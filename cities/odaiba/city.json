@@ -76,9 +76,10 @@
     "mix": {
       "elm": 0.4,
       "plane": 0.4,
-      "palm": 0.2
+      "palm": 0.2,
+      "cherry": 0.05
     },
-    "note": "Species are not mapped; the mix is a guess: elms and plane trees for the parks and streets, and palms for the seaside park's promenade."
+    "note": "Species are not mapped; the mix is a guess: elms and plane trees for the parks and streets, and palms for the seaside park's promenade. Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own."
   },
   "storey": {
     "res": [
@@ -208,6 +209,7 @@
     "note": "The Rainbow Bridge's towers and cables are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
   },
   "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Odaiba on Foot",
     "local_name": "Tokyoite",
     "water_name": "Tokyo Bay",
@@ -312,7 +314,7 @@
           642.0,
           -212.0
         ],
-        "radius": 200,
+        "radius": 120,
         "note": "The Rinkai line's station under the islands"
       }
     ],

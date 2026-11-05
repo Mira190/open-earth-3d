@@ -72,7 +72,8 @@
   "trees": {
     "mix": {
       "elm": 0.5,
-      "plane": 0.5
+      "plane": 0.5,
+      "cherry": 0.08
     },
     "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki) of the avenues and parks, plane trees for the street planes and ginkgos. A guess, not a survey."
   },
@@ -202,6 +203,7 @@
     "note": "The street signs, the roof names and the ring's LED rings are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
   },
   "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Ikebukuro on Foot",
     "local_name": "Tokyoite",
     "water_name": "the water",

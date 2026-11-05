@@ -1,0 +1,85 @@
+{
+ "note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. The check predicts each mapped roof as if it were not mapped.",
+ "counts": {
+  "prior:gabled": 236,
+  "measured:flat": 4143,
+  "prior:flat": 163,
+  "prior:hipped": 142,
+  "prior:gabled_across": 99,
+  "prior:skillion": 3,
+  "rule:flat": 7,
+  "fallback_flat": 6,
+  "too_low": 42,
+  "measured:gabled_across": 293,
+  "measured:gabled": 243,
+  "measured:hipped": 45,
+  "measured:half-hipped": 22,
+  "mapped:gabled": 3,
+  "mapped:mansard": 3,
+  "measured:skillion": 6
+ },
+ "check": {
+  "n": 6,
+  "flat_vs_pitched_accuracy": 0.833,
+  "exact_shape_accuracy": 0.167,
+  "family_accuracy": 0.167,
+  "pitched_recall": 0.833,
+  "flat_recall": 0.0,
+  "confusion_pitched": {
+   "true_pitched_pred_pitched": 5,
+   "true_pitched_pred_flat": 1,
+   "true_flat_pred_flat": 0,
+   "true_flat_pred_pitched": 0
+  },
+  "truth": {
+   "gabled": 3,
+   "mansard": 3
+  },
+  "vs_measured": {
+   "n": 4702,
+   "flat_vs_pitched_accuracy": 0.332,
+   "exact_shape_accuracy": 0.257,
+   "family_accuracy": 0.292,
+   "pitched_recall": 0.795,
+   "flat_recall": 0.263,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 485,
+    "true_pitched_pred_flat": 125,
+    "true_flat_pred_flat": 1077,
+    "true_flat_pred_pitched": 3015
+   },
+   "truth": {
+    "flat": 4092,
+    "gabled": 534,
+    "hipped": 70,
+    "skillion": 6
+   }
+  },
+  "measured_vs_mapped": {
+   "n": 6,
+   "flat_vs_pitched_accuracy": 0.0,
+   "exact_shape_accuracy": 0.0,
+   "family_accuracy": 0.0,
+   "pitched_recall": 0.0,
+   "flat_recall": 0.0,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 0,
+    "true_pitched_pred_flat": 6,
+    "true_flat_pred_flat": 0,
+    "true_flat_pred_pitched": 0
+   },
+   "truth": {
+    "gabled": 3,
+    "mansard": 3
+   }
+  }
+ },
+ "roofs_built": 1095,
+ "rooftop_props": 242,
+ "frontage_solids": 295,
+ "skeleton_failures": {
+  "short": 5,
+  "spike": 9,
+  "active": 1
+ }
+}

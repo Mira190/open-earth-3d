@@ -48,6 +48,20 @@
         "z_m": 31.2,
         "feather_m": 8,
         "note": "DEM5A interpolates a false terrace up to 40.5 m east of the keep, where the laser points were filtered out with the keep and its stone base. The 10 m DEM reads 31.5 to 32.6 m there and PLATEAU puts the ground under the keep at 30.9 to 31.7 m, so the honmaru is levelled to 31.2 m, DEM5A's median over the open plaza just south of it."
+      },
+      {
+        "name": "Ebisubashi's north head",
+        "ring": [[135.501415, 34.669228], [135.501415, 34.669327], [135.501196, 34.669327], [135.501196, 34.669228]],
+        "z_m": 3.9,
+        "feather_m": 3,
+        "note": "The DEM keeps the old bridge's approach as a hump across Ebisubashi-suji that stands up to 0.2 m over the drawn bridge's end (cities/osaka/city.py, EBISU) and falls 0.6 m across the street. The street at the bridge's north end, from 5 m on the bridge to 6 m past it and 10 m either side of its line, is levelled to the end of its deck, 3.9 m (the street's line in OpenStreetMap is at 3.9 m there)."
+      },
+      {
+        "name": "Ebisubashi's south head",
+        "ring": [[135.501415, 34.668804], [135.501415, 34.668903], [135.501196, 34.668903], [135.501196, 34.668804]],
+        "z_m": 4.1,
+        "feather_m": 3,
+        "note": "The same at the south end, under the Glico sign: levelled to the end of the deck, 4.1 m (the street's line, 4.1 to 4.2 m)."
       }
     ],
     "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey, with the 10 m DEM where it has gaps (GSI terms of use, compatible with CC BY 4.0)"
@@ -80,7 +94,7 @@
     ],
     "min_area_m2": 800
   },
-  "trees": {"mix": {"plane": 0.55, "elm": 0.45}, "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: plane trees for Midosuji's ginkgos and the London planes, elms for the zelkovas (keyaki). A guess, not a survey."},
+  "trees": {"mix": {"ginkgo": 0.4, "plane": 0.2, "zelkova": 0.15, "camphor": 0.15, "evergreen": 0.1, "cherry": 0.06}, "woods": {"camphor": 0.3, "evergreen": 0.25, "zelkova": 0.15, "pine": 0.12, "ginkgo": 0.1, "maple": 0.08, "cherry": 0.04}, "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.", "areas": [{"name": "Japan Mint", "osm": "W1270635689", "mix": {"cherry": 0.85, "maple": 0.15}, "note": "The Mint's riverside passage, open a week each April under some 340 cherries of 140 kinds."}, {"name": "Kema Sakuranomiya Park", "find": "大阪吹田自転車道線", "buffer": 20, "mix": {"cherry": 0.9, "zelkova": 0.1}, "note": "Some 4,800 cherries along the Okawa's east bank (Osaka City); its outline is the riverside path, widened."}, {"name": "Utsubo Park", "osm": "R15447686", "mix": {"zelkova": 0.4, "cherry": 0.2, "camphor": 0.2, "ginkgo": 0.1, "plane": 0.1}}, {"name": "Midosuji", "find": "御堂筋", "buffer": 22, "mix": {"ginkgo": 0.92, "plane": 0.08}, "note": "Midosuji is lined with ginkgos its whole 4 km (Osaka City), gold in late November, bare by late December."}, {"name": "Osaka Castle Park", "find": "大阪城公園", "mix": {"pine": 0.25, "camphor": 0.25, "evergreen": 0.2, "zelkova": 0.15, "maple": 0.15, "cherry": 0.25}}], "cherry_open": "03-27"},
   "storey": {
     "res": [
       3.6,
@@ -213,6 +227,27 @@
       "from": "17:15",
       "to": "18:15",
       "hold": 8
+    },
+    {
+      "title": "Namba Parks",
+      "text": "The Jerde Partnership's mall on the site of the old Osaka Stadium, opened in 2003: a canyon curves through it, and its roof is a park, terraces stepping up from the 2nd floor by Nankai Namba station to the 9th.",
+      "cam": [
+        -870,
+        -1820,
+        140
+      ],
+      "tgt": [
+        -1005,
+        -1980,
+        15
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "13:00",
+      "to": "14:00",
+      "hold": 9
     },
     {
       "title": "Tsutenkaku",
@@ -445,6 +480,7 @@
   },
   "verified_heights": "verified_heights.csv",
   "game": {
+    "weather": {"rain_days": [6.4, 7.3, 10.3, 10.0, 10.4, 12.3, 11.3, 7.8, 10.6, 9.2, 7.0, 7.1], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Osaka: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Osaka on Foot",
     "start": {
       "at": [
@@ -558,6 +594,7 @@
       "cars": 150,
       "radius_m": 450,
       "style": {
+        "umbrellas": ["clear", "clear", "clear", "clear", "#1d1f26", "#22304a", "#1d1f26", "#f2f2f2", "#7a2f1f"],
         "skin": [
           "#f6dccb",
           "#f0cdb3",

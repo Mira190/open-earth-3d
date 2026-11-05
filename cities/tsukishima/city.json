@@ -54,6 +54,21 @@
     "zoom": 14,
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
   },
+  "bridges": {
+    "min_m2": 50,
+    "deck_min_m": 2.0,
+    "widths": {"佃小橋": 4.4},
+    "forms": {
+      "佃小橋": {
+        "form": "girder",
+        "colour": "#c8402c",
+        "rail": "none",
+        "crown_m": 0.35,
+        "lamps": 0,
+        "note": "the deck under the vermilion railings city.py draws"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",
@@ -75,9 +90,22 @@
   "trees": {
     "mix": {
       "elm": 0.5,
-      "plane": 0.5
+      "plane": 0.5,
+      "cherry": 0.08
     },
-    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas, plane trees for the street planes and the riverside's cherries. A guess, not a survey."
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas, plane trees for the street planes and the riverside's cherries. A guess, not a survey.",
+    "areas": [
+      {
+        "name": "Ishikawajima Park",
+        "osm": "W597773279",
+        "mix": {
+          "cherry": 0.6,
+          "zelkova": 0.2,
+          "plane": 0.2
+        },
+        "note": "Cherries along the Sumida's terrace at the tip of Tsukudajima."
+      }
+    ]
   },
   "storey": {
     "res": [
@@ -202,6 +230,7 @@
     "note": "Monja Street's signs are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
   },
   "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Tsukishima on Foot",
     "local_name": "Tokyoite",
     "water_name": "the Sumida",

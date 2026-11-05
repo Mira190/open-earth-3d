@@ -1,9 +1,11 @@
 """Rewrite a built city's piers (web/data/<id>/places.json "piers") from its Overture layers,
 without rebuilding the scene: the mapped pier polygons and the decks shore.decks finds over the
-water (issue 50). Run pipeline/game_data.py after it, which keeps the ferries clear of them.
+water (issue 50), and the buildings out on the water (issue 65, pipeline/wet_buildings.py: a
+wharf deck mapped as a building is hidden, a vessel gets its hull). Run pipeline/game_data.py
+after it, which keeps the ferries clear of them.
 
-Needs data/raw/<id>/overture_{water,land,infrastructure,segment}.parquet
-(fetch_overture.py --only water land infrastructure segment).
+Needs data/raw/<id>/overture_{building,water,land,infrastructure,segment}.parquet
+(fetch_overture.py --only building water land infrastructure segment).
 
     python pipeline/refresh_piers.py --city tokyo
 """
@@ -13,6 +15,7 @@ import os
 import duckdb
 from shapely.geometry import box
 
+import wet_buildings
 from build_scene import pier_rings, water_polygons
 from cityctx import city_args
 
@@ -29,6 +32,8 @@ def main():
     places["piers"] = pier_rings(C, con, raw, sea, extent)
     json.dump(places, open(path, "w"), separators=(",", ":"))
     print(f"{C.id}: {before} -> {len(places['piers'])} piers in {path}")
+    d, v = wet_buildings.mark(C, wet_buildings.classify(C, con, raw, sea))
+    print(f"{C.id}: {d} deck solids hidden, {v} vessels given a hull (buildings.json)")
 
 
 if __name__ == "__main__":

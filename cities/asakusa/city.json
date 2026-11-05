@@ -39,6 +39,60 @@
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)",
     "exclude": [{"at": [139.810714, 35.710045], "radius_m": 30, "name": "Tokyo Skytree"}]
   },
+  "bridges": {
+    "note": "The Sumida's bridges in the colours the Tokyo Metropolitan Government chose in 1984 and kept in 2015 (隅田川中流部著名橋色彩基本方針: no two neighbours alike, low saturation); forms and spans from the Tokyo Road Maintenance Corporation (ブリッジサポーター通信 No.11) and each bridge's record.",
+    "forms": {
+      "吾妻橋": {
+        "form": "deck_arch",
+        "colour": "#a8392e",
+        "spans": 3,
+        "rail": "painted",
+        "lamps": 5,
+        "note": "1931, three steel solid-rib deck arches, vermilion after Senso-ji"
+      },
+      "駒形橋": {
+        "form": "half_through",
+        "colour": "#4e7398",
+        "span_m": [32.5, 74.7, 32.5],
+        "rise_m": 9.0,
+        "rail": "painted",
+        "lamps": 4,
+        "note": "1927, Japan's first half-through steel arch over the middle span, deck arches either side; blue"
+      },
+      "厩橋": {
+        "form": "through_arch",
+        "colour": "#4f8268",
+        "span_m": [47.5, 56.4, 47.5],
+        "rise_m": 8.5,
+        "rail": "painted",
+        "lamps": 4,
+        "note": "1929, the Sumida's only three-span through tied arch; green"
+      },
+      "言問橋": {
+        "form": "girder",
+        "colour": "#9aa8b0",
+        "spans": 3,
+        "lamps": 6,
+        "note": "1928, three-span steel Gerber girder, blue-grey"
+      },
+      "桜橋": {
+        "form": "x",
+        "colour": "#d9d7d0",
+        "arm_m": 6.0,
+        "spans": 3,
+        "lamps": 3,
+        "note": "1985, the Sumida's footbridge, an X in plan: 6 m arms, 20 m where they cross"
+      },
+      "隅田川橋梁": {
+        "form": "truss",
+        "colour": "#e6ecef",
+        "span_m": [51, 64, 51],
+        "truss_h": 8.0,
+        "lamps": 0,
+        "note": "Tobu Skytree Line, 1931: three-span Warren truss, repainted Skytree White in 2020"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",
@@ -52,8 +106,49 @@
     "min_area_m2": 3000
   },
   "trees": {
-    "mix": {"elm": 0.55, "plane": 0.45},
-    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) and the ginkgos of Senso-ji's precinct, plane trees for the street trees of Edo-dori and the Sumida's banks. A guess, not a survey."
+    "mix": {
+      "ginkgo": 0.3,
+      "zelkova": 0.3,
+      "plane": 0.2,
+      "camphor": 0.1,
+      "evergreen": 0.1,
+      "cherry": 0.08
+    },
+    "woods": {
+      "zelkova": 0.25,
+      "camphor": 0.2,
+      "evergreen": 0.2,
+      "ginkgo": 0.15,
+      "pine": 0.1,
+      "maple": 0.1,
+      "cherry": 0.04
+    },
+    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.",
+    "areas": [
+      {
+        "name": "Sumida Park",
+        "osm": "R14235095",
+        "mix": {
+          "cherry": 0.65,
+          "zelkova": 0.15,
+          "camphor": 0.1,
+          "ginkgo": 0.1
+        },
+        "note": "Some 600 cherries along the Sumida's west bank, planted by the shogun Yoshimune (Taito City)."
+      },
+      {
+        "name": "Senso-ji",
+        "find": "浅草寺",
+        "mix": {
+          "ginkgo": 0.4,
+          "camphor": 0.2,
+          "pine": 0.15,
+          "zelkova": 0.15,
+          "evergreen": 0.1
+        },
+        "note": "The precinct's old ginkgos, which survived the 1945 air raid."
+      }
+    ]
   },
   "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
   "check_points": {
@@ -129,6 +224,7 @@
     "fonts": "Lanterns and plaques drawn with Google Fonts under the SIL Open Font License: Yuji Syuku, Shippori Mincho"
   },
   "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Asakusa on Foot",
     "local_name": "Tokyoite",
     "water_name": "the Sumida",
@@ -166,6 +262,9 @@
       }
     ],
     "ferry_note": "Piers are from OpenStreetMap via Overture. One boat runs between the piers on this map; the timetable is not real. Tokyo Cruise and the Tokyo Mizube Line run on to Hinode, Hamarikyu and Odaiba from here.",
+    "scrambles": [
+      {"name": "雷門前 Kaminarimon-mae", "at": [-471.6, -123.8], "note": "Kaminarimon-dori before the gate; both diagonals mapped in OSM."}
+    ],
     "crowd": {"pedestrians": 560, "cars": 150, "radius_m": 420, "style": "tokyo"},
     "vehicles": {
       "helicopter": {"registration": "JA634T"},

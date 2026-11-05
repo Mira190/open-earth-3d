@@ -61,10 +61,87 @@
   },
   "trees": {
     "mix": {
-      "elm": 0.6,
-      "plane": 0.4
+      "zelkova": 0.35,
+      "ginkgo": 0.25,
+      "plane": 0.2,
+      "camphor": 0.1,
+      "evergreen": 0.1,
+      "cherry": 0.08
     },
-    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) of Omotesando and the shrine groves, plane trees for the street planes and ginkgos of Aoyama and Meiji Jingu Gaien. A guess, not a survey."
+    "woods": {
+      "evergreen": 0.3,
+      "camphor": 0.22,
+      "zelkova": 0.18,
+      "ginkgo": 0.1,
+      "maple": 0.08,
+      "sugi": 0.07,
+      "pine": 0.05,
+      "cherry": 0.04
+    },
+    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.",
+    "areas": [
+      {
+        "name": "Hachiko Square's planters",
+        "at": [
+          381.0,
+          -1035.5
+        ],
+        "radius": 2.0,
+        "mix": {
+          "cherry": 1.0
+        },
+        "note": "The round planter north of Hachiko holds a Somei-yoshino (photographs 2020-25)."
+      },
+      {
+        "name": "Hachiko Square's planters, south",
+        "at": [
+          383.6,
+          -1049.2
+        ],
+        "radius": 2.0,
+        "mix": {
+          "cherry": 1.0
+        },
+        "note": "And so does the one south of him."
+      },
+      {
+        "name": "Meguro River",
+        "osm": "R16272154",
+        "buffer": 14,
+        "mix": {
+          "cherry": 0.9,
+          "zelkova": 0.1
+        },
+        "note": "About 800 cherries on both banks from Ikejiri-Ohashi down through Nakameguro, their branches over the water (Meguro City)."
+      },
+      {
+        "name": "Meiji Jingu",
+        "find": "明治神宮",
+        "mix": {
+          "camphor": 0.3,
+          "evergreen": 0.35,
+          "sugi": 0.1,
+          "zelkova": 0.1,
+          "ginkgo": 0.05,
+          "pine": 0.05,
+          "maple": 0.05
+        },
+        "note": "The planted shrine forest, now mostly camphor and the evergreen oaks and shii of the laurel forest."
+      },
+      {
+        "name": "Yoyogi Park",
+        "find": "代々木公園",
+        "mix": {
+          "zelkova": 0.3,
+          "ginkgo": 0.2,
+          "plane": 0.15,
+          "camphor": 0.15,
+          "evergreen": 0.1,
+          "pine": 0.1,
+          "cherry": 0.15
+        }
+      }
+    ]
   },
   "storey": {
     "res": [
@@ -386,6 +463,7 @@
     "note": "clear: no street-lamp pole stands in the scramble, whose paved crossing is far wider than its four streets"
   },
   "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Tokyo Pilgrimage: Shibuya 東京巡礼・渋谷",
     "local_name": "Tokyoite",
     "water_name": "the river",
@@ -401,14 +479,28 @@
     ],
     "start": {
       "at": [
+        376.9,
+        -1013.1
+      ],
+      "facing": [
+        358.8,
+        -985.5
+      ],
+      "car": [
         371.9,
         -1041.6
       ],
-      "facing": [
-        368.7,
-        -1000.6
-      ],
-      "time": "live"
+      "time": "live",
+      "shot": {
+        "look": [
+          354.5,
+          -968.6,
+          34.0
+        ],
+        "dur": 4.2,
+        "walk_in": 2.2,
+        "sway_deg": 8
+      }
     },
     "helipads": [
       {
@@ -433,11 +525,28 @@
     "helipads_from_data": false,
     "wharves": [],
     "ferries": [],
+    "scrambles": [
+      {"name": "道玄坂下 Dogenzaka-shita", "at": [268.0, -998.6], "note": "In front of 109, where Dogenzaka and Bunkamura-dori fork; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings)."},
+      {"name": "井ノ頭通り入口 Inokashira-dori Iriguchi", "at": [391.4, -894.8], "note": "Koen-dori at Seibu; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."},
+      {"name": "神南一丁目 Jinnan 1-chome", "at": [392.3, -819.0], "note": "Koen-dori, the next crossing up; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."},
+      {"name": "勤労福祉会館前 Kinro Fukushi Kaikan-mae", "at": [251.7, -680.2], "note": "Koen-dori, about 200 m further; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."}
+    ],
     "crowd": {
       "pedestrians": 640,
+      "pedestrians_peak": 1600,
+      "hours": [[0, 0.32], [1, 0.16], [3, 0.07], [5, 0.1], [7, 0.42], [8, 0.72], [9, 0.55], [11, 0.55], [12, 0.7], [14, 0.62], [16, 0.72], [18, 0.88], [20, 0.86], [22, 0.66], [23, 0.5]],
+      "weekend_night": 1.15,
+      "weekend": 1.15,
+      "note": "hours: the share of the peak crowd out, by the hour: the morning commute, lunch, and the evening, busiest from 18:00 to 21:00 and busier still on Friday and Saturday nights and at the weekend (Shibuya Redevelopment Association, 2014: 260,000 people a day on weekdays, 390,000 on holidays); few after the last trains (about 00:30)",
       "cars": 200,
       "radius_m": 450,
       "style": "tokyo"
+    },
+    "look": {
+      "neon": 1,
+      "fill": [{ "at": [368.7, -1000.6], "z": 12, "w": 60, "h": 56, "colour": "#ffe4c8", "k": 1.2 }],
+      "sound": { "at": [368.7, -1000.6], "r": 170, "signal": "piyo", "station": [430.0, -1070.0] },
+      "note": "neon: the screens' light on the street (web/neon.js); fill: after dark, the light the crossing's shopfronts, floodlights and signs put on the middle of the scramble, where no street lamp stands (a light card over it, medium and high tiers); sound: the crossing's murmur, its screens' music, the walk signal's bird calls and the station's announcements (web/game/audio.js)"
     },
     "vehicles": {
       "helicopter": {
@@ -523,10 +632,10 @@
     "travel": [
       {
         "id": "t-shibuya",
-        "name": "Shibuya: Hachiko 渋谷",
+        "name": "Shibuya: the scramble 渋谷",
         "at": [
-          372.2,
-          -1044.1
+          376.9,
+          -1013.1
         ]
       },
       {
@@ -552,8 +661,8 @@
         "name": "Aoi 葵",
         "role": "Pilgrimage guide 聖地巡礼ガイド",
         "at": [
-          372.2,
-          -1044.1
+          355.6,
+          -983.6
         ],
         "look": {
           "character": "R_Female_Adult_14_f016",
@@ -712,7 +821,7 @@
           "shibuya",
           "yongen"
         ],
-        "on_open": "<b>Every walk done.</b> Report back to Aoi at Hachiko."
+        "on_open": "<b>Every walk done.</b> Report back to Aoi by QFRONT, across the scramble from Hachiko."
       }
     ],
     "quests": [
@@ -724,18 +833,18 @@
         "stamp": "Hachiko",
         "talk": [
           "ようこそ渋谷へ! I'm Aoi. I guide pilgrims: people who come to stand where a story stood. This month it's ten years since a film and a game put these streets on the map.",
-          "Hachiko has sat here since 1948. A game called this square Station Square. Walk out onto the scramble when the lights change.",
+          "You've just crossed it: the scramble, up to three thousand people at one change of the lights. Hachiko, back across the road, has sat there since 1948, and a game called his square Station Square. Cross back to him when the lights change.",
           "Want to see it from above? The lift at SKY GATE in Scramble Square, just across the road, goes up to SHIBUYA SKY, and a helicopter waits on the roof. A hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
           {
             "type": "visit",
             "at": [
-              368.7,
-              -1000.6
+              373.78,
+              -1047.42
             ],
-            "radius": 10,
-            "text": "Walk out onto the scramble"
+            "radius": 6,
+            "text": "Cross back to Hachiko"
           },
           {
             "type": "talk",

@@ -64,6 +64,7 @@ if (require.main === module) {
       const p = await b.newPage({ viewport: { width: 800, height: 500 } });
       await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
       await p.waitForFunction('window.__game', null, { timeout: 400000 });
+  await p.evaluate(() => window.__game.npcsReady && window.__game.npcsReady()); // (the NPCs' characters load after the game opens)
       const rs = await p.evaluate(survey);
       console.log(`${city}: ${await p.evaluate(() => { const N = window.__game.Wd.night; return `${N.lamps} lamps, ${N.foot} along the ways on foot, ${N.spots} at meeting places`; })}`);
       for (const r of rs) {

@@ -54,6 +54,24 @@
     "attribution": "3DBAG v2025.09.03 by the 3D geoinformation research group (TU Delft) and 3DGI, from BAG footprints and AHN LiDAR, CC BY 4.0"
   },
   "architecture": "amsterdam",
+  "bridges": {
+    "deck_min_m": 1.0,
+    "skip": ["Haarlemmer Houttuinen"],
+    "note": "The canal bridges the city's own builder leaves (those OpenStreetMap maps as lines): brick arches, as most of the city's are.",
+    "form": "stone_arch",
+    "stone": "#8a4f3c",
+    "forms": {
+      "Oosterdoksspoorbrug": {"form": "girder", "colour": "#5b5f63"},
+      "Blauwbrug": {
+        "form": "stone_arch",
+        "spans": 3,
+        "stone": "#c9c0ad",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1884, three stone arches and lamp columns, after Paris's Pont Alexandre III"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b4434",
@@ -341,6 +359,27 @@
       "hold": 9
     },
     {
+      "title": "The Rijksmuseum",
+      "text": "Pierre Cuypers' museum, opened in 1885: 135 m long, in red brick banded with sandstone, its towers 53 m high. A public passage runs through its middle, under the entrance hall, for cyclists and walkers.",
+      "cam": [
+        -640,
+        -1620,
+        45
+      ],
+      "tgt": [
+        -495,
+        -1445,
+        18
+      ],
+      "date": [
+        4,
+        20
+      ],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 9
+    },
+    {
       "title": "Below the water",
       "text": "The canals are kept at 40 cm below NAP, the national datum, and so is the IJ. Most streets in the old city stand a metre or two above the water; the Vondelpark is a polder two metres lower still.",
       "cam": [
@@ -423,6 +462,7 @@
     "gables": "Gable dates: Grachtenmuseum, Architecture in the canal district (grachten.museum)"
   },
   "game": {
+    "weather": {"rain_days": [12.2, 10.8, 9.7, 8.6, 8.9, 9.7, 10.9, 11.6, 10.9, 12.4, 13.4, 14.1], "threshold_mm": 1.0, "drizzle": 0.55, "source": "KNMI, Amsterdam Airport Schiphol, 1991-2020 normals, days with at least 1 mm"},
     "title": "Amsterdam on Foot",
     "local_name": "Amsterdammer",
     "water_name": "the canals",

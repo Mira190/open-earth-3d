@@ -8,6 +8,9 @@
 #     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
 #   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
+#   - checks that every city's buildings.bin is packed from its buildings.json as it is now and decodes
+#     to the same values (pipeline/pack.py --check, tools/pack_check.js);
+#   - checks that every shared model in web/assets is meshopt-compressed (pipeline/meshopt_glb.mjs --check);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
 #     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
@@ -20,7 +23,8 @@
 # The games play at a pinned local hour (GAME_TIME, default 10:00 in each city's own time zone,
 # tools/pin_clock.js), so that a run does not depend on the hour it is started at:
 #   GAME_TIME=22:40 tools/check.sh osaka    # at another hour; GAME_TIME=live: the real clock
-#   tools/check.sh                      # what this branch changed (committed or not)
+#   tools/check.sh                      # what this branch changed (committed or not); after a
+#                                       # pass, only what changed since it (CHECK_FULL=1: all of it)
 #   tools/check.sh sydney hardy-reef    # these cities and reef sites
 #   tools/check.sh title                # the title screen only
 #   tools/check.sh voice                # what the characters say only (it runs with every target)
@@ -34,6 +38,8 @@ JOBS=${CHECK_JOBS:-3}
 mkdir -p "$OUT"
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
 
+STAMP="$(git rev-parse --git-dir)/oe-check-pass"   # the commit of the last full pass, in this clone only
+stamp() { [ $# -eq 0 ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
 CITIES=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || echo "$d"; done)
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
@@ -58,6 +64,17 @@ if [ $# -gt 0 ]; then
   done
 else
   base=$(git merge-base origin/main HEAD 2>/dev/null) || { echo "no origin/main to compare with: git fetch origin main"; exit 2; }
+  # After a pass, only what changed since then. A run with no targets that passes on a clean tree
+  # stamps HEAD in $STAMP. When main moves on and is merged in again, the commit checked last is
+  # still an ancestor of HEAD, and everything not yet checked (main's new commits, conflict fixes,
+  # later work of the branch) is in the diff from it: a merge of main that only brought other
+  # cities checks those cities, not all twenty. CHECK_FULL=1 compares with main as before.
+  last=$(cat "$STAMP" 2>/dev/null)
+  if [ -z "${CHECK_FULL:-}" ] && [ -n "$last" ] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null \
+     && ! git merge-base --is-ancestor "$last" "$base"; then
+    echo "checking what changed since the last pass, $(git log -1 --format='%h %s' "$last" | cut -c1-70) (CHECK_FULL=1 for the whole branch)"
+    base=$last
+  fi
   changed=$( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)
   for f in $changed; do
     case "$f" in
@@ -76,6 +93,7 @@ fi
 
 if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
+  stamp "$@"
   exit 0
 fi
 
@@ -90,13 +108,31 @@ export PORT
 export GAME_TIME=${GAME_TIME:-10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
+# The game's and the clip check's timing and traffic steps can miss under three cities' load at once
+# on a software renderer (a taxi's drive-off, a ride's ETA, the brightness after a lost context, a car
+# into a post), and pass when run alone (issue 84). Run in parallel (pass=load), a failure is put off
+# to a rerun alone after the others (pass=alone), and only a failure alone fails; the run under load
+# keeps its log as <city>-load.log
+RETRY="$OUT/retry.txt"
+: >"$RETRY"
+game_step() {
+  local c=$1 pass=$2
+  if timeout 900 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then
+    echo "ok   game   $c$([ "$pass" = alone ] && echo "   (alone, after failing under load: see $OUT/$c-load.log)")"
+  elif [ "$pass" = load ]; then cp "$OUT/$c.log" "$OUT/$c-load.log"; echo "game $c" >>"$RETRY"
+  else echo "FAIL game   $c   (see $OUT/$c.log; under load $OUT/$c-load.log)"; fi
+}
+clip_step() {
+  local c=$1 pass=$2
+  if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
+    echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance$([ "$pass" = alone ] && echo "; alone, after failing under load: see $OUT/$c-clip-load.log"))"
+  elif [ "$pass" = load ]; then cp "$OUT/$c-clip.log" "$OUT/$c-clip-load.log"; echo "clip $c" >>"$RETRY"
+  else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
+}
 run_city() {
   local c=$1
-  if timeout 900 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then echo "ok   game   $c"
-  else echo "FAIL game   $c   (see $OUT/$c.log)"; fi
-  if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
-    echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance)"
-  else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
+  game_step "$c" load
+  clip_step "$c" load
   # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
   timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
   if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
@@ -143,6 +179,14 @@ EOF
   # what the characters say, everywhere (tools/voice_check.py): locals, not the map's credits. A second or so.
   if python3 tools/voice_check.py >"$OUT/voice.log" 2>&1; then tail -1 "$OUT/voice.log"
   else echo "FAIL voice  $(grep '^FAIL' "$OUT/voice.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/voice.log)"; fi
+  # each city's packed buildings (buildings.bin, pipeline/pack.py) against its buildings.json: up to date,
+  # and decoded by the browser's decoder (web/pack.js) to the same values. Ten seconds or so.
+  if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
+    echo "ok   pack   $(ls web/data/*/buildings.bin | wc -l) cities' buildings.bin up to date and decoded to their buildings.json"
+  else echo "FAIL pack   $(grep '^FAIL' "$OUT/pack.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/pack.log)"; fi
+  # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
+  if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
+  else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi
   # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
   if [ ${#cities[@]} -gt 0 ]; then
     if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"
@@ -153,8 +197,10 @@ EOF
     run_city "$c" &
   done
   wait
+  while read -r step c; do "${step}_step" "$c" alone; done <"$RETRY"
   for r in "${reefs[@]}"; do run_reef "$r"; done
   [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
 } | tee "$OUT/summary.txt"
-! grep -q '^FAIL' "$OUT/summary.txt"
+grep -q '^FAIL' "$OUT/summary.txt" && exit 1
+stamp "$@"

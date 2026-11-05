@@ -28,6 +28,18 @@ from japankit import Atlas
 HERE = os.path.dirname(os.path.abspath(__file__))
 ATLAS_FILE = "scramble.jpg"
 
+
+def _sibling(name):
+    """A module next to this one (this folder is not on sys.path): streets.py, the streets off the scramble."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"shibuya_{name}", os.path.join(HERE, f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+streets = _sibling("streets")
+
 MATERIALS = {
     # the junction's asphalt, laid over the ground (dark, a little worn; the game's street texture under it)
     "x_asphalt": {"color": "#4b4e52", "roughness": 0.93, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0], "decal": True, "street_lit": True},
@@ -61,7 +73,7 @@ MATERIALS = {
     "x_qf_panel": {"color": "#cfd2d5", "roughness": 0.45, "metalness": 0.5},
     "x_qf_roof": {"color": "#6d7176", "roughness": 0.8, "metalness": 0.2},
     "x_shop": {"color": "#59616a", "roughness": 0.12, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.8, "spandrel": 0.04,
-               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 1.0, "lit_k": 1.1, "warm_share": 0.8},
+               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 0.9, "lit_k": 0.8, "warm_share": 0.8},
     # QFRONT's floors behind the outer skin (as city.py's qfront_glass)
     "qfront_glass": {"color": "#2b3741", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
                      "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.55, "lit_k": 0.6},
@@ -83,8 +95,13 @@ MATERIALS = {
     "x_bike_white": {"color": "#e8e8e4", "roughness": 0.45, "metalness": 0.2},
     "x_bike_red": {"color": "#a8262a", "roughness": 0.45, "metalness": 0.3},
     "x_atlas": {"color": "#ffffff", "roughness": 0.6, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 1.3},
+    # the bookshop on Center Gai's corner: white clapboard, its blue awning and trim, the sign box's white sides
+    "x_clap": {"color": "#ecebe6", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.2]},
+    "x_bk_blue": {"color": "#1f45a8", "roughness": 0.65, "metalness": 0.0},
+    "x_bk_box": {"color": "#f1f1ee", "roughness": 0.5, "metalness": 0.1},
 }
-LIT = {"x_light", "x_atlas", "x_print", "x_shop", "x_red_lamp"}
+MATERIALS.update(streets.MATERIALS)
+LIT = {"x_light", "x_atlas", "x_print", "x_red_lamp"}
 
 
 # ---------------------------------------------------------------- data
@@ -1107,17 +1124,18 @@ def draw_gate(img, rects):
 # over the street); the brands are invented, in the kinds the real ones are (a pharmaceutical's two
 # boxes, a card company, a furniture store, throat lozenges, a karaoke chain).
 BILLBOARDS = [
-    {"at": (324.7, -971.6), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_hikari", 11.0, 3.6), ("bb_hikari2", 11.0, 6.2)], "gap": 0.5, "lift": 1.0},
+    # the Taiseido block's tower: three boxes stacked tight (15 cm apart) up to the tower's top at 39.4 m
+    {"at": (324.7, -971.6), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_hikari", 11.0, 3.6), ("bb_hikari2", 11.0, 6.2), ("bb_lens", 11.0, 4.0)],
+     "gap": 0.15, "lift": 1.0},
     {"at": (306.5, -951.0), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_card", 8.0, 8.0)], "lift": 3.0},
     {"at": (281.0, -952.0), "face": (372.0, -1020.0), "roof_m": 37.8, "boxes": [("bb_home", 10.5, 4.8)], "lift": 2.0},
     {"at": (274.0, -968.0), "face": (372.0, -1020.0), "roof_m": 52.1, "boxes": [("bb_nodo", 12.0, 5.6)], "lift": 1.5},
 ]
 # bands of tenants' signs across a building's face toward the scramble: (building, floors' heights above
-# the street, art) -- the Oto building's restaurants and opticians, the Taiseido block's bookshop fascia
+# the street, art) -- the Oto building's restaurants and opticians (the bookshop on the corner: BOOKSHOP)
 BANDS = [
     {"building": "渋谷駅前ビル", "near": (320.0, -1045.0), "toward": (372.0, -1010.0), "rows": [(8.2, "band_shabu"), (11.6, "band_cafe"), (15.0, "band_megane"),
                                                                                        (18.4, "band_price"), (21.8, "band_clinic")], "w": 0.8},
-    {"building": "w136690966", "near": (318.0, -975.0), "toward": (360.0, -1000.0), "rows": [(2.5, "band_books")], "w": 0.55},
     {"building": "渋谷駅前ビル", "near": (310.0, -1015.0), "toward": (305.0, -980.0), "rows": [(4.6, "band_karaoke"), (8.2, "band_cafe"), (11.6, "band_shabu"),
                                                                                     (15.0, "band_megane"), (18.4, "band_clinic")], "w": 0.85},
 ]
@@ -1132,12 +1150,12 @@ BB_ART = {
     "bb_card": ("#ffffff", "NC", "anton", "#1d3c9a", "NOVA CARD"),
     "bb_home": ("#f2c400", "HOMELY", "anton", "#164aa8", "家具と雑貨"),
     "bb_nodo": ("#f06aa0", "のどにハッカ", "zen", "#ffffff", "ハッカ散 ダイレクト"),
+    "bb_lens": ("#0b2a6f", "1DAY CLEAR", "anton", "#ffffff", "コンタクト レンズ"),
     "band_shabu": ("#f07a1a", "しゃぶしゃぶ 葉山", "zen", "#ffffff", None),
     "band_cafe": ("#d7262b", "Cafeレストラン ガロ", "zen", "#ffffff", None),
     "band_megane": ("#d42f2f", "メガネ・コンタクト", "zen", "#fff3a0", None),
     "band_price": ("#ffde2a", "チケット プライス", "zen", "#c0141c", None),
     "band_clinic": ("#ffffff", "渋谷駅前クリニック", "zen", "#1d4fa8", None),
-    "band_books": ("#ffffff", "大盛堂書店", "mincho", "#1a3c9c", None),
     "band_karaoke": ("#e01f26", "カラオケ ONE  2F", "zen", "#ffffff", None),
 }
 
@@ -1262,6 +1280,134 @@ def draw_magnet(img, rects):
     im = Image_new(w, h, (206, 210, 214))
     ad.text(im, (w * 0.42, h * 0.5), "MAGNET", "mincho", int(h * 0.7), fill="#d01e2a")
     ad.text(im, (w * 0.86, h * 0.56), "by SHIBUYA109", "mincho", int(h * 0.2), fill="#d01e2a")
+    img.paste(im, (x, y))
+
+
+# ---------------------------------------------------------------- the bookshop on Center Gai's corner
+
+# On the corner where Center Gai meets the scramble stands a bookshop that has been there since 1912, in a
+# narrow building at the south-east corner of the block (OSM's w136690966 is the whole block). Its front
+# is the corner's chamfer, facing the crossing, and a few metres of the side on the street to the south:
+# white clapboard to the first floor, the shop window and door on the chamfer under a blue awning with the
+# shop's name in white, and over them a big white box sign, lit from inside, wrapping round the corner:
+# the name in heavy blue characters inside a red outline of an open book, the romanised name in red
+# under it, a blue edge along its foot (photographs 2021-24). The name is invented in the real one's
+# pattern -- five characters, □□堂書店, set the same way in the same colours -- not the real shop's.
+# Sizes from photographs, scaled from the door: the awning at 3.0-3.45 m, the sign 3.6-6.9 m.
+BOOKSHOP = {"a": (323.6, -975.2), "b": (329.9, -969.4), "south_from": (295.4, -978.2), "return_m": 3.4,
+            "name": ("大昇", "堂書店"), "roman": "BOOKS TAISHODO", "awning": "TAISHODO",
+            "sign_z": (3.6, 6.9), "sign_off": 0.75, "awning_z": (3.0, 3.45), "awning_out": 1.15}
+
+
+def _offset_corner(a, n1, f1, n2, f2, off):
+    """Where the two faces' lines, each moved `off` out along its normal, meet (the sign's mitre)."""
+    p, q = a + n1 * off, a + n2 * off
+    M = np.array([f1, -f2]).T
+    t = np.linalg.solve(M, q - p)
+    return p + f1 * t[0]
+
+
+def bookshop(K, A, D):
+    """The corner bookshop: clapboard, shop window, awning and the wrapping box sign (BOOKSHOP)."""
+    B = BOOKSHOP
+    a, b, s0 = (np.asarray(B[k], float) for k in ("a", "b", "south_from"))
+    f1 = unit(b - a)                       # along the chamfer, from the south corner to Center Gai's
+    n1 = np.array([f1[1], -f1[0]])         # its outward normal (the crossing)
+    f2 = unit(a - s0)                      # along the south face, toward the corner
+    n2 = np.array([f2[1], -f2[0]])         # its outward normal (the street to the south)
+    Lc, Lr = float(np.linalg.norm(b - a)), B["return_m"]
+    r0 = a - f2 * Lr                       # where the shop's front starts on the south face
+    g = min(D.ground(*a), D.ground(*b), D.ground(*r0))
+
+    def face(p, q, n, off, z0, z1, m, uvm=True):
+        p, q = p + n * off, q + n * off
+        L = float(np.linalg.norm(q - p))
+        m.quad(np.array([*p, z0]), np.array([*q, z0]), np.array([*q, z1]), np.array([*p, z1]),
+               [[0, z0 - g], [L, z0 - g], [L, z1 - g], [0, z1 - g]] if uvm else None)
+
+    za0, za1 = (g + z for z in B["awning_z"])
+    # the ground floor: clapboard, the window and door on the chamfer, a display window on the side
+    face(r0, a, n2, 0.12, g, za1, K["x_clap"])
+    face(a, b, n1, 0.12, g, za1, K["x_clap"])
+    for p, q, n, inset in ((a, b, n1, 1.1), (r0, a, n2, 0.6)):
+        ff = unit(q - p)
+        pp, qq = p + ff * inset, q - ff * (inset if n is n1 else 1.4)
+        face(pp, qq, n, 0.14, g + (0.03 if n is n1 else 0.7), g + 2.55, K["x_shop"])
+        P = frame(pp + n * 0.14, n)
+        Lw = float(np.linalg.norm(qq - pp))
+        for v in np.linspace(0, Lw, max(2, int(Lw / 1.5)) + 1):     # mullions
+            box(K["x_frame"], P, 0.0, 0.05, v - 0.03, v + 0.03, g + (0.03 if n is n1 else 0.7), g + 2.55)
+        box(K["x_frame"], P, 0.0, 0.05, 0.0, Lw, g + 2.55, g + 2.66)
+    # the awning: sloping out from the wall, its front valance carrying the name in white
+    for p, q, n in ((r0, a, n2), (a, b, n1)):
+        out = B["awning_out"]
+        pa, qa = p + n * 0.12, q + n * 0.12
+        po, qo = pa + n * out, qa + n * out
+        K["x_bk_blue"].quad(np.array([*pa, za1]), np.array([*po, za0 + 0.25]), np.array([*qo, za0 + 0.25]), np.array([*qa, za1]))
+        K["x_bk_blue"].quad(np.array([*qa, za1 - 0.02]), np.array([*qo, za0 + 0.23]), np.array([*po, za0 + 0.23]), np.array([*pa, za1 - 0.02]))
+        if n is n1:
+            A.quad(K["x_atlas"], np.array([*po, za0]), np.array([*qo, za0]), np.array([*qo, za0 + 0.25]), np.array([*po, za0 + 0.25]), "bk_awning")
+        else:
+            K["x_bk_blue"].quad(np.array([*po, za0]), np.array([*qo, za0]), np.array([*qo, za0 + 0.25]), np.array([*po, za0 + 0.25]))
+    # the sign box round the corner: its face (one image across both faces), top, foot and ends
+    zs0, zs1 = (g + z for z in B["sign_z"])
+    off = B["sign_off"]
+    c = _offset_corner(a, n1, f1, n2, f2, off)
+    s_start, s_end = r0 + n2 * off, b + n1 * off + f1 * 0.2
+    L1, L2 = float(np.linalg.norm(c - s_start)), float(np.linalg.norm(s_end - c))
+    u0, v0, u1, v1 = A.uv("bk_sign")
+    um = u0 + (u1 - u0) * L1 / (L1 + L2)
+    zb = zs0 + 0.16                         # (the blue edge along its foot)
+    K["x_atlas"].quad(np.array([*s_start, zb]), np.array([*c, zb]), np.array([*c, zs1]), np.array([*s_start, zs1]), [[u0, v0], [um, v0], [um, v1], [u0, v1]])
+    K["x_atlas"].quad(np.array([*c, zb]), np.array([*s_end, zb]), np.array([*s_end, zs1]), np.array([*c, zs1]), [[um, v0], [u1, v0], [u1, v1], [um, v1]])
+    for p, q in ((s_start, c), (c, s_end)):
+        K["x_bk_blue"].quad(np.array([*p, zs0]), np.array([*q, zs0]), np.array([*q, zb]), np.array([*p, zb]))
+    wall_s, wall_e = r0 + n2 * 0.1, b + n1 * 0.1 + f1 * 0.2
+    wall_c = _offset_corner(a, n1, f1, n2, f2, 0.1)
+    for z, up in ((zs1, True), (zs0, False)):      # its top and its underside: a band bent round the corner
+        for quad in ((wall_s, s_start, c, wall_c), (wall_c, c, s_end, wall_e)):
+            for tri in ((quad[0], quad[1], quad[2]), (quad[0], quad[2], quad[3])):
+                pts = [np.array([*p, z]) for p in tri]
+                nz = np.cross(pts[1] - pts[0], pts[2] - pts[0])[2]
+                K["x_bk_box"].tri(*(pts if (nz > 0) == up else pts[::-1]))
+    for p, q in ((wall_s, s_start), (s_end, wall_e)):  # its ends
+        K["x_bk_box"].quad(np.array([*p, zs0]), np.array([*q, zs0]), np.array([*q, zs1]), np.array([*p, zs1]))
+        K["x_bk_box"].quad(np.array([*q, zs0]), np.array([*p, zs0]), np.array([*p, zs1]), np.array([*q, zs1]))
+
+
+def draw_bookshop(img, rects):
+    from PIL import ImageDraw
+    x, y, w, h = rects["bk_sign"]
+    B = BOOKSHOP
+    a, b, s0 = (np.asarray(B[k], float) for k in ("a", "b", "south_from"))
+    Lc = float(np.linalg.norm(b - a)) + 0.2 + 0.5
+    split = int(w * (B["return_m"] + 0.5) / (B["return_m"] + 0.5 + Lc))
+    im = Image_new(w, h, (250, 250, 247))
+    d = ImageDraw.Draw(im)
+    red, blue = (214, 40, 40), (24, 56, 190)
+    # the open book: a red outline, its pages' top edges dipping to the spine at the corner (the side face
+    # carries its left page, the front its right)
+    lw = max(6, h // 40)
+    top, bot = h * 0.1, h * 0.86
+    spine = split                           # at the corner, where the box turns
+    pts_top = [(lw, top + h * 0.06), (spine * 0.5, top), (spine, top + h * 0.1), (spine + (w - spine) * 0.5, top), (w - lw, top + h * 0.06)]
+    d.line(pts_top, fill=red, width=lw, joint="curve")
+    d.line([(lw, top + h * 0.06), (lw, bot)], fill=red, width=lw)
+    d.line([(lw, bot), (spine, bot + h * 0.04), (w * 0.74, bot)], fill=red, width=lw)
+    d.line([(spine, top + h * 0.1), (spine, bot + h * 0.04)], fill=red, width=max(3, lw // 2))
+    # the name: two characters on the side, three on the front
+    left, right = B["name"]
+    sz = int(h * 0.62)
+    for k, ch in enumerate(left):
+        ad.text(im, (split * (k + 0.5) / len(left), h * 0.5), ch, "zen", min(sz, int(split / len(left) * 0.92)), fill="#1838be")
+    span = (w - split) * 0.96
+    for k, ch in enumerate(right):
+        ad.text(im, (split + span * (k + 0.42) / len(right), h * 0.44), ch, "zen", sz, fill="#1838be")
+    ad.text(im, (w * 0.86, h * 0.8), B["roman"], "anton", int(h * 0.13), fill="#d42a2a")
+    img.paste(im, (x, y))
+    x, y, w, h = rects["bk_awning"]
+    im = Image_new(w, h, (31, 69, 168))
+    ad.text(im, (w * 0.5, h * 0.52), B["awning"], "anton", int(h * 0.74), fill="#ffffff", spacing=int(h * 0.1))
     img.paste(im, (x, y))
 
 
@@ -1419,6 +1565,8 @@ class Build:
         items += [(k, 768, 76) for b in BANDS for _, k in b["rows"]]
         items += [("jr_clear", 384, 96), ("st_billboard", 1024, 480), ("st_hoarding", 512, 160), ("magnet_name", 768, 112), ("koban_sign", 384, 76), ("s109_wrap", 512, 768), ("s109_name", 512, 384), ("cg_banner", 768, 160), ("cg_name", 64, 384)]
         items += [("qf_crown", 1024, 320), ("qf_name", 384, 52), ("qf_starbucks", 768, 92), ("qf_tsutaya", 512, 84)]
+        items += [("bk_sign", 1600, 400), ("bk_awning", 768, 48)]
+        items += streets.atlas_items()
         self.A = Atlas(list(dict.fromkeys(items)), width=2048)
 
     def meshes(self):
@@ -1435,6 +1583,8 @@ class Build:
         magnet_front(K, self.A, self.D)
         skins(K, self.D)
         sign_bands(K, self.A, self.D)
+        bookshop(K, self.A, self.D)
+        streets.build(K, self.A, self.D)
         if "center_gai" in self.lm:
             center_gai_gate(K, self.A, self.D, self.lm["center_gai"])
         for e in self.entrances:
@@ -1454,6 +1604,8 @@ class Build:
         draw_billboards(img, self.A.rects)
         draw_koban(img, self.A.rects)
         draw_magnet(img, self.A.rects)
+        draw_bookshop(img, self.A.rects)
+        streets.draw(img, self.A.rects)
         draw_station(img, self.A.rects)
         draw_jr(img, self.A.rects)
         img.save(os.path.join(out_dir, ATLAS_FILE), quality=90)

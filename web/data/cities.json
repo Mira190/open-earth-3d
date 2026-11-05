@@ -15,9 +15,12 @@
    3.0,
    4.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 7871009,
-   "game": 11140300
+   "model": 5312985,
+   "game": 8589609
   }
  },
  {
@@ -39,9 +42,12 @@
    4.8,
    3.9
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 6146129,
-   "game": 10420529
+   "model": 2892400,
+   "game": 7167149
   },
   "group_meta": {
    "kind": "city",
@@ -67,9 +73,12 @@
    3.2,
    7.7
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5062345,
-   "game": 8584843
+   "model": 2609509,
+   "game": 6132203
   },
   "group_meta": {
    "kind": "city",
@@ -93,9 +102,12 @@
    4.5,
    6.4
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 29386159,
-   "game": 35966061
+   "model": 11938598,
+   "game": 18521081
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -112,6 +124,9 @@
   "lat": 35.003,
   "lon": 135.7625,
   "status": "live",
+  "group": "Kyoto",
+  "district": "Central Kyoto",
+  "tagline": "Kyoto Station and Kyoto Tower to the Imperial Palace",
   "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people.",
   "timezone": "Asia/Tokyo",
   "built": true,
@@ -121,15 +136,74 @@
    3.0,
    5.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 33880352,
-   "game": 36882900
+   "model": 16599038,
+   "game": 19602699
   },
   "flyover": {
    "video": "flyover.mp4",
    "webm": "flyover.webm",
    "poster": "flyover.jpg",
    "seconds": 14
+  }
+ },
+ {
+  "id": "higashiyama",
+  "name": "Higashiyama",
+  "native": "\u6771\u5c71",
+  "country": "Japan",
+  "lat": 34.997,
+  "lon": 135.782,
+  "status": "live",
+  "group": "Kyoto",
+  "district": "Higashiyama",
+  "tagline": "Kiyomizu-dera, Sannenzaka, Ninenzaka and the Yasaka Pagoda",
+  "summary": "Kyoto's Higashiyama: Kiyomizu-dera's stage on its keyaki lattice, the stone lanes of Sannenzaka and Ninenzaka with their noren and lanterns, and the Yasaka Pagoda, on PLATEAU's measured heights.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 7090,
+  "extent_km": [
+   1.8,
+   1.8
+  ],
+  "packed": [
+   "buildings"
+  ],
+  "load_bytes": {
+   "model": 4985986,
+   "game": 5533206
+  }
+ },
+ {
+  "id": "fushimi-inari",
+  "name": "Fushimi Inari",
+  "native": "\u4f0f\u898b\u7a32\u8377",
+  "country": "Japan",
+  "lat": 34.966,
+  "lon": 135.777,
+  "status": "live",
+  "group": "Kyoto",
+  "district": "Fushimi Inari",
+  "tagline": "The Romon, the Senbon Torii and Mount Inari",
+  "summary": "Fushimi Inari Taisha: the Romon and the halls, the two tunnels of the Senbon Torii and thousands more torii climbing Mount Inari to Yotsutsuji and the summit, on PLATEAU's measured heights.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 5331,
+  "extent_km": [
+   2.2,
+   1.3
+  ],
+  "packed": [
+   "buildings"
+  ],
+  "load_bytes": {
+   "model": 2065628,
+   "game": 2501915
   }
  },
  {
@@ -151,9 +225,12 @@
    3.2,
    4.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5843325,
-   "game": 9305022
+   "model": 3846250,
+   "game": 7274544
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -754,9 +831,12 @@
    4.5,
    4.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 21798467,
-   "game": 25345485
+   "model": 8858435,
+   "game": 12415780
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1343,9 +1423,12 @@
    4.5,
    3.1
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 13293242,
-   "game": 16141023
+   "model": 7239574,
+   "game": 10101421
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1932,9 +2015,12 @@
    2.6,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 8445013,
-   "game": 9535812
+   "model": 4664258,
+   "game": 5760316
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -2521,9 +2607,12 @@
    1.8,
    1.5
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 2803701,
-   "game": 3546082
+   "model": 1574470,
+   "game": 2318318
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3110,9 +3199,12 @@
    1.9,
    1.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 6503500,
-   "game": 7327919
+   "model": 4464100,
+   "game": 5289281
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3699,9 +3791,12 @@
    1.8,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 3484407,
-   "game": 4159557
+   "model": 1110306,
+   "game": 1785725
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -4288,9 +4383,12 @@
    1.8,
    1.5
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 1617770,
-   "game": 2262350
+   "model": 889739,
+   "game": 1534633
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -4877,9 +4975,12 @@
    1.8,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 2411447,
-   "game": 3054039
+   "model": 1189433,
+   "game": 1832280
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -5466,9 +5567,12 @@
    1.8,
    1.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 1493811,
-   "game": 2050858
+   "model": 561183,
+   "game": 1123064
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -6055,9 +6159,12 @@
    1.8,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5172427,
-   "game": 5738215
+   "model": 4171024,
+   "game": 4737037
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -6644,9 +6751,12 @@
    2.2,
    2.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5382638,
-   "game": 6095559
+   "model": 5207639,
+   "game": 5920785
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -7347,9 +7457,12 @@
    5.6,
    4.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 29079124,
-   "game": 35355281
+   "model": 15637651,
+   "game": 21914479
   }
  },
  {
@@ -7368,9 +7481,12 @@
    4.0,
    4.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 16424377,
-   "game": 19656726
+   "model": 6240869,
+   "game": 9473657
   }
  },
  {
@@ -7390,9 +7506,12 @@
    4.0,
    4.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5279526,
-   "game": 8870626
+   "model": 4534902,
+   "game": 8127161
   }
  },
  {

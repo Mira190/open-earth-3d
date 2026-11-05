@@ -17,6 +17,7 @@ Parametric landmark (called by pipeline/landmarks.py):
                the cusped karahafu porch, the side roofs, white plaster, vermilion railings and lattices,
                and the row of red lanterns. OSM records the theatre at the 141 m of the tower behind it;
                the tower (歌舞伎座タワー) stays a building.
+  National Diet Building  on its 26 mapped solids, in granite, with its tower (cities/tokyo/diet.py).
 """
 import math
 
@@ -24,6 +25,18 @@ import numpy as np
 
 import archkit as ak
 from meshkit import Mesh
+
+
+def _load(name):
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location(f"tokyo_{name}", os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+DIET = _load("diet")
 
 TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
@@ -50,6 +63,9 @@ MATERIALS = {
     "kz_stone": {"color": "#a7a196", "roughness": 0.9, "metalness": 0.0},
     "kz_gold": {"color": "#d4a63c", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.7},
     "kz_lantern": {"color": "#d9412e", "roughness": 0.6, "metalness": 0.0, "emissive": "#ff7a3a", "glow": 1.4},
+    "kz_moss": {"color": "#4e6b34", "roughness": 0.95, "metalness": 0.0},
+    "kz_gravel": {"color": "#b9b3a6", "roughness": 0.95, "metalness": 0.0},
+    "kz_shrub": {"color": "#35562b", "roughness": 0.9, "metalness": 0.0},
     "kz_glass": {"color": "#2c3036", "roughness": 0.2, "metalness": 0.4, "emissive": "#ffd9a8", "glow": 0.5},
 }
 
@@ -131,21 +147,25 @@ def landmark_meshes(scene):
         for k in ("orange", "white", "deck"):
             mats[k]["flood"] = [round(t["ground_m"], 1), round(t["ground_m"] + TOWER["height"], 1), 0.5, 0.5]
     meshes, hidden = kabukiza()
-    return mats, (tower(t) if t else []) + meshes, {"hidden": hidden}
+    dm, dh = DIET.meshes("tokyo")  # the National Diet Building (cities/tokyo/diet.py)
+    mats.update({k: dict(v) for k, v in DIET.MATERIALS.items()})
+    for k in ("diet_granite", "diet_trim") if DIET.GROUND else ():  # floodlit from the forecourt, fading up the tower
+        mats[k]["flood"] = [DIET.GROUND[0], round(DIET.GROUND[0] + DIET.TOWER_M, 1), 0.5, 0.55]
+    return mats, (tower(t) if t else []) + meshes + dm, {"hidden": hidden + dh}
 
 
 KABUKIZA = "r4859313"
 FRONT_DEG = 215.0  # the front's compass bearing, onto Harumi-dori
 
 
-KZ_STEP = 0.2       # the front's stone plinth over the pavement
+KZ_STEP = 0.3       # the front's stone plinth over the pavement at the street's top end (it rises 0.37 m along the front), stood on (web/game/nav.js floorAt)
 KZ_FRONT = {}       # the front's frame, as kabukiza() lays it out (for game_extras)
 
 
 def kabukiza():
     import json
     import os
-    from shapely.geometry import Polygon
+    from shapely.geometry import Point, Polygon
     import cityctx
     C = cityctx.City("tokyo")
     osm = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "kabukiza_osm.json")))
@@ -179,26 +199,56 @@ def kabukiza():
             ak.prism(K["kz_plaster"], ak.WORLD, ring, g, g + 17.0, top=False)
             ak.cap(K["kz_ridge"], ak.WORLD, ring, g + 17.0)  # the roof garden's deck
             ak.cornice(K["kz_ridge"], ak.WORLD, ring, g + 16.0, ((0, 0), (0.6, 0.3), (1.2, 0.8), (1.2, 1.0), (0, 1.0)))
+            # the roof garden (屋上庭園): beds of moss and shrubs round a gravel path and its stepping stones
+            garden = poly.buffer(-3.0)
+            for bed in getattr(garden, "geoms", [garden]):
+                if bed.geom_type != "Polygon" or bed.area < 30:
+                    continue
+                br = ak.simplify(list(bed.exterior.coords), 0.5)
+                ak.prism(K["kz_stone"], ak.WORLD, br, g + 17.0, g + 17.35, top=False)
+                ak.cap(K["kz_moss"], ak.WORLD, br, g + 17.3)
+                c = bed.centroid
+                path = bed.buffer(-1.5)
+                if not path.is_empty and path.geom_type == "Polygon":
+                    ak.cap(K["kz_gravel"], ak.WORLD, ak.simplify(list(path.exterior.coords), 0.5), g + 17.33)
+                rng = np.random.default_rng(int(abs(c.x * 7 + c.y * 13)) % 9973)
+                x0_, y0_, x1_, y1_ = bed.bounds
+                for _ in range(int(bed.area / 6)):
+                    px, py = rng.uniform(x0_, x1_), rng.uniform(y0_, y1_)
+                    if bed.contains(Point(px, py)) and not path.buffer(0.3).contains(Point(px, py)):
+                        r = rng.uniform(0.45, 0.9)
+                        K["kz_shrub"].lathe([(g + 17.3, r * 0.6), (g + 17.3 + r * 0.6, r), (g + 17.3 + r * 1.3, r * 0.5), (g + 17.3 + r * 1.5, 0.05)], (px, py), segs=7)
+                if not path.is_empty and path.geom_type == "Polygon":  # the stepping stones along the path
+                    line = path.exterior
+                    for d in np.arange(0, line.length, 1.1):
+                        q = line.interpolate(d)
+                        K["kz_stone"].lathe([(g + 17.33, 0.32), (g + 17.4, 0.3)], (q.x, q.y), segs=7)
     hl = L / 2
     vf = W / 2  # the street face
     vb = -W / 2
     # ground floor: the arcade of the entrances, its glass, the stone plinth (one low step from the pavement,
     # so people walk in under the porch to the doors); the first eaves (tiles) at 8.5 m
-    ak.block(K["kz_stone"], F, -hl, hl, vb, vf, 0.0, KZ_STEP)
-    ak.block(K["kz_plaster"], F, -hl, hl, vb, vf - 1.5, KZ_STEP, 15.5, top=False)
+    # (its top KZ_STEP over the highest ground along the street face: the pavement rises 0.4 m along it, and a
+    # plinth set from the site's lowest corner was buried at the doors), level, so 0.3 to 0.7 m over the pavement
+    T = ak.Terrain("tokyo")
+    zs = max(T(*F(u, v, 0)[:2]) for u in np.linspace(-hl, hl, 25) for v in (vf, vf + 1.0)) - g + KZ_STEP
+    ak.block(K["kz_stone"], F, -hl, hl, vb, vf, 0.0, zs)
+    ak.block(K["kz_plaster"], F, -hl, hl, vb, vf - 1.5, zs, 15.5, top=False)
     us = np.linspace(-hl + 3, hl - 3, 13)
     for u in us:
         # (the wall run from +u to -u, so that the street is on its right: archkit draws openings there)
-        ak.opening(K["kz_glass"], F, (hl, vf - 1.5 + 0.02), (-hl, vf - 1.5 + 0.02), KZ_STEP, 3.2, 4.6, centre=hl - u)
+        ak.opening(K["kz_glass"], F, (hl, vf - 1.5 + 0.02), (-hl, vf - 1.5 + 0.02), zs, 3.2, 4.6, centre=hl - u)
     for u in (us[:-1] + us[1:]) / 2:                 # the arcade's posts between the doors, none in front of one
-        x, y, z = F(u, vf - 0.4, KZ_STEP)
-        K["kz_red"].lathe([(z, 0.3), (z + 8.2 - KZ_STEP, 0.3)], (x, y), segs=6)
+        x, y, z = F(u, vf - 0.4, zs)
+        K["kz_red"].lathe([(z, 0.3), (z + 8.2 - zs, 0.3)], (x, y), segs=6)
     ak.irimoya(K, ak.Frame(*F(0, vf - 3.0, 0)[:2], ax, g), L + 1.0, 5.0, 8.4, 1.8, over=2.2, lift=0.4,
                mats=("kz_tile", "kz_ridge", "kz_plaster"), gable_frac=1.0, sag=0.06)
     # the lanterns under the first eaves
     for u in np.linspace(-hl + 2, hl - 2, 22):
         x, y, z = F(u, vf + 0.6, 6.4)
-        K["kz_lantern"].lathe([(z, 0.25), (z + 0.2, 0.45), (z + 1.0, 0.48), (z + 1.3, 0.25)], (x, y), segs=8)
+        K["kz_lantern"].lathe([(z + 0.12, 0.3), (z + 0.3, 0.45), (z + 0.95, 0.48), (z + 1.18, 0.3)], (x, y), segs=10)
+        K["kz_ridge"].lathe([(z, 0.27), (z + 0.14, 0.31)], (x, y), segs=10)       # its black lacquered rims (提灯の上下輪)
+        K["kz_ridge"].lathe([(z + 1.16, 0.31), (z + 1.3, 0.27)], (x, y), segs=10)
     # the upper storey: vermilion railings and lattices, white plaster, the side roofs
     ak.balustrade(K["kz_red"], F, [(-hl + 1, vf - 1.6), (hl - 1, vf - 1.6)], 10.4, h=1.1)
     for u in np.linspace(-hl + 4, hl - 4, 9):
@@ -229,10 +279,14 @@ def kabukiza():
             gold.box(F(ua, v + 0.1, za - 0.3), F(ub, v + 0.1, zb - 0.3), 0.25, 0.45)
             K["kz_plaster"].tri(F(ua, v, za - 0.3), F(ub, v, zb - 0.3), F(0.0, v, z0 - 0.4))
     for su in (-1, 1):
-        x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, KZ_STEP)
-        K["kz_red"].lathe([(z, 0.35), (z + z0 - KZ_STEP, 0.35)], (x, y), segs=8)
-    KZ_FRONT.update({"F": F, "vf": vf, "g": g})
-    return K.out(), [s["si"] for s in solids]
+        x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, zs)
+        K["kz_red"].lathe([(z, 0.35), (z + z0 - zs, 0.35)], (x, y), segs=8)
+    KZ_FRONT.update({"F": F, "vf": vf, "g": g, "zs": zs})
+    # and what else the built data stands on the theatre's site off the tower (a PLATEAU-only block of the
+    # auditorium, 20 m, under no OpenStreetMap id), which the theatre draws instead
+    extra = [s["si"] for s in ak.load_solids("tokyo") if not s["osm"] and site.buffer(-1.0).contains(Point(*ak.ring_centroid(s["ring"])))
+             and not tower_p.contains(Point(*ak.ring_centroid(s["ring"])))]
+    return K.out(), [s["si"] for s in solids] + extra
 
 
 # ---------------------------------------------------------------- the game
@@ -241,10 +295,11 @@ def xy(p):
     return [round(float(p[0]), 2), round(float(p[1]), 2)]
 
 
-def close_to(name, at, z, start, within=1.5, keep=0.0):
+def close_to(name, at, z, start, within=1.5, keep=0.0, on=False):
     """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
-    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
-    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`, and with `on`, stand on
+    that floor (a gate's stone base, a plinth)."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {}), **({"on": True} if on else {})}
 
 
 def game_extras(scene):
@@ -291,7 +346,7 @@ def game_extras(scene):
     if not KZ_FRONT:
         kabukiza()
     if KZ_FRONT:
-        F, vf, g = KZ_FRONT["F"], KZ_FRONT["vf"], KZ_FRONT["g"]
+        F, vf, g, zs = KZ_FRONT["F"], KZ_FRONT["vf"], KZ_FRONT["g"], KZ_FRONT["zs"]
         # under the porch to the glass doors of the main entrance (1.5 m in from the street face)
-        close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + KZ_STEP, F(0, vf + 5.5, 0), 1.0))
+        close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + zs, F(0, vf + 5.5, 0), 1.0, on=True))
     return {"close": close}

@@ -192,12 +192,19 @@ window.OECars = (function () {
     // left and right in the frame of a left-hand-drive car swap with the cabin
     if (mirror < 0 && seats.rear_left) [seats.rear_left, seats.rear_right] = [seats.rear_right, seats.rear_left];
     // lamps seen from afar after dark
-    const glows = [];
+    const glows = [], gv = new THREE.Vector3(), dv = new THREE.Vector3(), cv = new THREE.Vector3();
     const glow = (p, hex, size, kind) => {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: lin(hex), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       s.position.copy(p).add(new THREE.Vector3(0, 0, Math.sign(p.z) * 0.06));
       s.renderOrder = 3;
-      s.userData = { size, kind };
+      s.userData = { size, kind, op: 0, out: new THREE.Vector3(0, 0, Math.sign(p.z) || 1) };
+      // a lamp shines the way it faces: its glow fades out as it is seen side on, and is gone from
+      // behind (a headlamp's glow seen from the back of the car read as a white bloom on the car ahead)
+      s.onBeforeRender = (r, sc, cam) => {
+        s.getWorldPosition(gv); dv.copy(s.userData.out).transformDirection(body.matrixWorld);
+        const f = dv.dot(cv.setFromMatrixPosition(cam.matrixWorld).sub(gv).normalize());
+        s.material.opacity = s.userData.op * clamp((f + 0.15) / 0.55, 0, 1);
+      };
       body.add(s);
       glows.push(s);
     };
@@ -250,14 +257,17 @@ window.OECars = (function () {
         mats.Light_Head.emissiveIntensity = lit ? 2.4 : 0.05;
         mats.Light_Tail.emissiveIntensity = (s.brake ? 2.2 : 0) + (lit ? 0.9 : 0.05);
         mats.Light_Amber.emissiveIntensity = amber ? 2.6 : 0;
-        mats.Sign.emissiveIntensity = s.sign ? 0.4 + 1.6 * night : 0;
+        mats.Sign.emissiveIntensity = s.sign ? 0.3 + 0.8 * night : 0; // (a lit panel, not a lamp: no bloom across the car)
         for (const q of glows) { // (the headlamps' glow is for the street, not for whoever is at the wheel: s.inside)
           const k = q.userData.kind === 'head' ? (lit && !s.inside ? 1 : 0) : lit ? (s.brake ? 1.4 : 0.8) : s.brake ? 0.6 : 0;
           q.visible = k > 0.01;
           q.scale.setScalar(q.userData.size * (0.5 + 0.8 * night) * Math.max(0.6, k));
-          q.material.opacity = Math.min(1, k * (0.35 + 0.65 * night));
+          q.material.opacity = q.userData.op = Math.min(1, k * (0.35 + 0.65 * night));
         }
-        if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) : 0;
+        // (the beam on a car stopped close ahead, s.near metres: dimmed as the eye would adapt to it,
+        // rather than a white wall where a queue's back is lit from 3 m)
+        const nearK = s.near != null && s.near < 12 ? Math.max(0.05, (Math.max(0, s.near) / 12) ** 2) : 1;
+        if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) * nearK : 0;
       },
       // a person in a seat, facing forward: the rig's root on the floor in front of the cushion
       // (people.js puts the feet there), the shins forward and, at the wheel, the hands on it. The
@@ -390,7 +400,7 @@ window.OECars = (function () {
       st.roll += (gr - st.roll) * Math.min(1, dt * 8);
     }
     function sub(dt, inp, env, events) {
-      const fx = Math.sin(st.h), fy = Math.cos(st.h), lx = -fy, ly = fx;
+      const fx = Math.sin(st.h), fy = Math.cos(st.h), lx = -fy, ly = fx, ph = st.h;
       let vf = st.vx * fx + st.vy * fy, vl = st.vx * lx + st.vy * ly;
       const fwd = clamp(inp.fwd || 0, -1, 1), hb = !!inp.handbrake && !st.air;
       // drive (W) and brake (S); stopped, S reverses and W goes forward again
@@ -432,11 +442,12 @@ window.OECars = (function () {
       const px = st.x, py = st.y;
       st.x += st.vx * dt; st.y += st.vy * dt;
       for (let it = 0; it < 2; it++) collide(env, events);
-      // the water's edge, a drop, a wall too high: back to where it was, bouncing off
+      // the water's edge, a drop, a wall too high: back to where it was, bouncing off (the heading
+      // too: a turn on the spot would swing the body into the trunk or wall it was pushed out of)
       const nfx = Math.sin(st.h), nfy = Math.cos(st.h);
       if (offs.some(o => !standable(st.x + nfx * o, st.y + nfy * o, st.z))) {
         const sp = Math.hypot(st.vx, st.vy);
-        st.x = px; st.y = py; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
+        st.x = px; st.y = py; st.h = ph; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
         if (sp > 2) events.push({ type: 'edge', speed: sp });
       }
       // follow the ground: up kerbs and ramps at once, off an edge under gravity
@@ -451,16 +462,20 @@ window.OECars = (function () {
         }
       }
     }
-    // walls (through nav), other cars (boxes), lamp posts and trunks and people (circles): push the
-    // body out along the contact, take the speed into it away (a hard hit bounces), and kick the yaw
+    // other cars (boxes) and people, then walls (through nav), then lamp posts and trunks (circles):
+    // push the body out along the contact, take the speed into it away (a hard hit bounces), and
+    // kick the yaw. What can move goes first and what can't last, so that a car pressing in from
+    // the side can't shove yours into a wall or a trunk (the last push is the one that holds)
     function collide(env, events) {
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       let nx = 0, ny = 0, moved = false, what = null;
+      const shove = (o, dx, dy) => {
+        st.x += dx; st.y += dy; nx += dx; ny += dy; moved = true;
+        st.r += clamp(o * (dx * fy - dy * fx) * 0.6, -0.3, 0.3); // a hit off the centre turns it
+      };
       for (const o of offs) {
         const cx = st.x + fx * o, cy = st.y + fy * o;
-        const p = nav.push(cx, cy, st.z, rad, 1.6);
-        let dx = p.x - cx, dy = p.y - cy;
-        if (dx || dy) what = what || 'wall';
+        let dx = 0, dy = 0;
         for (const b of env.boxes || []) { // other cars: the closest point of the box
           if (b.ref === st || st.z > b.z + b.top || st.z + 1.5 < b.z) continue;
           const bx = Math.sin(b.h), by = Math.cos(b.h), ex = cx + dx - b.x, ey = cy + dy - b.y;
@@ -479,23 +494,7 @@ window.OECars = (function () {
           what = what || 'person';
           if (q.onHit) q.onHit();
         }
-        if (dx || dy) {
-          st.x += dx; st.y += dy; nx += dx; ny += dy; moved = true;
-          st.r += clamp(o * (dx * fy - dy * fx) * 0.6, -0.3, 0.3); // a hit off the centre turns it
-        }
-      }
-      // lamp posts and tree trunks ({ x, y, z, r, kind }), solid: the body as a box, out of each circle
-      // from the nearest point of the box to its centre
-      for (const q of env.posts || []) {
-        if (Math.abs(q.z - st.z) > 2) continue;
-        const ex = q.x - st.x, ey = q.y - st.y, u = ex * fx + ey * fy, w = -ex * fy + ey * fx;
-        const cu = clamp(u, -C.half, C.half), cw = clamp(w, -C.hw, C.hw), du = u - cu, dw = w - cw, d = Math.hypot(du, dw);
-        let pu, pw, m;
-        if (d > 1e-6) { if (d >= q.r) continue; m = q.r - d; pu = -du / d; pw = -dw / d; } // (its centre outside the box)
-        else { const ou = C.half - Math.abs(u), ow = C.hw - Math.abs(w); if (ou < ow) { m = ou + q.r; pu = -Math.sign(u || 1); pw = 0; } else { m = ow + q.r; pu = 0; pw = -Math.sign(w || 1); } }
-        const px = (fx * pu - fy * pw) * (m + 0.005), py = (fy * pu + fx * pw) * (m + 0.005);
-        st.x += px; st.y += py; nx += px; ny += py; moved = true;
-        what = q.kind || 'post';
+        if (dx || dy) shove(o, dx, dy);
       }
       // and the corners the three circles leave out: the body as a box against each other car's box,
       // pushed out along the axis it is least deep on (the separating axes)
@@ -515,6 +514,24 @@ window.OECars = (function () {
         st.x += ux * best; st.y += uy * best; nx += ux * best; ny += uy * best; moved = true;
         what = 'car';
         if (b.onHit) b.onHit();
+      }
+      // the walls (through nav)
+      for (const o of offs) {
+        const cx = st.x + fx * o, cy = st.y + fy * o, p = nav.push(cx, cy, st.z, rad, 1.6), dx = p.x - cx, dy = p.y - cy;
+        if (dx || dy) { what = what || 'wall'; shove(o, dx, dy); }
+      }
+      // lamp posts and tree trunks ({ x, y, z, r, kind }), solid: the body as a box, out of each circle
+      // from the nearest point of the box to its centre
+      for (const q of env.posts || []) {
+        if (Math.abs(q.z - st.z) > 2) continue;
+        const ex = q.x - st.x, ey = q.y - st.y, u = ex * fx + ey * fy, w = -ex * fy + ey * fx;
+        const cu = clamp(u, -C.half, C.half), cw = clamp(w, -C.hw, C.hw), du = u - cu, dw = w - cw, d = Math.hypot(du, dw);
+        let pu, pw, m;
+        if (d > 1e-6) { if (d >= q.r) continue; m = q.r - d; pu = -du / d; pw = -dw / d; } // (its centre outside the box)
+        else { const ou = C.half - Math.abs(u), ow = C.hw - Math.abs(w); if (ou < ow) { m = ou + q.r; pu = -Math.sign(u || 1); pw = 0; } else { m = ow + q.r; pu = 0; pw = -Math.sign(w || 1); } }
+        const px = (fx * pu - fy * pw) * (m + 0.005), py = (fy * pu + fx * pw) * (m + 0.005);
+        st.x += px; st.y += py; nx += px; ny += py; moved = true;
+        what = q.kind || 'post';
       }
       if (!moved) return;
       const l = Math.hypot(nx, ny) || 1;
@@ -550,7 +567,11 @@ window.OECars = (function () {
     // the nearest place on a road to (x, y), within maxD (and, given z, at about that height),
     // going the way that keeps (x, y) on the kerb side (keep: 1 left, -1 right); { line, s, dir, x, y, z, d } or null
     function place(x, y, maxD = 150, keep = 1, z = null) {
-      const q = net.nearest(x, y, maxD, z, 3.5);
+      // the nearest kerb at your level; or, where that is more than twice as far, one down (or up) a
+      // slope from you (Melbourne's Federation Square is raised above the streets round it); with none
+      // at your level at all, none (a road a level up or down may be no way there)
+      let q = net.nearest(x, y, maxD, z, 3.5);
+      if (q && z != null && q.d > 20) { const sl = net.nearest(x, y, q.d / 2, z, 3.5, 0.1); if (sl) q = sl; }
       if (!q) return null;
       net.at(q.line, q.s, tmp);
       const side = (x - tmp.x) * -tmp.hy + (y - tmp.y) * tmp.hx; // > 0: (x, y) is left of the line's direction
@@ -591,6 +612,7 @@ window.OECars = (function () {
           for (const [v, li, dir] of edges[u]) {
             const back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
             if (B && edges === adj && B.some(b => b[2] === 1 && b[0] === li && b[1] === (dir > 0 ? 0 : 1))) continue; // a banned turn (junctions.js)
+            if (edges === adj && (net.shutNow && net.shutNow(li, dir > 0 ? 1 : -1) || net.turnShut && net.turnShut(from, li, dir > 0 ? 0 : 1))) continue; // (or one at this hour, or a street shut to cars now)
             const nd = d + L[li].len * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? 60 : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
@@ -603,9 +625,12 @@ window.OECars = (function () {
         for (const [, li, dir] of chain) segs.push([li, dir > 0 ? 0 : L[li].len, dir > 0 ? L[li].len : 0]);
         segs.push([b.line, b.dir > 0 ? 0 : lb.len, b.s]);
       }
-      const pts = [], nodes = [];
+      const pts = [], nodes = [], mids = [];
+      let run = 0;
       segs.forEach(([li, s0, s1], n) => {
         if (Math.abs(s1 - s0) < 1e-3) return;
+        midsAlong(li, s0, s1, run, mids);
+        run += Math.abs(s1 - s0);
         const part = [];
         stretch(li, s0, s1, part);
         for (const p of part) {
@@ -618,7 +643,21 @@ window.OECars = (function () {
       if (pts.length < 2) return null;
       let len = 0;
       for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-      return { pts, len, from: a, to: b, nodes };
+      return { pts, len, from: a, to: b, nodes, mids };
+    }
+    // the crossings between junctions (junctions.js midsOn, given to the network as net.midsOn) on
+    // line li from s0 to s1, with the route's distance to each (run: the route's at s0) and the arm
+    // its traffic comes up to them on: pushed onto out as { X, a, at }
+    function midsAlong(li, s0, s1, run, out) {
+      const Ms = net.midsOn ? net.midsOn(li) : null;
+      if (!Ms) return;
+      const up = s1 >= s0, lo = Math.min(s0, s1), hi = Math.max(s0, s1);
+      const on = Ms.filter(X => X.mid > lo && X.mid < hi);
+      if (!up) on.reverse();
+      for (const X of on) {
+        const a = X.arms.find(b => b.end === (up ? 1 : 0));
+        if (a) out.push({ X, a, at: run + Math.abs(X.mid - s0) });
+      }
     }
     // a place to start from, about r0..r1 metres away by road from (x, y) (an ordered ride sets out from there)
     function around(x, y, r0, r1) {
@@ -666,10 +705,12 @@ window.OECars = (function () {
     // (out.nodes: the junctions it comes up to, as a route's)
     function onward(rt, length = 220) {
       const b = rt.to, out = [];
-      out.nodes = [];
-      let li = b.line, dir = b.dir, s = b.s, left = length;
+      out.nodes = []; out.mids = [];
+      let li = b.line, dir = b.dir, s = b.s, left = length, run = 0;
       while (left > 0 && out.length < 40) {
         const l = L[li], s1 = dir > 0 ? l.len : 0, part = [];
+        midsAlong(li, s, s1, run, out.mids);
+        run += Math.abs(s1 - s);
         stretch(li, s, s1, part);
         for (const p of part) out.push([p[0], p[1], p[2], l.v || 11, l.c]);
         out.nodes.push({ k: out.length - 1, line: li, end: dir > 0 ? 1 : 0 });
@@ -715,6 +756,11 @@ window.OECars = (function () {
     }
     return { pts, cum, len, corner, at, pos };
   }
+
+  // a traffic car in a queue for a junction: queueing itself (c.q), or stopped behind cars, one after
+  // another up the lane, the first of which that isn't stopped is queueing (where the traffic's own
+  // c.q, set car by car, missed one: a car stopped behind another a little out of line)
+  const queueing = o => { for (let x = o, k = 0; x && k < 12; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 0.5) return false; } return false; };
 
   // ------------------------------------------------------------ the chauffeur
   // Drives a car (from car()) along a route: keeps to the lane on the keep side, slows for
@@ -803,12 +849,24 @@ window.OECars = (function () {
     // is coming along the side of the road it would swing out into: it waits behind until that has
     // gone by.
     const c = {}, passing = [], passed = [];
-    let still = false;
-    function gapAhead(others) {
+    let still = false, queued = false;
+    function gapAhead(others, dt = 0) {
       let gap = Infinity, pass = 0;
-      still = false; passing.length = 0; passed.length = 0;
+      still = queued = false; passing.length = 0; passed.length = 0;
       st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
+      // the back of the nearest car in the lane ahead queueing for a junction (o.q): a car stopped short
+      // of a queue is passed only with room to pull back in ahead of it, short of the queue, and never
+      // up the side of the queue itself
+      let qBack = Infinity;
+      for (const o of others) {
+        if (!queueing(o)) continue;
+        const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
+        if (a <= 0 || a > 100) continue;
+        P.at(Math.min(P.len, st.s + a), c);
+        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep;
+        if (Math.abs(w - lane - st.shift) < Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) qBack = Math.min(qBack, a - (o.half || 0.4));
+      }
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 60) continue;
@@ -817,11 +875,16 @@ window.OECars = (function () {
         if (Math.abs(w - lane - st.shift) >= Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) continue; // (side by side, clear)
         // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
         // turns round every few seconds and so never stays stuck long enough to be marked still
-        if ((o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
+        // (but never one queueing at a junction, o.q: a queue at a red light is waited out in the lane,
+        // not overtaken up the oncoming side to its head)
+        // (o.still: true, a flag the game sets, or a traffic car's own count of the seconds it has stood:
+        // over 6 s, and not queueing, it is stopped for good, as one caught up with this one at a kerb)
+        const oq = queueing(o);
+        if (!oq && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
-        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; }
+        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = oq; }
       }
       if (pass && Math.abs(st.shift) < 0.2) for (const o of others) { // (a car coming the other way)
         if (passed.includes(o)) continue;
@@ -831,8 +894,12 @@ window.OECars = (function () {
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + Math.max(0, a)) * keep;
         if (Math.abs(w - lane - pass) < (o.hw || 0.4) + C.hw + 0.4) { pass = 0; break; }
       }
+      // (a driver pulls out only once the way round has looked clear for a second, not on a frame's glimpse
+      // of it: one queueing that reads for a moment as stopped for good is never swung out round)
+      st.passT = pass ? (st.passT || 0) + dt : 0;
+      if (pass && Math.abs(st.shift) < 0.2 && st.passT < 1) pass = 0;
       if (!pass) for (const [g, stay] of passing) if (g < gap) { gap = g; still = stay; }
-      st.pass = pass;
+      st.pass = pass; st.passed = passed; // (what it goes round, for the game check)
       return gap;
     }
     // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
@@ -876,6 +943,34 @@ window.OECars = (function () {
       }
       return Infinity;
     }
+    // the gap to the line of a crossing between junctions ahead (route.mids, from the router), if it
+    // must stop there: at its red, or at amber if it can stop by the line, as the traffic does; at a
+    // zebra while someone is on the stripes or stepping onto them (lights.onStripes, from the
+    // traffic: actors.js), and after 15 s held there by someone standing on them it edges on
+    // for 6 s, braking for them as for anyone in the road. Infinity if it needn't.
+    let zebraT = 0, zebraOff = 0;
+    function midGap(dt) {
+      const M = route.mids;
+      if (!lights || !M || !M.length) return Infinity;
+      if (zebraOff > 0) zebraOff -= dt;
+      for (const m of M) {
+        const front = m.at - m.a.back - st.s - C.half; // its front bumper to the line
+        if (front < -0.5) continue; // over it already: on across
+        if (front > 90) break;
+        let hold = false;
+        if (m.X.sig) {
+          const lt = lights.light(m.a);
+          hold = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < front - 0.3);
+          if (priority && lt === 'g' && lights.priority) lights.priority(m.a); // (its green held while it comes: never the walkers' cut short)
+        } else if (lights.onStripes && !(zebraOff > 0) && st.v * st.v / 14 < front + 0.5) hold = lights.onStripes(m.X); // (if it can stop by then, braking as hard as it does: update)
+        zebraT = hold && !m.X.sig && st.v < 0.3 ? zebraT + dt : 0;
+        if (zebraT > 15) { zebraT = 0; zebraOff = 6; }
+        if (!hold) return Infinity;
+        st.junction = m.X.sig ? 'crossing red' : 'zebra'; st.lineAt = m.a;
+        return front + 2.6;
+      }
+      return Infinity;
+    }
     // the signals at the next junction ahead on its way, asked for its green in time (PRIO_T), as lineGap does
     function callAhead() {
       if (!lights || !lights.priority || !route.nodes) return;
@@ -902,7 +997,7 @@ window.OECars = (function () {
       let want = Math.min(cruise, q.v || cruise) * hz;
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
       // the cars ahead, and the line at a red light or a stop sign
-      const carGap = gapAhead(others), line = obey && !dry ? lineGap() : Infinity;
+      const carGap = gapAhead(others, dt), line = obey && !dry ? Math.min(lineGap(), midGap(dt)) : Infinity;
       if (!obey && !dry && priority) callAhead(); // (out of your sight it drives through a red: it calls its green all the same, for when it comes into sight)
       // a car standing where it is to pull in: pull in behind it
       if (end && still && carGap < line && carGap < Infinity && st.s + carGap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, carGap - 3.2)));
@@ -914,19 +1009,30 @@ window.OECars = (function () {
       // held up behind cars (never at the line: a red light is waited out) it counts the time while it
       // crawls, and keeps it until it is under way, since a car caught up with it turns round every few
       // seconds and the gap comes and goes
-      st.held = line <= carGap ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // (in a queue for a junction, the car ahead waiting its turn there, it is waiting for the light too:
+      // unless it is caught up in that car, or the queue has not moved for a minute, longer than any
+      // light's red, a jam in the junction, when it counts again, for a ride to find another way round)
+      st.qT = queued && st.v < 0.5 ? (st.qT || 0) + dt : 0;
+      const waiting = queued && carGap >= 0.5 && st.qT < 60;
+      st.gap = carGap; // (the gap to the car ahead: its headlamp beam is dimmed on one close ahead)
+      st.held = line <= carGap || waiting ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // queueing for a junction itself (stopped for its line, or behind a car that is): what the traffic
+      // behind reads, as it reads a car of its own (c.q), so it queues behind and never goes round
+      st.q = st.v < 0.5 && ((line < Infinity && line <= carGap) || (queued && carGap < line));
+      st.qBy = st.q && carGap < line ? st.block : null; // (the car it queues behind: that one does not queue behind it in turn)
       // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
       // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
       if (st.held > 8 && carGap < 0.5) want = Math.max(want, 1.5);
       // and held for 12 s in a tangle the traffic does not clear, it stops giving way and creeps on at
       // up to 3 m/s until it is under way (to the line, if a light is red), rather than wait for good
-      if (st.held > 12) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
+      // (never on into a car queueing ahead of it)
+      if (st.held > 12 && !queued) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
       // held up near the end for good (by a car that isn't moving off, not a light): stop here
-      st.stall = st.v < 0.2 && room < 0.1 && carGap < line ? st.stall + dt : 0;
-      if (end && st.stall > 8 && left < 45) { endAt(st.s); left = 0; }
+      st.stall = st.v < 0.2 && room < 0.1 && carGap < line && !waiting ? st.stall + dt : 0; // (not in a queue for the lights)
+      if (end && st.stall > 8 && left < 45 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; }
       // and queued 8 s behind cars within 45 m of the end (a jam between it and you), it stops where
       // it is, as a driver picking you up does, and you walk the last few metres
-      else if (end && !dry && st.held > 8 && left < 45 && carGap < line && carGap < 12) { endAt(st.s); left = 0; }
+      else if (end && !dry && st.held > 8 && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
@@ -985,5 +1091,5 @@ window.OECars = (function () {
     return { st, update, finish, jump, leave, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
-  return { car, headlamp, drive, router, path, chauffeur, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
+  return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
 })();
