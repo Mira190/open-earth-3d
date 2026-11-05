@@ -69,10 +69,11 @@ window.OpenEarthGame = async function game(cityId) {
   const QC = window.OEQuality.city();
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias, powerPreference: 'high-performance', reversedDepthBuffer: true });
   const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
+  let pxScale = 1; // the share of the tier's pixels drawn: shed() lowers it on a device that can't keep up
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
-    renderer.setPixelRatio(QC.pixelRatio(w, h));
+    renderer.setPixelRatio(Math.max(0.6, QC.pixelRatio(w, h) * pxScale)); // (pxScale: shed, below)
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
@@ -466,17 +467,33 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     lib = await OEPeople.load('assets/people/');
     if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
     if (Wd.streetLit) OEPeople.setLight(Wd.streetLit); // the street lights light the people after dark
+  } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
+  // the box-built figures are the last resort, for a device that could load none of the people's
+  // files: one character that fails to load (after its retries, gltf.js) leaves the rest of the
+  // library in place, and whoever was to wear it wears another realistic character (stand-in)
+  if (lib) {
     // the surveyors you play are the main characters (blender/build_people.py): the one you play now
     // loads here, the other when you switch; the old characters stand in if their files don't load
     for (const [k, h] of Object.entries({ W_Worker: 'H_Surveyor_W', M_Worker: 'H_Surveyor_M' })) if (lib.heroes[h]) PLAYER_LOOKS[k].hero = h;
     const pl = PLAYER_LOOKS[playerChar];
     if (pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
-    await lib.require(pl.character);
+    await lib.require(pl.character).catch(e => console.warn(`${pl.character} unavailable:`, e));
     // the NPCs near the start before the game opens, the others as you first come within NPC_LOAD_M of
-    // them (npcStream; issue 148). One whose file doesn't load stands in as a simple figure
+    // them (npcStream; issue 148)
     await Promise.all(G.npcs.filter(nearStart).map(n => n.look.character).filter(Boolean).map(c => lib.require(c).catch(e => console.warn(`${c} unavailable:`, e))));
-  } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
-  const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
+  }
+  // a character that is loaded for one that is not: of the same sex, textured (an NPC's or a
+  // surveyor's) before the crowd's, at its own size (the crowd's run large)
+  const sexOf = c => (/^W_|Female|_W$/.test(c) ? 'W' : 'M');
+  function standIn(look) {
+    const want = sexOf(look.character), have = Object.keys(lib.tpl), rank = c => (sexOf(c) === want ? 0 : 4) + (/^R_/.test(c) ? 0 : /^H_/.test(c) ? 1 : 2);
+    const c = have.sort((a, b) => rank(a) - rank(b))[0];
+    return c && Object.assign({}, look, { character: c, scale: /^W_/.test(c) ? 0.91 : /^M_/.test(c) ? 0.96 : 1 });
+  }
+  const makeRig = (look, opts) => {
+    const real = lib && look.character && (lib.tpl[look.character] ? look : standIn(look));
+    return real ? OEPeople.person(lib, Object.assign({}, real)) : OEActors.makePerson(look, opts);
+  };
   // an NPC whose character is still to load: nobody there yet (npcStream puts them in when it has come)
   const awaited = look => lib && look.character && !lib.tpl[look.character] && (lib.npcs[look.character] || lib.heroes[look.character] || lib.info.characters[look.character]);
   const pendingRig = () => ({ root: new THREE.Group(), pending: true, animate() {} });
@@ -544,7 +561,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     npcs.push(o);
   }
   const npcById = id => npcs.find(n => n.id === id);
-  // an NPC's character, loaded and put in their place (or a simple figure if it can't be loaded)
+  // an NPC's character, loaded and put in their place (or another realistic one if it can't be loaded)
   const npcLoad = n => n.loading || (n.loading = !n.rig.pending ? Promise.resolve() : lib.require(n.look.character).catch(e => console.warn(`${n.look.character} unavailable:`, e)).then(() => {
     const old = n.rig, rig = makeRig(npcLook(n));
     rig.root.position.copy(old.root.position); rig.root.rotation.copy(old.root.rotation);
@@ -3384,8 +3401,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   renderPassport();
 
   // ------------------------------------------------------------ the loop
-  let last = performance.now(), clockT = 0, sunTimer = 0, sunState = 'sun', fpsAcc = [0, 0], fpsWarned = false, stepPhase = 0, bumpT = -9, waterT = -99;
+  let last = performance.now(), clockT = 0, sunTimer = 0, sunState = 'sun', fpsAcc = [performance.now(), 0], fpsWarned = false, stepPhase = 0, bumpT = -9, waterT = -99;
   const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camSmooth = new THREE.Vector3();
+  // What a device that can't keep up gives up, a step every four seconds below 24 frames a second,
+  // nice-to-haves first: the far rain and its splashes, then every drop (the streets stay wet and the
+  // sky grey), then the wet street's reflections, then pixels, down to 70% of the tier's. The people
+  // keep their models and the city its detail: a crowd of boxes is not a city. False when there is
+  // nothing left to shed.
+  let shedLevel = 0;
+  function shed() {
+    const steps = [
+      () => weather && weather.shed < 1 && (weather.shed = 1),
+      () => weather && weather.shed < 2 && (weather.shed = 2),
+      () => mirror && mirror.on && !mirror.off && (mirror.off = true),
+      () => pxScale > 0.85 && ((pxScale = 0.85), resize(), true),
+      () => pxScale > 0.7 && ((pxScale = 0.7), resize(), true),
+    ];
+    while (shedLevel < steps.length) if (steps[shedLevel++]()) { console.info(`Running slowly: shed step ${shedLevel}`); return true; }
+    return false;
+  }
   let running = true;
   function frame(now) {
     if (!running) return;
@@ -3483,9 +3517,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       vehicleHud();
       if (player.mode !== 'foot') gaitChip('');
     }
-    // a low frame rate is worth a hint (slowroads does the same)
-    fpsAcc[0] += dt; fpsAcc[1]++;
-    if (fpsAcc[0] > 6) { if (!fpsWarned && fpsAcc[1] / fpsAcc[0] < 22 && !titleOn) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); } fpsAcc = [0, 0]; }
+    // a low frame rate: shed the extras first (shed), and only then hint at the crowd (slowroads does the same)
+    if (titleOn || paused || framesDrawn < 2) fpsAcc = [now, 0];
+    else if (++fpsAcc[1] && now - fpsAcc[0] > 4000 && !navigator.webdriver) { // (not for the tools' stills, films and checks on a software renderer: game_check calls shed itself)
+      if (fpsAcc[1] * 1000 / (now - fpsAcc[0]) < 24 && !shed() && !fpsWarned) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
+      fpsAcc = [now, 0];
+    }
     if (player.rig.hideHead) player.rig.hideHead(player.mode === 'heli' && cam.mode === 'cockpit' && !photo.on && !(cine.active && cine.label !== 'crane'));
     // depth of field in photo mode, and with the camera's motion blur in the opening shot; never in play
     if (atmos && atmos.camFx) atmos.camFx(photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
@@ -4173,7 +4210,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+  window.__game = { shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

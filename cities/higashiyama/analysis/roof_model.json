@@ -1,0 +1,88 @@
+{
+ "note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. The check predicts each mapped roof as if it were not mapped.",
+ "counts": {
+  "measured:flat": 1963,
+  "prior:flat": 191,
+  "prior:gabled_across": 103,
+  "prior:gabled": 183,
+  "prior:hipped": 130,
+  "rule:flat": 49,
+  "measured:gabled": 1623,
+  "measured:gabled_across": 2638,
+  "measured:hipped": 110,
+  "fallback_flat": 25,
+  "too_low": 156,
+  "measured:half-hipped": 154,
+  "measured:skillion": 84,
+  "mapped:gabled": 7,
+  "mapped:gabled_across": 2,
+  "mapped:pyramidal": 1,
+  "prior:skillion": 4,
+  "mapped:hipped": 2
+ },
+ "check": {
+  "n": 11,
+  "flat_vs_pitched_accuracy": 0.545,
+  "exact_shape_accuracy": 0.364,
+  "family_accuracy": 0.364,
+  "pitched_recall": 0.545,
+  "flat_recall": 0.0,
+  "confusion_pitched": {
+   "true_pitched_pred_pitched": 6,
+   "true_pitched_pred_flat": 5,
+   "true_flat_pred_flat": 0,
+   "true_flat_pred_pitched": 0
+  },
+  "truth": {
+   "gabled": 9,
+   "hipped": 2
+  },
+  "vs_measured": {
+   "n": 6451,
+   "flat_vs_pitched_accuracy": 0.641,
+   "exact_shape_accuracy": 0.258,
+   "family_accuracy": 0.464,
+   "pitched_recall": 0.706,
+   "flat_recall": 0.475,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 3281,
+    "true_pitched_pred_flat": 1367,
+    "true_flat_pred_flat": 856,
+    "true_flat_pred_pitched": 947
+   },
+   "truth": {
+    "gabled": 4243,
+    "flat": 1803,
+    "hipped": 318,
+    "skillion": 87
+   }
+  },
+  "measured_vs_mapped": {
+   "n": 10,
+   "flat_vs_pitched_accuracy": 0.4,
+   "exact_shape_accuracy": 0.3,
+   "family_accuracy": 0.4,
+   "pitched_recall": 0.4,
+   "flat_recall": 0.0,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 4,
+    "true_pitched_pred_flat": 6,
+    "true_flat_pred_flat": 0,
+    "true_flat_pred_pitched": 0
+   },
+   "truth": {
+    "gabled": 8,
+    "hipped": 2
+   }
+  }
+ },
+ "roofs_built": 5041,
+ "rooftop_props": 283,
+ "frontage_solids": 653,
+ "skeleton_failures": {
+  "short": 56,
+  "spike": 78,
+  "steps": 6,
+  "active": 12
+ }
+}

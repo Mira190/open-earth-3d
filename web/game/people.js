@@ -223,11 +223,19 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   });
 
   // ------------------------------------------------------------ loading
+  // people.json, tried again twice if the request fails (as gltf.js does for the models)
+  async function fetchJSON(url) {
+    for (let i = 0; ; i++) {
+      try { const r = await fetch(url); if (r.ok) return await r.json(); if (i >= 2 || r.status < 500) throw new Error(`${url}: HTTP ${r.status}`); }
+      catch (e) { if (i >= 2) throw e; }
+      await new Promise(r => setTimeout(r, 800 * 3 ** i));
+    }
+  }
   async function load(base, { onMsg } = {}) {
     if (!THREE.GLTFLoader || !THREE.SkeletonUtils) throw new Error('GLTFLoader is not available');
     const L = new THREE.GLTFLoader();
     const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
-    const info = await (await fetch(base + 'people.json')).json();
+    const info = await fetchJSON(base + 'people.json');
     const [aM, aW, cr] = await Promise.all([get(info.anims.M), get(info.anims.W), get(info.crowd)]);
     const lib = { info, clips: { M: aM.animations, W: aW.animations }, lod: {}, tpl: {}, loading: {} };
     cr.scene.traverse(o => {

@@ -31,6 +31,7 @@ from shapely import wkb as swkb
 from shapely.geometry import Polygon, box
 from shapely.ops import polylabel
 
+import bridges
 import roofs
 import typology
 import wet_buildings
@@ -1477,6 +1478,7 @@ def build(C):
     ctx.roof_shapes, ctx.roof_sources = list(roofs.CODES), ROOF_SRC
     if C.hook("finalize"):
         C.hook("finalize")(ctx)
+    ctx.landmarks["water_bridges"] = bridges.find(ctx)   # the bridges over the water the city does not draw itself (bridges.py)
     # labels the landmark hook adds go first: the viewer hides a label that would overlap an earlier one
     ctx.labels = {k: v for k, v in ctx.labels.items() if k not in before} | {k: v for k, v in ctx.labels.items() if k in before}
 

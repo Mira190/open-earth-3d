@@ -8,7 +8,7 @@
 // The coral cays' pisonia and she-oaks and Green Island's vine forest within 160 m are the shared trees every city plants (web/assets/trees,
 // blender/build_trees.py: grown limbs under leaf cards), the full tree within 55 m, once they have loaded.
 import * as THREE from 'three/webgpu';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from '../../gltf.js'; // (trees.glb is meshopt-compressed: it decodes it, and retries)
 import { Herd, hash } from './kit.js';
 import { pick, inside } from './profile.js';
 import * as G from './geo.js';
