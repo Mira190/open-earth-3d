@@ -2,7 +2,8 @@
 // the helicopter rotor, the ferry engine and horn, a car's engine through its gears,
 // its tyres in a slide and its horn, dialogue voice beeps with a pitch per character,
 // little penguins braying in the dark and silver gulls; at a busy crossing the crowd's murmur, the
-// screens' music, the walk signal's bird calls and the station's announcements. Browsers allow
+// screens' music, the walk signal's bird calls and the station's announcements; and a spare score
+// (score: a pad and a few bell notes, in phrases with silences between). Browsers allow
 // sound only after a click, so start() is called from the Play button.
 'use strict';
 window.OEAudio = (function () {
@@ -268,7 +269,64 @@ window.OEAudio = (function () {
     g.gain.linearRampToValueAtTime(0.0001, a + dur);
     s.connect(f1); s.connect(f2); f1.connect(g); f2.connect(g); g.connect(master); s.start(a); s.stop(a + dur + 0.1);
   }
+  // ---------------------------------------------------------------- the score
+  // A few notes, not a soundtrack: a soft pad changing chord every 12 s and now and then a single
+  // bell-like note over it, in D major's pentatonic (no note that clashes, whatever falls together),
+  // through a lowpass and a short echo. It plays in phrases of a minute or two with silences between,
+  // so the city is heard more than the music. mood: { night, rain, busy 0..1 (a crowd or the screens
+  // round you: it steps back), inside (a car or the helicopter: quieter) }. Synthesised, no files.
+  let mus = null, musOn = true;
+  const HZ = m => 440 * Math.pow(2, (m - 69) / 12);
+  const CHORDS = [[50, 57, 64, 66], [47, 54, 62, 69], [43, 50, 57, 59], [45, 52, 61, 66]]; // D add9, Bm7, G add9, A sus (MIDI)
+  const PENTA = [62, 64, 66, 69, 71, 74, 76, 78, 81]; // D E F# A B, two octaves
+  function score(mood = {}, dt = 0) {
+    if (!ctx) return;
+    if (!mus) {
+      const out = ctx.createGain(), lp = ctx.createBiquadFilter(), dl = ctx.createDelay(1), fb = ctx.createGain(), dlp = ctx.createBiquadFilter(), wet = ctx.createGain();
+      out.gain.value = 0; lp.type = 'lowpass'; lp.frequency.value = 1800; lp.Q.value = 0.3;
+      dl.delayTime.value = 0.43; fb.gain.value = 0.38; dlp.type = 'lowpass'; dlp.frequency.value = 1600; wet.gain.value = 0.5;
+      lp.connect(out); lp.connect(dl); dl.connect(dlp); dlp.connect(fb); fb.connect(dl); dlp.connect(wet); wet.connect(out); out.connect(master);
+      mus = { out, lp, pad: [], chordAt: 0, chord: 0, noteAt: ctx.currentTime + 6, phrase: 70 + Math.random() * 50, rest: 0, playing: true };
+    }
+    const t = ctx.currentTime;
+    // phrases and silences
+    if (mus.playing) { if ((mus.phrase -= dt) <= 0) { mus.playing = false; mus.rest = 35 + Math.random() * 40; } }
+    else if ((mus.rest -= dt) <= 0) { mus.playing = true; mus.phrase = 70 + Math.random() * 60; mus.chordAt = 0; }
+    const on = musOn && !muted && mus.playing;
+    const level = on ? 0.24 * (1 - 0.65 * Math.min(1, mood.busy || 0)) * (mood.inside ? 0.55 : 1) : 0;
+    ramp(mus.out.gain, level, on ? 3 : 2.5);
+    ramp(mus.lp.frequency, mood.rain ? 950 : mood.night ? 1300 : 1900, 2);
+    if (!on && mus.out.gain.value < 0.002) return;
+    // the pad: four voices, each a sine and a quiet triangle a few cents apart, swelling in and out
+    if (t >= mus.chordAt && mus.playing) {
+      const C = CHORDS[mus.chord++ % CHORDS.length], len = mood.night ? 16 : 12, down = mood.night ? -12 : 0;
+      for (const f of C) for (const [type, det, v] of [['sine', 0, 0.05], ['triangle', 7, 0.012]]) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type; o.frequency.value = HZ(f + down); o.detune.value = det;
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 3.5); g.gain.setValueAtTime(v, t + len - 1); g.gain.linearRampToValueAtTime(0.0001, t + len + 3);
+        o.connect(g); g.connect(mus.lp); o.start(t); o.stop(t + len + 3.1);
+      }
+      mus.chordAt = t + len;
+    }
+    // a single note now and then: struck, ringing away (fewer in the rain, lower and slower at night)
+    if (t >= mus.noteAt) {
+      if (mus.playing && Math.random() < (mood.rain ? 0.45 : 0.8)) {
+        const m = PENTA[Math.floor(Math.random() * PENTA.length)] - (mood.night ? 12 : 0), n = Math.random() < 0.25 ? 2 : 1;
+        for (let k = 0; k < n; k++) {
+          const at = t + 0.02 + k * 0.38, mk = k ? PENTA[Math.min(PENTA.length - 1, PENTA.indexOf(m + (mood.night ? 12 : 0)) + 2)] - (mood.night ? 12 : 0) : m;
+          for (const [mul, v, dur] of [[1, 0.09, 3.2], [2, 0.018, 1.4], [3.01, 0.006, 0.7]]) {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = 'sine'; o.frequency.value = HZ(mk) * mul;
+            g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(v, at + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+            o.connect(g); g.connect(mus.lp); o.start(at); o.stop(at + dur + 0.05);
+          }
+        }
+      }
+      mus.noteAt = t + (mood.night ? 4 : 2.6) + Math.random() * 4.5;
+    }
+  }
+  function setMusic(v) { musOn = !!v; }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, score, setMusic, get music() { return musOn; }, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();
