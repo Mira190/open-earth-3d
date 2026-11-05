@@ -104,6 +104,7 @@ xvfb-run -a node tools/city_film.js tokyo --plan --size 960x402      # the plan:
 xvfb-run -a node tools/city_film.js tokyo --stills --k 0.5           # a still from the middle of each shot
 xvfb-run -a node tools/city_film.js tokyo --stills --shots night --k 0.1,0.9
 xvfb-run -a node tools/city_film.js tokyo                             # the film: frames, score, encode
+python3 tools/film_sheet.py tokyo                                    # its contact sheet in docs/images/films
 ```
 
 - **The plan** (`plan.jpg` in the frames folder) draws the city from straight

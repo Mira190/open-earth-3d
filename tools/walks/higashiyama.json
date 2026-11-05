@@ -1,0 +1,67 @@
+[
+ {
+  "name": "Kiyomizu-dera, the covered corridor past the Amida-do (OSM w1340239544)",
+  "pts": [
+   [
+    322.4,
+    -240.9
+   ],
+   [
+    321.5,
+    -257.2
+   ]
+  ]
+ },
+ {
+  "name": "Kiyomizu-dera, across the Okunoin's front (OSM w1272415075)",
+  "pts": [
+   [
+    321.4,
+    -259.5
+   ],
+   [
+    320.4,
+    -276.3
+   ],
+   [
+    324.3,
+    -276.5
+   ],
+   [
+    324.1,
+    -278.5
+   ]
+  ]
+ },
+ {
+  "name": "Kiyomizu-dera, up through the West Gate (OSM w339551498)",
+  "pts": [
+   [
+    142.0,
+    -204.9
+   ],
+   [
+    148.0,
+    -206.95
+   ],
+   [
+    154.0,
+    -209.0
+   ]
+  ]
+ },
+ {
+  "name": "Kiyomizu-dera, onto the Okunoin's stage",
+  "pts": [
+   [
+    320.4,
+    -266.0
+   ],
+   [
+    316.6,
+    -267.9
+   ]
+  ],
+  "z": 115.25
+ }
+]
