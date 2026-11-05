@@ -247,7 +247,8 @@ const npcNight = require('./npc_night');
   if (rain) {
     check(rain.st.kind === 'rain' && rain.st.rain > 0.5 && rain.st.wet > 0.5 && rain.streaks && rain.occ === 1,
       `rain falls (rain ${rain.st.rain.toFixed(2)}, ground wet ${rain.st.wet.toFixed(2)}, streaks ${rain.streaks}, occlusion map ${rain.occ})`);
-    check(rain.walkers === 0 || rain.umb > 0, `umbrellas up in the crowd (${rain.umb} of ${rain.walkers} walkers)`);
+    // umbrellas are off for now (people.js UMBRELLAS): nobody puts one up
+    check(rain.umb === 0, `no umbrellas in the crowd (${rain.umb} of ${rain.walkers} walkers)`);
     check(/^(Rain|Drizzle) · /.test(rain.chip), `the HUD shows the rain ("${rain.chip}")`);
     check(rain.lum.mean > 18 && rain.lum.blown < 0.02, `the rain's frame is lit, not black or blown (luma ${rain.lum.mean.toFixed(0)}, ${(rain.lum.blown * 100).toFixed(1)}% blown)`);
     check(rain.after.rain === 0 && rain.after.wet === 0 && rain.dry, 'and clear again, dry');

@@ -106,6 +106,10 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   // and the canopy low over the head, so it hides the hand and the head under it. From
   // the head's joint (hd); the near people (umbrella_open) and the crowd's far copies share it
   const UMB_LEN = 0.66, UMB_D = [0.05, 1, -0.06];
+  // umbrellas are off for now: the hand on the handle doesn't read right yet, so nobody carries one,
+  // closed or open, and the rain falls on bare heads. Set true to bring them back.
+  const UMBRELLAS = false;
+  const noUmb = ids => (UMBRELLAS || !ids ? ids : ids.filter(id => id !== 'umbrella' && id !== 'umbrella_open'));
   const umbrellaHold = hd => {
     const dir = V3(...UMB_D).normalize(), grip = hd.clone().add(V3(-0.1, -0.32, 0.17));
     return { grip, dir, top: grip.clone().addScaledVector(dir, UMB_LEN), q: new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dir) };
@@ -466,7 +470,7 @@ ${PAT_GLSL}`)
     // what the NPC does while it waits (look.clip), if this character has the clip
     const idleClip = () => (look.clip && act[look.clip] ? look.clip : 'Idle');
     function setAccessories() {
-      const ids = [...(look.acc || []), ...((act[look.clip] && CLIP_ACC[look.clip]) || [])];
+      const ids = noUmb([...(look.acc || []), ...((act[look.clip] && CLIP_ACC[look.clip]) || [])]);
       const key = JSON.stringify([ids, look.apron || '']);
       if (key === accKey) return;
       accKey = key;
@@ -769,7 +773,7 @@ transformed = crowdPose(transformed, false);`);
     })());
     const UMB_KEYS = [true, false, 'shaft'];
     let rain = 0, umbOn = false;
-    const wantUmb = p => rain > 0.06 && p.mode !== 'sit' && p.umbK < 0.3 + 0.62 * Math.min(1, (rain - 0.06) / 0.5);
+    const wantUmb = p => UMBRELLAS && rain > 0.06 && p.mode !== 'sit' && p.umbK < 0.3 + 0.62 * Math.min(1, (rain - 0.06) / 0.5);
     const free = {}, active = new Map();
     let dtNow = 0, tNow = 0;
     function begin(dt, cx, cy, t, nActive) {
@@ -833,7 +837,7 @@ transformed = crowdPose(transformed, false);`);
     // the rain, 0..1 (weather.js): umbrellas go up as it comes on
     function setRain(r) {
       rain = r;
-      const on = r > 0.06;
+      const on = UMBRELLAS && r > 0.06;
       if (on === umbOn) return;
       umbOn = on;
       for (const c of UMB_KEYS) { const m = umbMesh(c); m.visible = on; if (!on) { for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero); m.instanceMatrix.needsUpdate = true; } }
