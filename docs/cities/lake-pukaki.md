@@ -190,7 +190,27 @@ filling the frame and cumulus building on the Divide.
 - the sky's irradiance from the same model;
 - a golden bounce off the tussock;
 - the mountains' shadows from a pass that marches every cell's ray toward the sun over the height grid, with the
-  Earth's curve and the sun's disc. It runs again only when the sun has moved.
+  Earth's curve and the sun's disc. It runs again only when the sun has moved;
+- by day the sky's light on the ground is taken at 0.72 of the model's. At full strength it gave about 40% of the light
+  on open ground with the sun 40° up, where a clear sky gives 15 to 25%, and its blue lifted every shadow into a grey
+  haze;
+- a daylight white balance, as a landscape photographer sets one: the overall cast of sun and sky together is taken out
+  of the land (a warm sun and a blue sky left the tussock sage). It fades out toward the golden hour, whose warmth stays.
+
+**The ground's colour** (`web/reef/alpine/terrain.js`):
+- the imagery is printed for a screen, so pale ground comes out near a linear 0.45 where dry tussock and gravel reflect
+  0.25 to 0.3. An albedo knee (`ALB_KNEE`) eases brightness down and keeps the hue; snow is set on its own;
+- ground that is green already is deepened toward a spring green (a vibrance, `GREEN_VIBRANCE`: grey-green gains most,
+  a bright lawn little); straw tussock, gravel and rock keep their colour;
+- seen low along the ground, grass hides the soil and shows its blades: richer and a little darker than the
+  straight-down photograph (none of this for red-brown ground, which turned magenta under it);
+- the looks by cover class (grain, blades, glints) blend over the four nearest 20 m cover pixels, so a class edge is a
+  fade, not a square; close up, three fine octaves and blade streaks (each fading as it shrinks under a pixel) replace
+  the 3 m blotches that read as stains.
+
+**Standing on it.** The player, the people, the plants and the seated landmarks stand on `terrain.heightAt`, which reads
+the height texture's half floats (steps of 0.125 m at 200 m above the lake, 0.25 m at 300 m) and interpolates the
+detail patch's own 2 m triangles, so nothing sinks into or floats over the surface as drawn.
 
 **Clouds** (`web/reef/alpine/clouds.js`, `?clouds=0..1`) are soft-edged cumulus puffs over the high peaks, with flat
 bases at about 2,350 m: the cloud a westerly builds on the Divide on a fine day. They are sheets facing the camera, not
@@ -198,7 +218,13 @@ volumes.
 
 **Tone and exposure:**
 - tone mapping is the title screen's curve family (Khronos PBR Neutral), not ACES, which turns the sky and the lake grey-teal;
-- exposure opens up as the light goes, as a photographer's does, until the eye's own adaptation takes over at dusk;
+- exposure is 1.7 (it was 1.9, which left the pale shores and the glitter path white) and opens up as the light goes,
+  as a photographer's does, until the eye's own adaptation takes over at dusk;
+- the sun's glitter on the lake is drawn as an eye sees it, not as the slope distribution's smooth average (a white
+  smear): a fifth of its light stays smooth and the rest goes into twinkling points on a grid sized to the pixel's
+  footprint along each axis, with the mean kept (`web/reef/ocean.js`, shared with the reef sea; the cities' water does
+  the same with `oeGlitter`). What feeds the bloom is held to 5 in the lights' units (`web/reef/post.js`), so a point
+  glows round itself instead of veiling the shore;
 - the depth buffer is logarithmic, so a far shore never flickers into its lake. Three.js r186 cannot resolve a
   reversed float depth buffer from a multisampled pass on WebGL2.
 
