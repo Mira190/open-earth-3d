@@ -611,6 +611,7 @@ window.OEJunctions = (function () {
     // the other road's green ends once it has run a few seconds, through amber as ever, and its own
     // green is held for it (up to HOLD past when it would have ended) while it comes on
     const MIN_G = 5, HOLD = 15;
+    const MP_MIN = 8, MP_MAX = 1.6; // (max-pressure: the least green before a blocked phase gives way, and how far a busy one runs on)
     function priority(a) {
       const j = a.j;
       if (!j.sig) return;
@@ -740,6 +741,7 @@ window.OEJunctions = (function () {
     function update(dt, t) {
       frame++;
       for (const j of J) {
+        if (j.sig) for (const a of j.arms) { a.qn = a.qn1 || 0; a.full = !!a.full1; a.qn1 = 0; a.full1 = false; } // (last frame's queues, counted by the traffic as it went)
         if (j.active.length) for (let i = j.active.length - 1; i >= 0; i--) { const o = j.active[i]; if (o.c.line < 0 || (!o.c.mv || o.c.mv.j !== j) && (!o.c.mv0 || o.c.mv0.j !== j)) j.active.splice(i, 1); }
         if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
         for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
@@ -759,14 +761,29 @@ window.OEJunctions = (function () {
         // gap-out (as SCATS and vehicle-actuated signals do): someone waits on another phase and no
         // car is coming on this one, so its green ends after GAP_MIN, the walk over first (FLASH)
         if (j.st === 'g' && j.cut == null && call && !D[j.ph] && j.ph !== 2 && j.ph !== 3 && !(j.mid != null && j.ph === 1) && j.t >= GAP_MIN - FLASH) j.cut = Math.max(j.t, GAP_MIN - FLASH) + FLASH;
-        const end = j.gEnd = j.cut != null ? Math.min(j.green[j.ph], j.cut) : j.green[j.ph];
+        // capacity-aware max-pressure (Varaiya 2013; Gregoire et al. 2014), on top: a phase's pressure is the cars
+        // queued at its arms' lines (a.qn, counted by the traffic, actors.js), an arm whose head car waits for
+        // room beyond counting none (serving it moves nobody). A green whose queues are all blocked so ends
+        // after MP_MIN when another phase has cars waiting; one whose queues still far outweigh the next
+        // phase's runs on, up to MP_MAX times its green. Only the queues at hand: nothing to forecast
+        if (j.st === 'g' && j.ph < 2 && !(j.mid != null)) {
+          const pr = ph => { let n = 0; for (const a of j.arms) if (a.in && a.phase === ph && !a.full) n += a.qn || 0; return n; };
+          const other = j.ph === 0 ? 1 : 0, mine = pr(j.ph), next = pr(other);
+          let blocked = false;
+          for (const a of j.arms) if (a.in && a.phase === j.ph && (a.qn || 0) > 0) { blocked = !!a.full; if (!blocked) break; }
+          if (j.cut == null && blocked && mine === 0 && next > 0 && j.t >= MP_MIN) { j.cut = j.t; j.mpCut = (j.mpCut || 0) + 1; }
+          const was = j.mpOn;
+          j.mpOn = j.cut == null && !j.scramble && mine >= 3 && mine > 2 * next + 1 && j.t < j.green[j.ph] * MP_MAX;
+          if (was && !j.mpOn && j.cut == null && j.t > j.green[j.ph] - FLASH) { j.cut = j.t + FLASH; j.mpExt = true; } // (run on past its green: it ends after the walkers' flash, never at once)
+        } else j.mpOn = false;
+        const end = j.gEnd = j.cut != null ? (j.mpExt ? j.cut : Math.min(j.green[j.ph], j.cut)) : j.mpOn ? Infinity : j.green[j.ph];
         if (j.st === 'g' && !held) {
           if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= end && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
             j.st = 'y'; j.t = 0; dirty.add(j);
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : j.ph === 1 && j.scramble ? 3 : 0;
           }
         } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
-        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 15) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 15) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; j.mpExt = j.mpOn = false; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
         j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > end - FLASH);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }

@@ -442,6 +442,7 @@ listed at the end.
 | **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
 | **Tesla FSD** (AI Day 2021 and 2022: the planning talks) | The planner run for every car round it, not only for itself: each car's way ahead is known and read by the others, and where two ways meet one asserts and the other yields, by the same rule read from both sides, rather than both reacting to what is in front of them. A car that can no longer stop goes; one in the junction goes before one coming. Ideas only (its software is proprietary). | It learns from fleet video; here every car's intent is exact (its route, its movement through the junction), so nothing has to be guessed from a camera. |
 | **Baidu Apollo** (EM planner, Apache-2.0), **SUMO** (EPL-2.0), **A/B Street** (Apache-2.0), **Autonomous Intersection Management** (Dresner and Stone) | Apollo: another car's way projected onto your own as the stretch it blocks, and a go-first or yield decision on it. SUMO and A/B Street: keep the box clear (no car into a junction whose way across is blocked or whose exit has no room), and break a deadlock by someone backing off, never by driving through. AIM: a reservation for the way across, which `junctions.js` already makes. Re-written from the papers and documentation; no code taken. | They simulate traffic for planners to study. Here the same rules drive the taxi you are sitting in. |
+| **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
 
 ## How it works
 
@@ -835,9 +836,9 @@ lane, along a straight line from its bonnet, and the traffic saw a ride only alo
 line from its own. A car turning across the ride, or one the ride came round a corner to, was
 seen late or not at all; the traffic didn't hold back for a ride on the move at all, leaving it
 to the ride's driver. Two would end nose to nose, each waiting for the other, and after a few
-seconds one drove through the other. In Shibuya (`tools/ride_overlap.js`, 14 trips from the
-scramble) a ride went into a car of the traffic 7 times in 3,000 s, up to 2.3 m deep, and 10 of
-the 16 trips hadn't arrived after five minutes. The planners of self-driving cars do it another
+seconds one drove through the other. In Shibuya (`tools/ride_overlap.js`, two runs of eight trips
+from the scramble) a ride went into a car of the traffic 9 times in 4,400 s, up to 2.3 m deep,
+once head on down a one-way street, and 10 of the 16 trips hadn't arrived after five minutes. The planners of self-driving cars do it another
 way (Tesla's interaction search, Apollo's ST graph: see [the table above](#what-we-took-from-other-games-and-where-this-one-is-different)):
 every car's intent is read by the others, and where two ways meet one goes and the other
 yields. In this game every car's intent is exact, so:
@@ -863,6 +864,35 @@ yields. In this game every car's intent is exact, so:
   (`junctions.makeWay`); wedged against one that won't move off, it asks again every 2 s, and only
   after 45 s (a knot nothing undoes) goes on at a crawl. It no longer creeps into a car at an
   angle to it after 8 s.
+- **Brake early and gently.** The traffic's speed was a limit read off the gap ahead, so a car
+  kept its speed until the last metres and then braked at up to 8 m/s². The Intelligent Driver
+  Model's interaction term (Treiber, Hennecke and Helbing 2000: the gap a driver wants grows with
+  its speed and with how fast it closes) is now a second limit, for the traffic (`actors.js`
+  `idm`: stopping 2.6 m short, a 0.8 s time gap, 2.5 m/s² to pull away, 3 m/s² to brake) and,
+  softer, for a ride (1.1 s, 2.2 and 2.6): a car starts to brake for a queue or a red seen 40 m
+  off. It is never faster than the old limit, so the queues and the waits at the lights are as
+  before; only the braking is earlier and softer, as a passenger feels it.
+- **Break the rings.** Round Shibuya station the queues waited for room behind queues that waited
+  for room, round a block and back, and nothing moved: one car stood 220 s at its line. The
+  traffic wanders, so a car held 5 s at its line for want of room, its light green, takes another
+  way out that has room (`outOfRing` in `tools/traffic_check.js`). Cars still jammed at the end of
+  `traffic_check.js`'s three Shibuya runs went from 25, 7 and 7 to 3, 4 and 3.
+- **People look both ways where nothing is marked.** Where a footway steps onto a road with no
+  signals and no zebra, the crowd stepped out regardless and every car stopped for it, one after
+  another (a queue east of the station stood for the people crossing for minutes). Now a walker
+  waits at the kerb while a car would reach the place within 3.5 s, as the law asks of someone
+  crossing away from a crossing (Japan's Road Traffic Act, article 13; the Highway Code, rule 7),
+  and after 20 s takes its chance at walking pace, the cars braking for it. At zebras and signals
+  nothing changes. The places are found a metre at a time along a footway the first time someone
+  walks it, and only those near you are kept.
+- **Signals that read their queues** (capacity-aware max-pressure, Varaiya 2013, with Gregoire et
+  al.'s rule for full roads beyond). The lights already ended a green early when nobody came on it
+  (gap-out, as SCATS and vehicle-actuated signals do). Now each arm counts the cars queued at its
+  line every frame (`a.qn`, from the traffic), and whether the head of its queue waits for room
+  beyond (`a.full`). A green whose queues are all blocked beyond ends after 8 s when another phase
+  has cars waiting (serving it moves nobody); one whose queue is more than twice the next phase's
+  runs on, up to 1.6 times its green, and then ends after the walkers' flash. A scramble keeps its
+  own order and walk. It reads only the queues at hand, nothing to forecast or store.
 - **No way against a one-way street.** Where the one-way streets leave no legal way (7% of
   random trips in Shibuya), the router searched any street at the same cost, and a trip could
   drive 300 m against the traffic, head on into it. Now a metre against a one-way street costs 25,
@@ -2234,3 +2264,10 @@ deadlock or a meeting at a shared berth takes to show.
 - A/B Street gridlock: [docs](https://a-b-street.github.io/docs/tech/trafficsim/gridlock.html),
   [source](https://github.com/a-b-street/abstreet) (Apache-2.0).
 - Autonomous Intersection Management: [Dresner and Stone, JAIR 2008](https://jair.org/index.php/jair/article/view/10542).
+- Real traffic control: SCATS ([overview](https://en.wikipedia.org/wiki/Sydney_Coordinated_Adaptive_Traffic_System),
+  [survey](https://arxiv.org/pdf/1904.08117)); SCOOT ([TRL LR1014](https://www.trl.co.uk/uploads/trl/documents/LR1014.pdf));
+  UTMS and MODERATO ([JICA report](https://openjicareport.jica.go.jp/pdf/12340022_02.pdf)); VICS ([how it works](https://www.vics.or.jp/en/structure/));
+  max-pressure ([Varaiya](https://link.springer.com/10.1007/978-1-4614-6243-9_2), capacity-aware: [Gregoire et al.](https://arxiv.org/pdf/1309.6484));
+  actuated control ([FHWA signal timing manual](https://ops.fhwa.dot.gov/publications/fhwahop08024/chapter5.htm));
+  box junctions ([Highway Code rule 174](https://theorytest.org.uk/hwc/highway-code/rule-174.html)); dispatch
+  ([Uber matching](https://www.uber.com/us/en/marketplace/matching/)).

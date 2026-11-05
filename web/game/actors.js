@@ -464,6 +464,39 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
     }
     const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], hot: null, plazas: null, muster };
+    // where footway li steps off the kerb onto a road with no crossing marked there, each way along it
+    // ({ s, dir, x, y }): found the first time a walker is on it, a metre at a time (crossings.road, from
+    // game.js, says what is carriageway; crossings.zebra, a zebra's stripes, where the cars give way instead)
+    const entries = new Map();
+    function roadEntries(li) {
+      let E = entries.get(li);
+      if (E) return E;
+      E = [];
+      const l = net.L[li], C = api.crossings, n = Math.max(1, Math.ceil(l.len));
+      let was = null;
+      for (let k = 0; k <= n; k++) {
+        const s = Math.min(l.len, k * l.len / n);
+        net.at(li, s, tmp);
+        const on = !!C.road(tmp.x, tmp.y);
+        // (a footway that crosses the road there, not one along the kerb that dips into the carriageway's edge)
+        if (was !== null && on !== was && !(C.zebra && C.zebra(tmp.x, tmp.y)) && (!C.across || C.across(tmp.x, tmp.y, tmp.hx, tmp.hy))) E.push({ s, dir: on ? 1 : -1, x: tmp.x, y: tmp.y });
+        was = on;
+      }
+      if (entries.size > 3000) entries.clear(); // (only the footways walked near you are kept)
+      entries.set(li, E);
+      return E;
+    }
+    // is a car (of the traffic, your car or a ride) coming that would reach (x, y) within 3.5 s?
+    function carComing(x, y, z) {
+      let yes = false;
+      api.cars.near(x, y, 35, o => {
+        if (yes || (o.v || 0) < 0.8) return;
+        const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = x - o.x, dy = y - o.y, a = dx * fx + dy * fy;
+        if (a < -o.half || Math.abs(-dx * fy + dy * fx) > (o.hw || 0.9) + 1.6) return;
+        if ((a - o.half) / o.v < 3.5) yes = true;
+      }, z);
+      return yes;
+    }
     const near1 = (l, x, y, r) => { for (let k = 0; k < l.pts.length; k += 3) if (Math.hypot(l.pts[k] - x, l.pts[k + 1] - y) < r) return true; return false; };
     // would a walker set off at s along line `line` heading `dir` be out in a road at a crossing
     // whose walk isn't on (or, at a scramble, too short for it to reach the far kerb)? Then its button is pressed
@@ -929,6 +962,25 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5));
         }
       }
+      // a road ahead with no crossing marked on it (no signals, no zebra): a look both ways first, and a wait at
+      // the kerb while a car would be there within 3.5 s, as the law asks of someone crossing away from a
+      // crossing (Japan's Road Traffic Act, art. 13; the UK's Highway Code, rule 7) and as people do. Before,
+      // the crowd stepped out regardless and every car stopped for it, one after another: on the streets east
+      // of Shibuya station a queue stood for the people crossing, car after car, for minutes. Out in the road,
+      // it goes on across; after 20 s at the kerb it takes its chance at walking pace, the cars braking for it
+      if (!atKerb && api.crossings && api.crossings.road && api.cars && !(X && X.some(x => Math.abs(x.s - p.s) < x.kerb + 2))) {
+        const E = roadEntries(p.line);
+        let held = false;
+        for (const e of E) {
+          if (e.dir !== p.dir) continue;
+          const d = (e.s - p.s) * p.dir;
+          if (d < -0.2 || d > 2.2) continue;
+          if ((p.gw || 0) < 20 && carComing(e.x, e.y, p.z)) { held = true; cap = Math.min(cap, Math.max(0, (d - 0.3) * 1.5)); }
+          break;
+        }
+        p.gw = held ? (p.gw || 0) + dt : 0;
+        if (held) atKerb = true;
+      }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
       // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
       if (atKerb) p.kw = (p.kw || 0) + dt;
@@ -1290,7 +1342,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return hit;
     }
-    let redRuns = 0, laneChanges = 0, outOfRing = 0;
+    let redRuns = 0, laneChanges = 0, outOfRing = 0, squeezes = 0;
     const redLog = []; // (the last few cars over a crossing's line on red, how: tools/traffic_why.js)
     const api = { mesh, fleet, C, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [] };
     // who goes first where two cars' ways meet (car c's way comes into o's box d metres ahead of its
@@ -1308,6 +1360,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return d < d2 - 0.5 || (Math.abs(d - d2) <= 0.5 && ic < io);
     }
     JN.first = first;
+    // the Intelligent Driver Model's interaction term: the acceleration a car at speed v takes for
+    // something gap metres ahead (bumper to it) moving at vl along its way; s0 the gap it stops at, T its
+    // time gap, a and b its comfortable acceleration and braking. (The free road term is the limit above.)
+    function idm(v, gap, vl, s0, T, a, b) {
+      const ss = s0 + Math.max(0, v * T + v * (v - vl) / (2 * Math.sqrt(a * b)));
+      return a * (1 - (ss / Math.max(0.05, gap)) * (ss / Math.max(0.05, gap)));
+    }
     if (crowd) crowd.cars = api;
     if (nav) nav.movers = api;
     // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
@@ -1510,7 +1569,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // the bonnet, which misses one round the corner it is turning), and given way to by the same rule as the
         // traffic's (first): the one that goes on is the one that would. One standing still is
         // left to the blockers below (passed side by side, swung out round, or braked for)
-        let sawX = null;
+        let sawX = null, leadX = null;
         if (np) for (const o of api.extra) {
           if (o.v < 0.3 || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
           const d = hitAt(P, np, o, o.half + 0.6, o.hw + c.hw + 0.25, step);
@@ -1519,7 +1578,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
           if (d2 >= 0 && first(c, o, d, d2, i, -1)) continue;
           const g = d + 0.6;
-          if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; }
+          if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; leadX = o; }
         }
         // in a junction and stopped behind a car waiting at another of its lines (an awkward corner,
         // a short arm whose line can't be set back far enough): that one backs off a little, and
@@ -1808,6 +1867,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
         }
         c.q = atLine || (why === 'person' && walker >= 0 && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there; or held by the crowd crossing at its line, not by you, who may stand there for good)
+        // counted at its arm for the signals' max-pressure (junctions.js): queued, and whether the head of the queue waits for room beyond
+        if (c.q && c.lineArm && c.lineArm.j.sig && c.toLine < 80) { const a = c.lineArm; a.qn1 = (a.qn1 || 0) + 1; if (why === 'room' && c.toLine - c.half < 3) a.full1 = true; }
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)
@@ -1822,7 +1883,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const free = c.tangleT > 4, behind = tangled > 0 && ahead && !free;
         // up to the limit, and braking in time for what is ahead (gently from far off, at most 3.5 m/s²)
         const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9, Math.sqrt(7 * (gap - 2.6)) + 0.5);
-        c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
+        // and what it closes on, by the Intelligent Driver Model's interaction term (Treiber, Hennecke and
+        // Helbing 2000): the gap it wants grows with its speed and with how fast it closes, so it starts to
+        // brake early and gently for a queue or a red line seen from 40 m, rather than at the last moment at
+        // 8 m/s² as the limit above alone did. Never faster than that limit: only earlier, softer braking
+        let dv = Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
+        if (gap < 40 && !(tangled > 0 && !behind)) {
+          const ld = front || leadX, vl = ld ? (ld.v || 0) * (Math.sin(ld.h) * fx + Math.cos(ld.h) * fy) : 0;
+          dv = Math.min(dv, idm(c.v, gap, vl, 2.6, 0.8, 2.5, 3) * dt);
+        }
+        c.v += Math.max(-8 * dt, dv);
         let s = c.s + c.dir * c.v * dt, line = c.line, dir = c.dir;
         const away = !eye || Math.hypot(eye.position.x - c.x, -eye.position.z - c.y) > 90;
         c.still = c.v < 0.3 ? (c.still || 0) + dt : 0;
@@ -1893,6 +1963,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // (the one of two nose to nose in a junction that goes on, held by the other 20 s, the queue behind
         // that one too close for it to back off: it squeezes past then, not after the minute and a half)
         const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20));
+        if (squeeze && !c.squeezing) squeezes++;
+        c.squeezing = squeeze;
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;
@@ -1996,7 +2068,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
       }
     }
-    return Object.assign(api, { update, take, footprint, stats: () => Object.assign(JN.stats(), { redRuns, redLog, laneChanges, outOfRing, conflicts: JN.conflicts() }) });
+    return Object.assign(api, { update, take, footprint, stats: () => Object.assign(JN.stats(), { redRuns, redLog, laneChanges, outOfRing, squeezes, conflicts: JN.conflicts() }) });
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)
