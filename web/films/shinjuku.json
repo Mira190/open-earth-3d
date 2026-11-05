@@ -1,0 +1,103 @@
+{
+ "id": "shinjuku",
+ "name": "Shinjuku",
+ "duration": 31.5,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/shinjuku.mp4",
+ "poster": "films/shinjuku.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "stairs",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "The stairs"
+  },
+  {
+   "id": "gyoen",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "The garden"
+  },
+  {
+   "id": "kabukicho",
+   "t0": 20,
+   "t1": 24.5,
+   "chapter": "After dark"
+  },
+  {
+   "id": "night",
+   "t0": 24.5,
+   "t1": 31.5,
+   "chapter": null
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "35.69°N 139.69°E",
+    "Sunrise behind Nishi-Shinjuku · 06:21 JST",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Shinjuku",
+   "native": "新宿",
+   "sub": "Japan",
+   "figures": "26,697 buildings · 4.5 × 3.1 km · 85% of heights surveyed by PLATEAU"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Suga Shrine, Yotsuya",
+   "head": "The 男坂",
+   "text": "Fifty-two stone steps between red handrails: the stairs at the end of Your Name, ten years old this year."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Shinjuku Gyoen",
+   "head": "Docomo Tower over the garden",
+   "text": "240 m of offices and antennas since 2000, over a garden that was the Imperial family's until 1949."
+  },
+  {
+   "t0": 20.6,
+   "t1": 24.2,
+   "kind": "lower",
+   "eyebrow": "Kabukicho, Shinjuku",
+   "head": "Kabukicho Ichibangai",
+   "text": "The red arch has lit the way in since 1969, to a kabuki theatre that was never built."
+  },
+  {
+   "t0": 27.7,
+   "t1": 31.5,
+   "kind": "end",
+   "name": "Shinjuku",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}
