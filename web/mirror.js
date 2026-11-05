@@ -31,7 +31,10 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
       uMirrorPx: { value: new THREE.Vector2(1, 1) }, uMirrorDark: { value: window.OEWeather ? 0 : 1 }, uWetM: { value: 0 }, uRainM: (W() && W().uOeRain) || { value: 0 } };
     const high = tier === 'high' && renderer.capabilities.isWebGL2;
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-    const rt = high ? new THREE.WebGLRenderTarget(Math.max(2, size.x >> 1), Math.max(2, size.y >> 1), { type: THREE.HalfFloatType, samples: 0 }) : null;
+    // a third of the screen's size: the picture is blurred and rippled down to far less than that anyway
+    const DIV = 3, dim = v => Math.max(2, Math.round(v / DIV));
+    const rt = high ? new THREE.WebGLRenderTarget(dim(size.x), dim(size.y), { type: THREE.HalfFloatType, samples: 0 }) : null;
+    let tick = 0;
     const blank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
     blank.needsUpdate = true;
     U.uMirror.value = blank;
@@ -91,6 +94,9 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         if (!rt || api.off || w < 0.003) { U.uMirrorOn.value = 0; return; } // (off: game.js sheds it on a device that can't keep up)
         const h = ground(camera.position.x, -camera.position.z);
         if (camera.position.y - h > 120) { U.uMirrorOn.value = 0; return; } // high over the city: the street's reflections are lost in the distance
+        // drawn every other frame: the last picture is kept with the mirrored camera it was drawn from
+        // (uMirrorMat), so in between it still lands where it should, a frame behind what moves in it
+        if ((tick++ & 1) && U.uMirrorOn.value === 1 && !api.every) return;
         camera.updateMatrixWorld();
         cam.copy(camera, false);
         camera.getWorldDirection(dir);
@@ -116,7 +122,15 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         renderer.shadowMap.autoUpdate = prevShadow;
         U.uMirror.value = rt.texture; U.uMirrorOn.value = 1;
       },
-      setSize(w, h) { if (rt) { rt.setSize(Math.max(2, w >> 1), Math.max(2, h >> 1)); U.uMirrorPx.value.set(1 / Math.max(2, w >> 1), 1 / Math.max(2, h >> 1)); } },
+      setSize(w, h) { if (rt) { rt.setSize(dim(w), dim(h)); U.uMirrorPx.value.set(1 / dim(w), 1 / dim(h)); } },
+      // draw it once while the game loads, whatever the weather: the scene's materials compile again
+      // for the mirror's clipping plane, seconds of stall that would otherwise come with the first rain
+      warm(scene) {
+        if (!rt) return;
+        const u = wetU() || own, w = u.value;
+        u.value = 1; api.every = true;
+        try { api.update(scene, 0); } finally { u.value = w; api.every = false; U.uMirrorOn.value = 0; U.uWetM.value = w; }
+      },
       dispose() { if (rt) rt.dispose(); blank.dispose(); },
     };
     api.setSize(size.x, size.y);

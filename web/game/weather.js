@@ -544,6 +544,14 @@ void main() {
         }
         if (focus) api.focus = focus;
       },
+      // while the game loads: the rain's own materials and its pass from above drawn once, so their
+      // shaders compile then rather than in a stall as the first rain comes on
+      warm() {
+        if (api.shed >= 2) return;
+        const was = [near.visible, far.visible, splash.visible];
+        near.visible = far.visible = splash.visible = true;
+        try { renderer.compile(world, camera); if (occRT) renderOcc(-9); } finally { [near.visible, far.visible, splash.visible] = was; occOn.value = 0; occT = -9; }
+      },
       // is a point under cover (a roof within a few metres overhead)? from the last occlusion map
       covered: () => cover.roof,
       dispose() { if (occRT) occRT.dispose(); for (const m of [near, far, splash]) { world.remove(m); m.geometry.dispose(); m.material.dispose(); } },

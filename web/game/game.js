@@ -3420,7 +3420,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let framesDrawn = 0, firstDrawn;
   const drawn = new Promise(r => { firstDrawn = r; });
   const warm = renderer.compileAsync ? renderer.compileAsync(world, camera).catch(() => {}) : Promise.resolve();
-  Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn)]).then(([flew]) => {
+  // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
+  // above and the wet street's mirror), so that the first rain of a visit comes on without a stall
+  const warmRain = () => { try { if (!weather || weather.armed === false) return; if (weather.warm) weather.warm(); if (mirror && mirror.warm && !mirror.off) mirror.warm(world); } catch (e) { console.warn('rain warm-up', e); } };
+  Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(warmRain)]).then(([flew]) => {
     if (flew) fromFlyover();
     preTitle = false;
     $('#g-title').hidden = false;
