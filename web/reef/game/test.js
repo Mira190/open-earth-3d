@@ -167,7 +167,7 @@ export async function gametest(api, ctx) {
       const sg = G.sign('summit');
       if (sg) { player.teleport(sg.x + 1.2, sg.north, undefined, 270); run(0.4); player.interact();
         const t = G.dialogue() ? G.dialogue().pages.map(p => p.t).join(' ') : '';
-        must(/m above sea level in this model/.test(t) && /In sight from here: \S/.test(t), 'the summit sign gives the model height and what is in sight', t.slice(0, 160));
+        must(/m above sea level/.test(t) && /In sight from here: \S/.test(t), 'the summit sign gives the model height and what is in sight', t.slice(0, 160));
         key('Escape'); run(0.3); }
       // the sky now, then a night: dark, look up, find the Southern Cross where the model says it is
       near('astronomer', 1.6); run(0.3); player.interact(); G.show('sky');

@@ -162,7 +162,7 @@ export default function lakeTekapo(G) {
         const lv = lakeLevel(G2), here = G2.here(), mt = P('mt-john');
         return [{ t: 'Meltwater from the Southern Alps carries glacial silt, and that turns it turquoise. The braided Godley and Macaulay rivers feed it at the top end.', src: ['wiki-lake', 'wiki-godley'] },
           { t: `The head of the lake is ${G2.where('godley-delta')} of here. It covers about 83 square kilometres.`, src: ['model-pois', 'wiki-lake'] },
-          lv !== null ? { t: `In this model the water stands at ${lv.toFixed(1)} m above sea level, and you're ${(G2.height(here.x, here.north) - lv).toFixed(1)} m above it. Mt John is ${(G2.height(mt.x, mt.north) - lv).toFixed(0)} m above the lake.`, src: ['model-lidar'] } : null,
+          lv !== null ? { t: `The lake sits about ${lv.toFixed(1)} m above sea level, and you're ${(G2.height(here.x, here.north) - lv).toFixed(1)} m above it. Mt John is ${(G2.height(mt.x, mt.north) - lv).toFixed(0)} m above the lake.`, src: ['model-lidar'] } : null,
           { t: `Its Māori name is Takapō. Since 2021 the district council uses both names. In Ngāi Tahu tradition it is one of the lakes Rākaihautū dug with his digging stick, Tūwhakaroria.`, src: ['wiki-lake'] },
           { t: `The surface water is about 6 °C in September and 17 °C in January. It's ${G2.month()}.`, src: ['wiki-lake', 'model-sun'] }];
       }, next: 'hello' },
@@ -204,7 +204,7 @@ export default function lakeTekapo(G) {
           { text: 'What is the weather like?', go: 'weather' },
           { text: 'Thanks, Ian.', go: 'end' }] },
       statue: { say: G2 => {
-        return [{ t: 'Innes Elliott of Kaikōura sculpted him. The model was a neighbour\'s dog called Haig, and it took about fifteen months.', src: ['wiki-lake'] },
+        return [{ t: 'Innes Elliott of Kaikōura sculpted him. He\'s based on a neighbour\'s dog called Haig, and it took about fifteen months.', src: ['wiki-lake'] },
           { t: 'The clay came from the insulator works at Temuka. They made a plaster cast and sent it to London in 1966, and it was cast in bronze there.', src: ['wiki-lake'] },
           { t: 'He stands on a cairn of stone above the shore; from the ground to the top of his ears is about three metres.', src: ['model-landmarks'] }];
       }, next: 'hello' },
@@ -280,11 +280,11 @@ export default function lakeTekapo(G) {
     nodes: { read: { say: G2 => {
       return [{ t: 'The footbridge, opened in 2015, crosses the Tekapo River just below the lake\'s outlet and joins the church to the township. It is 125 m long.', src: ['wiki-town'] },
         { t: 'The control gates at the outlet were finished in 1940; State Highway 8 runs across them. The lake\'s water now goes mostly through a tunnel under the town to Tekapo A power station, and on by a 26 km canal to Lake Pukaki.', src: ['wiki-town', 'wiki-lake'] },
-        { t: 'Its deck stands 8 to 11 m above the river on three piers, by the LiDAR survey of it.', src: ['model-landmarks'] }]; } } } });
+        { t: 'Its deck stands 8 to 11 m above the river, on three piers.', src: ['model-landmarks'] }]; } } } });
   if (P('mt-john')) signs.push({ id: 'summit', title: 'Mt John summit',
     at: G2 => { const m = P('mt-john'), s = G2.landSpot(m.x + 8, m.north + 8, { maxSlope: 0.4, maxR: 40 }) || m; return { x: s.x, north: s.north, heading: 40 }; },
     nodes: { read: { say: G2 => { const s = G2.sign('summit') || G2.here(), lv = lakeLevel(G2);
-      return [{ t: `Mt John summit, ${G2.height(s.x, s.north).toFixed(0)} m above sea level in this model${lv !== null ? `, ${(G2.height(s.x, s.north) - lv).toFixed(0)} m above Lake Tekapo` : ''}.`, src: ['model-lidar'] },
+      return [{ t: `Mt John summit, ${G2.height(s.x, s.north).toFixed(0)} m above sea level${lv !== null ? `, ${(G2.height(s.x, s.north) - lv).toFixed(0)} m above Lake Tekapo` : ''}.`, src: ['model-lidar'] },
         { t: `Lake Alexandrina is ${G2.where('lake-alexandrina', s)}, and small Lake McGregor ${G2.where('lake-mcgregor', s)}, between it and Lake Tekapo; McGregor drains into Lake Tekapo by a short stream.`, src: ['model-pois', 'wiki-mcgregor'] },
         { t: `In sight from here: ${inView(G2, s, ['mt-john', 'mt-john-observatory'], 6).join('; ')}.`, src: ['model-lidar', 'model-pois'] },
         { t: 'Across the lake, the Two Thumb Range runs north for about 45 km; Te Araroa, the trail the length of the country, crosses it at Stag Saddle, its highest point.', src: ['wiki-two-thumb'] }]; } } } });
