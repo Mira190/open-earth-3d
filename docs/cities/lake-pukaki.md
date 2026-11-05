@@ -102,16 +102,41 @@ The ground's detail is layered by distance:
 - **Within about 1 km:** grain and relief by class: hummocks in tussock, stones in scree, strata in rock, glints in snow.
 - **Within 240 m:** a 2 m patch on a bicubic read of the grid plus that relief. Its CPU twin (`terrain.heightAt`) is
   the surface the player and the people stand on.
+- **Within 40 m:** a turf of short grass on the grassy classes (and on "built" ground where the imagery is green):
+  tufts of 15 blades 9–28 cm tall, five or six a square metre near the eye (fewer on a phone) and thinning outward. The blades are a
+  living spring green, each its own shade, one in twelve dry straw, leaning a third of the way toward the colour of the
+  10 m mosaic under the tuft and darker at the foot: from the side a blade shows its own green, not the litter and soil
+  the satellite mixes in from above. The shader shrinks them to nothing before 40 m, so the turf has no edge as the
+  camera moves.
 - **Within 100–220 m:** plants and stones, placed by tile (`web/reef/alpine/flora.js`):
   - tussock clumps of 64 blades near and 18 further out, swaying in rolling gusts and lit through from behind;
-  - Russell lupins on the shore, the riverbeds and the road verges;
-  - matagouri;
-  - stones on scree, moraine and gravel.
+  - matagouri on scrub: a metre-high tangle of crooked grey twigs with spines, greener at the tips;
+  - stones on scree, moraine and gravel, few inside a lupin stand.
+- **Russell lupins, to 340 m:** in drifts (below).
+
+Every placement draws from one integer hash per tile. Until November 2026 it returned values from −0.5 to 0.5 rather
+than 0 to 1 (a signed XOR), so half of every draw passed every test: tussock stood at nearly every spot, stones were
+smaller than meant, no matagouri was ever placed, and every lupin came out purple or violet. It is unsigned now, and
+the thresholds were set again for about the density the tussock and stones had.
 
 Lupins flower from September to February (NZPCN), from November to February on the Mackenzie's riverflats (DOC's
 braided river field guide), and are at their best from mid-November to the end of December. The share in flower
 follows the clock's month. Their colours run blue to purple in wild stands, with pinks, white and a little yellow;
 no count of the shares is published, so the mix is a judgement from photographs.
+
+They grow in drifts, as on the shore in photographs: on the shore and the riverbed gravel, on the road verges, and on
+the grass, tussock and scrub slopes above a shore, a lake or a riverbed (full within 30 m of the water, thinning out to
+90 m), wherever a low-frequency noise (stands tens of metres across, ragged at the edges) says a stand is. The site's
+`flora.lupins` patches are stands on top of that, and the only ones on "built" ground (the grounds of the Church of the
+Good Shepherd). In a full stand they stand 1.4 plants a square metre, touching. Each stand is mostly one colour, with a
+second and a few odd plants of any colour. A plant is a clump: nine spikes of 0.5–1.1 m, the tallest in the middle,
+nearly as thick as their foot for most of their length and tapering to buds, florets raised in whorls, speckled paler
+(the banner petals) and opening from the foot up, over a mound of palmate leaves (fans of 11 leaflets on their stalks).
+Three forms by distance, from one set of spots so that a plant stays put as it changes form: whole plants within 12 m,
+plainer ones (five cone spikes, six leaves) to 55 m, and beyond, out to 340 m, patches of nine spikes over small leaf
+domes, 1.4 m across, one instance each, so the drifts on a shore a few hundred metres below a lookout still read as a
+band of colour. The far ring is filled a few milliseconds a frame and swapped in when done. A phone gets fewer and
+nearer.
 
 ## 5. The lake's colour
 
