@@ -1299,6 +1299,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function take(c) { JN.forget(c); c.line = -1; c.v = 0; }
     // ask traffic car o to back off for t seconds (not your car or a ride, and not one that has
     // already backed off a good while without moving on since): whether it will
+    // has it room on its piece to back off into (not at the very start of it)?
+    const canBack = o => o.line >= 0 && (o.dir > 0 ? o.s > 0.5 : o.s < net.L[o.line].len - 0.5);
     function backOff(o, t) {
       if (o.stuck === undefined || o.line < 0 || o.boSpent > 6) return false;
       o.backoff = Math.max(o.backoff || 0, t);
@@ -1472,6 +1474,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           c.waitOn = c.waitOnCar === front ? (c.waitOn || 0) + dt : 0; c.waitOnCar = front;
           if (c.waitOn > 8) { c.passBy = front; c.waitOn = 0; }
         } else if (!front || front !== c.waitOnCar) { c.waitOn = 0; c.waitOnCar = null; }
+        // two in a junction, each stopped for the other as the car ahead (nose to nose where their ways
+        // cross, each path seeing the other): after 4 s the one that went in first goes on as if the
+        // other weren't there, and the other gives way to it when they touch (below; #144)
+        if (front && c.mv && front.mv && front.front === c && c.v < 0.3 && front.v < 0.3) {
+          c.faceAll = c.faceCar === front ? (c.faceAll || 0) + dt : 0;
+          c.faceT = c.faceCar === front ? (c.faceT || 0) + dt : 0; c.faceCar = front;
+          const cb = canBack(c), fb = canBack(front); // (the one that can't back off goes on, else the one in first)
+          if (c.faceT > 4 && (cb !== fb ? fb : c.mvT < front.mvT || (c.mvT === front.mvT && i < C.indexOf(front)))) { c.passBy = front; c.faceT = 0; }
+        } else { c.faceT = c.faceAll = 0; c.faceCar = null; }
         if (c.passBy && (!c.mv || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4)) c.passBy = null;
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
@@ -1502,8 +1513,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const dx = q.x - c.x, dy = q.y - c.y, a = dx * fx + dy * fy;
           if (a + q.r < c.half || a > reach || Math.abs(-dx * fy + dy * fx) >= c.hw + q.r + 0.1) return;
           const g = a - q.r - c.half;
-          if (g < gap) { gap = g; byCar = true; front = null; why = 'post'; }
+          if (g < gap && !(c.postPass > 0)) { gap = g; byCar = true; front = null; why = 'post'; }
         });
+        // (stopped for one more than 10 s, a post its way runs into in a junction, say: it edges past it, #144)
+        c.postT = why === 'post' && c.v < 0.3 ? (c.postT || 0) + dt : 0;
+        if (c.postT > 10) { c.postT = 0; c.postPass = 6; } else if (c.postPass > 0) c.postPass -= dt;
         // (a facade beside its lane: in from it, below, until its back has passed the place: c.narrow is the
         // metres to go, not a time, so a car that stops beside a facade stays in from it however long it waits)
         // (and only once it is close to the place: one waiting short of a narrow stretch for a car coming the
@@ -1546,7 +1560,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             if (alt.length) {
               const e2 = alt[Math.floor(rnd() * alt.length)];
               if (jArm === arm) { c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; } else { c.exA.e = jEx = e2; }
-            }
+            } else if (c.mv || c.mv0) c.anyLane = jArm; // (no way on from its lane, and it can't move across while it holds the junction behind: it goes from the lane it is in, #144)
           }
           const lt = JN.light(jArm, jEx), stop = c.v * c.v / 8 < toLine - c.half - 0.3; // (can stop by the line, at 4 m/s²)
           if (c.mv && c.mv.a === jArm && lt !== 'g' && lt != null && stop) { JN.release(c); c.rel = 'lights'; } // the lights changed before it got there
@@ -1557,7 +1571,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               if (toLine - c.half < -1) { c.overWhy = `${c.rel || ''} ${c.why} v ${c.v.toFixed(1)} toLine ${(toLine - c.half).toFixed(1)} lane ${c.ln} lo ${c.lo.toFixed(1)} lt ${lt}`; JN.enter(c, jArm, jEx, t, true); c.mv.via = [c.line]; go = false; } // already over the line: in the junction, so through it
               if (go && jArm.sign === 'stop' && !c.halt) go = false;
               if (go && !room(c, jEx)) go = false;
-              const inLane = jEx.lanes.includes(c.ln || 0) && Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3; // (in a lane its movement can't go from, or still moving across: it waits)
+              // (in a lane its movement can't go from, or still moving across: it waits; but not one still
+              // holding its way through the junction behind, whose place in the road stays as it went in
+              // by until it is clear of that one: forced over its line there onto a piece too short to wait
+              // on, it would wait for good, holding that junction and its queues through every green, #144)
+              const inLane = (c.anyLane === jArm && (c.mv || c.mv0)) || (jEx.lanes.includes(c.ln || 0) && (Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3 || (c.mv && c.mv.j !== jArm.j)));
               if (!inLane) go = false;
               // a junction just after, too close to wait between: crossed with this one, its way chosen now
               const a2 = go ? JN.after(jEx, 2 * c.half + 3) : null;
@@ -1760,16 +1778,22 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         // in a junction and held there by a car waiting at its line (a bus swinging wide, say): that one backs off a little
         if (held && holder && c.mv && !holder.mv && holder.v < 0.3 && holder.toLine != null && holder.toLine - holder.half < 4) backOff(holder, 1.5);
-        c.inHeld = held ? (c.inHeld || 0) + dt : 0;
+        // (a step taken back below, last frame, is held too, by the car it would have gone into: #144)
+        const revBy = !held && c.revT > 0 && c.revBy && c.revBy.line >= 0 ? c.revBy : null;
+        c.revT = 0; // (set again below if this frame's step is taken back too)
+        c.inHeld = held || revBy ? (c.inHeld || 0) + dt : 0;
         // held a while by a car that is stopped too (an awkward corner, two nose to nose where a turn
         // cuts across the other lane): one of them gives way, backing off a metre or two, and the cars
         // behind it back off in turn to make it room (below). The one not in the junction gives way to
         // the one in it; of two in it, the one that went in later; of two on a street, one of the two
-        if (held && holder && holder.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
+        const heldBy0 = held ? holder : revBy;
+        if (heldBy0 && heldBy0.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
           c.giveT = 5;
-          const mutual = holder.front === c, j = C.indexOf(holder);
-          const yieldC = c.mv && holder.mv ? mutual && c.mvT > holder.mvT : !c.mv && holder.mv ? mutual : !c.mv && !holder.mv && mutual && i > j;
-          backOff(yieldC ? c : holder, 1.5);
+          const mutual = heldBy0.front === c, j = C.indexOf(heldBy0);
+          const yieldC = c.mv && heldBy0.mv ? mutual && (c.mvT > heldBy0.mvT || (c.mvT === heldBy0.mvT && i > j)) : !c.mv && heldBy0.mv ? mutual : !c.mv && !heldBy0.mv && mutual && i > j;
+          let yl = yieldC ? c : heldBy0;
+          if (!canBack(yl) && canBack(yl === c ? heldBy0 : c)) yl = yl === c ? heldBy0 : c; // (not one at the very start of its piece, with nowhere to back off to: the other)
+          backOff(yl, 1.5);
         }
         if (c.giveT > 0) c.giveT -= dt;
         // held a long time all the same (a knot no backing off undoes), or in a junction caught up behind
@@ -1779,7 +1803,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.behindT = behind && !turn ? (c.behindT || 0) + dt : 0;
         const long = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
         if (long && !inView(c)) { c.inHeld = c.behindT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
-        const squeeze = long && c.inHeld > 90;
+        // (the one of two nose to nose in a junction that goes on, held by the other 20 s, the queue behind
+        // that one too close for it to back off: it squeezes past then, not after the minute and a half)
+        const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20));
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;
@@ -1823,12 +1849,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // and a step along its road that took it deeper into another car is taken back (one parting
           // from a car it has long been caught with: deeper into any other), unless it is squeezing past
           // one it has waited on a long time; a step onto the next road was checked above, with the junction
+          // Taken back, it is held by that car, as by a step held above: in a junction, by one waiting at
+          // its line whose nose is in the way out (and which waits for this very movement to clear), that one
+          // backs off; and it squeezes past in time, as one held is (#144: the step was taken back unseen,
+          // the time held never counted, and two nose to nose, or a movement out of a junction and the car
+          // waiting on it, stood for good)
           if (!turn && !squeeze) {
-            const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1;
+            const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1, o1 = mostCar;
             if (f1 > 0 && f1 > (overlaps(c, was[3], was[4], Math.sin(was[6]), Math.cos(was[6]), 0, 0, null, kn), free ? fresh : depth) + 1e-3) {
               [c.line, c.s, c.dir, c.x, c.y, c.z, c.h] = was;
               [c.lo, c.ln] = wasLane;
               c.v = 0;
+              held = true; holder = o1; c.revT = dt; c.revBy = o1;
+              if (o1 && c.mv && !o1.mv && o1.v < 0.3 && o1.toLine != null && o1.toLine - o1.half < 4) backOff(o1, 1.5);
             }
           }
         }
