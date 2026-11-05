@@ -28,7 +28,10 @@ const [,, city = 'shibuya', framesArg = '60'] = process.argv;
     const u0 = W.update.bind(W); W.update = function (...a) { const t = performance.now(); const r = u0(...a); upd += performance.now() - t; nUpd++; return r; };
     const r = {};
     const run = async name => { upd = 0; nUpd = 0; const t = await time(); r[name] = Object.assign(t, { weatherCpu: +(upd / Math.max(1, nUpd)).toFixed(2) }); };
-    W.set('clear', { now: true }); await run('clear');
+    // a control for the first frames after a change: clear to clear
+    W.set('clear', { now: true });
+    { const t0 = performance.now(); const ts = await frames(6); r['clear again, its first 6 frames (control)'] = { mean: +((ts[ts.length - 1] - t0) / 6).toFixed(1), p90: 0, max: +Math.max(...ts.slice(1).map((t, i) => t - ts[i]), ts[0] - t0).toFixed(1), weatherCpu: 0 }; }
+    await run('clear');
     // what the first rain frame spends where: the weather's own work, the mirror's draw, the main draw
     const M0 = g.mirror && g.mirror.update; let mT = 0; if (M0) g.mirror.update = function (...a) { const t = performance.now(); const r = M0.apply(this, a); mT += performance.now() - t; return r; };
     // the first frames as the rain comes on: what it compiles and builds the first time
