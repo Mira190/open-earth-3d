@@ -685,13 +685,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const SCR_BOX = junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => ({ x: j.x, y: j.y, r: Math.max(...j.spans.map(w => Math.hypot((w[0] + w[3]) / 2 - j.x, (w[1] + w[4]) / 2 - j.y))) }));
   const inScramble = (line, s) => { roadNet.at(line, s, rq); return nearSpan(rq.x, rq.y, 7.5) || SCR_BOX.some(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
   function offScramble(pl, room = false) { // (room: a car to drive off from it, the spot with road ahead first; a pick-up, the nearest)
-    if (!pl || !SCR_AT.length || !inScramble(pl.line, pl.s)) return pl;
+    if (!pl || !SCR_AT.length || (!inScramble(pl.line, pl.s) && !(room && inScramble(pl.line, Math.max(0, Math.min(roadNet.L[pl.line].len, pl.s - 15 * pl.dir)))))) return pl;
     // (the nearest clear spot either way, the one with road ahead to drive off along first)
     const L = roadNet.L[pl.line].len, found = [];
+    const clear = s => !inScramble(pl.line, s) && (!room || !inScramble(pl.line, Math.max(0, Math.min(L, s - 15 * pl.dir)))); // (a car: and the kerb behind it, room for a taxi to pull in there)
     for (const sg of [1, -1]) for (let d = 3; d <= 90; d += 3) {
       const s = pl.s + d * sg;
       if (s < 3 || s > L - 3) break;
-      if (!inScramble(pl.line, s)) { found.push({ s, d, room: pl.dir > 0 ? L - s : s }); break; }
+      if (clear(s)) { found.push({ s, d, room: pl.dir > 0 ? L - s : s }); break; }
     }
     if (!found.length) return pl;
     found.sort((a, b) => (room ? (b.room > 25) - (a.room > 25) : 0) || a.d - b.d);
@@ -725,7 +726,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let first = null;
     for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
       const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) });
-      if (SCR_AT.length && inScramble(q.line, q.s)) continue; // (not back by the scramble's crosswalks)
+      if (SCR_AT.length && (inScramble(q.line, q.s) || inScramble(q.line, Math.max(0, Math.min(L, q.s - 15 * q.dir))))) continue; // (not back by the scramble's crosswalks, nor the kerb behind it)
       const pose = kerbPose(q);
       first = first || { pl: q, pose };
       if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
