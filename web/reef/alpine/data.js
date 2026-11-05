@@ -44,11 +44,12 @@ function bytesOf(img) {
 
 export async function loadAlpine(base, scene, onBytes = () => {}) {
   const t = scene.terrain, W = t.w, H = t.h;
-  const [bytes, strips, coverImg, lakeImg] = await Promise.all([
+  const [bytes, strips, coverImg, lakeImg, snowImg] = await Promise.all([
     fetch(base + t.file).then(r => { if (!r.ok) throw new Error(`terrain: HTTP ${r.status}`); return inflate(r, onBytes, t.bytes || W * H * 2); }),
     Promise.all(scene.ground.strips.map(s => loadImg(base + s.file))),
     loadImg(base + scene.cover.file),
-    loadImg(base + scene.lake_ids)
+    loadImg(base + scene.lake_ids),
+    scene.snow ? loadImg(base + scene.snow.file).catch(() => null) : Promise.resolve(null)   // the season's snow (alpine_snow.py)
   ]);
   const q = decodeHeights(bytes, W, H);
   const heights = new Float32Array(W * H);
@@ -60,5 +61,5 @@ export async function loadAlpine(base, scene, onBytes = () => {}) {
   const LIM = 2.6, waterHeights = Float32Array.from(heights);
   for (let i = 0; i < waterHeights.length; i++) if (lakeIds[i] !== 1 && waterHeights[i] < LIM) waterHeights[i] = LIM;
   const habitat = bytesOf(coverImg);
-  return { scene, heights, waterHeights, img: null, strips, habitat, lakeIds, alpine: true, base };
+  return { scene, heights, waterHeights, img: null, strips, habitat, lakeIds, snowImg, alpine: true, base };
 }

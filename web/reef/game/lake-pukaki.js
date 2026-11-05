@@ -57,7 +57,7 @@ export default function lakePukaki(G) {
 
   // ------------------------------------------------------------ Hana, the ranger at Peter's Lookout
   const hana = {
-    id: 'ranger', role: 'ranger', name: 'Hana', title: 'Department of Conservation ranger', gender: 'W',
+    id: 'ranger', role: 'ranger', name: 'Hana', title: 'Department of Conservation ranger', gender: 'W', look: { character: 'R_Female_Adult_12', clip: 'Idle' },
     at: near('peters-lookout', { dx: 6, dn: 4, face: 'aoraki' }),
     nodes: {
       hello: { say: G2 => {
@@ -103,7 +103,7 @@ export default function lakePukaki(G) {
 
   // ------------------------------------------------------------ Tom, stargazing guide on the south shore
   const tom = {
-    id: 'stargazer', role: 'guide', name: 'Tom', title: 'Stargazing guide', gender: 'M',
+    id: 'stargazer', role: 'guide', name: 'Tom', title: 'Stargazing guide', gender: 'M', look: { character: 'R_Male_Adult_13', clip: 'Idle' },
     at: near('view-of-mt-cook', { dx: 8, dn: -6, face: 'aoraki' }),
     nodes: {
       hello: { say: G2 => [
@@ -127,7 +127,7 @@ export default function lakePukaki(G) {
   // ------------------------------------------------------------ Mia, pilot at Glentanner
   const heli = () => G.vessels().find(v => v.kind === 'helicopter' && v.mode !== 'orbit');
   const mia = {
-    id: 'pilot', role: 'pilot', name: 'Mia', title: 'Helicopter pilot', gender: 'W',
+    id: 'pilot', role: 'pilot', name: 'Mia', title: 'Helicopter pilot', gender: 'W', look: { character: 'R_Pilot_Female_01', clip: 'Idle' },
     at: G2 => { const h = heli(); const p = h ? { x: h.x + 9, north: -h.z + 5 } : P('glentanner-helipad'); const s = G2.landSpot(p.x, p.north, { maxR: 60, maxSlope: 0.25 }) || p; return Object.assign(s, { heading: h ? G2.bearing(s, { x: h.x, north: -h.z }) : 0 }); },
     nodes: {
       hello: { say: G2 => [
@@ -143,7 +143,7 @@ export default function lakePukaki(G) {
 
   // ------------------------------------------------------------ Eli, at White Horse Hill
   const eli = {
-    id: 'walker', role: 'walker', name: 'Eli', title: 'Walker on the Hooker Valley Track', gender: 'M',
+    id: 'walker', role: 'walker', name: 'Eli', title: 'Walker on the Hooker Valley Track', gender: 'M', look: { character: 'R_Male_Adult_09', clip: 'LookAround' },
     at: near('white-horse-hill', { dx: 10, dn: 6, face: 'hooker-lake-view' }),
     nodes: {
       hello: { say: G2 => [

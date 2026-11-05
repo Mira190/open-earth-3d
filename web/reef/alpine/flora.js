@@ -273,6 +273,25 @@ export async function init(ctx) {
         }
       }
     }
+    // lupin drifts the site names (scene.json flora.lupins: {x, y, r_m, density}), on top of the shore and the verges
+    for (const [pi, p] of ((S.flora && S.flora.lupins) || []).entries()) {
+      const r = p.r_m || 60, dd0 = Math.hypot(p.x - cam.x, p.y + cam.z);
+      if (dd0 > R.l + r) continue;
+      const count = Math.min(1500, Math.round((p.density ?? 0.6) * Math.PI * r * r / 2.5));
+      for (let k = 0; k < count && nl < lMax; k++) {
+        const a = hash2(pi, k, 1) * Math.PI * 2, rr = Math.sqrt(hash2(pi, k, 2)) * r;
+        const x = p.x + Math.cos(a) * rr, n = p.y + Math.sin(a) * rr;
+        if (Math.hypot(x - cam.x, n + cam.z) > R.l || ctx.depth(x, n) > -0.05) continue;
+        const cls = ctx.habitat(x, n); if (cls === 13 || cls === 14 || cls === 0) continue;
+        pv.set(x, terrain.heightAt(x, n), -n);
+        const s = 0.75 + hash2(pi, k, 3) * 0.55;
+        q.setFromAxisAngle(up, hash2(pi, k, 4) * 50); sc.set(s, s, s);
+        lupins.setMatrixAt(nl, m4.compose(pv, q, sc)); lPos.setXY(nl, x, -n);
+        const c = pickLupin(hash2(pi, k, 5)), on = bloom > hash2(pi, k, 6) ? Math.min(1, bloom * 1.2) * (0.6 + 0.4 * hash2(pi, k, 7)) : 0;
+        lColAttr.setXYZW(nl, c[0], c[1], c[2], on);
+        nl++;
+      }
+    }
     for (const [m, n, attrs] of [[tussock, nt, [tTintAttr, tPos]], [tussockFar, ntf, [tfTint, tfPos]], [lupins, nl, [lColAttr, lPos]], [rocks, nr, [rTintAttr]], [shrubs, ns, [sPos]]]) {
       m.count = n; m.instanceMatrix.needsUpdate = true;
       for (const a of attrs) a.needsUpdate = true;
