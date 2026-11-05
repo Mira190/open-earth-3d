@@ -5,9 +5,10 @@
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
-// change with the traffic stopping for them, hear the walk signals' calls
-// (tools/walkcalls_step.js), ride a taxi up behind a queue at a red light (it waits
-// in its lane and goes when the queue moves), swing the chase camera round walls in tight spots
+// change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
+// (tools/scramble_step.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
+// behind a queue at a red light (it waits in its lane and goes when the queue moves), swing the
+// chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
 // (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
@@ -900,7 +901,8 @@ const npcNight = require('./npc_night');
     r.hailed = true;
     r.log = [];
     let t = 0;
-    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'})` : ''} near[${near}]`); } }
+    r.scrWait = 0; // (stood at a scramble's red through its walk, which no ride's priority cuts short: not counted against the half minute)
+    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (o.drv.st.v < 0.5 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble && /^the line/.test(o.drv.st.why || '')) r.scrWait += 0.5; if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'})` : ''} near[${near}]`); } }
     r.hailT = t;
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
     r.behind = o.drv.st.end < o.drv.path.len - 1; // (it pulled in behind a car at the kerb: your car, parked there)
@@ -915,6 +917,9 @@ const npcNight = require('./npc_night');
     r.dest = o.dest && o.dest.name;
     const s0 = o.drv.st.s;
     g.advance(20);
+    // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so at worst the other
+    // road's turn, the walk, the all reds round them and the wait for the last walkers, some 70 s, more)
+    for (r.walkWait = 0; o.drv.st.s - s0 < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) g.advance(1);
     r.drove = o.drv.st.s - s0;
     if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
       const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
@@ -965,13 +970,13 @@ const npcNight = require('./npc_night');
   if (taxi.none) check(true, 'no car, no taxis');
   else {
     check(taxi.hint, 'the kerb offers a taxi (Y)');
-    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15) && taxi.hailT <= 30)) console.log(taxi.log.join("\n"));
+    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15) && taxi.hailT - (taxi.scrWait || 0) <= 30)) console.log(taxi.log.join("\n"));
     check(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15), `hails a taxi: it pulls in beside you${taxi.hailed ? ` (${(taxi.near || 0).toFixed(1)} m away${taxi.behind ? ', behind the car parked at the kerb' : ''})` : ''}`);
-    check(taxi.hailed && taxi.hailT <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s`})`);
+    check(taxi.hailed && taxi.hailT - (taxi.scrWait || 0) <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s${taxi.scrWait ? `, ${taxi.scrWait.toFixed(1)} s of it at a scramble's red` : ''}`})`);
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
-    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)${taxi.why ? `: ${taxi.why}` : ''}`);
+    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
     check(taxi.ordered, `orders a ride on the phone${taxi.ordered ? '' : ` (${taxi.orderWhy})`}`);
     check(taxi.ordered && taxi.phoneMap, 'the phone shows the ride on its map, on the way');
@@ -1185,6 +1190,8 @@ const npcNight = require('./npc_night');
   }
   await shot('junction');
 
+  // the scrambles: every way at once in a walk phase of their own, the diagonals too (tools/scramble_step.js)
+  for (const r of await require('./scramble_step')(p)) { for (const [ok, what] of r.checks) check(ok, what); await shot(`scramble-${r.at.join('_')}`); }
   // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
   { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
 
