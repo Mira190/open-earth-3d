@@ -3297,9 +3297,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
   on($('#gm-sound'), 'change', e => A.setMuted(!e.target.checked));
-  { const mu = $('#gm-music'); let v = true; try { v = localStorage.getItem('oe3d-music') !== 'off'; } catch (e) { /* storage blocked */ }
-    if (A.setMusic) A.setMusic(v);
-    if (mu) { mu.checked = v; on(mu, 'change', e => { A.setMusic(e.target.checked); try { localStorage.setItem('oe3d-music', e.target.checked ? 'on' : 'off'); } catch (er) { /* storage blocked */ } }); } }
   on($('#gm-intro'), 'click', () => { $('#g-menu').hidden = true; startTour(); });
   on($('#gm-reset'), 'click', () => {
     try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
@@ -3546,7 +3543,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
     weatherTick(dt, titleOn);
-    scoreTick(dt, titleOn);
     if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
@@ -3631,12 +3627,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     weather.update(dt, clockT, W(fx, fy, fz));
     if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(weather.state.rain);
     if (A.rain) A.rain(titleOn ? 0 : weather.state.rain, weather.covered() && player.mode === 'foot', player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli');
-  }
-  // the score (audio.js): quieter in a car or the helicopter, stepping back at a busy crossing, darker in the rain and at night
-  function scoreTick(dt, titleOn) {
-    if (!A.score) return;
-    const sunAlt = sun && sun.altitude != null ? sun.altitude : 1;
-    A.score({ night: sunAlt < -0.05, rain: weather && weather.state.rain > 0.15, busy: titleOn ? 0 : Math.min(1, sndCount / 60), inside: ['car', 'ride', 'heli'].includes(player.mode) }, dt);
   }
   function simulate(dt) {
     const fwd = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;

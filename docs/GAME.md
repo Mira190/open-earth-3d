@@ -1069,17 +1069,6 @@ Sydney's traffic stood still a third of the time.
   crossing has a walk signal on a post on each kerb, facing across: a red
   figure standing over a green one walking, the red flashing while those
   already out finish crossing. The lamps change only when a signal does.
-- **The score** (`score()` in `web/game/audio.js`, synthesised, no files; the
-  menu's Music switch, kept per browser). Spare on purpose, after the ambient
-  scores of open-world walking games and Brian Eno's *Music for Airports*: a
-  soft pad of four voices changing chord every 12 s (D add9, Bm7, G add9, A sus)
-  and now and then one or two bell-like notes from D major's pentatonic, through
-  a lowpass and a short echo. It plays in phrases of a minute or two with
-  silences of half a minute or more between, so the city is heard more than the
-  music; it is darker and sparser in the rain, an octave lower and slower at
-  night, steps back at a busy crossing (as many people as are round you) and is
-  quieter in a car or the helicopter. `tools/score_record.js` records it in a mood
-  for a listen.
 - **Walk signals' calls** (`web/game/walkcalls.js`, the sounds in `web/game/audio.js`,
   all synthesised with Web Audio, no recordings). Each walk-signal head
   (`junctions.heads.peds`; its crosswalk runs to the head on the far kerb, or a
