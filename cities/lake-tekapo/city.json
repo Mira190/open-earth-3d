@@ -52,19 +52,27 @@
   "landmarks": [
     {"id": "church-good-shepherd", "glb": "assets/landmarks/tekapo-church.glb", "lonlat": [170.482466, -44.003346], "heading": 17, "ground_m": 714.9,
      "note": "heading is the altar end's bearing from true north: the long axis of the OpenStreetMap footprint (10.1 x 6.3 m) runs at 16.5 degrees, and the altar window looks north up the lake"},
-    {"id": "sheepdog-statue", "glb": "assets/landmarks/tekapo-collie.glb", "lonlat": [170.48395, -44.00347], "heading": 20, "ground_m": 713.2, "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is Overture's Sheepdog Memorial record, which matches a 3 m object in the LiDAR DSM"},
+    {"id": "sheepdog-statue", "glb": "assets/landmarks/tekapo-collie.glb", "lonlat": [170.48395, -44.00347], "heading": 20, "ground_m": 713.2, "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is the dark cairn in a round paved bay in the 0.075 m aerial photographs (2025-26), 9 m south of Overture's Sheepdog Memorial record"},
     {"id": "footbridge", "glb": "assets/landmarks/tekapo-footbridge.glb", "lonlat": [170.4810666, -44.0048970], "heading": 90, "deck_m": 711.0},
     {"id": "mt-john-observatory", "glb": "assets/landmarks/tekapo-observatory.glb", "lonlat": [170.4645, -43.9855], "heading": 0, "ground_m": 1023.2}
   ],
-  "start": {"x": 900, "y": -2400, "z": 420, "yaw": 0, "pitch": -7, "date": null},
+  "start": {"x": 418, "y": -20, "z": 38, "yaw": 15, "pitch": -6, "date": null},
   "spawn": {
-    "poi": "lakefront",
-    "x": 217,
-    "y": -11,
-    "heading": 20,
-    "note": "on the lakefront reserve below the Dark Sky Project, facing up the lake, with the footbridge and the church to the east"
+    "poi": "church-view",
+    "x": 430,
+    "y": 33,
+    "heading": 15,
+    "note": "the postcard: 32 m south-south-west of the Church of the Good Shepherd on bare ground (LiDAR DSM minus DEM 0.0 m), 2.6 m below its floor, looking up the lake along the church's own axis. Behind the south gable and the belfry lie the lake, the head of the lake (bearing 13 degrees, 25.5 km) and Mistake Peak (3 degrees, 24.3 km); the Two Thumb Range rises on the right (Beuzenberg Peak 27 degrees). Mt John stands left of the frame at 324 degrees and hides Aoraki (329 degrees, 53 km: 3.0 degrees up against Mt John's 7.4 degrees). Bearings from WGS84 geodesics; see docs/cities/lake-tekapo.md, The first view"
   },
+  "shots": [
+    {"id": "postcard", "x": 430, "y": 33, "z": 1.6, "yaw": 15, "pitch": 4, "fov": 50, "note": "the spawn view: church, lake, the alps at the head of the lake"},
+    {"id": "milky-way", "x": 430, "y": 33, "z": 1.2, "yaw": 15, "pitch": 28, "fov": 70, "time": "night", "note": "the same frame after astronomical dusk, the church against the reserve's sky"},
+    {"id": "lupins", "x": 520, "y": -150, "z": 1.2, "yaw": 330, "pitch": 2, "fov": 55, "month": 11, "note": "the lakeshore east of the footbridge in lupin season, the church and the lake beyond"},
+    {"id": "mt-john", "x": -940, "y": 2010, "z": 1.7, "yaw": 40, "pitch": -4, "fov": 60, "note": "from the summit over the lake to the Two Thumb Range"},
+    {"id": "aerial", "x": 2500, "y": -3500, "z": 900, "yaw": 340, "pitch": -12, "fov": 50, "note": "the whole lake from the south, the Godley at its head"}
+  ],
   "pois": [
+    {"id": "church-view", "name": "Below the Church of the Good Shepherd", "kind": "viewpoint", "lonlat": [170.482358, -44.003702], "src": "nominal"},
     {"id": "lakefront", "name": "Lake Tekapo lakefront", "kind": "shore", "lonlat": [170.4797, -44.0041], "src": "nominal"},
     {"id": "township", "name": "Lake Tekapo / Takapō township", "kind": "town", "lonlat": [170.477, -44.004], "src": "overture-places"},
     {"id": "church-good-shepherd", "name": "Church of the Good Shepherd", "kind": "church", "lonlat": [170.482466, -44.003346], "src": "osm"},

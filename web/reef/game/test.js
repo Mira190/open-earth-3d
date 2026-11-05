@@ -139,6 +139,58 @@ export async function gametest(api, ctx) {
       }
     }
 
+    // 4d. Lake Tekapo: the church at sunrise, Mt John's summit, the night sky worked out live
+    if (G.quest('church-sunrise') && G.npc('astronomer')) {
+      const yaw = d => { S.camYaw = d * Math.PI / 180; }, pitch = d => { S.camPitch = d * Math.PI / 180; };
+      const church = G.poi('church-good-shepherd');
+      must(G.dist(sp, church) < 60, 'the spawn is the church postcard', G.km(G.dist(sp, church)));
+      near('ranger', 1.6); run(0.3); player.interact(); G.show('lake');
+      const lk = G.dialogue() ? G.dialogue().pages.map(p => p.t).join(' ') : '';
+      must(/83 square kilometres/.test(lk) && /Takapō/.test(lk), 'Kate on the lake cites its size and its name', lk.slice(0, 120));
+      G.show('sunrise');
+      const sr = G.dialogue() ? G.dialogue().pages.map(p => p.t).join(' ') : '';
+      must(/Sunrise is at \d/.test(sr), 'Kate gives the next sunrise from the sun model', sr.slice(0, 80));
+      G.closeDialogue(); run(0.3);
+      // sunrise at the church: set the clock to the day's sunrise, stand there, look up the lake
+      if (ctx.setClock) {
+        const l = window.Sun.utcToLocal(G.nowMs()), rise = window.Sun.localToUtc(l.y, l.m, l.d, window.Sun.dayLimits(l.y, l.m, l.d).sunrise);
+        ctx.setClock(rise + 5 * 60e3); G.start('church-sunrise');
+        player.teleport(church.x - 6, church.north - 18, undefined, 16.5); yaw(16.5); run(1.0);
+        must(G.stepIndex('church-sunrise') >= 1, 'at the church at sunrise', JSON.stringify(G.state('church-sunrise')));
+        run(4, V());
+        must(G.isDone('church-sunrise'), 'looking up the lake completes the sunrise quest', JSON.stringify(G.state('church-sunrise')));
+      }
+      // the summit: walk-up step, then the sign
+      const mj = G.poi('mt-john'); G.start('mt-john');
+      player.teleport(mj.x + 10, mj.north + 10, undefined, 40); run(0.8);
+      must(G.stepIndex('mt-john') >= 1, 'reaching the summit of Mt John', JSON.stringify(G.state('mt-john')));
+      const sg = G.sign('summit');
+      if (sg) { player.teleport(sg.x + 1.2, sg.north, undefined, 270); run(0.4); player.interact();
+        const t = G.dialogue() ? G.dialogue().pages.map(p => p.t).join(' ') : '';
+        must(/m above sea level in this model/.test(t) && /In sight from here: \S/.test(t), 'the summit sign gives the model height and what is in sight', t.slice(0, 160));
+        key('Escape'); run(0.3); }
+      // the sky now, then a night: dark, look up, find the Southern Cross where the model says it is
+      near('astronomer', 1.6); run(0.3); player.interact(); G.show('sky');
+      const sk = G.dialogue() ? G.dialogue().pages.map(p => p.t).join(' ') : '';
+      must(/Southern Cross is (\d+° up|below)/.test(sk) && /never sets/.test(sk), 'Mei places the Southern Cross from the clock', sk.slice(sk.indexOf('Southern'), sk.indexOf('Southern') + 80));
+      G.closeDialogue(); run(0.3);
+      if (ctx.setClock) {
+        const l = window.Sun.utcToLocal(G.nowMs()), m18 = window.Sun.altitudeTime(l.y, l.m, l.d, -18, true);
+        ctx.setClock(window.Sun.localToUtc(l.y, l.m, l.d, (m18 ?? 1380) + 60));
+        G.start('stargazing'); player.teleport(mj.x + 6, mj.north - 6, undefined, 180); run(0.8);
+        must(G.stepIndex('stargazing') >= 1, 'on Mt John after full dark', JSON.stringify(G.state('stargazing')));
+        pitch(60); run(21, V());
+        must(G.stepIndex('stargazing') >= 2, 'looking up for 20 s lets the eyes adjust', JSON.stringify(G.state('stargazing')));
+        const RA = (11 + 56.13 / 60 + 12 + 57.45 / 60) / 2, DEC = (-55.68 - 64.70) / 2, D = G.nowMs() / 864e5 + 2440587.5 - 2451545;
+        const [lon, lat] = ctx.S.origin, H = (((18.697374558 + 24.06570982441908 * D + lon / 15 - RA) % 24 + 24) % 24) * 15 * Math.PI / 180, f = lat * Math.PI / 180, d = DEC * Math.PI / 180;
+        const alt = Math.asin(Math.sin(f) * Math.sin(d) + Math.cos(f) * Math.cos(d) * Math.cos(H)) * 180 / Math.PI;
+        const az = (Math.atan2(-Math.sin(H) * Math.cos(d), Math.cos(f) * Math.sin(d) - Math.sin(f) * Math.cos(d) * Math.cos(H)) * 180 / Math.PI + 360) % 360;
+        yaw(az); pitch(alt); run(0.6, V());
+        must(G.stepIndex('stargazing') >= 3, 'facing the Southern Cross finds it', `alt ${alt.toFixed(0)} az ${az.toFixed(0)}, ${JSON.stringify(G.state('stargazing'))}`);
+        pitch(-5);
+      }
+    }
+
     // 5. boarding a boat and stepping off beside it
     if (ctx.boats) {
       const y = ctx.boats.vessels.find(v => v.kind === 'yacht' && v.mode === 'anchored');
