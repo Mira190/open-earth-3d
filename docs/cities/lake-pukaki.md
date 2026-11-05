@@ -172,7 +172,12 @@ volumes.
 
 ## 7. The game
 
-`web/reef/game/lake-pukaki.js`; every line is computed from the model or cites a page that was read (docs/GAME_REEF.md):
+`web/reef/game/lake-pukaki.js`; every line is computed from the model or cites a page that was read (docs/GAME_REEF.md).
+The people are Microsoft Rocketbox avatars (MIT, the same files as the cities' NPCs; `web/reef/people.js` builds one
+when a person's look names it). You walk in hiking clothes; an alpine site has no stinger season and no sea temperature.
+
+![Hana at Peter's Lookout](../images/lake-pukaki/hana.jpg)
+
 
 | Who | Where | What |
 |---|---|---|
