@@ -410,7 +410,9 @@ vec3 scrCell(float cell, vec2 uv) {
   // inverse is its transpose). Things within about 150 m of the camera stay clear, so you
   // can still stand near the edge.
   let FOG0 = null;
-  function edgeHaze(frame, near = 150) {
+  // farLand: the land past the frame is drawn (farland.js), so the city fades into it only part
+  // way (FAR_EDGE) instead of into a wall of haze
+  function edgeHaze(frame, near = 150, farLand = false) {
     const C = THREE.ShaderChunk;
     if (!FOG0) FOG0 = { pv: C.fog_pars_vertex, v: C.fog_vertex, pf: C.fog_pars_fragment, f: C.fog_fragment };
     const w = frame.x[1] - frame.x[0], h = frame.y[1] - frame.y[0], fade = Math.min(500, Math.max(250, 0.1 * Math.min(w, h)));
@@ -444,14 +446,30 @@ vec3 scrCell(float cell, vec2 uv) {
 	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) );
+#ifdef OE_FARLAND
+	  if ( oePast > 30.0 && oeOpen < 0.5 ) discard; // over land past the frame the far land is drawn (farland.js)
+#endif
 	  oeEdge *= 1.0 - oeOpen; }
+#endif
+#ifdef OE_FAR
+	// the land past the frame (farland.js): as hazed as the city at the frame, where the city has faded
+	// into the haze, clearing over the first few hundred metres to a distant land's veil, and thickening
+	// with distance as air does (FAR_AIR m to 63%), so a far city's plain meets the sky in haze, not in a band
+	float oeFar = 0.0;
+	{ float oePast = length( max( abs( vEdgeXZ - ${c} ) - vec2( ${n(w / 2)}, ${n(h / 2)} ), 0.0 ) );
+	  float oeAir = 1.0 - exp( -vFogDepth / ${n(FAR_AIR)} );
+	  oeFar = max( ${FAR_EDGE.toFixed(3)} * ( 1.0 - smoothstep( 0.0, ${n(FAR_RAMP)}, oePast ) ), ${FAR_BASE.toFixed(3)} + ${(1 - FAR_BASE).toFixed(3)} * oeAir );
+	  oeEdge = 0.0; }
 #endif
 	// The edge's haze is a distant shore's tone, a little darker and greener than the horizon's, which
 	// the distance takes back to the horizon's by 12 km: so a headland fading out at the frame, or an
 	// island past it, reads as land in the haze beside the open sea rather than a pale blob on it.
 	// (fogFactor still holds the edge, for the night's additive lights, night.js.)
 	vec3 oeHaze = fogColor * mix( vec3( ${SEA_LAND.join(', ')} ), vec3( 1.0 ), max( fogFactor, smoothstep( 1500.0, 12000.0, vFogDepth ) ) );
-	fogFactor = max( fogFactor, oeEdge * oeGate );
+	fogFactor = max( fogFactor, oeEdge * oeGate${farLand ? ` * ${FAR_EDGE.toFixed(3)}` : ''} );
+#ifdef OE_FAR
+	fogFactor = max( fogFactor, oeFar );
+#endif
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
 #ifdef OE_SEA
 	gl_FragColor.a = mix( gl_FragColor.a, 1.0, fogFactor ); // the haze hides what lies under the water too, so nothing shows through it from below
@@ -463,6 +481,9 @@ vec3 scrCell(float cell, vec2 uv) {
   // its soft one (g), and from that to its softest (b).
   // SEA_LAND: the edge haze's tone (distant land), as a share of the fog's colour.
   const SEA_HALF = 40000, SEA_SOFT = [2500, 9000], SEA_LAND = ['0.70', '0.76', '0.70'];
+  // the land past the frame (farland.js): how far its haze takes to clear from the frame, and to how much
+  const FAR_RAMP = (window.OEFarLand || {}).RAMP || 1400, FAR_BASE = (window.OEFarLand || {}).BASE || 0.32,
+    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.2, FAR_AIR = (window.OEFarLand || {}).AIR || 30000;
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
   // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
@@ -575,7 +596,10 @@ vec3 photoGrade(vec3 c) {
     world.add(hemi);
     const TWI_SKY = new THREE.Color(0.03, 0.075, 0.24), TWI_LIGHT = new THREE.Color(0x4a72c8), TWI_FOG = new THREE.Color(0x23385e);   // the blue hour (setSun)
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
-    const edgeFade = edgeHaze(scene.frame);
+    // whether there is land past the frame to draw (farland.js), before the haze is written
+    const farOn = !!window.OEFarLand && new URLSearchParams(location.search).get('far') !== 'off'
+      && await fetch(D.DATA + 'far.json', { method: 'HEAD' }).then(r => r.ok, () => false);
+    const edgeFade = edgeHaze(scene.frame, 150, farOn);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -627,6 +651,8 @@ vec3 photoGrade(vec3 c) {
     // them (tileGeometry) and not drawn above the water out in front of them (clipGround)
     // the open water past the frame (edgeHaze); without it everything past the frame is haze
     const seaLoad = new Promise(res => texLoader.load(D.DATA + 'sea.jpg', t => { t.colorSpace = THREE.NoColorSpace; res(t); }, undefined, () => res(null)));
+    // and the land past it (farland.js, far.*), but for ?far=off, to compare
+    const farLoad = farOn ? OEFarLand.load(D.DATA) : Promise.resolve(null);
     let shoreTex = null, Q = null;
     if (scene.shore) {
       shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
@@ -848,6 +874,14 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         m.onBeforeCompile = (sh, r) => { if (ob) ob.call(m, sh, r); sh.uniforms.uSeaOpen = so; };
       }
     }
+    // the land past the frame, under its haze (farland.js); the sea over it is not drawn
+    let far = null;
+    const farData = await farLoad;
+    if (farData) try {
+      far = OEFarLand.create(farData, { frame: scene.frame, ground: D.ground, small, PG, PHOTO_GRADE });
+      world.add(far.mesh);
+      if (seaTex) for (const m of [water.material, waterMat]) m.defines = Object.assign({}, m.defines, { OE_FARLAND: '' });
+    } catch (e) { console.warn('far land: none drawn', e); far = null; }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
 
@@ -1223,7 +1257,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -1250,6 +1284,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
+        if (far) far.setNight(U.uNight.value);
         // The sky after dark as night photographs of a city show it: a deep blue overhead and, low
         // down, the glow its lights put in the air, which the haze at the model's edge takes too.
         // (The sky's own curve lifts a night sky to a grey tenth of the day's, which lit every glass
@@ -1355,7 +1390,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (api.lastSun) api.setSun(api.lastSun.sp, api.lastSun.minutes);
         renderer.shadowMap.needsUpdate = true;
       },
-      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); },
+      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); if (far) far.dispose(); },
     };
     return api;
   }

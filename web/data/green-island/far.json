@@ -1,0 +1,39 @@
+{
+ "half_m": 60000,
+ "cx": 0.0,
+ "cy": 0.0,
+ "nh": 512,
+ "nc": 1024,
+ "height": "(r * 256 + g) / 4 - 100 m, north up; under the sea at -6",
+ "lights": "b = sqrt(lights 0..1)",
+ "palette": {
+  "tree cover": "#34482c",
+  "shrubland": "#5c6242",
+  "grassland": "#7c8458",
+  "cropland": "#888660",
+  "built-up": "#635f5a",
+  "bare or sparse": "#a6987e",
+  "snow and ice": "#eceef0",
+  "water": "#223846",
+  "herbaceous wetland": "#526046",
+  "mangroves": "#2c4030",
+  "moss and lichen": "#787860"
+ },
+ "palette_samples": 64636,
+ "land_share": 0.183,
+ "relief_m": [
+  1.5,
+  1269.7
+ ],
+ "sources": {
+  "relief": "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
+  "land_cover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)",
+  "lights": "NASA Black Marble 2016, VIIRS day/night band (public domain), via NASA GIBS"
+ },
+ "black_marble": {
+  "black_marble_px": [
+   244,
+   245
+  ]
+ }
+}
