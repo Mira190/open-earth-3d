@@ -1250,8 +1250,8 @@
         "stamp": "思い出横丁",
         "talk": [
           "Omoide Yokocho: Memory Lane. It started as a black market by the west exit after the war. Eighty-odd counters now, each under a roof you can touch.",
-          "Shinjuku never stops building. Across the road the Odakyu department store's old building came down from 2022; a 48-storey tower, 260 metres, goes up there for 2029. The lane stays. The smoke stays.",
-          "Go and stand at the west exit and see the gap it left. Then come back and eat."
+          "Shinjuku never stops building. Across the road the Odakyu department store's old building came down from 2022; a 48-storey tower, 258 metres, goes up there for the spring of 2030. The lane stays. The smoke stays.",
+          "Go and stand at the west exit and watch the cranes. Then come back and eat."
         ],
         "steps": [
           {
@@ -1261,7 +1261,7 @@
               2602.9
             ],
             "radius": 25,
-            "text": "Stand at the west exit where the department store stood"
+            "text": "Stand at the west exit, under the cranes where the department store stood"
           }
         ]
       },
