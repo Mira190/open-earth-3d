@@ -805,8 +805,9 @@ const npcNight = require('./npc_night');
     r.dest = o.dest && o.dest.name;
     const s0 = o.drv.st.s;
     g.advance(20);
-    // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so up to its length more)
-    for (r.walkWait = 0; o.drv.st.s - s0 < 20 && r.walkWait < 50 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) g.advance(1);
+    // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so at worst the other
+    // road's turn, the walk, the all reds round them and the wait for the last walkers, some 70 s, more)
+    for (r.walkWait = 0; o.drv.st.s - s0 < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) g.advance(1);
     r.drove = o.drv.st.s - s0;
     if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
       const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];

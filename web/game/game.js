@@ -667,7 +667,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (and the box between them: out to the farthest crosswalk's middle)
   const SCR_BOX = junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => ({ x: j.x, y: j.y, r: Math.max(...j.spans.map(w => Math.hypot((w[0] + w[3]) / 2 - j.x, (w[1] + w[4]) / 2 - j.y))) }));
   const inScramble = (line, s) => { roadNet.at(line, s, rq); return nearSpan(rq.x, rq.y, 7.5) || SCR_BOX.some(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
-  function offScramble(pl) {
+  function offScramble(pl, room = false) { // (room: a car to drive off from it, the spot with road ahead first; a pick-up, the nearest)
     if (!pl || !SCR_AT.length || !inScramble(pl.line, pl.s)) return pl;
     // (the nearest clear spot either way, the one with road ahead to drive off along first)
     const L = roadNet.L[pl.line].len, found = [];
@@ -677,14 +677,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!inScramble(pl.line, s)) { found.push({ s, d, room: pl.dir > 0 ? L - s : s }); break; }
     }
     if (!found.length) return pl;
-    found.sort((a, b) => (b.room > 25) - (a.room > 25) || a.d - b.d);
+    found.sort((a, b) => (room ? (b.room > 25) - (a.room > 25) : 0) || a.d - b.d);
     roadNet.at(pl.line, found[0].s, rq);
     return Object.assign({}, pl, { s: found[0].s, x: rq.x, y: rq.y, z: rq.z });
   }
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   function kerbNear(x, y, z, ahead = 9, within = 250) {
-    const pl = offScramble(roads.place(x, y, within, keepSign, z));
+    const pl = offScramble(roads.place(x, y, within, keepSign, z), true);
     if (!pl) return null;
     const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
     const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
