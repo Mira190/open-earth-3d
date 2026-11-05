@@ -1533,7 +1533,7 @@ drop or into the water.
     museum's doors, the Eiffel Tower's pillar) are left out (`INSIDE`), and ways
     a model doesn't open yet are listed `open: false` with what they need
     (`NOT_YET`: Central Plaza and the ICC's walk in Hong Kong, Crown's riverside
-    walk in Melbourne; issue #161). Opened in the models: the Rijksmuseum's two side arches
+    walk in Melbourne, the Tombori River Walk in Osaka, Kiyomizu-dera's corridor and west gate; issue #161). Opened in the models: the Rijksmuseum's two side arches
     lead into aisles for walkers (the footways OSM maps 7.8 m either side of the
     cycle path), open to the cycle passage through an arcade, their outer walls
     glass, and the passage's vault now springs from the street's level, not the
