@@ -898,22 +898,32 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // gets there, so it seldom stops (tools/ride_check.js signals measures it); the time with them is
   // the one a ride is picked by and the app first says.
   const SIG_WAIT = 1;
+  // and the cars already queued at each signalled arm on its way (OECars.queueing), Q_CLEAR each to
+  // move off ahead of it when the light turns green: a ride waits behind a queue, never round it (#107, #143)
+  const Q_CLEAR = 1.8;
+  const queuedAt = a => { let n = 0; for (const c of cars.C) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) n++; return n; };
+  const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += Q_CLEAR * queuedAt(q.a); return t; };
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   function planRide(from, pickup) {
     const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
     if (!rt) return null;
     const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true, now: rideClock };
-    const P = OECars.path(rt.pts), sig = [];
+    const P = OECars.path(rt.pts), sig = [], qArms = [];
     let walks = 0; // (a scramble in its walk, which no call cuts short: the rest of it)
     for (const nd of rt.nodes || []) {
-      const p = rt.pts[nd.k], a = p && Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140 ? junctions.armAt(nd.line, nd.end) : null;
-      if (a && a.j.sig) sig.push(P.cum[Math.min(nd.k, P.cum.length - 1)]);
-      if (a && a.j.scramble && a.j.ph === 3) walks += junctions.toGreen(a);
+      const p = rt.pts[nd.k], a = p ? junctions.armAt(nd.line, nd.end) : null;
+      if (!a || !a.j.sig) continue;
+      const s = P.cum[Math.min(nd.k, P.cum.length - 1)];
+      qArms.push({ s, a });
+      if (Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140) {
+        sig.push(s);
+        if (a.j.scramble && a.j.ph === 3) walks += junctions.toGreen(a);
+      }
     }
     for (const m of rt.mids || []) if (m.X.sig && Math.hypot(m.X.x - pickup.x, m.X.y - pickup.y) < 140) sig.push(m.at); // (and the crossings' lights between junctions)
     sig.sort((p, q) => p - q);
     const drive = OECars.chauffeur(STUB, rt, opts).total();
-    return { rt, opts, drive, sig, T: drive + SIG_WAIT * sig.length + walks };
+    return { rt, opts, drive, sig, qArms, T: drive + SIG_WAIT * sig.length + walks + queueWait(qArms, -Infinity) };
   }
   // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, on its planned route to the pick-up
   function newRide(kind, from, pickup, plan, dest = null) {
@@ -928,7 +938,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const opts = Object.assign({ solid: (x, y, z, h) => (inSight(x, y, z) ? cars.footprint(x, y, z, h, C.half, C.hw, 0) : 0) }, plan.opts);
     o.drv = OECars.chauffeur(C, plan.rt, opts);
     o.drv.opts = opts; // (for a new route round a jam)
-    o.T0 = plan.T; o.sig = plan.sig; // (the lights it is to stop at near you, s along its route)
+    o.T0 = plan.T; o.sig = plan.sig; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
     const look = driverLook();
     o.driver = makeRig(look, {});
     C.sit(o.driver, 'driver');
@@ -1006,7 +1016,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let b = st.block, n = 0; // (the queue ahead, car by car, to the one at the line)
     while (b && b.line != null && b.why === 'car' && b.front && b.v < 1 && n < 8) { b = b.front; n++; }
     const a = /^the line/.test(st.why || '') ? st.lineAt : b && b.line != null && b.why === 'light' ? b.lineArm : null;
-    if (a && a.j.sig) return { light: true, t: junctions.toGreen(a) + (a === st.lineAt ? 0 : 1.5 * (n + 1)) };
+    if (a && a.j.sig) return { light: true, a, t: junctions.toGreen(a) + (a === st.lineAt ? 0 : 1.5 * (n + 1)) };
     // (behind a car stuck where it is, at a wall or stopped for good: the driver swings out round it
     // once it has waited 6 s, cars.js gapAhead)
     const stuck = st.block && st.block.line != null && st.block.v < 0.1 && (st.block.why === 'wall' || st.block.still > 2);
@@ -1015,7 +1025,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const eta = o => {
     if (o.phase !== 'coming') return o.phase === 'driving' ? o.drv.timeLeft() : 0;
     const st = o.drv.st, w = rideWait(st), lights = (o.sig || []).filter(s => s > st.s + 2).length - (w && w.light ? 1 : 0);
-    return o.drv.timeLeft() + SIG_WAIT * Math.max(0, lights) + (w ? w.t : 0);
+    return o.drv.timeLeft() + SIG_WAIT * Math.max(0, lights) + (w ? w.t : 0) + queueWait(o.qArms, st.s, w && w.a); // (the queue it is in already counted by rideWait)
   };
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
   function hail() {
@@ -1193,7 +1203,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         o.drv = OECars.chauffeur(o.C, rt, opts);
         o.drv.opts = opts;
         st = o.drv.st;
-        o.sig = []; o.rerouted = (o.rerouted || 0) + 1; // (the lights it was to stop at were on the old way)
+        o.sig = []; o.qArms = []; o.rerouted = (o.rerouted || 0) + 1; // (the lights it was to stop at were on the old way)
       }
     }
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
