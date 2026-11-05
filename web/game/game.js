@@ -681,6 +681,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     roadNet.at(pl.line, found[0].s, rq);
     return Object.assign({}, pl, { s: found[0].s, x: rq.x, y: rq.y, z: rq.z });
   }
+  // where to be picked up near (x, y): the nearest kerb within reach that is clear of a scramble, on
+  // this street or one round it (a taxi never pulls in on a scramble's crosswalks or in its box)
+  function pickupNear(x, y, z, within) {
+    const pl = roads.place(x, y, within, keepSign, z);
+    if (!pl || !SCR_AT.length || !inScramble(pl.line, pl.s)) return pl;
+    let best = offScramble(pl), bd = inScramble(best.line, best.s) ? Infinity : Math.hypot(best.x - x, best.y - y);
+    for (let r = 6; r <= Math.min(within, 40); r += 6) for (let k = 0; k < 16; k++) {
+      const a = k / 16 * Math.PI * 2, q = roads.place(x + Math.sin(a) * r, y + Math.cos(a) * r, 6, keepSign, z);
+      if (!q || inScramble(q.line, q.s)) continue;
+      roadNet.at(q.line, q.s, rq); // (going the way that keeps you on its kerb side)
+      q.dir = roadNet.L[q.line].ow || (((x - rq.x) * -rq.hy + (y - rq.y) * rq.hx) * keepSign >= 0 ? 1 : -1);
+      const d = Math.hypot(q.x - x, q.y - y);
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best;
+  }
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   function kerbNear(x, y, z, ahead = 9, within = 250) {
@@ -1008,7 +1024,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (player.mode !== 'foot' || player.auto) return;
     if (!CARS_OK) { H.toast('There are no taxis to hail here.'); return; }
     if (ride && ride.phase !== 'leaving') { H.toast(ride.phase === 'coming' ? `${ride.name} is on the way.` : `${ride.name} is waiting for you.`); return; }
-    const pickup = offScramble(roads.place(player.x, player.y, 40, keepSign, player.z));
+    const pickup = pickupNear(player.x, player.y, player.z, 40);
     if (!pickup) { H.toast('Stand at the kerb of a street to hail a taxi.'); return; }
     if (player.rig.wave) player.rig.wave(clockT);
     let best = null;
@@ -1036,7 +1052,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function orderRide(dest) {
     if (player.mode !== 'foot') { H.toast('Order once you are on foot.'); return; }
     if (ride && ride.phase !== 'leaving') { H.toast(`${ride.name} is already on the way.`); return; }
-    const pickup = offScramble(roads.place(player.x, player.y, 120, keepSign, player.z));
+    const pickup = pickupNear(player.x, player.y, player.z, 120);
     if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
     const o = rideFromAround('hire', pickup, dest);
     if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
