@@ -215,5 +215,5 @@ Sources read on 2026-11-05:
 - **Checked:** stills on a desktop (1440 × 900) and a phone (390 × 844) at day, dusk and night, in software WebGL2 (Mesa).
 - **Not checked:** a real GPU, WebGPU, Safari or iOS. The planar reflection renders the scene twice; on a slow device
   turn it off with `?mirror=0` and the plants with `?flora=0`.
-- **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway; seasonal snow lower than the summer
-  mosaic shows; a real star catalogue; volumetric clouds.
+- **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway;
+  a real star catalogue; volumetric clouds (issue #204).
