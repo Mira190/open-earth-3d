@@ -65,6 +65,7 @@ def _sibling(name):
 
 scramble = _sibling("scramble")   # the scramble at street level: its street, entrances, buildings and signs (#111)
 hachiko_kit = _sibling("hachiko")  # Hachiko, sculpted: the bronze Akita and his pedestal
+garden = _sibling("hachiko_garden")  # the lilyturf in the bed behind Hachiko, and its atlas
 
 # the map being built: "shibuya", or "shinjuku" when cities/shinjuku/city.py loads this file
 CITY = globals().get("CITY", "shibuya")
@@ -1335,6 +1336,8 @@ def landmark_assets(out_dir, scene):
     img.save(os.path.join(out_dir, "atlas.jpg"), quality=90)
     out = ["atlas.jpg"]
     lm = scene["landmarks"]
+    if "hachiko" in lm:   # Hachiko Square's lilyturf atlas
+        out.append(os.path.basename(garden.draw_atlas(os.path.join(out_dir, garden.ATLAS))))
     path = os.path.join(out_dir, "ema.jpg")
     if "suga" in lm:   # the ema, on the map that has Suga Shrine
         draw_ema_atlas(path, np.random.default_rng(2026))
@@ -2165,7 +2168,7 @@ MATERIALS.update({
     "hk_worn": {"color": "#75593a", "roughness": 0.34, "metalness": 0.88},
     "hk_plinth": {"color": "#77746f", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0]},
     "hk_step": {"color": "#45474a", "roughness": 0.6, "metalness": 0.0, "pattern": "granite", "joints_m": [0.2, 0.2]},
-    "hk_setts": {"color": "#56585b", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.11, 0.11], "decal": True, "street_lit": True},
+    "hk_setts": {"color": "#696b6e", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.11, 0.11], "decal": True, "street_lit": True},
     "hk_band": {"color": "#2f3133", "roughness": 0.8, "metalness": 0.0, "decal": True, "street_lit": True},
     "hk_inlay": {"color": "#b8b2a7", "roughness": 0.75, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0], "decal": True, "street_lit": True},
     "hk_wall": {"color": "#626467", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.16, 0.0]},
@@ -2173,8 +2176,9 @@ MATERIALS.update({
     "hk_soil": {"color": "#3a3128", "roughness": 1.0, "metalness": 0.0},
     "hk_steel": {"color": "#d3d7da", "roughness": 0.22, "metalness": 0.9},
     "hk_rock": {"color": "#7b776f", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0]},
-    "hk_pine": {"color": "#2c4428", "roughness": 0.95, "metalness": 0.0},
-    "hk_bark": {"color": "#4b3d33", "roughness": 0.95, "metalness": 0.0},
+    # the bed's lilyturf (hachiko_garden.py): cards cut out of the garden's atlas (their clear pixels
+    # are holes, in shadow too)
+    "hk_leaf": {"color": "#e6e6e6", "roughness": 0.8, "metalness": 0.0, "map": "hachiko_garden.png", "cutout": True},
     # QFRONT's glass front (web/world.js curtain_wall: panes between mullions, some lit after dark)
     "qfront_glass": {"color": "#3b4c58", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
                      "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.4, "lit_k": 0.42},
@@ -3025,9 +3029,10 @@ HACHIKO_LAMPS = [(374.5, -1028.0), (386.0, -1022.0), (386.0, -1052.0), (366.0, -
 # 2020, 2021 and July 2025 he is seen from behind looking at QFRONT's side, in profile from the square's south,
 # and from the front with the buses behind him (Wikimedia Commons, docs/cities/shibuya.md)
 HACHIKO_LOOKS_AT = (400.0, -1022.0)
-# Round his back, a curved bed of rocks, black pines and a maple behind a low granite wall that people sit
-# on, with stainless rails along it and lamps set in it; a Kasuga lantern in the bed; on his left the
-# memorial stone with its plate. Round him, dark granite setts laid in arcs. Out on the square, round
+# Round his back, a curved bed behind a low granite wall that people sit on, with stainless rails along
+# it and lamps set in it; in the bed rocks, lilyturf and a Kasuga lantern, and no tree (the real bed's
+# pines and maple are left out so that nothing stands over him); on his left the memorial stone with its
+# plate. Round him, grey granite setts laid in arcs. Out on the square, round
 # raised planters of granite strips with stainless rails, each with a cherry tree (photographs 2020-25;
 # the sizes are estimates). The setts' cherry-blossom inlays lie round the planters.
 HK_BED = {"r_in": 2.4, "r_out": 4.4, "from_deg": 100.0, "to_deg": 260.0, "wall_m": 0.48}
@@ -3035,6 +3040,7 @@ HK_DISC_M = 6.6
 HK_PLANTERS = [(381.0, -1035.5), (383.6, -1049.2)]   # world x, y
 HK_PLANTER = {"r": 1.35, "h": 0.72}
 HK_BLOSSOMS = [(378.0, -1031.0), (386.6, -1039.5), (380.0, -1053.0), (387.5, -1045.0)]
+HK_LANTERN_DEG = 108
 
 
 def hachiko_face(h):
@@ -3057,16 +3063,31 @@ def ring_wall(m, c, r, a0, a1, z0, z1, out=True, seg_deg=4.0):
 
 
 def ring_top(m, c, r0, r1, a0, a1, z, seg_deg=4.0, polar_uv=False):
-    """A flat annular sector facing up; UVs in metres (polar: along the arcs and out from the centre)."""
+    """An annular sector facing up, flat at z or, where z is a function of (x, y), lying on it; UVs in
+    metres (polar: along the arcs and out from the centre)."""
     n = max(2, int(abs(a1 - a0) / math.radians(seg_deg)))
     a = np.linspace(a0, a1, n + 1)
     if a1 < a0:
         a = a[::-1]
     for k in range(n):
         pts = [(r0, a[k]), (r0, a[k + 1]), (r1, a[k + 1]), (r1, a[k])]
-        P3 = [np.array([c[0] + r * math.cos(t), c[1] + r * math.sin(t), z]) for r, t in pts]
+        P3 = [np.array([c[0] + r * math.cos(t), c[1] + r * math.sin(t), 0.0]) for r, t in pts]
+        for p in P3:
+            p[2] = z(p[0], p[1]) if callable(z) else z
         uv = [[r * t, r] for r, t in pts] if polar_uv else [[p[0], p[1]] for p in P3]
         m.quad(*P3, uv)
+
+
+def ground_cell(m, poly, gz, lift):
+    """A polygon of paving lying lift over the ground, UVs in metres. A cell cut by a curve can be
+    concave, so it is cut into the triangles of its vertices that lie inside it, not fanned."""
+    from shapely.geometry.polygon import orient
+    from shapely.ops import triangulate
+    for t in triangulate(poly):
+        if t.area < 1e-5 or not poly.contains(t.representative_point()):
+            continue
+        pts = [np.array([px, py, gz(px, py) + lift]) for px, py in list(orient(t).exterior.coords)[:-1]]
+        m.tri(*pts, [list(p[:2]) for p in pts])
 
 
 def rail_ring(m, c, r, a0, a1, z, seg_deg=6.0, radius=0.028):
@@ -3108,26 +3129,6 @@ def hk_rock(m, P, u, v, z0, size, seed):
     sculpt_into(m, f, (u - r[0] - 0.1, v - r[1] - 0.1, -0.05), (u + r[0] + 0.1, v + r[1] + 0.1, r[2] + 0.1), max(0.09, size / 5), P, z0)
 
 
-def hk_pine(K, P, u, v, z0, h, seed):
-    """A garden black pine (kuromatsu), pruned to layered pads of needles on a leaning trunk."""
-    import sculptkit as sk
-    rng = np.random.default_rng(seed)
-    lean = rng.uniform(-0.25, 0.25, 2) * h
-    trunk = [P(u, v, z0), P(u + lean[0] * 0.3, v + lean[1] * 0.3, z0 + h * 0.45), P(u + lean[0], v + lean[1], z0 + h * 0.85)]
-    K("hk_bark").tube(trunk, 0.06 * h / 1.8, 7)
-    pads = []
-    for k in range(5):
-        a = rng.uniform(0, 2 * math.pi)
-        zz = h * (0.45 + 0.13 * k)
-        w = h * (0.32 - 0.04 * k)
-        cu, cv = u + lean[0] * zz / h + math.cos(a) * h * 0.18 * (k < 4), v + lean[1] * zz / h + math.sin(a) * h * 0.18 * (k < 4)
-        pads.append(sk.ellipsoid((cu, cv, zz), (w, w * 0.85, max(0.1, h * 0.065))))
-        if k < 4:
-            K("hk_bark").tube([P(u + lean[0] * zz / h, v + lean[1] * zz / h, z0 + zz - 0.05), P(cu, cv, z0 + zz)], 0.025 * h / 1.8, 5)
-    f = sk.roughen(sk.smooth_union(0.06, *pads), 0.05, 0.14, seed=seed)
-    sculpt_into(K("hk_pine"), f, (u - h * 0.75, v - h * 0.75, h * 0.3), (u + h * 0.75, v + h * 0.75, h * 1.05), 0.11, P, z0)
-
-
 def hachiko_square(K, h, lm):
     """Hachiko Square: its paving, lamps and planters, and Hachiko looking toward the station's Hachiko exit."""
     face = hachiko_face(h)
@@ -3145,20 +3146,32 @@ def hachiko_square(K, h, lm):
             cell = Polygon([(x, y), (x + 2, y), (x + 2, y + 2), (x, y + 2)]).intersection(sq)
             if cell.is_empty or cell.geom_type != "Polygon" or cell.area < 0.05:
                 continue
-            pts = [np.array([px, py, gz(px, py) + 0.06]) for px, py in list(cell.exterior.coords)[:-1]]
-            for k in range(1, len(pts) - 1):
-                K("plaza").tri(pts[0], pts[k], pts[k + 1], [list(pts[0][:2]), list(pts[k][:2]), list(pts[k + 1][:2])])
+            ground_cell(K("plaza"), cell, gz, 0.06)
     for lx, ly in HACHIKO_LAMPS:
         g = gz(lx, ly)
         lathe_at(K("steel_dark"), lx, ly, [(g, 0.14), (g + 8.0, 0.09), (g + 8.05, 0.0)], 8)
         lathe_at(K("lamp", "lit"), lx, ly, [(g + 7.6, 0.0), (g + 7.6, 0.45), (g + 8.0, 0.45), (g + 8.05, 0.0)], 10)
-    # round him, dark granite setts laid in arcs, edged by two bands of darker stone
-    zd = z + 0.075
-    ring_top(K("hk_setts"), at, 0.0, HK_DISC_M, 0.0, 2 * math.pi, zd, 5.0, polar_uv=True)
+    # grey granite setts laid in arcs round him and on out round the planters (photographs 2020-21: the
+    # square's clay pavers start beyond them), the arcs round him edged by two bands of darker stone
+    # on the ground, which rises 9 cm across them (laid flat at his foot, the clay pavers round them would
+    # come up through their uphill side)
+    zd = lambda x, y: max(z, gz(x, y)) + 0.075
+    for k in range(12):
+        ring_top(K("hk_setts"), at, HK_DISC_M * k / 12, HK_DISC_M * (k + 1) / 12, 0.0, 2 * math.pi, zd, 5.0, polar_uv=True)
+    from shapely.ops import unary_union
+    field = unary_union([Point(*c).buffer(HK_PLANTER["r"] + 2.6, 24) for c in HK_PLANTERS] + [Point(*at).buffer(HK_DISC_M, 48)]).convex_hull
+    field = field.intersection(Polygon(HACHIKO_SQUARE).buffer(-0.3)).difference(Point(*at).buffer(HK_DISC_M - 0.02, 48))
+    for x in np.arange(field.bounds[0], field.bounds[2], 2.0):
+        for y in np.arange(field.bounds[1], field.bounds[3], 2.0):
+            cell = Polygon([(x, y), (x + 2, y), (x + 2, y + 2), (x, y + 2)]).intersection(field)
+            for g in getattr(cell, "geoms", [cell]):
+                if g.is_empty or g.geom_type != "Polygon" or g.area < 0.02:
+                    continue
+                ground_cell(K("hk_setts"), g, gz, 0.07)
     for r in (3.1, HK_DISC_M - 0.15):
-        ring_top(K("hk_band"), at, r - 0.08, r + 0.08, 0.0, 2 * math.pi, zd + 0.004, 5.0)
+        ring_top(K("hk_band"), at, r - 0.08, r + 0.08, 0.0, 2 * math.pi, lambda x, y: zd(x, y) + 0.015, 5.0)
     for k, (bx, by) in enumerate(HK_BLOSSOMS):
-        blossom(K("hk_inlay"), (bx, by), 0.85, gz(bx, by) + 0.066, turn=0.4 * k)
+        blossom(K("hk_inlay"), (bx, by), 0.85, gz(bx, by) + 0.08, turn=0.4 * k)
     # the bed behind him: the low wall people sit on, its cap, the soil, stainless rails, lamps in the wall
     B = HK_BED
     ang = math.atan2(face[1], face[0])
@@ -3192,16 +3205,19 @@ def hachiko_square(K, h, lm):
         Q = frame(at + d * (B["r_in"] - 0.005), -d)
         block(K("hk_steel"), Q, -0.01, 0.012, -0.32, 0.32, z + 0.1, z + 0.26)
         block(K("lamp", "lit"), Q, 0.012, 0.016, -0.28, 0.28, z + 0.12, z + 0.24)
-    # in the bed: rocks, black pines, the lantern
+    # in the bed: rocks, lilyturf and the lantern
     rm = (B["r_in"] + B["r_out"]) / 2 + 0.15
     bed_at = lambda deg, r: (r * math.cos(math.radians(deg)), r * math.sin(math.radians(deg)))
     for k, (deg, r, size) in enumerate(((118, rm, 0.42), (150, rm + 0.3, 0.55), (196, rm - 0.2, 0.36), (228, rm + 0.2, 0.5), (248, rm - 0.1, 0.32))):
         u, v = bed_at(deg, r)
         hk_rock(K("hk_rock"), P, u, v, zw - 0.12, size, 1934 + k)
-    for k, (deg, r, hh) in enumerate(((132, rm, 1.9), (178, rm + 0.25, 2.3), (214, rm, 1.7), (240, rm + 0.3, 1.5))):
-        u, v = bed_at(deg, r)
-        hk_pine(K, P, u, v, zw - 0.06, hh, 1923 + k)
-    u, v = bed_at(108, rm + 0.25)
+    # (no trees in the bed: the real one's pines and maple are left out, so nothing stands over Hachiko)
+    rng = np.random.default_rng(1989)
+    for k in range(26):    # lilyturf between the rocks and round the pines' feet
+        deg = B["from_deg"] + 6 + (B["to_deg"] - B["from_deg"] - 12) * (k + rng.uniform(0, 0.8)) / 26
+        u, v = bed_at(deg, rng.uniform(B["r_in"] + 0.45, B["r_out"] - 0.25))
+        garden.turf(K, P(u, v, zw - 0.06), 77 + k)
+    u, v = bed_at(HK_LANTERN_DEG, rm + 0.25)
     lp = P(u, v, 0)
     lantern(K, lp[0], lp[1], zw - 0.06, 1.95)
     # the memorial stone on his left, its plate toward the square
