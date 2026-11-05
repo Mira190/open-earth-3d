@@ -144,7 +144,7 @@ export default function lakeTekapo(G) {
   // ------------------------------------------------------------ Kate, DOC ranger, by the church
   const kate = {
     id: 'ranger', role: 'ranger', name: 'Kate', title: 'Department of Conservation ranger', gender: 'W',
-    look: { character: 'R_Female_Adult_12', clip: 'idle' },
+    look: { character: 'R_Female_Adult_12', clip: 'Idle' },
     at: G2 => { const c = P('church-good-shepherd'), s = G2.spawn(), p = G2.landSpot(s.x + 7, s.north + 4, { maxSlope: 0.35, maxR: 25 }) || { x: s.x + 7, north: s.north + 4 };
       return { x: p.x, north: p.north, heading: G2.bearing(p, s) }; },
     nodes: {
@@ -195,7 +195,7 @@ export default function lakeTekapo(G) {
   // ------------------------------------------------------------ Ian, a runholder, by the sheepdog statue
   const ian = {
     id: 'runholder', role: 'guide', name: 'Ian', title: 'Runholder', gender: 'M',
-    look: { character: 'R_Male_Adult_13_m017_grey', clip: 'idle' },
+    look: { character: 'R_Male_Adult_13_m017_grey', clip: 'Idle' },
     at: G2 => { const s = P('sheepdog-statue'), p = G2.landSpot(s.x - 4, s.north - 3, { maxSlope: 0.35, maxR: 30 }) || { x: s.x - 4, north: s.north - 3 }; return { x: p.x, north: p.north, heading: G2.bearing(p, s) }; },
     nodes: {
       hello: { say: G2 => [{ t: `${G2.greet()}. Ian. My family's had a run out past the lake a long while. You've found the dog.`, src: null },
@@ -226,7 +226,7 @@ export default function lakeTekapo(G) {
   // ------------------------------------------------------------ Mei, astronomy guide, on the summit of Mt John
   const mei = {
     id: 'astronomer', role: 'guide', name: 'Mei', title: 'Dark Sky Project astronomy guide', gender: 'W',
-    look: { character: 'R_Female_Adult_14', clip: 'idle' },
+    look: { character: 'R_Female_Adult_14', clip: 'Idle' },
     at: G2 => { const c = P('astro-cafe') || P('mt-john'), p = G2.landSpot(c.x + 6, c.north - 6, { maxSlope: 0.3, maxR: 40 }) || { x: c.x + 6, north: c.north - 6 };
       return { x: p.x, north: p.north, heading: G2.bearing(p, P('mt-john-observatory') || c) }; },
     nodes: {

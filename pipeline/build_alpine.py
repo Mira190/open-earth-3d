@@ -354,20 +354,6 @@ def main():
                    + [l["depth_src"] for l in lakes if l["main"]],
     }
     scene.update(meta(city))
-    # landmark models (city.json `landmarks`): each glTF is built in its own anchor's frame with its orientation baked
-    # in (x east, y up, -z north, y = 0 at ground_m), so the viewer only places it (web/reef/alpine/landmarks.js); a
-    # walkable deck (a footbridge) goes along with its ends and heights in the local frame, above the lake
-    marks = []
-    for l in cfg.get("landmarks", []):
-        x, y = city.fwd.transform(*l["lonlat"])
-        m = {"id": l["id"], "glb": l["glb"], "x": round(float(x), 2), "y": round(float(y), 2), "z": round(l["ground_m"] - datum, 2)}
-        if l.get("deck"):
-            dk = l["deck"]
-            ends = [[round(float(v), 2) for v in city.fwd.transform(*e)] for e in dk["ends"]]
-            m["deck"] = {"ends": ends, "w": dk["width_m"], "z": [round(z - datum, 2) for z in dk["z_m"]]}
-        marks.append(m)
-    if marks:
-        scene["landmarks"] = marks
     old = os.path.join(city.out, "scene.json")
     if os.path.exists(old):                       # the aerial patches (alpine_detail.py) are kept across a rebuild
         prev = json.load(open(old))
