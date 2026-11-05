@@ -43,14 +43,14 @@ async function main() {
   // and the lake's turquoise where ACES pushes both toward a grey teal
   renderer.toneMapping = ALP ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
   // an alpine site is exposed as a landscape photograph is: sunlit snow just under white, the sky's blue mid-tone
-  renderer.toneMappingExposure = Number(q.get('exp') || (ALP ? 1.65 : 1.0));
+  renderer.toneMappingExposure = Number(q.get('exp') || (ALP ? 1.9 : 1.0));
   document.body.prepend(renderer.domElement);
   await renderer.init();
   // a lost device or context cannot be restored in place: reload with a note, not a black page (glcare.js)
   if (window.OEGLCare) window.OEGLCare.reloadOnLoss(renderer, document.body);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, ALP ? 160000 : 90000);
+  const camera = new THREE.PerspectiveCamera(Number(q.get('fov') || 60), innerWidth / innerHeight, 0.2, ALP ? 160000 : 90000);   // ?fov= for a long lens
   const windDir = Number(q.get('wind_dir') || 125);
   // a lake has wind chop and no swell
   const waves = ALP ? makeWaves(windDir, 0.32).filter(w => w.lam < 25) : makeWaves(windDir);
@@ -94,7 +94,7 @@ async function main() {
   stage('Shaping the sea floor, the water and the shore', 0.45);
   await paint();
   const hTex = heightTexture(d);
-  let terrain, shore, light = null, lakes = null;
+  let terrain, shore, light = null, lakes = null, clouds = null;
   if (ALP) {
     const groundTex = heightTexture(d, d.heights);
     const [{ createLight }, { createAlpineTerrain }, { createLakes }] = await Promise.all([import('./alpine/light.js'), import('./alpine/terrain.js'), import('./alpine/lakes.js')]);
@@ -102,6 +102,9 @@ async function main() {
     terrain = createAlpineTerrain(d, env, renderer, light, groundTex);
     lakes = createLakes(d, env, atm, light, groundTex);
     if (q.get('lakes') !== '0') scene.add(lakes.group);
+    const { createClouds } = await import('./alpine/clouds.js');
+    clouds = createClouds({ S, q, env, camera }, light);
+    scene.add(clouds.group);
     shore = { update() {} };
   } else {
     terrain = createTerrain(d, env, renderer);
@@ -109,6 +112,13 @@ async function main() {
     scene.add(shore.mesh);
   }
   scene.add(terrain.group);
+  if (ALP && q.get('mirror') !== '0') {
+    // the lake's mirror: the scene seen from below the water level, at part of the screen's resolution
+    const tsl = await import('three/tsl');
+    env.mirror = tsl.reflector({ resolutionScale: Math.min(innerWidth, innerHeight) < 700 ? 0.3 : 0.5, bounces: false });
+    env.mirror.target.rotateX(-Math.PI / 2);
+    scene.add(env.mirror.target);
+  }
   const ocean = createOcean(d, env, hTex);
   scene.add(ocean.mesh);
   // the land past the survey: the mainland's ranges and the coast's lights (farland.js); fewer triangles on a small screen
@@ -145,7 +155,7 @@ async function main() {
     for (let i = 1; i < SEEN.length; i++) if (x <= SEEN[i][0]) { const [a, la] = SEEN[i - 1], [b, lb] = SEEN[i]; return la * Math.pow(lb / la, (x - a) / (b - a)); }
     return 0.1;
   };
-  const baseExp = Number(q.get('exp') || (ALP ? 1.65 : 1.0));
+  const baseExp = Number(q.get('exp') || (ALP ? 1.9 : 1.0));
   let adapt = 1;
   renderer.toneMappingExposure = baseExp;
   function lights(sun) {
@@ -175,7 +185,7 @@ async function main() {
   let eqT = -1e9, equatorialMatrix = null;
   if (ALP) ({ equatorialMatrix } = await import('./alpine/atmos.js'));
   function alpineLights(sun, sunI, moonI, hemiI) {
-    const y = camera.position.y, Ts = atm.sunColour(y, Math.sin(sun.alt));
+    const y = camera.position.y, Ts = atm.sunColour(y, Math.sin(sun.alt)), deg = sun.alt * 180 / Math.PI;
     const E0 = 2.8 * adapt;
     atm.u.E0.value = E0; atm.u.Emoon.value = moonI * adapt;
     const amb = atm.skyAmbient(y, Math.sin(sun.alt));
@@ -187,7 +197,8 @@ async function main() {
     // the sky's light: the model's by day, the reef's measured twilight and starlight curve once the sun is down
     const day = THREE.MathUtils.smoothstep(Math.sin(sun.alt), -0.06, 0.04);
     const night = hemiI * adapt;   // already adapted below (lights() scales the hemisphere by adapt afterwards)
-    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day + night * [0.55, 0.7, 1.0][i] * (1 - day));
+    // (the night's light a little stronger than the reef's: the tussock and the snow under starlight should read)
+    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day + night * 1.8 * [0.55, 0.7, 1.0][i] * (1 - day));
     hemi.color.setRGB(sky[0], sky[1], sky[2]).multiplyScalar(1 / Math.max(lum(sky), 1e-6)); hemi.intensity = Math.max(lum(sky), 1e-6);
     hemi.groundColor.setRGB(0.55, 0.45, 0.3);
     light.u.sunE.value.setRGB(Ts[0] * E0, Ts[1] * E0, Ts[2] * E0);
@@ -201,6 +212,8 @@ async function main() {
     const autoExp = THREE.MathUtils.clamp(Math.pow(0.6 / Math.max(env.u.white.value / adapt, 1e-4), 0.6), 1, 2.6);
     renderer.toneMappingExposure = baseExp * THREE.MathUtils.lerp(autoExp, 1.4, THREE.MathUtils.smoothstep(adapt, 1, 40));
     atm.u.stars.value = THREE.MathUtils.smoothstep(-Math.sin(sun.alt), 0.05, 0.25) * adapt * 2.4e-6 * 0.9;
+    // the twilight sky (atmos.js twilight): the measured skylight curve, adapted, fading out as the sun climbs past 6 degrees
+    atm.u.twi.value = skyLight(deg) * adapt * 0.42 * (1 - THREE.MathUtils.smoothstep(deg, -1, 6));
     const now = clockMs();
     if (Math.abs(now - eqT) > 20000) { eqT = now; equatorialMatrix(now, S.origin[1], S.origin[0], eqM); atm.u.eq.value.copy(eqM); }
   }
@@ -284,7 +297,7 @@ async function main() {
     env.u.tide.value = tideNow();
     ripples.update(env.u.time.value); chop.update(env.u.time.value);
     terrain.update(camera.position);
-    if (ALP) dome.position.copy(camera.position);   // the sky is at infinity wherever the eye goes over 80 km
+    if (ALP) { dome.position.copy(camera.position); clouds.update(); }   // the sky is at infinity wherever the eye goes over 80 km
     if (light) light.update();
     ocean.update(camera.position);
     shore.update(camera.position);

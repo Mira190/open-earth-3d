@@ -23,7 +23,12 @@ const BETA_R = [5.802e-6, 13.558e-6, 33.1e-6];  // per metre at sea level (Hilla
 const H_R = 8000, H_M = 1200, H_O = 25000, W_O = 15000;
 const BETA_O = [0.650e-6, 1.881e-6, 0.085e-6];
 const G_MIE = 0.78;
-const MS = 0.075;                                 // multiple scattering, as a share of the single-scattered light, isotropic
+const MS = 0.12;                                  // multiple scattering, as a share of the single-scattered light, isotropic
+// the photographic response: a landscape camera (and the eye) sees a clear sky bluer and brighter than three display
+// primaries sampling the spectrum give it (green carries too much of Rayleigh's light at 550 nm). The sky and the
+// air's veil take the same gain and tint, so a far ridge still fades into exactly the sky behind it. Set against
+// photographs of the lake (docs/cities/lake-pukaki.md)
+const PHOTO = [0.62, 0.86, 1.32], PHOTO_GAIN = 1.4;
 
 export function createAtmos(opts) {
   const u = {
@@ -33,6 +38,7 @@ export function createAtmos(opts) {
     Emoon: uniform(0),
     stars: uniform(0),                             // how much of the starry sky the adapted eye sees
     eq: uniform(new THREE.Matrix3()),              // local direction -> equatorial (J2000) unit vector
+    twi: uniform(0),                               // the twilight sky's brightness once the sun is low or down (main.js)
   };
   const BR = vec3(...BETA_R), BO = vec3(...BETA_O);
   const BMs = u.betaM, BMe = u.betaM.mul(1.11);
@@ -72,7 +78,7 @@ export function createAtmos(opts) {
     const single = BR.mul(dR).mul(phaseR(nu)).mul(TsR).add(vec3(BMs.mul(dM).mul(phaseM(nu))).mul(TsM));
     // (lit by the sun as the molecules' altitude sees it: the higher light of the second and later orders)
     const multi = BR.mul(dR).add(vec3(BMs.mul(dM))).mul(MS).mul(TsR);
-    return single.add(multi).div(ext).mul(float(1).sub(T)).mul(E);
+    return single.add(multi).div(ext).mul(float(1).sub(T)).mul(E).mul(vec3(...PHOTO).mul(PHOTO_GAIN));
   };
 
   // ---- the sky in a direction, from the eye at height y (viewer frame)
@@ -85,6 +91,7 @@ export function createAtmos(opts) {
     const hR = h0.add(lift.mul(H_R)), hM = h0.add(lift.mul(H_M));
     let c = inscatter(dR, dM, T, dot(dir, sunDir), u.E0, trans(hR, sunDir), trans(hM, sunDir)).toVar();
     c.addAssign(inscatter(dR, dM, T, dot(dir, moonDir), u.Emoon, trans(hR, moonDir), trans(hM, moonDir)));
+    c.addAssign(twilight(dir, sunDir));
     if (disc) {
       // the sun: 0.27 degrees across, limb-darkened, through the air in front of it
       const cs = dot(dir, sunDir);
@@ -99,6 +106,24 @@ export function createAtmos(opts) {
     }
     return c;
   });
+
+  // ---- twilight: once the sun is near or under the horizon, single scattering from the low air goes dark while the
+  // high air is still lit. Its pattern as photographed: a warm glow over the sun's point on the horizon, fading up into a
+  // deep blue zenith (the ozone's Chappuis band), and opposite the sun the pink anti-twilight arch (the Belt of Venus)
+  // over the blue-grey of the Earth's own shadow. Brightness follows the measured fall of skylight through twilight
+  // (main.js skyLight, adapted), so dusk joins the day and the night without a step
+  function twilight(dir, sunDir) {
+    const e = max(dir.y, -0.02);
+    const hd = normalize(vec3(dir.x, 0, dir.z).add(vec3(1e-5, 0, 0))), hs = normalize(vec3(sunDir.x, 0, sunDir.z).add(vec3(1e-5, 0, 0)));
+    const cosA = dot(hd, hs);
+    const low = smoothstep(0.1, -0.05, sunDir.y);            // the twilight pattern takes over as the sun goes
+    const zen = vec3(0.07, 0.15, 0.44).mul(float(1).sub(e.mul(0.35)));
+    const glow = vec3(1.0, 0.46, 0.17).mul(exp(e.div(-0.10))).mul(pow(cosA.mul(0.5).add(0.5), 3.0)).mul(smoothstep(-0.30, -0.02, sunDir.y).mul(1.8));
+    const band = exp(e.sub(0.07).div(0.055).pow(2).negate()).mul(pow(float(0.5).sub(cosA.mul(0.5)), 2.0));
+    const belt = vec3(0.62, 0.36, 0.44).mul(band).mul(smoothstep(-0.14, -0.01, sunDir.y));
+    const shadow = vec3(0.10, 0.13, 0.24).mul(exp(e.div(-0.05))).mul(pow(float(0.5).sub(cosA.mul(0.5)), 2.0));
+    return zen.add(glow).add(belt).add(shadow).mul(u.twi).mul(low.mul(0.85).add(0.15));
+  }
 
   // ---- the night sky: the Milky Way as it lies across the southern sky, the Magellanic Clouds, and stars.
   // Positions are real (J2000 galactic pole and centre); brightness and texture are a model, not a survey
@@ -129,7 +154,7 @@ export function createAtmos(opts) {
     let mw = band.mul(0.55).add(bulge).mul(float(1).sub(dust)).mul(grain);
     const cloud = (c, s, k) => exp(float(1).sub(dot(e, c)).div(-s)).mul(k);
     mw = mw.add(cloud(lmcU, 0.0012, 0.55)).add(cloud(smcU, 0.0005, 0.35));
-    const col = mix(vec3(0.55, 0.62, 0.85), vec3(1.0, 0.86, 0.66), clamp(bulge.mul(0.8), 0, 1)).mul(mw).mul(0.020);
+    const col = mix(vec3(0.55, 0.62, 0.85), vec3(1.0, 0.86, 0.66), clamp(bulge.mul(0.8), 0, 1)).mul(mw).mul(0.11);
     // stars: one per cell of a direction grid, at a random place in it, brightness from a steep power law
     const cells = float(420);
     const p = e.mul(cells), ip = floor(p), fp = fract(p);
@@ -138,8 +163,9 @@ export function createAtmos(opts) {
     const d = length(fp.sub(centre));
     const mag = pow(rnd3, 14).mul(4).add(pow(rnd, 40).mul(30));
     const tint = mix(vec3(0.75, 0.82, 1.0), vec3(1.0, 0.85, 0.65), rnd2);
-    const star = smoothstep(0.09, 0.0, d).mul(mag).mul(float(1).add(band.mul(2)));
-    return col.add(tint.mul(star).mul(0.6));
+    const star = smoothstep(0.22, 0.0, d).mul(mag).mul(float(1).add(band.mul(2)));
+    // and the natural glow of a dark sky (airglow and starlight, about 21.6 mag per square arcsecond here)
+    return col.add(tint.mul(star).mul(1.6)).add(vec3(0.010, 0.012, 0.020));
   }
 
   // ---- the air between the eye C and a surface point P: returns col dimmed and veiled

@@ -663,12 +663,12 @@
    3.9
   ],
   "Rinf": [
-   0.012,
-   0.111,
-   0.235
+   0.03,
+   0.27,
+   0.49
   ],
   "g": 2.2,
-  "src": "Kd from the lake's Secchi depth: a mean of 0.5 m (Irwin 1978) and 0.41 m (James and Graynoth 2002), both read through search excerpts only, with Kd = 1.7 / Secchi for green and red and blue in the ratios QAA_v6 gives on Sentinel-2 L2A over the lake (pipeline/qaa.py; QAA alone, at 0.16 /m, misses most of the glacial flour's scattering). Rinf: the lake's colour in the ground imagery itself (LINZ 10 m mosaic, median of 400 m windows at four points, linearised), so the water and the land share one brightness scale; red from L2A's red-to-green ratio. See cities/lake-pukaki/analysis/optics.json"
+  "src": "Kd from the lake's Secchi depth: a mean of 0.5 m (Irwin 1978) and 0.41 m (James and Graynoth 2002), both read through search excerpts only, with Kd = 1.7 / Secchi for green and red and blue in the ratios QAA_v6 gives on Sentinel-2 L2A over the lake (pipeline/qaa.py; QAA alone, at 0.16 /m, misses most of the glacial flour's scattering). Rinf: the lake's colour in the ground imagery itself (LINZ 10 m mosaic, median of 400 m windows at four points, linearised: 0.001, 0.111, 0.249), raised to 0.03, 0.27, 0.49 to match photographs taken at the lake: the satellite looks straight down, and from the shore the milky water is brighter against the tussock than the mosaic has it; red from L2A's red-to-green ratio. See cities/lake-pukaki/analysis/optics.json"
  },
  "roads": "roads.json",
  "start": {

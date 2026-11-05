@@ -52,7 +52,7 @@ function lupinGeometry() {
     p.setXYZ(i, x * k, y, z * k);
   }
   spike.computeVertexNormals();
-  const sUV = spike.attributes.uv; for (let i = 0; i < sUV.count; i++) sUV.setXY(i, 1, 0.5 + (spike.attributes.position.getY(i) - 0.57) / 0.42 * 0.5);
+  const sUV = spike.attributes.uv; for (let i = 0; i < sUV.count; i++) sUV.setXY(i, 1, Math.min(1, Math.max(0, (spike.attributes.position.getY(i) - 0.57) / 0.42)));
   parts.push(spike);
   const stem = new THREE.CylinderGeometry(0.006, 0.009, 0.6, 5, 1).translate(0, 0.3, 0);
   const su = stem.attributes.uv; for (let i = 0; i < su.count; i++) su.setXY(i, 0, 0);
@@ -161,7 +161,7 @@ export async function init(ctx) {
   lMat.colorNode = Fn(() => {
     const tier = uv().y, isSpike = uv().x.greaterThan(0.5);
     // florets open from the bottom of the spike up; above the open ones, green buds
-    const open = smoothstep(lCol.w.sub(0.15), lCol.w.add(0.05), float(1).sub(tier));
+    const open = float(1).sub(smoothstep(lCol.w.sub(0.08), lCol.w.add(0.08), tier.mul(0.85)));
     const fl = mix(vec3(0.18, 0.30, 0.12), lCol.xyz, open);
     const leaf = vec3(0.12, 0.26, 0.10);
     const alb = isSpike.select(fl, leaf);
