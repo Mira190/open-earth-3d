@@ -11,7 +11,7 @@
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, mix, max, min, abs, smoothstep, clamp, texture, positionLocal, positionWorld,
   cameraPosition, normalize, dot, reflect, sin, cos, pow, exp, sqrt, select, length, mx_noise_float, uniform, frontFacing,
-  fwidth, screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
+  fwidth, screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, logarithmicDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
 import { gridUV } from './world.js';
 
 export function createOcean(d, env, heightTex) {
@@ -139,7 +139,14 @@ export function createOcean(d, env, heightTex) {
     // (the wind waves' thin crests close by: the long, low swell does not light up like this)
     const crest = smoothstep(0.0, 0.5, f.dyc.mul(1.6)).mul(u.wind).mul(smoothstep(1.0, 4.0, depth)).mul(smoothstep(250, 60, dist));
     const glow = vec3(0.02, 0.18, 0.2).mul(u.white).mul(crest);
-    const refl = mix(env.skyRefl(R).mul(0.85), env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6));
+    // an alpine lake mirrors the mountains round it (env.mirror: a planar reflection, main.js), bent by the waves;
+    // the sea reflects only its sky
+    let refl;
+    if (env.mirror) {
+      env.mirror.uvNode = env.mirror.uvNode.add(vec2(N.x, N.z).mul(0.06));
+      // the wind breaks the mirror up: the more of it, the more the reflection is a blur of sky than an image
+      refl = mix(env.mirror.rgb, env.skyRefl(R).mul(0.85), clamp(u.wind.mul(0.75), 0, 0.8));
+    } else refl = mix(env.skyRefl(R).mul(0.85), env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6));
     // sun glitter (Cox and Munk 1954): the facets that send the sun to the eye have the half-vector as their
     // normal; their share is the Gaussian slope density of what the pixel cannot resolve, around the slope it can.
     // radiance = E_sun F p / (4 cos(view) cos^4(facet tilt))
@@ -165,14 +172,17 @@ export function createOcean(d, env, heightTex) {
     // would pick up something in front of the water (a hull, a swimmer)
     const Nv = cameraViewMatrix.mul(vec4(N, 0)).xyz;
     const zS = positionView.z;
-    const zB0 = perspectiveDepthToViewZ(viewportDepthTexture(screenUV).x, cameraNear, cameraFar);
+    const toViewZ = dd => env.logDepth ? logarithmicDepthToViewZ(dd, cameraNear, cameraFar) : perspectiveDepthToViewZ(dd, cameraNear, cameraFar);
+    const zB0 = toViewZ(viewportDepthTexture(screenUV).x);
     const thick = zS.sub(zB0).max(0);
     const shift = vec2(Nv.x, Nv.y).mul(clamp(thick, 0, 4).mul(0.11).div(zS.negate().max(1))).clamp(-0.04, 0.04);
     const uvR = screenUV.add(shift);
-    const zB = perspectiveDepthToViewZ(viewportDepthTexture(uvR).x, cameraNear, cameraFar);
+    const zB = toViewZ(viewportDepthTexture(uvR).x);
     const uvB = select(zB.lessThan(zS), uvR, screenUV);
     const behind = viewportSharedTexture(uvB).rgb;
-    let above_c = mix(behind, refl, F.mul(edge)).add(glint.mul(edge)).add(glow.mul(edge)).toVar();
+    // (glacial flour scatters so much light back out of the lake that its own colour holds against the reflection)
+    // and a wind-roughened lake reflects less at a grazing view than a flat one would: its facets face higher, into the sky)
+    let above_c = mix(behind, refl, (env.mirror ? F.min(0.32) : F).mul(edge)).add(glint.mul(edge)).add(glow.mul(edge)).toVar();
     above_c.assign(mix(above_c, foamCol, foam.mul(edge)));
     // ---- from below: Snell's window and total internal reflection (n = 1.34)
     const nd = N.negate();

@@ -74,14 +74,16 @@ export async function init(ctx) {
   // toward a target, `wet` asks for water at least that deep within 30 m (a beach a boat can reach). With `orNull`
   // it returns null when nothing qualifies (a site with no land), else the starting point
   function landSpot(x, n, o = {}) {
-    const minH = o.minH ?? 0.25, maxH = o.maxH ?? 2.5, maxS = o.maxSlope ?? 0.3, maxR = o.maxR ?? 900, tide = o.msl ? 0 : env.u.tide.value;
+    // an alpine site stands on land at any height, only out of the water (a reef site's land is a beach a little above the tide)
+    const ALP = ctx.S.kind === 'alpine';
+    const minH = o.minH ?? (ALP ? -1e4 : 0.25), maxH = o.maxH ?? (ALP ? 1e4 : 2.5), maxS = o.maxSlope ?? 0.3, maxR = o.maxR ?? 900, tide = o.msl ? 0 : env.u.tide.value;
     const wetNear = (xx, nn) => { for (let a = 0; a < 6.28; a += 0.52) if (ctx.depth(xx + Math.cos(a) * 30, nn + Math.sin(a) * 30) > o.wet) return true; return false; };
     for (let r = 0; r <= maxR; r += 5) {
       const steps = Math.max(1, Math.round(2 * Math.PI * r / 5));
       let best = null, bs = 1e9;
       for (let k = 0; k < steps; k++) {
         const a = 2 * Math.PI * k / steps, xx = x + r * Math.cos(a), nn = n + r * Math.sin(a), h = ctx.height(xx, nn) - tide;
-        if (h < minH || h > maxH || slope(xx, nn) > maxS) continue;
+        if (h < minH || h > maxH || slope(xx, nn) > maxS || (ALP && ctx.depth(xx, nn) > -0.3)) continue;
         if (o.wet && !wetNear(xx, nn)) continue;
         const sc = o.toward ? Math.hypot(o.toward.x - xx, o.toward.north - nn) : 0;
         if (sc < bs) { bs = sc; best = { x: xx, north: nn }; }
