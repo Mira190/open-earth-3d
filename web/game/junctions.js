@@ -37,13 +37,28 @@
 //            Japan's 歩車分離 (pedestrian-only phase) after the cross road's: every arm's traffic
 //            held at red while the walkers cross every way at once, the diagonals too, and nobody
 //            walks in the traffic's phases. Shibuya's own cycle is about two minutes with 40 to 50 s
-//            of walk (live japan); the game keeps the walk and shortens the traffic's turns.
-//   timing   greens are short, as a game keeps them (a minute's wait at a red is no fun): about
-//            20 s for a main road, 12 s for a side road, 6 to 8 s for an arrow, a phase with nobody
-//            waiting on the other turning after CALL more; a crossing between junctions keeps the
-//            traffic's green 14 s and walks 10 s. A green gaps out (SCATS, vehicle-actuated
+//            of walk (live japan); the game keeps the walk (its crowd needs it to cross) and cuts
+//            the traffic's turns to a few seconds each.
+//   timing   a game's lights, not a city's: nobody waits at a red longer than RED (10 s), as the
+//            real cycle (a minute or two) scaled down. A real controller's maximum green starts
+//            timing when a car calls on a conflicting phase (NEMA TS 2 actuated control); here a
+//            green ends in time for the first to come up to another phase's red (or to press for
+//            the walk) to have theirs within RED of it: its amber (AMBER, a second more on a fast
+//            road) and its all red (ALLRED) count against that. Greens run up to about 13 s on a
+//            main road and 8 s on a side road while their traffic keeps coming, the other way
+//            empty; a phase with nobody waiting on the other turns after CALL more. The arrow
+//            comes only while nobody waits on the cross road (the turn filters through the
+//            oncoming traffic on the main road's green otherwise, as SCATS skips an arrow); a
+//            crossing between junctions walks 4 s and flashes 2. A green gaps out (SCATS, vehicle-actuated
 //            signals): someone waiting on another phase and no car coming on this one, it ends
-//            after GAP_MIN. tools/traffic_check.js measures the waits at a red.
+//            after GAP_MIN. The scramble's walk is the one wait longer than RED: a car coming up as
+//            it starts waits for its crowd to cross. You are seen as the traffic is: at the wheel a
+//            call for your phase, on foot at a kerb the button (want, urgeWalk: game.js), so RED
+//            holds for you; at a scramble the phase you wait for comes next, MIN_G into the one
+//            before it at most, its walk skipped for your car if it hasn't started (or the cross
+//            road's turn skipped for you on foot), never the same turn twice running. A ride you
+//            are in or that comes for you has
+//            priority (cars.js chauffeur). tools/traffic_check.js measures the waits at a red.
 //   walkers  the crowd crosses an arm's road at a junction with signals while that arm's traffic is
 //            held at red, and presses the button for it; it waits at the kerb otherwise.
 //   the box  a car goes in only when its movement (from its arm to its exit) crosses no movement
@@ -63,7 +78,8 @@ window.OEJunctions = (function () {
   const LINK = 24;      // a piece this short joining two junction nodes lies inside one junction (m)
   const SPAN = 42;      // and a junction is no wider than this (m)
   const SCR_W_POST = 5.0; // (m: a scramble's walk signal stands this far to the side of its crosswalk's line, clear of its stripes (up to 8 m wide) and the crowd spread across them)
-  const AMBER = 3.5, ALLRED = 2, CALL = 12, GAP_MIN = 7, FLASH = 5; // seconds; a phase with nobody waiting on the other turns after CALL more
+  const AMBER = 3, ALLRED = 1, CALL = 12, GAP_MIN = 5, FLASH = 3, RED = 10; // seconds; a phase with nobody waiting on the other turns after CALL more; nobody waits at a red longer than RED
+  const MID_CLEAR = 2; // (s: a crossing's walk flashing after its green, before its all red: 2 + 4 + 2 + 2 = RED for its cars)
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   let seed = 4242;
@@ -259,7 +275,7 @@ window.OEJunctions = (function () {
       j.sig = both && (mapped ? !!j.mapped : main2);
       if (j.sig) {
         const top = p => Math.max(0, ...j.arms.filter(a => a.phase === p).map(a => a.rank));
-        j.green = [10 + 2 * top(0), 6 + 1.5 * top(1), 5 + 0.5 * top(0)];
+        j.green = [8 + top(0), 5 + top(1), 3 + 0.25 * top(0)]; // (s: 13 on a primary road, 8 on a tertiary across it, 4 for an arrow)
         // a protected turn across after the main road's phase: at a big junction of two main roads
         const mainIn = j.arms.filter(a => a.in && a.phase === 0);
         j.arrow = j.arms.length >= 4 && top(0) >= 4 && top(1) >= 3 && mainIn.length >= 2 && mainIn.some(a => !L[a.line].ow);
@@ -332,7 +348,7 @@ window.OEJunctions = (function () {
       // (an arm with no crosswalk mapped across it still stops its traffic outside the box, as far out as the others')
       const backs = j.arms.filter(a => !bare.includes(a)).map(a => a.back).sort((p, q) => p - q);
       if (backs.length) for (const a of bare) a.back = Math.max(a.back, Math.min(L[a.line].len - 1.5, backs[backs.length >> 1]));
-      j.green = [16, 12, 6, 32]; j.allred = 4; // (and longer all-red before the walk: a wide box to clear)
+      j.green = [8, 6, 0, 32]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);
@@ -360,7 +376,7 @@ window.OEJunctions = (function () {
       if (on.some(o => Math.abs(o.mid - q.s) < 25)) return; // (one per stretch: a crossing with an island is mapped as two)
       net.at(q.line, q.s, tmp);
       const j = { id: J.length, mid: q.s, line: q.line, nodes: [], arms: [], inner: new Set(), x: tmp.x, y: tmp.y, z: tmp.z, hx: tmp.hx, hy: tmp.hy, sig, half: (ROADW[l.c] || 7) / 2,
-        green: [14, 10, 0], amber: (l.v || 11) > 16 ? AMBER + 1 : AMBER, ph: 0, st: 'g', t: rnd() * 20, nxt: 1, active: [], pend: [], near: [], demand: [0, 0, 0], seen: -1 };
+        green: [10, 4, 0], amber: (l.v || 11) > 16 ? AMBER + 1 : AMBER, allred: 2, ph: 0, st: 'g', t: rnd() * 20, nxt: 1, active: [], pend: [], near: [], demand: [0, 0, 0], seen: -1 };
       for (const end of [1, 0]) { // (the traffic heading for each end)
         if (!canReach(q.line, end)) continue;
         net.at(q.line, Math.max(0, Math.min(l.len, q.s + (end ? -6 : 6))), tmp);
@@ -604,20 +620,44 @@ window.OEJunctions = (function () {
       const j = a.j;
       if (!j.sig) return;
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
-      j.demand[a.phase === 0 ? 1 : 0] = 1;
+      ping(j, a.phase === 0 ? 1 : 0);
     }
     // a vehicle with priority coming up arm a (a ride on its way to you, as a bus has priority at
     // some signals, called from far enough out that the change is made by the time it gets there):
     // the other road's green ends once it has run a few seconds, through amber as ever, and its own
     // green is held for it (up to HOLD past when it would have ended) while it comes on
-    const MIN_G = 5, HOLD = 15;
-    function priority(a) {
+    // (a scramble's walk under way runs its course, its crowd out on the road; one not yet started
+    // waits for the ride's turn. A crossing's walk under way runs its few seconds too.)
+    const MIN_G = 4, HOLD = 6;
+    function toward(j, p, hold = true) {
+      if (j.ph === p && j.st === 'g') { if (hold) j.hold = frame; return; }
+      if ((j.ph === 3 || (j.mid != null && j.ph === 1)) && j.st === 'g') return; // (in their change, the phase after them may still be chosen)
+      // (a scramble's turn passed over for you comes the next time round whatever: never the same one
+      // twice running, while you stand at its kerb or sit at its line; j.skip)
+      const after = j.st === 'g' ? (j.ph === 0 ? 1 : j.ph === 1 ? 3 : 0) : j.nxt;
+      if (j.scramble && after !== p && j.skip === after) return;
+      if (j.ph !== p && j.st === 'g' && j.t >= MIN_G) { j.st = 'y'; j.t = 0; j.nxt = p; dirty.add(j); } // (its phase next: not the arrow's, nor the walk's)
+      else if (j.st !== 'g' && j.nxt !== p && j.ph !== p) j.nxt = p; // (changing already: to its phase next)
+      else return;
+      if (j.scramble && after !== p) j.skip = after;
+    }
+    function priority(a) { if (a.j.sig) toward(a.j, a.phase); }
+    // you, at the wheel, stopped or slowing for arm a's line (game.js): a call for its phase, as a car of
+    // the traffic makes, so RED holds for you; at a scramble the walk not started waits for your turn
+    function want(a) {
       const j = a.j;
       if (!j.sig) return;
-      if (j.ph === a.phase && j.st === 'g') { j.hold = frame; return; }
-      if (j.scramble) return; // (a scramble keeps its order: its walk is never cut short or skipped, its crowd out on the road or waiting for it)
-      if (j.ph !== a.phase && j.st === 'g' && j.t >= MIN_G) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
-      else if (j.st !== 'g' && j.nxt !== a.phase && j.ph !== a.phase) j.nxt = a.phase; // (changing already: to its phase next)
+      if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
+      ping(j, a.phase);
+      if (j.scramble) toward(j, a.phase, false);
+    }
+    // you, on foot at a kerb of arm a's road: the button pressed, so RED holds for you; at a scramble its
+    // walk next, the cross road's turn skipped
+    function urgeWalk(a) {
+      const j = a.j;
+      if (!j.sig) return;
+      call(a);
+      if (j.scramble) toward(j, 3, false);
     }
     // the scramble j's walk in `inS` seconds (the game opening on it): every arm held at red until then, or
     // the walk already that far in (inS < 0)
@@ -637,7 +677,12 @@ window.OEJunctions = (function () {
       if (j.st === 'y') return amber - j.t + allred + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
       return Math.max(0, allred - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
     }
-    let frame = 0;
+    let frame = 0, clock = 0;
+    // a call for phase p this frame (j.demand, which the first call of a frame clears), and when the
+    // last came (j.dAt): the traffic far from you steps every few frames, so a phase is waited for
+    // while its calls keep coming within half a second, not only in the frames they come in
+    function ping(j, p) { j.demand[p] = 1; (j.dAt || (j.dAt = [-1e9, -1e9, -1e9]))[p] = clock; }
+    const waitedFor = (j, p) => !!j.dAt && clock - j.dAt[p] < 0.5;
     const dirty = new Set(); // (the junctions whose signals changed this frame, for the heads)
     const NONE = [0, 0, 0];
     // a car coming up arm a, `eta` seconds from its stop line, to leave by exit m (or -1): seen by
@@ -647,8 +692,8 @@ window.OEJunctions = (function () {
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       // (the cars coming this frame; the requests before them in the frame see the last frame's)
       j.near.push({ c, k: a.i, m, eta, rank: a.sign ? 0 : a.rank });
-      if (eta < 12) j.demand[a.phase] = 1;
-      if (j.arrow && a.phase === 0 && eta < 6 && m >= 0) { const e = wayFor(j, a.i, m); if (e && e.across) j.demand[2] = 1; } // a car to turn across: the arrow
+      if (eta < 12) ping(j, a.phase);
+      if (j.arrow && a.phase === 0 && eta < 6 && m >= 0) { const e = wayFor(j, a.i, m); if (e && e.across) ping(j, 2); } // a car to turn across: the arrow
     }
     // may car c go into the junction from arm a, out by exit e, now (t)? It joins the movements in
     // it if so (true); else why not: 'cross' (a movement in it crosses its way), 'turn' (one waiting
@@ -738,7 +783,7 @@ window.OEJunctions = (function () {
     const inner = line => innerAll.has(line);
     // step the signals; and drop movements whose car has gone (taken, put back elsewhere)
     function update(dt, t) {
-      frame++;
+      frame++; clock += dt;
       for (const j of J) {
         if (j.active.length) for (let i = j.active.length - 1; i >= 0; i--) { const o = j.active[i]; if (o.c.line < 0 || (!o.c.mv || o.c.mv.j !== j) && (!o.c.mv0 || o.c.mv0.j !== j)) j.active.splice(i, 1); }
         if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
@@ -751,22 +796,35 @@ window.OEJunctions = (function () {
         j.t += dt;
         // the phase after this one: the main road's (0), its arrow (2) when someone waits to turn
         // across, the cross road's (1); a call from another phase ends this one's green
-        const D = j.seen >= frame - 2 ? j.demand : NONE, arrowCall = j.arrow && D[2];
-        const call = j.scramble ? 1 : j.mid != null ? (j.ph === 0 ? D[1] : 1) : j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1; // (a crossing's walk, once called, always ends)
+        const D = j.seen >= frame - 2 ? j.demand : NONE, W = p => !!D[p] || waitedFor(j, p), arrowCall = j.arrow && W(2);
+        const call = j.scramble ? 1 : j.mid != null ? (j.ph === 0 ? W(1) : 1) : j.ph === 0 ? W(1) || arrowCall : j.ph === 1 ? W(0) || arrowCall : 1; // (a crossing's walk, once called, always ends)
         j.call = !!call;
         const wasWalk = j.walkNow;
-        const held = j.hold != null && j.hold >= frame - 2 && j.ph !== 2 && j.t < j.green[j.ph] + HOLD; // (a vehicle with priority coming: held green for it)
+        // since when each of the traffic's phases (0, 1) has been waited for at its red: since the first
+        // car came up to it (or someone pressed for the walk it gives), or since it turned red with
+        // them still there; not while it shows green or amber
+        const ask = j.ask || (j.ask = [null, null]);
+        for (let p = 0; p < 2; p++) if (!waitedFor(j, p) || (j.ph === p && j.st !== 'r')) ask[p] = null; else if (ask[p] == null) ask[p] = clock;
+        // the green must end by then for the longest waiting to have theirs within RED, through the change
+        let cap = Infinity;
+        if (j.st === 'g' && j.ph < 2 && !j.scramble && !(j.mid != null && j.ph === 1)) { // (a scramble's turns are short and fixed: its walk, not they, is what it is waited through)
+          const q = 1 - j.ph;
+          if (ask[q] != null) cap = Math.max(MIN_G, j.t + ask[q] + RED - j.amber - (j.allred || ALLRED) - clock);
+        }
+        const held = j.hold != null && j.hold >= frame - 2 && j.ph !== 2 && j.t < Math.min(j.green[j.ph], cap) + HOLD; // (a vehicle with priority coming: held green for it)
         // gap-out (as SCATS and vehicle-actuated signals do): someone waits on another phase and no
         // car is coming on this one, so its green ends after GAP_MIN, the walk over first (FLASH)
-        if (j.st === 'g' && j.cut == null && call && !D[j.ph] && j.ph !== 2 && j.ph !== 3 && !(j.mid != null && j.ph === 1) && j.t >= GAP_MIN - FLASH) j.cut = Math.max(j.t, GAP_MIN - FLASH) + FLASH;
-        const end = j.gEnd = j.cut != null ? Math.min(j.green[j.ph], j.cut) : j.green[j.ph];
+        if (j.st === 'g' && j.cut == null && call && !W(j.ph) && j.ph !== 2 && j.ph !== 3 && !(j.mid != null && j.ph === 1) && j.t >= GAP_MIN - FLASH) j.cut = Math.max(j.t, GAP_MIN - FLASH) + FLASH;
+        const end = j.gEnd = Math.min(j.cut != null ? Math.min(j.green[j.ph], j.cut) : j.green[j.ph], cap);
         if (j.st === 'g' && !held) {
-          if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= end && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
+          if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !W(2)) || (W(1) && j.t >= 2) : j.t >= end && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
             j.st = 'y'; j.t = 0; dirty.add(j);
-            j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : j.ph === 1 && j.scramble ? 3 : 0;
+            // (the arrow only while nobody waits on the cross road, and after it the cross road's turn only
+            // if someone waits for it, else back to the main road's: RED holds for both)
+            j.nxt = j.ph === 0 ? (arrowCall && !W(1) ? 2 : 1) : j.ph === 2 ? (W(1) ? 1 : 0) : j.ph === 1 && j.scramble ? 3 : 0;
           }
-        } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
-        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 15) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
+        } else if (j.st === 'y' && j.t >= (j.mid != null && j.ph === 1 ? MID_CLEAR : j.amber)) { j.st = 'r'; j.t = 0; dirty.add(j); } // (a crossing's walk ends in its flashing, not a car's amber)
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 15) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; if (j.skip === j.ph) j.skip = null; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
         j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > end - FLASH);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
@@ -870,7 +928,7 @@ window.OEJunctions = (function () {
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
     net.midsOn = midsOn; // (the rides' router notes the crossings along a route: cars.js)
-    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, walkIn, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads

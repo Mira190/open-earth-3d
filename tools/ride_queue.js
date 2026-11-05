@@ -1,9 +1,9 @@
 // A queue at a red light for a ride to come up behind (#107), shared by tools/game_check.js and
 // tools/ride_shot.js. findQueue runs in the page (pass its source to page.evaluate): it steps the game a
-// second at a time, up to 3 minutes, until a signalled arm's light is red for at least 12 s more with a
+// second at a time, up to 3 minutes, until a signalled arm's light is red for at least 6 s more with a
 // car stopped at its line and the cars behind it queueing (c.q), a straight run of road behind
-// the tail, and a road on from the junction. It returns { h: the head of the queue, rt: a route from
-// 32 m behind the tail through the junction and 35 m on } or null. skip: lines not to use; near:
+// the tail, and a road on from the junction (a red is 10 s at most: junctions.js RED). It returns
+// { h: the head of the queue, rt: a route from 18 m behind the tail through the junction and 35 m on } or null. skip: lines not to use; near:
 // [x, y] to prefer a queue close to (within 250 m), as for a still.
 function findQueue(g, skip = new Set(), near = null) {
   const L = g.roadNet.L, C = g.cars.C;
@@ -13,9 +13,13 @@ function findQueue(g, skip = new Set(), near = null) {
     if (near) heads.sort((a, b) => Math.hypot(a.x - near[0], a.y - near[1]) - Math.hypot(b.x - near[0], b.y - near[1]));
     for (const h of heads) {
       const l = L[h.line], end = h.dir > 0 ? 1 : 0, n = l.pts.length / 3, arm = g.junctions.armAt(h.line, end);
-      if (!arm || !arm.j.sig || arm.j.scramble || g.junctions.toGreen(arm) < 12) continue; // (red long enough for the ride to come up behind it and wait; not a scramble's, whose minute-long walk tools/scramble_step.js covers)
+      if (!arm || !arm.j.sig || arm.j.scramble) continue; // (not a scramble's, whose minute-long walk tools/scramble_step.js covers)
+      // (red long enough for the ride to come up behind it and wait: the other road's green to run, by
+      // the end it has now, and the change; toGreen is the time with a ride's priority, shorter)
+      const j = arm.j, left = j.ph !== arm.phase && j.st === 'g' ? Math.max(0, (j.gEnd ?? j.green[j.ph]) - j.t) + j.amber + (j.allred || 1) : g.junctions.toGreen(arm);
+      if (left < 6) continue;
       const tail = C.filter(c => c.line === h.line && c.dir === h.dir && c.q && (c.s - h.s) * h.dir <= 0).reduce((m, c) => ((c.s - m.s) * h.dir < 0 ? c : m), h);
-      const s0 = tail.s - h.dir * (tail.half + 32);
+      const s0 = tail.s - h.dir * (tail.half + 18);
       if (s0 < 3 || s0 > l.len - 3) continue;
       const nx = l.pts[3 * (end ? n - 1 : 0)], ny = l.pts[3 * (end ? n - 1 : 0) + 1];
       for (let i = 0; i < L.length; i++) {
