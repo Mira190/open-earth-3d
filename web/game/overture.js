@@ -493,6 +493,13 @@ window.OEOverture = (function () {
       // (on top of the hour's own grade, which atmosphere.js applies each frame)
       lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)], skySat: lerp(1, gr.sky_sat ?? 1, w), stars: lerp(1, gr.stars ?? 1, w) };
       if (ctx.Wd && ctx.Wd.su) ctx.Wd.su.cloudTrim = (gr.clouds || 0) * w; // (more cloud, for the sun to light: weather.js)
+      // a night sky with depth: a glow along the horizon under a deep blue (world.js's night sky, while the overture plays)
+      const su = ctx.Wd && ctx.Wd.su;
+      if (su && su.uNightZenith && gr.night_sky) {
+        if (!skyWas) skyWas = [su.uNightZenith.value.clone(), su.uNightHorizon.value.clone()];
+        su.uNightZenith.value.copy(skyWas[0]).lerp(skyCol.setRGB(...gr.night_sky[0]), w);
+        su.uNightHorizon.value.copy(skyWas[1]).lerp(skyCol.setRGB(...gr.night_sky[1]), w);
+      }
       const sp = ctx.sun && ctx.sun(), L = lens.uniforms;
       if (!sp || !L.uSunVis || !window.OELens) return;
       const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
@@ -518,12 +525,14 @@ window.OEOverture = (function () {
       } else fx = null;
       if (L.uFlareTint) L.uFlareTint.value.setRGB(1, 0.62 + 0.25 * clamp(sp.altitude / 20), 0.42 + 0.4 * clamp(sp.altitude / 25));
     }
-    let flareVis = 0, fx = null;
+    let flareVis = 0, fx = null, skyWas = null;
+    const skyCol = new THREE.Color();
     const sunUv = new THREE.Vector2();
     function unlook() {
       fx = null;
       if (ctx.atmos && ctx.atmos.anime) ctx.atmos.anime(null);
       if (ctx.Wd && ctx.Wd.su) ctx.Wd.su.cloudTrim = 0;
+      if (skyWas && ctx.Wd && ctx.Wd.su) { ctx.Wd.su.uNightZenith.value.copy(skyWas[0]); ctx.Wd.su.uNightHorizon.value.copy(skyWas[1]); skyWas = null; }
       const lens = ctx.atmos && ctx.atmos.lens;
       if (!lens) return;
       lens.trim = null;
