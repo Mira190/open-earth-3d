@@ -207,14 +207,28 @@ def main():
 
     # ---------------------------------------------------------- paths
     foot, roads, n_tunnel, n_bridge = [], [], 0, 0
-    for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, access_restrictions, wkb"):
+    # roads mapped as a track or a service road that the game drives all the same, by name
+    # (game.drive_named: {name: speed m/s}): Queenstown's Skyline Road up Bob's Peak
+    named = gcfg.get("drive_named", {})
+    tracks = gcfg.get("drive_tracks", [])
+    seg_cols = "class, subtype, road_flags, level_rules, max_speed_kmh, access_restrictions, wkb"
+    if named and "name" in [d[0] for d in con.execute(f"DESCRIBE SELECT * FROM '{raw('segment')}'").fetchall()]:
+        seg_cols += ", name"
+    for r in rows(con, raw("segment"), seg_cols):
+        if r.get("name") in named and r["class"] not in ROAD:
+            r["class"], r["max_speed_kmh"] = "unclassified", named[r["name"]] * 3.6
+        elif tracks and r["class"] == "track":  # an unnamed track that carries a named one on to the streets, by an end
+            ends = C.to_local(swkb.loads(bytes(r["wkb"]))).boundary
+            for t in tracks:
+                if ends.distance(Point(*t["at"])) < t.get("r", 5):
+                    r["class"], r["max_speed_kmh"] = "unclassified", t.get("speed_ms", 6) * 3.6
         if r["subtype"] != "road" or (r["class"] not in FOOT and r["class"] not in ROAD):
             continue
         g = C.to_local(swkb.loads(bytes(r["wkb"])))
         if not g.intersects(extent):
             continue
         tunnels = flag_ranges(r["road_flags"], "is_tunnel")
-        bridges = flag_ranges(r["road_flags"], "is_bridge")
+        on_br = flag_ranges(r["road_flags"], "is_bridge")
         if any(a <= 0.0 and b >= 1.0 for a, b in tunnels):
             n_tunnel += 1
             continue
@@ -238,7 +252,7 @@ def main():
                 for k in range(n):
                     q = line.interpolate(k / (n - 1), normalized=True)
                     t = a + (b - a) * (line.project(q) / max(line.length, 1e-9))
-                    on_bridge = any(ba <= t <= bb for ba, bb in bridges)
+                    on_bridge = any(ba <= t <= bb for ba, bb in on_br)
                     lv = level_of(r["level_rules"], t)
                     sz = surface_z(q.x, q.y)
                     if r["class"] in FOOT and drape_z(q.x, q.y) is not None:
@@ -263,6 +277,24 @@ def main():
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
                     way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
                     roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
+    for t in tracks:  # a track that meets a street between the street's sampled points
+        tx, ty = t["at"]
+        best = None
+        for r in roads:
+            p = r["p"]
+            for k in range(0, len(p) - 3, 3):
+                ax, ay, bx, by = p[k] / 10, p[k + 1] / 10, p[k + 3] / 10, p[k + 4] / 10
+                L2 = (bx - ax) ** 2 + (by - ay) ** 2 or 1e-9
+                u = max(0.0, min(1.0, ((tx - ax) * (bx - ax) + (ty - ay) * (by - ay)) / L2))
+                d = math.hypot(ax + (bx - ax) * u - tx, ay + (by - ay) * u - ty)
+                if 0 < u < 1 and d < t.get("r", 5) and (best is None or d < best[0]) and abs(p[k] / 10 - tx) + abs(p[k + 1] / 10 - ty) > 0.5:
+                    best = (d, r, k, u)
+        if best:  # split the street there, so the track's end is a junction (the game's road graph joins pieces at their ends)
+            d, r, k, u = best
+            p = r["p"]
+            mid = [round(tx * 10), round(ty * 10), round(p[k + 2] + (p[k + 5] - p[k + 2]) * u)]
+            r["p"] = p[:k + 3] + mid
+            roads.append(dict(r, p=mid + p[k + 3:]))
     roads, n_cut = connected_roads(roads)
     if n_cut:
         print(f"roads: {n_cut} pieces cut off from the street network dropped (no car can reach them)")
@@ -278,7 +310,8 @@ def main():
     clear = ndimage.distance_transform_edt(nav) * DEM_CELL
     wharves = {}
     for w in gcfg.get("wharves", []):
-        hits = [p for n, p in terminals if n.startswith(w["terminal"])]
+        # a landing OpenStreetMap maps without a name (Kelvin Heights' jetty): its point in the local frame
+        hits = [Point(*w["at"])] if "at" in w else [p for n, p in terminals if n.startswith(w["terminal"])]
         if not hits:
             print("wharf not found:", w["terminal"])
             continue
@@ -525,7 +558,15 @@ def main():
         return routes
 
     rail = {}
+    # a line the city builds itself (a gondola's cable, which OpenStreetMap maps as an aerialway, not
+    # rail): city.py game_rail(scene) -> {kind: {lines: [...], ...}}, merged over game.rail's settings
+    own = C.hook("game_rail")(scene) if C.hook("game_rail") else {}
+    for kind, r in own.items():
+        rail[kind] = dict(gcfg.get("rail", {}).get(kind, {}), **r)
+        print(f"rail {kind}: from the city's hook, {sum(l['length_m'] for l in r['lines']):.0f} m")
     for kind, rc in gcfg.get("rail", {}).items():
+        if kind in own:
+            continue
         segs = []
         for r in rows(con, raw("segment"), "class, subtype, road_flags, wkb"):
             if r["subtype"] != "rail" or r["class"] != rc.get("class", kind):

@@ -45,7 +45,7 @@ from scipy import ndimage
 from cityctx import ROOT, City
 
 os.environ.setdefault("GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR")
-os.environ.setdefault("CPL_VSIL_CURL_ALLOWED_EXTENSIONS", ".tif")
+os.environ.setdefault("CPL_VSIL_CURL_ALLOWED_EXTENSIONS", ".tif,.tiff")
 if os.path.exists("/root/.ccr/ca-bundle.crt"):  # a proxied environment's CA bundle, for GDAL's curl
     os.environ.setdefault("CURL_CA_BUNDLE", "/root/.ccr/ca-bundle.crt")
 
@@ -235,15 +235,68 @@ def lights(box, built):
     return np.clip(dst * (0.2 + 0.8 * np.clip(b, 0, 1)), 0, 1), {"black_marble_px": [W, H]}
 
 
+def stac_relief(box, rc):
+    """A bare-earth relief from a STAC collection of COGs (city.json far.relief: {collection, crs}),
+    LINZ's national 8 m DEM for New Zealand, warped into the box's NH x NH grid; NaN where it has none."""
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from fetch_tiles import stac_mosaic
+    px = rc.get("pixel_m", round(2 * box.half / NH / 2))
+    a, ok, (x0, y0, x1, y1) = stac_mosaic(rc["collection"], [box.w, box.s, box.e, box.n], rc["crs"], px, pad_m=0)
+    src = np.where(ok, a[0], np.nan).astype(np.float32)
+    tr, shape = box.grid(NH)
+    dst = np.full(shape, np.nan, np.float32)
+    reproject(src, dst, src_transform=from_origin(x0, y1, px, px), src_crs=rc["crs"], dst_transform=tr, dst_crs=box.C.proj,
+              resampling=Resampling.average, src_nodata=np.nan, dst_nodata=np.nan)
+    return dst
+
+
+def satellite_colour(box, cc, col):
+    """The land's colour from a STAC collection of RGB COGs (city.json far.colour: {collection, crs,
+    name}), LINZ's 10 m satellite mosaic for New Zealand, warped onto the colour grid over the
+    land-cover colours where it covers the box. Returns (colour, share covered)."""
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from fetch_tiles import stac_mosaic
+    px = cc.get("pixel_m", 2 * box.half / NC)
+    a, ok, (x0, y0, x1, y1) = stac_mosaic(cc["collection"], [box.w, box.s, box.e, box.n], cc["crs"], px, bands=3, pad_m=0)
+    tr, shape = box.grid(NC)
+    out = col.copy()
+    have = np.zeros(shape, bool)
+    for k in range(3):
+        src = np.where(ok, a[k], np.nan).astype(np.float32)
+        dst = np.full(shape, np.nan, np.float32)
+        reproject(src, dst, src_transform=from_origin(x0, y1, px, px), src_crs=cc["crs"], dst_transform=tr, dst_crs=box.C.proj,
+                  resampling=Resampling.average, src_nodata=np.nan, dst_nodata=np.nan)
+        m = np.isfinite(dst)
+        out[..., k][m] = dst[m] * cc.get("gain", 1.0)
+        have |= m
+    return out, float(have.mean())
+
+
 def run(cid):
     global NH, NC
     t = time.time()
     C = City(cid)
     kind = C.cfg.get("kind") if C.cfg.get("kind") in ("marine", "alpine") else "city"
-    NH, NC = GRIDS.get(kind, (512, 1024))
-    box = Box(C, HALF_M[kind])
+    fc = C.cfg.get("far", {})  # a city's own resolution and relief, where the mountains round it are its backdrop
+    nh0, nc0 = GRIDS.get(kind, (512, 1024))
+    NH, NC = fc.get("nh", nh0), max(fc.get("nh", nh0), fc.get("nc", nc0))
+    box = Box(C, fc.get("half_m", HALF_M[kind]))
     fr = landcover(box)
     dem = warp(box, DEM_URL, 1, NH, Resampling.average, 0, 0.0)
+    # an inland city's 0 m (Queenstown: its lake), only where city.json sets it; an alpine site keeps heights above
+    # the sea, and web/reef/farland.js lowers the mesh by its terrain.datum_m instead
+    off = C.cfg.get("datum_offset_m", 0.0) if kind != "alpine" else 0.0
+    if fc.get("relief"):
+        bare = stac_relief(box, fc["relief"])
+        m = np.isfinite(bare)
+        # the national DEM is bare earth already: put the canopy and buildings back, for the step below to take out
+        tree0 = ndimage.zoom(fr[CLASSES.index(10)], NH / NC, order=1)
+        built0 = ndimage.zoom(fr[CLASSES.index(50)], NH / NC, order=1)
+        dem = np.where(m, bare + CANOPY_M * tree0 + BUILT_M * built0, dem)
+        print(f"relief: {m.mean() * 100:.0f}% from {fc['relief']['collection'].rsplit('/', 4)[-4]}")
+    dem = dem - off
     small = lambda a: a.reshape(NH, NC // NH, NH, NC // NH).mean(axis=(1, 3))
     tree, built, water = small(fr[CLASSES.index(10)] + fr[CLASSES.index(95)]), small(fr[CLASSES.index(50)]), small(fr[CLASSES.index(80)])
     h = dem - CANOPY_M * tree - BUILT_M * built
@@ -259,17 +312,20 @@ def run(cid):
     pal, nsamp = palette(C, box, fr)
     P = np.stack([pal[c] for c in CLASSES])  # (classes, 3)
     col = np.einsum("khw,kc->hwc", fr, P)
+    if fc.get("colour"):  # a measured colour: a satellite mosaic, where it covers the box
+        col, share = satellite_colour(box, fc["colour"], col)
+        print(f"colour: {share * 100:.0f}% from {fc['colour']['name']}")
     Image.fromarray(np.clip(np.round(col), 0, 255).astype(np.uint8), "RGB").save(os.path.join(C.out, "far.jpg"), quality=86, optimize=True)
     meta = {
-        "half_m": box.half, "cx": box.cx, "cy": box.cy, "nh": NH, "nc": NC,
+        "half_m": box.half, "cx": box.cx, "cy": box.cy, "nh": NH, "nc": NC, **({"mesh": fc["mesh"]} if fc.get("mesh") else {}), **({"clarity": fc["clarity"]} if fc.get("clarity") else {}),
         "height": "(r * 256 + g) / 4 - 100 m, north up; under the sea at -6", "lights": "b = sqrt(lights 0..1)",
         "palette": {NAMES[c]: "#%02x%02x%02x" % tuple(int(v) for v in pal[c]) for c in CLASSES},
         "palette_samples": nsamp,
         "land_share": round(float(1 - fr[CLASSES.index(80)].mean()), 3),
         "relief_m": [round(float(h[~sea].min()), 1) if (~sea).any() else 0, round(float(h.max()), 1)],
         "sources": {
-            "relief": "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
-            "land_cover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)",
+            "relief": (fc["relief"]["name"] + "; Copernicus DEM GLO-30 past it; ") * bool(fc.get("relief")) + "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
+            "land_cover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)" + (f"; colour from {fc['colour']['name']}" if fc.get("colour") else ""),
             "lights": "NASA Black Marble 2016, VIIRS day/night band (public domain), via NASA GIBS",
         },
         "black_marble": bm,
