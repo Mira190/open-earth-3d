@@ -9,6 +9,7 @@ export const CHUNK = 64;
 
 export async function loadScene(base, onBytes = () => {}) {
   const scene = await (await fetch(base + 'scene.json')).json();
+  if (scene.kind === 'alpine') return (await import('./alpine/data.js')).loadAlpine(base, scene, onBytes);   // a lake and its mountains
   const t = scene.terrain;
   // the terrain is most of the download: counted as it streams in (2 bytes a cell), for the loader
   const want = t.w * t.h * 2;
