@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 SECS=${1:-150} PLACES=${2:-3} OUT=${OUT:-/tmp/oe-traffic} JOBS=${JOBS:-2}
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
 mkdir -p "$OUT"
-cities=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)
+cities=$(tools/live_cities.sh)
 run() { xvfb-run -a node tools/traffic_check.js "$1" "$SECS" "$PLACES" > "$OUT/$1.log" 2>&1; }
 n=0
 for c in $cities; do run "$c" & n=$((n + 1)); if [ $n -ge "$JOBS" ]; then wait -n; n=$((n - 1)); fi; done

@@ -37,7 +37,9 @@ export function makeWaves(windDeg = 120, sheltered = 0.5) {
   return waves;
 }
 
-export function createEnv(scene, optics, waves, ripples, chop) {
+// opts (an alpine site, alpine/): sky(dir, u) and skyRefl(dir, u) replace the sky; air(col, C, P, u) the air's
+// veil; wet(P) says whether a point is in the main lake (elsewhere a point below the water level is dry land)
+export function createEnv(scene, optics, waves, ripples, chop, opts = {}) {
   const u = {
     time: uniform(0),
     sunDir: uniform(new THREE.Vector3(0.3, 0.8, 0.5).normalize()),
@@ -92,7 +94,7 @@ export function createEnv(scene, optics, waves, ripples, chop) {
     return c;
   });
   // the dome; and the sky as the sea reflects it, whose sun is the glitter in ocean.js
-  const sky = skyFn(true), skyRefl = skyFn(false);
+  const sky = opts.sky ? Fn(([dir]) => opts.sky(dir, u)) : skyFn(true), skyRefl = opts.skyRefl ? Fn(([dir]) => opts.skyRefl(dir, u)) : skyFn(false);
 
   // ---- caustics: the sun's light focused by the wave field. A ray that crosses the surface where the
   // water's curvature is positive is bent toward its neighbours; the density of rays on the floor is
@@ -138,7 +140,8 @@ export function createEnv(scene, optics, waves, ripples, chop) {
   const medium = Fn(([col, P]) => {
     const C = cameraPosition;
     const d = P.sub(C), L = length(d).max(1e-3);
-    const fc = u.tide.sub(C.y), fp = u.tide.sub(P.y);
+    let fc = u.tide.sub(C.y), fp = u.tide.sub(P.y);
+    if (opts.wet) { fc = select(opts.wet(C).greaterThan(0.5), fc, fc.min(-0.01)); fp = select(opts.wet(P).greaterThan(0.5), fp, fp.min(-0.01)); }
     const both = fc.greaterThan(0).and(fp.greaterThan(0));
     const none = fc.lessThanEqual(0).and(fp.lessThanEqual(0));
     const frac = select(both, float(1), select(none, float(0), max(fc, fp).div(abs(fc.sub(fp)).max(1e-4))));
@@ -157,6 +160,11 @@ export function createEnv(scene, optics, waves, ripples, chop) {
     const boost = select(dC.greaterThan(0), radiance(d.y.div(L)), float(1));
     let out = col.mul(lightAtt).mul(T).mul(mix(float(1), caustic(P), select(dP.greaterThan(0), float(1), float(0)))).add(veil.mul(boost).mul(select(frac.greaterThan(0), float(1), float(0)))).toVar();
     // air: aerial perspective toward the sky colour
+    if (opts.air) {
+      const Pa = C.add(d.mul(float(1).sub(frac)));
+      out.assign(select(frac.lessThan(1), opts.air(out, C, Pa, u), out));
+      return out;
+    }
     const a = float(1).sub(exp(La.mul(u.haze).negate()));
     out.assign(mix(out, sky(normalize(d).mul(vec3(1, 0.4, 1)).normalize()).mul(0.9), a.mul(select(frac.lessThan(1), float(1), float(0)))));
     return out;

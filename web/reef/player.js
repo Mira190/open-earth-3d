@@ -44,7 +44,7 @@ export async function init(ctx) {
   // the same sum of swell and chop as ocean.js (ripples only bend normals), for bobbing and bubbles
   function surfaceAt(x, z) {
     const u = env.u, tide = u.tide.value, wind = u.wind.value, t = u.time.value;
-    const depth = tide - ctx.height(x, -z);
+    const depth = ctx.depth(x, -z);   // the water over the bed (dry where the water cannot reach)
     const shoal = 1 + 0.7 * sm(6, 0.6, depth), gate = sm(0, 0.7, depth);
     let y = 0;
     for (const w of env.waves) if (w.disp) y += w.a * shoal * gate * wind * Math.sin(x * w.dx * w.k + z * w.dz * w.k - t * w.w + w.ph);
@@ -328,7 +328,7 @@ export async function init(ctx) {
       S.vy -= 9.8 * dt; S.pos.y += S.vy * dt;
       // falling (or jumping) into water deep enough to swim in
       const sea = surfaceAt(S.pos.x, S.pos.z);
-      if (S.pos.y <= sea && env.u.tide.value - ctx.height(S.pos.x, -S.pos.z) >= SWIM_ENTER && !onDeck) {
+      if (S.pos.y <= sea && ctx.depth(S.pos.x, -S.pos.z) >= SWIM_ENTER && !onDeck) {
         const v = S.vy; enterWater(); S.pos.y = sea - BODY_FLOAT - Math.min(1.2, -v * 0.25); splashAtFeet(24, 3.2 + Math.min(3, -v * 0.4)); return;
       }
       if (S.pos.y <= h) { S.pos.y = h; S.grounded = true; S.vy = 0; audio.step(dep > WADE_FROM ? 'water' : 'sand', 1.3); if (dep > WADE_FROM) splashAtFeet(6, 2); }

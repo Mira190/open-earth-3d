@@ -1,5 +1,8 @@
 {
   "note": "Cities on the globe. status: live (built and in web/data/<id>) or planned. Planned entries list the open data to check first; none of them has been verified for this project yet.",
+  "parked_note": "Parked: built cities taken off the globe and out of the checks for now, to keep each round of checks short while work focuses on the others. Their data stays in cities/<id> and web/data/<id>. To bring one back, take its id off this list, rebuild the globe's list (python pipeline/pack.py) and run tools/check.sh <id>.",
+  "parked": ["amsterdam", "paris", "hong-kong", "osaka", "melbourne", "melbourne-bayside",
+    "akihabara", "asakusa", "ueno", "ikebukuro", "jinbocho", "roppongi", "shinagawa", "tsukishima", "odaiba"],
   "cities": [
     {
       "id": "sydney",
@@ -288,6 +291,21 @@
       "group": "Great Barrier Reef",
       "tagline": "The southernmost coral cay of the reef",
       "summary": "Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef: its platform reef in open water, the airstrip and old lighthouse, from survey bathymetry and Sentinel-2. Start on the western beach."
+    },
+    {
+      "id": "lake-pukaki",
+      "name": "Lake Pukaki",
+      "native": "Pūkaki",
+      "country": "New Zealand",
+      "lat": -44.08,
+      "lon": 170.17,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Mackenzie",
+      "district": "Mackenzie District, Canterbury",
+      "tagline": "Aoraki / Mount Cook over the glacial-blue lake",
+      "timezone": "Pacific/Auckland",
+      "summary": "Lake Pukaki and Aoraki / Mount Cook, 38 by 84 km of the Mackenzie: LINZ's 1 m LiDAR terrain and aerial photos, the lake's glacial-flour blue measured from Sentinel-2, tussock and lupins, a sky from physical scattering and the dark-sky reserve's stars. Walk from Peter's Lookout, fly round Aoraki, walk the Hooker Valley."
     },
     {
       "id": "new-york",
