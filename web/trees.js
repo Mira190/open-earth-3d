@@ -247,6 +247,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       return out;
     }));
     const WOOD_M = keep < 1 ? 600 : 900, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
+    let sortedAt = -1e9;
     // re-sort the trees into near, mid and far when the camera has moved far enough
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
@@ -267,7 +268,13 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
           im.instanceColor.array.set(tint.subarray(3 * i, 3 * i + 3), 3 * j);
         }
       }
-      for (const per of meshes) for (const parts of per) for (const im of parts) { im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; }
+      // only the instances drawn go up to the GPU, not each mesh's whole buffer (all of them, 8 MB in a city with
+      // many trees, went up at every re-sort, and a fast move such as the opening shot re-sorts on most frames)
+      for (const per of meshes) for (const parts of per) for (const im of parts) for (const a of [im.instanceMatrix, im.instanceColor]) {
+        if (!im.count) continue; // (nothing drawn: what the buffer holds doesn't matter; an empty range would send it all)
+        if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, im.count * a.itemSize); }
+        a.needsUpdate = true;
+      }
     }
     return {
       n, species: names, count,
@@ -285,11 +292,14 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         }
         return out;
       },
-      // per frame: the wind, and the level of detail when the camera has moved 12 m
+      // per frame: the wind, and the level of detail when the camera has moved 12 m, at most five times a
+      // second while it keeps moving (a sort walks every tree: a fast move made it most frames' work), at once
+      // after a jump of 120 m
       update(camera, tSec) {
         U.uWind.value = tSec % 10000;
         camera.getWorldPosition(cam);
-        if (cam.distanceToSquared(last) > 144) { last.copy(cam); sort(cam); }
+        const d2 = cam.distanceToSquared(last);
+        if (d2 > 144 && (d2 > 14400 || !(tSec - sortedAt < 0.2))) { last.copy(cam); sortedAt = tSec; sort(cam); }
       },
       // stand each tree on the ground at its foot: ground(x, y, z) for the height the data gives
       // (the game's finer terrain, which the survey grid's heights can be above or below), or null

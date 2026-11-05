@@ -38,6 +38,7 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
     const cam = new THREE.PerspectiveCamera();
     const bias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), look = new THREE.Vector3(), dir = new THREE.Vector3(), up = new THREE.Vector3();
+    let warmed = false;
     const patched = new WeakSet();
     const puddle = PUDDLE; // (the weather's own oePuddle where its patch is in the shader: game/weather.js)
 
@@ -115,6 +116,25 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         renderer.clippingPlanes = prevClip; renderer.localClippingEnabled = prevLocal;
         renderer.shadowMap.autoUpdate = prevShadow;
         U.uMirror.value = rt.texture; U.uMirrorOn.value = 1;
+      },
+      // the mirror's own variant of the scene's shaders (three.js builds the clipping plane at the ground into
+      // each one), compiled a few objects at a time while the page is idle (OEWorld.compile), ahead of the first
+      // wet street (game.js asks when the sky clouds over): compiled in that street's first frame, a whole
+      // city's worth froze the game as the rain began
+      warm(scene) {
+        if (!rt || !window.OEWorld || !OEWorld.compile || warmed) return;
+        warmed = true;
+        const todo = scene.children.slice(), idle = window.requestIdleCallback ? f => requestIdleCallback(f, { timeout: 400 }) : f => setTimeout(f, 30);
+        const step = deadline => {
+          const prev = renderer.clippingPlanes, t0 = performance.now();
+          renderer.clippingPlanes = [plane];
+          try {
+            do { const o = todo.pop(); if (o && o.parent === scene) OEWorld.compile(renderer, o, camera, { scene, target: rt }); }
+            while (todo.length && performance.now() - t0 < Math.min(6, Math.max(2, deadline && deadline.timeRemaining ? deadline.timeRemaining() : 6)));
+          } finally { renderer.clippingPlanes = prev; }
+          if (todo.length) idle(step);
+        };
+        idle(step);
       },
       setSize(w, h) { if (rt) { rt.setSize(Math.max(2, w >> 1), Math.max(2, h >> 1)); U.uMirrorPx.value.set(1 / Math.max(2, w >> 1), 1 / Math.max(2, h >> 1)); } },
       dispose() { if (rt) rt.dispose(); blank.dispose(); },
