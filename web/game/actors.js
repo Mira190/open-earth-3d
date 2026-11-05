@@ -781,6 +781,21 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return deep;
     }
+    // how far the nearest other walker is from (x, y), up to 1 m (the neighbour hash as this step began)
+    function nearest1(self, x, y) {
+      let best = 1;
+      const c0 = Math.floor(x / CELL), r0 = Math.floor(y / CELL);
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+        for (let k = head[bucket(c0 + a, r0 + b)]; k >= 0; k = chain[k]) {
+          if (k === self) continue;
+          const o = P[k], ex = o.x - x, ey = o.y - y;
+          if (o.line < 0 || Math.abs(ex) > best || Math.abs(ey) > best) continue;
+          const e = Math.hypot(ex, ey);
+          if (e < best) best = e;
+        }
+      }
+      return best;
+    }
     function plazaStep(i, q, dt, player) {
       const pz = q.pz, g = q.g;
       let sp = 0;
@@ -865,7 +880,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         if (ul > 1e-6) { q.x += ux / ul * 1.2 * dt; q.y += uy / ul * 1.2 * dt; q.vx = ux / ul * 1.2; q.vy = uy / ul * 1.2; q.ejected = true; }
       } else if (carDepth(nx, ny, M) > was + 1e-4) { q.vx *= 0.3; q.vy *= 0.3; }
-      else { q.x = nx; q.y = ny; }
+      else {
+        // and never a step inside anyone: shoulder to shoulder at the kerb (0.45 m apart, centre to
+        // centre), shoulders brushing out on the crossing or squeezing through (0.32 m); a step that
+        // would come closer slides along them on one axis, or waits
+        const hard = q.squeeze > 0 || q.ph === 'cross' ? 0.32 : 0.45, n0 = Math.min(hard, nearest1(i, q.x, q.y));
+        if (nearest1(i, nx, ny) >= n0 - 1e-4) { q.x = nx; q.y = ny; }
+        else if (nearest1(i, nx, q.y) >= n0 - 1e-4) { q.x = nx; q.vy *= 0.3; }
+        else if (nearest1(i, q.x, ny) >= n0 - 1e-4) { q.y = ny; q.vx *= 0.3; }
+        else { q.vx *= 0.3; q.vy *= 0.3; }
+      }
       q.v = Math.hypot(q.vx, q.vy);
       ZAT.z = q.z;
       const z = ground ? ground(q.x, q.y, ZAT) : null;
