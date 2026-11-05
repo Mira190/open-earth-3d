@@ -146,6 +146,25 @@ site is north of Bustard Heads, the survey, and the map.
 People are placed above the highest water that the site's tide model gives for the next fortnight. Where there is no
 land, they stand on the pontoon deck.
 
+## Lake Pukaki (an alpine site)
+
+`game/lake-pukaki.js`. The people are real: a site casts a Microsoft Rocketbox avatar with `look: { character: 'R_…', clip }`
+(people.json `npcs`), which `people.js` builds with its sex's clips in place of the role's Quaternius character.
+There is no reef here, so the site has no fish survey, dive slate or yachts; the gametest skips
+those on an alpine site and checks the glacial flour's light instead. People stand on dry land at any height (`G.landSpot`
+on an alpine site).
+- **Hana**, a DOC ranger at Peter's Lookout, covers the lake (colour, size, levels, hydro storage, the drowned island
+  on the five-pound note) and Aoraki (height, summits, distance over the model). She covers the lupins in their months.
+- **Tom**, a stargazing guide on the south shore, covers the dark-sky reserve, tonight's sunset and moonrise, and how
+  high the Milky Way's centre stands, computed from the sky the viewer draws. He can wait for dark with you.
+- **Mia**, a pilot at Glentanner, covers the Tasman Glacier and offers a flight round Aoraki.
+- **Eli**, a walker at White Horse Hill, covers the Hooker Valley Track.
+- **Signs** at Peter's Lookout (the peaks in sight over the terrain, with their heights) and at the Alpine Memorial.
+- **Quests:** the view up the lake, lupins on the shore, Aoraki from the air, the Hooker Valley, a dark night.
+
+The sources and what each line says are in `game/lake-pukaki.js` `SOURCES` and in
+[docs/cities/lake-pukaki.md](cities/lake-pukaki.md).
+
 ## Where every fact comes from
 
 Cited pages were fetched and read on 2026-10-28; a line says only what its page says.

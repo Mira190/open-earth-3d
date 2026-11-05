@@ -44,7 +44,7 @@ STAMP="$(git rev-parse --git-dir)/oe-check-pass"   # the commit of the last full
 stamp() { [ $# -eq 0 ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
 CITIES=$(tools/live_cities.sh)
 PARKED=$(tools/live_cities.sh --parked)
-REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || echo "$d"; done)
+REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
 cities=() reefs=() title=0 loader=0 voice=0
@@ -121,16 +121,17 @@ RETRY="$OUT/retry.txt"
 : >"$RETRY"
 game_step() {
   local c=$1 pass=$2
-  # (25 minutes: the game check has grown past 120 steps, and a busy map such as Shibuya's takes a
-  # little over 15 on a software renderer even alone)
-  if timeout 1500 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then
+  # (30 minutes: a city's game check takes 10 to 15 on a software renderer alone, and more beside
+  # others; a run cut off at 15 failed for its clock, not for anything it found)
+  timeout 1800 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; local rc=$?
+  if [ $rc -eq 0 ]; then
     echo "ok   game   $c$([ "$pass" = alone ] && echo "   (alone, after failing under load: see $OUT/$c-load.log)")"
   elif [ "$pass" = load ]; then cp "$OUT/$c.log" "$OUT/$c-load.log"; echo "game $c" >>"$RETRY"
-  else echo "FAIL game   $c   (see $OUT/$c.log; under load $OUT/$c-load.log)"; fi
+  else echo "FAIL game   $c   ($([ $rc -eq 124 ] && echo 'timed out after 1800 s; ')see $OUT/$c.log; under load $OUT/$c-load.log)"; fi
 }
 clip_step() {
   local c=$1 pass=$2
-  if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
+  if timeout 1800 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
     echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance$([ "$pass" = alone ] && echo "; alone, after failing under load: see $OUT/$c-clip-load.log"))"
   elif [ "$pass" = load ]; then cp "$OUT/$c-clip.log" "$OUT/$c-clip-load.log"; echo "clip $c" >>"$RETRY"
   else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
