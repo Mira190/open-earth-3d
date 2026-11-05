@@ -90,15 +90,25 @@
         "note": "About a thousand maples and fifteen hundred cherries round the Stage and down the Nishikigumo valley."
       },
       {
+        "name": "Gion weeping cherry",
+        "at": [-101.3, 748.8],
+        "radius": 22,
+        "mix": {
+          "shidarezakura": 1
+        },
+        "note": "Maruyama Park's Gion shidarezakura (the second, grown from the first's seed), about 12 m tall. OSM maps no tree on its spot: the park's mapped trees nearest it stand for it."
+      },
+      {
         "name": "Maruyama Park",
         "find": "円山公園",
         "mix": {
-          "cherry": 0.6,
+          "cherry": 0.48,
+          "shidarezakura": 0.12,
           "maple": 0.15,
           "pine": 0.1,
           "zelkova": 0.15
         },
-        "note": "Kyoto's oldest public park, famous for its cherries round the Gion weeping cherry."
+        "note": "Kyoto's oldest public park, famous for its cherries round the Gion weeping cherry: about 680, Somei-yoshino and weeping cherries (the park's guide)."
       },
       {
         "name": "Kodai-ji",
@@ -107,8 +117,10 @@
           "maple": 0.45,
           "pine": 0.15,
           "evergreen": 0.2,
-          "cherry": 0.2
-        }
+          "cherry": 0.12,
+          "shidarezakura": 0.08
+        },
+        "note": "Kodai-ji's weeping cherry before the Hojo's rock garden, and its maples."
       }
     ],
     "cherry_open": "03-26"

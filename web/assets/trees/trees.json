@@ -24,10 +24,19 @@
    "pisonia": 14,
    "casuarina": 15,
    "cherry": 16,
-   "sakura": 17
+   "sakura": 17,
+   "shidare": 18,
+   "kawazu": 19,
+   "yae": 20
   },
   "columns": 4,
-  "rows": 5
+  "rows": 6,
+  "sakura_cells": [
+   17,
+   18,
+   19,
+   20
+  ]
  },
  "mix": {
   "plane": 0.3,
@@ -283,10 +292,13 @@
    ],
    "cell": 17,
    "trunk_r": 0.34,
-   "note": "Somei-yoshino cherry (Cerasus x yedoensis): a short dark trunk that forks low into a few limbs spreading wide, a crown wider than it is tall; pale pink on bare branches for about a fortnight from late March in Tokyo (web/trees.js), then fresh leaves, orange-red in November. Its cards are all bloom cards, shown as the leaf cell beside them out of flower",
+   "note": "Somei-yoshino cherry (Cerasus x yedoensis): a short dark trunk that forks low into a few limbs spreading wide, a crown wider than it is tall; pale pink on bare branches for about a fortnight from late March in Tokyo (web/trees.js), then fresh leaves, orange-red in November. Its cards are all bloom cards, shown as the leaf cell out of flower",
    "bloom_colour": "#f3dadc",
    "autumn_colour": "#b2532f",
-   "deciduous": true
+   "deciduous": true,
+   "bloom_offset_d": 0,
+   "bloom_len": 1.0,
+   "bark_bands": true
   },
   "evergreen": {
    "height_m": 14.0,
@@ -341,6 +353,79 @@
    "cell": 15,
    "trunk_r": 0.28,
    "note": "Coastal she-oak (Casuarina equisetifolia): an open, tapering crown of drooping grey-green branchlets, behind the beaches"
+  },
+  "shidarezakura": {
+   "height_m": 10.5,
+   "crown": [
+    6.2,
+    6.6,
+    4.6
+   ],
+   "colour": "#5d8a3a",
+   "bark": "#3d3230",
+   "triangles": [
+    3482,
+    544,
+    367
+   ],
+   "cell": 18,
+   "trunk_r": 0.46,
+   "note": "Weeping cherry (shidarezakura, Cerasus spachiana 'Pendula', an Edohigan): a stout trunk, scaffold limbs arching up into a dome and curtains of thin branches hanging nearly to the ground, pink a few days before the Somei-yoshino: Maruyama Park's Gion weeping cherry, the temple gardens, Rikugien",
+   "bloom_colour": "#efbdca",
+   "autumn_colour": "#b2532f",
+   "deciduous": true,
+   "bloom_offset_d": -4,
+   "bloom_len": 1.0,
+   "bark_bands": true
+  },
+  "kawazu": {
+   "height_m": 7.0,
+   "crown": [
+    4.6,
+    4.0,
+    2.8
+   ],
+   "colour": "#5f8c3a",
+   "bark": "#41332f",
+   "triangles": [
+    1874,
+    412,
+    103
+   ],
+   "cell": 19,
+   "trunk_r": 0.26,
+   "note": "Kawazu-zakura (Cerasus 'Kawazu-zakura', from Kawazu in Izu): a small upright tree whose deep pink flowers open in February, five weeks before the Somei-yoshino's, and last a month",
+   "bloom_colour": "#ef9fb9",
+   "autumn_colour": "#b2532f",
+   "deciduous": true,
+   "bloom_offset_d": -37,
+   "bloom_len": 1.7,
+   "bark_bands": true
+  },
+  "yaezakura": {
+   "height_m": 8.0,
+   "crown": [
+    2.2,
+    8.2,
+    1.0,
+    4.6
+   ],
+   "colour": "#5a8638",
+   "bark": "#3f3330",
+   "triangles": [
+    1954,
+    430,
+    103
+   ],
+   "cell": 20,
+   "trunk_r": 0.32,
+   "note": "Yaezakura (Cerasus serrulata 'Kanzan', the commonest double cherry): upswept limbs in a vase, heavy deep pink double flowers in mid April, about two weeks after the Somei-yoshino, with bronze new leaves",
+   "bloom_colour": "#eba3bc",
+   "autumn_colour": "#b2532f",
+   "deciduous": true,
+   "bloom_offset_d": 16,
+   "bloom_len": 1.15,
+   "bark_bands": true
   }
  }
 }

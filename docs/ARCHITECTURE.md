@@ -814,16 +814,71 @@ few deeper-pink buds. Every one of the cherry's cards is a bloom card
   Gyoen and Nijo-jo, the Osaka Mint's passage, the Okawa's east bank
   (Kema Sakuranomiya Park, about 4,800), Osaka Castle Park and Utsubo Park.
   Kyoto's Philosopher's Path and Maruyama Park are east of the Kyoto map.
-- **Not yet:** the other kinds (the weeping shidare-zakura of the Gyoen and
-  Maruyama, the late double yaezakura) are all Somei-yoshino here; the bark's
-  horizontal bands of lenticels are not drawn (bark is one colour); the petals do
-  not drift down.
+- **Not yet:** the petals do not drift down. (The other kinds and the bark's
+  bands came with issue #163, below.)
 - **Sources:** JMA's sakura phenology normals (public data); the parks' and wards'
   own guides for the tree counts; OpenStreetMap (ODbL) for the outlines. No code
   or art was taken from elsewhere.
 
 ![The cherry through the year: bare, in flower, hazakura, green, autumn](images/trees/cherry_year.jpg)
 ![The Meguro River at Nakameguro on 1 April and in June; Hachiko Square's planters on 1 April and in January](images/trees/cherry_places.jpg)
+
+### The other cherries and the bark (issue #163)
+
+Three more cherries join the Somei-yoshino in `blender/build_trees.py`, each with
+its own bloom cell in the atlas (a sixth row: `sakura`, `shidare`, `kawazu`,
+`yae`, listed in `trees.json` `atlas.sakura_cells`) and its own bloom date, an
+offset in days from the Somei-yoshino's opening (`bloom_offset_d`) over a bloom
+`bloom_len` times as long. `web/trees.js` keeps one bloom value per variety
+(`uSakuraV`, and its leaves' `uCherryBareV`); out of flower every cherry's card
+shows the cherry's leaf cell.
+
+| Species | Form | Flower | Offset, length |
+|---|---|---|---|
+| `cherry` (Somei-yoshino) | low fork, crown wider than tall | white blushed pink | 0, 1 |
+| `shidarezakura` (Edohigan 'Pendula') | scaffold limbs arching into a dome, curtains of thin branches to 1-3 m off the ground | smaller, a clearer pink | -4 d, 1 |
+| `kawazu` (Kawazu-zakura) | small, upright | big, deep vivid pink | -37 d (mid February in Tokyo), 1.7 (a month) |
+| `yaezakura` (Kanzan) | upswept vase | heavy double pompoms, deep pink, with bronze new leaves | +16 d (mid April), 1.15 |
+
+- **The weeping crown** (`grow_weeping`): the trunk forks at 3 m into eight
+  limbs that arch up to 9-10 m; from the outer half of each, eleven branches rise
+  a little, turn over and hang (a cubic curve whose end tangent points down, as
+  Weber and Penn's *curvature* and *down angle* parameters make a weeping
+  tree, the model Blender's Sapling add-on implements). Cards hang along each
+  branch from where it turns over, each growing down it and turned its own way
+  round it, so the crown reads as a curtain rather than strips. 3,482 / 544 / 367
+  triangles at the three distances: the most of any species, and planted only
+  where a place is known for it.
+- **The bark:** every cherry's bark carries `bark_bands`; `web/trees.js` draws the
+  horizontal lenticels in the bark shader, in the tree's own frame: broken rows of
+  short pale dashes about 14 cm apart, each row its own height, width and dash
+  length, faded out where a row would be finer than a pixel, and the bark a little
+  glossier (roughness 0.7) than other species'.
+- **Where (`trees.areas`):** a city picks a variety per area by naming it in the
+  area's `mix`, as any species. Maruyama Park: weeping cherries among the
+  Somei-yoshino, and a circle on the Gion weeping cherry's spot that turns the
+  park's nearest mapped trees (OSM maps none on it) into one; Kodai-ji's weeping
+  cherry; Gion Shirakawa's; the Kyoto Gyoen's (the Konoe-tei's itozakura) and
+  Nijo-jo's weeping and double cherries; Shinjuku Gyoen's double cherries,
+  weeping cherries and a few kawazu-zakura; the Kokyo East Gardens' grove.
+  Shibuya's Meguro River stays Somei-yoshino (on hold for the opening film).
+
+![The four cherries through the year as the game draws them: kawazu-zakura in February, Somei-yoshino and the weeping cherry on 1 April, yaezakura on 18 April, June, January](images/trees/cherry_varieties.jpg)
+
+**What we looked at.** How browser engines and open-source projects draw trees:
+three.js's `InstancedMesh` foliage with alpha-tested leaf cards (what the shared
+trees already do); [ez-tree](https://github.com/dgreenheck/ez-tree) (MIT; a
+recursive three.js branch generator with a gravity-like force that bends branches
+down, CC0 bark textures from ambientCG); Blender's Sapling Tree Gen (GPL; Weber
+and Penn's parametric model, with a weeping shape and per-level curvature and
+down angle); Weber and Penn, *Creation and Rendering of Realistic Trees*
+(SIGGRAPH 1995); SpeedTree's card-and-hull LOD scheme (proprietary, the industry
+reference for the LOD steps). **Adopted:** the idea of a branch that curves down
+from its turn-over point (Weber and Penn; no code from Sapling or ez-tree), drawn
+with our existing card-and-hull pipeline; the bark's bands are our own shader.
+**Sources:** cultivar habits and bloom times from the Japan Meteorological
+Agency's normals and the parks' guides (Shinjuku Gyoen, Maruyama Park, Kawazu
+town); no art was taken from elsewhere.
 
 ### The coral cays
 
