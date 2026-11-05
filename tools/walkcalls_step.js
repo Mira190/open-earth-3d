@@ -19,7 +19,8 @@ module.exports = async function walkCalls(p) {
     const scr = JN.J.filter(j => j.scramble && peds.some(o => o.a.j === j)).sort((a, b) => (b.mapped3 ? 100 : 0) + (b.plaza && b.plaza.gates ? b.plaza.gates.length : 0) - (a.mapped3 ? 100 : 0) - (a.plaza && a.plaza.gates ? a.plaza.gates.length : 0));
     const px = g.player.x, py = g.player.y;
     const j = scr[0] || JN.J.filter(q => q.sig && q.mid == null && peds.some(o => o.a.j === q)).sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py))[0];
-    if (!j) { A.setMuted(wasMuted); return { kind: W.kind, noJunction: true }; }
+    // (a map whose junctions have no signals, as Higashiyama's lanes: nowhere to listen, and nothing to hear)
+    if (!j) { A.setMuted(wasMuted); return { kind: W.kind, noJunction: true, unsignalled: !JN.J.some(q => q.sig && q.mid == null) }; }
     const mine = peds.filter(o => o.a.j === j);
     // (Japan's heard from the middle; a ticking box from beside it, its own walk and red counted)
     const o0 = mine.find(o => !o.diag) || mine[0], tick = W.kind !== 'jp', at = tick ? o0 : j;
@@ -54,6 +55,7 @@ module.exports = async function walkCalls(p) {
     return r;
   }).then(r => {
     if (r.none) return r;
+    if (r.noJunction && r.unsignalled) return Object.assign(r, { checks: [[true, `the walk signals' calls (${r.kind}): no junction with signals to listen at on this map`]] });
     if (r.noJunction) return Object.assign(r, { checks: [[false, `the walk signals' calls (${r.kind}) find a signalled junction to listen at`]] });
     const jp = r.kind === 'jp', list = Object.entries(r.calls).map(([k, v]) => `${v} ${k}`).join(', ') || 'none';
     const checks = [[r.walkT > 0 && r.inWalk >= Math.min(4, r.walkT / 2), `the walk signals' calls (${r.kind}) play at the ${r.scramble ? 'scramble' : 'junction'} at ${r.at} in its walk (${r.inWalk} in ${r.walkT.toFixed(0)} s of walk: ${list}; ${r.heads} heads)`]];

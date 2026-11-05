@@ -619,16 +619,23 @@ window.OEJunctions = (function () {
       if (j.ph !== a.phase && j.st === 'g' && j.t >= MIN_G) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
       else if (j.st !== 'g' && j.nxt !== a.phase && j.ph !== a.phase) j.nxt = a.phase; // (changing already: to its phase next)
     }
+    // the scramble j's walk in `inS` seconds (the game opening on it): every arm held at red until then, or
+    // the walk already that far in (inS < 0)
+    function walkIn(j, inS) {
+      if (!j || !j.scramble) return;
+      if (inS > 0) { j.st = 'r'; j.nxt = 3; j.t = (j.allred || ALLRED) - inS; } else { j.ph = 3; j.st = 'g'; j.t = -inS; }
+      j.walkNow = j.ph === 3 && j.st === 'g'; dirty.add(j);
+    }
     // about how long until arm a's light is green for a vehicle with priority there (0 if it is, or
     // there are no signals): what is left of the change, and of the other road's few seconds first
     function toGreen(a) {
       const j = a.j;
       if (!j.sig || light(a) === 'g') return 0;
-      const amber = j.amber || AMBER, change = amber + (j.allred || ALLRED);
-      if (j.ph === 3) return walkLeft(a) + (j.nxt === a.phase ? 0 : j.green[0] + change); // (a scramble's walk runs its course)
+      const amber = j.amber || AMBER, allred = j.allred || ALLRED, change = amber + allred;
+      if (j.ph === 3 && j.st === 'g') return Math.max(0, j.green[3] - j.t) + change; // (the scramble's walk runs its course; a call makes its phase next)
       if (j.st === 'g') return Math.max(0, MIN_G - j.t) + change; // the other road's green
-      if (j.st === 'y') return amber - j.t + ALLRED + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
-      return Math.max(0, ALLRED - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
+      if (j.st === 'y') return amber - j.t + allred + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
+      return Math.max(0, allred - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
     }
     let frame = 0;
     const dirty = new Set(); // (the junctions whose signals changed this frame, for the heads)
@@ -863,7 +870,7 @@ window.OEJunctions = (function () {
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
     net.midsOn = midsOn; // (the rides' router notes the crossings along a route: cars.js)
-    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, walkIn, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
