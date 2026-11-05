@@ -898,22 +898,28 @@ window.OEJunctions = (function () {
       const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len, t = (x - w[0]) * ux + (y - w[1]) * uy;
       return t > -2.5 && t < len + 2.5 && Math.abs((x - w[0]) * uy - (y - w[1]) * ux) < SCR_W_POST - 0.3;
     });
+    const inLanes = (x, y) => { const q = net.nearest(x, y, 10); return !!q && q.d < (ROADW[net.L[q.line].c] || 7) / 2 + 0.3; };
     for (const j of J) {
       if (!j.sig) continue;
       for (const a of j.arms) {
         if (!a.in) continue;
         const l = net.L[a.line];
         // (at a scramble, set back along the arm until clear of its crosswalks; none if it never is)
-        let d = a.back + 0.8, s = alongArm(l, a, d), clearOf = false;
-        for (let k = 0; k <= 10; k++) {
+        // (and clear of every road's drawn width, not just its own: beside a dual carriageway's other half, or a wider
+        // street meeting it, a pole at its own kerb stood out in their lanes; out a little further, else none)
+        let d = a.back + 0.8, s = alongArm(l, a, d), clearOf = false, wider = 0;
+        for (let k = 0; k <= 10 && !clearOf; k++) {
           d = a.back + 0.8 + k; s = alongArm(l, a, d);
           net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
-          const dir = a.end ? 1 : -1, kb = (ROADW[a.c] || 7) / 2 + 0.7;
-          if (!onWalk(j, tmp.x - tmp.hy * dir * kb * side, tmp.y + tmp.hx * dir * kb * side)) { clearOf = true; break; }
+          const dir = a.end ? 1 : -1;
+          for (const w of [0, 1, 2, 3]) {
+            const kb = (ROADW[a.c] || 7) / 2 + 0.7 + w, x = tmp.x - tmp.hy * dir * kb * side, y = tmp.y + tmp.hx * dir * kb * side;
+            if (!onWalk(j, x, y) && !inLanes(x, y)) { clearOf = true; wider = w; break; }
+          }
         }
         if (!clearOf) continue;
         const dir = a.end ? 1 : -1, hx = tmp.hx * dir, hy = tmp.hy * dir; // the way the arm's traffic drives
-        const kerb = (ROADW[a.c] || 7) / 2 + 0.7;
+        const kerb = (ROADW[a.c] || 7) / 2 + 0.7 + wider;
         const gz = (x, y) => { const g = ground ? ground(x, y, tmp) : null; return g != null ? g : tmp.z; };
         // the near-side pole at the stop line, the lantern facing the driver (who comes along h)
         const h = Math.atan2(-hx, -hy), rank = a.rank;
@@ -926,7 +932,7 @@ window.OEJunctions = (function () {
           const opp = a.j.scramble ? a.j.arms.filter(b => b !== a).reduce((m, b) => (Math.abs(angle(b.out, a.out)) > Math.abs(angle(m.out, a.out)) ? b : m)) : null;
           const far = opp ? a.back + opp.back : a.back + Math.max(...a.j.arms.filter(b => b !== a).map(b => b.back)) + Math.min(14, 2 * Math.hypot(a.x - a.j.x, a.y - a.j.y) + 2);
           const fx = tmp.x + hx * far + hy * kerb * side, fy = tmp.y + hy * far - hx * kerb * side;
-          if (net.nearest(fx, fy, 2.2) || onWalk(a.j, fx, fy)) continue; // that would stand in a road, or on a scramble's stripes
+          if (net.nearest(fx, fy, 2.2) || inLanes(fx, fy) || onWalk(a.j, fx, fy)) continue; // that would stand in a road, or on a scramble's stripes
           list.push({ a, x: fx, y: fy, z: gz(fx, fy), h, mast: 0, side: -side });
         }
       }
@@ -1017,8 +1023,10 @@ window.OEJunctions = (function () {
         net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
         const kerb = (ROADW[a.c] || 7) / 2 + 0.55;
         for (const k of [1, -1]) {
-          const px = tmp.x - tmp.hy * kerb * k, py = tmp.y + tmp.hx * kerb * k;
-          if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
+          // (clear of every road's lanes, a wider one meeting it too: out a little further, else none)
+          const w = [0, 0.8, 1.6, 2.4].find(w => { const x = tmp.x - tmp.hy * (kerb + w) * k, y = tmp.y + tmp.hx * (kerb + w) * k; return !net.nearest(x, y, 2.0) && !inLanes(x, y); });
+          if (w == null) continue; // that would stand in a road
+          const px = tmp.x - tmp.hy * (kerb + w) * k, py = tmp.y + tmp.hx * (kerb + w) * k;
           const g = ground ? ground(px, py, tmp) : null;
           peds.push({ a, x: px, y: py, z: g != null ? g : tmp.z, h: Math.atan2(tmp.hy * k, -tmp.hx * k) }); // (facing across, to the far kerb)
         }

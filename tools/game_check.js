@@ -209,6 +209,15 @@ const npcNight = require('./npc_night');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // no signal pole or walk post stands in a road's lanes (any road's drawn width, not just the one it serves: tools/pole_lanes.js)
+  const poles = await p.evaluate(() => {
+    const g = window.__game, H = g.junctions.heads, net = g.roadNet, HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }, out = [];
+    if (!H) return { n: 0, out };
+    for (const o of [...H.list, ...H.peds]) { const q = net.nearest(o.x, o.y, 10, o.z, 3); if (q && q.d < (HALF[net.L[q.line].c] || 3.5) - 0.2) out.push(`${o.x.toFixed(0)},${o.y.toFixed(0)}`); }
+    return { n: H.list.length + H.peds.length, out };
+  });
+  check(!poles.out.length, `no signal pole or walk post stands in a road's lanes (${poles.out.length} of ${poles.n}${poles.out.length ? ': ' + poles.out.slice(0, 6).join(' ') : ''})`);
+
   // the weather (weather.js): rain on, and the streaks are drawn, kept out from under cover by the
   // occlusion map, the ground wet, umbrellas up in the crowd, the HUD saying so, and the frame neither
   // black nor blown; then clear again, dry and quiet. And the season's weather keeps to the city's
