@@ -18,8 +18,9 @@ const R0 = 160, R1 = 650, R2 = 2600;
 const KEEP1 = 0.6, KEEP2 = 0.2;         // share of trees drawn in the middle and far rings (by a per-tree rank)
 const RS = 55;                          // the shared trees' full model within this, their sparse one to R0
 // the reef's species drawn with a shared tree near the camera: its name in web/assets/trees/trees.json
-// (Green Island's closed vine forest, a rainforest of evergreen broadleaves, takes the shared evergreen)
-const SHARED = { pisonia: 'pisonia', casuarina: 'casuarina', 'vine-forest': 'evergreen' };
+// (Green Island's closed vine forest, a rainforest of evergreen broadleaves, takes the shared evergreen; the cays'
+// beach scrub the shared Scaevola, and the octopus bush the shared Argusia)
+const SHARED = { pisonia: 'pisonia', casuarina: 'casuarina', 'vine-forest': 'evergreen', scaevola: 'scaevola', 'beach-scrub': 'scaevola', 'octopus-bush': 'argusia' };
 
 // model height (m) of each geometry, per-instance scale range, colours (linear albedo), far spindle width/height,
 // how far it is sunk, instance capacity [near, mid], and the planting grid (m)
