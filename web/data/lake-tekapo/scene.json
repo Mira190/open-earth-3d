@@ -1161,56 +1161,130 @@
   {
    "id": "church-good-shepherd",
    "glb": "data/lake-tekapo/models/tekapo-church.glb",
-   "x": 438.38,
-   "y": 72.65,
-   "z": 7.2
+   "lonlat": [
+    170.482466,
+    -44.003346
+   ],
+   "axis_deg": 16.5,
+   "ground_m": 714.9,
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them. axis_deg is the altar end's bearing: the long axis of the OpenStreetMap footprint (10.1 x 6.3 m) runs at 16.5 degrees, and the altar window looks north up the lake",
+   "kind": "landmark",
+   "x": 438,
+   "y": 73
   },
   {
    "id": "sheepdog-statue",
    "glb": "data/lake-tekapo/models/tekapo-collie.glb",
-   "x": 557.4,
-   "y": 58.87,
-   "z": 5.5
+   "lonlat": [
+    170.48395,
+    -44.00347
+   ],
+   "ground_m": 713.2,
+   "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is the dark cairn in a round paved bay in the 0.075 m aerial photographs (2025-26), 9 m south of Overture's Sheepdog Memorial record",
+   "kind": "landmark",
+   "x": 557,
+   "y": 59
   },
   {
    "id": "footbridge",
    "glb": "data/lake-tekapo/models/tekapo-footbridge.glb",
-   "x": 326.14,
-   "y": -99.68,
-   "z": 0.01,
+   "lonlat": [
+    170.4810666,
+    -44.004897
+   ],
+   "ground_m": 707.71,
+   "walk": "deck",
+   "note": "y = 0 is the river surface under it (the DEM, 707.71 m); the deck is 8.2-10.8 m above",
    "deck": {
     "ends": [
      [
-      264.7,
-      -98.92
+      170.4803005,
+      -44.0048902
      ],
      [
-      388.07,
-      -100.89
+      170.4818388,
+      -44.0049079
      ]
     ],
-    "w": 3.0,
-    "z": [
-     7.68,
-     8.88,
-     9.76,
-     10.34,
-     10.6,
-     10.56,
-     10.2,
-     9.53,
-     8.55
-    ]
-   }
+    "width_m": 3.0,
+    "z_m": [
+     715.38,
+     716.58,
+     717.46,
+     718.04,
+     718.3,
+     718.26,
+     717.9,
+     717.23,
+     716.25
+    ],
+    "note": "the deck's top from end to end, m NZVD2016, at nine even steps: the DSM along the OpenStreetMap way less the balustrade, fitted to a camber"
+   },
+   "kind": "landmark",
+   "x": 326,
+   "y": -100
   },
   {
    "id": "mt-john-observatory",
    "glb": "data/lake-tekapo/models/tekapo-observatory.glb",
-   "x": -1002.82,
-   "y": 2055.5,
-   "z": 315.5
+   "lonlat": [
+    170.4645,
+    -43.9855
+   ],
+   "ground_m": 1023.2,
+   "kind": "landmark",
+   "x": -1003,
+   "y": 2055
   }
  ],
+ "flora": {
+  "lupins": [
+   {
+    "lonlat": [
+     170.4885,
+     -44.0058
+    ],
+    "r_m": 90,
+    "density": 0.8,
+    "id": "lupins-0",
+    "x": 922,
+    "y": -200
+   },
+   {
+    "lonlat": [
+     170.484,
+     -44.0042
+    ],
+    "r_m": 50,
+    "density": 0.6,
+    "id": "lupins-1",
+    "x": 561,
+    "y": -22
+   },
+   {
+    "lonlat": [
+     170.4795,
+     -44.0062
+    ],
+    "r_m": 60,
+    "density": 0.6,
+    "id": "lupins-2",
+    "x": 200,
+    "y": -244
+   },
+   {
+    "lonlat": [
+     170.493,
+     -44.0075
+    ],
+    "r_m": 80,
+    "density": 0.7,
+    "id": "lupins-3",
+    "x": 1283,
+    "y": -389
+   }
+  ]
+ },
  "detail": [
   {
    "id": "township",
