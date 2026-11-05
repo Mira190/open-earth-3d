@@ -109,7 +109,9 @@ function inView(G, from, skip, max = 5) {
 
 // the church's long axis, toward the altar window (OpenStreetMap footprint; city.json landmarks)
 const CHURCH_AXIS = 16.5;
-const lakeLevel = G => (G.S.lake && Number.isFinite(G.S.lake.surface_m)) ? G.S.lake.surface_m : null;
+// alpine sites keep heights above the main lake's surface (the viewer's water level 0); datum_m is that surface above NZVD2016
+const lakeLevel = G => (G.S.terrain && Number.isFinite(G.S.terrain.datum_m)) ? G.S.terrain.datum_m : null;
+const asl = (G, h) => h + (lakeLevel(G) || 0);
 const yawDeg = G => ((G.player.S.camYaw / RAD) % 360 + 360) % 360;
 const pitchDeg = G => (G.player.S.camPitch || 0) / RAD;
 const facing = (G, brg, tol) => Math.abs(((yawDeg(G) - brg + 540) % 360) - 180) < tol;
@@ -162,7 +164,7 @@ export default function lakeTekapo(G) {
         const lv = lakeLevel(G2), here = G2.here(), mt = P('mt-john');
         return [{ t: 'Meltwater from the Southern Alps carries glacial silt, and that turns it turquoise. The braided Godley and Macaulay rivers feed it at the top end.', src: ['wiki-lake', 'wiki-godley'] },
           { t: `The head of the lake is ${G2.where('godley-delta')} of here. It covers about 83 square kilometres.`, src: ['model-pois', 'wiki-lake'] },
-          lv !== null ? { t: `The lake sits about ${lv.toFixed(1)} m above sea level, and you're ${(G2.height(here.x, here.north) - lv).toFixed(1)} m above it. Mt John is ${(G2.height(mt.x, mt.north) - lv).toFixed(0)} m above the lake.`, src: ['model-lidar'] } : null,
+          lv !== null ? { t: `The lake sits about ${lv.toFixed(1)} m above sea level, and you're ${G2.height(here.x, here.north).toFixed(1)} m above it. Mt John is ${G2.height(mt.x, mt.north).toFixed(0)} m above the lake.`, src: ['model-lidar'] } : null,
           { t: `Its Māori name is Takapō. Since 2021 the district council uses both names. In Ngāi Tahu tradition it is one of the lakes Rākaihautū dug with his digging stick, Tūwhakaroria.`, src: ['wiki-lake'] },
           { t: `The surface water is about 6 °C in September and 17 °C in January. It's ${G2.month()}.`, src: ['wiki-lake', 'model-sun'] }];
       }, next: 'hello' },
@@ -284,7 +286,7 @@ export default function lakeTekapo(G) {
   if (P('mt-john')) signs.push({ id: 'summit', title: 'Mt John summit',
     at: G2 => { const m = P('mt-john'), s = G2.landSpot(m.x + 8, m.north + 8, { maxSlope: 0.4, maxR: 40 }) || m; return { x: s.x, north: s.north, heading: 40 }; },
     nodes: { read: { say: G2 => { const s = G2.sign('summit') || G2.here(), lv = lakeLevel(G2);
-      return [{ t: `Mt John summit, ${G2.height(s.x, s.north).toFixed(0)} m above sea level${lv !== null ? `, ${(G2.height(s.x, s.north) - lv).toFixed(0)} m above Lake Tekapo` : ''}.`, src: ['model-lidar'] },
+      return [{ t: `Mt John summit, ${asl(G2, G2.height(s.x, s.north)).toFixed(0)} m above sea level${lv !== null ? `, ${G2.height(s.x, s.north).toFixed(0)} m above Lake Tekapo` : ''}.`, src: ['model-lidar'] },
         { t: `Lake Alexandrina is ${G2.where('lake-alexandrina', s)}, and small Lake McGregor ${G2.where('lake-mcgregor', s)}, between it and Lake Tekapo; McGregor drains into Lake Tekapo by a short stream.`, src: ['model-pois', 'wiki-mcgregor'] },
         { t: `In sight from here: ${inView(G2, s, ['mt-john', 'mt-john-observatory'], 6).join('; ')}.`, src: ['model-lidar', 'model-pois'] },
         { t: 'Across the lake, the Two Thumb Range runs north for about 45 km; Te Araroa, the trail the length of the country, crosses it at Stag Saddle, its highest point.', src: ['wiki-two-thumb'] }]; } } } });
@@ -307,7 +309,7 @@ export default function lakeTekapo(G) {
         { text: 'Climb to the summit of Mt John', target: 'mt-john', check: G2 => G2.dist(G2.here(), P('mt-john')) < 60 },
         { text: 'Read the summit sign', target: 'sign:summit', on: { sign: (G2, d, id) => id === 'summit' } },
         { text: 'Meet Mei by the café', target: 'npc:astronomer', talkTo: 'astronomer', node: 'hello' }],
-      onDone: G2 => G2.note('mt-john', `Mt John: ${(G2.height(P('mt-john').x, P('mt-john').north)).toFixed(0)} m in the model, the observatory's domes and the three lakes below.`, ['model-lidar', 'wiki-mjuo'], 'Mei') },
+      onDone: G2 => G2.note('mt-john', `Mt John: ${asl(G2, G2.height(P('mt-john').x, P('mt-john').north)).toFixed(0)} m above sea level, the observatory's domes and the three lakes below.`, ['model-lidar', 'wiki-mjuo'], 'Mei') },
     { id: 'lupins', title: 'Lupins on the shore', summary: 'Walked among the lupins on the lakeshore, and heard what they do to the rivers.',
       hint: 'Ask Kate about the flowers along the shore (mid-November to December).',
       available: () => lupinSeason(), unavailable: 'The lupins flower from about mid-November to the end of December (Wikipedia, Lake Tekapo).',
