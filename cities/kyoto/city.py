@@ -81,6 +81,11 @@ MATERIALS = {
     "moat_stone": {"color": "#878176", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.4, "block_m": 0.9, "solid": False},
     "moat_coping": {"color": "#a39d92", "roughness": 0.9, "metalness": 0.0, "solid": False},
     # the bridges' granite decks, laid over the photograph (which has the gate's shadow across the one before it)
+    # the courts round the halls (aprons, #187): granite flags at the Honganji, raked gravel at the castle
+    # and the palace, laid over the aerial photograph where its shadows of the halls and its strips of
+    # small water lay flat on the ground the drawn pavement stops short of
+    "court_flags": {"color": "#a8a196", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.9, 0.6], "decal": True, "street_lit": True},
+    "court_gravel": {"color": "#c9c3b5", "roughness": 0.95, "metalness": 0.0, "decal": True, "street_lit": True},
     "moat_deck": {"color": "#aaa398", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.9, 1.8], "decal": True, "street_lit": True},
 }
 
@@ -291,6 +296,43 @@ SHU = dict(BARK, post="shu", lattice="renji")
 BENT_FILL = 0.85   # a building filling less of its rectangle than this has a roof on its own outline (archkit.outline_roof)
 
 
+APRON_M = 3.5   # how far round a hall's outline its court is laid over the photograph (m)
+
+
+def W_of(sd):
+    return ak.oriented(sd["ring"])[4]
+
+
+def L_of(sd):
+    return ak.oriented(sd["ring"])[3]
+
+
+def aprons(K, solids, T, around, mat):
+    """The court round each hall in `around`, APRON_M out from its outline, laid in `mat` a little over the
+    ground (#187): the aerial photograph has each hall's shadow and the lean of its eaves on the ground
+    beside it, and strips of water too small to draw (city.json water.min_area_m2) along the platforms, a
+    blue band where the drawn pavement stops short of the wall. Not where another building stands."""
+    import shapely
+    from shapely.geometry import Polygon as Poly
+    from shapely.ops import unary_union
+    if not around:
+        return
+    fp = lambda sd: Poly(sd["ring"], sd["holes"]).buffer(0)
+    ring = unary_union([fp(sd).buffer(APRON_M, join_style="mitre") for sd in around])
+    near = [sd for sd in solids if sd["base"] <= 0 and fp(sd).intersects(ring)]
+    court = ring.difference(unary_union([fp(sd).buffer(0.05) for sd in near]))
+    m = K[mat]
+    for q in getattr(court, "geoms", [court]):
+        if q.geom_type != "Polygon" or q.area < 1.0:
+            continue
+        for t in shapely.constrained_delaunay_triangles(q.simplify(0.3).segmentize(3.0)).geoms:
+            cs = np.asarray(t.exterior.coords)[:3]
+            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+            if ax * by - ay * bx < 0:
+                cs = cs[::-1]
+            m.tri(*[np.array([x, y, T(x, y) + 0.04]) for x, y in cs], [[x, y] for x, y in cs])
+
+
 def temples_and_palaces():
     import json
     import os
@@ -304,7 +346,7 @@ def temples_and_palaces():
     by = {}
     for sd in solids:
         by.setdefault(sd["osm"], []).append(sd)
-    K = ak.Kit("kyoto_jp", floodlit={"jp_wall", "jp_bracket", "jp_gold"}, uv={"kawara", "hiwada", "jp_base", "ishigaki"})
+    K = ak.Kit("kyoto_jp", floodlit={"jp_wall", "jp_bracket", "jp_gold"}, uv={"kawara", "hiwada", "jp_base", "ishigaki", "court_flags"})
     hidden = []
 
     def bent(sd):
@@ -426,6 +468,8 @@ def temples_and_palaces():
         else:
             ak.hall(K, P, L, W, float(np.clip(4.0 + 0.36 * W, 6.5, 14.5)), BARK, eave_frac=0.42, base_h=0.8)
         hidden.append(sd["si"])
+    aprons(K, solids, T, [sd for sd in solids for oid, _, _ in TEMPLE_HALLS if sd["osm"] == oid], "court_flags")
+    aprons(K, solids, T, halls + [sd for sd in in_gosho if sd["base"] <= 0 and not (W_of(sd) < 4.5 and L_of(sd) > 12)], "court_gravel")
     # every part of a building drawn here goes with it (the parts mapped over a gate's posts, a hall's roof)
     drawn = {sd["osm"] for sd in solids if sd["si"] in set(hidden) and sd["osm"]}
     hidden += [sd["si"] for sd in solids if sd["osm"] in drawn]

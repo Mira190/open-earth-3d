@@ -1,8 +1,179 @@
 [
-  {"name": "hondo-from-okunoin", "at": [317.8, -268.7], "look": [272.0, -248.0], "time": "11:00", "eye": [318.6, -269.2, 117.0]},
-  {"name": "okunoin-corridor", "at": [321.6, -255.0], "look": [320.6, -275.0], "time": "11:00", "dist": 5, "pitch": 0.1},
-  {"name": "amidado-corridor", "at": [322.2, -238.0], "look": [321.5, -257.0], "time": "11:00", "dist": 5, "pitch": 0.1},
-  {"name": "stage-pillars", "cam": [292.0, -318.0, 108.0], "tgt": [276.0, -258.0, 108.0], "time": "15:00"},
-  {"name": "hondo-roof-air", "cam": [215.0, -320.0, 165.0], "tgt": [276.0, -245.0, 122.0], "time": "10:30"},
-  {"name": "west-gate", "at": [138.5, -203.5], "look": [149.0, -207.5], "time": "11:00", "dist": 6, "pitch": 0.12}
+ {
+  "at": [
+   316.4,
+   -267.9
+  ],
+  "look": [
+   272.0,
+   -248.0
+  ],
+  "eye": [
+   315.9,
+   -268.5,
+   116.85
+  ],
+  "name": "hondo-from-okunoin-day",
+  "time": "11:00"
+ },
+ {
+  "at": [
+   316.4,
+   -267.9
+  ],
+  "look": [
+   272.0,
+   -248.0
+  ],
+  "eye": [
+   315.9,
+   -268.5,
+   116.85
+  ],
+  "name": "hondo-from-okunoin-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "at": [
+   316.4,
+   -267.9
+  ],
+  "look": [
+   272.0,
+   -248.0
+  ],
+  "eye": [
+   315.9,
+   -268.5,
+   116.85
+  ],
+  "name": "hondo-from-okunoin-night",
+  "time": "21:00"
+ },
+ {
+  "at": [
+   321.6,
+   -255.0
+  ],
+  "look": [
+   320.6,
+   -275.0
+  ],
+  "dist": 5,
+  "pitch": 0.1,
+  "name": "okunoin-corridor-day",
+  "time": "11:00"
+ },
+ {
+  "at": [
+   321.6,
+   -255.0
+  ],
+  "look": [
+   320.6,
+   -275.0
+  ],
+  "dist": 5,
+  "pitch": 0.1,
+  "name": "okunoin-corridor-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "at": [
+   321.6,
+   -255.0
+  ],
+  "look": [
+   320.6,
+   -275.0
+  ],
+  "dist": 5,
+  "pitch": 0.1,
+  "name": "okunoin-corridor-night",
+  "time": "21:00"
+ },
+ {
+  "cam": [
+   292.0,
+   -318.0,
+   108.0
+  ],
+  "tgt": [
+   276.0,
+   -258.0,
+   108.0
+  ],
+  "name": "stage-pillars-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   292.0,
+   -318.0,
+   108.0
+  ],
+  "tgt": [
+   276.0,
+   -258.0,
+   108.0
+  ],
+  "name": "stage-pillars-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   292.0,
+   -318.0,
+   108.0
+  ],
+  "tgt": [
+   276.0,
+   -258.0,
+   108.0
+  ],
+  "name": "stage-pillars-night",
+  "time": "21:00"
+ },
+ {
+  "at": [
+   138.5,
+   -203.5
+  ],
+  "look": [
+   149.0,
+   -207.5
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "name": "west-gate-day",
+  "time": "11:00"
+ },
+ {
+  "at": [
+   138.5,
+   -203.5
+  ],
+  "look": [
+   149.0,
+   -207.5
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "name": "west-gate-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "at": [
+   138.5,
+   -203.5
+  ],
+  "look": [
+   149.0,
+   -207.5
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "name": "west-gate-night",
+  "time": "21:00"
+ }
 ]

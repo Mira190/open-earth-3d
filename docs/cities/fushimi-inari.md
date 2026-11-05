@@ -28,13 +28,33 @@ The sources are those of the other Kyoto maps:
 - **The Senbon Torii**: one torii at a time along each of the two mapped tunnels, at the count OSM's
   survey gives, from a note on the ways (2014): 382 in one and 399 in the other.
 - **The mountain's torii**: placed along the shortest mapped footpaths from the Okusha Hohaisho by
-  Kumataka-sha to Yotsutsuji, then round the summit by the 三ノ峰, 二ノ峰 and 一ノ峰 shrines and back. They
-  stand about 0.65 m apart, with random gaps and none within 7 m of a shrine. That makes about 3,150, a
-  third of the roughly 10,000 on the mountain; the side paths have none.
+  Kumataka-sha and Mitsutsuji to Yotsutsuji, then round the summit by the 三ノ峰, 二ノ峰 and 一ノ峰 shrines
+  and back. They stand about 0.65 m apart, with random gaps, none within 7 m of a shrine, and a gap of
+  3.6 m wherever another path joins.
+- **The side paths** (#167): torii line three legs off the round as well, each the shortest mapped way,
+  where it is not the round's: Mitsutsuji down to Araki-jinja and the north approach, Yotsutsuji up to
+  Kojin-ga-mine (田中社神蹟, the view over the city), and Gozendani to the Kiyotaki falls (清明舎).
+  (Okusha to Kumataka-sha is the round's first leg; OSM maps no second way between them.) With the
+  round and the Senbon Torii that is about 4,400 torii on the paths.
+- **The otsuka's miniature torii**: the faithful leave small torii, 30 cm to 1 m, by the thousand on the
+  otsuka (お塚), the stone mounds dedicated to their own name of Inari. Rows of them, 50 to 120 a mound,
+  stand behind each shrine and memorial stone OpenStreetMap maps along the torii-lined ways, facing the path and
+  kept 1.5 m off it: about 3,250. Path and votive torii together make about 7,650 of the roughly 10,000
+  the shrine speaks of; the rest stand on paths and mounds OpenStreetMap doesn't map.
+- **Sizes**: the shrine sells a donated torii by its 号, the pillar's diameter in sun (寸, 3.03 cm),
+  from 5号 to 10号 (the shrine's offering list; Japanese guides quote the same grades). Here: 5号 for
+  the small path torii, 6.5号 in the Senbon Torii (photographs against the 2 m width OSM gives the
+  tunnels), 7号 for the usual mountain torii, 10号 for the large ones, 1.5号 at the otsuka.
 - **How the torii are drawn**:
-  - Four sizes, instanced (`landmarks.json` "props").
+  - Five sizes, instanced (`landmarks.json` "props").
   - Each is vermilion, with black feet and a black lintel, and a ring at the heads of its pillars (稲荷鳥居).
   - A donor's name runs in black down the back of each pillar, so it shows as you come down.
+- **The torii are solid** (#167): the path torii stand closer than a walker is wide, so each side of a
+  run of them is one wall from pillar to pillar, from the ground to the tie beam, broken where the run
+  is (a shrine, a fork, a gap of a metre or more). The walls are landmark meshes (`torii_hit_*`) in a
+  material that is solid but never drawn (opacity 0), cut into 48 m chunks drawn only within their own
+  radius, so `web/game/nav.js` lays them into its fine cells like any landmark's posts and nothing in
+  the shared code changed. Walkers and the player keep between the pillars.
 - **The great torii** on the Omotesando.
 - **Stone lanterns** at the 154 lamps OpenStreetMap maps along the paths, lit after dark.
 - **Trees**: planted from the canopy model, as the shared trees; species are not mapped, so the mix
@@ -49,10 +69,12 @@ of the Senbon Torii, then a hiker resting at Yotsutsuji, where Kyoto opens out t
 ## What is approximate
 
 - **The torii**:
-  - Their sizes are four stand-ins; no published list of the size grades (号) was found.
+  - The 号 of each torii is a grade per kind, not each torii's own; heights are read from photographs.
   - The spacing on the mountain paths, and where the gaps fall, is not surveyed.
   - The Senbon Torii's counts come from OSM's survey note, not from the shrine.
+  - The side paths are chosen from guides and maps of the mountain (the round and the ways off it to
+    Araki-jinja, Kojin-ga-mine and Kiyotaki); OSM doesn't tag which of its ways are torii-lined.
+  - The otsuka's rows stand where OSM maps a shrine or a memorial stone, not on each mound.
 - **The halls**: their heights are read from photographs and PLATEAU's blocks.
 - **The Romon**: its width is the usual three bays, about 10 m.
-- **The torii and the game**: the torii are props, not solid. Walkers pass between the pillars, and
-  through them where a path bends.
+- Not checked on: a real GPU, WebGPU, Safari or iOS.

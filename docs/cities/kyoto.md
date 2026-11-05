@@ -85,8 +85,11 @@ the court before the Shishinden (南庭) is enclosed by its corridors (回廊) o
 vermilion pillars, with the vermilion Jōmei-mon (承明門) to the south and the
 Nikka-mon and Gekka-mon to the east and west; the Kenrei-mon is plain cypress.
 Outlines that bend, turn round a court or run along a wall are drawn on their own
-outline under an outline roof, rather than as one hall over their bounding box
-(which had roofed whole courts over). The parts mapped over a gate's posts go with
+outline under an outline roof (`archkit.outline_roof`), rather than as one hall over their
+bounding box (which had roofed whole courts over). Since #185 that is every outline filling
+less than 85% of its rectangle (`BENT_FILL`; it was 60%): the palace halls with a wing or a
+stepped side, such as the Gosho's Otsunegoten (御常御殿) and the Empress's Tsunegoten, Nijo's
+Shoin and the Wakuraku-an, no longer stand under one box of a roof over their courtyards. The parts mapped over a gate's posts go with
 the gate. At Nijo, the covered ways between the Ninomaru's halls are corridors.
 A block with a guessed height in the Shishinden's court is dropped.
 
@@ -154,6 +157,16 @@ moat, the gate's width (31 m), and its granite runs on east to the pavement over
 shadow on the photograph. Walkers keep off the water (`keep_off` in `game.json`), and the
 crowd's footways that crossed it are dropped. The bridges' widths and the water's depth below
 the pavement are read from the photograph, not measured.
+
+### The courts round the halls
+
+Seen on foot by day (#187), the aerial photograph's shadows of the halls, the lean of their eaves
+and strips of water too small to draw lay flat on the ground beside the halls, a dark or blue band
+where the drawn pavement stops short of a platform: along Higashi Honganji's Amida Hall, Nishi
+Hongwanji's Founder's and Amida Halls, and among Nijo's and the palace's halls. A court is laid over
+the photograph round each of these halls, 3.5 m out from its outline and not where another building
+stands (`aprons()` in `cities/kyoto/city.py`): granite flags at the two Honganji, raked gravel at
+Nijo and the Imperial Palace. The survey's views are `tools/views/kyoto-forecourts-187.json`.
 
 ## 6. What is not verified
 

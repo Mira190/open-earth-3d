@@ -74,6 +74,8 @@ MATERIALS = {
     "gable_shu": {"color": "#a23a24", "roughness": 0.7, "metalness": 0.0},
     "gable_white": {"color": "#e7e1d3", "roughness": 0.8, "metalness": 0.0},
     "stone": {"color": "#9c968b", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.45, "block_m": 0.9},
+    # the terrace before the West Gate (#187): granite flags laid over the aerial photograph
+    "court_flags": {"color": "#a39d93", "roughness": 0.86, "metalness": 0.0, "pattern": "granite", "joints_m": [0.9, 0.6], "decal": True, "street_lit": True},
     # the West Gate's steps: granite, walked as a strip (game_surfaces), so not solid
     "gate_step": {"color": "#97918a", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.36], "stair": "tread", "solid": False},
     "stone_dark": {"color": "#77736b", "roughness": 0.92, "metalness": 0.0},
@@ -394,6 +396,30 @@ def saimon_steps(K, P, u_edge, z_top, ground, width=5.4, max_rise=0.2):
         block(K["stone"], P, u_edge - 0.05, u_end, sv * (width / 2 + 0.3) - 0.3, sv * (width / 2 + 0.3) + 0.3,
               min(ground(*P(u_end, sv * width / 2, 0)[:2]), z_end) - 0.5, z_top - 0.05)
     _cache["saimon_steps"] = {"P": P, "u0": u_edge, "u1": u_end, "z_top": z_top, "z_foot": z_end, "width": width}
+    # the terrace at the foot of the flight, the city's sunset view, in granite flags laid over the aerial
+    # photograph, whose trees' shadows lay flat on it (#187); not where a building stands
+    from shapely.geometry import Polygon as Poly
+    pad = Poly([P(u, v, 0)[:2] for u, v in ((u_end, -7.0), (u_end + 9.0, -7.0), (u_end + 9.0, 7.0), (u_end, 7.0))])
+    C, T, S = ctx()
+    for sd in S:
+        q = Poly(sd["ring"]).buffer(0.1)
+        if sd["base"] <= 0 and q.intersects(pad):
+            pad = pad.difference(q)
+    drape(K["court_flags"], pad, ground)
+
+
+def drape(m, poly, ground, lift=0.04, seg=3.0):
+    """A polygon laid on the ground `lift` over it (a decal): its triangles' corners on the terrain."""
+    import shapely
+    for q in getattr(poly, "geoms", [poly]):
+        if q.geom_type != "Polygon" or q.area < 1.0:
+            continue
+        for t in shapely.constrained_delaunay_triangles(q.segmentize(seg)).geoms:
+            cs = np.asarray(t.exterior.coords)[:3]
+            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+            if ax * by - ay * bx < 0:
+                cs = cs[::-1]
+            m.tri(*[np.array([x, y, ground(x, y) + lift]) for x, y in cs], [[x, y] for x, y in cs])
 
 
 def lean_to(K, M, P, u0, u1, hv, z_hi, z_ground, ground):
@@ -649,7 +675,7 @@ def lanes(K):
 def landmark_meshes(scene):
     mats = {k: dict(v) for k, v in MATERIALS.items()}
     K = ak.Kit("kiyomizu", floodlit={"shu", "kiyo_white", "timber", "keyaki", "gold", "water", "lanes", "lamp_paper"},
-               uv={"hiwada", "hondo_hiwada", "gate_step", "kawara", "stone", "setts", "step_stone", "lanes", "hisashi"})
+               uv={"hiwada", "hondo_hiwada", "gate_step", "court_flags", "kawara", "stone", "setts", "step_stone", "lanes", "hisashi"})
     hidden = []
     kiyomizu(K, hidden)
     yasaka(K, hidden)
