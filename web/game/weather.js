@@ -544,6 +544,14 @@ void main() {
         }
         if (focus) api.focus = focus;
       },
+      // while the game loads: the rain's own materials and its pass from above drawn once, so their
+      // shaders compile then rather than in a stall as the first rain comes on
+      warm() {
+        if (api.shed >= 2) return;
+        const was = [near.visible, far.visible, splash.visible];
+        near.visible = far.visible = splash.visible = true;
+        try { renderer.compile(world, camera); if (occRT) renderOcc(-9); } finally { [near.visible, far.visible, splash.visible] = was; occOn.value = 0; occT = -9; }
+      },
       // is a point under cover (a roof within a few metres overhead)? from the last occlusion map
       covered: () => cover.roof,
       dispose() { if (occRT) occRT.dispose(); for (const m of [near, far, splash]) { world.remove(m); m.geometry.dispose(); m.material.dispose(); } },
@@ -551,7 +559,7 @@ void main() {
     // what the camera should not see from above: the sky, the stars and the moon, sprites and
     // labels, the rain itself, and whatever draws its own pass (a mirror)
     function hidden(tSec) {
-      if (tSec - hideAt < 8) return hideList;
+      if (tSec - hideAt < 60 && tSec >= hideAt) return hideList; // (a walk of the whole scene: once a minute, not every few seconds)
       hideAt = tSec;
       hideList = [];
       const plain = THREE.Object3D.prototype.onBeforeRender;

@@ -61,8 +61,19 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
       const warm = Math.min(60, T / 4);
       // the waits at a red: a car's from stopping at the line, or in the queue behind one stopped
       // there, till it moves on; a walker's from coming up to the kerb till stepping out (actors.js)
-      const red = C.map(() => 0), carWaits = [];
-      const atRed = c => { for (let k = 0, o = c; o && k < 40; k++, o = o.front) { if (o.why === 'light') return true; if (o.why !== 'car') return false; } return false; };
+      // (and apart, the waits at a scramble's red: its walk, which its crowd needs to cross, the one wait the
+      // timing lets run longer than junctions.RED)
+      const red = C.map(() => 0), redScr = C.map(() => false), redAt = C.map(() => null), carWaits = [], scrWaits = [], longWaits = [];
+      const redArm = c => { for (let k = 0, o = c; o && k < 40; k++, o = o.front) { if (o.why === 'light') return o.lineArm || true; if (o.why !== 'car') return null; } return null; };
+      const atRed = c => !!redArm(c);
+      // (a wait longer than RED and an amber at a junction other than a scramble: where, and what kind of junction)
+      const kind = j => (j.mid != null ? 'crossing' : j.arrow ? 'arrow' : 'two-phase');
+      const put = i => {
+        (redScr[i] ? scrWaits : carWaits).push(red[i]);
+        const a = redAt[i];
+        if (!redScr[i] && a && a.j && red[i] > (g.junctions.RED || 10) + 3 && longWaits.length < 12) longWaits.push(`${red[i]} s at ${kind(a.j)} ${a.j.id} arm ${a.i} (phase ${a.phase})`);
+        red[i] = 0; redScr[i] = false; redAt[i] = null;
+      };
       for (let t = 0; t < T; t++) {
         g.advance(1);
         if (t === warm && g.crowd && g.crowd.kerbWaits) g.crowd.kerbWaits.length = 0;
@@ -72,9 +83,10 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
         jammedNow = 0;
         for (let i = 0; i < A.active; i++) {
           const c = C[i], q = prev[i];
-          if (c.line < 0) { prev[i] = { line: -1 }; still[i] = 0; if (red[i]) carWaits.push(red[i]); red[i] = 0; continue; }
-          if (c.v < 0.3 && atRed(c)) red[i]++;
-          else if (red[i]) { carWaits.push(red[i]); red[i] = 0; }
+          if (c.line < 0) { prev[i] = { line: -1 }; still[i] = 0; if (red[i]) put(i); continue; }
+          const ra = c.v < 0.3 ? redArm(c) : null;
+          if (ra) { red[i]++; if (ra.j && ra.j.scramble) redScr[i] = true; if (ra.j) redAt[i] = ra; }
+          else if (red[i]) put(i);
           carSecs++;
           if (c.v < 0.3) stopped++;
           // in a building or a landmark (its middle, most of its width, knee to roof height), or on a road a car doesn't fit along
@@ -104,8 +116,8 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
       const out = { at: [Math.round(g.player.x), Math.round(g.player.y)], cars: A.active, seconds: samples, stoppedShare: stopped / Math.max(1, carSecs), meanSpeed: dist / Math.max(1, carSecs),
         jammedShare: jammed / Math.max(1, carSecs), jammedAtEnd: jammedNow, longestStill: worstJam, turnsPerCarMin: turns / Math.max(1, carSecs / 60), overlapsPerSample: overlaps / Math.max(1, samples), overlapMax,
         inWallShare: inWall / Math.max(1, carSecs), onFlaggedShare: onFlagged / Math.max(1, carSecs) };
-      for (const w of red) if (w) carWaits.push(w); // (still waiting at the end: as long as it has been)
-      out.carWaits = carWaits; out.walkWaits = g.crowd && g.crowd.kerbWaits ? g.crowd.kerbWaits.filter(w => w > 0.5).map(w => Math.round(w * 10) / 10) : [];
+      red.forEach((w, i) => { if (w) put(i); }); // (still waiting at the end: as long as it has been)
+      out.carWaits = carWaits; out.scrWaits = scrWaits; out.longWaits = longWaits; out.walkWaits = g.crowd && g.crowd.kerbWaits ? g.crowd.kerbWaits.filter(w => w > 0.5).map(w => Math.round(w * 10) / 10) : [];
       out.walls = [...walls.values()].sort((a, b) => b.n - a.n).slice(0, 12).map(w => Object.assign(w, { why: [...w.why].join('/'), cars: w.cars.size, what: [...w.what].join(', ') || 'between checks' }));
       out.updateMs = ut / Math.max(1, un);
       out.kerbWait = g.crowd ? g.crowd.kerbWait : 0; // walker-seconds at a kerb for the walk signal (since the start)
@@ -124,16 +136,18 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
     for (const w of r.walls) console.log(`    in a wall at ${w.x}, ${w.y} z ${w.z}: ${w.n} car-seconds, ${w.cars} car(s), line ${w.line}${w.ow ? ' one-way' : ''} lane ${w.ln} lo ${w.lo} off ${w.off} from the centre ${w.dc} (room there ${w.roomC}, hw ${w.hw}, w ${w.w}), ${w.mv ? 'in a junction, ' : ''}held by ${w.why}; ${w.what}`);
     console.log(`  the traffic update: ${f(r.updateMs)} ms a frame`);
     if (r.laneChanges != null) console.log(`  lane changes: ${r.laneChanges}; walkers waiting at a kerb for the walk signal: ${f(r.kerbWait / Math.max(1, r.seconds), 1)} on average`);
-    console.log(`  wait at a red: cars ${waitLine(r.carWaits)}; walkers ${waitLine(r.walkWaits)}`);
+    console.log(`  wait at a red: cars ${waitLine(r.carWaits)}; walkers ${waitLine(r.walkWaits)}${r.scrWaits && r.scrWaits.length ? `; cars at a scramble ${waitLine(r.scrWaits)}` : ''}`);
+    if (r.longWaits && r.longWaits.length) console.log(`    longest: ${r.longWaits.join('; ')}`);
     for (const l of r.crossLog || []) console.log(`    crossing movements: ${l}`);
     if (r.signals != null) console.log(`  red lights run: ${r.redRuns}; crossing movements let into one junction at once: ${r.conflicts}; cars found over a line: ${r.overLine}, crossing ${r.crossedOver || 0} movements in the junction`);
+    if (r.redRuns && r.redLog && r.redLog.length) console.log(`    red lights run: ${r.redLog.slice(0, 6).join('; ')}`);
   }
   const r0 = runs[0] || {}, avg = k => runs.reduce((a, r) => a + r[k], 0) / Math.max(1, runs.length), sum = k => runs.reduce((a, r) => a + (r[k] || 0), 0);
   if (r0.signals != null) console.log(`junctions: ${r0.junctions}, ${r0.signals} with signals (${r0.mapped} mapped, ${r0.arrows || 0} with a turn arrow), ${r0.heads} signal heads, ${r0.stops} stop and ${r0.giveWays} give-way signs; ${r0.midSignals || 0} crossings with signals and ${r0.zebras || 0} zebras between junctions; ${r0.bans || 0} banned turns (${sum('bannedExits')} exits left out where cars came)`);
   console.log(`all places: standing still ${(avg('stoppedShare') * 100).toFixed(0)}%, jammed ${(avg('jammedShare') * 100).toFixed(1)}%, ${(avg('meanSpeed') * 3.6).toFixed(0)} km/h, longest still ${Math.max(...runs.map(r => r.longestStill))} s, update ${avg('updateMs').toFixed(2)} ms a frame`);
-  const cw = runs.flatMap(r => r.carWaits || []), ww = runs.flatMap(r => r.walkWaits || []);
-  console.log(`all places: wait at a red: cars ${waitLine(cw)}; walkers ${waitLine(ww)}`);
-  if (process.env.WAITS_JSON) require('fs').appendFileSync(process.env.WAITS_JSON, JSON.stringify({ city, label: process.env.WAITS_LABEL || '', cars: { mean: mean(cw), p95: pct(cw, 0.95), max: pct(cw, 1), n: cw.length }, walkers: { mean: mean(ww), p95: pct(ww, 0.95), max: pct(ww, 1), n: ww.length },
+  const cw = runs.flatMap(r => r.carWaits || []), ww = runs.flatMap(r => r.walkWaits || []), sw = runs.flatMap(r => r.scrWaits || []);
+  console.log(`all places: wait at a red: cars ${waitLine(cw)}; walkers ${waitLine(ww)}${sw.length ? `; cars at a scramble ${waitLine(sw)}` : ''}`);
+  if (process.env.WAITS_JSON) require('fs').appendFileSync(process.env.WAITS_JSON, JSON.stringify({ city, label: process.env.WAITS_LABEL || '', cars: { mean: mean(cw), p95: pct(cw, 0.95), max: pct(cw, 1), n: cw.length }, scramble: { mean: mean(sw), p95: pct(sw, 0.95), max: pct(sw, 1), n: sw.length }, walkers: { mean: mean(ww), p95: pct(ww, 0.95), max: pct(ww, 1), n: ww.length },
     stopped: avg('stoppedShare'), jammed: avg('jammedShare'), kmh: avg('meanSpeed') * 3.6, longestStill: Math.max(...runs.map(r => r.longestStill)), overLine: sum('overLine'), crossed: sum('crossedOver'), redRuns: sum('redRuns'), conflicts: sum('conflicts') }) + '\n');
   for (const e of errors) console.log(`  pageerror: ${e}`);
   const fails = [];
