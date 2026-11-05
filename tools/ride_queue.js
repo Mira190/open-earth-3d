@@ -13,7 +13,7 @@ function findQueue(g, skip = new Set(), near = null) {
     if (near) heads.sort((a, b) => Math.hypot(a.x - near[0], a.y - near[1]) - Math.hypot(b.x - near[0], b.y - near[1]));
     for (const h of heads) {
       const l = L[h.line], end = h.dir > 0 ? 1 : 0, n = l.pts.length / 3, arm = g.junctions.armAt(h.line, end);
-      if (!arm || !arm.j.sig || g.junctions.toGreen(arm) < 12) continue; // (red long enough for the ride to come up behind it and wait)
+      if (!arm || !arm.j.sig || arm.j.scramble || g.junctions.toGreen(arm) < 12) continue; // (red long enough for the ride to come up behind it and wait; not a scramble's, whose minute-long walk tools/scramble_step.js covers)
       const tail = C.filter(c => c.line === h.line && c.dir === h.dir && c.q && (c.s - h.s) * h.dir <= 0).reduce((m, c) => ((c.s - m.s) * h.dir < 0 ? c : m), h);
       const s0 = tail.s - h.dir * (tail.half + 32);
       if (s0 < 3 || s0 > l.len - 3) continue;
