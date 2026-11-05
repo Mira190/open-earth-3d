@@ -1068,7 +1068,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // a step into a car, a bench or someone: stay put (whoever is already in one may walk
       // out of it, or along it), and after a while turn back
       let nx1 = tmp.x - nhy * p.lat, ny1 = tmp.y + nhx * p.lat, room1 = closest(nx1, ny1, player);
-      const room0 = closest(p.x, p.y, player), bad = (x, y, r) => blocked(x, y) > was + 1e-4 || (r < CLOSE && r < room0);
+      // out in a carriageway on a crossing, getting off it comes first: there a walker may close in to
+      // shoulders brushing (0.32 m) to clear it, never inside anyone; everywhere else it keeps CLOSE
+      const inRoad = !!(X && X.some(x => Math.abs(x.s - p.s) < x.kerb)), lim = inRoad ? 0.32 : CLOSE;
+      const room0 = closest(p.x, p.y, player), bad = (x, y, r) => blocked(x, y) > was + 1e-4 || (r < lim && r < room0);
       if (dl !== 0 && bad(nx1, ny1, room1)) { // drifting across into someone it is passing: straight on instead
         const lat2 = p.lat - dl, x2 = tmp.x - nhy * lat2, y2 = tmp.y + nhx * lat2, r2 = closest(x2, y2, player);
         if (!bad(x2, y2, r2)) { p.lat = lat2; dl = 0; nx1 = x2; ny1 = y2; room1 = r2; }
@@ -1113,7 +1116,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (jd > jmax) { p.x = ox + jx * jmax / jd; p.y = oy + jy * jmax / jd; }
       // and where it ends up (pulled in from a wall, or catching up) no closer to anyone than the
       // check above allowed: otherwise it stays where it was this step
-      if (jd > 1e-6 && (closest(p.x, p.y, player) < Math.min(CLOSE, room0) - 1e-4 || blocked(p.x, p.y) > was + 1e-4)) {
+      if (jd > 1e-6 && (closest(p.x, p.y, player) < Math.min(lim, room0) - 1e-4 || blocked(p.x, p.y) > was + 1e-4)) {
         if (p.dir !== dir0) turn(p);
         p.line = line0; p.s = s0; p.lat = lat0; p.hx = ohx; p.hy = ohy; p.x = ox; p.y = oy; p.z = oz; p.v = 0; p.vx = p.vy = 0;
         return;

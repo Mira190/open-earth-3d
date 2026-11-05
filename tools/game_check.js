@@ -210,10 +210,12 @@ const npcNight = require('./npc_night');
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
   // the crowd keeps out of each other (actors.js CLOSE) and never jumps: over five seconds near you, a
-  // frame at a time, no two walkers closer than 0.45 m centre to centre (they would show inside each
+  // frame at a time, no two walkers closer than 0.45 m centre to centre (0.3 m out on a crossing's road) (they would show inside each
   // other) and none moving farther in a frame than anyone walks (tools/crowd_spacing.js measures more)
   const spacing = await p.evaluate(() => {
     const g = window.__game, P = g.crowd.P, me = g.player, last = new Map();
+    // (out in a carriageway on a crossing they may close in to shoulders brushing, to clear it: actors.js)
+    const XS = g.crowd.crossings && g.crowd.crossings.byLine, inRoad = q => !!(XS && (XS.get(q.line) || []).some(x => Math.abs(x.s - q.s) < x.kerb));
     let close = 0, jumps = 0, n = 0;
     for (let k = 0; k < 150; k++) {
       g.advance(1 / 30);
@@ -222,7 +224,7 @@ const npcNight = require('./npc_night');
       for (const q of A) { const l = last.get(q); if (l && Math.hypot(q.x - l[0], q.y - l[1]) > 0.25 && Math.hypot(q.x - l[0], q.y - l[1]) < 20) jumps++; last.set(q, [q.x, q.y]); }
       for (let a = 0; a < A.length; a++) for (let b = a + 1; b < A.length; b++) {
         const q = A[a], r = A[b];
-        if (Math.abs(q.z - r.z) < 1.5 && Math.hypot(q.x - r.x, q.y - r.y) < 0.45) close++;
+        if (Math.abs(q.z - r.z) < 1.5 && Math.hypot(q.x - r.x, q.y - r.y) < (inRoad(q) || inRoad(r) ? 0.3 : 0.45)) close++;
       }
     }
     return { close, jumps, n };
