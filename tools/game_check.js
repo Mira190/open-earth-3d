@@ -201,7 +201,7 @@ const npcNight = require('./npc_night');
     out.t = t; out.total = o.total; out.done = done; out.kind = o.kind;
     out.near = Math.hypot(cam.x - g.player.x, cam.z + g.player.y, cam.y - head);
     out.at = Math.hypot(g.player.x - e[0], g.player.y - e[1]);
-    const sig = g.G.overture.signal;
+    const sig = g.G.overture.shots.some(q => (q.cues || []).some(c => c[1] === 'green')) ? g.G.overture.signal : null; // (only an overture that turns its signal green)
     if (sig) { const p0 = o.point(sig), j = g.junctions.J.filter(q => q.sig).sort((a, b) => Math.hypot(a.x - p0[0], a.y - p0[1]) - Math.hypot(b.x - p0[0], b.y - p0[1]))[0]; out.signal = j ? { d: Math.hypot(j.x - p0[0], j.y - p0[1]), ph: j.ph, st: j.st, scramble: !!j.scramble } : null; }
     out.layer = !!document.querySelector('.ov-layer');
     // skipped a few seconds in

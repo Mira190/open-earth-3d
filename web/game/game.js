@@ -3383,7 +3383,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
-    junctions, crowd, footNet, nav, clock, setClock, player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, get atmos() { return atmos; },
+    junctions, crowd, footNet, nav, clock, setClock, player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, get atmos() { return atmos; },
     walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } }) : null;
   if (overture && OEOverture.due(CITY.id)) overture.prepareScore();
   if (overture) $('#gm-overture').hidden = false;
@@ -3624,7 +3624,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (player.rig.hideHead) player.rig.hideHead(player.mode === 'heli' && cam.mode === 'cockpit' && !photo.on && !(cine.active && cine.label !== 'crane'));
     // depth of field in photo mode, and with the camera's motion blur in the opening shot; never in play
-    if (atmos && atmos.camFx) atmos.camFx(photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
+    if (atmos && atmos.camFx) atmos.camFx(overture && overture.active ? overture.fx : photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
       : arriving && cine.active ? { focus: camera.position.distanceTo(live.look), aperture: lensBlur(camera.fov, camera.position.distanceTo(live.look), 4), blur: 0.5 } : null);
     if (mirror) mirror.update(world, clockT);
     if (atmos) atmos.render(world, camera); else renderer.render(world, camera);

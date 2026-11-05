@@ -457,7 +457,8 @@ window.OEOverture = (function () {
       const gr = spec.grade || {}, w = EASE.smooth(clamp(t / 1.5)) * (s.type === 'land' ? 1 - EASE.smooth(clamp((k - 0.55) / 0.45)) : 1);
       const tint = gr.tint || [1, 1, 1];
       // (on top of the hour's own grade, which atmosphere.js applies each frame)
-      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)] };
+      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)], skySat: lerp(1, gr.sky_sat ?? 1, w) };
+      if (ctx.Wd && ctx.Wd.su) ctx.Wd.su.cloudTrim = (gr.clouds || 0) * w; // (more cloud, for the sun to light: weather.js)
       const sp = ctx.sun && ctx.sun(), L = lens.uniforms;
       if (!sp || !L.uSunVis || !window.OELens) return;
       const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
@@ -472,10 +473,23 @@ window.OEOverture = (function () {
       flareVis += ((vis * (gr.flare ?? 1) * w) - flareVis) * 0.15; // (eased, so a lamp post crossing the sun does not flicker it)
       L.uSunUv.value.set(on.u, on.v);
       L.uSunVis.value = flareVis;
+      // the animated film's lens (atmosphere.js anime): painted, graded, rays from the sun; lighter on a weaker tier
+      const an = spec.anime || {}, rad = { high: 3, medium: 2 }[tier] || 0;
+      if (ctx.atmos.anime && rad) ctx.atmos.anime({ k: (an.paint ?? 0.85) * w, radius: rad, grade: (an.grade ?? 1) * w, rays: (an.rays ?? 1) * w, sunVis: flareVis, sunUv: sunUv.set(on.u, on.v) });
+      // depth of field on the guide when it is near the lens (the camera's own effect, atmosphere.js camFx), not on a weak tier
+      const gd = (hero ? hero.visible : glow && glow.visible) ? cam.position.distanceTo(gprev) : 999, fstop = s.fstop ?? 2.8;
+      if (tier !== 'low' && gd < (s.focusFar ?? 9)) {
+        const f = 0.012 / Math.tan(cam.fov * RAD / 2);
+        fx = { focus: gd, aperture: f * f / (fstop * Math.max(0.05, gd - f)) / 0.024, blur: 0.25 };
+      } else fx = null;
       if (L.uFlareTint) L.uFlareTint.value.setRGB(1, 0.62 + 0.25 * clamp(sp.altitude / 20), 0.42 + 0.4 * clamp(sp.altitude / 25));
     }
-    let flareVis = 0;
+    let flareVis = 0, fx = null;
+    const sunUv = new THREE.Vector2();
     function unlook() {
+      fx = null;
+      if (ctx.atmos && ctx.atmos.anime) ctx.atmos.anime(null);
+      if (ctx.Wd && ctx.Wd.su) ctx.Wd.su.cloudTrim = 0;
       const lens = ctx.atmos && ctx.atmos.lens;
       if (!lens) return;
       lens.trim = null;
@@ -556,7 +570,7 @@ window.OEOverture = (function () {
     }
     return {
       play, skip, update, prepareScore, scorePlan, point, shots, total,
-      get active() { return active; }, get fov() { return fov; }, get t() { return t; }, get kind() { return kind; }, get end() { return endAt.slice(); },
+      get active() { return active; }, get fov() { return fov; }, get fx() { return active ? fx : null; }, get t() { return t; }, get kind() { return kind; }, get end() { return endAt.slice(); },
       // the guide's and the camera's path through each shot (for tools/overture_film.js's checks)
       sample(s, k) { const g = shotPose(s, k); return { pos: pose.pos.clone(), look: pose.look.clone(), guide: g ? g.clone() : null }; },
       setFrom(f) { from = f; },

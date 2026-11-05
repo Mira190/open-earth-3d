@@ -437,7 +437,8 @@ void main() {
         U.uOeRain.value = cur.rain;
         U.uOeT.value = reduced ? tSec * 0.3 : tSec;
         if (su && su.cloudCoverage && baseClouds) {
-          su.cloudCoverage.value = baseClouds[0] + (0.97 - baseClouds[0]) * smooth(0, 1, cur.cloud);
+          const ct = su.cloudTrim || 0; // (more cloud for a shot: the overture's sunset sky, overture.js)
+          su.cloudCoverage.value = Math.min(0.97, baseClouds[0] + ct + (0.97 - baseClouds[0] - ct) * smooth(0, 1, cur.cloud));
           su.cloudDensity.value = baseClouds[1] + (0.85 - baseClouds[1]) * cur.cloud;
         }
         // the camera's velocity, smoothed, for the slant of the streaks

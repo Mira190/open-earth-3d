@@ -190,6 +190,64 @@ window.OEAtmos = (function () {
       }`,
   });
 
+  // The animated film's lens, for a map's overture only (overture.js; never in play, off unless asked):
+  // after the title's lens, on the picture as it will be shown. In one pass and no target of its own:
+  //   a painted look  a Kuwahara filter (each pixel takes the mean of whichever of its four quadrants is
+  //                   the most even), which turns surfaces into flat brushed planes and keeps their edges,
+  //                   as the painted backgrounds of animated films are; radius in pixels at 900 lines
+  //   the grade       shadows lifted towards a clear blue, highlights warmed towards peach, colour where it
+  //                   is weak given more than where it is already strong (vibrance)
+  //   light           crepuscular rays from the sun where it is in frame (a march of 20 taps towards it over
+  //                   the bright pixels), and a soft halation round the brightest
+  const ANIME = () => ({
+    uniforms: { tDiffuse: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uK: { value: 0 }, uRadius: { value: 3 }, uGrade: { value: 0 },
+      uSunUv: { value: new THREE.Vector2(0.5, 0.5) }, uSunVis: { value: 0 }, uRays: { value: 0 }, uWarm: { value: new THREE.Vector3(1.0, 0.82, 0.62) } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform sampler2D tDiffuse; uniform vec2 uRes, uSunUv; uniform float uK, uRadius, uGrade, uSunVis, uRays; uniform vec3 uWarm; varying vec2 vUv;
+      float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+      void main() {
+        vec3 src = texture2D(tDiffuse, vUv).rgb, c = src;
+        // the painted look
+        if (uK > 0.0 && uRadius >= 1.0) {
+          vec2 px = vec2(uRes.y / 900.0) / uRes;
+          vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0), s0 = vec3(0.0), s1 = vec3(0.0), s2 = vec3(0.0), s3 = vec3(0.0);
+          float n = 0.0;
+          for (int j = 0; j <= 4; j++) for (int i = 0; i <= 4; i++) {
+            if (float(i) > uRadius || float(j) > uRadius) continue;
+            vec2 o = vec2(float(i), float(j)) * px;
+            vec3 a = texture2D(tDiffuse, vUv + vec2(-o.x, -o.y)).rgb, b = texture2D(tDiffuse, vUv + vec2(o.x, -o.y)).rgb;
+            vec3 d = texture2D(tDiffuse, vUv + vec2(-o.x, o.y)).rgb, e = texture2D(tDiffuse, vUv + o).rgb;
+            m0 += a; s0 += a * a; m1 += b; s1 += b * b; m2 += d; s2 += d * d; m3 += e; s3 += e * e; n += 1.0;
+          }
+          m0 /= n; m1 /= n; m2 /= n; m3 /= n;
+          float v0 = dot(s0 / n - m0 * m0, vec3(1.0)), v1 = dot(s1 / n - m1 * m1, vec3(1.0)), v2 = dot(s2 / n - m2 * m2, vec3(1.0)), v3 = dot(s3 / n - m3 * m3, vec3(1.0));
+          // (a soft choice between the quadrants, weighted by how even each is, rather than the hard minimum: no blocks)
+          float w0 = 1.0 / (1e-5 + v0 * v0 * 4e3), w1 = 1.0 / (1e-5 + v1 * v1 * 4e3), w2 = 1.0 / (1e-5 + v2 * v2 * 4e3), w3 = 1.0 / (1e-5 + v3 * v3 * 4e3);
+          vec3 k = (m0 * w0 + m1 * w1 + m2 * w2 + m3 * w3) / (w0 + w1 + w2 + w3);
+          c = mix(c, k, uK);
+        }
+        // light: rays from the sun over the bright pixels on the way to it, and a halation of the brightest
+        if (uSunVis > 0.0 && uRays > 0.0) {
+          vec2 dlt = (uSunUv - vUv) / 20.0; vec2 uv = vUv; float acc = 0.0, w = 1.0;
+          for (int i = 0; i < 20; i++) { uv += dlt; vec3 t = texture2D(tDiffuse, clamp(uv, 0.0, 1.0)).rgb; acc += smoothstep(0.62, 0.95, luma(t)) * w; w *= 0.93; }
+          float r = acc / 9.0 * uSunVis * uRays * (1.0 - smoothstep(0.0, 0.9, distance(vUv * vec2(uRes.x / uRes.y, 1.0), uSunUv * vec2(uRes.x / uRes.y, 1.0))));
+          c += uWarm * r * 0.55;
+        }
+        if (uGrade > 0.0) {
+          float l = luma(c);
+          vec3 g = c;
+          g = mix(g, g + vec3(-0.01, 0.025, 0.07), (1.0 - smoothstep(0.0, 0.45, l)) * 0.9);      // shadows: a clear blue, never grey
+          g = mix(g, g * uWarm * 1.08, smoothstep(0.55, 1.0, l) * 0.55);                        // highlights: peach
+          float mx = max(g.r, max(g.g, g.b)), mn = min(g.r, min(g.g, g.b)), sat = mx > 0.0 ? (mx - mn) / mx : 0.0;
+          g = mix(vec3(luma(g)), g, 1.0 + 0.55 * (1.0 - sat));                                    // vibrance
+          vec3 h = max(g - 0.82, 0.0); g += h * h * 2.2 * uWarm;                                  // halation on the brightest
+          c = mix(c, g, uGrade);
+        }
+        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+      }`,
+  });
+
   // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density}); look: game.look ({grade})
   function create(Wd, renderer, camera, { city, sky = {}, look = {} } = {}) {
     const keys = {};
@@ -206,7 +264,7 @@ window.OEAtmos = (function () {
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
-    let composer = null, bloom = null, grade = null, lens = null, camFx = null, distRT = null, fx = null, ao = null;
+    let composer = null, bloom = null, grade = null, lens = null, anime = null, camFx = null, distRT = null, fx = null, ao = null;
     // the distance pass: the depth material (which skins and instances as the scene's own materials do)
     // writing each pixel's distance from the camera over FAR, packed into RGBA. (MeshDistanceMaterial
     // reads its point from a point light's shadow camera and cannot be drawn outside a shadow pass.)
@@ -249,6 +307,9 @@ window.OEAtmos = (function () {
         camFx.enabled = false;
         composer.addPass(camFx);
         composer.addPass(lens);
+        anime = new THREE.ShaderPass(ANIME());
+        anime.enabled = false;
+        composer.addPass(anime);
       } else {
         composer.addPass(new THREE.OutputPass());
         grade = new THREE.ShaderPass(GRADE);
@@ -264,7 +325,7 @@ window.OEAtmos = (function () {
         night = U.uNight.value;
         const ov = window.OEWeather ? OEWeather.U.uOeOvercast.value : 0; // cloud cover from the weather (weather.js)
         if (su.time) su.time.value = tSec;
-        if (su.uSkySat) su.uSkySat.value = (1 + (skySat - 1) * (1 - night)) * (1 - 0.55 * ov); // not the night sky's red; a pale sky under cloud
+        if (su.uSkySat) su.uSkySat.value = (1 + (skySat - 1) * (1 - night)) * (1 - 0.55 * ov) * ((lens && lens.trim && lens.trim.skySat) || 1); // not the night sky's red; a pale sky under cloud
         skyBasis(utcMs, city.lat, city.lon, basis);
         S.matrix.copy(basis).setPosition(camera.position);
         S.matrixWorldNeedsUpdate = true;
@@ -301,6 +362,16 @@ window.OEAtmos = (function () {
       // draw the frame: through the post stack, or plainly
       // photo mode and the opening shot: {focus: m, aperture: 0..1, blur: 0..1}, or null (off, as in play)
       camFx(o) { if (o && !fx) o.fresh = true; fx = o && camFx ? o : null; },
+      // the overture's animated-film lens: {k, radius, grade, rays, sunUv, sunVis} or null (off: it costs nothing)
+      anime(o) {
+        if (!anime) return false;
+        anime.enabled = !!o;
+        if (!o) return true;
+        const A = anime.uniforms, z = renderer.getDrawingBufferSize(new THREE.Vector2());
+        A.uRes.value.set(z.x, z.y); A.uK.value = o.k || 0; A.uRadius.value = o.radius ?? 3; A.uGrade.value = o.grade || 0;
+        A.uRays.value = o.rays || 0; A.uSunVis.value = o.sunVis || 0; if (o.sunUv) A.uSunUv.value.copy(o.sunUv);
+        return true;
+      },
       render(scene, cam) {
         if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0);
         if (camFx && camFx.enabled) {
