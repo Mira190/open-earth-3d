@@ -1,0 +1,345 @@
+{
+ "city": "queenstown",
+ "lidar": "LINZ Otago - Queenstown LiDAR 1m DSM (2021)",
+ "model_vs_lidar_m": {
+  "estimate": {
+   "n": 23,
+   "median_abs_m": 4.23,
+   "p90_abs_m": 5.72,
+   "bias_m": 4.23,
+   "within_2m_pct": 13.0
+  },
+  "lidar": {
+   "n": 3587,
+   "median_abs_m": 0.03,
+   "p90_abs_m": 0.08,
+   "bias_m": 0.0,
+   "within_2m_pct": 100.0
+  }
+ },
+ "worst_survey_vs_lidar": [],
+ "no_roof_in_lidar": [
+  {
+   "name": "",
+   "osm_id": "w982917214",
+   "source": "estimate",
+   "model_m": 87.0,
+   "lidar_m": 85.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "95CC45FB-57A4-4F7B-950B-1A984AEF46F7",
+   "source": "estimate",
+   "model_m": 49.6,
+   "lidar_m": 43.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "15E897C4-B7B4-4AD9-AC07-034B33D72336",
+   "source": "estimate",
+   "model_m": 49.0,
+   "lidar_m": 44.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w245422637",
+   "source": "estimate",
+   "model_m": 22.4,
+   "lidar_m": 16.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w245422639",
+   "source": "estimate",
+   "model_m": 22.5,
+   "lidar_m": 16.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "5DE52708-1752-4776-8B7E-EA4CF0D7CA61",
+   "source": "estimate",
+   "model_m": 47.5,
+   "lidar_m": 41.1,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "762D1F4D-1646-492A-8430-B5C6E1E8F63F",
+   "source": "estimate",
+   "model_m": 47.4,
+   "lidar_m": 41.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "CC8BAAFE-C2B0-4325-976B-C10233D52F52",
+   "source": "estimate",
+   "model_m": 46.8,
+   "lidar_m": 41.0,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "FB7CD842-E0A7-4E9C-BEC7-927A540FF754",
+   "source": "estimate",
+   "model_m": 46.7,
+   "lidar_m": 41.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "ED5073D2-7C0B-4369-9677-D287E8143A8B",
+   "source": "estimate",
+   "model_m": 47.0,
+   "lidar_m": 40.7,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "7F285325-4F34-49EF-B374-774F1DBB193C",
+   "source": "estimate",
+   "model_m": 47.0,
+   "lidar_m": 41.2,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "32838DFC-A41F-4338-BD00-B15A83F0926B",
+   "source": "estimate",
+   "model_m": 49.0,
+   "lidar_m": 42.7,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "D1988B85-62DC-4A0A-903B-1C3F5A376A56",
+   "source": "estimate",
+   "model_m": 48.5,
+   "lidar_m": 42.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "DCAC9B86-BECE-4757-B1CE-95981E07AFDD",
+   "source": "estimate",
+   "model_m": 47.0,
+   "lidar_m": 40.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "D0C0B261-4BB7-4373-ACA3-9BDB2BD000AD",
+   "source": "estimate",
+   "model_m": 43.6,
+   "lidar_m": 39.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "71547B3F-45B7-4339-AC7C-6811B84471DC",
+   "source": "estimate",
+   "model_m": 48.1,
+   "lidar_m": 42.0,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "50051D50-12FA-4DF3-A8FA-FF7524A19D2F",
+   "source": "estimate",
+   "model_m": 50.2,
+   "lidar_m": 42.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "CD37F79B-DE71-4440-A30F-F3C080869B84",
+   "source": "estimate",
+   "model_m": 53.5,
+   "lidar_m": 46.0,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "6C40B4C8-66CC-494B-9A3C-0706FEF89EE9",
+   "source": "estimate",
+   "model_m": 51.5,
+   "lidar_m": 43.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "794B1271-9CD7-4CC7-A80A-0CFFF45D4F45",
+   "source": "estimate",
+   "model_m": 49.0,
+   "lidar_m": 42.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "160B50AB-FD2F-4C03-86DE-26AFCA60D20B",
+   "source": "estimate",
+   "model_m": 52.6,
+   "lidar_m": 45.0,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "7056D7AF-D5D9-4B4A-859C-32FE96180C6A",
+   "source": "estimate",
+   "model_m": 53.8,
+   "lidar_m": 46.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "0F1682EF-3915-43C7-BF05-790035F8073A",
+   "source": "estimate",
+   "model_m": 53.2,
+   "lidar_m": 46.9,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "536C838C-8519-4AE8-A513-8FDA0B4371E5",
+   "source": "estimate",
+   "model_m": 52.7,
+   "lidar_m": 45.9,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "6DE90BFB-0E41-42D4-B38C-C529F9E635A1",
+   "source": "estimate",
+   "model_m": 50.6,
+   "lidar_m": 45.9,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "AE73405C-EC26-4B85-9A87-EFC96AA41D88",
+   "source": "estimate",
+   "model_m": 46.5,
+   "lidar_m": 40.1,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "B6D48108-2572-45EA-B250-39CF3F2BCF8B",
+   "source": "estimate",
+   "model_m": 46.0,
+   "lidar_m": 39.9,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "FCE56701-57E6-4CFB-8662-2B87261451B7",
+   "source": "estimate",
+   "model_m": 47.5,
+   "lidar_m": 41.2,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "83E487CF-E7C0-46BC-BE85-AFB79C32EB1F",
+   "source": "estimate",
+   "model_m": 46.5,
+   "lidar_m": 40.2,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "AAF23349-3AC9-4DA9-AC7B-314329769CB8",
+   "source": "estimate",
+   "model_m": 46.9,
+   "lidar_m": 40.2,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "C62CA2FA-253E-4957-96E5-60C6ACCDBF3A",
+   "source": "estimate",
+   "model_m": 42.5,
+   "lidar_m": 37.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "40D52D81-9CEA-42B8-9782-67B3548764B0",
+   "source": "estimate",
+   "model_m": 42.4,
+   "lidar_m": 37.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "02F8F1B3-1AFA-4686-8043-52E259E3C82B",
+   "source": "estimate",
+   "model_m": 44.1,
+   "lidar_m": 36.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "440D22F2-692A-4D94-8BF8-ABC633E73EFA",
+   "source": "estimate",
+   "model_m": 41.0,
+   "lidar_m": 35.7,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "8324AC20-8306-4C88-85A9-A3D1306317AA",
+   "source": "estimate",
+   "model_m": 41.1,
+   "lidar_m": 36.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "1794F658-812A-4ADA-B0FF-A6DC90E17872",
+   "source": "estimate",
+   "model_m": 42.6,
+   "lidar_m": 37.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "7FC863E6-9A3C-4665-B5F5-8031DCF00307",
+   "source": "estimate",
+   "model_m": 40.2,
+   "lidar_m": 37.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "59D3801C-66CE-44B0-95C0-7E3285BA87AD",
+   "source": "estimate",
+   "model_m": 38.9,
+   "lidar_m": 35.7,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "2300696C-E2BB-42CB-95AE-A6E5FA7A2779",
+   "source": "estimate",
+   "model_m": 40.4,
+   "lidar_m": 37.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "F410ABB9-6CF9-41B5-B79E-9E865A906B8A",
+   "source": "estimate",
+   "model_m": 40.4,
+   "lidar_m": 37.5,
+   "note": "no roof in the 2020 LiDAR"
+  }
+ ],
+ "no_roof_in_lidar_n": 119,
+ "towers_100m_vs_lidar": null
+}

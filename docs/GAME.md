@@ -1579,6 +1579,19 @@ helicopter a line ahead in the air rather than a pointer.
 | ![](images/vehicles/ferry_river.jpg) | ![](images/vehicles/cars.jpg) |
 | **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
 | ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
+| **The lake steamer (Queenstown's TSS Earnslaw)** | |
+| ![](images/vehicles/ferry_steamer.jpg) | |
+
+**The lake steamer** (`ferry_steamer.glb`, `ferry_style.model: "steamer"`) is the only single-ended
+vessel: `vehicles.json` marks it `single_ended`, so it lies alongside as it came in, swings round
+at no more than 8° a second once under way (slow ahead while it does), always leads with its bow,
+and puffs coal smoke from `Funnel_Top`: soft puffs in the world's frame that rise, spread and drift
+astern, darker by night.
+
+**The gondola** (`rail.gondola`, `web/game/rail.js`) is a detachable gondola: cabins on a loop of
+cable, up on the right and down on the left, slowing through each station round its bullwheel. A
+cabin in a station can be boarded (E), and you ride standing in it to the other station. The line
+is the city's (`game_rail` in `city.py`), the cable's profile with its sag between the towers.
 
 **The helicopter comes after the game opens (issue 148).** Its model is 3.7 MB, more than any city's
 buildings once packed, and most games start on foot. `OEVehicles.load(..., { heli: 'later' })` leaves

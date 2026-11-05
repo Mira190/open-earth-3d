@@ -5,6 +5,17 @@
     "akihabara", "asakusa", "ueno", "ikebukuro", "jinbocho", "roppongi", "shinagawa", "tsukishima", "odaiba"],
   "cities": [
     {
+      "id": "queenstown",
+      "name": "Queenstown",
+      "native": "Tāhuna",
+      "country": "New Zealand",
+      "lat": -45.031,
+      "lon": 168.662,
+      "status": "live",
+      "timezone": "Pacific/Auckland",
+      "summary": "Queenstown on Lake Wakatipu: every roof measured by LINZ's 2021 LiDAR under its 2026 aerial photos, the Skyline Gondola to Bob's Peak, the TSS Earnslaw at Steamer Wharf, and the Remarkables across the lake."
+    },
+    {
       "id": "sydney",
       "name": "Sydney",
       "country": "Australia",

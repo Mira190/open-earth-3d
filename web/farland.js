@@ -60,7 +60,8 @@ window.OEFarLand = (function () {
     const past = (x, y) => Math.hypot(Math.max(fx0 - x, 0, x - fx1), Math.max(fy0 - y, 0, y - fy1));
     // a grid with its lines closer together near the centre: x = H t^P, so about 40 m apart at the
     // frame and a few hundred far out
-    const N = small ? 128 : 256, P = 1.7;
+    // a city whose mountains are its backdrop asks for a finer grid in far.json (mesh)
+    const N = (meta.mesh || 256) >> (small ? 1 : 0), P = 1.7;
     const axis = c0 => Array.from({ length: N + 1 }, (_, i) => { const t = 2 * i / N - 1; return c0 + Math.sign(t) * H * Math.pow(Math.abs(t), P); });
     const xs = axis(cx), ys = axis(cy);
     const pos = new Float32Array((N + 1) * (N + 1) * 3), inside = new Uint8Array((N + 1) * (N + 1));
