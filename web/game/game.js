@@ -880,10 +880,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // gets there, so it seldom stops (tools/ride_check.js signals measures it); the time with them is
   // the one a ride is picked by and the app first says.
   const SIG_WAIT = 1;
-  // A scramble's walk is the one turn its priority never cuts (junctions.js), so a scramble near you
-  // adds more: about half the time the ride comes up to it in the walk, or on the amber and all red
-  // round it, with some 20 s of that left on average. A taxi on your side of it is picked first.
-  const SCR_WAIT = 12;
+  // A scramble's walk is the one turn its priority never cuts (junctions.js), and a ride keeps a
+  // scramble's lights in sight or not, so a scramble near you adds more: coming up to it as the walk
+  // starts, the walk and the all red round it, about half a minute. It is counted at near that, so
+  // a taxi on your side of it is picked whenever there is one, and the time the app says holds.
+  const SCR_WAIT = 24;
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   function planRide(from, pickup) {
     const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
