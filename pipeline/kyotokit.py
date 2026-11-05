@@ -14,7 +14,24 @@ import math
 import numpy as np
 
 import archkit as ak
-from japankit import block, hip_roof, irimoya, lathe_at, left_of, taper, unit
+import japankit
+from japankit import block, lathe_at, left_of, taper, unit
+
+
+def hip_roof(roof, soffit, P, u_half, v_half, z_eave, z_top, ov, k=1.6, rings=6, ridge_frac=0.0, lift=None):
+    """japankit.hip_roof, with the corners' lift (反り) given, for a hall's own curve (lift None: japankit's)."""
+    if lift is None:
+        return japankit.hip_roof(roof, soffit, P, u_half, v_half, z_eave, z_top, ov, k=k, rings=rings, ridge_frac=ridge_frac)
+    return ak.japanese_roof(P, u_half, v_half, z_eave, z_top, ov, roof, soffit, None, soffit, gable_frac=1.0, k=k,
+                            lift=lift, ridge_frac=ridge_frac, ridges=False, n=rings)["corners"]
+
+
+def irimoya(roof, gable, soffit, P, u_half, v_half, z_eave, z_ridge, ov, gable_at=0.55, k=1.5, lift=None):
+    """japankit.irimoya, with the corners' lift given (lift None: japankit's)."""
+    if lift is None:
+        return japankit.irimoya(roof, gable, soffit, P, u_half, v_half, z_eave, z_ridge, ov, gable_at=gable_at, k=k)
+    return ak.japanese_roof(P, u_half, v_half, z_eave, z_ridge, ov, roof, soffit, gable, soffit, gable_frac=gable_at ** (1 / k), k=k,
+                            lift=lift, ridges=False)
 
 
 def frame(o, f):

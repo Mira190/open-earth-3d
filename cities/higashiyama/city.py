@@ -333,7 +333,7 @@ def hondo(K, ground):
     block(K["timber_dark"], Q, -bh - 0.15, bh + 0.15, -wv - 0.15, wv + 0.15, zt - 0.6, zt)
     kk.brackets(K, BARE, Q, bh, wv, zt, zt + 1.0, out=0.9)
     # the great roof: hipped, of hinoki bark, its ridge along the hall
-    from japankit import hip_roof
+    from kyotokit import hip_roof
     k, lift = ROOFS["hondo"]
     corners = hip_roof(K["hondo_hiwada"], K["soffit_wood"], kk.across(Q), wv + 0.9, bh + 0.9, zt + 1.0, ridge - 0.5, ov=3.4, k=k, ridge_frac=0.62,
                        lift=lift * 3.4)
@@ -687,7 +687,13 @@ def landmark_meshes(scene):
         z = H["zf"]
         for k in ("shu", "keyaki", "timber", "kiyo_white"):
             mats[k]["flood"] = [round(z - 16.0, 1), round(z + 20.0, 1), 0.5, 0.6]
-    return mats, K.out() + L.out(), {"hidden": sorted(set(hidden))}
+    extra = {"hidden": sorted(set(hidden))}
+    gs = _cache.get("saimon_steps")
+    if gs:   # the ground isn't drawn over the West Gate's steps, which the laser terrain's slope would bury
+        P, w = gs["P"], gs["width"] / 2 + 0.6
+        extra["clip"] = [{"ring": [[round(float(c), 2) for c in P(u, v, 0)[:2]] for u, v in
+                                   ((gs["u0"] - 0.1, -w), (gs["u1"] + 0.1, -w), (gs["u1"] + 0.1, w), (gs["u0"] - 0.1, w))], "holes": []}]
+    return mats, K.out() + L.out(), extra
 
 
 def landmark_assets(out_dir, scene):
