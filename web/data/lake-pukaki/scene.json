@@ -1374,5 +1374,18 @@
    "src": "Toit\u016b Te Whenua LINZ, Canterbury 0.3m Rural Aerial Photos (2015-2016), CC BY 4.0"
   }
  ],
- "structures": "structures.json"
+ "structures": "structures.json",
+ "snow": {
+  "file": "snow.png",
+  "w": 1920,
+  "h": 4224,
+  "px_m": 20,
+  "date": "2026-10-24",
+  "scene": "S2C_59GMM_20261024_0_L2A",
+  "scenes": [
+   "S2C_59GMM_20261024_0_L2A",
+   "S2B_59GMM_20261022_0_L2A"
+  ],
+  "src": "Copernicus Sentinel-2 L2A via Earth Search on AWS (Copernicus open licence); NDSI > 0.4 and B08 > 0.11; 255 = cloud"
+ }
 }

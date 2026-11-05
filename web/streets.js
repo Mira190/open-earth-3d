@@ -35,7 +35,7 @@ window.OEStreets = (function () {
       for (let k = 3; k + 2 < p.length; k += 3) {
         const ax = p[k - 3], ay = p[k - 2], bx = p[k], by = p[k + 1];
         if (ax === bx && ay === by) continue;
-        const i = S.push({ ax, ay, az: p[k - 1], bx, by, bz: p[k + 2], hw, c: l.c }) - 1;
+        const i = S.push({ ax, ay, az: p[k - 1], bx, by, bz: p[k + 2], hw, cw: (ROADW[l.c] || 7) / 2, c: l.c }) - 1;
         for (let cx = Math.floor((Math.min(ax, bx) - hw) / GC); cx <= Math.floor((Math.max(ax, bx) + hw) / GC); cx++)
           for (let cy = Math.floor((Math.min(ay, by) - hw) / GC); cy <= Math.floor((Math.max(ay, by) + hw) / GC); cy++) {
             const kk = key(cx, cy), g = grid.get(kk);
@@ -46,13 +46,14 @@ window.OEStreets = (function () {
     const out = { deep: 0, nx: 0, ny: 0, d: 0, seg: null };
     // the band a circle (radius r, at height z) reaches deepest into: out.deep (<= 0: clear of every
     // band), and the way out of it, (nx, ny), from the band's line
-    function deepest(x, y, z, r) {
+    // (lanes: the carriageway itself, kerb to kerb, not the band kept clear for the cars parked at it)
+    function deepest(x, y, z, r, lanes = false) {
       out.deep = -Infinity; out.seg = null;
       for (const i of grid.get(key(Math.floor(x / GC), Math.floor(y / GC))) || []) {
         const s = S[i], ex = s.bx - s.ax, ey = s.by - s.ay, L2 = ex * ex + ey * ey;
         const t = Math.max(0, Math.min(1, ((x - s.ax) * ex + (y - s.ay) * ey) / L2));
         if (z != null && Math.abs(s.az + (s.bz - s.az) * t - z) >= LEVEL) continue;
-        const qx = s.ax + ex * t, qy = s.ay + ey * t, d = Math.hypot(x - qx, y - qy), deep = s.hw + r - d;
+        const qx = s.ax + ex * t, qy = s.ay + ey * t, d = Math.hypot(x - qx, y - qy), deep = (lanes ? s.cw : s.hw) + r - d;
         if (deep <= out.deep) continue;
         out.deep = deep; out.seg = s; out.d = d;
         if (d > 1e-3) { out.nx = (x - qx) / d; out.ny = (y - qy) / d; }
@@ -67,12 +68,25 @@ window.OEStreets = (function () {
       depth(x, y, z, r = 0) { return deepest(x, y, z, r).deep; },
       // the nearest place within reach of (x, y) where a circle of radius r is clear of every band
       // at its level: [x, y], or null
-      kerbside(x, y, z, r = 0, reach = 6) {
+      // (lanes: clear of the carriageways only, as a signal post at a junction's corner, where no car parks)
+      kerbside(x, y, z, r = 0, reach = 6, lanes = false) {
         let px = x, py = y;
         for (let it = 0; it < 8; it++) {
-          const q = deepest(px, py, z, r);
+          const q = deepest(px, py, z, r, lanes);
           if (q.deep <= 0) return Math.hypot(px - x, py - y) <= reach ? [px, py] : null;
           px += q.nx * (q.deep + 0.06); py += q.ny * (q.deep + 0.06); // (past the edge by more than a decimetre rounds)
+        }
+        // (pushed out of one band into another and back, where roads meet at a sharp angle: the
+        // nearest clear spot on rings round it, half a metre apart, instead)
+        for (let d = 0.5; d <= reach; d += 0.5) {
+          const n = Math.max(12, Math.ceil(2 * Math.PI * d / 0.5));
+          let best = null, bd = Infinity;
+          for (let i = 0; i < n; i++) {
+            const t = (i / n) * 2 * Math.PI, qx = x + Math.sin(t) * d, qy = y + Math.cos(t) * d;
+            const e = deepest(qx, qy, z, r, lanes).deep;
+            if (e <= 0 && e < bd) { bd = e; best = [qx, qy]; } // (of the clear ones on the ring, the one furthest from any band)
+          }
+          if (best) return best;
         }
         return null;
       },

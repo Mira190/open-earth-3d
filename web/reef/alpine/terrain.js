@@ -35,7 +35,7 @@ const vnoiseT = (x, y) => {
 };
 const fbmT = (x, z) => vnoiseT(x.div(9), z.div(9)).mul(0.55).add(vnoiseT(x.div(3.7), z.div(3.7)).mul(0.3)).add(vnoiseT(x.div(1.6), z.div(1.6)).mul(0.15));
 
-export function createAlpineTerrain(d, env, renderer, light, heightTex) {
+export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null) {
   const t = d.scene.terrain, g = d.scene.ground, W = t.w, H = t.h;
   const lightU = light.u;
   // ---- textures: the ground strips, the cover classes
@@ -108,6 +108,23 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex) {
     return mix(alb, detailNode.sample(du).rgb, k);
   };
 
+  // ---- the season's snow (alpine_snow.py: the latest clear Sentinel-2 passes): laid over the summer mosaic from winter
+  // into early summer, by the clock's month (snowSeason, set in update)
+  const snowS = d.scene.snow;
+  let snowTex = null;
+  if (d.snowImg && snowS) {
+    snowTex = new THREE.Texture(d.snowImg); snowTex.colorSpace = THREE.NoColorSpace; snowTex.flipY = false;
+    snowTex.magFilter = snowTex.minFilter = THREE.LinearFilter; snowTex.generateMipmaps = false; snowTex.needsUpdate = true;
+  }
+  const snowSeason = uniform(0);
+  const SEASON = [0, 0, 0, 0.3, 0.7, 1, 1, 1, 1, 1, 1, 0.5];      // Jan..Dec: the spring snow holds from June to November
+  const seasonSnow = (x, z) => {
+    if (!snowTex) return float(0);
+    const v = texture(snowTex, vec2(x.sub(t.x0).div(snowS.w * snowS.px_m), z.add(t.y1).div(snowS.h * snowS.px_m))).level(0).r;
+    // 255 is no reading (cloud): the summer colour stays
+    return select(v.greaterThan(0.995), float(0), v.mul(255 / 254)).mul(snowSeason);
+  };
+
   // ---- the material, one per ground strip
   const time = env.u.time;
   function makeMat(strip, detailNormal) {
@@ -137,9 +154,13 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex) {
       alb.assign(select(grassy, alb.mul(float(1).add(blades.mul(0.35).mul(close))), alb));
       // the imagery's snow is a little grey from the 10 m mix of snow and rock; fresh snow is near white
       alb.assign(select(isSnow, mix(alb, vec3(0.86, 0.89, 0.93), 0.35), alb));
+      // the season's snow over the summer ground, thinning to tussock and rock showing through at its edge
+      const ss = seasonSnow(x, z);
+      const patchy = smoothstep(0.25, 0.75, ss.add(n1.mul(0.25)));
+      alb.assign(mix(alb, vec3(0.84, 0.87, 0.92), patchy));
       const N = detailNormal ? detailNormal(cls, near) : normalize(normalWorld);
       // glints in the snow: facets catching the sun, a few per square metre, only close up
-      const sp = select(isSnow, float(1), select(cls.equal(15).or(cls.equal(6)), float(0.35), float(0)));
+      const sp = select(isSnow.or(patchy.greaterThan(0.5)), float(1), select(cls.equal(15).or(cls.equal(6)), float(0.35), float(0)));
       let c = light.shade(alb, N, P, { spec: sp }).toVar();
       const glint = smoothstep(0.86, 0.98, mx_noise_float(vec3(x.mul(9), P.y.mul(9), z.mul(9)).add(cameraPosition.mul(0.35)))).mul(isSnow.select(1, 0)).mul(float(1).sub(smoothstep(8, 60, dist)));
       c.addAssign(vec3(lightU.sunE).mul(glint.mul(0.6).mul(light.sunVis(P))));
@@ -284,8 +305,11 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex) {
   }
   const heightAt = (x, north) => bicubicJS(x, north) + fbmJS(x, -north) * ampAt(x, north);
 
+  let monthSeen = -1;
   function update(cam) {
     detailUpdate(cam);
+    const m = new Date((ctx_clock ? ctx_clock() : Date.now()) + 12 * 3600e3).getUTCMonth();   // New Zealand's month, near enough
+    if (m !== monthSeen) { monthSeen = m; snowSeason.value = SEASON[m]; }
     centre.value.set(Math.round(cam.x / 8) * 8, Math.round(cam.z / 8) * 8);
     const si = Math.max(0, strips.findIndex(s => { const row = (cam.z + t.y1) / g.px_m; return row >= s.row0 && row < s.row0 + s.rows; }));
     // high above the land the patch is not worth drawing

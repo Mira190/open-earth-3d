@@ -581,7 +581,17 @@ pipeline writes. The only city-specific code is landmark geometry in
     that crosses the water, or runs more than 2.5 m above the ground drawn
     under it, is on a deck.
     - The deck is drawn as a concrete slab with parapets, with columns under
-      the high spans.
+      the high spans. An expressway is mapped over the road it follows (Shuto
+      Route 3 over Route 246), so a column under its middle would stand in that
+      road's lanes: each column in a carriageway, at any level it passes
+      (`OEDecks.clearColumns`, against streets.js's carriageways), moves across
+      under the deck to a clear spot (a median) as a slim pier, or becomes a
+      portal, a leg each side clear of the roads and a cap beam over the road
+      with 4.7 m under it, or is left out. Columns, signal poles and walk-signal
+      posts are solid (the posts), like lamp posts and trunks.
+    - A road dipping into the ground beside a deck (a rail cutting under the
+      street) is carried over it on the deck, and a road's deck is graded
+      smoothly, so a car on it doesn't bob over the survey's heights.
     - A bridge over the water is laid between its banks, slightly crowned. The
       data lifts a bridge one level (6 m), which over a canal is a hump in the
       air. Where a ferry's course passes under it, the span rises to clear the
@@ -819,6 +829,19 @@ pipeline writes. The only city-specific code is landmark geometry in
     car is brought to a kerb clear of the traffic, the posts and the trees.
     Your car meets another as a box against a box, corners included. The crowd
     keeps out of your car and a ride as it does the traffic's.
+  - **A ride drives like a car** (`cars.js` path, chauffeur): its route is taken
+    as a curve, the points averaged over a few metres (more the further it is
+    held off the line), so the heading turns smoothly and always faces the way
+    it moves; on the inside of a hairpin it keeps within the turn's radius, and
+    it covers its speed along its own lane, not the line's. Its heading turns no
+    faster than a 4.5 m turning circle allows, its height is averaged over 4 m
+    either side, and it eases across the road (to the kerb, out round a stopped
+    car) at a rate that grows with its speed and eases in as it gets there. A
+    stopped car it has begun to swing out round stays one while it stands
+    there, so it doesn't swing in and out from frame to frame. The router takes
+    a U-turn (at a junction, or at the end of the street it sets out on) only
+    where going round the block is over 400 m longer, and the driver makes one
+    as a loop across the road ahead of the turning point, not a turn on the spot.
   - **The crowd and the walls:** a footway that runs into a building (an arcade,
     a station's concourse; the model's buildings are solid) ends at its wall,
     and a walker stepping aside keeps in from a wall beside the footway. Before
@@ -2022,6 +2045,13 @@ the times given, or with `VIEW=kerb` a walker's view of a crossing.
 `tools/clip_check.js <city>` counts what passes through what (furniture in the
 road, cars in posts, walls and each other, walkers in walls, ferries in each
 other, heads through roofs); `tools/check.sh` runs it with the game check.
+`tools/ride_probe.js <city> [seconds] [DEST]` rides one taxi frame by frame
+(hailed at the start, to the first destination whose name holds DEST) and fails
+if it or any car of the traffic goes into a column, a signal pole, a walk-signal
+post, a lamp post or a trunk, or if the taxi bumps (over 4 m/s² up or down),
+lurches (its speed along its own track changing over 15 m/s² in a frame),
+judders (its track going back or stalling while under way) or snaps round faster
+than a car can steer.
 `tools/ride_check.js <city> [N] [signals]` hails a taxi and orders a ride N times each at
 kerbs round the start and says how long each took against what the phone said,
 and what held it up (at the line: a red, an amber, a stop sign or the junction's
