@@ -55,6 +55,12 @@ The sources are those of the other Kyoto maps:
   material that is solid but never drawn (opacity 0), cut into 48 m chunks drawn only within their own
   radius, so `web/game/nav.js` lays them into its fine cells like any landmark's posts and nothing in
   the shared code changed. Walkers and the player keep between the pillars.
+
+![The mountain's torii on foot, day, dusk and night](../images/kyoto/inari-mountain-torii.jpg)
+![Inside the Senbon Torii; the side path to Kojin-ga-mine](../images/kyoto/inari-senbon-kojin.jpg)
+![The miniature torii at the otsuka by the summit](../images/kyoto/inari-otsuka.jpg)
+![On a phone (390×844)](../images/kyoto/inari-phone.jpg)
+![On a phone: the Senbon Torii and Kojin-ga-mine](../images/kyoto/inari-phone-senbon-kojin.jpg)
 - **The great torii** on the Omotesando.
 - **Stone lanterns** at the 154 lamps OpenStreetMap maps along the paths, lit after dark.
 - **Trees**: planted from the canopy model, as the shared trees; species are not mapped, so the mix

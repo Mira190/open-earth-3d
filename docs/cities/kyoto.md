@@ -95,6 +95,8 @@ A block with a guessed height in the Shishinden's court is dropped.
 
 ![The Imperial Palace's south court, its corridors and the Jōmei-mon](../images/kyoto/gosho-south-court.jpg)
 ![Nijo's Ninomaru palace](../images/kyoto/nijo-ninomaru.jpg)
+![The south court and the Ninomaru at day, dusk and night (#185)](../images/kyoto/gosho-nijo-desktop.jpg)
+![The same on a phone (390×844)](../images/kyoto/gosho-nijo-phone.jpg)
 
 ## 3b. Kyoto Station Building
 
@@ -117,6 +119,13 @@ its PLATEAU footprint, which the renderers leave out. PLATEAU has it as one bloc
 
 **Approximate**: where each part starts and ends along the building, the set-backs and the steel's
 3.6 m spacing are read from GSI's aerial photograph and from photographs, not from drawings.
+
+![The north face from over the Karasuma exit, day, dusk and night (#167)](../images/kyoto/station-north.jpg)
+
+Looked at again for #167 on these stills: the parts stand where photographs have them (the west block,
+the Grand Staircase rising west under its glass, the atrium, the Skyway, the Granvia's block), but the
+north face reads as a plain window grid, where photographs show the atrium's glass front and the large
+grid frame over the face. A side-by-side check against photographs is left in the follow-up issue.
 
 **Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
 due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
@@ -168,6 +177,9 @@ the photograph round each of these halls, 3.5 m out from its outline, or 0.3 m a
 for a tall one (11 m round Higashi Honganji's 38 m Founder's Hall), and not where another building
 stands (`aprons()` in `cities/kyoto/city.py`): granite flags at the two Honganji, raked gravel at
 Nijo and the Imperial Palace. The survey's views are `tools/views/kyoto-forecourts-187.json`.
+
+![The court before Higashi Honganji's Amida Hall, day, dusk and night](../images/kyoto/honganji-amida-court.jpg)
+![The same on a phone](../images/kyoto/honganji-amida-court-phone.jpg)
 
 ## 6. What is not verified
 

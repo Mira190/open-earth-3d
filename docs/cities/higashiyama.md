@@ -57,6 +57,13 @@ block is hidden from the renderers and kept in the surface model.
   terrace west of it; ten granite steps run down its front between stone side walls to where the mapped
   way starts, walked as one strip, the ground not drawn over them. The terrace below is granite flags
   laid over the aerial photograph, whose trees' shadows lay on it (#187), on the ground the game draws.
+
+![The Main Hall from the Okunoin's stage: day, dusk, night](../images/kyoto/kiyomizu-hondo-from-okunoin.jpg)
+![The covered corridor onto the Okunoin's veranda](../images/kyoto/kiyomizu-okunoin-corridor.jpg)
+![The stage's pillars](../images/kyoto/kiyomizu-stage-pillars.jpg)
+![On a phone (390×844)](../images/kyoto/kiyomizu-phone.jpg)
+![The West Gate's steps and the terrace below them](../images/kyoto/kiyomizu-west-gate.jpg)
+![The same on a phone](../images/kyoto/kiyomizu-west-gate-phone.jpg)
 - **The Otowa Falls**: three streams from the rock under a timber roof, at the OSM node 音羽の滝 不動明王.
 - **The Yasaka Pagoda (八坂の塔, 1440)**: five storeys, 46 m, bare timber and white plaster under tiles.
 - **Yasaka Koshin-do (八坂庚申堂)**: strings of kukurizaru, cloth monkeys bound hand and foot, on frames
