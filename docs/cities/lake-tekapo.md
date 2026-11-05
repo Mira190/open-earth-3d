@@ -4,15 +4,20 @@ Viewer: `web/reef/index.html?city=lake-tekapo` (the reef viewer's alpine kind, s
 Mackenzie group). Config: `cities/lake-tekapo/city.json`. Landmark measurements:
 `cities/lake-tekapo/analysis/landmarks.json`. Game: `web/reef/game/lake-tekapo.js`.
 
-| The church (model) | Its altar end and window |
+| The postcard: the spawn at the church, day | The same frame at dusk |
 |---|---|
-| ![](../images/lake-tekapo/model-church.jpg) | ![](../images/lake-tekapo/model-church-2.jpg) |
-| **The sheepdog statue on its cairn** | **The footbridge over the Tekapo River** |
-| ![](../images/lake-tekapo/model-collie.jpg) | ![](../images/lake-tekapo/model-footbridge.jpg) |
+| ![](../images/lake-tekapo/day.jpg) | ![](../images/lake-tekapo/dusk.jpg) |
+| **Night under the dark sky reserve** | **Mt John's observatory over the lake** |
+| ![](../images/lake-tekapo/night.jpg) | ![](../images/lake-tekapo/mtjohn.jpg) |
+| **The whole lake from the south** | **On a phone (390 x 844)** |
+| ![](../images/lake-tekapo/aerial.jpg) | ![](../images/lake-tekapo/phone.jpg) |
 
-These are Blender previews of the models on a flat plane. The stills from the viewer (desktop 1440x900 and phone 390x844,
-day, dusk and night, from every viewpoint in `shots`) are added once the shared alpine viewer and
-`pipeline/build_alpine.py` are merged.
+Stills from the viewer (`tools/reef_shot.js`, WebGL2 on software rendering, 6 November 2026 at 14:30, 20:50 and 23:30
+NZDT). The landmark models alone, in Blender:
+
+| The church | The sheepdog statue | The footbridge |
+|---|---|---|
+| ![](../images/lake-tekapo/model-church.jpg) | ![](../images/lake-tekapo/model-collie.jpg) | ![](../images/lake-tekapo/model-footbridge.jpg) |
 
 ## Area
 
@@ -23,6 +28,22 @@ the township and the Church of the Good Shepherd, Mt John and its observatory, L
 Tekapo canal and Lake George Scott, Cowans Hill, the Godley delta and the braided flats above it, and the Two Thumb Range
 from Mount Edward north past Beuzenberg Peak. Its west edge meets the Lake Pukaki frame (east edge E 1390000) in a strip
 2-3.5 km wide over the canal and the Mary Range.
+
+## Build
+
+```bash
+python pipeline/fetch_linz.py --city lake-tekapo --only terrain fallback imagery
+python pipeline/fetch_overture.py --city lake-tekapo --only water segment building land land_use infrastructure
+python pipeline/build_alpine.py --city lake-tekapo      # terrain, ground, cover, lakes, scene.json (and the landmarks)
+python pipeline/alpine_detail.py --city lake-tekapo     # the 0.3 m township and 0.75 m Mt John and south-shore patches
+python pipeline/far_land.py --city lake-tekapo          # the land past the frame, 100 km round
+python pipeline/alpine_snow.py --city lake-tekapo       # the season's snow from the latest Sentinel-2 pass
+python pipeline/marine_meta.py --city lake-tekapo       # places, spawn, landmarks and lupin drifts into scene.json
+python pipeline/tekapo_landmarks.py && python blender/build_tekapo.py   # the landmark models
+```
+
+The landmarks reach the viewer through `scene.json` `landmarks` (copied by `marine_meta.py` from city.json) and
+`web/reef/alpine/landmarks.js`, which places each model and makes the footbridge's deck walkable.
 
 ## Data
 
@@ -50,8 +71,9 @@ All LINZ data is CC BY 4.0 (Toitū Te Whenua Land Information New Zealand), read
 | What | How |
 |---|---|
 | Ground, hills, mountains | measured: LINZ 1 m LiDAR, resampled |
-| Lake bed | **synthesised**: no open bathymetric survey of Lake Tekapo was found; the depth under the flattened surface is made from the distance to the shore and the slope of the land around it (`lake.bathymetry` in city.json) |
-| Lake level | the 2015 capture's surface; not the live level |
+| Lake bed | **synthesised**: no open bathymetric survey of Lake Tekapo was found; `build_alpine.py` deepens the bed with the distance from the shore to the published maximum, 120 m (NIWA LakeSPI) |
+| Lake level | the 2015 capture's flattened water, 707.7 m NZVD2016: the viewer's water level 0 (heights in the scene are above it) |
+| Lake colour | Lake Pukaki's attenuation (from its Secchi depth; no Secchi figure for Tekapo was found) with Tekapo's own hue from the 10 m mosaic (`optics.src` in city.json) |
 | The church, the statue, the footbridge, the observatory | modelled from measured footprints and heights (below); details from Heritage New Zealand's list entry and photographs |
 | The sheepdog's pose and the way it faces | nominal: standing, head up, facing north-north-east |
 | The footbridge's piers | three, read from their shadows in the 0.075 m aerial photographs |
@@ -65,9 +87,9 @@ frames on the ground just south of the church and along the lakeshore, with lupi
 December and the Milky Way above the church on moonless nights. The spawn reproduces that frame from the real
 geometry (WGS84 geodesics, LiDAR heights):
 
-- **Where**: 32 m south-south-west of the church (bearing 195 degrees from it), at 170.482358 E, 44.003702 S, local
-  (430, 33). The ground there is bare (DSM minus DEM 0.0 m), 712.5 m, 2.3 m below the church's ground, so the camera
-  looks slightly up at the building.
+- **Where**: 22 m south of the church on its own axis, at 170.482386 E, 44.003532 S, local (432, 52), on the tussock
+  between the paths. The first choice, 32 m south-south-west, turned out to be the car park in the 0.3 m aerial
+  photographs; this spot is clear ground, a little below the church, so the camera looks slightly up at the building.
 - **Which way**: heading 15 degrees, along the church's own axis (16.5 degrees, the OpenStreetMap footprint), the way
   its altar window looks. Behind the south gable and the belfry: the lake, the head of the lake (13.3 degrees,
   25.5 km), Mistake Peak (2.8 degrees, 24.3 km) and the Southern Alps beyond the Godley (Mt D'Archiac about 8 degrees,
@@ -76,7 +98,7 @@ geometry (WGS84 geodesics, LiDAR heights):
 - **What is not in it**: Aoraki. From the church it bears 328.7 degrees, 53 km away, 3.0 degrees above the horizontal
   after the Earth's curve; Mt John, 2.4 km away at 324.4 degrees, stands 7.4 degrees up and hides it. The famous view of
   Aoraki is Pukaki's.
-- **Arrival**: the camera comes down from (418, -20), 38 m up, behind the player, onto that frame.
+- **Arrival**: the camera comes down from (428, 30), 30 m up, behind the player, onto that frame.
 
 `shots` in city.json lists the stills taken from it and from the other hero viewpoints: the postcard, the same frame at
 night (the church against the reserve's sky), the lupins on the shore east of the footbridge, Mt John's summit over the
@@ -106,7 +128,7 @@ Measured by `pipeline/tekapo_landmarks.py`, built by `blender/build_tekapo.py` i
 |---|---|---|---|
 | Church of the Good Shepherd (1935) | footprint 10.1 x 6.4 m, long axis 16.5 degrees; ridge 6.1 m above the ground, median roof 4.7 m (eaves about 3 m) | OSM footprint; LINZ 1 m DSM - DEM (sheet BY17) | boulder-faced walls 0.5 m thick with lichen, four stepped buttresses a side, three lancets a side, a pointed-arch door in the south gable, the 2.7 x 1.55 m plate-glass altar window with two timber mullions in the north gable, concrete gable copings, a slate roof (1957), a belfry with its bell on the roofline west of the door, the concrete cross on the north gable; inside, cream plaster, rimu trusses, pews, the altar. 2,300 triangles |
 | Sheepdog statue (cast in London from a plaster sent in 1966) | 3.1 m to the top above the ground; a round paved bay about 6 m across | DSM - DEM; the 0.075 m aerial photographs | a bronze collie about 0.55 m at the withers on a tapering cairn of stone |
-| Footbridge (2015) | 131.9 m along the OSM way, deck 123 m, about 3 m wide; deck 8.2-10.8 m above the river (DSM along the way, less the balustrade); piers about 27.5, 50 and 100 m from the west end | OSM; DSM; aerial photographs | white steel box girder, composite decking, mesh balustrade with a timber handrail, elliptical concrete piers |
+| Footbridge (2015) | 131.9 m along the OSM way, deck 123 m, about 3 m wide; deck 7.7-10.6 m above the river (DSM along the way less the balustrade, fitted to a camber; walkable in the viewer); piers about 27.5, 50 and 100 m from the west end | OSM; DSM; aerial photographs | white steel box girder, composite decking, mesh balustrade with a timber handrail, elliptical concrete piers |
 | Mt John Observatory | 20 summit buildings: footprints and DSM heights; the domes' crowns at the DSM's highest point in each telescope building (MOA 9.8 m, One Metre 9.1 m, Astrograph 6.4 m, Boller & Chivens 5.8 m, Optical Craftsmen 4.8 m, the round domes 1.9-4.8 m) | OSM via Overture; DSM - DEM | painted blockwork with parapets, aluminium domes with their shutters |
 
 Heritage New Zealand's list entry (no. 311, fetched 2026-11-05) gives the materials and parts (poured concrete faced
@@ -129,12 +151,12 @@ Quests: **the church at sunrise** (be there within half an hour of sunrise and l
 it); **the summit of Mt John**; **lupins on the shore** (only in November and December); **a night under the reserve**
 (on Mt John after astronomical dusk, look up for 20 s, then face the Southern Cross where the model puts it).
 
-NPC looks name Rocketbox avatars (`look.character`) as AGENTS.md asks; the reef viewer's people currently build
-Quaternius templates, so the alpine viewer's support for them is with the shared viewer.
+NPC looks name Rocketbox avatars (`look.character`) as AGENTS.md asks; the reef viewer's people still build Quaternius
+templates from `role`, so that is how they appear for now.
 
 Facts and their pages are listed in the file's `SOURCES`; nothing is said that a page does not say or the model does not
 compute. Ngāi Tahu tradition appears only as Wikipedia gives it, and no character speaks for mana whenua.
 
 ## Not checked
 
-A real GPU, WebGPU, Safari and iOS. The viewer stills, until the shared alpine viewer and pipeline are merged.
+A real GPU, WebGPU (the software WebGPU adapter fails here, so the stills are WebGL2), Safari and iOS. The lupins, tussock and NPCs come from the shared alpine viewer and the reef people; the HUD's water temperature is the reef's sea model, not the lake's.

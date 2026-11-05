@@ -516,7 +516,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // other (a little farther out; where the cars are is read as they move)
     const none = [];
     let nearBenches = none, nearCars = none, nearPosts = none;
-    const addCar = o => { nearCars.push(o); }, addPost = o => { nearPosts.push(o); };
+    const addCar = o => { nearCars.push(o); }, addPost = o => { if (o.kind !== 'signal') nearPosts.push(o); }; // (not the junctions' poles: solid for the cars, but a walker steering round a walk signal's post at the kerb, where the crossing begins, is pushed out into the road and stands in the traffic's way)
     function gather(x, y, q, fresh, z) { // (z: the cars on that level, not on a deck over it or a street under it)
       nearBenches = benchAt.size ? benchAt.get(bkey(Math.floor(x / 4), Math.floor(y / 4))) || none : none;
       nearCars = q.cars || (q.cars = []);
@@ -1028,11 +1028,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
   const pathQ = new Float32Array(2 * (NPATH + 64)), pathZ = new Float32Array(NPATH + 64), pathNext = [];
+  // a car coming the other way within reach ahead of car c (heading fx, fy), on its road or a step from
+  // its centre line: one it would meet swinging out over that line
+  function oncomingIn(C, c, fx, fy, reach) {
+    for (const o of C) {
+      if (o === c || o.line < 0 || Math.abs(o.z - c.z) >= LEVEL) continue;
+      const dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy;
+      if (a <= 0 || a > reach || Math.abs(-dx * fy + dy * fx) > 4.5) continue;
+      if (Math.sin(o.h) * fx + Math.cos(o.h) * fy < -0.5) return true;
+    }
+    return false;
+  }
   function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null, posts = null, junctions = null } = {}) {
     const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const JN = junctions || OEJunctions.create(net, { keep, lane: LANE, signals: [] });
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
     let mesh = null, fleet = null;
+    const oncoming = (c, fx, fy, reach) => oncomingIn(C, c, fx, fy, reach);
     if (I) {
       const geos = carGeometries(lib.cars, I.tones), names = Object.keys(I.models).filter(k => geos[k] && geos[k].length === 3);
       const taxi = Object.assign({}, I.liveries.taxi, cfg.taxi), bus = Object.assign({}, I.liveries.bus, cfg.bus);
@@ -1410,7 +1422,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // offset into the lane by the direction over two steps either side; the first point kept is the front bumper
           const k0 = Math.round((Math.abs(c.s - sb) + c.half) / step);
           pk0 = k0; laneAt = lane;
-          c.pzc = pathZ[Math.min(nq - 1, Math.round(Math.abs(c.s - sb) / step))]; // (the line's height where the car is: PZ are the heights ahead)
           for (let k = k0; k < nq && np < NPATH; k++) {
             const ka = Math.max(0, k - 2), kb = Math.min(nq - 1, k + 2);
             let hx = Q[2 * kb] - Q[2 * ka], hy = Q[2 * kb + 1] - Q[2 * ka + 1];
@@ -1503,17 +1514,28 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             // (not round one stopped at a junction's line, a taxi waiting for its turn: it queues behind)
             const atJ = arm && left - arm.back < a + b.half + 15;
             const toKerb = w0 + side * need, toCentre = w0 - side * need; // (the kerb is on the keep side)
-            const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
+            // (over the centre line only with nothing coming the other way up to 40 m ahead: else it waits behind,
+            // as a driver does; one coming down a narrow street, in from a facade, would meet it head on)
+            const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 && !oncoming(c, fx, fy, a + b.half + 30) ? toCentre : null;
             if (sw != null && !atJ) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
           if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; youQ = !!b.q && b.qBy !== c; } // (a ride pulling in still reaches into the lane)
         }
         // a lamp post or a trunk in the way (at a corner taken wide): braked for like a car stopped there
+        // (along its way ahead, P, round a corner as it will drive it: a line straight on from its heading
+        // crossed the corner of a turn, and a car braked to a stop in the junction for the walk-signal post
+        // on that corner, which its way never comes near, and the cars behind it ran into it; Roppongi,
+        // tools/clip_check.js. With no way ahead, straight on as before)
         if (posts) posts.near(c.x + fx * reach / 2, c.y + fy * reach / 2, reach / 2 + 1, q => {
           if (Math.abs(q.z - c.z) >= LEVEL) return;
-          const dx = q.x - c.x, dy = q.y - c.y, a = dx * fx + dy * fy;
-          if (a + q.r < c.half || a > reach || Math.abs(-dx * fy + dy * fx) >= c.hw + q.r + 0.1) return;
-          const g = a - q.r - c.half;
+          const dx = q.x - c.x, dy = q.y - c.y, a = dx * fx + dy * fy, r = c.hw + q.r + 0.1;
+          let g = Infinity;
+          if (np) {
+            if (a < c.half - r) return; // (beside or behind it)
+            const r2 = r * r;
+            for (let k = 0; k < np; k++) { const ex = P[2 * k] - q.x, ey = P[2 * k + 1] - q.y; if (ex * ex + ey * ey < r2) { g = k * step - q.r; break; } }
+            if (g === Infinity && a + q.r >= c.half && a <= c.half + step && Math.abs(-dx * fy + dy * fx) < r) g = a - q.r - c.half; // (between its bumper and the first point)
+          } else if (a + q.r >= c.half && a <= reach && Math.abs(-dx * fy + dy * fx) < r) g = a - q.r - c.half;
           if (g < gap && !(c.postPass > 0)) { gap = g; byCar = true; front = null; why = 'post'; }
         });
         // (stopped for one more than 10 s, a post its way runs into in a junction, say: it edges past it, #144)
@@ -1689,13 +1711,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           else if (c.wallGap < Infinity) c.wallGap -= c.v * dt;
           if ((c.wallT = (c.wallT || 0) - dt) <= 0 || flagged) {
             c.wallT = 0.5; c.wallGap = Infinity;
-            const deck = c.z > nav.terrain(c.x, c.y) + 2;
+            // (each point at the height of the road there, not the car's: up a canal bridge's ramp, the deck
+            // ahead stands higher than a car at its foot, and at the car's height read as a wall across the
+            // way, where the car stopped; tools/game_check.js, Amsterdam)
+            const PZ = c.pz, dz = c.z - PZ[0];
             let nF = 0, nEnd = 0, nIn = Infinity; // (how far in from its lane it needs to be on the 25 m ahead, for how far, and from where)
-            // (each point looked at at the height the car will be there: the car's, up or down as its line climbs
-            // or falls, so that a bridge's rise ahead (Amsterdam's Huiszittenbrug, a landmark's solid under its
-            // deck) is not taken for a wall across the street)
             for (let k = 0; k < np; k++) {
-              const zk = c.z + Math.max(-1.5, Math.min(1.5, PZ[k] - c.pzc));
+              const zk = PZ[k] + dz, deck = zk > nav.terrain(P[2 * k], P[2 * k + 1]) + 2;
               if (nav.room(P[2 * k], P[2 * k + 1], zk, c.hw * 0.8, 1.4, deck)) continue;
               // a facade beside its lane, but room nearer the middle of the street: it moves in only as far as it
               // needs to there (so that two coming the other way up a narrow street can still pass). How far in
@@ -1765,7 +1787,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // (across to its lane a little at a time, slowly while it is barely moving, nosing that way)
         // (in a junction it keeps the lane it went in by: its way across is that lane's)
         const back = line === c.line && dir !== c.dir, keepIt = c.mv && !back, lnNow = keepIt ? c.ln : !back && JN.lanesOf(net.L[line]) > 1 ? c.ln : 0, loT = side * JN.shiftOf(net.L[line], lnNow);
-        const rate = Math.min(1.3, 0.4 + 0.15 * c.v) * dt, lo1 = back ? 0 : keepIt ? c.lo : c.lo + Math.max(-rate, Math.min(rate, loT - c.lo));
+        // (but not over the middle of a two-way road: out of a one-way street's lane nearest the middle,
+        // the lane kept across the junction is the oncoming one there, so it moves across at once, and
+        // can do so standing, where a car waiting at that road's line would otherwise hold it until it squeezed through)
+        const across = !back && !net.L[line].ow && LANE + side * (c.off + c.lo) < c.hw + 0.2;
+        const rate = Math.min(1.3, 0.4 + 0.15 * c.v) * dt, lo1 = back ? 0 : keepIt && !across ? c.lo : c.lo + Math.max(-rate, Math.min(rate, loT - c.lo));
         lanePos(line, s, dir, tmp, c.off + lo1, onto ? [c.line, c.dir] : dir === c.dir ? c.pv : null, onto ? nx2 : dir === c.dir && c.nx ? [nl, nd] : null);
         let dh = Math.atan2(tmp.hx, tmp.hy) - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
         const yaw = !back && dt > 0 ? Math.atan2((lo1 - c.lo) / dt, Math.max(c.v, 1.5)) : 0; // (a lane change: nosing across, left of the way it goes for a shift to the left)

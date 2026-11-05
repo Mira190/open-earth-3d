@@ -244,8 +244,8 @@ const TOL = {
           if (d > TOL.carCar.deep) {
             o.carCar++; o.pairs.push(`${g.cars.C.indexOf(C[i])}-${g.cars.C.indexOf(C[j])}`);
             const A = C[i], B = C[j];
-            H.note('car in car', d, { x: +A.x.toFixed(1), y: +A.y.toFixed(1), a: `${A.model || 'car'} line ${A.line} s ${A.s.toFixed(1)} dir ${A.dir} v ${A.v.toFixed(1)} off ${A.off.toFixed(2)}`,
-              b: `${B.model || 'car'} line ${B.line} s ${B.s.toFixed(1)} dir ${B.dir} v ${B.v.toFixed(1)} off ${B.off.toFixed(2)}` });
+            H.note('car in car', d, { x: +A.x.toFixed(1), y: +A.y.toFixed(1), a: `${A.model || 'car'} line ${A.line} s ${A.s.toFixed(1)} dir ${A.dir} v ${A.v.toFixed(1)} off ${A.off.toFixed(2)} lo ${(A.lo || 0).toFixed(2)} ln ${A.ln} np ${A.np} ${A.why || ''}${A.mv ? ' in a junction' : ''}`,
+              b: `${B.model || 'car'} line ${B.line} s ${B.s.toFixed(1)} dir ${B.dir} v ${B.v.toFixed(1)} off ${B.off.toFixed(2)} lo ${(B.lo || 0).toFixed(2)} ln ${B.ln} np ${B.np} ${B.why || ''}${B.mv ? ' in a junction' : ''}` });
           }
         }
         // a building's wall through it

@@ -14,7 +14,7 @@
 - The sheepdog statue (Innes Elliott; cast in London from a plaster sent in 1966): a bronze New Zealand collie,
   modelled on a dog called Haig, standing on a cairn of local stone; 3.1 m to the top from the LiDAR.
 - The footbridge over the Tekapo River (opened 2015): a 123 m steel girder deck on three piers, from the 0.075 m
-  aerial photographs (2025-26) and OpenStreetMap; its deck rises from 8.2 m to 10.8 m above the river (the DSM).
+  aerial photographs (2025-26) and OpenStreetMap; its deck rises from 7.7 m to 10.6 m above the river (the DSM).
 - The University of Canterbury Mt John Observatory: every building on the summit from its OpenStreetMap
   footprint, raised to its LiDAR height, with a dome where a telescope stands (the MOA 1.8 m, the 1 m McLellan,
   the Boller & Chivens and Optical Craftsmen 0.6 m, the Astrograph, and the small round domes).
@@ -134,7 +134,7 @@ def boulder_texture(n=1024, stones=110, seed=7):
     height = np.where(edge > mortar_w, 0.35 + 0.65 * dome, 0.15 * fine) + 0.08 * noise + 0.04 * fine
     # colours: per stone
     pal = np.array([[int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)] for h in (
-        "#7d776d", "#6a645b", "#857c6e", "#5e5850", "#8f8573", "#7a6a57", "#6f736e", "#948a78", "#5f6261", "#857560", "#a09583")])
+        "#a39a8a", "#938a7b", "#ab9f8c", "#8a8274", "#b5a891", "#a08b70", "#979a92", "#bcae97", "#8b8c88", "#ad9a7f", "#c4b6a0")])
     sid = idx % len(pal)
     tint = 0.85 + 0.3 * r.random(stones)[idx]
     col = pal[sid] * tint[..., None]
@@ -146,7 +146,7 @@ def boulder_texture(n=1024, stones=110, seed=7):
     orange_l = (tileable_noise(n, 5, seed + 4, 24) > 0.72) & has & (edge > mortar_w)
     col = np.where(grey_l[..., None], col * 0.6 + np.array([0.68, 0.70, 0.60]) * 0.4, col)
     col = np.where(orange_l[..., None], col * 0.6 + np.array([0.78, 0.56, 0.25]) * 0.4, col)
-    mortar = np.array([0.56, 0.54, 0.50]) * (0.8 + 0.3 * fine)[..., None]
+    mortar = np.array([0.62, 0.60, 0.55]) * (0.8 + 0.3 * fine)[..., None]
     col = np.where((edge > mortar_w)[..., None], col, mortar)
     ao = np.clip(0.62 + 0.38 * np.clip((edge + cell * 0.03) / (cell * 0.1), 0, 1), 0, 1)
     col *= ao[..., None]
@@ -805,7 +805,7 @@ def materials():
     mat("Concrete", "#b9b4aa", 0.85)
     mat("Glass", "#c9b47a", 0.15, alpha=0.6, cull=False)
     mat("ClearGlass", "#dfe9ee", 0.03, alpha=0.18, cull=False)
-    mat("Oak", "#4b3423", 0.6)
+    mat("Oak", "#4b3423", 0.6, cull=False)
     mat("Floor", "#7a5536", 0.55)
     mat("Linen", "#f2efe6", 0.9)
     mat("Bronze", "#3e3324", 0.5, metal=1.0)
