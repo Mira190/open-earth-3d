@@ -684,7 +684,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // through those coming the other way, a little to the left as they meet, so that lanes form as
     // they do in any thick crossing flow (Helbing and Molnar's social forces). On the far side it
     // strolls to a kerb of that corner and waits again; away from the player it goes back to the footways.
-    const PLAZA_SHARE = 0.42, PLAZA_R = 0.8; // (of the crowd; within this share of its radius of the player)
+    const PLAZA_SHARE = 0.3, PLAZA_R = 0.8; // (of the crowd; within this share of its radius of the player)
     function gatesOf(pz) {
       if (pz.gates) return pz.gates;
       const G = [];
@@ -722,7 +722,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (const pz of api.plazas || []) {
         const G = gatesOf(pz);
         if (!G.length) continue;
-        const want = near.includes(pz) ? Math.min(G.reduce((a, h) => a + h.len * 0.6, 0), Math.round(api.active * PLAZA_SHARE * (pz.weight || 1) / W)) : 0; // (no more than its crosswalks can carry)
+        const want = near.includes(pz) ? Math.min(G.reduce((a, h) => a + h.len * 0.32, 0), Math.round(api.active * PLAZA_SHARE * (pz.weight || 1) / W)) : 0; // (no more than its crosswalks can carry)
         let have = 0;
         for (let i = 0; i < api.active; i++) if (P[i].pz === pz) have++;
         // (more than its share: with the player gone, back to the footways at once, out of sight; else
@@ -813,7 +813,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (q.speed * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
       }
       const dx = q.T.x - q.x, dy = q.T.y - q.y, d = Math.hypot(dx, dy);
-      if (q.ph === 'cross') { sp = q.speed * 1.05; pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') sp = q.speed * 0.75; else sp = d > 0.3 ? 0.5 : 0;
+      if (q.ph === 'cross') { sp = q.speed * 1.05; pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') sp = q.speed * 0.75; else sp = d > 0.6 ? 0.5 : 0;
       if (q.pause > 0) sp = 0;
       let vx = d > 1e-3 ? dx / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0, vy = d > 1e-3 ? dy / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0;
       // the others near: apart, and, meeting someone coming the other way, a step to the left
@@ -829,7 +829,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (k === i) continue;
           const o = P[k], ex = q.x - o.x, ey = q.y - o.y, e = Math.hypot(ex, ey);
           if (e > 2.4 || e < 1e-4) continue;
-          if (e < 0.75) { const f = (0.75 - e) / e * 2.2; fx += ex * f; fy += ey * f; }
+          const keep = q.ph === 'wait' && sp === 0 ? 0.55 : 0.75; // (stood waiting: shoulder to shoulder, as a crowd at a kerb stands, not shoved about by every neighbour)
+          if (e < keep) { const f = (keep - e) / e * 2.2; fx += ex * f; fy += ey * f; }
           if (vv > 0.3 && e < 2.4 && (o.vx * vx + o.vy * vy) < 0 && (-ex * vx - ey * vy) > 0) { const f = 0.5 * (2.4 - e) / 2.4; fx += -vy / vv * f; fy += vx / vv * f; } // (left: + across the heading)
         }
       }
@@ -852,6 +853,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
       }
       vx += fx; vy += fy;
+      // (waiting: a nudge under a slow step is stood through, not shuffled to; a real push still moves them)
+      if (q.ph === 'wait' && sp === 0 && Math.hypot(vx, vy) < 0.35) vx = vy = 0;
       const m = Math.hypot(vx, vy), top = Math.max(sp, 0.6) * 1.15;
       if (m > top) { vx *= top / m; vy *= top / m; }
       // eased, as a body speeds up and turns
@@ -896,8 +899,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       ZAT.z = q.z;
       const z = ground ? ground(q.x, q.y, ZAT) : null;
       if (z != null) q.z = z;
+      // (waiting, pushed aside a step: the body keeps facing the road, as it does, rather than turning to every shove)
+      if (q.ph === 'wait' && q.v > 0 && Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.6 && !(pz.road && pz.road(q.x, q.y))) { q.T.x = q.x; q.T.y = q.y; } // (and stays where it was pushed, not back into the one who pushed it)
       if (q.face != null) q.h = q.face;
-      else if (q.v > 0.15) { const h = Math.atan2(q.vx, q.vy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 6); }
+      else if (q.v > (q.ph === 'wait' ? 0.45 : 0.15)) { const h = Math.atan2(q.vx, q.vy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 6); }
       else if (q.ph === 'wait') { const h = Math.atan2(-g.ox, -g.oy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 2); } // (facing the road)
       // there: on the far side, on to a kerb of that corner (or this one) to wait again
       if (Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.5) {
@@ -923,7 +928,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) {
         p = P[i];
         if (i >= api.active) { R.hide(i); release(p); if (p.pz) { if (p.g) p.g.n--; p.pz = p.g = null; p.state = 'walk'; } p.line = -1; continue; }
-        if (p.pz) { if (p.pause > 0) p.pause -= dt; plazaStep(i, p, dt, player); p.mode = 'ground'; R.place(i, p, p.v > 0.05); continue; }
+        if (p.pz) { if (p.pause > 0) p.pause -= dt; plazaStep(i, p, dt, player); p.mode = 'ground'; p.moving = p.ph === 'wait' ? p.v > (p.moving ? 0.2 : 0.4) : p.v > (p.moving ? 0.05 : 0.12); R.place(i, p, p.moving); continue; }
         if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (p.line < 0) { R.hide(i); continue; }
         if (p.pause > 0) p.pause -= dt;
@@ -1034,7 +1039,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // a facade beside the line, here or a little ahead: in towards the line (looked at every few steps)
       if (clear && ((p.wallStep = (p.wallStep || 0) + 1) % 3 === 0 || p.lim == null)) { lineAt(p.line, p.s, tmp); p.lim = wallFree(p, want, hw); p.limWant = want; }
       if (clear && p.lim != null && p.lim !== p.limWant) want = p.limWant >= 0 ? Math.min(want, p.lim) : Math.max(want, p.lim); // (no further out on that side)
-      let dl = Math.max(-0.9 * dt, Math.min(0.9 * dt, want - p.lat));
+      const lv = p.v < 0.2 && p.kw > 0.5 ? 0.25 : 0.9; // (stood at a kerb a while: a slow shuffle across, not a slide)
+      let dl = Math.max(-lv * dt, Math.min(lv * dt, want - p.lat));
       p.lat += dl;
       // a road ahead at a junction with signals, its traffic free to go: up to the kerb, and wait
       // there (the button pressed) for the walk signal; someone already out in the road walks on
@@ -1150,7 +1156,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const lr = dt > 0 ? dl / dt : 0;
       p.vx = hx * p.v - hy * lr; p.vy = hy * p.v + hx * lr;
       if (p.face != null) p.h = p.face;
-      else if (p.v > 0.05) { const h = Math.atan2(p.vx, p.vy); p.h += Math.atan2(Math.sin(h - p.h), Math.cos(h - p.h)) * Math.min(1, dt * 8); }
+      else if (p.v > 0.3) { const h = Math.atan2(p.vx, p.vy); p.h += Math.atan2(Math.sin(h - p.h), Math.cos(h - p.h)) * Math.min(1, dt * 8); }
+      else if (p.v > 0.05) { const h = Math.atan2(hx, hy); p.h += Math.atan2(Math.sin(h - p.h), Math.cos(h - p.h)) * Math.min(1, dt * 3); } // (barely moving, a sidestep: still facing the way it goes, not turned sideways to every shuffle)
     }
     function nearest(x, y, maxD) {
       let best = -1, bd = maxD;

@@ -210,6 +210,15 @@ const npcNight = require('./npc_night');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // no signal pole or walk post stands in a road's lanes (any road's drawn width, not just the one it serves: tools/pole_lanes.js)
+  const poles = await p.evaluate(() => {
+    const g = window.__game, H = g.junctions.heads, net = g.roadNet, HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }, out = [];
+    if (!H) return { n: 0, out };
+    for (const o of [...H.list, ...H.peds]) { const q = net.nearest(o.x, o.y, 10, o.z, 3); if (q && q.d < (HALF[net.L[q.line].c] || 3.5) - 0.2) out.push(`${o.x.toFixed(0)},${o.y.toFixed(0)}`); }
+    return { n: H.list.length + H.peds.length, out };
+  });
+  check(!poles.out.length, `no signal pole or walk post stands in a road's lanes (${poles.out.length} of ${poles.n}${poles.out.length ? ': ' + poles.out.slice(0, 6).join(' ') : ''})`);
+
   // the crowd keeps out of each other (actors.js CLOSE) and never jumps: over five seconds near you, a
   // frame at a time, no two walkers closer than 0.45 m centre to centre (0.3 m out on a crossing's road) (they would show inside each
   // other) and none moving farther in a frame than anyone walks (tools/crowd_spacing.js measures more)
@@ -335,6 +344,8 @@ const npcNight = require('./npc_night');
       // a clear run of 8 m up to the wall, on open ground
       const sx = x - nx * 8, sy = y - ny * 8, f = g.nav.floorAt(sx, sy, top + 1);
       if (!f || f.kind !== 'ground' || Math.abs(f.z - top) > 0.6) continue;
+      // water beyond the wall, not a pier's deck that carries on from it (a walker goes on onto the jetty)
+      if ([1, 1.5, 2.5].some(e => { const q = g.nav.floorAt(x + nx * e, y + ny * e, top + 1); return q && q.z > 0.5 && Math.abs(q.z - top) < 1 && g.nav.walk(x + nx * e, y + ny * e, q.z).ok; })) continue;
       let clear = true;
       for (let s = 0; s <= 7; s += 0.5) if (!g.nav.walk(sx + nx * s, sy + ny * s, f.z).ok) { clear = false; break; }
       if (!clear) continue;

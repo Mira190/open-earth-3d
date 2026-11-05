@@ -94,7 +94,8 @@ window.OpenEarthGame = async function game(cityId) {
   const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {} }) : null;
   if (atmos && atmos.composer) {
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
-    Wd.world.fog.near = 1500; Wd.world.fog.far = 24000; // and a little of it over the far city, for depth
+    const clear = Wd.world.userData.clarity || 1; // a city's clear air (far.json clarity, world.js)
+    Wd.world.fog.near = 1500 * clear; Wd.world.fog.far = 24000 * clear; // and a little of it over the far city, for depth
     if (renderer.capabilities.reversedDepthBuffer) U.uNudge.value = 1.5e-5; // a float depth buffer needs less to order coplanar roofs (buildings.js)
   }
   // a lost WebGL context pauses the game under a note and comes back redrawn (glcare.js)
@@ -651,6 +652,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   for (const w of G.wharves) { const p = nav.stand(w.terminal[0], w.terminal[1], 2, { rMax: 90, room: 100 }); w.landing = p ? [p.x, p.y] : w.terminal.slice(); }
   // street trams and a funicular, where the city has them (rail.js)
   const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
+  const railRide = () => (G.rail && (G.rail.funicular || G.rail.gondola)) || {}; // the line a rider takes: a funicular or a gondola
   const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
   // neighbourhood signs, things to look at and conversations to overhear (places.js), and lifts between a
   // street door and a floor high up (game.json "lifts", from the city's landmarks)
@@ -2217,7 +2219,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const st = railStation(player.x, player.y);
     if (st && rail.cars.length) {
       const car = rail.cars.find(c => rail.stationOf(c.id) === st), other = rail.stations.find(o => o !== st);
-      if (car) return { key: 'E', text: `Board the ${G.rail.funicular.name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
+      if (car) return { key: 'E', text: `Board the ${railRide().name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
       return { key: '', text: `${st.name}: the next car is due in ${fmtSec(rail.eta())}` };
     }
     const ls_ = liftStop(player.x, player.y, player.z);
@@ -2305,7 +2307,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function boardRail(car, st) {
     player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id;
     cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
-    H.toast(`Aboard the ${G.rail.funicular.name || 'funicular'}. ${G.rail.funicular.note || ''} <kbd>F</kbd> to skip ahead.`);
+    H.toast(`Aboard the ${railRide().name || 'funicular'}. ${railRide().note || ''} <kbd>F</kbd> to skip ahead.`);
   }
   function alightRail() {
     const car = player.vehicle, here = rail.stationOf(car.id);
@@ -3423,7 +3425,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (const end of [-1, 1]) {
         const len = crowdNet.L[line].len, sk = Math.max(0, Math.min(len, x.s + end * x.kerb));
         crowdNet.at(line, sk, tmp);
-        const mine = Math.hypot(tmp.x - player.x, tmp.y - player.y) < 6, n = mine ? 20 : 6;
+        const mine = Math.hypot(tmp.x - player.x, tmp.y - player.y) < 6, n = mine ? 11 : 4;
         // behind the kerb, facing across; where the footway ends at the kerb, the first steps out onto the stripes
         const back = end > 0 ? len - sk : sk;
         for (let i = 0; i < n; i++) spots.push({ line, s: back > 1.5 ? sk + end * (0.3 + Math.random() * Math.min(back - 0.3, mine ? 3.5 : 2.5)) : sk - end * Math.random() * (mine ? 3 : 2), dir: -end, side: -1.6 + Math.random() * 3.6 });
@@ -3433,6 +3435,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function spawn(pos, zRef) { // at ground level (or on steps built on it) unless a height is given
     const at = pos || G.start.at;
+    padCheck = 0; // a fresh start: the helicopter is brought to the pad near it at the next look, not half a second on
     let z0 = Math.max(0, nav.terrain(at[0], at[1]));
     for (const st of nav.strips) { const h = st.drape ? nav.stripHeight(st, at[0], at[1]) : null; if (h != null && h > z0) z0 = h; }
     // the nearest firm spot: not over the water or on the bank going down to it, not inside an NPC,
@@ -3764,7 +3767,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       }
       if (player.mode === 'rail') { // standing in the car, by the downhill window
         const c = player.vehicle;
-        player.x = c.x + Math.sin(c.h) * 3; player.y = c.y + Math.cos(c.h) * 3; player.z = c.z + 0.6 + Math.sin(c.pitch) * 3; player.h = c.h + Math.PI;
+        if (rail.riderPos) { const q = rail.riderPos(c); player.x = q.x; player.y = q.y; player.z = q.z; player.h = q.h + Math.PI; } // in a gondola cabin
+        else { player.x = c.x + Math.sin(c.h) * 3; player.y = c.y + Math.cos(c.h) * 3; player.z = c.z + 0.6 + Math.sin(c.pitch) * 3; player.h = c.h + Math.PI; }
       }
     }
     if (player.mode === 'ferry') { // stand on the upper deck
@@ -4359,7 +4363,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else if (player.mode === 'rail') {
       const c = player.vehicle, F = rail.funicular, here = rail.stationOf(c.id);
       el.hidden = false;
-      el.innerHTML = `<div><b>${G.rail.funicular.name || 'Funicular'}</b><span>${c.name}</span></div><div><b class="num">${Math.round(c.z)} m</b><span>above the datum</span></div>
+      el.innerHTML = `<div><b>${railRide().name || 'Funicular'}</b><span>${c.name}</span></div><div><b class="num">${Math.round(c.z)} m</b><span>above the datum</span></div>
         <div><b class="num">${Math.round(Math.tan(Math.abs(c.pitch)) * 100)}%</b><span>gradient</span></div><div><b class="num">${(c.speed * 3.6).toFixed(0)}</b><span>km/h</span></div>
         <p class="note">${here ? (c.moved ? 'E get off · ' : `Departs in ${fmtSec(F.cyc.t)} · `) : ''}F ${skip ? 'normal speed' : 'skip ahead'} · drag to look around</p>`;
     } else el.hidden = true;

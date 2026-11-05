@@ -1,6 +1,11 @@
 """Aerial imagery and terrain for a city, from the providers in its city.json.
 
   imagery  "xyz": any slippy-map tile service ({z}, {x}, {y} in the URL), Web Mercator
+           "stac_cog": a STAC collection of RGB(A) Cloud-Optimized GeoTIFFs (`collection`, `crs`),
+                       read from the overview nearest the tile size and cut into Web Mercator tiles
+                       at `zoom`, so the rest of the build reads them as it does "xyz" (LINZ's
+                       aerial photos, nz-imagery on AWS); `fallback` is a coarser collection for
+                       what the first leaves blank
            "synth": none; build_scene.py draws the ground from the vector data instead
            (for cities with no openly licensed aerial imagery)
   terrain  "arcgis_image": an ArcGIS ImageServer exportImage of float elevations
@@ -19,6 +24,12 @@
                          Kong's 2020 LiDAR terrain is published this way
            "wms_bil": an OGC WMS GetMap of float32 BIL rasters (`layer`, a projected `crs`,
                       `pixel_m`), e.g. IGN's LiDAR HD bare earth in Lambert-93 (France)
+           "stac_cog": a STAC collection of Cloud-Optimized GeoTIFFs in a projected `crs`
+                       (`collection`: the collection.json's URL), read over the bbox at
+                       `pixel_m` from the overviews; nodata (water, which LINZ leaves blank)
+                       is filled from the nearest valid pixel, or set to `water_m` (a level
+                       just under a lake's surface). New Zealand's LiDAR (LINZ,
+                       nz-elevation on AWS) is published this way, DEM and DSM alike
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -227,6 +238,153 @@ def dem_tile_index(bbox, cfg, raw, name="dem"):
     return [X0, Y0, X1, Y1], (W, Hh)
 
 
+def stac_items(collection, bbox):
+    """The COG URLs of a STAC collection's items whose bbox (WGS84) meets bbox."""
+    base = collection.rsplit("/", 1)[0]
+    c = requests.get(collection, timeout=60, headers=UA).json()
+    cb = c.get("extent", {}).get("spatial", {}).get("bbox", [[-180, -90, 180, 90]])[0]
+    if not (cb[2] > bbox[0] and cb[0] < bbox[2] and cb[3] > bbox[1] and cb[1] < bbox[3]):
+        print(f"stac: {collection} does not reach the bbox")
+        return []
+    hrefs = [l["href"] for l in c["links"] if l["rel"] == "item"]
+
+    def one(h):
+        u = h if h.startswith("http") else base + "/" + h.lstrip("./")
+        it = requests.get(u, timeout=60, headers=UA).json()
+        b = it["bbox"]
+        if b[2] > bbox[0] and b[0] < bbox[2] and b[3] > bbox[1] and b[1] < bbox[3]:
+            a = next(iter(it["assets"].values()))["href"]
+            return a if a.startswith("http") else u.rsplit("/", 1)[0] + "/" + a.lstrip("./")
+
+    with ThreadPoolExecutor(16) as ex:
+        return [u for u in ex.map(one, hrefs) if u]
+
+
+def _gdal_env():
+    os.environ.setdefault("GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR")
+    os.environ.setdefault("CPL_VSIL_CURL_ALLOWED_EXTENSIONS", ".tif,.tiff")
+    os.environ.setdefault("GDAL_HTTP_MAX_RETRY", "5")
+    os.environ.setdefault("GDAL_HTTP_RETRY_DELAY", "2")
+    if os.path.exists("/root/.ccr/ca-bundle.crt"):  # a proxied environment's CA bundle, for GDAL's curl
+        os.environ.setdefault("CURL_CA_BUNDLE", "/root/.ccr/ca-bundle.crt")
+
+
+def stac_mosaic(collection, bbox, crs, px, bands=1, frame="EPSG:4326", pad_m=200):
+    """Every item of a STAC COG collection over bbox, read at px metres in `crs` (a decimated read
+    takes the overviews) into one mosaic. Returns (array [bands, h, w], valid mask, [x0, y0, x1, y1])."""
+    _gdal_env()
+    import rasterio
+    from pyproj import Transformer
+    from rasterio.windows import from_bounds
+    from rasterio.enums import Resampling as Rs
+    t = Transformer.from_crs(frame, crs, always_xy=True)
+    xs, ys = t.transform([bbox[0], bbox[2], bbox[0], bbox[2]], [bbox[1], bbox[1], bbox[3], bbox[3]])
+    X0, Y0 = math.floor((min(xs) - pad_m) / px) * px, math.floor((min(ys) - pad_m) / px) * px
+    X1, Y1 = math.ceil((max(xs) + pad_m) / px) * px, math.ceil((max(ys) + pad_m) / px) * px
+    W, H = int(round((X1 - X0) / px)), int(round((Y1 - Y0) / px))
+    out = np.zeros((bands, H, W), np.float32)
+    ok = np.zeros((H, W), bool)
+    urls = stac_items(collection, bbox)
+
+    def one(u):
+        with rasterio.open("/vsicurl/" + u) as d:
+            b = d.bounds
+            ix0, iy0, ix1, iy1 = max(b.left, X0), max(b.bottom, Y0), min(b.right, X1), min(b.top, Y1)
+            if ix1 <= ix0 or iy1 <= iy0:
+                return None
+            # snap the intersection to the output grid
+            c0, c1 = int(round((ix0 - X0) / px)), int(round((ix1 - X0) / px))
+            r0, r1 = int(round((Y1 - iy1) / px)), int(round((Y1 - iy0) / px))
+            win = from_bounds(X0 + c0 * px, Y1 - r1 * px, X0 + c1 * px, Y1 - r0 * px, d.transform)
+            n = min(bands, d.count)
+            # (not boundless: a boundless read goes through a VRT that ignores the overviews)
+            a = d.read(list(range(1, n + 1)), window=win, out_shape=(n, r1 - r0, c1 - c0), resampling=Rs.average).astype(np.float32)
+            if d.count == 4 and bands == 3:  # RGBA: the alpha band says where the photo is
+                m = d.read(4, window=win, out_shape=(r1 - r0, c1 - c0), resampling=Rs.nearest) > 0
+            elif d.nodata is not None:
+                m = (a[0] != d.nodata) & (a[0] > -1000)
+            else:
+                m = a.sum(axis=0) > 0
+            return r0, r1, c0, c1, a, m
+
+    with ThreadPoolExecutor(6) as ex:
+        for res in ex.map(one, urls):
+            if res is None:
+                continue
+            r0, r1, c0, c1, a, m = res
+            new = m & ~ok[r0:r1, c0:c1]
+            for k in range(bands):
+                out[k, r0:r1, c0:c1][new] = a[min(k, a.shape[0] - 1)][new]
+            ok[r0:r1, c0:c1] |= m
+    print(f"stac: {len(urls)} items of {collection.rsplit('/', 3)[-3]} at {px} m, {ok.mean() * 100:.1f}% covered")
+    return out, ok, [X0, Y0, X1, Y1]
+
+
+def dem_stac(bbox, cfg, raw, name="dem"):
+    """A float32 GeoTIFF over the bbox in the collection's projected CRS, its nodata (water) filled
+    from the nearest valid pixel."""
+    a, ok, mbbox = stac_mosaic(cfg["collection"], bbox, cfg["crs"], cfg.get("pixel_m", 1.0), frame=cfg.get("frame_crs", "EPSG:4326"),
+                               pad_m=cfg.get("pad_m", 300))
+    a = a[0]
+    if not ok.all() and "water_m" in cfg:  # the survey's blank is the lake: a level just under its surface
+        a[~ok] = cfg["water_m"]
+    elif not ok.all():
+        from scipy.ndimage import distance_transform_edt
+        a = a[tuple(distance_transform_edt(~ok, return_distances=False, return_indices=True))]
+    Image.fromarray(a.astype(np.float32)).save(os.path.join(raw, f"{name}.tif"))
+    np.save(os.path.join(raw, f"{name}_valid.npy"), np.packbits(ok))  # where the survey has ground (not water)
+    print(f"{name}: {a.shape[1]} x {a.shape[0]} px, {(~ok).mean() * 100:.1f}% filled, range {a.min():.1f} to {a.max():.1f} m")
+    return mbbox, (a.shape[1], a.shape[0])
+
+
+def imagery_stac(bbox, im, out):
+    """Web Mercator tiles at im["zoom"] cut from a STAC collection of aerial photos, so that the
+    build reads them as an "xyz" service's tiles."""
+    from pyproj import Transformer
+    from scipy.ndimage import map_coordinates
+    z = im["zoom"]
+    os.makedirs(out, exist_ok=True)
+    xs, ys = tile_range(bbox, z)
+    lat = (bbox[1] + bbox[3]) / 2
+    tile_m = 2 * E / 2 ** z / 256 * math.cos(math.radians(lat))  # a tile pixel on the ground
+    px = im.get("pixel_m", round(tile_m, 2))
+    w, s = mlonlat(xs[0] * 256, (ys[-1] + 1) * 256, z)
+    e, n = mlonlat((xs[-1] + 1) * 256, ys[0] * 256, z)
+    rgb, ok, (X0, Y0, X1, Y1) = stac_mosaic(im["collection"], [w, s, e, n], im["crs"], px, bands=3, pad_m=50)
+    if im.get("fallback") and not ok.all():
+        fb = im["fallback"]
+        a2, ok2, b2 = stac_mosaic(fb["collection"], [w, s, e, n], im["crs"], fb.get("pixel_m", 10.0), bands=3, pad_m=200)
+        gy, gx = np.nonzero(~ok)  # only the holes (a full grid of indices would not fit in memory)
+        cx = ((X0 + (gx + 0.5) * px - b2[0]) / fb.get("pixel_m", 10.0) - 0.5).astype(np.float32)
+        cy = ((b2[3] - (Y1 - (gy + 0.5) * px)) / fb.get("pixel_m", 10.0) - 0.5).astype(np.float32)
+        for k in range(3):
+            rgb[k][gy, gx] = map_coordinates(a2[k], [cy, cx], order=1, mode="nearest")
+        del gy, gx, cx, cy, a2
+    rgb = np.clip(rgb, 0, 255).astype(np.uint8)
+    t = Transformer.from_crs("EPSG:4326", im["crs"], always_xy=True)
+    ext = im.get("format", "jpg")
+    n = 0
+    for tx in xs:
+        for ty in ys:
+            gx, gy = np.meshgrid(tx * 256 + np.arange(256) + 0.5, ty * 256 + np.arange(256) + 0.5)
+            lon, la = mlonlat(gx, gy, z)
+            mx, my = t.transform(lon.ravel(), la.ravel())
+            c = (np.asarray(mx) - X0) / px - 0.5
+            r = (Y1 - np.asarray(my)) / px - 0.5
+            tile = np.stack([map_coordinates(rgb[k], [r, c], order=1, mode="nearest").reshape(256, 256) for k in range(3)], -1)
+            Image.fromarray(tile).save(os.path.join(out, f"{tx}_{ty}.{ext}"), quality=90)
+            n += 1
+    return n, n, (xs, ys)
+
+
+def mlonlat(px, py, z):
+    """Longitude and latitude of global pixel coordinates at zoom z (256 px tiles)."""
+    nn = 2 ** z * 256
+    lon = np.asarray(px) / nn * 360 - 180
+    lat = np.degrees(np.arctan(np.sinh(np.pi * (1 - 2 * np.asarray(py) / nn))))
+    return lon, lat
+
+
 def dem_terrarium(raw, z, xs, ys):
     """Stitch Terrarium tiles into a float32 Web Mercator grid."""
     tiles = os.path.join(raw, "terrarium", str(z))
@@ -304,6 +462,9 @@ def main():
     xs = ys = []
     if a.only == "dem":
         print("imagery and terrarium: skipped (--only dem)")
+    elif im["type"] == "stac_cog":
+        ok, n, _ = imagery_stac(bbox, im, os.path.join(city.raw, "imagery", str(im["zoom"])))
+        print(f"imagery: stac z{im['zoom']}, {n} tiles in {time.time() - t:.0f} s")
     elif im["type"] == "xyz":
         ok, n, _ = fetch_xyz(bbox, im["url"], im["zoom"], im.get("format", "jpg"), os.path.join(city.raw, "imagery", str(im["zoom"])))
         print(f"imagery: z{im['zoom']}, {ok}/{n} tiles in {time.time() - t:.0f} s")
@@ -323,6 +484,8 @@ def main():
         mbbox, size = dem_wcs(bbox, tc, city.raw)
     elif tc["type"] == "tile_index":
         mbbox, size = dem_tile_index(bbox, tc, city.raw)
+    elif tc["type"] == "stac_cog":
+        mbbox, size = dem_stac(bbox, tc, city.raw)
     elif tc["type"] == "wms_bil":
         from fetch_ign import lambert_bbox, wms_bil
         mbbox, size = wms_bil(tc["layer"], tc["crs"], lambert_bbox(bbox, crs=tc["crs"]), tc.get("pixel_m", 2.0), os.path.join(city.raw, "dem.tif"), url=tc["url"])
@@ -330,15 +493,15 @@ def main():
         raise SystemExit(f"unknown terrain type {tc['type']}")
     # frame_crs: the datum the local frame's longitudes and latitudes are taken in when converting to
     # the DEM's CRS (GDA2020 for the Australian cities, within 0.5 m of WGS84 there; WGS84 for IGN's)
-    crs = tc.get("crs", "EPSG:4283") if tc["type"] in ("wcs", "tile_index", "wms_bil") else "EPSG:3857"
-    frame = tc.get("frame_crs", "EPSG:4326" if tc["type"] == "wms_bil" else "EPSG:7844")
+    crs = tc.get("crs", "EPSG:4283") if tc["type"] in ("wcs", "tile_index", "wms_bil", "stac_cog") else "EPSG:3857"
+    frame = tc.get("frame_crs", "EPSG:4326" if tc["type"] in ("wms_bil", "stac_cog") else "EPSG:7844")
     json.dump({"crs": crs, "frame_crs": frame, "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
               open(os.path.join(city.raw, "dem.json"), "w"))
     print(f"dem: {tc['type']}, {size[0]} x {size[1]} px")
     sc = cfg.get("surface_check")  # a LiDAR surface model, for analysis/lidar_heights.py
-    if sc and sc["type"] == "tile_index" and a.only != "dem":
-        mbbox, size = dem_tile_index(bbox, sc, city.raw, "dsm")
-        json.dump({"crs": sc["crs"], "frame_crs": sc.get("frame_crs", "EPSG:7844"), "bbox": mbbox, "size": list(size), "source": sc["type"]},
+    if sc and sc["type"] in ("tile_index", "stac_cog") and a.only != "dem":
+        mbbox, size = (dem_tile_index if sc["type"] == "tile_index" else dem_stac)(bbox, sc, city.raw, "dsm")
+        json.dump({"crs": sc["crs"], "frame_crs": sc.get("frame_crs", "EPSG:7844" if sc["type"] == "tile_index" else "EPSG:4326"), "bbox": mbbox, "size": list(size), "source": sc["type"]},
                   open(os.path.join(city.raw, "dsm.json"), "w"))
 
 

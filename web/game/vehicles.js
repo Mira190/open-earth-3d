@@ -42,7 +42,8 @@ window.OEVehicles = (function () {
 
   // ------------------------------------------------------------ loading and liveries
   // ferry: false for a city without ferries, else its ferry_style, which picks the model:
-  // 'model': 'river' (the 22 m shuttle) or 'harbour' (the 34 m ferry), else by its length.
+  // 'model': 'river' (the 22 m shuttle), 'harbour' (the 34 m ferry) or 'steamer' (a single-ended
+  // twin-screw lake steamer with a funnel, Queenstown's TSS Earnslaw), else by its length.
   // heli: 'later' leaves the helicopter (3.7 MB) out of the wait (issue 148): lib.loadHeli() fetches it
   // when it is wanted, and helicopter() stands it on its pad when it has come
   async function load(base = 'assets/vehicles/', { ferry = true, cars = true, heli = true } = {}) {
@@ -52,7 +53,7 @@ window.OEVehicles = (function () {
     const info = await (await fetch(base + 'vehicles.json')).json();
     const style = typeof ferry === 'object' ? ferry : {};
     const river = style.model ? style.model === 'river' : style.length_m < 28;
-    const ferryInfo = ferry ? (river && info.ferry_river) || info.ferry : null;
+    const ferryInfo = ferry ? (style.model === 'steamer' && info.ferry_steamer) || (river && info.ferry_river) || info.ferry : null;
     // the traffic's cars are optional: without them the streets keep their box cars
     const car = cars && info.cars ? get(info.cars.file).catch(e => { console.warn('Car models unavailable:', e); return null; }) : null;
     let heliP = null;
@@ -533,6 +534,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     };
     const tmp = {};
     const I = lib && (lib.ferryInfo || lib.info.ferry), style = G.ferry_style || {};
+    const single = !!(I && I.single_ended); // a steamer with one bow (ferry_steamer), not a double-ender
+    let dtLast = 1 / 60;
     // a livery named in game.vehicles, else the colours of the city's ferry_style, else the default
     const colours = I ? livery(I, cfg.livery || (style.hull && { hull: style.hull, band: style.trim, cabin: style.upper, trim: style.upper, flag: style.flag })) : null;
     let shared = null; // materials shared by every vessel in the city's livery
@@ -864,10 +867,15 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         v.x = tmp.x + Math.cos(tmp.h) * off; v.y = tmp.y - Math.sin(tmp.h) * off; // (starboard: to the right of the heading)
       }
       let dh = angDiff(tmp.h, v.h);
+      if (single) { // one bow: she lies alongside as she came in, and swings round slowly once she is under way
+        if (!manual && v.phase !== 'dwell') v.h += Math.sign(dh) * Math.min(Math.abs(dh) * Math.min(1, 4.8 * dtLast), 0.14 * dtLast); // at most 8 degrees a second
+        return;
+      }
       if (Math.abs(dh) > Math.PI / 2) dh = angDiff(tmp.h + Math.PI, v.h); // double-ended: either end can lead
       if (!manual) v.h += dh * (v.phase === 'dwell' ? 1 : 0.08);
     }
     function update(dt, scale, t, all = 1) {
+      dtLast = dt * all;
       const night = opts.U ? opts.U.uNight.value : 0;
       for (const v of vessels) {
         const c = v.cycle[v.ci], step = dt * all * (v.rider ? scale : 1);
@@ -935,6 +943,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
           // their hulls no nearer than touching, and else waits on, up to two minutes)
           if (room < Infinity && v.heldT >= 30) room = (v.blockBy && v.blockBy.heldT > 0) || v.heldT >= 120 ? Infinity : roomAhead(v, c, 0);
           if (room < Infinity) target = Math.min(target, room < 1 ? 0 : Math.sqrt(2 * A * room));
+          if (single && v.s > 0) { legPoint(c.leg, c.rev, v.s, tmp); target = Math.min(target, 0.8 + 6 * Math.max(0, 1 - Math.abs(angDiff(tmp.h, v.h)) / 1.2)); } // swinging round off the berth: slow ahead
           v.speed += Math.max(-A * 2 * step, Math.min(A * step, target - v.speed));
           v.s += v.speed * step;
           if (v.helm && left < 160 && !v.helm.manual) { v.helm.manual = true; v.helm.t0 = t; v.events = (v.events || []).concat([{ type: 'helm', v }]); }
@@ -944,7 +953,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         // which end leads: +1 when the model's +z end ("A") is ahead
         if (v.lx != null && dt > 0) {
           const mx = v.x - v.lx, my = v.y - v.ly, d = Math.hypot(mx, my);
-          if (d > 1e-3) { v.dir = Math.atan2(mx, my); v.lead = Math.cos(angDiff(v.dir, v.h)) >= 0 ? 1 : -1; }
+          if (d > 1e-3) { v.dir = Math.atan2(mx, my); v.lead = single ? 1 : Math.cos(angDiff(v.dir, v.h)) >= 0 ? 1 : -1; }
           v.mv += ((dt > 0 ? d / dt : 0) - v.mv) * Math.min(1, dt * 2);
         }
         v.lx = v.x; v.ly = v.y;
@@ -1039,8 +1048,49 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     spot('left', 'Side_Left', '#ff2a2a', 2.2); spot('right', 'Side_Right', '#2aff6a', 2.2); spot('mast', 'Masthead', '#ffffff', 2.6);
     const dp = node('Deck_Passenger').position;
     const tmpV = new THREE.Vector3(), red = lin('#ff2a2a'), green = lin('#2aff6a');
+    // a coal-fired steamer's smoke (ferry_steamer's Funnel_Top): soft puffs that leave the funnel, rise,
+    // spread and drift astern of her and downwind, thinning out; in the world, not the vessel's frame
+    const ft = node('Funnel_Top'), puffs = [];
+    let puffT = 0;
+    const smokeTex = () => {
+      if (smokeTex.t) return smokeTex.t;
+      const [c, x] = canvas(64, 64), gr = x.createRadialGradient(32, 32, 2, 32, 32, 31);
+      gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+      return (smokeTex.t = new THREE.CanvasTexture(c));
+    };
+    function smoke(dt, t, night) {
+      if (!ft || !g.parent || dt <= 0) return;
+      puffT -= dt;
+      if (puffT <= 0 && puffs.filter(p => p.life > 0).length < 28) {
+        puffT = 0.35;
+        let p = puffs.find(q => q.life <= 0);
+        if (!p) {
+          p = { s: new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex(), color: 0x3a3a3a, transparent: true, depthWrite: false, fog: true })), v: new THREE.Vector3() };
+          p.s.renderOrder = 2;
+          g.parent.add(p.s); puffs.push(p);
+        }
+        ft.getWorldPosition(p.s.position);
+        p.v.set(0.6 + Math.sin(t * 1.3) * 0.2, 1.6, 0.3); // up, and away on a light breeze
+        p.life = p.max = 9 + Math.random() * 3;
+        p.s.visible = true;
+      }
+      const grey = 0.2 + 0.12 * (1 - night);
+      for (const p of puffs) {
+        if (p.life <= 0) continue;
+        p.life -= dt;
+        if (p.life <= 0) { p.s.visible = false; continue; }
+        const a = 1 - p.life / p.max;
+        p.s.position.addScaledVector(p.v, dt);
+        p.v.y *= 1 - 0.12 * dt;
+        p.s.scale.setScalar((1.6 + a * 9) * scale);
+        p.s.material.opacity = 0.55 * (1 - a) * Math.min(1, a * 8);
+        p.s.material.color.setScalar(grey + a * 0.25);
+      }
+    }
     function animate(dt, t, { night, lead }) {
-      radar.rotation.y += dt * 2.6;
+      smoke(dt, t, night);
+      if (radar) radar.rotation.y += dt * 2.6;
       // flag: a travelling wave that grows towards the fly
       for (let i = 0; i < fp.count; i++) {
         const x = f0[3 * i + 2], k = Math.min(1, Math.abs(x) / 1.1);

@@ -1,0 +1,137 @@
+{
+ "rows": [
+  {
+   "place": "Queenstown Gardens",
+   "month": 1,
+   "clock_time": 98,
+   "standard_time": 98.1,
+   "diff_pp": 0.2
+  },
+  {
+   "place": "Queenstown Gardens",
+   "month": 2,
+   "clock_time": 97.7,
+   "standard_time": 97.8,
+   "diff_pp": 0.1
+  },
+  {
+   "place": "Queenstown Gardens",
+   "month": 3,
+   "clock_time": 97.4,
+   "standard_time": 97.6,
+   "diff_pp": 0.2
+  },
+  {
+   "place": "Queenstown Gardens",
+   "month": 10,
+   "clock_time": 97.8,
+   "standard_time": 97.9,
+   "diff_pp": 0.1
+  },
+  {
+   "place": "Queenstown Gardens",
+   "month": 11,
+   "clock_time": 98,
+   "standard_time": 98.2,
+   "diff_pp": 0.1
+  },
+  {
+   "place": "Queenstown Gardens",
+   "month": 12,
+   "clock_time": 98.2,
+   "standard_time": 98.3,
+   "diff_pp": 0.2
+  },
+  {
+   "place": "Queenstown Recreation Ground",
+   "month": 1,
+   "clock_time": 100,
+   "standard_time": 100,
+   "diff_pp": 0
+  },
+  {
+   "place": "Queenstown Recreation Ground",
+   "month": 2,
+   "clock_time": 99.9,
+   "standard_time": 100,
+   "diff_pp": 0.1
+  },
+  {
+   "place": "Queenstown Recreation Ground",
+   "month": 3,
+   "clock_time": 99.9,
+   "standard_time": 100,
+   "diff_pp": 0.1
+  },
+  {
+   "place": "Queenstown Recreation Ground",
+   "month": 10,
+   "clock_time": 100,
+   "standard_time": 100,
+   "diff_pp": 0
+  },
+  {
+   "place": "Queenstown Recreation Ground",
+   "month": 11,
+   "clock_time": 100,
+   "standard_time": 100,
+   "diff_pp": 0
+  },
+  {
+   "place": "Queenstown Recreation Ground",
+   "month": 12,
+   "clock_time": 100,
+   "standard_time": 100,
+   "diff_pp": 0
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "month": 1,
+   "clock_time": 96.3,
+   "standard_time": 97.3,
+   "diff_pp": 0.9
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "month": 2,
+   "clock_time": 94.1,
+   "standard_time": 95.6,
+   "diff_pp": 1.5
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "month": 3,
+   "clock_time": 91.1,
+   "standard_time": 93.5,
+   "diff_pp": 2.3
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "month": 10,
+   "clock_time": 95,
+   "standard_time": 96.1,
+   "diff_pp": 1.1
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "month": 11,
+   "clock_time": 96.7,
+   "standard_time": 97.5,
+   "diff_pp": 0.8
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "month": 12,
+   "clock_time": 97,
+   "standard_time": 97.8,
+   "diff_pp": 0.7
+  }
+ ],
+ "worst": {
+  "place": "Marine Parade Reserve",
+  "month": 3,
+  "clock_time": 91.1,
+  "standard_time": 93.5,
+  "diff_pp": 2.3
+ }
+}
