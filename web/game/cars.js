@@ -806,8 +806,10 @@ window.OECars = (function () {
 
   // a traffic car in a queue for a junction: queueing itself (c.q), or stopped behind cars, one after
   // another up the lane, the first of which that isn't stopped is queueing (where the traffic's own
-  // c.q, set car by car, missed one: a car stopped behind another a little out of line)
-  const queueing = o => { for (let x = o, k = 0; x && k < 12; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 0.5) return false; } return false; };
+  // c.q, set car by car, missed one: a car stopped behind another a little out of line); and a long
+  // queue creeping up to its light, cars inching on at walking pace one after another, is a queue
+  // all the same (a car moving freely ahead ends it: the one behind is about to move too)
+  const queueing = o => { for (let x = o, k = 0; x && k < 40; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 2.5) return false; } return false; };
 
   // ------------------------------------------------------------ the chauffeur
   // Drives a car (from car()) along a route: keeps to the lane on the keep side, slows for
