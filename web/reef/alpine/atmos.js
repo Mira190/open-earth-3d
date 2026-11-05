@@ -183,7 +183,10 @@ export function createAtmos(opts) {
     const hm = hC.add(hP).mul(0.5);
     const Ts = trans(hm, sunDir), Tm = trans(hm, moonDir);
     const veil = inscatter(dR, dM, T, dot(v, sunDir), u.E0, Ts, Ts).add(inscatter(dR, dM, T, dot(v, moonDir), u.Emoon, Tm, Tm));
-    return col.mul(T).add(veil);
+    // after sunset the air between is lit by the twilight sky, not by the sun: it veils toward the twilight horizon,
+    // or a far range would only lose its blue to the air and turn yellow
+    const tw = twilight(normalize(vec3(v.x, max(v.y, 0.0), v.z)), sunDir).mul(float(1).sub(T.g));
+    return col.mul(T).add(veil).add(tw.mul(0.9));
   });
 
   // ---- the CPU twin: the sun's colour and the sky's light at height y, for the scene's lights

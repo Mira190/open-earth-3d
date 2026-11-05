@@ -42,8 +42,15 @@ python pipeline/fetch_overture.py --city lake-pukaki --only water segment buildi
 python pipeline/build_alpine.py --city lake-pukaki
 python pipeline/alpine_detail.py --city lake-pukaki
 python pipeline/far_land.py --city lake-pukaki
+python pipeline/alpine_snow.py --city lake-pukaki
 python pipeline/marine_meta.py --city lake-pukaki
 ```
+
+`alpine_snow.py` maps the season's snow from the latest clear Sentinel-2 passes. For this build that is 22 and
+24 October 2026, two relative orbits, because one swath covers only part of the frame. Snow is NDSI > 0.4 with B08 >
+0.11, cloud is excluded by the scene classification layer, and the result is `snow.png` at 20 m. The summer mosaic
+alone shows the end of summer's snowline. The viewer lays the spring snow over it from June to November, at half
+strength in December, and drops it from January to March.
 
 `far_land.py` adds the land past the frame. For an alpine site that is a ring 100 km either side of the centre:
 Copernicus GLO-30 relief at 195 m, and WorldCover's classes coloured from the site's own imagery. `web/reef/farland.js`
@@ -208,5 +215,5 @@ Sources read on 2026-11-05:
 - **Checked:** stills on a desktop (1440 × 900) and a phone (390 × 844) at day, dusk and night, in software WebGL2 (Mesa).
 - **Not checked:** a real GPU, WebGPU, Safari or iOS. The planar reflection renders the scene twice; on a slow device
   turn it off with `?mirror=0` and the plants with `?flora=0`.
-- **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway; seasonal snow lower than the summer
-  mosaic shows; a real star catalogue; volumetric clouds.
+- **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway;
+  a real star catalogue; volumetric clouds (issue #204).
