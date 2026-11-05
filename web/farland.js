@@ -139,25 +139,59 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
   diffuseColor.rgb *= c * (1.0 + g);
 }`)
         .replace('#include <emissivemap_fragment>', `{
-  // after dark the built-up land's lights: Black Marble's glow, broken up as a city's lights are
-  // seen from the air (streets of points, not a lit sheet), the grain fading where a pixel covers it
+  // after dark the built-up land's lights as a night photograph from the air shows them: not a lit
+  // sheet nor a scatter of dots but streets, a lattice of them, lamps strung along each, a soft pool
+  // of light round each lamp on the road, the main roads brighter and continuous with their traffic,
+  // the lattice turned to each district's own bearing; how many streets are lit follows Black
+  // Marble's brightness (a core lit end to end, a suburb here and there). Each part fades to its mean
+  // where a pixel covers it, so that seen from far off the land glows evenly, as from a plane
   float L = texture2D(uFarLights, vec2(vFarUV.x, 1.0 - vFarUV.y)).r; L *= L;
-  // points of light in 24 m cells, at a random place in each, more of them the brighter the land
-  // (a core's streets lit end to end, a suburb's here and there), over a faint glow; the mean over
-  // a cell is about 1, which is what a pixel covering many cells shows
-  vec2 q = vFarXZ / 24.0, iq = floor(q), fq = fract(q) - 0.5;
-  vec2 o = vec2(farH(iq), farH(iq + 17.3)) - 0.5;
-  float fw = max(fwidth(q.x), fwidth(q.y)), dens = 0.08 + 0.5 * L;
-  float on = step(1.0 - dens, farH(iq + 5.1)), r = length(fq - 0.6 * o);
-  // a dot of radius 0.07 cells; one smaller than a pixel is drawn a pixel wide and dimmer by the
-  // ratio of the areas (as a camera sees a point of light: its light spread over the pixel), so
-  // the mean over many cells stays at about 1 at any distance
-  float rr = max(0.07, fw), k = 0.07 / rr, dots = on * (1.0 - smoothstep(rr * 0.5, rr, r)) * k * k / (dens * 0.0090);
-  // where the points merge, the glow they leave: brighter than their strict mean, as a camera's
-  // tone curve shows a sea of sub-pixel lights, so that the two meet without a step
-  float grain = 0.2 + mix(0.8 * dots, 1.8, smoothstep(0.15, 1.2, fw));
-  L *= L; // Black Marble's visual product saturates over a city: more contrast between core and suburb
-  totalEmissiveRadiance *= L * grain * uFarNight;
+  vec2 p = vFarXZ * vec2(1.0, -1.0);
+  float fw = max(max(fwidth(p.x), fwidth(p.y)), 0.05); // metres a pixel covers
+  // the district (a jittered 650 m cell): its bearing and its block sizes
+  vec2 di = floor(p / 650.0 + 0.5 * vec2(farN(p / 900.0), farN(p / 900.0 + 9.0)));
+  float ang = (farH(di + 3.7) - 0.5) * 1.4 + 0.35, ca = cos(ang), sa = sin(ang);
+  vec2 q = vec2(ca * p.x + sa * p.y, -sa * p.x + ca * p.y) + farH(di + 1.3) * 400.0;
+  q += (vec2(farN(q / 260.0), farN(q / 260.0 + 4.0)) - 0.5) * 16.0; // streets that wander a little
+  vec2 bs = vec2(62.0, 84.0) + vec2(farH(di + 2.1), farH(di + 4.4)) * vec2(46.0, 60.0);
+  vec2 cell = floor(q / bs), f = q - (cell + 0.5) * bs; // f: metres from the block's centre
+  vec2 toLine = 0.5 * bs - abs(f);                        // metres to the street on each axis
+  float lit = clamp(L * 1.6, 0.0, 1.0);
+  vec3 em = vec3(0.0);
+  for (int ax = 0; ax < 2; ax++) {
+    // the street along this axis nearest the pixel: its index, whether it is lit, a main road
+    float side = ax == 0 ? sign(f.x) : sign(f.y);
+    float li = (ax == 0 ? cell.x : cell.y) + max(side, 0.0);
+    vec2 id = vec2(li, float(ax) * 31.0) + di * 7.0;
+    float main = step(0.88, farH(id + 0.7));
+    // lit block by block: a side street lit along one block, dark along the next
+    float seg = ax == 0 ? cell.y : cell.x;
+    float on = step(farH(id + vec2(seg * 1.7, 2.9)), mix(0.12, 0.8, lit) + main);
+    float d = ax == 0 ? toLine.x : toLine.y;        // across the street
+    float along = ax == 0 ? q.y : q.x;              // along it
+    // lamps every 28 m (a main road's 22 m, both sides), a few out
+    float sp = main > 0.5 ? 22.0 : 28.0, k = floor(along / sp + 0.5), u = along - k * sp;
+    float lampOn = on * step(0.12, farH(id + vec2(k, 5.0)));
+    float dl = length(vec2(d - (main > 0.5 ? 4.0 : 2.5), u));
+    // the lamp itself: a point no smaller than a pixel, its light spread over the pixel when it is
+    float rc = max(0.7, fw * 0.75), core = (1.0 - smoothstep(0.4 * rc, rc, dl)) * (0.7 * 0.7) / (rc * rc);
+    // its pool on the road, long along it
+    float pool = exp(-(d * d) / 10.0 - (u * u) / (sp * sp * 0.05));
+    // a main road's traffic: a thin line of headlights and tail lights, bunched as cars are
+    float traffic = main * exp(-(d * d) / max(9.0, fw * fw)) * (0.04 + 0.16 * smoothstep(0.35, 0.8, farN(vec2(along / 35.0, li)))) * min(1.0, 3.0 / max(fw, 3.0));
+    // the mean of the lamps and pools over the street's width, for a pixel that covers them
+    float w = main > 0.5 ? 1.6 : 0.55 + 0.35 * farH(id + vec2(seg, 6.0)); // a main road brighter
+    float mean = lampOn * (0.7 * 0.7 * 3.14 * 1.6 / sp + 0.3 * sqrt(10.0 * 3.14) * sqrt(sp * sp * 0.05 * 3.14) / sp) / bs[1 - ax];
+    float detail = lampOn * (core * 1.6 + pool * 0.3) + traffic;
+    float near = 1.0 - smoothstep(6.0, 22.0, fw);
+    float v = w * mix(mean * 2.2 + main * on * 0.004, detail, near);
+    // a sodium street's orange, an LED main road's warm white
+    vec3 tint = mix(vec3(1.0, 0.72, 0.42), vec3(1.0, 0.9, 0.78), main * 0.7 + 0.3 * farH(id + 8.2));
+    em += tint * v;
+  }
+  // the glow over the district from all of it (a faint veil, so the streets keep their contrast)
+  em += vec3(1.0, 0.8, 0.6) * 0.022 * lit;
+  totalEmissiveRadiance *= em * L * 10.0 * uFarNight;
 }`);
     };
     mat.customProgramCacheKey = () => 'farland';
