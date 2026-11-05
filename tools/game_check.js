@@ -208,6 +208,26 @@ const npcNight = require('./npc_night');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // the crowd keeps out of each other (actors.js CLOSE) and never jumps: over five seconds near you, a
+  // frame at a time, no two walkers closer than 0.45 m centre to centre (they would show inside each
+  // other) and none moving farther in a frame than anyone walks (tools/crowd_spacing.js measures more)
+  const spacing = await p.evaluate(() => {
+    const g = window.__game, P = g.crowd.P, me = g.player, last = new Map();
+    let close = 0, jumps = 0, n = 0;
+    for (let k = 0; k < 150; k++) {
+      g.advance(1 / 30);
+      const A = P.slice(0, g.crowd.active).filter(q => q.line >= 0 && q.state === 'walk' && Math.hypot(q.x - me.x, q.y - me.y) < 50);
+      n = Math.max(n, A.length);
+      for (const q of A) { const l = last.get(q); if (l && Math.hypot(q.x - l[0], q.y - l[1]) > 0.25 && Math.hypot(q.x - l[0], q.y - l[1]) < 20) jumps++; last.set(q, [q.x, q.y]); }
+      for (let a = 0; a < A.length; a++) for (let b = a + 1; b < A.length; b++) {
+        const q = A[a], r = A[b];
+        if (Math.abs(q.z - r.z) < 1.5 && Math.hypot(q.x - r.x, q.y - r.y) < 0.45) close++;
+      }
+    }
+    return { close, jumps, n };
+  });
+  check(spacing.close === 0 && spacing.jumps === 0, `the crowd keeps out of each other (${spacing.close} frames with two walkers inside each other, ${spacing.jumps} jumps, of up to ${spacing.n} walkers near you)`);
+
   // the weather (weather.js): rain on, and the streaks are drawn, kept out from under cover by the
   // occlusion map, the ground wet, umbrellas up in the crowd, the HUD saying so, and the frame neither
   // black nor blown; then clear again, dry and quiet. And the season's weather keeps to the city's
