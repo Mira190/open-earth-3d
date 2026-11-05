@@ -10,7 +10,7 @@ OUT=${1:?out_dir}; shift
 PORT=${PORT:-8800}; export PORT
 JOBS=${JOBS:-2}
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
-CITIES=${*:-$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)}
+CITIES=${*:-$(tools/live_cities.sh)}
 curl -s -o /dev/null "http://localhost:$PORT/" || { python3 -m http.server "$PORT" --directory web >/dev/null 2>&1 & sleep 1; }
 shoot() {
   c=$1; mkdir -p "$OUT/$c"

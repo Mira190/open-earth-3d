@@ -660,7 +660,7 @@ def main():
         "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
-    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "close", "metro", "regulars", "signals") if k in gcfg}
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "close", "metro", "regulars", "signals", "scrambles") if k in gcfg}
     # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
     if C.hook("game_extras"):
         for k, v in C.hook("game_extras")(scene).items():
