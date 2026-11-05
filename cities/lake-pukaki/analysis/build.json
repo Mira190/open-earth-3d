@@ -1,0 +1,603 @@
+{
+ "datum_m": 525.82,
+ "lakes": [
+  {
+   "id": "pukaki",
+   "name": "Lake P\u016bkaki",
+   "main": true,
+   "level_nzvd": 525.82,
+   "area_km2": 172.703,
+   "max_depth_m": 70.0,
+   "depth_src": "Maximum depth 70 m: Our Lakes Our Future (Lakes380), Lake Pukaki datasheet, https://ourlakesourfuture.co.nz/lakes/lake-pukaki/; the bed's shape is synthesised from the distance to the shore (no open survey)",
+   "box": [
+    -2850,
+    -36990,
+    5790,
+    -5250
+   ],
+   "centre": [
+    1893,
+    -21130
+   ],
+   "level": 0.0
+  },
+  {
+   "id": "tasman-lake",
+   "name": "Tasman Lake",
+   "main": false,
+   "level_nzvd": 703.97,
+   "area_km2": 8.143,
+   "max_depth_m": 60.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1620,
+    16620,
+    4230,
+    22830
+   ],
+   "centre": [
+    2590,
+    19743
+   ],
+   "level": 178.15
+  },
+  {
+   "id": "murchison-lake",
+   "name": "Murchison Lake",
+   "main": false,
+   "level_nzvd": 1008.39,
+   "area_km2": 2.653,
+   "max_depth_m": 60.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    13260,
+    26940,
+    15810,
+    29820
+   ],
+   "centre": [
+    14491,
+    28373
+   ],
+   "level": 482.57
+  },
+  {
+   "id": "hooker-lake",
+   "name": "Hooker Lake",
+   "main": false,
+   "level_nzvd": 866.45,
+   "area_km2": 1.785,
+   "max_depth_m": 53.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4110,
+    18720,
+    -2370,
+    21630
+   ],
+   "centre": [
+    -3215,
+    20173
+   ],
+   "level": 340.63
+  },
+  {
+   "id": "mueller-lake",
+   "name": "Mueller Lake",
+   "main": false,
+   "level_nzvd": 752.95,
+   "area_km2": 0.974,
+   "max_depth_m": 39.5,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5400,
+    15840,
+    -3990,
+    17310
+   ],
+   "centre": [
+    -4825,
+    16581
+   ],
+   "level": 227.13
+  },
+  {
+   "id": "douglas-lake",
+   "name": "Douglas Lake",
+   "main": false,
+   "level_nzvd": 950.79,
+   "area_km2": 0.911,
+   "max_depth_m": 38.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -17160,
+    17340,
+    -14610,
+    18090
+   ],
+   "centre": [
+    -15584,
+    17708
+   ],
+   "level": 424.97
+  },
+  {
+   "id": "lake-7",
+   "name": null,
+   "main": false,
+   "level_nzvd": 943.82,
+   "area_km2": 0.362,
+   "max_depth_m": 24.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9510,
+    25080,
+    -8550,
+    26670
+   ],
+   "centre": [
+    -9235,
+    25866
+   ],
+   "level": 418.0
+  },
+  {
+   "id": "lake-poaka",
+   "name": "Lake Poaka",
+   "main": false,
+   "level_nzvd": 505.44,
+   "area_km2": 0.156,
+   "max_depth_m": 15.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4530,
+    -39000,
+    -3510,
+    -38490
+   ],
+   "centre": [
+    -4018,
+    -38754
+   ],
+   "level": -20.38
+  },
+  {
+   "id": "stilling-basin",
+   "name": "Stilling Basin",
+   "main": false,
+   "level_nzvd": 675.33,
+   "area_km2": 0.14,
+   "max_depth_m": 15.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    6210,
+    -29310,
+    6660,
+    -28590
+   ],
+   "centre": [
+    6514,
+    -28935
+   ],
+   "level": 149.51
+  },
+  {
+   "id": "lake-10",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1328.79,
+   "area_km2": 0.112,
+   "max_depth_m": 13.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7560,
+    -19620,
+    -7110,
+    -19110
+   ],
+   "centre": [
+    -7319,
+    -19375
+   ],
+   "level": 802.97
+  },
+  {
+   "id": "forks-lagoon",
+   "name": "Forks Lagoon",
+   "main": false,
+   "level_nzvd": 862.34,
+   "area_km2": 0.095,
+   "max_depth_m": 12.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    18480,
+    -9900,
+    18870,
+    -9390
+   ],
+   "centre": [
+    18579,
+    -9670
+   ],
+   "level": 336.52
+  },
+  {
+   "id": "lake-12",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1040.94,
+   "area_km2": 0.092,
+   "max_depth_m": 12.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4110,
+    39840,
+    -2490,
+    40110
+   ],
+   "centre": [
+    -3643,
+    39983
+   ],
+   "level": 515.12
+  },
+  {
+   "id": "lake-13",
+   "name": null,
+   "main": false,
+   "level_nzvd": 796.75,
+   "area_km2": 0.087,
+   "max_depth_m": 11.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    4200,
+    21600,
+    4650,
+    22140
+   ],
+   "centre": [
+    4400,
+    21871
+   ],
+   "level": 270.93
+  },
+  {
+   "id": "freds-tarn",
+   "name": "Freds Tarn",
+   "main": false,
+   "level_nzvd": 999.07,
+   "area_km2": 0.073,
+   "max_depth_m": 10.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    16440,
+    -6570,
+    16770,
+    -6210
+   ],
+   "centre": [
+    16552,
+    -6402
+   ],
+   "level": 473.25
+  },
+  {
+   "id": "lake-15",
+   "name": null,
+   "main": false,
+   "level_nzvd": 506.88,
+   "area_km2": 0.071,
+   "max_depth_m": 10.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5820,
+    -38880,
+    -5040,
+    -38460
+   ],
+   "centre": [
+    -5521,
+    -38650
+   ],
+   "level": -18.94
+  },
+  {
+   "id": "lake-16",
+   "name": null,
+   "main": false,
+   "level_nzvd": 806.13,
+   "area_km2": 0.062,
+   "max_depth_m": 10.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    18840,
+    -17490,
+    19200,
+    -17040
+   ],
+   "centre": [
+    18941,
+    -17240
+   ],
+   "level": 280.31
+  },
+  {
+   "id": "lake-17",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1879.8,
+   "area_km2": 0.053,
+   "max_depth_m": 9.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9930,
+    6060,
+    -9660,
+    6390
+   ],
+   "centre": [
+    -9773,
+    6225
+   ],
+   "level": 1353.98
+  },
+  {
+   "id": "lake-18",
+   "name": null,
+   "main": false,
+   "level_nzvd": 515.74,
+   "area_km2": 0.048,
+   "max_depth_m": 8.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9600,
+    -40650,
+    -9330,
+    -40350
+   ],
+   "centre": [
+    -9463,
+    -40487
+   ],
+   "level": -10.08
+  },
+  {
+   "id": "lake-19",
+   "name": null,
+   "main": false,
+   "level_nzvd": 865.94,
+   "area_km2": 0.044,
+   "max_depth_m": 8.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    16110,
+    -10890,
+    16350,
+    -10680
+   ],
+   "centre": [
+    16229,
+    -10776
+   ],
+   "level": 340.12
+  },
+  {
+   "id": "lake-20",
+   "name": null,
+   "main": false,
+   "level_nzvd": 620.11,
+   "area_km2": 0.041,
+   "max_depth_m": 8.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    11310,
+    -25020,
+    11580,
+    -24720
+   ],
+   "centre": [
+    11460,
+    -24852
+   ],
+   "level": 94.29
+  },
+  {
+   "id": "lake-21",
+   "name": null,
+   "main": false,
+   "level_nzvd": 803.96,
+   "area_km2": 0.038,
+   "max_depth_m": 7.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5010,
+    22470,
+    5250,
+    22920
+   ],
+   "centre": [
+    5136,
+    22693
+   ],
+   "level": 278.14
+  },
+  {
+   "id": "the-black-hole",
+   "name": "The Black Hole",
+   "main": false,
+   "level_nzvd": 745.86,
+   "area_km2": 0.037,
+   "max_depth_m": 7.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    7950,
+    -16290,
+    8130,
+    -15840
+   ],
+   "centre": [
+    8041,
+    -16074
+   ],
+   "level": 220.04
+  },
+  {
+   "id": "loch-cameron",
+   "name": "Loch Cameron",
+   "main": false,
+   "level_nzvd": 508.44,
+   "area_km2": 0.036,
+   "max_depth_m": 7.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7770,
+    -40410,
+    -7560,
+    -40050
+   ],
+   "centre": [
+    -7674,
+    -40230
+   ],
+   "level": -17.38
+  },
+  {
+   "id": "lake-24",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1326.13,
+   "area_km2": 0.033,
+   "max_depth_m": 7.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -11970,
+    15870,
+    -11550,
+    15990
+   ],
+   "centre": [
+    -11760,
+    15912
+   ],
+   "level": 800.31
+  },
+  {
+   "id": "lake-25",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1840.77,
+   "area_km2": 0.032,
+   "max_depth_m": 7.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -8670,
+    -17220,
+    -8460,
+    -16920
+   ],
+   "centre": [
+    -8596,
+    -17093
+   ],
+   "level": 1314.95
+  },
+  {
+   "id": "lake-26",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1187.55,
+   "area_km2": 0.027,
+   "max_depth_m": 6.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -16590,
+    11730,
+    -16380,
+    11910
+   ],
+   "centre": [
+    -16481,
+    11822
+   ],
+   "level": 661.73
+  },
+  {
+   "id": "lake-27",
+   "name": null,
+   "main": false,
+   "level_nzvd": 484.19,
+   "area_km2": 0.026,
+   "max_depth_m": 6.5,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    90,
+    -37230,
+    330,
+    -36960
+   ],
+   "centre": [
+    195,
+    -37087
+   ],
+   "level": -41.63
+  },
+  {
+   "id": "swan-lagoon",
+   "name": "Swan Lagoon",
+   "main": false,
+   "level_nzvd": 879.35,
+   "area_km2": 0.024,
+   "max_depth_m": 6.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    12090,
+    -13050,
+    12240,
+    -12840
+   ],
+   "centre": [
+    12170,
+    -12937
+   ],
+   "level": 353.53
+  },
+  {
+   "id": "lake-29",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1130.67,
+   "area_km2": 0.024,
+   "max_depth_m": 6.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -6750,
+    -21540,
+    -6630,
+    -21030
+   ],
+   "centre": [
+    -6698,
+    -21244
+   ],
+   "level": 604.85
+  }
+ ],
+ "cover_pct": {
+  "lake": 5.82,
+  "river and stream": 0.57,
+  "snow and ice": 21.97,
+  "debris-covered ice": 0.63,
+  "rock and cliff": 5.81,
+  "scree and moraine": 4.91,
+  "riverbed gravel": 0.87,
+  "tussock grassland": 38.67,
+  "alpine herbfield": 4.21,
+  "shrub and scrub": 5.92,
+  "forest": 4.14,
+  "pasture": 5.63,
+  "wetland": 0.58,
+  "road": 0.19,
+  "built": 0.01,
+  "shore": 0.07
+ }
+}
