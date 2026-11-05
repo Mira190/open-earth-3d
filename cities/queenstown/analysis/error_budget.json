@@ -1,0 +1,40 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Queenstown Gardens",
+   "prod": 96.78,
+   "finer_samples": 96.76,
+   "finer_dsm": 96.65,
+   "finer_time": 96.9,
+   "reference": 96.75,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.03,
+   "seconds": 127.923
+  },
+  {
+   "place": "Queenstown Recreation Ground",
+   "prod": 97.84,
+   "finer_samples": 97.83,
+   "finer_dsm": 97.82,
+   "finer_time": 98.34,
+   "reference": 98.3,
+   "lit_rays_leaving_extent_low_pct": 9.07,
+   "prod_minus_reference": -0.46,
+   "seconds": 49.175
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "prod": 89.51,
+   "finer_samples": 89.69,
+   "finer_dsm": 89.31,
+   "finer_time": 89.79,
+   "reference": 89.58,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.07,
+   "seconds": 9.339
+  }
+ ],
+ "max_abs_numerical_error_pp": 0.46
+}
