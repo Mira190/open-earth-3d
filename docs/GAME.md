@@ -1424,7 +1424,7 @@ quality tier runs a third of the cars.
   - **High floors:** a travel point with a height (`[x, y, z]`) lands you on a roof.
     `always: true` lists it on the map before you have been there.
 - **Sound** (`web/game/audio.js`): synthesised with Web Audio, with no files.
-  - harbour ambience;
+  - no ambience bed: the low rumble under everything was taken out (the owner found it strange); the city is heard in its crowds, traffic, screens and signals;
   - footsteps on the walk cycle;
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
