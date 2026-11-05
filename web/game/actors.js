@@ -1731,9 +1731,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 c.roomT = noRoom && toLine - c.half < 2.5 && c.v < 0.6 && !c.mv ? (c.roomT || 0) + dt : 0;
                 if (c.roomT > 5) {
                   c.roomT = 0;
-                  const alt = JN.exits(jArm).filter(e => e !== jEx && e.lanes.includes(c.ln || 0) && !JN.closedNow(e) && room(c, e) && (JN.light(jArm, e) == null || JN.light(jArm, e) === 'g'));
+                  // (as JN.choose weighs them: ahead before a turn, a main road before a lane; never a turn back, a road
+                  // the data runs through a building, a lesser road than the one it meant to take, or a one-way street
+                  // that leads nowhere)
+                  const alt = JN.exits(jArm).filter(e => e !== jEx && e.lanes.includes(c.ln || 0) && !JN.closedNow(e) && Math.abs(e.turn) < 2.4 && e.m.rank >= jEx.m.rank
+                    && !(net.avoid && net.avoid[e.m.line]) && !(net.L[e.m.line].ow && !net.next(e.m.line, 1 - e.m.end, true)) && room(c, e) && (JN.light(jArm, e) == null || JN.light(jArm, e) === 'g'));
                   if (alt.length) {
-                    const e2 = alt[Math.floor(rnd() * alt.length)];
+                    const w = alt.map(e => Math.max(0.15, (1 + 1.6 * Math.cos(e.turn)) * (0.6 + 0.2 * e.m.rank)));
+                    let r = rnd() * w.reduce((a, b) => a + b, 0), e2 = alt[alt.length - 1];
+                    for (let k = 0; k < alt.length; k++) if ((r -= w[k]) < 0) { e2 = alt[k]; break; }
                     if (jArm === arm) { c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; } else if (c.exA) c.exA.e = jEx = e2;
                     c.reroutes = (c.reroutes || 0) + 1; outOfRing++;
                   }

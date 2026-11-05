@@ -1072,16 +1072,16 @@ window.OECars = (function () {
       if (queued) return 'In the queue for the junction';
       return st.v < 0.5 ? 'Waiting behind the car ahead' : 'Following the car ahead';
     }
-    // is a car in the lane it pulls out into beside it, or coming up behind it within 4 s?
+    // is a car coming up the lane it pulls out into, behind it, within 3.5 s?
     const mq = {};
     function mirror(others) {
       P.at(st.s, mq);
       for (const o of others) {
         if (o.h == null || !o.half || o.walker) continue;
         const dx = o.x - mq.x, dy = o.y - mq.y, a = dx * mq.hx + dy * mq.hy, w = -dx * mq.hy + dy * mq.hx;
-        if (a > C.half + o.half + 1 || a < -40 || Math.abs(w - LANE * keep) > 1.6) continue;
+        if (a > 0 || a < -45 || Math.abs(w - LANE * keep) > 1.6 || (o.v || 0) < 2) continue; // (behind it in the lane, and moving)
         if (Math.sin(o.h) * mq.hx + Math.cos(o.h) * mq.hy < 0.6) continue; // (going its way)
-        if (a > -(C.half + o.half + 1) || (-a - C.half - o.half) / Math.max(0.5, o.v || 0) < 4) return true;
+        if ((-a - C.half - o.half) / o.v < 3.5) return true;
       }
       return false;
     }
@@ -1113,9 +1113,10 @@ window.OECars = (function () {
       const laneGap = carGap, xGap = dry ? Infinity : crossGap(others);
       if (xGap < carGap) { carGap = xGap; still = false; queued = queueing(st.xBlock); st.block = st.xBlock; }
       const across = xGap < laneGap; // (what holds it up is a car at an angle to it, not one ahead in its lane)
-      // pulling out from the kerb, a look in the mirror first: it waits while a car in the lane is beside it
-      // or coming up behind within 4 s, as a driver does (it would cut in front of it, and the car would
-      // brake for it beside it, the two edging along nose to tail)
+      // pulling out from the kerb, a look in the mirror first: it waits while a car is coming up the lane
+      // behind it, moving, within 3.5 s, as a driver does (it would cut in front of it, and the car would
+      // brake for it beside it, the two edging along nose to tail). A queue standing beside it is not waited
+      // out: the way ahead (crossGap, gapAhead) holds it while a car is in the way, and it noses in as they move
       st.mirror = !dry && from === 'kerb' && st.s < 4 && st.v < 1.5 && mirror(others);
       if (!obey && !dry && priority) callAhead(); // (out of your sight it drives through a red: it calls its green all the same, for when it comes into sight)
       // a car standing where it is to pull in: pull in behind it
