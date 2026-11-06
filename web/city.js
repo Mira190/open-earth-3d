@@ -326,7 +326,17 @@ window.OpenEarthCity = async function main(cityId) {
 
   // sample points of the focused place, gold where lit and indigo where shaded
   let focusPlace = null, samplePoints = null;
-  const ptsMat = new THREE.PointsMaterial({ size: 2.6, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false });
+  // round, soft-edged dots (a square sprite read as a pixel grid laid on the grass)
+  const dotTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.45, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    const t = new THREE.CanvasTexture(c);
+    if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; else t.encoding = THREE.sRGBEncoding;
+    return t;
+  })();
+  const ptsMat = new THREE.PointsMaterial({ size: 3.0, map: dotTex, alphaTest: 0.02, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.85, depthWrite: false });
   function paintSamples(name) {
     const smp = samples.get(name), n = smp.pts.length / 3;
     if (!samplePoints || samplePoints.userData.name !== name) {
@@ -458,8 +468,9 @@ window.OpenEarthCity = async function main(cityId) {
     setProvenance(!!s.provenance);
     clearSamples();
     setOrbit(false);
+    // a stop about a place flies to it and says its share of sun in the caption; the sample
+    // points stay for the Sun access table, where they are the analysis, not the sightseeing
     const view = stopView(s);
-    if (s.place) focusPlace = s.place;
     if (!here) flyTo(view.cam, view.tgt);
     const cap = $('#caption');
     cap.classList.remove('done');
@@ -473,7 +484,6 @@ window.OpenEarthCity = async function main(cityId) {
     showProgress();
     tourButtons();
     tour.t0 = performance.now() - (here ? FLY : 0);
-    if (focusPlace) refreshPlaces(true);
   }
   function stepTour(t) {
     if (tour.i < 0 || !tour.playing) return;

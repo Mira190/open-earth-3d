@@ -121,6 +121,7 @@ const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown co
       `${s.step} "${s.title}"`);
     if (i === n - 1) check('last stop says Finish', s.skip === 'Finish', `button: ${s.skip}`);
     else if (i > 0) check(`stop ${i + 1}: says Next`, s.skip === 'Next');
+    check(`stop ${i + 1}: no sun sample dots on the tour`, !s.samples);
     // the stop, with the flight done: its still, its HDR range and two frames apart
     await landed();
     await frame();
