@@ -73,8 +73,33 @@ Two more, the same picture to the bit:
   frame went from 269 to 121 ms.
 
 What the shadow pass still draws is mostly instanced props, trees and people spread over the whole city. An
-instanced mesh is culled as a whole, so these are drawn in full however small the shadow box. Splitting the
-static ones into cells the same way is next.
+instanced mesh is culled as a whole, so these are drawn in full however small the shadow box.
+
+## Next, by what it saves for what it risks
+
+Measured on Sydney's game, high tier, 1440 x 900, from the street, after the work above: 4.42 million triangles,
+849 draws, 78 full-screen passes.
+
+1. **Per-instance culling for the static instanced props** (rooftop plant, gable bodies, landmark street
+   furniture, benches, lamp posts). three.js r186's `BatchedMesh` culls each instance against the camera, the
+   shadow camera included (`perObjectFrustumCulled`), and sorts them; an `InstancedMesh` is all or nothing.
+   Most of the 1.5 million shadow-pass triangles are these. No visual change.
+2. **A cached shadow map for what does not move.** The buildings, landmarks and props cast the same shadow
+   until the sun moves by a texel or the shadow box slides. Unreal's virtual shadow maps cache static pages in
+   the same way. Draw the static casters into their own depth map only when the sun or the box moves; draw the
+   people, cars and vessels each frame into a small map round the player; take the nearer of the two in the
+   lit shaders. This needs a change to three.js's shadow lookup (`onBeforeCompile`), so it comes after 1.
+3. **Impostors for the far trees** (section above): about 0.6 million triangles past 300 m in the view pass.
+   Each needs a baked atlas per species and season, and stills to match.
+4. **The ocean's FFT** draws 45 full-screen passes a frame into 128 x 128 RGBA32F targets. Half-float targets
+   would halve those bytes, but only if the waves' heights keep their precision. Try it with stills of a calm
+   and a rough sea.
+5. **Shader precision on the low tier.** Mobile GPUs run `mediump` at twice the rate of `highp`. The world-space
+   maths (positions kilometres from the origin, the reversed depth) must stay `highp`; colour and lighting need
+   not. Go shader by shader, with stills.
+6. **4x MSAA on a high-DPI screen.** At two device pixels a CSS pixel the edges are already sampled twice in
+   each direction, so 2x MSAA there would likely look the same for half the samples. That is a visual change,
+   however small, so it needs stills side by side first.
 
 ## Far geometry: what games do, and what this game draws
 
