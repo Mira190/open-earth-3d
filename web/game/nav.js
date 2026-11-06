@@ -712,7 +712,7 @@ window.OENav = (function () {
     // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
     const PH = OEBuildings.POST / 2;
     const passages = new Set((D.B.passages || []).map(i => D.B.s[i])); // (a building over a road through it stands on no posts: pipeline/road_passages.py)
-    for (const s of shown) if (!passages.has(s)) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]], D.B.no_posts && D.B.no_posts[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
+    for (const s of shown) if (!passages.has(s)) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]], D.B.no_posts && D.B.no_posts[s[0]], D.B.inner_posts && D.B.inner_posts[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
     const tFine = performance.now();
     const coarse = landmarkCells(solidMeshes, slabs);
     startMs = performance.now() - tFine;

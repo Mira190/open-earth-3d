@@ -37,6 +37,25 @@ takes it from the buildings within 60 m, so a subway entrance's cover in Marunou
 60 m2) at most 8 m whatever its source (PLATEAU measures a tree over a shelter as its top).
 Its fascia and posts take a dark timber or steel colour (FRAME), its roof keeps its own.
 
+Then every roof on posts and every gate (not an arcade) is finished (finish(), run again on what an earlier
+run opened, so it needs no rebuild of the scene):
+- its colour: OSM building:colour when mapped; else its precinct's palette (cities/<id>/city.json
+  "roofs" "palette", by precinct name: Kiyomizu-dera's vermilion); else a shrine's vermilion (SHU) in a
+  Shinto precinct or on a Shinto building, a temple's aged timber (TIMBER) in a Buddhist one; else it
+  keeps its own (FRAME for a roof). The tags and precincts come from cities/<id>/roofs_osm.json
+  (pipeline/roof_osm.py, from the OpenStreetMap API).
+- its height: a pavilion under 400 m2 is no taller than its kind stands (a bell tower 4.5 m + 0.6 m per
+  metre of the square root of its area, a font's pavilion 3 m + 0.4, a dance stage or votive hall
+  4.5 m + 0.45, anything else 4 m + 0.5), over the highest ground under it, when its top is PLATEAU's
+  or a lidar's or a guess (they take a tree over it as its top): Higashiyama's bell towers stood
+  10-21 m tall over 16 m2. A pitched roof drops whole.
+- inner posts: a roof over 400 m2 stands on rows of posts inside its outline too (buildings.json
+  "inner_posts", by building: x_dm, y_dm, ...): one row down the middle of a platform's or a bus stand's
+  canopy (narrower than 24 m), else rows every 10 m across, at 10 m along, at least 1.5 m inside its
+  edge, 4 m off a road's centre line and 1.2 m off a footway, and not inside another building.
+- a roof the city names as closed (city.json "roofs" "closed", OSM ids: Shinjuku's Sumitomo Triangle
+  Plaza, a glass atrium) goes back to a glass building from the ground.
+
 Rewrites web/data/<city>/buildings.json in place; running it again changes nothing.
 """
 import argparse
@@ -51,6 +70,18 @@ WIDTH_M, ALONG, TALL_M = 6.0, 0.6, 20.0
 SMALL_M2, SMALL_TOP_M, GUESS_SMALL_M, GUESS_M, MIN_CLEAR_DM = 60.0, 8.0, 4.0, 8.0, 22
 GUESSED = {"estimate", "ml"}
 FRAME = "#5b564f"  # a roof on posts: dark timber or painted steel, under a roof of its own colour
+SHU = "#c4482a"  # a shrine's vermilion (朱), as the Fushimi Inari and Kiyomizu models' torii_shu under the grade
+TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
+GLASS = "#7f95a0"  # a glass atrium's walls
+UTILITY = {"bicycle_parking", "motorcycle_parking", "parking", "parking_entrance", "smoking_area", "toilets", "waste_disposal",
+           "recycling", "vending_machine", "fuel", "car_wash", "bus_station", "taxi"}
+SPAN_M, ROW_W_M, INNER_MIN_M2 = 10.0, 24.0, 400.0
+MEASURED_TALL = {"plateau", "lidar", "estimate", "ml"}  # tops that may be a tree over the roof
+KINDS = (  # (name parts, base m, m per metre of sqrt(area))
+    (("鐘楼", "鐘堂", "鐘撞", "梵鐘", "鐘つき"), 4.5, 0.6),
+    (("手水", "水屋", "浄水"), 3.0, 0.4),
+    (("舞殿", "神楽殿", "絵馬堂", "絵馬殿", "能舞台", "拝殿", "神輿"), 4.5, 0.45),
+)
 
 
 def roof_top_dm(meta, area_m2, top_dm):
@@ -177,9 +208,216 @@ def mark(out_dir):
         if plain is not None and len(meta) > 10:
             meta[10] = plain
         n += 1
+    n += finish(out_dir, B, G, polys, solid_tree, foot, tree)
     if n:
         with open(bpath, "w") as f:
             json.dump(B, f, separators=(",", ":"))
+    return n
+
+
+def muted_keep(hex_colour):
+    """A mapped building:colour as paint shows it: saturation at most 0.75, brightness 0.25-0.8."""
+    import colorsys
+    try:
+        r, g, b = (int(hex_colour[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    except (ValueError, IndexError):
+        return None
+    h, s_, v = colorsys.rgb_to_hsv(r, g, b)
+    r, g, b = colorsys.hsv_to_rgb(h, min(s_, 0.75), min(max(v, 0.25), 0.8))
+    return "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
+
+
+NAMED = {"red": "#b8402a", "vermilion": "#c4482a", "orange": "#c86a30", "brown": "#6a4a36", "black": "#2e2b28",
+         "white": "#e6e2d8", "grey": "#8c8c88", "gray": "#8c8c88", "green": "#4f6a4a", "blue": "#4a5f7a"}
+
+
+def mapped_colour(t):
+    c = (t.get("building:colour") or "").strip().lower()
+    if c in NAMED:
+        return NAMED[c]
+    return muted_keep(c) if c.startswith("#") and len(c) == 7 else None
+
+
+def kind_cap_m(name, area_m2):
+    """How tall a pavilion of this kind and footprint stands, at most."""
+    base, per = 4.0, 0.5
+    for parts, b, p in KINDS:
+        if any(k in name for k in parts):
+            base, per = b, p
+            break
+    return base + per * area_m2 ** 0.5
+
+
+def ground_max_dm(G, cfg, P):
+    """The highest walking ground under a footprint, in decimetres (None without a terrain grid)."""
+    import base64
+    import numpy as np
+    t = G.get("terrain")
+    if not t or t.get("encoding") != "int16le-base64":
+        return None
+    z = np.frombuffer(base64.b64decode(t["data"]), "<i2").reshape(t["ny"], t["nx"])
+    x0, x1, y0, y1 = cfg["extent_m"]
+    c = t["cell"]
+    a, b, e, f = P.bounds
+    c0, c1 = max(0, int((a - x0) / c)), min(t["nx"] - 1, int((e - x0) / c))
+    r0, r1 = max(0, int((y1 - f) / c)), min(t["ny"] - 1, int((y1 - b) / c))
+    best = None
+    for r in range(r0, r1 + 1):
+        for cc in range(c0, c1 + 1):
+            x, y = x0 + (cc + 0.5) * c, y1 - (r + 0.5) * c
+            if P.buffer(c * 0.75).contains(shapely.Point(x, y)):
+                v = int(z[r, cc])
+                best = v if best is None else max(best, v)
+    return best
+
+
+def drop_roof(r, top_dm):
+    """Lower a solid's pitched roof mesh to top_dm (decimetres over its base): whole, where its eaves then
+    stand at least 55% of the way up; else its eaves at 55% and its slopes shallower to fit."""
+    import base64
+    import numpy as np
+    top, eave = r[1], r[2]
+    dz = top - top_dm
+    new_eave = max(eave - dz, round(0.55 * top_dm))
+    xyz = np.frombuffer(base64.b64decode(r[6]), "<i2").astype(np.float64)
+    z = xyz[2::3]
+    lo = z <= eave
+    z[lo] = z[lo] * (new_eave / max(eave, 1))
+    z[~lo] = new_eave + (z[~lo] - eave) * ((top_dm - new_eave) / max(top - eave, 1))
+    xyz[2::3] = z
+    r[6] = base64.b64encode(np.round(xyz).astype("<i2").tobytes()).decode()
+    r[1], r[2] = top_dm, new_eave
+
+
+def inner_posts(P, roads, footways, others):
+    """Posts inside a wide roof's outline: [(x, y)] in metres (finish())."""
+    from shapely import affinity
+    R = P.minimum_rotated_rectangle
+    q = list(R.exterior.coords)[:4]
+    e = [((q[(k + 1) % 4][0] - q[k][0]), (q[(k + 1) % 4][1] - q[k][1])) for k in range(2)]
+    L = [max(1e-6, (v[0] ** 2 + v[1] ** 2) ** 0.5) for v in e]
+    k_long = 0 if L[0] >= L[1] else 1
+    ux, uy = e[k_long][0] / L[k_long], e[k_long][1] / L[k_long]
+    vx, vy = -uy, ux
+    length, width = L[k_long], L[1 - k_long]
+    cx, cy = R.centroid.x, R.centroid.y
+    rows = [0.0] if width < ROW_W_M else [(-width / 2 + width * (i + 1) / (int(width // SPAN_M) + 1))
+                                          for i in range(int(width // SPAN_M))]
+    m = max(1, int(length // SPAN_M))
+    along = [-length / 2 + length * (i + 0.5) / m for i in range(m)]
+    inside = P.buffer(-1.5)
+    out = []
+    for v in rows:
+        for u in along:
+            x, y = cx + ux * u + vx * v, cy + uy * u + vy * v
+            pt = shapely.Point(x, y)
+            if inside.is_empty or not inside.contains(pt):
+                continue
+            if roads is not None and any(roads[1][i].distance(pt) < 4.0 for i in roads[0].query(pt.buffer(4.0))):
+                continue
+            if footways is not None and any(footways[1][i].distance(pt) < 1.2 for i in footways[0].query(pt.buffer(1.2))):
+                continue
+            if any(o.contains(pt) for o in others):
+                continue
+            out.append((x, y))
+    del affinity
+    return out
+
+
+def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
+    """Colour, height, inner posts and closed atria for the roofs on posts and the gates (see the docstring)."""
+    cid = os.path.basename(os.path.normpath(out_dir))
+    cpath = os.path.join(ROOT, "cities", cid, "city.json")
+    cfg = json.load(open(cpath, encoding="utf8")) if os.path.exists(cpath) else {}
+    rcfg = cfg.get("roofs", {})
+    opath = os.path.join(ROOT, "cities", cid, "roofs_osm.json")
+    osm = json.load(open(opath, encoding="utf8")) if os.path.exists(opath) else {}
+    tags = osm.get("tags", {})
+    prec = [(Polygon(p["ring"]), p) for p in osm.get("precincts", []) if len(p["ring"]) >= 4]
+    prec = [(Pg if Pg.is_valid else Pg.buffer(0), p) for Pg, p in prec]
+    palette = rcfg.get("palette", {})
+    closed = set(rcfg.get("closed", []))
+    glass = B["styles"].index("glass") if "glass" in B.get("styles", []) else None
+    eaves = {r[0]: r for r in B.get("r", [])}
+    road_lines = []
+    for o in G.get("paths", {}).get("road", []):
+        p = o["p"]
+        if len(p) >= 6:
+            road_lines.append(LineString([(p[i] / 10, p[i + 1] / 10) for i in range(0, len(p), 3)]))
+    roads = (shapely.STRtree(road_lines), road_lines) if road_lines else None
+    footways = (foot_tree, foot) if foot else None
+    inner = {}
+    n = 0
+    for si, s in enumerate(B["s"]):
+        meta = B["b"][s[0]]
+        P = polys[si]
+        oid = (meta[6] or "") if P is not None else ""
+        if oid in closed:
+            if s[2] > 0:
+                s[2] = 0
+                meta[1] = "commercial"
+                meta[7] = GLASS
+                if glass is not None and len(meta) > 10:
+                    meta[10] = glass
+                n += 1
+            continue
+        if P is None or meta[1] != "roof" or s[2] <= 0:
+            continue
+        if (P.length >= 40 and 2 * P.area / P.length <= WIDTH_M and not is_gate(meta, P)
+                and sum(foot[i].intersection(P).length for i in foot_tree.query(P)) >= ALONG * P.length / 2):
+            continue  # an arcade: a covered street keeps its own colour
+        t = tags.get(oid, {})
+        name = (meta[0] or t.get("name") or "").strip()
+        here = [p for Pg, p in prec if Pg.intersects(P) and Pg.intersection(P).area > 0.5 * P.area]
+        here.sort(key=lambda p: Polygon(p["ring"]).area)  # the innermost (a sub-temple inside its head temple)
+        colour = mapped_colour(t)
+        if colour is None:
+            for p in here:
+                for k, c in palette.items():
+                    if k and k in p.get("name", ""):
+                        colour = c
+                        break
+                if colour:
+                    break
+        if colour is None and (t.get("amenity") in UTILITY or t.get("shelter_type") == "public_transport"):
+            colour = FRAME  # a bicycle stand's or a smoking area's roof in a precinct is painted steel all the same
+        if colour is None:
+            rel = t.get("religion") or (here[0].get("religion") if here else "") or ""
+            if rel == "shinto" or t.get("building") == "shrine":
+                colour = SHU
+            elif rel == "buddhist" or t.get("building") == "temple":
+                colour = TIMBER
+        if colour and len(meta) > 7 and meta[7] != colour:
+            meta[7] = colour
+            n += 1
+        # the height of a pavilion (not a gate: their tops were measured with their roofs)
+        gate = is_gate(meta, P) or t.get("building") in ("gatehouse", "gate")
+        if not gate and P.area < INNER_MIN_M2 and meta[4] in MEASURED_TALL and "height" not in t:
+            gmax = ground_max_dm(G, cfg, P)
+            lift = max(0, gmax - s[1]) if gmax is not None else 0
+            cap = max(lift + round(10 * kind_cap_m(name, P.area)), MIN_CLEAR_DM + 8)
+            if s[3] > cap:
+                r = eaves.get(si)
+                if r is not None:
+                    drop_roof(r, cap)
+                s[3] = cap
+                lo = open_soffit_dm(s[3] / 10)
+                if r is not None:
+                    lo = min(lo, r[2] - 5)
+                lo = min(lo, s[3] - 3)
+                s[2] = max(MIN_CLEAR_DM, lo)
+                meta[2] = meta[9] = round(s[3] / 10, 1)
+                n += 1
+        if P.area > INNER_MIN_M2:
+            others = [polys[j] for j in solid_tree.query(P) if j != si and polys[j] is not None
+                      and B["b"][B["s"][j][0]][1] != "roof" and B["s"][j][2] == 0]
+            pts = inner_posts(P, roads, footways, others)
+            if pts:
+                inner.setdefault(str(s[0]), []).extend(v for x, y in pts for v in (round(x * 10), round(y * 10)))
+    if inner or B.get("inner_posts"):
+        if B.get("inner_posts") != inner:
+            n += 1
+        B["inner_posts"] = inner
     return n
 
 
