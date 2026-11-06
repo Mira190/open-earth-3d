@@ -122,10 +122,13 @@ its PLATEAU footprint, which the renderers leave out. PLATEAU has it as one bloc
 
 ![The north face from over the Karasuma exit, day, dusk and night (#167)](../images/kyoto/station-north.jpg)
 
-Looked at again for #167 on these stills: the parts stand where photographs have them (the west block,
-the Grand Staircase rising west under its glass, the atrium, the Skyway, the Granvia's block), but the
-north face reads as a plain window grid, where photographs show the atrium's glass front and the large
-grid frame over the face. A side-by-side check against photographs is left in the follow-up issue.
+Looked at again for #167, and for #218 the north face was given what photographs show over it:
+the atrium's glass front in a deep portal of white steel (piers either side, a lintel over it and a
+band over the concourse's doors, standing out from the blocks beside it), and the great grid of
+squares over the north faces of the west block and the hotel, a module of 7.2 m by two storeys, its
+members 1.2 m proud of the glass and heavier every third line. The bays' size is read from photographs.
+
+![Kyoto Station's north front on a phone](../images/kyoto/station-north-phone.jpg)
 
 **Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
 due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
@@ -180,6 +183,16 @@ Nijo and the Imperial Palace. The survey's views are `tools/views/kyoto-forecour
 
 ![The court before Higashi Honganji's Amida Hall, day, dusk and night](../images/kyoto/honganji-amida-court.jpg)
 ![The same on a phone](../images/kyoto/honganji-amida-court-phone.jpg)
+
+The wide forecourts (#218) get the same: gravel over the photograph's trees' shadows across the hull
+of the buildings that frame each court, Higashi Honganji's and Nishi Hongwanji's between their gates and
+their halls and Nijo's outer court from the Higashi-Otemon to the Karamon (`FORECOURTS`), the granite
+aprons round the halls kept. The Imperial Palace's south court has no generated street lamps on its
+white gravel (`night.clear` in `city.json`).
+
+![The Honganji's and Nijo's forecourts, day, dusk and night](../images/kyoto/forecourts.jpg)
+![On a phone](../images/kyoto/forecourts-phone.jpg)
+![The south court at night, unlit](../images/kyoto/gosho-court-night.jpg)
 
 ## 6. What is not verified
 
