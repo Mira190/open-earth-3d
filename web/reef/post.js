@@ -67,7 +67,7 @@ export function createPost(renderer, scene, camera, env, { bloom: withBloom = tr
   const q = new URLSearchParams(location.search);
   let base = color.rgb;
   // bloom: off on the low tier (tier.js), as on the globe
-  if (withBloom && q.get('bloom') !== '0') base = base.add(bloom(finite, 0.35, 0.55, 0.92).rgb);
+  if (withBloom && q.get('bloom') !== '0') base = base.add(bloom(finite, 0.26, 0.5, 0.95).rgb);
   if (q.get('shafts') !== '0') base = base.add(shafts());
   // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift);
   // what is bright enough for the cones (a torch beam, a lamp, the moon's path) keeps its colour
