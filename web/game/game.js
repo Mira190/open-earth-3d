@@ -1423,9 +1423,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const fx = Math.sin(h0), fy = Math.cos(h0), ux = fy * keep, uy = -fx * keep;
     return loc.map(q => ({ x: x0 + ux * q.x + fx * q.y, y: y0 + uy * q.x + fy * q.y, h: h0 + keep * q.h, v: q.v, stop: q.stop }));
   }
-  function turnRound(o, dt) {
-    const st = o.drv.st, b = st.block;
-    const queued = !st.mv && st.v < 0.3 && b && b.line >= 0 && cars.C.includes(b) && b.v < 0.3 && !/^the line/.test(st.why || '');
+  // (force: now, wherever it is, as tools/game_check.js asks for one through __game.turnRide; the street, the room
+  // and the traffic are still asked)
+  function turnRound(o, dt, force = false) {
+    const st = o.drv.st, b = st.block && st.block.line >= 0 && cars.C.includes(st.block) ? st.block : null;
+    if (!force) {
+    const queued = !st.mv && st.v < 0.3 && b && b.v < 0.3 && !/^the line/.test(st.why || '');
     if (!queued) { o.qT = 0; o.qAt = null; return; }
     if (!o.qAt || o.qAt.c !== b || Math.hypot(b.x - o.qAt.x, b.y - o.qAt.y) > 1) { o.qAt = { c: b, x: b.x, y: b.y }; o.qT = 0; }
     o.qT = (o.qT || 0) + dt;
@@ -1435,16 +1438,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let hd = b;
     for (let k = 0; k < 30 && hd.front && hd.front.line != null && (hd.why === 'car' || hd.why === 'held'); k++) hd = hd.front;
     if (['light', 'walk', 'amber'].includes(hd.why) && hd.lineArm && hd.lineArm.j.sig && o.qT < 120) { o.turnNo = `the queue's head waits at a light (${hd.why})`; return; }
+    } else if (st.mv) { o.turnNo = 'in a junction'; return; }
     o.turnLook = clockT;
     const pl = placeOnRoute(st), to = o.phase === 'coming' ? o.pickup : st.route.to;
-    if (!pl || !to || b.line !== pl.line) { o.turnNo = !pl || !to ? 'nowhere on the roads' : 'the queue is on the next piece'; return; } // (a queue on this piece of road only: one on the next, the reroute goes round)
+    if (!pl || !to || (b && !force && b.line !== pl.line)) { o.turnNo = !pl || !to ? 'nowhere on the roads' : 'the queue is on the next piece'; return; } // (a queue on this piece of road only: one on the next, the reroute goes round)
     const l = roadNet.L[pl.line];
     if (l.ow || (pl.s < 6 || pl.s > l.len - 6)) { o.turnNo = l.ow ? 'a one-way street' : 'by a junction'; return; } // (a one-way street; or by the junction, where it would turn in the junction)
     // nothing coming the other way on this street within 45 m, nor on the move within 15 m (about to turn into it)
     if (cars.C.some(c => c.line >= 0 && c !== b && Math.abs(c.z - st.z) < 3 && c.v > 0.3 && (c.line === pl.line ? c.dir !== pl.dir && Math.hypot(c.x - st.x, c.y - st.y) < 45 : Math.hypot(c.x - st.x, c.y - st.y) < 15))) { o.turnNo = 'a car coming'; return; }
     const half = ROAD_HALF[l.c] || 3.5, w = 2 * OECars.LANE;
     if (half < 3) { o.turnNo = 'a street too narrow'; return; } // (a lane too narrow to turn in)
-    const gapAhead = Math.hypot(b.x - st.x, b.y - st.y) - (b.half || 2.3) - o.C.half;
+    const gapAhead = b ? Math.hypot(b.x - st.x, b.y - st.y) - (b.half || 2.3) - o.C.half : Infinity;
     const z = st.z, mine = myCar && player.mode !== 'car' ? myCar.D.st : null;
     let poses = null;
     for (const back of [Math.max(0, 3 - gapAhead), Math.max(0, 3 - gapAhead) + 1.5, Math.max(0, 3 - gapAhead) + 3]) {
@@ -4707,7 +4711,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { hold: on => { simHold = on !== false; }, held: () => simHold, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+  window.__game = { hold: on => { simHold = on !== false; }, held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
