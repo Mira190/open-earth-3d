@@ -66,6 +66,15 @@ def load():
     return json.load(open(PATH, encoding="utf8"))["moats"]
 
 
+def clip():
+    """The moats' outlines, where the viewer does not draw the ground above the water (landmarks.json "clip",
+    web/world.js): its 10 m grid slopes from a moat's bed up to the bank, and stood through the water in pale
+    wedges in front of the walls (the Nijubashi moat by the Seimon Tetsubashi, issue 234). The moats' own
+    water and walls are drawn over the gap."""
+    return [{"ring": [[round(p[0], 2), round(p[1], 2)] for p in m["ring"]],
+             "holes": [[[round(p[0], 2), round(p[1], 2)] for p in h] for h in m.get("holes", [])]} for m in load()]
+
+
 def _poly(m):
     from shapely.geometry import Polygon
     return Polygon([p[:2] for p in m["ring"]], [[p[:2] for p in h] for h in m.get("holes", [])])

@@ -90,6 +90,9 @@ window.OpenEarthGame = async function game(cityId) {
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {}, look: G.look || {} }) : null;
   if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
+  // shaders compiled before their first frame, in the variant the post stack draws with (world.js compile):
+  // the scene behind the loader, and what comes once the game is open (the helicopter's model)
+  const compileFor = (obj, scene = world) => OEWorld.compile(renderer, obj, camera, { scene, target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null });
   // the weather: dry, overcast, drizzle or rain, as the city's climate brings it for the date (weather.js)
   const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {} }) : null;
   if (atmos && atmos.composer) {
@@ -309,28 +312,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const [u0, z0] = st.profile[0], [u1, z1] = st.profile[st.profile.length - 1], [ox, oy] = st.origin, [ax, ay] = st.axis;
       return { pts: [[ox + ax * u0, oy + ay * u0, z0], [ox + ax * u1, oy + ay * u1, z1]], w: 2 * st.half_width };
     });
-    const wet = [...deckPlan.runs, ...own].filter(r => r.pts.some(q => nav.isWater(q[0], q[1])));
-    if (wet.length) {
-      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-      for (const r of wet) for (const q of r.pts) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
-      x0 -= 40; x1 += 40; y0 -= 40; y1 += 40;
-      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / 4096), cv = document.createElement('canvas');
-      cv.width = Math.ceil((x1 - x0) / res); cv.height = Math.ceil((y1 - y0) / res);
-      const g = cv.getContext('2d');
-      g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
-      g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
-      for (const r of wet) {
-        const hi = Math.max(...r.pts.map(q => q[2]));
-        g.lineWidth = (r.w + 2 * Math.max(2.5, 0.25 * hi)) / res;
-        g.beginPath();
-        r.pts.forEach((q, k) => g[k ? 'lineTo' : 'moveTo']((q[0] - x0) / res, (y1 - q[1]) / res));
-        g.stroke();
-      }
-      g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
-      const tex = new THREE.CanvasTexture(cv);
-      tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      Wd.sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
-    }
+    Wd.waterCover([...deckPlan.runs, ...own].filter(r => r.pts.some(q => nav.isWater(q[0], q[1])))); // (world.js: with the landmarks' decks)
   }
   // where a walkable strip (a canal bridge's deck) is carried on to the quay (nav.js), the approach is drawn in the deck's stone
   const LMM = (D.LM && D.LM.materials) || {};
@@ -671,7 +653,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const npcsReady = () => Promise.all(npcs.map(npcLoad)); // every NPC in place (for the tools that look at them)
 
   // ------------------------------------------------------------ vehicles
-  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea };
+  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea, compile: compileFor };
   // a pad the data puts on the ground inside a building's footprint is on its roof (a hospital's, a
   // tower's): there, if the roof is clear above for the rotor, else on the nearest open ground with
   // clear sky (pipeline/game_data.py snaps new data the same way)
@@ -3858,7 +3840,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // draw, which can take seconds, and a loader that faded before it showed a black frame
   let framesDrawn = 0, firstDrawn;
   const drawn = new Promise(r => { firstDrawn = r; });
-  const warm = renderer.compileAsync ? renderer.compileAsync(world, camera).catch(() => {}) : Promise.resolve();
+  // (and the passes the title doesn't draw: the opening shot's depth of field and motion blur, atmosphere.js)
+  const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null]);
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
   // above and the wet street's mirror), so that the first rain of a visit comes on without a stall
   const warmRain = () => { try { if (!weather || weather.armed === false) return; const t0 = performance.now(); if (weather.warm) weather.warm(); if (mirror && mirror.warm && !mirror.off) mirror.warm(world); console.info(`rain warm-up: ${Math.round(performance.now() - t0)} ms`); } catch (e) { console.warn('rain warm-up', e); } };
@@ -3868,6 +3851,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#g-title').hidden = false;
     $('#g-loader').classList.add('out');
     setTimeout(() => { $('#g-loader').hidden = true; OEPlate.stop($('#g-loader')); }, reduced ? 0 : 700);
+    // the helicopter's model while the title is up, if it waits within reach of the start (it is left out of the
+    // loader's wait, issue 148): fetched, built, its shaders compiled and its textures sent now, not during the
+    // opening shot; it lands on its pad once the game opens (heliToPad), not in the title's shot
+    setTimeout(() => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) heli.prefetch(); }, reduced ? 0 : 900);
   });
   renderPassport();
 

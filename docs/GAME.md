@@ -2082,7 +2082,12 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
 
 The game exposes a test hook (`window.__game.advance(seconds, keys)`) that runs
 the simulation at a fixed 30 Hz without rendering. A Playwright script plays
-the whole survey this way. It checks:
+the whole survey this way. Between steps the page keeps drawing and, unpaused,
+simulates in real time. So `tools/game_check.js` holds the world still
+(`window.__game.hold(true)`, as a pause does) while the NPCs' characters and the
+helicopter's model load. Otherwise what the next steps meet would depend on how
+long the files took on that machine, and a change that only made loading faster
+would send the traffic another way. It checks:
 
 1. Walking moves you along the ground.
 2. You can't walk into buildings or the harbour.

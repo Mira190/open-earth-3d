@@ -324,7 +324,7 @@ def run(cid):
         "land_share": round(float(1 - fr[CLASSES.index(80)].mean()), 3),
         "relief_m": [round(float(h[~sea].min()), 1) if (~sea).any() else 0, round(float(h.max()), 1)],
         "sources": {
-            "relief": (fc["relief"]["name"] + "; Copernicus DEM GLO-30 past it; ") * bool(fc.get("relief")) + "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
+            "relief": (fc["relief"]["name"] + "; Copernicus DEM GLO-30 past it; " if fc.get("relief") else "") + "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
             "land_cover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)" + (f"; colour from {fc['colour']['name']}" if fc.get("colour") else ""),
             "lights": "NASA Black Marble 2016, VIIRS day/night band (public domain), via NASA GIBS",
         },

@@ -140,17 +140,21 @@ window.OEVehicles = (function () {
   // coordinates (the disc spins with the rotor, so the smear trails the blades)
   function rotorBlurTexture(blades, tipColour, size = 512) {
     const [c, g] = canvas(size, size), img = g.createImageData(size, size), d = img.data, tip = new THREE.Color(tipColour);
+    const step = 2 * Math.PI / blades;
     for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
-      const x = (i + 0.5) / size * 2 - 1, y = (j + 0.5) / size * 2 - 1, r = Math.hypot(x, y);
+      const x = (i + 0.5) / size * 2 - 1, y = (j + 0.5) / size * 2 - 1, r = Math.sqrt(x * x + y * y);
       const k = 4 * (j * size + i);
       if (r > 1 || r < 0.06) { d[k + 3] = 0; continue; }
       let a = 0.09 + 0.07 * smooth(0.1, 0.9, r);
-      const ang = Math.atan2(y, x);
-      for (let b = 0; b < blades; b++) {
-        let behind = ang - b * 2 * Math.PI / blades;
-        behind = ((behind % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-        a += 0.55 * Math.exp(-behind / (0.07 + 0.26 * r));
-      }
+      // each blade's smear trailing behind it: the angles behind the blades are phi, phi + step, ...,
+      // so their sum is a geometric series (two exps a pixel rather than one a blade, the same picture
+      // in a third of the time: the model is built as the game opens)
+      let phi = Math.atan2(y, x) % step;
+      if (phi < 0) phi += step;
+      const il = 1 / (0.07 + 0.26 * r), q = Math.exp(-step * il);
+      let qn = q;
+      for (let b = 1; b < blades; b++) qn *= q;
+      a += 0.55 * Math.exp(-phi * il) * (1 - qn) / (1 - q);
       const isTip = r > 0.94;
       a = Math.min(0.85, a * (0.55 + 0.45 * r) + (isTip ? 0.22 : 0));
       const shade = isTip ? [tip.r * 255, tip.g * 255, tip.b * 255] : [42, 45, 49];
@@ -245,12 +249,31 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     const g = new THREE.Group();
     let V = null, real = null, ready = null, swap = null;
     const wear = v => { if (V) g.remove(V.group); V = v; g.add(v.group); };
-    if (lib && lib.heli) wear(heliModel(world, lib, cfg, opts));
+    // the searchlight is in the world from the start, whether or not the model has come (heliModel carries
+    // it to its lamp): three.js builds the number of lights into every lit material's shader, so a light
+    // that joined once the game was open recompiled the whole city at once, seconds of frozen frames
+    const mopts = Object.assign({}, opts, { searchlight: searchlight(world) });
+    // a model that comes later has its shaders compiled before it is shown, off the frame (where the GPU
+    // compiles in parallel, KHR_parallel_shader_compile), not in the first frame that draws it
+    // (opts.compile: the page's own, which compiles the variant its post stack draws with: world.js compile)
+    // (and its textures sent to the GPU then too, not in the first frame that draws them)
+    const warm = m => {
+      const R = opts.renderer, cam = opts.camera;
+      if (m && m.warmed) return m.warmed;
+      if (m && R && R.initTexture) {
+        const seen = new Set();
+        for (const o of [m.group, ...(m.extras || [])]) o.traverse(q => { for (const mat of [].concat(q.material || [])) for (const v of Object.values(mat)) if (v && v.isTexture && !seen.has(v)) { seen.add(v); try { R.initTexture(v); } catch (e) { /* drawn later instead */ } } });
+      }
+      const one = opts.compile ? o => opts.compile(o, world) : R && R.compileAsync && cam ? o => R.compileAsync(o, cam, world) : null;
+      if (!m || !one) return Promise.resolve(m);
+      return (m.warmed = Promise.all([m.group, ...(m.extras || [])].map(one)).catch(() => {}).then(() => m));
+    };
+    if (lib && lib.heli) wear(heliModel(world, lib, cfg, mopts));
     else {
       wear(kitHeli());
       if (lib && lib.loadHeli) {
         g.visible = false;
-        ready = () => lib.loadHeli().then(() => { if (!real) real = heliModel(world, lib, cfg, opts); return real; })
+        ready = () => lib.loadHeli().then(() => { if (!real) real = heliModel(world, lib, cfg, mopts); return warm(real); })
           .catch(e => { console.warn('Helicopter model unavailable, using a simple one:', e); g.visible = true; return null; });
         // (nobody aboard: only the model in g, the engine off, the door shut)
         swap = () => { if (real && V !== real && g.children.length === 1 && !st.on && st.rotor < 0.02 && st.door === 0) { wear(real); g.visible = true; swap = null; } };
@@ -349,8 +372,11 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     // show(): someone is getting in before it has come, so the kit-built one stands in until then
     let asked = null;
     const want = () => asked || (asked = ready ? ready().then(m => { if (swap) swap(); return m; }) : Promise.resolve(V));
+    // prefetch(): the model fetched, built and its shaders and textures readied, but not yet put on the pad
+    // (the title screen: it would appear out of nowhere in the shot); want() then puts it there at once
+    const prefetch = () => (ready && !asked ? ready() : Promise.resolve(null));
     const show = () => { g.visible = true; };
-    return { group: g, st, get seat() { return V.seat; }, update, doorAt, get way() { return V.way; }, toWorld, toLocal, want, show,
+    return { group: g, st, get seat() { return V.seat; }, update, doorAt, get way() { return V.way; }, toWorld, toLocal, want, prefetch, show,
       loaded: () => !ready || V === real };
   }
 
@@ -394,17 +420,15 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     spot('Beacon_Top', '#ff2020', 1.6); spot('Beacon_Bottom', '#ff2020', 1.6);
     spot('Strobe_L', '#ffffff', 2.6); spot('Strobe_R', '#ffffff', 2.6);
     spot('Landing_Light', '#fff3da', 2.2); spot('Searchlight', '#fff3da', 2.6);
-    // the searchlight: a real spot light (kept in the scene all the time so no shader
-    // recompiles when it switches) and a faint beam you can see in the night air
-    const sl = new THREE.SpotLight(lin('#fff1d6'), 0, 420, 0.2, 0.55, PHYS() ? 2 : 1);
-    sl.position.copy(p('Searchlight'));
-    sl.target.position.copy(p('Searchlight')).add(new THREE.Vector3(0, -0.72, 0.7).multiplyScalar(20));
-    src.add(sl, sl.target);
+    // the searchlight: a real spot light, kept in the world all the time so no shader recompiles when it
+    // switches or when the model arrives (helicopter() makes it), carried to the lamp while it shines;
+    // and a faint beam you can see in the night air
+    const sl = opts.searchlight || searchlight(world), slAt = p('Searchlight').clone(), slAim = slAt.clone().add(new THREE.Vector3(0, -0.72, 0.7).multiplyScalar(20));
     const beamTex = (() => { const [c, x] = canvas(4, 128), gr = x.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 4, 128); return new THREE.CanvasTexture(c); })();
     const beam = new THREE.Mesh(new THREE.ConeGeometry(9, 70, 32, 1, true).translate(0, -35, 0),
       new THREE.MeshBasicMaterial({ map: beamTex, color: lin('#fff0d0'), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: true }));
     beam.position.copy(p('Searchlight'));
-    beam.lookAt(sl.target.position);
+    beam.lookAt(slAim);
     beam.rotateX(-Math.PI / 2);
     beam.renderOrder = 5;
     src.add(beam);
@@ -474,6 +498,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       const search = powered && flying && night > 0.25 ? 1 : 0, landing = powered && night > 0.25 && agl < 80 ? 1 : 0;
       show('Searchlight', search, 1); show('Landing_Light', landing, 1);
       sl.intensity = search * (PHYS() ? 25000 : 2.2);
+      if (search) { src.updateWorldMatrix(true, false); sl.position.copy(slAt).applyMatrix4(src.matrixWorld); sl.target.position.copy(slAim).applyMatrix4(src.matrixWorld); }
       beam.material.opacity = search * 0.035 * night;
       for (const [n, ms] of Object.entries(lamps)) for (const m of ms) {
         m.emissiveIntensity = n === 'Screen' ? (powered ? 0.6 + night : 0.15) : n === 'Light_Lens' ? (search || landing ? 3 : 0)
@@ -513,7 +538,13 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         if (water) onWake(r, opts); else r.layers.set(0);
       }
     }
-    return { group: g, seat, door, way, animate };
+    return { group: g, seat, door, way, animate, extras: [spray.pts, ...rings] }; // (extras: what it put in the world itself)
+  }
+  // the helicopter's searchlight: a spot light and its target, in the world
+  function searchlight(world) {
+    const sl = new THREE.SpotLight(lin('#fff1d6'), 0, 420, 0.2, 0.55, PHYS() ? 2 : 1);
+    world.add(sl, sl.target);
+    return sl;
   }
 
   // ------------------------------------------------------------ ferries
