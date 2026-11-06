@@ -59,7 +59,7 @@ function lupinGeometry({ spikes = 9, leaves = 15, leaflets = 11, radial = 6, row
     const top = spread ? 0.55 + rnd() * 0.5 : (s === 0 ? 0.98 + rnd() * 0.14 : 0.52 + rnd() * 0.42);
     const len = Math.min(top - (spread ? 0.16 : 0.12), 0.24 + rnd() * 0.14 + (top - 0.5) * 0.35);
     const rad = (spread ? 0.05 : 0.034) + rnd() * 0.016, tipR = 0.006;
-    const spike = new THREE.CylinderGeometry(tipR, rad, len, radial, rows, !detail).translate(0, top - len / 2, 0);
+    const spike = new THREE.CylinderGeometry(tipR, rad, len, radial, rows, true).translate(0, top - len / 2, 0);
     const pp = spike.attributes.position, uu = spike.attributes.uv, tint = 0.5 + 0.5 * rnd(), ph = rnd() * 6.28;
     for (let i = 0; i < pp.count; i++) {
       const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i), t = Math.min(1, Math.max(0, (y - (top - len)) / len));
@@ -208,14 +208,68 @@ function mergeAll(geos) {
 
 // the share of lupins in flower by month: September to February (NZPCN), November to February on the Mackenzie's
 // riverflats (DOC's braided river field guide), at their best from mid November to the end of December
+// An instanced set split by where its instances stand round the camera when it is filled: one part within `near` metres
+// and eight sectors beyond, each with its own bounds, so the renderer leaves out the parts outside the view. Drawn as one
+// ring, a set spent most of its triangles behind the camera. attrs: the instanced attributes beside the matrix, as
+// [name, itemSize]; `max` caps the whole set as before (a full set leaves out the furthest, which are put last).
+class Ring {
+  constructor(geo, mat, max, attrs, { near = 16, margin = 2.5, name = '' } = {}) {
+    this.max = Math.max(1, max); this.near = near; this.margin = margin; this.attrs = attrs; this.parts = []; this.n = 0;
+    this.group = new THREE.Group();
+    for (let i = 0; i < 9; i++) {
+      const cap = Math.max(1, Math.ceil(this.max * (i === 0 ? 0.6 : 0.35)));
+      const g = new THREE.BufferGeometry(); g.setIndex(geo.index);
+      for (const k in geo.attributes) g.setAttribute(k, geo.attributes[k]);
+      const a = attrs.map(([k, sz]) => { const b = new THREE.InstancedBufferAttribute(new Float32Array(cap * sz), sz); g.setAttribute(k, b); return b; });
+      const m = new THREE.InstancedMesh(g, mat, cap); m.count = 0; m.visible = false; m.name = `${name}:${i}`;
+      m.boundingSphere = new THREE.Sphere(); m.boundingBox = new THREE.Box3();
+      this.group.add(m);
+      this.parts.push({ m, a, cap, n: 0, box: new THREE.Box3() });
+    }
+  }
+  layer(l) { for (const p of this.parts) p.m.layers.set(l); return this; }
+  begin(cx, cz) { this.cx = cx; this.cz = cz; this.n = 0; for (const p of this.parts) { p.n = 0; p.box.makeEmpty(); } }
+  get full() { return this.n >= this.max; }
+  // one instance: its matrix (m4, whose translation places it) and its attributes' values in `attrs` order
+  put(m4, ...vals) {
+    if (this.n >= this.max) return false;
+    const e = m4.elements, dx = e[12] - this.cx, dz = e[14] - this.cz;
+    const i = dx * dx + dz * dz < this.near * this.near ? 0 : 1 + (Math.floor((Math.atan2(dz, dx) / (2 * Math.PI) + 1) * 8) % 8);
+    const p = this.parts[i];
+    if (p.n >= p.cap) return false;
+    p.m.setMatrixAt(p.n, m4);
+    for (let k = 0; k < vals.length; k++) { const v = vals[k], a = p.a[k], o = p.n * a.itemSize; for (let c = 0; c < v.length; c++) a.array[o + c] = v[c]; }
+    p.box.expandByPoint(_v.set(e[12], e[13], e[14]));
+    p.n++; this.n++;
+    return true;
+  }
+  end() {
+    for (const p of this.parts) {
+      p.m.count = p.n; p.m.visible = p.n > 0;
+      if (!p.n) continue;
+      p.m.instanceMatrix.needsUpdate = true;
+      for (const a of p.a) { a.needsUpdate = true; }
+      p.box.expandByScalar(this.margin);
+      p.m.boundingBox.copy(p.box); p.box.getBoundingSphere(p.m.boundingSphere);
+    }
+  }
+}
+const _v = new THREE.Vector3();
+
 const BLOOM = [0.6, 0.25, 0, 0, 0, 0, 0, 0, 0.08, 0.3, 0.75, 1.0];
 
 export async function init(ctx) {
   const { scene, env, camera, S } = ctx;
   if (S.kind !== 'alpine' || !ctx.light) return null;
   const light = ctx.light, terrain = ctx.terrain;
-  const quality = ctx.q.get('flora') === '0' ? 0 : (Math.min(innerWidth, innerHeight) < 700 ? 0.55 : 1);
+  // how many plants, how far out, and in what form: by the picture tier (web/reef/tier.js), as the cities degrade
+  const tier = ctx.tier || { flora: Math.min(innerWidth, innerHeight) < 700 ? 0.55 : 1, simple: false, turf: 1, mirrorFlora: true };
+  const quality = tier.flora;
   if (!quality) return null;
+  // nothing grows on the seal (terrain.js's road field, read here as the GPU paints it), which is laid before the plants
+  const roads = ctx.terrain.roads;
+  if (roads) { await roads.ready; roads.update(camera.position); }
+  const onRoad = (x, n) => !!roads && roads.flatJS(x, n) > 0.35;
   const wind = env.u.wind, time = env.u.time;
   const windDir = new THREE.Vector2(Math.sin(125 * Math.PI / 180), -Math.cos(125 * Math.PI / 180));
   const wd = uniform(windDir);
@@ -236,8 +290,8 @@ export async function init(ctx) {
   };
 
   // ---- tussock
-  const tGeo = tussockGeometry(), tMax = Math.round(2600 * quality);
-  const tfGeo = tussockGeometry(18, 2, 2.2), tfMax = Math.round(14000 * quality);
+  const tGeo = tier.simple ? tussockGeometry(40, 3) : tussockGeometry(), tMax = Math.round(2600 * quality);
+  const tfGeo = tier.simple ? tussockGeometry(12, 2, 2.6) : tussockGeometry(18, 2, 2.2), tfMax = Math.round(14000 * quality);
   const tMat = new THREE.MeshBasicNodeMaterial({ side: THREE.DoubleSide });
   const tTint = attribute('aTint', 'vec3');
   // (on an instanced mesh the position node already sees the instance's transform: the height off the ground is the geometry's own)
@@ -249,13 +303,9 @@ export async function init(ctx) {
     const N = normalize(mix(vec3(0, 1, 0), normalize(normalWorld), 0.4));
     return lit(alb, N, positionWorld, float(1)).mul(t.mul(0.55).add(0.45));    // self-shadowed low in the clump
   })();
-  const tussock = new THREE.InstancedMesh(tGeo, tMat, tMax); tussock.count = 0; tussock.frustumCulled = false;
-  const tTintAttr = new THREE.InstancedBufferAttribute(new Float32Array(tMax * 3), 3); tGeo.setAttribute('aTint', tTintAttr);
-  const tPos = new THREE.InstancedBufferAttribute(new Float32Array(tMax * 2), 2); tGeo.setAttribute('aPos', tPos);
+  const tussock = new Ring(tGeo, tMat, tMax, [['aTint', 3], ['aPos', 2]], { near: 10, margin: 1.5, name: 'tussock' });
   // beyond 28 m a clump of 18 broader blades stands in for the 64
-  const tussockFar = new THREE.InstancedMesh(tfGeo, tMat, tfMax); tussockFar.count = 0; tussockFar.frustumCulled = false;
-  const tfTint = new THREE.InstancedBufferAttribute(new Float32Array(tfMax * 3), 3); tfGeo.setAttribute('aTint', tfTint);
-  const tfPos = new THREE.InstancedBufferAttribute(new Float32Array(tfMax * 2), 2); tfGeo.setAttribute('aPos', tfPos);
+  const tussockFar = new Ring(tfGeo, tMat, tfMax, [['aTint', 3], ['aPos', 2]], { margin: 1.5, name: 'tussock-far' });
 
   // ---- lupins: whole plants near the eye, plainer plants further out, and beyond those patches of several plants
   // in one instance, so a drift on a shore a few hundred metres away still reads as a band of colour
@@ -284,15 +334,10 @@ export async function init(ctx) {
     const N = isSpike.select(normalize(normalWorld), normalize(mix(vec3(0, 1, 0), normalize(normalWorld), 0.6)));
     return lit(alb, N, P, isSpike.select(float(0.35), float(0.45)));
   })();
-  const lupinMesh = (geo, max) => {
-    const m = new THREE.InstancedMesh(geo, lMat, Math.max(1, max)); m.count = 0; m.frustumCulled = false;
-    const col = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, max) * 4), 4); geo.setAttribute('aFlower', col);
-    const pos = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, max) * 2), 2); geo.setAttribute('aPos', pos);
-    return { mesh: m, col, pos, max: Math.max(1, max), n: 0 };
-  };
-  const lupNear = lupinMesh(lupinGeometry(), Math.round(2600 * quality));
-  const lupMid = lupinMesh(lupinGeometry({ spikes: 5, leaves: 6, leaflets: 7, radial: 4, rows: 2, detail: false, sd: 29 }), Math.round(14000 * quality));
-  const lupFar = lupinMesh(lupinGeometry({ spikes: 9, leaves: 0, radial: 3, rows: 1, detail: false, spread: 1.4, sd: 31 }), Math.round(14000 * quality));
+  const lupinMesh = (geo, max, near, name) => new Ring(geo, lMat, max, [['aFlower', 4], ['aPos', 2]], { near, margin: 2.5, name });
+  const lupNear = lupinMesh(tier.simple ? lupinGeometry({ spikes: 7, leaves: 9, leaflets: 9, radial: 5, rows: 8 }) : lupinGeometry(), Math.round(2600 * quality), 5, 'lupin-near');
+  const lupMid = lupinMesh(lupinGeometry({ spikes: 5, leaves: 6, leaflets: 7, radial: 4, rows: 2, detail: false, sd: 29 }), Math.round(14000 * quality), 16, 'lupin-mid');
+  const lupFar = lupinMesh(lupinGeometry({ spikes: 9, leaves: 0, radial: 3, rows: 1, detail: false, spread: 1.4, sd: 31 }), Math.round(14000 * quality), 80, 'lupin-far');
 
   // ---- stones and shrubs
   const rGeo = rockGeometry(), rMax = Math.round(6000 * quality);
@@ -304,9 +349,8 @@ export async function init(ctx) {
     const alb = vec3(0.42, 0.41, 0.39).mul(rTint).mul(float(1).add(n));
     return light.shade(alb, normalize(normalWorld), P);
   })();
-  const rocks = new THREE.InstancedMesh(rGeo, rMat, rMax); rocks.count = 0; rocks.frustumCulled = false;
-  const rTintAttr = new THREE.InstancedBufferAttribute(new Float32Array(rMax * 3), 3); rGeo.setAttribute('aTint', rTintAttr);
-  const sGeo = shrubGeometry(), sMax = Math.round(1500 * quality);
+  const rocks = new Ring(rGeo, rMat, rMax, [['aTint', 3]], { near: 10, margin: 2, name: 'stones' });
+  const sGeo = shrubGeometry(tier.simple ? 28 : 46), sfGeo = shrubGeometry(14), sMax = Math.round(1500 * quality);
   const sMat = new THREE.MeshBasicNodeMaterial({ side: THREE.DoubleSide });
   sMat.positionNode = Fn(() => positionLocal.add(sway(attribute('aPos', 'vec2'), positionGeometry.y.mul(0.3), 3)))();
   sMat.colorNode = Fn(() => {
@@ -316,13 +360,14 @@ export async function init(ctx) {
     const alb = mix(vec3(0.085, 0.08, 0.065), vec3(0.11, 0.14, 0.07), smoothstep(0.3, 1.0, uv().y)).mul(float(1).add(n)).mul(smoothstep(0.0, 0.5, positionGeometry.y).mul(0.5).add(0.5));
     return lit(alb, normalize(normalWorld), P, float(0.4));
   })();
-  const shrubs = new THREE.InstancedMesh(sGeo, sMat, sMax); shrubs.count = 0; shrubs.frustumCulled = false;
-  const sPos = new THREE.InstancedBufferAttribute(new Float32Array(sMax * 2), 2); sGeo.setAttribute('aPos', sPos);
+  const shrubs = new Ring(sGeo, sMat, sMax, [['aPos', 2]], { margin: 2.5, name: 'matagouri' });
+  // beyond 40 m a bush of 14 twigs stands in for the 46: at that range a twig is under a pixel wide
+  const shrubsFar = new Ring(sfGeo, sMat, sMax, [['aPos', 2]], { margin: 2.5, name: 'matagouri-far' });
   // ---- the turf: short grass round the eye on the grassy ground, tinted from the ground's own colour under each tuft
   // (the 10 m mosaic), darker at the foot and a little richer than the ground, so at eye level the grass reads as
   // grass rather than as a photograph seen edge on. It thins with distance and shrinks away before TURF_R in the
   // shader, so its edge never shows as the camera moves
-  const TURF_R = 40 * Math.sqrt(quality), turfDens = quality < 1 ? 0.6 : 1;
+  const TURF_R = 40 * Math.sqrt(quality), turfDens = (quality < 1 ? 0.6 : 1) * (tier.turf ?? 1);
   const gGeo = turfGeometry(), gMax = Math.round(12000 * quality * turfDens);
   const gMat = new THREE.MeshBasicNodeMaterial({ side: THREE.DoubleSide });
   const gTint = attribute('aTint', 'vec3'), gBase = attribute('aBase', 'vec3');
@@ -346,10 +391,13 @@ export async function init(ctx) {
     const N = normalize(mix(vec3(0, 1, 0), normalize(normalWorld), 0.35));
     return lit(alb, N, positionWorld, float(0.9));
   })();
-  const turf = new THREE.InstancedMesh(gGeo, gMat, Math.max(1, gMax)); turf.count = 0; turf.frustumCulled = false;
-  const gTintAttr = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, gMax) * 3), 3); gGeo.setAttribute('aTint', gTintAttr);
-  const gBaseAttr = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, gMax) * 3), 3); gGeo.setAttribute('aBase', gBaseAttr);
-  scene.add(tussock, tussockFar, lupNear.mesh, lupMid.mesh, lupFar.mesh, rocks, shrubs, turf);
+  const turf = new Ring(gGeo, gMat, gMax, [['aTint', 3], ['aBase', 3]], { near: 6, margin: 1, name: 'turf' });
+  // the lake's mirror (layer 0) leaves out what is too small to read in a wind-blurred reflection (layer 1): the turf, the
+  // tussock, the stones, the matagouri and the far lupin patches always, and every lupin below the high tier (the
+  // mirror draws the scene again, and with every plant in it cost as much as the view)
+  for (const r of [tussock, tussockFar, rocks, turf, shrubs, shrubsFar, lupFar]) r.layer(1);
+  if (!tier.mirrorFlora) for (const r of [lupNear, lupMid]) r.layer(1);
+  for (const r of [tussock, tussockFar, lupNear, lupMid, lupFar, rocks, shrubs, shrubsFar, turf]) scene.add(r.group);
 
   // ---- placement by tiles round the camera
   // wild stands run blue to purple (Wikipedia: Lupinus polyphyllus), with pinks, white and a few yellow (NZPCN, DOC);
@@ -365,7 +413,7 @@ export async function init(ctx) {
     const tx = Math.floor(cam.x / TILE), tn = Math.floor(-cam.z / TILE);
     const key = tx + ',' + tn + ',' + month();
     if (key === lastKey) return; lastKey = key;
-    let nt = 0, ntf = 0, nr = 0, ns = 0;
+    for (const r of [tussock, tussockFar, rocks, shrubs, shrubsFar]) r.begin(cam.x, cam.z);
     const R = { t: 95 * Math.sqrt(quality), r: 110 * Math.sqrt(quality), s: 220 * Math.sqrt(quality) };
     const span = Math.ceil(R.s / TILE);
     for (let j = -span; j <= span; j++) for (let i = -span; i <= span; i++) {
@@ -385,45 +433,39 @@ export async function init(ctx) {
         const maybe = ((cls === 7 || cls === 8 || cls === 12) && dd < R.t) ||
           ((cls === 4 || cls === 5 || cls === 6 || cls === 3 || cls === 15) && dd < R.r) || cls === 9 || cls === 7;
         if (!maybe) continue;
-        if (ctx.depth(x, n) > -0.05) continue;                         // not in the water
+        if (ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;        // not in the water, nor on a sealed road
         const h = terrain.heightAt(x, n);
         pv.set(x, h, -n);
         const clump = mx2(x, n);
         if ((cls === 7 || cls === 8 || cls === 12) && dd < R.t && hk < (cls === 8 ? 0.6 : 1.0) * (0.55 + 0.45 * clump)) {
           const near = dd < 28;
-          if (near ? nt < tMax : ntf < tfMax) {
+          if (!(near ? tussock : tussockFar).full) {
             const s = 0.65 + hash2(ci, cj, k + 500) * 0.55;
             q.setFromAxisAngle(up, hk * 40); sc.set(s, s * (0.8 + 0.4 * hash2(ci, cj, k + 900)), s);
             m4.compose(pv, q, sc);
             const g = 0.75 + 0.3 * hash2(ci, cj, k + 77);
-            if (near) { tussock.setMatrixAt(nt, m4); tPos.setXY(nt, x, -n); tTintAttr.setXYZ(nt, g, g * (0.95 + 0.1 * clump), g * 0.9); nt++; }
-            else { tussockFar.setMatrixAt(ntf, m4); tfPos.setXY(ntf, x, -n); tfTint.setXYZ(ntf, g, g * (0.95 + 0.1 * clump), g * 0.9); ntf++; }
+            (near ? tussock : tussockFar).put(m4, [g, g * (0.95 + 0.1 * clump), g * 0.9], [x, -n]);
           }
         }
         // stones on the shore and the gravel, but few inside a lupin stand: its plants cover the ground
         const inStand = (cls === 15 || cls === 6) && hash2(ci, cj, k + 450) < lupinMask(x, n, cls) * 0.9;
-        if ((cls === 4 || cls === 5 || cls === 6 || cls === 3 || cls === 15) && !inStand && dd < R.r && nr < rMax && hk < (cls === 6 ? 0.55 : 0.85)) {
+        if ((cls === 4 || cls === 5 || cls === 6 || cls === 3 || cls === 15) && !inStand && dd < R.r && !rocks.full && hk < (cls === 6 ? 0.55 : 0.85)) {
           // (most small, a few boulders; the sizes the stones had before the hash was fixed, when half its draws were negative)
           const s = (cls === 4 || cls === 3 ? 0.3 : 0.12) + Math.pow(hash2(ci, cj, k + 400), 3) * (cls === 4 ? 1.2 : 0.5);
           q.setFromEuler(new THREE.Euler(hk * 3, hk * 17, hn * 5)); sc.set(s, s, s);
           pv.y = h - s * 0.25;
-          rocks.setMatrixAt(nr, m4.compose(pv, q, sc));
-          const g = 0.6 + 0.45 * hash2(ci, cj, k + 600); rTintAttr.setXYZ(nr, g, g * 0.98, g * 0.95);
-          nr++;
+          const g = 0.6 + 0.45 * hash2(ci, cj, k + 600);
+          rocks.put(m4.compose(pv, q, sc), [g, g * 0.98, g * 0.95]);
         }
-        if ((cls === 9 || (cls === 7 && hk > 0.985)) && dd < R.s && ns < sMax && hk > 0.75) {
+        if ((cls === 9 || (cls === 7 && hk > 0.985)) && dd < R.s && !(dd < 40 ? shrubs : shrubsFar).full && hk > 0.75) {
           const s = 0.7 + hash2(ci, cj, k + 800) * 0.8;
           q.setFromAxisAngle(up, hk * 30); sc.set(s * 1.2, s, s * 1.2);
           pv.y = h;
-          shrubs.setMatrixAt(ns, m4.compose(pv, q, sc)); sPos.setXY(ns, x, -n);
-          ns++;
+          (dd < 40 ? shrubs : shrubsFar).put(m4.compose(pv, q, sc), [x, -n]);
         }
       }
     }
-    for (const [m, n, attrs] of [[tussock, nt, [tTintAttr, tPos]], [tussockFar, ntf, [tfTint, tfPos]], [rocks, nr, [rTintAttr]], [shrubs, ns, [sPos]]]) {
-      m.count = n; m.instanceMatrix.needsUpdate = true;
-      for (const a of attrs) a.needsUpdate = true;
-    }
+    for (const r of [tussock, tussockFar, rocks, shrubs, shrubsFar]) r.end();
   }
   // clumps: a low-frequency field so plants come in drifts, not evenly
   const mx2 = (x, n) => { const v = Math.sin(x * 0.043 + Math.sin(n * 0.031) * 2.1) * 0.5 + Math.sin(n * 0.057 - Math.sin(x * 0.027) * 1.7) * 0.5; return v * 0.5 + 0.5; };
@@ -503,12 +545,10 @@ export async function init(ctx) {
     return r < 0.5 ? pickLupin(hash2(ci, cj, 31)) : r < 0.8 ? pickLupin(hash2(ci, cj, 32)) : pickLupin((r - 0.8) * 5);
   };
   const putLupin = (L, x, n, s, rot, c, j, on) => {
-    if (L.n >= L.max) return;
+    if (L.full) return;
     pv.set(x, terrain.heightAt(x, n), -n); q.setFromAxisAngle(up, rot); sc.set(s, s, s);
-    L.mesh.setMatrixAt(L.n, m4.compose(pv, q, sc)); L.pos.setXY(L.n, x, -n);
-    L.col.setXYZW(L.n, c[0] * j, c[1] * j, c[2] * j, on); L.n++;
+    L.put(m4.compose(pv, q, sc), [c[0] * j, c[1] * j, c[2] * j, on], [x, -n]);
   };
-  const upload = L => { L.mesh.count = L.n; L.mesh.instanceMatrix.needsUpdate = true; L.col.needsUpdate = true; L.pos.needsUpdate = true; };
   const sq = Math.sqrt(quality), lupDens = quality < 1 ? 0.6 : 1;
   const RN = 12 * sq, RM = 55 * sq, RF = 340 * sq, FT = 48;
   // the tiles round the camera within a radius, nearest first (so a full mesh leaves out the furthest plants)
@@ -529,7 +569,7 @@ export async function init(ctx) {
     // was as it changes form
     const key = Math.floor(cam.x / TILE) + ',' + Math.floor(-cam.z / TILE) + ',' + mo;
     if (key !== lupKey) {
-      lupKey = key; lupNear.n = lupMid.n = 0;
+      lupKey = key; lupNear.begin(cam.x, cam.z); lupMid.begin(cam.x, cam.z);
       const K = Math.round(1.4 * lupDens * TILE * TILE);
       for (const [, ci, cj] of tilesNear(cam, TILE, RM)) {
         for (let k = 0; k < K; k++) {
@@ -537,19 +577,19 @@ export async function init(ctx) {
           const dd = Math.hypot(x - cam.x, n + cam.z);
           if (dd > RM || hk >= (dd < RN ? 1 : dd < 30 * sq ? 0.6 : 0.4)) continue;
           const cls = ctx.habitat(x, n), m = lupinMask(x, n, cls);
-          if (hash2(ci, cj, 8000 + k) >= Math.pow(m, 0.5) || ctx.depth(x, n) > -0.05) continue;
+          if (hash2(ci, cj, 8000 + k) >= Math.pow(m, 0.5) || ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
           putLupin(dd < RN ? lupNear : lupMid, x, n, (0.75 + 0.4 * hash2(ci, cj, 9300 + k)) * (0.85 + 0.15 * m), hk * 60,
             standColour(x, n, hash2(ci, cj, 9000 + k)), 0.92 + 0.16 * hash2(ci, cj, 9400 + k), flowerOf(hash2(ci, cj, 9500 + k), hash2(ci, cj, 9600 + k)));
         }
       }
-      upload(lupNear); upload(lupMid);
+      lupNear.end(); lupMid.end();
     }
     // beyond, patches of ten plants in one instance on coarser tiles, while the lupins are in flower (out of flower
     // a patch is a few green humps nobody sees from there): a patch a 3 m^2 in a full stand, fewer past 200 m
     // The far ring has thousands of spots to weigh: it is filled a few milliseconds a frame into a staging copy, and
     // the patches on show change over when it is done (all at once on the first frame)
     const fkey = Math.floor(cam.x / FT) + ',' + Math.floor(-cam.z / FT) + ',' + mo;
-    if (fkey !== farKey) { farKey = fkey; farJob = bloom > 0 ? farFill({ x: cam.x, z: cam.z }, flowerOf) : null; if (!farJob) { lupFar.n = 0; upload(lupFar); } }
+    if (fkey !== farKey) { farKey = fkey; farJob = bloom > 0 ? farFill({ x: cam.x, z: cam.z }, flowerOf) : null; if (!farJob) { lupFar.begin(cam.x, cam.z); lupFar.end(); } }
     if (farJob) {
       const t0 = performance.now(), budget = farFirst ? 1e9 : 3;
       while (performance.now() - t0 < budget) { if (farJob.next().done) { farJob = null; break; } }
@@ -558,6 +598,7 @@ export async function init(ctx) {
   }
   let farJob = null, farFirst = true;
   const stage = { mat: new Float32Array(lupFar.max * 16), col: new Float32Array(lupFar.max * 4), pos: new Float32Array(lupFar.max * 2), n: 0 };
+  const sm4 = new THREE.Matrix4();
   function* farFill(cam, flowerOf) {
     stage.n = 0;
     const K = Math.round(0.24 * lupDens * FT * FT);
@@ -568,7 +609,7 @@ export async function init(ctx) {
         // from just inside the plainer plants' edge (so there is no gap between them) out to RF
         if (dd > RF || dd < RM * 0.85 || hk >= (dd < 200 ? 1 : 0.7)) continue;
         const cls = ctx.habitat(x, n), m = lupinMask(x, n, cls);
-        if (hash2(ci, cj, 6000 + k) >= Math.pow(m, 0.6) || ctx.depth(x, n) > -0.05) continue;
+        if (hash2(ci, cj, 6000 + k) >= Math.pow(m, 0.6) || ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
         const s = 0.9 + 0.4 * hash2(ci, cj, 6300 + k), c = standColour(x, n, hash2(ci, cj, 6100 + k) * 0.9), j = 0.95 + 0.1 * hash2(ci, cj, 6400 + k), i = stage.n++;
         pv.set(x, terrain.heightAt(x, n), -n); q.setFromAxisAngle(up, hk * 60); sc.set(s, s, s);
         m4.compose(pv, q, sc).toArray(stage.mat, i * 16);
@@ -577,11 +618,9 @@ export async function init(ctx) {
       }
       yield;
     }
-    lupFar.n = stage.n;
-    lupFar.mesh.instanceMatrix.array.set(stage.mat.subarray(0, stage.n * 16));
-    lupFar.col.array.set(stage.col.subarray(0, stage.n * 4));
-    lupFar.pos.array.set(stage.pos.subarray(0, stage.n * 2));
-    upload(lupFar);
+    lupFar.begin(cam.x, cam.z);
+    for (let i = 0; i < stage.n; i++) lupFar.put(sm4.fromArray(stage.mat, i * 16), stage.col.subarray(i * 4, i * 4 + 4), stage.pos.subarray(i * 2, i * 2 + 2));
+    lupFar.end();
   }
   // ---- the turf's placement, with the ground's colour read from the mosaic round the camera (a 48 x 48 px window, 480 m,
   // read again when the camera has moved 120 m)
@@ -621,8 +660,8 @@ export async function init(ctx) {
     const tx = Math.floor(cam.x / TT), tn = Math.floor(-cam.z / TT), key = tx + ',' + tn;
     if (key === turfKey) return; turfKey = key;
     readWindow(cam);
-    if (!win.px) { turf.count = 0; return; }
-    let ng = 0;
+    turf.begin(cam.x, cam.z);
+    if (!win.px) { turf.end(); return; }
     // tufts a square metre: 6 within 8 m of the eye, thinning to under one at the edge (where the shader has shrunk them);
     // the tiles nearest first, so a full mesh leaves out the furthest
     const dens = d => turfDens * (d < 8 ? 5.5 : 5.5 * Math.pow(8 / d, 1.3));
@@ -634,7 +673,7 @@ export async function init(ctx) {
     tiles.sort((a, b) => a[0] - b[0]);
     for (const [near, ci, cj] of tiles) {
       const K = Math.round(dens(near) * TT * TT);
-      for (let k = 0; k < K && ng < gMax; k++) {
+      for (let k = 0; k < K && !turf.full; k++) {
         const x = (ci + hash2(ci, cj, 20000 + k * 3)) * TT, n = (cj + hash2(ci, cj, 20001 + k * 3)) * TT;
         const dd = Math.hypot(x - cam.x, n + cam.z);
         if (dd > R || hash2(ci, cj, 20002 + k * 3) * dens(near) > dens(dd)) continue;
@@ -643,18 +682,16 @@ export async function init(ctx) {
         if (!grassy && cls !== 14) continue;
         groundColour(x, n, gc);
         if (!grassy && !(gc[1] > gc[0] * 1.05 && gc[1] > gc[2] * 1.2)) continue;
-        if (ctx.depth(x, n) > -0.05) continue;
+        if (ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
         const h = terrain.heightAt(x, n);
         const s = 0.7 + hash2(ci, cj, 21000 + k) * 0.6;
         pv.set(x, h, -n); q.setFromAxisAngle(up, hash2(ci, cj, 21500 + k) * 40); sc.set(s, s * (0.75 + 0.5 * hash2(ci, cj, 21700 + k)), s);
-        turf.setMatrixAt(ng, m4.compose(pv, q, sc));
         const v = 0.85 + 0.3 * hash2(ci, cj, 22000 + k);
-        gTintAttr.setXYZ(ng, gc[0] * v, gc[1] * v, gc[2] * v); gBaseAttr.setXYZ(ng, x, h, -n);
-        ng++;
+        turf.put(m4.compose(pv, q, sc), [gc[0] * v, gc[1] * v, gc[2] * v], [x, h, -n]);
       }
     }
-    turf.count = ng; turf.instanceMatrix.needsUpdate = true; gTintAttr.needsUpdate = true; gBaseAttr.needsUpdate = true;
+    turf.end();
   }
-  fill(camera.position); fillLupins(camera.position); fillTurf(camera.position);
-  return { update() { fill(camera.position); fillLupins(camera.position); fillTurf(camera.position); } };
+  fill(camera.position); fillLupins(camera.position); if (gMax) fillTurf(camera.position);
+  return { update() { fill(camera.position); fillLupins(camera.position); if (gMax) fillTurf(camera.position); } };
 }

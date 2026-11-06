@@ -658,5 +658,9 @@
     "type": "gsi_elevation_api",
     "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
     "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "night": {
+    "note": "clear: no generated street lamp in the Imperial Palace's south court, the white gravel before the Shishinden, which has none",
+    "clear": [[-50.0, 2296.0, 18.0], [-17.0, 2296.0, 18.0], [-50.0, 2316.0, 16.0], [-17.0, 2316.0, 16.0]]
   }
 }
