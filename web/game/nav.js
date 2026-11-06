@@ -26,7 +26,10 @@ window.OENav = (function () {
     // along a quay (quays.js) the water starts a few tens of centimetres short of the seawall's face,
     // not at the 5 m grid's bank
     const quays = D.quays || null;
+    // landings past the frame (outposts.js: Queenstown's Walter Peak wharf): their own ground, water and walls
+    const OP = window.OEOutposts && OEOutposts.list(G).length ? OEOutposts : null;
     function isWater(x, y) {
+      if (OP && (x < x0 || y > y1 || x >= x0 + wm.nx * wm.cell || y <= y1 - wm.ny * wm.cell)) { const o = OP.at(G, x, y); if (o) return OP.water(o, x, y); }
       const q = quays && quays.water(x, y);
       if (q != null) return q;
       const c = Math.floor((x - x0) / wm.cell), r = Math.floor((y1 - y) / wm.cell);
@@ -171,6 +174,7 @@ window.OENav = (function () {
       return best;
     }
     function terrain(x, y) {
+      if (OP && (x < T.x0 || y > T.y1 || x >= T.x0 + T.nx * T.cell || y <= T.y1 - T.ny * T.cell)) { const o = OP.at(G, x, y); if (o) { const g = OP.ground(o, x, y); tri = g.slope; return g.z; } }
       if (patches.length) { const h = patchAt(x, y); if (h !== null) { tri = 0; return h[1] !== null ? h[1] : h[0]; } }
       if (pgrid.size) { const h = passageFloor(x, y); if (h !== null) { tri = 0; return h; } }
       const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell)), r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
@@ -814,6 +818,7 @@ window.OENav = (function () {
       if (f.z < z - DROP) return { ok: false, why: 'drop' };
       if (nogo && f.kind !== 'pier' && nogo.data[cellOf(x, y)] > 0) return { ok: false, why: 'nogo' };
       if (keepOff && f.kind === 'ground' && keepOff(x, y)) return { ok: false, why: 'keep_off' };
+      if (OP && f.kind === 'ground') { const o = OP.at(G, x, y); if (o && OP.blocked(o, x, y)) return { ok: false, why: 'wall' }; } // (a building there, or the far land's edge)
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
       if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD) && triHit(x, y, R, f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cell, and then its triangles, withoutFine)
       return { ok: true, z: f.z, kind: f.kind };

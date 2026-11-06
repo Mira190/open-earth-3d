@@ -320,8 +320,8 @@
     "blurb": "Walk Queenstown's lakefront under the real sun. Sail on the steamer Earnslaw, ride the Skyline Gondola up Bob's Peak, and watch the Remarkables turn pink at dusk.",
     "start": {
       "at": [
-        -992.0,
-        464.0
+        -978.8,
+        474.9
       ],
       "facing": [
         150,
@@ -331,7 +331,8 @@
       "car": [
         -440,
         236
-      ]
+      ],
+      "z": 474.6
     },
     "keep": "left",
     "wharves": [
@@ -341,20 +342,17 @@
         "terminal": "TSS Earnslaw"
       },
       {
-        "id": "kelvin-heights",
-        "name": "Kelvin Heights jetty",
-        "at": [
-          2303.4,
-          -1070.4
-        ]
+        "id": "walter-peak",
+        "name": "Walter Peak",
+        "outpost": "walter-peak"
       }
     ],
     "ferries": [
       {
-        "route": "Kelvin Heights",
+        "route": "Walter Peak",
         "stops": [
           "steamer-wharf",
-          "kelvin-heights"
+          "walter-peak"
         ],
         "vessels": [
           "Earnslaw"
@@ -363,7 +361,7 @@
     ],
     "ferry_speed_ms": 6.7,
     "ferry_dwell_s": 40,
-    "ferry_note": "The Earnslaw sails from Steamer Wharf, where she really berths. Her real run is to Walter Peak, beyond the map's edge across the lake, so here she crosses Frankton Arm to the jetty at Kelvin Heights and back, at her service speed of 13 knots. At a landing you can skip the wait.",
+    "ferry_note": "The Earnslaw sails from Steamer Wharf, where she really berths, to the Walter Peak wharf in Beach Bay, 12.5 km across Lake Wakatipu past the map's edge, at her service speed of 13 knots: about half an hour, where the real cruise takes 45 minutes. F skips ahead; at a landing you can skip the wait.",
     "ferry_style": {
       "model": "steamer",
       "length_m": 51.2,
@@ -484,8 +482,8 @@
         "name": "Aroha",
         "role": "Bob's Peak guide",
         "at": [
-          -986.0,
-          465.0
+          -993.0,
+          463.5
         ],
         "look": {
           "character": "R_Female_Adult_08",
@@ -518,7 +516,8 @@
         },
         "idle": [
           "She burns about a tonne and a half of coal there and back. You can walk through the engine room and watch the stokers.",
-          "Lady of the Lake, they call her. Launched at Kingston in 1912, and still steaming."
+          "Lady of the Lake, they call her. Launched at Kingston in 1912, and still steaming.",
+          "Walter Peak's a high-country station. The Colonel's Homestead is up from the wharf, in gardens they've been planting since the 1870s."
         ]
       },
       {
@@ -619,7 +618,7 @@
           "hill",
           "air"
         ],
-        "on_open": "<b>The lake, the hill and the air.</b> Go back up to Aroha on the luge track."
+        "on_open": "<b>The lake, the hill and the air.</b> Go back to Aroha by the glass lift, on the luge track under the deck."
       }
     ],
     "quests": [
@@ -662,22 +661,32 @@
         "talk": [
           "Morning! That's her alongside: the Earnslaw, built in Dunedin, carried in pieces by rail to Kingston and launched there in 1912.",
           "Fifty-one metres, twin screws, two triple-expansion engines and the coal to feed them. Thirteen knots, flat out.",
-          "She'll take you across Frankton Arm to Kelvin Heights. Walk round the promenade deck on the way and look back at the town."
+          "She's off to Walter Peak, across the lake under Cecil Peak. Walk round the promenade deck on the way and look back at the town."
         ],
         "steps": [
           {
             "type": "ride",
             "from": "steamer-wharf",
-            "to": "kelvin-heights",
-            "text": "Sail on the Earnslaw from Steamer Wharf to Kelvin Heights"
+            "to": "walter-peak",
+            "text": "Sail on the Earnslaw from Steamer Wharf to Walter Peak"
+          },
+          {
+            "type": "visit",
+            "at": [
+              -9318.0,
+              -9015.0
+            ],
+            "radius": 18,
+            "text": "Walk up to the Colonel's Homestead"
           },
           {
             "type": "ride",
-            "from": "kelvin-heights",
+            "from": "walter-peak",
             "to": "steamer-wharf",
             "text": "Sail back to Steamer Wharf"
           }
-        ]
+        ],
+        "check": true
       },
       {
         "id": "lakefront",
@@ -813,7 +822,7 @@
         "steps": []
       }
     ],
-    "start_note": "On the luge track on Bob's Peak, under the Skyline restaurant's viewing deck and the gondola's big portal, where Queenstown's best-known photograph is taken: the town, Queenstown Bay, the Gardens peninsula, the Kelvin Peninsula and the Remarkables over the lake.",
+    "start_note": "On the Skyline deck on Bob's Peak, along the restaurant's south-east face, where Queenstown's best-known photograph is taken: the town, Queenstown Bay, the Gardens peninsula, the Kelvin Peninsula and the Remarkables over the lake. The glass lift at the deck's south-west end goes down to the luge track, where Aroha waits.",
     "look": {
       "grade": {
         "blue": {
@@ -861,7 +870,51 @@
         "speed_ms": 6
       }
     ],
-    "drive_note": "Skyline Road, the service road up Bob's Peak, is mapped as a track, and so is the unnamed track that carries it down to Lomond Crescent in Fernhill. The game drives both (drive_named, drive_tracks), so a taxi can come to the top."
+    "drive_note": "Skyline Road, the service road up Bob's Peak, is mapped as a track, and so is the unnamed track that carries it down to Lomond Crescent in Fernhill. The game drives both (drive_named, drive_tracks), so a taxi can come to the top.",
+    "outposts": [
+      {
+        "id": "walter-peak",
+        "name": "Walter Peak",
+        "note": "The Earnslaw's far wharf in Beach Bay, in front of the Colonel's Homestead, 13 km across Lake Wakatipu: past the frame, so it is a tile of its own (pipeline/outposts.py).",
+        "bbox": [
+          168.5365,
+          -45.1158,
+          168.55,
+          -45.1078
+        ],
+        "cell_m": 2,
+        "band_m": 70,
+        "deck_m": 1.3,
+        "terrain": {
+          "collection": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand-contour/dem_8m/2193/collection.json",
+          "crs": "EPSG:2193",
+          "pixel_m": 8,
+          "name": "LINZ New Zealand Contour-Interpolated 8m DEM (CC BY 4.0)"
+        },
+        "imagery": {
+          "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/otago/otago_2025-2026_0.15m/rgbnir/2193/collection.json",
+          "crs": "EPSG:2193",
+          "pixel_m": 0.5,
+          "name": "LINZ Otago 0.15m Rural Aerial Photos (2025-2026) (CC BY 4.0)",
+          "scale": 0.00390625
+        },
+        "wharf": {
+          "id": "walter-peak",
+          "name": "Walter Peak",
+          "terminal": [
+            168.54334,
+            -45.11124
+          ]
+        },
+        "buildings": {
+          "w256277788@3": {
+            "name": "The Colonel's Homestead",
+            "eaves_m": 3.2,
+            "ridge_m": 7.0
+          }
+        }
+      }
+    ]
   },
   "tour": [
     {

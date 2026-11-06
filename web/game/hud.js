@@ -75,7 +75,8 @@ window.OEHud = (function () {
       if (route && route.length > 1) {
         g.strokeStyle = css('--sun'); g.lineWidth = 3.5 / k; g.lineJoin = g.lineCap = 'round';
         g.beginPath();
-        route.forEach((p, i) => (i ? g.lineTo(base.X(p[0]), base.Y(p[1])) : g.moveTo(base.X(p[0]), base.Y(p[1]))));
+        let pen = false; // (a route through a lift breaks where the lift goes up or down: a null, and the line goes on from the other floor)
+        for (const p of route) { if (!p) { pen = false; continue; } if (pen) g.lineTo(base.X(p[0]), base.Y(p[1])); else g.moveTo(base.X(p[0]), base.Y(p[1])); pen = true; }
         g.stroke();
       }
       if (ride && ride.length > 1) rideLine(g, ride, base.X, base.Y, 1 / k);

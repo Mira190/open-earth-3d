@@ -18,7 +18,7 @@ addEventListener('unhandledrejection', e => fail(e.reason));
 // the loader: what is happening and how far along, painted before each long step (a step blocks the page)
 const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style.width = `${Math.round(f * 100)}%`; };
 const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
-const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
+const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
@@ -199,6 +199,21 @@ async function main() {
   let eqT = -1e9, equatorialMatrix = null;
   if (ALP) ({ equatorialMatrix } = await import('./alpine/atmos.js'));
   const SKY_DAY = 0.72;
+  // the mountains' shadow where the viewer is (light.js visAt), for what the scene's sun light lights (the cars, the
+  // landmark models, the people): marched again when the eye has moved 4 m or the sun 0.02 degrees, eased over a
+  // second or so, as a shadow's edge passes (issue #232)
+  const vv = { x: 1e9, z: 1e9, s: new THREE.Vector3(), v: 1, eased: null, t: 0 };
+  function viewVis() {
+    if (!light || !light.visAt || !terrain || !terrain.heightAt) return 1;
+    const p = camera.position, sd = light.u.sunDir.value;
+    if (Math.hypot(p.x - vv.x, p.z - vv.z) > 4 || vv.s.distanceToSquared(sd) > 1e-7) {
+      vv.x = p.x; vv.z = p.z; vv.s.copy(sd);
+      vv.v = light.visAt(p.x, -p.z, (x, n) => terrain.heightAt(x, n));
+    }
+    const now = performance.now() / 1000, dt = Math.min(1, now - vv.t); vv.t = now;
+    vv.eased = vv.eased == null ? vv.v : vv.eased + (vv.v - vv.eased) * Math.min(1, dt * 1.5);
+    return vv.eased;
+  }
   function alpineLights(sun, sunI, moonI, hemiI) {
     const y = camera.position.y, Ts = atm.sunColour(y, Math.sin(sun.alt)), deg = sun.alt * 180 / Math.PI;
     const E0 = 2.8 * adapt;
@@ -206,7 +221,7 @@ async function main() {
     const amb = atm.skyAmbient(y, Math.sin(sun.alt));
     const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
     const sunLum = Math.max(lum(Ts), 1e-6);
-    sunL.color.setRGB(Ts[0] / sunLum, Ts[1] / sunLum, Ts[2] / sunLum); sunL.intensity = E0 * sunLum;
+    sunL.color.setRGB(Ts[0] / sunLum, Ts[1] / sunLum, Ts[2] / sunLum); sunL.intensity = E0 * sunLum * viewVis();
     env.u.sunCol.value.setRGB(Ts[0] / Math.max(...Ts, 1e-6), Ts[1] / Math.max(...Ts, 1e-6), Ts[2] / Math.max(...Ts, 1e-6));
     env.u.sunI.value = E0 * sunLum;
     // the sky's light: the model's by day, the reef's measured twilight and starlight curve once the sun is down
@@ -286,7 +301,7 @@ async function main() {
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,alpine/traffic,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
+  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,alpine/traffic,alpine/parked,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
   for (const [i, name] of mods.entries()) {
     stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
     await paint();
