@@ -1976,7 +1976,13 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
 
 The game exposes a test hook (`window.__game.advance(seconds, keys)`) that runs
 the simulation at a fixed 30 Hz without rendering. A Playwright script plays
-the whole survey this way. It checks:
+the whole survey this way. Between steps the page keeps drawing and, unpaused,
+simulates in real time. So `tools/game_check.js` holds the game
+(`window.__game.hold(true)`: the clock and the simulation still, as in a pause)
+while it waits on something that isn't play, such as files loading, the route
+network building, or the big map worked by hand. Otherwise what the next steps
+meet would depend on how long those waits took on that machine, and a change
+that only made loading faster would send the traffic another way. It checks:
 
 1. Walking moves you along the ground.
 2. You can't walk into buildings or the harbour.
