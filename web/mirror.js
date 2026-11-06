@@ -136,7 +136,7 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         };
         if (!(window.OEWorld && OEWorld.compile)) return draw();
         plane.constant = -(ground(camera.position.x, -camera.position.z) - 0.05);
-        return OEWorld.compile(renderer, scene, camera, { target: rt, clip: [plane] }).then(draw);
+        return OEWorld.compile(renderer, scene, camera, { target: rt, clip: [plane], behind: true }).then(draw);
       },
       dispose() { if (rt) rt.dispose(); blank.dispose(); },
     };

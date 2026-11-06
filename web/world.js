@@ -1610,8 +1610,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // of 10 to 25 seconds. The caller holds its draws until this resolves, since a draw would compile the
   // rest in one frame again.
   const SLICE_MS = 50, SLICED = 40;
-  // clip: the clipping planes it is drawn with (a mirror's), which also pick the variant.
-  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null } = {}) {
+  // clip: the clipping planes it is drawn with (a mirror's), which also pick the variant. behind: it
+  // compiles while the scene is on screen (behind the title), a short slice a frame, so frames keep coming.
+  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false } = {}) {
     if (!renderer.compileAsync) return Promise.resolve();
     const objs = [];
     obj.traverse(o => { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) objs.push(o); });
@@ -1633,11 +1634,11 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           // (every object, even one whose material has a program: this variant, for this target and
           // these planes, may be new. One that is not costs a lookup; an object's children are in the
           // list on their own, so they are looked up again, cheaply)
-          while (i < objs.length && performance.now() - s0 < SLICE_MS) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
+          while (i < objs.length && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS)) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
         } catch (e) { console.warn('compile', e); }
         finally { unbind(was); }
         slices++; longest = Math.max(longest, performance.now() - s0);
-        if (i < objs.length) await idle();
+        if (i < objs.length) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : idle());
       }
       // then wait for the GPU to finish them (KHR_parallel_shader_compile), as compileAsync does
       await new Promise(done => {
