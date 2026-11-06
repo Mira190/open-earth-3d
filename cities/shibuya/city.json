@@ -1012,17 +1012,19 @@
     "note": "After dark: a meteor crosses the sky over Shibuya's lights, from the stars down to the skyline, as a film's trailer would show the city. Every shot is from the air or across the city; none comes near the crowd.",
     "guide": "meteor",
     "title": {"name": "渋谷", "reading": "Shibuya", "line": "星降る夜  ·  A night of falling stars"},
-    "grade": {"tint": [1.0, 0.98, 1.05], "sat": 1.15, "ev": 1.1, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]]},
+    "grade": {"tint": [1.0, 0.98, 1.05], "sat": 1.15, "ev": 1.1, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]], "bloom": 2.2},
     "anime": {"paint": 0.6, "grade": 0.8, "rays": 0},
     "score": {"root": 49, "scale": [0, 2, 4, 5, 7, 9, 11], "chords": [[5, 7, 9], [3, 5, 7], [0, 2, 4], [4, 6, 8]], "motif": [4, 2, 1, 0, 2], "tempo": 66, "voice": "piano", "air": "wind", "arp": true, "chirp": false, "title_shot": "stars", "title_at": 0.5, "finale_shot": "skyline", "finale_at": 0.22},
     "shots": [
       {"id": "stars", "dur": 6.5, "type": "move", "from": ["@shibuya_sky", -370, -580, -40], "to": ["@shibuya_sky", -360, -560, -45], "lookFrom": ["@shibuya_sky", 0, 0, 900], "lookTo": ["@shibuya_sky", 0, 0, -60], "fov": 42, "ease": "inOut", "fadeIn": 2.0, "guide": [["@shibuya_sky", -1100, 1100, 650], ["@shibuya_sky", 0, 1300, 560], ["@shibuya_sky", 1200, 900, 430]], "gFrom": 0.2, "gTo": 0.75, "guideEase": "linear", "drift": 0},
       {"id": "tower", "dur": 5, "type": "orbit", "at": ["@shibuya_sky", 0, 0, -10], "az": [302, 318], "dist": [270, 255], "h": [-55, -48], "fov": 34, "ease": "linear", "guide": [["@shibuya_sky", 900, -900, 520], ["@shibuya_sky", 200, -1500, 470], ["@shibuya_sky", -500, -1800, 400]], "gFrom": 0.25, "gTo": 0.85, "guideEase": "linear", "drift": 0},
-      {"id": "scramble", "dur": 5.5, "type": "move", "from": ["@scramble", -95, 115, 62], "to": ["@scramble", -82, 100, 58], "lookFrom": ["@scramble", 55, -55, 30], "lookTo": ["@scramble", 60, -60, 34], "fov": 40, "ease": "linear", "drift": 0, "guide": [["@shibuya_sky", 800, 300, 700], ["@shibuya_sky", 400, -500, 600], ["@shibuya_sky", 100, -1300, 480]], "gFrom": 0.4, "gTo": 0.95, "guideEase": "linear", "caption": {"eyebrow": "渋谷スクランブル交差点 · The scramble", "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.", "at": 0.1, "until": 0.95}},
-      {"id": "s109", "dur": 4.5, "type": "orbit", "at": ["@s109", 0, 0, 25], "az": [36, 54], "dist": [115, 106], "h": [18, 22], "look": ["@s109", 0, 0, 34], "fov": 36, "ease": "linear", "drift": 0},
+      {"id": "scramble", "dur": 5.5, "type": "move", "from": ["@scramble", -120, 140, 115], "to": ["@scramble", -108, 126, 108], "lookFrom": ["@scramble", 80, -90, 75], "lookTo": ["@scramble", 85, -95, 72], "fov": 42, "ease": "linear", "drift": 0, "guide": [["@shibuya_sky", 800, 300, 700], ["@shibuya_sky", 400, -500, 600], ["@shibuya_sky", 100, -1300, 480]], "gFrom": 0.4, "gTo": 0.95, "guideEase": "linear", "caption": {"eyebrow": "渋谷スクランブル交差点 · The scramble", "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.", "at": 0.1, "until": 0.95}},
+      {"id": "s109", "dur": 4.5, "type": "orbit", "at": ["@s109", 0, 0, 20], "az": [34, 50], "dist": [95, 88], "h": [4, 7], "look": ["@s109", 0, 0, 42], "fov": 40, "ease": "linear", "drift": 0},
       {"id": "gymnasium", "dur": 5, "type": "orbit", "at": ["label:Yoyogi National Gymnasium", 0, 0, 30], "az": [140, 152], "dist": [230, 215], "h": [-10, -8], "look": ["label:Yoyogi National Gymnasium", 0, 0, 70], "fov": 38, "ease": "linear", "drift": 0, "guide": [["label:Yoyogi National Gymnasium", -611, 336, 300], ["label:Yoyogi National Gymnasium", -390, 557, 270], ["label:Yoyogi National Gymnasium", -107, 689, 220]], "gFrom": 0.2, "gTo": 0.8, "guideEase": "linear"},
       {"id": "skyline", "dur": 9, "type": "move", "from": ["@scramble", 60, 560, 200], "to": ["@scramble", 70, 470, 185], "lookFrom": ["@scramble", 100, -110, 150], "lookTo": ["@scramble", 100, -110, 135], "fov": 40, "ease": "inOut", "drift": 0, "fadeOut": 1.8, "title": {"at": 0.22, "until": 0.86}, "guide": [["@shibuya_sky", -1300, -500, 300], ["@shibuya_sky", -300, -900, 260], ["@shibuya_sky", 800, -1000, 220]], "gFrom": 0.05, "gTo": 0.55, "guideEase": "linear"}
-    ]
+    ],
+    "sky": {"zenith": [0.008, 0.014, 0.05], "mid": [0.03, 0.045, 0.13], "horizon": [0.3, 0.19, 0.25], "milky": 1.0, "stars": 1.0, "clouds": 0.6, "pole": [0.35, 0.55, -0.76]},
+    "shower": 1.1
   }
     }
   }

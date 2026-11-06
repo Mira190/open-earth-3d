@@ -84,7 +84,7 @@ window.OEOverture = (function () {
     snow: { geo: flakeGeometry, color: '#f4f8ff', edge: '#ffffff', size: 0.035, glow: '#dfeaff', fall: 0.7, spin: 1.2 },
     mote: { geo: null, color: '#fff1d0', edge: '#fff1d0', size: 0.05, glow: '#ffe6b0', fall: -0.05, spin: 0 },
     // a meteor, for the night: a white head and a long blue-violet tail across the sky, far off (sized in metres there)
-    meteor: { geo: null, color: '#ffffff', edge: '#7f6bff', size: 2.2, glow: '#e8f2ff', fall: 0, spin: 0, tail: 36, far: true },
+    meteor: { geo: null, color: '#ffffff', edge: '#c070ff', size: 2.2, glow: '#eaf6ff', fall: 0, spin: 0, tail: 48, far: true },
   };
   function kindFor(spec, m, d) {
     const md = m * 100 + d;
@@ -102,6 +102,56 @@ window.OEOverture = (function () {
     g.fillStyle = r; g.fillRect(0, 0, 64, 64);
     const t = new THREE.CanvasTexture(c);
     return t;
+  }
+
+  // ------------------------------------------------------------ a night sky painted for the overture
+  // One sphere inside the camera's far plane, drawn last and only where nothing stands in front of it (the
+  // sky's pixels): a deep gradient from the zenith's indigo to a glow along the horizon where the city's light
+  // lifts it, the Milky Way as a band of soft noise with its dark lanes, stars in two scales that twinkle, and
+  // thin clouds low down lit from below by the city. All in the shader: no texture, a few hundred bytes.
+  function nightSky(o = {}) {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uK: { value: 0 }, uMilky: { value: o.milky ?? 1 }, uStars: { value: o.stars ?? 1 }, uClouds: { value: o.clouds ?? 0.6 },
+        uZen: { value: new THREE.Color(...(o.zenith || [0.008, 0.014, 0.05])) }, uMid: { value: new THREE.Color(...(o.mid || [0.03, 0.045, 0.13])) },
+        uHor: { value: new THREE.Color(...(o.horizon || [0.32, 0.2, 0.26])) }, uPole: { value: new THREE.Vector3(...(o.pole || [0.35, 0.55, -0.76])).normalize() } },
+      vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: `
+        uniform float uTime, uK, uMilky, uStars, uClouds; uniform vec3 uZen, uMid, uHor, uPole; varying vec3 vW;
+        float h31(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
+        float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y),
+                     mix(mix(h31(i + vec3(0,0,1)), h31(i + vec3(1,0,1)), f.x), mix(h31(i + vec3(0,1,1)), h31(i + vec3(1,1,1)), f.x), f.y), f.z); }
+        float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * vn(p); p = p * 2.03 + 1.7; a *= 0.5; } return v; }
+        float stars(vec3 d, float scale, float density) {
+          vec3 p = d * scale, c = floor(p), f = fract(p) - 0.5;
+          float r = h31(c);
+          if (r > density) return 0.0;
+          vec3 o = vec3(h31(c + 11.1), h31(c + 23.7), h31(c + 37.3)) - 0.5;
+          float dd = length(f - o * 0.6), b = pow(h31(c + 5.3), 5.0) * 6.0 + 0.6;
+          float tw = 0.75 + 0.25 * sin(uTime * (1.5 + 3.0 * h31(c + 9.9)) + r * 40.0);
+          return b * tw * smoothstep(0.2, 0.0, dd);
+        }
+        void main() {
+          vec3 d = normalize(vW - cameraPosition);
+          float h = d.y, up = clamp(h, 0.0, 1.0);
+          vec3 col = mix(uMid, uZen, smoothstep(0.08, 0.75, up));
+          col = mix(col, uHor, exp(-max(h, -0.02) * 14.0) * 0.9);                 // the glow over the city along the horizon
+          float band = dot(d, uPole), mw = exp(-band * band / 0.05) * smoothstep(-0.02, 0.25, h);
+          float n = fbm(d * 7.0), lanes = smoothstep(0.45, 0.75, fbm(d * 13.0 + 4.0));
+          col += vec3(0.36, 0.38, 0.66) * mw * (0.3 + 1.1 * n * n) * (1.0 - 0.8 * lanes) * 0.42 * uMilky;   // the Milky Way, its dust lanes
+          float st = stars(d, 160.0, 0.10) + stars(d, 330.0, 0.05 + 0.2 * mw) * 0.6;
+          col += vec3(0.85, 0.9, 1.0) * st * uStars * smoothstep(0.0, 0.18, h);
+          // thin clouds low in the sky, lit from below by the city: dark blue bodies with warm undersides
+          vec2 cp = d.xz / max(h + 0.08, 0.05);
+          float cl = smoothstep(0.52, 0.8, fbm(vec3(cp * 0.9, 1.3) + vec3(uTime * 0.004, 0.0, 0.0))) * smoothstep(0.42, 0.04, h) * smoothstep(-0.01, 0.04, h);
+          col = mix(col, mix(vec3(0.04, 0.05, 0.11), uHor * 0.9, smoothstep(0.3, 0.0, h) * 0.8), cl * uClouds);
+          gl_FragColor = vec4(col, uK);
+        }`,
+      side: THREE.BackSide, depthWrite: false, depthTest: true, transparent: true, fog: false,
+    });
+    const m = new THREE.Mesh(new THREE.SphereGeometry(38000, 48, 24), mat);
+    m.renderOrder = -1e6; m.frustumCulled = false; m.name = 'overture-sky'; // (the first of the see-through things, after the sky and the city: the meteors and the glows go over it)
+    return m;
   }
 
   // ------------------------------------------------------------ the overture of one map
@@ -178,7 +228,7 @@ window.OEOverture = (function () {
 
     // ------------------------------------------------------------ the guide and the air
     const tier = ctx.tier || 'high';
-    let kind = 'sakura', K = KINDS.sakura, hero = null, glow = null, drift = null, driftData = null, group = null, tail = [];
+    let kind = 'sakura', K = KINDS.sakura, hero = null, glow = null, drift = null, driftData = null, group = null, tail = [], sky = null, shower = [], nextStar = 0;
     const NDRIFT = { high: 420, medium: 260, low: 110 }[tier] || 200, BOX = 36;
     function build() {
       kind = spec.guide || kindFor(spec, ctx.clock.m, ctx.clock.d);
@@ -210,12 +260,25 @@ window.OEOverture = (function () {
       for (let i = 0; i < NDRIFT; i++) driftData.push({ p: new V3((rnd() - 0.5) * BOX, (rnd() - 0.5) * BOX * 0.6, (rnd() - 0.5) * BOX), ph: rnd() * 6.28, s: 0.7 + rnd() * 0.6, ax: new V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), w: 0.6 + rnd() * 1.6 });
       group.add(drift);
       ctx.world.add(group);
+      // after dark, the painted night sky, and a shower of smaller meteors besides the guide
+      sky = spec.sky ? nightSky(spec.sky) : null;
+      if (sky) ctx.world.add(sky);
+      shower = [];
+      if (K.far && (spec.shower ?? 0) > 0) for (let i = 0; i < 5; i++) {
+        const parts = [];
+        for (let j = 0; j < 12; j++) {
+          const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(K.glow).lerp(new THREE.Color(K.edge), j / 12), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+          sp.frustumCulled = false; sp.visible = false; group.add(sp); parts.push(sp);
+        }
+        shower.push({ parts, t0: -99, life: 1, a: new V3(), v: new V3() });
+      }
     }
     function dispose() {
       if (!group) return;
       ctx.world.remove(group);
       group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
-      group = hero = glow = drift = null; tail = [];
+      group = hero = glow = drift = null; tail = []; shower = [];
+      if (sky) { ctx.world.remove(sky); sky.geometry.dispose(); sky.material.dispose(); sky = null; }
     }
 
     // the guide's path through a shot: a Catmull-Rom curve through its points, held at the first until `rest`
@@ -491,7 +554,7 @@ window.OEOverture = (function () {
       const gr = spec.grade || {}, w = EASE.smooth(clamp(t / 1.5)) * (s.type === 'land' ? 1 - EASE.smooth(clamp((k - 0.55) / 0.45)) : 1);
       const tint = gr.tint || [1, 1, 1];
       // (on top of the hour's own grade, which atmosphere.js applies each frame)
-      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)], skySat: lerp(1, gr.sky_sat ?? 1, w), stars: lerp(1, gr.stars ?? 1, w) };
+      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)], skySat: lerp(1, gr.sky_sat ?? 1, w), stars: lerp(1, gr.stars ?? 1, w), bloom: lerp(1, gr.bloom ?? 1, w) };
       if (ctx.Wd && ctx.Wd.su) ctx.Wd.su.cloudTrim = (gr.clouds || 0) * w; // (more cloud, for the sun to light: weather.js)
       // a night sky with depth: a glow along the horizon under a deep blue (world.js's night sky, while the overture plays)
       const su = ctx.Wd && ctx.Wd.su;
@@ -544,6 +607,32 @@ window.OEOverture = (function () {
       if (!active || !drift) return;
       const s = shotAt(t), k = clamp((t - s.t0) / s.dur);
       look(s, k);
+      if (sky) { sky.material.uniforms.uTime.value = t; sky.material.uniforms.uK.value = EASE.smooth(clamp(t / 1.2)); }
+      if (shower.length && s.shower !== 0) {
+        // now and then a smaller meteor, somewhere in the sky ahead, falling across it for a second
+        const cam = ctx.camera, fwd = cam.getWorldDirection(dCol).setY(0).normalize();
+        if (t > nextStar) {
+          const m = shower.find(q => t - q.t0 > q.life);
+          if (m) {
+            const rnd = Math.random, right = new V3(-fwd.z, 0, fwd.x), D = 1800;
+            m.a.copy(cam.position).addScaledVector(fwd, D).addScaledVector(right, (rnd() - 0.5) * D * 1.2);
+            m.a.y = cam.position.y + D * (0.28 + rnd() * 0.32);
+            m.v.copy(right).multiplyScalar((rnd() < 0.5 ? -1 : 1) * (380 + rnd() * 260)); m.v.y = -(140 + rnd() * 160);
+            m.t0 = t; m.life = 0.6 + rnd() * 0.7;
+          }
+          nextStar = t + (spec.shower ?? 1.2) * (0.5 + Math.random());
+        }
+        for (const m of shower) {
+          const u = (t - m.t0) / m.life, on = u >= 0 && u <= 1, life = on ? Math.sin(Math.PI * u) : 0;
+          m.parts.forEach((sp, j) => {
+            sp.visible = on;
+            if (!on) return;
+            sp.position.copy(m.a).addScaledVector(m.v, (t - m.t0) - j * 0.022);
+            const dd = cam.position.distanceTo(sp.position), px = dd * Math.tan(fov * RAD / 2) * 2 / 900, f = 1 - j / 12;
+            sp.scale.setScalar(px * (j ? 3 + 7 * f : 12)); sp.material.opacity = (j ? 0.55 * f * f : 0.9) * life;
+          });
+        }
+      }
       const dens = ch(s.drift ?? 0.5, k, EASE.smooth) * (s.type === 'land' ? 1 - EASE.smooth(clamp((k - 0.6) / 0.4)) : 1);
       const n = Math.round(NDRIFT * clamp(dens));
       drift.count = n;

@@ -343,7 +343,7 @@ window.OEAtmos = (function () {
         M.material.uniforms.uSun.value.copy(Wd.sunDir).applyQuaternion(q);
         M.material.uniforms.uOpacity.value = (0.25 + 0.75 * night) * (1 - 0.92 * ov);
         if (ao) ao.update(night);
-        if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
+        if (bloom) { const bt = (lens && lens.trim && lens.trim.bloom) || 1; bloom.threshold = (6.0 - 4.4 * night) / Math.sqrt(bt); bloom.strength = (0.15 + 0.15 * night) * bt; } // (a dreamier glow for a shot: overture.js)
         if (lens) {
           const L = lens.uniforms;
           const trim = lens.trim || null;                          // a shot's own exposure, saturation and tint on the hour's grade (overture.js)
