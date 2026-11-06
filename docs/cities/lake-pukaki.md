@@ -340,3 +340,29 @@ centrelines:
   are a judgement from photographs.
 
 The reef gametest checks that the cars keep left and stand on the drawn ground.
+
+## 11. Landmark models
+
+Measured by `pipeline/pukaki_landmarks.py` (`cities/lake-pukaki/analysis/landmarks.json`: OpenStreetMap footprints and
+bridge ways via Overture Maps 2026-10-21.0, heights from LINZ's 1 m LiDAR DSM less DEM) and built by
+`blender/build_pukaki.py` into `web/data/lake-pukaki/models/pukaki-*.glb` (meshopt-compressed). They are placed by
+city.json `landmarks`, as at Tekapo.
+
+| Landmark | Measured | Model |
+|---|---|---|
+| The Hermitage Hotel | OSM footprint 144 x 102 m (6,700 m²), 29.8 m to the top over 763 m ground; 6,800 square metres of LiDAR height over the hotel and its attached wings | blocks of whole storeys (3.2 m) cut from the LiDAR, each on its own ground (it falls 13 m across the site), up to eight storeys at the Aoraki Wing; walls in 3 m bays of windows, parapets and flat roofs. 9,900 triangles |
+| Lake Pukaki Visitor Centre | footprint 10.3 x 7.6 m, 5.2 m to the top, 3.9 m median | a mono-pitch roof rising to the lake over a glazed lake side, cedar boards on the others (the form a judgement) |
+| Mt Cook Alpine Salmon shop | footprint 14.7 x 6.7 m, 5.8 m to the ridge | a gable of corrugated iron over weatherboards, the shop windows to the car park (the form a judgement) |
+| The tahr statue (Game and Forest Foundation, unveiled 2014) | no mapped position: the LiDAR's object 2.8 m tall on the knoll inside the viewing loop 21 m west of the visitor centre (a judgement) | a life-size bronze Himalayan tahr bull (0.95 m at the shoulder) with a bull's long ruff, on a greywacke boulder, facing up the lake |
+| Lower Hooker, Hooker Bluff and Upper Hooker swing bridges | spans along the OSM ways: 71.0, 101.5 and 78.7 m; decks along the DSM (a sag fitted); banks and river from the DEM | a 1.2 m deck hung from two main cables at handrail height on portal frames, hangers every 1.5 m, wire mesh sides, backstays to anchor blocks; walkable (`deck` in city.json) |
+
+The Hooker Bluff bridge was rebuilt in 2025-26: DOC gives the new one as 189 m long and 1.2 m wide, opened in July
+2026. OpenStreetMap's way, and so the model, has 101.5 m of bridge; the new alignment was not in the data read.
+The bronze is less metallic than real bronze, because the viewer has no environment map and a full metal renders
+near black without one.
+
+![The landmarks in Blender](../images/lake-pukaki/model-hermitage.jpg)
+
+Sources read on 2026-11-06: Scoop, "Duchess of Bedford to dedicate tahr statue" (2014); Wikipedia, *Lake Pukaki* (the
+statue on its boulder by the visitor centre); DOC, the Hooker Valley Track and its new second bridge (2026); DC
+Structures Studio, Hooker Valley pedestrian bridge 2.
