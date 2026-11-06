@@ -140,6 +140,13 @@ async function main() {
   const dome = new THREE.Mesh(new THREE.SphereGeometry(ALP ? 150000 : 60000, 32, 16), skyMat);
   dome.frustumCulled = false; dome.renderOrder = -1;
   scene.add(dome);
+  // an alpine site's stars: the Bright Star Catalogue on the turning sky (alpine/stars.js)
+  let stars = null;
+  if (ALP && q.get('stars') !== '0') {
+    const { createStars } = await import('./alpine/stars.js');
+    stars = await createStars({ atm, camera, renderer, url: '../data/sky/bsc5.bin' }).catch(e => { console.warn('stars: none drawn', e); return null; });
+    if (stars) scene.add(stars.mesh);
+  }
 
   // ---- light, in the units where the overhead sun is 2.8: the sun, the moon and the sky, each in its true
   // proportion, and an eye that adapts to them. The adaptation scales the light itself (so the frame stays in a
@@ -317,7 +324,7 @@ async function main() {
     env.u.tide.value = tideNow();
     ripples.update(env.u.time.value); chop.update(env.u.time.value);
     terrain.update(camera.position);
-    if (ALP) { dome.position.copy(camera.position); clouds.update(); }   // the sky is at infinity wherever the eye goes over 80 km
+    if (ALP) { dome.position.copy(camera.position); clouds.update(); if (stars) stars.update(env.u.time.value); }   // the sky is at infinity wherever the eye goes over 80 km
     if (light) light.update();
     ocean.update(camera.position);
     shore.update(camera.position);

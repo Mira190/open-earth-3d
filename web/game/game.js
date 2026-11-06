@@ -307,7 +307,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the water closes over the bottom there. The mask is a little wider than the deck, more so the higher it
   // stands, since an aerial photograph leans a raised deck off its plan position
   if (Wd.sea && Wd.sea.setCover) {
-    const wet = deckPlan.runs.filter(r => r.pts.some(q => nav.isWater(q[0], q[1])));
+    // (and under a city's own decks drawn as landmarks, strips marked "cover": the Shuto over the Nihonbashi River)
+    const own = (G.surfaces || []).filter(st => st.type === 'strip' && st.cover).map(st => {
+      const [u0, z0] = st.profile[0], [u1, z1] = st.profile[st.profile.length - 1], [ox, oy] = st.origin, [ax, ay] = st.axis;
+      return { pts: [[ox + ax * u0, oy + ay * u0, z0], [ox + ax * u1, oy + ay * u1, z1]], w: 2 * st.half_width };
+    });
+    const wet = [...deckPlan.runs, ...own].filter(r => r.pts.some(q => nav.isWater(q[0], q[1])));
     if (wet.length) {
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       for (const r of wet) for (const q of r.pts) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
@@ -342,7 +347,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // deck or pier at their height, else on the ground, else, on the bank of the water, a step back
   // from it; a tree the drawn ground would put under the water is not drawn
   const seat = (x, y, z) => {
-    let on = Math.abs(nav.surfaceAt(x, y) - z) < 0.5;
+    let on = Math.abs(nav.surfaceAt(x, y, z) - z) < 0.5;
     nav.decksAt(x, y, h => { if (Math.abs(h - z) < 0.5) on = true; });
     if (on) return [x, y, z];
     if (!nav.offGround(x, y)) return [x, y, nav.terrain(x, y)];
@@ -384,7 +389,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // bridge's walkway, a flight of steps: not the ground under it), or the ground drawn there (null on the bank of the water)
   const lineGround = (x, y, at) => {
     if (at.deck) return at.z;
-    const s = nav.surfaceAt(x, y);
+    const s = nav.surfaceAt(x, y, at.z);
     if (s > -Infinity && Math.abs(s - at.z) < 1.5) return s;
     return nav.offGround(x, y) ? null : nav.terrain(x, y);
   };

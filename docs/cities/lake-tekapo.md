@@ -119,6 +119,24 @@ Sources: [Pixeo, Church of the Good Shepherd](https://pixeoapp.com/photography-g
 [TV Tropes, Video Game Vista](https://TVTropes.org/pmwiki/pmwiki.php/Main/VideoGameVista),
 [GMTK, How Nintendo Solved Zelda's Open World Problem](https://gmtk.substack.com/p/how-nintendo-solved-zeldas-open-world).
 
+## The township's photograph, cleaned for the eye level
+
+The 0.3 m township patch has the parked cars and the buildings' shadows of the day it was flown printed in it; from
+eye level a car is a grey or coloured smear on the road, and a printed shadow doubles up with the viewer's own when the
+sun is elsewhere (issue #228). `pipeline/aerial_clean.py` cleans any patch at 0.35 m or finer as
+`pipeline/alpine_detail.py` writes it (or an existing one in place: `python pipeline/aerial_clean.py web/data/lake-tekapo
+detail_township.webp`):
+
+- **Cars:** on the sealed ground (10 m either side of a street's line in roads.json, 16 m along service roads and car
+  parks' aisles, never on or within 1.5 m of a building's footprint), a blob that differs from the tarmac round it
+  (brighter, darker or more coloured than the median over 12 m), 1.2 to 8 m thick (a car, or a row parked side by side
+  or nose in) and ringed mostly by tarmac, is filled from the tarmac round it with the photograph's own grain. In the
+  township that took out 2,000-odd cars and their shadows; a few in the densest row by the church and some white cars on
+  pale tarmac remain.
+- **Printed shadows:** within 10 m of a building, deep grey shadows on open ground (under half the brightness of the
+  ground round them, low in saturation, off the road) are brightened part of the way toward that ground. It is mild on
+  purpose: a stronger lift took out dark roofs, hedges and garden beds with them.
+
 ## Landmarks
 
 Measured by `pipeline/tekapo_landmarks.py`, built by `blender/build_tekapo.py` into `web/data/lake-tekapo/models/tekapo-*.glb`

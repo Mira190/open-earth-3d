@@ -175,8 +175,9 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // yozakura (#162): an area with "yozakura" lights its cherries after dark while they flower: uplights at each
   // tree's foot (a pool of light round it) and bonbori, paper lanterns on posts, along its ways on foot (foot: the
   // city's night.json, whose foot and foot_pts are the mapped footways), or beside its trees where none is mapped;
-  // night: the uniform world.js sets after dark (0..1); small: the light tier (fewer lanterns, no glows)
-  function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, night = null, foot = null, small = false } = {}) {
+  // night: the uniform world.js sets after dark (0..1); small: the light tier (fewer lanterns, no glows);
+  // farKeep: the share of a wood's far crowns (past 200 m, where half stand for all) the tier draws
+  function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, night = null, foot = null, small = false, farKeep = 1 } = {}) {
     const I = lib.info, n = list.length / 4;
     const AT = I.atlas || {}, cells = AT.cells || {};
     const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, sakura: cells.sakura ?? -10, maple: cells.maple ?? 7 };
@@ -195,6 +196,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const decid = Array.from({ length: A.cols * A.rows }, () => 0);
     for (const [sp, S] of Object.entries(I.species)) if (S.deciduous && cellOf(sp) != null && cellOf(sp) < decid.length) decid[cellOf(sp)] = 1;
     const U = { uYoz: { value: 0 }, uYozCol: { value: new THREE.Color(1.0, 0.8, 0.74).multiplyScalar(1.5) }, uWind: { value: 0 }, uBloom: { value: 0 }, uSakuraV: { value: new Array(A.sakuraN).fill(0) }, uCherryBareV: { value: new Array(A.sakuraN).fill(0) }, uAutumn: { value: 0 }, uFall: { value: fall }, uBare: { value: 0 }, uDecid: { value: decid } };
+    const petalFall = new Array(A.sakuraN).fill(0); // how fast each cherry variety sheds its petals (0..1)
     const city = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0);
     // the species drawn: the city's, then any only an area plants (weight 0 in the city's own mix)
     // an area is a circle, an outline (xy) or several (parts: the stretches of an avenue), each outline
@@ -259,7 +261,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       const k = pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (zi >= 0 && zones[zi].yozakura && isCherry.has(weights[k][0])) { lit[i] = 1; litVar.add(varieties.find(o => o.sp === weights[k][0]).v); }
-      if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
+      if (wood) { half[i] = 1 + Math.floor(hash(x + 5, y + 9) * 254); far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
       const s = i >= measured ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
         : 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
@@ -299,11 +301,14 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     }));
     let yozBloom = 0;
     const Y = yozakura();
+    const PT = petals();
+    const farCut = 1 + 127 * Math.min(1, Math.max(0, farKeep)); // (half[] is 1..254 for a wood's trees, 0 for the rest: never cut)
     const WOOD_M = keep < 1 ? 600 : 900, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
     let sortedAt = -1e9;
     // re-sort the trees into near, mid and far when the camera has moved far enough
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
+      if (PT) PT.gather(eye);
       const n0 = L[0] * L[0], n1 = L[1] * L[1];
       // from higher up a wood is seen further, and only as crowns: its reach grows with the camera's height
       const WM = Math.min(keep < 1 ? 1200 : 2200, WOOD_M + (keep < 1 ? 1 : 2) * Math.max(0, eye.y - 60));
@@ -313,7 +318,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         // beyond WOOD_M a wood is the photo's canopy (world.js woodsFloor): its trees thin out towards it
         if (f < 1 && e2 > WM * WM * (0.55 + 45 * (f - 0.55)) ** 2) continue;
         const lod = e2 < n0 * f * f ? 0 : e2 < n1 * (f < 1 ? 0.15 : 1) ? 1 : 2;
-        if (lod === 2 && half[i]) continue; // past 200 m half a wood's crowns stand for all (they overlap)
+        if (lod === 2 && half[i] >= farCut) continue; // past 200 m half a wood's crowns stand for all (they overlap), fewer on a lighter tier
         const parts = meshes[which[i]][lod];
         for (const im of parts) {
           const j = im.count++;
@@ -330,6 +335,94 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         a.needsUpdate = true;
       }
     }
+    // ------------------------------------------------------------ falling petals (#223)
+    // the petals a cherry sheds, drifting down round the nearest cherries while they flower, and most as their
+    // bloom goes over (hanafubuki). One instanced mesh of small petal cards, whose fall, drift and tumble are a pure
+    // function of time and each card's seed in the vertex shader (no work per frame on the CPU): each card falls
+    // from a point in one of the K nearest shedding crowns to the ground under it, and starts again from another
+    // crown chosen afresh each time; the crowns are gathered when the trees are sorted (the camera moved 12 m).
+    // 3,000 cards (900 on a light device) of 2 triangles; nothing is drawn out of flower.
+    function petals() {
+      const spV = names.map(sp => { const o = varieties.find(v => v.sp === sp); return o ? o.v : -1; });
+      if (!spV.some(v => v >= 0) || !which.some(k => spV[k] >= 0)) return null;
+      const K = 12, N = small ? 900 : 3000;
+      const uC = { value: Array.from({ length: K }, () => new THREE.Vector4()) }, uD = { value: Array.from({ length: K }, () => new THREE.Vector4()) };
+      const uN = { value: 0 };
+      const g = new THREE.InstancedBufferGeometry();
+      // a petal: a card 10 cm long (a petal is 1.5 cm; at that size it would be lost past a few metres), its outline cut in the fragment shader (an obovate with a notch at its tip)
+      const base = new THREE.PlaneGeometry(0.1, 0.082);
+      g.index = base.index; g.setAttribute('position', base.getAttribute('position')); g.setAttribute('normal', base.getAttribute('normal')); g.setAttribute('uv', base.getAttribute('uv'));
+      const seed = new Float32Array(N * 4);
+      for (let i = 0; i < N * 4; i++) seed[i] = hash(i * 0.7131 + 3.1, i * 0.3177 + 1.7);
+      g.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seed, 4));
+      g.instanceCount = N;
+      const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(1.0, 0.86, 0.89), roughness: 0.75, side: THREE.DoubleSide, alphaTest: 0.5 });
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uPT: U.uWind, uPC: uC, uPD: uD, uPN: uN, uPYoz: U.uYoz });
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', `#include <common>
+attribute vec4 aSeed; uniform float uPT; uniform vec4 uPC[${K}]; uniform vec4 uPD[${K}]; uniform float uPN; varying vec2 vPUv; varying float vPLit;
+float ph(float n) { return fract(sin(n) * 43758.5453); }
+mat3 prot(vec3 a, float t) { a = normalize(a); float c = cos(t), s = sin(t), k = 1.0 - c;
+  return mat3(c + a.x*a.x*k, a.y*a.x*k + a.z*s, a.z*a.x*k - a.y*s, a.x*a.y*k - a.z*s, c + a.y*a.y*k, a.z*a.y*k + a.x*s, a.x*a.z*k + a.y*s, a.y*a.z*k - a.x*s, c + a.z*a.z*k); }`)
+          .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+float pL = 6.0 + 4.0 * aSeed.y;                         // one turn's length (s): its fall, then 1.5 s on the ground
+float pc = uPT / pL + aSeed.z, ci = floor(pc), pt = fract(pc) * pL;
+float r1 = ph(ci * 1.37 + aSeed.x * 91.7), r2 = ph(ci * 2.11 + aSeed.w * 53.3), r3 = ph(ci * 0.73 + aSeed.y * 17.9), r4 = ph(ci * 3.07 + aSeed.z * 29.1);
+int pk = int(min(floor(r1 * r1 * uPN), ${K - 1}.0));   // (the crowns are sorted nearest first: more fall near the eye)
+vec4 pC = uPC[0], pD = uPD[0];
+for (int j = 0; j < ${K}; j++) if (j == pk) { pC = uPC[j]; pD = uPD[j]; }
+float pOn = step(r4, pD.z) * step(0.5, uPN);              // this crown sheds this many of its cards
+float pa = r2 * 6.2832, pr = pC.w * sqrt(r3);
+float py0 = pD.x + (pD.y - pD.x) * r4 / max(pD.z, 1e-3);   // from a height in the crown
+float pv = (py0 + 0.1) / (pL - 1.5), pfall = pt * pv, py = max(py0 - pfall, 0.03);   // 0.6-1.9 m/s
+float pland = step(py0 - 0.03, pfall);                     // on the ground: it lies there until its turn ends
+float pft = min(pfall, py0) / pv;                              // how long it has been falling (s)
+vec3 pw = vec3(0.94, 0.0, 0.34) * pft * (0.9 + 0.7 * aSeed.z); // the breeze carries it 1-1.6 m/s while it falls,
+pw += vec3(-0.34, 0.0, 0.94) * pft * (aSeed.w - 0.5) * 0.8;    // spread across it
+vec3 pP = pC.xyz + vec3(cos(pa) * pr, py, sin(pa) * pr) + pw
+        + vec3(sin(pt * 1.7 + aSeed.x * 6.0), 0.0, cos(pt * 1.3 + aSeed.y * 6.0)) * 0.6 * (1.0 - pland);
+mat3 pR = pland > 0.5 ? mat3(1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0) : prot(vec3(aSeed.x - 0.5, 0.6, aSeed.w - 0.5), pt * (2.5 + 3.0 * aSeed.z) + aSeed.y * 6.0);
+float pS = pOn * smoothstep(0.0, 0.6, pt) * (1.0 - smoothstep(pL - 1.2, pL, pt)) * (0.75 + 0.5 * aSeed.x);
+objectNormal = pR * objectNormal;`)
+          .replace('#include <begin_vertex>', `#include <begin_vertex>
+transformed = pP + pR * (position * pS); vPUv = uv; vPLit = pD.w * (1.0 - smoothstep(4.0, 9.0, length(pw)));`);
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', '#include <common>\nvarying vec2 vPUv; varying float vPLit; uniform float uPYoz;')
+          .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.8, 0.74) * 0.7 * vPLit * uPYoz;')
+          .replace('#include <alphatest_fragment>', `vec2 pq = vPUv * 2.0 - 1.0;
+float pin = 1.0 - length(vec2(pq.x * (1.15 - 0.35 * pq.y), pq.y));       // an obovate, wider at its tip
+if (pin < 0.0 || (pq.y > 0.55 && abs(pq.x) < 0.16 * (pq.y - 0.55) / 0.45 + 0.02)) discard;   // the notch
+diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, pq.y));`);
+      };
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.frustumCulled = false; mesh.castShadow = false; mesh.receiveShadow = true; mesh.visible = false; mesh.name = 'petals';
+      world.add(mesh);
+      const near = [];
+      return {
+        mesh, crowns: () => (mesh.visible ? near.length : 0),
+        // the K nearest drawn cherries whose variety is shedding, within 90 m
+        gather(eye) {
+          near.length = 0;
+          if (!petalFall.some(v => v > 0)) { mesh.visible = false; uN.value = 0; return; }
+          for (let i = 0; i < n; i++) {
+            const v = spV[which[i]];
+            if (v < 0 || !(petalFall[v] > 0) || (M[16 * i] === 0 && M[16 * i + 2] === 0)) continue;
+            const d2 = (pos[3 * i] - eye.x) ** 2 + (pos[3 * i + 2] - eye.z) ** 2;
+            if (d2 > 8100) continue;
+            if (near.length < K) near.push([d2, i]); else if (d2 < near[K - 1][0]) near[K - 1] = [d2, i]; else continue;
+            near.sort((a, b) => a[0] - b[0]);
+          }
+          near.forEach(([, i], j) => {
+            const h = list[4 * i + 3] / 10, foot = pos[3 * i + 1] - 4, v = spV[which[i]];
+            uC.value[j].set(pos[3 * i], foot, pos[3 * i + 2], 0.55 * h);
+            uD.value[j].set(0.35 * h, 0.9 * h, petalFall[v], lit[i]); // (lit: a yozakura tree's uplights catch its petals after dark)
+          });
+          uN.value = near.length; mesh.visible = near.length > 0;
+        },
+      };
+    }
+
     // ------------------------------------------------------------ yozakura (#162)
     // the lit places' lights: a soft pool on the ground round each lit tree's foot and each lantern's, bonbori
     // (a post, a washi shade lit from inside, a halo) along the mapped footways in the area, every 7 m on
@@ -437,6 +530,8 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       n, species: names, count,
       // the yozakura lights (#162): how many trees are lit and how many lanterns stand, for the tools
       yozakura: () => (Y ? { trees: Y.trees, lanterns: Y.lanterns, on: U.uYoz.value, out: Y.group.visible } : null),
+      // the falling petals (#223): how many cards there are and round how many crowns they fall now, for the tools
+      petals: () => (PT ? { cards: PT.mesh.geometry.instanceCount, crowns: PT.crowns(), visible: PT.mesh.visible } : null),
       // the season the trees show: flowering, autumn colour and how bare the deciduous ones are (0..1)
       season: () => ({ bloom: U.uBloom.value, sakura: U.uSakuraV.value[0], varieties: Object.fromEntries(varieties.map(({ sp, v }) => [sp, U.uSakuraV.value[v]])), autumn: U.uAutumn.value, bare: U.uBare.value }),
       // the species of tree i (an index into species) and where it stands (x, y local metres), for the tools
@@ -485,6 +580,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       setSeason(month, day) {
         const doy = Math.round((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 864e5);
         U.uBloom.value = south ? +(doy >= 285 && doy <= 334) : +(doy >= 130 && doy <= 178);
+        last.set(1e9, 0, 0); // the shedding cherries gathered again at the next update
         const given = typeof cherry === 'string' ? cherry.split('-').map(Number) : null; // city.json trees.cherry_open, "MM-DD"
         const open = given ? Math.round((Date.UTC(2001, given[0] - 1, given[1]) - Date.UTC(2001, 0, 1)) / 864e5) : cherry != null ? cherry : (sakuraOpen(lat != null ? lat : south ? -SAKURA_LAT : SAKURA_LAT) + (south ? 182 : 0)) % 365;
         const d = (doy + (south ? 182 : 0)) % 365; // the day in a northern year
@@ -504,6 +600,8 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
           U.uSakuraV.value[v] = t < 0 || t > 17 ? 0 : t < 7 ? 0.35 + 0.65 * t / 7 : t <= 12 ? 1 : 1 - (t - 12) / 5.5;
           const ct = ((doy - open - off + 730 + 60) % 365 - 60) / len;
           if (litVar.has(v)) yozBloom = Math.max(yozBloom, U.uSakuraV.value[v] > 0 ? 1 : 0);
+          // the petals fall: a few in full bloom, most as it goes over, none once it has
+          petalFall[v] = t < 6 || t > 17.5 ? 0 : t <= 11 ? 0.15 : 0.15 + 0.85 * Math.min(1, (t - 11) / 2) * (t > 16 ? (17.5 - t) / 1.5 : 1);
           U.uCherryBareV.value[v] = ct < -45 || ct > 17 ? U.uBare.value : ct < 12 ? 1 : 1 - (1 - U.uBare.value) * (ct - 12) / 5;
         }
         for (const [name, m] of Object.entries(mats)) {
