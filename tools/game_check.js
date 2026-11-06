@@ -1444,6 +1444,7 @@ const npcNight = require('./npc_night');
       o.drv.leave();
       o.drv = OECars.chauffeur(o.C, Object.assign({}, pick.rt, { end: false }), { keep: k, from: 'lane', v: 0, lights: g.junctions, now: g.t }); // (on through: not pulling in at the end of this short way)
       const st = o.drv.st, queued = C.filter(c => c.line === pick.h.line && c.dir === pick.h.dir && c.q);
+      for (const c of queued) c.s0r = (c.s - pick.rt.from.s) * pick.h.dir; // (where each stood along the taxi's way, for a pass's report)
       r = { n: queued.length, shift: 0, passed: [], behind: false, overtook: [], gone: false, moved: null, follow: null, jams };
       const sHead = (pick.h.s - pick.rt.from.s) * pick.h.dir; // (the head of the queue, along the taxi's way)
       const arm = g.junctions.armAt(pick.h.line, pick.h.dir > 0 ? 1 : 0), seq = [], behind = new Set();
@@ -1461,7 +1462,7 @@ const npcNight = require('./npc_night');
         r.openT = r.behind && st.v < 0.3 && st.gap > 7 && !/^the line/.test(st.why || '') ? (r.openT || 0) + 0.25 : 0;
         r.openMax = Math.max(r.openMax || 0, r.openT);
         // (passed: one queueing in its own lane, now behind it; not one in the other lane of a road with two each way)
-        for (const c of queued) if (c.q && c.line === pick.h.line && along(c, st, a) < -(c.half + o.C.half) && Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a)) < c.hw + o.C.hw + 0.2 && !r.passed.includes(C.indexOf(c))) { r.passed.push(C.indexOf(c)); (r.passedHow || (r.passedHow = [])).push(`car ${C.indexOf(c)} at ${t} s: ${c.why} v ${c.v.toFixed(1)} dir ${c.dir} lane ${c.ln || 0} s ${c.s.toFixed(1)}${c.mv ? ` in ${c.mv.j.id}` : ''}, ${(-along(c, st, a)).toFixed(1)} m behind the taxi (its s ${st.s.toFixed(1)}, shift ${st.shift.toFixed(1)}, ${st.why || ''})`); }
+        for (const c of queued) if (c.q && c.line === pick.h.line && along(c, st, a) < -(c.half + o.C.half) && Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a)) < c.hw + o.C.hw + 0.2 && !r.passed.includes(C.indexOf(c))) { r.passed.push(C.indexOf(c)); (r.passedHow || (r.passedHow = [])).push(`car ${C.indexOf(c)} at ${t} s: ${c.why} v ${c.v.toFixed(1)} dir ${c.dir} lane ${c.ln || 0} s ${c.s.toFixed(1)}${c.mv ? ` in ${c.mv.j.id}` : ''}, ${(-along(c, st, a)).toFixed(1)} m behind the taxi (its s ${st.s.toFixed(1)}, shift ${st.shift.toFixed(1)}, ${st.why || ''}; the car ${(c.toLine - c.half).toFixed(1)} m from its line${c.lineArm ? ` of ${c.lineArm.j.id}` : ''}, started ${(c.s0r ?? NaN).toFixed(1)} m along the taxi's way; the taxi ${(st.toLine - o.C.half).toFixed(1)} m from its next line${st.mv ? `, in ${st.mv.j.id}` : ''}, its heading off the car's by ${(Math.atan2(Math.sin(a - c.h), Math.cos(a - c.h)) * 57.3).toFixed(0)}°)`); }
         // the traffic behind it, in its lane, while it queues: none comes past it (on a road with two
         // lanes each way, one moving up in the other lane is not one going round it)
         const lat = c => Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a));
