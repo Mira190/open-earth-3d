@@ -81,6 +81,7 @@ FRAME = "#5b564f"  # a roof on posts: dark timber or painted steel, under a roof
 SHU = "#c4482a"  # a shrine's vermilion (朱), as the Fushimi Inari and Kiyomizu models' torii_shu under the grade
 TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
 GLASS = "#7f95a0"  # a glass atrium's walls
+GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM = "#5d7280", 4.5, 12.0, 300  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
 PITCH_DEG, PITCH_OVERHANG, PITCH_MAX_M2, PITCH_EAVE_M = 32.0, 0.5, 900.0, 2.4  # an open pavilion's pitched roof (pitched_roof())
 KAWARA, BARK = "#4c5156", "#4a4c50"  # a temple's grey tiles (kawara); a shrine pavilion's, a little darker (Yasaka-jinja's Buden, photographs)
 UTILITY = {"bicycle_parking", "motorcycle_parking", "parking", "parking_entrance", "smoking_area", "toilets", "waste_disposal",
@@ -301,6 +302,42 @@ def drop_roof(r, top_dm):
     r[1], r[2] = top_dm, new_eave
 
 
+def glass_atrium_roof(B, s, si, P, polys):
+    """A closed glass atrium's roof (#258, Shinjuku's Sumitomo Triangle Plaza, by a photograph): faceted glass
+    rising from eaves at ATRIUM_EAVE_M on its far side to its top by the tower it stands against (a tower within
+    ATRIUM_NEAR_M: PLATEAU cuts the two apart). Each corner of its outline takes a height by its distance from the
+    tower, and the outline is triangulated into flat facets between them. None when nothing taller stands by it."""
+    import numpy as np
+    import roofs
+    from build_scene import pack_roof
+    top, lo = s[3], round(10 * ATRIUM_EAVE_M)
+    if top - lo < 20 or P.geom_type != "Polygon":
+        return None
+    tall = [polys[j] for j, o in enumerate(B["s"]) if j != si and polys[j] is not None and o[1] + o[3] > s[1] + top + 100
+            and polys[j].distance(P) < ATRIUM_NEAR_M]
+    if not tall:
+        return None
+    q = np.asarray(shapely.geometry.polygon.orient(P, 1.0).exterior.coords)[:-1]
+    d = np.array([min(T.distance(shapely.geometry.Point(x, y)) for T in tall) for x, y in q])
+    if d.max() - d.min() < 10:
+        return None
+    tris = roofs.earcut(q)
+    if not tris:
+        return None
+    zs = lo + (top - lo) * (d.max() - d) / (d.max() - d.min())   # the nearest corners at the top, the farthest at the eaves
+    pos = [c for (x, y), z in zip(q, zs) for c in (round(x * 10), round(y * 10), int(round(z)))]
+    idx = [i for t in tris for i in t]
+    meta = B["b"][s[0]]
+    mats, shapes = B.get("roof_materials", []), B.get("roof_shapes", [])
+    if len(meta) > 15:
+        if "glass" in mats:
+            meta[13] = mats.index("glass")
+        if "skillion" in shapes:
+            meta[15] = shapes.index("skillion")
+        meta[8] = GLASS_ROOF
+    return [si, top, lo, roofs.CODES["skillion"]] + pack_roof(pos, idx) + [len(tris)]
+
+
 def roof_shape_for(t, here, colour):
     """The pitched roof an open pavilion carries ((shape, source) or None): its mapped roof:shape, else a
     hipped roof (a hip-and-gable's nearest) in a temple's or a shrine's precinct or on a temple or a shrine."""
@@ -421,6 +458,7 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
     prec = [(Pg if Pg.is_valid else Pg.buffer(0), p) for Pg, p in prec]
     palette = rcfg.get("palette", {})
     closed = set(rcfg.get("closed", []))
+    glazed = set(rcfg.get("glazed", []))
     glass = B["styles"].index("glass") if "glass" in B.get("styles", []) else None
     eaves = {r[0]: r for r in B.get("r", [])}
     road_lines = []
@@ -445,6 +483,16 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
                 and meta[1] in ("", "yes") and meta[10] != plain and B["styles"][meta[10]] != "wall"):
             meta[10] = plain
             n += 1
+    parts = rcfg.get("atrium_parts", {})   # a tower's low solids that are its atrium's: moved to the atrium's building
+    if parts:
+        by_osm = {}
+        for bi, m in enumerate(B["b"]):
+            by_osm.setdefault(m[6] or "", bi)
+        for s in B["s"]:
+            src = B["b"][s[0]][6] or ""
+            if src in parts and parts[src] in by_osm and s[3] < ATRIUM_PART_DM and s[2] == 0:
+                s[0] = by_osm[parts[src]]
+                n += 1
     for si, s in enumerate(B["s"]):
         meta = B["b"][s[0]]
         P = polys[si]
@@ -457,7 +505,20 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
                 if glass is not None and len(meta) > 10:
                     meta[10] = glass
                 n += 1
+            if si not in eaves and P is not None and P.area > 300:
+                r = glass_atrium_roof(B, s, si, P, polys)
+                if r is not None:
+                    new_roofs.append(r)
+                    eaves[si] = r
+                    n += 1
             continue
+        if oid in glazed and P is not None and meta[1] == "roof":
+            mats = B.get("roof_materials", [])
+            want = (GLASS, GLASS_ROOF, mats.index("glass") if "glass" in mats else meta[13])
+            if (meta[7], meta[8], meta[13]) != want:
+                meta[7], meta[8], meta[13] = want
+                n += 1
+            continue   # a glazed roof spans between the buildings either side: no posts inside it
         if P is None or meta[1] != "roof" or s[2] <= 0:
             continue
         if (P.length >= 40 and 2 * P.area / P.length <= WIDTH_M and not is_gate(meta, P)
