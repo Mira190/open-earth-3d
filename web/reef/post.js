@@ -3,13 +3,13 @@
 // the surface above that point (the same caustic focusing the sea floor shows), then scatter it
 // toward the eye through the water's own attenuation. A mask-edge vignette comes with it.
 import * as THREE from 'three/webgpu';
-import { pass, Fn, Loop, float, vec2, vec3, vec4, mix, max, min, exp, log, length, normalize, dot, pow, select, smoothstep,
+import { pass, Fn, If, Loop, float, vec2, vec3, vec4, mix, max, min, exp, log, length, normalize, dot, pow, select, smoothstep,
   clamp, screenUV, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, cameraPosition, interleavedGradientNoise } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 const BLOOM_CAP = 5;
 
-export function createPost(renderer, scene, camera, env) {
+export function createPost(renderer, scene, camera, env, { bloom: withBloom = true } = {}) {
   const u = env.u;
   const post = new THREE.RenderPipeline(renderer);
   const scenePass = pass(scene, camera);
@@ -25,7 +25,6 @@ export function createPost(renderer, scene, camera, env) {
     const l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     return vec4(c.mul(min(float(1), float(BLOOM_CAP).div(max(l, 1e-4)))), 1);
   })();
-  const bloomPass = bloom(finite, 0.35, 0.55, 0.92);
 
   const STEPS = 14;
   const shafts = Fn(() => {
@@ -42,13 +41,16 @@ export function createPost(renderer, scene, camera, env) {
     const span = min(L, toSurface);
     const step = span.div(STEPS);
     const phase = float(0.18).add(pow(max(dot(dir, u.sunDir), 0), 5).mul(1.2));  // forward scattering toward the sun
-    Loop(STEPS, ({ i }) => {
-      const t = float(i).add(jitter).mul(step);
-      const S = cameraPosition.add(dir.mul(t));
-      const lit = env.causticSoft(S);                   // sun reaching this point through the waves
-      const dS = u.tide.sub(S.y).max(0);
-      const sunHere = exp(u.K.mul(dS.mul(u.lightPath).add(t)).negate());
-      acc.addAssign(sunHere.mul(lit).mul(step));
+    // (only with the eye under water: a branch on a uniform, so above the water no pixel pays for the march)
+    If(under, () => {
+      Loop(STEPS, ({ i }) => {
+        const t = float(i).add(jitter).mul(step);
+        const S = cameraPosition.add(dir.mul(t));
+        const lit = env.causticSoft(S);                   // sun reaching this point through the waves
+        const dS = u.tide.sub(S.y).max(0);
+        const sunHere = exp(u.K.mul(dS.mul(u.lightPath).add(t)).negate());
+        acc.addAssign(sunHere.mul(lit).mul(step));
+      });
     });
     // select, not a multiply by 0: above the water the march can overflow, and 0 x inf is a NaN that bloom-free
     // pixels show as black (a full row at the screen's middle)
@@ -64,7 +66,8 @@ export function createPost(renderer, scene, camera, env) {
 
   const q = new URLSearchParams(location.search);
   let base = color.rgb;
-  if (q.get('bloom') !== '0') base = base.add(bloomPass.rgb);
+  // bloom: off on the low tier (tier.js), as on the globe
+  if (withBloom && q.get('bloom') !== '0') base = base.add(bloom(finite, 0.35, 0.55, 0.92).rgb);
   if (q.get('shafts') !== '0') base = base.add(shafts());
   // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift);
   // what is bright enough for the cones (a torch beam, a lamp, the moon's path) keeps its colour
