@@ -194,6 +194,26 @@ window.OEAtmos = (function () {
       }`,
   });
 
+  // Highlights that never blow out (in every view of the game, by day and by night): before the bloom and the
+  // title's tone curve, each pixel brighter than a knee is rolled off towards a ceiling, scaled as a whole so
+  // its hue holds (an orange lamp stays orange rather than going to a flat yellow-white slab), as hue-preserving
+  // tone mappers do (Polyphony's GT curve, AgX with its emissive-colour option) and as games author emissive
+  // light: a lamp, a lit window or a sign is bright but its face keeps its colour and shape, and only the bloom
+  // round it says how bright it is. The ceiling follows the exposure (uCap, in scene units): 2.0 after it,
+  // which the title's curve takes to about 0.96, just short of white. A small lamp a pixel or two across still
+  // blooms; a lantern filling the frame from a metre away is a soft warm glow, not a white wall.
+  const HIGHLIGHT = () => ({
+    uniforms: { tDiffuse: { value: null }, uCap: { value: 8 }, uKnee: { value: 0.55 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float uCap, uKnee; varying vec2 vUv;
+      void main() {
+        vec4 t = texture2D(tDiffuse, vUv); vec3 c = max(t.rgb, 0.0);
+        float peak = max(c.r, max(c.g, c.b)), k = uKnee * uCap;
+        if (peak > k) { float r = uCap - k, np = k + r * (1.0 - exp(-(peak - k) / r)); c *= np / peak; }
+        gl_FragColor = vec4(c, t.a);
+      }`,
+  });
+
   // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density}); look: game.look ({grade})
   function create(Wd, renderer, camera, { city, sky = {}, look = {} } = {}) {
     const keys = {};
@@ -210,7 +230,7 @@ window.OEAtmos = (function () {
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
-    let composer = null, bloom = null, grade = null, lens = null, camFx = null, fx = null, ao = null, rt = null, wantAO = false, sceneDepth = null;
+    let highlight = null, composer = null, bloom = null, grade = null, lens = null, camFx = null, fx = null, ao = null, rt = null, wantAO = false, sceneDepth = null;
     const FAR = 3000, prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4(); // (FAR: the camera effects' depth of field reaches 3 km)
     const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
     const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
@@ -234,6 +254,7 @@ window.OEAtmos = (function () {
       scenePass.render = (r, wb, rb, ...rest) => { sceneDepth = rb.depthTexture || null; return drawScene(r, wb, rb, ...rest); };
       composer.addPass(scenePass);
       if (wantAO) { ao = OEAO.create(renderer, camera, { tier: QC.name }); composer.addPass(ao.pass); }
+      if (window.OELens && sky.lens !== false) { highlight = new THREE.ShaderPass(HIGHLIGHT()); composer.addPass(highlight); }
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
       if (window.OELens) OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
       composer.addPass(bloom);
@@ -295,6 +316,18 @@ window.OEAtmos = (function () {
           L.uContrast.value += 0.05 * ov;
           L.uTint.value.set(gr.tint[0], gr.tint[1], gr.tint[2]);
           L.uTime.value = tSec;
+          // the ceiling for the highlights, in scene units, from the exposure; the bloom starts below it, so what is
+          // rolled off still glows
+          if (highlight) {
+            const cap = 2.0 / Math.max(1e-3, L.uExposure.value);
+            highlight.uniforms.uCap.value = cap;
+            // (after dark only: by day nothing is meant to bloom but the sun's own glints, and a lower threshold would
+            // make sunlit white paint glow)
+            if (bloom && night > 0.3) { bloom.threshold = Math.min(bloom.threshold, 0.45 * cap); bloom.strength *= 1.15; }
+            // a soft knee rather than a hard edge at the threshold (as engines' bloom prefilters do), so a lamp's halo
+            // grows with its brightness instead of switching on
+            if (bloom && bloom.highPassUniforms) bloom.highPassUniforms.smoothWidth.value = night > 0.3 ? 0.4 * cap : 0.01;
+          }
         }
       },
       setSize(w, h) { if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
