@@ -904,6 +904,31 @@ const npcNight = require('./npc_night');
     check(rl.onShown && rl.menuHidden && rl.back, 'route line On: shown, hidden while the menu is open, and back after');
   }
 
+  // a city drawn as a subway map (Tokyo): B, the Districts button or the menu opens the map full screen
+  // (metro.js) with the game held still under it, your station marked, the others offering to travel there;
+  // Esc closes it onto the game. (Travelling itself loads another map: the title check goes in from it.)
+  const mt = await p.evaluate(() => {
+    const g = window.__game, btn = document.getElementById('g-metro-btn');
+    if (!btn || btn.hidden) return { none: true };
+    const out = {}, key = (k, code) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, code, bubbles: true }));
+    key('b', 'KeyB'); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyB' })); g.advance(0.2);
+    const el = document.querySelector('.ts-mfull.solo');
+    out.open = !!el && OEMetro.isOpen();
+    out.here = !!(el && el.querySelector('.mt-you')) && !!(el && el.querySelector('.mt-pick [data-close]'));
+    const other = el && [...el.querySelectorAll('.mt-chip')].find(b => !b.querySelector('i'));
+    if (other) other.click();
+    const prim = el && el.querySelector('.mt-pick .primary');
+    out.travel = !!prim && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    key('Escape', 'Escape'); g.advance(0.2);
+    out.closed = !document.querySelector('.ts-mfull') && !OEMetro.isOpen() && document.getElementById('g-menu').hidden;
+    btn.click(); out.byButton = OEMetro.isOpen(); OEMetro.close();
+    document.getElementById('g-menu').hidden = false;
+    const mb = document.getElementById('gm-metro'); if (mb) mb.click();
+    out.byMenu = OEMetro.isOpen() && document.getElementById('g-menu').hidden; OEMetro.close();
+    return out;
+  });
+  if (!mt.none) check(mt.open && mt.here && mt.travel && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, Esc closes it (${JSON.stringify(mt)})`);
+
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
     const g = window.__game;
