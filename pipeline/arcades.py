@@ -53,6 +53,10 @@ run opened, so it needs no rebuild of the scene):
   "inner_posts", by building: x_dm, y_dm, ...): one row down the middle of a platform's or a bus stand's
   canopy (narrower than 24 m), else rows every 10 m across, at 10 m along, at least 1.5 m inside its
   edge, 4 m off a road's centre line and 1.2 m off a footway, and not inside another building.
+- a structure under 2.6 m with no name or class (a vent's or a stair's cover by a subway exit, a shed, a
+  kiosk's back) is drawn plain: there is no room in it for a storey of windows (Marunouchi's solid 18776, a
+  2.4 m block beside Tokyo Station's M8 exit, was a windowed box under the trees), and so is a subway
+  entrance's cover under 4.5 m (named ...出入口, as the M8 exit itself is).
 - a roof the city names as closed (city.json "roofs" "closed", OSM ids: Shinjuku's Sumitomo Triangle
   Plaza, a glass atrium) goes back to a glass building from the ground.
 
@@ -76,6 +80,8 @@ GLASS = "#7f95a0"  # a glass atrium's walls
 UTILITY = {"bicycle_parking", "motorcycle_parking", "parking", "parking_entrance", "smoking_area", "toilets", "waste_disposal",
            "recycling", "vending_machine", "fuel", "car_wash", "bus_station", "taxi"}
 SPAN_M, ROW_W_M, INNER_MIN_M2 = 10.0, 24.0, 400.0
+LOW_DM = 26  # under this (decimetres) a building has no room for a storey of windows
+EXITS, EXIT_DM = ("出入口", "入口", "出口", "Entrance", "entrance"), 45  # a subway entrance's cover under 4.5 m
 MEASURED_TALL = {"plateau", "lidar", "estimate", "ml"}  # tops that may be a tree over the roof
 KINDS = (  # (name parts, base m, m per metre of sqrt(area))
     (("鐘楼", "鐘堂", "鐘撞", "梵鐘", "鐘つき"), 4.5, 0.6),
@@ -348,6 +354,18 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
     footways = (foot_tree, foot) if foot else None
     inner = {}
     n = 0
+    plain = B["styles"].index("plain") if "plain" in B.get("styles", []) else None
+    top = {}
+    for s in B["s"]:
+        top[s[0]] = max(top.get(s[0], 0), s[3])
+    for s in B["s"]:  # the low structures
+        meta = B["b"][s[0]]
+        name = (meta[0] or "").strip()
+        entrance = name.endswith(EXITS) and top[s[0]] < EXIT_DM  # a subway entrance's cover: steel and glass, no storey
+        if (plain is not None and len(meta) > 10 and s[2] == 0 and (entrance or (top[s[0]] < LOW_DM and not name))
+                and meta[1] in ("", "yes") and meta[10] != plain and B["styles"][meta[10]] != "wall"):
+            meta[10] = plain
+            n += 1
     for si, s in enumerate(B["s"]):
         meta = B["b"][s[0]]
         P = polys[si]
@@ -428,7 +446,7 @@ def main():
     data = os.path.join(ROOT, "web", "data")
     ids = sorted(d for d in os.listdir(data) if os.path.exists(os.path.join(data, d, "game.json"))) if a.city == "all" else [a.city]
     for cid in ids:
-        print(f"{cid}: {mark(os.path.join(data, cid))} covered walkways and gates opened to walk under")
+        print(f"{cid}: {mark(os.path.join(data, cid))} changes: covered walkways and gates opened, roofs on posts finished, low structures plain")
 
 
 if __name__ == "__main__":

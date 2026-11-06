@@ -64,9 +64,11 @@ MATERIALS = {
     "renji": {"color": "#3e6b56", "roughness": 0.75, "metalness": 0.0},  # the corridors' green lattice
     "jp_gold": {"color": "#d6a93a", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.5},
     # Kyoto Station: grey-silver aluminium and glass on a 3.6 m grid, the atrium's glass, white steel
-    "ks_panel": {"color": "#8d9399", "roughness": 0.35, "metalness": 0.55, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
-                 "spandrel": 0.45, "mullion_m": 0.18, "frame": "#cfd3d6", "lit_share": 0.55, "lit_k": 0.8},
-    "ks_glass": {"color": "#6f8696", "roughness": 0.05, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
+    # (#244, side by side with photographs from Karasuma-dori: the panels a neutral mid grey, darker than the
+    # sky, and the glass grid dark with the sky and Kyoto Tower in it; they had read pale blue-white)
+    "ks_panel": {"color": "#7c7f81", "roughness": 0.45, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
+                 "spandrel": 0.45, "mullion_m": 0.18, "frame": "#b4b8bb", "lit_share": 0.55, "lit_k": 0.8},
+    "ks_glass": {"color": "#4c5f6c", "roughness": 0.05, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
                  "spandrel": 0.0, "mullion_m": 0.06, "frame": "#e6e9eb", "lit_share": 0.9, "lit_k": 0.5},
     "ks_roofglass": {"color": "#b8c9d4", "roughness": 0.06, "metalness": 0.3, "opacity": 0.32},
     "ks_steel": {"color": "#dfe2e4", "roughness": 0.35, "metalness": 0.6, "emissive": "#fff1dc", "glow": 0.35},
