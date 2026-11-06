@@ -190,8 +190,9 @@ is to pull in at is taken, by your own car or one stopped there for good (10 s),
 it pulls in just behind, and drives round one only waiting in the traffic; held
 up near the end for 8 s, it stops where it is with its hazards on. Where no car
 can reach your kerb in time (a dead end the near side of the street faces into,
-a stub no road feeds) the pick-up moves to the kerb across the street or a street
-round the corner, as a ride app moves it; in streets as slow as Shibuya's a car
+a stub no road feeds) the pick-up of a ride ordered on the phone moves to the kerb across the
+street or a street round the corner, as a ride app moves it (a taxi you hail keeps your kerb, or
+the one across the street: it pulls in beside you, #209); in streets as slow as Shibuya's a car
 can set out from just round the corner, 15 to 40 m off; and where the one-way
 streets leave next to no way in, the search goes back along any street, as the
 router does. Rather than none, a slow ride comes, the phone saying how slow.
@@ -449,6 +450,9 @@ listed at the end.
 | **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 | **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
+| **Tesla FSD** (AI Day 2021 and 2022: the planning talks) | The planner run for every car round it, not only for itself: each car's way ahead is known and read by the others, and where two ways meet one asserts and the other yields, by the same rule read from both sides, rather than both reacting to what is in front of them. A car that can no longer stop goes; one in the junction goes before one coming. Ideas only (its software is proprietary). | It learns from fleet video; here every car's intent is exact (its route, its movement through the junction), so nothing has to be guessed from a camera. |
+| **Baidu Apollo** (EM planner, Apache-2.0), **SUMO** (EPL-2.0), **A/B Street** (Apache-2.0), **Autonomous Intersection Management** (Dresner and Stone) | Apollo: another car's way projected onto your own as the stretch it blocks, and a go-first or yield decision on it. SUMO and A/B Street: keep the box clear (no car into a junction whose way across is blocked or whose exit has no room), and break a deadlock by someone backing off, never by driving through. AIM: a reservation for the way across, which `junctions.js` already makes. Re-written from the papers and documentation; no code taken. | They simulate traffic for planners to study. Here the same rules drive the taxi you are sitting in. |
+| **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
 
 ## How it works
 
@@ -850,9 +854,10 @@ pipeline writes. The only city-specific code is landmark geometry in
     a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
     if the way stays blocked (but for the squeeze past, under Unsticking). One caught up with another gets out without going
     into a third; two still caught after 4 s part (out of sight, one leaves the
-    traffic). A ride on the move is left to its own driver (unless it follows it), who never
-    steps further into a car of the traffic and swings out round a stopped car only when
-    nothing is coming the other way. None is put on the road on top of your car or a ride, and your
+    traffic). A ride and the traffic see each other along their ways and give way by one rule
+    (see [How the drivers see and give way](#how-the-drivers-see-and-give-way)); the ride's
+    driver never steps further into a car of the traffic in your sight and swings out round a
+    stopped car only when nothing is coming the other way. None is put on the road on top of your car or a ride, and your
     car is brought to a kerb clear of the traffic, the posts and the trees.
     Your car meets another as a box against a box, corners included. The crowd
     keeps out of your car and a ride as it does the traffic's.
@@ -874,6 +879,82 @@ pipeline writes. The only city-specific code is landmark geometry in
     and a walker stepping aside keeps in from a wall beside the footway. Before
     this, about one walker in nine in Sydney's centre was inside a building.
   - **After dark:** headlights, tail lights and the taxis' roof signs light up.
+
+#### How the drivers see and give way
+
+Before, a ride's driver judged the cars round it by where their centres were across from its
+lane, along a straight line from its bonnet, and the traffic saw a ride only along a straight
+line from its own. A car turning across the ride, or one the ride came round a corner to, was
+seen late or not at all; the traffic didn't hold back for a ride on the move at all, leaving it
+to the ride's driver. Two would end nose to nose, each waiting for the other, and after a few
+seconds one drove through the other. In Shibuya (`tools/ride_overlap.js`, two runs of eight trips
+from the scramble) a ride went into a car of the traffic 9 times in 4,400 s, up to 2.3 m deep,
+once head on down a one-way street, and 10 of the 16 trips hadn't arrived after five minutes. The planners of self-driving cars do it another
+way (Tesla's interaction search, Apollo's ST graph: see [the table above](#what-we-took-from-other-games-and-where-this-one-is-different)):
+every car's intent is read by the others, and where two ways meet one goes and the other
+yields. In this game every car's intent is exact, so:
+
+- **Each car looks along its way.** The traffic's cars already did (points every 1.5 m from the
+  bumper, round the corner and across the junction); a ride's driver now does too
+  (`cars.js` `look`, `crossGap`), and publishes that way (`st.ps`) for the traffic to read. A
+  car at an angle is caught by its box, not its centre.
+- **One rule for who goes first, read from both sides** (`actors.js` `first`, given to the
+  ride's driver as `junctions.first`): where each one's way runs into the other, the one that
+  can no longer stop (braking at 4 m/s²) goes; then the one already in the junction (of two in
+  it, the one in first); then the one nearer the place; at a dead heat, a ride before the
+  traffic. The one that goes isn't braked for; the other stops short of it. The traffic reads a
+  ride with you in it as one of its own (its way, its movement, its line, stopped or moving) and
+  never steps into it. A ride on its way to you is left to its own driver as before ("soft": the
+  traffic doesn't wait on it, and wedged a second it goes on at a crawl), so that it comes within
+  the half minute in Tokyo's tangled streets; held to the rule, it stood two minutes in a knot of
+  cars giving way to each other in Shinjuku's game check.
+- **Keep the box clear.** A car of the traffic doesn't go into a junction whose way across is
+  blocked by a ride or your car standing there, or by a car waiting at another of its lines with
+  its nose in the way (after 3 s that one is asked to back off a metre or two; after 12 s the car
+  goes in all the same, so a busy arm never shuts a movement out). A ride's driver waits at the
+  line for room beyond the junction, as the traffic does (`junctions.room`).
+- **Back off, never through.** Nose to nose with a car that waits on it in turn, a ride's driver
+  backs off a metre or two along its way if the road behind is clear, else asks that car to
+  (`junctions.makeWay`); wedged against one that won't move off, it asks again every 2 s, and only
+  after 20 s (a knot nothing undoes, neither able to back off) goes on at a crawl. A ride stopped
+  for a moment on its way still counts as on the move to the traffic, so both read the same rule. It no longer creeps into a car at an
+  angle to it after 8 s.
+- **Brake early and gently.** The traffic's speed was a limit read off the gap ahead, so a car
+  kept its speed until the last metres and then braked at up to 8 m/s². The Intelligent Driver
+  Model's interaction term (Treiber, Hennecke and Helbing 2000: the gap a driver wants grows with
+  its speed and with how fast it closes) is now a second limit, for the traffic (`actors.js`
+  `idm`: stopping 2.6 m short, a 0.8 s time gap, 2.5 m/s² to pull away, 3 m/s² to brake): a car
+  starts to brake for a queue or a red seen 40 m off. (A ride's driver keeps the old limit alone:
+  with the model it crept up a stop-and-go queue more slowly, was held long enough to read a car in
+  the queue as stopped for good, and went round it.) It is never faster than the old limit, so the queues and the waits at the lights are as
+  before; only the braking is earlier and softer, as a passenger feels it.
+- **Break the rings.** Round Shibuya station the queues waited for room behind queues that waited
+  for room, round a block and back, and nothing moved: one car stood 220 s at its line. The
+  traffic wanders, so a car held 5 s at its line for want of room, its light green, takes another
+  way out that has room (`outOfRing` in `tools/traffic_check.js`). Cars still jammed at the end of
+  `traffic_check.js`'s three Shibuya runs went from 25, 7 and 7 to 3, 4 and 3.
+- **People look both ways where nothing is marked.** Where a footway steps onto a road with no
+  signals and no zebra, the crowd stepped out regardless and every car stopped for it, one after
+  another (a queue east of the station stood for the people crossing for minutes). Now a walker
+  waits at the kerb while a car would reach the place within 3.5 s, as the law asks of someone
+  crossing away from a crossing (Japan's Road Traffic Act, article 13; the Highway Code, rule 7),
+  and after 20 s takes its chance at walking pace, the cars braking for it. At zebras and signals
+  nothing changes. The places are found a metre at a time along a footway the first time someone
+  walks it, and only those near you are kept.
+- **Signals that read their queues** (capacity-aware max-pressure, Varaiya 2013, with Gregoire et
+  al.'s rule for full roads beyond). The lights already ended a green early when nobody came on it
+  (gap-out, as SCATS and vehicle-actuated signals do). Now each arm counts the cars queued at its
+  line every frame (`a.qn`, from the traffic), and whether the head of its queue waits for room
+  beyond (`a.full`). A green whose queues are all blocked beyond ends after 8 s when another phase
+  has cars waiting (serving it moves nobody); one whose queue is more than twice the next phase's
+  runs on, up to 1.6 times its green, and then ends after the walkers' flash. A scramble keeps its
+  own order and walk. It reads only the queues at hand, nothing to forecast or store.
+- **No way against a one-way street.** Where the one-way streets leave no legal way (7% of
+  random trips in Shibuya), the router searched any street at the same cost, and a trip could
+  drive 300 m against the traffic, head on into it. Now a metre against a one-way street costs 25,
+  and a banned turn 400 m, so the way found breaks the rules for the fewest metres it must. (The
+  way a ride comes for you is searched as before: out of your sight it comes in good time, and held
+  to this a hailed taxi in Shinjuku was given a kerb 31 m from you.)
 
 #### Junctions and traffic lights
 
@@ -972,7 +1053,11 @@ Sydney's traffic stood still a third of the time.
 - **Lanes.** A motorway, trunk or primary road, and a one-way secondary, has
   two lanes each way: the first beside the centre line (on a one-way street, on
   the keep side), the second 3 m out towards the kerb (on a one-way street,
-  across on the other side). Where OpenStreetMap paints arrows on the lanes
+  across on the other side). A one-way road of one lane (a ramp, a narrow
+  one-way street) is driven on its line, the middle of its carriageway, not
+  1.7 m to the keep side (#177); a car eases across to it, at a lane change's
+  rate, where it comes onto such a road from another, and a ride's driver
+  follows the same lanes (`cars.js` `laneAt`). Where OpenStreetMap paints arrows on the lanes
   (`turn:lanes`, written on the road pieces as `"tl"` by
   `pipeline/road_lanes.py`), a movement goes from the lanes whose arrows show
   its way, the half of the road's lanes on the first lane's side standing for
@@ -1069,12 +1154,16 @@ Sydney's traffic stood still a third of the time.
   `landmarks.scramble`, with its six mapped crosswalks, the one diagonal from
   Hachiko to QFRONT among them) and the junctions a city lists in
   `game.scrambles` in `city.json` run a fourth phase after the traffic's two:
-  every arm red and every walk signal green together for 32 s, the green figures
-  flashing for the last 6, then 8 s for the main road and 6 s for the cross
+  every arm red and every walk signal green together for as long as its longest
+  crosswalk takes at its crowd's brisk pace (1.45 m/s, plus 5 s to step out; 15 s
+  at the least and 32 s at the most: 28 s at Shibuya's, 15 s at the small ones
+  round it, #199), the green figures flashing for the last 6, then 8 s for the main road and 6 s for the cross
   road (the real cycle is about two minutes with 40 to 50 s of walk; the game
   keeps the walk, which its crowd needs to cross, and cuts the traffic's turns
-  to a few seconds). The all-red round the walk is 4 s and is held up to 15 s
-  more while anyone is still out on the road. The walk is the one wait longer
+  to a few seconds). The all-red round the walk is 4 s and is held up to 25 s
+  more while anyone is still out on the road, and no car goes into the box while
+  anyone is out crossing it until its green has run 2 s (`junctions.js` `may`,
+  #197). The walk is the one wait longer
   than 10 s (`RED`): a car coming up as it starts waits for its crowd. Nobody
   walks in the traffic's phases. A ride's priority, or you waiting at the wheel,
   never shortens a walk under way, but one not yet started waits for your turn;
@@ -2326,3 +2415,20 @@ deadlock or a meeting at a shared berth takes to show.
 - Animal Crossing favours: [Nookipedia](https://nookipedia.com/wiki/Favor).
 - slowroads: [web.dev](https://web.dev/slow-roads/).
 - Streets GL: [source](https://github.com/strandedkitty/streets-gl).
+- Tesla FSD planning: AI Day 2021
+  ([video](https://www.youtube.com/watch?v=j0z4FweCy4M), planning from about 1:13:00) and AI Day 2022
+  ([video](https://www.youtube.com/watch?v=ODSJsviD_SU), interaction search from about 1:04:00).
+- Baidu Apollo EM motion planner: [arXiv 1807.08048](https://arxiv.org/abs/1807.08048),
+  [source](https://github.com/ApolloAuto/apollo) (Apache-2.0).
+- SUMO junctions and keep-clear: [Intersections](https://sumo.dlr.de/docs/Simulation/Intersections.html),
+  [source](https://github.com/eclipse-sumo/sumo) (EPL-2.0).
+- A/B Street gridlock: [docs](https://a-b-street.github.io/docs/tech/trafficsim/gridlock.html),
+  [source](https://github.com/a-b-street/abstreet) (Apache-2.0).
+- Autonomous Intersection Management: [Dresner and Stone, JAIR 2008](https://jair.org/index.php/jair/article/view/10542).
+- Real traffic control: SCATS ([overview](https://en.wikipedia.org/wiki/Sydney_Coordinated_Adaptive_Traffic_System),
+  [survey](https://arxiv.org/pdf/1904.08117)); SCOOT ([TRL LR1014](https://www.trl.co.uk/uploads/trl/documents/LR1014.pdf));
+  UTMS and MODERATO ([JICA report](https://openjicareport.jica.go.jp/pdf/12340022_02.pdf)); VICS ([how it works](https://www.vics.or.jp/en/structure/));
+  max-pressure ([Varaiya](https://link.springer.com/10.1007/978-1-4614-6243-9_2), capacity-aware: [Gregoire et al.](https://arxiv.org/pdf/1309.6484));
+  actuated control ([FHWA signal timing manual](https://ops.fhwa.dot.gov/publications/fhwahop08024/chapter5.htm));
+  box junctions ([Highway Code rule 174](https://theorytest.org.uk/hwc/highway-code/rule-174.html)); dispatch
+  ([Uber matching](https://www.uber.com/us/en/marketplace/matching/)).
