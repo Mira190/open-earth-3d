@@ -1559,5 +1559,50 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     finally { renderer.setRenderTarget(prev); }
   }
 
-  return { load, create, lin, smooth, compile };
+  // Send an object's textures to the GPU before it is drawn (issue 201): a model streamed in once the game
+  // is open (an NPC's character, the helicopter) otherwise uploads them all, and builds their mipmaps, in
+  // the first frame that draws it. One texture a frame, in the frame's idle time (requestIdleCallback,
+  // at the latest after 250 ms), from one queue that every caller shares, so two models arriving together
+  // still cost a frame one texture. Resolves when the last of obj's is up; a texture already sent (or
+  // queued by another object) is not sent twice.
+  const sent = new WeakSet(), queue = [];
+  let pumping = false;
+  const later = f => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 250 }) : setTimeout(f, 16));
+  function pump() {
+    if (!queue.length) { pumping = false; return; }
+    pumping = true;
+    later(() => {
+      const job = queue.shift();
+      try { job.renderer.initTexture(job.tex); } catch (e) { /* uploaded on its first draw instead */ }
+      job.done();
+      requestAnimationFrame(pump); // (the next one in another frame)
+    });
+  }
+  function textures(obj) {
+    const out = new Set();
+    obj.traverse(o => {
+      for (const m of [].concat(o.material || [])) for (const v of Object.values(m)) if (v && v.isTexture && !v.isRenderTargetTexture && v.image) out.add(v);
+    });
+    return [...out];
+  }
+  function upload(renderer, obj) {
+    if (!renderer || !renderer.initTexture || !obj) return Promise.resolve();
+    const waits = [];
+    for (const tex of textures(obj)) {
+      if (sent.has(tex)) { const j = queue.find(q => q.tex === tex); if (j) waits.push(j.p); continue; } // (up, or on its way)
+      sent.add(tex);
+      const job = { renderer, tex };
+      job.p = new Promise(r => { job.done = r; });
+      queue.push(job);
+      waits.push(job.p);
+    }
+    if (!pumping) pump();
+    return Promise.all(waits).then(() => {});
+  }
+  // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
+  function warm(renderer, obj, camera, opts) {
+    return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
+  }
+
+  return { load, create, lin, smooth, compile, upload, warm };
 })();
