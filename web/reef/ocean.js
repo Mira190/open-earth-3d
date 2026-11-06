@@ -145,7 +145,10 @@ export function createOcean(d, env, heightTex) {
     if (env.mirror) {
       env.mirror.uvNode = env.mirror.uvNode.add(vec2(N.x, N.z).mul(0.06));
       // the wind breaks the mirror up: the more of it, the more the reflection is a blur of sky than an image
-      refl = mix(env.mirror.rgb, env.skyRefl(R).mul(0.85), clamp(u.wind.mul(0.75), 0, 0.8));
+      // the mirror's image of the sun is held to a bright sky's level: the sun on the water is the glitter's (below),
+      // and the disc's full radiance, smeared by the waves, read as a white slab across the lake
+      const mir = env.mirror.rgb, mL = dot(mir, vec3(0.2126, 0.7152, 0.0722));
+      refl = mix(mir.mul(min(float(1), u.white.mul(1.0).div(max(mL, 1e-4)))), env.skyRefl(R).mul(0.85), clamp(u.wind.mul(0.75), 0, 0.8));
     } else refl = mix(env.skyRefl(R).mul(0.85), env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6));
     // sun glitter (Cox and Munk 1954): the facets that send the sun to the eye have the half-vector as their
     // normal; their share is the Gaussian slope density of what the pixel cannot resolve, around the slope it can.
@@ -187,7 +190,11 @@ export function createOcean(d, env, heightTex) {
     const spark = mix(mix(sparkAt(sx0, sz0), sparkAt(sx0.mul(2), sz0), fx), mix(sparkAt(sx0, sz0.mul(2)), sparkAt(sx0.mul(2), sz0.mul(2)), fx), fz)
       .mul(SPARK_NORM).mul(0.8).add(0.2);
     // the sun's glitter, and the moon's: the same law at 2.3e-6 of the light, which the adapted eye sees as a path of silver
-    const glint = glintOf(u.sunDir, u.sunI, u.sunCol, u.sunDir.y).add(glintOf(u.moonDir, u.moonI, vec3(0.85, 0.9, 1.0), u.moonDir.y)).mul(spark);
+    const glint0 = glintOf(u.sunDir, u.sunI, u.sunCol, u.sunDir.y).add(glintOf(u.moonDir, u.moonI, vec3(0.85, 0.9, 1.0), u.moonDir.y)).mul(spark);
+    // rolled off toward a few times a sunlit white, as film takes a highlight: the path still glitters, but its
+    // core no longer burns a block of flat white into the frame (the moon's path, far below this, keeps its own)
+    const gL = dot(glint0, vec3(0.2126, 0.7152, 0.0722));
+    const glint = glint0.div(gL.div(u.white.mul(1.2)).add(1));
     // the floor through the water, bent by the surface: resample the frame behind along the view-space normal,
     // by an amount that grows with the water the ray crosses; keep the straight sample where the bent one
     // would pick up something in front of the water (a hull, a swimmer)

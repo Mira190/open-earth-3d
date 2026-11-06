@@ -20,8 +20,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 7087436,
-   "game": 10878029
+   "model": 7087461,
+   "game": 10878054
   }
  },
  {
@@ -44,8 +44,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5570682,
-   "game": 8848969
+   "model": 5570932,
+   "game": 8849219
   }
  },
  {
@@ -72,8 +72,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 19430772,
-   "game": 22440965
+   "model": 19430412,
+   "game": 22440605
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -109,8 +109,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5078884,
-   "game": 5626972
+   "model": 5078865,
+   "game": 5626953
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
@@ -140,8 +140,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2850816,
-   "game": 3290667
+   "model": 2850805,
+   "game": 3290656
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
@@ -171,8 +171,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 4101629,
-   "game": 4778729
+   "model": 4101642,
+   "game": 4778742
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
@@ -201,8 +201,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 11116385,
-   "game": 14568263
+   "model": 11241826,
+   "game": 14693704
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -1377,8 +1377,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 7725269,
-   "game": 10589319
+   "model": 7725369,
+   "game": 10589419
   },
   "group_meta": {
    "native": "\u6771\u4eac",
