@@ -132,7 +132,7 @@ Good Shepherd). In a full stand they stand 1.4 plants a square metre, touching. 
 second and a few odd plants of any colour. A plant is a clump: nine spikes of 0.5–1.1 m, the tallest in the middle,
 nearly as thick as their foot for most of their length and tapering to buds, florets raised in whorls, speckled paler
 (the banner petals) and opening from the foot up, over a mound of palmate leaves (fans of 11 leaflets on their stalks).
-Three forms by distance, from one set of spots so that a plant stays put as it changes form: whole plants within 12 m,
+Four forms by distance, from one set of spots so that a plant stays put as it changes form: within 4.5 m (high and medium tiers) every flower modelled, pea flowers in whorls of six every 1.8 cm, each a short keel under a broad banner petal, packed round a thin stem, over leaflets folded along their midribs (refilled every metre the eye moves, and swapped with the coarser forms in the shader by the live distance, so a plant never waits for a refill to change); whole plants within 12 m,
 plainer ones (five cone spikes, six leaves) to 55 m, and beyond, out to 340 m, patches of nine spikes over small leaf
 domes, 1.4 m across, one instance each, so the drifts on a shore a few hundred metres below a lookout still read as a
 band of colour. The far ring is filled a few milliseconds a frame and swapped in when done. A phone gets fewer and
@@ -182,7 +182,7 @@ filling the frame and cumulus building on the Divide.
 **Night** is the Aoraki Mackenzie International Dark Sky Reserve (Bortle 2):
 - the Milky Way laid on the J2000 galactic plane, brighter and wider toward the bulge in Sagittarius, with dust lanes;
 - the Magellanic Clouds at their real positions (circumpolar, due south);
-- stars from a hashed grid: the positions and counts are not a catalogue;
+- the stars of the Yale Bright Star Catalogue (section 12);
 - the sky turned by sidereal time for the clock.
 
 **The light on the land** (`web/reef/alpine/light.js`):
@@ -215,6 +215,13 @@ detail patch's own 2 m triangles, so nothing sinks into or floats over the surfa
 **Clouds** (`web/reef/alpine/clouds.js`, `?clouds=0..1`) are soft-edged cumulus puffs over the high peaks, with flat
 bases at about 2,350 m: the cloud a westerly builds on the Divide on a fine day. They are sheets facing the camera, not
 volumes.
+
+**A nor'west arch** (`?weather=nwarch`, both Mackenzie sites): Canterbury's sign of a nor'wester. A deck of high
+cloud 6 km up over the basin, streaked along the wind as lenticular cloud is, ends in the west in a long straight edge
+parallel to the Main Divide (city.json `clouds.nwarch`: a point on it 12 km south-east of the Divide at Aoraki and its
+bearing, 37 degrees, a judgement from photographs), with the clear foehn gap under it over the Alps. Its underside
+takes the sky's light by day and, while the sun is still above the deck's own horizon round sunset, the orange and
+red the arch is known for. It is a shaded sheet, not a volume, and takes no haze (it is above most of the air).
 
 **Tone and exposure:**
 - tone mapping is the title screen's curve family (Khronos PBR Neutral), not ACES, which turns the sky and the lake grey-teal;
@@ -266,8 +273,7 @@ Sources read on 2026-11-05:
 - **Checked:** stills on a desktop (1440 × 900) and a phone (390 × 844) at day, dusk and night, in software WebGL2 (Mesa).
 - **Not checked:** a real GPU, WebGPU, Safari or iOS. The planar reflection renders the scene twice; on a slow device
   turn it off with `?mirror=0` and the plants with `?flora=0`.
-- **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway;
-  a real star catalogue; volumetric clouds (issue #204).
+- **Open:** volumetric clouds (issue #204).
 
 ## 9. Picture tiers
 
@@ -287,13 +293,15 @@ the way round). The mirror leaves out what is too small to read in a wind-blurre
 matagouri and far lupin patches always. The matagouri beyond 40 m is a bush of 14 twigs, and the lupins' spikes have no
 end caps. The underwater light shafts are skipped by a branch when the eye is above the water.
 
-Measured with `tools/reef_cost.js` at Tekapo's lupin shore (`shots` "lupins", 6 November, 14:30), WebGL2 on Mesa
+Measured with `tools/reef_cost.js` at Tekapo's lupin shore (the low tier has no close-up form) (`shots` "lupins", 6 November, 14:30), WebGL2 on Mesa
 llvmpipe, triangles a frame over every pass and the median frame time:
 
 | | Before | high | medium | low |
 |---|---|---|---|---|
 | Desktop 1440 x 900 | 6.57 M, 2105 ms | 2.46 M, 1689 ms | 1.53 M, 963 ms | 0.73 M, 605 ms |
 | Phone 390 x 844 (3x screen) | 3.00 M, 1359 ms | 1.88 M, 1099 ms | 1.16 M, 572 ms | 0.64 M, 341 ms |
+| Desktop, with the close-up lupins (section 4) | | 2.90 M, 1567 ms | 1.79 M, 987 ms | 0.73 M, 678 ms |
+| Phone, with the close-up lupins | | 2.33 M, 1131 ms | 1.42 M, 622 ms | 0.64 M, 351 ms |
 
 A software renderer is limited by its pixels more than by its triangles, so the frame times say less than the
 triangles about a real GPU. A phone picks the low tier for itself. On the reef sites, whose life is light already
@@ -340,3 +348,65 @@ centrelines:
   are a judgement from photographs.
 
 The reef gametest checks that the cars keep left and stand on the drawn ground.
+
+| SH80 below Peter's Lookout | After dark |
+|---|---|
+| ![](../images/lake-pukaki/sh80-traffic.jpg) | ![](../images/lake-pukaki/sh80-night.jpg) |
+
+## 11. Landmark models
+
+Measured by `pipeline/pukaki_landmarks.py` (`cities/lake-pukaki/analysis/landmarks.json`: OpenStreetMap footprints and
+bridge ways via Overture Maps 2026-10-21.0, heights from LINZ's 1 m LiDAR DSM less DEM) and built by
+`blender/build_pukaki.py` into `web/data/lake-pukaki/models/pukaki-*.glb` (meshopt-compressed). They are placed by
+city.json `landmarks`, as at Tekapo.
+
+| Landmark | Measured | Model |
+|---|---|---|
+| The Hermitage Hotel | OSM footprint 144 x 102 m (6,700 m²), 29.8 m to the top over 763 m ground; 6,800 square metres of LiDAR height over the hotel and its attached wings | blocks of whole storeys (3.2 m) cut from the LiDAR, each on its own ground (it falls 13 m across the site), up to eight storeys at the Aoraki Wing; walls in 3 m bays of windows, parapets and flat roofs. 9,900 triangles |
+| Lake Pukaki Visitor Centre | footprint 10.3 x 7.6 m, 5.2 m to the top, 3.9 m median | a mono-pitch roof rising to the lake over a glazed lake side, cedar boards on the others (the form a judgement) |
+| Mt Cook Alpine Salmon shop | footprint 14.7 x 6.7 m, 5.8 m to the ridge | a gable of corrugated iron over weatherboards, the shop windows to the car park (the form a judgement) |
+| The tahr statue (Game and Forest Foundation, unveiled 2014) | no mapped position: the LiDAR's object 2.8 m tall on the knoll inside the viewing loop 21 m west of the visitor centre (a judgement) | a life-size bronze Himalayan tahr bull (0.95 m at the shoulder) with a bull's long ruff, on a greywacke boulder, facing up the lake |
+| Lower Hooker, Hooker Bluff and Upper Hooker swing bridges | spans along the OSM ways: 71.0, 101.5 and 78.7 m; decks along the DSM (a sag fitted); banks and river from the DEM | a 1.2 m deck hung from two main cables at handrail height on portal frames, hangers every 1.5 m, wire mesh sides, backstays to anchor blocks; walkable (`deck` in city.json) |
+
+The Hooker Bluff bridge was rebuilt in 2025-26: DOC gives the new one as 189 m long and 1.2 m wide, opened in July
+2026. OpenStreetMap's way, and so the model, has 101.5 m of bridge; the new alignment was not in the data read.
+The bronze is less metallic than real bronze, because the viewer has no environment map and a full metal renders
+near black without one.
+
+| The tahr statue by the visitor centre | The Hermitage in Blender |
+|---|---|
+| ![](../images/lake-pukaki/tahr.jpg) | ![](../images/lake-pukaki/model-hermitage.jpg) |
+
+Sources read on 2026-11-06: Scoop, "Duchess of Bedford to dedicate tahr statue" (2014); Wikipedia, *Lake Pukaki* (the
+statue on its boulder by the visitor centre); DOC, the Hooker Valley Track and its new second bridge (2026); DC
+Structures Studio, Hooker Valley pedestrian bridge 2.
+
+## 12. The stars
+
+`web/reef/alpine/stars.js` draws the **Yale Bright Star Catalogue, 5th revised edition** (D. Hoffleit and W. H. Warren
+Jr., Yale University Observatory, 1991): 9,096 stars to about magnitude 6.5, the naked eye's limit under the reserve's
+sky, with their J2000 positions, V magnitudes and B-V colours. `pipeline/stars.py` reads the catalogue's file from the
+Smithsonian Astrophysical Observatory's Telescope Data Center (tdc-www.harvard.edu/catalogs/bsc5.html; the same data
+as CDS / NASA ADC catalogue V/50) into `web/data/sky/bsc5.bin` (91 kB). **Licence:** the catalogue is distributed by
+the astronomical data centres free of charge for any use, with acknowledgement; this is the acknowledgement.
+
+- **Position:** each star is turned by the same matrix as the Milky Way and the Magellanic Clouds (atmos.js
+  `equatorialMatrix`: sidereal time for the clock, the site's latitude and longitude), so the Southern Cross, the
+  Pointers, Orion and the Clouds stand where they are on the date and at the hour. Precession since J2000 (a third of a
+  degree) is left out.
+- **Look:** a sprite a few pixels across for each star, larger for the bright ones, as a photograph spreads them;
+  brightness from the magnitude with the range eased to a photograph's; colour from B-V (Ballesteros 2012 to a
+  temperature, then a blackbody's colour, at 60% of its saturation, as the eye sees star colours).
+- **Through the air:** dimmed by the airmass (Kasten and Young 1989) at 0.2 magnitudes an airmass, twinkling more
+  toward the horizon, and hidden behind the land (depth-tested at 140 km). The lake's mirror shows them.
+- **Under the stars:** the Milky Way's band, its bulge and dust lanes, and the Clouds stay a model on their real
+  positions, with a smooth grain of unresolved stars along the band.
+
+Checked in stills: a November night shows the Clouds high in the south and the Pointers low beside the band; a June
+midnight puts the galactic core overhead.
+
+| The southern sky from Peter's Lookout, 7 November 01:30 | A nor'west arch at sunset (`?weather=nwarch`) |
+|---|---|
+| ![](../images/lake-pukaki/stars-south.jpg) | ![](../images/lake-pukaki/nwarch.jpg) |
+
+![Lupins up close](../images/lake-pukaki/lupins-close.jpg)

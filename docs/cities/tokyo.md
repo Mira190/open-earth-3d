@@ -43,7 +43,15 @@ of the Outer Garden moats' banks over their water. The ground under each moat go
 DEM's fill that bled onto the banks beside them is taken off (a point within 10 m of a moat stands no
 higher than the bank 12 m back), dressed stone walls stand from the water to the bank, and the game
 treats the moats as water at their level. The bridges over them now meet their banks where they are
-(Wadakura-bashi at 2.7 and 2.9 m) instead of a river's 3.5 m embankment. The outlines are
+(Wadakura-bashi at 2.7 and 2.9 m) instead of a river's 3.5 m embankment.
+
+The Seimon Tetsubashi (二重橋) is level, without a crown, at the Seimon terrace's 16.7 m (GSI's laser over
+the flat terrace at its south end; the palace side reads 16.5 to 17 m). The 5 m DEM spreads the Nijubashi
+moat's walls over 15 to 18 m of slope, which had set the deck from 15.3 down to 10.1 m. Within 40 m of the
+bridge (fading over 30 m more) the walls now stand to the terrace, read 18 m back from the shore, and the
+ground behind them is the terrace's (`moats.py` WALLED).
+
+![The Seimon Tetsubashi level between the Nijubashi moat's walls](../images/tokyo/nijubashi-level.jpg) The outlines are
 OpenStreetMap's (ODbL); `python cities/tokyo/moats.py` writes `cities/tokyo/moats.json`, and
 `pipeline/refresh_terrain.py --city tokyo --hook`, `pipeline/refresh_bridges.py`, `pipeline/landmarks.py`
 and `pipeline/game_extras.py` bring a built city up to it.
@@ -85,6 +93,7 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 | Footprints, names, roads, water, parks | Overture Maps, release 2026-10-21.0 (OpenStreetMap) | ODbL |
 | Terrain | GSI DEM5A, 5 m airborne laser survey, bare earth (10 m DEM where 5A has no data) | GSI terms of use |
 | Aerial photos | GSI seamless photos, zoom 17 | GSI terms of use |
+| Shuto Expressway (Nihonbashi) | Overture Maps segments (OpenStreetMap); heights from photographs | ODbL |
 | Palace moats' water levels | Ministry of the Environment, Kokyo Gaien National Garden Office: 皇居外苑濠 濠別管理方針 (March 2010) | Government publication, cited |
 
 ## 3. How PLATEAU is used

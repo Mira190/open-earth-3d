@@ -123,10 +123,12 @@ window.OEQuality = (function () {
   // the cities' 3D views in the same tiers: pixels within the tier's budget (a desktop keeps up to
   // 2x), MSAA, the sun's shadow map, a half-float post stack only where one can be drawn into, and
   // on low world.js's small set, which leaves out shopfronts, parapets, awnings and rooftop plant,
-  // the water's reflection and half its wave detail
+  // the water's reflection and half its wave detail. woods: the share of the woods' far crowns drawn
+  // (web/trees.js farKeep): half on medium, where a wooded hillside's far ring was most of a frame's
+  // triangles (Queenstown, #227); low already keeps a third of the woods' trees and draws them nearer
   function city() {
     const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name, s = TIERS[name];
-    return { name, small: name === 'low', shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low',
+    return { name, small: name === 'low', shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.min(c.dpr, 2) : pixelRatio(s, w, h)) };
   }

@@ -9,12 +9,12 @@ pipeline/survey.py), so no building needs a height fix here. What the data canno
                     are Doppelmayr-style tubular steel masts with a crossarm carrying a sheave train
                     over each track; the cabins (web/game/rail.js, kind "gondola") ride the profile.
 
-  Skyline deck      the viewing deck in front of the Skyline complex on Bob's Peak, where the
-                    town's best-known photograph is taken: the bay, the Gardens, the Kelvin
-                    Peninsula and the Remarkables. A timber deck on steel posts with a glass
-                    balustrade, laid along the contour and facing south-east down the slope. Its
-                    place and size are indicative (DECK), its level the ground at its back edge
-                    from the LiDAR; the game walks it as a strip and the player starts on it.
+  Skyline deck      the viewing deck on the Skyline restaurant's south-east face on Bob's Peak, where
+                    the town's best-known photograph is taken: the bay, the Gardens, the Kelvin
+                    Peninsula and the Remarkables. A timber deck on a steel frame with a glass
+                    balustrade, 17 m over the luge track. Its place and level are measured (DECK:
+                    the 2026 aerial photographs and the 2021 LiDAR); the game walks it as a strip
+                    and the player starts on it.
 """
 import json
 import math
@@ -28,7 +28,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TRACK_M = 5.6        # between the up and the down cable
 CABLE_R = 0.026      # the haul rope, 52 mm
 
-DECK = {"at": (-1048.0, 452.0), "along_deg": 45.0, "length": 26.0, "depth": 10.0}  # centre, the bearing of its long side, metres
+# The viewing deck along the south-east face of the Skyline restaurant, where LINZ's 2026 aerial photographs
+# show the crowd at its balustrade and the 2021 LiDAR's surface model a 3-4 m strip 17 m over the luge
+# track below, at 474.6 m (the restaurant's roof at 479.4 m): its centre, the bearing of its long side,
+# its length and depth (metres), and its level (z, from the LiDAR; without it, the ground at its back edge).
+DECK = {"at": (-975.0, 478.1), "along_deg": 49.5, "length": 26.0, "depth": 3.6, "z": 474.6}
 
 MATERIALS = {
     "skyline_wall": {"color": "#3e4347", "roughness": 0.55, "metalness": 0.2},
@@ -104,7 +108,7 @@ def cable_z(G, s):
     return p[-1][1]
 
 
-def gondola_meshes(G):
+def gondola_meshes(G, ground=None):
     o, u, r = _frame(G)
     steel = Mesh("gondola_towers", "gondola_steel", False)
     sheave = Mesh("gondola_sheaves", "gondola_sheave", False)
@@ -115,10 +119,13 @@ def gondola_meshes(G):
     for sp in G["supports"]:
         if sp["kind"] != "tower":
             continue
+        if sp.get("type") == "portal":
+            portal(G, sp, o, u, r, steel, sheave, footing, paint, ground)
+            continue
         c = o + u * sp["s"]
         g, top = sp["ground"], sp["ground"] + sp["height_m"]
         arm_z = top - 0.55  # the crossarm, under the sheave trains
-        # concrete footing, the mast (tapering tube), its flange rings
+        # concrete plinth, the mast (tapering tube), its flange rings
         footing.box([c[0], c[1], g - 0.6], [c[0], c[1], g + 0.5], 2.2, 2.2)
         steel.tube([[c[0], c[1], g + 0.5], [c[0], c[1], arm_z - 0.4]], [0.55, 0.38], sides=14)
         for z in np.arange(g + 0.5 + 6.0, arm_z - 1.0, 6.0):
@@ -126,14 +133,7 @@ def gondola_meshes(G):
         # the head: a crossarm across the line, and a maintenance platform with its rail
         a0, a1 = c - r * (half + 1.2), c + r * (half + 1.2)
         steel.box([a0[0], a0[1], arm_z], [a1[0], a1[1], arm_z], 0.6, 0.7)
-        p0, p1 = c - u * 1.0, c + u * 1.0
-        footing_plat = [p0 - r * (half + 0.9), p0 + r * (half + 0.9), p1 + r * (half + 0.9), p1 - r * (half + 0.9)]
-        for k in range(4):
-            a, b = footing_plat[k], footing_plat[(k + 1) % 4]
-            steel.box([a[0], a[1], arm_z - 0.45], [b[0], b[1], arm_z - 0.45], 0.08, 0.08)
-            steel.box([a[0], a[1], arm_z + 0.65], [b[0], b[1], arm_z + 0.65], 0.05, 0.05)
-        steel.quad([*footing_plat[0], arm_z - 0.42], [*footing_plat[1], arm_z - 0.42], [*footing_plat[2], arm_z - 0.42], [*footing_plat[3], arm_z - 0.42])
-        steel.quad([*footing_plat[3], arm_z - 0.44], [*footing_plat[2], arm_z - 0.44], [*footing_plat[1], arm_z - 0.44], [*footing_plat[0], arm_z - 0.44])
+        platform(steel, c, u, r, half, 1.0, arm_z)
         # a ladder up the mast's downhill side
         lad = c - u * 0.5
         for side in (-0.22, 0.22):
@@ -143,19 +143,8 @@ def gondola_meshes(G):
         # a sheave train over each track: a beam along the line with its wheels, the rope over them
         for side in (-1, 1):
             t = c + r * side * half
-            cz = cable_z(G, sp["s"])
-            pitch = (cable_z(G, sp["s"] + 4) - cable_z(G, sp["s"] - 4)) / 8
-            n = 4 if sp["height_m"] < 18 else 6
-            Lb = 0.45 * n
-            b0, b1 = t - u * Lb / 2, t + u * Lb / 2
-            steel.box([b0[0], b0[1], cz - 0.35 - pitch * Lb / 2], [b1[0], b1[1], cz - 0.35 + pitch * Lb / 2], 0.18, 0.3)
-            steel.box([t[0], t[1], arm_z + 0.35], [t[0], t[1], cz - 0.35], 0.2, 0.2)
-            for k in range(n):
-                w = t + u * (-Lb / 2 + 0.225 + 0.45 * k)
-                wz = cz - 0.2 + pitch * (-Lb / 2 + 0.225 + 0.45 * k)
-                for d in (-0.12, 0.12):
-                    q = w + r * d
-                    sheave.tube([[q[0] - r[0] * 0.03, q[1] - r[1] * 0.03, wz], [q[0] + r[0] * 0.03, q[1] + r[1] * 0.03, wz]], 0.2, sides=12)
+            steel.box([t[0], t[1], arm_z + 0.35], [t[0], t[1], cable_z(G, sp["s"]) - 0.35], 0.2, 0.2)
+            sheave_train(G, sp["s"], sp.get("head_m", 0.45 * (4 if sp["height_m"] < 18 else 6)), t, u, r, steel, sheave)
     # the rope: up on the right and down on the left, between the stations, and round the bullwheels
     prof = G["profile"]
     for side in (-1, 1):
@@ -167,13 +156,94 @@ def gondola_meshes(G):
     return [steel, sheave, footing, paint, cable]
 
 
+def sheave_train(G, s, length, t, u, r, steel, sheave):
+    """A beam along the line at track point t (the tower's s), `length` m long, with a pair of
+    wheels every 0.45 m under the rope, following the cable's pitch."""
+    n = max(4, int(length / 0.45))
+    Lb = 0.45 * n
+    z = lambda d: cable_z(G, s + d)
+    b0, b1 = t - u * Lb / 2, t + u * Lb / 2
+    steel.box([b0[0], b0[1], z(-Lb / 2) - 0.35], [b1[0], b1[1], z(Lb / 2) - 0.35], 0.18, 0.3)
+    for k in range(n):
+        d = -Lb / 2 + 0.225 + 0.45 * k
+        w, wz = t + u * d, z(d) - 0.2
+        sheave.tube([[w[0] - r[0] * 0.15, w[1] - r[1] * 0.15, wz], [w[0] + r[0] * 0.15, w[1] + r[1] * 0.15, wz]], 0.2, sides=8)  # a pair of wheels
+
+
+def platform(steel, c, u, r, half, along, z):
+    """A maintenance platform round a tower's head at z: grating, its frame and a handrail."""
+    p0, p1 = c - u * along, c + u * along
+    ring = [p0 - r * (half + 0.9), p0 + r * (half + 0.9), p1 + r * (half + 0.9), p1 - r * (half + 0.9)]
+    for k in range(4):
+        a, b = ring[k], ring[(k + 1) % 4]
+        steel.box([a[0], a[1], z - 0.45], [b[0], b[1], z - 0.45], 0.08, 0.08)
+        steel.box([a[0], a[1], z + 0.65], [b[0], b[1], z + 0.65], 0.05, 0.05)
+        steel.box([a[0], a[1], z - 0.45], [a[0], a[1], z + 0.65], 0.05, 0.05)
+    steel.quad([*ring[0], z - 0.42], [*ring[1], z - 0.42], [*ring[2], z - 0.42], [*ring[3], z - 0.42])
+    steel.quad([*ring[3], z - 0.44], [*ring[2], z - 0.44], [*ring[1], z - 0.44], [*ring[0], z - 0.44])
+
+
+def portal(G, sp, o, u, r, steel, sheave, footing, paint, ground=None):
+    """A portal tower, as the 2026 photographs show three of them (by the bottom station, over the
+    luge and under the top station): a lattice frame across and along the line on a pair of legs
+    outside the tracks (two pairs under a long head), carrying a long sheave train over each track."""
+    half = TRACK_M / 2
+    c, Lh = o + u * sp["s"], sp.get("head_m", 8.0)
+    leg_d = half + 1.9
+    ends = [-Lh / 2 + 1.0, Lh / 2 - 1.0] if Lh > 12 else [0.0]
+    cz = lambda d: cable_z(G, sp["s"] + d)
+    for e in ends:
+        q = c + u * e
+        top = cz(e) - 1.1  # the cross girder, under the sheave trains
+        feet = []
+        for side in (-1, 1):
+            f = q + r * side * (leg_d + 0.8)
+            g = ground(*f) if ground else sp["ground"]  # each leg on the bare earth under it
+            feet.append((f, g))
+            footing.box([f[0], f[1], g - 0.6], [f[0], f[1], g + 0.6], 1.8, 1.8)
+            h = q + r * side * leg_d
+            steel.tube([[f[0], f[1], g + 0.6], [h[0], h[1], top]], [0.42, 0.3], sides=12)
+            paint.tube([[f[0], f[1], g + 1.8], [f[0] + (h[0] - f[0]) * 0.04, f[1] + (h[1] - f[1]) * 0.04, g + 2.4]], 0.45, sides=12)
+        # the cross girder and a K-brace between the legs
+        a0, a1 = q - r * (leg_d + 0.3), q + r * (leg_d + 0.3)
+        steel.box([a0[0], a0[1], top], [a1[0], a1[1], top], 0.7, 0.9)
+        (f0, g0), (f1, g1) = feet
+        zm = min(g0, g1) + 0.55 * (top - min(g0, g1))
+        m0, m1 = q - r * (leg_d - 0.15) * 0.97, q + r * (leg_d - 0.15) * 0.97
+        steel.box([m0[0], m0[1], zm], [m1[0], m1[1], zm], 0.25, 0.25)
+        for m in (m0, m1):
+            steel.box([m[0], m[1], zm], [q[0], q[1], top - 0.45], 0.16, 0.16)
+    # the head: a lattice along the line, a girder and a walkway outside each track
+    for side in (-1, 1):
+        t = c + r * side * half
+        sheave_train(G, sp["s"], Lh, t, u, r, steel, sheave)
+        w = c + r * side * (half + 1.0)
+        b0, b1 = w - u * Lh / 2, w + u * Lh / 2
+        z0, z1 = cz(-Lh / 2) - 1.1, cz(Lh / 2) - 1.1
+        steel.box([b0[0], b0[1], z0], [b1[0], b1[1], z1], 0.35, 0.6)            # the bottom chord
+        steel.box([b0[0], b0[1], z0 + 1.5], [b1[0], b1[1], z1 + 1.5], 0.06, 0.06)  # the walkway's handrail
+        n = max(2, int(Lh / 2.4))
+        for k in range(n + 1):
+            d = -Lh / 2 + Lh * k / n
+            p = c + u * d
+            z = cz(d) - 1.1
+            pa, pb = p - r * (half + 1.0), p + r * (half + 1.0)
+            if side < 0:
+                steel.box([pa[0], pa[1], z], [pb[0], pb[1], z], 0.18, 0.25)   # the cross members
+            q = p + r * side * (half + 1.0)
+            steel.box([q[0], q[1], z], [q[0], q[1], z + 1.5], 0.05, 0.05)       # the handrail's posts
+            ts = p + r * side * half
+            steel.box([q[0], q[1], z + 0.1], [ts[0], ts[1], cz(d) - 0.45], 0.12, 0.12)  # the hangers to the sheave beam
+    paint.box([*(c - u * Lh / 2 - r * (half + 1.0)), cz(-Lh / 2) - 1.45], [*(c - u * Lh / 2 + r * (half + 1.0)), cz(-Lh / 2) - 1.45], 0.12, 0.12)
+
+
 def deck_frame(ground):
     a = math.radians(DECK["along_deg"])
     ax = np.array([math.sin(a), math.cos(a)])           # along the deck
     out = np.array([ax[1], -ax[0]])                       # out over the slope (south-east)
     c = np.array(DECK["at"])
     back = c - out * DECK["depth"] / 2
-    z = max(ground(*(back + ax * u)) for u in np.linspace(-DECK["length"] / 2, DECK["length"] / 2, 9)) + 0.15
+    z = DECK.get("z") or max(ground(*(back + ax * u)) for u in np.linspace(-DECK["length"] / 2, DECK["length"] / 2, 9)) + 0.15
     return c, ax, out, z
 
 
@@ -219,7 +289,7 @@ def game_surfaces(scene):
     return [{"name": "Skyline deck", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
              "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)], "half_width": DECK["depth"] / 2,
              "profile": [[-L / 2, round(z, 2)], [L / 2, round(z, 2)]], "thickness": 0.25, "mesh": "skyline_deck",
-             "drape": True, "fly_under": False, "label": "the Skyline deck"}]
+             "drape": False, "fly_under": False, "label": "the Skyline deck"}]
 
 
 def finalize(ctx):
@@ -236,13 +306,28 @@ def finalize(ctx):
 def landmark_meshes(scene):
     meshes = []
     G = gondola_data()
-    if G:
-        meshes += gondola_meshes(G)
     from archkit import Terrain
-    meshes += deck_meshes(Terrain("queenstown"))
+    T = Terrain("queenstown")
+    if G:
+        meshes += gondola_meshes(G, T)
+    meshes += deck_meshes(T)
     for M in massing_data().values():
         meshes += terraces(M)
-    return MATERIALS, meshes
+    heritage = _sibling("heritage")
+    hm, hidden = heritage.meshes(T)
+    return {**MATERIALS, **heritage.MATERIALS}, meshes + hm, {"hidden": hidden}
+
+
+def _sibling(name):
+    """A module next to this one (cities/queenstown/<name>.py): the city's own modules are not on the path."""
+    import importlib.util
+    import sys
+    key = f"queenstown_{name}"
+    if key not in sys.modules:
+        spec = importlib.util.spec_from_file_location(key, os.path.join(HERE, f"{name}.py"))
+        sys.modules[key] = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sys.modules[key])
+    return sys.modules[key]
 
 
 def game_rail(scene):

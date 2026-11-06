@@ -175,8 +175,9 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // yozakura (#162): an area with "yozakura" lights its cherries after dark while they flower: uplights at each
   // tree's foot (a pool of light round it) and bonbori, paper lanterns on posts, along its ways on foot (foot: the
   // city's night.json, whose foot and foot_pts are the mapped footways), or beside its trees where none is mapped;
-  // night: the uniform world.js sets after dark (0..1); small: the light tier (fewer lanterns, no glows)
-  function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, night = null, foot = null, small = false } = {}) {
+  // night: the uniform world.js sets after dark (0..1); small: the light tier (fewer lanterns, no glows);
+  // farKeep: the share of a wood's far crowns (past 200 m, where half stand for all) the tier draws
+  function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, night = null, foot = null, small = false, farKeep = 1 } = {}) {
     const I = lib.info, n = list.length / 4;
     const AT = I.atlas || {}, cells = AT.cells || {};
     const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, sakura: cells.sakura ?? -10, maple: cells.maple ?? 7 };
@@ -260,7 +261,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       const k = pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (zi >= 0 && zones[zi].yozakura && isCherry.has(weights[k][0])) { lit[i] = 1; litVar.add(varieties.find(o => o.sp === weights[k][0]).v); }
-      if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
+      if (wood) { half[i] = 1 + Math.floor(hash(x + 5, y + 9) * 254); far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
       const s = i >= measured ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
         : 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
@@ -301,6 +302,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     let yozBloom = 0;
     const Y = yozakura();
     const PT = petals();
+    const farCut = 1 + 127 * Math.min(1, Math.max(0, farKeep)); // (half[] is 1..254 for a wood's trees, 0 for the rest: never cut)
     const WOOD_M = keep < 1 ? 600 : 900, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
     // re-sort the trees into near, mid and far when the camera has moved far enough
     function sort(eye) {
@@ -315,7 +317,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         // beyond WOOD_M a wood is the photo's canopy (world.js woodsFloor): its trees thin out towards it
         if (f < 1 && e2 > WM * WM * (0.55 + 45 * (f - 0.55)) ** 2) continue;
         const lod = e2 < n0 * f * f ? 0 : e2 < n1 * (f < 1 ? 0.15 : 1) ? 1 : 2;
-        if (lod === 2 && half[i]) continue; // past 200 m half a wood's crowns stand for all (they overlap)
+        if (lod === 2 && half[i] >= farCut) continue; // past 200 m half a wood's crowns stand for all (they overlap), fewer on a lighter tier
         const parts = meshes[which[i]][lod];
         for (const im of parts) {
           const j = im.count++;

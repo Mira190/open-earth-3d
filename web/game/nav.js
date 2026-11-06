@@ -729,10 +729,15 @@ window.OENav = (function () {
       return false;
     }
     // the highest surface already built at (x, y), a deck strip or a pier (-Infinity for none)
-    function surfaceAt(x, y) {
+    // the highest built surface at (x, y) (a pier, a strip), or with `near`, the one nearest that height (a
+    // bridge's deck under the expressway's that crosses it: the Shuto over Nihonbashi)
+    function surfaceAt(x, y, near) {
       const k = cellOf(x, y);
       let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
-      for (const s of stripsAt(x, y)) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; }
+      for (const s of stripsAt(x, y)) {
+        const z = stripHeight(s, x, y);
+        if (z != null && (near == null ? z > h : Math.abs(z - near) < Math.abs(h - near))) h = z;
+      }
       return h;
     }
     // ---------------------------------------------------------- decks of mapped bridges and viaducts (decks.js)
