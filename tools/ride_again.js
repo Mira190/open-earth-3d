@@ -107,10 +107,12 @@ const [,, city = 'shibuya', trials = '4'] = process.argv;
       if (!worst && !seated) worst = 'you are in the ride, but your figure is not in its seat';
       // and it drives you off (one got back into in the traffic is in the jam you got out of: a minute for
       // it to clear or find a way round; reported, not failed: that is the traffic's, not the ride's)
-      const s1 = o2.drv.st.s;
-      for (let i = 0; i < 120 && o2.drv.st.s - s1 < 30 && !worst && o2.phase === 'driving'; i++) g.advance(0.5);
-      if (!worst && o2.phase === 'driving' && o2.drv.st.s - s1 < 30) r.stuck = `hasn't moved on in a minute: ${(o2.drv.st.s - s1).toFixed(0)} m (${o2.drv.st.why || ''}${o2.drv.st.lineAt && o2.drv.st.lineAt.j.sig ? `, light ${o2.drv.st.lineAt.j.ph}${o2.drv.st.lineAt.j.st}` : ''}, found another way ${o2.rerouted || 0} times)`;
-      r.second = worst || `in, ${(o2.drv.st.s).toFixed(0)} m on to ${o2.dest && o2.dest.name}${o2.rerouted ? `, round a jam ${o2.rerouted} times` : ''}`;
+      // (the way driven, half a second at a time: one that turns round or finds another way starts the new way's s from 0)
+      let went = 0, px = o2.drv.st.x, py = o2.drv.st.y;
+      for (let i = 0; i < 120 && went < 30 && !worst && o2.phase === 'driving'; i++) { g.advance(0.5); const t = o2.drv.st; went += Math.hypot(t.x - px, t.y - py); px = t.x; py = t.y; }
+      if (!worst && o2.phase === 'driving' && went < 30) r.stuck = `hasn't moved on in a minute: ${went.toFixed(0)} m (${o2.drv.st.why || ''}${o2.drv.st.lineAt && o2.drv.st.lineAt.j.sig ? `, light ${o2.drv.st.lineAt.j.ph}${o2.drv.st.lineAt.j.st}` : ''}, found another way ${o2.rerouted || 0} times, turned round ${o2.turned || 0} times${o2.turn ? ', turning now' : ''}${o2.qT ? `, queued ${o2.qT.toFixed(0)} s` : ''})`;
+      r.turned = o2.turned || 0;
+      r.second = worst || `in, ${went.toFixed(0)} m on to ${o2.dest && o2.dest.name}${o2.rerouted ? `, round a jam ${o2.rerouted} times` : ''}${o2.turned ? `, turned round ${o2.turned} times` : ''}`;
       r.ok = !worst;
       res.push(r);
     }

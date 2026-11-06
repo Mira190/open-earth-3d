@@ -63,6 +63,12 @@ const npcNight = require('./npc_night');
   await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
+  // (the game reads its clock at Play, from a Date that runs on at the real rate from GAME_TIME: a load
+  // that took longer starts it a little later, with a crowd of another size; in lockstep it starts on the minute)
+  if (lockstep && pinned) await p.evaluate(spec => {
+    const g = window.__game, m = /(\d\d?):(\d\d)$/.exec(spec), min = m ? +m[1] * 60 + +m[2] : null;
+    if (min != null && Math.abs(g.clock.min - min) < 30) { g.setClock(g.clock.y, g.clock.m, g.clock.d, min); g.crowdAuto(true); }
+  }, pinned.spec);
   await p.evaluate(() => window.__game.advance(1));
   await shot('start');
 

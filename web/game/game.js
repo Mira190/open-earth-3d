@@ -549,6 +549,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (hit) { l.lanes = 1; one++; }
     } });
     junctions.oneLane = one; }
+  // the roads' half-widths as the game draws them
+  const ROAD_HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 };
   // how wide a vehicle each lesser street has room for (#202): along each street of a lane each way or
   // narrower, every 3 m (clear of its ends, where the junction's corners are), the widest body (most of its
   // width, knee to 1.4 m, as tools/game_check.js counts a car in a wall) that its lane has room for, the
@@ -565,8 +567,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         roadNet.at(i, s, q);
         const z = (q.deck ? q.z : lineGround(q.x, q.y, q)) ?? q.z;
         for (const dir of l.ow ? [l.ow] : [1, -1]) {
-          const hx = q.hx * dir, hy = q.hy * dir, x = q.x - hy * lane, y = q.y + hx * lane;
-          while (k < R.length && !nav.room(x, y, z, R[k], 1.4, !!q.deck)) k++;
+          // (in its lane, or edged in towards the middle as a car between two facades is, actors.js narrow)
+          let best = R.length;
+          for (const f of [1, 0.5, 0]) {
+            const hx = q.hx * dir, hy = q.hy * dir, x = q.x - hy * lane * f, y = q.y + hx * lane * f;
+            let kk = k;
+            while (kk < best && !nav.room(x, y, z, R[kk], 1.4, !!q.deck)) kk++;
+            best = kk;
+            if (best === k) break;
+          }
+          k = best;
         }
       }
       fit[i] = k === 0 ? 9 : k < R.length ? R[k] / 0.8 : 0; // (as a vehicle's half-width: most of it, 0.8, must have room)
@@ -583,7 +593,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } }
   if (junctions.heads && junctions.heads.walkPosts) for (const q of junctions.heads.walkPosts) posts.add(q.x, q.y, q.z, 0.09, 'lamp'); // (a scramble's walk signals stand beside its crosswalks: walked round)
   // (is (x, y) in a carriageway, as the game draws the roads? nobody waits there)
-  const ROAD_HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 };
   const onRoad = (x, y) => { const q = roadNet.nearest(x, y, 8); return !!q && q.d < (ROAD_HALF[roadNet.L[q.line].c] || 3.5) + 0.3; };
   // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
   // (and where a footway steps onto a road with no crossing marked, the crowd looks for a gap in the traffic:
