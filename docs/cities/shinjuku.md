@@ -74,7 +74,15 @@ tread is lowered by the least change to the grid that clears it, and each grid p
 to how far it stands above the treads, so the hillside beside the stairs takes the cut and the lane at the
 foot barely moves. The checks compare the uncut DEM.
 
-## 2a. The Tokyo Metropolitan Government Building
+## 1a. Sumitomo Triangle Plaza
+
+OpenStreetMap maps the Sumitomo Building's Triangle Plaza (新宿住友ビル三角広場, r11664668, 4,601 m²,
+opened 2020) as `building=roof`, so `pipeline/arcades.py` stood it on posts (#245). It is an all-weather
+atrium under a glass roof, closed on every side by glass walls between the building's wings, so it is a
+glass building from the ground again (`city.json` `roofs.closed`, #246). Not checked against a photograph
+from inside the plaza: Wikimedia Commons refused this session's requests (HTTP 429).
+
+
 
 PLATEAU gives the six OpenStreetMap parts of the No. 1 building (Kenzo Tange,
 1991) its top's 243 m, so the two towers stood as flat slabs the full width of
