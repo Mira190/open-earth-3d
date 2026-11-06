@@ -12,6 +12,20 @@ window.OEWorld = (function () {
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const idle = () => new Promise(r => setTimeout(r, 0));
 
+  // The loader's lines (index.html #load-* and #g-load-*): what is being done, the bar, and the stage the
+  // load is at, which the caller can name (a third argument) or which follows from how far along it is, so
+  // that the page never sits on a finished download while the packs decode and the shaders compile.
+  const STAGES = [[0.28, 'Downloading'], [0.995, 'Building the city'], [Infinity, 'Preparing the city']];
+  function loadLine(prefix = '') {
+    const msg = document.getElementById(prefix + 'load-msg'), bar = document.getElementById(prefix + 'load-bar'),
+      stage = document.getElementById(prefix + 'load-stage');
+    return (t, f, st) => {
+      if (msg) msg.textContent = t;
+      if (bar) bar.style.width = `${Math.round(f * 100)}%`;
+      if (stage) stage.textContent = st || (f > 0 ? STAGES.find(([to]) => f < to)[1] : '');
+    };
+  }
+
   // the city's data files; game.json too when asked for
   async function load(cityId, { game = false, onMsg = () => {} } = {}) {
     const DATA = `data/${cityId}/`;
@@ -25,8 +39,12 @@ window.OEWorld = (function () {
       if (now - shown < 80) return;
       shown = now;
       onMsg(want ? `Downloading ${entry.name || 'the city'}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
-        0.02 + 0.26 * (want ? Math.min(1, got / want) : 0));
+        0.02 + 0.26 * (want ? Math.min(1, got / want) : 0), 'Downloading');
     };
+    // once every file is in, the packs are still decoding (in a Worker) and the JSON parsing: said so,
+    // rather than leaving the label on a download that has finished
+    let open = 0;
+    const unpack = () => { if (--open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
     const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
       if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
@@ -38,20 +56,21 @@ window.OEWorld = (function () {
       }
       return new Blob(parts);
     };
-    const getJSON = async u => JSON.parse(await (await fetchAll(await fetch(DATA + u), u)).text());
+    const fetchFile = async u => { open++; try { return await fetchAll(await fetch(DATA + u), u); } finally { unpack(); } };
+    const getJSON = async u => JSON.parse(await (await fetchFile(u)).text());
     // the buildings, landmarks, game, terrain, places and scene as packed by pipeline/pack.py (a quarter to a
     // third of the JSON's download, issues 148, 201 and 259) and decoded in a Worker (pack-worker.js), so that the loader's bar
     // keeps moving; as JSON where a city has no pack yet or the browser cannot inflate one
     const getPacked = async name => {
       if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
-          const r = await fetch(DATA + name + '.bin');
-          if (r.ok) return await (OEPack.decodeIn || OEPack.decode)(await (await fetchAll(r, name + '.bin')).arrayBuffer());
+          const buf = await (await fetchFile(name + '.bin')).arrayBuffer();
+          return await (OEPack.decodeIn || OEPack.decode)(buf);
         } catch (e) { console.warn(`${name}.bin:`, e); }
       }
       return getJSON(name + '.json');
     };
-    onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
+    onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
     // the terrain grid: int16 heights, as bytes from its pack or as base64 text from its JSON
     const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
       return u.byteOffset % 2 ? u.slice().buffer : u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); };
@@ -1608,5 +1627,5 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
   }
 
-  return { load, create, lin, smooth, compile, upload, warm };
+  return { load, loadLine, create, lin, smooth, compile, upload, warm };
 })();

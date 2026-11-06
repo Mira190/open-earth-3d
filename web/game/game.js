@@ -21,7 +21,7 @@ window.OpenEarthGame = async function game(cityId) {
   const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
   // ------------------------------------------------------------ load
-  const loadMsg = (t, f) => { $('#g-load-msg').textContent = t; $('#g-load-bar').style.width = `${Math.round(f * 100)}%`; };
+  const loadMsg = OEWorld.loadLine('g-'); // (index.html #g-load-msg, #g-load-bar and #g-load-stage)
   let D;
   try {
     D = await OEWorld.load(cityId, { game: true, onMsg: loadMsg });
@@ -3655,6 +3655,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let framesDrawn = 0, firstDrawn;
   const drawn = new Promise(r => { firstDrawn = r; });
   // (and the passes the title doesn't draw: the opening shot's depth of field and motion blur, atmosphere.js)
+  loadMsg('Compiling the shaders for this view', 1);
   const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null]);
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
   // above and the wet street's mirror), so that the first rain of a visit comes on without a stall
