@@ -31,8 +31,11 @@ function hat(T, o) {
   const m = mat(c, { rough: 0.9, double: true });
   g.add(new THREE.Mesh(new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 28), m));
   g.add(mesh(new THREE.CylinderGeometry(0.1335, 0.1385, 0.026, 28, 1, true), mat(o.band || '#2b2f36', { rough: 0.8, double: true }), 0, 0.024, 0));
-  g.position.set(T.head.cx, T.head.top - 0.075, T.head.cz + 0.008);
-  g.rotation.x = -0.05;
+  // square over the middle of the skull (a touch forward of it, where the band meets the brow), seated down to
+  // just above the brows, the front of the brim dipped a few degrees as a hat is worn (a brim tipped up at the
+  // front reads as a hat pushed back off the head)
+  g.position.set(T.head.cx, T.head.top - 0.095, (T.head.mid ?? T.head.cz) + 0.012);
+  g.rotation.x = 0.05;
   return { obj: g, bone: 'Head' };
 }
 function cap(T, o) {

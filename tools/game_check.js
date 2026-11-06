@@ -55,6 +55,22 @@ const npcNight = require('./npc_night');
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
+  // the lights in the scene by kind, as three.js counts them for its shaders (one under a hidden parent does
+  // not count). The count is built into every lit material's shader, so it must stay what it was on the
+  // title: a light that comes, goes or hides later recompiles the whole city at once, seconds of frozen
+  // frames (the helicopter's searchlight arriving with its model, a headlamp leaving with the car, the sun
+  // hidden at night). Checked after the helicopter comes, after the car and the taxi, and by night and day.
+  const lightCensus = () => p.evaluate(() => {
+    const n = {}, walk = o => {
+      if (!o.visible) return;
+      if (o.isLight) { const k = `${o.type}${o.castShadow ? ' (shadow)' : ''}`; n[k] = (n[k] || 0) + 1; }
+      for (const c of o.children) walk(c);
+    };
+    walk(window.__game.Wd.world);
+    return Object.keys(n).sort().map(k => `${n[k]} ${k}`).join(', ');
+  });
+  const lights0 = await lightCensus();
+  const lightsKept = async when => { const l = await lightCensus(); check(l === lights0, `the scene's lights are the title's ${when} (${l}${l === lights0 ? '' : `; on the title ${lights0}`})`); };
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => window.__game.advance(1));
@@ -72,6 +88,7 @@ const npcNight = require('./npc_night');
   });
   check(lazy.pending === 0 && lazy.drawn >= lazy.wanted - 1, `the NPCs' characters load after the game opens (${lazy.open} of ${lazy.n} still to come at the start; all in place after ${lazy.s.toFixed(1)} s, ${lazy.drawn} of ${lazy.wanted} as their own characters)`);
   check(lazy.heli, 'the helicopter\'s model comes after the game opens and stands on its pad');
+  await lightsKept('once the helicopter has come');
 
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
   // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
@@ -1067,6 +1084,14 @@ const npcNight = require('./npc_night');
     if (!rideOk && taxi.rideLog) console.log(taxi.rideLog.join('\n'));
   }
   await shot('taxi');
+  await lightsKept('after the car and the taxi');
+  // and by night and by day (the sun below the horizon stays a light, dark)
+  const clockWas = await p.evaluate(() => { const c = window.__game.clock; return [c.y, c.m, c.d, c.min]; });
+  for (const [hh, when] of [[3, 'at 3 am'], [12, 'at noon']]) {
+    await p.evaluate(h => { const g = window.__game, c = g.clock; g.setClock(c.y, c.m, c.d, h * 60); g.advance(0.5); }, hh);
+    await lightsKept(when);
+  }
+  await p.evaluate(c => { window.__game.setClock(...c); window.__game.advance(0.25); }, clockWas); // (back to the run's own hour)
 
   // a quick start: the helicopter waits on a pad near where you start and a taxi can reach you
   // from a kerb close by; and walk towards another pad while the helicopter stands shut down far

@@ -1,0 +1,227 @@
+// What the main thread does when "Start the survey" is pressed: every frame's length for a few
+// seconds either side of the click, the long tasks, the WebGL work done on the main thread (shader
+// compiles and links, texture and buffer uploads, each timed and counted) and a CPU profile of the
+// seconds after the click, its functions ranked by their own time in the frames over 50 ms.
+//   python3 -m http.server 8800 --directory web &
+//   xvfb-run -a node tools/start_profile.js sydney [WxH, 960x600] [seconds after the click, 20]
+// TIER=high (default) forces a quality tier, as the films and stills do. CONT=1 presses Continue.
+// OUT=file.json also writes the frames, the GL work and the ranked functions as JSON. RAIN=1 then puts the
+// rain on and counts the shaders compiled for it (the wet street's reflection on the high tier, mirror.js).
+// Software WebGL (llvmpipe) makes the GPU's share far slower than a real device's: read the
+// JavaScript and the GL call counts first, and the GL milliseconds as an upper bound.
+const { chromium } = require('playwright');
+const fs = require('fs');
+const [,, city = 'sydney', size = '960x600', after = '20'] = process.argv;
+const [w, h] = size.split('x').map(Number);
+(async () => {
+  const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox', '--enable-precise-memory-info'] });
+  const phone = w < 600;
+  const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, hasTouch: phone, isMobile: phone });
+  await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
+  await ctx.addInitScript(() => {
+    // the WebGL calls that block the main thread, timed where they are made
+    const gl = window.__gl = { on: false, calls: {}, log: [] };
+    const wrap = (proto, name) => {
+      const f = proto[name];
+      if (!f) return;
+      proto[name] = function (...a) {
+        if (!gl.on) return f.apply(this, a);
+        const t0 = performance.now(), r = f.apply(this, a), dt = performance.now() - t0;
+        const c = gl.calls[name] || (gl.calls[name] = { n: 0, ms: 0, max: 0 });
+        c.n++; c.ms += dt; c.max = Math.max(c.max, dt);
+        const bytes = name === 'bufferSubData' ? (a[4] != null ? a[4] * (a[2].BYTES_PER_ELEMENT || 1) : a[2] && a[2].byteLength) : 0;
+        if (bytes) { c.bytes = (c.bytes || 0) + bytes; c.maxBytes = Math.max(c.maxBytes || 0, bytes); }
+        if (dt > 4) gl.log.push({ t: t0, name, ms: +dt.toFixed(1), kb: bytes ? Math.round(bytes / 1024) : undefined });
+        return r;
+      };
+    };
+    // each program's link time, and how long its first check waited (a long wait: compiled on the frame)
+    const linkP = WebGL2RenderingContext.prototype.linkProgram, logP = WebGL2RenderingContext.prototype.getProgramInfoLog;
+    let seq = 0;
+    gl.waits = [];
+    WebGL2RenderingContext.prototype.linkProgram = function (pr) { pr.__oe = { id: ++seq, t: performance.now() }; return linkP.call(this, pr); };
+    WebGL2RenderingContext.prototype.getProgramInfoLog = function (pr) {
+      const t0 = performance.now(), r = logP.call(this, pr), dt = performance.now() - t0;
+      if (gl.on && pr.__oe && !pr.__oe.checked) { pr.__oe.checked = true; gl.waits.push({ prog: pr, t: t0, ms: +dt.toFixed(1), sinceLink: +(t0 - pr.__oe.t).toFixed(0) }); }
+      return r;
+    };
+    for (const P of [WebGL2RenderingContext.prototype]) {
+      for (const n of ['compileShader', 'linkProgram', 'getProgramParameter', 'getShaderParameter', 'getProgramInfoLog', 'useProgram',
+        'texImage2D', 'texSubImage2D', 'texImage3D', 'texStorage2D', 'compressedTexImage2D', 'generateMipmap', 'bufferData', 'bufferSubData', 'readPixels', 'getError', 'clientWaitSync']) wrap(P, n);
+    }
+    // the frames, from requestAnimationFrame, and the long tasks
+    const fr = window.__frames = [];
+    const tick = t => { fr.push(t); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    window.__long = [];
+    try { new PerformanceObserver(l => { for (const e of l.getEntries()) window.__long.push({ t: e.startTime, ms: e.duration }); }).observe({ entryTypes: ['longtask'] }); } catch (e) { /* none */ }
+    // the attributes flagged for upload after the click (needsUpdate), with their sizes and how often
+    window.__ups = new Map();
+    // the renderer, to count its programs, textures and geometries
+    addEventListener('three-ready', () => {
+      const BA = window.THREE.BufferAttribute.prototype, d = Object.getOwnPropertyDescriptor(BA, 'needsUpdate');
+      if (d && d.set) Object.defineProperty(BA, 'needsUpdate', { configurable: true, set(v) {
+        if (v === true && window.__gl.on) { const u = window.__ups.get(this) || { n: 0, bytes: this.array.byteLength, ranges: 0 }; u.n++; u.bytes = this.array.byteLength; if (this.updateRanges && this.updateRanges.length) u.ranges++; window.__ups.set(this, u); }
+        d.set.call(this, v);
+      } });
+      const R = window.THREE.WebGLRenderer;
+      window.THREE.WebGLRenderer = function (...a) { const r = new R(...a); window.__renderer = r; return r; };
+      window.THREE.WebGLRenderer.prototype = R.prototype;
+    });
+  });
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
+  const t0 = Date.now();
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.waitForFunction(() => window.__game && !document.querySelector('#g-title').hidden && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
+  const loadS = (Date.now() - t0) / 1000;
+  await p.waitForTimeout(4000); // the title orbit settles
+  const info = () => p.evaluate(() => {
+    const r = window.__renderer;
+    const mem = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
+    return r ? { programList: (r.info.programs || []).map(q => `${q.name}#${q.id}`), programs: r.info.programs ? r.info.programs.length : null, textures: r.info.memory.textures, geometries: r.info.memory.geometries, calls: r.info.render.calls, triangles: r.info.render.triangles, heapMB: mem } : null;
+  });
+  const before = await info();
+  const cdp = await ctx.newCDPSession(p);
+  await cdp.send('Profiler.enable');
+  await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+  const tClick = await p.evaluate(() => { window.__gl.on = true; window.__frames.length = 0; window.__long.length = 0; return performance.now(); });
+  // the title's frames, for the baseline
+  await p.waitForTimeout(2000);
+  const base = await p.evaluate(() => window.__frames.slice());
+  await cdp.send('Profiler.start');
+  const [tPress, clickMs] = await p.evaluate(cont => { const t = performance.now(); document.querySelector(cont ? '#gt-continue' : '#gt-play').click(); return [t, performance.now() - t]; }, !!process.env.CONT);
+  await p.waitForTimeout(+after * 1000);
+  const { profile } = await cdp.send('Profiler.stop');
+  const res = await p.evaluate(() => ({ nf: window.__frames.length, frames: window.__frames.slice(), long: window.__long.slice(), gl: window.__gl }));
+  const waits = await p.evaluate(() => {
+    const r = window.__renderer, byGl = new Map((r ? r.info.programs : []).map(q => [q.program, q]));
+    return window.__gl.waits.map(w => { const q = byGl.get(w.prog); return { t: w.t, ms: w.ms, sinceLink: w.sinceLink, id: q ? q.id : null, name: q ? `${q.type || ''} ${q.name || ''}`.trim() : '(gone)' }; });
+  });
+  // the attributes uploaded most after the click (bytes flagged x times), and whose they are
+  const ups = await p.evaluate(() => {
+    const own = new Map(), g = window.__game;
+    if (g) g.Wd.world.traverse(o => {
+      const nm = o.name || (o.parent && o.parent.name) || o.type;
+      if (o.instanceMatrix) own.set(o.instanceMatrix, `${nm}.instanceMatrix`);
+      if (o.instanceColor) own.set(o.instanceColor, `${nm}.instanceColor`);
+      if (o.geometry) for (const [k, a] of Object.entries(o.geometry.attributes)) if (!own.has(a)) own.set(a, `${nm}.${k}`);
+    });
+    return [...window.__ups.entries()].map(([a, u]) => ({ who: own.get(a) || '(not in the world)', n: u.n, kb: Math.round(u.bytes / 1024), total: Math.round(u.n * u.bytes / 1024), ranges: u.ranges }))
+      .sort((x, y) => y.total - x.total).slice(0, 25);
+  });
+  const afterInfo = await info();
+  // RAIN=1: then the rain on, a few frames, and the programs that took (the wet street's reflection, mirror.js)
+  let rainProgs = null;
+  if (process.env.RAIN) rainProgs = await p.evaluate(async () => {
+    const r = window.__renderer, g = window.__game, ids = new Set(r.info.programs.map(q => q.id)), t0 = performance.now();
+    g.weather.set('rain', { now: true });
+    await new Promise(res => { let k = 0; const f = () => (++k >= 6 ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    return { ms: Math.round(performance.now() - t0), mirror: !!(g.mirror && g.mirror.on), fresh: r.info.programs.filter(q => !ids.has(q.id)).map(q => `${q.type || ''} ${q.name || ''}`.trim()) };
+  });
+  // each program compiled after the title was up: its material type, the objects that use it, and how its
+  // parameters differ from the nearest program of the same type compiled before (a light count, a define)
+  const why = await p.evaluate(oldIds => {
+    const r = window.__renderer, g = window.__game, out = [];
+    if (!r || !g) return out;
+    const progs = r.info.programs || [], old = progs.filter(q => oldIds.includes(q.id)), users = new Map();
+    const scenes = [g.Wd.world];
+    for (const sc of scenes) sc.traverse(o => {
+      const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      for (const m of ms) {
+        const pr = r.properties.get(m), prog = pr && pr.currentProgram;
+        if (!prog) continue;
+        const chain = []; for (let q = o; q && chain.length < 4; q = q.parent) chain.push(q.name || q.type);
+        const l = users.get(prog.id) || []; if (l.length < 3) l.push(`${chain.join('<')}${o.visible ? '' : ' (hidden)'}`); users.set(prog.id, l);
+      }
+    });
+    for (const q of progs) {
+      if (oldIds.includes(q.id)) continue;
+      const keys = (q.cacheKey || '').split(','), same = old.filter(o => o.type === q.type || o.name === q.name);
+      let best = null, bestN = 1e9;
+      for (const o of same) { const k = (o.cacheKey || '').split(','); let n = 0; for (let i = 0; i < Math.max(k.length, keys.length); i++) if (k[i] !== keys[i]) n++; if (n < bestN) { bestN = n; best = k; } }
+      const diff = best ? keys.map((v, i) => (v !== best[i] ? `${i}:${String(best[i]).slice(0, 24)}→${String(v).slice(0, 24)}` : null)).filter(Boolean).slice(0, 6) : ['(no program of this type before)'];
+      out.push({ id: q.id, name: q.name, type: q.type || '', users: users.get(q.id) || [], diff });
+    }
+    return out;
+  }, before ? before.programList.map(s => +s.split('#').pop()) : []);
+  await b.close();
+
+  // frames
+  const dts = (fs_, from, to) => { const o = []; for (let i = 1; i < fs_.length; i++) if (fs_[i] >= from && fs_[i] <= to) o.push({ t: fs_[i], dt: fs_[i] - fs_[i - 1] }); return o; };
+  const stats = arr => {
+    const d = arr.map(f => f.dt).sort((a, b) => a - b), q = k => d[Math.min(d.length - 1, Math.floor(k * d.length))] || 0;
+    return { n: d.length, median: +q(0.5).toFixed(1), p95: +q(0.95).toFixed(1), max: +(d[d.length - 1] || 0).toFixed(1), over50: d.filter(x => x > 50).length, over100: d.filter(x => x > 100).length, sumOver50: Math.round(d.filter(x => x > 50).reduce((s, x) => s + x, 0)) };
+  };
+  console.log(`frames recorded: ${base.length} on the title, ${res.nf} after; first ${base[0]} click ${tClick} press ${tPress}`);
+  const baseF = dts(base, tClick, tPress), postF = dts(res.frames, tPress, tPress + +after * 1000);
+  const first = dts(res.frames, tPress, tPress + 3000);
+  console.log(`${city} ${w}x${h} tier ${process.env.TIER || 'high'}: loaded in ${loadS.toFixed(0)} s`);
+  console.log(`title (2 s before):  ${JSON.stringify(stats(baseF))}`);
+  console.log(`after the click (${after} s): ${JSON.stringify(stats(postF))}`);
+  console.log(`first 3 s:            ${JSON.stringify(stats(first))}`);
+  console.log(`click handler: ${clickMs.toFixed(0)} ms`);
+  const worst = postF.slice().sort((a, b) => b.dt - a.dt).slice(0, 12);
+  console.log('worst frames (ms after the click, length):', worst.map(f => `${Math.round(f.t - f.dt - tPress)}+${Math.round(f.dt)}`).join(' '));
+  console.log('long tasks after the click:', res.long.filter(l => l.t >= tPress).map(l => `${Math.round(l.t - tPress)}+${Math.round(l.ms)}`).join(' '));
+  // GL work after the click
+  const glAfter = res.gl.log.filter(e => e.t >= tPress);
+  console.log('GL calls (whole window from 2 s before the click):');
+  for (const [k, v] of Object.entries(res.gl.calls).sort((a, b) => b[1].ms - a[1].ms)) console.log(`  ${k.padEnd(22)} ${String(v.n).padStart(6)} calls ${v.ms.toFixed(0).padStart(6)} ms  max ${v.max.toFixed(0)} ms${v.bytes ? `  ${(v.bytes / 1048576).toFixed(1)} MB, the largest ${(v.maxBytes / 1024).toFixed(0)} kB` : ''}`);
+  console.log(`GL calls over 4 ms after the click: ${glAfter.length}, ${glAfter.reduce((s, e) => s + e.ms, 0).toFixed(0)} ms:`, glAfter.slice(0, 30).map(e => `${Math.round(e.t - tPress)} ${e.name} ${e.ms}${e.kb ? ` (${e.kb} kB)` : ''}`).join(', '));
+  const newProgs = afterInfo && before ? afterInfo.programList.filter(q => !before.programList.includes(q)) : [];
+  if (before) delete before.programList;
+  if (afterInfo) delete afterInfo.programList;
+  const firstUse = waits.filter(w => w.t >= tPress);
+  console.log(`programs first used after the click (${firstUse.length}): the wait at first use (a long one was compiled on that frame) and how long after its link:`);
+  for (const w of firstUse) console.log(`  ${String(Math.round(w.t - tPress)).padStart(6)} ms  #${w.id} ${w.name}: waited ${w.ms} ms, linked ${w.sinceLink} ms before`);
+  console.log(`attributes flagged for upload after the click, by bytes (times x size; "ranged": uploads limited to a range):`);
+  for (const u of ups) console.log(`  ${String(u.total).padStart(8)} kB  ${u.n} x ${u.kb} kB${u.ranges ? ` (${u.ranges} ranged)` : ''}  ${u.who}`);
+  if (rainProgs) console.log(`rain on: ${rainProgs.fresh.length} programs compiled in its first 6 frames (${rainProgs.ms} ms; the mirror ${rainProgs.mirror ? 'on' : 'off'}): ${rainProgs.fresh.slice(0, 12).join(', ')}`);
+  console.log('renderer before:', JSON.stringify(before));
+  console.log('renderer after: ', JSON.stringify(afterInfo));
+  console.log(`programs compiled after the title was up (${newProgs.length}):`);
+  for (const q of why) console.log(`  #${q.id} ${q.type} ${q.name || ''} | ${q.users.join('; ') || '(no object in the world: a pass or a removed object)'} | ${q.diff.join(' ')}`);
+
+  // the CPU profile: self time by function, over the whole window and in the frames over 50 ms
+  const nodes = new Map(profile.nodes.map(n => [n.id, n]));
+  const label = n => { const c = n.callFrame; return `${c.functionName || '(anon)'} ${c.url.replace(/^.*\/web\//, '')}:${c.lineNumber + 1}`; };
+  const slow = postF.filter(f => f.dt > 50).map(f => [f.t - f.dt, f.t]);
+  // profile timestamps are in microseconds on the same clock as performance.now() plus an offset: align on the start
+  const startUs = profile.startTime, offsetMs = tPress - 0; // the profiler started a moment before the click
+  const self = new Map(), selfSlow = new Map();
+  let t = profile.startTime;
+  const toPerf = us => (us - startUs) / 1000 + tPress - 5; // (about: the profiler starts ~5 ms before the press)
+  for (let i = 0; i < profile.samples.length; i++) {
+    t += profile.timeDeltas[i];
+    const n = nodes.get(profile.samples[i]), k = label(n), dt = (profile.timeDeltas[i + 1] || 500) / 1000;
+    self.set(k, (self.get(k) || 0) + dt);
+    const tp = toPerf(t);
+    if (slow.some(([a, z]) => tp >= a && tp <= z)) selfSlow.set(k, (selfSlow.get(k) || 0) + dt);
+  }
+  // and inclusive time for the app's own functions (the frame's big callers)
+  const parent = new Map();
+  for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
+  const incl = new Map();
+  for (let i = 0; i < profile.samples.length; i++) {
+    const dt = (profile.timeDeltas[i + 1] || 500) / 1000, seen = new Set();
+    for (let id = profile.samples[i]; id != null; id = parent.get(id)) {
+      const n = nodes.get(id);
+      if (!/\/web\//.test(n.callFrame.url)) continue;
+      const k = label(n);
+      if (seen.has(k)) continue;
+      seen.add(k); incl.set(k, (incl.get(k) || 0) + dt);
+    }
+  }
+  const top = (m, n = 25) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+  console.log(`\nself time, all ${after} s after the click (ms):`);
+  for (const [k, v] of top(self)) console.log(`  ${v.toFixed(0).padStart(6)}  ${k}`);
+  console.log('\nself time in the frames over 50 ms (ms):');
+  for (const [k, v] of top(selfSlow)) console.log(`  ${v.toFixed(0).padStart(6)}  ${k}`);
+  console.log('\ninclusive time, the app\'s functions (ms):');
+  for (const [k, v] of top(incl, 40)) console.log(`  ${v.toFixed(0).padStart(6)}  ${k}`);
+  if (errors.length) console.log('page errors:', errors);
+  if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify({ city, size, before, after: afterInfo, base: stats(baseF), post: stats(postF), worst, gl: res.gl.calls, glAfter, self: top(self, 80), selfSlow: top(selfSlow, 80), incl: top(incl, 80) }, null, 1));
+  void offsetMs;
+})();

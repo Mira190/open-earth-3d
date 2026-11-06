@@ -110,16 +110,15 @@ Maruyama Park is inside this map: its cherries round the Gion weeping cherry are
 entry in `cities/higashiyama/city.json`, outlined from OpenStreetMap (円山公園).
 
 The Philosopher's Path (哲学の道, Ginkaku-ji to Nanzen-ji along the Lake Biwa Canal's branch, about
-35.010–35.027 N, 135.790–135.796 E) is outside every map. It is to come in as a **district of its
-own**, not by growing this one. Growing Higashiyama north to 35.03 and east to 135.80 would take it
+35.010–35.027 N, 135.790–135.796 E) is outside every map. It came in as a **district of its
+own** ([tetsugaku.md](tetsugaku.md)), not by growing this one. Growing Higashiyama north to 35.03 and east to 135.80 would take it
 from about 3.3 km² to about 11.6 km², roughly three times the buildings and ground tiles, and every
 visit to Kiyomizu-dera would load them. A district of its own (about 135.784–135.800 E,
 35.006–35.030 N, 3.9 km², the size of this map) loads only for those who choose it, and adds one game
 check to the runs that shared code needs, a cost in computer time once per change rather than in
 load time for every player. It holds a walk of its own too: Ginkaku-ji, Honen-in, the path's cherries,
-Eikan-do and Nanzen-ji with the canal's aqueduct (水路閣) and the Keage incline. The plan is in the
-follow-up issue to #164; the cherries are to be planted along the canal from photographs and the
-city's street-tree records, the way `trees.areas` and the mapped trees are here.
+Eikan-do and Nanzen-ji with the canal's aqueduct (水路閣) and the Keage incline. Its cherries are planted along the
+canal from photographs, the way `trees.areas` and the mapped trees are here.
 
 ## What is approximate
 

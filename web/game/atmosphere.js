@@ -152,15 +152,20 @@ window.OEAtmos = (function () {
   // The camera's own effects, for photo mode and the opening shot only (never in play): depth of
   // field, a disc of 24 taps whose radius is the circle of confusion for the focus distance and the
   // lens, and the camera's motion blur, each pixel smeared along the way it moved on screen since
-  // the last frame (its distance from the camera, read from a distance pass, put back into the
-  // world and seen from the last frame's camera). The distance pass is drawn only while either is on.
+  // the last frame (its point rebuilt from the depth buffer the scene was drawn with, as the ambient
+  // occlusion does, ao.js, put back into the world and seen from the last frame's camera). It reads the
+  // depth the scene already wrote: a second pass drawing the whole city's distance from the camera
+  // doubled the geometry in the opening shot and compiled a depth shader for every kind of mesh
+  // (instanced, skinned) the moment the shot began, a freeze of seconds as the game opened.
   const CAMFX = () => ({ // (made when the stack is: this script runs before three.js has loaded)
-    uniforms: { tDiffuse: { value: null }, tDist: { value: null }, uFocus: { value: 10 }, uAperture: { value: 0 }, uBlur: { value: 0 },
+    uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, uReversed: { value: 0 }, uFocus: { value: 10 }, uAperture: { value: 0 }, uBlur: { value: 0 },
       uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uFar: { value: 3000 }, uAspect: { value: 1 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `#include <packing>
-      uniform sampler2D tDiffuse, tDist; uniform float uFocus, uAperture, uBlur, uFar, uAspect; uniform mat4 uInvProj, uCamWorld, uPrevVP; varying vec2 vUv;
-      float dist(vec2 uv) { return unpackRGBAToDepth(texture2D(tDist, uv)) * uFar; }
+    fragmentShader: `
+      uniform sampler2D tDiffuse, tDepth; uniform float uReversed, uFocus, uAperture, uBlur, uFar, uAspect; uniform mat4 uInvProj, uCamWorld, uPrevVP; varying vec2 vUv;
+      // the point in the camera's frame: reversed depth ([1 at the near plane, 0 at the far one], clip control 0..1) or not
+      vec3 viewAt(vec2 uv) { float z = texture2D(tDepth, uv).x; vec4 p = uInvProj * vec4(uv * 2.0 - 1.0, uReversed > 0.5 ? z : z * 2.0 - 1.0, 1.0); return p.xyz / p.w; }
+      float dist(vec2 uv) { return min(length(viewAt(uv)), uFar); }
       float coc(float d) { return clamp(uAperture * abs(d - uFocus) / max(d, 0.1), 0.0, 0.025); } // (a fraction of the frame's height)
       void main() {
         vec3 c = texture2D(tDiffuse, vUv).rgb;
@@ -179,8 +184,7 @@ window.OEAtmos = (function () {
           }
         }
         if (uBlur > 0.0) {
-          vec4 v = uInvProj * vec4(vUv * 2.0 - 1.0, 1.0, 1.0); vec3 dir = normalize(v.xyz / v.w);
-          vec4 wp = uCamWorld * vec4(dir * min(d, uFar * 0.99), 1.0), pp = uPrevVP * wp;
+          vec4 wp = uCamWorld * vec4(normalize(viewAt(vUv)) * min(d, uFar * 0.99), 1.0), pp = uPrevVP * wp;
           vec2 prev = pp.xy / max(pp.w, 1e-4) * 0.5 + 0.5, mv = clamp((vUv - prev) * uBlur, vec2(-0.03), vec2(0.03));
           vec3 m = c;
           for (int i = 1; i < 8; i++) m += texture2D(tDiffuse, vUv - mv * (float(i) / 7.0 - 0.5)).rgb;
@@ -264,19 +268,8 @@ window.OEAtmos = (function () {
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
-    let composer = null, bloom = null, grade = null, lens = null, anime = null, camFx = null, distRT = null, fx = null, ao = null;
-    // the distance pass: the depth material (which skins and instances as the scene's own materials do)
-    // writing each pixel's distance from the camera over FAR, packed into RGBA. (MeshDistanceMaterial
-    // reads its point from a point light's shadow camera and cannot be drawn outside a shadow pass.)
-    const FAR = 3000, prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4();
-    const distMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
-    distMat.onBeforeCompile = sh => {
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vOeDist;')
-        .replace('#include <project_vertex>', '#include <project_vertex>\n\tvOeDist = length( mvPosition.xyz );');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vOeDist;')
-        .replace(/}\s*$/, `\tgl_FragColor = packDepthToRGBA( clamp( vOeDist / ${FAR.toFixed(1)}, 0.0, 0.9999 ) );\n}`);
-    };
-    distMat.customProgramCacheKey = () => 'oe-distance';
+    let composer = null, bloom = null, grade = null, lens = null, anime = null, camFx = null, fx = null, ao = null, rt = null, wantAO = false, sceneDepth = null;
+    const FAR = 3000, prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4(); // (FAR: the camera effects' depth of field reaches 3 km)
     const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
     const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
     if (canPost) {
@@ -286,13 +279,18 @@ window.OEAtmos = (function () {
       // distant walls and roofs no longer fight over the same pixels as the camera moves
       // ambient occlusion (ao.js) on the medium and high tiers reads that depth, so there it is
       // resolved from the multisampled buffer into the texture; elsewhere only its format is wanted
-      const wantAO = !!window.OEAO && QC.name !== 'low' && sky.ao !== false;
+      // the camera's effects (CAMFX) read it too, while they are on
+      wantAO = !!window.OEAO && QC.name !== 'low' && sky.ao !== false;
+      const wantFx = !!window.OELens && sky.lens !== false;
       const deep = renderer.capabilities.reversedDepthBuffer ? new THREE.DepthTexture(size.x, size.y, THREE.FloatType)
-        : wantAO ? new THREE.DepthTexture(size.x, size.y, THREE.UnsignedIntType) : null;
-      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: QC.samples, depthTexture: deep });
+        : wantAO || wantFx ? new THREE.DepthTexture(size.x, size.y, THREE.UnsignedIntType) : null;
+      rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: QC.samples, depthTexture: deep });
       if (deep) rt.resolveDepthBuffer = wantAO;
       composer = new THREE.EffectComposer(renderer, rt);
-      composer.addPass(new THREE.RenderPass(world, camera));
+      // the scene's pass, noting which target's depth it drew (the composer's two targets take turns)
+      const scenePass = new THREE.RenderPass(world, camera), drawScene = scenePass.render.bind(scenePass);
+      scenePass.render = (r, wb, rb, ...rest) => { sceneDepth = rb.depthTexture || null; return drawScene(r, wb, rb, ...rest); };
+      composer.addPass(scenePass);
       if (wantAO) { ao = OEAO.create(renderer, camera, { tier: QC.name }); composer.addPass(ao.pass); }
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
       if (window.OELens) OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
@@ -305,6 +303,9 @@ window.OEAtmos = (function () {
         lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
         camFx = new THREE.ShaderPass(CAMFX());
         camFx.enabled = false;
+        camFx.uniforms.uReversed.value = renderer.capabilities.reversedDepthBuffer ? 1 : 0;
+        const drawFx = camFx.render.bind(camFx);
+        camFx.render = (...a) => { camFx.uniforms.tDepth.value = sceneDepth; return drawFx(...a); }; // (the depth this frame's scene was drawn with)
         composer.addPass(camFx);
         composer.addPass(lens);
         anime = new THREE.ShaderPass(ANIME());
@@ -372,27 +373,35 @@ window.OEAtmos = (function () {
         A.uRays.value = o.rays || 0; A.uSunVis.value = o.sunVis || 0; if (o.sunUv) A.uSunUv.value.copy(o.sunUv);
         return true;
       },
+      // the passes the title never draws (the camera's effects come on with the opening shot and photo mode),
+      // compiled behind the loader rather than on the opening shot's first frame (world.js compile)
+      warm() {
+        if (!camFx || !window.OEWorld || !OEWorld.compile) return Promise.resolve();
+        // (a stand-in for the pass's full-screen triangle, with the attributes it has: position and uv, no normals,
+        // since the attributes are part of a shader's variant; drawn as its own scene, without the city's lights)
+        const tri = new THREE.BufferGeometry();
+        tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+        tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
+        const quad = new THREE.Mesh(tri, camFx.material);
+        return OEWorld.compile(renderer, quad, new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), { target: composer.renderTarget1 }).then(() => tri.dispose());
+      },
       render(scene, cam) {
-        if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0);
+        if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0) && !!rt.depthTexture;
+        // the scene's depth resolved from the multisampled buffer while something reads it (the ambient occlusion, the camera's effects)
+        if (rt) composer.renderTarget1.resolveDepthBuffer = composer.renderTarget2.resolveDepthBuffer = wantAO || !!(camFx && camFx.enabled);
         if (camFx && camFx.enabled) {
-          const z = renderer.getDrawingBufferSize(new THREE.Vector2()), w = Math.max(2, z.x >> 1), h = Math.max(2, z.y >> 1);
-          if (!distRT || distRT.width !== w || distRT.height !== h) { if (distRT) distRT.dispose(); distRT = new THREE.WebGLRenderTarget(w, h); }
-          const F = camFx.uniforms, far = FAR;
-          const prevT = renderer.getRenderTarget(), prevO = scene.overrideMaterial, prevBg = scene.background, prevS = renderer.shadowMap.autoUpdate, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
-          scene.overrideMaterial = distMat; scene.background = null; renderer.shadowMap.autoUpdate = false;
-          renderer.setRenderTarget(distRT); renderer.setClearColor(0xffffff, 1); renderer.clear(); renderer.render(scene, cam);
-          renderer.setRenderTarget(prevT); scene.overrideMaterial = prevO; scene.background = prevBg; renderer.shadowMap.autoUpdate = prevS; renderer.setClearColor(cc, ca);
+          const z = renderer.getDrawingBufferSize(new THREE.Vector2()), F = camFx.uniforms;
           cam.updateMatrixWorld();
           curVP.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
-          Object.assign(F.uFocus, { value: fx.focus || 10 }); F.uAperture.value = fx.aperture || 0; F.uBlur.value = fx.blur || 0; F.uFar.value = far;
-          F.tDist.value = distRT.texture; F.uInvProj.value.copy(cam.projectionMatrixInverse); F.uCamWorld.value.copy(cam.matrixWorld);
+          Object.assign(F.uFocus, { value: fx.focus || 10 }); F.uAperture.value = fx.aperture || 0; F.uBlur.value = fx.blur || 0; F.uFar.value = FAR;
+          F.uInvProj.value.copy(cam.projectionMatrixInverse); F.uCamWorld.value.copy(cam.matrixWorld);
           F.uPrevVP.value.copy(fx.fresh ? curVP : prevVP); F.uAspect.value = z.x / Math.max(1, z.y);
           fx.fresh = false;
         }
         if (camFx) { cam.updateMatrixWorld(); prevVP.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); }
         if (composer) composer.render(); else renderer.render(scene, cam);
       },
-      dispose() { if (distRT) distRT.dispose(); if (ao) ao.pass.dispose(); if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },
+      dispose() { if (ao) ao.pass.dispose(); if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },
     };
     return api;
   }
