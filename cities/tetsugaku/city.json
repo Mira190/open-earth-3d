@@ -880,11 +880,11 @@
     ],
     "start": {
       "at": [
-        222,
-        1030
+        205,
+        1033
       ],
       "facing": [
-        214,
+        204,
         980
       ],
       "time": "live"
@@ -912,8 +912,8 @@
         "name": "Haruka 遥",
         "role": "Student at Kyoto University",
         "at": [
-          222,
-          1040
+          206,
+          1043
         ],
         "look": {
           "character": "R_Female_Adult_12_f013",
