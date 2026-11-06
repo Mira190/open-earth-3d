@@ -648,6 +648,45 @@ drive the game under `navigator.webdriver`, where the measurement is off (a soft
 would shed everything); `tools/game_check.js` calls `shed` itself to check the order and that no
 one turns into a box.
 
+### No shader compiles in play
+
+A shader program compiled in a frame stalls that frame until the GPU driver has finished it: tens
+to hundreds of milliseconds per program on many devices, and a city's materials need well over a
+hundred. Pressing Start the survey once compiled 111 programs and froze for seconds. three.js
+keys each program on more than the material, so these rules hold for every page:
+
+- **The number of lights never changes once the scene is up.** Every lit material's shader is
+  built for a given count of each kind of light (and of shadow-casting ones), so a light added,
+  removed or hidden, its own `visible` or any ancestor's, recompiles everything. Lights that
+  come and go are made at the start, kept in the world and dimmed to 0. The helicopter's
+  searchlight is in the world before its model arrives (`vehicles.js`). The car headlamp goes
+  back to the world when you get out (`cars.js`). The sun stays a light below the horizon, with
+  its shadow map not redrawn (`world.js`). The reef's deck lights are a fixed pool for the same
+  reason. `tools/game_check.js` checks that the lights stay as they were on the title.
+- **Compile ahead for the target the scene is drawn into.** `OEWorld.compile` binds the post
+  stack's render target around `compileAsync`. Drawn into a target, three.js leaves the tone
+  curve and the sRGB encoding to the last pass, so with the screen bound the warm-up compiled
+  a variant nothing drew with. The loaders compile the scene with it, and so does anything that
+  arrives later: the helicopter compiles while the title is up and joins the scene once the
+  game opens. A pass the title doesn't draw (the arrival's depth of field) is compiled behind the
+  loader (`atmos.warm`). A stand-in for it needs the pass's own attributes, since attributes are
+  part of the variant.
+- **Avoid passes that draw the whole scene with an `overrideMaterial`.** Each kind of mesh
+  (plain, instanced, skinned, batched) gets its own variant of the override, and the scene's
+  geometry is drawn again. The camera effects read the depth buffer the scene already wrote
+  (`atmosphere.js`, as `ao.js` does). The rain's passes, which do override the scene's materials
+  or change a global state built into its shaders (the occlusion map from above, the wet
+  street's clipping plane in `mirror.js`), are drawn once behind the loader whatever the weather
+  (`warmRain` in `game.js`), so the first rain comes on without a stall (`tools/rain_perf.js`
+  measures it).
+
+`tools/start_profile.js` measures the start. It times every frame and main-thread WebGL call
+either side of the click, and lists each program compiled after the title, which objects use it
+and how it differs from the nearest earlier program (a light count, a flag, the colour space).
+It also ranks the attributes uploaded after the click. `RAIN=1` then puts the rain on and counts
+the programs that compiles. llvmpipe compiles at first draw whatever was linked ahead, so the
+asynchronous half shows only on a real GPU. Count programs here, and time them on a device.
+
 ## Analyses
 
 All analyses take `--city <id>` and write `cities/<id>/analysis/<name>.json`.
