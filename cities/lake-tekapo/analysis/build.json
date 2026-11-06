@@ -1,0 +1,703 @@
+{
+ "datum_m": 707.7,
+ "lakes": [
+  {
+   "id": "tekapo",
+   "name": "Lake Tekapo / Takap\u014d",
+   "main": true,
+   "level_nzvd": 707.7,
+   "area_km2": 96.431,
+   "max_depth_m": 120.0,
+   "depth_src": "Maximum depth 120 m: NIWA LakeSPI, Lake Tekapo (https://lakespi.niwa.co.nz/lake/47228); Wikipedia gives 120 m and an average of 69 m; the bed's shape is synthesised from the distance to the shore (no open survey)",
+   "box": [
+    -1210,
+    -330,
+    7070,
+    24900
+   ],
+   "centre": [
+    3778,
+    12283
+   ],
+   "level": 0.0
+  },
+  {
+   "id": "lake-alexandrina",
+   "name": "Lake Alexandrina",
+   "main": false,
+   "level_nzvd": 712.41,
+   "area_km2": 6.458,
+   "max_depth_m": 60.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2920,
+    3810,
+    -970,
+    10770
+   ],
+   "centre": [
+    -1963,
+    7312
+   ],
+   "level": 4.71
+  },
+  {
+   "id": "lake-mcgregor",
+   "name": "Lake McGregor",
+   "main": false,
+   "level_nzvd": 708.85,
+   "area_km2": 0.414,
+   "max_depth_m": 25.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -850,
+    7230,
+    290,
+    7920
+   ],
+   "centre": [
+    -515,
+    7573
+   ],
+   "level": 1.15
+  },
+  {
+   "id": "roys-lagoon",
+   "name": "Roys Lagoon",
+   "main": false,
+   "level_nzvd": 764.03,
+   "area_km2": 0.251,
+   "max_depth_m": 20.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5270,
+    1890,
+    5780,
+    3120
+   ],
+   "centre": [
+    5377,
+    2516
+   ],
+   "level": 56.33
+  },
+  {
+   "id": "glenmore-tarns",
+   "name": "Glenmore Tarns",
+   "main": false,
+   "level_nzvd": 894.14,
+   "area_km2": 0.148,
+   "max_depth_m": 15.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4870,
+    12150,
+    -4060,
+    12990
+   ],
+   "centre": [
+    -4304,
+    12780
+   ],
+   "level": 186.44
+  },
+  {
+   "id": "forks-lagoon",
+   "name": "Forks Lagoon",
+   "main": false,
+   "level_nzvd": 862.33,
+   "area_km2": 0.095,
+   "max_depth_m": 12.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7720,
+    6390,
+    -7330,
+    6900
+   ],
+   "centre": [
+    -7629,
+    6650
+   ],
+   "level": 154.63
+  },
+  {
+   "id": "grebe-tarn",
+   "name": "Grebe Tarn",
+   "main": false,
+   "level_nzvd": 874.63,
+   "area_km2": 0.091,
+   "max_depth_m": 12.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4030,
+    11400,
+    -3640,
+    11940
+   ],
+   "centre": [
+    -3756,
+    11676
+   ],
+   "level": 166.93
+  },
+  {
+   "id": "cluster-tarns",
+   "name": "Cluster Tarns",
+   "main": false,
+   "level_nzvd": 902.38,
+   "area_km2": 0.082,
+   "max_depth_m": 11.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5800,
+    10770,
+    -5230,
+    12180
+   ],
+   "centre": [
+    -5624,
+    11387
+   ],
+   "level": 194.68
+  },
+  {
+   "id": "scott-pond",
+   "name": "Scott Pond",
+   "main": false,
+   "level_nzvd": 682.92,
+   "area_km2": 0.074,
+   "max_depth_m": 10.9,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -1240,
+    -1380,
+    -700,
+    -1080
+   ],
+   "centre": [
+    -1080,
+    -1221
+   ],
+   "level": -24.78
+  },
+  {
+   "id": "freds-tarn",
+   "name": "Freds Tarn",
+   "main": false,
+   "level_nzvd": 999.07,
+   "area_km2": 0.072,
+   "max_depth_m": 10.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9790,
+    9690,
+    -9460,
+    10050
+   ],
+   "centre": [
+    -9664,
+    9878
+   ],
+   "level": 291.37
+  },
+  {
+   "id": "stony-tarn",
+   "name": "Stony Tarn",
+   "main": false,
+   "level_nzvd": 813.1,
+   "area_km2": 0.07,
+   "max_depth_m": 10.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2710,
+    14190,
+    -2200,
+    14580
+   ],
+   "centre": [
+    -2514,
+    14393
+   ],
+   "level": 105.4
+  },
+  {
+   "id": "t\u016b\u012b-tarn",
+   "name": "T\u016b\u012b Tarn",
+   "main": false,
+   "level_nzvd": 792.78,
+   "area_km2": 0.064,
+   "max_depth_m": 10.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2500,
+    14850,
+    -1870,
+    15180
+   ],
+   "centre": [
+    -2130,
+    14997
+   ],
+   "level": 85.08
+  },
+  {
+   "id": "lake-12",
+   "name": null,
+   "main": false,
+   "level_nzvd": 806.13,
+   "area_km2": 0.061,
+   "max_depth_m": 9.9,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7330,
+    -1200,
+    -6970,
+    -750
+   ],
+   "centre": [
+    -7233,
+    -950
+   ],
+   "level": 98.43
+  },
+  {
+   "id": "lake-murray",
+   "name": "Lake Murray",
+   "main": false,
+   "level_nzvd": 723.23,
+   "area_km2": 0.059,
+   "max_depth_m": 9.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -820,
+    10920,
+    -430,
+    11310
+   ],
+   "centre": [
+    -640,
+    11102
+   ],
+   "level": 15.53
+  },
+  {
+   "id": "hartley-tarn",
+   "name": "Hartley Tarn",
+   "main": false,
+   "level_nzvd": 852.64,
+   "area_km2": 0.059,
+   "max_depth_m": 9.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -3250,
+    13350,
+    -2800,
+    13740
+   ],
+   "centre": [
+    -2968,
+    13572
+   ],
+   "level": 144.94
+  },
+  {
+   "id": "patersons-ponds",
+   "name": "Patersons Ponds",
+   "main": false,
+   "level_nzvd": 637.34,
+   "area_km2": 0.058,
+   "max_depth_m": 9.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -3790,
+    -6120,
+    -3550,
+    -5490
+   ],
+   "centre": [
+    -3704,
+    -6069
+   ],
+   "level": -70.36
+  },
+  {
+   "id": "sunday-tarn",
+   "name": "Sunday Tarn",
+   "main": false,
+   "level_nzvd": 879.43,
+   "area_km2": 0.053,
+   "max_depth_m": 9.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4690,
+    10920,
+    -4360,
+    11250
+   ],
+   "centre": [
+    -4568,
+    11072
+   ],
+   "level": 171.73
+  },
+  {
+   "id": "lake-17",
+   "name": null,
+   "main": false,
+   "level_nzvd": 793.54,
+   "area_km2": 0.046,
+   "max_depth_m": 8.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    4250,
+    630,
+    4670,
+    990
+   ],
+   "centre": [
+    4491,
+    801
+   ],
+   "level": 85.84
+  },
+  {
+   "id": "lake-18",
+   "name": null,
+   "main": false,
+   "level_nzvd": 865.9,
+   "area_km2": 0.041,
+   "max_depth_m": 8.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -10090,
+    5400,
+    -9850,
+    5610
+   ],
+   "centre": [
+    -9971,
+    5503
+   ],
+   "level": 158.2
+  },
+  {
+   "id": "pierce-pond",
+   "name": "Pierce Pond",
+   "main": false,
+   "level_nzvd": 710.61,
+   "area_km2": 0.04,
+   "max_depth_m": 8.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    710,
+    11160,
+    1040,
+    11370
+   ],
+   "centre": [
+    930,
+    11273
+   ],
+   "level": 2.91
+  },
+  {
+   "id": "lake-20",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1412.3,
+   "area_km2": 0.037,
+   "max_depth_m": 7.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    22310,
+    30330,
+    22490,
+    30570
+   ],
+   "centre": [
+    22404,
+    30446
+   ],
+   "level": 704.6
+  },
+  {
+   "id": "lake-21",
+   "name": null,
+   "main": false,
+   "level_nzvd": 709.45,
+   "area_km2": 0.037,
+   "max_depth_m": 7.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    2090,
+    12840,
+    2330,
+    13110
+   ],
+   "centre": [
+    2165,
+    12967
+   ],
+   "level": 1.75
+  },
+  {
+   "id": "lake-22",
+   "name": null,
+   "main": false,
+   "level_nzvd": 819.75,
+   "area_km2": 0.036,
+   "max_depth_m": 7.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2860,
+    11460,
+    -2710,
+    11820
+   ],
+   "centre": [
+    -2781,
+    11621
+   ],
+   "level": 112.05
+  },
+  {
+   "id": "lake-23",
+   "name": null,
+   "main": false,
+   "level_nzvd": 779.78,
+   "area_km2": 0.036,
+   "max_depth_m": 7.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5870,
+    -1320,
+    6110,
+    -1050
+   ],
+   "centre": [
+    6032,
+    -1204
+   ],
+   "level": 72.08
+  },
+  {
+   "id": "boundary-tarns",
+   "name": "Boundary Tarns",
+   "main": false,
+   "level_nzvd": 876.68,
+   "area_km2": 0.033,
+   "max_depth_m": 7.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5710,
+    9900,
+    -5110,
+    10290
+   ],
+   "centre": [
+    -5632,
+    10072
+   ],
+   "level": 168.98
+  },
+  {
+   "id": "lake-25",
+   "name": null,
+   "main": false,
+   "level_nzvd": 788.68,
+   "area_km2": 0.033,
+   "max_depth_m": 7.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    3440,
+    120,
+    3710,
+    300
+   ],
+   "centre": [
+    3586,
+    213
+   ],
+   "level": 80.98
+  },
+  {
+   "id": "lake-26",
+   "name": null,
+   "main": false,
+   "level_nzvd": 632.58,
+   "area_km2": 0.028,
+   "max_depth_m": 6.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -3790,
+    -6480,
+    -3670,
+    -6120
+   ],
+   "centre": [
+    -3730,
+    -6330
+   ],
+   "level": -75.12
+  },
+  {
+   "id": "lake-27",
+   "name": null,
+   "main": false,
+   "level_nzvd": 762.68,
+   "area_km2": 0.028,
+   "max_depth_m": 6.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    3530,
+    1710,
+    3770,
+    1980
+   ],
+   "centre": [
+    3643,
+    1853
+   ],
+   "level": 54.98
+  },
+  {
+   "id": "lake-28",
+   "name": null,
+   "main": false,
+   "level_nzvd": 734.32,
+   "area_km2": 0.025,
+   "max_depth_m": 6.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -280,
+    15480,
+    -70,
+    15660
+   ],
+   "centre": [
+    -178,
+    15564
+   ],
+   "level": 26.62
+  },
+  {
+   "id": "lake-29",
+   "name": null,
+   "main": false,
+   "level_nzvd": 396.38,
+   "area_km2": 0.023,
+   "max_depth_m": 6.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    25640,
+    -3210,
+    25820,
+    -3000
+   ],
+   "centre": [
+    25716,
+    -3106
+   ],
+   "level": -311.32
+  },
+  {
+   "id": "lake-30",
+   "name": null,
+   "main": false,
+   "level_nzvd": 429.97,
+   "area_km2": 0.023,
+   "max_depth_m": 6.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    24200,
+    -1980,
+    24470,
+    -1830
+   ],
+   "centre": [
+    24344,
+    -1900
+   ],
+   "level": -277.73
+  },
+  {
+   "id": "lake-31",
+   "name": null,
+   "main": false,
+   "level_nzvd": 769.69,
+   "area_km2": 0.022,
+   "max_depth_m": 6.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    2990,
+    2040,
+    3140,
+    2250
+   ],
+   "centre": [
+    3055,
+    2140
+   ],
+   "level": 61.99
+  },
+  {
+   "id": "lake-32",
+   "name": null,
+   "main": false,
+   "level_nzvd": 880.89,
+   "area_km2": 0.021,
+   "max_depth_m": 5.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4150,
+    13620,
+    -3970,
+    13800
+   ],
+   "centre": [
+    -4061,
+    13712
+   ],
+   "level": 173.19
+  },
+  {
+   "id": "lake-33",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1427.39,
+   "area_km2": 0.02,
+   "max_depth_m": 5.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    22010,
+    30270,
+    22220,
+    30450
+   ],
+   "centre": [
+    22120,
+    30366
+   ],
+   "level": 719.69
+  }
+ ],
+ "cover_pct": {
+  "lake": 5.56,
+  "river and stream": 0.69,
+  "snow and ice": 9.22,
+  "debris-covered ice": 0.0,
+  "rock and cliff": 1.14,
+  "scree and moraine": 2.64,
+  "riverbed gravel": 1.07,
+  "tussock grassland": 59.84,
+  "alpine herbfield": 4.59,
+  "shrub and scrub": 5.33,
+  "forest": 0.75,
+  "pasture": 8.28,
+  "wetland": 0.39,
+  "road": 0.29,
+  "built": 0.06,
+  "shore": 0.14
+ }
+}

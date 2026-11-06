@@ -1,0 +1,1342 @@
+{
+ "id": "lake-tekapo",
+ "name": "Lake Tekapo",
+ "native": "Takap\u014d",
+ "kind": "alpine",
+ "origin": [
+  170.477,
+  -44.004
+ ],
+ "timezone": "Pacific/Auckland",
+ "extent_m": [
+  -10240,
+  26240,
+  -11040,
+  40800
+ ],
+ "vertical_datum": "m NZVD2016, shifted so the lake surface is 0",
+ "terrain": {
+  "file": "terrain.bin.gz",
+  "w": 1216,
+  "h": 1728,
+  "cell_m": 30,
+  "x0": -10240,
+  "y1": 40800,
+  "units_m": 0.125,
+  "datum_m": 707.7,
+  "bytes": 4202496,
+  "encoding": "plane-residual, byte planes, gzip"
+ },
+ "ground": {
+  "strips": [
+   {
+    "file": "ground_0.webp",
+    "row0": 0,
+    "rows": 3840
+   },
+   {
+    "file": "ground_1.webp",
+    "row0": 3840,
+    "rows": 1344
+   }
+  ],
+  "w": 3648,
+  "h": 5184,
+  "px_m": 10
+ },
+ "cover": {
+  "file": "cover.png",
+  "w": 1824,
+  "h": 2592,
+  "px_m": 20,
+  "classes": {
+   "0": "lake",
+   "1": "river and stream",
+   "2": "snow and ice",
+   "3": "debris-covered ice",
+   "4": "rock and cliff",
+   "5": "scree and moraine",
+   "6": "riverbed gravel",
+   "7": "tussock grassland",
+   "8": "alpine herbfield",
+   "9": "shrub and scrub",
+   "10": "forest",
+   "11": "pasture",
+   "12": "wetland",
+   "13": "road",
+   "14": "built",
+   "15": "shore"
+  }
+ },
+ "lakes": [
+  {
+   "id": "tekapo",
+   "name": "Lake Tekapo / Takap\u014d",
+   "main": true,
+   "level_nzvd": 707.7,
+   "area_km2": 96.431,
+   "max_depth_m": 120.0,
+   "depth_src": "Maximum depth 120 m: NIWA LakeSPI, Lake Tekapo (https://lakespi.niwa.co.nz/lake/47228); Wikipedia gives 120 m and an average of 69 m; the bed's shape is synthesised from the distance to the shore (no open survey)",
+   "box": [
+    -1210,
+    -330,
+    7070,
+    24900
+   ],
+   "centre": [
+    3778,
+    12283
+   ],
+   "level": 0.0
+  },
+  {
+   "id": "lake-alexandrina",
+   "name": "Lake Alexandrina",
+   "main": false,
+   "level_nzvd": 712.41,
+   "area_km2": 6.458,
+   "max_depth_m": 60.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2920,
+    3810,
+    -970,
+    10770
+   ],
+   "centre": [
+    -1963,
+    7312
+   ],
+   "level": 4.71
+  },
+  {
+   "id": "lake-mcgregor",
+   "name": "Lake McGregor",
+   "main": false,
+   "level_nzvd": 708.85,
+   "area_km2": 0.414,
+   "max_depth_m": 25.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -850,
+    7230,
+    290,
+    7920
+   ],
+   "centre": [
+    -515,
+    7573
+   ],
+   "level": 1.15
+  },
+  {
+   "id": "roys-lagoon",
+   "name": "Roys Lagoon",
+   "main": false,
+   "level_nzvd": 764.03,
+   "area_km2": 0.251,
+   "max_depth_m": 20.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5270,
+    1890,
+    5780,
+    3120
+   ],
+   "centre": [
+    5377,
+    2516
+   ],
+   "level": 56.33
+  },
+  {
+   "id": "glenmore-tarns",
+   "name": "Glenmore Tarns",
+   "main": false,
+   "level_nzvd": 894.14,
+   "area_km2": 0.148,
+   "max_depth_m": 15.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4870,
+    12150,
+    -4060,
+    12990
+   ],
+   "centre": [
+    -4304,
+    12780
+   ],
+   "level": 186.44
+  },
+  {
+   "id": "forks-lagoon",
+   "name": "Forks Lagoon",
+   "main": false,
+   "level_nzvd": 862.33,
+   "area_km2": 0.095,
+   "max_depth_m": 12.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7720,
+    6390,
+    -7330,
+    6900
+   ],
+   "centre": [
+    -7629,
+    6650
+   ],
+   "level": 154.63
+  },
+  {
+   "id": "grebe-tarn",
+   "name": "Grebe Tarn",
+   "main": false,
+   "level_nzvd": 874.63,
+   "area_km2": 0.091,
+   "max_depth_m": 12.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4030,
+    11400,
+    -3640,
+    11940
+   ],
+   "centre": [
+    -3756,
+    11676
+   ],
+   "level": 166.93
+  },
+  {
+   "id": "cluster-tarns",
+   "name": "Cluster Tarns",
+   "main": false,
+   "level_nzvd": 902.38,
+   "area_km2": 0.082,
+   "max_depth_m": 11.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5800,
+    10770,
+    -5230,
+    12180
+   ],
+   "centre": [
+    -5624,
+    11387
+   ],
+   "level": 194.68
+  },
+  {
+   "id": "scott-pond",
+   "name": "Scott Pond",
+   "main": false,
+   "level_nzvd": 682.92,
+   "area_km2": 0.074,
+   "max_depth_m": 10.9,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -1240,
+    -1380,
+    -700,
+    -1080
+   ],
+   "centre": [
+    -1080,
+    -1221
+   ],
+   "level": -24.78
+  },
+  {
+   "id": "freds-tarn",
+   "name": "Freds Tarn",
+   "main": false,
+   "level_nzvd": 999.07,
+   "area_km2": 0.072,
+   "max_depth_m": 10.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9790,
+    9690,
+    -9460,
+    10050
+   ],
+   "centre": [
+    -9664,
+    9878
+   ],
+   "level": 291.37
+  },
+  {
+   "id": "stony-tarn",
+   "name": "Stony Tarn",
+   "main": false,
+   "level_nzvd": 813.1,
+   "area_km2": 0.07,
+   "max_depth_m": 10.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2710,
+    14190,
+    -2200,
+    14580
+   ],
+   "centre": [
+    -2514,
+    14393
+   ],
+   "level": 105.4
+  },
+  {
+   "id": "t\u016b\u012b-tarn",
+   "name": "T\u016b\u012b Tarn",
+   "main": false,
+   "level_nzvd": 792.78,
+   "area_km2": 0.064,
+   "max_depth_m": 10.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2500,
+    14850,
+    -1870,
+    15180
+   ],
+   "centre": [
+    -2130,
+    14997
+   ],
+   "level": 85.08
+  },
+  {
+   "id": "lake-12",
+   "name": null,
+   "main": false,
+   "level_nzvd": 806.13,
+   "area_km2": 0.061,
+   "max_depth_m": 9.9,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7330,
+    -1200,
+    -6970,
+    -750
+   ],
+   "centre": [
+    -7233,
+    -950
+   ],
+   "level": 98.43
+  },
+  {
+   "id": "lake-murray",
+   "name": "Lake Murray",
+   "main": false,
+   "level_nzvd": 723.23,
+   "area_km2": 0.059,
+   "max_depth_m": 9.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -820,
+    10920,
+    -430,
+    11310
+   ],
+   "centre": [
+    -640,
+    11102
+   ],
+   "level": 15.53
+  },
+  {
+   "id": "hartley-tarn",
+   "name": "Hartley Tarn",
+   "main": false,
+   "level_nzvd": 852.64,
+   "area_km2": 0.059,
+   "max_depth_m": 9.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -3250,
+    13350,
+    -2800,
+    13740
+   ],
+   "centre": [
+    -2968,
+    13572
+   ],
+   "level": 144.94
+  },
+  {
+   "id": "patersons-ponds",
+   "name": "Patersons Ponds",
+   "main": false,
+   "level_nzvd": 637.34,
+   "area_km2": 0.058,
+   "max_depth_m": 9.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -3790,
+    -6120,
+    -3550,
+    -5490
+   ],
+   "centre": [
+    -3704,
+    -6069
+   ],
+   "level": -70.36
+  },
+  {
+   "id": "sunday-tarn",
+   "name": "Sunday Tarn",
+   "main": false,
+   "level_nzvd": 879.43,
+   "area_km2": 0.053,
+   "max_depth_m": 9.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4690,
+    10920,
+    -4360,
+    11250
+   ],
+   "centre": [
+    -4568,
+    11072
+   ],
+   "level": 171.73
+  },
+  {
+   "id": "lake-17",
+   "name": null,
+   "main": false,
+   "level_nzvd": 793.54,
+   "area_km2": 0.046,
+   "max_depth_m": 8.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    4250,
+    630,
+    4670,
+    990
+   ],
+   "centre": [
+    4491,
+    801
+   ],
+   "level": 85.84
+  },
+  {
+   "id": "lake-18",
+   "name": null,
+   "main": false,
+   "level_nzvd": 865.9,
+   "area_km2": 0.041,
+   "max_depth_m": 8.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -10090,
+    5400,
+    -9850,
+    5610
+   ],
+   "centre": [
+    -9971,
+    5503
+   ],
+   "level": 158.2
+  },
+  {
+   "id": "pierce-pond",
+   "name": "Pierce Pond",
+   "main": false,
+   "level_nzvd": 710.61,
+   "area_km2": 0.04,
+   "max_depth_m": 8.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    710,
+    11160,
+    1040,
+    11370
+   ],
+   "centre": [
+    930,
+    11273
+   ],
+   "level": 2.91
+  },
+  {
+   "id": "lake-20",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1412.3,
+   "area_km2": 0.037,
+   "max_depth_m": 7.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    22310,
+    30330,
+    22490,
+    30570
+   ],
+   "centre": [
+    22404,
+    30446
+   ],
+   "level": 704.6
+  },
+  {
+   "id": "lake-21",
+   "name": null,
+   "main": false,
+   "level_nzvd": 709.45,
+   "area_km2": 0.037,
+   "max_depth_m": 7.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    2090,
+    12840,
+    2330,
+    13110
+   ],
+   "centre": [
+    2165,
+    12967
+   ],
+   "level": 1.75
+  },
+  {
+   "id": "lake-22",
+   "name": null,
+   "main": false,
+   "level_nzvd": 819.75,
+   "area_km2": 0.036,
+   "max_depth_m": 7.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -2860,
+    11460,
+    -2710,
+    11820
+   ],
+   "centre": [
+    -2781,
+    11621
+   ],
+   "level": 112.05
+  },
+  {
+   "id": "lake-23",
+   "name": null,
+   "main": false,
+   "level_nzvd": 779.78,
+   "area_km2": 0.036,
+   "max_depth_m": 7.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5870,
+    -1320,
+    6110,
+    -1050
+   ],
+   "centre": [
+    6032,
+    -1204
+   ],
+   "level": 72.08
+  },
+  {
+   "id": "boundary-tarns",
+   "name": "Boundary Tarns",
+   "main": false,
+   "level_nzvd": 876.68,
+   "area_km2": 0.033,
+   "max_depth_m": 7.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5710,
+    9900,
+    -5110,
+    10290
+   ],
+   "centre": [
+    -5632,
+    10072
+   ],
+   "level": 168.98
+  },
+  {
+   "id": "lake-25",
+   "name": null,
+   "main": false,
+   "level_nzvd": 788.68,
+   "area_km2": 0.033,
+   "max_depth_m": 7.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    3440,
+    120,
+    3710,
+    300
+   ],
+   "centre": [
+    3586,
+    213
+   ],
+   "level": 80.98
+  },
+  {
+   "id": "lake-26",
+   "name": null,
+   "main": false,
+   "level_nzvd": 632.58,
+   "area_km2": 0.028,
+   "max_depth_m": 6.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -3790,
+    -6480,
+    -3670,
+    -6120
+   ],
+   "centre": [
+    -3730,
+    -6330
+   ],
+   "level": -75.12
+  },
+  {
+   "id": "lake-27",
+   "name": null,
+   "main": false,
+   "level_nzvd": 762.68,
+   "area_km2": 0.028,
+   "max_depth_m": 6.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    3530,
+    1710,
+    3770,
+    1980
+   ],
+   "centre": [
+    3643,
+    1853
+   ],
+   "level": 54.98
+  },
+  {
+   "id": "lake-28",
+   "name": null,
+   "main": false,
+   "level_nzvd": 734.32,
+   "area_km2": 0.025,
+   "max_depth_m": 6.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -280,
+    15480,
+    -70,
+    15660
+   ],
+   "centre": [
+    -178,
+    15564
+   ],
+   "level": 26.62
+  },
+  {
+   "id": "lake-29",
+   "name": null,
+   "main": false,
+   "level_nzvd": 396.38,
+   "area_km2": 0.023,
+   "max_depth_m": 6.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    25640,
+    -3210,
+    25820,
+    -3000
+   ],
+   "centre": [
+    25716,
+    -3106
+   ],
+   "level": -311.32
+  },
+  {
+   "id": "lake-30",
+   "name": null,
+   "main": false,
+   "level_nzvd": 429.97,
+   "area_km2": 0.023,
+   "max_depth_m": 6.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    24200,
+    -1980,
+    24470,
+    -1830
+   ],
+   "centre": [
+    24344,
+    -1900
+   ],
+   "level": -277.73
+  },
+  {
+   "id": "lake-31",
+   "name": null,
+   "main": false,
+   "level_nzvd": 769.69,
+   "area_km2": 0.022,
+   "max_depth_m": 6.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    2990,
+    2040,
+    3140,
+    2250
+   ],
+   "centre": [
+    3055,
+    2140
+   ],
+   "level": 61.99
+  },
+  {
+   "id": "lake-32",
+   "name": null,
+   "main": false,
+   "level_nzvd": 880.89,
+   "area_km2": 0.021,
+   "max_depth_m": 5.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4150,
+    13620,
+    -3970,
+    13800
+   ],
+   "centre": [
+    -4061,
+    13712
+   ],
+   "level": 173.19
+  },
+  {
+   "id": "lake-33",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1427.39,
+   "area_km2": 0.02,
+   "max_depth_m": 5.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    22010,
+    30270,
+    22220,
+    30450
+   ],
+   "centre": [
+    22120,
+    30366
+   ],
+   "level": 719.69
+  }
+ ],
+ "lake_ids": "lakes.png",
+ "optics": {
+  "K": [
+   5.0,
+   3.6,
+   3.9
+  ],
+  "Rinf": [
+   0.03,
+   0.25,
+   0.49
+  ],
+  "g": 2.2,
+  "src": "No published Secchi depth for Lake Tekapo was found (searched 2026-11-05), so Kd is Lake Pukaki's, from that glacial-flour lake's Secchi depth (cities/lake-pukaki/city.json). Rinf keeps Pukaki's brightness with Tekapo's own hue: in the LINZ 10 m mosaic (median of 400 m windows at four mid-lake points, linearised) Tekapo is 0.0072, 0.206, 0.405 (green over blue 0.51) against Pukaki's 0.0037, 0.120, 0.250 (0.48) measured the same way; the mosaic is colour-balanced sheet by sheet, so only the hue is carried over."
+ },
+ "roads": "roads.json",
+ "structures": "structures.json",
+ "start": {
+  "x": 428,
+  "y": 30,
+  "z": 30,
+  "yaw": 16,
+  "pitch": -6,
+  "date": null
+ },
+ "sources": [
+  "Toit\u016b Te Whenua LINZ, New Zealand LiDAR 1m DEM (Canterbury - Mackenzie 2015, Canterbury 2016-2019 and West Coast 2020-2022 captures; CC BY 4.0); New Zealand Contour-Interpolated 8m DEM (Geographx, CC BY 4.0) where the LiDAR has a gap",
+  "Toit\u016b Te Whenua LINZ, New Zealand 10m Satellite Imagery (2025-2026), Copernicus Sentinel-2 (CC BY 4.0); Mackenzie 0.3m Rural (2021) and 0.075m Urban (2025-2026) Aerial Photos (CC BY 4.0)",
+  "OpenStreetMap contributors via Overture Maps (ODbL): glaciers, scree, scrub, woods, water, roads, buildings, places",
+  "Maximum depth 120 m: NIWA LakeSPI, Lake Tekapo (https://lakespi.niwa.co.nz/lake/47228); Wikipedia gives 120 m and an average of 69 m; the bed's shape is synthesised from the distance to the shore (no open survey)"
+ ],
+ "pois": [
+  {
+   "id": "church-view",
+   "name": "Below the Church of the Good Shepherd",
+   "kind": "viewpoint",
+   "lonlat": [
+    170.482386,
+    -44.003535
+   ],
+   "src": "nominal",
+   "x": 432,
+   "y": 52
+  },
+  {
+   "id": "lakefront",
+   "name": "Lake Tekapo lakefront",
+   "kind": "shore",
+   "lonlat": [
+    170.4797,
+    -44.0041
+   ],
+   "src": "nominal",
+   "x": 217,
+   "y": -11
+  },
+  {
+   "id": "township",
+   "name": "Lake Tekapo / Takap\u014d township",
+   "kind": "town",
+   "lonlat": [
+    170.477,
+    -44.004
+   ],
+   "src": "overture-places",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "id": "church-good-shepherd",
+   "name": "Church of the Good Shepherd",
+   "kind": "church",
+   "lonlat": [
+    170.482466,
+    -44.003346
+   ],
+   "src": "osm",
+   "x": 438,
+   "y": 73
+  },
+  {
+   "id": "sheepdog-statue",
+   "name": "Sheepdog statue",
+   "kind": "monument",
+   "lonlat": [
+    170.48395,
+    -44.00347
+   ],
+   "src": "overture-places",
+   "x": 557,
+   "y": 59
+  },
+  {
+   "id": "footbridge",
+   "name": "Lake Tekapo footbridge (MacLaren Footbridge)",
+   "kind": "bridge",
+   "lonlat": [
+    170.4810666,
+    -44.004897
+   ],
+   "src": "osm",
+   "x": 326,
+   "y": -100
+  },
+  {
+   "id": "dark-sky-project",
+   "name": "Dark Sky Project",
+   "kind": "observatory",
+   "lonlat": [
+    170.47712,
+    -44.00331
+   ],
+   "src": "overture-places",
+   "x": 10,
+   "y": 77
+  },
+  {
+   "id": "hot-springs",
+   "name": "Tekapo Springs",
+   "kind": "pools",
+   "lonlat": [
+    170.46095,
+    -43.99481
+   ],
+   "src": "overture-places",
+   "x": -1287,
+   "y": 1021
+  },
+  {
+   "id": "mt-john",
+   "name": "Mt John / \u014cteh\u012bwai",
+   "kind": "peak",
+   "lonlat": [
+    170.46504,
+    -43.98574
+   ],
+   "ele": 1031,
+   "src": "osm",
+   "x": -959,
+   "y": 2029
+  },
+  {
+   "id": "mt-john-observatory",
+   "name": "University of Canterbury Mt John Observatory",
+   "kind": "observatory",
+   "lonlat": [
+    170.46418,
+    -43.98525
+   ],
+   "src": "overture-places",
+   "x": -1028,
+   "y": 2083
+  },
+  {
+   "id": "astro-cafe",
+   "name": "Astro Caf\u00e9",
+   "kind": "cafe",
+   "lonlat": [
+    170.46473,
+    -43.98583
+   ],
+   "src": "overture-places",
+   "x": -984,
+   "y": 2019
+  },
+  {
+   "id": "lake-alexandrina",
+   "name": "Lake Alexandrina",
+   "kind": "lake",
+   "lonlat": [
+    170.4519,
+    -43.9385
+   ],
+   "src": "osm",
+   "x": -2015,
+   "y": 7278
+  },
+  {
+   "id": "lake-mcgregor",
+   "name": "Lake McGregor",
+   "kind": "lake",
+   "lonlat": [
+    170.4718,
+    -43.9363
+   ],
+   "src": "osm",
+   "x": -418,
+   "y": 7522
+  },
+  {
+   "id": "motuariki",
+   "name": "Motuariki Island",
+   "kind": "island",
+   "lonlat": [
+    170.52211,
+    -43.93898
+   ],
+   "src": "osm",
+   "x": 3622,
+   "y": 7223
+  },
+  {
+   "id": "cowans-hill",
+   "name": "Cowans Hill",
+   "kind": "peak",
+   "lonlat": [
+    170.49341,
+    -44.01542
+   ],
+   "ele": 783,
+   "src": "osm",
+   "x": 1316,
+   "y": -1269
+  },
+  {
+   "id": "lake-george-scott",
+   "name": "Lake George Scott",
+   "kind": "lake",
+   "lonlat": [
+    170.46328,
+    -44.01534
+   ],
+   "src": "overture-places",
+   "x": -1100,
+   "y": -1260
+  },
+  {
+   "id": "tekapo-canal",
+   "name": "Tekapo Canal",
+   "kind": "canal",
+   "lonlat": [
+    170.43858,
+    -44.04205
+   ],
+   "src": "osm",
+   "x": -3079,
+   "y": -4229
+  },
+  {
+   "id": "lupins-shore",
+   "name": "Lakeshore east of the church",
+   "kind": "meadow",
+   "lonlat": [
+    170.4885,
+    -44.0058
+   ],
+   "src": "nominal",
+   "note": "where the game looks for lupins in season: the lakeshore and the Tekapo River's banks below the regional park",
+   "x": 922,
+   "y": -200
+  },
+  {
+   "id": "godley-delta",
+   "name": "Godley River delta, head of the lake",
+   "kind": "delta",
+   "lonlat": [
+    170.553,
+    -43.772
+   ],
+   "src": "osm",
+   "note": "just north of the lake polygon's northernmost point (170.5555, -43.7799)",
+   "x": 6119,
+   "y": 25775
+  },
+  {
+   "id": "mistake-peak",
+   "name": "Mistake Peak",
+   "kind": "peak",
+   "lonlat": [
+    170.49699,
+    -43.78479
+   ],
+   "ele": 1921,
+   "src": "osm",
+   "x": 1609,
+   "y": 24356
+  },
+  {
+   "id": "mount-edward",
+   "name": "Mount Edward",
+   "kind": "peak",
+   "lonlat": [
+    170.59797,
+    -44.00808
+   ],
+   "ele": 1916,
+   "src": "osm",
+   "x": 9701,
+   "y": -460
+  },
+  {
+   "id": "mount-maude",
+   "name": "Mount Maude",
+   "kind": "peak",
+   "lonlat": [
+    170.63194,
+    -43.98139
+   ],
+   "ele": 1797,
+   "src": "osm",
+   "x": 12431,
+   "y": 2501
+  },
+  {
+   "id": "dobson-peak",
+   "name": "Dobson Peak",
+   "kind": "peak",
+   "lonlat": [
+    170.66983,
+    -43.9356
+   ],
+   "ele": 2095,
+   "src": "osm",
+   "x": 15483,
+   "y": 7582
+  },
+  {
+   "id": "roundhill",
+   "name": "Roundhill Ski Area",
+   "kind": "skifield",
+   "lonlat": [
+    170.65645,
+    -43.82548
+   ],
+   "src": "overture-places",
+   "x": 14435,
+   "y": 19820
+  },
+  {
+   "id": "two-thumb-range",
+   "name": "Two Thumb Range",
+   "kind": "range",
+   "lonlat": [
+    170.67136,
+    -43.73743
+   ],
+   "src": "osm",
+   "x": 15657,
+   "y": 29600
+  },
+  {
+   "id": "beuzenberg-peak",
+   "name": "Beuzenberg Peak",
+   "kind": "peak",
+   "lonlat": [
+    170.68363,
+    -43.7166
+   ],
+   "ele": 2070,
+   "src": "osm",
+   "x": 16652,
+   "y": 31912
+  },
+  {
+   "id": "airport",
+   "name": "Lake Tekapo Airport (Air Safaris)",
+   "kind": "airport",
+   "lonlat": [
+    170.4414,
+    -44.0024
+   ],
+   "src": "overture-places",
+   "x": -2855,
+   "y": 177
+  },
+  {
+   "id": "helipad",
+   "name": "Tekapo helicopter base",
+   "kind": "helipad",
+   "lonlat": [
+    170.40667,
+    -44.01278
+   ],
+   "src": "overture-places",
+   "x": -5640,
+   "y": -978
+  }
+ ],
+ "spawn": {
+  "poi": "church-view",
+  "x": 432,
+  "y": 52,
+  "heading": 16,
+  "note": "the postcard: 22 m south of the Church of the Good Shepherd on its own axis, on the tussock between the paths and clear of the car park (0.3 m aerial photographs, 2025-26), looking up the lake along the church's own axis. Behind the south gable and the belfry lie the lake, the head of the lake (bearing 13 degrees, 25.5 km) and Mistake Peak (3 degrees, 24.3 km); the Two Thumb Range rises on the right (Beuzenberg Peak 27 degrees). Mt John stands left of the frame at 324 degrees and hides Aoraki (329 degrees, 53 km: 3.0 degrees up against Mt John's 7.4 degrees). Bearings from WGS84 geodesics; see docs/cities/lake-tekapo.md, The first view"
+ },
+ "harbour": {
+  "parked": [
+   {
+    "kind": "helicopter",
+    "name": "Tekapo scenic helicopter",
+    "at": "helipad"
+   }
+  ],
+  "scenic": [
+   {
+    "kind": "helicopter",
+    "name": "Scenic flight up the lake",
+    "around": "motuariki",
+    "r": 6000,
+    "alt": 1400,
+    "v": 45,
+    "dir": 1
+   }
+  ],
+  "moorings": 0
+ },
+ "region": "Te Manahuna \u00b7 Mackenzie Basin \u00b7 Aotearoa New Zealand",
+ "landmarks": [
+  {
+   "id": "church-good-shepherd",
+   "glb": "data/lake-tekapo/models/tekapo-church.glb",
+   "lonlat": [
+    170.482466,
+    -44.003346
+   ],
+   "axis_deg": 16.5,
+   "ground_m": 714.9,
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them. axis_deg is the altar end's bearing: the long axis of the OpenStreetMap footprint (10.1 x 6.3 m) runs at 16.5 degrees, and the altar window looks north up the lake",
+   "kind": "landmark",
+   "x": 438,
+   "y": 73
+  },
+  {
+   "id": "sheepdog-statue",
+   "glb": "data/lake-tekapo/models/tekapo-collie.glb",
+   "lonlat": [
+    170.48395,
+    -44.00347
+   ],
+   "ground_m": 713.2,
+   "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is the dark cairn in a round paved bay in the 0.075 m aerial photographs (2025-26), 9 m south of Overture's Sheepdog Memorial record",
+   "kind": "landmark",
+   "x": 557,
+   "y": 59
+  },
+  {
+   "id": "footbridge",
+   "glb": "data/lake-tekapo/models/tekapo-footbridge.glb",
+   "lonlat": [
+    170.4810666,
+    -44.004897
+   ],
+   "ground_m": 707.71,
+   "walk": "deck",
+   "note": "y = 0 is the river surface under it (the DEM, 707.71 m); the deck is 8.2-10.8 m above",
+   "deck": {
+    "ends_m": [
+     [
+      -61.44,
+      0.76
+     ],
+     [
+      61.93,
+      -1.22
+     ]
+    ],
+    "width_m": 3.0,
+    "z_m": [
+     715.38,
+     716.58,
+     717.46,
+     718.04,
+     718.3,
+     718.26,
+     717.9,
+     717.23,
+     716.25
+    ],
+    "note": "the walkable deck: its ends in metres east and north of the landmark's point, and its top from end to end, m NZVD2016, at nine even steps (the DSM along the OpenStreetMap way less the balustrade, fitted to a camber); web/reef/alpine/landmarks.js prefers it to raycasting the model, so the handrails are not walked on"
+   },
+   "kind": "landmark",
+   "x": 326,
+   "y": -100
+  },
+  {
+   "id": "mt-john-observatory",
+   "glb": "data/lake-tekapo/models/tekapo-observatory.glb",
+   "lonlat": [
+    170.4645,
+    -43.9855
+   ],
+   "ground_m": 1023.2,
+   "kind": "landmark",
+   "x": -1003,
+   "y": 2055
+  }
+ ],
+ "flora": {
+  "lupins": [
+   {
+    "lonlat": [
+     170.4885,
+     -44.0058
+    ],
+    "r_m": 90,
+    "density": 0.8,
+    "id": "lupins-0",
+    "x": 922,
+    "y": -200
+   },
+   {
+    "lonlat": [
+     170.484,
+     -44.0042
+    ],
+    "r_m": 50,
+    "density": 0.6,
+    "id": "lupins-1",
+    "x": 561,
+    "y": -22
+   },
+   {
+    "lonlat": [
+     170.4795,
+     -44.0062
+    ],
+    "r_m": 60,
+    "density": 0.6,
+    "id": "lupins-2",
+    "x": 200,
+    "y": -244
+   },
+   {
+    "lonlat": [
+     170.493,
+     -44.0075
+    ],
+    "r_m": 80,
+    "density": 0.7,
+    "id": "lupins-3",
+    "x": 1283,
+    "y": -389
+   }
+  ]
+ },
+ "detail": [
+  {
+   "id": "township",
+   "file": "detail_township.webp",
+   "x0": -1040,
+   "y1": 900,
+   "w": 8000,
+   "h": 6000,
+   "px_m": 0.3,
+   "src": "Toit\u016b Te Whenua LINZ, Mackenzie 0.075m Urban Aerial Photos (2025-2026), CC BY 4.0"
+  },
+  {
+   "id": "mt-john",
+   "file": "detail_mt-john.webp",
+   "x0": -2703,
+   "y1": 3944,
+   "w": 4000,
+   "h": 4000,
+   "px_m": 0.75,
+   "src": "Toit\u016b Te Whenua LINZ, Mackenzie 0.3m Rural Aerial Photos (2021), CC BY 4.0"
+  },
+  {
+   "id": "south-shore",
+   "file": "detail_south-shore.webp",
+   "x0": 746,
+   "y1": 1944,
+   "w": 4000,
+   "h": 4000,
+   "px_m": 0.75,
+   "src": "Toit\u016b Te Whenua LINZ, Mackenzie 0.3m Rural Aerial Photos (2021), CC BY 4.0"
+  }
+ ],
+ "snow": {
+  "file": "snow.png",
+  "w": 1824,
+  "h": 2592,
+  "px_m": 20,
+  "date": "2026-10-24",
+  "scene": "S2C_59GMM_20261024_0_L2A",
+  "scenes": [
+   "S2C_59GMM_20261024_0_L2A"
+  ],
+  "src": "Copernicus Sentinel-2 L2A via Earth Search on AWS (Copernicus open licence); NDSI > 0.4 and B08 > 0.11; 255 = cloud"
+ },
+ "clouds": {
+  "nwarch": {
+   "edge": [
+    -17270,
+    38330
+   ],
+   "bearing_deg": 37,
+   "note": "?weather=nwarch: the arch's edge, a point on it (m east and north) about 12 km south-east of the Main Divide at Aoraki, and its bearing, parallel to the Divide; a judgement from photographs of the arch from the Mackenzie"
+  }
+ }
+}

@@ -582,7 +582,7 @@ def ishigaki(m, P, ring, z0, z1, batter=0.25, rows=6):
 
 def load_solids(city_id):
     """The built city's solids (web/data/<city>/buildings.json), for landmarks that stand on their
-    mapped footprints: [{si, osm, name, ground, base, top, ring [(x, y)], holes}] (metres)."""
+    mapped footprints: [{si, osm, name, src (height source), ground, base, top, ring [(x, y)], holes}] (metres)."""
     import json
     import os
     path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "data", city_id, "buildings.json")
@@ -591,7 +591,7 @@ def load_solids(city_id):
     for si, s in enumerate(B["s"]):
         b = B["b"][s[0]]
         r = s[4]
-        out.append({"si": si, "osm": (b[6] or "").split("@")[0], "name": b[0] or "", "ground": s[1] / 10, "base": s[2] / 10, "top": s[3] / 10,
+        out.append({"si": si, "osm": (b[6] or "").split("@")[0], "name": b[0] or "", "src": b[4], "ground": s[1] / 10, "base": s[2] / 10, "top": s[3] / 10,
                     "ring": [(r[i] / 10, r[i + 1] / 10) for i in range(0, len(r), 2)],
                     "holes": [[(h[i] / 10, h[i + 1] / 10) for i in range(0, len(h), 2)] for h in s[5:]]})
     return out
@@ -736,7 +736,10 @@ def gate(K, P, L, W, ridge, mats, storeys=2, base_h=0.8, foot=0.3):
     base, post = K[mats["base"]], K[mats["post"]]
     block(base, P, -L / 2, L / 2, -W / 2, W / 2, -foot, base_h)
     z1 = base_h + (ridge - base_h) * (0.32 if storeys == 2 else 0.5)
-    for u in np.linspace(-L / 2 + 1.0, L / 2 - 1.0, 6):
+    # five bays, or three on a gate too small for five to leave a walker room between the posts, or one: an
+    # odd number, so that the middle one is open for the way through
+    n = 6 if L >= 11.0 else 4 if L >= 6.0 else 2
+    for u in np.linspace(-L / 2 + 1.0, L / 2 - 1.0, n):
         for v in (-W / 2 + 1.0, 0.0, W / 2 - 1.0):
             x, y, z = P(u, v, base_h)
             post.lathe([(z, 0.42), (z + z1 - base_h, 0.42)], (x, y), segs=6)

@@ -14,7 +14,24 @@ import math
 import numpy as np
 
 import archkit as ak
-from japankit import block, hip_roof, irimoya, lathe_at, left_of, taper, unit
+import japankit
+from japankit import block, lathe_at, left_of, taper, unit
+
+
+def hip_roof(roof, soffit, P, u_half, v_half, z_eave, z_top, ov, k=1.6, rings=6, ridge_frac=0.0, lift=None):
+    """japankit.hip_roof, with the corners' lift (反り) given, for a hall's own curve (lift None: japankit's)."""
+    if lift is None:
+        return japankit.hip_roof(roof, soffit, P, u_half, v_half, z_eave, z_top, ov, k=k, rings=rings, ridge_frac=ridge_frac)
+    return ak.japanese_roof(P, u_half, v_half, z_eave, z_top, ov, roof, soffit, None, soffit, gable_frac=1.0, k=k,
+                            lift=lift, ridge_frac=ridge_frac, ridges=False, n=rings)["corners"]
+
+
+def irimoya(roof, gable, soffit, P, u_half, v_half, z_eave, z_ridge, ov, gable_at=0.55, k=1.5, lift=None):
+    """japankit.irimoya, with the corners' lift given (lift None: japankit's)."""
+    if lift is None:
+        return japankit.irimoya(roof, gable, soffit, P, u_half, v_half, z_eave, z_ridge, ov, gable_at=gable_at, k=k)
+    return ak.japanese_roof(P, u_half, v_half, z_eave, z_ridge, ov, roof, soffit, gable, soffit, gable_frac=gable_at ** (1 / k), k=k,
+                            lift=lift, ridges=False)
 
 
 def frame(o, f):
@@ -191,10 +208,12 @@ def hakkyaku(K, M, P, z0, frontage, depth, ridge, roof="kirizuma", ground=None):
     return {"stone": zb, "eave": ze}
 
 
-def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, posts_every=3.0, doors=True, veranda=True, ground=None):
+def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, posts_every=3.0, doors=True, veranda=True, ground=None,
+         k=1.55, lift=None):
     """A hall raised on its floor: posts round the walls, white plaster or boarded walls with lattice
     doors in the front, a veranda (縁) round it on short legs, the bracket band and its roof:
-    "irimoya" (入母屋), "yosemune" (寄棟, hipped) or "hogyo" (宝形, a pyramid). Heights absolute."""
+    "irimoya" (入母屋), "yosemune" (寄棟, hipped) or "hogyo" (宝形, a pyramid). Heights absolute. k: the
+    roof's sweep (archkit.japanese_roof), lift: its corners' rise (反り), for a hall's own curve."""
     ov = ov if ov is not None else max(1.8, min(hu, hv) * 0.32)
     block(K[M["base"]], P, -hu - 0.8, hu + 0.8, -hv - 0.8, hv + 0.8, z0 - 0.8, z0 + 0.25)
     plinth(K, M["base"], P, hu + 0.8, hv + 0.8, z0 + 0.25, ground)
@@ -226,19 +245,19 @@ def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, pos
     Hu, Hv = hu + 0.6, hv + 0.6
     if roof == "irimoya":
         if hv >= hu:
-            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), Hv, Hu, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=1.55)
+            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), Hv, Hu, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=k, lift=lift)
             ridge_cap(K, M, P, R["Ug"] + 0.3, ridge - 0.9, h=0.75)
         else:
-            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=1.55)
+            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=k, lift=lift)
             ridge_cap(K, M, across(P), R["Ug"] + 0.3, ridge - 0.9, h=0.75)
     elif roof == "yosemune":
-        e = hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.4, ov=ov, k=1.55, ridge_frac=0.55)
+        e = hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.4, ov=ov, k=k, ridge_frac=0.55, lift=lift)
         if hv >= hu:
             ridge_cap(K, M, P, max(Hv - Hu, 0.5) * 0.55 + 0.5, ridge - 0.6, h=0.6)
         else:
             ridge_cap(K, M, across(P), max(Hu - Hv, 0.5) * 0.55 + 0.5, ridge - 0.6, h=0.6)
     else:   # hogyo: a pyramid with its finial (露盤, 宝珠)
-        hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 1.2, ov=ov, k=1.6)
+        hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 1.2, ov=ov, k=k + 0.05, lift=lift)
         x, y, _ = P(0, 0, 0)
         lathe_at(K[M["metal"]], x, y, [(ridge - 1.4, 0.7), (ridge - 0.9, 0.7), (ridge - 0.8, 0.25), (ridge - 0.5, 0.35), (ridge, 0.0)], 8)
 
@@ -297,11 +316,12 @@ def pagoda(K, M, P, z0, storeys, height, sorin, core, podium=1.2, deep=1.0, grou
     lathe_at(K[M["metal"]], x, y, [(tip - 1.6, 0.0), (tip - 1.3, 0.3), (tip - 1.0, 0.22), (tip - 0.7, 0.0)], 10)
 
 
-def kakezukuri(K, M, P, u0, u1, v0, v1, z_floor, ground, every=3.6, levels=None, r=0.32):
+def kakezukuri(K, M, P, u0, u1, v0, v1, z_floor, ground, every=3.6, levels=None, r=0.32, bays=None):
     """The lattice a hanging stage stands on (懸造): keyaki pillars on stone from the slope to the floor,
-    every `every` m, tied in both directions by through-beams (貫) every few metres, no nails, no braces.
-    ground(x, y) gives the slope. Returns the pillars' feet [(x, y, z)]."""
-    nu, nv = max(1, int(round((u1 - u0) / every))), max(1, int(round((v1 - v0) / every)))
+    every `every` m (or `bays`: (along u, along v), a counted grid), tied in both directions by
+    through-beams (貫) every few metres, no nails, no braces. ground(x, y) gives the slope. Returns the
+    pillars' feet [(x, y, z)]."""
+    nu, nv = bays or (max(1, int(round((u1 - u0) / every))), max(1, int(round((v1 - v0) / every))))
     us, vs = np.linspace(u0, u1, nu + 1), np.linspace(v0, v1, nv + 1)
     feet = {}
     for u in us:
@@ -462,3 +482,56 @@ def stairs(m, pts, width, z_from, z_to, rise=0.17, riser=None):
             m.quad(P(i, zb), P(j, zb), P(j, z), P(i, z))
         out.append(((a + b) / 2, z))
     return out
+
+
+def drape(m, poly, ground, lift=0.04, cell=1.5):
+    """A polygon (shapely, with holes) laid on the ground `lift` over it, as a decal: triangulated over a
+    `cell` m grid inside it and its outline every `cell` m, each corner on the terrain, so that it follows
+    the ground between its edges rather than spanning them (a mound in a court would poke through)."""
+    import shapely
+    from shapely.geometry import MultiPoint, Point
+    for q in getattr(poly, "geoms", [poly]):
+        if q.geom_type != "Polygon" or q.area < 1.0:
+            continue
+        q = q.simplify(0.2)
+        pts = [c for r in [q.exterior] + list(q.interiors) for c in r.segmentize(cell).coords]
+        x0, y0, x1, y1 = q.bounds
+        inner = q.buffer(-0.3 * cell)
+        for x in np.arange(x0 + cell / 2, x1, cell):
+            for y in np.arange(y0 + cell / 2, y1, cell):
+                if inner.contains(Point(x, y)):
+                    pts.append((x, y))
+        for t in shapely.delaunay_triangles(MultiPoint(pts)).geoms:
+            if not q.buffer(0.01).contains(t.centroid):
+                continue
+            cs = np.asarray(t.exterior.coords)[:3]
+            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+            if ax * by - ay * bx < 0:
+                cs = cs[::-1]
+            m.tri(*[np.array([x, y, ground(x, y) + lift]) for x, y in cs], [[x, y] for x, y in cs])
+
+
+def game_ground(city):
+    """The ground the game draws and walks on (game.json "terrain", the 5 m bare-earth grid, each cell split
+    from its south-west to its north-east corner as web/game/nav.js terrain() reads it), as ground(x, y): a
+    decal laid on it lies on what is drawn, where archkit.Terrain's model can differ by half a metre."""
+    import base64
+    import json
+    import os
+    root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "data", city)
+    T = json.load(open(os.path.join(root, "game.json")))["terrain"]
+    fr = json.load(open(os.path.join(root, "scene.json")))["frame"]
+    D = np.frombuffer(base64.b64decode(T["data"]), "<i2").astype(np.float64) * T["scale"]
+    nx, ny, cell, x0, y1 = T["nx"], T["ny"], T["cell"], fr["x"][0], fr["y"][1]
+
+    def ground(x, y):
+        c = min(max((x - x0) / cell, 0.0), nx - 1.001)
+        r = min(max((y1 - y) / cell, 0.0), ny - 1.001)
+        c0, r0 = int(c), int(r)
+        fc, f_r = c - c0, r - r0
+        i = r0 * nx + c0
+        a, b, d, e = D[i], D[i + 1], D[i + nx], D[i + nx + 1]
+        if fc + f_r <= 1:
+            return float(a + fc * (b - a) + f_r * (d - a))
+        return float(e + (1 - fc) * (d - e) + (1 - f_r) * (b - e))
+    return ground

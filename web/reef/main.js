@@ -7,6 +7,7 @@ import { createShore } from './shore.js';
 import { createPost } from './post.js';
 import { createRipples } from './ripples.js';
 import { loadTide } from './tide.js';
+import { reefTier } from './tier.js';
 
 const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
@@ -17,7 +18,7 @@ addEventListener('unhandledrejection', e => fail(e.reason));
 // the loader: what is happening and how far along, painted before each long step (a step blocks the page)
 const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style.width = `${Math.round(f * 100)}%`; };
 const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
-const STEPS = { life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
+const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
@@ -36,14 +37,17 @@ async function main() {
   // an alpine site is seen across 80 km of land: a logarithmic depth buffer keeps a far shore from flickering into
   // its lake (with the usual buffer, 0.2 m to 160 km leaves hundreds of metres of depth per step out there). A
   // reversed float buffer would be cheaper, but three.js r186 cannot resolve it from a multisampled pass on WebGL2
-  const renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: q.get('gl') === '1', logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // the picture tier (tier.js, from web/quality.js): MSAA, pixels, plants, the mirror and the bloom by what the device can draw
+  const tier = reefTier(q);
+  const renderer = new THREE.WebGPURenderer({ antialias: tier.antialias, forceWebGL: q.get('gl') === '1', logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
+  renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight));
   renderer.setSize(innerWidth, innerHeight);
   // an alpine site takes the title screen's curve family (Khronos PBR Neutral, web/lens.js): it keeps the sky's blue
   // and the lake's turquoise where ACES pushes both toward a grey teal
   renderer.toneMapping = ALP ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
-  // an alpine site is exposed as a landscape photograph is: sunlit snow just under white, the sky's blue mid-tone
-  renderer.toneMappingExposure = Number(q.get('exp') || (ALP ? 1.9 : 1.0));
+  // an alpine site is exposed as a landscape photograph is: sunlit snow just under white, the sky's blue mid-tone, the lake
+  // and the pale gravel of its shores with room above them (1.9 left the shore and the glitter path white)
+  renderer.toneMappingExposure = Number(q.get('exp') || (ALP ? 1.7 : 1.0));
   document.body.prepend(renderer.domElement);
   await renderer.init();
   // a lost device or context cannot be restored in place: reload with a note, not a black page (glcare.js)
@@ -51,6 +55,7 @@ async function main() {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(Number(q.get('fov') || 60), innerWidth / innerHeight, 0.2, ALP ? 160000 : 90000);   // ?fov= for a long lens
+  camera.layers.enable(1);   // layer 1: what the lake's mirror leaves out (the small plants; all of them below the high tier)
   const windDir = Number(q.get('wind_dir') || 125);
   // a lake has wind chop and no swell
   const waves = ALP ? makeWaves(windDir, 0.32).filter(w => w.lam < 25) : makeWaves(windDir);
@@ -99,7 +104,7 @@ async function main() {
     const groundTex = heightTexture(d, d.heights);
     const [{ createLight }, { createAlpineTerrain }, { createLakes }] = await Promise.all([import('./alpine/light.js'), import('./alpine/terrain.js'), import('./alpine/lakes.js')]);
     light = createLight(renderer, d, env, atm, groundTex);
-    terrain = createAlpineTerrain(d, env, renderer, light, groundTex);
+    terrain = createAlpineTerrain(d, env, renderer, light, groundTex, () => clockMs(), { range: tier.terrain });
     lakes = createLakes(d, env, atm, light, groundTex);
     if (q.get('lakes') !== '0') scene.add(lakes.group);
     const { createClouds } = await import('./alpine/clouds.js');
@@ -112,17 +117,19 @@ async function main() {
     scene.add(shore.mesh);
   }
   scene.add(terrain.group);
-  if (ALP && q.get('mirror') !== '0') {
-    // the lake's mirror: the scene seen from below the water level, at part of the screen's resolution
+  if (ALP && tier.mirror) {
+    // the lake's mirror: the scene seen from below the water level, at part of the screen's resolution, without what is
+    // on layer 1 (the turf, tussock and stones, too small to read in a wind-blurred reflection)
     const tsl = await import('three/tsl');
-    env.mirror = tsl.reflector({ resolutionScale: Math.min(innerWidth, innerHeight) < 700 ? 0.3 : 0.5, bounces: false });
+    env.mirror = tsl.reflector({ resolutionScale: Math.min(tier.mirror, Math.min(innerWidth, innerHeight) < 700 ? 0.3 : 0.5), bounces: false });
+    env.mirror.reflector.getVirtualCamera(camera).layers.set(0);
     env.mirror.target.rotateX(-Math.PI / 2);
     scene.add(env.mirror.target);
   }
   const ocean = createOcean(d, env, hTex);
   scene.add(ocean.mesh);
   // the land past the survey: the mainland's ranges and the coast's lights (farland.js); fewer triangles on a small screen
-  const far = await createFarLand(base, d, env, { small: Math.min(innerWidth, innerHeight) < 700 }).catch(e => { console.warn('far land: none drawn', e); return null; });
+  const far = await createFarLand(base, d, env, { small: tier.farSmall }).catch(e => { console.warn('far land: none drawn', e); return null; });
   if (far) scene.add(far.mesh);
 
   // sky dome
@@ -133,6 +140,13 @@ async function main() {
   const dome = new THREE.Mesh(new THREE.SphereGeometry(ALP ? 150000 : 60000, 32, 16), skyMat);
   dome.frustumCulled = false; dome.renderOrder = -1;
   scene.add(dome);
+  // an alpine site's stars: the Bright Star Catalogue on the turning sky (alpine/stars.js)
+  let stars = null;
+  if (ALP && q.get('stars') !== '0') {
+    const { createStars } = await import('./alpine/stars.js');
+    stars = await createStars({ atm, camera, renderer, url: '../data/sky/bsc5.bin' }).catch(e => { console.warn('stars: none drawn', e); return null; });
+    if (stars) scene.add(stars.mesh);
+  }
 
   // ---- light, in the units where the overhead sun is 2.8: the sun, the moon and the sky, each in its true
   // proportion, and an eye that adapts to them. The adaptation scales the light itself (so the frame stays in a
@@ -155,7 +169,7 @@ async function main() {
     for (let i = 1; i < SEEN.length; i++) if (x <= SEEN[i][0]) { const [a, la] = SEEN[i - 1], [b, lb] = SEEN[i]; return la * Math.pow(lb / la, (x - a) / (b - a)); }
     return 0.1;
   };
-  const baseExp = Number(q.get('exp') || (ALP ? 1.9 : 1.0));
+  const baseExp = Number(q.get('exp') || (ALP ? 1.7 : 1.0));
   let adapt = 1;
   renderer.toneMappingExposure = baseExp;
   function lights(sun) {
@@ -184,6 +198,7 @@ async function main() {
   const eqM = new THREE.Matrix3();
   let eqT = -1e9, equatorialMatrix = null;
   if (ALP) ({ equatorialMatrix } = await import('./alpine/atmos.js'));
+  const SKY_DAY = 0.72;
   function alpineLights(sun, sunI, moonI, hemiI) {
     const y = camera.position.y, Ts = atm.sunColour(y, Math.sin(sun.alt)), deg = sun.alt * 180 / Math.PI;
     const E0 = 2.8 * adapt;
@@ -197,14 +212,26 @@ async function main() {
     // the sky's light: the model's by day, the reef's measured twilight and starlight curve once the sun is down
     const day = THREE.MathUtils.smoothstep(Math.sin(sun.alt), -0.06, 0.04);
     const night = hemiI * adapt;   // already adapted below (lights() scales the hemisphere by adapt afterwards)
-    // (the night's light a little stronger than the reef's: the tussock and the snow under starlight should read)
-    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day + night * 1.8 * [0.55, 0.7, 1.0][i] * (1 - day));
-    hemi.color.setRGB(sky[0], sky[1], sky[2]).multiplyScalar(1 / Math.max(lum(sky), 1e-6)); hemi.intensity = Math.max(lum(sky), 1e-6);
+    // once the sun is down the land is lit by the twilight sky it stands under (atmos.js twilight: the same colours and
+    // brightness, over the hemisphere), never darker than starlight (a little stronger than the reef's, so the tussock
+    // and the snow read under the stars)
+    const twi = skyLight(deg) * adapt * 0.42 * (1 - THREE.MathUtils.smoothstep(deg, -1, 6));
+    // (by day the model's sky light on the ground is taken at 0.72: as it was, the sky gave 40% of the light on open ground
+    // with the sun 40 degrees up, where a clear sky gives 15 to 25%, and its blue lifted every shadow into a grey haze)
+    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day * SKY_DAY + Math.max(Math.PI * twi * [0.11, 0.16, 0.40][i], night * 1.1 * [0.55, 0.7, 1.0][i]) * (1 - day));
+    // a landscape photographer's daylight balance: the cast of sun and sky together is taken out of the land (a warm sun
+    // and a blue sky left it sage and grey), less and less toward the golden hour, whose warmth stays
+    const sinA = Math.max(Math.sin(sun.alt), 0), tot = [0, 1, 2].map(i => Ts[i] * E0 * sinA + sky[i]), totL = Math.max(lum(tot), 1e-6);
+    const wbAmt = 0.75 * THREE.MathUtils.smoothstep(sinA, 0.08, 0.4);
+    const wb = tot.map(v => 1 + (totL / Math.max(v, 1e-6) - 1) * wbAmt);
+    const wbL = lum(wb); for (let i = 0; i < 3; i++) wb[i] /= wbL;
+    sunL.color.setRGB(Ts[0] * wb[0] / sunLum, Ts[1] * wb[1] / sunLum, Ts[2] * wb[2] / sunLum);
+    hemi.color.setRGB(sky[0] * wb[0], sky[1] * wb[1], sky[2] * wb[2]).multiplyScalar(1 / Math.max(lum(sky), 1e-6)); hemi.intensity = Math.max(lum(sky), 1e-6);
     hemi.groundColor.setRGB(0.55, 0.45, 0.3);
-    light.u.sunE.value.setRGB(Ts[0] * E0, Ts[1] * E0, Ts[2] * E0);
-    light.u.skyE.value.setRGB(sky[0], sky[1], sky[2]);
+    light.u.sunE.value.setRGB(Ts[0] * E0 * wb[0], Ts[1] * E0 * wb[1], Ts[2] * E0 * wb[2]);
+    light.u.skyE.value.setRGB(sky[0] * wb[0], sky[1] * wb[1], sky[2] * wb[2]);
     const bounce = 0.18 * (E0 * sunLum * Math.max(Math.sin(sun.alt), 0) + lum(sky));
-    light.u.groundE.value.setRGB(bounce * 1.1, bounce * 0.95, bounce * 0.7);
+    light.u.groundE.value.setRGB(bounce * 1.1 * wb[0], bounce * 0.95 * wb[1], bounce * 0.7 * wb[2]);
     light.u.moonE.value.setRGB(0.8 * moonI * adapt, 0.86 * moonI * adapt, 1.0 * moonI * adapt);
     env.u.white.value = (E0 * sunLum * Math.max(Math.sin(sun.alt), 0) + moonI * adapt * Math.max(Math.sin(sun.moonAlt), 0) + lum(sky)) / Math.PI;
     // a landscape photographer opens up as the light goes: from a high sun to the last of the golden hour about a
@@ -244,12 +271,12 @@ async function main() {
   const keys = new Set();
   addEventListener('keydown', e => keys.add(e.code)); addEventListener('keyup', e => keys.delete(e.code));
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
-  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight)); renderer.setSize(innerWidth, innerHeight); });
 
-  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env);
+  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom });
 
   // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
-  const ctx = { THREE, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes,
+  const ctx = { THREE, tier, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes,
     height: ALP ? (x, north) => terrain.heightAt(x, north) : (x, north) => terrainHeight(d, x, north),   // sea-floor / ground elevation, m above datum
     habitat: ALP ? (x, north) => { const c = S.cover, i = Math.floor((x - S.terrain.x0) / c.px_m), j = Math.floor((S.terrain.y1 - north) / c.px_m);
       return i < 0 || j < 0 || i >= c.w || j >= c.h ? 7 : d.habitat[j * c.w + i]; } : (x, north) => habitatAt(d, x, north),   // class under a point (HABITAT; an alpine site's COVER)
@@ -259,7 +286,7 @@ async function main() {
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
+  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,alpine/traffic,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
   for (const [i, name] of mods.entries()) {
     stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
     await paint();
@@ -274,7 +301,7 @@ async function main() {
   stage('First frames', 0.98);
   let last = performance.now(), frames = 0;
   // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
-  window.__reef = { camera, env, renderer, d, ctx, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
+  window.__reef = { camera, env, renderer, d, ctx, tier, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
     const dt = Math.max(Math.min((now - last) / 1000, 0.1), 0); last = now;
     if (!ctx.controller) {
@@ -297,7 +324,7 @@ async function main() {
     env.u.tide.value = tideNow();
     ripples.update(env.u.time.value); chop.update(env.u.time.value);
     terrain.update(camera.position);
-    if (ALP) { dome.position.copy(camera.position); clouds.update(); }   // the sky is at infinity wherever the eye goes over 80 km
+    if (ALP) { dome.position.copy(camera.position); clouds.update(); if (stars) stars.update(env.u.time.value); }   // the sky is at infinity wherever the eye goes over 80 km
     if (light) light.update();
     ocean.update(camera.position);
     shore.update(camera.position);
@@ -307,7 +334,7 @@ async function main() {
     if (++frames === 3) { $('load').classList.add('done'); window.__ready = true; }
     const gx = terrainHeight(d, camera.position.x, -camera.position.z);
     const tz = env.u.tide.value;
-    $('hud').textContent = `${renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · alt ${camera.position.y.toFixed(1)} m · floor ${gx.toFixed(1)} m · sun ${(sun.alt * 57.3).toFixed(0)}° · tide ${tz >= 0 ? '+' : ''}${tz.toFixed(2)} m${tide && tideFixed === null ? (tide.rising(clockMs()) ? ' rising' : ' falling') : ''}`;
+    $('hud').textContent = `${renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · alt ${camera.position.y.toFixed(1)} m · floor ${gx.toFixed(1)} m · sun ${(sun.alt * 57.3).toFixed(0)}° · ${ALP ? 'lake' : 'tide'} ${tz >= 0 ? '+' : ''}${tz.toFixed(2)} m${tide && tideFixed === null ? (tide.rising(clockMs()) ? ' rising' : ' falling') : ''}`;
   };
   if (terrain.prepare) { stage('Unrolling the aerial photographs', 0.97); await terrain.prepare(camera.position); }
   if (q.get('still')) { frame(1000); frame(1016); $('load').classList.add('done'); window.__ready = true; }  // for tests: one settled frame

@@ -432,17 +432,24 @@ BRIDGE_MATS = {"bridge_deck": {"color": "#55575a", "roughness": 0.9, "metalness"
                "bridge_pier": {"color": "#8a877f", "roughness": 0.9, "metalness": 0.0}}
 
 
-def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_m2=250.0, colours=None, widths=None, floor=3.5):
+def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_m2=250.0, colours=None, widths=None, floor=3.5,
+                  road_floor=None):
     """The bridges OpenStreetMap outlines over the water (Overture infrastructure, class bridge, at least
     min_m2 and a quarter of it over the water): the axis along the outline's long side, its length and width,
-    and the deck's height at both ends (the ground just beyond each end, at least 3.5 m) with a crown in the
-    middle. A Tokyo river bridge is a steel girder painted in its own colour (`colours` by name)."""
+    and the deck's height at both ends (the ground under the road it carries just beyond each end, road_bank,
+    or the ground beyond the end where no road crosses it; at least 3.5 m) with a crown in the middle. A Tokyo river bridge is a steel girder painted in its own colour (`colours` by name)."""
     import shapely
     C = ctx.city
     water = shapely.union_all([r["geom"] for r in jk.overture(C, "water", "class IN (" + ", ".join(f"'{c}'" for c in classes) + ")")
                                if r["geom"].geom_type in ("Polygon", "MultiPolygon")])
     ctx.bridge_water = water   # (bridges.py clear: the ground under a deck, over the water alone)
+    moats = shapely.union_all([r["geom"] for r in jk.overture(C, "water", "class = 'moat'")
+                               if r["geom"].geom_type in ("Polygon", "MultiPolygon")]) if "moat" in classes else None
     out = []
+    try:
+        roads = [r["geom"] for r in jk.overture(C, "segment", "subtype = 'road'") if r["geom"].geom_type == "LineString"]
+    except Exception:   # no segment layer
+        roads = []
     rows = jk.overture(C, "infrastructure", "class = 'bridge'")
     shapes = [(r["name"] or "", r["geom"]) for r in rows if r["geom"].geom_type == "Polygon"]
     # a bridge mapped only as its centre lines (one per carriageway): the lines of one name together, a
@@ -482,11 +489,61 @@ def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_
         if width > 60 or length < 15:
             continue
         c = np.asarray(g.minimum_rotated_rectangle.centroid.coords[0])
-        za = max(ctx.ground(*(c - ax * (length / 2 + 3))), floor)
-        zb = max(ctx.ground(*(c + ax * (length / 2 + 3))), floor)
+        # the floor is a river's embankment; a castle moat's bridge meets its banks where they are (Wadakura-bashi)
+        # (its bank read where the grid no longer takes in the water: 3 m beyond the end, or further back
+        # until 7 m from the moat: the game grid marks its shore cells water, a cell beyond the outline)
+        if moats is not None and g.intersection(moats).area > 0.5 * g.intersection(water).area:
+            def bank(s):
+                for d in np.arange(3.0, 10.5, 0.5):
+                    p = c + s * ax * (length / 2 + d)
+                    if moats.distance(shapely.Point(*p)) >= 7.0:
+                        break
+                return ctx.ground(*p)
+            za, zb = bank(-1), bank(1)
+        else:
+            # the bank where the road it carries comes onto the deck (the road centre lines across its end), if
+            # it stands at road_floor or higher (lower, the grid has the water there); else the ground just
+            # beyond the end, a river's embankment (floor) at the least
+            def bank(s):
+                z, _ = road_bank(ctx.ground, roads, c, ax * s, length, width) if roads else (None, 0)
+                if z is not None and z >= (floor if road_floor is None else road_floor):
+                    return z
+                return max(ctx.ground(*(c + s * ax * (length / 2 + 3))), floor)
+            za, zb = bank(-1), bank(1)
         out.append({"name": name, "centre": rnd(c), "axis": rnd(ax, 5), "length_m": round(length, 1), "width_m": round(width, 1),
                     "z_ends": [round(za, 2), round(zb, 2)], "colour": (colours or {}).get(name)})
     return out
+
+
+def road_bank(ground, roads, c, ax, length, width, near=(3.0, 8.0)):
+    """The bank at a bridge's end along the road it carries: the road centre lines (local LineStrings) that
+    cross the end within the deck's width and run along `ax` (the unit axis outward from the centre `c`),
+    sampled `near` metres beyond the end. (median height, number of roads), or (None, 0) with none."""
+    import shapely
+    e = c + ax * length / 2
+    cut = shapely.LineString([e - np.array([-ax[1], ax[0]]) * width / 2, e + np.array([-ax[1], ax[0]]) * width / 2])
+    zs, n = [], 0
+    for r in roads:
+        if not r.intersects(cut):
+            continue
+        p = r.intersection(cut)
+        p = p if p.geom_type == "Point" else p.centroid
+        t = r.project(p)
+        d = np.asarray(r.interpolate(min(t + 1.0, r.length)).coords[0]) - np.asarray(r.interpolate(max(t - 1.0, 0.0)).coords[0])
+        if np.hypot(*d) < 1e-6 or abs(float(d @ ax)) / float(np.hypot(*d)) < 0.8:   # a road across the end (an embankment street)
+            continue
+        got = []
+        for dt in np.arange(0.0, 15.0, 1.0):
+            for q in (t + dt, t - dt):
+                if 0 <= q <= r.length:
+                    x, y = r.interpolate(q).coords[0]
+                    u = float((np.array([x, y]) - e) @ ax)
+                    if near[0] <= u <= near[1]:
+                        got.append(ground(x, y))
+        if got:
+            zs.append(float(np.median(got)))
+            n += 1
+    return (float(np.median(zs)), n) if zs else (None, 0)
 
 
 def deck_profile(b):

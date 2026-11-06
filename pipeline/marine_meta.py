@@ -66,6 +66,19 @@ def meta(city):
         out["region"] = cfg["region"]
     if cfg.get("life"):
         out["life"] = life(city, cfg["life"])
+    # an alpine site's landmark models (web/reef/alpine/landmarks.js): placed at their point, orientation baked in
+    if cfg.get("landmarks"):
+        out["landmarks"] = [dict(poi(city, dict(L, kind=L.get("kind", "landmark"))), glb=L["glb"]) for L in cfg["landmarks"]]
+    # an alpine site's weather presets (web/reef/alpine/clouds.js: the nor'west arch's edge)
+    if cfg.get("clouds"):
+        out["clouds"] = cfg["clouds"]
+    # an alpine site's flora patches (web/reef/alpine/flora.js), e.g. lupin drifts the land cover cannot tell
+    if cfg.get("flora"):
+        fl = json.loads(json.dumps(cfg["flora"]))
+        for k, v in fl.items():
+            if isinstance(v, list):
+                fl[k] = [poi(city, dict(p, id=p.get("id", f"{k}-{i}"))) for i, p in enumerate(v)]
+        out["flora"] = fl
     return out
 
 

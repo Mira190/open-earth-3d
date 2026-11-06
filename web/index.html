@@ -528,6 +528,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-vhud span { font: 400 8.5px/1.2 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 .g-vhud .note { grid-column: 1 / -1; margin: 6px 0 0; padding-top: 8px; border-top: 1px solid var(--line); font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
 .g-vhud .note kbd { font-size: 9px; padding: 1px 4px; }
+.g-vhud .note b.intent { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; font: 500 9.5px/1.5 var(--f-mono); letter-spacing: 0.12em; color: var(--accent); }
+.g-vhud .note b.intent::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 .g-lens { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 130px; width: 290px; padding: 14px 16px 15px; display: grid; gap: 5px; }
 .g-lens .eyebrow { color: var(--accent); }
 .g-lens b { font: 500 15px/1.3 var(--f-body); color: #fff; }
@@ -1053,7 +1055,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <div class="field"><span class="note">Time of day</span><div class="seg wrap" id="gm-time"><button data-t="live">Now</button></div></div>
           <div class="field"><label for="gm-clock"><span>Any time</span><output class="num" id="gm-clock-v"></output></label><input type="range" id="gm-clock" min="0" max="1439" step="1" aria-label="Time of day, local clock time"></div>
           <div class="field"><label for="gm-date"><span>Date</span></label><input type="date" id="gm-date" aria-label="Date"></div>
-          <div class="field"><span class="note">Weather</span><div class="seg wrap" id="gm-weather"><button data-w="live" aria-pressed="true">As the season brings it</button><button data-w="clear">Clear</button><button data-w="overcast">Overcast</button><button data-w="drizzle">Drizzle</button><button data-w="rain">Rain</button></div></div>
+          <div class="field"><span class="note">Weather</span><div class="seg wrap" id="gm-weather"><button data-w="live" aria-pressed="true">As the season brings it</button><button data-w="clear">Clear</button><button data-w="overcast">Overcast</button><button data-w="drizzle">Drizzle</button><button data-w="rain">Rain</button><button data-w="off" title="No weather at all: the lightest on a slow device">Off</button></div></div>
           <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
           <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>

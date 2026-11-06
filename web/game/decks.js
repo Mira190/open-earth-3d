@@ -19,6 +19,8 @@ window.OEDecks = (function () {
   const STUB = 20;      // how far back from a loose end a stub is cut (m)
   const SLOPE = 0.3;   // a deck climbing steeper than this (rise over run, outside steps) is regraded
   const EDGE = 4;      // how far past a walkable strip's edge a line along it is taken to be on it (m)
+  const DIP = 25;        // a road is carried over a dip this long either side of a point (m)
+  const DIP_Z = 0.8;     // and this deep
   const LEVEL = 6;      // the data puts a bridge or a viaduct this much higher per level
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const FOOTW = { pedestrian: 8, footway: 3, path: 2.5, steps: 3, cycleway: 2.5, living_street: 5 };
@@ -56,6 +58,65 @@ window.OEDecks = (function () {
       if (z - g < 2.5 || (water && near(x, y, 10))) continue;
       const d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
       out.push({ x, y, z0: g, z1: z, hx: r.kind === 'road' ? 0.7 : 0.3, hy: r.kind === 'road' ? Math.min(hw - 0.8, 2.5) : 0.3, ex: (b[0] - a[0]) / d, ey: (b[1] - a[1]) / d });
+    }
+    return out;
+  }
+
+  // Columns out of the streets under the decks. An expressway is mapped over the road it follows
+  // (Shuto Route 3 over Route 246), so a column under its middle stands in that road's lanes and
+  // the traffic drives through it. depth(x, y, z, r): how far a circle reaches into a carriageway
+  // at height z (streets.js carriageways, the roads as decks.js has laid them), <= 0 when clear.
+  // A column in a carriageway is, in order of preference: moved across under the deck to the
+  // nearest spot clear of the roads below (a median), slimmed to a single pier; or split into a
+  // portal, as the Shuto's piers over a road are: a leg on each side clear of the roads and a cap
+  // beam across under the deck, high enough for the lorries under it; or left out.
+  // blocked(x, y, z, r): is a pier there in a building? Returns { moved, portals, dropped }.
+  const PIER = 0.6;      // the half size of a pier moved or split off a column
+  const HEADROOM = 4.7;  // the clearance under a portal's beam over a road (m)
+  function clearColumns(runs, depth, blocked = null) {
+    const out = { moved: 0, portals: 0, dropped: 0 };
+    // is a box (half sizes hx along ex, ey and hy across), from z up to ztop, clear of the roads? (a road
+    // at any level it passes: the ground's, or one carried over a cutting beside it)
+    const clearAt = (x, y, z, hx, hy, ex, ey, ztop = z) => {
+      const r = Math.min(hx, hy) + 0.25, long = Math.max(hx, hy) - Math.min(hx, hy), ux = hx > hy ? ex : -ey, uy = hx > hy ? ey : ex;
+      for (let zz = z; zz <= Math.max(z, ztop) + 1e-6; zz += 2.5)
+        for (let u = -long; u <= long + 1e-6; u += Math.max(0.3, long / 3 || 1)) if (depth(x + ux * u, y + uy * u, zz, r) > 0) return false;
+      return !blocked || !blocked(x, y, z + 1, Math.max(hx, hy));
+    };
+    for (const r of runs) {
+      if (!r.cols || !r.cols.length) continue;
+      const hw = r.w / 2, keep = [];
+      for (const c of r.cols) {
+        // (a metre down, and up to 4 m under the deck, so that the deck's own ramp over it is not taken for a road beside it)
+        const zg = c.z0 + 0.3 - 1, zt = c.z1 - 4;
+        if (c.z0 < -1 || clearAt(c.x, c.y, zg, c.hx, c.hy, c.ex, c.ey, zt)) { keep.push(c); continue; }
+        const ax = -c.ey, ay = c.ex; // across the deck
+        let best = null;
+        for (const along of [0, 3, -3, 6, -6, 9, -9]) {
+          const bx = c.x + c.ex * along, by = c.y + c.ey * along;
+          // the nearest clear spot each side of the line, out to 12 m past the deck's edge
+          const side = [null, null];
+          for (let u = 0; u <= hw + 12; u += 0.5) for (const k of [0, 1]) {
+            const v = k ? u : -u;
+            if (side[k] == null && clearAt(bx + ax * v, by + ay * v, zg, PIER, PIER, c.ex, c.ey, zt)) side[k] = v;
+          }
+          const inner = [side[0], side[1]].filter(v => v != null && Math.abs(v) <= hw - PIER).sort((a, b) => Math.abs(a) - Math.abs(b))[0];
+          if (inner != null) { best = { along, v: inner }; break; }
+          if (!best && side[0] != null && side[1] != null && c.z1 - (c.z0 + 0.3) - 1.4 >= HEADROOM) best = { along, v0: side[0], v1: side[1] };
+        }
+        if (best && best.v != null) {
+          keep.push(Object.assign({}, c, { x: c.x + c.ex * best.along + ax * best.v, y: c.y + c.ey * best.along + ay * best.v, hx: PIER, hy: PIER }));
+          out.moved++;
+        } else if (best) {
+          const bx = c.x + c.ex * best.along, by = c.y + c.ey * best.along;
+          for (const v of [best.v0, best.v1]) keep.push(Object.assign({}, c, { x: bx + ax * v, y: by + ay * v, hx: PIER, hy: PIER }));
+          // the cap beam, across from leg to leg just under the deck
+          const m = (best.v0 + best.v1) / 2;
+          keep.push(Object.assign({}, c, { x: bx + ax * m, y: by + ay * m, z0: c.z1 - 1.4, hx: PIER, hy: (best.v1 - best.v0) / 2 + PIER, beam: true }));
+          out.portals++;
+        } else out.dropped++;
+      }
+      r.cols = keep;
     }
     return out;
   }
@@ -105,12 +166,12 @@ window.OEDecks = (function () {
       let cls = new Uint8Array(n), zs = new Float32Array(n);
       for (let k = 0; k < n; k++) {
         const x = X(k), y = Y(k), z = p[3 * k + 2] / 10, g = nav.terrain(x, y), water = nav.isWater(x, y);
-        let s = nav.surfaceAt(x, y);
+        let s = nav.surfaceAt(x, y, z);
         // a level over a raised deck that is drawn, or a metre off its edge: a bridge's sidewalk the data lifts a
         // level where the bridge itself is an area (Ebisubashi)
         let lifted = false;
         if (!water && z - g > RISE) {
-          const s1 = Math.max(s, ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => nav.surfaceAt(x + dx, y + dy)));
+          const s1 = Math.max(s, ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => nav.surfaceAt(x + dx, y + dy, z)));
           if (s1 > g + 1 && z > s1 && z - s1 < 2 * RISE) { s = s1; lifted = true; }
         }
         // put on it by the data, or over the water on a pier, or lifted a level over it
@@ -124,7 +185,7 @@ window.OEDecks = (function () {
       // meets, such as a ramp's foot on a quay under a bridge, nor steps, which go down off it)
       if (o.c !== 'steps' && n > 1) for (const [k, j] of [[0, 1], [n - 1, n - 2]]) {
         if (cls[k] !== 0 || cls[j] !== 1 || joined(X(k), Y(k))) continue;
-        const s = nav.surfaceAt(X(k), Y(k));
+        const s = nav.surfaceAt(X(k), Y(k), zs[k]);
         if (s > zs[k] + 1 && s - zs[k] < 2 * RISE && Math.abs(s - zs[j]) < 1.5) { cls[k] = 1; zs[k] = s; }
       }
       // a line along a bridge's strip that the data puts a few metres past its edge, and so far below it (the
@@ -134,6 +195,41 @@ window.OEDecks = (function () {
         if (cls[k] === 1) continue;
         const h = nav.stripBeside(X(k), Y(k), EDGE);
         if (h != null && h - zs[k] > 2 * RISE) { cls[k] = 2; zs[k] = h; }
+      }
+      // a road over a dip in the ground drawn under it (a rail cutting under the street, the survey's
+      // grid catching the bottom of a hollow): carried level over it on a deck, as a road is, from the
+      // higher ground or deck within DIP metres before it to the same after, rather than dropping into it
+      // (a car would pitch down and up through it at speed). Only where the line is on a deck already
+      // within DIP, or the data has it above the ground there: a sag in a hilly street stays on the ground.
+      // A dip of less than DIP_Z is left to the ground.
+      if (kind === 'road' && n > 2) {
+        const c0 = new Float32Array(n);
+        for (let k = 1; k < n; k++) c0[k] = c0[k - 1] + Math.hypot(X(k) - X(k - 1), Y(k) - Y(k - 1));
+        const z0 = zs.slice();
+        for (let k = 1; k < n - 1; k++) {
+          if (cls[k] !== 0) continue;
+          let best = -Infinity, deck = p[3 * k + 2] / 10 - z0[k] > DIP_Z; // (the data has it higher than the ground drawn there)
+          for (let i = k - 1; i >= 0 && c0[k] - c0[i] <= DIP; i--) {
+            if (cls[i] === 2) deck = true;
+            if (z0[i] - z0[k] <= DIP_Z) continue;
+            for (let j = k + 1; j < n && c0[j] - c0[k] <= DIP; j++) {
+              if (cls[j] === 2) deck = true;
+              if (z0[j] - z0[k] <= DIP_Z) continue;
+              const t = (c0[k] - c0[i]) / Math.max(1e-6, c0[j] - c0[i]), z = z0[i] + (z0[j] - z0[i]) * t;
+              if (z > best) best = z;
+            }
+          }
+          for (let j = k + 1; j < n && c0[j] - c0[k] <= DIP && !deck; j++) if (cls[j] === 2) deck = true;
+          if (deck && best - z0[k] > DIP_Z) { cls[k] = 2; zs[k] = best; }
+        }
+        // and a road's deck graded smoothly: the data's heights along it are the survey's, a metre up or
+        // down from point to point, which a car on it would bob over (eased, never below the ground drawn
+        // under it with room for the slab; its ends, where it meets the ground, stay put)
+        for (let it = 0; it < 3; it++) {
+          const z1 = zs.slice();
+          for (let k = 1; k < n - 1; k++) if (cls[k] === 2 && !nav.isWater(X(k), Y(k)))
+            zs[k] = Math.max(nav.terrain(X(k), Y(k)) + THICK + 0.6, (z1[k - 1] + 2 * z1[k] + z1[k + 1]) / 4);
+        }
       }
       // a loose end on a deck (no other line meets it): cut back what is over the water, and
       // bring the first point on land down to the ground
@@ -253,5 +349,5 @@ window.OEDecks = (function () {
     return M;
   }
 
-  return { plan, mesh, RISE };
+  return { plan, mesh, clearColumns, RISE };
 })();

@@ -85,13 +85,18 @@ the court before the Shishinden (南庭) is enclosed by its corridors (回廊) o
 vermilion pillars, with the vermilion Jōmei-mon (承明門) to the south and the
 Nikka-mon and Gekka-mon to the east and west; the Kenrei-mon is plain cypress.
 Outlines that bend, turn round a court or run along a wall are drawn on their own
-outline under an outline roof, rather than as one hall over their bounding box
-(which had roofed whole courts over). The parts mapped over a gate's posts go with
+outline under an outline roof (`archkit.outline_roof`), rather than as one hall over their
+bounding box (which had roofed whole courts over). Since #185 that is every outline filling
+less than 85% of its rectangle (`BENT_FILL`; it was 60%): the palace halls with a wing or a
+stepped side, such as the Gosho's Otsunegoten (御常御殿) and the Empress's Tsunegoten, Nijo's
+Shoin and the Wakuraku-an, no longer stand under one box of a roof over their courtyards. The parts mapped over a gate's posts go with
 the gate. At Nijo, the covered ways between the Ninomaru's halls are corridors.
 A block with a guessed height in the Shishinden's court is dropped.
 
 ![The Imperial Palace's south court, its corridors and the Jōmei-mon](../images/kyoto/gosho-south-court.jpg)
 ![Nijo's Ninomaru palace](../images/kyoto/nijo-ninomaru.jpg)
+![The south court and the Ninomaru at day, dusk and night (#185)](../images/kyoto/gosho-nijo-desktop.jpg)
+![The same on a phone (390×844)](../images/kyoto/gosho-nijo-phone.jpg)
 
 ## 3b. Kyoto Station Building
 
@@ -114,6 +119,16 @@ its PLATEAU footprint, which the renderers leave out. PLATEAU has it as one bloc
 
 **Approximate**: where each part starts and ends along the building, the set-backs and the steel's
 3.6 m spacing are read from GSI's aerial photograph and from photographs, not from drawings.
+
+![The north face from over the Karasuma exit, day, dusk and night (#167)](../images/kyoto/station-north.jpg)
+
+Looked at again for #167, and for #218 the north face was given what photographs show over it:
+the atrium's glass front in a deep portal of white steel (piers either side, a lintel over it and a
+band over the concourse's doors, standing out from the blocks beside it), and the great grid of
+squares over the north faces of the west block and the hotel, a module of 7.2 m by two storeys, its
+members 1.2 m proud of the glass and heavier every third line. The bays' size is read from photographs.
+
+![Kyoto Station's north front on a phone](../images/kyoto/station-north-phone.jpg)
 
 **Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
 due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
@@ -154,6 +169,30 @@ moat, the gate's width (31 m), and its granite runs on east to the pavement over
 shadow on the photograph. Walkers keep off the water (`keep_off` in `game.json`), and the
 crowd's footways that crossed it are dropped. The bridges' widths and the water's depth below
 the pavement are read from the photograph, not measured.
+
+### The courts round the halls
+
+Seen on foot by day (#187), the aerial photograph's shadows of the halls, the lean of their eaves
+and strips of water too small to draw lay flat on the ground beside the halls, a dark or blue band
+where the drawn pavement stops short of a platform: along Higashi Honganji's Amida Hall, Nishi
+Hongwanji's Founder's and Amida Halls, and among Nijo's and the palace's halls. A court is laid over
+the photograph round each of these halls, 3.5 m out from its outline, or 0.3 m a metre of its height
+for a tall one (11 m round Higashi Honganji's 38 m Founder's Hall), and not where another building
+stands (`aprons()` in `cities/kyoto/city.py`): granite flags at the two Honganji, raked gravel at
+Nijo and the Imperial Palace. The survey's views are `tools/views/kyoto-forecourts-187.json`.
+
+![The court before Higashi Honganji's Amida Hall, day, dusk and night](../images/kyoto/honganji-amida-court.jpg)
+![The same on a phone](../images/kyoto/honganji-amida-court-phone.jpg)
+
+The wide forecourts (#218) get the same: gravel over the photograph's trees' shadows across the hull
+of the buildings that frame each court, Higashi Honganji's and Nishi Hongwanji's between their gates and
+their halls and Nijo's outer court from the Higashi-Otemon to the Karamon (`FORECOURTS`), the granite
+aprons round the halls kept. The Imperial Palace's south court has no generated street lamps on its
+white gravel (`night.clear` in `city.json`).
+
+![The Honganji's and Nijo's forecourts, day, dusk and night](../images/kyoto/forecourts.jpg)
+![On a phone](../images/kyoto/forecourts-phone.jpg)
+![The south court at night, unlit](../images/kyoto/gosho-court-night.jpg)
 
 ## 6. What is not verified
 

@@ -49,6 +49,11 @@
     "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
   },
   "plateau": {
+    "veg_from": "tokyo",
+    "veg": [
+      "https://assets.cms.plateau.reearth.io/assets/84/48ebed-93d8-4196-bdda-e1db9590d3d1/13104_shinjuku-ku_pref_2025_citygml_1_op.zip"
+    ],
+    "veg_source": "Project PLATEAU 2025 CityGML vegetation (MLIT, CC BY 4.0): measured street-tree heights",
     "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
     "zoom": 14,
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
@@ -91,7 +96,8 @@
           "maple": 0.22,
           "elm": 0.5,
           "plane": 0.28,
-          "cherry": 0.15
+          "cherry": 0.09,
+          "shidarezakura": 0.06
         }
       },
       {
@@ -109,6 +115,7 @@
       {
         "name": "Shinjuku Gyoen",
         "find": "新宿御苑",
+        "floor": "lawn",
         "mix": {
           "plane": 0.25,
           "zelkova": 0.15,
@@ -117,9 +124,12 @@
           "pine": 0.1,
           "ginkgo": 0.1,
           "sugi": 0.1,
-          "cherry": 0.22
+          "cherry": 0.12,
+          "yaezakura": 0.06,
+          "shidarezakura": 0.025,
+          "kawazu": 0.015
         },
-        "note": "The French formal garden's plane avenues, the Japanese garden's pines, the Himalayan cedars (sugi stands in) and camphors."
+        "note": "The French formal garden's plane avenues, the Japanese garden's pines, the Himalayan cedars (sugi stands in) and camphors. Its cherries are some sixty-five varieties, a thousand trees: the Somei-yoshino and the weeping cherries at the end of March, the double cherries (Kanzan, Ichiyo) through April, and a few kawazu-zakura in February (the garden's guide)."
       },
       {
         "name": "Meiji Jingu Gaien",
@@ -134,6 +144,7 @@
       },
       {
         "name": "Meiji Jingu",
+        "floor": "earth",
         "find": "明治神宮",
         "mix": {
           "camphor": 0.3,
@@ -1244,8 +1255,8 @@
         "stamp": "思い出横丁",
         "talk": [
           "Omoide Yokocho: Memory Lane. It started as a black market by the west exit after the war. Eighty-odd counters now, each under a roof you can touch.",
-          "Shinjuku never stops building. Across the road the Odakyu department store's old building came down from 2022; a 48-storey tower, 260 metres, goes up there for 2029. The lane stays. The smoke stays.",
-          "Go and stand at the west exit and see the gap it left. Then come back and eat."
+          "Shinjuku never stops building. Across the road the Odakyu department store's old building came down from 2022; a 48-storey tower, 258 metres, goes up there for the spring of 2030. The lane stays. The smoke stays.",
+          "Go and stand at the west exit and watch the cranes. Then come back and eat."
         ],
         "steps": [
           {
@@ -1255,7 +1266,7 @@
               2602.9
             ],
             "radius": 25,
-            "text": "Stand at the west exit where the department store stood"
+            "text": "Stand at the west exit, under the cranes where the department store stood"
           }
         ]
       },

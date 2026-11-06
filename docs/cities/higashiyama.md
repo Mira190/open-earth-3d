@@ -27,16 +27,43 @@ block is hidden from the renderers and kept in the surface model.
   Library; the temple). The floor is set level with the hillside behind the hall, from the laser terrain.
   The body sits under a hipped roof of hinoki bark, with the wing corridors running forward either side
   of the stage under their own gabled roofs.
-- **The Stage (舞台)**: about 200 m² of hinoki boards (the temple), on the mapped outline. Below it
-  stands a lattice of keyaki pillars on stone footings, tied by through-beams (懸造) every 2.4 m in both
-  directions, from the slope up to the floor. The model's pillars stand on a regular 3.2–3.8 m grid
-  wherever the ground is more than 1.2 m below the floor. The temple counts 18 pillars under the stage;
-  the grid is close to that, not a survey of where each one stands.
+  - **Its roof** (#167) is a material of its own: bark laid in courses finer than the smaller halls',
+    darker and greyer, and the thick cut edge of the bark (軒付) round the eaves, following their rise to
+    the corners.
+  - **Its inside**: the outer hall and the inner sanctum (内陣) are dark behind the posts, under a dark
+    ceiling, with the gilt shrines (厨子) of the Kannon and its attendants at the back. The outer walls are
+    boards and shitomi lattices with a band of white plaster above the nageshi, as photographed, not
+    white walls, so the hall no longer reads light grey through its open sides from the Okunoin.
+- **The Stage (舞台)**: about 200 m² of hinoki boards (the temple), on the mapped outline, on eighteen
+  keyaki pillars (the temple's count): six across the front, three rows deep, about 0.64 m thick
+  (photographs, against the railing), on stone footings, tied by through-beams (懸造) every 2.4 m in
+  both directions. The Main Hall's front stands on more of them, every 3.4–3.8 m.
+- **Each hall's own roof curve** (#167): the sweep of each roof (`ROOFS` in `city.py`: the exponent of
+  `archkit.japanese_roof`'s profile, flat at the eaves and steep at the ridge, and the corners' lift as a
+  share of the overhang) is read side on from photographs of that roof: the Main Hall's and the
+  Okunoin's bark roofs sag deepest and barely lift at the corners (1.9 and 1.8, lift 0.12–0.14), the
+  tiled Sutra Hall, Founder's Hall and Asakura-do are stiffer and turn up more (1.45–1.5, 0.26–0.3).
 - **Vermilion buildings**: the Deva Gate (仁王門, two storeys, about 10 × 5 m, 14 m high), the West
   Gate, the Three-storey Pagoda (about 31 m), the Bell Tower, the Sutra Hall, the Founder's Hall and the
   Todoroki Gate. The Koyasu Pagoda, about 15 m, stands across the valley.
-- **Bare timber buildings**: the Okunoin, with its own small stage facing the Main Hall, and the
-  Asakura-do, Shaka-do and Amida-do.
+- **Bare timber buildings**: the Okunoin, and the Asakura-do, Shaka-do and Amida-do.
+- **The covered corridor** (OSM w1340239544 and w1272415075, #161) from the Shaka-do past the Amida-do
+  to the Okunoin: the Amida-do stands back behind it, the corridor under a lean-to of bark on posts;
+  at the Okunoin it comes onto the veranda along the hall's whole front, crosses it and leaves past the
+  hall's south-west corner. The veranda and the stage out from it (on its own OSM outline, w893859575,
+  shallow and wide: 3.6 × 12 m) are one floor, level with the way from the Amida-do, with the railing
+  on the valley side alone. Both are walked as strips (`game_surfaces`).
+- **The West Gate's steps** (OSM w339551498, #161): the gate stands on its stone platform 1.8 m over the
+  terrace west of it; ten granite steps run down its front between stone side walls to where the mapped
+  way starts, walked as one strip, the ground not drawn over them. The terrace below is granite flags
+  laid over the aerial photograph, whose trees' shadows lay on it (#187), on the ground the game draws.
+
+![The Main Hall from the Okunoin's stage: day, dusk, night](../images/kyoto/kiyomizu-hondo-from-okunoin.jpg)
+![The covered corridor onto the Okunoin's veranda](../images/kyoto/kiyomizu-okunoin-corridor.jpg)
+![The stage's pillars](../images/kyoto/kiyomizu-stage-pillars.jpg)
+![On a phone (390×844)](../images/kyoto/kiyomizu-phone.jpg)
+![The West Gate's steps and the terrace below them](../images/kyoto/kiyomizu-west-gate.jpg)
+![The same on a phone](../images/kyoto/kiyomizu-west-gate-phone.jpg)
 - **The Otowa Falls**: three streams from the rock under a timber roof, at the OSM node 音羽の滝 不動明王.
 - **The Yasaka Pagoda (八坂の塔, 1440)**: five storeys, 46 m, bare timber and white plaster under tiles.
 - **Yasaka Koshin-do (八坂庚申堂)**: strings of kukurizaru, cloth monkeys bound hand and foot, on frames
@@ -77,11 +104,29 @@ Taken as ideas only, in this project's own look:
 Not taken: any of their art, models or layouts. Their shortened climbs are not taken either: here the
 climb is the real one.
 
+## Maruyama Park and the Philosopher's Path (#164)
+
+Maruyama Park is inside this map: its cherries round the Gion weeping cherry are a `trees.areas`
+entry in `cities/higashiyama/city.json`, outlined from OpenStreetMap (円山公園).
+
+The Philosopher's Path (哲学の道, Ginkaku-ji to Nanzen-ji along the Lake Biwa Canal's branch, about
+35.010–35.027 N, 135.790–135.796 E) is outside every map. It is to come in as a **district of its
+own**, not by growing this one. Growing Higashiyama north to 35.03 and east to 135.80 would take it
+from about 3.3 km² to about 11.6 km², roughly three times the buildings and ground tiles, and every
+visit to Kiyomizu-dera would load them. A district of its own (about 135.784–135.800 E,
+35.006–35.030 N, 3.9 km², the size of this map) loads only for those who choose it, and adds one game
+check to the runs that shared code needs, a cost in computer time once per change rather than in
+load time for every player. It holds a walk of its own too: Ginkaku-ji, Honen-in, the path's cherries,
+Eikan-do and Nanzen-ji with the canal's aqueduct (水路閣) and the Keage incline. The plan is in the
+follow-up issue to #164; the cherries are to be planted along the canal from photographs and the
+city's street-tree records, the way `trees.areas` and the mapped trees are here.
+
 ## What is approximate
 
-- The stage's pillar positions follow a regular grid, not a survey.
-- The roofs' curves are the shared temple roof profile, not measured.
-- The Okunoin's stage is sized from its footprint.
+- The stage's eighteen pillars stand on an even grid across the mapped outline, not each surveyed.
+- The roofs' curves are read from photographs, not from measured drawings.
+- The Okunoin's floor level (115.45 m) is taken from the corridor's ends on GSI's terrain.
+- The West Gate's flight is as steep as the mapped way's foot allows (0.18 m risers, 0.32 m treads).
 - The Yasaka Pagoda's first-storey width is an estimate from its 13.5 m footprint, which is traced at
   the eaves.
 - Jishu-jinja is under restoration until about 2027–28 and is left as PLATEAU's blocks.

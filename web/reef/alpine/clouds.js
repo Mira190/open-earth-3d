@@ -4,6 +4,10 @@
 // Each puff is a camera-facing sheet shaded as a lumpy sphere: lit tops in the sun's colour, blue-grey bases in the
 // sky's light, a bright rim when the sun is behind; it takes the scene's air like everything else (the fog node), so
 // far clouds fade into the sky. ?clouds=0 clears the sky, ?clouds=0.2..1 sets how much builds.
+// ?weather=nwarch: a nor'west arch, Canterbury's sign of a nor'wester: a deck of high cloud over the basins and the
+// plains, ending in the west in a long straight edge parallel to the Main Divide, with the clear foehn gap under it over
+// the Alps, and the deck's underside lit orange and red at sunrise and sunset. The edge is city.json clouds.nwarch {edge: [x, y], bearing_deg} (a point on it
+// and its bearing); the deck is at 6 km, streaked along the wind like the lenticular cloud it is made of.
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, uv, mix, max, min, smoothstep, dot, normalize, length, sqrt, pow, uniform, mx_noise_float, clamp, attribute, cameraPosition, positionWorld } from 'three/tsl';
 
@@ -11,8 +15,10 @@ const hash = (i, k) => { let h = (i * 2654435761 + k * 40503 + 12345) >>> 0; h =
 
 export function createClouds(ctx, light) {
   const { S, q, env, camera } = ctx;
-  const amount = q.get('clouds') !== null ? Number(q.get('clouds')) : 0.55;
+  const nwarch = q.get('weather') === 'nwarch' && S.clouds && S.clouds.nwarch;
+  const amount = q.get('clouds') !== null ? Number(q.get('clouds')) : nwarch ? 0.25 : 0.55;
   const group = new THREE.Group();
+  if (nwarch) group.add(archDeck(S, light));
   if (!(amount > 0)) return { group, update() {} };
   const datum = S.terrain.datum_m || 0;
   const base = 2350 - datum;                        // the cumulus base, m above the lake (about 2,350 m above the sea)
@@ -71,4 +77,44 @@ export function createClouds(ctx, light) {
   }
   update();
   return { group, update };
+}
+
+// the nor'west arch's deck: a plane 6 km above the sea, its density from the distance east of the edge
+// (wavering a little along it), streaked along the north-westerly, lit from above (the underside takes the sky's
+// light and, with the sun low, the sun's colour through the deck's thin edge)
+function archDeck(S, light) {
+  const A = S.clouds.nwarch, datum = S.terrain.datum_m || 0;
+  const b = (A.bearing_deg ?? 37) * Math.PI / 180;
+  const along = new THREE.Vector2(Math.sin(b), Math.cos(b)), across = new THREE.Vector2(-along.y, along.x);   // across: to the north-west
+  const geo = new THREE.PlaneGeometry(220000, 220000, 1, 1).rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  const E = uniform(new THREE.Vector2(A.edge[0], A.edge[1])), U = uniform(along), V = uniform(across);
+  const dens = Fn(() => {
+    const P = vec2(positionWorld.x, positionWorld.z.negate()).sub(E);
+    const s = dot(P, U), w = dot(P, V).negate();                // along the edge, and east of it (m)
+    const waver = mx_noise_float(vec3(s.mul(0.00004), 0, 1.7)).mul(2500).add(mx_noise_float(vec3(s.mul(0.0003), 0, 4.1)).mul(400));
+    const edge = smoothstep(0, 2500, w.add(waver));
+    // streaks along the wind (across the edge), and a little texture
+    const streak = mx_noise_float(vec3(s.mul(0.0006), w.mul(0.00008), 2.3)).mul(0.35).add(0.75);
+    const fine = mx_noise_float(vec3(s.mul(0.003), w.mul(0.001), 5.1)).mul(0.15).add(0.9);
+    return clamp(edge.mul(streak).mul(fine), 0, 1);
+  })();
+  mat.colorNode = Fn(() => {
+    const d = dens;
+    const sy = light.u.sunDir.y, low = float(1).sub(smoothstep(0.02, 0.35, sy));
+    // the underside: grey in the sky's light, the sun's light through the thin deck (most at its edge), and round sunset,
+    // while the sun is still above the deck's own horizon (it is 6 km up: about 2.5 degrees below the land's), the
+    // orange and red the nor'west arch is known for, in proportion to the sky's light so it follows the eye's adaptation
+    const skyL = dot(vec3(light.u.skyE), vec3(0.2126, 0.7152, 0.0722));
+    const sky = vec3(light.u.skyE).mul(0.35).add(vec3(skyL).mul(0.9));
+    const sun = vec3(light.u.sunE).mul(float(0.55).add(low.mul(0.6))).mul(float(1.15).sub(d.mul(0.6)));
+    const glow = vec3(1.0, 0.42, 0.18).mul(smoothstep(-0.06, 0.0, sy).mul(float(1).sub(smoothstep(0.04, 0.2, sy)))).mul(skyL.mul(9));
+    return sky.add(sun).add(glow).mul(0.9 / Math.PI);
+  })();
+  mat.opacityNode = dens.mul(0.92);
+  mat.fog = false;     // (above most of the air: the haze between the eye and the land would hide it in the sky)
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(A.edge[0] - across.x * 90000, 6000 - datum, -(A.edge[1] - across.y * 90000));
+  m.renderOrder = 4; m.frustumCulled = false; m.name = 'nwarch';
+  return m;
 }

@@ -24,6 +24,8 @@ writes:
 
 Both have a `Body_LOD1`, a decimated copy of the body for distance.
 - `ferry_river.glb`: a double-ended river shuttle, 22 m, with the ferry's nodes.
+- `ferry_steamer.glb`: a single-ended twin-screw lake steamer of 1912, 51.2 m, in the class of
+  Queenstown's TSS Earnslaw, with the ferry's nodes and `Funnel_Top` (where the smoke leaves).
 - `cars.glb`: the traffic (a sedan, a taxi, a hatchback, an SUV, a van and a city bus),
   each with two decimated copies (`_LOD1`, `_LOD2`) and its occlusion in the vertex
   colours. Each car but the bus has a cabin seen through its glass (`<name>_Cabin`:
@@ -1460,6 +1462,256 @@ CAR_LIVERIES = {"taxi": {"colours": ["#f3f3f0", "#c9ccd0", "#1c1d1f"], "band": "
                             "#e7e5df", "#3d4146"]}
 
 
+# ------------------------------------------------------------ lake steamer
+# A single-ended twin-screw lake steamer of 1912: the TSS Earnslaw on Lake Wakatipu, 51.2 m long,
+# 7.3 m in the beam and 2.1 m deep (Wikipedia, citing the NZ National Maritime Museum). A plumb
+# stem, a long white hull with a red boot-topping, a glazed main saloon and an upper saloon under
+# an open boat deck, a wheelhouse forward on the boat deck, a tall raked red funnel with a black
+# top amidships, cowl ventilators, a single mast forward, two lifeboats on davits, an ensign aft.
+# Bow ("A") at +x; origin at the waterline amidships, as the ferries'. The game sails her bow first
+# (vehicles.json single_ended) and puffs coal smoke from Funnel_Top.
+STEAMER = dict(L=51.2, B=7.3, T=2.1)
+STEAMER_LIVERY = {"hull": "#f3f2ed", "band": "#1c1f22", "cabin": "#f4f2ec", "trim": "#7a4a26", "deck": "#9b7a55", "boot": "#9a2b20"}
+
+
+def build_ferry_steamer():
+    ferry_materials(STEAMER_LIVERY)
+    material("Funnel", "#c4261c", 0.45, coat=0.4)
+    material("Funnel_Top", "#151515", 0.6)
+    material("Vent_In", "#b5241b", 0.6)
+    material("Brass", "#b89140", 0.3, 0.8)
+    material("Boat", "#f4f3ef", 0.4, coat=0.3)
+    hl, hb, keel = STEAMER["L"] / 2, STEAMER["B"] / 2, -STEAMER["T"]
+    body, trim = Mesh(), Mesh()
+
+    def half_b(x):
+        """The hull's half-breadth at the sheer: a fine entrance to a plumb stem, a long parallel
+        body, a rounded counter stern."""
+        t = x / hl
+        if t > 0.3:  # the entrance
+            q = (t - 0.3) / 0.7
+            return hb * max(0.012, (1 - q ** 1.9) ** 0.75)
+        if t < -0.55:  # the run aft, to a round counter
+            q = (-0.55 - t) / 0.45
+            return hb * max(0.18, (1 - q ** 2.2) ** 0.55)
+        return hb
+
+    def sheer(x):
+        t = x / hl
+        return 2.05 + 0.75 * max(0, t) ** 2 + 0.25 * max(0, -t) ** 2
+
+    def keel_at(x):
+        t = x / hl
+        return keel + 0.9 * max(0, t - 0.82) / 0.18 + 1.4 * max(0, -t - 0.86) / 0.14  # the forefoot and the counter rise
+
+    xs = list(np.concatenate([np.linspace(-hl, -hl + 6, 12), np.linspace(-hl + 6.5, hl - 9, 30), np.linspace(hl - 8.5, hl, 22)]))
+    zs = [None, -1.7, -1.3, -0.9, -0.5, -0.2, 0.0, 0.14, 0.5, 1.0, 1.5, 1.8, None]  # rows; the first is the keel, the last the sheer
+
+    def section(x):
+        k, sh, b = keel_at(x), sheer(x), half_b(x)
+        fine = min(1.0, max(0.0, (x / hl - 0.3) / 0.7))
+        p = 2.8 - 1.4 * fine  # round bilge amidships, a V forward
+        out = []
+        for z in zs:
+            z = k if z is None and not out else sh if z is None else min(max(z, k + 0.02), sh - 0.02)
+            q = min(1.0, max(0.0, (0.0 - z) / max(-k, 0.3))) if z < 0 else 0.0
+            w = b * (1 - q ** p) ** (1 / p) if z < 0 else b * (1 + 0.012 * z)
+            out.append((x, w, z))
+        return out
+    secs = [section(x) for x in xs]
+    # hull side faces between rows, each side; material by the row's height
+    def mat_of(z):
+        return "Boot" if z < 0 else "Band" if z < 0.14 else "Hull"
+    for side in (1, -1):
+        ids = [[body.vert((p[0], side * p[1], p[2])) for p in s] for s in secs]
+        for i in range(len(secs) - 1):
+            for r in range(len(zs) - 1):
+                f = [ids[i][r], ids[i + 1][r], ids[i + 1][r + 1], ids[i][r + 1]]
+                body.face(f if side > 0 else f[::-1], mat_of((secs[i][r][2] + secs[i][r + 1][2]) / 2), True)
+    # the keel and the deck: strips across between the two sides
+    for i in range(len(secs) - 1):
+        a, b = secs[i], secs[i + 1]
+        kq = [body.vert((a[0][0], a[0][1], a[0][2])), body.vert((a[0][0], -a[0][1], a[0][2])), body.vert((b[0][0], -b[0][1], b[0][2])), body.vert((b[0][0], b[0][1], b[0][2]))]
+        body.face(kq[::-1], "Boot", False)
+        dq = [body.vert((a[-1][0], -a[-1][1], a[-1][2])), body.vert((a[-1][0], a[-1][1], a[-1][2])), body.vert((b[-1][0], b[-1][1], b[-1][2])), body.vert((b[-1][0], -b[-1][1], b[-1][2]))]
+        body.face(dq, "Deck", False)
+    # stern transom (the counter's end) closed
+    s0 = secs[0]
+    body.face([body.vert((p[0], p[1], p[2])) for p in s0] + [body.vert((p[0], -p[1], p[2])) for p in s0[::-1]], "Hull", False)
+    # rubbing strake along the sheer, and the bulwark round the foredeck and the stern with its rail
+    edge = [(x, half_b(x) * 1.01, sheer(x) - 0.12) for x in xs]
+    for sy in (1, -1):
+        tube(body, "Band", [(x, sy * y, z) for x, y, z in edge], 0.08, segs=8)
+        fwd = [(x, sy * half_b(x) * 0.985, sheer(x)) for x in xs if x > 15.5]
+        aft = [(x, sy * half_b(x) * 0.985, sheer(x)) for x in xs if x < -21.5]
+        for run in (fwd, aft):
+            lo = [body.vert(p) for p in run]
+            hi = [body.vert((p[0], p[1], p[2] + 1.0)) for p in run]
+            for i in range(len(run) - 1):
+                body.face([lo[i], lo[i + 1], hi[i + 1], hi[i]] if sy > 0 else [lo[i + 1], lo[i], hi[i], hi[i + 1]], "Bulwark", True)
+            tube(body, "Trim", [(p[0], p[1], p[2] + 1.02) for p in run], 0.055, segs=8)
+    # portholes in the hull below the main deck (the engine room and the old steerage)
+    for x in np.arange(-19, 14, 2.2):
+        if -3.5 < x < 1.0:
+            continue
+        for sy in (1, -1):
+            cyl(body, "Window", 0.17, 0.04, T((x, sy * (half_b(x) + 0.01), 0.85), (HALF, 0, 0)), segs=12)
+            cyl(body, "Brass", 0.21, 0.03, T((x, sy * (half_b(x) + 0.005), 0.85), (HALF, 0, 0)), segs=12)
+
+    def shifted(outline, dx):
+        return [(x + dx, y) for x, y in outline]
+
+    # the main saloon: house sides close to the hull's, glazed in tall panes, doors amidships
+    D1, D2, D3 = 2.05, 4.35, 6.65  # main deck, upper deck, boat deck
+    o1 = shifted(rounded_rect(18.2, hb - 0.32, 1.6), -3.2)
+    per1 = sum(math.dist(o1[i], o1[(i + 1) % len(o1)]) for i in range(len(o1)))
+    cabin(body, o1, D1, D2, window_band(per1, D1 + 0.75, D2 - 0.45, pane=1.05, post=0.28), "Cabin", "Interior")
+    slab(body, shifted(rounded_rect(19.2, hb + 0.05, 1.9), -3.0), D2, D2 + 0.2, "Deck", "Trim", "Cabin")
+    # the upper saloon, set in from the deck's edge for a promenade round it
+    o2 = shifted(rounded_rect(12.5, hb - 1.15, 1.4), -4.0)
+    per2 = sum(math.dist(o2[i], o2[(i + 1) % len(o2)]) for i in range(len(o2)))
+    cabin(body, o2, D2 + 0.2, D3, window_band(per2, D2 + 0.95, D3 - 0.4, pane=1.15, post=0.22), "Cabin", "Interior")
+    slab(body, shifted(rounded_rect(13.4, hb - 0.75, 1.6), -4.0), D3, D3 + 0.16, "Deck", "Trim", "Cabin")
+    railing(body, offset_outline(shifted(rounded_rect(19.2, hb + 0.05, 1.9, step=0.6), -3.0), -0.12), D2 + 0.2, mat="Rail")
+    railing(body, offset_outline(shifted(rounded_rect(13.4, hb - 0.75, 1.6, step=0.6), -4.0), -0.1), D3 + 0.16, mat="Rail")
+    # stanchions under the upper deck's edge round the open promenade
+    for x in np.arange(-21.5, 15.0, 2.4):
+        for sy in (1, -1):
+            cyl(body, "Cabin", 0.06, D2 - D1, T((x, sy * (hb - 0.12), (D1 + D2) / 2)), segs=8)
+    # benches on the promenade and the after deck
+    for x in np.arange(-15.5, 7.5, 2.6):
+        for sy in (1, -1):
+            box(body, "Bench", (1.8, 0.42, 0.07), T((x, sy * (hb - 1.65), D2 + 0.65)))
+            box(body, "Bench", (1.8, 0.06, 0.42), T((x, sy * (hb - 1.4), D2 + 0.9)))
+    # the wheelhouse forward on the boat deck, varnished kauri below big windows
+    o3 = shifted(rounded_rect(1.9, 1.9, 0.5, step=0.25), 5.2)
+    per3 = sum(math.dist(o3[i], o3[(i + 1) % len(o3)]) for i in range(len(o3)))
+    cabin(body, o3, D3 + 0.16, D3 + 2.45, window_band(per3, D3 + 1.15, D3 + 2.2, pane=0.75, post=0.12), "Trim", "Interior")
+    slab(body, shifted(rounded_rect(2.25, 2.3, 0.6, step=0.25), 5.2), D3 + 2.45, D3 + 2.62, "Cabin", "Cabin", "Cabin")
+    # the funnel: an oval, raked aft, red with a black top, guyed to the deck, a whistle on its front
+    rake = math.radians(7)
+    fb, ft = D3 + 0.16, 16.4
+    fx0 = -1.6
+    pts = []
+    for k in range(9):
+        z = fb + (ft - fb) * k / 8
+        pts.append((fx0 - (z - fb) * math.tan(rake), 0, z))
+    fun = Mesh()
+    for i in range(len(pts) - 1):
+        pass
+    ring_n = 28
+    rings = []
+    for (x, _, z) in pts:
+        rings.append([body.vert((x + 1.05 * math.cos(a), 0.82 * math.sin(a), z)) for a in np.linspace(0, TAU, ring_n, endpoint=False)])
+    for i in range(len(rings) - 1):
+        zm = (pts[i][2] + pts[i + 1][2]) / 2
+        for k in range(ring_n):
+            k2 = (k + 1) % ring_n
+            body.face([rings[i][k], rings[i][k2], rings[i + 1][k2], rings[i + 1][k]], "Funnel_Top" if zm > ft - 1.1 else "Funnel", True)
+    inner = [body.vert((pts[-1][0] + 0.9 * math.cos(a), 0.68 * math.sin(a), ft - 0.6)) for a in np.linspace(0, TAU, ring_n, endpoint=False)]
+    for k in range(ring_n):
+        k2 = (k + 1) % ring_n
+        body.face([rings[-1][k2], rings[-1][k], inner[k], inner[k2]], "Funnel_Top", True)
+    body.face(inner[::-1], "Metal_Dark", False)
+    tube(body, "Funnel_Top", [(p[0] + 1.06 * math.cos(a), 0.83 * math.sin(a), ft - 1.15) for a in np.linspace(0, TAU, ring_n + 1) for p in [pts[-2]]], 0.05, segs=6, caps=False)
+    for sy in (1, -1):  # guy wires
+        for dx in (1.2, -1.6):
+            tube(body, "Metal_Dark", [(fx0 - 8.2 * math.tan(rake), sy * 0.7, 14.5), (fx0 + dx * 2.2, sy * (hb - 1.0), D3 + 0.2)], 0.012, segs=4)
+    cyl(body, "Brass", 0.07, 0.9, T((fx0 + 1.0 - 7.0 * math.tan(rake), 0, 14.0)), segs=10)  # the whistle
+    cyl(body, "Brass", 0.12, 0.25, T((fx0 + 1.0 - 7.4 * math.tan(rake), 0, 14.55)), segs=10)
+    # cowl ventilators round the funnel: a pipe and a bell mouth, red inside
+    for (vx, vy, h, face) in ((1.6, 1.6, 2.4, 0.0), (1.6, -1.6, 2.4, 0.0), (-4.6, 1.7, 2.0, math.pi), (-4.6, -1.7, 2.0, math.pi)):
+        cyl(body, "Cabin", 0.17, h, T((vx, vy, D3 + 0.16 + h / 2)), segs=12)
+        M = T((vx + math.cos(face) * 0.2, vy, D3 + 0.16 + h + 0.18), (0, HALF + 0.25, face))
+        cyl(body, "Cabin", 0.36, 0.5, M, segs=16, r2=0.2, caps=False)
+        cyl(body, "Vent_In", 0.33, 0.02, M @ T((0, 0, 0.24)), segs=16)
+    # the mast forward, raked aft, with a yard and the masthead light
+    mx, mz0, mz1 = 18.0, sheer(18.0), 20.5
+    tube(body, "Rail", [(mx, 0, mz0), (mx - (mz1 - mz0) * math.tan(math.radians(5)), 0, mz1)], lambda t: 0.13 - 0.08 * t, segs=10)
+    yz = 14.5
+    box(body, "Rail", (0.08, 3.6, 0.08), T((mx - (yz - mz0) * math.tan(math.radians(5)), 0, yz)))
+    for sy in (1, -1):  # shrouds
+        tube(body, "Metal_Dark", [(mx - (17.5 - mz0) * math.tan(math.radians(5)), 0, 17.5), (mx - 1.5, sy * (half_b(mx - 1.5) - 0.1), sheer(mx - 1.5) + 0.9)], 0.012, segs=4)
+        tube(body, "Metal_Dark", [(mx - (17.5 - mz0) * math.tan(math.radians(5)), 0, 17.5), (mx + 4.5, sy * (half_b(mx + 4.5) - 0.1), sheer(mx + 4.5) + 0.9)], 0.012, segs=4)
+    tube(body, "Metal_Dark", [(mx - (19.0 - mz0) * math.tan(math.radians(5)), 0, 19.0), (hl - 0.2, 0, sheer(hl) + 1.0)], 0.012, segs=4)  # forestay
+    # foredeck: capstan, bitts, the anchor at the hawse
+    cyl(body, "Metal_Dark", 0.32, 0.6, T((21.0, 0, sheer(21.0) + 0.3)), segs=16)
+    for sy in (1, -1):
+        for x in (19.5, 14.8):
+            cyl(body, "Metal_Dark", 0.12, 0.55, T((x, sy * (half_b(x) - 0.5), sheer(x) + 0.28)), segs=10)
+        box(body, "Metal_Dark", (0.9, 0.12, 0.6), T((23.6, sy * (half_b(23.6) + 0.03), sheer(23.6) - 0.7), (0, 0, sy * 0.25)))
+    # lifeboats in davits on the boat deck aft, a life raft canister each side
+    for sy in (1, -1):
+        bx, by, bz = -12.0, sy * (hb - 1.25), D3 + 1.05
+        sec = []
+        for x in np.linspace(-2.9, 2.9, 15):
+            w = 0.82 * (1 - (abs(x) / 2.95) ** 2.2) ** 0.6
+            sec.append([(bx + x, by + w * math.cos(a), bz - 0.55 * max(0, math.sin(a)) + 0.12 * min(0, math.sin(a)) * -1) for a in np.linspace(0, TAU, 14, endpoint=False)])
+        loft(body, "Boat", sec, caps=True)
+        box(body, "Seat", (5.2, 1.2, 0.06), T((bx, by, bz + 0.13)))
+        for dx in (-2.4, 2.4):
+            tube(body, "Rail", [(bx + dx, by - sy * 0.9, D3 + 0.16), (bx + dx, by - sy * 0.9, bz + 1.0), (bx + dx, by, bz + 1.3)], 0.06, segs=8)
+        cyl(body, "Raft", 0.33, 1.2, T((-8.5, sy * (hb - 1.25), D3 + 0.5), (0, HALF, 0)), segs=14)
+        for x in (-4.0, 7.5):
+            revolve(body, "Buoy", [(0.30 + 0.07 * math.cos(t), 0.07 * math.sin(t)) for t in np.linspace(0, TAU, 10, endpoint=False)][::-1],
+                    (x, sy * (hb - 0.75 + 0.06), D3 + 0.75), (0, 1, 0), segs=16)
+    # the main saloon's lights
+    for y in (-1.5, 1.5):
+        box(body, "Light_Cabin", (32.0, 0.18, 0.03), T((-3.2, y, D2 - 0.04)))
+        box(body, "Light_Cabin", (22.0, 0.16, 0.03), T((-4.0, y * 0.8, D3 - 0.04)))
+    # navigation lights on the wheelhouse wings, the masthead light, a stern light
+    lights = {"Side_Left": (6.4, hb - 0.2, D3 + 1.2), "Side_Right": (6.4, -(hb - 0.2), D3 + 1.2), "Masthead": (mx - (19.5 - mz0) * math.tan(math.radians(5)) + 0.18, 0, 19.5)}
+    sphere(body, "Light_White", 0.1, T(lights["Masthead"]), segs=10, rings=6)
+    for k in ("Side_Left", "Side_Right"):
+        box(body, "Metal_Dark", (0.5, 0.06, 0.3), T((lights[k][0], lights[k][1] * 1.01, lights[k][2])))
+        sphere(body, "Light_White", 0.07, T((lights[k][0], lights[k][1] * 1.03, lights[k][2])), segs=8, rings=6)
+    # the name on the bows, both sides
+    for sy in (1, -1):
+        x0, x1, z0, z1 = 17.0, 22.6, 1.35, 1.85
+        n = 8
+        ids = []
+        for i in range(n + 1):
+            x = x0 + (x1 - x0) * i / n
+            y = sy * (half_b(x) + 0.02 + 0.01 * (sheer(x) - 2.0))
+            ids.append((trim.vert((x, y, z0)), trim.vert((x, y, z1))))
+        for i in range(n):
+            u0, u1 = i / n, (i + 1) / n
+            if sy > 0:  # port side: reads left to right from outside, bow on the right
+                trim.face([ids[i + 1][0], ids[i][0], ids[i][1], ids[i + 1][1]], "Decal_Name", False, uv=[(u0, 0), (u1, 0), (u1, 1), (u0, 1)])
+            else:
+                trim.face([ids[i][0], ids[i + 1][0], ids[i + 1][1], ids[i][1]], "Decal_Name", False, uv=[(u0, 0), (u1, 0), (u1, 1), (u0, 1)])
+
+    objs = {"Body": body.build("Body"), "Trim": trim.build("Trim")}
+    radar = Mesh()
+    rz = D3 + 2.62
+    cyl(radar, "Metal_Dark", 0.1, 0.25, T((5.2, 0, rz + 0.12)), segs=12)
+    box(radar, "Raft", (0.2, 1.6, 0.12), T((5.2, 0, rz + 0.32)), bevel=0.04)
+    objs["Radar"] = radar.build("Radar", origin=(5.2, 0, rz))
+    flag = Mesh()  # the New Zealand ensign at the stern staff
+    w, h = 1.4, 0.7
+    sx = -hl + 0.6
+    tube(body, "Trim", [(sx, 0, sheer(sx)), (sx, 0, sheer(sx) + 3.6)], 0.04, segs=6)
+    fz = sheer(sx) + 2.8
+    fv = [flag.vert((sx - 0.05 - w * k / 6, 0, fz + h * r)) for r in (0, 1) for k in range(7)]
+    for k in range(6):
+        flag.face([fv[k], fv[k + 1], fv[k + 8], fv[k + 7]], "Flag", False)
+    objs["Flag"] = flag.build("Flag", origin=(sx, 0, fz))
+    anchors = dict(lights)
+    top = (pts[-1][0], 0, ft)
+    anchors.update({"Deck_Passenger": (-8.0, -(hb - 1.0), D2 + 0.2), "Bow_A": (hl, 0, 0), "Bow_B": (-hl, 0, 0), "Funnel_Top": top})
+    for k, p in anchors.items():
+        objs[k] = empty(k, p)
+    wl = []
+    for x in np.linspace(hl, -hl, 25):
+        wl.append([round(float(x), 2), round(half_b(x) * 0.97, 2)])
+    for x in np.linspace(-hl, hl, 25)[1:-1]:
+        wl.append([round(float(x), 2), round(-half_b(x) * 0.97, 2)])
+    info = {"length_m": STEAMER["L"], "beam_m": STEAMER["B"], "deck_m": D1, "upper_deck_m": D2 + 0.2, "label_m": 19.0, "waterline": wl,
+            "single_ended": True, "funnel_top": [0, round(ft, 2), round(top[0], 2)],
+            "note": "A single-ended twin-screw lake steamer of 1912 in the class of the TSS Earnslaw (51.2 x 7.3 m); bow at +z"}
+    return objs, info
+
+
 def car_materials():
     material("Paint", "#d8dadc", 0.3, 0.0, coat=1.0)
     material("Paint2", "#1c1d1f", 0.3, 0.0, coat=1.0)
@@ -2079,7 +2331,7 @@ def bake_vertex_ao(meshes, distance, samples):
     print(f"  vertex AO for {len(meshes)} meshes: {time.time() - t:.0f} s")
 
 
-KINDS = ["helicopter", "ferry", "ferry_river", "cars"]
+KINDS = ["helicopter", "ferry", "ferry_river", "ferry_steamer", "cars"]
 
 
 def main():
@@ -2104,13 +2356,15 @@ def main():
                             ("cockpit", (5.0, -2.7, 1.9), (2.3, 0, 1.3), 35)],
              "ferry": [("front34", (34, -26, 9), (0, 0, 3), 40), ("side", (0, -48, 5), (0, 0, 3.2), 40),
                        ("end", (40, 4, 6), (0, 0, 3.5), 45), ("deck", (16, -9, 7.5), (4, 0, 4.5), 30)],
+             "ferry_steamer": [("front34", (46, -36, 10), (0, 0, 5), 40), ("side", (0, -70, 6), (0, 0, 5), 40),
+                               ("stern", (-50, 22, 9), (0, 0, 5), 40), ("deck", (12, -10, 9), (-3, 0, 6), 30)],
              "ferry_river": [("front34", (24, -18, 6), (0, 0, 2), 40), ("side", (0, -32, 3.5), (0, 0, 2.0), 40),
                              ("end", (26, 3, 4), (0, 0, 2.2), 45), ("deck", (10, -6, 5), (3, 0, 2.5), 32)],
              "cars": [("row", (9, -24, 2.2), (0, -6, 0.8), 40), ("front", (11, -9, 1.6), (0, -9, 0.8), 45), ("rear", (-9, -3, 1.8), (0, -3, 0.8), 45),
                       ("bus", (-14, 20, 3.0), (0, 15, 1.5), 40), ("high", (16, -20, 10), (0, -4, 0.5), 35)]}
     hero = {"helicopter": ("front34", (9.6, -7.4, 1.9), (-0.9, 0.2, 1.75), 46), "ferry": ("front34", (36, -30, 4.5), (-1, 0, 3.6), 42),
-            "ferry_river": ("front34", (24, -20, 3.2), (-1, 0, 2.0), 42)}
-    builders = {"helicopter": build_helicopter, "ferry": build_ferry, "ferry_river": build_ferry_river, "cars": build_cars}
+            "ferry_river": ("front34", (24, -20, 3.2), (-1, 0, 2.0), 42), "ferry_steamer": ("front34", (44, -38, 5), (-2, 0, 6), 40)}
+    builders = {"helicopter": build_helicopter, "ferry": build_ferry, "ferry_river": build_ferry_river, "ferry_steamer": build_ferry_steamer, "cars": build_cars}
     for kind in KINDS:
         if a.only and a.only != kind:
             continue
@@ -2196,7 +2450,8 @@ def main():
                           "registrations": REGISTRATIONS, "registration_default": "OEH-3D", "logo": "OPEN EARTH 3D",
                           "rotor_rpm": 395, "tail_rotor_rpm": 3580})
         else:
-            entry.update({"default_livery": "river" if kind == "ferry_river" else "bay", "liveries": FERRY_LIVERIES,
+            entry.update({"default_livery": "river" if kind == "ferry_river" else "earnslaw" if kind == "ferry_steamer" else "bay",
+                          "liveries": dict(FERRY_LIVERIES, earnslaw=STEAMER_LIVERY) if kind == "ferry_steamer" else FERRY_LIVERIES,
                           "paint": {"Hull": "hull", "Band": "band", "Cabin": "cabin", "Bulwark": "cabin", "Trim": "trim",
                                     "Deck": "deck", "Boot": "boot"}})
         entry.update(info)

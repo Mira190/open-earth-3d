@@ -125,7 +125,7 @@ export function createAtmos(opts) {
     return zen.add(glow).add(belt).add(shadow).mul(u.twi).mul(low.mul(0.85).add(0.15));
   }
 
-  // ---- the night sky: the Milky Way as it lies across the southern sky, the Magellanic Clouds, and stars.
+  // ---- the night sky: the Milky Way as it lies across the southern sky and the Magellanic Clouds (the stars: stars.js).
   // Positions are real (J2000 galactic pole and centre); brightness and texture are a model, not a survey
   const GAL = new THREE.Matrix3().set(   // equatorial (J2000) -> galactic, rows: galactic x (to the centre), y, z (north pole)
     -0.0548755604, -0.8734370902, -0.4838350155,
@@ -155,17 +155,11 @@ export function createAtmos(opts) {
     const cloud = (c, s, k) => exp(float(1).sub(dot(e, c)).div(-s)).mul(k);
     mw = mw.add(cloud(lmcU, 0.0012, 0.55)).add(cloud(smcU, 0.0005, 0.35));
     const col = mix(vec3(0.55, 0.62, 0.85), vec3(1.0, 0.86, 0.66), clamp(bulge.mul(0.8), 0, 1)).mul(mw).mul(0.11);
-    // stars: one per cell of a direction grid, at a random place in it, brightness from a steep power law
-    const cells = float(420);
-    const p = e.mul(cells), ip = floor(p), fp = fract(p);
-    const rnd = hash3(ip), rnd2 = hash3(ip.add(17.3)), rnd3 = hash3(ip.add(41.7));
-    const centre = vec3(rnd, rnd2, rnd3).mul(0.7).add(0.15);
-    const d = length(fp.sub(centre));
-    const mag = pow(rnd3, 14).mul(4).add(pow(rnd, 40).mul(30));
-    const tint = mix(vec3(0.75, 0.82, 1.0), vec3(1.0, 0.85, 0.65), rnd2);
-    const star = smoothstep(0.22, 0.0, d).mul(mag).mul(float(1).add(band.mul(2)));
-    // and the natural glow of a dark sky (airglow and starlight, about 21.6 mag per square arcsecond here)
-    return col.add(tint.mul(star).mul(1.6)).add(vec3(0.010, 0.012, 0.020));
+    // the stars themselves are the Bright Star Catalogue's, drawn by stars.js; under them, the unresolved stars of the
+    // band (a fine grain brighter along the plane) and the natural glow of a dark sky (airglow and starlight, about
+    // 21.6 mag per square arcsecond here)
+    const faint = smoothstep(0.2, 0.9, mx_noise_float(e.mul(260)).mul(0.5).add(0.5)).mul(band.mul(0.6).add(0.05)).mul(0.06);
+    return col.add(vec3(0.85, 0.88, 1.0).mul(faint)).add(vec3(0.010, 0.012, 0.020));
   }
 
   // ---- the air between the eye C and a surface point P: returns col dimmed and veiled
@@ -183,7 +177,10 @@ export function createAtmos(opts) {
     const hm = hC.add(hP).mul(0.5);
     const Ts = trans(hm, sunDir), Tm = trans(hm, moonDir);
     const veil = inscatter(dR, dM, T, dot(v, sunDir), u.E0, Ts, Ts).add(inscatter(dR, dM, T, dot(v, moonDir), u.Emoon, Tm, Tm));
-    return col.mul(T).add(veil);
+    // after sunset the air between is lit by the twilight sky, not by the sun: it veils toward the twilight horizon,
+    // or a far range would only lose its blue to the air and turn yellow
+    const tw = twilight(normalize(vec3(v.x, max(v.y, 0.0), v.z)), sunDir).mul(float(1).sub(T.g));
+    return col.mul(T).add(veil).add(tw.mul(0.9));
   });
 
   // ---- the CPU twin: the sun's colour and the sky's light at height y, for the scene's lights

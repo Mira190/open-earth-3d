@@ -1,0 +1,965 @@
+{
+  "id": "queenstown",
+  "name": "Queenstown",
+  "native": "Tāhuna",
+  "country": "New Zealand",
+  "country_code": "NZ",
+  "timezone": "Pacific/Auckland",
+  "locale": "en-NZ",
+  "description": "Queenstown on Lake Wakatipu from open data: LINZ's 1 m LiDAR terrain and roofs under its 2026 aerial photos, the Skyline Gondola to Bob's Peak and the TSS Earnslaw at Steamer Wharf, lit by the real sun.",
+  "bbox": [
+    168.6296,
+    -45.0584,
+    168.7121,
+    -45.0125
+  ],
+  "origin": [
+    168.662,
+    -45.031
+  ],
+  "extent_m": [
+    -2400,
+    3800,
+    -2900,
+    1900
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m above Lake Wakatipu",
+  "year": 2026,
+  "imagery": {
+    "type": "stac_cog",
+    "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/otago/queenstown_2026_0.1m/rgb/2193/collection.json",
+    "crs": "EPSG:2193",
+    "zoom": 18,
+    "fallback": {
+      "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/otago/queenstown_2021_0.1m/rgb/2193/collection.json",
+      "pixel_m": 0.84
+    },
+    "attribution": "LINZ Queenstown 0.1m Urban Aerial Photos (2026), Toitū Te Whenua Land Information New Zealand (CC BY 4.0)"
+  },
+  "terrain": {
+    "type": "stac_cog",
+    "collection": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/otago/queenstown_2021/dem_1m/2193/collection.json",
+    "crs": "EPSG:2193",
+    "frame_crs": "EPSG:4326",
+    "pixel_m": 1.0,
+    "bare_earth": true,
+    "attribution": "LINZ Otago - Queenstown LiDAR 1m DEM (2021), Toitū Te Whenua LINZ, Landpro and Queenstown-Lakes District Council (CC BY 4.0)",
+    "water_m": 308.2
+  },
+  "surface_check": {
+    "type": "stac_cog",
+    "collection": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/otago/queenstown_2021/dsm_1m/2193/collection.json",
+    "crs": "EPSG:2193",
+    "frame_crs": "EPSG:4326",
+    "pixel_m": 1.0,
+    "name": "LINZ Otago - Queenstown LiDAR 1m DSM (2021)",
+    "flown": "2021-03-12",
+    "flown_ms": 1615546800000,
+    "water_m": 308.2
+  },
+  "datum_offset_m": 309.2,
+  "datum_note": "Lake Wakatipu's level when the LiDAR was flown on 12 March 2021: the median DEM height (NZVD2016) of the ground along the survey's water edge, 309.2 m. The lake's normal operating range is about a metre either side; the scene's 0 m is this level.",
+  "water": {
+    "classes": [
+      "lake",
+      "bay"
+    ],
+    "min_area_m2": 5000,
+    "note": "Lake Wakatipu, with Queenstown Bay and Frankton Arm mapped as bays inside it. The lake is 309 m above the sea, so the scene's 0 m is its surface (datum_offset_m); past the frame the lake carries on as open water to the horizon, and the far land rises out of it.",
+    "waves": {
+      "wind_ms": 4.0,
+      "wind_from_deg": 225,
+      "fetch_km": 6.0,
+      "depth_m": 60,
+      "cascades_m": [
+        157,
+        33.3,
+        7.1
+      ],
+      "choppiness": 0.7,
+      "note": "A light south-westerly down the lake's reach from Cecil Peak to the town, chosen values, not a measurement. The lake is mostly glassy at dawn and ruffled by afternoon."
+    },
+    "colour": "#0a4f86",
+    "shallow_colour": "#18a6b8",
+    "clarity_m": 12,
+    "scatter": 0.75,
+    "colour_note": "Lake Wakatipu is glacial and very clear (Secchi depths of 10 m and more): a saturated blue in the open lake and turquoise over the shallows off the beaches and the Gardens. Matched to photographs from Bob's Peak and the Fernhill side of the bay, which the owner set as the reference, and to the 2026 LINZ aerial photo.",
+    "shore_slopes": {
+      "sand": 0.08,
+      "rock": 0.45,
+      "built": 1.0
+    },
+    "seawall": {
+      "stone": "#7d7a72",
+      "coping": "#9a978f",
+      "course_m": 0.45,
+      "block_m": 1.0,
+      "high_water_m": 0.6,
+      "note": "Queenstown's lake front: grey schist rubble walls and concrete along Marine Parade and the wharves; the lake rises and falls by about a metre with the seasons, not with a tide."
+    }
+  },
+  "trees": {
+    "mix": {
+      "pine": 0.22,
+      "sugi": 0.18,
+      "elm": 0.16,
+      "maple": 0.16,
+      "plane": 0.12,
+      "evergreen": 0.08,
+      "gum": 0.08
+    },
+    "woods": {
+      "pine": 0.38,
+      "sugi": 0.42,
+      "evergreen": 0.1,
+      "maple": 0.1
+    },
+    "floor": "earth",
+    "note": "Species are not mapped; the mix is a guess at Queenstown's planting: Douglas fir and other conifers on Bob's Peak and in the Gardens (drawn as the shared pine and sugi), oaks, sycamores, poplars and willows (drawn as the elm and maple) on the streets and the lake front, and a few eucalypts. The woods on Ben Lomond's lower slopes are wilding conifers."
+  },
+  "storey": {
+    "res": [
+      2.9,
+      2.6
+    ],
+    "non": [
+      3.6,
+      0.5
+    ]
+  },
+  "architecture": "sydney",
+  "architecture_overrides": {
+    "awning": 0.45,
+    "signage": 0.35,
+    "roofs": {
+      "house": {
+        "gabled": 0.6,
+        "hipped": 0.4
+      }
+    }
+  },
+  "labels": {
+    "Eichardt's Private Hotel": "Eichardt's",
+    "St Peter's Anglican Church": "St Peter's Church",
+    "Steamer Wharf": "Steamer Wharf",
+    "Williams Cottage": "Williams Cottage",
+    "Queenstown Skyline Gondola": "Skyline Gondola",
+    "Queenstown Memorial Centre": "Memorial Centre"
+  },
+  "minor_labels": [
+    "Williams Cottage",
+    "Memorial Centre",
+    "St Peter's Church"
+  ],
+  "place_labels": [
+    "Queenstown Gardens",
+    "Queenstown Recreation Ground",
+    "Earnslaw Park",
+    "Marine Parade Reserve"
+  ],
+  "places": [
+    {
+      "name": "Queenstown Gardens",
+      "class": "garden",
+      "period": "all",
+      "from": "10:00",
+      "to": "14:00",
+      "protected": false
+    },
+    {
+      "name": "Queenstown Recreation Ground",
+      "class": "park",
+      "period": "all",
+      "from": "10:00",
+      "to": "14:00",
+      "protected": false
+    },
+    {
+      "name": "Marine Parade Reserve",
+      "class": "park",
+      "period": "all",
+      "from": "10:00",
+      "to": "14:00",
+      "protected": false
+    }
+  ],
+  "analysis_region": [
+    -900,
+    700,
+    -800,
+    600
+  ],
+  "sun_hours_region": [
+    -1000,
+    900,
+    -900,
+    700
+  ],
+  "night": {
+    "street": [
+      [
+        "#ffb15a",
+        0.65
+      ],
+      [
+        "#ffd49a",
+        0.35
+      ]
+    ],
+    "highway": [
+      [
+        "#ffb15a",
+        1.0
+      ]
+    ],
+    "keep": "left",
+    "note": "Queenstown's streets read warm amber in long exposures from Bob's Peak (the reference photograph); the lamps' colours are chosen to match it."
+  },
+  "check_points": {
+    "Queenstown Mall": [
+      168.6604,
+      -45.0312
+    ],
+    "Earnslaw Park": [
+      168.6586,
+      -45.0333
+    ],
+    "Gondola base": [
+      168.6565,
+      -45.0284
+    ],
+    "Queenstown Gardens": [
+      168.6635,
+      -45.0355
+    ],
+    "Frankton Road": [
+      168.68,
+      -45.0335
+    ]
+  },
+  "start": {
+    "date": [
+      5,
+      10
+    ],
+    "time": "17:35",
+    "cam": [
+      -1080,
+      500,
+      520
+    ],
+    "tgt": [
+      700,
+      -1500,
+      120
+    ]
+  },
+  "sources": {
+    "landmarks": "TSS Earnslaw, Skyline Gondola, Eichardt's and St Peter's: published dimensions and photographs"
+  },
+  "far": {
+    "nh": 1024,
+    "half_m": 36000,
+    "mesh": 640,
+    "relief": {
+      "collection": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand-contour/dem_8m/2193/collection.json",
+      "crs": "EPSG:2193",
+      "pixel_m": 32,
+      "name": "LINZ New Zealand Contour-Interpolated 8m DEM (CC BY 4.0), read at 32 m"
+    },
+    "note": "The Remarkables, Cecil and Walter Peaks and Ben Lomond are the town's backdrop, so the land past the frame is finer here than the default (70 m cells to 36 km, a 640-line grid) and its relief is LINZ's bare-earth national DEM rather than the global surface model. The air over the lake is very clear, so the haze's distances are stretched (clarity 2.2), a chosen value matched to photographs from Bob's Peak.",
+    "nc": 2048,
+    "colour": {
+      "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand_2025-2026_10m/rgb/2193/collection.json",
+      "crs": "EPSG:2193",
+      "name": "LINZ New Zealand 10m Satellite Imagery (2025-2026) (CC BY 4.0)"
+    },
+    "clarity": 2.2
+  },
+  "game": {
+    "weather": {
+      "rain_days": [
+        7.6,
+        6.5,
+        7.3,
+        7.3,
+        9.7,
+        8.6,
+        7.8,
+        8.1,
+        8.3,
+        8.4,
+        7.7,
+        8.7
+      ],
+      "threshold_mm": 1.0,
+      "drizzle": 0.35,
+      "source": "NIWA, Queenstown Airport (agents 5450 and 5451), 1991-2020 normals, days with at least 1 mm (via Wikipedia's climate table)"
+    },
+    "climate": {
+      "mean_max_c": [
+        22.0,
+        21.8,
+        19.1,
+        15.2,
+        11.9,
+        8.6,
+        8.2,
+        10.2,
+        13.0,
+        15.4,
+        17.5,
+        20.2
+      ],
+      "source": "NIWA, Queenstown Airport, 1991-2020 normals, mean daily maximum (via Wikipedia's climate table)"
+    },
+    "title": "Queenstown on Foot",
+    "local_name": "local",
+    "water_name": "the lake",
+    "blurb": "Walk Queenstown's lakefront under the real sun. Sail on the steamer Earnslaw, ride the Skyline Gondola up Bob's Peak, and watch the Remarkables turn pink at dusk.",
+    "start": {
+      "at": [
+        -992.0,
+        464.0
+      ],
+      "facing": [
+        150,
+        -600
+      ],
+      "time": "live",
+      "car": [
+        -440,
+        236
+      ]
+    },
+    "keep": "left",
+    "wharves": [
+      {
+        "id": "steamer-wharf",
+        "name": "Steamer Wharf",
+        "terminal": "TSS Earnslaw"
+      },
+      {
+        "id": "kelvin-heights",
+        "name": "Kelvin Heights jetty",
+        "at": [
+          2303.4,
+          -1070.4
+        ]
+      }
+    ],
+    "ferries": [
+      {
+        "route": "Kelvin Heights",
+        "stops": [
+          "steamer-wharf",
+          "kelvin-heights"
+        ],
+        "vessels": [
+          "Earnslaw"
+        ]
+      }
+    ],
+    "ferry_speed_ms": 6.7,
+    "ferry_dwell_s": 40,
+    "ferry_note": "The Earnslaw sails from Steamer Wharf, where she really berths. Her real run is to Walter Peak, beyond the map's edge across the lake, so here she crosses Frankton Arm to the jetty at Kelvin Heights and back, at her service speed of 13 knots. At a landing you can skip the wait.",
+    "ferry_style": {
+      "model": "steamer",
+      "length_m": 51.2,
+      "beam_m": 7.3,
+      "hull": "#f3f2ed",
+      "trim": "#1c1f22",
+      "upper": "#f4f2ec",
+      "flag": "#c4261c",
+      "note": "The TSS Earnslaw: a snow-white hull and a bright red funnel since her 1984 refit (Wikipedia; RealNZ). 51.2 m by 7.3 m."
+    },
+    "helipads": [
+      {
+        "id": "bobs-peak-pad",
+        "name": "Bob's Peak pad (game)",
+        "at": [
+          -1090,
+          600,
+          515.3
+        ],
+        "heading": 135
+      },
+      {
+        "id": "rec-ground-pad",
+        "name": "Recreation Ground pad (game)",
+        "at": [
+          -150,
+          160,
+          7.5
+        ],
+        "heading": 150
+      }
+    ],
+    "helipads_from_data": false,
+    "vehicles": {
+      "helicopter": {
+        "livery": "survey"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#f3f3f0",
+            "#1c1d1f",
+            "#c9ccd0"
+          ],
+          "share": 0.06
+        },
+        "bus": {
+          "colour": "#f1f2f0",
+          "band": "#0f6db3"
+        },
+        "note": "Queenstown's taxis are mostly white or black cars with a roof sign; the town's buses are white with blue (approximate)."
+      },
+      "ferry": {
+        "livery": "earnslaw"
+      }
+    },
+    "crowd": {
+      "pedestrians": 260,
+      "cars": 110,
+      "radius_m": 450
+    },
+    "rail": {
+      "gondola": {
+        "name": "Skyline Gondola",
+        "stations": [
+          {
+            "id": "brecon-street",
+            "name": "Brecon Street"
+          },
+          {
+            "id": "bobs-peak",
+            "name": "Bob's Peak"
+          }
+        ],
+        "speed_ms": 5.0,
+        "cabins": 35,
+        "platform_m": 8,
+        "length_m": 2.2,
+        "width_m": 2.0,
+        "height_m": 2.05,
+        "hanger_m": 2.6,
+        "livery": "#c3c7ca",
+        "trim": "#8d9396",
+        "cabin_name": "Cabin",
+        "note": "Ten seats, 438 m up to Bob's Peak.",
+        "source": "Doppelmayr D-Line detachable gondola opened 29 June 2023: 35 ten-seat Omega V cabins, up to 5 m/s, 760 m inclined, 438 m rise (Doppelmayr release, June 2023; lift-world.info). The cabins: light silver-grey Omega V shells with dark glazing bands (a 2023 photograph of the terminals, Thermosash), their roofs white in LINZ's 2026 aerial photographs."
+      }
+    },
+    "viewpoints": [
+      {
+        "id": "bobs-peak",
+        "name": "Bob's Peak",
+        "at": [
+          -1048,
+          452
+        ]
+      },
+      {
+        "id": "queenstown-hill",
+        "name": "Queenstown Hill",
+        "at": [
+          1040,
+          859
+        ]
+      },
+      {
+        "id": "gardens-point",
+        "name": "Queenstown Gardens, the point",
+        "at": [
+          -118,
+          -703
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "aroha",
+        "name": "Aroha",
+        "role": "Bob's Peak guide",
+        "at": [
+          -986.0,
+          465.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_08",
+          "skin": "#a8714f",
+          "hair": "#1d1714",
+          "top": "#2f5d50",
+          "legs": "#2b2f36",
+          "clip": "Documents"
+        },
+        "idle": [
+          "The lake rises and falls a few centimetres every half hour or so. Our tīpuna said it was a giant breathing under the water.",
+          "Tāhuna means the shallow bay. That's it below you, between the town and the Gardens."
+        ]
+      },
+      {
+        "id": "callum",
+        "name": "Callum",
+        "role": "Earnslaw deckhand",
+        "at": [
+          -330,
+          -282
+        ],
+        "look": {
+          "character": "R_Male_Adult_05",
+          "skin": "#e0b49a",
+          "hair": "#5a3b25",
+          "top": "#1d2a3a",
+          "legs": "#2a2c30",
+          "clip": "LookAround"
+        },
+        "idle": [
+          "She burns about a tonne and a half of coal there and back. You can walk through the engine room and watch the stokers.",
+          "Lady of the Lake, they call her. Launched at Kingston in 1912, and still steaming."
+        ]
+      },
+      {
+        "id": "mei",
+        "name": "Mei",
+        "role": "Gondola attendant",
+        "at": [
+          -462,
+          280
+        ],
+        "look": {
+          "character": "R_Female_Adult_12",
+          "skin": "#e3c0a0",
+          "hair": "#120f0e",
+          "top": "#c4261c",
+          "legs": "#24262a",
+          "clip": "Idle_Neutral"
+        },
+        "idle": [
+          "Ten seats a cabin, and the doors close on their own. Mind your feet at the top.",
+          "The cabins come round every few seconds, all day and into the evening."
+        ]
+      },
+      {
+        "id": "hemi",
+        "name": "Hemi",
+        "role": "Bob's Peak regular",
+        "at": [
+          -1056.0,
+          446.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_03",
+          "skin": "#94603f",
+          "hair": "#16110e",
+          "top": "#3c4a2c",
+          "legs": "#2b3138",
+          "clip": "Photo"
+        },
+        "idle": [
+          "The Remarkables run north and south, so they catch the last of the sun from the west. Wait for it.",
+          "Ben Lomond's behind us, the big one. You can walk up from here, but take a jacket."
+        ]
+      },
+      {
+        "id": "sophie",
+        "name": "Sophie",
+        "role": "Helicopter pilot",
+        "at": [
+          -1078,
+          590
+        ],
+        "look": {
+          "character": "R_Female_Adult_14",
+          "skin": "#efcdb4",
+          "hair": "#c9a46b",
+          "top": "#15253b",
+          "legs": "#1d2024",
+          "clip": "Phone"
+        },
+        "idle": [
+          "On a clear day you can see Walter Peak and Cecil Peak from right over the bay. The lake does the rest.",
+          "Down the lake past the peninsula and back: ten minutes and the best view in Otago."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "lake",
+        "title": "The lake",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "hill",
+        "title": "The hill",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "air",
+        "title": "The air",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "lake",
+          "hill",
+          "air"
+        ],
+        "on_open": "<b>The lake, the hill and the air.</b> Go back up to Aroha on the luge track."
+      }
+    ],
+    "quests": [
+      {
+        "id": "welcome",
+        "line": "start",
+        "giver": "aroha",
+        "title": "Welcome to Tāhuna",
+        "stamp": "Queenstown Bay",
+        "talk": [
+          "Kia ora, welcome to Queenstown! I'm Aroha. This is the view everyone comes for: the town, the bay, the Gardens, and the Remarkables across the lake. It's {season}, and it looks good {now}.",
+          "Three ways to know it, any order. The hill: Hemi, along the hillside, knows when the light is best. The lake: Callum, at Steamer Wharf, can get you on the Earnslaw. The air: Sophie keeps a helicopter on the flat above the luge.",
+          "The gondola takes you down to Brecon Street. WASD to walk, E to talk, T to switch walks. Which first?"
+        ],
+        "choices": [
+          {
+            "text": "The hill: Hemi, along the hillside",
+            "action": "track",
+            "line": "hill"
+          },
+          {
+            "text": "The lake: Callum, at Steamer Wharf",
+            "action": "track",
+            "line": "lake"
+          },
+          {
+            "text": "The air: Sophie, above the luge",
+            "action": "track",
+            "line": "air"
+          }
+        ],
+        "steps": []
+      },
+      {
+        "id": "earnslaw",
+        "line": "lake",
+        "giver": "callum",
+        "title": "Lady of the Lake",
+        "stamp": "TSS Earnslaw",
+        "talk": [
+          "Morning! That's her alongside: the Earnslaw, built in Dunedin, carried in pieces by rail to Kingston and launched there in 1912.",
+          "Fifty-one metres, twin screws, two triple-expansion engines and the coal to feed them. Thirteen knots, flat out.",
+          "She'll take you across Frankton Arm to Kelvin Heights. Walk round the promenade deck on the way and look back at the town."
+        ],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "steamer-wharf",
+            "to": "kelvin-heights",
+            "text": "Sail on the Earnslaw from Steamer Wharf to Kelvin Heights"
+          },
+          {
+            "type": "ride",
+            "from": "kelvin-heights",
+            "to": "steamer-wharf",
+            "text": "Sail back to Steamer Wharf"
+          }
+        ]
+      },
+      {
+        "id": "lakefront",
+        "line": "lake",
+        "giver": "callum",
+        "title": "The lakefront",
+        "stamp": "Marine Parade",
+        "talk": [
+          "Good trip? Now the town from the shore. Walk along Marine Parade past Eichardt's, the old hotel on the corner. It began as William Rees's woolshed.",
+          "Keep going round the beach to Williams Cottage, from the 1860s and hardly changed, then out along the Gardens to the point."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -109,
+              -199
+            ],
+            "radius": 25,
+            "text": "Walk past Eichardt's on Marine Parade"
+          },
+          {
+            "type": "visit",
+            "at": [
+              -12,
+              -272
+            ],
+            "radius": 20,
+            "text": "Find Williams Cottage"
+          },
+          {
+            "type": "visit",
+            "at": [
+              -118,
+              -703
+            ],
+            "radius": 60,
+            "text": "Walk out to the point of the Queenstown Gardens"
+          }
+        ]
+      },
+      {
+        "id": "dusk",
+        "line": "hill",
+        "giver": "hemi",
+        "title": "The Remarkables at dusk",
+        "stamp": "Bob's Peak",
+        "talk": [
+          "Kia ora. Look across the lake: that's the Remarkables, and Cecil and Walter Peaks down to the right.",
+          "Sun goes down at {sunset} today. Stay up here till then and watch the range turn pink. The town's lights come on under you.",
+          "Then take the gondola down. Mei at the bottom station will tell you about the ride."
+        ],
+        "choices": [
+          {
+            "text": "Wait here till dusk",
+            "action": "dusk"
+          },
+          {
+            "text": "I'll stay as it is"
+          }
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -1048,
+              452
+            ],
+            "radius": 30,
+            "after_dark": true,
+            "text": "Watch the sun go down from Bob's Peak"
+          },
+          {
+            "type": "rail",
+            "from": "bobs-peak",
+            "to": "brecon-street",
+            "text": "Ride the gondola down to Brecon Street"
+          },
+          {
+            "type": "talk",
+            "npc": "mei",
+            "text": "Find Mei at the bottom station"
+          }
+        ]
+      },
+      {
+        "id": "gondola",
+        "line": "hill",
+        "giver": "mei",
+        "title": "Up Bob's Peak",
+        "stamp": "Skyline Gondola",
+        "talk": [
+          "Good ride? It drops {landmark:skyline_gondola.rise_m} m between here and the top station, one of the steepest lifts of its kind anywhere.",
+          "Go back up whenever you like; the cabins come round every few seconds. Aroha's at the top."
+        ],
+        "steps": [
+          {
+            "type": "rail",
+            "from": "brecon-street",
+            "to": "bobs-peak",
+            "text": "Ride the gondola back up to Bob's Peak"
+          }
+        ]
+      },
+      {
+        "id": "fly",
+        "line": "air",
+        "giver": "sophie",
+        "title": "Over the bay",
+        "stamp": "Lake Wakatipu",
+        "talk": [
+          "Hi! She's ready on the pad. Take her down over the town, round the Gardens and out over the bay.",
+          "The town's small from up there and the mountains aren't. Bring her down on the Recreation Ground by the lake."
+        ],
+        "steps": [
+          {
+            "type": "land",
+            "text": "Fly over the bay and land back on the Recreation Ground",
+            "place": "Queenstown Recreation Ground"
+          }
+        ]
+      },
+      {
+        "id": "done",
+        "line": "finale",
+        "giver": "aroha",
+        "title": "Tāhuna",
+        "stamp": "Queenstowner",
+        "talk": [
+          "The lake, the hill and the air. You've done in a day what most visitors take a week over.",
+          "The town's yours: change the time, take the steamer again, or go back up the hill for the stars. Winter nights here are very clear."
+        ],
+        "steps": []
+      }
+    ],
+    "start_note": "On the luge track on Bob's Peak, under the Skyline restaurant's viewing deck and the gondola's big portal, where Queenstown's best-known photograph is taken: the town, Queenstown Bay, the Gardens peninsula, the Kelvin Peninsula and the Remarkables over the lake.",
+    "look": {
+      "grade": {
+        "blue": {
+          "ev": 1.5,
+          "tint": [
+            0.99,
+            0.98,
+            1.04
+          ],
+          "sat": 1.28,
+          "contrast": 0.18
+        },
+        "night": {
+          "ev": 1.32,
+          "sat": 1.15,
+          "contrast": 0.26
+        },
+        "golden": {
+          "ev": 1.12,
+          "sat": 1.16,
+          "contrast": 0.15
+        },
+        "day": {
+          "ev": 1.06,
+          "sat": 1.14,
+          "contrast": 0.16
+        }
+      },
+      "note": "Matched to the owner's reference photographs from Bob's Peak: a saturated blue hour with the town's warm lights, and a clear, vivid day."
+    },
+    "sky": {
+      "clouds": 0.35,
+      "saturation": 1.9
+    },
+    "drive_named": {
+      "Skyline Road": 6
+    },
+    "drive_tracks": [
+      {
+        "at": [
+          -1051.4,
+          -372.1
+        ],
+        "r": 5,
+        "speed_ms": 6
+      }
+    ],
+    "drive_note": "Skyline Road, the service road up Bob's Peak, is mapped as a track, and so is the unnamed track that carries it down to Lomond Crescent in Fernhill. The game drives both (drive_named, drive_tracks), so a taxi can come to the top."
+  },
+  "tour": [
+    {
+      "title": "Queenstown from Bob's Peak",
+      "text": "{buildings} buildings on LINZ's 1 m LiDAR terrain, every roof measured from the 2021 surface model, under the 2026 aerial photos. The Remarkables across the lake are LINZ's national 8 m DEM under its 10 m satellite mosaic.",
+      "cam": [
+        -1080,
+        500,
+        520
+      ],
+      "tgt": [
+        700,
+        -1500,
+        120
+      ],
+      "date": [
+        5,
+        10
+      ],
+      "from": "17:15",
+      "to": "17:45",
+      "hold": 9
+    },
+    {
+      "title": "The bay from the Fernhill side",
+      "text": "Queenstown Bay, the Gardens peninsula and Frankton Arm from the hillside above Lake Esplanade, with the Remarkables beyond. The Earnslaw sails from Steamer Wharf.",
+      "cam": [
+        -1500,
+        -600,
+        150
+      ],
+      "tgt": [
+        600,
+        -300,
+        60
+      ],
+      "date": [
+        10,
+        15
+      ],
+      "from": "11:00",
+      "to": "12:00",
+      "hold": 8
+    },
+    {
+      "title": "The Skyline Gondola",
+      "text": "{landmark:skyline_gondola.length_m} m up the face of Bob's Peak and {landmark:skyline_gondola.rise_m} m up from Brecon Street. The line and its stations are OpenStreetMap's; its six towers, three masts and three portals, are placed and measured from their shadows in LINZ's 2026 aerial photographs.",
+      "cam": [
+        -560,
+        180,
+        420
+      ],
+      "tgt": [
+        -800,
+        380,
+        420
+      ],
+      "date": [
+        2,
+        10
+      ],
+      "from": "15:00",
+      "to": "15:30",
+      "hold": 8
+    },
+    {
+      "title": "Steamer Wharf",
+      "text": "The TSS Earnslaw's berth, where she has sailed from since 1912. In the game she steams across Frankton Arm.",
+      "cam": [
+        -200,
+        -420,
+        40
+      ],
+      "tgt": [
+        -340,
+        -280,
+        8
+      ],
+      "date": [
+        2,
+        10
+      ],
+      "from": "16:00",
+      "to": "16:30",
+      "hold": 7
+    },
+    {
+      "title": "Sun on the lakefront",
+      "text": "Marine Parade Reserve is in direct sun for {sun:Marine Parade Reserve|6-21|12:00}% of its area at noon on the winter solstice, under the hill to the north-west.",
+      "place": "Marine Parade Reserve",
+      "date": [
+        6,
+        21
+      ],
+      "from": "11:00",
+      "to": "13:00",
+      "hold": 7
+    }
+  ],
+  "night_ambient": 0.1
+}

@@ -64,7 +64,9 @@ const jsonOut = rest[0] === '--json' ? rest[1] : null;
       const end = () => { if (run) { out.push(run); run = null; } };
       for (let j = 0; j <= n; j++) {
         g.roadNet.at(li, l.len * j / n, q);
-        const f = nav.floorAt(q.x, q.y, q.z + 0.6);
+        // (at the height a car drives at, on a car's floor: route.js)
+        if (!q.deck) { const s = nav.surfaceAt(q.x, q.y); q.z = s > -Infinity && Math.abs(s - q.z) < 1.5 ? s : nav.offGround(q.x, q.y) ? q.z : nav.terrain(q.x, q.y); }
+        const f = nav.floorAt(q.x, q.y, q.z + 0.6, true);
         // (no floor at the road's height: a deck's heights, counted below; a wall only where a building stands
         // at the road's own height there, an elevated road run into a tower: then measured from the road)
         const lost = !f || Math.abs(f.z - q.z) > 2;

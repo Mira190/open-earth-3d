@@ -2,7 +2,8 @@
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
 // in sight at night, put the rain on and off (weather.js),
-// fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
+// fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it (every
+// place it offers reachable by road; out on the way, a hand up gets you back into it)
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
 // change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
@@ -63,8 +64,9 @@ const npcNight = require('./npc_night');
   // and the helicopter's model when a pad is in range; here all of them at once, and in their places
   const lazy = await p.evaluate(async () => {
     const g = window.__game, open = g.npcs.filter(n => n.rig.pending).length, t = performance.now();
-    await g.npcsReady();
-    if (g.heli && g.heli.want) { await g.heli.want(); g.advance(0.1); }
+    g.hold(true); // (the world held while they load: the traffic's run after doesn't depend on how long that takes, #201)
+    try { await g.npcsReady(); if (g.heli && g.heli.want) await g.heli.want(); } finally { g.hold(false); }
+    if (g.heli && g.heli.want) g.advance(0.1);
     return { n: g.npcs.length, open, pending: g.npcs.filter(n => n.rig.pending).length, drawn: g.npcs.filter(n => n.rig.character).length,
       wanted: g.npcs.filter(n => n.look.character).length, heli: !g.vlib || !g.heli || g.heli.loaded(), s: (performance.now() - t) / 1000 };
   });
@@ -246,6 +248,37 @@ const npcNight = require('./npc_night');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // no signal pole or walk post stands in a road's lanes (any road's drawn width, not just the one it serves: tools/pole_lanes.js)
+  const poles = await p.evaluate(() => {
+    const g = window.__game, H = g.junctions.heads, net = g.roadNet, HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }, out = [];
+    if (!H) return { n: 0, out };
+    for (const o of [...H.list, ...H.peds]) { const q = net.nearest(o.x, o.y, 10, o.z, 3); if (q && q.d < (HALF[net.L[q.line].c] || 3.5) - 0.2) out.push(`${o.x.toFixed(0)},${o.y.toFixed(0)}`); }
+    return { n: H.list.length + H.peds.length, out };
+  });
+  check(!poles.out.length, `no signal pole or walk post stands in a road's lanes (${poles.out.length} of ${poles.n}${poles.out.length ? ': ' + poles.out.slice(0, 6).join(' ') : ''})`);
+
+  // the crowd keeps out of each other (actors.js CLOSE) and never jumps: over five seconds near you, a
+  // frame at a time, no two walkers closer than 0.45 m centre to centre (0.3 m out on a crossing's road) (they would show inside each
+  // other) and none moving farther in a frame than anyone walks (tools/crowd_spacing.js measures more)
+  const spacing = await p.evaluate(() => {
+    const g = window.__game, P = g.crowd.P, me = g.player, last = new Map();
+    // (out in a carriageway on a crossing they may close in to shoulders brushing, to clear it: actors.js)
+    const XS = g.crowd.crossings && g.crowd.crossings.byLine, inRoad = q => !!(XS && (XS.get(q.line) || []).some(x => Math.abs(x.s - q.s) < x.kerb));
+    let close = 0, jumps = 0, n = 0;
+    for (let k = 0; k < 150; k++) {
+      g.advance(1 / 30);
+      const A = P.slice(0, g.crowd.active).filter(q => q.line >= 0 && q.state === 'walk' && Math.hypot(q.x - me.x, q.y - me.y) < 50);
+      n = Math.max(n, A.length);
+      for (const q of A) { const l = last.get(q); if (l && Math.hypot(q.x - l[0], q.y - l[1]) > 0.25 && Math.hypot(q.x - l[0], q.y - l[1]) < 20) jumps++; last.set(q, [q.x, q.y]); }
+      for (let a = 0; a < A.length; a++) for (let b = a + 1; b < A.length; b++) {
+        const q = A[a], r = A[b];
+        if (Math.abs(q.z - r.z) < 1.5 && Math.hypot(q.x - r.x, q.y - r.y) < (inRoad(q) || inRoad(r) ? 0.3 : 0.45)) close++;
+      }
+    }
+    return { close, jumps, n };
+  });
+  check(spacing.close === 0 && spacing.jumps === 0, `the crowd keeps out of each other (${spacing.close} frames with two walkers inside each other, ${spacing.jumps} jumps, of up to ${spacing.n} walkers near you)`);
+
   // the weather (weather.js): rain on, and the streaks are drawn, kept out from under cover by the
   // occlusion map, the ground wet, umbrellas up in the crowd, the HUD saying so, and the frame neither
   // black nor blown; then clear again, dry and quiet. And the season's weather keeps to the city's
@@ -285,11 +318,55 @@ const npcNight = require('./npc_night');
   if (rain) {
     check(rain.st.kind === 'rain' && rain.st.rain > 0.5 && rain.st.wet > 0.5 && rain.streaks && rain.occ === 1,
       `rain falls (rain ${rain.st.rain.toFixed(2)}, ground wet ${rain.st.wet.toFixed(2)}, streaks ${rain.streaks}, occlusion map ${rain.occ})`);
-    check(rain.walkers === 0 || rain.umb > 0, `umbrellas up in the crowd (${rain.umb} of ${rain.walkers} walkers)`);
+    // umbrellas are off for now (people.js UMBRELLAS): nobody puts one up
+    check(rain.umb === 0, `no umbrellas in the crowd (${rain.umb} of ${rain.walkers} walkers)`);
     check(/^(Rain|Drizzle) · /.test(rain.chip), `the HUD shows the rain ("${rain.chip}")`);
     check(rain.lum.mean > 18 && rain.lum.blown < 0.02, `the rain's frame is lit, not black or blown (luma ${rain.lum.mean.toFixed(0)}, ${(rain.lum.blown * 100).toFixed(1)}% blown)`);
     check(rain.after.rain === 0 && rain.after.wet === 0 && rain.dry, 'and clear again, dry');
     if (rain.year) check(Math.abs(rain.year.wet - rain.year.want) <= Math.max(8, rain.year.want / 3), `the season's weather keeps to the climate (${rain.year.wet} wet days in a year, normals ${rain.year.want})`);
+  }
+
+  // what a slow device sheds of the weather (weather.js shed, driven by game.js shed): first the far
+  // streaks and splashes, then the weather altogether, dry, remembered for the next visit and said in
+  // a toast (its note); a pick from the menu brings it back; a weather the visitor picked keeps its
+  // wet streets and loses only its drops
+  const guard = await p.evaluate(() => {
+    const W = window.__game.weather;
+    if (!W || !W.guardForce) return null;
+    W.guardReset(); W.guardForce(true);
+    W.set({ rain: 0.9, cloud: 1, wet: 1, now: true });
+    W.update(0.1, 1, null);
+    const full = { level: W.level, shed: W.shed };
+    W.shed = 1; W.update(0.1, 1.1, null);
+    const light = { level: W.level, near: W.meshes.near.visible, far: W.meshes.far.visible, splash: W.meshes.splash.visible };
+    W.shed = 2;
+    let kept = null;
+    try { kept = localStorage.getItem('oe3d-weather-guard'); } catch (e) { /* storage blocked */ }
+    const off = { level: W.level, mode: W.mode, kept };
+    W.update(0.1, 2, null);
+    const dry = W.state;
+    const note = W.takeNote();
+    W.set('rain', { now: true });
+    const back = W.level;
+    W.guardReset();
+    W.set('rain', { now: true, keep: true }); W.update(0.1, 3, null);
+    W.shed = 1; W.shed = 2; W.update(0.1, 3.1, null);
+    const picked = { mode: W.mode, near: W.meshes.near.visible, rain: W.state.rain, shed: W.shed };
+    W.guardReset(); W.guardForce(false);
+    try { localStorage.removeItem('oe3d-weather'); } catch (e) { /* storage blocked */ }
+    W.set('clear', { now: true }); W.update(0.1, 4, null); W.set('live');
+    return { full, light, off, dry: { rain: dry.rain, wet: dry.wet }, note, back, picked };
+  });
+  if (guard) {
+    check(guard.full.level === 2 && guard.full.shed === 0, `the full rain to begin with (level ${guard.full.level}, shed ${guard.full.shed})`);
+    check(guard.light.level === 1 && guard.light.near && !guard.light.far && !guard.light.splash,
+      `a slow device sheds the far streaks and splashes first (level ${guard.light.level}, near ${guard.light.near}, far ${guard.light.far}, splash ${guard.light.splash})`);
+    check(guard.off.level === 0 && guard.off.mode === 'off' && guard.off.kept === 'off' && guard.dry.rain === 0 && guard.dry.wet === 0,
+      `and then the weather, dry, remembered (level ${guard.off.level}, ${guard.off.mode}, kept ${guard.off.kept}, rain ${guard.dry.rain}, wet ${guard.dry.wet})`);
+    check(/Weather is off/.test(guard.note || ''), `and says so ("${guard.note}")`);
+    check(guard.back >= 1, `a weather picked again comes back on (level ${guard.back})`);
+    check(guard.picked.mode === 'rain' && !guard.picked.near && guard.picked.rain > 0.5 && guard.picked.shed === 2,
+      `a weather the visitor picked is kept, without its drops (${guard.picked.mode}, drops ${guard.picked.near}, rain ${guard.picked.rain.toFixed(2)})`);
   }
 
   // a quay (web/quays.js): walk straight at a seawall and stop on its coping with the toes at its
@@ -305,6 +382,8 @@ const npcNight = require('./npc_night');
       // a clear run of 8 m up to the wall, on open ground
       const sx = x - nx * 8, sy = y - ny * 8, f = g.nav.floorAt(sx, sy, top + 1);
       if (!f || f.kind !== 'ground' || Math.abs(f.z - top) > 0.6) continue;
+      // water beyond the wall, not a pier's deck that carries on from it (a walker goes on onto the jetty)
+      if ([1, 1.5, 2.5].some(e => { const q = g.nav.floorAt(x + nx * e, y + ny * e, top + 1); return q && q.z > 0.5 && Math.abs(q.z - top) < 1 && g.nav.walk(x + nx * e, y + ny * e, q.z).ok; })) continue;
       let clear = true;
       for (let s = 0; s <= 7; s += 0.5) if (!g.nav.walk(sx + nx * s, sy + ny * s, f.z).ok) { clear = false; break; }
       if (!clear) continue;
@@ -873,12 +952,21 @@ const npcNight = require('./npc_night');
     if (!o) return Object.assign(r, { hailed: false });
     r.hailed = true;
     r.log = [];
+    { const P = o.drv.path, e = {}, cs = c.D.st; if (P && P.at) P.at(P.len, e); r.log.push(`you at ${g.player.x.toFixed(0)}, ${g.player.y.toFixed(0)}; your car at ${cs.x.toFixed(0)}, ${cs.y.toFixed(0)} (${Math.hypot(cs.x - g.player.x, cs.y - g.player.y).toFixed(0)} m); the taxi at ${o.drv.st.x.toFixed(0)}, ${o.drv.st.y.toFixed(0)}, its way ${P ? P.len.toFixed(0) : '?'} m to ${e.x != null ? `${e.x.toFixed(0)}, ${e.y.toFixed(0)}` : '?'}`); }
     let t = 0;
     r.scrWait = 0; // (stood at a scramble's red through its walk, which no ride's priority cuts short: not counted against the half minute)
-    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (o.drv.st.v < 0.5 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble && /^the line/.test(o.drv.st.why || '')) r.scrWait += 0.5; if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'})` : ''} near[${near}]`); } }
+    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (o.drv.st.v < 0.5 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble && /^the line/.test(o.drv.st.why || '')) r.scrWait += 0.5; if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.junction === 'turn' && st.lineAt ? `: waiting before it ${st.lineAt.j.pend.filter(w => w.c !== st).map(w => `${A.C.includes(w.c) ? `car ${A.C.indexOf(w.c)}` : 'a vehicle'} arm ${w.k} ${w.c.why || ''} v ${(w.c.v || 0).toFixed(1)} light ${g.junctions.light(st.lineAt.j.arms[w.k], w.m)}`).join(', ')}` : ''})` : ''} near[${near}]`); } }
     r.hailT = t;
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
     r.behind = o.drv.st.end < o.drv.path.len - 1; // (it pulled in behind a car at the kerb: your car, parked there)
+    // every place the driver will offer has a kerb (the nearest at the ground's height there, as the game
+    // picks it) that a road from here reaches: never one on a piece of road cut off from the streets
+    // (a drive mapped at Shibuya Hikarie's level), which used to put you out of the taxi
+    { const gz = (x, y) => { const f = g.nav.floorAt(x, y, Math.max(0, g.nav.terrain(x, y)) + 1); return f ? f.z : null; }, st = o.drv.st, from = g.roads.place(st.x, st.y, 60, k, st.z);
+      r.cutOff = !from ? ['(no road where the taxi is)'] : g.destinations(st.x, st.y).filter(d => {
+        const to = g.roads.place(d.at[0], d.at[1], 300, k, gz(d.at[0], d.at[1])) || g.roads.place(d.at[0], d.at[1], 300, k);
+        return !to || !(g.roads.route(from, to, 30000) || g.roads.route(from, Object.assign({}, to, { dir: -to.dir }), 30000));
+      }).map(d => d.name); }
     g.boardRide();
     for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
     r.inTaxi = g.player.mode === 'ride';
@@ -903,6 +991,24 @@ const npcNight = require('./npc_night');
       r.why = `v ${t.v.toFixed(1)}, at ${t.s.toFixed(0)} of ${t.P.len.toFixed(0)} m${t.done ? " (done)" : ""}, phase ${o.phase}, pass ${t.pass.toFixed(1)}, held ${(t.held || 0).toFixed(0)} s, ${t.why}${t.junction ? ` (the junction: ${t.junction})` : ''}${t.block ? ` behind ${t.block === player ? 'you' : mc && t.block.x === mc.D.st.x ? 'your car' : t.block.line != null ? `a car on line ${t.block.line} (stuck ${(t.block.stuck || 0).toFixed(0)} s, v ${(t.block.v || 0).toFixed(1)})` : 'something'} at ${Math.hypot(t.block.x - t.x, t.block.y - t.y).toFixed(1)} m${t.block.still ? ', still' : ''}` : ''}; ${ahead.join('; ') || 'nothing ahead'}`;
       // (and what is in the junction it waits at: each car's way, what holds it, and for how long it has stood)
       if (t.junction) { const JN = g.cars.junctions, near = JN.J.filter(j => Math.hypot(j.x - t.x, j.y - t.y) < 40 && j.active.length); r.why += near.map(j => `; junction ${j.id}${j.mid != null ? ' (a crossing)' : ''}: ` + j.active.map(o => `car ${g.cars.C.indexOf(o.c)} ${o.c.why}${o.c.heldBy ? ' by ' + o.c.heldBy : ''} v ${o.c.v.toFixed(1)} still ${(o.c.still || 0).toFixed(0)} s${o.forced ? ' over its line' : ''}`).join(', ')).join(''); }
+    }
+    // held up on the way (as in a jam: held where it is), you get out in the road and put a hand up:
+    // the taxi you got out of, still beside you, is the one that takes you, where you were going offered first
+    if (o.phase === 'driving') {
+      const b = r.back = {};
+      o.hold = true; g.advance(0.5);
+      g.leaveRide(); o.hold = true; g.advance(0.5); // (still held: the jam hasn't cleared)
+      b.out = g.player.mode === 'foot';
+      g.hail();
+      b.same = g.ride() === o && o.phase === 'waiting';
+      g.boardRide();
+      for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
+      for (let i = 0; i < 80 && g.dlg.open && !g.dlg.hasChoices; i++) g.dlg.tick(0.1);
+      b.first = ((document.querySelector('#gd-choices button') || {}).textContent || '').replace(/\s+/g, ' ').trim();
+      g.dlg.choose(0);
+      g.advance(1);
+      b.on = g.player.mode === 'ride' && g.player.vehicle === o && o.phase === 'driving' && !o.hold;
+      b.dest = o.dest && o.dest.name;
     }
     g.skipRide();
     g.advance(6);
@@ -950,6 +1056,9 @@ const npcNight = require('./npc_night');
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
     check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}`);
+    check(!taxi.cutOff || !taxi.cutOff.length, `every place the taxi driver offers has a kerb a road from the taxi reaches${taxi.cutOff && taxi.cutOff.length ? ` (not ${taxi.cutOff.join(', ')})` : ''}`);
+    const bk = taxi.back;
+    check(!bk || (bk.out && bk.same && bk.on && /where you were going/.test(bk.first)), `out on the way, a hand up: back into the same taxi, on to where you were going${bk ? ` (out ${!!bk.out}, the same taxi ${!!bk.same}, offered first "${bk.first || '–'}", on to ${bk.dest || '–'}: ${bk.on ? 'driving' : 'not driving'})` : ' (not driving: not tried)'}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
     check(taxi.ordered, `orders a ride on the phone${taxi.ordered ? '' : ` (${taxi.orderWhy})`}`);
     check(taxi.ordered && taxi.phoneMap, 'the phone shows the ride on its map, on the way');
@@ -1206,10 +1315,10 @@ const npcNight = require('./npc_night');
       r = { n: queued.length, shift: 0, passed: [], behind: false, overtook: [], gone: false, moved: null, follow: null, jams };
       const sHead = (pick.h.s - pick.rt.from.s) * pick.h.dir; // (the head of the queue, along the taxi's way)
       const arm = g.junctions.armAt(pick.h.line, pick.h.dir > 0 ? 1 : 0), seq = [], behind = new Set();
-      for (let t = 0; t < 180 && !st.done; t += 0.25) { // (a red can be long where the signals give a call or a scramble its turn)
+      for (let t = 0; t < 90 && !st.done; t += 0.25) { // (a red is 10 s at most, junctions.js RED: a queue standing longer is held by a jam beyond, and another is tried)
         g.advance(0.25);
         const lt = g.junctions.light(arm); if (!seq.length || seq[seq.length - 1][1] !== lt) seq.push([t, lt]); // (the light it waits at, as it changes)
-        if (Math.abs(st.shift) > Math.max(0.2, r.shift)) r.round = (st.passed || []).map(c => `car ${C.indexOf(c)} (${c.why}, v ${(c.v || 0).toFixed(1)}${c.q ? ', queueing' : ''}, stood ${typeof c.still === 'number' ? c.still.toFixed(0) : c.still} s${c.stuck ? `, stuck ${c.stuck.toFixed(0)} s` : ''})`).join(', ') || 'nothing';
+        if (Math.abs(st.shift) > Math.max(0.2, r.shift)) r.round = (st.passed && st.passed.length ? st.passed : (st.rounded || {}).cars || []).map(c => `car ${C.indexOf(c)} (${c.whyRound || ''}; ${c.why}${c.stay ? ', parked' : ''}${c === g.myCar() ? ', yours' : ''}, v ${(c.v || 0).toFixed(1)}${c.q ? ', queueing' : ''}, stood ${typeof c.still === 'number' ? c.still.toFixed(0) : c.still} s${c.stuck ? `, stuck ${c.stuck.toFixed(0)} s` : ''}${(() => { const ch = []; for (let x = c.front, k = 0; x && k < 6; x = x.front, k++) ch.push(`${C.indexOf(x) >= 0 ? C.indexOf(x) : 'you'} ${x.why || ''} v ${(x.v || 0).toFixed(1)}${x.q ? ' q' : ''}`); return ch.length ? `; ahead of it ${ch.join(' < ')}` : ''; })()})`).join(', ') + (st.rounded ? ` (held ${st.rounded.held.toFixed(0)} s)` : '') || 'nothing';
         r.shift = Math.max(r.shift, Math.abs(st.shift));
         const a = st.h, bl = st.block;
         if (bl && bl.q && st.v < 0.5) { r.behind = true; r.ahead = bl; }
@@ -1233,10 +1342,10 @@ const npcNight = require('./npc_night');
         if (st.s > sHead + 5) { r.gone = true; break; }
       }
       const bl = st.block;
-      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)}; now phase ${arm.j.ph} ${arm.j.st} for ${arm.j.t.toFixed(0)} s, next ${arm.j.nxt}, called ${arm.j.call})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, still ${(bl.still || 0).toFixed(0)} s)` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
+      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)}; now phase ${arm.j.ph} ${arm.j.st} for ${arm.j.t.toFixed(0)} s, next ${arm.j.nxt}, called ${arm.j.call})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, ${typeof bl.still === 'number' ? `still ${bl.still.toFixed(0)} s` : bl.still ? 'held still' : 'moving'})` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
       delete r.ahead;
       if (r.follow != null || r.moved != null) break;
-      jams.push(`line ${pick.h.line}: ${r.behind ? '' : 'the light changed before it caught up; '}${r.why}`); // (the queue never moved in 3 minutes: a long red or a jam in the junction, not the taxi's doing; another queue)
+      jams.push(`line ${pick.h.line}: ${r.behind ? '' : 'the light changed before it caught up; '}${r.why}`); // (the queue never moved in 90 s: a jam in the junction or beyond it, not the taxi's doing; another queue)
     }
     if (!r) { g.skipRide(); g.advance(6); g.leaveRide(); return { none: 'no queue at a red light in 3 minutes' }; }
     g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
@@ -1250,7 +1359,7 @@ const npcNight = require('./npc_night');
     check(queue.shift < 0.5 && (queue.behind || !queue.round), `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.round ? `, going round ${queue.round}` : ''}${queue.behind ? '' : ', never caught up with the queue'})`);
     check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed car ${queue.passed.join(', ')})` : ''}`);
     check(!queue.overtook.length, `the traffic behind it queues behind it${queue.overtook.length ? ` (car ${queue.overtook.join(', ')} came past it)` : ''}`);
-    if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 3 minutes, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);
+    if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 90 s, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);
     // (a queue that never moved in any of the tries is a jam ahead of it, not the taxi's doing: noted
     // above; the check is the taxi's own: once the car ahead moves, it follows without standing)
     if (queue.follow == null && queue.moved == null) console.log(`note and it goes on when the queue moves: not tried, the queue never moved (${queue.why})`);
@@ -1279,7 +1388,7 @@ const npcNight = require('./npc_night');
   const carWalls = await p.evaluate(() => {
     const g = window.__game, nav = g.nav, C = g.cars.C, RL = g.roadNet.L, av = g.roadNet.avoid;
     let n = 0, inWall = 0, waits = 0;
-    const still = new Map();
+    const at = [], still = new Map();
     for (let t = 0; t < 20; t++) {
       g.advance(1);
       for (const c of C) {
@@ -1288,14 +1397,26 @@ const npcNight = require('./npc_night');
         if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
         const s = c.why === 'wall' && c.v < 0.1 ? (still.get(c) || 0) + 1 : 0;
         still.set(c, s);
-        if (s === 6) waits++;
+        if (s === 6) { waits++; if (at.length < 3) at.push(`${c.x.toFixed(0)},${c.y.toFixed(0)} on road ${c.line}${RL[c.line].ow ? ' (one-way)' : ''}, the wall ${c.wallGap.toFixed(1)} m ahead`); }
       }
     }
     const traps = RL.filter((l, i) => l.ow && (l.wall & (l.ow > 0 ? 2 : 1)) && !(av && av[i])).length;
-    return { n, inWall, waits, traps, ends: RL.filter(l => l.wall).length };
+    return { n, inWall, waits, at, traps, ends: RL.filter(l => l.wall).length };
   });
   check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
-  check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
+  check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}${carWalls.at.length ? `: ${carWalls.at.join('; ')}` : ''}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
+
+  // the passages through the landmarks (landmarks.json "passages", pipeline/landmark_passages.py: the
+  // Rijksmuseum's cycle passage and its aisles, the Imperial Palace's gates, Saint-Sulpice's loggia): each
+  // walked end to end both ways on foot, and a road's with room for a car along it (tools/passage_walk.js).
+  // After the traffic's steps: its walks run the world on for minutes, which would hand them other traffic
+  {
+    const res = await require('./passage_walk')(p);
+    for (const r of res) {
+      if (r.notYet) { console.log(`     (not opened in the model yet: ${r.name}, way ${r.osm}: ${r.notYet})`); continue; }
+      check(r.ok, `walks the passage ${r.name} (way ${r.osm}, ${r.cls}, ${r.len.toFixed(0)} m${r.rev ? ', back' : ''})${r.ok ? '' : `: ${r.why} at ${r.at}`}`);
+    }
+  }
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)

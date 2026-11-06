@@ -62,6 +62,8 @@ MATERIALS = {
     "setts": {"color": "#8f8a80", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.4], "street_lit": True, "decal": True},
     "kerb": {"color": "#a19b90", "roughness": 0.9, "metalness": 0.0, "solid": False},
     # the donors' names on the torii's backs
+    # the torii's pillars in the collision world (torii_hits): solid, never seen
+    "torii_hit": {"color": "#d24e28", "roughness": 1.0, "metalness": 0.0, "opacity": 0.0},
     "inari_words": {"color": "#ffffff", "roughness": 0.6, "metalness": 0.0, "map": "inari.png", "cutout": True},
 }
 SHU = {"post": "inari_shu", "wall": "inari_white", "roof": "hiwada", "soffit": "soffit", "gable": "gable", "ridge": "hiwada_ridge",
@@ -78,8 +80,19 @@ YOTSUTSUJI = (135.78138, 34.96911)
 OMOTESANDO_TORII = (135.77104, 34.96793)      # the great torii on the Omotesando (OSM ceremonial gate)
 FOOT = {"footway", "path", "steps", "pedestrian", "track"}
 
-# torii kinds: (height, span between the pillars) in metres
-KINDS = {"senbon": (2.6, 1.5), "small": (2.4, 1.6), "mountain": (3.1, 2.0), "large": (4.6, 2.9)}
+# torii kinds: (height, span between the pillars, pillar diameter) in metres. The shrine sells a donated
+# torii by its size in 号, the pillar's diameter in sun (寸, 3.03 cm): 5号 to 10号 on the paths (the
+# Senbon Torii's are 6号 and 7号 in photographs, measured against the 2 m width OpenStreetMap gives the
+# tunnels), the miniature ones left at the otsuka 1号 to 3号 (see docs/cities/fushimi-inari.md)
+SUN = 0.0303
+KINDS = {"senbon": (2.6, 1.5, 6.5 * SUN), "small": (2.4, 1.6, 5 * SUN), "mountain": (3.1, 2.0, 7 * SUN), "large": (4.6, 2.9, 10 * SUN),
+         "votive": (0.62, 0.42, 1.5 * SUN)}
+# the side paths off the round, each a leg between two places OpenStreetMap names, torii-lined as the
+# round is; a leg keeps off the ways the round already takes
+SIDE = [("三つ辻 (Mittsu tsuji)", "荒木神社"),            # Mitsutsuji down to Araki-jinja and the north approach
+        ("四ツ辻 (Yottsu tsuji)", "田中社 権田夫大神"),   # Yotsutsuji up to Kojin-ga-mine (田中社神蹟)
+        ("御膳谷奉拝所", "清明舎")]                       # Gozendani to the Kiyotaki falls (清滝)
+# (Okusha to Kumataka-sha is the round's first leg; the other way from Neagari-no-matsu is the same mapped way)
 
 _cache = {}
 
@@ -278,8 +291,9 @@ def graph():
     return xy, adj
 
 
-def shortest(a, b, avoid=()):
+def shortest(a, b, avoid=(), used=None, avoid_edges=(), nodes=False):
     xy, adj = graph()
+    via = {}
     dist, prev, q = {a: 0.0}, {}, [(0.0, a)]
     while q:
         d, n = heapq.heappop(q)
@@ -290,16 +304,18 @@ def shortest(a, b, avoid=()):
         for m, w, wid in adj.get(n, ()):
             if wid in avoid:
                 continue
-            nd = d + w
+            nd = d + (w * 50 if (min(n, m), max(n, m)) in avoid_edges else w)   # (a way already taken: only if no other)
             if nd < dist.get(m, 1e18):
-                dist[m], prev[m] = nd, n
+                dist[m], prev[m], via[m] = nd, n, wid
                 heapq.heappush(q, (nd, m))
     if b not in dist:
         return []
     path = [b]
     while path[-1] != a:
+        if used is not None:
+            used.add((min(path[-1], prev[path[-1]]), max(path[-1], prev[path[-1]])))
         path.append(prev[path[-1]])
-    return [xy[n] for n in reversed(path)]
+    return path[::-1] if nodes else [xy[n] for n in reversed(path)]
 
 
 def nearest(p):
@@ -311,6 +327,65 @@ def uphill(pts, T):
     return pts if T(*pts[-1]) >= T(*pts[0]) else pts[::-1]
 
 
+def LineString_distance(pts, p):
+    """The distance from p to the polyline pts."""
+    A, B = np.asarray(pts[:-1], float), np.asarray(pts[1:], float)
+    d = B - A
+    t = np.clip(((p - A) * d).sum(1) / np.maximum((d * d).sum(1), 1e-9), 0, 1)
+    return float(np.min(np.linalg.norm(A + d * t[:, None] - p, axis=1)))
+
+
+def foot_segments():
+    """The footpaths' segments as arrays (a, b) for distances."""
+    if "segs" not in _cache:
+        xy, adj = graph()
+        A, B = [], []
+        for n, nb in adj.items():
+            for m, _, _ in nb:
+                if n < m:
+                    A.append(xy[n]); B.append(xy[m])
+        _cache["segs"] = (np.array(A), np.array(B))
+    return _cache["segs"]
+
+
+def path_distance(p):
+    A, B = foot_segments()
+    d = B - A
+    t = np.clip(((p - A) * d).sum(1) / np.maximum((d * d).sum(1), 1e-9), 0, 1)
+    return float(np.min(np.linalg.norm(A + d * t[:, None] - p, axis=1)))
+
+
+def votive(out, rng):
+    """The miniature torii left at the otsuka (お塚, the stone mounds the faithful dedicate to their own
+    name of Inari, more than ten thousand on the mountain): a cluster behind each shrine and memorial
+    stone OpenStreetMap maps along the torii-lined ways, stacked in rows up the mound, kept off the path."""
+    C, T, S, osm = ctx()
+    x_okusha = local(ROUTE[0][1])[0] - 30
+    lined = np.array([a[:2] for k, at in out.items() if k != "votive" for a in at])
+    for n in osm["nodes"]:
+        t = n["tags"]
+        if t.get("historic") not in ("wayside_shrine", "memorial"):
+            continue
+        c = local(n["ll"])
+        if c[0] < x_okusha or path_distance(c) > 25 or np.min(np.linalg.norm(lined - c, axis=1)) > 20:
+            continue    # (only on the torii-lined ways: not the temples' graves to the south)
+        # away from the nearest path: the mound rises behind the shrine
+        A, B = foot_segments()
+        d = B - A
+        tt = np.clip(((c - A) * d).sum(1) / np.maximum((d * d).sum(1), 1e-9), 0, 1)
+        q = (A + d * tt[:, None])[int(np.argmin(np.linalg.norm(A + d * tt[:, None] - c, axis=1)))]
+        back = unit(c - q) if np.linalg.norm(c - q) > 0.3 else unit(np.array([rng.normal(), rng.normal()]))
+        side = np.array([-back[1], back[0]])
+        face = math.atan2(-back[1], -back[0]) - math.pi / 2     # each faces the path
+        for k in range(int(rng.integers(50, 120))):
+            row, col = divmod(k, 11)
+            p = c + back * (1.0 + 0.4 * row + rng.uniform(-0.1, 0.1)) + side * ((col - 5) * 0.46 + rng.uniform(-0.12, 0.12))
+            if path_distance(p) < 1.5:
+                continue
+            out["votive"].append([round(float(p[0]), 2), round(float(p[1]), 2), round(T(*p) - 0.03, 2),
+                                  round(face + float(rng.uniform(-0.25, 0.25)), 3), round(float(rng.uniform(0.7, 1.6)), 2)])
+
+
 def torii_sites():
     """Every torii: {kind: [[x, y, z, heading, across]]}, the Senbon Torii at their surveyed spacing along
     each mapped tunnel, and the mountain route's at a torii every 0.65 m with gaps at the shrines and here
@@ -320,9 +395,12 @@ def torii_sites():
     C, T, S, osm = ctx()
     rng = np.random.default_rng(10000)
     out = {k: [] for k in KINDS}
-    lines = []
+    lines, runs = [], []
+    xy, adj = graph()
+    forks = np.array([xy[n] for n, nb in adj.items() if len({m for m, _, _ in nb}) >= 3])
+    lamp_xy = np.array([a[:2] for a in lamps()])
 
-    def place(pts, n=None, pitch=None, kind="mountain", gaps=False, keep_clear=()):
+    def place(pts, n=None, pitch=None, kind="mountain", gaps=False, keep_clear=(), avoid_lines=()):
         Q, ss = kk.resample(pts, 0.05)
         L = ss[-1]
         if L < 2:
@@ -337,12 +415,26 @@ def torii_sites():
                     continue
                 at.append(s)
                 s += pitch * rng.uniform(0.85, 1.25)
+        run = []
         for s in at:
             i = min(int(np.searchsorted(ss, s)), len(Q) - 1)
             a, b = Q[max(i - 4, 0)], Q[min(i + 4, len(Q) - 1)]
             p = Q[i]
+            # none on a sharp bend (its pillars would stand in the way round it), nor, in the Senbon Torii,
+            # where the other tunnel runs close (where the two part at their ends)
+            a2, b2 = Q[max(i - 16, 0)], Q[min(i + 16, len(Q) - 1)]
+            d1, d2 = p - a2, b2 - p
+            if np.linalg.norm(d1) > 0.1 and np.linalg.norm(d2) > 0.1 and \
+                    math.acos(float(np.clip(d1 @ d2 / np.linalg.norm(d1) / np.linalg.norm(d2), -1, 1))) > 0.6:
+                continue
+            if any(LineString_distance(o, p) < KINDS[kind][1] / 2 + 0.9 for o in avoid_lines):
+                continue
             if any(np.linalg.norm(p - c) < r for c, r in keep_clear):
                 continue
+            if kind != "senbon" and len(forks) and np.min(np.linalg.norm(forks - p, axis=1)) < 1.8:
+                continue    # a gap where another path joins
+            if len(lamp_xy) and np.min(np.linalg.norm(lamp_xy - p, axis=1)) < 1.3:
+                continue    # and at a lamp OpenStreetMap maps on the path (a solid post in the game)
             h = math.atan2(b[1] - a[1], b[0] - a[0]) - math.pi / 2
             k = kind
             if kind == "mountain":
@@ -350,22 +442,51 @@ def torii_sites():
                 k = "large" if r < 0.04 else "small" if r < 0.35 else "mountain"
             out[k].append([round(float(p[0]), 2), round(float(p[1]), 2), round(T(*p) - 0.05, 2), round(h, 3),
                            round(float(rng.uniform(0.95, 1.08)), 2)])
+            run.append((k, out[k][-1]))
         lines.append(pts)
+        runs.append(run)
 
     senbon = set()
-    for w in osm["ways"]:
-        if w["id"] in SENBON and len(w["ll"]) > 1:
-            pts = uphill([local(q) for q in w["ll"]], T)
-            place(pts, n=SENBON[w["id"]], kind="senbon")
-            senbon.add(w["id"])
+    tunnels = {w["id"]: uphill([local(q) for q in w["ll"]], T) for w in osm["ways"] if w["id"] in SENBON and len(w["ll"]) > 1}
+    for wid, pts in tunnels.items():
+        place(pts, n=SENBON[wid], kind="senbon", avoid_lines=[q for k, q in tunnels.items() if k != wid])
+        senbon.add(wid)
     clear = [(local(ll), 7.0) for _, ll in ROUTE]
     stops = [nearest(local(ll)) for _, ll in ROUTE]
+    used = set()
     for a, b in zip(stops, stops[1:]):
-        pts = shortest(a, b, avoid=senbon)
+        pts = shortest(a, b, avoid=senbon, used=used)
         if len(pts) > 1:
             place(uphill(pts, T) if a == stops[0] else pts, pitch=0.65, gaps=True, keep_clear=clear)
+    named = {w["tags"]["name"].replace("\u3000", " "): np.mean([local(q) for q in w["ll"]], axis=0)
+             for w in osm["ways"] if w["tags"].get("name") and w["ll"]}     # (a shrine's outline: its middle)
+    named.update({n["tags"]["name"].replace("\u3000", " "): local(n["ll"]) for n in osm["nodes"] if n["tags"].get("name")})
+    for a, b in SIDE:
+        if a not in named or b not in named:
+            print(f"  torii: no place named {a if a not in named else b}")
+            continue
+        na, nb = nearest(named[a]), nearest(named[b])
+        length = lambda ids: sum(float(np.linalg.norm(xy[n] - xy[m])) for n, m in zip(ids, ids[1:]))
+        direct = shortest(na, nb, avoid=senbon, nodes=True)
+        ids = shortest(na, nb, avoid=senbon, avoid_edges=set(used), nodes=True)
+        if length(ids) > 1.8 * length(direct):
+            ids = direct      # no other way of about the same length: the direct one, where it is not lined yet
+        run = []          # the leg's stretches off the ways already lined
+        for n, m in zip(ids, ids[1:]):
+            e = (min(n, m), max(n, m))
+            if e in used:
+                if len(run) > 1:
+                    place(uphill([xy[k] for k in run], T), pitch=0.65, gaps=True, keep_clear=clear + [(named[b], 5.0)], avoid_lines=list(lines))
+                run = []
+                continue
+            used.add(e)
+            run = run + [m] if run else [n, m]
+        if len(run) > 1:
+            place(uphill([xy[k] for k in run], T), pitch=0.65, gaps=True, keep_clear=clear + [(named[b], 5.0)], avoid_lines=list(lines))
+    votive(out, rng)
     _cache["torii"] = out
     _cache["torii_lines"] = lines
+    _cache["torii_runs"] = runs
     return out
 
 
@@ -375,18 +496,121 @@ def torii_props():
     for kind, at in torii_sites().items():
         if not at:
             continue
-        h, span = KINDS[kind]
+        h, span, dia = KINDS[kind]
         body = Mesh(f"torii_{kind}_shu", "torii_shu", False)
         black = Mesh(f"torii_{kind}_black", "inari_black", False)
         words = Mesh(f"torii_{kind}_words", "inari_words", False, uv=True)
-        kk.torii(body, black, h, span)
-        r = max(0.09, 0.055 * h)
+        r = dia / 2
+        kk.torii(body, black, h, span, r=r)
+        if kind == "votive":
+            props.append({"name": f"torii_{kind}", "at": at, "parts": [m.dump() for m in (body, black)], "far": 160})
+            continue
         for s in (-1, 1):   # the names, on the pillar's back (the side facing uphill, +y)
             x = s * span / 2
             words.quad((x - r * 0.9, r + 0.01, 0.12 * h), (x + r * 0.9, r + 0.01, 0.12 * h), (x + r * 0.9, r + 0.01, 0.72 * h), (x - r * 0.9, r + 0.01, 0.72 * h),
                        [[1, 0], [0, 0], [0, 1], [1, 1]] if s < 0 else [[0, 0], [1, 0], [1, 1], [0, 1]])
         props.append({"name": f"torii_{kind}", "at": at, "parts": [m.dump() for m in (body, black, words)], "far": 2200})
     return props
+
+
+WALL_TOP = 1.15   # the collision walls' height (m): over a walker's knee, so they stop walkers, and under the
+# camera, which the landmarks' coarse cells (padded 0.3 m) would otherwise lift over the torii's roofs
+
+
+def torii_hits(chunk=48.0):
+    """The torii's pillars for the collision world. The torii on the paths stand closer than a walker is
+    wide (0.2 m apart in the Senbon Torii, 0.65 m on the mountain), so each side of a run of them is one
+    wall, pillar to pillar, from the ground to 1.15 m (over the knee, under the camera), broken where the run is (a shrine, a gap
+    of a metre or more). The walls are in a material that is solid but never drawn (opacity 0), cut into
+    chunks drawn only within their own radius: walkers and the player keep between the pillars. (The
+    miniature torii at the otsuka stand off the path.)"""
+    torii_sites()
+    cells = {}
+
+    def wall(pts):
+        if len(pts) < 2:
+            return
+        x, y = pts[len(pts) // 2][:2]
+        m = cells.setdefault((int(x // chunk), int(y // chunk)), Mesh("_", "torii_hit", False))
+        n = len(m.v)
+        for px, py, z0, z1, _ in pts:
+            m.v += [(px, py, z0), (px, py, z1)]
+            m.t += [[0.0, 0.0], [0.0, 0.0]]
+        for k in range(len(pts) - 1):
+            a = n + 2 * k
+            m.i += [a, a + 2, a + 1, a + 1, a + 2, a + 3]
+
+    for run in _cache["torii_runs"]:
+        for side in (-1, 1):
+            pts, last = [], None
+            for kind, (x, y, z, hd, sc) in run:
+                h, span, dia = KINDS[kind]
+                # along the pillars' outer faces: the collision world's cells (0.25 m) widen a wall by up to a
+                # cell each side, and the tunnels are only a little wider than two people
+                X = side * ((span / 2 + h * 0.01) * sc + dia / 2)
+                p = (round(x + math.cos(hd) * X, 2), round(y + math.sin(hd) * X, 2), round(z, 2), round(z + WALL_TOP, 2), hd)
+                if last is not None and (math.hypot(p[0] - last[0], p[1] - last[1]) > 1.0 or abs(math.remainder(hd - last[4], math.tau)) > 0.35):
+                    wall(pts)
+                    pts = []
+                pts.append(p)
+                last = p
+            wall(pts)
+    out = []
+    for (i, j), m in sorted(cells.items()):
+        m.name = f"torii_hit_{i}_{j}"
+        out.append(Near(m))
+    return out
+
+
+def torii_ceilings(step=2.0):
+    """Each run of torii as a low ceiling for the game's camera (landmarks.json "ceilings", web/game/nav.js
+    ceilingAt): under the tie beams of the run's lowest torii, so that the chase camera stays in the
+    tunnel rather than over the lintels."""
+    torii_sites()
+    out = []
+    for run in _cache["torii_runs"]:
+        if len(run) < 3:
+            continue
+        h = min(KINDS[k][0] for k, _ in run)
+        span = min(KINDS[k][1] * a[4] for k, a in run)
+        pieces, pts, last = [], [], None
+        for kind, (x, y, z, hd, sc) in run:
+            if last is None or math.hypot(x - last[0], y - last[1]) >= step:
+                if last is not None and math.hypot(x - last[0], y - last[1]) > 4.0 and len(pts) > 1:
+                    pieces.append(pts)
+                    pts = []
+                pts.append([x, y, z])
+                last = (x, y)
+        if len(pts) > 1:
+            pieces.append(pts)
+        out += [{"pts": p, "half_width": round(span / 2 - 0.1, 2), "clear_m": round(0.7 * h - 0.05, 2)} for p in pieces]
+    return out
+
+
+class Near:
+    """A mesh drawn only within its own radius ("far" 1 m)."""
+    def __init__(self, m):
+        self.m, self.v, self.i, self.name = m, m.v, m.i, m.name
+
+    def dump(self):
+        return dict(self.m.dump(), far=1)
+
+
+def woods_clear(scene):
+    """No tree from the canopy in a torii tunnel: the ways the torii line, 1.6 m either side, as rings of
+    20 m pieces of them (no piece closes on itself, so none has a hole) for pipeline/woods.py
+    (pipeline/woods_clear.py applies it to the trees already planted)."""
+    from shapely.geometry import LineString
+    torii_sites()
+    out = []
+    for l in _cache["torii_lines"]:
+        Q, ss = kk.resample(l, 1.0)
+        for i in range(0, len(Q) - 1, 20):
+            piece = Q[i:i + 21]
+            if len(piece) > 1:
+                g = LineString(piece).buffer(1.6, quad_segs=2).simplify(0.2)
+                out.append([[round(x, 2), round(y, 2)] for x, y in g.exterior.coords])
+    return out
 
 
 def lamps():
@@ -429,7 +653,7 @@ def landmark_meshes(scene):
     R = romon_layout()
     if R:
         mats["inari_shu"]["flood"] = [round(R["z0"], 1), round(R["z0"] + 16.0, 1), 0.5, 0.6]
-    return mats, K.out() + more, {"hidden": sorted(set(hidden)), "props": torii_props() + lamp_props()}
+    return mats, K.out() + more + torii_hits(), {"ceilings": torii_ceilings(), "hidden": sorted(set(hidden)), "props": torii_props() + lamp_props()}
 
 
 def landmark_assets(out_dir, scene):

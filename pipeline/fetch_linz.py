@@ -19,9 +19,9 @@ city.json:
   "terrain": {"type": "linz_cog", "url": ".../{sheet}.tiff", "fallback": ".../{sheet}.tiff",
               "sheets": [...], "read_m": 16}
   "imagery": {"type": "linz_cog", "url": ".../{sheet}.tiff", "sheets": [...], "pixel_m": 10}
-  "detail":  [{"id", "url", "read_m", "nztm": [e0, n0, e1, n1]}]   optional finer windows
 
-writes data/raw/<id>/linz/<kind>_<sheet>.tif (GeoTIFF, EPSG:2193), skipping files already there.
+writes data/raw/<id>/linz/<kind>_<sheet>.tif (GeoTIFF, EPSG:2193), skipping files already there. The aerial
+patches (city.json "detail") are pipeline/alpine_detail.py's.
 """
 import os
 import time
@@ -89,7 +89,7 @@ def fetch(kind, url, sheets, read_m, out, bands=None):
 
 
 def main():
-    city, a = city_args(__doc__.splitlines()[0], lambda ap: ap.add_argument("--only", nargs="+", help="terrain, fallback, imagery, detail"))
+    city, a = city_args(__doc__.splitlines()[0], lambda ap: ap.add_argument("--only", nargs="+", help="terrain, fallback, imagery"))
     out = os.path.join(city.raw, "linz")
     os.makedirs(out, exist_ok=True)
     cfg = city.cfg
@@ -102,20 +102,6 @@ def main():
     I = cfg["imagery"]
     if want("imagery"):
         fetch("img", I["url"], I["sheets"], I.get("pixel_m", 10), out, bands=[1, 2, 3])
-    if want("detail"):
-        for d in cfg.get("detail", []):
-            for s in d["sheets"]:
-                path = os.path.join(out, f"detail_{d['id']}_{s}.tif")
-                if os.path.exists(path):
-                    continue
-                try:
-                    data, tf, crs, nd = read_sheet(d["url"].format(sheet=s), d["read_m"], d.get("bands"), d["nztm"])
-                except Exception as e:
-                    print(f"detail {d['id']} {s}: {e}")
-                    continue
-                if data.size:
-                    save(path, data, tf, crs, nd)
-                    print(f"detail {d['id']} {s}: {data.shape[2]} x {data.shape[1]} at {tf.a:.2f} m", flush=True)
 
 
 if __name__ == "__main__":

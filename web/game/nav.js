@@ -135,8 +135,44 @@ window.OENav = (function () {
       const h = patchAt(x, y);
       return h && h[1] !== null ? h[0] : null;
     }
+    // the floors of the passages through a landmark (landmarks.json "passages" with floor: a road, a cycle
+    // path or a footway mapped through the building, pipeline/landmark_passages.py): the bare-earth model
+    // under a building is a guess (under the Rijksmuseum it dips 2 m), so in a passage's corridor the
+    // ground is the passage's floor, level from one end to the other as the landmark draws it (issue #127),
+    // and for PMARGIN either side of it: the hall the way runs through (the Rijksmuseum's aisles either side of
+    // its cycle path), whose floor the landmark's cells stand on (ref, landmarkCells)
+    const PMARGIN = 3.0, PG = 16, pgrid = new Map(), pkey = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
+    for (const pa of (D.LM && D.LM.passages) || []) {
+      if (!pa.floor || !pa.pts || pa.pts.length < 2) continue;
+      const hw = pa.w / 2 + PMARGIN;
+      for (let i = 1; i < pa.pts.length; i++) {
+        const [ax, ay, az] = pa.pts[i - 1], [bx, by, bz] = pa.pts[i], L = Math.hypot(bx - ax, by - ay);
+        if (L < 1e-3) continue;
+        const sgm = { ax, ay, az, bz, ex: (bx - ax) / L, ey: (by - ay) / L, L, hw };
+        for (let cx = Math.floor((Math.min(ax, bx) - hw) / PG); cx <= Math.floor((Math.max(ax, bx) + hw) / PG); cx++)
+          for (let cy = Math.floor((Math.min(ay, by) - hw) / PG); cy <= Math.floor((Math.max(ay, by) + hw) / PG); cy++) {
+            const k = pkey(cx, cy), l = pgrid.get(k);
+            if (l) l.push(sgm); else pgrid.set(k, [sgm]);
+          }
+      }
+    }
+    // the floor of a passage at (x, y), or null outside every passage's corridor
+    function passageFloor(x, y) {
+      if (!pgrid.size) return null;
+      const l = pgrid.get(pkey(Math.floor(x / PG), Math.floor(y / PG)));
+      if (!l) return null;
+      let best = null, bd = Infinity;
+      for (const s of l) {
+        const dx = x - s.ax, dy = y - s.ay, u = dx * s.ex + dy * s.ey;
+        if (u < -0.05 || u > s.L + 0.05) continue;
+        const v = Math.abs(-dx * s.ey + dy * s.ex);
+        if (v <= s.hw && v < bd) { bd = v; best = s.az + (s.bz - s.az) * Math.max(0, Math.min(1, u / s.L)); }
+      }
+      return best;
+    }
     function terrain(x, y) {
       if (patches.length) { const h = patchAt(x, y); if (h !== null) { tri = 0; return h[1] !== null ? h[1] : h[0]; } }
+      if (pgrid.size) { const h = passageFloor(x, y); if (h !== null) { tri = 0; return h; } }
       const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell)), r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
       const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0, D = T.data;
       const a = D[i], b = D[i + 1], d = D[i + T.nx], e = D[i + T.nx + 1];
@@ -147,14 +183,37 @@ window.OENav = (function () {
     // the ground at (x, y) as seen from height z: under a slab that stands above z, the floor under it
     function terrainBelow(x, y, z) { const t = terrain(x, y), u = under(x, y); return u !== null && t > z ? u : t; }
     // the underside of a slab over a walker at height z at (x, y) (the patch's "clear_m" over its floor), or null
+    // low ceilings along a line a landmark gives (landmarks.json "ceilings": [{pts: [[x, y, z], ...],
+    // half_width, clear_m}]: a tunnel of torii, whose lintels stand clear_m over the path), so that the
+    // camera stays under them; in 16 m cells of their segments
+    const ceilSegs = [], ceilGrid = new Map(), CG = 16, ckey = (cx, cy) => cx * 65536 + cy;
+    for (const c of (D.LM && D.LM.ceilings) || []) for (let i = 1; i < c.pts.length; i++) {
+      const a = c.pts[i - 1], b = c.pts[i], k = ceilSegs.push({ a, b, hw: c.half_width, clear: c.clear_m }) - 1;
+      for (let cx = Math.floor((Math.min(a[0], b[0]) - c.half_width) / CG); cx <= Math.floor((Math.max(a[0], b[0]) + c.half_width) / CG); cx++)
+        for (let cy = Math.floor((Math.min(a[1], b[1]) - c.half_width) / CG); cy <= Math.floor((Math.max(a[1], b[1]) + c.half_width) / CG); cy++) {
+          const g = ceilGrid.get(ckey(cx, cy)); if (g) g.push(k); else ceilGrid.set(ckey(cx, cy), [k]);
+        }
+    }
+    function lineCeiling(x, y, z) {
+      const g = ceilGrid.get(ckey(Math.floor(x / CG), Math.floor(y / CG)));
+      if (!g) return null;
+      let best = null;
+      for (const k of g) {
+        const { a, b, hw, clear } = ceilSegs[k], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2));
+        if (Math.hypot(a[0] + dx * t - x, a[1] + dy * t - y) > hw) continue;
+        const h = a[2] + (b[2] - a[2]) * t + clear;
+        if (h > z + 0.5 && (best === null || h < best)) best = h;
+      }
+      return best;
+    }
     function ceilingAt(x, y, z) {
-      if (!patches.length) return null;
       for (const p of patches) {
         if (!p.up || x < p.x0 || y < p.y0 || x >= p.x1 || y >= p.y1) continue;
         const h = patchAt(x, y);
         return h && h[1] !== null && h[1] > z + 0.5 ? h[0] + (p.clear_m || 2.2) : null;
       }
-      return null;
+      return ceilSegs.length ? lineCeiling(x, y, z) : null;
     }
     // is (x, y, z) inside the body of a slab over a patch, from its soffit to its top (with the camera probe's radius)?
     const upperSlabs = patches.filter(p => p.up);
@@ -319,6 +378,20 @@ window.OENav = (function () {
       if (k >= 0 && pier.data[k] > h) h = pier.data[k];
       return h;
     };
+    // the floor a walker beside a point may stand on: the floor under it, or a strip's within a 2 m cell of it, up
+    // to 3 m over that (a wall beside a raised floor, a tower's beside the loggia it flanks, is laid into fine cells
+    // up to BAND over that floor, so that its 2 m cells do not come down to the head of someone on it; not a
+    // bridge's deck high over the ground beside it)
+    const refBeside = (x, y, h0) => {
+      let h = h0;
+      for (const s of stripsAt(x, y)) {
+        const [u, v] = stripUV(s, x, y);
+        if (Math.abs(v) > s.half_width + DSM.cell || u < s.us[0] - DSM.cell || u > s.us[s.us.length - 1] + DSM.cell) continue;
+        const q = interp(s.us, s.zs, u);
+        if (q > h && q < h0 + 3.0) h = q;
+      }
+      return h;
+    };
     // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
     // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length squared
     const seg = (P, Q, step, fn) => { const n = Math.max(1, Math.ceil(Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]) / step));
@@ -368,7 +441,7 @@ window.OENav = (function () {
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
           const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
           const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
-          const rlo = Math.min(...rs), zc = Math.max(...rs) + BAND;
+          const rlo = Math.min(...rs), zc = refBeside(cx, cy, Math.max(...rs)) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor
           let below = [P];
@@ -679,10 +752,15 @@ window.OENav = (function () {
       return false;
     }
     // the highest surface already built at (x, y), a deck strip or a pier (-Infinity for none)
-    function surfaceAt(x, y) {
+    // the highest built surface at (x, y) (a pier, a strip), or with `near`, the one nearest that height (a
+    // bridge's deck under the expressway's that crosses it: the Shuto over Nihonbashi)
+    function surfaceAt(x, y, near) {
       const k = cellOf(x, y);
       let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
-      for (const s of stripsAt(x, y)) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; }
+      for (const s of stripsAt(x, y)) {
+        const z = stripHeight(s, x, y);
+        if (z != null && (near == null ? z > h : Math.abs(z - near) < Math.abs(h - near))) h = z;
+      }
       return h;
     }
     // ---------------------------------------------------------- decks of mapped bridges and viaducts (decks.js)
@@ -706,15 +784,16 @@ window.OENav = (function () {
       }
     }
     // the floor a walker at height z would stand on at (x, y): the highest surface no more
-    // than a step above z. Returns {z, kind} or null (water or nothing reachable).
-    function floorAt(x, y, z) {
+    // than a step above z. Returns {z, kind} or null (water or nothing reachable). cars: a car's floor,
+    // which takes the expressways' decks too (a walker's does not: decks.js gives them walk false)
+    function floorAt(x, y, z, cars = false) {
       let best = null, kind = '';
       const take = (h, k) => { if (h <= z + STEP && (best === null || h > best)) { best = h; kind = k; } };
       if (!offGround(x, y)) { take(terrain(x, y), 'ground'); const u = under(x, y); if (u !== null) take(u, 'ground'); }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
-      decksAt(x, y, (h, d) => { if (d.walk) take(h, 'deck'); });
+      decksAt(x, y, (h, d) => { if (d.walk || cars) take(h, 'deck'); });
       const bt = col.topAt(x, y, z + STEP, BUILDING);
       if (bt > -Infinity) take(bt, 'roof');
       // a landmark's floor within a step (a gate's stone base, a plinth, a platform), within FOOT: its floor
@@ -880,7 +959,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
+    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, passageFloor, passages: (D.LM && D.LM.passages) || [], tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
     return api;
   }
   return { create };

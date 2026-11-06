@@ -29,6 +29,62 @@ pyramid to the lantern at 65.45 m (House of Representatives, the building's
 fact sheet: 206.36 by 88.63 m). The storeys and the tower's stages are taken
 from photographs.
 
+### The palace moats and their bridges
+
+GSI's laser DEM has no returns from water, and its gaps are filled from the castle's banks, so the
+moats read several metres above the streets beside them (the Wadakura moat at 6.8 m against banks of
+2.8 m) and Wadakura-bashi and the Seimon Ishibashi ramped down to the banks. `cities/tokyo/moats.py`
+makes each moat water at its own level: the twelve Outer Garden moats at the levels the Ministry of
+the Environment publishes (Kokyo Gaien National Garden Office, 皇居外苑濠 濠別管理方針, March 2010:
+水面標高 T.P. m): Wadakura, Babasaki and Hibiya 1.43 m, Kikyo, Otemachi and Shimizu 1.87 m, Hamaguri
+2.37 m, Gaisen 2.85 m, Sakurada and the Nijubashi moat 3.82 m, Hanzo and Chidorigafuchi 15.98 m. The
+moats inside the palace, which have no published level, stand at their low bank less 1.7 m, the median
+of the Outer Garden moats' banks over their water. The ground under each moat goes down to a bed, the
+DEM's fill that bled onto the banks beside them is taken off (a point within 10 m of a moat stands no
+higher than the bank 12 m back), dressed stone walls stand from the water to the bank, and the game
+treats the moats as water at their level. The bridges over them now meet their banks where they are
+(Wadakura-bashi at 2.7 and 2.9 m) instead of a river's 3.5 m embankment.
+
+The Seimon Tetsubashi (二重橋) is level, without a crown, at the Seimon terrace's 16.7 m (GSI's laser over
+the flat terrace at its south end; the palace side reads 16.5 to 17 m). The 5 m DEM spreads the Nijubashi
+moat's walls over 15 to 18 m of slope, which had set the deck from 15.3 down to 10.1 m. Within 40 m of the
+bridge (fading over 30 m more) the walls now stand to the terrace, read 18 m back from the shore, and the
+ground behind them is the terrace's (`moats.py` WALLED).
+
+![The Seimon Tetsubashi level between the Nijubashi moat's walls](../images/tokyo/nijubashi-level.jpg) The outlines are
+OpenStreetMap's (ODbL); `python cities/tokyo/moats.py` writes `cities/tokyo/moats.json`, and
+`pipeline/refresh_terrain.py --city tokyo --hook`, `pipeline/refresh_bridges.py`, `pipeline/landmarks.py`
+and `pipeline/game_extras.py` bring a built city up to it.
+
+![Wadakura-bashi level with its banks over the Wadakura moat at 1.43 m](../images/tokyo/moats-wadakura-bashi.jpg)
+![The Seimon Ishibashi over the Nijubashi moat at 3.82 m](../images/tokyo/moats-seimon-ishibashi.jpg)
+
+### Nihonbashi's bronzes
+
+Nihonbashi (1911, Tsumaki Yorinaka; the bronzes by Watanabe Osao) carries, from its photographs, the
+two lamp standards over its middle pier on granite pedestals, each with a pair of winged kirin back to
+back, and at its four ends granite pillars with their lamps and the lions holding the City of Tokyo's
+crest. The figures are sculpted fields (`pipeline/sculptkit.py`) in `pipeline/bridges.py` (city.json
+bridges forms `"statues"`); every bridge with bronze lamps (Nihonbashi, Tokiwabashi, the Seimon
+Ishibashi, the Nijubashi) has turned candelabra with glass globes, and the bridges' lamps glow after
+dark. The Shuto Expressway over Nihonbashi is not drawn.
+
+![Nihonbashi at dusk: the kirin on the middle lamp standards and the lions at the ends](../images/tokyo/nihonbashi-bronzes-dusk.jpg)
+
+### The Imperial Palace
+
+The Kyūden (1968, Yoshimura Junzō) was 43 mapped parts with flat tops. `cities/tokyo/palace.py` draws
+its wings, the union of those footprints with the courts as holes, with pale walls to their eaves at
+9 m and green copper hipped roofs that follow every turn of the outline (`archkit.outline_roof`) up to
+the mapped tops of 15 to 17 m. An unnamed 64 m² outline in the east court that the build gave its
+neighbours' 22 m is left out.
+
+![The Imperial Palace's wings under their outline roofs](../images/tokyo/imperial-palace-roofs.jpg)
+
+The Kabuki-za's roof garden, with the white PLATEAU block hidden:
+
+![Kabuki-za's roof garden](../images/tokyo/kabukiza-roof-garden.jpg)
+
 ## 2. Sources
 
 | Layer | Source | Licence |
@@ -37,6 +93,8 @@ from photographs.
 | Footprints, names, roads, water, parks | Overture Maps, release 2026-10-21.0 (OpenStreetMap) | ODbL |
 | Terrain | GSI DEM5A, 5 m airborne laser survey, bare earth (10 m DEM where 5A has no data) | GSI terms of use |
 | Aerial photos | GSI seamless photos, zoom 17 | GSI terms of use |
+| Shuto Expressway (Nihonbashi) | Overture Maps segments (OpenStreetMap); heights from photographs | ODbL |
+| Palace moats' water levels | Ministry of the Environment, Kokyo Gaien National Garden Office: 皇居外苑濠 濠別管理方針 (March 2010) | Government publication, cited |
 
 ## 3. How PLATEAU is used
 

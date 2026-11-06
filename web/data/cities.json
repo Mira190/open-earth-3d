@@ -1,5 +1,30 @@
 [
  {
+  "id": "queenstown",
+  "name": "Queenstown",
+  "native": "T\u0101huna",
+  "country": "New Zealand",
+  "lat": -45.031,
+  "lon": 168.662,
+  "status": "live",
+  "timezone": "Pacific/Auckland",
+  "summary": "Queenstown on Lake Wakatipu: every roof measured by LINZ's 2021 LiDAR under its 2026 aerial photos, the Skyline Gondola to Bob's Peak, the TSS Earnslaw at Steamer Wharf, and the Remarkables across the lake.",
+  "built": true,
+  "game": true,
+  "buildings": 4071,
+  "extent_km": [
+   6.2,
+   4.8
+  ],
+  "packed": [
+   "buildings"
+  ],
+  "load_bytes": {
+   "model": 4687135,
+   "game": 8477586
+  }
+ },
+ {
   "id": "sydney",
   "name": "Sydney",
   "country": "Australia",
@@ -19,8 +44,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5548667,
-   "game": 8826954
+   "model": 5555128,
+   "game": 8833415
   }
  },
  {
@@ -47,8 +72,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 17355726,
-   "game": 20365229
+   "model": 19288829,
+   "game": 22299022
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -81,8 +106,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 4985986,
-   "game": 5533206
+   "model": 5071451,
+   "game": 5619478
   }
  },
  {
@@ -109,8 +134,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2152651,
-   "game": 2592443
+   "model": 2810987,
+   "game": 3250838
   }
  },
  {
@@ -136,8 +161,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5444614,
-   "game": 8882794
+   "model": 10834379,
+   "game": 14272468
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -731,8 +756,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 8899460,
-   "game": 12458830
+   "model": 8957686,
+   "game": 12517056
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1312,8 +1337,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 7239574,
-   "game": 10102114
+   "model": 7701968,
+   "game": 10566018
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1984,6 +2009,27 @@
   "extent_km": [
    38.4,
    84.5
+  ]
+ },
+ {
+  "id": "lake-tekapo",
+  "name": "Lake Tekapo",
+  "native": "Takap\u014d",
+  "country": "New Zealand",
+  "lat": -43.92,
+  "lon": 170.52,
+  "status": "live",
+  "viewer": "reef/index.html",
+  "group": "Mackenzie",
+  "district": "Mackenzie District, Canterbury",
+  "tagline": "The Church of the Good Shepherd on the turquoise lake",
+  "timezone": "Pacific/Auckland",
+  "summary": "Lake Tekapo / Takap\u014d, 36 by 52 km of the Mackenzie: LINZ's 1 m LiDAR terrain and aerial photos, the Church of the Good Shepherd, the sheepdog statue and Mt John's observatory modelled from the survey, lupins in their season and the dark-sky reserve's stars. Start at the church's postcard view, climb Mt John, find the Southern Cross.",
+  "built": true,
+  "game": false,
+  "extent_km": [
+   36.5,
+   51.8
   ]
  },
  {

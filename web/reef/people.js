@@ -148,8 +148,142 @@ const AX = new THREE.Vector3(1, 0, 0), AY = new THREE.Vector3(0, 1, 0), AZ = new
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
+// ---------------------------------------------------------------- a real person: a Microsoft Rocketbox avatar
+// (MIT; web/assets/people/LICENSE-Rocketbox.txt), as the cities' NPCs are (blender/build_people.py --npcs,
+// people.json "npcs"): textured, so not recoloured per look, driven by its sex's motion-captured clips. A site's
+// person names one in look.character (R_<avatar>[_<head>][_<tag>...]) and look.clip. Same interface as the
+// Quaternius rig below, less the swimming pose and the accessories (no clip for those; they are no-ops).
+const REAL = { tpl: {}, clips: {} };
+export const isReal = name => /^R_/.test(name || '') && !!(lib && lib.info.npcs && lib.info.npcs.characters[name]);
+async function createRealPerson(look, opts) {
+  const N = lib.info.npcs, info = N.characters[look.character], sex = info.sex;
+  const tpl = await (REAL.tpl[look.character] || (REAL.tpl[look.character] = lib.get(info.file)));
+  const clipsG = await (REAL.clips[sex] || (REAL.clips[sex] = lib.get(N.clips[sex].file)));
+  const model = SkeletonUtils.clone(tpl.scene);
+  model.traverse(o => { if (o.isMesh) { o.frustumCulled = false; } });
+  const group = new THREE.Group(), pivot = new THREE.Group();
+  group.add(pivot); pivot.add(model);
+  const H = info.height_m || 1.72;
+  const rig = { group, pivot, model, look, tpl: { height: H }, bones: {}, acc: {}, mixer: new THREE.AnimationMixer(model), actions: {}, cur: null, T: null,
+    heading: 0, targetHeading: null, speech: null, extra: {}, proc: { k: 0, mode: 'none' }, real: true, hipY: H * 0.53 };
+  model.traverse(o => { if (o.isBone) rig.bones[o.name] = o; });
+  for (const c of clipsG.animations) rig.actions[c.name] = rig.mixer.clipAction(c);
+  const speeds = N.clips[sex].ground_speed || { Walk: 1.1 };
+  const alias = { Idle: look.clip && rig.actions[look.clip] ? look.clip : 'Idle', Run: 'Walk' };
+  rig.play = (name, o = {}) => {
+    const a = rig.actions[alias[name] || name] || rig.actions.Idle;
+    if (!a) return null;
+    if (rig.cur !== a) {
+      a.reset(); a.setLoop(o.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); a.clampWhenFinished = !!o.once;
+      a.setEffectiveWeight(1).play();
+      if (rig.cur) rig.cur.crossFadeTo(a, o.fade ?? 0.25, false);
+      rig.cur = a;
+      if (o.offset) a.time = o.offset * a.getClip().duration;
+    }
+    if (o.speed !== undefined) a.setEffectiveTimeScale(o.speed);
+    return a;
+  };
+  rig.locomote = (speed, fade = 0.25) => speed < 0.12 ? rig.play('Idle', { fade, speed: 1 }) : rig.play('Walk', { fade, speed: THREE.MathUtils.clamp(speed / speeds.Walk, 0.4, 2.4) });
+  rig.wave = () => rig.play('Wave', { once: true, fade: 0.2 });
+  rig.setLook = l => { Object.assign(look, l); return rig; };
+  rig.addAccessory = () => null; rig.show = () => {}; rig.has = () => false;
+  rig.setSwim = () => {};
+  rig.world = (p, out = new THREE.Vector3()) => model.localToWorld(out.copy(p));
+  const headPos = out => { const b = rig.bones[N.bones.Head]; return b ? b.getWorldPosition(out) : group.getWorldPosition(out).add(_v.set(0, H - 0.1, 0)); };
+  rig.mouth = out => headPos(out);
+  rig.snorkelTip = out => headPos(out);
+  rig.faceTowards = (v, snap) => {
+    const p = group.getWorldPosition(_v.clone());
+    const dx = (v.x ?? v[0]) - p.x, dz = (v.z ?? v[2] ?? -(v.north)) - p.z;
+    if (Math.abs(dx) + Math.abs(dz) < 1e-4) return rig;
+    rig.targetHeading = Math.atan2(dx, dz);
+    if (snap) { rig.heading = rig.targetHeading; group.rotation.y = rig.heading; }
+    return rig;
+  };
+  rig.setHeading = h => { rig.heading = h; rig.targetHeading = null; group.rotation.y = h; };
+  rig.say = makeSay(rig, group, () => H + 0.45, opts);
+  rig.update = (dt, camera) => {
+    if (rig.targetHeading !== null) {
+      let d = rig.targetHeading - rig.heading; d = Math.atan2(Math.sin(d), Math.cos(d));
+      rig.heading += d * Math.min(1, dt * 5);
+      if (Math.abs(d) < 0.01) rig.targetHeading = null;
+      group.rotation.y = rig.heading;
+    }
+    rig.mixer.update(dt);
+    rig.say.tick(dt, camera);
+  };
+  rig.dispose = () => { if (group.parent) group.parent.remove(group); rig.mixer.stopAllAction(); };
+  rig.play('Idle', { fade: 0 });
+  return rig;
+}
+
+// a floating speech bubble that fades, shared by both kinds of person
+function makeSay(rig, group, height, opts) {
+  const say = (text, secs = 4.5) => {
+    if (rig.speech) { group.remove(rig.speech.sprite); rig.speech.sprite.material.map.dispose(); rig.speech.sprite.material.dispose(); rig.speech = null; }
+    if (!text) return rig;
+    const cv = document.createElement('canvas'), cx = cv.getContext('2d'), W = 512, lh = 40, pad = 22;
+    cx.font = '500 30px "Inter Tight", system-ui, sans-serif';
+    const words = String(text).split(' '), lines = []; let line = '';
+    for (const w of words) { const t = line ? line + ' ' + w : w; if (cx.measureText(t).width > W - pad * 2 && line) { lines.push(line); line = w; } else line = t; }
+    lines.push(line);
+    cv.width = W; cv.height = lines.length * lh + pad * 2;
+    cx.font = '500 30px "Inter Tight", system-ui, sans-serif';
+    cx.fillStyle = 'rgba(6,10,18,0.84)'; cx.beginPath(); cx.roundRect(2, 2, W - 4, cv.height - 4, 4); cx.fill();
+    cx.strokeStyle = 'rgba(236,232,225,0.22)'; cx.lineWidth = 2; cx.stroke();
+    cx.fillStyle = '#ece8e1'; cx.textBaseline = 'top';
+    lines.forEach((l, i) => cx.fillText(l, pad, pad + i * lh));
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const spm = new THREE.SpriteNodeMaterial({ map: tex, transparent: true, depthWrite: false, fog: false });
+    const sp = new THREE.Sprite(spm);
+    sp.center.set(0.5, 0); sp.renderOrder = 30;
+    sp.userData.w = 1.5; sp.userData.h = 1.5 * cv.height / W;
+    sp.position.y = height();
+    group.add(sp);
+    rig.speech = { sprite: sp, t: secs, secs };
+    if (opts.onSay) opts.onSay(text, rig);
+    return rig;
+  };
+  say.tick = (dt, camera) => {
+    if (!rig.speech) return;
+    const S = rig.speech; S.t -= dt;
+    const sp = S.sprite, dist = camera ? camera.position.distanceTo(group.position) : 5, sc = Math.max(1, dist / 7);
+    sp.scale.set(sp.userData.w * sc, sp.userData.h * sc, 1);
+    sp.material.opacity = Math.min(1, S.t * 2, (S.secs - S.t) * 6);
+    if (S.t <= 0) say(null);
+  };
+  return say;
+}
+
+// The head under a hat (gear.js hat: its crown a lathe about its own y, the brim at y = 0): the bind-pose positions with
+// everything above the brim drawn inside the crown, 8 mm in from it, and none above its top. `hat` is the hat's matrix
+// in the bind pose's model space as it is worn (levelOnHead included). Built once per character and shared by everyone
+// of that character in a hat.
+const CROWN = [[0, 0.136], [0.03, 0.13], [0.098, 0.122], [0.105, 0.105]];   // (height above the brim, the crown's radius)
+const crownR = h => { for (let i = 1; i < CROWN.length; i++) if (h <= CROWN[i][0]) { const [a, ra] = CROWN[i - 1], [b, rb] = CROWN[i]; return ra + (rb - ra) * (h - a) / (b - a); } return CROWN[CROWN.length - 1][1]; };
+function hatHead(tpl, hat) {
+  if (tpl.hatPos || !hat) return tpl.hatPos || tpl.geometry.getAttribute('position');
+  const src = tpl.geometry.getAttribute('position'), n = src.count, out = new Float32Array(n * 3);
+  const inv = hat.clone().invert(), v = new THREE.Vector3(), low = tpl.T.head.top - 0.16;
+  for (let i = 0; i < n; i++) {
+    v.fromBufferAttribute(src, i);
+    if (v.y > low) {   // only a head is up there (the arms of the bind pose are at the shoulders)
+      v.applyMatrix4(inv);
+      if (v.y > -0.004 && Math.hypot(v.x, v.z) < 0.35) {
+        const h = Math.min(v.y, 0.094), r = Math.hypot(v.x, v.z), m = crownR(Math.max(0, h)) - 0.008;
+        v.y = h; if (r > m) { v.x *= m / r; v.z *= m / r; }
+      }
+      v.applyMatrix4(hat);
+    }
+    out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z;
+  }
+  return (tpl.hatPos = new THREE.BufferAttribute(out, 3));
+}
+
 export async function createPerson(lookIn, opts = {}) {
   const look = Object.assign({}, lookIn);
+  await loadLibrary();
+  if (isReal(look.character)) return createRealPerson(look, opts);
   const tpl = await template(look.character);
   const T = tpl.T, pack = tpl.pack, speeds = lib.info.ground_speed[pack];
   const model = SkeletonUtils.clone(tpl.scene);
@@ -200,17 +334,41 @@ export async function createPerson(lookIn, opts = {}) {
     const holder = { type, parts: [], userData: {} };
     for (const p of list) {
       const b = bones[p.bone] || bones.Chest;
+      if ((type === 'hat' || type === 'cap') && p.bone === 'Head') levelOnHead(p.obj);
+      if (type === 'hat') { p.obj.updateMatrix(); hatHead(tpl, p.obj.matrix); }   // (model space, before attach re-expresses it)
       attach(b, p.obj);
       holder.parts.push(p.obj);
       Object.assign(holder.userData, p.obj.userData);
     }
     rig.acc[type] = holder;
+    if (type === 'hat') geo.setAttribute('position', hatHead(tpl));
     return holder;
   };
+  // A hat is worn level as the person stands: the characters' idle pose carries the head pitched and turned from its
+  // bind pose, and a hat set square on the bind pose's skull rides that tilt (from the side, the brim dips at the front).
+  // The hat is turned back by the tilt (not the head's turn about the vertical), so it sits level on the idle head and
+  // still nods and turns with it.
+  function levelOnHead(obj) {
+    const idle = rig.actions.Idle, head = bones.Head;
+    if (!idle || !head) return;
+    idle.reset().play(); rig.mixer.update(0); model.updateMatrixWorld(true);
+    const qIdle = new THREE.Quaternion(), qBind = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
+    _m.copy(model.matrixWorld).invert().multiply(head.matrixWorld).decompose(p, qIdle, s);
+    tpl.restWorld.Head.decompose(p, qBind, s);
+    const delta = qIdle.multiply(qBind.invert());                          // bind -> idle, in model space
+    const twist = new THREE.Quaternion(0, delta.y, 0, delta.w).normalize(); // its turn about the vertical
+    const tilt = 2 * Math.acos(Math.min(1, Math.abs(delta.clone().multiply(twist.clone().invert()).w)));
+    idle.stop(); rig.mixer.update(0);
+    rig.hatTilt = tilt * 180 / Math.PI;
+    if (tilt < 0.01 || tilt > 0.4) return;                               // level already, or a pose that is not standing
+    obj.quaternion.premultiply(delta.invert().multiply(twist));          // delta^-1 * twist * the hat's own turn
+  }
   rig.show = (type, v = true) => {
     if (!rig.acc[type]) { if (!v) return; rig.addAccessory(type, (look.accessories || []).find(a => a.type === type) || {}); }
     for (const p of rig.acc[type].parts) p.visible = v;
     rig.acc[type].on = v;
+    // under a hat the hair is pressed down inside its crown (a full head of hair would poke through it)
+    if (type === 'hat') geo.setAttribute('position', v ? hatHead(tpl) : tpl.geometry.getAttribute('position'));
   };
   rig.has = type => !!(rig.acc[type] && rig.acc[type].on);
   // model-space point of a bone-attached landmark, in world
@@ -243,8 +401,15 @@ export async function createPerson(lookIn, opts = {}) {
   rig.wave = () => rig.play('Wave', { once: true, fade: 0.2 });
 
   // ---- swimming: bone offsets about model-space axes, applied after the clip each frame
+  // The mixer writes a track only when its value changes (three.js PropertyMixer), so a bone whose clip track is constant
+  // (the Idle clip's neck is one key) keeps last frame's offset: each bone posed here is put back before the mixer runs,
+  // or the offsets pile up frame on frame and the head spins.
+  const posed = new Map();
+  const keep = bone => { if (!posed.has(bone)) posed.set(bone, [bone.position.clone(), bone.quaternion.clone(), bone.scale.clone()]); };
+  const unpose = () => { for (const [b, [p, q, s]] of posed) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(s); } posed.clear(); };
   const twist = (bone, axis, ang) => {
     if (!bone || !ang) return;
+    keep(bone);
     model.updateMatrixWorld(false);
     bone.parent.getWorldQuaternion(_q); model.getWorldQuaternion(_q2);
     _q.premultiply(_q2.clone().invert());                       // parent's orientation in model space
@@ -286,6 +451,7 @@ export async function createPerson(lookIn, opts = {}) {
     _mA.copy(rLL).invert().premultiply(ll.matrixWorld);
     _mB.makeTranslation(F.cx, 0.1, F.back + 0.06).multiply(_mC.makeRotationX(plantar)).multiply(_mD.makeTranslation(-F.cx, -0.1, -(F.back + 0.06)));
     _mA.multiply(_mB).multiply(rF);
+    keep(ft);
     ft.parent.updateWorldMatrix(true, false);
     _mA.premultiply(_mC.copy(ft.parent.matrixWorld).invert());
     _mA.decompose(ft.position, ft.quaternion, ft.scale);
@@ -336,6 +502,7 @@ export async function createPerson(lookIn, opts = {}) {
       if (Math.abs(d) < 0.01) rig.targetHeading = null;
       group.rotation.y = rig.heading;
     }
+    unpose();
     rig.mixer.update(dt);
     applyProc(dt);
     if (rig.speech) {
