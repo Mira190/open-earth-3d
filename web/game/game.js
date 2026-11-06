@@ -549,6 +549,28 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (hit) { l.lanes = 1; one++; }
     } });
     junctions.oneLane = one; }
+  // how wide a vehicle each lesser street has room for (#202): along each street of a lane each way or
+  // narrower, every 3 m (clear of its ends, where the junction's corners are), the widest body (most of its
+  // width, knee to 1.4 m, as tools/game_check.js counts a car in a wall) that its lane has room for, the
+  // least of them kept per street. The traffic keeps a vehicle wider than that off the street (actors.js
+  // fits): a bus or a van doesn't turn into a lane between two facades it would scrape
+  { const side = KEEP === 'right' ? -1 : 1, q = {}, RL = roadNet.L, R = [1.15, 1.0, 0.9, 0.8, 0.72, 0.64];
+    const fit = roadNet.fit = new Float32Array(RL.length).fill(9);
+    nav.withoutFine(() => { for (let i = 0; i < RL.length; i++) {
+      const l = RL[i];
+      if ((ROAD_HALF[l.c] || 3.5) > 3.5 || junctions.lanesOf(l) > 1 || l.len < 12) continue;
+      const lane = side * (OECars.LANE + junctions.shiftOf(l, 0));
+      let k = 0; // (the widest still passing: the samples only ever narrow it)
+      for (let s = 5; s <= l.len - 5 && k < R.length; s += 3) {
+        roadNet.at(i, s, q);
+        const z = (q.deck ? q.z : lineGround(q.x, q.y, q)) ?? q.z;
+        for (const dir of l.ow ? [l.ow] : [1, -1]) {
+          const hx = q.hx * dir, hy = q.hy * dir, x = q.x - hy * lane, y = q.y + hx * lane;
+          while (k < R.length && !nav.room(x, y, z, R[k], 1.4, !!q.deck)) k++;
+        }
+      }
+      fit[i] = k === 0 ? 9 : k < R.length ? R[k] / 0.8 : 0; // (as a vehicle's half-width: most of it, 0.8, must have room)
+    } }); }
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera, clear: (x, y, z, r) => roadsNow.kerbside(x, y, z, r, 6, true) });
   // the signal poles, the walk-signal posts and the columns under the decks are solid too
   { const H = junctions.heads;
@@ -996,6 +1018,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // ------------------------------------------------------------ taxis and rides
   const FIRST = { Australia: ['Sam', 'Priya', 'Tom', 'Mei', 'Ahmed', 'Jess', 'Luca', 'Aroha'], Japan: ['Kenji', 'Yui', 'Haruto', 'Aiko', 'Takeshi', 'Emi'],
     France: ['Karim', 'Léa', 'Julien', 'Camille', 'Moussa', 'Inès'], China: ['Ka-ming', 'Wing', 'Chi-wai', 'Mei-ling', 'Siu-fung', 'Hoi-yan'] };
+  // what picks among rides and places a crowd stands: its own seeded run, so a harness that drives the
+  // clock (tools/game_check.js) sends the same car on every run (the plates and names stay random)
+  let simSeed = 9137;
+  const srnd = () => ((simSeed = (simSeed * 1664525 + 1013904223) >>> 0) / 4294967296);
   const L1 = () => 'ABCDEFGHJKLMNPRSTUVWXYZ'[Math.floor(Math.random() * 23)], D1 = () => String(Math.floor(Math.random() * 10));
   const plate = () => ({ France: () => `${L1()}${L1()}-${D1()}${D1()}${D1()}-${L1()}${L1()}`, Japan: () => `${D1()}${D1()}-${D1()}${D1()}`,
     China: () => `${L1()}${L1()} ${D1()}${D1()}${D1()}${D1()}` }[CITY.country] || (() => `${L1()}${L1()}${L1()} ${D1()}${D1()}${L1()}`))();
@@ -1037,9 +1063,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const queuedAt = a => { let n = 0; for (const c of cars.C) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) n++; return n; };
   const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += Q_CLEAR * queuedAt(q.a); return t; };
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
+  // A way that crosses a scramble near you is timed with its walk (SCR_WAIT): where another way round it
+  // reaches you sooner, counted the same way, the ride takes that one, as a driver who knows the scramble's
+  // half-minute walk would (#243)
   function planRide(from, pickup) {
     const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000, undefined, null, true); // (loose: as before, the way to you)
     if (!rt) return null;
+    const plan = planOn(rt, from, pickup);
+    if (!plan.scr.length) return plan;
+    const shun = new Set();
+    for (const nd of rt.nodes || []) { const a = junctions.armAt(nd.line, nd.end); if (a && a.j.scramble && Math.hypot(a.j.x - pickup.x, a.j.y - pickup.y) < 160) { for (const b of a.j.arms) shun.add(b.line); for (const l of a.j.inner || []) shun.add(l); } }
+    shun.delete(from.line); shun.delete(pickup.line);
+    const rt2 = shun.size ? roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000, undefined, shun, true) : null;
+    if (!rt2 || (rt2.nodes || []).some(nd => shun.has(nd.line))) return plan;
+    const plan2 = planOn(rt2, from, pickup);
+    return plan2.T < plan.T ? plan2 : plan;
+  }
+  function planOn(rt, from, pickup) {
     const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true, now: rideClock };
     const P = OECars.path(rt.pts), sig = [], scr = [], qArms = [];
     for (const nd of rt.nodes || []) {
@@ -1138,7 +1178,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         if (!plan) continue;
         const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
         const hidden = d > 240 || (dx * fx + dy * fy) / Math.max(1, d) < 0.3;
-        const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5) + Math.random();
+        const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5) + srnd();
         if (!best || score < best.score) best = { pl, plan, score, pickup };
       }
     };
@@ -1341,6 +1381,111 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
   }
+  // A ride stuck in a queue on the piece of road it is on (#199): there is no way round a queue there, so
+  // once the car in front of it hasn't moved for TURN_WAIT seconds, on a two-way street with nothing coming
+  // the other way and room to do it, the driver turns round in the road, as drivers do: a three-point turn
+  // (forward across on full lock, back on the other lock, forward into the far lane), a short straight back
+  // first where the car in front is close, and then on by another way from there. Each pose of it is tried
+  // first against the traffic's cars, your car and the road's edges; where any fails it waits on in the queue.
+  const TURN_WAIT = 20, TURN_R = 5, TURN_V = 1.6;
+  function turnPoses(x0, y0, h0, back, w, keep) {
+    // the bicycle model: (direction, steer, angle) for each leg; a found so that the far lane is w across
+    const run = (a, out) => {
+      let x = 0, y = 0, h = 0;
+      const legs = [[-1, 0, back], [1, 1, a], [-1, -1, Math.PI - 2 * a], [1, 1, a]];
+      for (const [v, sg, amt] of legs) {
+        const L = sg ? TURN_R * amt : amt, n = Math.max(1, Math.ceil(L / 0.25));
+        for (let i = 0; i < n; i++) {
+          x += v * Math.sin(h) * L / n; y += v * Math.cos(h) * L / n; h += v * sg / TURN_R * L / n;
+          if (out) out.push({ x, y, h, v });
+        }
+        if (out && out.length) out[out.length - 1].stop = true;
+      }
+      return x;
+    };
+    let lo = 0.6, hi = 1.5;
+    for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2; if (run(m) < w) lo = m; else hi = m; }
+    const loc = [];
+    run((lo + hi) / 2, loc);
+    // local (x across to the far lane, y ahead) to the map: across is the side away from the kerb
+    const fx = Math.sin(h0), fy = Math.cos(h0), ux = fy * keep, uy = -fx * keep;
+    return loc.map(q => ({ x: x0 + ux * q.x + fx * q.y, y: y0 + uy * q.x + fy * q.y, h: h0 + keep * q.h, v: q.v, stop: q.stop }));
+  }
+  function turnRound(o, dt) {
+    const st = o.drv.st, b = st.block;
+    const queued = !st.mv && st.v < 0.3 && b && b.line >= 0 && cars.C.includes(b) && b.v < 0.3 && !/^the line/.test(st.why || '');
+    if (!queued) { o.qT = 0; o.qAt = null; return; }
+    if (!o.qAt || o.qAt.c !== b || Math.hypot(b.x - o.qAt.x, b.y - o.qAt.y) > 1) { o.qAt = { c: b, x: b.x, y: b.y }; o.qT = 0; }
+    o.qT = (o.qT || 0) + dt;
+    if (o.qT < TURN_WAIT || clockT - (o.turnLook || 0) < 2) return;
+    // (a queue held at a red, or a scramble's walk, moves when its light changes: it waits that out, as a
+    // driver does, unless it has stood through more than two cycles' worth of it)
+    let hd = b;
+    for (let k = 0; k < 30 && hd.front && hd.front.line != null && (hd.why === 'car' || hd.why === 'held'); k++) hd = hd.front;
+    if (['light', 'walk', 'amber'].includes(hd.why) && hd.lineArm && hd.lineArm.j.sig && o.qT < 120) return;
+    o.turnLook = clockT;
+    const pl = placeOnRoute(st), to = o.phase === 'coming' ? o.pickup : st.route.to;
+    if (!pl || !to || b.line !== pl.line) return; // (a queue on this piece of road only: one on the next, the reroute goes round)
+    const l = roadNet.L[pl.line];
+    if (l.ow || (pl.s < 6 || pl.s > l.len - 6)) return; // (a one-way street; or by the junction, where it would turn in the junction)
+    // nothing coming the other way on this street, nor about to turn into it, within 45 m
+    if (cars.C.some(c => c.line >= 0 && c !== b && Math.abs(c.z - st.z) < 3 && Math.hypot(c.x - st.x, c.y - st.y) < 45 && (c.line !== pl.line || c.dir !== pl.dir) && c.v > 0.3)) return;
+    const half = ROAD_HALF[l.c] || 3.5, w = 2 * OECars.LANE;
+    if (half < 3) return; // (a lane too narrow to turn in)
+    const gapAhead = Math.hypot(b.x - st.x, b.y - st.y) - (b.half || 2.3) - o.C.half;
+    const z = st.z, mine = myCar && player.mode !== 'car' ? myCar.D.st : null;
+    let poses = null;
+    for (const back of [Math.max(0, 3 - gapAhead), Math.max(0, 3 - gapAhead) + 1.5, Math.max(0, 3 - gapAhead) + 3]) {
+      const P = turnPoses(st.x, st.y, st.h, back, w, keepSign);
+      // the street's middle, from the lane the car is in: every corner of every pose inside the kerbs
+      const cx = st.x + Math.cos(st.h) * keepSign * OECars.LANE, cy = st.y - Math.sin(st.h) * keepSign * OECars.LANE, ux = Math.cos(st.h), uy = -Math.sin(st.h);
+      const ok = P.every(q => {
+        const fx = Math.sin(q.h), fy = Math.cos(q.h);
+        for (const [a, c] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+          const px = q.x + fx * a * o.C.half + fy * c * o.C.hw, py = q.y + fy * a * o.C.half - fx * c * o.C.hw;
+          if (Math.abs((px - cx) * ux + (py - cy) * uy) > half - 0.25) return false;
+        }
+        if (cars.footprint(q.x, q.y, z, q.h, o.C.half, o.C.hw, 0.25) > 0) return false;
+        if (mine && Math.hypot(mine.x - q.x, mine.y - q.y) < o.C.half + myCar.C.half + 0.3) return false;
+        return true;
+      });
+      if (ok) { poses = P; break; }
+    }
+    if (!poses) return;
+    const e = poses[poses.length - 1], back = Math.max(0, (e.x - st.x) * -Math.sin(st.h) + (e.y - st.y) * -Math.cos(st.h));
+    const sR = Math.max(0, Math.min(l.len, pl.s - pl.dir * back));
+    const left = st.end - st.s, rt = roads.route({ line: pl.line, s: sR, dir: -pl.dir }, to, 6000, undefined, jamAhead(st));
+    if (!rt || rt.len > left + (o.phase === 'driving' ? Math.max(400, left) : 400)) return;
+    // (a way that turns straight back on itself would only bring it back into the queue)
+    for (let i = 1; i + 1 < rt.pts.length && i < 40; i++) {
+      const p0 = rt.pts[i - 1], p1 = rt.pts[i], p2 = rt.pts[i + 1];
+      if (Math.abs(angDiff(Math.atan2(p2[0] - p1[0], p2[1] - p1[1]), Math.atan2(p1[0] - p0[0], p1[1] - p0[1]))) > 2.6) return;
+    }
+    o.turn = { poses, i: 0, u: 0, wait: 0.4, rt };
+    o.turned = (o.turned || 0) + 1;
+    if (o.phase === 'driving' && player.vehicle === o) H.toast(`<b>${o.name}:</b> ${OEActors.pick(['This isn\'t moving. I\'ll turn round.', 'We\'re not getting through. Turning round.', 'Nothing\'s moving up there. Let\'s go back round.'])}`);
+  }
+  function turnStep(o, dt) {
+    const T = o.turn, st = o.drv.st, P = T.poses;
+    st.brake = T.wait > 0; st.signal = 0;
+    if (T.wait > 0) { T.wait -= dt; st.v = 0; return; }
+    T.u += TURN_V * dt;
+    while (T.u >= 0.25 && T.i < P.length - 1) {
+      T.u -= 0.25;
+      if (P[T.i].stop) { T.i++; T.wait = 0.6; T.u = 0; break; } // (a moment at each change of gear)
+      T.i++;
+    }
+    const q = P[T.i];
+    Object.assign(st, { x: q.x, y: q.y, h: q.h, v: q.v * (T.wait > 0 ? 0 : TURN_V), steer: 0 });
+    if (T.i < P.length - 1) return;
+    // round: on by the new way, from its lane
+    const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 });
+    o.drv.leave();
+    o.drv = OECars.chauffeur(o.C, T.rt, opts);
+    o.drv.opts = opts;
+    o.sig = []; o.scr = []; o.qArms = [];
+    o.turn = null; o.qT = 0; o.qAt = null; o.rerouteT = clockT;
+  }
   // the roads up to 250 m ahead on a ride's way (not the one it is on) that are jammed: a car of the
   // traffic on one has stood longer than a red light lasts (40 s, past the 95th percentile of the waits at a
   // red), or has stood 20 s in a junction it is crossing (the pieces of road inside the junction count)
@@ -1384,6 +1529,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const o = ride;
     let st = o.drv.st;
     if (o.hold) st.v = 0; // (waiting in its lane for you to get back in)
+    else if (o.turn) turnStep(o, dt);
     else o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z) || SCR_BOX.some(j => Math.hypot(st.x - j.x, st.y - j.y) < j.r + 60)); // (and the lights, in sight, and a scramble's always: out of sight or not, nobody drives into its walk)
     // running well late in a jam and out of view, it finds its way round, a stretch at a time, to a
     // clear piece of road (games keep the cars that come for you on time); in view it queues as it would
@@ -1423,6 +1569,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         }
       }
     }
+    if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
     o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
       inside: player.vehicle === o && cam.mode === 'cabin', near: st.gap,
@@ -3520,7 +3667,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const mine = Math.hypot(tmp.x - player.x, tmp.y - player.y) < 6, n = mine ? 11 : 4;
         // behind the kerb, facing across; where the footway ends at the kerb, the first steps out onto the stripes
         const back = end > 0 ? len - sk : sk;
-        for (let i = 0; i < n; i++) spots.push({ line, s: back > 1.5 ? sk + end * (0.3 + Math.random() * Math.min(back - 0.3, mine ? 3.5 : 2.5)) : sk - end * Math.random() * (mine ? 3 : 2), dir: -end, side: -1.6 + Math.random() * 3.6 });
+        for (let i = 0; i < n; i++) spots.push({ line, s: back > 1.5 ? sk + end * (0.3 + srnd() * Math.min(back - 0.3, mine ? 3.5 : 2.5)) : sk - end * srnd() * (mine ? 3 : 2), dir: -end, side: -1.6 + srnd() * 3.6 });
       }
     }
     return crowd.muster(spots, player.x, player.y);
@@ -3692,7 +3839,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!running) return;
     if (care.lost) { last = now; requestAnimationFrame(frame); return; } // the game holds still until the picture is back
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
-    last = now; clockT += dt;
+    last = now; if (!simHold) clockT += dt; // (a harness's hold: only advance() moves the world's clock)
     U.uTime.value = clockT;
     const titleOn = preTitle || !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || photo.on || simHold;
     stage.classList.toggle('titled', titleOn);
@@ -4503,7 +4650,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { hold: on => { simHold = on !== false; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+  window.__game = { hold: on => { simHold = on !== false; }, held: () => simHold, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

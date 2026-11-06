@@ -54,6 +54,12 @@ const npcNight = require('./npc_night');
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  // lockstep (#243): the world held for the whole run, so that only the check's advance() calls move
+  // it, a thirtieth of a second at a time. The page's own frames still draw, but they don't step the
+  // traffic by however long the machine took between two steps, so the same code plays the same run
+  // on a fast machine and a loaded one. GAME_LOCKSTEP=0 leaves the frames running the world as a player's do.
+  const lockstep = process.env.GAME_LOCKSTEP !== '0';
+  if (lockstep) await p.evaluate(() => window.__game.hold(true));
   await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
@@ -65,7 +71,8 @@ const npcNight = require('./npc_night');
   const lazy = await p.evaluate(async () => {
     const g = window.__game, open = g.npcs.filter(n => n.rig.pending).length, t = performance.now();
     g.hold(true); // (the world held while they load: the traffic's run after doesn't depend on how long that takes, #201)
-    try { await g.npcsReady(); if (g.heli && g.heli.want) await g.heli.want(); } finally { g.hold(false); }
+    const was = g.held ? g.held() : false;
+    try { await g.npcsReady(); if (g.heli && g.heli.want) await g.heli.want(); } finally { g.hold(was); }
     if (g.heli && g.heli.want) g.advance(0.1);
     return { n: g.npcs.length, open, pending: g.npcs.filter(n => n.rig.pending).length, drawn: g.npcs.filter(n => n.rig.character).length,
       wanted: g.npcs.filter(n => n.look.character).length, heli: !g.vlib || !g.heli || g.heli.loaded(), s: (performance.now() - t) / 1000 };
@@ -939,12 +946,15 @@ const npcNight = require('./npc_night');
     g.dlg.choose(0);
     g.advance(1);
     r.dest = o.dest && o.dest.name;
-    const s0 = o.drv.st.s;
-    g.advance(20);
+    // (the way it has driven, a second at a time: a ride that turns round or finds another way starts its new
+    // way from 0, so its s alone would read it as standing)
+    let went = 0, px = o.drv.st.x, py = o.drv.st.y;
+    const tick = () => { g.advance(1); const t = o.drv.st; went += Math.hypot(t.x - px, t.y - py); px = t.x; py = t.y; };
+    for (let i = 0; i < 20; i++) tick();
     // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so at worst the other
     // road's turn, the walk, the all reds round them and the wait for the last walkers, some 70 s, more)
-    for (r.walkWait = 0; o.drv.st.s - s0 < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) g.advance(1);
-    r.drove = o.drv.st.s - s0;
+    for (r.walkWait = 0; went < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) tick();
+    r.drove = went; r.turned = o.turned || 0;
     if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
       const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
       for (const c of g.cars.C.concat(mc ? [Object.assign({ mine: true }, mc.D.st)] : [])) {
@@ -952,6 +962,9 @@ const npcNight = require('./npc_night');
         if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}${c.mine ? '' : ` (${c.why}${c.q ? ', queueing' : ''}${c.mv ? ', in a junction' : ''})`}`);
       }
       r.why = `v ${t.v.toFixed(1)}, at ${t.s.toFixed(0)} of ${t.P.len.toFixed(0)} m${t.done ? " (done)" : ""}, phase ${o.phase}, pass ${t.pass.toFixed(1)}, held ${(t.held || 0).toFixed(0)} s, ${t.why}${t.junction ? ` (the junction: ${t.junction})` : ''}${t.block ? ` behind ${t.block === player ? 'you' : mc && t.block.x === mc.D.st.x ? 'your car' : t.block.line != null ? `a car on line ${t.block.line} (stuck ${(t.block.stuck || 0).toFixed(0)} s, v ${(t.block.v || 0).toFixed(1)})` : 'something'} at ${Math.hypot(t.block.x - t.x, t.block.y - t.y).toFixed(1)} m${t.block.still ? ', still' : ''}` : ''}; ${ahead.join('; ') || 'nothing ahead'}`;
+      // (the head of the queue it is in: what holds that car, and its light)
+      { let hd = t.block, k = 0; while (hd && hd.front && hd.front.line != null && (hd.why === 'car' || hd.why === 'held') && k < 30) { hd = hd.front; k++; }
+        if (hd && hd.line != null) { const a = hd.lineArm; r.why += `; the queue's head ${k + 1} cars on: car ${g.cars.C.indexOf(hd)} ${hd.why} v ${(hd.v || 0).toFixed(1)} still ${(hd.still || 0).toFixed(0)} s on piece ${hd.line}${a ? `, ${(hd.toLine - hd.half).toFixed(1)} m from the line of junction ${a.j.id}${a.j.scramble ? ' (a scramble)' : ''} arm ${a.i}, light ${g.cars.junctions.light(a, hd.lineEx)}, phase ${a.j.ph} ${a.j.st} for ${a.j.t.toFixed(0)} s, arm phase ${a.phase}` : ''}${hd.mv ? `, in junction ${hd.mv.j.id}` : ''}`; } }
       // (and what is in the junction it waits at: each car's way, what holds it, and for how long it has stood)
       if (t.junction) { const JN = g.cars.junctions, near = JN.J.filter(j => Math.hypot(j.x - t.x, j.y - t.y) < 40 && j.active.length); r.why += near.map(j => `; junction ${j.id}${j.mid != null ? ' (a crossing)' : ''}: ` + j.active.map(o => `car ${g.cars.C.indexOf(o.c)} ${o.c.why}${o.c.heldBy ? ' by ' + o.c.heldBy : ''} v ${o.c.v.toFixed(1)} still ${(o.c.still || 0).toFixed(0)} s${o.forced ? ' over its line' : ''}`).join(', ')).join(''); }
     }

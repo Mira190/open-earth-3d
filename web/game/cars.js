@@ -698,16 +698,18 @@ window.OECars = (function () {
       }
     }
     // a place to start from, about r0..r1 metres away by road from (x, y) (an ordered ride sets out from there)
+    let aroundSeed = 2718; // (its own seeded run: the same place on every run of a harness that drives the clock)
+    const arnd = () => ((aroundSeed = (aroundSeed * 1664525 + 1013904223) >>> 0) / 4294967296);
     function around(x, y, r0, r1) {
       const cand = net.near(x, y, r0, r1);
       for (let k = 0; k < 12 && cand.length; k++) {
-        const i = cand[Math.floor(Math.random() * cand.length)], l = L[i];
+        const i = cand[Math.floor(arnd() * cand.length)], l = L[i];
         if (l.len < 20) continue;
-        const s = l.len * (0.3 + Math.random() * 0.4);
+        const s = l.len * (0.3 + arnd() * 0.4);
         net.at(i, s, tmp);
         const d = Math.hypot(tmp.x - x, tmp.y - y);
         if (d < r0 || d > r1 * 1.2) continue;
-        return { line: i, s, dir: l.ow || (Math.random() < 0.5 ? 1 : -1), x: tmp.x, y: tmp.y, z: tmp.z };
+        return { line: i, s, dir: l.ow || (arnd() < 0.5 ? 1 : -1), x: tmp.x, y: tmp.y, z: tmp.z };
       }
       return null;
     }

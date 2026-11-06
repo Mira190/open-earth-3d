@@ -467,9 +467,10 @@ window.OEJunctions = (function () {
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
-    function choose(a) {
+    function choose(a, hw = 0) {
       let ex = exits(a);
       if (!ex.length) return null;
+      if (hw && net.fit && ex.length > 1) { const w = ex.filter(e => net.fit[e.m.line] >= hw); if (w.length) ex = w; } // (not into a street too narrow for it, if there is another way: #202)
       if (clockOf && ex.some(e => e.tw || L[e.m.line].tb)) { // (not a way closed at this hour, if there is another)
         const t = clockOf(), open = ex.filter(e => !closedNow(e, t));
         if (open.length) ex = open;
