@@ -525,6 +525,28 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // (and the crossings between junctions: signals or zebra stripes); the scrambles, every way at once in
     // a phase of their own: Shibuya's with its mapped crosswalks (scene landmarks), the others a city names
     scrambles: [(scene.landmarks || {}).scramble, ...(G.scrambles || [])].filter(Boolean), foot: crowdNet });
+  // a main road whose second lane runs into a solid somewhere between its junctions (a tower beside an
+  // expressway's deck, Sydney's Cahill Expressway past one at 33 m, issue 119; the data's lanes are where
+  // the line is, not where the second lane is) has one lane there, so no car waits at the facade for room
+  // in the first
+  { const side = KEEP === 'right' ? -1 : 1, q = {}, RL = roadNet.L;
+    let one = 0;
+    nav.withoutFine(() => { for (let i = 0; i < RL.length; i++) {
+      const l = RL[i];
+      if (junctions.lanesOf(l) < 2 || l.len < 30) continue;
+      const lane = side * (OECars.LANE + junctions.shiftOf(l, 1));
+      let hit = false;
+      for (let s = 12; s <= l.len - 12 && !hit; s += 4) {
+        roadNet.at(i, s, q);
+        const z = (q.deck ? q.z : lineGround(q.x, q.y, q)) ?? q.z;
+        for (const dir of l.ow ? [l.ow] : [1, -1]) {
+          const hx = q.hx * dir, hy = q.hy * dir, x = q.x - hy * lane, y = q.y + hx * lane;
+          if (!nav.room(x, y, z, 0.75, 1.4, !!q.deck)) { hit = true; break; }
+        }
+      }
+      if (hit) { l.lanes = 1; one++; }
+    } });
+    junctions.oneLane = one; }
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera, clear: (x, y, z, r) => roadsNow.kerbside(x, y, z, r, 6, true) });
   // the signal poles, the walk-signal posts and the columns under the decks are solid too
   { const H = junctions.heads;
@@ -684,7 +706,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const CARS_OK = !!(vlib && vlib.cars && Object.values(vlib.info.cars.models).some(m => m.seats));
   const carCfg = Object.assign({ model: 'Car_Hatch', colour: '#c8372d', seat: '#34363a' }, (G.vehicles || {}).car);
   // the ways you can actually go, on foot, by road and in the air (route.js), worked out in slices behind the title
-  const ways = OERoute.create({ nav, footNet, roadNet, DSM, helipads: G.helipads, lifts: G.lifts || [] });
+  const ways = OERoute.create({ nav, footNet, roadNet, DSM, helipads: G.helipads, lifts: G.lifts || [], ground: lineGround });
   roadNet.avoid = ways.drive;
   const roads = OECars.router(roadNet, { avoid: ways.drive }), headlamp = CARS_OK ? OECars.headlamp(world) : null, rq = {};
   // a pose at the kerb of a place on the roads (router.place), facing the way it goes
@@ -746,12 +768,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let first = null;
     const along = (pl, s0) => {
       const L = roadNet.L[pl.line].len;
-      for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
+      // (not in a junction, nor so close to one that the traffic turning through it can't get round: at Hong
+      // Kong's start it was parked at a junction's mouth, and every car behind waited on it for good, issue 128;
+      // 12 m clear of one ahead, and 18 m of one behind, where a taxi hailed from beside it pulls in)
+      const l0 = roadNet.L[pl.line], n0 = l0.pts.length / 3, jn = k => (roadNet.nodes.get(roadNet.key(l0.pts[3 * k], l0.pts[3 * k + 1])) || []).length > 2;
+      const back = d => half + (d ? 18 : 12), nearJ = s => junctions.inner(pl.line) || (jn(0) && s < back(pl.dir > 0)) || (jn(n0 - 1) && L - s < back(pl.dir < 0));
+      for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24, 30, -30, 36, -36]) {
         const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) });
         if (SCR_AT.length && (inScramble(q.line, q.s) || inScramble(q.line, Math.max(0, Math.min(L, q.s - 15 * q.dir))) || (q.dir > 0 ? L - q.s : q.s) < 12)) continue; // (not back by the scramble's crosswalks, nor the kerb behind it; and with road ahead to drive off along)
         const pose = kerbPose(q);
         first = first || { pl: q, pose };
-        if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+        if (nearJ(q.s) || cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
         if (scrambleJ.some(j => Math.hypot(j.x - pose.x, j.y - pose.y) < 36)) continue; // (not at the mouth of a scramble, its crowd crossing every way)
         let hit = false;
         const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
@@ -764,8 +791,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       return null;
     };
     let got = along(pl0, pl0.s + ahead * pl0.dir);
-    // (by a scramble, its street too short for all that: the streets round, nearest first)
-    if (!got && SCR_AT.length) for (let r = 15; r <= 75 && !got; r += 15) for (let k = 0; k < 12 && !got; k++) {
+    // (by a scramble, its street too short for all that, or a short piece between two junctions: the streets
+    // round, nearest first)
+    if (!got) for (let r = 15; r <= 75 && !got; r += 15) for (let k = 0; k < 12 && !got; k++) {
       const a = k / 12 * Math.PI * 2, q = roads.place(x + Math.sin(a) * r, y + Math.cos(a) * r, 8, keepSign, z);
       if (q && q.line !== pl0.line) got = along(q, q.s);
     }
