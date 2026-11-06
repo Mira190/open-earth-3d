@@ -101,7 +101,7 @@ def romon(K, M, P, z0, frontage, depth, ridge, nio=True, lattice=True, ground=No
     zb = z0 + 0.35
     block(K[M["base"]], P, -hu - 1.0, hu + 1.0, -hv - 1.0, hv + 1.0, z0 - 0.8, zb)
     plinth(K, M["base"], P, hu + 1.0, hv + 1.0, zb, ground)
-    z1 = z0 + ridge * 0.3                         # the first storey's head ties
+    z1 = z0 + max(ridge * 0.3, 3.7)               # the first storey's head ties (at least 3.7 m: room to walk under them)
     bay = frontage / 3
     vs = (-hv, -bay / 2, bay / 2, hv)
     for u in (-hu, 0.0, hu):

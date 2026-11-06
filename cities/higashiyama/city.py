@@ -645,11 +645,11 @@ def yasaka_jinja(K, hidden):
             continue
         sd, P, z0, hu, hv = got
         if key == "nishi_romon":
-            # it stands at the top of its steps: its stone is the platform's (the highest ground under it), and
-            # its roof is tiled, its outer bays closed by green lattice windows (photographs)
-            z0 = float(max(T(*P(u, v, 0)[:2]) for u in (-hu * 0.5, 0, hu * 0.5) for v in (-hv * 0.6, 0, hv * 0.6)))
+            # its roof is tiled, its outer bays closed by green lattice windows (photographs); it stands on the
+            # ground of its platform at the top of the steps (the laser terrain has the platform)
             M = dict(VERMILION_TILE, screen="rengo", nio="shu_dark")
-            kk.romon(K, M, P, z0, 2 * hv - 2.4, 2 * hu - 2.0, h, nio=False, ground=ground)
+            # (its middle bay, the way through, about 3.5 m between the posts: the outer bays narrower than the footprint's)
+            kk.romon(K, M, P, z0, 2 * hv - 1.2, 2 * hu - 2.0, h, nio=False, ground=ground)
             west_wings(K, M, P, z0, hu, hv, hidden, ground)
         else:
             kk.romon(K, dict(VERMILION, nio="shu_dark"), P, z0, 2 * hv - 2.4, 2 * hu - 2.0, h, nio=False, ground=ground)
