@@ -235,9 +235,12 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     the water from the line. The coping sits on the highest drawn ground behind
     it, so the ground never shows through it;
   - *the ground:* the grid points out in the water within 1.5 coarse cells of a
-    quay (and points beside one that lie below the water, where the DEM took the
-    river for land) are raised to the quay's level, so the ground meets the wall
-    level; the ground shader discards it above the water from a quarter metre
+    quay that have a neighbour (of the eight round them) on land, the points of
+    the cells that would slope from the land down to the bed (and points beside
+    one that lie below the water, where the DEM took the river for land), are
+    raised to the quay's level, so the ground meets the wall level. Every point
+    within the band was raised until #246: on the viewer's 10 m grid that lifted
+    15 m out from each bank, most of a 40-60 m river such as the Nihonbashi; the ground shader discards it above the water from a quarter metre
     behind the shoreline out (a 2.5 m mask of the band along the quays), and the
     bottom is drawn under the cells it opens;
   - *walking:* along a quay a walker stops with the toes at the coping's edge,

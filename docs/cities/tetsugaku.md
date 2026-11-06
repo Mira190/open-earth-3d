@@ -24,9 +24,13 @@ cost is one more game check on the runs that shared code needs.
 
 ## What is built in code (`cities/tetsugaku/city.py`)
 
-- **The path's cherries**: a cherry every 4 to 5 m along both banks of the path where OpenStreetMap names
-  it, as photographs show them: a single row on each side of the canal and the walk, kept a road's half
-  width off the streets the path runs beside (242 trees; `landmarks.json` "trees"). The cherries were first planted in 1922 by the painter Hashimoto Kansetsu and his
+- **The path's cherries**: a cherry every 4 to 5 m along both banks of the path, as photographs show them:
+  a single row on each side of the canal and the walk, kept a road's half width off the streets the path
+  runs beside (294 trees; `landmarks.json` "trees"). Where OpenStreetMap names the path, and along the six
+  stretches between its named pieces that it maps as unnamed lanes and footways (south of Honen-in, by
+  Otoyo-jinja and on towards Nyakuoji, 17-88 m each; `city.py` `path_bridges`: the shortest way along the
+  mapped ways from the end of one named piece to the next, under 160 m and no more than 1.6 times the
+  straight line), which had only the trees the data maps there (#244). The cherries were first planted in 1922 by the painter Hashimoto Kansetsu and his
   wife (関雪桜). A tree area 7 m either side of the path (`trees.areas` "Philosopher's Path cherries")
   makes them, and the trees mapped there, Somei-yoshino with a few maples. They flower with Kyoto's
   cherries (from 26 March). The path is not lit after dark, so they have no yozakura lighting; Maruyama
@@ -43,6 +47,21 @@ cost is one more game check on the runs that shared code needs.
 - **Ginkaku (the Kannon-den, 1489)**: the lower storey in the shoin manner, the upper a Zen hall with its
   bell-shaped windows, under a shingle roof with the bronze phoenix.
 
+- **Eikan-do (永観堂, Zenrin-ji)** (#244), on the outlines OpenStreetMap maps for them, facing west down to
+  the gate: the **Miei-do** (御影堂, 1912, the main hall, 16.7 m to its ridge, PLATEAU's top), the
+  **Amida-do** (阿弥陀堂, 1597, moved here from Osaka in 1607, home of the Mikaeri Amida; 13.5 m, since
+  PLATEAU's 25.1 m is measured from the foot of its slope) and the **Shaka-do** (釈迦堂, the 1530s, 9.2 m):
+  halls of bare timber on verandas, posts every 3 m, doors of keyaki across their fronts, bracket bands
+  and tiled hipped-and-gabled roofs with lifted corners. The **Tahoto** (多宝塔, 1928) on the hill above:
+  its square lower storey under a skirt roof, the white dome (亀腹), the round upper body under its bracket
+  ring, the deep square upper roof and a copper finial of nine rings, 15 m in all (PLATEAU's 12.0 m is the
+  trees round it).
+- **Honen-in's gate (法然院の山門)** (#244): a small gate of bare timber under a deep thatched gable (茅葺),
+  0.6 m of miscanthus cut square at the eaves, moss on its lower courses and a ridge of cedar bark under
+  battens; two main posts and two behind, the lintel, tie beams and its doors standing open, on stone steps,
+  5.4 m to the ridge. PLATEAU measured 19.8 m there (the trees over it), and the gate stood as a box from
+  6 m to 19.8 m on its opening.
+
 ## The game: The Philosopher's Path on Foot
 
 From the bridge below Ginkaku-ji, a student starts you south along the canal to a retired canal keeper
@@ -50,14 +69,30 @@ near Nyakuoji, who sends you on to a photographer at the Keage Incline.
 
 ## What is approximate
 
-- The cherries' spacing is read from photographs; the trees are not surveyed one by one, and the path's
-  southern stretch, which OpenStreetMap does not name, has only the trees the data maps there.
+- The cherries' spacing is read from photographs; the trees are not surveyed one by one.
+- Eikan-do's halls: their footprints are the mapped outlines (traced at the eaves), the Miei-do's and the
+  Shaka-do's heights are PLATEAU's, the Amida-do's 13.5 m and the Tahoto's 15 m are estimates from
+  photographs; the bays and the brackets are generic (`kyotokit.hall`), not drawn from the temple's plans.
+  The covered stair (臥龍廊) that climbs from the Miei-do to the Kaisan-do is a roof on posts from the data.
+- Honen-in's gate: 5.4 m to its ridge and its proportions are read from photographs.
+- Roofs on posts in the temple precincts (bell towers, fonts, shelters, 120 of them) take a temple's aged
+  timber, and those in Okazaki-jinja's and Heian-jingu's precincts a shrine's vermilion (`pipeline/arcades.py`,
+  [GAME.md](../GAME.md)); a pavilion's height comes from its kind and footprint where PLATEAU took a tree
+  over it.
 - The Sanmon's width and depth come from its mapped outline (traced at the eaves); its storey heights
   are proportions of the published 22 m.
 - The aqueduct's arch count is its mapped length over a 4.5 m span read from photographs; its 9 m height is
   the figure usually quoted.
 - The Kannon-den's height (10.5 m) is an estimate from photographs.
 - Not checked on: a real GPU, WebGPU, Safari or iOS.
+
+## Reference photographs
+
+From Wikimedia Commons (`tools/commons.py`), compared with stills of the model:
+
+| Subject | File | Author | Licence |
+|---|---|---|---|
+| Eikan-do's Tahoto | [Tahoto Pagoda, Eikan-do (Kyoto) (2640404498).jpg](https://commons.wikimedia.org/wiki/File:Tahoto_Pagoda,_Eikan-do_(Kyoto)_(2640404498).jpg) | KimonBerlin | CC BY-SA 2.0 |
 
 ## Stills
 
@@ -67,3 +102,4 @@ Desktop (1440×900) and phone (390×844), day, dusk and night (`tools/views/tets
 ![Nanzen-ji's Sanmon and the aqueduct](../images/tetsugaku/nanzenji.jpg)
 ![The Keage Incline and Ginkaku](../images/tetsugaku/incline-ginkaku.jpg)
 ![On a phone](../images/tetsugaku/phone.jpg)
+![Eikan-do's Miei-do and Amida-do at day, dusk and night in November, and (trees hidden) Honen-in's gate from the lane and from inside, and Eikan-do from above (#244)](../images/tetsugaku/eikando-honenin.jpg)

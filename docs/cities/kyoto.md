@@ -130,6 +130,14 @@ members 1.2 m proud of the glass and heavier every third line. The bays' size is
 
 ![Kyoto Station's north front on a phone](../images/kyoto/station-north-phone.jpg)
 
+Compared side by side for #244 with a photograph from Karasuma-dori
+([Kyoto Station C0389.jpg](https://commons.wikimedia.org/wiki/File:Kyoto_Station_C0389.jpg), Fg2, public
+domain): the massing, the portal and the grid match, but the panels read pale blue-white against the sky
+where the photograph shows a neutral mid grey, darker than the sky, and the glass grid dark with the sky and
+Kyoto Tower in it. The panels are `#7c7f81` (less metallic) and the glass `#4c5f6c` now. Still left: the
+Granvia's balconies and the punched windows of the hotel floors over the portal, which the photograph shows
+and the curtain-wall pattern does not.
+
 **Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
 due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
 
