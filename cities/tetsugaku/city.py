@@ -117,6 +117,13 @@ def cherries(every=4.5, off=2.6):
     rng = np.random.default_rng(1922)
     from shapely.geometry import Point, Polygon
     blocked = [Polygon(sd["ring"]).buffer(0.8) for sd in S if sd["base"] <= 0]
+    # and off the carriageways where the path runs along a street: a road's half width and a lane's reach
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    ROADW = {"primary": 6.5, "secondary": 5.5, "tertiary": 4.5, "residential": 3.2, "unclassified": 3.2, "living_street": 2.8, "service": 2.6}
+    roads = unary_union([LineString([local(q) for q in w["ll"]]).buffer(ROADW[w["tags"]["highway"]])
+                         for w in ctx()[3]["ways"] if w["tags"].get("highway") in ROADW and len(w["ll"]) > 1])
+    blocked.append(roads)
     out = []
     for pts in path_lines():
         Q, ss = kk.resample(pts, 0.5)

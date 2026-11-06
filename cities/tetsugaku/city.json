@@ -880,12 +880,12 @@
     ],
     "start": {
       "at": [
-        212,
-        960
+        222,
+        1030
       ],
       "facing": [
-        230,
-        880
+        214,
+        980
       ],
       "time": "live"
     },
@@ -895,8 +895,8 @@
         "id": "tetsugaku-pad",
         "name": "Philosopher's Path pad (game)",
         "at": [
-          -420,
-          -300
+          210,
+          805
         ]
       }
     ],
@@ -912,8 +912,8 @@
         "name": "Haruka 遥",
         "role": "Student at Kyoto University",
         "at": [
-          205,
-          930
+          222,
+          1040
         ],
         "look": {
           "character": "R_Female_Adult_12_f013",
