@@ -21,7 +21,7 @@
   ],
   "load_bytes": {
    "model": 4687135,
-   "game": 8477212
+   "game": 8477586
   }
  },
  {
@@ -44,8 +44,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5548667,
-   "game": 8826954
+   "model": 5555128,
+   "game": 8833415
   }
  },
  {
@@ -72,8 +72,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 19301299,
-   "game": 22310802
+   "model": 19288829,
+   "game": 22299022
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -106,8 +106,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5070073,
-   "game": 5618039
+   "model": 5071451,
+   "game": 5619478
   }
  },
  {
@@ -134,8 +134,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2810714,
-   "game": 3250506
+   "model": 2810987,
+   "game": 3250838
   }
  },
  {
@@ -161,8 +161,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 10834335,
-   "game": 14272424
+   "model": 10834379,
+   "game": 14272468
   },
   "flyover": {
    "video": "flyover.mp4",

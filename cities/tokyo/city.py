@@ -27,6 +27,7 @@ import math
 import numpy as np
 
 import archkit as ak
+import japankit as jk
 from meshkit import Mesh
 
 
@@ -76,6 +77,7 @@ MATERIALS = {
 
 
 def adjust_building(b, cls, g, geoms, ctx):
+    geoms = jk.police_box(b, geoms)
     x, y = ctx.city.fwd.transform(*TOWER_LL)
     near = math.hypot(g.centroid.x - x, g.centroid.y - y) < 60
     if near and b["name"] != FOOT_TOWN:
@@ -93,6 +95,13 @@ def adjust_building(b, cls, g, geoms, ctx):
         # and the lattice above it is the landmark mesh.
         return [[q, 0.0, 18.0, "parametric", None] for q in ctx.polygons(g)]
     return geoms
+
+
+def retop(sd):
+    """pipeline/retop.py: the police boxes the build sized from their neighbours (和田倉門外交番 and
+    日本橋交番 at 35 m, the palace's 警備派出所 at 30 m), as adjust_building now sizes them."""
+    q = jk.police_box(sd, [[None, sd["base"], sd["top"], sd["src"], None]])[0]
+    return (q[1], q[2], q[3]) if (q[2], q[3]) != (sd["top"], sd["src"]) else None
 
 
 def finalize(ctx):
