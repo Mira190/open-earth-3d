@@ -58,6 +58,8 @@ LAND = {"forest", "wood", "scrub", "shrubbery", "shrub"}
 # temples and churches (fetch_overture.py --only religious) that OSM doesn't map as a park or religious land
 CAMPUS = {"school", "university", "college", "kindergarten", "education", "hospital"}
 GROUNDS_M = 45.0   # a hall's grounds: this far round it
+STREET_ROW_M = 12  # a street's row of trees: canopy within this many metres of a road's centreline...
+GREEN_EXG = 0.015  # ...where the photo is this much greener than red or blue (a sunlit crown), WorldCover or not
 WC_URL = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{ns}{lat:02d}{ew}{lon:03d}_Map.tif"
 WC_SOURCE = "ESA WorldCover 10 m 2021 v200 (CC BY 4.0): its tree class, where the canopy outside the mapped woods is trusted"
 LAND_USE = {"park", "village_green", "recreation_ground", "garden", "cemetery", "grave_yard", "religious",
@@ -284,6 +286,16 @@ def build(C, write=True):
         exg = f[..., 1] - np.maximum(f[..., 0], f[..., 2])  # how much greener than red or blue (sRGB)
         open_ground = ((exg < 0.015) & (lum > 0.5)) | (lum > 0.72)
         canopy &= ~ndimage.binary_opening(open_ground, iterations=3)
+    # a street's row of trees that WorldCover calls built-up (its 10 m cells see the road and the roofs round a
+    # narrow row, #241): trusted too where the photo shows green crowns there and the row runs along a road
+    if ph is not None:
+        along = ndimage.binary_dilation(road, iterations=STREET_ROW_M)
+        green = ndimage.binary_opening(exg > GREEN_EXG, iterations=1)
+        row = ~wood & ~grounds & ~street & along & ndimage.binary_dilation(green, iterations=1)
+        street |= row
+        n_row = int((row & canopy & (sm >= MIN_TREE_M)).sum())
+    else:
+        n_row = 0
     ok = (wood | grounds) & ~built & ~water
     under = canopy & ok
     under = ndimage.binary_closing(under, iterations=2) & ok
@@ -352,7 +364,7 @@ def build(C, write=True):
     n_cover = int(cover.sum())
     n_lone = sum(1 for x, y, h in keep if lone[min(ny - 1, max(0, int((y1 - y) / FINE))), min(nx - 1, max(0, int((x - x0) / FINE)))])
     print(f"{C.id}: woods and parks {wood.sum() / 1e4:.0f} ha, grounds {grounds.sum() / 1e4:.0f} ha, canopy over them {n_cover / 1e4:.0f} ha; "
-          f"{len(trees) // 4} trees from the canopy, {n_lone} of them along the streets (OSM maps {len(mapped)})")
+          f"{len(trees) // 4} trees from the canopy, {n_lone} of them along the streets (OSM maps {len(mapped)}); {n_row / 1e4:.1f} ha of street rows WorldCover calls built-up")
     if not write:
         return rgb, trees
     Image.fromarray(rgb, 'RGBA').save(os.path.join(C.out, "woods.png"), optimize=True)
