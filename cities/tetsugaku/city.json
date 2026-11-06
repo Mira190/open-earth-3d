@@ -1,0 +1,1007 @@
+{
+  "id": "tetsugaku",
+  "name": "Philosopher's Path",
+  "native": "哲学の道",
+  "description": "Kyoto's Philosopher's Path from open data: the canal walk under its cherries from Ginkaku-ji to Nanzen-ji, past Honen-in and Eikan-do to the brick aqueduct and the Keage incline, with measured heights from Project PLATEAU on GSI laser terrain.",
+  "bbox": [
+    135.784,
+    35.006,
+    135.8,
+    35.03
+  ],
+  "origin": [
+    135.792,
+    35.018
+  ],
+  "extent_m": [
+    -720,
+    720,
+    -1320,
+    1320
+  ],
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "en-JP",
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P. (Tokyo Peil)",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 18,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "plateau": {
+    "zip": "https://assets.cms.plateau.reearth.io/assets/3c/f912d5-980d-4c10-a037-6a9e87874a4e/26100_kyoto-shi_2022_3dtiles-mvt_1_op.zip",
+    "attribution": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0): building heights measured from aerial survey",
+    "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
+    "roofs": true
+  },
+  "water": {
+    "classes": [],
+    "min_area_m2": 5000,
+    "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "architecture_overrides": {
+    "machiya": true,
+    "signage": 0.3
+  },
+  "osm_detail": {
+    "north": {
+      "bbox": [
+        135.789,
+        35.019,
+        135.8,
+        35.029
+      ],
+      "note": "Ginkaku-ji, Honen-in and the path's north half: pipeline/osm_detail.py"
+    },
+    "south": {
+      "bbox": [
+        135.787,
+        35.007,
+        135.798,
+        35.019
+      ],
+      "note": "Eikan-do, Nanzen-ji, the aqueduct, the Keage incline and the path's south half: pipeline/osm_detail.py"
+    }
+  },
+  "trees": {
+    "mix": {
+      "cherry": 0.2,
+      "maple": 0.22,
+      "zelkova": 0.12,
+      "camphor": 0.1,
+      "pine": 0.12,
+      "evergreen": 0.14,
+      "ginkgo": 0.1
+    },
+    "woods": {
+      "evergreen": 0.38,
+      "sugi": 0.22,
+      "camphor": 0.1,
+      "maple": 0.06,
+      "pine": 0.1,
+      "zelkova": 0.08,
+      "cherry": 0.06
+    },
+    "cherry_open": "03-26",
+    "note": "Species are not mapped; the mix is a guess from Kyoto's street-tree surveys and the temples' own guides. The Higashiyama hillsides above the path are a laurel forest with cedars, pines and maples. The path's own cherries (Kansetsu-zakura, first planted in 1922) are planted along both banks by city.py, every 4 to 5 m as photographs show them; the area round the path makes them and the mapped trees there cherries. The path is not lit at night, so no yozakura.",
+    "areas": [
+      {
+        "name": "Philosopher's Path cherries",
+        "mix": {
+          "cherry": 0.88,
+          "maple": 0.12
+        },
+        "note": "Somei-yoshino along the canal, with a few maples (city.py cherries; outline: the path, 7 m either side)",
+        "parts": [
+          [
+            [
+              242.6,
+              93.3
+            ],
+            [
+              275.7,
+              39.7
+            ],
+            [
+              326.6,
+              -25.4
+            ],
+            [
+              341.7,
+              -37.4
+            ],
+            [
+              357.4,
+              -42.7
+            ],
+            [
+              365.7,
+              -47.2
+            ],
+            [
+              375.7,
+              -59.5
+            ],
+            [
+              379.2,
+              -68.8
+            ],
+            [
+              377.3,
+              -106.8
+            ],
+            [
+              359.6,
+              -227.0
+            ],
+            [
+              350.8,
+              -278.1
+            ],
+            [
+              346.4,
+              -286.2
+            ],
+            [
+              342.5,
+              -288.9
+            ],
+            [
+              336.1,
+              -287.4
+            ],
+            [
+              333.7,
+              -281.2
+            ],
+            [
+              337.4,
+              -273.9
+            ],
+            [
+              357.6,
+              -147.2
+            ],
+            [
+              363.4,
+              -105.1
+            ],
+            [
+              365.4,
+              -71.6
+            ],
+            [
+              363.6,
+              -66.7
+            ],
+            [
+              356.8,
+              -58.2
+            ],
+            [
+              334.7,
+              -49.5
+            ],
+            [
+              316.3,
+              -35.0
+            ],
+            [
+              264.6,
+              31.2
+            ],
+            [
+              227.7,
+              90.0
+            ],
+            [
+              228.6,
+              95.3
+            ],
+            [
+              233.0,
+              98.3
+            ],
+            [
+              237.7,
+              97.7
+            ],
+            [
+              242.6,
+              93.3
+            ]
+          ],
+          [
+            [
+              199.8,
+              154.9
+            ],
+            [
+              214.4,
+              128.9
+            ],
+            [
+              214.0,
+              123.6
+            ],
+            [
+              209.9,
+              120.1
+            ],
+            [
+              205.9,
+              120.0
+            ],
+            [
+              202.4,
+              122.1
+            ],
+            [
+              187.3,
+              148.6
+            ],
+            [
+              170.0,
+              185.1
+            ],
+            [
+              169.9,
+              189.1
+            ],
+            [
+              172.5,
+              193.0
+            ],
+            [
+              177.7,
+              194.3
+            ],
+            [
+              182.3,
+              191.6
+            ],
+            [
+              199.8,
+              154.9
+            ]
+          ],
+          [
+            [
+              207.7,
+              377.2
+            ],
+            [
+              187.7,
+              283.1
+            ],
+            [
+              181.5,
+              263.6
+            ],
+            [
+              177.6,
+              259.8
+            ],
+            [
+              172.3,
+              259.9
+            ],
+            [
+              168.8,
+              263.1
+            ],
+            [
+              168.2,
+              267.8
+            ],
+            [
+              174.0,
+              286.2
+            ],
+            [
+              193.7,
+              379.0
+            ],
+            [
+              194.3,
+              389.8
+            ],
+            [
+              196.9,
+              393.7
+            ],
+            [
+              202.1,
+              395.1
+            ],
+            [
+              205.8,
+              393.4
+            ],
+            [
+              207.9,
+              389.9
+            ],
+            [
+              207.7,
+              377.2
+            ]
+          ],
+          [
+            [
+              262.4,
+              483.8
+            ],
+            [
+              235.4,
+              453.8
+            ],
+            [
+              230.2,
+              452.4
+            ],
+            [
+              225.6,
+              455.0
+            ],
+            [
+              224.1,
+              459.5
+            ],
+            [
+              225.3,
+              463.3
+            ],
+            [
+              253.0,
+              494.2
+            ],
+            [
+              313.6,
+              544.3
+            ],
+            [
+              318.1,
+              545.5
+            ],
+            [
+              322.4,
+              543.6
+            ],
+            [
+              324.6,
+              538.7
+            ],
+            [
+              322.7,
+              533.7
+            ],
+            [
+              262.4,
+              483.8
+            ]
+          ],
+          [
+            [
+              400.6,
+              636.8
+            ],
+            [
+              386.6,
+              607.2
+            ],
+            [
+              376.5,
+              598.6
+            ],
+            [
+              369.4,
+              599.9
+            ],
+            [
+              367.2,
+              604.1
+            ],
+            [
+              367.7,
+              608.1
+            ],
+            [
+              375.7,
+              616.2
+            ],
+            [
+              387.3,
+              641.4
+            ],
+            [
+              389.0,
+              653.1
+            ],
+            [
+              392.9,
+              656.9
+            ],
+            [
+              398.2,
+              656.7
+            ],
+            [
+              401.9,
+              652.9
+            ],
+            [
+              400.6,
+              636.8
+            ]
+          ],
+          [
+            [
+              276.2,
+              1024.5
+            ],
+            [
+              281.5,
+              1025.2
+            ],
+            [
+              285.7,
+              1023.2
+            ],
+            [
+              306.0,
+              1001.9
+            ],
+            [
+              311.7,
+              992.6
+            ],
+            [
+              322.5,
+              969.0
+            ],
+            [
+              324.9,
+              957.9
+            ],
+            [
+              328.3,
+              906.3
+            ],
+            [
+              330.0,
+              895.9
+            ],
+            [
+              336.3,
+              878.0
+            ],
+            [
+              349.2,
+              849.2
+            ],
+            [
+              378.9,
+              808.0
+            ],
+            [
+              396.1,
+              779.1
+            ],
+            [
+              404.8,
+              760.2
+            ],
+            [
+              412.8,
+              728.3
+            ],
+            [
+              414.5,
+              703.1
+            ],
+            [
+              410.9,
+              667.8
+            ],
+            [
+              408.9,
+              664.3
+            ],
+            [
+              403.1,
+              660.1
+            ],
+            [
+              396.6,
+              660.8
+            ],
+            [
+              393.6,
+              666.0
+            ],
+            [
+              394.4,
+              670.0
+            ],
+            [
+              397.4,
+              673.1
+            ],
+            [
+              400.6,
+              712.2
+            ],
+            [
+              399.0,
+              726.3
+            ],
+            [
+              391.5,
+              755.7
+            ],
+            [
+              383.8,
+              772.3
+            ],
+            [
+              367.2,
+              800.5
+            ],
+            [
+              337.0,
+              842.3
+            ],
+            [
+              326.9,
+              864.0
+            ],
+            [
+              316.2,
+              893.2
+            ],
+            [
+              313.4,
+              917.0
+            ],
+            [
+              312.5,
+              944.2
+            ],
+            [
+              309.2,
+              964.6
+            ],
+            [
+              295.2,
+              993.1
+            ],
+            [
+              279.2,
+              1010.0
+            ],
+            [
+              274.1,
+              1010.2
+            ],
+            [
+              270.7,
+              1013.5
+            ],
+            [
+              270.6,
+              1019.4
+            ],
+            [
+              276.2,
+              1024.5
+            ]
+          ],
+          [
+            [
+              220.9,
+              1057.2
+            ],
+            [
+              225.2,
+              1051.4
+            ],
+            [
+              222.1,
+              1044.9
+            ],
+            [
+              216.8,
+              1043.9
+            ],
+            [
+              207.8,
+              1047.9
+            ],
+            [
+              206.5,
+              1053.1
+            ],
+            [
+              209.2,
+              1057.7
+            ],
+            [
+              213.7,
+              1059.1
+            ],
+            [
+              220.9,
+              1057.2
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "Ginkaku-ji",
+        "find": "慈照寺",
+        "mix": {
+          "pine": 0.3,
+          "maple": 0.35,
+          "evergreen": 0.25,
+          "camphor": 0.1
+        },
+        "note": "The moss garden's maples and pines round the Kannon-den"
+      },
+      {
+        "name": "Honen-in",
+        "find": "法然院",
+        "mix": {
+          "maple": 0.5,
+          "evergreen": 0.3,
+          "camphor": 0.2
+        },
+        "note": "The thatched gate under maples"
+      },
+      {
+        "name": "Eikan-do",
+        "find": "禅林寺",
+        "mix": {
+          "maple": 0.75,
+          "evergreen": 0.15,
+          "pine": 0.1
+        },
+        "note": "Eikan-do, 'the temple of maples': about 3,000 maples (the temple)"
+      },
+      {
+        "name": "Nanzen-ji",
+        "find": "南禅寺",
+        "mix": {
+          "pine": 0.3,
+          "maple": 0.35,
+          "evergreen": 0.2,
+          "cherry": 0.15
+        },
+        "note": "Pines along the approach, maples round the Sanmon and the aqueduct"
+      }
+    ]
+  },
+  "labels": {},
+  "analysis_region": [
+    -650,
+    650,
+    -1250,
+    1250
+  ],
+  "sun_hours_region": [
+    -700,
+    700,
+    -1300,
+    1300
+  ],
+  "start": {
+    "date": [
+      4,
+      2
+    ],
+    "time": "10:20",
+    "cam": [
+      -480,
+      120,
+      360
+    ],
+    "tgt": [
+      250,
+      150,
+      90
+    ]
+  },
+  "tour": [
+    {
+      "title": "The Philosopher's Path from open data",
+      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs. The path follows the Lake Biwa Canal's branch about 2 km along the foot of the Higashiyama hills, from Ginkaku-ji to Nanzen-ji.",
+      "cam": [
+        -480,
+        120,
+        360
+      ],
+      "tgt": [
+        250,
+        150,
+        90
+      ],
+      "date": [
+        4,
+        2
+      ],
+      "from": "10:00",
+      "to": "11:00",
+      "hold": 8
+    },
+    {
+      "title": "Ginkaku-ji",
+      "text": "The Silver Pavilion, Ashikaga Yoshimasa's retreat (1489), was never silvered. The path begins at the bridge below its approach.",
+      "cam": [
+        120,
+        900,
+        160
+      ],
+      "tgt": [
+        520,
+        1045,
+        90
+      ],
+      "date": [
+        4,
+        2
+      ],
+      "from": "09:30",
+      "to": "10:30",
+      "hold": 7
+    },
+    {
+      "title": "Along the canal",
+      "text": "The philosopher Nishida Kitaro walked here daily; the cherries were planted from 1922 by the painter Hashimoto Kansetsu and his wife. Early April turns the canal pink.",
+      "cam": [
+        160,
+        260,
+        130
+      ],
+      "tgt": [
+        300,
+        520,
+        75
+      ],
+      "date": [
+        4,
+        2
+      ],
+      "from": "14:00",
+      "to": "15:00",
+      "hold": 7
+    },
+    {
+      "title": "Nanzen-ji and the aqueduct",
+      "text": "The Sanmon (1628) stands about 22 m high. Behind it the canal crosses the precinct on a brick aqueduct of 1888, Suirokaku.",
+      "cam": [
+        -150,
+        -650,
+        140
+      ],
+      "tgt": [
+        110,
+        -790,
+        70
+      ],
+      "date": [
+        11,
+        25
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 8
+    },
+    {
+      "title": "The Keage Incline",
+      "text": "From 1891 to 1948 boats rode cradles up and down 36 m on these rails between the canal's two levels. Today the rails are a walk under cherries.",
+      "cam": [
+        -420,
+        -1150,
+        150
+      ],
+      "tgt": [
+        -150,
+        -900,
+        70
+      ],
+      "date": [
+        4,
+        2
+      ],
+      "from": "11:00",
+      "to": "12:00",
+      "hold": 7
+    }
+  ],
+  "game": {
+    "weather": {
+      "rain_days": [
+        8.1,
+        8.9,
+        11.2,
+        10.6,
+        10.8,
+        13.2,
+        12.6,
+        9.3,
+        11.1,
+        9.4,
+        7.4,
+        8.2
+      ],
+      "threshold_mm": 0.5,
+      "drizzle": 0.5,
+      "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
+    },
+    "title": "The Philosopher's Path on Foot",
+    "local_name": "Kyoto local",
+    "greeting": "おこしやす。",
+    "water_name": "the Lake Biwa Canal",
+    "blurb": "Walk the Philosopher's Path under the real sun: from Ginkaku-ji along the canal and its cherries, past Honen-in and Eikan-do, to Nanzen-ji's gate, the brick aqueduct and the Keage Incline.",
+    "smalltalk": [
+      "おこしやす。",
+      "こんにちは。",
+      "おおきに。",
+      "Excuse me!",
+      "お参りどすか?"
+    ],
+    "start": {
+      "at": [
+        212,
+        960
+      ],
+      "facing": [
+        230,
+        880
+      ],
+      "time": "live"
+    },
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "tetsugaku-pad",
+        "name": "Philosopher's Path pad (game)",
+        "at": [
+          -420,
+          -300
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 300,
+      "cars": 50,
+      "radius_m": 380,
+      "style": "kyoto"
+    },
+    "npcs": [
+      {
+        "id": "haruka",
+        "name": "Haruka 遥",
+        "role": "Student at Kyoto University",
+        "at": [
+          205,
+          930
+        ],
+        "look": {
+          "character": "R_Female_Adult_12_f013",
+          "skin": "#f6dcc4",
+          "hair": "#1c1411",
+          "top": "#556b4a",
+          "legs": "#2b2f3a",
+          "shirt": "#556b4a",
+          "pants": "#2b2f3a",
+          "clip": "Reading",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Nishida Kitaro walked this path every day, thinking. Now it's mostly us, thinking about lunch.",
+          "In early April you can hardly see the water for the petals."
+        ]
+      },
+      {
+        "id": "kenji",
+        "name": "Mr. Kenji 健二",
+        "role": "Retired canal keeper",
+        "at": [
+          290,
+          -150
+        ],
+        "look": {
+          "character": "R_Male_Adult_03_m008_grey",
+          "skin": "#e8c29f",
+          "hair": "#bdb7ae",
+          "top": "#3a4a5a",
+          "legs": "#2e2c2a",
+          "shirt": "#3a4a5a",
+          "pants": "#2e2c2a",
+          "clip": "LookAround"
+        },
+        "idle": [
+          "This water comes from Lake Biwa, through the hills by tunnel. The city built the canal in 1890 to bring water and power back after the capital left.",
+          "Follow it south: it crosses Nanzen-ji on a brick bridge. People are always surprised to see one in a Zen temple."
+        ]
+      },
+      {
+        "id": "sumire",
+        "name": "Sumire すみれ",
+        "role": "Photographer",
+        "at": [
+          -200,
+          -950
+        ],
+        "look": {
+          "character": "R_Female_Adult_15_f013",
+          "skin": "#f6dcc4",
+          "hair": "#2a1c15",
+          "top": "#8a3a3a",
+          "legs": "#3b2a3a",
+          "shirt": "#8a3a3a",
+          "pants": "#3b2a3a",
+          "clip": "Photo"
+        },
+        "idle": [
+          "The incline is my favourite in April: the cherries close over the rails like a tunnel.",
+          "The old boats rode up here on cradles. There's one still sitting on its cradle halfway down."
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "canal",
+        "giver": "haruka",
+        "title": "Down the canal",
+        "stamp": "Philosopher's Path",
+        "talk": [
+          "おこしやす. This is the start of the Philosopher's Path. The canal runs south along the hills for about two kilometres.",
+          "Walk it down to Nyakuoji: there's an old canal keeper there who knows where the water goes. WASD to walk, Shift to run, E to talk."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "kenji",
+            "text": "Walk the path south to the canal keeper near Nyakuoji"
+          },
+          {
+            "type": "talk",
+            "npc": "sumire",
+            "text": "Find the photographer at the Keage Incline"
+          }
+        ]
+      }
+    ]
+  }
+}

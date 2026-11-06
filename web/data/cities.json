@@ -21,7 +21,7 @@
   ],
   "load_bytes": {
    "model": 4687135,
-   "game": 8477212
+   "game": 8477586
   }
  },
  {
@@ -44,8 +44,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5548667,
-   "game": 8826954
+   "model": 5555128,
+   "game": 8833415
   }
  },
  {
@@ -72,8 +72,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 19301299,
-   "game": 22310802
+   "model": 19288829,
+   "game": 22299022
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -106,8 +106,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5070073,
-   "game": 5618039
+   "model": 5071451,
+   "game": 5619478
   }
  },
  {
@@ -134,8 +134,36 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2810714,
-   "game": 3250506
+   "model": 2810987,
+   "game": 3250838
+  }
+ },
+ {
+  "id": "tetsugaku",
+  "name": "Philosopher's Path",
+  "native": "\u54f2\u5b66\u306e\u9053",
+  "country": "Japan",
+  "lat": 35.018,
+  "lon": 135.792,
+  "status": "live",
+  "group": "Kyoto",
+  "district": "Philosopher's Path",
+  "tagline": "Ginkaku-ji to Nanzen-ji along the canal",
+  "summary": "Kyoto's Philosopher's Path: the canal walk under its cherries from Ginkaku-ji to Nanzen-ji, Nanzen-ji's Sanmon, the brick aqueduct and the Keage Incline, on PLATEAU's measured heights.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 10204,
+  "extent_km": [
+   1.4,
+   2.6
+  ],
+  "packed": [
+   "buildings"
+  ],
+  "load_bytes": {
+   "model": 4123113,
+   "game": 4800217
   }
  },
  {

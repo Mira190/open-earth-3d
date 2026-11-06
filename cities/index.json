@@ -99,6 +99,19 @@
       "summary": "Fushimi Inari Taisha: the Romon and the halls, the two tunnels of the Senbon Torii and thousands more torii climbing Mount Inari to Yotsutsuji and the summit, on PLATEAU's measured heights."
     },
     {
+      "id": "tetsugaku",
+      "name": "Philosopher's Path",
+      "native": "哲学の道",
+      "country": "Japan",
+      "lat": 35.018,
+      "lon": 135.792,
+      "status": "live",
+      "group": "Kyoto",
+      "district": "Philosopher's Path",
+      "tagline": "Ginkaku-ji to Nanzen-ji along the canal",
+      "summary": "Kyoto's Philosopher's Path: the canal walk under its cherries from Ginkaku-ji to Nanzen-ji, Nanzen-ji's Sanmon, the brick aqueduct and the Keage Incline, on PLATEAU's measured heights."
+    },
+    {
       "id": "tokyo",
       "name": "Marunouchi & Ginza",
       "native": "丸の内・銀座",
