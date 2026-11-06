@@ -53,6 +53,11 @@ MATERIALS = {
     "rail": {"color": "#4a4440", "roughness": 0.5, "metalness": 0.7},
     "sleeper": {"color": "#5a4a3c", "roughness": 0.9, "metalness": 0.0},
     "boat": {"color": "#7a6450", "roughness": 0.85, "metalness": 0.0},
+    # Honen-in's approach (#263): its worn granite steps (walked on the ground under them, so not solid), and the
+    # white plaster walls either side of the gate on their timber base boards, capped with tiles
+    "step_stone": {"color": "#8f8b80", "roughness": 0.92, "metalness": 0.0, "pattern": "granite", "joints_m": [0.9, 0.36], "stair": "tread", "solid": False},
+    "kerb_stone": {"color": "#a19c91", "roughness": 0.9, "metalness": 0.0, "solid": False},
+    "rubble": {"color": "#6f6a5e", "roughness": 0.96, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.35, "block_m": 0.5},
     # Honen-in's thatch: miscanthus gone grey-brown, moss in it, under a ridge of cedar bark
     "thatch": {"color": "#6b5f48", "roughness": 0.98, "metalness": 0.0, "pattern": "roof_tiles", "bay_m": 0.05, "course_m": 0.07},
     "thatch_under": {"color": "#4f4334", "roughness": 0.98, "metalness": 0.0},
@@ -547,7 +552,7 @@ def honen_gate(K, hidden):
     P = kk.frame(o, f)
     z0 = float(np.median([T(*P(u, v, 0)[:2]) for u in (-1, 0, 1) for v in (-1, 0, 1)]))
     ground = lambda x, y: T(x, y)
-    hu, hv = min(hu, 1.9), min(hv, 2.4)
+    hu, hv = min(hu, 1.9), min(max(hv, 1.6), 2.4)   # its opening about 2.3 m across, as the photograph shows it
     zb = z0 + 0.2
     block(K["stone"], P, -hu - 0.6, hu + 0.6, -hv - 0.5, hv + 0.5, z0 - 0.6, zb)
     kk.plinth(K, "stone", P, hu + 0.6, hv + 0.5, zb, ground)
@@ -564,7 +569,56 @@ def honen_gate(K, hidden):
     for v in (-hv + 0.3, hv - 0.3):                                                    # the bracket blocks
         block(K["bracket"], P, -hu + 0.1, 0.55, v - 0.2, v + 0.2, zt, zt + 0.3)
     thatch_hip(K, P, hu - 0.3, hv, zt + 0.15, z0 + HONEN_GATE[1], ov_u=1.25, ov_v=1.0, thick=0.62)
+    honen_walls(K, P, hv, zb, ground)
+    honen_steps(K, P, hu, hv, zb, ground)
     hidden.append(sd["si"])
+
+
+def honen_walls(K, P, hv, zb, ground, run=7.0, h=2.3, bay=1.8):
+    """The walls either side of Honen-in's gate (#263): white plaster between timber posts on a base of boards
+    (腰板), level with the gate's stone and stepped down the slope, under a cap of tiles, about 2.3 m high and
+    running 7 m each way along the line of the gate's main posts (photographs: the left one against the stone
+    wall of the bank, the right one on to the temple's lodge)."""
+    u0, u1 = 0.2, 0.5
+    for sv in (-1, 1):
+        n = int(round(run / bay))
+        for k in range(n):
+            va, vb = hv + 0.15 + k * bay, hv + 0.15 + (k + 1) * bay
+            g = min(ground(*P((u0 + u1) / 2, sv * v, 0)[:2]) for v in (va, vb))
+            z_base = min(zb, g + 0.05)
+            z_top = max(zb, g + 0.3) + h
+            a, b = sorted((sv * va, sv * vb))
+            block(K["rubble"], P, u0 - 0.1, u1 + 0.1, a, b, g - 0.5, z_base + 0.25)
+            block(K["timber"], P, u0 + 0.02, u1 - 0.02, a, b, z_base + 0.25, z_base + 0.75)          # the base boards
+            block(K["plaster"], P, u0 + 0.05, u1 - 0.05, a, b, z_base + 0.75, z_top - 0.2)
+            block(K["timber_dark"], P, u0, u1, a, b, z_top - 0.25, z_top - 0.1)                     # the head rail
+            for v in (a, b):                                                                     # the posts
+                block(K["timber"], P, u0 - 0.03, u1 + 0.03, v - 0.08, v + 0.08, z_base + 0.25, z_top - 0.1)
+            for su in (-1, 1):                                                                   # the tile cap
+                c = (u0 + u1) / 2
+                K["kawara"].quad(P(c, a, z_top + 0.22), P(c, b, z_top + 0.22), P(c + su * 0.55, b, z_top - 0.02), P(c + su * 0.55, a, z_top - 0.02)) \
+                    if su > 0 else K["kawara"].quad(P(c, b, z_top + 0.22), P(c, a, z_top + 0.22), P(c - 0.55, a, z_top - 0.02), P(c - 0.55, b, z_top - 0.02))
+            block(K["timber_dark"], P, u0 - 0.5, u1 + 0.5, a, b, z_top - 0.12, z_top - 0.02)
+            block(K["kawara_ridge"], P, (u0 + u1) / 2 - 0.12, (u0 + u1) / 2 + 0.12, a, b, z_top + 0.18, z_top + 0.36)
+
+
+def honen_steps(K, P, hu, hv, zb, ground, rise=0.18):
+    """The flight of worn granite steps up from the lane to Honen-in's gate (#263), wider than the gate, between
+    sloping kerbs; it runs out from the gate's stone until the ground has fallen the flight's height (4 to 7
+    steps) (photographs)."""
+    u0 = hu + 0.6
+    u, z_end = u0, zb
+    while u < u0 + 7.0:
+        u += 0.25
+        z_end = ground(*P(u, 0, 0)[:2])
+        if zb - z_end >= 6 * rise:
+            break
+    n = max(4, min(7, int(round((zb - z_end) / rise))))
+    z_end = zb - n * rise
+    w = 2 * hv + 2.6
+    kk.stairs(K["step_stone"], [P(u0, 0, 0)[:2], P(u, 0, 0)[:2]], w, zb, z_end, rise=rise)
+    for sv in (-1, 1):
+        K["kerb_stone"].box(P(u0, sv * (w / 2 + 0.18), zb + 0.12), P(u, sv * (w / 2 + 0.18), z_end + 0.12), 0.36, 0.34)
 
 
 # ---------------------------------------------------------------- Eikan-do
@@ -648,7 +702,7 @@ def eikando(K, hidden):
 
 def landmark_meshes(scene):
     mats = {k: dict(v) for k, v in MATERIALS.items()}
-    K = ak.Kit("tetsugaku", floodlit={"timber", "plaster"}, uv={"kawara", "kokera", "stone", "thatch"})
+    K = ak.Kit("tetsugaku", floodlit={"timber", "plaster"}, uv={"kawara", "kokera", "stone", "thatch", "step_stone", "rubble"})
     hidden = []
     sanmon(K, hidden)
     aqueduct(K)
