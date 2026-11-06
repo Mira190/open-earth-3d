@@ -619,7 +619,25 @@ pipeline writes. The only city-specific code is landmark geometry in
     - **Closed roofs.** A roof the city names (`city.json` `roofs.closed`) is a
       building again: Shinjuku's Sumitomo Triangle Plaza (r11664668) is a glass
       atrium closed on every side, opened in 2020 between the Sumitomo Building's
-      wings, and stands as glass from the ground.
+      wings, and stands as glass from the ground. Its roof (#258, against a
+      photograph from above: Akonnchiroll, CC BY-SA 4.0, compared) is faceted
+      glass rising from eaves at 4.5 m to its top by the tower, each corner of
+      its outline as high as it is near the tower; the tower's own low PLATEAU
+      solids, which PLATEAU files with the tower, are the atrium's other wings
+      (`roofs.atrium_parts`).
+    - **Glazed roofs.** A roof the city names as glazed (`roofs.glazed`) is glass
+      spanning between the buildings either side, with no posts under it: the
+      Opera City Galleria's roof (w787547154, 186 × 13 m at 26 m between the New
+      National Theatre and Opera City Tower), which had stood on a row of posts
+      down the walkway.
+    - **Pitched roofs on pavilions** (#258). A pavilion under 900 m² drawn as a
+      flat slab takes its mapped `roof:shape` (with `roof:material` and
+      `roof:colour`), or, in a temple's or a shrine's precinct or on a temple or
+      a shrine, a hipped roof of grey kawara (a hip-and-gable's nearest), its
+      eaves at least 2.4 m up and its fascia lowered under them. Yasaka-jinja's
+      Buden (w105449709), which a photograph shows under dark grey tiles, and
+      140 others across the live cities (Shibuya waits for the overture
+      session).
     - **Low structures.** A building under 2.6 m with no name or class (a vent's
       or a stair's cover, a shed, a kiosk's back) and a subway entrance's cover
       under 4.5 m are drawn plain, without a storey of windows (Marunouchi's
@@ -628,6 +646,9 @@ pipeline writes. The only city-specific code is landmark geometry in
 
     ![Roofs on posts at day, dusk and night: Yasaka's dance stage, a bell tower in Higashiyama, Tokyo Station's platform canopies, Shinjuku's Triangle Plaza closed in glass, Kyoto Station's bus stands](images/roofs/open-roofs.jpg)
     ![On a phone](images/roofs/phone.jpg)
+    ![Yasaka-jinja's Buden: a photograph (Jakub Hałun, CC BY 4.0) and its pitched roof now (#258)](images/roofs/buden.jpg)
+    ![The Sumitomo Triangle Plaza's sloping glass, day and dusk (#258)](images/roofs/sumitomo-atrium.jpg)
+    ![The Opera City Galleria's glazed roof, day, dusk and night (#258)](images/roofs/galleria.jpg)
   - **Precinct walls are walls** (`pipeline/walls.py`): the earthen walls round
     the Kyoto Gosho and the Sento Gosho come in the open data as buildings 3 m
     wide and hundreds of metres long, with a height estimated from the houses

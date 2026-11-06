@@ -79,8 +79,17 @@ foot barely moves. The checks compare the uncut DEM.
 OpenStreetMap maps the Sumitomo Building's Triangle Plaza (新宿住友ビル三角広場, r11664668, 4,601 m²,
 opened 2020) as `building=roof`, so `pipeline/arcades.py` stood it on posts (#245). It is an all-weather
 atrium under a glass roof, closed on every side by glass walls between the building's wings, so it is a
-glass building from the ground again (`city.json` `roofs.closed`, #246). Not checked against a photograph
-from inside the plaza: Wikimedia Commons refused this session's requests (HTTP 429).
+glass building from the ground again (`city.json` `roofs.closed`, #246). Checked for #258 against a photograph
+from above ([Shinjuku Sumitomo Building, 2026.jpg](https://commons.wikimedia.org/wiki/File:Shinjuku_Sumitomo_Building,_2026.jpg),
+Akonnchiroll, CC BY-SA 4.0, compared, not copied): its glass slopes in facets from low eaves round its edge up
+to the tower on all three sides, so it has a faceted glass roof from 4.5 m to its 20 m top by the tower, and
+the tower's low PLATEAU solids (r9215167 under 30 m) are drawn as its other wings (`roofs.atrium_parts`).
+
+**Two more roofs (#258).** The 2,394 m² roof at 26 m that OpenStreetMap maps as `building=roof` (w787547154)
+is 186 m long and 13 m wide, between the New National Theatre and Opera City: the Opera City Galleria's glazed
+roof over the walkway (`roofs.glazed`: glass, no posts). The roof at 51.6–53.1 m on posts (w1409752350,
+30 × 88 m) lies between Keio University Hospital's buildings 1 and 2, over the hospital's taxi and emergency
+driveways (OpenStreetMap, mapped from the hospital's own campus plan).
 
 
 
