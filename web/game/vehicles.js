@@ -260,13 +260,15 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     const warm = m => {
       const R = opts.renderer, cam = opts.camera;
       if (m && m.warmed) return m.warmed;
-      if (m && R && R.initTexture) {
+      // (a texture a frame in idle time where the page queues them, opts.upload: world.js upload; else all at once)
+      const up = m && opts.upload ? Promise.all([m.group, ...(m.extras || [])].map(o => opts.upload(o))).catch(() => {}) : null;
+      if (m && !up && R && R.initTexture) {
         const seen = new Set();
         for (const o of [m.group, ...(m.extras || [])]) o.traverse(q => { for (const mat of [].concat(q.material || [])) for (const v of Object.values(mat)) if (v && v.isTexture && !seen.has(v)) { seen.add(v); try { R.initTexture(v); } catch (e) { /* drawn later instead */ } } });
       }
       const one = opts.compile ? o => opts.compile(o, world) : R && R.compileAsync && cam ? o => R.compileAsync(o, cam, world) : null;
       if (!m || !one) return Promise.resolve(m);
-      return (m.warmed = Promise.all([m.group, ...(m.extras || [])].map(one)).catch(() => {}).then(() => m));
+      return (m.warmed = Promise.resolve(up).then(() => Promise.all([m.group, ...(m.extras || [])].map(one))).catch(() => {}).then(() => m));
     };
     if (lib && lib.heli) wear(heliModel(world, lib, cfg, mopts));
     else {
