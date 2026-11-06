@@ -626,7 +626,22 @@ pipeline writes. The only city-specific code is landmark geometry in
       and dropped 30 m in 23 m off the deck; it now runs from the deck down to
       its north end at Milsons Point.
     - The crowd and the traffic keep to the decks, the sun meter sees their
-      shade, and you can walk them (but not the expressways). In Osaka this is
+      shade, and you can walk them (but not the expressways). The traffic's
+      router (route.js) looks for a car's floor along each road, which takes the
+      expressways' decks (`nav.floorAt(x, y, z, true)`), at the height the car
+      drives at: on a deck the line's, on the ground the ground's, since a hill
+      road's straight line between two of its points cuts under the brow of the
+      hill. Before (issue #119) it looked for a walker's floor at the line's
+      height, so it kept the traffic off the whole Shuto and Hanshin
+      expressways and Hong Kong's hill roads, though their decks were built and
+      drawn. Road pieces the traffic keeps off, before and after: Osaka 139 to
+      15, Tokyo 79 to 6, Hong Kong 47 to 4 (`tools/road_walls.js`); none is left
+      with no floor at its height (`tools/deck_gaps.js` lists any, with the decks
+      at each spot and why). A main road whose second lane runs into a solid
+      between its junctions (a tower beside an expressway's deck: Sydney's
+      Cahill Expressway passes one at 33 m) has one lane there, so no car waits
+      at the facade for room in the first (game.js; Sydney 11 pieces, Hong Kong
+      17, Tokyo 30, Osaka 42). In Osaka this is
       what joins the city across its rivers: from the start on the Dotonbori,
       every NPC can now be reached on foot.
   - **Everything else on the ground:** passers-by, cars, trees, benches and
@@ -1681,8 +1696,7 @@ drop or into the water.
     10; Paris 17, 14; Akihabara 15, 5; Shinagawa 14, 19; Hong Kong 13, 15;
     Jinbocho 11, 3; Sydney 11, 9; Tsukishima 5, 5, 3. What `road_walls.js` still
     lists afterwards is mostly alleys and roads through landmarks (Odaiba's 41
-    stretches, Amsterdam 32, Paris 21: issue #120); elevated roads with no deck
-    under them stay off the traffic's way (issue #119). The
+    stretches, Amsterdam 32, Paris 21: issue #120). The
     game check counts the car-seconds in a wall (at most 1%), the cars waiting at
     a wall and the one-way roads into one.
   - **Passages through landmarks** (`pipeline/landmark_passages.py`, issues #120
@@ -2238,6 +2252,21 @@ deadlock or a meeting at a shared berth takes to show.
     six-lane motorway two. OSM's counts (`"nl"`) only take a main road down to one lane
     each way, smoothed along the road (see
     [Junctions and traffic lights](#junctions-and-traffic-lights)). There are no turn pockets.
+    What jammed Hong Kong after the counts (issue #128) was
+    elsewhere: at the start your car was parked at a junction's mouth, on a 31 m
+    piece between two junctions, and every car behind it waited on it for good
+    (your car is now parked half a car's length and 12 m clear of a junction
+    ahead of it and 24 m of one behind, where a taxi hailed beside it pulls in,
+    on the roads round about when the nearest is all junction); and
+    two one-way roads merging into nothing (a road the data has lost between
+    them) held their cars at the end, so they are kept off now, with the one-way
+    roads that lead only there (route.js). Jammed (still 30 s or more) under
+    `tools/traffic_check.js hong-kong 150 6`: 6.9% on main, 5.3% with the merge
+    fix alone; the start's jammed car-seconds fell from about 2,800 to 330 with
+    the parking fix (`tools/traffic_why.js hong-kong 0`). Scaling the car count
+    to the lane-metres near you was tried and left out: it took Hong Kong's 170
+    cars down by 1 to 3%, too little to show. `traffic_check.js` also
+    reports the cars on a motorway and on a deck at each place.
   - The arrow phase follows the main road's on every big junction alike; the
     real plans (SCATS's, Tokyo's) are not open data. None of the game's cities
     publishes its signal timings (a request to NSW for Sydney's was refused,
