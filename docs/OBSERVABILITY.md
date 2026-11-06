@@ -70,19 +70,28 @@ sendBeacon is unavailable or refuses the batch, the script falls back to `fetch`
 
 ## The PostHog dashboard
 
-Build these insights in PostHog (Product analytics, then New insight, then Trends). In every one, filter
-out `view = test`.
+`tools/posthog_dashboard.py` builds the dashboard *Open Earth 3D: visitors and service levels* in the
+project and keeps it up to date. It finds the dashboard and each insight by name, so you can run it again
+after changing a query. Run it with `POSTHOG_PERSONAL_API_KEY` set to a personal key that has insight and
+dashboard write access; `--check` runs each query and changes nothing. The dashboard has:
 
-- **Visitors:** event `view`, unique users, by day.
-- **Views by city:** event `view`, total count, broken down by `city`.
-- **Play time (hours):** event `time`, property sum of `s`, filtered to `view` in (game, reef), divided
-  by 3600. Break it down by `city` for each city's share.
-- **Load time p75:** event `load`, filtered to `ok = true`, property 75th percentile of `ms`, broken
-  down by `device`.
-- **Load success:** a formula, A ÷ (A + B), where A is `load` with `ok = true` and B is `load` with
-  `ok = false` and `ms ≥ 20000`.
-- **Frame rate:** event `time`, property median of `fps`, broken down by `tier`.
-- **Errors:** event `error`, total count, broken down by `msg`.
+- **SLO scorecard** (the last 7 days): each of the seven levels with its value, number of samples and
+  MET / MISS. A level is judged once it has 20 samples.
+- **Visitors and play time** (the last 30 days): visitors, new visitors, page loads, views, players,
+  play hours, and play minutes per player (median and p90).
+- Trends:
+  - unique visitors per day;
+  - play time per day, and by city;
+  - views by city, and by kind;
+  - load time p75 by device;
+  - load success;
+  - median fps by tier;
+  - devices;
+  - referrers;
+  - errors by message;
+  - lost WebGL contexts.
+
+Every insight filters out events with `view = test`, which the setup checks send.
 
 ## Testing
 
