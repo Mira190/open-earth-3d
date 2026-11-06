@@ -42,6 +42,8 @@ run opened, so it needs no rebuild of the scene):
 - a borrowed top (#258): a roof on posts over 15 m whose top is that of a building it touches (the height
   matching took the neighbour's) is held to a canopy's 8 m: Keio University Hospital's entrance canopy over its
   taxi drive stood at 51.6-53.1 m on posts, building 1's top.
+  A covered walk (an arcade) with a borrowed top is held to 6 m the same way (two beside a Kyoto hotel stood at
+  38.4-41.4 m, #263).
 - its colour: OSM building:colour when mapped; else its precinct's palette (cities/<id>/city.json
   "roofs" "palette", by precinct name: Kiyomizu-dera's vermilion); else a shrine's vermilion (SHU) in a
   Shinto precinct or on a Shinto building, a temple's aged timber (TIMBER) in a Buddhist one; else it
@@ -86,6 +88,7 @@ TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
 GLASS = "#7f95a0"  # a glass atrium's walls
 GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM = "#5d7280", 4.5, 12.0, 300  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
 BORROWED_DM = 150  # a roof on posts taller than this with a neighbour's top: its height was the neighbour's
+WALK_M = 6.0  # a covered walk with a borrowed top: held to a hotel's or a station's covered pavement, its underside 4.5 m up
 PITCH_DEG, PITCH_OVERHANG, PITCH_MAX_M2, PITCH_EAVE_M = 32.0, 0.5, 900.0, 2.4  # an open pavilion's pitched roof (pitched_roof())
 KAWARA, BARK = "#4c5156", "#4a4c50"  # a temple's grey tiles (kawara); a shrine pavilion's, a little darker (Yasaka-jinja's Buden, photographs)
 UTILITY = {"bicycle_parking", "motorcycle_parking", "parking", "parking_entrance", "smoking_area", "toilets", "waste_disposal",
@@ -539,7 +542,19 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
             continue
         if (P.length >= 40 and 2 * P.area / P.length <= WIDTH_M and not is_gate(meta, P)
                 and sum(foot[i].intersection(P).length for i in foot_tree.query(P)) >= ALONG * P.length / 2):
-            continue  # an arcade: a covered street keeps its own colour
+            # an arcade: a covered street keeps its own colour; but a covered walk with the top of the building it
+            # runs along (#263: two beside a Kyoto hotel, w1316075664 and w1316075663, stood 38.4-41.4 m up on posts,
+            # the hotel's 41.4 m) is held to a covered walk's height
+            if (s[3] > BORROWED_DM and "height" not in tags.get(oid, {}) and meta[4] in MEASURED_TALL
+                    and borrowed_top(B, s, si, P, polys, solid_tree)):
+                r = eaves.get(si)
+                if r is not None:
+                    drop_roof(r, round(10 * WALK_M))
+                s[3] = round(10 * WALK_M)
+                s[2] = soffit_dm(WALK_M)
+                meta[2] = meta[9] = WALK_M
+                n += 1
+            continue
         t = tags.get(oid, {})
         name = (meta[0] or t.get("name") or "").strip()
         here = [p for Pg, p in prec if Pg.intersects(P) and Pg.intersection(P).area > 0.5 * P.area]
