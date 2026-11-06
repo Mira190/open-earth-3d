@@ -1090,7 +1090,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function planOn(rt, from, pickup) {
     const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true, now: rideClock };
-    const P = OECars.path(rt.pts), sig = [], scr = [], qArms = [];
+    const P = OECars.path(rt.pts), sig = [], scr = [], scrJ = [], qArms = [];
     for (const nd of rt.nodes || []) {
       const p = rt.pts[nd.k], a = p ? junctions.armAt(nd.line, nd.end) : null;
       if (!a || !a.j.sig) continue;
@@ -1098,13 +1098,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       qArms.push({ s, a });
       if (Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140) {
         sig.push(s);
-        if (a.j.scramble) scr.push(s); // (its walk: SCR_WAIT)
+        if (a.j.scramble) { scr.push(s); scrJ.push(a.j); } // (its walk: SCR_WAIT)
       }
     }
     for (const m of rt.mids || []) if (m.X.sig && Math.hypot(m.X.x - pickup.x, m.X.y - pickup.y) < 140) sig.push(m.at); // (and the crossings' lights between junctions)
     sig.sort((p, q) => p - q);
     const drive = OECars.chauffeur(STUB, rt, opts).total();
-    return { rt, opts, drive, sig, scr, qArms, T: drive + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
+    return { rt, opts, drive, sig, scr, scrJ, qArms, T: drive + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
   }
   // what keeps a ride's driver out of the traffic's cars where you could see it (out of sight, as nothing
   // else holds a driver up there, it would only be late): never a step further into one (solid), and,
@@ -1128,7 +1128,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const opts = Object.assign(rideGuard(C, true), plan.opts);
     o.drv = OECars.chauffeur(C, plan.rt, opts);
     o.drv.opts = opts; // (for a new route round a jam)
-    o.T0 = plan.T; o.sig = plan.sig; o.scr = plan.scr || []; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
+    o.T0 = plan.T; o.sig = plan.sig; o.scr = plan.scr || []; o.scrJ = plan.scrJ || []; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
     const look = driverLook();
     o.driver = makeRig(look, {});
     C.sit(o.driver, 'driver');
@@ -1431,16 +1431,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // driver does, unless it has stood through more than two cycles' worth of it)
     let hd = b;
     for (let k = 0; k < 30 && hd.front && hd.front.line != null && (hd.why === 'car' || hd.why === 'held'); k++) hd = hd.front;
-    if (['light', 'walk', 'amber'].includes(hd.why) && hd.lineArm && hd.lineArm.j.sig && o.qT < 120) return;
+    if (['light', 'walk', 'amber'].includes(hd.why) && hd.lineArm && hd.lineArm.j.sig && o.qT < 120) { o.turnNo = `the queue's head waits at a light (${hd.why})`; return; }
     o.turnLook = clockT;
     const pl = placeOnRoute(st), to = o.phase === 'coming' ? o.pickup : st.route.to;
-    if (!pl || !to || b.line !== pl.line) return; // (a queue on this piece of road only: one on the next, the reroute goes round)
+    if (!pl || !to || b.line !== pl.line) { o.turnNo = !pl || !to ? 'nowhere on the roads' : 'the queue is on the next piece'; return; } // (a queue on this piece of road only: one on the next, the reroute goes round)
     const l = roadNet.L[pl.line];
-    if (l.ow || (pl.s < 6 || pl.s > l.len - 6)) return; // (a one-way street; or by the junction, where it would turn in the junction)
-    // nothing coming the other way on this street, nor about to turn into it, within 45 m
-    if (cars.C.some(c => c.line >= 0 && c !== b && Math.abs(c.z - st.z) < 3 && Math.hypot(c.x - st.x, c.y - st.y) < 45 && (c.line !== pl.line || c.dir !== pl.dir) && c.v > 0.3)) return;
+    if (l.ow || (pl.s < 6 || pl.s > l.len - 6)) { o.turnNo = l.ow ? 'a one-way street' : 'by a junction'; return; } // (a one-way street; or by the junction, where it would turn in the junction)
+    // nothing coming the other way on this street within 45 m, nor on the move within 15 m (about to turn into it)
+    if (cars.C.some(c => c.line >= 0 && c !== b && Math.abs(c.z - st.z) < 3 && c.v > 0.3 && (c.line === pl.line ? c.dir !== pl.dir && Math.hypot(c.x - st.x, c.y - st.y) < 45 : Math.hypot(c.x - st.x, c.y - st.y) < 15))) { o.turnNo = 'a car coming'; return; }
     const half = ROAD_HALF[l.c] || 3.5, w = 2 * OECars.LANE;
-    if (half < 3) return; // (a lane too narrow to turn in)
+    if (half < 3) { o.turnNo = 'a street too narrow'; return; } // (a lane too narrow to turn in)
     const gapAhead = Math.hypot(b.x - st.x, b.y - st.y) - (b.half || 2.3) - o.C.half;
     const z = st.z, mine = myCar && player.mode !== 'car' ? myCar.D.st : null;
     let poses = null;
@@ -1460,15 +1460,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       });
       if (ok) { poses = P; break; }
     }
-    if (!poses) return;
+    if (!poses) { o.turnNo = 'no room to turn'; return; }
     const e = poses[poses.length - 1], back = Math.max(0, (e.x - st.x) * -Math.sin(st.h) + (e.y - st.y) * -Math.cos(st.h));
     const sR = Math.max(0, Math.min(l.len, pl.s - pl.dir * back));
     const left = st.end - st.s, rt = roads.route({ line: pl.line, s: sR, dir: -pl.dir }, to, 6000, undefined, jamAhead(st));
-    if (!rt || rt.len > left + (o.phase === 'driving' ? Math.max(400, left) : 400)) return;
+    if (!rt || rt.len > left + (o.phase === 'driving' ? Math.max(400, left) : 400)) { o.turnNo = rt ? `the way back round is ${rt.len.toFixed(0)} m` : 'no way back round'; return; }
     // (a way that turns straight back on itself would only bring it back into the queue)
     for (let i = 1; i + 1 < rt.pts.length && i < 40; i++) {
       const p0 = rt.pts[i - 1], p1 = rt.pts[i], p2 = rt.pts[i + 1];
-      if (Math.abs(angDiff(Math.atan2(p2[0] - p1[0], p2[1] - p1[1]), Math.atan2(p1[0] - p0[0], p1[1] - p0[1]))) > 2.6) return;
+      if (Math.abs(angDiff(Math.atan2(p2[0] - p1[0], p2[1] - p1[1]), Math.atan2(p1[0] - p0[0], p1[1] - p0[1]))) > 2.6) { o.turnNo = 'the way back turns round again'; return; }
     }
     o.turn = { poses, i: 0, u: 0, wait: 0.4, rt };
     o.turned = (o.turned || 0) + 1;
@@ -1550,6 +1550,35 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         if (!inView(at.x, at.y, at.z) && !cars.C.some(c => c.line >= 0 && Math.hypot(c.x - at.x, c.y - at.y) < (c.half || 2.4) + 3.5)) { o.drv.jump(s); break; }
       }
     }
+    // coming for you up to a scramble whose walk is on, or about to start (its other road's amber or the all
+    // red before it), with 90 m still to go: a way round it, if one reaches you sooner than the walk would
+    // let it through, as a driver who sees the walk start turns off (#243: Shinjuku's taxi stood 26 s so)
+    if (o.phase === 'coming' && !st.mv && (o.scr || []).length && clockT - (o.scrLook || 0) > 1 && o.drv.opts
+      && Math.abs(st.lat - (st.lane ?? OECars.LANE)) < 0.2 && Math.abs(st.shift) < 0.1 && !st.backoff) {
+      o.scrLook = clockT;
+      const k = o.scr.findIndex(s => s > st.s + 2), j = k >= 0 ? o.scrJ[k] : null;
+      const walk = j && (j.ph === 3 || (j.nxt === 3 && j.st !== 'g'));
+      if (walk && o.scr[k] - st.s < 90 && o.scr[k] - st.s > 12) {
+        const left = j.ph === 3 ? Math.max(0, j.green[3] - j.t) + (j.allred || 2) : j.green[3] + (j.allred || 2) * 2 + (j.st === 'y' ? j.amber : 0);
+        const pl = placeOnRoute(st), shun = new Set();
+        for (const b of j.arms) shun.add(b.line);
+        for (const l of j.inner || []) shun.add(l);
+        if (pl) { shun.delete(pl.line); shun.delete(o.pickup.line); }
+        const rt = pl ? roads.route(pl, o.pickup, 4000, undefined, shun, true) : null;
+        if (rt && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
+          const alt = planOn(rt, Object.assign({}, pl, { v: st.v }), o.pickup);
+          if (alt.T + 3 < o.drv.timeLeft() + left) {
+            const opts = Object.assign({}, alt.opts, { from: 'lane', v: st.v });
+            o.drv.leave();
+            o.drv = OECars.chauffeur(o.C, alt.rt, opts);
+            o.drv.opts = opts;
+            st = o.drv.st;
+            o.sig = alt.sig; o.scr = alt.scr; o.scrJ = alt.scrJ; o.qArms = alt.qArms; o.rerouteT = clockT;
+            o.roundWalk = (o.roundWalk || 0) + 1;
+          }
+        }
+      }
+    }
     // a jam on its way, as a navigator with live traffic sees one: held up more than 10 s behind a queue
     // in view (one it can't pass for the traffic coming the other way), or, up to 250 m ahead on its way, a
     // road where a car has stood longer than a red light lasts (40 s) or a junction a car has stood in for
@@ -1579,6 +1608,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       }
     }
     if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }
+    // at a junction's line, waiting for a car crossing in it, which stands in the junction for this ride's
+    // nose (actors.js, why 'you'): each waits on the other, so after 2 s the ride backs off a metre or two
+    // along its way, if the road behind it is clear, as a driver who pulled up too far does (#243: Shinjuku's
+    // taxi stood 30 s so)
+    if (!o.turn && !o.hold && st.v < 0.3 && !st.mv && /^the line/.test(st.why || '') && !(st.backoff > 0)) {
+      const mutual = cars.C.some(c => c.line >= 0 && c.mv && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && Math.hypot(c.x - st.x, c.y - st.y) < 25);
+      o.mutJ = mutual ? (o.mutJ || 0) + dt : 0;
+      if (o.mutJ > 2) { o.mutJ = -3; st.backoff = 1.5; o.yielded = (o.yielded || 0) + 1; }
+    } else if (!(st.backoff > 0)) o.mutJ = 0;
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
     o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
       inside: player.vehicle === o && cam.mode === 'cabin', near: st.gap,

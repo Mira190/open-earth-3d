@@ -1493,6 +1493,21 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const onWay = line => { for (let k = 0; k < pathNext.length; k += 2) if (pathNext[k] === line) return true; return false; }; // (the pieces of the way just worked out)
     // the cars on each line this frame (for the room beyond a junction)
     const onLine = new Map();
+    // a car coming up exit e's piece towards the junction, near, on a street too narrow for two to pass (one of
+    // them in from a facade, narrowF): car c waits at its line for it rather than turn in and stop just inside,
+    // nose to nose with it, as that one waits at its own line for c's movement to clear the junction (each for
+    // the other: Shibuya's junction 931, a car stood 75 s so with five queues behind)
+    function narrowComing(c, e) {
+      const m = e.m, ml = net.L[m.line], toward = m.end === 0 ? -1 : 1;
+      if (ml.ow || JN.lanesOf(ml) > 1) return false;
+      for (const j of onLine.get(m.line) || []) {
+        const o = C[j];
+        if (o === c || o.dir !== toward) continue;
+        const d = toward < 0 ? o.s : ml.len - o.s;
+        if (d < 30 && (o.narrowF > 0.2 || o.narrow > 0)) return true;
+      }
+      return false;
+    }
     // is there room for car c on exit e of a junction, beyond it, behind the last car going out
     // that way (and the cars already crossing to it)?
     // (on an exit with two lanes, behind the cars in the lane it will be in)
@@ -1769,7 +1784,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         let sawX = null, leadX = null, xQ = false, youBy = null; // (youBy: which of yours it brakes for, and how, for the checks)
         if (np) for (const o of api.extra) {
           if (o.soft || (o.v < 0.3 && !o.live) || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
-          const d = hitAt(P, np, o, o.half + 0.6, o.hw + c.hw + 0.25, step);
+          // (a ride stopped at a junction's line, waiting its turn, is measured by its own size by a car crossing that
+          // junction, not with the margins kept from one on the move: with them the car stood in the box for the
+          // ride's nose while the ride waited at its line for that car's movement, each for the other, #243)
+          const waiting = c.mv && !o.mv && o.v < 0.3 && o.toLine != null && o.toLine >= 0 && o.toLine < 6;
+          const d = hitAt(P, np, o, o.half + (waiting ? 0.1 : 0.6), o.hw + c.hw + (waiting ? 0.05 : 0.25), step);
           if (d < 0) continue;
           (sawX || (sawX = new Set())).add(o.id);
           const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
@@ -1902,6 +1921,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               if (go && jArm.sign === 'stop' && !c.halt) go = false;
               let noRoom = false;
               if (go && !room(c, jEx)) { go = false; noRoom = true; }
+              let narrowOut = false;
+              if (go && narrowComing(c, jEx)) { go = false; noRoom = narrowOut = true; } // (and after 5 s, another way out, as for room, below)
               // keep the box clear: not in while its way across is blocked by a ride or your car standing in the
               // junction (it would stop half way across, the junction held, and the two nose to nose, each waiting
               // on the other, until one drove through the other: SUMO's keep-clear, A/B Street's "don't block the
@@ -1925,14 +1946,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 const lt2 = JN.light(a2, c.ex2.e);
                 if (!c.ex2.e || !(lt2 == null || lt2 === 'g') || a2.sign === 'stop' || !room(c, c.ex2.e)) go = false;
               }
-              const r = c.mv && c.mv.a === jArm ? true : go ? JN.request(c, jArm, jEx, t, a2, a2 && c.ex2.e) : false;
+              // (in it already: its way through this junction let in, or, crossing two close junctions together, this
+              // one's let in with the one just after, mv0: then a light turning red behind it, or the room beyond
+              // filling, doesn't stop it at the line it was let over, holding both junctions' boxes there, as a car
+              // stood 87 s at Shibuya's 813 with the cars at the junction's other arms waiting on it, #178)
+              const r = (c.mv && c.mv.a === jArm) || (c.mv0 && c.mv0.a === jArm && c.mv && c.mv.j !== jArm.j) ? true : go ? JN.request(c, jArm, jEx, t, a2, a2 && c.ex2.e) : false;
               if (r === true && go) { // the pieces it may still be on before each junction's arm
                 if (a2) { c.mv0.via = [c.line]; c.mv.via = [c.line].concat(jEx.steps.map(st => st[0])); } else c.mv.via = [c.line];
               }
               if (r !== true) {
                 const g = toLine - c.half + 2.4;
                 lineGap = Math.min(lineGap, g);
-                if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = r || (lt === 'r' || lt === 'y' ? 'light' : jArm.sign === 'stop' && !c.halt ? 'stop' : !inLane ? 'lane' : 'room'); }
+                if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = r || (lt === 'r' || lt === 'y' ? 'light' : jArm.sign === 'stop' && !c.halt ? 'stop' : !inLane ? 'lane' : narrowOut ? 'narrow' : 'room'); }
                 // no room on its way out for 5 s, at its line with its light green: another way out with room, if
                 // there is one (the traffic wanders, so any way will do). A queue that waits for room behind a queue
                 // that waits for room, round a block and back, is a ring that never moves: Shibuya's station streets
