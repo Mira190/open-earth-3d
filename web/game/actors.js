@@ -885,15 +885,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') {
         sp = q.speed * 0.75;
         if (pz.road && pz.road(q.x, q.y)) {
-          sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1;
+          sp = xSpeed(q);
           // (still out on the road, held up short of its spot by the crowd massed at the kerb: a spot further back
-          // behind it, twice, and then it stands where it is, not counted as out crossing: the signals held their
-          // all-red and the cars' green for it, a minute at a time, Shinjuku's 1105, #264)
+          // behind it, twice, then another kerb of that corner, and after that it edges on through as it can, no
+          // longer counted as out crossing: the signals held their all-red and the cars' greens for such a one, a
+          // minute at a time, Shinjuku's 1105, #264)
+          if (!((q.sTries || 0) > 3)) pz.busy = (pz.busy || 0) + 1;
           q.sjam = q.v < 0.15 ? (q.sjam || 0) + dt : 0;
           if (q.sjam > 3) {
             q.sjam = 0; q.sTries = (q.sTries || 0) + 1;
             if (q.sTries <= 2 && q.g) spotAt(q.g, q.spread * 0.5, 2 + 1.5 * q.sTries, q.T, pz.road);
-            else { q.ph = 'wait'; q.T.x = q.x; q.T.y = q.y; q.react = 0.2 + rnd() * 2.2; }
+            else if (q.sTries === 3 && q.g && q.g.corner && q.g.corner.length) { const c = q.g.corner; toGate(q, c[Math.floor(rnd() * c.length)]); q.sTries = 3; }
           }
         } else q.sTries = 0;
       } else sp = d > 0.6 ? 0.5 : 0;
@@ -1441,14 +1443,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return depth;
     }
     // and how deep the people (the player, the crowd) and the lamp posts and trunks would be in it
-    let inWho = -1; // (the walker deepest in it, from the last peopleIn)
+    let inWho = -1, inPosts = 0; // (the walker deepest in it, from the last peopleIn)
     function peopleIn(c, x, y, hx, hy) {
       let d = 0, most = 0;
-      inWho = -1;
-      if (posts) posts.near(x, y, c.half + 0.3, q => {
+      inWho = -1; inPosts = 0;
+      if (posts && !(c.postPass > 0)) posts.near(x, y, c.half + 0.3, q => { // (not while it has leave to edge past a post, below)
         if (Math.abs(q.z - c.z) >= LEVEL) return;
         const dx = q.x - x, dy = q.y - y, ea = c.half + q.r - Math.abs(dx * hx + dy * hy), eb = c.hw + q.r - Math.abs(-dx * hy + dy * hx);
-        if (ea > 0 && eb > 0) d += Math.min(ea, eb);
+        if (ea > 0 && eb > 0) { d += Math.min(ea, eb); inPosts += Math.min(ea, eb); }
       });
       const c0 = Math.floor((x - c.half - 1) / CELL), c1 = Math.floor((x + c.half + 1) / CELL), r0 = Math.floor((y - c.half - 1) / CELL), r1 = Math.floor((y + c.half + 1) / CELL);
       for (let a = c0; a <= c1; a++) for (let b = r0; b <= r1; b++) {
@@ -2309,8 +2311,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;
+          const p1 = inPosts;
           held = d1 > (c.pw > 5 ? 0.12 : 0.02) && d1 > peopleIn(c, c.x, c.y, hx0, hy0) + 1e-3; // (waited on a while, it edges up to them, not into them: they step aside, below)
           if (held && who >= 0) walker = who; // (a walker against it: asked to turn back, below, if it waits on them)
+          // (held by a post alone, its body's corner swinging over the kerb at a junction's corner: after 10 s it has
+          // leave to edge past, as for a post ahead, above; a bus stood 106 s so in Tokyo's 689, the junction's queues behind)
+          c.postHeld = held && who < 0 && p1 >= d1 - 1e-3 ? (c.postHeld || 0) + dt : 0;
+          if (c.postHeld > 10) { c.postHeld = 0; c.postPass = c.mv ? 30 : 6; held = false; }
         }
         if (behind && !turn && !squeeze) held = true;
         if (c.backoff > 0) { // backing off for a car that can't get past, a metre or two, if the way behind is clear
