@@ -22,11 +22,21 @@ async function run(b) {
     const P = g.crowd.P, C = g.cars.C;
     return { t: g.t().toFixed(2), clock: g.clock.min.toFixed(3), active: g.crowd.active, cars: g.cars.active,
       crowd: h(P.slice(0, g.crowd.active).flatMap(q => [q.x, q.y, q.line])), traffic: h(C.flatMap(c => [c.x, c.y, c.line, c.v])),
-      player: h([g.player.x, g.player.y]), lights: h(g.junctions.J.filter(j => j.sig).flatMap(j => [j.ph, j.t])) };
+      player: h([g.player.x, g.player.y]), ride: g.ride() ? h([g.ride().drv.st.x, g.ride().drv.st.y, g.ride().drv.st.v]) + g.ride().phase : '-', dlg: `${g.dlg.open}`, tiles: g.nav.tiles.join('/'), npcs: h(g.npcs.flatMap(n => [n.x, n.y])), ferries: h(g.fer.vessels.flatMap(v => [v.x, v.y])), heli: h([g.heli.st.x, g.heli.st.y, g.heli.st.z]), lights: h(g.junctions.J.filter(j => j.sig).flatMap(j => [j.ph, j.t])) };
   });
   out.push(await dig());
   for (let i = 0; i < +steps; i++) {
     await p.waitForTimeout(300 + Math.random() * 1500); // (real time between the steps, as a check's screenshots take)
+    // (with TAXI=1, at the third step a taxi hailed where you stand, boarded, told where to, driven)
+    if (process.env.TAXI && i === 2) await p.evaluate(() => {
+      const g = window.__game;
+      g.advance(0.5); g.hail();
+      const o = g.ride(); if (!o) return;
+      for (let t = 0; t < 120 && o.phase === 'coming'; t++) g.advance(0.5);
+      g.boardRide(); for (let t = 0; t < 16 && g.player.mode !== 'ride'; t++) g.advance(0.5);
+      for (let t = 0; t < 80 && g.dlg.open && !g.dlg.hasChoices; t++) g.dlg.tick(0.1);
+      if (g.dlg.open && g.dlg.hasChoices) g.dlg.choose(0);
+    });
     await p.evaluate(() => window.__game.advance(1));
     out.push(await dig());
   }

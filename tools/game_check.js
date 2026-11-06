@@ -46,7 +46,14 @@ const npcNight = require('./npc_night');
   p.on('console', m => { if (m.type() === 'error') logs.push(`error: ${m.text().slice(0, 300)}`); });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
+  // DIGEST=1: at each screenshot, a digest of the traffic, the crowd, the lights and you (as tools/lockstep_probe.js
+  // prints), to find the step at which two runs of the same tree part
+  const digest = () => p.evaluate(() => {
+    const g = window.__game, h = a => { let x = 2166136261; for (const v of a) { x ^= Math.round(v * 100) | 0; x = Math.imul(x, 16777619) >>> 0; } return x.toString(16); };
+    return `t ${g.t().toFixed(2)} clock ${g.clock.min.toFixed(2)} crowd ${h(g.crowd.P.slice(0, g.crowd.active).flatMap(q => [q.x, q.y]))} traffic ${h(g.cars.C.flatMap(c => [c.x, c.y, c.v]))} lights ${h(g.junctions.J.filter(j => j.sig).flatMap(j => [j.ph, j.t]))} you ${h([g.player.x, g.player.y, g.player.z])} tiles ${g.nav.tiles.join('/')}`;
+  });
   const shot = async name => {
+    if (process.env.DIGEST) console.log(`digest ${name}: ${await digest()}`);
     const png = await p.evaluate(() => document.getElementById('game-gl').toDataURL('image/png'));
     fs.writeFileSync(path.join(outDir, `${city}-${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
   };
@@ -991,6 +998,9 @@ const npcNight = require('./npc_night');
     // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so at worst the other
     // road's turn, the walk, the all reds round them and the wait for the last walkers, some 70 s, more)
     for (r.walkWait = 0; went < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) tick();
+    // (and under way again after it, on the same way or a new one round a jam, whose line it hasn't come to yet:
+    // a few seconds to be off, as it is)
+    if (r.walkWait) for (let k = 0; went < 20 && k < 6 && o.drv.st.v > 0.5; k++) { tick(); r.walkWait++; }
     r.drove = went; r.turned = o.turned || 0;
     if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
       const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
