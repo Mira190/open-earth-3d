@@ -729,6 +729,7 @@ window.OEJunctions = (function () {
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
         if (j.sig && light(j.arms[o.k], o.m) === 'r') continue; // (its light has turned red since)
+        if (c.P && o.c.why === 'you') continue; // (a car of the traffic standing for a ride, or for you, doesn't hold a ride's turn: each waited on the other, half a minute in Shinjuku's game check)
         if (conflict(j, k, m, o.k, o.m)) return 'turn';
       }
       if (!j.sig && j.seen >= frame - 1 && !(mine && t - mine.since > 3 * WAITED)) { // give way to the main road: a car on a greater arm coming, not stopped
