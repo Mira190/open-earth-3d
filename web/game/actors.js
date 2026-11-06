@@ -1920,7 +1920,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               if (toLine - c.half < -1) { c.overWhy = `${c.rel || ''} ${c.why} v ${c.v.toFixed(1)} toLine ${(toLine - c.half).toFixed(1)} lane ${c.ln} lo ${c.lo.toFixed(1)} lt ${lt}`; JN.enter(c, jArm, jEx, t, true); c.mv.via = [c.line]; go = false; } // already over the line: in the junction, so through it
               if (go && jArm.sign === 'stop' && !c.halt) go = false;
               let noRoom = false;
-              if (go && !room(c, jEx)) { go = false; noRoom = true; }
+              // (an exit too short to wait on before the next junction's line is crossed with that junction, below,
+              // and the room asked for is beyond it: asked here, a piece shorter than a car up to that line never had
+              // room, and no car ever took it; Shibuya's 811 onto a 39 m piece whose far line is 28 m back, a car stood
+              // 121 s at it, #243. Not with a car on the short piece going that way: it waits behind that one)
+              const pair = go ? JN.after(jEx, 2 * c.half + 3) : null;
+              const through = pair && !(onLine.get(jEx.m.line) || []).some(j => C[j] !== c && C[j].dir === (jEx.m.end === 0 ? 1 : -1));
+              if (go && !through && !room(c, jEx)) { go = false; noRoom = true; }
               let narrowOut = false;
               if (go && narrowComing(c, jEx)) { go = false; noRoom = narrowOut = true; } // (and after 5 s, another way out, as for room, below)
               // keep the box clear: not in while its way across is blocked by a ride or your car standing in the
