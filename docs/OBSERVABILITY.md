@@ -48,15 +48,16 @@ schedule.
   id. The JSONL collector does not log IP addresses.
 - The script sends nothing when Do Not Track or Global Privacy Control is on, when `?telemetry=off` is
   in the URL, or when the browser is automated (the checks in `tools/`).
-- It sends nothing until `CONFIG.endpoint` in `web/telemetry.js` is set. **As shipped, the endpoint is
-  empty, so the script sends nothing.**
+- `CONFIG` in `web/telemetry.js` sends the events to the project's PostHog EU Cloud project. The `phc_`
+  key there is PostHog's public capture key: it can write events but cannot read them. To stop sending
+  events, empty `CONFIG.endpoint`.
 
 ## Where the events go
 
 `CONFIG` at the top of `web/telemetry.js` chooses the destination:
 
 - **PostHog** (`format: 'posthog'`, `endpoint: 'https://eu.i.posthog.com/batch/'`, `key: 'phc_…'`): the
-  hosted option. The free tier covers 1M events a month, and the project key is public by design.
+  hosted option, and the one in use (EU Cloud). The free tier covers 1M events a month, and the project key is public by design.
   Events go through the `/batch/` capture API with `$process_person_profile: false`, so they stay
   anonymous. PostHog's insights show unique users, sums of `s` and percentiles of `ms` and `fps`.
 - **Self-hosted** (`format: 'jsonl'`, `endpoint: 'https://<your host>/e'`): run
@@ -66,6 +67,22 @@ schedule.
 
 Beacons use `navigator.sendBeacon` with a `text/plain` body, so no CORS preflight is needed. When
 sendBeacon is unavailable or refuses the batch, the script falls back to `fetch` with `keepalive`.
+
+## The PostHog dashboard
+
+Build these insights in PostHog (Product analytics, then New insight, then Trends). In every one, filter
+out `view = test`.
+
+- **Visitors:** event `view`, unique users, by day.
+- **Views by city:** event `view`, total count, broken down by `city`.
+- **Play time (hours):** event `time`, property sum of `s`, filtered to `view` in (game, reef), divided
+  by 3600. Break it down by `city` for each city's share.
+- **Load time p75:** event `load`, filtered to `ok = true`, property 75th percentile of `ms`, broken
+  down by `device`.
+- **Load success:** a formula, A ÷ (A + B), where A is `load` with `ok = true` and B is `load` with
+  `ok = false` and `ms ≥ 20000`.
+- **Frame rate:** event `time`, property median of `fps`, broken down by `tier`.
+- **Errors:** event `error`, total count, broken down by `msg`.
 
 ## Testing
 

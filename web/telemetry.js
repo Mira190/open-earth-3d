@@ -22,9 +22,9 @@
 'use strict';
 window.OETelemetry = (function () {
   const CONFIG = {
-    endpoint: '',          // e.g. 'https://eu.i.posthog.com/batch/' or 'https://stats.example.org/e'
+    endpoint: 'https://eu.i.posthog.com/batch/',   // PostHog EU Cloud; or a collector of your own (format 'jsonl')
     format: 'posthog',     // 'posthog' or 'jsonl'
-    key: '',               // PostHog project API key (phc_...), public by design
+    key: 'phc_v8YPULU9RMwSuJD4K3WYDM8KaGck9Z2XeAFdKeVRD95B',   // the project's public capture key (it only writes events)
   };
   const VERSION = 1;
   const q = new URLSearchParams(location.search);

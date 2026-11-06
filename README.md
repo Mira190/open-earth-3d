@@ -458,8 +458,8 @@ has no `version.json` and says "Local build". Raise `VERSION` for a new major or
 ## Visitors and service levels
 
 `web/telemetry.js` counts visitors, views, play time, load times, frame rate, errors and lost WebGL
-contexts. It uses no cookies, honours Do Not Track and Global Privacy Control, and sends nothing until
-an endpoint is configured. `tools/slo_report.py` turns the log into a visitor and SLO report.
+contexts, and sends them to PostHog (EU Cloud). It uses no cookies and honours Do Not Track and Global
+Privacy Control. `tools/slo_report.py` turns the log into a visitor and SLO report.
 [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) defines each event and SLO target and shows how to send
 the events to PostHog or to a self-hosted collector.
 
