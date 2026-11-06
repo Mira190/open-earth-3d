@@ -1897,6 +1897,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (c.narrow <= 0) { c.wallT = 0; c.narrowIn = Infinity; }
           if (!swerve && c.narrowIn < 6 + c.v) swerve = -LANE * side * (c.narrowF || 0);
         } else { c.narrowF = 0; c.narrowIn = Infinity; }
+        // (and one slow or stopped in its lane with its body in a facade, a queue along a street that has room only nearer
+        // its middle, which the look ahead from the bumper missed: half way in, as one on the move would be, #202;
+        // Higashiyama's road 138 kept a queue in a wall)
+        if (nav && c.v < 2 && !c.ln && !c.mv && !JN.centred(c.line) && (c.wallChk = (c.wallChk || 0) - dt) <= 0) {
+          c.wallChk = 0.5;
+          c.inWallNow = !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false) && Math.abs(c.off) < LANE * 0.4;
+        } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = false;
+        if (!swerve && c.inWallNow) swerve = -LANE * side * 0.5;
         c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
