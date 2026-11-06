@@ -264,22 +264,28 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     // the NPCs (build_people.py --npcs): textured too, on the same skeleton, sharing one file of clips per sex
     const NP = info.npcs || {};
     lib.npcs = NP.characters || {};
+    // a textured character that comes once the game is open is shown (lib.tpl, which the crowd and the NPCs
+    // wait on) only when its textures are on the GPU and its shaders compiled, off the frame (lib.warm, set
+    // by the game once its loader has compiled the scene; issue 201): else the first frame that draws it
+    // uploads them and links its program, a hitch of a frame or more each time someone new comes into view
+    const ready = (name, tpl) => {
+      tpl.scene.traverse(o => { if (o.isSkinnedMesh) [].concat(o.material).forEach(litMaterial); }); // (the variant person() draws)
+      return (lib.warm ? lib.warm(tpl.scene).catch(() => {}) : Promise.resolve()).then(() => {
+        lib.tpl[name] = tpl;
+        if (onMsg) onMsg(name);
+        return tpl;
+      });
+    };
     const clipsOf = sex => lib.loading[`clips:${sex}`] || (lib.loading[`clips:${sex}`] = get(NP.clips[sex].file).then(g => g.animations));
     lib.require = name => {
       const h = lib.heroes[name], c = lib.npcs[name];
       if (c) {
-        return lib.loading[name] || (lib.loading[name] = Promise.all([get(c.file), clipsOf(c.sex)]).then(([g, clips]) => {
-          lib.tpl[name] = { scene: g.scene, textured: true, clips, speeds: NP.clips[c.sex].ground_speed, bones: NP.bones || {} };
-          if (onMsg) onMsg(name);
-          return lib.tpl[name];
-        }));
+        return lib.loading[name] || (lib.loading[name] = Promise.all([get(c.file), clipsOf(c.sex)]).then(([g, clips]) =>
+          ready(name, { scene: g.scene, textured: true, clips, speeds: NP.clips[c.sex].ground_speed, bones: NP.bones || {} })));
       }
       if (!h) return plain(name);
-      return lib.loading[name] || (lib.loading[name] = get(h.file).then(g => {
-        lib.tpl[name] = { scene: g.scene, textured: true, clips: g.animations, speeds: h.ground_speed, bones: H.bones || {} };
-        if (onMsg) onMsg(name);
-        return lib.tpl[name];
-      }));
+      return lib.loading[name] || (lib.loading[name] = get(h.file).then(g =>
+        ready(name, { scene: g.scene, textured: true, clips: g.animations, speeds: h.ground_speed, bones: H.bones || {} })));
     };
     return lib;
   }
