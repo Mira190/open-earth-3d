@@ -668,6 +668,7 @@ window.OEOverture = (function () {
     // names is missing after a rebuild, say; the game then plays its plain crane instead
     function play(done) {
       pick();
+      if (variant === 'day' && base.day === false) return false; // (a map whose day overture is not ready yet: the plain crane)
       try { placeEnd(); resolve(); } catch (e) { console.warn(String(e)); return false; }
       onDone = done;
       active = true; settling = false; fired = new Set(); lastShot = null; from = null; lapsed = 0;

@@ -212,6 +212,7 @@ const npcNight = require('./npc_night');
     const out = {};
     let done = null;
     out.started = o.play(sk => { done = { skipped: sk }; });
+    if (!out.started && o.variant === 'day' && g.G.overture.day === false) return { off: true }; // (its day overture is off: the opening shot plays)
     if (!out.started) return out;
     let t = 0;
     while (o.active && t < o.total + 3) { g.advance(0.25); t += 0.25; if (Math.round(t * 4) % 16 === 0) await new Promise(r => requestAnimationFrame(r)); }
@@ -233,7 +234,8 @@ const npcNight = require('./npc_night');
     out.skip = s; out.skipDone = done;
     return out;
   });
-  if (ov) {
+  if (ov && ov.off) check(true, 'the overture is for after dark here; by day the opening shot plays');
+  else if (ov) {
     check(ov.started && ov.done && !ov.done.skipped && ov.t <= ov.total + 1 && ov.near < 12 && ov.at < 3,
       `the overture plays (${ov.total ? ov.total.toFixed(1) : '?'} s, guide ${ov.kind}) and hands over to the chase camera ${ov.near != null ? ov.near.toFixed(1) : '?'} m from the player's head, ${ov.at != null ? ov.at.toFixed(1) : '?'} m from its end spot`);
     if (ov.signal !== undefined) check(ov.signal && ov.signal.d < 30 && ov.signal.st === 'g' && (ov.signal.scramble ? ov.signal.ph === 3 : ov.signal.ph === 1),
