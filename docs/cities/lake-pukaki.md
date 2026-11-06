@@ -216,6 +216,13 @@ detail patch's own 2 m triangles, so nothing sinks into or floats over the surfa
 bases at about 2,350 m: the cloud a westerly builds on the Divide on a fine day. They are sheets facing the camera, not
 volumes.
 
+**A nor'west arch** (`?weather=nwarch`, both Mackenzie sites): Canterbury's sign of a nor'wester. A deck of high
+cloud 6 km up over the basin, streaked along the wind as lenticular cloud is, ends in the west in a long straight edge
+parallel to the Main Divide (city.json `clouds.nwarch`: a point on it 12 km south-east of the Divide at Aoraki and its
+bearing, 37 degrees, a judgement from photographs), with the clear foehn gap under it over the Alps. Its underside
+takes the sky's light by day and, while the sun is still above the deck's own horizon round sunset, the orange and
+red the arch is known for. It is a shaded sheet, not a volume, and takes no haze (it is above most of the air).
+
 **Tone and exposure:**
 - tone mapping is the title screen's curve family (Khronos PBR Neutral), not ACES, which turns the sky and the lake grey-teal;
 - exposure is 1.7 (it was 1.9, which left the pale shores and the glitter path white) and opens up as the light goes,

@@ -842,5 +842,15 @@
         "note": "the walkable deck: its ends in metres east and north of the landmark's point, its top from end to end at nine even steps (the DSM along the way, fitted to a sag)"
       }
     }
-  ]
+  ],
+  "clouds": {
+    "nwarch": {
+      "edge": [
+        8900,
+        21950
+      ],
+      "bearing_deg": 37,
+      "note": "?weather=nwarch: the arch's edge, a point on it (m east and north) about 12 km south-east of the Main Divide at Aoraki, and its bearing, parallel to the Divide; a judgement from photographs of the arch from the Mackenzie"
+    }
+  }
 }
