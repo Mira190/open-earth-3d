@@ -694,7 +694,7 @@ const npcNight = require('./npc_night');
   // the landmarks then in view, at least as many are named as at the whole city, and more where any were left off;
   // a drag pans without dropping a waypoint, and the fit button shows the whole city again
   const mz = await (async () => {
-    await p.evaluate(() => { const g = window.__game; g.hold(true); if (document.getElementById('g-bigmap').hidden) g.toggleMap(); }); // (held while the map is worked by hand: the waits are real time)
+    await p.evaluate(() => { const g = window.__game; if (document.getElementById('g-bigmap').hidden) g.toggleMap(); });
     await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
     const r = await p.evaluate(() => {
       const b = document.getElementById('g-bigmap-c').getBoundingClientRect(), q = window.__game.mapPins().filter(q => q.d.kind === 'landmark');
@@ -714,7 +714,7 @@ const npcNight = require('./npc_night');
     await p.click('#g-mapzoom [data-z="fit"]');
     await p.waitForTimeout(150);
     const v3 = await p.evaluate(() => window.__game.mapView());
-    await p.evaluate(() => { document.getElementById('g-bigmap').hidden = true; window.__game.hold(false); });
+    await p.evaluate(() => { document.getElementById('g-bigmap').hidden = true; });
     return { v0, v1, v2, v3 };
   })();
   const seen = new Set(mz.v1.inView), before = mz.v0.names.filter(n => seen.has(n)).length, after = mz.v1.names.filter(n => seen.has(n)).length;
@@ -792,8 +792,7 @@ const npcNight = require('./npc_night');
   // the way (not through a building); it stays set for the helicopter and the car below
   const route = await p.evaluate(async () => {
     const g = window.__game;
-    g.hold(true); // (held while the network builds, as above)
-    try { for (let i = 0; i < 600 && !g.ways.ready; i++) await new Promise(r => setTimeout(r, 500)); } finally { g.hold(false); }
+    for (let i = 0; i < 600 && !g.ways.ready; i++) await new Promise(r => setTimeout(r, 500));
     if (!g.ways.ready) return { ready: false };
     const me = { x: g.player.x, y: g.player.y, z: g.player.z };
     const n = g.npcs.slice().sort((a, b) => Math.hypot(b.x - me.x, b.y - me.y) - Math.hypot(a.x - me.x, a.y - me.y)).find(q => g.ways.walk(me, q));

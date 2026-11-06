@@ -3692,15 +3692,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return false;
   }
   let running = true;
-  // a harness's hold (__game.hold, tools/game_check.js): the world stands still between its steps while the check
-  // waits on something that only takes time (a model loading, the route network building, the big map worked by hand),
-  // so what the check meets next doesn't depend on how long the wait took on that machine. Nothing moves while held,
-  // not even the camera or the clock (the crowd's density and the ground's detail follow them); advance() still moves it
+  // a harness's hold (__game.hold): the world stands still between its steps while it waits on something
+  // that only takes time to load (tools/game_check.js), so a slower load doesn't send the traffic down
+  // another way; advance() still moves it
   let simHold = false;
   function frame(now) {
     if (!running) return;
     if (care.lost) { last = now; requestAnimationFrame(frame); return; } // the game holds still until the picture is back
-    const dt = simHold ? 0 : Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
     last = now; clockT += dt;
     U.uTime.value = clockT;
     const titleOn = preTitle || !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || photo.on || simHold;
