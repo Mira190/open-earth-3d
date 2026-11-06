@@ -221,7 +221,7 @@ window.OEOverture = (function () {
     cut();
     function resolve() { // the shots' points, once the player is placed (an "end" anchor depends on it)
       for (const s of shots) {
-        for (const k of ['at', 'look', 'from', 'to', 'lookFrom', 'lookTo', 'via']) if (s[k]) s['_' + k] = point(s[k]);
+        for (const k of ['at', 'look', 'from', 'to', 'lookFrom', 'lookTo', 'via', 'focus']) if (s[k]) s['_' + k] = point(s[k]);
         s._guide = (s.guide || []).map(point);
       }
     }
@@ -588,8 +588,9 @@ window.OEOverture = (function () {
       if (ctx.atmos.anime && rad) ctx.atmos.anime({ k: (an.paint ?? 0.85) * w, radius: rad, grade: (an.grade ?? 1) * w, rays: (an.rays ?? 1) * w, sunVis: flareVis, sunUv: sunUv.set(on.u, on.v),
         haze: (an.haze || 0) * w, hazeD: an.haze_m, hazeC: an.haze_rgb, rim: (an.rim || 0) * w, rimC: an.rim_rgb });
       // depth of field on the guide when it is near the lens (the camera's own effect, atmosphere.js camFx), not on a weak tier
-      const gd = (hero ? hero.visible : glow && glow.visible) ? cam.position.distanceTo(gprev) : 999, fstop = s.fstop ?? 2.8;
-      if (tier !== 'low' && gd < (s.focusFar ?? 9)) {
+      // focus: on the guide when it is near the lens, or on the shot's own point (a statue), a wide aperture
+      const gd = s._focus ? cam.position.distanceTo(W(...s._focus)) : (hero ? hero.visible : glow && glow.visible) ? cam.position.distanceTo(gprev) : 999, fstop = s.fstop ?? 2.8;
+      if (tier !== 'low' && gd < (s.focusFar ?? (s._focus ? 60 : 9))) {
         const f = 0.012 / Math.tan(cam.fov * RAD / 2);
         fx = { focus: gd, aperture: f * f / (fstop * Math.max(0.05, gd - f)) / 0.024, blur: 0.25 };
       } else fx = null;
