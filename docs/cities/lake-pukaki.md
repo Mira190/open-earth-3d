@@ -349,6 +349,10 @@ centrelines:
 
 The reef gametest checks that the cars keep left and stand on the drawn ground.
 
+| SH80 below Peter's Lookout | After dark |
+|---|---|
+| ![](../images/lake-pukaki/sh80-traffic.jpg) | ![](../images/lake-pukaki/sh80-night.jpg) |
+
 ## 11. Landmark models
 
 Measured by `pipeline/pukaki_landmarks.py` (`cities/lake-pukaki/analysis/landmarks.json`: OpenStreetMap footprints and
@@ -369,7 +373,9 @@ The Hooker Bluff bridge was rebuilt in 2025-26: DOC gives the new one as 189 m l
 The bronze is less metallic than real bronze, because the viewer has no environment map and a full metal renders
 near black without one.
 
-![The landmarks in Blender](../images/lake-pukaki/model-hermitage.jpg)
+| The tahr statue by the visitor centre | The Hermitage in Blender |
+|---|---|
+| ![](../images/lake-pukaki/tahr.jpg) | ![](../images/lake-pukaki/model-hermitage.jpg) |
 
 Sources read on 2026-11-06: Scoop, "Duchess of Bedford to dedicate tahr statue" (2014); Wikipedia, *Lake Pukaki* (the
 statue on its boulder by the visitor centre); DOC, the Hooker Valley Track and its new second bridge (2026); DC
@@ -398,3 +404,9 @@ the astronomical data centres free of charge for any use, with acknowledgement; 
 
 Checked in stills: a November night shows the Clouds high in the south and the Pointers low beside the band; a June
 midnight puts the galactic core overhead.
+
+| The southern sky from Peter's Lookout, 7 November 01:30 | A nor'west arch at sunset (`?weather=nwarch`) |
+|---|---|
+| ![](../images/lake-pukaki/stars-south.jpg) | ![](../images/lake-pukaki/nwarch.jpg) |
+
+![Lupins up close](../images/lake-pukaki/lupins-close.jpg)
