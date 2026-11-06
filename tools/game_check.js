@@ -228,6 +228,27 @@ const npcNight = require('./npc_night');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // the crowd crosses a major road only at a crosswalk (its signals, a zebra or a scramble: actors.js roadEntries,
+  // tools/jaywalk_probe.js), not wherever a footway steps off the kerb
+  const jay = await p.evaluate(() => {
+    const g = window.__game, C = g.crowd.crossings;
+    let n = 0, out = 0;
+    if (!C || !C.major) return { n, out };
+    for (let k = 0; k < 8; k++) {
+      g.advance(1);
+      for (const q of g.crowd.P.slice(0, g.crowd.active)) {
+        if (q.line < 0 || q.state !== 'walk') continue;
+        n++;
+        if (!C.road(q.x, q.y) || !C.major(q.x, q.y)) continue;
+        const h = g.crowdNet.at(q.line, q.s, {}), X = C.byLine.get(q.line);
+        if (!C.across(q.x, q.y, h.hx, h.hy) || (X && X.some(c => Math.abs(c.s - q.s) < c.kerb + 2)) || C.zebra(q.x, q.y)) continue;
+        out++;
+      }
+    }
+    return { n, out };
+  });
+  check(jay.n > 0 && jay.out <= Math.max(3, 0.01 * jay.n), `the crowd crosses major roads only at crosswalks (${jay.out} of ${jay.n} walkers crossing one elsewhere, at most 1%)`);
+
   // no signal pole or walk post stands in a road's lanes (any road's drawn width, not just the one it serves: tools/pole_lanes.js)
   const poles = await p.evaluate(() => {
     const g = window.__game, H = g.junctions.heads, net = g.roadNet, HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }, out = [];
