@@ -1,7 +1,9 @@
 """Find a built city's bridges over the water again (pipeline/bridges.py), without rebuilding the scene:
 scene.json's landmarks "water_bridges", as build_scene.py finds them after the city's finalize hook. The
-banks' heights come from the game's walking ground (game.json "terrain", the DEM's land on the same 5 m
-grid), or from the DEM where it has been fetched, so the next full build gives the same decks.
+banks' heights come from the game's walking ground (game.json "terrain": the DEM's land on the same 5 m
+grid, after the city's adjust_terrain hook and refresh_terrain.py), which gives the decks the build gave.
+The raw DEM is read only for a city without a game: it is interpolated over the rivers, so a bank read
+from it a few metres off the water stands too high (一ツ橋 at 7.2 m against the built 4.3 m).
 
 Then run pipeline/landmarks.py (the bridges' meshes) and pipeline/game_extras.py (their decks in the game's
 surfaces); in the game the roads and footways over the water are laid on the decks (web/game/decks.js).
@@ -31,10 +33,11 @@ class Ctx:
 
 
 def walking_ground(C):
-    if os.path.exists(os.path.join(C.raw, "dem.tif")):
+    path = os.path.join(C.out, "game.json")
+    if not os.path.exists(path):
         from build_scene import load_dem
         return load_dem(C)
-    t = json.load(open(os.path.join(C.out, "game.json"), encoding="utf8"))["terrain"]
+    t = json.load(open(path, encoding="utf8"))["terrain"]
     assert t["cell"] == DEM_CELL
     return np.frombuffer(base64.b64decode(t["data"]), "<i2").reshape(t["ny"], t["nx"]).astype(np.float32) * t["scale"]
 
