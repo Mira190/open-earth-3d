@@ -1594,7 +1594,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // in view (one it can't pass for the traffic coming the other way), or, up to 250 m ahead on its way, a
     // road where a car has stood longer than a red light lasts (40 s) or a junction a car has stood in for
     // 20 s. It looks for another way from where it is, round those roads, and takes it if it is no more
-    // than 300 m longer (on the trip, 300 m or half as far again), as a driver with a map app does; on the
+    // than 300 m longer (on the trip, with you in it, 150 m or a quarter as far again: a long way round with the meter running reads as a detour), as a driver with a map app does; on the
     // trip the driver says so. Not while it is in a junction (its way across is held), and every 8 s at most
     if ((o.phase === 'coming' || o.phase === 'driving') && !st.mv && clockT - (o.rerouteT || 0) > 8 && o.drv.opts && clockT - (o.jamLook || 0) > 1
       && Math.abs(st.lat - (st.lane ?? OECars.LANE)) < 0.2 && Math.abs(st.shift) < 0.1 && !st.backoff) { // (settled in its lane: the new way starts from the lane, not the kerb or a swing out round a car)
@@ -1611,7 +1611,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         // picked, against the time left and a red light's wait for the jam: a way 100 m round that met a scramble's
         // red made Shibuya's taxi 57 s, #243)
         const sooner = o.phase !== 'coming' || !rt || planOn(rt, Object.assign({}, pl, { v: st.v }), o.pickup).T < o.drv.timeLeft() + SCR_WAIT * (o.scr || []).filter(q => q > st.s + 2).length + 12;
-        if (rt && sooner && rt.len < left + (o.phase === 'driving' ? Math.max(300, left * 0.5) : 300) && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
+        if (rt && sooner && rt.len < left + (o.phase === 'driving' ? Math.max(150, left * 0.25) : 300) && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
           const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: st.v });
           o.drv.leave();
           o.drv = OECars.chauffeur(o.C, rt, opts);
