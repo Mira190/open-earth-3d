@@ -439,7 +439,17 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   function showMenu() {
     app.classList.add('menu');
     menuShownAt = clock();
-    if (sel < 0 && !narrow()) after(1600, () => { if (sel < 0 && state === 'menu' && performance.now() - lastInput > 1500) select(0, false, true); });
+    autoPick();
+  }
+  // left alone on the menu, the first destination's card comes up. The opening shows the menu while
+  // its pull-back is still running (state 'open'), so this waits for the menu proper before it picks.
+  function autoPick() {
+    if (sel >= 0 || narrow()) return;
+    after(1600, () => {
+      if (sel >= 0 || !running) return;
+      if (state === 'open') { autoPick(); return; }
+      if (state === 'menu' && performance.now() - lastInput > 1500) select(0, false, true);
+    });
   }
   let menuShownAt = 0;
 
@@ -491,7 +501,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       : d.sites ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
       : `<div class="ts-actions">${d.c.game ? '<button class="ts-btn primary" data-go="play">Play <kbd>P</kbd></button>' : ''}<button class="ts-btn" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>`;
     card.innerHTML = `<div><span class="eb">${d.country} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${d.name}${d.native ? `<small lang="${lang(d)}">${d.native}</small>` : ''}</h2></div>
-      <p class="sum">${d.meta && d.meta.summary ? d.meta.summary : d.sites ? 'Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.' : (d.c.summary || '')}</p>
+      <p class="sum">${d.meta && d.meta.summary ? d.meta.summary : d.sites ? `${d.sites.length} maps: ${d.sites.map(c => c.name).join(', ')}.` : (d.c.summary || '')}</p>
       <dl class="ts-stats">${stats}<div><dt>Local time</dt><dd data-k="time"></dd></div><div><dt>Sun</dt><dd data-k="sun"></dd></div></dl>
       ${prog ? `<span class="ts-prog">${prog}</span>` : ''}${actions}`;
     fillStats(d);
