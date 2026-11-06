@@ -455,6 +455,14 @@ workflow writes it with the commit and the build time to `web/version.json`, tag
 `v0.1.42`, and the title screen shows it at the bottom right and under About. A local checkout
 has no `version.json` and says "Local build". Raise `VERSION` for a new major or minor release.
 
+## Visitors and service levels
+
+`web/telemetry.js` counts visitors, views, play time, load times, frame rate, errors and lost WebGL
+contexts, and sends them to PostHog (EU Cloud). It uses no cookies and honours Do Not Track and Global
+Privacy Control. `tools/slo_report.py` turns the log into a visitor and SLO report.
+[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) defines each event and SLO target and shows how to send
+the events to PostHog or to a self-hosted collector.
+
 ## Add a city
 
 1. Create `cities/<id>/city.json`. It holds:
