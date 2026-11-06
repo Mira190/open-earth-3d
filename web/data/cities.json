@@ -17,11 +17,13 @@
    4.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 7087461,
-   "game": 10878054
+   "model": 4427946,
+   "game": 5330902
   }
  },
  {
@@ -41,11 +43,13 @@
    4.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 5570932,
-   "game": 8849219
+   "model": 2275975,
+   "game": 2707986
   }
  },
  {
@@ -69,11 +73,13 @@
    5.0
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 19430412,
-   "game": 22440605
+   "model": 6864525,
+   "game": 7246803
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -103,11 +109,13 @@
    1.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 5078865,
-   "game": 5626953
+   "model": 1551539,
+   "game": 1670025
   }
  },
  {
@@ -131,11 +139,13 @@
    1.3
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 2850805,
-   "game": 3290656
+   "model": 1108228,
+   "game": 1203662
   }
  },
  {
@@ -159,11 +169,13 @@
    2.6
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 4101642,
-   "game": 4778742
+   "model": 1183197,
+   "game": 1321684
   }
  },
  {
@@ -186,11 +198,13 @@
    4.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 11241826,
-   "game": 14693704
+   "model": 2499934,
+   "game": 2976226
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -781,11 +795,13 @@
    4.0
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 8957686,
-   "game": 12517056
+   "model": 4994484,
+   "game": 5544724
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1362,11 +1378,13 @@
    3.1
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 7725369,
-   "game": 10589419
+   "model": 3219206,
+   "game": 3662517
   },
   "group_meta": {
    "native": "\u6771\u4eac",

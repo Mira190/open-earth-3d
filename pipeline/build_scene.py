@@ -1582,9 +1582,9 @@ def build(C):
         print(f"  {f}: {os.path.getsize(os.path.join(C.out, f)) / 1e6:.2f} MB")
 
 
-def _pack_stale(city):
+def _pack_stale(city, name="buildings.json"):
     from pack import stale
-    return stale(city)
+    return stale(city, name)
 
 
 def write_index():
@@ -1615,11 +1615,13 @@ def write_index():
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
         if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
             size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
-            # the buildings packed (pipeline/pack.py, issue 148) when the pack is there and up to date
-            packed = os.path.exists(os.path.join(data, "buildings.bin")) and not _pack_stale(c["id"])
-            c["packed"] = ["buildings"] if packed else []
-            model = size(["scene.json", "buildings.bin" if packed else "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
-            c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
+            # the buildings, landmarks and game packed (pipeline/pack.py, issues 148 and 201) where the pack is
+            # there and up to date
+            c["packed"] = [n for n in ("buildings", "landmarks", "game")
+                           if os.path.exists(os.path.join(data, n + ".bin")) and os.path.exists(os.path.join(data, n + ".json")) and not _pack_stale(c["id"], n + ".json")]
+            f = lambda n: n + (".bin" if n in c["packed"] else ".json")
+            model = size(["scene.json", f("buildings"), "places.json", f("landmarks"), "terrain.json", "uncertainty.json"])
+            c["load_bytes"] = {"model": model, "game": model + size([f("game")])}
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
             c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
