@@ -677,6 +677,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
   }
   const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }), vopts);
+  // skipping a crossing runs the boats 8 times as fast, and waiting for one 25 times; on a long leg (Queenstown's
+  // Earnslaw, 12.5 km to Walter Peak past the frame) fast enough that the crossing passes in about 40 s and the
+  // longest wait for her in about a minute
+  const LONG_LEG = Math.max(0, ...(G.ferries || []).flatMap(f => f.legs.map(l => l.length_m || 0))), FERRY_V = G.ferry_speed_ms || 9;
+  const FERRY_SKIP = Math.max(8, LONG_LEG / (FERRY_V * 40)), FERRY_WAIT = Math.max(25, 2 * LONG_LEG / (FERRY_V * 60));
   const wharfById = id => G.wharves.find(w => w.id === id);
   // where you stand to board at each wharf: by its terminal, or the nearest place on foot to it where
   // the terminal is mapped out on the water
@@ -3285,7 +3290,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const way = guide.pts && gold.ahead(); // the gold route still to go, as on the minimap and in the world
     if (way && way.length > 1) {
       g.save(); g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--sun') || '#ffc23d'; g.lineWidth = 3.5 * dpr; g.lineJoin = g.lineCap = 'round';
-      g.beginPath(); way.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.restore();
+      g.beginPath(); let pen = false; for (const p of way) { if (!p) { pen = false; continue; } const [x, y] = P2(p[0], p[1]); if (pen) g.lineTo(x, y); else g.moveTo(x, y); pen = true; } g.stroke(); g.restore(); // (a null: the break at a lift)
     }
     g.save(); g.scale(dpr, dpr);
     bigPins = [];
@@ -3527,6 +3532,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function spawn(pos, zRef) { // at ground level (or on steps built on it) unless a height is given
     const at = pos || G.start.at;
+    if (!pos && zRef == null && G.start.z != null) zRef = G.start.z; // a start on a floor over the ground (game.start.z: Queenstown's deck)
     padCheck = 0; // a fresh start: the helicopter is brought to the pad near it at the next look, not half a second on
     let z0 = Math.max(0, nav.terrain(at[0], at[1]));
     for (const st of nav.strips) { const h = st.drape ? nav.stripHeight(st, at[0], at[1]) : null; if (h != null && h > z0) z0 = h; }
@@ -3540,8 +3546,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (let d = 0.5; d <= 4 && f; d += 0.5) { const w = nav.walk(x + Math.sin(h) * d, y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
       return !!f;
     };
-    const ok = (x, y) => !npcs.some(n => Math.hypot(n.x - x, n.y - y) < 1.4), okStart = (x, y) => ok(x, y) && (pos || ahead(x, y));
-    const p = nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok: okStart, room: 100 }) || nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok });
+    const ok = (x, y) => !npcs.some(n => Math.hypot(n.x - x, n.y - y) < 1.4), okStart = (x, y) => ok(x, y) && (pos || G.start.z != null || ahead(x, y)); // (a deck's start faces out over its balustrade)
+    const p = nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok: okStart, room: !pos && G.start.z != null ? 0 : 100 }) || nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok });
     player.x = p ? p.x : at[0]; player.y = p ? p.y : at[1]; player.z = p ? p.z : z0;
     player.vz = 0; player.ground = true;
     player.h = Math.atan2(fa[0] - player.x, fa[1] - player.y);
@@ -3852,7 +3858,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const wantTo = waitFerry && rideTarget(waitFerry);
     const here = waitFerry && fer.vessels.find(q => fer.stopOf(q) === waitFerry && (!wantTo || q.stops.includes(wantTo)));
     if (here) { waitFerry = null; H.toast(`${here.name} is alongside. <kbd>E</kbd> to board.`); }
-    fer.update(dt, skip && player.mode === 'ferry' ? 8 : 1, clockT, waitFerry ? 25 : 1);
+    fer.update(dt, skip && player.mode === 'ferry' ? FERRY_SKIP : 1, clockT, waitFerry ? FERRY_WAIT : 1);
     if (rail) {
       rail.update(dt, clockT, [player.mode === 'foot' ? player : null, ...npcs], player.mode === 'rail' && skip);
       for (const ev of rail.events.splice(0)) {
