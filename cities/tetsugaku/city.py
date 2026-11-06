@@ -509,36 +509,34 @@ def ginkaku(K, hidden):
 
 # ---------------------------------------------------------------- Honen-in's thatched gate
 
-def thatch_gable(K, P, hu, hv, z_eave, z_ridge, ov_u, ov_v, thick=0.65):
-    """A thatched gable roof (茅葺の切妻): its ridge along v, straight slopes front and back, as thick as a
-    bundle of miscanthus (`thick`), cut square at the eaves and the verges; moss in the lower courses and a
-    ridge of cedar bark held down by its battens."""
+def thatch_hip(K, P, hu, hv, z_eave, z_ridge, ov_u, ov_v, thick=0.65):
+    """A hipped thatched roof (茅葺の寄棟): its short ridge along v, the slopes front, back and at both ends as
+    thick as a bundle of miscanthus (`thick`), cut square at the eaves all round; moss in the lower courses and
+    a boxed ridge (箱棟) of cedar bark held down by its battens (#258, as photographs of Honen-in's gate show
+    it; it had been drawn as a gable)."""
     Eu, Ev = hu + ov_u, hv + ov_v
-    zt = lambda u: z_ridge - (z_ridge - z_eave) * abs(u) / Eu
-    us = np.linspace(-Eu, Eu, 13)
-    vs = np.linspace(-Ev, Ev, 7)
-    K["thatch"].grid([[P(u, v, zt(u)) for v in vs] for u in us])
-    K["thatch_under"].grid([[P(u, v, zt(u) - thick) for v in vs[::-1]] for u in us])
-    for su in (-1, 1):  # the eaves' cut face, and the moss on the lowest course
-        u = su * Eu
-        a, b = (P(u, -Ev, zt(u) - thick), P(u, Ev, zt(u) - thick)) if su > 0 else (P(u, Ev, zt(u) - thick), P(u, -Ev, zt(u) - thick))
-        c, d = (P(u, Ev, zt(u)), P(u, -Ev, zt(u))) if su > 0 else (P(u, -Ev, zt(u)), P(u, Ev, zt(u)))
-        K["thatch_under"].quad(a, b, c, d)
+    Rv = max(0.6, Ev - 0.95 * Eu)            # the ridge's half length: the end slopes as steep as the front
+    def zt(u, v):
+        return z_ridge - (z_ridge - z_eave) * max(abs(u) / Eu, max(0.0, abs(v) - Rv) / (Ev - Rv))
+    us = np.linspace(-Eu, Eu, 15)
+    vs = np.unique(np.concatenate([np.linspace(-Ev, Ev, 15), [-Rv, Rv]]))
+    K["thatch"].grid([[P(u, v, zt(u, v)) for v in vs] for u in us])
+    K["thatch_under"].grid([[P(u, v, zt(u, v) - thick) for v in vs[::-1]] for u in us])
+    ring = [(u, -Ev) for u in us] + [(Eu, v) for v in vs[1:]] + [(u, Ev) for u in us[::-1][1:]] + [(-Eu, v) for v in vs[::-1][1:]]
+    for (u0, v0), (u1, v1) in zip(ring, ring[1:]):    # the eaves' cut face all round
+        K["thatch_under"].quad(P(u0, v0, zt(u0, v0) - thick), P(u1, v1, zt(u1, v1) - thick), P(u1, v1, zt(u1, v1)), P(u0, v0, zt(u0, v0)))
+    for su in (-1, 1):  # moss on the lowest course, front and back
         um = su * (Eu - 0.7)
-        K["moss"].grid([[P(uu, v, zt(uu) + 0.02) for v in vs] for uu in sorted((um, u))])
-    for sv in (-1, 1):  # the verges
-        v = sv * Ev
-        for a, b in zip(us, us[1:]):
-            q = [P(a, v, zt(a) - thick), P(b, v, zt(b) - thick), P(b, v, zt(b)), P(a, v, zt(a))]
-            K["thatch_under"].quad(*(q if sv < 0 else q[::-1]))
-    # the ridge: a bundle of bark on top, its battens across it
-    K["thatch_ridge"].box(P(0, -Ev - 0.15, z_ridge + 0.15), P(0, Ev + 0.15, z_ridge + 0.15), 1.1, 0.45)
-    for v in np.linspace(-Ev + 0.3, Ev - 0.3, 7):
-        K["timber_dark"].box(P(-0.6, v, z_ridge + 0.05), P(0.6, v, z_ridge + 0.05), 0.09, 0.42)
+        K["moss"].grid([[P(uu, v, zt(uu, v) + 0.02) for v in np.linspace(-Ev + 0.8, Ev - 0.8, 7)] for uu in sorted((um, su * Eu))])
+    # the boxed ridge: a bundle of bark on top, a lattice of battens across it
+    K["thatch_ridge"].box(P(0, -Rv - 0.25, z_ridge + 0.2), P(0, Rv + 0.25, z_ridge + 0.2), 1.0, 0.55)
+    for v in np.linspace(-Rv - 0.1, Rv + 0.1, 6):
+        K["timber_dark"].box(P(-0.55, v, z_ridge + 0.32), P(0.55, v, z_ridge + 0.32), 0.08, 0.5)
+    K["timber_dark"].box(P(0, -Rv - 0.3, z_ridge + 0.5), P(0, Rv + 0.3, z_ridge + 0.5), 0.5, 0.12)
 
 
 def honen_gate(K, hidden):
-    """法然院の山門: a small gate of bare timber under a deep thatched gable, on the stone steps up from the
+    """法然院の山門: a small gate of bare timber under a deep hipped roof of thatch, on the stone steps up from the
     lane: two main posts and two behind, tie beams and a lintel, the leaves of its door open; its roof
     green with moss in the shade of the trees, as photographs show it."""
     C, T, S, _ = ctx()
@@ -565,7 +563,7 @@ def honen_gate(K, hidden):
         block(K["timber"], P, 0.25 - 1.15, 0.25, sv * (hv - 0.5) - 0.04, sv * (hv - 0.5) + 0.04, zb + 0.1, zt - 0.5)
     for v in (-hv + 0.3, hv - 0.3):                                                    # the bracket blocks
         block(K["bracket"], P, -hu + 0.1, 0.55, v - 0.2, v + 0.2, zt, zt + 0.3)
-    thatch_gable(K, P, hu - 0.3, hv, zt + 0.55, z0 + HONEN_GATE[1], ov_u=1.25, ov_v=0.8, thick=0.62)
+    thatch_hip(K, P, hu - 0.3, hv, zt + 0.15, z0 + HONEN_GATE[1], ov_u=1.25, ov_v=1.0, thick=0.62)
     hidden.append(sd["si"])
 
 
