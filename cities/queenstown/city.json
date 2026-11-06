@@ -320,8 +320,8 @@
     "blurb": "Walk Queenstown's lakefront under the real sun. Sail on the steamer Earnslaw, ride the Skyline Gondola up Bob's Peak, and watch the Remarkables turn pink at dusk.",
     "start": {
       "at": [
-        -978.8,
-        474.9
+        -992.0,
+        464.0
       ],
       "facing": [
         150,
@@ -457,8 +457,8 @@
         "id": "bobs-peak",
         "name": "Bob's Peak",
         "at": [
-          -975.0,
-          478.1
+          -1048,
+          452
         ]
       },
       {
@@ -484,8 +484,8 @@
         "name": "Aroha",
         "role": "Bob's Peak guide",
         "at": [
-          -973.1,
-          479.7
+          -986.0,
+          465.0
         ],
         "look": {
           "character": "R_Female_Adult_08",
@@ -547,8 +547,8 @@
         "name": "Hemi",
         "role": "Bob's Peak regular",
         "at": [
-          -967.4,
-          484.6
+          -1056.0,
+          446.0
         ],
         "look": {
           "character": "R_Male_Adult_03",
@@ -619,7 +619,7 @@
           "hill",
           "air"
         ],
-        "on_open": "<b>The lake, the hill and the air.</b> Go back up to Aroha on the Skyline deck."
+        "on_open": "<b>The lake, the hill and the air.</b> Go back up to Aroha on the luge track."
       }
     ],
     "quests": [
@@ -631,12 +631,12 @@
         "stamp": "Queenstown Bay",
         "talk": [
           "Kia ora, welcome to Queenstown! I'm Aroha. This is the view everyone comes for: the town, the bay, the Gardens, and the Remarkables across the lake. It's {season}, and it looks good {now}.",
-          "Three ways to know it, any order. The hill: Hemi, along the deck, knows when the light is best. The lake: Callum, at Steamer Wharf, can get you on the Earnslaw. The air: Sophie keeps a helicopter on the flat above the luge.",
+          "Three ways to know it, any order. The hill: Hemi, along the hillside, knows when the light is best. The lake: Callum, at Steamer Wharf, can get you on the Earnslaw. The air: Sophie keeps a helicopter on the flat above the luge.",
           "The gondola takes you down to Brecon Street. WASD to walk, E to talk, T to switch walks. Which first?"
         ],
         "choices": [
           {
-            "text": "The hill: Hemi, along the deck",
+            "text": "The hill: Hemi, along the hillside",
             "action": "track",
             "line": "hill"
           },
@@ -727,7 +727,7 @@
         "stamp": "Bob's Peak",
         "talk": [
           "Kia ora. Look across the lake: that's the Remarkables, and Cecil and Walter Peaks down to the right.",
-          "Sun goes down at {sunset} today. Stay on the deck till then and watch the range turn pink. The town's lights come on under you.",
+          "Sun goes down at {sunset} today. Stay up here till then and watch the range turn pink. The town's lights come on under you.",
           "Then take the gondola down. Mei at the bottom station will tell you about the ride."
         ],
         "choices": [
@@ -743,8 +743,8 @@
           {
             "type": "visit",
             "at": [
-              -975.0,
-              478.1
+              -1048,
+              452
             ],
             "radius": 30,
             "after_dark": true,
@@ -813,7 +813,7 @@
         "steps": []
       }
     ],
-    "start_note": "On the Skyline deck on Bob's Peak, where Queenstown's best-known photograph is taken: the town, Queenstown Bay, the Gardens peninsula, the Kelvin Peninsula and the Remarkables over the lake.",
+    "start_note": "On the luge track on Bob's Peak, under the Skyline restaurant's viewing deck and the gondola's big portal, where Queenstown's best-known photograph is taken: the town, Queenstown Bay, the Gardens peninsula, the Kelvin Peninsula and the Remarkables over the lake.",
     "look": {
       "grade": {
         "blue": {

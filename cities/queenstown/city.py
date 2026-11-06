@@ -289,7 +289,7 @@ def game_surfaces(scene):
     return [{"name": "Skyline deck", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
              "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)], "half_width": DECK["depth"] / 2,
              "profile": [[-L / 2, round(z, 2)], [L / 2, round(z, 2)]], "thickness": 0.25, "mesh": "skyline_deck",
-             "drape": True, "fly_under": False, "label": "the Skyline deck"}]
+             "drape": False, "fly_under": False, "label": "the Skyline deck"}]
 
 
 def finalize(ctx):

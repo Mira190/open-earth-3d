@@ -8,17 +8,17 @@
 > lake's surface (309.2 m above the sea). Every number here comes from the scripts in
 > `analysis/` with `--city queenstown`, and their outputs are in `cities/queenstown/analysis/`.
 
-| Blue hour from the Skyline deck (the game's start) | The same view from above, as in the reference photograph |
+| Blue hour from Bob's Peak | The same view from above, as in the reference photograph |
 |---|---|
 | ![](../images/queenstown/game-start-blue.jpg) | ![](../images/queenstown/ref1-blue-hour.jpg) |
-| **Day from the deck** | **The bay from the Fernhill side** |
+| **Day from Bob's Peak** | **The bay from the Fernhill side** |
 | ![](../images/queenstown/game-start-day.jpg) | ![](../images/queenstown/ref2-fernhill.jpg) |
 | **The TSS Earnslaw at Steamer Wharf** | **Night from Bob's Peak** |
 | ![](../images/queenstown/game-earnslaw.jpg) | ![](../images/queenstown/night.jpg) |
 | **The Skyline Gondola and its towers** | **The Earnslaw (Blender)** |
 | ![](../images/queenstown/gondola.jpg) | ![](../images/vehicles/ferry_steamer.jpg) |
 
-Phone (390 × 844), from the start on the deck: day, dusk, night.
+Phone (390 × 844), from the game's start on the luge track under the gondola's big portal: day, dusk, night.
 
 | Day | Dusk | Night |
 |---|---|---|
@@ -33,16 +33,18 @@ amber under the snow on the Remarkables, and a clear day over Queenstown Bay fro
 side. The first is the place the town is best known for. It is where the game starts, and it is
 the model viewer's opening shot. The second is the tour's second stop. Matched to them:
 
-- **The start** is on the Skyline viewing deck on Bob's Peak, facing south-east over the town,
-  the bay, the Gardens peninsula and the Kelvin Peninsula to the Remarkables. The deck is a
-  landmark (`cities/queenstown/city.py`, `DECK`): timber boards on a steel frame with a glass
-  balustrade. The game walks it as a strip. Its place and level are measured. LINZ's 2026 aerial
+- **The start** is on the luge track under the Skyline restaurant's viewing deck on Bob's Peak,
+  beside the gondola's big portal, facing south-east over the town, the bay, the Gardens peninsula and the Kelvin
+  Peninsula to the Remarkables. The deck is a landmark (`cities/queenstown/city.py`, `DECK`):
+  timber boards on a steel frame with a glass balustrade. The game walks it as a strip. Its place and level are measured. LINZ's 2026 aerial
   photographs show the crowd at its balustrade along the restaurant's south-east face. The 2021
   LiDAR surface model shows a strip 3–4 m deep and about 26 m long at 474.6 m, 17 m over the luge
   track and 4.8 m under the restaurant's roof. The model draws it 26 × 3.6 m. Skyline opened an
   extension in March 2026 that takes the deck from 68 to 430 m² (Otago Daily Times, 2026). The
   photographs were flown before it opened, and its plans are not published, so the larger deck is
-  a follow-up.
+  a follow-up. The real deck is reached through the restaurant, which the game does not model, so
+  the game starts on the luge track below it, where a taxi can come up Skyline Road. Until
+  then this was a deck drawn on the open hillside there; the photographs show none.
 - **The lake** is a saturated blue with turquoise over the shallows (`water.colour`,
   `shallow_colour`, `scatter`).
 - **The air** is clear: `far.clarity` 2.2 stretches every haze distance (the fog and the far
@@ -92,6 +94,21 @@ Nothing was taken from either but that idea.
   (`massing.json`).
 
 ## 3. The landmarks
+
+| **Eichardt's, day** | **Eichardt's, night** | **St Peter's at dusk, the lych-gate on the left** |
+|---|---|---|
+| ![](../images/queenstown/eichardts-day.jpg) | ![](../images/queenstown/eichardts-night.jpg) | ![](../images/queenstown/st-peters-dusk.jpg) |
+| **Williams Cottage** | **Steamer Wharf at dusk** | **From the Skyline deck** |
+| ![](../images/queenstown/williams-cottage-day.jpg) | ![](../images/queenstown/steamer-wharf-dusk.jpg) | ![](../images/queenstown/skyline-deck.jpg) |
+| **The gondola from the lake, night** | **Phone: Eichardt's, St Peter's, Steamer Wharf** | |
+| ![](../images/queenstown/gondola-night.jpg) | ![](../images/queenstown/phone-eichardts.jpg) ![](../images/queenstown/phone-st-peters.jpg) ![](../images/queenstown/phone-steamer-wharf.jpg) | |
+
+The towers in LINZ's 2026 aerial photograph (CC BY 4.0), along the line (s, metres) and across it
+(d): on the left, the big portal over the luge, its legs' shadows falling across the line; on the
+right, the mast at 381.5 m, its white plinth at the foot of the shadow and its head displaced
+downhill.
+
+![](../images/queenstown/gondola-towers-aerial.jpg)
 
 - **The Skyline Gondola.** Doppelmayr's 10-MGD D-Line opened on 29 June 2023: 35 ten-seat CWA
   Omega V cabins, 5 m/s, 760 m inclined and 438 m up (Doppelmayr's release, June 2023;
@@ -188,9 +205,9 @@ for the shadows and the analyses (landmarks.json `hidden`).
 
 ## 4. Queenstown on Foot
 
-You start on the Skyline deck. Aroha welcomes you, and there are three walks, in any order:
+You start on the luge track on Bob's Peak, under the gondola's big portal. Aroha welcomes you, and there are three walks, in any order:
 
-- **The hill.** Hemi, further along the deck, keeps you there until the Remarkables turn pink
+- **The hill.** Hemi, further along the hillside, keeps you there until the Remarkables turn pink
   ("Wait here till dusk" sets the time). Then you ride the gondola down to Mei at Brecon Street,
   and back up.
 - **The lake.** Callum, at Steamer Wharf, puts you on the Earnslaw across Frankton Arm to the
@@ -210,24 +227,56 @@ told as the giant's breathing); William Rees's woolshed, which became Eichardt's
 built in Dunedin, carried in pieces by rail to Kingston and launched there in 1912, burning about
 1.5 t of coal a return trip (RealNZ).
 
-## 5. Checks
+## 5. The woods' cost
+
+The canopy model plants 152,829 trees, most of them in the woods on Bob's Peak and Ben Lomond's
+lower slopes. That is about ten times any other city. `tools/woods_probe.js` measured them on
+llvmpipe at 1440 × 900, standing at four spots:
+
+| Spot | High | Medium, before | Medium, now | Low |
+|---|---|---|---|---|
+| By the top station (-1046, 450) | 4.12 M | 4.12 M | 2.48 M | 0.77 M |
+| Halfway up the line (-700, 380) | 2.53 M | 2.53 M | 1.75 M | 0.58 M |
+| Brecon Street (-460, 290) | 1.32 M | 1.32 M | — | 0.34 M |
+| Eichardt's (-100, -200) | 0.28 M | 0.28 M | — | 0.07 M |
+
+The figures are the tree triangles drawn in a frame. The trees add 44 to 70 draw calls (692
+against 648 by the top station on high). On llvmpipe they took a frame from about 3.0 to 5.0 s
+there on high. llvmpipe's frame times jump about between runs, so the triangles are the figure to
+compare.
+
+Most of the triangles are the woods' far ring: about 32,000 far crowns, each with its trunk, past
+200 m. The medium tier drew exactly what the high tier drew. Now the tier sets the share of a
+wood's far crowns it draws (`OEQuality.city().woods`, `web/trees.js` `farKeep`): all of them on
+high, half on medium. Low already keeps a third of the woods' trees and draws them nearer. The
+photograph's canopy under the woods (`woodsFloor`) carries the hillside where the crowns thin. The
+change applies to every city's woods; Queenstown's are where it counts.
+
+## 6. Checks
 
 - Heights: 3,831 of 4,117 solids are measured by the LiDAR, and 240 are estimated from their
   neighbours. These are mostly buildings that went up after the March 2021 flight: 119 footprints
   have no roof in the surface model (`analysis/lidar_heights.json`).
 - `tools/game_check.js queenstown`: walk, talk, the helicopter, the Earnslaw, the car, a taxi and
   a ride, the junctions, rain, and a lost WebGL context.
-- Stills: desktop 1440 × 900 and phone 390 × 844, day, dusk and night, on llvmpipe at the
+- Stills of each landmark at street level, of the gondola from the lake and from the deck, and of
+  the start: desktop 1440 × 900 and phone 390 × 844, day, dusk and night, on llvmpipe at the
   desktop tier.
 - Not checked: a real GPU, WebGPU, Safari or iOS.
 
-## 6. Limitations and follow-ups
+## 7. Limitations and follow-ups
 
-- Eichardt's, St Peter's, Williams Cottage and the Steamer Wharf building are not yet modelled
-  from their heritage listings.
-- The gondola has the 6 towers OpenStreetMap maps, not Doppelmayr's 10. The cabins' colours are
-  a guess.
-- The deck's place and size are indicative, not surveyed.
-- 153,000 trees are planted from the canopy model, most of them on Bob's Peak and Ben Lomond's
-  lower slopes. That is many more than any other city. A small device keeps a third of them, and
-  only those near the camera are drawn.
+- **The deck.** The 430 m² deck Skyline opened in March 2026 is not drawn. Its plans are not
+  published, and the photographs predate it. The real deck is reached through the restaurant, so
+  the game starts on the luge track below it and does not reach it.
+- **The gondola's towers.** Doppelmayr give 10; the photographs show six structures. Which frames
+  Doppelmayr count as separate towers is unconfirmed.
+- **The heritage landmarks.**
+  - Eichardt's Moorish arch is drawn although no photograph since 2001 shows it.
+  - St Peter's lych-gate stands where the LiDAR shows a roof over the path; its place is not in a
+    listing.
+  - Neither church nor cottage has its interior.
+- **The Earnslaw's real run** is to Walter Peak, about 13 km across the lake, past the frame.
+  Far land (`pipeline/far_land.py`) is only a height grid seen through haze. The game's water,
+  its ferry routes and its wharves stop at the frame, so a landing there needs the game to sail
+  and walk past the frame.

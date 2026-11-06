@@ -47,7 +47,7 @@ MATERIALS = {
     "eich_green": {"color": "#26372d", "roughness": 0.5, "metalness": 0.35},
     "eich_iron": {"color": "#2a3a30", "roughness": 0.5, "metalness": 0.5, "pattern": "railing", "bar_m": 0.12, "rails_m": [0.08, 0.95]},
     "eich_roof": {"color": "#6d7174", "roughness": 0.55, "metalness": 0.45, "pattern": "roof_tiles", "bay_m": 0.076, "course_m": 2.4},
-    "eich_window": {"color": "#141a1c", "roughness": 0.1, "metalness": 0.3, "emissive": "#ffc98a", "glow": 0.55},
+    "eich_window": {"color": "#141a1c", "roughness": 0.1, "metalness": 0.3, "emissive": "#ffc98a", "glow": 0.32},
     # St Peter's: greywacke rubble, freestone dressings, slate; the lancets' leaded glass glows after dark
     "stp_greywacke": {"color": "#68706f", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.24, "block_m": 0.5,
                       "emissive": "#ffe2bc", "glow": 0.22, "flood": [0.0, 9.0, 0.35, 0.5]},
