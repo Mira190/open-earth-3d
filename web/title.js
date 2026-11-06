@@ -148,7 +148,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   };
   for (const d of dests) { d.mark = mk(d, 'live'); d.mark.onclick = () => select(dests.indexOf(d), true); d.mark.onpointerenter = () => hover(dests.indexOf(d)); }
   const plannedMarks = planned.map(c => ({ c, el: mk(c, 'plan'), p: E.ll(c.lat, c.lon) }));
-  for (const m of plannedMarks) m.el.onclick = () => { $('globe-notice').textContent = `${m.c.name} is next in line. Open data to start from: ${m.c.data || 'to be surveyed'}`; $('globe-notice').hidden = false; };
+  for (const m of plannedMarks) m.el.onclick = () => { $('globe-notice').textContent = `${m.c.name}, coming soon. ${(m.c.guide && m.c.guide.line) || ''}`.trim(); $('globe-notice').hidden = false; };
 
   // ------------------------------------------------------------ the camera
   const pose = { pos: new V3(0, 0, 6), look: new V3(), up: new V3(0, 1, 0), fov: 30 };
@@ -473,27 +473,27 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   }
   function showCard(d) {
     const p = progress(d);
-    const km = d.c.extent_km ? `${d.c.extent_km[0]} × ${d.c.extent_km[1]}<small>km</small>` : '';
-    // a group's span: the great-circle distance between its two furthest sites
     const metro = d.meta && d.meta.kind === 'metro';
     // a city of a few districts, without a map of its own (Melbourne: the centre and the bayside)
     const city = d.meta && d.meta.kind === 'city';
-    let spanKm = 0;
-    if (d.sites) for (const a of d.sites) for (const b of d.sites) spanKm = Math.max(spanKm, E.ll(a.lat, a.lon).angleTo(E.ll(b.lat, b.lon)) * 6371);
+    // a travel guide's card, as a game's location card reads: a line that sells the place, the sights
+    // to see, a local custom and the best hour to come (cities/guide.json), not the data behind the model
+    const g = (d.meta && d.meta.guide) || (!d.sites && d.c.guide) || {};
+    const best = g.best ? `<div><dt>Best at</dt><dd class="best">${escH(g.best[0])}<small>${escH(g.best[1] || '')}</small></dd></div>` : '';
     const stats = metro
-      ? `<div><dt>Maps</dt><dd>${d.sites.length}<small>of ${d.meta.districts.length} districts</small></dd></div><div><dt>Buildings</dt><dd>${fmtN(d.sites.reduce((a, c) => a + (c.buildings || 0), 0))}</dd></div>`
-      : city
-      ? `<div><dt>Buildings</dt><dd>${fmtN(d.sites.reduce((a, c) => a + (c.buildings || 0), 0))}</dd></div><div><dt>Districts</dt><dd>${d.sites.length}</dd></div>`
-      : d.sites
-      ? `<div><dt>Sites</dt><dd>${d.sites.length}</dd></div><div><dt>From end to end</dt><dd>${fmtN(Math.round(spanKm / 10) * 10)}<small>km</small></dd></div>`
-      : `<div><dt>Buildings</dt><dd>${fmtN(d.c.buildings || 0)}</dd></div><div><dt>Model</dt><dd>${km}</dd></div>`;
+      ? `<div><dt>Districts</dt><dd>${d.sites.length}<small>of ${d.meta.districts.length} open</small></dd></div>${best}`
+      : best;
     const prog = p.stamps ? `${p.stamps} stamp${p.stamps > 1 ? 's' : ''} in your passport` : p.visited ? 'Visited' : '';
+    const hook = c => escH((c.guide && c.guide.hook) || c.tagline || '');
     const actions = metro ? metroHTML(d)
-      : city ? `<ul class="ts-sites ts-districts">${d.sites.map(c => `<li><button data-site="${c.id}" aria-label="${c.district || c.name}: explore in 3D"><b>${c.district || c.name}</b><small>${c.tagline || ''}</small></button>${c.game ? `<button class="ts-dplay" data-site="${c.id}" data-go="play" aria-label="Play ${c.district || c.name}">Play</button>` : ''}</li>`).join('')}</ul>`
-      : d.sites ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
+      : city ? `<span class="ts-k ts-where">Where to go</span><ul class="ts-sites ts-districts">${d.sites.map(c => `<li><button data-site="${c.id}" aria-label="${c.district || c.name}: explore in 3D"><b>${c.district || c.name}</b><small>${hook(c)}</small></button>${c.game ? `<button class="ts-dplay" data-site="${c.id}" data-go="play" aria-label="Play ${c.district || c.name}">Play</button>` : ''}</li>`).join('')}</ul>`
+      : d.sites ? `<span class="ts-k ts-where">Where to go</span><ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${hook(c)}</small></button></li>`).join('')}</ul>`
       : `<div class="ts-actions">${d.c.game ? '<button class="ts-btn primary" data-go="play">Play <kbd>P</kbd></button>' : ''}<button class="ts-btn" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>`;
+    const line = g.line || (d.sites ? '' : d.c.tagline || '');
+    const spots = g.spots && g.spots.length ? `<div class="ts-spots"><span class="ts-k">Must see</span><ol>${g.spots.map(([n, t], i) => `<li style="--i:${i}"><i>${String(i + 1).padStart(2, '0')}</i><b>${escH(n)}</b><span>${escH(t)}</span></li>`).join('')}</ol></div>` : '';
+    const local = g.local ? `<p class="ts-local"><span class="ts-k">${escH(g.local[0])}</span>${escH(g.local[1])}</p>` : '';
     card.innerHTML = `<div><span class="eb">${d.country} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${d.name}${d.native ? `<small lang="${lang(d)}">${d.native}</small>` : ''}</h2></div>
-      <p class="sum">${d.meta && d.meta.summary ? d.meta.summary : d.sites ? `${d.sites.length} maps: ${d.sites.map(c => c.name).join(', ')}.` : (d.c.summary || '')}</p>
+      ${line ? `<p class="sum">${escH(line)}</p>` : ''}${spots}${local}
       <dl class="ts-stats">${stats}<div><dt>Local time</dt><dd data-k="time"></dd></div><div><dt>Sun</dt><dd data-k="sun"></dd></div></dl>
       ${prog ? `<span class="ts-prog">${prog}</span>` : ''}${actions}`;
     fillStats(d);
@@ -634,8 +634,10 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const c = s.map && cities.find(x => x.id === s.map && x.built), els = app.querySelectorAll('.mt-pick');
     for (const el of els) {
     const arrive = s.travel ? ` data-arrive="${escH(s.travel)}"` : '';
-    el.innerHTML = `<div class="mt-name"><b>${escH(s.name)}</b><small lang="ja">${escH(s.native)}</small>${c ? `<em>${escH(c.name)} map</em>` : '<em class="next">Next in line</em>'}</div>
-      <p>${escH(c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || '')}</p>
+    const sg = s.guide || {};
+    el.innerHTML = `<div class="mt-name"><b>${escH(s.name)}</b><small lang="ja">${escH(s.native)}</small>${c ? `<em>${escH(c.name)} map</em>` : '<em class="next">Coming soon</em>'}</div>
+      <p>${escH(sg.line || (c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || ''))}</p>
+      ${sg.spots ? `<ul class="mt-spots">${sg.spots.map(n => `<li>${escH(n)}</li>`).join('')}</ul>` : ''}
       ${c ? `<div class="ts-actions">${c.game ? `<button class="ts-btn primary" data-map="${c.id}" data-go="play"${arrive}>Play <kbd>P</kbd></button>` : ''}<button class="ts-btn" data-map="${c.id}" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>` : ''}`;
     }
   }
