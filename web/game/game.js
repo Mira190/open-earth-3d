@@ -1072,8 +1072,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // and the cars already queued at each signalled arm on its way (OECars.queueing), Q_CLEAR each to
   // move off ahead of it when the light turns green: a ride waits behind a queue, never round it (#107, #143)
   const Q_CLEAR = 1.8;
-  const queuedAt = a => { let n = 0; for (const c of cars.C) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) n++; return n; };
-  const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += Q_CLEAR * queuedAt(q.a); return t; };
+  // (at any junction on its way, signals or none; and a queue whose head has stood over 20 s waiting for room beyond,
+  // a jam that spills back, counts JAM_WAIT more: Shibuya's taxi was sent down a one-way street into one, 150 s, #243)
+  const JAM_WAIT = 30;
+  const queuedAt = a => { let n = 0, jam = false; for (const c of cars.C) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) { n++; if (c.why === 'room' && (c.still || 0) > 20 && c.toLine - c.half < 3) jam = true; } return n * Q_CLEAR + (jam ? JAM_WAIT : 0); };
+  const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += queuedAt(q.a); return t; };
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   // A way that crosses a scramble near you is timed with its walk (SCR_WAIT): where another way round it
   // reaches you sooner, counted the same way, the ride takes that one, as a driver who knows the scramble's
@@ -1096,9 +1099,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const P = OECars.path(rt.pts), sig = [], scr = [], scrJ = [], qArms = [];
     for (const nd of rt.nodes || []) {
       const p = rt.pts[nd.k], a = p ? junctions.armAt(nd.line, nd.end) : null;
-      if (!a || !a.j.sig) continue;
+      if (!a) continue;
       const s = P.cum[Math.min(nd.k, P.cum.length - 1)];
-      qArms.push({ s, a });
+      if (P.cum[Math.min(nd.k, P.cum.length - 1)] < 400) qArms.push({ s, a }); // (the queues on its way, near enough to stand when it comes)
+      if (!a.j.sig) continue;
       if (Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140) {
         sig.push(s);
         if (a.j.scramble) { scr.push(s); scrJ.push(a.j); } // (its walk: SCR_WAIT)
