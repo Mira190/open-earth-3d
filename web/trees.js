@@ -539,7 +539,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       // the chochin: a pink washi lantern (Nakameguro's festival lanterns are pink) between black lacquered rims,
       // hung from a rope that sags a little between each two; a halo round each after dark
       const HANG = 1.95, MID = 1.62;
-      const paperMat = new THREE.MeshStandardMaterial({ color: 0xf3c3c9, roughness: 0.85, emissive: new THREE.Color(1.0, 0.46, 0.52), emissiveIntensity: 0 });
+      const paperMat = new THREE.MeshStandardMaterial({ color: 0xee9fb0, roughness: 0.85, emissive: new THREE.Color(1.0, 0.46, 0.52), emissiveIntensity: 0 });
       const paper = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 12, 8).scale(1, 1.5, 1).translate(0, MID, 0), paperMat, Math.max(1, nC));
       const rimMat = new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.5 });
       const rims = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.095, 0.095, 0.05, 10).translate(0, MID + 0.235, 0), rimMat, Math.max(1, nC * 2));
