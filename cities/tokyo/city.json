@@ -61,6 +61,7 @@
   },
   "bridges": {
     "note": "Central Tokyo's bridges over the rivers and the Imperial Palace's moats; forms from each bridge's record (Tokyo Metropolitan Government, Chiyoda and Chuo wards).",
+    "road_min_m": 2.0,
     "widths": {"和田倉橋": 7.5, "皇居正門鉄橋 「二重橋」": 10.0},
     "forms": {
       "勝鬨橋": {"form": "kachidoki", "colour": "#8ea8a6", "note": "1940, the bascule between two tied arches"},
