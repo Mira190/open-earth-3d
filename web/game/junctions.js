@@ -881,7 +881,10 @@ window.OEJunctions = (function () {
         for (const a of j.arms) {
           const l = L[a.line], d1 = Math.min(l.len, a.back + 2.5);
           R2.length = 0;
-          for (let d = 0; d <= d1 + 1e-6; d += 1) { net.at(a.line, Math.max(0, Math.min(l.len, alongArm(l, a, d))), tmp); R2.push(tmp.x, tmp.y); }
+          // (a crossing between junctions on a one-way road has one arm, toward the traffic coming: its stripes
+          // reach a little past the crossing's own point too, which the other arm would cover on a two-way road)
+          const d0 = a.mid != null && j.arms.length === 1 ? -Math.min(6, d1) : 0;
+          for (let d = d0; d <= d1 + 1e-6; d += 1) { net.at(a.line, Math.max(0, Math.min(l.len, alongArm(l, a, d))), tmp); R2.push(tmp.x, tmp.y); }
           const half = (ROADW[a.c] || 7) / 2;
           for (const fi of new Set(fnet.near(a.x, a.y, 0, d1 + 12))) {
             if (skip && skip.has(fi)) continue;

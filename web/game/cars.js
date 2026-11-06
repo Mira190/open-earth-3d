@@ -310,9 +310,11 @@ window.OECars = (function () {
         body.add(light, light.target);
         api.lamp = light;
       },
-      drop(light) { if (api.lamp === light) { body.remove(light, light.target); api.lamp = null; light.intensity = 0; } },
+      // (back to the world, not out of it: a light leaving the scene recompiles every lit material's shader)
+      drop(light) { if (api.lamp === light) { body.remove(light, light.target); if (light.userData.home) light.userData.home.add(light, light.target); api.lamp = null; light.intensity = 0; } },
       // off the street for good (a ride that has driven away): its own geometry and materials go too
       dispose() {
+        if (api.lamp) api.drop(api.lamp);
         world.remove(g);
         for (const q of own) q.dispose();
         for (const m of new Set(Object.values(mats).concat(glows.map(q => q.material)))) m.dispose();
@@ -323,6 +325,7 @@ window.OECars = (function () {
   // the headlamp beam, one for whichever car the player is in
   function headlamp(world) {
     const l = new THREE.SpotLight(lin('#fff1d6'), 0, 70, 0.55, 0.6, PHYS() ? 2 : 1);
+    l.userData.home = world; // (where it waits, lit by nobody, between cars: cars.js drop)
     world.add(l, l.target);
     return l;
   }

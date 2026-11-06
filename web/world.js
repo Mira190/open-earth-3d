@@ -1394,7 +1394,10 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         su.sunPosition.value.copy(api.sunDir);
         const day = smooth(-5, 8, sp.altitude);
         api.day = day;
-        sunLight.visible = sp.altitude > -0.5;
+        // below the horizon the sun is dark (its intensity is 0 from -0.5°) and its shadow map is not redrawn,
+        // but it stays a light: hiding it took a light out of every lit material's shader, so sunset, sunrise
+        // and a jump in the clock across either recompiled the whole city
+        sunLight.shadow.autoUpdate = sp.altitude > -0.5;
         sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 7, sp.altitude); // full a little sooner: a low sun still rakes the city with gold
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
         // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
@@ -1521,5 +1524,21 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return api;
   }
 
-  return { load, create, lin, smooth };
+  // Compile the shaders an object will draw with, before it is drawn, as asynchronously as the GPU allows
+  // (KHR_parallel_shader_compile): for the scene behind the loader, and for anything that comes later (a
+  // model fetched once the game is open). target is the render target the scene is drawn into (the post
+  // stack's), which picks the shaders' variant: drawn into a target, three.js leaves the tone curve and
+  // the sRGB encoding to the last pass, so a compile with none bound made the variant for the screen,
+  // which the post stack never draws with (half the programs the loader waited for were of that kind).
+  // scene: whose lights and fog they are lit with. Resolves when they are ready (at once without WebGL 2).
+  function compile(renderer, obj, camera, { scene = obj, target = null } = {}) {
+    if (!renderer.compileAsync) return Promise.resolve();
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(target);
+    try { return renderer.compileAsync(obj, camera, scene).catch(() => {}); } // (compiles now; the promise waits on the GPU)
+    catch (e) { return Promise.resolve(); }
+    finally { renderer.setRenderTarget(prev); }
+  }
+
+  return { load, create, lin, smooth, compile };
 })();

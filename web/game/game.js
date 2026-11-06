@@ -90,6 +90,9 @@ window.OpenEarthGame = async function game(cityId) {
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {}, look: G.look || {} }) : null;
   if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
+  // shaders compiled before their first frame, in the variant the post stack draws with (world.js compile):
+  // the scene behind the loader, and what comes once the game is open (the helicopter's model)
+  const compileFor = (obj, scene = world) => OEWorld.compile(renderer, obj, camera, { scene, target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null });
   // the weather: dry, overcast, drizzle or rain, as the city's climate brings it for the date (weather.js)
   const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {} }) : null;
   if (atmos && atmos.composer) {
@@ -619,7 +622,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const npcsReady = () => Promise.all(npcs.map(npcLoad)); // every NPC in place (for the tools that look at them)
 
   // ------------------------------------------------------------ vehicles
-  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea };
+  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea, compile: compileFor };
   // a pad the data puts on the ground inside a building's footprint is on its roof (a hospital's, a
   // tower's): there, if the roof is clear above for the rotor, else on the nearest open ground with
   // clear sky (pipeline/game_data.py snaps new data the same way)
@@ -3627,7 +3630,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // draw, which can take seconds, and a loader that faded before it showed a black frame
   let framesDrawn = 0, firstDrawn;
   const drawn = new Promise(r => { firstDrawn = r; });
-  const warm = renderer.compileAsync ? renderer.compileAsync(world, camera).catch(() => {}) : Promise.resolve();
+  // (and the passes the title doesn't draw: the opening shot's depth of field and motion blur, atmosphere.js)
+  const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null]);
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
   // above and the wet street's mirror), so that the first rain of a visit comes on without a stall
   const warmRain = () => { try { if (!weather || weather.armed === false) return; const t0 = performance.now(); if (weather.warm) weather.warm(); if (mirror && mirror.warm && !mirror.off) mirror.warm(world); console.info(`rain warm-up: ${Math.round(performance.now() - t0)} ms`); } catch (e) { console.warn('rain warm-up', e); } };
@@ -3637,6 +3641,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#g-title').hidden = false;
     $('#g-loader').classList.add('out');
     setTimeout(() => { $('#g-loader').hidden = true; OEPlate.stop($('#g-loader')); }, reduced ? 0 : 700);
+    // the helicopter's model while the title is up, if it waits within reach of the start (it is left out of the
+    // loader's wait, issue 148): fetched, built, its shaders compiled and its textures sent now, not during the
+    // opening shot; it lands on its pad once the game opens (heliToPad), not in the title's shot
+    setTimeout(() => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) heli.prefetch(); }, reduced ? 0 : 900);
   });
   renderPassport();
 
