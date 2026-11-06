@@ -849,7 +849,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (xSpeed(q) * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
       }
       const dx = q.T.x - q.x, dy = q.T.y - q.y, d = Math.hypot(dx, dy);
-      if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') sp = q.speed * 0.75; else sp = d > 0.6 ? 0.5 : 0;
+      if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') { sp = q.speed * 0.75; if (pz.road && pz.road(q.x, q.y)) { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } } else sp = d > 0.6 ? 0.5 : 0;
       if (q.pause > 0) sp = 0;
       let vx = d > 1e-3 ? dx / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0, vy = d > 1e-3 ? dy / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0;
       // the others near: apart, and, meeting someone coming the other way, a step to the left
@@ -903,12 +903,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       q.tight = q.ph === 'cross' && (q.jam > 3 || (q.tight && q.jam > 0)); // (once close along a car's side, it stays close until it is through: no flipping back to the wide berth)
       const M = q.tight ? 0.12 : 0.3;
       q.ejected = false;
-      if (q.jam > 6) { // (and still stuck: back to the kerb it set out from, if the way there is clear)
-        const back = spotAt(g, q.spread, 0.8, {}, pz.road);
-        let clear = true;
-        for (let k = 1; k <= 6 && clear; k++) if (carDepth(q.x + (back.x - q.x) * k / 6, q.y + (back.y - q.y) * k / 6, 0.12) > 0) clear = false;
-        if (clear) { q.g = null; toGate(q, g, 0.8 + rnd()); q.jam = 0; return; }
-        q.jam = 3.5;
+      if (q.jam > (pz.walk() ? 6 : 3)) { // (and still stuck: off the road by the nearest kerb whose way is clear, the one it set out
+        // from or any other of the scramble's; sooner once the walk is over, the traffic's turn waiting on it, #197)
+        let best = null, bd = Infinity;
+        for (const h of gatesOf(pz)) {
+          const back = spotAt(h, q.spread, 0.8, {}, pz.road), d = Math.hypot(back.x - q.x, back.y - q.y);
+          if (d >= bd || d > 30) continue;
+          let clear = true;
+          for (let k = 1; k <= 8 && clear; k++) if (carDepth(q.x + (back.x - q.x) * k / 8, q.y + (back.y - q.y) * k / 8, 0.12) > 0) clear = false;
+          if (clear) { best = h; bd = d; }
+        }
+        if (best) { q.g = null; toGate(q, best, 0.8 + rnd()); q.jam = 0; return; }
+        q.jam = pz.walk() ? 3.5 : 1.5;
       }
       const was = carDepth(q.x, q.y, M), nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
       if (was > 0.02) { // (caught by one, a car pulling up: straight out of it, the shortest way)

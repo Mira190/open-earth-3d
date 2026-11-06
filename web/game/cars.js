@@ -1136,7 +1136,7 @@ window.OECars = (function () {
     // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
     const halted = new Set();
     const PRIO_T = 12; // (s: the other road's few seconds of green, amber and all red, and a little to spare)
-    function lineGap() {
+    function lineGap(dtNow = 0) {
       st.toLine = Infinity;
       if (!lights || !route.nodes) return Infinity;
       for (let i = 0; i < route.nodes.length; i++) {
@@ -1165,7 +1165,12 @@ window.OECars = (function () {
           }
           if (!stop && toLine < C.half + 4 + st.v * st.v / 6) {
             // (room beyond for the whole car, as the traffic waits for it: never stopped in the box across the others' way)
-            const roomy = !lights.room || lights.room(st, ex.e);
+            // (after 12 s at its line waiting for room, it goes in all the same, as the traffic's cars do (actors.js
+            // boxT): the exit's queue moves up as it crosses, and a ride coming for you stood half a minute at a
+            // green in Shinjuku's game check)
+            const fits = !lights.room || lights.room(st, ex.e);
+            st.roomT = fits || toLine - C.half > 4 ? 0 : (st.roomT || 0) + dtNow;
+            const roomy = fits || st.roomT > 12;
             const last = st.mv && st.mv.j !== a.j ? outAt : null, r = roomy ? lights.request(st, a, ex.e, t) : 'room';
             if (r === true) { into(a, ex, false, last); return Infinity; }
             if (toLine - C.half < 2.5 && st.v < 0.6 && roomy) { lights.wait(st, a, ex.e, t); st.wj = a.j; } // its turn comes: the longest waiting goes first
@@ -1275,7 +1280,7 @@ window.OECars = (function () {
       for (let i = q.i; i > 0 && st.s - P.cum[i] < 8; i--) if (P.corner[i] < want) want = P.corner[i];
       // the cars ahead, and the line at a red light or a stop sign
       let carGap = gapAhead(others, dt);
-      const line = obey && !dry ? Math.min(lineGap(), midGap(dt)) : Infinity;
+      const line = obey && !dry ? Math.min(lineGap(dt), midGap(dt)) : Infinity;
       // and along its way, the cars at an angle to it (crossGap): the nearer rules
       if (!dry) look(); else st.np = 0;
       const laneGap = carGap, xGap = dry ? Infinity : crossGap(others);
