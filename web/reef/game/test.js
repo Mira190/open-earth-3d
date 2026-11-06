@@ -359,6 +359,12 @@ export async function gametest(api, ctx) {
       player.equip('none');
     } else {
       if (ctx.S.kind === 'alpine') must(!G.quest('survey'), 'an alpine lake has no fish survey');
+      // the highway's traffic (alpine/traffic.js): cars on the road, keeping left, on the ground as it is drawn
+      if (ctx.S.kind === 'alpine' && ctx.traffic) {
+        for (let i = 0; i < 30; i++) ctx.updaters.forEach(u => u(0.1, i * 0.1));
+        const t = ctx.traffic.stats();
+        must(t.n > 0 && t.left === t.n && t.ground === t.n, 'traffic on the highway keeps left, on the ground', `${t.n} cars, ${t.left} in the left lane, ${t.ground} on the ground`);
+      }
       else must(G.quest('survey') && !G.quest('survey').available(G), 'no ctx.life: the survey is unavailable, not broken');
     }
 

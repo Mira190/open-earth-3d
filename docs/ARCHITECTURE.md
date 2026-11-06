@@ -918,6 +918,64 @@ Kyoto Gyoen's gravel read slightly blue. Set: the Kyoto Gyoen (gravel), the Koky
 Gaien and Shinjuku Gyoen (lawn), Meiji Jingu (leaf litter, `earth`). Yoyogi's lawn
 waits for Shibuya's opening film.
 
+### Canopy outside the parks, measured heights, the Gion cherry (issue #223)
+
+- **Canopy outside the mapped parks.** `woods.py` planted only inside mapped woods,
+  parks and religious land, so the trees of a campus, of a shrine's or temple's
+  grounds that OSM maps only as halls, and of the streets were missing wherever OSM
+  maps no tree. Outside the mapped woods it now plants where ESA WorldCover 2021's
+  tree class (10 m, CC BY 4.0, the tiles `far_land.py` reads, cached in
+  `data/raw/<id>/worldcover.npz`, with one cell's slack) agrees with the canopy model:
+  in the grounds (Overture land use `school`, `university`, `college`,
+  `kindergarten`, `hospital`, and 45 m round every building Overture classes
+  `shrine`, `temple`, `church` and the like, `fetch_overture.py --only religious`)
+  with their floor and the Poisson fill, as in a park; along the streets and in
+  gardens the canopy's own peaks only (crowns at least 3 m across), off the
+  carriageways and footways, without a floor (the ground there is paving). Overture's
+  places were tried for the shrines and temples and have too few in Japan (21 in
+  Higashiyama); Overpass is not reachable from the build machines.
+  The fill adds 1-4 % to each city's trees: Kyoto 17,294 to 18,266, Higashiyama
+  31,371 to 31,788, Fushimi 31,183 to 31,786, Tokyo 20,921 to 21,045, Shinjuku
+  32,725 to 34,002, Sydney 14,148 to 14,939, Queenstown 152,727 to 154,959. They
+  are wood trees in `places.json` `woods`, so the tiers thin and step them down as
+  the woods' (`keep`, `WOOD_M`), and the cost per tier moves by the same 1-4 %. The
+  canopy model itself has little canopy outside the woods in these cities (in
+  Kyoto 77 ha of canopy over 4 m in 1,500 ha, 68 ha of it in the woods), so the fill
+  is modest; where WorldCover calls a street tree built-up, none is planted.
+
+![The fill outside the parks, at 11:00](images/trees/canopy_fill.jpg)
+
+- **Measured street-tree heights.** OSM rarely gives a tree's height, so
+  `build_scene.py` drew the mapped trees between 7 and 14 m.
+  `pipeline/plateau_veg.py` (run by `game_data.py` after the kerbside tidy) reads
+  PLATEAU 2025's CityGML vegetation (`udx/veg/`, MLIT, CC BY 4.0;
+  `plateau.veg` in `city.json`): each `veg:SolitaryVegetationObject`'s `veg:height`,
+  the crown top above the root ball, at its modelled crown's foot. PLATEAU surveys
+  trees one by one only in its LOD3 road pilot areas: 216 tall trees in five 1 km
+  meshes of the Tokyo map (Chiyoda, Chuo, Minato), 65 in one mesh of Kyoto's, none
+  in Shinjuku's. Their heights are much lower than the guess (Tokyo median 5.4 m,
+  90th percentile 8.1 m; Kyoto 4.7 m and 7.0 m). A mapped tree within 3 m of a
+  surveyed one takes its height (15 in Tokyo, 12 in Kyoto); the other street trees
+  (within 9 m of a road) take a height drawn from the survey's quantiles, the same
+  for the same spot; trees in parks and precincts keep theirs. A map with no survey
+  borrows a neighbour's (`plateau.veg_from`: Shinjuku Tokyo's, Higashiyama and
+  Fushimi Kyoto's). The canopy height model was tried as the measure and sees almost
+  none of them: none of Tokyo's 216, half of Kyoto's with a correlation of 0.4.
+  **Sydney:** the City of Sydney's tree register ("Trees", on Data.NSW and the
+  City's open data site) lists each street and park tree with its species, height,
+  canopy, age and trunk diameter, but its listings give no licence ("not specified"),
+  so it is not used until the City confirms its terms. NSW Spatial Services'
+  airborne lidar (point clouds and 1 m DEMs through the Elvis portal) is the open
+  alternative, through a height-above-ground surface at each mapped tree. Neither is
+  read yet (in the follow-up issue).
+- **The Gion weeping cherry on its own spot.** Maruyama Park's Gion shidarezakura
+  stood on the park's nearest mapped trees, about 17 m off. Higashiyama's
+  `landmark_meshes` now plants it as a landmark tree (`landmarks.json` `trees`,
+  `city.py` `gion_cherry`) at 35.00388 N, 135.78090 E, 12 m tall: the lone round
+  crown in the gravel plaza north-west of the Hyotan pond in the city's aerial
+  photograph. Its two nearest mapped trees, 6 m west in the open plaza, are taken off,
+  and the `trees.areas` circle that makes it a weeping cherry is 3 m across.
+
 ### The cays' scrub and the clumped Pisonia (issue #165)
 
 The coral cays' beach scrub was drawn as blobs near the camera. Two shared shrubs

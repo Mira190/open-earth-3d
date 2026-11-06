@@ -1387,5 +1387,186 @@
    "S2B_59GMM_20261022_0_L2A"
   ],
   "src": "Copernicus Sentinel-2 L2A via Earth Search on AWS (Copernicus open licence); NDSI > 0.4 and B08 > 0.11; 255 = cloud"
+ },
+ "landmarks": [
+  {
+   "id": "hermitage",
+   "glb": "data/lake-pukaki/models/pukaki-hermitage.glb",
+   "lonlat": [
+    170.09316,
+    -43.73274
+   ],
+   "ground_m": 762.87,
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them; the massing from the LiDAR over the OpenStreetMap footprints of the hotel and its attached wings, each block on its own ground",
+   "kind": "landmark",
+   "x": -4628,
+   "y": 13871
+  },
+  {
+   "id": "visitor-centre",
+   "glb": "data/lake-pukaki/models/pukaki-visitor-centre.glb",
+   "lonlat": [
+    170.1398,
+    -44.19009
+   ],
+   "ground_m": 538.1,
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them; footprint 10.3 x 7.6 m (OpenStreetMap), 5.2 m to the top (LiDAR)",
+   "kind": "landmark",
+   "x": -863,
+   "y": -36944
+  },
+  {
+   "id": "salmon-shop",
+   "glb": "data/lake-pukaki/models/pukaki-salmon-shop.glb",
+   "lonlat": [
+    170.13996,
+    -44.19018
+   ],
+   "ground_m": 538.0,
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them; footprint 14.7 x 6.7 m (OpenStreetMap), 5.8 m to the top (LiDAR)",
+   "kind": "landmark",
+   "x": -851,
+   "y": -36954
+  },
+  {
+   "id": "tahr-statue",
+   "glb": "data/lake-pukaki/models/pukaki-tahr-statue.glb",
+   "lonlat": [
+    170.139531,
+    -44.190085
+   ],
+   "ground_m": 539.2,
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them; no mapped position: the place is the LiDAR's object 2.8 m tall on the knoll inside the viewing loop 21 m west of the visitor centre (the 2015 capture, after the 2014 unveiling), a judgement; the bull faces north up the lake",
+   "kind": "landmark",
+   "x": -885,
+   "y": -36943
+  },
+  {
+   "id": "lower-hooker-bridge",
+   "glb": "data/lake-pukaki/models/pukaki-lower-hooker-bridge.glb",
+   "lonlat": [
+    170.10308,
+    -43.71583
+   ],
+   "ground_m": 747.7,
+   "walk": "deck",
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them; y = 0 is the river under it (the DEM, 747.7 m); span 71.0 m along the OpenStreetMap way",
+   "deck": {
+    "ends_m": [
+     [
+      -20.97,
+      -28.27
+     ],
+     [
+      21.4,
+      28.71
+     ]
+    ],
+    "width_m": 1.2,
+    "z_m": [
+     758.98,
+     757.86,
+     757.14,
+     756.8,
+     756.85,
+     757.29,
+     758.12,
+     759.34,
+     760.95
+    ],
+    "note": "the walkable deck: its ends in metres east and north of the landmark's point, its top from end to end at nine even steps (the DSM along the way, fitted to a sag)"
+   },
+   "kind": "landmark",
+   "x": -3830,
+   "y": 15751
+  },
+  {
+   "id": "hooker-bluff-bridge",
+   "glb": "data/lake-pukaki/models/pukaki-hooker-bluff-bridge.glb",
+   "lonlat": [
+    170.10002,
+    -43.70556
+   ],
+   "ground_m": 790.67,
+   "walk": "deck",
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them; y = 0 is the river under it (the DEM, 790.67 m); span 101.5 m along the OpenStreetMap way",
+   "deck": {
+    "ends_m": [
+     [
+      34.71,
+      -36.97
+     ],
+     [
+      -34.52,
+      37.22
+     ]
+    ],
+    "width_m": 1.2,
+    "z_m": [
+     810.76,
+     811.71,
+     812.57,
+     813.34,
+     814.02,
+     814.61,
+     815.12,
+     815.53,
+     815.86
+    ],
+    "note": "the walkable deck: its ends in metres east and north of the landmark's point, its top from end to end at nine even steps (the DSM along the way, fitted to a sag)"
+   },
+   "kind": "landmark",
+   "x": -4077,
+   "y": 16892
+  },
+  {
+   "id": "upper-hooker-bridge",
+   "glb": "data/lake-pukaki/models/pukaki-upper-hooker-bridge.glb",
+   "lonlat": [
+    170.09858,
+    -43.69271
+   ],
+   "ground_m": 851.77,
+   "walk": "deck",
+   "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them; y = 0 is the river under it (the DEM, 851.77 m); span 78.7 m along the OpenStreetMap way",
+   "deck": {
+    "ends_m": [
+     [
+      -38.48,
+      -7.04
+     ],
+     [
+      39.09,
+      6.04
+     ]
+    ],
+    "width_m": 1.2,
+    "z_m": [
+     859.64,
+     860.16,
+     860.58,
+     860.88,
+     861.08,
+     861.16,
+     861.12,
+     860.98,
+     860.72
+    ],
+    "note": "the walkable deck: its ends in metres east and north of the landmark's point, its top from end to end at nine even steps (the DSM along the way, fitted to a sag)"
+   },
+   "kind": "landmark",
+   "x": -4194,
+   "y": 18319
+  }
+ ],
+ "clouds": {
+  "nwarch": {
+   "edge": [
+    8900,
+    21950
+   ],
+   "bearing_deg": 37,
+   "note": "?weather=nwarch: the arch's edge, a point on it (m east and north) about 12 km south-east of the Main Divide at Aoraki, and its bearing, parallel to the Divide; a judgement from photographs of the arch from the Mackenzie"
+  }
  }
 }

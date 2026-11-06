@@ -60,6 +60,7 @@ import walls
 import woods
 import bridges
 import kerbside
+import plateau_veg
 import night_lights
 import road_rules
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
@@ -712,6 +713,7 @@ def main():
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
     kerbside.tidy_places(C.out, roads)  # the mapped trees out of the carriageways too (places.json)
+    plateau_veg.calibrate(C)  # the mapped street trees' heights from PLATEAU's surveyed trees (pipeline/plateau_veg.py)
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
     print(f"{restorey.mark(C.out)} one-floor records given storeys (buildings.json)")  # pipeline/restorey.py: a no-op on a fresh build
     print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
