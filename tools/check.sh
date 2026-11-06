@@ -88,7 +88,7 @@ else
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
       web/reef/*) all_reefs ;;
-      web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
+      web/title.*|tools/title_*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/telemetry.js|tools/telemetry_*|tools/slo_report.py) title=1; telemetry=1 ;;   # watches every page, sends nothing
       web/index.html|web/quality.js) all_cities; title=1; loader=1; telemetry=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1; telemetry=1 ;;
@@ -188,6 +188,10 @@ for line in open(sys.argv[1]):
 if not seen: bad.append('no scenario ran')
 print('FAIL title   ' + '; '.join(bad) if bad else f'ok   title  {seen} devices and faults, none black')
 EOF
+  # a click opens a destination's card and a second goes in; Tokyo goes in only from its subway map
+  if timeout 900 $X node tools/title_pick_check.js >"$OUT/title-pick.log" 2>&1; then
+    echo "ok   title picks  $(grep -c ': ' "$OUT/title-pick.log") steps: card first, in on the second click, districts from the map"
+  else echo "FAIL title picks  $(grep -E 'FAIL|Error' "$OUT/title-pick.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/title-pick.log)"; fi
 }
 
 {
