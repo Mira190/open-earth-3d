@@ -320,8 +320,8 @@
     "blurb": "Walk Queenstown's lakefront under the real sun. Sail on the steamer Earnslaw, ride the Skyline Gondola up Bob's Peak, and watch the Remarkables turn pink at dusk.",
     "start": {
       "at": [
-        -1046.0,
-        450.0
+        -978.8,
+        474.9
       ],
       "facing": [
         150,
@@ -445,11 +445,11 @@
         "width_m": 2.0,
         "height_m": 2.05,
         "hanger_m": 2.6,
-        "livery": "#2d3439",
-        "trim": "#c9ced1",
+        "livery": "#c3c7ca",
+        "trim": "#8d9396",
         "cabin_name": "Cabin",
         "note": "Ten seats, 438 m up to Bob's Peak.",
-        "source": "Doppelmayr D-Line detachable gondola opened 29 June 2023: 35 ten-seat Omega V cabins, up to 5 m/s, 760 m inclined, 438 m rise (Doppelmayr release, June 2023; lift-world.info). The cabins' colours here are a guess."
+        "source": "Doppelmayr D-Line detachable gondola opened 29 June 2023: 35 ten-seat Omega V cabins, up to 5 m/s, 760 m inclined, 438 m rise (Doppelmayr release, June 2023; lift-world.info). The cabins: light silver-grey Omega V shells with dark glazing bands (a 2023 photograph of the terminals, Thermosash), their roofs white in LINZ's 2026 aerial photographs."
       }
     },
     "viewpoints": [
@@ -457,8 +457,8 @@
         "id": "bobs-peak",
         "name": "Bob's Peak",
         "at": [
-          -1048,
-          452
+          -975.0,
+          478.1
         ]
       },
       {
@@ -484,8 +484,8 @@
         "name": "Aroha",
         "role": "Bob's Peak guide",
         "at": [
-          -1041.0,
-          457.0
+          -973.1,
+          479.7
         ],
         "look": {
           "character": "R_Female_Adult_08",
@@ -547,8 +547,8 @@
         "name": "Hemi",
         "role": "Bob's Peak regular",
         "at": [
-          -1056.0,
-          446.0
+          -967.4,
+          484.6
         ],
         "look": {
           "character": "R_Male_Adult_03",
@@ -743,8 +743,8 @@
           {
             "type": "visit",
             "at": [
-              -1048,
-              452
+              -975.0,
+              478.1
             ],
             "radius": 30,
             "after_dark": true,
@@ -908,7 +908,7 @@
     },
     {
       "title": "The Skyline Gondola",
-      "text": "{landmark:skyline_gondola.length_m} m up the face of Bob's Peak and {landmark:skyline_gondola.rise_m} m up from Brecon Street. The line, its towers and stations are OpenStreetMap's; the towers' heights and the cable's sag are measured from the LiDAR.",
+      "text": "{landmark:skyline_gondola.length_m} m up the face of Bob's Peak and {landmark:skyline_gondola.rise_m} m up from Brecon Street. The line and its stations are OpenStreetMap's; its six towers, three masts and three portals, are placed and measured from their shadows in LINZ's 2026 aerial photographs.",
       "cam": [
         -560,
         180,
