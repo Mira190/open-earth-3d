@@ -476,7 +476,10 @@ pipeline writes. The only city-specific code is landmark geometry in
     `upper` holds the slab's level in a block of the grid and `clear_m` the
     room under it: the ground is the slab, and `nav.floorAt` offers the floor
     under it too, so a walker goes under or over; the camera stays under the
-    slab when the walker is. `walks` names routes `tools/game_check.js` walks
+    slab when the walker is. A landmark can give low ceilings of its own along a line
+    (`landmarks.json` "ceilings": `[{pts: [[x, y, z], ...], half_width, clear_m}]`, Fushimi Inari's
+    torii tunnels): `nav.ceilingAt` keeps the camera `clear_m` over the line's height within
+    `half_width` of it. `walks` names routes `tools/game_check.js` walks
     on foot ([[x, y], ...], `from_m`, `to_m`; `face: true` for a walk to a
     seawall's edge).
   - **Footways and roads:** 3D polylines.
