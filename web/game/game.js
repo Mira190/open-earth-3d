@@ -309,28 +309,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const [u0, z0] = st.profile[0], [u1, z1] = st.profile[st.profile.length - 1], [ox, oy] = st.origin, [ax, ay] = st.axis;
       return { pts: [[ox + ax * u0, oy + ay * u0, z0], [ox + ax * u1, oy + ay * u1, z1]], w: 2 * st.half_width };
     });
-    const wet = [...deckPlan.runs, ...own].filter(r => r.pts.some(q => nav.isWater(q[0], q[1])));
-    if (wet.length) {
-      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-      for (const r of wet) for (const q of r.pts) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
-      x0 -= 40; x1 += 40; y0 -= 40; y1 += 40;
-      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / 4096), cv = document.createElement('canvas');
-      cv.width = Math.ceil((x1 - x0) / res); cv.height = Math.ceil((y1 - y0) / res);
-      const g = cv.getContext('2d');
-      g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
-      g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
-      for (const r of wet) {
-        const hi = Math.max(...r.pts.map(q => q[2]));
-        g.lineWidth = (r.w + 2 * Math.max(2.5, 0.25 * hi)) / res;
-        g.beginPath();
-        r.pts.forEach((q, k) => g[k ? 'lineTo' : 'moveTo']((q[0] - x0) / res, (y1 - q[1]) / res));
-        g.stroke();
-      }
-      g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
-      const tex = new THREE.CanvasTexture(cv);
-      tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      Wd.sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
-    }
+    Wd.waterCover([...deckPlan.runs, ...own].filter(r => r.pts.some(q => nav.isWater(q[0], q[1])))); // (world.js: with the landmarks' decks)
   }
   // where a walkable strip (a canal bridge's deck) is carried on to the quay (nav.js), the approach is drawn in the deck's stone
   const LMM = (D.LM && D.LM.materials) || {};

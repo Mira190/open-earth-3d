@@ -292,6 +292,10 @@ window.OEDecks = (function () {
         const pts = [];
         for (let i = from; i <= to; i++) pts.push([X(i), Y(i), zs[i]]);
         const run = { pts, w, kind, c: o.c, lift: kind === 'road' ? 0.03 : 0.1 };
+        // a deck that stays under RISE over dry ground all along (a road carried over a shallow dip in the
+        // street, issue 234: Chuo-dori at Nihonbashi's south bank) is part of the street: no parapets, which
+        // would stand across the carriageway where the line meets the next one or crosses the junction
+        if (kind === 'road' && pts.every(q => !nav.isWater(q[0], q[1]) && q[2] - nav.terrain(q[0], q[1]) < RISE)) run.parapet = false;
         run.cols = columns(run, nav, near);
         runs.push(run);
         for (let i = from; i < to; i++) segs.push({ ax: X(i), ay: Y(i), az: zs[i], bx: X(i + 1), by: Y(i + 1), bz: zs[i + 1], hw: w / 2, th: THICK, walk: o.c !== 'motorway' });
@@ -317,7 +321,32 @@ window.OEDecks = (function () {
       for (let i = 0; i < 4; i++) { const [u0, v0] = c[i], [u1, v1] = c[(i + 1) % 4]; quad(P(u0, v0, z0), P(u1, v1, z0), P(u1, v1, z1), P(u0, v0, z1), k); }
       quad(P(-hx, -hy, z1), P(hx, -hy, z1), P(hx, hy, z1), P(-hx, hy, z1), k);
     };
-    for (const r of runs) {
+    // a parapet stands only where its deck has an edge: not on another deck's surface, as where a dual
+    // carriageway's two lines are each laid as a deck wider than the gap between them (Chuo-dori over the
+    // Nihonbashi, issue 234: each one's inner parapet stood across the other's lanes, slanting where the
+    // lines converge on the bank). (pieces of every deck in 20 m cells; within a metre and a half in height)
+    const CELL = 20, cells = new Map(), cellKey = (x, y) => `${Math.floor(x / CELL)},${Math.floor(y / CELL)}`;
+    runs.forEach((r, ri) => {
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const a = r.pts[i], b = r.pts[i + 1], s = { ri, a, b, hw: r.w / 2 }, pad = r.w / 2 + 1;
+        for (let x = Math.floor((Math.min(a[0], b[0]) - pad) / CELL); x <= Math.floor((Math.max(a[0], b[0]) + pad) / CELL); x++)
+          for (let y = Math.floor((Math.min(a[1], b[1]) - pad) / CELL); y <= Math.floor((Math.max(a[1], b[1]) + pad) / CELL); y++) {
+            const k = `${x},${y}`;
+            if (!cells.has(k)) cells.set(k, []);
+            cells.get(k).push(s);
+          }
+      }
+    });
+    const onOther = (ri, x, y, z) => {
+      for (const s of cells.get(cellKey(x, y)) || []) {
+        if (s.ri === ri) continue;
+        const ex = s.b[0] - s.a[0], ey = s.b[1] - s.a[1], L2 = ex * ex + ey * ey;
+        const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - s.a[0]) * ex + (y - s.a[1]) * ey) / L2)) : 0;
+        if (Math.hypot(x - s.a[0] - ex * t, y - s.a[1] - ey * t) < s.hw - 0.3 && Math.abs(z - (s.a[2] + (s.b[2] - s.a[2]) * t)) < 1.5) return true;
+      }
+      return false;
+    };
+    runs.forEach((r, ri) => {
       const n = r.pts.length, hw = r.w / 2, top = r.colour ? lin(r.colour) : C[r.kind]; // (a strip's approach: its deck's colour)
       // the left of the line at each point, the average of the pieces either side
       const L = r.pts.map((q, i) => {
@@ -333,13 +362,15 @@ window.OEDecks = (function () {
         quad(at(i, hw, -THICK), at(j, hw, -THICK), at(j, -hw, -THICK), at(i, -hw, -THICK), C.under);             // the soffit
         if (r.parapet !== false) for (const s of [1, -1]) { // parapets: outer face, top, inner face
           const o = s * hw, w = s * (hw - 0.25);
+          const mx = (r.pts[i][0] + r.pts[j][0]) / 2 + (L[i][0] + L[j][0]) / 2 * o, my = (r.pts[i][1] + r.pts[j][1]) / 2 + (L[i][1] + L[j][1]) / 2 * o;
+          if (onOther(ri, mx, my, (r.pts[i][2] + r.pts[j][2]) / 2)) continue;
           quad(at(i, o, 0), at(j, o, 0), at(j, o, PARAPET), at(i, o, PARAPET), C.side);
           quad(at(i, o, PARAPET), at(j, o, PARAPET), at(j, w, PARAPET), at(i, w, PARAPET), C.side);
           quad(at(i, w, PARAPET), at(j, w, PARAPET), at(j, w, 0), at(i, w, 0), C.side);
         }
       }
       for (const c of r.cols) box(c.x, c.y, c.z0, c.z1, c.hx, c.hy, c.ex, c.ey, C.under);
-    }
+    });
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));

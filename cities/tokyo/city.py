@@ -173,7 +173,7 @@ def landmark_meshes(scene):
     mats.update({k: dict(v) for k, v in pm.items()})
     sm, smesh = SHUTO.meshes(Mesh)  # the Shuto Expressway over the Nihonbashi River (cities/tokyo/shuto.py)
     mats.update({k: dict(v) for k, v in sm.items()})
-    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh, {"hidden": hidden + dh + ph}
+    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh, {"hidden": hidden + dh + ph, "clip": MOATS.clip(), "water_cover": SHUTO.cover()}
 
 
 def landmark_glows(scene):
