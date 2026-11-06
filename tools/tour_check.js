@@ -100,7 +100,8 @@ const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown co
       step: $('#cap-step').textContent, title: $('#cap-title').textContent, skip: $('#cap-skip').hidden ? null : $('#cap-skip').textContent,
       caption: !$('#caption').hidden, card: $('#caption').classList.contains('done') && !$('#cap-end').hidden,
       play: !$('#cap-play').hidden, segs: [...document.querySelectorAll('#cap-bars i')].map(i => parseFloat(i.style.width) || 0),
-      tourBtn: $('#btn-tour').textContent, panelBtn: $('#tour-play').textContent, game: !$('#btn-play').hidden };
+      tourBtn: $('#btn-tour').textContent, panelBtn: $('#tour-play').textContent, game: !$('#btn-play').hidden,
+      samples: C.world.children.some(o => o.isPoints && C.placeInfo.some(q => q.name === o.userData.name)) };
   });
   // Hold the stop in hand at its start while it is checked (a software renderer's frames are so
   // slow that a stop would run out on its own between two checks): the flight there still runs.
@@ -120,6 +121,7 @@ const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown co
       `${s.step} "${s.title}"`);
     if (i === n - 1) check('last stop says Finish', s.skip === 'Finish', `button: ${s.skip}`);
     else if (i > 0) check(`stop ${i + 1}: says Next`, s.skip === 'Next');
+    check(`stop ${i + 1}: no sun sample dots on the tour`, !s.samples);
     // the stop, with the flight done: its still, its HDR range and two frames apart
     await landed();
     await frame();
@@ -170,6 +172,7 @@ const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown co
   check('the tour ends on its last stop', e.done && !e.playing && e.i === n - 1, `stop ${e.i + 1} of ${n}, playing ${e.playing}`);
   check('the end card shows', e.caption && e.card && e.skip === null && (!e.game || e.play), `"${e.step}" "${e.title}"`);
   check('every segment is full', e.segs.every(v => v >= 99.9), e.segs.join(' '));
+  check('the last stop\'s sun samples are cleared at the end', !e.samples);
   check('the camera turns slowly at the end', e.orbit);
   check('the buttons offer the tour again', e.tourBtn === 'Tour' && e.panelBtn === 'Watch again', `${e.tourBtn} / ${e.panelBtn}`);
   // the end card as the page shows it, for the record (a software renderer's compositor can be slow
