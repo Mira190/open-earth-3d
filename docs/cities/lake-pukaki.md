@@ -293,13 +293,15 @@ the way round). The mirror leaves out what is too small to read in a wind-blurre
 matagouri and far lupin patches always. The matagouri beyond 40 m is a bush of 14 twigs, and the lupins' spikes have no
 end caps. The underwater light shafts are skipped by a branch when the eye is above the water.
 
-Measured with `tools/reef_cost.js` at Tekapo's lupin shore (`shots` "lupins", 6 November, 14:30), WebGL2 on Mesa
+Measured with `tools/reef_cost.js` at Tekapo's lupin shore (the low tier has no close-up form) (`shots` "lupins", 6 November, 14:30), WebGL2 on Mesa
 llvmpipe, triangles a frame over every pass and the median frame time:
 
 | | Before | high | medium | low |
 |---|---|---|---|---|
 | Desktop 1440 x 900 | 6.57 M, 2105 ms | 2.46 M, 1689 ms | 1.53 M, 963 ms | 0.73 M, 605 ms |
 | Phone 390 x 844 (3x screen) | 3.00 M, 1359 ms | 1.88 M, 1099 ms | 1.16 M, 572 ms | 0.64 M, 341 ms |
+| Desktop, with the close-up lupins (section 4) | | 2.90 M, 1567 ms | 1.79 M, 987 ms | 0.73 M, 678 ms |
+| Phone, with the close-up lupins | | 2.33 M, 1131 ms | 1.42 M, 622 ms | 0.64 M, 351 ms |
 
 A software renderer is limited by its pixels more than by its triangles, so the frame times say less than the
 triangles about a real GPU. A phone picks the low tier for itself. On the reef sites, whose life is light already

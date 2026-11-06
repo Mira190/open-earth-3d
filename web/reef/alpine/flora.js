@@ -442,7 +442,7 @@ export async function init(ctx) {
   // mirror draws the scene again, and with every plant in it cost as much as the view)
   for (const r of [tussock, tussockFar, rocks, turf, shrubs, shrubsFar, lupFar]) r.layer(1);
   if (!tier.mirrorFlora) for (const r of [lupNear, lupMid]) r.layer(1);
-  if (lupClose && !tier.mirrorFlora) lupClose.layer(1);
+  if (lupClose) lupClose.layer(1);     // (its florets are lost in a wind-blurred reflection)
   for (const r of [tussock, tussockFar, lupClose, lupNear, lupMid, lupFar, rocks, shrubs, shrubsFar, turf]) if (r) scene.add(r.group);
 
   // ---- placement by tiles round the camera

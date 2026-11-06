@@ -28,6 +28,7 @@ from rasterio.warp import reproject, transform_bounds
 from rasterio.windows import from_bounds
 from scipy import ndimage
 
+from aerial_clean import clean
 from cityctx import city_args
 
 os.environ.setdefault("GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR")
@@ -139,6 +140,11 @@ def main():
         lo_sat = np.stack([ndimage.gaussian_filter(sat[b], sigma) for b in range(3)])
         matched = L * (lo_sat + 1e-3) / (lo_photo + 1e-3)
         rgb = (np.clip(matched, 0, 1) ** (1 / 2.2) * 255).astype(np.uint8).transpose(1, 2, 0)
+        # at 0.3 m the parked cars and the buildings' shadows are printed in the photo: cleaned for the eye level
+        # (pipeline/aerial_clean.py; issue #228)
+        if px <= 0.35:
+            rgb, rep = clean(rgb, x0, y1, px, city.out)
+            print(f"{a['id']}: {rep}", flush=True)
         name = f"detail_{a['id']}.webp"
         Image.fromarray(rgb).save(os.path.join(city.out, name), quality=80, method=6)
         out_areas.append({"id": a["id"], "file": name, "x0": x0, "y1": y1, "w": W, "h": H, "px_m": px,
