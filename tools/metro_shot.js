@@ -1,5 +1,6 @@
 // Stills of a group's subway map on the title screen (Tokyo's districts, title.js metroHTML): the
-// card as it opens, then with a station picked, on a desktop and a phone.
+// card as it opens, then with a station picked, then the map full screen (title.js openFull) as it
+// draws itself and once it has, on a desktop and a phone.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/metro_shot.js out_dir [group name] [station]   # defaults: Tokyo, Asakusa
 const { chromium } = require('playwright');
@@ -28,6 +29,12 @@ fs.mkdirSync(out, { recursive: true });
     await p.screenshot({ path: `${out}/${name}-${station.toLowerCase()}.png` });
     const pick = await p.evaluate(() => document.querySelector('.mt-pick').innerText);
     console.log(name, JSON.stringify(pick));
+    // (on a phone the touch on the card's map has already opened it full screen)
+    if (!(await p.$('.ts-mfull:not([hidden])'))) await p.locator('.ts-card [data-full]').first().click();
+    await p.waitForTimeout(700);
+    await p.screenshot({ path: `${out}/${name}-full-drawing.png` });
+    await p.waitForTimeout(2500);
+    await p.screenshot({ path: `${out}/${name}-full.png` });
     await ctx.close();
   }
   console.log(errs.length ? errs.join('\n') : 'no page errors');
