@@ -644,7 +644,7 @@ window.OEJunctions = (function () {
     // (a scramble's walk under way runs its course, its crowd out on the road; one not yet started
     // waits for the ride's turn. A crossing's walk under way runs its few seconds too.)
     const MIN_G = 4, HOLD = 6;
-    const MP_MIN = 8, MP_MAX = 1.6; // (max-pressure: the least green before a blocked phase gives way, and how far a busy one runs on, never past RED's cap)
+    const MP_MIN = 8, MP_MAX = 1.6, SCR_MP = 2.5; // (max-pressure: the least green before a blocked phase gives way, and how far a busy one runs on, never past RED's cap)
     function toward(j, p, hold = true) {
       if (j.ph === p && j.st === 'g') { if (hold) j.hold = frame; return; }
       if ((j.ph === 3 || (j.mid != null && j.ph === 1)) && j.st === 'g') return; // (in their change, the phase after them may still be chosen)
@@ -857,7 +857,10 @@ window.OEJunctions = (function () {
           for (const a of j.arms) if (a.in && a.phase === j.ph && (a.qn || 0) > 0) { blocked = !!a.full; if (!blocked) break; }
           if (j.cut == null && blocked && mine === 0 && next > 0 && j.t >= MP_MIN) { j.cut = j.t; j.mpCut = (j.mpCut || 0) + 1; }
           const was = j.mpOn;
-          j.mpOn = j.cut == null && !j.scramble && mine >= 3 && mine > 2 * next + 1 && j.t < Math.min(j.green[j.ph] * MP_MAX, cap - FLASH);
+          // (a scramble's turns too, which are short so that its walk comes round soon: a queue there that far outweighs
+          // the other road's runs its green on to SCR_MP times its length, as a busy junction's does, rather than queue
+          // through three greens of 8 s, Shinjuku's 1106, #264)
+          j.mpOn = j.cut == null && mine >= 3 && mine > 2 * next + 1 && j.t < Math.min(j.green[j.ph] * (j.scramble ? SCR_MP : MP_MAX), cap - FLASH);
           if (was && !j.mpOn && j.cut == null && j.t > j.green[j.ph] - FLASH) { j.cut = j.t + FLASH; j.mpExt = true; } // (run on past its green: it ends after the walkers' flash, never at once)
         } else j.mpOn = false;
         const end = j.gEnd = Math.min(j.cut != null ? (j.mpExt ? j.cut : Math.min(j.green[j.ph], j.cut)) : j.mpOn ? Infinity : j.green[j.ph], cap);

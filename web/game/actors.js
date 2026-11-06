@@ -754,7 +754,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       // (a crosswalk landing in a road, at an island or another street, isn't one to wait at either end of)
       const on = (g, d, u) => pz.road && pz.road(g.x + g.ox * d - g.oy * u * SCR_HW, g.y + g.oy * d + g.ox * u * SCR_HW);
-      const ok = G.filter(g => !(on(g, 3, 0) && on(g, 5, 0)) && !(on(g.partner, 3, 0) && on(g.partner, 5, 0)));
+      const off = g => spotAt(g, 0, 0.8, {}, pz.road).ok !== false; // (and somewhere off the road behind it to wait)
+      const ok = G.filter(g => !(on(g, 3, 0) && on(g, 5, 0)) && !(on(g.partner, 3, 0) && on(g.partner, 5, 0)) && off(g) && off(g.partner));
       for (const g of ok) g.corner = ok.filter(h => h !== g && h !== g.partner && Math.hypot(h.x - g.x, h.y - g.y) < 16);
       return (pz.gates = ok);
     }
@@ -763,9 +764,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function spotAt(g, u, depth, out, road = null) {
       for (let k = 0; k < 6; k++) {
         out.x = g.x + g.ox * depth - g.oy * u * SCR_HW; out.y = g.y + g.oy * depth + g.ox * u * SCR_HW;
-        if (!road || !road(out.x, out.y)) break;
+        if (!road || !road(out.x, out.y)) return out;
         u *= 0.6; depth = 0.8 + (depth - 0.8) * 0.6;
       }
+      // (still in a road at the kerb: further back from it, on the stripes' line, where the pavement is; a spot left
+      // in the road massed its crowd on the carriageway, where it held the signals' all-red and the cars' greens,
+      // Shinjuku's 1106, #264)
+      for (const d of [1.5, 2.5, 3.5, 5, 6.5]) {
+        out.x = g.x + g.ox * d; out.y = g.y + g.oy * d;
+        if (!road(out.x, out.y)) return out;
+      }
+      out.ok = false;
       return out;
     }
     function toGate(q, g, depth) { // to wait at gate g
@@ -873,7 +882,21 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (xSpeed(q) * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
       }
       const dx = q.T.x - q.x, dy = q.T.y - q.y, d = Math.hypot(dx, dy);
-      if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') { sp = q.speed * 0.75; if (pz.road && pz.road(q.x, q.y)) { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } } else sp = d > 0.6 ? 0.5 : 0;
+      if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') {
+        sp = q.speed * 0.75;
+        if (pz.road && pz.road(q.x, q.y)) {
+          sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1;
+          // (still out on the road, held up short of its spot by the crowd massed at the kerb: a spot further back
+          // behind it, twice, and then it stands where it is, not counted as out crossing: the signals held their
+          // all-red and the cars' green for it, a minute at a time, Shinjuku's 1105, #264)
+          q.sjam = q.v < 0.15 ? (q.sjam || 0) + dt : 0;
+          if (q.sjam > 3) {
+            q.sjam = 0; q.sTries = (q.sTries || 0) + 1;
+            if (q.sTries <= 2 && q.g) spotAt(q.g, q.spread * 0.5, 2 + 1.5 * q.sTries, q.T, pz.road);
+            else { q.ph = 'wait'; q.T.x = q.x; q.T.y = q.y; q.react = 0.2 + rnd() * 2.2; }
+          }
+        } else q.sTries = 0;
+      } else sp = d > 0.6 ? 0.5 : 0;
       if (q.pause > 0) sp = 0;
       let vx = d > 1e-3 ? dx / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0, vy = d > 1e-3 ? dy / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0;
       // the others near: apart, and, meeting someone coming the other way, a step to the left
@@ -1830,6 +1853,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           (sawX || (sawX = new Set())).add(o.id);
           const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
           if (d2 >= 0 && first(c, o, d, d2, i, -1)) continue;
+          // (and not one whose driver is giving way to this car already, as its own reading of the rule had it last
+          // frame: the two readings measure with different margins and could each give way to the other, a car
+          // standing in Shinjuku's junction 1105 for the taxi coming for you while the taxi stood for it, 15 s, #254)
+          if (o.xBlock && (o.xBlock === c || o.xBlock.of === c)) continue;
           const g = d + 0.6;
           if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; leadX = o; xQ = !!o.q && o.qBy !== c; youBy = o.id + ' on its way'; } // (a ride queueing for a junction: this car queues behind it)
         }
