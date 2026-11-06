@@ -410,7 +410,7 @@ const npcNight = require('./npc_night');
     const g = window.__game, pl = g.player, P = (g.G.patches || [])[0];
     if (!P) return { none: true };
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
-    const b = Uint8Array.from(atob(P.data), c => c.charCodeAt(0)), Z = new Int16Array(b.buffer, 0, P.nx * P.ny);
+    const b = typeof P.data === 'string' ? Uint8Array.from(atob(P.data), c => c.charCodeAt(0)) : P.data, Z = new Int16Array(b.buffer, b.byteOffset, P.nx * P.ny);
     const at = (x, y) => { const i = Math.floor((x - P.x0) / P.cell), j = Math.floor((y - P.y0) / P.cell); return i < 0 || j < 0 || i >= P.nx || j >= P.ny || Z[j * P.nx + i] === -32768 ? null : Z[j * P.nx + i] / 100; };
     const go = (x, y, dx, dy, z, t) => {
       Object.assign(pl, { x, y, z, ground: true, vz: 0, speed: 0 });
@@ -517,7 +517,7 @@ const npcNight = require('./npc_night');
   // head does not pass between the soffit, clear_m over the floor, and the slab's top)
   const slabCam = await p.evaluate(() => {
     const g = window.__game, pl = g.player, out = [];
-    const dec = s => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new Int16Array(b.buffer, 0, b.length >> 1); };
+    const dec = s => { const b = typeof s === 'string' ? Uint8Array.from(atob(s), c => c.charCodeAt(0)) : s; return new Int16Array(b.buffer, b.byteOffset, b.length >> 1); };
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, pitch: g.cam.pitch };
     for (const P of g.G.patches || []) {
       const U = P.upper;

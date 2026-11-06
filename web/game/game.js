@@ -34,13 +34,14 @@ window.OpenEarthGame = async function game(cityId) {
   // (the ground mesh uses every second point, 10 m, except on the tiles near the player)
   let Tfine = D.T;
   if (D.G.terrain) {
-    const t = D.G.terrain, raw = Uint8Array.from(atob(t.data), c => c.charCodeAt(0)), v = new Int16Array(raw.buffer);
+    const bytesOf = b => (typeof b === 'string' ? Uint8Array.from(atob(b), c => c.charCodeAt(0)) : b); // (bytes from game.bin, base64 from game.json)
+    const t = D.G.terrain, raw = bytesOf(t.data), v = new Int16Array(raw.buffer, raw.byteOffset, raw.byteLength >> 1);
     Tfine = { data: Float32Array.from(v, q => q * t.scale), nx: t.nx, ny: t.ny, cell: t.cell, x0: D.scene.frame.x[0], y1: D.scene.frame.y[1] };
     // land below the level of the sea (behind Osaka's river walls, in an underpass) would be drawn
     // under the water, which lies level everywhere: keep it just above
     const wm = D.G.water;
     if (wm && wm.nx === t.nx && wm.ny === t.ny) {
-      const bits = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0)), d = Tfine.data;
+      const bits = bytesOf(wm.bits), d = Tfine.data;
       for (let i = 0; i < d.length; i++) if (d[i] < 0.15 && !((bits[i >> 3] >> (7 - (i & 7))) & 1)) d[i] = 0.15;
     }
     const nx = Math.ceil(t.nx / 2), ny = Math.ceil(t.ny / 2), c = new Float32Array(nx * ny);

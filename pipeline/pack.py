@@ -13,7 +13,8 @@ nothing downstream changes, except that
   - the roof meshes' base64 strings (buildings.json "r" columns 6 and 7) arrive as bytes (Uint8Array);
   - the landmark meshes' vertex lists (landmarks.json meshes[].position, .index, .uv) arrive as typed
     arrays (Float64Array or Int32Array) that a Worker hands over without copying (web/pack-worker.js);
-  - the terrain grid (terrain.json "data", base64 int16) arrives as its bytes (Uint8Array).
+  - the terrain grids (terrain.json "data"; game.json terrain, patches and upper "data", base64 int16)
+    and the game's water mask (game.json water "bits") arrive as their bytes (Uint8Array).
 
 The format is a generic, lossless columnar encoding of a JSON tree, gzip-wrapped (the browser inflates
 it with DecompressionStream; GitHub Pages does not gzip unknown binary types):
@@ -53,11 +54,12 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "web", "data")
 BYTES = {"buildings.json": {("r", 6): "<i2", ("r", 7): None},  # base64 columns shipped as bytes: (table, position): element type
-         # (and in game.json the height grids and the water mask, which decode back to base64 text, "s64")
+         # (and in game.json the height grids and the water mask)
          "game.json": {("terrain", "data"): "<i2", ("patches", "data"): "<i2", ("upper", "data"): "<i2", ("water", "bits"): None},
          "terrain.json": {("data",): "<i2"}}
 # bytes columns that arrive as bytes (Uint8Array) in a deep pack; the others decode back to base64 text ("s64")
-RAW = {"terrain.json": {("data",)}}
+RAW = {"terrain.json": {("data",)},
+       "game.json": {("terrain", "data"), ("patches", "data"), ("upper", "data"), ("water", "bits")}}
 # numeric lists decoded as typed arrays (list columns flagged "ta"): (list, key) in a list of objects
 TYPED = {"landmarks.json": {("meshes", "position"), ("meshes", "index"), ("meshes", "uv")}}
 NAMES = ("buildings.json", "landmarks.json", "game.json", "terrain.json", "places.json", "scene.json")
