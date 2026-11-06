@@ -102,6 +102,14 @@ window.OEVehicles = (function () {
   // decals; everything keeps the AO baked in Blender
   function dress(root, paint, colours, { decals = {}, lamps = {}, glassTint = '#0f1a21' } = {}) {
     const cache = new Map();
+    // the baked AO is grey and three.js reads its .r: one byte a texel on the GPU instead of four
+    // (a 2048 px map with its mips, 21 MB to 5); RedFormat is in r128 and r186 alike
+    root.traverse(o => {
+      for (const m of [].concat(o.material || [])) {
+        const t = m.aoMap;
+        if (t && THREE.RedFormat !== undefined && t.format !== THREE.RedFormat && !(t.isCompressedTexture)) { t.format = THREE.RedFormat; t.needsUpdate = true; }
+      }
+    });
     const make = (m, trim) => {
       const ao = m.aoMap ? { aoMap: m.aoMap, aoMapIntensity: 1 } : {};
       const n = m.name, key = paint[n];
