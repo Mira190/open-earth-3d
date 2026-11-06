@@ -75,9 +75,6 @@ NOT_YET = {
     "1515285572": "Crown (Melbourne): the covered riverside walk under the complex's overhang; the model's wall stands on it",
     "1411716215": "the Tombori River Walk (Osaka): the boardwalk along the Dotonbori canal under its bridges is not laid in the game yet",
     "1411716206": "the Tombori River Walk (Osaka): the boardwalk along the Dotonbori canal under its bridges is not laid in the game yet",
-    "1340239544": "Kiyomizu-dera (Higashiyama): the covered corridor along the main hall to its stage; the model's walls close it",
-    "1272415075": "Kiyomizu-dera (Higashiyama): the covered corridor along the main hall to its stage; the model's walls close it",
-    "339551498": "Kiyomizu-dera's west gate (Higashiyama): the way up through it; the gate's stone platform has no steps yet",
 }
 DIP = 0.4       # the bare earth under a building this far off the line between a passage's two ends is a guess
 CELL = 1.0      # the cells the landmarks' cover is read in (m)

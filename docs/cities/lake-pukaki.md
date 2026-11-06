@@ -268,3 +268,75 @@ Sources read on 2026-11-05:
   turn it off with `?mirror=0` and the plants with `?flora=0`.
 - **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway;
   a real star catalogue; volumetric clouds (issue #204).
+
+## 9. Picture tiers
+
+The reef and alpine viewer takes the same picture tier as the globe and the cities (`web/quality.js`: the device's
+own, measured, or the visitor's choice in About; `?quality=high|medium|low` for one visit) and reads it in its own
+terms (`web/reef/tier.js`):
+
+| Tier | Who gets it | Plants | Lake mirror | Post | Pixels |
+|---|---|---|---|---|---|
+| high | desktop GPUs | all, to full radius; turf to 40 m | half resolution, near and mid lupins in it | bloom, 4x MSAA | up to 2x |
+| medium | tablets, weaker laptops | 70% within 84% of the radii; a thinner turf | a third, no plants | bloom | within the tier's budget |
+| low | phones, software renderers | 40% within 63% of the radii, simpler forms (lupins of 7 spikes and 9 leaves, tussock of 40 blades, matagouri of 28 twigs); no turf | off | no bloom | within the tier's budget |
+
+On every tier each plant set is split into a disc round the eye and eight sectors beyond it, each with its own
+bounds, so the renderer leaves out what is behind the camera (until November 2026 every set was drawn as one ring all
+the way round). The mirror leaves out what is too small to read in a wind-blurred reflection: the turf, tussock, stones,
+matagouri and far lupin patches always. The matagouri beyond 40 m is a bush of 14 twigs, and the lupins' spikes have no
+end caps. The underwater light shafts are skipped by a branch when the eye is above the water.
+
+Measured with `tools/reef_cost.js` at Tekapo's lupin shore (`shots` "lupins", 6 November, 14:30), WebGL2 on Mesa
+llvmpipe, triangles a frame over every pass and the median frame time:
+
+| | Before | high | medium | low |
+|---|---|---|---|---|
+| Desktop 1440 x 900 | 6.57 M, 2105 ms | 2.46 M, 1689 ms | 1.53 M, 963 ms | 0.73 M, 605 ms |
+| Phone 390 x 844 (3x screen) | 3.00 M, 1359 ms | 1.88 M, 1099 ms | 1.16 M, 572 ms | 0.64 M, 341 ms |
+
+A software renderer is limited by its pixels more than by its triangles, so the frame times say less than the
+triangles about a real GPU. A phone picks the low tier for itself. On the reef sites, whose life is light already
+(Hardy Reef: 0.4 M triangles at the surface), the tier sets the pixels, MSAA and bloom only.
+
+What was looked at: Unreal Engine's scalability groups for foliage (`foliage.DensityScale`, `grass.DensityScale`,
+`foliage.LODDistanceScale`) and its hierarchical instanced foliage, culled by cluster; Unity's terrain detail density
+and distance. The approach is theirs (density and distance scaled per tier, instances culled in clusters); no code was
+taken.
+
+## 10. The highways and their traffic
+
+**The road surface** (`web/reef/alpine/roadfield.js`, painted in `terrain.js`). Round the eye, a 640 m field at
+1.25 m holds the signed distance across the nearest sealed road's centreline, the phase along it, and the road's
+kind and half-width. Because the distance is signed, it changes linearly across a road, so a bilinear read is exact
+and a 10 cm line stays sharp on 1.25 m texels, as signed distance fields keep glyphs sharp (Green 2007). A read whose
+gradient is far steeper than a metre per metre (where one road's field meets another's, or the "no road" value) is
+no road. The ground is painted within about 240 m, past which the photographs carry the roads:
+- **State highways** (OpenStreetMap primary: SH80, Mount Cook Road; SH8): two 3.4 m lanes; a 100 mm white edge line at
+  each lane's outer edge; a broken white centre line of 3 m stripes and 7 m gaps (the NZTA Traffic Control Devices
+  Manual, part 5, table 2-6); sealed shoulders to 3.9 m and a gravel shoulder beyond.
+- **Secondary and tertiary roads:** 3.2 m lanes and the centre line only.
+- **Residential streets, unclassified roads and tracks** are left to the photographs: the township's 0.3 m photographs
+  show its streets, and most of the Mackenzie's back roads are gravel.
+- **The seal** is chipseal: pale greywacke chips in bitumen, with a third of the photograph's own colour kept so it sits
+  in the aerial patches without a step, and the wheel paths a little darker.
+- **Flat ground:** the relief (section 4) is laid flat on the seal and eased back over 2 m past its edge, on the GPU and
+  in `heightAt` alike, so the player, the cars and the drawn road agree. No plant grows on the seal.
+
+**Traffic** (`web/reef/alpine/traffic.js`, `?traffic=0` leaves it out, `?traffic=<n>` scales it). The shared Blender
+cars (`web/assets/vehicles/cars.glb`: SUVs, hatchbacks, sedans, vans for the campervans, and coaches) drive the highway
+centrelines:
+- **Keeping left**, 1.7 m left of the centreline.
+- **Speed:** 100 km/h on the open road, 50 km/h within 150 m of a building, slowed for bends (2.5 m/s² sideways) and
+  for the car ahead (a two-second gap). At a line's end a car carries on along the same road.
+- **Wheels and detail:** the wheels are split off the body as `web/game/cars.js` splits them, so they turn. Three
+  levels of detail.
+- **After dark:** lamps lit, and a pool of headlamp light on the road ahead (added light, since a light per car would
+  recompile every material as cars come and go). A soft contact shadow under each car.
+- **Why not cars.js:** the cities' cars and traffic patch WebGL materials, which the reef viewer's WebGPU renderer
+  cannot take, so this module drives the same models with their own glTF materials.
+- **How many:** about a car a kilometre each way by day, 45% of that in the shoulder hours, 8% at night. No traffic count
+  for SH80 was found, so the figure is a judgement for a rural state highway. The colours (white and silver commonest)
+  are a judgement from photographs.
+
+The reef gametest checks that the cars keep left and stand on the drawn ground.
