@@ -401,8 +401,15 @@ export async function createPerson(lookIn, opts = {}) {
   rig.wave = () => rig.play('Wave', { once: true, fade: 0.2 });
 
   // ---- swimming: bone offsets about model-space axes, applied after the clip each frame
+  // The mixer writes a track only when its value changes (three.js PropertyMixer), so a bone whose clip track is constant
+  // (the Idle clip's neck is one key) keeps last frame's offset: each bone posed here is put back before the mixer runs,
+  // or the offsets pile up frame on frame and the head spins.
+  const posed = new Map();
+  const keep = bone => { if (!posed.has(bone)) posed.set(bone, [bone.position.clone(), bone.quaternion.clone(), bone.scale.clone()]); };
+  const unpose = () => { for (const [b, [p, q, s]] of posed) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(s); } posed.clear(); };
   const twist = (bone, axis, ang) => {
     if (!bone || !ang) return;
+    keep(bone);
     model.updateMatrixWorld(false);
     bone.parent.getWorldQuaternion(_q); model.getWorldQuaternion(_q2);
     _q.premultiply(_q2.clone().invert());                       // parent's orientation in model space
@@ -444,6 +451,7 @@ export async function createPerson(lookIn, opts = {}) {
     _mA.copy(rLL).invert().premultiply(ll.matrixWorld);
     _mB.makeTranslation(F.cx, 0.1, F.back + 0.06).multiply(_mC.makeRotationX(plantar)).multiply(_mD.makeTranslation(-F.cx, -0.1, -(F.back + 0.06)));
     _mA.multiply(_mB).multiply(rF);
+    keep(ft);
     ft.parent.updateWorldMatrix(true, false);
     _mA.premultiply(_mC.copy(ft.parent.matrixWorld).invert());
     _mA.decompose(ft.position, ft.quaternion, ft.scale);
@@ -494,6 +502,7 @@ export async function createPerson(lookIn, opts = {}) {
       if (Math.abs(d) < 0.01) rig.targetHeading = null;
       group.rotation.y = rig.heading;
     }
+    unpose();
     rig.mixer.update(dt);
     applyProc(dt);
     if (rig.speech) {
