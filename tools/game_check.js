@@ -715,14 +715,28 @@ const npcNight = require('./npc_night');
       [pl.x, pl.y, pl.z] = a; pl.mode = 'foot'; g.advance(0.3);
       const act = g.currentAction && g.currentAction(), offered = !!(act && /lift/i.test(act.text || ''));
       g.rideLift(L, i, j);
-      for (let k = 0; k < 80 && g.cine.active; k++) g.advance(0.25);
+      // a lift ridden in its car (lifts[].car, Queenstown's): through the ride the player stands in the car's
+      // middle on its floor, and the car ends at the far stop's floor with that stop's doors shut again
+      const C = L.car && g.liftCar && g.liftCar(L), ride = { frames: 0, off: 0, floorOff: 0 };
+      for (let k = 0; k < 240 && (g.cine.active || pl.mode === 'lift'); k++) {
+        g.advance(0.25);
+        const R = g.liftRide && g.liftRide();
+        if (C && R && R.phase === 'ride') {
+          const floor = (L.stops[L.car.drawn_at].floor ?? L.stops[L.car.drawn_at].at[2]) + C.dz;
+          ride.frames++; ride.off = Math.max(ride.off, Math.hypot(pl.x - L.car.centre[0], pl.y - L.car.centre[1])); ride.floorOff = Math.max(ride.floorOff, Math.abs(pl.z - floor));
+        }
+      }
       g.advance(0.5);
-      out.push({ name: L.name, from: L.stops[i].name, to: L.stops[j].name, offered, dz: Math.abs(pl.z - b[2]), d: Math.hypot(pl.x - b[0], pl.y - b[1]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok, floor: pl.floor });
+      const o = { name: L.name, from: L.stops[i].name, to: L.stops[j].name, offered, dz: Math.abs(pl.z - b[2]), d: Math.hypot(pl.x - b[0], pl.y - b[1]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok, floor: pl.floor, mode: pl.mode };
+      if (C) Object.assign(o, { car: true, rideFrames: ride.frames, off: ride.off, floorOff: ride.floorOff,
+        carAt: Math.abs((L.stops[L.car.drawn_at].floor ?? L.stops[L.car.drawn_at].at[2]) + C.dz - (L.stops[j].floor ?? b[2])), shut: C.doors.every(d => d.k < 0.01) });
+      out.push(o);
     }
     g.spawn(); g.advance(0.5);
     return out;
   });
   for (const r of liftRides) check(r.offered && r.dz < 0.6 && r.d < 3 && r.walk, `the ${r.name} from ${r.from} to ${r.to} (offered at its door: ${r.offered}; ends ${r.d.toFixed(1)} m from the stop, ${r.dz.toFixed(2)} m off its level, on ${r.floor}${r.walk ? '' : ', not walkable'})`);
+  for (const r of liftRides.filter(q => q.car)) check(r.rideFrames > 4 && r.off < 0.6 && r.floorOff < 0.1 && r.carAt < 0.05 && r.shut && r.mode === 'foot', `the ${r.name}'s car rides from ${r.from} to ${r.to} with you in it (${r.rideFrames} frames under way, at most ${r.off.toFixed(2)} m off its middle and ${r.floorOff.toFixed(2)} m off its floor; the car ${r.carAt.toFixed(2)} m from the far floor, doors ${r.shut ? 'shut' : 'open'}, ${r.mode})`);
 
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it

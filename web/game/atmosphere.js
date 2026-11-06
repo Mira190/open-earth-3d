@@ -183,12 +183,29 @@ window.OEAtmos = (function () {
             c /= w;
           }
         }
+        // The motion blur (issue 265: its 8 even taps up to 3% of the frame drew each edge as a row of jagged
+        // copies, the far rock smeared over the near deck, and a cut smeared the whole frame): 12 taps offset
+        // by a per-pixel noise (interleaved gradient noise, Jimenez 2014), so the steps dissolve into grain
+        // instead of copies; a shorter streak; a sample further off than the pixel itself doesn't bleed over
+        // it (only the nearer one smears over what is behind); and a jump of the camera (a cut, or the first
+        // frame after a long one) draws no blur at all rather than a frame-wide smear.
         if (uBlur > 0.0) {
           vec4 wp = uCamWorld * vec4(normalize(viewAt(vUv)) * min(d, uFar * 0.99), 1.0), pp = uPrevVP * wp;
-          vec2 prev = pp.xy / max(pp.w, 1e-4) * 0.5 + 0.5, mv = clamp((vUv - prev) * uBlur, vec2(-0.03), vec2(0.03));
-          vec3 m = c;
-          for (int i = 1; i < 8; i++) m += texture2D(tDiffuse, vUv - mv * (float(i) / 7.0 - 0.5)).rgb;
-          c = m / 8.0;
+          vec2 prev = pp.xy / max(pp.w, 1e-4) * 0.5 + 0.5, raw = vUv - prev;
+          float cut = 1.0 - smoothstep(0.05, 0.09, length(raw)) ;
+          vec2 mv = raw * uBlur * cut;
+          float ml = length(mv);
+          if (ml > 0.012) mv *= 0.012 / ml;
+          if (ml * float(textureSize(tDiffuse, 0).y) > 1.0) {
+            float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            vec3 m = c; float w = 1.0;
+            for (int i = 0; i < 12; i++) {
+              vec2 uv = vUv - mv * ((float(i) + ign) / 12.0 - 0.5);
+              float k = dist(uv) > d * 1.15 + 0.5 ? 0.15 : 1.0;
+              m += texture2D(tDiffuse, uv).rgb * k; w += k;
+            }
+            c = m / w;
+          }
         }
         gl_FragColor = vec4(c, 1.0);
       }`,

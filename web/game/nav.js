@@ -82,8 +82,12 @@ window.OENav = (function () {
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     const solidMeshes = [];  // the meshes that are solid, for the collision world's finer cells (below)
     for (const m of D.LM.meshes || []) {
-      if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
       const mat = (D.LM.materials || {})[m.material] || {};
+      // walked on as a strip surface; its slab is added below. What stands on the strip's edge as a wall stays one
+      // (issue 265: a deck's glass balustrade, named for the deck, let walkers through it), though it carries the
+      // strip's name: glass, a balustrade, a railing or a barrier
+      const barrier = mat.opacity < 1 || /glass|balustrade|railing|barrier/.test(m.name);
+      if (strips.some(st => st.mesh && m.name.startsWith(st.mesh) && (m.name === st.mesh || !barrier))) continue;
       if (mat.decal) continue; // paving laid over a roof, which is the solid
       if (mat.solid === false) continue; // walls a city's fine walking levels hold walkers back at instead (game.json "patches")
       solidMeshes.push(m);

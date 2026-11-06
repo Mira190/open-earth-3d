@@ -532,6 +532,44 @@ vec3 photoGrade(vec3 c) {
   c = pow(max(c - uPhotoGrade.x, 0.0) / (1.0 - uPhotoGrade.x), vec3(uPhotoGrade.y));
   return max(mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, uPhotoGrade.z), 0.0);
 }`;
+  // Steep ground: the aerial photograph is taken from straight above, so on a face steeper than about
+  // 45 degrees each of its pixels is drawn over 1.4 to 4 metres of slope, smeared down the fall line
+  // into grey-white streaks (the schist under the Skyline deck on Bob's Peak, issue 265). There the
+  // photograph gives way to rock: its own tone, blurred to some 30 m so its streaks go, with a detail
+  // projected along the face's three axes (triplanar, so nothing stretches) and a foliation's bands.
+  // oeSteep (0 flat, 1 a cliff) is left for the game's ground to keep its pavers off the faces.
+  const STEEP_ROCK = `varying vec3 vRockWP, vRockWN;
+float rockH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float rockN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(rockH(i), rockH(i + vec2(1, 0)), f.x), mix(rockH(i + vec2(0, 1)), rockH(i + vec2(1, 1)), f.x), f.y); }
+float rockFace(vec2 p, float fine) { return rockN(p * 0.21) * 0.42 + rockN(p * 0.83 + 5.3) * 0.3 + (rockN(p * 3.1 + 1.7) * 0.18 + rockN(p * 11.0) * 0.1) * fine; }
+float steepness() { return smoothstep(0.72, 0.5, normalize(vRockWN).y); }
+vec3 steepRock(vec3 c, float k) {
+  if (k < 0.003) return c;
+  vec3 n = normalize(vRockWN), w = pow(abs(n), vec3(4.0));
+  w /= dot(w, vec3(1.0));
+  float d = distance(vRockWP, cameraPosition), fine = 1.0 - smoothstep(60.0, 260.0, d);
+  float r = rockFace(vRockWP.zy, fine) * w.x + rockFace(vRockWP.xz, fine) * w.y + rockFace(vRockWP.xy, fine) * w.z;
+  // the schist's foliation: bands along the height, warped, finer near
+  float band = rockN(vec2(vRockWP.y * 0.9 + rockN(vRockWP.xz * 0.05) * 7.0, 0.5));
+  // the photograph's tone over some 30 m (its mip there), kept to the albedo weathered schist has
+#ifdef USE_MAP
+  vec2 oeT = vec2(textureSize(map, 0));
+  float mpp = length(fwidth(vRockWP.xz)) / max(length(fwidth(vMapUv * oeT)), 1e-5);
+  vec3 base = textureLod(map, vMapUv, clamp(log2(30.0 / max(mpp, 1e-3)), 0.0, 9.0)).rgb;
+  base = photoGrade(base);
+#else
+  vec3 base = c;
+#endif
+  float L = dot(base, vec3(0.2126, 0.7152, 0.0722));
+  vec3 tint = mix(vec3(1.0), base / max(L, 1e-3), 0.35);
+  vec3 rock = vec3(0.92, 0.9, 0.84) * tint * clamp(L, 0.07, 0.2);
+  rock *= (0.62 + 0.62 * r) * mix(0.82, 1.08, band);
+  // lichen and the grass the ledges hold, where the face eases
+  float ledge = smoothstep(0.55, 0.75, rockN(vRockWP.xz * 0.6 + vRockWP.y * 0.3)) * (1.0 - smoothstep(0.35, 0.75, k));
+  rock = mix(rock, c, ledge * 0.6);
+  return mix(c, rock, k);
+}`;
   // a histogram of the tiles' luminance and their mean saturation, from a small copy of each
   function photoStats() {
     const S0 = { hist: new Float64Array(256), sat: 0, n: 0 }, cv = document.createElement('canvas');
@@ -846,8 +884,11 @@ vec3 woodsFloor(vec3 c) {
     const gradePhoto = sh => {
       clipGround(sh);
       sh.uniforms.uPhotoGrade = PG;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRockWP, vRockWN;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvRockWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vRockWN = normalize(mat3(modelMatrix) * objectNormal);');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
-        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);');
+        .replace('#include <map_pars_fragment>', `#include <map_pars_fragment>\n${STEEP_ROCK}`)
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);\nfloat oeSteep = steepness();\ndiffuseColor.rgb = steepRock(diffuseColor.rgb, oeSteep);');
       woodsFloor(sh); // after the photo, the game's drawn streets and grain: the floor has its own
       streetLit(sh);
     };

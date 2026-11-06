@@ -145,6 +145,21 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
           g.advance(0.5);
         }
       }
+      // "lift": {id, from, to, at: 0..1, phase} rides a lift whose car is drawn (game.json lifts[].car) from stop
+      // `from` to `to`, and holds it that far through the run (or in that phase: "open", "in", "open2", "out")
+      if (v.lift) {
+        const L = g.lifts.find(q => q.id === v.lift.id) || g.lifts[0];
+        [g.player.x, g.player.y, g.player.z] = L.stops[v.lift.from ?? 0].at; g.advance(0.3);
+        g.rideLift(L, v.lift.from ?? 0, v.lift.to ?? 1);
+        for (let i = 0; i < 400; i++) {
+          const R = g.liftRide();
+          if (!R) break;
+          if (v.lift.phase ? R.phase === v.lift.phase && R.t >= (v.lift.at ?? 0.5) * 1.1 : R.phase === 'ride' && R.t >= (v.lift.at ?? 0.5) * Math.abs(R.zB - R.zA) / R.v) break;
+          g.advance(0.1);
+        }
+        if (v.yaw != null) Object.assign(g.cam, { yaw: v.yaw, yawTo: null, distTo: 0, dist: v.dist ?? g.cam.dist, pitch: v.pitch ?? g.cam.pitch });
+        g.hold(true); g.advance(0.05);
+      }
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
         g.photoMode(true);
@@ -152,11 +167,25 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         P.focus.set(v.look[0], lz, -v.look[1]); P.anchor.copy(P.focus);
         Object.assign(P, { az: Math.atan2(dx, dy), pitch: Math.atan2(h, d), dist: Math.hypot(d, h) });
         if (v.fov) P.fov = v.fov;
+        P.fstop = v.fstop ?? 16; // (photo mode's depth of field: sharp unless a still asks for it)
         g.player.rig.root.visible = false;
         g.advance(0.1);
       }
     }, v);
     await (v.closer ? grabPage : grab)(v.name);
+    // "pick": [[u, v], ...] points on the frame (0..1 from its top left): what the camera sees there, printed
+    // (the mesh's name, its material's, and where it is hit), to find which surface draws a fault in the still
+    if (v.pick) console.log(JSON.stringify(await p.evaluate(pts => {
+      const g = window.__game, rc = new THREE.Raycaster();
+      return pts.map(([u, w]) => {
+        rc.setFromCamera(new THREE.Vector2(2 * u - 1, 1 - 2 * w), g.camera);
+        const root = g.Wd.world.parent || g.Wd.world;
+        const hit = rc.intersectObjects(root.children, true).find(h => h.object.visible && h.object.isMesh);
+        if (!hit) return { at: [u, w], hit: null };
+        const o = hit.object, m = Array.isArray(o.material) ? o.material[0] : o.material;
+        return { at: [u, w], mesh: o.name || o.parent && o.parent.name || o.type, material: m && (m.name || m.type), xyz: [+hit.point.x.toFixed(1), +(-hit.point.z).toFixed(1), +hit.point.y.toFixed(1)] };
+      });
+    }, v.pick)));
     if (v.closer) await p.evaluate(() => window.__game.interact()); // (step back)
     if (v.eye) await p.evaluate(() => { window.__game.photoMode(false); window.__game.player.rig.root.visible = true; });
   }
