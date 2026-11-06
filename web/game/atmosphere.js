@@ -249,6 +249,7 @@ window.OEAtmos = (function () {
       rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: QC.samples, depthTexture: deep });
       if (deep) rt.resolveDepthBuffer = wantAO;
       composer = new THREE.EffectComposer(renderer, rt);
+      if (window.OEWorld && OEWorld.leanComposer) OEWorld.leanComposer(composer); // the scene alone multisampled (world.js)
       // the scene's pass, noting which target's depth it drew (the composer's two targets take turns)
       const scenePass = new THREE.RenderPass(world, camera), drawScene = scenePass.render.bind(scenePass);
       scenePass.render = (r, wb, rb, ...rest) => { sceneDepth = rb.depthTexture || null; return drawScene(r, wb, rb, ...rest); };

@@ -104,6 +104,7 @@ window.OpenEarthCity = async function main(cityId) {
   let bloom = null;
   if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2 && QC.post) {
     post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }));
+    OEWorld.leanComposer(post); // the scene alone multisampled (world.js)
     post.addPass(new THREE.RenderPass(world, camera));
     bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0);
     OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
