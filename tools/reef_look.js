@@ -5,7 +5,8 @@
 //   NODE_PATH=$(npm root -g) xvfb-run -a node tools/reef_look.js "city=lake-tekapo&gl=1&mute=1" out/tek \
 //     '[{"tag":"side","yaw":90,"pitch":-4,"dist":2.2},{"tag":"church","x":432,"north":40,"heading":16,"yaw":16,"pitch":2,"dist":3.4}]'
 // A view: yaw, pitch (degrees) and dist (metres) of the camera round the player; x, north and heading move the player
-// there first; body (degrees) turns the body to that heading (yaw is then relative to nothing: it is the camera's own).
+// there first; body (degrees) turns the body to that heading (yaw is then relative to nothing: it is the camera's own);
+// clip (Walk, Run) plays that clip in place for the still.
 // Under xvfb-run (DISPLAY set) it uses Mesa's llvmpipe; W and H set the viewport (MOBILE=1 for a phone).
 const { chromium } = require('playwright');
 const [,, query, prefix, viewsJson = '[]', wait = '6000'] = process.argv;
@@ -35,6 +36,10 @@ const [,, query, prefix, viewsJson = '[]', wait = '6000'] = process.argv;
       if (v.pitch !== undefined) S.camPitch = v.pitch * R;
       if (v.dist !== undefined) S.dist = v.dist;
       if (v.view) S.view = v.view;
+      // clip: the player's body plays that clip in place (a walk or a run seen from the side, the hat on a moving head)
+      const rig = pl.rig;
+      if (v.clip) { rig._locomote = rig._locomote || rig.locomote; rig.locomote = () => rig.play(v.clip, { fade: 0 }); }
+      else if (rig._locomote) { rig.locomote = rig._locomote; delete rig._locomote; }
     }, v);
     await p.waitForTimeout(Number(v.wait || 2500));
     const out = `${prefix}-${v.tag}.png`;
