@@ -78,7 +78,7 @@ window.OEJunctions = (function () {
   const LINK = 24;      // a piece this short joining two junction nodes lies inside one junction (m)
   const SPAN = 42;      // and a junction is no wider than this (m)
   const SCR_W_POST = 5.0; // (m: a scramble's walk signal stands this far to the side of its crosswalk's line, clear of its stripes (up to 8 m wide) and the crowd spread across them)
-  const SCR_V = 1.45, SCR_MIN = 18; // a scramble's crowd's pace across (m/s) and its shortest walk (s)
+  const SCR_V = 1.45, SCR_MIN = 15; // a scramble's crowd's pace across (m/s) and its shortest walk (s)
   const AMBER = 3, ALLRED = 1, CALL = 12, GAP_MIN = 5, FLASH = 3, RED = 10; // seconds; a phase with nobody waiting on the other turns after CALL more; nobody waits at a red longer than RED
   const MID_CLEAR = 2; // (s: a crossing's walk flashing after its green, before its all red: 2 + 4 + 2 + 2 = RED for its cars)
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -723,6 +723,7 @@ window.OEJunctions = (function () {
     function may(c, a, e, t) {
       const j = a.j, k = a.i, m = mv(c, e);
       for (const o of j.active) if (o.c === c && o.k === k && o.m === m) return true; // (in it already, this way)
+      if (j.scramble && j.busy > 0 && !(j.ph < 2 && j.st === 'g' && j.t > 5)) return 'walk'; // (none into a scramble's box with anyone still out crossing it, #197; 5 s into a green, the last of them is let be)
       for (const o of j.active) if (o.c !== c && (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m))) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
@@ -852,7 +853,7 @@ window.OEJunctions = (function () {
             j.nxt = j.ph === 0 ? (arrowCall && !W(1) ? 2 : 1) : j.ph === 2 ? (W(1) ? 1 : 0) : j.ph === 1 && j.scramble ? 3 : 0;
           }
         } else if (j.st === 'y' && j.t >= (j.mid != null && j.ph === 1 ? MID_CLEAR : j.amber)) { j.st = 'r'; j.t = 0; dirty.add(j); } // (a crossing's walk ends in its flashing, not a car's amber)
-        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 15) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; j.mpExt = j.mpOn = false; if (j.skip === j.ph) j.skip = null; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 25) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; j.mpExt = j.mpOn = false; if (j.skip === j.ph) j.skip = null; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
         j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > end - FLASH);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }

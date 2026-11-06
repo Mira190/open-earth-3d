@@ -190,8 +190,9 @@ is to pull in at is taken, by your own car or one stopped there for good (10 s),
 it pulls in just behind, and drives round one only waiting in the traffic; held
 up near the end for 8 s, it stops where it is with its hazards on. Where no car
 can reach your kerb in time (a dead end the near side of the street faces into,
-a stub no road feeds) the pick-up moves to the kerb across the street or a street
-round the corner, as a ride app moves it; in streets as slow as Shibuya's a car
+a stub no road feeds) the pick-up of a ride ordered on the phone moves to the kerb across the
+street or a street round the corner, as a ride app moves it (a taxi you hail keeps your kerb, or
+the one across the street: it pulls in beside you, #209); in streets as slow as Shibuya's a car
 can set out from just round the corner, 15 to 40 m off; and where the one-way
 streets leave next to no way in, the search goes back along any street, as the
 router does. Rather than none, a slow ride comes, the phone saying how slow.
@@ -1049,7 +1050,11 @@ Sydney's traffic stood still a third of the time.
 - **Lanes.** A motorway, trunk or primary road, and a one-way secondary, has
   two lanes each way: the first beside the centre line (on a one-way street, on
   the keep side), the second 3 m out towards the kerb (on a one-way street,
-  across on the other side). Where OpenStreetMap paints arrows on the lanes
+  across on the other side). A one-way road of one lane (a ramp, a narrow
+  one-way street) is driven on its line, the middle of its carriageway, not
+  1.7 m to the keep side (#177); a car eases across to it, at a lane change's
+  rate, where it comes onto such a road from another, and a ride's driver
+  follows the same lanes (`cars.js` `laneAt`). Where OpenStreetMap paints arrows on the lanes
   (`turn:lanes`, written on the road pieces as `"tl"` by
   `pipeline/road_lanes.py`), a movement goes from the lanes whose arrows show
   its way, the half of the road's lanes on the first lane's side standing for
@@ -1146,12 +1151,16 @@ Sydney's traffic stood still a third of the time.
   `landmarks.scramble`, with its six mapped crosswalks, the one diagonal from
   Hachiko to QFRONT among them) and the junctions a city lists in
   `game.scrambles` in `city.json` run a fourth phase after the traffic's two:
-  every arm red and every walk signal green together for 32 s, the green figures
-  flashing for the last 6, then 8 s for the main road and 6 s for the cross
+  every arm red and every walk signal green together for as long as its longest
+  crosswalk takes at its crowd's brisk pace (1.45 m/s, plus 5 s to step out; 15 s
+  at the least and 32 s at the most: 28 s at Shibuya's, 15 s at the small ones
+  round it, #199), the green figures flashing for the last 6, then 8 s for the main road and 6 s for the cross
   road (the real cycle is about two minutes with 40 to 50 s of walk; the game
   keeps the walk, which its crowd needs to cross, and cuts the traffic's turns
-  to a few seconds). The all-red round the walk is 4 s and is held up to 15 s
-  more while anyone is still out on the road. The walk is the one wait longer
+  to a few seconds). The all-red round the walk is 4 s and is held up to 25 s
+  more while anyone is still out on the road, and no car goes into the box while
+  anyone is out crossing it until its green has run 5 s (`junctions.js` `may`,
+  #197). The walk is the one wait longer
   than 10 s (`RED`): a car coming up as it starts waits for its crowd. Nobody
   walks in the traffic's phases. A ride's priority, or you waiting at the wheel,
   never shortens a walk under way, but one not yet started waits for your turn;

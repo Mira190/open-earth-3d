@@ -2070,7 +2070,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           if (c.ln && (c.wallGap < 40 || c.narrowNow)) c.noL1 = 6; // (a facade by the second lane: back to the first)
           if (c.wallGap < gap) { gap = c.wallGap; byCar = false; front = null; why = 'wall'; }
-          c.atWall = why === 'wall' && c.v < 0.1 ? (c.atWall || 0) + dt : 0;
+          // (stood at it, or creeping up to it under 1 m/s with less than 3 m left: a bus nosing along a one-way
+          // street that hugs a facade crept into the wall for seconds at 0.3 m/s before it gave up, #202)
+          c.atWall = why === 'wall' && (c.v < 0.1 || (c.v < 1 && gap < 3)) ? (c.atWall || 0) + dt : 0;
           if (c.atWall > 1.5) {
             c.atWall = 0; c.wallT = 0;
             if (far) { respawn(c, cx, cy, radius * 0.6); continue; }
