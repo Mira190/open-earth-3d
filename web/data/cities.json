@@ -78,8 +78,8 @@
    "game"
   ],
   "load_bytes": {
-   "model": 6863980,
-   "game": 7246258
+   "model": 6866877,
+   "game": 7249155
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -183,8 +183,8 @@
    "game"
   ],
   "load_bytes": {
-   "model": 1203944,
-   "game": 1342431
+   "model": 1210904,
+   "game": 1349391
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."

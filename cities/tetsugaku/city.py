@@ -49,6 +49,7 @@ MATERIALS = {
     # the aqueduct's brick in English bond, weathered to a rose grey (photographs, #244), its granite imposts and coping
     "brick": {"color": "#8c5c4c", "roughness": 0.9, "metalness": 0.0},
     "granite": {"color": "#a9a398", "roughness": 0.9, "metalness": 0.0},
+    "brick_dark": {"color": "#6e4639", "roughness": 0.92, "metalness": 0.0},
     "rail": {"color": "#4a4440", "roughness": 0.5, "metalness": 0.7},
     "sleeper": {"color": "#5a4a3c", "roughness": 0.9, "metalness": 0.0},
     "boat": {"color": "#7a6450", "roughness": 0.85, "metalness": 0.0},
@@ -359,11 +360,69 @@ def aqueduct(K):
         s = k * span
         zk = max(zi, min(T(*P(s, v, 0)[:2]) for v in (-half, half)) + 3.5)
         block(K["granite"], P, s - pier / 2 - 0.18, s + pier / 2 + 0.18, -half - 0.18, half + 0.18, zk - 0.45, zk)
-    # the corbel table under the coping: a small blind arcade on both faces
+    # over the arches, as photographs show it (#258): a granite string course just over the crowns; above it
+    # a blind arcade of small round arches on brick pilasters, seven to a bay, with a granite roundel over
+    # each pier; a projecting brick band on a row of dentils under the coping; and in each spandrel over a
+    # pier an inverted triangle of granite strips round a panel of darker brick, its apex over the pier
+    zc = ztop - 1.5                      # the string course's foot
+    za, zs_ = zc + 0.25, ztop - 0.9       # the arcade's pilasters: their foot and springing
+    pitch = span / 7
+    ra = (pitch - 0.16) / 2
     for v, d in ((-half, -1), (half, 1)):
-        block(K["brick"], P, -0.6, L + 0.6, min(v, v + d * 0.18), max(v, v + d * 0.18), ztop - 0.35, ztop)
-        for u in np.arange(0.4, L, 1.35):
-            block(K["granite"], P, u - 0.12, u + 0.12, min(v, v + d * 0.22), max(v, v + d * 0.22), ztop - 0.75, ztop - 0.35)
+        def face(off):
+            return v + d * off
+        def vb(o0, o1):
+            return min(face(o0), face(o1)), max(face(o0), face(o1))
+        block(K["granite"], P, -0.6, L + 0.6, *vb(0, 0.2), zc, zc + 0.25)
+        block(K["brick"], P, -0.6, L + 0.6, *vb(0, 0.18), ztop - 0.25, ztop)
+        for u in np.arange(0.2, L, 0.6):
+            block(K["brick"], P, u - 0.1, u + 0.1, *vb(0, 0.12), ztop - 0.37, ztop - 0.25)
+        for k in range(n + 1):
+            for j in range(7 if k < n else 1):
+                cu = k * span + j * pitch      # each arch's centre: one stands over each pier and the ends
+                block(K["brick"], P, cu + pitch / 2 - 0.08, cu + pitch / 2 + 0.08, *vb(0, 0.1), za, zs_)
+                if k == 0 and j == 0:
+                    block(K["brick"], P, cu - pitch / 2 - 0.08, cu - pitch / 2 + 0.08, *vb(0, 0.1), za, zs_)
+                if j == 0 and 0 < k < n:
+                    # over the pier, a granite roundel in place of an arch
+                    cz, rr, m = za + 0.42, 0.26, 12
+                    for i in range(m):
+                        a0, a1 = 2 * math.pi * i / m, 2 * math.pi * (i + 1) / m
+                        c0 = P(cu, face(0.1), cz)
+                        c1 = P(cu + rr * math.cos(a0), face(0.1), cz + rr * math.sin(a0))
+                        c2 = P(cu + rr * math.cos(a1), face(0.1), cz + rr * math.sin(a1))
+                        K["granite"].tri(c0, c1, c2) if d < 0 else K["granite"].tri(c0, c2, c1)
+                    continue
+                # the recess inside the arch in darker brick, and the arch's ring of brick proud of the face
+                o0, o1 = face(0.03), face(0.1)
+                fl = (lambda m, a, b, c: m.tri(a, b, c)) if d < 0 else (lambda m, a, b, c: m.tri(a, c, b))
+                pa, pb, pc, pd = P(cu - ra, o0, za), P(cu + ra, o0, za), P(cu + ra, o0, zs_), P(cu - ra, o0, zs_)
+                fl(K["brick_dark"], pa, pb, pc)
+                fl(K["brick_dark"], pa, pc, pd)
+                ctr = P(cu, o0, zs_)
+                for i in range(6):
+                    b0, b1 = math.pi * i / 6, math.pi * (i + 1) / 6
+                    fl(K["brick_dark"], ctr, P(cu + ra * math.cos(b0), o0, zs_ + ra * math.sin(b0)), P(cu + ra * math.cos(b1), o0, zs_ + ra * math.sin(b1)))
+                    r0, r1 = ra, ra + 0.12
+                    q = [P(cu + r * math.cos(b), o1, zs_ + r * math.sin(b)) for r, b in ((r0, b0), (r1, b0), (r1, b1), (r0, b1))]
+                    fl(K["brick"], q[0], q[1], q[2])
+                    fl(K["brick"], q[0], q[2], q[3])
+                    qi = [P(cu + r0 * math.cos(b), oo, zs_ + r0 * math.sin(b)) for oo, b in ((o0, b0), (o1, b0), (o1, b1), (o0, b1))]
+                    fl(K["brick"], qi[0], qi[1], qi[2])
+                    fl(K["brick"], qi[0], qi[2], qi[3])
+        for k in range(1, n):
+            s = k * span
+            g = min(T(*P(s, vv, 0)[:2]) for vv in (-half, half))
+            w2, apex = 1.6, zc - 1.8
+            if apex < g + 3.5:
+                continue
+            o = face(0.03)
+            a_, b_, c_ = P(s - w2, o, zc), P(s + w2, o, zc), P(s, o, apex)
+            K["brick_dark"].tri(a_, b_, c_) if d > 0 else K["brick_dark"].tri(a_, c_, b_)
+            for e0, e1 in (((s - w2, zc - 0.1), (s, apex)), ((s + w2, zc - 0.1), (s, apex))):
+                K["granite"].box(P(e0[0], face(0.07), e0[1]), P(e1[0], face(0.07), e1[1]), 0.14, 0.17)
+            block(K["granite"], P, s - w2 - 0.15, s + w2 + 0.15, *vb(0, 0.14), zc - 0.22, zc)
+            block(K["granite"], P, s - 0.2, s + 0.2, *vb(0, 0.16), apex - 0.15, apex + 0.3)    # the keystone at the apex
     block(K["granite"], P, -0.6, L + 0.6, -half - 0.3, half + 0.3, ztop, ztop + 0.35)
     for v in (-half, half):
         block(K["granite"], P, -0.6, L + 0.6, v - 0.25, v + 0.25, ztop + 0.35, ztop + 1.0)
