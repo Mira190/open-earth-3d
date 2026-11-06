@@ -87,7 +87,7 @@ window.OEFilm = (function () {
   // the city's model, fetched while the film plays so the dive is quicker
   function prefetch(city, play) {
     const base = `data/${city.id}/`, packed = n => `${n}.${(city.packed || []).includes(n) ? 'bin' : 'json'}`; // (pipeline/pack.py)
-    const files = ['scene.json', packed('buildings'), packed('landmarks'), 'terrain.json'].concat(play ? [packed('game')] : []);
+    const files = [packed('scene'), packed('buildings'), packed('places'), packed('landmarks'), packed('terrain')].concat(play ? [packed('game')] : []);
     for (const f of files) fetch(base + f, { priority: 'low' }).catch(() => {});
   }
 

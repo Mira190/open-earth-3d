@@ -21,7 +21,7 @@ window.OpenEarthGame = async function game(cityId) {
   const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
   // ------------------------------------------------------------ load
-  const loadMsg = (t, f) => { $('#g-load-msg').textContent = t; $('#g-load-bar').style.width = `${Math.round(f * 100)}%`; };
+  const loadMsg = OEWorld.loadLine('g-'); // (index.html #g-load-msg, #g-load-bar and #g-load-stage)
   let D;
   try {
     D = await OEWorld.load(cityId, { game: true, onMsg: loadMsg });
@@ -34,13 +34,14 @@ window.OpenEarthGame = async function game(cityId) {
   // (the ground mesh uses every second point, 10 m, except on the tiles near the player)
   let Tfine = D.T;
   if (D.G.terrain) {
-    const t = D.G.terrain, raw = Uint8Array.from(atob(t.data), c => c.charCodeAt(0)), v = new Int16Array(raw.buffer);
+    const bytesOf = b => (typeof b === 'string' ? Uint8Array.from(atob(b), c => c.charCodeAt(0)) : b); // (bytes from game.bin, base64 from game.json)
+    const t = D.G.terrain, raw = bytesOf(t.data), v = new Int16Array(raw.buffer, raw.byteOffset, raw.byteLength >> 1);
     Tfine = { data: Float32Array.from(v, q => q * t.scale), nx: t.nx, ny: t.ny, cell: t.cell, x0: D.scene.frame.x[0], y1: D.scene.frame.y[1] };
     // land below the level of the sea (behind Osaka's river walls, in an underpass) would be drawn
     // under the water, which lies level everywhere: keep it just above
     const wm = D.G.water;
     if (wm && wm.nx === t.nx && wm.ny === t.ny) {
-      const bits = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0)), d = Tfine.data;
+      const bits = bytesOf(wm.bits), d = Tfine.data;
       for (let i = 0; i < d.length; i++) if (d[i] < 0.15 && !((bits[i >> 3] >> (7 - (i & 7))) & 1)) d[i] = 0.15;
     }
     const nx = Math.ceil(t.nx / 2), ny = Math.ceil(t.ny / 2), c = new Float32Array(nx * ny);
@@ -3870,11 +3871,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let framesDrawn = 0, firstDrawn;
   const drawn = new Promise(r => { firstDrawn = r; });
   // (and the passes the title doesn't draw: the opening shot's depth of field and motion blur, atmosphere.js)
+  loadMsg('Compiling the shaders for this view', 1);
   const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null]);
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
-  // above and the wet street's mirror), so that the first rain of a visit comes on without a stall
-  const warmRain = () => { try { if (!weather || weather.armed === false) return; const t0 = performance.now(); if (weather.warm) weather.warm(); if (mirror && mirror.warm && !mirror.off) mirror.warm(world); console.info(`rain warm-up: ${Math.round(performance.now() - t0)} ms`); } catch (e) { console.warn('rain warm-up', e); } };
-  Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(warmRain)]).then(([flew]) => {
+  // above and the wet street's mirror), so that the first rain of a visit comes on without a stall; the
+  // mirror's variant of every shader compiles in slices behind the title, not holding the loader up
+  const warmRain = () => {
+    try {
+      if (!weather || weather.armed === false) return;
+      const t0 = performance.now();
+      if (weather.warm) weather.warm(o => compileFor(o));
+      return Promise.resolve(mirror && mirror.warm && !mirror.off ? mirror.warm(world) : null) // (compiled in slices, then drawn)
+        .then(() => console.info(`rain warm-up: ${Math.round(performance.now() - t0)} ms`), e => console.warn('rain warm-up', e));
+    } catch (e) { console.warn('rain warm-up', e); }
+  };
+  Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(() => { warmRain(); })]).then(([flew]) => {
     if (flew) fromFlyover();
     if (lib) lib.warm = warmFor; // the characters that come from now on are warmed before they are shown (people.js)
     preTitle = false;
@@ -4707,7 +4718,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else el.hidden = true;
   }
 
-  requestAnimationFrame(frame);
+  warm.finally(() => requestAnimationFrame(frame)); // (the first draw waits for the shaders, compiled in slices: world.js compile)
   function advance(seconds, hold = []) {
     for (const c of hold) keys.add(c);
     const n = Math.round(seconds * 30);

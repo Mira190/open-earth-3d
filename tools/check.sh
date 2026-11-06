@@ -8,7 +8,7 @@
 #     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
 #   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
-#   - checks that every city's buildings.bin, and each live city's landmarks.bin and game.bin, is packed
+#   - checks that every city's buildings.bin, and each live city's other packs (landmarks, game, terrain, places, scene), is packed
 #     from its JSON as it is now and decodes to the same values (pipeline/pack.py --check, tools/pack_check.js);
 #   - checks that every shared model in web/assets is meshopt-compressed (pipeline/meshopt_glb.mjs --check);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
@@ -197,7 +197,7 @@ EOF
   # each city's packed buildings (buildings.bin, pipeline/pack.py) against its buildings.json: up to date,
   # and decoded by the browser's decoder (web/pack.js) to the same values. Ten seconds or so.
   if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
-    echo "ok   pack   $(ls web/data/*/{buildings,landmarks,game}.bin 2>/dev/null | wc -l) packs (buildings, landmarks, game) up to date and decoded to their JSON"
+    echo "ok   pack   $(grep -c ' MB packed' "$OUT/pack.log") packs (buildings, landmarks, game, terrain, places, scene) up to date and decoded to their JSON"
   else echo "FAIL pack   $(grep '^FAIL' "$OUT/pack.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/pack.log)"; fi
   # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
   if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"

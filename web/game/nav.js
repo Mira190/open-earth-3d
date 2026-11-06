@@ -20,7 +20,8 @@ window.OENav = (function () {
   function create(D, DSM) {
     const G = D.G, T = D.quays ? D.quays.raise(D.T) : D.T; // the ground as drawn: level up to a quay's wall
     // ---------------------------------------------------------- water (5 m, packed bits)
-    const wm = G.water, bytes = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0));
+    const bytesOf = b => (typeof b === 'string' ? Uint8Array.from(atob(b), c => c.charCodeAt(0)) : b); // (bytes from game.bin, base64 from game.json)
+    const wm = G.water, bytes = bytesOf(wm.bits);
     const isWaterCell = (r, c) => (bytes[(r * wm.nx + c) >> 3] >> (7 - ((r * wm.nx + c) & 7))) & 1;
     const x0 = DSM.x0, y1 = DSM.y1;
     // along a quay (quays.js) the water starts a few tens of centimetres short of the seawall's face,
@@ -117,7 +118,7 @@ window.OENav = (function () {
     // interpolated, so that a wall stays a wall and a riser a step. Where a slab stands over the
     // paving (a forecourt over a colonnade), "upper" holds the slab's level: the ground is the slab,
     // and the floor under it is walked too (floorAt, groundBelow)
-    const int16 = s => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new Int16Array(b.buffer, 0, b.length >> 1); };
+    const int16 = s => { const b = bytesOf(s); return new Int16Array(b.buffer, b.byteOffset, b.length >> 1); };
     const patches = (G.patches || []).map(p => Object.assign({}, p, {
       z: int16(p.data), up: p.upper ? Object.assign({}, p.upper, { z: int16(p.upper.data) }) : null, x1: p.x0 + p.nx * p.cell, y1: p.y0 + p.ny * p.cell }));
     // the patch's levels at (x, y): [the floor, the slab over it or null], or null off the patches
