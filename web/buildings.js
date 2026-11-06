@@ -18,7 +18,8 @@
 window.OEBuildings = (function () {
   // the posts under a canopy (a solid of class "roof" lifted off the ground, pipeline/arcades.py: a
   // covered walkway or a gate): [[x, y], ...] in metres, 0.25 m in from its outline. A long thin one (an
-  // arcade) stands on posts every 6 m along its edges, anything else (a gate) on its corners. nav.js
+  // arcade) stands on posts every 6 m along its edges, anything else (a gate, a shelter) on its corners, and a
+  // roof over 400 m2 every 8 m along a side longer than 12 m too. nav.js
   // walks round the same posts. skip: [x_dm, y_dm, ...] posts not put up, where one would stand in a road's
   // carriageway (buildings.json no_posts, by building: pipeline/road_passages.py)
   const POST = 0.3; // a post's side (m)
@@ -31,6 +32,7 @@ window.OEBuildings = (function () {
       area += ax * by - bx * ay; per += Math.hypot(bx - ax, by - ay);
     }
     const sg = area > 0 ? 1 : -1, thin = per > 40 && Math.abs(area) / per <= 2.5; // (mean width = 2 area / perimeter)
+    const wide = Math.abs(area) / 2 > 400; // bigger than a gate (pipeline/arcades.py is_gate): its long sides on posts too
     const P = k => [r[2 * ((k + n) % n)] / 10, r[2 * ((k + n) % n) + 1] / 10];
     const inward = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l * sg, dx / l * sg]; };
     let last = null;
@@ -40,8 +42,9 @@ window.OEBuildings = (function () {
       let nx = n0[0] + n1[0], ny = n0[1] + n1[1];
       const l = Math.hypot(nx, ny) || 1;
       add(b[0] + nx / l * 0.25, b[1] + ny / l * 0.25);
-      if (thin) { // along the edge to the next corner
-        const L = Math.hypot(c[0] - b[0], c[1] - b[1]), m = Math.floor(L / 6);
+      const L = Math.hypot(c[0] - b[0], c[1] - b[1]);
+      if (thin || (wide && L > 12)) { // along the edge to the next corner (a wide roof's long side: a platform's or a forecourt's canopy)
+        const m = Math.floor(L / (thin ? 6 : 8));
         for (let i = 1; i < m; i++) { const t = i / m; add(b[0] + (c[0] - b[0]) * t + n1[0] * 0.25, b[1] + (c[1] - b[1]) * t + n1[1] * 0.25); }
       }
     }

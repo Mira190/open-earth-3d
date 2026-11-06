@@ -482,6 +482,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (hot && (Math.hypot(x - hot.x, y - hot.y) > hot.r || Math.hypot(x - cx, y - cy) < rMe)) continue;
         const X = api.crossings && api.crossings.byLine.get(line);
         if (X && X.some(q => Math.abs(q.s - s) < q.kerb + 0.5)) continue; // (not out in a road at a crossing)
+        if (api.crossings && api.crossings.major && api.crossings.road && api.crossings.road(tmp.x, tmp.y) && api.crossings.major(tmp.x, tmp.y)) continue; // (nor out in a major road)
         gather(x, y, p, true, tmp.z);
         if (blocked(x, y) > 0 || (wall && wall(x, y, tmp.z)) || crowded(x, y, p, CLOSE + 0.1)) continue;
         p.line = line; p.s = s; p.dir = dir;
@@ -504,9 +505,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         net.at(li, s, tmp);
         const on = !!C.road(tmp.x, tmp.y);
         // (a footway that crosses the road there, not one along the kerb that dips into the carriageway's edge)
-        if (was !== null && on !== was && !(C.zebra && C.zebra(tmp.x, tmp.y)) && (!C.across || C.across(tmp.x, tmp.y, tmp.hx, tmp.hy))) E.push({ s, dir: on ? 1 : -1, x: tmp.x, y: tmp.y });
+        if (was !== null && on !== was && !(C.zebra && C.zebra(tmp.x, tmp.y)) && (!C.across || C.across(tmp.x, tmp.y, tmp.hx, tmp.hy))) E.push({ s, dir: on ? 1 : -1, x: tmp.x, y: tmp.y, major: !!(C.major && C.major(tmp.x, tmp.y)) });
         was = on;
       }
+      // (a major road, C.major: crossed only at a crosswalk, its signals or a zebra, as the law asks where one
+      // is near (Japan's Road Traffic Act, art. 12; the UK's Highway Code, rule 8) and as a city's crowd does;
+      // where the footway's step off the kerb is a signalled junction's own crossing, it is that crossing)
+      const X = C.byLine && C.byLine.get(li);
+      for (const e of E) if (e.major && X && X.some(x => Math.abs(x.s - e.s) < x.kerb + 2.5)) e.major = false;
+      E.banned = [E.some(e => e.major && e.dir === -1), E.some(e => e.major && e.dir === 1)]; // (walking against, along the line)
       if (entries.size > 3000) entries.clear(); // (only the footways walked near you are kept)
       entries.set(li, E);
       return E;
@@ -539,13 +546,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     // where a walker goes on at the end of its line: any way on, and near a place the crowd gathers
     // (api.hot), more often the way towards it, so that the crowd stays thick there
+    // a way on that doesn't lead across a major road away from a crossing (roadEntries): a few tries, or none
+    function nextOk(line, end) {
+      let o = null;
+      for (let k = 0; k < 6; k++) {
+        o = net.next(line, end);
+        if (!o || !banned(o[0], o[1] === 0 ? 1 : -1)) return o;
+      }
+      return null;
+    }
+    const banned = (li, dir) => { const C = api.crossings; if (!C || !C.road || !C.major) return false; const B = roadEntries(li).banned; return !!(B && B[dir > 0 ? 1 : 0]); };
     function onward(p, end) {
-      let nx = net.next(p.line, end);
+      let nx = nextOk(p.line, end);
       const h = nx && api.hot && api.hot.find(q => Math.hypot(p.x - q.x, p.y - q.y) < q.r * 1.6);
       if (h && rnd() < h.pull) {
         const far = o => { const l = net.L[o[0]], k = o[1] === 0 ? l.pts.length - 3 : 0; return Math.hypot(l.pts[k] - h.x, l.pts[k + 1] - h.y); };
         let best = null, bd = Math.hypot(p.x - h.x, p.y - h.y) - 2; // (only a way that does lead nearer: no back and forth in a pocket)
-        for (let k = 0; k < 4; k++) { const o = net.next(p.line, end), d = o && far(o); if (o && d < bd) { best = o; bd = d; } }
+        for (let k = 0; k < 4; k++) { const o = nextOk(p.line, end), d = o && far(o); if (o && d < bd) { best = o; bd = d; } }
         if (best) nx = best;
       }
       return nx;
@@ -1110,6 +1127,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (e.dir !== p.dir) continue;
           const d = (e.s - p.s) * p.dir;
           if (d < -0.2 || d > 2.2) continue;
+          if (e.major) { turn(p); p.gw = 0; break; } // (a major road with no crossing here: back, to the crossing another way)
           if ((p.gw || 0) < 20 && carComing(e.x, e.y, p.z)) { held = true; cap = Math.min(cap, Math.max(0, (d - 0.3) * 1.5)); }
           break;
         }
