@@ -39,6 +39,9 @@ Its fascia and posts take a dark timber or steel colour (FRAME), its roof keeps 
 
 Then every roof on posts and every gate (not an arcade) is finished (finish(), run again on what an earlier
 run opened, so it needs no rebuild of the scene):
+- a borrowed top (#258): a roof on posts over 15 m whose top is that of a building it touches (the height
+  matching took the neighbour's) is held to a canopy's 8 m: Keio University Hospital's entrance canopy over its
+  taxi drive stood at 51.6-53.1 m on posts, building 1's top.
 - its colour: OSM building:colour when mapped; else its precinct's palette (cities/<id>/city.json
   "roofs" "palette", by precinct name: Kiyomizu-dera's vermilion); else a shrine's vermilion (SHU) in a
   Shinto precinct or on a Shinto building, a temple's aged timber (TIMBER) in a Buddhist one; else it
@@ -82,6 +85,7 @@ SHU = "#c4482a"  # a shrine's vermilion (朱), as the Fushimi Inari and Kiyomizu
 TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
 GLASS = "#7f95a0"  # a glass atrium's walls
 GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM = "#5d7280", 4.5, 12.0, 300  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
+BORROWED_DM = 150  # a roof on posts taller than this with a neighbour's top: its height was the neighbour's
 PITCH_DEG, PITCH_OVERHANG, PITCH_MAX_M2, PITCH_EAVE_M = 32.0, 0.5, 900.0, 2.4  # an open pavilion's pitched roof (pitched_roof())
 KAWARA, BARK = "#4c5156", "#4a4c50"  # a temple's grey tiles (kawara); a shrine pavilion's, a little darker (Yasaka-jinja's Buden, photographs)
 UTILITY = {"bicycle_parking", "motorcycle_parking", "parking", "parking_entrance", "smoking_area", "toilets", "waste_disposal",
@@ -338,6 +342,18 @@ def glass_atrium_roof(B, s, si, P, polys):
     return [si, top, lo, roofs.CODES["skillion"]] + pack_roof(pos, idx) + [len(tris)]
 
 
+def borrowed_top(B, s, si, P, polys, solid_tree):
+    """Whether a roof on posts has the top of a building it touches (within 0.5 m, over the ground or over
+    its base): a height the matching took from the building beside it, not a measurement of the roof."""
+    for j in solid_tree.query(P.buffer(1.5)):
+        o = B["s"][j]
+        if j == si or polys[j] is None or B["b"][o[0]][1] == "roof" or o[2] > 0:
+            continue
+        if (abs(o[3] - s[3]) <= 5 or abs(o[1] + o[3] - s[1] - s[3]) <= 5) and polys[j].distance(P) < 1.5:
+            return True
+    return False
+
+
 def roof_shape_for(t, here, colour):
     """The pitched roof an open pavilion carries ((shape, source) or None): its mapped roof:shape, else a
     hipped roof (a hip-and-gable's nearest) in a temple's or a shrine's precinct or on a temple or a shrine."""
@@ -550,6 +566,19 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
             n += 1
         # the height of a pavilion (not a gate: their tops were measured with their roofs)
         gate = is_gate(meta, P) or t.get("building") in ("gatehouse", "gate")
+        if not gate and s[3] > BORROWED_DM and "height" not in t and meta[4] in MEASURED_TALL and borrowed_top(B, s, si, P, polys, solid_tree):
+            # its top is a building's beside it, taken over by the height matching (#258: Keio University Hospital's
+            # entrance canopy, w1409752350, stood at 51.6-53.1 m on posts over its taxi drive, building 1's 53.1 m)
+            r = eaves.get(si)
+            if r is not None:
+                drop_roof(r, round(10 * GUESS_M))
+            s[3] = round(10 * GUESS_M)
+            lo = open_soffit_dm(s[3] / 10)
+            if r is not None:
+                lo = min(lo, r[2] - 5)
+            s[2] = max(MIN_CLEAR_DM, min(lo, s[3] - 3))
+            meta[2] = meta[9] = round(s[3] / 10, 1)
+            n += 1
         if not gate and P.area < INNER_MIN_M2 and meta[4] in MEASURED_TALL and "height" not in t:
             gmax = ground_max_dm(G, cfg, P)
             lift = max(0, gmax - s[1]) if gmax is not None else 0

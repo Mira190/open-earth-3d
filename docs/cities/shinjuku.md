@@ -89,7 +89,11 @@ the tower's low PLATEAU solids (r9215167 under 30 m) are drawn as its other wing
 is 186 m long and 13 m wide, between the New National Theatre and Opera City: the Opera City Galleria's glazed
 roof over the walkway (`roofs.glazed`: glass, no posts). The roof at 51.6–53.1 m on posts (w1409752350,
 30 × 88 m) lies between Keio University Hospital's buildings 1 and 2, over the hospital's taxi and emergency
-driveways (OpenStreetMap, mapped from the hospital's own campus plan).
+driveways (OpenStreetMap, mapped from the hospital's own campus plan): the entrance canopy over the drop-off. Its
+53.1 m is building 1's top, which the height matching gave it, not a measurement of the canopy, so
+`pipeline/arcades.py` holds a roof on posts over 15 m whose top is a touching building's to a canopy's 8 m (a
+second Shinjuku roof, w436078785, had 15.6 m the same way, and one beside Kyoto Station 21 m). Not checked against a
+photograph: Wikimedia Commons kept refusing this session's requests (HTTP 429).
 
 
 
