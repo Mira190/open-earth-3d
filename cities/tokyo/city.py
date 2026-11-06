@@ -19,6 +19,7 @@ Parametric landmark (called by pipeline/landmarks.py):
                the tower (歌舞伎座タワー) stays a building.
   National Diet Building  on its 26 mapped solids, in granite, with its tower (cities/tokyo/diet.py).
   The Imperial Palace  its wings round their courts under green copper outline roofs (cities/tokyo/palace.py).
+  The Shuto Expressway  the Inner Circular Route's viaduct over the Nihonbashi River (cities/tokyo/shuto.py).
   The palace moats  water at their published levels, walled in dressed stone; the ground under them
                brought down to their beds (cities/tokyo/moats.py).
 """
@@ -27,6 +28,7 @@ import math
 import numpy as np
 
 import archkit as ak
+import japankit as jk
 from meshkit import Mesh
 
 
@@ -42,6 +44,7 @@ def _load(name):
 DIET = _load("diet")
 MOATS = _load("moats")
 PALACE = _load("palace")
+SHUTO = _load("shuto")
 
 TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
@@ -76,6 +79,7 @@ MATERIALS = {
 
 
 def adjust_building(b, cls, g, geoms, ctx):
+    geoms = jk.police_box(b, geoms)
     x, y = ctx.city.fwd.transform(*TOWER_LL)
     near = math.hypot(g.centroid.x - x, g.centroid.y - y) < 60
     if near and b["name"] != FOOT_TOWN:
@@ -93,6 +97,13 @@ def adjust_building(b, cls, g, geoms, ctx):
         # and the lattice above it is the landmark mesh.
         return [[q, 0.0, 18.0, "parametric", None] for q in ctx.polygons(g)]
     return geoms
+
+
+def retop(sd):
+    """pipeline/retop.py: the police boxes the build sized from their neighbours (和田倉門外交番 and
+    日本橋交番 at 35 m, the palace's 警備派出所 at 30 m), as adjust_building now sizes them."""
+    q = jk.police_box(sd, [[None, sd["base"], sd["top"], sd["src"], None]])[0]
+    return (q[1], q[2], q[3]) if (q[2], q[3]) != (sd["top"], sd["src"]) else None
 
 
 def finalize(ctx):
@@ -160,7 +171,19 @@ def landmark_meshes(scene):
     mats.update(mm)
     pm, pmesh, ph = PALACE.meshes()  # the Imperial Palace's wings under outline roofs (cities/tokyo/palace.py)
     mats.update({k: dict(v) for k, v in pm.items()})
-    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh, {"hidden": hidden + dh + ph}
+    sm, smesh = SHUTO.meshes(Mesh)  # the Shuto Expressway over the Nihonbashi River (cities/tokyo/shuto.py)
+    mats.update({k: dict(v) for k, v in sm.items()})
+    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh, {"hidden": hidden + dh + ph}
+
+
+def landmark_glows(scene):
+    """The Shuto's deck lamps over the Nihonbashi River (cities/tokyo/shuto.py)."""
+    return SHUTO.glows()
+
+
+def game_surfaces(scene):
+    """The Shuto's decks over the Nihonbashi River, driven and passed under (cities/tokyo/shuto.py)."""
+    return SHUTO.surfaces()
 
 
 def adjust_terrain(dem, C, cell):

@@ -166,12 +166,12 @@ window.OEDecks = (function () {
       let cls = new Uint8Array(n), zs = new Float32Array(n);
       for (let k = 0; k < n; k++) {
         const x = X(k), y = Y(k), z = p[3 * k + 2] / 10, g = nav.terrain(x, y), water = nav.isWater(x, y);
-        let s = nav.surfaceAt(x, y);
+        let s = nav.surfaceAt(x, y, z);
         // a level over a raised deck that is drawn, or a metre off its edge: a bridge's sidewalk the data lifts a
         // level where the bridge itself is an area (Ebisubashi)
         let lifted = false;
         if (!water && z - g > RISE) {
-          const s1 = Math.max(s, ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => nav.surfaceAt(x + dx, y + dy)));
+          const s1 = Math.max(s, ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => nav.surfaceAt(x + dx, y + dy, z)));
           if (s1 > g + 1 && z > s1 && z - s1 < 2 * RISE) { s = s1; lifted = true; }
         }
         // put on it by the data, or over the water on a pier, or lifted a level over it
@@ -185,7 +185,7 @@ window.OEDecks = (function () {
       // meets, such as a ramp's foot on a quay under a bridge, nor steps, which go down off it)
       if (o.c !== 'steps' && n > 1) for (const [k, j] of [[0, 1], [n - 1, n - 2]]) {
         if (cls[k] !== 0 || cls[j] !== 1 || joined(X(k), Y(k))) continue;
-        const s = nav.surfaceAt(X(k), Y(k));
+        const s = nav.surfaceAt(X(k), Y(k), zs[k]);
         if (s > zs[k] + 1 && s - zs[k] < 2 * RISE && Math.abs(s - zs[j]) < 1.5) { cls[k] = 1; zs[k] = s; }
       }
       // a line along a bridge's strip that the data puts a few metres past its edge, and so far below it (the

@@ -582,7 +582,7 @@ def ishigaki(m, P, ring, z0, z1, batter=0.25, rows=6):
 
 def load_solids(city_id):
     """The built city's solids (web/data/<city>/buildings.json), for landmarks that stand on their
-    mapped footprints: [{si, osm, name, ground, base, top, ring [(x, y)], holes}] (metres)."""
+    mapped footprints: [{si, osm, name, src (height source), ground, base, top, ring [(x, y)], holes}] (metres)."""
     import json
     import os
     path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "data", city_id, "buildings.json")
@@ -591,7 +591,7 @@ def load_solids(city_id):
     for si, s in enumerate(B["s"]):
         b = B["b"][s[0]]
         r = s[4]
-        out.append({"si": si, "osm": (b[6] or "").split("@")[0], "name": b[0] or "", "ground": s[1] / 10, "base": s[2] / 10, "top": s[3] / 10,
+        out.append({"si": si, "osm": (b[6] or "").split("@")[0], "name": b[0] or "", "src": b[4], "ground": s[1] / 10, "base": s[2] / 10, "top": s[3] / 10,
                     "ring": [(r[i] / 10, r[i + 1] / 10) for i in range(0, len(r), 2)],
                     "holes": [[(h[i] / 10, h[i + 1] / 10) for i in range(0, len(h), 2)] for h in s[5:]]})
     return out
