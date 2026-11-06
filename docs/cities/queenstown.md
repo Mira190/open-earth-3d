@@ -8,17 +8,17 @@
 > lake's surface (309.2 m above the sea). Every number here comes from the scripts in
 > `analysis/` with `--city queenstown`, and their outputs are in `cities/queenstown/analysis/`.
 
-| Blue hour from the Skyline deck (the game's start) | The same view from above, as in the reference photograph |
+| Blue hour from Bob's Peak | The same view from above, as in the reference photograph |
 |---|---|
 | ![](../images/queenstown/game-start-blue.jpg) | ![](../images/queenstown/ref1-blue-hour.jpg) |
-| **Day from the deck** | **The bay from the Fernhill side** |
+| **Day from Bob's Peak** | **The bay from the Fernhill side** |
 | ![](../images/queenstown/game-start-day.jpg) | ![](../images/queenstown/ref2-fernhill.jpg) |
 | **The TSS Earnslaw at Steamer Wharf** | **Night from Bob's Peak** |
 | ![](../images/queenstown/game-earnslaw.jpg) | ![](../images/queenstown/night.jpg) |
 | **The Skyline Gondola and its towers** | **The Earnslaw (Blender)** |
 | ![](../images/queenstown/gondola.jpg) | ![](../images/vehicles/ferry_steamer.jpg) |
 
-Phone (390 × 844), from the start on the deck: day, dusk, night.
+Phone (390 × 844), from the game's start on the luge track under the gondola's big portal: day, dusk, night.
 
 | Day | Dusk | Night |
 |---|---|---|
@@ -33,12 +33,18 @@ amber under the snow on the Remarkables, and a clear day over Queenstown Bay fro
 side. The first is the place the town is best known for. It is where the game starts, and it is
 the model viewer's opening shot. The second is the tour's second stop. Matched to them:
 
-- **The start** is on the Skyline viewing deck in front of the complex on Bob's Peak, facing
-  south-east over the town, the bay, the Gardens peninsula and the Kelvin Peninsula to the
-  Remarkables. The deck is a landmark (`cities/queenstown/city.py`, `DECK`): timber boards, steel
-  posts down the slope and a glass balustrade. The game walks it as a strip. Its place and size
-  are indicative. Its level is the ground at its back edge, and it stands west of the gondola's
-  last tower, clear of the cable.
+- **The start** is on the luge track under the Skyline restaurant's viewing deck on Bob's Peak,
+  beside the gondola's big portal, facing south-east over the town, the bay, the Gardens peninsula and the Kelvin
+  Peninsula to the Remarkables. The deck is a landmark (`cities/queenstown/city.py`, `DECK`):
+  timber boards on a steel frame with a glass balustrade. The game walks it as a strip. Its place and level are measured. LINZ's 2026 aerial
+  photographs show the crowd at its balustrade along the restaurant's south-east face. The 2021
+  LiDAR surface model shows a strip 3–4 m deep and about 26 m long at 474.6 m, 17 m over the luge
+  track and 4.8 m under the restaurant's roof. The model draws it 26 × 3.6 m. Skyline opened an
+  extension in March 2026 that takes the deck from 68 to 430 m² (Otago Daily Times, 2026). The
+  photographs were flown before it opened, and its plans are not published, so the larger deck is
+  a follow-up. The real deck is reached through the restaurant, which the game does not model, so
+  the game starts on the luge track below it, where a taxi can come up Skyline Road. Until
+  then this was a deck drawn on the open hillside there; the photographs show none.
 - **The lake** is a saturated blue with turquoise over the shallows (`water.colour`,
   `shallow_colour`, `scatter`).
 - **The air** is clear: `far.clarity` 2.2 stretches every haze distance (the fog and the far
@@ -60,7 +66,8 @@ Nothing was taken from either but that idea.
 | Roofs | LINZ, Otago - Queenstown LiDAR 1m DSM (2021): the median of the surface model inside each footprint, over the lowest ground under it | CC BY 4.0 |
 | Ground | LINZ, Queenstown 0.1m Urban Aerial Photos (2026), February–March 2026, read at 0.42 m from the COGs' overviews; the 2021 urban photos fill the rest | CC BY 4.0 |
 | Footprints, roads, water, places | Overture Maps 2026-10-21.0 (OpenStreetMap and others) | ODbL and others, as Overture lists them |
-| The gondola | OpenStreetMap `aerialway=gondola` with its pylons and stations (via Overture) | ODbL |
+| The gondola | OpenStreetMap `aerialway=gondola` with its stations (via Overture); the towers from LINZ's 2026 urban aerial photos (their plinths and shadows) | ODbL; CC BY 4.0 |
+| Heritage landmarks | Heritage New Zealand Pouhere Taonga, New Zealand Heritage List entries 7439, 2341 and 2336 (read for facts, not copied); photographs on Wikimedia Commons (listed in section 3); the 2021 LiDAR for their outlines and heights | © HNZPT; CC BY-SA 3.0 / CC BY 2.0 / CC BY-SA 2.0; CC BY 4.0 |
 | The land past the frame | LINZ, New Zealand Contour-Interpolated 8m DEM (read at 32 m); LINZ, New Zealand 10m Satellite Imagery (2025–2026); ESA WorldCover 2021; NASA Black Marble | CC BY 4.0; CC BY 4.0; CC BY 4.0; public domain |
 | Climate | NIWA, Queenstown Airport, 1991–2020 normals (via Wikipedia's climate table) | — |
 
@@ -88,18 +95,100 @@ Nothing was taken from either but that idea.
 
 ## 3. The landmarks
 
-- **The Skyline Gondola.** The line, its towers and its stations are OpenStreetMap's, measured by
-  `gondola.py` into `gondola.json`. The line runs 620 m in plan and 754 m along the slope, rising
-  430 m from the Brecon Street station (36 m above the lake) to the top station. Doppelmayr
-  publish 760 m inclined and 438 m up (release, June 2023). The towers' heights are the laser's
-  highest return within 4 m of each mapped tower where it caught the lattice (14.3, 21.7 and
-  16.5 m). Elsewhere a tower is as tall as the cable needs to keep the cabins 5 m over the ground.
-  The cable sags 2.5% of the span. The surface model along the line is no guide to the trees,
-  because it caught the cable and the cabins. Doppelmayr's line has 10 towers; OpenStreetMap maps
-  6, and the model draws those 6. The towers are tubular masts with a crossarm, a platform, a
-  ladder and a sheave train over each track. In the game, 35 ten-seat cabins
-  (`web/game/rail.js`, kind `gondola`) go up one side and down the other, at 5 m/s, slowing
-  round each station's bullwheel. You can ride one between the stations.
+| **Eichardt's, day** | **Eichardt's, night** | **St Peter's at dusk, the lych-gate on the left** |
+|---|---|---|
+| ![](../images/queenstown/eichardts-day.jpg) | ![](../images/queenstown/eichardts-night.jpg) | ![](../images/queenstown/st-peters-dusk.jpg) |
+| **Williams Cottage** | **Steamer Wharf at dusk** | **From the Skyline deck** |
+| ![](../images/queenstown/williams-cottage-day.jpg) | ![](../images/queenstown/steamer-wharf-dusk.jpg) | ![](../images/queenstown/skyline-deck.jpg) |
+| **The gondola from the lake, night** | **Phone: Eichardt's, St Peter's, Steamer Wharf** | |
+| ![](../images/queenstown/gondola-night.jpg) | ![](../images/queenstown/phone-eichardts.jpg) ![](../images/queenstown/phone-st-peters.jpg) ![](../images/queenstown/phone-steamer-wharf.jpg) | |
+
+The towers in LINZ's 2026 aerial photograph (CC BY 4.0), along the line (s, metres) and across it
+(d): on the left, the big portal over the luge, its legs' shadows falling across the line; on the
+right, the mast at 381.5 m, its white plinth at the foot of the shadow and its head displaced
+downhill.
+
+![](../images/queenstown/gondola-towers-aerial.jpg)
+
+- **The Skyline Gondola.** Doppelmayr's 10-MGD D-Line opened on 29 June 2023: 35 ten-seat CWA
+  Omega V cabins, 5 m/s, 760 m inclined and 438 m up (Doppelmayr's release, June 2023;
+  lift-world.info). The line and its stations are OpenStreetMap's, measured by `gondola.py` into
+  `gondola.json`. In plan the line runs 620 m from the Brecon Street station, 36 m above the lake,
+  to the top station 430 m higher.
+  - *The towers.* The 2021 LiDAR was flown before the line was built (2021–2023). Along it the
+    laser caught the old line and the forest the new corridor was cut through, so it measures
+    none of the new towers. The towers come from LINZ's 0.1 m urban aerial photographs of February
+    and March 2026 (`gondola.py --photo`, `PHOTO_TOWERS`). Each tower's foot is a white concrete
+    plinth on the line, where its shadow starts. Its head shows several metres downhill of the
+    foot, because of the photograph's relief displacement. Its height is the length of its
+    shadow: the head's shadow lies across the line from the foot, along the sun's azimuth. The sun
+    is calibrated on coaches in the same photograph, in the Brecon Street car park: 3.65 m tall,
+    3.05 m of shadow towards 212°. That gives 0.84 m of shadow per metre of height, the sun 50°
+    up. Each shadow is followed down or up the slope on the 1 m DEM.
+  - *What the photographs show.* There are six tower sites along the line, read to about half a
+    metre along it. Three are tubular masts with a crossarm, at 97, 230 and 381.5 m along the line,
+    16, 18 and 28.5 m high. Three are portals: a lattice frame on legs either side of the tracks,
+    carrying long sheave trains where the line breaks over a crest. The first stands over the rock
+    by the bottom station (32 m along, about 15 m high, an 11 m head). The second, the largest,
+    stands over the luge (554 m, about 11 m over its foot, a 19 m head on two pairs of legs). The
+    third stands under the top station (598 m, about 15 m high, an 8.5 m head).
+  - *Ten or six.* Doppelmayr give 10 towers. OpenStreetMap maps 6, at the same six sites. The
+    photographs, at 0.1 m, show no other tower along the line; a tower 10–30 m tall would cast a
+    shadow 8–25 m long. Doppelmayr's count most likely takes the three portals' frames (two pairs of
+    legs under the longest) as more than one tower each. The model draws the six structures as
+    the photographs show them.
+  - *The cable.* It sags 2.5% of each span. At 3.8 m, the lowest the cabins pass over the ground is
+    just below the big portal, where the line comes over the luge.
+  - *The cabins.* Omega V shells in light silver-grey with dark glazing bands (a 2023 photograph
+    of the terminals, Thermosash). Their roofs are white in the 2026 aerial photographs.
+  - In the game the cabins (`web/game/rail.js`, kind `gondola`) go up one side and down the other,
+    slowing round each station's bullwheel, and you can ride one between the stations.
+- **Eichardt's Private Hotel** (Heritage NZ List 7439; `heritage.py`). This is F. W. Burwell's
+  Victorian Free Classical hotel of 1871–86, on the corner of Marine Parade and Ballarat Street.
+  HNZ's listing gives its features: a symmetrical facade, a classical cornice with brackets,
+  string courses at both floors, Gibbs surrounds on the ground floor, quoins and architraves, and
+  a parapet concealing the roof.
+  - *Size.* The model stands on the LiDAR's roof edges: 31 × 22 m, the parapet at 8.3–9.2 m, the
+    pediment over the lake front's middle bay at 11.2 m.
+  - *What the photographs add* (2010 and later, Wikimedia Commons): white plaster with rusticated
+    quoins, thirteen bays to the lake, dark green sashes, cast-iron balconies on curved brackets,
+    a balustrade with urns, and the pediment's shell between Baroque scrolls.
+  - *What changed.* HNZ describe the 1929 alterations: a stepped Art Deco parapet in place of
+    Burwell's balustrade, and a Moorish horseshoe arch over the Ballarat Street door, repeated on
+    the balcony door above. The restoration after the November 1999 flood (reopened December
+    2001) brought the balustrade back, as every photograph since shows, so the model has the
+    balustrade and not the stepped parapet. It keeps the Moorish arch on both Ballarat Street
+    doors. No photograph found shows whether the arch survived the restoration.
+  - After dark, floodlights at its foot light the plaster.
+- **St Peter's Anglican Church** (List 2341; `heritage.py`). Built in 1932 to J. McDowall Smith's
+  design: "modelled on the traditional lines of the English parish church", its walls faced with
+  greywacke from the lake edge (the parish's history).
+  - *Plan and heights.* OpenStreetMap maps only a 13 m² square, which is the tower. The plan and
+    the heights come from the LiDAR: a nave of 12 × 8.8 m with its ridge at 8.5 m, a narrower
+    chancel to the east-north-east with its ridge at 7.7 m, the square tower on the north side,
+    its battlements at 9.4 m, a west porch and a vestry.
+  - *From a photograph* (John Harwood, 2007, CC BY 2.0): the rubble walls with pale freestone
+    dressings, the steep slate roofs, paired lancets with leaded lights between buttresses, the
+    tower's louvred belfry lancets, and the octagonal slate spire with its cross. The spire's tip
+    is drawn at 17 m; the LiDAR caught 15.2 m below the point.
+  - *The lych-gate* is in memory of Thomas Hicks. It is drawn in oak under a slate gable, on the
+    path beside the tower, where the LiDAR shows a 4–5 m roof over the path. No listing gives its
+    place.
+- **Williams Cottage** (List 2336; `heritage.py`). 1864, with a lean-to of 1866, and "believed to
+  be the earliest remaining cottage in Queenstown".
+  - *From HNZ's conservation-plan text:* painted weatherboards, a very high gabled roof of
+    corrugated iron, a stone chimney between the main roof and the lean-to, a verandah to the
+    front, four-paned windows under it and six- and twelve-paned sashes elsewhere, and a later
+    rear room with another massive stone chimney.
+  - *From the LiDAR:* the ridge at 5.9 m and the eaves at 2.7 m.
+  - *From a photograph* (Schwede66, Wikimedia Commons, CC BY-SA 3.0): cream boards, oxblood
+    joinery, a red roof, schist chimneys with brick tops, and the rear chimney's tall black flue.
+- **Steamer Wharf** (`heritage.py`). The waterfront pavilions by the Earnslaw's berth, by Wyatt +
+  Gray.
+  - *Form.* Two-storey weatherboard pavilions with their gables to the lake, in green, oxblood and
+    cream with white trim, grey iron roofs, and orange-red balconies and stairs (Tim J Keegan,
+    2011, CC BY-SA 2.0). The model splits OpenStreetMap's two blocks into pavilions about 7 m
+    wide, eaves at 5.6 m and ridges at 7.7 m (the LiDAR's).
 - **The TSS Earnslaw** (`blender/build_vehicles.py`, `ferry_steamer.glb`), 51.2 × 7.3 m with
   2.1 m draught (Wikipedia, citing the NZ National Maritime Museum). The model has a plumb stem,
   a white hull with a red boot-topping and portholes, glazed main and upper saloons, an open
@@ -111,15 +200,14 @@ Nothing was taken from either but that idea.
   single-ended: she lies alongside as she came in, swings round slowly once under way, sails bow
   first, and puffs coal smoke from her funnel.
 
-Eichardt's (Heritage NZ List 7439), St Peter's (List 2341) and Williams Cottage (List 2336) are
-their mapped footprints with their LiDAR heights. They are named and labelled, and the game's
-lakefront walk takes you past them. Modelling them finely is a follow-up (see section 6).
+The heritage landmarks are drawn in place of their mapped blocks, which stay in the surface model
+for the shadows and the analyses (landmarks.json `hidden`).
 
 ## 4. Queenstown on Foot
 
-You start on the Skyline deck. Aroha welcomes you, and there are three walks, in any order:
+You start on the luge track on Bob's Peak, under the gondola's big portal. Aroha welcomes you, and there are three walks, in any order:
 
-- **The hill.** Hemi, further along the deck, keeps you there until the Remarkables turn pink
+- **The hill.** Hemi, further along the hillside, keeps you there until the Remarkables turn pink
   ("Wait here till dusk" sets the time). Then you ride the gondola down to Mei at Brecon Street,
   and back up.
 - **The lake.** Callum, at Steamer Wharf, puts you on the Earnslaw across Frankton Arm to the
@@ -139,24 +227,56 @@ told as the giant's breathing); William Rees's woolshed, which became Eichardt's
 built in Dunedin, carried in pieces by rail to Kingston and launched there in 1912, burning about
 1.5 t of coal a return trip (RealNZ).
 
-## 5. Checks
+## 5. The woods' cost
+
+The canopy model plants 152,829 trees, most of them in the woods on Bob's Peak and Ben Lomond's
+lower slopes. That is about ten times any other city. `tools/woods_probe.js` measured them on
+llvmpipe at 1440 × 900, standing at four spots:
+
+| Spot | High | Medium, before | Medium, now | Low |
+|---|---|---|---|---|
+| By the top station (-1046, 450) | 4.12 M | 4.12 M | 2.48 M | 0.77 M |
+| Halfway up the line (-700, 380) | 2.53 M | 2.53 M | 1.75 M | 0.58 M |
+| Brecon Street (-460, 290) | 1.32 M | 1.32 M | — | 0.34 M |
+| Eichardt's (-100, -200) | 0.28 M | 0.28 M | — | 0.07 M |
+
+The figures are the tree triangles drawn in a frame. The trees add 44 to 70 draw calls (692
+against 648 by the top station on high). On llvmpipe they took a frame from about 3.0 to 5.0 s
+there on high. llvmpipe's frame times jump about between runs, so the triangles are the figure to
+compare.
+
+Most of the triangles are the woods' far ring: about 32,000 far crowns, each with its trunk, past
+200 m. The medium tier drew exactly what the high tier drew. Now the tier sets the share of a
+wood's far crowns it draws (`OEQuality.city().woods`, `web/trees.js` `farKeep`): all of them on
+high, half on medium. Low already keeps a third of the woods' trees and draws them nearer. The
+photograph's canopy under the woods (`woodsFloor`) carries the hillside where the crowns thin. The
+change applies to every city's woods; Queenstown's are where it counts.
+
+## 6. Checks
 
 - Heights: 3,831 of 4,117 solids are measured by the LiDAR, and 240 are estimated from their
   neighbours. These are mostly buildings that went up after the March 2021 flight: 119 footprints
   have no roof in the surface model (`analysis/lidar_heights.json`).
 - `tools/game_check.js queenstown`: walk, talk, the helicopter, the Earnslaw, the car, a taxi and
   a ride, the junctions, rain, and a lost WebGL context.
-- Stills: desktop 1440 × 900 and phone 390 × 844, day, dusk and night, on llvmpipe at the
+- Stills of each landmark at street level, of the gondola from the lake and from the deck, and of
+  the start: desktop 1440 × 900 and phone 390 × 844, day, dusk and night, on llvmpipe at the
   desktop tier.
 - Not checked: a real GPU, WebGPU, Safari or iOS.
 
-## 6. Limitations and follow-ups
+## 7. Limitations and follow-ups
 
-- Eichardt's, St Peter's, Williams Cottage and the Steamer Wharf building are not yet modelled
-  from their heritage listings.
-- The gondola has the 6 towers OpenStreetMap maps, not Doppelmayr's 10. The cabins' colours are
-  a guess.
-- The deck's place and size are indicative, not surveyed.
-- 153,000 trees are planted from the canopy model, most of them on Bob's Peak and Ben Lomond's
-  lower slopes. That is many more than any other city. A small device keeps a third of them, and
-  only those near the camera are drawn.
+- **The deck.** The 430 m² deck Skyline opened in March 2026 is not drawn. Its plans are not
+  published, and the photographs predate it. The real deck is reached through the restaurant, so
+  the game starts on the luge track below it and does not reach it.
+- **The gondola's towers.** Doppelmayr give 10; the photographs show six structures. Which frames
+  Doppelmayr count as separate towers is unconfirmed.
+- **The heritage landmarks.**
+  - Eichardt's Moorish arch is drawn although no photograph since 2001 shows it.
+  - St Peter's lych-gate stands where the LiDAR shows a roof over the path; its place is not in a
+    listing.
+  - Neither church nor cottage has its interior.
+- **The Earnslaw's real run** is to Walter Peak, about 13 km across the lake, past the frame.
+  Far land (`pipeline/far_land.py`) is only a height grid seen through haze. The game's water,
+  its ferry routes and its wharves stop at the frame, so a landing there needs the game to sail
+  and walk past the frame.

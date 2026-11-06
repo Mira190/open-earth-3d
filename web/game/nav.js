@@ -183,14 +183,37 @@ window.OENav = (function () {
     // the ground at (x, y) as seen from height z: under a slab that stands above z, the floor under it
     function terrainBelow(x, y, z) { const t = terrain(x, y), u = under(x, y); return u !== null && t > z ? u : t; }
     // the underside of a slab over a walker at height z at (x, y) (the patch's "clear_m" over its floor), or null
+    // low ceilings along a line a landmark gives (landmarks.json "ceilings": [{pts: [[x, y, z], ...],
+    // half_width, clear_m}]: a tunnel of torii, whose lintels stand clear_m over the path), so that the
+    // camera stays under them; in 16 m cells of their segments
+    const ceilSegs = [], ceilGrid = new Map(), CG = 16, ckey = (cx, cy) => cx * 65536 + cy;
+    for (const c of (D.LM && D.LM.ceilings) || []) for (let i = 1; i < c.pts.length; i++) {
+      const a = c.pts[i - 1], b = c.pts[i], k = ceilSegs.push({ a, b, hw: c.half_width, clear: c.clear_m }) - 1;
+      for (let cx = Math.floor((Math.min(a[0], b[0]) - c.half_width) / CG); cx <= Math.floor((Math.max(a[0], b[0]) + c.half_width) / CG); cx++)
+        for (let cy = Math.floor((Math.min(a[1], b[1]) - c.half_width) / CG); cy <= Math.floor((Math.max(a[1], b[1]) + c.half_width) / CG); cy++) {
+          const g = ceilGrid.get(ckey(cx, cy)); if (g) g.push(k); else ceilGrid.set(ckey(cx, cy), [k]);
+        }
+    }
+    function lineCeiling(x, y, z) {
+      const g = ceilGrid.get(ckey(Math.floor(x / CG), Math.floor(y / CG)));
+      if (!g) return null;
+      let best = null;
+      for (const k of g) {
+        const { a, b, hw, clear } = ceilSegs[k], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2));
+        if (Math.hypot(a[0] + dx * t - x, a[1] + dy * t - y) > hw) continue;
+        const h = a[2] + (b[2] - a[2]) * t + clear;
+        if (h > z + 0.5 && (best === null || h < best)) best = h;
+      }
+      return best;
+    }
     function ceilingAt(x, y, z) {
-      if (!patches.length) return null;
       for (const p of patches) {
         if (!p.up || x < p.x0 || y < p.y0 || x >= p.x1 || y >= p.y1) continue;
         const h = patchAt(x, y);
         return h && h[1] !== null && h[1] > z + 0.5 ? h[0] + (p.clear_m || 2.2) : null;
       }
-      return null;
+      return ceilSegs.length ? lineCeiling(x, y, z) : null;
     }
     // is (x, y, z) inside the body of a slab over a patch, from its soffit to its top (with the camera probe's radius)?
     const upperSlabs = patches.filter(p => p.up);
@@ -729,10 +752,15 @@ window.OENav = (function () {
       return false;
     }
     // the highest surface already built at (x, y), a deck strip or a pier (-Infinity for none)
-    function surfaceAt(x, y) {
+    // the highest built surface at (x, y) (a pier, a strip), or with `near`, the one nearest that height (a
+    // bridge's deck under the expressway's that crosses it: the Shuto over Nihonbashi)
+    function surfaceAt(x, y, near) {
       const k = cellOf(x, y);
       let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
-      for (const s of stripsAt(x, y)) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; }
+      for (const s of stripsAt(x, y)) {
+        const z = stripHeight(s, x, y);
+        if (z != null && (near == null ? z > h : Math.abs(z - near) < Math.abs(h - near))) h = z;
+      }
       return h;
     }
     // ---------------------------------------------------------- decks of mapped bridges and viaducts (decks.js)

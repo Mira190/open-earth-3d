@@ -1,0 +1,7 @@
+[
+ {"name": "senbon-chase-day", "at": [-178.37, 70.27], "look": [-173.5, 65.2], "time": "11:00"},
+ {"name": "mountain-chase-day", "at": [553.9, 127.8], "look": [562.3, 122.4], "time": "11:00"},
+ {"name": "kojin-chase-day", "at": [408.8, 358.9], "look": [422.2, 384.6], "time": "11:00"},
+ {"name": "senbon-chase-dusk", "at": [-178.37, 70.27], "look": [-173.5, 65.2], "time": "sunset+10"},
+ {"name": "mountain-chase-night", "at": [553.9, 127.8], "look": [562.3, 122.4], "time": "21:00"}
+]

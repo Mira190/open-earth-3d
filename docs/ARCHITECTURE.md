@@ -976,6 +976,44 @@ waits for Shibuya's opening film.
   photograph. Its two nearest mapped trees, 6 m west in the open plaza, are taken off,
   and the `trees.areas` circle that makes it a weeping cherry is 3 m across.
 
+### Falling petals (issue #223)
+
+While a cherry variety flowers its petals drift down round the nearest cherries: a
+few in full bloom, most as the bloom goes over (hanafubuki, the last five days of
+the fortnight), none out of flower (`petalFall` in `web/trees.js`, from the same
+dates as the bloom).
+
+- **How engines do it cheaply.** A falling leaf or petal is the textbook particle,
+  and the browser engines offer two ways: a CPU or GPU-state particle system
+  (a three.js falling-leaves demo on freefrontend.com moves each instance's matrix on the CPU every frame; Babylon.js's
+  `GPUParticleSystem` (WebGL2 transform feedback) and the FBO particle systems for React Three Fiber keep the state
+  in a texture and step it on the GPU), or *stateless* particles, whose position, drift
+  and spin at any moment are a pure function of time and each instance's seed, worked out
+  in the vertex shader and recycled with `mod`/`fract` over a lifetime (the approach of
+  Godot's shared "wind driven falling particles" and "falling leaf" shaders). The
+  stateless way needs no per-frame CPU work, no extra render target and no WebGL2
+  feature, so it costs the same on three.js r128 and r186 and on a phone. Adopted:
+  stateless; no code was copied (the technique only).
+- **What it does.** One `Mesh` of an `InstancedBufferGeometry`: a card 10 cm long
+  (a real petal is 1.5 cm, lost beyond a few metres), its obovate outline and notch
+  cut in the fragment shader, white blushed pink at its base, lit by the scene as a
+  `MeshStandardMaterial`. Each card falls for one turn of 6-10 s from a point in one
+  of the 12 nearest shedding crowns (chosen afresh each turn, nearer crowns more often,
+  and kept or skipped by that crown's shedding rate), at the speed that brings it to
+  the ground 1.5 s before its turn ends, tumbling about its own axis, swaying, and
+  carried 1-1.6 m/s down the breeze and spread across it; then it lies flat for the
+  rest of its turn and fades. The crowns (their foot, crown radius and height from the
+  tree's height) are gathered when the trees are sorted, after the camera has moved
+  12 m, within 90 m.
+- **Cost.** 3,000 cards (900 on the light tier), 2 triangles each: 6,000
+  triangles in one draw call, no shadow pass; nothing is drawn out of flower or with
+  no shedding cherry within 90 m. `trees.petals()` reports the cards and crowns for
+  the tools.
+- **After dark** a petal from a lit tree (`yozakura`) catches its uplights while it
+  is within a few metres of the crown.
+
+![Petals round the Gion weeping cherry on 6 April: day, night (lit), and on a phone](images/trees/petals.jpg)
+
 ### The cays' scrub and the clumped Pisonia (issue #165)
 
 The coral cays' beach scrub was drawn as blobs near the camera. Two shared shrubs

@@ -67,6 +67,7 @@
   },
   "bridges": {
     "note": "Central Tokyo's bridges over the rivers and the Imperial Palace's moats; forms from each bridge's record (Tokyo Metropolitan Government, Chiyoda and Chuo wards).",
+    "road_min_m": 2.0,
     "widths": {"和田倉橋": 7.5, "皇居正門鉄橋 「二重橋」": 10.0},
     "forms": {
       "勝鬨橋": {"form": "kachidoki", "colour": "#8ea8a6", "note": "1940, the bascule between two tied arches"},
@@ -126,8 +127,9 @@
         "rail": "painted",
         "lamps": 2,
         "lamp_style": "bronze",
-        "deck_z": [15.3, 10.1],
-        "note": "1964 steel, to the 1888 iron bridge's design, black; its deck from the palace's inner terrace (15.3 m, GSI DEM) down to the Seimon forecourt at the stone bridge's west end (10.1 m): the moat's own floor no longer sets it"
+        "deck_z": [16.7, 16.7],
+        "crown_m": 0.0,
+        "note": "1964 steel, to the 1888 iron bridge's design, black; a level deck between the moat's walls at the Seimon terrace's height (16.7 m, GSI's laser over the flat terrace at its south end; the palace side is 16.5 to 17 m), the walls standing to it (cities/tokyo/moats.py WALLED)"
       }
     }
   },
