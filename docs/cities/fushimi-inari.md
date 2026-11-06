@@ -56,6 +56,13 @@ The sources are those of the other Kyoto maps:
   radius, so `web/game/nav.js` lays them into its fine cells like any landmark's posts and nothing in
   the shared code changed. Walkers and the player keep between the pillars.
 
+- **The camera in the tunnels** (#218): each run of torii is a low ceiling for the game's camera
+  (`landmarks.json` "ceilings": the run's line, its half width and the height of its lowest torii's tie
+  beam), which `web/game/nav.js` `ceilingAt` reads beside the patches' slabs, so the chase camera stays
+  under the lintels inside the tunnel, as a visitor sees it, rather than riding over the roofs.
+
+![The chase camera in the Senbon Torii](../images/kyoto/inari-camera-tunnel.jpg)
+
 ![The mountain's torii on foot, day, dusk and night](../images/kyoto/inari-mountain-torii.jpg)
 ![Inside the Senbon Torii; the side path to Kojin-ga-mine](../images/kyoto/inari-senbon-kojin.jpg)
 ![The miniature torii at the otsuka by the summit](../images/kyoto/inari-otsuka.jpg)

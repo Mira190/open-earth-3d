@@ -562,6 +562,31 @@ def torii_hits(chunk=48.0):
     return out
 
 
+def torii_ceilings(step=2.0):
+    """Each run of torii as a low ceiling for the game's camera (landmarks.json "ceilings", web/game/nav.js
+    ceilingAt): under the tie beams of the run's lowest torii, so that the chase camera stays in the
+    tunnel rather than over the lintels."""
+    torii_sites()
+    out = []
+    for run in _cache["torii_runs"]:
+        if len(run) < 3:
+            continue
+        h = min(KINDS[k][0] for k, _ in run)
+        span = min(KINDS[k][1] * a[4] for k, a in run)
+        pieces, pts, last = [], [], None
+        for kind, (x, y, z, hd, sc) in run:
+            if last is None or math.hypot(x - last[0], y - last[1]) >= step:
+                if last is not None and math.hypot(x - last[0], y - last[1]) > 4.0 and len(pts) > 1:
+                    pieces.append(pts)
+                    pts = []
+                pts.append([x, y, z])
+                last = (x, y)
+        if len(pts) > 1:
+            pieces.append(pts)
+        out += [{"pts": p, "half_width": round(span / 2 - 0.1, 2), "clear_m": round(0.7 * h - 0.05, 2)} for p in pieces]
+    return out
+
+
 class Near:
     """A mesh drawn only within its own radius ("far" 1 m)."""
     def __init__(self, m):
@@ -628,7 +653,7 @@ def landmark_meshes(scene):
     R = romon_layout()
     if R:
         mats["inari_shu"]["flood"] = [round(R["z0"], 1), round(R["z0"] + 16.0, 1), 0.5, 0.6]
-    return mats, K.out() + more + torii_hits(), {"hidden": sorted(set(hidden)), "props": torii_props() + lamp_props()}
+    return mats, K.out() + more + torii_hits(), {"ceilings": torii_ceilings(), "hidden": sorted(set(hidden)), "props": torii_props() + lamp_props()}
 
 
 def landmark_assets(out_dir, scene):
