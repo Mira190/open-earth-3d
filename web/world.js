@@ -1363,6 +1363,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         if (far) far.setNight(U.uNight.value);
+        if (outposts && outposts.userData.setNight) outposts.userData.setNight(U.uNight.value); // (a landing's lit windows, outposts.js)
         // The sky after dark as night photographs of a city show it: a deep blue overhead and, low
         // down, the glow its lights put in the air, which the haze at the model's edge takes too.
         // (The sky's own curve lifts a night sky to a grey tenth of the day's, which lit every glass

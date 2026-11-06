@@ -36,6 +36,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
 | Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, NASA Black Marble, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
+| Landings past the frame | `outposts.py` | game.json `outposts`, `outpost_<id>.jpg`: a small tile of ground far from the model that a ferry calls at (Queenstown's Walter Peak, 13 km across Lake Wakatipu): its terrain on a 2 m grid, its water and building masks, its photo, its buildings and its wharf as a strip surface, from a STAC DEM and photo collection and Overture; the ferry legs that call there routed over Overture's lake past the frame (`web/outposts.js`) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
@@ -374,6 +375,15 @@ The views switch in place, without reloading the page.
     above and from the tour cameras toward and away from a low sun:
     `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
     for `tools/city_shot.js`).
+  - landings past the frame (`web/outposts.js`, `pipeline/outposts.py`, issue 237). A ferry's far wharf can lie
+    beyond the frame: Queenstown's Earnslaw sails 13 km to Walter Peak. An outpost is a tile of ground there in the
+    city's local frame (terrain on a 2 m grid, the aerial photo, water, wharf deck and buildings). The far land
+    puts grid lines on the tile's box and drops its triangles inside (`farland.js` holes), and the tile's outer band
+    blends to the far land's own surface (`surface(x, y)`, bilinear in a grid cell and so exact along the box's
+    edges), so there is no seam; the edge haze treats the box as it treats the frame; `nav.js` takes its ground,
+    water and building footprints, and keeps walkers off the outer half of the band. A long ferry leg skips (F) and
+    waits at rates that scale with the leg, so a 12.5 km crossing passes in about 40 s. The low tier draws the tile's
+    ground on a 4 m grid.
   - past the frame, the land (issue 78). Under that haze stands the land that is
     really there (`web/farland.js`, `pipeline/far_land.py`): a low terrain 40 km
     either side of the frame's centre (60 km at a reef site) from Copernicus

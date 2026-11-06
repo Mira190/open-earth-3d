@@ -74,8 +74,9 @@ window.OEOutposts = (function () {
   // ------------------------------------------------------------ drawing (world.js)
   // ctx: { DATA, texLoader, small, photoMaterial(tex) -> material (the city's photo grade), anisotropy }
   function build(G, ctx) {
-    const T = THREE, group = new T.Group();
+    const T = THREE, group = new T.Group(), nightMats = [];
     group.name = 'outposts';
+    group.userData.setNight = k => { for (const m of nightMats) m.emissiveIntensity = 1.4 * k; };
     const lin = h => new T.Color(h).convertSRGBToLinear();
     for (const o of list(G)) {
       // the ground: the tile's grid (every second point on a small device), draped with its photo
@@ -102,7 +103,7 @@ window.OEOutposts = (function () {
       // corner is lost on the few that are not): weatherboard walls with a dark plinth and window bands to
       // the eaves, and a pitched roof, gabled on a long building and hipped on a squarer one. The roof's
       // colour is the photo's (pipeline/outposts.py); the walls' colour and the heights are judged
-      const wallPos = [], wallCol = [], roofPos = [], roofCol = [];
+      const wallPos = [], wallCol = [], roofPos = [], roofCol = [], litPos = [], litCol = [], darkPos = [], darkCol = [];
       const push = (P, C, col, ...v) => { for (const q of v) { P.push(q[0], q[2], -q[1]); C.push(col.r, col.g, col.b); } };
       const quad = (P, C, col, a, b, c, d) => push(P, C, col, a, b, c, a, c, d);
       const glass = lin('#2b3238'), frameCol = lin('#f2efe8');
@@ -115,7 +116,7 @@ window.OEOutposts = (function () {
         if (v1 - v0 > u1 - u0) { [ux, uy] = [-uy, ux]; [u0, u1, v0, v1] = [v0, v1, -u1, -u0]; } // u along the long side
         const P = (u, v, z) => [u * ux - v * uy, u * uy + v * ux, z];
         const zb = b.z - 0.5, ze = b.z + b.eaves_m, zr = b.z + b.ridge_m, Lu = u1 - u0, Lv = v1 - v0;
-        const wc = lin(b.wall || '#ece8dc').multiplyScalar(0.82), rc = lin(b.roof || '#7a3a30'), plinth = wc.clone().multiplyScalar(0.5);
+        const wc = lin(b.wall || '#ece8dc').multiplyScalar(0.62), rc = lin(b.roof || '#7a3a30'), plinth = wc.clone().multiplyScalar(0.5); // (painted weatherboard, about 0.5 reflectance)
         const C4 = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
         for (let k = 0; k < 4; k++) {
           const [ua, va] = C4[k], [uc, vc] = C4[(k + 1) % 4], len = Math.hypot(uc - ua, vc - va), tu = (uc - ua) / len, tv = (vc - va) / len, nu = tv, nv = -tu;
@@ -128,7 +129,8 @@ window.OEOutposts = (function () {
             const W = (s, z) => P(ua + tu * (m + s) + nu * e, va + tv * (m + s) + nv * e, z);
             quad(wallPos, wallCol, frameCol, W(-w - 0.07, za - 0.07), W(w + 0.07, za - 0.07), W(w + 0.07, zz + 0.07), W(-w - 0.07, zz + 0.07));
             const W2 = (s, z) => P(ua + tu * (m + s) + nu * 2 * e, va + tv * (m + s) + nv * 2 * e, z);
-            quad(wallPos, wallCol, glass, W2(-w, za), W2(w, za), W2(w, zz), W2(-w, zz));
+            const lit = ((k * 7 + i * 13 + b.ring.length * 5) % 10) < 6; // (most windows lit after dark, not all)
+            quad(lit ? litPos : darkPos, lit ? litCol : darkCol, glass, W2(-w, za), W2(w, za), W2(w, zz), W2(-w, zz));
           }
         }
         // the roof, 0.4 m over the walls
@@ -144,13 +146,16 @@ window.OEOutposts = (function () {
           push(wallPos, wallCol, wc, P(u1, v1, ze), P(u1, v0, ze), P(u1, vm, zr - 0.04));
         }
       }
-      for (const [pos, col, rough, metal] of [[wallPos, wallCol, 0.85, 0], [roofPos, roofCol, 0.55, 0.35]]) {
+      // the windows glow warm after dark (group.userData.setNight, from world.js with the far land's)
+      const glow = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.15, metalness: 0, emissive: lin('#ffc98a'), emissiveIntensity: 0 });
+      nightMats.push(glow);
+      for (const [pos, col, rough, metal, mat] of [[wallPos, wallCol, 0.85, 0], [roofPos, roofCol, 0.55, 0.35], [litPos, litCol, 0, 0, glow], [darkPos, darkCol, 0.15, 0]]) {
         if (!pos.length) continue;
         const bg = new T.BufferGeometry();
         bg.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
         bg.setAttribute('color', new T.Float32BufferAttribute(col, 3));
         bg.computeVertexNormals();
-        const bm = new T.Mesh(bg, new T.MeshStandardMaterial({ vertexColors: true, roughness: rough, metalness: metal, side: T.DoubleSide }));
+        const bm = new T.Mesh(bg, mat || new T.MeshStandardMaterial({ vertexColors: true, roughness: rough, metalness: metal, side: T.DoubleSide }));
         bm.castShadow = bm.receiveShadow = true;
         group.add(bm);
       }

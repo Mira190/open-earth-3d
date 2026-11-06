@@ -33,18 +33,24 @@ amber under the snow on the Remarkables, and a clear day over Queenstown Bay fro
 side. The first is the place the town is best known for. It is where the game starts, and it is
 the model viewer's opening shot. The second is the tour's second stop. Matched to them:
 
-- **The start** is on the luge track under the Skyline restaurant's viewing deck on Bob's Peak,
-  beside the gondola's big portal, facing south-east over the town, the bay, the Gardens peninsula and the Kelvin
-  Peninsula to the Remarkables. The deck is a landmark (`cities/queenstown/city.py`, `DECK`):
+- **The start** is on the Skyline restaurant's viewing deck on Bob's Peak, facing south-east over
+  the town, the bay, the Gardens peninsula and the Kelvin Peninsula to the Remarkables. The deck is a landmark (`cities/queenstown/city.py`, `DECK`):
   timber boards on a steel frame with a glass balustrade. The game walks it as a strip. Its place and level are measured. LINZ's 2026 aerial
   photographs show the crowd at its balustrade along the restaurant's south-east face. The 2021
   LiDAR surface model shows a strip 3–4 m deep and about 26 m long at 474.6 m, 17 m over the luge
   track and 4.8 m under the restaurant's roof. The model draws it 26 × 3.6 m. Skyline opened an
-  extension in March 2026 that takes the deck from 68 to 430 m² (Otago Daily Times, 2026). The
-  photographs were flown before it opened, and its plans are not published, so the larger deck is
-  a follow-up. The real deck is reached through the restaurant, which the game does not model, so
-  the game starts on the luge track below it, where a taxi can come up Skyline Road. Until
-  then this was a deck drawn on the open hillside there; the photographs show none.
+  extension in March 2026 that takes the deck from 68 to 430 m² (Otago Daily Times, 20 March 2026;
+  the Queenstown Times gives 460 m²). The photographs were flown before it opened, and neither its
+  plans nor newer imagery are published, so the larger deck is not drawn.
+- **The way onto the deck.** The real deck is reached through the restaurant. The extension's five
+  levels run from a lift level at the bottom to the deck on top (Otago Daily Times), and its builder
+  describes a glass elevator on a structural steel frame (Naylor Love's project page). Neither says
+  where the lift stands, so the game draws a glass lift on a steel frame where the deck's south-west
+  end meets the luge track, 15 m below (`cities/queenstown/city.py`, `LIFT`). <kbd>E</kbd> at its
+  door rides it, at a passenger lift's 1 m/s. The game starts on the deck (`game.start.z`), and
+  Aroha waits at the lift's foot, on the open luge track, where the welcome's gold line leads.
+  No road reaches the deck's level, so a taxi meets you at the lift's foot: `tools/game_check.js`
+  measures the start's kerb from there (138 m) when the start stands at a lift's top.
 - **The lake** is a saturated blue with turquoise over the shallows (`water.colour`,
   `shallow_colour`, `scatter`).
 - **The air** is clear: `far.clarity` 2.2 stretches every haze distance (the fog and the far
@@ -70,6 +76,8 @@ Nothing was taken from either but that idea.
 | Heritage landmarks | Heritage New Zealand Pouhere Taonga, New Zealand Heritage List entries 7439, 2341 and 2336 (read for facts, not copied); photographs on Wikimedia Commons (listed in section 3); the 2021 LiDAR for their outlines and heights | © HNZPT; CC BY-SA 3.0 / CC BY 2.0 / CC BY-SA 2.0; CC BY 4.0 |
 | The land past the frame | LINZ, New Zealand Contour-Interpolated 8m DEM (read at 32 m); LINZ, New Zealand 10m Satellite Imagery (2025–2026); ESA WorldCover 2021; NASA Black Marble | CC BY 4.0; CC BY 4.0; CC BY 4.0; public domain |
 | Climate | NIWA, Queenstown Airport, 1991–2020 normals (via Wikipedia's climate table) | — |
+| Walter Peak (past the frame) | LINZ New Zealand Contour-Interpolated 8m DEM (no LiDAR covers it); LINZ Otago 0.15m Rural Aerial Photos (2025–2026), RGBNIR, 16-bit, read at 0.5 m; Overture Maps 2026-10-21.0: Lake Wakatipu, the wharf, the ferry terminal and the buildings | CC BY 4.0; CC BY 4.0; ODbL |
+| The deck's access, the Earnslaw's run | Otago Daily Times (20 March 2026), Queenstown Times (5 June 2026), Naylor Love's project page; RealNZ's TSS Earnslaw and Walter Peak pages and insider guide | read for facts |
 
 ### New in the pipeline
 
@@ -132,11 +140,15 @@ downhill.
     by the bottom station (32 m along, about 15 m high, an 11 m head). The second, the largest,
     stands over the luge (554 m, about 11 m over its foot, a 19 m head on two pairs of legs). The
     third stands under the top station (598 m, about 15 m high, an 8.5 m head).
-  - *Ten or six.* Doppelmayr give 10 towers. OpenStreetMap maps 6, at the same six sites. The
-    photographs, at 0.1 m, show no other tower along the line; a tower 10–30 m tall would cast a
-    shadow 8–25 m long. Doppelmayr's count most likely takes the three portals' frames (two pairs of
-    legs under the longest) as more than one tower each. The model draws the six structures as
-    the photographs show them.
+  - *Ten or six.* Doppelmayr give 10 towers (lift-world.info and remontees-mecaniques.net repeat it, with
+    the stations at 345 and 783 m, the drive at the top and the tensioning at the bottom). OpenStreetMap
+    maps 6, at the same six sites. The photographs, at 0.1 m, show no other tower along the line; a tower
+    10–30 m tall would cast a shadow 8–25 m long. No line profile or data sheet that breaks the count down
+    is published, and none was found (November 2026). The big portal over the luge is one lattice head,
+    21 m along the line, on two pairs of legs, its two white plinths either side of the line 12 m apart:
+    one structure, so it is not split. The likeliest reading is that Doppelmayr count each portal's leg
+    pairs or sheave trains, or the stations' own entry supports, as towers. The model draws the six
+    structures the photographs show.
   - *The cable.* It sags 2.5% of each span. At 3.8 m, the lowest the cabins pass over the ground is
     just below the big portal, where the line comes over the luge.
   - *The cabins.* Omega V shells in light silver-grey with dark glazing bands (a 2023 photograph
@@ -158,7 +170,9 @@ downhill.
     the balcony door above. The restoration after the November 1999 flood (reopened December
     2001) brought the balustrade back, as every photograph since shows, so the model has the
     balustrade and not the stepped parapet. It keeps the Moorish arch on both Ballarat Street
-    doors. No photograph found shows whether the arch survived the restoration.
+    doors. HNZ's text (List 7439) comes from a 1998 report, before the restoration, and QLDC protects
+    the facade (District Plan, protected feature 136). No photograph or text found from after 2001
+    shows whether the arch survived; Wikimedia Commons could not be searched from here (November 2026).
   - After dark, floodlights at its foot light the plaster.
 - **St Peter's Anglican Church** (List 2341; `heritage.py`). Built in 1932 to J. McDowall Smith's
   design: "modelled on the traditional lines of the English parish church", its walls faced with
@@ -170,10 +184,12 @@ downhill.
   - *From a photograph* (John Harwood, 2007, CC BY 2.0): the rubble walls with pale freestone
     dressings, the steep slate roofs, paired lancets with leaded lights between buttresses, the
     tower's louvred belfry lancets, and the octagonal slate spire with its cross. The spire's tip
-    is drawn at 17 m; the LiDAR caught 15.2 m below the point.
-  - *The lych-gate* is in memory of Thomas Hicks. It is drawn in oak under a slate gable, on the
-    path beside the tower, where the LiDAR shows a 4–5 m roof over the path. No listing gives its
-    place.
+    is drawn at 17 m; the LiDAR caught 15.2 m below the point. A 1 m surface model rarely returns the
+    tip of a slender spire, and no height is published, so the drawn height stands.
+  - *The lych-gate* is in memory of Thomas Hicks (the parish). QLDC protects it (District Plan,
+    protected feature 39) on the church's lot at the corner of Camp and Church Streets: the lot's
+    address, not the gate's own place. It is drawn in oak under a slate gable, on the path beside the
+    tower, where the LiDAR shows a 4–5 m roof over the path, 23 m from Camp Street.
 - **Williams Cottage** (List 2336; `heritage.py`). 1864, with a lean-to of 1866, and "believed to
   be the earliest remaining cottage in Queenstown".
   - *From HNZ's conservation-plan text:* painted weatherboards, a very high gabled roof of
@@ -181,6 +197,10 @@ downhill.
     front, four-paned windows under it and six- and twelve-paned sashes elsewhere, and a later
     rear room with another massive stone chimney.
   - *From the LiDAR:* the ridge at 5.9 m and the eaves at 2.7 m.
+  - *The stone store room.* HNZ: "a small stone store room is situated to the side". The mapped
+    footprint stands out 3 m from the lean-to's north-east wall, about 2.6 m wide, and the model draws
+    it there: schist rubble under an iron skillion falling away from the cottage, a plank door in its
+    end wall.
   - *From a photograph* (Schwede66, Wikimedia Commons, CC BY-SA 3.0): cream boards, oxblood
     joinery, a red roof, schist chimneys with brick tops, and the rear chimney's tall black flue.
 - **Steamer Wharf** (`heritage.py`). The waterfront pavilions by the Earnslaw's berth, by Wyatt +
@@ -203,15 +223,46 @@ downhill.
 The heritage landmarks are drawn in place of their mapped blocks, which stay in the surface model
 for the shadows and the analyses (landmarks.json `hidden`).
 
+## 3b. The Earnslaw to Walter Peak
+
+| The Earnslaw on her way, past the frame | At Walter Peak |
+|---|---|
+| ![](../images/queenstown/earnslaw-day.jpg) | ![](../images/queenstown/earnslaw-walterpeak.jpg) |
+| **Walter Peak at dusk** | **The Colonel's Homestead, on foot** |
+| ![](../images/queenstown/walter-dusk.jpg) | ![](../images/queenstown/walter-day.jpg) |
+
+The Earnslaw's real run is to the Walter Peak wharf in Beach Bay, in front of the Colonel's Homestead,
+about 45 minutes each way (RealNZ). The wharf is 13 km from the town, well past the map's frame
+(`pipeline/outposts.py`, `web/outposts.js`, shared by any city):
+
+- **The route.** The leg is routed over Overture's Lake Wakatipu on a 10 m grid from the frame to the
+  far wharf (inside the frame over the game's own water), keeping 30 m off the shore out on the lake:
+  12.5 km, straight down the open lake past Cecil Peak, as OpenStreetMap's "TSS Earnslaw Cruise" line runs.
+- **The crossing.** At her 13-knot service speed she takes about half an hour, where the real cruise takes
+  45 minutes: the game keeps her rated speed rather than slowing her to the timetable. <kbd>F</kbd> skips
+  the crossing in about 40 s, and the wait for her at a wharf passes in about a minute at most.
+- **Walter Peak.** A tile 1.07 × 0.89 km on a 2 m grid: LINZ's 8 m national DEM (no LiDAR covers it),
+  smoothed a little on land to take out its contour terraces, under LINZ's 2025–26 0.15 m rural aerial
+  photographs read at 0.5 m. The lake's bottom shelves to 6 m, as the far land's lake does, so the water
+  matches at the tile's edge. The far land is cut round the tile with grid lines on its box, and the tile's
+  outer 70 m blends to the far land's own surface, so there is no seam.
+- **The wharf** is Overture's pier at the ferry terminal, a timber deck on piles 1.3 m over the lake that the
+  game walks as a strip. Her berth is alongside its outer half.
+- **The buildings** are Overture's 18 footprints round the homestead: weatherboard walls with window bands
+  and a pitched roof, gabled on a long building and hipped on a squarer one, each on its footprint's
+  oriented rectangle. The roofs' colours are the photograph's; the walls' colour and the heights are judged
+  (the homestead's eaves at 3.2 m and ridge at 7 m), as no survey covers them.
+- **The walk.** Callum's lake quest sails there, walks up to the Colonel's Homestead and sails back.
+
 ## 4. Queenstown on Foot
 
-You start on the luge track on Bob's Peak, under the gondola's big portal. Aroha welcomes you, and there are three walks, in any order:
+You start on the Skyline deck on Bob's Peak. Aroha waits at the foot of the glass lift on the luge track below, and there are three walks, in any order:
 
 - **The hill.** Hemi, further along the hillside, keeps you there until the Remarkables turn pink
   ("Wait here till dusk" sets the time). Then you ride the gondola down to Mei at Brecon Street,
   and back up.
-- **The lake.** Callum, at Steamer Wharf, puts you on the Earnslaw across Frankton Arm to the
-  Kelvin Heights jetty and back. Then you walk Marine Parade past Eichardt's to Williams Cottage
+- **The lake.** Callum, at Steamer Wharf, puts you on the Earnslaw to Walter Peak, past the map's
+  edge; you walk up to the Colonel's Homestead and sail back. Then you walk Marine Parade past Eichardt's to Williams Cottage
   and out to the point of the Gardens.
 - **The air.** Sophie flies from the Recreation Ground.
 
@@ -220,8 +271,8 @@ service road up Bob's Peak, is mapped as a track, and so is the unnamed track th
 to Lomond Crescent. The game drives both (`drive_named`, `drive_tracks`), so a taxi can come up to
 the top. The real road is private.
 
-The Earnslaw's real run is to Walter Peak, beyond the map's edge across the lake. In the game she
-crosses to Kelvin Heights at her service speed of 13 knots, and `ferry_note` says so. The lines
+The Earnslaw sails her real run, to Walter Peak (section 3b), and `ferry_note` says how its time
+differs. The lines
 are sourced: Tāhuna, "shallow bay"; Rākaihautū and the lake; the seiche (26.7 min, about 200 mm,
 told as the giant's breathing); William Rees's woolshed, which became Eichardt's; the Earnslaw
 built in Dunedin, carried in pieces by rail to Kingston and launched there in 1912, burning about
@@ -258,25 +309,26 @@ change applies to every city's woods; Queenstown's are where it counts.
   neighbours. These are mostly buildings that went up after the March 2021 flight: 119 footprints
   have no roof in the surface model (`analysis/lidar_heights.json`).
 - `tools/game_check.js queenstown`: walk, talk, the helicopter, the Earnslaw, the car, a taxi and
-  a ride, the junctions, rain, and a lost WebGL context.
-- Stills of each landmark at street level, of the gondola from the lake and from the deck, and of
-  the start: desktop 1440 × 900 and phone 390 × 844, day, dusk and night, on llvmpipe at the
-  desktop tier.
+  a ride, the junctions, rain, and a lost WebGL context; the glass lift up and down; the kerb for a taxi
+  from the lift's foot; the crossing to Walter Peak (skipped in 56 s), ashore on its wharf, and the walk
+  to the Colonel's Homestead; the lake quest's walk there has ground to stand on.
+- Stills of each landmark at street level, of the gondola from the lake and from the deck, of the deck
+  and its lift, of the Earnslaw on her way and at Walter Peak, and of Walter Peak on foot: desktop
+  1440 × 900 and phone 390 × 844, day, dusk and night, on llvmpipe at the desktop tier.
 - Not checked: a real GPU, WebGPU, Safari or iOS.
 
 ## 7. Limitations and follow-ups
 
-- **The deck.** The 430 m² deck Skyline opened in March 2026 is not drawn. Its plans are not
-  published, and the photographs predate it. The real deck is reached through the restaurant, so
-  the game starts on the luge track below it and does not reach it.
-- **The gondola's towers.** Doppelmayr give 10; the photographs show six structures. Which frames
-  Doppelmayr count as separate towers is unconfirmed.
+- **The deck.** The 430 m² deck Skyline opened in March 2026 is not drawn: its plans are not
+  published and the photographs predate it. The glass lift's place is judged; the restaurant's
+  interior, through which the real deck is reached, is not modelled.
+- **The gondola's towers.** Doppelmayr give 10; the photographs show six structures, drawn as such.
+  No published profile says how the 10 are counted.
 - **The heritage landmarks.**
   - Eichardt's Moorish arch is drawn although no photograph since 2001 shows it.
-  - St Peter's lych-gate stands where the LiDAR shows a roof over the path; its place is not in a
-    listing.
+  - St Peter's lych-gate stands where the LiDAR shows a roof over the path; QLDC's listing gives
+    only the lot. The spire's tip at 17 m is the drawn height, not a measured one.
   - Neither church nor cottage has its interior.
-- **The Earnslaw's real run** is to Walter Peak, about 13 km across the lake, past the frame.
-  Far land (`pipeline/far_land.py`) is only a height grid seen through haze. The game's water,
-  its ferry routes and its wharves stop at the frame, so a landing there needs the game to sail
-  and walk past the frame.
+- **Walter Peak.** No LiDAR covers it, so its ground is the 8 m national DEM, and its buildings'
+  heights, walls and forms are judged; the gardens' trees are only in the photograph. The crossing
+  runs at the Earnslaw's service speed (about 30 minutes) rather than the timetable's 45.
