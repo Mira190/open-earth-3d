@@ -1694,7 +1694,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const end = c.dir > 0 ? 1 : 0, arm = JN.armAt(c.line, end);
         if (c.nx === undefined) {
           // (the way across chosen before it got here: coming up to it, or crossing the junction before with it)
-          c.ex = arm ? (c.exA && c.exA.a === arm ? c.exA.e : c.ex2 && c.ex2.a === arm ? c.ex2.e : JN.choose(arm, c.hw)) : null;
+          c.ex = arm ? (c.exA && c.exA.a === arm ? c.exA.e : c.ex2 && c.ex2.a === arm ? c.ex2.e : JN.choose(arm, c.hw, c.half)) : null;
           if (c.exA && c.exA.a === arm) c.exA = null;
           if (c.ex2 && c.ex2.a === arm) c.ex2 = null;
           c.plan = c.ex ? c.ex.steps.slice(1) : null;
@@ -1826,11 +1826,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // two in a junction, each stopped for the other as the car ahead (nose to nose where their ways
         // cross, each path seeing the other): after 4 s the one that went in first goes on as if the
         // other weren't there, and the other gives way to it when they touch (below; #144)
-        if (front && c.mv && front.mv && front.front === c && c.v < 0.3 && front.v < 0.3) {
-          c.faceAll = c.faceCar === front ? (c.faceAll || 0) + dt : 0;
-          c.faceT = c.faceCar === front ? (c.faceT || 0) + dt : 0; c.faceCar = front;
-          const cb = canBack(c), fb = canBack(front); // (the one that can't back off goes on, else the one in first)
-          if (c.faceT > 4 && (cb !== fb ? fb : c.mvT < front.mvT || (c.mvT === front.mvT && i < C.indexOf(front)))) { c.passBy = front; c.faceT = 0; }
+        // (or held by each other, a step each took back into the other: neither has the other on its way ahead, and the
+        // two stood 63 s in Sydney's junction 461, out of neighbouring lanes of one arm, #243)
+        const fr = front || (c.why === 'held' && c.front && c.front.why === 'held' && c.front.front === c ? c.front : null);
+        if (fr && c.mv && fr.mv && fr.front === c && c.v < 0.3 && fr.v < 0.3) {
+          c.faceAll = c.faceCar === fr ? (c.faceAll || 0) + dt : 0;
+          c.faceT = c.faceCar === fr ? (c.faceT || 0) + dt : 0; c.faceCar = fr;
+          const cb = canBack(c), fb = canBack(fr); // (the one that can't back off goes on, else the one in first)
+          if (c.faceT > 4 && (cb !== fb ? fb : c.mvT < fr.mvT || (c.mvT === fr.mvT && i < C.indexOf(fr)))) { c.passBy = fr; c.faceT = 0; }
         } else { c.faceT = c.faceAll = 0; c.faceCar = null; }
         if (c.passBy && (!c.mv || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4)) c.passBy = null;
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
@@ -1912,7 +1915,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             li = n2[0]; ld = n2[1] === 0 ? 1 : -1;
           }
           if (a2 && d2 < c.half + 6 + c.v * c.v / 6) {
-            if (!c.exA || c.exA.a !== a2) c.exA = { a: a2, e: JN.choose(a2, c.hw) };
+            if (!c.exA || c.exA.a !== a2) c.exA = { a: a2, e: JN.choose(a2, c.hw, c.half) };
             if (c.exA.e) { jArm = a2; jEx = c.exA.e; toLine = d2; }
           }
         }
@@ -1966,7 +1969,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               // a junction just after, too close to wait between: crossed with this one, its way chosen now
               const a2 = go ? JN.after(jEx, 2 * c.half + 3) : null;
               if (a2) {
-                if (!c.ex2 || c.ex2.a !== a2) c.ex2 = { a: a2, e: JN.choose(a2, c.hw) };
+                if (!c.ex2 || c.ex2.a !== a2) c.ex2 = { a: a2, e: JN.choose(a2, c.hw, c.half) };
                 const lt2 = JN.light(a2, c.ex2.e);
                 if (!c.ex2.e || !(lt2 == null || lt2 === 'g') || a2.sign === 'stop' || !room(c, c.ex2.e)) go = false;
               }
@@ -2240,7 +2243,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (long && !inView(c)) { c.inHeld = c.behindT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
         // (the one of two nose to nose in a junction that goes on, held by the other 20 s, the queue behind
         // that one too close for it to back off: it squeezes past then, not after the minute and a half)
-        const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20));
+        // (or, of two held by each other that backing off hasn't parted in 30 s, the one in the junction first: two head-on
+        // at the mouth of a piece stood 61 s in Sydney's junction 472, the one that could back off boxed in behind, #243)
+        const stuckPair = heldBy0 && heldBy0.front === c && c.inHeld > 30 && (!heldBy0.mv || (c.mv && (c.mvT < heldBy0.mvT || (c.mvT === heldBy0.mvT && i < C.indexOf(heldBy0)))));
+        const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20) || stuckPair);
         if (squeeze && !c.squeezing) squeezes++;
         c.squeezing = squeeze;
         if (squeeze) held = false;

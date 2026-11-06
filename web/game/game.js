@@ -4126,7 +4126,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // (and one coming for you, stopped on its way, is not parked either: read so, a car crossing a junction in front
       // of it stood for it as for a car parked across its bonnet while the ride waited for that car, #243)
       const live = o === ride && !st.done && (ride.phase === 'driving' || ride.phase === 'leaving' || (ride.phase === 'coming' && !ride.turn)), soft = o === ride && ride.phase === 'coming' && Math.abs(st.v) >= 0.3;
-      blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
+      // (turning round in the road: its way is no way ahead, so it goes to the traffic with none, and a car whose way it
+      // is across waits for it, never first by the give-way rule, nor swung round it as round a parked car)
+      const turning = o === ride && !!ride.turn;
+      blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: !turning && Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
+      if (turning) { cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true }); continue; }
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
       const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft };

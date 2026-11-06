@@ -467,10 +467,14 @@ window.OEJunctions = (function () {
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
-    function choose(a, hw = 0) {
+    function choose(a, hw = 0, half = 0) {
       let ex = exits(a);
       if (!ex.length) return null;
       if (hw && net.fit && ex.length > 1) { const w = ex.filter(e => net.fit[e.m.line] >= hw); if (w.length) ex = w; } // (not into a street too narrow for it, if there is another way: #202)
+      // (nor onto a piece shorter than it up to the next line that can't be crossed with the junction there, a piece
+      // that comes straight back to this junction: a bus out of Shinjuku's 1195 onto one stood across it 69 s, at the
+      // red of the arm it came back to, its movement never out of the junction)
+      if (half && ex.length > 1) { const w = ex.filter(e => reach(e) >= 2 * half + 2.5 || after(e, 2 * half + 3)); if (w.length) ex = w; }
       if (clockOf && ex.some(e => e.tw || L[e.m.line].tb)) { // (not a way closed at this hour, if there is another)
         const t = clockOf(), open = ex.filter(e => !closedNow(e, t));
         if (open.length) ex = open;
@@ -728,7 +732,10 @@ window.OEJunctions = (function () {
       // (but not the movement of a car behind it on its own piece: one that left this junction onto a piece that comes back to
       // it, queued behind c, can't clear the box until c goes, and c stood at the line for good, Sydney's junction 583, Shibuya's 813)
       const behind = o => o.c.line === c.line && o.c.line >= 0 && o.c.dir === c.dir && (o.c.s - c.s) * c.dir < 0;
-      for (const o of j.active) if (o.c !== c && !behind(o) && (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m))) return 'cross';
+      // (nor a movement whose car stands behind a queue that comes back to c: it can't clear the junction before c goes.
+      // Kyoto's 327: a ride in the junction behind a bus behind the car waiting at its line for the ride's movement)
+      const waitsOnMe = o => { for (let x = o.c, n = 0; x && n < 8; n++) { const f = x.front || x.block; if (f === c) return (o.c.v || 0) < 0.3; if (!f || f.line == null) return false; x = f; } return false; };
+      for (const o of j.active) if (o.c !== c && !behind(o) && (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o)) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
