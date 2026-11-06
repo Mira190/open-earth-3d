@@ -70,6 +70,14 @@ MATERIALS = {
                  "spandrel": 0.45, "mullion_m": 0.18, "frame": "#b4b8bb", "lit_share": 0.55, "lit_k": 0.8},
     "ks_glass": {"color": "#4c5f6c", "roughness": 0.05, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
                  "spandrel": 0.0, "mullion_m": 0.06, "frame": "#e6e9eb", "lit_share": 0.9, "lit_k": 0.5},
+    # the Hotel Granvia's guest floors (#258): grey granite panels, and windows lit room by room after dark
+    "ks_stone": {"color": "#85878a", "roughness": 0.7, "metalness": 0.05, "pattern": "granite", "joints_m": [1.8, 1.1]},
+    "ks_room": {"color": "#3f4d58", "roughness": 0.06, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 1.65,
+                "spandrel": 0.0, "mullion_m": 0.05, "frame": "#c9ccce", "lit_share": 0.5, "lit_k": 0.8},
+    # the glass block beside the atrium: deep blue glass on a fine dark grid, the sky and Kyoto Tower in it
+    "ks_bluegrid": {"color": "#33495e", "roughness": 0.04, "metalness": 0.7, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 1.8,
+                    "spandrel": 0.0, "mullion_m": 0.07, "frame": "#262d33", "lit_share": 0.35, "lit_k": 0.4},
+    "ks_rail": {"color": "#8a9aa4", "roughness": 0.1, "metalness": 0.4, "opacity": 0.45},
     "ks_roofglass": {"color": "#b8c9d4", "roughness": 0.06, "metalness": 0.3, "opacity": 0.32},
     "ks_steel": {"color": "#dfe2e4", "roughness": 0.35, "metalness": 0.6, "emissive": "#fff1dc", "glow": 0.35},
     # the great grid over the north face (#218): aluminium-clad frames standing proud of the glass
@@ -213,7 +221,7 @@ def kyoto_station():
     if not S:
         return [], []
     F, u0, D = S["F"], S["u0"], STATION
-    K = ak.Kit("kyoto_station", floodlit={"ks_steel", "ks_led"}, uv={"ks_panel", "ks_glass", "ks_steps"})
+    K = ak.Kit("kyoto_station", floodlit={"ks_steel", "ks_led"}, uv={"ks_panel", "ks_glass", "ks_steps", "ks_stone", "ks_room", "ks_bluegrid"})
     scale = (S["u1"] - S["u0"]) / D["length"]
     s_ = lambda s: u0 + s * scale
     A0, A1 = D["atrium"]
@@ -279,13 +287,59 @@ def kyoto_station():
         ak.block(K["ks_steel"], F, s_(sa) - 1.4, s_(sa) + 1.4, vn - 0.5, vn + 2.4, 0.0, H + 1.2)
     ak.block(K["ks_steel"], F, s_(A0) - 1.4, s_(A1) + 1.4, vn - 0.5, vn + 2.4, H - 1.8, H + 1.2)
     ak.block(K["ks_steel"], F, s_(A0), s_(A1), vn + 0.6, vn + 2.4, 5.4, 6.4)     # over the concourse's doors
-    # the east block: the hotel, 60 m, the glazed triangle of its east atrium facing north
+    # the east block, the Hotel Granvia (#258, side by side with photographs from Karasuma-dori and the forecourt,
+    # docs/cities/kyoto.md): next to the atrium a block of glass on a fine steel grid standing forward to the
+    # portal's face (PLATEAU's strip in front of the main solid), then the hotel: a podium of big windows, a
+    # faceted glass slope rising west over it to the glass block, the guest floors with punched windows and
+    # small balconies hung under every other one, staggered floor to floor, and a glazed top storey
     ve = S["north"](A1, D["length"])
-    mass(A1, D["length"], vs, ve - 12.0, D["east_top"])
-    mass(A1 + 45, D["length"], ve - 12.0, ve, D["east_top"] - 12.0)
-    K["ks_glass"].quad(F(s_(A1), ve, 0.0), F(s_(A1 + 45), ve, 0.0), F(s_(A1 + 45), ve - 12.0, D["east_top"] - 8.0), F(s_(A1), ve - 12.0, D["east_top"]),
-                       [[0, 0], [45, 0], [45, 52], [0, 60]])
-    ak.wall(K["ks_glass"], F, s_(A1), ve, s_(A1), ve - 12.0, 0.0, D["east_top"])
+    G1, E1, Hh = A1 + 40.0, D["length"], D["east_top"]
+    vf = vn                                        # the glass block's front, flush with the portal's
+    vr = ve - 6.0                                  # the guest floors' face, behind the podium
+    zp, zt = 22.0, 55.0                            # the podium's top, and the glazed top storey's foot
+    mass(A1, E1, vs, vr, Hh)
+    ak.block(K["ks_bluegrid"], F, s_(A1), s_(G1), vr, vf, 0.0, Hh, top=False)
+    ak.block(K["ks_concrete"], F, s_(A1) + 0.4, s_(G1) - 0.4, vr, vf - 0.4, Hh - 0.3, Hh + 0.9)
+    ak.block(K["ks_stone"], F, s_(G1), s_(E1), vr, ve, 0.0, zp)
+    ak.block(K["ks_stone"], F, s_(G1), s_(E1), vr - 0.01, vr + 0.01, zp, zt, top=False)
+    # the podium: the porte-cochere's soffit and two rows of big windows over it
+    ak.block(K["ks_concrete"], F, s_(G1), s_(E1), ve - 1.5, ve + 0.4, 6.4, 7.6)
+    for u in np.arange(s_(G1) + 2.0, s_(E1) - 5.0, 7.2):
+        for z0 in (9.5, 15.5):
+            K["ks_room"].quad(F(u, ve + 0.04, z0), F(u + 5.6, ve + 0.04, z0), F(u + 5.6, ve + 0.04, z0 + 4.2), F(u, ve + 0.04, z0 + 4.2),
+                              [[0, 0], [1.8, 0], [1.8, 1.65], [0, 1.65]])
+    # the faceted glass slope: a triangle in plan from the glass block's foot east along the podium
+    ca, cb, cc = (s_(G1), ve, zp), (s_(G1), vr, zp + 18.0), (s_(G1) + 45.0, vr, zp)
+    K["ks_roofglass"].tri(F(*ca), F(*cc), F(*cb))
+    K["ks_roofglass"].tri(F(*ca), F(*cb), F(*cc))
+    for t in np.linspace(0.0, 1.0, 4):
+        pa = np.array(ca) + t * (np.array(cc) - np.array(ca))
+        pb = np.array(ca) + t * (np.array(cb) - np.array(ca))
+        K["ks_steel"].box(F(*pa), F(*cb), 0.18, 0.18)
+        K["ks_steel"].box(F(*pb), F(*cc), 0.18, 0.18)
+    for q0, q1 in ((ca, cb), (cb, cc), (cc, ca)):
+        K["ks_steel"].box(F(*q0), F(*q1), 0.3, 0.3)
+    canopy = lambda u: zp + 18.0 * max(0.0, 1.0 - (u - s_(G1)) / 45.0)
+    # the guest floors: 3.3 m storeys, a window every 3.6 m, a balcony under every other window
+    for f, z in enumerate(np.arange(zp + 0.9, zt - 2.0, 3.3)):
+        for k, u in enumerate(np.arange(s_(G1) + 1.8, s_(E1) - 1.0, 3.6)):
+            if z < canopy(u + 1.8) + 0.6:
+                continue
+            K["ks_room"].quad(F(u - 0.9, vr + 0.04, z), F(u + 0.9, vr + 0.04, z), F(u + 0.9, vr + 0.04, z + 1.65), F(u - 0.9, vr + 0.04, z + 1.65),
+                              [[k * 1.8, f * 1.65], [k * 1.8 + 1.8, f * 1.65], [k * 1.8 + 1.8, f * 1.65 + 1.65], [k * 1.8, f * 1.65 + 1.65]])
+            ak.block(K["ks_frame"], F, u - 1.0, u + 1.0, vr, vr + 0.18, z - 0.12, z)        # the sill
+            if (k + f) % 2 == 0:
+                ak.block(K["ks_concrete"], F, u - 1.3, u + 1.3, vr, vr + 1.1, z - 0.3, z - 0.08)
+                K["ks_steel"].box(F(u - 1.3, vr + 1.05, z + 0.95), F(u + 1.3, vr + 1.05, z + 0.95), 0.06, 0.06)
+                for uu in (u - 1.3, u + 1.3):
+                    K["ks_steel"].box(F(uu, vr + 0.05, z + 0.95), F(uu, vr + 1.05, z + 0.95), 0.06, 0.06)
+                    K["ks_steel"].box(F(uu, vr + 1.05, z - 0.08), F(uu, vr + 1.05, z + 0.95), 0.05, 0.05)
+                K["ks_rail"].quad(F(u - 1.3, vr + 1.05, z - 0.08), F(u + 1.3, vr + 1.05, z - 0.08), F(u + 1.3, vr + 1.05, z + 0.9), F(u - 1.3, vr + 1.05, z + 0.9))
+                K["ks_rail"].quad(F(u + 1.3, vr + 1.05, z - 0.08), F(u - 1.3, vr + 1.05, z - 0.08), F(u - 1.3, vr + 1.05, z + 0.9), F(u + 1.3, vr + 1.05, z + 0.9))
+    # the glazed top storey with its rail, the length of the hotel and over the glass block
+    ak.block(K["ks_glass"], F, s_(A1) + 0.5, s_(E1) - 0.5, vr - 1.5, vr + 0.05, zt, Hh, top=False)
+    K["ks_steel"].box(F(s_(A1), vr + 0.6, zt + 1.1), F(s_(E1), vr + 0.6, zt + 1.1), 0.08, 0.08)
+    ak.block(K["ks_concrete"], F, s_(G1), s_(E1), vr, vr + 0.8, zt - 0.3, zt)
     # the great grid over the north faces either side of the atrium (#218): Hara's frame of squares, a
     # module of 7.2 m by two storeys (8.4 m), its members 1.2 m proud of the glass and heavier every
     # third line, as photographs of the Karasuma side show it (the bays' size read from them)
@@ -299,9 +353,25 @@ def kyoto_station():
             K["ks_frame"].box(F(ua, v + 0.8, z), F(ub, v + 0.8, z), 1.6, h)
     grid(0, 85, vw, 0.0, 45.0)
     grid(85, T0, S["north"](85, T0), 0.0, D["garden"])
-    grid(A1 + 45, D["length"], ve, 0.0, D["east_top"] - 12.0)
-    grid(A1 + 45, D["length"], ve - 12.0, D["east_top"] - 12.0, D["east_top"])
-    return K.out(), [S["sd"]["si"]]
+    return K.out(), [S["sd"]["si"]] + station_strips(S, A1, vn)
+
+
+def station_strips(S, A1, vn):
+    """Solids PLATEAU cut from the station along its north face east of the atrium (a strip 13 m deep and
+    66 m high in front of the main solid), which the model draws as the Hotel Granvia's glass block."""
+    from shapely.geometry import Polygon
+    F0, u0 = S["F"], S["u0"]
+    out = []
+    for sd in ak.load_solids("kyoto"):
+        if sd["si"] == S["sd"]["si"] or sd["top"] < 40:
+            continue
+        loc = Polygon([F0.local(x, y)[:2] for x, y in sd["ring"]])
+        if loc.is_empty or not loc.is_valid:
+            continue
+        a, b, c, d = loc.bounds
+        if a - u0 > A1 - 25 and c - u0 < S["u1"] - u0 - 40 and b > S["north"](A1, STATION["length"]) - 2 and d < vn + 3:
+            out.append(sd["si"])
+    return out
 
 
 # ---------------------------------------------------------------- temples, the castle and the palace

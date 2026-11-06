@@ -39,6 +39,9 @@ Its fascia and posts take a dark timber or steel colour (FRAME), its roof keeps 
 
 Then every roof on posts and every gate (not an arcade) is finished (finish(), run again on what an earlier
 run opened, so it needs no rebuild of the scene):
+- a borrowed top (#258): a roof on posts over 15 m whose top is that of a building it touches (the height
+  matching took the neighbour's) is held to a canopy's 8 m: Keio University Hospital's entrance canopy over its
+  taxi drive stood at 51.6-53.1 m on posts, building 1's top.
 - its colour: OSM building:colour when mapped; else its precinct's palette (cities/<id>/city.json
   "roofs" "palette", by precinct name: Kiyomizu-dera's vermilion); else a shrine's vermilion (SHU) in a
   Shinto precinct or on a Shinto building, a temple's aged timber (TIMBER) in a Buddhist one; else it
@@ -57,6 +60,10 @@ run opened, so it needs no rebuild of the scene):
   kiosk's back) is drawn plain: there is no room in it for a storey of windows (Marunouchi's solid 18776, a
   2.4 m block beside Tokyo Station's M8 exit, was a windowed box under the trees), and so is a subway
   entrance's cover under 4.5 m (named ...出入口, as the M8 exit itself is).
+- its roof (#258): a pavilion under 900 m2 drawn as a flat slab gets a pitched roof (buildings.json "r"): its
+  mapped roof:shape (and roof:material, roof:colour), else in a temple's or a shrine's precinct, or on a
+  temple or a shrine, a hipped roof of grey kawara (a hip-and-gable's nearest; Yasaka-jinja's Buden stood
+  as a slab on posts), its eaves no lower than 2.4 m and its fascia under them.
 - a roof the city names as closed (city.json "roofs" "closed", OSM ids: Shinjuku's Sumitomo Triangle
   Plaza, a glass atrium) goes back to a glass building from the ground.
 
@@ -77,6 +84,10 @@ FRAME = "#5b564f"  # a roof on posts: dark timber or painted steel, under a roof
 SHU = "#c4482a"  # a shrine's vermilion (朱), as the Fushimi Inari and Kiyomizu models' torii_shu under the grade
 TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
 GLASS = "#7f95a0"  # a glass atrium's walls
+GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM = "#5d7280", 4.5, 12.0, 300  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
+BORROWED_DM = 150  # a roof on posts taller than this with a neighbour's top: its height was the neighbour's
+PITCH_DEG, PITCH_OVERHANG, PITCH_MAX_M2, PITCH_EAVE_M = 32.0, 0.5, 900.0, 2.4  # an open pavilion's pitched roof (pitched_roof())
+KAWARA, BARK = "#4c5156", "#4a4c50"  # a temple's grey tiles (kawara); a shrine pavilion's, a little darker (Yasaka-jinja's Buden, photographs)
 UTILITY = {"bicycle_parking", "motorcycle_parking", "parking", "parking_entrance", "smoking_area", "toilets", "waste_disposal",
            "recycling", "vending_machine", "fuel", "car_wash", "bus_station", "taxi"}
 SPAN_M, ROW_W_M, INNER_MIN_M2 = 10.0, 24.0, 400.0
@@ -295,6 +306,126 @@ def drop_roof(r, top_dm):
     r[1], r[2] = top_dm, new_eave
 
 
+def glass_atrium_roof(B, s, si, P, polys):
+    """A closed glass atrium's roof (#258, Shinjuku's Sumitomo Triangle Plaza, by a photograph): faceted glass
+    rising from eaves at ATRIUM_EAVE_M on its far side to its top by the tower it stands against (a tower within
+    ATRIUM_NEAR_M: PLATEAU cuts the two apart). Each corner of its outline takes a height by its distance from the
+    tower, and the outline is triangulated into flat facets between them. None when nothing taller stands by it."""
+    import numpy as np
+    import roofs
+    from build_scene import pack_roof
+    top, lo = s[3], round(10 * ATRIUM_EAVE_M)
+    if top - lo < 20 or P.geom_type != "Polygon":
+        return None
+    tall = [polys[j] for j, o in enumerate(B["s"]) if j != si and polys[j] is not None and o[1] + o[3] > s[1] + top + 100
+            and polys[j].distance(P) < ATRIUM_NEAR_M]
+    if not tall:
+        return None
+    q = np.asarray(shapely.geometry.polygon.orient(P, 1.0).exterior.coords)[:-1]
+    d = np.array([min(T.distance(shapely.geometry.Point(x, y)) for T in tall) for x, y in q])
+    if d.max() - d.min() < 10:
+        return None
+    tris = roofs.earcut(q)
+    if not tris:
+        return None
+    zs = lo + (top - lo) * (d.max() - d) / (d.max() - d.min())   # the nearest corners at the top, the farthest at the eaves
+    pos = [c for (x, y), z in zip(q, zs) for c in (round(x * 10), round(y * 10), int(round(z)))]
+    idx = [i for t in tris for i in t]
+    meta = B["b"][s[0]]
+    mats, shapes = B.get("roof_materials", []), B.get("roof_shapes", [])
+    if len(meta) > 15:
+        if "glass" in mats:
+            meta[13] = mats.index("glass")
+        if "skillion" in shapes:
+            meta[15] = shapes.index("skillion")
+        meta[8] = GLASS_ROOF
+    return [si, top, lo, roofs.CODES["skillion"]] + pack_roof(pos, idx) + [len(tris)]
+
+
+def borrowed_top(B, s, si, P, polys, solid_tree):
+    """Whether a roof on posts has the top of a building it touches (within 0.5 m, over the ground or over
+    its base): a height the matching took from the building beside it, not a measurement of the roof."""
+    for j in solid_tree.query(P.buffer(1.5)):
+        o = B["s"][j]
+        if j == si or polys[j] is None or B["b"][o[0]][1] == "roof" or o[2] > 0:
+            continue
+        if (abs(o[3] - s[3]) <= 5 or abs(o[1] + o[3] - s[1] - s[3]) <= 5) and polys[j].distance(P) < 1.5:
+            return True
+    return False
+
+
+def roof_shape_for(t, here, colour):
+    """The pitched roof an open pavilion carries ((shape, source) or None): its mapped roof:shape, else a
+    hipped roof (a hip-and-gable's nearest) in a temple's or a shrine's precinct or on a temple or a shrine."""
+    import roofs
+    shape = (t.get("roof:shape") or "").strip()
+    if shape in roofs.PITCHED and shape not in ("dome", "onion", "spherical"):
+        return shape, "mapped"
+    if shape and shape != "flat" and shape not in roofs.PITCHED:
+        shape = ""
+    if shape == "flat":
+        return None
+    rel = t.get("religion") or (here[0].get("religion") if here else "") or ""
+    if rel in ("shinto", "buddhist") or t.get("building") in ("shrine", "temple") or colour in (SHU, TIMBER):
+        return "hipped", "rule"
+    return None
+
+
+def pitched_roof(B, s, si, P, t, here, colour):
+    """A roof record (buildings.json "r") for an open pavilion drawn as a flat slab (#258): its eaves over its
+    fascia and its ridge at its top, kawara over a temple's, cypress bark's brown over a shrine's. None when
+    there is no pitched roof to give it or no room for one."""
+    import numpy as np
+    import roofs
+    from build_scene import pack_roof
+    got = roof_shape_for(t, here, colour)
+    if got is None or P.geom_type != "Polygon":
+        return None
+    shape, src = got
+    meta = B["b"][s[0]]
+    top = s[3] / 10
+    cap = min(0.45 * top, top - PITCH_EAVE_M - 0.25)   # its eaves no lower than a person walks under
+    if cap < 0.8:
+        return None
+    Q = shapely.geometry.polygon.orient(P, 1.0)
+    for tol, over in ((0.0, PITCH_OVERHANG), (0.3, PITCH_OVERHANG), (0.3, 0.0), (0.8, 0.0)):
+        R = Q.simplify(tol) if tol else Q
+        if R.geom_type != "Polygon" or len(R.exterior.coords) < 4:
+            continue
+        R = shapely.geometry.polygon.orient(R, 1.0)
+        rings = [np.asarray(R.exterior.coords)[:-1]]
+        m, built, rh = roofs.roof_mesh(rings, shape, pitch=PITCH_DEG, cap=cap, overhang=over)
+        if m is not None and built != "flat" and rh >= 0.6 and roofs.check(m, rings, rh, built):
+            break
+    else:
+        return None
+    eave = top - rh
+    s[2] = max(MIN_CLEAR_DM, min(s[2], round(10 * (eave - 0.3))))   # its fascia under the eaves, open below
+    v = np.asarray(m.v)
+    q = np.c_[np.round(v[:, :2] * 10), np.round((eave + v[:, 2]) * 10)].astype(int)
+    uniq, remap = {}, []
+    for p_ in q.tolist():
+        remap.append(uniq.setdefault(tuple(p_), len(uniq)))
+    pos = [c for p_ in uniq for c in p_]
+    idx = [remap[i] for tri in m.roof + m.wall for i in tri]
+    mats, shapes, srcs = B.get("roof_materials", []), B.get("roof_shapes", []), B.get("roof_sources", [])
+    if len(meta) > 16:
+        sacred = colour in (SHU, TIMBER) or src == "rule"
+        mat = (t.get("roof:material") or "").strip()
+        mat = mat if mat in mats else "kawara" if sacred else None
+        if mat in mats:
+            meta[13] = mats.index(mat)
+        if built in shapes:
+            meta[15] = shapes.index(built)
+        if src in srcs:
+            meta[16] = srcs.index(src)
+        if t.get("roof:colour"):
+            meta[8] = t["roof:colour"]
+        elif sacred:
+            meta[8] = BARK if colour == SHU else KAWARA
+    return [si, s[3], round(eave * 10), roofs.CODES[built]] + pack_roof(pos, idx) + [len(m.roof)]
+
+
 def inner_posts(P, roads, footways, others):
     """Posts inside a wide roof's outline: [(x, y)] in metres (finish())."""
     from shapely import affinity
@@ -343,6 +474,7 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
     prec = [(Pg if Pg.is_valid else Pg.buffer(0), p) for Pg, p in prec]
     palette = rcfg.get("palette", {})
     closed = set(rcfg.get("closed", []))
+    glazed = set(rcfg.get("glazed", []))
     glass = B["styles"].index("glass") if "glass" in B.get("styles", []) else None
     eaves = {r[0]: r for r in B.get("r", [])}
     road_lines = []
@@ -354,6 +486,7 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
     footways = (foot_tree, foot) if foot else None
     inner = {}
     n = 0
+    new_roofs = []
     plain = B["styles"].index("plain") if "plain" in B.get("styles", []) else None
     top = {}
     for s in B["s"]:
@@ -366,6 +499,16 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
                 and meta[1] in ("", "yes") and meta[10] != plain and B["styles"][meta[10]] != "wall"):
             meta[10] = plain
             n += 1
+    parts = rcfg.get("atrium_parts", {})   # a tower's low solids that are its atrium's: moved to the atrium's building
+    if parts:
+        by_osm = {}
+        for bi, m in enumerate(B["b"]):
+            by_osm.setdefault(m[6] or "", bi)
+        for s in B["s"]:
+            src = B["b"][s[0]][6] or ""
+            if src in parts and parts[src] in by_osm and s[3] < ATRIUM_PART_DM and s[2] == 0:
+                s[0] = by_osm[parts[src]]
+                n += 1
     for si, s in enumerate(B["s"]):
         meta = B["b"][s[0]]
         P = polys[si]
@@ -378,7 +521,20 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
                 if glass is not None and len(meta) > 10:
                     meta[10] = glass
                 n += 1
+            if si not in eaves and P is not None and P.area > 300:
+                r = glass_atrium_roof(B, s, si, P, polys)
+                if r is not None:
+                    new_roofs.append(r)
+                    eaves[si] = r
+                    n += 1
             continue
+        if oid in glazed and P is not None and meta[1] == "roof":
+            mats = B.get("roof_materials", [])
+            want = (GLASS, GLASS_ROOF, mats.index("glass") if "glass" in mats else meta[13])
+            if (meta[7], meta[8], meta[13]) != want:
+                meta[7], meta[8], meta[13] = want
+                n += 1
+            continue   # a glazed roof spans between the buildings either side: no posts inside it
         if P is None or meta[1] != "roof" or s[2] <= 0:
             continue
         if (P.length >= 40 and 2 * P.area / P.length <= WIDTH_M and not is_gate(meta, P)
@@ -410,6 +566,19 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
             n += 1
         # the height of a pavilion (not a gate: their tops were measured with their roofs)
         gate = is_gate(meta, P) or t.get("building") in ("gatehouse", "gate")
+        if not gate and s[3] > BORROWED_DM and "height" not in t and meta[4] in MEASURED_TALL and borrowed_top(B, s, si, P, polys, solid_tree):
+            # its top is a building's beside it, taken over by the height matching (#258: Keio University Hospital's
+            # entrance canopy, w1409752350, stood at 51.6-53.1 m on posts over its taxi drive, building 1's 53.1 m)
+            r = eaves.get(si)
+            if r is not None:
+                drop_roof(r, round(10 * GUESS_M))
+            s[3] = round(10 * GUESS_M)
+            lo = open_soffit_dm(s[3] / 10)
+            if r is not None:
+                lo = min(lo, r[2] - 5)
+            s[2] = max(MIN_CLEAR_DM, min(lo, s[3] - 3))
+            meta[2] = meta[9] = round(s[3] / 10, 1)
+            n += 1
         if not gate and P.area < INNER_MIN_M2 and meta[4] in MEASURED_TALL and "height" not in t:
             gmax = ground_max_dm(G, cfg, P)
             lift = max(0, gmax - s[1]) if gmax is not None else 0
@@ -426,12 +595,20 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
                 s[2] = max(MIN_CLEAR_DM, lo)
                 meta[2] = meta[9] = round(s[3] / 10, 1)
                 n += 1
+        if si not in eaves and P.area <= PITCH_MAX_M2:
+            r = pitched_roof(B, s, si, P, t, here, colour)
+            if r is not None:
+                new_roofs.append(r)
+                eaves[si] = r
+                n += 1
         if P.area > INNER_MIN_M2:
             others = [polys[j] for j in solid_tree.query(P) if j != si and polys[j] is not None
                       and B["b"][B["s"][j][0]][1] != "roof" and B["s"][j][2] == 0]
             pts = inner_posts(P, roads, footways, others)
             if pts:
                 inner.setdefault(str(s[0]), []).extend(v for x, y in pts for v in (round(x * 10), round(y * 10)))
+    if new_roofs:
+        B["r"] = B.get("r", []) + new_roofs
     if inner or B.get("inner_posts"):
         if B.get("inner_posts") != inner:
             n += 1

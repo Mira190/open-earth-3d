@@ -83,6 +83,11 @@ Two yachts with tenders west of the cay, the jetty without moored boats (`marina
 marina berths), the helicopter on its pad, five public moorings, the island launch from the gate to the jetty, a yacht and
 a dive boat (all routes connect) and a scenic helicopter. The player starts walking on the western beach by the helipad.
 
+The jetty is laid along OSM's pier (way 1023505426) from its shore end to its head (#258). Placed by the shore
+search from the head alone it stood 140 m east, in the beach. Checked with the other walls that meet the water at
+the reef and alpine sites (Green Island's and Hamilton Island's jetties, Lake Tekapo's footbridge, the Hooker
+bridges, whose river is ground cover with no water surface to meet): nothing else clipped or floating.
+
 ## Known problems
 
 - Green Kd (above); QAA rests on Sentinel-2 L2A over water, which keeps some sky reflection. Habitat inferred, not
