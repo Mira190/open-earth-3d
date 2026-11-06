@@ -64,8 +64,9 @@ const npcNight = require('./npc_night');
   // and the helicopter's model when a pad is in range; here all of them at once, and in their places
   const lazy = await p.evaluate(async () => {
     const g = window.__game, open = g.npcs.filter(n => n.rig.pending).length, t = performance.now();
-    await g.npcsReady();
-    if (g.heli && g.heli.want) { await g.heli.want(); g.advance(0.1); }
+    g.hold(true); // (the world held while they load: the traffic's run after doesn't depend on how long that takes, #201)
+    try { await g.npcsReady(); if (g.heli && g.heli.want) await g.heli.want(); } finally { g.hold(false); }
+    if (g.heli && g.heli.want) g.advance(0.1);
     return { n: g.npcs.length, open, pending: g.npcs.filter(n => n.rig.pending).length, drawn: g.npcs.filter(n => n.rig.character).length,
       wanted: g.npcs.filter(n => n.look.character).length, heli: !g.vlib || !g.heli || g.heli.loaded(), s: (performance.now() - t) / 1000 };
   });
