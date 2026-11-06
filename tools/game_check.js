@@ -50,7 +50,7 @@ const npcNight = require('./npc_night');
   // prints), to find the step at which two runs of the same tree part
   const digest = () => p.evaluate(() => {
     const g = window.__game, h = a => { let x = 2166136261; for (const v of a) { x ^= Math.round(v * 100) | 0; x = Math.imul(x, 16777619) >>> 0; } return x.toString(16); };
-    return `t ${g.t().toFixed(2)} clock ${g.clock.min.toFixed(2)} crowd ${h(g.crowd.P.slice(0, g.crowd.active).flatMap(q => [q.x, q.y]))} traffic ${h(g.cars.C.flatMap(c => [c.x, c.y, c.v]))} lights ${h(g.junctions.J.filter(j => j.sig).flatMap(j => [j.ph, j.t]))} you ${h([g.player.x, g.player.y, g.player.z])} tiles ${g.nav.tiles.join('/')}`;
+    return `t ${g.t().toFixed(2)} clock ${g.clock.min.toFixed(2)} crowd ${h(g.crowd.P.slice(0, g.crowd.active).flatMap(q => [q.x, q.y]))} traffic ${h(g.cars.C.flatMap(c => [c.x, c.y, c.v]))} lights ${h(g.junctions.J.filter(j => j.sig).flatMap(j => [j.ph, j.t]))} you ${h([g.player.x, g.player.y, g.player.z])} tiles ${g.nav.tiles.join('/')} heli ${h([g.heli.st.x, g.heli.st.y, g.heli.st.z, g.heli.st.h || 0])} npcs ${h(g.npcs.flatMap(n => [n.x, n.y]))} ferries ${h(g.fer.vessels.flatMap(v => [v.x, v.y]))} cam ${h([g.camera.position.x, g.camera.position.y, g.camera.position.z])} carsActive ${g.cars.active} extra ${g.cars.extra.length}`;
   });
   const shot = async name => {
     if (process.env.DIGEST) console.log(`digest ${name}: ${await digest()}`);
@@ -69,7 +69,7 @@ const npcNight = require('./npc_night');
   const lockstep = process.env.GAME_LOCKSTEP !== '0';
   // (and every landmark tile laid, nav.js layAll, and the route network built, route.js: the roads it finds a car
   // can't get along are kept off by the traffic as it finds them, so a run started before it is done meets another traffic)
-  if (lockstep) await p.evaluate(async () => { const g = window.__game; g.hold(true); if (g.nav.layAll) g.nav.layAll(); await g.ways.build(); });
+  if (lockstep) await p.evaluate(async () => { const g = window.__game; g.hold(true, true); if (g.nav.layAll) g.nav.layAll(); await g.ways.build(); if (g.heli && g.heli.want) await g.heli.want(); }); // (and the helicopter on its pad: fetched while the title shows, it may be there or not by the time the check holds the game)
   await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
   // the lights in the scene by kind, as three.js counts them for its shaders (one under a hidden parent does
   // not count). The count is built into every lit material's shader, so it must stay what it was on the
@@ -111,6 +111,7 @@ const npcNight = require('./npc_night');
   });
   check(lazy.pending === 0 && lazy.drawn >= lazy.wanted - 1, `the NPCs' characters load after the game opens (${lazy.open} of ${lazy.n} still to come at the start; all in place after ${lazy.s.toFixed(1)} s, ${lazy.drawn} of ${lazy.wanted} as their own characters)`);
   check(lazy.heli, 'the helicopter\'s model comes after the game opens and stands on its pad');
+  if (process.env.DIGEST) console.log(`digest lazy: ${await digest()}`);
   await lightsKept('once the helicopter has come');
 
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
@@ -193,6 +194,7 @@ const npcNight = require('./npc_night');
     }
     return { arrived: t, near, steps, missing, flag: O.done() };
   });
+  if (process.env.DIGEST) console.log(`digest onboard: ${await digest()}`);
   // an opening shot at a scramble (#110: Shibuya): you start at its kerb or on its stripes, the walk on, the crowd round you
   const opening = await p.evaluate(() => {
     const g = window.__game, pl = g.player, sc = (g.scene.landmarks || {}).scramble;
@@ -224,6 +226,7 @@ const npcNight = require('./npc_night');
     const toasts = seen;
     return { settled: t, tour: O.active(), toast: toasts.join(' | ') };
   });
+  if (process.env.DIGEST) console.log(`digest second: ${await digest()}`);
   check(second.settled < 1.2 && !second.tour && /gold line|minimap shows the way/.test(second.toast),
     `on a later map the intro is skipped: a key settles the arrival (${second.settled.toFixed(1)} s), no tour, the guide's welcome ("${second.toast.slice(0, 90)}")`);
 
@@ -1456,7 +1459,7 @@ const npcNight = require('./npc_night');
         r.openT = r.behind && st.v < 0.3 && st.gap > 7 && !/^the line/.test(st.why || '') ? (r.openT || 0) + 0.25 : 0;
         r.openMax = Math.max(r.openMax || 0, r.openT);
         // (passed: one queueing in its own lane, now behind it; not one in the other lane of a road with two each way)
-        for (const c of queued) if (c.q && c.line === pick.h.line && along(c, st, a) < -(c.half + o.C.half) && Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a)) < c.hw + o.C.hw + 0.2 && !r.passed.includes(C.indexOf(c))) r.passed.push(C.indexOf(c));
+        for (const c of queued) if (c.q && c.line === pick.h.line && along(c, st, a) < -(c.half + o.C.half) && Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a)) < c.hw + o.C.hw + 0.2 && !r.passed.includes(C.indexOf(c))) { r.passed.push(C.indexOf(c)); (r.passedHow || (r.passedHow = [])).push(`car ${C.indexOf(c)} at ${t} s: ${c.why} v ${c.v.toFixed(1)} dir ${c.dir} lane ${c.ln || 0} s ${c.s.toFixed(1)}${c.mv ? ` in ${c.mv.j.id}` : ''}, ${(-along(c, st, a)).toFixed(1)} m behind the taxi (its s ${st.s.toFixed(1)}, shift ${st.shift.toFixed(1)}, ${st.why || ''})`); }
         // the traffic behind it, in its lane, while it queues: none comes past it (on a road with two
         // lanes each way, one moving up in the other lane is not one going round it)
         const lat = c => Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a));
@@ -1484,7 +1487,7 @@ const npcNight = require('./npc_night');
     // noted above; the lane is still checked for the way up to it)
     if (!queue.behind) console.log(`note a ride behind a queue at a red light: not tried, the light changed before it caught up with any (out of its lane by ${queue.shift.toFixed(2)} m at most)`);
     check(queue.shift < 0.5 && (queue.behind || !queue.round), `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.round ? `, going round ${queue.round}` : ''}${queue.behind ? '' : ', never caught up with the queue'})`);
-    check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed car ${queue.passed.join(', ')})` : ''}`);
+    check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed ${(queue.passedHow || []).join('; ')})` : ''}`);
     check(!queue.overtook.length, `the traffic behind it queues behind it${queue.overtook.length ? ` (car ${queue.overtook.join(', ')} came past it)` : ''}`);
     if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 90 s, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);
     // (a queue that never moved in any of the tries is a jam ahead of it, not the taxi's doing: noted
