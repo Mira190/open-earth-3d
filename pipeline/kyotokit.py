@@ -209,11 +209,12 @@ def hakkyaku(K, M, P, z0, frontage, depth, ridge, roof="kirizuma", ground=None):
 
 
 def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, posts_every=3.0, doors=True, veranda=True, ground=None,
-         k=1.55, lift=None):
+         k=1.55, lift=None, gable_at=0.5):
     """A hall raised on its floor: posts round the walls, white plaster or boarded walls with lattice
     doors in the front, a veranda (縁) round it on short legs, the bracket band and its roof:
     "irimoya" (入母屋), "yosemune" (寄棟, hipped) or "hogyo" (宝形, a pyramid). Heights absolute. k: the
-    roof's sweep (archkit.japanese_roof), lift: its corners' rise (反り), for a hall's own curve."""
+    roof's sweep (archkit.japanese_roof), lift: its corners' rise (反り), for a hall's own curve; gable_at: how far
+    down the hipped-and-gabled roof its gables reach (lower: a longer ridge and bigger gables)."""
     ov = ov if ov is not None else max(1.8, min(hu, hv) * 0.32)
     block(K[M["base"]], P, -hu - 0.8, hu + 0.8, -hv - 0.8, hv + 0.8, z0 - 0.8, z0 + 0.25)
     plinth(K, M["base"], P, hu + 0.8, hv + 0.8, z0 + 0.25, ground)
@@ -230,25 +231,25 @@ def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, pos
     for (a, b) in (((-hu, -hv), (hu, -hv)), ((hu, -hv), (hu, hv)), ((hu, hv), (-hu, hv)), ((-hu, hv), (-hu, -hv))):
         L = math.hypot(b[0] - a[0], b[1] - a[1])
         n = max(1, int(round(L / posts_every)))
-        for k in range(n):
-            t = k / n
+        for q in range(n):
+            t = q / n
             x, y, _ = P(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, 0)
             post(K, M["post"], x, y, z_floor, zt, 0.24)
     block(K[M["post"]], P, -hu - 0.12, hu + 0.12, -hv - 0.12, hv + 0.12, zt - 0.4, zt)
     block(K[M["post"]], P, -hu - 0.1, hu + 0.1, -hv - 0.1, hv + 0.1, z_floor + 0.1, z_floor + 0.35)
     if doors:                                      # lattice doors (蔀戸 / 格子戸) across the front bays
         n = max(1, int(round(2 * hv / posts_every)))
-        for k in range(n):
-            va, vb = -hv + 2 * hv * k / n, -hv + 2 * hv * (k + 1) / n
+        for q in range(n):
+            va, vb = -hv + 2 * hv * q / n, -hv + 2 * hv * (q + 1) / n
             block(K[M["screen_wood"] if "screen_wood" in M else M["wood"]], P, hu - 0.02, hu + 0.05, va + 0.3, vb - 0.3, z_floor + 0.4, zt - 0.6)
     brackets(K, M, P, hu, hv, zt, eave - 0.15, out=min(1.2, ov * 0.4))
     Hu, Hv = hu + 0.6, hv + 0.6
     if roof == "irimoya":
         if hv >= hu:
-            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), Hv, Hu, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=k, lift=lift)
+            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), Hv, Hu, eave, ridge - 0.7, ov=ov, gable_at=gable_at, k=k, lift=lift)
             ridge_cap(K, M, P, R["Ug"] + 0.3, ridge - 0.9, h=0.75)
         else:
-            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=k, lift=lift)
+            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.7, ov=ov, gable_at=gable_at, k=k, lift=lift)
             ridge_cap(K, M, across(P), R["Ug"] + 0.3, ridge - 0.9, h=0.75)
     elif roof == "yosemune":
         e = hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.4, ov=ov, k=k, ridge_frac=0.55, lift=lift)
