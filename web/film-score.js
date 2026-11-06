@@ -18,7 +18,7 @@ window.OEFilmScore = (function () {
     // a fixed seed, so a film re-renders to the same sound
     let seed = 7;
     const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const master = ctx.createGain(); master.gain.value = 0.85;
+    const master = ctx.createGain(); master.gain.value = plan.clean ? 1.7 : 0.85; // (music alone: a little louder, with nothing under it)
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.4;
     master.connect(comp); comp.connect(ctx.destination);
@@ -48,8 +48,11 @@ window.OEFilmScore = (function () {
     const deg = (d, oct = 0) => root + scale[((d % scale.length) + scale.length) % scale.length] + 12 * (oct + Math.floor(d / scale.length));
     const T = plan.title, F = plan.finale, end = plan.duration;
 
+    // plan.clean (the overture): music only, no noise of any kind: no drone, no air, no rushing riser or
+    // noise in the hits, and the pad in soft sines
+    const clean = !!plan.clean;
     // the drone, from the black to the title, then down under the rest
-    { const mix = ctx.createGain(), lp = filter('lowpass', 240, 0.9);
+    if (!clean) { const mix = ctx.createGain(), lp = filter('lowpass', 240, 0.9);
       for (const [m, type, v] of [[root - 24, 'sine', 0.5], [root - 24 + 0.06, 'sine', 0.42], [root - 12, 'sawtooth', 0.04], [root - 17, 'triangle', 0.1]]) {
         const o = osc(type, hz(m), 0, D), g = ctx.createGain(); g.gain.value = v; o.connect(g); g.connect(mix);
       }
@@ -60,7 +63,7 @@ window.OEFilmScore = (function () {
       g.setValueAtTime(0.12, end - 3); g.linearRampToValueAtTime(0, end + 1.5); }
 
     // the city's air: a bed of filtered noise
-    { const air = plan.air || 'city', n = noiseSrc(0, D);
+    if (!clean && plan.air !== 'none') { const air = plan.air || 'city', n = noiseSrc(0, D);
       const bp = filter(air === 'wind' ? 'bandpass' : 'lowpass', air === 'harbour' ? 700 : air === 'wind' ? 500 : 380, air === 'wind' ? 0.4 : 0.6);
       const l = osc('sine', air === 'harbour' ? 0.11 : 0.05, 0, D), lg = ctx.createGain(); lg.gain.value = air === 'harbour' ? 300 : 120; l.connect(lg); lg.connect(bp.frequency);
       n.connect(bp);
@@ -69,6 +72,7 @@ window.OEFilmScore = (function () {
 
     // the riser into the title, and the hit
     function riser(t, dur) {
+      if (clean) return;
       const t0 = Math.max(0, t - dur), n = noiseSrc(t0, t + 0.1), bp = filter('bandpass', 300, 5);
       bp.frequency.setValueAtTime(260, t0); bp.frequency.exponentialRampToValueAtTime(7000, t);
       n.connect(bp);
@@ -79,13 +83,17 @@ window.OEFilmScore = (function () {
       const g2 = voice(lp, 0.5); g2.setValueAtTime(0.0001, t0); g2.exponentialRampToValueAtTime(0.08, t - 0.02); g2.linearRampToValueAtTime(0, t + 0.03);
     }
     function hit(t, chord, level = 1) {
+      if (!clean) {
       const sub = osc('sine', 92, t, t + 5);
       sub.frequency.setValueAtTime(hz(root - 12) * 1.4, t); sub.frequency.exponentialRampToValueAtTime(hz(root - 24) * 0.55, t + 1.4);
       const gs = voice(sub, 0.15); gs.setValueAtTime(0, t); gs.linearRampToValueAtTime(0.9 * level, t + 0.01); gs.exponentialRampToValueAtTime(0.0001, t + 4.5);
-      const n = noiseSrc(t, t + 1.5), lp = filter('lowpass', 2600, 0.5);
-      lp.frequency.setValueAtTime(2600, t); lp.frequency.exponentialRampToValueAtTime(180, t + 0.9);
-      n.connect(lp);
-      const gn = voice(lp, 0.9); gn.setValueAtTime(0, t); gn.linearRampToValueAtTime(0.45 * level, t + 0.005); gn.exponentialRampToValueAtTime(0.0001, t + 1.2);
+      }
+      if (!clean) {
+        const n = noiseSrc(t, t + 1.5), lp = filter('lowpass', 2600, 0.5);
+        lp.frequency.setValueAtTime(2600, t); lp.frequency.exponentialRampToValueAtTime(180, t + 0.9);
+        n.connect(lp);
+        const gn = voice(lp, 0.9); gn.setValueAtTime(0, t); gn.linearRampToValueAtTime(0.45 * level, t + 0.005); gn.exponentialRampToValueAtTime(0.0001, t + 1.2);
+      }
       chord.forEach((m, i) => {
         const o = osc('sine', hz(m), t, t + 9); o.detune.value = (rnd() - 0.5) * 8;
         const a = (0.11 - i * 0.012) * level;
@@ -104,7 +112,7 @@ window.OEFilmScore = (function () {
     for (let i = 0; i < marks.length - 1; i++) {
       const t0 = marks[i], t1 = marks[i + 1] + 1.2, c = chords[i % chords.length];
       const mix = ctx.createGain(), lp = filter('lowpass', 1000, 0.8);
-      for (const m of chordAt(c, -1)) for (const det of [-7, 7]) { const o = osc('sawtooth', hz(m), t0, t1 + 0.1); o.detune.value = det; const g = ctx.createGain(); g.gain.value = 0.12; o.connect(g); g.connect(mix); }
+      for (const m of chordAt(c, -1)) for (const det of [-7, 7]) { const o = osc(clean ? 'sine' : 'sawtooth', hz(m), t0, t1 + 0.1); o.detune.value = det; const g = ctx.createGain(); g.gain.value = 0.12; o.connect(g); g.connect(mix); }
       const l = osc('sine', 0.08, t0, t1), lg = ctx.createGain(); lg.gain.value = 420; l.connect(lg); lg.connect(lp.frequency);
       mix.connect(lp);
       const g = voice(lp, 0.8);
@@ -113,7 +121,7 @@ window.OEFilmScore = (function () {
     }
 
     // a soft pulse under the highlights, at the city's tempo
-    { const beat = 60 / (plan.tempo || 76);
+    if (!clean) { const beat = 60 / (plan.tempo || 76);
       for (let t = T + 2; t < F - 0.2; t += beat) {
         const o = osc('sine', hz(root - 24) * 1.5, t, t + 0.5); o.frequency.setValueAtTime(hz(root - 12), t); o.frequency.exponentialRampToValueAtTime(hz(root - 24), t + 0.25);
         const g = voice(o, 0.1); g.setValueAtTime(0, t); g.linearRampToValueAtTime(0.18 * Math.min(1, (t - T - 2) / 4), t + 0.008); g.exponentialRampToValueAtTime(0.0001, t + 0.45);
@@ -144,8 +152,8 @@ window.OEFilmScore = (function () {
         g.setValueAtTime(0, t); g.linearRampToValueAtTime(peak, t + 0.003); g.exponentialRampToValueAtTime(peak * 0.4, t + 0.25 / (1 + i));
         g.exponentialRampToValueAtTime(0.0001, t + dec / (1 + i * 0.7));
       });
-      const n = noiseSrc(t, t + 0.05), bp = filter('bandpass', Math.min(6000, f * 6), 1.2);
-      n.connect(bp); const gh = voice(bp, 0.2, pan); gh.setValueAtTime(0.012 * level, t); gh.exponentialRampToValueAtTime(0.0001, t + 0.04);
+      if (!clean) { const n = noiseSrc(t, t + 0.05), bp = filter('bandpass', Math.min(6000, f * 6), 1.2);
+        n.connect(bp); const gh = voice(bp, 0.2, pan); gh.setValueAtTime(0.012 * level, t); gh.exponentialRampToValueAtTime(0.0001, t + 0.04); }
     }
     // the arpeggio: up and back down each chord, in eighths, one chord to a bar, softer at the ends
     if (plan.arp) {

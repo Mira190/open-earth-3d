@@ -84,7 +84,7 @@ window.OEOverture = (function () {
     snow: { geo: flakeGeometry, color: '#f4f8ff', edge: '#ffffff', size: 0.035, glow: '#dfeaff', fall: 0.7, spin: 1.2 },
     mote: { geo: null, color: '#fff1d0', edge: '#fff1d0', size: 0.05, glow: '#ffe6b0', fall: -0.05, spin: 0 },
     // a meteor, for the night: a white head and a long blue-violet tail across the sky, far off (sized in metres there)
-    meteor: { geo: null, color: '#ffffff', edge: '#c070ff', size: 2.2, glow: '#eaf6ff', fall: 0, spin: 0, tail: 48, far: true },
+    meteor: { geo: null, color: '#ffffff', edge: '#c070ff', size: 2.2, glow: '#eaf6ff', fall: 0, spin: 0, tail: 96, far: true },
   };
   function kindFor(spec, m, d) {
     const md = m * 100 + d;
@@ -292,7 +292,12 @@ window.OEOverture = (function () {
       const i = Math.min(P.length - 2, Math.floor(u)), f = u - i;
       const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
       const cr = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * f + (2 * a - 5 * b + 4 * c - d) * f * f + (-a + 3 * b - 3 * c + d) * f * f * f);
-      const x = cr(p0[0], p1[0], p2[0], p3[0]), y = cr(p0[1], p1[1], p2[1], p3[1]), z = cr(p0[2], p1[2], p2[2], p3[2]);
+      const x = cr(p0[0], p1[0], p2[0], p3[0]), y = cr(p0[1], p1[1], p2[1], p3[1]);
+      let z = cr(p0[2], p1[2], p2[2], p3[2]);
+      if (s.arc) { // a falling star's curve: the path bows down by arc times its length at the middle
+        const a = P[0], b = P[P.length - 1], L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), q = u / (P.length - 1);
+        z -= s.arc * L * 4 * q * (1 - q);
+      }
       // a leaf's flutter: a lazy sway across its line and a bob, more as it moves
       const t = (s.t0 + k * s.dur), amp = K.far ? 0 : (k < r ? 0.012 : 0.16) * (s.flutter ?? 1);
       out.copy(W(x + Math.sin(t * 1.9) * amp, y + Math.cos(t * 1.4) * amp, z + Math.sin(t * 2.6) * amp * 0.6));
@@ -524,15 +529,16 @@ window.OEOverture = (function () {
           const px = d => d * Math.tan(fov * RAD / 2) * 2 / 900; // (metres a pixel at d, on 900 lines)
           glow.material.opacity = 0.95 * Math.pow(life, 0.6);
           glow.scale.setScalar(px(camD) * 26 * K.size / 2.2);
-          const n = tail.length, len = (s.tailLen ?? 0.22) * (a1 - a0);
+          const n = tail.length, len = (s.tailLen ?? 0.32) * (a1 - a0);
+          glow.material.opacity *= 0.85 + 0.15 * Math.sin(t * 47.0) * Math.sin(t * 31.0); // (its head flickers as it burns)
           tail.forEach((sp, i) => {
             const q = guideAt(s, k - len * (i + 1) / n, tmpB);
             sp.visible = !!q && show;
             if (!sp.visible) return;
             sp.position.copy(q);
             const f = 1 - (i + 1) / n, d = pose.pos.distanceTo(q);
-            sp.material.opacity = 0.75 * f * f * Math.pow(life, 0.6);
-            sp.scale.setScalar(px(d) * (5 + 14 * f));
+            sp.material.opacity = 0.8 * Math.pow(f, 1.6) * Math.pow(life, 0.6);
+            sp.scale.setScalar(px(d) * (2.5 + 9 * f * f));
           });
         }
         if (g) gprev.copy(g);
@@ -579,7 +585,8 @@ window.OEOverture = (function () {
       L.uSunVis.value = flareVis;
       // the animated film's lens (atmosphere.js anime): painted, graded, rays from the sun; lighter on a weaker tier
       const an = spec.anime || {}, rad = { high: 3, medium: 2 }[tier] || 0;
-      if (ctx.atmos.anime && rad) ctx.atmos.anime({ k: (an.paint ?? 0.85) * w, radius: rad, grade: (an.grade ?? 1) * w, rays: (an.rays ?? 1) * w, sunVis: flareVis, sunUv: sunUv.set(on.u, on.v) });
+      if (ctx.atmos.anime && rad) ctx.atmos.anime({ k: (an.paint ?? 0.85) * w, radius: rad, grade: (an.grade ?? 1) * w, rays: (an.rays ?? 1) * w, sunVis: flareVis, sunUv: sunUv.set(on.u, on.v),
+        haze: (an.haze || 0) * w, hazeD: an.haze_m, hazeC: an.haze_rgb, rim: (an.rim || 0) * w, rimC: an.rim_rgb });
       // depth of field on the guide when it is near the lens (the camera's own effect, atmosphere.js camFx), not on a weak tier
       const gd = (hero ? hero.visible : glow && glow.visible) ? cam.position.distanceTo(gprev) : 999, fstop = s.fstop ?? 2.8;
       if (tier !== 'low' && gd < (s.focusFar ?? 9)) {

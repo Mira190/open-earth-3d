@@ -204,14 +204,36 @@ window.OEAtmos = (function () {
   //   light           crepuscular rays from the sun where it is in frame (a march of 20 taps towards it over
   //                   the bright pixels), and a soft halation round the brightest
   const ANIME = () => ({
-    uniforms: { tDiffuse: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uK: { value: 0 }, uRadius: { value: 3 }, uGrade: { value: 0 },
+    uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, uReversed: { value: 0 }, uInvProj: { value: new THREE.Matrix4() }, uDepth: { value: 0 },
+      uHaze: { value: new THREE.Vector3(0.2, 0.22, 0.4) }, uHazeD: { value: 1500 }, uHazeK: { value: 0 }, uRim: { value: 0 }, uRimC: { value: new THREE.Vector3(0.7, 0.6, 1.0) },
+      uRes: { value: new THREE.Vector2(1, 1) }, uK: { value: 0 }, uRadius: { value: 3 }, uGrade: { value: 0 },
       uSunUv: { value: new THREE.Vector2(0.5, 0.5) }, uSunVis: { value: 0 }, uRays: { value: 0 }, uWarm: { value: new THREE.Vector3(1.0, 0.82, 0.62) } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
-      uniform sampler2D tDiffuse; uniform vec2 uRes, uSunUv; uniform float uK, uRadius, uGrade, uSunVis, uRays; uniform vec3 uWarm; varying vec2 vUv;
+      uniform sampler2D tDiffuse, tDepth; uniform vec2 uRes, uSunUv; uniform float uK, uRadius, uGrade, uSunVis, uRays, uReversed, uDepth, uHazeD, uHazeK, uRim;
+      uniform vec3 uWarm, uHaze, uRimC; uniform mat4 uInvProj; varying vec2 vUv;
       float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+      // the distance of what the pixel shows (1e6 for the sky), from the scene's depth (reversed or not)
+      float dist(vec2 uv) {
+        float z = texture2D(tDepth, uv).x;
+        if (uReversed > 0.5 ? z <= 0.0 : z >= 1.0) return 1e6;
+        vec4 p = uInvProj * vec4(uv * 2.0 - 1.0, uReversed > 0.5 ? z : z * 2.0 - 1.0, 1.0); return length(p.xyz / p.w);
+      }
       void main() {
         vec3 src = texture2D(tDiffuse, vUv).rgb, c = src;
+        // depth: the far city sinks into the air (layers, as a painted background is built), and a nearer roofline
+        // against something far behind it catches a thin rim of the sky's light
+        if (uDepth > 0.5) {
+          float d = dist(vUv);
+          if (d < 1e5) {
+            float a = (1.0 - exp(-d / uHazeD)) * uHazeK;
+            c = mix(c, uHaze + c * 0.35, a);
+            vec2 px = 1.6 / uRes;
+            float far = max(max(dist(vUv + vec2(0.0, px.y)), dist(vUv - vec2(0.0, px.y))), max(dist(vUv + vec2(px.x, 0.0)), dist(vUv - vec2(px.x, 0.0))));
+            float edge = smoothstep(1.25, 2.5, far / max(d, 1.0)) * (far > 9e5 ? 1.0 : 0.6);
+            c += uRimC * edge * uRim * (0.6 + 0.4 * exp(-d / 800.0));
+          }
+        }
         // the painted look
         if (uK > 0.0 && uRadius >= 1.0) {
           vec2 px = vec2(uRes.y / 900.0) / uRes;
@@ -310,6 +332,9 @@ window.OEAtmos = (function () {
         composer.addPass(lens);
         anime = new THREE.ShaderPass(ANIME());
         anime.enabled = false;
+        anime.uniforms.uReversed.value = renderer.capabilities.reversedDepthBuffer ? 1 : 0;
+        const drawAnime = anime.render.bind(anime);
+        anime.render = (...a) => { anime.uniforms.tDepth.value = sceneDepth; anime.uniforms.uDepth.value = sceneDepth && anime.depthOn ? 1 : 0; anime.uniforms.uInvProj.value.copy(camera.projectionMatrixInverse); return drawAnime(...a); };
         composer.addPass(anime);
       } else {
         composer.addPass(new THREE.OutputPass());
@@ -371,6 +396,9 @@ window.OEAtmos = (function () {
         const A = anime.uniforms, z = renderer.getDrawingBufferSize(new THREE.Vector2());
         A.uRes.value.set(z.x, z.y); A.uK.value = o.k || 0; A.uRadius.value = o.radius ?? 3; A.uGrade.value = o.grade || 0;
         A.uRays.value = o.rays || 0; A.uSunVis.value = o.sunVis || 0; if (o.sunUv) A.uSunUv.value.copy(o.sunUv);
+        anime.depthOn = !!(rt && rt.depthTexture) && ((o.haze || 0) > 0 || (o.rim || 0) > 0);
+        A.uHazeK.value = o.haze || 0; A.uRim.value = o.rim || 0; if (o.hazeD) A.uHazeD.value = o.hazeD;
+        if (o.hazeC) A.uHaze.value.set(...o.hazeC); if (o.rimC) A.uRimC.value.set(...o.rimC);
         return true;
       },
       // the passes the title never draws (the camera's effects come on with the opening shot and photo mode),
@@ -388,7 +416,7 @@ window.OEAtmos = (function () {
       render(scene, cam) {
         if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0) && !!rt.depthTexture;
         // the scene's depth resolved from the multisampled buffer while something reads it (the ambient occlusion, the camera's effects)
-        if (rt) composer.renderTarget1.resolveDepthBuffer = composer.renderTarget2.resolveDepthBuffer = wantAO || !!(camFx && camFx.enabled);
+        if (rt) composer.renderTarget1.resolveDepthBuffer = composer.renderTarget2.resolveDepthBuffer = wantAO || !!(camFx && camFx.enabled) || !!(anime && anime.enabled && anime.depthOn);
         if (camFx && camFx.enabled) {
           const z = renderer.getDrawingBufferSize(new THREE.Vector2()), F = camFx.uniforms;
           cam.updateMatrixWorld();
