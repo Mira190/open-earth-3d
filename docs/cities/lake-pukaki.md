@@ -268,3 +268,38 @@ Sources read on 2026-11-05:
   turn it off with `?mirror=0` and the plants with `?flora=0`.
 - **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway;
   a real star catalogue; volumetric clouds (issue #204).
+
+## 9. Picture tiers
+
+The reef and alpine viewer takes the same picture tier as the globe and the cities (`web/quality.js`: the device's
+own, measured, or the visitor's choice in About; `?quality=high|medium|low` for one visit) and reads it in its own
+terms (`web/reef/tier.js`):
+
+| Tier | Who gets it | Plants | Lake mirror | Post | Pixels |
+|---|---|---|---|---|---|
+| high | desktop GPUs | all, to full radius; turf to 40 m | half resolution, near and mid lupins in it | bloom, 4x MSAA | up to 2x |
+| medium | tablets, weaker laptops | 70% within 84% of the radii; a thinner turf | a third, no plants | bloom | within the tier's budget |
+| low | phones, software renderers | 40% within 63% of the radii, simpler forms (lupins of 7 spikes and 9 leaves, tussock of 40 blades, matagouri of 28 twigs); no turf | off | no bloom | within the tier's budget |
+
+On every tier each plant set is split into a disc round the eye and eight sectors beyond it, each with its own
+bounds, so the renderer leaves out what is behind the camera (until November 2026 every set was drawn as one ring all
+the way round). The mirror leaves out what is too small to read in a wind-blurred reflection: the turf, tussock, stones,
+matagouri and far lupin patches always. The matagouri beyond 40 m is a bush of 14 twigs, and the lupins' spikes have no
+end caps. The underwater light shafts are skipped by a branch when the eye is above the water.
+
+Measured with `tools/reef_cost.js` at Tekapo's lupin shore (`shots` "lupins", 6 November, 14:30), WebGL2 on Mesa
+llvmpipe, triangles a frame over every pass and the median frame time:
+
+| | Before | high | medium | low |
+|---|---|---|---|---|
+| Desktop 1440 x 900 | 6.57 M, 2105 ms | 2.46 M, 1689 ms | 1.53 M, 963 ms | 0.73 M, 605 ms |
+| Phone 390 x 844 (3x screen) | 3.00 M, 1359 ms | 1.88 M, 1099 ms | 1.16 M, 572 ms | 0.64 M, 341 ms |
+
+A software renderer is limited by its pixels more than by its triangles, so the frame times say less than the
+triangles about a real GPU. A phone picks the low tier for itself. On the reef sites, whose life is light already
+(Hardy Reef: 0.4 M triangles at the surface), the tier sets the pixels, MSAA and bloom only.
+
+What was looked at: Unreal Engine's scalability groups for foliage (`foliage.DensityScale`, `grass.DensityScale`,
+`foliage.LODDistanceScale`) and its hierarchical instanced foliage, culled by cluster; Unity's terrain detail density
+and distance. The approach is theirs (density and distance scaled per tier, instances culled in clusters); no code was
+taken.

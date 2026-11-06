@@ -7,6 +7,7 @@ import { createShore } from './shore.js';
 import { createPost } from './post.js';
 import { createRipples } from './ripples.js';
 import { loadTide } from './tide.js';
+import { reefTier } from './tier.js';
 
 const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
@@ -36,8 +37,10 @@ async function main() {
   // an alpine site is seen across 80 km of land: a logarithmic depth buffer keeps a far shore from flickering into
   // its lake (with the usual buffer, 0.2 m to 160 km leaves hundreds of metres of depth per step out there). A
   // reversed float buffer would be cheaper, but three.js r186 cannot resolve it from a multisampled pass on WebGL2
-  const renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: q.get('gl') === '1', logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // the picture tier (tier.js, from web/quality.js): MSAA, pixels, plants, the mirror and the bloom by what the device can draw
+  const tier = reefTier(q);
+  const renderer = new THREE.WebGPURenderer({ antialias: tier.antialias, forceWebGL: q.get('gl') === '1', logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
+  renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight));
   renderer.setSize(innerWidth, innerHeight);
   // an alpine site takes the title screen's curve family (Khronos PBR Neutral, web/lens.js): it keeps the sky's blue
   // and the lake's turquoise where ACES pushes both toward a grey teal
@@ -52,6 +55,7 @@ async function main() {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(Number(q.get('fov') || 60), innerWidth / innerHeight, 0.2, ALP ? 160000 : 90000);   // ?fov= for a long lens
+  camera.layers.enable(1);   // layer 1: what the lake's mirror leaves out (the small plants; all of them below the high tier)
   const windDir = Number(q.get('wind_dir') || 125);
   // a lake has wind chop and no swell
   const waves = ALP ? makeWaves(windDir, 0.32).filter(w => w.lam < 25) : makeWaves(windDir);
@@ -100,7 +104,7 @@ async function main() {
     const groundTex = heightTexture(d, d.heights);
     const [{ createLight }, { createAlpineTerrain }, { createLakes }] = await Promise.all([import('./alpine/light.js'), import('./alpine/terrain.js'), import('./alpine/lakes.js')]);
     light = createLight(renderer, d, env, atm, groundTex);
-    terrain = createAlpineTerrain(d, env, renderer, light, groundTex, () => clockMs());
+    terrain = createAlpineTerrain(d, env, renderer, light, groundTex, () => clockMs(), { range: tier.terrain });
     lakes = createLakes(d, env, atm, light, groundTex);
     if (q.get('lakes') !== '0') scene.add(lakes.group);
     const { createClouds } = await import('./alpine/clouds.js');
@@ -113,17 +117,19 @@ async function main() {
     scene.add(shore.mesh);
   }
   scene.add(terrain.group);
-  if (ALP && q.get('mirror') !== '0') {
-    // the lake's mirror: the scene seen from below the water level, at part of the screen's resolution
+  if (ALP && tier.mirror) {
+    // the lake's mirror: the scene seen from below the water level, at part of the screen's resolution, without what is
+    // on layer 1 (the turf, tussock and stones, too small to read in a wind-blurred reflection)
     const tsl = await import('three/tsl');
-    env.mirror = tsl.reflector({ resolutionScale: Math.min(innerWidth, innerHeight) < 700 ? 0.3 : 0.5, bounces: false });
+    env.mirror = tsl.reflector({ resolutionScale: Math.min(tier.mirror, Math.min(innerWidth, innerHeight) < 700 ? 0.3 : 0.5), bounces: false });
+    env.mirror.reflector.getVirtualCamera(camera).layers.set(0);
     env.mirror.target.rotateX(-Math.PI / 2);
     scene.add(env.mirror.target);
   }
   const ocean = createOcean(d, env, hTex);
   scene.add(ocean.mesh);
   // the land past the survey: the mainland's ranges and the coast's lights (farland.js); fewer triangles on a small screen
-  const far = await createFarLand(base, d, env, { small: Math.min(innerWidth, innerHeight) < 700 }).catch(e => { console.warn('far land: none drawn', e); return null; });
+  const far = await createFarLand(base, d, env, { small: tier.farSmall }).catch(e => { console.warn('far land: none drawn', e); return null; });
   if (far) scene.add(far.mesh);
 
   // sky dome
@@ -258,12 +264,12 @@ async function main() {
   const keys = new Set();
   addEventListener('keydown', e => keys.add(e.code)); addEventListener('keyup', e => keys.delete(e.code));
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
-  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight)); renderer.setSize(innerWidth, innerHeight); });
 
-  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env);
+  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom });
 
   // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
-  const ctx = { THREE, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes,
+  const ctx = { THREE, tier, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes,
     height: ALP ? (x, north) => terrain.heightAt(x, north) : (x, north) => terrainHeight(d, x, north),   // sea-floor / ground elevation, m above datum
     habitat: ALP ? (x, north) => { const c = S.cover, i = Math.floor((x - S.terrain.x0) / c.px_m), j = Math.floor((S.terrain.y1 - north) / c.px_m);
       return i < 0 || j < 0 || i >= c.w || j >= c.h ? 7 : d.habitat[j * c.w + i]; } : (x, north) => habitatAt(d, x, north),   // class under a point (HABITAT; an alpine site's COVER)
@@ -288,7 +294,7 @@ async function main() {
   stage('First frames', 0.98);
   let last = performance.now(), frames = 0;
   // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
-  window.__reef = { camera, env, renderer, d, ctx, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
+  window.__reef = { camera, env, renderer, d, ctx, tier, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
     const dt = Math.max(Math.min((now - last) / 1000, 0.1), 0); last = now;
     if (!ctx.controller) {

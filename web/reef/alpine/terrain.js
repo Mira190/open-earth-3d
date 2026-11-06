@@ -37,7 +37,7 @@ const vnoiseT = (x, y) => {
 };
 const fbmT = (x, z) => vnoiseT(x.div(9), z.div(9)).mul(0.55).add(vnoiseT(x.div(3.7), z.div(3.7)).mul(0.3)).add(vnoiseT(x.div(1.6), z.div(1.6)).mul(0.15));
 
-export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null) {
+export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null, { range = 1 } = {}) {
   const t = d.scene.terrain, g = d.scene.ground, W = t.w, H = t.h;
   const lightU = light.u;
   // ---- textures: the ground strips, the cover classes
@@ -263,7 +263,8 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     m.userData = { cx, cy, lod: 3, centre: new THREE.Vector3(t.x0 + (cx + 0.5) * CHUNK * t.cell_m, 0, -(t.y1 - (cy + 0.5) * CHUNK * t.cell_m)) };
     group.add(m); chunks.push(m);
   }
-  const RANGE = [1400, 3800, 9000];
+  // the chunks' levels by distance (the low tier keeps the finer ones nearer the eye: range < 1)
+  const RANGE = [1400, 3800, 9000].map(r => r * range);
   const B = 4, FAR = RANGE[1] + 600, blocks = [];
   for (let by = 0; by < ch; by += B) for (let bx = 0; bx < cw; bx += B) {
     const members = chunks.filter(m => m.userData.cx >= bx && m.userData.cx < bx + B && m.userData.cy >= by && m.userData.cy < by + B);
