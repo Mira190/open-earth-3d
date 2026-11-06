@@ -66,6 +66,11 @@ the model viewer's opening shot. The second is the tour's second stop. Matched t
     `rideLiftCar`). The car comes to you, the landing and car doors slide open, you step in and turn
     to the glass, and the car runs at 1 m/s, shortened to at most 8 s. The counterweight passes it
     the other way and the ropes pay out from the head, while the camera holds outside the glass.
+  - Stills (llvmpipe, desktop tier, 1440 × 900; phone 390 × 844):
+
+    | The lift from the deck | Riding it | Its foot on the luge track | The deck's LED strip at night | Phone, dusk |
+    |---|---|---|---|---|
+    | ![](../images/queenstown/lift-deck-day.jpg) | ![](../images/queenstown/lift-ride-day.jpg) | ![](../images/queenstown/lift-foot-day.jpg) | ![](../images/queenstown/deck-led-night.jpg) | ![](../images/queenstown/phone-lift-ride-dusk.jpg) |
   - The game starts on the deck (`game.start.z`), and Aroha waits at the lift's foot, on the open
     luge track, where the welcome's gold line leads. No road reaches the deck's level, so a taxi
     meets you at the lift's foot: `tools/game_check.js` measures the start's kerb from there when
