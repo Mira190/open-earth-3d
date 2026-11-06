@@ -841,7 +841,9 @@ window.OECars = (function () {
   // c.q, set car by car, missed one: a car stopped behind another a little out of line); and a long
   // queue creeping up to its light, cars inching on at walking pace one after another, is a queue
   // all the same (a car moving freely ahead ends it: the one behind is about to move too)
-  const queueing = o => { for (let x = o, k = 0; x && k < 40; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 2.5) return false; } return false; };
+  // (a queue at a junction, o.q; or, for a car of the traffic not parked, one whose queue is moving off ahead: a crawling queue of
+  // six behind a red, its head pulling away, read as stopped for good and the ride swung out round it in Shinjuku's game check)
+  const queueing = o => { for (let x = o, k = 0; x && k < 40; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 2.5) return k > 0 && o.still !== true; } return false; };
 
   // ------------------------------------------------------------ the chauffeur
   // Drives a car (from car()) along a route: keeps to the lane on the keep side, slows for
