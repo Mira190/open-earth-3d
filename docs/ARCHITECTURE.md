@@ -965,6 +965,9 @@ flower (from the first flowers to the petals' fall, the light-ups' season).
   Meguro River (Shibuya, with chochin). Ueno's Sakura-dori and Osaka's Mint are
   parked.
 
+![The Meguro River at 20:30 in the bloom: chochin along the railings under the lit cherries](images/trees/meguro_yozakura.jpg)
+![The Meguro River's chochin by day, and on a phone at night](images/trees/meguro_day_phone.jpg)
+
 ![Yozakura at 20:00: Chidorigafuchi's moat (left) and Maruyama Park round the Gion weeping cherry](images/trees/yozakura.jpg)
 ![On a phone: Chidorigafuchi and Maruyama at night, and Chidorigafuchi by day in the bloom](images/trees/yozakura_phone.jpg)
 
