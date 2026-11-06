@@ -701,16 +701,18 @@ window.OECars = (function () {
       }
     }
     // a place to start from, about r0..r1 metres away by road from (x, y) (an ordered ride sets out from there)
+    let aroundSeed = 2718; // (its own seeded run: the same place on every run of a harness that drives the clock)
+    const arnd = () => ((aroundSeed = (aroundSeed * 1664525 + 1013904223) >>> 0) / 4294967296);
     function around(x, y, r0, r1) {
       const cand = net.near(x, y, r0, r1);
       for (let k = 0; k < 12 && cand.length; k++) {
-        const i = cand[Math.floor(Math.random() * cand.length)], l = L[i];
+        const i = cand[Math.floor(arnd() * cand.length)], l = L[i];
         if (l.len < 20) continue;
-        const s = l.len * (0.3 + Math.random() * 0.4);
+        const s = l.len * (0.3 + arnd() * 0.4);
         net.at(i, s, tmp);
         const d = Math.hypot(tmp.x - x, tmp.y - y);
         if (d < r0 || d > r1 * 1.2) continue;
-        return { line: i, s, dir: l.ow || (Math.random() < 0.5 ? 1 : -1), x: tmp.x, y: tmp.y, z: tmp.z };
+        return { line: i, s, dir: l.ow || (arnd() < 0.5 ? 1 : -1), x: tmp.x, y: tmp.y, z: tmp.z };
       }
       return null;
     }
@@ -874,6 +876,13 @@ window.OECars = (function () {
   // round a loop of UT_R metres' radius across the road, ahead of the turning point, and comes back
   // in on the other side, instead of turning on the spot. The route's junction nodes and crossings
   // keep their places on it.
+  // whether the queue a car b heads, or is in, waits at a junction with signals (its light, a scramble's walk, a
+  // movement crossing it there): it moves when the light changes
+  function atSignal(b) {
+    let h = b, k = 0;
+    while (h && h.front && h.front.line != null && (h.why === 'car' || h.why === 'held') && k < 30) { h = h.front; k++; }
+    return !!(h && h.line != null && h.lineArm && h.lineArm.j.sig && ['light', 'walk', 'cross', 'turn', 'room'].includes(h.why) && h.toLine - h.half < 4);
+  }
   const UT_R = 4.5, UT_D = 9;
   function uTurns(route, keep) {
     let pts = route.pts, nodes = route.nodes, mids = route.mids, changed = false;
@@ -1333,10 +1342,12 @@ window.OECars = (function () {
       if (st.mutT > 3) { st.mutT = -3; if (!backable() && makeWay) makeWay(st.x, st.y, st.z, st.h, C.half, C.hw); else st.backoff = 1.5; }
       // held up near the end for good (by a car that isn't moving off, not a light): stop here
       st.stall = st.v < 0.2 && room < 0.1 && carGap < line && !waiting ? st.stall + dt : 0; // (not in a queue for the lights)
-      if (end && st.stall > 8 && left < 45 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; }
+      if (end && st.stall > (atSignal(st.block) ? 25 : 8) && left < 45 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; }
       // and queued 8 s behind cars within 45 m of the end (a jam between it and you), it stops where
       // it is, as a driver picking you up does, and you walk the last few metres
-      else if (end && !dry && st.held > 8 && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
+      // (a queue held at a signal is waited out, not taken for a jam, unless it stands 25 s: Kyoto's taxi stopped 39 m
+      // from you behind a car waiting for its green, #243)
+      else if (end && !dry && st.held > (atSignal(st.block) ? 25 : 8) && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
       // out round something stopped in the lane, and back in after it, at a crawl
       // (across no faster than its speed allows a car to steer, and easing in as it gets there, so
       // that it straightens out as a car does rather than snapping straight when it is across)

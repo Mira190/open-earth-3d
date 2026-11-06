@@ -138,6 +138,18 @@ Kyoto Tower in it. The panels are `#7c7f81` (less metallic) and the glass `#4c5f
 Granvia's balconies and the punched windows of the hotel floors over the portal, which the photograph shows
 and the curtain-wall pattern does not.
 
+**The Hotel Granvia (#258).** Side by side again with the same photograph and with one from the forecourt
+([Hotel Granvia Kyoto 20111007-001.jpg](https://commons.wikimedia.org/wiki/File:Hotel_Granvia_Kyoto_20111007-001.jpg),
+J o, CC BY-SA 3.0, compared): east of the atrium's portal a block of deep blue glass on a fine dark grid stands
+forward to the portal's face, where PLATEAU cuts a strip 13 m deep and 66 m high off the station's solid (it
+had been drawn as a generic office block in front of the landmark and is hidden now); then the hotel: a podium
+of big windows over the porte-cochère, a faceted glass slope rising west over it to the glass block, ten guest
+floors of punched windows (one every 3.6 m, 3.3 m storeys) with a small balcony and its rail hung under every
+other window, staggered floor to floor, and a glazed top storey. Rooms are lit one by one after dark.
+
+![The Granvia: the photograph (Fg2, public domain), and the model at day and night](../images/kyoto/granvia.jpg)
+![On a phone, day, dusk and night](../images/kyoto/granvia-phone.jpg)
+
 **Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
 due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
 

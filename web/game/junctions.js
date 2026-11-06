@@ -467,9 +467,14 @@ window.OEJunctions = (function () {
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
-    function choose(a) {
+    function choose(a, hw = 0, half = 0) {
       let ex = exits(a);
       if (!ex.length) return null;
+      if (hw && net.fit && ex.length > 1) { const w = ex.filter(e => net.fit[e.m.line] >= hw); if (w.length) ex = w; } // (not into a street too narrow for it, if there is another way: #202)
+      // (nor onto a piece shorter than it up to the next line that can't be crossed with the junction there, a piece
+      // that comes straight back to this junction: a bus out of Shinjuku's 1195 onto one stood across it 69 s, at the
+      // red of the arm it came back to, its movement never out of the junction)
+      if (half && ex.length > 1) { const w = ex.filter(e => reach(e) >= 2 * half + 2.5 || after(e, 2 * half + 3)); if (w.length) ex = w; }
       if (clockOf && ex.some(e => e.tw || L[e.m.line].tb)) { // (not a way closed at this hour, if there is another)
         const t = clockOf(), open = ex.filter(e => !closedNow(e, t));
         if (open.length) ex = open;
@@ -727,13 +732,19 @@ window.OEJunctions = (function () {
       // (but not the movement of a car behind it on its own piece: one that left this junction onto a piece that comes back to
       // it, queued behind c, can't clear the box until c goes, and c stood at the line for good, Sydney's junction 583, Shibuya's 813)
       const behind = o => o.c.line === c.line && o.c.line >= 0 && o.c.dir === c.dir && (o.c.s - c.s) * c.dir < 0;
-      for (const o of j.active) if (o.c !== c && !behind(o) && (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m))) return 'cross';
+      // (a long vehicle's turn takes the whole junction, the arm's other lane too: a bus from one lane of Sydney's 461 held
+      // the car turning from the other 63 s)
+      // (nor a movement whose car stands behind a queue that comes back to c: it can't clear the junction before c goes.
+      // Kyoto's 327: a ride in the junction behind a bus behind the car waiting at its line for the ride's movement)
+      const waitsOnMe = o => { for (let x = o.c, n = 0; x && n < 8; n++) { const f = x.front || x.block; if (f === c) return (o.c.v || 0) < 0.3; if (!f || f.line == null) return false; x = f; } return false; };
+      for (const o of j.active) if (o.c !== c && !behind(o) && ((o.k !== k || (o.m >> 4) !== (m >> 4)) && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o)) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
         if (j.sig && light(j.arms[o.k], o.m) === 'r') continue; // (its light has turned red since)
         if (c.P && o.c.why === 'you') continue; // (a car of the traffic standing for a ride, or for you, doesn't hold a ride's turn: each waited on the other, half a minute in Shinjuku's game check)
         if (c.P && (o.c.why === 'cross' || o.c.why === 'room') && (o.c.still || 0) > 4) continue; // (nor one that has stood held by others for a while: its turn can't be taken, and the ride waited on it for 40 s under load)
+        if (o.c.why === 'room' && (o.c.still || 0) > 4) continue; // (nor, for anyone, one waiting for room beyond the junction: it can't take its turn, and the movements across its way stood behind it, 96 s at Shinjuku's 1195 at 18:00, #178)
         if (conflict(j, k, m, o.k, o.m)) return 'turn';
       }
       if (!j.sig && j.seen >= frame - 1 && !(mine && t - mine.since > 3 * WAITED)) { // give way to the main road: a car on a greater arm coming, not stopped

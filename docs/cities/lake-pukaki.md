@@ -199,17 +199,29 @@ filling the frame and cumulus building on the Divide.
 - the mountains' shadows from a pass that marches every cell's ray toward the sun over the height grid, with the
   Earth's curve and the sun's disc. It runs again only when the sun has moved;
 - the cars, the landmark models and the people take the scene's sun light, not that pass, so in a valley's shadow at
-  golden hour they stood sunlit (issue #232). The same march runs on the CPU at the viewer (`light.js` `visAt`, again
-  when the eye has moved 4 m or the sun 0.02°), and the sun light is scaled by it, eased over about a second: down in
-  the shadow they stand in it with the slope round them. One value for the view: a sunlit landmark seen from inside a
-  shadow is drawn shaded, which a shadow map per object would put right;
+  golden hour they stood sunlit (issue #232). For #232 the sun light was scaled by the pass's march at the viewer: one
+  value for the view, so a sunlit landmark seen from inside a shadow was drawn shaded. Since #251 each fragment of
+  theirs takes the shadow where it stands: a light node for the scene's directional sun (`light.js`,
+  `TerrainShadowedSun`, registered in three.js's node library for `DirectionalLight`) multiplies the light's colour by
+  the pass's visibility at the fragment's world position. One texture lookup a fragment, the same on every tier
+  (`web/reef/tier.js`), and no extra pass;
+- how browser engines put a terrain's shadow on objects, surveyed for #251: cascaded shadow maps (three.js's CSM add-on,
+  Babylon.js's `CascadedShadowGenerator`, CesiumJS's shadows) render the casters into depth maps from the sun every
+  frame, and mountains 10 km off need a far cascade and a second draw of the land; Unreal's landscape uses heightfield
+  (distance-field) shadows, a march over the height grid rather than a depth render. A height grid's horizon march into
+  a world-space texture, updated only when the sun moves, is the cheap case of the latter, and this site already made
+  one for the land; it is adopted for the objects too. Its texels are 60 m, so a shadow's edge on a car is as soft as
+  on the slope it drives over, and a tall roof takes the shadow of its ground (2 m up). Our own code (three.js MIT);
 - by day the sky's light on the ground is taken at 0.72 of the model's. At full strength it gave about 40% of the light
   on open ground with the sun 40° up, where a clear sky gives 15 to 25%, and its blue lifted every shadow into a grey
   haze;
 - a daylight white balance, as a landscape photographer sets one: the overall cast of sun and sky together is taken out
   of the land (a warm sun and a blue sky left the tussock sage). It fades out toward the golden hour, whose warmth stays.
 
-| The scene's sun light in a hill's shadow at 19:50, before | After |
+| From inside the shadow at 17:55, the sunlit Hermitage: before (one value, shaded) | After (#251, its own) |
+|---|---|
+| ![](../images/lake-pukaki/hermitage-shadow-before.jpg) | ![](../images/lake-pukaki/hermitage-shadow-after.jpg) |
+| **The scene's sun light in a hill's shadow at 19:50, before** | **After** |
 |---|---|
 | ![](../images/lake-pukaki/shadow-before.jpg) | ![](../images/lake-pukaki/shadow-after.jpg) |
 | **Facing a low sun at the visitor centre, before** | **After: the verge's tussock and lupins lit through** |
