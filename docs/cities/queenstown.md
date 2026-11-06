@@ -18,7 +18,7 @@
 | **The Skyline Gondola and its towers** | **The Earnslaw (Blender)** |
 | ![](../images/queenstown/gondola.jpg) | ![](../images/vehicles/ferry_steamer.jpg) |
 
-Phone (390 × 844), from the game's start on the luge track under the gondola's big portal: day, dusk, night.
+Phone (390 × 844), from the game's start on the Skyline deck: day, dusk, night.
 
 | Day | Dusk | Night |
 |---|---|---|
@@ -63,6 +63,12 @@ Games looked at for the arrival, for their design only: Microsoft Flight Simulat
 approach into Queenstown sets the town in its mountains. The vista points of open-world games such
 as Assassin's Creed and Ghost of Tsushima start the player where the whole map can be read.
 Nothing was taken from either but that idea.
+
+| The deck, day | Dusk | Night |
+|---|---|---|
+| ![](../images/queenstown/deck-day.jpg) | ![](../images/queenstown/deck-dusk.jpg) | ![](../images/queenstown/deck-night.jpg) |
+| **The glass lift from the luge track, day** | **Dusk** | **Night** |
+| ![](../images/queenstown/lift-day.jpg) | ![](../images/queenstown/lift-dusk.jpg) | ![](../images/queenstown/lift-night.jpg) |
 
 ## 2. The data
 
@@ -253,6 +259,17 @@ about 45 minutes each way (RealNZ). The wharf is 13 km from the town, well past 
   oriented rectangle. The roofs' colours are the photograph's; the walls' colour and the heights are judged
   (the homestead's eaves at 3.2 m and ridge at 7 m), as no survey covers them.
 - **The walk.** Callum's lake quest sails there, walks up to the Colonel's Homestead and sails back.
+
+| The crossing at dusk | At night | Walter Peak at night |
+|---|---|---|
+| ![](../images/queenstown/earnslaw-dusk.jpg) | ![](../images/queenstown/earnslaw-night.jpg) | ![](../images/queenstown/walter-night.jpg) |
+
+Phone (390 × 844): the crossing and Walter Peak, day, dusk and night.
+
+| | Day | Dusk | Night |
+|---|---|---|---|
+| The crossing | ![](../images/queenstown/phone-earnslaw-day.jpg) | ![](../images/queenstown/phone-earnslaw-dusk.jpg) | ![](../images/queenstown/phone-earnslaw-night.jpg) |
+| Walter Peak | ![](../images/queenstown/phone-walter-day.jpg) | ![](../images/queenstown/phone-walter-dusk.jpg) | ![](../images/queenstown/phone-walter-night.jpg) |
 
 ## 4. Queenstown on Foot
 

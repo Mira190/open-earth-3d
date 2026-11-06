@@ -139,6 +139,10 @@ detail_township.webp`):
   model and material, in traffic.js's colours. About seven stalls in ten have a car by day, half in the shoulder
   hours and a third overnight (a judgement). They stand over the cars still printed in the photograph and give the
   car parks life. `?parked=0` leaves them out.
+
+  | The lakefront car park, before | With the parked cars |
+  |---|---|
+  | ![](../images/lake-tekapo/parked-before.jpg) | ![](../images/lake-tekapo/parked-after.jpg) |
 - **Printed shadows:** within 10 m of a building, deep grey shadows on open ground (under half the brightness of the
   ground round them, low in saturation, off the road) are brightened part of the way toward that ground. It is mild on
   purpose: a stronger lift took out dark roofs, hedges and garden beds with them.

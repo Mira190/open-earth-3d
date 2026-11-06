@@ -209,6 +209,12 @@ filling the frame and cumulus building on the Divide.
 - a daylight white balance, as a landscape photographer sets one: the overall cast of sun and sky together is taken out
   of the land (a warm sun and a blue sky left the tussock sage). It fades out toward the golden hour, whose warmth stays.
 
+| The scene's sun light in a hill's shadow at 19:50, before | After |
+|---|---|
+| ![](../images/lake-pukaki/shadow-before.jpg) | ![](../images/lake-pukaki/shadow-after.jpg) |
+| **Facing a low sun at the visitor centre, before** | **After: the verge's tussock and lupins lit through** |
+| ![](../images/lake-pukaki/tussock-before.jpg) | ![](../images/lake-pukaki/tussock-after.jpg) |
+
 **The ground's colour** (`web/reef/alpine/terrain.js`):
 - the imagery is printed for a screen, so pale ground comes out near a linear 0.45 where dry tussock and gravel reflect
   0.25 to 0.3. An albedo knee (`ALB_KNEE`) eases brightness down and keeps the hue; snow is set on its own;
