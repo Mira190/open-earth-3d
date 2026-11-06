@@ -265,6 +265,27 @@ const npcNight = require('./npc_night');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // the crowd crosses a major road only at a crosswalk (its signals, a zebra or a scramble: actors.js roadEntries,
+  // tools/jaywalk_probe.js), not wherever a footway steps off the kerb
+  const jay = await p.evaluate(() => {
+    const g = window.__game, C = g.crowd.crossings;
+    let n = 0, out = 0;
+    if (!C || !C.major) return { n, out };
+    for (let k = 0; k < 8; k++) {
+      g.advance(1);
+      for (const q of g.crowd.P.slice(0, g.crowd.active)) {
+        if (q.line < 0 || q.state !== 'walk') continue;
+        n++;
+        if (!C.road(q.x, q.y) || !C.major(q.x, q.y)) continue;
+        const h = g.crowdNet.at(q.line, q.s, {}), X = C.byLine.get(q.line);
+        if (!C.across(q.x, q.y, h.hx, h.hy) || (X && X.some(c => Math.abs(c.s - q.s) < c.kerb + 2)) || C.zebra(q.x, q.y)) continue;
+        out++;
+      }
+    }
+    return { n, out };
+  });
+  check(jay.n > 0 && jay.out <= Math.max(3, 0.01 * jay.n), `the crowd crosses major roads only at crosswalks (${jay.out} of ${jay.n} walkers crossing one elsewhere, at most 1%)`);
+
   // no signal pole or walk post stands in a road's lanes (any road's drawn width, not just the one it serves: tools/pole_lanes.js)
   const poles = await p.evaluate(() => {
     const g = window.__game, H = g.junctions.heads, net = g.roadNet, HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }, out = [];
@@ -693,6 +714,25 @@ const npcNight = require('./npc_night');
   });
   for (const h of decks) check(h.ok && h.mode === 'foot' && h.walk && h.d < 45 && h.dz < 6 && h.up > 60, `travels to ${h.name}'s deck (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.up.toFixed(0)} m over the street, ${h.walk ? 'on' : 'off'} walkable ground)`);
 
+  // the lifts (game.json "lifts": Queenstown's glass lift from the luge track to the Skyline deck, the Skytree's,
+  // Shibuya Sky's): from each stop to the next and back, standing at its door, the lift is offered, the ride
+  // ends on the floor at the next stop's level, and a walker can stand there
+  const liftRides = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, out = [];
+    for (const L of g.lifts || []) for (let i = 0; i < L.stops.length; i++) {
+      const j = (i + 1) % L.stops.length, a = L.stops[i].at, b = L.stops[j].at;
+      [pl.x, pl.y, pl.z] = a; pl.mode = 'foot'; g.advance(0.3);
+      const act = g.currentAction && g.currentAction(), offered = !!(act && /lift/i.test(act.text || ''));
+      g.rideLift(L, i, j);
+      for (let k = 0; k < 80 && g.cine.active; k++) g.advance(0.25);
+      g.advance(0.5);
+      out.push({ name: L.name, from: L.stops[i].name, to: L.stops[j].name, offered, dz: Math.abs(pl.z - b[2]), d: Math.hypot(pl.x - b[0], pl.y - b[1]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok, floor: pl.floor });
+    }
+    g.spawn(); g.advance(0.5);
+    return out;
+  });
+  for (const r of liftRides) check(r.offered && r.dz < 0.6 && r.d < 3 && r.walk, `the ${r.name} from ${r.from} to ${r.to} (offered at its door: ${r.offered}; ends ${r.d.toFixed(1)} m from the stop, ${r.dz.toFixed(2)} m off its level, on ${r.floor}${r.walk ? '' : ', not walkable'})`);
+
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it
   const hops = await p.evaluate(() => {
@@ -918,6 +958,54 @@ const npcNight = require('./npc_night');
   check(ferry.none || ferry.moved > 20, ferry.none ? 'no ferries' : `${ferry.n} ferries run (the farthest moved ${ferry.moved.toFixed(0)} m in ${ferry.t} s)`);
   await shot('ferry');
 
+  // a crossing to a landing past the frame (pipeline/outposts.py: Queenstown's Earnslaw to Walter Peak, 12.5 km
+  // over Lake Wakatipu): aboard at the wharf in the frame, skipped (F) once she is under way, alongside the far
+  // wharf within a minute or so, ashore on its deck, and on foot from there to a building of the landing
+  const far = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, W = id => g.G.wharves.find(w => w.id === id);
+    const to = (g.G.wharves || []).find(w => w.outpost);
+    if (!to) return { none: true };
+    const v = g.fer.vessels.find(q => q.stops.includes(to.id));
+    if (!v) return { none: true, why: 'no vessel calls there' };
+    const from = W(v.stops.find(id => id !== to.id));
+    let t = 0;
+    while (!(v.phase === 'dwell' && g.fer.stopOf(v) === from.id) && t < 8000) { g.advance(5); t += 5; }
+    [pl.x, pl.y] = from.landing; pl.z = g.nav.terrain(pl.x, pl.y); pl.mode = 'foot'; g.advance(0.2);
+    g.board(v, from);
+    for (let i = 0; i < 400 && v.phase === 'dwell'; i++) g.advance(0.5);
+    return { to: to.id, name: to.name, from: from.name, mode: pl.mode, sailing: v.phase === 'sail' };
+  });
+  if (far.none) check(!far.why, far.why || 'no landing past the frame');
+  else {
+    await p.keyboard.press('KeyF');
+    const fr = await p.evaluate(to => {
+      const g = window.__game, pl = g.player, v = pl.vehicle, w = g.G.wharves.find(q => q.id === to), o = g.G.outposts.find(q => q.id === w.outpost);
+      let real = 0;
+      while (v && !(v.phase === 'dwell' && g.fer.stopOf(v) === to) && real < 300) { g.advance(0.5); real += 0.5; }
+      const r = { real, docked: !!v && g.fer.stopOf(v) === to };
+      if (!r.docked) return r;
+      g.alight(); g.advance(0.5);
+      Object.assign(r, { mode: pl.mode, d: Math.hypot(pl.x - w.terminal[0], pl.y - w.terminal[1]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
+      // on foot to the landing's largest building
+      const area = q => { let s = 0; for (let i = 0; i < q.length; i++) { const a = q[i], c = q[(i + 1) % q.length]; s += a[0] * c[1] - c[0] * a[1]; } return Math.abs(s / 2); };
+      const big = (o.buildings || []).slice().sort((a, c) => area(c.ring) - area(a.ring))[0];
+      if (big) {
+        const cx = big.ring.reduce((s, q) => s + q[0], 0) / big.ring.length, cy = big.ring.reduce((s, q) => s + q[1], 0) / big.ring.length;
+        const way = g.ways.walk({ x: pl.x, y: pl.y, z: pl.z }, { x: cx, y: cy });
+        r.to = big.name || 'a building'; r.way = way ? way.len : null;
+      }
+      r.drawn = !!(g.Wd && g.Wd.outposts && g.Wd.outposts.children.length);
+      return r;
+    }, far.to);
+    check(fr.docked && fr.real <= 120, `the ${far.from} to ${far.name} crossing, past the frame, skipped (${fr.real.toFixed(0)} s${fr.docked ? '' : ', not there'})`);
+    if (fr.docked) {
+      check(fr.mode === 'foot' && fr.walk && fr.d < 25, `ashore at ${far.name} (${fr.mode}, ${fr.d.toFixed(1)} m from its terminal, on ${fr.walk ? 'walkable' : 'no'} ground)`);
+      check(fr.drawn && fr.way != null && fr.way < 600, `${far.name} is drawn, and a walk from the wharf reaches ${fr.to} (${fr.way == null ? 'none' : `${fr.way.toFixed(0)} m`})`);
+    }
+    await shot('landing');
+    await p.evaluate(() => { const g = window.__game; g.spawn(); g.advance(0.5); });
+  }
+
   // your car: round to the driver's door and in, seated with the head under the roof, drive off,
   // brake to a stop and get out beside it
   const car = await p.evaluate(() => {
@@ -1101,10 +1189,18 @@ const npcNight = require('./npc_night');
     g.spawn();
     g.advance(0.5);
     const k = g.roads.place(pl.x, pl.y, 400, 1, pl.z), r = { kerb: k ? k.d : null, heli: g.heli ? Math.hypot(g.heli.st.x - pl.x, g.heli.st.y - pl.y) : null };
+    // a start up on a deck reached by a lift (Queenstown's Skyline deck, 15 m over the luge track): no road
+    // comes up to the deck's level, so a taxi meets you where the lift comes down; the kerb is measured
+    // from its foot, the lift's ride added to the way there
+    const L = (g.lifts || []).find(l => l.stops.length > 1 && l.stops.slice(1).some(s => Math.hypot(s.at[0] - pl.x, s.at[1] - pl.y) < 30 && Math.abs(s.at[2] - pl.z) < 3));
+    if (L && (r.kerb == null || r.kerb >= 150)) {
+      const f = L.stops[0].at, kf = g.roads.place(f[0], f[1], 400, 1, f[2]);
+      r.lift = L.name; r.walk = Math.hypot(f[0] - pl.x, f[1] - pl.y); r.kerb = kf ? kf.d : null;
+    }
     return r;
   });
   check(quick.heli == null || quick.heli < 450, `the helicopter waits near the start (${quick.heli == null ? 'none' : `${quick.heli.toFixed(0)} m`})`);
-  check(quick.kerb != null && quick.kerb < 150, `a kerb for a taxi near the start (${quick.kerb == null ? 'none' : `${quick.kerb.toFixed(0)} m`})`);
+  check(quick.kerb != null && quick.kerb < 150, `a kerb for a taxi near the start (${quick.kerb == null ? 'none' : `${quick.kerb.toFixed(0)} m`}${quick.lift ? ` from the foot of the ${quick.lift}, ${quick.walk.toFixed(0)} m from the start` : ''})`);
   const pads = await p.evaluate(() => {
     const g = window.__game, pl = g.player, s = g.heli && g.heli.st, P = g.helipads || [];
     if (!s || P.length < 2) return { none: true };

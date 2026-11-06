@@ -18,7 +18,8 @@ Writes web/data/<city>/game.json:
             every half metre, -32768 none): paving with walls and steps the 5 m grid would
             smooth into slopes
   wharves   ferry berths next to the Overture ferry terminals named in city.json
-  ferries   routes found by a shortest path through open water, kept clear of land
+  ferries   routes found by a shortest path through open water, kept clear of land (to a wharf
+            past the frame, over the lake beyond it: pipeline/outposts.py)
             and piers, then smoothed
   helipads, props (benches and street lamps, moved out of the carriageways: pipeline/kerbside.py;
   traffic signals and signs), npcs and quests (positions snapped to open ground)
@@ -311,6 +312,8 @@ def main():
     clear = ndimage.distance_transform_edt(nav) * DEM_CELL
     wharves = {}
     for w in gcfg.get("wharves", []):
+        if w.get("outpost"):
+            continue  # a wharf past the frame: pipeline/outposts.py finds it
         # a landing OpenStreetMap maps without a name (Kelvin Heights' jetty): its point in the local frame
         hits = [Point(*w["at"])] if "at" in w else [p for n, p in terminals if n.startswith(w["terminal"])]
         if not hits:
@@ -708,7 +711,9 @@ def main():
         for k, v in C.hook("game_extras")(scene).items():
             out[k] = out.get(k, []) + v if isinstance(v, list) else v
     import game_extras
-    game_extras.drop_kept_off(out)  # the crowd's footways over a landmark's water (game_extras "keep_off")
+    game_extras.drop_kept_off(out)
+    import outposts
+    outposts.apply(C, out)  # landings past the frame, their wharves and the ferry legs to them (pipeline/outposts.py)  # the crowd's footways over a landmark's water (game_extras "keep_off")
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")

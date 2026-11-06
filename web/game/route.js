@@ -137,6 +137,7 @@ window.OERoute = (function () {
     const GC = 24, gkey = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
     // nodes: position (moved onto walkable ground when first used), and a grid to snap to
     const NX = [], NY = [], NZ = [], NS = []; // NS: 0 not yet checked, 1 walkable, 2 nowhere to stand
+    const liftNodes = []; // the lifts' stops (repair joins one with no footway near it to the network)
     const ngrid = new Map();
     function nodeAt(x, y, z) {
       const cx = Math.floor(x / MERGE), cy = Math.floor(y / MERGE);
@@ -309,6 +310,7 @@ window.OERoute = (function () {
         for (const l of lifts) for (let i = 1; i < l.stops.length; i++) {
           const a = l.stops[i - 1].at, b = l.stops[i].at, na = newNode(a[0], a[1], a[2]), nb = newNode(b[0], b[1], b[2]);
           EA.push(na); EB.push(nb); EM.push(LIFT); EP.push(Float32Array.of(a[0], a[1], a[2], b[0], b[1], b[2]));
+          liftNodes.push(na, nb);
         }
         // the roads as a car drives them: a floor near the height the car drives at every 2 m (on a deck, the
         // line's; on the ground, the ground's: ground(), as cars.js has it, since a hill road's straight line
@@ -439,6 +441,16 @@ window.OERoute = (function () {
         const F = flood(NX[n], NY[n], NZ[n], { limit: 30, extra: 0, cells: 600, want: e => find(EA[e]) !== me });
         if (F && F.att.length) { const a = F.att[0]; join(n, a.j, F.back(a.cell).reverse()); }
         await tick(0.97, 'joining the pieces');
+      }
+      // a lift's stop with no footway near it (Queenstown's glass lift comes down on the open hillside of the
+      // luge track): over the ground to the main network, up to 200 m, so that a route from the floor at its
+      // other end goes on from it (without, it was a dead end, and nothing past the lift could be reached)
+      for (const n of liftNodes) {
+        if (sizeOf(n) >= top * 0.5) continue;
+        const F = flood(NX[n], NY[n], NZ[n], { limit: 200, extra: 0, cells: 40000, want: e => EM[e] !== LIFT && sizeOf(EA[e]) >= top * 0.5 });
+        const a = F && F.att.find(q => q.big !== false);
+        if (a) join(n, a.j, F.back(a.cell).reverse());
+        await tick(0.98, 'joining the lifts');
       }
       // split the edges at the points joined, from the far end back, and name each point's node
       const nodeOf = new Map();

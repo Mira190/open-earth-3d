@@ -312,28 +312,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const [u0, z0] = st.profile[0], [u1, z1] = st.profile[st.profile.length - 1], [ox, oy] = st.origin, [ax, ay] = st.axis;
       return { pts: [[ox + ax * u0, oy + ay * u0, z0], [ox + ax * u1, oy + ay * u1, z1]], w: 2 * st.half_width };
     });
-    const wet = [...deckPlan.runs, ...own].filter(r => r.pts.some(q => nav.isWater(q[0], q[1])));
-    if (wet.length) {
-      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-      for (const r of wet) for (const q of r.pts) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
-      x0 -= 40; x1 += 40; y0 -= 40; y1 += 40;
-      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / 4096), cv = document.createElement('canvas');
-      cv.width = Math.ceil((x1 - x0) / res); cv.height = Math.ceil((y1 - y0) / res);
-      const g = cv.getContext('2d');
-      g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
-      g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
-      for (const r of wet) {
-        const hi = Math.max(...r.pts.map(q => q[2]));
-        g.lineWidth = (r.w + 2 * Math.max(2.5, 0.25 * hi)) / res;
-        g.beginPath();
-        r.pts.forEach((q, k) => g[k ? 'lineTo' : 'moveTo']((q[0] - x0) / res, (y1 - q[1]) / res));
-        g.stroke();
-      }
-      g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
-      const tex = new THREE.CanvasTexture(cv);
-      tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      Wd.sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
-    }
+    Wd.waterCover([...deckPlan.runs, ...own].filter(r => r.pts.some(q => nav.isWater(q[0], q[1])))); // (world.js: with the landmarks' decks)
   }
   // where a walkable strip (a canal bridge's deck) is carried on to the quay (nav.js), the approach is drawn in the deck's stone
   const LMM = (D.LM && D.LM.materials) || {};
@@ -571,7 +550,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // road says what is carriageway, zebra where a zebra's stripes are, the cars giving way there instead)
   const zebraAt = (x, y) => { const q = roadNet.nearest(x, y, 9); const M = q && junctions.midsOn ? junctions.midsOn(q.line) : null; return !!(M && M.some(X => Math.abs(X.mid - q.s) < 9)); };
   const aq = {}, acrossRoad = (x, y, hx, hy) => { const q = roadNet.nearest(x, y, 10); if (!q) return false; roadNet.at(q.line, q.s, aq); return Math.abs(hx * aq.hy - hy * aq.hx) > 0.5; }; // (at 30° or more to the road)
-  crowd.crossings = { byLine: junctions.crossings(crowdNet, onRoad), walk: junctions.walk, walkLeft: junctions.walkLeft, call: junctions.call, road: onRoad, zebra: zebraAt, across: acrossRoad };
+  // (a major road, crossed only at a crosswalk: a class from tertiary up, or two lanes or more each way; a
+  // scramble's own streets are its crowd's, which crosses them on its walk)
+  const MAJOR = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
+  const majorAt = (x, y) => { const q = roadNet.nearest(x, y, 10); if (!q) return false; const l = roadNet.L[q.line]; return MAJOR.has(l.c) || (junctions.lanesOf ? junctions.lanesOf(l) : l.nl || 1) >= 2; };
+  crowd.crossings = { byLine: junctions.crossings(crowdNet, onRoad), walk: junctions.walk, walkLeft: junctions.walkLeft, call: junctions.call, road: onRoad, zebra: zebraAt, across: acrossRoad, major: majorAt };
   // and gathers at the scrambles: a share of it their own, massing at the kerbs and surging across
   // every way at once (actors.js plazas), and more of it on the footways round them
   { const S = junctions.J.filter(j => j.scramble && j.spans && j.spans.length);
@@ -680,6 +663,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
   }
   const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }), vopts);
+  // skipping a crossing runs the boats 8 times as fast, and waiting for one 25 times; on a long leg (Queenstown's
+  // Earnslaw, 12.5 km to Walter Peak past the frame) fast enough that the crossing passes in about 40 s and the
+  // longest wait for her in about a minute
+  const LONG_LEG = Math.max(0, ...(G.ferries || []).flatMap(f => f.legs.map(l => l.length_m || 0))), FERRY_V = G.ferry_speed_ms || 9;
+  const FERRY_SKIP = Math.max(8, LONG_LEG / (FERRY_V * 40)), FERRY_WAIT = Math.max(25, 2 * LONG_LEG / (FERRY_V * 60));
   const wharfById = id => G.wharves.find(w => w.id === id);
   // where you stand to board at each wharf: by its terminal, or the nearest place on foot to it where
   // the terminal is mapped out on the water
@@ -1950,6 +1938,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     try { localStorage.setItem(KEY, JSON.stringify({ qs, pos: [player.x, player.y, player.z], car, clock: { y: clock.y, m: clock.m, d: clock.d, min: clock.min, scale: clock.scale } })); } catch (e) { /* storage blocked */ }
   }
   function loadSave() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+  // where you stand is kept too, not only at a quest's steps: every half minute of play, and when the tab
+  // is put away or the page closes. Not before the game has started (the title would write the spawn
+  // over a saved game the player has not chosen to continue yet).
+  let playing = false;
+  const keep = () => { if (playing) save(); };
+  on(document, 'visibilitychange', () => { if (document.hidden) keep(); });
+  on(window, 'pagehide', keep);
+  const keepTimer = setInterval(() => { if (!document.hidden) keep(); }, 30000);
+  ac.signal.addEventListener('abort', () => clearInterval(keepTimer));
 
   // ------------------------------------------------------------ HUD
   const base = H.baseMap(D);
@@ -3290,7 +3287,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const way = guide.pts && gold.ahead(); // the gold route still to go, as on the minimap and in the world
     if (way && way.length > 1) {
       g.save(); g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--sun') || '#ffc23d'; g.lineWidth = 3.5 * dpr; g.lineJoin = g.lineCap = 'round';
-      g.beginPath(); way.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.restore();
+      g.beginPath(); let pen = false; for (const p of way) { if (!p) { pen = false; continue; } const [x, y] = P2(p[0], p[1]); if (pen) g.lineTo(x, y); else g.moveTo(x, y); pen = true; } g.stroke(); g.restore(); // (a null: the break at a lift)
     }
     g.save(); g.scale(dpr, dpr);
     bigPins = [];
@@ -3534,6 +3531,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function spawn(pos, zRef, facing = null) { // at ground level (or on steps built on it) unless a height is given
     const at = pos || G.start.at;
+    if (!pos && zRef == null && G.start.z != null) zRef = G.start.z; // a start on a floor over the ground (game.start.z: Queenstown's deck)
     padCheck = 0; // a fresh start: the helicopter is brought to the pad near it at the next look, not half a second on
     let z0 = Math.max(0, nav.terrain(at[0], at[1]));
     for (const st of nav.strips) { const h = st.drape ? nav.stripHeight(st, at[0], at[1]) : null; if (h != null && h > z0) z0 = h; }
@@ -3547,8 +3545,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (let d = 0.5; d <= 4 && f; d += 0.5) { const w = nav.walk(x + Math.sin(h) * d, y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
       return !!f;
     };
-    const ok = (x, y) => !npcs.some(n => Math.hypot(n.x - x, n.y - y) < 1.4), okStart = (x, y) => ok(x, y) && (pos || ahead(x, y));
-    const p = nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok: okStart, room: 100 }) || nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok });
+    const ok = (x, y) => !npcs.some(n => Math.hypot(n.x - x, n.y - y) < 1.4), okStart = (x, y) => ok(x, y) && (pos || G.start.z != null || ahead(x, y)); // (a deck's start faces out over its balustrade)
+    const p = nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok: okStart, room: !pos && G.start.z != null ? 0 : 100 }) || nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok });
     player.x = p ? p.x : at[0]; player.y = p ? p.y : at[1]; player.z = p ? p.z : z0;
     player.vz = 0; player.ground = true;
     player.h = Math.atan2(fa[0] - player.x, fa[1] - player.y);
@@ -3575,6 +3573,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (Continue, a district from the subway map): the arrival then starts from the same view of the new place
   const startGame = cont => {
     A.start();
+    playing = true;
     const was = [player.x, player.y, player.z];
     if (cont && saved) {
       qs = Object.assign(qs, migrate(saved.qs));
@@ -3874,7 +3873,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const wantTo = waitFerry && rideTarget(waitFerry);
     const here = waitFerry && fer.vessels.find(q => fer.stopOf(q) === waitFerry && (!wantTo || q.stops.includes(wantTo)));
     if (here) { waitFerry = null; H.toast(`${here.name} is alongside. <kbd>E</kbd> to board.`); }
-    fer.update(dt, skip && player.mode === 'ferry' ? 8 : 1, clockT, waitFerry ? 25 : 1);
+    fer.update(dt, skip && player.mode === 'ferry' ? FERRY_SKIP : 1, clockT, waitFerry ? FERRY_WAIT : 1);
     if (rail) {
       rail.update(dt, clockT, [player.mode === 'foot' ? player : null, ...npcs], player.mode === 'rail' && skip);
       for (const ev of rail.events.splice(0)) {
@@ -4527,6 +4526,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { hold: on => { simHold = on !== false; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
-    stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
+    stop() { keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
 };

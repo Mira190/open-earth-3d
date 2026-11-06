@@ -130,6 +130,19 @@ def glows():
     return [[round(x, 1), round(y, 1), round(z + 9.6, 1), "#ffd9a0", 0.35] for cw in S["ways"] for x, y, z in cw["lamps"]]
 
 
+def cover():
+    """Where the water closes over the photograph of the riverbed (landmarks.json "water_cover", web/world.js):
+    the stretch's outline, both carriageways and the 6-16 m between them, which the photograph also shows
+    covered by the real deck over the river (issue 234), with 3 m for its lean in the photograph."""
+    import shapely
+    from shapely.geometry import LineString
+    S = load()
+    if not S:
+        return []
+    g = shapely.union_all([LineString([p[:2] for p in cw["pts"]]).buffer(HALF + 3.0) for cw in S["ways"]]).buffer(10.0).buffer(-10.0)
+    return [[[round(x, 1), round(y, 1)] for x, y in q.exterior.simplify(0.5).coords] for q in getattr(g, "geoms", [g])]
+
+
 def surfaces():
     """Each carriageway as straight strips STEP long, a metre over into the next, for the game."""
     S = load()

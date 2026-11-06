@@ -19,7 +19,7 @@ the colours) is from the listings and from photographs (docs/cities/queenstown.m
                             a steep slate roof, paired lancets between buttresses, a square
                             crenellated tower with louvred belfry lancets under an octagonal slate
                             spire, a west porch, a vestry, and the timber lych-gate on the path.
-  Williams Cottage          List 2336. 1864, its lean-to 1866: painted weatherboards, a very high
+  Williams Cottage          List 2336. 1864, its lean-to 1866, and a small stone store room to the side: painted weatherboards, a very high
                             gabled roof of corrugated iron, a stone chimney between the main roof and
                             the lean-to, a verandah to the lake, 12-pane sashes, and the later rear
                             room with its own stone chimney.
@@ -528,6 +528,15 @@ def williams(K, ground):
     skillion(K, lambda u, v, z: P(v, u, z), V0, V1, U1, 4.5, 3.2, 2.35, roof)
     ak.block(K[board], P, 4.5, 7.3, -2.5, V1, -0.6, 2.9, top=False)
     skillion(K, lambda u, v, z: P(v, u, z), -2.5, V1, 4.5, 7.3, 3.1, 2.85, roof, over=0.2)
+    # the small stone store room to the side (HNZ List 2336: "a small stone store room is situated to the side"),
+    # where the mapped footprint stands out 3 m from the lean-to's north-east wall: schist rubble under an iron
+    # skillion falling away from the cottage, a plank door in its end wall
+    su0, su1, sv1 = 1.5, 4.1, V1 + 3.0
+    ak.block(K[stone], P, su0, su1, V1, sv1, -0.6, 2.15, top=False)
+    K[stone].tri(P(su0, V1, 2.15), P(su0, sv1, 2.15), P(su0, V1, 2.6))  # its end walls up to the roof
+    K[stone].tri(P(su1, sv1, 2.15), P(su1, V1, 2.15), P(su1, V1, 2.6))
+    skillion(K, lambda u, v, z: P(u, v, z), su0, su1, V1, sv1, 2.6, 2.1, roof, over=0.15)
+    ak.opening(K[ox], P, (su1, V1), (su1, sv1), 0.05, 0.8, 1.75, depth=0.03, centre=1.6)
     ak.band(K[ox], P, ak.rect(U0, 7.3, V0, V1), -0.6, out=0.04, h=0.75)   # the flood wall's painted face
     # chimneys: schist rubble, the main one between the roof and the lean-to, the rear room's; brick tops
     for (cu, cv, z1, w, d) in ((-0.8, -3.0, 5.9, 1.3, 1.0), (7.3, 1.6, 4.5, 1.1, 1.4)):

@@ -16,6 +16,8 @@ the water (under paving, and in front of a seawall) (web/world.js); "seawalls", 
 seawall the landmark draws itself, polylines [[x, y], ...] with the water on their right, where a
 walker stops at its edge (web/quays.js); "trees", a landmark's own trees, [x, y, z, height] in decimetres as
 places.json's, standing at z (a roof garden's, on its terraces), drawn after the woods' in the city's mix (web/world.js).
+"water_cover": rings [[x, y], ...] where the water closes over the aerial photograph of the bottom (a deck over a
+river the photograph shows wider than the landmark draws it) (web/world.js waterCover).
 
     python pipeline/landmarks.py --city sydney      # reads/writes web/data/<city>
 """

@@ -11,8 +11,9 @@
 // - the wheels split off the body as cars.js splits them (a triangle with all its corners in a wheel's cylinder), so
 //   they turn; three levels of detail by distance (vehicles.json lod1_m, lod2_m);
 // - headlamps and tail lamps lit from dusk;
-// - how many: about one car a kilometre each way by day (a rural state highway's traffic at 100 km/h; no count for
-//   SH80 was found, so the figure is a judgement), fewer at night.
+// - how many: from Waka Kotahi's count on SH80 (TMS site 08000001, Lake Pukaki, north of the SH8 junction: an
+//   AADT of 1,756 vehicles in 2024, 7% heavy): about 0.67 cars a kilometre each way by day, 0.39 in the shoulder hours
+//   and 0.10 at night (see PER_KM).
 // ?traffic=0 leaves it out; ?traffic=<n> scales the number of cars.
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from '../../gltf.js';
@@ -20,6 +21,10 @@ import { GLTFLoader } from '../../gltf.js';
 const KEEP = 1;                   // +1: keep left (New Zealand)
 const LANE = 1.7;                 // m from the centreline to the lane's middle
 const R_LIVE = 2200, R_SPAWN = [500, 2000];
+// cars a kilometre each way by day (8 to 19 h), in the shoulder hours (6 to 8, 19 to 22) and at night: SH80's AADT of
+// 1,756 (Waka Kotahi TMS site 08000001, 2024), with three quarters of it by day, a fifth in the shoulder hours and the
+// rest at night (a rural highway's day, a judgement: the site's hourly counts were not read), at about 90 km/h
+const PER_KM = { day: 0.67, shoulder: 0.39, night: 0.10 };
 // models and how often each is seen on the road to Aoraki: hatchbacks, sedans and SUVs, campervans (the van), coaches
 const MODELS = [['Car_SUV', 0.3], ['Car_Hatch', 0.24], ['Car_Sedan', 0.22], ['Car_Van', 0.18], ['Bus', 0.06]];
 // New Zealand's car colours, white and silver commonest (a judgement from photographs of the road; no published share)
@@ -188,7 +193,7 @@ export async function init(ctx) {
     }
     return false;
   }
-  // the number of cars wanted: the highway within R_LIVE, about a car a kilometre each way by day, fewer at night
+  // the number of cars wanted: the highway within R_LIVE, at PER_KM each way by the hour
   const wanted = () => {
     const cx = camera.position.x, cy = -camera.position.z;
     let len = 0;
@@ -197,8 +202,8 @@ export async function init(ctx) {
       if (Math.hypot((a[0] + b[0]) / 2 - cx, (a[1] + b[1]) / 2 - cy) < R_LIVE) len += L.cum[k] - L.cum[k - 1];
     }
     const hr = (new Date(ctx.clockMs ? ctx.clockMs() : Date.now()).getUTCHours() + 13) % 24;   // New Zealand's hour (daylight time)
-    const day = hr >= 8 && hr < 19 ? 1 : hr >= 6 && hr < 22 ? 0.45 : 0.08;
-    return Math.min(24, Math.round(len / 1000 * 2 * day * scale));
+    const perKm = hr >= 8 && hr < 19 ? PER_KM.day : hr >= 6 && hr < 22 ? PER_KM.shoulder : PER_KM.night;
+    return Math.min(24, Math.round(len / 1000 * 2 * perKm * scale));
   };
   let want = wanted(), wantT = 0;
 

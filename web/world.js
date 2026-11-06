@@ -412,7 +412,9 @@ vec3 scrCell(float cell, vec2 uv) {
   let FOG0 = null;
   // farLand: the land past the frame is drawn (farland.js), so the city fades into it only part
   // way (FAR_EDGE) instead of into a wall of haze
-  function edgeHaze(frame, near = 150, farLand = false) {
+  // boxes: landings past the frame (outposts.js: {x0, x1, y0, y1, band}), clear inside like the frame,
+  // hazing over their band to the far land's air at their edge
+  function edgeHaze(frame, near = 150, farLand = false, boxes = []) {
     const C = THREE.ShaderChunk;
     if (!FOG0) FOG0 = { pv: C.fog_pars_vertex, v: C.fog_vertex, pf: C.fog_pars_fragment, f: C.fog_fragment };
     const w = frame.x[1] - frame.x[0], h = frame.y[1] - frame.y[0], fade = Math.min(500, Math.max(250, 0.1 * Math.min(w, h)));
@@ -424,7 +426,11 @@ vec3 scrCell(float cell, vec2 uv) {
     // so the sea in front of it hazes too. (Lifted from the band's inner edge, it hazed the whole
     // view from a tour stop a few hundred metres inside the frame: Shibuya's Sangenjaya and Suga
     // Shrine looked out through fog.)
-    const out = (p, a = 0, b = fade) => `smoothstep( ${n(a)}, ${n(b)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
+    const out0 = (p, a = 0, b = fade) => `smoothstep( ${n(a)}, ${n(b)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
+    const outBox = (o, p, a, b) => { const f = o.band || 60, k = f / fade; return `smoothstep( ${n(a * k)}, ${n(b * k)}, length( max( abs( ${p} - vec2( ${n((o.x0 + o.x1) / 2)}, ${n(-(o.y0 + o.y1) / 2)} ) ) - vec2( ${n((o.x1 - o.x0) / 2 - f)}, ${n((o.y1 - o.y0) / 2 - f)} ), 0.0 ) ) )`; };
+    const out = (p, a = 0, b = fade) => boxes.reduce((e, o) => `min( ${e}, ${outBox(o, p, a, b)} )`, out0(p, a, b));
+    // how far past the frame a point is, or past the nearest landing's box, whichever is nearer
+    const pastBoxes = p => boxes.map(o => ` oePast = min( oePast, length( max( abs( ${p} - vec2( ${n((o.x0 + o.x1) / 2)}, ${n(-(o.y0 + o.y1) / 2)} ) ) - vec2( ${n((o.x1 - o.x0) / 2)}, ${n((o.y1 - o.y0) / 2)} ), 0.0 ) ) );`).join('');
     // Over the sea the frame ends nowhere in particular: past the frame's edge, where there is real
     // open water, the surface carries on and the distance's own haze takes it to the horizon,
     // darkening a little toward a distant sea's tone on the way; only over land does the water haze
@@ -440,7 +446,7 @@ vec3 scrCell(float cell, vec2 uv) {
 #endif`);
     C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );', `\tfloat oeEdge = ${out('vEdgeXZ')}, oeGate = max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} );
 #ifdef OE_SEA
-	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );
+	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );${pastBoxes('vEdgeXZ')}
 	  vec3 oeM = texture2D( uSeaOpen, vec2( 0.5 + oeP.x / ${n(2 * SEA_HALF)}, 0.5 - oeP.y / ${n(2 * SEA_HALF)} ) ).rgb; // north up (flipY)
 	  float oeOpen = oePast > 0.0 ? mix( mix( oeM.r, oeM.g, smoothstep( 0.0, ${n(SEA_SOFT[0])}, oePast ) ), oeM.b, smoothstep( ${n(SEA_SOFT[0])}, ${n(SEA_SOFT[1])}, oePast ) ) : 0.0;
 	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
@@ -456,7 +462,7 @@ vec3 scrCell(float cell, vec2 uv) {
 	// into the haze, clearing over the first few hundred metres to a distant land's veil, and thickening
 	// with distance as air does (FAR_AIR m to 63%), so a far city's plain meets the sky in haze, not in a band
 	float oeFar = 0.0;
-	{ float oePast = length( max( abs( vEdgeXZ - ${c} ) - vec2( ${n(w / 2)}, ${n(h / 2)} ), 0.0 ) );
+	{ float oePast = length( max( abs( vEdgeXZ - ${c} ) - vec2( ${n(w / 2)}, ${n(h / 2)} ), 0.0 ) );${pastBoxes('vEdgeXZ')}
 	  // and the air near the ground is thicker (a haze layer about a kilometre deep): from a tower the
 	  // line of sight stays in it and a far city pales into haze within ten kilometres, while from
 	  // high up the path through it is short and the same land stays clear
@@ -616,7 +622,9 @@ vec3 photoGrade(vec3 c) {
     FAR_AIR = ((window.OEFarLand || {}).AIR || 30000) * clarity; FAR_AIR_LOW = 15000 * clarity;
     if (farMeta && farMeta.half_m) FAR_HALF = farMeta.half_m;
     world.fog.near *= clarity; world.fog.far *= clarity;
-    const edgeFade = edgeHaze(scene.frame, 150, farOn);
+    // landings past the frame (outposts.js): the far land leaves them open and the haze treats them as the frame
+    const outHoles = window.OEOutposts && D.G ? OEOutposts.list(D.G).map(o => ({ x0: o.x0, x1: o.x1, y0: o.y0, y1: o.y1, band: o.band })) : [];
+    const edgeFade = edgeHaze(scene.frame, 150, farOn, outHoles);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -685,16 +693,23 @@ vec3 photoGrade(vec3 c) {
       } catch (e) { console.warn('quays: none drawn', e); Q = null; }
     }
     D.quays = Q;
-    const QUAY = Q && { mask: { value: Q.maskTexture() }, dist: { value: shoreTex }, box: { value: new THREE.Vector4(...Q.box) } };
+    const QUAY = Q && { mask: { value: Q.maskTexture() }, dist: { value: shoreTex }, box: { value: new THREE.Vector4(...Q.box) },
+      bed: { value: lin(((scene.water || {}).seawall || {}).bed || '#3a3b33') } }; // (the bottom's colour, as quayBed's)
     const clipGround = sh => {
       if (QUAY) { // out in front of a quay, above the water: the grid's ramp up to the land
-        Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayDist: QUAY.dist, uQuayBox: QUAY.box });
+        Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayDist: QUAY.dist, uQuayBox: QUAY.box, uQuayBed: QUAY.bed });
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vQuayWP;')
           .replace('#include <project_vertex>', '#include <project_vertex>\nvQuayWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uQuayMask, uQuayDist; uniform vec4 uQuayBox; varying vec3 vQuayWP;')
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uQuayMask, uQuayDist; uniform vec4 uQuayBox; uniform vec3 uQuayBed; varying vec3 vQuayWP;')
           .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
   { vec2 quv = vec2((vQuayWP.x - uQuayBox.x) / uQuayBox.z, (uQuayBox.y + vQuayWP.z) / uQuayBox.w);
-    if (vQuayWP.y > -0.05 && all(greaterThan(quv, vec2(0.0))) && all(lessThan(quv, vec2(1.0))) && texture2D(uQuayMask, quv).r > 0.5 && texture2D(uQuayDist, quv).r > 127.5 / 255.0) discard; }`); // from a quarter metre back: under the coping
+    if (vQuayWP.y > -0.05 && all(greaterThan(quv, vec2(0.0))) && all(lessThan(quv, vec2(1.0))) && texture2D(uQuayMask, quv).r > 0.5 && texture2D(uQuayDist, quv).r > 127.5 / 255.0) discard;
+    // the bottom of a river or a dock between quays is the bed, not the aerial photo draped on it: the photo
+    // there is of the water and of what stands over it (the Shuto over the Nihonbashi River, a streaked grey
+    // deck on the riverbed, lit orange at night: issue 234), and where the water lets the bottom through it showed
+    oeBed = vQuayWP.y < -0.3 && all(greaterThan(quv, vec2(0.0))) && all(lessThan(quv, vec2(1.0))) && texture2D(uQuayMask, quv).r > 0.5 && texture2D(uQuayDist, quv).r > 130.5 / 255.0 ? 1.0 : 0.0; }`) // (a metre and more out from the wall)
+          .replace('#include <clipping_planes_fragment>', 'float oeBed = 0.0;\n#include <clipping_planes_fragment>')
+          .replace('#include <map_fragment>', '#include <map_fragment>\nif (oeBed > 0.5) diffuseColor.rgb = uQuayBed;'); // from a quarter metre back: under the coping
       }
       if (!CLIP) return;
       Object.assign(sh.uniforms, { uClip: CLIP.tex, uClipBox: CLIP.box });
@@ -938,10 +953,20 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     let far = null;
     const farData = await farLoad;
     if (farData) try {
-      far = OEFarLand.create(farData, { frame: scene.frame, ground: D.ground, small, PG, PHOTO_GRADE });
+      far = OEFarLand.create(farData, { frame: scene.frame, ground: D.ground, small, PG, PHOTO_GRADE, holes: outHoles });
       world.add(far.mesh);
       if (seaTex) for (const m of [water.material, waterMat]) m.defines = Object.assign({}, m.defines, { OE_FARLAND: '' });
     } catch (e) { console.warn('far land: none drawn', e); far = null; }
+    // the landings past the frame (outposts.js), their edges blended to the far land's surface
+    let outposts = null;
+    if (outHoles.length) try {
+      OEOutposts.blend(D.G, far && far.surface);
+      outposts = OEOutposts.build(D.G, { DATA: D.DATA, texLoader, small, anisotropy: renderer.capabilities.getMaxAnisotropy(),
+        photoMaterial: tex => { const m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 });
+          m.onBeforeCompile = sh => { sh.uniforms.uPhotoGrade = PG; sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
+            .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);'); }; return m; } });
+      world.add(outposts);
+    } catch (e) { console.warn('outposts: none drawn', e); outposts = null; }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
 
@@ -1314,10 +1339,69 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         return true;
       } catch (e) { return false; }
     }
+    // the water closes over the bottom under what is drawn over it: the aerial photograph has the same
+    // bridge or expressway on the riverbed, and the shallow water of a river shows it through (the
+    // Nihonbashi River under the Shuto, issues 65 and 234). The landmarks' up-facing faces over the
+    // ground are drawn into a mask (a little wider than each face, more so the higher it stands: an aerial
+    // photograph leans a raised deck off its plan); on land the terrain covers the water either way.
+    // The game adds its own decks (game.js: waterCover(runs)). Where to look: water.js uCover
+    let coverBase = null;
+    function waterCover(runs = []) {
+      if (!sea || !sea.setCover) return;
+      const fr = scene.frame, x0 = fr.x[0], x1 = fr.x[1], y0 = fr.y[0], y1 = fr.y[1];
+      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / 4096), W = Math.ceil((x1 - x0) / res), H = Math.ceil((y1 - y0) / res);
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+      g.fillStyle = g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
+      let any = false;
+      if (!coverBase) { // [x0, y0, x1, y1, x2, y2, pad] in metres, once
+        coverBase = [];
+        for (const m of (LM && LM.meshes) || []) {
+          const p = m.position, ix = m.index;
+          if (!p || !ix || LM.materials[m.material] && LM.materials[m.material].opacity < 1) continue;
+          for (let i = 0; i + 2 < ix.length; i += 3) {
+            const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
+            const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+            const nz = ux * vy - uy * vx, nl = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, nz);
+            if (!(nl > 0) || Math.abs(nz) < 0.7 * nl) continue; // a deck's or a roof's face, not a wall
+            const ax = p[a], ay = p[a + 1], bx = p[b], by = p[b + 1], cx = p[c], cy = p[c + 1];
+            const zt = Math.max(p[a + 2], p[b + 2], p[c + 2]), zg = D.ground((ax + bx + cx) / 3, (ay + by + cy) / 3);
+            if (zt - zg < 1 || zt - zg > 40) continue; // over the water, low enough to lean into the photo of the bottom
+            coverBase.push(ax, ay, bx, by, cx, cy, Math.max(2.5, 0.25 * (zt - zg)));
+          }
+        }
+      }
+      const X = x => (x - x0) / res, Y = y => (y1 - y) / res;
+      for (const ring of (LM && LM.water_cover) || []) { // a deck the photograph shows wider than it is drawn (landmarks.json)
+        g.beginPath(); ring.forEach(([x, y], k) => g[k ? 'lineTo' : 'moveTo'](X(x), Y(y))); g.closePath(); g.fill(); any = true;
+      }
+      for (let i = 0; i < coverBase.length; i += 7) {
+        const q = coverBase;
+        g.lineWidth = 2 * q[i + 6] / res;
+        g.beginPath(); g.moveTo(X(q[i]), Y(q[i + 1])); g.lineTo(X(q[i + 2]), Y(q[i + 3])); g.lineTo(X(q[i + 4]), Y(q[i + 5])); g.closePath();
+        g.fill(); g.stroke(); any = true;
+      }
+      for (const r of runs) {
+        const hi = Math.max(...r.pts.map(q => q[2]));
+        g.lineWidth = (r.w + 2 * Math.max(2.5, 0.25 * hi)) / res;
+        g.beginPath();
+        r.pts.forEach((q, k) => g[k ? 'lineTo' : 'moveTo'](X(q[0]), Y(q[1])));
+        g.stroke(); any = true;
+      }
+      if (!any) return;
+      g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
+      const tex = new THREE.CanvasTexture(cv);
+      tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      if (sea.uniforms && sea.uniforms.uCover.value) sea.uniforms.uCover.value.dispose();
+      sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
+    }
+    if (!game) try { waterCover(); } catch (e) { console.warn('water cover:', e); }
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -1348,6 +1432,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         if (far) far.setNight(U.uNight.value);
+        if (outposts && outposts.userData.setNight) outposts.userData.setNight(U.uNight.value); // (a landing's lit windows, outposts.js)
         // The sky after dark as night photographs of a city show it: a deep blue overhead and, low
         // down, the glow its lights put in the air, which the haze at the model's edge takes too.
         // (The sky's own curve lifts a night sky to a grey tenth of the day's, which lit every glass
