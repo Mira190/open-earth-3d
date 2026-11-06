@@ -1012,7 +1012,7 @@
     "note": "After dark: a meteor crosses the sky over Shibuya's lights, from the stars down to the skyline, as a film's trailer would show the city. Every shot is from the air or across the city; none comes near the crowd.",
     "guide": "meteor",
     "title": {"name": "渋谷", "reading": "Shibuya", "line": "星降る夜  ·  A night of falling stars"},
-    "grade": {"tint": [1.0, 0.98, 1.05], "sat": 1.15, "ev": 1.1, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]], "bloom": 2.2},
+    "grade": {"tint": [1.0, 0.98, 1.05], "sat": 1.15, "ev": 1.1, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]], "bloom": 1.3},
     "anime": {"paint": 0.6, "grade": 0.8, "rays": 0, "haze": 0.55, "haze_m": 1400, "haze_rgb": [0.16, 0.15, 0.32], "rim": 0.22, "rim_rgb": [0.55, 0.5, 0.95]},
     "score": {"root": 49, "scale": [0, 2, 4, 5, 7, 9, 11], "chords": [[5, 7, 9], [3, 5, 7], [0, 2, 4], [4, 6, 8]], "motif": [4, 2, 1, 0, 2], "tempo": 66, "voice": "piano", "air": "none", "arp": true, "chirp": false, "title_shot": "stars", "title_at": 0.5, "finale_shot": "skyline", "finale_at": 0.22, "clean": true},
     "shots": [
