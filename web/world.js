@@ -39,8 +39,8 @@ window.OEWorld = (function () {
       return new Blob(parts);
     };
     const getJSON = async u => JSON.parse(await (await fetchAll(await fetch(DATA + u), u)).text());
-    // the buildings, landmarks and game as packed by pipeline/pack.py (a quarter to a third of the JSON's
-    // download, issues 148 and 201) and decoded in a Worker (pack-worker.js), so that the loader's bar
+    // the buildings, landmarks, game, terrain, places and scene as packed by pipeline/pack.py (a quarter to a
+    // third of the JSON's download, issues 148, 201 and 259) and decoded in a Worker (pack-worker.js), so that the loader's bar
     // keeps moving; as JSON where a city has no pack yet or the browser cannot inflate one
     const getPacked = async name => {
       if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
@@ -52,8 +52,11 @@ window.OEWorld = (function () {
       return getJSON(name + '.json');
     };
     onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
-    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getPacked('buildings'), getJSON('places.json'),
-      getPacked('landmarks'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
+    // the terrain grid: int16 heights, as bytes from its pack or as base64 text from its JSON
+    const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
+      return u.byteOffset % 2 ? u.slice().buffer : u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); };
+    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getPacked('scene'), getPacked('buildings'), getPacked('places'),
+      getPacked('landmarks'), getPacked('terrain').then(grid),
       getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;

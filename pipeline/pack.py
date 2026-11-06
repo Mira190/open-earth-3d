@@ -1,17 +1,19 @@
-"""Pack a city's big JSON files into the compact binary form the browser loads (issues 148, 201):
-buildings.json into buildings.bin, and landmarks.json and game.json into landmarks.bin and game.bin.
+"""Pack a city's JSON files into the compact binary form the browser loads (issues 148, 201, 259):
+buildings.json into buildings.bin, and landmarks.json, game.json, terrain.json, places.json and
+scene.json into landmarks.bin, game.bin, terrain.bin, places.bin and scene.bin.
 
     python pipeline/pack.py                 # every pack that is missing or stale
     python pipeline/pack.py shibuya osaka   # these cities' (packed again even when up to date)
     python pipeline/pack.py --check         # exit 1 if any pack is missing or stale
 
-buildings.bin is made for every city; landmarks.bin and game.bin for the live cities (cities/index.json
+buildings.bin is made for every city; the others for the live cities (cities/index.json
 less "parked") and for any city that already has one. The JSON stays the pipeline's source: every step
 reads and writes it. Each pack is derived from it and decodes (web/pack.js) to the very same object, so
 nothing downstream changes, except that
   - the roof meshes' base64 strings (buildings.json "r" columns 6 and 7) arrive as bytes (Uint8Array);
   - the landmark meshes' vertex lists (landmarks.json meshes[].position, .index, .uv) arrive as typed
-    arrays (Float64Array or Int32Array) that a Worker hands over without copying (web/pack-worker.js).
+    arrays (Float64Array or Int32Array) that a Worker hands over without copying (web/pack-worker.js);
+  - the terrain grid (terrain.json "data", base64 int16) arrives as its bytes (Uint8Array).
 
 The format is a generic, lossless columnar encoding of a JSON tree, gzip-wrapped (the browser inflates
 it with DecompressionStream; GitHub Pages does not gzip unknown binary types):
@@ -52,10 +54,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "web", "data")
 BYTES = {"buildings.json": {("r", 6): "<i2", ("r", 7): None},  # base64 columns shipped as bytes: (table, position): element type
          # (and in game.json the height grids and the water mask, which decode back to base64 text, "s64")
-         "game.json": {("terrain", "data"): "<i2", ("patches", "data"): "<i2", ("upper", "data"): "<i2", ("water", "bits"): None}}
+         "game.json": {("terrain", "data"): "<i2", ("patches", "data"): "<i2", ("upper", "data"): "<i2", ("water", "bits"): None},
+         "terrain.json": {("data",): "<i2"}}
+# bytes columns that arrive as bytes (Uint8Array) in a deep pack; the others decode back to base64 text ("s64")
+RAW = {"terrain.json": {("data",)}}
 # numeric lists decoded as typed arrays (list columns flagged "ta"): (list, key) in a list of objects
 TYPED = {"landmarks.json": {("meshes", "position"), ("meshes", "index"), ("meshes", "uv")}}
-NAMES = ("buildings.json", "landmarks.json", "game.json")
+NAMES = ("buildings.json", "landmarks.json", "game.json", "terrain.json", "places.json", "scene.json")
 SMALL = 4096  # a value whose JSON is shorter than this stays JSON
 MAGIC = b"OEPK"
 
@@ -138,7 +143,7 @@ class Writer:
             if path in self.bytes_cols:
                 raw = [base64.b64decode(v) for v in vals]
                 lens, cat, dt = self.ints([len(r) for r in raw]), b"".join(raw), self.bytes_cols[path]
-                s64 = {"s64": 1} if self.deep else {}  # (decoded back to base64 text: nothing that reads it changes)
+                s64 = {"s64": 1} if self.deep and path not in self.raw else {}  # (decoded back to base64 text: nothing that reads it changes)
                 if dt:  # an array of numbers: as integers, so that they can be delta-coded and shuffled
                     return {"t": "b", "len": lens, "e": dt, "c": self.ints(np.frombuffer(cat, dt).tolist()), **s64}
                 return {"t": "b", "len": lens, "o": self.put(cat), "n": len(vals), **s64}
@@ -186,11 +191,11 @@ class Writer:
         return {"j": v}
 
 
-def encode(obj, bytes_cols=(), typed=(), deep=False):
+def encode(obj, bytes_cols=(), typed=(), deep=False, raw=()):
     """deep: objects and lists of objects packed by key too (landmarks.json, game.json); buildings.json
     keeps the layout of its first packs, its top-level lists as columns and the rest as JSON."""
     w = Writer()
-    w.bytes_cols, w.typed, w.deep = dict(bytes_cols), set(typed), deep
+    w.bytes_cols, w.typed, w.deep, w.raw = dict(bytes_cols), set(typed), deep, set(raw)
     keys = {}
     for k, v in obj.items():
         if deep:
@@ -284,7 +289,8 @@ def decode(data):
 def pack_file(src, dst, name="buildings.json"):
     raw = open(src, "rb").read()
     obj = json.loads(raw)
-    w, keys = encode(obj, BYTES.get(name, ()), TYPED.get(name, ()), deep=name != "buildings.json")
+    w, keys = encode(obj, BYTES.get(name, ()), TYPED.get(name, ()), deep=name != "buildings.json",
+                     raw=RAW.get(name, ()))
     head = json.dumps({"format": "oe-pack", "v": 1, "source": name, "sha256": hashlib.sha256(raw).hexdigest(),
                        "keys": keys}, separators=(",", ":"), ensure_ascii=False).encode()
     pre = MAGIC + struct.pack("<I", len(head)) + head
@@ -326,8 +332,8 @@ def parked():
 
 
 def packs(city):
-    """The files of a city that are packed: buildings.json always; landmarks.json and game.json for a
-    live city, or where a pack of them is already there (kept up to date)."""
+    """The files of a city that are packed: buildings.json always; the others (landmarks, game, terrain,
+    places, scene) for a live city, or where a pack of them is already there (kept up to date)."""
     out = []
     for name in NAMES:
         src = os.path.join(DATA, city, name)
