@@ -51,6 +51,11 @@ function measure(tpl) {
     if (y > H.top - 0.2 && y < H.top - 0.05) { H.halfW = Math.max(H.halfW, Math.abs(pos.getX(i))); H.front = Math.max(H.front, pos.getZ(i)); }
   }
   H.cx /= cnt; H.cz /= cnt;
+  // the skull's middle, front to back, where a hat's crown goes: the midpoint of its extent over the brow (the
+  // centroid above leans to wherever the mesh is densest: a face's detail, a fringe, a bun)
+  let zf = -1e9, zb = 1e9;
+  for (let i = 0; i < n; i++) if (reg[i] === REG.head) { const y = pos.getY(i); if (y > H.top - 0.1 && y < H.top - 0.03) { zf = Math.max(zf, pos.getZ(i)); zb = Math.min(zb, pos.getZ(i)); } }
+  H.mid = zf > zb ? (zf + zb) / 2 : H.cz;
   H.eye = tpl.bonePos['Head'].y + 0.15; H.mouth = H.eye - 0.07;   // all the faces share one skull: eyes 15 cm above the head joint
   const Tz = { front: -1e9, back: 1e9, halfW: 0, chestY: tpl.bonePos['Chest'].y };
   const y0 = Tz.chestY - 0.2, y1 = Tz.chestY + 0.1;
