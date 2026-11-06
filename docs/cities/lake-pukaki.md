@@ -182,7 +182,7 @@ filling the frame and cumulus building on the Divide.
 **Night** is the Aoraki Mackenzie International Dark Sky Reserve (Bortle 2):
 - the Milky Way laid on the J2000 galactic plane, brighter and wider toward the bulge in Sagittarius, with dust lanes;
 - the Magellanic Clouds at their real positions (circumpolar, due south);
-- stars from a hashed grid: the positions and counts are not a catalogue;
+- the stars of the Yale Bright Star Catalogue (section 12);
 - the sky turned by sidereal time for the clock.
 
 **The light on the land** (`web/reef/alpine/light.js`):
@@ -266,8 +266,7 @@ Sources read on 2026-11-05:
 - **Checked:** stills on a desktop (1440 × 900) and a phone (390 × 844) at day, dusk and night, in software WebGL2 (Mesa).
 - **Not checked:** a real GPU, WebGPU, Safari or iOS. The planar reflection renders the scene twice; on a slow device
   turn it off with `?mirror=0` and the plants with `?flora=0`.
-- **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway;
-  a real star catalogue; volumetric clouds (issue #204).
+- **Open:** volumetric clouds (issue #204).
 
 ## 9. Picture tiers
 
@@ -366,3 +365,27 @@ near black without one.
 Sources read on 2026-11-06: Scoop, "Duchess of Bedford to dedicate tahr statue" (2014); Wikipedia, *Lake Pukaki* (the
 statue on its boulder by the visitor centre); DOC, the Hooker Valley Track and its new second bridge (2026); DC
 Structures Studio, Hooker Valley pedestrian bridge 2.
+
+## 12. The stars
+
+`web/reef/alpine/stars.js` draws the **Yale Bright Star Catalogue, 5th revised edition** (D. Hoffleit and W. H. Warren
+Jr., Yale University Observatory, 1991): 9,096 stars to about magnitude 6.5, the naked eye's limit under the reserve's
+sky, with their J2000 positions, V magnitudes and B-V colours. `pipeline/stars.py` reads the catalogue's file from the
+Smithsonian Astrophysical Observatory's Telescope Data Center (tdc-www.harvard.edu/catalogs/bsc5.html; the same data
+as CDS / NASA ADC catalogue V/50) into `web/data/sky/bsc5.bin` (91 kB). **Licence:** the catalogue is distributed by
+the astronomical data centres free of charge for any use, with acknowledgement; this is the acknowledgement.
+
+- **Position:** each star is turned by the same matrix as the Milky Way and the Magellanic Clouds (atmos.js
+  `equatorialMatrix`: sidereal time for the clock, the site's latitude and longitude), so the Southern Cross, the
+  Pointers, Orion and the Clouds stand where they are on the date and at the hour. Precession since J2000 (a third of a
+  degree) is left out.
+- **Look:** a sprite a few pixels across for each star, larger for the bright ones, as a photograph spreads them;
+  brightness from the magnitude with the range eased to a photograph's; colour from B-V (Ballesteros 2012 to a
+  temperature, then a blackbody's colour, at 60% of its saturation, as the eye sees star colours).
+- **Through the air:** dimmed by the airmass (Kasten and Young 1989) at 0.2 magnitudes an airmass, twinkling more
+  toward the horizon, and hidden behind the land (depth-tested at 140 km). The lake's mirror shows them.
+- **Under the stars:** the Milky Way's band, its bulge and dust lanes, and the Clouds stay a model on their real
+  positions, with a smooth grain of unresolved stars along the band.
+
+Checked in stills: a November night shows the Clouds high in the south and the Pointers low beside the band; a June
+midnight puts the galactic core overhead.
