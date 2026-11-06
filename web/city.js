@@ -488,6 +488,8 @@ window.OpenEarthCity = async function main(cityId) {
   // tour is over and what there is to do next.
   function endTour() {
     tour.playing = false; tour.done = true; tour.k = 1;
+    // the last stop's sun samples go with it: the end card is about the whole city, not one place
+    clearSamples();
     showProgress();
     tourButtons();
     const cap = $('#caption');
