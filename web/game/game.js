@@ -1181,6 +1181,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let best = null;
     for (const c of cars.C) {
       if (!c.taxi || c.line < 0) continue;
+      if (c.v < 2 && (c.q || c.still > 2 || c.why === 'car')) continue; // (not one standing in a queue, nose to tail: it would sit there with you waiting; one from round the corner instead)
       const d = Math.hypot(c.x - player.x, c.y - player.y);
       if (d > 300 || d < 12) continue;
       const from = { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, plan = planRide(from, pickup);
