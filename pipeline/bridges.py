@@ -26,7 +26,9 @@ it), `rail` ("steel", "stone", "timber" with giboshi caps), `lamps` (lamp posts 
 in proportion), `crown_m` (the deck's rise in the middle), `deck_z` (the deck's height at its two ends, from its
 south or west end, where the road over it is carried up above the banks). Over a ferry's course (game.json "ferries") a deck rises
 in the middle until the city's boats pass under it, with someone standing on the upper deck (`lift_m`). `skip` names bridges to leave out, `widths` the deck of one mapped as lines,
-`deck_min_m` the lowest a deck's ends stand (3.5 m: a Tokyo river's embankment), `min_m2` the smallest outline,
+`deck_min_m` the lowest a deck's ends stand (3.5 m: a Tokyo river's embankment), `road_min_m` the lowest
+ground under the road a deck carries that its end is set to instead (districtkit.road_bank; lower, the
+grid has the water there; deck_min_m when not given), `min_m2` the smallest outline,
 `classes` the water's classes, `form`, `colour`, `stone`, `rail` and `lamps` the city's default for every bridge,
 and `off` leaves them all out.
 """
@@ -167,7 +169,8 @@ def find(ctx, scene=None):
     colours = {n: f["colour"] for n, f in forms.items() if f.get("colour")}
     try:
         found = dk.water_bridges(ctx, classes=tuple(cfg.get("classes", CLASSES)), min_m2=cfg.get("min_m2", 150.0),
-                                 colours=colours, widths=cfg.get("widths"), floor=cfg.get("deck_min_m", 3.5))
+                                 colours=colours, widths=cfg.get("widths"), floor=cfg.get("deck_min_m", 3.5),
+                                 road_floor=cfg.get("road_min_m"))
     except Exception as e:   # no water or no infrastructure layer
         print(f"bridges: none ({e})")
         return []

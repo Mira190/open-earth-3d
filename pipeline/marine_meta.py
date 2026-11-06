@@ -69,6 +69,9 @@ def meta(city):
     # an alpine site's landmark models (web/reef/alpine/landmarks.js): placed at their point, orientation baked in
     if cfg.get("landmarks"):
         out["landmarks"] = [dict(poi(city, dict(L, kind=L.get("kind", "landmark"))), glb=L["glb"]) for L in cfg["landmarks"]]
+    # an alpine site's weather presets (web/reef/alpine/clouds.js: the nor'west arch's edge)
+    if cfg.get("clouds"):
+        out["clouds"] = cfg["clouds"]
     # an alpine site's flora patches (web/reef/alpine/flora.js), e.g. lupin drifts the land cover cannot tell
     if cfg.get("flora"):
         fl = json.loads(json.dumps(cfg["flora"]))

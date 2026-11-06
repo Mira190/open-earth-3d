@@ -4,7 +4,8 @@
 // For the woods planted from the canopy (pipeline/woods.py) against main's mapped trees alone.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/woods_probe.js kyoto 357,2590 100,1880   # x,y in the city's local frame
-// TIER=low takes the small device's share of the woods. The shadow figure is what the sun's shadow
+// TIER=low takes the small device's share of the woods. Each spot also times the frame with the trees
+// hidden, and counts the page's draw calls a frame (shadow passes included) with and without them. The shadow figure is what the sun's shadow
 // map draws again (each caster, every frame the shadows update).
 const { chromium } = require('playwright');
 const [,, city = 'kyoto', ...spots] = process.argv;
@@ -14,6 +15,17 @@ const [,, city = 'kyoto', ...spots] = process.argv;
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
+  // count the draw calls the page makes (every draw on a WebGL context), to read them per frame
+  await p.addInitScript(() => {
+    window.__dc = 0;
+    for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) {
+      if (!C) continue;
+      for (const f of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced']) {
+        const o = C.prototype[f];
+        if (o) C.prototype[f] = function (...a) { window.__dc++; return o.apply(this, a); };
+      }
+    }
+  });
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -28,9 +40,9 @@ const [,, city = 'kyoto', ...spots] = process.argv;
       const f = g.nav.floorAt(x, y, g.nav.terrain(x, y) + 0.5);
       g.player.x = x; g.player.y = y; g.player.z = f ? f.z : 0;
       g.advance(2);
-      const t0 = performance.now();
+      const t0 = performance.now(), d0 = window.__dc;
       for (let i = 0; i < 4; i++) await new Promise(r => requestAnimationFrame(r));
-      const ms = (performance.now() - t0) / 4;
+      const ms = (performance.now() - t0) / 4, calls = (window.__dc - d0) / 4;
       const per = {};
       let tris = 0, shadow = 0;
       g.Wd.world.traverse(o => {
@@ -40,10 +52,17 @@ const [,, city = 'kyoto', ...spots] = process.argv;
         if (o.castShadow) shadow += t * o.count;
         per[t] = (per[t] || 0) + o.count;
       });
+      // the frame without the trees, for what they cost; and the renderer's draw calls with and without them
+      const tm = [];
+      g.Wd.world.traverse(o => { if (o.isInstancedMesh && o.geometry.getAttribute('tc') && o.visible) { tm.push(o); o.visible = false; } });
+      const t1 = performance.now(), d1 = window.__dc;
+      for (let i = 0; i < 4; i++) await new Promise(r => requestAnimationFrame(r));
+      const bare = (performance.now() - t1) / 4, callsBare = (window.__dc - d1) / 4;
+      for (const o of tm) o.visible = true;
       const T = g.Wd.trees, species = T ? T.species.map((sp, k) => `${sp} ${T.count[k]}`).join(', ') : '';
-      return { species, trees: g.Wd.trees ? g.Wd.trees.n : 0, tris: Math.round(tris), shadow: Math.round(shadow), perMeshTriangles: per, ms: Math.round(ms) };
+      return { species, trees: g.Wd.trees ? g.Wd.trees.n : 0, tris: Math.round(tris), shadow: Math.round(shadow), perMeshTriangles: per, ms: Math.round(ms), bare: Math.round(bare), calls, callsBare };
     }, [x, y]);
-    console.log(`${city} [${process.env.TIER || 'high'}] at ${x},${y}: ${r.trees} trees in all; ${(r.tris / 1e6).toFixed(2)} M tree triangles drawn, ${(r.shadow / 1e6).toFixed(2)} M of them into the shadow map (per mesh size: ${JSON.stringify(r.perMeshTriangles)}); ${r.ms} ms a frame`);
+    console.log(`${city} [${process.env.TIER || 'high'}] at ${x},${y}: ${r.trees} trees in all; ${(r.tris / 1e6).toFixed(2)} M tree triangles drawn, ${(r.shadow / 1e6).toFixed(2)} M of them into the shadow map (per mesh size: ${JSON.stringify(r.perMeshTriangles)}); ${r.ms} ms a frame, ${r.bare} ms without the trees; ${r.calls} draw calls a frame (${r.callsBare} without)`);
     if (s === spots[0] || !spots.length) console.log(`  species: ${r.species}`);
   }
   if (logs.length) console.log(logs.join('\n'));

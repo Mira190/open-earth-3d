@@ -918,6 +918,102 @@ Kyoto Gyoen's gravel read slightly blue. Set: the Kyoto Gyoen (gravel), the Koky
 Gaien and Shinjuku Gyoen (lawn), Meiji Jingu (leaf litter, `earth`). Yoyogi's lawn
 waits for Shibuya's opening film.
 
+### Canopy outside the parks, measured heights, the Gion cherry (issue #223)
+
+- **Canopy outside the mapped parks.** `woods.py` planted only inside mapped woods,
+  parks and religious land, so the trees of a campus, of a shrine's or temple's
+  grounds that OSM maps only as halls, and of the streets were missing wherever OSM
+  maps no tree. Outside the mapped woods it now plants where ESA WorldCover 2021's
+  tree class (10 m, CC BY 4.0, the tiles `far_land.py` reads, cached in
+  `data/raw/<id>/worldcover.npz`, with one cell's slack) agrees with the canopy model:
+  in the grounds (Overture land use `school`, `university`, `college`,
+  `kindergarten`, `hospital`, and 45 m round every building Overture classes
+  `shrine`, `temple`, `church` and the like, `fetch_overture.py --only religious`)
+  with their floor and the Poisson fill, as in a park; along the streets and in
+  gardens the canopy's own peaks only (crowns at least 3 m across), off the
+  carriageways and footways, without a floor (the ground there is paving). Overture's
+  places were tried for the shrines and temples and have too few in Japan (21 in
+  Higashiyama); Overpass is not reachable from the build machines.
+  The fill adds 1-4 % to each city's trees: Kyoto 17,294 to 18,266, Higashiyama
+  31,371 to 31,788, Fushimi 31,183 to 31,786, Tokyo 20,921 to 21,045, Shinjuku
+  32,725 to 34,002, Sydney 14,148 to 14,939, Queenstown 152,727 to 154,959. They
+  are wood trees in `places.json` `woods`, so the tiers thin and step them down as
+  the woods' (`keep`, `WOOD_M`), and the cost per tier moves by the same 1-4 %. The
+  canopy model itself has little canopy outside the woods in these cities (in
+  Kyoto 77 ha of canopy over 4 m in 1,500 ha, 68 ha of it in the woods), so the fill
+  is modest; where WorldCover calls a street tree built-up, none is planted.
+
+![The fill outside the parks, at 11:00](images/trees/canopy_fill.jpg)
+
+- **Measured street-tree heights.** OSM rarely gives a tree's height, so
+  `build_scene.py` drew the mapped trees between 7 and 14 m.
+  `pipeline/plateau_veg.py` (run by `game_data.py` after the kerbside tidy) reads
+  PLATEAU 2025's CityGML vegetation (`udx/veg/`, MLIT, CC BY 4.0;
+  `plateau.veg` in `city.json`): each `veg:SolitaryVegetationObject`'s `veg:height`,
+  the crown top above the root ball, at its modelled crown's foot. PLATEAU surveys
+  trees one by one only in its LOD3 road pilot areas: 216 tall trees in five 1 km
+  meshes of the Tokyo map (Chiyoda, Chuo, Minato), 65 in one mesh of Kyoto's, none
+  in Shinjuku's. Their heights are much lower than the guess (Tokyo median 5.4 m,
+  90th percentile 8.1 m; Kyoto 4.7 m and 7.0 m). A mapped tree within 3 m of a
+  surveyed one takes its height (15 in Tokyo, 12 in Kyoto); the other street trees
+  (within 9 m of a road) take a height drawn from the survey's quantiles, the same
+  for the same spot; trees in parks and precincts keep theirs. A map with no survey
+  borrows a neighbour's (`plateau.veg_from`: Shinjuku Tokyo's, Higashiyama and
+  Fushimi Kyoto's). The canopy height model was tried as the measure and sees almost
+  none of them: none of Tokyo's 216, half of Kyoto's with a correlation of 0.4.
+  **Sydney:** the City of Sydney's tree register ("Trees", on Data.NSW and the
+  City's open data site) lists each street and park tree with its species, height,
+  canopy, age and trunk diameter, but its listings give no licence ("not specified"),
+  so it is not used until the City confirms its terms. NSW Spatial Services'
+  airborne lidar (point clouds and 1 m DEMs through the Elvis portal) is the open
+  alternative, through a height-above-ground surface at each mapped tree. Neither is
+  read yet (in the follow-up issue).
+- **The Gion weeping cherry on its own spot.** Maruyama Park's Gion shidarezakura
+  stood on the park's nearest mapped trees, about 17 m off. Higashiyama's
+  `landmark_meshes` now plants it as a landmark tree (`landmarks.json` `trees`,
+  `city.py` `gion_cherry`) at 35.00388 N, 135.78090 E, 12 m tall: the lone round
+  crown in the gravel plaza north-west of the Hyotan pond in the city's aerial
+  photograph. Its two nearest mapped trees, 6 m west in the open plaza, are taken off,
+  and the `trees.areas` circle that makes it a weeping cherry is 3 m across.
+
+### Falling petals (issue #223)
+
+While a cherry variety flowers its petals drift down round the nearest cherries: a
+few in full bloom, most as the bloom goes over (hanafubuki, the last five days of
+the fortnight), none out of flower (`petalFall` in `web/trees.js`, from the same
+dates as the bloom).
+
+- **How engines do it cheaply.** A falling leaf or petal is the textbook particle,
+  and the browser engines offer two ways: a CPU or GPU-state particle system
+  (a three.js falling-leaves demo on freefrontend.com moves each instance's matrix on the CPU every frame; Babylon.js's
+  `GPUParticleSystem` (WebGL2 transform feedback) and the FBO particle systems for React Three Fiber keep the state
+  in a texture and step it on the GPU), or *stateless* particles, whose position, drift
+  and spin at any moment are a pure function of time and each instance's seed, worked out
+  in the vertex shader and recycled with `mod`/`fract` over a lifetime (the approach of
+  Godot's shared "wind driven falling particles" and "falling leaf" shaders). The
+  stateless way needs no per-frame CPU work, no extra render target and no WebGL2
+  feature, so it costs the same on three.js r128 and r186 and on a phone. Adopted:
+  stateless; no code was copied (the technique only).
+- **What it does.** One `Mesh` of an `InstancedBufferGeometry`: a card 10 cm long
+  (a real petal is 1.5 cm, lost beyond a few metres), its obovate outline and notch
+  cut in the fragment shader, white blushed pink at its base, lit by the scene as a
+  `MeshStandardMaterial`. Each card falls for one turn of 6-10 s from a point in one
+  of the 12 nearest shedding crowns (chosen afresh each turn, nearer crowns more often,
+  and kept or skipped by that crown's shedding rate), at the speed that brings it to
+  the ground 1.5 s before its turn ends, tumbling about its own axis, swaying, and
+  carried 1-1.6 m/s down the breeze and spread across it; then it lies flat for the
+  rest of its turn and fades. The crowns (their foot, crown radius and height from the
+  tree's height) are gathered when the trees are sorted, after the camera has moved
+  12 m, within 90 m.
+- **Cost.** 3,000 cards (900 on the light tier), 2 triangles each: 6,000
+  triangles in one draw call, no shadow pass; nothing is drawn out of flower or with
+  no shedding cherry within 90 m. `trees.petals()` reports the cards and crowns for
+  the tools.
+- **After dark** a petal from a lit tree (`yozakura`) catches its uplights while it
+  is within a few metres of the crown.
+
+![Petals round the Gion weeping cherry on 6 April: day, night (lit), and on a phone](images/trees/petals.jpg)
+
 ### The cays' scrub and the clumped Pisonia (issue #165)
 
 The coral cays' beach scrub was drawn as blobs near the camera. Two shared shrubs
