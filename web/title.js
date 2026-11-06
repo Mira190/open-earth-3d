@@ -461,6 +461,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   }
   function select(i, fromUser = false, quiet = false) {
     if (state === 'dive') return;
+    // nothing is picked before the menu shows: a pointer resting where the (still invisible) list
+    // will be would otherwise bring a card up over the opening's title
+    if (!app.classList.contains('menu')) return;
     if (i === sel && fromUser) return;
     sel = i;
     items.forEach((b, k) => b.setAttribute('aria-current', String(k === i)));

@@ -221,6 +221,7 @@
 .ts-top, .ts-menu, .ts-foot { opacity: 0; transition: opacity 1s ease; }
 .ts-menu .ts-eyebrow, .ts-menu li, .ts-menu .ts-hint { opacity: 0; transform: translateX(-16px); }
 .title-app.menu .ts-top, .title-app.menu .ts-menu, .title-app.menu .ts-foot { opacity: 1; }
+.title-app:not(.menu) .ts-top, .title-app:not(.menu) .ts-menu, .title-app:not(.menu) .ts-foot, .title-app:not(.menu) .ts-card { pointer-events: none; } /* hidden during the opening: nothing to hover */
 .title-app.menu .ts-menu .ts-eyebrow, .title-app.menu .ts-menu li, .title-app.menu .ts-menu .ts-hint {
   opacity: 1; transform: none; transition: opacity 0.9s ease, transform 1.1s var(--ease); transition-delay: calc(var(--i, 0) * 70ms + 150ms); }
 .title-app.diving .ts-top, .title-app.diving .ts-menu, .title-app.diving .ts-foot, .title-app.diving .ts-card, .title-app.diving .ts-marks { opacity: 0 !important; transition: opacity 0.45s ease; pointer-events: none; }
