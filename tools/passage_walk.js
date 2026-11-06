@@ -13,6 +13,9 @@ module.exports = async function walkPassages(p) {
     const P = nav.passages || [];
     if (!P.length) return out;
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, mode: pl.mode };
+    // (the traffic off the streets while it walks: the passage's floor and room are what is tried, and a car queued in a
+    // road through a building stood in the walker's way, Sydney's Olympic Drive; it comes back after, elsewhere)
+    const traffic = g.cars.active; g.cars.active = 0; g.advance(0.05);
     // the floor at the passage's own level: the ground, or a surface the city lays over it there (a flight of steps,
     // a loggia's floor: game.json surfaces), within a step of the height of the passage's points there, not a bridge
     // deck that runs high over it
@@ -63,7 +66,7 @@ module.exports = async function walkPassages(p) {
         out.push(r);
       }
     }
-    Object.assign(pl, { mode: keep.mode, x: keep.x, y: keep.y, z: keep.z, h: keep.h, speed: 0 }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    Object.assign(pl, { mode: keep.mode, x: keep.x, y: keep.y, z: keep.z, h: keep.h, speed: 0 }); g.cam.yaw = keep.yaw; g.cars.active = traffic; g.advance(0.2);
     return out;
   });
 };
