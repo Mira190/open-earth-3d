@@ -368,6 +368,22 @@ export async function gametest(api, ctx) {
       else must(G.quest('survey') && !G.quest('survey').available(G), 'no ctx.life: the survey is unavailable, not broken');
     }
 
+    // 11b. swimming and the duck-dive hold the body's pose: the swim offsets are put back each frame, not piled up
+    // (a constant clip track is not rewritten by the mixer, so a piled-up neck turn spun the head)
+    {
+      const sp0 = G.spawn(); let w = null;
+      found: for (let r = 50; r < 3000; r += 25) for (let a = 0; a < 6.28; a += 0.3) { const x = sp0.x + Math.cos(a) * r, n = sp0.north + Math.sin(a) * r, d = G.depth(x, n); if (d > 3 && d < 30) { w = { x, north: n }; break found; } }
+      const neck = player.rig && player.rig.bones && (player.rig.bones.Neck || player.rig.bones.Head);
+      if (w && neck) {
+        player.equip('none'); player.teleport(w.x, w.north, undefined, 0); run(1.5);
+        const turn = secs => { const q0 = neck.quaternion.clone(); run(secs, V({ down: 1 })); return 2 * Math.acos(Math.min(1, Math.abs(q0.dot(neck.quaternion)))); };
+        const a0 = turn(0.05), a1 = (run(1, V({ down: 1 })), turn(0.05));
+        must(S.water && a0 < 0.15 && a1 < 0.15, 'the swimmer\'s head holds still at the surface and on a duck-dive',
+          `${(a0 * 57.3).toFixed(1)} and ${(a1 * 57.3).toFixed(1)} deg per frame, ${player.state} ${S.depthBody.toFixed(1)} m`);
+        const sp = G.spawn(); player.teleport(sp.x, sp.north, undefined, sp.heading); run(0.3);
+      }
+    }
+
     // 12. journal and saving (hear the reef facts first, so there are cited notes on every site)
     const reefer = G.content.npcs.find(n => n.nodes && n.nodes.reef);
     if (reefer) { near(reefer.id, 1.6); run(0.8); G.talk(reefer.id); G.show('reef'); T.drain(); run(0.5); }
