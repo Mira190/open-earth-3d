@@ -874,6 +874,20 @@ pipeline writes. The only city-specific code is landmark geometry in
     a U-turn (at a junction, or at the end of the street it sets out on) only
     where going round the block is over 400 m longer, and the driver makes one
     as a loop across the road ahead of the turning point, not a turn on the spot.
+    A ride stuck in a queue on the piece of road it is on (where no other way
+    round starts) turns round in the road once the car in front hasn't moved
+    for 20 s, on a two-way street with nothing coming: a three-point turn
+    (forward across on full lock, back on the other lock, forward into the far
+    lane; a 5 m turning radius), with a short straight back first where the
+    car in front is close, each pose tried first against the traffic, your car
+    and the kerbs. A queue held at a red or a scramble's walk is waited out.
+  - **Streets kept to the vehicles that fit them (#202):** at the start each
+    street of a lane each way or narrower is measured every 3 m for the widest
+    body its lane has room for (in its lane, half way in, or in the middle, as
+    a car between two facades edges in). A vehicle wider than that isn't put
+    on it and doesn't turn into it when there is another way; a street with
+    room for no vehicle is one a car can't get along, as a road the data runs
+    through a building is.
   - **The crowd and the walls:** a footway that runs into a building (an arcade,
     a station's concourse; the model's buildings are solid) ends at its wall,
     and a walker stepping aside keeps in from a wall beside the footway. Before
@@ -2191,6 +2205,19 @@ There is a screenshot after each step, and it fails on any page error.
 each city's time zone: `GAME_TIME=22:40` (or `YYYY-MM-DDTHH:MM`) pins the page's
 clock to another local hour (`tools/pin_clock.js`), and `GAME_TIME=live` leaves the
 real one, which a city starting at `"time": "live"` would otherwise play at.
+
+The check plays in lockstep (#243): the world is held for the whole run (`__game.hold`), so only the
+check's own `advance()` calls move it, a thirtieth of a second at a time, and a run on a loaded
+machine plays the same traffic as one on an idle machine. Held, the page's frames still draw, but they
+neither step the world nor ease the camera (which the traffic reads for what is in view). Before the
+first step every landmark tile is laid (`nav.layAll`: a query over a box wider than the 96 m that
+`need()` lays still meets the tiles the frames' prefetch has laid, so what the traffic met depended on how
+far that had got), the route network is built (it fills in the roads a car can't get along as it
+goes), and the game's clock is set to `GAME_TIME`'s minute at Play (it is read from a `Date` that runs on
+at the real rate during the load). Dispatch's tie-breaks draw from a seeded run. `GAME_LOCKSTEP=0`
+leaves the frames running the world, as a player's do. `tools/lockstep_probe.js <city> [steps]` loads
+a city twice, steps both the same way with real time between the steps, and compares a digest of the
+crowd, the traffic and the lights after each step.
 
 `tools/traffic_check.js <city> [seconds] [places]` measures the traffic (see
 [Junctions and traffic lights](#junctions-and-traffic-lights)), with the

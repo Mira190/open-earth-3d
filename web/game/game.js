@@ -745,6 +745,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the ways you can actually go, on foot, by road and in the air (route.js), worked out in slices behind the title
   const ways = OERoute.create({ nav, footNet, roadNet, DSM, helipads: G.helipads, lifts: G.lifts || [], ground: lineGround });
   roadNet.avoid = ways.drive;
+  // (a street whose lane has room for no vehicle anywhere along it, by the width pass above, is one a car can't
+  // get along, as one the data runs through a building is: kept off by the traffic and the routes alike, #202)
+  for (let i = 0; i < roadNet.L.length; i++) if (roadNet.fit[i] === 0) ways.drive[i] = 1;
   const roads = OECars.router(roadNet, { avoid: ways.drive }), headlamp = CARS_OK ? OECars.headlamp(world) : null, rq = {};
   // a pose at the kerb of a place on the roads (router.place), facing the way it goes
   function kerbPose(pl, off) {
@@ -1557,12 +1560,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       && Math.abs(st.lat - (st.lane ?? OECars.LANE)) < 0.2 && Math.abs(st.shift) < 0.1 && !st.backoff) {
       o.scrLook = clockT;
       const k = o.scr.findIndex(s => s > st.s + 2), j = k >= 0 ? o.scrJ[k] : null;
-      const walk = j && (j.ph === 3 || (j.nxt === 3 && j.st !== 'g'));
+      const walk = j && !(o.walkRound && o.walkRound.has(j)) && (j.ph === 3 || (j.nxt === 3 && j.st !== 'g')); // (each scramble gone round once at most: a way round that met it again doesn't swing back)
       if (walk && o.scr[k] - st.s < 90 && o.scr[k] - st.s > 12) {
         const left = j.ph === 3 ? Math.max(0, j.green[3] - j.t) + (j.allred || 2) : j.green[3] + (j.allred || 2) * 2 + (j.st === 'y' ? j.amber : 0);
         const pl = placeOnRoute(st), shun = new Set();
-        for (const b of j.arms) shun.add(b.line);
-        for (const l of j.inner || []) shun.add(l);
+        (o.walkRound || (o.walkRound = new Set())).add(j);
+        for (const q of o.walkRound) { for (const b of q.arms) shun.add(b.line); for (const l of q.inner || []) shun.add(l); }
         if (pl) { shun.delete(pl.line); shun.delete(o.pickup.line); }
         const rt = pl ? roads.route(pl, o.pickup, 4000, undefined, shun, true) : null;
         if (rt && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
@@ -1596,7 +1599,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (pl && shun.size && to) {
         o.rerouteT = clockT;
         const left = st.end - st.s, rt = roads.route(pl, to, 6000, undefined, shun);
-        if (rt && rt.len < left + (o.phase === 'driving' ? Math.max(300, left * 0.5) : 300) && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
+        // (coming for you, by the time it takes, the new way's lights and scrambles near you counted as when a ride is
+        // picked, against the time left and a red light's wait for the jam: a way 100 m round that met a scramble's
+        // red made Shibuya's taxi 57 s, #243)
+        const sooner = o.phase !== 'coming' || !rt || planOn(rt, Object.assign({}, pl, { v: st.v }), o.pickup).T < o.drv.timeLeft() + SCR_WAIT * (o.scr || []).filter(q => q > st.s + 2).length + 12;
+        if (rt && sooner && rt.len < left + (o.phase === 'driving' ? Math.max(300, left * 0.5) : 300) && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
           const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: st.v });
           o.drv.leave();
           o.drv = OECars.chauffeur(o.C, rt, opts);
@@ -1609,11 +1616,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }
     // at a junction's line, waiting for a car crossing in it, which stands in the junction for this ride's
-    // nose (actors.js, why 'you'): each waits on the other, so after 2 s the ride backs off a metre or two
+    // nose (actors.js, why 'you'), or stopped behind a car that stands for it in turn: each waits on the
+    // other, so after 2 s the ride backs off a metre or two
     // along its way, if the road behind it is clear, as a driver who pulled up too far does (#243: Shinjuku's
     // taxi stood 30 s so)
-    if (!o.turn && !o.hold && st.v < 0.3 && !st.mv && /^the line/.test(st.why || '') && !(st.backoff > 0)) {
-      const mutual = cars.C.some(c => c.line >= 0 && c.mv && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && Math.hypot(c.x - st.x, c.y - st.y) < 25);
+    if (!o.turn && !o.hold && st.v < 0.3 && !st.mv && !(st.backoff > 0)) {
+      const mutual = cars.C.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c : st.block === c) && Math.hypot(c.x - st.x, c.y - st.y) < 25);
       o.mutJ = mutual ? (o.mutJ || 0) + dt : 0;
       if (o.mutJ > 2) { o.mutJ = -3; st.backoff = 1.5; o.yielded = (o.yielded || 0) + 1; }
     } else if (!(st.backoff > 0)) o.mutJ = 0;
@@ -4106,7 +4114,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // it reads of a ride on the move, as the ride reads it, never one by one rule and the other by another)
       // (on its way to you, a ride is left to its own driver as before, soft: the traffic doesn't wait on it,
       // so that it comes in good time; with you in it, it is read by the rule, never stepped into)
-      const live = o === ride && !st.done && (ride.phase === 'driving' || ride.phase === 'leaving'), soft = o === ride && ride.phase === 'coming' && Math.abs(st.v) >= 0.3;
+      // (and one coming for you, stopped on its way, is not parked either: read so, a car crossing a junction in front
+      // of it stood for it as for a car parked across its bonnet while the ride waited for that car, #243)
+      const live = o === ride && !st.done && (ride.phase === 'driving' || ride.phase === 'leaving' || (ride.phase === 'coming' && !ride.turn)), soft = o === ride && ride.phase === 'coming' && Math.abs(st.v) >= 0.3;
       blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
