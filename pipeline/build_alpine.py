@@ -115,6 +115,19 @@ def encode_heights(q):
     return np.concatenate([r[:, 0], r[:, 1]]).tobytes()
 
 
+def river_snow(cover):
+    """Snow read off a river: white water in a gorge (the Hooker under its lower bridge) is bright and grey, so the
+    colour rule takes it for snow, and on ground steeper than the riverbed rule allows nothing takes it back. A snow
+    pixel with no more than three others in its 5 x 5 window (a snowfield is a patch, not a string) beside a river
+    or riverbed pixel is river (issue #232). In place; returns how many."""
+    snow = cover == 2
+    near_river = ndimage.maximum_filter(np.isin(cover, (1, 6)).astype(np.uint8), size=3).astype(bool)
+    lone = ndimage.uniform_filter(snow.astype(np.float32), size=5) * 25 <= 4.5
+    m = snow & near_river & lone
+    cover[m] = 1
+    return int(m.sum())
+
+
 def mode_filter(c, size=3, keep=()):
     """The commonest class in each size x size window (classes in `keep`, thin lines such as roads
     and streams, are left where they are), so the cover reads as patches, not pixel noise."""
@@ -310,6 +323,7 @@ def main():
     # the cover at twice the ground's pixel (20 m), within a phone's texture size; the classes only steer detail
     cpx = px * 2
     cov2 = mode_filter(cover, 2, keep=(13,))[::2, ::2]
+    print(f"cover: {river_snow(cov2)} snow pixels along the rivers taken for river")
     Image.fromarray(cov2).save(os.path.join(city.out, "cover.png"), optimize=True)
     for stale in ("terrain.bin", "ground.jpg", "habitat.png"):
         p = os.path.join(city.out, stale)

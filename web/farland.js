@@ -47,7 +47,10 @@ window.OEFarLand = (function () {
   // F: load()'s result; frame: {x: [x0, x1], y: [y0, y1]}, the model's own ground inside it;
   // ground(x, y): that ground's height; small: the lighter set; T: the three.js namespace
   // landMin: the lowest the land past the frame may be (a reef site's highest tide), so the sea never laps over it
-  function geometry(F, { frame, ground, small, landMin = -Infinity }, T) {
+  // holes: boxes {x0, x1, y0, y1} past the frame that a tile of finer ground fills (web/outposts.js: Queenstown's
+  // Walter Peak wharf): the grid has lines on their edges and no triangles inside, and surface(x, y) is the far
+  // land's own surface there, which the tile's edge meets exactly
+  function geometry(F, { frame, ground, small, landMin = -Infinity, holes = [] }, T) {
     const { meta, px, n } = F, H = meta.half_m, cx = meta.cx, cy = meta.cy, cell = 2 * H / n;
     const fx0 = frame.x[0], fx1 = frame.x[1], fy0 = frame.y[0], fy1 = frame.y[1];
     // height at a local point (bilinear on the height map; row 0 north)
@@ -63,12 +66,23 @@ window.OEFarLand = (function () {
     // a city whose mountains are its backdrop asks for a finer grid in far.json (mesh)
     const N = (meta.mesh || 256) >> (small ? 1 : 0), P = 1.7;
     const axis = c0 => Array.from({ length: N + 1 }, (_, i) => { const t = 2 * i / N - 1; return c0 + Math.sign(t) * H * Math.pow(Math.abs(t), P); });
-    const xs = axis(cx), ys = axis(cy);
-    const pos = new Float32Array((N + 1) * (N + 1) * 3), inside = new Uint8Array((N + 1) * (N + 1));
+    // a hole's edges as grid lines, in place of the nearest line (the count stays N + 1 a side)
+    const snap = (a, vs) => { for (const v of vs) { let b = 0; for (let i = 1; i < a.length; i++) if (Math.abs(a[i] - v) < Math.abs(a[b] - v)) b = i; a[b] = v; } a.sort((p, q) => p - q); return a; };
+    const xs = snap(axis(cx), holes.flatMap(o => [o.x0, o.x1])), ys = snap(axis(cy), holes.flatMap(o => [o.y0, o.y1]));
+    const inHole = (x, y) => holes.some(o => x > o.x0 + 1e-3 && x < o.x1 - 1e-3 && y > o.y0 + 1e-3 && y < o.y1 - 1e-3);
+    const onHole = (x, y) => holes.some(o => x >= o.x0 - 1e-3 && x <= o.x1 + 1e-3 && y >= o.y0 - 1e-3 && y <= o.y1 + 1e-3);
+    const pos = new Float32Array((N + 1) * (N + 1) * 3), inside = new Uint8Array((N + 1) * (N + 1)), hv = new Float32Array((N + 1) * (N + 1));
     for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
       const x = xs[i], y = ys[N - j], k = j * (N + 1) + i, d = past(x, y);
       let h;
-      if (d <= 0) {
+      if (d > 0 && onHole(x, y)) {
+        // in or on a hole: the far land's own height (kept for surface()); inside it, under the tile and dropped
+        let hm = height(x, y);
+        if (hm > 0) hm = Math.max(hm, landMin);
+        hv[k] = hm;
+        h = inHole(x, y) ? hm - 30 : hm;
+        inside[k] = 1; // (a cell with all four corners on or in the hole lies in it: the grid has lines on its edges)
+      } else if (d <= 0) {
         // under the city's own ground (never seen; it keeps the triangles that cross the frame whole)
         h = ground(x, y) - 12; inside[k] = 1;
       } else {
@@ -79,8 +93,16 @@ window.OEFarLand = (function () {
         if (hm > 0) hm = Math.max(hm, landMin);
         h = (ground(ex, ey) - 2) * (1 - s) + hm * s;
       }
+      if (!inside[k]) hv[k] = h;
       pos[3 * k] = x; pos[3 * k + 1] = h; pos[3 * k + 2] = -y;
     }
+    // the far land's surface at (x, y), bilinear in its grid cell (on a grid line, the mesh's own edge, exactly)
+    const cellOf = (a, v) => { let lo = 0, hi = a.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (a[m] <= v) lo = m; else hi = m; } return lo; };
+    const surface = (x, y) => {
+      const i = cellOf(xs, x), jy = cellOf(ys, y), u = (x - xs[i]) / (xs[i + 1] - xs[i]), v = (y - ys[jy]) / (ys[jy + 1] - ys[jy]);
+      const at = (ii, jj) => hv[(N - jj) * (N + 1) + ii];
+      return (at(i, jy) * (1 - u) + at(i + 1, jy) * u) * (1 - v) + (at(i, jy + 1) * (1 - u) + at(i + 1, jy + 1) * u) * v;
+    };
     const idx = [];
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const a = j * (N + 1) + i, b = a + 1, c = a + N + 1, d = c + 1;
@@ -95,13 +117,13 @@ window.OEFarLand = (function () {
     // the night lights as a texture, from the height map's blue channel (stored as a square root)
     const lights = new Uint8Array(n * n * 4);
     for (let i = 0; i < n * n; i++) { const v = px[4 * i + 2]; lights[4 * i] = lights[4 * i + 1] = lights[4 * i + 2] = v; lights[4 * i + 3] = 255; }
-    return { geo, lights, n, height, tris: idx.length / 3 };
+    return { geo, lights, n, height, surface, tris: idx.length / 3 };
   }
 
   // the city's far land (world.js). PG, PHOTO_GRADE: the city photo's grade, which the colours were measured under
-  function create(F, { frame, ground, small, PG, PHOTO_GRADE }) {
+  function create(F, { frame, ground, small, PG, PHOTO_GRADE, holes = [] }) {
     const { meta } = F, H = meta.half_m, cx = meta.cx, cy = meta.cy;
-    const { geo, lights, n, height, tris } = geometry(F, { frame, ground, small }, THREE);
+    const { geo, lights, n, height, surface, tris } = geometry(F, { frame, ground, small, holes }, THREE);
     const lightTex = new THREE.DataTexture(lights, n, n);
     lightTex.flipY = false; // row 0 north: flipped in the shader
     lightTex.magFilter = THREE.LinearFilter; lightTex.minFilter = THREE.LinearMipmapLinearFilter; lightTex.generateMipmaps = true;
@@ -221,7 +243,7 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
     mesh.frustumCulled = false;
     console.info(`far land: ${tris.toLocaleString()} triangles, relief to ${meta.relief_m[1]} m`);
     return {
-      mesh, height,
+      mesh, height, surface,
       // after dark (world.js setSun, U.uNight 0..1)
       setNight(k) { night.value = k; mat.emissiveIntensity = k > 0 ? 0.05 : 0; },
       dispose() { geo.dispose(); mat.dispose(); lightTex.dispose(); col.dispose(); },

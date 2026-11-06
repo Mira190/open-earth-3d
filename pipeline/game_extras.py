@@ -1,7 +1,7 @@
 """Refresh what a city's landmark builders give its game, in a built web/data/<city>/game.json, without
 the raw downloads a full pipeline/game_data.py run needs: the walkable surfaces (city.py
 game_surfaces(scene)), and the spots to look at closely, the conversations to overhear and the things
-to walk up to (city.json game "spots", "chatter", "close", then city.py game_extras(scene)). They are
+to walk up to and the lifts (city.json game "spots", "chatter", "close", "lifts", then city.py game_extras(scene)). They are
 built from scene.json alone, so a change to a builder lands in the game in seconds.
 
   close   things people come to see up close, each {name, at: [x, y, z], from: [x, y], within, keep}:
@@ -20,14 +20,15 @@ import os
 import bridges
 from cityctx import city_args
 
-KEYS = ("spots", "chatter", "close", "keep_off")  # (city.json's own first, then the builders')
+KEYS = ("spots", "chatter", "close", "keep_off", "lifts")  # (city.json's own first, then the builders')
 
 
 def apply(C, scene, out):
     """Set out's surfaces and KEYS from the city's hooks and city.json, as game_data.py builds them."""
     gcfg = C.cfg.get("game", {})
     hook = C.hook("game_surfaces")
-    out["surfaces"] = (hook(scene) if hook else []) + bridges.surfaces(scene)   # and the bridges over the water (bridges.py)
+    out["surfaces"] = ((hook(scene) if hook else []) + bridges.surfaces(scene)   # and the bridges over the water (bridges.py)
+                       + [s for s in out.get("surfaces", []) if s.get("outpost")])  # and an outpost's wharf (pipeline/outposts.py)
     for k in KEYS:
         out.pop(k, None)
         if k in gcfg:

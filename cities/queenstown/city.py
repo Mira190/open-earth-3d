@@ -14,7 +14,7 @@ pipeline/survey.py), so no building needs a height fix here. What the data canno
                     Peninsula and the Remarkables. A timber deck on a steel frame with a glass
                     balustrade, 17 m over the luge track. Its place and level are measured (DECK:
                     the 2026 aerial photographs and the 2021 LiDAR); the game walks it as a strip
-                    and the player starts on it.
+                    and the player starts on it. A glass lift (LIFT) joins it to the luge track.
 """
 import json
 import math
@@ -34,6 +34,15 @@ CABLE_R = 0.026      # the haul rope, 52 mm
 # its length and depth (metres), and its level (z, from the LiDAR; without it, the ground at its back edge).
 DECK = {"at": (-975.0, 478.1), "along_deg": 49.5, "length": 26.0, "depth": 3.6, "z": 474.6}
 
+# The way up to the deck. The real deck is reached through the restaurant, and the extension that opened
+# in March 2026 has a glass lift (Naylor Love's project page: a glass elevator on a structural steel frame;
+# the Otago Daily Times: five levels from the lift level up to the deck). Neither gives the lift's place,
+# so it is drawn where the deck's south-west end meets the luge track, 15 m below: a glass shaft on a
+# steel frame, its door to the luge track on its south-west side, its top door onto the deck. u: along the
+# deck from its centre (past its south-west end), side: the shaft's width (m), m_per_min: a passenger
+# lift's 1 m/s.
+LIFT = {"u": -14.9, "side": 2.4, "m_per_min": 60}
+
 MATERIALS = {
     "skyline_wall": {"color": "#3e4347", "roughness": 0.55, "metalness": 0.2},
     "skyline_glass": {"color": "#26343c", "roughness": 0.08, "metalness": 0.5, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 3.6,
@@ -42,6 +51,7 @@ MATERIALS = {
     "deck_timber": {"color": "#8d6c4c", "roughness": 0.85, "pattern": "granite", "joints_m": [0.14, 2.4]},
     "deck_steel": {"color": "#3b4045", "roughness": 0.5, "metalness": 0.6},
     "deck_glass": {"color": "#3d5158", "roughness": 0.04, "metalness": 0.0, "opacity": 0.12},
+    "skyline_lift_cab": {"color": "#9aa3a8", "roughness": 0.3, "metalness": 0.6},
     "gondola_steel": {"color": "#59636b", "roughness": 0.45, "metalness": 0.7},
     "gondola_sheave": {"color": "#c8cdd0", "roughness": 0.35, "metalness": 0.75},
     "gondola_cable": {"color": "#2b2e31", "roughness": 0.4, "metalness": 0.8},
@@ -281,6 +291,60 @@ def deck_meshes(ground):
     return [timber, steel, glass]
 
 
+def lift_frame(ground):
+    """The lift's centre, the deck's axes and level, the ground at its foot and its two stops ([x, y, z])."""
+    c, ax, out, z = deck_frame(ground)
+    q = c + ax * LIFT["u"]
+    h = LIFT["side"] / 2
+    foot_xy = q - ax * (h + 1.2)                        # outside its door on the south-west side, along the luge track
+    top_xy = c + ax * (-DECK["length"] / 2 + 1.2)       # on the deck, by its south-west end
+    g = float(min(ground(*(q + ax * a + out * b)) for a in (-h, h) for b in (-h, h)))
+    foot = [round(float(foot_xy[0]), 2), round(float(foot_xy[1]), 2), round(float(ground(*foot_xy)), 2)]
+    top = [round(float(top_xy[0]), 2), round(float(top_xy[1]), 2), round(float(z), 2)]
+    return q, ax, out, z, g, foot, top
+
+
+def lift_meshes(ground):
+    q, ax, out, z, g, foot, top = lift_frame(ground)
+    h = LIFT["side"] / 2
+    steel = Mesh("skyline_lift_frame", "deck_steel", False)
+    glass = Mesh("skyline_lift_glass", "deck_glass", False)
+    roof = Mesh("skyline_lift_roof", "skyline_roof", False)
+    cab = Mesh("skyline_lift_cab", "skyline_lift_cab", False)
+    P = lambda a, b, zz: [*(q + ax * a + out * b), zz]
+    z0, z1 = g - 0.3, z + 3.2                             # from its pit to the machine head over the deck
+    for a in (-h, h):
+        for b in (-h, h):
+            steel.box(P(a, b, z0), P(a, b, z1), 0.16, 0.16)  # the corner posts
+    for zz in np.arange(g + 3.0, z1, 3.0):                    # a ring beam every 3 m
+        for (a0, b0), (a1, b1) in (((-h, -h), (h, -h)), ((h, -h), (h, h)), ((h, h), (-h, h)), ((-h, h), (-h, -h))):
+            steel.box(P(a0, b0, zz), P(a1, b1, zz), 0.1, 0.12)
+    for (a0, b0), (a1, b1) in (((-h, -h), (h, -h)), ((h, -h), (h, h)), ((h, h), (-h, h)), ((-h, h), (-h, -h))):
+        glass.quad(P(a0, b0, g), P(a1, b1, g), P(a1, b1, z1 - 0.4), P(a0, b0, z1 - 0.4))
+        glass.quad(P(a1, b1, g), P(a0, b0, g), P(a0, b0, z1 - 0.4), P(a1, b1, z1 - 0.4))
+    roof.box(P(0, 0, z1 - 0.4), P(0, 0, z1 + 0.15), LIFT["side"] + 0.5, LIFT["side"] + 0.5, up=(*ax, 0))
+    # the cab, waiting at the deck, and the door frames at the foot and onto the deck
+    cab.box(P(0, 0, z + 0.05), P(0, 0, z + 2.4), LIFT["side"] - 0.3, LIFT["side"] - 0.3, up=(*ax, 0))
+    for zz, a in ((g, -h), (z, h)):  # the door at the foot faces south-west, the one at the top onto the deck
+        steel.box(P(a, -0.6, zz), P(a, -0.6, zz + 2.3), 0.12, 0.12, up=(*ax, 0))
+        steel.box(P(a, 0.6, zz), P(a, 0.6, zz + 2.3), 0.12, 0.12, up=(*ax, 0))
+        steel.box(P(a, -0.6, zz + 2.3), P(a, 0.6, zz + 2.3), 0.14, 0.12)
+    # a landing from the shaft's top door onto the deck's end
+    steel.box(P(h, 0, z - 0.3), P(h + 1.0, 0, z - 0.3), 1.3, 0.3)
+    return [steel, glass, roof, cab]
+
+
+def game_extras(scene):
+    """The lift between the luge track and the deck (web/game/game.js rideLift; route.js walks through it)."""
+    from archkit import Terrain
+    q, ax, out, z, g, foot, top = lift_frame(Terrain("queenstown"))
+    face_out = [round(float(out[0]), 3), round(float(out[1]), 3)]
+    face_sw = [round(float(-ax[0]), 3), round(float(-ax[1]), 3)]
+    return {"lifts": [{"id": "skyline-lift", "name": "Skyline glass lift", "line": "SKYLINE GLASS LIFT · LUGE TRACK → DECK", "m_per_min": LIFT["m_per_min"],
+                       "stops": [{"name": "The luge track", "at": foot, "face": face_sw},
+                                 {"name": "The Skyline deck", "at": top, "face": face_out}]}]}
+
+
 def game_surfaces(scene):
     from archkit import Terrain
     t = Terrain("queenstown")
@@ -311,6 +375,7 @@ def landmark_meshes(scene):
     if G:
         meshes += gondola_meshes(G, T)
     meshes += deck_meshes(T)
+    meshes += lift_meshes(T)
     for M in massing_data().values():
         meshes += terraces(M)
     heritage = _sibling("heritage")

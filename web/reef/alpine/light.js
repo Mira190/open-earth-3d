@@ -75,5 +75,20 @@ export function createLight(renderer, d, env, atm, heightTex) {
     }
     return c;
   };
-  return { u, update, sunVis, shade, rt, SW, SH };
+  // the same march on the CPU at one point (x east, north), over heightAt(x, north): the sun's visibility there, 0..1.
+  // The cars, the landmark models and the people take the scene's sun light (main.js), not this pass, so main.js
+  // scales that light by the visibility where the viewer is: down in a valley's shadow at golden hour they stand in
+  // it as the slope round them does, not sunlit
+  function visAt(x, north, heightAt) {
+    const s = u.sunDir.value, horiz = Math.max(Math.hypot(s.x, s.z), 1e-4), dx = s.x / horiz, dz = s.z / horiz, tanE = s.y / horiz;
+    const h0 = heightAt(x, north) + 2.0;
+    let margin = 1, dist = 45.0;
+    for (let i = 0; i < STEPS; i++) {
+      const hx = heightAt(x + dx * dist, north - dz * dist);
+      if (hx != null && Number.isFinite(hx)) margin = Math.min(margin, (h0 + tanE * dist - dist * dist / (2 * 6371e3 * 1.15) - hx) / dist);
+      dist *= 1.2;
+    }
+    return THREE.MathUtils.smoothstep(margin, -0.012, 0.012) * THREE.MathUtils.smoothstep(s.y, -0.02, 0.03);
+  }
+  return { u, update, sunVis, shade, rt, SW, SH, visAt };
 }
