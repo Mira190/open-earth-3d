@@ -17,11 +17,13 @@
    4.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 7087461,
-   "game": 10878054
+   "model": 4428002,
+   "game": 5330958
   }
  },
  {
@@ -41,11 +43,13 @@
    4.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 5570932,
-   "game": 8849219
+   "model": 2276519,
+   "game": 2708530
   }
  },
  {
@@ -69,11 +73,13 @@
    5.0
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 19430412,
-   "game": 22440605
+   "model": 6863980,
+   "game": 7246258
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -106,11 +112,13 @@
    1.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 5078865,
-   "game": 5626953
+   "model": 1551586,
+   "game": 1670072
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
@@ -137,11 +145,13 @@
    1.3
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 2850805,
-   "game": 3290656
+   "model": 1108250,
+   "game": 1203684
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
@@ -168,11 +178,13 @@
    2.6
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 4101642,
-   "game": 4778742
+   "model": 1203944,
+   "game": 1342431
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
@@ -198,11 +210,13 @@
    4.8
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 11241826,
-   "game": 14693704
+   "model": 2501407,
+   "game": 2977699
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -793,11 +807,13 @@
    4.0
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 8957686,
-   "game": 12517056
+   "model": 4994484,
+   "game": 5544724
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1374,11 +1390,13 @@
    3.1
   ],
   "packed": [
-   "buildings"
+   "buildings",
+   "landmarks",
+   "game"
   ],
   "load_bytes": {
-   "model": 7725369,
-   "game": 10589419
+   "model": 3219200,
+   "game": 3662511
   },
   "group_meta": {
    "native": "\u6771\u4eac",

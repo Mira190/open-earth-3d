@@ -1,12 +1,17 @@
-"""Pack a city's buildings.json into buildings.bin, the compact binary form the browser loads (issue 148).
+"""Pack a city's big JSON files into the compact binary form the browser loads (issues 148, 201):
+buildings.json into buildings.bin, and landmarks.json and game.json into landmarks.bin and game.bin.
 
-    python pipeline/pack.py                 # every city whose buildings.bin is missing or stale
-    python pipeline/pack.py shibuya osaka   # these cities (packed again even when up to date)
-    python pipeline/pack.py --check         # exit 1 if any city's buildings.bin is missing or stale
+    python pipeline/pack.py                 # every pack that is missing or stale
+    python pipeline/pack.py shibuya osaka   # these cities' (packed again even when up to date)
+    python pipeline/pack.py --check         # exit 1 if any pack is missing or stale
 
-buildings.json stays the pipeline's source: every step reads and writes it. buildings.bin is derived
-from it and decodes (web/pack.js) to the very same object, so nothing downstream changes, except that
-the roof meshes' base64 strings ("r" columns 6 and 7) arrive as bytes (Uint8Array) instead.
+buildings.bin is made for every city; landmarks.bin and game.bin for the live cities (cities/index.json
+less "parked") and for any city that already has one. The JSON stays the pipeline's source: every step
+reads and writes it. Each pack is derived from it and decodes (web/pack.js) to the very same object, so
+nothing downstream changes, except that
+  - the roof meshes' base64 strings (buildings.json "r" columns 6 and 7) arrive as bytes (Uint8Array);
+  - the landmark meshes' vertex lists (landmarks.json meshes[].position, .index, .uv) arrive as typed
+    arrays (Float64Array or Int32Array) that a Worker hands over without copying (web/pack-worker.js).
 
 The format is a generic, lossless columnar encoding of a JSON tree, gzip-wrapped (the browser inflates
 it with DecompressionStream; GitHub Pages does not gzip unknown binary types):
@@ -24,7 +29,12 @@ else a column in the blob. A column of N values is one of
                                            "e" (element type, "<i2") and "c" (int column) the elements
     {"t": "l", "len": int col, "c": col}  lists of one scalar type, flattened
     {"t": "r", "len": int col, "c": [col for each position]}   rows (lists of mixed types), by position
+    {"t": "d", "n", "k": {key: {"has": int col (absent: every row has it), "c": col}}}
+                                          a list of objects, by key: each key's values in the rows that have it
+    {"t": "one", "c": col}                a single value (a long base64 string) as a column of one
     {"t": "j", "v": [...]}                anything else, as JSON
+A top-level value is {"j": value} when small, else a column, or {"t": "o", "k": {key: descriptor}} for an
+object, each of its values described in the same way.
 Every pack is decoded again here and compared with the source before it is written.
 """
 import base64
@@ -40,7 +50,13 @@ import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "web", "data")
-BYTES = {"buildings.json": {("r", 6): "<i2", ("r", 7): None}}  # base64 columns shipped as bytes: (table, position): element type
+BYTES = {"buildings.json": {("r", 6): "<i2", ("r", 7): None},  # base64 columns shipped as bytes: (table, position): element type
+         # (and in game.json the height grids and the water mask, which decode back to base64 text, "s64")
+         "game.json": {("terrain", "data"): "<i2", ("patches", "data"): "<i2", ("upper", "data"): "<i2", ("water", "bits"): None}}
+# numeric lists decoded as typed arrays (list columns flagged "ta"): (list, key) in a list of objects
+TYPED = {"landmarks.json": {("meshes", "position"), ("meshes", "index"), ("meshes", "uv")}}
+NAMES = ("buildings.json", "landmarks.json", "game.json")
+SMALL = 4096  # a value whose JSON is shorter than this stays JSON
 MAGIC = b"OEPK"
 
 
@@ -122,9 +138,10 @@ class Writer:
             if path in self.bytes_cols:
                 raw = [base64.b64decode(v) for v in vals]
                 lens, cat, dt = self.ints([len(r) for r in raw]), b"".join(raw), self.bytes_cols[path]
+                s64 = {"s64": 1} if self.deep else {}  # (decoded back to base64 text: nothing that reads it changes)
                 if dt:  # an array of numbers: as integers, so that they can be delta-coded and shuffled
-                    return {"t": "b", "len": lens, "e": dt, "c": self.ints(np.frombuffer(cat, dt).tolist())}
-                return {"t": "b", "len": lens, "o": self.put(cat), "n": len(vals)}
+                    return {"t": "b", "len": lens, "e": dt, "c": self.ints(np.frombuffer(cat, dt).tolist()), **s64}
+                return {"t": "b", "len": lens, "o": self.put(cat), "n": len(vals), **s64}
             tab, idx = {}, []
             for v in vals:
                 idx.append(tab.setdefault(v, len(tab)))
@@ -134,19 +151,51 @@ class Writer:
             lens = self.ints([len(v) for v in vals])
             if flat and (all(_is_num(x) for x in flat) or all(type(x) is str for x in flat)):
                 return {"t": "l", "len": lens, "c": self.column(flat)}
+            if flat and all(_is_num(x) for x in flat) and path in self.typed:
+                return {"t": "l", "len": lens, "c": self.column(flat), "ta": 1}
             width = max(len(v) for v in vals)
             if width <= 64:
                 cols = [self.column([v[j] for v in vals if len(v) > j], (path[0] if path else None, j)) for j in range(width)]
                 return {"t": "r", "len": lens, "c": cols}
+        if self.deep and vals and all(type(v) is dict for v in vals):
+            keys = {}
+            for v in vals:
+                for k in v:
+                    keys.setdefault(k, None)
+            out = {}
+            for k in keys:
+                has = [k in v for v in vals]
+                sub = [v[k] for v in vals if k in v]
+                d = {"c": self.column(sub, (path[-1] if path else None, k))}
+                if not all(has):
+                    d["has"] = self.ints([int(h) for h in has])
+                out[k] = d
+            return {"t": "d", "n": len(vals), "k": out}
         return {"t": "j", "v": vals}
 
+    def value(self, v, path):
+        """A top-level value, or one inside an object: JSON when small, else a column or an object."""
+        if len(json.dumps(v, separators=(",", ":"))) < SMALL:
+            return {"j": v}
+        if type(v) is str and path[-2:] in self.bytes_cols:  # one base64 string: a column of one
+            return {"t": "one", "c": self.column([v], path[-2:])}
+        if type(v) is dict:
+            return {"t": "o", "k": {k: self.value(x, path + (k,)) for k, x in v.items()}}
+        if type(v) is list and len(v) >= 2:
+            return self.column(v, path)
+        return {"j": v}
 
-def encode(obj, bytes_cols=()):
+
+def encode(obj, bytes_cols=(), typed=(), deep=False):
+    """deep: objects and lists of objects packed by key too (landmarks.json, game.json); buildings.json
+    keeps the layout of its first packs, its top-level lists as columns and the rest as JSON."""
     w = Writer()
-    w.bytes_cols = dict(bytes_cols)
+    w.bytes_cols, w.typed, w.deep = dict(bytes_cols), set(typed), deep
     keys = {}
     for k, v in obj.items():
-        if type(v) is list and len(v) >= 64:
+        if deep:
+            keys[k] = w.value(v, (k,))
+        elif type(v) is list and len(v) >= 64:
             keys[k] = w.column(v, (k,))
         else:
             keys[k] = {"j": v}
@@ -201,9 +250,25 @@ def _dec(d, blob):
         lens = _dec_ints(d["len"], blob)
         cols = [iter(_dec(c, blob)) for c in d["c"]]
         return [[next(cols[j]) for j in range(n)] for n in lens]
+    if t == "d":
+        out = [{} for _ in range(d["n"])]
+        for k, kd in d["k"].items():
+            vals = iter(_dec(kd["c"], blob))
+            rows = range(d["n"]) if "has" not in kd else [i for i, h in enumerate(_dec_ints(kd["has"], blob)) if h]
+            for i in rows:
+                out[i][k] = next(vals)
+        return out
+    if t == "o":
+        return {k: _val(x, blob) for k, x in d["k"].items()}
+    if t == "one":
+        return _dec(d["c"], blob)[0]
     if t == "j":
         return d["v"]
     raise ValueError(t)
+
+
+def _val(d, blob):
+    return d["j"] if "j" in d else _dec(d, blob)
 
 
 def decode(data):
@@ -213,13 +278,13 @@ def decode(data):
     head = json.loads(data[8:8 + hl])
     start = 8 + hl + (-(8 + hl)) % 8
     blob = data[start:]
-    return head, {k: d["j"] if "j" in d else _dec(d, blob) for k, d in head["keys"].items()}
+    return head, {k: _val(d, blob) for k, d in head["keys"].items()}
 
 
 def pack_file(src, dst, name="buildings.json"):
     raw = open(src, "rb").read()
     obj = json.loads(raw)
-    w, keys = encode(obj, BYTES.get(name, ()))
+    w, keys = encode(obj, BYTES.get(name, ()), TYPED.get(name, ()), deep=name != "buildings.json")
     head = json.dumps({"format": "oe-pack", "v": 1, "source": name, "sha256": hashlib.sha256(raw).hexdigest(),
                        "keys": keys}, separators=(",", ":"), ensure_ascii=False).encode()
     pre = MAGIC + struct.pack("<I", len(head)) + head
@@ -256,6 +321,23 @@ def cities():
     return sorted(c for c in os.listdir(DATA) if os.path.exists(os.path.join(DATA, c, "buildings.json")))
 
 
+def parked():
+    return set(json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8")).get("parked", []))
+
+
+def packs(city):
+    """The files of a city that are packed: buildings.json always; landmarks.json and game.json for a
+    live city, or where a pack of them is already there (kept up to date)."""
+    out = []
+    for name in NAMES:
+        src = os.path.join(DATA, city, name)
+        if not os.path.exists(src):
+            continue
+        if name == "buildings.json" or city not in parked() or os.path.exists(src[:-5] + ".bin"):
+            out.append(name)
+    return out
+
+
 def update_index(ids):
     """cities.json load_bytes: what the loader downloads, now with buildings.bin (build_scene.write_index)."""
     sys.path.insert(0, os.path.join(ROOT, "pipeline"))
@@ -269,20 +351,21 @@ def main(argv):
     for c in named:
         if c not in cities():
             raise SystemExit(f"no buildings.json for {c}")
+    every = [(c, n) for c in (named or cities()) for n in packs(c)]
     if check:
-        bad = [(c, s) for c in (named or cities()) if (s := stale(c))]
-        for c, s in bad:
-            print(f"FAIL pack   {c}: buildings.bin {s}; run python pipeline/pack.py {c}")
+        bad = [(c, n, s) for c, n in every if (s := stale(c, n))]
+        for c, n, s in bad:
+            print(f"FAIL pack   {c}: {n[:-5]}.bin {s}; run python pipeline/pack.py {c}")
         if not bad:
-            print(f"ok   pack   {len(named or cities())} cities, buildings.bin matches buildings.json")
+            print(f"ok   pack   {len(every)} packs in {len(named or cities())} cities match their JSON")
         return 1 if bad else 0
-    todo = named or [c for c in cities() if stale(c)]
-    for c in todo:
-        src = os.path.join(DATA, c, "buildings.json")
-        raw, gz, out = pack_file(src, src[:-5] + ".bin")
-        print(f"{c}: buildings.json {raw / 1e6:.2f} MB ({gz / 1e6:.2f} MB gzipped) -> buildings.bin {out / 1e6:.2f} MB")
+    todo = every if named else [(c, n) for c, n in every if stale(c, n)]
+    for c, n in todo:
+        src = os.path.join(DATA, c, n)
+        raw, gz, out = pack_file(src, src[:-5] + ".bin", n)
+        print(f"{c}: {n} {raw / 1e6:.2f} MB ({gz / 1e6:.2f} MB gzipped) -> {n[:-5]}.bin {out / 1e6:.2f} MB")
     if todo:
-        update_index(todo)
+        update_index([c for c, _ in todo])
     return 0
 
 

@@ -39,21 +39,22 @@ window.OEWorld = (function () {
       return new Blob(parts);
     };
     const getJSON = async u => JSON.parse(await (await fetchAll(await fetch(DATA + u), u)).text());
-    // the buildings as packed by pipeline/pack.py (a quarter of the JSON's download, issue 148), or as
-    // JSON where a city has no pack yet or the browser cannot inflate one
-    const getBuildings = async () => {
-      if (window.OEPack && OEPack.supported() && (entry.packed || []).includes('buildings')) {
+    // the buildings, landmarks and game as packed by pipeline/pack.py (a quarter to a third of the JSON's
+    // download, issues 148 and 201) and decoded in a Worker (pack-worker.js), so that the loader's bar
+    // keeps moving; as JSON where a city has no pack yet or the browser cannot inflate one
+    const getPacked = async name => {
+      if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
-          const r = await fetch(DATA + 'buildings.bin');
-          if (r.ok) return await OEPack.decode(await (await fetchAll(r, 'buildings.bin')).arrayBuffer());
-        } catch (e) { console.warn('buildings.bin:', e); }
+          const r = await fetch(DATA + name + '.bin');
+          if (r.ok) return await (OEPack.decodeIn || OEPack.decode)(await (await fetchAll(r, name + '.bin')).arrayBuffer());
+        } catch (e) { console.warn(`${name}.bin:`, e); }
       }
-      return getJSON('buildings.json');
+      return getJSON(name + '.json');
     };
     onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
-    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getBuildings(), getJSON('places.json'),
-      getJSON('landmarks.json'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
-      getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null),
+    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getPacked('buildings'), getJSON('places.json'),
+      getPacked('landmarks'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
+      getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;
     // buildings demolished since the survey (landmarks.json "demolished": solid indices): not drawn, and
@@ -1256,7 +1257,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-      g.setIndex(m.index);
+      g.setIndex(Array.isArray(m.index) ? m.index : new THREE.BufferAttribute(new Uint32Array(m.index.buffer, m.index.byteOffset, m.index.length), 1)); // (typed: landmarks.bin)
       if (m.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
       g.computeVertexNormals();
       return g;

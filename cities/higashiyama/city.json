@@ -51,6 +51,7 @@
     "min_area_m2": 5000,
     "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
   },
+  "roofs": {"palette": {"清水寺": "#c4482a"}, "note": "pipeline/arcades.py: a precinct whose roofs on posts and gates take its own colour (Kiyomizu-dera's gates and pavilions are vermilion, though it is a temple)"},
   "trees": {
     "mix": {
       "zelkova": 0.2,

@@ -582,6 +582,52 @@ pipeline writes. The only city-specific code is landmark geometry in
     blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 24
     in Kyoto, 86 in Osaka, 55 in Shibuya, 20 in Tokyo and a few elsewhere are
     canopies now.
+  - **Roofs on posts** (`pipeline/arcades.py`, #245 and #246): every other
+    OpenStreetMap `building=roof` (a park's shelter, a station's or a petrol
+    station's canopy, a shrine's open pavilion) stands on posts, unless it lies
+    inside a taller building. Each run then finishes the roofs on posts and the
+    gates, on what an earlier run opened:
+    - **Colour.** OSM `building:colour` when mapped; else the precinct's palette
+      (`city.json` `roofs.palette`, by precinct name: Kiyomizu-dera is a temple,
+      but its gates and pavilions are vermilion); else a shrine's vermilion
+      (`#c4482a`, the torii models' `torii_shu`) in a Shinto precinct or on a
+      `building=shrine`, a temple's aged timber (`#6a5444`) in a Buddhist one or
+      on a `building=temple`. Bicycle stands, smoking shelters and the like stay
+      painted steel. The tags and the precincts (`amenity=place_of_worship`,
+      `landuse=religious`, with their religion) come from the OpenStreetMap API
+      by `pipeline/roof_osm.py` into `cities/<id>/roofs_osm.json` (ODbL); the
+      Overpass mirrors refuse this environment. Higashiyama: Kiyomizu's Nio-mon,
+      West Gate and bell tower and Yasaka's pavilions vermilion, Kennin-ji's and
+      Chion-in's gates timber; Fushimi Inari's halls vermilion; Shinjuku's
+      Hanazono-jinja; the Philosopher's Path's 120 roofs in temple precincts timber.
+    - **Height.** A pavilion under 400 m² whose top is PLATEAU's, a lidar's or a
+      guess (all of which take a tree over a small roof as its top) is no taller
+      than its kind stands over the highest ground under it: a bell tower
+      4.5 m + 0.6 m per metre of the square root of its area, a font's pavilion
+      3 m + 0.4, a dance stage or votive hall 4.5 m + 0.45, anything else
+      4 m + 0.5. A pitched roof drops with it, whole while its eaves stay at least
+      55% of the way up, shallower when they would not. Higashiyama's bell
+      towers stood 15-21 m tall over 16-25 m² and stand 7-9 m; Shinjuku's
+      shrine fonts stood 18.5 m. Gates keep their measured tops.
+    - **Inner posts.** A roof over 400 m² stands on rows of posts inside its
+      outline too (`buildings.json` `inner_posts`, by building, which
+      `web/buildings.js` draws and `web/game/nav.js` walks round): one row down
+      the middle of a canopy narrower than 24 m (a platform's, a bus stand's),
+      else rows every 10 m across, at 10 m along; 1.5 m inside the edge, 4 m off
+      a road's centre line, 1.2 m off a footway and not inside another building.
+      Tokyo Station's 5,000 m² platform canopies have 24-36 each.
+    - **Closed roofs.** A roof the city names (`city.json` `roofs.closed`) is a
+      building again: Shinjuku's Sumitomo Triangle Plaza (r11664668) is a glass
+      atrium closed on every side, opened in 2020 between the Sumitomo Building's
+      wings, and stands as glass from the ground.
+    - **Low structures.** A building under 2.6 m with no name or class (a vent's
+      or a stair's cover, a shed, a kiosk's back) and a subway entrance's cover
+      under 4.5 m are drawn plain, without a storey of windows (Marunouchi's
+      solid 18776, a 2.4 m block beside Tokyo Station's M8 exit, and the exit
+      itself).
+
+    ![Roofs on posts at day, dusk and night: Yasaka's dance stage, a bell tower in Higashiyama, Tokyo Station's platform canopies, Shinjuku's Triangle Plaza closed in glass, Kyoto Station's bus stands](images/roofs/open-roofs.jpg)
+    ![On a phone](images/roofs/phone.jpg)
   - **Precinct walls are walls** (`pipeline/walls.py`): the earthen walls round
     the Kyoto Gosho and the Sento Gosho come in the open data as buildings 3 m
     wide and hundreds of metres long, with a height estimated from the houses

@@ -71,6 +71,22 @@ dark. The Shuto Expressway over Nihonbashi is not drawn.
 
 ![Nihonbashi at dusk: the kirin on the middle lamp standards and the lions at the ends](../images/tokyo/nihonbashi-bronzes-dusk.jpg)
 
+### The Nihonbashi River in the viewer (#246)
+
+In software stills (llvmpipe) the water seemed to add nothing over the Nihonbashi River. Measured again: at
+the river's middle (1420, 1565) the ground is below the water (-0.05 m and the bed at -4 m), and hiding the
+water changes 17,790 pixels of a 1440 × 900 still; the earlier test was aimed at (1420, 1590), on the
+bank, where the ground is 3.9 m up. Under the Shuto's deck the river is in shade, and the water's own colour
+there is close to the bed's, so it reads as dark either way. The quays now raise only the grid points by the
+bank (`web/quays.js`, [ARCHITECTURE.md](../ARCHITECTURE.md)). Not checked on a real GPU.
+
+### The slab by the M8 exit (#246)
+
+Solid 18776, a PLATEAU block of 15 × 5 m and 2.4 m beside Tokyo Station's M8 exit at (583, 1400), has no
+name or class: a vent's or a stair's cover. It was drawn as a one-storey house with windows under the trees;
+it is drawn plain now, and so is the M8 exit's own cover (`pipeline/arcades.py`, low structures). Not
+checked against a photograph: Wikimedia Commons refused this session's requests.
+
 ### The Imperial Palace
 
 The Kyūden (1968, Yoshimura Junzō) was 43 mapped parts with flat tops. `cities/tokyo/palace.py` draws

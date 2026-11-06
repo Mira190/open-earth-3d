@@ -21,9 +21,11 @@ window.OEBuildings = (function () {
   // arcade) stands on posts every 6 m along its edges, anything else (a gate, a shelter) on its corners, and a
   // roof over 400 m2 every 8 m along a side longer than 12 m too. nav.js
   // walks round the same posts. skip: [x_dm, y_dm, ...] posts not put up, where one would stand in a road's
-  // carriageway (buildings.json no_posts, by building: pipeline/road_passages.py)
+  // carriageway (buildings.json no_posts, by building: pipeline/road_passages.py). inner: [x_dm, y_dm, ...] the
+  // rows of posts inside a roof over 400 m2 (buildings.json inner_posts, by building: pipeline/arcades.py),
+  // those inside this solid's outline
   const POST = 0.3; // a post's side (m)
-  function canopyPosts(s, meta, skip = null) {
+  function canopyPosts(s, meta, skip = null, inner = null) {
     if (!(s[2] > 0) || !meta || meta[1] !== 'roof') return [];
     const r = s[4], n = r.length / 2, out = [];
     let area = 0, per = 0;
@@ -49,6 +51,17 @@ window.OEBuildings = (function () {
       }
     }
     if (out.length > 1 && Math.hypot(out[0][0] - last[0], out[0][1] - last[1]) <= 3) out.pop();
+    if (inner && inner.length) {
+      for (let i = 0; i < inner.length; i += 2) {
+        const x = inner[i] / 10, y = inner[i + 1] / 10;
+        let c = false; // (inside the outline: even-odd crossings)
+        for (let k = 0, j = n - 1; k < n; j = k++) {
+          const xk = r[2 * k] / 10, yk = r[2 * k + 1] / 10, xj = r[2 * j] / 10, yj = r[2 * j + 1] / 10;
+          if ((yk > y) !== (yj > y) && x < (xj - xk) * (y - yk) / (yj - yk) + xk) c = !c;
+        }
+        if (c) out.push([x, y]);
+      }
+    }
     if (skip && skip.length) return out.filter(([x, y]) => { for (let i = 0; i < skip.length; i += 2) if (Math.hypot(x - skip[i] / 10, y - skip[i + 1] / 10) < 0.6) return false; return true; });
     return out;
   }
@@ -483,7 +496,7 @@ window.OEBuildings = (function () {
       if (passages.has(si)) cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true); // a building over a road through it (pipeline/road_passages.py): the passage's ceiling
       else if (s[2] > 0 && meta[bi][1] === 'roof') { // a canopy over the street (pipeline/arcades.py): its underside, and the posts it stands on
         cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true);
-        for (const [x, y] of canopyPosts(s, meta[bi], B.no_posts && B.no_posts[bi])) post(x, y, foot ? Math.min(g0, foot(x, y)) - 0.2 : g0, zb, bi);
+        for (const [x, y] of canopyPosts(s, meta[bi], B.no_posts && B.no_posts[bi], B.inner_posts && B.inner_posts[bi])) post(x, y, foot ? Math.min(g0, foot(x, y)) - 0.2 : g0, zb, bi);
       }
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough
