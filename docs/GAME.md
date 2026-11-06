@@ -1159,7 +1159,7 @@ Sydney's traffic stood still a third of the time.
   keeps the walk, which its crowd needs to cross, and cuts the traffic's turns
   to a few seconds). The all-red round the walk is 4 s and is held up to 25 s
   more while anyone is still out on the road, and no car goes into the box while
-  anyone is out crossing it until its green has run 5 s (`junctions.js` `may`,
+  anyone is out crossing it until its green has run 2 s (`junctions.js` `may`,
   #197). The walk is the one wait longer
   than 10 s (`RED`): a car coming up as it starts waits for its crowd. Nobody
   walks in the traffic's phases. A ride's priority, or you waiting at the wheel,

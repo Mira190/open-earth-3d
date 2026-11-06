@@ -723,7 +723,7 @@ window.OEJunctions = (function () {
     function may(c, a, e, t) {
       const j = a.j, k = a.i, m = mv(c, e);
       for (const o of j.active) if (o.c === c && o.k === k && o.m === m) return true; // (in it already, this way)
-      if (j.scramble && j.busy > 0 && !(j.ph < 2 && j.st === 'g' && j.t > 5)) return 'walk'; // (none into a scramble's box with anyone still out crossing it, #197; 5 s into a green, the last of them is let be)
+      if (j.scramble && j.busy > 0 && !(j.ph < 2 && j.st === 'g' && j.t > 2)) return 'walk'; // (none into a scramble's box with anyone still out crossing it, #197; 2 s into a green, the last of them is let be: the all-red before it has waited for them, and a longer wait cut its short greens to a few seconds)
       // (but not the movement of a car behind it on its own piece: one that left this junction onto a piece that comes back to
       // it, queued behind c, can't clear the box until c goes, and c stood at the line for good, Sydney's junction 583, Shibuya's 813)
       const behind = o => o.c.line === c.line && o.c.line >= 0 && o.c.dir === c.dir && (o.c.s - c.s) * c.dir < 0;
