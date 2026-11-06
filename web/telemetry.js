@@ -212,5 +212,5 @@ window.OETelemetry = (function () {
 
   // the first view once the page's scripts are in (so its events carry the quality tier)
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', view, { once: true }); else view();
-  return { on: true, track, flush, view };
+  return { on: true, track, flush, view, frames: () => (cur ? cur.frames.n : 0) };   // frames: for tools/telemetry_check.js
 })();

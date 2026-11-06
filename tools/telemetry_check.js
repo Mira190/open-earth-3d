@@ -59,6 +59,8 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     await p.waitForFunction(() => { const b = document.getElementById('gt-play') || document.querySelector('#g-title button'); return b && b.offsetParent; }, null, { timeout: 120000 }).catch(() => {});
     const started = await p.evaluate(() => { const b = document.getElementById('gt-play') || document.querySelector('#g-title [data-start], #g-title button'); if (b) b.click(); return !!b; });
     await sleep(15000);
+    // a loaded software renderer can draw under a frame a second: play on until the frame rate has its samples
+    await p.waitForFunction(() => window.OETelemetry.frames() >= 15, null, { timeout: 90000, polling: 1000 }).catch(() => {});
     await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await p.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     const save = await p.evaluate(c => { try { return JSON.parse(localStorage.getItem(`oe3d-game-${c}`)); } catch (e) { return null; } }, city);
