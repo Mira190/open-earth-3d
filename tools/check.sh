@@ -29,6 +29,7 @@
 #   tools/check.sh title                # the title screen only
 #   tools/check.sh voice                # what the characters say only (it runs with every target)
 #   tools/check.sh loader               # the loading screen's hand-over only
+#   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
 #   tools/check.sh all                  # every city, every reef site and the title
 # Parked cities (cities/index.json "parked", tools/live_cities.sh) are left out of every run, even
 # when they changed or the shared code did; name one to check it anyway: tools/check.sh amsterdam
@@ -47,7 +48,7 @@ PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0
 add_city() { is_in "$1" "${cities[*]:-}" || cities+=("$1"); }
 add_reef() { is_in "$1" "${reefs[*]:-}" || reefs+=("$1"); }
 all_cities() { for c in $CITIES; do add_city "$c"; done; }
@@ -56,10 +57,11 @@ all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
 if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
-      all) all_cities; all_reefs; title=1; loader=1 ;;
+      all) all_cities; all_reefs; title=1; loader=1; telemetry=1 ;;
       voice) voice=1 ;;
       title) title=1 ;;
       loader) loader=1 ;;
+      telemetry) telemetry=1 ;;
       *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
          else echo "unknown target: $t (cities: $(echo $CITIES); reef sites: $(echo $REEFS))"; exit 2; fi ;;
@@ -87,15 +89,16 @@ else
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
       web/reef/*) all_reefs ;;
       web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
-      web/index.html|web/quality.js) all_cities; title=1; loader=1 ;;
-      web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1 ;;
+      web/telemetry.js|tools/telemetry_*|tools/slo_report.py) title=1; telemetry=1 ;;   # watches every page, sends nothing
+      web/index.html|web/quality.js) all_cities; title=1; loader=1; telemetry=1 ;;
+      web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1; telemetry=1 ;;
       web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
       tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
     esac
   done
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   stamp "$@"
   exit 0
@@ -163,6 +166,11 @@ run_loader() {
     else echo "FAIL loader $m   ($(grep '^FAIL' "$OUT/load-$m.log" | head -1); see $OUT/load-$m.log)"; fi
   done
 }
+run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)
+  if TPORT=$((PORT + 21)) timeout 1500 $X node tools/telemetry_check.js sydney "$OUT/telemetry" >"$OUT/telemetry.log" 2>&1; then
+    echo "ok   telemetry  $(grep -c '^ok' "$OUT/telemetry.log") steps: views, loads, play time, frame rate, the SLO report, the save"
+  else echo "FAIL telemetry  $(grep '^FAIL' "$OUT/telemetry.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/telemetry.log)"; fi
+}
 run_title() {
   timeout 1800 node tools/title_check.js "$OUT/title" >"$OUT/title.log" 2>&1
   python3 -I - "$OUT/title.log" <<'EOF'
@@ -208,6 +216,7 @@ EOF
   for r in "${reefs[@]}"; do run_reef "$r"; done
   [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
+  [ $telemetry -eq 1 ] && run_telemetry
 } | tee "$OUT/summary.txt"
 grep -q '^FAIL' "$OUT/summary.txt" && exit 1
 stamp "$@"
