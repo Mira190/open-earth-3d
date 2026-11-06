@@ -136,6 +136,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
     for (const w of r.walls) console.log(`    in a wall at ${w.x}, ${w.y} z ${w.z}: ${w.n} car-seconds, ${w.cars} car(s), line ${w.line}${w.ow ? ' one-way' : ''} lane ${w.ln} lo ${w.lo} off ${w.off} from the centre ${w.dc} (room there ${w.roomC}, hw ${w.hw}, w ${w.w}), ${w.mv ? 'in a junction, ' : ''}held by ${w.why}; ${w.what}`);
     console.log(`  the traffic update: ${f(r.updateMs)} ms a frame`);
     if (r.laneChanges != null) console.log(`  lane changes: ${r.laneChanges}; walkers waiting at a kerb for the walk signal: ${f(r.kerbWait / Math.max(1, r.seconds), 1)} on average`);
+    if (r.squeezes != null) console.log(`  squeezed through another car in view (a knot nothing else undid): ${r.squeezes}; another way out taken for want of room: ${r.outOfRing || 0}`);
     console.log(`  wait at a red: cars ${waitLine(r.carWaits)}; walkers ${waitLine(r.walkWaits)}${r.scrWaits && r.scrWaits.length ? `; cars at a scramble ${waitLine(r.scrWaits)}` : ''}`);
     if (r.longWaits && r.longWaits.length) console.log(`    longest: ${r.longWaits.join('; ')}`);
     for (const l of r.crossLog || []) console.log(`    crossing movements: ${l}`);
