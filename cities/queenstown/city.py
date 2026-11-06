@@ -57,14 +57,20 @@ MATERIALS = {
     "deck_timber": {"color": "#8d6c4c", "roughness": 0.85, "pattern": "granite", "joints_m": [0.14, 2.4]},
     "deck_steel": {"color": "#3b4045", "roughness": 0.5, "metalness": 0.6},
     "deck_glass": {"color": "#3d5158", "roughness": 0.04, "metalness": 0.0, "opacity": 0.12},
+    "deck_led": {"color": "#d8cbb4", "roughness": 0.5, "emissive": "#ffc98a", "glow": 2.2, "solid": False},
     "lift_frame": {"color": "#2b3034", "roughness": 0.42, "metalness": 0.55},
     "lift_steel": {"color": "#c3c8cc", "roughness": 0.26, "metalness": 0.9},
     "lift_rail": {"color": "#6d7378", "roughness": 0.4, "metalness": 0.75},
     "lift_glass": {"color": "#55707a", "roughness": 0.03, "metalness": 0.0, "opacity": 0.13},
-    "lift_door_glass": {"color": "#5d7680", "roughness": 0.03, "metalness": 0.0, "opacity": 0.16},
-    "lift_floor": {"color": "#4a4743", "roughness": 0.55},
-    "lift_light": {"color": "#f3efe6", "roughness": 0.5, "emissive": "#fff1dc", "glow": 1.4},
-    "lift_cw": {"color": "#4b5054", "roughness": 0.7, "metalness": 0.3},
+    # what moves (the car, its doors, the landing doors, the counterweight) and the lit buttons are not walls to
+    # the game's walkers (web/game/nav.js): the car rides, and the shaft's glass and frame round it are the walls
+    "lift_door_glass": {"color": "#5d7680", "roughness": 0.03, "metalness": 0.0, "opacity": 0.16, "solid": False},
+    "lift_car_glass": {"color": "#55707a", "roughness": 0.03, "metalness": 0.0, "opacity": 0.13, "solid": False},
+    "lift_car_steel": {"color": "#c3c8cc", "roughness": 0.26, "metalness": 0.9, "solid": False},
+    "lift_car_frame": {"color": "#2b3034", "roughness": 0.42, "metalness": 0.55, "solid": False},
+    "lift_car_floor": {"color": "#4a4743", "roughness": 0.55, "solid": False},
+    "lift_light": {"color": "#f3efe6", "roughness": 0.5, "emissive": "#fff1dc", "glow": 1.4, "solid": False},
+    "lift_cw": {"color": "#4b5054", "roughness": 0.7, "metalness": 0.3, "solid": False},
     "gondola_steel": {"color": "#59636b", "roughness": 0.45, "metalness": 0.7},
     "gondola_sheave": {"color": "#c8cdd0", "roughness": 0.35, "metalness": 0.75},
     "gondola_cable": {"color": "#2b2e31", "roughness": 0.4, "metalness": 0.8},
@@ -276,6 +282,7 @@ def deck_meshes(ground):
     timber = Mesh("skyline_deck", "deck_timber", False, uv=True)
     steel = Mesh("skyline_deck_frame", "deck_steel", False)
     glass = Mesh("skyline_deck_glass", "deck_glass", False)
+    led = Mesh("skyline_deck_led", "deck_led", False, floodlit=True)
     P = lambda u, v, h=0.0: [*(c + ax * u + out * v), z + h]
     timber.quad(P(-L / 2, -D / 2), P(L / 2, -D / 2), P(L / 2, D / 2), P(-L / 2, D / 2), [[-L / 2, -D / 2], [L / 2, -D / 2], [L / 2, D / 2], [-L / 2, D / 2]])
     timber.quad(P(-L / 2, D / 2, -0.25), P(L / 2, D / 2, -0.25), P(L / 2, -D / 2, -0.25), P(-L / 2, -D / 2, -0.25))
@@ -302,9 +309,10 @@ def deck_meshes(ground):
             u, v = u0 + (u1 - u0) * k / n, v0 + (v1 - v0) * k / n
             steel.box(P(u, v), P(u, v, 1.1), 0.06, 0.06)
         steel.box(P(u0, v0, 1.12), P(u1, v1, 1.12), 0.08, 0.06)
+        led.box(P(u0, v0, 1.08), P(u1, v1, 1.08), 0.03, 0.012)   # the LED strip under the handrail, lit after dark
         glass.quad(P(u0, v0, 0.08), P(u1, v1, 0.08), P(u1, v1, 1.05), P(u0, v0, 1.05))
         glass.quad(P(u1, v1, 0.08), P(u0, v0, 0.08), P(u0, v0, 1.05), P(u1, v1, 1.05))
-    return [timber, steel, glass]
+    return [timber, steel, glass, led]
 
 
 def lift_frame(ground):
@@ -313,7 +321,7 @@ def lift_frame(ground):
     q = c + ax * LIFT["u"]
     A, B = LIFT["a"], LIFT["b"]
     foot_xy = q - ax * (A + 1.2)                        # outside its door on the south-west side, along the luge track
-    top_xy = c + ax * (-DECK["length"] / 2 + 1.2)       # on the deck, by its south-west end
+    top_xy = c + ax * (-DECK["length"] / 2 + 2.2)       # on the deck, by its south-west end (clear of the shaft's 2 m cells, nav.js)
     g = float(ground(*foot_xy))                         # the foot's landing, level with the luge track outside its door
     foot = [round(float(foot_xy[0]), 2), round(float(foot_xy[1]), 2), round(g, 2)]
     top = [round(float(top_xy[0]), 2), round(float(top_xy[1]), 2), round(float(z), 2)]
@@ -353,10 +361,10 @@ def lift_meshes(ground):
     M = lambda name, mat, flood=False: Mesh(f"skyline_lift_{name}", mat, False, floodlit=flood)
     frame, glass, steel, rail, head = M("frame", "lift_frame"), M("glass", "lift_glass"), M("steel", "lift_steel"), M("rail", "lift_rail"), M("head", "lift_frame")
     plinth = M("pit", "gondola_concrete")
-    car_steel, car_glass, car_floor = M("car_steel", "lift_steel"), M("car_glass", "lift_glass"), M("car_floor", "lift_floor")
-    car_frame, car_light = M("car_frame", "lift_frame"), M("car_light", "lift_light", True)
+    car_steel, car_glass, car_floor = M("car_steel", "lift_car_steel"), M("car_glass", "lift_car_glass"), M("car_floor", "lift_car_floor")
+    car_frame, car_light = M("car_frame", "lift_car_frame"), M("car_light", "lift_light", True)
     doors = {k: M(k, "lift_door_glass") for k in ("car_door_ne", "car_door_sw", "door_top", "door_foot")}
-    door_frames = {k: M(k + "_frame", "lift_steel") for k in doors}
+    door_frames = {k: M(k + "_frame", "lift_car_steel") for k in doors}
     buttons = M("buttons", "lift_light", True)
     cw, rope_car, rope_cw = M("cw", "lift_cw"), M("rope_car", "gondola_cable"), M("rope_cw", "gondola_cable")
     levels, z1 = lift_levels(g, z)

@@ -1653,7 +1653,10 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   const SLICE_MS = 50, SLICED = 40;
   // clip: the clipping planes it is drawn with (a mirror's), which also pick the variant. behind: it
   // compiles while the scene is on screen (behind the title), a short slice a frame, so frames keep coming.
-  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false } = {}) {
+  // hold: while it returns true, a compile behind the scene waits (a frame at a time) without compiling: a slice
+  // can be no shorter than one program, which on a device without parallel compiles is a hitch of its own, so
+  // the game holds the warm-up through its opening shot and its rides (issue 265)
+  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null } = {}) {
     if (!renderer.compileAsync) return Promise.resolve();
     const objs = [];
     obj.traverse(o => { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) objs.push(o); });
@@ -1670,6 +1673,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       const props = renderer.properties, mats = new Set(), t0 = performance.now();
       let slices = 0, longest = 0;
       for (let i = 0; i < objs.length;) {
+        while (behind && hold && hold()) await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
         const s0 = performance.now(), was = bind();
         try {
           // (every object, even one whose material has a program: this variant, for this target and

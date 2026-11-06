@@ -187,6 +187,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       });
     }, v.pick)));
     if (v.closer) await p.evaluate(() => window.__game.interact()); // (step back)
+    if (v.lift) await p.evaluate(() => { const g = window.__game; g.hold(false); for (let i = 0; i < 400 && g.liftRide(); i++) g.advance(0.1); }); // (the ride run out)
     if (v.eye) await p.evaluate(() => { window.__game.photoMode(false); window.__game.player.rig.root.visible = true; });
   }
   if (logs.length) console.log(logs.slice(0, 20).join('\n'));

@@ -3899,7 +3899,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!weather || weather.armed === false) return;
       const t0 = performance.now();
       if (weather.warm) weather.warm(o => compileFor(o));
-      return Promise.resolve(mirror && mirror.warm && !mirror.off ? mirror.warm(world) : null) // (compiled in slices, then drawn)
+      return Promise.resolve(mirror && mirror.warm && !mirror.off ? mirror.warm(world, { hold: () => playing && (!!arriving || cine.active || player.mode === 'lift') }) : null) // (compiled in slices, then drawn)
         .then(() => console.info(`rain warm-up: ${Math.round(performance.now() - t0)} ms`), e => console.warn('rain warm-up', e));
     } catch (e) { console.warn('rain warm-up', e); }
   };
@@ -4659,7 +4659,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const out = [C.axis[1], -C.axis[0]]; // across the shaft, to the view side
     liftRide = { c, l, from, to, a, b, zA, zB, v, out, phase: 'call', t: 0, from0: [player.x, player.y, player.z], h0: player.h };
     player.mode = 'lift'; player.vehicle = null; player.speed = 0; player.vz = 0;
-    cam.mode = 'chase'; cam.distTo = 7.5; cam.yawTo = Math.atan2(-out[0], -out[1]) + 0.5; cam.pitch = 0.12; cam.lastInput = -10;
+    cam.mode = 'chase'; cam.distTo = 8; cam.yawTo = Math.atan2(C.axis[0], C.axis[1]) - 0.35; cam.pitch = 0.06; cam.lastInput = -10; // (from the open side along the shaft: the deck and the sky behind)
     H.toast(`<b>${l.line || l.name}</b><span>${b.name}: ${Math.round(Math.abs(zB - zA))} m at ${l.m_per_min || 60} m a minute</span>`);
   }
   function liftStep(dt) {

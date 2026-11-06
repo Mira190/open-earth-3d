@@ -127,7 +127,7 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
       // for the mirror's clipping plane, seconds of stall that would otherwise come with the first rain.
       // Compiled first in slices (world.js compile), so that no one task builds them all; then drawn.
       // Returns a promise where it compiles in slices.
-      warm(scene) {
+      warm(scene, { hold = null } = {}) {
         if (!rt) return;
         const draw = () => {
           const u = wetU() || own, w = u.value;
@@ -136,7 +136,7 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         };
         if (!(window.OEWorld && OEWorld.compile)) return draw();
         plane.constant = -(ground(camera.position.x, -camera.position.z) - 0.05);
-        return OEWorld.compile(renderer, scene, camera, { target: rt, clip: [plane], behind: true }).then(draw);
+        return OEWorld.compile(renderer, scene, camera, { target: rt, clip: [plane], behind: true, hold }).then(draw);
       },
       dispose() { if (rt) rt.dispose(); blank.dispose(); },
     };

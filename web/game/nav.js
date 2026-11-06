@@ -397,7 +397,10 @@ window.OENav = (function () {
         const [u, v] = stripUV(s, x, y);
         if (Math.abs(v) > s.half_width + DSM.cell || u < s.us[0] - DSM.cell || u > s.us[s.us.length - 1] + DSM.cell) continue;
         const q = interp(s.us, s.zs, u);
-        if (q > h && q < h0 + 3.0) h = q;
+        // (and whatever stands at its very edge, within 1.5 m of its outline, however high it is over the ground:
+        // a balustrade, a lift's shaft against a deck's end, issue 265; their 2 m cells reached onto the deck)
+        const edge = Math.abs(v) <= s.half_width + 1.5 && u >= s.us[0] - 1.5 && u <= s.us[s.us.length - 1] + 1.5;
+        if (q > h && (q < h0 + 3.0 || edge)) h = q;
       }
       return h;
     };
