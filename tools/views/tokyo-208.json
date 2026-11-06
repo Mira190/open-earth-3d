@@ -1,0 +1,7 @@
+[
+ {"name": "nijubashi", "cam": [-430, 1110, 32], "tgt": [-489, 1136, 14], "date": [5, 12], "time": "10:30"},
+ {"name": "nijubashi-plaza", "cam": [-330, 1060, 8], "tgt": [-470, 1135, 14], "date": [5, 12], "time": "15:30"},
+ {"name": "nihonbashi-shuto", "cam": [1440, 1490, 9], "tgt": [1402, 1562, 9], "date": [5, 12], "time": "10:30"},
+ {"name": "nihonbashi-river", "cam": [1290, 1590, 6], "tgt": [1400, 1562, 10], "date": [5, 12], "time": "15:00"},
+ {"name": "nihonbashi-air", "cam": [1520, 1440, 70], "tgt": [1390, 1570, 8], "date": [5, 12], "time": "10:30"}
+]

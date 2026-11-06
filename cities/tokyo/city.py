@@ -19,6 +19,7 @@ Parametric landmark (called by pipeline/landmarks.py):
                the tower (歌舞伎座タワー) stays a building.
   National Diet Building  on its 26 mapped solids, in granite, with its tower (cities/tokyo/diet.py).
   The Imperial Palace  its wings round their courts under green copper outline roofs (cities/tokyo/palace.py).
+  The Shuto Expressway  the Inner Circular Route's viaduct over the Nihonbashi River (cities/tokyo/shuto.py).
   The palace moats  water at their published levels, walled in dressed stone; the ground under them
                brought down to their beds (cities/tokyo/moats.py).
 """
@@ -43,6 +44,7 @@ def _load(name):
 DIET = _load("diet")
 MOATS = _load("moats")
 PALACE = _load("palace")
+SHUTO = _load("shuto")
 
 TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
@@ -169,7 +171,19 @@ def landmark_meshes(scene):
     mats.update(mm)
     pm, pmesh, ph = PALACE.meshes()  # the Imperial Palace's wings under outline roofs (cities/tokyo/palace.py)
     mats.update({k: dict(v) for k, v in pm.items()})
-    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh, {"hidden": hidden + dh + ph}
+    sm, smesh = SHUTO.meshes(Mesh)  # the Shuto Expressway over the Nihonbashi River (cities/tokyo/shuto.py)
+    mats.update({k: dict(v) for k, v in sm.items()})
+    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh, {"hidden": hidden + dh + ph}
+
+
+def landmark_glows(scene):
+    """The Shuto's deck lamps over the Nihonbashi River (cities/tokyo/shuto.py)."""
+    return SHUTO.glows()
+
+
+def game_surfaces(scene):
+    """The Shuto's decks over the Nihonbashi River, driven and passed under (cities/tokyo/shuto.py)."""
+    return SHUTO.surfaces()
 
 
 def adjust_terrain(dem, C, cell):
