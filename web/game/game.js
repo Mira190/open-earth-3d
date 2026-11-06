@@ -590,6 +590,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const MAJOR = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
   const majorAt = (x, y) => { const q = roadNet.nearest(x, y, 10); if (!q) return false; const l = roadNet.L[q.line]; return MAJOR.has(l.c) || (junctions.lanesOf ? junctions.lanesOf(l) : l.nl || 1) >= 2; };
   crowd.crossings = { byLine: junctions.crossings(crowdNet, onRoad), walk: junctions.walk, walkLeft: junctions.walkLeft, call: junctions.call, road: onRoad, zebra: zebraAt, across: acrossRoad, major: majorAt };
+  // (the crowd was first placed before it knew which roads are major: one standing out in one, away from a crossing, is
+  // placed again, as a walker placed later is, so that it doesn't start the game crossing where nobody crosses)
+  { const X = crowd.crossings.byLine, at = {};
+    for (const p of crowd.P) { if (p.line < 0) continue; crowdNet.at(p.line, p.s, at); if (onRoad(at.x, at.y) && majorAt(at.x, at.y) && !((X.get(p.line) || []).some(q => Math.abs(q.s - p.s) < q.kerb + 0.5))) crowd.respawn(p, at.x, at.y, 0); } }
   // and gathers at the scrambles: a share of it their own, massing at the kerbs and surging across
   // every way at once (actors.js plazas), and more of it on the footways round them
   { const S = junctions.J.filter(j => j.scramble && j.spans && j.spans.length);
@@ -3938,7 +3942,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!paused) simulate(dt);
     if (!paused) { crossingSound(dt); walkCalls.update(dt, camera); }
     else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
-    if (player.mode !== 'heli') nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame
+    if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : titleYaw + dt * 0.05; }
     if (simHold) { /* (held by a harness: the camera too, which the traffic reads, what is in view; advance() moves it) */ } else if (photo.on) photoCamera(dt); else if (closeup && !titleOn) closeupCamera(dt); else updateCamera(dt, titleOn);
@@ -4718,6 +4722,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         sunState = sun.altitude <= 0 ? 'night' : S.sunlit(DSM, px, py, player.mode === 'heli' ? heli.st.z + 1 : player.z + 1.6, sun) ? 'sun' : 'shade'; checkSteps(); }
     }
     for (const c of hold) keys.delete(c);
+    // (held by a harness, the tiles round you are laid here, all of them, as a player's frames lay them a few ms at a
+    // time: at the same point of the run however long the machine takes, nav.js; laid by the frames, what a wide query
+    // met depended on how far they had got, #243)
+    if (simHold && player.mode !== 'heli') nav.prefetch(player.x, player.y, 48, Infinity);
     weatherTick(seconds, false);
     // and the route, as a frame works it out (by the way you are going now)
     const titled = preTitle || !$('#g-title').hidden, ob = titled ? null : objective();

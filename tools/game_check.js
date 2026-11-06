@@ -67,9 +67,9 @@ const npcNight = require('./npc_night');
   // traffic by however long the machine took between two steps, so the same code plays the same run
   // on a fast machine and a loaded one. GAME_LOCKSTEP=0 leaves the frames running the world as a player's do.
   const lockstep = process.env.GAME_LOCKSTEP !== '0';
-  // (and every landmark tile laid, nav.js layAll, and the route network built, route.js: the roads it finds a car
+  // (the tiles round you laid by advance() while held, game.js, and the route network built, route.js: the roads it finds a car
   // can't get along are kept off by the traffic as it finds them, so a run started before it is done meets another traffic)
-  if (lockstep) await p.evaluate(async () => { const g = window.__game; g.hold(true, true); if (g.nav.layAll) g.nav.layAll(); await g.ways.build(); if (g.heli && g.heli.want) await g.heli.want(); }); // (and the helicopter on its pad: fetched while the title shows, it may be there or not by the time the check holds the game)
+  if (lockstep) await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.heli && g.heli.want) await g.heli.want(); }); // (and the helicopter on its pad: fetched while the title shows, it may be there or not by the time the check holds the game)
   await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
   // the lights in the scene by kind, as three.js counts them for its shaders (one under a hidden parent does
   // not count). The count is built into every lit material's shader, so it must stay what it was on the
@@ -259,6 +259,7 @@ const npcNight = require('./npc_night');
   const jay = await p.evaluate(() => {
     const g = window.__game, C = g.crowd.crossings;
     let n = 0, out = 0;
+    const who = [];
     if (!C || !C.major) return { n, out };
     for (let k = 0; k < 8; k++) {
       g.advance(1);
@@ -268,12 +269,13 @@ const npcNight = require('./npc_night');
         if (!C.road(q.x, q.y) || !C.major(q.x, q.y)) continue;
         const h = g.crowdNet.at(q.line, q.s, {}), X = C.byLine.get(q.line);
         if (!C.across(q.x, q.y, h.hx, h.hy) || (X && X.some(c => Math.abs(c.s - q.s) < c.kerb + 2)) || C.zebra(q.x, q.y)) continue;
-        out++;
+        out++; if (who.length < 6 && !who.some(w => w.i === q)) who.push({ i: q, d: `walker ${g.crowd.P.indexOf(q)} on footway ${q.line} at ${q.x.toFixed(0)},${q.y.toFixed(0)} s ${q.s.toFixed(1)} dir ${q.dir} ${q.mode} v ${(q.v || 0).toFixed(1)}${q.plaza ? ' plaza' : ''}${q.kerbNext ? ' kerbNext' : ''}` });
       }
     }
-    return { n, out };
+    return { n, out, who: who.map(w => w.d) };
   });
   check(jay.n > 0 && jay.out <= Math.max(3, 0.01 * jay.n), `the crowd crosses major roads only at crosswalks (${jay.out} of ${jay.n} walkers crossing one elsewhere, at most 1%)`);
+  if (jay.who && jay.out > Math.max(3, 0.01 * jay.n)) console.log(`  crossing elsewhere: ${jay.who.join('; ')}`);
 
   // no signal pole or walk post stands in a road's lanes (any road's drawn width, not just the one it serves: tools/pole_lanes.js)
   const poles = await p.evaluate(() => {

@@ -701,9 +701,8 @@ window.OENav = (function () {
       for (const [, k] of todo) { if (performance.now() >= until) return false; if (!runTile(k, until)) return false; }
       return true;
     }
-    // every tile laid now (a harness in lockstep, tools/game_check.js): a query over a box wider than need()
-    // lays (96 m) still meets the tiles already laid, so what the traffic and the crowd meet depends on how
-    // far the frames' prefetch has got; with all of them laid it doesn't (#243)
+    // every tile laid now, for a tool that wants all of them (a query over a box wider than need() lays, 96 m,
+    // still meets the tiles already laid; a harness that holds the game lays the ones round you in advance(), #243)
     function layAll() { const t = performance.now(); for (const [k] of tileTris) runTile(k, Infinity); return performance.now() - t; }
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create(4); // (4 m buckets: the fine landmark cells put hundreds of small boxes in one 8 m bucket)

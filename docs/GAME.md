@@ -2269,12 +2269,15 @@ real one, which a city starting at `"time": "live"` would otherwise play at.
 The check plays in lockstep (#243): the world is held for the whole run (`__game.hold`), so only the
 check's own `advance()` calls move it, a thirtieth of a second at a time, and a run on a loaded
 machine plays the same traffic as one on an idle machine. Held, the page's frames still draw, but they
-neither step the world nor ease the camera (which the traffic reads for what is in view). Before the
-first step every landmark tile is laid (`nav.layAll`: a query over a box wider than the 96 m that
-`need()` lays still meets the tiles the frames' prefetch has laid, so what the traffic met depended on how
-far that had got), the route network is built (it fills in the roads a car can't get along as it
-goes), and the game's clock is set to `GAME_TIME`'s minute at Play (it is read from a `Date` that runs on
-at the real rate during the load). Dispatch's tie-breaks draw from a seeded run. `GAME_LOCKSTEP=0`
+neither step the world, ease the camera (which the traffic reads for what is in view), tick a
+conversation nor lay landmark tiles: `advance()` lays the tiles round you at the end of each call, all
+of them, as a player's frames lay them a few ms at a time (a query over a box wider than the 96 m that
+`need()` lays still meets the tiles already laid, so what the traffic met depended on how far the frames
+had got). Before the first step the world's clock and the title's orbit go back to zero
+(`__game.hold(true, true)`: the arrival sets out from the orbit's pose), the route network is built (it
+fills in the roads a car can't get along as it goes), the helicopter is on its pad, and the game's clock
+is set to `GAME_TIME`'s minute at Play (it is read from a `Date` that runs on at the real rate during the
+load). Dispatch's tie-breaks draw from a seeded run. `GAME_LOCKSTEP=0`
 leaves the frames running the world, as a player's do. `tools/lockstep_probe.js <city> [steps]` loads
 a city twice, steps both the same way with real time between the steps, and compares a digest of the
 crowd, the traffic and the lights after each step.

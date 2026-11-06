@@ -510,6 +510,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (was !== null && on !== was && !(C.zebra && C.zebra(tmp.x, tmp.y)) && (!C.across || C.across(tmp.x, tmp.y, tmp.hx, tmp.hy))) E.push({ s, dir: on ? 1 : -1, x: tmp.x, y: tmp.y, major: !!(C.major && C.major(tmp.x, tmp.y)) });
         was = on;
       }
+      // (a footway that lies out in a major road its whole length, never stepping off a kerb, a crossing mapped as a
+      // footway without its signals or stripes: crossed away from a crosswalk all the same; Tetsugaku's footway 952
+      // in a secondary road, where walkers stood in the road)
+      const all = was && E.length === 0 && C.major && (() => { net.at(li, l.len / 2, tmp); return !!C.road(tmp.x, tmp.y) && !!C.major(tmp.x, tmp.y) && !(C.zebra && C.zebra(tmp.x, tmp.y)); })();
+      if (all && !(C.byLine && (C.byLine.get(li) || []).length)) { E.push({ s: 0, dir: 1, x: tmp.x, y: tmp.y, major: true }, { s: l.len, dir: -1, x: tmp.x, y: tmp.y, major: true }); }
       // (a major road, C.major: crossed only at a crosswalk, its signals or a zebra, as the law asks where one
       // is near (Japan's Road Traffic Act, art. 12; the UK's Highway Code, rule 8) and as a city's crowd does;
       // where the footway's step off the kerb is a signalled junction's own crossing, it is that crossing)
@@ -1245,7 +1250,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) { const d = Math.hypot(P[i].x - x, P[i].y - y); if (P[i].line >= 0 && d < bd) { bd = d; best = i; } }
       return best;
     }
-    return Object.assign(api, { update, nearest });
+    return Object.assign(api, { update, nearest, respawn });
   }
 
   // ------------------------------------------------------------ traffic (drives on the left, or on the right)
