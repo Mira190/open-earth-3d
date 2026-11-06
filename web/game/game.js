@@ -1095,7 +1095,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // one setting out from a street a couple of hundred metres off by road, chosen so it takes
   // RIDE_T to reach you and, where it can be, out of sight (behind you, or farther than you can see)
-  function rideFromAround(kind, pickup, dest) {
+  // (a taxi you hail pulls in beside you, at most across the street: only a ride ordered on the phone has
+  // its pick-up moved round the corner, #209)
+  function rideFromAround(kind, pickup, dest, move = true) {
     let best = bestFrom(pickup);
     // none can reach that kerb in time (a dead end the near side of the street faces into, a stub no
     // road feeds): the kerb across the street and the streets round it too, as a ride app moves the
@@ -1103,7 +1105,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // (a scramble's walk on the way counts in the time the app gives, but no move of the pick-up gets round it: every way there crosses it)
     if (!best || best.plan.T - SCR_WAIT * (best.plan.scr || []).length > RIDE_T[1] + 5) {
       const alts = roadNet.L[pickup.line].ow ? [] : [Object.assign({}, pickup, { dir: -pickup.dir })];
-      for (const [dx, dy] of [[25, 0], [-25, 0], [0, 25], [0, -25]]) {
+      if (move) for (const [dx, dy] of [[25, 0], [-25, 0], [0, 25], [0, -25]]) {
         const q = roads.place(pickup.x + dx, pickup.y + dy, 30, keepSign, pickup.z);
         if (q && q.line !== pickup.line && !alts.some(a => a.line === q.line) && !(SCR_AT.length && inScramble(q.line, q.s))) alts.push(q);
       }
@@ -1192,7 +1194,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       o = newRide('taxi', best.from, pickup, best.plan);
       cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h });
     }
-    if (!o) o = rideFromAround('taxi', pickup, null);
+    if (!o) o = rideFromAround('taxi', pickup, null, false);
     if (!o) { H.toast('No taxis about. Try a busier street, or order a ride on your phone (N).'); return; }
     if (ride) { ride.drv.leave(); ride.C.dispose(); } // the last one, still driving off
     ride = o;
@@ -1394,7 +1396,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // than 300 m longer (on the trip, 300 m or half as far again), as a driver with a map app does; on the
     // trip the driver says so. Not while it is in a junction (its way across is held), and every 8 s at most
     if ((o.phase === 'coming' || o.phase === 'driving') && !st.mv && clockT - (o.rerouteT || 0) > 8 && o.drv.opts && clockT - (o.jamLook || 0) > 1
-      && Math.abs(st.lat - OECars.LANE) < 0.2 && Math.abs(st.shift) < 0.1 && !st.backoff) { // (settled in its lane: the new way starts from the lane, not the kerb or a swing out round a car)
+      && Math.abs(st.lat - (st.lane ?? OECars.LANE)) < 0.2 && Math.abs(st.shift) < 0.1 && !st.backoff) { // (settled in its lane: the new way starts from the lane, not the kerb or a swing out round a car)
       o.jamLook = clockT;
       const shun = jamAhead(st);
       if (st.held > 10 && st.block && st.block.line >= 0) shun.add(st.block.line);

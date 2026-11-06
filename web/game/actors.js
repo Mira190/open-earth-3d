@@ -831,22 +831,25 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return best;
     }
+    // a scramble's crowd crosses briskly, as Shibuya's does (about 1.5 m/s, the slowest a little under,
+    // the quickest near 1.8): junctions.js times the walk by it (SCR_V), #199
+    const xSpeed = q => Math.max(q.speed, 1.38) * 1.05;
     function plazaStep(i, q, dt, player) {
       const pz = q.pz, g = q.g;
       let sp = 0;
       if (q.ph === 'wait') {
         // the walk on, and time enough to make the far kerb: out, after a moment's reaction
         const far = g.len + 1; // (the crosswalk's length: the deepest of the crowd at the kerb a little behind the front rows)
-        if (pz.walk() && pz.left() > far / (q.speed * 0.85)) { // (with time in hand for a crowd in the way)
+        if (pz.walk() && pz.left() > far / (xSpeed(q) * 0.85)) { // (with time in hand for a crowd in the way)
           if ((q.react -= dt) <= 0) { q.ph = 'cross'; spotAt(g.partner, -q.spread + (rnd() - 0.5) * 0.5, 0.6 + rnd() * 1.4, q.T, pz.road); g.n--; }
         }
       }
       else if (q.ph === 'cross') { // (still behind the kerb as the walk ends, or with too little of it left: back to wait)
         const P2 = g.partner, ex = P2.x - g.x, ey = P2.y - g.y, t = ((q.x - g.x) * ex + (q.y - g.y) * ey) / (ex * ex + ey * ey);
-        if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (q.speed * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
+        if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (xSpeed(q) * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
       }
       const dx = q.T.x - q.x, dy = q.T.y - q.y, d = Math.hypot(dx, dy);
-      if (q.ph === 'cross') { sp = q.speed * 1.05; pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') sp = q.speed * 0.75; else sp = d > 0.6 ? 0.5 : 0;
+      if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') sp = q.speed * 0.75; else sp = d > 0.6 ? 0.5 : 0;
       if (q.pause > 0) sp = 0;
       let vx = d > 1e-3 ? dx / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0, vy = d > 1e-3 ? dy / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0;
       // the others near: apart, and, meeting someone coming the other way, a step to the left
@@ -1538,6 +1541,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (c.mv && o.mv && c.mv.j === o.mv.j) return c.mvT < o.mvT || (c.mvT === o.mvT && ic < io);
       if (c.mv && !o.mv && o.toLine > 0) return true;
       if (!c.mv && o.mv && c.toLine > 0) return false;
+      // (already touching, each in the other's way at once: the one in front goes on and the one behind waits,
+      // as the one behind can't drive through it; at a dead heat the ride's driver, which never steps
+      // further into a car it can see, and the car that gave it way would both stand for good)
+      if (d < 0.5 && d2 < 0.5) { const a = (o.x - c.x) * Math.sin(c.h) + (o.y - c.y) * Math.cos(c.h); if (Math.abs(a) > 0.3) return a < 0; }
       return d < d2 - 0.5 || (Math.abs(d - d2) <= 0.5 && ic < io);
     }
     JN.first = first;

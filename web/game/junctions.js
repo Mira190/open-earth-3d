@@ -78,6 +78,7 @@ window.OEJunctions = (function () {
   const LINK = 24;      // a piece this short joining two junction nodes lies inside one junction (m)
   const SPAN = 42;      // and a junction is no wider than this (m)
   const SCR_W_POST = 5.0; // (m: a scramble's walk signal stands this far to the side of its crosswalk's line, clear of its stripes (up to 8 m wide) and the crowd spread across them)
+  const SCR_V = 1.45, SCR_MIN = 18; // a scramble's crowd's pace across (m/s) and its shortest walk (s)
   const AMBER = 3, ALLRED = 1, CALL = 12, GAP_MIN = 5, FLASH = 3, RED = 10; // seconds; a phase with nobody waiting on the other turns after CALL more; nobody waits at a red longer than RED
   const MID_CLEAR = 2; // (s: a crossing's walk flashing after its green, before its all red: 2 + 4 + 2 + 2 = RED for its cars)
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -94,7 +95,13 @@ window.OEJunctions = (function () {
   const byClass = l => (TWO[l.c] || (l.ow && l.c === 'secondary') ? 2 : 1);
   const lanesOf = l => l.lanes || byClass(l); // (l.lanes: OSM's count, smoothed: create)
   const SHORT2 = 120, SHORT1 = 40; // m
-  const shiftOf = (l, ln) => (ln ? (l.ow ? -3.2 : 3.0) : 0);
+  // a lane's offset from the first lane's place (LANE to the keep side of the line): the second lane
+  // across from it on a two-way road, inside it on a one-way road (the pair about centred); and the
+  // only lane of a one-way road on the line itself, the middle of its carriageway (#177). Cars ease
+  // from one lane's place to the next at a lane change's rate where two roads meet (actors.js loT)
+  const ONE_LANE = 1.7;
+  const centred = l => !!(l && l.ow && lanesOf(l) < 2);
+  const shiftOf = (l, ln) => (ln ? (l.ow ? -3.2 : 3.0) : centred(l) ? -ONE_LANE : 0);
 
   // net: actors.network of the roads; opts.signals, .stops, .giveWay: mapped points [x, y, z, ...]
   // in decimetres; keep: the side the traffic keeps to; lane: its lane's offset from the line (m)
@@ -348,7 +355,10 @@ window.OEJunctions = (function () {
       // (an arm with no crosswalk mapped across it still stops its traffic outside the box, as far out as the others')
       const backs = j.arms.filter(a => !bare.includes(a)).map(a => a.back).sort((p, q) => p - q);
       if (backs.length) for (const a of bare) a.back = Math.max(a.back, Math.min(L[a.line].len - 1.5, backs[backs.length >> 1]));
-      j.green = [8, 6, 0, 32]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
+      // its walk as long as its longest crosswalk takes at the crowd's brisk pace (SCR_V, actors.js xSpeed),
+      // with a few seconds to step out, and no longer: the cars' red is the walk (#199)
+      const longest = segs.reduce((m, w) => Math.max(m, Math.hypot(w[2] - w[0], w[3] - w[1])), 0);
+      j.green = [8, 6, 0, Math.max(SCR_MIN, Math.min(32, Math.ceil(longest / SCR_V + 5)))]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);
@@ -946,7 +956,7 @@ window.OEJunctions = (function () {
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
     net.midsOn = midsOn; // (the rides' router notes the crossings along a route: cars.js)
-    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, centred: line => centred(L[line]), mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
@@ -1283,5 +1293,5 @@ window.OEJunctions = (function () {
       peds, dropped }; // (the walk signals, { a: its arm, x, y, z, h }: walkcalls.js sounds them)
   }
 
-  return { create, STYLES, RANK, lanesOf, shiftOf };
+  return { create, STYLES, RANK, lanesOf, shiftOf, centred };
 })();

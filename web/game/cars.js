@@ -961,10 +961,30 @@ window.OECars = (function () {
     const kerbStart = kerbOf(P.pos(0, q2).c);
     let kerbEnd = kerbOf(P.pos(P.len, q2).c);
     // the way it keeps off the centre line at s: the lane, easing in to the kerb at the end and out of it at the start
+    // (the lane's place on each piece of road on the way: LANE off the line, or on it along a one-way
+    // road of one lane, as the traffic drives it (junctions.js shiftOf, #177); eased over 6 m either side
+    // of where one piece meets the next)
+    const laneRuns = [];
+    if (lights && lights.centred && route.nodes) {
+      let a0 = 0;
+      for (const nd of route.nodes) { const b = P.cum[Math.min(nd.k, P.cum.length - 1)]; laneRuns.push([a0, b, lights.centred(nd.line) ? 0 : LANE]); a0 = b; }
+      if (route.to && route.to.line != null) laneRuns.push([a0, P.len, lights.centred(route.to.line) ? 0 : LANE]);
+      if (laneRuns.every(r => r[2] === LANE)) laneRuns.length = 0;
+    }
+    function laneAt(s) {
+      if (!laneRuns.length) return LANE;
+      let i = 0;
+      while (i < laneRuns.length - 1 && s > laneRuns[i][1]) i++;
+      const r = laneRuns[i], E = 6;
+      if (i > 0 && s - r[0] < E) return laneRuns[i - 1][2] + (r[2] - laneRuns[i - 1][2]) * smooth(r[0] - E, r[0] + E, s);
+      if (i < laneRuns.length - 1 && r[1] - s < E) return r[2] + (laneRuns[i + 1][2] - r[2]) * smooth(r[1] - E, r[1] + E, s);
+      return r[2];
+    }
     function lat(s) {
-      let k = LANE;
-      if (end) k += (kerbEnd - LANE) * smooth(st.end - 24, st.end - 4, s);
-      if (from === 'kerb') k += (kerbStart - LANE) * (1 - smooth(0, 12, s));
+      const L0 = laneAt(s);
+      let k = L0;
+      if (end) k += (kerbEnd - L0) * smooth(st.end - 24, st.end - 4, s);
+      if (from === 'kerb') k += (kerbStart - L0) * (1 - smooth(0, 12, s));
       return k;
     }
     const pa = {}, pb = {};
@@ -1329,6 +1349,7 @@ window.OECars = (function () {
       // across the road it eases to its line as it goes, never sideways on the spot (so an end
       // brought forward bends its path in rather than jumping it)
       const k = lat(st.s);
+      st.lane = laneAt(st.s); // (its lane's place here, kerbs aside: game.js reads it)
       const lr = Math.min(0.35 * st.v, 1.6 * Math.abs(k - st.lat) + 0.02);
       st.lat += clamp(k - st.lat, -lr * dt, lr * dt);
       pose(st.s, q, st.lat);
