@@ -267,7 +267,7 @@ window.OEAtmos = (function () {
           g = mix(g, g * uWarm * 1.08, smoothstep(0.55, 1.0, l) * 0.55);                        // highlights: peach
           float mx = max(g.r, max(g.g, g.b)), mn = min(g.r, min(g.g, g.b)), sat = mx > 0.0 ? (mx - mn) / mx : 0.0;
           g = mix(vec3(luma(g)), g, 1.0 + 0.55 * (1.0 - sat));                                    // vibrance
-          vec3 h = max(g - 0.82, 0.0); g += h * h * 2.2 * uWarm;                                  // halation on the brightest
+          vec3 h = max(g - 0.86, 0.0); g += h * h * 0.9 * uWarm;                                  // a touch of halation on the brightest (the roll-off keeps them from white)
           c = mix(c, g, uGrade);
         }
         gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
