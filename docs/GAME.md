@@ -1461,7 +1461,7 @@ quality tier runs a third of the cars.
   - **GPS route:** the way you can actually go, drawn on the minimap and in the
     world (see **Routes** below).
   - **Dialogue:** typewriter text.
-  - **Stamps:** saved in the browser.
+  - **Stamps:** saved in the browser. Your position, car and clock are saved every 30 seconds of play and whenever the tab is hidden or closed, so **Continue** on the title returns you to where you stopped.
 - **Camera shots** (`web/cine.js`, shared with the model viewer):
   - **How they work:** a shot maps progress (0 to 1) to a camera pose. The director
     plays one at a time on the game clock. A key or a drag skips it, and a skipped
