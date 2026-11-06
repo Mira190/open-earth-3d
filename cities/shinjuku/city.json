@@ -49,6 +49,11 @@
     "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
   },
   "plateau": {
+    "veg_from": "tokyo",
+    "veg": [
+      "https://assets.cms.plateau.reearth.io/assets/84/48ebed-93d8-4196-bdda-e1db9590d3d1/13104_shinjuku-ku_pref_2025_citygml_1_op.zip"
+    ],
+    "veg_source": "Project PLATEAU 2025 CityGML vegetation (MLIT, CC BY 4.0): measured street-tree heights",
     "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
     "zoom": 14,
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
