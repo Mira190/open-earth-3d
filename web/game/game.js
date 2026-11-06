@@ -3658,9 +3658,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   loadMsg('Compiling the shaders for this view', 1);
   const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null]);
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
-  // above and the wet street's mirror), so that the first rain of a visit comes on without a stall
-  const warmRain = () => { try { if (!weather || weather.armed === false) return; const t0 = performance.now(); if (weather.warm) weather.warm(); if (mirror && mirror.warm && !mirror.off) mirror.warm(world); console.info(`rain warm-up: ${Math.round(performance.now() - t0)} ms`); } catch (e) { console.warn('rain warm-up', e); } };
-  Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(warmRain)]).then(([flew]) => {
+  // above and the wet street's mirror), so that the first rain of a visit comes on without a stall; the
+  // mirror's variant of every shader compiles in slices behind the title, not holding the loader up
+  const warmRain = () => {
+    try {
+      if (!weather || weather.armed === false) return;
+      const t0 = performance.now();
+      if (weather.warm) weather.warm(o => compileFor(o));
+      return Promise.resolve(mirror && mirror.warm && !mirror.off ? mirror.warm(world) : null) // (compiled in slices, then drawn)
+        .then(() => console.info(`rain warm-up: ${Math.round(performance.now() - t0)} ms`), e => console.warn('rain warm-up', e));
+    } catch (e) { console.warn('rain warm-up', e); }
+  };
+  Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(() => { warmRain(); })]).then(([flew]) => {
     if (flew) fromFlyover();
     if (lib) lib.warm = warmFor; // the characters that come from now on are warmed before they are shown (people.js)
     preTitle = false;
@@ -4487,7 +4496,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else el.hidden = true;
   }
 
-  requestAnimationFrame(frame);
+  warm.finally(() => requestAnimationFrame(frame)); // (the first draw waits for the shaders, compiled in slices: world.js compile)
   function advance(seconds, hold = []) {
     for (const c of hold) keys.add(c);
     const n = Math.round(seconds * 30);

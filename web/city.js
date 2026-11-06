@@ -1059,7 +1059,7 @@ window.OpenEarthCity = async function main(cityId) {
     updateLabels();
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  warm.finally(() => requestAnimationFrame(frame)); // (the first draw waits for the shaders, compiled in slices: world.js compile)
   window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower, Wd,
     cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour, renderer, world, care };
   // the router calls stop() before it shows another view
