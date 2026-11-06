@@ -1357,13 +1357,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // its middle round the lane's corner. Measured with tools/bus_turn.js: before, a bus's heading swung
     // 20 degrees in a tenth of a second at a junction's corner, three to four times what its lock allows,
     // its rear skating sideways at 10 to 20 m/s
-    const LONG_V = 3.5;
+    const LONG_V = 3.5, TRAIL_MAX = 0.12;
     function trail(c, reset) {
       const fa = c.half * 0.6, wb = c.half * 1.15, sx = Math.sin(c.h), sy = Math.cos(c.h), fx = c.x + sx * fa, fy = c.y + sy * fa;
       const dx = fx - c.rx, dy = fy - c.ry, d = Math.hypot(dx, dy);
       if (reset || c.rx == null || !(d > 1e-3) || Math.abs(d - wb) > 1.5) { c.rx = fx - sx * wb; c.ry = fy - sy * wb; return; } // (placed, turned round, or moved a long way at once: straight behind)
-      c.rx = fx - dx / d * wb; c.ry = fy - dy / d * wb;
-      c.h = Math.atan2(fx - c.rx, fy - c.ry); c.x = fx - Math.sin(c.h) * fa; c.y = fy - Math.cos(c.h) * fa;
+      // (no more than TRAIL_MAX off the lane's own heading: further, the body's rear corner sweeps over the
+      // kerb into a lamp post at a tight corner; tools/clip_check.js, Queenstown)
+      let h = Math.atan2(dx, dy), dh = h - c.h;
+      dh -= Math.round(dh / (2 * Math.PI)) * 2 * Math.PI;
+      if (Math.abs(dh) > TRAIL_MAX) h = c.h + Math.sign(dh) * TRAIL_MAX;
+      c.h = h; c.rx = fx - Math.sin(h) * wb; c.ry = fy - Math.cos(h) * wb;
+      c.x = fx - Math.sin(h) * fa; c.y = fy - Math.cos(h) * fa;
     }
     function lanePos(line, s, dir, out, off = 0, prev = null, next = null) {
       along(line, s, dir, -3, prev, next, pA); along(line, s, dir, 3, prev, next, pB);
