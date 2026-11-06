@@ -18,7 +18,7 @@ addEventListener('unhandledrejection', e => fail(e.reason));
 // the loader: what is happening and how far along, painted before each long step (a step blocks the page)
 const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style.width = `${Math.round(f * 100)}%`; };
 const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
-const STEPS = { life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
+const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
@@ -279,7 +279,7 @@ async function main() {
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
+  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,alpine/traffic,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
   for (const [i, name] of mods.entries()) {
     stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
     await paint();

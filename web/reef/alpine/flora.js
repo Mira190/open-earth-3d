@@ -266,6 +266,10 @@ export async function init(ctx) {
   const tier = ctx.tier || { flora: Math.min(innerWidth, innerHeight) < 700 ? 0.55 : 1, simple: false, turf: 1, mirrorFlora: true };
   const quality = tier.flora;
   if (!quality) return null;
+  // nothing grows on the seal (terrain.js's road field, read here as the GPU paints it), which is laid before the plants
+  const roads = ctx.terrain.roads;
+  if (roads) { await roads.ready; roads.update(camera.position); }
+  const onRoad = (x, n) => !!roads && roads.flatJS(x, n) > 0.35;
   const wind = env.u.wind, time = env.u.time;
   const windDir = new THREE.Vector2(Math.sin(125 * Math.PI / 180), -Math.cos(125 * Math.PI / 180));
   const wd = uniform(windDir);
@@ -429,7 +433,7 @@ export async function init(ctx) {
         const maybe = ((cls === 7 || cls === 8 || cls === 12) && dd < R.t) ||
           ((cls === 4 || cls === 5 || cls === 6 || cls === 3 || cls === 15) && dd < R.r) || cls === 9 || cls === 7;
         if (!maybe) continue;
-        if (ctx.depth(x, n) > -0.05) continue;                         // not in the water
+        if (ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;        // not in the water, nor on a sealed road
         const h = terrain.heightAt(x, n);
         pv.set(x, h, -n);
         const clump = mx2(x, n);
@@ -573,7 +577,7 @@ export async function init(ctx) {
           const dd = Math.hypot(x - cam.x, n + cam.z);
           if (dd > RM || hk >= (dd < RN ? 1 : dd < 30 * sq ? 0.6 : 0.4)) continue;
           const cls = ctx.habitat(x, n), m = lupinMask(x, n, cls);
-          if (hash2(ci, cj, 8000 + k) >= Math.pow(m, 0.5) || ctx.depth(x, n) > -0.05) continue;
+          if (hash2(ci, cj, 8000 + k) >= Math.pow(m, 0.5) || ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
           putLupin(dd < RN ? lupNear : lupMid, x, n, (0.75 + 0.4 * hash2(ci, cj, 9300 + k)) * (0.85 + 0.15 * m), hk * 60,
             standColour(x, n, hash2(ci, cj, 9000 + k)), 0.92 + 0.16 * hash2(ci, cj, 9400 + k), flowerOf(hash2(ci, cj, 9500 + k), hash2(ci, cj, 9600 + k)));
         }
@@ -605,7 +609,7 @@ export async function init(ctx) {
         // from just inside the plainer plants' edge (so there is no gap between them) out to RF
         if (dd > RF || dd < RM * 0.85 || hk >= (dd < 200 ? 1 : 0.7)) continue;
         const cls = ctx.habitat(x, n), m = lupinMask(x, n, cls);
-        if (hash2(ci, cj, 6000 + k) >= Math.pow(m, 0.6) || ctx.depth(x, n) > -0.05) continue;
+        if (hash2(ci, cj, 6000 + k) >= Math.pow(m, 0.6) || ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
         const s = 0.9 + 0.4 * hash2(ci, cj, 6300 + k), c = standColour(x, n, hash2(ci, cj, 6100 + k) * 0.9), j = 0.95 + 0.1 * hash2(ci, cj, 6400 + k), i = stage.n++;
         pv.set(x, terrain.heightAt(x, n), -n); q.setFromAxisAngle(up, hk * 60); sc.set(s, s, s);
         m4.compose(pv, q, sc).toArray(stage.mat, i * 16);
@@ -678,7 +682,7 @@ export async function init(ctx) {
         if (!grassy && cls !== 14) continue;
         groundColour(x, n, gc);
         if (!grassy && !(gc[1] > gc[0] * 1.05 && gc[1] > gc[2] * 1.2)) continue;
-        if (ctx.depth(x, n) > -0.05) continue;
+        if (ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
         const h = terrain.heightAt(x, n);
         const s = 0.7 + hash2(ci, cj, 21000 + k) * 0.6;
         pv.set(x, h, -n); q.setFromAxisAngle(up, hash2(ci, cj, 21500 + k) * 40); sc.set(s, s * (0.75 + 0.5 * hash2(ci, cj, 21700 + k)), s);

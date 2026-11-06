@@ -303,3 +303,40 @@ What was looked at: Unreal Engine's scalability groups for foliage (`foliage.Den
 `foliage.LODDistanceScale`) and its hierarchical instanced foliage, culled by cluster; Unity's terrain detail density
 and distance. The approach is theirs (density and distance scaled per tier, instances culled in clusters); no code was
 taken.
+
+## 10. The highways and their traffic
+
+**The road surface** (`web/reef/alpine/roadfield.js`, painted in `terrain.js`). Round the eye, a 640 m field at
+1.25 m holds the signed distance across the nearest sealed road's centreline, the phase along it, and the road's
+kind and half-width. Because the distance is signed, it changes linearly across a road, so a bilinear read is exact
+and a 10 cm line stays sharp on 1.25 m texels, as signed distance fields keep glyphs sharp (Green 2007). A read whose
+gradient is far steeper than a metre per metre (where one road's field meets another's, or the "no road" value) is
+no road. The ground is painted within about 240 m, past which the photographs carry the roads:
+- **State highways** (OpenStreetMap primary: SH80, Mount Cook Road; SH8): two 3.4 m lanes; a 100 mm white edge line at
+  each lane's outer edge; a broken white centre line of 3 m stripes and 7 m gaps (the NZTA Traffic Control Devices
+  Manual, part 5, table 2-6); sealed shoulders to 3.9 m and a gravel shoulder beyond.
+- **Secondary and tertiary roads:** 3.2 m lanes and the centre line only.
+- **Residential streets, unclassified roads and tracks** are left to the photographs: the township's 0.3 m photographs
+  show its streets, and most of the Mackenzie's back roads are gravel.
+- **The seal** is chipseal: pale greywacke chips in bitumen, with a third of the photograph's own colour kept so it sits
+  in the aerial patches without a step, and the wheel paths a little darker.
+- **Flat ground:** the relief (section 4) is laid flat on the seal and eased back over 2 m past its edge, on the GPU and
+  in `heightAt` alike, so the player, the cars and the drawn road agree. No plant grows on the seal.
+
+**Traffic** (`web/reef/alpine/traffic.js`, `?traffic=0` leaves it out, `?traffic=<n>` scales it). The shared Blender
+cars (`web/assets/vehicles/cars.glb`: SUVs, hatchbacks, sedans, vans for the campervans, and coaches) drive the highway
+centrelines:
+- **Keeping left**, 1.7 m left of the centreline.
+- **Speed:** 100 km/h on the open road, 50 km/h within 150 m of a building, slowed for bends (2.5 m/s² sideways) and
+  for the car ahead (a two-second gap). At a line's end a car carries on along the same road.
+- **Wheels and detail:** the wheels are split off the body as `web/game/cars.js` splits them, so they turn. Three
+  levels of detail.
+- **After dark:** lamps lit, and a pool of headlamp light on the road ahead (added light, since a light per car would
+  recompile every material as cars come and go). A soft contact shadow under each car.
+- **Why not cars.js:** the cities' cars and traffic patch WebGL materials, which the reef viewer's WebGPU renderer
+  cannot take, so this module drives the same models with their own glTF materials.
+- **How many:** about a car a kilometre each way by day, 45% of that in the shoulder hours, 8% at night. No traffic count
+  for SH80 was found, so the figure is a judgement for a rural state highway. The colours (white and silver commonest)
+  are a judgement from photographs.
+
+The reef gametest checks that the cars keep left and stand on the drawn ground.
