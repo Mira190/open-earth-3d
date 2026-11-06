@@ -40,8 +40,11 @@ cost is one more game check on the runs that shared code needs.
   on its mapped outline: the lower storey's posts, brackets and pent roof of tiles; the upper storey with
   its balcony and railing (where Goemon looks out in the kabuki play), white walls and lattice doors, and
   its hipped-and-gabled roof.
-- **The aqueduct (水路閣, 1888)**: red brick on granite springers, a row of round arches along the mapped
-  line, about 9 m high, the canal's channel on top behind a granite coping.
+- **The aqueduct (水路閣, 1888)**: brick weathered to a rose grey, about 9 m high, fourteen round arches
+  along the mapped line on piers 2.4 m thick, each pier pierced along the line by a small round-headed
+  passage (the row of them you see through from the end), the arches springing from granite imposts,
+  stepped granite plinths, a corbel table under the coping and the canal's channel on top. Compared
+  with photographs for #244: the first model had 22 thin arches on 1.1 m piers and no passages.
 - **The Keage Incline (1891–1948)**: its two rails on sleepers down the mapped lines, 2.5 m apart, and a
   boat (三十石舟) on its cradle halfway down.
 - **Ginkaku (the Kannon-den, 1489)**: the lower storey in the shoin manner, the upper a Zen hall with its
@@ -81,8 +84,9 @@ near Nyakuoji, who sends you on to a photographer at the Keage Incline.
   over it.
 - The Sanmon's width and depth come from its mapped outline (traced at the eaves); its storey heights
   are proportions of the published 22 m.
-- The aqueduct's arch count is its mapped length over a 4.5 m span read from photographs; its 9 m height is
-  the figure usually quoted.
+- The aqueduct's arch count is its mapped length (97 m) over a 7.2 m bay read from photographs; its 9 m
+  height is the figure usually quoted. The blind arcade under the coping is drawn as corbels, and the
+  triangular panels over the piers are left out.
 - The Kannon-den's height (10.5 m) is an estimate from photographs.
 - Not checked on: a real GPU, WebGPU, Safari or iOS.
 
@@ -92,6 +96,8 @@ From Wikimedia Commons (`tools/commons.py`), compared with stills of the model:
 
 | Subject | File | Author | Licence |
 |---|---|---|---|
+| The aqueduct, from below | [The Lake Biwa Canal Suirokaku Aqueduct.jpg](https://commons.wikimedia.org/wiki/File:The_Lake_Biwa_Canal_Suirokaku_Aqueduct.jpg) | 鵜飼 実幸 | CC0 |
+| The aqueduct's piers and passages | [Suirokaku.JPG](https://commons.wikimedia.org/wiki/File:Suirokaku.JPG) (compared, not copied) | (not given on the file page) | CC BY-SA 3.0 |
 | Eikan-do's Tahoto | [Tahoto Pagoda, Eikan-do (Kyoto) (2640404498).jpg](https://commons.wikimedia.org/wiki/File:Tahoto_Pagoda,_Eikan-do_(Kyoto)_(2640404498).jpg) | KimonBerlin | CC BY-SA 2.0 |
 
 ## Stills
@@ -102,4 +108,5 @@ Desktop (1440×900) and phone (390×844), day, dusk and night (`tools/views/tets
 ![Nanzen-ji's Sanmon and the aqueduct](../images/tetsugaku/nanzenji.jpg)
 ![The Keage Incline and Ginkaku](../images/tetsugaku/incline-ginkaku.jpg)
 ![On a phone](../images/tetsugaku/phone.jpg)
+![The aqueduct: a photograph (鵜飼 実幸, CC0) and the model with the trees hidden (#244)](../images/tetsugaku/suirokaku.jpg)
 ![Eikan-do's Miei-do and Amida-do at day, dusk and night in November, and (trees hidden) Honen-in's gate from the lane and from inside, and Eikan-do from above (#244)](../images/tetsugaku/eikando-honenin.jpg)

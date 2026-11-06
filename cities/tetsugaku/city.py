@@ -46,8 +46,8 @@ MATERIALS = {
     "lattice": {"color": "#3b2d24", "roughness": 0.8, "metalness": 0.0},
     "bracket": {"color": "#54443a", "roughness": 0.85, "metalness": 0.0},
     "bronze": {"color": "#6d5a36", "roughness": 0.4, "metalness": 0.8},
-    # the aqueduct's red brick in English bond, its granite springers and coping
-    "brick": {"color": "#87492f", "roughness": 0.9, "metalness": 0.0},
+    # the aqueduct's brick in English bond, weathered to a rose grey (photographs, #244), its granite imposts and coping
+    "brick": {"color": "#8c5c4c", "roughness": 0.9, "metalness": 0.0},
     "granite": {"color": "#a9a398", "roughness": 0.9, "metalness": 0.0},
     "rail": {"color": "#4a4440", "roughness": 0.5, "metalness": 0.7},
     "sleeper": {"color": "#5a4a3c", "roughness": 0.9, "metalness": 0.0},
@@ -69,7 +69,7 @@ EIKAN = dict(BARE, screen_wood="timber")  # Eikan-do's fronts: doors of bare key
 SANMON, AQUEDUCT, INCLINE = "w190876301", 190871337, (378872665, 378872666)
 SANMON_H = 22.0          # m to the ridge (the temple)
 AQUEDUCT_H = 9.0         # m, the arches' top over the ground at its middle
-AQUEDUCT_SPAN = 4.5      # m between piers (photographs: 13 arches over its mapped length)
+AQUEDUCT_SPAN = 7.2      # m between pier centres: 2.4 m piers, 4.8 m clear (photographs on Commons, #244)
 GINKAKU = ("銀閣", 10.5)  # the Kannon-den's mapped name and height to its ridge (estimated from photographs)
 # Eikan-do (Zenrin-ji): OSM way, height to the ridge (m), the floor's height over the ground. PLATEAU's tops are
 # 16.7 m for the Miei-do and 9.2 m for the Shaka-do; its 25.1 m for the Amida-do is measured from the foot of
@@ -317,29 +317,54 @@ def aqueduct(K):
     P = kk.frame(a, t)
     n = max(3, int(round(L / AQUEDUCT_SPAN)))
     span = L / n
-    pier = 1.1
+    pier = 2.4
     gs = [T(*P(s, 0, 0)[:2]) for s in np.linspace(0, L, 9)]
     ztop = float(np.median(gs)) + AQUEDUCT_H
     half = 2.0
+    lane, lane_h = 0.8, 2.3       # the small passage through each pier along the line: half its width, its springing
     for k in range(n + 1):
         s = k * span
+        a0, a1 = max(s - pier / 2, -0.6), min(s + pier / 2, L + 0.6)
         g = min(T(*P(s, v, 0)[:2]) for v in (-half, half)) - 0.4
-        block(K["brick"], P, s - pier / 2, s + pier / 2, -half, half, g, ztop)
-        block(K["granite"], P, s - pier / 2 - 0.08, s + pier / 2 + 0.08, -half - 0.08, half + 0.08, g, g + 1.2)
+        # a stepped granite plinth
+        block(K["granite"], P, a0 - 0.25, a1 + 0.25, -half - 0.25, half + 0.25, g, g + 0.75)
+        block(K["granite"], P, a0 - 0.1, a1 + 0.1, -half - 0.1, half + 0.1, g + 0.75, g + 1.0)
+        if 0 < k < n:
+            # two legs and a round head over the passage (seen through the whole row of piers)
+            for v0, v1 in ((-half, -lane), (lane, half)):
+                block(K["brick"], P, a0, a1, v0, v1, g + 1.0, g + 1.0 + lane_h + lane)
+            zs = g + 1.0 + lane_h
+            m = 10
+            for j in range(m):
+                v0, v1 = -lane + 2 * lane * j / m, -lane + 2 * lane * (j + 1) / m
+                vm = (v0 + v1) / 2
+                block(K["brick"], P, a0, a1, v0, v1 + 0.01, zs + math.sqrt(max(lane * lane - vm * vm, 0.0)), zs + lane + 0.3)
+            block(K["brick"], P, a0, a1, -half, half, zs + lane + 0.3, ztop)
+        else:
+            block(K["brick"], P, a0, a1, -half, half, g + 1.0, ztop)
     for k in range(n):
         s0, s1 = k * span + pier / 2, (k + 1) * span - pier / 2
         c, r = (s0 + s1) / 2, (s1 - s0) / 2
         g = min(T(*P(c, v, 0)[:2]) for v in (-half, half))
-        spring = max(g + 2.5, ztop - 1.6 - r)
-        m = 10
+        spring = max(g + 3.5, ztop - 1.6 - r)
+        m = 28
         for j in range(m):
             u0, u1 = s0 + (s1 - s0) * j / m, s0 + (s1 - s0) * (j + 1) / m
             um = (u0 + u1) / 2
             z_arch = spring + math.sqrt(max(r * r - (um - c) ** 2, 0.0))
             block(K["brick"], P, u0, u1 + 0.01, -half, half, z_arch, ztop)
-        block(K["granite"], P, s0, s0 + 0.25, -half - 0.05, half + 0.05, spring - 0.3, spring)
-        block(K["granite"], P, s1 - 0.25, s1, -half - 0.05, half + 0.05, spring - 0.3, spring)
-    block(K["granite"], P, -0.6, L + 0.6, -half - 0.15, half + 0.15, ztop, ztop + 0.35)
+    # the granite impost each pier's arches spring from
+    zi = ztop - 1.6 - (span - pier) / 2
+    for k in range(1, n):
+        s = k * span
+        zk = max(zi, min(T(*P(s, v, 0)[:2]) for v in (-half, half)) + 3.5)
+        block(K["granite"], P, s - pier / 2 - 0.18, s + pier / 2 + 0.18, -half - 0.18, half + 0.18, zk - 0.45, zk)
+    # the corbel table under the coping: a small blind arcade on both faces
+    for v, d in ((-half, -1), (half, 1)):
+        block(K["brick"], P, -0.6, L + 0.6, min(v, v + d * 0.18), max(v, v + d * 0.18), ztop - 0.35, ztop)
+        for u in np.arange(0.4, L, 1.35):
+            block(K["granite"], P, u - 0.12, u + 0.12, min(v, v + d * 0.22), max(v, v + d * 0.22), ztop - 0.75, ztop - 0.35)
+    block(K["granite"], P, -0.6, L + 0.6, -half - 0.3, half + 0.3, ztop, ztop + 0.35)
     for v in (-half, half):
         block(K["granite"], P, -0.6, L + 0.6, v - 0.25, v + 0.25, ztop + 0.35, ztop + 1.0)
 
