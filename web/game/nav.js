@@ -756,15 +756,16 @@ window.OENav = (function () {
       }
     }
     // the floor a walker at height z would stand on at (x, y): the highest surface no more
-    // than a step above z. Returns {z, kind} or null (water or nothing reachable).
-    function floorAt(x, y, z) {
+    // than a step above z. Returns {z, kind} or null (water or nothing reachable). cars: a car's floor,
+    // which takes the expressways' decks too (a walker's does not: decks.js gives them walk false)
+    function floorAt(x, y, z, cars = false) {
       let best = null, kind = '';
       const take = (h, k) => { if (h <= z + STEP && (best === null || h > best)) { best = h; kind = k; } };
       if (!offGround(x, y)) { take(terrain(x, y), 'ground'); const u = under(x, y); if (u !== null) take(u, 'ground'); }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
-      decksAt(x, y, (h, d) => { if (d.walk) take(h, 'deck'); });
+      decksAt(x, y, (h, d) => { if (d.walk || cars) take(h, 'deck'); });
       const bt = col.topAt(x, y, z + STEP, BUILDING);
       if (bt > -Infinity) take(bt, 'roof');
       // a landmark's floor within a step (a gate's stone base, a plinth, a platform), within FOOT: its floor
