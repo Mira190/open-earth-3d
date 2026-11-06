@@ -1170,7 +1170,7 @@ window.OECars = (function () {
             // green in Shinjuku's game check)
             const fits = !lights.room || lights.room(st, ex.e);
             st.roomT = fits || toLine - C.half > 4 ? 0 : (st.roomT || 0) + dtNow;
-            const roomy = fits || st.roomT > 12;
+            const roomy = fits || st.roomT > (priority ? 5 : 12); // (a ride on its way to you, its green called ahead, the sooner)
             const last = st.mv && st.mv.j !== a.j ? outAt : null, r = roomy ? lights.request(st, a, ex.e, t) : 'room';
             if (r === true) { into(a, ex, false, last); return Infinity; }
             if (toLine - C.half < 2.5 && st.v < 0.6 && roomy) { lights.wait(st, a, ex.e, t); st.wj = a.j; } // its turn comes: the longest waiting goes first
