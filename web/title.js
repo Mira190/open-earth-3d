@@ -514,7 +514,26 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     else if (b.dataset.site) dive(dests[sel], b.dataset.go === 'play', cities.find(c => c.id === b.dataset.site));
     else dive(dests[sel], b.dataset.go === 'play');
   });
-  on(list, 'click', e => { const b = e.target.closest('.ts-item'); if (!b) return; lastInput = performance.now(); const i = +b.dataset.i; if (i === sel && !narrow()) dive(dests[i], false); else select(i, true); });
+  // A first click opens the card; only a second click on the same destination goes in. A click focuses
+  // its button before it lands, and the focus selects (focusin, below), so what counts is what was
+  // selected when the pointer went down: without that one click went straight in and the card,
+  // with its Play button or Tokyo's subway map, was never seen.
+  let downSel = null;
+  on(list, 'pointerdown', e => { downSel = e.target.closest('.ts-item') ? sel : null; });
+  on(list, 'click', e => {
+    const b = e.target.closest('.ts-item'); if (!b) return;
+    lastInput = performance.now();
+    const i = +b.dataset.i, was = downSel ?? sel;
+    downSel = null;
+    if (i === was && !narrow()) goFrom(dests[i]); else select(i, true);
+  });
+  // going in from the list: a city straight in; a group of maps never to a default one, but to the
+  // card, where its districts (Tokyo's subway map) or sites are chosen
+  function goFrom(d) {
+    if (!d.sites) { dive(d, false); return; }
+    const to = card.querySelector('.mt-stn.sel') || card.querySelector('.mt-stn.on') || card.querySelector('[data-site]');
+    if (to) to.focus({ preventScroll: true });
+  }
   // a card comes up only when asked for (a click, a tap or the keyboard), never on a hover or by itself
   on(list, 'pointerover', e => { const b = e.target.closest('.ts-item'); if (b && e.pointerType !== 'touch') hover(+b.dataset.i); });
   on(list, 'pointerleave', () => hover(-1));
