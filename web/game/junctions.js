@@ -766,7 +766,7 @@ window.OEJunctions = (function () {
         const X = m.end === 0 ? M[0] : M[M.length - 1], a = X.arms.find(b => b.end === 1 - m.end);
         if (a) return (m.end === 0 ? X.mid : L[m.line].len - X.mid) - a.back - m.back;
       }
-      return L[m.line].len - m.back - (a2 && a2.in && a2.j !== m.j ? a2.back : 0);
+      return L[m.line].len - m.back - (a2 && a2.in ? a2.back : 0); // (an arm of this same junction too: a piece that comes back to it has its line to stop at, Shinjuku's 1195, #264)
     }
     function enter(c, a, e, t, forced = false) { // into the junction: its movement joins those in it
       const j = a.j, m = mv(c, e);
