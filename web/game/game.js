@@ -571,7 +571,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // road says what is carriageway, zebra where a zebra's stripes are, the cars giving way there instead)
   const zebraAt = (x, y) => { const q = roadNet.nearest(x, y, 9); const M = q && junctions.midsOn ? junctions.midsOn(q.line) : null; return !!(M && M.some(X => Math.abs(X.mid - q.s) < 9)); };
   const aq = {}, acrossRoad = (x, y, hx, hy) => { const q = roadNet.nearest(x, y, 10); if (!q) return false; roadNet.at(q.line, q.s, aq); return Math.abs(hx * aq.hy - hy * aq.hx) > 0.5; }; // (at 30° or more to the road)
-  crowd.crossings = { byLine: junctions.crossings(crowdNet, onRoad), walk: junctions.walk, walkLeft: junctions.walkLeft, call: junctions.call, road: onRoad, zebra: zebraAt, across: acrossRoad };
+  // (a major road, crossed only at a crosswalk: a class from tertiary up, or two lanes or more each way; a
+  // scramble's own streets are its crowd's, which crosses them on its walk)
+  const MAJOR = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
+  const majorAt = (x, y) => { const q = roadNet.nearest(x, y, 10); if (!q) return false; const l = roadNet.L[q.line]; return MAJOR.has(l.c) || (junctions.lanesOf ? junctions.lanesOf(l) : l.nl || 1) >= 2; };
+  crowd.crossings = { byLine: junctions.crossings(crowdNet, onRoad), walk: junctions.walk, walkLeft: junctions.walkLeft, call: junctions.call, road: onRoad, zebra: zebraAt, across: acrossRoad, major: majorAt };
   // and gathers at the scrambles: a share of it their own, massing at the kerbs and surging across
   // every way at once (actors.js plazas), and more of it on the footways round them
   { const S = junctions.J.filter(j => j.scramble && j.spans && j.spans.length);
