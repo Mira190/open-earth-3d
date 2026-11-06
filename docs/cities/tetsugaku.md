@@ -26,7 +26,7 @@ cost is one more game check on the runs that shared code needs.
 
 - **The path's cherries**: a cherry every 4 to 5 m along both banks of the path where OpenStreetMap names
   it, as photographs show them: a single row on each side of the canal and the walk, kept a road's half
-  width off the streets the path runs beside (245 trees; `landmarks.json` "trees"). The cherries were first planted in 1922 by the painter Hashimoto Kansetsu and his
+  width off the streets the path runs beside (242 trees; `landmarks.json` "trees"). The cherries were first planted in 1922 by the painter Hashimoto Kansetsu and his
   wife (関雪桜). A tree area 7 m either side of the path (`trees.areas` "Philosopher's Path cherries")
   makes them, and the trees mapped there, Somei-yoshino with a few maples. They flower with Kyoto's
   cherries (from 26 March). The path is not lit after dark, so they have no yozakura lighting; Maruyama
