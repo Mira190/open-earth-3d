@@ -9,6 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Fn, uniform, float, int, vec2, vec3, vec4, mix, max, min, abs, floor, fract, smoothstep, clamp, texture, select,
   positionWorld, positionLocal, normalWorld, cameraPosition, length, normalize, dot, sin, varying, mx_noise_float, exp, pow, fwidth } from 'three/tsl';
 import { CHUNK } from '../world.js';
+import { createRoadField, DASH_ON, DASH } from './roadfield.js';
 
 const HALF = 240, CELLS = 240;          // the detail patch: 480 m square, 2 m cells
 const ALB_KNEE = 1.1;
@@ -37,9 +38,11 @@ const vnoiseT = (x, y) => {
 };
 const fbmT = (x, z) => vnoiseT(x.div(9), z.div(9)).mul(0.55).add(vnoiseT(x.div(3.7), z.div(3.7)).mul(0.3)).add(vnoiseT(x.div(1.6), z.div(1.6)).mul(0.15));
 
-export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null) {
+export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null, { range = 1 } = {}) {
   const t = d.scene.terrain, g = d.scene.ground, W = t.w, H = t.h;
   const lightU = light.u;
+  // the sealed roads round the eye (roadfield.js): painted into the ground, with the relief laid flat under them
+  const roads = createRoadField(d.base || '');
   // ---- textures: the ground strips, the cover classes
   const strips = d.strips.map((img, i) => {
     const tex = new THREE.Texture(img);
@@ -109,10 +112,11 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     } else dU.on.value = 0;
   }
   // the patch under a camera position, loaded before the first frame (a still, or the arrival)
-  function prepare(cam) {
+  async function prepare(cam) {
     detailUpdate(cam);
+    await roads.ready; roads.update(cam);
     const a = areas.find(a => a.loading && !a.tex);
-    if (!a) return Promise.resolve();
+    if (!a) return;
     return new Promise(res => { const t0 = performance.now(); const tick = () => (a.tex || performance.now() - t0 > 20000) ? res() : setTimeout(tick, 50); tick(); })
       .then(() => { dU.on.value = 0.95; detailUpdate(cam); });
   }
@@ -158,7 +162,39 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       // out near 0.45 where the ground reflects 0.25 to 0.3. Brightness is eased toward that (hue kept; snow is set below)
       const lum0 = dot(alb, vec3(0.2126, 0.7152, 0.0722));
       alb.assign(select(isSnow, alb, alb.mul(float(1).div(lum0.mul(ALB_KNEE).add(1)))));
-      const look = lookAt(x, z), wTuss = look.r, wRock = look.g, wGrass = look.b;
+      // the sealed roads: chipseal, its painted lines and a gravel shoulder, within the road field's window (about 250 m)
+      const rf = roads.sample(x, z);
+      const ruv = vec2(x.sub(roads.origin.x), z.negate().sub(roads.origin.y)).div(roads.span);
+      const inWin = smoothstep(0.0, 0.01, ruv.x).mul(smoothstep(1.0, 0.99, ruv.x)).mul(smoothstep(0.0, 0.01, ruv.y)).mul(smoothstep(1.0, 0.99, ruv.y));
+      const rKind = floor(rf.a.div(16).add(1e-3)), rHw = rf.a.sub(rKind.mul(16)), rd = abs(rf.r), raa = fwidth(rf.r).max(0.004);
+      const rOn = select(rKind.greaterThan(0.5), float(1), float(0)).mul(inWin).mul(roads.valid(x, z, rf.r)).mul(float(1).sub(smoothstep(190, 240, length(P.xz.sub(cameraPosition.xz)))));
+      const seal = float(1).sub(smoothstep(rHw.sub(raa), rHw.add(raa).add(0.12), rd)).mul(rOn).toVar();
+      const shoulder = float(1).sub(smoothstep(rHw.add(0.3), rHw.add(1.1), rd)).mul(rOn).sub(seal).max(0);
+      {
+        // New Zealand's chipseal: dark grey stones in bitumen, a little darker and smoother in the wheel paths; the
+        // grain fades as it shrinks under a pixel
+        const fineK = float(1).sub(smoothstep(0.3, 0.9, fwidth(x.mul(30)).max(fwidth(z.mul(30)))));
+        const chip = mx_noise_float(vec3(x.mul(30), 0.7, z.mul(30))).mul(fineK).mul(0.22).add(mx_noise_float(vec3(x.mul(2.1), 0.2, z.mul(2.1))).mul(0.08));
+        const wheel = float(1).sub(smoothstep(0.25, 0.45, abs(rd.sub(0.95)))).add(float(1).sub(smoothstep(0.25, 0.45, abs(rd.sub(2.45))))).min(1);
+        // (the greywacke chips weather pale: a sunlit seal photographs a mid grey, near a tenth reflectance; a third of the
+        // photograph's own colour is kept, so the seal sits in the aerial patches and the mosaic without a step)
+        const photoL = dot(alb, vec3(0.2126, 0.7152, 0.0722));
+        const asphalt = mix(vec3(0.105, 0.103, 0.098), vec3(photoL).mul(vec3(1.0, 0.99, 0.95)).min(0.2), 0.33).mul(float(1).add(chip)).mul(float(1).sub(wheel.mul(0.12)));
+        alb.assign(mix(alb, mix(alb, vec3(0.2, 0.185, 0.16), 0.55), shoulder));
+        alb.assign(mix(alb, asphalt, seal));
+        // the lines: white edge lines on a state highway at the lanes' outer edges, a broken centre line on the highway
+        // and the secondary roads (a 3 m stripe, a 7 m gap); a worn white paint with glass beads
+        const line = (v, c, w) => float(1).sub(smoothstep(raa.negate(), raa, abs(v.sub(c)).sub(w / 2)));
+        const lane = select(rKind.lessThan(1.5), float(3.4), float(3.2));
+        const edge = line(rd, lane.add(0.05), 0.1).mul(select(rKind.lessThan(1.5), float(1), float(0)));
+        const ph = roads.phase(rf);
+        const dash = smoothstep(0.0, 0.01, ph).mul(float(1).sub(smoothstep(DASH_ON / DASH - 0.01, DASH_ON / DASH, ph)));
+        const centre = line(rf.r, float(0), 0.1).mul(dash).mul(select(rKind.lessThan(2.5), float(1), float(0)));
+        const paint = edge.add(centre).min(1).mul(seal).mul(float(0.85).add(mx_noise_float(vec3(x.mul(6), 0.1, z.mul(6))).mul(0.15)));
+        alb.assign(mix(alb, vec3(0.62, 0.62, 0.6), paint));
+      }
+      const offRoad = float(1).sub(seal);
+      const look0 = lookAt(x, z), look = look0.mul(offRoad), wTuss = look.r, wRock = look.g, wGrass = look.b;
       // the imagery's own colour noise at 10 m, broken up below the pixel, from a few km in to a few tens of metres;
       // closer than that a 3 m blotch reads as a stain on the ground, so it hands over to the fine grain below
       const n1 = mx_noise_float(vec3(x.mul(0.31), 0, z.mul(0.31))), n2 = mx_noise_float(vec3(x.mul(1.9), 0.5, z.mul(1.9)));
@@ -263,7 +299,8 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     m.userData = { cx, cy, lod: 3, centre: new THREE.Vector3(t.x0 + (cx + 0.5) * CHUNK * t.cell_m, 0, -(t.y1 - (cy + 0.5) * CHUNK * t.cell_m)) };
     group.add(m); chunks.push(m);
   }
-  const RANGE = [1400, 3800, 9000];
+  // the chunks' levels by distance (the low tier keeps the finer ones nearer the eye: range < 1)
+  const RANGE = [1400, 3800, 9000].map(r => r * range);
   const B = 4, FAR = RANGE[1] + 600, blocks = [];
   for (let by = 0; by < ch; by += B) for (let bx = 0; bx < cw; bx += B) {
     const members = chunks.filter(m => m.userData.cx >= bx && m.userData.cx < bx + B && m.userData.cy >= by && m.userData.cy < by + B);
@@ -291,7 +328,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     return h;
   };
   const bilinear = (wx, wz) => texture(heightTex, vec2(wx.sub(t.x0).div(W * t.cell_m), wz.add(t.y1).div(H * t.cell_m))).level(0).r;
-  const detailHeight = (wx, wz) => bicubic(wx, wz).add(relief(wx, wz));
+  const detailHeight = (wx, wz) => bicubic(wx, wz).add(relief(wx, wz).mul(float(1).sub(roads.flat(wx, wz))));
   const geo = new THREE.PlaneGeometry(2 * HALF, 2 * HALF, CELLS, CELLS).rotateX(-Math.PI / 2);
   const snapped = Fn(() => vec2(positionLocal.x, positionLocal.z).add(centre));
   // the patch's normal from differences of its own height, carried to the fragment, with fine grain on top
@@ -353,7 +390,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
   // (x0, z1) corner to its (x1, z0) corner, as PlaneGeometry builds them. Standing on the smooth function instead put feet
   // up to 0.3 m into rock and scree, whose finest relief the 2 m cells cannot hold
   const STEP = 2 * HALF / CELLS;
-  const vertexH = (x, z) => bicubicJS(x, -z) + fbmJS(x, z) * ampAt(x, -z);
+  const vertexH = (x, z) => bicubicJS(x, -z) + fbmJS(x, z) * ampAt(x, -z) * (1 - roads.flatJS(x, -z));
   const heightAt = (x, north) => {
     const z = -north, x0 = Math.floor(x / STEP) * STEP, z0 = Math.floor(z / STEP) * STEP, u = (x - x0) / STEP, v = (z - z0) / STEP;
     const hb = vertexH(x0, z0 + STEP), hd = vertexH(x0 + STEP, z0);
@@ -365,6 +402,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
   let monthSeen = -1;
   function update(cam) {
     detailUpdate(cam);
+    roads.update(cam);
     const m = new Date((ctx_clock ? ctx_clock() : Date.now()) + 12 * 3600e3).getUTCMonth();   // New Zealand's month, near enough
     if (m !== monthSeen) { monthSeen = m; snowSeason.value = SEASON[m]; }
     centre.value.set(Math.round(cam.x / 8) * 8, Math.round(cam.z / 8) * 8);
@@ -384,5 +422,5 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       }
     }
   }
-  return { group, update, prepare, material: mats[0], materials: mats, heightAt, coverAt, coverTex };
+  return { group, update, prepare, material: mats[0], materials: mats, heightAt, coverAt, coverTex, roads };
 }
