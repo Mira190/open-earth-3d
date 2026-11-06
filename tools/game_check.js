@@ -59,7 +59,9 @@ const npcNight = require('./npc_night');
   // traffic by however long the machine took between two steps, so the same code plays the same run
   // on a fast machine and a loaded one. GAME_LOCKSTEP=0 leaves the frames running the world as a player's do.
   const lockstep = process.env.GAME_LOCKSTEP !== '0';
-  if (lockstep) await p.evaluate(() => window.__game.hold(true));
+  // (and every landmark tile laid, nav.js layAll, and the route network built, route.js: the roads it finds a car
+  // can't get along are kept off by the traffic as it finds them, so a run started before it is done meets another traffic)
+  if (lockstep) await p.evaluate(async () => { const g = window.__game; g.hold(true); if (g.nav.layAll) g.nav.layAll(); await g.ways.build(); });
   await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
