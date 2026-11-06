@@ -1262,6 +1262,7 @@ window.dispatchEvent(new Event('three-ready'));
       current = window.OpenEarthCity(city.id);
     } else {
       pane('globe-app').hidden = false;
+      document.title = 'Open Earth 3D'; // the city's and the game's pages name their city in the tab (city.js, game.js)
       const notice = noGL ? 'The 3D models need WebGL 2, which this browser has turned off or does not support.'
         : id && id !== 'globe' ? `“${id}” has no 3D model yet. Pick a live city.` : '';
       current = window.OpenEarthGlobe(cities, notice, from);

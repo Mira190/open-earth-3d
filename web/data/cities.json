@@ -86,6 +86,9 @@
    "webm": "flyover.webm",
    "poster": "flyover.jpg",
    "seconds": 14
+  },
+  "group_meta": {
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
   }
  },
  {
@@ -116,6 +119,9 @@
   "load_bytes": {
    "model": 1551539,
    "game": 1670025
+  },
+  "group_meta": {
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
   }
  },
  {
@@ -146,6 +152,9 @@
   "load_bytes": {
    "model": 1108228,
    "game": 1203662
+  },
+  "group_meta": {
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
   }
  },
  {
@@ -176,6 +185,9 @@
   "load_bytes": {
    "model": 1183197,
    "game": 1321684
+  },
+  "group_meta": {
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
   }
  },
  {
@@ -1958,7 +1970,10 @@
   "extent_km": [
    33.4,
    33.2
-  ]
+  ],
+  "group_meta": {
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  }
  },
  {
   "id": "hardy-reef",
@@ -1977,7 +1992,10 @@
   "extent_km": [
    28.2,
    27.6
-  ]
+  ],
+  "group_meta": {
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  }
  },
  {
   "id": "green-island",
@@ -1996,7 +2014,10 @@
   "extent_km": [
    26.6,
    33.6
-  ]
+  ],
+  "group_meta": {
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  }
  },
  {
   "id": "heron-island",
@@ -2015,7 +2036,10 @@
   "extent_km": [
    19.4,
    14.3
-  ]
+  ],
+  "group_meta": {
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  }
  },
  {
   "id": "lady-elliot-island",
@@ -2034,7 +2058,10 @@
   "extent_km": [
    12.0,
    12.0
-  ]
+  ],
+  "group_meta": {
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  }
  },
  {
   "id": "lake-pukaki",
@@ -2055,7 +2082,10 @@
   "extent_km": [
    38.4,
    84.5
-  ]
+  ],
+  "group_meta": {
+   "summary": "Two glacial lakes of the Mackenzie Basin on LINZ's 1 m LiDAR terrain and aerial photos: Lake Pukaki under Aoraki / Mount Cook, and Lake Tekapo with the Church of the Good Shepherd, under the dark-sky reserve's stars."
+  }
  },
  {
   "id": "lake-tekapo",
@@ -2076,7 +2106,10 @@
   "extent_km": [
    36.5,
    51.8
-  ]
+  ],
+  "group_meta": {
+   "summary": "Two glacial lakes of the Mackenzie Basin on LINZ's 1 m LiDAR terrain and aerial photos: Lake Pukaki under Aoraki / Mount Cook, and Lake Tekapo with the Church of the Good Shepherd, under the dark-sky reserve's stars."
+  }
  },
  {
   "id": "new-york",
