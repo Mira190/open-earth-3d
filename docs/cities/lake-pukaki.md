@@ -132,7 +132,7 @@ Good Shepherd). In a full stand they stand 1.4 plants a square metre, touching. 
 second and a few odd plants of any colour. A plant is a clump: nine spikes of 0.5–1.1 m, the tallest in the middle,
 nearly as thick as their foot for most of their length and tapering to buds, florets raised in whorls, speckled paler
 (the banner petals) and opening from the foot up, over a mound of palmate leaves (fans of 11 leaflets on their stalks).
-Three forms by distance, from one set of spots so that a plant stays put as it changes form: whole plants within 12 m,
+Four forms by distance, from one set of spots so that a plant stays put as it changes form: within 4.5 m (high and medium tiers) every flower modelled, pea flowers in whorls of six every 1.8 cm, each a short keel under a broad banner petal, packed round a thin stem, over leaflets folded along their midribs (refilled every metre the eye moves, and swapped with the coarser forms in the shader by the live distance, so a plant never waits for a refill to change); whole plants within 12 m,
 plainer ones (five cone spikes, six leaves) to 55 m, and beyond, out to 340 m, patches of nine spikes over small leaf
 domes, 1.4 m across, one instance each, so the drifts on a shore a few hundred metres below a lookout still read as a
 band of colour. The far ring is filled a few milliseconds a frame and swapped in when done. A phone gets fewer and

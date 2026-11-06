@@ -7,7 +7,7 @@
 // All are instanced meshes refilled by tiles as the camera moves; each is lit by light.js like the land under it,
 // mountains' shadows included.
 import * as THREE from 'three/webgpu';
-import { Fn, float, vec2, vec3, vec4, mix, max, min, sin, cos, smoothstep, clamp, dot, normalize, length, uniform, positionLocal,
+import { Fn, select, float, vec2, vec3, vec4, mix, max, min, sin, cos, smoothstep, clamp, dot, normalize, length, uniform, positionLocal,
   positionWorld, cameraPosition, attribute, mx_noise_float, exp, pow, abs, instanceIndex, varying, uv, normalWorld, positionGeometry } from 'three/tsl';
 
 const TILE = 24;
@@ -48,7 +48,10 @@ function tussockGeometry(blades = 64, segs = 4, wMul = 1) {
 // its foot.
 //   detail: florets raised in whorls on the spikes (near); without, plain cones (further out)
 //   spread: the stalks scattered over a disc of that radius, each over a small dome of leaves (a far patch of plants)
-function lupinGeometry({ spikes = 9, leaves = 15, leaflets = 11, radial = 6, rows = 11, detail = true, spread = 0, sd = 23 } = {}) {
+//   florets: each flower modelled, for the plants within a few metres: a pea flower in whorls of five up a thinner spike,
+//   its keel jutting out and its banner petal standing up behind it, smaller toward the buds at the tip; the leaflets
+//   folded along the midrib
+function lupinGeometry({ spikes = 9, leaves = 15, leaflets = 11, radial = 6, rows = 11, detail = true, spread = 0, sd = 23, florets = false } = {}) {
   seed = sd;
   const parts = [];
   const m4 = new THREE.Matrix4(), rq = new THREE.Quaternion(), ax = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
@@ -58,14 +61,14 @@ function lupinGeometry({ spikes = 9, leaves = 15, leaflets = 11, radial = 6, row
     // the middle spike tallest, the outer ones shorter and leaning out (0.5 to 1.2 m, as in photographs of the shore)
     const top = spread ? 0.55 + rnd() * 0.5 : (s === 0 ? 0.98 + rnd() * 0.14 : 0.52 + rnd() * 0.42);
     const len = Math.min(top - (spread ? 0.16 : 0.12), 0.24 + rnd() * 0.14 + (top - 0.5) * 0.35);
-    const rad = (spread ? 0.05 : 0.034) + rnd() * 0.016, tipR = 0.006;
+    const rad = ((spread ? 0.05 : 0.034) + rnd() * 0.016) * (florets ? 0.5 : 1), tipR = 0.006;
     const spike = new THREE.CylinderGeometry(tipR, rad, len, radial, rows, true).translate(0, top - len / 2, 0);
     const pp = spike.attributes.position, uu = spike.attributes.uv, tint = 0.5 + 0.5 * rnd(), ph = rnd() * 6.28;
     for (let i = 0; i < pp.count; i++) {
       const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i), t = Math.min(1, Math.max(0, (y - (top - len)) / len));
       // a spike's outline: nearly as thick as its foot for most of its length, then tapering to the buds (not a cone)
       let k = Math.max(tipR, rad * (1 - 0.88 * Math.pow(t, 2.4))) / (rad + (tipR - rad) * t);
-      if (detail) {
+      if (detail && !florets) {
         // florets: whorls of pea flowers standing out from the spike, smaller toward the buds at the tip
         const aa = Math.atan2(z, x);
         k *= 1 + 0.8 * (1 - t * 0.55) * Math.max(0, Math.sin(t * len * 190 + ph) * Math.cos(aa * 4 + t * 11 + ph));
@@ -75,6 +78,34 @@ function lupinGeometry({ spikes = 9, leaves = 15, leaflets = 11, radial = 6, row
     }
     spike.computeVertexNormals();
     const stalk = [spike];
+    if (florets) {
+      // whorls every 1.8 cm, six flowers each, turned a little from the whorl below, packed so they hide the stem
+      const fp = [], fn = [], fu = [];
+      const tri = (a, b, c, n, tt) => { for (const v of [a, b, c]) { fp.push(v[0], v[1], v[2]); fn.push(n[0], n[1], n[2]); fu.push(tint, tt); } };
+      const nw = Math.max(4, Math.round(len / 0.018));
+      for (let wv = 0; wv < nw; wv++) {
+        const tt = (wv + 0.5) / nw, y0 = top - len + tt * len;
+        const core = Math.max(tipR, rad * (1 - 0.88 * Math.pow(tt, 2.4)));
+        const sz = 0.026 * (1 - 0.55 * tt) * (0.85 + 0.3 * rnd());
+        for (let f = 0; f < 6; f++) {
+          const af = (f / 6) * Math.PI * 2 + wv * 0.55 + ph;
+          const ux = Math.cos(af), uz = Math.sin(af), wx = -uz, wz = ux;
+          const P = (o, up, sd2) => [ux * (core + o) + wx * sd2, y0 + up, uz * (core + o) + wz * sd2];
+          const nOut = [ux * 0.8, 0.45, uz * 0.8];
+          // the keel and wings: a short rounded boat jutting out and a little down
+          const k0 = P(0, -sz * 0.05, 0), k1 = P(sz * 0.5, -sz * 0.12, sz * 0.36), k2 = P(sz * 0.95, -sz * 0.28, 0), k3 = P(sz * 0.5, -sz * 0.12, -sz * 0.36);
+          tri(k0, k1, k2, nOut, tt); tri(k0, k2, k3, nOut, tt);
+          // the banner: a broad round petal standing up behind the keel and facing out, its sides folded back a little
+          const b0 = P(sz * 0.12, 0, 0), bl = P(sz * 0.18, sz * 0.4, sz * 0.58), br = P(sz * 0.18, sz * 0.4, -sz * 0.58);
+          const bt = P(sz * 0.4, sz * 1.05, 0), bul = P(sz * 0.32, sz * 0.88, sz * 0.46), bur = P(sz * 0.32, sz * 0.88, -sz * 0.46);
+          tri(b0, bl, bul, nOut, tt); tri(b0, bul, bt, nOut, tt); tri(b0, bt, bur, nOut, tt); tri(b0, bur, br, nOut, tt);
+        }
+      }
+      const fg = new THREE.BufferGeometry();
+      fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3)); fg.setAttribute('normal', new THREE.Float32BufferAttribute(fn, 3));
+      fg.setAttribute('uv', new THREE.Float32BufferAttribute(fu, 2));
+      stalk.push(fg);
+    }
     if (!spread) {
       const stem = new THREE.CylinderGeometry(0.005, 0.008, top - len, 4, 1, true).translate(0, (top - len) / 2, 0);
       const su = stem.attributes.uv; for (let i = 0; i < su.count; i++) su.setXY(i, 0, 0);
@@ -108,7 +139,9 @@ function lupinGeometry({ spikes = 9, leaves = 15, leaflets = 11, radial = 6, row
       const dx = Math.cos(b), dz = Math.sin(b), up = Math.sin(tilt) * (dx * Math.cos(a) + dz * Math.sin(a)) + 0.12;
       const qx = -dz, qz = dx;
       const tip = [cx + dx * L, y + up * L, cz + dz * L], mid = [cx + dx * L * 0.45, y + up * L * 0.45 + 0.004, cz + dz * L * 0.45];
-      const lft = [mid[0] + qx * w, mid[1], mid[2] + qz * w], rgt = [mid[0] - qx * w, mid[1], mid[2] - qz * w], o = [cx, y, cz];
+      // (up close, each leaflet folded along its midrib, its edges a little down)
+      const fold = florets ? w * 0.45 : 0;
+      const lft = [mid[0] + qx * w, mid[1] - fold, mid[2] + qz * w], rgt = [mid[0] - qx * w, mid[1] - fold, mid[2] - qz * w], o = [cx, y, cz];
       const n = new THREE.Vector3(-dx * up * 0.6, 1, -dz * up * 0.6).normalize().toArray();
       tri(o, lft, tip, n); tri(o, tip, rgt, n);
     }
@@ -269,7 +302,7 @@ export async function init(ctx) {
   // nothing grows on the seal (terrain.js's road field, read here as the GPU paints it), which is laid before the plants
   const roads = ctx.terrain.roads;
   if (roads) { await roads.ready; roads.update(camera.position); }
-  const onRoad = (x, n) => !!roads && roads.flatJS(x, n) > 0.35;
+  const onRoad = (x, n) => !!roads && roads.flatJS(x, n) > 0.92;   // (the seal and its first half metre: lupins grow to its edge)
   const wind = env.u.wind, time = env.u.time;
   const windDir = new THREE.Vector2(Math.sin(125 * Math.PI / 180), -Math.cos(125 * Math.PI / 180));
   const wd = uniform(windDir);
@@ -311,7 +344,16 @@ export async function init(ctx) {
   // in one instance, so a drift on a shore a few hundred metres away still reads as a band of colour
   const lMat = new THREE.MeshBasicNodeMaterial({ side: THREE.DoubleSide });
   const lCol = attribute('aFlower', 'vec4');      // rgb flower colour, a: in flower (0..1)
-  lMat.positionNode = Fn(() => positionLocal.add(sway(attribute('aPos', 'vec2'), positionGeometry.y, 2.2)))();
+  // the plants within RC of the eye are drawn in their finest form (florets, lupClose below) and the coarser forms step
+  // aside for them, by the live distance in the shader, so the swap never waits for a refill
+  const RC = tier.simple ? 0 : 4.5;
+  const lupPos = (hideNear) => Fn(() => {
+    const aP = attribute('aPos', 'vec2'), p = positionLocal.add(sway(aP, positionGeometry.y, 2.2));
+    if (!RC) return p;
+    const dd = length(aP.sub(vec2(cameraPosition.x, cameraPosition.z)));
+    return select(hideNear ? dd.lessThan(RC) : dd.greaterThanEqual(RC), vec3(0, -1e6, 0), p);
+  })();
+  lMat.positionNode = lupPos(true);
   lMat.colorNode = Fn(() => {
     const tier = uv().y, sv = uv().x, isSpike = sv.greaterThan(0.25);
     const P = positionWorld, dist = length(P.sub(cameraPosition));
@@ -335,6 +377,9 @@ export async function init(ctx) {
     return lit(alb, N, P, isSpike.select(float(0.35), float(0.45)));
   })();
   const lupinMesh = (geo, max, near, name) => new Ring(geo, lMat, max, [['aFlower', 4], ['aPos', 2]], { near, margin: 2.5, name });
+  // the finest form: a copy of the material that keeps only the plants within RC
+  const lMatClose = lMat.clone(); lMatClose.positionNode = lupPos(false); lMatClose.colorNode = lMat.colorNode;
+  const lupClose = RC ? new Ring(lupinGeometry({ florets: true, leaflets: 11, radial: 7, rows: 10 }), lMatClose, 400, [['aFlower', 4], ['aPos', 2]], { near: 3, margin: 2.5, name: 'lupin-close' }) : null;
   const lupNear = lupinMesh(tier.simple ? lupinGeometry({ spikes: 7, leaves: 9, leaflets: 9, radial: 5, rows: 8 }) : lupinGeometry(), Math.round(2600 * quality), 5, 'lupin-near');
   const lupMid = lupinMesh(lupinGeometry({ spikes: 5, leaves: 6, leaflets: 7, radial: 4, rows: 2, detail: false, sd: 29 }), Math.round(14000 * quality), 16, 'lupin-mid');
   const lupFar = lupinMesh(lupinGeometry({ spikes: 9, leaves: 0, radial: 3, rows: 1, detail: false, spread: 1.4, sd: 31 }), Math.round(14000 * quality), 80, 'lupin-far');
@@ -397,7 +442,8 @@ export async function init(ctx) {
   // mirror draws the scene again, and with every plant in it cost as much as the view)
   for (const r of [tussock, tussockFar, rocks, turf, shrubs, shrubsFar, lupFar]) r.layer(1);
   if (!tier.mirrorFlora) for (const r of [lupNear, lupMid]) r.layer(1);
-  for (const r of [tussock, tussockFar, lupNear, lupMid, lupFar, rocks, shrubs, shrubsFar, turf]) scene.add(r.group);
+  if (lupClose && !tier.mirrorFlora) lupClose.layer(1);
+  for (const r of [tussock, tussockFar, lupClose, lupNear, lupMid, lupFar, rocks, shrubs, shrubsFar, turf]) if (r) scene.add(r.group);
 
   // ---- placement by tiles round the camera
   // wild stands run blue to purple (Wikipedia: Lupinus polyphyllus), with pinks, white and a few yellow (NZPCN, DOC);
@@ -560,7 +606,22 @@ export async function init(ctx) {
     }
     return out.sort((a, b) => a[0] - b[0]);
   };
-  let lupKey = '', farKey = '';
+  let lupKey = '', farKey = '', closeKey = -1;
+  const closeAt = { x: 1e9, z: 1e9 };
+  // the lupins' spots in a tile (1.4 plants a square metre in a full stand, all of them near the eye and fewer further
+  // out), each passed to put(distance, x, n, scale, turn, colour, shade, in flower) when it holds a plant within R
+  function lupinSpots(ci, cj, cam, R, flowerOf, put) {
+    const K = Math.round(1.4 * lupDens * TILE * TILE);
+    for (let k = 0; k < K; k++) {
+      const x = (ci + hash2(ci, cj, 7000 + k * 3)) * TILE, n = (cj + hash2(ci, cj, 7001 + k * 3)) * TILE, hk = hash2(ci, cj, 7002 + k * 3);
+      const dd = Math.hypot(x - cam.x, n + cam.z);
+      if (dd > R || hk >= (dd < RN ? 1 : dd < 30 * sq ? 0.6 : 0.4)) continue;
+      const cls = ctx.habitat(x, n), m = lupinMask(x, n, cls);
+      if (hash2(ci, cj, 8000 + k) >= Math.pow(m, 0.5) || ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
+      put(dd, x, n, (0.75 + 0.4 * hash2(ci, cj, 9300 + k)) * (0.85 + 0.15 * m), hk * 60,
+        standColour(x, n, hash2(ci, cj, 9000 + k)), 0.92 + 0.16 * hash2(ci, cj, 9400 + k), flowerOf(hash2(ci, cj, 9500 + k), hash2(ci, cj, 9600 + k)));
+    }
+  }
   function fillLupins(cam) {
     const mo = month(), bloom = BLOOM[mo];
     const flowerOf = (a, b) => bloom > a ? Math.min(1, bloom * 1.2) * (0.72 + 0.28 * b) : 0;
@@ -570,19 +631,16 @@ export async function init(ctx) {
     const key = Math.floor(cam.x / TILE) + ',' + Math.floor(-cam.z / TILE) + ',' + mo;
     if (key !== lupKey) {
       lupKey = key; lupNear.begin(cam.x, cam.z); lupMid.begin(cam.x, cam.z);
-      const K = Math.round(1.4 * lupDens * TILE * TILE);
-      for (const [, ci, cj] of tilesNear(cam, TILE, RM)) {
-        for (let k = 0; k < K; k++) {
-          const x = (ci + hash2(ci, cj, 7000 + k * 3)) * TILE, n = (cj + hash2(ci, cj, 7001 + k * 3)) * TILE, hk = hash2(ci, cj, 7002 + k * 3);
-          const dd = Math.hypot(x - cam.x, n + cam.z);
-          if (dd > RM || hk >= (dd < RN ? 1 : dd < 30 * sq ? 0.6 : 0.4)) continue;
-          const cls = ctx.habitat(x, n), m = lupinMask(x, n, cls);
-          if (hash2(ci, cj, 8000 + k) >= Math.pow(m, 0.5) || ctx.depth(x, n) > -0.05 || onRoad(x, n)) continue;
-          putLupin(dd < RN ? lupNear : lupMid, x, n, (0.75 + 0.4 * hash2(ci, cj, 9300 + k)) * (0.85 + 0.15 * m), hk * 60,
-            standColour(x, n, hash2(ci, cj, 9000 + k)), 0.92 + 0.16 * hash2(ci, cj, 9400 + k), flowerOf(hash2(ci, cj, 9500 + k), hash2(ci, cj, 9600 + k)));
-        }
-      }
+      for (const [, ci, cj] of tilesNear(cam, TILE, RM)) lupinSpots(ci, cj, cam, RM, flowerOf, (dd, ...a) => putLupin(dd < RN ? lupNear : lupMid, ...a));
       lupNear.end(); lupMid.end();
+    }
+    // the finest form within RC (and a little beyond, for the walk to the next refill), refilled every metre: the same
+    // spots, so a plant keeps its place, size and colour as it changes form
+    if (lupClose && (Math.hypot(cam.x - closeAt.x, cam.z - closeAt.z) > 1 || closeKey !== mo)) {
+      closeAt.x = cam.x; closeAt.z = cam.z; closeKey = mo;
+      lupClose.begin(cam.x, cam.z);
+      for (const [, ci, cj] of tilesNear(cam, TILE, RC + 3)) lupinSpots(ci, cj, cam, RC + 3, flowerOf, (dd, ...a) => putLupin(lupClose, ...a));
+      lupClose.end();
     }
     // beyond, patches of ten plants in one instance on coarser tiles, while the lupins are in flower (out of flower
     // a patch is a few green humps nobody sees from there): a patch a 3 m^2 in a full stand, fewer past 200 m
