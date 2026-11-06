@@ -91,6 +91,10 @@ the low bytes and then all the high bytes, gzipped: 3.4 MB where the plain grid 
 
 `cover.png` holds one class per 20 m (`build_alpine.py COVER`): lake, river, snow and ice, debris-covered ice, rock and
 cliff, scree and moraine, riverbed gravel, tussock, alpine herbfield, scrub, forest, pasture, wetland, road, built, shore.
+White water in a gorge (the Hooker under its lower bridge) is bright and grey, so the colour rule took it for snow, a
+flat white band along the river; a snow pixel with no more than three others in its 5 × 5 window beside a river or
+riverbed pixel is now river (`build_alpine.py river_snow`: 4,031 pixels here, 2,436 at Tekapo, applied to the built
+covers in place).
 The classes come from the imagery's colour (lightness, saturation, green), the slope and the height, with
 OpenStreetMap's mapped glaciers, scree and shingle, scrub and heath, and woods on top, and a 3 × 3 majority filter.
 They steer the detail only: the colour is always the imagery's.
@@ -109,7 +113,10 @@ The ground's detail is layered by distance:
   the satellite mixes in from above. The shader shrinks them to nothing before 40 m, so the turf has no edge as the
   camera moves.
 - **Within 100–220 m:** plants and stones, placed by tile (`web/reef/alpine/flora.js`):
-  - tussock clumps of 64 blades near and 18 further out, swaying in rolling gusts and lit through from behind;
+  - tussock clumps of 64 blades near and 18 further out, swaying in rolling gusts and lit through from behind: a
+    forward lobe toward the sun and a diffuse share every thin blade passes through to its shaded face, so a backlit
+    clump glows straw-gold against a low sun, as in photographs, rather than the near black of its sky-lit side (issue
+    #232; the leaves of the lupins and shrubs take the same);
   - matagouri on scrub: a metre-high tangle of crooked grey twigs with spines, greener at the tips;
   - stones on scree, moraine and gravel, few inside a lupin stand.
 - **Russell lupins, to 340 m:** in drifts (below).
@@ -191,11 +198,22 @@ filling the frame and cumulus building on the Divide.
 - a golden bounce off the tussock;
 - the mountains' shadows from a pass that marches every cell's ray toward the sun over the height grid, with the
   Earth's curve and the sun's disc. It runs again only when the sun has moved;
+- the cars, the landmark models and the people take the scene's sun light, not that pass, so in a valley's shadow at
+  golden hour they stood sunlit (issue #232). The same march runs on the CPU at the viewer (`light.js` `visAt`, again
+  when the eye has moved 4 m or the sun 0.02°), and the sun light is scaled by it, eased over about a second: down in
+  the shadow they stand in it with the slope round them. One value for the view: a sunlit landmark seen from inside a
+  shadow is drawn shaded, which a shadow map per object would put right;
 - by day the sky's light on the ground is taken at 0.72 of the model's. At full strength it gave about 40% of the light
   on open ground with the sun 40° up, where a clear sky gives 15 to 25%, and its blue lifted every shadow into a grey
   haze;
 - a daylight white balance, as a landscape photographer sets one: the overall cast of sun and sky together is taken out
   of the land (a warm sun and a blue sky left the tussock sage). It fades out toward the golden hour, whose warmth stays.
+
+| The scene's sun light in a hill's shadow at 19:50, before | After |
+|---|---|
+| ![](../images/lake-pukaki/shadow-before.jpg) | ![](../images/lake-pukaki/shadow-after.jpg) |
+| **Facing a low sun at the visitor centre, before** | **After: the verge's tussock and lupins lit through** |
+| ![](../images/lake-pukaki/tussock-before.jpg) | ![](../images/lake-pukaki/tussock-after.jpg) |
 
 **The ground's colour** (`web/reef/alpine/terrain.js`):
 - the imagery is printed for a screen, so pale ground comes out near a linear 0.45 where dry tussock and gravel reflect
@@ -343,8 +361,13 @@ centrelines:
   recompile every material as cars come and go). A soft contact shadow under each car.
 - **Why not cars.js:** the cities' cars and traffic patch WebGL materials, which the reef viewer's WebGPU renderer
   cannot take, so this module drives the same models with their own glTF materials.
-- **How many:** about a car a kilometre each way by day, 45% of that in the shoulder hours, 8% at night. No traffic count
-  for SH80 was found, so the figure is a judgement for a rural state highway. The colours (white and silver commonest)
+- **How many:** from Waka Kotahi's count on SH80 (its State Highway Traffic Monitoring Sites layer, site 08000001,
+  "Lake Pukaki – Nth of SH8 Junction", at -44.1828, 170.1153): an AADT of 1,756 vehicles in 2024 (1,439 in 2023), 7%
+  of them heavy. With three quarters of a day's traffic between 8 and 19 h, a fifth in the shoulder hours and the
+  rest at night (a rural highway's day, a judgement: the site's hourly counts were not read), at about 90 km/h that is
+  0.67 cars a kilometre each way by day, 0.39 in the shoulder hours and 0.10 at night (`traffic.js` `PER_KM`). It
+  was a car a kilometre by day before, a judgement. There is no count site further up SH80, so the valley takes the
+  same figure; the coaches' share (6%) is close to the count's heavy share. The colours (white and silver commonest)
   are a judgement from photographs.
 
 The reef gametest checks that the cars keep left and stand on the drawn ground.
@@ -368,8 +391,12 @@ city.json `landmarks`, as at Tekapo.
 | The tahr statue (Game and Forest Foundation, unveiled 2014) | no mapped position: the LiDAR's object 2.8 m tall on the knoll inside the viewing loop 21 m west of the visitor centre (a judgement) | a life-size bronze Himalayan tahr bull (0.95 m at the shoulder) with a bull's long ruff, on a greywacke boulder, facing up the lake |
 | Lower Hooker, Hooker Bluff and Upper Hooker swing bridges | spans along the OSM ways: 71.0, 101.5 and 78.7 m; decks along the DSM (a sag fitted); banks and river from the DEM | a 1.2 m deck hung from two main cables at handrail height on portal frames, hangers every 1.5 m, wire mesh sides, backstays to anchor blocks; walkable (`deck` in city.json) |
 
-The Hooker Bluff bridge was rebuilt in 2025-26: DOC gives the new one as 189 m long and 1.2 m wide, opened in July
-2026. OpenStreetMap's way, and so the model, has 101.5 m of bridge; the new alignment was not in the data read.
+The Hooker Bluff bridge was rebuilt in 2025-26: DOC gives the new one as 189 m long and 1.2 m wide, opened on 28 July
+2026; DC Structures Studio describe a central swing span with 5 m steel masts at its east and west ends on concrete pads
+on the moraine, and gradients to 8%. OpenStreetMap's way, and so the model, has 101.5 m of bridge. Looked at again in
+November 2026: the way (16301097) still has its 2018 two-node geometry, about 112 m end to end; its last edit (changeset
+186749568, 1 August 2026, "path finally reopened") changed its tags only. A 189 m bridge does not fit it, so its ends or
+its line moved; redrawing it needs the new alignment mapped, or LINZ photographs flown since July 2026.
 The bronze is less metallic than real bronze, because the viewer has no environment map and a full metal renders
 near black without one.
 

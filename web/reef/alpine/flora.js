@@ -316,10 +316,14 @@ export async function init(ctx) {
     return vec3(wd.x, 0, wd.y).mul(bend);
   };
   const lit = (alb, N, P, trans) => {
-    // light through thin leaves when the sun is behind them, from the eye's side
-    const V = normalize(cameraPosition.sub(P));
-    const back = pow(max(dot(V.negate(), light.u.sunDir), 0), 4).mul(trans);
-    return light.shade(alb, N, P).add(vec3(light.u.sunE).mul(alb).mul(back.mul(light.sunVis(P)).mul(0.22)));
+    // light through thin leaves when the sun is behind them, from the eye's side: a forward lobe toward the sun, and
+    // the diffuse share every thin blade passes through to its shaded face (so a backlit tussock glows straw-gold, as
+    // it does in photographs against a low sun, and is not the near-black of its sky-lit side: issue #232)
+    const V = normalize(cameraPosition.sub(P)), L = light.u.sunDir;
+    const fwd = max(dot(V.negate(), L), 0);
+    const back = pow(fwd, 4).mul(0.22).add(pow(fwd, 1.5).mul(0.16));
+    const through = abs(dot(N, L)).mul(0.2).mul(smoothstep(-0.1, 0.4, fwd));
+    return light.shade(alb, N, P).add(vec3(light.u.sunE).mul(alb).mul(back.add(through).mul(trans).mul(light.sunVis(P))));
   };
 
   // ---- tussock

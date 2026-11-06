@@ -1578,6 +1578,15 @@ quality tier runs a third of the cars.
     <kbd>E</kbd> at a stop takes you to the next one. The camera climbs the
     building with you, and the time is shortened from the lift's own speed
     (`m_per_min`). The player arrives facing the stop's `face`.
+    A stop with no footway near it (Queenstown's glass lift down to the luge track) is joined to the route network
+    over the ground, and the gold line breaks at a lift on the minimap and the map as in the world. A start up on a
+    deck (`game.start.z`, Queenstown's Skyline deck) spawns on the floor at that level, and `tools/game_check.js`
+    measures its kerb from the foot of the lift that serves it. Every lift is ridden up and down in the check.
+  - **Landings past the frame** (game.json `outposts`, `pipeline/outposts.py`): a ferry can call at a wharf beyond the
+    map's edge. Its leg is routed over the real lake past the frame, the far wharf and the ground round it are a tile
+    of their own (`web/outposts.js`), and the game walks there as anywhere. <kbd>F</kbd> skips a long crossing in
+    about 40 s, and waiting for the boat takes about a minute at most. The check sails there, goes ashore and walks
+    to the landing's largest building.
   - **Escalators:** a walkable strip with `moving_ms` carries whoever stands on its
     moving stretch (`moving_u`) along its axis. You can walk on it too.
   - **High floors:** a travel point with a height (`[x, y, z]`) lands you on a roof.

@@ -15,7 +15,8 @@
 // ("closer": a photo spot's id looks closer at it from where you stand, "along": seconds looking along it,
 // "up": seconds up (or down, negative) between its rails, with the panel up: a screenshot of the page, not the canvas;
 // "street": true stands on the ground there rather than on the roof over it; "z": on the floor
-// nearest that level, as under a slab; "scramble": "walk" or "wait" runs on to that moment of the
+// nearest that level, as under a slab; "ferry": {to, at} aboard a vessel that far along its leg to that wharf;
+// "scramble": "walk" or "wait" runs on to that moment of the
 // nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera)
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
@@ -127,6 +128,22 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         const j = g.junctions.J.filter(q => q.scramble).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
         const ph = v.scramble === 'walk' ? 3 : 1, at = v.phaseT ?? (ph === 3 ? 9 : 8);
         for (let i = 0; j && i < 600 && !(j.ph === ph && j.st === 'g' && j.t >= at); i++) g.advance(0.25);
+      }
+      // "ferry": {to: a wharf's id, at: 0..1} aboard the first vessel that calls there, that far along its leg to it
+      // (Queenstown's Earnslaw on the lake past the frame); "yaw" turns the chase camera off her heading (radians)
+      if (v.ferry) {
+        const V = g.fer.vessels.find(q => q.stops.includes(v.ferry.to));
+        const ci = V && V.cycle.findIndex(c => (c.rev ? c.leg.from : c.leg.to) === v.ferry.to);
+        if (V && ci >= 0) {
+          const from = g.G.wharves.find(w => w.id === (V.cycle[ci].rev ? V.cycle[ci].leg.to : V.cycle[ci].leg.from));
+          g.board(V, from);
+          V.ci = ci; V.phase = 'sail'; V.s = V.cycle[ci].leg.len * (v.ferry.at ?? 0.5); V.speed = g.G.ferry_speed_ms || 6;
+          V.s = Math.max(0, V.s - 300); // (and on for 300 m, so the smoke and the wake from where she was are gone)
+          for (let i = 0; i < 45; i++) g.advance(1);
+          if (g.route && g.route.set) g.route.set('off'); // (no gold line across the lake)
+          Object.assign(g.cam, { yaw: V.h + (v.yaw ?? 0.9), pitch: v.pitch ?? 0.25, dist: v.dist ?? 60, distTo: 0, yawTo: null, lastInput: -10 });
+          g.advance(0.5);
+        }
       }
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
