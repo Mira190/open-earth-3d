@@ -732,10 +732,12 @@ window.OEJunctions = (function () {
       // (but not the movement of a car behind it on its own piece: one that left this junction onto a piece that comes back to
       // it, queued behind c, can't clear the box until c goes, and c stood at the line for good, Sydney's junction 583, Shibuya's 813)
       const behind = o => o.c.line === c.line && o.c.line >= 0 && o.c.dir === c.dir && (o.c.s - c.s) * c.dir < 0;
+      // (a long vehicle's turn takes the whole junction, the arm's other lane too: a bus from one lane of Sydney's 461 held
+      // the car turning from the other 63 s)
       // (nor a movement whose car stands behind a queue that comes back to c: it can't clear the junction before c goes.
       // Kyoto's 327: a ride in the junction behind a bus behind the car waiting at its line for the ride's movement)
       const waitsOnMe = o => { for (let x = o.c, n = 0; x && n < 8; n++) { const f = x.front || x.block; if (f === c) return (o.c.v || 0) < 0.3; if (!f || f.line == null) return false; x = f; } return false; };
-      for (const o of j.active) if (o.c !== c && !behind(o) && (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o)) return 'cross';
+      for (const o of j.active) if (o.c !== c && !behind(o) && ((o.k !== k || (o.m >> 4) !== (m >> 4)) && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o)) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;

@@ -1515,22 +1515,23 @@ const npcNight = require('./npc_night');
   const carWalls = await p.evaluate(() => {
     const g = window.__game, nav = g.nav, C = g.cars.C, RL = g.roadNet.L, av = g.roadNet.avoid;
     let n = 0, inWall = 0, waits = 0;
-    const at = [], still = new Map();
+    const at = [], still = new Map(), walls = new Map();
     for (let t = 0; t < 20; t++) {
       g.advance(1);
       for (const c of C) {
         if (c.line < 0) continue;
         n++;
-        if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
+        if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) { inWall++; const k = `car ${C.indexOf(c)} (${c.model}) on road ${c.line} (${RL[c.line].c}${g.roadNet.fit && g.roadNet.fit[c.line] < 9 ? `, room for ${g.roadNet.fit[c.line].toFixed(2)} m half-width` : ''})`; walls.set(k, (walls.get(k) || []).concat(`${c.x.toFixed(0)},${c.y.toFixed(0)} v ${c.v.toFixed(1)} ${c.why || '-'}${c.mv ? ' turning' : ''}`)); }
         const s = c.why === 'wall' && c.v < 0.1 ? (still.get(c) || 0) + 1 : 0;
         still.set(c, s);
         if (s === 6) { waits++; if (at.length < 3) at.push(`${c.x.toFixed(0)},${c.y.toFixed(0)} on road ${c.line}${RL[c.line].ow ? ' (one-way)' : ''}, the wall ${c.wallGap.toFixed(1)} m ahead`); }
       }
     }
     const traps = RL.filter((l, i) => l.ow && (l.wall & (l.ow > 0 ? 2 : 1)) && !(av && av[i])).length;
-    return { n, inWall, waits, at, traps, ends: RL.filter(l => l.wall).length };
+    return { n, inWall, waits, at, traps, ends: RL.filter(l => l.wall).length, walls: [...walls.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 5).map(([k, v]) => `${k}: ${v.length} s, ${v.slice(0, 3).join(' | ')}`) };
   });
   check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
+  if (carWalls.inWall > 0.005 * carWalls.n) console.log(`  in a wall: ${carWalls.walls.join('\n  in a wall: ')}`);
   check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}${carWalls.at.length ? `: ${carWalls.at.join('; ')}` : ''}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
 
   // the passages through the landmarks (landmarks.json "passages", pipeline/landmark_passages.py: the

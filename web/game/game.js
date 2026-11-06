@@ -1234,6 +1234,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const c of cars.C) {
       if (!c.taxi || c.line < 0) continue;
       if (c.v < 2 && (c.q || c.still > 2 || c.why === 'car')) continue; // (not one standing in a queue, nose to tail: it would sit there with you waiting; one from round the corner instead)
+      if (c.front && c.front.line >= 0 && (c.front.v || 0) < 2 && Math.hypot(c.front.x - c.x, c.front.y - c.y) < 15 + c.v) continue; // (nor one about to stop behind a car standing close ahead: Shinjuku's taxi lost 10 s so)
       const d = Math.hypot(c.x - player.x, c.y - player.y);
       if (d > 300 || d < 12) continue;
       const from = { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, plan = planRide(from, pickup);
