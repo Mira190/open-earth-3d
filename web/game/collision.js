@@ -25,7 +25,7 @@ window.OECollision = (function () {
     // nears them) go into per-cell lists beside the packed grid; need(x0, y0, x1, y1), when set, is
     // asked to add what lies in a box before a query visits it
     const late = { seg: new Map(), pr: new Map() };
-    let need = null;
+    let need = null, fineTag = null;
 
     // a solid: rings of flat [x, y, ...] arrays (outer ring and holes, metres), from zlo to zhi
     function add(rings, zlo, zhi, tag = 1, id = -1) {
@@ -101,8 +101,11 @@ window.OECollision = (function () {
     }
 
     // visit each wall (or prism) whose cell overlaps the box once; stop early when fn returns true
+    // need() answers true for a box it lays nothing for (one wider than a walker's, a flight's): such a query
+    // passes over the solids added late with the tag fineTag, so that what it sees never depends on which of
+    // them the frames have laid so far (#264 item 4)
     function visit(grid, marks, x0, y0, x1, y1, fn) {
-      if (need) need(x0, y0, x1, y1);
+      const coarse = need ? need(x0, y0, x1, y1) === true : false;
       marks = grid === segCell ? segMark : prMark; // (need() may have grown them)
       const c0 = Math.max(0, Math.floor((x0 - gx0) / cellSize)), c1 = Math.min(gnx - 1, Math.floor((x1 - gx0) / cellSize));
       const r0 = Math.max(0, Math.floor((y0 - gy0) / cellSize)), r1 = Math.min(gny - 1, Math.floor((y1 - gy0) / cellSize));
@@ -118,6 +121,7 @@ window.OECollision = (function () {
         const l = grid.late.get(k);
         if (l) for (const i of l) {
           if (marks[i] === mark) continue;
+          if (coarse && prisms[grid === segCell ? segP[i] : i].tag === fineTag) continue;
           marks[i] = mark;
           if (fn(i)) return true;
         }
@@ -300,7 +304,7 @@ window.OECollision = (function () {
     }
 
     const api = { add, build, sweep, slide, depenetrate, overlap, topAt, prismAt, sweepSphere, inside, prisms, SKIN,
-      get walls() { return nseg; }, set need(f) { need = f; }, get need() { return need; } };
+      get walls() { return nseg; }, set need(f) { need = f; }, get need() { return need; }, set fineTag(t) { fineTag = t; } };
     return api;
   }
   return { create, SKIN };

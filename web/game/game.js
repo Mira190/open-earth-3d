@@ -1403,7 +1403,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (forward across on full lock, back on the other lock, forward into the far lane), a short straight back
   // first where the car in front is close, and then on by another way from there. Each pose of it is tried
   // first against the traffic's cars, your car and the road's edges; where any fails it waits on in the queue.
-  const TURN_WAIT = 20, TURN_R = 5, TURN_V = 1.6;
+  // TURN_R is the radius the car's middle runs on at full lock: a city taxi's 5.3 m kerb-to-kerb turning
+  // radius (Toyota's JPN Taxi, the Prius) is about 4.5 m at the middle of the car, the rear axle on 3.8 m
+  const TURN_WAIT = 20, TURN_R = 4.5, TURN_V = 1.6;
   function turnPoses(x0, y0, h0, back, w, keep) {
     // the bicycle model: (direction, steer, angle) for each leg; a found so that the far lane is w across
     const run = (a, out) => {
@@ -1459,11 +1461,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const P = turnPoses(st.x, st.y, st.h, back, w, keepSign);
       // the street's middle, from the lane the car is in: every corner of every pose inside the kerbs
       const cx = st.x + Math.cos(st.h) * keepSign * OECars.LANE, cy = st.y - Math.sin(st.h) * keepSign * OECars.LANE, ux = Math.cos(st.h), uy = -Math.sin(st.h);
+      // (the wheels inside the kerbs; the body's corners may hang over them, as a bumper swings out over the
+      // pavement in a turn in the road, but not into a wall, a post or a facade: Shibuya's 7 m streets had no
+      // room for a turn with the whole body kept off the kerb, #264)
       const ok = P.every(q => {
-        const fx = Math.sin(q.h), fy = Math.cos(q.h);
+        const fx = Math.sin(q.h), fy = Math.cos(q.h), ax = o.C.half * 0.55;
         for (const [a, c] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+          const wx = q.x + fx * a * ax + fy * c * (o.C.hw - 0.1), wy = q.y + fy * a * ax - fx * c * (o.C.hw - 0.1);
+          if (Math.abs((wx - cx) * ux + (wy - cy) * uy) > half - 0.15) return false;
           const px = q.x + fx * a * o.C.half + fy * c * o.C.hw, py = q.y + fy * a * o.C.half - fx * c * o.C.hw;
-          if (Math.abs((px - cx) * ux + (py - cy) * uy) > half - 0.25) return false;
+          const off = Math.abs((px - cx) * ux + (py - cy) * uy);
+          if (off > half + 0.9 || (off > half - 0.25 && !nav.room(px, py, z, 0.15, 1.2))) return false;
         }
         if (cars.footprint(q.x, q.y, z, q.h, o.C.half, o.C.hw, 0.25) > 0) return false;
         if (mine && Math.hypot(mine.x - q.x, mine.y - q.y) < o.C.half + myCar.C.half + 0.3) return false;

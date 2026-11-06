@@ -636,13 +636,16 @@ window.OENav = (function () {
       if (c < 0 || r < 0 || c >= FNX) return -Infinity;
       const tc = Math.floor(c / TPC), tr = Math.floor(r / TPC), k = tr * TNX + tc;
       if (tc >= TNX || tr >= TNY || !tileTris.has(k)) return -Infinity;
-      if (tileDone[k] !== 2) { if (coarseOnly) return -Infinity; runTile(k, Infinity); }
+      if (coarseOnly) return -Infinity; // (a sweep reads no fine cell, laid or not)
+      if (tileDone[k] !== 2) runTile(k, Infinity);
       const g = tileFloor.get(k), i = 2 * ((r - tr * TPC) * TPC + c - tc * TPC);
       if (!g) return -Infinity;
       return g[i + 1] <= zmax ? g[i + 1] : g[i] <= zmax ? g[i] : -Infinity;
     }
+    // (true for a box it lays nothing for: the query then reads none of the fine cells, laid or not, so that
+    // the traffic and the crowd do the same before and after the frames' prefetch lays a landmark's tiles, #264)
     function need(xa, ya, xb, yb) {
-      if (coarseOnly || xb - xa > 96 || yb - ya > 96) return;
+      if (coarseOnly || xb - xa > 96 || yb - ya > 96) return true;
       const c0 = Math.max(0, Math.floor((xa - x0) / TILE)), c1 = Math.min(TNX - 1, Math.floor((xb - x0) / TILE));
       const r0 = Math.max(0, Math.floor((y1 - yb) / TILE)), r1 = Math.min(TNY - 1, Math.floor((y1 - ya) / TILE));
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (tileDone[r * TNX + c] !== 2) runTile(r * TNX + c, Infinity);
@@ -724,7 +727,7 @@ window.OENav = (function () {
       for (let i = 0; i < l.length; i += 2) col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], l[i], l[i + 1], LANDMARK, k);
     }
     col.build();
-    col.need = need;
+    col.need = need; col.fineTag = LFINE;
     // buildings under a deck (or poking through it in the data) don't block a walker on the deck
     const underDeck = new Uint8Array(col.prisms.length);
     col.prisms.forEach((p, i) => {

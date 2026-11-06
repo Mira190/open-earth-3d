@@ -1924,6 +1924,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           c.inWallNow = !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false) && Math.abs(c.off) < LANE * 0.4;
         } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = false;
         if (!swerve && c.inWallNow) swerve = -LANE * side * 0.5;
+        // (and such a street is single file there: it counts as in a narrow stretch, so that one coming the other
+        // way waits short of it, in its lane, as the narrow rule makes moving cars do, rather than brush past, #264)
+        if (c.inWallNow) { c.narrowF = Math.max(c.narrowF || 0, 0.5); c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, 2 * c.half + 1.5); c.narrowIn = 0; }
         c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
