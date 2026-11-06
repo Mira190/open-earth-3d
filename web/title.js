@@ -316,9 +316,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     orb.tlon = d.lon + (narrow() ? 0 : 16);
     orb.tdist = fitDist(0.92);
   }
-  // where the menu's orbit starts. On a wide screen the menu soon chooses the first destination
-  // for itself, so the camera arrives framed on it already, rather than settling and then
-  // swinging over to it
+  // where the menu's orbit starts: on a wide screen framed on the first destination, the one a
+  // visitor reads first, with its card closed until it is clicked
   function menuStart() {
     homeView();
     if (!narrow() && dests.length) frameOn(dests[0]);
@@ -439,7 +438,6 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   function showMenu() {
     app.classList.add('menu');
     menuShownAt = clock();
-    if (sel < 0 && !narrow()) after(1600, () => { if (sel < 0 && state === 'menu' && performance.now() - lastInput > 1500) select(0, false, true); });
   }
   let menuShownAt = 0;
 
@@ -451,6 +449,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   }
   function select(i, fromUser = false, quiet = false) {
     if (state === 'dive') return;
+    // nothing is picked before the menu shows: a pointer resting where the (still invisible) list
+    // will be would otherwise bring a card up over the opening's title
+    if (!app.classList.contains('menu')) return;
     if (i === sel && fromUser) return;
     sel = i;
     items.forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
@@ -491,7 +492,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       : d.sites ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
       : `<div class="ts-actions">${d.c.game ? '<button class="ts-btn primary" data-go="play">Play <kbd>P</kbd></button>' : ''}<button class="ts-btn" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>`;
     card.innerHTML = `<div><span class="eb">${d.country} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${d.name}${d.native ? `<small lang="${lang(d)}">${d.native}</small>` : ''}</h2></div>
-      <p class="sum">${d.meta && d.meta.summary ? d.meta.summary : d.sites ? 'Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.' : (d.c.summary || '')}</p>
+      <p class="sum">${d.meta && d.meta.summary ? d.meta.summary : d.sites ? `${d.sites.length} maps: ${d.sites.map(c => c.name).join(', ')}.` : (d.c.summary || '')}</p>
       <dl class="ts-stats">${stats}<div><dt>Local time</dt><dd data-k="time"></dd></div><div><dt>Sun</dt><dd data-k="sun"></dd></div></dl>
       ${prog ? `<span class="ts-prog">${prog}</span>` : ''}${actions}`;
     fillStats(d);
@@ -514,14 +515,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     else dive(dests[sel], b.dataset.go === 'play');
   });
   on(list, 'click', e => { const b = e.target.closest('.ts-item'); if (!b) return; lastInput = performance.now(); const i = +b.dataset.i; if (i === sel && !narrow()) dive(dests[i], false); else select(i, true); });
-  let hoverT = 0;
-  on(list, 'pointerover', e => {
-    const b = e.target.closest('.ts-item');
-    if (!b || e.pointerType === 'touch') return;
-    clearTimeout(hoverT);
-    hoverT = setTimeout(() => { lastInput = performance.now(); select(+b.dataset.i, true); }, 140);
-  });
-  on(list, 'pointerleave', () => clearTimeout(hoverT));
+  // a card comes up only when asked for (a click, a tap or the keyboard), never on a hover or by itself
+  on(list, 'pointerover', e => { const b = e.target.closest('.ts-item'); if (b && e.pointerType !== 'touch') hover(+b.dataset.i); });
+  on(list, 'pointerleave', () => hover(-1));
   on(list, 'focusin', e => { const b = e.target.closest('.ts-item'); if (b && state === 'menu') select(+b.dataset.i, true); });
 
   // the dive: down onto the city, faster and faster, into the dark where the model loads
@@ -914,8 +910,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     state = 'menu';
     menuStart();
     if (back) {
-      const i = dests.indexOf(back);
-      select(i, false, true);
+      frameOn(back); // turned to the city just left, its card closed until it is clicked
+      focusDir.copy(back.dir);
       orb.lat = orb.tlat; orb.lon = orb.tlon;
       transition({ pos: E.ll(back.lat, back.lon, 1.02), look: new V3(), up: new V3(0, 1, 0), fov: 50 }, reduced ? 0 : 2.6);
     } else {

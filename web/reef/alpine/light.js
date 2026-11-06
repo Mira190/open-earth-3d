@@ -75,10 +75,22 @@ export function createLight(renderer, d, env, atm, heightTex) {
     }
     return c;
   };
-  // the same march on the CPU at one point (x east, north), over heightAt(x, north): the sun's visibility there, 0..1.
-  // The cars, the landmark models and the people take the scene's sun light (main.js), not this pass, so main.js
-  // scales that light by the visibility where the viewer is: down in a valley's shadow at golden hour they stand in
-  // it as the slope round them does, not sunlit
+  // the cars, the landmark models and the people are lit by the scene's sun light (main.js), not by shade(): each of
+  // their fragments takes the mountains' shadow from this pass where it stands, as the land does (#251). A light
+  // node for the scene's directional lights multiplies the light's colour by the pass's visibility at the fragment's
+  // world position, for a light marked userData.terrainShadow; one texture lookup a fragment, on every tier. (Before,
+  // the sun light was scaled by the visibility at the viewer, so a sunlit landmark seen from inside a valley's shadow
+  // was drawn shaded, and a car in the shadow seen from the sunlit slope was drawn sunlit.)
+  class TerrainShadowedSun extends THREE.DirectionalLightNode {
+    setupDirect(builder) {
+      const d = super.setupDirect(builder);
+      if (!this.light.userData.terrainShadow) return d;
+      return { lightDirection: d.lightDirection, lightColor: d.lightColor.mul(sunVis(positionWorld)) };
+    }
+  }
+  renderer.library.lightNodes.set(THREE.DirectionalLight, TerrainShadowedSun);
+  // the same march on the CPU at one point (x east, north), over heightAt(x, north): the sun's visibility there, 0..1
+  // (tools and tests read it to choose and check their viewpoints)
   function visAt(x, north, heightAt) {
     const s = u.sunDir.value, horiz = Math.max(Math.hypot(s.x, s.z), 1e-4), dx = s.x / horiz, dz = s.z / horiz, tanE = s.y / horiz;
     const h0 = heightAt(x, north) + 2.0;

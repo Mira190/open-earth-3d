@@ -588,6 +588,73 @@ pipeline writes. The only city-specific code is landmark geometry in
     blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 24
     in Kyoto, 86 in Osaka, 55 in Shibuya, 20 in Tokyo and a few elsewhere are
     canopies now.
+  - **Roofs on posts** (`pipeline/arcades.py`, #245 and #246): every other
+    OpenStreetMap `building=roof` (a park's shelter, a station's or a petrol
+    station's canopy, a shrine's open pavilion) stands on posts, unless it lies
+    inside a taller building. Each run then finishes the roofs on posts and the
+    gates, on what an earlier run opened:
+    - **Colour.** OSM `building:colour` when mapped; else the precinct's palette
+      (`city.json` `roofs.palette`, by precinct name: Kiyomizu-dera is a temple,
+      but its gates and pavilions are vermilion); else a shrine's vermilion
+      (`#c4482a`, the torii models' `torii_shu`) in a Shinto precinct or on a
+      `building=shrine`, a temple's aged timber (`#6a5444`) in a Buddhist one or
+      on a `building=temple`. Bicycle stands, smoking shelters and the like stay
+      painted steel. The tags and the precincts (`amenity=place_of_worship`,
+      `landuse=religious`, with their religion) come from the OpenStreetMap API
+      by `pipeline/roof_osm.py` into `cities/<id>/roofs_osm.json` (ODbL); the
+      Overpass mirrors refuse this environment. Higashiyama: Kiyomizu's Nio-mon,
+      West Gate and bell tower and Yasaka's pavilions vermilion, Kennin-ji's and
+      Chion-in's gates timber; Fushimi Inari's halls vermilion; Shinjuku's
+      Hanazono-jinja; the Philosopher's Path's 120 roofs in temple precincts timber.
+    - **Height.** A pavilion under 400 m² whose top is PLATEAU's, a lidar's or a
+      guess (all of which take a tree over a small roof as its top) is no taller
+      than its kind stands over the highest ground under it: a bell tower
+      4.5 m + 0.6 m per metre of the square root of its area, a font's pavilion
+      3 m + 0.4, a dance stage or votive hall 4.5 m + 0.45, anything else
+      4 m + 0.5. A pitched roof drops with it, whole while its eaves stay at least
+      55% of the way up, shallower when they would not. Higashiyama's bell
+      towers stood 15-21 m tall over 16-25 m² and stand 7-9 m; Shinjuku's
+      shrine fonts stood 18.5 m. Gates keep their measured tops.
+    - **Inner posts.** A roof over 400 m² stands on rows of posts inside its
+      outline too (`buildings.json` `inner_posts`, by building, which
+      `web/buildings.js` draws and `web/game/nav.js` walks round): one row down
+      the middle of a canopy narrower than 24 m (a platform's, a bus stand's),
+      else rows every 10 m across, at 10 m along; 1.5 m inside the edge, 4 m off
+      a road's centre line, 1.2 m off a footway and not inside another building.
+      Tokyo Station's 5,000 m² platform canopies have 24-36 each.
+    - **Closed roofs.** A roof the city names (`city.json` `roofs.closed`) is a
+      building again: Shinjuku's Sumitomo Triangle Plaza (r11664668) is a glass
+      atrium closed on every side, opened in 2020 between the Sumitomo Building's
+      wings, and stands as glass from the ground. Its roof (#258, against a
+      photograph from above: Akonnchiroll, CC BY-SA 4.0, compared) is faceted
+      glass rising from eaves at 4.5 m to its top by the tower, each corner of
+      its outline as high as it is near the tower; the tower's own low PLATEAU
+      solids, which PLATEAU files with the tower, are the atrium's other wings
+      (`roofs.atrium_parts`).
+    - **Glazed roofs.** A roof the city names as glazed (`roofs.glazed`) is glass
+      spanning between the buildings either side, with no posts under it: the
+      Opera City Galleria's roof (w787547154, 186 × 13 m at 26 m between the New
+      National Theatre and Opera City Tower), which had stood on a row of posts
+      down the walkway.
+    - **Pitched roofs on pavilions** (#258). A pavilion under 900 m² drawn as a
+      flat slab takes its mapped `roof:shape` (with `roof:material` and
+      `roof:colour`), or, in a temple's or a shrine's precinct or on a temple or
+      a shrine, a hipped roof of grey kawara (a hip-and-gable's nearest), its
+      eaves at least 2.4 m up and its fascia lowered under them. Yasaka-jinja's
+      Buden (w105449709), which a photograph shows under dark grey tiles, and
+      140 others across the live cities (Shibuya waits for the overture
+      session).
+    - **Low structures.** A building under 2.6 m with no name or class (a vent's
+      or a stair's cover, a shed, a kiosk's back) and a subway entrance's cover
+      under 4.5 m are drawn plain, without a storey of windows (Marunouchi's
+      solid 18776, a 2.4 m block beside Tokyo Station's M8 exit, and the exit
+      itself).
+
+    ![Roofs on posts at day, dusk and night: Yasaka's dance stage, a bell tower in Higashiyama, Tokyo Station's platform canopies, Shinjuku's Triangle Plaza closed in glass, Kyoto Station's bus stands](images/roofs/open-roofs.jpg)
+    ![On a phone](images/roofs/phone.jpg)
+    ![Yasaka-jinja's Buden: a photograph (Jakub Hałun, CC BY 4.0) and its pitched roof now (#258)](images/roofs/buden.jpg)
+    ![The Sumitomo Triangle Plaza's sloping glass, day and dusk (#258)](images/roofs/sumitomo-atrium.jpg)
+    ![The Opera City Galleria's glazed roof, day, dusk and night (#258)](images/roofs/galleria.jpg)
   - **Precinct walls are walls** (`pipeline/walls.py`): the earthen walls round
     the Kyoto Gosho and the Sento Gosho come in the open data as buildings 3 m
     wide and hundreds of metres long, with a height estimated from the houses
@@ -880,6 +947,20 @@ pipeline writes. The only city-specific code is landmark geometry in
     a U-turn (at a junction, or at the end of the street it sets out on) only
     where going round the block is over 400 m longer, and the driver makes one
     as a loop across the road ahead of the turning point, not a turn on the spot.
+    A ride stuck in a queue on the piece of road it is on (where no other way
+    round starts) turns round in the road once the car in front hasn't moved
+    for 20 s, on a two-way street with nothing coming: a three-point turn
+    (forward across on full lock, back on the other lock, forward into the far
+    lane; a 5 m turning radius), with a short straight back first where the
+    car in front is close, each pose tried first against the traffic, your car
+    and the kerbs. A queue held at a red or a scramble's walk is waited out.
+  - **Streets kept to the vehicles that fit them (#202):** at the start each
+    street of a lane each way or narrower is measured every 3 m for the widest
+    body its lane has room for (in its lane, half way in, or in the middle, as
+    a car between two facades edges in). A vehicle wider than that isn't put
+    on it and doesn't turn into it when there is another way; a street with
+    room for no vehicle is one a car can't get along, as a road the data runs
+    through a building is.
   - **The crowd and the walls:** a footway that runs into a building (an arcade,
     a station's concourse; the model's buildings are solid) ends at its wall,
     and a walker stepping aside keeps in from a wall beside the footway. Before
@@ -2211,6 +2292,22 @@ There is a screenshot after each step, and it fails on any page error.
 each city's time zone: `GAME_TIME=22:40` (or `YYYY-MM-DDTHH:MM`) pins the page's
 clock to another local hour (`tools/pin_clock.js`), and `GAME_TIME=live` leaves the
 real one, which a city starting at `"time": "live"` would otherwise play at.
+
+The check plays in lockstep (#243): the world is held for the whole run (`__game.hold`), so only the
+check's own `advance()` calls move it, a thirtieth of a second at a time, and a run on a loaded
+machine plays the same traffic as one on an idle machine. Held, the page's frames still draw, but they
+neither step the world, ease the camera (which the traffic reads for what is in view), tick a
+conversation nor lay landmark tiles: `advance()` lays the tiles round you at the end of each call, all
+of them, as a player's frames lay them a few ms at a time (a query over a box wider than the 96 m that
+`need()` lays still meets the tiles already laid, so what the traffic met depended on how far the frames
+had got). Before the first step the world's clock and the title's orbit go back to zero
+(`__game.hold(true, true)`: the arrival sets out from the orbit's pose), the route network is built (it
+fills in the roads a car can't get along as it goes), the helicopter is on its pad, and the game's clock
+is set to `GAME_TIME`'s minute at Play (it is read from a `Date` that runs on at the real rate during the
+load). Dispatch's tie-breaks draw from a seeded run. `GAME_LOCKSTEP=0`
+leaves the frames running the world, as a player's do. `tools/lockstep_probe.js <city> [steps]` loads
+a city twice, steps both the same way with real time between the steps, and compares a digest of the
+crowd, the traffic and the lights after each step.
 
 `tools/traffic_check.js <city> [seconds] [places]` measures the traffic (see
 [Junctions and traffic lights](#junctions-and-traffic-lights)), with the

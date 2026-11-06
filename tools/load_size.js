@@ -5,7 +5,8 @@
 // counts every file fetched, once each, raw and as GitHub Pages would send it (gzip for text types,
 // as is for images, models and binaries). "Playable" is the moment the loading screen starts to fade.
 // Prints the totals before playable and after it (deferred downloads: the helicopter, NPC avatars),
-// and with --files every file. The web root is read from WEB (default web/) to size the files.
+// and with --files every file, and the main thread's long tasks and longest frame before playable (the
+// loader's bar stands still for that long). The web root is read from WEB (default web/) to size the files.
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const args = process.argv.slice(2), flags = args.filter(a => a.startsWith('--')), pos = args.filter(a => !a.startsWith('--'));
@@ -18,6 +19,14 @@ const TEXT = /\.(json|js|mjs|css|html|svg|txt)$/;
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
+  // the main thread while it loads (issue 201): its long tasks and the frames the loader's bar missed
+  await ctx.addInitScript(() => {
+    window.__long = []; window.__gaps = [];
+    try { new PerformanceObserver(l => { for (const e of l.getEntries()) window.__long.push([e.startTime, e.duration]); }).observe({ entryTypes: ['longtask'] }); } catch (e) { /* none */ }
+    let last = 0;
+    const tick = t => { if (last) window.__gaps.push([last, t - last]); last = t; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
   const p = await ctx.newPage();
   if (+mbps > 0) {
     const cdp = await ctx.newCDPSession(p);
@@ -40,11 +49,17 @@ const TEXT = /\.(json|js|mjs|css|html|svg|txt)$/;
   const sel = mode === 'play' ? '#g-loader' : '#loader';
   await p.waitForFunction(s => { const l = document.querySelector(s); return l && (l.hidden || l.classList.contains('out')); }, sel, { timeout: 900000, polling: 100 });
   playable = (Date.now() - t0) / 1000;
+  // the long tasks before it could be played (downloading, decoding, building the city, compiling)
+  const main = await p.evaluate(() => {
+    const now = performance.now(), L = window.__long.filter(l => l[0] < now), G = window.__gaps.filter(g => g[0] < now);
+    const tot = l => Math.round(l.reduce((s, x) => s + x[1], 0)), max = l => Math.round(Math.max(0, ...l.map(x => x[1])));
+    return { n: L.length, ms: tot(L), max: max(L), gap: max(G), over100: G.filter(g => g[1] > 100).length };
+  });
   const dataIn = Math.max(0, ...[...seen.values()].map(v => v.t)); // the last file in before it could be played
   await p.waitForTimeout(+(process.env.AFTER || 30000)); // what follows once it can be played
   const sum = (late) => { let n = 0, raw = 0, wire = 0; for (const v of seen.values()) if (v.late === late) { n++; raw += v.raw; wire += v.wire; } return { n, raw, wire }; };
   const a = sum(false), z = sum(true), mb = x => (x / 1e6).toFixed(1);
   if (flags.includes('--files')) for (const [k, v] of [...seen].sort((x, y) => y[1].wire - x[1].wire)) console.log(`${v.late ? 'after ' : 'before'} ${mb(v.raw).padStart(6)} ${mb(v.wire).padStart(6)}  ${k}`);
-  console.log(`${city} ${mode} @${mbps} Mbps: data in after ${dataIn.toFixed(1)} s, playable after ${playable.toFixed(1)} s; before: ${a.n} files, ${mb(a.raw)} MB raw, ${mb(a.wire)} MB on the wire; after (${(+(process.env.AFTER || 30000) / 1000)} s): ${z.n} files, ${mb(z.raw)} MB raw, ${mb(z.wire)} MB on the wire${errors.length ? '; page errors: ' + errors.join(' | ') : ''}`);
+  console.log(`${city} ${mode} @${mbps} Mbps: data in after ${dataIn.toFixed(1)} s, playable after ${playable.toFixed(1)} s; before: ${a.n} files, ${mb(a.raw)} MB raw, ${mb(a.wire)} MB on the wire; after (${(+(process.env.AFTER || 30000) / 1000)} s): ${z.n} files, ${mb(z.raw)} MB raw, ${mb(z.wire)} MB on the wire; main thread before playable: ${main.n} long tasks, ${main.ms} ms, longest ${main.max} ms, longest frame ${main.gap} ms, ${main.over100} frames over 100 ms${errors.length ? '; page errors: ' + errors.join(' | ') : ''}`);
   await b.close();
 })();

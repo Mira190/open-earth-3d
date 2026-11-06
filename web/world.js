@@ -39,21 +39,22 @@ window.OEWorld = (function () {
       return new Blob(parts);
     };
     const getJSON = async u => JSON.parse(await (await fetchAll(await fetch(DATA + u), u)).text());
-    // the buildings as packed by pipeline/pack.py (a quarter of the JSON's download, issue 148), or as
-    // JSON where a city has no pack yet or the browser cannot inflate one
-    const getBuildings = async () => {
-      if (window.OEPack && OEPack.supported() && (entry.packed || []).includes('buildings')) {
+    // the buildings, landmarks and game as packed by pipeline/pack.py (a quarter to a third of the JSON's
+    // download, issues 148 and 201) and decoded in a Worker (pack-worker.js), so that the loader's bar
+    // keeps moving; as JSON where a city has no pack yet or the browser cannot inflate one
+    const getPacked = async name => {
+      if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
-          const r = await fetch(DATA + 'buildings.bin');
-          if (r.ok) return await OEPack.decode(await (await fetchAll(r, 'buildings.bin')).arrayBuffer());
-        } catch (e) { console.warn('buildings.bin:', e); }
+          const r = await fetch(DATA + name + '.bin');
+          if (r.ok) return await (OEPack.decodeIn || OEPack.decode)(await (await fetchAll(r, name + '.bin')).arrayBuffer());
+        } catch (e) { console.warn(`${name}.bin:`, e); }
       }
-      return getJSON('buildings.json');
+      return getJSON(name + '.json');
     };
     onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
-    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getBuildings(), getJSON('places.json'),
-      getJSON('landmarks.json'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
-      getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null),
+    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getPacked('buildings'), getJSON('places.json'),
+      getPacked('landmarks'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
+      getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;
     // buildings demolished since the survey (landmarks.json "demolished": solid indices): not drawn, and
@@ -1256,7 +1257,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-      g.setIndex(m.index);
+      g.setIndex(Array.isArray(m.index) ? m.index : new THREE.BufferAttribute(new Uint32Array(m.index.buffer, m.index.byteOffset, m.index.length), 1)); // (typed: landmarks.bin)
       if (m.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
       g.computeVertexNormals();
       return g;
@@ -1559,5 +1560,50 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     finally { renderer.setRenderTarget(prev); }
   }
 
-  return { load, create, lin, smooth, compile };
+  // Send an object's textures to the GPU before it is drawn (issue 201): a model streamed in once the game
+  // is open (an NPC's character, the helicopter) otherwise uploads them all, and builds their mipmaps, in
+  // the first frame that draws it. One texture a frame, in the frame's idle time (requestIdleCallback,
+  // at the latest after 250 ms), from one queue that every caller shares, so two models arriving together
+  // still cost a frame one texture. Resolves when the last of obj's is up; a texture already sent (or
+  // queued by another object) is not sent twice.
+  const sent = new WeakSet(), queue = [];
+  let pumping = false;
+  const later = f => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 250 }) : setTimeout(f, 16));
+  function pump() {
+    if (!queue.length) { pumping = false; return; }
+    pumping = true;
+    later(() => {
+      const job = queue.shift();
+      try { job.renderer.initTexture(job.tex); } catch (e) { /* uploaded on its first draw instead */ }
+      job.done();
+      requestAnimationFrame(pump); // (the next one in another frame)
+    });
+  }
+  function textures(obj) {
+    const out = new Set();
+    obj.traverse(o => {
+      for (const m of [].concat(o.material || [])) for (const v of Object.values(m)) if (v && v.isTexture && !v.isRenderTargetTexture && v.image) out.add(v);
+    });
+    return [...out];
+  }
+  function upload(renderer, obj) {
+    if (!renderer || !renderer.initTexture || !obj) return Promise.resolve();
+    const waits = [];
+    for (const tex of textures(obj)) {
+      if (sent.has(tex)) { const j = queue.find(q => q.tex === tex); if (j) waits.push(j.p); continue; } // (up, or on its way)
+      sent.add(tex);
+      const job = { renderer, tex };
+      job.p = new Promise(r => { job.done = r; });
+      queue.push(job);
+      waits.push(job.p);
+    }
+    if (!pumping) pump();
+    return Promise.all(waits).then(() => {});
+  }
+  // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
+  function warm(renderer, obj, camera, opts) {
+    return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
+  }
+
+  return { load, create, lin, smooth, compile, upload, warm };
 })();

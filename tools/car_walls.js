@@ -22,7 +22,7 @@ const [,, city = 'fushimi-inari', secs = '20'] = process.argv;
         if (c.line < 0) continue;
         n++;
         if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) {
-          const k = C.indexOf(c), e = by.get(k) || { n: 0, at: [], line: c.line, c: RL[c.line].c, name: RL[c.line].name || '' };
+          const k = C.indexOf(c), e = by.get(k) || { n: 0, at: [], line: c.line, c: RL[c.line].c, name: RL[c.line].name || '', model: c.model, hw: c.hw, half: c.half, ow: RL[c.line].ow || 0, fit: g.roadNet.fit ? g.roadNet.fit[c.line] : null };
           e.n++; if (e.at.length < 3) e.at.push(`${c.x.toFixed(1)},${c.y.toFixed(1)} z${c.z.toFixed(1)} v${c.v.toFixed(1)} ${c.why || '-'}${c.mv ? ' (turning)' : ''}`);
           by.set(k, e);
         }
@@ -31,6 +31,6 @@ const [,, city = 'fushimi-inari', secs = '20'] = process.argv;
     return { n, cars: [...by.entries()].map(([k, e]) => ({ car: k, ...e })) };
   }, +secs);
   console.log(`${city}: ${r.cars.reduce((a, e) => a + e.n, 0)} of ${r.n} car-seconds in a wall`);
-  for (const e of r.cars) console.log(`  car ${e.car}: ${e.n} s on line ${e.line} (${e.c} ${e.name}): ${e.at.join(' | ')}`);
+  for (const e of r.cars) console.log(`  car ${e.car} (${e.model}, ${(2 * e.hw).toFixed(2)} × ${(2 * e.half).toFixed(1)} m): ${e.n} s on line ${e.line} (${e.c}${e.ow ? ' one-way' : ''} ${e.name}${e.fit != null ? `, fits ${e.fit}` : ''}): ${e.at.join(' | ')}`);
   await b.close();
 })();

@@ -153,9 +153,11 @@ The owner should not be the one who finds the bug.
 # Shared assets
 
 - The browser loads each city's buildings from `web/data/<id>/buildings.bin`, packed from
-  `buildings.json` (a quarter of its gzipped size). `buildings.json` stays the pipeline's source; after
-  any step that writes it, run `python pipeline/pack.py` (it packs what is stale and updates
-  `cities.json`). `tools/check.sh` fails on a stale pack. Never hand-merge a `.bin`: repack it.
+  `buildings.json` (a quarter of its gzipped size), and a live city's landmarks and game from
+  `landmarks.bin` and `game.bin`, decoded in a Worker. The JSON stays the pipeline's source; after
+  any step that writes `buildings.json`, `landmarks.json` or `game.json`, run `python pipeline/pack.py`
+  (it packs what is stale and updates `cities.json`). `tools/check.sh` fails on a stale pack. Never
+  hand-merge a `.bin`: repack it.
 
 - Every city shares the helicopter, ferry, river shuttle and car models
   (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and the people

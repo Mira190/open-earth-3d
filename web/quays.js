@@ -100,12 +100,26 @@ window.OEQuays = (function () {
       const cache = drawn ? raisedDrawn : raised;
       if (cache.has(T)) return cache.get(T);
       const data = Float32Array.from(T.data), up = new Uint8Array(data.length);
+      // on a coarse grid (the viewer's 10 m, the game's far ground) a point out in the water is raised only
+      // where one of the eight round it is on land: those are the cells that slope from the land down to the
+      // bed. Every point within the band was raised before, which on the 10 m grid lifted 15 m out from each
+      // bank, most of a 40-60 m river. The game's 5 m walking grid keeps the whole band (7.5 m): a walker
+      // stands on it up to the coping's edge
+      const narrow = T.cell > 7;
+      const landNear = (x, y) => {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const k = pix(x + dc * T.cell, y + dr * T.cell);
+          if (k >= 0 && D[k] <= 0) return true;
+        }
+        return false;
+      };
       let n = 0;
       for (let r = 0; r < T.ny; r++) for (let c = 0; c < T.nx; c++) {
         const x = T.x0 + c * T.cell, y = T.y1 - r * T.cell, k = pix(x, y);
         if (k < 0 || !zone[k] || Number.isNaN(TOP[k]) || (drawn && skip && skip(x, y))) continue;
         const i = r * T.nx + c;
-        if (D[k] > 0 ? Q[k] : data[i] < 0.15) { data[i] = TOP[k]; up[i] = 1; n++; }
+        if (D[k] > 0 ? Q[k] && (!narrow || landNear(x, y)) : data[i] < 0.15) { data[i] = TOP[k]; up[i] = 1; n++; }
       }
       const out = Object.assign({}, T, { data, up, quayPoints: n });
       cache.set(T, out);

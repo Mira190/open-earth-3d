@@ -70,6 +70,14 @@
       "note": "a point on the island's mapped beach"
     },
     {
+      "id": "heron-jetty-root",
+      "name": "Heron Island jetty, shore end",
+      "kind": "marina",
+      "lonlat": [151.91122, -23.44214],
+      "src": "osm",
+      "note": "the island end of OSM way 1023505426 (man_made=pier, an area): the jetty runs west from here and turns out to its head; laid as one straight line from here to its head (#258: placed by the shore search it stood 140 m off, in the beach)"
+    },
+    {
       "id": "heron-jetty",
       "name": "Heron Island jetty",
       "kind": "marina",
@@ -143,7 +151,7 @@
   },
   "harbour": {
     "fleets": [{"at": "heron-anchorage", "n": 2}],
-    "marina": {"at": "heron-jetty", "len": 90, "fingers": 2, "boats": false},
+    "marina": {"at": "heron-jetty", "from": "heron-jetty-root", "fingers": 2, "boats": false},
     "pontoon": null,
     "parked": [{"kind": "helicopter", "name": "Helicopter", "at": "heron-helipad"}],
     "moorings": 6,
