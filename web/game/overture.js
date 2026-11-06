@@ -471,12 +471,30 @@ window.OEOverture = (function () {
     }
     // the crowd on the footways round a point, as if they had been walking there all along
     function crowdAround(c, r) {
-      const C = ctx.crowd, net = ctx.footNet, cand = net.near(c[0], c[1], 0, r), tmp = {};
+      const C = ctx.crowd;
+      if (C.respawn) { // (the crowd's own placing: on its footways, clear of the walls, the cars, the benches and the major roads)
+        // the crowd the game walks round you already stays as it is; a few of them (crowd_near_max, 24) are brought
+        // within 25 m of your end spot (a whole pool placed round you, a third of it that close, and left there after
+        // the overture, was a crowd walking through itself and out across the roads)
+        const net = ctx.crowdNet, tmp = {}, nClose = Math.min(Math.round(C.active * (spec.crowd_near ?? 0.35)), spec.crowd_near_max ?? 24);
+        for (let i = 0; i < nClose; i++) {
+          const p = C.P[i];
+          for (let k = 0; k < (net ? 6 : 1); k++) {
+            C.respawn(p, endAt[0], endAt[1], 1.6);
+            if (p.line < 0 || !net) break;
+            net.at(p.line, p.s, tmp);
+            if (Math.hypot(tmp.x - endAt[0], tmp.y - endAt[1]) < 25) break;
+          }
+        }
+        return;
+      }
+      C.active = C.P.length;
+      const nClose = Math.round(C.P.length * (spec.crowd_near ?? 0.35));
+      const net = ctx.crowdNet || ctx.footNet, cand = net.near(c[0], c[1], 0, r), tmp = {};
       if (!cand.length) return;
       let seed = 97;
       const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-      C.active = C.P.length;
-      const close = net.near(endAt[0], endAt[1], 0, 28), nClose = Math.round(C.P.length * (spec.crowd_near ?? 0.35));
+      const close = net.near(endAt[0], endAt[1], 0, 28);
       C.P.forEach((p, i) => {
         const pool = i < nClose && close.length ? close : cand;
         if (p.seat) { p.seat.by = -1; p.seat = null; }
@@ -668,6 +686,7 @@ window.OEOverture = (function () {
     // names is missing after a rebuild, say; the game then plays its plain crane instead
     function play(done) {
       pick();
+      if (variant === 'day' && base.day === false) return false; // (a map whose day overture is not ready yet: the plain crane)
       try { placeEnd(); resolve(); } catch (e) { console.warn(String(e)); return false; }
       onDone = done;
       active = true; settling = false; fired = new Set(); lastShot = null; from = null; lapsed = 0;
@@ -678,7 +697,7 @@ window.OEOverture = (function () {
       const c = spec.crowd_at ? point(spec.crowd_at) : endAt;
       crowdAround(c, spec.crowd_r || 120);
       if (scoreBuf) startScore(0); else prepareScore().then(() => { if (active && !settling) startScore(t); }); // (late: joined where the picture is)
-      ctx.cine.play(frameFn, total, { label: 'overture', onEnd: () => finish(false) });
+      ctx.cine.play(frameFn, total, { label: 'overture', onEnd: () => { if (!settling) finish(false); } }); // (a skip's ease ends this shot as it starts: not the end)
       markSeen(ctx.CITY.id);
       return true;
     }

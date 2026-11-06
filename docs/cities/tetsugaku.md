@@ -117,3 +117,16 @@ Desktop (1440×900) and phone (390×844), day, dusk and night (`tools/views/tets
 ![The aqueduct's arcade, roundels and spandrel triangles at day, dusk and night, trees hidden (#258)](../images/tetsugaku/suirokaku-arcade.jpg)
 ![Honen-in's gate: a photograph (Tetsuhiro Terada, CC BY 2.0) and the hipped thatch at day, dusk and night, trees hidden (#258)](../images/tetsugaku/honen-gate.jpg)
 ![Eikan-do's Miei-do and Amida-do at day, dusk and night in November, and (trees hidden) Honen-in's gate from the lane and from inside, and Eikan-do from above (#244)](../images/tetsugaku/eikando-honenin.jpg)
+
+## Honen-in's walls and steps (#263)
+
+Side by side with a photograph from the lane ([Gate, Hōnen-in temple, Kyoto - Dec 10, 2023.jpg](https://commons.wikimedia.org/wiki/File:Gate,_H%C5%8Dnen-in_temple,_Kyoto_-_Dec_10,_2023.jpg),
+lamblukas, CC BY 2.0, compared, not copied): the white plaster walls either side of the gate, between timber posts
+on base boards (腰板) under a tile cap, 2.3 m high and running 7 m each way on the line of the gate's main posts,
+stepped down the slope (`honen_walls()`); and the flight of worn granite steps up from the lane, wider than the
+gate, between sloping kerbs, out from the gate's stone until the ground has fallen the flight's height (4-7 steps
+of 0.18 m, `honen_steps()`; walked on the ground under them). The gate's opening is now 2.3 m across, as the
+photograph shows it. The walls' length and the steps' count are read from the photograph; the lodge on the right
+of the photograph is PLATEAU's block.
+
+![Honen-in: the photograph (lamblukas, CC BY 2.0) and the walls and steps at day, dusk and night, trees hidden (#263)](../images/fidelity-263/honen-walls-steps.jpg)

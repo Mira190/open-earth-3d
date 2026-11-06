@@ -120,6 +120,50 @@ load time for every player. It holds a walk of its own too: Ginkaku-ji, Honen-in
 Eikan-do and Nanzen-ji with the canal's aqueduct (水路閣) and the Keage incline. Its cherries are planted along the
 canal from photographs, the way `trees.areas` and the mapped trees are here.
 
+## Yasaka-jinja's halls (#263)
+
+八坂神社's own buildings had been PLATEAU's windowed blocks. `yasaka_jinja()` in `cities/higashiyama/city.py`
+now builds them on their OpenStreetMap outlines, side by side with photographs on Wikimedia Commons (compared,
+not copied):
+
+- **The honden (本殿, w88108397, 1654, National Treasure)**, in the Gion style: the sanctuary and the worship hall
+  under one great hipped-and-gabled roof of hinoki bark, its eaves low all round (5.6 m) and its gable small near
+  the 14.6 m ridge (PLATEAU's top), vermilion posts and white walls on a floor raised 1.3 m, a veranda all round.
+- **The West Gate (西楼門, w105449683, 1497)**: a two-storey vermilion gate under **tiles** (not bark), green lattice
+  windows (連子窓) in its outer bays, standing at the top of its steps; 11 m over its platform, scaled from the
+  people on its steps (PLATEAU had 9.0 m). Its two wings (翼廊) either side, unnamed PLATEAU solids of 12.9 and
+  17.2 m (the trees over them), are low vermilion halls with white walls and green lattice under tiled roofs,
+  6.5 m to the ridge.
+- **The South Gate (南楼門, w88108386)**: a two-storey vermilion gate at PLATEAU's 15.0 m, under bark (no photograph
+  was reached; see below).
+- **The Buden (舞殿, w105449709)**: the open dance pavilion, a stage of hinoki on a stone base between dark lacquered
+  posts, its railing, three rows of white paper lanterns under the eaves all round (lit after dark), and a big
+  hipped-and-gabled roof of copper gone pale green, its gables east and west as the photograph shows them
+  (`pipeline/arcades.py` had given it a grey tiled slab on posts).
+- **The Tokiwa-den (常磐殿) and the reception halls (常磐新殿)**: vermilion halls under tiled hipped-and-gabled roofs.
+  **The Noh stage (能舞台)**: a hinoki floor open on three sides under a gabled bark roof.
+- **The small shrines (末社, 摂社)**: every named shrine under 70 m² in the precinct (Eki-jinja, Utsukushi-gozen-sha,
+  Hiyoshi-sha and the rest) in the flowing style (流造): the sanctuary on a stone base, the bark roof's front slope
+  running on over its steps, at a small shrine's height (2.6 m + 0.45 m per metre of the square root of its
+  area). PLATEAU had measured the trees over them: Hiyoshi-sha's 12 m² stood 15 m tall.
+
+**A shared fix.** `kyotokit.hall()`'s post and door loops reused the name `k`, so every hall took the number of its
+front bays as its roof's sweep instead of the one asked for: the roofs read as a flat skirt with a narrow tent
+in the middle. Kiyomizu-dera's, Eikan-do's and Fushimi Inari's halls now have the curves their `ROOFS` and calls
+give them. `hall()` also takes `gable_at` (how far down the gables reach).
+
+| Photograph | Author | Licence |
+|---|---|---|
+| [Yasaka Shrine main buildings.jpg](https://commons.wikimedia.org/wiki/File:Yasaka_Shrine_main_buildings.jpg) | Chris Gladis (MShades) | CC BY 2.0 |
+| [Nishiromon Gate, Yasaka Shrine, Kyoto, West view 20190416 1.jpg](https://commons.wikimedia.org/wiki/File:Nishiromon_Gate,_Yasaka_Shrine,_Kyoto,_West_view_20190416_1.jpg) | DXR | CC BY-SA 4.0 |
+
+![Yasaka-jinja: the photographs (Chris Gladis, CC BY 2.0; DXR, CC BY-SA 4.0), the honden and the Buden at day and night, the West Gate and its wings at day and night (#263)](../images/fidelity-263/yasaka-jinja.jpg)
+![The precinct from above, and the Buden's lanterns at dusk (#263)](../images/fidelity-263/yasaka-jinja-aerial-dusk.jpg)
+![On a phone: the Buden at day, dusk and night, the West Gate; Honen-in's gate; the Sumitomo Triangle Plaza (#263)](../images/fidelity-263/phone.jpg)
+
+Not checked against a photograph (Wikimedia Commons refused this session's requests, HTTP 429): the South Gate's
+roof (bark or tiles), the Tokiwa-den's and the reception halls' roofs and colours, the small shrines' colours.
+
 ## What is approximate
 
 - The stage's eighteen pillars stand on an even grid across the mapped outline, not each surveyed.
