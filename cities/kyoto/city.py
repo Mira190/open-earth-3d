@@ -70,6 +70,8 @@ MATERIALS = {
                  "spandrel": 0.0, "mullion_m": 0.06, "frame": "#e6e9eb", "lit_share": 0.9, "lit_k": 0.5},
     "ks_roofglass": {"color": "#b8c9d4", "roughness": 0.06, "metalness": 0.3, "opacity": 0.32},
     "ks_steel": {"color": "#dfe2e4", "roughness": 0.35, "metalness": 0.6, "emissive": "#fff1dc", "glow": 0.35},
+    # the great grid over the north face (#218): aluminium-clad frames standing proud of the glass
+    "ks_frame": {"color": "#a7abb0", "roughness": 0.38, "metalness": 0.55},
     "ks_concrete": {"color": "#b3b0aa", "roughness": 0.85, "metalness": 0.0},
     # the Grand Staircase's LED risers (since 2012): a warm white, red and green for Christmas, cherry pink in spring
     "ks_led": {"color": "#d8d4cc", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffe3b8", "glow": 0.9,
@@ -269,6 +271,12 @@ def kyoto_station():
     ak.block(K["ks_glass"], F, s_(A0 - 25), s_(A1 + 13), vn - 5.0, vn - 1.5, zs, zs + 3.2, top=False)
     ak.block(K["ks_steel"], F, s_(A0 - 25), s_(A1 + 13), vn - 5.2, vn - 1.3, zs - 0.6, zs)
     ak.block(K["ks_steel"], F, s_(A0 - 25), s_(A1 + 13), vn - 5.2, vn - 1.3, zs + 3.2, zs + 3.6)
+    # the atrium's front, the gate (門) of the station: a deep portal of white steel round the glass, its
+    # piers either side and a lintel over it, standing out from the faces of the blocks beside it
+    for sa in (A0, A1):
+        ak.block(K["ks_steel"], F, s_(sa) - 1.4, s_(sa) + 1.4, vn - 0.5, vn + 2.4, 0.0, H + 1.2)
+    ak.block(K["ks_steel"], F, s_(A0) - 1.4, s_(A1) + 1.4, vn - 0.5, vn + 2.4, H - 1.8, H + 1.2)
+    ak.block(K["ks_steel"], F, s_(A0), s_(A1), vn + 0.6, vn + 2.4, 5.4, 6.4)     # over the concourse's doors
     # the east block: the hotel, 60 m, the glazed triangle of its east atrium facing north
     ve = S["north"](A1, D["length"])
     mass(A1, D["length"], vs, ve - 12.0, D["east_top"])
@@ -276,6 +284,21 @@ def kyoto_station():
     K["ks_glass"].quad(F(s_(A1), ve, 0.0), F(s_(A1 + 45), ve, 0.0), F(s_(A1 + 45), ve - 12.0, D["east_top"] - 8.0), F(s_(A1), ve - 12.0, D["east_top"]),
                        [[0, 0], [45, 0], [45, 52], [0, 60]])
     ak.wall(K["ks_glass"], F, s_(A1), ve, s_(A1), ve - 12.0, 0.0, D["east_top"])
+    # the great grid over the north faces either side of the atrium (#218): Hara's frame of squares, a
+    # module of 7.2 m by two storeys (8.4 m), its members 1.2 m proud of the glass and heavier every
+    # third line, as photographs of the Karasuma side show it (the bays' size read from them)
+    def grid(sa, sb, v, z0, z1):
+        ua, ub = s_(sa), s_(sb)
+        for k, u in enumerate(np.arange(ua, ub + 0.1, 7.2)):
+            w = 1.1 if k % 3 == 0 else 0.6
+            K["ks_frame"].box(F(u, v + 0.8, z0), F(u, v + 0.8, z1), w, 1.6)
+        for k, z in enumerate(np.arange(z0, z1 + 0.1, 8.4)):
+            h = 1.0 if k % 3 == 0 else 0.55
+            K["ks_frame"].box(F(ua, v + 0.8, z), F(ub, v + 0.8, z), 1.6, h)
+    grid(0, 85, vw, 0.0, 45.0)
+    grid(85, T0, S["north"](85, T0), 0.0, D["garden"])
+    grid(A1 + 45, D["length"], ve, 0.0, D["east_top"] - 12.0)
+    grid(A1 + 45, D["length"], ve - 12.0, D["east_top"] - 12.0, D["east_top"])
     return K.out(), [S["sd"]["si"]]
 
 
@@ -310,6 +333,31 @@ def W_of(sd):
 
 def L_of(sd):
     return ak.oriented(sd["ring"])[3]
+
+
+# the wide forecourts (#218), each the hull of the buildings that frame it: Higashi Honganji's and Nishi
+# Hongwanji's courts between their gates and their halls, and Nijo's outer court from the Higashi-Otemon
+# to the Karamon. Gravel, laid over the photograph's trees' shadows; the aprons round the halls stay granite
+FORECOURTS = [("w99130389", "w560097459", "w1241560765", "w99130358"), ("w99182315", "w99182202", "w372432409", "w99182450"),
+              ("w99019130", "w99019140")]
+
+
+def forecourts(K, solids, mat="court_gravel"):
+    from shapely.geometry import MultiPoint, Polygon as Poly
+    from shapely.ops import unary_union
+    import kyotokit
+    fp = lambda sd: Poly(sd["ring"], sd["holes"]).buffer(0)
+    heights = {oid: ridge for oid, ridge, _ in TEMPLE_HALLS}
+    for ids in FORECOURTS:
+        got = [sd for sd in solids if sd["osm"] in ids and sd["base"] <= 0]
+        if len({sd["osm"] for sd in got}) < 2:
+            continue
+        hull = MultiPoint([c for sd in got for c in sd["ring"]]).convex_hull.buffer(4.0)
+        aprons_ = unary_union([fp(sd).buffer(max(APRON_M, APRON_PER_M * heights.get(sd["osm"], 0.0)), join_style="mitre")
+                               for sd in got if sd["osm"] in heights])
+        near = [sd for sd in solids if sd["base"] <= 0 and fp(sd).intersects(hull)]
+        court = hull.difference(aprons_.buffer(-0.05) if not aprons_.is_empty else aprons_).difference(unary_union([fp(sd).buffer(0.05) for sd in near]))
+        kyotokit.drape(K[mat], court, kyotokit.game_ground("kyoto"), lift=0.04, cell=5.0)
 
 
 def aprons(K, solids, T, around, mat, heights=None):
@@ -494,6 +542,7 @@ def temples_and_palaces():
         hidden.append(sd["si"])
     aprons(K, solids, T, [sd for sd in solids for oid, _, _ in TEMPLE_HALLS if sd["osm"] == oid], "court_flags",
            {oid: ridge for oid, ridge, _ in TEMPLE_HALLS})
+    forecourts(K, solids)
     aprons(K, solids, T, halls + [sd for sd in in_gosho if sd["base"] <= 0 and not (W_of(sd) < 4.5 and L_of(sd) > 12)], "court_gravel")
     # every part of a building drawn here goes with it (the parts mapped over a gate's posts, a hall's roof)
     drawn = {sd["osm"] for sd in solids if sd["si"] in set(hidden) and sd["osm"]}

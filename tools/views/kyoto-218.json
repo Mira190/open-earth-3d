@@ -1,0 +1,226 @@
+[
+ {
+  "cam": [
+   -330,
+   -1700,
+   85
+  ],
+  "tgt": [
+   -370,
+   -1890,
+   40
+  ],
+  "name": "station-north-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -330,
+   -1700,
+   85
+  ],
+  "tgt": [
+   -370,
+   -1890,
+   40
+  ],
+  "name": "station-north-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -330,
+   -1700,
+   85
+  ],
+  "tgt": [
+   -370,
+   -1890,
+   40
+  ],
+  "name": "station-north-night",
+  "time": "21:00"
+ },
+ {
+  "cam": [
+   -372,
+   -1775,
+   48
+  ],
+  "tgt": [
+   -372,
+   -1850,
+   52
+  ],
+  "name": "station-gate-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -372,
+   -1775,
+   48
+  ],
+  "tgt": [
+   -372,
+   -1850,
+   52
+  ],
+  "name": "station-gate-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -372,
+   -1775,
+   48
+  ],
+  "tgt": [
+   -372,
+   -1850,
+   52
+  ],
+  "name": "station-gate-night",
+  "time": "21:00"
+ },
+ {
+  "cam": [
+   -250,
+   -1370,
+   70
+  ],
+  "tgt": [
+   -330,
+   -1370,
+   32
+  ],
+  "name": "higashi-forecourt-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -250,
+   -1370,
+   70
+  ],
+  "tgt": [
+   -330,
+   -1370,
+   32
+  ],
+  "name": "higashi-forecourt-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -250,
+   -1370,
+   70
+  ],
+  "tgt": [
+   -330,
+   -1370,
+   32
+  ],
+  "name": "higashi-forecourt-night",
+  "time": "21:00"
+ },
+ {
+  "cam": [
+   -860,
+   -1250,
+   70
+  ],
+  "tgt": [
+   -950,
+   -1250,
+   29
+  ],
+  "name": "nishi-forecourt-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -860,
+   -1250,
+   70
+  ],
+  "tgt": [
+   -950,
+   -1250,
+   29
+  ],
+  "name": "nishi-forecourt-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -860,
+   -1250,
+   70
+  ],
+  "tgt": [
+   -950,
+   -1250,
+   29
+  ],
+  "name": "nishi-forecourt-night",
+  "time": "21:00"
+ },
+ {
+  "cam": [
+   -1010,
+   1110,
+   60
+  ],
+  "tgt": [
+   -1080,
+   1085,
+   39
+  ],
+  "name": "nijo-forecourt-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -1010,
+   1110,
+   60
+  ],
+  "tgt": [
+   -1080,
+   1085,
+   39
+  ],
+  "name": "nijo-forecourt-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -1010,
+   1110,
+   60
+  ],
+  "tgt": [
+   -1080,
+   1085,
+   39
+  ],
+  "name": "nijo-forecourt-night",
+  "time": "21:00"
+ },
+ {
+  "name": "gosho-south-court-night",
+  "cam": [
+   -33,
+   2262,
+   72
+  ],
+  "tgt": [
+   -33,
+   2345,
+   54
+  ],
+  "time": "21:00"
+ }
+]

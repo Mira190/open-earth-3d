@@ -54,6 +54,12 @@ CANOPY_M = 2.5     # canopy over the ground from this height
 # the clipped trees of a Paris garden
 FLOOR = {"AU": "lawn", "NL": "lawn", "FR": "gravel"}
 LAND = {"forest", "wood", "scrub", "shrubbery", "shrub"}
+# the grounds whose canopy is planted where WorldCover agrees: campuses, and round the halls of shrines,
+# temples and churches (fetch_overture.py --only religious) that OSM doesn't map as a park or religious land
+CAMPUS = {"school", "university", "college", "kindergarten", "education", "hospital"}
+GROUNDS_M = 45.0   # a hall's grounds: this far round it
+WC_URL = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{ns}{lat:02d}{ew}{lon:03d}_Map.tif"
+WC_SOURCE = "ESA WorldCover 10 m 2021 v200 (CC BY 4.0): its tree class, where the canopy outside the mapped woods is trusted"
 LAND_USE = {"park", "village_green", "recreation_ground", "garden", "cemetery", "grave_yard", "religious",
             "nature_reserve", "zoo", "grass", "meadow", "dog_park", "golf_course"}
 FOOTW = {"footway": 2.5, "pedestrian": 4, "path": 2, "steps": 3, "cycleway": 2, "track": 3, "bridleway": 2}
@@ -104,6 +110,61 @@ def canopy_model(C, gx, gy):
         col = (np.asarray(X) - X0) / rx - 0.5
         row = (Y1 - np.asarray(Y)) / ry - 0.5
         out[i:i + 256] = map_coordinates(chm.astype(np.float32), [row, col], order=1, mode="constant", cval=0).reshape(xx.shape)
+    return out
+
+
+def worldcover_trees(C, gx, gy):
+    """Whether ESA WorldCover 2021 (10 m) calls each of the frame's 1 m cells tree cover (class 10),
+    read once into data/raw/<id>/worldcover.npz; the far-land helper (far_land.py) reads the same tiles."""
+    import rasterio
+    from rasterio.windows import from_bounds
+    w, s, e, n = C.cfg["bbox"]
+    w, s, e, n = w - 0.003, s - 0.003, e + 0.003, n + 0.003
+    cache = os.path.join(C.raw, "worldcover.npz")
+    if not os.path.exists(cache):
+        step, res = 0.0, None
+        parts = []
+        for la in range(math.floor(s / 3) * 3, math.ceil(n / 3) * 3, 3):
+            for lo in range(math.floor(w / 3) * 3, math.ceil(e / 3) * 3, 3):
+                url = WC_URL.format(ns="N" if la >= 0 else "S", lat=abs(la), ew="E" if lo >= 0 else "W", lon=abs(lo))
+                with rasterio.open("/vsicurl/" + url) as r:
+                    win = from_bounds(max(w, r.bounds.left), max(s, r.bounds.bottom), min(e, r.bounds.right), min(n, r.bounds.top),
+                                      r.transform).round_offsets().round_lengths()
+                    parts.append((r.read(1, window=win), r.window_transform(win)))
+                    step = r.res[0]
+        nx, ny = int(round((e - w) / step)), int(round((n - s) / step))
+        res = np.zeros((ny, nx), np.uint8)
+        for a, t in parts:
+            c0, r0 = int(round((t.c - w) / step)), int(round((n - t.f) / step))
+            rr, cc = slice(max(r0, 0), min(r0 + a.shape[0], ny)), slice(max(c0, 0), min(c0 + a.shape[1], nx))
+            res[rr, cc] = a[rr.start - r0:rr.stop - r0, cc.start - c0:cc.stop - c0]
+        os.makedirs(C.raw, exist_ok=True)
+        np.savez_compressed(cache, wc=res, box=np.array([w, s, e, n]), step=np.array(step))
+    z = np.load(cache)
+    wc, (w, s, e, n), step = z["wc"], z["box"], float(z["step"])
+    out = np.zeros((len(gy), len(gx)), bool)
+    for i in range(0, len(gy), 256):
+        yy, xx = np.meshgrid(gy[i:i + 256], gx, indexing="ij")
+        lon, lat = C.inv.transform(xx.ravel(), yy.ravel())
+        col = np.clip(((np.asarray(lon) - w) / step).astype(int), 0, wc.shape[1] - 1)
+        row = np.clip(((n - np.asarray(lat)) / step).astype(int), 0, wc.shape[0] - 1)
+        out[i:i + 256] = (wc[row, col] == 10).reshape(xx.shape)
+    return out
+
+
+def grounds_polygons(C):
+    """Campuses (Overture land use) and the grounds round the halls of shrines, temples and churches."""
+    import duckdb
+    from shapely import wkb as swkb
+    con, out = duckdb.connect(), []
+    for cls, g in con.execute(f"SELECT class, wkb FROM '{os.path.join(C.raw, 'overture_land_use.parquet')}'").fetchall():
+        if cls in CAMPUS:
+            out += [p for p in polygons(C.to_local(swkb.loads(bytes(g)))) if p.area > 150]
+    path = os.path.join(C.raw, "overture_religious.parquet")
+    if not os.path.exists(path):
+        raise SystemExit(f"{path} is missing: python pipeline/fetch_overture.py --city {C.id} --only religious")
+    for (g,) in con.execute(f"SELECT wkb FROM '{path}'").fetchall():
+        out += polygons(C.to_local(swkb.loads(bytes(g))).buffer(GROUNDS_M, 8))
     return out
 
 
@@ -170,6 +231,15 @@ def build(C, write=True):
         for r in p.interiors:
             d.polygon(P(r.coords), fill=0)
     wood = np.asarray(img, bool)
+    # outside them, the canopy is planted only where ESA WorldCover's tree class agrees (one 10 m cell's
+    # slack): in the grounds of campuses, shrines and temples, with their floor; along the streets and in
+    # the gardens, the canopy's own peaks only, without a floor (the ground there is paving)
+    img, d, P = raster(nx, ny, FINE, x0, y1)
+    for p in grounds_polygons(C):
+        d.polygon(P(p.exterior.coords), fill=1)
+    wct = ndimage.binary_dilation(worldcover_trees(C, gx, gy), iterations=5)
+    grounds = np.asarray(img, bool) & ~wood & wct
+    street = ~wood & ~grounds & wct
 
     # what nothing grows on: buildings, water, roads; footways, kept apart
     img, d, P = raster(nx, ny, FINE, x0, y1)
@@ -214,7 +284,7 @@ def build(C, write=True):
         exg = f[..., 1] - np.maximum(f[..., 0], f[..., 2])  # how much greener than red or blue (sRGB)
         open_ground = ((exg < 0.015) & (lum > 0.5)) | (lum > 0.72)
         canopy &= ~ndimage.binary_opening(open_ground, iterations=3)
-    ok = wood & ~built & ~water
+    ok = (wood | grounds) & ~built & ~water
     under = canopy & ok
     under = ndimage.binary_closing(under, iterations=2) & ok
     lab, n = ndimage.label(~under & ok)  # the gaps between crowns smaller than a small room, filled
@@ -232,7 +302,9 @@ def build(C, write=True):
     # trees already planted by a distance that grows with its height, and clear of the paths
     # and of the trees OSM maps
     free = under & ~kerb & ~ndimage.binary_dilation(foot, iterations=1) & (sm >= MIN_TREE_M)
-    peak = (sm == ndimage.maximum_filter(sm, size=5)) & free
+    lone = canopy & street & ~built & ~water & ~road & ~kerb & ~ndimage.binary_dilation(foot, iterations=1) & (sm >= MIN_TREE_M)
+    lone = ndimage.binary_opening(lone, iterations=1)  # a crown at least 3 m across
+    peak = (sm == ndimage.maximum_filter(sm, size=5)) & (free | lone)
     pr, pc = np.nonzero(peak)
     o = np.argsort(-sm[pr, pc])
     rng = np.random.default_rng(54)
@@ -278,8 +350,9 @@ def build(C, write=True):
     ach = down(ok.astype(np.float32))
     rgb = np.stack([np.clip(rch * 255, 0, 255), gch, np.clip(bch * 255 * 1.4, 0, 255), ach * 255], -1).round().astype(np.uint8)
     n_cover = int(cover.sum())
-    print(f"{C.id}: woods and parks {wood.sum() / 1e4:.0f} ha, canopy over them {n_cover / 1e4:.0f} ha; "
-          f"{len(trees) // 4} trees from the canopy (OSM maps {len(mapped)})")
+    n_lone = sum(1 for x, y, h in keep if lone[min(ny - 1, max(0, int((y1 - y) / FINE))), min(nx - 1, max(0, int((x - x0) / FINE)))])
+    print(f"{C.id}: woods and parks {wood.sum() / 1e4:.0f} ha, grounds {grounds.sum() / 1e4:.0f} ha, canopy over them {n_cover / 1e4:.0f} ha; "
+          f"{len(trees) // 4} trees from the canopy, {n_lone} of them along the streets (OSM maps {len(mapped)})")
     if not write:
         return rgb, trees
     Image.fromarray(rgb, 'RGBA').save(os.path.join(C.out, "woods.png"), optimize=True)
@@ -288,8 +361,8 @@ def build(C, write=True):
     scene["woods"] = {"file": "woods.png", "cell": CELL, "nx": W, "ny": H, "x0": x0, "y1": y1, "trees": len(trees) // 4,
                       "floor": C.cfg.get("trees", {}).get("floor") or FLOOR.get(C.cfg.get("country_code"), "earth"),
                       "encoding": "r: ground cover under the canopy (0-255), g: canopy height x 8 (m), b: a footway under the canopy, a: in a wood or park",
-                      "source": CHM_SOURCE}
-    scene.setdefault("sources", {})["canopy"] = CHM_SOURCE
+                      "source": CHM_SOURCE + "; " + WC_SOURCE}
+    scene.setdefault("sources", {})["canopy"] = CHM_SOURCE + "; " + WC_SOURCE
     json.dump(scene, open(scene_path, "w"), separators=(",", ":"))  # as build_scene.py writes it
     return rgb, trees
 
