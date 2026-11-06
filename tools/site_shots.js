@@ -5,6 +5,7 @@
 // z is metres above the site's datum (the lake's surface on an alpine site), not above the ground: an eye-level shot
 // on ground 9 m up the shore is z 10.5.
 // month: renders at that month's 5th at the shot's local time of day (for a season, e.g. lupins in December).
+// query: more of the viewer's address for that shot (e.g. "weather=nwarch", "traffic=3").
 const { execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path');
 const [,, site, outDir = 'shots', ...only] = process.argv;
@@ -12,10 +13,12 @@ const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cities', site
 fs.mkdirSync(outDir, { recursive: true });
 for (const s of cfg.shots || []) {
   if (only.length && !only.includes(s.id)) continue;
-  let time = s.time;
+  // time "night": 23:30 in New Zealand (daylight time) on 6 November 2026, after astronomical dusk (the viewer reads a
+  // word that is not a date as no time at all)
+  let time = s.time === 'night' ? '2026-11-06T10:30:00Z' : s.time;
   if (s.month && time) { const t = new Date(time); t.setUTCMonth(s.month - 1); time = t.toISOString(); }
   const q = ['still=1', 'gl=1', 'freeze=5', `city=${site}`, `x=${s.x}`, `y=${s.y}`, `z=${s.z}`, `yaw=${s.yaw ?? 0}`, `pitch=${s.pitch ?? 0}`, `fov=${s.fov ?? 60}`,
-    time ? `time=${time}` : '', `mods=${s.mods ?? 'alpine/flora,alpine/landmarks'}`].filter(Boolean).join('&');
+    time ? `time=${time}` : '', `mods=${s.mods ?? 'alpine/flora,alpine/landmarks'}`, s.query || ''].filter(Boolean).join('&');
   for (const [tag, env] of [['desktop', { W: 1440, H: 900 }], ['phone', { W: 390, H: 844, MOBILE: 1 }]]) {
     const out = path.join(outDir, `${s.id}-${tag}.png`);
     const r = execFileSync('node', [path.join(__dirname, 'reef_shot.js'), q, out, '15000', '0'], { env: Object.assign({}, process.env, env) }).toString();

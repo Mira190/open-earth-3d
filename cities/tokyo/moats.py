@@ -43,6 +43,21 @@ BED = 4.0          # m, the grid under the water: deep enough that a cell across
 BLEED = 10.0       # m beyond the shore that the DEM's fill over the water raises the banks
 REACH = 12.0       # m back from the shore where the bank is the DEM's own
 WALL_STEP = 2.5    # m between a wall's posts along the shore
+# Where a moat's dressed walls stand to the full height of a terrace, the 5 m DEM spreads them over some
+# 15-18 m of slope from the shore: the Seimon Tetsubashi (二重橋) spans the Nijubashi moat between walls that
+# stand from the water to the Seimon terrace (16.7 m, GSI's laser over the flat terrace south of the bridge;
+# the palace side is 16.5 m 30 m north of it). Within `r` of `at` the wall's head and the ground behind it
+# are the terrace's, read `reach` back from the shore; the effect fades out over `fade` beyond.
+WALLED = {"二重橋濠": {"at": (-489.0, 1134.1), "r": 40.0, "fade": 30.0, "reach": 18.0}}
+
+
+def walled(name, x, y):
+    """(weight 0..1, reach) of a full-height wall at (x, y) on moat `name` (WALLED)."""
+    w = WALLED.get(name)
+    if not w:
+        return 0.0, REACH
+    d = float(np.hypot(x - w["at"][0], y - w["at"][1]))
+    return float(np.clip(1 - (d - w["r"]) / w["fade"], 0.0, 1.0)), w["reach"]
 
 
 def load():
@@ -74,7 +89,8 @@ def adjust_terrain(dem, C, cell, lower=True):
     water = shapely.union_all(polys)
     raw = dem.copy()
     at = lambda x, y: raw[int(np.clip(round((C.y1 - y) / cell), 0, ny - 1)), int(np.clip(round((x - C.x0) / cell), 0, nx - 1))]
-    near = water.buffer(BLEED)
+    far = max([BLEED] + [w["reach"] for w in WALLED.values()])
+    near = water.buffer(far)
     x0, y0, x1, y1 = near.bounds
     c0, c1 = max(0, int((x0 - C.x0) / cell)), min(nx, int((x1 - C.x0) / cell) + 2)
     r0, r1 = max(0, int((C.y1 - y1) / cell)), min(ny, int((C.y1 - y0) / cell) + 2)
@@ -91,7 +107,14 @@ def adjust_terrain(dem, C, cell, lower=True):
         b = e + d / n * REACH
         if water.contains(shapely.Point(*b)):   # a narrow causeway between two moats: its own ground
             continue
-        dem[r, c] = min(dem[r, c], at(*b))
+        if n <= BLEED:
+            dem[r, c] = min(dem[r, c], at(*b))
+        for m, g in zip(moats, polys):         # behind a full-height wall: the terrace's ground (WALLED)
+            k, reach = walled(m["name"], *e)
+            if k > 0 and n <= reach and g.distance(shapely.Point(*e)) < 0.5:
+                t = e + d / n * reach
+                if not water.contains(shapely.Point(*t)):
+                    dem[r, c] = max(dem[r, c], (1 - k) * dem[r, c] + k * float(at(*t)))
     if not lower:
         return dem
     for m, g in zip(moats, polys):
@@ -243,10 +266,22 @@ def build():
                     n = -n
                 o = np.asarray(p[:2]) + n * 2.0          # the bank, 2 m back from the shore
                 top = float(sample(C, bank, *o)[0])
+                k, reach = walled(name, *p[:2])
+                if k > 0:                                # a full-height wall: the terrace's ground (WALLED)
+                    top = max(top, (1 - k) * top + k * float(sample(C, bank, *(np.asarray(p[:2]) + n * reach))[0]))
                 for g2, l2 in others:                # the bank is another moat's water: up to the higher one
                     if g2.distance(shapely.Point(*o)) < 1.0:
                         top = max(level, l2)
                 p[2] = round(max(top, level), 2)
+            # a full-height wall's head runs level along its course: the median of its neighbours (the
+            # terrace read 18 m back turns a corner unevenly)
+            ks = [walled(name, *p[:2])[0] for p in ring]
+            if any(ks):
+                z = np.array([p[2] for p in ring])
+                med = [float(np.median(np.take(z, range(k - 3, k + 4), mode="wrap"))) for k in range(len(ring))]
+                for p, k, zm in zip(ring, ks, med):
+                    if k > 0:
+                        p[2] = round(max((1 - k) * p[2] + k * zm, level), 2)
     write(moats)
     for m in moats:
         print(f"{m['name'] or '(unnamed)'}: {m['level']} m ({m['source']}), {len(m['ring'])} shore points")

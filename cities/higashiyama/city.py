@@ -685,7 +685,27 @@ def landmark_meshes(scene):
         P, w = gs["P"], gs["width"] / 2 + 0.6
         extra["clip"] = [{"ring": [[round(float(c), 2) for c in P(u, v, 0)[:2]] for u, v in
                                    ((gs["u0"] - 0.1, -w), (gs["u1"] + 0.1, -w), (gs["u1"] + 0.1, w), (gs["u0"] - 0.1, w))], "holes": []}]
+    extra["trees"] = gion_cherry()
     return mats, K.out() + L.out(), extra
+
+
+# Maruyama Park's Gion weeping cherry (the second tree, grown in 1949 from the first's seed, about 12 m tall),
+# on its own spot: the lone round crown in the gravel plaza north-west of the Hyotan pond in the city's aerial
+# photograph (35.00388 N, 135.78090 E). OSM maps no node for it; its two nearest mapped trees, 6 m west in the
+# open plaza, are taken off (places.json), and trees.areas' "Gion weeping cherry" circle makes it a weeping cherry.
+GION_CHERRY = (-100.8, 763.5, 12.0)
+
+
+def gion_cherry():
+    x, y, h = GION_CHERRY
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "higashiyama", "places.json")
+    P = json.load(open(path))
+    t = P.get("trees", [])
+    keep = [v for i in range(0, len(t), 4) if math.hypot(t[i] / 10 - x, t[i + 1] / 10 - y) >= 7.5 for v in t[i:i + 4]]
+    if len(keep) != len(t):
+        P["trees"] = keep
+        json.dump(P, open(path, "w"), separators=(",", ":"))
+    return [round(x * 10), round(y * 10), round(kk.game_ground("higashiyama")(x, y) * 10), round(h * 10)]
 
 
 def landmark_assets(out_dir, scene):

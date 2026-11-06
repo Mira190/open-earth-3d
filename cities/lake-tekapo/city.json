@@ -677,5 +677,15 @@
         "density": 0.7
       }
     ]
+  },
+  "clouds": {
+    "nwarch": {
+      "edge": [
+        -17270,
+        38330
+      ],
+      "bearing_deg": 37,
+      "note": "?weather=nwarch: the arch's edge, a point on it (m east and north) about 12 km south-east of the Main Divide at Aoraki, and its bearing, parallel to the Divide; a judgement from photographs of the arch from the Mackenzie"
+    }
   }
 }
