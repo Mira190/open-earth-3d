@@ -299,7 +299,108 @@ window.OEInland = (function () {
       return false;
     }
 
-    return { bodies, decks, walled, natural, raise, water, level, onDeck, nearest, bank, byWall, holeMask, build };
+    // ------------------------------------------------------------ the lights in the water at night
+    // Each light near the water (a street lamp, a chochin, a bonbori) is seen in it as a streak: its mirror image
+    // under the water's level, where the line from the eye to that image meets the water, drawn out towards the eye
+    // as the ripples' slopes spread its reflection (longer the more grazing the view), broken into shimmering
+    // dashes that drift with time. An additive card on the water, per light, placed in the vertex shader for the
+    // camera: no second render of the scene (as the sea's planar reflection is) and no large texture, so it runs on
+    // every tier. Where the card runs past the water's edge it is under the bank, and the ground hides it.
+    // groups: [{pos (three.js x, y, z triples, read once), colour (THREE.Color, or a function of the light's index
+    // giving one), gain}], one intensity a group set per frame with set(i, k); returns {mesh, set(i, k), count} or null
+    function glints(groups, { reach = 26, fog = true } = {}) {
+      const P = [], WZ = [], C = [], G = [];
+      groups.forEach((g, gi) => {
+        const n = g.pos.length / 3;
+        for (let i = 0; i < n; i++) {
+          const x = g.pos[3 * i], z = g.pos[3 * i + 1], y = -g.pos[3 * i + 2];
+          const nw = nearest(x, y, reach);
+          if (!nw || z < nw.wz + 0.5) continue;
+          const c = typeof g.colour === 'function' ? g.colour(i) : g.colour;
+          P.push(x, z, -y); WZ.push(nw.wz); C.push(c.r * g.gain, c.g * g.gain, c.b * g.gain); G.push(gi);
+        }
+      });
+      const n = WZ.length;
+      if (!n) return null;
+      const geo = new THREE.InstancedBufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+      geo.setIndex([0, 1, 2, 0, 2, 3]);
+      geo.setAttribute('iLight', new THREE.InstancedBufferAttribute(new Float32Array(P), 3));
+      geo.setAttribute('iWz', new THREE.InstancedBufferAttribute(new Float32Array(WZ), 1));
+      geo.setAttribute('iCol', new THREE.InstancedBufferAttribute(new Float32Array(C), 3));
+      geo.setAttribute('iGroup', new THREE.InstancedBufferAttribute(new Float32Array(G), 1));
+      geo.instanceCount = n;
+      const K = [0, 0, 0, 0, 0, 0, 0, 0];
+      const mat = new THREE.ShaderMaterial({
+        uniforms: Object.assign(THREE.UniformsUtils.merge([THREE.UniformsLib.fog]), { uK: { value: K }, uTime: { value: 0 } }),
+        vertexShader: `attribute vec3 iLight, iCol; attribute float iWz, iGroup;
+uniform float uK[8], uTime;
+varying vec3 vC; varying vec2 vUv; varying float vSeed, vR, vAbove, vTheta;
+#include <common>
+#include <fog_pars_vertex>
+const float S2 = 0.085; // how far the ripples tilt a reflected ray (radians): twice their slopes, about 0.04 rms
+void main() {
+  float k = 0.0;
+  for (int i = 0; i < 8; i++) if (abs(iGroup - float(i)) < 0.5) k = uK[i];
+  vec3 cam = cameraPosition, M = vec3(iLight.x, 2.0 * iWz - iLight.y, iLight.z); // the light's mirror image
+  float above = cam.y - iWz;
+  vC = vec3(0.0); vUv = vec2(0.0); vSeed = 0.0; vR = 1.0; vAbove = 1.0; vTheta = 0.0;
+  if (k <= 0.0 || above < 0.05) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  vec2 d = M.xz - cam.xz; float D = length(d); d = D > 1e-3 ? d / D : vec2(0.0, 1.0);
+  // the image is seen at the elevation theta under the horizon; the water reflects the light to the eye wherever
+  // the ripples tilt a ray within S2 of that: from the distance at theta + S2 out to the one at theta - S2 (the
+  // horizon, if that is above it), a streak towards the eye that grows longer the lower the view
+  float theta = atan(cam.y - M.y, D);
+  float rP = above / tan(theta), r0 = above / tan(min(theta + S2, 1.55)), r1 = theta - S2 > 0.004 ? above / tan(theta - S2) : rP + 400.0;
+  r1 = min(r1, rP + 400.0);
+  float r = mix(r0, r1, position.y * 0.5 + 0.5);
+  // across: the ripples spread it less that way, and it stays a lamp's width close to
+  float hw = 0.1 + r * S2 * 0.18;
+  vec2 xz = cam.xz + d * r + vec2(-d.y, d.x) * position.x * hw;
+  vec3 wp = vec3(xz.x, iWz + 0.03, xz.y);
+  vUv = position.xy; vR = r; vAbove = above; vTheta = theta;
+  vSeed = fract(sin(dot(iLight.xz, vec2(12.9898, 78.233))) * 43758.5453);
+  // the water reflects more the more grazing the view (Schlick, n = 1.33); a lamp far brighter than the night round
+  // it is seen in it from overhead too; a far lamp's light in the water is weaker, and far off it fades out
+  float F = 0.02 + 0.98 * pow(1.0 - sin(theta), 5.0);
+  float dist = length(M - cam);
+  vC = iCol * k * (0.12 + 0.88 * F) * min(1.0, 30.0 / dist) * (1.0 - smoothstep(900.0, 1600.0, dist));
+  vec4 mvPosition = viewMatrix * vec4(wp, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+  #include <fog_vertex>
+}`,
+        fragmentShader: `uniform float uTime; varying vec3 vC; varying vec2 vUv; varying float vSeed, vR, vAbove, vTheta;
+#include <common>
+#include <fog_pars_fragment>
+const float S2 = 0.085;
+float gn(float x) { float i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(fract(sin(i * 91.7 + vSeed * 311.0) * 4375.5), fract(sin((i + 1.0) * 91.7 + vSeed * 311.0) * 4375.5), f); }
+void main() {
+  // how far this point's reflected ray is from the light's, in S2: most light near the image, less out along
+  float t = (atan(vAbove, vR) - vTheta) / S2;
+  float across = exp(-vUv.x * vUv.x * 4.0), along = exp(-t * t * 2.6);
+  // broken into dashes by the ripples' crests, a metre or so apart, drifting; whole near the image
+  float dash = gn(vR * 1.3 + uTime * 1.6) * 0.65 + gn(vR * 2.9 - uTime * 2.1 + 7.0) * 0.35;
+  dash = mix(1.0, smoothstep(0.2, 0.85, dash) * 1.7, 0.9 * smoothstep(0.1, 0.7, abs(t)));
+  gl_FragColor = vec4(vC * across * along * dash, 1.0);
+  ${fog ? `#include <fog_fragment>
+#ifdef USE_FOG
+  gl_FragColor.rgb = max(gl_FragColor.rgb - fogColor * fogFactor, 0.0);
+#endif` : ''}
+}`,
+        fog, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.name = 'inland_glints'; mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false;
+      const t0 = performance.now();
+      mesh.onBeforeRender = () => { mat.uniforms.uTime.value = ((performance.now() - t0) / 1000) % 1000; };
+      return {
+        mesh, count: n,
+        set(i, k) { K[i] = k; mesh.visible = K.some(v => v > 0.001); },
+        dispose() { geo.dispose(); mat.dispose(); },
+      };
+    }
+
+    return { bodies, decks, walled, natural, raise, water, level, onDeck, nearest, bank, byWall, holeMask, build, glints };
   }
 
   return { create };

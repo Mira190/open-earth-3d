@@ -51,8 +51,9 @@ from cityctx import city_args, polygons
 CLASSES = ["pond", "lake", "reservoir", "basin", "water", "river", "canal", "moat"]
 FLAT = {"pond", "lake", "reservoir", "basin", "water", "moat"}  # still water: one level
 SEG_M = 4.0        # ring vertices this far apart at most (a channel's level changes along it)
-BANK_OUT_M = (3.0, 8.0)  # a wall's bank: the highest ground this far outside it
+BANK_OUT_M = (2.5, 5.0, 8.0)  # a wall's bank: the highest ground this far outside it, on its own side
 SMOOTH_M = 80.0    # a channel's bank smoothed over this length along it
+BANK_RISE_M = 2.5  # a channel's higher bank (on a slope) at most this much over its lower one
 ROAD_HALF = {"motorway": 9.0, "trunk": 8.0, "primary": 7.0, "secondary": 6.0, "tertiary": 5.0, "residential": 3.5,
              "unclassified": 3.5, "living_street": 3.0, "service": 2.5, "pedestrian": 3.0, "footway": 1.5, "path": 1.2,
              "steps": 1.5, "cycleway": 1.5, "track": 2.0}
@@ -115,16 +116,44 @@ def smooth_along(s, v, length):
 
 
 def bank_samples(at, poly, pts):
-    """The bank's height at each ring point: the highest ground BANK_OUT_M outside the polygon near it."""
-    out = np.empty(len(pts))
+    """The bank's height at each ring point: the highest ground BANK_OUT_M outside the polygon on the point's own
+    side (a fan about its outward normal, none of whose samples crosses the water). A narrow channel on a slope
+    (the Philosopher's Path canal) would otherwise take its uphill bank's height on its downhill side too, and its
+    coping stood high over the ground there (issue 300)."""
+    n = len(pts)
+    out = np.empty(n)
     for i, (x, y) in enumerate(pts):
+        tx, ty = pts[(i + 1) % n] - pts[(i - 1) % n]
+        L = np.hypot(tx, ty) or 1.0
+        nx, ny = ty / L, -tx / L
+        if poly.contains(Point(x + 0.4 * nx, y + 0.4 * ny)):
+            nx, ny = -nx, -ny
         best = -1e9
-        for a in np.linspace(0, 2 * np.pi, 12, endpoint=False):
+        for a in np.radians([-55, -25, 0, 25, 55]):
+            ca, sa = np.cos(a), np.sin(a)
+            dx, dy = nx * ca - ny * sa, nx * sa + ny * ca
             for d in BANK_OUT_M:
-                px, py = x + d * np.cos(a), y + d * np.sin(a)
-                if not poly.contains(Point(px, py)):
-                    best = max(best, float(at(px, py)))
+                px, py = x + d * dx, y + d * dy
+                seg = LineString([(x + 0.3 * dx, y + 0.3 * dy), (px, py)])
+                if poly.intersects(seg):
+                    break   # back over the water: the far bank, not this one
+                best = max(best, float(at(px, py)))
         out[i] = best if best > -1e8 else float(at(x, y))
+    return out
+
+
+def across_min(R, BZ, width):
+    """Each ring point's bank and the lowest bank across the channel from it (within `width` m): the water stands
+    level across a channel, under its lower bank."""
+    P = np.concatenate(R)
+    Z = np.concatenate(BZ)
+    out = []
+    for pts in R:
+        m = np.empty(len(pts))
+        for i, (x, y) in enumerate(pts):
+            k = np.hypot(P[:, 0] - x, P[:, 1] - y) <= width
+            m[i] = Z[k].min()
+        out.append(m)
     return out
 
 
@@ -148,7 +177,7 @@ def line_body(C, at, line, spec, extent):
     poly = unary_union(parts).buffer(0.3).buffer(-0.3).intersection(extent)
     # levels along the line: the bank either side, smoothed, never rising downstream
     s = np.arange(0, L.length + 0.1, 5.0)
-    bank = np.empty(len(s))
+    sides = np.empty((2, len(s)))
     for i, si in enumerate(s):
         p, q = L.interpolate(si), L.interpolate(min(L.length, si + 2) if si + 2 <= L.length else si - 2)
         d = np.array([q.x - p.x, q.y - p.y]) * (1 if si + 2 <= L.length else -1)
@@ -156,10 +185,14 @@ def line_body(C, at, line, spec, extent):
         nx, ny = -d[1], d[0]
         t = si / L.length
         half = (w0 + (w1 - w0) * t) / 2
-        vals = [float(at(p.x + o * nx, p.y + o * ny)) for side in (-1, 1) for o in side * np.array([half + 3, half + 5, half + 8])]
-        bank[i] = np.percentile(vals, 60)
-    bank = smooth_along(s, bank, SMOOTH_M)
-    bank = np.minimum.accumulate(bank)
+        for j, side in enumerate((-1, 1)):
+            vals = [float(at(p.x + o * nx, p.y + o * ny)) for o in side * np.array([half + 3, half + 5, half + 8])]
+            sides[j, i] = np.percentile(vals, 60)
+    # each bank on its own (a river along a slope has a higher bank uphill), smoothed, never rising downstream; the
+    # water under the lower one
+    sides = np.array([np.minimum.accumulate(smooth_along(s, v, SMOOTH_M)) for v in sides])
+    low = sides.min(axis=0)
+    sides = np.minimum(sides, low + BANK_RISE_M)
     out = []
     for p in polygons(poly):
         if p.area < 20:
@@ -169,8 +202,14 @@ def line_body(C, at, line, spec, extent):
         for ring in rings:
             pts = ring_xy(ring)
             st = np.array([L.project(Point(x, y)) for x, y in pts])
-            b = np.interp(st, s, bank)
-            wz = b - spec["bank_to_water_m"]
+            # which bank: the side of the line the point is on (n = (-d.y, d.x) is side +1, as above)
+            side = np.empty(len(pts), int)
+            for k, ((x, y), sk) in enumerate(zip(pts, st)):
+                a, q = L.interpolate(max(0.0, sk - 1.0)), L.interpolate(min(L.length, sk + 1.0))
+                c = L.interpolate(sk)
+                side[k] = 1 if (q.x - a.x) * (y - c.y) - (q.y - a.y) * (x - c.x) > 0 else 0
+            b = np.where(side == 1, np.interp(st, s, sides[1]), np.interp(st, s, sides[0]))
+            wz = np.interp(st, s, low) - spec["bank_to_water_m"]
             R.append(pts); BZ.append(b); WZ.append(wz)
         out.append({"name": spec["name"], "kind": "walled", "walls": spec.get("walls", "concrete"), "rings": R, "bz": BZ, "wz": WZ,
                     "water_m": spec.get("water_m", 0.3), "_poly": p, "_line": L})
@@ -189,10 +228,16 @@ def polygon_body(C, at, cell, name, cls, poly, rule):
             lvl = min(float(b.min()) for b in BZ) - d
             WZ = [np.full(len(pts), lvl) for pts in R]
         else:
+            # the water level across the channel (under its lower bank), then smoothed along it
+            low = across_min(R, BZ, 1.6 * 2 * poly.area / max(poly.length, 1.0) + 2.0)
             WZ = []
-            for pts, b in zip(R, BZ):
+            for pts, b in zip(R, low):
                 st = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
                 WZ.append(smooth_along(st, b, SMOOTH_M) - d)
+            # and the banks along each side smoothed too, never under the water's own bank
+            # (a hillside over the uphill bank stays a slope behind a wall at most BANK_RISE_M higher than the other)
+            BZ = [np.clip(smooth_along(np.concatenate([[0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))]), b, 20.0), w + d, w + d + BANK_RISE_M)
+                  for pts, b, w in zip(R, BZ, WZ)]
         return {"name": name, "kind": "walled", "walls": rule["walls"], "rings": R, "bz": BZ, "wz": WZ,
                 "water_m": rule.get("water_m", 0.5), "_poly": poly}
     # natural: the laser survey's own level over the water (it interpolates across it), just under the bank
