@@ -1,0 +1,78 @@
+# Watches the service levels (docs/OBSERVABILITY.md): every 15 minutes, tools/slo_report.py reads the last
+# week of events from PostHog, judges each level over the week and its error budget's burn over the last
+# hours (the multiwindow, multi-burn-rate rules of the SRE Workbook), and opens an issue labelled "slo" when
+# something fires, or comments on the open one when what fires changes. It closes nothing: a person does.
+#
+# Off until the owner turns it on:
+#   1. a PostHog personal API key with read access to the project (query:read, project:read), stored as the
+#      repository secret POSTHOG_PERSONAL_API_KEY (Settings > Secrets and variables > Actions > Secrets);
+#   2. the repository variable SLO_ALERTS set to "on" (the same page, Variables).
+# Until both are there the job is skipped.
+name: SLO watch
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: slo-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    if: ${{ vars.SLO_ALERTS == 'on' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Judge the levels and the burn rates
+        id: report
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_HOST: https://eu.posthog.com
+        run: |
+          set +e
+          python3 tools/slo_report.py --posthog --days 7 --json > report.json
+          code=$?
+          set -e
+          if [ ! -s report.json ]; then echo "no report (exit $code)"; exit 1; fi
+          python3 tools/slo_report.py --posthog --days 7 > report.txt || true
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the issue
+        if: steps.report.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          r = json.load(open('report.json'))
+          miss = [s for s in r['slo'] if s['met'] is False]
+          alerts = r.get('alerts') or []
+          sig = ','.join(sorted({f"{a['id']}:{a['severity']}" for a in alerts} | {f"{s['id']}:miss" for s in miss}))
+          page = any(a['severity'] == 'page' for a in alerts)
+          lines = []
+          for a in alerts:
+              lines.append(f"- **{a['severity']}**: {a['what']} burning {a['burn_long']}x its budget ({a['rule']}, {a['n']} samples)")
+          for s in miss:
+              lines.append(f"- **7-day miss**: {s['what']} is {s['value']:.3g} against {s['op']} {s['target']:g} ({s['n']} samples)")
+          body = '\n'.join(lines) + f"\n\nThe report: {os.environ['RUN_URL']}\n\n<details><summary>tools/slo_report.py</summary>\n\n```\n" + open('report.txt').read()[:50000] + "\n```\n</details>\n\n<!-- slo-sig:" + sig + " -->\n"
+          open('body.md', 'w').write(body)
+          open('sig.txt', 'w').write(sig)
+          open('title.txt', 'w').write(('SLO page: ' if page else 'SLO: ') + ', '.join(sorted({a['what'] for a in alerts} | {s['what'] for s in miss}))[:200])
+          PY
+          gh label create slo --color B60205 --description "A service level missed or burning its budget (SLO watch)" 2>/dev/null || true
+          n=$(gh issue list --label slo --state open --json number --jq '.[0].number')
+          if [ -z "$n" ]; then
+            gh issue create --title "$(cat title.txt)" --label slo --body-file body.md
+          else
+            last=$(gh issue view "$n" --json body,comments --jq '[.body] + [.comments[].body] | map(select(test("slo-sig:"))) | last' | sed -n 's/.*slo-sig:\([^ ]*\) -->.*/\1/p')
+            if [ "$last" != "$(cat sig.txt)" ]; then gh issue comment "$n" --body-file body.md; else echo "issue #$n already says this"; fi
+          fi

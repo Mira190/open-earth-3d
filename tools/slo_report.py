@@ -82,12 +82,20 @@ def read_posthog(days):
         sys.exit('POSTHOG_PERSONAL_API_KEY is not set')
     api = API(key)
     pid = os.environ.get('POSTHOG_PROJECT') or api.call('GET', '/api/projects/@current/')['id']
-    out, page = [], 50000
+    # keyset pagination on the timestamp (PostHog refuses OFFSET with a personal key); events that share the
+    # last timestamp of a page come again on the next, and are kept once by their uuid
+    out, seen, page, last = [], set(), 20000, None
     while True:
-        q = (f"SELECT event, timestamp, distinct_id, properties FROM events WHERE {OURS} "
-             f"AND timestamp > now() - INTERVAL {float(days or 7)} * 86400 SECOND ORDER BY timestamp LIMIT {page} OFFSET {len(out)}")
+        after = f"AND timestamp >= toDateTime64('{last}', 6, 'UTC') " if last else ''
+        q = (f"SELECT uuid, event, timestamp, distinct_id, properties FROM events WHERE {OURS} "
+             f"AND timestamp > now() - INTERVAL {int(float(days or 7) * 86400)} SECOND {after}ORDER BY timestamp LIMIT {page}")
         res = api.call('POST', f'/api/projects/{pid}/query/', {'query': {'kind': 'HogQLQuery', 'query': q}}).get('results') or []
-        for ev, ts, vid, props in res:
+        fresh = 0
+        for uid, ev, ts, vid, props in res:
+            if uid in seen:
+                continue
+            seen.add(uid)
+            fresh += 1
             if isinstance(props, str):
                 try:
                     props = json.loads(props)
@@ -95,8 +103,9 @@ def read_posthog(days):
                     props = {}
             t = ts if isinstance(ts, str) else str(ts)
             out.append({'event': ev, 'got': t, 'ts': t, 'vid': vid, 'props': props or {}})
-        if len(res) < page:
+        if len(res) < page or not fresh:
             return out
+        last = str(res[-1][2]).replace('T', ' ').replace('Z', '').split('+')[0]
 
 
 def read(path, days):

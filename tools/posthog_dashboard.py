@@ -3,6 +3,7 @@
 
     POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/posthog_dashboard.py            # create or update
     POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/posthog_dashboard.py --check    # run each query, change nothing
+    POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/posthog_dashboard.py --alerts   # and the alerts (ALERTS) on their insights
 
 The dashboard and each insight are found by name, so running it again updates them in place. The SLOs
 and their targets are those of docs/OBSERVABILITY.md and tools/slo_report.py. The events come from
@@ -124,6 +125,36 @@ def first_minutes(days):
             f"FROM events WHERE event IN ('load', 'mode', 'quest') AND properties.view = 'game' AND {w} GROUP BY city ORDER BY loaded DESC")
 
 
+def releases(days):
+    """The levels by deployed version (every event carries "app"): a regression points to the release that brought it."""
+    w = f'timestamp > now() - INTERVAL {days} DAY'
+    ok3 = f"event = 'load' AND toString(properties.ok) = 'true' AND {D3}"
+    q75 = lambda f, extra='': f"round(quantileIf(0.75)(toFloat(properties.{f}), {ok3}{extra}) / 1000, 1)"
+    return ("SELECT app, page_loads, loads_3d, load_p75_desktop_s, load_p75_mobile_s, fetched_s, decoded_s, built_s, first_frame_s, "
+            "round(100 * crashes / page_loads, 2) AS crash_pct, round(100 * err_pages / page_loads, 2) AS script_error_pct, "
+            "round(100 * lost_pages / page_loads, 2) AS gl_lost_pct, fps_median, slow_frames_pct, first_seen FROM ("
+            "SELECT coalesce(nullIf(toString(properties.app), ''), '?') AS app, count(DISTINCT if(event != 'crash', properties.sid, NULL)) AS page_loads, "
+            f"countIf({ok3}) AS loads_3d, {q75('ms', " AND properties.device = 'desktop'")} AS load_p75_desktop_s, "
+            f"{q75('ms', " AND properties.device IN ('phone', 'tablet')")} AS load_p75_mobile_s, "
+            f"{q75('fetch_ms')} AS fetched_s, {q75('decode_ms')} AS decoded_s, {q75('build_ms')} AS built_s, {q75('frame_ms')} AS first_frame_s, "
+            "countIf(event = 'crash') AS crashes, count(DISTINCT if(event = 'error' AND properties.kind IN ('script', 'promise'), properties.sid, NULL)) AS err_pages, "
+            "count(DISTINCT if(event = 'gl_lost', properties.sid, NULL)) AS lost_pages, "
+            f"quantileIf(0.5)(toFloat(properties.fps), event = 'time' AND properties.fps IS NOT NULL AND {D3}) AS fps_median, "
+            f"round(100 * sumIf(toFloat(properties.slow) * toFloat(properties.frames), event = 'time' AND properties.frames IS NOT NULL AND {D3}) "
+            f"/ nullIf(sumIf(toFloat(properties.frames), event = 'time' AND properties.frames IS NOT NULL AND {D3}), 0), 2) AS slow_frames_pct, "
+            f"min(timestamp) AS first_seen FROM events WHERE {OURS} AND {w} GROUP BY app) WHERE page_loads > 0 ORDER BY first_seen DESC LIMIT 30")
+
+
+def stages(days):
+    """Where a load's time goes: p75 of each stage (s from the view's start) by view and device (telemetry v3)."""
+    w = f'timestamp > now() - INTERVAL {days} DAY'
+    q = lambda f: f"round(quantile(0.75)(toFloat(properties.{f})) / 1000, 1)"
+    return (f"SELECT properties.view AS view, if(properties.device = 'desktop', 'desktop', 'phone/tablet') AS device, count() AS loads, "
+            f"{q('fetch_ms')} AS fetched_s, {q('decode_ms')} AS decoded_s, {q('build_ms')} AS built_s, {q('frame_ms')} AS first_frame_s, {q('ms')} AS ready_s "
+            f"FROM events WHERE event = 'load' AND toString(properties.ok) = 'true' AND toInt(properties.v) >= 3 AND {w} "
+            "GROUP BY view, device ORDER BY view, device")
+
+
 def trends(series, display='ActionsLineGraph', breakdown=None, date_from='-30d', interval='day', formula=None, props=None):
     src = {'kind': 'TrendsQuery', 'series': series, 'interval': interval, 'dateRange': {'date_from': date_from},
            'properties': props if props is not None else NOT_TEST, 'filterTestAccounts': False,
@@ -147,6 +178,12 @@ def ev(event, math='total', prop=None, props=None, name=None):
 def sql(q):
     return {'kind': 'DataTableNode', 'source': {'kind': 'HogQLQuery', 'query': q}}
 
+
+OK = [{'key': 'ok', 'value': ['true'], 'operator': 'exact', 'type': 'event'}]
+DESK = [{'key': 'device', 'value': ['desktop'], 'operator': 'exact', 'type': 'event'}]
+MOB = [{'key': 'device', 'value': ['phone', 'tablet'], 'operator': 'exact', 'type': 'event'}]
+SCRIPT = [{'key': 'kind', 'value': ['script', 'promise'], 'operator': 'exact', 'type': 'event'}]
+V3 = [{'key': 'v', 'value': 3, 'operator': 'gte', 'type': 'event'}]
 
 INSIGHTS = [
     ('SLO scorecard, last 7 days', 'The nine service levels of docs/OBSERVABILITY.md: value, samples, met or missed (judged from 20 samples).', sql(scorecard(7))),
@@ -183,6 +220,52 @@ INSIGHTS = [
     ('Engaged play (%) by view', 'Share of time on screen with input in the last minute or a tour or camera move playing (not a tab left open).',
      trends([ev('time', 'sum', 'eng_s', THREE_D, 'Engaged s'), ev('time', 'sum', 's', THREE_D + [{'key': 'eng_s', 'operator': 'is_set', 'value': 'is_set', 'type': 'event'}], 'Seconds')],
             breakdown='view', formula='100 * A / B')),
+    # release comparison (issue 298): every event carries the deployed version as "app"
+    ('Release comparison, last 30 days', 'By deployed version (newest first): page loads, load p75 by device and each load stage (s), pages that died, '
+     'page loads with a script error or a lost WebGL context (%), median fps and slow frames (%).', sql(releases(30))),
+    ('Load stages p75 by view and device, last 7 days', 'Seconds from the view\'s start to its data fetched, decoded, scene built, first frame and the loader gone '
+     '(the title screen: textures in, decoded, first frame, opening drawn).', sql(stages(7))),
+    ('Load time p75 by release (s)', 'Model, game and reef loads that became ready, by the deployed version.',
+     trends([ev('load', 'p75', 'ms', OK + THREE_D, 'Load ms')], breakdown='app', formula='A / 1000')),
+    ('Load stages p75 (s)', 'Model, game and reef loads: data fetched, decoded, scene built, first frame, ready.',
+     trends([ev('load', 'p75', f, OK + THREE_D + V3, n) for f, n in (('fetch_ms', 'Fetched'), ('decode_ms', 'Decoded'), ('build_ms', 'Built'), ('frame_ms', 'First frame'), ('ms', 'Ready'))],
+            formula=None)),
+    ('Frame rate (median fps) by release', 'The median frame rate of play pieces in the 3D views, by deployed version.',
+     trends([ev('time', 'median', 'fps', THREE_D, 'fps')], breakdown='app')),
+    ('Script errors per 100 page loads by release', 'Script errors and unhandled rejections ÷ page loads (one "page" event each), by deployed version.',
+     trends([ev('error', props=SCRIPT, name='Errors'), ev('page', name='Page loads')], breakdown='app', formula='100 * A / B')),
+    ('Pages that died per 100 page loads by release', 'Crash reports ÷ page loads, by the version of the page that reported them.',
+     trends([ev('crash', name='Died'), ev('page', name='Page loads')], breakdown='app', formula='100 * A / B')),
+    # the insights the alerts watch (ALERTS): no breakdown, one series, the SLO's line as the bound
+    ('Alert: load time p75, desktop (s)', 'Watched by an alert: over 10 s on a day (the SLO line; judged on any number of loads).',
+     trends([ev('load', 'p75', 'ms', OK + THREE_D + DESK, 'Load ms')], formula='A / 1000', date_from='-14d')),
+    ('Alert: load time p75, phone and tablet (s)', 'Watched by an alert: over 20 s on a day.',
+     trends([ev('load', 'p75', 'ms', OK + THREE_D + MOB, 'Load ms')], formula='A / 1000', date_from='-14d')),
+    ('Alert: loader errors per hour', 'Watched by an alert: any model, game or reef loader showing its error.',
+     trends([ev('load', props=[{'key': 'ok', 'value': ['false'], 'operator': 'exact', 'type': 'event'},
+                               {'key': 'why', 'value': ['error'], 'operator': 'exact', 'type': 'event'}] + THREE_D, name='Loader errors')],
+            date_from='-48h', interval='hour')),
+    ('Alert: pages that died on screen per day', 'Watched by an alert: two or more a day (a tab crash or an out-of-memory kill, reported by the next page load).',
+     trends([ev('crash', name='Died')], date_from='-14d')),
+    ('Alert: script errors per hour', 'Watched by an alert: more than five script errors or unhandled rejections in an hour.',
+     trends([ev('error', props=SCRIPT, name='Errors')], date_from='-48h', interval='hour')),
+    ('Alert: play time under 30 fps (%), daily', 'Watched by an alert: over 10% of a day\'s play time in the 3D views below 30 fps '
+     '(the smoothness SLO\'s line; an upper bound, so a day without visitors, which reads 0, does not fire).',
+     trends([ev('time', 'sum', 's', THREE_D + [{'key': 'fps', 'value': 30, 'operator': 'lt', 'type': 'event'}], 'Seconds under 30 fps'),
+             ev('time', 'sum', 's', THREE_D + [{'key': 'fps', 'operator': 'is_set', 'value': 'is_set', 'type': 'event'}], 'Seconds')],
+            formula='100 * A / B', date_from='-14d')),
+]
+
+# PostHog alerts (on trends insights only; the HogQL scorecard cannot carry one): the insight, the interval it
+# is checked at, and the bounds outside which it fires. The key's owner is subscribed (email and in-app).
+# The free plan allows five alerts, so these are the five fast signals; the play time under 30 fps keeps its
+# insight, and every level, smoothness included, is watched by the burn-rate job (.github/workflows/slo.yml).
+ALERTS = [
+    ('Load time p75, desktop over 10 s', 'Alert: load time p75, desktop (s)', 'daily', None, 10),
+    ('Load time p75, phone and tablet over 20 s', 'Alert: load time p75, phone and tablet (s)', 'daily', None, 20),
+    ('A loader showed its error', 'Alert: loader errors per hour', 'hourly', None, 0),
+    ('Two or more pages died on screen in a day', 'Alert: pages that died on screen per day', 'daily', None, 1),
+    ('More than five script errors in an hour', 'Alert: script errors per hour', 'hourly', None, 5),
 ]
 
 
@@ -213,6 +296,7 @@ class API:
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--check', action='store_true', help='run each query and print its first rows; change nothing')
+    ap.add_argument('--alerts', action='store_true', help='also create or update the alerts (ALERTS) on their insights')
     a = ap.parse_args()
     key = os.environ.get('POSTHOG_PERSONAL_API_KEY')
     if not key:
@@ -231,16 +315,40 @@ def main():
         dash = api.call('POST', f'/api/projects/{pid}/dashboards/', {'name': DASHBOARD, 'description': 'Visitors, play time, where they stay and leave, and the nine service levels of web/telemetry.js (docs/OBSERVABILITY.md). Built by tools/posthog_dashboard.py.', 'pinned': True})
         print(f"made dashboard {dash['id']}")
     have = {i['name']: i for i in api.all(f'/api/projects/{pid}/insights/?limit=200&saved=true') if i.get('name') and not i.get('deleted')}
+    ids = {}
     for name, desc, q in INSIGHTS:
         body = {'name': name, 'description': desc, 'query': q, 'saved': True}
         if name in have:
-            ids = set(have[name].get('dashboards') or []) | {dash['id']}
-            api.call('PATCH', f"/api/projects/{pid}/insights/{have[name]['id']}/", dict(body, dashboards=sorted(ids)))
+            on = set(have[name].get('dashboards') or []) | {dash['id']}
+            api.call('PATCH', f"/api/projects/{pid}/insights/{have[name]['id']}/", dict(body, dashboards=sorted(on)))
+            ids[name] = have[name]['id']
             print(f'updated  {name}')
         else:
-            api.call('POST', f'/api/projects/{pid}/insights/', dict(body, dashboards=[dash['id']]))
+            ids[name] = api.call('POST', f'/api/projects/{pid}/insights/', dict(body, dashboards=[dash['id']]))['id']
             print(f'made     {name}')
     print(f"{HOST}/project/{pid}/dashboard/{dash['id']}")
+    if a.alerts:
+        alerts(api, pid, ids)
+
+
+def alerts(api, pid, ids):
+    """Create or update each alert of ALERTS (found by name), subscribing the owner of the key."""
+    me = api.call('GET', '/api/users/@me/')['id']
+    have = {x['name']: x for x in api.all(f'/api/projects/{pid}/alerts/?limit=100')}
+    for name, insight, every, lower, upper in ALERTS:
+        bounds = {k: v for k, v in (('lower', lower), ('upper', upper)) if v is not None}
+        body = {'name': name, 'insight': ids[insight], 'enabled': True, 'calculation_interval': every,
+                'condition': {'type': 'absolute_value'}, 'threshold': {'configuration': {'type': 'absolute', 'bounds': bounds}},
+                'config': {'type': 'TrendsAlertConfig', 'series_index': 0, 'check_ongoing_interval': upper is not None}}
+        if name in have:
+            subs = sorted({u['id'] if isinstance(u, dict) else u for u in have[name].get('subscribed_users') or []} | {me})
+            api.call('PATCH', f"/api/projects/{pid}/alerts/{have[name]['id']}/", dict(body, subscribed_users=subs))
+            print(f'updated  alert {name}')
+        else:
+            api.call('POST', f'/api/projects/{pid}/alerts/', dict(body, subscribed_users=[me]))
+            print(f'made     alert {name}')
+    for name in sorted(set(have) - {a[0] for a in ALERTS}):
+        print(f'note     alert {name} is in PostHog but not in ALERTS (left as it is)')
 
 
 if __name__ == '__main__':
