@@ -754,7 +754,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       // (a crosswalk landing in a road, at an island or another street, isn't one to wait at either end of)
       const on = (g, d, u) => pz.road && pz.road(g.x + g.ox * d - g.oy * u * SCR_HW, g.y + g.oy * d + g.ox * u * SCR_HW);
-      const ok = G.filter(g => !(on(g, 3, 0) && on(g, 5, 0)) && !(on(g.partner, 3, 0) && on(g.partner, 5, 0)));
+      const off = g => spotAt(g, 0, 0.8, {}, pz.road).ok !== false; // (and somewhere off the road behind it to wait)
+      const ok = G.filter(g => !(on(g, 3, 0) && on(g, 5, 0)) && !(on(g.partner, 3, 0) && on(g.partner, 5, 0)) && off(g) && off(g.partner));
       for (const g of ok) g.corner = ok.filter(h => h !== g && h !== g.partner && Math.hypot(h.x - g.x, h.y - g.y) < 16);
       return (pz.gates = ok);
     }
@@ -763,9 +764,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function spotAt(g, u, depth, out, road = null) {
       for (let k = 0; k < 6; k++) {
         out.x = g.x + g.ox * depth - g.oy * u * SCR_HW; out.y = g.y + g.oy * depth + g.ox * u * SCR_HW;
-        if (!road || !road(out.x, out.y)) break;
+        if (!road || !road(out.x, out.y)) return out;
         u *= 0.6; depth = 0.8 + (depth - 0.8) * 0.6;
       }
+      // (still in a road at the kerb: further back from it, on the stripes' line, where the pavement is; a spot left
+      // in the road massed its crowd on the carriageway, where it held the signals' all-red and the cars' greens,
+      // Shinjuku's 1106, #264)
+      for (const d of [1.5, 2.5, 3.5, 5, 6.5]) {
+        out.x = g.x + g.ox * d; out.y = g.y + g.oy * d;
+        if (!road(out.x, out.y)) return out;
+      }
+      out.ok = false;
       return out;
     }
     function toGate(q, g, depth) { // to wait at gate g
@@ -873,7 +882,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (xSpeed(q) * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
       }
       const dx = q.T.x - q.x, dy = q.T.y - q.y, d = Math.hypot(dx, dy);
-      if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') { sp = q.speed * 0.75; if (pz.road && pz.road(q.x, q.y)) { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } } else sp = d > 0.6 ? 0.5 : 0;
+      if (q.ph === 'cross') { sp = xSpeed(q); pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') {
+        sp = q.speed * 0.75;
+        if (pz.road && pz.road(q.x, q.y)) {
+          sp = xSpeed(q);
+          // (still out on the road, held up short of its spot by the crowd massed at the kerb: a spot further back
+          // behind it, twice, then another kerb of that corner, and after that it edges on through as it can, no
+          // longer counted as out crossing: the signals held their all-red and the cars' greens for such a one, a
+          // minute at a time, Shinjuku's 1105, #264)
+          if (!((q.sTries || 0) > 3)) pz.busy = (pz.busy || 0) + 1;
+          q.sjam = q.v < 0.15 ? (q.sjam || 0) + dt : 0;
+          if (q.sjam > 3) {
+            q.sjam = 0; q.sTries = (q.sTries || 0) + 1;
+            if (q.sTries <= 2 && q.g) spotAt(q.g, q.spread * 0.5, 2 + 1.5 * q.sTries, q.T, pz.road);
+            else if (q.sTries === 3 && q.g && q.g.corner && q.g.corner.length) { const c = q.g.corner; toGate(q, c[Math.floor(rnd() * c.length)]); q.sTries = 3; }
+          }
+        } else q.sTries = 0;
+      } else sp = d > 0.6 ? 0.5 : 0;
       if (q.pause > 0) sp = 0;
       let vx = d > 1e-3 ? dx / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0, vy = d > 1e-3 ? dy / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0;
       // the others near: apart, and, meeting someone coming the other way, a step to the left
@@ -1404,14 +1429,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return depth;
     }
     // and how deep the people (the player, the crowd) and the lamp posts and trunks would be in it
-    let inWho = -1; // (the walker deepest in it, from the last peopleIn)
+    let inWho = -1, inPosts = 0; // (the walker deepest in it, from the last peopleIn)
     function peopleIn(c, x, y, hx, hy) {
       let d = 0, most = 0;
-      inWho = -1;
-      if (posts) posts.near(x, y, c.half + 0.3, q => {
+      inWho = -1; inPosts = 0;
+      if (posts && !(c.postPass > 0)) posts.near(x, y, c.half + 0.3, q => { // (not while it has leave to edge past a post, below)
         if (Math.abs(q.z - c.z) >= LEVEL) return;
         const dx = q.x - x, dy = q.y - y, ea = c.half + q.r - Math.abs(dx * hx + dy * hy), eb = c.hw + q.r - Math.abs(-dx * hy + dy * hx);
-        if (ea > 0 && eb > 0) d += Math.min(ea, eb);
+        if (ea > 0 && eb > 0) { d += Math.min(ea, eb); inPosts += Math.min(ea, eb); }
       });
       const c0 = Math.floor((x - c.half - 1) / CELL), c1 = Math.floor((x + c.half + 1) / CELL), r0 = Math.floor((y - c.half - 1) / CELL), r1 = Math.floor((y + c.half + 1) / CELL);
       for (let a = c0; a <= c1; a++) for (let b = r0; b <= r1; b++) {
@@ -1816,6 +1841,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           (sawX || (sawX = new Set())).add(o.id);
           const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
           if (d2 >= 0 && first(c, o, d, d2, i, -1)) continue;
+          // (and not one whose driver is giving way to this car already, as its own reading of the rule had it last
+          // frame: the two readings measure with different margins and could each give way to the other, a car
+          // standing in Shinjuku's junction 1105 for the taxi coming for you while the taxi stood for it, 15 s, #254)
+          if (o.xBlock && (o.xBlock === c || o.xBlock.of === c)) continue;
           const g = d + 0.6;
           if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; leadX = o; xQ = !!o.q && o.qBy !== c; youBy = o.id + ' on its way'; } // (a ride queueing for a junction: this car queues behind it)
         }
@@ -1849,6 +1878,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
           if (!b.parked && b.id && sawX && sawX.has(b.id)) continue; // (on the move and on its way: given way to, or not, above)
           if (np && !b.parked && b.id && api.extra.some(o => o.id === b.id && o.np)) { // (on the move with a way of its own, not on this car's: only one straight across its bonnet, close, holds it)
+            const xo = api.extra.find(o => o.id === b.id);
+            if (xo && xo.block && (xo.block === c || xo.block.of === c)) continue; // (not one held up by this car itself: the two would wait on each other)
             const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
             if (a > 0 && a < c.half + b.half + 4 && Math.abs(w) < c.hw + (b.hw || 0.9) + 0.2 && a - b.half - c.half < gap) { gap = Math.max(0, a - b.half - c.half); byCar = true; front = null; why = 'you'; youBy = b.id + ' across its bonnet'; }
             continue;
@@ -1892,6 +1923,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         });
         // (stopped for one more than 10 s, a post its way runs into in a junction, say: it edges past it, #144)
         c.postT = why === 'post' && c.v < 0.3 ? (c.postT || 0) + dt : 0;
+        if (c.postT > 10 && !inView(c)) { c.postT = 0; respawn(c, cx, cy, radius * 0.6); continue; } // (out of view: it leaves the traffic rather than drive through it)
         if (c.postT > 10) { c.postT = 0; c.postPass = c.mv ? 30 : 6; } else if (c.postPass > 0) c.postPass -= dt; // (in a junction, for the rest of its turn: a bus held there by a walker meanwhile ran out its 6 s and stood at the post again, 200 s in Kyoto's 309)
         // (a facade beside its lane: in from it, below, until its back has passed the place: c.narrow is the
         // metres to go, not a time, so a car that stops beside a facade stays in from it however long it waits)
@@ -1910,6 +1942,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           c.inWallNow = !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false) && Math.abs(c.off) < LANE * 0.4;
         } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = false;
         if (!swerve && c.inWallNow) swerve = -LANE * side * 0.5;
+        // (and such a street is single file there: it counts as in a narrow stretch, so that one coming the other
+        // way waits short of it, in its lane, as the narrow rule makes moving cars do, rather than brush past, #264)
+        if (c.inWallNow) { c.narrowF = Math.max(c.narrowF || 0, 0.5); c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, 2 * c.half + 1.5); c.narrowIn = 0; }
         c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
@@ -1985,6 +2020,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 if (!c.ex2 || c.ex2.a !== a2) c.ex2 = { a: a2, e: JN.choose(a2, c.hw, c.half) };
                 const lt2 = JN.light(a2, c.ex2.e);
                 if (!c.ex2.e || !(lt2 == null || lt2 === 'g') || a2.sign === 'stop' || !room(c, c.ex2.e)) go = false;
+                // (held at this line by the next one's light: a call for its phase, as if at its line, and the time
+                // counted lost on this green, junctions.js; a 6 s green at Shinjuku's 1105 went by on 1103's red, #264)
+                if (c.ex2.e && lt2 && lt2 !== 'g') { if (!a2.j.scramble) JN.want(a2); if (toLine - c.half < 3 && jArm.j.sig) jArm.lost1 = true; }
               }
               // (in it already: its way through this junction let in, or, crossing two close junctions together, this
               // one's let in with the one just after, mv0: then a light turning red behind it, or the room beyond
@@ -2154,7 +2192,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         c.q = atLine || (why === 'person' && walker >= 0 && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there; or held by the crowd crossing at its line, not by you, who may stand there for good)
         // counted at its arm for the signals' max-pressure (junctions.js): queued, and whether the head of the queue waits for room beyond
-        if (c.q && c.lineArm && c.lineArm.j.sig && c.toLine < 80) { const a = c.lineArm; a.qn1 = (a.qn1 || 0) + 1; if (why === 'room' && c.toLine - c.half < 3) a.full1 = true; }
+        if (c.q && c.lineArm && c.lineArm.j.sig && c.toLine < 80) { const a = c.lineArm; a.qn1 = (a.qn1 || 0) + 1; if (why === 'room' && c.toLine - c.half < 3) a.full1 = true; if (why === 'cross' && c.toLine - c.half < 3) a.lost1 = true; }
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)
@@ -2265,8 +2303,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;
+          const p1 = inPosts;
           held = d1 > (c.pw > 5 ? 0.12 : 0.02) && d1 > peopleIn(c, c.x, c.y, hx0, hy0) + 1e-3; // (waited on a while, it edges up to them, not into them: they step aside, below)
           if (held && who >= 0) walker = who; // (a walker against it: asked to turn back, below, if it waits on them)
+          // (held by a post alone, its body's corner swinging over the kerb at a junction's corner: after 10 s it has
+          // leave to edge past, as for a post ahead, above; a bus stood 106 s so in Tokyo's 689, the junction's queues behind)
+          c.postHeld = held && who < 0 && p1 >= d1 - 1e-3 ? (c.postHeld || 0) + dt : 0;
+          // (out of view it leaves the traffic instead, as a knot does below: edged past, a bus's body went through a street
+          // light at Shibuya's 1916 in the clip check)
+          if (c.postHeld > 10 && !inView(c)) { c.postHeld = 0; respawn(c, cx, cy, radius * 0.6); continue; }
+          if (c.postHeld > 10) { c.postHeld = 0; c.postPass = c.mv ? 30 : 6; held = false; }
         }
         if (behind && !turn && !squeeze) held = true;
         if (c.backoff > 0) { // backing off for a car that can't get past, a metre or two, if the way behind is clear

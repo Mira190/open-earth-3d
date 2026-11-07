@@ -563,6 +563,11 @@ window.OECars = (function () {
   // such a line is taken only where there is no other way
   const WRONG = 25; // (the cost of a metre against a one-way street, on a way where the one-way streets leave none)
   const UTURN = 400; // what a U-turn costs a route, as metres driven (router)
+  // what a metre of each class of road costs a route against a main road's, and a turn at a junction, as metres
+  // driven: a taxi driver keeps to the main roads and turns as little as the way allows, as a navigator's
+  // fastest way does, rather than thread the shortest way through the back streets corner by corner (the way a ride comes for you, loose, stays the shortest: it has to be there soon)
+  const ROUTE_CLS = { motorway: 1, trunk: 1, primary: 1, secondary: 1.05, tertiary: 1.15, unclassified: 1.5, residential: 1.6, service: 2, living_street: 2.5 };
+  const TURN_COST = 30;
   function router(net, { avoid = null } = {}) {
     const L = net.L, ids = new Map(), adj = [], all = [], into = []; // (all: both ways along every line, for when the one-way streets leave no way; into: the ways in to each node)
     const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); all.push([]); into.push([]); } return ids.get(k); };
@@ -574,6 +579,15 @@ window.OECars = (function () {
       return [a, b];
     });
     const tmp = {};
+    // each line's heading at its ends, the way along it (hd[2 * li]: setting off from its start, hd[2 * li + 1]: arriving at its end)
+    const hd = new Float32Array(2 * L.length);
+    L.forEach((l, i) => {
+      const n = l.pts.length / 3, P = l.pts, k = Math.min(n - 1, 2), m = Math.max(0, n - 3);
+      hd[2 * i] = Math.atan2(P[3 * k] - P[0], P[3 * k + 1] - P[1]);
+      hd[2 * i + 1] = Math.atan2(P[3 * n - 3] - P[3 * m], P[3 * n - 2] - P[3 * m + 1]);
+    });
+    const headAt = (li, dir, arriving) => (dir > 0 ? hd[2 * li + (arriving ? 1 : 0)] : hd[2 * li + (arriving ? 0 : 1)] + Math.PI);
+    const turnCost = (pl, pd, li, dir) => { const a = headAt(li, dir, false) - headAt(pl, pd, true); return Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) > 0.6 ? TURN_COST : 0; };
     // the pieces in groups that join, either way along every piece (as route() falls back to): a route
     // only ever joins two places in one group. A group of less than ISLAND metres of road, and a fifth
     // of the biggest, is a fragment cut off from the streets (a drive mapped at a building's level, as
@@ -639,7 +653,7 @@ window.OECars = (function () {
           const [d, u] = pop();
           if (d > (dist.get(u) ?? Infinity)) continue;
           if (u === goal) { found = true; break; }
-          if (d > limit) break;
+          if (d > (loose ? limit : limit * 1.6)) break; // (on the costs, a back street dearer than its length)
           const p = prev.get(u), from = p ? p[1] * 2 + (p[2] > 0 ? 1 : 0) : a.line * 2 + (a.dir > 0 ? 1 : 0), B = net.bans && net.bans.get(from);
           for (const [v, li, dir] of edges[u]) {
             // straight back the way it came: a U-turn at the junction, or at the end of the street it
@@ -654,7 +668,7 @@ window.OECars = (function () {
             // way found keeps to the one-way streets but for the fewest metres it must: a navigator's way
             // in to a street the map lets no car reach, not 300 m against the traffic)
             const wrong = edges !== adj && !loose && L[li].ow && L[li].ow !== dir ? WRONG : 1;
-            const nd = d + L[li].len * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? UTURN : 0) + (ban && edges !== adj && !loose ? 400 : 0);
+            const nd = d + L[li].len * (loose ? 1 : ROUTE_CLS[L[li].c] || 1.3) * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? UTURN : 0) + (ban && edges !== adj && !loose ? 400 : 0) + (p && !back && !loose ? turnCost(p[1], p[2], li, dir) : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
@@ -1347,7 +1361,9 @@ window.OECars = (function () {
       // it is, as a driver picking you up does, and you walk the last few metres
       // (a queue held at a signal is waited out, not taken for a jam, unless it stands 25 s: Kyoto's taxi stopped 39 m
       // from you behind a car waiting for its green, #243)
-      else if (end && !dry && st.held > (atSignal(st.block) ? 25 : 8) && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
+      else if (end && !dry && st.held > (atSignal(st.block) ? 25 : left < 30 ? 4 : 8) && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
+      // (and within 30 m of the end, after 4 s: a driver that close to the fare stops where it is, rather than wait to go
+      // round a car standing in the lane, Fushimi-inari's phoned ride 8 s late so, #264)
       // out round something stopped in the lane, and back in after it, at a crawl
       // (across no faster than its speed allows a car to steer, and easing in as it gets there, so
       // that it straightens out as a car does rather than snapping straight when it is across)
@@ -1387,7 +1403,7 @@ window.OECars = (function () {
       // never a step further into a car of the traffic (solid: how deep a pose is in their
       // footprints); it waits, and after 2 s wedged asks the ones it is up against to back off a metre or
       // two (makeWay), every 2 s; only after WEDGE_GIVE, a knot nothing undoes, does it go on at a crawl
-      if (solid && !dry && st.s > s0 && Math.abs(st.shift) < 0.2) { // (not while swinging out round a car: that line keeps a hand's width clear)
+      if (solid && !dry && st.s > s0) { // (swinging out round a car too: its line keeps a hand's width clear of the one it goes round, but not of one stopped across it beyond, or coming nose to nose)
         const d1 = solid(q.x, q.y, q.z, Math.atan2(q.hx, q.hy));
         if (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01 && (st.wedged += dt) < wedge) {
           if (makeWay && st.wedged > 2 && Math.floor(st.wedged / 2) !== Math.floor((st.wedged - dt) / 2)) makeWay(q.x, q.y, q.z, Math.atan2(q.hx, q.hy), C.half, C.hw);

@@ -358,7 +358,9 @@ window.OEJunctions = (function () {
       // its walk as long as its longest crosswalk takes at the crowd's brisk pace (SCR_V, actors.js xSpeed),
       // with a few seconds to step out, and no longer: the cars' red is the walk (#199)
       const longest = segs.reduce((m, w) => Math.max(m, Math.hypot(w[2] - w[0], w[3] - w[1])), 0);
-      j.green = [8, 6, 0, Math.max(SCR_MIN, Math.min(32, Math.ceil(longest / SCR_V + 5)))]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
+      j.green = [10, 8, 0, Math.max(SCR_MIN, Math.min(32, Math.ceil(longest / SCR_V + 5)))]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
+      // (its turns 10 s and 8 s: at 8 s and 6 s, a car through every 3 s from a standing start, the queues backed up
+      // through the junction behind, Shinjuku's 1105 arm 2 a minute and more, #264)
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);
@@ -644,7 +646,7 @@ window.OEJunctions = (function () {
     // (a scramble's walk under way runs its course, its crowd out on the road; one not yet started
     // waits for the ride's turn. A crossing's walk under way runs its few seconds too.)
     const MIN_G = 4, HOLD = 6;
-    const MP_MIN = 8, MP_MAX = 1.6; // (max-pressure: the least green before a blocked phase gives way, and how far a busy one runs on, never past RED's cap)
+    const MP_MIN = 8, MP_MAX = 1.6, SCR_MP = 2.5; // (max-pressure: the least green before a blocked phase gives way, and how far a busy one runs on, never past RED's cap)
     function toward(j, p, hold = true) {
       if (j.ph === p && j.st === 'g') { if (hold) j.hold = frame; return; }
       if ((j.ph === 3 || (j.mid != null && j.ph === 1)) && j.st === 'g') return; // (in their change, the phase after them may still be chosen)
@@ -766,7 +768,7 @@ window.OEJunctions = (function () {
         const X = m.end === 0 ? M[0] : M[M.length - 1], a = X.arms.find(b => b.end === 1 - m.end);
         if (a) return (m.end === 0 ? X.mid : L[m.line].len - X.mid) - a.back - m.back;
       }
-      return L[m.line].len - m.back - (a2 && a2.in && a2.j !== m.j ? a2.back : 0);
+      return L[m.line].len - m.back - (a2 && a2.in ? a2.back : 0); // (an arm of this same junction too: a piece that comes back to it has its line to stop at, Shinjuku's 1195, #264)
     }
     function enter(c, a, e, t, forced = false) { // into the junction: its movement joins those in it
       const j = a.j, m = mv(c, e);
@@ -813,7 +815,7 @@ window.OEJunctions = (function () {
     function update(dt, t) {
       frame++; clock += dt;
       for (const j of J) {
-        if (j.sig) for (const a of j.arms) { a.qn = a.qn1 || 0; a.full = !!a.full1; a.qn1 = 0; a.full1 = false; } // (last frame's queues, counted by the traffic as it went)
+        if (j.sig) for (const a of j.arms) { a.qn = a.qn1 || 0; a.full = !!a.full1; a.lost = !!a.lost1; a.qn1 = 0; a.full1 = a.lost1 = false; } // (last frame's queues, counted by the traffic as it went)
         if (j.active.length) for (let i = j.active.length - 1; i >= 0; i--) { const o = j.active[i]; if (o.c.line < 0 || (!o.c.mv || o.c.mv.j !== j) && (!o.c.mv0 || o.c.mv0.j !== j)) j.active.splice(i, 1); }
         if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
         for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
@@ -850,6 +852,16 @@ window.OEJunctions = (function () {
         // after MP_MIN when another phase has cars waiting; one whose queues still far outweigh the next
         // phase's runs on, up to MP_MAX times its green but never past `cap`, so no red is waited over RED.
         // Only the queues at hand: nothing to forecast
+        // a scramble's turn whose head waits at its line for a car still crossing the box (the walk's or the last
+        // turn's, late out) has its green run on by the time so lost, up to 8 s: a green of 6 s otherwise went by
+        // with one car through, and a queue stood a minute in Shinjuku's 1105 (#264)
+        let gLen = j.green[j.ph];
+        if (j.scramble && j.st === 'g' && j.ph < 2) {
+          if (j.t < dt * 1.5) j.lostT = 0;
+          let lost = false; for (const a of j.arms) if (a.in && a.phase === j.ph && a.lost) { lost = true; break; }
+          if (lost && j.t < gLen + 8) j.lostT = (j.lostT || 0) + dt;
+          gLen += Math.min(j.lostT || 0, 8);
+        }
         if (j.st === 'g' && j.ph < 2 && !(j.mid != null)) {
           const pr = ph => { let n = 0; for (const a of j.arms) if (a.in && a.phase === ph && !a.full) n += a.qn || 0; return n; };
           const other = j.ph === 0 ? 1 : 0, mine = pr(j.ph), next = pr(other);
@@ -857,10 +869,13 @@ window.OEJunctions = (function () {
           for (const a of j.arms) if (a.in && a.phase === j.ph && (a.qn || 0) > 0) { blocked = !!a.full; if (!blocked) break; }
           if (j.cut == null && blocked && mine === 0 && next > 0 && j.t >= MP_MIN) { j.cut = j.t; j.mpCut = (j.mpCut || 0) + 1; }
           const was = j.mpOn;
-          j.mpOn = j.cut == null && !j.scramble && mine >= 3 && mine > 2 * next + 1 && j.t < Math.min(j.green[j.ph] * MP_MAX, cap - FLASH);
-          if (was && !j.mpOn && j.cut == null && j.t > j.green[j.ph] - FLASH) { j.cut = j.t + FLASH; j.mpExt = true; } // (run on past its green: it ends after the walkers' flash, never at once)
+          // (a scramble's turns too, which are short so that its walk comes round soon: a queue there that far outweighs
+          // the other road's runs its green on to SCR_MP times its length, as a busy junction's does, rather than queue
+          // through three greens of 8 s, Shinjuku's 1106, #264)
+          j.mpOn = j.cut == null && mine >= 3 && mine > 2 * next + 1 && j.t < Math.min(gLen * (j.scramble ? SCR_MP : MP_MAX), cap - FLASH);
+          if (was && !j.mpOn && j.cut == null && j.t > gLen - FLASH) { j.cut = j.t + FLASH; j.mpExt = true; } // (run on past its green: it ends after the walkers' flash, never at once)
         } else j.mpOn = false;
-        const end = j.gEnd = Math.min(j.cut != null ? (j.mpExt ? j.cut : Math.min(j.green[j.ph], j.cut)) : j.mpOn ? Infinity : j.green[j.ph], cap);
+        const end = j.gEnd = Math.min(j.cut != null ? (j.mpExt ? j.cut : Math.min(gLen, j.cut)) : j.mpOn ? Infinity : gLen, cap);
         if (j.st === 'g' && !held) {
           if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !W(2)) || (W(1) && j.t >= 2) : j.t >= end && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
             j.st = 'y'; j.t = 0; dirty.add(j);
