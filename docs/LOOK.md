@@ -123,9 +123,9 @@ Rocketbox avatars.
 
 ### The crossing's sound (`web/game/audio.js`, `game.look.sound`)
 
-Off in play: the city's ambience (this, and the walk signals' calls) was too loud, so the game
-loop no longer plays it; `?noise=1` on the game's URL brings it back. Footsteps, vehicles, horns,
-the weather, the birds and the score still sound.
+The constant beds are off in play: the crowd's murmur and the screens' music were too loud and
+always there, so the game keeps them silent; `?noise=1` on the game's URL brings them back. The
+station's announcements and the walk signals' calls still play.
 
 All synthesised, no recordings: the crowd's murmur (noise through two voice bands pulsing at a
 syllable's rate) as loud as there are people round you; the screens' music, muffled across the

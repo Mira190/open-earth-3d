@@ -2385,10 +2385,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // announcement, all rising as you come to it (heard from the camera, so a film hears what it
   // sees). The walk signals' calls, there and at every signalled crossing: walkcalls.js.
   const walkCalls = OEWalkCalls.create({ junctions, audio: A, country: CITY.country, cfg: (G.signals || {}).sound, hour: () => clock.min / 60 });
-  // The city's ambience (the crowd's murmur, the screens' music, the station's announcements and the
-  // walk signals' calls) is off: the owner found it too loud. What you do still sounds (footsteps,
-  // engines, horns, doors, the shutter), and so do the weather, the birds and the score. ?noise=1
-  // brings the ambience back for a listen.
+  // The city's constant beds (the crowd's murmur and the screens' music) are off: too loud, always
+  // there. What comes and goes still sounds: the station's announcements, the walk signals' calls,
+  // footsteps, engines, horns, the weather, the birds and the score. ?noise=1 brings the beds back.
   const CITY_NOISE = new URLSearchParams(location.search).get('noise') === '1';
   const SND = (G.look || {}).sound;
   let sndJ = null, sndAnn = 20 + Math.random() * 30, sndNear = 0, sndCount = 0;
@@ -2408,9 +2407,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       sndNear = 0.5; sndCount = 0;
       for (let i = 0; i < crowd.active; i++) { const p = crowd.P[i]; if (p.line >= 0 && Math.abs(p.x - cx) < 40 && Math.abs(p.y - cy) < 40) sndCount++; }
     }
-    A.murmur(level * Math.min(1, 0.25 + sndCount / 80));
     const hr = clock.min / 60;
-    A.screens(level * (hr >= 9 || hr < 0.1 ? 1 : 0));
+    A.murmur(CITY_NOISE ? level * Math.min(1, 0.25 + sndCount / 80) : 0);
+    A.screens(CITY_NOISE ? level * (hr >= 9 || hr < 0.1 ? 1 : 0) : 0);
     if (SND.station && (sndAnn -= dt) <= 0) {
       sndAnn = 45 + Math.random() * 60;
       const ds = Math.hypot(cx - SND.station[0], cy - SND.station[1]);
@@ -4017,7 +4016,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!paused) checkSteps();
     }
     if (!paused) simulate(dt);
-    if (!paused && CITY_NOISE) { crossingSound(dt); if (!(overture && overture.active)) walkCalls.update(dt, camera); } // (the overture's score has the birds' calls in it)
+    if (!paused) { crossingSound(dt); if (!(overture && overture.active)) walkCalls.update(dt, camera); } // (the overture's score has the birds' calls in it)
     else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
