@@ -17,7 +17,7 @@ before the split.
 
 ![SHIBUYA SKY's roof in Cycles: GEO COMPASS, the deck, the hammocks, the escalator's well and SKY EDGE's light lines](../images/shibuya/cycles-shibuya-sky.jpg)
 
-| SHIBUYA SKY: SKY EDGE at sunset | Riding up from 46F |
+| SHIBUYA SKY: SKY EDGE at sunset | Riding down the west edge at the blue hour |
 |---|---|
 | ![](../images/shibuya/sky-edge.jpg) | ![](../images/shibuya/sky-escalator.jpg) |
 | **The roof: GEO COMPASS, the escalator's well, the hammocks** | **CROSSING LIGHT** |
@@ -38,9 +38,10 @@ before the split.
   to a median of −0.01 m, and 97.7% within a metre. AWS's global Terrarium tiles read 6.0 m too high
   at the median, because they are a surface model.
 - **SHIBUYA SKY.** The open roof of Shibuya Scramble Square, 229 m up: deck, glass
-  fence, SKY EDGE, GEO COMPASS, CLOUD HAMMOCK, the escalator from 46F and the 18
-  searchlights. In the game you take the lift up and ride the escalator out.
-  Section 5.
+  fence, SKY EDGE, GEO COMPASS, CLOUD HAMMOCK, the 18 searchlights, and the two
+  escalators in glass channels down the west and north edges, up from 46F's doors
+  and down again facing Shinjuku. In the game you take the lift up and ride them.
+  Section 4.
 - **A game's Tokyo, as it is.** The scramble's crossings and Hachiko, the Center
   Gai arch, the big screens and SHIBUYA109, Sangenjaya's lanes, and shop signs and
   utility poles in the neighbourhoods. Section 6.
@@ -82,26 +83,70 @@ footprint along PLATEAU's roof faces, as in [Tokyo](tokyo.md#3-how-plateau-is-us
 
 The open deck on the roof of Shibuya Scramble Square (opened 1 November 2019):
 about 2,500 m² at 229 m. Visitors ride the lifts of SKY GATE from 14F to 45F at
-360 m a minute, and climb from the 46F gallery to the roof on an escalator walled
-in glass.
+360 m a minute and come out of the 46F gallery through glass doors at the foot of
+the roof's west and north edges, into a channel walled in glass and open to the sky
+under a net, where an escalator and a broad stair climb beside the glass to the deck.
 
+| The way down at the blue hour | The way down at night |
+|---|---|
+| ![](../images/shibuya/sky-escalator.jpg) | ![](../images/shibuya/sky-escalator-night.jpg) |
+| **Out of 46F's doors, at night** | **The two channels from the air** |
+| ![](../images/shibuya/sky-door-night.jpg) | ![](../images/shibuya/sky-channels.jpg) |
+
+- **The channels.** Photographs put them down the west and north edges, the band
+  PLATEAU surveyed 9 m below the deck (190 m² of its roof model). The north channel
+  carries the escalator up (signed SKY STAGE, ROOFTOP at its foot), the west one
+  the escalator down: riding down you face Shinjuku's towers and Yoyogi's woods,
+  with the scramble 229 m below on your left, the roof's most photographed view,
+  above all at sunset and in the blue hour. The two meet in the corner at their
+  feet, where 46F's doors open onto white stone.
+- **Across a channel, 6.4 m:** the outer glass, which steps up 3 m over the flights
+  from the corner to the deck; the escalator (1 m steps edged in yellow, glass
+  balustrades with black handrails, a light under each handrail); white columns
+  carrying white beams over the channel every 4.5 m; the stair (timber treads on
+  white risers, two legs of 30 risers of 0.15 m on 0.30 m goings with a landing,
+  glass on the escalator's side, a handrail and a foot light on the wall); and the
+  deck's flank, clad in dark glass on white mullions. A net of fine wire spans from
+  the outer glass's top rail to a cable on posts over the deck's rim.
+- **The doors** are a pair of sliding glass leaves, 0.9 m each and 2.4 m high, in
+  white frames with fixed glass either side and a transom to 2.7 m, lit from the
+  gallery after dark: one in each channel's flank at its foot.
 - **The deck** is put at PLATEAU's lower roof tier (227.1 m above the ground) and
   GEO COMPASS reaches its top tier. Scramble Square's solids each stand on their
   own ground, a few centimetres apart; their heights are set so that every top is
-  at one level, the one the deck is drawn at, so feet, boards and the escalator
-  meet. PLATEAU has a 190 m² band along the west and north edges 9 m lower; it is
-  under the edge of the deck here and is raised to it.
-- **On the roof:** the deck boards, the glass fence on steel posts (lowest at SKY
-  EDGE, the corner over the scramble), light lines in the floor fanning out to
-  that corner, GEO COMPASS (a raised square with a compass on its floor and steps
-  up each side), CLOUD HAMMOCK's nets, and the 18 searchlights of CROSSING LIGHT,
-  which the light show turns on after dark.
-- **The escalator** rises 5.5 m at 30° from a landing on 46F, in a well cut into
-  the roof, with glass balustrades and black handrails. In the game it is a
-  walkable surface that moves at 0.5 m/s: stand on it and it carries you up.
-- **Estimates.** The plan of the roof furniture is drawn from photographs and the
-  GSI aerial photo, whose view of the tower leans. The escalator's rise, angle and
-  speed and the fence heights are estimates.
+  at one level, the one the deck is drawn at, so feet, boards and the flights meet.
+- **On the roof:** the deck boards (pale timber-look, from the photographs), the
+  glass fence on steel posts, GEO COMPASS (a raised square with a compass on its
+  floor and steps up each side), CLOUD HAMMOCK's nets, the 18 searchlights of
+  CROSSING LIGHT, which the light show turns on after dark, and SKY EDGE: the
+  deck's corner over the channels' feet, where the glass on the rim is lowest
+  (1.1 m) and seven lines of light set in the floor run out to it.
+- **In the game** the lift lands you in front of the north door, facing the
+  escalator up. The escalators move at 0.5 m/s and carry whoever stands on them,
+  up the north edge and down the west; the stairs are walked. The spot "The
+  escalator down to SKY EDGE" is at the head of the way down.
+- **Built.** `cities/shibuya/city.py` (`sky_flights`, `sky_channels`, `sky_doors`)
+  draws the channels and cuts them into the roof when the scene is built;
+  `cities/shibuya/sky_refit.py` cut them into the built roof of November 2026
+  (keeping every solid's index) without the raw downloads.
+- **Estimates.** The plan is drawn from photographs (listed below) and PLATEAU's
+  band, not from drawings: the channels' width, the rise (PLATEAU's 9 m), the
+  flights' lengths, the doors' sizes and the lights are estimates. Which edge
+  carries which escalator follows the photographs' views (the Docomo tower and
+  Yoyogi's woods past the escalator up; Shinjuku ahead and the scramble on the left
+  riding down).
+- **Reference photographs** (Wikimedia Commons; used to compare, not as textures):
+  [the foot of the escalator up, 2019-11](https://commons.wikimedia.org/wiki/File:Shibuya_Scramble_Square_-_SHIBUYA_SKY_3.jpg)
+  and [towards the National Stadium, 2019-11](https://commons.wikimedia.org/wiki/File:Shibuya_Scramble_Square_-_SHIBUYA_SKY_4.jpg) (Kakidai, CC BY-SA 4.0);
+  [riding down, 2023-05](https://commons.wikimedia.org/wiki/File:Shibuya_Scramble_Square_SHIBUYA_SKY_(53131621676).jpg),
+  [riding up, 2023](https://commons.wikimedia.org/wiki/File:Shibuya_Scramble_Square_SHIBUYA_SKY_(53002088261).jpg),
+  [the head of the stair, 2023](https://commons.wikimedia.org/wiki/File:Shibuya_Scramble_Square_SHIBUYA_SKY_(53137572352).jpg),
+  [the channel from the deck, 2023-08](https://commons.wikimedia.org/wiki/File:Shibuya_Scramble_Square_SHIBUYA_SKY_(53331156129).jpg),
+  [the net and the outer glass, 2023](https://commons.wikimedia.org/wiki/File:Shibuya_Scramble_Square_SHIBUYA_SKY_(53085799886).jpg)
+  (Dick Thomas Johnson, CC BY 2.0). Visitors' notes on the photo spot (the
+  handrail's diagonal, the sky and the city at dusk while some blue remains):
+  [Lemon8](https://www.lemon8-app.com/onumarui/6954390644936983046?region=us),
+  [Kaori Blog](https://www.kaoriblog.com/20230712shibuyasky/).
 
 ## 5. A game's Tokyo, as it is
 

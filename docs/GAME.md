@@ -329,7 +329,8 @@ Amsterdam has no real helipad in the old city. The pad on the Dam is a game devi
 is a pilgrimage: in Shibuya a welcome across the scramble by QFRONT, in Shinjuku at the east exit, then
 lines in any order and a report back.
 - **Shibuya:** cross the scramble to Aoi and back to Hachiko, read the arch over Center Gai, take the
-  lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
+  lift up SHIBUYA SKY, ride the escalator up the north edge onto the roof, stand at SKY EDGE and ride
+  down the west edge facing Shinjuku.
 - **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
   and the triangle after dark.
 - **Your Name** (Shinjuku): climb the 52 steps of Suga Shrine's 男坂 and read an ema.
@@ -1675,7 +1676,9 @@ quality tier runs a third of the cars.
     about 40 s, and waiting for the boat takes about a minute at most. The check sails there, goes ashore and walks
     to the landing's largest building.
   - **Escalators:** a walkable strip with `moving_ms` carries whoever stands on its
-    moving stretch (`moving_u`) along its axis. You can walk on it too.
+    moving stretch (`moving_u`) along its axis, so a way down is a strip whose axis
+    points down the flight (SHIBUYA SKY's west escalator). You can walk on it too.
+    `tools/game_check.js` stands on each and checks that it carries you to its far end.
   - **High floors:** a travel point with a height (`[x, y, z]`) lands you on a roof.
     `always: true` lists it on the map before you have been there.
 - **Sound** (`web/game/audio.js`): synthesised with Web Audio, with no files.
@@ -2244,8 +2247,9 @@ A cars script drives each part of the new road travel, in Sydney and in Paris:
 
 A Shibuya script checks the walk's moving parts:
 - **SHIBUYA SKY:** <kbd>E</kbd> at the street door offers the lift, which lands
-  you on 46F at the escalator's foot; standing still, the escalator carries you
-  5.5 m up to the deck in 20 s; you then walk out across the roof.
+  you before 46F's north door at the escalator's foot; standing still, the escalator
+  carries you 9 m up to the deck in about 35 s, and the one down the west edge brings
+  you back (`tools/game_check.js` rides every escalator, up and down).
 - **The 男坂:** from the lane at its foot you walk onto the first step and up all
   52 to the approach, with your feet on each tread.
 - **Places:** the station sign comes up after the start, and every spot answers
