@@ -590,7 +590,7 @@ def torii_ceilings(step=2.0):
 class Near:
     """A mesh drawn only within its own radius ("far" 1 m)."""
     def __init__(self, m):
-        self.m, self.v, self.i, self.name = m, m.v, m.i, m.name
+        self.m, self.v, self.i, self.name, self.mat = m, m.v, m.i, m.name, m.mat
 
     def dump(self):
         return dict(self.m.dump(), far=1)

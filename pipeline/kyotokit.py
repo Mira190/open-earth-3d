@@ -92,11 +92,19 @@ def ridge_cap(K, M, P, half, z, h=0.8, w=0.7, oni=1.3):
         taper(K[M["ridge"]], P, 0, s * (half - 0.2), w * 1.6, 0.5, z + h * 0.6, w * 0.9, 0.35, z + h + oni)
 
 
+ROMON_EAVE = 0.57    # a two-storey gate's eaves' edge, a share of its height: the roof is the rest (#290; 0.6 before)
+ROMON_GABLE, ROMON_K = 0.42, 1.25   # its gable from this share of the roof's height up, and the slope's sag (1.6 before)
+ROMON_CAP = {"h": 1.0, "w": 0.8, "oni": 1.6}   # its ridge cap's height and width, and the end tiles over it (m)
+
+
 def romon(K, M, P, z0, frontage, depth, ridge, nio=True, lattice=True, ground=None):
     """A two-storey gate (楼門): three bays across, two deep, the middle bay the passage; the guardians
     (仁王) in the outer front bays behind lattice; above the first storey's brackets a balcony with its
     railing (縁, 高欄), the upper storey's walls between posts, its brackets, and a hipped-and-gabled roof
-    with its ridge across the passage. Returns the levels {top of the stone, balcony, eaves}."""
+    with its ridge across the passage: tall and steep, about 40% of the gate's height from the eaves' edge to
+    the ridge, a big gable over a short skirt, and a deep ridge with tall end tiles, as the photographs of
+    Yasaka-jinja's and Kiyomizu-dera's gates show them from the street (#290). Returns the levels {top of the
+    stone, balcony, eaves, ridge (the foot of its cap)}."""
     hu, hv = depth / 2, frontage / 2
     zb = z0 + 0.35
     block(K[M["base"]], P, -hu - 1.0, hu + 1.0, -hv - 1.0, hv + 1.0, z0 - 0.8, zb)
@@ -135,7 +143,7 @@ def romon(K, M, P, z0, frontage, depth, ridge, nio=True, lattice=True, ground=No
     rail = [P(su * (hu + 0.8), sv * (hv + 0.8), zbal) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
     K[M["post"]].rails(rail, 0.9, post_every=1.6, post=0.12, rail=0.09, rails=2)
     hu2, hv2 = hu - 0.3, hv - 0.6
-    ze = z0 + ridge * 0.6
+    ze = z0 + ridge * ROMON_EAVE
     zt2 = ze - (ze - zbal) * 0.3
     block(K[M["wall"]], P, -hu2 + 0.12, hu2 - 0.12, -hv2 + 0.12, hv2 - 0.12, zbal, zt2)
     for u in (-hu2, hu2):
@@ -150,10 +158,11 @@ def romon(K, M, P, z0, frontage, depth, ridge, nio=True, lattice=True, ground=No
         block(K[M["wood"]], P, u - 0.06, u + 0.06, -bay / 2 + 0.3, bay / 2 - 0.3, zbal + 0.3, zt2 - 0.4)
     block(K[M["post"]], P, -hu2 - 0.2, hu2 + 0.2, -hv2 - 0.2, hv2 + 0.2, zt2 - 0.45, zt2)
     brackets(K, M, P, hu2, hv2, zt2, ze - 0.25, out=1.1)
-    R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), hv2 + 1.1, hu2 + 1.1, ze, z0 + ridge - 0.8,
-                ov=max(2.4, depth * 0.38), gable_at=0.5, k=1.6)
-    ridge_cap(K, M, P, R["Ug"] + 0.4, z0 + ridge - 1.0, h=0.7)
-    return {"stone": zb, "balcony": zbal, "eave": ze}
+    zr = z0 + ridge - ROMON_CAP["h"] - 0.05
+    R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), hv2 + 1.1, hu2 + 1.1, ze, zr + 0.2,
+                ov=max(2.2, depth * 0.36), gable_at=ROMON_GABLE, k=ROMON_K)
+    ridge_cap(K, M, P, R["Ug"] + 0.4, zr, h=ROMON_CAP["h"], w=ROMON_CAP["w"], oni=ROMON_CAP["oni"])
+    return {"stone": zb, "balcony": zbal, "eave": ze, "ridge": zr}
 
 
 def kirizuma(K, M, P, hu, hv, z_eave, z_ridge, ov_u, ov_v, k=1.3):

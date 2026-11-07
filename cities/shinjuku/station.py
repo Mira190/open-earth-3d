@@ -50,6 +50,7 @@ from japankit import Atlas
 
 ATLAS_FILE = "station.jpg"
 FRIT_FILE = "kabukicho_tower.png"
+KT_LETTERS_FILE = "kabukicho_tower_name.png"
 
 MATERIALS = {
     # the west exit's site: white steel hoarding, the cabins' white and navy, fresh concrete, the site's deck,
@@ -85,6 +86,15 @@ MATERIALS = {
     "st_kt_frit": {"color": "#f4f6f8", "roughness": 0.35, "metalness": 0.1, "map": FRIT_FILE, "cutout": True, "emissive": "#cfe4ff", "glow": 0.22},
     "st_kt_fin": {"color": "#e8ecf0", "roughness": 0.3, "metalness": 0.4, "emissive": "#bfe0ff", "glow": 2.6},
     "st_kt_canopy": {"color": "#d9dcdf", "roughness": 0.35, "metalness": 0.6},
+    # its podium (#290): brown cladding patterned in small scales, the screen's black frame, the arches' glazing,
+    # the café's granite steps, the name's silver letters
+    "st_kt_clad": {"color": "#8c6c60", "roughness": 0.5, "metalness": 0.45, "pattern": "granite", "joints_m": [0.45, 0.3]},
+    "st_kt_black": {"color": "#151619", "roughness": 0.35, "metalness": 0.3},
+    "st_kt_win": {"color": "#3a434c", "roughness": 0.18, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.6, "storey_m": 4.3,
+                  "spandrel": 0.22, "mullion_m": 0.1, "frame": "#4a4a4c", "lit_share": 0.8, "lit_k": 0.9, "warm_share": 0.85},
+    "st_kt_paving": {"color": "#a6a5a1", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.6], "street_lit": True},
+    "st_kt_step": {"color": "#9a9894", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "tread"},
+    "st_kt_letters": {"color": "#e8eaec", "roughness": 0.3, "metalness": 0.7, "map": KT_LETTERS_FILE, "cutout": True, "emissive": "#fff4e6", "glow": 0.9},
     "st_lobby": {"color": "#55606a", "roughness": 0.15, "metalness": 0.3, "emissive": "#ffe6c0", "glow": 1.4},
     # the drawn signs (this module's atlas), lit from inside after dark
     "st_atlas": {"color": "#ffffff", "roughness": 0.55, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 1.3},
@@ -101,7 +111,7 @@ MATERIALS = {
     "st_rail": {"color": "#b8bcc0", "roughness": 0.35, "metalness": 0.7},
     "st_green": {"color": "#3f5a32", "roughness": 0.95, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0]},
 }
-LIT = {"st_window", "st_lamp", "st_aviation", "st_kt_frit", "st_kt_fin", "st_lobby", "st_atlas"}
+LIT = {"st_window", "st_lamp", "st_aviation", "st_kt_frit", "st_kt_fin", "st_lobby", "st_atlas", "st_kt_win", "st_kt_letters"}
 
 # ---------------------------------------------------------------- places (local frame, metres)
 
@@ -129,8 +139,17 @@ OFFICE = {"at": (277.0, 2633.0), "axis_deg": 97.0, "w": 12.2, "d": 2.5, "storeys
 
 FRIT_BURST = 0.3                # how far up the tower the frit's jets break into spray (photographs)
 KT_OSM = "w852000385"           # Tokyu Kabukicho Tower
-KT = {"floors_m": 200.0, "crown_m": 225.0, "frit_off": 0.35, "fin_every": 1.6, "lobby_m": 8.5, "canopy_m": 6.2}
+KT = {"floors_m": 200.0, "crown_m": 225.0, "frit_off": 0.35, "fin_every": 1.6, "podium_m": 25.0, "soffit_m": 29.0, "inset": 2.5,
+      # the front to the plaza, west to east as seen from it (m along a 40.5 m front; heights in m over the street), read
+      # from the photographs of 2024 from the plaza's axis (Asanagi, CC0) and its south side (Fotointheworld, CC BY 4.0)
+      "front": {"L": 40.5, "frame": (3.5, 26.0), "frame_z": (9.2, 20.4), "frame_r": 3.0, "cafe": (2.9, 20.5), "steps_m": 2.2,
+                "steps_deep": 5.5, "escalator": (20.5, 25.7), "name": (5.0, 17.5), "name_z": (21.4, 23.0), "arches": 26.0,
+                "openings": ((27.5, 32.4), (33.9, 38.8)), "spring": 17.6}}
 CINE_CITY = (434.0, 3020.0)     # Cine City Plaza (OSM way 684924350), the tower's front
+# PLATEAU-only solids between the tower's front and the plaza: a long block 15 m tall, a 10 m one at its south end and a
+# canopy, which GSI's aerial photograph (taken while the tower's pit was dug) shows beside the site; photographs of
+# 2024 from the plaza show the podium's front open to it, with nothing standing before it (#290)
+KT_FORECOURT = [(389.0, 3075.0), (421.0, 3075.0), (421.0, 2994.0), (338.0, 2984.0), (350.0, 3010.0), (376.0, 3005.0)]
 
 LUMINE = "r16502754"
 LUMINE_FRONT = ((441.1, 2467.2), (431.4, 2550.9))   # its face to the East Square (the outline's east edge)
@@ -466,7 +485,50 @@ def draw_west(img, R):
 
 # ---------------------------------------------------------------- Tokyu Kabukicho Tower
 
+def facade_poly(m, P, pts, v, uvz0=0.0):
+    """A flat convex (or star-shaped from its first point) polygon [(u, z)] on the face plane at v, fanned from
+    its first point; texture coordinates in metres (u, z - uvz0)."""
+    a = pts[0]
+    for b, c in zip(pts[1:], pts[2:]):
+        m.tri(P(a[0], v, a[1]), P(b[0], v, b[1]), P(c[0], v, c[1]), [[a[0], a[1] - uvz0], [b[0], b[1] - uvz0], [c[0], c[1] - uvz0]])
+
+
+def kt_arches(K, P, g, span, openings, spring, top, depth=0.9, shop=4.2):
+    """The podium's tall arches (#290): a frame of the patterned cladding standing `depth` out from the face over
+    `span` (u0, u1), cut by round-headed openings [(u0, u1)] rising from the street to `spring` (m over g) and a
+    half circle over it; in each, the glazing of the floors behind and a lit shop front at its foot."""
+    clad, win, shopm = K["st_kt_clad"], K["st_kt_win"], K["st_lobby"]
+    v = -depth
+    edges = [span[0]] + [x for o in openings for x in o] + [span[1]]
+    zs, zt = g + spring, g + top
+    for x0, x1 in zip(edges[0::2], edges[1::2]):           # the piers, and the frame over them
+        facade_poly(clad, P, [(x0, g), (x1, g), (x1, zt), (x0, zt)], v, g)
+    for k, (o0, o1) in enumerate(openings):
+        r, uc = (o1 - o0) / 2, (o0 + o1) / 2
+        arc = [(uc - r * math.cos(t), zs + r * math.sin(t)) for t in np.linspace(0, math.pi, 17)]
+        half = len(arc) // 2
+        facade_poly(clad, P, [(o0, zt)] + arc[:half + 1], v, g)          # the spandrels, either side of the crown
+        facade_poly(clad, P, [(o1, zt)] + arc[half:][::-1], v, g)
+        facade_poly(clad, P, [(o0, zs), (o0, zt), arc[0]], v, g)
+        for (u1, z1), (u2, z2) in zip(arc, arc[1:]):                  # the arch's soffit, back to the face
+            clad.quad(P(u1, v, z1), P(u2, v, z2), P(u2, 0.0, z2), P(u1, 0.0, z1), [[0, z1 - g], [depth, z2 - g], [depth, z2 - g], [0, z1 - g]])
+        for u in (o0, o1):                                             # the piers' sides
+            clad.quad(P(u, v, g), P(u, 0.0, g), P(u, 0.0, zs), P(u, v, zs), [[0, 0], [depth, 0], [depth, spring], [0, spring]])
+        facade_poly(win, P, [(o0, g + shop), (o1, g + shop), (o1, zs)] + arc[::-1][:-1] + [(o0, zs)], -0.03, g)
+        shopm.quad(P(o0, -0.04, g), P(o1, -0.04, g), P(o1, -0.04, g + shop), P(o0, -0.04, g + shop))
+        K["st_frame"].box(P(o0, -0.3, g + shop), P(o1, -0.3, g + shop), 0.6, 0.35)   # the shop front's head
+    for u in (span[0], span[1]):                                      # the frame's ends and its top
+        clad.quad(P(u, v, g), P(u, 0.0, g), P(u, 0.0, zt), P(u, v, zt), [[0, 0], [depth, 0], [depth, top], [0, top]])
+    clad.quad(P(span[0], v, zt), P(span[1], v, zt), P(span[1], 0.0, zt), P(span[0], 0.0, zt))
+
+
 def kabukicho_tower(K, A, D):
+    """Tokyu Kabukicho Tower on its PLATEAU outline: the podium, faced in brown cladding patterned in small scales
+    (#290, photographs from Cine City Plaza, 2024: Asanagi, CC0; Fotointheworld, CC BY 4.0), to KT["podium_m"]; on
+    its front to the plaza a big screen in a black frame with rounded upper corners (the screen itself is one of the
+    east exit's screens, cities/shibuya/city.py SHINJUKU_SCREENS), the café's glass and its wide steps under it, the
+    escalator to the first floor, and its name over the frame; five tall arches, two on the front and three on the
+    face that turns from it; over the podium a terrace, the tower's soffit, and the tower set back on every side."""
     solids = [s for s in D.solids if s["osm"] == KT_OSM]
     if not solids:
         return [], None
@@ -474,10 +536,22 @@ def kabukicho_tower(K, A, D):
     ring = ccw(ak.simplify(s["ring"], 0.3))
     g = s["ground"]
     zf, zc = g + KT["floors_m"], g + KT["crown_m"]
-    ak.prism(K["st_kt_glass"], ak.WORLD, ring, g, zf, top=False)
-    ak.cap(K["st_frame"], ak.WORLD, ring, zf)
+    zp, zs = g + KT["podium_m"], g + KT["soffit_m"]
+    ak.prism(K["st_kt_clad"], ak.WORLD, ring, g, zp, top=False)
+    ak.cap(K["st_conc"], ak.WORLD, ring, zp)
+    def inset(d):
+        q = Polygon(ring).buffer(-d, join_style=2)
+        q = max(getattr(q, "geoms", [q]), key=lambda x: x.area)
+        return ccw(ak.simplify([tuple(c) for c in q.exterior.coords[:-1]], 0.3))
+    tower = inset(KT["inset"])
+    ak.prism(K["st_kt_win"], ak.WORLD, inset(KT["inset"] + 1.5), zp, zs - 0.8, top=False)       # the terrace's glass
+    ak.prism(K["st_frame"], ak.WORLD, inset(KT["inset"] - 0.8), zs - 0.8, zs)                    # the tower's soffit
+    for a, b in zip(ring, ring[1:] + ring[:1]):                                                  # the terrace's rail
+        K["st_rail"].tube([np.array([*a, zp + 1.1]), np.array([*b, zp + 1.1])], 0.04, 4)
+    ak.prism(K["st_kt_glass"], ak.WORLD, tower, zs, zf, top=False)
+    ak.cap(K["st_frame"], ak.WORLD, tower, zf)
     # the frit skin: one picture up each face, a little out from the glass
-    for a, b in zip(ring, ring[1:] + ring[:1]):
+    for a, b in zip(tower, tower[1:] + tower[:1]):
         a, b = np.asarray(a), np.asarray(b)
         L = float(np.linalg.norm(b - a))
         if L < 2.0:
@@ -485,7 +559,7 @@ def kabukicho_tower(K, A, D):
         f = (b - a) / L
         n = np.array([f[1], -f[0]])
         o = n * KT["frit_off"]
-        z0 = g + KT["lobby_m"] + 2.0
+        z0 = zs + 1.0
         u0 = 0.5 + 0.5 * math.sin(a[0] * 0.37 + a[1] * 0.11)   # each face a different stretch of the picture
         uw = min(1.0, L / 40.0) * 0.5
         K["st_kt_frit"].quad(np.array([*(a + o), z0]), np.array([*(b + o), z0]), np.array([*(b + o), zc - 1.0]), np.array([*(a + o), zc - 1.0]),
@@ -498,10 +572,10 @@ def kabukicho_tower(K, A, D):
             hh = (zc - zf) * (0.8 + 0.2 * abs(2 * t - 1))
             box(K["st_kt_fin"], frame(p, n), -0.35, 0.35, -0.08, 0.08, zf - 3.0, zf + hh)
         K["st_kt_fin"].tube([np.array([*(a + n * 0.15), zf + 0.5]), np.array([*(b + n * 0.15), zf + 0.5])], 0.12, 4)
-    inner = Polygon(ring).buffer(-3.0)
+    inner = Polygon(tower).buffer(-3.0)
     if inner.geom_type == "Polygon" and not inner.is_empty:
         ak.prism(K["st_frame"], ak.WORLD, ccw(list(inner.exterior.coords)[:-1]), zf, zf + 6.0)
-    # the front on Cine City Plaza: the edges that face it carry the lobby, the canopy and the name
+    # the faces to Cine City Plaza: the longest is the front, the next the face turning from it
     front = []
     for a, b in zip(ring, ring[1:] + ring[:1]):
         a, b = np.asarray(a), np.asarray(b)
@@ -510,26 +584,75 @@ def kabukicho_tower(K, A, D):
         n = np.array([f[1], -f[0]])
         if L > 6 and np.dot(n, unit(np.asarray(CINE_CITY) - (a + b) / 2)) > 0.55:
             front.append((a, b, L, f, n))
-    best = max(front, key=lambda e: e[2]) if front else None
-    for a, b, L, f, n in front:
-        o = n * 0.06
-        K["st_lobby"].quad(np.array([*(a + o), g]), np.array([*(b + o), g]), np.array([*(b + o), g + KT["lobby_m"]]), np.array([*(a + o), g + KT["lobby_m"]]))
-        P = frame(a, f)   # u along the front, v to its left (into the building is -n... v left of f is -n here)
-        cz = g + KT["canopy_m"]
-        K["st_kt_canopy"].quad(np.array([*(a + n * 4.5), cz]), np.array([*(b + n * 4.5), cz]), np.array([*b, cz]), np.array([*a, cz]))
-        K["st_kt_canopy"].quad(np.array([*a, cz + 0.4]), np.array([*b, cz + 0.4]), np.array([*(b + n * 4.5), cz + 0.4]), np.array([*(a + n * 4.5), cz + 0.4]))
-        K["st_kt_canopy"].quad(np.array([*(a + n * 4.5), cz]), np.array([*(a + n * 4.5), cz + 0.4]), np.array([*(b + n * 4.5), cz + 0.4]), np.array([*(b + n * 4.5), cz]))
-        for k in range(int(L / 7.0) + 1):
-            p = a + f * min(L - 0.5, 0.5 + k * 7.0) + n * 4.2
-            K["st_kt_canopy"].tube([np.array([*p, g]), np.array([*p, cz])], 0.14, 8)
+    front.sort(key=lambda e: -e[2])
+    best = front[0] if front else None
     if best:
         a, b, L, f, n = best
-        m = (a + b) / 2
-        sign_quad(K, A, m, n, min(L - 2.0, 22.0), g + KT["canopy_m"] + 0.9, g + KT["canopy_m"] + 2.3, "kt_name", off=0.1)
-        sign_quad(K, A, m, n, 3.0, g + 16.0, g + 34.0, "kt_name_ja", off=KT["frit_off"] + 0.05)
+        P = frame(a, f)          # u along the front, to the right seen from the plaza; v to its left, into the building
+        X = KT["front"]
+        k = L / X["L"]           # the photographs' widths, scaled to the mapped front
+        u = lambda x: x * k
+        # the screen's frame: black, its upper corners rounded
+        f0, f1, fz0, fz1, rr = u(X["frame"][0]), u(X["frame"][1]), g + X["frame_z"][0], g + X["frame_z"][1], X["frame_r"]
+        outline = [(f0, fz0), (f1, fz0)] + [(f1 - rr + rr * math.cos(t), fz1 - rr + rr * math.sin(t)) for t in np.linspace(0, math.pi / 2, 7)] \
+            + [(f0 + rr - rr * math.cos(t), fz1 - rr + rr * math.sin(t)) for t in np.linspace(math.pi / 2, 0, 7)]
+        cu = (f0 + f1) / 2
+        facade_poly(K["st_kt_black"], P, [(cu, fz0)] + outline[1:] + [outline[0], (cu, fz0)], -0.3, g)
+        for (u1, z1), (u2, z2) in zip(outline[1:] + outline[:1], outline[2:] + outline[:2]):   # its edge, back to the wall
+            if z1 > fz0 + 0.01 or z2 > fz0 + 0.01:
+                K["st_kt_black"].quad(P(u1, -0.3, z1), P(u2, -0.3, z2), P(u2, 0.0, z2), P(u1, 0.0, z1))
+        # the café's glass under it, its wide steps out to the plaza, the escalator's opening beside them
+        c0, c1, top = u(X["cafe"][0]), u(X["cafe"][1]), X["steps_m"]
+        K["st_kt_win"].quad(P(c0, -0.05, g + top), P(c1, -0.05, g + top), P(c1, -0.05, fz0), P(c0, -0.05, fz0),
+                            [[c0, 0.0], [c1, 0.0], [c1, fz0 - g - top], [c0, fz0 - g - top]])
+        for j in range(4):
+            K["st_frame"].box(P(c0 + (c1 - c0) * j / 3, -0.12, g + top), P(c0 + (c1 - c0) * j / 3, -0.12, fz0), 0.12, 0.15)
+        K["st_frame"].box(P(c0, -0.12, g + top + 3.4), P(c1, -0.12, g + top + 3.4), 0.12, 0.2)
+        n_st, deep = 13, X["steps_deep"]
+        for j in range(n_st):
+            box(K["st_kt_step"], P, c0, c1, -deep + deep * j / n_st, 0.0, g, g + top * (j + 1) / n_st)
+        e0, e1 = u(X["escalator"][0]), u(X["escalator"][1])
+        K["st_lobby"].quad(P(e0, -0.05, g), P(e1, -0.05, g), P(e1, -0.05, fz0), P(e0, -0.05, fz0))
+        for side in (e0 + 0.4, e1 - 0.4):          # the escalator's glass sides, from the plaza up into the building
+            K["st_rail"].tube([P(side, -X["steps_deep"], g + 1.0), P(side, 0.0, g + 6.0), P(side, 2.0, g + 6.0)], 0.06, 5)
+        K["st_kt_canopy"].quad(P(e0, -X["steps_deep"], g + 0.15), P(e1, -X["steps_deep"], g + 0.15), P(e1, 0.0, g + 5.0), P(e0, 0.0, g + 5.0))
+        # the name over the frame, in letters standing on the cladding
+        l0, l1 = u(X["name"][0]), u(X["name"][1])
+        K["st_kt_letters"].quad(P(l0, -0.08, g + X["name_z"][0]), P(l1, -0.08, g + X["name_z"][0]), P(l1, -0.08, g + X["name_z"][1]),
+                                P(l0, -0.08, g + X["name_z"][1]), [[0, 0], [1, 0], [1, 1], [0, 1]])
+        # the arches: two on the front, east of the frame
+        kt_arches(K, P, g, (u(X["arches"]), L), [(u(p), u(q)) for p, q in X["openings"]], X["spring"], KT["podium_m"])
+    for a, b, L, f, n in front[1:2]:   # and three on the face that turns from it
+        P = frame(a, f)
+        bay = L / 3
+        kt_arches(K, P, g, (0.0, L), [(bay * j + bay * 0.13, bay * (j + 1) - bay * 0.13) for j in range(3)], KT["front"]["spring"], KT["podium_m"])
     c = np.array(Polygon(ring).centroid.coords[0])
     return [x["si"] for x in solids], {"at": [round(float(c[0]), 1), round(float(c[1]), 1)], "z": round(g, 2), "top": round(zc, 1),
                                        "front": [round(float(v), 1) for v in ((best[0] + best[1]) / 2 if best else c)]}
+
+
+def kt_forecourt(K, D, hidden):
+    """The plaza's paving where the blocks PLATEAU still has before the tower stood (KT_FORECOURT): over the
+    aerial photograph, which shows their roofs."""
+    import kyotokit
+    from shapely.ops import unary_union
+    fore = Polygon(KT_FORECOURT)
+    standing = [Polygon(sd["ring"]).buffer(0.2) for sd in D.solids if sd["si"] not in hidden and Polygon(sd["ring"]).intersects(fore)]
+    standing += [Polygon(sd["ring"]).buffer(0.2) for sd in D.solids if sd["osm"] == KT_OSM]
+    kyotokit.drape(K["st_kt_paving"], fore.difference(unary_union(standing)), D.ground, lift=0.05, cell=3.0)
+
+
+def draw_kt_letters(path):
+    """The podium's name in silver letters on clear ground (its clear pixels are holes): TOKYU, small, over
+    KABUKICHO TOWER, as the photographs of 2024 show them over the screen's frame."""
+    from PIL import Image
+    W, H = 1024, 128
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ad.text(img, (W * 0.09, H * 0.2), "TOKYU", "bebas", H * 0.26, fill="#eef0f2")
+    ad.text(img, (W / 2, H * 0.66), "KABUKICHO  TOWER", "bebas", H * 0.62, fill="#eef0f2", max_w=W - 16, spacing=10)
+    a = np.asarray(img).copy()
+    a[..., 3] = np.where(a[..., 3] > 110, 255, 0)
+    Image.fromarray(a, "RGBA").save(path, optimize=True)
 
 
 def draw_frit(path):
@@ -567,17 +690,6 @@ def draw_frit(path):
     a = np.asarray(img).copy()
     a[..., 3] = np.where(a[..., 3] > 110, 255, 0)
     Image.fromarray(a, "RGBA").save(path, optimize=True)
-
-
-def draw_kt(img, R):
-    from PIL import ImageDraw
-    d = ImageDraw.Draw(img)
-    x, y, w, h = R["kt_name"]
-    d.rectangle([x, y, x + w - 1, y + h - 1], fill=(22, 24, 30))
-    ad.text(img, (x + w / 2, y + h / 2 + 2), "TOKYU KABUKICHO TOWER", "bebas", h * 0.62, fill="#f2f4f8", max_w=w - 30, spacing=6)
-    x, y, w, h = R["kt_name_ja"]
-    d.rectangle([x, y, x + w - 1, y + h - 1], fill=(236, 240, 244))
-    ad.vtext(img, (x + w / 2, y + 14), "東急歌舞伎町タワー", "zen", min(w * 0.7, (h - 28) / (9 * 1.06)), fill="#20242c")
 
 
 # ---------------------------------------------------------------- the east exit: LUMINE EST and the East Square
@@ -765,7 +877,7 @@ class Build:
     def __init__(self, D):
         self.D = D
         items = [("west_board", 1024, 220), ("west_art", 640, 200), ("west_notice", 384, 200), ("office_band", 1024, 40),
-                 ("kt_name", 1024, 64), ("kt_name_ja", 96, 576), ("lumine_est", 1024, 216), ("jr_east", 768, 96)]
+                 ("lumine_est", 1024, 216), ("jr_east", 768, 96)]
         self.A = Atlas(items, width=2048)
         self.info, self.gone = {}, []
 
@@ -774,6 +886,10 @@ class Build:
         self.gone = site_solids(self.D)
         self.info["west"] = west_site(K, self.A, self.D)
         hidden, self.info["tower"] = kabukicho_tower(K, self.A, self.D)
+        fore = Polygon(KT_FORECOURT)
+        gone = [sd for sd in self.D.solids if not sd["osm"] and sd["si"] not in hidden and fore.contains(Polygon(sd["ring"]).centroid)]
+        hidden += [sd["si"] for sd in gone]
+        kt_forecourt(K, self.D, set(hidden))
         self.info["lumine"] = lumine(K, self.A, self.D)
         self.info["hanao"] = hanao(K, self.D)
         for sd in self.D.solids:
@@ -787,11 +903,11 @@ class Build:
         from PIL import Image
         img = Image.new("RGB", (self.A.W, self.A.H), (30, 32, 36))
         draw_west(img, self.A.rects)
-        draw_kt(img, self.A.rects)
         draw_lumine(img, self.A.rects)
         img.save(os.path.join(out_dir, ATLAS_FILE), quality=88)
         draw_frit(os.path.join(out_dir, FRIT_FILE))
-        return [ATLAS_FILE, FRIT_FILE]
+        draw_kt_letters(os.path.join(out_dir, KT_LETTERS_FILE))
+        return [ATLAS_FILE, FRIT_FILE, KT_LETTERS_FILE]
 
     def glows(self):
         out = []

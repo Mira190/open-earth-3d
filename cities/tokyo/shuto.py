@@ -46,6 +46,7 @@ CLEAR = 0.3                    # m between the lamps' tops and the girders' soff
 GIRDER_MIN = 0.7               # m, the girders' depth over the lamps at least
 SHALLOW_R = (14.0, 40.0)       # m from the bridge's centre: the girders shallow inside the first, full outside the second
 SAME_LINE_M = 3.0              # m: samples of lines the data puts further apart than this are other decks
+ON_SAMPLE_M = 0.3              # m: a point this near a sample's measured height already stands on it
 SURVEY_M = 30.0                # m: a line point this near any sample is inside the survey
 GROUND_LINE_M = 8.0            # T.P. m: a line point under this is on the ground here (the ground is 2-5 m), not on a viaduct
 TAPER_M = 150.0                # m along a line outside the survey over which its offset from the survey eases to nothing
@@ -112,12 +113,15 @@ def lidar_z(x, y, near=None):
     ks = T.query_ball_point([x, y], LIDAR_R)
     if not ks:
         return None
-    if near is not None:      # only a sample of a line the data puts within SAME_LINE_M of this one (not a deck over it)
-        ks = [k for k in ks if abs(dz[k] - near) <= SAME_LINE_M]
+    if near is not None:      # only a sample of a line the data puts within SAME_LINE_M of this one (not a deck over it),
+        # or one the point already stands on (game.json's lines in the first survey are on its samples: --game again
+        # leaves them, #290)
+        gap = lambda k: min(abs(dz[k] - near), abs(z[k] - near) if abs(z[k] - near) <= ON_SAMPLE_M else 99.0)
+        ks = [k for k in ks if gap(k) <= SAME_LINE_M]
         if not ks:
             return None
-        best = min(abs(dz[k] - near) for k in ks)
-        ks = [k for k in ks if abs(dz[k] - near) <= best + 0.5]
+        best = min(gap(k) for k in ks)
+        ks = [k for k in ks if gap(k) <= best + 0.5]
     k = min(ks, key=lambda k: (xy[k, 0] - x) ** 2 + (xy[k, 1] - y) ** 2)
     return float(z[k])
 
