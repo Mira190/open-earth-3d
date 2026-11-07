@@ -1467,7 +1467,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // way out, { line, s, dir } } or a reason why not
   function reversePoses(o, pl, ok) {
     const st = o.drv.st, l = roadNet.L[pl.line], back = pl.dir > 0 ? pl.s : l.len - pl.s;
-    if (back > 160) return `the junction behind is ${back.toFixed(0)} m back`;
+    if (back > 80) return `the junction behind is ${back.toFixed(0)} m back`;
     const k = pl.dir > 0 ? 0 : l.pts.length / 3 - 1, av = roadNet.avoid;
     const outs = (roadNet.nodes.get(roadNet.key(l.pts[3 * k], l.pts[3 * k + 1])) || []).filter(([li, e]) => li !== pl.line && roadNet.L[li].ow !== (e === 0 ? -1 : 1) && !(av && av[li]) && !(roadNet.fit && roadNet.fit[li] < o.C.hw));
     if (!outs.length) return 'no other way out of the junction behind';
@@ -1632,7 +1632,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // (a car of the traffic come into where it goes next: it waits there, as a driver does part way round, up
     // to 10 s; the traffic gives way to it, so the car is one already there or crossing, Queenstown, #264)
     const nx = P[Math.min(T.i + 1, P.length - 1)];
-    if (!(T.held >= 10) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) { T.held = (T.held || 0) + dt; st.v = 0; st.brake = true; return; }
+    // (backing out of a one-way street it never goes on into one: after 3 s it asks it to back off, and after 40 s
+    // gives up the backing out where it is and drives on from there, #283)
+    if ((T.rev || !(T.held >= 10)) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) {
+      T.held = (T.held || 0) + dt; st.v = 0; st.brake = true;
+      if (T.rev && T.held > 3 && junctions.makeWay) junctions.makeWay(nx.x, nx.y, st.z, nx.h, o.C.half, o.C.hw, 0.3);
+      if (T.rev && T.held > 40) { // (on from where it stands, by the nearest road's lane)
+        const pl = placeOf(st), to = o.phase === 'coming' ? o.pickup : T.rt.to, rt2 = pl && to && roads.route(pl, to, 6000);
+        if (rt2) { const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 }); o.drv.leave(); o.drv = OECars.chauffeur(o.C, rt2, opts); o.drv.opts = opts; o.sig = []; o.scr = []; o.qArms = []; o.turn = null; o.qT = 0; o.qAt = null; o.rerouteT = clockT; }
+      }
+      return;
+    }
+    T.held = 0;
     T.u += TURN_V * dt;
     while (T.u >= 0.25 && T.i < P.length - 1) {
       T.u -= 0.25;

@@ -9,7 +9,8 @@
 // change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
 // (tools/scramble_step.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
-// with you in it round in the road (a three-point turn, never into the traffic), swing the
+// with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
+// a one-way street to the junction behind (tools/reverse_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
 // (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
@@ -27,6 +28,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
+const { reverseStep } = require('./reverse_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1671,7 +1673,7 @@ const npcNight = require('./npc_night');
     }
     if (said !== 'turning') return Object.assign(r, { turned: false });
     const st0 = o.drv.st;
-    r.turned = true;
+    r.turned = true; r.rev = !!o.turn.rev; // (on a one-way street it backs out instead: tools/reverse_step.js checks that)
     window.__turn = { o, r, h0: st0.h, u: 0 };
     // (half way round: a still from outside, the chase camera's)
     for (; window.__turn.u < 40 && o.turn && o.turn.i < o.turn.poses.length * 0.45; window.__turn.u += 0.25) {
@@ -1706,9 +1708,28 @@ const npcNight = require('./npc_night');
   if (turn.none) check(true, `a ride turns round in the road: not tried (${turn.none})`);
   else if (!turn.turned) console.log(`note a ride turns round in the road: nowhere to on its way in ${turn.tries} tries (${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')})`);
   else {
-    check(turn.done && turn.round > 2.8, `a ride turns round in the road: a three-point turn in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}° (after ${turn.tries} tries${Object.keys(turn.why).length ? `: ${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')}` : ''})`);
+    check(turn.done && (turn.rev || turn.round > 2.8), turn.rev ? `a ride turns round: on a one-way street, it backs out to the junction behind (in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}°)` : `a ride turns round in the road: a three-point turn in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}° (after ${turn.tries} tries${Object.keys(turn.why).length ? `: ${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')}` : ''})`);
     check(turn.overlap === 0, `and never into a car of the traffic as it turns (${turn.overlap.toFixed(2)} m deep at most)`);
     check(turn.drove > 10, `and drives on the other way (${turn.drove.toFixed(0)} m in ${turn.driveSecs} s)`);
+  }
+
+  // backing out of a one-way street (#283): cars of the traffic on one-way streets near you, and a ride with you in
+  // it put on one, asked to turn round: each backs along its lane to the junction behind, never into another car,
+  // and goes on from there by another way (tools/reverse_step.js)
+  const rev = await p.evaluate(reverseStep, { ride: true });
+  if (rev.none) check(true, `backing out of a one-way street: not tried (${rev.none})`);
+  else {
+    // (one that gives up, held 20 s by the junction behind, waits on as before, by design: each must stop, back out or
+    // give up within the minute, never into another car, and one at least get out by another way)
+    const T = rev.traffic, bad = T.filter(w => !(w.done || w.gone || w.gaveUp) || w.deep > 0.1 || !T.some(x => x.done || x.gone));
+    if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
+    else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most`).join('; ')})`);
+    const R = rev.ride;
+    if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
+    else {
+      check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto})`);
+      check(R.deep === 0 && R.drove > 10, `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most; ${R.drove.toFixed(0)} m on)`);
+    }
   }
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the

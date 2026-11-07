@@ -4,7 +4,7 @@
 //   traffic  up to three cars of the traffic on one-way streets near you are asked to back out
 //            (cars.reverse); each must end up on another piece of road, going on, within 60 s, never into
 //            another car on the way (its body 0.1 m into one at most);
-//   ride     (with ride: true, and a ride on the way to you or with you in it) the ride is put on a one-way
+//   ride     (with ride: true; a ride is ordered and boarded if none is under way) the ride is put on a one-way
 //            street near you and asked to turn round (__game.turnRide): it must back out, never into a car
 //            of the traffic, onto another piece of road, and drive on from there.
 // tools/game_check.js runs it; alone: GAME_TIME=10:00 xvfb-run -a node tools/reverse_probe.js shibuya
@@ -14,7 +14,10 @@ function reverseStep({ ride: tryRide = false } = {}) {
   const depth = c => { const l = c.line; c.line = -1; const d = A.footprint(c.x, c.y, c.z, c.h, c.half * 0.95, c.hw * 0.95, 0); c.line = l; return d; };
   const px = g.player.x, py = g.player.y;
   if (!A.reverse) return { none: 'no reversing in this build' };
-  const cand = C.filter(c => c.line >= 0 && L[c.line].ow && !c.mv && A.canReverse(c) && Math.hypot(c.x - px, c.y - py) < 300)
+  // (as a jam leaves one: nothing on the move behind it on its street; in moving traffic it would wait on the cars
+  // behind, and give up)
+  const clearBehind = c => !C.some(o => o !== c && o.line === c.line && o.dir === c.dir && (c.s - o.s) * c.dir > 0 && o.v > 0.3);
+  const cand = C.filter(c => c.line >= 0 && L[c.line].ow && !c.mv && A.canReverse(c) && clearBehind(c) && Math.hypot(c.x - px, c.y - py) < 300)
     .sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py));
   const watch = [];
   for (const c of cand) {
@@ -22,21 +25,38 @@ function reverseStep({ ride: tryRide = false } = {}) {
     const line = c.line;
     if (A.reverse(c)) watch.push({ c, id: C.indexOf(c), line, deep: 0, t: 0, done: false, gone: false, went: 0, x: c.x, y: c.y });
   }
-  for (let t = 0; t < 60 && watch.some(w => !w.done && !w.gone); t += 0.1) {
+  for (let t = 0; t < 60 && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
     g.advance(0.1);
     for (const w of watch) {
-      if (w.done || w.gone) continue;
+      if (w.done || w.gone || w.gaveUp) continue;
       const c = w.c;
       if (c.line < 0 || Math.hypot(c.x - w.x, c.y - w.y) > 30) { w.gone = true; continue; } // (out of the traffic, come back elsewhere)
       w.went += Math.hypot(c.x - w.x, c.y - w.y); w.x = c.x; w.y = c.y;
       if (c.rev) w.deep = Math.max(w.deep, depth(c));
       w.t = t;
-      if (!c.rev) { w.done = true; w.onto = c.line; w.why = c.why; }
+      if (!c.rev) { w.done = c.line !== w.line; w.gaveUp = !w.done; if (w.gaveUp) w.still = `gave up: ${c.revEnd || '?'}`; w.onto = c.line; w.why = c.why; }
     }
   }
-  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), done: w.done, gone: w.gone, went: +w.went.toFixed(1), still: w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back)` : '' }));
+  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), done: w.done, gone: w.gone, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back)` : '') }));
   if (!tryRide) return out;
-  // the ride, put on a one-way street near you and asked to turn round
+  // the ride, put on a one-way street near you and asked to turn round (one ordered and boarded first, as
+  // game_check.js's turn step does, if none is under way)
+  if (!(g.ride() && g.ride().drv && (g.ride().phase === 'driving' || g.ride().phase === 'coming'))) {
+    for (let t = 0; t < 40 && g.player.mode === 'ride'; t++) { if (g.ride()) g.ride().hold = true; g.leaveRide(); g.advance(0.5); }
+    if (g.ride() && g.ride().phase !== 'leaving') g.cancelRide();
+    g.advance(2);
+    const dest = g.destinations(g.player.x, g.player.y)[0];
+    let r = null;
+    for (let i = 0; dest && i < 4 && !r; i++) { if (g.orderRide(dest) && g.ride() && (g.ride().phase === 'coming' || g.ride().phase === 'waiting')) r = g.ride(); else g.advance(5); }
+    for (let t = 0; r && t < 120 && r.phase === 'coming'; t++) g.advance(0.5);
+    if (r && r.phase === 'waiting') {
+      g.boardRide();
+      for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
+      for (let i = 0; i < 80 && g.dlg.open && !g.dlg.hasChoices; i++) g.dlg.tick(0.1);
+      if (g.dlg.open && g.dlg.hasChoices) g.dlg.choose(0);
+      g.advance(3);
+    }
+  }
   const o = g.ride();
   if (!o || !o.drv || !(o.phase === 'driving' || o.phase === 'coming')) { out.ride = { none: `no ride under way (${o ? o.phase : 'none'})` }; return out; }
   const to = o.phase === 'coming' ? o.pickup : o.drv.st.route.to, opts = o.drv.opts;
@@ -72,6 +92,7 @@ function reverseStep({ ride: tryRide = false } = {}) {
     for (let k = 0; k < 40 && went <= 10; k++) { g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - qx, q.y - qy); qx = q.x; qy = q.y; }
     r.drove = +went.toFixed(1); r.secs = +r.secs.toFixed(1); r.back = +r.back.toFixed(1); r.deep = +r.deep.toFixed(2);
     out.ride = r;
+    g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
     return out;
   }
   out.ride = { none: `no one-way street near you to back out of (${Object.entries(tried).map(([k, n]) => `${k} ${n}`).join(', ') || 'none tried'})` };
