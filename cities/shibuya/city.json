@@ -5,7 +5,7 @@
   "country_code": "JP",
   "timezone": "Asia/Tokyo",
   "locale": "ja-JP",
-  "description": "Sangenjaya to Shibuya, Harajuku and Yoyogi Park from open data, lit by the real sun: Project PLATEAU's surveyed heights, the scramble and Hachiko, SHIBUYA SKY 229 m up, Center Gai, Shibuya Stream and the streets Persona 5 drew.",
+  "description": "Shibuya, Harajuku and Yoyogi Park, out to Sangenjaya's backstreets: the scramble and Hachiko, the city from SHIBUYA SKY, Center Gai's arcades and the streets a famous game drew.",
   "bbox": [
     139.665,
     35.639,
@@ -49,6 +49,8 @@
     "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
   },
   "plateau": {
+    "veg_from": "tokyo",
+    "veg_note": "PLATEAU's Shibuya-ku survey of single trees has one mesh (53393596), south of the map; the street trees take the heights of Tokyo's surveyed ones (pipeline/plateau_veg.py)",
     "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
     "zoom": 14,
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
@@ -58,6 +60,10 @@
     "min_area_m2": 5000,
     "sea": false,
     "note": "No sea and no open river: the Shibuya River runs in a culvert under the station, and the ponds of Shinjuku Gyoen and Meiji Jingu are left to the aerial photo, since the viewer's water plane sits at sea level and the ground here is 20-45 m above it."
+  },
+  "roofs": {
+    "open_at": [[469.5, -908.2], [492.8, -1010.2]],
+    "note": "pipeline/arcades.py (#234): two low PLATEAU-only solids in pedestrian squares (tools/square_huts.py) that the aerial photograph shows are canopies, not huts: a covered walk 3 m wide and 4.1 m tall along the footway by the Yamanote tracks north of the station, and a 2.6 m shelter on an island of the east exit's bus terminal. Each is named by a point inside it, as PLATEAU's footprints have no OSM id."
   },
   "trees": {
     "mix": {
@@ -112,7 +118,11 @@
           "cherry": 0.9,
           "zelkova": 0.1
         },
-        "note": "About 800 cherries on both banks from Ikejiri-Ohashi down through Nakameguro, their branches over the water (Meguro City)."
+        "yozakura": true,
+        "lanterns": "chochin",
+        "lantern_inset": 8.5,
+        "lantern_spacing": 3.5,
+        "note": "About 800 cherries on both banks from Ikejiri-Ohashi down through Nakameguro, their branches over the water (Meguro City). In the bloom pink chochin hang along both railings and the cherries are lit after dark (#241): the area is the river's line buffered 14 m, so the railings, about 5.5 m either side of it, are 8.5 m inside the outline."
       },
       {
         "name": "Meiji Jingu",
@@ -131,6 +141,7 @@
       {
         "name": "Yoyogi Park",
         "find": "代々木公園",
+        "floor": "lawn",
         "mix": {
           "zelkova": 0.3,
           "ginkgo": 0.2,
@@ -186,8 +197,8 @@
   },
   "tour": [
     {
-      "title": "Sangenjaya to Harajuku, from open data",
-      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height that Project PLATEAU surveyed, on GSI's laser-scanned bare earth under GSI aerial photographs.",
+      "title": "Sangenjaya to Harajuku",
+      "text": "Youth culture's Tokyo: fashion on Takeshita Street, the forest of Meiji Jingu, the busiest crossing on Earth, and out west the izakaya alleys of Sangenjaya where the city goes home to drink.",
       "cam": [
         1900,
         -4500,
@@ -208,7 +219,7 @@
     },
     {
       "title": "The scramble",
-      "text": "Four streets meet at Shibuya's scramble, and when the lights change every crossing goes green at once, the diagonal too. The white bars are drawn from OpenStreetMap's crosswalks. Hachiko sits on his granite to the south.",
+      "text": "When the lights change, every crossing turns green at once, the diagonals too, and up to three thousand people cross together. Watch it from above, then join in. Hachiko sits to the south, waiting for his master, as he did for ten years.",
       "cam": [
         208.7,
         -1150.6,
@@ -229,7 +240,7 @@
     },
     {
       "title": "SHIBUYA SKY, 229 m",
-      "text": "On Scramble Square's roof (2019): about 2,500 m² of open deck at {landmark:shibuya_sky.deck_m} m, glass at the edge, GEO COMPASS in the middle and the escalator coming up out of the 46th floor.",
+      "text": "An open-air deck on Scramble Square's roof, glass at the edge and nothing above you but sky. Come at sunset: Mount Fuji on the horizon, then Tokyo lighting up beneath your feet.",
       "cam": [
         264.5,
         -1052.1,
@@ -250,7 +261,7 @@
     },
     {
       "title": "Sangenjaya's triangle",
-      "text": "Between Setagaya-dori and Route 246, the backstreets of Sangenjaya: a bathhouse, a snack bar, a meat shop open all night. A game drew its home town here and called it Yongen-Jaya.",
+      "text": "Between Setagaya-dori and Route 246: a bathhouse, a snack bar, a meat shop open all night. A game drew its hero's home town here and called it Yongen-Jaya; fans still come looking for the café.",
       "cam": [
         -2441.0,
         -3014.5,
@@ -990,7 +1001,6 @@
     ],
     "overture": {
       "note": "The overture (docs/OVERTURE.md, web/game/overture.js): Crossing. A petal (a ginkgo leaf in autumn, a snowflake in winter, a mote of light in summer) leaves the edge of SHIBUYA SKY, falls 229 m to the scramble, passes Hachiko, and the screens, and ends on the scramble from across it, into the sun, before the game begins at the kerb (game.start). Crowds are kept at a distance: no shot comes close to them. Points name the landmarks in scene.json, so a rebuilt map moves them.",
-      "day": false,
       "title": {"name": "渋谷", "reading": "Shibuya", "line": "交差  ·  Crossing"},
       "guides": [["sakura", [3, 18], [4, 20]], ["mote", [4, 21], [10, 24]], ["ginkgo", [10, 25], [12, 20]], ["snow", [12, 21], [3, 17]]],
       "signal": ["@scramble"],

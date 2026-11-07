@@ -66,6 +66,10 @@ run opened, so it needs no rebuild of the scene):
   mapped roof:shape (and roof:material, roof:colour), else in a temple's or a shrine's precinct, or on a
   temple or a shrine, a hipped roof of grey kawara (a hip-and-gable's nearest; Yasaka-jinja's Buden stood
   as a slab on posts), its eaves no lower than 2.4 m and its fascia under them.
+- a canopy the city names by a point inside it (city.json "roofs" "open_at", [x, y] in metres: a PLATEAU-only
+  footprint has no OSM id to name it by), no taller than OPEN_AT_M and standing on the ground, is taken for a
+  roof first, and lifted onto posts like any other (Shibuya's covered walk by the tracks north of the station and
+  the shelter on an island of its east exit's bus terminal, #234: low PLATEAU solids drawn as huts).
 - a roof the city names as closed (city.json "roofs" "closed", OSM ids: Shinjuku's Sumitomo Triangle
   Plaza, a glass atrium) goes back to a glass building from the ground; one that comes in several parts has one
   faceted glass roof over all of them, rising from its eaves to the tower (one_atrium_roof(), #263).
@@ -88,6 +92,7 @@ SHU = "#c4482a"  # a shrine's vermilion (朱), as the Fushimi Inari and Kiyomizu
 TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
 GLASS = "#7f95a0"  # a glass atrium's walls
 GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM, ATRIUM_GAP_M = "#5d7280", 4.5, 12.0, 300, 8.0  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
+OPEN_AT_M = 8.0  # a canopy named by a point (city.json roofs.open_at): no taller than this
 BORROWED_DM = 150  # a roof on posts taller than this with a neighbour's top: its height was the neighbour's
 WALK_M = 6.0  # a covered walk with a borrowed top: held to a hotel's or a station's covered pavement, its underside 4.5 m up
 PITCH_DEG, PITCH_OVERHANG, PITCH_MAX_M2, PITCH_EAVE_M = 32.0, 0.5, 900.0, 2.4  # an open pavilion's pitched roof (pitched_roof())
@@ -152,6 +157,8 @@ def open_roof(B, s, si, P, polys, solid_tree, eave, plain):
     lo = open_soffit_dm(s[3] / 10)
     if eave is not None:
         lo = min(lo, eave - 5)
+        if lo < MIN_CLEAR_DM <= eave - 2:
+            lo = MIN_CLEAR_DM  # low eaves (2.4-2.6 m: a covered walk's): a thinner fascia rather than a box from the ground
     if s[3] - lo < 3:
         lo = s[3] - 3
     if lo < MIN_CLEAR_DM:
@@ -192,6 +199,15 @@ def mark(out_dir):
             P = None
         polys.append(None if P is None or P.is_empty else P)
     solid_tree = shapely.STRtree([P if P is not None else Polygon() for P in polys])
+    cid = os.path.basename(os.path.normpath(out_dir))
+    cpath = os.path.join(ROOT, "cities", cid, "city.json")
+    open_at = (json.load(open(cpath, encoding="utf8")).get("roofs", {}).get("open_at", []) if os.path.exists(cpath) else [])
+    for x, y in open_at:  # a canopy the city names by a point inside it: a roof from here on
+        pt = shapely.Point(x, y)
+        for j in solid_tree.query(pt):
+            o = B["s"][j]
+            if polys[j] is not None and polys[j].contains(pt) and o[2] == 0 and o[3] <= 10 * OPEN_AT_M and B["b"][o[0]][1] != "roof":
+                B["b"][o[0]][1] = "roof"
     for si, s in enumerate(B["s"]):
         bi = s[0]
         meta = B["b"][bi]
@@ -223,6 +239,8 @@ def mark(out_dir):
             continue
         lo = soffit_dm(height)
         if s[2] >= lo or s[3] - lo < 3:
+            if roof and s[2] == 0 and open_roof(B, s, si, P, polys, solid_tree, eaves.get(id(s)), plain):
+                n += 1  # too low for an arcade's soffit: a roof on posts (a covered walk 4 m tall)
             continue
         s[2] = lo
         meta[1] = "roof"

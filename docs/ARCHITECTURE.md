@@ -960,10 +960,21 @@ flower (from the first flowers to the petals' fall, the light-ups' season).
   (night.json's), on alternate sides 1.5 m off the centre line, or beside every
   other lit tree where none is mapped: a dark post, a washi shade lit warm from
   inside and a halo. On the light tier every 14 m, at most 240, and no halos.
+- **The chochin** (#241): an area with `"lanterns": "chochin"` hangs paper lanterns
+  on a rope along its edge instead of standing bonbori: `lantern_inset` metres inside
+  its outline (for a river buffered from its line, the railings) every
+  `lantern_spacing` metres (twice that on the light tier, at most 400; 1,600 on the
+  others), only where a lit cherry stands within 16 m, at its foot's height. Each is
+  a pink washi lantern between black lacquered rims on a cord from the rope, which
+  sags between each two, with a halo and a small pool of light after dark. The
+  Meguro River's festival lanterns are pink, hung along both railings.
 - **Where:** Chidorigafuchi and its Ryokudo (Tokyo; the Chiyoda Sakura
-  Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama).
-  The Meguro River waits for Shibuya's opening film; Ueno's Sakura-dori and
-  Osaka's Mint are parked.
+  Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama), the
+  Meguro River (Shibuya, with chochin). Ueno's Sakura-dori and Osaka's Mint are
+  parked.
+
+![The Meguro River at 20:30 in the bloom: chochin along the railings under the lit cherries](images/trees/meguro_yozakura.jpg)
+![The Meguro River's chochin by day, and on a phone at night](images/trees/meguro_day_phone.jpg)
 
 ![Yozakura at 20:00: Chidorigafuchi's moat (left) and Maruyama Park round the Gion weeping cherry](images/trees/yozakura.jpg)
 ![On a phone: Chidorigafuchi and Maruyama at night, and Chidorigafuchi by day in the bloom](images/trees/yozakura_phone.jpg)
@@ -1004,7 +1015,13 @@ waits for Shibuya's opening film.
   the woods' (`keep`, `WOOD_M`), and the cost per tier moves by the same 1-4 %. The
   canopy model itself has little canopy outside the woods in these cities (in
   Kyoto 77 ha of canopy over 4 m in 1,500 ha, 68 ha of it in the woods), so the fill
-  is modest; where WorldCover calls a street tree built-up, none is planted.
+  is modest. Where WorldCover calls a narrow street row built-up (its 10 m cells see
+  the road and the roofs round it), the canopy is trusted too within 12 m of a
+  road's centre line where the aerial photograph is greener than red or blue by
+  0.015 (the open-ground test's threshold), a sunlit crown (#241, `STREET_ROW_M`,
+  `GREEN_EXG`): 2.2 ha of street rows in Kyoto (196 street trees to 253), 1.4 ha in
+  Sydney, 0.7 in Shibuya and Tetsugaku, 0.1-0.5 elsewhere. The rest of Kyoto's 16 ha
+  of canopy without WorldCover's agreement is not along a road (gardens, banks).
 
 ![The fill outside the parks, at 11:00](images/trees/canopy_fill.jpg)
 
