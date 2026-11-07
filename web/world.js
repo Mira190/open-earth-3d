@@ -79,6 +79,12 @@ window.OEWorld = (function () {
       getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;
+    // the map's name as the globe's list gives it (cities/index.json), and the city it is a district of:
+    // Higashiyama is a district of Kyoto, Shibuya one of Tokyo, never cities of their own
+    if (entry.name) CITY.name = entry.name;
+    const gm = entry.group_meta, inCity = gm && ['city', 'metro'].includes(gm.kind) && entry.group !== CITY.name;
+    CITY.city = inCity ? entry.group : null;
+    CITY.place = inCity ? `${CITY.name}, ${entry.group}` : CITY.name;
     // buildings demolished since the survey (landmarks.json "demolished": solid indices): not drawn, and
     // flat in the surface model, so nothing stands, shades or blocks the way where they stood
     for (const si of (LM && LM.demolished) || []) if (B.s[si]) B.s[si][3] = B.s[si][2];

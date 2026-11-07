@@ -1704,9 +1704,18 @@ const npcNight = require('./npc_night');
       const st = o.drv.st;
       Object.assign(r, { secs: T.u, done: !o.turn, round: Math.abs(ad(st.h, T.h0)) });
       let went = 0, px = st.x, py = st.y;
-      let secs = 0; // (40 s at most: a red light or a queue on its new way may hold it a while)
-      for (; secs < 40 && went <= 10; secs++) { g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - px, q.y - py); px = q.x; py = q.y; }
-      r.drove = went; r.driveSecs = secs;
+      let secs = 0; // (120 s at most: a red light or a queue on its new way may hold it a while, two of Shibuya's long cycles)
+      const held = {}; // (what held it, as the driver says, and the nearest car of the traffic ahead: printed on a failure)
+      for (; secs < 120 && went <= 10; secs++) {
+        g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - px, q.y - py); px = q.x; py = q.y;
+        const fx = Math.cos(q.h), fy = Math.sin(q.h);
+        let near = null;
+        for (const c of g.cars.C) { if (c.line < 0) continue; const a = (c.x - q.x) * fx + (c.y - q.y) * fy, d = Math.hypot(c.x - q.x, c.y - q.y); if (a > 0 && d < 30 && (!near || d < near.d)) near = { d, c }; }
+        const k = `${(q.why || '-').replace(/[0-9.]+/g, '#')}${near ? ` | car ${g.cars.C.indexOf(near.c)} ${near.d.toFixed(0)} m ahead on road ${near.c.line}, v ${near.c.v.toFixed(1)}, ${near.c.why || '-'}, off ${(+near.c.off || 0).toFixed(1)}${near.c.inWallNow ? ', in from a wall' : ''}` : ''}`;
+        held[k] = (held[k] || 0) + 1;
+      }
+      r.drove = went; r.driveSecs = secs; r.held = Object.entries(held).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => `${n} s: ${k}`);
+      r.at = `${o.drv.st.x.toFixed(0)},${o.drv.st.y.toFixed(0)}`;
       g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
       delete window.__turn;
       return r;
@@ -1718,6 +1727,7 @@ const npcNight = require('./npc_night');
     check(turn.done && turn.round > 2.8, `a ride turns round in the road: a three-point turn in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}° (after ${turn.tries} tries${Object.keys(turn.why).length ? `: ${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')}` : ''})`);
     check(turn.overlap === 0, `and never into a car of the traffic as it turns (${turn.overlap.toFixed(2)} m deep at most)`);
     check(turn.drove > 10, `and drives on the other way (${turn.drove.toFixed(0)} m in ${turn.driveSecs} s)`);
+    if (!(turn.drove > 10)) console.log(`  at ${turn.at}, held by: ${turn.held.join('\n  held by: ')}`);
   }
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the

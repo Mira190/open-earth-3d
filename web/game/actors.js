@@ -2019,12 +2019,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // Higashiyama's road 138 kept a queue in a wall)
         if (nav && c.v < 2 && !c.ln && !c.mv && !JN.centred(c.line) && (c.wallChk = (c.wallChk || 0) - dt) <= 0) {
           c.wallChk = 0.5;
-          c.inWallNow = !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false) && Math.abs(c.off) < LANE * 0.4;
-        } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = false;
-        if (!swerve && c.inWallNow) swerve = -LANE * side * 0.5;
+          // (and one still in the facade half way in goes on to the middle, which game.js fits samples too: Kyoto's
+          // road 128 by the station has room for a car only there)
+          const off = Math.abs(c.off), inWall = off < LANE * 0.9 && !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false);
+          c.inWallNow = !inWall ? 0 : off < LANE * 0.4 ? 0.5 : 1;
+        } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = 0;
+        if (!swerve && c.inWallNow) swerve = -LANE * side * c.inWallNow;
         // (and such a street is single file there: it counts as in a narrow stretch, so that one coming the other
         // way waits short of it, in its lane, as the narrow rule makes moving cars do, rather than brush past, #264)
-        if (c.inWallNow) { c.narrowF = Math.max(c.narrowF || 0, 0.5); c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, 2 * c.half + 1.5); c.narrowIn = 0; }
+        if (c.inWallNow) { c.narrowF = Math.max(c.narrowF || 0, c.inWallNow); c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, 2 * c.half + 1.5); c.narrowIn = 0; }
         c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)

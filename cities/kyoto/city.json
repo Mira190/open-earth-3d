@@ -357,7 +357,54 @@
   ],
   "game": {
     "weather": {"rain_days": [8.1, 8.9, 11.2, 10.6, 10.8, 13.2, 12.6, 9.3, 11.1, 9.4, 7.4, 8.2], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
-    "title": "Kyoto on Foot",
+    "title": "Central Kyoto on Foot",
+    "travel": [
+      {
+        "id": "k-station",
+        "name": "Kyoto Station 京都駅",
+        "at": [
+          -262.0,
+          -1812.0
+        ],
+        "check": true
+      },
+      {
+        "id": "k-honganji",
+        "name": "Higashi Honganji 東本願寺",
+        "at": [
+          -353.8,
+          -1382.9
+        ],
+        "check": true
+      },
+      {
+        "id": "k-nishiki",
+        "name": "Shijo: Nishiki Market 錦市場",
+        "at": [
+          192.0,
+          248.0
+        ],
+        "check": true
+      },
+      {
+        "id": "k-nijo",
+        "name": "Nijo Castle 二条城",
+        "at": [
+          -1295.0,
+          1205.5
+        ],
+        "check": true
+      },
+      {
+        "id": "k-gosho",
+        "name": "The Imperial Palace 京都御所",
+        "at": [
+          136.1,
+          2166.7
+        ],
+        "check": true
+      }
+    ],
     "start": {
       "at": [-262, -1812],
       "facing": [-292, -1720],

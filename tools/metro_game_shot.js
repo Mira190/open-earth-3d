@@ -34,7 +34,7 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/`;
     if (phone) await p.locator('#g-metro-btn').tap(); else await p.keyboard.press('b');
     await p.waitForTimeout(3000);
     await p.screenshot({ path: `${out}/${name}-game-map.png` });
-    const chip = p.locator('.ts-mfull .mt-chip[data-mapid="shinjuku"]');
+    const chip = p.locator(`.ts-mfull .mt-chip:not([data-mapid="${city}"])`).first(); // another map of the group
     if (phone) await chip.tap(); else await chip.click();
     await p.waitForTimeout(600);
     await p.screenshot({ path: `${out}/${name}-game-pick.png` });

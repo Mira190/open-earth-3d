@@ -314,6 +314,53 @@
       "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
     },
     "title": "Higashiyama on Foot",
+    "travel": [
+      {
+        "id": "h-pagoda",
+        "name": "Yasaka Pagoda 八坂の塔",
+        "at": [
+          -294.8,
+          173.4
+        ],
+        "check": true
+      },
+      {
+        "id": "h-yasaka",
+        "name": "Gion: Yasaka Shrine 八坂神社",
+        "at": [
+          -331.6,
+          741.5
+        ],
+        "check": true
+      },
+      {
+        "id": "h-ninenzaka",
+        "name": "Ninenzaka 二年坂",
+        "at": [
+          -92.2,
+          136.5
+        ],
+        "check": true
+      },
+      {
+        "id": "h-sannenzaka",
+        "name": "Sannenzaka 三年坂",
+        "at": [
+          -96.3,
+          -58.3
+        ],
+        "check": true
+      },
+      {
+        "id": "h-kiyomizu",
+        "name": "Kiyomizu-dera 清水寺",
+        "at": [
+          83.7,
+          -164.9
+        ],
+        "check": true
+      }
+    ],
     "local_name": "Kyoto local",
     "greeting": "おこしやす。",
     "water_name": "the Kamo River",

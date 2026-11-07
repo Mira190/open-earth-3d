@@ -267,6 +267,35 @@
       "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
     },
     "title": "Fushimi Inari on Foot",
+    "travel": [
+      {
+        "id": "f-romon",
+        "name": "The Romon 楼門",
+        "at": [
+          -430.1,
+          123.1
+        ],
+        "check": true
+      },
+      {
+        "id": "f-senbon",
+        "name": "Senbon Torii 千本鳥居",
+        "at": [
+          -181.4,
+          73.8
+        ],
+        "check": true
+      },
+      {
+        "id": "f-yotsutsuji",
+        "name": "Yotsutsuji 四ツ辻",
+        "at": [
+          389.3,
+          336.8
+        ],
+        "check": true
+      }
+    ],
     "local_name": "Kyoto local",
     "greeting": "ようお参り。",
     "water_name": "the Kamo River",

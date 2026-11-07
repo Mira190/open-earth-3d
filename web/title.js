@@ -510,7 +510,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const g = (d.meta && d.meta.guide) || (!d.sites && d.c.guide) || {};
     const best = g.best ? `<div><dt>Best at</dt><dd class="best">${escH(g.best[0])}<small>${escH(g.best[1] || '')}</small></dd></div>` : '';
     const stats = metro
-      ? `<div><dt>Districts</dt><dd>${d.sites.length}<small>of ${d.meta.districts.length} open</small></dd></div>${best}`
+      ? `<div><dt>Districts</dt><dd>${d.meta.districts.filter(s => s.map).length}${d.meta.districts.some(s => !s.map) ? `<small>of ${d.meta.districts.length} open</small>` : '<small>all open</small>'}</dd></div>${best}`
       : best;
     const prog = p.stamps ? `${p.stamps} stamp${p.stamps > 1 ? 's' : ''} in your passport` : p.visited ? 'Visited' : '';
     const hook = c => escH((c.guide && c.guide.hook) || c.tagline || '');
