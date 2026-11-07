@@ -68,7 +68,8 @@ async function open(site) {
   await p.waitForFunction(() => window.__game && document.getElementById('g-loader') && document.getElementById('g-loader').classList.contains('out'), null, { timeout: 900000, polling: 1000 });
   console.log('Tier:', await p.evaluate(() => { const q = OEQuality.city(), c = document.getElementById('game-gl'); return `${q.name}, ${c.width}x${c.height}`; }));
   for (const f of ['lens.js']) await p.addScriptTag({ path: path.join(ROOT, 'web', f) });
-  for (const f of ['director.js', 'score.js']) await p.addScriptTag({ path: path.join(__dirname, 'film', f) });
+  await p.addScriptTag({ path: path.join(__dirname, 'film', 'director.js') });
+  await p.addScriptTag({ path: path.join(ROOT, 'web', 'film-score.js') });
   await p.evaluate(s => OEFilmDirector.setup(s), Object.assign({}, spec, { size: [W, H] }));
   await p.evaluate(() => __vt.start());
   // the game's loop was waiting on the real clock: let it run once, onto the virtual one
@@ -176,7 +177,7 @@ async function encode() {
   const b = await chromium.launch();
   const p = await b.newPage();
   await p.goto(`http://localhost:${PORT}/index.html#none`);
-  await p.addScriptTag({ path: path.join(__dirname, 'film', 'score.js') });
+  await p.addScriptTag({ path: path.join(ROOT, 'web', 'film-score.js') });
   const plan = Object.assign({ duration: DURATION, cuts: spec.shots.map(s => s.t0).filter(x => x > 0) }, spec.score,
     { title: spec.shots.find(s => s.id === spec.score.title_shot).t0 + (spec.score.title_at || 0), finale: spec.shots.find(s => s.id === spec.score.finale_shot).t0 + (spec.score.finale_at || 0) });
   const pcm = await p.evaluate(async plan => {

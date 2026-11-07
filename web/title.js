@@ -148,7 +148,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   };
   for (const d of dests) { d.mark = mk(d, 'live'); d.mark.onclick = () => select(dests.indexOf(d), true); d.mark.onpointerenter = () => hover(dests.indexOf(d)); }
   const plannedMarks = planned.map(c => ({ c, el: mk(c, 'plan'), p: E.ll(c.lat, c.lon) }));
-  for (const m of plannedMarks) m.el.onclick = () => { $('globe-notice').textContent = `${m.c.name} is next in line. Open data to start from: ${m.c.data || 'to be surveyed'}`; $('globe-notice').hidden = false; };
+  for (const m of plannedMarks) m.el.onclick = () => { $('globe-notice').textContent = `${m.c.name}, coming soon. ${(m.c.guide && m.c.guide.line) || ''}`.trim(); $('globe-notice').hidden = false; };
 
   // ------------------------------------------------------------ the camera
   const pose = { pos: new V3(0, 0, 6), look: new V3(), up: new V3(0, 1, 0), fov: 30 };
@@ -453,6 +453,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     // will be would otherwise bring a card up over the opening's title
     if (!app.classList.contains('menu')) return;
     if (i === sel && fromUser) return;
+    closeFull(true);
     sel = i;
     items.forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
     for (const d of dests) d.mark.classList.toggle('hot', dests.indexOf(d) === i);
@@ -472,30 +473,31 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   }
   function showCard(d) {
     const p = progress(d);
-    const km = d.c.extent_km ? `${d.c.extent_km[0]} × ${d.c.extent_km[1]}<small>km</small>` : '';
-    // a group's span: the great-circle distance between its two furthest sites
     const metro = d.meta && d.meta.kind === 'metro';
     // a city of a few districts, without a map of its own (Melbourne: the centre and the bayside)
     const city = d.meta && d.meta.kind === 'city';
-    let spanKm = 0;
-    if (d.sites) for (const a of d.sites) for (const b of d.sites) spanKm = Math.max(spanKm, E.ll(a.lat, a.lon).angleTo(E.ll(b.lat, b.lon)) * 6371);
+    // a travel guide's card, as a game's location card reads: a line that sells the place, the sights
+    // to see, a local custom and the best hour to come (cities/guide.json), not the data behind the model
+    const g = (d.meta && d.meta.guide) || (!d.sites && d.c.guide) || {};
+    const best = g.best ? `<div><dt>Best at</dt><dd class="best">${escH(g.best[0])}<small>${escH(g.best[1] || '')}</small></dd></div>` : '';
     const stats = metro
-      ? `<div><dt>Maps</dt><dd>${d.sites.length}<small>of ${d.meta.districts.length} districts</small></dd></div><div><dt>Buildings</dt><dd>${fmtN(d.sites.reduce((a, c) => a + (c.buildings || 0), 0))}</dd></div>`
-      : city
-      ? `<div><dt>Buildings</dt><dd>${fmtN(d.sites.reduce((a, c) => a + (c.buildings || 0), 0))}</dd></div><div><dt>Districts</dt><dd>${d.sites.length}</dd></div>`
-      : d.sites
-      ? `<div><dt>Sites</dt><dd>${d.sites.length}</dd></div><div><dt>From end to end</dt><dd>${fmtN(Math.round(spanKm / 10) * 10)}<small>km</small></dd></div>`
-      : `<div><dt>Buildings</dt><dd>${fmtN(d.c.buildings || 0)}</dd></div><div><dt>Model</dt><dd>${km}</dd></div>`;
+      ? `<div><dt>Districts</dt><dd>${d.sites.length}<small>of ${d.meta.districts.length} open</small></dd></div>${best}`
+      : best;
     const prog = p.stamps ? `${p.stamps} stamp${p.stamps > 1 ? 's' : ''} in your passport` : p.visited ? 'Visited' : '';
+    const hook = c => escH((c.guide && c.guide.hook) || c.tagline || '');
     const actions = metro ? metroHTML(d)
-      : city ? `<ul class="ts-sites ts-districts">${d.sites.map(c => `<li><button data-site="${c.id}" aria-label="${c.district || c.name}: explore in 3D"><b>${c.district || c.name}</b><small>${c.tagline || ''}</small></button>${c.game ? `<button class="ts-dplay" data-site="${c.id}" data-go="play" aria-label="Play ${c.district || c.name}">Play</button>` : ''}</li>`).join('')}</ul>`
-      : d.sites ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
+      : city ? `<span class="ts-k ts-where">Where to go</span><ul class="ts-sites ts-districts">${d.sites.map(c => `<li><button data-site="${c.id}" aria-label="${c.district || c.name}: explore in 3D"><b>${c.district || c.name}</b><small>${hook(c)}</small></button>${c.game ? `<button class="ts-dplay" data-site="${c.id}" data-go="play" aria-label="Play ${c.district || c.name}">Play</button>` : ''}</li>`).join('')}</ul>`
+      : d.sites ? `<span class="ts-k ts-where">Where to go</span><ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${hook(c)}</small></button></li>`).join('')}</ul>`
       : `<div class="ts-actions">${d.c.game ? '<button class="ts-btn primary" data-go="play">Play <kbd>P</kbd></button>' : ''}<button class="ts-btn" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>`;
+    const line = g.line || (d.sites ? '' : d.c.tagline || '');
+    const spots = g.spots && g.spots.length ? `<div class="ts-spots"><span class="ts-k">Must see</span><ol>${g.spots.map(([n, t], i) => `<li style="--i:${i}"><i>${String(i + 1).padStart(2, '0')}</i><b>${escH(n)}</b><span>${escH(t)}</span></li>`).join('')}</ol></div>` : '';
+    const local = g.local ? `<p class="ts-local"><span class="ts-k">${escH(g.local[0])}</span>${escH(g.local[1])}</p>` : '';
     card.innerHTML = `<div><span class="eb">${d.country} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${d.name}${d.native ? `<small lang="${lang(d)}">${d.native}</small>` : ''}</h2></div>
-      <p class="sum">${d.meta && d.meta.summary ? d.meta.summary : d.sites ? `${d.sites.length} maps: ${d.sites.map(c => c.name).join(', ')}.` : (d.c.summary || '')}</p>
+      ${line ? `<p class="sum">${escH(line)}</p>` : ''}${spots}${local}
       <dl class="ts-stats">${stats}<div><dt>Local time</dt><dd data-k="time"></dd></div><div><dt>Sun</dt><dd data-k="sun"></dd></div></dl>
       ${prog ? `<span class="ts-prog">${prog}</span>` : ''}${actions}`;
     fillStats(d);
+    card.scrollTop = 0;
     card.classList.toggle('metro', !!metro);
     if (metro) metroPick(d, metroSel[d.id] ?? d.meta.districts.findIndex(x => x.map));
     card.classList.remove('on', 'has-film');
@@ -505,15 +507,27 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (window.OEFilm) OEFilm.card(card, d.sites ? { id: d.id.replace(/^group-/, '').toLowerCase().replace(/\W+/g, '-'), name: d.name, country: d.country, game: false } : d.c,
       { go: play => (d.sites ? dive(d, false, d.sites[0]) : dive(d, play)) });
   }
-  on(card, 'click', e => {
-    const st = e.target.closest('[data-district]');
-    if (st && sel >= 0) { metroPick(dests[sel], +st.dataset.district); return; }
+  const metroClick = e => {
+    if (e.target.closest('[data-close]')) { closeFull(); return; }
+    if (e.target.closest('[data-full]')) { if (sel >= 0) openFull(dests[sel]); return; }
+    const ch = e.target.closest('[data-chip]');
+    if (ch && sel >= 0) { metroPick(dests[sel], +ch.dataset.chip, true); return; }
+    const svg = e.target.closest('.ts-metro svg');
+    // on a phone the card's map is too small to aim at: a touch on it opens it full screen
+    if (svg && sel >= 0 && !svg.closest('.ts-mfull') && matchMedia('(pointer: coarse)').matches) { openFull(dests[sel]); return; }
+    if (svg && sel >= 0) {
+      const st = e.target.closest('[data-district]');
+      const i = e.detail === 0 && st ? +st.dataset.district : metroNearest(dests[sel], svg, e.clientX, e.clientY);
+      if (i >= 0) metroPick(dests[sel], i, true);
+      return;
+    }
     const b = e.target.closest('button');
     if (!b || sel < 0) return;
     if (b.dataset.map) dive(dests[sel], b.dataset.go === 'play', cities.find(c => c.id === b.dataset.map), b.dataset.arrive);
     else if (b.dataset.site) dive(dests[sel], b.dataset.go === 'play', cities.find(c => c.id === b.dataset.site));
     else dive(dests[sel], b.dataset.go === 'play');
-  });
+  };
+  on(card, 'click', metroClick);
   // A first click opens the card; only a second click on the same destination goes in. A click focuses
   // its button before it lands, and the focus selects (focusin, below), so what counts is what was
   // selected when the pointer went down: without that one click went straight in and the card,
@@ -531,6 +545,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   // card, where its districts (Tokyo's subway map) or sites are chosen
   function goFrom(d) {
     if (!d.sites) { dive(d, false); return; }
+    if (d.meta && d.meta.kind === 'metro') { openFull(d); return; }
     const to = card.querySelector('.mt-stn.sel') || card.querySelector('.mt-stn.on') || card.querySelector('[data-site]');
     if (to) to.focus({ preventScroll: true });
   }
@@ -548,7 +563,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   // is there and goes in at that district.
   const metroSel = {};
   const escH = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
-  function metroHTML(d) {
+  function metroHTML(d, full = false) {
     const m = d.meta, pts = [];
     for (const l of m.lines) for (const [la, lo] of l.stops) pts.push([la, lo]);
     for (const s of m.districts) pts.push([s.lat, s.lon]);
@@ -564,38 +579,117 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       const [cx, cy] = P(c.lat, c.lon), w = c.extent_km[0] / 111.32 / Math.cos(c.lat * RAD) * k * sc, h = c.extent_km[1] / 111.32 * sc;
       return `<rect class="mt-area" x="${f(cx - w / 2)}" y="${f(cy - h / 2)}" width="${f(w)}" height="${f(h)}" rx="3"/>`;
     }).join('');
-    const lines = m.lines.map(l => {
+    const lines = m.lines.map((l, li) => {
       const ps = l.stops.map(([la, lo]) => P(la, lo).map(f).join(',')).join(' ');
-      return `<${l.loop ? 'polygon' : 'polyline'} class="mt-line" points="${ps}" style="--c:${l.colour}"><title>${escH(l.name)} ${escH(l.native || '')}</title></${l.loop ? 'polygon' : 'polyline'}>`;
+      return `<${l.loop ? 'polygon' : 'polyline'} class="mt-line" points="${ps}" pathLength="1" style="--c:${l.colour};--k:${li}"><title>${escH(l.name)} ${escH(l.native || '')}</title></${l.loop ? 'polygon' : 'polyline'}>`;
     }).join('');
+    d.mtXY = m.districts.map(s => P(s.lat, s.lon));
     const stns = m.districts.map((s, i) => {
       // the label on the side the group's config says (l, r, t, b), clear of its neighbours
-      const [x, y] = P(s.lat, s.lon), at = s.label || (x < W * 0.62 ? 'r' : 'l');
+      const [x, y] = d.mtXY[i], at = s.label || (x < W * 0.62 ? 'r' : 'l');
       const [tx, ty, an] = { r: [x + 11, y + 5, 'start'], l: [x - 11, y + 5, 'end'], t: [x, y - 12, 'middle'], b: [x, y + 21, 'middle'] }[at];
-      return `<g class="mt-stn${s.map ? ' on' : ''}" data-district="${i}" tabindex="0" role="button" aria-label="${escH(s.name)}${s.map ? '' : ', next in line'}">
-        <circle cx="${f(x)}" cy="${f(y)}" r="${s.map ? 7 : 5}"/><text x="${f(tx)}" y="${f(ty)}" text-anchor="${an}" lang="ja">${escH(s.native)}</text></g>`;
+      return `<g class="mt-stn${s.map ? ' on' : ''}" style="--k:${i}" data-district="${i}" tabindex="0" role="button" aria-label="${escH(s.name)}${s.map ? '' : ', next in line'}">
+        ${s.map ? `<circle class="mt-ring" cx="${f(x)}" cy="${f(y)}" r="7"/>` : ''}<circle class="mt-dot" cx="${f(x)}" cy="${f(y)}" r="${s.map ? 7 : 5}"/><text x="${f(tx)}" y="${f(ty)}" text-anchor="${an}" lang="ja">${escH(s.native)}</text></g>`;
     }).join('');
     const legend = m.lines.map(l => `<span style="--c:${l.colour}"><i></i>${escH(l.native || l.name)}</span>`).join('');
-    return `<div class="ts-metro"><svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Districts of ${escH(d.name)}">${areas}${lines}${stns}</svg>
+    // the built maps as buttons under the subway map: big enough for a thumb, and they say in words
+    // what the lit stations are, for a visitor who would not think to touch a map
+    const maps = [...new Set(m.districts.filter(s => s.map).map(s => s.map))].map(id => cities.find(c => c.id === id && c.built)).filter(Boolean);
+    const at = id => { const j = m.districts.findIndex(s => s.map === id && !s.travel); return j >= 0 ? j : m.districts.findIndex(s => s.map === id); };
+    const chips = maps.map(c => `<button class="mt-chip" data-chip="${at(c.id)}" data-mapid="${c.id}"><b>${escH(c.name)}</b>${c.native ? `<small lang="ja">${escH(c.native)}</small>` : ''}</button>`).join('');
+    const touch = matchMedia('(pointer: coarse)').matches;
+    // until a station has been picked once in this browser, the lit ones pulse under a line that says
+    // they can be chosen
+    const cue = !store.get('oe3d-metro-picked');
+    // on the card the map is small: a phone opens it full screen to choose from (a fingertip is
+    // bigger than its stations there), a desktop can pick on it or open it
+    const say = full ? `${touch ? 'Tap' : 'Click'} a lit station, or a name` : touch ? 'Tap the map' : 'Click a station';
+    const grow = full ? '' : `<button class="mt-expand" data-full aria-label="Open the map of ${escH(d.name)} full screen"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 4.5V1h3.5M7.5 1H11v3.5M11 7.5V11H7.5M4.5 11H1V7.5"/></svg>Open map</button>`;
+    return `<div class="ts-metro${cue ? ' cue' : ''}${full ? ' big' : ''}"><div class="mt-cue"><i></i><span>Choose a district</span><em>${say}</em>${grow}</div>
+      <svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Districts of ${escH(d.name)}">${areas}${lines}${stns}</svg>
+      <div class="mt-chips" role="group" aria-label="Built maps">${chips}</div>
       <div class="mt-legend">${legend}</div><div class="mt-pick" aria-live="polite"></div></div>`;
   }
-  function metroPick(d, i) {
+  // a touch on the map picks the station nearest to it, lit ones first: a fingertip covers several of
+  // the small dots, and a near miss should still land on the district meant
+  function metroNearest(d, svg, cx, cy) {
+    const ctm = svg.getScreenCTM();
+    if (!ctm || !d.mtXY) return -1;
+    const pt = new DOMPoint(cx, cy).matrixTransform(ctm.inverse());
+    const reach = 26 / Math.max(0.2, ctm.a) * (matchMedia('(pointer: coarse)').matches ? 1 : 0.6); // ~26 css px on a phone
+    let best = -1, bd = Infinity;
+    d.mtXY.forEach(([x, y], i) => {
+      const dist = Math.hypot(x - pt.x, y - pt.y) * (d.meta.districts[i].map ? 1 : 1.5);
+      if (dist < bd) { bd = dist; best = i; }
+    });
+    return bd <= reach * 1.5 ? best : -1;
+  }
+  function metroPick(d, i, byUser = false) {
     const m = d.meta, s = m.districts[i];
     if (!s) return;
     metroSel[d.id] = i;
-    card.querySelectorAll('.mt-stn').forEach((g, j) => g.classList.toggle('sel', j === i));
-    const c = s.map && cities.find(x => x.id === s.map && x.built), el = card.querySelector('.mt-pick');
-    if (!el) return;
+    if (byUser) { store.set('oe3d-metro-picked', '1'); app.querySelectorAll('.ts-metro').forEach(tm => tm.classList.remove('cue')); A.tick(2600, 0.03); }
+    app.querySelectorAll('.mt-stn').forEach(g => g.classList.toggle('sel', +g.dataset.district === i));
+    app.querySelectorAll('.mt-chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mapid === s.map)));
+    const c = s.map && cities.find(x => x.id === s.map && x.built), els = app.querySelectorAll('.mt-pick');
+    for (const el of els) {
     const arrive = s.travel ? ` data-arrive="${escH(s.travel)}"` : '';
-    el.innerHTML = `<div class="mt-name"><b>${escH(s.name)}</b><small lang="ja">${escH(s.native)}</small>${c ? `<em>${escH(c.name)} map</em>` : '<em class="next">Next in line</em>'}</div>
-      <p>${escH(c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || '')}</p>
+    const sg = s.guide || {};
+    el.innerHTML = `<div class="mt-name"><b>${escH(s.name)}</b><small lang="ja">${escH(s.native)}</small>${c ? `<em>${escH(c.name)} map</em>` : '<em class="next">Coming soon</em>'}</div>
+      <p>${escH(sg.line || (c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || ''))}</p>
+      ${sg.spots ? `<ul class="mt-spots">${sg.spots.map(n => `<li>${escH(n)}</li>`).join('')}</ul>` : ''}
       ${c ? `<div class="ts-actions">${c.game ? `<button class="ts-btn primary" data-map="${c.id}" data-go="play"${arrive}>Play <kbd>P</kbd></button>` : ''}<button class="ts-btn" data-map="${c.id}" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>` : ''}`;
+    }
   }
-  on(card, 'keydown', e => { const st = e.target.closest('[data-district]'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); metroPick(dests[sel], +st.dataset.district); } });
+  // ------------------------------------------------------------ the subway map, full screen
+  // Choosing a district is the first decision a visitor makes in Tokyo, so it gets the whole screen,
+  // as a game's world map does: the globe dims and leans in behind, the lines draw themselves and the
+  // stations light up one after another, the stations grow to a fingertip's size, and the district
+  // picked comes up beside the map (under it on a phone) with Play and Explore. Esc or Back returns.
+  const full = document.createElement('section');
+  full.className = 'ts-mfull'; full.hidden = true;
+  full.setAttribute('role', 'dialog'); full.setAttribute('aria-modal', 'true');
+  stage.appendChild(full);
+  on(full, 'click', metroClick);
+  let fullFrom = null;
+  function openFull(d) {
+    if (!d || !d.meta || d.meta.kind !== 'metro' || !full.hidden) return;
+    fullFrom = document.activeElement;
+    full.setAttribute('aria-label', `Districts of ${d.name}`);
+    full.innerHTML = `<div class="mf-head"><div><span class="eb">${escH(d.country)} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${escH(d.name)}${d.native ? `<small lang="ja">${escH(d.native)}</small>` : ''}</h2></div>
+      <button class="mf-x" data-close aria-label="Back to the globe">Back <kbd>Esc</kbd></button></div>${metroHTML(d, true)}`;
+    full.hidden = false;
+    app.classList.add('metro-full');
+    A.tick(1500, 0.04);
+    orb.tdist = fitDist(0.92) * 0.82; // the globe leans in behind the map
+    metroPick(d, metroSel[d.id] ?? d.meta.districts.findIndex(x => x.map));
+    const st = full.querySelector('.mt-stn.sel') || full.querySelector('.mt-stn.on');
+    if (st) st.focus({ preventScroll: true });
+  }
+  function closeFull(quiet = false) {
+    if (full.hidden) return;
+    full.hidden = true; full.innerHTML = '';
+    app.classList.remove('metro-full');
+    if (sel >= 0 && !quiet) frameOn(dests[sel]);
+    if (!quiet && fullFrom && fullFrom.isConnected) fullFrom.focus({ preventScroll: true });
+    fullFrom = null;
+  }
+  // the lit stations in order, for the arrow keys on the full-screen map
+  function metroStep(d, dir) {
+    const lit = d.meta.districts.map((s, i) => (s.map ? i : -1)).filter(i => i >= 0);
+    const k = lit.indexOf(metroSel[d.id]);
+    const i = lit[(k + dir + lit.length) % lit.length];
+    metroPick(d, i, true);
+    const st = full.querySelector(`.mt-stn[data-district="${i}"]`);
+    if (st) st.focus({ preventScroll: true });
+  }
+  on(full, 'keydown', e => { const st = e.target.closest('[data-district]'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); metroPick(dests[sel], +st.dataset.district, true); } });
+  on(card, 'keydown', e => { const st = e.target.closest('[data-district]'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); metroPick(dests[sel], +st.dataset.district, true); } });
 
   function dive(d, play, site, arrive) {
     if (state === 'dive' || (state !== 'menu' && state !== 'open')) return;
     if (state === 'open') skip();
+    closeFull(true);
     state = 'dive';
     if (window.OEFilm) OEFilm.stopPreview();
     app.classList.add('diving');
@@ -667,6 +761,15 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (state === 'open') { if (e.target.closest && e.target.closest('button')) return; e.preventDefault(); skip(); return; } // a key on Sound or Skip is that button's
     if (state !== 'menu') return;
     const k = e.key.toLowerCase();
+    if (!full.hidden) { // the full-screen map has the keys: arrows walk the lit stations, Enter and P go in
+      const d = dests[sel];
+      if (k === 'escape') { e.preventDefault(); closeFull(); }
+      else if (['arrowright', 'arrowdown', 'd', 's'].includes(k)) { e.preventDefault(); metroStep(d, 1); }
+      else if (['arrowleft', 'arrowup', 'a', 'w'].includes(k)) { e.preventDefault(); metroStep(d, -1); }
+      else if (k === 'p' && full.querySelector('[data-map][data-go="play"]')) full.querySelector('[data-map][data-go="play"]').click();
+      else if (k === 'enter' && !e.target.closest('button') && full.querySelector('[data-map][data-go="model"]')) { e.preventDefault(); full.querySelector('[data-map][data-go="model"]').click(); }
+      return;
+    }
     if (k === 'arrowdown' || k === 's' || k === 'arrowright') { e.preventDefault(); select((sel + 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'enter' && sel >= 0 && !e.target.closest('.ts-card, .ts-top, .ts-foot')) { e.preventDefault(); const d = dests[sel]; const mb = card.querySelector('[data-map][data-go="model"]'); if (mb) mb.click(); else if (d.sites) card.querySelector('[data-site]').focus(); else dive(d, false); }

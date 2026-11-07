@@ -667,6 +667,7 @@ vec3 steepRock(vec3 c, float k) {
     sunLight.shadow.normalBias = 1.0;
     const shCam = sunLight.shadow.camera;
     shCam.near = 10; shCam.far = 9000;
+    leanShadowMap(renderer, sunLight.shadow, SHADOW);
     world.add(sunLight, sunLight.target);
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
@@ -1458,6 +1459,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
       const tex = new THREE.CanvasTexture(cv);
       tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096)
       if (sea.uniforms && sea.uniforms.uCover.value) sea.uniforms.uCover.value.dispose();
       sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
     }
@@ -1737,6 +1739,25 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     if (!pumping) pump();
     return Promise.all(waits).then(() => {});
   }
+  // A PCF shadow map as three.js (r186) makes it is a render target with an RGBA8 colour texture beside
+  // the depth texture it samples, and that colour is never read: 64 MB of GPU memory at 4096 px, 16 at
+  // 2048. WebGLShadowMap builds its own only while shadow.map is null, so the same target made here
+  // first, with a one-byte colour texture (a framebuffer still needs one the depth's size), is the one
+  // it keeps: drawn, cleared, resized and sampled as before, the shadows to the bit the same.
+  function leanShadowMap(renderer, shadow, size) {
+    if (shadow.map || !THREE.DepthTexture || !THREE.RedFormat) return;
+    const st = renderer.state && renderer.state.buffers && renderer.state.buffers.depth;
+    const reversed = !!(st && st.getReversed && st.getReversed());
+    const map = new THREE.WebGLRenderTarget(size, size, { format: THREE.RedFormat, type: THREE.UnsignedByteType,
+      minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
+    const d = map.depthTexture = new THREE.DepthTexture(size, size, THREE.UnsignedIntType);
+    d.name = 'sun.shadowMap';
+    d.format = THREE.DepthFormat;
+    d.compareFunction = reversed ? THREE.GreaterEqualCompare : THREE.LessEqualCompare;
+    d.minFilter = d.magFilter = THREE.LinearFilter;
+    shadow.map = map;
+  }
+
   // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
   function warm(renderer, obj, camera, opts) {
     return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));

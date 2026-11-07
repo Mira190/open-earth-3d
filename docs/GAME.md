@@ -402,6 +402,12 @@ is pressed, in the crane, at the street, the hand-over and 3 s on), and
 `tools/game_check.js` checks that the game opens at the scramble's kerb, in its
 walk, with walkers round you.
 
+A map with an overture (`game.overture`, so far Shibuya) plays it in place of the
+opening shot the first time you play that map: about forty seconds cut to a score, from the
+map's signature sights down to your shoulder, after which the onboarding goes on as
+below. Any key or tap eases down to you in under a second; "Play the opening" in the
+menu plays it again. See [OVERTURE.md](OVERTURE.md).
+
 The first time a browser plays any map (or reef site), a short tour of the HUD
 follows the arrival (`web/onboard.js`): walking and looking, the map, travel,
 taxis and rides, the passport, the phone, photo mode, the menu and the route line,

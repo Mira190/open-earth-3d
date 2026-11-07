@@ -85,6 +85,14 @@ Akonnchiroll, CC BY-SA 4.0, compared, not copied): its glass slopes in facets fr
 to the tower on all three sides, so it has a faceted glass roof from 4.5 m to its 20 m top by the tower, and
 the tower's low PLATEAU solids (r9215167 under 30 m) are drawn as its other wings (`roofs.atrium_parts`).
 
+**One roof (#263).** The plaza still came as PLATEAU's pieces, two with a faceted roof each and the rest flat at
+14-26 m. `pipeline/arcades.py` (`one_atrium_roof`) now draws one faceted glass roof over all of them: their union,
+closed over the strips PLATEAU leaves between its pieces (up to 8 m) and run on to the tower's walls, rising from
+eaves at 4.5 m round the plaza's edge to 20.4 m against the tower, each point by its distances to the two; the
+other parts' walls stop at the same eaves under it. Only the tower it wraps counts, not a tall neighbour.
+
+![The Sumitomo Triangle Plaza under one glass roof, from the south at day and dusk and from the north-west (#263)](../images/fidelity-263/sumitomo-one-roof.jpg)
+
 **Two more roofs (#258).** The 2,394 m² roof at 26 m that OpenStreetMap maps as `building=roof` (w787547154)
 is 186 m long and 13 m wide, between the New National Theatre and Opera City: the Opera City Galleria's glazed
 roof over the walkway (`roofs.glazed`: glass, no posts). The roof at 51.6–53.1 m on posts (w1409752350,

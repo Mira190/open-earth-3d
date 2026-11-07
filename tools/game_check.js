@@ -230,6 +230,45 @@ const npcNight = require('./npc_night');
   check(second.settled < 1.2 && !second.tour && /gold line|minimap shows the way/.test(second.toast),
     `on a later map the intro is skipped: a key settles the arrival (${second.settled.toFixed(1)} s), no tour, the guide's welcome ("${second.toast.slice(0, 90)}")`);
 
+  // the overture (overture.js, docs/OVERTURE.md), on a map that has one: it plays through to the player's
+  // shoulder, the walk at its signal turns green, and a key at any point eases down to the player in under a second
+  const ov = await p.evaluate(async () => {
+    const g = window.__game, o = g.overture();
+    if (!o) return null;
+    const out = {};
+    let done = null;
+    out.started = o.play(sk => { done = { skipped: sk }; });
+    if (!out.started && o.variant === 'day' && g.G.overture.day === false) return { off: true }; // (its day overture is off: the opening shot plays)
+    if (!out.started) return out;
+    let t = 0;
+    while (o.active && t < o.total + 3) { g.advance(0.25); t += 0.25; if (Math.round(t * 4) % 16 === 0) await new Promise(r => requestAnimationFrame(r)); }
+    for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(r)); // (a frame or two of the chase camera)
+    const e = o.end, head = g.player.z + 1.55, cam = g.camera.position;
+    out.t = t; out.total = o.total; out.done = done; out.kind = o.kind;
+    out.near = Math.hypot(cam.x - g.player.x, cam.z + g.player.y, cam.y - head);
+    out.at = Math.hypot(g.player.x - e[0], g.player.y - e[1]);
+    const sig = g.G.overture.shots.some(q => (q.cues || []).some(c => c[1] === 'green')) ? g.G.overture.signal : null; // (only an overture that turns its signal green)
+    if (sig) { const p0 = o.point(sig), j = g.junctions.J.filter(q => q.sig).sort((a, b) => Math.hypot(a.x - p0[0], a.y - p0[1]) - Math.hypot(b.x - p0[0], b.y - p0[1]))[0]; out.signal = j ? { d: Math.hypot(j.x - p0[0], j.y - p0[1]), ph: j.ph, st: j.st, scramble: !!j.scramble } : null; }
+    out.layer = !!document.querySelector('.ov-layer');
+    // skipped a few seconds in
+    done = null;
+    o.play(sk => { done = { skipped: sk }; });
+    g.advance(4);
+    o.skip();
+    let s = 0;
+    while (o.active && s < 3) { g.advance(0.1); s += 0.1; await new Promise(r => requestAnimationFrame(r)); }
+    out.skip = s; out.skipDone = done;
+    return out;
+  });
+  if (ov && ov.off) check(true, 'the overture is for after dark here; by day the opening shot plays');
+  else if (ov) {
+    check(ov.started && ov.done && !ov.done.skipped && ov.t <= ov.total + 1 && ov.near < 12 && ov.at < 3,
+      `the overture plays (${ov.total ? ov.total.toFixed(1) : '?'} s, guide ${ov.kind}) and hands over to the chase camera ${ov.near != null ? ov.near.toFixed(1) : '?'} m from the player's head, ${ov.at != null ? ov.at.toFixed(1) : '?'} m from its end spot`);
+    if (ov.signal !== undefined) check(ov.signal && ov.signal.d < 30 && ov.signal.st === 'g' && (ov.signal.scramble ? ov.signal.ph === 3 : ov.signal.ph === 1),
+      `the overture's signal turns the walk green as control comes to you (${JSON.stringify(ov.signal)})`);
+    check(ov.skipDone && ov.skipDone.skipped && ov.skip < 1.2, `a key during the overture eases down to the player (${ov.skip != null ? ov.skip.toFixed(1) : '?'} s)`);
+  }
+
   // walking: forward for four seconds
   const walk = await p.evaluate(() => {
     const g = window.__game, a = [g.player.x, g.player.y];
