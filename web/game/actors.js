@@ -1853,7 +1853,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         lanePos(line, s, dir, tmp, lo);
         if (overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 0.3, 0.1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) { R.wait += dt; if (R.wait > 20) { c.revBan = 60; c.revEnd = 'no room on the way out'; c.rev = null; } return true; }
         c.line = line; c.s = s; c.dir = dir; c.ln = 0; c.lo = lo; c.off = 0; c.pv = null; c.rev = null;
-        c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; c.inWallNow = 0;
+        c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; c.inWallNow = false;
         c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.v = 0.5; // (its heading eased round to the new way's by its next steps, not swung at once)
         return false; // (on its way from here this frame, as any car)
       }
@@ -2201,12 +2201,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // Higashiyama's road 138 kept a queue in a wall)
         if (nav && c.v < 2 && !c.ln && !c.mv && !JN.centred(c.line) && (c.wallChk = (c.wallChk || 0) - dt) <= 0) {
           c.wallChk = 0.5;
-          c.inWallNow = !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false) && Math.abs(c.off) < LANE * 0.4 ? 0.5 : 0;
-        } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = 0;
-        if (!swerve && c.inWallNow) swerve = -LANE * side * c.inWallNow;
+          c.inWallNow = !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false) && Math.abs(c.off) < LANE * 0.4;
+        } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = false;
+        if (!swerve && c.inWallNow) swerve = -LANE * side * 0.5;
         // (and such a street is single file there: it counts as in a narrow stretch, so that one coming the other
         // way waits short of it, in its lane, as the narrow rule makes moving cars do, rather than brush past, #264)
-        if (c.inWallNow) { c.narrowF = Math.max(c.narrowF || 0, c.inWallNow); c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, 2 * c.half + 1.5); c.narrowIn = 0; }
+        if (c.inWallNow) { c.narrowF = Math.max(c.narrowF || 0, 0.5); c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, 2 * c.half + 1.5); c.narrowIn = 0; }
         c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
