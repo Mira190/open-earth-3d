@@ -3,7 +3,7 @@
 // reverseStep runs in the page (page.evaluate(reverseStep, { ride, stills })), once the game has started (stills: a
 // still at three points as the ride backs out, through window.__still(name), which the caller exposes):
 //   traffic  up to three cars of the traffic on one-way streets near you are asked to back out
-//            (cars.reverse); each must end up on another piece of road, going on, within 60 s, never into
+//            (cars.reverse); each must end up on another piece of road, going on, within 90 s, never into
 //            another car on the way (its body 0.1 m into one at most);
 //   ride     (with ride: true; a ride is ordered and boarded if none is under way) the ride is put on a one-way
 //            street near you and asked to turn round (__game.turnRide): it must back out, never into a car
@@ -32,7 +32,8 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     const line = c.line;
     if (A.reverse(c)) watch.push({ c, id: C.indexOf(c), line, deep: 0, t: 0, done: false, gone: false, went: 0, x: c.x, y: c.y });
   }
-  for (let t = 0; t < 60 && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
+  // (90 s: it backs up to 80 m at a walking pace, and may wait up to 20 s at a time on the way for the junction behind)
+  for (let t = 0; t < 90 && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
     g.advance(0.1);
     for (const w of watch) {
       if (w.done || w.gone || w.gaveUp) continue;

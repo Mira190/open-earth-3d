@@ -38,6 +38,7 @@ module.exports = async function scrambles(p, { all = false } = {}) {
       const onStripes = o => (j.walks || []).some(w => { const len = Math.hypot(w[2] - w[0], w[3] - w[1]); if (len < 4) return false; const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len, t = (o.x - w[0]) * ux + (o.y - w[1]) * uy; return t > 0 && t < len && Math.abs((o.x - w[0]) * uy - (o.y - w[1]) * ux) < 4; });
       const poles = H ? [...H.list, ...H.peds].filter(o => o.a.j === j && onStripes(o)).map(o => `${o.x.toFixed(1)},${o.y.toFixed(1)}`) : [];
       // and those waiting at its kerbs stand still: not turning about, or breaking into a step and out of it, half a second to the next
+      // (once arrived: from their fourth look on, a second and a half after they came to their place)
       const stood = new Map();
       let waitLooks = 0, fidgets = 0, turnsF = 0, stepsF = 0;
       for (let t = 0; t < 2 * 4 * (j.green[0] + j.green[1] + j.green[3] + 3 * (j.amber + j.allred)); t++) {
@@ -46,8 +47,8 @@ module.exports = async function scrambles(p, { all = false } = {}) {
         last = j.ph;
         for (const q of C.P.slice(0, C.active)) {
           const w = stood.get(q);
-          if (q.pz === pz && q.ph === 'wait' && w) { waitLooks++; const tu = Math.abs(Math.atan2(Math.sin(q.h - w.h), Math.cos(q.h - w.h))) > 0.35, stp = w.m !== !!q.moving; if (tu || stp) { fidgets++; if (tu) turnsF++; if (stp) stepsF++; } }
-          if (q.pz === pz && q.ph === 'wait') stood.set(q, { h: q.h, m: !!q.moving }); else stood.delete(q);
+          if (q.pz === pz && q.ph === 'wait' && w && w.n >= 3) { waitLooks++; const tu = Math.abs(Math.atan2(Math.sin(q.h - w.h), Math.cos(q.h - w.h))) > 0.35, stp = w.m !== !!q.moving; if (tu || stp) { fidgets++; if (tu) turnsF++; if (stp) stepsF++; } }
+          if (q.pz === pz && q.ph === 'wait') stood.set(q, { h: q.h, m: !!q.moving, n: w ? w.n + 1 : 1 }); else stood.delete(q); // (n: its looks waiting so far; the first second and a half, turning round to the road from the way it came, is arriving, not fidgeting)
         }
         const P = C.P.slice(0, C.active), out = P.filter(q => onPlaza(q) || onFoot(q));
         const shown = H && H.walkShown ? H.walkShown(j) : [];

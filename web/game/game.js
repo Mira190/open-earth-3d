@@ -4349,11 +4349,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (turning) {
         const gm = ride.turn.rev ? 0.7 : 0.3; // (backing out, a wider berth: a car creeping up to it at an angle in the junction touched it, Sydney)
         cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + gm, hw: o.C.hw + gm, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true });
-        // (backing out of a one-way street: where it goes next too, 3 and 6 m on along its way, and where it stops backing,
+        // (backing out of a one-way street: where it goes next too, every 6 m of its way back from 3 m on, and where it stops backing,
         // in the mouth of the junction behind, so that a car crossing that junction, or turning into the street, stops
         // short of it rather than in its way, each then waiting for the other, #283)
         const T = ride.turn;
-        if (T.rev) for (const ahead of [12, 24, T.poses.findIndex(p => p.stop) - T.i]) { if (!(ahead > 0)) continue; const q = T.poses[Math.min(T.poses.length - 1, T.i + ahead)]; if (q !== T.poses[T.i]) cars.extra.push({ id, x: q.x, y: q.y, z: st.z, h: q.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true }); }
+        const stopAt = T.rev ? T.poses.findIndex(p => p.stop) : -1, aheads = [];
+        if (T.rev) { for (let a = 12; T.i + a < stopAt; a += 24) aheads.push(a); aheads.push(stopAt - T.i); }
+        for (const ahead of aheads) { if (!(ahead > 0)) continue; const q = T.poses[Math.min(T.poses.length - 1, T.i + ahead)]; if (q !== T.poses[T.i]) cars.extra.push({ id, x: q.x, y: q.y, z: st.z, h: q.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true }); }
         continue;
       }
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
