@@ -2201,10 +2201,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // Higashiyama's road 138 kept a queue in a wall)
         if (nav && c.v < 2 && !c.ln && !c.mv && !JN.centred(c.line) && (c.wallChk = (c.wallChk || 0) - dt) <= 0) {
           c.wallChk = 0.5;
-          // (and one still in the facade half way in goes on to the middle, which game.js fits samples too: Kyoto's
-          // road 128 by the station has room for a car only there)
-          const off = Math.abs(c.off), inWall = off < LANE * 0.9 && !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false);
-          c.inWallNow = !inWall ? 0 : off < LANE * 0.4 ? 0.5 : 1;
+          c.inWallNow = !nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, false) && Math.abs(c.off) < LANE * 0.4 ? 0.5 : 0;
         } else if (c.v >= 2 || c.ln || c.mv) c.inWallNow = 0;
         if (!swerve && c.inWallNow) swerve = -LANE * side * c.inWallNow;
         // (and such a street is single file there: it counts as in a narrow stretch, so that one coming the other
