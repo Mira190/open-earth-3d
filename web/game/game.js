@@ -1650,7 +1650,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // gives up the backing out where it is and drives on from there, #283)
     if ((T.rev || !(T.held >= 10)) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) {
       T.held = (T.held || 0) + dt; st.v = 0; st.brake = true;
-      if (T.rev && T.held > 3 && junctions.makeWay) junctions.makeWay(nx.x, nx.y, st.z, nx.h, o.C.half, o.C.hw, 0.3);
+      if (T.held > 3 && junctions.makeWay) junctions.makeWay(nx.x, nx.y, st.z, nx.h, o.C.half, o.C.hw, 0.3);
       // (a car come into the street behind it since, stopped there for it: it backs out first, Fushimi Inari's piece 99)
       if (T.rev && T.held > 3 && T.pl && cars.reverse) for (const c of cars.C) if (c.line === T.pl.line && c.dir === T.pl.dir && c.v < 0.3 && !c.rev && Math.hypot(c.x - nx.x, c.y - nx.y) < 10) cars.reverse(c);
       // (held 10 s on the way back: its way out worked out again from where it is, round what holds it now)
@@ -4375,7 +4375,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const turning = o === ride && !!ride.turn;
       blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: !turning && Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
       if (turning) {
-        const gm = ride.turn.rev ? 0.7 : 0.3; // (backing out, a wider berth: a car creeping up to it at an angle in the junction touched it, Sydney)
+        const gm = 0.7; // (turning round, a wide berth: a car creeping up to it at an angle touched it, Sydney, and one met a three-point turn in Shinjuku)
         cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + gm, hw: o.C.hw + gm, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true });
         // (backing out of a one-way street: where it goes next too, every 6 m of its way back from 3 m on, and where it stops backing,
         // in the mouth of the junction behind, so that a car crossing that junction, or turning into the street, stops
