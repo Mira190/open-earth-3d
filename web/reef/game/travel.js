@@ -42,7 +42,7 @@ export function createTravel(ctx) {
     const out = await Promise.all(reef.map(async c => {
       const current = c.id === here;
       const ready = current || await probe(c.id);
-      const o = { id: c.id, name: c.name, lat: c.lat, lon: c.lon, summary: c.summary || '', status: c.status || '', ready, current, km: null, bearing: null };
+      const o = { id: c.id, name: c.name, lat: c.lat, lon: c.lon, summary: (c.guide && c.guide.hook) || c.tagline || c.summary || '', status: c.status || '', ready, current, km: null, bearing: null };
       if (origin && Number.isFinite(c.lat) && Number.isFinite(c.lon)) { o.km = distanceKm(origin, c); o.bearing = bearingDeg(origin, c); }
       return o;
     }));
