@@ -677,6 +677,14 @@ keys each program on more than the material, so these rules hold for every page:
   game opens. A pass the title doesn't draw (the arrival's depth of field) is compiled behind the
   loader (`atmos.warm`). A stand-in for it needs the pass's own attributes, since attributes are
   part of the variant.
+- **Compile the city in slices.** `compileAsync` creates every program of the scene in one call, a
+  task of 10–25 s on a software renderer. `OEWorld.compile` compiles a big object in slices of about
+  50 ms, object by object, and yields between them; the loaders hold their first draw until it is
+  done, since a draw would compile the rest in one frame. The mirror's clipped variant compiles the
+  same way behind the title. The weather's warm-up compiles only the rain's own meshes.
+- **Share programs that differ only in uniforms.** Landmark materials key their programs by the text
+  their `onBeforeCompile` chain writes (`byText` in `world.js`), not by name: in Sydney 128 landmark
+  programs were 42 shaders.
 - **Avoid passes that draw the whole scene with an `overrideMaterial`.** Each kind of mesh
   (plain, instanced, skinned, batched) gets its own variant of the override, and the scene's
   geometry is drawn again. The camera effects read the depth buffer the scene already wrote
@@ -1232,6 +1240,14 @@ stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
 
 The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
 more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
+
+The live cities' `landmarks.json`, `game.json`, `terrain.json`, `places.json` and `scene.json` are
+packed the same way (issues 201, 259) and decoded in a Worker (`web/pack-worker.js`), so that nothing
+is parsed on the main thread at load: the landmark meshes' vertex lists arrive as typed arrays, and the
+height grids (`terrain.json` and `game.json` terrain, patches and upper) and the game's water mask as
+`Uint8Array`, which `world.js`, `game.js`, `hud.js` and `nav.js` read as they are (they still take base64
+from the JSON, the fallback). The loader says when the files are in and the packs are unpacking, and
+shows its stage under the label (`OEWorld.loadLine`).
 
 ### Shared models: meshopt
 

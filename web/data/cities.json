@@ -9,6 +9,31 @@
   "status": "live",
   "timezone": "Pacific/Auckland",
   "summary": "Queenstown on Lake Wakatipu: every roof measured by LINZ's 2021 LiDAR under its 2026 aerial photos, the Skyline Gondola to Bob's Peak, the TSS Earnslaw at Steamer Wharf, and the Remarkables across the lake.",
+  "guide": {
+   "line": "The adventure capital of the south, folded between Lake Wakatipu and the Remarkables. Ride the gondola up at dusk, watch the lake turn to gold, and be on the wharf when the old steamer whistles.",
+   "spots": [
+    [
+     "Skyline Gondola",
+     "Up to Bob's Peak, the whole lake beneath you"
+    ],
+    [
+     "TSS Earnslaw",
+     "A 1912 coal-fired steamer, still sailing every day"
+    ],
+    [
+     "The Remarkables",
+     "A jagged wall of rock across the water, snow-capped till spring"
+    ]
+   ],
+   "local": [
+    "Local",
+    "K\u0101i Tahu named the bay T\u0101huna. Today it's a burger after midnight and a Central Otago pinot on the waterfront."
+   ],
+   "best": [
+    "Dusk",
+    "alpenglow"
+   ]
+  },
   "built": true,
   "game": true,
   "buildings": 4071,
@@ -19,11 +44,14 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 4430471,
-   "game": 5333427
+   "model": 1818052,
+   "game": 2721275
   }
  },
  {
@@ -34,6 +62,31 @@
   "lon": 151.2115,
   "status": "live",
   "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places, and a game: walk it, ride the ferries, fly under the bridge.",
+  "guide": {
+   "line": "A harbour city of sails and sandstone. Take the ferry past the Opera House, wander The Rocks where the colony began, and watch the bridge light up as the sun goes down behind Balmain.",
+   "spots": [
+    [
+     "Opera House",
+     "Utzon's white sails on Bennelong Point"
+    ],
+    [
+     "Harbour Bridge",
+     "The Coathanger: fly beneath its steel arch"
+    ],
+    [
+     "Circular Quay",
+     "Green-and-gold ferries out to Manly and Taronga"
+    ]
+   ],
+   "local": [
+    "Local",
+    "Gadigal Country for tens of thousands of years. Today: a flat white at dawn, a ferry to work, fish and chips on the quay."
+   ],
+   "best": [
+    "Dusk",
+    "harbour lights"
+   ]
+  },
   "timezone": "Australia/Sydney",
   "built": true,
   "game": true,
@@ -45,11 +98,14 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 2277081,
-   "game": 2709092
+   "model": 1320118,
+   "game": 1752124
   }
  },
  {
@@ -64,6 +120,9 @@
   "district": "Central Kyoto",
   "tagline": "Kyoto Station and Kyoto Tower to the Imperial Palace",
   "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people.",
+  "guide": {
+   "hook": "Kyoto Tower's beacon, Nishiki Market and the Imperial Palace gardens"
+  },
   "timezone": "Asia/Tokyo",
   "built": true,
   "game": true,
@@ -75,11 +134,14 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 6869101,
-   "game": 7251379
+   "model": 6240101,
+   "game": 6622369
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -88,7 +150,18 @@
    "seconds": 14
   },
   "group_meta": {
-   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
+   "guide": {
+    "line": "Japan's capital for a thousand years, and it still keeps the old hours: temple bells at dawn, lanterns in the lanes at dusk, and some 1,600 temples tucked between the hills.",
+    "local": [
+     "Local",
+     "Matcha and wagashi in a wooden machiya teahouse, and a maiko's footsteps on Gion's stones at dusk."
+    ],
+    "best": [
+     "Dawn",
+     "before the crowds"
+    ]
+   }
   }
  },
  {
@@ -103,6 +176,9 @@
   "district": "Higashiyama",
   "tagline": "Kiyomizu-dera, Sannenzaka, Ninenzaka and the Yasaka Pagoda",
   "summary": "Kyoto's Higashiyama: Kiyomizu-dera's stage on its keyaki lattice, the stone lanes of Sannenzaka and Ninenzaka with their noren and lanterns, and the Yasaka Pagoda, on PLATEAU's measured heights.",
+  "guide": {
+   "hook": "Kiyomizu's wooden stage and lantern-lit stone lanes to the Yasaka Pagoda"
+  },
   "timezone": "Asia/Tokyo",
   "built": true,
   "game": true,
@@ -114,14 +190,28 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 1592899,
-   "game": 1711409
+   "model": 1105851,
+   "game": 1224358
   },
   "group_meta": {
-   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
+   "guide": {
+    "line": "Japan's capital for a thousand years, and it still keeps the old hours: temple bells at dawn, lanterns in the lanes at dusk, and some 1,600 temples tucked between the hills.",
+    "local": [
+     "Local",
+     "Matcha and wagashi in a wooden machiya teahouse, and a maiko's footsteps on Gion's stones at dusk."
+    ],
+    "best": [
+     "Dawn",
+     "before the crowds"
+    ]
+   }
   }
  },
  {
@@ -136,6 +226,9 @@
   "district": "Fushimi Inari",
   "tagline": "The Romon, the Senbon Torii and Mount Inari",
   "summary": "Fushimi Inari Taisha: the Romon and the halls, the two tunnels of the Senbon Torii and thousands more torii climbing Mount Inari to Yotsutsuji and the summit, on PLATEAU's measured heights.",
+  "guide": {
+   "hook": "Ten thousand vermilion torii climbing the rice god's sacred mountain"
+  },
   "timezone": "Asia/Tokyo",
   "built": true,
   "game": true,
@@ -147,14 +240,28 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 1108133,
-   "game": 1203567
+   "model": 653479,
+   "game": 748910
   },
   "group_meta": {
-   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
+   "guide": {
+    "line": "Japan's capital for a thousand years, and it still keeps the old hours: temple bells at dawn, lanterns in the lanes at dusk, and some 1,600 temples tucked between the hills.",
+    "local": [
+     "Local",
+     "Matcha and wagashi in a wooden machiya teahouse, and a maiko's footsteps on Gion's stones at dusk."
+    ],
+    "best": [
+     "Dawn",
+     "before the crowds"
+    ]
+   }
   }
  },
  {
@@ -169,6 +276,9 @@
   "district": "Philosopher's Path",
   "tagline": "Ginkaku-ji to Nanzen-ji along the canal",
   "summary": "Kyoto's Philosopher's Path: the canal walk under its cherries from Ginkaku-ji to Nanzen-ji, Nanzen-ji's Sanmon, the brick aqueduct and the Keage Incline, on PLATEAU's measured heights.",
+  "guide": {
+   "hook": "A canal walk under the cherry trees, Ginkaku-ji to Nanzen-ji"
+  },
   "timezone": "Asia/Tokyo",
   "built": true,
   "game": true,
@@ -180,14 +290,28 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 1217805,
-   "game": 1356292
+   "model": 726788,
+   "game": 865270
   },
   "group_meta": {
-   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path."
+   "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
+   "guide": {
+    "line": "Japan's capital for a thousand years, and it still keeps the old hours: temple bells at dawn, lanterns in the lanes at dusk, and some 1,600 temples tucked between the hills.",
+    "local": [
+     "Local",
+     "Matcha and wagashi in a wooden machiya teahouse, and a maiko's footsteps on Gion's stones at dusk."
+    ],
+    "best": [
+     "Dawn",
+     "before the crowds"
+    ]
+   }
   }
  },
  {
@@ -212,11 +336,14 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 2501970,
-   "game": 2978262
+   "model": 1843544,
+   "game": 2319830
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -236,7 +363,15 @@
      "lat": 35.6812,
      "lon": 139.7671,
      "map": "tokyo",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Red-brick Tokyo Station, glass towers and the moats and stone walls of the Imperial Palace.",
+      "spots": [
+       "Tokyo Station",
+       "Imperial Palace",
+       "Hibiya Park"
+      ]
+     }
     },
     {
      "name": "Ginza",
@@ -244,7 +379,15 @@
      "lat": 35.6717,
      "lon": 139.764,
      "map": "tokyo",
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "Tokyo's grand boulevard: flagship stores, Wako's clock tower and the water bus down to Tokyo Tower.",
+      "spots": [
+       "Wako clock",
+       "Kabuki-za",
+       "Tokyo Tower"
+      ]
+     }
     },
     {
      "name": "Shibuya",
@@ -252,7 +395,15 @@
      "lat": 35.659,
      "lon": 139.7016,
      "map": "shibuya",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "The world's busiest crossing, the faithful dog Hachiko, and the whole city at your feet from SHIBUYA SKY.",
+      "spots": [
+       "The Scramble",
+       "Hachiko",
+       "SHIBUYA SKY"
+      ]
+     }
     },
     {
      "name": "Harajuku",
@@ -261,7 +412,15 @@
      "lon": 139.7027,
      "map": "shibuya",
      "travel": "t-harajuku",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Crepes and street fashion on Takeshita Street, and the hush of Meiji Jingu's forest next door.",
+      "spots": [
+       "Takeshita Street",
+       "Meiji Jingu",
+       "Yoyogi Park"
+      ]
+     }
     },
     {
      "name": "Shinjuku",
@@ -270,7 +429,15 @@
      "lon": 139.7003,
      "map": "shinjuku",
      "travel": "t-east",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Neon Kabukicho, Golden Gai's six-seat bars, and the towers of Nishi-Shinjuku lit up at night.",
+      "spots": [
+       "Kabukicho",
+       "Golden Gai",
+       "Shinjuku Gyoen"
+      ]
+     }
     },
     {
      "name": "Yotsuya",
@@ -279,7 +446,15 @@
      "lon": 139.7302,
      "map": "shinjuku",
      "travel": "t-suga",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Quiet backstreets, a ginkgo avenue turning gold, and the Suga Shrine stairs from Your Name.",
+      "spots": [
+       "Suga Shrine stairs",
+       "Ginkgo avenue",
+       "Jingu Gaien"
+      ]
+     }
     },
     {
      "name": "Sangen-jaya",
@@ -288,77 +463,165 @@
      "lon": 139.6702,
      "map": "shibuya",
      "travel": "t-sancha",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Old izakaya alleys in the Sankaku Chitai, a corner bathhouse, and the Tokyo the tour buses miss.",
+      "spots": [
+       "Sankaku Chitai",
+       "Carrot Tower",
+       "Setagaya Line"
+      ]
+     }
     },
     {
      "name": "Akihabara",
      "native": "\u79cb\u8449\u539f",
      "lat": 35.6984,
      "lon": 139.7731,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Electric Town: arcades stacked six floors high, anime shops and maid caf\u00e9s under the neon.",
+      "spots": [
+       "Arcades",
+       "Chuo-dori",
+       "Kanda Myojin"
+      ]
+     }
     },
     {
      "name": "Asakusa",
      "native": "\u6d45\u8349",
      "lat": 35.711,
      "lon": 139.7976,
-     "label": "b"
+     "label": "b",
+     "guide": {
+      "line": "Old Edo: the Thunder Gate's great red lantern, incense smoke at Senso-ji, and rice crackers fresh off the grill.",
+      "spots": [
+       "Kaminarimon",
+       "Senso-ji",
+       "Nakamise"
+      ]
+     }
     },
     {
      "name": "Oshiage \u00b7 Skytree",
      "native": "\u62bc\u4e0a",
      "lat": 35.7102,
      "lon": 139.8133,
-     "label": "t"
+     "label": "t",
+     "guide": {
+      "line": "Tokyo Skytree, 634 m, the tallest tower in the world, rising over the Sumida River.",
+      "spots": [
+       "Skytree",
+       "Tembo Deck",
+       "Sumida River"
+      ]
+     }
     },
     {
      "name": "Ueno",
      "native": "\u4e0a\u91ce",
      "lat": 35.7138,
      "lon": 139.7774,
-     "label": "t"
+     "label": "t",
+     "guide": {
+      "line": "Museums under the cherry trees, the lotus pond, and Ameyoko's market stalls beneath the tracks.",
+      "spots": [
+       "Ueno Park",
+       "Ameyoko",
+       "Shinobazu Pond"
+      ]
+     }
     },
     {
      "name": "Ikebukuro",
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Sunshine City, Otome Road's anime shops and a bowl of ramen long after the last train.",
+      "spots": [
+       "Sunshine 60",
+       "Otome Road",
+       "Ramen alley"
+      ]
+     }
     },
     {
      "name": "Jinbocho",
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "Book town: a hundred and more second-hand bookshops, and curry houses for when the browsing is done.",
+      "spots": [
+       "Book street",
+       "Curry houses",
+       "Kanda"
+      ]
+     }
     },
     {
      "name": "Roppongi",
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "label": "b"
+     "label": "b",
+     "guide": {
+      "line": "Art by day and clubs till dawn: the view from Mori Tower and the giant spider Maman.",
+      "spots": [
+       "Roppongi Hills",
+       "Mori Tower",
+       "Tokyo Midtown"
+      ]
+     }
     },
     {
      "name": "Tsukishima",
      "native": "\u6708\u5cf6",
      "lat": 35.6646,
      "lon": 139.784,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Monja Street: griddles sizzling in a riverside island town of old wooden houses.",
+      "spots": [
+       "Monja Street",
+       "Sumida River",
+       "Back lanes"
+      ]
+     }
     },
     {
      "name": "Odaiba",
      "native": "\u304a\u53f0\u5834",
      "lat": 35.627,
      "lon": 139.775,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Rainbow Bridge across the bay, a life-size Gundam, and a beach with the skyline beyond.",
+      "spots": [
+       "Rainbow Bridge",
+       "Gundam",
+       "Odaiba Beach"
+      ]
+     }
     },
     {
      "name": "Shinagawa",
      "native": "\u54c1\u5ddd",
      "lat": 35.6285,
      "lon": 139.7387,
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "The Tokaido's first stop: bullet trains, and Sengaku-ji where the forty-seven ronin rest.",
+      "spots": [
+       "Shinkansen",
+       "Sengaku-ji",
+       "Tokaido"
+      ]
+     }
     }
    ],
    "lines": [
@@ -776,7 +1039,18 @@
       ]
      ]
     }
-   ]
+   ],
+   "guide": {
+    "line": "Thirty-seven million people, and every station opens onto a different world. Pick a stop on the line and step out into it.",
+    "local": [
+     "Local",
+     "The last train at midnight, an onigiri from the konbini, and a city that is still wide awake."
+    ],
+    "best": [
+     "Night",
+     "neon hours"
+    ]
+   }
   }
  },
  {
@@ -809,11 +1083,14 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 5044105,
-   "game": 5596705
+   "model": 4291897,
+   "game": 4844497
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -827,7 +1104,15 @@
      "lat": 35.6812,
      "lon": 139.7671,
      "map": "tokyo",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Red-brick Tokyo Station, glass towers and the moats and stone walls of the Imperial Palace.",
+      "spots": [
+       "Tokyo Station",
+       "Imperial Palace",
+       "Hibiya Park"
+      ]
+     }
     },
     {
      "name": "Ginza",
@@ -835,7 +1120,15 @@
      "lat": 35.6717,
      "lon": 139.764,
      "map": "tokyo",
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "Tokyo's grand boulevard: flagship stores, Wako's clock tower and the water bus down to Tokyo Tower.",
+      "spots": [
+       "Wako clock",
+       "Kabuki-za",
+       "Tokyo Tower"
+      ]
+     }
     },
     {
      "name": "Shibuya",
@@ -843,7 +1136,15 @@
      "lat": 35.659,
      "lon": 139.7016,
      "map": "shibuya",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "The world's busiest crossing, the faithful dog Hachiko, and the whole city at your feet from SHIBUYA SKY.",
+      "spots": [
+       "The Scramble",
+       "Hachiko",
+       "SHIBUYA SKY"
+      ]
+     }
     },
     {
      "name": "Harajuku",
@@ -852,7 +1153,15 @@
      "lon": 139.7027,
      "map": "shibuya",
      "travel": "t-harajuku",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Crepes and street fashion on Takeshita Street, and the hush of Meiji Jingu's forest next door.",
+      "spots": [
+       "Takeshita Street",
+       "Meiji Jingu",
+       "Yoyogi Park"
+      ]
+     }
     },
     {
      "name": "Shinjuku",
@@ -861,7 +1170,15 @@
      "lon": 139.7003,
      "map": "shinjuku",
      "travel": "t-east",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Neon Kabukicho, Golden Gai's six-seat bars, and the towers of Nishi-Shinjuku lit up at night.",
+      "spots": [
+       "Kabukicho",
+       "Golden Gai",
+       "Shinjuku Gyoen"
+      ]
+     }
     },
     {
      "name": "Yotsuya",
@@ -870,7 +1187,15 @@
      "lon": 139.7302,
      "map": "shinjuku",
      "travel": "t-suga",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Quiet backstreets, a ginkgo avenue turning gold, and the Suga Shrine stairs from Your Name.",
+      "spots": [
+       "Suga Shrine stairs",
+       "Ginkgo avenue",
+       "Jingu Gaien"
+      ]
+     }
     },
     {
      "name": "Sangen-jaya",
@@ -879,77 +1204,165 @@
      "lon": 139.6702,
      "map": "shibuya",
      "travel": "t-sancha",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Old izakaya alleys in the Sankaku Chitai, a corner bathhouse, and the Tokyo the tour buses miss.",
+      "spots": [
+       "Sankaku Chitai",
+       "Carrot Tower",
+       "Setagaya Line"
+      ]
+     }
     },
     {
      "name": "Akihabara",
      "native": "\u79cb\u8449\u539f",
      "lat": 35.6984,
      "lon": 139.7731,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Electric Town: arcades stacked six floors high, anime shops and maid caf\u00e9s under the neon.",
+      "spots": [
+       "Arcades",
+       "Chuo-dori",
+       "Kanda Myojin"
+      ]
+     }
     },
     {
      "name": "Asakusa",
      "native": "\u6d45\u8349",
      "lat": 35.711,
      "lon": 139.7976,
-     "label": "b"
+     "label": "b",
+     "guide": {
+      "line": "Old Edo: the Thunder Gate's great red lantern, incense smoke at Senso-ji, and rice crackers fresh off the grill.",
+      "spots": [
+       "Kaminarimon",
+       "Senso-ji",
+       "Nakamise"
+      ]
+     }
     },
     {
      "name": "Oshiage \u00b7 Skytree",
      "native": "\u62bc\u4e0a",
      "lat": 35.7102,
      "lon": 139.8133,
-     "label": "t"
+     "label": "t",
+     "guide": {
+      "line": "Tokyo Skytree, 634 m, the tallest tower in the world, rising over the Sumida River.",
+      "spots": [
+       "Skytree",
+       "Tembo Deck",
+       "Sumida River"
+      ]
+     }
     },
     {
      "name": "Ueno",
      "native": "\u4e0a\u91ce",
      "lat": 35.7138,
      "lon": 139.7774,
-     "label": "t"
+     "label": "t",
+     "guide": {
+      "line": "Museums under the cherry trees, the lotus pond, and Ameyoko's market stalls beneath the tracks.",
+      "spots": [
+       "Ueno Park",
+       "Ameyoko",
+       "Shinobazu Pond"
+      ]
+     }
     },
     {
      "name": "Ikebukuro",
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Sunshine City, Otome Road's anime shops and a bowl of ramen long after the last train.",
+      "spots": [
+       "Sunshine 60",
+       "Otome Road",
+       "Ramen alley"
+      ]
+     }
     },
     {
      "name": "Jinbocho",
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "Book town: a hundred and more second-hand bookshops, and curry houses for when the browsing is done.",
+      "spots": [
+       "Book street",
+       "Curry houses",
+       "Kanda"
+      ]
+     }
     },
     {
      "name": "Roppongi",
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "label": "b"
+     "label": "b",
+     "guide": {
+      "line": "Art by day and clubs till dawn: the view from Mori Tower and the giant spider Maman.",
+      "spots": [
+       "Roppongi Hills",
+       "Mori Tower",
+       "Tokyo Midtown"
+      ]
+     }
     },
     {
      "name": "Tsukishima",
      "native": "\u6708\u5cf6",
      "lat": 35.6646,
      "lon": 139.784,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Monja Street: griddles sizzling in a riverside island town of old wooden houses.",
+      "spots": [
+       "Monja Street",
+       "Sumida River",
+       "Back lanes"
+      ]
+     }
     },
     {
      "name": "Odaiba",
      "native": "\u304a\u53f0\u5834",
      "lat": 35.627,
      "lon": 139.775,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Rainbow Bridge across the bay, a life-size Gundam, and a beach with the skyline beyond.",
+      "spots": [
+       "Rainbow Bridge",
+       "Gundam",
+       "Odaiba Beach"
+      ]
+     }
     },
     {
      "name": "Shinagawa",
      "native": "\u54c1\u5ddd",
      "lat": 35.6285,
      "lon": 139.7387,
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "The Tokaido's first stop: bullet trains, and Sengaku-ji where the forty-seven ronin rest.",
+      "spots": [
+       "Shinkansen",
+       "Sengaku-ji",
+       "Tokaido"
+      ]
+     }
     }
    ],
    "lines": [
@@ -1367,7 +1780,18 @@
       ]
      ]
     }
-   ]
+   ],
+   "guide": {
+    "line": "Thirty-seven million people, and every station opens onto a different world. Pick a stop on the line and step out into it.",
+    "local": [
+     "Local",
+     "The last train at midnight, an onigiri from the konbini, and a city that is still wide awake."
+    ],
+    "best": [
+     "Night",
+     "neon hours"
+    ]
+   }
   }
  },
  {
@@ -1392,11 +1816,14 @@
   "packed": [
    "buildings",
    "landmarks",
-   "game"
+   "game",
+   "terrain",
+   "places",
+   "scene"
   ],
   "load_bytes": {
-   "model": 3226699,
-   "game": 3670010
+   "model": 2453214,
+   "game": 2896520
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1410,7 +1837,15 @@
      "lat": 35.6812,
      "lon": 139.7671,
      "map": "tokyo",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Red-brick Tokyo Station, glass towers and the moats and stone walls of the Imperial Palace.",
+      "spots": [
+       "Tokyo Station",
+       "Imperial Palace",
+       "Hibiya Park"
+      ]
+     }
     },
     {
      "name": "Ginza",
@@ -1418,7 +1853,15 @@
      "lat": 35.6717,
      "lon": 139.764,
      "map": "tokyo",
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "Tokyo's grand boulevard: flagship stores, Wako's clock tower and the water bus down to Tokyo Tower.",
+      "spots": [
+       "Wako clock",
+       "Kabuki-za",
+       "Tokyo Tower"
+      ]
+     }
     },
     {
      "name": "Shibuya",
@@ -1426,7 +1869,15 @@
      "lat": 35.659,
      "lon": 139.7016,
      "map": "shibuya",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "The world's busiest crossing, the faithful dog Hachiko, and the whole city at your feet from SHIBUYA SKY.",
+      "spots": [
+       "The Scramble",
+       "Hachiko",
+       "SHIBUYA SKY"
+      ]
+     }
     },
     {
      "name": "Harajuku",
@@ -1435,7 +1886,15 @@
      "lon": 139.7027,
      "map": "shibuya",
      "travel": "t-harajuku",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Crepes and street fashion on Takeshita Street, and the hush of Meiji Jingu's forest next door.",
+      "spots": [
+       "Takeshita Street",
+       "Meiji Jingu",
+       "Yoyogi Park"
+      ]
+     }
     },
     {
      "name": "Shinjuku",
@@ -1444,7 +1903,15 @@
      "lon": 139.7003,
      "map": "shinjuku",
      "travel": "t-east",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Neon Kabukicho, Golden Gai's six-seat bars, and the towers of Nishi-Shinjuku lit up at night.",
+      "spots": [
+       "Kabukicho",
+       "Golden Gai",
+       "Shinjuku Gyoen"
+      ]
+     }
     },
     {
      "name": "Yotsuya",
@@ -1453,7 +1920,15 @@
      "lon": 139.7302,
      "map": "shinjuku",
      "travel": "t-suga",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Quiet backstreets, a ginkgo avenue turning gold, and the Suga Shrine stairs from Your Name.",
+      "spots": [
+       "Suga Shrine stairs",
+       "Ginkgo avenue",
+       "Jingu Gaien"
+      ]
+     }
     },
     {
      "name": "Sangen-jaya",
@@ -1462,77 +1937,165 @@
      "lon": 139.6702,
      "map": "shibuya",
      "travel": "t-sancha",
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Old izakaya alleys in the Sankaku Chitai, a corner bathhouse, and the Tokyo the tour buses miss.",
+      "spots": [
+       "Sankaku Chitai",
+       "Carrot Tower",
+       "Setagaya Line"
+      ]
+     }
     },
     {
      "name": "Akihabara",
      "native": "\u79cb\u8449\u539f",
      "lat": 35.6984,
      "lon": 139.7731,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Electric Town: arcades stacked six floors high, anime shops and maid caf\u00e9s under the neon.",
+      "spots": [
+       "Arcades",
+       "Chuo-dori",
+       "Kanda Myojin"
+      ]
+     }
     },
     {
      "name": "Asakusa",
      "native": "\u6d45\u8349",
      "lat": 35.711,
      "lon": 139.7976,
-     "label": "b"
+     "label": "b",
+     "guide": {
+      "line": "Old Edo: the Thunder Gate's great red lantern, incense smoke at Senso-ji, and rice crackers fresh off the grill.",
+      "spots": [
+       "Kaminarimon",
+       "Senso-ji",
+       "Nakamise"
+      ]
+     }
     },
     {
      "name": "Oshiage \u00b7 Skytree",
      "native": "\u62bc\u4e0a",
      "lat": 35.7102,
      "lon": 139.8133,
-     "label": "t"
+     "label": "t",
+     "guide": {
+      "line": "Tokyo Skytree, 634 m, the tallest tower in the world, rising over the Sumida River.",
+      "spots": [
+       "Skytree",
+       "Tembo Deck",
+       "Sumida River"
+      ]
+     }
     },
     {
      "name": "Ueno",
      "native": "\u4e0a\u91ce",
      "lat": 35.7138,
      "lon": 139.7774,
-     "label": "t"
+     "label": "t",
+     "guide": {
+      "line": "Museums under the cherry trees, the lotus pond, and Ameyoko's market stalls beneath the tracks.",
+      "spots": [
+       "Ueno Park",
+       "Ameyoko",
+       "Shinobazu Pond"
+      ]
+     }
     },
     {
      "name": "Ikebukuro",
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Sunshine City, Otome Road's anime shops and a bowl of ramen long after the last train.",
+      "spots": [
+       "Sunshine 60",
+       "Otome Road",
+       "Ramen alley"
+      ]
+     }
     },
     {
      "name": "Jinbocho",
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "Book town: a hundred and more second-hand bookshops, and curry houses for when the browsing is done.",
+      "spots": [
+       "Book street",
+       "Curry houses",
+       "Kanda"
+      ]
+     }
     },
     {
      "name": "Roppongi",
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "label": "b"
+     "label": "b",
+     "guide": {
+      "line": "Art by day and clubs till dawn: the view from Mori Tower and the giant spider Maman.",
+      "spots": [
+       "Roppongi Hills",
+       "Mori Tower",
+       "Tokyo Midtown"
+      ]
+     }
     },
     {
      "name": "Tsukishima",
      "native": "\u6708\u5cf6",
      "lat": 35.6646,
      "lon": 139.784,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Monja Street: griddles sizzling in a riverside island town of old wooden houses.",
+      "spots": [
+       "Monja Street",
+       "Sumida River",
+       "Back lanes"
+      ]
+     }
     },
     {
      "name": "Odaiba",
      "native": "\u304a\u53f0\u5834",
      "lat": 35.627,
      "lon": 139.775,
-     "label": "r"
+     "label": "r",
+     "guide": {
+      "line": "Rainbow Bridge across the bay, a life-size Gundam, and a beach with the skyline beyond.",
+      "spots": [
+       "Rainbow Bridge",
+       "Gundam",
+       "Odaiba Beach"
+      ]
+     }
     },
     {
      "name": "Shinagawa",
      "native": "\u54c1\u5ddd",
      "lat": 35.6285,
      "lon": 139.7387,
-     "label": "l"
+     "label": "l",
+     "guide": {
+      "line": "The Tokaido's first stop: bullet trains, and Sengaku-ji where the forty-seven ronin rest.",
+      "spots": [
+       "Shinkansen",
+       "Sengaku-ji",
+       "Tokaido"
+      ]
+     }
     }
    ],
    "lines": [
@@ -1950,7 +2513,18 @@
       ]
      ]
     }
-   ]
+   ],
+   "guide": {
+    "line": "Thirty-seven million people, and every station opens onto a different world. Pick a stop on the line and step out into it.",
+    "local": [
+     "Local",
+     "The last train at midnight, an onigiri from the konbini, and a city that is still wide awake."
+    ],
+    "best": [
+     "Night",
+     "neon hours"
+    ]
+   }
   }
  },
  {
@@ -1964,6 +2538,9 @@
   "summary": "The Whitsunday Islands and the inner Great Barrier Reef: 30 m survey bathymetry, a Sentinel-2 sea floor, caustics, wet sand and a swash line. Walk Whitehaven Beach, snorkel, dive.",
   "group": "Great Barrier Reef",
   "tagline": "Whitehaven Beach, Hill Inlet and the Whitsunday Passage",
+  "guide": {
+   "hook": "Whitehaven's pure silica sand swirling into the turquoise of Hill Inlet"
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -1972,7 +2549,18 @@
    33.2
   ],
   "group_meta": {
-   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.",
+   "guide": {
+    "line": "The largest living thing on Earth: 2,300 km of coral off Queensland. Swim with turtles, walk silica sand as white as snow, and fly over Heart Reef.",
+    "local": [
+     "Reef manners",
+     "Reef-safe sunscreen, fins kept off the coral, and a turtle always has right of way."
+    ],
+    "best": [
+     "Low tide",
+     "reef flats"
+    ]
+   }
   }
  },
  {
@@ -1986,6 +2574,9 @@
   "group": "Great Barrier Reef",
   "tagline": "Heart Reef and the Reefworld pontoon, outer reef",
   "summary": "Hardy Reef on the outer Great Barrier Reef: Heart Reef, the Reefworld pontoon on the channel wall, and Hook, Line and Bait reefs, from 30 m survey bathymetry and Sentinel-2. No land: start on the pontoon's deck and dive the wall.",
+  "guide": {
+   "hook": "Heart Reef from the air, the outer reef from the pontoon"
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -1994,7 +2585,18 @@
    27.6
   ],
   "group_meta": {
-   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.",
+   "guide": {
+    "line": "The largest living thing on Earth: 2,300 km of coral off Queensland. Swim with turtles, walk silica sand as white as snow, and fly over Heart Reef.",
+    "local": [
+     "Reef manners",
+     "Reef-safe sunscreen, fins kept off the coral, and a turtle always has right of way."
+    ],
+    "best": [
+     "Low tide",
+     "reef flats"
+    ]
+   }
   }
  },
  {
@@ -2008,6 +2610,9 @@
   "group": "Great Barrier Reef",
   "tagline": "Coral cay off Cairns, with Arlington Reef and Michaelmas Cay",
   "summary": "Green Island, a coral cay 27 km off Cairns, with Arlington Reef, Upolu Cay and Michaelmas Cay: survey bathymetry, a seam-free Sentinel-2 sea floor and MSQ's tide. Walk the beach by the jetty, snorkel the reef flat.",
+  "guide": {
+   "hook": "A rainforest cay off Cairns: snorkel straight off the beach"
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -2016,7 +2621,18 @@
    33.6
   ],
   "group_meta": {
-   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.",
+   "guide": {
+    "line": "The largest living thing on Earth: 2,300 km of coral off Queensland. Swim with turtles, walk silica sand as white as snow, and fly over Heart Reef.",
+    "local": [
+     "Reef manners",
+     "Reef-safe sunscreen, fins kept off the coral, and a turtle always has right of way."
+    ],
+    "best": [
+     "Low tide",
+     "reef flats"
+    ]
+   }
   }
  },
  {
@@ -2030,6 +2646,9 @@
   "group": "Great Barrier Reef",
   "tagline": "Coral cay on the Tropic of Capricorn, with Wistari Reef",
   "summary": "Heron Island and Heron and Wistari reefs in the southern Great Barrier Reef: the cay rebuilt from its mapped outline, the reef flat drying at low tide, the research station and the wreck of HMCS Protector at the channel.",
+  "guide": {
+   "hook": "Green turtles nesting on a cay on the Tropic of Capricorn"
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -2038,7 +2657,18 @@
    14.3
   ],
   "group_meta": {
-   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.",
+   "guide": {
+    "line": "The largest living thing on Earth: 2,300 km of coral off Queensland. Swim with turtles, walk silica sand as white as snow, and fly over Heart Reef.",
+    "local": [
+     "Reef manners",
+     "Reef-safe sunscreen, fins kept off the coral, and a turtle always has right of way."
+    ],
+    "best": [
+     "Low tide",
+     "reef flats"
+    ]
+   }
   }
  },
  {
@@ -2052,6 +2682,9 @@
   "group": "Great Barrier Reef",
   "tagline": "The southernmost coral cay of the reef",
   "summary": "Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef: its platform reef in open water, the airstrip and old lighthouse, from survey bathymetry and Sentinel-2. Start on the western beach.",
+  "guide": {
+   "hook": "Manta rays gliding at the reef's southern tip"
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -2060,7 +2693,18 @@
    12.0
   ],
   "group_meta": {
-   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.",
+   "guide": {
+    "line": "The largest living thing on Earth: 2,300 km of coral off Queensland. Swim with turtles, walk silica sand as white as snow, and fly over Heart Reef.",
+    "local": [
+     "Reef manners",
+     "Reef-safe sunscreen, fins kept off the coral, and a turtle always has right of way."
+    ],
+    "best": [
+     "Low tide",
+     "reef flats"
+    ]
+   }
   }
  },
  {
@@ -2077,6 +2721,9 @@
   "tagline": "Aoraki / Mount Cook over the glacial-blue lake",
   "timezone": "Pacific/Auckland",
   "summary": "Lake Pukaki and Aoraki / Mount Cook, 38 by 84 km of the Mackenzie: LINZ's 1 m LiDAR terrain and aerial photos, the lake's glacial-flour blue measured from Sentinel-2, tussock and lupins, a sky from physical scattering and the dark-sky reserve's stars. Walk from Peter's Lookout, fly round Aoraki, walk the Hooker Valley.",
+  "guide": {
+   "hook": "Aoraki / Mount Cook over a lake of glacial milk-blue"
+  },
   "built": true,
   "game": false,
   "extent_km": [
@@ -2084,7 +2731,18 @@
    84.5
   ],
   "group_meta": {
-   "summary": "Two glacial lakes of the Mackenzie Basin on LINZ's 1 m LiDAR terrain and aerial photos: Lake Pukaki under Aoraki / Mount Cook, and Lake Tekapo with the Church of the Good Shepherd, under the dark-sky reserve's stars."
+   "summary": "Two glacial lakes of the Mackenzie Basin on LINZ's 1 m LiDAR terrain and aerial photos: Lake Pukaki under Aoraki / Mount Cook, and Lake Tekapo with the Church of the Good Shepherd, under the dark-sky reserve's stars.",
+   "guide": {
+    "line": "Glacier-blue lakes under New Zealand's highest peak, and a night sky so dark it's protected as a reserve for the stars.",
+    "local": [
+     "Local",
+     "Lupins in early summer, the Milky Way overhead, and silence at the Church of the Good Shepherd."
+    ],
+    "best": [
+     "Night",
+     "dark-sky reserve"
+    ]
+   }
   }
  },
  {
@@ -2101,6 +2759,9 @@
   "tagline": "The Church of the Good Shepherd on the turquoise lake",
   "timezone": "Pacific/Auckland",
   "summary": "Lake Tekapo / Takap\u014d, 36 by 52 km of the Mackenzie: LINZ's 1 m LiDAR terrain and aerial photos, the Church of the Good Shepherd, the sheepdog statue and Mt John's observatory modelled from the survey, lupins in their season and the dark-sky reserve's stars. Start at the church's postcard view, climb Mt John, find the Southern Cross.",
+  "guide": {
+   "hook": "A little stone church on the turquoise shore, under the stars"
+  },
   "built": true,
   "game": false,
   "extent_km": [
@@ -2108,7 +2769,18 @@
    51.8
   ],
   "group_meta": {
-   "summary": "Two glacial lakes of the Mackenzie Basin on LINZ's 1 m LiDAR terrain and aerial photos: Lake Pukaki under Aoraki / Mount Cook, and Lake Tekapo with the Church of the Good Shepherd, under the dark-sky reserve's stars."
+   "summary": "Two glacial lakes of the Mackenzie Basin on LINZ's 1 m LiDAR terrain and aerial photos: Lake Pukaki under Aoraki / Mount Cook, and Lake Tekapo with the Church of the Good Shepherd, under the dark-sky reserve's stars.",
+   "guide": {
+    "line": "Glacier-blue lakes under New Zealand's highest peak, and a night sky so dark it's protected as a reserve for the stars.",
+    "local": [
+     "Local",
+     "Lupins in early summer, the Milky Way overhead, and silence at the Church of the Good Shepherd."
+    ],
+    "best": [
+     "Night",
+     "dark-sky reserve"
+    ]
+   }
   }
  },
  {
@@ -2119,6 +2791,9 @@
   "lon": -74.0113,
   "status": "planned",
   "data": "NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM; NYS orthoimagery.",
+  "guide": {
+   "line": "The city that never sleeps: Lower Manhattan's canyons, the Statue of Liberty across the harbour, and a slice at midnight."
+  },
   "built": false,
   "game": false
  },
@@ -2130,6 +2805,9 @@
   "lon": -0.0922,
   "status": "planned",
   "data": "Environment Agency 1 m LiDAR DTM (OGL); OSM heights; open aerial imagery still to find.",
+  "guide": {
+   "line": "Two thousand years on the Thames: St Paul's dome, the Tower's ravens, and a pint in the City when the bells ring out."
+  },
   "built": false,
   "game": false
  },
@@ -2141,6 +2819,9 @@
   "lon": 103.851,
   "status": "planned",
   "data": "OSM footprints and heights; open bare-earth DEM and imagery still to find.",
+  "guide": {
+   "line": "The garden city on the equator: Marina Bay's skyline, the Supertrees at night, and chilli crab at a hawker centre."
+  },
   "built": false,
   "game": false
  }

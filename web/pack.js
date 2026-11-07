@@ -1,7 +1,7 @@
-// Open Earth 3D packed data (issues 148, 201): decodes a file written by pipeline/pack.py (buildings.bin,
-// landmarks.bin, game.bin) back to the object its JSON source holds, so that nothing that reads it
+// Open Earth 3D packed data (issues 148, 201, 259): decodes a file written by pipeline/pack.py (buildings,
+// landmarks, game, terrain, places and scene .bin) back to the object its JSON source holds, so that nothing that reads it
 // changes, except that base64 columns packed as bytes (the roof meshes, buildings.json "r" positions 6
-// and 7) arrive as Uint8Array, and the landmark meshes' vertex lists (list columns flagged "ta") as
+// and 7) and the terrain grid (terrain.json "data") arrive as Uint8Array, and the landmark meshes' vertex lists (list columns flagged "ta") as
 // typed arrays. The page decodes in a Worker (pack-worker.js, decodeIn below) where it can.
 // The file is gzip-wrapped; DecompressionStream inflates it (a server that already sent it with
 // Content-Encoding: gzip is handled too). Works in a page (window.OEPack) and in Node (require).
@@ -92,10 +92,11 @@
     for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
     return btoa(s);
   }
-  // an object's values, each by its descriptor: {j: value} as it is, else a column (typed ones as plain arrays)
+  // an object's values, each by its descriptor: {j: value} as it is, else a column (typed ones as plain
+  // arrays, but bytes, a base64 string packed as a column of one, as they are)
   function obj(keys, blob) {
     const out = {};
-    for (const [k, d] of Object.entries(keys)) { const v = 'j' in d ? d.j : col(d, blob); out[k] = ArrayBuffer.isView(v) ? plain(v) : v; }
+    for (const [k, d] of Object.entries(keys)) { const v = 'j' in d ? d.j : col(d, blob); out[k] = ArrayBuffer.isView(v) && !(v instanceof Uint8Array) ? plain(v) : v; }
     return out;
   }
 
