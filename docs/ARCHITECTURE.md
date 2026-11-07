@@ -831,10 +831,47 @@ Two more scripts build what every city shares, from code, with no stock assets:
   shuttle and the traffic (sedan, taxi, hatchback, SUV, van and bus), with
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
-- `blender/build_trees.py`: fifteen tree species grown from points in their
-  crown shapes, with a leaf atlas it draws itself (4 x 4 cells), in three levels
-  of detail, into `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
+- `blender/build_trees.py`: twenty-one tree species grown from points in their
+  crown shapes and a grass, with a leaf atlas it draws itself (4 x 6 cells, each
+  cell's colours bled within the cell), in three levels of detail, into
+  `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
   (`tools/trees_lineup_shot.js`) shows them in a row as the game draws them.
+  - *tussock* (#286): Otago's snow tussock and hard tussock, a fountain of fine
+    rolled blades about a metre high, olive at the base and straw to bleached gold
+    above, as blade cards round a squat foot (`grow_tussock`, 40, 12 and 6 triangles).
+    A city plants it with `trees.tussock` in city.json (world.js): `beds` scatters it
+    over a landmark mesh's faces (`per_m2`), `slopes` over the open hills
+    (`above_m` over the city's zero, `per_ha`, `max`, denser `near` [x, y, r, per_ha]):
+    where no canopy stands (`woods.png`), 25 m off the roads (and so off their
+    houses), clear of the landmarks and gentler than rock. Queenstown plants it in the
+    Skyline deck's bed (which replaces the blade fans `city.py` drew) and over Bob's
+    Peak and the hills, about 9,000 tufts; the light tier plants a third. Any city
+    with open grassland can add it (`trees.mix` too, as a species).
+
+## The far ground under the landmarks
+
+The game draws its ground from the 5 m grid near the player and from every second
+point of it, 10 m, further off. On a crest the 10 m triangles bridge the 5 m
+ground's hollows, and a landmark's floor laid on the 5 m ground (the Skyline site on
+Bob's Peak) had the far ground rising through it near its edge, by up to 2.1 m seen
+from the town (#286). `world.js settleUnderFloors` lowers the 10 m points within a
+cell of every landmark face that lies on the ground (near level, within 1.5 m of
+the 5 m grid) to the lowest 5 m point round them and just under the face, at most
+3 m; near the player nothing changes. `tools/floor_settle_probe.js <city>` measures
+how far the far ground stands over the floors before and after: Queenstown 2.09 m to
+none, Sydney 4.9 m (its seawall beds) to none, Tokyo 6.2 m (the moats) to none, Kyoto
+and Shibuya to a few points at the frame's edge. `?settle=off` draws without.
+
+## Curtain walls at night
+
+`curtain_wall` (world.js PATTERNS) draws panes between mullions and a spandrel at
+the foot of each storey; `spandrel` is the band's share of the storey, or its colour
+with `spandrel_frac` its share (the Skyline restaurant gave a colour, and its glass
+lost its bands). After dark a lit pane close to shows the room behind it: brighter
+towards the ceiling, a downlight a bay under the ceiling, people standing and seated
+and a table's top dark against the light, each bay a little brighter or dimmer;
+further off the storey's mean, as before. `warm_share` 1 lights a restaurant warm
+(#286: the Skyline's flat pale panels beside the deck).
 
 ## Woods and park canopy
 
