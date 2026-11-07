@@ -18,6 +18,8 @@ addEventListener('unhandledrejection', e => fail(e.reason));
 // the loader: what is happening and how far along, painted before each long step (a step blocks the page)
 const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style.width = `${Math.round(f * 100)}%`; };
 const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
+// the load's stages for the telemetry (telemetry.js markOf): data fetched (world.js), decoded, built, the first frame
+const mark = s => { try { performance.mark(`oe:${s}`); } catch (e) { /* no User Timing */ } };
 const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
@@ -25,6 +27,7 @@ async function main() {
   stage('Downloading the sea floor and the imagery', 0.03);
   const [d, tide] = await Promise.all([loadScene(base, (got, want) => stage(`Downloading the sea floor and the imagery: ${(got / 1e6).toFixed(1)}${want ? ` of ${(want / 1e6).toFixed(1)}` : ''} MB`, 0.03 + 0.3 * (want ? Math.min(1, got / want) : 0))), loadTide(base)]);
   const S = d.scene;
+  mark('decoded');
   const ALP = S.kind === 'alpine';   // a lake and its mountains (alpine/): its own land, air and light
   document.title = `Open Earth 3D: ${S.name}`;
   $('load-title').textContent = S.name;
@@ -296,6 +299,7 @@ async function main() {
   }
 
   // compiling the shaders can take a while on a first visit; done here it shows on the loader, not as a frozen first frame
+  mark('built');
   stage('Compiling the shaders (the first visit takes longest)', 0.9);
   await paint();
   if (renderer.compileAsync && !q.get('still')) { try { await renderer.compileAsync(scene, camera); } catch (e) { console.warn('shader precompile skipped:', e); } }
@@ -332,7 +336,8 @@ async function main() {
     if (now - sunT > 2000) { sunT = now; Object.assign(sun, setSun(env, clockMs(), S.origin[1], S.origin[0])); }
     lights(sun);
     if (post) post.render(); else renderer.render(scene, camera);
-    if (++frames === 3) { $('load').classList.add('done'); window.__ready = true; }
+    if (++frames === 1) mark('frame');
+    if (frames === 3) { $('load').classList.add('done'); window.__ready = true; }
     const gx = terrainHeight(d, camera.position.x, -camera.position.z);
     const tz = env.u.tide.value;
     $('hud').textContent = `${renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · alt ${camera.position.y.toFixed(1)} m · floor ${gx.toFixed(1)} m · sun ${(sun.alt * 57.3).toFixed(0)}° · ${ALP ? 'lake' : 'tide'} ${tz >= 0 ? '+' : ''}${tz.toFixed(2)} m${tide && tideFixed === null ? (tide.rising(clockMs()) ? ' rising' : ' falling') : ''}`;

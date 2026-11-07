@@ -10,7 +10,7 @@ already exposes (`window.__city`, `window.__game`, `window.__reef`).
 | Event | When | Main fields |
 |---|---|---|
 | `view` | the page opens, or the hash changes to the globe, a city's model (`#<id>`), its game (`#play-<id>`), or a reef site (`reef/?city=<id>`) | `view`, `city`, `first`, `new_visitor`, `visit_n` (page loads in this browser), `days_since` (since the last), `from` / `from_s` (the view before, and its seconds) |
-| `load` | the view's loader fades (`ok: true`), shows its error (`why: "error"`), or the visitor leaves first (`why: "left"` / `"closed"`, with what the loader said) | `ok`, `ms` (from the hash change; the page's first view counts from the navigation itself) |
+| `load` | the view's loader fades (`ok: true`), shows its error (`why: "error"`), or the visitor leaves first (`why: "left"` / `"closed"`, with what the loader said); the title screen, which has no loader, when the first frame of its opening or menu is drawn | `ok`, `ms` (from the hash change; the page's first view counts from the navigation itself), and the stages (below): `fetch_ms`, `decode_ms`, `build_ms`, `frame_ms` |
 | `time` | the tab is put away, the view changes, the page closes, and every 5 minutes | `s` (seconds on screen and ready since the last one), `eng_s` (of those, engaged), `fps` (median), `slow` (share of frames over 50 ms), `frames`, `inp` (the slowest tap or key, ms, if over 40), `heap_mb` (Chromium) |
 | `dwell` | with each `time` | `spot`, `mode`, `s`, `eng_s`: the same seconds split by where the visitor was and how they moved |
 | `tour` | the model's tour reaches a stop, ends, or is taken over | `action` (`stop` / `end` / `leave`), `stop`, `stops` |
@@ -34,6 +34,30 @@ visitor left, even when a phone kills the tab without an `exit`.
 
 **Play time** is the sum of `time.s` in the game and reef views. The time is sent in pieces, so a phone
 that kills a tab without a `pagehide` loses at most the last piece.
+
+### Load stages
+
+`load.ms` alone does not say where a slow load spends its time, so each `load` (since telemetry version 3)
+also carries the time from the same start to each stage the page reached:
+
+| Field | Mark | Model and game (`web/world.js`, `web/city.js`, `web/game/game.js`) | Reef sites (`web/reef/`) | Title screen (`web/title.js`, `web/earth.js`) |
+|---|---|---|---|---|
+| `fetch_ms` | `oe:fetched` | every data file downloaded | the terrain downloaded | the Earth's textures downloaded |
+| `decode_ms` | `oe:decoded` | the packs decoded and the JSON parsed | the terrain and imagery decoded | the textures decoded and sent to the GPU |
+| `build_ms` | `oe:built` | the scene built, before its shaders compile | the scene and its modules built | — |
+| `frame_ms` | `oe:frame` | the first frame drawn | the first frame drawn | the first frame (the stars, while the Earth loads) |
+| `ms` | (the loader) | the loader goes | the loader goes | `oe:ready`: the first frame of the opening or the menu |
+
+The pages set the marks with `performance.mark('oe:<stage>', { detail: { view, city } })`, so they work
+without the telemetry and show in a browser's performance panel; `web/telemetry.js` reads the last mark of
+each stage since the view started (a mark naming another view, one left while it loaded, does not count).
+The stages add fields to the one `load` event and no events of their own. A failed or abandoned load
+carries the stages it reached, which says where it stuck.
+
+The first measurements (software WebGL on the check machine) put almost all of a model's or game's load
+between `decode_ms` and `frame_ms` (fetched and decoded in under a second, the first frame at 18 to 26 s): building
+the scene and compiling its shaders, not the download. Real devices will tell the same or not in the
+**Load stages** insights of the PostHog dashboard.
 
 ## Where visitors stay and where they leave
 
@@ -84,8 +108,10 @@ The report and the dashboard answer:
 
 The report also lists unique visitors (in total and by day), new visitors, views by kind and city, play
 time (in total, the median and p90 per player, and by city), devices, tiers, referrers, the main load
-failures and the main errors. It exits 1 when a judged level misses its target, so it can run on a
-schedule.
+failures and the main errors, the load stages (p75 of each by view and device) and the levels by release
+(`app`). It reads the collector's log, or with `--posthog` the last `--days` (7) of events from PostHog
+(`POSTHOG_PERSONAL_API_KEY`, a key with query read access). It exits 1 when a judged level misses its
+target, so it can run on a schedule.
 
 ## Privacy
 
@@ -141,7 +167,22 @@ dashboard write access; `--check` runs each query and changes nothing. The dashb
   - returning visitors;
   - engaged play, by view.
 
+- **Release comparison** (issue 298): every event carries the deployed version (`app`, `web/version.json`),
+  so a regression points to the release that brought it:
+  - *Release comparison, last 30 days*: a table by version, newest first: page loads, load p75 on desktop
+    and on phones and tablets, p75 of each load stage, pages that died, page loads with a script error or a
+    lost WebGL context (%), median fps and slow frames (%);
+  - *Load time p75 by release (s)*, *Frame rate (median fps) by release*, *Script errors per 100 page loads
+    by release* and *Pages that died per 100 page loads by release*: the same as trends, a line a version;
+  - *Load stages p75 by view and device, last 7 days* (a table) and *Load stages p75 (s)* (a trend of the
+    five stages).
+
 Every insight filters out events with `view = test`, which the setup checks send.
+
+To recreate all of it in a new project: `POSTHOG_PERSONAL_API_KEY=phx_… python3 tools/posthog_dashboard.py`
+(a personal key with insight and dashboard write access and project read access; `POSTHOG_HOST` for
+another region). The script finds the dashboard and the insights by name and updates them in place. In the project in use (EU Cloud, project 337415) the dashboard is
+*Open Earth 3D: visitors and service levels*.
 
 ## Testing
 
@@ -159,7 +200,11 @@ Every insight filters out events with `view = test`, which the setup checks send
   - the game reports leaving its title screen, its spot and mode on every play event, time on foot by
     spot, and engaged time;
   - the page's `exit`, the view each view came from, and a dead page left by an earlier visit reported
-    once as a `crash`.
+    once as a `crash`;
+  - the load stages: the title screen's load (once, with its textures and first frame before ready), and the
+    model's, the game's and a reef site's (Hardy Reef) with data fetched, decoded, built and first frame, in
+    order and within `ms`;
+  - the report's load stages and its table by release.
 
 ## Prior art
 
@@ -170,6 +215,9 @@ Every insight filters out events with `view = test`, which the setup checks send
   so they cannot carry the SLOs.
 - The SLO style follows Google's *Site Reliability Workbook*: a ratio of good events to all events,
   with a target and a window.
+- The load stages use the W3C [User Timing](https://www.w3.org/TR/user-timing/) marks (Level 3 for
+  `detail`), as the web-vitals library and Lighthouse's user timings read them; the release table follows
+  Sentry's release health, which compares crash-free sessions and timings by release.
 - The behaviour events follow the *design events* of game analytics (GameAnalytics, Unity Analytics):
   progression steps and where in the world time goes, with a heat map's idea reduced to named spots so
   no position leaves the browser.

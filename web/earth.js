@@ -611,7 +611,13 @@ window.OEEarth = (function () {
       const files = [['stars.json', 155e3], ['milkyway.jpg', 150e3], ['surface.jpg', 1.36e6], [`day-${String(month).padStart(2, '0')}.jpg`, 1.4e6], ['clouds.jpg', 1.78e6],
         ['lights.jpg', q.lights8k ? 1.07e6 : 0]];
       const total = files.reduce((a, f) => a + f[1], 0), got = files.map(() => 0);
-      const tick = (i, b, t) => { got[i] = files[i][1] * Math.min(1, b / (t || 1)); onProgress(got.reduce((a, x) => a + x, 0) / total, files[i][0]); };
+      let all = false;   // every byte in: the title's "fetched" stage for the telemetry (telemetry.js markOf)
+      const tick = (i, b, t) => {
+        got[i] = files[i][1] * Math.min(1, b / (t || 1));
+        const f = got.reduce((a, x) => a + x, 0) / total;
+        if (!all && f > 0.999) { all = true; try { performance.mark('oe:fetched', { detail: { view: 'globe', city: '' } }); } catch (e) { /* no User Timing */ } }
+        onProgress(f, files[i][0]);
+      };
       const cat = await fetch(base + files[0][0]).then(r => r.json()).catch(() => null);
       tick(0, 1, 1);
       stars = starField(cat);

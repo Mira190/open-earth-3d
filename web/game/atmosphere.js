@@ -452,18 +452,9 @@ window.OEAtmos = (function () {
         if (o.hazeC) A.uHaze.value.set(...o.hazeC); if (o.rimC) A.uRimC.value.set(...o.rimC);
         return true;
       },
-      // the passes the title never draws (the camera's effects come on with the opening shot and photo mode),
-      // compiled behind the loader rather than on the opening shot's first frame (world.js compile)
-      warm() {
-        if (!camFx || !window.OEWorld || !OEWorld.compile) return Promise.resolve();
-        // (a stand-in for the pass's full-screen triangle, with the attributes it has: position and uv, no normals,
-        // since the attributes are part of a shader's variant; drawn as its own scene, without the city's lights)
-        const tri = new THREE.BufferGeometry();
-        tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
-        tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
-        const quad = new THREE.Mesh(tri, camFx.material);
-        return OEWorld.compile(renderer, quad, new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), { target: composer.renderTarget1 }).then(() => tri.dispose());
-      },
+      // every pass's programs, compiled behind the loader rather than by the first frame drawn through the post
+      // stack, the camera's effects among them (they come on with the opening shot and photo mode): world.js warmPasses
+      warm() { return composer && window.OEWorld && OEWorld.warmPasses ? OEWorld.warmPasses(renderer, composer) : Promise.resolve(); },
       render(scene, cam) {
         if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0) && !!rt.depthTexture;
         // the scene's depth resolved from the multisampled buffer while something reads it (the ambient occlusion, the camera's effects)
