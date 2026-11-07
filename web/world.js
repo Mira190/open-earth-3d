@@ -1680,7 +1680,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         return renderer.compileAsync(obj, camera, scene) // (compiles now; the promise waits on the GPU)
           .then(() => { const ms = new Set(depth); for (const o of objs) for (const m of [].concat(o.material)) ms.add(m); firstUse(renderer, ms); }).catch(() => {});
       } catch (e) { return Promise.resolve(); }
-      finally { unbind(was); if (casters.length) depth = compileDepth(renderer, casters, camera); }
+      finally { unbind(was); if (casters.length) depth = compileDepth(renderer, casters, camera, scene); }
     }
     return (async () => {
       const props = renderer.properties, mats = new Set(), t0 = performance.now();
@@ -1695,7 +1695,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           // list on their own, so they are looked up again, cheaply. Then the casters' shadow variants)
           while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS)) {
             if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
-            else { for (const m of compileDepth(renderer, [casters[i++ - objs.length]], camera)) mats.add(m); }
+            else { const j = i - objs.length, k = Math.min(casters.length, j + 24); for (const m of compileDepth(renderer, casters.slice(j, k), camera, scene)) mats.add(m); i += k - j; }
           }
         } catch (e) { console.warn('compile', e); }
         finally { unbind(was); }
@@ -1729,32 +1729,34 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   }
 
   // The shadow pass's material for a caster's material, as WebGLShadowMap (r186) picks it: the caster's
-  // customDepthMaterial, else a depth material with the material's side flipped (its shadowSide where it
+  // customDepthMaterial or else a depth material, given the material's side flipped (its shadowSide where it
   // has one), its map, alpha map, alpha test and displacement. One per combination of what picks the
   // variant, here; three.js keeps one and clones it per material, which compiles to the same programs.
   // Each is compiled for the caster, into a render target as the shadow map is, in the state the shadow
   // pass draws in, so that the program is the one it looks up: no tone mapping and linear output (a render
-  // target), no fog (it draws with an empty scene), shadows on, and no lights counted (three.js draws the
-  // shadow maps before it sets up the frame's lights, so its depth programs are keyed with none). The
-  // last two from a scene holding only a bare THREE.Light that casts shadows: pushed as a shadow, counted
-  // as no kind of light.
+  // target), no fog (it draws with an empty scene) and shadows on. Its lights are the ones the frame before
+  // set up: three.js draws the shadow maps before it sets up the frame's lights, so its depth programs are
+  // keyed with the lights of the last frame drawn (the scene's), or none at all in the first frames. Both
+  // variants, then: with the scene's lights (the scene, its fog off), and with none (a scene holding only a
+  // bare THREE.Light that casts shadows: pushed as a shadow, counted as no kind of light).
   const depthMats = new Map(), FLIP = {};
   let depthRT = null, depthScene = null;
   function depthOf(o, m) {
-    if (o.customDepthMaterial) return o.customDepthMaterial;
     if (!FLIP[THREE.FrontSide]) { FLIP[THREE.FrontSide] = THREE.BackSide; FLIP[THREE.BackSide] = THREE.FrontSide; FLIP[THREE.DoubleSide] = THREE.DoubleSide; }
     const side = m.shadowSide !== null && m.shadowSide !== undefined ? m.shadowSide : FLIP[m.side];
     const alphaTest = m.alphaToCoverage === true ? 0.5 : m.alphaTest;
     const key = [side, m.map ? m.map.channel || 0 : '-', m.alphaMap ? m.alphaMap.channel || 0 : '-', alphaTest > 0, !!(m.displacementMap && m.displacementScale !== 0), !!m.wireframe, !!m.clipShadows].join('|');
-    let d = depthMats.get(key);
+    // (a caster's own depth material takes the same from its material: three.js writes them onto it too)
+    let d = o.customDepthMaterial || depthMats.get(key);
     if (!d) depthMats.set(key, d = new THREE.MeshDepthMaterial());
     Object.assign(d, { visible: m.visible, wireframe: m.wireframe, side, alphaMap: m.alphaMap || null, alphaTest, map: m.map || null, clipShadows: m.clipShadows,
       clippingPlanes: m.clippingPlanes, clipIntersection: m.clipIntersection, displacementMap: m.displacementMap || null,
       displacementScale: m.displacementScale === undefined ? 1 : m.displacementScale, displacementBias: m.displacementBias || 0 });
     return d;
   }
-  function compileDepth(renderer, casters, camera) {
+  function compileDepth(renderer, casters, camera, scene) {
     const out = [];
+    if (!casters.length) return out;
     if (!depthRT) {
       depthRT = new THREE.WebGLRenderTarget(1, 1);
       depthScene = new THREE.Scene();
@@ -1762,19 +1764,22 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       caster.castShadow = true;
       depthScene.add(caster);
     }
-    const was = renderer.getRenderTarget();
+    // (the casters alone, as one object to compile: three.js walks the target scene's lights once a call)
+    const just = { traverse: f => { for (const o of casters) f(o); }, traverseVisible() {} };
+    const was = renderer.getRenderTarget(), mats = casters.map(o => o.material), fog = scene && scene.isScene ? scene.fog : null;
     renderer.setRenderTarget(depthRT);
     try {
-      for (const o of casters) {
-        const mat = o.material;
-        o.material = Array.isArray(mat) ? mat.map(m => depthOf(o, m)) : depthOf(o, mat);
-        const kids = o.children;
-        o.children = []; // (just the caster: its children are casters of their own, or not)
-        try { for (const m of renderer.compile(o, camera, depthScene)) out.push(m); }
+      casters.forEach(o => { o.material = Array.isArray(o.material) ? o.material.map(m => depthOf(o, m)) : depthOf(o, o.material); });
+      for (const target of scene && scene.isScene ? [scene, depthScene] : [depthScene]) {
+        if (target === scene) scene.fog = null;
+        try { for (const m of renderer.compile(just, camera, target)) out.push(m); }
         catch (e) { /* compiled by the shadow pass instead */ }
-        finally { o.material = mat; o.children = kids; }
+        finally { if (target === scene) scene.fog = fog; }
       }
-    } finally { renderer.setRenderTarget(was); }
+    } finally {
+      casters.forEach((o, k) => { o.material = mats[k]; });
+      renderer.setRenderTarget(was);
+    }
     return out;
   }
 
