@@ -3,7 +3,6 @@
 
     POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/posthog_dashboard.py            # create or update
     POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/posthog_dashboard.py --check    # run each query, change nothing
-    POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/posthog_dashboard.py --alerts   # and the alerts (ALERTS) on their insights
 
 The dashboard and each insight are found by name, so running it again updates them in place. The SLOs
 and their targets are those of docs/OBSERVABILITY.md and tools/slo_report.py. The events come from
@@ -180,8 +179,6 @@ def sql(q):
 
 
 OK = [{'key': 'ok', 'value': ['true'], 'operator': 'exact', 'type': 'event'}]
-DESK = [{'key': 'device', 'value': ['desktop'], 'operator': 'exact', 'type': 'event'}]
-MOB = [{'key': 'device', 'value': ['phone', 'tablet'], 'operator': 'exact', 'type': 'event'}]
 SCRIPT = [{'key': 'kind', 'value': ['script', 'promise'], 'operator': 'exact', 'type': 'event'}]
 V3 = [{'key': 'v', 'value': 3, 'operator': 'gte', 'type': 'event'}]
 
@@ -236,36 +233,6 @@ INSIGHTS = [
      trends([ev('error', props=SCRIPT, name='Errors'), ev('page', name='Page loads')], breakdown='app', formula='100 * A / B')),
     ('Pages that died per 100 page loads by release', 'Crash reports ÷ page loads, by the version of the page that reported them.',
      trends([ev('crash', name='Died'), ev('page', name='Page loads')], breakdown='app', formula='100 * A / B')),
-    # the insights the alerts watch (ALERTS): no breakdown, one series, the SLO's line as the bound
-    ('Alert: load time p75, desktop (s)', 'Watched by an alert: over 10 s on a day (the SLO line; judged on any number of loads).',
-     trends([ev('load', 'p75', 'ms', OK + THREE_D + DESK, 'Load ms')], formula='A / 1000', date_from='-14d')),
-    ('Alert: load time p75, phone and tablet (s)', 'Watched by an alert: over 20 s on a day.',
-     trends([ev('load', 'p75', 'ms', OK + THREE_D + MOB, 'Load ms')], formula='A / 1000', date_from='-14d')),
-    ('Alert: loader errors per hour', 'Watched by an alert: any model, game or reef loader showing its error.',
-     trends([ev('load', props=[{'key': 'ok', 'value': ['false'], 'operator': 'exact', 'type': 'event'},
-                               {'key': 'why', 'value': ['error'], 'operator': 'exact', 'type': 'event'}] + THREE_D, name='Loader errors')],
-            date_from='-48h', interval='hour')),
-    ('Alert: pages that died on screen per day', 'Watched by an alert: two or more a day (a tab crash or an out-of-memory kill, reported by the next page load).',
-     trends([ev('crash', name='Died')], date_from='-14d')),
-    ('Alert: script errors per hour', 'Watched by an alert: more than five script errors or unhandled rejections in an hour.',
-     trends([ev('error', props=SCRIPT, name='Errors')], date_from='-48h', interval='hour')),
-    ('Alert: play time under 30 fps (%), daily', 'Watched by an alert: over 10% of a day\'s play time in the 3D views below 30 fps '
-     '(the smoothness SLO\'s line; an upper bound, so a day without visitors, which reads 0, does not fire).',
-     trends([ev('time', 'sum', 's', THREE_D + [{'key': 'fps', 'value': 30, 'operator': 'lt', 'type': 'event'}], 'Seconds under 30 fps'),
-             ev('time', 'sum', 's', THREE_D + [{'key': 'fps', 'operator': 'is_set', 'value': 'is_set', 'type': 'event'}], 'Seconds')],
-            formula='100 * A / B', date_from='-14d')),
-]
-
-# PostHog alerts (on trends insights only; the HogQL scorecard cannot carry one): the insight, the interval it
-# is checked at, and the bounds outside which it fires. The key's owner is subscribed (email and in-app).
-# The free plan allows five alerts, so these are the five fast signals; the play time under 30 fps keeps its
-# insight, and every level, smoothness included, is watched by the burn-rate job (.github/workflows/slo.yml).
-ALERTS = [
-    ('Load time p75, desktop over 10 s', 'Alert: load time p75, desktop (s)', 'daily', None, 10),
-    ('Load time p75, phone and tablet over 20 s', 'Alert: load time p75, phone and tablet (s)', 'daily', None, 20),
-    ('A loader showed its error', 'Alert: loader errors per hour', 'hourly', None, 0),
-    ('Two or more pages died on screen in a day', 'Alert: pages that died on screen per day', 'daily', None, 1),
-    ('More than five script errors in an hour', 'Alert: script errors per hour', 'hourly', None, 5),
 ]
 
 
@@ -296,7 +263,6 @@ class API:
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--check', action='store_true', help='run each query and print its first rows; change nothing')
-    ap.add_argument('--alerts', action='store_true', help='also create or update the alerts (ALERTS) on their insights')
     a = ap.parse_args()
     key = os.environ.get('POSTHOG_PERSONAL_API_KEY')
     if not key:
@@ -315,40 +281,16 @@ def main():
         dash = api.call('POST', f'/api/projects/{pid}/dashboards/', {'name': DASHBOARD, 'description': 'Visitors, play time, where they stay and leave, and the nine service levels of web/telemetry.js (docs/OBSERVABILITY.md). Built by tools/posthog_dashboard.py.', 'pinned': True})
         print(f"made dashboard {dash['id']}")
     have = {i['name']: i for i in api.all(f'/api/projects/{pid}/insights/?limit=200&saved=true') if i.get('name') and not i.get('deleted')}
-    ids = {}
     for name, desc, q in INSIGHTS:
         body = {'name': name, 'description': desc, 'query': q, 'saved': True}
         if name in have:
             on = set(have[name].get('dashboards') or []) | {dash['id']}
             api.call('PATCH', f"/api/projects/{pid}/insights/{have[name]['id']}/", dict(body, dashboards=sorted(on)))
-            ids[name] = have[name]['id']
             print(f'updated  {name}')
         else:
-            ids[name] = api.call('POST', f'/api/projects/{pid}/insights/', dict(body, dashboards=[dash['id']]))['id']
+            api.call('POST', f'/api/projects/{pid}/insights/', dict(body, dashboards=[dash['id']]))
             print(f'made     {name}')
     print(f"{HOST}/project/{pid}/dashboard/{dash['id']}")
-    if a.alerts:
-        alerts(api, pid, ids)
-
-
-def alerts(api, pid, ids):
-    """Create or update each alert of ALERTS (found by name), subscribing the owner of the key."""
-    me = api.call('GET', '/api/users/@me/')['id']
-    have = {x['name']: x for x in api.all(f'/api/projects/{pid}/alerts/?limit=100')}
-    for name, insight, every, lower, upper in ALERTS:
-        bounds = {k: v for k, v in (('lower', lower), ('upper', upper)) if v is not None}
-        body = {'name': name, 'insight': ids[insight], 'enabled': True, 'calculation_interval': every,
-                'condition': {'type': 'absolute_value'}, 'threshold': {'configuration': {'type': 'absolute', 'bounds': bounds}},
-                'config': {'type': 'TrendsAlertConfig', 'series_index': 0, 'check_ongoing_interval': upper is not None}}
-        if name in have:
-            subs = sorted({u['id'] if isinstance(u, dict) else u for u in have[name].get('subscribed_users') or []} | {me})
-            api.call('PATCH', f"/api/projects/{pid}/alerts/{have[name]['id']}/", dict(body, subscribed_users=subs))
-            print(f'updated  alert {name}')
-        else:
-            api.call('POST', f'/api/projects/{pid}/alerts/', dict(body, subscribed_users=[me]))
-            print(f'made     alert {name}')
-    for name in sorted(set(have) - {a[0] for a in ALERTS}):
-        print(f'note     alert {name} is in PostHog but not in ALERTS (left as it is)')
 
 
 if __name__ == '__main__':

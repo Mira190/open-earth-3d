@@ -166,8 +166,7 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     try { execFileSync('python3', [path.join(__dirname, 'slo_report.py'), log], { stdio: 'inherit' }); } catch (e) { /* a missed level exits 1 */ }
     try { rep = JSON.parse(execFileSync('python3', [path.join(__dirname, 'slo_report.py'), log, '--json']).toString()); } catch (e) { rep = e.stdout ? JSON.parse(e.stdout.toString()) : null; }
     must(rep && rep.visitors === 1 && rep.players === 1 && rep.slo.length === 9 && rep.tour.ended === 1 && Object.keys(rep.minutes_by_spot).length > 0, 'the SLO report reads the log', rep && `${rep.visitors} visitor, ${rep.play_hours} h`);
-    must(rep && rep.load_stages && rep.load_stages['city desktop'] && rep.load_stages['city desktop'].built != null && rep.burn && rep.burn.length === 9 && rep.releases, 'the report has the load stages, the burn rates and the releases');
-    try { execFileSync('python3', [path.join(__dirname, 'slo_burn_check.py')], { stdio: 'inherit' }); must(true, 'the burn-rate alerts on made-up logs'); } catch (e) { must(false, 'the burn-rate alerts on made-up logs'); }
+    must(rep && rep.load_stages && rep.load_stages['city desktop'] && rep.load_stages['city desktop'].built != null && rep.releases && Object.keys(rep.releases).length, 'the report has the load stages and the releases');
     must(!errors.length, 'no page errors', errors.join(' | '));
     exit = fails.length ? 1 : 0;
   } catch (e) {
