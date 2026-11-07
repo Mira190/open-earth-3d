@@ -9,7 +9,8 @@
 // change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
 // (tools/scramble_step.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
-// with you in it round in the road (a three-point turn, never into the traffic), swing the
+// with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
+// a one-way street to the junction behind (tools/reverse_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
 // (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
@@ -27,6 +28,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
+const { reverseStep } = require('./reverse_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1143,7 +1145,7 @@ const npcNight = require('./npc_night');
     };
     let t = 0;
     r.scrWait = 0; // (stood at a scramble's red through its walk, which no ride's priority cuts short: not counted against the half minute)
-    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (o.drv.st.v < 0.5 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble && /^the line/.test(o.drv.st.why || '')) r.scrWait += 0.5; if (t % 5 === 0) try { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}${c.youBy ? `(${c.youBy})` : ''}:${c.mv ? 'in' : ''}`).join(' '), inJ = /^the line/.test(st.why || '') && st.lineAt ? ` junction ${st.lineAt.j.id}: ${st.lineAt.j.active.map(o => `${A.C.includes(o.c) ? `car ${A.C.indexOf(o.c)}` : 'the taxi'} ${o.k}->${o.m & 15} ${o.c.why || ''}${o.c.youBy ? `(${o.c.youBy})` : ''} v ${(+o.c.v || 0).toFixed(1)} ${Math.hypot(o.c.x - st.x, o.c.y - st.y).toFixed(0)} m`).join(', ') || 'none in it'}` : ''; r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.junction === 'turn' && st.lineAt ? `: waiting before it ${st.lineAt.j.pend.filter(w => w.c !== st).map(w => `${A.C.includes(w.c) ? `car ${A.C.indexOf(w.c)}` : 'a vehicle'} arm ${w.k} ${w.c.why || ''} v ${(+w.c.v || 0).toFixed(1)} light ${g.junctions.light(st.lineAt.j.arms[w.k], w.m)}`).join(', ')}` : ''})` : ''} near[${near}]${inJ}${roomOf(st)}${o.turnNo ? ` (not turned: ${o.turnNo})` : ''}`); } catch (e) { r.log.push(`${t}s (the log line failed: ${e.message})`); } }
+    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (o.drv.st.v < 0.5 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble && /^the line/.test(o.drv.st.why || '')) r.scrWait += 0.5; if (t % 5 === 0) try { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}${c.youBy ? `(${c.youBy})` : ''}${c.heldBy ? `/${c.heldBy}` : ''}${c.front ? `>${A.C.includes(c.front) ? A.C.indexOf(c.front) : 'the taxi'}` : ''}:${c.mv ? 'in' : ''}`).join(' '), inJ = /^the line/.test(st.why || '') && st.lineAt ? ` junction ${st.lineAt.j.id}: ${st.lineAt.j.active.map(o => `${A.C.includes(o.c) ? `car ${A.C.indexOf(o.c)}` : 'the taxi'} ${o.k}->${o.m & 15} ${o.c.why || ''}${o.c.youBy ? `(${o.c.youBy})` : ''} v ${(+o.c.v || 0).toFixed(1)} ${Math.hypot(o.c.x - st.x, o.c.y - st.y).toFixed(0)} m`).join(', ') || 'none in it'}` : ''; r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.junction === 'turn' && st.lineAt ? `: waiting before it ${st.lineAt.j.pend.filter(w => w.c !== st).map(w => `${A.C.includes(w.c) ? `car ${A.C.indexOf(w.c)}` : 'a vehicle'} arm ${w.k} ${w.c.why || ''} v ${(+w.c.v || 0).toFixed(1)} light ${g.junctions.light(st.lineAt.j.arms[w.k], w.m)}`).join(', ')}` : ''})` : ''} near[${near}]${inJ}${roomOf(st)}${o.turnNo ? ` (not turned: ${o.turnNo})` : ''}`); } catch (e) { r.log.push(`${t}s (the log line failed: ${e.message})`); } }
     r.hailT = t; r.yielded = o.yielded || 0; r.log.push(`(backed off for a car in the junction ${r.yielded} times, round a scramble's walk ${o.roundWalk || 0} times, turned round ${o.turned || 0} times)`);
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
     r.behind = o.drv.st.end < o.drv.path.len - 1; // (it pulled in behind a car at the kerb: your car, parked there)
@@ -1171,7 +1173,9 @@ const npcNight = require('./npc_night');
     for (let i = 0; i < 20; i++) tick();
     // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so at worst the other
     // road's turn, the walk, the all reds round them and the wait for the last walkers, some 70 s, more)
-    for (r.walkWait = 0; went < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) tick();
+    const scrSeq = []; // (the scramble's phases as it waits, for a failure's report)
+    for (r.walkWait = 0; went < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) { tick(); const a = o.drv.st.lineAt, j = a && a.j; if (j) { const k = `${j.ph}${j.st}`; if (scrSeq.last !== k) { scrSeq.last = k; scrSeq.push(`${r.walkWait}:${k}${j.busy ? `(busy ${j.busy})` : ''}`); } if (!r.scrAt) r.scrAt = `junction ${j.id} arm ${a.i} (phase ${a.phase})`; } }
+    if (scrSeq.length) r.scrSeq = scrSeq.join(' ');
     // (and under way again after it, on the same way or a new one round a jam, whose line it hasn't come to yet:
     // a few seconds to be off, as it is)
     if (r.walkWait) for (let k = 0; went < 20 && k < 6 && o.drv.st.v > 0.5; k++) { tick(); r.walkWait++; }
@@ -1235,7 +1239,7 @@ const npcNight = require('./npc_night');
       for (; u < 120 && q.phase === 'coming'; u += 0.5) {
         g.advance(0.5);
         const st = q.drv.st;
-        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(+st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.junction === 'cross' && st.lineAt ? ` (in the junction: ${st.lineAt.j.active.map(o => `${o.c === st ? 'the ride' : g.cars.C.includes(o.c) ? `car ${g.cars.C.indexOf(o.c)}` : 'another vehicle'} arm ${o.k} to ${o.m}${o.forced ? ' over its line' : ''} v ${(+o.c.v || 0).toFixed(1)} ${o.c.why || ''} on ${o.c.line}${o.c.mv && o.c.mv.j !== st.lineAt.j ? ' (its next junction elsewhere)' : ''}`).join('; ') || 'nobody'})` : ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(+st.block.v || 0).toFixed(1)} ${st.block.why || ''}${st.block.heldBy ? ` (held: ${st.block.heldBy})` : ''}` : st.block.walker ? 'a walker' : st.block.id ? st.block.id : `something at ${(+st.block.x || 0).toFixed(0)}, ${(+st.block.y || 0).toFixed(0)}`}` : ''}${st.xBlock && st.xBlock !== st.block ? ` across ${st.xBlock.line != null ? `car ${g.cars.C.indexOf(st.xBlock)}` : 'something'}` : ''}`);
+        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(+st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.junction === 'cross' && st.lineAt ? ` (in the junction: ${st.lineAt.j.active.map(o => `${o.c === st ? 'the ride' : g.cars.C.includes(o.c) ? `car ${g.cars.C.indexOf(o.c)}` : 'another vehicle'} arm ${o.k} to ${o.m}${o.forced ? ' over its line' : ''} v ${(+o.c.v || 0).toFixed(1)} ${o.c.why || ''} on ${o.c.line}${o.c.mv && o.c.mv.j !== st.lineAt.j ? ' (its next junction elsewhere)' : ''}`).join('; ') || 'nobody'})` : ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(+st.block.v || 0).toFixed(1)} ${st.block.why || ''}${st.block.heldBy ? ` (held: ${st.block.heldBy})` : ''}` : st.block.walker ? 'a walker' : st.block.id ? st.block.id : `something at ${(+st.block.x || 0).toFixed(0)}, ${(+st.block.y || 0).toFixed(0)}`}` : ''}${st.xBlock && st.xBlock !== st.block ? ` across ${st.xBlock.line != null ? `car ${g.cars.C.indexOf(st.xBlock)}` : 'something'}` : ''}${(() => { let x = st.block, k = 0; if (!x || x.line == null) return ''; while (x.front && x.front.line != null && k < 30) { x = x.front; k++; } return k ? `; the head ${k} cars on: car ${g.cars.C.indexOf(x)} ${x.why} v ${(+x.v || 0).toFixed(1)} on ${x.line}${x.lineArm ? ` at junction ${x.lineArm.j.id}${x.lineArm.j.scramble ? ' (a scramble)' : ''} ${(x.toLine - x.half).toFixed(1)} m on` : ''}${x.mv ? ` in junction ${x.mv.j.id}` : ''}` : ''; })()}`);
       }
       r.rideT = u; r.rideHere = q.phase === 'waiting';
       g.phoneShow(false);
@@ -1252,7 +1256,7 @@ const npcNight = require('./npc_night');
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
-    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(+taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}`);
+    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(+taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}${taxi.drove > 20 || !taxi.scrSeq ? '' : `; at ${taxi.scrAt}, its phases as it waited: ${taxi.scrSeq}`}`);
     check(!taxi.cutOff || !taxi.cutOff.length, `every place the taxi driver offers has a kerb a road from the taxi reaches${taxi.cutOff && taxi.cutOff.length ? ` (not ${taxi.cutOff.join(', ')})` : ''}`);
     const bk = taxi.back;
     check(!bk || (bk.out && bk.same && bk.on && /where you were going/.test(bk.first)), `out on the way, a hand up: back into the same taxi, on to where you were going${bk ? ` (out ${!!bk.out}, the same taxi ${!!bk.same}, offered first "${bk.first || '–'}", on to ${bk.dest || '–'}: ${bk.on ? 'driving' : 'not driving'})` : ' (not driving: not tried)'}`);
@@ -1605,6 +1609,10 @@ const npcNight = require('./npc_night');
   check(heldQ.held.length === 0, `no movement left standing in a junction for more than two cycles (${heldQ.watched} cars watched at their lines, ${heldQ.cycles} greens waited through${heldQ.held.length ? `; ${heldQ.held.length} standing` : ''})`);
   for (const h of heldQ.held.slice(0, 6)) console.log('  ' + h);
   const qNote = (what, L) => { if (L.length) console.log(`note ${what}: ${L.length}\n  ${L.slice(0, 3).join('\n  ')}`); };
+  // (a car at the mouth of a street too narrow for two, waiting on one coming the other way: never over 30 s, as on a
+  // single-track road, the one nearer its passing place first, #283; and a scramble's count of those at a kerb never below none)
+  check(heldQ.narrow.max <= 30, `no car waits over 30 s at a narrow stretch for one coming the other way (${heldQ.narrow.max} s at most${heldQ.narrow.over.length ? `: ${heldQ.narrow.over.join('; ')}` : ''})`);
+  check(heldQ.gates.min >= 0, `the scrambles' counts of those waiting at their kerbs never go below none (${heldQ.gates.min}${heldQ.gates.at ? ` at ${heldQ.gates.at}` : ''})`);
   qNote('a queue at a signal held through more than two greens', heldQ.queues);
   qNote('held at a signal by your car, a ride or you in the road (not the junction\'s doing)', heldQ.yours);
   qNote('held at a signal behind a car at a wall across its way', heldQ.walls);
@@ -1680,7 +1688,7 @@ const npcNight = require('./npc_night');
     }
     if (said !== 'turning') return Object.assign(r, { turned: false });
     const st0 = o.drv.st;
-    r.turned = true;
+    r.turned = true; r.rev = !!o.turn.rev; // (on a one-way street it backs out instead: tools/reverse_step.js checks that)
     window.__turn = { o, r, h0: st0.h, u: 0 };
     // (half way round: a still from outside, the chase camera's)
     for (; window.__turn.u < 40 && o.turn && o.turn.i < o.turn.poses.length * 0.45; window.__turn.u += 0.25) {
@@ -1724,10 +1732,29 @@ const npcNight = require('./npc_night');
   if (turn.none) check(true, `a ride turns round in the road: not tried (${turn.none})`);
   else if (!turn.turned) console.log(`note a ride turns round in the road: nowhere to on its way in ${turn.tries} tries (${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')})`);
   else {
-    check(turn.done && turn.round > 2.8, `a ride turns round in the road: a three-point turn in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}° (after ${turn.tries} tries${Object.keys(turn.why).length ? `: ${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')}` : ''})`);
+    check(turn.done && (turn.rev || turn.round > 2.8), turn.rev ? `a ride turns round: on a one-way street, it backs out to the junction behind (in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}°)` : `a ride turns round in the road: a three-point turn in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}° (after ${turn.tries} tries${Object.keys(turn.why).length ? `: ${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')}` : ''})`);
     check(turn.overlap === 0, `and never into a car of the traffic as it turns (${turn.overlap.toFixed(2)} m deep at most)`);
     check(turn.drove > 10, `and drives on the other way (${turn.drove.toFixed(0)} m in ${turn.driveSecs} s)`);
     if (!(turn.drove > 10)) console.log(`  at ${turn.at}, held by: ${turn.held.join('\n  held by: ')}`);
+  }
+
+  // backing out of a one-way street (#283): cars of the traffic on one-way streets near you, and a ride with you in
+  // it put on one, asked to turn round: each backs along its lane to the junction behind, never into another car,
+  // and goes on from there by another way (tools/reverse_step.js)
+  const rev = await p.evaluate(reverseStep, { ride: true });
+  if (rev.none) check(true, `backing out of a one-way street: not tried (${rev.none})`);
+  else {
+    // (one that gives up, held 20 s by the junction behind, waits on as before, by design: each must stop, back out or
+    // give up within a minute and a half, never into another car, and one at least get out by another way)
+    const T = rev.traffic, bad = T.filter(w => !(w.done || w.gone || w.gaveUp) || w.deep > 0.1 || !T.some(x => x.done || x.gone));
+    if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
+    else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most`).join('; ')})`);
+    const R = rev.ride;
+    if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
+    else {
+      check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto}${R.heldBy ? `; held ${R.heldBy}` : ''})`);
+      check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''})`);
+    }
   }
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the

@@ -862,7 +862,11 @@ window.OECars = (function () {
   // all the same (a car moving freely ahead ends it: the one behind is about to move too)
   // (a queue at a junction, o.q; or, for a car of the traffic not parked, one whose queue is moving off ahead: a crawling queue of
   // six behind a red, its head pulling away, read as stopped for good and the ride swung out round it in Shinjuku's game check)
-  const queueing = o => { for (let x = o, k = 0; x && k < 40; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 2.5) return k > 0 && o.still !== true; } return false; };
+  // (or at the head of the cars in front, one held by a rule of the road: a walker crossing, a light, its turn at a
+  // junction, room beyond: a queue, not a car broken down to go round; a ride swung out round one in a queue behind
+  // someone crossing mid-block, Queenstown's queue step, #283)
+  const RULED = /^(person|zebra|walk|light|amber|stop|cross|turn|room|give|narrow|lane)$/;
+  const queueing = (o, ruled = true) => { for (let x = o, k = 0; x && k < 40; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 2.5) return k > 0 && o.still !== true; if (ruled && (!x.front || x.front.line == null)) return RULED.test(x.why || ''); } return false; }; // (ruled false: only a queue at a junction, as before)
 
   // ------------------------------------------------------------ the chauffeur
   // Drives a car (from car()) along a route: keeps to the lane on the keep side, slows for
@@ -949,6 +953,7 @@ window.OECars = (function () {
   }
   function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, makeWay = null, wedge = WEDGE_GIVE, lights = null, priority = false, now = null } = {}) {
     route = uTurns(route, keep);
+    const ruledQ = !hurry; // (a queue held by a rule of the road, not only one at a junction, is waited in: with you in it, not on the way to you, which keeps its time)
     const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, held: 0, end: P.len, route, P,
       half: C.half, hw: C.hw, ps: new Float32Array(2 * LOOK_N), np: 0, pst: LOOK_STEP, toLine: Infinity, backoff: 0 };
     // as junctions.js sees it: a car of the traffic (line >= 0 while it is on the street, half, v)
@@ -1053,7 +1058,7 @@ window.OECars = (function () {
       // up the side of the queue itself
       let qBack = Infinity;
       for (const o of others) {
-        if (!queueing(o)) continue;
+        if (!queueing(o, ruledQ)) continue;
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 100) continue;
         P.at(Math.min(P.len, st.s + a), c);
@@ -1074,7 +1079,7 @@ window.OECars = (function () {
         // (and one it has begun to swing out round stays one while it stands there: its held time is
         // reset at a red light, and the car would else drop out and back in from frame to frame)
         // (nor one whose car ahead is moving off: a queue that has begun to move, its tail not yet off)
-        const oq = queueing(o);
+        const oq = queueing(o, ruledQ);
         const stopped = !oq && !(o.front && (o.front.v || 0) >= 0.5) && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - (a + half) > 2 * C.half + 8 || !o.stay); // (not one parked where it is to pull in: one parked short of it, with room past it to pull back in to the kerb, it goes round, and pulls in beside you, not 20 m back behind it)
         // (side by side, clear; a stopped car in its lane is judged by the lane, not by where it has
         // swung out to: else, once out, it would count as clear, swing back in, and so on every frame)
@@ -1312,7 +1317,7 @@ window.OECars = (function () {
       // and along its way, the cars at an angle to it (crossGap): the nearer rules
       if (!dry) look(); else st.np = 0;
       const laneGap = carGap, xGap = dry ? Infinity : crossGap(others);
-      if (xGap < carGap) { carGap = xGap; still = false; queued = queueing(st.xBlock); st.block = st.xBlock; }
+      if (xGap < carGap) { carGap = xGap; still = false; queued = queueing(st.xBlock, ruledQ); st.block = st.xBlock; }
       const across = xGap < laneGap; // (what holds it up is a car at an angle to it, not one ahead in its lane)
       // pulling out from the kerb, a look in the mirror first: it waits while a car is coming up the lane
       // behind it, moving, within 3.5 s, as a driver does (it would cut in front of it, and the car would
