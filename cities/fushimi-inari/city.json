@@ -5,7 +5,7 @@
   "country_code": "JP",
   "timezone": "Asia/Tokyo",
   "locale": "en-JP",
-  "description": "Fushimi Inari Taisha from open data: the Romon gate, the main shrine and the Senbon Torii climbing Mount Inari past Yotsutsuji, with measured heights from Project PLATEAU on GSI laser terrain.",
+  "description": "Fushimi Inari Taisha, the shrine of the rice god: through the great vermilion Romon, past the fox guardians, and up Mount Inari under thousands of torii to Yotsutsuji and the summit.",
   "bbox": [
     135.765,
     34.96,
@@ -175,8 +175,8 @@
   ],
   "tour": [
     {
-      "title": "Fushimi Inari from open data",
-      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs, and thousands of torii on the paths up Inari-yama, 233 m.",
+      "title": "The mountain of the rice god",
+      "text": "For thirteen centuries merchants and farmers have climbed Inari-yama to pray for a good harvest and a good year. Thousands of torii line the paths to the 233 m summit, every one a gift.",
       "cam": [
         -1100,
         -500,
@@ -197,7 +197,7 @@
     },
     {
       "title": "The Romon",
-      "text": "Toyotomi Hideyoshi's gate of 1589, about 14 m, vermilion under hinoki bark, with the foxes of Inari before it: one holds a jewel, the other a key.",
+      "text": "Toyotomi Hideyoshi's gate of 1589, about 14 m of vermilion under hinoki bark. Inari's foxes stand guard before it: one holds a jewel, the other the key to the rice granary.",
       "cam": [
         -440,
         110,
@@ -218,7 +218,7 @@
     },
     {
       "title": "Senbon Torii",
-      "text": "Two tunnels of torii side by side, counted on the ground at 382 and 399, each given by a person or a company whose name is on the back.",
+      "text": "Two tunnels of torii side by side, close enough to touch, glowing orange when the low sun comes through. Walk round to the back of each gate: the names are the people and companies who gave it.",
       "cam": [
         -270,
         40,
