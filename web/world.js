@@ -1364,6 +1364,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         im.castShadow = im.receiveShadow = true;
         im.name = `${pr.name}_${part.name}`;
         farAt(im, c, r + 10, pr.far || 600);
+        OEBuildings.cellInstances(im);
         world.add(im);
       }
     }
