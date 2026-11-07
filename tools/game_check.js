@@ -1704,9 +1704,9 @@ const npcNight = require('./npc_night');
       const st = o.drv.st;
       Object.assign(r, { secs: T.u, done: !o.turn, round: Math.abs(ad(st.h, T.h0)) });
       let went = 0, px = st.x, py = st.y;
-      let secs = 0; // (40 s at most: a red light or a queue on its new way may hold it a while)
+      let secs = 0; // (120 s at most: a red light or a queue on its new way may hold it a while, two of Shibuya's long cycles)
       const held = {}; // (what held it, as the driver says, and the nearest car of the traffic ahead: printed on a failure)
-      for (; secs < 40 && went <= 10; secs++) {
+      for (; secs < 120 && went <= 10; secs++) {
         g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - px, q.y - py); px = q.x; py = q.y;
         const fx = Math.cos(q.h), fy = Math.sin(q.h);
         let near = null;
