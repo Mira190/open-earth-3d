@@ -543,8 +543,8 @@ Data tab. The shared sources are:
   the mapped woods and parks and the ground under them (`pipeline/woods.py`).
 - **Sydney's street and park trees:** City of Sydney, "Trees" (the council's tree
   inventory: position, species, height; CC BY 4.0, "City of Sydney"; ArcGIS item
-  15c4713a688a48fcb604fc343118af05, extracted 2026-11-07), for the trees' heights,
-  the trees OpenStreetMap does not map, and the species mix (`pipeline/plateau_veg.py`).
+  15c4713a688a48fcb604fc343118af05, extracted 2026-11-07), for the trees' heights
+  and the trees OpenStreetMap does not map (`pipeline/plateau_veg.py`).
 - **Queenstown's tree heights:** LINZ Otago - Queenstown LiDAR 1m DSM and DEM (2021),
   Toitū Te Whenua Land Information New Zealand (CC BY 4.0), the crown top over the
   ground at each mapped tree (`pipeline/plateau_veg.py`, extracted 2026-11-07).

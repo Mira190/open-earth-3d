@@ -73,8 +73,7 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
   is up to 85 m at the edges. The extent is 3.0 × 4.8 km.
 - **Trees:** OSM's 6,026 mapped trees, plus 8,906 more from the City of Sydney's tree
   inventory ("Trees", CC BY 4.0, extracted 2026-11-07), which OSM does not map; every tree
-  the inventory surveys has its measured height, and the species mix is the inventory's
-  (`pipeline/plateau_veg.py`, docs/ARCHITECTURE.md "Measured street-tree heights").
+  the inventory surveys has its measured height (`pipeline/plateau_veg.py`, docs/ARCHITECTURE.md "Measured street-tree heights").
 - **Buildings:** 7,962 buildings and 8,308 solids. OSM building parts replace
   their outlines, so in the surface model Sydney Tower is a 290 m shaft, a
   240–270 m turret and a spire to 309 m, all from data. Each building records:

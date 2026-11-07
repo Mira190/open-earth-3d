@@ -1123,10 +1123,14 @@ waits for Shibuya's opening film.
   trees `woods.py` had put within 3 m of one; and draws the other street trees (The
   Rocks, Barangaroo, the north shore, outside the council's area) from the inventory's
   heights (median 10 m, 90th percentile 20 m). The old guesses had a correlation of
-  0.02 with the measured heights. The species mix (`trees.mix`, and `trees.woods` for
-  the parks) is now the inventory's own by genus: brush box, water gum, paperbarks
-  and eucalypts 31%, plane trees 25%, deciduous broadleaves 21%, evergreen broadleaves
-  11%, figs 5%, jacarandas 3%, palms 3%. NSW Spatial Services' lidar is not used: its
+  0.02 with the measured heights. The inventory's species shares by genus (brush box,
+  water gum, paperbarks and eucalypts 31%, plane trees 25%, deciduous broadleaves 21%,
+  evergreen broadleaves 11%, figs 5%, jacarandas 3%, palms 3%; its park trees: evergreen
+  broadleaves 27%, gums 22%, palms 20%, figs 12%) are the measured `trees.mix`, but
+  with them the game's check finds two cars holding each other in a CBD junction and a
+  bus edging into a lamp post (the trunks' sizes change with the species, and the
+  traffic's timing with them), so the guessed mix stays until that traffic hold is fixed
+  (follow-up issue). NSW Spatial Services' lidar is not used: its
   files are in a requester-pays bucket. The canopy height models were measured
   against the inventory (`tools/chm_check.py`, 3,000 trees, the highest canopy within
   2.5 m of the trunk): Meta and WRI's v1 (2024) sees 45% of the trees, correlation
