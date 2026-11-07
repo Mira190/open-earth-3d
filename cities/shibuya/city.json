@@ -1001,7 +1001,6 @@
     ],
     "overture": {
       "note": "The overture (docs/OVERTURE.md, web/game/overture.js): Crossing. A petal (a ginkgo leaf in autumn, a snowflake in winter, a mote of light in summer) leaves the edge of SHIBUYA SKY, falls 229 m to the scramble, passes Hachiko, and the screens, and ends on the scramble from across it, into the sun, before the game begins at the kerb (game.start). Crowds are kept at a distance: no shot comes close to them. Points name the landmarks in scene.json, so a rebuilt map moves them.",
-      "day": false,
       "title": {"name": "渋谷", "reading": "Shibuya", "line": "交差  ·  Crossing"},
       "guides": [["sakura", [3, 18], [4, 20]], ["mote", [4, 21], [10, 24]], ["ginkgo", [10, 25], [12, 20]], ["snow", [12, 21], [3, 17]]],
       "signal": ["@scramble"],

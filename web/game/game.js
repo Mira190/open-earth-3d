@@ -62,8 +62,21 @@ window.OpenEarthGame = async function game(cityId) {
   // and the other maps of the same group (Tokyo's districts: cities/index.json groups), as on the subway map
   const me = (window.OE_CITIES || []).find(c => c.id === cityId), kin = me && me.group
     ? window.OE_CITIES.filter(c => c.group === me.group && c.id !== me.id && c.built && c.game).map(c => ({ id: c.id, name: `${c.name}${c.native ? ` ${c.native}` : ''}`, how: c.tagline })) : [];
-  $('#gm-links').innerHTML = [...(G.links || []), ...kin.filter(k => !(G.links || []).some(l => l.id === k.id))]
-    .map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
+  // a city drawn as a subway map (Tokyo): its districts are chosen on the map, full screen (metro.js),
+  // from the Districts button, B, or the menu; the game holds still under it
+  const metro = window.OEMetro ? OEMetro.group(window.OE_CITIES || [], cityId) : null;
+  $('#gm-links').innerHTML = (metro ? `<button class="btn primary" id="gm-metro">Change district · ${metro.name} map <kbd>B</kbd></button>` : '')
+    + [...(G.links || []), ...kin.filter(k => !(G.links || []).some(l => l.id === k.id))]
+      .map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
+  $('#g-metro-btn').hidden = !metro;
+  if (metro) { $('#g-metro-btn').innerHTML = `${metro.name} <kbd>B</kbd>`; document.querySelectorAll('.g-metro-key').forEach(r => { r.hidden = false; }); }
+  function openMetro() {
+    if (!metro || OEMetro.isOpen()) return;
+    $('#g-menu').hidden = true; $('#g-bigmap').hidden = true; $('#g-pass').hidden = true;
+    if (!phone.el.hidden) phoneShow(false);
+    keys.clear();
+    OEMetro.full({ g: metro, cities: window.OE_CITIES, here: cityId, backLabel: 'Back to the game', backWord: 'Back to the game' });
+  }
   const stage = $('#game-stage'), canvas = $('#game-gl');
   // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries;
   // reversed depth (where the GPU has EXT_clip_control) with the post stack's float depth buffer (atmosphere.js)
@@ -2394,10 +2407,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let overture = null; // the map's opening film (overture.js), made once the player is placed
-  let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden;
+  let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => (window.OEMetro && OEMetro.isOpen()) || !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden;
   const k = c => keys.has(c);
   on(window, 'keydown', e => {
     if (e.target.closest && e.target.closest('input, select, textarea')) return;
+    if (window.OEMetro && OEMetro.isOpen()) return; // the subway map has the keys (metro.js)
     const c = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(c)) e.preventDefault();
     if (e.repeat) { keys.add(c); return; }
@@ -2443,6 +2457,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (c === 'Enter' && guess.bi >= 0 && !guess.revealed) guessCheck();
     else if (c === 'KeyV') nextView();
     else if (c === 'KeyM') toggleMap();
+    else if (c === 'KeyB' && metro) openMetro();
     else if (c === 'KeyP') togglePass();
     else if (c === 'KeyH' && player.mode === 'ferry') takeHelm();
     else if (c === 'KeyR' && player.mode === 'foot') unstuck();
@@ -3673,6 +3688,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#gq-lines'), 'click', e => { const b = e.target.closest('button'); if (b) cycleTrack(b.dataset.line); });
   on($('#g-pass-btn'), 'click', togglePass);
   on($('#g-menu-btn'), 'click', toggleMenu);
+  on($('#g-metro-btn'), 'click', openMetro);
+  on($('#gm-links'), 'click', e => { if (e.target.closest('#gm-metro')) openMetro(); });
   for (const id of ['#g-bigmap-close', '#g-pass-close', '#g-menu-close']) on($(id), 'click', () => { $(id).closest('.g-overlay').hidden = true; });
   on($('#gm-time'), 'click', e => { const b = e.target.closest('button'); if (b) { presetTime(b.dataset.t); menuSync(); H.toast(`Time: ${b.dataset.label || b.textContent}, ${fmtMin(clock.min)}`); } });
   on($('#gm-clock'), 'input', e => { setClock(clock.y, clock.m, clock.d, +e.target.value); menuSync(); });
@@ -3964,7 +3981,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
     last = now; if (!simHold) clockT += dt; // (a harness's hold: only advance() moves the world's clock)
     U.uTime.value = clockT;
-    const titleOn = preTitle || !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || photo.on || simHold;
+    const titleOn = preTitle || !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || (window.OEMetro && OEMetro.isOpen()) || photo.on || simHold;
     stage.classList.toggle('titled', titleOn);
     // time of day
     if (!clock.frozen && !paused) { clock.min += dt * clock.scale / 60; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min); }
@@ -4880,6 +4897,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   window.__game = { hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
-    stop() { keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
+    stop() { if (window.OEMetro) OEMetro.close(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
 };
