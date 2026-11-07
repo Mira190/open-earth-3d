@@ -417,6 +417,8 @@
   .ts-card.metro .ts-stats { grid-template-columns: 1fr 1fr; }
   .mt-legend { display: none; }
   .mt-pick { min-height: 0; }
+  .mt-spots { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .mt-spots li { flex: none; }
   .ts-card h2 { font-size: 24px; }
   .ts-card h2 small { display: inline; margin: 0 0 0 10px; font-size: 13px; }
   .ts-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }
