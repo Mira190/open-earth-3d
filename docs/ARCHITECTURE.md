@@ -324,7 +324,10 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   broken into drifting dashes further out, Fresnel-weighted and weaker for a far light.
   One additive card per light, placed in the vertex shader for the camera: no second
   render of the scene, as the sea's planar reflection is, so every tier has it, and where
-  a card runs past the water's edge it is under the bank and the ground hides it. Walkers stop at a channel's railing and a pond's edge
+  a card runs past the water's edge it is under the bank and the ground hides it.
+
+  ![The Meguro at night in the festival: the chochin in the water](images/water/meguro_reflections_night.jpg)
+  ![Kyoto's Horikawa: the sunken promenade from a crossing](images/water/horikawa_day.jpg) Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 
   Live cities: Shibuya (the Meguro River, the Shibuya River's open stretch, 12 ponds),
@@ -872,6 +875,9 @@ towards the ceiling, a downlight a bay under the ceiling, people standing and se
 and a table's top dark against the light, each bay a little brighter or dimmer;
 further off the storey's mean, as before. `warm_share` 1 lights a restaurant warm
 (#286: the Skyline's flat pale panels beside the deck).
+
+![The Skyline restaurant's glass at night, and the tussock in the deck's bed by day](images/queenstown/skyline_glass_night.jpg)
+![The tussock in the Skyline deck's bed](images/queenstown/skyline_deck_tussock.jpg)
 
 ## Woods and park canopy
 
