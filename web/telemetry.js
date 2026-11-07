@@ -334,7 +334,7 @@ window.OETelemetry = (function () {
       const age = o ? Date.now() - o.t : 1e12;
       if (age < 30000) continue;
       localStorage.removeItem(k);
-      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_up_s: o.up, ago_s: Math.round(age / 1000) }), 0);
+      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
     }
   } catch (e) { /* storage blocked */ }
   setInterval(() => { if (!document.hidden && !going) alive(); }, 5000);
