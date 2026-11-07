@@ -8,13 +8,16 @@ Shinjuku map only (see docs/cities/shinjuku.md for every source and its licence)
     (Odakyu Electric Railway, Tokyo Metro, Tokyu Land; built by Taisei) began its new building on
     25 March 2024: 48 storeys and five basements, 258.15 m, due at the end of March 2030 (fiscal 2029).
     PLATEAU surveyed the old building standing; those solids are left out (landmark_demolished) and the
-    site is drawn as it is: white hoarding along the plaza and the lane, the project's board on its face
-    to the plaza, the site office in stacked cabins, floodlights, two luffing-jib tower cranes, and the
-    new building as far as it has risen: in January and July 2026 the work was still mostly below
-    ground (reports from the site), so the drawing stops at the ground-floor deck, the concrete core
-    two storeys up and the first tier of steel columns. The site's outline is OpenStreetMap's
-    construction area joined to the old building's PLATEAU footprint; the cranes' and the office's
-    places are illustrative.
+    site is drawn as photographs of 17 October 2026 show it (BLUE STYLE COM's site report): the new
+    building's steel is still below the plaza, so nothing stands on the site's own deck but the site
+    office and floodlights; along its plaza side a steel work deck (乗入れ構台) one storey up, on H-piles,
+    with a fascia of grey panels and a white mesh fence, reaches out into the roundabout, and a ramp in
+    white panels climbs to it from the plaza's north end; on the deck's south half stand two red and white
+    crawler cranes with luffing jibs, and at the site's north end a yellow all-terrain crane. No tower
+    crane has gone up. The white hoarding runs along the plaza and the lane, the project's board on its
+    face to the plaza. The site's outline is OpenStreetMap's construction area joined to the old
+    building's PLATEAU footprint; the deck's, the ramp's and the cranes' places are read from the
+    photographs against GSI's aerial photograph (about +-5 m).
   * Tokyu Kabukicho Tower (2023, 225 m, 48 storeys; Kume Sekkei and Tokyu Sekkei, the facade by Yuko
     Nagayama & Associates): on its mapped outline, glass between thin mullions, and over it a second
     skin of white frit printed as rising jets of water, the fountain the facade was drawn as (a nod to
@@ -24,9 +27,13 @@ Shinjuku map only (see docs/cities/shinjuku.md for every source and its licence)
     1964, LUMINE EST since 2006), its name, and the station's sign over the doors; in the square,
     renewed in July 2020, Tomokazu Matsuyama's Hanao-san (花尾), a bouquet in mirror-polished
     stainless steel, 7 m tall and 8 m on its base.
-  * The west exit's ramps (Sakakura, 1966): the two oval loops that take the cars down to the
-    underground plaza, their parapets and the planted islands in them, on the loops of GSI's aerial
-    photograph.
+  * The west exit's ramps (Sakakura, 1966): the two oval loops that took the cars down to the
+    underground plaza closed on 15 January 2025 and are being taken out with the plaza's rebuilding;
+    photographs of May and October 2026 show their openings decked flat in asphalt behind the road
+    works' barriers. They are drawn so: the loops' line kept as a ring of red and white water-filled
+    barriers and orange mesh panels round a flat deck at the plaza's level, over the hollow the terrain
+    model keeps there. North of them stands the underground plaza's ventilation tower, an open drum
+    faced in mottled brown tiles (the ivy that covered it is gone), on GSI's aerial photograph.
 
 Words are the buildings' own names, set in open fonts, not their logos. Local frame: x east, y north,
 z up, metres.
@@ -45,20 +52,32 @@ ATLAS_FILE = "station.jpg"
 FRIT_FILE = "kabukicho_tower.png"
 
 MATERIALS = {
-    # the west exit's site: white steel hoarding, the cabins' white and navy, steel columns in their red
-    # primer, the core's fresh concrete, the ground-floor deck, the cranes' white masts and red jibs
+    # the west exit's site: white steel hoarding, the cabins' white and navy, fresh concrete, the site's deck,
+    # the floodlights' masts
     "st_hoard": {"color": "#efeeea", "roughness": 0.65, "metalness": 0.15, "pattern": "granite", "joints_m": [0.5, 0.0]},
     "st_cabin": {"color": "#e9eaec", "roughness": 0.6, "metalness": 0.2, "pattern": "granite", "joints_m": [2.3, 2.7]},
     "st_navy": {"color": "#1f3566", "roughness": 0.55, "metalness": 0.2},
     "st_window": {"color": "#40505e", "roughness": 0.2, "metalness": 0.3, "emissive": "#ffe2b0", "glow": 1.1},
-    "st_steel": {"color": "#8a3b2a", "roughness": 0.6, "metalness": 0.35},
-    "st_core": {"color": "#a9a7a1", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.8, 0.9]},
     "st_deck": {"color": "#7d7b76", "roughness": 0.9, "metalness": 0.0},
     "st_mast": {"color": "#e4e4e0", "roughness": 0.5, "metalness": 0.4},
-    "st_jib": {"color": "#c9302a", "roughness": 0.5, "metalness": 0.35},
-    "st_net": {"color": "#4f6f9a", "roughness": 0.9, "metalness": 0.0, "pattern": "lattice"},
     "st_lamp": {"color": "#f4f4ee", "roughness": 0.3, "metalness": 0.0, "emissive": "#fff4dc", "glow": 3.0},
     "st_aviation": {"color": "#d01010", "roughness": 0.4, "metalness": 0.0, "emissive": "#ff2a1a", "glow": 3.0},
+    # the work deck: grey fascia panels, its steel (H-piles and girders, grey primer), the deck's checker plate;
+    # the crawlers' red and white, the all-terrain crane's yellow, the tyres and tracks; the road works' barriers
+    "st_fascia": {"color": "#a7a8a5", "roughness": 0.7, "metalness": 0.2, "pattern": "granite", "joints_m": [1.8, 0.0]},
+    "st_girder": {"color": "#5d605f", "roughness": 0.6, "metalness": 0.45},
+    "st_plate": {"color": "#6d6c68", "roughness": 0.85, "metalness": 0.2},
+    "st_red": {"color": "#c8361f", "roughness": 0.5, "metalness": 0.3},
+    "st_white": {"color": "#ecebe6", "roughness": 0.5, "metalness": 0.25},
+    "st_yellow": {"color": "#e3b51e", "roughness": 0.45, "metalness": 0.3},
+    "st_track": {"color": "#26272a", "roughness": 0.8, "metalness": 0.3},
+    "st_barrier_r": {"color": "#d0402a", "roughness": 0.6, "metalness": 0.0},
+    "st_barrier_w": {"color": "#efefea", "roughness": 0.6, "metalness": 0.0},
+    "st_mesh_o": {"color": "#e8742a", "roughness": 0.8, "metalness": 0.0, "pattern": "lattice"},
+    "st_asphalt": {"color": "#5b5c5d", "roughness": 0.95, "metalness": 0.0},
+    # the ventilation drum: tiles in mottled browns and ochres, its concrete inner face and plinth
+    "st_brick": {"color": "#8c6b52", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.11, "block_m": 0.24},
+    "st_conc": {"color": "#9d9a93", "roughness": 0.9, "metalness": 0.0},
     # Tokyu Kabukicho Tower: blue-silver glass in a fine grid, the white frit over it, the crown's fins
     # lit cool white after dark, the canopy's steel and the lobby's light
     "st_kt_glass": {"color": "#7d93a8", "roughness": 0.12, "metalness": 0.45, "pattern": "curtain_wall", "bay_m": 1.5, "storey_m": 4.2,
@@ -70,9 +89,10 @@ MATERIALS = {
     # the drawn signs (this module's atlas), lit from inside after dark
     "st_atlas": {"color": "#ffffff", "roughness": 0.55, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 1.3},
     "st_frame": {"color": "#2a2c30", "roughness": 0.45, "metalness": 0.6},
-    # LUMINE EST's front: pale panels in bands
-    "st_lumine": {"color": "#6f7a84", "roughness": 0.25, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.4,
-                  "spandrel": 0.5, "mullion_m": 0.22, "frame": "#e2ded4", "lit_share": 0.7, "lit_k": 0.9, "warm_share": 0.85},
+    # LUMINE EST's front: horizontal louvres of grey-brown aluminium over dark glass (photographs, 2013-23)
+    "st_lumine": {"color": "#3c434a", "roughness": 0.2, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 7.2, "storey_m": 4.4,
+                  "spandrel": 0.2, "mullion_m": 0.12, "frame": "#55595c", "lit_share": 0.7, "lit_k": 0.9, "warm_share": 0.85},
+    "st_louvre": {"color": "#8d877d", "roughness": 0.45, "metalness": 0.55},
     # Hanao-san: mirror-polished stainless steel; its base's dark granite
     "st_chrome": {"color": "#e3e7ec", "roughness": 0.08, "metalness": 1.0},
     "st_plinth": {"color": "#3a3b3d", "roughness": 0.4, "metalness": 0.1, "pattern": "granite", "joints_m": [0.6, 0.4]},
@@ -89,18 +109,32 @@ LIT = {"st_window", "st_lamp", "st_aviation", "st_kt_frit", "st_kt_fin", "st_lob
 SITE = [(272.7, 2613.9), (268.6, 2645.3), (301.3, 2649.1), (305.3, 2615.3), (302.4, 2576.0), (298.6, 2483.3), (263.1, 2479.4),
         (258.7, 2496.9), (250.0, 2498.8)]
 SITE_GONE_MIN_M = 20.0          # PLATEAU-only solids taller than this inside the site: the old building
-TOWER = {"u": (55.0, 118.0), "v": (-19.0, 17.0), "core_u": (74.0, 98.0), "core_v": (-8.0, 7.0), "deck_m": 1.2,
-         "core_m": 9.0, "steel_m": 13.5, "bay_m": 9.0}
-CRANES = [{"at": (283.5, 2548.0), "mast_m": 34.0, "jib_m": 42.0, "luff_deg": 58.0, "slew_deg": 200.0},
-          {"at": (285.0, 2592.0), "mast_m": 30.0, "jib_m": 38.0, "luff_deg": 64.0, "slew_deg": 110.0}]
+TOWER = {"deck_m": 1.2}          # the site's own deck over the excavation, at the plaza's level
+# the work deck along the site's plaza side, one storey up (the photographs: the plaza's buses pass under its edge)
+WORK_DECK = {"ring": [(230.0, 2492.0), (262.0, 2492.0), (268.0, 2602.0), (236.0, 2602.0)], "up_m": 7.0, "fascia_m": 1.6,
+             "pile_every": 8.0, "fence_m": 1.8}
+# the ramp up to it from the plaza's north end: from (x, y) at the plaza to (x, y) at the deck, its width
+WORK_RAMP = {"from": (247.0, 2660.0), "to": (247.0, 2602.0), "w": 7.5, "wall_m": 2.6}
+# crawler cranes on the work deck: lattice boom, a luffing jib at its head (deg from the horizontal), facing
+CRAWLERS = [{"at": (247.0, 2560.0), "face_deg": 70.0, "boom_m": 46.0, "boom_deg": 62.0, "jib_m": 26.0, "jib_deg": 15.0},
+            {"at": (250.0, 2508.0), "face_deg": 95.0, "boom_m": 54.0, "boom_deg": 80.0, "jib_m": 22.0, "jib_deg": 40.0}]
+# the all-terrain crane at the site's north end, on the site's deck: its telescopic boom
+MOBILE = {"at": (283.0, 2628.0), "face_deg": 200.0, "boom_m": 44.0, "boom_deg": 72.0}
+PLAZA = {"z": 0.0}              # the plaza's level round the loops (deck_over_hollow sets it)
+PLAZA_R = 42.0                  # m from the loops' middle: the ring whose ground gives the plaza's level
+PLAZA_PCT = 20                  # its lower ground (the ring crosses kerbs and raised islands)
+HOLLOW_M = 0.5                  # m: ground lower than the plaza by this is the openings' hollow, decked over
+VENT = {"at": (172.0, 2616.0), "r": 8.3, "h": 7.4, "wall_m": 0.45}   # the underground plaza's ventilation drum
 OFFICE = {"at": (277.0, 2633.0), "axis_deg": 97.0, "w": 12.2, "d": 2.5, "storeys": 3}
 
+FRIT_BURST = 0.3                # how far up the tower the frit's jets break into spray (photographs)
 KT_OSM = "w852000385"           # Tokyu Kabukicho Tower
 KT = {"floors_m": 200.0, "crown_m": 225.0, "frit_off": 0.35, "fin_every": 1.6, "lobby_m": 8.5, "canopy_m": 6.2}
 CINE_CITY = (434.0, 3020.0)     # Cine City Plaza (OSM way 684924350), the tower's front
 
 LUMINE = "r16502754"
 LUMINE_FRONT = ((441.1, 2467.2), (431.4, 2550.9))   # its face to the East Square (the outline's east edge)
+LUMINE_LOUVRE_M = 0.6          # m between the front's louvres
 HANAO = {"at": (453.3, 2500.5), "plinth_r": 2.0, "plinth_m": 1.0, "h": 7.0, "bench_r": (3.3, 4.3), "bench_m": 0.45}
 # the round bench about it: OSM maps it as a 1 m "building" (relation 16263947, bench=yes) and PLATEAU stands it
 # and the square's planters at 2.4-2.8 m, so they read as huts; they are drawn here as the bench instead
@@ -108,7 +142,7 @@ HANAO_HIDE = ("r16263947",)
 HANAO_HIDE_P = ((454.0, 2500.0), (453.0, 2510.0))   # PLATEAU-only solids (no OSM id) of the same, by centroid
 
 RAMPS = [{"c": (192.0, 2529.0), "a": 22.0, "b": 10.5}, {"c": (192.5, 2508.0), "a": 21.5, "b": 9.5}]   # the loops: centre, half length, half width
-RAMP_OPEN_DEG = 55.0            # each loop's parapet is open this far either side of east, where its road comes up
+RAMP_OPEN_DEG = 55.0            # each loop's parapet was open this far either side of east, where its road came up
 
 
 # ---------------------------------------------------------------- helpers
@@ -193,40 +227,13 @@ def west_site(K, A, D):
         sign_quad(K, A, m + f * 18.0, n, 4.2, z + 0.8, z + 3.0, "west_notice")
     # the ground inside: a fresh concrete deck over the excavation
     ak.cap(K["st_deck"], ak.WORLD, ring, g0 + TOWER["deck_m"])
-    # the new building, as far as it has risen: its core and the first tier of steel
-    ax = unit(np.array(SITE[5]) - np.array(SITE[6]))     # along the site, from its south end
-    side = np.array([-ax[1], ax[0]])
-    south = np.array(SITE[6]) + side * 18.0
-    P = frame(south, ax)
     z0 = g0 + TOWER["deck_m"]
-    cu, cv = TOWER["core_u"], TOWER["core_v"]
-    box(K["st_core"], P, cu[0], cu[1], cv[0], cv[1], z0, z0 + TOWER["core_m"])
-    u0, u1 = TOWER["u"]
-    v0, v1 = TOWER["v"]
-    bay = TOWER["bay_m"]
-    us = list(np.arange(u0, u1 + 0.1, bay))
-    vs = list(np.linspace(v0, v1, 5))
-    zt = z0 + TOWER["steel_m"]
-    S = K["st_steel"]
-    for u in us:
-        for v in vs:
-            if cu[0] - 1 < u < cu[1] + 1 and cv[0] - 1 < v < cv[1] + 1:
-                continue
-            box(S, P, u - 0.4, u + 0.4, v - 0.4, v + 0.4, z0, zt)
-    for z in (z0 + 4.5, z0 + 9.0, zt):   # girders at each floor, both ways
-        for u in us:
-            box(S, P, u - 0.2, u + 0.2, v0, v1, z - 0.8, z)
-        for v in vs:
-            box(S, P, u0, u1, v - 0.2, v + 0.2, z - 0.8, z)
-    # the safety net round the top tier
-    for a, b in (((u0, v0), (u1, v0)), ((u1, v0), (u1, v1)), ((u1, v1), (u0, v1)), ((u0, v1), (u0, v0))):
-        L = math.hypot(b[0] - a[0], b[1] - a[1])
-        pa, pb = P(a[0], a[1], 0), P(b[0], b[1], 0)
-        K["st_net"].quad(np.array([*pa[:2], zt - 4.5]), np.array([*pb[:2], zt - 4.5]), np.array([*pb[:2], zt + 1.2]), np.array([*pa[:2], zt + 1.2]),
-                         [[0, 0], [L, 0], [L, 5.7], [0, 5.7]])
+    # the work deck one storey up along the plaza side, and the ramp up to it
+    deck = work_deck(K, D, g0)
     # the cranes, the office, the floodlights
-    for c in CRANES:
-        crane(K, np.asarray(c["at"]), z0 if Point(*c["at"]).within(site) else D.ground(*c["at"]), c)
+    for c in CRAWLERS:
+        crawler(K, np.asarray(c["at"]), deck, c)
+    mobile_crane(K, np.asarray(MOBILE["at"]), z0, MOBILE)
     office(K, A, D)
     lamps = []
     for k, p in enumerate(ring):
@@ -238,54 +245,164 @@ def west_site(K, A, D):
         box(K["st_lamp"], frame(q, centre - q), -0.3, 0.3, -0.6, 0.6, z + 14.0, z + 14.7)
         lamps.append([round(float(q[0]), 1), round(float(q[1]), 1)])
     return {"at": [round(float(centre[0]), 1), round(float(centre[1]), 1)], "z": round(g0, 2), "lamps": lamps,
-            "steel_top": round(float(zt), 2), "cranes": [list(c["at"]) for c in CRANES]}
+            "deck_z": round(float(deck), 2), "cranes": [list(c["at"]) for c in CRAWLERS] + [list(MOBILE["at"])]}
 
 
-def crane(K, c, z, spec):
-    """A luffing-jib tower crane: a lattice mast, the slewing deck and cab, the counter-jib with its
-    weights, the A-frame, the jib raised at its angle, its ties, the hook, and red lights on its tips."""
-    top = z + spec["mast_m"]
-    M, J = K["st_mast"], K["st_jib"]
-    h = 1.0
-    for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
-        M.tube([np.array([c[0] + dx * h, c[1] + dy * h, z]), np.array([c[0] + dx * h, c[1] + dy * h, top])], 0.1, 4)
-    for k in range(int(spec["mast_m"] / 2.5)):
-        z1, z2 = z + k * 2.5, z + (k + 1) * 2.5
-        for (x1, y1), (x2, y2) in (((-h, -h), (h, -h)), ((h, -h), (h, h)), ((h, h), (-h, h)), ((-h, h), (-h, -h))):
-            M.tube([np.array([c[0] + x1, c[1] + y1, z1]), np.array([c[0] + x2, c[1] + y2, z2])], 0.045, 3)
-    a = math.radians(spec["slew_deg"])
+def work_deck(K, D, g0):
+    """The steel work deck along the site's plaza side: a checker-plate top on girders, H-piles in a grid under
+    it, a fascia of grey panels round its edge with a white mesh fence over it; and the ramp up to it from the
+    plaza's north end, walled in white panels. Returns the deck's top."""
+    ring = ccw(WORK_DECK["ring"])
+    z = g0 + WORK_DECK["up_m"]
+    fz = WORK_DECK["fascia_m"]
+    poly = Polygon(ring)
+    ak.cap(K["st_plate"], ak.WORLD, ring, z)
+    ak.cap(K["st_girder"], ak.WORLD, ring, z - fz, down=True)
+    for a, b in zip(ring, ring[1:] + ring[:1]):
+        a, b = np.asarray(a), np.asarray(b)
+        L = float(np.linalg.norm(b - a))
+        f = (b - a) / L
+        n = np.array([f[1], -f[0]])                     # out of a ccw ring
+        pa, pb = a + n * 0.05, b + n * 0.05
+        K["st_fascia"].quad(np.array([*pa, z - fz]), np.array([*pb, z - fz]), np.array([*pb, z + 0.15]), np.array([*pa, z + 0.15]),
+                            [[0, 0], [L, 0], [L, fz + 0.15], [0, fz + 0.15]])
+        fh = WORK_DECK["fence_m"]
+        K["st_rail"].tube([np.array([*a, z + fh]), np.array([*b, z + fh])], 0.04, 4)
+        K["st_barrier_w"].quad(np.array([*a, z + 0.15]), np.array([*b, z + 0.15]), np.array([*b, z + fh]), np.array([*a, z + fh]))
+        K["st_barrier_w"].quad(np.array([*b, z + 0.15]), np.array([*a, z + 0.15]), np.array([*a, z + fh]), np.array([*b, z + fh]))
+    # piles and the girders between them, every pile_every both ways, clear of the ramp's foot
+    x0, y0, x1, y1 = poly.bounds
+    e = WORK_DECK["pile_every"]
+    for x in np.arange(x0 + 2.0, x1, e):
+        for y in np.arange(y0 + 2.0, y1, e):
+            if not poly.buffer(-1.0).contains(Point(x, y)):
+                continue
+            g = D.ground(x, y)
+            box(K["st_girder"], frame((x, y), (1, 0)), -0.2, 0.2, -0.2, 0.2, g, z - fz)
+            box(K["st_girder"], frame((x, y), (1, 0)), -0.03, 0.03, -0.2, 0.2, g + 1.2, z - fz - 0.4)
+    # the ramp: a sloping deck between white panel walls
+    f0, f1 = np.asarray(WORK_RAMP["from"], float), np.asarray(WORK_RAMP["to"], float)
+    ax = unit(f1 - f0)
+    side = np.array([-ax[1], ax[0]])
+    w = WORK_RAMP["w"] / 2
+    za, zb = D.ground(*f0), z
+    L = float(np.linalg.norm(f1 - f0))
+    for s0, s1 in ((-w, w),):
+        A0, A1, B0, B1 = f0 + side * s0, f0 + side * s1, f1 + side * s0, f1 + side * s1
+        K["st_plate"].quad(np.array([*A1, za + 0.05]), np.array([*A0, za + 0.05]), np.array([*B0, zb]), np.array([*B1, zb]))
+        K["st_girder"].quad(np.array([*A0, za]), np.array([*A1, za]), np.array([*B1, zb - 1.0]), np.array([*B0, zb - 1.0]))
+    hw = WORK_RAMP["wall_m"]
+    for s0 in (-w, w):
+        A, B = f0 + side * s0, f1 + side * s0
+        for o in (0.0, 0.12):
+            pa, pb = A + side * np.sign(s0) * o, B + side * np.sign(s0) * o
+            qa, qb = (pa, pb) if (s0 > 0) == (o > 0) else (pb, pa)
+            zqa, zqb = (za, zb) if qa is pa else (zb, za)
+            K["st_hoard"].quad(np.array([*qa, zqa]), np.array([*qb, zqb]), np.array([*qb, zqb + hw]), np.array([*qa, zqa + hw]),
+                               [[0, zqa], [L, zqb], [L, zqb + hw], [0, zqa + hw]])
+        # the ramp's side under the slope, down to the plaza
+        K["st_fascia"].quad(np.array([*A, za]), np.array([*B, D.ground(*B)]), np.array([*B, zb]), np.array([*A, za]))
+    for t in np.arange(8.0, L - 2.0, 8.0):   # trestles under it
+        c = f0 + ax * t
+        zt = za + (zb - za) * t / L
+        for s0 in (-w + 0.5, w - 0.5):
+            q = c + side * s0
+            box(K["st_girder"], frame(q, ax), -0.18, 0.18, -0.18, 0.18, D.ground(*q), zt - 0.6)
+    return z
+
+
+def crawler(K, c, z, spec):
+    """A lattice-boom crawler crane: two tracks, the carbody and the red and white house with its cab and
+    counterweight, the boom raised at its angle with a luffing jib at its head, the gantry and its pendants,
+    the hook block, and red lights at the tips."""
+    a = math.radians(spec["face_deg"])
     f = np.array([math.cos(a), math.sin(a)])
     P = frame(c, f)
-    box(K["st_mast"], P, -2.2, 2.2, -1.8, 1.8, top, top + 1.2)                       # the slewing deck
-    box(K["st_cabin"], P, 1.4, 3.6, 1.0, 3.0, top + 0.2, top + 2.6)   # the cab, on the jib's side
-    box(K["st_jib"], P, -9.0, -2.0, -1.0, 1.0, top + 0.8, top + 1.6)                 # the counter-jib
-    box(K["st_core"], P, -9.0, -6.5, -1.3, 1.3, top + 1.6, top + 4.2)                 # its weights
-    peak = P(-1.0, 0, top + 9.0)
-    for v in (-1.0, 1.0):                                                             # the A-frame
-        J.tube([P(-1.8, v, top + 1.2), peak], 0.12, 4)
-        J.tube([P(0.8, v, top + 1.2), peak], 0.12, 4)
-    lu = math.radians(spec["luff_deg"])
-    foot = P(1.5, 0, top + 1.5)
-    tip = foot + np.array([*(f * math.cos(lu) * spec["jib_m"]), math.sin(lu) * spec["jib_m"]])
-    for v in (-0.7, 0.7):                                                             # the jib: two chords and lacing
-        o = np.array([-f[1] * v, f[0] * v, 0.0])
-        J.tube([foot + o, tip + o * 0.4], 0.12, 4)
-    lower = foot - np.array([0, 0, 1.0])
-    J.tube([lower, tip - np.array([0, 0, 0.3])], 0.1, 4)
-    n = 14
+    for v in (-2.6, 2.6):                                                           # the tracks
+        box(K["st_track"], P, -3.8, 3.8, v - 0.5, v + 0.5, z, z + 1.1)
+    box(K["st_girder"], P, -1.6, 1.6, -2.1, 2.1, z + 0.5, z + 1.4)                     # the carbody
+    box(K["st_white"], P, -4.2, 1.6, -1.6, 1.6, z + 1.4, z + 3.4)                      # the house
+    box(K["st_red"], P, -4.2, 1.6, -1.65, 1.65, z + 1.4, z + 1.8)
+    box(K["st_red"], P, -5.6, -3.4, -1.7, 1.7, z + 1.4, z + 3.6)                       # the counterweight
+    box(K["st_white"], P, 0.4, 2.2, 1.7, 2.9, z + 1.5, z + 3.6)                        # the cab
+    K["st_window"].quad(P(2.22, 1.8, z + 2.4), P(2.22, 2.8, z + 2.4), P(2.22, 2.8, z + 3.4), P(2.22, 1.8, z + 3.4))
+    peak = P(-2.0, 0, z + 7.5)                                                        # the gantry
+    for v in (-1.2, 1.2):
+        K["st_red"].tube([P(-3.6, v, z + 3.4), peak], 0.1, 4)
+        K["st_red"].tube([P(0.0, v, z + 3.4), peak], 0.1, 4)
+    lu = math.radians(spec["boom_deg"])
+    foot = P(1.4, 0, z + 2.4)
+    up = np.array([*(f * math.cos(lu)), math.sin(lu)])
+    tip = foot + up * spec["boom_m"]
+    jl = math.radians(spec["jib_deg"])
+    jtip = tip + np.array([*(f * math.cos(jl)), math.sin(jl)]) * spec["jib_m"]
+    lattice(K, foot, tip, f, 1.2, 0.5, int(spec["boom_m"] / 2.2))
+    lattice(K, tip, jtip, f, 0.7, 0.35, int(spec["jib_m"] / 2.0))
+    strut = tip + np.array([0, 0, 1.0]) * 5.0 - up * 1.0                              # the jib's strut and its ties
+    K["st_red"].tube([tip, strut], 0.12, 4)
+    K["st_frame"].tube([strut, jtip], 0.03, 3)
+    K["st_frame"].tube([strut, peak], 0.03, 3)
+    K["st_frame"].tube([peak, P(-5.4, 0, z + 3.6)], 0.035, 3)
+    hook = jtip.copy()
+    hook[2] = max(z + 6.0, jtip[2] - 0.55 * (jtip[2] - z))
+    K["st_frame"].tube([jtip, hook], 0.03, 3)
+    box(K["st_yellow"], frame(hook[:2], f), -0.4, 0.4, -0.3, 0.3, hook[2] - 1.0, hook[2])
+    for q in (tip, jtip):
+        box(K["st_aviation"], frame(q[:2], f), -0.25, 0.25, -0.25, 0.25, q[2], q[2] + 0.5)
+
+
+def lattice(K, a, b, f, w, w_tip, n):
+    """A boom from a to b in alternating red and white sections: four chords tapering from w wide to w_tip,
+    laced with diagonals."""
+    side = np.array([-f[1], f[0], 0.0])
+    d = unit(b - a)
+    up = np.cross(side, d)
+    corners = [(-1, -1), (1, -1), (1, 1), (-1, 1)]
     for k in range(n):
         s0, s1 = k / n, (k + 1) / n
-        a0 = foot + (tip - foot) * s0
-        b1 = lower + (tip - np.array([0, 0, 0.3]) - lower) * s1
-        J.tube([a0, b1], 0.04, 3)
-    K["st_frame"].tube([peak, tip], 0.035, 3)                                         # the luffing ties
-    K["st_frame"].tube([peak, P(-8.5, 0, top + 1.6)], 0.035, 3)
+        p0, p1 = a + (b - a) * s0, a + (b - a) * s1
+        h0, h1 = (w + (w_tip - w) * s0) / 2, (w + (w_tip - w) * s1) / 2
+        M = K["st_red"] if (k // 2) % 2 == 0 else K["st_white"]
+        c0 = [p0 + side * sx * h0 + up * sy * h0 for sx, sy in corners]
+        c1 = [p1 + side * sx * h1 + up * sy * h1 for sx, sy in corners]
+        for q in range(4):
+            M.tube([c0[q], c1[q]], 0.07, 4)
+            M.tube([c0[q], c1[(q + 1) % 4]], 0.035, 3)
+
+
+def mobile_crane(K, c, z, spec):
+    """An all-terrain crane: the yellow carrier on its tyres, outriggers down, the cab, the slewing
+    superstructure and its counterweight, and the telescopic boom out at its angle."""
+    a = math.radians(spec["face_deg"])
+    f = np.array([math.cos(a), math.sin(a)])
+    P = frame(c, f)
+    box(K["st_yellow"], P, -6.5, 6.5, -1.3, 1.3, z + 1.0, z + 2.0)                     # the carrier
+    for u in (-5.0, -3.4, 2.2, 3.8, 5.4):                                             # its tyres
+        for v in (-1.35, 1.05):
+            box(K["st_track"], P, u - 0.6, u + 0.6, v, v + 0.3, z, z + 1.25)
+    for u in (-5.8, 5.8):                                                             # the outriggers
+        for v in (-1, 1):
+            box(K["st_yellow"], P, u - 0.25, u + 0.25, v * 1.3, v * 3.6, z + 1.1, z + 1.5)
+            box(K["st_girder"], P, u - 0.4, u + 0.4, v * 3.6 - 0.4, v * 3.6 + 0.4, z, z + 1.3)
+    box(K["st_yellow"], P, 4.6, 6.6, -1.3, 0.2, z + 2.0, z + 3.6)                      # the driving cab
+    box(K["st_yellow"], P, -4.0, 1.0, -1.2, 1.2, z + 2.0, z + 3.4)                      # the superstructure
+    box(K["st_girder"], P, -5.2, -3.6, -1.3, 1.3, z + 2.2, z + 3.6)                     # the counterweight
+    box(K["st_white"], P, -0.8, 1.2, 1.2, 2.2, z + 2.0, z + 3.9)                       # the crane cab
+    lu = math.radians(spec["boom_deg"])
+    up = np.array([*(f * math.cos(lu)), math.sin(lu)])
+    foot = P(-2.5, 0, z + 3.4)
+    L = spec["boom_m"]
+    k = 5                                                                             # telescopic sections, each narrower
+    for i in range(k):
+        s0, s1 = i / k * L * 0.98, (i + 1) / k * L
+        w = 1.3 - i * 0.16
+        K["st_yellow"].box(foot + up * s0, foot + up * s1, w, w * 1.15)
+    tip = foot + up * L
     hook = tip.copy()
-    hook[2] = top - spec["mast_m"] * 0.45
+    hook[2] = z + L * 0.35
     K["st_frame"].tube([tip, hook], 0.03, 3)
-    box(K["st_jib"], frame(hook[:2], f), -0.35, 0.35, -0.35, 0.35, hook[2] - 0.9, hook[2])
-    for q in (tip, peak, P(-9.0, 0, top + 1.6)):
-        box(K["st_aviation"], frame(q[:2], f), -0.25, 0.25, -0.25, 0.25, q[2], q[2] + 0.5)
+    box(K["st_yellow"], frame(hook[:2], f), -0.35, 0.35, -0.3, 0.3, hook[2] - 0.9, hook[2])
+    box(K["st_aviation"], frame(tip[:2], f), -0.25, 0.25, -0.25, 0.25, tip[2], tip[2] + 0.5)
 
 
 def office(K, A, D):
@@ -416,8 +533,9 @@ def kabukicho_tower(K, A, D):
 
 
 def draw_frit(path):
-    """The frit skin's picture: rising jets of water in white dots and strokes on clear glass (its
-    clear pixels are holes), denser toward the top where the jets break into spray."""
+    """The frit skin's picture: rising jets of water in white dots and strokes on clear glass (its clear pixels are
+    holes), breaking into spray a third of the way up the tower (FRIT_BURST), thin lines running on above, as
+    photographs of 2023-24 show the white strands dense over the lower tower and the glass clear above."""
     from PIL import Image, ImageDraw
     W, H = 1024, 4096
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -430,16 +548,19 @@ def draw_frit(path):
         for k in range(1400):
             s = (k / 1400) ** 0.85                       # up the jet
             yy = H * (1 - s)
-            spread = 6 + 70 * s ** 2.2                   # a thin stream that opens into spray
+            burst = math.exp(-((s - FRIT_BURST) / 0.09) ** 2)   # where the jets break, a third of the way up
+            spread = 5 + 80 * burst + 10 * s                  # a stream that bursts into spray, then thins out above
             xx = x0 + lean * (H - yy) * 0.08 + rng.normal(0, spread)
-            r = 1.5 + 4.5 * (1 - s) + rng.random() * 2.0
-            if s > 0.75 and rng.random() < 0.5:          # the spray: drops thrown out and falling
-                xx += rng.normal(0, 90 * (s - 0.7))
+            r = (1.5 + 4.5 * (1 - s)) * (0.35 if s > FRIT_BURST + 0.15 else 1.0) + rng.random() * 2.0
+            if burst > 0.3 and rng.random() < 0.5:            # the spray: drops thrown out and falling
+                xx += rng.normal(0, 70 * burst)
                 r *= 0.7
+            if s > FRIT_BURST + 0.15 and rng.random() < 0.6:  # above it only a fine line runs on up
+                continue
             d.ellipse([xx - r, yy - r * 2.2, xx + r, yy + r * 2.2], fill=(250, 252, 255, 255))
-        d.line([(x0, H), (x0 + lean * H * 0.06, H * 0.32)], fill=(250, 252, 255, 255), width=5)
-    for _ in range(5000):                                 # fine mist over the top third
-        xx, yy = rng.random() * W, (rng.random() ** 2.4) * H * 0.4
+        d.line([(x0, H), (x0 + lean * H * 0.06, H * 0.02)], fill=(250, 252, 255, 255), width=4)
+    for _ in range(5000):                                 # fine mist about the burst
+        xx, yy = rng.random() * W, H * (1 - FRIT_BURST) + rng.normal(0, H * 0.07)
         r = 1.0 + rng.random() * 1.6
         d.ellipse([xx - r, yy - r, xx + r, yy + r], fill=(250, 252, 255, 255))
     img = img.resize((512, 2048), Image.LANCZOS)
@@ -472,10 +593,13 @@ def lumine(K, A, D):
     g = min(s["ground"] for s in solids) if solids else D.ground(*a)
     top = max(s["top"] for s in solids if Polygon(s["ring"]).area > 1000) if solids else 29.0
     m = (a + b) / 2
-    # pale bands between the windows of the upper floors, a glazed and lit street floor, the canopy over the doors
+    # dark glass behind horizontal louvres on the upper floors, a glazed and lit street floor, the canopy over the doors
     o = n * 0.12
     K["st_lumine"].quad(np.array([*(a + o), g + 6.0]), np.array([*(b + o), g + 6.0]), np.array([*(b + o), g + top - 0.5]), np.array([*(a + o), g + top - 0.5]),
                         [[0, 6.0], [L, 6.0], [L, top - 0.5], [0, top - 0.5]])
+    for z in np.arange(g + 6.3, g + top - 0.6, LUMINE_LOUVRE_M):   # the louvres, each a blade tilted a little down
+        K["st_louvre"].quad(np.array([*(a + n * 0.25), z]), np.array([*(b + n * 0.25), z]), np.array([*(b + n * 0.75), z - 0.12]), np.array([*(a + n * 0.75), z - 0.12]))
+        K["st_louvre"].quad(np.array([*(a + n * 0.75), z - 0.15]), np.array([*(b + n * 0.75), z - 0.15]), np.array([*(b + n * 0.25), z - 0.03]), np.array([*(a + n * 0.25), z - 0.03]))
     K["st_lobby"].quad(np.array([*(a + o * 0.5), g]), np.array([*(b + o * 0.5), g]), np.array([*(b + o * 0.5), g + 5.6]), np.array([*(a + o * 0.5), g + 5.6]))
     c0 = m - f * 14.0
     c1 = m + f * 14.0
@@ -483,7 +607,7 @@ def lumine(K, A, D):
     K["st_kt_canopy"].quad(np.array([*(c0 + n * 3.5), cz]), np.array([*(c1 + n * 3.5), cz]), np.array([*c1, cz]), np.array([*c0, cz]))
     K["st_kt_canopy"].quad(np.array([*c0, cz + 0.35]), np.array([*c1, cz + 0.35]), np.array([*(c1 + n * 3.5), cz + 0.35]), np.array([*(c0 + n * 3.5), cz + 0.35]))
     K["st_kt_canopy"].quad(np.array([*(c0 + n * 3.5), cz]), np.array([*(c0 + n * 3.5), cz + 0.35]), np.array([*(c1 + n * 3.5), cz + 0.35]), np.array([*(c1 + n * 3.5), cz]))
-    sign_quad(K, A, m, n, 18.0, g + top - 6.0, g + top - 2.2, "lumine_est", off=0.2)
+    sign_quad(K, A, m, n, 18.0, g + top - 6.0, g + top - 2.2, "lumine_est", off=0.9)   # over the louvres
     sign_quad(K, A, m, n, 11.0, cz + 0.45, cz + 1.75, "jr_east", off=3.6)
     return {"front": [round(float(m[0]), 1), round(float(m[1]), 1)], "z": round(g, 2)}
 
@@ -556,24 +680,81 @@ def stadium(c, a, b, n=48, a0=0.0, a1=2 * math.pi):
 
 
 def ramps(K, D):
+    """The loops as they stand closed: each opening decked flat at the plaza's level (the rim's ground), the old
+    parapet's line kept as a ring of water-filled barriers, red and white by turns, with orange mesh panels on
+    stands here and there and cones between; and the ventilation drum north of them."""
+    out = []
+    deck_over_hollow(K, D)
     for rp in RAMPS:
         c, a, b = rp["c"], rp["a"], rp["b"]
-        o0 = math.radians(RAMP_OPEN_DEG)
-        outer = stadium(c, a, b, 64, o0, 2 * math.pi - o0)
-        inner = stadium(c, a - 7.0, max(2.0, b - 6.5), 48)
-        for path, h in ((outer, 1.1), (inner, 0.75)):
-            for p, q in zip(path, path[1:]):
-                zp, zq = D.ground(*p), D.ground(*q)
-                n = unit(np.array([q[1] - p[1], p[0] - q[0]]))
-                for s in (0.0, 0.3):
-                    pp, qq = p + n * s, q + n * s
-                    K["st_parapet"].quad(np.array([*pp, zp]), np.array([*qq, zq]), np.array([*qq, zq + h]), np.array([*pp, zp + h]),
-                                         [[0, 0], [float(np.linalg.norm(q - p)), 0], [float(np.linalg.norm(q - p)), h], [0, h]])
-                K["st_parapet"].quad(np.array([*p, zp + h]), np.array([*q, zq + h]), np.array([*(q + n * 0.3), zq + h]), np.array([*(p + n * 0.3), zp + h]))
-            K["st_rail"].tube([np.array([*(p + 0.0), D.ground(*p) + h + 0.35]) for p in path], 0.04, 4)
-        isl = [tuple(p) for p in inner[:-1]]
-        ak.cap(K["st_green"], ak.WORLD, isl, D.ground(*c) + 0.75)
-    return [list(r["c"]) for r in RAMPS]
+        outer = stadium(c, a, b, 64)
+        rim = PLAZA["z"]
+        s = 0.0
+        for k, (p, q) in enumerate(zip(outer, outer[1:])):
+            L = float(np.linalg.norm(q - p))
+            if k % 9 in (3, 4):          # an orange mesh panel on its feet
+                for t in (p, q):
+                    K["st_frame"].tube([np.array([*t, rim]), np.array([*t, rim + 1.8])], 0.03, 3)
+                K["st_mesh_o"].quad(np.array([*p, rim + 0.15]), np.array([*q, rim + 0.15]), np.array([*q, rim + 1.8]), np.array([*p, rim + 1.8]),
+                                    [[0, 0], [L, 0], [L, 1.65], [0, 1.65]])
+                K["st_mesh_o"].quad(np.array([*q, rim + 0.15]), np.array([*p, rim + 0.15]), np.array([*p, rim + 1.8]), np.array([*q, rim + 1.8]),
+                                    [[0, 0], [L, 0], [L, 1.65], [0, 1.65]])
+            else:                        # a barrier, 1.2 m long sections
+                n = max(1, int(round(L / 1.2)))
+                for j in range(n):
+                    u0, u1 = p + (q - p) * j / n, p + (q - p) * (j + 0.94) / n
+                    M = K["st_barrier_r"] if int((s + L * j / n) / 1.2) % 2 == 0 else K["st_barrier_w"]
+                    d = unit(u1 - u0)
+                    P = frame(u0, d)
+                    box(M, P, 0.0, float(np.linalg.norm(u1 - u0)), -0.22, 0.22, rim, rim + 0.8)
+            s += L
+        for k in range(0, len(outer) - 1, 6):   # cones inside the ring
+            p = outer[k] + unit(np.asarray(c) - outer[k]) * 1.2
+            K["st_mesh_o"].lathe([(rim, 0.18), (rim + 0.7, 0.03)], (float(p[0]), float(p[1])), 8)
+        out.append(list(c))
+    vent(K, D)
+    return out
+
+
+def deck_over_hollow(K, D):
+    """The loops' openings decked flat: the terrain model keeps the hollow the openings made (the photograph's
+    ground), wider than the loops; the deck covers every cell of it lower than the plaza by HOLLOW_M, at the plaza's
+    level (the lower ground, PLAZA_PCT, on a ring PLAZA_R out from the loops' middle)."""
+    import shapely
+    from shapely.geometry import box as sbox
+    cx = float(np.mean([r["c"][0] for r in RAMPS]))
+    cy = float(np.mean([r["c"][1] for r in RAMPS]))
+    z = float(np.percentile([D.ground(cx + PLAZA_R * math.cos(t), cy + PLAZA_R * math.sin(t)) for t in np.linspace(0, 2 * math.pi, 48, endpoint=False)], PLAZA_PCT))
+    cells = []
+    for x in np.arange(cx - 55.0, cx + 55.0, 2.0):
+        for y in np.arange(cy - 45.0, cy + 45.0, 2.0):
+            if D.ground(x + 1.0, y + 1.0) < z - HOLLOW_M:
+                cells.append(sbox(x, y, x + 2.0, y + 2.0))
+    PLAZA["z"] = z
+    if not cells:
+        return
+    U = shapely.union_all(cells).buffer(1.5).buffer(-0.5).simplify(0.4)
+    for poly in getattr(U, "geoms", [U]):
+        if poly.area < 30:
+            continue
+        ak.cap(K["st_asphalt"], ak.WORLD, list(poly.exterior.coords)[:-1], z + 0.03)
+        ring = list(poly.exterior.coords)
+        for (x1, y1), (x2, y2) in zip(ring, ring[1:]):   # its edge down to the hollow, so no gap shows under it
+            K["st_asphalt"].quad(np.array([x1, y1, z + 0.03]), np.array([x2, y2, z + 0.03]), np.array([x2, y2, z - 2.5]), np.array([x1, y1, z - 2.5]))
+            K["st_asphalt"].quad(np.array([x2, y2, z + 0.03]), np.array([x1, y1, z + 0.03]), np.array([x1, y1, z - 2.5]), np.array([x2, y2, z - 2.5]))
+
+
+def vent(K, D):
+    """The underground plaza's ventilation drum: an open cylinder faced in tiles over a concrete plinth band,
+    its concrete inner face, the rim's coping."""
+    c = VENT["at"]
+    r, h, t = VENT["r"], VENT["h"], VENT["wall_m"]
+    g = min(D.ground(c[0] + r * math.cos(q), c[1] + r * math.sin(q)) for q in np.linspace(0, 2 * math.pi, 12, endpoint=False))
+    K["st_conc"].lathe([(g - 0.5, r + 0.05), (g + 0.6, r + 0.05)], c, 64)
+    K["st_brick"].lathe([(g + 0.6, r), (g + h - 0.25, r)], c, 64)
+    K["st_conc"].lathe([(g + h - 0.25, r + 0.04), (g + h, r + 0.04), (g + h, r - t), (g + h - 0.25, r - t)], c, 64)
+    K["st_conc"].lathe([(g + h - 0.25, r - t), (g + 0.2, r - t)], c, 64)   # inside, top to bottom: faces in
+    K["st_asphalt"].lathe([(g + 0.2, r - t), (g + 0.2, 0.01)], c, 32)
 
 
 # ---------------------------------------------------------------- the build

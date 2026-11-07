@@ -182,6 +182,10 @@ def landmark_meshes(scene):
 
 # ---------------------------------------------------------------- Kyoto Station
 
+# the Hotel Granvia's north face, west to east from the glass block (m along the building), and its heights (m),
+# read from the frontal photograph (Zairon, 2017, CC BY-SA 4.0) scaled to the hotel's PLATEAU length (#272)
+GRANVIA = {"tower": 10.3, "shaft": 7.6, "gate": 9.9, "corner": 2.5, "recess": 7.0, "box_bottom": 40.0, "box_top": 45.7,
+           "box_proud": 0.6, "glass": (31.9, 40.0), "band": (29.9, 31.9), "base_top": 34.5, "holes_z": 24.0, "vault": 30.5}
 STATION_OSM = "w136243347"   # 京都駅ビル: the largest of its solids is the building over the concourse
 STATION = {"length": 470.0, "height": 59.8, "atrium": (214.0, 361.0), "atrium_deep": 29.0, "atrium_h": 50.0,
            "stairs": (130.0, 214.0), "stairs_top": 45.0, "stairs_foot": 10.0, "steps": 171, "skyway_m": 45.0,
@@ -287,43 +291,109 @@ def kyoto_station():
         ak.block(K["ks_steel"], F, s_(sa) - 1.4, s_(sa) + 1.4, vn - 0.5, vn + 2.4, 0.0, H + 1.2)
     ak.block(K["ks_steel"], F, s_(A0) - 1.4, s_(A1) + 1.4, vn - 0.5, vn + 2.4, H - 1.8, H + 1.2)
     ak.block(K["ks_steel"], F, s_(A0), s_(A1), vn + 0.6, vn + 2.4, 5.4, 6.4)     # over the concourse's doors
-    # the east block, the Hotel Granvia (#258, side by side with photographs from Karasuma-dori and the forecourt,
-    # docs/cities/kyoto.md): next to the atrium a block of glass on a fine steel grid standing forward to the
-    # portal's face (PLATEAU's strip in front of the main solid), then the hotel: a podium of big windows, a
-    # faceted glass slope rising west over it to the glass block, the guest floors with punched windows and
-    # small balconies hung under every other one, staggered floor to floor, and a glazed top storey
+    # the east block, the Hotel Granvia (#258, #272; side by side with photographs from Karasuma-dori and the
+    # forecourt, docs/cities/kyoto.md): next to the atrium a block of glass on a fine steel grid standing forward to
+    # the portal's face (PLATEAU's strip in front of the main solid), then the hotel. Its north face, west to east
+    # (the frontal photograph, Zairon 2017, scaled to PLATEAU's length): a tower of balconied rooms over a grey base
+    # pierced by a grid of square openings; a shaft of blue grid glass; the gate (門), a void through the guest
+    # floors in which a grey box hangs under the top floors, its soffit sloping up into the void, a curtain of glass
+    # set back under it and a concave band below that; then the long wing of rooms with small balconies hung under
+    # every other window, staggered floor to floor, over a podium of big windows with a faceted glass vault rising up
+    # its face from the east to the gate; a glazed top storey the length of it, and a glazed corner at its east end
     ve = S["north"](A1, D["length"])
     G1, E1, Hh = A1 + 40.0, D["length"], D["east_top"]
     vf = vn                                        # the glass block's front, flush with the portal's
     vr = ve - 6.0                                  # the guest floors' face, behind the podium
     zp, zt = 22.0, 55.0                            # the podium's top, and the glazed top storey's foot
-    mass(A1, E1, vs, vr, Hh)
+    GV = GRANVIA
+    tw, sh = G1 + GV["tower"], G1 + GV["tower"] + GV["shaft"]          # the tower's east side, the shaft's
+    gw, ge = sh, sh + GV["gate"]                                       # the gate's sides
+    rec = GV["recess"]
+    mass(A1, E1, vs, vr - rec, Hh)                 # the main solid, its face back where the gate's glass stands
+    for a_, b_ in ((A1, gw), (ge, E1)):            # the north range either side of the gate, to the guest floors' face
+        mass(a_, b_, vr - rec, vr, Hh)
+    mass(gw, ge, vr - rec, vr, zp)                 # under the gate, and over its box
+    ak.block(K["ks_panel"], F, s_(gw), s_(ge), vr - rec, vr, GV["box_top"], Hh, top=False)
+    ak.block(K["ks_concrete"], F, s_(gw), s_(ge), vr - rec + 0.4, vr - 0.4, Hh - 0.3, Hh + 0.9)
     ak.block(K["ks_bluegrid"], F, s_(A1), s_(G1), vr, vf, 0.0, Hh, top=False)
     ak.block(K["ks_concrete"], F, s_(A1) + 0.4, s_(G1) - 0.4, vr, vf - 0.4, Hh - 0.3, Hh + 0.9)
     ak.block(K["ks_stone"], F, s_(G1), s_(E1), vr, ve, 0.0, zp)
-    ak.block(K["ks_stone"], F, s_(G1), s_(E1), vr - 0.01, vr + 0.01, zp, zt, top=False)
+    # the gate: its side walls and ceiling, the glass curtain at its back, the concave band and the dark recess under it
+    zb, zg0, zg1 = GV["box_bottom"], GV["glass"][0], GV["glass"][1]
+    for uu, sgn in ((gw, 1), (ge, -1)):
+        u = s_(uu)
+        q = (lambda a1, b1, c1, d1: K["ks_stone"].quad(a1, b1, c1, d1, [[0, zp], [rec, zp], [rec, zb], [0, zb]])) if sgn > 0 else \
+            (lambda a1, b1, c1, d1: K["ks_stone"].quad(b1, a1, d1, c1, [[0, zp], [rec, zp], [rec, zb], [0, zb]]))
+        q(F(u, vr, zp), F(u, vr - rec, zp), F(u, vr - rec, zb + 2.5), F(u, vr, zb))
+    ak.wall(K["ks_glass"], F, s_(gw), vr - rec + 0.05, s_(ge), vr - rec + 0.05, zg0, zg1)
+    for k in range(1, 5):                          # the curtain's mullions
+        u = s_(gw) + (s_(ge) - s_(gw)) * k / 5
+        K["ks_frame"].box(F(u, vr - rec + 0.25, zg0), F(u, vr - rec + 0.25, zg1), 0.2, 0.3)
+    arc = [(s_(gw) + (s_(ge) - s_(gw)) * t, vr - rec * 0.55 * math.sin(math.pi * t)) for t in np.linspace(0, 1, 13)]
+    zc0, zc1 = GV["band"]
+    for (u1, v1), (u2, v2) in zip(arc, arc[1:]):  # the concave band, faced in panels, and its soffit
+        K["ks_frame"].quad(F(u1, v1, zc0), F(u2, v2, zc0), F(u2, v2, zc1), F(u1, v1, zc1))
+        K["ks_frame"].quad(F(u2, v2, zc1), F(u1, v1, zc1), F(u1, vr - rec, zc1), F(u2, vr - rec, zc1))
+        K["ks_concrete"].quad(F(u1, vr - rec, zc0), F(u2, vr - rec, zc0), F(u2, v2, zc0), F(u1, v1, zc0))
+    K["ks_glass"].quad(F(s_(gw), vr - rec + 0.05, zp), F(s_(ge), vr - rec + 0.05, zp), F(s_(ge), vr - rec + 0.05, zc0), F(s_(gw), vr - rec + 0.05, zc0))
+    ak.block(K["ks_glass"], F, s_(gw) + 1.0, s_(ge) - 1.0, vr - 1.2, ve - 0.6, zp, zp + 2.6, top=True)   # the glazed room on the podium
+    # the box, hung under the top floors: its grey front a little proud of the guest floors' face, its soffit
+    # sloping up from the front into the gate
+    zbt = GV["box_top"]
+    vb = vr + GV["box_proud"]
+    u1, u2 = s_(gw), s_(ge)
+    K["ks_stone"].quad(F(u1, vb, zb), F(u2, vb, zb), F(u2, vb, zbt), F(u1, vb, zbt), [[0, zb], [u2 - u1, zb], [u2 - u1, zbt], [0, zbt]])
+    K["ks_concrete"].quad(F(u2, vb, zb), F(u1, vb, zb), F(u1, vr - rec, zb + 2.5), F(u2, vr - rec, zb + 2.5))
+    for uu, sgn in ((u1, -1), (u2, 1)):
+        tri = [F(uu, vb, zb), F(uu, vr - rec, zb + 2.5), F(uu, vr - rec, zbt), F(uu, vb, zbt)]
+        K["ks_stone"].quad(*(tri if sgn > 0 else tri[::-1]))
+    ak.block(K["ks_concrete"], F, u1, u2, vr, vb, zbt, zbt + 0.3)
+    # the shaft of blue grid glass from over the tower's base to the top, and the base of the tower and the shaft
+    # standing forward to the podium's face, with its grid of square openings
+    ak.block(K["ks_bluegrid"], F, s_(tw), s_(sh), vr, vr + 0.6, GV["base_top"], Hh, top=False)
+    ak.block(K["ks_stone"], F, s_(G1), s_(sh), vr, ve, zp, GV["base_top"])
+    for i in range(4):
+        for j in range(4):
+            u = s_(G1) + 2.4 + i * 1.7
+            z = GV["holes_z"] + j * 1.75
+            K["ks_frame"].quad(F(u, ve + 0.03, z), F(u + 0.9, ve + 0.03, z), F(u + 0.9, ve + 0.03, z + 0.9), F(u, ve + 0.03, z + 0.9))
+    # the glazed corner at the east end
+    ak.block(K["ks_bluegrid"], F, s_(E1) - GV["corner"], s_(E1) + 0.05, vr - 0.3, vr + 0.4, zp, Hh, top=False)
     # the podium: the porte-cochere's soffit and two rows of big windows over it
     ak.block(K["ks_concrete"], F, s_(G1), s_(E1), ve - 1.5, ve + 0.4, 6.4, 7.6)
     for u in np.arange(s_(G1) + 2.0, s_(E1) - 5.0, 7.2):
         for z0 in (9.5, 15.5):
+            if u < s_(sh) and z0 > 12:
+                continue
             K["ks_room"].quad(F(u, ve + 0.04, z0), F(u + 5.6, ve + 0.04, z0), F(u + 5.6, ve + 0.04, z0 + 4.2), F(u, ve + 0.04, z0 + 4.2),
                               [[0, 0], [1.8, 0], [1.8, 1.65], [0, 1.65]])
-    # the faceted glass slope: a triangle in plan from the glass block's foot east along the podium
-    ca, cb, cc = (s_(G1), ve, zp), (s_(G1), vr, zp + 18.0), (s_(G1) + 45.0, vr, zp)
-    K["ks_roofglass"].tri(F(*ca), F(*cc), F(*cb))
-    K["ks_roofglass"].tri(F(*ca), F(*cb), F(*cc))
-    for t in np.linspace(0.0, 1.0, 4):
-        pa = np.array(ca) + t * (np.array(cc) - np.array(ca))
-        pb = np.array(ca) + t * (np.array(cb) - np.array(ca))
-        K["ks_steel"].box(F(*pa), F(*cb), 0.18, 0.18)
-        K["ks_steel"].box(F(*pb), F(*cc), 0.18, 0.18)
-    for q0, q1 in ((ca, cb), (cb, cc), (cc, ca)):
-        K["ks_steel"].box(F(*q0), F(*q1), 0.3, 0.3)
-    canopy = lambda u: zp + 18.0 * max(0.0, 1.0 - (u - s_(G1)) / 45.0)
+    # the faceted glass vault up the face of the wing, from the podium's top at the east end rising to the gate:
+    # a ridge of facets between the podium's edge and the guest floors' face, high and low by turns
+    va0, va1 = ge + 0.5, E1 - GV["corner"] - 6.0
+    zv = GV["vault"]
+    n = int((va1 - va0) / 4.5)
+    rise = lambda u: zp + (zv - zp) * min(1.0, max(0.0, (u - s_(va1)) / (s_(va0) - s_(va1) + 1e-9)) * 1.6)
+    front = [(s_(va0) + (s_(va1) - s_(va0)) * k / n, ve - 0.6) for k in range(n + 1)]
+    back = [(u, vr + 0.05) for u, _ in front]
+    for k in range(n):
+        (ua, vfa), (ub, vfb) = front[k], front[k + 1]
+        hb = (0.0 if k % 2 else 1.4)
+        pa, pb = F(ua, vfa, zp + 0.3), F(ub, vfb, zp + 0.3)
+        ra, rb = F(ua, vr + 0.05, rise(ua) + hb), F(ub, vr + 0.05, rise(ub) + (1.4 - hb))
+        mid = F((ua + ub) / 2, (vfa + vr) / 2, (zp + 0.3 + (rise(ua) + rise(ub)) / 2) / 2 + 2.2)
+        for tri_ in ((pa, pb, mid), (pb, rb, mid), (rb, ra, mid), (ra, pa, mid)):
+            K["ks_roofglass"].tri(*tri_)
+            K["ks_roofglass"].tri(tri_[0], tri_[2], tri_[1])
+            for e0, e1 in ((tri_[0], tri_[1]), (tri_[1], tri_[2])):
+                K["ks_steel"].box(e0, e1, 0.12, 0.12)
+    canopy = lambda u: (rise(u) + 1.6) if s_(va0) - 1.0 <= u <= s_(va1) + 1.0 else 0.0
+    def blank(u, z):   # where the guest floors' windows are not: the gate, the shaft, the tower's base, the corner
+        return (s_(gw) - 0.9 <= u <= s_(ge) + 0.9 and z < GV["box_top"] + 0.4) or s_(tw) - 0.9 <= u <= s_(sh) + 0.9 \
+            or (u < s_(tw) and z < GV["base_top"] + 0.4) or u > s_(E1) - GV["corner"] - 1.2
     # the guest floors: 3.3 m storeys, a window every 3.6 m, a balcony under every other window
     for f, z in enumerate(np.arange(zp + 0.9, zt - 2.0, 3.3)):
         for k, u in enumerate(np.arange(s_(G1) + 1.8, s_(E1) - 1.0, 3.6)):
-            if z < canopy(u + 1.8) + 0.6:
+            if z < canopy(u + 1.8) + 0.6 or blank(u, z):
                 continue
             K["ks_room"].quad(F(u - 0.9, vr + 0.04, z), F(u + 0.9, vr + 0.04, z), F(u + 0.9, vr + 0.04, z + 1.65), F(u - 0.9, vr + 0.04, z + 1.65),
                               [[k * 1.8, f * 1.65], [k * 1.8 + 1.8, f * 1.65], [k * 1.8 + 1.8, f * 1.65 + 1.65], [k * 1.8, f * 1.65 + 1.65]])
