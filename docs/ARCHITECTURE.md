@@ -263,12 +263,27 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     may widen downstream (the Meguro River 9 to 13 m, the Shibuya River 8 m, the
     Kanda River 11 m, Kyoto's Takase River, Shirakawa and Misosogi, the canal's branch
     along the Philosopher's Path), and narrow river or canal polygons (under 15 m on
-    average) or ones a city names (the Kamo Canal, the Biwako Canal at Okazaki). The
-    bank is the ground either side just outside the walls (the laser survey dips into
-    a 10 m channel), the median of samples 3-8 m out, smoothed over 80 m and never
-    rising downstream; the water `bank_to_water_m` below it (4.5 m for the Meguro, a
-    metre for a Kyoto stream) and its bed `water_m` under that. Stretches in a culvert
-    (`tunnel=culvert`) are left out;
+    average) or ones a city names (the Kamo Canal, the Biwako Canal at Okazaki). Each
+    bank is the ground on its own side just outside the walls (the laser survey dips
+    into a 10 m channel): samples 3-8 m out on that side only, smoothed over 80 m and
+    never rising downstream. The water stands level across the channel, `bank_to_water_m`
+    under the lower bank (4.5 m for the Meguro, a metre for a Kyoto stream), its bed
+    `water_m` under that; the higher bank, on a slope, is at most 2.5 m over the lower,
+    a hillside behind it staying a slope (#300: one level for both banks stood the
+    Philosopher's Path canal's coping over the ground on its downhill side). Stretches in
+    a culvert (`tunnel=culvert`) are left out;
+  - *sunken promenades* (`terrace` on a line, #300): Kyoto's Horikawa from Oshikoji up
+    to the map's edge, restored by Kyoto City (1997-2008) with a stream, paths and
+    benches inside the old river and entrances from the pavements and crossings. Between
+    stone walls 9.5 m apart a paved floor (granite setts) stands 0.35 m over the water and
+    about 2.6 m under the street; the stream runs down its middle, 2.4 m wide between
+    low stone edges; at each crossing a flight of steps (0.16 m risers, 0.3 m treads, a
+    parapet on the open side) runs down along the wall from the crossing's downstream
+    face, on one bank and then the other. Kyoto City's summary gives the stretch, the
+    stream, the stepped weirs and the entrances but no dimensions: the depth and widths
+    are read from photographs. No other live city has one; a city adds
+    `"terrace": {"stream_m", "path_m", "steps_m"}` to a line in `water.inland.lines`.
+    Walkers do not go down yet: the promenade is drawn, not walked;
   - *natural* water (the Kamo River, the ponds): the survey interpolates across water,
     so its level is the survey's own inside the outline (the lowest fifth within 40 m
     along a river, a third of the way up for a pond, just under its shore);
@@ -287,10 +302,32 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   the water over it, level-shaded, its ripples drifting downstream with the sun's
   glitter (`water.js patchGlitter`) and the street lights. Where a road crosses with
   no bridge model (`bridges.py`), the ground stays over the channel as a deck with a
-  slab edge, an underside and railings. Trees planted from the canopy over a channel
-  (the Meguro's cherries reach across it) stand on its bank, 0.8 m behind the wall,
-  though in the game one whose foot falls in a carriageway (the Meguro's bank lanes run
-  up to the railing in the road data) is left out, as any tree there is; none stands in a pond. Walkers stop at a channel's railing and a pond's edge
+  slab edge, an underside and railings. Only a way that crosses is a deck: a piece over
+  the channel longer than 32 m, or one that does not reach over its middle, runs along
+  it (the Philosopher's Path itself, the Horikawa's promenade) and was covering stretches
+  of the canals with slabs. Trees planted from the canopy over a channel
+  (the Meguro's cherries reach across it) stand on its bank, 0.8 m behind the wall. The
+  lanes along a channel's banks are narrower than their class in the road data (the
+  Meguro's run up to the railing): `bank_lanes` gives such a road `cw` in game.json, its
+  carriageway's width, keeping 1.8 m from the wall and no narrower than 5.4 m (the
+  traffic keeps 1.7 m off the line); `streets.js` takes its band as the carriageway and
+  0.3 m (no parking along the river) and the game draws the street that wide, so a
+  bank's cherries stand in the game as in the viewer, clear of the carriageway; none
+  stands in a pond.
+
+  After dark the street lights, the festival's chochin and the bonbori near the water
+  are seen in it (`inland.js glints`, #300), as a long-exposure photograph of Nakameguro
+  shows them: each light's mirror image under the water's level, where the line from the
+  eye to it meets the water, drawn out towards the eye over every part of the water whose
+  ripples tilt a reflected ray within 0.085 rad of it (from the elevation theta + 0.085
+  out to theta - 0.085, or the horizon), a lamp's width across, brightest at the image and
+  broken into drifting dashes further out, Fresnel-weighted and weaker for a far light.
+  One additive card per light, placed in the vertex shader for the camera: no second
+  render of the scene, as the sea's planar reflection is, so every tier has it, and where
+  a card runs past the water's edge it is under the bank and the ground hides it.
+
+  ![The Meguro at night in the festival: the chochin in the water](images/water/meguro_reflections_night.jpg)
+  ![Kyoto's Horikawa: the sunken promenade from a crossing](images/water/horikawa_day.jpg) Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 
   Live cities: Shibuya (the Meguro River, the Shibuya River's open stretch, 12 ponds),
@@ -800,10 +837,50 @@ Two more scripts build what every city shares, from code, with no stock assets:
   shuttle and the traffic (sedan, taxi, hatchback, SUV, van and bus), with
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
-- `blender/build_trees.py`: fifteen tree species grown from points in their
-  crown shapes, with a leaf atlas it draws itself (4 x 4 cells), in three levels
-  of detail, into `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
+- `blender/build_trees.py`: twenty-one tree species grown from points in their
+  crown shapes and a grass, with a leaf atlas it draws itself (4 x 6 cells, each
+  cell's colours bled within the cell), in three levels of detail, into
+  `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
   (`tools/trees_lineup_shot.js`) shows them in a row as the game draws them.
+  - *tussock* (#286): Otago's snow tussock and hard tussock, a fountain of fine
+    rolled blades about a metre high, olive at the base and straw to bleached gold
+    above, as blade cards round a squat foot (`grow_tussock`, 40, 12 and 6 triangles).
+    A city plants it with `trees.tussock` in city.json (world.js): `beds` scatters it
+    over a landmark mesh's faces (`per_m2`), `slopes` over the open hills
+    (`above_m` over the city's zero, `per_ha`, `max`, denser `near` [x, y, r, per_ha]):
+    where no canopy stands (`woods.png`), 25 m off the roads (and so off their
+    houses), clear of the landmarks and gentler than rock. Queenstown plants it in the
+    Skyline deck's bed (which replaces the blade fans `city.py` drew) and over Bob's
+    Peak and the hills, about 9,000 tufts; the light tier plants a third. Any city
+    with open grassland can add it (`trees.mix` too, as a species).
+
+## The far ground under the landmarks
+
+The game draws its ground from the 5 m grid near the player and from every second
+point of it, 10 m, further off. On a crest the 10 m triangles bridge the 5 m
+ground's hollows, and a landmark's floor laid on the 5 m ground (the Skyline site on
+Bob's Peak) had the far ground rising through it near its edge, by up to 2.1 m seen
+from the town (#286). `world.js settleUnderFloors` lowers the 10 m points within a
+cell of every landmark face that lies on the ground (near level, within 1.5 m of
+the 5 m grid) to the lowest 5 m point round them and just under the face, at most
+3 m; near the player nothing changes. `tools/floor_settle_probe.js <city>` measures
+how far the far ground stands over the floors before and after: Queenstown 2.09 m to
+none, Sydney 4.9 m (its seawall beds) to none, Tokyo 6.2 m (the moats) to none, Kyoto
+and Shibuya to a few points at the frame's edge. `?settle=off` draws without.
+
+## Curtain walls at night
+
+`curtain_wall` (world.js PATTERNS) draws panes between mullions and a spandrel at
+the foot of each storey; `spandrel` is the band's share of the storey, or its colour
+with `spandrel_frac` its share (the Skyline restaurant gave a colour, and its glass
+lost its bands). After dark a lit pane close to shows the room behind it: brighter
+towards the ceiling, a downlight a bay under the ceiling, people standing and seated
+and a table's top dark against the light, each bay a little brighter or dimmer;
+further off the storey's mean, as before. `warm_share` 1 lights a restaurant warm
+(#286: the Skyline's flat pale panels beside the deck).
+
+![The Skyline restaurant's glass at night, and the tussock in the deck's bed by day](images/queenstown/skyline_glass_night.jpg)
+![The tussock in the Skyline deck's bed](images/queenstown/skyline_deck_tussock.jpg)
 
 ## Woods and park canopy
 

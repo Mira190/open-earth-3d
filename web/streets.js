@@ -27,15 +27,16 @@ window.OEStreets = (function () {
   const setback = c => Math.max((ROADW[c] || 7) / 2, kerb(c) + CAR_HW);
   const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
 
-  // lines: [{ c: class, p: [x, y, z, ...] in metres }]
+  // lines: [{ c: class, p: [x, y, z, ...] in metres, cw: the carriageway's width where it is not its class's (m) }]
   function carriageways(lines) {
     const S = [], grid = new Map(), GC = 16, key = (cx, cy) => cx * 131071 + cy;
     for (const l of lines) {
-      const p = l.p, hw = setback(l.c);
+      // (a lane narrower than its class, "cw" in game.json: one along a channel's bank, with no parking at its kerb)
+      const p = l.p, cw = l.cw ? l.cw / 2 : (ROADW[l.c] || 7) / 2, hw = l.cw ? cw + 0.3 : setback(l.c);
       for (let k = 3; k + 2 < p.length; k += 3) {
         const ax = p[k - 3], ay = p[k - 2], bx = p[k], by = p[k + 1];
         if (ax === bx && ay === by) continue;
-        const i = S.push({ ax, ay, az: p[k - 1], bx, by, bz: p[k + 2], hw, cw: (ROADW[l.c] || 7) / 2, c: l.c }) - 1;
+        const i = S.push({ ax, ay, az: p[k - 1], bx, by, bz: p[k + 2], hw, cw, c: l.c }) - 1;
         for (let cx = Math.floor((Math.min(ax, bx) - hw) / GC); cx <= Math.floor((Math.max(ax, bx) + hw) / GC); cx++)
           for (let cy = Math.floor((Math.min(ay, by) - hw) / GC); cy <= Math.floor((Math.max(ay, by) + hw) / GC); cy++) {
             const kk = key(cx, cy), g = grid.get(kk);
@@ -95,7 +96,7 @@ window.OEStreets = (function () {
 
   // the road lines of a city: the game's (game.json, decimetres), else night.json's (the viewer)
   function roadLines(D) {
-    if (D.G && D.G.paths) return D.G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10) }));
+    if (D.G && D.G.paths) return D.G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw }));
     const N = D.N;
     if (!N || !N.roads) return [];
     const unpack = b64 => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new Int16Array(u.buffer); };

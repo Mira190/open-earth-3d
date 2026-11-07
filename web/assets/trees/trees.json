@@ -29,7 +29,8 @@
    "kawazu": 19,
    "yae": 20,
    "scaevola": 21,
-   "argusia": 22
+   "argusia": 22,
+   "tussock": 23
   },
   "columns": 4,
   "rows": 6,
@@ -464,6 +465,24 @@
    "cell": 22,
    "trunk_r": 0.12,
    "note": "Octopus bush (Argusia argentea, now Heliotropium arboreum): crooked spreading stems under a rounded crown of silvery grey-green felted leaves in rosettes, about 3.5 m high and 5 m across"
+  },
+  "tussock": {
+   "height_m": 0.95,
+   "crown": [
+    0.5,
+    0.55,
+    0.5
+   ],
+   "colour": "#a08d5c",
+   "bark": "#6b5f3e",
+   "triangles": [
+    40,
+    12,
+    6
+   ],
+   "cell": 23,
+   "trunk_r": 0.04,
+   "note": "Tussock (snow tussock, Chionochloa rigida, and hard tussock, Festuca novae-zelandiae): a dense fountain of fine rolled blades about a metre high, olive at the base and straw to bleached gold above; the grassland of Otago's open hills round Queenstown, and a planted bed's grass"
   }
  }
 }
