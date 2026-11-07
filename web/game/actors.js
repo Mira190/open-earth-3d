@@ -1005,7 +1005,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const fw = heading(q, q.vx, q.vy, dt);
       if (q.face != null) q.h = q.face;
       else if (q.v > (q.ph === 'wait' ? (Math.hypot(q.T.x - q.x, q.T.y - q.y) > 1.2 ? 0.45 : Infinity) : 0.15) && fw > 0.12) turnTo(q, dt, 6, fw); // (waiting, it turns only to walk back a way to its place: shoved about in the press it keeps facing the road, #283)
-      else if (q.ph === 'wait') { const h = Math.atan2(-g.ox, -g.oy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 2); } // (facing the road)
+      else if (q.ph === 'wait') { const h = Math.atan2(-g.ox, -g.oy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 0.8); } // (facing the road, settling round to it over a second or so, as one does in a crowd, not swung round)
       // there: on the far side, on to a kerb of that corner (or this one) to wait again
       if (Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.5) {
         if (q.ph === 'cross' && pz.owe > 0 && toFootway(q)) pz.owe--;
