@@ -758,7 +758,8 @@ window.OEJunctions = (function () {
         if (!j.sig && rankOf(a) > rankOf(j.arms[o.k]) + 2) continue; // (one waiting on another arm doesn't hold a piece too short to wait on clearing the box behind it: rankOf)
         if (c.P && o.c.why === 'you') continue; // (a car of the traffic standing for a ride, or for you, doesn't hold a ride's turn: each waited on the other, half a minute in Shinjuku's game check)
         if (c.P && (o.c.why === 'cross' || o.c.why === 'room') && (o.c.still || 0) > 4) continue; // (nor one that has stood held by others for a while: its turn can't be taken, and the ride waited on it for 40 s under load)
-        if (o.c.why === 'room' && (o.c.still || 0) > 4) continue; // (nor, for anyone, one waiting for room beyond the junction: it can't take its turn, and the movements across its way stood behind it, 96 s at Shinjuku's 1195 at 18:00, #178)
+        if (o.c.why === 'room' && (o.c.still || 0) > 4) continue;
+        if (o.c.why === 'narrow' && (o.c.still || 0) > 4) continue; // (nor one waiting at its line for a car coming up a way out too narrow for both: that car may be the one waiting on it here, each for the other, 69 s at Fushimi Inari, #283) // (nor, for anyone, one waiting for room beyond the junction: it can't take its turn, and the movements across its way stood behind it, 96 s at Shinjuku's 1195 at 18:00, #178)
         if (conflict(j, k, m, o.k, o.m)) return 'turn';
       }
       if (!j.sig && j.seen >= frame - 1 && !(mine && t - mine.since > 3 * WAITED)) { // give way to the main road: a car on a greater arm coming, not stopped

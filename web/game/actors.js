@@ -1313,7 +1313,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const PACE = 1.25;   // the traffic drives a quarter over the posted limit, as drivers do on an open street (the data's
                        // limits are the signs': 30 km/h on a side street reads as a crawl in play); a ride's route,
                        // its time and how it passes a queue stay on the limits (cars.js chauffeur)
-  const LAT_A = 2.8, BEND_B = 2.2; // the sideways pull a car of the traffic takes a bend with (m/s²: an urban driver's 0.3 g), and how hard it brakes for one ahead
+  const LAT_A = 3.5, BEND_B = 2.2, BEND_W = 6; // the sideways pull a car of the traffic takes a bend with (m/s²: a city driver's third of a g; a junction's corner at about 19 km/h, as a ride's driver takes it), how hard it brakes for one ahead, and how far either side it reads a bend (m)
   const STUCK = 20;    // seconds stopped behind a car that won't move (not queueing at a junction) before turning round
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
@@ -1613,7 +1613,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const o = C[j];
         if (o === c || o.dir !== toward) continue;
         const d = toward < 0 ? o.s : ml.len - o.s;
-        if (d < 30 && (o.narrowF > 0.2 || o.narrow > 0)) return true;
+        if (d < 30 && (o.narrowF > 0.2 || o.narrow > 0) && !(o.still > 20 && !(o.lineArm && o.toLine - o.half < 3))) return true; // (not one stood 20 s out on the piece, held there by something else: it is not coming)
       }
       return false;
     }
@@ -1770,7 +1770,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 0.3, 0.1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) { R.wait += dt; if (R.wait > 20) { c.revEnd = 'no room on the way out'; c.rev = null; } return true; }
         c.line = line; c.s = s; c.dir = dir; c.ln = 0; c.lo = lo; c.off = 0; c.pv = null; c.rev = null;
         c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; c.inWallNow = false;
-        c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = Math.atan2(tmp.hx, tmp.hy); c.v = 0.5;
+        c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.v = 0.5; // (its heading eased round to the new way's by its next steps, not swung at once)
         return false; // (on its way from here this frame, as any car)
       }
       const v = Math.min(REV_V, R.v + 1.2 * dt), sb = Math.max(0, Math.min(l.len, c.s - c.dir * v * dt));
@@ -1917,14 +1917,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // junction's corner at its full 50 km/h, a bus's heading swinging 15 degrees in a tenth of a second
           // (tools/bus_turn.js)
           {
-            const aLat = c.half > LONG_V ? 1.6 : LAT_A, kc = Math.round(Math.abs(c.s - sb) / step);
+            // (the turn read over BEND_W either side: the roads' lines meet at sharp corners, and read over a step or two a
+            // corner of 30 degrees between two pieces was a tight bend, the traffic crawling through every junction)
+            const aLat = c.half > LONG_V ? 1.6 : LAT_A, kc = Math.round(Math.abs(c.s - sb) / step), w = Math.max(2, Math.round(BEND_W / step));
             let vb = Infinity;
-            for (let k = Math.max(2, kc); k + 2 < nq; k++) {
-              const h0 = Math.atan2(Q[2 * k] - Q[2 * k - 4], Q[2 * k + 1] - Q[2 * k - 3]), h1 = Math.atan2(Q[2 * k + 4] - Q[2 * k], Q[2 * k + 5] - Q[2 * k + 1]);
+            for (let k = Math.max(w, kc); k + w < nq; k++) {
+              const h0 = Math.atan2(Q[2 * k] - Q[2 * (k - w)], Q[2 * k + 1] - Q[2 * (k - w) + 1]), h1 = Math.atan2(Q[2 * (k + w)] - Q[2 * k], Q[2 * (k + w) + 1] - Q[2 * k + 1]);
               let tk = h1 - h0;
               tk = Math.abs(tk > Math.PI ? tk - 2 * Math.PI : tk < -Math.PI ? tk + 2 * Math.PI : tk);
-              if (tk < 0.06) continue;
-              const vk = Math.max(c.half > LONG_V ? 2 : 2.5, Math.sqrt(aLat * 2 * step / tk)), dk = Math.max(0, (k - kc) * step - c.half);
+              if (tk < 0.08) continue;
+              const vk = Math.max(c.half > LONG_V ? 2 : 2.5, Math.sqrt(aLat * w * step / tk)), dk = Math.max(0, (k - kc) * step - c.half);
               const vc = Math.sqrt(vk * vk + 2 * BEND_B * dk);
               if (vc < vb) vb = vc;
             }
@@ -2398,7 +2400,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // started where it stands, a minute and a half in a queue: a knot no rule here undoes, out of sight)
         if (c.ax === undefined || Math.abs(c.x - c.ax) + Math.abs(c.y - c.ay) > 4) { c.ax = c.x; c.ay = c.y; c.idle = 0; } else c.idle += dt;
         if ((c.still > 45 && !c.q || c.idle > (c.q ? 90 : 60)) && (!eye || Math.hypot(eye.position.x - c.x, -eye.position.z - c.y) > 150)) { c.still = c.idle = 0; respawn(c, cx, cy, radius * 0.6); continue; } // out of sight, a car stuck a long time (not queueing) comes back elsewhere
-        if (c.stuck > (tangled > 0 ? 2 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
+        // (waiting on one coming the other way where a street has room for one, which is itself held in the stretch: out of
+        // view after 25 s it comes back elsewhere, as a knot does; in view it backs out or turns round after 10 s, so that
+        // no such wait lasts half a minute, #283)
+        c.narrowT = why === 'narrow' && c.v < 0.3 ? (c.narrowT || 0) + dt : 0;
+        if (c.narrowT > 25 && !inView(c)) { c.narrowT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
+        if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
           c.stuck = 0;
           if (!l.ow && !away && (why === 'narrow' || c.narrowF > 0.2) && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; } // (a street with no room to turn round in: backed out to the junction behind, as on a one-way street)
           if (!l.ow) dir = -dir;
@@ -2531,6 +2538,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const nxs = [];
             if (c.nx && c.dir === dir) { nxs.push([c.nx[0], c.nx[1] === 0 ? 1 : -1]); if (c.plan) for (const q of c.plan) nxs.push([q[0], q[1] === 0 ? 1 : -1]); }
             trail(c, back, line, s, dir, c.off + lo1 + sw, pvA, nxs);
+            // (never, so drawn after its front, into a post its lane's own pose keeps clear of: at a corner's lamp post the
+            // body swung wide, or its rear drawn in, went 0.1 m into it, Queenstown's clip check: back on the lane's pose)
+            if (posts && (c.x !== tmp.x || c.y !== tmp.y)) {
+              peopleIn(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h)); const pT = inPosts;
+              if (pT > 0) { peopleIn(c, tmp.x, tmp.y, hx1, hy1); if (pT > inPosts + 1e-3) { c.x = tmp.x; c.y = tmp.y; c.h = h; trail(c, true, line, s, dir, 0, pvA, nxs); } }
+            }
           }
           // and a step along its road that took it deeper into another car is taken back (one parting
           // from a car it has long been caught with: deeper into any other), unless it is squeezing past

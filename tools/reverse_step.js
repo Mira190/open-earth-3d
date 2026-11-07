@@ -97,7 +97,8 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     const near = g.roadNet.nearest(o.drv.st.x, o.drv.st.y, 10, o.drv.st.z);
     r.onto = near ? near.line : null;
     let went = 0, qx = o.drv.st.x, qy = o.drv.st.y;
-    for (let k = 0; k < 40 && went <= 10; k++) { g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - qx, q.y - qy); qx = q.x; qy = q.y; }
+    // (a minute at most: a scramble's walk and the queue at its line on the new way may hold it a while)
+    for (let k = 0; k < 60 && went <= 10; k++) { g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - qx, q.y - qy); qx = q.x; qy = q.y; }
     r.drove = +went.toFixed(1); r.secs = +r.secs.toFixed(1); r.back = +r.back.toFixed(1); r.deep = +r.deep.toFixed(2);
     out.ride = r;
     g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);

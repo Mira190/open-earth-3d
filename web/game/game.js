@@ -1621,7 +1621,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const left = st.end - st.s, rt = roads.route(R.at, to, 6000, undefined, new Set([pl.line, ...jamAhead(st)]));
     if (!rt || rt.len > left + (o.phase === 'driving' ? Math.max(500, left) : 500)) { o.turnNo = rt ? `the way round is ${rt.len.toFixed(0)} m` : 'no way round'; return; }
     if (rt.nodes && rt.nodes.some(nd => nd.line === pl.line)) { o.turnNo = 'the way round comes back up this street'; return; }
-    o.turn = { poses: R.poses, i: 0, u: 0, wait: 0.4, rt, rev: true };
+    o.turn = { poses: R.poses, i: 0, u: 0, wait: 0.4, rt, rev: true, pl, ok };
     o.turned = (o.turned || 0) + 1; o.reversed = (o.reversed || 0) + 1;
     if (o.phase === 'driving' && player.vehicle === o) H.toast(`<b>${o.name}:</b> ${OEActors.pick(['One-way and nothing\'s moving. I\'ll back out.', 'We\'re stuck in here. Backing up to the corner.', 'Can\'t turn round in this one. Reversing out.'])}`);
   }
@@ -1637,6 +1637,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if ((T.rev || !(T.held >= 10)) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) {
       T.held = (T.held || 0) + dt; st.v = 0; st.brake = true;
       if (T.rev && T.held > 3 && junctions.makeWay) junctions.makeWay(nx.x, nx.y, st.z, nx.h, o.C.half, o.C.hw, 0.3);
+      // (held 10 s on the way back: its way out worked out again from where it is, round what holds it now)
+      if (T.rev && T.held > 10 && !T.again && T.pl) {
+        T.again = true;
+        const A = roadNet.L[T.pl.line], q = roadNet.nearest(st.x, st.y, 6, st.z, 3, 0, i => i !== T.pl.line);
+        if (q && A) {
+          const R2 = reversePoses(o, { line: T.pl.line, s: q.s, dir: T.pl.dir }, T.ok);
+          const rt2 = typeof R2 === 'string' ? null : roads.route(R2.at, T.rt.to, 6000, undefined, new Set([T.pl.line]));
+          if (rt2 && !(rt2.nodes && rt2.nodes.some(nd => nd.line === T.pl.line))) { Object.assign(T, { poses: R2.poses, i: 0, u: 0, wait: 0.4, rt: rt2, held: 0 }); return; }
+        }
+      }
       if (T.rev && T.held > 40) { // (on from where it stands, by the nearest road's lane)
         const pl = placeOf(st), to = o.phase === 'coming' ? o.pickup : T.rt.to, rt2 = pl && to && roads.route(pl, to, 6000);
         if (rt2) { const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 }); o.drv.leave(); o.drv = OECars.chauffeur(o.C, rt2, opts); o.drv.opts = opts; o.sig = []; o.scr = []; o.qArms = []; o.turn = null; o.qT = 0; o.qAt = null; o.rerouteT = clockT; }
