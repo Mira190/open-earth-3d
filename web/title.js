@@ -442,10 +442,39 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   let menuShownAt = 0;
 
   // ------------------------------------------------------------ the menu
-  function hover(i) {
-    if (hot === i) return;
-    hot = i;
-    for (const d of dests) d.mark.classList.toggle('hot', dests.indexOf(d) === i || dests.indexOf(d) === sel);
+  // A hover previews a destination without opening its card: its row lights and the others dim,
+  // its mark lights on the globe, and the globe turns to it. Leaving the list turns it back to the
+  // chosen destination, or to where it was before the hover. The turn waits a beat, so a pointer
+  // crossing the list on its way somewhere else does not swing the globe.
+  let hoverT = 0, preHover = null, listHot = -1;
+  function hover(i, turn = false) {
+    if (hot !== i) {
+      hot = i;
+      for (const d of dests) d.mark.classList.toggle('hot', dests.indexOf(d) === i || dests.indexOf(d) === sel);
+      items.forEach((b, k) => b.classList.toggle('hot', k === i));
+      list.classList.toggle('hovering', i >= 0);
+    }
+    // only a hover on the list turns the globe: a mark on the globe would move from under the pointer
+    if (!turn || listHot === i) return;
+    listHot = i;
+    clearTimeout(hoverT);
+    if (state !== 'menu' || fullOpen() || narrow()) return;
+    lastInput = performance.now();
+    if (i >= 0) {
+      hoverT = setTimeout(() => {
+        if (listHot !== i || state !== 'menu' || fullOpen()) return;
+        if (!preHover) preHover = { tlat: orb.tlat, tlon: orb.tlon, tdist: orb.tdist };
+        orb.vlon = orb.vlat = 0;
+        frameOn(dests[i]);
+      }, 110);
+    } else if (preHover) {
+      hoverT = setTimeout(() => {
+        if (listHot >= 0 || state !== 'menu' || !preHover) return;
+        if (sel >= 0) frameOn(dests[sel]);
+        else { orb.tlat = preHover.tlat; orb.tlon = preHover.tlon; orb.tdist = preHover.tdist; }
+        preHover = null;
+      }, 220);
+    }
   }
   function select(i, fromUser = false, quiet = false) {
     if (state === 'dive') return;
@@ -454,7 +483,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (!app.classList.contains('menu')) return;
     if (i === sel && fromUser) return;
     closeFull(true);
-    sel = i;
+    sel = i; preHover = null;
     items.forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
     for (const d of dests) d.mark.classList.toggle('hot', dests.indexOf(d) === i);
     if (fromUser || !quiet) A.tick(2100, 0.035);
@@ -550,8 +579,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (to) to.focus({ preventScroll: true });
   }
   // a card comes up only when asked for (a click, a tap or the keyboard), never on a hover or by itself
-  on(list, 'pointerover', e => { const b = e.target.closest('.ts-item'); if (b && e.pointerType !== 'touch') hover(+b.dataset.i); });
-  on(list, 'pointerleave', () => hover(-1));
+  on(list, 'pointerover', e => { const b = e.target.closest('.ts-item'); if (b && e.pointerType !== 'touch') hover(+b.dataset.i, true); });
+  on(list, 'pointerleave', () => hover(-1, true));
   on(list, 'focusin', e => { const b = e.target.closest('.ts-item'); if (b && state === 'menu') select(+b.dataset.i, true); });
 
   // the dive: down onto the city, faster and faster, into the dark where the model loads
@@ -641,7 +670,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     lastInput = performance.now();
     if (state === 'open') { skip(); return; }
     if (state !== 'menu') return;
-    drag = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
+    preHover = null; drag = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
     canvas.setPointerCapture(e.pointerId);
     orb.vlat = orb.vlon = 0;
   });
