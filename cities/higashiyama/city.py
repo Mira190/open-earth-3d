@@ -115,9 +115,11 @@ BARE = {"post": "timber", "wall": "kiyo_white", "roof": "hiwada", "soffit": "sof
         "nio": "nio", "screen_wood": "lattice", "pillar": "keyaki", "nuki": "nuki"}
 BARE_TILE = dict(BARE, roof="kawara", ridge="kawara_ridge")
 # Yasaka-jinja's small shrines by name where a photograph shows them (#272): Ōkuninushi-sha in black lacquer with
-# gold fittings behind its stone torii (2023). The others stay vermilion until a photograph says otherwise.
+# gold fittings behind its stone torii (2023); Akuōji-sha (#290) in bare wood under copper gone grey-green
+# (KENPEI, CC BY-SA 3.0; Yanajin33, CC BY-SA 4.0). Ekijinja, Utsukushigozen-sha, Hiyoshi-sha and Kitamuki
+# Ebisu-sha are vermilion with white panels in their photographs (KENPEI; Yanajin33), as drawn.
 LACQUER = dict(VERMILION, post="urushi", wood="urushi", gable="urushi", screen_wood="urushi", wall="urushi")
-SHRINE_LOOK = {"大国主社": LACQUER}
+SHRINE_LOOK = {"大国主社": LACQUER, "悪王子社": dict(BARE, wall="timber", roof="doban", ridge="doban_ridge")}
 
 # (OpenStreetMap way, kind, published height to the top in metres, toward: the point its front faces)
 KIYOMIZU = {
@@ -658,8 +660,8 @@ def yasaka_jinja(K, hidden):
             kk.romon(K, M, P, z0, 2 * hv - 1.2, 2 * hu - 2.0, h, nio=False, ground=ground)
             west_wings(K, M, P, z0, hu, hv, hidden, ground)
         else:   # under hinoki bark, three gold crests (左三つ巴) on its ridge either side (photograph, 2024)
-            kk.romon(K, dict(VERMILION, nio="shu_dark"), P, z0, 2 * hv - 2.4, 2 * hu - 2.0, h, nio=False, ground=ground)
-            ridge_crests(K, P, z0 + h - 0.75, 0.55, (-0.3 * hv, 0.0, 0.3 * hv), 0.32)
+            lv = kk.romon(K, dict(VERMILION, nio="shu_dark"), P, z0, 2 * hv - 2.4, 2 * hu - 2.0, h, nio=False, ground=ground)
+            ridge_crests(K, P, lv["ridge"] + kk.ROMON_CAP["h"] * 0.42, kk.ROMON_CAP["w"] / 2 + 0.05, (-0.3 * hv, 0.0, 0.3 * hv), 0.38)
         # its way through and the steps before it, the gate's width, are open: no tree stands there (photographs)
         _cache.setdefault("tree_clear", []).append([tuple(P(u, v, 0)[:2]) for u, v in
                                                     ((-hu - 1.0, -hv - 0.5), (hu + GATE_STEPS_M, -hv - 0.5), (hu + GATE_STEPS_M, hv + 0.5), (-hu - 1.0, hv + 0.5))])

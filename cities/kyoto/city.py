@@ -182,12 +182,13 @@ def landmark_meshes(scene):
 
 # ---------------------------------------------------------------- Kyoto Station
 
-# the Hotel Granvia's north face, west to east from the glass block (m along the building), and its heights (m),
-# read from the frontal photograph (Zairon, 2017, CC BY-SA 4.0) scaled to the hotel's PLATEAU length (#272)
-GRANVIA = {"tower": 10.3, "shaft": 7.6, "gate": 9.9, "corner": 2.5, "recess": 7.0, "box_bottom": 40.0, "box_top": 45.7,
+# the Hotel Granvia's north face, west to east (m along the building), and its heights (m), read from the frontal
+# photographs (Zairon, 2017, CC BY-SA 4.0; Soramimi, CC BY-SA 4.0) scaled to the face's PLATEAU length: the strip
+# w536429045, 77 m, standing 12 m forward of the main solid (#272, #290). "east_h" is the range set back behind it
+GRANVIA = {"tower": 9.8, "shaft": 7.0, "gate": 10.2, "corner": 3.4, "east_h": 56.0, "recess": 7.0, "box_bottom": 40.0, "box_top": 45.7,
            "box_proud": 0.6, "glass": (31.9, 40.0), "band": (29.9, 31.9), "base_top": 34.5, "holes_z": 24.0, "vault": 30.5}
 STATION_OSM = "w136243347"   # 京都駅ビル: the largest of its solids is the building over the concourse
-STATION = {"length": 470.0, "height": 59.8, "atrium": (214.0, 361.0), "atrium_deep": 29.0, "atrium_h": 50.0,
+STATION = {"length": 470.0, "height": 59.8, "atrium": (214.0, 325.0), "atrium_deep": 29.0, "atrium_h": 50.0,
            "stairs": (130.0, 214.0), "stairs_top": 45.0, "stairs_foot": 10.0, "steps": 171, "skyway_m": 45.0,
            "west_top": 59.8, "garden": 45.0, "south": 31.0, "east_top": 59.8}
 
@@ -300,9 +301,13 @@ def kyoto_station():
     # set back under it and a concave band below that; then the long wing of rooms with small balconies hung under
     # every other window, staggered floor to floor, over a podium of big windows with a faceted glass vault rising up
     # its face from the east to the gate; a glazed top storey the length of it, and a glazed corner at its east end
-    ve = S["north"](A1, D["length"])
-    G1, E1, Hh = A1 + 40.0, D["length"], D["east_top"]
-    vf = vn                                        # the glass block's front, flush with the portal's
+    # (#290) the face is PLATEAU's strip in front of the main solid (w536429045, 77 m from 15 m east of the atrium):
+    # the aerial photograph shows the atrium's glass roof ending there and the station's north face stepping back
+    # 28 m east of the strip, behind a separate building 46 m tall (w120374245) that the forecourt photographs show
+    # beside the hotel's east corner, not in front of its face
+    G1, E1, ve = hotel_front(S, A1)
+    Hh = D["east_top"]
+    vf = S["north"](A1, G1)                        # the glass block's front, the main solid's face
     vr = ve - 6.0                                  # the guest floors' face, behind the podium
     zp, zt = 22.0, 55.0                            # the podium's top, and the glazed top storey's foot
     GV = GRANVIA
@@ -310,6 +315,8 @@ def kyoto_station():
     gw, ge = sh, sh + GV["gate"]                                       # the gate's sides
     rec = GV["recess"]
     mass(A1, E1, vs, vr - rec, Hh)                 # the main solid, its face back where the gate's glass stands
+    ven = S["north"](E1 + 3.0, D["length"])        # the range east of the face, set back, a little lower
+    mass(E1, D["length"], vs, ven, GV["east_h"])
     for a_, b_ in ((A1, gw), (ge, E1)):            # the north range either side of the gate, to the guest floors' face
         mass(a_, b_, vr - rec, vr, Hh)
     mass(gw, ge, vr - rec, vr, zp)                 # under the gate, and over its box
@@ -391,9 +398,10 @@ def kyoto_station():
         return (s_(gw) - 0.9 <= u <= s_(ge) + 0.9 and z < GV["box_top"] + 0.4) or s_(tw) - 0.9 <= u <= s_(sh) + 0.9 \
             or (u < s_(tw) and z < GV["base_top"] + 0.4) or u > s_(E1) - GV["corner"] - 1.2
     # the guest floors: 3.3 m storeys, a window every 3.6 m, a balcony under every other window
-    for f, z in enumerate(np.arange(zp + 0.9, zt - 2.0, 3.3)):
-        for k, u in enumerate(np.arange(s_(G1) + 1.8, s_(E1) - 1.0, 3.6)):
-            if z < canopy(u + 1.8) + 0.6 or blank(u, z):
+    def rooms(ua, ub, vr, z0, z1, skip):
+      for f, z in enumerate(np.arange(z0, z1, 3.3)):
+        for k, u in enumerate(np.arange(ua + 1.8, ub - 1.0, 3.6)):
+            if skip(u, z):
                 continue
             K["ks_room"].quad(F(u - 0.9, vr + 0.04, z), F(u + 0.9, vr + 0.04, z), F(u + 0.9, vr + 0.04, z + 1.65), F(u - 0.9, vr + 0.04, z + 1.65),
                               [[k * 1.8, f * 1.65], [k * 1.8 + 1.8, f * 1.65], [k * 1.8 + 1.8, f * 1.65 + 1.65], [k * 1.8, f * 1.65 + 1.65]])
@@ -406,6 +414,9 @@ def kyoto_station():
                     K["ks_steel"].box(F(uu, vr + 1.05, z - 0.08), F(uu, vr + 1.05, z + 0.95), 0.05, 0.05)
                 K["ks_rail"].quad(F(u - 1.3, vr + 1.05, z - 0.08), F(u + 1.3, vr + 1.05, z - 0.08), F(u + 1.3, vr + 1.05, z + 0.9), F(u - 1.3, vr + 1.05, z + 0.9))
                 K["ks_rail"].quad(F(u + 1.3, vr + 1.05, z - 0.08), F(u - 1.3, vr + 1.05, z - 0.08), F(u - 1.3, vr + 1.05, z + 0.9), F(u + 1.3, vr + 1.05, z + 0.9))
+    rooms(s_(G1), s_(E1), vr, zp + 0.9, zt - 2.0, lambda u, z: z < canopy(u + 1.8) + 0.6 or blank(u, z))
+    # the range behind, east of the face (its rooms and balconies show beside the face's east corner)
+    rooms(s_(E1) + 1.0, s_(D["length"]) - 1.0, ven, zp + 0.9, GV["east_h"] - 3.0, lambda u, z: False)
     # the glazed top storey with its rail, the length of the hotel and over the glass block
     ak.block(K["ks_glass"], F, s_(A1) + 0.5, s_(E1) - 0.5, vr - 1.5, vr + 0.05, zt, Hh, top=False)
     K["ks_steel"].box(F(s_(A1), vr + 0.6, zt + 1.1), F(s_(E1), vr + 0.6, zt + 1.1), 0.08, 0.08)
@@ -426,11 +437,31 @@ def kyoto_station():
     return K.out(), [S["sd"]["si"]] + station_strips(S, A1, vn)
 
 
-def station_strips(S, A1, vn):
-    """Solids PLATEAU cut from the station along its north face east of the atrium (a strip 13 m deep and
-    66 m high in front of the main solid), which the model draws as the Hotel Granvia's glass block."""
+def hotel_front(S, A1):
+    """The Hotel Granvia's north face (#290): the tall strip PLATEAU cut off the station's solid east of the
+    atrium, as (west end, east end) in metres along the building, and its north side."""
     from shapely.geometry import Polygon
     F0, u0 = S["F"], S["u0"]
+    scale = (S["u1"] - u0) / STATION["length"]
+    best = None
+    for si in station_strips(S, A1, None):
+        sd = next(d for d in ak.load_solids("kyoto") if d["si"] == si)
+        loc = Polygon([F0.local(x, y)[:2] for x, y in sd["ring"]])
+        if best is None or loc.area > best.area:
+            best = loc
+    if best is None:   # without the strip: the face as PLATEAU's main solid puts it
+        return A1 + 15.0, A1 + 92.0, S["north"](A1, A1 + 92.0)
+    a, _, c, d = best.bounds
+    return (a - u0) / scale, (c - u0) / scale, d
+
+
+def station_strips(S, A1, vn=None):
+    """Solids PLATEAU cut from the station along its north face east of the atrium (a strip 12 m deep and
+    66 m high in front of the main solid), which the model draws as the Hotel Granvia's north face."""
+    from shapely.geometry import Polygon
+    F0, u0 = S["F"], S["u0"]
+    scale = (S["u1"] - u0) / STATION["length"]
+    face = S["north"](A1, STATION["length"])
     out = []
     for sd in ak.load_solids("kyoto"):
         if sd["si"] == S["sd"]["si"] or sd["top"] < 40:
@@ -439,7 +470,7 @@ def station_strips(S, A1, vn):
         if loc.is_empty or not loc.is_valid:
             continue
         a, b, c, d = loc.bounds
-        if a - u0 > A1 - 25 and c - u0 < S["u1"] - u0 - 40 and b > S["north"](A1, STATION["length"]) - 2 and d < vn + 3:
+        if (a - u0) / scale > A1 - 5 and (c - u0) / scale < STATION["length"] - 40 and face - 2 < b < face + 6 and d - b < 20:
             out.append(sd["si"])
     return out
 

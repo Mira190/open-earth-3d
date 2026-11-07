@@ -46,6 +46,9 @@ CLEAR = 0.3                    # m between the lamps' tops and the girders' soff
 GIRDER_MIN = 0.7               # m, the girders' depth over the lamps at least
 SHALLOW_R = (14.0, 40.0)       # m from the bridge's centre: the girders shallow inside the first, full outside the second
 SAME_LINE_M = 3.0              # m: samples of lines the data puts further apart than this are other decks
+FIRST = (150.0, 1500.0)        # shuto_lidar.py's first survey (#272): game.json's lines there were put on it then
+ON_SAMPLE_M = 0.3
+MOVED_GRADE = 0.1              # a moved point climbs or falls at most this to its neighbours              # m: a point this near a sample's measured height already stands on it
 SURVEY_M = 30.0                # m: a line point this near any sample is inside the survey
 GROUND_LINE_M = 8.0            # T.P. m: a line point under this is on the ground here (the ground is 2-5 m), not on a viaduct
 TAPER_M = 150.0                # m along a line outside the survey over which its offset from the survey eases to nothing
@@ -112,12 +115,15 @@ def lidar_z(x, y, near=None):
     ks = T.query_ball_point([x, y], LIDAR_R)
     if not ks:
         return None
-    if near is not None:      # only a sample of a line the data puts within SAME_LINE_M of this one (not a deck over it)
-        ks = [k for k in ks if abs(dz[k] - near) <= SAME_LINE_M]
+    if near is not None:      # only a sample of a line the data puts within SAME_LINE_M of this one (not a deck over it),
+        # or one the point already stands on (game.json's lines in the first survey are on its samples: --game again
+        # leaves them, #290)
+        gap = lambda k: min(abs(dz[k] - near), abs(z[k] - near) if abs(z[k] - near) <= ON_SAMPLE_M else 99.0)
+        ks = [k for k in ks if gap(k) <= SAME_LINE_M]
         if not ks:
             return None
-        best = min(abs(dz[k] - near) for k in ks)
-        ks = [k for k in ks if abs(dz[k] - near) <= best + 0.5]
+        best = min(gap(k) for k in ks)
+        ks = [k for k in ks if gap(k) <= best + 0.5]
     k = min(ks, key=lambda k: (xy[k, 0] - x) ** 2 + (xy[k, 1] - y) ** 2)
     return float(z[k])
 
@@ -385,6 +391,9 @@ def on_lidar(game):
         for i, (x, y, z) in enumerate(p):
             if z < GROUND_LINE_M:  # on the ground (or in a cutting): not on a viaduct
                 continue
+            if x > FIRST[0] and y > FIRST[1]:   # the first survey's lines already stand on its samples (#290)
+                f[i] = 0.0
+                continue
             h = lidar_z(x, y, near=z)
             if h is not None:
                 f[i] = h - z
@@ -448,6 +457,23 @@ def on_lidar(game):
                     changed = True
         if not changed:
             break
+    # no step where a moved point meets one that stays (a ramp's foot on the ground, a junction): the moved points
+    # eased toward their neighbours, to at most MOVED_GRADE between them, back and forth along the line (#290)
+    for p, f in zip(P, off):
+        moved = np.isfinite(f) & (np.abs(np.nan_to_num(f)) > 0.05)
+        if not moved.any():
+            continue
+        z = p[:, 2] + np.where(moved, np.nan_to_num(f), 0.0)
+        s = np.hypot(*np.diff(p[:, :2], axis=0).T)
+        for _ in range(6):
+            for order in (range(1, len(p)), range(len(p) - 2, -1, -1)):
+                for i in order:
+                    j = i - 1 if order.step == 1 else i + 1
+                    if not moved[i]:
+                        continue
+                    d = s[min(i, j)] * MOVED_GRADE
+                    z[i] = min(max(z[i], z[j] - d), z[j] + d)
+        f[moved] = z[moved] - p[moved, 2]
     n = 0
     for o, p, f in zip(roads, P, off):
         for i in range(len(p)):
