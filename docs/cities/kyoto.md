@@ -164,10 +164,32 @@ long wing of rooms over the podium, and a glazed corner at the east end. The fac
 west from the glass block; the photographs show it rising up the wing's face from the east end to the gate, a ridge of
 facets high and low by turns, and it is drawn so.
 
-Not resolved: PLATEAU's solid w120374245 (18 m, 31 × 50 m) stands in front of the hotel's east third, north of its
-face, and hides the vault and the entrance from the forecourt in the model, while the photographs show the
-forecourt open there. Either the hotel's PLATEAU length runs on behind another building or the solid is misplaced;
-it is left as it is until it is checked (follow-up issue).
+**The Granvia's place (#290).** PLATEAU's solid w120374245 (46 m tall, 31 × 50 m; #272 had read its height as 18 m)
+stood in front of the hotel's east third and hid the vault and the entrance from the forecourt. It is neither
+misplaced nor to be hidden: GSI's aerial photograph shows a separate building there, its roof covered in solar
+panels, and the photograph from the drive-up road ([Drive-up entrance to Hotel Granvia Kyoto in Kyoto, Japan (2019) -
+278.jpg](https://commons.wikimedia.org/wiki/File:Drive-up_entrance_to_Hotel_Granvia_Kyoto_in_Kyoto,_Japan_(2019)_-_278.jpg),
+Another Believer, CC BY-SA 4.0) shows it beside the hotel's east corner, light grey in horizontal bands. What was
+wrong was the hotel: its face had been drawn from 40 m east of the atrium to the station's east end, 60 m too far
+east. Laid over the aerial photograph, PLATEAU's outlines put it right:
+
+- the atrium's glass roof ends at x −280, 37 m west of where `STATION["atrium"]` ended it (now 214–325 m along the
+  building), where the station's north face steps forward;
+- the hotel's north face is the strip PLATEAU cuts off the main solid (w536429045): 77 m long, 66 m tall, from 15 m
+  east of the atrium, 12 m forward of the main solid. The frontal photograph from the taxi pool ([East zone of Kyoto
+  Station.JPG](https://commons.wikimedia.org/wiki/File:East_zone_of_Kyoto_Station.JPG), Soramimi, CC BY-SA 4.0) spans
+  77 m from the tower's west edge to the glazed east corner (13 window bays of the wing at 3.6 m), so the widths are
+  read from it again: the tower 9.8 m, the blue shaft 7.0 m, the gate 10.2 m, the corner 3.4 m;
+- east of the face the station steps back 28 m (PLATEAU's main solid, and the photograph's balconied range behind the
+  corner): drawn as a range of rooms to 56 m, the separate building in front of it.
+
+The vault, the gate and the entrance under its canopy now show from the forecourt as the photographs have them.
+Not done: the separate building (w120374245) is still drawn in the generic glass style; its banded grey face and
+rounded corner need a building style of its own (follow-up).
+
+![The Granvia: the photograph from the taxi pool (Soramimi, CC BY-SA 4.0) and the model at day, dusk and night (#290)](../images/fidelity-290/granvia.jpg)
+![From the forecourt and the east, desktop, day, dusk and night (#290)](../images/fidelity-290/kyoto-desktop.jpg)
+![On a phone (#290)](../images/fidelity-290/kyoto-phone.jpg)
 
 ![The Granvia's north face: the photograph (Zairon, CC BY-SA 4.0), and the model by day and at night (#272)](../images/kyoto/granvia-272.jpg)
 

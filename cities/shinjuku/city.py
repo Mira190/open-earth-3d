@@ -63,7 +63,9 @@ _open_fronts = _m.open_fronts
 
 def _fronts_off_the_canyon(sites):
     """The shared shop signs everywhere but along Kabukicho's canyon, where kabukicho.py puts its own."""
-    keep = _open_fronts(sites)
+    from shapely.geometry import Point, Polygon
+    fore = Polygon(station.KT_FORECOURT).buffer(1.0)   # the blocks PLATEAU still has before Kabukicho Tower's front (#290)
+    keep = [s for s in _open_fronts(sites) if not fore.contains(Point(s[0], s[1]))]
     canyon = _KB.get("canyon")
     if not canyon:
         return keep

@@ -89,5 +89,8 @@ of the Senbon Torii, then a hiker resting at Yotsutsuji, where Kyoto opens out t
     Araki-jinja, Kojin-ga-mine and Kiyotaki); OSM doesn't tag which of its ways are torii-lined.
   - The otsuka's rows stand where OSM maps a shrine or a memorial stone, not on each mound.
 - **The halls**: their heights are read from photographs and PLATEAU's blocks.
-- **The Romon**: its width is the usual three bays, about 10 m.
+- **The Romon**: its width is the usual three bays, about 10 m. Its roof follows the other gates' (#290: eaves at 57%
+  of its height, a steeper slope and a deeper ridge; [Higashiyama](higashiyama.md)).
+
+![The Romon at day, dusk and night (#290)](../images/fidelity-290/fushimi-inari-desktop.jpg)
 - Not checked on: a real GPU, WebGPU, Safari or iOS.
