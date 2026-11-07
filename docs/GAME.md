@@ -1292,6 +1292,28 @@ Sydney's traffic stood still a third of the time.
     Feliciani, Nishinari and others' crossing-flow experiments (stripes form even
     at fairly low density) confirm the patterns to aim for. Ideas only; no code or
     data from any of them.
+  - *A crowd that masses.* Games settle a crowd that bunches up by giving an agent
+    that arrives somewhere a place to stand and making it stand there, rather than
+    letting every body push towards a goal it cannot reach. Unreal's Mass splits its
+    avoidance into a moving and a standing processor, the standing agents softer to
+    pass and nudged aside rather than steering; Detour Crowd and Unreal's queues stop
+    an agent that reaches the one ahead; Moussaïd, Helbing and Theraulaz (PNAS 2011)
+    model a walker as slowing to keep a safe distance to the first body in its way,
+    from which queues and stop-and-go waves follow. Here, from them (ideas only, no
+    code):
+    - A walker short of its spot at a kerb that has covered no ground for a second,
+      the crowd in its way, stands where it is, at the back of them, instead of
+      walking on the spot into their backs.
+    - A footway walker slowed to a crawl by the crowd at a scramble's kerb just
+      ahead joins it where it stands, rather than creeping into it and turning back.
+    - When the walk comes on, the crowd sets off as a wave from the front: each row
+      later by how deep it stands, and only once whoever stands in front of it has
+      stepped off (never held more than 4 s by that).
+    - Shibuya, within 40 m of you over a minute (`tools/crowd_press.js`): the time the
+      scramble's crowd spent pressing without getting anywhere on its way to a kerb
+      went from 143 walker-seconds to 19 (the longest from 27 s to 2 s), and the
+      footways' walkers from 19% of their time to 1.5% (the longest from 18 s to 2 s).
+    - `tools/crowd_film.js` films the crowd massed nearest you, to see it move.
   - `tools/scramble_step.js`, run by `tools/game_check.js` in every city with a
     scramble, checks that in the walk every arm's light is red, the walk signals
     are green and the crowd is out on the crosswalks and the diagonals; that in

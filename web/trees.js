@@ -302,6 +302,137 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       });
       return out;
     }));
+    // ------------------------------------------------------------ the far trees as impostors
+    // Past the mid distance (520 m, a wood's from 200 m) a tree was a trunk and an 80-triangle crown hull in its
+    // species' one colour: no blossom, no autumn, the same dome for every species. Here each species' mid-distance
+    // tree (its real cards, in the season's colours) is drawn once into an atlas from three heights (level, 40 and
+    // 80 degrees up), and a far tree is one quad facing the camera that shows it, blended between the two nearest
+    // heights, mirrored for every other tree, tinted per tree, lit by the sun as a round crown (the cards' normals
+    // point out of the crown, so the near trees are lit as a mass too) and uplit after dark where a yozakura is
+    // lit. Two triangles for 80, and the far trees look like the near ones. The atlas is drawn again when the
+    // season's look changes (a new day of blossom or autumn), from the same materials. Octahedral impostors
+    // (Ryan Brucks; agargaro/octahedral-impostor for three.js) take many more views; a tree is near enough to
+    // round that three heights and a mirror do here, and seen from 200 m and further.
+    const IMP_E = [0, 40, 80];
+    let imp = null, impTick = 0;
+    const seasonKey = () => [U.uBloom.value, U.uAutumn.value, U.uBare.value].concat(U.uSakuraV.value, U.uCherryBareV.value).map(v => (+v).toFixed(2)).join(',');
+    function bakeFar(renderer) {
+      if (!renderer || !THREE.WebGLRenderTarget) return;
+      const key = seasonKey();
+      if (imp && imp.key === key) return;
+      const V = IMP_E.length, NS = names.length;
+      let CELL = small ? 128 : 256;
+      while (CELL > 64 && NS * CELL > renderer.capabilities.maxTextureSize) CELL /= 2;
+      if (!imp) {
+        const rt = new THREE.WebGLRenderTarget(V * CELL, NS * CELL, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter });
+        rt.texture.colorSpace = THREE.SRGBColorSpace;
+        rt.texture.anisotropy = 4;
+        const scene = new THREE.Scene();
+        scene.add(new THREE.AmbientLight(0xffffff, Math.PI)); // (a Lambert surface under ambient π gives back its albedo)
+        imp = { rt, scene, renderer, species: [], key: '' };
+        names.forEach((sp, k) => {
+          const node = lib.gltf.scene.getObjectByName(`${sp}_LOD1`);
+          if (!node || !count[k] || !meshes[k][2].length) { imp.species.push(null); return; }
+          const parts = [], box = new THREE.Box3();
+          node.traverse(o => {
+            if (!o.isMesh) return;
+            const g = o.geometry.clone();
+            g.setAttribute('tc', g.getAttribute('color')); g.deleteAttribute('color');
+            g.setAttribute('aLit', new THREE.InstancedBufferAttribute(new Float32Array(1), 1));
+            g.computeBoundingBox(); box.union(g.boundingBox);
+            const m = new THREE.InstancedMesh(g, matFor(o.material.name), 1);
+            m.setMatrixAt(0, new THREE.Matrix4());
+            m.setColorAt(0, new THREE.Color(1, 1, 1));
+            m.frustumCulled = false;
+            parts.push(m);
+          });
+          const c = box.getCenter(new THREE.Vector3()), r = box.getBoundingSphere(new THREE.Sphere()).radius * 1.02;
+          const S = I.species[sp] || {};
+          imp.species.push({ k, parts, c, r, clear: lin(S.colour || '#4d6b34').multiplyScalar(0.55) });
+        });
+      }
+      imp.key = key;
+      const R = imp.renderer, prevRT = R.getRenderTarget(), prevC = R.getClearColor(new THREE.Color()), prevA = R.getClearAlpha(), prevSh = R.shadowMap.autoUpdate;
+      R.shadowMap.autoUpdate = false;
+      const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 10);
+      for (const sp of imp.species) {
+        if (!sp) continue;
+        for (const m of sp.parts) imp.scene.add(m);
+        cam.left = cam.bottom = -sp.r; cam.right = cam.top = sp.r; cam.near = 0.01; cam.far = 4 * sp.r; cam.updateProjectionMatrix();
+        IMP_E.forEach((e, v) => {
+          const a = e * Math.PI / 180;
+          cam.position.set(sp.c.x, sp.c.y + Math.sin(a) * 2 * sp.r, sp.c.z + Math.cos(a) * 2 * sp.r);
+          cam.up.set(0, 1, 0); cam.lookAt(sp.c); cam.updateMatrixWorld();
+          imp.rt.viewport.set(v * CELL, sp.k * CELL, CELL, CELL);
+          imp.rt.scissor.set(v * CELL, sp.k * CELL, CELL, CELL);
+          imp.rt.scissorTest = true;
+          R.setRenderTarget(imp.rt);
+          R.setClearColor(sp.clear, 0); // (the edges' mips fade into the species' green, not black)
+          R.clear();
+          R.render(imp.scene, cam);
+        });
+        for (const m of sp.parts) imp.scene.remove(m);
+      }
+      imp.rt.scissorTest = false; imp.rt.viewport.set(0, 0, V * CELL, NS * CELL); imp.rt.scissor.set(0, 0, V * CELL, NS * CELL);
+      R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); R.shadowMap.autoUpdate = prevSh;
+      if (!imp.meshes) imp.meshes = true; else return;
+      // the far meshes, once: one quad per tree, in place of the hulls
+      const quad = new THREE.PlaneGeometry(1, 1);
+      for (const sp of imp.species) {
+        if (!sp) continue;
+        const k = sp.k, g = quad.clone();
+        g.setAttribute('aLit', new THREE.InstancedBufferAttribute(new Float32Array(count[k]), 1));
+        const mat = new THREE.MeshStandardMaterial({ map: imp.rt.texture, alphaTest: 0.5, roughness: 0.88, metalness: 0 });
+        const uImp = { value: new THREE.Vector4(k / NS, 1 / NS, 1 / V, sp.r * 2) }, uImpC = { value: sp.c.clone() };
+        mat.customProgramCacheKey = () => 'tree-impostor';
+        mat.onBeforeCompile = sh => {
+          Object.assign(sh.uniforms, { uImp, uImpC, uYoz: U.uYoz, uYozCol: U.uYozCol });
+          sh.vertexShader = sh.vertexShader
+            .replace('#include <common>', `#include <common>
+attribute float aLit; uniform float uYoz; uniform vec4 uImp; uniform vec3 uImpC;
+varying float vLit; varying vec3 vIR; varying vec3 vIU; varying vec3 vIF; varying vec2 vIq; varying vec2 vIuvA; varying vec2 vIuvB; varying float vIt;`)
+            .replace('#include <begin_vertex>', `vec3 iC = (modelMatrix * (instanceMatrix * vec4(uImpC, 1.0))).xyz;
+float iS = length(instanceMatrix[0].xyz), iSy = length(instanceMatrix[1].xyz);
+vec3 iV = normalize(cameraPosition - iC);
+vec3 iR = cross(vec3(0.0, 1.0, 0.0), iV); float iRl = length(iR);
+iR = iRl > 1e-3 ? iR / iRl : vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+vec3 iU = cross(iV, iR);
+vec3 transformed = iC + (iR * position.x * iS + iU * position.y * iSy) * uImp.w;
+float iFlip = fract(sin(dot(iC.xz, vec2(12.9898, 78.233))) * 43758.5453) < 0.5 ? -1.0 : 1.0;
+float iE = degrees(asin(clamp(iV.y, -1.0, 1.0)));
+float iF0 = iE < 40.0 ? 0.0 : 1.0;
+vIt = iE < 40.0 ? clamp(iE / 40.0, 0.0, 1.0) : clamp((iE - 40.0) / 40.0, 0.0, 1.0);
+vec2 iCuv = vec2(position.x * iFlip + 0.5, position.y + 0.5);
+vIuvA = vec2((iF0 + iCuv.x) * uImp.z, uImp.x + iCuv.y * uImp.y);
+vIuvB = vec2((iF0 + 1.0 + iCuv.x) * uImp.z, uImp.x + iCuv.y * uImp.y);
+vIq = position.xy * 2.0;
+vIR = (viewMatrix * vec4(iR, 0.0)).xyz; vIU = (viewMatrix * vec4(iU, 0.0)).xyz; vIF = (viewMatrix * vec4(iV, 0.0)).xyz;
+vLit = aLit * uYoz;`)
+            .replace('#include <worldpos_vertex>', 'vec4 worldPosition = vec4(transformed, 1.0);')
+            .replace('#include <project_vertex>', 'vec4 mvPosition = viewMatrix * vec4(transformed, 1.0);\ngl_Position = projectionMatrix * mvPosition;');
+          sh.fragmentShader = sh.fragmentShader
+            .replace('#include <common>', `#include <common>
+uniform float uYoz; uniform vec3 uYozCol; varying float vLit; varying vec3 vIR; varying vec3 vIU; varying vec3 vIF; varying vec2 vIq; varying vec2 vIuvA; varying vec2 vIuvB; varying float vIt;`)
+            .replace('#include <map_fragment>', `diffuseColor *= mix(texture2D(map, vIuvA), texture2D(map, vIuvB), vIt);
+vec2 iTx = vIuvA * vec2(textureSize(map, 0));
+float iLod = max(0.0, 0.5 * log2(max(dot(dFdx(iTx), dFdx(iTx)), dot(dFdy(iTx), dFdy(iTx)))));
+diffuseColor.a *= 1.0 + iLod * 0.25; // (a mip averages the leaves' alpha down, and the crown thins to its twigs at a distance: kept as dense as up close)`)
+            .replace('#include <normal_fragment_begin>', `float faceDirection = 1.0;
+float iz = sqrt(max(0.0, 1.0 - dot(vIq, vIq)));
+vec3 normal = normalize(vIq.x * vIR + vIq.y * vIU + max(iz, 0.35) * vIF);
+vec3 nonPerturbedNormal = normal;`)
+            .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\nif (vLit > 0.0) totalEmissiveRadiance += diffuseColor.rgb * uYozCol * vLit * 0.6;');
+        };
+        const m = new THREE.InstancedMesh(g, mat, count[k]);
+        m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count[k] * 3), 3);
+        m.castShadow = false; m.receiveShadow = true; m.frustumCulled = false; m.count = 0; m.name = `${names[k]}-far`;
+        world.add(m);
+        for (const h of meshes[k][2]) { h.count = 0; h.visible = false; }
+        meshes[k][2] = [m];
+      }
+      last.set(1e9, 0, 0); sortedAt = -1e9; // (re-sorted into the new meshes at the next update)
+    }
     let yozBloom = 0;
     const Y = yozakura();
     const PT = petals();
@@ -309,8 +440,67 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const WOOD_M = keep < 1 ? 600 : 900, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
     let sortedAt = -1e9;
     // re-sort the trees into near, mid and far when the camera has moved far enough
+    // The near and mid trees cast the sun's shadow, but they are instanced meshes the GPU draws whole (frustum
+    // culling is off: their instances are re-sorted as the camera moves), so every tree within 520 m went into a
+    // shadow map that covers 180 m round the player: in Sydney's game nine tenths of the shadow pass. So each
+    // re-sort writes them nearest first by their distance from the eye in the light's own plane (the larger of
+    // the two axes, the box's own measure), and the shadow pass draws only as many of them as can reach the
+    // shadow camera's box (shadowCount), with room for a crown, the wind and the sun's turn since the sort. The
+    // view draws them all, as before.
+    const shB = { on: false, x: new THREE.Vector3(), y: new THREE.Vector3(), dir: new THREE.Vector3(), eye: new THREE.Vector3(), bucket: names.map(() => [[], []]) };
+    let sunOf = null;
+    function put(parts, i) {
+      for (const im of parts) {
+        const j = im.count++;
+        im.instanceMatrix.array.set(M.subarray(16 * i, 16 * i + 16), 16 * j);
+        im.instanceColor.array.set(tint.subarray(3 * i, 3 * i + 3), 3 * j);
+        im.geometry.attributes.aLit.array[j] = lit[i];
+      }
+    }
+    function shadowOrder() {
+      const ord = [];
+      shB.bucket.forEach((per, k) => per.forEach((b, lod) => {
+        const parts = meshes[k][lod], m = b.length / 2;
+        ord.length = 0;
+        for (let q = 0; q < m; q++) ord.push(q);
+        ord.sort((a, c) => b[2 * a + 1] - b[2 * c + 1]);
+        const keys = new Float32Array(m);
+        ord.forEach((q, j) => { keys[j] = b[2 * q + 1]; put(parts, b[2 * q]); });
+        for (const im of parts) im.userData.shKeys = keys;
+        b.length = 0;
+      }));
+    }
+    // how many of a mesh's first instances can cast into the shadow camera's box: those whose distance from the
+    // sort's eye, in the light's plane, is within the box's half width, plus how far the box's centre has moved
+    // off that eye, plus 30 m for a crown and its sway, plus the sun's turn since the sort over 600 m
+    const shD = new THREE.Vector3();
+    function shadowCount(im, shc) {
+      const keys = im.userData.shKeys, dir = sunOf && sunOf();
+      if (!shB.on || !keys || keys.length !== im.count || !dir || !shc.isOrthographicCamera) return im.count;
+      const cos = Math.min(1, dir.dot(shB.dir));
+      if (cos < 0.995) return im.count; // (turned more than 5.7 degrees: the next update re-sorts)
+      shD.subVectors(shc.position, shB.eye);
+      const half = Math.max(shc.right - shc.left, shc.top - shc.bottom) / 2 / (shc.zoom || 1);
+      const bound = half + Math.max(Math.abs(shD.dot(shB.x)), Math.abs(shD.dot(shB.y))) + 30 + 600 * Math.acos(cos);
+      let lo = 0, hi = keys.length;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (keys[mid] <= bound) lo = mid + 1; else hi = mid; }
+      return lo;
+    }
+    for (const per of meshes) for (const parts of per.slice(0, 2)) for (const im of parts) {
+      if (!im.castShadow) continue;
+      im.onBeforeShadow = (r, o, cam, shc) => { const k = shadowCount(im, shc); if (k < im.count) { im.userData.shFull = im.count; im.count = k; } };
+      im.onAfterShadow = () => { if (im.userData.shFull != null) { im.count = im.userData.shFull; im.userData.shFull = null; } };
+    }
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
+      const sd = sunOf && sunOf();
+      shB.on = !!(sd && sd.y > 0.01);
+      if (shB.on) {
+        shB.dir.copy(sd).normalize(); shB.eye.copy(eye);
+        shB.x.set(shB.dir.z, 0, -shB.dir.x);
+        if (shB.x.lengthSq() < 1e-8) shB.x.set(1, 0, 0);
+        shB.x.normalize(); shB.y.crossVectors(shB.dir, shB.x);
+      }
       if (PT) PT.gather(eye);
       const n0 = L[0] * L[0], n1 = L[1] * L[1];
       // from higher up a wood is seen further, and only as crowns: its reach grows with the camera's height
@@ -322,14 +512,14 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         if (f < 1 && e2 > WM * WM * (0.55 + 45 * (f - 0.55)) ** 2) continue;
         const lod = e2 < n0 * f * f ? 0 : e2 < n1 * (f < 1 ? 0.15 : 1) ? 1 : 2;
         if (lod === 2 && half[i] >= farCut) continue; // past 200 m half a wood's crowns stand for all (they overlap), fewer on a lighter tier
-        const parts = meshes[which[i]][lod];
-        for (const im of parts) {
-          const j = im.count++;
-          im.instanceMatrix.array.set(M.subarray(16 * i, 16 * i + 16), 16 * j);
-          im.instanceColor.array.set(tint.subarray(3 * i, 3 * i + 3), 3 * j);
-          im.geometry.attributes.aLit.array[j] = lit[i];
+        if (lod < 2 && shB.on) { // (written below, nearest the shadow's centre first)
+          const b = shB.bucket[which[i]][lod];
+          b.push(i, Math.max(Math.abs(dx * shB.x.x + dy * shB.x.y + dz * shB.x.z), Math.abs(dx * shB.y.x + dy * shB.y.y + dz * shB.y.z)));
+          continue;
         }
+        put(meshes[which[i]][lod], i);
       }
+      if (shB.on) shadowOrder();
       // only the instances drawn go up to the GPU, not each mesh's whole buffer (all of them, 8 MB in a city with
       // many trees, went up at every re-sort, and a fast move such as the opening shot re-sorts on most frames)
       for (const per of meshes) for (const parts of per) for (const im of parts) for (const a of [im.instanceMatrix, im.instanceColor, im.geometry.attributes.aLit]) {
@@ -629,11 +819,17 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       // after a jump of 120 m
       update(camera, tSec) {
         U.uWind.value = tSec % 10000;
+        if (imp && imp.meshes && ++impTick % 30 === 0) bakeFar(imp.renderer); // (the season's look changed: the atlas again)
         if (Y) { const k = (night ? night.value : 0) * yozBloom; U.uYoz.value = k; Y.set(k, yozBloom > 0); }
         camera.getWorldPosition(cam);
         const d2 = cam.distanceToSquared(last);
-        if (d2 > 144 && (d2 > 14400 || !(tSec - sortedAt < 0.2))) { last.copy(cam); sortedAt = tSec; sort(cam); }
+        const turned = shB.on && sunOf && sunOf().dot(shB.dir) < 0.9986; // (the sun 3 degrees on since the sort)
+        if (turned || (d2 > 144 && (d2 > 14400 || !(tSec - sortedAt < 0.2)))) { last.copy(cam); sortedAt = tSec; sort(cam); }
       },
+      // the far trees as impostors, drawn with this renderer (and again when the season's look changes)
+      bakeFar(renderer) { try { bakeFar(renderer); } catch (e) { console.warn('far trees: hulls kept', e); } },
+      // where the sun is (a unit vector towards it), for the shadow pass to draw only the trees near its box
+      shadowSun(f) { sunOf = f; sortedAt = -1e9; last.set(1e9, 0, 0); },
       // stand each tree on the ground at its foot: ground(x, y, z) for the height the data gives
       // (the game's finer terrain, which the survey grid's heights can be above or below), or null
       // for a tree not to draw

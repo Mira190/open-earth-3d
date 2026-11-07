@@ -84,8 +84,53 @@ Two more, the same picture to the bit:
   **4.31 → 4.09 and 4.75 → 4.58 million triangles** (two views facing each other) for 40 and 81 more draws.
   The street lamps after dark were already drawn by cell (`night.js`).
 
+- **The sun's shadow, split by what moves** (`world.js` `shadowCache`, `trees.js` `shadowCount`). A frame-by-frame
+  count of the shadow pass on foot in Sydney (`tools/frame_cost.js` with `FOOT=1 FREEZE=1`, and a split by caster)
+  found it was not the buildings: those were already culled by cell. It was the trees within 520 m, which are
+  drawn whole (their instances are re-sorted as the camera moves, so frustum culling is off for them) into a map
+  180 m round the player, the traffic signals of the whole city, the crowd and the cars. Three changes:
+  - the trees: each re-sort writes the near and mid trees nearest first by their distance from the eye in the
+    light's plane, and the shadow pass draws only the first so many that can reach the shadow camera's box, with
+    30 m for a crown and its sway and room for the sun's turn since the sort (a turn of 3 degrees re-sorts). The
+    view draws them all. 0.35 to 0.20 million triangles.
+  - the traffic signals' poles, arms and housings (`game/junctions.js`) go in cells, like the props above.
+  - the still casters (buildings, props, landmarks, signals, benches, lamp posts: `world.js` `still()`, or
+    `userData.shadowStatic`) are drawn into a depth map of their own only when the light's pose or one of them
+    changes (the sun steps every quarter second of the game's clock; a lift car moving; a landmark shown or
+    hidden), and copied into the shadow map with a framebuffer blit in place of its clear each frame, before
+    the moving casters are drawn over it. Three.js's own shadow pass draws both halves with its own materials.
+    `fitShadow` keeps 5% more room than asked and holds the box still while the view moves inside that room and
+    the sun has not stepped, so a walker does not slide it a texel every few frames. `?shadowcache=off` turns it
+    off.
+
+  Sydney on foot, one frame without a refresh: the shadow pass went from about **1.47 to 1.16 million
+  triangles**, the still casters' share drawn about four times a second instead of sixty. Stills with the cache on
+  and off match to the bit from the air and in every shadow on the ground on foot (the rest is wind, waves and the
+  crowd). What is left is the crowd (about 0.6 million; people only stand round the player, so the box covers
+  them) and the cars. Not measurable here: the time a blit of a 4096 px depth map takes on a phone's GPU, against
+  the triangles it saves; on the low tier the map is 2048 px, a quarter of the bytes.
+
 What the shadow pass still draws is mostly instanced props, trees and people spread over the whole city. An
 instanced mesh is culled as a whole, so these are drawn in full however small the shadow box.
+
+## The far trees as impostors
+
+Past the mid distance (520 m; a wood's trees from 200 m) a tree was a trunk and an 80-triangle crown hull in its
+species' one colour. Now each species' mid-distance model (its real leaf cards, in the season's colours) is drawn
+once, at load, into an atlas from three heights (level, 40 and 80 degrees up; 256 px a view, 128 on a small
+screen), and each far tree is one camera-facing quad (`web/trees.js`, `bakeFar`). The quad blends the two
+nearest heights, is mirrored for every other tree and tinted per tree, and is lit by the sun as a round crown (a
+spheroid normal, as the near trees' cards are). Where a yozakura is lit after dark it is uplit too. The alpha is
+scaled by the mip level, so a crown keeps its density at a distance rather than thinning to twigs. The atlas is
+drawn again only when the season's look changes. `?impostors=off` keeps the hulls.
+
+Sydney's game on foot, high tier, 1440 x 900: **3.75 → 3.14 million triangles** a frame (−16%) and 456 → 450 draws.
+The stills from the air at day, dusk and night, on a desktop and a phone, show the far trees with their leaves,
+species colours and light, where the hulls were smooth green domes.
+
+Adopted from: octahedral impostors (Ryan Brucks, for Fortnite) and
+[agargaro/octahedral-impostor](https://github.com/agargaro/octahedral-impostor) (MIT) for the idea; no code was
+taken. A tree is near enough to round that three heights and a mirror do here instead of an octahedral grid.
 
 ## Next, by what it saves for what it risks
 
@@ -96,13 +141,9 @@ Measured on Sydney's game, high tier, 1440 x 900, from the street, after the wor
    furniture, benches, lamp posts). three.js r186's `BatchedMesh` culls each instance against the camera, the
    shadow camera included (`perObjectFrustumCulled`), and sorts them; an `InstancedMesh` is all or nothing.
    Most of the 1.5 million shadow-pass triangles are these. No visual change.
-2. **A cached shadow map for what does not move.** The buildings, landmarks and props cast the same shadow
-   until the sun moves by a texel or the shadow box slides. Unreal's virtual shadow maps cache static pages in
-   the same way. Draw the static casters into their own depth map only when the sun or the box moves; draw the
-   people, cars and vessels each frame into a small map round the player; take the nearer of the two in the
-   lit shaders. This needs a change to three.js's shadow lookup (`onBeforeCompile`), so it comes after 1.
-3. **Impostors for the far trees** (section above): about 0.6 million triangles past 300 m in the view pass.
-   Each needs a baked atlas per species and season, and stills to match.
+2. **A cached shadow map for what does not move.** Done (above), as a copy of the cached depth under each frame's
+   moving casters rather than two maps, so the lit shaders are unchanged.
+3. **Impostors for the far trees.** Done (below).
 4. **The ocean's FFT** draws 45 full-screen passes a frame into 128 x 128 RGBA32F targets (256 x 256 on a large
    screen with a hardware GPU). Its outputs are already half float, and the butterflies stay 32-bit where the GPU
    can render to it, because seven butterfly stages in half float would put noise in the waves. At 128 x 128 the
