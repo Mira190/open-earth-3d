@@ -183,14 +183,111 @@ window.OEAtmos = (function () {
             c /= w;
           }
         }
+        // The motion blur (issue 265: its 8 even taps up to 3% of the frame drew each edge as a row of jagged
+        // copies, the far rock smeared over the near deck, and a cut smeared the whole frame): 12 taps offset
+        // by a per-pixel noise (interleaved gradient noise, Jimenez 2014), so the steps dissolve into grain
+        // instead of copies; a shorter streak; a sample further off than the pixel itself doesn't bleed over
+        // it (only the nearer one smears over what is behind); and a jump of the camera (a cut, or the first
+        // frame after a long one) draws no blur at all rather than a frame-wide smear.
         if (uBlur > 0.0) {
           vec4 wp = uCamWorld * vec4(normalize(viewAt(vUv)) * min(d, uFar * 0.99), 1.0), pp = uPrevVP * wp;
-          vec2 prev = pp.xy / max(pp.w, 1e-4) * 0.5 + 0.5, mv = clamp((vUv - prev) * uBlur, vec2(-0.03), vec2(0.03));
-          vec3 m = c;
-          for (int i = 1; i < 8; i++) m += texture2D(tDiffuse, vUv - mv * (float(i) / 7.0 - 0.5)).rgb;
-          c = m / 8.0;
+          vec2 prev = pp.xy / max(pp.w, 1e-4) * 0.5 + 0.5, raw = vUv - prev;
+          float cut = 1.0 - smoothstep(0.05, 0.09, length(raw)) ;
+          vec2 mv = raw * uBlur * cut;
+          float ml = length(mv);
+          if (ml > 0.012) mv *= 0.012 / ml;
+          if (ml * float(textureSize(tDiffuse, 0).y) > 1.0) {
+            float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            vec3 m = c; float w = 1.0;
+            for (int i = 0; i < 12; i++) {
+              vec2 uv = vUv - mv * ((float(i) + ign) / 12.0 - 0.5);
+              float k = dist(uv) > d * 1.15 + 0.5 ? 0.15 : 1.0;
+              m += texture2D(tDiffuse, uv).rgb * k; w += k;
+            }
+            c = m / w;
+          }
         }
         gl_FragColor = vec4(c, 1.0);
+      }`,
+  });
+
+  // The animated film's lens, for a map's overture only (overture.js; never in play, off unless asked):
+  // after the title's lens, on the picture as it will be shown. In one pass and no target of its own:
+  //   a painted look  a Kuwahara filter (each pixel takes the mean of whichever of its four quadrants is
+  //                   the most even), which turns surfaces into flat brushed planes and keeps their edges,
+  //                   as the painted backgrounds of animated films are; radius in pixels at 900 lines
+  //   the grade       shadows lifted towards a clear blue, highlights warmed towards peach, colour where it
+  //                   is weak given more than where it is already strong (vibrance)
+  //   light           crepuscular rays from the sun where it is in frame (a march of 20 taps towards it over
+  //                   the bright pixels), and a soft halation round the brightest
+  const ANIME = () => ({
+    uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, uReversed: { value: 0 }, uInvProj: { value: new THREE.Matrix4() }, uDepth: { value: 0 },
+      uHaze: { value: new THREE.Vector3(0.2, 0.22, 0.4) }, uHazeD: { value: 1500 }, uHazeK: { value: 0 }, uRim: { value: 0 }, uRimC: { value: new THREE.Vector3(0.7, 0.6, 1.0) },
+      uRes: { value: new THREE.Vector2(1, 1) }, uK: { value: 0 }, uRadius: { value: 3 }, uGrade: { value: 0 },
+      uSunUv: { value: new THREE.Vector2(0.5, 0.5) }, uSunVis: { value: 0 }, uRays: { value: 0 }, uWarm: { value: new THREE.Vector3(1.0, 0.82, 0.62) } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform sampler2D tDiffuse, tDepth; uniform vec2 uRes, uSunUv; uniform float uK, uRadius, uGrade, uSunVis, uRays, uReversed, uDepth, uHazeD, uHazeK, uRim;
+      uniform vec3 uWarm, uHaze, uRimC; uniform mat4 uInvProj; varying vec2 vUv;
+      float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+      // the distance of what the pixel shows (1e6 for the sky), from the scene's depth (reversed or not)
+      float dist(vec2 uv) {
+        float z = texture2D(tDepth, uv).x;
+        if (uReversed > 0.5 ? z <= 0.0 : z >= 1.0) return 1e6;
+        vec4 p = uInvProj * vec4(uv * 2.0 - 1.0, uReversed > 0.5 ? z : z * 2.0 - 1.0, 1.0); return length(p.xyz / p.w);
+      }
+      void main() {
+        vec3 src = texture2D(tDiffuse, vUv).rgb, c = src;
+        // depth: the far city sinks into the air (layers, as a painted background is built), and a nearer roofline
+        // against something far behind it catches a thin rim of the sky's light
+        if (uDepth > 0.5) {
+          float d = dist(vUv);
+          if (d < 1e5) {
+            float a = (1.0 - exp(-d / uHazeD)) * uHazeK;
+            c = mix(c, uHaze + c * 0.35, a);
+            vec2 px = 1.6 / uRes;
+            float far = max(max(dist(vUv + vec2(0.0, px.y)), dist(vUv - vec2(0.0, px.y))), max(dist(vUv + vec2(px.x, 0.0)), dist(vUv - vec2(px.x, 0.0))));
+            float edge = smoothstep(1.25, 2.5, far / max(d, 1.0)) * (far > 9e5 ? 1.0 : 0.6);
+            c += uRimC * edge * uRim * (0.6 + 0.4 * exp(-d / 800.0));
+          }
+        }
+        // the painted look
+        if (uK > 0.0 && uRadius >= 1.0) {
+          vec2 px = vec2(uRes.y / 900.0) / uRes;
+          vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0), s0 = vec3(0.0), s1 = vec3(0.0), s2 = vec3(0.0), s3 = vec3(0.0);
+          float n = 0.0;
+          for (int j = 0; j <= 4; j++) for (int i = 0; i <= 4; i++) {
+            if (float(i) > uRadius || float(j) > uRadius) continue;
+            vec2 o = vec2(float(i), float(j)) * px;
+            vec3 a = texture2D(tDiffuse, vUv + vec2(-o.x, -o.y)).rgb, b = texture2D(tDiffuse, vUv + vec2(o.x, -o.y)).rgb;
+            vec3 d = texture2D(tDiffuse, vUv + vec2(-o.x, o.y)).rgb, e = texture2D(tDiffuse, vUv + o).rgb;
+            m0 += a; s0 += a * a; m1 += b; s1 += b * b; m2 += d; s2 += d * d; m3 += e; s3 += e * e; n += 1.0;
+          }
+          m0 /= n; m1 /= n; m2 /= n; m3 /= n;
+          float v0 = dot(s0 / n - m0 * m0, vec3(1.0)), v1 = dot(s1 / n - m1 * m1, vec3(1.0)), v2 = dot(s2 / n - m2 * m2, vec3(1.0)), v3 = dot(s3 / n - m3 * m3, vec3(1.0));
+          // (a soft choice between the quadrants, weighted by how even each is, rather than the hard minimum: no blocks)
+          float w0 = 1.0 / (1e-5 + v0 * v0 * 4e3), w1 = 1.0 / (1e-5 + v1 * v1 * 4e3), w2 = 1.0 / (1e-5 + v2 * v2 * 4e3), w3 = 1.0 / (1e-5 + v3 * v3 * 4e3);
+          vec3 k = (m0 * w0 + m1 * w1 + m2 * w2 + m3 * w3) / (w0 + w1 + w2 + w3);
+          c = mix(c, k, uK);
+        }
+        // light: rays from the sun over the bright pixels on the way to it, and a halation of the brightest
+        if (uSunVis > 0.0 && uRays > 0.0) {
+          vec2 dlt = (uSunUv - vUv) / 20.0; vec2 uv = vUv; float acc = 0.0, w = 1.0;
+          for (int i = 0; i < 20; i++) { uv += dlt; vec3 t = texture2D(tDiffuse, clamp(uv, 0.0, 1.0)).rgb; acc += smoothstep(0.62, 0.95, luma(t)) * w; w *= 0.93; }
+          float r = acc / 9.0 * uSunVis * uRays * (1.0 - smoothstep(0.0, 0.9, distance(vUv * vec2(uRes.x / uRes.y, 1.0), uSunUv * vec2(uRes.x / uRes.y, 1.0))));
+          c += uWarm * r * 0.55;
+        }
+        if (uGrade > 0.0) {
+          float l = luma(c);
+          vec3 g = c;
+          g = mix(g, g + vec3(-0.01, 0.025, 0.07), (1.0 - smoothstep(0.0, 0.45, l)) * 0.9);      // shadows: a clear blue, never grey
+          g = mix(g, g * uWarm * 1.08, smoothstep(0.55, 1.0, l) * 0.55);                        // highlights: peach
+          float mx = max(g.r, max(g.g, g.b)), mn = min(g.r, min(g.g, g.b)), sat = mx > 0.0 ? (mx - mn) / mx : 0.0;
+          g = mix(vec3(luma(g)), g, 1.0 + 0.55 * (1.0 - sat));                                    // vibrance
+          vec3 h = max(g - 0.86, 0.0); g += h * h * 0.9 * uWarm;                                  // a touch of halation on the brightest (the roll-off keeps them from white)
+          c = mix(c, g, uGrade);
+        }
+        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
       }`,
   });
 
@@ -230,7 +327,7 @@ window.OEAtmos = (function () {
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
-    let highlight = null, composer = null, bloom = null, grade = null, lens = null, camFx = null, fx = null, ao = null, rt = null, wantAO = false, sceneDepth = null;
+    let highlight = null, composer = null, bloom = null, grade = null, lens = null, anime = null, camFx = null, fx = null, ao = null, rt = null, wantAO = false, sceneDepth = null;
     const FAR = 3000, prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4(); // (FAR: the camera effects' depth of field reaches 3 km)
     const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
     const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
@@ -271,6 +368,12 @@ window.OEAtmos = (function () {
         camFx.render = (...a) => { camFx.uniforms.tDepth.value = sceneDepth; return drawFx(...a); }; // (the depth this frame's scene was drawn with)
         composer.addPass(camFx);
         composer.addPass(lens);
+        anime = new THREE.ShaderPass(ANIME());
+        anime.enabled = false;
+        anime.uniforms.uReversed.value = renderer.capabilities.reversedDepthBuffer ? 1 : 0;
+        const drawAnime = anime.render.bind(anime);
+        anime.render = (...a) => { anime.uniforms.tDepth.value = sceneDepth; anime.uniforms.uDepth.value = sceneDepth && anime.depthOn ? 1 : 0; anime.uniforms.uInvProj.value.copy(camera.projectionMatrixInverse); return drawAnime(...a); };
+        composer.addPass(anime);
       } else {
         composer.addPass(new THREE.OutputPass());
         grade = new THREE.ShaderPass(GRADE);
@@ -286,13 +389,13 @@ window.OEAtmos = (function () {
         night = U.uNight.value;
         const ov = window.OEWeather ? OEWeather.U.uOeOvercast.value : 0; // cloud cover from the weather (weather.js)
         if (su.time) su.time.value = tSec;
-        if (su.uSkySat) su.uSkySat.value = (1 + (skySat - 1) * (1 - night)) * (1 - 0.55 * ov); // not the night sky's red; a pale sky under cloud
+        if (su.uSkySat) su.uSkySat.value = (1 + (skySat - 1) * (1 - night)) * (1 - 0.55 * ov) * ((lens && lens.trim && lens.trim.skySat) || 1); // not the night sky's red; a pale sky under cloud
         skyBasis(utcMs, city.lat, city.lon, basis);
         S.matrix.copy(basis).setPosition(camera.position);
         S.matrixWorldNeedsUpdate = true;
         S.material.uniforms.uOpacity.value = night * (1 - 0.6 * clouds) * (1 - ov);
         S.material.uniforms.uTime.value = tSec;
-        S.material.uniforms.uScale.value = renderer.getPixelRatio();
+        S.material.uniforms.uScale.value = renderer.getPixelRatio() * ((lens && lens.trim && lens.trim.stars) || 1); // (a shot's starrier sky: overture.js)
         S.visible = night > 0.02;
         const md = moonRaDec(utcMs), dir = eq(md.ra, md.dec).applyMatrix4(basis).normalize();
         M.visible = dir.y > -0.02;
@@ -304,17 +407,18 @@ window.OEAtmos = (function () {
         M.material.uniforms.uSun.value.copy(Wd.sunDir).applyQuaternion(q);
         M.material.uniforms.uOpacity.value = (0.25 + 0.75 * night) * (1 - 0.92 * ov);
         if (ao) ao.update(night);
-        if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
+        if (bloom) { const bt = (lens && lens.trim && lens.trim.bloom) || 1; bloom.threshold = (6.0 - 4.4 * night) / Math.sqrt(bt); bloom.strength = (0.15 + 0.15 * night) * bt; } // (a dreamier glow for a shot: overture.js)
         if (lens) {
           const L = lens.uniforms;
+          const trim = lens.trim || null;                          // a shot's own exposure, saturation and tint on the hour's grade (overture.js)
           gradeAt(keys, Wd.lastSun ? Wd.lastSun.sp.altitude : 30, gr);
-          L.uExposure.value = renderer.toneMappingExposure * gr.ev; // the world's exposure, set for ACES, graded for the hour under the film curve
+          L.uExposure.value = renderer.toneMappingExposure * gr.ev * (trim ? trim.ev : 1); // the world's exposure, set for ACES, graded for the hour under the film curve
           L.uLift.value = 1 - 0.7 * night;                         // at night the city keeps its blacks
           L.uContrast.value = gr.contrast;
           L.uNightTone.value = night;                              // blue between the lights, amber in them
-          L.uSat.value = gr.sat - 0.1 * ov;                        // under cloud a little cooler and softer, not grey
+          L.uSat.value = (gr.sat - 0.1 * ov) * (trim ? trim.sat : 1);                        // under cloud a little cooler and softer, not grey
           L.uContrast.value += 0.05 * ov;
-          L.uTint.value.set(gr.tint[0], gr.tint[1], gr.tint[2]);
+          L.uTint.value.set(gr.tint[0] * (trim ? trim.tint[0] : 1), gr.tint[1] * (trim ? trim.tint[1] : 1), gr.tint[2] * (trim ? trim.tint[2] : 1));
           L.uTime.value = tSec;
           // the ceiling for the highlights, in scene units, from the exposure; the bloom starts below it, so what is
           // rolled off still glows
@@ -334,6 +438,19 @@ window.OEAtmos = (function () {
       // draw the frame: through the post stack, or plainly
       // photo mode and the opening shot: {focus: m, aperture: 0..1, blur: 0..1}, or null (off, as in play)
       camFx(o) { if (o && !fx) o.fresh = true; fx = o && camFx ? o : null; },
+      // the overture's animated-film lens: {k, radius, grade, rays, sunUv, sunVis} or null (off: it costs nothing)
+      anime(o) {
+        if (!anime) return false;
+        anime.enabled = !!o;
+        if (!o) return true;
+        const A = anime.uniforms, z = renderer.getDrawingBufferSize(new THREE.Vector2());
+        A.uRes.value.set(z.x, z.y); A.uK.value = o.k || 0; A.uRadius.value = o.radius ?? 3; A.uGrade.value = o.grade || 0;
+        A.uRays.value = o.rays || 0; A.uSunVis.value = o.sunVis || 0; if (o.sunUv) A.uSunUv.value.copy(o.sunUv);
+        anime.depthOn = !!(rt && rt.depthTexture) && ((o.haze || 0) > 0 || (o.rim || 0) > 0);
+        A.uHazeK.value = o.haze || 0; A.uRim.value = o.rim || 0; if (o.hazeD) A.uHazeD.value = o.hazeD;
+        if (o.hazeC) A.uHaze.value.set(...o.hazeC); if (o.rimC) A.uRimC.value.set(...o.rimC);
+        return true;
+      },
       // the passes the title never draws (the camera's effects come on with the opening shot and photo mode),
       // compiled behind the loader rather than on the opening shot's first frame (world.js compile)
       warm() {
@@ -349,7 +466,7 @@ window.OEAtmos = (function () {
       render(scene, cam) {
         if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0) && !!rt.depthTexture;
         // the scene's depth resolved from the multisampled buffer while something reads it (the ambient occlusion, the camera's effects)
-        if (rt) composer.renderTarget1.resolveDepthBuffer = composer.renderTarget2.resolveDepthBuffer = wantAO || !!(camFx && camFx.enabled);
+        if (rt) composer.renderTarget1.resolveDepthBuffer = composer.renderTarget2.resolveDepthBuffer = wantAO || !!(camFx && camFx.enabled) || !!(anime && anime.enabled && anime.depthOn);
         if (camFx && camFx.enabled) {
           const z = renderer.getDrawingBufferSize(new THREE.Vector2()), F = camFx.uniforms;
           cam.updateMatrixWorld();

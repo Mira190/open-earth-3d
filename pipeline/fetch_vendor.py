@@ -11,8 +11,11 @@ Writes web/vendor/three/{three.module.min.js, three.core.min.js, addons/...},
 web/vendor/three-mesh-bvh/index.module.min.js, web/assets/fonts/*.woff2 and web/fonts.css.
 The reef's WebGPU build (web/vendor/three/three.webgpu.js) is the same release and stays.
 """
+import glob
+import json
 import os
 import re
+import sys
 import urllib.request
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
@@ -38,7 +41,17 @@ FONTS = [
     "family=Zalando+Sans+Expanded:wght@200..500",
     "family=Inter+Tight:wght@400;500;600",
 ]
-CJK = "family=Shippori+Mincho:wght@500&family=Noto+Serif+TC:wght@500&text=" + urllib.request.quote("大阪京都東香港")
+def cjk_text():
+    """the cities' names on the title, and the title drop of each map's overture (game.overture.title)"""
+    chars = set("大阪京都東香港")
+    for f in glob.glob(os.path.join(os.path.dirname(WEB), "cities", "*", "city.json")):
+        ov = (json.load(open(f, encoding="utf8")).get("game") or {}).get("overture", {})
+        for t in (ov.get("title", {}), ov.get("night", {}).get("title", {})):  # (the day's and the night's)
+            chars |= {c for c in t.get("name", "") + t.get("line", "") if ord(c) > 0x2e7f}
+    return "".join(sorted(chars))
+
+
+CJK = "family=Shippori+Mincho:wght@500&family=Noto+Serif+TC:wght@500&text=" + urllib.request.quote(cjk_text())
 SUBSETS = {"latin", "latin-ext"}
 
 
@@ -96,5 +109,6 @@ def fonts():
 
 
 if __name__ == "__main__":
-    three()
+    if "--fonts" not in sys.argv:  # (--fonts: the fonts only, as after a new overture title)
+        three()
     fonts()

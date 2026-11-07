@@ -1594,6 +1594,20 @@ def write_index():
     # stations grey, as districts still to build; their data stays where it is
     parked = set(idx.get("parked", []))
     idx["cities"] = [c for c in idx["cities"] if c["id"] not in parked]
+    # the cards' travel-guide text (cities/guide.json): a line, three sights, a local custom, the best time
+    gpath = os.path.join(ROOT, "cities", "guide.json")
+    guide = json.load(open(gpath, encoding="utf8")) if os.path.exists(gpath) else {}
+    for c in idx["cities"]:
+        if c["id"] in guide.get("cities", {}):
+            c["guide"] = guide["cities"][c["id"]]
+    for name, g in idx.get("groups", {}).items():
+        gg = dict(guide.get("groups", {}).get(name, {}))
+        ds = gg.pop("districts", {})
+        if gg:
+            g["guide"] = gg
+        for s in g.get("districts", []):
+            if s["name"] in ds:
+                s["guide"] = ds[s["name"]]
     for g in idx.get("groups", {}).values():
         for s in g.get("districts", []):
             if s.get("map") in parked:
