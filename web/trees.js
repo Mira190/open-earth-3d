@@ -105,6 +105,11 @@ vTurn = fract(sin(dot(ip.xz, vec2(12.9898, 78.233))) * 43758.5453);`;
   if (bare > 0.0 && bc >= 0 && bc < ATLAS_CELLS && uDecid[bc] > 0.5 && fract(vCard * 7.13 + vTurn * 0.37) < bare * (0.85 + 0.3 * vTurn)) discard; }
 #include <alphatest_fragment>`);
       if (depth) return;
+      // leaves right at the camera dither away (as games clear foliage off the lens): a chase camera behind you in a
+      // wood otherwise looks out through a wall of leaf cards a metre away. The camera's pass only: the shadows stay whole
+      if (leaves) sh.fragmentShader = sh.fragmentShader.replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
+{ float dc = length(vViewPosition);
+  if (dc < 4.0 && fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) > smoothstep(1.0, 4.0, dc)) discard; }`);
       // yozakura (#162): a cherry in a lit place (aLit), after dark in the bloom (uYoz), lit from uplights at its
       // foot: brightest on the undersides of the crown and the lower boughs, falling off up the tree
       sh.vertexShader = sh.vertexShader.replace('vTurn = fract(', 'vLit = aLit * uYoz; vUpH = position.y; vNy = objectNormal.y;\nvTurn = fract(');
