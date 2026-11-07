@@ -84,6 +84,8 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return l && l.classList.contains('out'); }, null, { timeout: 600000 });
     // start a new game and stand somewhere, then close the page: the position must be saved
     await p.waitForFunction(() => { const b = document.getElementById('gt-play') || document.querySelector('#g-title button'); return b && b.offsetParent; }, null, { timeout: 120000 }).catch(() => {});
+    // (the title seen once by the 1 s sampler first, as a person on it would be: a click the instant it shows can fall between two samples)
+    await p.evaluate(() => window.OETelemetry.sample());
     const started = await p.evaluate(() => { const b = document.getElementById('gt-play') || document.querySelector('#g-title [data-start], #g-title button'); if (b) b.click(); return !!b; });
     await sleep(15000);
     await p.evaluate(() => window.OETelemetry.sample());

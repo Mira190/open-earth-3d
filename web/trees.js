@@ -84,18 +84,12 @@ vAO = tc.r;
 vLocal = position; // (the tree's own frame, before its instance's turn and scale: the bark's bands)
 vCard = tc.b; // a leaf card's own phase: which cards fall first
 vTurn = fract(sin(dot(ip.xz, vec2(12.9898, 78.233))) * 43758.5453);`;
-  // The atlas's defines are set on the material itself (own), not only written into the shader by its
-  // onBeforeCompile: a material's defines are part of its program's key, and onBeforeCompile used to add them to
-  // the material's own object, so the key changed after the first compile and the warm-up's program was not the one
-  // the first draw looked up (compiled again then, issue 299). They also tell the leaves' program from the bark's.
-  const own = (mat, fn) => { mat.onBeforeCompile = fn; mat.defines = Object.assign({}, mat.defines, fn.defs); };
   function shader(U, leaves, depth, A) {
-    const defs = { ATLAS_COLS: A.cols.toFixed(1), ATLAS_ROWS: A.rows.toFixed(1), CELL_BLOOM: A.bloom.toFixed(1), CELL_SAKURA: A.sakura.toFixed(1), CELL_CHERRY: A.cherry.toFixed(1), SAKURA_N: A.sakuraN, CELL_MAPLE: A.maple.toFixed(1), ATLAS_CELLS: A.cols * A.rows };
-    if (leaves) defs.LEAVES = '';
-    const fn = sh => {
+    return sh => {
       sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uSakuraV = U.uSakuraV; sh.uniforms.uCherryBareV = U.uCherryBareV; sh.uniforms.uAutumn = U.uAutumn; sh.uniforms.uFall = U.uFall;
       sh.uniforms.uBare = U.uBare; sh.uniforms.uDecid = U.uDecid; sh.uniforms.uYoz = U.uYoz; sh.uniforms.uYozCol = U.uYozCol;
-      sh.defines = Object.assign({}, sh.defines, defs);
+      sh.defines = Object.assign(sh.defines || {}, { ATLAS_COLS: A.cols.toFixed(1), ATLAS_ROWS: A.rows.toFixed(1), CELL_BLOOM: A.bloom.toFixed(1), CELL_SAKURA: A.sakura.toFixed(1), CELL_CHERRY: A.cherry.toFixed(1), SAKURA_N: A.sakuraN, CELL_MAPLE: A.maple.toFixed(1), ATLAS_CELLS: A.cols * A.rows });
+      if (leaves) sh.defines.LEAVES = '';
       sh.vertexShader = sh.vertexShader.replace('#include <common>', VERT_HEAD).replace('#include <uv_vertex>', VERT_UV).replace('#include <begin_vertex>', VERT_WIND);
       // in winter a deciduous tree's cards fall, in the camera's pass and the shadow's alike: each card at its
       // own time (vCard), each tree a little ahead of or behind the others (vTurn); a cherry's cards in flower
@@ -165,8 +159,6 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       // the cards' normals point out of the crown on both faces: lit as a mass, never flipped
       if (leaves) sh.fragmentShader = sh.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
     };
-    fn.defs = defs;
-    return fn;
   }
 
   // world: the scene; list: x, y, ground, height in dm per tree (places.json trees, then woods);
@@ -243,11 +235,11 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     let atlas = null;
     lib.gltf.scene.traverse(o => { if (o.isMesh && o.material.name === 'Leaves') atlas = o.material.map; });
     const leafMat = new THREE.MeshStandardMaterial({ map: atlas, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.82 });
-    own(leafMat, shader(U, true, false, A));
+    leafMat.onBeforeCompile = shader(U, true, false, A);
     const leafDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: atlas, alphaTest: 0.5, side: THREE.DoubleSide });
-    own(leafDepth, shader(U, true, true, A));
+    leafDepth.onBeforeCompile = shader(U, true, true, A);
     const solidDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
-    own(solidDepth, shader(U, false, true, A));
+    solidDepth.onBeforeCompile = shader(U, false, true, A);
     const mats = {};
     const matFor = name => {
       if (name === 'Leaves') return leafMat;
@@ -256,7 +248,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         const bands = kind === 'Bark' && S.bark_bands;
         mats[name] = new THREE.MeshStandardMaterial({ color: kind === 'Bark' ? lin(S.bark) : lin(S.colour).multiplyScalar(0.8), roughness: bands ? 0.7 : kind === 'Bark' ? 0.92 : 0.88 });
         if (bands) mats[name].defines = { BARK_BANDS: '' };
-        own(mats[name], shader(U, false, false, A));
+        mats[name].onBeforeCompile = shader(U, false, false, A);
       }
       return mats[name];
     };
