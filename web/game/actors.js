@@ -1351,25 +1351,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const L2 = net.L[o[0]], d = Math.min(L2.len, over);
       return net.at(o[0], (ahead ? o[1] > 0 : o[1] < 0) ? d : L2.len - d, out);
     }
-    // A bus (longer than LONG_V either side of its middle) turns as one does: its front axle follows the
-    // lane and its rear axle is drawn after it along the body (a tractrix, as a bicycle model's rear wheel
-    // goes), so the body swings round over its wheelbase, the rear cutting in a little, rather than pivot on
-    // its middle round the lane's corner. Measured with tools/bus_turn.js: before, a bus's heading swung
-    // 20 degrees in a tenth of a second at a junction's corner, three to four times what its lock allows,
-    // its rear skating sideways at 10 to 20 m/s
-    const LONG_V = 3.5, TRAIL_MAX = 0.12;
-    function trail(c, reset) {
-      const fa = c.half * 0.6, wb = c.half * 1.15, sx = Math.sin(c.h), sy = Math.cos(c.h), fx = c.x + sx * fa, fy = c.y + sy * fa;
-      const dx = fx - c.rx, dy = fy - c.ry, d = Math.hypot(dx, dy);
-      if (reset || c.rx == null || !(d > 1e-3) || Math.abs(d - wb) > 1.5) { c.rx = fx - sx * wb; c.ry = fy - sy * wb; return; } // (placed, turned round, or moved a long way at once: straight behind)
-      // (no more than TRAIL_MAX off the lane's own heading: further, the body's rear corner sweeps over the
-      // kerb into a lamp post at a tight corner; tools/clip_check.js, Queenstown)
-      let h = Math.atan2(dx, dy), dh = h - c.h;
-      dh -= Math.round(dh / (2 * Math.PI)) * 2 * Math.PI;
-      if (Math.abs(dh) > TRAIL_MAX) h = c.h + Math.sign(dh) * TRAIL_MAX;
-      c.h = h; c.rx = fx - Math.sin(h) * wb; c.ry = fy - Math.cos(h) * wb;
-      c.x = fx - Math.sin(h) * fa; c.y = fy - Math.cos(h) * fa;
-    }
     function lanePos(line, s, dir, out, off = 0, prev = null, next = null) {
       along(line, s, dir, -3, prev, next, pA); along(line, s, dir, 3, prev, next, pB);
       net.at(line, s, out);
@@ -2321,8 +2302,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (line === c.line && dir !== c.dir) { JN.forget(c); c.v = Math.min(c.v, 1.5); } // turned round (slowly: never at speed)
           c.line = line; c.s = s; c.dir = dir; c.lo = lo1; c.ln = lnNow;
           c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = h;
-          const rWas = c.half > LONG_V ? [c.rx, c.ry] : null;
-          if (rWas) trail(c, back);
           // and a step along its road that took it deeper into another car is taken back (one parting
           // from a car it has long been caught with: deeper into any other), unless it is squeezing past
           // one it has waited on a long time; a step onto the next road was checked above, with the junction
@@ -2336,7 +2315,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             if (f1 > 0 && f1 > (overlaps(c, was[3], was[4], Math.sin(was[6]), Math.cos(was[6]), 0, 0, null, kn), free ? fresh : depth) + 1e-3) {
               [c.line, c.s, c.dir, c.x, c.y, c.z, c.h] = was;
               [c.lo, c.ln] = wasLane;
-              if (rWas) [c.rx, c.ry] = rWas;
               c.v = 0;
               held = true; holder = o1; c.revT = dt; c.revBy = o1;
               if (o1 && c.mv && !o1.mv && o1.v < 0.3 && o1.toLine != null && o1.toLine - o1.half < 4) backOff(o1, 1.5);

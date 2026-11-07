@@ -565,7 +565,7 @@ window.OECars = (function () {
   const UTURN = 400; // what a U-turn costs a route, as metres driven (router)
   // what a metre of each class of road costs a route against a main road's, and a turn at a junction, as metres
   // driven: a taxi driver keeps to the main roads and turns as little as the way allows, as a navigator's
-  // fastest way does, rather than thread the shortest way through the back streets corner by corner
+  // fastest way does, rather than thread the shortest way through the back streets corner by corner (the way a ride comes for you, loose, stays the shortest: it has to be there soon)
   const ROUTE_CLS = { motorway: 1, trunk: 1, primary: 1, secondary: 1.05, tertiary: 1.15, unclassified: 1.5, residential: 1.6, service: 2, living_street: 2.5 };
   const TURN_COST = 30;
   function router(net, { avoid = null } = {}) {
@@ -653,7 +653,7 @@ window.OECars = (function () {
           const [d, u] = pop();
           if (d > (dist.get(u) ?? Infinity)) continue;
           if (u === goal) { found = true; break; }
-          if (d > limit * 1.6) break; // (on the costs, a back street dearer than its length)
+          if (d > (loose ? limit : limit * 1.6)) break; // (on the costs, a back street dearer than its length)
           const p = prev.get(u), from = p ? p[1] * 2 + (p[2] > 0 ? 1 : 0) : a.line * 2 + (a.dir > 0 ? 1 : 0), B = net.bans && net.bans.get(from);
           for (const [v, li, dir] of edges[u]) {
             // straight back the way it came: a U-turn at the junction, or at the end of the street it
@@ -668,7 +668,7 @@ window.OECars = (function () {
             // way found keeps to the one-way streets but for the fewest metres it must: a navigator's way
             // in to a street the map lets no car reach, not 300 m against the traffic)
             const wrong = edges !== adj && !loose && L[li].ow && L[li].ow !== dir ? WRONG : 1;
-            const nd = d + L[li].len * (ROUTE_CLS[L[li].c] || 1.3) * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? UTURN : 0) + (ban && edges !== adj && !loose ? 400 : 0) + (p && !back ? turnCost(p[1], p[2], li, dir) : 0);
+            const nd = d + L[li].len * (loose ? 1 : ROUTE_CLS[L[li].c] || 1.3) * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? UTURN : 0) + (ban && edges !== adj && !loose ? 400 : 0) + (p && !back && !loose ? turnCost(p[1], p[2], li, dir) : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
