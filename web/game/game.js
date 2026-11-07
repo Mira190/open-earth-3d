@@ -1481,7 +1481,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (const dIn of [6, 4.5, 8, 3]) {
         if (dIn >= back - 0.5) continue;
         const legA = [];
-        for (let u = 0; u <= back - dIn; u += D) legA.push(onA(pl.s - pl.dir * u));
+        for (let u = 0; u <= back - dIn; u += D) legA.push(Object.assign(onA(pl.s - pl.dir * u), { leg: true })); // (leg: on the straight back along the street)
         if (legA.length < 2) continue;
         const P0 = legA[legA.length - 1];
         for (const dOut of [7, 10, 5]) {
@@ -1612,7 +1612,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const r = roadNet.nearest(px, py, 12, z);
         if (!r || r.d > (ROAD_HALF[roadNet.L[r.line].c] || half) + 0.6) return false;
       }
-      if (cars.footprint(q.x, q.y, z, q.h, o.C.half, o.C.hw, 0.1) > 0) return false;
+      if (cars.footprint(q.x, q.y, z, q.h, o.C.half, o.C.hw, q.leg ? 0.1 : 0.8) > 0) return false; // (in the junction, room round it: a car close by there, held, would hold it in turn)
       if (mine && Math.hypot(mine.x - q.x, mine.y - q.y) < o.C.half + myCar.C.half + 0.3) return false;
       return true;
     };
@@ -1640,7 +1640,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // (a car come into the street behind it since, stopped there for it: it backs out first, Fushimi Inari's piece 99)
       if (T.rev && T.held > 3 && T.pl && cars.reverse) for (const c of cars.C) if (c.line === T.pl.line && c.dir === T.pl.dir && c.v < 0.3 && !c.rev && Math.hypot(c.x - nx.x, c.y - nx.y) < 10) cars.reverse(c);
       // (held 10 s on the way back: its way out worked out again from where it is, round what holds it now)
-      if (T.rev && T.held > 10 && !T.again && T.pl) {
+      if (T.rev && T.held > 10 && !T.again && T.pl && P[T.i].leg) { // (still on the straight back: from there it can take up another way round from where it is, without a jump)
         T.again = true;
         const A = roadNet.L[T.pl.line], q = roadNet.nearest(st.x, st.y, 6, st.z, 3, 0, i => i !== T.pl.line);
         if (q && A) {
@@ -1651,7 +1651,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       }
       if (T.rev && T.held > 40) { // (on from where it stands, by the nearest road's lane)
         const pl = placeOf(st), to = o.phase === 'coming' ? o.pickup : T.rt.to, rt2 = pl && to && roads.route(pl, to, 6000);
-        if (rt2) { const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 }); o.drv.leave(); o.drv = OECars.chauffeur(o.C, rt2, opts); o.drv.opts = opts; o.sig = []; o.scr = []; o.qArms = []; o.turn = null; o.qT = 0; o.qAt = null; o.rerouteT = clockT; }
+        const p0 = rt2 && rt2.pts[0], p1 = rt2 && rt2.pts[Math.min(1, rt2.pts.length - 1)], clear = p0 && cars.footprint(p0[0], p0[1], st.z, Math.atan2(p1[0] - p0[0], p1[1] - p0[1]), o.C.half, o.C.hw, 0.1) === 0; // (not on into a car where it takes up the lane)
+        if (rt2 && clear) { const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 }); o.drv.leave(); o.drv = OECars.chauffeur(o.C, rt2, opts); o.drv.opts = opts; o.sig = []; o.scr = []; o.qArms = []; o.turn = null; o.qT = 0; o.qAt = null; o.rerouteT = clockT; }
       }
       return;
     }

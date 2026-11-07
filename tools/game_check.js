@@ -1173,7 +1173,9 @@ const npcNight = require('./npc_night');
     for (let i = 0; i < 20; i++) tick();
     // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so at worst the other
     // road's turn, the walk, the all reds round them and the wait for the last walkers, some 70 s, more)
-    for (r.walkWait = 0; went < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) tick();
+    const scrSeq = []; // (the scramble's phases as it waits, for a failure's report)
+    for (r.walkWait = 0; went < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) { tick(); const a = o.drv.st.lineAt, j = a && a.j; if (j) { const k = `${j.ph}${j.st}`; if (scrSeq.last !== k) { scrSeq.last = k; scrSeq.push(`${r.walkWait}:${k}${j.busy ? `(busy ${j.busy})` : ''}`); } if (!r.scrAt) r.scrAt = `junction ${j.id} arm ${a.i} (phase ${a.phase})`; } }
+    if (scrSeq.length) r.scrSeq = scrSeq.join(' ');
     // (and under way again after it, on the same way or a new one round a jam, whose line it hasn't come to yet:
     // a few seconds to be off, as it is)
     if (r.walkWait) for (let k = 0; went < 20 && k < 6 && o.drv.st.v > 0.5; k++) { tick(); r.walkWait++; }
@@ -1254,7 +1256,7 @@ const npcNight = require('./npc_night');
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
-    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(+taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}`);
+    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(+taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}${taxi.drove > 20 || !taxi.scrSeq ? '' : `; at ${taxi.scrAt}, its phases as it waited: ${taxi.scrSeq}`}`);
     check(!taxi.cutOff || !taxi.cutOff.length, `every place the taxi driver offers has a kerb a road from the taxi reaches${taxi.cutOff && taxi.cutOff.length ? ` (not ${taxi.cutOff.join(', ')})` : ''}`);
     const bk = taxi.back;
     check(!bk || (bk.out && bk.same && bk.on && /where you were going/.test(bk.first)), `out on the way, a hand up: back into the same taxi, on to where you were going${bk ? ` (out ${!!bk.out}, the same taxi ${!!bk.same}, offered first "${bk.first || '–'}", on to ${bk.dest || '–'}: ${bk.on ? 'driving' : 'not driving'})` : ' (not driving: not tried)'}`);
@@ -1728,7 +1730,7 @@ const npcNight = require('./npc_night');
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
       check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto}${R.heldBy ? `; held ${R.heldBy}` : ''})`);
-      check(R.deep === 0 && R.drove > 10, `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most; ${R.drove.toFixed(0)} m on)`);
+      check(R.deep === 0 && R.drove > 10, `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}` : ''})`);
     }
   }
 

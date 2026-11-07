@@ -862,7 +862,11 @@ window.OECars = (function () {
   // all the same (a car moving freely ahead ends it: the one behind is about to move too)
   // (a queue at a junction, o.q; or, for a car of the traffic not parked, one whose queue is moving off ahead: a crawling queue of
   // six behind a red, its head pulling away, read as stopped for good and the ride swung out round it in Shinjuku's game check)
-  const queueing = o => { for (let x = o, k = 0; x && k < 40; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 2.5) return k > 0 && o.still !== true; } return false; };
+  // (or at the head of the cars in front, one held by a rule of the road: a walker crossing, a light, its turn at a
+  // junction, room beyond: a queue, not a car broken down to go round; a ride swung out round one in a queue behind
+  // someone crossing mid-block, Queenstown's queue step, #283)
+  const RULED = /^(person|zebra|walk|light|amber|stop|cross|turn|room|give|narrow|lane)$/;
+  const queueing = o => { for (let x = o, k = 0; x && k < 40; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 2.5) return k > 0 && o.still !== true; if (!x.front || x.front.line == null) return RULED.test(x.why || ''); } return false; };
 
   // ------------------------------------------------------------ the chauffeur
   // Drives a car (from car()) along a route: keeps to the lane on the keep side, slows for

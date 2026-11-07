@@ -28,6 +28,7 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
   const watch = [];
   for (const c of cand) {
     if (watch.length >= 3) break;
+    if (watch.some(w => w.line === c.line)) continue; // (one to a street: three of one queue each waited on the next)
     const line = c.line;
     if (A.reverse(c)) watch.push({ c, id: C.indexOf(c), line, deep: 0, t: 0, done: false, gone: false, went: 0, x: c.x, y: c.y });
   }
@@ -96,12 +97,12 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
       if (o.turn && o.turn.held > 2 && !r.heldBy) { const T = o.turn, nx = T.poses[Math.min(T.i + 1, T.poses.length - 1)]; r.heldBy = `at pose ${T.i} of ${T.poses.length}: ` + (C.filter(c => c.line >= 0 && Math.hypot(c.x - nx.x, c.y - nx.y) < 8).map(c => `car ${C.indexOf(c)} ${c.why} v ${c.v.toFixed(1)} on piece ${c.line}${c.mv ? ` in junction ${c.mv.j.id}` : ''}${c.youBy ? ` (${c.youBy})` : ''}, ${Math.hypot(c.x - nx.x, c.y - nx.y).toFixed(1)} m off`).join('; ') || 'no car near'); }
     }
     r.done = !o.turn;
-    const near = g.roadNet.nearest(o.drv.st.x, o.drv.st.y, 10, o.drv.st.z);
-    r.onto = near ? near.line : null;
+    const rf = o.drv.st.route && o.drv.st.route.from; // (the piece its new way sets out on: the nearest road to it can be the street it left, close by at the junction)
+    r.onto = rf && rf.line != null ? rf.line : null;
     let went = 0, qx = o.drv.st.x, qy = o.drv.st.y;
     // (a minute at most: a scramble's walk and the queue at its line on the new way may hold it a while)
     for (let k = 0; k < 60 && went <= 10; k++) { g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - qx, q.y - qy); qx = q.x; qy = q.y; }
-    r.drove = +went.toFixed(1); r.secs = +r.secs.toFixed(1); r.back = +r.back.toFixed(1); r.deep = +r.deep.toFixed(2);
+    r.drove = +went.toFixed(1); if (went <= 10) r.driveWhy = `${o.drv.st.why || ''} v ${o.drv.st.v.toFixed(1)}${o.drv.st.block ? `, behind car ${C.indexOf(o.drv.st.block)} (${o.drv.st.block.why})` : ''}`; r.secs = +r.secs.toFixed(1); r.back = +r.back.toFixed(1); r.deep = +r.deep.toFixed(2);
     out.ride = r;
     g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
     return out;

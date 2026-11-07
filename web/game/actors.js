@@ -902,7 +902,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const atKerb = q.gutT > 1 && d < 2.5;
           if (!((q.sTries || 0) > 3) && !atKerb) pz.busy = (pz.busy || 0) + 1;
           q.sjam = q.v < 0.15 ? (q.sjam || 0) + dt : 0;
-          if (q.sjam > (pz.walk() ? 3 : 1.5)) {
+          if (q.sjam > 3) {
             q.sjam = 0; q.sTries = (q.sTries || 0) + 1;
             if (q.sTries <= 2 && q.g) spotAt(q.g, q.spread * 0.5, 2 + 1.5 * q.sTries, q.T, pz.road);
             else if (q.sTries === 3 && q.g && q.g.corner && q.g.corner.length) { const c = q.g.corner; toGate(q, c[Math.floor(rnd() * c.length)]); q.sTries = 3; }
@@ -1035,7 +1035,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       let v = lx == null || !(dt > 0) ? p.v || 0 : Math.hypot(p.x - lx, p.y - ly) / dt;
       if (v > 4) v = p.v || 0; // (put somewhere else, not a pace)
       p.av = p.av == null ? v : p.av + (v - p.av) * Math.min(1, dt * 4);
-      p.moving = p.state !== 'sit' && (p.moving ? p.av > 0.12 : p.av > 0.35);
+      // (one waiting at a scramble's kerb, shoulder to shoulder and nudged by the press, stands through a slower shuffle than
+      // that, as before: at the margins above it broke into a step and out of it, Tokyo's "those waiting at its kerbs
+      // stand still" step, 1015 turns or steps in 7592 looks)
+      const kerb = p.pz && p.ph === 'wait';
+      p.moving = p.state !== 'sit' && (p.moving ? p.av > (kerb ? 0.2 : 0.12) : p.av > (kerb ? 0.4 : 0.35));
     }
     let frame = 0;
     function update(dt, cx, cy, t, player) {
@@ -2438,10 +2442,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.narrowT > 25 && !inView(c)) { c.narrowT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
         if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
           c.stuck = 0;
-          if (!l.ow && !away && (why === 'narrow' || c.narrowF > 0.2) && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; } // (a street with no room to turn round in: backed out to the junction behind, as on a one-way street)
+          if (!l.ow && !away && why !== 'you' && (why === 'narrow' || c.narrowF > 0.2) && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; } // (a street with no room to turn round in: backed out to the junction behind, as on a one-way street)
           if (!l.ow) dir = -dir;
           else if (away) { respawn(c, cx, cy, radius * 0.6); continue; }
-          else if (reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; } // (in sight on a one-way street: back out to the junction behind, #283)
+          else if (why !== 'you' && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; } // (in sight on a one-way street: back out to the junction behind, #283; not one held by a ride, or you, which will move on: backing out, it went into a ride's own way back, Sydney)
         }
         if (s < 0 || s > l.len) {
           if (dir === c.dir && c.nx) { line = nl; dir = nd; s = nd > 0 ? 0 : net.L[line].len; }
