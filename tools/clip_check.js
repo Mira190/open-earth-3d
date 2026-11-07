@@ -65,7 +65,7 @@ const TOL = {
     // the carriageways: each road line's pieces at half its drawn width, through a grid of 16 m cells
     const segs = [], grid = new Map(), GC = 16;
     for (const r of G.paths.road) {
-      const q = r.p, hw = (ROADW[r.c] || 7) / 2;
+      const q = r.p, hw = (r.cw || ROADW[r.c] || 7) / 2; // (a bank lane drawn narrower than its class: game.json cw)
       for (let k = 3; k < q.length; k += 3) {
         const s = { ax: q[k - 3] / 10, ay: q[k - 2] / 10, az: q[k - 1] / 10, bx: q[k] / 10, by: q[k + 1] / 10, bz: q[k + 2] / 10, hw };
         const i = segs.push(s) - 1;
