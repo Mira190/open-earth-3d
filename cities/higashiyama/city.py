@@ -97,6 +97,12 @@ MATERIALS = {
     "saru_yellow": {"solid": False, "color": "#e8c03a", "roughness": 0.85, "metalness": 0.0},
     "saru_green": {"solid": False, "color": "#4f9a58", "roughness": 0.85, "metalness": 0.0},
     "saru_purple": {"solid": False, "color": "#7d5bb0", "roughness": 0.85, "metalness": 0.0},
+    # Yasaka-jinja (#263): the Buden's roof of copper gone to a pale green, the West Gate's green lattice
+    # windows (連子窓), as photographs show them
+    "doban": {"color": "#7f978b", "roughness": 0.55, "metalness": 0.25, "pattern": "roof_tiles", "bay_m": 0.45, "course_m": 0.9},
+    "doban_ridge": {"color": "#3c3f3e", "roughness": 0.6, "metalness": 0.2},
+    "rengo": {"color": "#3f7d5a", "roughness": 0.7, "metalness": 0.0},
+    "urushi": {"color": "#2a211c", "roughness": 0.55, "metalness": 0.0},
     "hisashi": {"color": "#4d5054", "roughness": 0.65, "metalness": 0.1, "pattern": "roof_tiles", "bay_m": 0.25, "course_m": 0.25},
 }
 
@@ -542,6 +548,229 @@ def yasaka(K, hidden):
     hidden.append(sd["si"])
 
 
+# ---------------------------------------------------------------- Yasaka-jinja's halls (#263)
+
+# (OpenStreetMap way, height to the ridge in metres); the halls face south, down the precinct to the South
+# Gate, the West Gate faces west down Shijo-dori. Heights are PLATEAU's where a roof is its top; the small
+# shrines' (末社) are not (PLATEAU measured the trees over them: Hiyoshi-sha's 12 m2 stood 15 m tall).
+YASAKA_JINJA = {
+    "honden": ("w88108397", 14.6),        # 本殿 (1654, National Treasure): the honden and the worship hall under one roof (祇園造)
+    "minami_romon": ("w88108386", 15.0),  # 南楼門: the gate at the head of the south approach
+    "nishi_romon": ("w105449683", 11.0),  # 西楼門 (1497, Important Cultural Property): the gate at the end of Shijo-dori,
+                                          # about 11 m over its platform, scaled from people on its steps (PLATEAU: 9.0 m)
+    "buden": ("w105449709", 10.1),        # 舞殿: the dance pavilion before the honden, hung with lanterns
+    "tokiwaden": ("w88108402", 9.6),      # 常磐殿: the hall for ceremonies by the South Gate
+    "tokiwa_shinden": ("w88108391", 11.4),  # 常磐新殿: the reception halls south of the honden
+    "noh": ("w328903229", 8.1),           # 能舞台: the Noh stage
+}
+YASAKA_HONDEN_FRONT = (-314.0, 600.0)    # the precinct's south: where the halls face
+YASAKA_WEST = (-600.0, 747.0)            # down Shijo-dori: where the West Gate faces
+
+
+def jinja_site(oid, toward):
+    C, T, S = ctx()
+    sd = solid_of(oid)
+    if not sd:
+        return None
+    o, f, hu, hv = kk.site(sd["ring"], toward)
+    P = kk.frame(o, f)
+    z0 = float(np.median([T(*P(u, v, 0)[:2]) for u in (-hu * 0.6, 0, hu * 0.6) for v in (-hv * 0.6, 0, hv * 0.6)]))
+    return sd, P, z0, hu, hv
+
+
+def hokora(K, M, P, z0, hu, hv, h, ground):
+    """A small shrine (末社, 摂社) in the flowing style (流造): the sanctuary on a stone base and a raised floor,
+    a gabled roof of hinoki bark with its ridge along the front, the front slope running on over the steps
+    (向拝) on two posts."""
+    zb = z0 + 0.4
+    block(K[M["base"]], P, -hu - 0.3, hu + 0.3, -hv - 0.3, hv + 0.3, z0 - 0.6, zb)
+    kk.plinth(K, M["base"], P, hu + 0.3, hv + 0.3, zb, ground)
+    bu = max(0.8, hu * 0.55)                 # the sanctuary's half depth, set back from the front
+    bv = max(0.8, hv - 0.35)
+    uc = -hu + bu + 0.1
+    zf = zb + min(1.0, 0.18 * h)
+    ze = z0 + 0.55 * h
+    block(K[M["wood"]], P, uc - bu - 0.25, uc + bu + 0.6, -bv - 0.25, bv + 0.25, zb, zf)
+    block(K[M["wall"]], P, uc - bu + 0.08, uc + bu - 0.08, -bv + 0.08, bv - 0.08, zf, ze - 0.25)
+    block(K[M["screen_wood"]], P, uc + bu - 0.06, uc + bu + 0.02, -bv + 0.25, bv - 0.25, zf + 0.15, ze - 0.45)
+    for u in (uc - bu, uc + bu):
+        for v in (-bv, bv):
+            x, y, _ = P(u, v, 0)
+            kk.post(K, M["post"], x, y, zf, ze, 0.12, segs=6)
+    for v in (-bv, bv):                      # the front posts of the step roof (向拝柱)
+        x, y, _ = P(hu - 0.15, v, 0)
+        kk.post(K, M["post"], x, y, zb, ze - 0.5, 0.1, segs=6)
+    block(K[M["post"]], P, uc - bu - 0.1, hu, -bv - 0.1, bv + 0.1, ze - 0.45, ze - 0.2)
+    # the roof: ridge over the sanctuary's middle; the back slope short, the front one long over the steps
+    Eb, Ef = bu + 0.6, (hu - uc) + 0.5
+    zr = z0 + h
+    us = np.linspace(-Eb, Ef, 13)
+    zs = [zr - (zr - (ze - 0.2)) * ((-u / Eb) if u < 0 else (u / Ef)) ** 0.8 for u in us]
+    vs = np.linspace(-bv - 0.6, bv + 0.6, 4)
+    K[M["roof"]].grid([[P(uc + u, v, z) for v in vs] for u, z in zip(us, zs)])
+    K[M["soffit"]].grid([[P(uc + u, v, z - 0.18) for v in vs[::-1]] for u, z in zip(us, zs)])
+    for sv in (-1, 1):
+        vv = sv * (bv + 0.6)
+        for (a, za), (b, zb2) in zip(zip(us, zs), zip(us[1:], zs[1:])):
+            K[M["gable"]].quad(P(uc + a, vv, za - 0.2), P(uc + b, vv, zb2 - 0.2), P(uc + b, vv, zb2), P(uc + a, vv, za))
+        K[M["wall"]].quad(P(uc - bu, sv * bv, ze - 0.25), P(uc + bu, sv * bv, ze - 0.25), P(uc, sv * bv, zr - 0.3), P(uc, sv * bv, zr - 0.3))
+    block(K[M["ridge"]], P, uc - 0.2, uc + 0.2, -bv - 0.7, bv + 0.7, zr - 0.05, zr + 0.25)
+    for v in np.linspace(-bv + 0.2, bv - 0.2, 3):       # the billets on the ridge (鰹木)
+        K[M["ridge"]].box(P(uc - 0.35, v, zr + 0.35), P(uc + 0.35, v, zr + 0.35), 0.16, 0.16)
+
+
+def yasaka_jinja(K, hidden):
+    """八坂神社: the honden in the Gion style, one great hipped-and-gabled roof of hinoki bark over the sanctuary
+    and the worship hall, vermilion posts and white walls on its raised floor, its veranda all round; the
+    South and West Gates as two-storey vermilion gates (楼門); the Tokiwa-den and the reception halls under
+    tiled roofs; the Noh stage open on its posts; and the small shrines round the honden in the flowing
+    style, at a small shrine's height. The Buden (舞殿) is pipeline/arcades.py's open pavilion. Photographs:
+    docs/cities/higashiyama.md."""
+    C, T, S = ctx()
+    ground = lambda x, y: T(x, y)
+    got = jinja_site(YASAKA_JINJA["honden"][0], YASAKA_HONDEN_FRONT)
+    if got:
+        sd, P, z0, hu, hv = got
+        a, b = hu - 2.4, hv - 2.4
+        zf = z0 + 1.3
+        # the Gion style: the eaves come down low all round (the honden's aisles and the worship hall's
+        # under the one roof), the ridge high over the middle
+        kk.hall(K, VERMILION, P, z0, a, b, zf, z0 + 5.6, z0 + YASAKA_JINJA["honden"][1], roof="irimoya",
+                ov=3.0, posts_every=2.6, veranda=True, ground=ground, k=1.3, lift=0.14, gable_at=0.6)
+        hidden.append(sd["si"])
+    for key in ("minami_romon", "nishi_romon"):
+        oid, h = YASAKA_JINJA[key]
+        got = jinja_site(oid, YASAKA_WEST if key == "nishi_romon" else YASAKA_HONDEN_FRONT)
+        if not got:
+            continue
+        sd, P, z0, hu, hv = got
+        if key == "nishi_romon":
+            # its roof is tiled, its outer bays closed by green lattice windows (photographs); it stands on the
+            # ground of its platform at the top of the steps (the laser terrain has the platform)
+            M = dict(VERMILION_TILE, screen="rengo", nio="shu_dark")
+            # (its middle bay, the way through, about 3.5 m between the posts: the outer bays narrower than the footprint's)
+            kk.romon(K, M, P, z0, 2 * hv - 1.2, 2 * hu - 2.0, h, nio=False, ground=ground)
+            west_wings(K, M, P, z0, hu, hv, hidden, ground)
+        else:
+            kk.romon(K, dict(VERMILION, nio="shu_dark"), P, z0, 2 * hv - 2.4, 2 * hu - 2.0, h, nio=False, ground=ground)
+        hidden.append(sd["si"])
+    got = jinja_site(YASAKA_JINJA["buden"][0], (-314.0, 739.0))
+    if got:
+        buden(K, *got, ground, hidden)
+    for key in ("tokiwaden", "tokiwa_shinden"):
+        oid, h = YASAKA_JINJA[key]
+        got = jinja_site(oid, YASAKA_HONDEN_FRONT)
+        if not got:
+            continue
+        sd, P, z0, hu, hv = got
+        a, b = hu - 1.6, hv - 1.6
+        kk.hall(K, VERMILION_TILE, P, z0, a, b, z0 + 0.9, z0 + h * 0.5, z0 + h, roof="irimoya", ov=max(1.8, min(a, b) * 0.28),
+                posts_every=3.0, veranda=True, ground=ground, k=1.5, lift=0.22)
+        hidden.append(sd["si"])
+    got = jinja_site(YASAKA_JINJA["noh"][0], YASAKA_HONDEN_FRONT)
+    if got:     # the Noh stage: a floor of hinoki on its posts, open on three sides, under a gabled bark roof
+        sd, P, z0, hu, hv = got
+        zf = z0 + 0.9
+        block(K["stone"], P, -hu + 0.2, hu - 0.2, -hv + 0.2, hv - 0.2, z0 - 0.6, z0 + 0.2)
+        block(K["hinoki_floor"], P, -hu + 0.4, hu - 0.4, -hv + 0.4, hv - 0.4, z0 + 0.2, zf)
+        ze = z0 + YASAKA_JINJA["noh"][1] * 0.6
+        for u in (-hu + 0.6, hu - 0.6):
+            for v in (-hv + 0.6, hv - 0.6):
+                x, y, _ = P(u, v, 0)
+                kk.post(K, "timber", x, y, zf, ze, 0.16, "stone", segs=8)
+        block(K["timber_dark"], P, -hu + 0.4, hu - 0.4, -hv + 0.4, hv - 0.4, ze - 0.4, ze)
+        block(K["kiyo_white"], P, -hu + 0.5, -hu + 0.62, -hv + 0.6, hv - 0.6, zf, ze - 0.4)    # the back wall (鏡板)
+        kk.kirizuma(K, BARE, P, hu - 0.6, hv - 0.6, ze, z0 + YASAKA_JINJA["noh"][1], ov_u=1.4, ov_v=0.9)
+        hidden.append(sd["si"])
+    # the small shrines in the precinct: every shrine-classed building under 70 m2, at a small shrine's height
+    prec = _yasaka_precinct()
+    got_xy = (-314.0, 739.0)    # the honden: the small shrines round it face it
+    B = json.load(open(os.path.join(os.path.dirname(os.path.dirname(HERE)), "web", "data", "higashiyama", "buildings.json")))
+    for sd in S:
+        if sd["si"] in hidden:
+            continue
+        nm, cls = sd["name"], B["b"][B["s"][sd["si"]][0]][1]
+        area = abs(ak.ring_area(sd["ring"]))
+        if cls != "shrine" or area > 70 or area < 6 or not nm or prec is None:
+            continue
+        cx, cy = np.mean(np.asarray(sd["ring"]), axis=0)
+        if not prec.contains(Point(cx, cy)):
+            continue
+        o, f, hu, hv = kk.site(sd["ring"], got_xy)
+        P = kk.frame(o, f)
+        z0 = float(min(T(*P(u, v, 0)[:2]) for u in (-hu, hu) for v in (-hv, hv)))
+        h = 2.6 + 0.45 * math.sqrt(area)
+        hokora(K, VERMILION, P, z0, hu - 0.2, hv - 0.2, h, ground)
+        hidden.append(sd["si"])
+
+
+def west_wings(K, M, P, z0, hu, hv, hidden, ground):
+    """The West Gate's wings (翼廊): a low vermilion hall either side of it on the platform, white walls and green
+    lattice windows under a tiled hipped-and-gabled roof, about 6.5 m to the ridge (photographs). They come in the
+    data as two unnamed PLATEAU solids 12.9 m and 17.2 m tall (the trees over them)."""
+    C, T, S = ctx()
+    gx, gy, _ = P(0, 0, 0)
+    for sd in S:
+        if sd["name"] or sd["si"] in hidden:
+            continue
+        area = abs(ak.ring_area(sd["ring"]))
+        cx, cy = np.mean(np.asarray(sd["ring"]), axis=0)
+        if not (30 < area < 140) or math.hypot(cx - gx, cy - gy) > 18.0:
+            continue
+        o, f, a, b = kk.site(sd["ring"], P(10.0, 0, 0)[:2])
+        Q = kk.frame(o, f)
+        zq = float(max(T(*Q(u, v, 0)[:2]) for u in (-a * 0.5, 0, a * 0.5) for v in (-b * 0.5, 0, b * 0.5)))
+        kk.hall(K, dict(M, screen_wood="rengo"), Q, zq, a - 0.9, b - 0.9, zq + 0.45, zq + 4.0, zq + 6.5, roof="irimoya", ov=1.5,
+                posts_every=2.4, veranda=False, ground=ground, k=1.45, lift=0.25)
+        hidden.append(sd["si"])
+
+
+def buden(K, sd, P, z0, hu, hv, ground, hidden):
+    """舞殿: the dance pavilion before the honden. A stage of hinoki on a stone base, open all round between its
+    dark lacquered posts, its railing; rows of white paper lanterns, the names of their donors on them, hung under
+    the eaves all round; a big hipped-and-gabled roof of copper gone pale green, its gable to the front
+    (photographs; the open-roof pass drew it as a slab of grey tiles)."""
+    a, b = hu - 1.2, hv - 1.2
+    zf = z0 + 1.1
+    H = YASAKA_JINJA["buden"][1]
+    block(K["stone"], P, -a - 1.0, a + 1.0, -b - 1.0, b + 1.0, z0 - 0.6, z0 + 0.5)
+    kk.plinth(K, "stone", P, a + 1.0, b + 1.0, z0 + 0.5, ground)
+    block(K["hinoki_floor"], P, -a - 0.5, a + 0.5, -b - 0.5, b + 0.5, z0 + 0.5, zf)
+    ze = z0 + H * 0.55
+    zt = ze - 1.2
+    for (u0, v0), (u1, v1) in (((-a, -b), (a, -b)), ((a, -b), (a, b)), ((a, b), (-a, b)), ((-a, b), (-a, -b))):
+        n = max(1, int(round(math.hypot(u1 - u0, v1 - v0) / 2.7)))
+        for k in range(n):
+            x, y, _ = P(u0 + (u1 - u0) * k / n, v0 + (v1 - v0) * k / n, 0)
+            kk.post(K, "urushi", x, y, zf, zt, 0.17, segs=8)
+    rail = [P(su * (a + 0.35), sv * (b + 0.35), zf) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+    K["urushi"].rails(rail, 0.75, post_every=1.35, post=0.09, rail=0.07, rails=2)
+    block(K["urushi"], P, -a - 0.15, a + 0.15, -b - 0.15, b + 0.15, zt - 0.45, zt)
+    kk.brackets(K, {"post": "urushi", "bracket": "gold"}, P, a, b, zt, ze - 0.15, out=1.0)
+    # the lanterns: three rows on rails just inside the posts, about 0.32 m across, every 0.4 m
+    for row in range(3):
+        z = zt - 0.55 - row * 0.62
+        for (u0, v0), (u1, v1) in (((-a, -b), (a, -b)), ((a, -b), (a, b)), ((a, b), (-a, b)), ((-a, b), (-a, -b))):
+            L = math.hypot(u1 - u0, v1 - v0)
+            for t in np.arange(0.35, L - 0.2, 0.4):
+                q = P(u0 + (u1 - u0) * t / L, v0 + (v1 - v0) * t / L, 0)
+                cu, cv = (u0 + (u1 - u0) * t / L), (v0 + (v1 - v0) * t / L)
+                x, y, _ = P(cu * (1 - 0.25 / a) if abs(cu) > a - 0.01 else cu, cv * (1 - 0.25 / b) if abs(cv) > b - 0.01 else cv, 0)
+                lathe_at(K["lamp_paper"], x, y, [(z, 0.0), (z + 0.03, 0.14), (z + 0.25, 0.16), (z + 0.47, 0.14), (z + 0.5, 0.0)], 6)
+    M = {"roof": "doban", "gable": "urushi", "soffit": "soffit_wood", "ridge": "doban_ridge"}
+    R = kk.irimoya(K["doban"], K["urushi"], K["soffit_wood"], kk.across(P), b + 0.6, a + 0.6, ze, z0 + H - 0.6, ov=2.4, gable_at=0.55,
+                   k=1.6, lift=0.3)
+    kk.ridge_cap(K, M, P, R["Ug"] + 0.3, z0 + H - 0.8, h=0.65)
+    hidden.append(sd["si"])
+
+
+def _yasaka_precinct():
+    from shapely.geometry import Polygon
+    d = json.load(open(os.path.join(HERE, "roofs_osm.json")))
+    got = [p for p in d.get("precincts", []) if p.get("name") == "八坂神社"]
+    return Polygon(got[0]["ring"]).buffer(2.0) if got else None
+
+
 def koshindo(K):
     """Yasaka Koshin-do's kukurizaru: strings of cloth monkeys, each a ball bound hand and foot, in red
     with the odd pink, yellow, green and purple, hung on a frame at the temple's gate on Yasaka-dori
@@ -671,6 +900,7 @@ def landmark_meshes(scene):
     hidden = []
     kiyomizu(K, hidden)
     yasaka(K, hidden)
+    yasaka_jinja(K, hidden)
     koshindo(K)
     L = ak.Kit("lanes", floodlit={"lanes", "lamp_paper"}, uv={"setts", "step_stone", "lanes"})
     lanes(L)
