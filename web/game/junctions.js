@@ -703,13 +703,24 @@ window.OEJunctions = (function () {
     const waitedFor = (j, p) => !!j.dAt && clock - j.dAt[p] < 0.5;
     const dirty = new Set(); // (the junctions whose signals changed this frame, for the heads)
     const NONE = [0, 0, 0];
+    // an arm's standing in giving way at a junction without signals: its road's rank, none behind a sign; and the
+    // arm of a piece too short to wait on, out of a junction with signals just behind (KEEP m between the two lines),
+    // first of all, so that its cars clear the box behind rather than stand across it (#283: Shinjuku's 1103, 27 m from
+    // the scramble 1105 by piece 2452, 6 m between the lines, held a car of 1105's turn on the piece while it gave way,
+    // and 1105's queue behind stood through its turn's greens, a minute at a time)
+    const KEEP = 12;
+    function rankOf(a) {
+      if (a.sign) return 0;
+      if (a.keep === undefined) { const b = armOf.get(a.line * 2 + 1 - a.end); a.keep = !a.j.sig && !!b && b.j !== a.j && !!b.j.sig && L[a.line].len - a.back - b.back < KEEP; }
+      return a.rank + (a.keep ? 3 : 0);
+    }
     // a car coming up arm a, `eta` seconds from its stop line, to leave by exit m (or -1): seen by
     // the signals (a call for its phase) and by cars giving way to it
     function approach(c, a, m, eta) {
       const j = a.j;
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       // (the cars coming this frame; the requests before them in the frame see the last frame's)
-      j.near.push({ c, k: a.i, m, eta, rank: a.sign ? 0 : a.rank });
+      j.near.push({ c, k: a.i, m, eta, rank: rankOf(a) });
       if (eta < 12) ping(j, a.phase);
       if (j.arrow && a.phase === 0 && eta < 6 && m >= 0) { const e = wayFor(j, a.i, m); if (e && e.across) ping(j, 2); } // a car to turn across: the arrow
     }
@@ -744,13 +755,14 @@ window.OEJunctions = (function () {
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
         if (j.sig && light(j.arms[o.k], o.m) === 'r') continue; // (its light has turned red since)
+        if (!j.sig && rankOf(a) > rankOf(j.arms[o.k]) + 2) continue; // (one waiting on another arm doesn't hold a piece too short to wait on clearing the box behind it: rankOf)
         if (c.P && o.c.why === 'you') continue; // (a car of the traffic standing for a ride, or for you, doesn't hold a ride's turn: each waited on the other, half a minute in Shinjuku's game check)
         if (c.P && (o.c.why === 'cross' || o.c.why === 'room') && (o.c.still || 0) > 4) continue; // (nor one that has stood held by others for a while: its turn can't be taken, and the ride waited on it for 40 s under load)
         if (o.c.why === 'room' && (o.c.still || 0) > 4) continue; // (nor, for anyone, one waiting for room beyond the junction: it can't take its turn, and the movements across its way stood behind it, 96 s at Shinjuku's 1195 at 18:00, #178)
         if (conflict(j, k, m, o.k, o.m)) return 'turn';
       }
       if (!j.sig && j.seen >= frame - 1 && !(mine && t - mine.since > 3 * WAITED)) { // give way to the main road: a car on a greater arm coming, not stopped
-        const me = a.sign ? 0 : a.rank;
+        const me = rankOf(a);
         for (const o of j.near) if (o.c !== c && o.rank > me && o.eta < 3.2 && o.c.v > 1.5 && (o.m < 0 || conflict(j, k, m, o.k, o.m))) return 'give';
       }
       return true;

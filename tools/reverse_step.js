@@ -1,6 +1,7 @@
 // Backing out of a one-way street (#283): a car of the traffic, or a ride with you in it, that can't go on
 // along a one-way street backs along its lane to the junction behind and takes another way out there.
-// reverseStep runs in the page (page.evaluate(reverseStep, { ride })), once the game has started:
+// reverseStep runs in the page (page.evaluate(reverseStep, { ride, stills })), once the game has started (stills: a
+// still at three points as the ride backs out, through window.__still(name), which the caller exposes):
 //   traffic  up to three cars of the traffic on one-way streets near you are asked to back out
 //            (cars.reverse); each must end up on another piece of road, going on, within 60 s, never into
 //            another car on the way (its body 0.1 m into one at most);
@@ -8,7 +9,7 @@
 //            street near you and asked to turn round (__game.turnRide): it must back out, never into a car
 //            of the traffic, onto another piece of road, and drive on from there.
 // tools/game_check.js runs it; alone: GAME_TIME=10:00 xvfb-run -a node tools/reverse_probe.js shibuya
-function reverseStep({ ride: tryRide = false } = {}) {
+async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
   const g = window.__game, A = g.cars, C = A.C, L = g.roadNet.L, out = { traffic: [], ride: null };
   // how deep a car's body is in the other cars of the traffic (its own taken out of the count)
   const depth = c => { const l = c.line; c.line = -1; const d = A.footprint(c.x, c.y, c.z, c.h, c.half * 0.95, c.hw * 0.95, 0); c.line = l; return d; };
@@ -16,7 +17,12 @@ function reverseStep({ ride: tryRide = false } = {}) {
   if (!A.reverse) return { none: 'no reversing in this build' };
   // (as a jam leaves one: nothing on the move behind it on its street; in moving traffic it would wait on the cars
   // behind, and give up)
-  const clearBehind = c => !C.some(o => o !== c && o.line === c.line && o.dir === c.dir && (c.s - o.s) * c.dir > 0 && o.v > 0.3);
+  const clearBehind = c => !C.some(o => {
+    if (o === c || o.line < 0 || o.v <= 0.3) return false;
+    if (o.line === c.line) return o.dir === c.dir && (c.s - o.s) * c.dir > 0;
+    const fx = Math.sin(c.h), fy = Math.cos(c.h), dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy; // (or coming up behind it from the piece before, 25 m)
+    return a < 0 && a > -25 && Math.abs(-dx * fy + dy * fx) < 5 && Math.sin(o.h) * fx + Math.cos(o.h) * fy > 0.5;
+  });
   const cand = C.filter(c => c.line >= 0 && L[c.line].ow && !c.mv && A.canReverse(c) && clearBehind(c) && Math.hypot(c.x - px, c.y - py) < 300)
     .sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py));
   const watch = [];
@@ -78,8 +84,10 @@ function reverseStep({ ride: tryRide = false } = {}) {
     if (said !== 'turning' || !o.turn || !o.turn.rev) { tried[said] = (tried[said] || 0) + 1; continue; }
     const st0 = o.drv.st, r = { line: i, x: +st0.x.toFixed(0), y: +st0.y.toFixed(0), deep: 0, secs: 0, back: 0 };
     let bx = st0.x, by = st0.y;
+    const marks = stills && window.__still ? [0.35, 0.7, 0.95] : [];
     for (; r.secs < 90 && o.turn; r.secs += 0.1) {
       g.advance(0.1);
+      if (marks.length && o.turn && o.turn.i >= o.turn.poses.length * marks[0]) { marks.shift(); if (g.cam.mode === 'cabin') g.cam.mode = 'chase'; g.advance(0.02); await window.__still(`reverse-${3 - marks.length}`); } // (with stills: from the chase camera, as it backs out)
       const st = o.drv.st;
       if (st.v < 0) r.back += Math.hypot(st.x - bx, st.y - by);
       bx = st.x; by = st.y;

@@ -4332,7 +4332,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // is across waits for it, never first by the give-way rule, nor swung round it as round a parked car)
       const turning = o === ride && !!ride.turn;
       blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: !turning && Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
-      if (turning) { cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true }); continue; }
+      if (turning) {
+        cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true });
+        // (backing out of a one-way street: where it goes next too, 3 and 6 m on along its way, so that a car crossing the
+        // junction behind stops short of it rather than in it, each then waiting for the other, #283)
+        const T = ride.turn;
+        if (T.rev) for (const ahead of [12, 24]) { const q = T.poses[Math.min(T.poses.length - 1, T.i + ahead)]; if (q !== T.poses[T.i]) cars.extra.push({ id, x: q.x, y: q.y, z: st.z, h: q.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true }); }
+        continue;
+      }
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
       const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft };
