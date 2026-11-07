@@ -27,7 +27,10 @@ SLOS = [
     ('slow_frames', 'Frames slower than 50 ms', 0.05, 'le'),
     ('error_free', 'Page loads without a script error', 0.99, 'ge'),
     ('gl_kept', 'Page loads without a lost WebGL context', 0.995, 'ge'),
+    ('crash_free', 'Page loads that did not die on screen', 0.995, 'ge'),
+    ('inp_p75', 'Slowest interaction per page load, p75 (ms)', 200.0, 'le'),
 ]
+LEFT_SOON_S = 60        # a page that ends this soon after the tour's end card: the visitor watched the tour and went
 
 
 def pct(xs, p):
@@ -115,13 +118,98 @@ def report(events):
     n = len(sessions)
     lv['error_free'] = (1 - len(errs & sessions) / n if n else None, n)
     lv['gl_kept'] = (1 - len(lost & sessions) / n if n else None, n)
+    # a page that ended on screen (reported by the next page load) and how fast the page answers input
+    crashes = [e for e in events if e['event'] == 'crash']
+    lv['crash_free'] = (1 - len(crashes) / n if n else None, n)
+    worst = defaultdict(float)
+    for e in times:
+        worst[e['props'].get('sid')] = max(worst[e['props'].get('sid')], float(e['props'].get('inp') or 0))
+    lv['inp_p75'] = (pct(list(worst.values()), 0.75), len(worst))
+    r.update(behaviour(events))
+    r['crashes'] = dict(Counter(f"{e['props'].get('prev_view')}:{e['props'].get('prev_city') or ''} {e['props'].get('prev_spot') or ''}".strip() for e in crashes).most_common(10))
+    r['load_failures'] = dict(Counter((e['props'].get('why'), e['props'].get('view'), e['props'].get('city')) for e in bad).most_common(10))
+    r['top_errors'] = dict(Counter(f"{e['props'].get('msg')} @ {e['props'].get('src')}" for e in events if e['event'] == 'error').most_common(10))
     r['slo'] = []
     for sid, what, target, how in SLOS:
         val, cnt = lv[sid]
         met = None if val is None or cnt < MIN_N else (val >= target if how == 'ge' else val <= target)
         r['slo'].append({'id': sid, 'what': what, 'target': target, 'op': '>=' if how == 'ge' else '<=', 'value': val, 'n': cnt, 'met': met})
-    r['load_failures'] = dict(Counter((e['props'].get('why'), e['props'].get('view'), e['props'].get('city')) for e in bad).most_common(10))
-    r['top_errors'] = dict(Counter(f"{e['props'].get('msg')} @ {e['props'].get('src')}" for e in events if e['event'] == 'error').most_common(10))
+    return r
+
+
+def place(p):
+    return f"{p.get('view', '')}{':' + p['city'] if p.get('city') else ''}"
+
+
+def behaviour(events):
+    """Where visitors stay, where they leave, and what the tour and the game's first minutes do to that."""
+    r = {}
+    # time by spot: the dwell events (seconds since the last "time", by spot and mode)
+    dwell = defaultdict(float)
+    eng = [0.0, 0.0]
+    for e in events:
+        p = e['props']
+        if e['event'] == 'dwell':
+            dwell[f"{place(p)} · {p.get('spot')} ({p.get('mode')})"] += float(p.get('s') or 0)
+        elif e['event'] == 'time' and p.get('view') in LOADING and p.get('eng_s') is not None:
+            eng[0] += float(p.get('eng_s') or 0)
+            eng[1] += float(p.get('s') or 0)
+    r['minutes_by_spot'] = {k: round(v / 60, 1) for k, v in sorted(dwell.items(), key=lambda x: -x[1])[:20]}
+    r['engaged_share'] = round(eng[0] / eng[1], 3) if eng[1] else None
+
+    # each page load in order: its last event says where the visitor left
+    pages = defaultdict(list)
+    for i, e in enumerate(events):
+        if e['props'].get('sid') and e['event'] != 'crash':
+            pages[e['props']['sid']].append((e.get('ts') or e.get('got') or '', i, e))
+    exits, how, after_tour = Counter(), Counter(), Counter()
+    tour = {'model_views': 0, 'started': 0, 'ended': 0, 'reached': Counter()}
+    games = {'ready': 0, 'started': 0, 'first_mode': Counter()}
+    for sid, evs in pages.items():
+        evs.sort(key=lambda x: (x[0], x[1]))
+        last = evs[-1][2]['props']
+        exits[f"{place(last)} · {last.get('tour') and 'tour ' + last['tour'] or last.get('spot') or '-'}"] += 1
+        ex = next((x[2]['props'] for x in evs if x[2]['event'] == 'exit'), None)
+        how[('closed' if ex else 'put away or killed') + (', idle' if ex and (ex.get('idle_s') or 0) > 120 else '')] += 1
+        # the tour of each model view, and what came after its end
+        seq = [x[2] for x in evs]
+        for k, e in enumerate(seq):
+            p = e['props']
+            if e['event'] == 'view' and p.get('view') == 'city':
+                tour['model_views'] += 1
+                rest = seq[k + 1:]
+                stop = next((j for j, x in enumerate(rest) if x['event'] == 'view'), len(rest))
+                mine = rest[:stop]
+                stops = [x['props'].get('stop') or 0 for x in mine if x['event'] == 'tour' and x['props'].get('action') == 'stop']
+                if stops:
+                    tour['started'] += 1
+                    tour['reached'][max(stops)] += 1
+                end = next((x for x in mine if x['event'] == 'tour' and x['props'].get('action') == 'end'), None)
+                if end:
+                    tour['ended'] += 1
+                    nxt = rest[stop] if stop < len(rest) else None
+                    if nxt:
+                        after_tour['went to ' + nxt['props'].get('view', '?')] += 1
+                    else:
+                        tail = [x for x in mine if (x.get('ts') or '') >= (end.get('ts') or '')]
+                        spent = sum(float(x['props'].get('s') or 0) for x in tail if x['event'] == 'time')
+                        after_tour['left within a minute' if spent < LEFT_SOON_S else 'stayed to look, then left'] += 1
+            if e['event'] == 'load' and p.get('view') == 'game' and p.get('ok'):
+                games['ready'] += 1
+            if e['event'] == 'mode' and p.get('view') == 'game' and p.get('start'):
+                games['started'] += 1
+            if e['event'] == 'mode' and p.get('view') == 'game' and not p.get('start') and p.get('from') == 'foot':
+                games['first_mode'][p.get('to')] += 1
+    r['exits'] = dict(exits.most_common(15))
+    r['page_ends'] = dict(how)
+    tour['reached'] = dict(sorted(tour['reached'].items()))
+    r['tour'] = tour
+    r['after_tour'] = dict(after_tour)
+    games['first_mode'] = dict(games['first_mode'])
+    r['game'] = games
+    views = [e for e in events if e['event'] == 'view']
+    r['returning_visitors'] = len({e['vid'] for e in views if (e['props'].get('visit_n') or 1) > 1})
+    r['flows'] = dict(Counter(f"{e['props']['from']} -> {place(e['props'])}" for e in views if e['props'].get('from')).most_common(10))
     return r
 
 
@@ -138,10 +226,28 @@ def show(r):
     print('\nService levels')
     for s in r['slo']:
         v = s['value']
-        val = '—' if v is None else (f'{v:.1f} s' if 'Load time' in s['what'] else f'{v * 100:.2f}%')
-        tgt = f"{s['target']:.0f} s" if 'Load time' in s['what'] else f"{s['target'] * 100:g}%"
+        val = '—' if v is None else (f'{v:.1f} s' if 'Load time' in s['what'] else f'{v:.0f} ms' if '(ms)' in s['what'] else f'{v * 100:.2f}%')
+        tgt = f"{s['target']:.0f} s" if 'Load time' in s['what'] else f"{s['target']:.0f} ms" if '(ms)' in s['what'] else f"{s['target'] * 100:g}%"
         mark = {True: 'MET ', False: 'MISS', None: '  ··'}[s['met']]
         print(f"  {mark}  {s['what']:<44} {val:>9}  target {s['op']} {tgt:<6} (n={s['n']})")
+    print('\nWhere visitors stay (minutes by spot)')
+    for k, v in r['minutes_by_spot'].items():
+        print(f'  {v:>7}  {k}')
+    if r['engaged_share'] is not None:
+        print(f"Engaged: {r['engaged_share'] * 100:.0f}% of the time in 3D views had input in the last minute or a tour playing")
+    print('\nWhere page loads ended (the last event)')
+    for k, v in r['exits'].items():
+        print(f'  {v:>5}  {k}')
+    print('Ended by: ' + ', '.join(f'{k} {n}' for k, n in r['page_ends'].items()))
+    t = r['tour']
+    print(f"\nTour: {t['model_views']} model views, {t['started']} started, {t['ended']} ended; furthest stop " + ', '.join(f'{k}: {n}' for k, n in t['reached'].items()))
+    if r['after_tour']:
+        print('After the tour: ' + ', '.join(f'{k} {n}' for k, n in r['after_tour'].items()))
+    g = r['game']
+    print(f"Game: {g['ready']} loaded, {g['started']} left the title screen; first ride from on foot " + ', '.join(f'{k} {n}' for k, n in g['first_mode'].items()))
+    print(f"Returning visitors {r['returning_visitors']} · flows " + ', '.join(f'{k} {n}' for k, n in r['flows'].items()))
+    if r['crashes']:
+        print('Pages that died on screen: ' + '; '.join(f'{k} ×{n}' for k, n in r['crashes'].items()))
     if r['load_failures']:
         print('\nLoad failures: ' + '; '.join(f'{k} ×{n}' for k, n in r['load_failures'].items()))
     if r['top_errors']:

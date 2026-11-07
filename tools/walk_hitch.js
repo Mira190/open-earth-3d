@@ -29,7 +29,9 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
         // the texel count of an upload: (target, level, ifmt, w, h, ...) or (target, level, ifmt, fmt, type, source)
         let px = 0;
         if (name === 'texImage2D' || name === 'texSubImage2D') px = typeof a[3] === 'number' && typeof a[4] === 'number' && a.length >= 8 ? a[3] * a[4] : (a[a.length - 1] && (a[a.length - 1].width * a[a.length - 1].height || 0)) || 0;
-        gl.log.push({ t: t0, name, ms: dt, px });
+        const e = { t: t0, name, ms: dt, px };
+        if ((name === 'getProgramParameter' || name === 'getProgramInfoLog') && dt > 20) e.prog = (gl.progs && gl.progs.get(a[0])) || '?'; // (which program a long wait was for)
+        gl.log.push(e);
         return r;
       };
     }
@@ -37,6 +39,7 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
     // defines, to tell which materials compile on the way (PLAY=1 lists them)
     const names = new WeakMap(), src = P.shaderSource;
     window.__stack = !!STACK;
+    if (STACK) Error.stackTraceLimit = 60; // (past three.js's own frames, to the page's)
     P.shaderSource = function (sh, text) {
       const nm = (/#define SHADER_NAME (.*)/.exec(text) || [])[1] || '?';
       const defs = (text.match(/#define (USE_[A-Z_]+|[A-Z_]*INSTANC[A-Z_]*|FLAT_SHADED|DOUBLE_SIDED)\b/g) || []).map(d => d.slice(8)).join(' ');
@@ -44,14 +47,27 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
       names.set(sh, nm + (own ? ' {' + own + '}' : '') + (/gl_FragColor|pc_fragColor|out highp vec4/.test(text) ? ' (fs)' : ' (vs)') + (defs ? ' [' + defs + ']' : '') + ' #' + text.length);
       return src.call(this, sh, text);
     };
+    const att = P.attachShader;
+    gl.progs = new WeakMap();
+    P.attachShader = function (pr, sh) { const n = names.get(sh); if (n && / \(fs\)/.test(n)) gl.progs.set(pr, n.split(' (fs)')[0]); else if (n && !gl.progs.has(pr)) gl.progs.set(pr, n.split(' (vs)')[0]); return att.call(this, pr, sh); };
     const comp = P.compileShader;
     P.compileShader = function (sh) {
-      if (gl.on) gl.shaders.push({ t: performance.now(), what: names.get(sh) || '?',
+      if (gl.on) gl.shaders.push({ t: performance.now(), what: names.get(sh) || '?', obj: window.__drawing,
         // (STACK=1: the page's own frames that led to it, past three.js)
         from: window.__stack ? (new Error().stack || '').split('\n').filter(l => /\/(game|web)\/|\/[a-z]+\.js/.test(l) && !/vendor|three/.test(l)).slice(0, 4).map(l => l.trim().replace(/^at /, '').replace(/https?:\/\/[^/]+\//, '')).join(' < ') : undefined });
       return comp.call(this, sh);
     };
     gl.shaders = [];
+    // (STACK=1: the object being drawn, by the names up its parents, and its material's: the draw that compiled it)
+    if (STACK) addEventListener('three-ready', () => {
+      const O = window.THREE && THREE.Object3D && THREE.Object3D.prototype;
+      if (!O) return;
+      const path = o => { const n = []; for (let q = o; q && n.length < 4; q = q.parent) n.push(q.name || q.type); return n.join('<'); };
+      const mark = shadow => function (r, s, c, g, m) { window.__drawing = (shadow ? 'shadow ' : '') + path(this) + ' / ' + (m && (m.name || m.type)); };
+      const b = O.onBeforeRender, sh = O.onBeforeShadow, on = mark(false), onS = mark(true);
+      O.onBeforeRender = function (...a) { on.apply(this, a); return b && b.apply(this, a); };
+      if (sh) O.onBeforeShadow = function (...a) { onS.apply(this, a); return sh.apply(this, a); };
+    });
     const fr = window.__frames = [];
     const tick = t => { fr.push(t); requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
@@ -111,7 +127,8 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
     if (z - a < 50) continue;
     const inF = r.gl.log.filter(e => e.t >= a && e.t < z);
     spikes.push({ at: +((a - r.frames[0]) / 1000).toFixed(1), ms: Math.round(z - a), texMs: Math.round(sum(inF.filter(e => /^tex|compressed|generateMipmap/.test(e.name)))), tex: inF.filter(e => /^tex|compressed/.test(e.name)).length, big: inF.filter(e => e.px >= 256 * 256).length,
-      compiles: inF.filter(e => e.name === 'compileShader').length, linkWaitMs: Math.round(sum(inF.filter(e => /getProgram/.test(e.name)))) });
+      compiles: inF.filter(e => e.name === 'compileShader').length, linkWaitMs: Math.round(sum(inF.filter(e => /getProgram/.test(e.name)))),
+      waits: inF.filter(e => e.prog).map(e => `${Math.round(e.ms)} ms ${e.prog}`).slice(0, 4) });
   }
   // the model-sized uploads a frame at most (several in one frame: a model uploaded on its first draw)
   let bigMax = 0;
@@ -125,7 +142,7 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
     bigUploads: tex.filter(e => e.px >= 256 * 256).length, bigPerFrameMax: bigMax, // a model's texture, not a label's or a lookup's texMs: Math.round(sum(tex)), texMaxMs: Math.round(Math.max(0, ...tex.map(e => e.ms))),
     compiles: comp.filter(e => e.name === 'compileShader').length, linkWaitMs: Math.round(sum(r.gl.log.filter(e => /getProgram/.test(e.name)))),
     worst: spikes.sort((a, b) => b.ms - a.ms).slice(0, 10), errors: errors.slice(0, 5),
-    shaders: process.env.PLAY ? r.gl.shaders.map(e => `${((e.t - r.frames[0]) / 1000).toFixed(1)} s ${e.what}${e.from ? ' <= ' + e.from : ''}`) : undefined,
+    shaders: process.env.PLAY ? r.gl.shaders.map(e => `${((e.t - r.frames[0]) / 1000).toFixed(1)} s ${e.what}${e.obj ? ' @ ' + e.obj : ''}${e.from ? ' <= ' + e.from : ''}`) : undefined,
   };
   console.log(JSON.stringify(out, null, 1));
   if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify(Object.assign({ dts, gl: r.gl.log, loads: r.loads }, out)));

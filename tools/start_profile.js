@@ -6,6 +6,9 @@
 //   xvfb-run -a node tools/start_profile.js sydney [WxH, 960x600] [seconds after the click, 20]
 // TIER=high (default) forces a quality tier, as the films and stills do. CONT=1 presses Continue.
 // LOAD=1 stops once the loader is gone, after printing its longest frames and the time to playable.
+// LOAD=1 PROFILE=1 also profiles the load (from the page's first script on) and breaks its longest frames
+// down: the WebGL work in each and the functions it spent its time in, by self and inclusive time.
+// PROFILE=1 keeps the GL log on from the start, so the loader's compiles show in it too.
 // OUT=file.json also writes the frames, the GL work and the ranked functions as JSON. RAIN=1 then puts the
 // rain on and counts the shaders compiled for it (the wet street's reflection on the high tier, mirror.js).
 // Software WebGL (llvmpipe) makes the GPU's share far slower than a real device's: read the
@@ -19,9 +22,9 @@ const [w, h] = size.split('x').map(Number);
   const phone = w < 600;
   const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, hasTouch: phone, isMobile: phone });
   await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
-  await ctx.addInitScript(() => {
+  await ctx.addInitScript(on => {
     // the WebGL calls that block the main thread, timed where they are made
-    const gl = window.__gl = { on: false, calls: {}, log: [] };
+    const gl = window.__gl = { on, calls: {}, log: [] };
     const wrap = (proto, name) => {
       const f = proto[name];
       if (!f) return;
@@ -69,12 +72,49 @@ const [w, h] = size.split('x').map(Number);
       window.THREE.WebGLRenderer = function (...a) { const r = new R(...a); window.__renderer = r; return r; };
       window.THREE.WebGLRenderer.prototype = R.prototype;
     });
-  });
+  }, !!(process.env.LOAD && process.env.PROFILE));
   const p = await ctx.newPage();
+  // the loader's longest frames, each broken down: its GL work, and the functions it ran (self and inclusive)
+  const loadProfile = async (cdp, top, sync) => {
+    const { profile } = await cdp.send('Profiler.stop');
+    const [glLog, waits] = await p.evaluate(() => [window.__gl.log.slice(), window.__gl.waits.map(w => ({ t: w.t, ms: w.ms, sinceLink: w.sinceLink }))]);
+    const nodes = new Map(profile.nodes.map(n => [n.id, n])), parent = new Map();
+    for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
+    const label = n => { const c = n.callFrame; return `${c.functionName || '(anon)'} ${c.url.replace(/^.*\/web\//, '').replace(/^https?:\/\/[^/]+\//, '')}:${c.lineNumber + 1}`; };
+    // (the profile's first sample is at the start the page's clock was read just after)
+    const ts = []; let t = profile.startTime;
+    for (let i = 0; i < profile.samples.length; i++) { t += profile.timeDeltas[i]; ts.push((t - profile.startTime) / 1000 + sync); }
+    for (const f of top.slice(0, 4)) {
+      const a = f.t, z = f.t + f.dt, self = new Map(), incl = new Map(), gls = new Map();
+      for (let i = 0; i < ts.length; i++) {
+        if (ts[i] < a || ts[i] > z) continue;
+        const dt = (profile.timeDeltas[i + 1] || 1000) / 1000, n = nodes.get(profile.samples[i]);
+        self.set(label(n), (self.get(label(n)) || 0) + dt);
+        const seen = new Set();
+        for (let id = profile.samples[i]; id != null; id = parent.get(id)) {
+          const q = nodes.get(id); if (!/\/web\/|localhost/.test(q.callFrame.url) || /vendor/.test(q.callFrame.url)) continue;
+          const k = label(q); if (seen.has(k)) continue; seen.add(k); incl.set(k, (incl.get(k) || 0) + dt);
+        }
+      }
+      for (const e of glLog) if (e.t >= a && e.t <= z) { const g = gls.get(e.name) || { n: 0, ms: 0 }; g.n++; g.ms += e.ms; gls.set(e.name, g); }
+      const w = waits.filter(e => e.t >= a && e.t <= z);
+      const best = (m, n) => [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => `${v.toFixed(0).padStart(6)}  ${k}`).join('\n');
+      console.log(`\nframe of ${(f.dt / 1000).toFixed(1)} s at ${(a / 1000).toFixed(1)} s: GL ${[...gls.entries()].map(([k, g]) => `${k} ${g.n}x ${g.ms.toFixed(0)} ms`).join(', ') || 'none over 4 ms'}` +
+        (w.length ? `; first-use waits ${w.length}, ${w.reduce((s, e) => s + e.ms, 0).toFixed(0)} ms` : ''));
+      console.log('  self (ms):\n' + best(self, 10));
+      console.log('  inclusive, the app\'s (ms):\n' + best(incl, 14));
+    }
+  };
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
   const t0 = Date.now();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  // (PROFILE=1: the profiler on before the page loads; its clock is put on the page's once the page has one)
+  const lcdp = process.env.LOAD && process.env.PROFILE ? await ctx.newCDPSession(p) : null;
+  if (lcdp) { await lcdp.send('Profiler.enable'); await lcdp.send('Profiler.setSamplingInterval', { interval: 1000 }); }
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'commit', timeout: 120000 });
+  let lsync = null;
+  if (lcdp) { await lcdp.send('Profiler.start'); lsync = await p.evaluate(() => performance.now()).catch(() => 0); }
+  await p.waitForLoadState('domcontentloaded', { timeout: 120000 });
   await p.waitForFunction(() => window.__game && !document.querySelector('#g-title').hidden && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
   const loadS = (Date.now() - t0) / 1000;
   // the loader's frames, from the first one to the loader gone: the longest, and the time they add up to
@@ -84,6 +124,7 @@ const [w, h] = size.split('x').map(Number);
     const top = d.slice().sort((a, b) => b.dt - a.dt).slice(0, 8), over = d.filter(f => f.dt > 1000);
     console.log(`${city} ${w}x${h} loader: playable after ${loadS.toFixed(1)} s; longest frames (s): ${top.map(f => (f.dt / 1000).toFixed(1)).join(' ')}; ` +
       `${over.length} frames over 1 s, ${(over.reduce((s, f) => s + f.dt, 0) / 1000).toFixed(1)} s in them`);
+    if (lcdp) await loadProfile(lcdp, top, lsync);
     if (process.env.LOAD) { await b.close(); return; } // LOAD=1: the loader only
   }
   await p.waitForTimeout(4000); // the title orbit settles
