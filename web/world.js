@@ -204,17 +204,21 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
       };
     },
     // a curtain wall (u metres along the facade, v metres up): panes between mullions every bay_m,
-    // a spandrel at the foot of each storey_m, pane tones that vary, and some panes lit after dark
+    // a spandrel at the foot of each storey_m (spandrel: its share of the storey, or its colour with spandrel_frac
+    // its share), pane tones that vary, and some panes lit after dark, rooms behind them close to
     // (lit_share of them, lit_k bright: a shop's glass is mostly lit and softer than an office's;
     // warm_share of the lit ones under warm light, the rest cool white)
     curtain_wall(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 1.5 }, uSty: { value: m.storey_m || 4.0 }, uSpan: { value: m.spandrel || 0.25 },
-          uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT,
+        // (spandrel: the band's share of a storey, or its colour, with spandrel_frac its share: the Skyline's gave a
+        // colour and its glass lost its bands and its depth, #286)
+        const spanK = typeof m.spandrel === 'number' ? m.spandrel : (m.spandrel_frac ?? 0.25);
+        Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 1.5 }, uSty: { value: m.storey_m || 4.0 }, uSpan: { value: spanK },
+          uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uSpanC: { value: lin(typeof m.spandrel === 'string' ? m.spandrel : (m.frame || '#c9ced2')) }, uLmNight: LM_NIGHT,
           uLitShare: { value: m.lit_share ?? 0.38 }, uLitK: { value: m.lit_k ?? 1.3 }, uWarm: { value: m.warm_share ?? 0.25 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK, uWarm; uniform vec3 uFrame; float pWin, pLit; vec3 pLitC;
+uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK, uWarm; uniform vec3 uFrame, uSpanC; float pWin, pLit, pRoom; vec3 pLitC;
 float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bu = vUv.x / uBay, bv = vUv.y / uSty, fw = max(fwidth(bu), fwidth(bv));
@@ -228,7 +232,21 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     vec2 cf = floor(vec2(bu * 0.25, bv)); float vfar = smoothstep(0.75, 1.6, max(fwidth(bu * 0.25), fwidth(bv)));
     float sf = 1.0 - smoothstep(uSpan - fwidth(bv), uSpan + fwidth(bv), fract(bv)); // the storey's spandrel band
     vec3 farCol = mix(diffuseColor.rgb * (0.85 + 0.3 * cwHash(cf)), uFrame, 0.3 * (1.0 - 0.75 * uLmNight));
-    diffuseColor.rgb = mix(mix(glass, uFrame, solid), farCol, far);
+    diffuseColor.rgb = mix(mix(glass, mix(uFrame, uSpanC, step(mull, span * 0.9)), solid), farCol, far);
+    // the room behind a lit pane, close to: brighter towards the ceiling, a row of downlights under it one to a bay,
+    // and the chairs, tables and people dark against the light in its lower third (each bay its own), so the glass
+    // reads as rooms with depth rather than as lit panels; far off, the storey's mean
+    { float fx = fract(bu), fy = (fract(bv) - uSpan) / max(1.0 - uSpan, 0.05), hR = uSty * (1.0 - uSpan);
+      float grad = 0.3 + 0.55 * smoothstep(0.05, 1.0, fy);
+      float lamp = exp(-pow((fx - 0.5) / 0.09, 2.0)) * exp(-pow((fy - 0.94) * hR / 0.06, 2.0)) * 1.4 + exp(-pow((fy - 0.97) / 0.035, 2.0)) * 0.2;
+      // people standing or seated in thirds of a bay, a table's top in some: dark against the room
+      float j = floor(fx * 3.0), h = cwHash(cell * 1.31 + j), mx = (fract(fx * 3.0) - 0.5) * uBay / 3.0;
+      float tall = h < 0.22 ? 1.62 : 1.18, my = fy * hR;
+      float body = step(abs(mx), 0.17 - 0.04 * smoothstep(tall - 0.6, tall - 0.3, my)) * step(my, tall - 0.22);
+      float head = step(length(vec2(mx, my - tall + 0.12)), 0.11);
+      float person = step(h, 0.42) * max(body, head), table = step(0.55, cwHash(cell + 9.0)) * step(abs(my - 0.74), 0.025);
+      float room = (grad + lamp) * (1.0 - 0.8 * max(person, table)) * (0.7 + 0.45 * cwHash(cell + 21.0));
+      pRoom = mix(room, 0.6, smoothstep(0.05, 0.3, fw)); }
     float litFar = mix(0.6 * step(1.0 - 0.68 * uLitShare, cwHash(cf + 17.0)) * (1.0 - sf), 0.34 * uLitShare, vfar);
     // lit in runs of four panes along a storey, as an office is, each run a little brighter or dimmer,
     // mostly under cool white light
@@ -236,7 +254,7 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     pLitC = mix(cwHash(cf + 5.0) < 1.0 - uWarm ? vec3(0.8, 0.9, 1.0) : vec3(1.0, 0.84, 0.62), vec3(0.85, 0.88, 0.9), far); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  totalEmissiveRadiance += pWin * pLit * uLmNight * pLitC * uLitK;`);
+  totalEmissiveRadiance += pWin * pLit * uLmNight * pLitC * uLitK * pRoom;`);
       };
     },
     // a riveted iron lattice cut out of a panel (u metres across, v metres up): a strut at the
@@ -1342,10 +1360,69 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       }
       TR = keep;
     }
+    // tussock (trees.json "tussock", city.json trees.tussock, #286): in a landmark's planted beds (beds: [{mesh, per_m2}],
+    // scattered over the faces of that mesh) and on the open hills (slopes: {above_m, per_ha, max, near: [[x, y, r,
+    // per_ha]]}): above the town, where no canopy stands (woods.png), off the roads and their houses (25 m) and clear of
+    // the landmarks, on ground no steeper than rock; standing where they are put, all of them tussock
+    let own = null;
+    const TU = (scene.trees || {}).tussock;
+    if (TU && window.OETrees) try {
+      const pts = [], hsh = (x, y) => { const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return v - Math.floor(v); };
+      for (const bed of TU.beds || []) for (const m of (LM && LM.meshes) || []) {
+        if (m.name !== bed.mesh) continue;
+        const p = m.position, ix = m.index;
+        for (let i = 0; i + 2 < ix.length; i += 3) {
+          const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
+          const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], area = Math.abs(ux * vy - uy * vx) / 2;
+          let n = area * (bed.per_m2 || 2);
+          for (let j = 0; n > 0; j++, n--) {
+            if (n < 1 && hsh(p[a] + j, p[a + 1]) > n) break;
+            let u = hsh(p[a] + j * 1.7, p[b] + i), v = hsh(p[c] - j * 2.3, p[a + 1] + i);
+            if (u + v > 1) { u = 1 - u; v = 1 - v; }
+            const x = p[a] + ux * u + vx * v, y = p[a + 1] + uy * u + vy * v, z = p[a + 2] + (p[b + 2] - p[a + 2]) * u + (p[c + 2] - p[a + 2]) * v;
+            pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), Math.round(10 * (0.55 + 0.35 * hsh(x, y))));
+          }
+        }
+      }
+      const SL = TU.slopes;
+      if (SL) {
+        const Tg = D.Tfine || D.T, F = scene.frame, roads = D.streets && D.streets.roads, W = scene.woods;
+        let canopy = null; // the woods' canopy at 8 m: whether any crown stands there
+        if (woodsTex && woodsTex.image && W) {
+          const cw = Math.ceil(W.nx / 4), ch = Math.ceil(W.ny / 4), cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+          const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(woodsTex.image, 0, 0, cw, ch);
+          const px = g.getImageData(0, 0, cw, ch).data, c8 = W.cell * 4;
+          canopy = (x, y) => { const i = Math.floor((x - W.x0) / c8), j = Math.floor((W.y1 - y) / c8); return i >= 0 && j >= 0 && i < cw && j < ch && px[4 * (j * cw + i) + 1] > 0; };
+        }
+        const lmHash = new Set(); // the landmarks' 8 m cells, and their neighbours
+        for (const m of (LM && LM.meshes) || []) { const p = m.position; for (let i = 0; i < p.length; i += 9) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) lmHash.add((Math.floor(p[i] / 8) + a) * 100003 + Math.floor(p[i + 1] / 8) + b); }
+        const max = Math.round((SL.max || 8000) * (small ? 0.35 : 1)), above = SL.above_m ?? 80;
+        const cand = (x, y, k) => {
+          const z = S.terrainAt(Tg, x, y);
+          if (!(z > above) || (canopy && canopy(x, y)) || lmHash.has(Math.floor(x / 8) * 100003 + Math.floor(y / 8))) return;
+          const sx = S.terrainAt(Tg, x + 2, y) - S.terrainAt(Tg, x - 2, y), sy = S.terrainAt(Tg, x, y + 2) - S.terrainAt(Tg, x, y - 2);
+          if (Math.hypot(sx, sy) / 4 > (SL.slope_max || 1.1)) return; // (a bluff: rock)
+          if (roads && roads.depth(x, y, null, 25) > 0) return;
+          if (IN && IN.water(x, y)) return;
+          pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), Math.round(10 * (0.6 + 0.45 * hsh(y, x + k))));
+        };
+        // near the places named, denser; then over the whole frame, each candidate on a jittered grid
+        const grid = (x0, y0, x1, y1, per_ha, inside) => {
+          const step = 100 / Math.sqrt(per_ha);
+          for (let y = y0; y < y1 && pts.length / 4 < max; y += step) for (let x = x0; x < x1 && pts.length / 4 < max; x += step) {
+            const jx = x + (hsh(x, y) - 0.5) * step, jy = y + (hsh(y, x) - 0.5) * step;
+            if (!inside || inside(jx, jy)) cand(jx, jy, step);
+          }
+        };
+        for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
+        grid(F.x[0], F.y[0], F.x[1], F.y[1], SL.per_ha || 20, (x, y) => !(SL.near || []).some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r));
+      }
+      if (pts.length) { own = { from: TR.length / 4, species: 'tussock' }; TR = TR.concat(pts); console.info(`tussock: ${pts.length / 4} planted`); }
+    } catch (e) { console.warn('tussock: none planted', e); }
     const nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
-      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, woods: (scene.trees || {}).woods, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, lat: D.CITY.lat, cherry: (scene.trees || {}).cherry_open, measured: nMapped, keep: small ? 0.35 : 1, farKeep: window.OEQuality ? OEQuality.city().woods : 1, fixed: nFixed, night: U.uNight, foot: D.N, small }); }
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, woods: (scene.trees || {}).woods, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, lat: D.CITY.lat, cherry: (scene.trees || {}).cherry_open, measured: nMapped, keep: small ? 0.35 : 1, farKeep: window.OEQuality ? OEQuality.city().woods : 1, fixed: nFixed, own, night: U.uNight, foot: D.N, small }); }
       catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
     }
     if (nT && !trees) {

@@ -1,14 +1,14 @@
 """Build the street and park trees every city shares: web/assets/trees/trees.glb and
 trees.json.
 
-Nineteen species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
+Twenty-one species and a grass: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
 Island date palm and Japanese maple (momiji, red in autumn: web/trees.js); Japan's black pine,
 cryptomeria (sugi), camphor, zelkova and ginkgo (the last two turn in autumn too) and the
 Somei-yoshino cherry (pale pink on bare branches for a fortnight in spring) with three other
 cherries on their own dates: the weeping shidarezakura, the February kawazu-zakura and the mid-April
 yaezakura, all on bark banded with lenticels (web/trees.js draws the bands); an evergreen
 broadleaf for Hong Kong's hills and the laurel forest of the shrine groves; and the coral cays'
-pisonia and she-oak (casuarina). Each is grown,
+pisonia and she-oak (casuarina); and tussock, Otago's grass of the open hills, a fountain of blade cards. Each is grown,
 not sculpted: points are scattered through the shell of
 the species' crown shape, clustered into limbs and twigs, and branches are grown from the
 trunk out to each cluster; every point carries a card with a spray of leaves from a leaf
@@ -48,13 +48,13 @@ DOCS = os.path.join(ROOT, "docs", "images", "trees")
 # bloom cell stays right of its leaf cell ("bloom" beside "jacaranda"): web/trees.js swaps one for the other
 # with the season. The cherries' bloom cells follow each other from "sakura" (SAKURA_CELLS, in that order:
 # the Somei-yoshino, the weeping cherry, the kawazu-zakura and the yaezakura) and all show the cherry's
-# leaf cell ("cherry") out of flower. Cells 21 and 22 are the coral cays' beach scrub; 23 is free.
+# leaf cell ("cherry") out of flower. Cells 21 and 22 are the coral cays' beach scrub; 23 a tussock's fountain of blades.
 ATLAS_W, ATLAS_H, CW, CH = 1024, 3072, 256, 512
 COLS, ROWS = ATLAS_W // CW, ATLAS_H // CH
 CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7,
          "pine": 8, "sugi": 9, "camphor": 10, "zelkova": 11, "ginkgo": 12, "evergreen": 13, "pisonia": 14, "casuarina": 15,
          "cherry": 16, "sakura": 17, "shidare": 18, "kawazu": 19, "yae": 20,
-         "scaevola": 21, "argusia": 22}
+         "scaevola": 21, "argusia": 22, "tussock": 23}
 SAKURA_CELLS = ["sakura", "shidare", "kawazu", "yae"]
 
 
@@ -286,7 +286,40 @@ SPRAYS = {
                     colours=["#a7b39b", "#b6c1a9", "#98a58d", "#c0c9b2"], twig="#8a8072", twig_w=2, fill=0.95),
     "palm": dict(leaf="lance", L=84, W=8, twigs=1, spread=0.04, every=1, start=2, angle=(0.9, 1.25), arch=0, droop=0.25,
                  colours=["#5e7a3a", "#6b8a42", "#55703a", "#738f48"], twig="#7a7a4a", twig_w=5),
+    # a tussock's blades (drawn by blades(), not as a spray): fine and rolled, olive-green at the base, the old
+    # ones straw and the tips bleached gold, as Otago's snow tussock and hard tussock stand on the hills
+    "tussock": dict(leaf="blade", base=["#5d6438", "#6b6c3e", "#56603a"], mid=["#9c8a52", "#a99556", "#8f8150", "#b29d60"],
+                    tip=["#d2bb7c", "#c9b070", "#ddc88e", "#bfa468"], n=150),
 }
+
+
+def blades(img, spec, rng, S=2):
+    """A tussock's fountain of blades from the bottom middle of the cell: each a long thin arc that leans out and
+    droops at its tip, olive at the base through straw to a bleached tip; the dead ones paler and lower."""
+    dr = ImageDraw.Draw(img)
+    bx, by = CW * S / 2, CH * S - 4 * S
+    lerp = lambda a, b, t: tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+    for k in range(spec["n"]):
+        dead = rng.random() < 0.3
+        lean = rng.normal(0, 0.42)                       # radians from the vertical
+        L = CH * S * rng.uniform(0.55, 0.97) * (0.8 if dead else 1.0)
+        droop = rng.uniform(0.6, 1.6) * (1.0 + abs(lean))
+        x0 = bx + rng.normal(0, 7) * S
+        cb = hexrgb(spec["base"][rng.integers(len(spec["base"]))])
+        cm = hexrgb(spec["mid"][rng.integers(len(spec["mid"]))], 1.08 if dead else 1.0)
+        ct = hexrgb(spec["tip"][rng.integers(len(spec["tip"]))], 1.05 if dead else 1.0)
+        n = 22
+        x, y, a = x0, by, -math.pi / 2 + lean * 0.6
+        w0 = rng.uniform(2.2, 3.4) * S
+        for i in range(n):
+            t = i / n
+            a += (lean * 0.05 + (math.copysign(1, lean) * droop * 0.035 * t * t)) if abs(lean) > 0.05 else rng.normal(0, 0.01)
+            nx_, ny_ = x + math.cos(a) * L / n, y + math.sin(a) * L / n
+            nx_ = min(max(nx_, 8 * S), (CW - 8) * S)
+            ny_ = max(ny_, 36 * S)
+            col = lerp(cb, cm, min(1, t * 2.2)) if t < 0.45 else lerp(cm, ct, (t - 0.45) / 0.55)
+            dr.line([(x, y), (nx_, ny_)], fill=col + (255,), width=max(1, int(w0 * (1 - 0.75 * t))))
+            x, y = nx_, ny_
 
 
 def build_atlas(path):
@@ -295,7 +328,10 @@ def build_atlas(path):
     img = Image.new("RGBA", (ATLAS_W, ATLAS_H), (0, 0, 0, 0))
     for name, k in CELLS.items():
         cell = Image.new("RGBA", (CW * S, CH * S), (0, 0, 0, 0))
-        spray(cell, k, SPRAYS[name], rng, S)
+        if SPRAYS[name].get("leaf") == "blade":
+            blades(cell, SPRAYS[name], rng, S)
+        else:
+            spray(cell, k, SPRAYS[name], rng, S)
         # fade the last few texels at the cell's edge, so a card never shows a straight cut
         a = np.asarray(cell, np.float32)
         ex = np.minimum(np.arange(CW * S), np.arange(CW * S)[::-1]) / (6 * S)
@@ -304,14 +340,19 @@ def build_atlas(path):
         cell = Image.fromarray(a.astype(np.uint8), "RGBA").resize((CW, CH), Image.LANCZOS)
         img.paste(cell, ((k % COLS) * CW, (k // COLS) * CH))
     # bleed the leaf colours into the clear texels, so mipmaps don't fringe dark
+    # (cell by cell: a cherry's pink bled into the tussock's cell under it and tinged its blade tips far off)
     a = np.asarray(img, np.float32) / 255
     rgb, al = a[..., :3], a[..., 3:]
-    pm = Image.fromarray((rgb * al * 255).astype(np.uint8))
-    am = Image.fromarray((al[..., 0] * 255).astype(np.uint8))
-    bp = np.asarray(pm.filter(ImageFilter.GaussianBlur(10)), np.float32) / 255
-    ba = np.asarray(am.filter(ImageFilter.GaussianBlur(10)), np.float32)[..., None] / 255
-    bleed = np.clip(bp / np.maximum(ba, 1e-3), 0, 1)
-    out = np.where(al > 0.02, rgb, bleed)
+    out = rgb.copy()
+    for k in range(COLS * ROWS):
+        x0, y0 = (k % COLS) * CW, (k // COLS) * CH
+        c_rgb, c_al = rgb[y0:y0 + CH, x0:x0 + CW], al[y0:y0 + CH, x0:x0 + CW]
+        pm = Image.fromarray((c_rgb * c_al * 255).astype(np.uint8))
+        am = Image.fromarray((c_al[..., 0] * 255).astype(np.uint8))
+        bp = np.asarray(pm.filter(ImageFilter.GaussianBlur(10)), np.float32) / 255
+        ba = np.asarray(am.filter(ImageFilter.GaussianBlur(10)), np.float32)[..., None] / 255
+        bleed = np.clip(bp / np.maximum(ba, 1e-3), 0, 1)
+        out[y0:y0 + CH, x0:x0 + CW] = np.where(c_al > 0.02, c_rgb, bleed)
     final = np.concatenate([out, al], axis=-1)
     Image.fromarray((final * 255).astype(np.uint8), "RGBA").save(path, optimize=True)
     return path
@@ -409,6 +450,12 @@ SPECIES = {
                     bark="#6f655a", lean=0.35, leader=False, colour="#a4b098", stems=4,
                     note="Octopus bush (Argusia argentea, now Heliotropium arboreum): crooked spreading stems under a "
                          "rounded crown of silvery grey-green felted leaves in rosettes, about 3.5 m high and 5 m across"),
+    # a grass, not a tree (#286): grown as a fountain of blade cards (grow_tussock)
+    "tussock": dict(H=0.95, trunk=0.0, r0=0.04, crown=("tussock", 0.5, 0.55, 0.5), n=16, size=1.0, leaf="tussock",
+                    bark="#6b5f3e", lean=0.0, colour="#a08d5c",
+                    note="Tussock (snow tussock, Chionochloa rigida, and hard tussock, Festuca novae-zelandiae): a dense fountain "
+                         "of fine rolled blades about a metre high, olive at the base and straw to bleached gold above; the "
+                         "grassland of Otago's open hills round Queenstown, and a planted bed's grass"),
 }
 
 
@@ -579,6 +626,8 @@ def grow(name, sp, seed, lod):
         return grow_palm(name, sp, rng, lod)
     if sp["crown"][0] == "weep":
         return grow_weeping(name, sp, rng, lod)
+    if sp["crown"][0] == "tussock":
+        return grow_tussock(name, sp, rng, lod)
     P, clumps = crown_points(sp, rng)
     shape = sp["crown"]
     if shape[0] in ("vase", "cone"):
@@ -820,6 +869,33 @@ def grow_palm(name, sp, rng, lod):
         out = Vector((-math.sin(a), math.cos(a), 0)).cross(d)
         for at, dd, LL in ((head, d, L * 0.52), (mid, d2, L * 0.55)):
             card(T, at, dd, out, LL, CELLS["palm"], crown_c, crown_r * 1.4, rng, aspect=0.85, sway=0.9)
+    return T
+
+
+def grow_tussock(name, sp, rng, lod):
+    """A tussock: blade cards round a tight base, leaning out more the further round the outside, so it reads as a
+    fountain from every side; a short dark crown of old leaf bases at the foot. lod 1: a ring of six; 2: three
+    crossed cards."""
+    T = Tree()
+    H = sp["H"]
+    crown_c, crown_r = np.array([0, 0, H * 0.35]), H * 0.6
+    count = sp["n"] if lod == 0 else 6 if lod == 1 else 3
+    for k in range(count):
+        a = TAU * k / count + (rng.uniform(-0.25, 0.25) if lod == 0 else 0)
+        outer = (k % 3 != 0) if lod == 0 else lod == 1
+        tilt = rng.uniform(0.28, 0.55) if outer else rng.uniform(0.0, 0.18)
+        d = Vector((math.cos(a), math.sin(a), 0))
+        up = (Vector((0, 0, 1)) * math.cos(tilt) + d * math.sin(tilt)).normalized()
+        at = Vector((math.cos(a) * 0.06, math.sin(a) * 0.06, -0.04))
+        out = Vector((-math.sin(a), math.cos(a), 0)) if lod < 2 else d
+        size = H * rng.uniform(0.85, 1.08) * (1.1 if lod else 1.0)
+        card(T, at, up, out, size, CELLS["tussock"], crown_c, crown_r, rng, aspect=0.62, sway=0.8)
+    if lod == 0:   # the foot: a squat cone of old bases, so it does not stand on a point
+        segs, r = 8, 0.16
+        ring = [T.vert(Vector((math.cos(TAU * i / segs) * r, math.sin(TAU * i / segs) * r, -0.03)), 0.45, 0.0) for i in range(segs)]
+        top = T.vert(Vector((0, 0, 0.14)), 0.4, 0.05)
+        for i in range(segs):
+            T.m.face([ring[i], ring[(i + 1) % segs], top], f"Bark_{name}", True)
     return T
 
 
