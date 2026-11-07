@@ -195,19 +195,36 @@ window.OEBuildings = (function () {
     };
   }
 
-  // sky openness of a wall point facing (nx, ny), from a coarse surface model: 1 - mean sine of the horizon
+  // sky openness of a wall point facing (nx, ny), from a coarse surface model: 1 - mean sine of the horizon.
+  // In two steps, since a wall asks it at every storey of the same point: rays() samples the model along
+  // each direction once (the cells a ray crosses do not depend on the height), then openness() takes the
+  // horizon from those samples for a height z, as the single pass did (issue 266: the loader's longest frame
+  // spent a second here in Shibuya)
   const DIRS = [-1.05, -0.5, 0, 0.5, 1.05], STEPS = [5, 9, 14, 21, 30, 42, 58, 80, 110];
-  function openness(G, x, y, z, nx, ny) {
-    if (!G) return 1;
-    const { nx: gx, ny: gy, cell, x0, y1, data } = G;
+  const DCOS = DIRS.map(Math.cos), DSIN = DIRS.map(Math.sin), NS = STEPS.length;
+  const RAYS = [new Float32Array(DIRS.length * (NS + 1)), new Float32Array(DIRS.length * (NS + 1))]; // (a wall's two ends, reused)
+  function rays(G, x, y, nx, ny, end) {
+    if (!G) return null;
+    const { nx: gx, ny: gy, cell, x0, y1, data } = G, out = RAYS[end].fill(0); // (per direction: its count, then its samples)
+    for (let i = 0; i < DIRS.length; i++) {
+      const c = DCOS[i], s = DSIN[i], dx = nx * c - ny * s, dy = nx * s + ny * c;
+      for (let k = 0; k < NS; k++) {
+        const d = STEPS[k], col = Math.floor((x + dx * d - x0) / cell), row = Math.floor((y1 - (y + dy * d)) / cell);
+        if (col < 0 || row < 0 || col >= gx || row >= gy) break; // (the ray has left the model)
+        out[i * (NS + 1) + 1 + k] = data[row * gx + col];
+        out[i * (NS + 1)] = k + 1;
+      }
+    }
+    return out;
+  }
+  function openness(R, z) {
+    if (!R) return 1;
     let acc = 0;
-    for (const a of DIRS) {
-      const c = Math.cos(a), s = Math.sin(a), dx = nx * c - ny * s, dy = nx * s + ny * c;
+    for (let i = 0; i < DIRS.length; i++) {
       let best = 0;
-      for (const d of STEPS) {
-        const col = Math.floor((x + dx * d - x0) / cell), row = Math.floor((y1 - (y + dy * d)) / cell);
-        if (col < 0 || row < 0 || col >= gx || row >= gy) break;
-        const t = (data[row * gx + col] - z) / d;
+      const o = i * (NS + 1), m = R[o];
+      for (let k = 0; k < m; k++) {
+        const t = (R[o + 1 + k] - z) / STEPS[k];
         if (t > best) best = t;
       }
       acc += best / Math.sqrt(1 + best * best);
@@ -329,9 +346,10 @@ window.OEBuildings = (function () {
           const fl = (fronts && o === 0 && fronts.get(k)) || 0;
           const flags = fl + (ri === signAt ? 4 : 0) + 32 * nFloors;
           let prevIds = null;
+          const ra = rays(G, x0 + nx * 0.5, y0 + ny * 0.5, nx, ny, 0), rb = rays(G, x1 + nx * 0.5, y1 + ny * 0.5, nx, ny, 1);
           for (let li = 0; li < levels.length; li++) {
             const z = levels[li];
-            const oa = openness(G, x0 + nx * 0.5, y0 + ny * 0.5, z + 0.5, nx, ny), ob = openness(G, x1 + nx * 0.5, y1 + ny * 0.5, z + 0.5, nx, ny);
+            const oa = openness(ra, z + 0.5), ob = openness(rb, z + 0.5);
             const ia = buf.v(x0, y0, z, ax, ay, 0, P.wall, s0, z - g0, kind * 16 + si, P.storey, P.ground, P.u, oa, flags, nb, bi, P.code);
             const ib = buf.v(x1, y1, z, bx, by, 0, P.wall, s1, z - g0, kind * 16 + si, P.storey, P.ground, P.u, ob, flags, nb, bi, P.code);
             if (prevIds) buf.idx.push(prevIds[0], prevIds[1], ib, prevIds[0], ib, ia);

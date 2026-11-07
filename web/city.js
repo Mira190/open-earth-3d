@@ -1010,7 +1010,8 @@ window.OpenEarthCity = async function main(cityId) {
   // draw, which can take seconds, and a loader that faded before it showed a black frame
   let framesDrawn = 0, firstDrawn;
   const drawn = new Promise(r => { firstDrawn = r; });
-  const warm = OEWorld.compile(renderer, world, camera, { target: post ? post.renderTarget1 : null }); // (the post stack's variant of each shader)
+  const warm = Promise.all([OEWorld.compile(renderer, world, camera, { target: post ? post.renderTarget1 : null }), // (the post stack's variant of each shader)
+    OEWorld.uploadSliced ? OEWorld.uploadSliced(renderer, world) : null]); // (and its textures sent, in slices too)
   Promise.all([OEPlate.finish($('#loader')), warm.then(() => drawn)]).then(([flew]) => {
     $('#loader').classList.add('out');
     setTimeout(() => { $('#loader').hidden = true; OEPlate.stop($('#loader')); }, reduced ? 0 : 700);

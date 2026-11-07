@@ -1842,10 +1842,24 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     shadow.map = map;
   }
 
+  // The textures of a big object (the city behind the loader), sent in slices of about SLICE_MS before
+  // its first draw, which would otherwise upload them all, and build their mipmaps, in that one frame
+  // (issue 266: 2.4 s of the longest frame of Shibuya's load). Shares upload()'s record of what is sent.
+  async function uploadSliced(renderer, obj) {
+    if (!renderer || !renderer.initTexture || !obj) return;
+    let s0 = performance.now();
+    for (const tex of textures(obj)) {
+      if (sent.has(tex)) continue;
+      sent.add(tex);
+      try { renderer.initTexture(tex); } catch (e) { /* uploaded on its first draw instead */ }
+      if (performance.now() - s0 > SLICE_MS) { await idle(); s0 = performance.now(); }
+    }
+  }
+
   // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
   function warm(renderer, obj, camera, opts) {
     return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, warm };
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, warm };
 })();
