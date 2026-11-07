@@ -90,7 +90,7 @@ window.OEWorld = (function () {
     const ti = new Int16Array(terrBuf);
     const T = { data: Float32Array.from(ti, v => v * scene.terrain.scale), nx: scene.terrain.nx, ny: scene.terrain.ny,
       cell: scene.terrain.cell, x0: scene.frame.x[0], y1: scene.frame.y[1] };
-    return { id: cityId, DATA, scene, B, P, LM, UNC, G, N, CITY, T, ground: (x, y) => Math.max(0, S.terrainAt(T, x, y)) };
+    return { id: cityId, DATA, scene, B, P, LM, UNC, G, N, CITY, T, T0: T, ground: (x, y) => Math.max(0, S.terrainAt(T, x, y)) };
   }
 
   // surface patterns for parametric landmark materials (landmarks.json "pattern"), drawn
@@ -740,6 +740,14 @@ vec3 steepRock(vec3 c, float k) {
     const seaLoad = new Promise(res => texLoader.load(D.DATA + 'sea.jpg', t => { t.colorSpace = THREE.NoColorSpace; res(t); }, undefined, () => res(null)));
     // and the land past it (farland.js, far.*), but for ?far=off, to compare
     const farLoad = farOn ? OEFarLand.load(D.DATA) : Promise.resolve(null);
+    // inland water at its own level (inland.js, scene.json "inland"): the terrain levelled to the channels' banks
+    // and lowered under the ponds, in place, before anything stands on it
+    let IN = null;
+    if (window.OEInland && new URLSearchParams(location.search).get('inland') !== 'off') try { // ?inland=off: without, to compare
+      IN = OEInland.create(scene);
+      if (IN) for (const g of new Set([D.T0, D.T, D.Tfine].filter(Boolean))) IN.raise(g);
+    } catch (e) { console.warn('inland water: none drawn', e); IN = null; }
+    D.inland = IN;
     let shoreTex = null, Q = null;
     if (scene.shore) {
       shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
@@ -757,7 +765,17 @@ vec3 steepRock(vec3 c, float k) {
     D.quays = Q;
     const QUAY = Q && { mask: { value: Q.maskTexture() }, dist: { value: shoreTex }, box: { value: new THREE.Vector4(...Q.box) },
       bed: { value: lin(((scene.water || {}).seawall || {}).bed || '#3a3b33') } }; // (the bottom's colour, as quayBed's)
+    const HOLE = IN && IN.holeMask();
     const clipGround = sh => {
+      if (HOLE) { // over a walled channel the ground is cut away: its walls and bed are drawn instead (inland.js)
+        Object.assign(sh.uniforms, { uHole: { value: HOLE.tex }, uHoleBox: { value: new THREE.Vector4(...HOLE.box) } });
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vHoleWP;')
+          .replace('#include <project_vertex>', '#include <project_vertex>\nvHoleWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uHole; uniform vec4 uHoleBox; varying vec3 vHoleWP;')
+          .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  { vec2 huv = vec2((vHoleWP.x - uHoleBox.x) / uHoleBox.z, (uHoleBox.y + vHoleWP.z) / uHoleBox.w);
+    if (all(greaterThan(huv, vec2(0.0))) && all(lessThan(huv, vec2(1.0))) && texture2D(uHole, huv).r > 0.502) discard; }`); // (inland.js: 128 at the hole's edge)
+      }
       if (QUAY) { // out in front of a quay, above the water: the grid's ramp up to the land
         Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayDist: QUAY.dist, uQuayBox: QUAY.box, uQuayBed: QUAY.bed });
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vQuayWP;')
@@ -1065,6 +1083,81 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       console.info(`quays: ${(length / 1000).toFixed(1)} km of seawall in ${geos.length} pieces`);
     }
 
+    // inland water (inland.js): the channels' water over their beds between revetments under a coping and a
+    // railing, the ponds' and the rivers' water in their beds; the flow drifts the ripples downstream
+    let inland = null;
+    if (IN) try {
+      const ripples = rippleTexture(), IW = scene.inland || {};
+      const flow = b => { // the way the water runs: from its highest point to its lowest (still water: a slow drift)
+        let hi = null, lo = null;
+        b.rings[0].forEach((p, i) => { const z = b.wz[0][i]; if (!hi || z > hi[2]) hi = [p[0], p[1], z]; if (!lo || z < lo[2]) lo = [p[0], p[1], z]; });
+        const dx = lo[0] - hi[0], dy = lo[1] - hi[1], L = Math.hypot(dx, dy), still = hi[2] - lo[2] < 0.3 || L < 1;
+        return still ? [0.012, 0.007] : [0.09 * dx / L, 0.09 * dy / L]; // m/s of texture drift, as tiles of 5 m: about 0.45 m/s
+      };
+      const glint = sh => { if (window.OEWater && OEWater.patchGlitter) OEWater.patchGlitter(sh, SCREEN.t); streetLit(sh); };
+      const wallMats = {}, waterMats = [];
+      const concrete = () => {
+        const m = new THREE.MeshStandardMaterial({ color: lin(IW.concrete || '#a29f96'), roughness: 0.92, metalness: 0 });
+        m.defines = { USE_UV: '' };
+        m.onBeforeCompile = sh => {
+          // cast in lifts 1.5 m high and bays 10 m long, weathered: grime streaks down from the coping, darker and
+          // greener towards the water, wet at the waterline
+          sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
+            .replace('#include <color_fragment>', `#include <color_fragment>
+  { float fw = max(fwidth(vUv.x), fwidth(vUv.y)), near = 1.0 - smoothstep(0.1, 0.4, fw);
+    float lift = abs(fract(vUv.y / 1.5 + 0.5) - 0.5) * 1.5, bay = abs(fract(vUv.x / 10.0 + 0.5) - 0.5) * 10.0;
+    float joint = 1.0 - smoothstep(0.01, 0.03 + fw, min(lift, bay));
+    float bayTone = 0.9 + 0.16 * inH(vec2(floor(vUv.x / 10.0), floor(vUv.y / 1.5)));
+    float streak = 0.5 + 0.5 * sin(vUv.x * 2.3 + 3.0 * sin(vUv.x * 0.37)) * sin(vUv.x * 7.1 + 1.3);
+    float top = clamp(vUv.y / 4.5, 0.0, 1.0);
+    diffuseColor.rgb *= mix(1.0, bayTone * (1.0 - 0.35 * joint), near) * (0.8 + 0.2 * mix(streak, 1.0, top));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.47, 0.36), 1.0 - smoothstep(0.0, 0.9 + 0.2 * streak, vUv.y));
+    diffuseColor.rgb *= mix(0.55, 1.0, smoothstep(-0.25, 0.08, vUv.y)); }`);
+          streetLit(sh);
+        };
+        m.customProgramCacheKey = () => 'inland|concrete';
+        return m;
+      };
+      const stone = () => {
+        const sw = Object.assign({ stone: '#8f8678', course_m: 0.45, block_m: 0.9 }, IW.stone || {});
+        const m = new THREE.MeshStandardMaterial({ color: lin(sw.stone), roughness: 0.9, metalness: 0 });
+        PATTERNS.ashlar(m, { course_m: sw.course_m, block_m: sw.block_m, tide: true, high_water_m: 0.35 });
+        const own = m.onBeforeCompile;
+        m.onBeforeCompile = sh => { own(sh); streetLit(sh); };
+        m.customProgramCacheKey = () => 'inland|stone';
+        return m;
+      };
+      const mats = {
+        water: b => {
+          const walledBody = b.kind === 'walled';
+          const tex = ripples.clone(); tex.repeat.set(0.2, 0.2); tex.needsUpdate = true;
+          const m = new THREE.MeshStandardMaterial({ color: lin(walledBody ? (IW.colour || '#33463d') : (IW.pond_colour || '#2b3d36')), roughness: 0.06, metalness: 0,
+            transparent: true, opacity: walledBody ? 0.7 : 0.86, normalMap: tex, normalScale: new THREE.Vector2(walledBody ? 0.35 : 0.18, walledBody ? 0.35 : 0.18), depthWrite: true });
+          m.onBeforeCompile = glint;
+          m.customProgramCacheKey = () => 'inland|water';
+          waterMats.push({ tex, v: flow(b) });
+          return m;
+        },
+        bed: () => mats._bed || (mats._bed = new THREE.MeshStandardMaterial({ color: lin(IW.bed || '#4b4b43'), roughness: 0.95, metalness: 0 })),
+        wall: b => wallMats[b.walls] || (wallMats[b.walls] = b.walls === 'stone' ? stone() : concrete()),
+        coping: new THREE.MeshStandardMaterial({ color: lin(IW.coping || '#b3afa5'), roughness: 0.85, metalness: 0 }),
+        rail: new THREE.MeshStandardMaterial({ color: lin(IW.rail || '#5d6a66'), roughness: 0.5, metalness: 0.5, side: THREE.DoubleSide }),
+        slab: new THREE.MeshStandardMaterial({ color: lin(IW.concrete || '#a29f96'), roughness: 0.9, metalness: 0 }),
+      };
+      PATTERNS.railing(mats.rail, { bar_m: 0.14, rails_m: [0.06, 1.05] });
+      mats.coping.onBeforeCompile = mats.slab.onBeforeCompile = streetLit;
+      mats.bed().onBeforeCompile = streetLit;
+      const built = IN.build(mats);
+      inland = built.group;
+      // the ripples drift with the flow (seconds since the page opened)
+      const t0 = performance.now();
+      const first = inland.children.find(m => m.name === 'inland_water');
+      if (first) first.onBeforeRender = () => { const t = (performance.now() - t0) / 1000; for (const w of waterMats) w.tex.offset.set((w.v[0] * t) % 1, (w.v[1] * t) % 1); };
+      world.add(inland);
+      console.info(`inland water: ${IN.bodies.length} bodies, ${(built.length / 1000).toFixed(1)} km of revetment, ${IN.decks.length} decks`);
+    } catch (e) { console.warn('inland water: none drawn', e); inland = null; }
+
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
     await idle();
@@ -1232,10 +1325,21 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // "trees", [x, y, z, height] dm: a roof garden's, standing on its terraces): the shared Blender species
     // (trees.js) in the city's mix, else low-poly crowns on short trunks; the mapped trees'
     // heights are not mapped (7-14 m spread)
-    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nT = TR.length / 4;
+    let TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nMapped = (P.trees || []).length / 4, nFixed = ((P.trees || []).length + (P.woods || []).length) / 4;
+    if (IN) { // none stands in a channel or a pond (inland.js): a cherry planted from the canopy over the Meguro River stands on its bank
+      const keep = [], m0 = nMapped, f0 = nFixed;
+      for (let i = 0; i < TR.length; i += 4) {
+        const at = i < 4 * f0 ? IN.bank(TR[i] / 10, TR[i + 1] / 10) : [0, 0, null]; // (a landmark's own tree stays where it is put)
+        if (at) { keep.push(at[2] == null ? TR[i] : Math.round(at[0] * 10), at[2] == null ? TR[i + 1] : Math.round(at[1] * 10), at[2] == null ? TR[i + 2] : Math.round(at[2] * 10), TR[i + 3]); continue; }
+        if (i < 4 * m0) nMapped--;
+        if (i < 4 * f0) nFixed--;
+      }
+      TR = keep;
+    }
+    const nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
-      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, woods: (scene.trees || {}).woods, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, lat: D.CITY.lat, cherry: (scene.trees || {}).cherry_open, measured: nMapped, keep: small ? 0.35 : 1, farKeep: window.OEQuality ? OEQuality.city().woods : 1, fixed: ((P.trees || []).length + (P.woods || []).length) / 4, night: U.uNight, foot: D.N, small }); }
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, woods: (scene.trees || {}).woods, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, lat: D.CITY.lat, cherry: (scene.trees || {}).cherry_open, measured: nMapped, keep: small ? 0.35 : 1, farKeep: window.OEQuality ? OEQuality.city().woods : 1, fixed: nFixed, night: U.uNight, foot: D.N, small }); }
       catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
     }
     if (nT && !trees) {
@@ -1472,7 +1576,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, inland, inlandWater: IN, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1

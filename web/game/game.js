@@ -388,7 +388,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     G.props[k] = keep;
   }
-  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && !inRoad(x, y, g, 0.4) && !underDeck(x, y, g, 8) ? g : null; });
+  // (a tree on a channel's bank, by its wall, stands in the planting strip the roads' outlines run over: inland.js)
+  const byWall = (x, y) => !!(D.inland && D.inland.byWall(x, y, 1.2));
+  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && (byWall(x, y) || !inRoad(x, y, g, 0.4)) && !underDeck(x, y, g, 8) ? g : null; });
   // night.js's poles, behind the kerb: where one would be in a wall, its lamp hangs on a bracket there
   // (and one beside a deck, in the road or under it, goes)
   if (Wd.night && Wd.night.hidePoles) Wd.night.hidePoles((x, y, z) => !inWall(x, y, z, 0.1) && !inRoad(x, y, z, 0.1) && !inRoad(x, y, nav.terrain(x, y), 0.1) && !underDeck(x, y, z, 7));
