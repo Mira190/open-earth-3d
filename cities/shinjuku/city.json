@@ -62,7 +62,12 @@
     "classes": [],
     "min_area_m2": 5000,
     "sea": false,
-    "note": "No sea and no open river: the Shibuya River runs in a culvert under the station, and the ponds of Shinjuku Gyoen and Meiji Jingu are left to the aerial photo, since the viewer's water plane sits at sea level and the ground here is 20-45 m above it."
+    "note": "No sea. The Shibuya River runs in a culvert; the Kanda River's concrete channel in the north-west corner and the ponds of Shinjuku Gyoen and Meiji Jingu are drawn at their own level (inland, pipeline/inland_water.py).",
+    "inland": {
+      "note": "The Kanda River about 11 m between concrete revetments 5 m down to a shallow flow (read from photographs, not measured); ponds at the 5 m laser survey's level.",
+      "lines": [{"name": "神田川", "width_m": 11.0, "bank_to_water_m": 5.0, "water_m": 0.3, "walls": "concrete"}],
+      "classes": ["pond", "lake", "water", "river", "canal"], "min_area_m2": 250
+    }
   },
   "roofs": {"closed": ["r11664668"], "atrium_parts": {"r9215167": "r11664668"}, "glazed": ["w787547154"], "note": "pipeline/arcades.py: Sumitomo Triangle Plaza (r11664668) is a glass atrium closed on every side, not a roof on posts: its glass slopes from low eaves up to the tower (photograph, #258), and the tower's own low solids (r9215167 under 30 m, which PLATEAU files with the tower) are the atrium's other wings; the Opera City Galleria's roof (w787547154, 186 x 13 m at 26 m between the New National Theatre and Opera City) is a glazed roof spanning the walkway, with no posts under it (#258)"},
   "trees": {

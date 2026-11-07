@@ -32,7 +32,9 @@ def queries(root):
     return {
         "building": f"SELECT {COMMON}, class, subtype, has_parts FROM {base('buildings/type=building')}",
         "building_part": f"SELECT {COMMON}, building_id FROM {base('buildings/type=building_part')}",
-        "water": f"SELECT {simple} FROM {base('base/type=water')}",
+        # the OSM tags say which stretches of a river run in a culvert (tunnel=culvert), for the inland water
+        # drawn at its own level (pipeline/inland_water.py)
+        "water": f"SELECT {simple}, source_tags FROM {base('base/type=water')}",
         "land": f"SELECT {simple} FROM {base('base/type=land')}",
         "land_use": f"SELECT {simple} FROM {base('base/type=land_use')}",
         # the halls of shrines, temples and churches, round which pipeline/woods.py plants their grounds' canopy

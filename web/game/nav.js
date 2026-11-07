@@ -19,6 +19,7 @@ window.OENav = (function () {
 
   function create(D, DSM) {
     const G = D.G, T = D.quays ? D.quays.raise(D.T) : D.T; // the ground as drawn: level up to a quay's wall
+    const inland = D.inland || null; // inland water (inland.js): walkers stop at a channel's railing and a pond's edge
     // ---------------------------------------------------------- water (5 m, packed bits)
     const bytesOf = b => (typeof b === 'string' ? Uint8Array.from(atob(b), c => c.charCodeAt(0)) : b); // (bytes from game.bin, base64 from game.json)
     const wm = G.water, bytes = bytesOf(wm.bits);
@@ -828,6 +829,7 @@ window.OENav = (function () {
       if (f.z < z - DROP) return { ok: false, why: 'drop' };
       if (nogo && f.kind !== 'pier' && nogo.data[cellOf(x, y)] > 0) return { ok: false, why: 'nogo' };
       if (keepOff && f.kind === 'ground' && keepOff(x, y)) return { ok: false, why: 'keep_off' };
+      if (inland && f.kind === 'ground' && inland.water(x, y)) return { ok: false, why: 'keep_off' }; // a channel's edge, a pond's (inland.js)
       if (OP && f.kind === 'ground') { const o = OP.at(G, x, y); if (o && OP.blocked(o, x, y)) return { ok: false, why: 'wall' }; } // (a building there, or the far land's edge)
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
       if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD) && triHit(x, y, R, f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cell, and then its triangles, withoutFine)
