@@ -50,8 +50,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1896298,
-   "game": 2799521
+   "model": 1896314,
+   "game": 2799537
   }
  },
  {
@@ -104,8 +104,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1320192,
-   "game": 1752198
+   "model": 1320187,
+   "game": 1752193
   }
  },
  {
@@ -140,8 +140,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 6260970,
-   "game": 6643235
+   "model": 6243081,
+   "game": 6625346
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -196,8 +196,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1108615,
-   "game": 1227122
+   "model": 1106722,
+   "game": 1225229
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
@@ -246,8 +246,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 655419,
-   "game": 750850
+   "model": 653560,
+   "game": 748991
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
@@ -296,8 +296,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 739219,
-   "game": 877701
+   "model": 726851,
+   "game": 865333
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
@@ -342,8 +342,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1843732,
-   "game": 2320043
+   "model": 1843718,
+   "game": 2320029
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -1089,8 +1089,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 4300715,
-   "game": 4853304
+   "model": 4291927,
+   "game": 4844516
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1822,8 +1822,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 2468250,
-   "game": 2911556
+   "model": 2462593,
+   "game": 2905899
   },
   "group_meta": {
    "native": "\u6771\u4eac",
