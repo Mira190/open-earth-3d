@@ -83,6 +83,42 @@ the model viewer's opening shot. The second is the tour's second stop. Matched t
 - **The light**: the city keys its own grade (`game.look.grade`): a brighter, more saturated blue
   hour, a vivid day and warm amber street lamps (`night.street`).
 
+- **The Skyline site's ground** (issue 269, `cities/queenstown/site.py`). At 1 m a pixel the aerial photograph
+  under the restaurant shows its leaning roof and shadow draped on the slope, and the game's near ground read
+  that grey as pavers. Round the restaurant the ground is now drawn:
+  - **The floor** is laid on the game's 5 m terrain, on the very triangles the ground near the player is drawn
+    with (south-west to north-east diagonals), and the photograph is clipped from under it (landmarks.json `clip`).
+    A skirt hangs from its edge, where the viewer's 10 m ground stands lower.
+  - **Its painting** (`skyline_site.jpg`, 7 cm a pixel). Over a few metres its colour is the photograph's, so
+    from the air it reads as the photograph does. Where the photograph has the roofs, their skylit blue shadow
+    and the old pale tracks, that colour is filled in from the ground about them. Over it lies drawn detail:
+    tussock clumps, Otago schist on ground steeper than about 40° and in scattered outcrops (platy foliation,
+    lichen, joints), needle litter under the firs (the woods map), and schist chip round the buildings' feet.
+    The last 6 m blend into the photograph's own colour.
+  - **What is mapped**: OpenStreetMap's Arrow and Dart luge tracks (`attraction=summer_toboggan`,
+    `surface=paved`), smoothed over 7 m, since their traced nodes wander a metre either side. They are built as
+    2.2 m of asphalt between 0.22 m concrete kerbs in 1 m lengths. Footways and steps are drawn as pavers, and
+    paths as compacted schist gravel (ODbL, fetched once into `site_osm.json`).
+  - **Before, after, and from the air:**
+
+    | Before | The floor, day | Dusk | Night |
+    |---|---|---|---|
+    | ![](../images/queenstown/site-before-day.jpg) | ![](../images/queenstown/site-floor-day.jpg) | ![](../images/queenstown/site-floor-dusk.jpg) | ![](../images/queenstown/site-floor-night.jpg) |
+    | **From the air** | **The luge tracks** | **Phone, dusk** | |
+    | ![](../images/queenstown/site-floor-air.jpg) | ![](../images/queenstown/site-luge-day.jpg) | ![](../images/queenstown/phone-site-dusk.jpg) | |
+- **Behind the deck.** The LiDAR's terraces stand 2–9 m back from the drawn deck, because the face is not
+  parallel to it. A graphite steel planter 0.45 m high now runs along the deck's back edge, with a planted bed
+  of tussock behind it out to the glass and a fascia under its edge. The planter is solid to the walkers,
+  who keep to the deck strip.
+- **The deck after dark.** The boards take the night system's light (`street_lit`). Soft warm pools
+  (`landmark_glows`, 2.6 m wide) lie along the balustrade where the handrail's LED strip and the new step
+  lights at the posts' feet would put them down. They are kept dim (0.022), so the boards read warm, never
+  white or orange.
+
+  | The planter, day | The deck, dusk | Night | Phone, night |
+  |---|---|---|---|
+  | ![](../images/queenstown/deck-planter-day.jpg) | ![](../images/queenstown/deck-lights-dusk.jpg) | ![](../images/queenstown/deck-lights-night.jpg) | ![](../images/queenstown/phone-deck-night.jpg) |
+
 Games looked at for the arrival, for their design only: Microsoft Flight Simulator's photogrammetry
 approach into Queenstown sets the town in its mountains. The vista points of open-world games such
 as Assassin's Creed and Ghost of Tsushima start the player where the whole map can be read.
@@ -107,6 +143,7 @@ Nothing was taken from either but that idea.
 | The land past the frame | LINZ, New Zealand Contour-Interpolated 8m DEM (read at 32 m); LINZ, New Zealand 10m Satellite Imagery (2025–2026); ESA WorldCover 2021; NASA Black Marble | CC BY 4.0; CC BY 4.0; CC BY 4.0; public domain |
 | Climate | NIWA, Queenstown Airport, 1991–2020 normals (via Wikipedia's climate table) | — |
 | Walter Peak (past the frame) | LINZ New Zealand Contour-Interpolated 8m DEM (no LiDAR covers it); LINZ Otago 0.15m Rural Aerial Photos (2025–2026), RGBNIR, 16-bit, read at 0.5 m; Overture Maps 2026-10-21.0: Lake Wakatipu, the wharf, the ferry terminal and the buildings | CC BY 4.0; CC BY 4.0; ODbL |
+| The Skyline site's luge tracks, footways, paths | OpenStreetMap (API, November 2026), `cities/queenstown/site_osm.json` | ODbL |
 | The deck's access, the Earnslaw's run | Otago Daily Times (20 March 2026), Queenstown Times (5 June 2026), Naylor Love's project page; RealNZ's TSS Earnslaw and Walter Peak pages and insider guide | read for facts |
 
 ### New in the pipeline
@@ -214,8 +251,8 @@ downhill.
   - *From a photograph* (John Harwood, 2007, CC BY 2.0): the rubble walls with pale freestone
     dressings, the steep slate roofs, paired lancets with leaded lights between buttresses, the
     tower's louvred belfry lancets, and the octagonal slate spire with its cross. The spire's tip
-    is drawn at 17 m; the LiDAR caught 15.2 m below the point. A 1 m surface model rarely returns the
-    tip of a slender spire, and no height is published, so the drawn height stands.
+    is drawn at 16 m (issue 269). The LiDAR's cell at the tower's centre reads 15.2 m over the bare earth,
+    and a 1 m surface model misses a slender tip by up to a metre; no height is published.
   - *The lych-gate* is in memory of Thomas Hicks (the parish). QLDC protects it (District Plan,
     protected feature 39) on the church's lot at the corner of Camp and Church Streets: the lot's
     address, not the gate's own place. It is drawn in oak under a slate gable, on the path beside the
@@ -360,7 +397,10 @@ change applies to every city's woods; Queenstown's are where it counts.
 
 ## 7. Limitations and follow-ups
 
-- **The deck.** The 430 m² deck Skyline opened in March 2026 is still not drawn. Its plans are not
+- **The deck.** The 430 m² deck Skyline opened in March 2026 is still not drawn. Its 430 m² comes from the 2016
+  consent RM160647 (Environment Court, 2017 NZEnvC 124; final 2019), whose plans sit behind QLDC's eDocs login.
+  LINZ's newest RGB imagery of the town (12 February – 3 March 2026) predates the opening, and the Otago
+  2025–26 survey has only its near-infrared draft so far. Its plans are not
   published, the aerial photographs predate it, and no photograph found (Commons to April 2026, the
   opening coverage) shows its outline. The press gives its area (430 m², or 460 m² in the Queenstown
   Times) but not its shape. Skyline says it reaches its full size only when the old complex is
@@ -370,12 +410,23 @@ change applies to every city's woods; Queenstown's are where it counts.
   of rise, 35 cabins at 5 m/s). The photographs show six structures, and those are what is drawn.
   The ODT's report of the build says three towers were flown in by helicopter and seven set by crane
   and digger, but no published profile or data sheet places them or gives their heights, and
-  counting the portals' leg pairs as towers gives seven, not 10.
-- **The heritage landmarks.**
-  - Eichardt's Moorish arch is drawn although no photograph since 2001 shows it.
-  - St Peter's lych-gate stands where the LiDAR shows a roof over the path; QLDC's listing gives
-    only the lot. The spire's tip at 17 m is the drawn height, not a measured one.
+  counting the portals' leg pairs as towers gives seven, not 10. Searched again in November 2026
+  (Doppelmayr, lift-world, the ODT, QLDC consents): no positions or heights are published.
+- **The heritage landmarks** (checked again for issue 269; Commons still refused with 600 s back-offs, so
+  other sources were used):
+  - **St Peter's spire.** Its tip is now 16 m, read from LINZ's 2021 1 m surface model (CC BY 4.0). The cell
+    at the tower's centre stands 15.2 m over the bare earth, and the tower's flat top 9.4 m, which matches the
+    drawn parapet. A 1 m posting misses a slender tip by up to a metre. No published height was found
+    (Heritage NZ List 2341, QLDC's inventory, the parish's history).
+  - **The lych-gate** is QLDC's own inventory item 39 ("Corner Camp and Church Street", District Plan
+    chapter 26). That names the corner lot, not the frontage. It stays where the LiDAR shows a roof over the
+    path from Camp Street, beside the tower. A user-recorded waymark puts it 12 m west, near the steps.
+  - **Eichardt's Moorish arch.** Heritage NZ's List entry 7439 records the horseshoe-arched door on Ballarat
+    Street and its balcony door as part of the 1929–36 Murchison alterations. No source says whether the 2001
+    restoration kept them. It is drawn with them, and with the balustraded parapet back.
   - Neither church nor cottage has its interior.
 - **Walter Peak.** No LiDAR covers it, so its ground is the 8 m national DEM, and its buildings'
-  heights, walls and forms are judged; the gardens' trees are only in the photograph. The crossing
+  heights, walls and forms are judged; the gardens' trees are only in the photograph. The 2021 Queenstown LiDAR
+  ends at 168.576°E, west of the town but east of Walter Peak (168.52°E). QLDC's district-wide LiDAR is due
+  in 2026–27. The crossing
   runs at the Earnslaw's service speed (about 30 minutes) rather than the timetable's 45.
