@@ -15,7 +15,7 @@ const [,, city = 'shinjuku', secs = '300', jid = ''] = process.argv;
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   if (pinned) await p.evaluate(spec => { const g = window.__game, m = /(\d\d?):(\d\d)$/.exec(spec), min = +m[1] * 60 + +m[2]; if (Math.abs(g.clock.min - min) < 30) { g.setClock(g.clock.y, g.clock.m, g.clock.d, min); g.crowdAuto(true); } }, pinned.spec);
-  if (process.env.BUSY) await p.evaluate(() => { globalThis.BUSY = 1; });
+  if (process.env.BUSY) await p.evaluate(v => { globalThis.BUSY = v; }, +process.env.BUSY);
   const r = await p.evaluate(([secs, jid]) => {
     const g = window.__game, JN = g.junctions, C = g.cars.C, out = [];
     const S = JN.J.filter(j => j.scramble && (!jid || String(j.id) === jid));
@@ -26,8 +26,8 @@ const [,, city = 'shinjuku', secs = '300', jid = ''] = process.argv;
         const s = stat.get(j.id), key = `${j.ph}${j.st}`;
         if (s.last !== key) { s.phases.push(`${t}:${key}`); if (j.ph === 3 && j.st === 'g') s.cycles++; s.last = key; }
         if (j.ph === 3 && j.st === 'r') s.redHeld++;
-        // (with BUSY=1: who keeps it busy through the cars' green)
-        if (globalThis.BUSY && j.ph < 2 && j.st === 'g' && j.busy > 0 && t % 10 === 0) {
+        // (with BUSY=1: who keeps it busy through the cars' green; BUSY=2: and through the all-red after the walk)
+        if (globalThis.BUSY && j.busy > 0 && ((j.ph < 2 && j.st === 'g' && t % 10 === 0) || (globalThis.BUSY > 1 && j.ph === 3 && j.st === 'r' && j.t > 4 && t % 3 === 0))) { // (BUSY=2: through the all-red after the walk too)
           const cr = g.crowd, who = [];
           for (let i = 0; i < cr.active; i++) {
             const q = cr.P[i];

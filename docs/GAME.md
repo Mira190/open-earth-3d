@@ -1042,6 +1042,45 @@ yields. In this game every car's intent is exact, so:
   and a banned turn 400 m, so the way found breaks the rules for the fewest metres it must. (The
   way a ride comes for you is searched as before: out of your sight it comes in good time, and held
   to this a hailed taxi in Shinjuku was given a kerb 31 m from you.)
+- **Back out of a one-way street (#283).** A car or a ride blocked on a one-way street (a jam
+  that won't clear, a wall across it) couldn't turn round: a turn in the road would put it head on
+  into the traffic in its one lane, so it stood until out of sight. Now it backs along its lane to
+  the junction behind and takes another way out there, as a driver does (`actors.js` `reverse`,
+  `game.js` `reversePoses`: straight back, then the tail swung away from the way out on its lock,
+  then forward into that way's lane on a curve no tighter than its lock). The cars stopped behind
+  it on the street back out first; a ride asks a car in its way to back off and never drives into
+  it, and the traffic sees where it goes next and stops short of it. A junction more than 80 m
+  back, it waits as before. A car facing one that won't give way on a street too narrow to turn
+  in backs out the same way (`tools/reverse_step.js`).
+- **Single-track manners on narrow stretches.** Of two coming at each other where a street has
+  room for one, the one in the stretch goes first; of two both in it or both short of it, the one
+  nearer the far end (its passing place); and none waits on one standing outside the stretch,
+  queued at its own line, which waits its turn once the other is in. One waiting there is no
+  longer counted as queueing (it is not behind the other), so after 20 s it backs out or turns
+  round; the check holds it to 30 s.
+- **A bus takes a corner as a bus does.** The traffic took a junction's corner at its full
+  50 km/h: a bus's heading swung 15 to 25 degrees in a tenth of a second. Now a bus looks along its
+  way from its middle on and takes each bend at no more than 1.6 m/s² of sideways pull, braking for
+  it in time and gathering speed out of it gently (the bend read over 6 m either side, since the
+  roads' lines meet at sharp corners). At a tight corner, a turn on the kerb side, it swings up to
+  1.5 m wide, its front axle following that path (on past the next piece of road, which inside a
+  junction can be a few metres long) and its rear axle drawn after it along the body, so it comes
+  round over its wheelbase; where that would put its body into a post its lane's own pose keeps
+  clear of, it keeps to the lane's pose. `tools/bus_turn.js` in Tokyo: the biggest jump in heading
+  3 to 6 degrees a tenth of a second (10 to 25 before), the rear axle's sideways slip 0.06 to
+  0.5 m/s, turns taken at 2 to 4 m/s. The cars were slowed the same way at first (3.5 m/s², a
+  corner at 19 km/h, as a ride's driver takes it), but the queues at the lights grew with it and a
+  taxi in Shinjuku took 50 s to come, not 10: the junctions' timings want tuning to it first, so the
+  cars keep their speed round a corner for now (a follow-up).
+- **A short piece out of a signal clears first.** Shinjuku's junction 1103, 27 m from the scramble
+  1105, has no signals; between its line and 1105's there is room for one car. A car out of 1105's
+  turn waited there to give way, and the queue behind it at 1105 stood through its greens, a minute
+  at a time. Now at a junction without signals the arm of a piece too short to wait on (12 m
+  between the lines), out of a signalled junction just behind, ranks first, so it clears the box
+  behind as the box-junction rule asks (`junctions.js` `rankOf`): the head of 1105's arm 2 stood
+  24 s at most in a run where it had stood 56 s. A scramble walker stood still in the gutter a pace
+  from its spot counts as at the kerb, not out crossing: it held the all-red after the walk 10 to
+  15 s at a time.
 
 #### Junctions and traffic lights
 
