@@ -3311,23 +3311,46 @@ def crossing_wall_signs(K, lm):
 #
 # The open-air deck on the roof of Shibuya Scramble Square's east tower (opened 1 November 2019; Nikken
 # Sekkei and Nomura, with Rhizomatiks): about 2,500 m2 at 229 m (SHIBUYA SKY; Wikipedia). Visitors enter at
-# 14F, ride the Hitachi lifts of SKY GATE to 45F at 360 m a minute, and climb from the 46F gallery to the
-# roof on an escalator walled in glass. On the roof: SKY EDGE, the corner over the scramble where the glass
-# is lowest; GEO COMPASS, the highest point, a raised deck with a compass on its floor; CLOUD HAMMOCK, nets
-# to lie in; and CROSSING LIGHT, 18 searchlights after dark. The deck is put at PLATEAU's lower roof tier
-# and GEO COMPASS reaches its top; the plan of the roof furniture is drawn from photographs.
+# 14F, ride the Hitachi lifts of SKY GATE to 45F at 360 m a minute, and come out from the 46F gallery at the
+# foot of the roof's west and north edges, in a channel walled in glass under a net, where an escalator and
+# a broad stair climb beside the glass to the deck: the escalator up the north edge (signed SKY STAGE,
+# ROOFTOP at its foot), and the way down the west edge, riding towards Shinjuku with the scramble far below
+# on the left. That ride, at sunset and in the blue hour, is the roof's most photographed view. On the deck:
+# SKY EDGE, the corner where the deck meets the channels, where the glass is lowest and lines of light in the
+# floor run out to it; GEO COMPASS, the highest point, a raised deck with a compass on its floor; CLOUD
+# HAMMOCK, nets to lie in; and CROSSING LIGHT, 18 searchlights after dark. The deck is put at PLATEAU's lower
+# roof tier and GEO COMPASS reaches its top; the channels follow the band along the west and north edges that
+# PLATEAU surveyed 9 m lower. The plan and the furniture are drawn from photographs (Wikimedia Commons, 2019-23).
 
 SCRAMBLE_SQ = "渋谷スクランブルスクエア"
-SKY = {"floor_46_below_m": 5.5, "escalator_deg": 30.0, "escalator_ms": 0.5, "fence_m": 2.0, "edge_fence_m": 1.3, "compass_m": 24.0,
-       "lift_m_per_min": 360.0, "searchlights": 18, "opened": "2019-11-01", "area_m2": 2500}
+SKY = {"floor_46_below_m": 9.0, "channel_m": 6.4, "door_strip_m": 3.0, "escalator_deg": 30.0, "escalator_ms": 0.5,
+       "stair_rise_m": 0.15, "stair_going_m": 0.30, "fence_m": 2.0, "edge_fence_m": 1.1, "rim_fence_m": 1.25, "net_m": 2.4,
+       "compass_m": 24.0, "lift_m_per_min": 360.0, "searchlights": 18, "opened": "2019-11-01", "area_m2": 2500}
 
 MATERIALS.update({
-    "deck": {"color": "#b4ada3", "roughness": 0.85, "metalness": 0.05},          # the roof's pale paving (GSI aerial photo)
-    "deck_light": {"color": "#c2bbb1", "roughness": 0.8, "metalness": 0.05},
+    "deck": {"color": "#c4b29b", "roughness": 0.85, "metalness": 0.0},          # the deck's pale timber-look boards (photographs)
+    "deck_light": {"color": "#cfbea8", "roughness": 0.82, "metalness": 0.0},
     "glass": {"color": "#bcd6de", "roughness": 0.05, "metalness": 0.1, "opacity": 0.28},
     "rubber": {"color": "#1a1a1a", "roughness": 0.6, "metalness": 0.0},
     "net": {"color": "#e8e8e4", "roughness": 0.9, "metalness": 0.0, "opacity": 0.75},
     "led": {"color": "#cfe8ff", "roughness": 0.3, "metalness": 0.0, "emissive": "#9fd2ff", "glow": 3.0},
+    # the channels: white steel frames, a net of fine wire over them, glass cladding on the deck's flank, the
+    # escalator's grey steps edged in yellow, the stair's timber treads on white risers, white stone at 46F
+    "frame_white": {"color": "#e3e5e6", "roughness": 0.4, "metalness": 0.25},
+    "frame_air": {"color": "#e3e5e6", "roughness": 0.4, "metalness": 0.25, "solid": False},
+    "wire": {"color": "#d6d9dc", "roughness": 0.5, "metalness": 0.4, "solid": False},
+    "glass_clad": {"color": "#3a4856", "roughness": 0.32, "metalness": 0.08},
+    "door_glass": {"color": "#7f8b93", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffd29a", "glow": 0.7},
+    "esc_step": {"color": "#55595e", "roughness": 0.45, "metalness": 0.6},
+    # an escalator's glass balustrades: a walker is held on the steps by the drop beside them, not by the glass,
+    # which stands closer to the steps than a walker's body is wide
+    "esc_glass": {"color": "#bcd6de", "roughness": 0.05, "metalness": 0.1, "opacity": 0.28, "solid": False},
+    "esc_clad": {"color": "#c3c8cc", "roughness": 0.3, "metalness": 0.55},
+    "esc_yellow": {"color": "#e8bb10", "roughness": 0.55, "metalness": 0.0},
+    "tread": {"color": "#d2b994", "roughness": 0.8, "metalness": 0.0},
+    "riser": {"color": "#ecebe7", "roughness": 0.7, "metalness": 0.0},
+    "stone_white": {"color": "#dedcd6", "roughness": 0.6, "metalness": 0.0},
+    "foot_light": {"color": "#f2ead8", "roughness": 0.5, "metalness": 0.0, "emissive": "#ffd59a", "glow": 1.6},
 })
 
 
@@ -3343,16 +3366,53 @@ def roof_frame(ring):
 
 
 def sky_plan(ring, toward):
-    """Where things go on the roof: the frame turned so that +u, +v points at the SKY EDGE corner (the one
-    nearest the scramble), the escalator pit near the opposite corner."""
+    """The roof's frame, turned so that +u, +v points at the corner nearest the scramble (west-north-west):
+    +u runs to the north edge, +v to the west edge."""
     c, a1, a2, h1, h2 = roof_frame(ring)
     d = np.asarray(toward) - c
     a1 = a1 if d @ a1 > 0 else -a1
     a2 = a2 if d @ a2 > 0 else -a2
-    pit_len, pit_w = 15.0, 3.6
-    pit_c = c - a1 * (h1 - 9.5 - pit_len / 2) - a2 * (h2 - 8.0)
-    pit = [pit_c + a1 * su * pit_len / 2 + a2 * sv * pit_w / 2 for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-    return {"c": c, "a1": a1, "a2": a2, "h1": h1, "h2": h2, "pit_c": pit_c, "pit": pit, "pit_len": pit_len, "pit_w": pit_w}
+    return {"c": c, "a1": a1, "a2": a2, "h1": h1, "h2": h2}
+
+
+def sky_flights(h1, h2):
+    """SHIBUYA SKY's channels, in the roof's frame (u, v) (sky_plan). Each runs down an edge from the deck to the
+    46F level: the north one (u = h1) along -v, the west one (v = h2) along -u, and they meet in the corner at
+    the foot, where the way out from 46F is. A flight's own frame: s up the flight from its foot (the corner's
+    side of the foot is a strip D long where 46F's doors are, then the corner), t in from the outer glass.
+    Across a channel W wide: the outer glass, the escalator, a line of columns, the stair, the deck's flank.
+    The escalator rises at 30° between a 2 m landing at its foot and 2.2 m at its head; the stair in two legs
+    of 0.15 m risers on 0.30 m goings with a 1.5 m landing between them."""
+    W, R, D = SKY["channel_m"], SKY["floor_46_below_m"], SKY["door_strip_m"]
+    run = R / math.tan(math.radians(SKY["escalator_deg"]))
+    L = 2.0 + run + 2.2
+    half = int(round(R / SKY["stair_rise_m"] / 2))
+    leg = half * SKY["stair_going_m"]
+    vb, ub = h2 - W - D, h1 - W - D
+    flights = [{"id": "n", "dir": (0.0, -1.0), "o": (h1, vb), "inn": (-1.0, 0.0), "up": True},
+               {"id": "w", "dir": (-1.0, 0.0), "o": (ub, h2), "inn": (0.0, -1.0), "up": False}]
+    for f in flights:
+        f["uv"] = (lambda f: lambda s, t: (f["o"][0] + f["dir"][0] * s + f["inn"][0] * t, f["o"][1] + f["dir"][1] * s + f["inn"][1] * t))(f)
+    rect = lambda u0, u1, v0, v1: [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
+    return {"W": W, "R": R, "D": D, "run": run, "L": L, "leg": leg, "half": half, "flights": flights,
+            "esc": [[0.0, 0.0], [2.0, 0.0], [2.0 + run, R], [L, R]],
+            "stair": [[0.0, 0.0], [leg, R / 2], [leg + 1.5, R / 2], [2 * leg + 1.5, R], [L, R]],
+            "t": {"glass": 0.12, "esc": 1.2, "esc_hw": 0.6, "col": 2.12, "st0": 2.45, "st1": W - 0.08},
+            "edge": (h1 - W, h2 - W),          # SKY EDGE: the deck's corner over the channels' foot
+            "north": rect(h1 - W, h1, vb - L, h2), "west": rect(ub - L, h1 - W, h2 - W, h2)}
+
+
+def sky_channel_poly(plan, grow=1.0):
+    """The two channels as one polygon in the local frame, run out past the roof's edges by `grow`."""
+    c, a1, a2 = plan["c"], plan["a1"], plan["a2"]
+    F = sky_flights(plan["h1"], plan["h2"])
+    W2 = lambda u, v: tuple(c + a1 * u + a2 * v)
+    h1, h2 = plan["h1"], plan["h2"]
+    (nu0, nv0), _, (nu1, nv1), _ = F["north"]
+    (wu0, wv0), _, (wu1, wv1), _ = F["west"]
+    north = Polygon([W2(u, v) for u, v in ((nu0, nv0), (h1 + grow, nv0), (h1 + grow, h2 + grow), (nu0, h2 + grow))])
+    west = Polygon([W2(u, v) for u, v in ((wu0, wv0), (nu0 + 0.01, wv0), (nu0 + 0.01, h2 + grow), (wu0, h2 + grow))])
+    return north.union(west)
 
 
 def solid_base(q, ctx):
@@ -3360,12 +3420,18 @@ def solid_base(q, ctx):
     return max(min(ctx.ground(x, y) for x, y in q.simplify(0.15, preserve_topology=True).exterior.coords), 0.0)
 
 
+def largest(p):
+    """A polygon, or the largest part of a cut that fell apart (None if nothing is left)."""
+    if p.is_empty:
+        return None
+    return p if p.geom_type == "Polygon" else max((g for g in getattr(p, "geoms", []) if g.geom_type == "Polygon"), key=lambda g: g.area, default=None)
+
+
 def sky_building(b, g, geoms, ctx):
     """Scramble Square's roof becomes SHIBUYA SKY's deck: the top tier is lowered to the deck (PLATEAU's
-    lower roof tier), and the escalator's well is cut down to the 46F floor. Each solid stands on its own
-    ground, a few centimetres apart, so the deck's solids get the heights that put their tops at one level,
-    the one the deck is drawn at. The thin band PLATEAU has 9 m lower along the west and north edges
-    (190 m², under the edge of the deck in the model) is raised to it."""
+    lower roof tier), and the channels down the west and north edges are cut to the 46F level (the band
+    PLATEAU has 9 m lower along those edges). Each solid stands on its own ground, a few centimetres apart,
+    so the deck's solids get the heights that put their tops at one level, the one the deck is drawn at."""
     tops = sorted({round(q[2], 1) for q in geoms}, reverse=True)
     top = tops[0]
     deck = next((t for t in tops[1:] if 0.8 <= top - t <= 4.0), round(top - 2.0, 1))
@@ -3373,7 +3439,7 @@ def sky_building(b, g, geoms, ctx):
     ring = [[round(x, 2), round(y, 2)] for x, y in main[0].exterior.coords]
     toward = scramble_node(ctx)
     plan = sky_plan(ring, toward)
-    pit = Polygon(plan["pit"])
+    chan = sky_channel_poly(plan)
     c, a1, a2, h1, h2 = plan["c"], plan["a1"], plan["a2"], plan["h1"], plan["h2"]
     rect = Polygon([c + a1 * su * h1 + a2 * sv * h2 for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))])
     ground = round(max(min(ctx.ground(x, y) for x, y in ring), 0.0), 2)
@@ -3381,14 +3447,17 @@ def sky_building(b, g, geoms, ctx):
     up_to = lambda p, zdm: (zdm - round(solid_base(p, ctx) * 10)) / 10  # the height that puts p's top there
     out = []
     for q in geoms:
-        p = main[0].difference(pit.buffer(0.3, join_style=2)) if q is main else q[0]
-        if q is main or (q[2] > deck - 12.0 and p.intersection(rect).area > 0.5 * p.area):
+        if q is main or (q[2] > deck - 12.0 and q[0].intersection(rect).area > 0.5 * q[0].area):
+            p = largest(q[0].difference(chan))
+            if p is None:
+                continue
             q = [p, q[1], up_to(p, z_dm), q[3], q[4], *q[5:]]
             ctx.bare_roof(q)   # the deck's furniture is SHIBUYA SKY's (sky_meshes), not generated plant
         elif round(q[2], 1) > deck:
-            q = [p, q[1], deck, q[3], q[4], *q[5:]]
+            q = [q[0], q[1], deck, q[3], q[4], *q[5:]]
         out.append(q)
-    out.append([pit, 0.0, up_to(pit, z_dm - round(SKY["floor_46_below_m"] * 10)), main[3], None, *main[5:]])
+    floor = largest(main[0].intersection(chan))
+    out.append([floor, 0.0, up_to(floor, z_dm - round(SKY["floor_46_below_m"] * 10)), main[3], None, *main[5:]])
     ctx.bare_roof(out[-1])
     ctx.landmarks["_sky"] = {"ring": ring, "roof_top_m": top, "deck_m": deck, "ground_m": ground, "deck_z": z_dm / 10,
                              "toward": [round(float(toward[0]), 1), round(float(toward[1]), 1)]}
@@ -3396,58 +3465,85 @@ def sky_building(b, g, geoms, ctx):
 
 
 def sky_searchlights(c, a1, a2, h1, h2):
-    """The roof's searchlights: one in each corner, the rest spaced along the edges."""
+    """The roof's searchlights: one in each corner, the rest spaced along the edges; those that would stand in
+    the channels stand on the deck's rim over them."""
     out = [c + a1 * su * (h1 - 1.0) + a2 * sv * (h2 - 1.0) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
     while len(out) < SKY["searchlights"]:
         k = len(out) - 4
         t = (k + 1) / (SKY["searchlights"] - 3)
         out.append([c + a1 * (-h1 + 2 * h1 * t) - a2 * (h2 - 1.0), c + a2 * (-h2 + 2 * h2 * t) + a1 * (h1 - 1.0),
                     c + a1 * (h1 - 2 * h1 * t) + a2 * (h2 - 1.0), c + a2 * (h2 - 2 * h2 * t) - a1 * (h1 - 1.0)][k % 4])
-    return out
+    F = sky_flights(h1, h2)
+    eu, ev = F["edge"]
+    rim = []
+    for q in out:
+        u, v = float((q - c) @ a1), float((q - c) @ a2)
+        if u > eu - 0.5 and v > F["north"][0][1] - 0.5:
+            u = eu - 1.0
+        if v > ev - 0.5 and u > F["west"][0][0] - 0.5:
+            v = ev - 1.0
+        rim.append(c + a1 * u + a2 * v)
+    return rim
+
+
+def sky_record(s):
+    """landmarks.shibuya_sky, from what the roof's build measured (s: ring, toward, deck_z, ground_m, deck_m,
+    roof_top_m); pipeline sky_finalize and cities/shibuya/sky_refit.py both write it."""
+    p = sky_plan(s["ring"], s["toward"])
+    z = s["deck_z"]
+    c, a1, a2, h1, h2 = p["c"], p["a1"], p["a2"], p["h1"], p["h2"]
+    g = Polygon(s["ring"])
+    _, mid, n, _ = facing_edges(g, s["toward"])[0]
+    door = np.asarray(mid) + n * 3.0                         # the lift's street door: the foot of the facade facing the scramble
+    beams = sky_searchlights(c, a1, a2, h1, h2)
+    r2 = lambda v: [round(float(v[0]), 2), round(float(v[1]), 2)]
+    return {"centre": r2(c), "a1": [round(float(a1[0]), 5), round(float(a1[1]), 5)], "a2": [round(float(a2[0]), 5), round(float(a2[1]), 5)],
+            "half": [round(h1, 2), round(h2, 2)], "deck_z": round(z, 2), "z0": round(z - SKY["floor_46_below_m"], 2),
+            "ground_m": s["ground_m"], "deck_m": s["deck_m"], "roof_top_m": s["roof_top_m"], "ring": s["ring"], "toward": s["toward"],
+            "door": r2(door), "door_z": s.get("door_z"),
+            "beams": [[round(float(q[0]), 1), round(float(q[1]), 1), round(z + 1.0, 1)] for q in beams],
+            "at": r2(c), "top_m": round(z + 2.0, 1), **SKY}
 
 
 def sky_finalize(ctx):
     s = ctx.landmarks.pop("_sky", None)
     if not s:
         return
-    node = s["toward"]
-    p = sky_plan(s["ring"], node)
-    z = s["deck_z"]
-    c, a1, a2, h1, h2 = p["c"], p["a1"], p["a2"], p["h1"], p["h2"]
-    # the lift's street door: the foot of the facade that faces the scramble, a few metres out
-    g = Polygon(s["ring"])
-    _, mid, n, _ = facing_edges(g, node)[0]
-    door = np.asarray(mid) + n * 3.0
-    esc_rise = SKY["floor_46_below_m"]
-    esc_run = esc_rise / math.tan(math.radians(SKY["escalator_deg"]))
-    f = a1                                      # the escalator climbs along +a1, towards the SKY EDGE end
-    e0 = p["pit_c"] - f * (p["pit_len"] / 2 - 2.2)  # its foot, past a landing at 46F
-    beams = sky_searchlights(c, a1, a2, h1, h2)
-    r2 = lambda v: [round(float(v[0]), 2), round(float(v[1]), 2)]
-    ctx.landmarks["shibuya_sky"] = {
-        "centre": r2(c), "a1": [round(float(a1[0]), 5), round(float(a1[1]), 5)], "a2": [round(float(a2[0]), 5), round(float(a2[1]), 5)],
-        "half": [round(h1, 2), round(h2, 2)], "deck_z": round(z, 2), "ground_m": s["ground_m"], "deck_m": s["deck_m"],
-        "roof_top_m": s["roof_top_m"], "pit": [r2(q) for q in p["pit"]], "pit_c": r2(p["pit_c"]), "pit_len": p["pit_len"], "pit_w": p["pit_w"],
-        "escalator": {"origin": r2(e0), "axis": [round(float(f[0]), 5), round(float(f[1]), 5)], "run_m": round(esc_run, 2), "rise_m": esc_rise,
-                      "z0": round(z - esc_rise, 2), "half_width": 0.6, "plate_end": round(p["pit_len"] - 2.2 + 0.4, 2)},
-        "door": r2(door), "door_z": round(ctx.ground(*door), 2),
-        "beams": [[round(float(q[0]), 1), round(float(q[1]), 1), round(z + 1.0, 1)] for q in beams],
-        "at": r2(c), "top_m": round(z + 2.0, 1), **SKY,
-    }
-    ctx.labels["SHIBUYA SKY 229 m"] = [round(float(c[0]), 1), round(float(c[1]), 1), round(z + 14, 1)]
+    rec = sky_record(s)
+    rec["door_z"] = round(ctx.ground(*rec["door"]), 2)
+    ctx.landmarks["shibuya_sky"] = rec
+    c = rec["centre"]
+    ctx.labels["SHIBUYA SKY 229 m"] = [round(float(c[0]), 1), round(float(c[1]), 1), round(rec["deck_z"] + 14, 1)]
+
+
+def sky_uv(s):
+    """(u, v) -> world xy in the roof's frame, and back."""
+    c, a1, a2 = np.asarray(s["centre"]), np.asarray(s["a1"]), np.asarray(s["a2"])
+    return (lambda u, v: c + a1 * u + a2 * v), (lambda p: (float((np.asarray(p)[:2] - c) @ a1), float((np.asarray(p)[:2] - c) @ a2)))
+
+
+def prof_at(prof, s):
+    """A flight's profile [[s, rise], ...] at s (held flat past its ends)."""
+    if s <= prof[0][0]:
+        return prof[0][1]
+    for (s0, z0), (s1, z1) in zip(prof, prof[1:]):
+        if s <= s1:
+            return z0 + (z1 - z0) * (s - s0) / ((s1 - s0) or 1.0)
+    return prof[-1][1]
 
 
 def sky_meshes(s):
-    K = Kit("sky", floodlit=("led", "lamp"))
+    K = Kit("sky", floodlit=("led", "lamp", "door_glass", "foot_light"))
     c, a1, a2 = np.asarray(s["centre"]), np.asarray(s["a1"]), np.asarray(s["a2"])
     h1, h2 = s["half"]
     z = s["deck_z"]
     P = frame(c, a1)                    # u along a1, v along a2 (a2 is a1's left or right: use its sign)
     sgn = 1.0 if left_of(a1) @ a2 > 0 else -1.0
     Q = lambda u, v, zz: P(u, sgn * v, zz)
-    pit = Polygon(s["pit"])
+    F = sky_flights(h1, h2)
+    chan = Polygon(F["north"]).union(Polygon(F["west"]))
     gc = SKY["compass_m"] / 2
-    # the deck, in boards round the well and the GEO COMPASS
+    # the deck, in boards round the channels and the GEO COMPASS
     D, D2 = K("deck"), K("deck_light")
     tone = np.random.default_rng(2019)          # a paler tile here and there
     n1, n2 = int(2 * h1 / 3), int(2 * h2 / 3)
@@ -3455,12 +3551,21 @@ def sky_meshes(s):
         for j in range(n2):
             u0, v0 = -h1 + 0.4 + i * (2 * h1 - 0.8) / n1, -h2 + 0.4 + j * (2 * h2 - 0.8) / n2
             u1, v1 = u0 + (2 * h1 - 0.8) / n1, v0 + (2 * h2 - 0.8) / n2
-            cell = Polygon([Q(u0, v0, 0)[:2], Q(u1, v0, 0)[:2], Q(u1, v1, 0)[:2], Q(u0, v1, 0)[:2]])
-            if cell.intersects(pit.buffer(0.4)) or (abs((u0 + u1) / 2) < gc and abs((v0 + v1) / 2) < gc):
+            cell = Polygon([(u0, v0), (u1, v0), (u1, v1), (u0, v1)])
+            if abs((u0 + u1) / 2) < gc and abs((v0 + v1) / 2) < gc:
+                continue
+            if cell.intersects(chan.buffer(0.3)):
+                cut = cell.difference(chan.buffer(0.3))
+                for part in getattr(cut, "geoms", [cut]):
+                    if part.geom_type == "Polygon" and part.area > 0.05:
+                        r = list(part.exterior.coords)[:-1]
+                        for k in range(1, len(r) - 1):
+                            (D2 if tone.random() < 0.35 else D).tri(Q(*r[0], z + 0.03), Q(*r[k], z + 0.03), Q(*r[k + 1], z + 0.03))
                 continue
             (D2 if tone.random() < 0.35 else D).quad(Q(u0, v0, z + 0.03), Q(u1, v0, z + 0.03), Q(u1, v1, z + 0.03), Q(u0, v1, z + 0.03))
-    # the glass fence round the edge, lowest at SKY EDGE (+u, +v corner), on steel posts
+    # the glass fence round the deck's outer edge, on steel posts (the channels have their own glass)
     G, S = K("glass"), K("steel_dark")
+    (nu0, nv0), (wu0, wv0) = F["north"][0], F["west"][0]
     edges = [((-h1, -h2), (h1, -h2)), ((h1, -h2), (h1, h2)), ((h1, h2), (-h1, h2)), ((-h1, h2), (-h1, -h2))]
     for (ua, va), (ub, vb) in edges:
         L = math.hypot(ub - ua, vb - va)
@@ -3469,11 +3574,27 @@ def sky_meshes(s):
             t0, t1 = k / n, (k + 1) / n
             pa, pb = (ua + (ub - ua) * t0, va + (vb - va) * t0), (ua + (ub - ua) * t1, va + (vb - va) * t1)
             mid = ((pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2)
-            edge = mid[0] > h1 - 14 and mid[1] > h2 - 14
-            hh = SKY["edge_fence_m"] if edge else SKY["fence_m"]
+            if (mid[0] > h1 - 0.1 and mid[1] > nv0 - 0.2) or (mid[1] > h2 - 0.1 and mid[0] > wu0 - 0.2):
+                continue
+            # a segment cut by a channel's end stops at it
+            if mid[0] > h1 - 0.1 and max(pa[1], pb[1]) > nv0:
+                pa, pb = (pa, (pb[0], nv0)) if pb[1] > pa[1] else ((pa[0], nv0), pb)
+            if mid[1] > h2 - 0.1 and max(pa[0], pb[0]) > wu0:
+                pa, pb = (pa, (wu0, pb[1])) if pb[0] > pa[0] else ((wu0, pa[1]), pb)
+            hh = SKY["fence_m"]
             G.quad(Q(*pa, z), Q(*pb, z), Q(*pb, z + hh), Q(*pa, z + hh))
             S.tube([Q(*pa, z), Q(*pa, z + hh)], 0.04, 6)
             S.tube([Q(*pa, z + hh), Q(*pb, z + hh)], 0.03, 4)
+    sky_channels(K, Q, F, z, s["z0"])
+    # SKY EDGE: lines of light set in the deck, running out to its corner over the channels
+    eu, ev = F["edge"]
+    for k in range(7):
+        ang = math.radians(180 + 12 + k * 11)          # fanned across the deck's quarter behind the corner
+        du, dv = math.cos(ang), math.sin(ang)
+        a, b = 1.2, 1.2 + 14.0 + 4.0 * math.sin(k * 1.7) ** 2
+        nu, nv = -dv * 0.035, du * 0.035
+        K("led", "edge_lines").quad(Q(eu + du * a + nu, ev + dv * a + nv, z + 0.036), Q(eu + du * b + nu, ev + dv * b + nv, z + 0.036),
+                                    Q(eu + du * b - nu, ev + dv * b - nv, z + 0.036), Q(eu + du * a - nu, ev + dv * a - nv, z + 0.036))
     # GEO COMPASS: the raised deck in the middle, the compass on its floor, steps up each side
     zt = z + 2.0
     block(K("concrete", "compass"), Q, -gc, gc, -gc, gc, z - 0.5, zt - 0.02)
@@ -3498,35 +3619,177 @@ def sky_meshes(s):
         S.tube([Q(u - 2.6, v + 1.4, z + 0.9), Q(u + 2.6, v + 1.4, z + 0.9)], 0.04, 4)
         us, vs = np.linspace(-2.5, 2.5, 9), np.linspace(-1.35, 1.35, 5)
         K("net").grid([[Q(u + a, v + b, z + 0.9 - 0.45 * (1 - (a / 2.5) ** 2) * (1 - (b / 1.35) ** 2)) for a in us] for b in vs])
-    # the escalator up from the 46F gallery: steps, glass balustrades with black handrails, the glass walls
-    # round the top of its well, and the well's floor at 46F
-    e = s["escalator"]
-    o, f = np.asarray(e["origin"]), np.asarray(e["axis"])
-    E = frame(o, f)
-    run, rise, z0 = e["run_m"], e["rise_m"], e["z0"]
-    n = int(rise / 0.2)
-    for j in range(n):
-        u0, u1 = j * run / n, (j + 1) * run / n
-        block(K("steel", "esc"), E, u0, u1, -0.55, 0.55, z0 + j * rise / n - 0.25, z0 + (j + 1) * rise / n)
-    block(K("steel", "esc"), E, run, e["plate_end"], -1.75, 1.75, z - 0.25, z)        # the top landing, across the well
-    block(K("steel", "esc"), E, -2.2, 0.0, -1.75, 1.75, z0 - 0.25, z0)                # the landing at 46F
-    for side in (-1, 1):
-        K("glass", "esc").quad(E(-0.5, side * 0.62, z0 + 0.1), E(run + 1.0, side * 0.62, z + 0.1), E(run + 1.0, side * 0.62, z + 1.05), E(-0.5, side * 0.62, z0 + 1.05))
-        K("rubber", "esc").tube([E(-0.6, side * 0.62, z0 + 1.0), E(run + 1.1, side * 0.62, z + 1.0)], 0.04, 6)
-        block(K("steel_dark", "esc"), E, -0.5, run + 1.0, side * 0.62 - 0.06, side * 0.62 + 0.06, z0 - 0.3, z0 + 0.12)
-    pc = np.asarray(s["pit_c"])
-    W = frame(pc, f)
-    L, Wd = s["pit_len"] / 2, s["pit_w"] / 2
-    for (ua, va), (ub, vb) in (((-L, -Wd), (L, -Wd)), ((L, -Wd), (L, Wd)), ((L, Wd), (-L, Wd)), ((-L, Wd), (-L, -Wd))):
-        if ua == ub == L:
-            continue  # the open end, where the escalator comes up onto the deck
-        # part of the escalator's mesh (esc_*), so the game does not make the rim solid round the rider's head
-        K("glass", "esc_well").quad(W(ua, va, z), W(ub, vb, z), W(ub, vb, z + 1.3), W(ua, va, z + 1.3))
-        K("steel_dark", "esc_well").tube([W(ua, va, z + 1.3), W(ub, vb, z + 1.3)], 0.03, 4)
     for q in s["beams"]:                      # the searchlights of CROSSING LIGHT
         lathe_at(S, q[0], q[1], [(z, 0.35), (z + 0.6, 0.3), (z + 0.65, 0.0)], 10)
         lathe_at(K("lamp", "lit"), q[0], q[1], [(z + 0.6, 0.26), (z + 0.75, 0.0)], 10)
     return K.meshes()
+
+
+def sky_doors(K, X, sa, sb, tw, z0):
+    """46F's way out at the foot of a channel, in the deck's flank from s = sa to sb: a pair of sliding glass
+    doors 0.9 m a leaf and 2.4 m high in white frames, fixed glass either side, a transom to 2.7 m, lit
+    from the gallery inside (the sizes are those of a public building's automatic doors; estimates)."""
+    mid, leaf, hd, ht = (sa + sb) / 2, 0.9, 2.4, 2.7
+    d0, d1 = mid - leaf, mid + leaf
+    K("door_glass").quad(X(d0, tw, z0), X(d1, tw, z0), X(d1, tw, z0 + hd), X(d0, tw, z0 + hd))      # the doors, lit within
+    for a, b in ((sa, d0 - 0.06), (d1 + 0.06, sb)):                                            # the fixed glass
+        K("glass_clad", "door").quad(X(a, tw, z0), X(b, tw, z0), X(b, tw, z0 + ht), X(a, tw, z0 + ht))
+    K("glass_clad", "door").quad(X(d0, tw, z0 + hd + 0.08), X(d1, tw, z0 + hd + 0.08), X(d1, tw, z0 + ht), X(d0, tw, z0 + ht))
+    fr = K("frame_white", "door")
+    for s_ in (d0 - 0.03, mid, d1 + 0.03):                                                     # the jambs and the meeting stiles
+        block(fr, lambda a, b, zz: X(a, b, zz), s_ - 0.03, s_ + 0.03, tw - 0.08, tw, z0, z0 + hd + 0.04)
+    block(fr, lambda a, b, zz: X(a, b, zz), d0 - 0.06, d1 + 0.06, tw - 0.1, tw, z0 + hd, z0 + hd + 0.08)   # the head
+    block(fr, lambda a, b, zz: X(a, b, zz), sa, sb, tw - 0.12, tw, z0 + ht - 0.02, z0 + ht + 0.1)          # over the transom
+    for s_ in (sa + 0.02, sb - 0.02):
+        block(fr, lambda a, b, zz: X(a, b, zz), s_ - 0.04, s_ + 0.04, tw - 0.1, tw, z0, z0 + ht)
+    for k in range(2):                                                                         # the leaves' pull bars
+        sx = mid + (-1 if k == 0 else 1) * 0.12
+        K("steel", "door").tube([X(sx, tw - 0.06, z0 + 0.8), X(sx, tw - 0.06, z0 + 1.6)], 0.016, 6)
+
+
+def sky_channels(K, Q, F, z, z0):
+    """The two channels down the west and north edges (sky_flights): white stone at 46F, 46F's glass doors,
+    the escalator and the stair side by side, the outer glass stepping up with them, white columns and beams
+    over them every 4.5 m, a net of fine wire from the outer glass to the deck's rim, the deck's flank clad in
+    glass, and the rim's low glass fence, lowest at SKY EDGE."""
+    W, R, Dd, L, T = F["W"], F["R"], F["D"], F["L"], F["t"]
+    eu, ev = F["edge"]
+    netz = z + SKY["net_m"]
+    for rect in (F["north"], F["west"]):                           # the floor at 46F, white stone
+        (u0, v0), _, (u1, v1), _ = rect
+        K("stone_white", "floor").quad(Q(u0, v0, z0 + 0.02), Q(u1, v0, z0 + 0.02), Q(u1, v1, z0 + 0.02), Q(u0, v1, z0 + 0.02))
+    corner = None
+    for f in F["flights"]:
+        X = lambda s_, t_, zz, f=f: Q(*f["uv"](s_, t_), zz)
+        esc = lambda s_: z0 + prof_at(F["esc"], s_)
+        st = lambda s_: z0 + prof_at(F["stair"], s_)
+        rail = lambda s_: max(esc(s_), st(s_)) + 3.0                 # the outer glass's top: 3 m over the flight
+        e, hw = T["esc"], T["esc_hw"]
+        part = "esc" + f["id"]
+        # -- the escalator: the clad body to the floor, the steps edged in yellow, the glass balustrades and black handrails
+        ks = [0.0, 2.0, 2.0 + F["run"], L]
+        for sa, sb in zip(ks, ks[1:]):
+            for side in (-1, 1):
+                tv = e + side * (hw + 0.02)
+                K("esc_clad", part + "_body").quad(X(sa, tv, z0), X(sb, tv, z0), X(sb, tv, esc(sb) + 0.12), X(sa, tv, esc(sa) + 0.12))
+                K("esc_clad", part + "_body").quad(X(sa, e + side * (hw - 0.1), esc(sa)), X(sb, e + side * (hw - 0.1), esc(sb)),
+                                                   X(sb, tv, esc(sb) + 0.12), X(sa, tv, esc(sa) + 0.12))
+        nst = int(round(F["run"] / 0.4))
+        dz, ds = R / nst, F["run"] / nst
+        steps = [(sa, sa + 0.4, z0) for sa in np.arange(0.0, 2.0 - 0.01, 0.4)] + \
+                [(2.0 + k * ds, 2.0 + (k + 1) * ds, z0 + (k + 1) * dz) for k in range(nst)] + \
+                [(sa, sa + 0.4, z) for sa in np.arange(2.0 + F["run"], L - 0.39, 0.4)]
+        w0, w1 = e - (hw - 0.1), e + (hw - 0.1)
+        for k, (sa, sb, zz) in enumerate(steps):
+            K("esc_step", part).quad(X(sa, w0, zz), X(sb, w0, zz), X(sb, w1, zz), X(sa, w1, zz))
+            if 2.0 <= sa < 2.0 + F["run"] - 0.01:
+                K("esc_step", part).quad(X(sa, w0, zz - dz), X(sa, w1, zz - dz), X(sa, w1, zz), X(sa, w0, zz))
+            y = K("esc_yellow", part)
+            y.quad(X(sb - 0.05, w0, zz + 0.004), X(sb, w0, zz + 0.004), X(sb, w1, zz + 0.004), X(sb - 0.05, w1, zz + 0.004))
+            for wv in (w0, w1 - 0.04):
+                y.quad(X(sa, wv, zz + 0.004), X(sb, wv, zz + 0.004), X(sb, wv + 0.04, zz + 0.004), X(sa, wv + 0.04, zz + 0.004))
+        bs = [0.9, 2.0, 2.0 + F["run"], L - 0.75]
+        for side in (-1, 1):
+            tv = e + side * hw
+            g = K("esc_glass", part)
+            for sa, sb in zip(bs, bs[1:]):
+                g.quad(X(sa, tv, esc(sa) + 0.14), X(sb, tv, esc(sb) + 0.14), X(sb, tv, esc(sb) + 0.95), X(sa, tv, esc(sa) + 0.95))
+            path = []
+            for sc_, za, sgn_ in ((bs[0], esc(bs[0]), -1), (bs[-1], esc(bs[-1]), 1)):   # the newels' half-round glass and handrail
+                arc = [(sc_ + sgn_ * 0.42 * math.sin(math.pi * a / 8), za + 0.56 + 0.42 * math.cos(math.pi * a / 8)) for a in range(9)]
+                for (sa_, za_), (sb_, zb_) in zip(arc, arc[1:]):
+                    g.quad(X(sc_, tv, za + 0.56), X(sa_, tv, za_), X(sb_, tv, zb_), X(sc_, tv, za + 0.56))
+                path.append(arc)
+            hand = [X(s_, tv, z_ + 0.05) for s_, z_ in reversed(path[0])] + [X(s_, tv, esc(s_) + 1.0) for s_ in bs[1:-1]] + [X(s_, tv, z_ + 0.05) for s_, z_ in path[1]]
+            K("rubber", part).tube(hand, 0.045, 6)
+            K("led", part).tube([X(s_, e + side * (hw - 0.05), esc(s_) + 0.9) for s_ in bs], 0.014, 4)
+        # -- the stair: timber treads on white risers, two legs and a landing, glass on the escalator's side
+        part = "stair" + f["id"]
+        t0_, t1_ = T["st0"], T["st1"]
+        treads = []
+        for leg, zb, sb0 in ((0, z0, 0.0), (1, z0 + R / 2, F["leg"] + 1.5)):
+            for k in range(F["half"]):
+                sa = sb0 + k * SKY["stair_going_m"]
+                zz = zb + (k + 1) * SKY["stair_rise_m"]
+                end = sa + SKY["stair_going_m"] if k < F["half"] - 1 else (F["leg"] + 1.5 if leg == 0 else L)
+                treads.append((sa, end, zz))
+        for sa, sb, zz in treads:
+            K("riser", part).quad(X(sa, t0_, zz - SKY["stair_rise_m"]), X(sa, t1_, zz - SKY["stair_rise_m"]), X(sa, t1_, zz), X(sa, t0_, zz))
+            K("tread", part).quad(X(sa, t0_, zz), X(sa, t1_, zz), X(sb, t1_, zz), X(sb, t0_, zz))
+            K("steel_dark", part).quad(X(sa, t0_, zz + 0.003), X(sa, t1_, zz + 0.003), X(sa + 0.04, t1_, zz + 0.003), X(sa + 0.04, t0_, zz + 0.003))
+        sp = [p_[0] for p_ in F["stair"]]
+        for tv in (t0_, t1_):                                      # the stair's white flanks to the floor
+            for sa, sb in zip(sp, sp[1:]):
+                K("riser", part + "_body").quad(X(sa, tv, z0), X(sb, tv, z0), X(sb, tv, st(sb)), X(sa, tv, st(sa)))
+        g = K("glass", part)
+        for sa, sb in zip(sp, sp[1:]):
+            g.quad(X(sa, t0_ - 0.03, st(sa) + 0.1), X(sb, t0_ - 0.03, st(sb) + 0.1), X(sb, t0_ - 0.03, st(sb) + 1.05), X(sa, t0_ - 0.03, st(sa) + 1.05))
+        for s_ in np.arange(0.3, L, 1.5):
+            K("steel", part).tube([X(s_, t0_ - 0.03, st(s_) + 0.05), X(s_, t0_ - 0.03, st(s_) + 1.05)], 0.02, 4)
+        K("steel", part).tube([X(s_, t0_ + 0.02, st(s_) + 0.95) for s_ in sp], 0.025, 6)
+        K("steel", part).tube([X(s_, t1_ - 0.06, st(s_) + 0.9) for s_ in sp], 0.025, 6)   # the handrail on the flank
+        K("foot_light", part).tube([X(s_, t1_ - 0.03, st(s_) + 0.28) for s_ in sp], 0.018, 4)
+        # -- the deck's flank: glass cladding on white mullions over the stair, 46F's glass doors at the foot
+        tw = W - 0.03
+        for s_a in np.arange(-Dd, L - 0.01, 1.5):
+            s_b = min(s_a + 1.5, L)
+            lo_a, lo_b = (z0, z0) if s_a < 0 else (st(s_a), st(s_b))
+            if s_a < 0:
+                lo_a = lo_b = z0 + 2.7
+            K("glass_clad").quad(X(s_a, tw, lo_a), X(s_b, tw, lo_b), X(s_b, tw, z - 0.1), X(s_a, tw, z - 0.1))
+            m0 = z0 if s_a < 0 else lo_a
+            if m0 < z - 0.2:
+                K("frame_white").tube([X(s_a, tw - 0.03, m0), X(s_a, tw - 0.03, z)], 0.03, 4)
+        sky_doors(K, X, -Dd, 0.0, tw, z0)
+        # the head of the channel: the deck's face under the arriving flights, clad the same
+        K("glass_clad").quad(X(L - 0.03, 0.0, z0), X(L - 0.03, W, z0), X(L - 0.03, W, z - 0.1), X(L - 0.03, 0.0, z - 0.1))
+        # the coping and the rim's glass fence along the flank, lowest at SKY EDGE; its tall posts carry the net
+        block(K("frame_white", "rim"), lambda s_, t_, zz: X(s_, t_, zz), 0.0 - Dd, L, W - 0.05, W + 0.35, z - 0.1, z + 0.08)
+        rf = SKY["rim_fence_m"]
+        for s_a in np.arange(-Dd, L - 0.01, 2.0):
+            s_b = min(s_a + 2.0, L)
+            near = lambda s_: min(1.0, max(0.0, (s_ + Dd) / 8.0))     # from SKY EDGE (s = -D) the glass rises to the rim's height
+            ha, hb = SKY["edge_fence_m"] + (rf - SKY["edge_fence_m"]) * near(s_a), SKY["edge_fence_m"] + (rf - SKY["edge_fence_m"]) * near(s_b)
+            K("glass", "rim").quad(X(s_a, W + 0.1, z + 0.08), X(s_b, W + 0.1, z + 0.08), X(s_b, W + 0.1, z + hb), X(s_a, W + 0.1, z + ha))
+            K("steel_dark", "rim").tube([X(s_a, W + 0.1, z + ha), X(s_b, W + 0.1, z + hb)], 0.025, 4)
+            K("frame_white", "rim").tube([X(s_a, W + 0.1, z), X(s_a, W + 0.1, netz)], 0.035, 6)
+        K("frame_white", "rim").tube([X(-Dd, W + 0.1, netz), X(L, W + 0.1, netz)], 0.02, 4)
+        # at the head, short glass either side of the escalator where the flights come up onto the deck
+        for ta, tb in ((T["glass"], e - hw - 0.25), (e + hw + 0.2, T["st0"] - 0.03)):
+            K("glass", "rim").quad(X(L, ta, z), X(L, tb, z), X(L, tb, z + 1.1), X(L, ta, z + 1.1))
+        # -- the outer glass, stepping up with the flights from the corner to the head, and its top rail
+        s_lo = -(Dd + W)
+        joints = list(np.arange(s_lo, L - 0.01, 1.5)) + [L]
+        for s_a, s_b in zip(joints, joints[1:]):
+            K("glass", "outer").quad(X(s_a, T["glass"], z0), X(s_b, T["glass"], z0), X(s_b, T["glass"], rail(s_b)), X(s_a, T["glass"], rail(s_a)))
+        K("frame_white", "outer").tube([X(s_, T["glass"], rail(s_) + 0.05) for s_ in joints], 0.07, 4)
+        # -- white columns and beams every 4.5 m, from the 46F floor to over the outer glass
+        for s_ in np.arange(-Dd + 1.2, L - 0.5, 4.5):
+            top = rail(s_) + 0.2
+            K("frame_white", "cols").lathe([(z0, 0.17), (top, 0.17)], tuple(Q(*f["uv"](s_, T["col"]), 0)[:2]), 14)
+            block(K("frame_air", "beams"), lambda a, b, zz: X(a, b, zz), s_ - 0.09, s_ + 0.09, 0.0, W, top, top + 0.28)
+        # -- the net: fine wire from the outer glass's top rail to the cable over the rim (every 0.6 m)
+        wire = K("wire", "net")
+        ss = list(np.arange(-Dd, L - 0.01, 0.6)) + [L]
+        nt = int(W / 0.6)
+        h = lambda s_, t_: rail(s_) + 0.1 + (netz - rail(s_) - 0.1) * t_ / W
+        for s_ in ss:
+            wire.tube([X(s_, 0.0, h(s_, 0.0)), X(s_, W, h(s_, W))], 0.008, 3)
+        for j in range(1, nt + 1):
+            t_ = j * W / nt
+            wire.tube([X(s_, t_, h(s_, t_)) for s_ in ss], 0.008, 3)
+        if corner is None:
+            corner = (X(-(Dd + W), 0.0, rail(-(Dd + W)) + 0.1), X(-Dd, 0.0, rail(-Dd) + 0.1))
+        else:
+            corner = corner + (X(-Dd, 0.0, rail(-Dd) + 0.1),)
+    # the net over the corner at the foot: from the two outer rails up to SKY EDGE's corner
+    O, A, B = corner
+    C = Q(eu, ev, netz)
+    n_ = 11
+    bil = lambda a, b: O * (1 - a) * (1 - b) + A * a * (1 - b) + C * a * b + B * (1 - a) * b
+    for i in range(n_ + 1):
+        K("wire", "net").tube([bil(i / n_, j / n_) for j in range(n_ + 1)], 0.008, 3)
+        K("wire", "net").tube([bil(j / n_, i / n_) for j in range(n_ + 1)], 0.008, 3)
 
 
 # ---------------------------------------------------------------- hooks
@@ -3742,12 +4005,33 @@ def landmark_glows(scene):
 
 
 def sky_surfaces(s):
-    """SHIBUYA SKY: the escalator from 46F (it carries you), GEO COMPASS's top and its four flights of steps."""
+    """SHIBUYA SKY: the escalators and stairs in the channels (an escalator carries you: up the north edge,
+    down the west), GEO COMPASS's top and its four flights of steps."""
     out = []
-    e = s["escalator"]
-    out.append({"name": "SHIBUYA SKY escalator", "type": "strip", "origin": e["origin"], "axis": e["axis"], "half_width": 0.55,
-                "profile": [[-2.2, e["z0"]], [0.0, e["z0"]], [e["run_m"], s["deck_z"]], [e["plate_end"], s["deck_z"]]],
-                "thickness": 1.0, "mesh": "sky_esc", "moving_ms": s["escalator_ms"], "moving_u": [0.0, e["run_m"] + 0.5], "label": "the escalator to the roof"})
+    F = sky_flights(*s["half"])
+    W2, _ = sky_uv(s)
+    z, z0, L, T = s["deck_z"], s["z0"], F["L"], F["t"]
+    r2 = lambda v: [round(float(v[0]), 2), round(float(v[1]), 2)]
+    for f in F["flights"]:
+        at = lambda s_, t_, f=f: W2(*f["uv"](s_, t_))
+        up = at(1.0, 0.0) - at(0.0, 0.0)
+        ax = [round(float(up[0]), 5), round(float(up[1]), 5)]
+        name = {"n": "north", "w": "west"}[f["id"]]
+        prof = [[round(s_, 2), round(z0 + r, 2)] for s_, r in F["esc"]] + [[round(L + 0.5, 2), z]]
+        if f["up"]:
+            out.append({"name": f"SHIBUYA SKY escalator, {name}", "type": "strip", "origin": r2(at(0.0, T["esc"])), "axis": ax,
+                        "half_width": T["esc_hw"] - 0.1, "profile": prof, "thickness": 1.0, "mesh": "sky_esc" + f["id"],
+                        "moving_ms": s["escalator_ms"], "moving_u": [0.6, round(L - 0.4, 2)], "label": "the escalator to the roof"})
+        else:   # the way down: its axis points down the flight, from its head
+            out.append({"name": f"SHIBUYA SKY escalator, {name}", "type": "strip", "origin": r2(at(L, T["esc"])), "axis": [-ax[0], -ax[1]],
+                        "half_width": T["esc_hw"] - 0.1, "profile": [[round(L - p_[0], 2), p_[1]] for p_ in reversed(prof)],
+                        "thickness": 1.0, "mesh": "sky_esc" + f["id"], "moving_ms": s["escalator_ms"], "moving_u": [0.4, round(L - 0.6, 2)],
+                        "label": "the escalator down to SKY EDGE"})
+        mid = (T["st0"] + T["st1"]) / 2
+        out.append({"name": f"SHIBUYA SKY stair, {name}", "type": "strip", "origin": r2(at(0.0, mid)), "axis": ax,
+                    "half_width": round((T["st1"] - T["st0"]) / 2, 2),
+                    "profile": [[round(s_, 2), round(z0 + r, 2)] for s_, r in F["stair"]] + [[round(L + 0.5, 2), z]],
+                    "thickness": 1.0, "mesh": "sky_stair" + f["id"], "label": "the stair to the roof"})
     gc, zt, z = s["compass_m"] / 2, s["deck_z"] + 2.0, s["deck_z"]
     a1, a2, c = np.asarray(s["a1"]), np.asarray(s["a2"]), np.asarray(s["centre"])
     out.append({"name": "SHIBUYA SKY GEO COMPASS", "type": "strip", "origin": s["centre"], "axis": s["a1"], "half_width": gc,
@@ -3911,8 +4195,20 @@ def sky_extras(s, spots, chatter):
         p = c + a1 * u + a2 * v
         spots.append(spot("hammock", "CLOUD HAMMOCK", p, s["deck_z"], "Lie in the net", [
             "You lie back in the net. 229 metres up, nothing over you but the sky, and the wind."], 3.2))
-    edge = c + a1 * (h1 - 9.0) + a2 * (h2 - 9.0)
+    F = sky_flights(h1, h2)
+    W2, _ = sky_uv(s)
+    eu, ev = F["edge"]
+    edge = W2(eu - 3.0, ev - 3.0)
     chatter.append(talk(edge, s["deck_z"], [["Visitor", "You can see the scramble breathing."], ["Visitor", "Is that Mt Fuji? Left, look."], ["Friend", "Only on a clear day."]], 16))
+    west = F["flights"][1]
+    head = W2(*west["uv"](F["L"] + 1.2, F["t"]["esc"] + 0.6))
+    spots.append(spot("sky-escalator", "The escalator down to SKY EDGE", head, s["deck_z"], "Look down the escalator", [
+        "The escalator runs down the tower's west edge in a channel of glass, open to the sky under a net of fine wire.",
+        "Riding down you face Shinjuku's towers and the woods of Yoyogi, with the scramble 229 metres below on your left.",
+        "Come at sunset, and stay for the blue hour: the sky goes deep blue over Mt Fuji, and the city's lights come on beneath it."], 3.0))
+    chatter.append(talk(W2(*west["uv"](F["L"] - 6.0, F["t"]["st0"] + 1.2)), s["deck_z"] - 3.0,
+                        [["Visitor", "Stop there, one step down. The handrail across the corner, the sky over you."], ["Friend", "Now?"],
+                         ["Visitor", "Wait for the lights to come on. That blue only lasts ten minutes."]], 10))
 
 
 def game_extras(scene):
@@ -3929,14 +4225,17 @@ def game_extras(scene):
     if not s:
         return out
     sky_extras(s, spots, chatter)
-    e = s["escalator"]
-    land = np.asarray(e["origin"]) - np.asarray(e["axis"]) * 1.2
-    c, a1, a2 = np.asarray(s["centre"]), np.asarray(s["a1"]), np.asarray(s["a2"])
-    edge = c + a1 * (s["half"][0] - 9.0) + a2 * (s["half"][1] - 9.0)   # SKY EDGE
+    F = sky_flights(*s["half"])
+    W2, _ = sky_uv(s)
+    north = F["flights"][0]
+    land = W2(*north["uv"](-F["D"] - F["W"] / 2, F["W"] / 2))    # in the corner at the channels' feet, out of 46F's doors
+    face = W2(*north["uv"](1.0, 0.0)) - W2(*north["uv"](0.0, 0.0))
+    eu, ev = F["edge"]
+    edge = W2(eu - 4.0, ev - 4.0)                                 # on the deck behind SKY EDGE
     return out | {"lifts": [{"id": "sky-gate", "name": "SHIBUYA SKY", "line": "SKY GATE · TRANSITION POD · 14F → 45F", "m_per_min": s["lift_m_per_min"],
                        "stops": [{"name": "Shibuya Scramble Square, street level", "at": [*s["door"], s["door_z"]]},
-                                 {"name": "SHIBUYA SKY 46F, the escalator to the roof", "at": [round(float(land[0]), 2), round(float(land[1]), 2), e["z0"]],
-                                  "face": e["axis"]}]}],
+                                 {"name": "SHIBUYA SKY 46F, the escalator to the roof", "at": [round(float(land[0]), 2), round(float(land[1]), 2), s["z0"]],
+                                  "face": [round(float(face[0]), 5), round(float(face[1]), 5)]}]}],
             "travel": [{"id": "shibuya-sky", "name": "SHIBUYA SKY (the roof, 229 m)", "at": [round(float(edge[0]), 1), round(float(edge[1]), 1), s["deck_z"]], "always": True}]}
 
 

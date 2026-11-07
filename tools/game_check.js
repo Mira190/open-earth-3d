@@ -781,6 +781,29 @@ const npcNight = require('./npc_night');
   for (const r of liftRides) check(r.offered && r.dz < 0.6 && r.d < 3 && r.walk, `the ${r.name} from ${r.from} to ${r.to} (offered at its door: ${r.offered}; ends ${r.d.toFixed(1)} m from the stop, ${r.dz.toFixed(2)} m off its level, on ${r.floor}${r.walk ? '' : ', not walkable'})`);
   for (const r of liftRides.filter(q => q.car)) check(r.rideFrames > 4 && r.off < 0.6 && r.floorOff < 0.1 && r.carAt < 0.05 && r.shut && r.mode === 'foot', `the ${r.name}'s car rides from ${r.from} to ${r.to} with you in it (${r.rideFrames} frames under way, at most ${r.off.toFixed(2)} m off its middle and ${r.floorOff.toFixed(2)} m off its floor; the car ${r.carAt.toFixed(2)} m from the far floor, doors ${r.shut ? 'shut' : 'open'}, ${r.mode})`);
 
+  // the escalators (surfaces with moving_ms: SHIBUYA SKY's, up the north edge and down the west): stand still on
+  // the foot of its moving stretch and it carries you, up or down, to its far end, where you can stand
+  const escRides = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, nav = g.nav, out = [];
+    // a city with no escalator is left as it was: a respawn and half a second moved on would shift the timing of
+    // the traffic that the taxi and the drive checks after this one meet
+    if (!nav.strips.some(q => q.moving_ms)) return out;
+    for (const s of nav.strips.filter(q => q.moving_ms)) {
+      const mu = s.moving_u || [s.us[0], s.us[s.us.length - 1]], u0 = mu[0] + 0.3;
+      const x = s.origin[0] + s.axis[0] * u0, y = s.origin[1] + s.axis[1] * u0;
+      [pl.x, pl.y, pl.z] = [x, y, nav.stripHeight(s, x, y)]; pl.mode = 'foot'; pl.ground = true; pl.vz = 0;
+      const z0 = pl.z, need = (mu[1] - u0) / s.moving_ms;
+      let t = 0;
+      for (; t < need * 1.6 + 4; t += 0.25) { g.advance(0.25); if (nav.stripUV(s, pl.x, pl.y)[0] >= mu[1] - 0.05) break; }
+      g.advance(0.5);
+      const [u] = nav.stripUV(s, pl.x, pl.y);
+      out.push({ name: s.name, rise: pl.z - z0, want: s.zs[s.zs.length - 1] - s.zs[0], t, need, u, end: mu[1], walk: nav.walk(pl.x, pl.y, pl.z).ok, mode: pl.mode });
+    }
+    g.spawn(); g.advance(0.5);
+    return out;
+  });
+  for (const r of escRides) check(r.u >= r.end - 0.3 && Math.abs(r.rise - r.want) < 0.6 && r.t < r.need * 1.3 + 2 && r.walk && r.mode === 'foot', `the ${r.name} carries you ${r.rise >= 0 ? 'up' : 'down'} ${Math.abs(r.rise).toFixed(1)} m of its ${Math.abs(r.want).toFixed(1)} in ${r.t.toFixed(1)} s (its stretch takes ${r.need.toFixed(1)} s; ends ${(r.end - r.u).toFixed(2)} m short, ${r.walk ? 'standing' : 'not walkable'})`);
+
   // the quests a city names for checking (quests[].check: a new walk): each place a step sends you to has
   // ground you can stand on within its radius, and each NPC a step names is there
   const goals = await p.evaluate(() => {
