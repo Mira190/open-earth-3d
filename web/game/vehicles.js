@@ -255,7 +255,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     // way (load with heli: 'later'): nothing on the pad until it comes, or the kit-built one if you get in
     // first or it can't be loaded; it takes the kit's place as soon as nobody is aboard
     const g = new THREE.Group();
-    let V = null, real = null, ready = null, swap = null;
+    let V = null, real = null, warmed = false, ready = null, swap = null;
     const wear = v => { if (V) g.remove(V.group); V = v; g.add(v.group); };
     // the searchlight is in the world from the start, whether or not the model has come (heliModel carries
     // it to its lamp): three.js builds the number of lights into every lit material's shader, so a light
@@ -276,17 +276,23 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       }
       const one = opts.compile ? o => opts.compile(o, world) : R && R.compileAsync && cam ? o => R.compileAsync(o, cam, world) : null;
       if (!m || !one) return Promise.resolve(m);
-      return (m.warmed = Promise.resolve(up).then(() => Promise.all([m.group, ...(m.extras || [])].map(one))).catch(() => {}).then(() => m));
+      // (what the model put in the world itself, its spray and rings, is drawn from the moment it is made: kept
+      // out of sight until it has compiled, or the first frame would link its shaders; issue 266)
+      const hid = (m.extras || []).filter(o => o.visible);
+      for (const o of hid) o.visible = false;
+      return (m.warmed = Promise.resolve(up).then(() => Promise.all([m.group, ...(m.extras || [])].map(one))).catch(() => {}).then(() => { for (const o of hid) o.visible = true; return m; }));
     };
     if (lib && lib.heli) wear(heliModel(world, lib, cfg, mopts));
     else {
       wear(kitHeli());
       if (lib && lib.loadHeli) {
         g.visible = false;
-        ready = () => lib.loadHeli().then(() => { if (!real) real = heliModel(world, lib, cfg, mopts); return warm(real); })
+        // (real is shown only once warm: update() tries the swap every frame, and the model is made before its
+        // shaders have compiled, which a swap in between linked in the frame that drew it; issue 266)
+        ready = () => lib.loadHeli().then(() => { if (!real) real = heliModel(world, lib, cfg, mopts); return warm(real); }).then(m => { warmed = true; return m; })
           .catch(e => { console.warn('Helicopter model unavailable, using a simple one:', e); g.visible = true; return null; });
         // (nobody aboard: only the model in g, the engine off, the door shut)
-        swap = () => { if (real && V !== real && g.children.length === 1 && !st.on && st.rotor < 0.02 && st.door === 0) { wear(real); g.visible = true; swap = null; } };
+        swap = () => { if (real && warmed && V !== real && g.children.length === 1 && !st.on && st.rotor < 0.02 && st.door === 0) { wear(real); g.visible = true; swap = null; } };
       }
     }
     world.add(g);

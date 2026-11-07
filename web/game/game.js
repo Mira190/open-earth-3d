@@ -3933,7 +3933,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const drawn = new Promise(r => { firstDrawn = r; });
   // (and the passes the title doesn't draw: the opening shot's depth of field and motion blur, atmosphere.js)
   loadMsg('Compiling the shaders for this view', 1);
-  const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null]);
+  const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null, OEWorld.uploadSliced ? OEWorld.uploadSliced(renderer, world) : null]); // (and its textures sent, in slices too)
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
   // above and the wet street's mirror), so that the first rain of a visit comes on without a stall; the
   // mirror's variant of every shader compiles in slices behind the title, not holding the loader up
@@ -3948,7 +3948,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   };
   Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(() => { warmRain(); })]).then(([flew]) => {
     if (flew) fromFlyover();
-    if (lib) lib.warm = warmFor; // the characters that come from now on are warmed before they are shown (people.js)
+    if (lib) { lib.warm = warmFor; if (lib.warmPalette) lib.warmPalette(); } // the characters that come from now on are warmed before they are shown (people.js)
     preTitle = false;
     $('#g-title').hidden = false;
     $('#g-loader').classList.add('out');

@@ -4,9 +4,12 @@
 // the screens, signs, shopfronts, lamps and headlights reflected as long, rippling images, which
 // is most of what makes a city in the rain look as it does at night. It is the planar reflection of
 // three.js's Reflector (MIT), done for the ground's own materials rather than a mirror mesh: the
-// mirror camera, its texture matrix, and a clipping plane at the ground (rather than an oblique
-// near plane, which the game's reversed depth buffer would need worked out again) so that nothing
-// under the street is drawn into it. The ground is not flat everywhere, so the mirror follows the
+// mirror camera, its texture matrix, and an oblique near plane at the ground (Lengyel's, as the
+// Reflector has it, worked out for the reversed depth buffer too) so that nothing under the street
+// is drawn into it. Not renderer.clippingPlanes: a clipping plane is a variant of every shader, a
+// second program for each of the scene's materials (about 120 more in Sydney) to compile before the
+// first rain; the oblique plane is in the projection only, and the mirror draws with the programs the
+// screen does (issue 266). The ground is not flat everywhere, so the mirror follows the
 // ground under the camera; where the street slopes away from it the reflection drifts a little,
 // which the blur and the ripples hide.
 // The materials it is given (the ground tiles, paving and road markings) take the picture by
@@ -41,6 +44,28 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
     const cam = new THREE.PerspectiveCamera();
     const bias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), look = new THREE.Vector3(), dir = new THREE.Vector3(), up = new THREE.Vector3();
+    const vplane = new THREE.Plane(), C = new THREE.Vector4(), Q = new THREE.Vector4();
+    const reversed = !!(renderer.capabilities && renderer.capabilities.reversedDepthBuffer);
+    // The mirror camera's near plane laid on the ground (plane, in world space): the projection's third
+    // row is swapped for one that puts the clip test of the near plane on the plane, and its far plane
+    // through the far corner of the frustum on the plane's side (Q), so depth keeps its range. With a
+    // standard depth range the near test is z + w >= 0, so row3 = a C - row4, a = 2 (row4.Q) / (C.Q);
+    // with a reversed one (z in 0..w, the near plane at z = w) it is w - z >= 0, so row3 = row4 - a C,
+    // a = (row4.Q) / (C.Q), and the far plane z = 0 passes through Q. row4 is (0, 0, -1, 0).
+    function oblique() {
+      vplane.copy(plane).applyMatrix4(cam.matrixWorldInverse);
+      C.set(vplane.normal.x, vplane.normal.y, vplane.normal.z, vplane.constant);
+      const e = cam.projectionMatrix.elements;
+      Q.set(Math.sign(C.x) || 1, Math.sign(C.y) || 1, reversed ? 0 : 1, 1).applyMatrix4(cam.projectionMatrixInverse);
+      const cq = C.dot(Q), r4q = -Q.z;
+      // (false: the mirrored camera is not under the plane, the screen's camera under the ground it stands
+      // over, where depth would run backwards; or the frustum's far side is all under the street)
+      if (!(C.w < 0) || !(cq > 1e-9) || !(r4q > 0)) return false;
+      if (reversed) { const a = r4q / cq; e[2] = -a * C.x; e[6] = -a * C.y; e[10] = -1 - a * C.z; e[14] = -a * C.w; }
+      else { const a = 2 * r4q / cq; e[2] = a * C.x; e[6] = a * C.y; e[10] = a * C.z + 1; e[14] = a * C.w; }
+      cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+      return true;
+    }
     const patched = new WeakSet();
     const puddle = PUDDLE; // (the weather's own oePuddle where its patch is in the shader: game/weather.js)
 
@@ -106,26 +131,28 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         cam.up.copy(up).multiplyScalar(-1);
         cam.lookAt(look.copy(cam.position).add(dir));
         cam.updateMatrixWorld();
-        cam.projectionMatrix.copy(camera.projectionMatrix);
-        cam.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
-        U.uMirrorMat.value.copy(bias).multiply(cam.projectionMatrix).multiply(cam.matrixWorldInverse);
+        // (the screen camera's projection, in the depth range the renderer draws with: three.js turns a
+        // camera to the reversed range on its first draw, and would rebuild this one's, oblique plane and all)
+        if (reversed && camera.reversedDepth !== true) { cam._reversedDepth = true; cam.updateProjectionMatrix(); }
+        else { if (reversed) cam._reversedDepth = true; cam.projectionMatrix.copy(camera.projectionMatrix); cam.projectionMatrixInverse.copy(camera.projectionMatrixInverse); }
+        U.uMirrorMat.value.copy(bias).multiply(cam.projectionMatrix).multiply(cam.matrixWorldInverse); // (the texture lookup keeps the plain projection)
         plane.constant = -(h - 0.05);
-        const prevT = renderer.getRenderTarget(), prevShadow = renderer.shadowMap.autoUpdate, prevClip = renderer.clippingPlanes, prevLocal = renderer.localClippingEnabled;
+        if (!oblique()) { U.uMirrorOn.value = 0; return; }
+        const prevT = renderer.getRenderTarget(), prevShadow = renderer.shadowMap.autoUpdate;
         U.uMirror.value = blank; U.uMirrorOn.value = 0;      // not into itself
         renderer.shadowMap.autoUpdate = false;
-        renderer.clippingPlanes = [plane];
         renderer.setRenderTarget(rt);
         renderer.clear();
         renderer.render(scene, cam);
         renderer.setRenderTarget(prevT);
-        renderer.clippingPlanes = prevClip; renderer.localClippingEnabled = prevLocal;
         renderer.shadowMap.autoUpdate = prevShadow;
         U.uMirror.value = rt.texture; U.uMirrorOn.value = 1;
       },
       setSize(w, h) { if (rt) { rt.setSize(dim(w), dim(h)); U.uMirrorPx.value.set(1 / dim(w), 1 / dim(h)); } },
-      // draw it once while the game loads, whatever the weather: the scene's materials compile again
-      // for the mirror's clipping plane, seconds of stall that would otherwise come with the first rain.
-      // Compiled first in slices (world.js compile), so that no one task builds them all; then drawn.
+      // draw it once while the game loads, whatever the weather: anything the screen's own draws have not
+      // compiled (what is out of view from the title's orbit, a variant for the mirror's render target)
+      // compiles then, not with the first rain. Compiled first in slices (world.js compile), so that no one
+      // task builds them all, which for the most part only looks up the screen's programs; then drawn.
       // Returns a promise where it compiles in slices.
       warm(scene, { hold = null } = {}) {
         if (!rt) return;
@@ -135,8 +162,7 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
           try { api.update(scene, 0); } finally { u.value = w; api.every = false; U.uMirrorOn.value = 0; U.uWetM.value = w; }
         };
         if (!(window.OEWorld && OEWorld.compile)) return draw();
-        plane.constant = -(ground(camera.position.x, -camera.position.z) - 0.05);
-        return OEWorld.compile(renderer, scene, camera, { target: rt, clip: [plane], behind: true, hold }).then(draw);
+        return OEWorld.compile(renderer, scene, camera, { target: rt, behind: true, hold, shadows: false }).then(draw);
       },
       dispose() { if (rt) rt.dispose(); blank.dispose(); },
     };
