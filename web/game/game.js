@@ -4346,7 +4346,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const turning = o === ride && !!ride.turn;
       blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: !turning && Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
       if (turning) {
-        cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true });
+        const gm = ride.turn.rev ? 0.7 : 0.3; // (backing out, a wider berth: a car creeping up to it at an angle in the junction touched it, Sydney)
+        cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + gm, hw: o.C.hw + gm, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true });
         // (backing out of a one-way street: where it goes next too, 3 and 6 m on along its way, and where it stops backing,
         // in the mouth of the junction behind, so that a car crossing that junction, or turning into the street, stops
         // short of it rather than in its way, each then waiting for the other, #283)

@@ -92,7 +92,8 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
       const st = o.drv.st;
       if (st.v < 0) r.back += Math.hypot(st.x - bx, st.y - by);
       bx = st.x; by = st.y;
-      r.deep = Math.max(r.deep, A.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.9, o.C.hw * 0.9, 0));
+      const dp = A.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.9, o.C.hw * 0.9, 0);
+      if (dp > r.deep) { r.deep = dp; const T = o.turn; r.deepAt = `${T ? `pose ${T.i} of ${T.poses.length}${T.poses[T.i] && T.poses[T.i].leg ? ' (backing along the street)' : ''}${T.again ? ', worked out again' : ''}` : 'driving on'}: ${C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < c.half + o.C.half + 1).map(c => `car ${C.indexOf(c)} ${c.why} v ${c.v.toFixed(1)}${c.rev ? ' reversing' : ''}${c.mv ? ' in a junction' : ''}`).join('; ')}`; }
       // (what holds it, when it waits on the way: the cars within 8 m of where it goes next, for a failure's report)
       if (o.turn && o.turn.held > 2 && !r.heldBy) { const T = o.turn, nx = T.poses[Math.min(T.i + 1, T.poses.length - 1)]; r.heldBy = `at pose ${T.i} of ${T.poses.length}: ` + (C.filter(c => c.line >= 0 && Math.hypot(c.x - nx.x, c.y - nx.y) < 8).map(c => `car ${C.indexOf(c)} ${c.why} v ${c.v.toFixed(1)} on piece ${c.line}${c.mv ? ` in junction ${c.mv.j.id}` : ''}${c.youBy ? ` (${c.youBy})` : ''}, ${Math.hypot(c.x - nx.x, c.y - nx.y).toFixed(1)} m off`).join('; ') || 'no car near'); }
     }
