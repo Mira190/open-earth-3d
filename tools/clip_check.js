@@ -254,7 +254,7 @@ const TOL = {
         H.postsNear(a.x, a.y, a.hl + 1, q => {
           if (Math.abs(q.z - a.z) >= LEVEL) return;
           const d = H.boxCircle(a, q.x, q.y, q.r);
-          if (d > TOL.carPost.deep) { o.carPost++; H.note(`car in ${q.kind}`, d, { x: +q.x.toFixed(1), y: +q.y.toFixed(1), car: `${C[i].model || 'car'} line ${C[i].line} off ${C[i].off.toFixed(2)}` }); }
+          if (d > TOL.carPost.deep) { o.carPost++; H.note(`car in ${q.kind}`, d, { x: +q.x.toFixed(1), y: +q.y.toFixed(1), car: `${C[i].model || 'car'} line ${C[i].line} off ${C[i].off.toFixed(2)} v ${C[i].v.toFixed(1)}${C[i].mv ? ' in a junction' : ''}${C[i].postPass > 0 ? ' with leave past a post' : ''} ${C[i].why || ''}` }); }
         });
       });
       // your car and a ride

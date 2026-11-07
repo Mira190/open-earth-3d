@@ -1424,7 +1424,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!OECars.queueing(c) && (c.stuck > 4 || (late && c.v < 2)) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v } : c);
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!OECars.queueing(c) && (c.stuck > 4 || (late && c.v < 2)) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v, of: c } : c);
     if (myCar) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
@@ -1435,7 +1435,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (forward across on full lock, back on the other lock, forward into the far lane), a short straight back
   // first where the car in front is close, and then on by another way from there. Each pose of it is tried
   // first against the traffic's cars, your car and the road's edges; where any fails it waits on in the queue.
-  const TURN_WAIT = 20, TURN_R = 5, TURN_V = 1.6;
+  // TURN_R is the radius the car's middle runs on at full lock: a city taxi's 5.3 m kerb-to-kerb turning
+  // radius (Toyota's JPN Taxi, the Prius) is about 4.5 m at the middle of the car, the rear axle on 3.8 m
+  const TURN_WAIT = 20, TURN_R = 4.5, TURN_V = 1.6;
   function turnPoses(x0, y0, h0, back, w, keep) {
     // the bicycle model: (direction, steer, angle) for each leg; a found so that the far lane is w across
     const run = (a, out) => {
@@ -1491,11 +1493,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const P = turnPoses(st.x, st.y, st.h, back, w, keepSign);
       // the street's middle, from the lane the car is in: every corner of every pose inside the kerbs
       const cx = st.x + Math.cos(st.h) * keepSign * OECars.LANE, cy = st.y - Math.sin(st.h) * keepSign * OECars.LANE, ux = Math.cos(st.h), uy = -Math.sin(st.h);
+      // (the wheels inside the kerbs; the body's corners may hang over them, as a bumper swings out over the
+      // pavement in a turn in the road, but not into a wall, a post or a facade: Shibuya's 7 m streets had no
+      // room for a turn with the whole body kept off the kerb, #264)
       const ok = P.every(q => {
-        const fx = Math.sin(q.h), fy = Math.cos(q.h);
+        const fx = Math.sin(q.h), fy = Math.cos(q.h), ax = o.C.half * 0.55;
         for (const [a, c] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+          const wx = q.x + fx * a * ax + fy * c * (o.C.hw - 0.1), wy = q.y + fy * a * ax - fx * c * (o.C.hw - 0.1);
+          if (Math.abs((wx - cx) * ux + (wy - cy) * uy) > half - 0.15) return false;
           const px = q.x + fx * a * o.C.half + fy * c * o.C.hw, py = q.y + fy * a * o.C.half - fx * c * o.C.hw;
-          if (Math.abs((px - cx) * ux + (py - cy) * uy) > half - 0.25) return false;
+          const off = Math.abs((px - cx) * ux + (py - cy) * uy);
+          if (off > half + 0.9 || (off > half - 0.25 && !nav.room(px, py, z, 0.15, 1.2))) return false;
         }
         if (cars.footprint(q.x, q.y, z, q.h, o.C.half, o.C.hw, 0.25) > 0) return false;
         if (mine && Math.hypot(mine.x - q.x, mine.y - q.y) < o.C.half + myCar.C.half + 0.3) return false;
@@ -1521,6 +1529,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const T = o.turn, st = o.drv.st, P = T.poses;
     st.brake = T.wait > 0; st.signal = 0;
     if (T.wait > 0) { T.wait -= dt; st.v = 0; return; }
+    // (a car of the traffic come into where it goes next: it waits there, as a driver does part way round, up
+    // to 10 s; the traffic gives way to it, so the car is one already there or crossing, Queenstown, #264)
+    const nx = P[Math.min(T.i + 1, P.length - 1)];
+    if (!(T.held >= 10) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) { T.held = (T.held || 0) + dt; st.v = 0; st.brake = true; return; }
     T.u += TURN_V * dt;
     while (T.u >= 0.25 && T.i < P.length - 1) {
       T.u -= 0.25;
@@ -1626,7 +1638,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // in view (one it can't pass for the traffic coming the other way), or, up to 250 m ahead on its way, a
     // road where a car has stood longer than a red light lasts (40 s) or a junction a car has stood in for
     // 20 s. It looks for another way from where it is, round those roads, and takes it if it is no more
-    // than 300 m longer (on the trip, 300 m or half as far again), as a driver with a map app does; on the
+    // than 300 m longer (on the trip, with you in it, 150 m or a quarter as far again: a long way round with the meter running reads as a detour), as a driver with a map app does; on the
     // trip the driver says so. Not while it is in a junction (its way across is held), and every 8 s at most
     if ((o.phase === 'coming' || o.phase === 'driving') && !st.mv && clockT - (o.rerouteT || 0) > 8 && o.drv.opts && clockT - (o.jamLook || 0) > 1
       && Math.abs(st.lat - (st.lane ?? OECars.LANE)) < 0.2 && Math.abs(st.shift) < 0.1 && !st.backoff) { // (settled in its lane: the new way starts from the lane, not the kerb or a swing out round a car)
@@ -1643,7 +1655,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         // picked, against the time left and a red light's wait for the jam: a way 100 m round that met a scramble's
         // red made Shibuya's taxi 57 s, #243)
         const sooner = o.phase !== 'coming' || !rt || planOn(rt, Object.assign({}, pl, { v: st.v }), o.pickup).T < o.drv.timeLeft() + SCR_WAIT * (o.scr || []).filter(q => q > st.s + 2).length + 12;
-        if (rt && sooner && rt.len < left + (o.phase === 'driving' ? Math.max(300, left * 0.5) : 300) && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
+        if (rt && sooner && rt.len < left + (o.phase === 'driving' ? Math.max(150, left * 0.25) : 300) && !(rt.nodes || []).some(nd => shun.has(nd.line))) {
           const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: st.v });
           o.drv.leave();
           o.drv = OECars.chauffeur(o.C, rt, opts);
@@ -4213,7 +4225,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
       const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft };
-      if (o === ride && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null });
+      if (o === ride && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null, xBlock: st.xBlock || null, block: st.block || null });
       cars.extra.push(x);
     }
     cars.update(dt, cx, cy, clockT, blockers);
