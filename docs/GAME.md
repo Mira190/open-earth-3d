@@ -1315,7 +1315,8 @@ Sydney's traffic stood still a third of the time.
   crossing has a walk signal on a post on each kerb, facing across: a red
   figure standing over a green one walking, the red flashing while those
   already out finish crossing. The lamps change only when a signal does.
-- **Walk signals' calls** (`web/game/walkcalls.js`, the sounds in `web/game/audio.js`,
+- **Walk signals' calls** (off in play with the rest of the city's ambience, as too loud;
+  `?noise=1` brings them back) (`web/game/walkcalls.js`, the sounds in `web/game/audio.js`,
   all synthesised with Web Audio, no recordings). Each walk-signal head
   (`junctions.heads.peds`; its crosswalk runs to the head on the far kerb, or a
   scramble's along `j.walks`) is a speaker 3.3 m up, heard from the camera, fading with distance and panned

@@ -1343,6 +1343,19 @@ const npcNight = require('./npc_night');
   });
   check(fx.none || (fx.on && fx.off), fx.none ? 'no post stack for the depth of field' : `photo mode focuses with a depth of field (${fx.on}), and play has none (${fx.off})`);
   if (fx.snd) check(fx.snd.junction != null, `the crossing's sound listens to its signals (junction ${fx.snd.junction})`);
+  // the city's ambience is off in play (too loud): over a second of frames, no murmur, music or walk call
+  const hush = await p.evaluate(async () => {
+    const g = window.__game, A = window.OEAudio, frame = () => new Promise(r => requestAnimationFrame(() => r()));
+    if (!A.on) A.start();
+    const calls = { murmur: 0, screens: 0, announce: 0 }, keep = {};
+    for (const k of Object.keys(calls)) { keep[k] = A[k]; A[k] = (...a) => { calls[k]++; return keep[k](...a); }; }
+    const n0 = g.walkCalls.state().played, t0 = performance.now();
+    while (performance.now() - t0 < 1200) await frame();
+    Object.assign(A, keep);
+    return { calls, walk: g.walkCalls.state().played - n0, noise: g.cityNoise() };
+  });
+  check(!hush.noise && !hush.walk && !hush.calls.murmur && !hush.calls.screens && !hush.calls.announce,
+    `the city's ambience is off in play (murmur ${hush.calls.murmur}, music ${hush.calls.screens}, announcements ${hush.calls.announce}, walk calls ${hush.walk})`);
 
   // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
   const lights = await p.evaluate(() => {
