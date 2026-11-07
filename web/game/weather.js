@@ -421,7 +421,7 @@ void main() {
     let clockAt = null, snap = true, cover = { roof: false, h: 0, at: 0 }, occT = -9, occAt = new THREE.Vector3(1e9, 0, 0), hideList = [], hideAt = -99;
     const lastCam = new THREE.Vector3().copy(camera.position), vel = new THREE.Vector3();
     const baseClouds = su && su.cloudCoverage ? [su.cloudCoverage.value, su.cloudDensity.value] : null;
-    const readBuf = new Uint16Array(4);
+    const readBuf = new Float32Array(4), readHalf = new Uint16Array(4);
     const api = {
       U, kinds: Object.keys(KINDS), names: NAMES, meshes: { near, far, splash }, occ: occRT,
       get mode() { return mode; },
@@ -556,8 +556,15 @@ void main() {
         try {
           if (compile) for (const m of [near, far, splash]) compile(m);
           else renderer.compile(world, camera);
-          if (occRT) renderOcc(-9);
-        } finally { [near.visible, far.visible, splash.visible] = was; occOn.value = 0; occT = -9; }
+        } finally { [near.visible, far.visible, splash.visible] = was; }
+        // the occlusion map's programs compiled off the frame, then one map drawn (its target and depth buffer
+        // made) without a read back: nothing is read from it until the rain comes (issue 299)
+        if (!occRT) return;
+        return occPrograms().then(() => {
+          if (cur.rain > 0) return; // (the rain came on meanwhile: its own maps are drawn)
+          renderOcc(-9, false);
+          occOn.value = 0; occT = -9;
+        });
       },
       // is a point under cover (a roof within a few metres overhead)? from the last occlusion map
       covered: () => cover.roof,
@@ -578,7 +585,7 @@ void main() {
       });
       return hideList;
     }
-    function renderOcc(tSec) {
+    function renderOcc(tSec, read = true) {
       const c = camera.position, texel = 2 * OCC_R / T.occ;
       const cx = Math.round(c.x / texel) * texel, cz = Math.round(c.z / texel) * texel;
       occBase.value = Math.round(c.y);
@@ -606,13 +613,39 @@ void main() {
       // a roof over the camera's focus, read back without stalling the frame
       // (the map's v runs from +z at the bottom to -z at the top: occBox's negative depth)
       const f = api.focus || c, px = Math.floor(((f.x - cx) / (2 * OCC_R) + 0.5) * T.occ), iy = Math.floor(((f.z - cz) / (-2 * OCC_R) + 0.5) * T.occ);
-      if (renderer.readRenderTargetPixelsAsync && px >= 0 && px < T.occ && iy >= 0 && iy < T.occ) {
-        renderer.readRenderTargetPixelsAsync(occRT, px, iy, 1, 1, readBuf).then(b => {
-          const h = THREE.DataUtils.fromHalfFloat(b[0]) + occBase.value, a = THREE.DataUtils.fromHalfFloat(b[3]);
-          const over = h - f.y;
-          cover = { roof: a > 0.5 && over > 0.4 && over < 12, h: over, at: tSec };
-        }).catch(() => { /* a lost context */ });
+      if (read && px >= 0 && px < T.occ && iy >= 0 && iy < T.occ) {
+        const base = occBase.value, fy = f.y, done = (h, a) => { const over = h + base - fy; cover = { roof: a > 0.5 && over > 0.4 && over < 12, h: over, at: tSec }; };
+        (window.OEWorld && OEWorld.readAsync ? OEWorld.readAsync(renderer, occRT, px, iy, 1, 1, readBuf).then(b => done(b[0], b[3]))
+          : renderer.readRenderTargetPixelsAsync ? renderer.readRenderTargetPixelsAsync(occRT, px, iy, 1, 1, readHalf).then(b => done(THREE.DataUtils.fromHalfFloat(b[0]), THREE.DataUtils.fromHalfFloat(b[3])))
+            : Promise.resolve()).catch(() => { /* a lost context */ });
       }
+    }
+    // The occlusion pass's programs (issue 299): the pass draws the city with one material in place of each
+    // object's own, which three.js keys by the kind of object (instanced, skinned, with normals or without,
+    // receiving shadows), so one object of each kind is compiled with it, into its target, without drawing,
+    // and the programs are waited for off the frame and their first-use queries made then: the first map
+    // drawn after costs no compile (it was 2.5 s on the loader's frame).
+    function occPrograms() {
+      const hide = new Set(hidden(-9)), kinds = new Map();
+      world.traverse(o => {
+        if (!o.isMesh || !o.material || hide.has(o)) return;
+        const g = o.geometry, at = (g && g.attributes) || {};
+        const key = [o.isSkinnedMesh, o.isInstancedMesh, !!o.instanceColor, o.isBatchedMesh, !!at.normal, !!at.tangent, !!(g && g.morphAttributes && Object.keys(g.morphAttributes).length), o.receiveShadow].join();
+        if (!kinds.has(key)) kinds.set(key, o);
+      });
+      const list = [...kinds.values()], prev = renderer.getRenderTarget(), fog = world.fog;
+      const just = { traverse: f => { for (const o of list) { const m = o.material; o.material = occMat; try { f(o); } finally { o.material = m; } } }, traverseVisible() {} };
+      world.fog = null; renderer.setRenderTarget(occRT);
+      try { renderer.compile(just, occCam, world); } catch (e) { return Promise.resolve(); } finally { world.fog = fog; renderer.setRenderTarget(prev); }
+      const progs = () => [...((renderer.properties.get(occMat).programs || new Map()).values())];
+      return new Promise(done => {
+        const check = () => {
+          if (progs().some(p => p.isReady && !p.isReady())) { setTimeout(check, 10); return; }
+          for (const p of progs()) try { p.getUniforms(); p.getAttributes(); } catch (e) { /* on its first draw */ }
+          done();
+        };
+        check();
+      });
     }
     return api;
   }

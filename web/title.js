@@ -798,6 +798,10 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     }
   }
 
+  // the load's stages for the telemetry (telemetry.js markOf): textures in (earth.js), decoded and sent to the GPU,
+  // the first frame (the stars, while the earth loads), and ready: the first frame of the opening or the menu
+  const stageMark = s => { try { performance.mark(`oe:${s}`, { detail: { view: 'globe', city: '' } }); } catch (e) { /* no User Timing */ } };
+  let firstFrame = true, shown = false;
   let lastT = performance.now() / 1000;
   let manual = false; // the film tool draws frames itself
   function frame(force) {
@@ -883,6 +887,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     earth.earth.uFocus.value.copy(focusDir);
     earth.earth.uFocusAmt.value += ((sel >= 0 && state === 'menu' ? 1 : 0) - earth.earth.uFocusAmt.value) * Math.min(1, dt * 3);
     if (drawing) earth.render(performance.now());
+    if (firstFrame) { firstFrame = false; stageMark('frame'); }
+    if (!shown && state !== 'boot') { shown = true; stageMark('ready'); }
     if (state === 'menu' || state === 'dive' || (state === 'open' && app.classList.contains('menu'))) placeMarks();
   }
   // a night view wants the eye open a little wider than a day one
@@ -938,6 +944,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const back = from && dests.find(d => d.id === from || (d.sites && d.sites.some(c => c.id === from)));
   try { await earth.load(); } catch (e) { console.warn('title: textures', e); }
   if (!running) return api();
+  stageMark('decoded');
   if (mode !== 'still') {
     if (earth.renderer.getContext().isContextLost()) {
       // lost while the textures went up (memory runs short then): the still holds until the

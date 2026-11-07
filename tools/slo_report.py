@@ -4,12 +4,14 @@
     python3 tools/slo_report.py telemetry.jsonl            # a report on the terminal
     python3 tools/slo_report.py telemetry.jsonl --days 7   # the last week only
     python3 tools/slo_report.py telemetry.jsonl --json     # the same numbers as JSON
+    POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/slo_report.py --posthog --days 7   # the events from PostHog
 
 The service levels and their targets are defined in docs/OBSERVABILITY.md; SLOS below is the same
 table. Exits 1 when a level with enough data misses its target, so it can run on a schedule.
 """
 import argparse
 import json
+import os
 import sys
 import time
 from collections import Counter, defaultdict
@@ -31,8 +33,6 @@ SLOS = [
     ('inp_p75', 'Slowest interaction per page load, p75 (ms)', 200.0, 'le'),
 ]
 LEFT_SOON_S = 60        # a page that ends this soon after the tour's end card: the visitor watched the tour and went
-
-
 def pct(xs, p):
     xs = sorted(xs)
     if not xs:
@@ -40,6 +40,41 @@ def pct(xs, p):
     k = (len(xs) - 1) * p
     lo = int(k)
     return xs[lo] + (xs[min(lo + 1, len(xs) - 1)] - xs[lo]) * (k - lo)
+
+
+def read_posthog(days):
+    """The site's events of the last days from PostHog (HogQL), in the collector's form."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from posthog_dashboard import API, OURS
+    key = os.environ.get('POSTHOG_PERSONAL_API_KEY')
+    if not key:
+        sys.exit('POSTHOG_PERSONAL_API_KEY is not set')
+    api = API(key)
+    pid = os.environ.get('POSTHOG_PROJECT') or api.call('GET', '/api/projects/@current/')['id']
+    # keyset pagination on the timestamp (PostHog refuses OFFSET with a personal key); events that share the
+    # last timestamp of a page come again on the next, and are kept once by their uuid
+    out, seen, page, last = [], set(), 20000, None
+    while True:
+        after = f"AND timestamp >= toDateTime64('{last}', 6, 'UTC') " if last else ''
+        q = (f"SELECT uuid, event, timestamp, distinct_id, properties FROM events WHERE {OURS} "
+             f"AND timestamp > now() - INTERVAL {int(float(days or 7) * 86400)} SECOND {after}ORDER BY timestamp LIMIT {page}")
+        res = api.call('POST', f'/api/projects/{pid}/query/', {'query': {'kind': 'HogQLQuery', 'query': q}}).get('results') or []
+        fresh = 0
+        for uid, ev, ts, vid, props in res:
+            if uid in seen:
+                continue
+            seen.add(uid)
+            fresh += 1
+            if isinstance(props, str):
+                try:
+                    props = json.loads(props)
+                except ValueError:
+                    props = {}
+            t = ts if isinstance(ts, str) else str(ts)
+            out.append({'event': ev, 'got': t, 'ts': t, 'vid': vid, 'props': props or {}})
+        if len(res) < page or not fresh:
+            return out
+        last = str(res[-1][2]).replace('T', ' ').replace('Z', '').split('+')[0]
 
 
 def read(path, days):
@@ -127,14 +162,68 @@ def report(events):
     lv['inp_p75'] = (pct(list(worst.values()), 0.75), len(worst))
     r.update(behaviour(events))
     r['crashes'] = dict(Counter(f"{e['props'].get('prev_view')}:{e['props'].get('prev_city') or ''} {e['props'].get('prev_spot') or ''}".strip() for e in crashes).most_common(10))
-    r['load_failures'] = dict(Counter((e['props'].get('why'), e['props'].get('view'), e['props'].get('city')) for e in bad).most_common(10))
+    r['load_failures'] = dict(Counter(' '.join(str(x) for x in (e['props'].get('why'), e['props'].get('view'), e['props'].get('city')) if x) for e in bad).most_common(10))
     r['top_errors'] = dict(Counter(f"{e['props'].get('msg')} @ {e['props'].get('src')}" for e in events if e['event'] == 'error').most_common(10))
     r['slo'] = []
     for sid, what, target, how in SLOS:
         val, cnt = lv[sid]
         met = None if val is None or cnt < MIN_N else (val >= target if how == 'ge' else val <= target)
         r['slo'].append({'id': sid, 'what': what, 'target': target, 'op': '>=' if how == 'ge' else '<=', 'value': val, 'n': cnt, 'met': met})
+    r['load_stages'] = stage_report(events)
+    r['releases'] = releases(events)
     return r
+
+
+def stage_report(events):
+    """Where a load's time goes: p75 of each stage (s) by view and device, from the v3 load events."""
+    G = defaultdict(lambda: defaultdict(list))
+    for e in events:
+        p = e['props']
+        if e['event'] != 'load' or not p.get('ok') or p.get('ms') is None:
+            continue
+        k = f"{p.get('view')} {'desktop' if p.get('device') == 'desktop' else 'phone/tablet'}"
+        G[k]['ready'].append(p['ms'] / 1000)
+        for st, f in (('fetched', 'fetch_ms'), ('decoded', 'decode_ms'), ('built', 'build_ms'), ('frame', 'frame_ms')):
+            if p.get(f) is not None:
+                G[k][st].append(p[f] / 1000)
+    return {k: {'n': len(v['ready']), **{st: round(pct(xs, 0.75), 2) for st, xs in v.items() if xs}} for k, v in sorted(G.items())}
+
+
+def vkey(v):
+    try:
+        return tuple(int(x) for x in str(v).split('.'))
+    except ValueError:
+        return (-1, str(v))
+
+
+def releases(events):
+    """The levels by deployed version (the "app" property): a regression points to the release that brought it."""
+    R = defaultdict(lambda: {'sids': set(), 'err': set(), 'lost': set(), 'crash': 0, 'loads': [], 'fps': [], 'frames': 0, 'slow': 0.0})
+    for e in events:
+        p = e['props']
+        r = R[p.get('app') or '?']
+        if p.get('sid') and e['event'] != 'crash':
+            r['sids'].add(p['sid'])
+        if e['event'] == 'error' and p.get('kind') in ('script', 'promise'):
+            r['err'].add(p.get('sid'))
+        elif e['event'] == 'gl_lost':
+            r['lost'].add(p.get('sid'))
+        elif e['event'] == 'crash':
+            r['crash'] += 1
+        elif e['event'] == 'load' and p.get('ok') and p.get('view') in LOADING and p.get('ms') is not None:
+            r['loads'].append(p['ms'] / 1000)
+        elif e['event'] == 'time' and p.get('view') in LOADING and p.get('fps') is not None:
+            r['fps'].append(p['fps'])
+            r['frames'] += p.get('frames') or 0
+            r['slow'] += (p.get('slow') or 0) * (p.get('frames') or 0)
+    out = {}
+    for v in sorted(R, key=vkey, reverse=True):
+        r, n = R[v], len(R[v]['sids'])
+        out[v] = {'page_loads': n, 'loads': len(r['loads']), 'load_p75_s': round(pct(r['loads'], 0.75), 2) if r['loads'] else None,
+                  'crash_rate': round(r['crash'] / n, 4) if n else None, 'error_rate': round(len(r['err'] & r['sids']) / n, 4) if n else None,
+                  'gl_lost_rate': round(len(r['lost'] & r['sids']) / n, 4) if n else None,
+                  'fps_median': pct(r['fps'], 0.5), 'slow_frames': round(r['slow'] / r['frames'], 4) if r['frames'] else None}
+    return out
 
 
 def place(p):
@@ -230,6 +319,15 @@ def show(r):
         tgt = f"{s['target']:.0f} s" if 'Load time' in s['what'] else f"{s['target']:.0f} ms" if '(ms)' in s['what'] else f"{s['target'] * 100:g}%"
         mark = {True: 'MET ', False: 'MISS', None: '  ··'}[s['met']]
         print(f"  {mark}  {s['what']:<44} {val:>9}  target {s['op']} {tgt:<6} (n={s['n']})")
+    if r.get('load_stages'):
+        print('\nLoad stages, p75 (s from the view\'s start): fetched · decoded · built · first frame · ready')
+        for k, v in r['load_stages'].items():
+            print(f"  {k:<22} {' · '.join(str(v.get(st, '—')) for st in ('fetched', 'decoded', 'built', 'frame', 'ready'))}  (n={v['n']})")
+    if r.get('releases'):
+        print('\nBy release: page loads · load p75 · crashes · script errors · lost GL · median fps · slow frames')
+        for v, x in list(r['releases'].items())[:8]:
+            f = lambda q: '—' if q is None else f'{q * 100:.1f}%'
+            print(f"  {v:<10} {x['page_loads']:>5} · {'—' if x['load_p75_s'] is None else str(x['load_p75_s']) + ' s':>7} · {f(x['crash_rate'])} · {f(x['error_rate'])} · {f(x['gl_lost_rate'])} · {x['fps_median'] or '—'} · {f(x['slow_frames'])}")
     print('\nWhere visitors stay (minutes by spot)')
     for k, v in r['minutes_by_spot'].items():
         print(f'  {v:>7}  {k}')
@@ -256,11 +354,15 @@ def show(r):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('log')
+    ap.add_argument('log', nargs='?', help='the collector\'s JSON lines (tools/telemetry_server.py)')
+    ap.add_argument('--posthog', action='store_true', help='read the events from PostHog instead (POSTHOG_PERSONAL_API_KEY)')
     ap.add_argument('--days', type=float, default=0)
     ap.add_argument('--json', action='store_true')
     a = ap.parse_args()
-    r = report(read(a.log, a.days))
+    if not a.log and not a.posthog:
+        ap.error('give a log file or --posthog')
+    events = read_posthog(a.days or 7) if a.posthog else read(a.log, a.days)
+    r = report(events)
     if a.json:
         print(json.dumps(r, indent=1, default=str))
     else:
