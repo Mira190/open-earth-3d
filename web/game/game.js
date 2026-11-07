@@ -1497,6 +1497,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const T = o.turn, st = o.drv.st, P = T.poses;
     st.brake = T.wait > 0; st.signal = 0;
     if (T.wait > 0) { T.wait -= dt; st.v = 0; return; }
+    // (a car of the traffic come into where it goes next: it waits there, as a driver does part way round, up
+    // to 10 s; the traffic gives way to it, so the car is one already there or crossing, Queenstown, #264)
+    const nx = P[Math.min(T.i + 1, P.length - 1)];
+    if (!(T.held >= 10) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) { T.held = (T.held || 0) + dt; st.v = 0; st.brake = true; return; }
     T.u += TURN_V * dt;
     while (T.u >= 0.25 && T.i < P.length - 1) {
       T.u -= 0.25;
@@ -4158,7 +4162,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
       const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft };
-      if (o === ride && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null, xBlock: st.xBlock || null });
+      if (o === ride && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null, xBlock: st.xBlock || null, block: st.block || null });
       cars.extra.push(x);
     }
     cars.update(dt, cx, cy, clockT, blockers);

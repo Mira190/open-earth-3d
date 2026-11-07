@@ -1382,9 +1382,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // its middle round the lane's corner. Measured with tools/bus_turn.js: before, a bus's heading swung
     // 20 degrees in a tenth of a second at a junction's corner, three to four times what its lock allows,
     // its rear skating sideways at 10 to 20 m/s
+    // (its middle on the lane and its rear axle drawn after that, not its front axle on the lane: so led, the rear
+    // axle cut 2 m inside a 12 m corner, over the kerb and through the street lights there, Shibuya's clip check, #264)
     const LONG_V = 3.5;
     function trail(c, reset) {
-      const fa = c.half * 0.6, wb = c.half * 1.15, sx = Math.sin(c.h), sy = Math.cos(c.h), fx = c.x + sx * fa, fy = c.y + sy * fa;
+      const fa = 0, wb = c.half * 0.55, sx = Math.sin(c.h), sy = Math.cos(c.h), fx = c.x + sx * fa, fy = c.y + sy * fa;
       const dx = fx - c.rx, dy = fy - c.ry, d = Math.hypot(dx, dy);
       if (reset || c.rx == null || !(d > 1e-3) || Math.abs(d - wb) > 1.5) { c.rx = fx - sx * wb; c.ry = fy - sy * wb; return; } // (placed, turned round, or moved a long way at once: straight behind)
       c.rx = fx - dx / d * wb; c.ry = fy - dy / d * wb;
@@ -1892,6 +1894,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
           if (!b.parked && b.id && sawX && sawX.has(b.id)) continue; // (on the move and on its way: given way to, or not, above)
           if (np && !b.parked && b.id && api.extra.some(o => o.id === b.id && o.np)) { // (on the move with a way of its own, not on this car's: only one straight across its bonnet, close, holds it)
+            const xo = api.extra.find(o => o.id === b.id);
+            if (xo && xo.block && (xo.block === c || xo.block.of === c)) continue; // (not one held up by this car itself: the two would wait on each other)
             const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
             if (a > 0 && a < c.half + b.half + 4 && Math.abs(w) < c.hw + (b.hw || 0.9) + 0.2 && a - b.half - c.half < gap) { gap = Math.max(0, a - b.half - c.half); byCar = true; front = null; why = 'you'; youBy = b.id + ' across its bonnet'; }
             continue;
@@ -1935,6 +1939,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         });
         // (stopped for one more than 10 s, a post its way runs into in a junction, say: it edges past it, #144)
         c.postT = why === 'post' && c.v < 0.3 ? (c.postT || 0) + dt : 0;
+        if (c.postT > 10 && !inView(c)) { c.postT = 0; respawn(c, cx, cy, radius * 0.6); continue; } // (out of view: it leaves the traffic rather than drive through it)
         if (c.postT > 10) { c.postT = 0; c.postPass = c.mv ? 30 : 6; } else if (c.postPass > 0) c.postPass -= dt; // (in a junction, for the rest of its turn: a bus held there by a walker meanwhile ran out its 6 s and stood at the post again, 200 s in Kyoto's 309)
         // (a facade beside its lane: in from it, below, until its back has passed the place: c.narrow is the
         // metres to go, not a time, so a car that stops beside a facade stays in from it however long it waits)
@@ -2031,6 +2036,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 if (!c.ex2 || c.ex2.a !== a2) c.ex2 = { a: a2, e: JN.choose(a2, c.hw, c.half) };
                 const lt2 = JN.light(a2, c.ex2.e);
                 if (!c.ex2.e || !(lt2 == null || lt2 === 'g') || a2.sign === 'stop' || !room(c, c.ex2.e)) go = false;
+                // (held at this line by the next one's light: a call for its phase, as if at its line, and the time
+                // counted lost on this green, junctions.js; a 6 s green at Shinjuku's 1105 went by on 1103's red, #264)
+                if (c.ex2.e && lt2 && lt2 !== 'g') { if (!a2.j.scramble) JN.want(a2); if (toLine - c.half < 3 && jArm.j.sig) jArm.lost1 = true; }
               }
               // (in it already: its way through this junction let in, or, crossing two close junctions together, this
               // one's let in with the one just after, mv0: then a light turning red behind it, or the room beyond
@@ -2200,7 +2208,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         c.q = atLine || (why === 'person' && walker >= 0 && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there; or held by the crowd crossing at its line, not by you, who may stand there for good)
         // counted at its arm for the signals' max-pressure (junctions.js): queued, and whether the head of the queue waits for room beyond
-        if (c.q && c.lineArm && c.lineArm.j.sig && c.toLine < 80) { const a = c.lineArm; a.qn1 = (a.qn1 || 0) + 1; if (why === 'room' && c.toLine - c.half < 3) a.full1 = true; }
+        if (c.q && c.lineArm && c.lineArm.j.sig && c.toLine < 80) { const a = c.lineArm; a.qn1 = (a.qn1 || 0) + 1; if (why === 'room' && c.toLine - c.half < 3) a.full1 = true; if (why === 'cross' && c.toLine - c.half < 3) a.lost1 = true; }
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)
@@ -2317,6 +2325,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // (held by a post alone, its body's corner swinging over the kerb at a junction's corner: after 10 s it has
           // leave to edge past, as for a post ahead, above; a bus stood 106 s so in Tokyo's 689, the junction's queues behind)
           c.postHeld = held && who < 0 && p1 >= d1 - 1e-3 ? (c.postHeld || 0) + dt : 0;
+          // (out of view it leaves the traffic instead, as a knot does below: edged past, a bus's body went through a street
+          // light at Shibuya's 1916 in the clip check)
+          if (c.postHeld > 10 && !inView(c)) { c.postHeld = 0; respawn(c, cx, cy, radius * 0.6); continue; }
           if (c.postHeld > 10) { c.postHeld = 0; c.postPass = c.mv ? 30 : 6; held = false; }
         }
         if (behind && !turn && !squeeze) held = true;
