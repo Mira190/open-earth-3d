@@ -783,6 +783,9 @@ const npcNight = require('./npc_night');
   // the foot of its moving stretch and it carries you, up or down, to its far end, where you can stand
   const escRides = await p.evaluate(() => {
     const g = window.__game, pl = g.player, nav = g.nav, out = [];
+    // a city with no escalator is left as it was: a respawn and half a second moved on would shift the timing of
+    // the traffic that the taxi and the drive checks after this one meet
+    if (!nav.strips.some(q => q.moving_ms)) return out;
     for (const s of nav.strips.filter(q => q.moving_ms)) {
       const mu = s.moving_u || [s.us[0], s.us[s.us.length - 1]], u0 = mu[0] + 0.3;
       const x = s.origin[0] + s.axis[0] * u0, y = s.origin[1] + s.axis[1] * u0;
