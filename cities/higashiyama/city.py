@@ -114,6 +114,10 @@ BARE = {"post": "timber", "wall": "kiyo_white", "roof": "hiwada", "soffit": "sof
         "base": "stone", "bracket": "timber_dark", "wood": "timber_dark", "metal": "bronze", "gold": "gold", "screen": "screen",
         "nio": "nio", "screen_wood": "lattice", "pillar": "keyaki", "nuki": "nuki"}
 BARE_TILE = dict(BARE, roof="kawara", ridge="kawara_ridge")
+# Yasaka-jinja's small shrines by name where a photograph shows them (#272): Ōkuninushi-sha in black lacquer with
+# gold fittings behind its stone torii (2023). The others stay vermilion until a photograph says otherwise.
+LACQUER = dict(VERMILION, post="urushi", wood="urushi", gable="urushi", screen_wood="urushi", wall="urushi")
+SHRINE_LOOK = {"大国主社": LACQUER}
 
 # (OpenStreetMap way, kind, published height to the top in metres, toward: the point its front faces)
 KIYOMIZU = {
@@ -563,6 +567,7 @@ YASAKA_JINJA = {
     "tokiwa_shinden": ("w88108391", 11.4),  # 常磐新殿: the reception halls south of the honden
     "noh": ("w328903229", 8.1),           # 能舞台: the Noh stage
 }
+GATE_STEPS_M = 22.0                      # m before a gate's front kept clear of trees, its width (its steps and the approach)
 YASAKA_HONDEN_FRONT = (-314.0, 600.0)    # the precinct's south: where the halls face
 YASAKA_WEST = (-600.0, 747.0)            # down Shijo-dori: where the West Gate faces
 
@@ -636,7 +641,8 @@ def yasaka_jinja(K, hidden):
         # the Gion style: the eaves come down low all round (the honden's aisles and the worship hall's
         # under the one roof), the ridge high over the middle
         kk.hall(K, VERMILION, P, z0, a, b, zf, z0 + 5.6, z0 + YASAKA_JINJA["honden"][1], roof="irimoya",
-                ov=3.0, posts_every=2.6, veranda=True, ground=ground, k=1.3, lift=0.14, gable_at=0.6)
+                ov=3.0, posts_every=2.6, doors=False, veranda=True, ground=ground, k=1.3, lift=0.14, gable_at=0.6)
+        honden_front(K, P, a, b, zf, z0 + 5.6, 2.6)
         hidden.append(sd["si"])
     for key in ("minami_romon", "nishi_romon"):
         oid, h = YASAKA_JINJA[key]
@@ -651,8 +657,12 @@ def yasaka_jinja(K, hidden):
             # (its middle bay, the way through, about 3.5 m between the posts: the outer bays narrower than the footprint's)
             kk.romon(K, M, P, z0, 2 * hv - 1.2, 2 * hu - 2.0, h, nio=False, ground=ground)
             west_wings(K, M, P, z0, hu, hv, hidden, ground)
-        else:
+        else:   # under hinoki bark, three gold crests (左三つ巴) on its ridge either side (photograph, 2024)
             kk.romon(K, dict(VERMILION, nio="shu_dark"), P, z0, 2 * hv - 2.4, 2 * hu - 2.0, h, nio=False, ground=ground)
+            ridge_crests(K, P, z0 + h - 0.75, 0.55, (-0.3 * hv, 0.0, 0.3 * hv), 0.32)
+        # its way through and the steps before it, the gate's width, are open: no tree stands there (photographs)
+        _cache.setdefault("tree_clear", []).append([tuple(P(u, v, 0)[:2]) for u, v in
+                                                    ((-hu - 1.0, -hv - 0.5), (hu + GATE_STEPS_M, -hv - 0.5), (hu + GATE_STEPS_M, hv + 0.5), (-hu - 1.0, hv + 0.5))])
         hidden.append(sd["si"])
     got = jinja_site(YASAKA_JINJA["buden"][0], (-314.0, 739.0))
     if got:
@@ -700,8 +710,38 @@ def yasaka_jinja(K, hidden):
         P = kk.frame(o, f)
         z0 = float(min(T(*P(u, v, 0)[:2]) for u in (-hu, hu) for v in (-hv, hv)))
         h = 2.6 + 0.45 * math.sqrt(area)
-        hokora(K, VERMILION, P, z0, hu - 0.2, hv - 0.2, h, ground)
+        hokora(K, SHRINE_LOOK.get(nm, VERMILION), P, z0, hu - 0.2, hv - 0.2, h, ground)
         hidden.append(sd["si"])
+
+
+def honden_front(K, P, hu, hv, z_floor, eave, every):
+    """The honden's front (photographs, 2017-19): its bays open between the vermilion posts onto the dark of the
+    worship hall, white boards over them, and gold fittings (金具) on the head and floor beams and at every post's
+    head and foot."""
+    zt = eave - max(0.9, (eave - z_floor) * 0.18)
+    n = max(1, int(round(2 * hv / every)))
+    for q in range(n):
+        va, vb = -hv + 2 * hv * q / n, -hv + 2 * hv * (q + 1) / n
+        K["urushi"].quad(P(hu - 0.12, va + 0.25, z_floor + 0.35), P(hu - 0.12, vb - 0.25, z_floor + 0.35),
+                         P(hu - 0.12, vb - 0.25, zt - 1.0), P(hu - 0.12, va + 0.25, zt - 1.0))
+        block(K["kiyo_white"], P, hu - 0.16, hu - 0.1, va + 0.25, vb - 0.25, zt - 1.0, zt - 0.4)
+    for z in (zt - 0.28, z_floor + 0.22):        # gold bands along the head and floor beams
+        block(K["gold"], P, hu + 0.1, hu + 0.15, -hv - 0.1, hv + 0.1, z - 0.06, z + 0.06)
+    for q in range(n + 1):                       # and plates where the posts meet them
+        v = -hv + 2 * hv * q / n
+        for z in (zt - 0.28, z_floor + 0.22):
+            block(K["gold"], P, hu + 0.1, hu + 0.2, v - 0.32, v + 0.32, z - 0.16, z + 0.16)
+
+
+def ridge_crests(K, P, z, du, vs, r):
+    """Gold crests on a ridge's sides, facing out either way: discs of radius r at height z, du from the ridge."""
+    for v in vs:
+        for s in (-1, 1):
+            pts = [P(s * du, v + r * math.cos(t), z + r * math.sin(t)) for t in np.linspace(0, 2 * math.pi, 17)]
+            c = P(s * du, v, z)
+            for a, b in zip(pts, pts[1:]):
+                K["gold"].tri(c, a, b) if s > 0 else K["gold"].tri(c, b, a)
+                K["gold"].tri(c, b, a) if s > 0 else K["gold"].tri(c, a, b)
 
 
 def west_wings(K, M, P, z0, hu, hv, hidden, ground):
@@ -927,11 +967,16 @@ GION_CHERRY = (-100.8, 763.5, 12.0)
 
 
 def gion_cherry():
+    """The Gion cherry as a landmark tree, its neighbours taken off places.json, and with them every tree standing in
+    a gate's way or on the steps before it (tree_clear: the gates' rings, set as yasaka_jinja() draws them)."""
+    from shapely.geometry import Point as Pt, Polygon as Pg
     x, y, h = GION_CHERRY
     path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "higashiyama", "places.json")
     P = json.load(open(path))
     t = P.get("trees", [])
-    keep = [v for i in range(0, len(t), 4) if math.hypot(t[i] / 10 - x, t[i + 1] / 10 - y) >= 7.5 for v in t[i:i + 4]]
+    clear = [Pg(r) for r in _cache.get("tree_clear", [])]
+    keep = [v for i in range(0, len(t), 4) if math.hypot(t[i] / 10 - x, t[i + 1] / 10 - y) >= 7.5
+            and not any(c.contains(Pt(t[i] / 10, t[i + 1] / 10)) for c in clear) for v in t[i:i + 4]]
     if len(keep) != len(t):
         P["trees"] = keep
         json.dump(P, open(path, "w"), separators=(",", ":"))

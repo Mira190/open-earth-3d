@@ -87,6 +87,18 @@
     "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.",
     "areas": [
       {
+        "name": "Kabukicho Central Road",
+        "at": [
+          470.0,
+          2850.0
+        ],
+        "radius": 58,
+        "mix": {
+          "ginkgo": 1.0
+        },
+        "note": "Central Road's street trees: slim young trees on a central stem, about 5.5 m, as photographs of 2019 show them (#272)"
+      },
+      {
         "name": "Shinjuku Gyoen's Japanese garden",
         "at": [
           1030.0,

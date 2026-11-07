@@ -471,6 +471,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function respawn(p, cx, cy, rMin) {
       release(p);
       if (p.pz) { if (p.gc) { p.gc.n--; p.gc = null; } p.pz = p.g = null; } // (off a scramble's kerbs, taken off its gate's count)
+      p.fx = p.gx = p.av = null; p.moving = false; // (somewhere new: nothing of the pace or the way it went before)
       p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.side = 0.6 + rnd() * 1.2; p.kerbNext = null; p.kerbBack = false;
       // (a share of them where the crowd gathers, api.hot: a scramble; out of the player's way there)
       const H = api.hot && api.hot.filter(h => Math.hypot(h.x - cx, h.y - cy) < radius);
@@ -1001,8 +1002,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (z != null) q.z = z;
       // (waiting, pushed aside a step: the body keeps facing the road, as it does, rather than turning to every shove)
       if (q.ph === 'wait' && q.v > 0 && Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.6 && !(pz.road && pz.road(q.x, q.y))) { q.T.x = q.x; q.T.y = q.y; } // (and stays where it was pushed, not back into the one who pushed it)
+      const fw = heading(q, q.vx, q.vy, dt);
       if (q.face != null) q.h = q.face;
-      else if (q.v > (q.ph === 'wait' ? 0.45 : 0.15)) { const h = Math.atan2(q.vx, q.vy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 6); }
+      else if (q.v > (q.ph === 'wait' ? 0.45 : 0.15) && fw > 0.12) turnTo(q, dt, 6, fw);
       else if (q.ph === 'wait') { const h = Math.atan2(-g.ox, -g.oy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 2); } // (facing the road)
       // there: on the far side, on to a kerb of that corner (or this one) to wait again
       if (Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.5) {
@@ -1010,6 +1012,30 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         else if (q.ph === 'cross') { const c = g.partner.corner, n2 = rnd() < 0.55 && c.length ? c[Math.floor(rnd() * c.length)] : g.partner; q.g = null; toGate(q, n2); }
         else if (q.ph === 'stroll') q.ph = 'wait';
       }
+    }
+    // the way the body faces, out of where it is going: its velocity eased over a good part of a second,
+    // so the jostle of a crowd (a shove one way, a step back the other) averages out rather than swinging
+    // the body to and fro, and a slow shuffle, weighing little, turns it slowly. Returns the eased speed
+    function heading(p, vx, vy, dt) {
+      const k = Math.min(1, dt * 2.5);
+      if (p.fx == null) { p.fx = vx; p.fy = vy; } else { p.fx += (vx - p.fx) * k; p.fy += (vy - p.fy) * k; }
+      return Math.hypot(p.fx, p.fy);
+    }
+    function turnTo(p, dt, rate, fw) {
+      const h = Math.atan2(p.fx, p.fy);
+      p.h += Math.atan2(Math.sin(h - p.h), Math.cos(h - p.h)) * Math.min(1, dt * rate * Math.min(1, fw / 0.9));
+    }
+    // the pace the body shows: the ground it really covered (a sidestep round someone included, a step
+    // put back for bumping into them not), eased over a quarter second, and walking or standing with a
+    // margin between the two, so that a walker edging along in a queue or nudged in a crowd at a kerb
+    // walks or stands rather than flickering between the two clips every few frames
+    function gait(p, dt) {
+      const lx = p.gx, ly = p.gy;
+      p.gx = p.x; p.gy = p.y;
+      let v = lx == null || !(dt > 0) ? p.v || 0 : Math.hypot(p.x - lx, p.y - ly) / dt;
+      if (v > 4) v = p.v || 0; // (put somewhere else, not a pace)
+      p.av = p.av == null ? v : p.av + (v - p.av) * Math.min(1, dt * 4);
+      p.moving = p.state !== 'sit' && (p.moving ? p.av > 0.12 : p.av > 0.35);
     }
     let frame = 0;
     function update(dt, cx, cy, t, player) {
@@ -1028,13 +1054,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) {
         p = P[i];
         if (i >= api.active) { R.hide(i); release(p); if (p.pz) { uncount(p); p.pz = p.g = null; p.state = 'walk'; } p.line = -1; continue; }
-        if (p.pz) { if (p.pause > 0) p.pause -= dt; plazaStep(i, p, dt, player); p.mode = 'ground'; p.moving = p.ph === 'wait' ? p.v > (p.moving ? 0.2 : 0.4) : p.v > (p.moving ? 0.05 : 0.12); R.place(i, p, p.moving); continue; }
+        if (p.pz) { if (p.pause > 0) p.pause -= dt; plazaStep(i, p, dt, player); p.mode = 'ground'; gait(p, dt); R.place(i, p, p.moving); continue; }
         if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (p.line < 0) { R.hide(i); continue; }
         if (p.pause > 0) p.pause -= dt;
         if (p.state === 'walk') { // farther off, a longer step every few frames does
           const d = Math.max(Math.abs(p.x - cx), Math.abs(p.y - cy)), k = d < NEAR ? 1 : d < FAR ? 2 : 4;
-          if ((frame + i) % k === 0) walk(i, k * dt, player, pvx, pvy);
+          if ((frame + i) % k === 0) { walk(i, k * dt, player, pvx, pvy); gait(p, k * dt); }
         }
         else if (p.state === 'sit') {
           p.v = p.vx = p.vy = 0;
@@ -1055,7 +1081,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
         }
         p.mode = p.state === 'sit' ? 'sit' : 'ground';
-        R.place(i, p, p.state !== 'sit' && p.v > 0.05);
+        if (p.state !== 'walk') gait(p, dt);
+        R.place(i, p, p.state !== 'sit' && p.moving);
       }
       R.end();
     }
@@ -1066,6 +1093,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       q.dir = -q.dir; q.hx = -q.hx; q.hy = -q.hy;
       if (q.lat != null) q.lat = -q.lat;
       q.dodge = -q.dodge;
+      if (q.fx != null) { q.fx = -q.fx; q.fy = -q.fy; } // (turned back: faces the new way at once, not walking backwards until the eased way catches up)
       if (q.lim != null) { q.lim = -q.lim; q.limWant = -q.limWant; }
     }
     function walk(i, dt, player, pvx, pvy) {
@@ -1275,8 +1303,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       const lr = dt > 0 ? dl / dt : 0;
       p.vx = hx * p.v - hy * lr; p.vy = hy * p.v + hx * lr;
+      // (the body faces the way it goes along the footway; drifting across to pass someone turns it only a little)
+      const fw = heading(p, hx * p.v - hy * lr * 0.4, hy * p.v + hx * lr * 0.4, dt);
       if (p.face != null) p.h = p.face;
-      else if (p.v > 0.3) { const h = Math.atan2(p.vx, p.vy); p.h += Math.atan2(Math.sin(h - p.h), Math.cos(h - p.h)) * Math.min(1, dt * 8); }
+      else if (fw > 0.3) turnTo(p, dt, 8, fw);
       else if (p.v > 0.05) { const h = Math.atan2(hx, hy); p.h += Math.atan2(Math.sin(h - p.h), Math.cos(h - p.h)) * Math.min(1, dt * 3); } // (barely moving, a sidestep: still facing the way it goes, not turned sideways to every shuffle)
     }
     function nearest(x, y, maxD) {

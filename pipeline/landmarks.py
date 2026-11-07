@@ -39,6 +39,12 @@ def main():
     if city.hook("landmark_assets"):
         for f in city.hook("landmark_assets")(city.out, scene) or []:
             print(f"{f}: {os.path.getsize(os.path.join(city.out, f)) / 1e6:.2f} MB")
+    # a material whose image this city never writes and no mesh uses (one a shared module defines for another
+    # city: Shibuya's Hachiko lilyturf in Shinjuku) is left out, or the viewer asks for the missing image
+    used = {m.mat for m in meshes} | {q.get("material") for p in extra.get("props", []) for q in p.get("parts", [])}
+    for k in [k for k, v in materials.items() if v.get("map") and k not in used and not os.path.exists(os.path.join(city.out, v["map"]))]:
+        print(f"  material {k}: unused, its image {materials[k]['map']} not here; left out")
+        del materials[k]
     out = {"materials": materials, "meshes": [m.dump() for m in meshes],
            "notes": "Parametric; dimensions from published figures, anchors from OpenStreetMap footprints." if meshes else "No parametric landmarks."}
     out.update(extra)
