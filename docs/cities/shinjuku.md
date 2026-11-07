@@ -264,19 +264,38 @@ viewpoints in `tools/views/shinjuku-station.json`, taken with `tools/scramble_sh
 - **Tokyu Kabukicho Tower's frit** ([Tokyu Kabukicho Tower and Kabukicho Cinecity Square 2024-01-25.jpg](https://commons.wikimedia.org/wiki/File:Tokyu_Kabukicho_Tower_and_Kabukicho_Cinecity_Square_2024-01-25.jpg),
   Asanagi, CC0): the white strands are dense over the lower tower and the glass clear above, so the jets now break into spray
   a third of the way up (`FRIT_BURST`) with thin lines running on, instead of a mist over the top third. The crown's
-  fins agree. The podium's brown patterned cladding, its five arches and the big screen over the steps, which the
-  photographs show, are not drawn yet (follow-up).
+  fins agree.
+- **Tokyu Kabukicho Tower's podium (#290)**, from the photographs from Cine City Plaza's axis (the one above) and its
+  south side ([Tokyu Kabukicho Tower exteiror 2024.JPG](https://commons.wikimedia.org/wiki/File:Tokyu_Kabukicho_Tower_exteiror_2024.JPG),
+  Fotointheworld, CC BY 4.0; [Tokyu Kabukicho Tower (53331427520).jpg](https://commons.wikimedia.org/wiki/File:Tokyu_Kabukicho_Tower_(53331427520).jpg),
+  Dick Thomas Johnson, CC BY 2.0), its widths scaled to the mapped 40.5 m front (`KT["front"]` in
+  `cities/shinjuku/station.py`): a podium to 25 m faced in brown metal cladding patterned in small scales; on the front
+  a black frame with rounded upper corners round a 16.5 × 9.3 m screen from 9.8 m up, over the café's glass and its
+  thirteen wide granite steps up 2.2 m from the plaza, the escalator to the first floor beside them, and TOKYU
+  KABUKICHO TOWER in silver letters over the frame; five tall round-headed arches, two on the front and three on the
+  face turning from it, their glazing set back behind a frame of the cladding; over the podium a glazed terrace, the
+  tower's soffit at 29 m and the tower set back 2.5 m all round. The screen is one of the east exit's screens
+  (`SHINJUKU_SCREENS` in `cities/shibuya/city.py`), so it plays their programmes and throws its light on the plaza at
+  night the way they do. The model's canopy and lobby are gone.
+- **What stood before it.** PLATEAU still has a block 15 m tall and 52 m long, a 10 m one at its south end and a low
+  canopy between the tower's front and the plaza: GSI's aerial photograph, taken while the tower's pit was dug, shows
+  them beside the site, and the photographs of 2024 show the podium's front open to the plaza. They are hidden
+  (`KT_FORECOURT`), the plaza's paving laid where they stood, and the shop signs they carried are left out.
 - **LUMINE EST's front** ([Shinjuku-STA East-entrance 2023.jpg](https://commons.wikimedia.org/wiki/File:Shinjuku-STA_East-entrance_2023.jpg),
   MaedaAkihiko, CC BY-SA 4.0; [LUMINE EST Shinjuku.jpg](https://commons.wikimedia.org/wiki/File:LUMINE_EST_Shinjuku.jpg), ITA-ATU, CC BY-SA 4.0) is
   horizontal louvres of grey-brown aluminium the whole height, not pale bands between windows: drawn as blades every
   0.6 m over dark glass, the name over them.
-- **Hanao-san's blooms**: no photograph of them was reached; unchanged.
+- **Hanao-san's blooms**: no photograph of them was reached; unchanged (Commons searched again in #290: nothing).
+
+![Tokyu Kabukicho Tower's podium: the photograph (Asanagi, CC0) and the model at day, dusk and night (#290)](../images/fidelity-290/kabukicho-tower.jpg)
+![The front and the arches, desktop and phone, day, dusk and night (#290)](../images/fidelity-290/shinjuku-desktop.jpg)
+![On a phone (#290)](../images/fidelity-290/shinjuku-phone.jpg)
 
 **Cross Shinjuku Vision 2.** An Con Consulting announced it on 13 February 2025: a vertical screen on
 the roof of a new four-storey building (one basement) across the side street from the Cross Shinjuku
 building, playing in step with the cat screen, due in 2026. Construction began in February 2025, tenant
 leasing in April 2026 and completion was due within 2026. No report of it opening was found by
-7 November 2026 (checked again in #272: the operator's site and its media sheet still list only the first vision), so it is not added to `SHINJUKU_SCREENS`; its size and position have not been
+7 November 2026 (checked again in #272 and #290: the operator's site and its media sheet still list only the first vision), so it is not added to `SHINJUKU_SCREENS`; its size and position have not been
 published either. Sources: [PR TIMES](https://prtimes.jp/main/html/rd/p/000000009.000055107.html),
 [Sign News](https://www.sogohodo.co.jp/display/29502/), [Cross Shinjuku Vision](https://shinjuku.xspace.tokyo/).
 
