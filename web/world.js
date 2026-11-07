@@ -1519,9 +1519,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // compiled now, off the frame, rather than by the first read in the middle of the game's set-up (issue 299)
     if (renderer.capabilities.isWebGL2) compile(renderer, envScene, hazeCam, { target: hazeTarget(), shadows: false });
     // The three views side by side in one target, read back at once without stalling the frame (readAsync: a
-    // synchronous read waited for all the GPU's queued work, 1.8 s of the loader on a software renderer, issue 299).
-    // Calls back with whether it is usable.
-    function readHaze(az, done) {
+    // synchronous read waited for all the GPU's queued work, 1.8 s of the loader on a software renderer, issue 299),
+    // or at once (sync). Calls back with whether it is usable.
+    function readHaze(az, done, sync = false) {
       try {
         const rt = hazeTarget(), prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
         su.uHazeOn.value = 0;
@@ -1543,6 +1543,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           hazeC.setRGB(r / 12, g / 12, b / 12);
           done(true);
         };
+        if (sync) { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); return; }
         readAsync(renderer, rt, 0, 0, 6, 2, hazePx).then(use, () => {
           try { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); } catch (e) { done(false); } // (no fences: WebGL 1)
         });
@@ -1665,13 +1666,22 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         let newSky = key !== envKey && now - envAt >= (api.envEvery || 0);
         // the haze read back without a stall (readHaze): the first sky is made at once, without it (what is compiled
         // next needs a sky to be lit by, not its haze), and made again when it comes; a later one waits for it
+        // the haze read back: for a sky a step on from the last (the sun moving in play) without a stall, the new sky
+        // waiting the frame or two for it; for the first sky, made at once without it (what is compiled next needs a
+        // sky to be lit by, not its haze) and made again when it comes; for a jump (the clock set from the menu, a
+        // still, a film) at once, as before, so that the very next frame is the new hour's
         if (newSky && api.skyHaze && hazeKey !== key) {
-          const first = !envRT, again = { sp: Object.assign({}, sp), minutes };
-          if (!hazeBusy) {
-            hazeBusy = true;
-            readHaze(az, ok => { hazeOk = ok; hazeKey = key; hazeBusy = false; if (first && ok) { envKey = ''; envWait = envWait || again; } });
+          const first = !envRT, [ka, kz] = key.split('|').map(Number), [ea, ez] = envKey ? envKey.split('|').map(Number) : [NaN, NaN];
+          const step = !first && Math.abs(ka - ea) <= 1 && (Math.abs(kz - ez) <= 1 || Math.abs(kz - ez) >= 59);
+          if (!first && !step) readHaze(az, ok => { hazeOk = ok; hazeKey = key; }, true);
+          else {
+            const again = { sp: Object.assign({}, sp), minutes };
+            if (!hazeBusy) {
+              hazeBusy = true;
+              readHaze(az, ok => { hazeOk = ok; hazeKey = key; hazeBusy = false; if (first && ok) { envKey = ''; envWait = envWait || again; } });
+            }
+            if (!first) newSky = false;
           }
-          if (!first) newSky = false;
         }
         envWait = key !== envKey && !newSky ? { sp: Object.assign({}, sp), minutes } : null;
         su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
