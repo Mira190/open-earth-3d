@@ -658,6 +658,19 @@ vec3 steepRock(vec3 c, float k) {
     envSky.scale.setScalar(50); // inside the PMREM cube camera's far plane
     envScene.add(envSky);
     const pmrem = new THREE.PMREMGenerator(renderer);
+    // its programs (the background box, the GGX filter, the blur) compiled now, off the frame, rather than by the first
+    // light from the sky in the middle of the game's set-up (issue 299: 1.5 s there on a software renderer). They are
+    // three.js r186's PMREMGenerator's own parts, so only where they are as there; else the first sky compiles them
+    try {
+      if (pmrem._setSize && pmrem._allocateTargets && renderer.capabilities.isWebGL2) {
+        pmrem._setSize(256); // (fromScene's size)
+        pmrem._allocateTargets().dispose();
+        const g = new THREE.Group(), lod = pmrem._lodMeshes && pmrem._lodMeshes[0];
+        if (lod) for (const m of [pmrem._ggxMaterial, pmrem._blurMaterial]) if (m) g.add(new THREE.Mesh(lod.geometry, m));
+        g.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false })));
+        if (pmrem._pingPongRenderTarget) compile(renderer, g, new THREE.PerspectiveCamera(90, 1, 0.1, 100), { target: pmrem._pingPongRenderTarget, shadows: false });
+      }
+    } catch (e) { /* compiled by the first sky instead */ }
     let envRT = null, envKey = '', envAt = -1e9, envWait = null;
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 2 * Math.PI); // intensities are physical since r155: π × the old values
@@ -1401,10 +1414,10 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // the sky's program as this read and the light from the sky (PMREM) draw it, with no lights and into a target,
     // compiled now, off the frame, rather than by the first read in the middle of the game's set-up (issue 299)
     if (renderer.capabilities.isWebGL2) compile(renderer, envScene, hazeCam, { target: hazeTarget(), shadows: false });
-    // The three views side by side in one target, read back at once: at once (sync) for the first sky, which
-    // everything compiled after it is lit by; for a later one (the sun has moved) without stalling the frame
-    // (readAsync), the new sky waiting the frame or two for it (setSun). Calls back with whether it is usable.
-    function readHaze(az, sync, done) {
+    // The three views side by side in one target, read back at once without stalling the frame (readAsync: a
+    // synchronous read waited for all the GPU's queued work, 1.8 s of the loader on a software renderer, issue 299).
+    // Calls back with whether it is usable.
+    function readHaze(az, done) {
       try {
         const rt = hazeTarget(), prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
         su.uHazeOn.value = 0;
@@ -1426,8 +1439,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           hazeC.setRGB(r / 12, g / 12, b / 12);
           done(true);
         };
-        if (sync) { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); }
-        else readAsync(renderer, rt, 0, 0, 6, 2, hazePx).then(use, () => done(false));
+        readAsync(renderer, rt, 0, 0, 6, 2, hazePx).then(use, () => {
+          try { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); } catch (e) { done(false); } // (no fences: WebGL 1)
+        });
       } catch (e) { done(false); }
     }
     // the water closes over the bottom under what is drawn over it: the aerial photograph has the same
@@ -1545,12 +1559,15 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         // would otherwise rebuild it nearly every frame. The one held back waits for tick.
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`, now = performance.now();
         let newSky = key !== envKey && now - envAt >= (api.envEvery || 0);
+        // the haze read back without a stall (readHaze): the first sky is made at once, without it (what is compiled
+        // next needs a sky to be lit by, not its haze), and made again when it comes; a later one waits for it
         if (newSky && api.skyHaze && hazeKey !== key) {
-          if (!envRT) readHaze(az, true, ok => { hazeOk = ok; hazeKey = key; });
-          else { // (the sun has moved on: the new sky waits for its haze, read back without a stall)
-            if (!hazeBusy) { hazeBusy = true; readHaze(az, false, ok => { hazeOk = ok; hazeKey = key; hazeBusy = false; }); }
-            newSky = false;
+          const first = !envRT, again = { sp: Object.assign({}, sp), minutes };
+          if (!hazeBusy) {
+            hazeBusy = true;
+            readHaze(az, ok => { hazeOk = ok; hazeKey = key; hazeBusy = false; if (first && ok) { envKey = ''; envWait = envWait || again; } });
           }
+          if (!first) newSky = false;
         }
         envWait = key !== envKey && !newSky ? { sp: Object.assign({}, sp), minutes } : null;
         su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
