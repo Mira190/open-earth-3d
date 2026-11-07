@@ -825,6 +825,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       p.vx = p.vy = 0;
       return true;
     }
+    // walker p (on the footways) joins scramble pz's crowd where it stands, waiting at its nearest kerb
+    function joinPlaza(p, pz) {
+      const G = pz.gates;
+      if (!G || !G.length || !api.plazas || !api.plazas.includes(pz) || (pz.road && pz.road(p.x, p.y))) return false;
+      let g = null, bd = 16;
+      for (const h of G) { const d = Math.hypot(h.x - p.x, h.y - p.y); if (d < bd) { bd = d; g = h; } }
+      if (!g) return false;
+      release(p);
+      p.pz = pz; p.state = 'scr'; p.mode = 'ground'; p.g = null; p.kerbNext = null; p.kerbBack = false;
+      toGate(p, g, 0.7);
+      p.T.x = p.x; p.T.y = p.y; p.ph = 'wait'; p.vx = p.vy = 0;
+      return true;
+    }
     function toFootway(q) {
       const near = net.nearest(q.x, q.y, 6, q.z, 2);
       if (!near) return false;
@@ -868,6 +881,20 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // a scramble's crowd crosses briskly, as Shibuya's does (about 1.5 m/s, the slowest a little under,
     // the quickest near 1.8): junctions.js times the walk by it (SCR_V), #199
     const xSpeed = q => Math.max(q.speed, 1.38) * 1.05;
+    // whether someone still waiting at gate g stands just in front of q, between it and the road
+    function aheadWaits(i, q, g) {
+      const c0 = Math.floor(q.x / CELL), r0 = Math.floor(q.y / CELL);
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+        for (let k = head[bucket(c0 + a, r0 + b)]; k >= 0; k = chain[k]) {
+          if (k === i) continue;
+          const o = P[k];
+          if (o.g !== g || o.ph !== 'wait') continue;
+          const ex = o.x - q.x, ey = o.y - q.y, fwd = -(ex * g.ox + ey * g.oy), lat = Math.abs(ex * g.oy - ey * g.ox);
+          if (fwd > 0.15 && fwd < 1.1 && lat < 0.45) return true;
+        }
+      }
+      return false;
+    }
     function plazaStep(i, q, dt, player) {
       const pz = q.pz, g = q.g;
       let sp = 0;
@@ -875,7 +902,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // the walk on, and time enough to make the far kerb: out, after a moment's reaction
         const far = g.len + 1; // (the crosswalk's length: the deepest of the crowd at the kerb a little behind the front rows)
         if (pz.walk() && pz.left() > far / (xSpeed(q) * 0.85)) { // (with time in hand for a crowd in the way)
-          if ((q.react -= dt) <= 0) { q.ph = 'cross'; spotAt(g.partner, -q.spread + (rnd() - 0.5) * 0.5, 0.6 + rnd() * 1.4, q.T, pz.road); g.n--; }
+          // a crowd at a kerb sets off as a wave from the front, as a real one does (and as Detour's and Mass's
+          // queues do, each agent moving once the one ahead has): the front row on its reaction, each row behind
+          // it later by how deep it stands and only once whoever stands in front of it has stepped off, rather
+          // than every row at once walking into the backs of the row ahead. Never held more than 4 s by that
+          const depth = Math.max(0, (q.x - g.x) * g.ox + (q.y - g.y) * g.oy - 0.8);
+          if ((q.react -= dt) <= -0.35 * depth && (q.react < -4 || !aheadWaits(i, q, g))) { q.ph = 'cross'; spotAt(g.partner, -q.spread + (rnd() - 0.5) * 0.5, 0.6 + rnd() * 1.4, q.T, pz.road); g.n--; }
         }
       }
       else if (q.ph === 'cross') { // (still behind the kerb as the walk ends, or with too little of it left: back to wait)
@@ -991,6 +1023,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       ZAT.z = q.z;
       const z = ground ? ground(q.x, q.y, ZAT) : null;
       if (z != null) q.z = z;
+      // short of its spot at the kerb and getting nowhere for a second, the crowd there in its way: it stands where
+      // it is, at the back of them, as people do on reaching a crowd, instead of walking on the spot into their
+      // backs until someone gives way (Shibuya: some pressed so for 27 s; tools/crowd_press.js)
+      if ((q.ph === 'stroll' || q.ph === 'wait') && Math.hypot(q.T.x - q.x, q.T.y - q.y) > 0.6 && !(pz.road && pz.road(q.x, q.y))) {
+        q.held = (q.av ?? q.v) < 0.15 ? (q.held || 0) + dt : 0;
+        if (q.held > 1) { q.T.x = q.x; q.T.y = q.y; q.ph = 'wait'; q.held = 0; }
+      } else q.held = 0;
       // (waiting, pushed aside a step: the body keeps facing the road, as it does, rather than turning to every shove)
       if (q.ph === 'wait' && q.v > 0 && Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.6 && !(pz.road && pz.road(q.x, q.y))) { q.T.x = q.x; q.T.y = q.y; } // (and stays where it was pushed, not back into the one who pushed it)
       const fw = heading(q, q.vx, q.vy, dt);
@@ -1150,6 +1189,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           else p.stuckT = 0; // (no way round: it waits, and in the end turns back)
         }
       }
+      // slowed to a crawl by the crowd at a scramble's kerb, just ahead: one of them, standing where it is at the
+      // back of them, as someone coming up to a crowd at a crossing does, rather than creeping into their backs
+      // and in the end turning back (Shibuya: a tenth of the footways' walkers near you at any moment).
+      // Unreal's Mass and Detour's crowds settle an agent that reaches a queue the same way
+      let pzAhead = null;
+      if (p.v < 0.3) for (let k = 0; k < nn; k++) {
+        const o = P[nbr[k]], ex = o.x - p.x, ey = o.y - p.y;
+        if (o.pz && o.ph !== 'cross' && ex * ex + ey * ey < 2.6 && ex * hx + ey * hy > 0.1) { pzAhead = o.pz; break; }
+      }
+      p.pzSlow = pzAhead ? (p.pzSlow || 0) + dt : 0;
+      if (p.pzSlow > 0.6 && joinPlaza(p, pzAhead)) { p.pzSlow = 0; return; }
       if (p.detourT > 0) want = p.detourLat;
       // (counted out on a scramble's crosswalk, for its signals to wait for; and massed at its kerbs, spread
       // across the stripes' width rather than in single file)
