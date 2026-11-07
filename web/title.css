@@ -1,6 +1,7 @@
 /* The title screen: the Earth full-bleed, the type set like a film's titles.
    One accent (the sun's amber), off-white type on the blue-black of space, hairlines instead of boxes. */
-.title-app {
+/* (the full-screen subway map opened over the game or the 3D model, metro.js, wears the title's tokens) */
+.title-app, .ts-mfull.solo {
   --sp: #04060b; --tx: #ece8e1; --tx2: #8a93a3; --tx3: #5b6472; --amber: #ffb066; --amber-2: #f29a4a; --line: rgba(236, 232, 225, 0.14);
   --glass: rgba(6, 10, 18, 0.5);
   --t-display: "Zalando Sans Expanded", "Michroma", "Bricolage Grotesque", system-ui, sans-serif;
@@ -246,6 +247,17 @@
   padding: max(26px, 4vh) max(28px, 4vw) max(26px, 4vh);
   background: radial-gradient(90% 80% at 32% 55%, rgba(4, 6, 11, 0.7), rgba(4, 6, 11, 0.95) 75%); }
 .ts-mfull[hidden] { display: none; }
+.ts-mfull.solo { position: fixed; z-index: 1000; overflow: hidden; background: radial-gradient(90% 80% at 32% 55%, rgba(4, 6, 11, 0.62), rgba(4, 6, 11, 0.94) 75%);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+:where(.ts-mfull.solo) button { font: inherit; color: inherit; }
+.ts-mfull.solo :focus-visible:not(.mt-stn) { outline: 1px solid var(--amber); outline-offset: 3px; }
+/* where the player is: a marker over their station, their map's extent drawn firmer, "Here" on its button */
+.ts-metro .mt-you .mt-youring { fill: none; stroke: var(--amber); stroke-width: 1.4; stroke-dasharray: 3 2.4; }
+.ts-metro .mt-stn .mt-you text { font: 500 7px/1 var(--t-mono); letter-spacing: 0.16em; fill: var(--amber); paint-order: stroke; stroke: rgba(4, 6, 11, 0.85); stroke-width: 3px; }
+.ts-metro .mt-area.here { stroke: var(--amber); stroke-dasharray: none; fill: rgba(255, 176, 102, 0.12); }
+.mt-chip b i { font-style: normal; color: var(--amber); margin-left: 6px; }
+@media (prefers-reduced-motion: no-preference) { .ts-mfull .mt-youring { transform-box: fill-box; transform-origin: center; animation: mf-spin 9s linear infinite; } }
+@keyframes mf-spin { to { transform: rotate(360deg); } }
 /* everything else steps back: the globe stays, dimmed, as the place the map is of */
 .title-app.metro-full :is(.ts-top, .ts-menu, .ts-card, .ts-foot, .ts-marks, .ts-caps, .ts-title, .ts-open-tools) { visibility: hidden !important; }
 .mf-head { grid-column: 1 / -1; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }

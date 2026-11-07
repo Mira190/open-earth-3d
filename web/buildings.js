@@ -766,6 +766,7 @@ window.OEBuildings = (function () {
     // for tools and tests (tools/city_shot.js prints it)
     window.__buildings = { vertices: geometry.attributes.position.count, triangles: geometry.index.count / 3, props: PR.length,
       roofs: roofOf.size, build_ms: Math.round(performance.now() - t0) };
+    for (const o of props.children.slice()) cellInstances(o);
     return { mesh, geometry, material, props, styles: STYLES, info: BI };
   }
 
@@ -1338,5 +1339,45 @@ window.OEBuildings = (function () {
     return group;
   }
 
-  return { create, cells, STYLES, guessStyle, canopyPosts, POST };
+  // A static instanced mesh is culled as one: its bounding sphere spans every instance, so a rooftop
+  // plant box across the city is drawn for the view and the sun's shadow map wherever the camera is.
+  // cellInstances splits it in place over a grid of `size` metres: the mesh keeps one cell's instances
+  // and takes the others as child instanced meshes with the same geometry and material, each with its
+  // own bounds, so frustum culling (the shadow camera's included) drops the cells out of sight. The
+  // picture is the same. Only for meshes whose instances are never changed afterwards by index, and
+  // whose geometry has no per-instance attributes of its own.
+  function cellInstances(im, size = 400) {
+    if (!im || !im.isInstancedMesh || im.children.length || im.userData.cells) return im;
+    const g = im.geometry, n = im.count, per = (g.index ? g.index.count : g.attributes.position.count) / 3;
+    if (n * per < 30000) return im; // a few draws more cost an old device's CPU more than these triangles its GPU
+    for (const a of Object.values(g.attributes)) if (a.isInstancedBufferAttribute) return im;
+    const A = im.instanceMatrix.array, C = im.instanceColor ? im.instanceColor.array : null, by = new Map();
+    for (let i = 0; i < n; i++) {
+      const k = Math.floor(A[16 * i + 12] / size) * 65536 + Math.floor(A[16 * i + 14] / size);
+      let l = by.get(k); if (!l) by.set(k, l = []); l.push(i);
+    }
+    if (by.size < 2) return im;
+    const fill = (m, list) => {
+      const M = new Float32Array(16 * list.length), K = C ? new Float32Array(3 * list.length) : null;
+      list.forEach((i, j) => { M.set(A.subarray(16 * i, 16 * i + 16), 16 * j); if (K) K.set(C.subarray(3 * i, 3 * i + 3), 3 * j); });
+      m.instanceMatrix = new THREE.InstancedBufferAttribute(M, 16);
+      m.instanceColor = K ? new THREE.InstancedBufferAttribute(K, 3) : null;
+      m.count = list.length;
+      m.boundingSphere = null; m.boundingBox = null; m.computeBoundingSphere();
+    };
+    const lists = [...by.values()];
+    for (const list of lists.slice(1)) {
+      const c = new THREE.InstancedMesh(g, im.material, list.length);
+      c.castShadow = im.castShadow; c.receiveShadow = im.receiveShadow; c.renderOrder = im.renderOrder;
+      c.customDepthMaterial = im.customDepthMaterial; c.customDistanceMaterial = im.customDistanceMaterial;
+      c.layers.mask = im.layers.mask; c.name = im.name; c.userData.cellOf = im;
+      fill(c, list);
+      im.add(c);
+    }
+    fill(im, lists[0]);
+    im.userData.cells = by.size;
+    return im;
+  }
+
+  return { create, cells, cellInstances, STYLES, guessStyle, canopyPosts, POST };
 })();
