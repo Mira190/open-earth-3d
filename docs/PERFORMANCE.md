@@ -103,9 +103,16 @@ Measured on Sydney's game, high tier, 1440 x 900, from the street, after the wor
    lit shaders. This needs a change to three.js's shadow lookup (`onBeforeCompile`), so it comes after 1.
 3. **Impostors for the far trees** (section above): about 0.6 million triangles past 300 m in the view pass.
    Each needs a baked atlas per species and season, and stills to match.
-4. **The ocean's FFT** draws 45 full-screen passes a frame into 128 x 128 RGBA32F targets. Half-float targets
-   would halve those bytes, but only if the waves' heights keep their precision. Try it with stills of a calm
-   and a rough sea.
+4. **The ocean's FFT** draws 45 full-screen passes a frame into 128 x 128 RGBA32F targets (256 x 256 on a large
+   screen with a hardware GPU). Its outputs are already half float, and the butterflies stay 32-bit where the GPU
+   can render to it, because seven butterfly stages in half float would put noise in the waves. At 128 x 128 the
+   passes cost little, so this stays as it is.
+
+   *Tried, not adopted:* skipping the waves and the water's reflection while no water is on screen, found with an
+   occlusion query round the water's draw. In Shibuya's streets, with no water in the picture (checked by painting
+   the water red), the query still reported samples drawn every frame, so it would rarely switch off. The one large
+   saving would have been the reflection's second render, and only the high tier on a large screen has that: an old
+   device already goes without it.
 5. **Shader precision on the low tier.** Mobile GPUs run `mediump` at twice the rate of `highp`. The world-space
    maths (positions kilometres from the origin, the reversed depth) must stay `highp`; colour and lighting need
    not. Go shader by shader, with stills.
