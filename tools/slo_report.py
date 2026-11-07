@@ -4,15 +4,21 @@
     python3 tools/slo_report.py telemetry.jsonl            # a report on the terminal
     python3 tools/slo_report.py telemetry.jsonl --days 7   # the last week only
     python3 tools/slo_report.py telemetry.jsonl --json     # the same numbers as JSON
+    POSTHOG_PERSONAL_API_KEY=phx_... python3 tools/slo_report.py --posthog --days 7   # the events from PostHog
 
 The service levels and their targets are defined in docs/OBSERVABILITY.md; SLOS below is the same
-table. Exits 1 when a level with enough data misses its target, so it can run on a schedule.
+table. Each level is judged over the whole log (7 days on a schedule), and its error budget is watched
+over short windows too: the multiwindow, multi-burn-rate alerts of the Site Reliability Workbook
+(BURN_RULES). Exits 1 when a level with enough data misses its target or burns its budget too fast, so
+it can run on a schedule (.github/workflows/slo.yml).
 """
 import argparse
 import json
+import os
 import sys
 import time
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 
 LOADING = ('city', 'game', 'reef')
 ABANDON_S = 20          # leaving a loader before this is a change of mind, not a failure
@@ -31,6 +37,21 @@ SLOS = [
     ('inp_p75', 'Slowest interaction per page load, p75 (ms)', 200.0, 'le'),
 ]
 LEFT_SOON_S = 60        # a page that ends this soon after the tour's end card: the visitor watched the tour and went
+# The error budget of each level is what its target allows to go wrong: 1 - target for a share that must be
+# high, the target itself for one that must be low, and a quarter of the samples for a p75 (a p75 under the
+# line means at most a quarter of the samples over it). Burn rate: the share that went wrong in a window over
+# that budget; 1 spends the budget exactly over the window the target is judged on.
+# BURN_RULES: (severity, long window h, short window h, burn rate), both windows over the rate to fire, as in
+# the Site Reliability Workbook ch. 5 ("multiwindow, multi-burn-rate alerts"): the long window says the burn is
+# big enough to matter, the short one that it is still going on (so an alert stops soon after a fix). Against
+# the 7-day window, 14.4 for an hour spends 9% of the week's budget, and 6 for six hours 21%.
+BURN_RULES = [
+    ('page', 1.0, 5 / 60, 14.4),
+    ('ticket', 6.0, 0.5, 6.0),
+]
+BURN_WINDOWS = {'5m': 5 / 60, '30m': 0.5, '1h': 1.0, '6h': 6.0}
+MIN_BURN_N = 10         # fewer samples than this in the long window: no burn alert (one bad load is not a trend)
+P75_THRESHOLDS = {'load_p75_desktop': 10.0, 'load_p75_mobile': 20.0, 'inp_p75': 200.0}
 
 
 def pct(xs, p):
@@ -40,6 +61,42 @@ def pct(xs, p):
     k = (len(xs) - 1) * p
     lo = int(k)
     return xs[lo] + (xs[min(lo + 1, len(xs) - 1)] - xs[lo]) * (k - lo)
+
+
+def when(e):
+    """The event's time in epoch seconds: the collector's receipt, else the browser's clock."""
+    t = e.get('got') or e.get('ts') or ''
+    try:
+        d = datetime.fromisoformat(t.replace('Z', '+00:00'))
+        return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).timestamp()
+    except ValueError:
+        return 0.0
+
+
+def read_posthog(days):
+    """The site's events of the last days from PostHog (HogQL), in the collector's form."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from posthog_dashboard import API, OURS
+    key = os.environ.get('POSTHOG_PERSONAL_API_KEY')
+    if not key:
+        sys.exit('POSTHOG_PERSONAL_API_KEY is not set')
+    api = API(key)
+    pid = os.environ.get('POSTHOG_PROJECT') or api.call('GET', '/api/projects/@current/')['id']
+    out, page = [], 50000
+    while True:
+        q = (f"SELECT event, timestamp, distinct_id, properties FROM events WHERE {OURS} "
+             f"AND timestamp > now() - INTERVAL {float(days or 7)} * 86400 SECOND ORDER BY timestamp LIMIT {page} OFFSET {len(out)}")
+        res = api.call('POST', f'/api/projects/{pid}/query/', {'query': {'kind': 'HogQLQuery', 'query': q}}).get('results') or []
+        for ev, ts, vid, props in res:
+            if isinstance(props, str):
+                try:
+                    props = json.loads(props)
+                except ValueError:
+                    props = {}
+            t = ts if isinstance(ts, str) else str(ts)
+            out.append({'event': ev, 'got': t, 'ts': t, 'vid': vid, 'props': props or {}})
+        if len(res) < page:
+            return out
 
 
 def read(path, days):
@@ -127,14 +184,147 @@ def report(events):
     lv['inp_p75'] = (pct(list(worst.values()), 0.75), len(worst))
     r.update(behaviour(events))
     r['crashes'] = dict(Counter(f"{e['props'].get('prev_view')}:{e['props'].get('prev_city') or ''} {e['props'].get('prev_spot') or ''}".strip() for e in crashes).most_common(10))
-    r['load_failures'] = dict(Counter((e['props'].get('why'), e['props'].get('view'), e['props'].get('city')) for e in bad).most_common(10))
+    r['load_failures'] = dict(Counter(' '.join(str(x) for x in (e['props'].get('why'), e['props'].get('view'), e['props'].get('city')) if x) for e in bad).most_common(10))
     r['top_errors'] = dict(Counter(f"{e['props'].get('msg')} @ {e['props'].get('src')}" for e in events if e['event'] == 'error').most_common(10))
     r['slo'] = []
+    S = budget_events(events)
     for sid, what, target, how in SLOS:
         val, cnt = lv[sid]
         met = None if val is None or cnt < MIN_N else (val >= target if how == 'ge' else val <= target)
-        r['slo'].append({'id': sid, 'what': what, 'target': target, 'op': '>=' if how == 'ge' else '<=', 'value': val, 'n': cnt, 'met': met})
+        # the share of the window's error budget spent: over 1 is a miss
+        xs, b = S.get(sid, []), budget_of(sid, target, how)
+        tot = sum(x[2] for x in xs)
+        spent = round(sum(x[1] for x in xs) / tot / b, 3) if tot and b else None
+        r['slo'].append({'id': sid, 'what': what, 'target': target, 'op': '>=' if how == 'ge' else '<=', 'value': val, 'n': cnt, 'met': met, 'budget_spent': spent})
+    r['load_stages'] = stage_report(events)
+    r['releases'] = releases(events)
     return r
+
+
+def budget_events(events):
+    """For each level, its samples as (time, bad, total): what went wrong out of what was counted."""
+    S = defaultdict(list)
+    for e in events:
+        p, t = e['props'], when(e)
+        if e['event'] == 'load' and p.get('view') in LOADING:
+            ok = bool(p.get('ok'))
+            if ok or p.get('why') == 'error' or (p.get('ms') or 0) >= ABANDON_S * 1000:
+                S['load_success'].append((t, 0 if ok else 1, 1))
+            if ok and p.get('ms') is not None:
+                dev = 'load_p75_desktop' if p.get('device') == 'desktop' else 'load_p75_mobile' if p.get('device') in ('phone', 'tablet') else None
+                if dev:
+                    S[dev].append((t, 1 if p['ms'] / 1000 > P75_THRESHOLDS[dev] else 0, 1))
+        elif e['event'] == 'time' and p.get('view') in LOADING and p.get('fps') is not None:
+            s = float(p.get('s') or 0)
+            S['smooth'].append((t, s if p['fps'] < 30 else 0, s))
+            fr = p.get('frames') or 0
+            S['slow_frames'].append((t, (p.get('slow') or 0) * fr, fr))
+        elif e['event'] == 'crash':
+            S['crash_free'].append((t, 1, 0))     # a page reported dead, out of the page loads counted below
+    # per page load: an error, a lost context, the slowest interaction; at the time the page load started
+    first, err, lost, inp = {}, set(), set(), {}
+    for e in events:
+        sid = e['props'].get('sid')
+        if not sid or e['event'] == 'crash':
+            continue
+        first[sid] = min(first.get(sid, 9e18), when(e))
+        if e['event'] == 'error' and e['props'].get('kind') in ('script', 'promise'):
+            err.add(sid)
+        elif e['event'] == 'gl_lost':
+            lost.add(sid)
+        elif e['event'] == 'time':
+            inp[sid] = max(inp.get(sid, 0.0), float(e['props'].get('inp') or 0))
+    for sid, t in first.items():
+        S['error_free'].append((t, 1 if sid in err else 0, 1))
+        S['gl_kept'].append((t, 1 if sid in lost else 0, 1))
+        S['crash_free'].append((t, 0, 1))
+    for sid, m in inp.items():
+        S['inp_p75'].append((first.get(sid, 0.0), 1 if m > P75_THRESHOLDS['inp_p75'] else 0, 1))
+    return S
+
+
+def budget_of(sid, target, how):
+    if sid in P75_THRESHOLDS:
+        return 0.25
+    return target if how == 'le' else 1 - target
+
+
+def burn(events, now=None):
+    """Each level's burn rate over the short windows, and the alerts that fire (BURN_RULES)."""
+    now = now or time.time()
+    S = budget_events(events)
+    rows, alerts = [], []
+    for sid, what, target, how in SLOS:
+        b = budget_of(sid, target, how)
+        xs = S.get(sid, [])
+        win = {}
+        for name, h in BURN_WINDOWS.items():
+            sel = [x for x in xs if now - h * 3600 <= x[0] <= now + 300]
+            bad, tot = sum(x[1] for x in sel), sum(x[2] for x in sel)
+            n = sum(1 for x in sel if x[2])
+            win[name] = {'burn': round(bad / tot / b, 2) if tot and b else None, 'n': n}
+        fired = []
+        for sev, long_h, short_h, rate in BURN_RULES:
+            L = win[next(k for k, v in BURN_WINDOWS.items() if v == long_h)]
+            Sh = win[next(k for k, v in BURN_WINDOWS.items() if v == short_h)]
+            if L['n'] >= MIN_BURN_N and (L['burn'] or 0) >= rate and (Sh['burn'] or 0) >= rate:
+                fired.append(sev)
+                alerts.append({'id': sid, 'what': what, 'severity': sev, 'rule': f'{long_h:g} h and {short_h * 60:g} min over {rate:g}x',
+                               'burn_long': L['burn'], 'burn_short': Sh['burn'], 'n': L['n']})
+        rows.append({'id': sid, 'budget': b, 'windows': win, 'alerts': fired})
+    return rows, alerts
+
+
+def stage_report(events):
+    """Where a load's time goes: p75 of each stage (s) by view and device, from the v3 load events."""
+    G = defaultdict(lambda: defaultdict(list))
+    for e in events:
+        p = e['props']
+        if e['event'] != 'load' or not p.get('ok') or p.get('ms') is None:
+            continue
+        k = f"{p.get('view')} {'desktop' if p.get('device') == 'desktop' else 'phone/tablet'}"
+        G[k]['ready'].append(p['ms'] / 1000)
+        for st, f in (('fetched', 'fetch_ms'), ('decoded', 'decode_ms'), ('built', 'build_ms'), ('frame', 'frame_ms')):
+            if p.get(f) is not None:
+                G[k][st].append(p[f] / 1000)
+    return {k: {'n': len(v['ready']), **{st: round(pct(xs, 0.75), 2) for st, xs in v.items() if xs}} for k, v in sorted(G.items())}
+
+
+def vkey(v):
+    try:
+        return tuple(int(x) for x in str(v).split('.'))
+    except ValueError:
+        return (-1, str(v))
+
+
+def releases(events):
+    """The levels by deployed version (the "app" property): a regression points to the release that brought it."""
+    R = defaultdict(lambda: {'sids': set(), 'err': set(), 'lost': set(), 'crash': 0, 'loads': [], 'fps': [], 'frames': 0, 'slow': 0.0})
+    for e in events:
+        p = e['props']
+        r = R[p.get('app') or '?']
+        if p.get('sid') and e['event'] != 'crash':
+            r['sids'].add(p['sid'])
+        if e['event'] == 'error' and p.get('kind') in ('script', 'promise'):
+            r['err'].add(p.get('sid'))
+        elif e['event'] == 'gl_lost':
+            r['lost'].add(p.get('sid'))
+        elif e['event'] == 'crash':
+            r['crash'] += 1
+        elif e['event'] == 'load' and p.get('ok') and p.get('view') in LOADING and p.get('ms') is not None:
+            r['loads'].append(p['ms'] / 1000)
+        elif e['event'] == 'time' and p.get('view') in LOADING and p.get('fps') is not None:
+            r['fps'].append(p['fps'])
+            r['frames'] += p.get('frames') or 0
+            r['slow'] += (p.get('slow') or 0) * (p.get('frames') or 0)
+    out = {}
+    for v in sorted(R, key=vkey, reverse=True):
+        r, n = R[v], len(R[v]['sids'])
+        out[v] = {'page_loads': n, 'loads': len(r['loads']), 'load_p75_s': round(pct(r['loads'], 0.75), 2) if r['loads'] else None,
+                  'crash_rate': round(r['crash'] / n, 4) if n else None, 'error_rate': round(len(r['err'] & r['sids']) / n, 4) if n else None,
+                  'gl_lost_rate': round(len(r['lost'] & r['sids']) / n, 4) if n else None,
+                  'fps_median': pct(r['fps'], 0.5), 'slow_frames': round(r['slow'] / r['frames'], 4) if r['frames'] else None}
+    return out
 
 
 def place(p):
@@ -229,7 +419,24 @@ def show(r):
         val = '—' if v is None else (f'{v:.1f} s' if 'Load time' in s['what'] else f'{v:.0f} ms' if '(ms)' in s['what'] else f'{v * 100:.2f}%')
         tgt = f"{s['target']:.0f} s" if 'Load time' in s['what'] else f"{s['target']:.0f} ms" if '(ms)' in s['what'] else f"{s['target'] * 100:g}%"
         mark = {True: 'MET ', False: 'MISS', None: '  ··'}[s['met']]
-        print(f"  {mark}  {s['what']:<44} {val:>9}  target {s['op']} {tgt:<6} (n={s['n']})")
+        spent = '' if s.get('budget_spent') is None else f"  budget spent {s['budget_spent'] * 100:.0f}%"
+        print(f"  {mark}  {s['what']:<44} {val:>9}  target {s['op']} {tgt:<6} (n={s['n']}){spent}")
+    if r.get('burn'):
+        print('\nBurn rate (x the budget; 1 spends it over the judged window): ' + ' · '.join(BURN_WINDOWS))
+        for b in r['burn']:
+            ws = '  '.join(f"{'—' if w['burn'] is None else w['burn']:>6}/{w['n']:<4}" for w in b['windows'].values())
+            print(f"  {b['id']:<18} {ws}  {' '.join(a.upper() for a in b['alerts'])}")
+        for a in r['alerts']:
+            print(f"  ALERT {a['severity']}: {a['what']} burning {a['burn_long']}x over {a['rule']} (n={a['n']})")
+    if r.get('load_stages'):
+        print('\nLoad stages, p75 (s from the view\'s start): fetched · decoded · built · first frame · ready')
+        for k, v in r['load_stages'].items():
+            print(f"  {k:<22} {' · '.join(str(v.get(st, '—')) for st in ('fetched', 'decoded', 'built', 'frame', 'ready'))}  (n={v['n']})")
+    if r.get('releases'):
+        print('\nBy release: page loads · load p75 · crashes · script errors · lost GL · median fps · slow frames')
+        for v, x in list(r['releases'].items())[:8]:
+            f = lambda q: '—' if q is None else f'{q * 100:.1f}%'
+            print(f"  {v:<10} {x['page_loads']:>5} · {'—' if x['load_p75_s'] is None else str(x['load_p75_s']) + ' s':>7} · {f(x['crash_rate'])} · {f(x['error_rate'])} · {f(x['gl_lost_rate'])} · {x['fps_median'] or '—'} · {f(x['slow_frames'])}")
     print('\nWhere visitors stay (minutes by spot)')
     for k, v in r['minutes_by_spot'].items():
         print(f'  {v:>7}  {k}')
@@ -256,16 +463,23 @@ def show(r):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('log')
+    ap.add_argument('log', nargs='?', help='the collector\'s JSON lines (tools/telemetry_server.py)')
+    ap.add_argument('--posthog', action='store_true', help='read the events from PostHog instead (POSTHOG_PERSONAL_API_KEY)')
     ap.add_argument('--days', type=float, default=0)
+    ap.add_argument('--now', help='judge the burn rates at this time (ISO 8601) instead of now: for tests and past incidents')
     ap.add_argument('--json', action='store_true')
     a = ap.parse_args()
-    r = report(read(a.log, a.days))
+    if not a.log and not a.posthog:
+        ap.error('give a log file or --posthog')
+    events = read_posthog(a.days or 7) if a.posthog else read(a.log, a.days)
+    r = report(events)
+    now = when({'got': a.now}) if a.now else None
+    r['burn'], r['alerts'] = burn(events, now)
     if a.json:
         print(json.dumps(r, indent=1, default=str))
     else:
         show(r)
-    sys.exit(1 if any(s['met'] is False for s in r['slo']) else 0)
+    sys.exit(1 if any(s['met'] is False for s in r['slo']) or r['alerts'] else 0)
 
 
 if __name__ == '__main__':

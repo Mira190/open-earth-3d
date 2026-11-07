@@ -6,7 +6,9 @@
 // Also the behaviour events: the model's tour stop by stop to its end, where the player is in the game
 // (spot and mode on every event, "dwell" by spot), the game started from its title, how the page ended
 // ("exit"), and a page left dead on screen by an earlier visit reported as a "crash".
-// Also checks that a game in progress keeps the player's position when the page is closed (the save).
+// Also checks that a game in progress keeps the player's position when the page is closed (the save), and
+// the load's stages (data fetched, decoded, first frame, loader gone) on the title screen, the model, the
+// game and a reef site, each in order and within the load's time.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/telemetry_check.js [city] [out_dir]
 const { chromium } = require('playwright');
@@ -60,7 +62,9 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const T = encodeURIComponent(`http://127.0.0.1:${CPORT}/e`);
     await p.goto(`http://localhost:${PORT}/?telemetry=${T}#globe`, { waitUntil: 'load', timeout: 120000 });
     must(await p.evaluate(() => window.OETelemetry.on), 'on with ?telemetry=<collector>');
-    await sleep(3000);
+    // the title screen reports its load once its opening or its menu is drawn
+    await p.waitForFunction(() => performance.getEntriesByName('oe:ready').length > 0, null, { timeout: 180000 }).catch(() => {});
+    await sleep(1500);
     // the city's model, then its game
     await p.evaluate(c => { location.hash = c; }, city);
     await p.waitForFunction(() => { const l = document.getElementById('loader'); return l && l.classList.contains('out'); }, null, { timeout: 600000 });
@@ -97,6 +101,15 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     await sleep(1500);
     await p.goto('about:blank');
     await sleep(1500);
+    // a reef site: its own page and loader (#load "done"), its data from reef/world.js
+    const reef = process.env.REEF || 'hardy-reef';
+    if (fs.existsSync(path.join(__dirname, '..', 'web', 'data', reef, 'scene.json'))) {
+      await p.goto(`http://localhost:${PORT}/reef/?city=${reef}&telemetry=${T}`, { waitUntil: 'load', timeout: 120000 });
+      await p.waitForFunction(() => window.__ready === true, null, { timeout: 600000 }).catch(() => {});
+      await sleep(1500);
+      await p.goto('about:blank');
+      await sleep(1500);
+    }
     await ctx.close();
 
     const ev = read();
@@ -108,6 +121,22 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const lc = of('load', x => x.view === 'city' && x.ok), lg = of('load', x => x.view === 'game' && x.ok);
     must(lc.length === 1 && lc[0].props.ms > 0, 'model load: ready, with its time', lc[0] && `${lc[0].props.ms} ms`);
     must(lg.length === 1 && lg[0].props.ms > 0, 'game load: ready, with its time', lg[0] && `${lg[0].props.ms} ms`);
+    // the stages: present, in order, and none after the loader went (the title's are its own: fetched, decoded, ready)
+    const staged = (e, keys) => {
+      if (!e) return false;
+      const v = keys.map(k => e.props[k]);
+      return v.every(x => typeof x === 'number' && x >= 0) && v.every((x, i) => i === 0 || x >= v[i - 1]) && v[v.length - 1] <= e.props.ms;
+    };
+    const stg = e => e && ['fetch_ms', 'decode_ms', 'build_ms', 'frame_ms', 'ms'].map(k => `${k.replace('_ms', '')} ${e.props[k]}`).join(', ');
+    must(staged(lc[0], ['fetch_ms', 'decode_ms', 'build_ms', 'frame_ms']), 'model load: fetched, decoded, built, first frame, ready, in order', stg(lc[0]));
+    must(staged(lg[0], ['fetch_ms', 'decode_ms', 'build_ms', 'frame_ms']), 'game load: fetched, decoded, built, first frame, ready, in order', stg(lg[0]));
+    const lt = of('load', x => x.view === 'globe' && x.ok);
+    must(lt.length === 1 && staged(lt[0], ['frame_ms']) && staged(lt[0], ['decode_ms']) && lt[0].props.ms > 0, 'title screen load: once, with its first frame and textures before ready', stg(lt[0]));
+    const lr = of('load', x => x.view === 'reef' && x.ok);
+    if (fs.existsSync(path.join(__dirname, '..', 'web', 'data', process.env.REEF || 'hardy-reef', 'scene.json'))) {
+      must(lr.length === 1 && staged(lr[0], ['fetch_ms', 'decode_ms', 'build_ms', 'frame_ms']), 'reef site load: fetched, decoded, built, first frame, ready, in order', stg(lr[0]));
+    }
+    must(of('load').every(e => e.props.v >= 3), 'load events carry telemetry version 3');
     const tg = of('time', x => x.view === 'game');
     const playS = tg.reduce((s, e) => s + e.props.s, 0);
     must(playS > 3, 'play time counted', `${playS.toFixed(1)} s`);
@@ -128,7 +157,7 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const dw = of('dwell', x => x.view === 'game' && x.mode === 'foot');
     must(dw.length >= 1 && dw.reduce((s, e) => s + e.props.s, 0) > 3, 'time on foot is summed by spot', dw.map(e => `${e.props.spot} ${e.props.s}s`).join('; '));
     must(tg.every(e => e.props.eng_s != null), 'engaged time is counted');
-    const ex = of('exit');
+    const ex = of('exit', x => x.view === 'game');
     must(ex.length === 1 && ex[0].props.view === 'game' && ex[0].props.page_s > 0, 'the page says how it ended', ex[0] && `page ${ex[0].props.page_s} s, idle ${ex[0].props.idle_s} s`);
     const cr = of('crash');
     must(cr.length === 1 && cr[0].props.prev_city === 'testville' && cr[0].props.prev_spot === 'Test Wharf', 'a page that died on screen is reported once by the next', cr.length);
@@ -137,6 +166,8 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     try { execFileSync('python3', [path.join(__dirname, 'slo_report.py'), log], { stdio: 'inherit' }); } catch (e) { /* a missed level exits 1 */ }
     try { rep = JSON.parse(execFileSync('python3', [path.join(__dirname, 'slo_report.py'), log, '--json']).toString()); } catch (e) { rep = e.stdout ? JSON.parse(e.stdout.toString()) : null; }
     must(rep && rep.visitors === 1 && rep.players === 1 && rep.slo.length === 9 && rep.tour.ended === 1 && Object.keys(rep.minutes_by_spot).length > 0, 'the SLO report reads the log', rep && `${rep.visitors} visitor, ${rep.play_hours} h`);
+    must(rep && rep.load_stages && rep.load_stages['city desktop'] && rep.load_stages['city desktop'].built != null && rep.burn && rep.burn.length === 9 && rep.releases, 'the report has the load stages, the burn rates and the releases');
+    try { execFileSync('python3', [path.join(__dirname, 'slo_burn_check.py')], { stdio: 'inherit' }); must(true, 'the burn-rate alerts on made-up logs'); } catch (e) { must(false, 'the burn-rate alerts on made-up logs'); }
     must(!errors.length, 'no page errors', errors.join(' | '));
     exit = fails.length ? 1 : 0;
   } catch (e) {

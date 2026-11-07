@@ -21,6 +21,7 @@ export async function loadScene(base, onBytes = () => {}) {
     for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; onBytes(got, want); }
     buf = await new Blob(parts).arrayBuffer();
   } else buf = await res.arrayBuffer();
+  try { performance.mark('oe:fetched'); } catch (e) { /* no User Timing */ }   // the load's stages (telemetry.js)
   const raw = new Int16Array(buf);
   const heights = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i++) heights[i] = raw[i] * t.units_m;

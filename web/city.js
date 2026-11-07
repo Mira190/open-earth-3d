@@ -1006,6 +1006,7 @@ window.OpenEarthCity = async function main(cityId) {
   camera.position.copy(W(...st0.cam));
   controls.target.copy(W(...st0.tgt));
   controls.update();
+  try { performance.mark('oe:built', { detail: { view: 'city', city: cityId } }); } catch (e) { /* no User Timing */ } // the scene built (telemetry.js)
   loadMsg('Compiling the shaders for this view', 1);
   // the loader stays up until the scene has been drawn twice: the shaders compile on the first
   // draw, which can take seconds, and a loader that faded before it showed a black frame
@@ -1058,6 +1059,7 @@ window.OpenEarthCity = async function main(cityId) {
     else renderer.render(world, camera);
     care.drawn();
     if (framesDrawn < 2 && ++framesDrawn === 2) firstDrawn();
+    else if (framesDrawn === 1) try { performance.mark('oe:frame', { detail: { view: 'city', city: cityId } }); } catch (e) { /* no User Timing */ } // the load's first frame (telemetry.js)
     updateLabels();
     requestAnimationFrame(frame);
   }

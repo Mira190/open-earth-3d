@@ -44,7 +44,10 @@ window.OEWorld = (function () {
     // once every file is in, the packs are still decoding (in a Worker) and the JSON parsing: said so,
     // rather than leaving the label on a download that has finished
     let open = 0;
-    const unpack = () => { if (--open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
+    // the load's stages for the telemetry (telemetry.js markOf): every file in, then every file decoded
+    const view = { view: game ? 'game' : 'city', city: cityId };
+    const mark = s => { try { performance.mark(`oe:${s}`, { detail: view }); } catch (e) { /* no User Timing */ } };
+    const unpack = () => { if (--open === 0) mark('fetched'); if (open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
     const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
       if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
@@ -78,6 +81,7 @@ window.OEWorld = (function () {
       getPacked('landmarks'), getPacked('terrain').then(grid),
       getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
+    mark('decoded');
     const CITY = scene.city;
     // buildings demolished since the survey (landmarks.json "demolished": solid indices): not drawn, and
     // flat in the surface model, so nothing stands, shades or blocks the way where they stood
