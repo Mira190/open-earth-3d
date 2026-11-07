@@ -5,7 +5,7 @@
   "country_code": "JP",
   "timezone": "Asia/Tokyo",
   "locale": "ja-JP",
-  "description": "Marunouchi to Tokyo Tower from open data, lit by the real sun. Every building height is a PLATEAU survey value, and every shadow is computed.",
+  "description": "Marunouchi and Ginza to Tokyo Tower: red-brick Tokyo Station, the Imperial Palace moats, Ginza's grand boulevard, Hibiya Park, the water bus on the bay and the orange-and-white tower at sunset.",
   "bbox": [
     139.7405,
     35.6475,
@@ -325,8 +325,8 @@
   },
   "tour": [
     {
-      "title": "Marunouchi to Tokyo Tower, from open data",
-      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height that Project PLATEAU surveyed, on GSI 5 m laser-scanned bare earth under GSI aerial photos.",
+      "title": "Marunouchi to Tokyo Tower",
+      "text": "Tokyo's front door: the station where every shinkansen line begins, the palace where the emperor lives, Ginza's department stores, and Tokyo Tower glowing orange at the end of the road.",
       "cam": [
         2400,
         -2700,
@@ -346,8 +346,8 @@
       "hold": 8
     },
     {
-      "title": "Tokyo Station and the air above it",
-      "text": "Tokyo Station's red-brick Marunouchi building was restored in 2012. The unused floor area above it was sold to the towers around it, so the old station stays low while Marunouchi grows tall. Compare it with JP Tower, behind it, at 200 m.",
+      "title": "Tokyo Station",
+      "text": "The red-brick Marunouchi building of 1914, restored to its domes in 2012. It sold the air above it to the towers around, so it stays low while Marunouchi grows tall. Buy an ekiben and catch a bullet train.",
       "cam": [
         980,
         520,
@@ -376,7 +376,7 @@
       "from": "11:30",
       "to": "13:30",
       "hold": 10,
-      "text": "On the winter solstice, {sun:Hibiya Park 日比谷公園|12-22|12:00}% of Hibiya Park is in direct sun at noon, and {sun:Hibiya Park 日比谷公園|12-22|13:00}% at 13:00. On 21 June at noon it is {sun:Hibiya Park 日比谷公園|6-21|12:00}%. No rule protects either."
+      "text": "Japan's first Western-style park, where office workers bring their bento. On a midwinter noon {sun:Hibiya Park 日比谷公園|12-22|12:00}% of it is in the sun, and by 13:00 {sun:Hibiya Park 日比谷公園|12-22|13:00}%."
     },
     {
       "title": "The National Diet Building",
@@ -397,11 +397,11 @@
         654,
         50
       ],
-      "text": "Japan's parliament, finished in 1936 after seventeen years of building, in granite and marble quarried in Japan. The House of Representatives sits in the south wing, the House of Councillors in the north, and the stepped pyramid of the central tower rises 65 m."
+      "text": "Japan's parliament, finished in 1936 after seventeen years of building, in granite and marble quarried across Japan. Its stepped pyramid rises 65 m over Nagatacho, the heart of Japanese politics."
     },
     {
       "title": "Tokyo Tower at sunset",
-      "text": "333 m, painted in bands of International Orange and white because aircraft must see it. The lattice is built from published dimensions, anchored at the tower's published coordinates.",
+      "text": "333 m of International Orange and white, opened in 1958 as the symbol of a city rebuilt. Look for its light-up after dark: Landmark Light in warm gold, or Diamond Veil on special nights.",
       "cam": [
         -300,
         -2150,
@@ -422,7 +422,7 @@
     },
     {
       "title": "After dark",
-      "text": "Windows light from the same facade grid that shades them by day. Drag to explore, or open Sun access to test a tower of your own.",
+      "text": "The city lights up window by window, from Ginza's neon to the tower's glow. Drag to explore, or open Sun access to test a tower of your own.",
       "cam": [
         2000,
         -1500,

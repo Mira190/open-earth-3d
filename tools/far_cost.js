@@ -49,8 +49,16 @@ const [w, h] = size.split('x').map(Number);
       sc.traverse(o => {
         if (!o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh) return;
         const prev = o.onBeforeRender;
-        hooked.push([o, prev]);
-        o.onBeforeShadow = o.onBeforeShadow || (() => {});
+        const prevS = o.onBeforeShadow;
+        hooked.push([o, prev, prevS]);
+        o.onBeforeShadow = function (r, obj, c, sc2, gm, mat, grp) {
+          const per = (grp ? grp.count : (gm.index ? gm.index.count : gm.attributes.position.count)) / 3;
+          const n = o.isInstancedMesh ? o.count : (gm.isInstancedBufferGeometry ? Math.min(gm.instanceCount, 1e7) : 1);
+          let nm = o.name || (o.parent && o.parent.name) || (o.material && o.material.name) || o.type;
+          if (o.isInstancedMesh || gm.isInstancedBufferGeometry) nm += ` [${Math.round(per)} tris each, ${gm.type}${o.parent && o.parent.parent ? ' in ' + (o.parent.name || o.parent.type) + '/' + (o.parent.parent.name || o.parent.parent.type) : ''}${o.isSkinnedMesh ? ' skinned' : ''}]`;
+          drawn.push({ nm, shadow: true, per, n, dists: null, d: 0 });
+          if (prevS) prevS.apply(this, arguments);
+        };
         o.onBeforeRender = function (r, s, c, gm, mat, grp) {
           const rt = r.getRenderTarget(), shadow = !!(rt && rt.depthTexture && rt.depthTexture.name && /shadow/i.test(rt.depthTexture.name)) || !!(mat && (mat.isMeshDepthMaterial || mat.isMeshDistanceMaterial));
           const per = (grp ? grp.count : (gm.index ? gm.index.count : gm.attributes.position.count)) / 3;
@@ -74,7 +82,7 @@ const [w, h] = size.split('x').map(Number);
       if (g.atmos && g.atmos.composer) g.atmos.composer.render(); else R.render(sc, cam);
       const tris = R.info.render.triangles, calls = R.info.render.calls;
       R.info.autoReset = true;
-      for (const [o, prev] of hooked) o.onBeforeRender = prev;
+      for (const [o, prev, prevS] of hooked) { o.onBeforeRender = prev; o.onBeforeShadow = prevS; }
       const out = { tris, calls };
       // by name and pass: triangles, and how many of them lie past 300 m, 800 m and 2 km
       const by = new Map(), B = [300, 800, 2000];

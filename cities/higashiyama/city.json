@@ -5,7 +5,7 @@
   "country_code": "JP",
   "timezone": "Asia/Tokyo",
   "locale": "en-JP",
-  "description": "Kyoto's Higashiyama from open data: Kiyomizu-dera and its stage on the hillside, Sannenzaka and Ninenzaka, the Yasaka Pagoda and Kodai-ji, with measured heights from Project PLATEAU on GSI laser terrain.",
+  "description": "Kyoto's Higashiyama: Kiyomizu-dera's wooden stage over the valley, the stone lanes of Sannenzaka and Ninenzaka with their noren and lanterns, and the Yasaka Pagoda over the roofs.",
   "bbox": [
     135.772,
     34.989,
@@ -203,8 +203,8 @@
   ],
   "tour": [
     {
-      "title": "Higashiyama from open data",
-      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs. The lanes climb 60 m from Yasaka-dori to the gates of Kiyomizu-dera.",
+      "title": "Old Kyoto on the hillside",
+      "text": "The lanes climb from Yasaka-dori to the gates of Kiyomizu-dera, past teahouses, pottery shops and pickle sellers. Come early, before the tour buses, or at dusk when the lanterns come on.",
       "cam": [
         -520,
         -640,
@@ -225,7 +225,7 @@
     },
     {
       "title": "Kiyomizu-dera",
-      "text": "The Main Hall's stage hangs nearly 13 m over the valley on a lattice of keyaki pillars, joined without a nail. Rebuilt in 1633; the hall is about 36 m across and 18 m high.",
+      "text": "The Main Hall's stage hangs nearly 13 m over the valley on a lattice of keyaki pillars, joined without a single nail. \"To jump from the stage of Kiyomizu\" is how Kyoto says taking the plunge.",
       "cam": [
         350,
         -300,
@@ -246,7 +246,7 @@
     },
     {
       "title": "Sannenzaka and Ninenzaka",
-      "text": "Stone steps and setts between two-storey wooden shops: a district preserved by law since 1976. Noren in the doorways, lanterns at the eaves.",
+      "text": "Stone steps between two-storey wooden shops, noren in the doorways, lanterns at the eaves. Legend says a stumble on Sannenzaka brings three years' bad luck, so watch your step.",
       "cam": [
         -150,
         -40,
@@ -267,7 +267,7 @@
     },
     {
       "title": "The Yasaka Pagoda",
-      "text": "Five storeys and 46 m of bare timber, rebuilt in 1440, at the top of Yasaka-dori.",
+      "text": "Five storeys of bare timber, 46 m high, rebuilt in 1440: the picture of Kyoto, at the top of the lane, best framed from Yasaka-dori at sunset.",
       "cam": [
         -340,
         182,

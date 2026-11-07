@@ -5,7 +5,7 @@
   "country_code": "JP",
   "timezone": "Asia/Tokyo",
   "locale": "ja-JP",
-  "description": "Shinjuku from open data, lit by the real sun: Nishi-Shinjuku's towers at Project PLATEAU's surveyed heights, Kabukicho's arch, the east exit's screens, 2-chome, Shinjuku Gyoen, Jingu Gaien and, in Yotsuya, the Suga Shrine stairs of Your Name.",
+  "description": "Shinjuku, the city that never switches off: Nishi-Shinjuku's towers, the neon of Kabukicho, Golden Gai's tiny bars, the gardens of Shinjuku Gyoen and, in Yotsuya, the shrine stairs of Your Name.",
   "bbox": [
     139.6815,
     35.669,
@@ -207,8 +207,8 @@
   },
   "tour": [
     {
-      "title": "Shinjuku, from open data",
-      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height that Project PLATEAU surveyed, on GSI's laser-scanned bare earth under GSI aerial photographs.",
+      "title": "Shinjuku",
+      "text": "The busiest station in the world, three million passengers a day, and around it every Tokyo at once: towers to the west, neon to the east, six-seat bars in Golden Gai and cherry blossom in Shinjuku Gyoen.",
       "cam": [
         2900,
         -300,
@@ -229,7 +229,7 @@
     },
     {
       "title": "The stairs of Suga Shrine",
-      "text": "{landmark:suga.otokozaka.steps} stone steps, three and a half metres wide, red iron handrails both sides and down the middle: the 男坂 of Suga Shrine, the stairs of Your Name. The film turns ten this year.",
+      "text": "Stone steps between red handrails, a glimpse of the city below: the stairs where Your Name ends. Fans leave painted ema at the shrine at the top. The film turns ten this year.",
       "cam": [
         2478.1,
         1882.6,
@@ -267,11 +267,11 @@
         2330,
         170
       ],
-      "text": "Kenzo Tange's city hall, finished in 1991: one tower that splits in two at the 33rd floor, 243 m high, with a free observation deck in each half at 202 m. It was the tallest building in Tokyo until 2007."
+      "text": "Kenzo Tange's twin-towered city hall, 243 m. Both observation decks at 202 m are free; on a clear winter morning you can see Mount Fuji."
     },
     {
       "title": "Kabukicho after dark",
-      "text": "Kabukicho Ichibangai's red arch has lit the way in since 1969. The district is named for a kabuki theatre planned after the war that was never built.",
+      "text": "Kabukicho Ichibangai's red arch has lit the way in since 1969: neon, karaoke, ramen at 3 a.m., and Godzilla peering over the cinema roof. The district is named for a kabuki theatre that was never built.",
       "cam": [
         325.5,
         2705.6,

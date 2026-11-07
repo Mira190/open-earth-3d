@@ -5,7 +5,7 @@
   "country_code": "AU",
   "timezone": "Australia/Sydney",
   "locale": "en-AU",
-  "description": "Central Sydney from open data, lit by the real sun. Every shadow is computed, and every height is traceable to its source.",
+  "description": "Central Sydney, a harbour city of sails and sandstone: the Opera House on Bennelong Point, the Harbour Bridge, The Rocks where the colony began, and the ferries of Circular Quay.",
   "bbox": [151.195, -33.884, 151.228, -33.84],
   "origin": [151.2115, -33.862],
   "extent_m": [-1500, 1500, -2400, 2400],
@@ -140,8 +140,8 @@
   },
   "tour": [
     {
-      "title": "Central Sydney from open data",
-      "text": "{buildings} buildings from OpenStreetMap via Overture Maps, standing on NSW 5 m bare-earth terrain under NSW aerial imagery.",
+      "title": "Sydney Harbour",
+      "text": "Gadigal Country, where the First Fleet dropped anchor in 1788. Today the harbour is the city's living room: ferries crossing, sails on the water, and a flat white on the quay.",
       "cam": [1750, 2250, 1150],
       "tgt": [-180, -380, 30],
       "date": [3, 21],
@@ -151,7 +151,7 @@
     },
     {
       "title": "Sydney Opera House",
-      "text": "Each shell is a spherical triangle cut from one sphere of radius 75.2 m, the rule Utzon settled on in 1961. The highest shell stands 67 m above sea level.",
+      "text": "Jørn Utzon's sails, each shell cut from a single sphere, covered in a million Swedish tiles that wash themselves in the rain. Catch a show, or just sit on the steps at sunset.",
       "cam": [135.4, 717.1, 70],
       "tgt": [335.4, 542.1, 24],
       "date": [3, 21],
@@ -161,7 +161,7 @@
     },
     {
       "title": "Sydney Harbour Bridge",
-      "text": "Arch span 503 m, crown 134 m above sea level, 28 panels. The alignment comes from the two pylon footprints in OpenStreetMap, {landmark:harbour_bridge.bearing_deg}° east of north.",
+      "text": "The Coathanger, opened in 1932: climb the arch 134 m above the water, walk across from The Rocks to Milsons Point, or watch the fireworks pour off it at New Year.",
       "cam": [-616.3, 1017.9, 95],
       "tgt": [-76.3, 1077.9, 70],
       "date": [3, 21],
@@ -170,8 +170,8 @@
       "hold": 8
     },
     {
-      "title": "A winter day on the towers",
-      "text": "21 June, 8 am to 4 pm. The sun never climbs above 32.7° here, so at noon a 200 m tower casts a shadow over 310 m long.",
+      "title": "Winter among the towers",
+      "text": "In June the sun stays low over the city and the towers throw long shadows across the streets. The light is gold all day: a good season for the harbour walk from the Quay to the Botanic Garden.",
       "cam": [-1750, -1650, 760],
       "tgt": [-260, -620, 40],
       "date": [6, 21],
@@ -186,16 +186,16 @@
       "from": "12:30",
       "to": "13:15",
       "hold": 9,
-      "text": "On 21 June at 12:30, {sun:Martin Place|6-21|12:30}% of Martin Place gets direct sun; on 21 December, {sun:Martin Place|12-21|12:30}%. The plan protects it only from 1 September to 31 May, 12:00–14:00."
+      "text": "The city's grand plaza, where Sydney eats its lunch on the steps. On a winter lunchtime {sun:Martin Place|6-21|12:30}% of it is in the sun; in December, {sun:Martin Place|12-21|12:30}%."
     },
     {
-      "title": "Hyde Park in its protected hours",
+      "title": "Hyde Park",
       "place": "Hyde Park",
       "date": [6, 21],
       "from": "10:00",
       "to": "14:00",
       "hold": 10,
-      "text": "Protected all year from 10:00 to 14:00. On the winter solstice, sun on the park falls from {sun:Hyde Park|6-21|10:00}% at 10:00 to {sun:Hyde Park|6-21|14:00}% at 14:00 as the towers to the west take over."
+      "text": "Avenues of fig trees and the Archibald Fountain, the oldest park in Australia. In winter its sunny lawns shrink from {sun:Hyde Park|6-21|10:00}% at 10:00 to {sun:Hyde Park|6-21|14:00}% by 14:00."
     },
     {
       "title": "Sydney Tower",
@@ -216,11 +216,11 @@
         -942,
         200
       ],
-      "text": "309 m, the tallest structure in the city since it opened in 1981. The gold turret is held to its shaft by 56 cables; on a clear day the Blue Mountains show from the observation deck."
+      "text": "The gold turret at 309 m, the city's tallest since 1981. On a clear day the Blue Mountains show from the observation deck, and the restaurant up top slowly turns the whole city past your table."
     },
     {
       "title": "After dark",
-      "text": "Windows light from the same facade grid that shades them by day. Drag to explore, or open Sun access to test a tower of your own.",
+      "text": "The city lights up window by window and the bridge glows over the water. Drag to explore, or open Sun access to test a tower of your own.",
       "cam": [900, 1900, 700],
       "tgt": [-200, -350, 40],
       "date": [9, 22],

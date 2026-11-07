@@ -419,8 +419,12 @@ window.OEOverture = (function () {
       if ((scoreBuf && scoreFor === v) || !spec.score) return scoreBuf;
       try {
         await loadScript('film-score.js');
-        const chs = await OEFilmScore.render(scorePlan(), 44100);
-        if (v === variant) { scoreBuf = chs; scoreFor = v; } // (not if the hour changed to the other overture meanwhile)
+        // at 24 kHz (a piano and soft sines: nothing above 12 kHz to keep), straight into one AudioBuffer and the
+        // render's own arrays dropped, so a 45 s score holds about 8 MB rather than 33, and only while it plays
+        const RATE = 24000, chs = await OEFilmScore.render(scorePlan(), RATE);
+        let buf = chs;
+        if (window.AudioBuffer) try { buf = new AudioBuffer({ length: chs[0].length, numberOfChannels: 2, sampleRate: RATE }); buf.copyToChannel(chs[0], 0); buf.copyToChannel(chs[1], 1); } catch (e) { buf = chs; }
+        if (v === variant) { scoreBuf = buf; scoreFor = v; } // (not if the hour changed to the other overture meanwhile)
       } catch (e) { console.warn('overture: no score', e); }
       return scoreBuf;
     }
@@ -429,8 +433,8 @@ window.OEOverture = (function () {
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         audio = audio || new AC();
-        const b = audio.createBuffer(2, scoreBuf[0].length, 44100);
-        b.copyToChannel(scoreBuf[0], 0); b.copyToChannel(scoreBuf[1], 1);
+        let b = scoreBuf;
+        if (Array.isArray(b)) { b = audio.createBuffer(2, scoreBuf[0].length, 24000); b.copyToChannel(scoreBuf[0], 0); b.copyToChannel(scoreBuf[1], 1); }
         const g = audio.createGain(); g.gain.value = 0.8; g.connect(audio.destination);
         scoreSrc = audio.createBufferSource(); scoreSrc.buffer = b; scoreSrc.connect(g); scoreSrc.start(0, offset);
         scoreSrc.gainNode = g;
@@ -440,8 +444,9 @@ window.OEOverture = (function () {
       if (!scoreSrc || !audio) return;
       const g = scoreSrc.gainNode.gain, n = audio.currentTime;
       g.cancelScheduledValues(n); g.setValueAtTime(g.value, n); g.linearRampToValueAtTime(0, n + sec);
-      const s = scoreSrc; setTimeout(() => { try { s.stop(); } catch (e) { /* stopped */ } }, sec * 1000 + 100);
+      const s = scoreSrc; setTimeout(() => { try { s.stop(); s.disconnect(); } catch (e) { /* stopped */ } }, sec * 1000 + 100);
       scoreSrc = null;
+      scoreBuf = null; scoreFor = null; // (played: its memory goes back; "Play the opening" renders it again, about a second)
     }
 
     // ------------------------------------------------------------ the signal the cues change, and the crowd
