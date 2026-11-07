@@ -71,7 +71,10 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
 - **One local frame:** a transverse Mercator centred on the scene. It has no
   grid rotation. With UTM zone 56 the imagery would sit about 1° off, which
   is up to 85 m at the edges. The extent is 3.0 × 4.8 km.
-- **Trees:** 6,096 trees mapped in OSM, as points and tree rows.
+- **Trees:** OSM's 6,026 mapped trees, plus 8,906 more from the City of Sydney's tree
+  inventory ("Trees", CC BY 4.0, extracted 2026-11-07), which OSM does not map; every tree
+  the inventory surveys has its measured height, and the species mix is the inventory's
+  (`pipeline/plateau_veg.py`, docs/ARCHITECTURE.md "Measured street-tree heights").
 - **Buildings:** 7,962 buildings and 8,308 solids. OSM building parts replace
   their outlines, so in the surface model Sydney Tower is a 290 m shaft, a
   240–270 m turret and a spire to 309 m, all from data. Each building records:
@@ -611,8 +614,9 @@ numbers stay valid because the geometry they depend on is unchanged.
   photographs. The benches are generic; the band of glass on the podium is
   placed from photographs. A pale wedge of the terrain shows on the water in
   the corner west of the walkway's round end (it did before these levels).
-- **Trees, roofs and facades.** The 6,096 OSM-mapped trees are drawn with
-  guessed heights of 7–14 m. They are not in the shadow analysis, so parks
+- **Trees, roofs and facades.** The trees the City of Sydney surveys have their
+  measured heights; the rest (The Rocks, Barangaroo, the north shore) take heights
+  drawn from the survey's, and the species is drawn from its mix, not the tree's own. They are not in the shadow analysis, so parks
   read sunnier than they feel. Roof shapes are mapped for 3% of buildings;
   the rest are inferred. Facades are a style per building, not the
   building's own elevation. The surface model follows the pitched roofs.

@@ -370,7 +370,9 @@ node analysis/uncertainty.js --city <id> 40       # writes the viewer's uncertai
 python blender/build_scene.py --city <id>         # if renders are configured
 python pipeline/game_data.py --city <id>          # if the city has a game block; runs woods.py too
 python pipeline/woods.py --city <id>              # on its own: the woods' trees and floor (needs land, land_use, religious)
-python pipeline/plateau_veg.py --city <id>        # on its own: the mapped street trees' heights from PLATEAU (plateau.veg)
+python pipeline/plateau_veg.py --city <id>        # on its own: the mapped street trees' heights from PLATEAU (plateau.veg),
+                                                  # a council's tree inventory (trees.survey: {arcgis, height, add, attribution})
+                                                  # or the LiDAR surface model over the bare earth (trees.lidar: true)
 ```
 
 Then open `web/` with `python -m http.server` and go to `#<id>`.
