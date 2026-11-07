@@ -567,6 +567,7 @@ YASAKA_JINJA = {
     "tokiwa_shinden": ("w88108391", 11.4),  # 常磐新殿: the reception halls south of the honden
     "noh": ("w328903229", 8.1),           # 能舞台: the Noh stage
 }
+GATE_STEPS_M = 22.0                      # m before a gate's front kept clear of trees, its width (its steps and the approach)
 YASAKA_HONDEN_FRONT = (-314.0, 600.0)    # the precinct's south: where the halls face
 YASAKA_WEST = (-600.0, 747.0)            # down Shijo-dori: where the West Gate faces
 
@@ -659,6 +660,9 @@ def yasaka_jinja(K, hidden):
         else:   # under hinoki bark, three gold crests (左三つ巴) on its ridge either side (photograph, 2024)
             kk.romon(K, dict(VERMILION, nio="shu_dark"), P, z0, 2 * hv - 2.4, 2 * hu - 2.0, h, nio=False, ground=ground)
             ridge_crests(K, P, z0 + h - 0.75, 0.55, (-0.3 * hv, 0.0, 0.3 * hv), 0.32)
+        # its way through and the steps before it, the gate's width, are open: no tree stands there (photographs)
+        _cache.setdefault("tree_clear", []).append([tuple(P(u, v, 0)[:2]) for u, v in
+                                                    ((-hu - 1.0, -hv - 0.5), (hu + GATE_STEPS_M, -hv - 0.5), (hu + GATE_STEPS_M, hv + 0.5), (-hu - 1.0, hv + 0.5))])
         hidden.append(sd["si"])
     got = jinja_site(YASAKA_JINJA["buden"][0], (-314.0, 739.0))
     if got:
@@ -963,11 +967,16 @@ GION_CHERRY = (-100.8, 763.5, 12.0)
 
 
 def gion_cherry():
+    """The Gion cherry as a landmark tree, its neighbours taken off places.json, and with them every tree standing in
+    a gate's way or on the steps before it (tree_clear: the gates' rings, set as yasaka_jinja() draws them)."""
+    from shapely.geometry import Point as Pt, Polygon as Pg
     x, y, h = GION_CHERRY
     path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "higashiyama", "places.json")
     P = json.load(open(path))
     t = P.get("trees", [])
-    keep = [v for i in range(0, len(t), 4) if math.hypot(t[i] / 10 - x, t[i + 1] / 10 - y) >= 7.5 for v in t[i:i + 4]]
+    clear = [Pg(r) for r in _cache.get("tree_clear", [])]
+    keep = [v for i in range(0, len(t), 4) if math.hypot(t[i] / 10 - x, t[i + 1] / 10 - y) >= 7.5
+            and not any(c.contains(Pt(t[i] / 10, t[i + 1] / 10)) for c in clear) for v in t[i:i + 4]]
     if len(keep) != len(t):
         P["trees"] = keep
         json.dump(P, open(path, "w"), separators=(",", ":"))

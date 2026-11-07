@@ -89,9 +89,10 @@ MATERIALS = {
     # the drawn signs (this module's atlas), lit from inside after dark
     "st_atlas": {"color": "#ffffff", "roughness": 0.55, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 1.3},
     "st_frame": {"color": "#2a2c30", "roughness": 0.45, "metalness": 0.6},
-    # LUMINE EST's front: pale panels in bands
-    "st_lumine": {"color": "#6f7a84", "roughness": 0.25, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.4,
-                  "spandrel": 0.5, "mullion_m": 0.22, "frame": "#e2ded4", "lit_share": 0.7, "lit_k": 0.9, "warm_share": 0.85},
+    # LUMINE EST's front: horizontal louvres of grey-brown aluminium over dark glass (photographs, 2013-23)
+    "st_lumine": {"color": "#3c434a", "roughness": 0.2, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 7.2, "storey_m": 4.4,
+                  "spandrel": 0.2, "mullion_m": 0.12, "frame": "#55595c", "lit_share": 0.7, "lit_k": 0.9, "warm_share": 0.85},
+    "st_louvre": {"color": "#8d877d", "roughness": 0.45, "metalness": 0.55},
     # Hanao-san: mirror-polished stainless steel; its base's dark granite
     "st_chrome": {"color": "#e3e7ec", "roughness": 0.08, "metalness": 1.0},
     "st_plinth": {"color": "#3a3b3d", "roughness": 0.4, "metalness": 0.1, "pattern": "granite", "joints_m": [0.6, 0.4]},
@@ -126,12 +127,14 @@ HOLLOW_M = 0.5                  # m: ground lower than the plaza by this is the 
 VENT = {"at": (172.0, 2616.0), "r": 8.3, "h": 7.4, "wall_m": 0.45}   # the underground plaza's ventilation drum
 OFFICE = {"at": (277.0, 2633.0), "axis_deg": 97.0, "w": 12.2, "d": 2.5, "storeys": 3}
 
+FRIT_BURST = 0.3                # how far up the tower the frit's jets break into spray (photographs)
 KT_OSM = "w852000385"           # Tokyu Kabukicho Tower
 KT = {"floors_m": 200.0, "crown_m": 225.0, "frit_off": 0.35, "fin_every": 1.6, "lobby_m": 8.5, "canopy_m": 6.2}
 CINE_CITY = (434.0, 3020.0)     # Cine City Plaza (OSM way 684924350), the tower's front
 
 LUMINE = "r16502754"
 LUMINE_FRONT = ((441.1, 2467.2), (431.4, 2550.9))   # its face to the East Square (the outline's east edge)
+LUMINE_LOUVRE_M = 0.6          # m between the front's louvres
 HANAO = {"at": (453.3, 2500.5), "plinth_r": 2.0, "plinth_m": 1.0, "h": 7.0, "bench_r": (3.3, 4.3), "bench_m": 0.45}
 # the round bench about it: OSM maps it as a 1 m "building" (relation 16263947, bench=yes) and PLATEAU stands it
 # and the square's planters at 2.4-2.8 m, so they read as huts; they are drawn here as the bench instead
@@ -530,8 +533,9 @@ def kabukicho_tower(K, A, D):
 
 
 def draw_frit(path):
-    """The frit skin's picture: rising jets of water in white dots and strokes on clear glass (its
-    clear pixels are holes), denser toward the top where the jets break into spray."""
+    """The frit skin's picture: rising jets of water in white dots and strokes on clear glass (its clear pixels are
+    holes), breaking into spray a third of the way up the tower (FRIT_BURST), thin lines running on above, as
+    photographs of 2023-24 show the white strands dense over the lower tower and the glass clear above."""
     from PIL import Image, ImageDraw
     W, H = 1024, 4096
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -544,16 +548,19 @@ def draw_frit(path):
         for k in range(1400):
             s = (k / 1400) ** 0.85                       # up the jet
             yy = H * (1 - s)
-            spread = 6 + 70 * s ** 2.2                   # a thin stream that opens into spray
+            burst = math.exp(-((s - FRIT_BURST) / 0.09) ** 2)   # where the jets break, a third of the way up
+            spread = 5 + 80 * burst + 10 * s                  # a stream that bursts into spray, then thins out above
             xx = x0 + lean * (H - yy) * 0.08 + rng.normal(0, spread)
-            r = 1.5 + 4.5 * (1 - s) + rng.random() * 2.0
-            if s > 0.75 and rng.random() < 0.5:          # the spray: drops thrown out and falling
-                xx += rng.normal(0, 90 * (s - 0.7))
+            r = (1.5 + 4.5 * (1 - s)) * (0.35 if s > FRIT_BURST + 0.15 else 1.0) + rng.random() * 2.0
+            if burst > 0.3 and rng.random() < 0.5:            # the spray: drops thrown out and falling
+                xx += rng.normal(0, 70 * burst)
                 r *= 0.7
+            if s > FRIT_BURST + 0.15 and rng.random() < 0.6:  # above it only a fine line runs on up
+                continue
             d.ellipse([xx - r, yy - r * 2.2, xx + r, yy + r * 2.2], fill=(250, 252, 255, 255))
-        d.line([(x0, H), (x0 + lean * H * 0.06, H * 0.32)], fill=(250, 252, 255, 255), width=5)
-    for _ in range(5000):                                 # fine mist over the top third
-        xx, yy = rng.random() * W, (rng.random() ** 2.4) * H * 0.4
+        d.line([(x0, H), (x0 + lean * H * 0.06, H * 0.02)], fill=(250, 252, 255, 255), width=4)
+    for _ in range(5000):                                 # fine mist about the burst
+        xx, yy = rng.random() * W, H * (1 - FRIT_BURST) + rng.normal(0, H * 0.07)
         r = 1.0 + rng.random() * 1.6
         d.ellipse([xx - r, yy - r, xx + r, yy + r], fill=(250, 252, 255, 255))
     img = img.resize((512, 2048), Image.LANCZOS)
@@ -586,10 +593,13 @@ def lumine(K, A, D):
     g = min(s["ground"] for s in solids) if solids else D.ground(*a)
     top = max(s["top"] for s in solids if Polygon(s["ring"]).area > 1000) if solids else 29.0
     m = (a + b) / 2
-    # pale bands between the windows of the upper floors, a glazed and lit street floor, the canopy over the doors
+    # dark glass behind horizontal louvres on the upper floors, a glazed and lit street floor, the canopy over the doors
     o = n * 0.12
     K["st_lumine"].quad(np.array([*(a + o), g + 6.0]), np.array([*(b + o), g + 6.0]), np.array([*(b + o), g + top - 0.5]), np.array([*(a + o), g + top - 0.5]),
                         [[0, 6.0], [L, 6.0], [L, top - 0.5], [0, top - 0.5]])
+    for z in np.arange(g + 6.3, g + top - 0.6, LUMINE_LOUVRE_M):   # the louvres, each a blade tilted a little down
+        K["st_louvre"].quad(np.array([*(a + n * 0.25), z]), np.array([*(b + n * 0.25), z]), np.array([*(b + n * 0.75), z - 0.12]), np.array([*(a + n * 0.75), z - 0.12]))
+        K["st_louvre"].quad(np.array([*(a + n * 0.75), z - 0.15]), np.array([*(b + n * 0.75), z - 0.15]), np.array([*(b + n * 0.25), z - 0.03]), np.array([*(a + n * 0.25), z - 0.03]))
     K["st_lobby"].quad(np.array([*(a + o * 0.5), g]), np.array([*(b + o * 0.5), g]), np.array([*(b + o * 0.5), g + 5.6]), np.array([*(a + o * 0.5), g + 5.6]))
     c0 = m - f * 14.0
     c1 = m + f * 14.0
@@ -597,7 +607,7 @@ def lumine(K, A, D):
     K["st_kt_canopy"].quad(np.array([*(c0 + n * 3.5), cz]), np.array([*(c1 + n * 3.5), cz]), np.array([*c1, cz]), np.array([*c0, cz]))
     K["st_kt_canopy"].quad(np.array([*c0, cz + 0.35]), np.array([*c1, cz + 0.35]), np.array([*(c1 + n * 3.5), cz + 0.35]), np.array([*(c0 + n * 3.5), cz + 0.35]))
     K["st_kt_canopy"].quad(np.array([*(c0 + n * 3.5), cz]), np.array([*(c0 + n * 3.5), cz + 0.35]), np.array([*(c1 + n * 3.5), cz + 0.35]), np.array([*(c1 + n * 3.5), cz]))
-    sign_quad(K, A, m, n, 18.0, g + top - 6.0, g + top - 2.2, "lumine_est", off=0.2)
+    sign_quad(K, A, m, n, 18.0, g + top - 6.0, g + top - 2.2, "lumine_est", off=0.9)   # over the louvres
     sign_quad(K, A, m, n, 11.0, cz + 0.45, cz + 1.75, "jr_east", off=3.6)
     return {"front": [round(float(m[0]), 1), round(float(m[1]), 1)], "z": round(g, 2)}
 
