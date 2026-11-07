@@ -18,7 +18,7 @@ import urllib.request
 
 HOST = os.environ.get('POSTHOG_HOST', 'https://eu.posthog.com')
 DASHBOARD = 'Open Earth 3D: visitors and service levels'
-OURS = "event IN ('view', 'load', 'time', 'page', 'error', 'gl_lost') AND coalesce(toString(properties.view), '') != 'test'"
+OURS = "event IN ('view', 'load', 'time', 'page', 'error', 'gl_lost', 'dwell', 'tour', 'mode', 'quest', 'exit', 'crash') AND coalesce(toString(properties.view), '') != 'test'"
 D3 = "properties.view IN ('city', 'game', 'reef')"
 NOT_TEST = [{'key': 'view', 'value': ['test'], 'operator': 'is_not', 'type': 'event'}]
 PLAY = [{'key': 'view', 'value': ['game', 'reef'], 'operator': 'exact', 'type': 'event'}]
@@ -59,6 +59,12 @@ def scorecard(days):
         slo_row('Page loads without a lost WebGL context', '>= 99.5%',
                 f"SELECT 100 * (1 - count(DISTINCT if(event = 'gl_lost', properties.sid, NULL)) / nullIf(count(DISTINCT properties.sid), 0)) AS v, "
                 f"count(DISTINCT properties.sid) AS n FROM events WHERE {OURS} AND {w}", 'v >= 99.5', '%'),
+        slo_row('Page loads that did not die on screen', '>= 99.5%',
+                f"SELECT 100 * (1 - countIf(event = 'crash') / nullIf(count(DISTINCT properties.sid), 0)) AS v, count(DISTINCT properties.sid) AS n "
+                f"FROM events WHERE {OURS} AND {w}", 'v >= 99.5', '%'),
+        slo_row('Slowest interaction per page load, p75', '<= 200 ms',
+                f"SELECT quantile(0.75)(m) AS v, count() AS n FROM (SELECT properties.sid AS sid, max(coalesce(toFloat(properties.inp), 0)) AS m "
+                f"FROM events WHERE event = 'time' AND toInt(properties.v) >= 2 AND {w} GROUP BY sid)", 'v <= 200', ' ms'),
     ]
     return 'SELECT slo, target, value, samples, status FROM (\n' + '\nUNION ALL\n'.join(rows) + '\n) ORDER BY ord'
 
@@ -74,6 +80,48 @@ def engagement(days):
         "(SELECT 1 AS k, count() AS players, sum(t) / 3600 AS hours, quantile(0.5)(t) AS med, quantile(0.9)(t) AS p90 FROM "
         f"(SELECT distinct_id, sum(toFloat(properties.s)) AS t FROM events WHERE event = 'time' AND properties.view IN ('game', 'reef') AND {w} GROUP BY distinct_id)) AS b "
         "ON a.k = b.k")
+
+
+def dwell(days):
+    w = f'timestamp > now() - INTERVAL {days} DAY'
+    return ("SELECT properties.city AS city, properties.view AS view, properties.spot AS spot, properties.mode AS mode, "
+            "round(sum(toFloat(properties.s)) / 60, 1) AS minutes, round(100 * sum(toFloat(properties.eng_s)) / nullIf(sum(toFloat(properties.s)), 0)) AS engaged_pct, "
+            f"count(DISTINCT distinct_id) AS visitors FROM events WHERE event = 'dwell' AND {w} GROUP BY city, view, spot, mode ORDER BY minutes DESC LIMIT 60")
+
+
+def exits(days):
+    # the last event of each page load is where the visitor left; how it ended comes from the exit event, if any
+    w = f'timestamp > now() - INTERVAL {days} DAY'
+    return ("SELECT view, city, where_left, count() AS page_loads, round(median(page_s)) AS median_page_s, countIf(closed) AS closed_tab, countIf(idle_s > 120) AS idle_2min FROM ("
+            "SELECT properties.sid AS sid, argMax(toString(properties.view), timestamp) AS view, argMax(toString(properties.city), timestamp) AS city, "
+            "argMax(if(properties.tour IS NOT NULL AND properties.view = 'city', concat('tour ', toString(properties.tour)), coalesce(toString(properties.spot), '-')), timestamp) AS where_left, "
+            "max(if(event = 'exit', toFloat(properties.page_s), NULL)) AS page_s, max(if(event = 'exit', toFloat(properties.idle_s), NULL)) AS idle_s, countIf(event = 'exit') > 0 AS closed "
+            f"FROM events WHERE {OURS} AND event != 'crash' AND toInt(properties.v) >= 2 AND {w} GROUP BY sid) "
+            "GROUP BY view, city, where_left ORDER BY page_loads DESC LIMIT 40")
+
+
+def tour_funnel(days):
+    # per page load and city: the furthest stop, whether the end card came up, and what happened next
+    w = f'timestamp > now() - INTERVAL {days} DAY'
+    return ("SELECT city, count() AS model_views, countIf(furthest > 0) AS started, round(avg(if(furthest > 0, furthest / stops, NULL)) * 100) AS avg_pct_seen, "
+            "countIf(is_ended) AS ended, countIf(is_ended AND is_played) AS then_played, countIf(is_ended AND NOT is_played AND after_s < 60) AS left_within_1min FROM ("
+            "SELECT properties.sid AS sid, properties.city AS city, "
+            "maxIf(toFloat(properties.stop), event = 'tour' AND properties.action = 'stop') AS furthest, max(toFloat(properties.stops)) AS stops, "
+            "countIf(event = 'tour' AND properties.action = 'end') > 0 AS is_ended, "
+            "countIf(event = 'view' AND properties.from = concat('city:', toString(properties.city)) AND properties.view = 'game') > 0 AS is_played, "
+            "sumIf(toFloat(properties.s), event = 'time' AND properties.view = 'city' AND properties.tour = 'done') AS after_s "
+            f"FROM events WHERE event IN ('view', 'tour', 'time') AND toInt(properties.v) >= 2 AND {w} GROUP BY sid, city) "
+            "WHERE city != '' AND (furthest > 0 OR is_played) GROUP BY city ORDER BY model_views DESC")
+
+
+def first_minutes(days):
+    w = f'timestamp > now() - INTERVAL {days} DAY'
+    return ("SELECT properties.city AS city, countIf(event = 'load' AND toString(properties.ok) = 'true') AS loaded, "
+            "countIf(event = 'mode' AND toString(properties.start) = 'true') AS started, "
+            "countIf(event = 'mode' AND properties.from = 'foot' AND properties.to = 'car') AS took_car, "
+            "countIf(event = 'mode' AND properties.to = 'heli') AS flew, countIf(event = 'mode' AND properties.to IN ('ferry', 'rail', 'ride')) AS rode, "
+            "countIf(event = 'quest' AND properties.action = 'step') AS quest_steps, countIf(event = 'quest' AND properties.action = 'done') AS quests_done "
+            f"FROM events WHERE event IN ('load', 'mode', 'quest') AND properties.view = 'game' AND {w} GROUP BY city ORDER BY loaded DESC")
 
 
 def trends(series, display='ActionsLineGraph', breakdown=None, date_from='-30d', interval='day', formula=None, props=None):
@@ -101,8 +149,12 @@ def sql(q):
 
 
 INSIGHTS = [
-    ('SLO scorecard, last 7 days', 'The seven service levels of docs/OBSERVABILITY.md: value, samples, met or missed (judged from 20 samples).', sql(scorecard(7))),
+    ('SLO scorecard, last 7 days', 'The nine service levels of docs/OBSERVABILITY.md: value, samples, met or missed (judged from 20 samples).', sql(scorecard(7))),
     ('Visitors and play time, last 30 days', 'Unique visitors, new visitors, page loads, views; players, play hours, minutes per player (median, p90).', sql(engagement(30))),
+    ('Where visitors stay, last 30 days', 'Minutes by city, view, spot (tour stop, neighbourhood or nearest landmark) and mode (on foot, car, heli, ferry...), with the share engaged.', sql(dwell(30))),
+    ('Where page loads end, last 30 days', 'The last event of each page load: the view, the city and the spot or tour stop; median page time and how many closed the tab or had been idle 2 min.', sql(exits(30))),
+    ('Tour funnel by city, last 30 days', 'Model views whose tour started, the share of stops seen, the end card reached, then played the game or left within a minute.', sql(tour_funnel(30))),
+    ('The game\'s first minutes by city, last 30 days', 'Games loaded, title screen left, first car, helicopter and ride, quest steps and quests done.', sql(first_minutes(30))),
     ('Unique visitors per day', 'Distinct visitor ids (a random id in localStorage) that opened any view.', trends([ev('view', 'dau', name='Visitors')])),
     ('Play time per day (hours)', 'Seconds on screen and ready in the game and reef views, summed.',
      trends([ev('time', 'sum', 's', PLAY, 'Play seconds')], formula='A / 3600')),
@@ -124,6 +176,13 @@ INSIGHTS = [
     ('Errors by message (7 days)', 'Script errors, unhandled rejections and failed resources.',
      trends([ev('error', name='Errors')], 'ActionsTable', 'msg', date_from='-7d')),
     ('Lost WebGL contexts per day', 'Contexts lost while a view was showing.', trends([ev('gl_lost', name='Lost')])),
+    ('Pages that died on screen per day', 'Reported by the next page load: a tab crash or an out-of-memory kill while the page was visible, by the view it died in.',
+     trends([ev('crash', name='Died')], breakdown='prev_view')),
+    ('Returning visitors per day', 'Visitors whose browser had opened the site before (visit_n > 1).',
+     trends([ev('view', 'dau', props=[{'key': 'visit_n', 'value': 1, 'operator': 'gt', 'type': 'event'}], name='Returning')])),
+    ('Engaged play (%) by view', 'Share of time on screen with input in the last minute or a tour or camera move playing (not a tab left open).',
+     trends([ev('time', 'sum', 'eng_s', THREE_D, 'Engaged s'), ev('time', 'sum', 's', THREE_D + [{'key': 'eng_s', 'operator': 'is_set', 'value': 'is_set', 'type': 'event'}], 'Seconds')],
+            breakdown='view', formula='100 * A / B')),
 ]
 
 
@@ -169,7 +228,7 @@ def main():
         return
     dash = next((d for d in api.all(f'/api/projects/{pid}/dashboards/?limit=200') if d.get('name') == DASHBOARD and not d.get('deleted')), None)
     if not dash:
-        dash = api.call('POST', f'/api/projects/{pid}/dashboards/', {'name': DASHBOARD, 'description': 'Visitors, play time and the seven service levels of web/telemetry.js (docs/OBSERVABILITY.md). Built by tools/posthog_dashboard.py.', 'pinned': True})
+        dash = api.call('POST', f'/api/projects/{pid}/dashboards/', {'name': DASHBOARD, 'description': 'Visitors, play time, where they stay and leave, and the nine service levels of web/telemetry.js (docs/OBSERVABILITY.md). Built by tools/posthog_dashboard.py.', 'pinned': True})
         print(f"made dashboard {dash['id']}")
     have = {i['name']: i for i in api.all(f'/api/projects/{pid}/insights/?limit=200&saved=true') if i.get('name') and not i.get('deleted')}
     for name, desc, q in INSIGHTS:

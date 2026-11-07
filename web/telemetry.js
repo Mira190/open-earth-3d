@@ -9,7 +9,15 @@
 //     kills the tab without a pagehide;
 //   - frame times are taken from requestAnimationFrame while the view is ready and visible: the median
 //     frame rate and the share of frames slower than 50 ms (a dropped-frame stutter a person notices);
-//   - script errors, unhandled rejections and lost WebGL contexts are counted, a few per page at most.
+//   - script errors, unhandled rejections and lost WebGL contexts are counted, a few per page at most;
+//   - where in the view the visitor is and what they are doing is read once a second from the views' own
+//     handles (window.__city, window.__game, window.__reef: the tour stop, the neighbourhood or nearest
+//     landmark, on foot or in a car, the quest), summed into "dwell" events by spot and mode, and carried on
+//     every event, so the last event of a page load says where the visitor left; "tour", "mode" and "quest"
+//     events mark the steps, and "exit" says how the page ended;
+//   - engaged time (input in the last minute, or a tour or camera move playing) is told apart from a tab left
+//     open, and a page that died while on screen (a tab crash, an out-of-memory kill) is reported by the
+//     next page load ("crash").
 // Nothing is stored but a random visitor id in localStorage (no cookies, no fingerprinting, no IP kept by
 // this code); nothing is sent at all until CONFIG names an endpoint, nor when the browser asks not to be
 // tracked (Do Not Track or Global Privacy Control), nor from automated browsers (the checks in tools/).
@@ -26,7 +34,7 @@ window.OETelemetry = (function () {
     format: 'posthog',     // 'posthog' or 'jsonl'
     key: 'phc_v8YPULU9RMwSuJD4K3WYDM8KaGck9Z2XeAFdKeVRD95B',   // the project's public capture key (it only writes events)
   };
-  const VERSION = 1;
+  const VERSION = 2;
   const q = new URLSearchParams(location.search);
   const arg = q.get('telemetry');
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -36,7 +44,7 @@ window.OETelemetry = (function () {
   const asked = (arg && arg !== 'off') && (debug || endpoint !== CONFIG.endpoint);
   const optOut = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
   const on = arg !== 'off' && !optOut && (debug || (!!endpoint && (asked || !navigator.webdriver)));
-  const noop = { on: false, track() {}, flush() {}, view() {} };
+  const noop = { on: false, track() {}, flush() {}, view() {}, here() { return null; } };
   if (!on) return noop;
 
   const now = () => performance.now();
@@ -46,6 +54,13 @@ window.OETelemetry = (function () {
   const fresh = !vid;
   if (!vid) vid = rid();                 // storage blocked: a visitor id for this page only
   const sid = rid();                     // one page load
+  // how many page loads this browser has made, and the days since the last: return visits without a profile
+  let visit = { n: 1, days: null };
+  try {
+    const o = JSON.parse(localStorage.getItem('oe3d-visits') || 'null'), t = Date.now();
+    if (o && o.n > 0) visit = { n: o.n + 1, days: Math.round((t - o.t) / 864e5 * 10) / 10 };
+    localStorage.setItem('oe3d-visits', JSON.stringify({ n: visit.n, t }));
+  } catch (e) { /* storage blocked */ }
 
   // the device, coarse: what the quality tiers and the SLO targets are split by
   const touch = matchMedia('(pointer: coarse)').matches;
@@ -67,7 +82,7 @@ window.OETelemetry = (function () {
   // ---------------------------------------------------------------- the queue
   let queue = [];
   function track(event, props) {
-    queue.push({ event, ts: new Date().toISOString(), props: Object.assign(base(), cur ? { view: cur.kind, city: cur.city } : {}, props || {}) });
+    queue.push({ event, ts: new Date().toISOString(), props: Object.assign(base(), cur ? { view: cur.kind, city: cur.city } : {}, snap(), props || {}) });
     if (queue.length >= 20) flush();
   }
   function flush() {
@@ -100,6 +115,8 @@ window.OETelemetry = (function () {
   const LOADERS = { city: 'loader', game: 'g-loader', reef: 'load' };
   let cur = null;           // { kind, city, t0, ready, failed, active, since, frames }
   let sinceFlush = 0;       // ms of active time in this view not yet sent
+  let engFlush = 0;         // seconds of it the visitor was engaged (input in the last minute, or a tour playing)
+  let slice = { inp: 0, heap: 0 };   // the slowest interaction (ms) and the most memory (MB) since the last "time"
 
   function activeNow() { return cur && cur.ready && !document.hidden; }
   function bank() {         // move the running stretch of active time into the view's tally
@@ -118,25 +135,39 @@ window.OETelemetry = (function () {
       props.slow = Math.round(f.slow / n * 1000) / 1000;
       props.frames = n;
     }
+    props.eng_s = Math.round(engFlush / 100) / 10;
+    if (slice.inp) props.inp = slice.inp;
+    if (slice.heap) props.heap_mb = slice.heap;
     if (final) props.final = true;
-    sinceFlush = 0; cur.frames = frames();
+    sinceFlush = 0; engFlush = 0; slice = { inp: 0, heap: 0 }; cur.frames = frames();
     if (props.s > 0 || final) track('time', props);
+    // the time by spot and mode since the last one
+    for (const [k, d] of cur.dwell) if (d.s >= 1) track('dwell', { spot: d.spot, mode: d.mode, s: Math.round(d.s * 10) / 10, eng_s: Math.round(d.eng * 10) / 10 });
+    cur.dwell.clear();
   }
   const frames = () => ({ n: 0, slow: 0, bins: new Uint32Array(100) });
 
   function leave(why) {
     if (!cur) return;
-    if (!cur.ready && !cur.failed) track('load', { ok: false, why, ms: Math.round(now() - cur.t0) });
+    if (!cur.ready && !cur.failed) {
+      const el = document.getElementById(LOADERS[cur.kind]);   // what the loader was saying when the visitor gave up
+      track('load', { ok: false, why, ms: Math.round(now() - cur.t0), msg: el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120) : undefined });
+    }
     sendTime(true);
+    prev = { from: `${cur.kind}${cur.city ? `:${cur.city}` : ''}`, from_s: Math.round(cur.active / 1000) };
     cur = null;
   }
-  function view() {
+  let prev = {};
+  function view(restored) {
     const w = where();
     if (cur && cur.kind === w.kind && cur.city === w.city) return;
     leave('left');
     // the first view is timed from the navigation itself (the page's own download is part of its wait)
-    cur = { kind: w.kind, city: w.city, t0: views ? now() : 0, ready: w.kind === 'globe', failed: false, active: 0, since: null, frames: frames() };
-    track('view', { first: !views++, new_visitor: fresh });
+    cur = { kind: w.kind, city: w.city, t0: views ? now() : 0, ready: w.kind === 'globe', failed: false, active: 0, since: null, frames: frames(),
+      restored: restored === true, here: null, dwell: new Map(), tourMax: 0, tourDone: false, stamps: null };
+    track('view', Object.assign({ first: !views++, new_visitor: fresh, visit_n: visit.n, days_since: visit.days }, prev));
+    prev = {};
+    while (crashes.length) crashes.shift()();
     if (cur.ready) bank();
     watchLoader();
     flush();
@@ -155,7 +186,7 @@ window.OETelemetry = (function () {
       if (!el || v !== cur) return false;
       if (!v.ready && (el.classList.contains('out') || el.classList.contains('done'))) {
         v.ready = true; bank();
-        track('load', { ok: true, ms: Math.round(now() - v.t0) }); flush();
+        if (!v.restored) { track('load', { ok: true, ms: Math.round(now() - v.t0) }); flush(); }
         return true;
       }
       if (!v.failed && el.classList.contains('err')) {
@@ -183,6 +214,131 @@ window.OETelemetry = (function () {
   }
   requestAnimationFrame(tick);
 
+  // ---------------------------------------------------------------- where the visitor is, and what they are doing
+  // Read from the views' own handles once a second while the view is ready and on screen; each view's code
+  // stays as it is. A spot is a place a person would name: the tour stop, else the neighbourhood (game.json
+  // "areas"), else the nearest landmark, travel point, wharf or trig within 300 m (the model viewer: the
+  // nearest named place to what the camera looks at, within 400 m).
+  const $id = id => document.getElementById(id);
+  const clip = s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  function nearest(list, x, y, r) { let best = null, bd = r; for (const p of list) { const d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; best = p[2]; } } return best; }
+  let named = null, namedFor = null;
+  function names(g) {      // the game's named points, [x, y, name], built once per game
+    if (namedFor === g) return named;
+    namedFor = g; named = [];
+    const G = g.G || {};
+    for (const l of g.landmarks || []) if (l.at) named.push([l.at[0], l.at[1], l.name]);
+    for (const t of G.travel || []) if (t.at) named.push([t.at[0], t.at[1], t.name]);
+    for (const w of G.wharves || []) { const a = w.landing || w.terminal; if (a) named.push([a[0], a[1], w.name]); }
+    for (const v of g.VP || []) named.push([v.x, v.y, v.name]);
+    named = named.filter(p => p[2] && isFinite(p[0]) && isFinite(p[1]));
+    return named;
+  }
+  function look(kind) {
+    try {
+      if (kind === 'city') {
+        const c = window.__city;
+        if (!c || !c.tour) return null;
+        const t = c.tour, stops = document.querySelectorAll('#cap-bars span').length, n = t.i + 1;
+        if (t.playing && n > 0) return { spot: `tour ${n}: ${clip(($id('cap-title') || {}).textContent)}`, mode: 'tour', stop: n, stops, done: false, watching: true };
+        let spot = 'free look';
+        if (c.controls && c.placeInfo) {
+          const g = c.controls.target, p = nearest(c.placeInfo.filter(q => q.c).map(q => [q.c[0], q.c[1], q.name]), g.x, -g.z, 400);
+          if (p) spot = clip(p);
+        }
+        const tab = document.querySelector('.panel [role="tab"][aria-selected="true"]');
+        return { spot, mode: c.orbit && c.orbit.on ? 'orbit' : 'free', panel: tab ? tab.dataset.tab : undefined, stop: n, stops, done: !!t.done, watching: !!(c.orbit && c.orbit.on && t.done) };
+      }
+      if (kind === 'game') {
+        const g = window.__game;
+        if (!g || !g.player) return null;
+        const ttl = $id('g-title');
+        if (ttl && !ttl.hidden) return { spot: 'title screen', mode: 'menu' };
+        const p = g.player, a = g.places && g.places.area && g.places.area();
+        const spot = (a && a.name) || nearest(names(g), p.x, p.y, 300) || 'streets';
+        const out = { spot: clip(spot), mode: g.photo && g.photo.on ? 'photo' : p.mode, watching: !!((g.cine && g.cine.active) || (g.onboard && g.onboard.active && g.onboard.active())) };
+        const l = g.tracked && g.tracked();
+        if (l && g.ls) { const st = g.ls(l); out.quest = `${l.id} ${st.qi + 1}.${st.si + 1}`; }
+        try { out.stamps = g.qs().stamps.length; } catch (e) { /* no quests here */ }
+        return out;
+      }
+      if (kind === 'reef') {
+        const r = window.__reef, g = window.__game, pl = r && r.ctx && r.ctx.player;
+        if (!pl || !pl.S) return null;
+        const S = pl.S, x = S.pos.x, y = -S.pos.z;
+        const spot = nearest((r.ctx.pois || []).map(q => [q.x, q.y, q.name || q.id]), x, y, 150) || (S.water ? 'open water' : 'shore');
+        return { spot: clip(spot), mode: g && g.aboard ? 'boat' : S.state, depth: Math.round(S.depthBody || 0), watching: !!(g && g.arrival && g.arrival.on) };
+      }
+    } catch (e) { /* a view between states: try again next second */ }
+    return null;
+  }
+  // the context every event carries: so the last event of a page load says where the visitor was when they left
+  function snap() {
+    const h = cur && cur.here;
+    if (!h) return {};
+    const o = { spot: h.spot, mode: h.mode };
+    if (h.stops) o.tour = h.done || cur.tourDone ? 'done' : h.mode === 'tour' ? `${h.stop}/${h.stops}` : cur.tourMax ? `left ${cur.tourMax}/${h.stops}` : 'none';
+    if (h.quest) o.quest = h.quest;
+    return o;
+  }
+  let lastInput = -1e9, lastSample = 0;
+  for (const t of ['pointerdown', 'keydown', 'wheel', 'touchstart']) addEventListener(t, () => { lastInput = now(); }, { capture: true, passive: true });
+  function sample() {
+    const t = now(), dt = Math.min(2, (t - lastSample) / 1000);
+    lastSample = t;
+    if (!activeNow()) return;
+    const h = look(cur.kind), was = cur.here;
+    if (!h) return;
+    cur.here = h;
+    const eng = h.watching || t - lastInput < 60000;
+    if (eng) engFlush += dt * 1000;
+    const k = `${h.spot}\u0001${h.mode}`;
+    let d = cur.dwell.get(k);
+    if (!d) cur.dwell.set(k, d = { spot: h.spot, mode: h.mode, s: 0, eng: 0 });
+    d.s += dt; if (eng) d.eng += dt;
+    // the steps: a tour stop reached, the tour ended or taken over; on foot to a car or a helicopter; a quest step done
+    if (h.stops) {
+      if (h.mode === 'tour' && (!was || was.stop !== h.stop || was.mode !== 'tour')) { cur.tourMax = Math.max(cur.tourMax, h.stop); track('tour', { action: 'stop', stop: h.stop, stops: h.stops }); }
+      if (h.done && !cur.tourDone) { cur.tourDone = true; track('tour', { action: 'end', stops: h.stops }); }
+      else if (was && was.mode === 'tour' && h.mode !== 'tour' && !h.done) track('tour', { action: 'leave', stop: was.stop, stops: h.stops });
+    }
+    if (was && !h.stops && was.mode !== h.mode && h.mode !== 'menu' && was.mode !== 'menu') track('mode', { from: was.mode, to: h.mode });
+    if (was && was.mode === 'menu' && h.mode !== 'menu') track('mode', { from: 'menu', to: h.mode, start: true });
+    if (h.stamps != null) {
+      if (cur.stamps != null && h.stamps > cur.stamps) track('quest', { action: 'done', stamps: h.stamps });
+      else if (was && was.quest && h.quest && was.quest !== h.quest && h.stamps === cur.stamps) track('quest', { action: 'step', from: was.quest });
+      cur.stamps = h.stamps;
+    }
+    if (performance.memory) slice.heap = Math.max(slice.heap, Math.round(performance.memory.usedJSHeapSize / 1048576));
+  }
+  setInterval(sample, 1000);
+  // how long the page takes to answer a tap or a key (the Event Timing API behind INP): the slowest in each piece
+  try {
+    new PerformanceObserver(l => { for (const e of l.getEntries()) if (e.interactionId && e.duration > slice.inp) slice.inp = Math.round(e.duration); })
+      .observe({ type: 'event', buffered: true, durationThreshold: 40 });
+  } catch (e) { /* Safari before 18: no Event Timing */ }
+
+  // ---------------------------------------------------------------- a page that died on screen
+  // While the page is visible a small note says it is alive (refreshed every five seconds); it is taken away
+  // when the tab is put away or the page closes. A note left behind, and older than half a minute (another
+  // tab of the site keeps its own fresh), means the page ended without closing: the browser or the GPU
+  // process crashed, or the system killed it for memory. The next page load reports it.
+  const ALIVE = 'oe3d-alive-', crashes = [];   // the reports wait for the first view, so they carry its tier
+  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready) }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
+  const gone = () => { try { localStorage.removeItem(ALIVE + sid); } catch (e) { /* storage blocked */ } };
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k || k.indexOf(ALIVE) || k === ALIVE + sid) continue;
+      let o = null; try { o = JSON.parse(localStorage.getItem(k)); } catch (e) { o = null; }
+      const age = o ? Date.now() - o.t : 1e12;
+      if (age < 30000) continue;
+      localStorage.removeItem(k);
+      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
+    }
+  } catch (e) { /* storage blocked */ }
+  setInterval(() => { if (!document.hidden && !going) alive(); }, 5000);
+
   // ---------------------------------------------------------------- errors and the GPU
   let errors = 0;
   const err = (kind, msg, src) => { if (errors++ < 5) track('error', { kind, msg: String(msg || '').slice(0, 200), src: String(src || '').replace(location.origin, '').slice(0, 160) }); };
@@ -199,9 +355,16 @@ window.OETelemetry = (function () {
   // ---------------------------------------------------------------- the page's life
   addEventListener('hashchange', () => { changed = now(); view(); });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { sendTime(false); flush(); } else bank();
+    if (document.hidden) { gone(); sendTime(false); flush(); } else { alive(); bank(); }
   });
-  addEventListener('pagehide', () => { going = true; leave('closed'); flush(); });
+  // how the page ended: where the visitor was, how long the page was open, how long since they last touched it
+  addEventListener('pagehide', () => {
+    if (cur && !going) track('exit', { page_s: Math.round(now() / 1000), view_s: Math.round((cur.active + (cur.since != null ? now() - cur.since : 0)) / 1000), views,
+      idle_s: lastInput > 0 ? Math.round((now() - lastInput) / 1000) : null, ready: cur.ready, tour_max: cur.tourMax || undefined, hidden: document.hidden });
+    going = true; gone(); leave('closed'); flush();
+  });
+  // back from the back-forward cache: the page lives again, so its view starts over (ready already, no load)
+  addEventListener('pageshow', e => { if (e.persisted) { going = false; alive(); view(true); } });
   setInterval(() => { if (activeNow()) { sendTime(false); flush(); } }, 300000);
 
   // how the page itself arrived: time to first byte and first paint, once per page
@@ -212,5 +375,6 @@ window.OETelemetry = (function () {
 
   // the first view once the page's scripts are in (so its events carry the quality tier)
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', view, { once: true }); else view();
-  return { on: true, track, flush, view, frames: () => (cur ? cur.frames.n : 0) };   // frames: for tools/telemetry_check.js
+  alive();
+  return { on: true, track, flush, view, frames: () => (cur ? cur.frames.n : 0), here: () => (cur ? cur.here : null), sample };   // frames, here, sample: for tools/telemetry_check.js
 })();

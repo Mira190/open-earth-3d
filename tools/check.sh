@@ -168,7 +168,7 @@ run_loader() {
 }
 run_telemetry() {   # the visitor and SLO events end to end, and the game's save on leaving (tools/telemetry_check.js)
   if TPORT=$((PORT + 21)) timeout 1500 $X node tools/telemetry_check.js sydney "$OUT/telemetry" >"$OUT/telemetry.log" 2>&1; then
-    echo "ok   telemetry  $(grep -c '^ok' "$OUT/telemetry.log") steps: views, loads, play time, frame rate, the SLO report, the save"
+    echo "ok   telemetry  $(grep -c '^ok' "$OUT/telemetry.log") steps: views, loads, play time, frame rate, tour, spots, exit, crash, the SLO report, the save"
   else echo "FAIL telemetry  $(grep '^FAIL' "$OUT/telemetry.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/telemetry.log)"; fi
 }
 run_title() {
