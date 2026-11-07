@@ -6,6 +6,8 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/frame_cost.js sydney [WxH] [frames]
 // TIER=low|medium|high (default high). TIME=HH:MM sets the clock (default 15:30); NIGHT=1 is 21:30.
+// FOOT=1 measures on foot, after the title (the arrival settled); else the title screen's orbit.
+// QUERY=?a=b adds a query to the page's address; FREEZE=1 stops the game's clock (a steady sun, as between its steps).
 const { chromium } = require('playwright');
 const [,, city = 'sydney', size = '1440x900', frames = '3'] = process.argv;
 const [w, h] = size.split('x').map(Number);
@@ -64,10 +66,25 @@ const [w, h] = size.split('x').map(Number);
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const time = process.env.NIGHT ? '21:30' : process.env.TIME || '15:30';
   await p.evaluate(t => { const g = window.__game; const [H, M] = t.split(':').map(Number); const c = g.clock; g.setClock(c.y, c.m, c.d, H * 60 + M); }, time);
+  if (process.env.FOOT) {
+    await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
+    for (let i = 0; i < 60 && !(await p.evaluate(() => { const t = document.getElementById('g-title'); return !t || t.hidden; })); i++) {
+      await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });
+      await p.waitForTimeout(1000);
+    }
+    await p.evaluate(async () => {
+      const g = window.__game;
+      for (let t = 0; t < 10 && (!g.arriving || !g.arriving()); t += 0.25) await new Promise(r => setTimeout(r, 250));
+      for (let t = 0; t < 10 && g.arriving && g.arriving(); t += 0.25) { g.settleArrival(); g.advance(0.25); await new Promise(r => requestAnimationFrame(r)); }
+      if (g.cine && g.cine.active) g.cine.skip();
+      const O = window.OEOnboard, tour = O && O.current && O.current(); if (tour) tour.skip();
+    });
+  }
+  if (process.env.FREEZE) await p.evaluate(() => { window.__game.clock.frozen = true; });
   await p.waitForTimeout(6000);
   const out = await p.evaluate(async n => {
     const g = window.__game, res = [], js = [];

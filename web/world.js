@@ -674,6 +674,8 @@ vec3 steepRock(vec3 c, float k) {
     const shCam = sunLight.shadow.camera;
     shCam.near = 10; shCam.far = 9000;
     leanShadowMap(renderer, sunLight.shadow, SHADOW);
+    const shadowStill = new URLSearchParams(location.search).get('shadowcache') === 'off' ? null : shadowCache(renderer, sunLight);
+    const still = o => { if (shadowStill && o) shadowStill.mark(o); return o; };
     world.add(sunLight, sunLight.target);
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
@@ -1036,7 +1038,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         photoMaterial: tex => { const m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 });
           m.onBeforeCompile = sh => { sh.uniforms.uPhotoGrade = PG; sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
             .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);'); }; return m; } });
-      world.add(outposts);
+      world.add(still(outposts));
     } catch (e) { console.warn('outposts: none drawn', e); outposts = null; }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
@@ -1184,7 +1186,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
     const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
-    world.add(bCells || buildings, BLD.props);
+    world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
 
     // piers and wharves: 2.2 m concrete decks, or level with the quay they meet where that is up to
@@ -1222,7 +1224,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       streetLit(sh);
     };
     piers.castShadow = piers.receiveShadow = true;
-    world.add(piers);
+    world.add(still(piers));
     // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
     const walks = (D.G && D.G.boardwalks) || [];
     if (walks.length) {
@@ -1230,7 +1232,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
       deck.material.onBeforeCompile = streetLit;
       deck.castShadow = deck.receiveShadow = true;
-      world.add(deck);
+      world.add(still(deck));
     }
 
     // trees mapped in OSM, then those planted from the woods' and parks' canopy (pipeline/woods.py,
@@ -1261,7 +1263,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         trunks.setMatrixAt(i, m4);
       }
       crowns.castShadow = crowns.receiveShadow = trunks.castShadow = true;
-      world.add(crowns, trunks);
+      world.add(still(crowns), still(trunks));
     }
 
     // ------------------------------------------------------------ landmarks
@@ -1348,7 +1350,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
       if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
       mesh.name = m.name;
-      world.add(mesh);
+      world.add(still(mesh)); // (a lift's car among them: the cache sees it move and draws it afresh)
       if ((LM.materials[m.material] || {}).pattern === 'led_screen') screenMeshes.push({ mesh, m: LM.materials[m.material], mat: lmMats[m.material] });
     }
     // street furniture (landmarks.json "props"): each kind's parts drawn once, instanced at every
@@ -1371,7 +1373,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         im.name = `${pr.name}_${part.name}`;
         farAt(im, c, r + 10, pr.far || 600);
         OEBuildings.cellInstances(im);
-        world.add(im);
+        world.add(still(im));
       }
     }
 
@@ -1386,7 +1388,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
 
     // ------------------------------------------------------------ sun
     const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
-    const shX = new THREE.Vector3(), shY = new THREE.Vector3(), shAt = new THREE.Vector3();
+    const shX = new THREE.Vector3(), shY = new THREE.Vector3(), shAt = new THREE.Vector3(), shTmp = new THREE.Vector3(), shZ = new THREE.Vector3();
+    let shR = 0;
     // The haze at the model's edge in the colour of the sky at the horizon (away from the sun's
     // glare, read back from a few pixels of the sky), and the sky's last few degrees above the
     // horizon in that haze: the city fades into the sky instead of ending in a grey band. Only
@@ -1479,7 +1482,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
       world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
-      sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
+      sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
       setSun(sp, minutes) {
@@ -1564,9 +1567,12 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // view is within about three steps of it) and its centre moves in whole texels along the
       // light's axes.
       fitShadow(target, half) {
-        const cur = shCam.right;
-        if (!(half <= cur && half > cur / 1.3)) {
-          const q = Math.pow(1.1, Math.ceil(Math.log(half) / Math.log(1.1) - 1e-9));
+        // with the cache (shadowCache) the box keeps 5% more room than asked, and holds still while the view
+        // moves within that room and the sun has not stepped: a box that slides a texel follows a walker
+        // every few frames, and each slide would draw the still casters again
+        const room = shadowStill ? 1.05 : 1, need = half * room, cur = shCam.right;
+        if (!(need <= cur && need > cur / 1.3)) {
+          const q = Math.pow(1.1, Math.ceil(Math.log(need) / Math.log(1.1) - 1e-9));
           shCam.left = -q; shCam.right = q; shCam.top = q; shCam.bottom = -q; shCam.updateProjectionMatrix();
         }
         const texel = 2 * shCam.right / sunLight.shadow.mapSize.x, z = api.sunDir;
@@ -1575,9 +1581,11 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (l > 1e-6) {
           shX.divideScalar(l);
           shY.crossVectors(z, shX);
-          const snap = v => Math.round(v / texel) * texel;
+          const snap = v => Math.round(v / texel) * texel, slack = shCam.right - half, d = shTmp.copy(target).sub(shAt);
+          if (shadowStill && shZ.equals(z) && shR === shCam.right && Math.abs(d.dot(shX)) <= slack && Math.abs(d.dot(shY)) <= slack && Math.abs(d.dot(z)) < 300) return;
           shAt.copy(z).multiplyScalar(target.dot(z)).addScaledVector(shX, snap(target.dot(shX))).addScaledVector(shY, snap(target.dot(shY)));
         } else shAt.copy(target);
+        shZ.copy(z); shR = shCam.right;
         sunLight.target.position.copy(shAt);
         sunLight.position.copy(shAt).addScaledVector(z, 4500);
       },
@@ -1617,6 +1625,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       },
       dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); if (far) far.dispose(); },
     };
+    if (trees && trees.shadowSun) trees.shadowSun(() => api.sunDir);
     return api;
   }
 
@@ -1767,6 +1776,91 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     d.compareFunction = reversed ? THREE.GreaterEqualCompare : THREE.LessEqualCompare;
     d.minFilter = d.magFilter = THREE.LinearFilter;
     shadow.map = map;
+  }
+
+  // The sun's shadow map, cached for what does not move. The city's walls, roofs, rooftop plant, landmarks and
+  // street furniture cast the same shadow from one frame to the next: only the sun's steps (every quarter of a
+  // second of the game's clock) and the shadow box sliding after the camera change it. So those casters
+  // (marked with mark(), which takes an object and all under it) are drawn into a depth map of their own only
+  // when the light's pose or one of them changes (a lift car moving, a landmark shown or hidden), and every
+  // frame that depth is copied into the shadow map with a framebuffer blit in place of its clear, and the
+  // casters that move (people, cars, vessels, the trees in the wind) are drawn over it. The shadow map holds
+  // exactly what it held before; three.js's own shadow pass draws both halves, with its own materials.
+  function shadowCache(renderer, light) {
+    const SM = renderer.shadowMap, orig = SM.render, gl = renderer.getContext(), shadow = light.shadow;
+    if (typeof gl.blitFramebuffer !== 'function' || !shadow.map || !shadow.map.depthTexture || SM.__cached) return null;
+    SM.__cached = true;
+    const props = renderer.properties, state = renderer.state, D = shadow.map.depthTexture;
+    const still = new THREE.WebGLRenderTarget(shadow.map.width, shadow.map.height, { format: THREE.RedFormat, type: THREE.UnsignedByteType,
+      minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
+    const sd = still.depthTexture = new THREE.DepthTexture(shadow.map.width, shadow.map.height, D.type);
+    sd.format = D.format; sd.compareFunction = D.compareFunction; sd.minFilter = sd.magFilter = THREE.LinearFilter;
+    let on = true, casters = [], pose = [], sig = [], frame = 0, built = false;
+    const api = { refreshes: 0, frames: 0, mark(o) { if (o) o.userData.shadowStatic = true; return o; }, off() { on = false; } };
+    const walk = (o, st, fn) => { st = st || !!o.userData.shadowStatic; fn(o, st); for (const c of o.children) walk(c, st, fn); };
+    const drawable = o => o.isMesh || o.isLine || o.isPoints;
+    function collect(scene) {
+      const out = [];
+      walk(scene, false, (o, st) => { if (st && drawable(o) && o.castShadow) out.push(o); });
+      if (out.length !== casters.length || out.some((o, i) => o !== casters[i])) { casters = out; built = false; }
+    }
+    function poseOf() {
+      const a = light.matrixWorld.elements, b = light.target.matrixWorld.elements, c = shadow.camera;
+      return [a[12], a[13], a[14], b[12], b[13], b[14], c.left, c.right, c.top, c.bottom, c.near, c.far, shadow.mapSize.x, shadow.mapSize.y];
+    }
+    // what each still caster looks like to the shadow pass: where it is, whether it is shown, its instances
+    function sigOf() {
+      const out = [];
+      for (const o of casters) {
+        let v = 1;
+        for (let p = o; p; p = p.parent) if (!p.visible) { v = 0; break; }
+        out.push(v, o.castShadow ? 1 : 0, o.isInstancedMesh ? o.count + 1e6 * o.instanceMatrix.version : 0);
+        if (v) for (const e of o.matrixWorld.elements) out.push(e);
+      }
+      return out;
+    }
+    const same = (a, b) => { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
+    function blit() {
+      const w = shadow.map.width, h = shadow.map.height, dst = props.get(shadow.map).__webglFramebuffer;
+      state.bindFramebuffer(gl.READ_FRAMEBUFFER, props.get(still).__webglFramebuffer);
+      state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst);
+      state.buffers.depth.setMask(true);
+      gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.DEPTH_BUFFER_BIT, gl.NEAREST);
+      state.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst);
+    }
+    SM.render = function (lights, scene, camera) {
+      if (!on || lights.length !== 1 || lights[0] !== light || this.type !== THREE.PCFShadowMap ||
+          !(this.autoUpdate || this.needsUpdate) || !(shadow.autoUpdate || shadow.needsUpdate)) return orig.call(this, lights, scene, camera);
+      const asked = this.needsUpdate || shadow.needsUpdate;
+      try {
+        if (frame++ % 30 === 0) collect(scene);
+        light.updateMatrixWorld(); light.target.updateMatrixWorld();
+        const p = poseOf(), s = sigOf();
+        api.frames++;
+        if (!built || asked || !same(p, pose) || !same(s, sig)) {
+          // the still casters alone, into their own map
+          const moving = [];
+          walk(scene, false, (o, st) => { if (!st && o.castShadow && drawable(o)) { o.castShadow = false; moving.push(o); } });
+          const real = shadow.map, need = this.needsUpdate;
+          shadow.map = still;
+          try { orig.call(this, lights, scene, camera); } finally { shadow.map = real; for (const o of moving) o.castShadow = true; }
+          this.needsUpdate = need; shadow.needsUpdate = need || shadow.needsUpdate;
+          pose = p; sig = s; built = true; api.refreshes++;
+        }
+        // every frame: the still casters' depth, and the moving ones drawn over it
+        for (const o of casters) o.castShadow = false;
+        const clear = renderer.clear;
+        renderer.clear = blit;
+        try { orig.call(this, lights, scene, camera); } finally { renderer.clear = clear; for (const o of casters) o.castShadow = true; }
+      } catch (e) {
+        console.warn('shadow cache: off', e);
+        on = false;
+        return orig.call(this, lights, scene, camera);
+      }
+    };
+    api.dispose = () => { SM.render = orig; SM.__cached = false; still.dispose(); };
+    return api;
   }
 
   // An EffectComposer clones its target for the second of the pair it ping-pongs between, so with a
