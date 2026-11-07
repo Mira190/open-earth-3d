@@ -784,16 +784,21 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
         post.count = shade.count = cap.count = nL; pool.count = j;
         for (const m of [post, shade, cap, pool]) m.instanceMatrix.needsUpdate = true;
         halo.geometry.attributes.position.needsUpdate = true;
+        if (Yo) Yo.placed++;
       };
+      let Yo = null;
       place(null);
-      return {
-        group, chGroup, place, lanterns: nL, chochin: nC, trees: nT,
+      return Yo = {
+        group, chGroup, place, lanterns: nL, chochin: nC, trees: nT, placed: 0,
+        // the lit lanterns' centres (three.js x, y, z triples) and how lit they are now: what the inland water reflects
+        heads: { chochin: chPos, bonbori: haloPos }, lit: { chochin: 0, bonbori: 0 },
         // per frame: how lit the uplights and bonbori are (after dark, in the bloom) and whether they are out at
         // all; and the same for the chochin (after dark, in the festival's window)
         set(k, out, kc = k, outC = out) {
           group.visible = out; chGroup.visible = outC && nC > 0;
           shadeMat.emissiveIntensity = 2.6 * k; halo.material.opacity = 0.85 * k; poolMat.opacity = 0.32 * k;
           paperMat.emissiveIntensity = 2.4 * kc; chHalo.material.opacity = 0.8 * kc;
+          this.lit.chochin = outC && nC > 0 ? kc : 0; this.lit.bonbori = out ? k : 0;
         },
       };
     }
@@ -801,6 +806,8 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
     return {
       n, species: names, count,
       // the yozakura lights (#162): how many trees are lit and how many lanterns stand, for the tools
+      // the lit lanterns, for the inland water's reflections: {heads, lit, placed} or null
+      lanterns: () => (Y ? { heads: Y.heads, lit: Y.lit, placed: Y.placed, chochin: Y.chochin, bonbori: Y.lanterns } : null),
       yozakura: () => (Y ? { trees: Y.trees, lanterns: Y.lanterns, chochin: Y.chochin, on: U.uYoz.value, out: Y.group.visible, chochinOut: Y.chGroup.visible } : null),
       // the falling petals (#223): how many cards there are and round how many crowns they fall now, for the tools
       petals: () => (PT ? { cards: PT.mesh.geometry.instanceCount, crowns: PT.crowns(), visible: PT.mesh.visible } : null),

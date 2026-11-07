@@ -1489,6 +1489,29 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       try { night = OENight.create({ world, U }, D, renderer, NU, { small, game, nearCars }); }
       catch (e) { console.warn('night lights unavailable:', e); NU.uNightOn.value = 0; }
     }
+    // the street lights, the chochin and the bonbori in the inland water after dark (inland.js glints): built
+    // again when the game stands the lanterns on its own ground
+    let glints = null, glintPlaced = -1;
+    const buildGlints = () => {
+      const Ls = trees && trees.lanterns ? trees.lanterns() : null, groups = [];
+      if (night && night.heads) { const h = night.heads(); groups.push({ pos: h.pos, colour: i => h.colour[i].clone().multiplyScalar(h.bright[i]), gain: 2.0 }); }
+      if (Ls && Ls.chochin) groups.push({ pos: Ls.heads.chochin.subarray(0, 3 * Ls.chochin), colour: new THREE.Color(1.0, 0.42, 0.5), gain: 3.5 });
+      if (Ls && Ls.bonbori) groups.push({ pos: Ls.heads.bonbori.subarray(0, 3 * Ls.bonbori), colour: new THREE.Color(1.0, 0.6, 0.3), gain: 2.5 });
+      if (glints) { world.remove(glints.mesh); glints.dispose(); }
+      glints = groups.length ? IN.glints(groups) : null;
+      if (glints) { glints.groups = groups.length; glints.hasCh = !!(Ls && Ls.chochin); glints.hasBon = !!(Ls && Ls.bonbori); world.add(glints.mesh); }
+      glintPlaced = Ls ? Ls.placed : 0;
+    };
+    const updateGlints = () => {
+      const Ls = trees && trees.lanterns ? trees.lanterns() : null;
+      if (Ls && Ls.placed !== glintPlaced) buildGlints();
+      if (!glints) return;
+      let g = 0;
+      if (night && night.heads) glints.set(g++, night.on());
+      if (glints.hasCh) glints.set(g++, Ls.lit.chochin);
+      if (glints.hasBon) glints.set(g++, Ls.lit.bonbori);
+    };
+    if (IN && inland) try { buildGlints(); if (glints) console.info(`inland water: ${glints.count} lights reflected`); } catch (e) { console.warn('inland water: no reflections', e); glints = null; }
 
     // ------------------------------------------------------------ sun
     const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
@@ -1585,7 +1608,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, inland, inlandWater: IN, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -1717,6 +1740,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
         if (night && camera) night.update(camera, t / 1000);
+        if (glints || (IN && inland && trees)) try { updateGlints(); } catch (e) { glints = null; }
       },
       // after a lost WebGL context comes back (glcare.js): three.js has its state again, but a
       // render target comes back empty, so the sky's light (the PMREM target) and the haze read
