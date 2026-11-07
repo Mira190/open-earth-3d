@@ -2118,5 +2118,45 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, warm, leanComposer };
+  // The game draws its ground from the 5 m grid near the player and from every second point of it (10 m) further
+  // off. A landmark's floor (the Skyline site's on Bob's Peak, a plaza) is laid on the 5 m ground, and on a crest
+  // the 10 m triangles bridge over the 5 m ground's hollows: from far off they rose through the floor near its edge
+  // (#286). Under every landmark face that lies on the ground (near level, within 1.5 m of the 5 m grid), the 10 m
+  // grid's points within a cell of it are lowered, in place, to the lowest 5 m point round them and just under the
+  // floor, so the far ground stays under it at every distance; near the player the 5 m grid is drawn as it is.
+  // Tc: the 10 m grid (every second point of Tf), Tf: the 5 m one, LM: landmarks.json; returns the points lowered
+  function settleUnderFloors(Tc, Tf, LM) {
+    if (!Tc || !Tf || !LM || !LM.meshes) return 0;
+    const S = window.Sun, mark = new Float32Array(Tc.nx * Tc.ny).fill(Infinity);
+    for (const m of LM.meshes) {
+      const p = m.position, ix = m.index;
+      if (!p || !ix || (LM.materials[m.material] && LM.materials[m.material].opacity === 0)) continue;
+      for (let i = 0; i + 2 < ix.length; i += 3) {
+        const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
+        const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+        const nz = ux * vy - uy * vx, nl = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, nz);
+        if (!(nl > 1e-6) || Math.abs(nz) < 0.9 * nl) continue; // (a floor, not a wall or a roof's pitch)
+        const zl = Math.min(p[a + 2], p[b + 2], p[c + 2]), cx = (p[a] + p[b] + p[c]) / 3, cy = (p[a + 1] + p[b + 1] + p[c + 1]) / 3;
+        if (Math.abs(zl - S.terrainAt(Tf, cx, cy)) > 1.5) continue; // (a deck or a roof, up off the ground)
+        const x0 = Math.min(p[a], p[b], p[c]), x1 = Math.max(p[a], p[b], p[c]), y0 = Math.min(p[a + 1], p[b + 1], p[c + 1]), y1 = Math.max(p[a + 1], p[b + 1], p[c + 1]);
+        const k0 = Math.max(0, Math.floor((x0 - Tc.x0) / Tc.cell) - 1), k1 = Math.min(Tc.nx - 1, Math.ceil((x1 - Tc.x0) / Tc.cell) + 1);
+        const r0 = Math.max(0, Math.floor((Tc.y1 - y1) / Tc.cell) - 1), r1 = Math.min(Tc.ny - 1, Math.ceil((Tc.y1 - y0) / Tc.cell) + 1);
+        for (let r = r0; r <= r1; r++) for (let k = k0; k <= k1; k++) { const q = r * Tc.nx + k; if (zl < mark[q]) mark[q] = zl; }
+      }
+    }
+    const f = Math.round(Tc.cell / Tf.cell);
+    let n = 0;
+    for (let r = 0; r < Tc.ny; r++) for (let k = 0; k < Tc.nx; k++) {
+      const q = r * Tc.nx + k;
+      if (mark[q] === Infinity) continue;
+      let lo = Tc.data[q];
+      for (let i = f * r - f; i <= f * r + f; i++) for (let j = f * k - f; j <= f * k + f; j++)
+        if (i >= 0 && j >= 0 && i < Tf.ny && j < Tf.nx) lo = Math.min(lo, Tf.data[i * Tf.nx + j]);
+      lo = Math.min(lo, Math.max(mark[q] - 0.08, lo - 3)); // (and just under the floor, but no pit)
+      if (lo < Tc.data[q] - 1e-3) { Tc.data[q] = lo; n++; }
+    }
+    return n;
+  }
+
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, warm, leanComposer, settleUnderFloors };
 })();

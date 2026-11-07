@@ -48,6 +48,7 @@ window.OpenEarthGame = async function game(cityId) {
     for (let r = 0; r < ny; r++) for (let k = 0; k < nx; k++) c[r * nx + k] = Tfine.data[(2 * r) * t.nx + 2 * k];
     D.T = { data: c, nx, ny, cell: t.cell * 2, x0: Tfine.x0, y1: Tfine.y1 };
     D.Tfine = Tfine; // the walls of the buildings reach down to whichever ground is drawn
+    if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.settleUnderFloors(D.T, Tfine, D.LM); // (the far ground under the landmarks' floors at every distance, #286; ?settle=off: without, to compare)
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
