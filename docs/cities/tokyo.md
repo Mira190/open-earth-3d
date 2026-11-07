@@ -67,9 +67,51 @@ back, and at its four ends granite pillars with their lamps and the lions holdin
 crest. The figures are sculpted fields (`pipeline/sculptkit.py`) in `pipeline/bridges.py` (city.json
 bridges forms `"statues"`); every bridge with bronze lamps (Nihonbashi, Tokiwabashi, the Seimon
 Ishibashi, the Nijubashi) has turned candelabra with glass globes, and the bridges' lamps glow after
-dark. The Shuto Expressway over Nihonbashi is not drawn.
+dark. The Shuto Expressway over it is `cities/tokyo/shuto.py` (below).
 
 ![Nihonbashi at dusk: the kirin on the middle lamp standards and the lions at the ends](../images/tokyo/nihonbashi-bronzes-dusk.jpg)
+
+### The Shuto's heights, measured (#234, #272)
+
+No drawing or published height was found for the Inner Circular Route (C1) over the Nihonbashi River, Edobashi
+JCT or the stretch west to Kandabashi JCT (the MLIT council documents give lengths and lanes only). They are now
+measured from the Tokyo Metropolitan Government's airborne LiDAR (東京都デジタルツイン実現プロジェクト 区部点群データ,
+2023 survey, `tokyopc-23ku-2024` on G空間情報センター, CC BY 4.0). `cities/tokyo/shuto_lidar.py` reads the sheet
+index from the dataset's vector tiles and fetches only the nine 400 × 300 m sheets under the expressway (about
+1 GB of LAS, kept to the 5.3 million points within 14 m of the lines, in `data/raw/tokyo/lidar`, not in the
+repository). Along each elevated motorway line it takes, every 6 m, the densest 0.25 m layer of returns within
+a lane's width, between 3 m over the ground and 2.5 m over the line's data height: the road's surface (vehicles
+are sparse, parapets narrow). Where a ramp passes under another deck the scanner saw only the upper one: a run of
+samples that measures the same as a line the data puts a level higher is dropped and interpolated over, and
+where two decks overlap outright the lower takes the upper's height less the data's difference. The LiDAR's
+ground returns agree with the game's terrain grid near the lines (median 0.00 m, quartiles −0.07 and +0.10 m), so
+both are T.P.
+
+What it found:
+
+- The road over Nihonbashi is at **14.1 m** (T.P.), not the 17 m the photographs had suggested. The bridge's deck
+  is at 5.4 m by its middle pier and the kirin lamp standards' tops at 12.75 m in the same survey: about a metre
+  between the lamps and the road. The girders now shallow over the bridge (0.7 m at least) so that their soffit
+  clears the lamps by 0.3 m, and are 2.2 m deep elsewhere.
+- Upstream the road falls to 11–12 m by Ichikoku-bashi and climbs again to 18.7 m where the C1 rises over the
+  Yaesu ramps; at Edobashi JCT the decks are 12.5–17 m; west of Kandabashi JCT 12–14.6 m.
+- OpenStreetMap's layers (6 m a level) had put all these viaducts at 20–25 m, 6–8 m too high.
+
+`shuto.py --relevel` puts `shuto.json`'s stretch on the samples; `shuto.py --game` puts `game.json`'s elevated
+expressway lines on them (`web/game/decks.js` draws those viaducts at their lines' heights): a line within 4.5 m
+of a sample of a line the data puts within 3 m of it takes the sample's height; inside the survey, a stretch no
+sample reached keeps its line's nearest measured height; a ramp coming down to the ground beyond its last sample
+runs straight to where it meets it; a line running on out of the survey eases back to its data height over
+150 m, through the junctions into the lines joined to it. 958 points moved; no grade over 33% was added (the
+steepest new ones are short ramps at Route 1's off-ramp by the map's edge).
+
+| The C1 over the river from upstream (game, day) | Over Nihonbashi from its south end (viewer) |
+|---|---|
+| ![](../images/fidelity-272/shuto-river.jpg) | ![](../images/fidelity-272/shuto-nihonbashi.jpg) |
+| **Edobashi JCT from the air (game)** | **The Yaesu ramps under the C1 (game)** |
+| ![](../images/fidelity-272/shuto-edobashi.jpg) | ![](../images/fidelity-272/shuto-yaesu.jpg) |
+
+Not done: the Shuto beyond the survey (Route 4 and the C1 south of Kandabashi) keeps OpenStreetMap's layers.
 
 ### The Nihonbashi River in the viewer (#246)
 
@@ -109,7 +151,7 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 | Footprints, names, roads, water, parks | Overture Maps, release 2026-10-21.0 (OpenStreetMap) | ODbL |
 | Terrain | GSI DEM5A, 5 m airborne laser survey, bare earth (10 m DEM where 5A has no data) | GSI terms of use |
 | Aerial photos | GSI seamless photos, zoom 17 | GSI terms of use |
-| Shuto Expressway (Nihonbashi) | Overture Maps segments (OpenStreetMap); heights from photographs | ODbL |
+| Shuto Expressway (Nihonbashi to Kandabashi and Edobashi) | Overture Maps segments (OpenStreetMap); road heights from the Tokyo Metropolitan Government's airborne LiDAR (`tokyopc-23ku-2024`, G空間情報センター) | ODbL; CC BY 4.0 |
 | Palace moats' water levels | Ministry of the Environment, Kokyo Gaien National Garden Office: 皇居外苑濠 濠別管理方針 (March 2010) | Government publication, cited |
 
 ## 3. How PLATEAU is used

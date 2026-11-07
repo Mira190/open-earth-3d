@@ -161,8 +161,29 @@ give them. `hall()` also takes `gable_at` (how far down the gables reach).
 ![The precinct from above, and the Buden's lanterns at dusk (#263)](../images/fidelity-263/yasaka-jinja-aerial-dusk.jpg)
 ![On a phone: the Buden at day, dusk and night, the West Gate; Honen-in's gate; the Sumitomo Triangle Plaza (#263)](../images/fidelity-263/phone.jpg)
 
-Not checked against a photograph (Wikimedia Commons refused this session's requests, HTTP 429): the South Gate's
-roof (bark or tiles), the Tokiwa-den's and the reception halls' roofs and colours, the small shrines' colours.
+**Checked against photographs (#272).** Commons answered this time, slowly:
+
+- **The South Gate** is under **hinoki bark**, as drawn (a close photograph of 2024 shows the bark's courses and
+  the snow guards): its ridge now carries the shrine's three gold crests (左三つ巴) on either face. Trees no longer
+  stand in a gate's way: the steps before the South and West Gates, the gates' width and 22 m out, are kept clear of
+  the mapped trees (one stood on the South Gate's axis, on its steps).
+- **The honden's front** is open: its bays stand open between the vermilion posts onto the dark of the worship hall,
+  white boards over them, and gold fittings (金具) run along the head and floor beams with plates at every post
+  (photographs of 2017–19); it had been drawn as dark lattice doors.
+- **The small shrines:** Ōkuninushi-sha (大国主社), behind its stone torii, is in black lacquer with gold fittings
+  (2023), and is drawn so. A photograph of another small shrine in the precinct (unnamed in its caption) shows it in
+  bare, weathered wood inside a shelter. The others stay vermilion until a photograph says otherwise.
+
+Still not checked: the Tokiwa-den's and the reception halls' roofs and colours (no photograph of either was found on
+Commons) and the other small shrines' colours.
+
+| Photograph | Author | Licence |
+|---|---|---|
+| [South Tower Gate of Yasaka Shrine in Kyoto, 20240820 1706 5167.jpg](https://commons.wikimedia.org/wiki/File:South_Tower_Gate_of_Yasaka_Shrine_in_Kyoto,_20240820_1706_5167.jpg) | Jakub Hałun | CC BY 4.0 |
+| [Honden of Yasaka Jinja.jpg](https://commons.wikimedia.org/wiki/File:Honden_of_Yasaka_Jinja.jpg) | Immanuelle | CC BY-SA 4.0 |
+| [Yasaka Shrine subshrine torii.jpg](https://commons.wikimedia.org/wiki/File:Yasaka_Shrine_subshrine_torii.jpg), [Yasaka Subhsrine.jpg](https://commons.wikimedia.org/wiki/File:Yasaka_Subhsrine.jpg) | Immanuelle (2023) | CC BY-SA 4.0 |
+
+![Yasaka-jinja (#272): the honden's open front with its gold fittings, the South Gate, Ōkuninushi-sha, by day and at night](../images/fidelity-272/yasaka.jpg)
 
 ## What is approximate
 

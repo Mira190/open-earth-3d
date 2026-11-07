@@ -140,8 +140,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 6240219,
-   "game": 6622754
+   "model": 6243081,
+   "game": 6625612
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -279,7 +279,7 @@
      "lon": 135.7815,
      "map": "higashiyama",
      "travel": "h-ninenzaka",
-     "label": "r",
+     "label": "l",
      "guide": {
       "line": "Stone steps between wooden teahouses and pottery shops, lantern-lit at dusk, all the way up to Kiyomizu.",
       "spots": [
@@ -296,7 +296,7 @@
      "lon": 135.785,
      "map": "higashiyama",
      "travel": "h-kiyomizu",
-     "label": "b",
+     "label": "r",
      "guide": {
       "line": "The wooden stage on its lattice of keyaki pillars, thirteen metres over the trees, and the Otowa spring below.",
       "spots": [
@@ -596,8 +596,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1105933,
-   "game": 1224612
+   "model": 1106722,
+   "game": 1225401
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -729,7 +729,7 @@
      "lon": 135.7815,
      "map": "higashiyama",
      "travel": "h-ninenzaka",
-     "label": "r",
+     "label": "l",
      "guide": {
       "line": "Stone steps between wooden teahouses and pottery shops, lantern-lit at dusk, all the way up to Kiyomizu.",
       "spots": [
@@ -746,7 +746,7 @@
      "lon": 135.785,
      "map": "higashiyama",
      "travel": "h-kiyomizu",
-     "label": "b",
+     "label": "r",
      "guide": {
       "line": "The wooden stage on its lattice of keyaki pillars, thirteen metres over the trees, and the Otowa spring below.",
       "spots": [
@@ -1179,7 +1179,7 @@
      "lon": 135.7815,
      "map": "higashiyama",
      "travel": "h-ninenzaka",
-     "label": "r",
+     "label": "l",
      "guide": {
       "line": "Stone steps between wooden teahouses and pottery shops, lantern-lit at dusk, all the way up to Kiyomizu.",
       "spots": [
@@ -1196,7 +1196,7 @@
      "lon": 135.785,
      "map": "higashiyama",
      "travel": "h-kiyomizu",
-     "label": "b",
+     "label": "r",
      "guide": {
       "line": "The wooden stage on its lattice of keyaki pillars, thirteen metres over the trees, and the Otowa spring below.",
       "spots": [
@@ -1629,7 +1629,7 @@
      "lon": 135.7815,
      "map": "higashiyama",
      "travel": "h-ninenzaka",
-     "label": "r",
+     "label": "l",
      "guide": {
       "line": "Stone steps between wooden teahouses and pottery shops, lantern-lit at dusk, all the way up to Kiyomizu.",
       "spots": [
@@ -1646,7 +1646,7 @@
      "lon": 135.785,
      "map": "higashiyama",
      "travel": "h-kiyomizu",
-     "label": "b",
+     "label": "r",
      "guide": {
       "line": "The wooden stage on its lattice of keyaki pillars, thirteen metres over the trees, and the Otowa spring below.",
       "spots": [
@@ -1943,8 +1943,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1843557,
-   "game": 2319911
+   "model": 1843718,
+   "game": 2320093
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -3425,8 +3425,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 2453240,
-   "game": 2896546
+   "model": 2462593,
+   "game": 2905899
   },
   "group_meta": {
    "native": "\u6771\u4eac",

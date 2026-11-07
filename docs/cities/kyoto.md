@@ -150,6 +150,27 @@ other window, staggered floor to floor, and a glazed top storey. Rooms are lit o
 ![The Granvia: the photograph (Fg2, public domain), and the model at day and night](../images/kyoto/granvia.jpg)
 ![On a phone, day, dusk and night](../images/kyoto/granvia-phone.jpg)
 
+**The Granvia's north face (#272).** Set beside the frontal photograph
+([Kyoto Kyoto Station 8.jpg](https://commons.wikimedia.org/wiki/File:Kyoto_Kyoto_Station_8.jpg), Zairon, CC BY-SA 4.0)
+and the forecourt photographs ([Hotel Granvia Kyoto 20111007-001.jpg](https://commons.wikimedia.org/wiki/File:Hotel_Granvia_Kyoto_20111007-001.jpg),
+J o, CC BY-SA 3.0; [Kyoto Station C0389.jpg](https://commons.wikimedia.org/wiki/File:Kyoto_Station_C0389.jpg), public
+domain), the face is now, west to east (its widths scaled to the hotel's PLATEAU length, its heights to the
+building's 59.8 m, about ±1 m; `GRANVIA` in `cities/kyoto/city.py`): a tower of balconied rooms (10.3 m) over a grey
+base standing forward to the podium's face to 34.5 m, pierced by a grid of sixteen square openings; a shaft of blue
+grid glass (7.6 m) from over that base to the top; **the gate** (9.9 m), a void 7 m deep through the guest floors in
+which a grey box hangs under the top floors from 40 to 45.7 m, its soffit sloping up into the void, a curtain of glass
+set back under it, a concave band below that and the dark recess down to the podium with its glazed room; then the
+long wing of rooms over the podium, and a glazed corner at the east end. The faceted glass vault had been drawn rising
+west from the glass block; the photographs show it rising up the wing's face from the east end to the gate, a ridge of
+facets high and low by turns, and it is drawn so.
+
+Not resolved: PLATEAU's solid w120374245 (18 m, 31 × 50 m) stands in front of the hotel's east third, north of its
+face, and hides the vault and the entrance from the forecourt in the model, while the photographs show the
+forecourt open there. Either the hotel's PLATEAU length runs on behind another building or the solid is misplaced;
+it is left as it is until it is checked (follow-up issue).
+
+![The Granvia's north face: the photograph (Zairon, CC BY-SA 4.0), and the model by day and at night (#272)](../images/kyoto/granvia-272.jpg)
+
 **Two covered walks (#263).** Two roofs mapped as `building=roof` beside a hotel south of the station
 (w1316075664 and w1316075663, 91 and 143 m², thin and along the footways, so `pipeline/arcades.py` takes them for
 arcades) stood 38.4-41.4 m up on posts: 41.4 m is the hotel's top, which the height matching gave them. The
