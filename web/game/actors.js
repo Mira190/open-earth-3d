@@ -2094,10 +2094,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // (a ride stopped at a junction's line, waiting its turn, is measured by its own size by a car crossing that
           // junction, not with the margins kept from one on the move: with them the car stood in the box for the
           // ride's nose while the ride waited at its line for that car's movement, each for the other, #243)
-          // (and one stopped a while in a car's way, wherever either stands: measured by its own size too, after 8 s, so that a
+          // (and one stopped a while in a car's way, wherever either stands: measured by its own size too, after 4 s, so that a
           // ride stood beside the car's way, within the margins only, holds it no longer: Tokyo's car 94 stood 71 s in junction
           // 1465 for a ride on its way, and at Fushimi Inari a car stood for the taxi coming for you, which waited on it in turn, #283)
-          const waiting = !o.mv && o.v < 0.3 && ((c.mv && o.toLine != null && o.toLine >= 0 && o.toLine < 6) || c.xWaitT > 8);
+          const waiting = !o.mv && o.v < 0.3 && ((c.mv && o.toLine != null && o.toLine >= 0 && o.toLine < 6) || c.xWaitT > 4);
           const d = hitAt(P, np, o, o.half + (waiting ? 0.1 : 0.6), o.hw + c.hw + (waiting ? 0.05 : 0.25), step);
           if (d < 0) continue;
           (sawX || (sawX = new Set())).add(o.id);
