@@ -163,6 +163,7 @@ void main() {
     }
     const pass = {
       enabled: level > 0, needsSwap: true, clear: false, renderToScreen: false,
+      materials: [mats[1], mats[2], blurMat, mixMat], quadGeometry: quad.geometry, // (what the post stack's warm-up compiles: atmosphere.js)
       setSize(w, h) {
         const hw = Math.max(2, Math.ceil(w / 2)), hh = Math.max(2, Math.ceil(h / 2));
         A.setSize(hw, hh); B.setSize(hw, hh);

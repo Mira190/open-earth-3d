@@ -7,6 +7,11 @@
 //   - the time a view is on screen and ready is counted in "time" events (sent when the tab is put away,
 //     the view changes, the page closes, and every five minutes), so play time adds up even when a phone
 //     kills the tab without a pagehide;
+//   - a view's load is told in stages by the pages' own performance marks ("oe:fetched", "oe:decoded",
+//     "oe:built", "oe:frame", and the title screen's "oe:ready"; see markOf): the times from the view's start to
+//     its data fetched, decoded, its scene built (before its shaders compile), its first frame drawn and the
+//     loader gone ride on the one "load" event, so the stages
+//     cost no events of their own; the title screen, which has no loader, reports its "load" at "oe:ready";
 //   - frame times are taken from requestAnimationFrame while the view is ready and visible: the median
 //     frame rate and the share of frames slower than 50 ms (a dropped-frame stutter a person notices);
 //   - script errors, unhandled rejections and lost WebGL contexts are counted, a few per page at most;
@@ -34,7 +39,7 @@ window.OETelemetry = (function () {
     format: 'posthog',     // 'posthog' or 'jsonl'
     key: 'phc_v8YPULU9RMwSuJD4K3WYDM8KaGck9Z2XeAFdKeVRD95B',   // the project's public capture key (it only writes events)
   };
-  const VERSION = 2;
+  const VERSION = 3;   // 3: load stages (fetch_ms, decode_ms, build_ms, frame_ms) and the title screen's load
   const q = new URLSearchParams(location.search);
   const arg = q.get('telemetry');
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -151,7 +156,7 @@ window.OETelemetry = (function () {
     if (!cur) return;
     if (!cur.ready && !cur.failed) {
       const el = document.getElementById(LOADERS[cur.kind]);   // what the loader was saying when the visitor gave up
-      track('load', { ok: false, why, ms: Math.round(now() - cur.t0), msg: el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120) : undefined });
+      track('load', Object.assign({ ok: false, why, ms: Math.round(now() - cur.t0), msg: el ? (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120) : undefined }, stages(cur)));
     }
     sendTime(true);
     prev = { from: `${cur.kind}${cur.city ? `:${cur.city}` : ''}`, from_s: Math.round(cur.active / 1000) };
@@ -169,10 +174,42 @@ window.OETelemetry = (function () {
     prev = {};
     while (crashes.length) crashes.shift()();
     if (cur.ready) bank();
+    globeReady();
     watchLoader();
     flush();
   }
   let views = 0;
+
+  // the stages of a view's load, from the pages' performance marks: "oe:<stage>", with { detail: { view, city } }
+  // where one page has several views (world.js serves the model and the game). The last mark of each stage
+  // since the view started counts; a mark naming another view (one left while it loaded) does not.
+  const STAGES = { fetched: 'fetch_ms', decoded: 'decode_ms', built: 'build_ms', frame: 'frame_ms' };
+  function markOf(stage, v) {
+    let at = null;
+    try {
+      for (const m of performance.getEntriesByName(`oe:${stage}`, 'mark')) {
+        const d = m.detail;
+        if (m.startTime >= v.t0 && (!d || !d.view || (d.view === v.kind && (d.city == null || d.city === v.city)))) at = m.startTime;
+      }
+    } catch (e) { /* no User Timing */ }
+    return at;
+  }
+  function stages(v) {
+    const o = {};
+    for (const k in STAGES) { const t = markOf(k, v); if (t != null) o[STAGES[k]] = Math.round(t - v.t0); }
+    return o;
+  }
+  // the title screen has no loader: it is ready at its "oe:ready" mark (title.js), reported once per globe view
+  function globeReady() {
+    const v = cur;
+    if (!v || v.kind !== 'globe' || v.loaded || v.restored) return;
+    const t = markOf('ready', v);
+    if (t == null) return;
+    v.loaded = true;
+    track('load', Object.assign({ ok: true, ms: Math.round(t - v.t0) }, stages(v)));
+    flush();
+  }
+  try { new PerformanceObserver(() => globeReady()).observe({ type: 'mark' }); } catch (e) { /* checked each second instead */ }
 
   // the loader of the view: ready when it fades, failed when it says so
   let mo = null;
@@ -186,12 +223,12 @@ window.OETelemetry = (function () {
       if (!el || v !== cur) return false;
       if (!v.ready && (el.classList.contains('out') || el.classList.contains('done'))) {
         v.ready = true; bank();
-        if (!v.restored) { track('load', { ok: true, ms: Math.round(now() - v.t0) }); flush(); }
+        if (!v.restored) { track('load', Object.assign({ ok: true, ms: Math.round(now() - v.t0) }, stages(v))); flush(); }
         return true;
       }
       if (!v.failed && el.classList.contains('err')) {
         v.failed = true;
-        track('load', { ok: false, why: 'error', ms: Math.round(now() - v.t0), msg: (el.textContent || '').trim().slice(0, 160) }); flush();
+        track('load', Object.assign({ ok: false, why: 'error', ms: Math.round(now() - v.t0), msg: (el.textContent || '').trim().slice(0, 160) }, stages(v))); flush();
         return true;
       }
       return false;
@@ -286,6 +323,7 @@ window.OETelemetry = (function () {
   function sample() {
     const t = now(), dt = Math.min(2, (t - lastSample) / 1000);
     lastSample = t;
+    globeReady();
     if (!activeNow()) return;
     const h = look(cur.kind), was = cur.here;
     if (!h) return;
