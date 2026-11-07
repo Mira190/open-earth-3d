@@ -310,8 +310,67 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const WOOD_M = keep < 1 ? 600 : 900, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
     let sortedAt = -1e9;
     // re-sort the trees into near, mid and far when the camera has moved far enough
+    // The near and mid trees cast the sun's shadow, but they are instanced meshes the GPU draws whole (frustum
+    // culling is off: their instances are re-sorted as the camera moves), so every tree within 520 m went into a
+    // shadow map that covers 180 m round the player: in Sydney's game nine tenths of the shadow pass. So each
+    // re-sort writes them nearest first by their distance from the eye in the light's own plane (the larger of
+    // the two axes, the box's own measure), and the shadow pass draws only as many of them as can reach the
+    // shadow camera's box (shadowCount), with room for a crown, the wind and the sun's turn since the sort. The
+    // view draws them all, as before.
+    const shB = { on: false, x: new THREE.Vector3(), y: new THREE.Vector3(), dir: new THREE.Vector3(), eye: new THREE.Vector3(), bucket: names.map(() => [[], []]) };
+    let sunOf = null;
+    function put(parts, i) {
+      for (const im of parts) {
+        const j = im.count++;
+        im.instanceMatrix.array.set(M.subarray(16 * i, 16 * i + 16), 16 * j);
+        im.instanceColor.array.set(tint.subarray(3 * i, 3 * i + 3), 3 * j);
+        im.geometry.attributes.aLit.array[j] = lit[i];
+      }
+    }
+    function shadowOrder() {
+      const ord = [];
+      shB.bucket.forEach((per, k) => per.forEach((b, lod) => {
+        const parts = meshes[k][lod], m = b.length / 2;
+        ord.length = 0;
+        for (let q = 0; q < m; q++) ord.push(q);
+        ord.sort((a, c) => b[2 * a + 1] - b[2 * c + 1]);
+        const keys = new Float32Array(m);
+        ord.forEach((q, j) => { keys[j] = b[2 * q + 1]; put(parts, b[2 * q]); });
+        for (const im of parts) im.userData.shKeys = keys;
+        b.length = 0;
+      }));
+    }
+    // how many of a mesh's first instances can cast into the shadow camera's box: those whose distance from the
+    // sort's eye, in the light's plane, is within the box's half width, plus how far the box's centre has moved
+    // off that eye, plus 30 m for a crown and its sway, plus the sun's turn since the sort over 600 m
+    const shD = new THREE.Vector3();
+    function shadowCount(im, shc) {
+      const keys = im.userData.shKeys, dir = sunOf && sunOf();
+      if (!shB.on || !keys || keys.length !== im.count || !dir || !shc.isOrthographicCamera) return im.count;
+      const cos = Math.min(1, dir.dot(shB.dir));
+      if (cos < 0.995) return im.count; // (turned more than 5.7 degrees: the next update re-sorts)
+      shD.subVectors(shc.position, shB.eye);
+      const half = Math.max(shc.right - shc.left, shc.top - shc.bottom) / 2 / (shc.zoom || 1);
+      const bound = half + Math.max(Math.abs(shD.dot(shB.x)), Math.abs(shD.dot(shB.y))) + 30 + 600 * Math.acos(cos);
+      let lo = 0, hi = keys.length;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (keys[mid] <= bound) lo = mid + 1; else hi = mid; }
+      return lo;
+    }
+    for (const per of meshes) for (const parts of per.slice(0, 2)) for (const im of parts) {
+      if (!im.castShadow) continue;
+      im.onBeforeShadow = (r, o, cam, shc) => { const k = shadowCount(im, shc); if (k < im.count) { im.userData.shFull = im.count; im.count = k; } };
+      im.onAfterShadow = () => { if (im.userData.shFull != null) { im.count = im.userData.shFull; im.userData.shFull = null; } };
+    }
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
+      const sd = sunOf && sunOf();
+      shB.on = !!(sd && sd.y > 0.01);
+      if (shB.on) {
+        shB.dir.copy(sd).normalize(); shB.eye.copy(eye);
+        shB.x.set(shB.dir.z, 0, -shB.dir.x);
+        if (shB.x.lengthSq() < 1e-8) shB.x.set(1, 0, 0);
+        shB.x.normalize(); shB.y.crossVectors(shB.dir, shB.x);
+      }
       if (PT) PT.gather(eye);
       const n0 = L[0] * L[0], n1 = L[1] * L[1];
       // from higher up a wood is seen further, and only as crowns: its reach grows with the camera's height
@@ -323,14 +382,14 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         if (f < 1 && e2 > WM * WM * (0.55 + 45 * (f - 0.55)) ** 2) continue;
         const lod = e2 < n0 * f * f ? 0 : e2 < n1 * (f < 1 ? 0.15 : 1) ? 1 : 2;
         if (lod === 2 && half[i] >= farCut) continue; // past 200 m half a wood's crowns stand for all (they overlap), fewer on a lighter tier
-        const parts = meshes[which[i]][lod];
-        for (const im of parts) {
-          const j = im.count++;
-          im.instanceMatrix.array.set(M.subarray(16 * i, 16 * i + 16), 16 * j);
-          im.instanceColor.array.set(tint.subarray(3 * i, 3 * i + 3), 3 * j);
-          im.geometry.attributes.aLit.array[j] = lit[i];
+        if (lod < 2 && shB.on) { // (written below, nearest the shadow's centre first)
+          const b = shB.bucket[which[i]][lod];
+          b.push(i, Math.max(Math.abs(dx * shB.x.x + dy * shB.x.y + dz * shB.x.z), Math.abs(dx * shB.y.x + dy * shB.y.y + dz * shB.y.z)));
+          continue;
         }
+        put(meshes[which[i]][lod], i);
       }
+      if (shB.on) shadowOrder();
       // only the instances drawn go up to the GPU, not each mesh's whole buffer (all of them, 8 MB in a city with
       // many trees, went up at every re-sort, and a fast move such as the opening shot re-sorts on most frames)
       for (const per of meshes) for (const parts of per) for (const im of parts) for (const a of [im.instanceMatrix, im.instanceColor, im.geometry.attributes.aLit]) {
@@ -636,8 +695,11 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
         if (Y) { const nv = night ? night.value : 0, k = nv * yozBloom; U.uYoz.value = k; Y.set(k, yozBloom > 0, nv * chochinOut, chochinOut > 0); }
         camera.getWorldPosition(cam);
         const d2 = cam.distanceToSquared(last);
-        if (d2 > 144 && (d2 > 14400 || !(tSec - sortedAt < 0.2))) { last.copy(cam); sortedAt = tSec; sort(cam); }
+        const turned = shB.on && sunOf && sunOf().dot(shB.dir) < 0.9986; // (the sun 3 degrees on since the sort)
+        if (turned || (d2 > 144 && (d2 > 14400 || !(tSec - sortedAt < 0.2)))) { last.copy(cam); sortedAt = tSec; sort(cam); }
       },
+      // where the sun is (a unit vector towards it), for the shadow pass to draw only the trees near its box
+      shadowSun(f) { sunOf = f; sortedAt = -1e9; last.set(1e9, 0, 0); },
       // stand each tree on the ground at its foot: ground(x, y, z) for the height the data gives
       // (the game's finer terrain, which the survey grid's heights can be above or below), or null
       // for a tree not to draw

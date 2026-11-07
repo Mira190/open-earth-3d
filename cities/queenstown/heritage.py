@@ -469,7 +469,9 @@ def st_peters(K, ground):
         for k, z in enumerate(np.arange(0.2, Z_PAR - 0.4, 0.5)):
             w = 0.3 if k % 2 else 0.2
             K[free].box(P(u, v, z), P(u, v, z + 0.26), w, w)
-    spire_top = 16.8 + rise
+    # the tip, checked against LINZ's 2021 1 m surface model (issue 269): 15.2 m over the bare earth in the cell at
+    # the tower's centre, the parapet's plateau at 9.4 m; a 1 m posting misses a slender tip by up to a metre
+    spire_top = 16.0 + rise
     x, y, _ = P(*tc, 0)
     m = K[slate]
     oct_r = [(Z_PAR - 0.2, 1.55), (Z_PAR + 0.7, 1.35), (spire_top - 0.3, 0.08), (spire_top, 0.0)]
