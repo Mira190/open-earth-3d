@@ -1,6 +1,7 @@
-"""The Shuto Expressway's deck heights from Tokyo's airborne LiDAR, where no drawing gives them: Edobashi JCT,
-the Inner Circular Route (C1) west along the Nihonbashi River to Kandabashi JCT, and Route 1 north out of
-Edobashi, as far as the map reaches.
+"""The Shuto Expressway's deck heights from Tokyo's airborne LiDAR, where no drawing gives them: every elevated
+line in the map. First (#272) Edobashi JCT, the Inner Circular Route (C1) west along the Nihonbashi River to
+Kandabashi JCT and Route 1 north out of Edobashi (FIRST); then (#290) the rest: the C1 on west of Kandabashi and
+round the palace's moats, and south through Kasumigaseki, Ginza and Shiodome, as far as the map reaches.
 
 Source: 東京都デジタルツイン実現プロジェクト 区部点群データ (Tokyo Metropolitan Government, 2023 survey,
 published 2024 on G空間情報センター as `tokyopc-23ku-2024`), CC BY 4.0. Each sheet of the 1:500 map grid
@@ -11,6 +12,10 @@ its download URL).
     python cities/tokyo/shuto_lidar.py            fetch the sheets (data/raw/tokyo/lidar), keep the points within
                                                   14 m of the expressway, measure, write shuto_lidar.json
     python cities/tokyo/shuto_lidar.py --measure  measure again from the kept points
+
+FIRST's samples are kept as they were measured: game.json's lines there already stand on them (shuto.py --game),
+so its heights there are no longer the data's, which the measure needs; the lines outside it are measured from
+their own heights in game.json (the data's, eased toward FIRST's for TAPER_M where they run on out of it).
 
 The measure: along each elevated motorway line of game.json (its plan; its heights are the data's levels, 6 m a
 level, which stand 6-8 m over the real decks here), every STEP metres, the points within R_ALONG metres along the
@@ -42,7 +47,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 RAW = os.path.join(ROOT, "data", "raw", "tokyo", "lidar")
 OUT = os.path.join(HERE, "shuto_lidar.json")
 INDEX = "https://gic-tokyo.s3.ap-northeast-1.amazonaws.com/2024/dig/Vectortile/23ku/lp/14/{x}/{y}.pbf"
-REGION = (150.0, 1500.0)       # the elevated lines east of x and north of y (local m): Kandabashi to Edobashi and on
+FIRST = (150.0, 1500.0)        # the first survey (#272): the elevated lines east of x and north of y (local m)
 KEEP_M = 14.0                  # points kept within this of a line, in plan
 STEP = 6.0                     # m between samples
 R_ALONG = 3.0
@@ -55,7 +60,10 @@ DATA_STEP = 5.0                # m: the data puts the other line about a level (
 OVER_RUN = 9.0                 # m: a run of samples this near another line's (the decks side by side or crossing)
 MAX_GRADE = 0.12               # rise over run between samples of one deck at most
 OVER = 3.5                     # m, in plan: a line this near another (decks overlapping), under it
-MIN_AREA = 0.01                # a sheet must hold this share of the lines' buffer to be fetched
+MAX_DROP = 9.0                 # m: a layer this far under the line's data height is a road under it (the data's levels are
+                               # 6-8 m too high at most where measured, #272)
+MAX_RISE = 1.0                 # m: and one this far over it is a deck over the line (the data never put a deck too low there)
+MIN_AREA = 0.003               # a sheet must hold this share of the lines' buffer to be fetched (about 30 m of line)
 
 
 def lines():
@@ -66,10 +74,22 @@ def lines():
         if o["c"] != "motorway":
             continue
         p = np.asarray(o["p"], float).reshape(-1, 3) / 10
-        m = (p[:, 2] > 8) & (p[:, 0] > REGION[0]) & (p[:, 1] > REGION[1])
-        if m.sum() >= 2:
-            out.append(p[m])
+        m = (p[:, 2] > 8) & ~((p[:, 0] > FIRST[0]) & (p[:, 1] > FIRST[1]))
+        # each run of points outside FIRST on its own (a line may leave it and come back)
+        idx = np.nonzero(m)[0]
+        for run in np.split(idx, np.nonzero(np.diff(idx) > 1)[0] + 1):
+            if len(run) >= 2:
+                out.append(p[run])
     return out
+
+
+def first():
+    """FIRST's samples and lines, as shuto_lidar.json has them."""
+    if not os.path.exists(OUT):
+        return [], []
+    d = json.load(open(OUT, encoding="utf8"))
+    inside = lambda q: q[0] > FIRST[0] and q[1] > FIRST[1]
+    return [q for q in d["samples"] if inside(q)], [q for q in d["lines"] if inside(q["from"]) or inside(q["to"])]
 
 
 def city():
@@ -263,6 +283,9 @@ def measure(L):
             k0 = int(np.nonzero(h >= 0.7 * top)[0][0])
             zm = (e[k0] + e[k0 + 1]) / 2
             lay = z[np.abs(z - zm) <= 0.3]
+            if len(lay) >= MIN_N and not (c[2] - MAX_DROP <= np.median(lay) <= c[2] + MAX_RISE):   # a road under it, or a deck over it
+                line.append([c[0], c[1], None, int(len(lay)), c[2]])
+                continue
             line.append([c[0], c[1], float(np.median(lay)) if len(lay) >= MIN_N else None, int(len(lay)), c[2]])
         # drop jumps against the neighbours' median, then fill by interpolation along the line
         zs = np.array([q[2] if q[2] is not None else np.nan for q in line], float)
@@ -273,6 +296,8 @@ def measure(L):
                 zs[i] = np.nan
         raw.append((p, line, zs))
     occluded(raw)
+    samples, lines_out = first()
+    print(f"{len(samples)} samples of the first survey kept")
     for p, line, zs in raw:
         ok = np.isfinite(zs)
         if ok.sum() < 2:

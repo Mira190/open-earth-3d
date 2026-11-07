@@ -540,6 +540,9 @@ void main() {
     const api = {
       setGlowScale(v) { glowScale = v; },
       group, lamps: nL, generated: nGen, foot: nFoot - nRoad, spots, cars: nT,
+      // every lamp's head (three.js x, y, z triples), colour (linear, at white's luminance) and brightness: what
+      // the inland water reflects (inland.js glints)
+      heads: () => ({ pos: Float32Array.from({ length: 3 * nL }, (_, k) => (k % 3 === 0 ? L.x : k % 3 === 1 ? L.z : L.y)[(k / 3) | 0] * (k % 3 === 2 ? -1 : 1)), colour: L.c, bright: L.b }),
       poles: bases, // x, y, z of the foot of each pole it draws
       // take away the poles stand(x, y, z) turns down (one in a wall: the lamp is on its bracket there)
       hidePoles(stand) {

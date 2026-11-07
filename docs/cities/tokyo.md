@@ -111,7 +111,20 @@ steepest new ones are short ramps at Route 1's off-ramp by the map's edge).
 | **Edobashi JCT from the air (game)** | **The Yaesu ramps under the C1 (game)** |
 | ![](../images/fidelity-272/shuto-edobashi.jpg) | ![](../images/fidelity-272/shuto-yaesu.jpg) |
 
-Not done: the Shuto beyond the survey (Route 4 and the C1 south of Kandabashi) keeps OpenStreetMap's layers.
+**The rest of the Shuto (#290).** `shuto_lidar.py` now measures every elevated line in the map: the C1 west of
+Kandabashi JCT and round the palace's moats, and south through Kasumigaseki, Ginza and Shiodome, from 31 sheets
+fetched only under those viaducts (13.3 million points kept). The first survey's samples are kept as they were
+measured (`FIRST`): game.json's lines there already stand on them, so their heights are no longer the data's, which
+the measure needs. Two guards were added: a layer more than 9 m under a line's data height is a road under the deck
+(two short decks at the map's east edge measured 11–15 m low, the upper under the lower), and one more than 1 m
+over it is a deck over the line (at the junctions by the moats); both are left out. `shuto.py --game` put 2,038
+points on the new samples (median 2.8 m down, a quarter of them 4.4 m or more; a few ramps by the junctions up to
+2.9 m up, where they meet decks whose measured height is above their data); it leaves the first survey's points as
+they are, and eases moved points toward their neighbours to at most 10% between them, so no grade over 12% was made
+steeper (`tools/shuto_grades.py`). Not checked against a drawing or a photograph: the junctions by the moats, where
+decks stack over tunnels, are the least certain.
+
+![The C1's stacked viaducts by Ginza, on their measured heights (game, #290)](../images/fidelity-290/shuto-ginza.jpg)
 
 ### The Nihonbashi River in the viewer (#246)
 
@@ -127,7 +140,9 @@ bank (`web/quays.js`, [ARCHITECTURE.md](../ARCHITECTURE.md)). Not checked on a r
 Solid 18776, a PLATEAU block of 15 × 5 m and 2.4 m beside Tokyo Station's M8 exit at (583, 1400), has no
 name or class: a vent's or a stair's cover. It was drawn as a one-storey house with windows under the trees;
 it is drawn plain now, and so is the M8 exit's own cover (`pipeline/arcades.py`, low structures). Not
-checked against a photograph: Wikimedia Commons refused this session's requests.
+checked against a photograph: Wikimedia Commons refused this session's requests. (#290: Commons answered, but its photographs of the Marunouchi north side
+show the station's dome and the plaza from far off; none shows the block. GSI's aerial photograph has a pale
+rectangle there, consistent with a low cover. Left plain.)
 
 ### The Imperial Palace
 
@@ -151,7 +166,7 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 | Footprints, names, roads, water, parks | Overture Maps, release 2026-10-21.0 (OpenStreetMap) | ODbL |
 | Terrain | GSI DEM5A, 5 m airborne laser survey, bare earth (10 m DEM where 5A has no data) | GSI terms of use |
 | Aerial photos | GSI seamless photos, zoom 17 | GSI terms of use |
-| Shuto Expressway (Nihonbashi to Kandabashi and Edobashi) | Overture Maps segments (OpenStreetMap); road heights from the Tokyo Metropolitan Government's airborne LiDAR (`tokyopc-23ku-2024`, G空間情報センター) | ODbL; CC BY 4.0 |
+| Shuto Expressway (every elevated line in the map) | Overture Maps segments (OpenStreetMap); road heights from the Tokyo Metropolitan Government's airborne LiDAR (`tokyopc-23ku-2024`, G空間情報センター) | ODbL; CC BY 4.0 |
 | Palace moats' water levels | Ministry of the Environment, Kokyo Gaien National Garden Office: 皇居外苑濠 濠別管理方針 (March 2010) | Government publication, cited |
 
 ## 3. How PLATEAU is used

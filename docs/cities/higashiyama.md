@@ -174,8 +174,29 @@ give them. `hall()` also takes `gable_at` (how far down the gables reach).
   (2023), and is drawn so. A photograph of another small shrine in the precinct (unnamed in its caption) shows it in
   bare, weathered wood inside a shelter. The others stay vermilion until a photograph says otherwise.
 
-Still not checked: the Tokiwa-den's and the reception halls' roofs and colours (no photograph of either was found on
-Commons) and the other small shrines' colours.
+**The gates' roofs and the small shrines (#290).** The romon roofs (`kyotokit.romon`: the South and West Gates, and
+Kiyomizu-dera's Deva Gate; Fushimi Inari's Romon too) read flat from the street beside the photographs: their eaves
+now stand at 57% of the gate's height (60% before), the slope sags less (k 1.25 from 1.6), the gable starts lower
+and the ridge cap is a metre deep with end tiles 1.6 m over it, so the roof is about 43% of the gate's height and its
+crests read. The South Gate's three gold crests sit on the deeper ridge. Photographs of the small shrines
+(KENPEI, CC BY-SA 3.0; Yanajin33, CC BY-SA 4.0): **Akuōji-sha (悪王子社)** is bare wood under copper gone grey-green,
+the shrine the unnamed photograph of #272 showed, and is drawn so; Ekijinja (疫神社), Utsukushigozen-sha (美御前社),
+Hiyoshi-sha (日吉社) and Kitamuki Ebisu-sha (蛭子社) are vermilion with white panels, as drawn. The Inari shrines'
+photographs show only their vermilion shelter.
+
+Still not checked: the Tokiwa-den's and the reception halls' roofs and colours (Commons searched again in #290;
+nothing), and the two Inari shrines' own sanctuaries.
+
+| Photograph | Author | Licence |
+|---|---|---|
+| [South Tower Gate of Yasaka Shrine in Kyoto, 20240820 1706 5167.jpg](https://commons.wikimedia.org/wiki/File:South_Tower_Gate_of_Yasaka_Shrine_in_Kyoto,_20240820_1706_5167.jpg) | Jakub Hałun | CC BY 4.0 |
+| [Nio-mon, Kiyomizu-dera Temple, Kyoto, West view 20190416 1.jpg](https://commons.wikimedia.org/wiki/File:Nio-mon,_Kiyomizu-dera_Temple,_Kyoto,_West_view_20190416_1.jpg) | DXR | CC BY-SA 4.0 |
+| [Yasaka-jinja akuojisha.jpg](https://commons.wikimedia.org/wiki/File:Yasaka-jinja_akuojisha.jpg), [ekijinja](https://commons.wikimedia.org/wiki/File:Yasaka-jinja_ekijinja.jpg), [utsukushigozensha](https://commons.wikimedia.org/wiki/File:Yasaka-jinja_utsukushigozensha.jpg), [hiyoshisha](https://commons.wikimedia.org/wiki/File:Yasaka-jinja_hiyoshisha.jpg) | KENPEI | CC BY-SA 3.0 |
+| [Yasaka Shrine - Akuôji-sha.jpg](https://commons.wikimedia.org/wiki/File:Yasaka_Shrine_-_Aku%C3%B4ji-sha.jpg), [Kitamuki-Yebisu-sha](https://commons.wikimedia.org/wiki/File:Yasaka_Shrine_-_Kitamuki-Yebisu-sha.jpg), [Inari-sha](https://commons.wikimedia.org/wiki/File:Yasaka_Shrine_-_Inari-sha.jpg) | Yanajin33 | CC BY-SA 4.0 |
+
+![The South Gate: the photograph (Jakub Hałun, CC BY 4.0) and the model; Kiyomizu-dera's Deva Gate (DXR, CC BY-SA 4.0) and the model (#290)](../images/fidelity-290/romon.jpg)
+![The gates and Akuōji-sha, desktop, day, dusk and night (#290)](../images/fidelity-290/higashiyama-desktop.jpg)
+![On a phone (#290)](../images/fidelity-290/higashiyama-phone.jpg)
 
 | Photograph | Author | Licence |
 |---|---|---|
