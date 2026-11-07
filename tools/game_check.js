@@ -908,10 +908,11 @@ const npcNight = require('./npc_night');
   // (metro.js) with the game held still under it, your station marked, the others offering to travel there;
   // Esc closes it onto the game. (Travelling itself loads another map: the title check goes in from it.)
   const mt = await p.evaluate(() => {
-    const g = window.__game, btn = document.getElementById('g-metro-btn');
+    const btn = document.getElementById('g-metro-btn');
     if (!btn || btn.hidden) return { none: true };
     const out = {}, key = (k, code) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, code, bubbles: true }));
-    key('b', 'KeyB'); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyB' })); g.advance(0.2);
+    // (no advance(): the world's clock stays where it was, so the steps after run as they would without this one)
+    key('b', 'KeyB'); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyB' }));
     const el = document.querySelector('.ts-mfull.solo');
     out.open = !!el && OEMetro.isOpen();
     out.here = !!(el && el.querySelector('.mt-you')) && !!(el && el.querySelector('.mt-pick [data-close]'));
@@ -919,7 +920,7 @@ const npcNight = require('./npc_night');
     if (other) other.click();
     const prim = el && el.querySelector('.mt-pick .primary');
     out.travel = !!prim && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
-    key('Escape', 'Escape'); g.advance(0.2);
+    key('Escape', 'Escape');
     out.closed = !document.querySelector('.ts-mfull') && !OEMetro.isOpen() && document.getElementById('g-menu').hidden;
     btn.click(); out.byButton = OEMetro.isOpen(); OEMetro.close();
     document.getElementById('g-menu').hidden = false;

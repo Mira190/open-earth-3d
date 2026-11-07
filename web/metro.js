@@ -117,7 +117,7 @@
     root.querySelectorAll('.mt-chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mapid === s.map)));
     const c = s.map && cities.find(x => x.id === s.map && x.built);
     const arrive = s.travel ? ` data-arrive="${escH(s.travel)}"` : '';
-    const stay = c && o.here === c.id && !s.travel;
+    const stay = c && o.here === c.id && i === home(g, o.here); // (another station of your map: a travel point in it)
     const travel = o.here && c && !stay;
     const label = o.here ? (o.play === false ? 'Explore in 3D' : 'Travel here') : 'Play';
     const acts = !c ? ''
