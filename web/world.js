@@ -1175,7 +1175,11 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       bGeo.boundsTree = new THREE.MeshBVH(bGeo);
       buildings.raycast = THREE.acceleratedRaycast;
     }
-    world.add(buildings, BLD.props);
+    // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
+    // for the bounds-tree; the cells share its geometry's buffers and its material
+    const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
+    world.add(bCells || buildings, BLD.props);
+    if (bCells) buildings.updateMatrixWorld();
 
     // piers and wharves: 2.2 m concrete decks, or level with the quay they meet where that is up to
     // 4 m higher (a seawall promenade), so that stepping down onto a pier is never a step you can't
@@ -1758,10 +1762,35 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     shadow.map = map;
   }
 
+  // An EffectComposer clones its target for the second of the pair it ping-pongs between, so with a
+  // multisampled target every full-screen pass after the scene (the AO's mix, the highlights, the bloom's
+  // composite, the lens, the output) writes four samples a pixel and resolves them: a triangle that covers
+  // the whole frame gives all four the same value, so that is four times the bytes for the same picture,
+  // and a second multisampled buffer held for it. Here the scene alone draws into the multisampled target
+  // (renderTarget1, which the composer always gives it first and which the shader warm-ups compile against),
+  // and the passes after it take turns between two single-sampled targets with no depth: the same frame,
+  // to the bit, with one multisampled buffer instead of two.
+  function leanComposer(composer) {
+    const ms = composer.renderTarget1;
+    if (!ms || !ms.samples || composer.__lean) return composer;
+    const single = () => { const t = ms.clone(); t.samples = 0; if (t.depthTexture) t.depthTexture.dispose(); t.depthTexture = null; t.depthBuffer = false; t.resolveDepthBuffer = false; return t; };
+    const a = single(), b = single();
+    composer.renderTarget2.dispose();
+    composer.renderTarget2 = a;
+    const render = composer.render.bind(composer), setSize = composer.setSize.bind(composer);
+    composer.render = function (dt) { this.readBuffer = ms; this.writeBuffer = a; return render(dt); };
+    composer.swapBuffers = function () { const r = this.readBuffer; this.readBuffer = this.writeBuffer; this.writeBuffer = r === ms ? b : r; };
+    composer.setSize = function (w, h) { setSize(w, h); b.setSize(a.width, a.height); };
+    const dispose = composer.dispose && composer.dispose.bind(composer);
+    composer.dispose = function () { b.dispose(); if (dispose) dispose(); };
+    composer.__lean = true;
+    return composer;
+  }
+
   // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
   function warm(renderer, obj, camera, opts) {
     return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, warm };
+  return { load, loadLine, create, lin, smooth, compile, upload, warm, leanComposer };
 })();

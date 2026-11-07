@@ -6,7 +6,7 @@
   "country_code": "NZ",
   "timezone": "Pacific/Auckland",
   "locale": "en-NZ",
-  "description": "Queenstown on Lake Wakatipu from open data: LINZ's 1 m LiDAR terrain and roofs under its 2026 aerial photos, the Skyline Gondola to Bob's Peak and the TSS Earnslaw at Steamer Wharf, lit by the real sun.",
+  "description": "Queenstown on Lake Wakatipu, the adventure capital of the south: the Skyline Gondola up Bob's Peak, the old steamer Earnslaw at its wharf, and the Remarkables across the water.",
   "bbox": [
     168.6296,
     -45.0584,
@@ -919,7 +919,7 @@
   "tour": [
     {
       "title": "Queenstown from Bob's Peak",
-      "text": "{buildings} buildings on LINZ's 1 m LiDAR terrain, every roof measured from the 2021 surface model, under the 2026 aerial photos. The Remarkables across the lake are LINZ's national 8 m DEM under its 10 m satellite mosaic.",
+      "text": "Kāi Tahu called this shallow bay Tāhuna. Gold brought the town in 1862; now it's bungy, jet boats and ski fields. Across the lake the Remarkables catch the last light of the day.",
       "cam": [
         -1080,
         500,
@@ -940,7 +940,7 @@
     },
     {
       "title": "The bay from the Fernhill side",
-      "text": "Queenstown Bay, the Gardens peninsula and Frankton Arm from the hillside above Lake Esplanade, with the Remarkables beyond. The Earnslaw sails from Steamer Wharf.",
+      "text": "Queenstown Bay, the Gardens peninsula and Frankton Arm, with the Remarkables beyond. Watch for the Earnslaw's black smoke as she leaves Steamer Wharf.",
       "cam": [
         -1500,
         -600,
@@ -961,7 +961,7 @@
     },
     {
       "title": "The Skyline Gondola",
-      "text": "{landmark:skyline_gondola.length_m} m up the face of Bob's Peak and {landmark:skyline_gondola.rise_m} m up from Brecon Street. The line and its stations are OpenStreetMap's; its six towers, three masts and three portals, are placed and measured from their shadows in LINZ's 2026 aerial photographs.",
+      "text": "Up the face of Bob's Peak to the lookout, where the luge tracks wind down the hill and the whole lake lies below. Ride up for sunset and stay for dinner.",
       "cam": [
         -560,
         180,
@@ -982,7 +982,7 @@
     },
     {
       "title": "Steamer Wharf",
-      "text": "The TSS Earnslaw's berth, where she has sailed from since 1912. In the game she steams across Frankton Arm.",
+      "text": "The TSS Earnslaw has sailed from here since 1912, a coal-fired twin-screw steamer still stoked by hand. Take her across to Walter Peak for a high-country farm visit and a sing-along at the piano.",
       "cam": [
         -200,
         -420,
@@ -1002,8 +1002,8 @@
       "hold": 7
     },
     {
-      "title": "Sun on the lakefront",
-      "text": "Marine Parade Reserve is in direct sun for {sun:Marine Parade Reserve|6-21|12:00}% of its area at noon on the winter solstice, under the hill to the north-west.",
+      "title": "The lakefront in winter",
+      "text": "Marine Parade, the town's lakeside lawn. Even at noon in midwinter only {sun:Marine Parade Reserve|6-21|12:00}% of it is in the sun under the hill, so grab a hot chocolate and walk.",
       "place": "Marine Parade Reserve",
       "date": [
         6,

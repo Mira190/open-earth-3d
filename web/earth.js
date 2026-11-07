@@ -566,6 +566,7 @@ window.OEEarth = (function () {
     const ldr = () => ({ type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace });
     const rt = new THREE.WebGLRenderTarget(2, 2, Object.assign(q.hdr ? { type: THREE.HalfFloatType } : ldr(), { samples: q.samples }));
     const composer = new THREE.EffectComposer(renderer, rt);
+    if (window.OEWorld && OEWorld.leanComposer) OEWorld.leanComposer(composer); // the scene alone multisampled (world.js)
     composer.addPass(new THREE.RenderPass(scene, camera));
     // without the pass, a stand-in keeps the director's strength settings harmless
     const bloom = q.bloom ? new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.88, 1.5) : { strength: 0, enabled: false, dispose() {} };

@@ -5,7 +5,7 @@
   "country_code": "JP",
   "timezone": "Asia/Tokyo",
   "locale": "ja-JP",
-  "description": "Sangenjaya to Shibuya, Harajuku and Yoyogi Park from open data, lit by the real sun: Project PLATEAU's surveyed heights, the scramble and Hachiko, SHIBUYA SKY 229 m up, Center Gai, Shibuya Stream and the streets Persona 5 drew.",
+  "description": "Shibuya, Harajuku and Yoyogi Park, out to Sangenjaya's backstreets: the scramble and Hachiko, the city from SHIBUYA SKY, Center Gai's arcades and the streets a famous game drew.",
   "bbox": [
     139.665,
     35.639,
@@ -197,8 +197,8 @@
   },
   "tour": [
     {
-      "title": "Sangenjaya to Harajuku, from open data",
-      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height that Project PLATEAU surveyed, on GSI's laser-scanned bare earth under GSI aerial photographs.",
+      "title": "Sangenjaya to Harajuku",
+      "text": "Youth culture's Tokyo: fashion on Takeshita Street, the forest of Meiji Jingu, the busiest crossing on Earth, and out west the izakaya alleys of Sangenjaya where the city goes home to drink.",
       "cam": [
         1900,
         -4500,
@@ -219,7 +219,7 @@
     },
     {
       "title": "The scramble",
-      "text": "Four streets meet at Shibuya's scramble, and when the lights change every crossing goes green at once, the diagonal too. The white bars are drawn from OpenStreetMap's crosswalks. Hachiko sits on his granite to the south.",
+      "text": "When the lights change, every crossing turns green at once, the diagonals too, and up to three thousand people cross together. Watch it from above, then join in. Hachiko sits to the south, waiting for his master, as he did for ten years.",
       "cam": [
         208.7,
         -1150.6,
@@ -240,7 +240,7 @@
     },
     {
       "title": "SHIBUYA SKY, 229 m",
-      "text": "On Scramble Square's roof (2019): about 2,500 m² of open deck at {landmark:shibuya_sky.deck_m} m, glass at the edge, GEO COMPASS in the middle and the escalator coming up out of the 46th floor.",
+      "text": "An open-air deck on Scramble Square's roof, glass at the edge and nothing above you but sky. Come at sunset: Mount Fuji on the horizon, then Tokyo lighting up beneath your feet.",
       "cam": [
         264.5,
         -1052.1,
@@ -261,7 +261,7 @@
     },
     {
       "title": "Sangenjaya's triangle",
-      "text": "Between Setagaya-dori and Route 246, the backstreets of Sangenjaya: a bathhouse, a snack bar, a meat shop open all night. A game drew its home town here and called it Yongen-Jaya.",
+      "text": "Between Setagaya-dori and Route 246: a bathhouse, a snack bar, a meat shop open all night. A game drew its hero's home town here and called it Yongen-Jaya; fans still come looking for the café.",
       "cam": [
         -2441.0,
         -3014.5,
