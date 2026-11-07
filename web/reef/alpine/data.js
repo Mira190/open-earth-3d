@@ -51,6 +51,7 @@ export async function loadAlpine(base, scene, onBytes = () => {}) {
     loadImg(base + scene.lake_ids),
     scene.snow ? loadImg(base + scene.snow.file).catch(() => null) : Promise.resolve(null)   // the season's snow (alpine_snow.py)
   ]);
+  try { performance.mark('oe:fetched'); } catch (e) { /* no User Timing */ }   // the load's stages (telemetry.js)
   const q = decodeHeights(bytes, W, H);
   const heights = new Float32Array(W * H);
   for (let i = 0; i < heights.length; i++) heights[i] = q[i] * t.units_m;

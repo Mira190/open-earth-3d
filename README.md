@@ -541,6 +541,19 @@ Data tab. The shared sources are:
 - **Woods and park canopy:** Meta and World Resources Institute High Resolution
   Canopy Height Maps (Tolan et al. 2024, CC BY 4.0), for the trees planted in
   the mapped woods and parks and the ground under them (`pipeline/woods.py`).
+- **Sydney's street and park trees:** City of Sydney, "Trees" (the council's tree
+  inventory: position, species, height; CC BY 4.0, "City of Sydney"; ArcGIS item
+  15c4713a688a48fcb604fc343118af05, extracted 2026-11-07), for the trees' heights
+  and the trees OpenStreetMap does not map (`pipeline/plateau_veg.py`).
+- **Queenstown's tree heights:** LINZ Otago - Queenstown LiDAR 1m DSM and DEM (2021),
+  Toitū Te Whenua Land Information New Zealand (CC BY 4.0), the crown top over the
+  ground at each mapped tree (`pipeline/plateau_veg.py`, extracted 2026-11-07).
+- **Reference photographs** (for checking models, never as textures): Wikimedia
+  Commons (`tools/commons.py`), and, when Commons rate-limits, Openverse
+  (`tools/photos.py`: api.openverse.org, anonymous, only CC BY, CC BY-SA, CC0 and
+  public-domain images, mostly Flickr's). Each photograph's author, licence and page
+  go in the city's doc. Geograph (CC BY-SA) covers only Britain and Ireland, none of
+  the live maps; Flickr's own API, DigitalNZ, Te Papa and Trove need a key.
 - **Open water past the model's frame:** Overture Maps' base water and land
   themes (OpenStreetMap's coastline and water bodies, ODbL), 40 km around each
   city, through `pipeline/open_sea.py` into `web/data/<id>/sea.jpg`. Considered
@@ -553,8 +566,15 @@ Data tab. The shared sources are:
   © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the
   European Union and ESA; all rights reserved"), from the AWS open data
   registry; ESA WorldCover 10 m 2021 v200 (CC BY 4.0, © ESA WorldCover project
-  2021, contains modified Copernicus Sentinel data); NASA Black Marble 2016
-  (VIIRS day/night band, public domain) via NASA GIBS. 40 km around each city
+  2021, contains modified Copernicus Sentinel data); the annual VIIRS night
+  lights of 2024 (Annual VNL V2: Elvidge, C. D., Zhizhin, M., Ghosh, T., Hsu,
+  F. C. and Taneja, J., 2021, Remote Sensing 13(5), 922; Earth Observation Group,
+  Payne Institute for Public Policy, Colorado School of Mines; as Cloud-Optimized
+  GeoTIFFs by T. Hengl, OpenGeoHub, Zenodo doi 10.5281/zenodo.7750174, v0.4,
+  CC BY 4.0, read anonymously on 2026-11-07), which replaced NASA Black Marble
+  2016 (public domain, via NASA GIBS: its newest annual layer, and its visual
+  product saturates over a city; NASA's newer VNP46A4 needs an Earthdata login).
+  40 km around each city
   and 60 km around each reef site, through `pipeline/far_land.py` into
   `web/data/<id>/far.*`. Considered and not used: FABDEM (bare-earth GLO-30) is
   CC BY-NC-SA; Sentinel-2 cloudless mosaics after 2016 are CC BY-NC-SA, and a

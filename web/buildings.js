@@ -233,7 +233,10 @@ window.OEBuildings = (function () {
   }
 
   // foot(x, y): the height of the ground drawn there, so walls reach it where it is below a building's base
-  function create(D, { lin, U, renderer, SRC, small = false, foot = null, photoGrade = null, night = null }) {
+  // progress(f): how far the walls are, 0..1. The walls are raised in slices of about SLICE ms, yielding between
+  // them, so the loader's frames keep coming (issue 299: one frame of 2.5 s in Shibuya); resolves with the meshes
+  const SLICE = 40, pause = () => new Promise(r => setTimeout(r, 0));
+  async function create(D, { lin, U, renderer, SRC, small = false, foot = null, photoGrade = null, night = null, progress = null }) {
     const t0 = performance.now();
     const { B, T, scene } = D;
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
@@ -282,6 +285,7 @@ window.OEBuildings = (function () {
       G = S.buildDSM(T, B.s, { cell: 4, x0: fr.x[0], x1: fr.x[1], y0: fr.y[0], y1: fr.y[1] });
     } catch (e) { G = null; }
 
+    await pause();
     const buf = Buf();
     const trimC = lin('#d6d2c8'), soffitC = lin('#e9e4d8'), awnC = lin('#3b3f43');
 
@@ -503,7 +507,7 @@ window.OEBuildings = (function () {
       if (hidden.has(si) || s[2] !== 0 || BI[bi].style !== 'mixed') return;
       if (!(s[3] <= signTop.get(bi))) { signTop.set(bi, s[3]); signSolid.set(bi, si); }
     });
-    B.s.forEach((s, si) => {
+    const solid = (s, si) => {
       if (hidden.has(si)) return;
       const bi = s[0], P = BI[bi], g0 = s[1] / 10, zb = g0 + s[2] / 10, zt = g0 + s[3] / 10;
       const rings = s.slice(4).map(r => r.map(q => q / 10));
@@ -545,13 +549,18 @@ window.OEBuildings = (function () {
         deckZ.set(si, zt);
       }
       if (fronts && !small) for (const [k, fl] of fronts) if (fl & 2) awning(rings[0], k, g0, bi);
-    });
+    };
+    for (let si = 0, s0 = performance.now(); si < B.s.length; si++) {
+      solid(B.s[si], si);
+      if (performance.now() - s0 > SLICE) { if (progress) progress(si / B.s.length); await pause(); s0 = performance.now(); }
+    }
     // awnings on roofed solids too
     if (!small) for (const [si, fronts] of frontOf) if (roofOf.has(si) && !hidden.has(si)) {
       const s = B.s[si];
       for (const [k, fl] of fronts) if (fl & 2) awning(s[4].map(q => q / 10), k, s[1] / 10, s[0]);
     }
 
+    await pause();
     const geometry = buf.geometry();
     // the share of homes lit by cool white ceiling lights rather than warm lamps: most in Japan and
     // Hong Kong, a few elsewhere (docs/NIGHT.md)

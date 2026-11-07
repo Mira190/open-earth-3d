@@ -28,12 +28,13 @@
  "sources": {
   "relief": "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
   "land_cover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)",
-  "lights": "NASA Black Marble 2016, VIIRS day/night band (public domain), via NASA GIBS"
+  "lights": "Annual VNL V2 2024, VIIRS day/night band (Earth Observation Group, Payne Institute, Colorado School of Mines; COGs by T. Hengl, OpenGeoHub, Zenodo doi 10.5281/zenodo.7750174; CC BY 4.0), extracted 2026-11-07"
  },
- "black_marble": {
-  "black_marble_px": [
-   163,
-   164
-  ]
+ "night_lights": {
+  "vnl_px": [
+   218,
+   178
+  ],
+  "vnl_radiance_max": 49.0
  }
 }

@@ -88,8 +88,9 @@ else
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
       web/reef/*) all_reefs ;;
-      web/title.*|tools/title_*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
-      web/telemetry.js|tools/telemetry_*|tools/slo_report.py) title=1; telemetry=1 ;;   # watches every page, sends nothing
+      web/title.js|web/earth.js) title=1; telemetry=1 ;;   # (the title screen's load stages: tools/telemetry_check.js)
+      web/title.*|tools/title_*|web/score.js|web/film.*|web/fonts.css) title=1 ;;
+      web/telemetry.js|tools/telemetry_*|tools/slo_*) title=1; telemetry=1 ;;   # watches every page, sends nothing
       web/index.html|web/quality.js) all_cities; title=1; loader=1; telemetry=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1; telemetry=1 ;;
       web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;

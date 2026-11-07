@@ -44,7 +44,10 @@ window.OEWorld = (function () {
     // once every file is in, the packs are still decoding (in a Worker) and the JSON parsing: said so,
     // rather than leaving the label on a download that has finished
     let open = 0;
-    const unpack = () => { if (--open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
+    // the load's stages for the telemetry (telemetry.js markOf): every file in, then every file decoded
+    const view = { view: game ? 'game' : 'city', city: cityId };
+    const mark = s => { try { performance.mark(`oe:${s}`, { detail: view }); } catch (e) { /* no User Timing */ } };
+    const unpack = () => { if (--open === 0) mark('fetched'); if (open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
     const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
       if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
@@ -78,6 +81,7 @@ window.OEWorld = (function () {
       getPacked('landmarks'), getPacked('terrain').then(grid),
       getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
+    mark('decoded');
     const CITY = scene.city;
     // the map's name as the globe's list gives it (cities/index.json), and the city it is a district of:
     // Higashiyama is a district of Kyoto, Shibuya one of Tokyo, never cities of their own
@@ -664,6 +668,19 @@ vec3 steepRock(vec3 c, float k) {
     envSky.scale.setScalar(50); // inside the PMREM cube camera's far plane
     envScene.add(envSky);
     const pmrem = new THREE.PMREMGenerator(renderer);
+    // its programs (the background box, the GGX filter, the blur) compiled now, off the frame, rather than by the first
+    // light from the sky in the middle of the game's set-up (issue 299: 1.5 s there on a software renderer). They are
+    // three.js r186's PMREMGenerator's own parts, so only where they are as there; else the first sky compiles them
+    try {
+      if (pmrem._setSize && pmrem._allocateTargets && renderer.capabilities.isWebGL2) {
+        pmrem._setSize(256); // (fromScene's size)
+        pmrem._allocateTargets().dispose();
+        const g = new THREE.Group(), lod = pmrem._lodMeshes && pmrem._lodMeshes[0];
+        if (lod) for (const m of [pmrem._ggxMaterial, pmrem._blurMaterial]) if (m) g.add(new THREE.Mesh(lod.geometry, m));
+        g.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false })));
+        if (pmrem._pingPongRenderTarget) compile(renderer, g, new THREE.PerspectiveCamera(90, 1, 0.1, 100), { target: pmrem._pingPongRenderTarget, shadows: false });
+      }
+    } catch (e) { /* compiled by the first sky instead */ }
     let envRT = null, envKey = '', envAt = -1e9, envWait = null;
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 2 * Math.PI); // intensities are physical since r155: π × the old values
@@ -851,7 +868,7 @@ vec3 steepRock(vec3 c, float k) {
     const woodsFloor = sh => {
       if (!WOODS) return;
       Object.assign(sh.uniforms, { uWoods: WOODS.tex, uWoodsBox: WOODS.box });
-      if (floorTex) { sh.uniforms.uFloorMap = { value: floorTex }; sh.defines = Object.assign(sh.defines || {}, { FLOOR_MAP: '' }); }
+      if (floorTex) { sh.uniforms.uFloorMap = { value: floorTex }; sh.defines = Object.assign({}, sh.defines, { FLOOR_MAP: "" }); } // (a copy: the material's own are in its key, trees.js)
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWoodWP;')
         .replace('#include <project_vertex>', '#include <project_vertex>\nvWoodWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
@@ -1268,17 +1285,23 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     const foot = (x, y) => Math.min(S.terrainTri(T, x, y), D.Tfine ? S.terrainTri(D.Tfine, x, y) : Infinity);
     U.uPhotoGrade = PG;
     if (NU) Object.assign(U, NU);
-    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small, foot, photoGrade: PHOTO_GRADE, night: NIGHT });
+    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, foot, photoGrade: PHOTO_GRADE, night: NIGHT,
+      progress: f => loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5 + 0.14 * f) });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
     U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
-    if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
-      bGeo.boundsTree = new THREE.MeshBVH(bGeo);
-      buildings.raycast = THREE.acceleratedRaycast;
-    }
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
     const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
+    if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
+      // built in a Worker where the walls are drawn as cells (a city's worth: a second on the main thread, issue 299),
+      // and put on the picking mesh when it comes (it reorders that mesh's index, which the cells have copied
+      // already); a pick before then takes the plain, slower way. A small town's, or without a Worker, here
+      const here = () => { if (!bGeo.boundsTree) bGeo.boundsTree = new THREE.MeshBVH(bGeo); buildings.raycast = THREE.acceleratedRaycast; };
+      if (bCells) bvhIn(bGeo).then(data => { if (!bGeo.boundsTree) bGeo.boundsTree = THREE.MeshBVH.deserialize(data, bGeo, { setIndex: true }); buildings.raycast = THREE.acceleratedRaycast; })
+        .catch(e => { console.warn('bounds-tree worker', e); here(); });
+      else here();
+    }
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
 
@@ -1522,28 +1545,42 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // horizon in that haze: the city fades into the sky instead of ending in a grey band. Only
     // where the fog is mixed in linear light before the tone curve (the game's post stack sets
     // skyHaze); the viewer fogs after it and keeps its fixed colours.
-    let hazeRT = null, hazeOk = false, fogBase = null;
-    const hazeCam = new THREE.PerspectiveCamera(8, 1, 0.1, 100), hazeC = new THREE.Color(), hazePx = new Float32Array(16);
-    function readHaze(az) {
+    let hazeRT = null, hazeOk = false, fogBase = null, hazeKey = null, hazeBusy = false;
+    const hazeCam = new THREE.PerspectiveCamera(8, 1, 0.1, 100), hazeC = new THREE.Color(), hazePx = new Float32Array(48);
+    const hazeTarget = () => hazeRT || (hazeRT = new THREE.WebGLRenderTarget(6, 2, { type: THREE.FloatType }));
+    // the sky's program as this read and the light from the sky (PMREM) draw it, with no lights and into a target,
+    // compiled now, off the frame, rather than by the first read in the middle of the game's set-up (issue 299)
+    if (renderer.capabilities.isWebGL2) compile(renderer, envScene, hazeCam, { target: hazeTarget(), shadows: false });
+    // The three views side by side in one target, read back at once without stalling the frame (readAsync: a
+    // synchronous read waited for all the GPU's queued work, 1.8 s of the loader on a software renderer, issue 299),
+    // or at once (sync). Calls back with whether it is usable.
+    function readHaze(az, done, sync = false) {
       try {
-        if (!hazeRT) hazeRT = new THREE.WebGLRenderTarget(2, 2, { type: THREE.FloatType });
-        const prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
+        const rt = hazeTarget(), prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
         su.uHazeOn.value = 0;
-        let r = 0, g = 0, b = 0;
-        for (const turn of [0.5, 1, 1.5]) { // across from the sun and on either side
+        rt.scissorTest = true;
+        [0.5, 1, 1.5].forEach((turn, i) => { // across from the sun and on either side
           const a = az + turn * Math.PI;
           hazeCam.lookAt(Math.sin(a) * Math.cos(el), Math.sin(el), -Math.cos(a) * Math.cos(el));
-          renderer.setRenderTarget(hazeRT);
+          rt.viewport.set(2 * i, 0, 2, 2); rt.scissor.set(2 * i, 0, 2, 2);
+          renderer.setRenderTarget(rt);
           renderer.render(envScene, hazeCam);
-          renderer.readRenderTargetPixels(hazeRT, 0, 0, 2, 2, hazePx);
-          for (let i = 0; i < 16; i += 4) { r += hazePx[i]; g += hazePx[i + 1]; b += hazePx[i + 2]; }
-        }
+        });
+        rt.scissorTest = false; rt.viewport.set(0, 0, 6, 2); rt.scissor.set(0, 0, 6, 2);
         renderer.setRenderTarget(prev);
         su.uHazeOn.value = on;
-        if (!(r + g + b > 0) || !isFinite(r + g + b)) return false;
-        hazeC.setRGB(r / 12, g / 12, b / 12);
-        return true;
-      } catch (e) { return false; }
+        const use = px => {
+          let r = 0, g = 0, b = 0;
+          for (let i = 0; i < 48; i += 4) { r += px[i]; g += px[i + 1]; b += px[i + 2]; }
+          if (!(r + g + b > 0) || !isFinite(r + g + b)) return done(false);
+          hazeC.setRGB(r / 12, g / 12, b / 12);
+          done(true);
+        };
+        if (sync) { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); return; }
+        readAsync(renderer, rt, 0, 0, 6, 2, hazePx).then(use, () => {
+          try { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); } catch (e) { done(false); } // (no fences: WebGL 1)
+        });
+      } catch (e) { done(false); }
     }
     // the water closes over the bottom under what is drawn over it: the aerial photograph has the same
     // bridge or expressway on the riverbed, and the shallow water of a river shows it through (the
@@ -1659,9 +1696,27 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         // api.envEvery (ms) allows one new sky at most that often: a sun easing between two hours
         // would otherwise rebuild it nearly every frame. The one held back waits for tick.
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`, now = performance.now();
-        const newSky = key !== envKey && now - envAt >= (api.envEvery || 0);
+        let newSky = key !== envKey && now - envAt >= (api.envEvery || 0);
+        // the haze read back without a stall (readHaze): the first sky is made at once, without it (what is compiled
+        // next needs a sky to be lit by, not its haze), and made again when it comes; a later one waits for it
+        // the haze read back: for a sky a step on from the last (the sun moving in play) without a stall, the new sky
+        // waiting the frame or two for it; for the first sky, made at once without it (what is compiled next needs a
+        // sky to be lit by, not its haze) and made again when it comes; for a jump (the clock set from the menu, a
+        // still, a film) at once, as before, so that the very next frame is the new hour's
+        if (newSky && api.skyHaze && hazeKey !== key) {
+          const first = !envRT, [ka, kz] = key.split('|').map(Number), [ea, ez] = envKey ? envKey.split('|').map(Number) : [NaN, NaN];
+          const step = !first && Math.abs(ka - ea) <= 1 && (Math.abs(kz - ez) <= 1 || Math.abs(kz - ez) >= 59);
+          if (!first && !step) readHaze(az, ok => { hazeOk = ok; hazeKey = key; }, true);
+          else {
+            const again = { sp: Object.assign({}, sp), minutes };
+            if (!hazeBusy) {
+              hazeBusy = true;
+              readHaze(az, ok => { hazeOk = ok; hazeKey = key; hazeBusy = false; if (first && ok) { envKey = ''; envWait = envWait || again; } });
+            }
+            if (!first) newSky = false;
+          }
+        }
         envWait = key !== envKey && !newSky ? { sp: Object.assign({}, sp), minutes } : null;
-        if (newSky && api.skyHaze) hazeOk = readHaze(az);
         su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
         // at night the haze is the night's blue with a little of the city's glow in it (night.js)
         // by day a grey-blue, warming to a sandy haze as the sun gets low; under that, the night's
@@ -1747,7 +1802,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // from the sky are made again, and the shadow map redrawn. The water's FFT and wakes and
       // the post stack's targets are drawn afresh every frame.
       restoreGPU() {
-        envKey = ''; envAt = -1e9; envWait = null; hazeOk = false;
+        envKey = ''; envAt = -1e9; envWait = null; hazeOk = false; hazeKey = null;
         if (api.lastSun) api.setSun(api.lastSun.sp, api.lastSun.minutes);
         renderer.shadowMap.needsUpdate = true;
       },
@@ -1801,7 +1856,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // program in one call, which on a software renderer, or a phone without parallel compiles, was one task
   // of 10 to 25 seconds. The caller holds its draws until this resolves, since a draw would compile the
   // rest in one frame again.
-  const SLICE_MS = 50, SLICED = 40;
+  const SLICE_MS = 50, SLICED = 40, FLIGHT = 6;
   // clip: the clipping planes it is drawn with (a mirror's), which also pick the variant. behind: it
   // compiles while the scene is on screen (behind the title), a short slice a frame, so frames keep coming.
   // hold: while it returns true, a compile behind the scene waits (a frame at a time) without compiling: a slice
@@ -1832,7 +1887,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       finally { unbind(was); if (casters.length) depth = compileDepth(renderer, casters, camera, scene); }
     }
     return (async () => {
-      const props = renderer.properties, mats = new Set(), t0 = performance.now();
+      const props = renderer.properties, mats = new Set(), t0 = performance.now(), flying = new Set();
+      const inFlight = () => { for (const p of flying) if (p.isReady()) flying.delete(p); return flying.size; };
       let slices = 0, longest = 0;
       const n = objs.length + casters.length;
       for (let i = 0; i < n;) {
@@ -1842,14 +1898,18 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           // (every object, even one whose material has a program: this variant, for this target and
           // these planes, may be new. One that is not costs a lookup; an object's children are in the
           // list on their own, so they are looked up again, cheaply. Then the casters' shadow variants)
-          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS)) {
-            if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
-            else { const j = i - objs.length, k = Math.min(casters.length, j + 24); for (const m of compileDepth(renderer, casters.slice(j, k), camera, scene)) mats.add(m); i += k - j; }
+          // (and no more than FLIGHT programs still being compiled at a time: the next shader's source otherwise waits
+          // in the call that sends it until the GPU has caught up, a stall of seconds on a software renderer or a
+          // device that compiles one at a time, issue 299; the slice ends and the next one waits for them instead)
+          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS) && inFlight() < FLIGHT) {
+            const add = m => { mats.add(m); const p = props.get(m).currentProgram; if (p && p.isReady && !p.isReady()) flying.add(p); };
+            if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) add(m);
+            else { const j = i - objs.length, k = Math.min(casters.length, j + 24); for (const m of compileDepth(renderer, casters.slice(j, k), camera, scene)) add(m); i += k - j; }
           }
         } catch (e) { console.warn('compile', e); }
         finally { unbind(was); }
         slices++; longest = Math.max(longest, performance.now() - s0);
-        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : idle());
+        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : inFlight() >= FLIGHT ? new Promise(r => setTimeout(r, 10)) : idle());
       }
       // then wait for the GPU to finish them (KHR_parallel_shader_compile), as compileAsync does
       const all = new Set(mats);
@@ -1972,6 +2032,92 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     if (!pumping) pump();
     return Promise.all(waits).then(() => {});
   }
+  // A geometry's bounds-tree built in a Worker (bvh-worker.js, next to this file) from copies of its positions and
+  // index: resolves with the serialised tree for THREE.MeshBVH.deserialize
+  const here = document.currentScript ? document.currentScript.src : location.href;
+  function bvhIn(geo) {
+    return new Promise((ok, fail) => {
+      let w;
+      try { w = new Worker(new URL('bvh-worker.js', here), { type: 'module' }); } catch (e) { fail(e); return; }
+      const t0 = performance.now();
+      w.onmessage = e => { w.terminate(); if (e.data.error) fail(new Error(e.data.error)); else { console.info(`bounds-tree: ${Math.round(e.data.ms)} ms in a worker, back after ${Math.round(performance.now() - t0)} ms`); ok(e.data.data); } };
+      w.onerror = e => { e.preventDefault(); w.terminate(); fail(new Error(e.message || 'worker failed')); };
+      const position = geo.attributes.position.array.slice(), index = geo.index.array.slice();
+      w.postMessage({ id: 1, position, index }, [position.buffer, index.buffer]);
+    });
+  }
+
+  // A post stack's programs (issue 299): three.js compiles a pass's material on its first draw, so the first frame
+  // drawn through the composer compiled them all (2.6 s of the loader's first frame on a software renderer).
+  // Each pass's materials (its own, its full-screen quad's, those in its arrays; a pass with materials of its own
+  // lists them in .materials and its quad's geometry in .quadGeometry) are compiled with compile() into the
+  // composer's target, and those of the last few passes (the one that draws to the screen, whichever is on) for the
+  // screen too: the two differ in output colour space and tone mapping, which pick the variant.
+  function warmPasses(renderer, composer) {
+    if (!composer || !composer.passes) return Promise.resolve();
+    // (a stand-in for a pass's full-screen triangle, with its attributes, position and uv: they are part of the variant)
+    const tri = new THREE.BufferGeometry();
+    tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+    tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
+    const toTarget = new THREE.Group(), toScreen = new THREE.Group(), passes = composer.passes;
+    passes.forEach((p, i) => {
+      const mats = new Set(), add = v => { if (v && v.isMaterial) mats.add(v); };
+      for (const v of Object.values(p)) { add(v); if (Array.isArray(v)) v.forEach(add); }
+      if (p.fsQuad) add(p.fsQuad.material);
+      for (const m of mats) {
+        toTarget.add(new THREE.Mesh(p.quadGeometry || tri, m));
+        if (i >= passes.length - 3) toScreen.add(new THREE.Mesh(p.quadGeometry || tri, m));
+      }
+    });
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    return Promise.all([compile(renderer, toTarget, cam, { target: composer.renderTarget1, shadows: false }),
+      compile(renderer, toScreen, cam, { target: null, shadows: false })]).then(() => tri.dispose());
+  }
+
+  // A few pixels of a float render target read back without stalling the frame (issue 299): into a pixel-pack
+  // buffer behind a fence, and out of it once the fence has passed, at the start of a later frame. three.js's
+  // readRenderTargetPixelsAsync polls the fence on a timer and reads when it fires, which is often after
+  // that frame's draws were sent: the read (getBufferSubData, synchronous) then waits for all of them, seconds
+  // on a software renderer. A requestAnimationFrame callback asked for from inside the game's frame runs
+  // before the game's next one (callbacks run in the order they were asked for), so nothing new is queued.
+  // out: a Float32Array of w * h * 4 (RGBA, float: readable from any float colour buffer).
+  const reads = [];
+  function pollReads() {
+    for (let i = reads.length - 1; i >= 0; i--) {
+      const q = reads[i], gl = q.gl;
+      let st;
+      try { st = gl.isContextLost() ? gl.WAIT_FAILED : gl.clientWaitSync(q.sync, 0, 0); } catch (e) { st = gl.WAIT_FAILED; }
+      if (st === gl.TIMEOUT_EXPIRED) continue;
+      reads.splice(i, 1);
+      try {
+        if (st === gl.WAIT_FAILED) throw new Error('read back failed');
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, q.buf);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, q.out);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        q.ok(q.out);
+      } catch (e) { q.no(e); }
+      finally { try { gl.deleteSync(q.sync); gl.deleteBuffer(q.buf); } catch (e) { /* a lost context */ } }
+    }
+    if (reads.length) requestAnimationFrame(pollReads);
+  }
+  function readAsync(renderer, rt, x, y, w, h, out) {
+    const gl = renderer.getContext(), fb = rt && renderer.properties.get(rt).__webglFramebuffer;
+    if (!(gl.fenceSync && gl.getBufferSubData) || !fb || rt.samples > 0 || out.length < w * h * 4) return Promise.reject(new Error('no read back'));
+    const cur = renderer.getRenderTarget(), buf = gl.createBuffer();
+    renderer.state.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buf);
+    gl.bufferData(gl.PIXEL_PACK_BUFFER, out.byteLength, gl.STREAM_READ);
+    gl.readPixels(x, y, w, h, gl.RGBA, gl.FLOAT, 0);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    renderer.state.bindFramebuffer(gl.FRAMEBUFFER, cur ? renderer.properties.get(cur).__webglFramebuffer : null);
+    const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    gl.flush();
+    return new Promise((ok, no) => {
+      reads.push({ gl, buf, sync, out, ok, no });
+      if (reads.length === 1) requestAnimationFrame(pollReads);
+    });
+  }
+
   // A PCF shadow map as three.js (r186) makes it is a render target with an RGBA8 colour texture beside
   // the depth texture it samples, and that colour is never read: 64 MB of GPU memory at 4096 px, 16 at
   // 2048. WebGLShadowMap builds its own only while shadow.map is null, so the same target made here
@@ -2120,5 +2266,5 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, warm, leanComposer };
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, warm, leanComposer, readAsync, warmPasses };
 })();
