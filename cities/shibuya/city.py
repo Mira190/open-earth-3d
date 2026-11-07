@@ -3337,6 +3337,9 @@ MATERIALS.update({
     "glass_clad": {"color": "#3a4856", "roughness": 0.32, "metalness": 0.08},
     "door_glass": {"color": "#7f8b93", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffd29a", "glow": 0.7},
     "esc_step": {"color": "#55595e", "roughness": 0.45, "metalness": 0.6},
+    # an escalator's glass balustrades: a walker is held on the steps by the drop beside them, not by the glass,
+    # which stands closer to the steps than a walker's body is wide
+    "esc_glass": {"color": "#bcd6de", "roughness": 0.05, "metalness": 0.1, "opacity": 0.28, "solid": False},
     "esc_clad": {"color": "#c3c8cc", "roughness": 0.3, "metalness": 0.55},
     "esc_yellow": {"color": "#e8bb10", "roughness": 0.55, "metalness": 0.0},
     "tread": {"color": "#d2b994", "roughness": 0.8, "metalness": 0.0},
@@ -3683,7 +3686,7 @@ def sky_channels(K, Q, F, z, z0):
         bs = [0.9, 2.0, 2.0 + F["run"], L - 0.75]
         for side in (-1, 1):
             tv = e + side * hw
-            g = K("glass", part)
+            g = K("esc_glass", part)
             for sa, sb in zip(bs, bs[1:]):
                 g.quad(X(sa, tv, esc(sa) + 0.14), X(sb, tv, esc(sb) + 0.14), X(sb, tv, esc(sb) + 0.95), X(sa, tv, esc(sa) + 0.95))
             path = []
@@ -3747,7 +3750,7 @@ def sky_channels(K, Q, F, z, z0):
             K("frame_white", "rim").tube([X(s_a, W + 0.1, z), X(s_a, W + 0.1, netz)], 0.035, 6)
         K("frame_white", "rim").tube([X(-Dd, W + 0.1, netz), X(L, W + 0.1, netz)], 0.02, 4)
         # at the head, short glass either side of the escalator where the flights come up onto the deck
-        for ta, tb in ((T["glass"], e - hw), (e + hw, T["st0"] - 0.03)):
+        for ta, tb in ((T["glass"], e - hw - 0.25), (e + hw + 0.2, T["st0"] - 0.03)):
             K("glass", "rim").quad(X(L, ta, z), X(L, tb, z), X(L, tb, z + 1.1), X(L, ta, z + 1.1))
         # -- the outer glass, stepping up with the flights from the corner to the head, and its top rail
         s_lo = -(Dd + W)
@@ -4220,7 +4223,7 @@ def game_extras(scene):
     F = sky_flights(*s["half"])
     W2, _ = sky_uv(s)
     north = F["flights"][0]
-    land = W2(*north["uv"](-F["D"] / 2, F["W"] - 2.2))            # before 46F's doors at the foot of the north escalator
+    land = W2(*north["uv"](-F["D"] - F["W"] / 2, F["W"] / 2))    # in the corner at the channels' feet, out of 46F's doors
     face = W2(*north["uv"](1.0, 0.0)) - W2(*north["uv"](0.0, 0.0))
     eu, ev = F["edge"]
     edge = W2(eu - 4.0, ev - 4.0)                                 # on the deck behind SKY EDGE
