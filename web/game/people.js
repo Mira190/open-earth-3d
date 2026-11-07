@@ -847,7 +847,7 @@ transformed = crowdPose(transformed, false);`);
         r.root.position.copy(W(p.x, p.y, p.z));
         r.root.rotation.y = Math.PI - p.h;
         if (p.wave) { p.wave = false; r.wave(tNow); }
-        r.animate(dtNow, moving ? p.v ?? p.speed : 0, p.mode === 'sit' ? 'sit' : 'ground', tNow);
+        r.animate(dtNow, moving ? Math.max(0.2, p.av ?? p.v ?? p.speed) : 0, p.mode === 'sit' ? 'sit' : 'ground', tNow);
         return;
       }
       p.wave = false;
@@ -861,7 +861,7 @@ transformed = crowdPose(transformed, false);`);
       const ua = p.mesh.geometry.attributes.iUmb;
       if (ua.getX(p.slot) !== (held ? 1 : 0)) { ua.setX(p.slot, held ? 1 : 0); ua.needsUpdate = true; }
       // the cadence follows the speed; when it changes, shift the phase so the stride doesn't jump
-      const f = moving ? 4.5 * (p.v ?? p.speed) / p.look.scale : p.animF ?? 4.5 * p.speed / p.look.scale;
+      const f = moving ? 4.5 * Math.max(0.2, p.av ?? p.v ?? p.speed) / p.look.scale : p.animF ?? 4.5 * p.speed / p.look.scale;
       if (p.animF == null) { p.animF = f; p.animO = p.phase; }
       else if (Math.abs(f - p.animF) > 0.02 * p.animF) { p.animO += (p.animF - f) * tNow; p.animF = f; }
       p.mesh.geometry.attributes.aAnim.setXYZ(p.slot, p.animO, p.animF, sit ? -1 : moving ? 0.42 : 0);
