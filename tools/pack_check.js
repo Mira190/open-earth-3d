@@ -1,4 +1,4 @@
-// Decodes each city's packs (buildings.bin, landmarks.bin, game.bin) with the browser's decoder
+// Decodes each city's packs (buildings, landmarks, game, terrain, places and scene .bin) with the browser's decoder
 // (web/pack.js) and compares them, value for value, with their JSON (the bytes columns as base64 again,
 // the typed arrays as lists), and times both (issues 148, 201).
 //   node tools/pack_check.js [city ...]     (default: every city with a pack)
@@ -23,12 +23,12 @@ const same = (a, b, at) => {
   return Object.is(a, b) || (a === 0 && b === 0) ? null : `${at}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`;
 };
 (async () => {
-  const NAMES = ['buildings', 'landmarks', 'game'];
+  const NAMES = ['buildings', 'landmarks', 'game', 'terrain', 'places', 'scene'];
   const ids = process.argv.slice(2).length ? process.argv.slice(2)
-    : fs.readdirSync(DATA).filter(c => NAMES.some(n => fs.existsSync(path.join(DATA, c, `${n}.bin`))));
+    : fs.readdirSync(DATA).filter(c => NAMES.some(n => fs.existsSync(path.join(DATA, c, `${n}.bin`)) && fs.existsSync(path.join(DATA, c, `${n}.json`))));
   let bad = 0;
   for (const c of ids) for (const n of NAMES) {
-    if (!fs.existsSync(path.join(DATA, c, `${n}.bin`))) continue;
+    if (!fs.existsSync(path.join(DATA, c, `${n}.bin`)) || !fs.existsSync(path.join(DATA, c, `${n}.json`))) continue; // (a reef site's terrain.bin is its own format)
     const bin = fs.readFileSync(path.join(DATA, c, `${n}.bin`)), js = fs.readFileSync(path.join(DATA, c, `${n}.json`), 'utf8');
     let t = performance.now();
     const ref = JSON.parse(js), tj = performance.now() - t;

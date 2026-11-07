@@ -546,12 +546,18 @@ void main() {
         if (focus) api.focus = focus;
       },
       // while the game loads: the rain's own materials and its pass from above drawn once, so their
-      // shaders compile then rather than in a stall as the first rain comes on
-      warm() {
+      // shaders compile then rather than in a stall as the first rain comes on. compile(obj): the game's,
+      // for the variant the main pass draws with (its post stack's target); without it the whole world was
+      // compiled again for the screen, a variant nothing drew with, in one task (issue 259)
+      warm(compile) {
         if (api.shed >= 2) return;
         const was = [near.visible, far.visible, splash.visible];
         near.visible = far.visible = splash.visible = true;
-        try { renderer.compile(world, camera); if (occRT) renderOcc(-9); } finally { [near.visible, far.visible, splash.visible] = was; occOn.value = 0; occT = -9; }
+        try {
+          if (compile) for (const m of [near, far, splash]) compile(m);
+          else renderer.compile(world, camera);
+          if (occRT) renderOcc(-9);
+        } finally { [near.visible, far.visible, splash.visible] = was; occOn.value = 0; occT = -9; }
       },
       // is a point under cover (a roof within a few metres overhead)? from the last occlusion map
       covered: () => cover.roof,

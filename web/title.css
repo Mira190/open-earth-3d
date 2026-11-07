@@ -158,8 +158,27 @@
 .ts-card h2 { margin: 8px 0 0; font: 300 clamp(26px, 2.5vw, 36px)/1 var(--t-display); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
 .ts-card h2 small { display: block; margin-top: 10px; font: 500 15px/1 var(--t-jp); letter-spacing: 0.32em; color: var(--tx2); text-transform: none; }
 .ts-card h2 small:lang(zh-Hant) { font-family: var(--t-tc); }
-.ts-card .sum { margin: 0; color: #c9cbd0; font-size: 13px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.ts-stats { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; padding: 14px 0 2px; border-top: 1px solid var(--line); }
+/* the guide's voice: one line that sells the place, set off by the sun's amber */
+.ts-card .sum { margin: 0; padding-left: 13px; border-left: 1px solid var(--amber); color: #dcd8d0; font-size: 13.5px; line-height: 1.6; text-wrap: pretty;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.ts-k { display: block; font: 400 8.5px/1 var(--t-mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--amber); }
+/* must see: three sights, numbered as a game marks its points of interest, each coming in after the last */
+.ts-spots { display: grid; gap: 8px; }
+.ts-spots ol { list-style: none; margin: 0; padding: 0; display: grid; }
+.ts-spots li { position: relative; display: grid; grid-template-columns: 28px 1fr; column-gap: 4px; row-gap: 3px; padding: 8px 0 8px; border-top: 1px solid var(--line); }
+.ts-spots li:last-child { border-bottom: 1px solid var(--line); }
+.ts-spots li::before { content: ""; position: absolute; left: -24px; top: 50%; width: 2px; height: 0; background: var(--amber); transform: translateY(-50%); transition: height 0.35s var(--ease); }
+.ts-spots li:hover::before { height: 70%; }
+.ts-spots i { grid-row: span 2; align-self: center; font: 400 9.5px/1 var(--t-mono); font-style: normal; letter-spacing: 0.08em; color: var(--amber); display: flex; align-items: center; gap: 5px; }
+.ts-spots i::before { content: ""; width: 5px; height: 5px; border: 1px solid var(--amber); transform: rotate(45deg); flex: none; }
+.ts-spots b { font: 300 12px/1.1 var(--t-display); letter-spacing: 0.12em; text-transform: uppercase; color: #fff; }
+.ts-spots li span { font-size: 12px; line-height: 1.35; color: var(--tx2); }
+.ts-card.on .ts-spots li { animation: ts-spot 0.7s var(--ease) both; animation-delay: calc(0.18s + var(--i, 0) * 0.09s); }
+@keyframes ts-spot { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+.ts-stats dd.best small { display: block; margin: 5px 0 0; }
+.ts-where { margin-bottom: -8px; }
+.ts-local { margin: 0; display: grid; gap: 7px; font-size: 12px; line-height: 1.5; color: #bfc2c8; text-wrap: pretty; }
+.ts-stats { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 12px 18px; padding: 14px 0 2px; border-top: 1px solid var(--line); }
 .ts-stats div { display: grid; gap: 5px; }
 .ts-stats dt { font: 400 8.5px/1 var(--t-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--tx3); }
 .ts-stats dd { margin: 0; font: 300 15px/1.1 var(--t-display); letter-spacing: 0.04em; color: var(--tx); font-variant-numeric: tabular-nums; }
@@ -173,7 +192,8 @@
 .ts-btn.primary:hover { background: #ffc48c; border-color: #ffc48c; }
 .ts-btn kbd { font: 400 9px/1 var(--t-mono); letter-spacing: 0.06em; opacity: 0.6; }
 .ts-card.metro { gap: 12px; max-height: calc(100vh - 2 * max(26px, 5vh)); overflow: hidden auto; scrollbar-width: thin; }
-.ts-card.metro .sum { display: none; }
+.ts-card.metro .sum { -webkit-line-clamp: 2; font-size: 12.5px; }
+.ts-card.metro .ts-local { display: none; }
 .ts-card.metro .ts-stats { grid-template-columns: repeat(4, auto); padding-top: 10px; }
 /* a group drawn as a subway map (Tokyo's districts): lines at their real colours, built maps shaded */
 .ts-metro { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
@@ -292,6 +312,9 @@
 .mt-pick em { margin-left: auto; font: 400 8.5px/1 var(--t-mono); font-style: normal; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber); }
 .mt-pick em.next { color: var(--tx3); }
 .mt-pick p { margin: 0; font-size: 12px; line-height: 1.5; color: #c9cbd0; }
+.mt-spots { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.mt-spots li { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.03); font: 400 9px/1 var(--t-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--tx); }
+.mt-spots li::before { content: ""; width: 4px; height: 4px; border: 1px solid var(--amber); transform: rotate(45deg); }
 .ts-sites { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; border-top: 1px solid var(--line); padding-top: 8px; max-height: 40vh; overflow: auto; }
 .ts-sites button { width: 100%; text-align: left; border: 0; background: none; cursor: pointer; padding: 8px 6px; display: grid; gap: 3px; color: var(--tx); }
 .ts-sites button:hover, .ts-sites button:focus-visible { background: rgba(236, 232, 225, 0.06); }
@@ -380,16 +403,26 @@
   .ts-list:has(.ts-item[aria-current="true"]) .ts-item:not([aria-current="true"]) { opacity: 0.6; }
   .ts-menu .ts-hint, .ts-foot { display: none; }
   .ts-card { left: 16px; right: 16px; width: auto; bottom: calc(124px + env(safe-area-inset-bottom, 0px)); padding: 16px 18px; gap: 12px; }
-  .ts-card .sum { display: none; }
+  .ts-card .sum { -webkit-line-clamp: 3; font-size: 12.5px; line-height: 1.5; padding-left: 10px; }
+  .ts-card.metro .sum, .ts-local, .ts-spots .ts-k { display: none; }
+  /* the sights as a row of chips a thumb can swipe */
+  .ts-spots ol { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -18px; padding: 0 18px; }
+  .ts-spots li, .ts-spots li:last-child { flex: none; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.03); }
+  .ts-spots li span, .ts-spots li::before { display: none; }
+  .ts-spots i { font-size: 8.5px; }
+  .ts-spots b { font-size: 10px; white-space: nowrap; }
+  .ts-where { display: none; }
   .ts-metro svg { max-height: 30vh; }
   .ts-card.metro { max-height: calc(100vh - 150px - env(safe-area-inset-bottom, 0px)); }
   .ts-card.metro .ts-stats { grid-template-columns: 1fr 1fr; }
   .mt-legend { display: none; }
   .mt-pick { min-height: 0; }
+  .mt-spots { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .mt-spots li { flex: none; }
   .ts-card h2 { font-size: 24px; }
   .ts-card h2 small { display: inline; margin: 0 0 0 10px; font-size: 13px; }
   .ts-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }
-  .ts-stats div:nth-child(2) { display: none; }
+  .ts-card.metro .ts-stats div:nth-child(2) { display: none; }
   .ts-stats dd { font-size: 13px; }
   .ts-btn { padding: 12px; min-width: 0; }
   .ts-about .cols { grid-template-columns: 1fr; }
@@ -397,4 +430,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ts-card, .ts-menu li { transition: none !important; }
+  .ts-card.on .ts-spots li { animation: none; }
 }

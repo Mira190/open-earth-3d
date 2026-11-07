@@ -59,6 +59,28 @@ full-frame lens at the chosen focal length), and the opening shot of a city has 
 and the camera's motion blur as it cranes in. In play there is neither. Both read a distance
 pass drawn only while they are on.
 
+The motion blur takes 12 taps along each pixel's motion, offset per pixel by interleaved gradient
+noise (Jimenez, *Next Generation Post Processing in Call of Duty: Advanced Warfare*, SIGGRAPH 2014),
+so its steps dissolve into a fine grain instead of standing as copies. Its streak is held to 1.2% of
+the frame. A sample further off than the pixel itself is weighted down, so a far surface doesn't
+smear over a near one (the background-over-foreground rule of McGuire et al., *A Reconstruction
+Filter for Plausible Motion Blur*, I3D 2012, in its simplest form). A camera that jumps more than
+5% of the frame in a frame (a cut, or the first frame after a stall) draws no blur. Before issue
+265 it took 8 even taps up to 3% of the frame: the arrival onto Queenstown's Skyline deck drew
+each edge of the rock and the deck as a row of jagged copies.
+
+### Steep ground (`web/world.js` STEEP_ROCK, every city)
+
+The aerial photograph is taken from straight above, so on a face steeper than about 45 degrees
+each of its pixels is drawn over 1.4 to 4 metres of slope, smeared down the fall line. There the
+photograph gives way to rock, blended in between 44 and 60 degrees of slope: the photograph's own
+tone, blurred to some 30 m, kept to a weathered schist's albedo, with a detail projected along the
+face's three axes (triplanar mapping, so nothing stretches) and a foliation's bands. The game's
+ground keeps its pavers off those faces (`oeSteep`). Near the camera, where a photo pixel is
+magnified past about four screen pixels, its detail is taken towards the mean over a few of its
+pixels and the sky's blue is taken out of its baked shadows: the drawn grain and pavers carry the
+detail there instead of a smear of the photo's roof shadows and kerb lines.
+
 ### Wet streets (`web/mirror.js`, with the weather of #95)
 
 When the ground is wet (`OEWeather.uniforms.uWet`, the weather's), the high tier draws the city a

@@ -4,6 +4,7 @@
 // and links, each timed) and the long tasks.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/walk_hitch.js sydney [seconds, 40] [m/s, 9]   (W, H: the window, 640x400)
+//   PLAY=1 xvfb-run -a node tools/walk_hitch.js queenstown 20   the frames from the press of Play through the arrival
 // TIER=high (default) forces a quality tier. OUT=file.json writes the frames and the GL log as JSON.
 // Software WebGL (llvmpipe) makes the GPU's share far slower than a real device's: compare runs on the
 // same machine, and read the counts of uploads and compiles in the walk before their milliseconds.
@@ -14,7 +15,7 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
   const ctx = await b.newContext({ viewport: { width: +(process.env.W || 640), height: +(process.env.H || 400) }, deviceScaleFactor: 1 });
   await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
-  await ctx.addInitScript(() => {
+  await ctx.addInitScript(STACK => {
     const gl = window.__gl = { on: false, calls: {}, log: [] };
     const P = WebGL2RenderingContext.prototype;
     for (const name of ['texImage2D', 'texSubImage2D', 'texImage3D', 'texStorage2D', 'compressedTexImage2D', 'generateMipmap', 'compileShader', 'linkProgram', 'getProgramParameter', 'getProgramInfoLog']) {
@@ -32,21 +33,45 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
         return r;
       };
     }
+    // which shader each compile is (three.js names its programs in "#define SHADER_NAME"), with its variant's
+    // defines, to tell which materials compile on the way (PLAY=1 lists them)
+    const names = new WeakMap(), src = P.shaderSource;
+    window.__stack = !!STACK;
+    P.shaderSource = function (sh, text) {
+      const nm = (/#define SHADER_NAME (.*)/.exec(text) || [])[1] || '?';
+      const defs = (text.match(/#define (USE_[A-Z_]+|[A-Z_]*INSTANC[A-Z_]*|FLAT_SHADED|DOUBLE_SIDED)\b/g) || []).map(d => d.slice(8)).join(' ');
+      const own = [...new Set((text.match(/uniform\s+\w+\s+(u[A-Z]\w*)/g) || []).map(u => u.split(/\s+/).pop()))].slice(0, 4).join(',');
+      names.set(sh, nm + (own ? ' {' + own + '}' : '') + (/gl_FragColor|pc_fragColor|out highp vec4/.test(text) ? ' (fs)' : ' (vs)') + (defs ? ' [' + defs + ']' : '') + ' #' + text.length);
+      return src.call(this, sh, text);
+    };
+    const comp = P.compileShader;
+    P.compileShader = function (sh) {
+      if (gl.on) gl.shaders.push({ t: performance.now(), what: names.get(sh) || '?',
+        // (STACK=1: the page's own frames that led to it, past three.js)
+        from: window.__stack ? (new Error().stack || '').split('\n').filter(l => /\/(game|web)\/|\/[a-z]+\.js/.test(l) && !/vendor|three/.test(l)).slice(0, 4).map(l => l.trim().replace(/^at /, '').replace(/https?:\/\/[^/]+\//, '')).join(' < ') : undefined });
+      return comp.call(this, sh);
+    };
+    gl.shaders = [];
     const fr = window.__frames = [];
     const tick = t => { fr.push(t); requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
     window.__long = [];
     try { new PerformanceObserver(l => { for (const e of l.getEntries()) window.__long.push({ t: e.startTime, ms: e.duration }); }).observe({ entryTypes: ['longtask'] }); } catch (e) { /* none */ }
-  });
+  }, !!process.env.STACK);
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && !document.querySelector('#g-title').hidden && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
+  let pending0 = null;
+  // PLAY=1: the frames from the press of Play through the arrival (the survey's start, issue 265), not a walk
+  if (process.env.PLAY) await p.evaluate(() => { window.__gl.on = true; window.__frames.length = 0; window.__long.length = 0; window.__loads = []; window.__walkDone = false; });
   await p.evaluate(() => document.querySelector('#gt-play').click());
   await p.waitForFunction(() => window.__game && window.__game.player && !window.__game.cine?.on, null, { timeout: 120000, polling: 500 }).catch(() => {});
-  await p.waitForTimeout(12000); // the arrival plays and settles
-  const pending0 = await p.evaluate(() => window.__game.npcs.filter(n => n.rig.pending).length);
+  await p.waitForTimeout(process.env.PLAY ? +secs * 1000 : 12000); // the arrival plays and settles
+  if (process.env.PLAY) await p.evaluate(() => { window.__walkDone = true; });
+  else {
+  pending0 = await p.evaluate(() => window.__game.npcs.filter(n => n.rig.pending).length);
   // the walk: toward the nearest NPC still to load, at <speed> m/s, the ground's height under each step
   await p.evaluate(([secs, v]) => {
     const g = window.__game, pl = g.player;
@@ -71,6 +96,7 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
     };
     requestAnimationFrame(step);
   }, [+secs, +speed]);
+  }
   await p.waitForFunction(() => window.__walkDone, null, { timeout: (+secs + 120) * 1000, polling: 500 });
   const r = await p.evaluate(() => ({ frames: window.__frames.slice(), long: window.__long.slice(), gl: window.__gl, loads: window.__loads,
     pending: window.__game.npcs.filter(n => n.rig.pending).length }));
@@ -99,6 +125,7 @@ const [,, city = 'sydney', secs = '40', speed = '9'] = process.argv;
     bigUploads: tex.filter(e => e.px >= 256 * 256).length, bigPerFrameMax: bigMax, // a model's texture, not a label's or a lookup's texMs: Math.round(sum(tex)), texMaxMs: Math.round(Math.max(0, ...tex.map(e => e.ms))),
     compiles: comp.filter(e => e.name === 'compileShader').length, linkWaitMs: Math.round(sum(r.gl.log.filter(e => /getProgram/.test(e.name)))),
     worst: spikes.sort((a, b) => b.ms - a.ms).slice(0, 10), errors: errors.slice(0, 5),
+    shaders: process.env.PLAY ? r.gl.shaders.map(e => `${((e.t - r.frames[0]) / 1000).toFixed(1)} s ${e.what}${e.from ? ' <= ' + e.from : ''}`) : undefined,
   };
   console.log(JSON.stringify(out, null, 1));
   if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify(Object.assign({ dts, gl: r.gl.log, loads: r.loads }, out)));
