@@ -61,7 +61,7 @@
     "sea": false,
     "note": "No sea. The Shibuya River runs in a culvert under the station; its open stretch south of it and the Meguro River from Ikejiri-Ohashi down through Nakameguro are concrete channels drawn at their own level (inland, pipeline/inland_water.py), and so are the parks' ponds.",
     "inland": {
-      "note": "Concrete revetments about 4.5-5 m from the street down to a shallow flow (Tokyo Metropolitan Government's river works); the Meguro about 9 m between its walls at Ikejiri-Ohashi and 13 m at Nakameguro, the Shibuya River about 8 m. The ponds at the 5 m laser survey's level.",
+      "note": "Concrete revetments about 4.5-5 m from the street down to a shallow flow (read from photographs, not measured); the Meguro about 9 m between its walls at Ikejiri-Ohashi and 13 m at Nakameguro, the Shibuya River about 8 m. The ponds at the 5 m laser survey's level.",
       "lines": [
         {"name": "目黒川", "width_m": [9.0, 13.0], "bank_to_water_m": 4.5, "water_m": 0.3, "walls": "concrete"},
         {"name": "渋谷川", "width_m": 8.0, "bank_to_water_m": 5.0, "water_m": 0.2, "walls": "concrete"}

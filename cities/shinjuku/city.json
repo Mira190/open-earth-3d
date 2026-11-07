@@ -64,7 +64,7 @@
     "sea": false,
     "note": "No sea. The Shibuya River runs in a culvert; the Kanda River's concrete channel in the north-west corner and the ponds of Shinjuku Gyoen and Meiji Jingu are drawn at their own level (inland, pipeline/inland_water.py).",
     "inland": {
-      "note": "The Kanda River about 11 m between concrete revetments 5 m down to a shallow flow (Tokyo Metropolitan Government's river works); ponds at the 5 m laser survey's level.",
+      "note": "The Kanda River about 11 m between concrete revetments 5 m down to a shallow flow (read from photographs, not measured); ponds at the 5 m laser survey's level.",
       "lines": [{"name": "神田川", "width_m": 11.0, "bank_to_water_m": 5.0, "water_m": 0.3, "walls": "concrete"}],
       "classes": ["pond", "lake", "water", "river", "canal"], "min_area_m2": 250
     }

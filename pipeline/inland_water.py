@@ -257,6 +257,11 @@ def decks(C, bodies, extent):
 
 def main():
     C, _ = city_args(__doc__.splitlines()[0])
+    build(C)
+
+
+def build(C):
+    """Write scene.json "inland" for city C (game_data.py runs it after game.json, whose 5 m terrain it reads)."""
     cfg = C.cfg.get("water", {}).get("inland")
     scene_path = os.path.join(C.out, "scene.json")
     scene = json.load(open(scene_path, encoding="utf8"))
