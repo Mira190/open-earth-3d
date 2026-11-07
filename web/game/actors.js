@@ -1004,7 +1004,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (q.ph === 'wait' && q.v > 0 && Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.6 && !(pz.road && pz.road(q.x, q.y))) { q.T.x = q.x; q.T.y = q.y; } // (and stays where it was pushed, not back into the one who pushed it)
       const fw = heading(q, q.vx, q.vy, dt);
       if (q.face != null) q.h = q.face;
-      else if (q.v > (q.ph === 'wait' ? 0.45 : 0.15) && fw > 0.12) turnTo(q, dt, 6, fw);
+      else if (q.v > (q.ph === 'wait' ? (Math.hypot(q.T.x - q.x, q.T.y - q.y) > 1.2 ? 0.45 : Infinity) : 0.15) && fw > 0.12) turnTo(q, dt, 6, fw); // (waiting, it turns only to walk back a way to its place: shoved about in the press it keeps facing the road, #283)
       else if (q.ph === 'wait') { const h = Math.atan2(-g.ox, -g.oy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 2); } // (facing the road)
       // there: on the far side, on to a kerb of that corner (or this one) to wait again
       if (Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.5) {
@@ -1039,7 +1039,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // that, as before: at the margins above it broke into a step and out of it, Tokyo's "those waiting at its kerbs
       // stand still" step, 1015 turns or steps in 7592 looks)
       const kerb = p.pz && p.ph === 'wait';
-      p.moving = p.state !== 'sit' && (p.moving ? p.av > (kerb ? 0.2 : 0.12) : p.av > (kerb ? 0.4 : 0.35));
+      p.moving = p.state !== 'sit' && (p.moving ? p.av > (kerb ? 0.3 : 0.12) : p.av > (kerb ? 0.55 : 0.35));
     }
     let frame = 0;
     function update(dt, cx, cy, t, player) {
