@@ -1594,6 +1594,20 @@ def write_index():
     # stations grey, as districts still to build; their data stays where it is
     parked = set(idx.get("parked", []))
     idx["cities"] = [c for c in idx["cities"] if c["id"] not in parked]
+    # the cards' travel-guide text (cities/guide.json): a line, three sights, a local custom, the best time
+    gpath = os.path.join(ROOT, "cities", "guide.json")
+    guide = json.load(open(gpath, encoding="utf8")) if os.path.exists(gpath) else {}
+    for c in idx["cities"]:
+        if c["id"] in guide.get("cities", {}):
+            c["guide"] = guide["cities"][c["id"]]
+    for name, g in idx.get("groups", {}).items():
+        gg = dict(guide.get("groups", {}).get(name, {}))
+        ds = gg.pop("districts", {})
+        if gg:
+            g["guide"] = gg
+        for s in g.get("districts", []):
+            if s["name"] in ds:
+                s["guide"] = ds[s["name"]]
     for g in idx.get("groups", {}).values():
         for s in g.get("districts", []):
             if s.get("map") in parked:
@@ -1615,12 +1629,12 @@ def write_index():
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
         if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
             size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
-            # the buildings, landmarks and game packed (pipeline/pack.py, issues 148 and 201) where the pack is
+            # the buildings, landmarks, game, terrain, places and scene packed (pipeline/pack.py, issues 148, 201, 259) where the pack is
             # there and up to date
-            c["packed"] = [n for n in ("buildings", "landmarks", "game")
+            c["packed"] = [n for n in ("buildings", "landmarks", "game", "terrain", "places", "scene")
                            if os.path.exists(os.path.join(data, n + ".bin")) and os.path.exists(os.path.join(data, n + ".json")) and not _pack_stale(c["id"], n + ".json")]
             f = lambda n: n + (".bin" if n in c["packed"] else ".json")
-            model = size(["scene.json", f("buildings"), "places.json", f("landmarks"), "terrain.json", "uncertainty.json"])
+            model = size([f("scene"), f("buildings"), f("places"), f("landmarks"), f("terrain"), "uncertainty.json"])
             c["load_bytes"] = {"model": model, "game": model + size([f("game")])}
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))

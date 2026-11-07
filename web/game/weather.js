@@ -509,7 +509,8 @@ void main() {
         U.uOeRain.value = cur.rain;
         U.uOeT.value = reduced ? tSec * 0.3 : tSec;
         if (su && su.cloudCoverage && baseClouds) {
-          su.cloudCoverage.value = baseClouds[0] + (0.97 - baseClouds[0]) * smooth(0, 1, cur.cloud);
+          const ct = su.cloudTrim || 0; // (more cloud for a shot: the overture's sunset sky, overture.js)
+          su.cloudCoverage.value = Math.min(0.97, baseClouds[0] + ct + (0.97 - baseClouds[0] - ct) * smooth(0, 1, cur.cloud));
           su.cloudDensity.value = baseClouds[1] + (0.85 - baseClouds[1]) * cur.cloud;
         }
         // the camera's velocity, smoothed, for the slant of the streaks
@@ -545,12 +546,18 @@ void main() {
         if (focus) api.focus = focus;
       },
       // while the game loads: the rain's own materials and its pass from above drawn once, so their
-      // shaders compile then rather than in a stall as the first rain comes on
-      warm() {
+      // shaders compile then rather than in a stall as the first rain comes on. compile(obj): the game's,
+      // for the variant the main pass draws with (its post stack's target); without it the whole world was
+      // compiled again for the screen, a variant nothing drew with, in one task (issue 259)
+      warm(compile) {
         if (api.shed >= 2) return;
         const was = [near.visible, far.visible, splash.visible];
         near.visible = far.visible = splash.visible = true;
-        try { renderer.compile(world, camera); if (occRT) renderOcc(-9); } finally { [near.visible, far.visible, splash.visible] = was; occOn.value = 0; occT = -9; }
+        try {
+          if (compile) for (const m of [near, far, splash]) compile(m);
+          else renderer.compile(world, camera);
+          if (occRT) renderOcc(-9);
+        } finally { [near.visible, far.visible, splash.visible] = was; occOn.value = 0; occT = -9; }
       },
       // is a point under cover (a roof within a few metres overhead)? from the last occlusion map
       covered: () => cover.roof,

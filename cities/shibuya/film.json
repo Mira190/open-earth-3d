@@ -1,12 +1,12 @@
 {
-  "name": "Shibuya & Shinjuku",
+  "name": "Shibuya",
   "date": [
     11,
     20
   ],
   "year": 2026,
   "exposure": 1.1,
-  "poster": 21,
+  "poster": 19,
   "score": {
     "root": 49,
     "scale": [
@@ -60,18 +60,18 @@
       "dur": 5.5,
       "type": "move",
       "from": [
-        -1680,
-        2660,
-        115
+        -700,
+        -660,
+        110
       ],
       "to": [
-        -1620,
-        2650,
-        117
+        -650,
+        -680,
+        112
       ],
       "look": [
-        -433,
-        2330,
+        518,
+        -1124,
         190
       ],
       "fov": 26,
@@ -86,8 +86,8 @@
         "at": 0.9,
         "until": 5.2,
         "lines": [
-          "35.69°N 139.69°E",
-          "Sunrise behind Nishi-Shinjuku · 06:21 JST",
+          "35.66°N 139.70°E",
+          "Sunrise behind Shibuya Scramble Square · 06:21 JST",
           "The real sun, for the day you watch"
         ]
       },
@@ -103,21 +103,21 @@
       "dur": 4.5,
       "type": "move",
       "from": [
-        700,
-        -2500,
-        230
+        -330,
+        -80,
+        360
       ],
       "to": [
-        660,
-        -2750,
-        420
+        -400,
+        0,
+        500
       ],
       "look": [
         380,
-        900,
-        160
+        -1000,
+        -170
       ],
-      "fov": 32,
+      "fov": 30,
       "time": [
         "07:30"
       ],
@@ -125,10 +125,10 @@
         "kind": "main",
         "at": 0.4,
         "until": 4.3,
-        "name": "Shibuya & Shinjuku",
-        "native": "渋谷・新宿",
+        "name": "Shibuya",
+        "native": "渋谷",
         "sub": "Japan",
-        "figures": "90,304 buildings · 5.4 × 6.2 km · 86% of heights surveyed by PLATEAU"
+        "figures": "47,787 buildings · 4.5 × 4.0 km · 87% of heights surveyed by PLATEAU"
       },
       "tint": [
         1.04,
@@ -137,36 +137,36 @@
       ]
     },
     {
-      "id": "stairs",
-      "chapter": "The stairs",
+      "id": "yoyogi",
+      "chapter": "Yoyogi",
       "dur": 5,
       "type": "move",
       "from": [
-        2442,
-        1854,
-        23.9
+        640,
+        130,
+        60
       ],
       "to": [
-        2440,
-        1851.5,
-        23.85
+        610,
+        150,
+        58
       ],
       "look": [
-        2426,
-        1833,
-        29.6
+        331,
+        -95,
+        45
       ],
-      "fov": 32,
+      "fov": 28,
       "time": [
-        "08:40"
+        "15:50"
       ],
       "title": {
         "kind": "lower",
         "at": 0.6,
         "until": 4.6,
-        "eyebrow": "Suga Shrine, Yotsuya",
-        "head": "The 男坂",
-        "text": "Fifty-two stone steps between red handrails: the stairs at the end of Your Name, ten years old this year."
+        "eyebrow": "Yoyogi Park, 1964",
+        "head": "Yoyogi National Gymnasium",
+        "text": "Kenzo Tange's roofs for the Tokyo Olympics hang on steel cables slung between two concrete masts."
       }
     },
     {
@@ -216,21 +216,21 @@
       "dur": 5,
       "type": "move",
       "from": [
-        690,
-        -1012,
-        238
+        700,
+        -1005,
+        206
       ],
       "to": [
-        705,
-        -995,
-        234
+        714,
+        -990,
+        204
       ],
       "look": [
         518,
         -1124,
-        236
+        238
       ],
-      "fov": 26,
+      "fov": 24,
       "time": [
         "16:24"
       ],
@@ -244,43 +244,45 @@
       }
     },
     {
-      "id": "kabukicho",
-      "chapter": "After dark",
+      "id": "omotesando",
+      "chapter": "Golden hour",
       "dur": 4.5,
       "type": "move",
       "from": [
-        404,
-        2780,
-        35.3
+        1192,
+        -225,
+        5.5
       ],
       "to": [
-        405,
-        2788,
-        35.3
+        1180,
+        -218.5,
+        5.5
       ],
       "look": [
-        409,
-        2830,
-        39
+        1040,
+        -140,
+        10
       ],
       "fov": 30,
       "time": [
-        "20:10"
+        "16:28"
       ],
+      "agl": true,
+      "hand": 1,
       "people": [
-        408,
-        2810
+        1150,
+        -205
       ],
-      "crowd_r": 40,
-      "crowd_n": 140,
-      "crowd_clear": 12,
+      "crowd_r": 45,
+      "crowd_n": 90,
+      "crowd_clear": 10,
       "title": {
         "kind": "lower",
         "at": 0.6,
         "until": 4.2,
-        "eyebrow": "Shinjuku",
-        "head": "Kabukicho Ichibangai",
-        "text": "The red arch has lit the way in since 1969, to a kabuki theatre that was never built."
+        "eyebrow": "Harajuku to Aoyama",
+        "head": "Omotesando",
+        "text": "Meiji Shrine's front approach since 1920: a kilometre of zelkova trees, and the shops under them."
       }
     },
     {
@@ -288,30 +290,30 @@
       "dur": 7,
       "type": "move",
       "from": [
-        1700,
-        1300,
-        260
+        1150,
+        -420,
+        110
       ],
       "to": [
-        1600,
-        1360,
-        270
+        1080,
+        -390,
+        118
       ],
       "look": [
-        -200,
-        2350,
-        160
+        480,
+        -1120,
+        130
       ],
       "fov": 28,
       "time": [
-        "20:40",
-        "20:48"
+        "17:10",
+        "17:45"
       ],
       "title": {
         "kind": "end",
         "at": 3.2,
         "until": 7,
-        "name": "Shibuya & Shinjuku",
+        "name": "Shibuya",
         "line": "The model, the sun and the city: open them."
       },
       "tint": [
@@ -322,5 +324,6 @@
       "sat": 1.12,
       "ev": 0.3
     }
-  ]
+  ],
+  "grade": "game"
 }

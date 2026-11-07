@@ -635,7 +635,11 @@ window.OEEarth = (function () {
         if (!tex.lights) earthU.uLightsMap.value = tex.surf;
       });
       const day = fetchImage(base + files[3][0], (b, t) => tick(3, b, t)).then(img => { tex.day = texture(img, renderer, W); earthU.uDay.value = tex.day; });
-      const cl = fetchImage(base + files[4][0], (b, t) => tick(4, b, t)).then(img => { tex.clouds = texture(img, renderer, q.clouds); earthU.uClouds.value = tex.clouds; });
+      const cl = fetchImage(base + files[4][0], (b, t) => tick(4, b, t)).then(img => {
+        tex.clouds = texture(img, renderer, q.clouds);
+        tex.clouds.format = THREE.RedFormat; // grey, read as .r: a byte a texel on the GPU, not four (43 MB to 11 at 4096 x 2048)
+        earthU.uClouds.value = tex.clouds;
+      });
       // the lights at 8192 x 4096, one channel, where the screen is big enough to show them
       const li = !q.lights8k || renderer.capabilities.maxTextureSize < 8192 ? null : fetchImage(base + files[5][0], (b, t) => tick(5, b, t)).then(img => {
         const t = new THREE.Texture(img);

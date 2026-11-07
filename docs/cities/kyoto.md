@@ -150,6 +150,12 @@ other window, staggered floor to floor, and a glazed top storey. Rooms are lit o
 ![The Granvia: the photograph (Fg2, public domain), and the model at day and night](../images/kyoto/granvia.jpg)
 ![On a phone, day, dusk and night](../images/kyoto/granvia-phone.jpg)
 
+**Two covered walks (#263).** Two roofs mapped as `building=roof` beside a hotel south of the station
+(w1316075664 and w1316075663, 91 and 143 m², thin and along the footways, so `pipeline/arcades.py` takes them for
+arcades) stood 38.4-41.4 m up on posts: 41.4 m is the hotel's top, which the height matching gave them. The
+borrowed-top rule (a roof on posts whose top is a touching building's) now covers arcades too, held to a covered
+walk's 6 m, its underside at 4.5 m.
+
 **Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
 due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
 

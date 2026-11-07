@@ -175,6 +175,9 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // yozakura (#162): an area with "yozakura" lights its cherries after dark while they flower: uplights at each
   // tree's foot (a pool of light round it) and bonbori, paper lanterns on posts, along its ways on foot (foot: the
   // city's night.json, whose foot and foot_pts are the mapped footways), or beside its trees where none is mapped;
+  // an area with "lanterns": "chochin" hangs chochin on a rope along its edge instead, lantern_inset metres inside
+  // its outline (a river's railings, when the area is the river buffered) and lantern_spacing apart, where its
+  // lit cherries stand (the Meguro River's festival lanterns, #241);
   // night: the uniform world.js sets after dark (0..1); small: the light tier (fewer lanterns, no glows);
   // farKeep: the share of a wood's far crowns (past 200 m, where half stand for all) the tier draws
   function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, night = null, foot = null, small = false, farKeep = 1 } = {}) {
@@ -250,7 +253,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       return mats[name];
     };
     // which species each tree is, its matrix and its tint
-    const lit = new Float32Array(n), isCherry = new Set(varieties.map(o => o.sp)), litVar = new Set();
+    const lit = new Float32Array(n), litZone = new Int16Array(n).fill(-1), isCherry = new Set(varieties.map(o => o.sp)), litVar = new Set();
     const which = new Int16Array(n), far = new Float32Array(n).fill(1), half = new Uint8Array(n), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
     const names = weights.map(([k]) => k), count = names.map(() => 0);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color();
@@ -260,7 +263,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       const zi = zones.findIndex(a => inZone(a, x, y));
       const k = pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
       which[i] = k; count[k]++;
-      if (zi >= 0 && zones[zi].yozakura && isCherry.has(weights[k][0])) { lit[i] = 1; litVar.add(varieties.find(o => o.sp === weights[k][0]).v); }
+      if (zi >= 0 && zones[zi].yozakura && isCherry.has(weights[k][0])) { lit[i] = 1; litZone[i] = zi; litVar.add(varieties.find(o => o.sp === weights[k][0]).v); }
       if (wood) { half[i] = 1 + Math.floor(hash(x + 5, y + 9) * 254); far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
       const s = i >= measured ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
@@ -449,7 +452,8 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
         if (!cellOf2.has(key)) cellOf2.set(key, []);
         cellOf2.get(key).push([x, y]); L.push([x, y, z]);
       };
-      const inYoz = (x, y) => yz.some(a => inZone(a, x, y));
+      const hang = a => a.lanterns === 'chochin';
+      const inYoz = (x, y) => yz.some(a => !hang(a) && inZone(a, x, y)); // (the bonbori: not where chochin hang)
       const spacing = small ? 14 : 7;
       if (foot && foot.foot && foot.foot_pts) {
         const unpack = b64 => { const t = atob(b64), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return new Int16Array(u.buffer); };
@@ -473,11 +477,52 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
         }
       }
       // where a lit place has no footway mapped through it: beside every other lit tree
-      for (let i = 0; i < n; i++) if (lit[i] && (i & 1) && !(M[16 * i] === 0 && M[16 * i + 2] === 0)) {
+      for (let i = 0; i < n; i++) if (lit[i] && (i & 1) && !hang(zones[litZone[i]]) && !(M[16 * i] === 0 && M[16 * i + 2] === 0)) {
         const x = pos[3 * i], y = -pos[3 * i + 2], a = hash(x + 3, y + 7) * Math.PI * 2;
         if (!near(x, y, spacing * 1.2)) add(x + Math.cos(a) * 3.5, y + Math.sin(a) * 3.5, pos[3 * i + 1] - 4);
       }
       const nL = L.length, nT = lit.reduce((a, v) => a + v, 0);
+      // the chochin: x, y, z (ground), and the ropes between them (pairs of indices), along each hanging area's
+      // outline, inset, every lantern_spacing metres, only where a lit cherry stands within 16 m (the ground's
+      // height is its foot's: the festival's lanterns run where its trees do)
+      const C = [], ropes = [];
+      if (yz.some(hang)) {
+        const G = new Map(), key = (x, y) => Math.floor(x / 16) * 100003 + Math.floor(y / 16);
+        for (let i = 0; i < n; i++) if (lit[i] && hang(zones[litZone[i]]) && !(M[16 * i] === 0 && M[16 * i + 2] === 0)) {
+          const x = pos[3 * i], y = -pos[3 * i + 2], k = key(x, y);
+          if (!G.has(k)) G.set(k, []); G.get(k).push([x, y, pos[3 * i + 1] - 4]);
+        }
+        const footOf = (x, y) => {
+          let best = 256, z = null;
+          for (let gx = Math.floor(x / 16) - 1; gx <= Math.floor(x / 16) + 1; gx++) for (let gy = Math.floor(y / 16) - 1; gy <= Math.floor(y / 16) + 1; gy++)
+            for (const [a, b, c] of G.get(gx * 100003 + gy) || []) { const d = (a - x) ** 2 + (b - y) ** 2; if (d < best) { best = d; z = c; } }
+          return z;
+        };
+        const cap = small ? 400 : 1600;
+        for (const a of yz.filter(hang)) {
+          const inset = a.lantern_inset ?? 2, step = (a.lantern_spacing ?? 3.5) * (small ? 2 : 1);
+          for (const { P } of a.polys) {
+            let area = 0;
+            for (let j = 0; j < P.length; j++) { const [x0, y0] = P[j], [x1, y1] = P[(j + 1) % P.length]; area += x0 * y1 - x1 * y0; }
+            const turn = area > 0 ? 1 : -1; // (inward: to the left of a ring wound anticlockwise)
+            let prev = -1, next = 0, acc = 0;
+            for (let j = 0; j < P.length && C.length < cap; j++) {
+              const [ax, ay] = P[j], [bx, by] = P[(j + 1) % P.length], len = Math.hypot(bx - ax, by - ay);
+              if (len < 0.01) continue;
+              const ux = (bx - ax) / len, uy = (by - ay) / len, nx = -uy * turn, ny = ux * turn;
+              for (; next <= acc + len && C.length < cap; next += step) {
+                const t = next - acc, x = ax + ux * t + nx * inset, y = ay + uy * t + ny * inset;
+                const z = inZone(a, x, y) ? footOf(x, y) : null;
+                if (z == null) { prev = -1; continue; }
+                if (prev >= 0 && Math.hypot(C[prev][0] - x, C[prev][1] - y) < step * 1.8) ropes.push([prev, C.length]);
+                prev = C.length; C.push([x, y, z]);
+              }
+              acc += len;
+            }
+          }
+        }
+      }
+      const nC = C.length;
       // the bonbori: a dark post with a cap, a washi shade glowing from inside, a halo round it
       const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.035, 0.045, 1.3, 6).translate(0, 0.65, 0), new THREE.MeshStandardMaterial({ color: 0x2b211c, roughness: 0.8 }), Math.max(1, nL));
       const shadeMat = new THREE.MeshStandardMaterial({ color: 0xf1e7d6, roughness: 0.9, emissive: new THREE.Color(1.0, 0.62, 0.32), emissiveIntensity: 0 });
@@ -490,11 +535,26 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       // the pools: a disc on the ground round each lit tree (its uplights) and each lantern
       const poolMat = new THREE.MeshBasicMaterial({ map: glowTex, color: new THREE.Color(1.0, 0.78, 0.62), transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
         depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: true });
-      const pool = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), poolMat, Math.max(1, nT + nL));
+      const pool = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), poolMat, Math.max(1, nT + nL + nC));
+      // the chochin: a pink washi lantern (Nakameguro's festival lanterns are pink) between black lacquered rims,
+      // hung from a rope that sags a little between each two; a halo round each after dark
+      const HANG = 1.95, MID = 1.62;
+      const paperMat = new THREE.MeshStandardMaterial({ color: 0xee9fb0, roughness: 0.85, emissive: new THREE.Color(1.0, 0.46, 0.52), emissiveIntensity: 0 });
+      const paper = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 12, 8).scale(1, 1.5, 1).translate(0, MID, 0), paperMat, Math.max(1, nC));
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.5 });
+      const rims = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.095, 0.095, 0.05, 10).translate(0, MID + 0.235, 0), rimMat, Math.max(1, nC * 2));
+      const ropePos = new Float32Array(ropes.length * 12 + nC * 6);
+      const rope = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(ropePos, 3)), new THREE.LineBasicMaterial({ color: 0x2a2420 }));
+      const chPos = new Float32Array(nC * 3);
+      const chHalo = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(chPos, 3)),
+        new THREE.PointsMaterial({ map: glowTex, size: 1.2, sizeAttenuation: true, color: new THREE.Color(1.0, 0.55, 0.58), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+      for (const m of [paper, rims, rope, chHalo]) m.frustumCulled = false;
+      paper.castShadow = rims.castShadow = false; paper.count = rims.count = 0;
       for (const m of [post, shade, cap, pool]) { m.frustumCulled = false; m.castShadow = m !== pool; m.receiveShadow = m !== pool; m.count = 0; }
       pool.castShadow = false; pool.renderOrder = 1;
       const group = new THREE.Group(); group.name = 'yozakura'; group.visible = false;
       group.add(post, shade, cap, pool); if (!small) group.add(halo);
+      if (nC) { group.add(paper, rims, rope); if (!small) group.add(chHalo); }
       world.add(group);
       // stand them on the ground (ground(x, y, z): the game's, after a reseat; else the data's heights)
       const place = ground => {
@@ -507,6 +567,23 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
           m4.makeScale(4.4, 1, 4.4).setPosition(x, zz + 0.12, -y); pool.setMatrixAt(j, m4);
         });
         let j = nL;
+        const cz = C.map(([x, y, z]) => { const g = ground ? ground(x, y, z) : z; return g == null ? z : g; });
+        C.forEach(([x, y], c) => {
+          const zz = cz[c], sw = 0.04 * (hash(x, y) - 0.5);
+          m4.compose(new THREE.Vector3(x, zz, -y), q0.setFromAxisAngle(new THREE.Vector3(0, 0, 1), sw), new THREE.Vector3(1, 1, 1));
+          paper.setMatrixAt(c, m4); rims.setMatrixAt(2 * c, m4);
+          m4.multiply(new THREE.Matrix4().makeTranslation(0, -0.47, 0)); rims.setMatrixAt(2 * c + 1, m4);
+          chPos.set([x, zz + MID, -y], 3 * c);
+          ropePos.set([x, zz + HANG, -y, x, zz + MID + 0.26, -y], ropes.length * 12 + 6 * c); // (the cord down to its rim)
+          m4.makeScale(3, 1, 3).setPosition(x, zz + 0.12, -y); pool.setMatrixAt(j++, m4);
+        });
+        ropes.forEach(([a, b], r) => {
+          const [ax, ay] = C[a], [bx, by] = C[b], mx = (ax + bx) / 2, my = (ay + by) / 2, mz = (cz[a] + cz[b]) / 2 + HANG - 0.14;
+          ropePos.set([ax, cz[a] + HANG, -ay, mx, mz, -my, mx, mz, -my, bx, cz[b] + HANG, -by], 12 * r);
+        });
+        paper.count = nC; rims.count = 2 * nC;
+        paper.instanceMatrix.needsUpdate = rims.instanceMatrix.needsUpdate = true;
+        rope.geometry.attributes.position.needsUpdate = chHalo.geometry.attributes.position.needsUpdate = true;
         for (let i = 0; i < n; i++) if (lit[i] && !(M[16 * i] === 0 && M[16 * i + 2] === 0)) {
           const s = Math.hypot(M[16 * i], M[16 * i + 2]), r = 10 * s;
           m4.makeScale(r, 1, r).setPosition(pos[3 * i], pos[3 * i + 1] - 4 + 0.12, pos[3 * i + 2]); pool.setMatrixAt(j++, m4);
@@ -517,11 +594,12 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       };
       place(null);
       return {
-        group, place, lanterns: nL, trees: nT,
+        group, place, lanterns: nL, chochin: nC, trees: nT,
         // per frame: how lit they are (after dark, in the bloom), and the season (whether they are out at all)
         set(k, out) {
           group.visible = out;
           shadeMat.emissiveIntensity = 2.6 * k; halo.material.opacity = 0.85 * k; poolMat.opacity = 0.32 * k;
+          paperMat.emissiveIntensity = 2.4 * k; chHalo.material.opacity = 0.8 * k;
         },
       };
     }
@@ -529,7 +607,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
     return {
       n, species: names, count,
       // the yozakura lights (#162): how many trees are lit and how many lanterns stand, for the tools
-      yozakura: () => (Y ? { trees: Y.trees, lanterns: Y.lanterns, on: U.uYoz.value, out: Y.group.visible } : null),
+      yozakura: () => (Y ? { trees: Y.trees, lanterns: Y.lanterns, chochin: Y.chochin, on: U.uYoz.value, out: Y.group.visible } : null),
       // the falling petals (#223): how many cards there are and round how many crowns they fall now, for the tools
       petals: () => (PT ? { cards: PT.mesh.geometry.instanceCount, crowns: PT.crowns(), visible: PT.mesh.visible } : null),
       // the season the trees show: flowering, autumn colour and how bare the deciduous ones are (0..1)

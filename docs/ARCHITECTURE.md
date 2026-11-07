@@ -677,6 +677,14 @@ keys each program on more than the material, so these rules hold for every page:
   game opens. A pass the title doesn't draw (the arrival's depth of field) is compiled behind the
   loader (`atmos.warm`). A stand-in for it needs the pass's own attributes, since attributes are
   part of the variant.
+- **Compile the city in slices.** `compileAsync` creates every program of the scene in one call, a
+  task of 10–25 s on a software renderer. `OEWorld.compile` compiles a big object in slices of about
+  50 ms, object by object, and yields between them; the loaders hold their first draw until it is
+  done, since a draw would compile the rest in one frame. The mirror's clipped variant compiles the
+  same way behind the title. The weather's warm-up compiles only the rain's own meshes.
+- **Share programs that differ only in uniforms.** Landmark materials key their programs by the text
+  their `onBeforeCompile` chain writes (`byText` in `world.js`), not by name: in Sydney 128 landmark
+  programs were 42 shaders.
 - **Avoid passes that draw the whole scene with an `overrideMaterial`.** Each kind of mesh
   (plain, instanced, skinned, batched) gets its own variant of the override, and the scene's
   geometry is drawn again. The camera effects read the depth buffer the scene already wrote
@@ -952,10 +960,21 @@ flower (from the first flowers to the petals' fall, the light-ups' season).
   (night.json's), on alternate sides 1.5 m off the centre line, or beside every
   other lit tree where none is mapped: a dark post, a washi shade lit warm from
   inside and a halo. On the light tier every 14 m, at most 240, and no halos.
+- **The chochin** (#241): an area with `"lanterns": "chochin"` hangs paper lanterns
+  on a rope along its edge instead of standing bonbori: `lantern_inset` metres inside
+  its outline (for a river buffered from its line, the railings) every
+  `lantern_spacing` metres (twice that on the light tier, at most 400; 1,600 on the
+  others), only where a lit cherry stands within 16 m, at its foot's height. Each is
+  a pink washi lantern between black lacquered rims on a cord from the rope, which
+  sags between each two, with a halo and a small pool of light after dark. The
+  Meguro River's festival lanterns are pink, hung along both railings.
 - **Where:** Chidorigafuchi and its Ryokudo (Tokyo; the Chiyoda Sakura
-  Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama).
-  The Meguro River waits for Shibuya's opening film; Ueno's Sakura-dori and
-  Osaka's Mint are parked.
+  Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama), the
+  Meguro River (Shibuya, with chochin). Ueno's Sakura-dori and Osaka's Mint are
+  parked.
+
+![The Meguro River at 20:30 in the bloom: chochin along the railings under the lit cherries](images/trees/meguro_yozakura.jpg)
+![The Meguro River's chochin by day, and on a phone at night](images/trees/meguro_day_phone.jpg)
 
 ![Yozakura at 20:00: Chidorigafuchi's moat (left) and Maruyama Park round the Gion weeping cherry](images/trees/yozakura.jpg)
 ![On a phone: Chidorigafuchi and Maruyama at night, and Chidorigafuchi by day in the bloom](images/trees/yozakura_phone.jpg)
@@ -996,7 +1015,13 @@ waits for Shibuya's opening film.
   the woods' (`keep`, `WOOD_M`), and the cost per tier moves by the same 1-4 %. The
   canopy model itself has little canopy outside the woods in these cities (in
   Kyoto 77 ha of canopy over 4 m in 1,500 ha, 68 ha of it in the woods), so the fill
-  is modest; where WorldCover calls a street tree built-up, none is planted.
+  is modest. Where WorldCover calls a narrow street row built-up (its 10 m cells see
+  the road and the roofs round it), the canopy is trusted too within 12 m of a
+  road's centre line where the aerial photograph is greener than red or blue by
+  0.015 (the open-ground test's threshold), a sunlit crown (#241, `STREET_ROW_M`,
+  `GREEN_EXG`): 2.2 ha of street rows in Kyoto (196 street trees to 253), 1.4 ha in
+  Sydney, 0.7 in Shibuya and Tetsugaku, 0.1-0.5 elsewhere. The rest of Kyoto's 16 ha
+  of canopy without WorldCover's agreement is not along a road (gardens, banks).
 
 ![The fill outside the parks, at 11:00](images/trees/canopy_fill.jpg)
 
@@ -1215,6 +1240,14 @@ stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
 
 The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
 more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
+
+The live cities' `landmarks.json`, `game.json`, `terrain.json`, `places.json` and `scene.json` are
+packed the same way (issues 201, 259) and decoded in a Worker (`web/pack-worker.js`), so that nothing
+is parsed on the main thread at load: the landmark meshes' vertex lists arrive as typed arrays, and the
+height grids (`terrain.json` and `game.json` terrain, patches and upper) and the game's water mask as
+`Uint8Array`, which `world.js`, `game.js`, `hud.js` and `nav.js` read as they are (they still take base64
+from the JSON, the fallback). The loader says when the files are in and the packs are unpacking, and
+shows its stage under the label (`OEWorld.loadLine`).
 
 ### Shared models: meshopt
 

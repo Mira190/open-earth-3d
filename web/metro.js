@@ -71,7 +71,7 @@
       const side = at === 'r' && x < 84 ? 'below' : at === 'l' && x > W - 84 ? 'below' : at;
       const [mx, my, ma] = { r: [x - 12, y + 3, 'end'], l: [x + 12, y + 3, 'start'], t: [x, y + 20, 'middle'], b: [x, y - 13, 'middle'], below: [x, y + 21, 'middle'] }[side];
       const mark = i === hereAt ? `<g class="mt-you" aria-hidden="true"><circle class="mt-youring" cx="${f(x)}" cy="${f(y)}" r="11"/><text x="${f(mx)}" y="${f(my)}" text-anchor="${ma}">YOU ARE HERE</text></g>` : '';
-      return `<g class="mt-stn${s.map ? ' on' : ''}${s.map && s.map === here ? ' here' : ''}" style="--k:${i}" data-district="${i}" tabindex="0" role="button" aria-label="${escH(s.name)}${s.map ? '' : ', next in line'}${i === hereAt ? ', you are here' : ''}">
+      return `<g class="mt-stn${s.map ? ' on' : ''}${s.map && s.map === here ? ' here' : ''}" style="--k:${i}" data-district="${i}" tabindex="0" role="button" aria-label="${escH(s.name)}${s.map ? '' : ', coming soon'}${i === hereAt ? ', you are here' : ''}">
         ${s.map ? `<circle class="mt-ring" cx="${f(x)}" cy="${f(y)}" r="7"/>` : ''}<circle class="mt-dot" cx="${f(x)}" cy="${f(y)}" r="${s.map ? 7 : 5}"/><text x="${f(tx)}" y="${f(ty)}" text-anchor="${an}" lang="ja">${escH(s.native)}</text>${mark}</g>`;
     }).join('');
     const legend = m.lines.map(l => `<span style="--c:${l.colour}"><i></i>${escH(l.native || l.name)}</span>`).join('');
@@ -124,10 +124,13 @@
       : stay ? `<div class="ts-actions"><button class="ts-btn primary" data-close>Stay here <kbd>Esc</kbd></button></div>`
       : o.play === false ? `<div class="ts-actions"><button class="ts-btn primary" data-map="${c.id}" data-go="model">${label} <kbd>↵</kbd></button>${c.game ? `<button class="ts-btn" data-map="${c.id}" data-go="play"${arrive}>Play <kbd>P</kbd></button>` : ''}</div>`
       : `<div class="ts-actions">${c.game ? `<button class="ts-btn primary" data-map="${c.id}" data-go="play"${arrive}>${label} <kbd>${travel ? '↵' : 'P'}</kbd></button>` : ''}<button class="ts-btn" data-map="${c.id}" data-go="model">Explore in 3D${travel ? '' : ' <kbd>↵</kbd>'}</button></div>`;
-    const tag = !c ? '<em class="next">Next in line</em>' : stay ? '<em>You are here</em>' : `<em>${escH(c.name)} map</em>`;
-    const note = c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || '';
+    const tag = !c ? '<em class="next">Coming soon</em>' : stay ? '<em>You are here</em>' : `<em>${escH(c.name)} map</em>`;
+    // as a travel guide reads (cities/guide.json): the district's hook and its sights, else the map's line
+    const sg = s.guide || {};
+    const note = sg.line || (c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || '');
+    const spots = sg.spots ? `<ul class="mt-spots">${sg.spots.map(n => `<li>${escH(n)}</li>`).join('')}</ul>` : '';
     for (const el of root.querySelectorAll('.mt-pick')) {
-      el.innerHTML = `<div class="mt-name"><b>${escH(s.name)}</b><small lang="ja">${escH(s.native)}</small>${tag}</div><p>${escH(note)}</p>${acts}`;
+      el.innerHTML = `<div class="mt-name"><b>${escH(s.name)}</b><small lang="ja">${escH(s.native)}</small>${tag}</div><p>${escH(note)}</p>${spots}${acts}`;
     }
   }
 

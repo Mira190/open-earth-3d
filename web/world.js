@@ -12,6 +12,20 @@ window.OEWorld = (function () {
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const idle = () => new Promise(r => setTimeout(r, 0));
 
+  // The loader's lines (index.html #load-* and #g-load-*): what is being done, the bar, and the stage the
+  // load is at, which the caller can name (a third argument) or which follows from how far along it is, so
+  // that the page never sits on a finished download while the packs decode and the shaders compile.
+  const STAGES = [[0.28, 'Downloading'], [0.995, 'Building the city'], [Infinity, 'Preparing the city']];
+  function loadLine(prefix = '') {
+    const msg = document.getElementById(prefix + 'load-msg'), bar = document.getElementById(prefix + 'load-bar'),
+      stage = document.getElementById(prefix + 'load-stage');
+    return (t, f, st) => {
+      if (msg) msg.textContent = t;
+      if (bar) bar.style.width = `${Math.round(f * 100)}%`;
+      if (stage) stage.textContent = st || (f > 0 ? STAGES.find(([to]) => f < to)[1] : '');
+    };
+  }
+
   // the city's data files; game.json too when asked for
   async function load(cityId, { game = false, onMsg = () => {} } = {}) {
     const DATA = `data/${cityId}/`;
@@ -25,8 +39,12 @@ window.OEWorld = (function () {
       if (now - shown < 80) return;
       shown = now;
       onMsg(want ? `Downloading ${entry.name || 'the city'}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
-        0.02 + 0.26 * (want ? Math.min(1, got / want) : 0));
+        0.02 + 0.26 * (want ? Math.min(1, got / want) : 0), 'Downloading');
     };
+    // once every file is in, the packs are still decoding (in a Worker) and the JSON parsing: said so,
+    // rather than leaving the label on a download that has finished
+    let open = 0;
+    const unpack = () => { if (--open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
     const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
       if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
@@ -38,22 +56,26 @@ window.OEWorld = (function () {
       }
       return new Blob(parts);
     };
-    const getJSON = async u => JSON.parse(await (await fetchAll(await fetch(DATA + u), u)).text());
-    // the buildings, landmarks and game as packed by pipeline/pack.py (a quarter to a third of the JSON's
-    // download, issues 148 and 201) and decoded in a Worker (pack-worker.js), so that the loader's bar
+    const fetchFile = async u => { open++; try { return await fetchAll(await fetch(DATA + u), u); } finally { unpack(); } };
+    const getJSON = async u => JSON.parse(await (await fetchFile(u)).text());
+    // the buildings, landmarks, game, terrain, places and scene as packed by pipeline/pack.py (a quarter to a
+    // third of the JSON's download, issues 148, 201 and 259) and decoded in a Worker (pack-worker.js), so that the loader's bar
     // keeps moving; as JSON where a city has no pack yet or the browser cannot inflate one
     const getPacked = async name => {
       if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
-          const r = await fetch(DATA + name + '.bin');
-          if (r.ok) return await (OEPack.decodeIn || OEPack.decode)(await (await fetchAll(r, name + '.bin')).arrayBuffer());
+          const buf = await (await fetchFile(name + '.bin')).arrayBuffer();
+          return await (OEPack.decodeIn || OEPack.decode)(buf);
         } catch (e) { console.warn(`${name}.bin:`, e); }
       }
       return getJSON(name + '.json');
     };
-    onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
-    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getPacked('buildings'), getJSON('places.json'),
-      getPacked('landmarks'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
+    onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
+    // the terrain grid: int16 heights, as bytes from its pack or as base64 text from its JSON
+    const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
+      return u.byteOffset % 2 ? u.slice().buffer : u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); };
+    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getPacked('scene'), getPacked('buildings'), getPacked('places'),
+      getPacked('landmarks'), getPacked('terrain').then(grid),
       getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;
@@ -510,6 +532,44 @@ vec3 photoGrade(vec3 c) {
   c = pow(max(c - uPhotoGrade.x, 0.0) / (1.0 - uPhotoGrade.x), vec3(uPhotoGrade.y));
   return max(mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, uPhotoGrade.z), 0.0);
 }`;
+  // Steep ground: the aerial photograph is taken from straight above, so on a face steeper than about
+  // 45 degrees each of its pixels is drawn over 1.4 to 4 metres of slope, smeared down the fall line
+  // into grey-white streaks (the schist under the Skyline deck on Bob's Peak, issue 265). There the
+  // photograph gives way to rock: its own tone, blurred to some 30 m so its streaks go, with a detail
+  // projected along the face's three axes (triplanar, so nothing stretches) and a foliation's bands.
+  // oeSteep (0 flat, 1 a cliff) is left for the game's ground to keep its pavers off the faces.
+  const STEEP_ROCK = `varying vec3 vRockWP, vRockWN;
+float rockH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float rockN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(rockH(i), rockH(i + vec2(1, 0)), f.x), mix(rockH(i + vec2(0, 1)), rockH(i + vec2(1, 1)), f.x), f.y); }
+float rockFace(vec2 p, float fine) { return rockN(p * 0.21) * 0.42 + rockN(p * 0.83 + 5.3) * 0.3 + (rockN(p * 3.1 + 1.7) * 0.18 + rockN(p * 11.0) * 0.1) * fine; }
+float steepness() { return smoothstep(0.72, 0.5, normalize(vRockWN).y); }
+vec3 steepRock(vec3 c, float k) {
+  if (k < 0.003) return c;
+  vec3 n = normalize(vRockWN), w = pow(abs(n), vec3(4.0));
+  w /= dot(w, vec3(1.0));
+  float d = distance(vRockWP, cameraPosition), fine = 1.0 - smoothstep(60.0, 260.0, d);
+  float r = rockFace(vRockWP.zy, fine) * w.x + rockFace(vRockWP.xz, fine) * w.y + rockFace(vRockWP.xy, fine) * w.z;
+  // the schist's foliation: bands along the height, warped, finer near
+  float band = rockN(vec2(vRockWP.y * 0.9 + rockN(vRockWP.xz * 0.05) * 7.0, 0.5));
+  // the photograph's tone over some 30 m (its mip there), kept to the albedo weathered schist has
+#ifdef USE_MAP
+  vec2 oeT = vec2(textureSize(map, 0));
+  float mpp = length(fwidth(vRockWP.xz)) / max(length(fwidth(vMapUv * oeT)), 1e-5);
+  vec3 base = textureLod(map, vMapUv, clamp(log2(30.0 / max(mpp, 1e-3)), 0.0, 9.0)).rgb;
+  base = photoGrade(base);
+#else
+  vec3 base = c;
+#endif
+  float L = dot(base, vec3(0.2126, 0.7152, 0.0722));
+  vec3 tint = mix(vec3(1.0), base / max(L, 1e-3), 0.35);
+  vec3 rock = vec3(0.92, 0.9, 0.84) * tint * clamp(L, 0.07, 0.2);
+  rock *= (0.62 + 0.62 * r) * mix(0.82, 1.08, band);
+  // lichen and the grass the ledges hold, where the face eases
+  float ledge = smoothstep(0.55, 0.75, rockN(vRockWP.xz * 0.6 + vRockWP.y * 0.3)) * (1.0 - smoothstep(0.35, 0.75, k));
+  rock = mix(rock, c, ledge * 0.6);
+  return mix(c, rock, k);
+}`;
   // a histogram of the tiles' luminance and their mean saturation, from a small copy of each
   function photoStats() {
     const S0 = { hist: new Float64Array(256), sat: 0, n: 0 }, cv = document.createElement('canvas');
@@ -607,6 +667,7 @@ vec3 photoGrade(vec3 c) {
     sunLight.shadow.normalBias = 1.0;
     const shCam = sunLight.shadow.camera;
     shCam.near = 10; shCam.far = 9000;
+    leanShadowMap(renderer, sunLight.shadow, SHADOW);
     world.add(sunLight, sunLight.target);
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
@@ -824,8 +885,11 @@ vec3 woodsFloor(vec3 c) {
     const gradePhoto = sh => {
       clipGround(sh);
       sh.uniforms.uPhotoGrade = PG;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRockWP, vRockWN;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvRockWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vRockWN = normalize(mat3(modelMatrix) * objectNormal);');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
-        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);');
+        .replace('#include <map_pars_fragment>', `#include <map_pars_fragment>\n${STEEP_ROCK}`)
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);\nfloat oeSteep = steepness();\ndiffuseColor.rgb = steepRock(diffuseColor.rgb, oeSteep);');
       woodsFloor(sh); // after the photo, the game's drawn streets and grain: the floor has its own
       streetLit(sh);
     };
@@ -1250,7 +1314,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     };
     const lmMaterial = m => {
       const base = m.floodlit ? floodlit(m.material) : lmMats[m.material];
-      return m.sky != null && m.sky < 1 ? sheltered(base, (m.floodlit ? 'flood|' : '') + m.material, m.sky, m.bounce) : base;
+      return byText(m.sky != null && m.sky < 1 ? sheltered(base, (m.floodlit ? 'flood|' : '') + m.material, m.sky, m.bounce) : base);
     };
     const lmGeometry = m => {
       const p = m.position, arr = new Float32Array(p.length);
@@ -1287,7 +1351,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       let r = 0;
       for (const a of pr.at) r = Math.max(r, c.distanceTo(W(a[0], a[1], a[2])));
       for (const part of pr.parts) {
-        const im = new THREE.InstancedMesh(lmGeometry(part), part.floodlit ? floodlit(part.material) : lmMats[part.material], pr.at.length);
+        const im = new THREE.InstancedMesh(lmGeometry(part), byText(part.floodlit ? floodlit(part.material) : lmMats[part.material]), pr.at.length);
         pr.at.forEach((a, i) => {
           imP.set(a[0], a[2], -a[1]); imQ.setFromAxisAngle(UP, a[3]); imS.set(a[4] || 1, 1, a[4] || 1);
           im.setMatrixAt(i, im4.compose(imP, imQ, imS));
@@ -1395,6 +1459,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
       const tex = new THREE.CanvasTexture(cv);
       tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096)
       if (sea.uniforms && sea.uniforms.uCover.value) sea.uniforms.uCover.value.dispose();
       sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
     }
@@ -1551,13 +1616,87 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // the sRGB encoding to the last pass, so a compile with none bound made the variant for the screen,
   // which the post stack never draws with (half the programs the loader waited for were of that kind).
   // scene: whose lights and fog they are lit with. Resolves when they are ready (at once without WebGL 2).
-  function compile(renderer, obj, camera, { scene = obj, target = null } = {}) {
+  // A landmark material keys its program by name (lm|<material>), since three.js would otherwise key it by
+  // the text of its onBeforeCompile, and wrappers read alike across patterns; but most of them write the
+  // very same shader (a plain colour under the street lights, or a pattern whose values are uniforms), and
+  // each name was a program of its own: 128 programs for 42 shaders in Sydney (issue 259). byText keys
+  // the program by the text the material's onBeforeCompile chain writes instead, run once on three.js's
+  // own shader, so materials that differ only in uniforms share one program. Whatever wraps the material
+  // later (the weather, the mirror) adds its own part to the key, as it did; the text is read again when
+  // the chain changes.
+  const textOf = new WeakMap(), byTextSet = new WeakSet();
+  const fnv = (h, str) => { for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
+  function byText(mat) {
+    if (!mat || byTextSet.has(mat) || !mat.onBeforeCompile || !mat.isMeshStandardMaterial) return mat;
+    byTextSet.add(mat);
+    const own = mat.customProgramCacheKey;
+    mat.customProgramCacheKey = function () {
+      const fn = this.onBeforeCompile, inner = own ? own.call(this) : '', memo = textOf.get(this);
+      if (memo && memo[0] === fn && memo[1] === inner) return memo[2];
+      let key = inner;
+      try {
+        const lib = THREE.ShaderLib.physical; // (MeshStandardMaterial's, and MeshPhysicalMaterial's)
+        const sh = { vertexShader: lib.vertexShader, fragmentShader: lib.fragmentShader, uniforms: THREE.UniformsUtils.clone(lib.uniforms), defines: Object.assign({}, this.defines) };
+        fn.call(this, sh, null);
+        const text = `${sh.vertexShader}\n//\n${sh.fragmentShader}\n//${JSON.stringify(sh.defines)}`;
+        key = `lmtext|${text.length}|${fnv(2166136261, text).toString(36)}|${fnv(84696351, text).toString(36)}`;
+      } catch (e) { /* (keyed by name, as before) */ }
+      textOf.set(this, [fn, inner, key]);
+      return key;
+    };
+    return mat;
+  }
+
+  // A big object (the city behind the loader: hundreds of materials) is compiled in slices of about
+  // SLICE_MS, object by object, yielding between them (issue 259): three.js's compileAsync creates every
+  // program in one call, which on a software renderer, or a phone without parallel compiles, was one task
+  // of 10 to 25 seconds. The caller holds its draws until this resolves, since a draw would compile the
+  // rest in one frame again.
+  const SLICE_MS = 50, SLICED = 40;
+  // clip: the clipping planes it is drawn with (a mirror's), which also pick the variant. behind: it
+  // compiles while the scene is on screen (behind the title), a short slice a frame, so frames keep coming.
+  // hold: while it returns true, a compile behind the scene waits (a frame at a time) without compiling: a slice
+  // can be no shorter than one program, which on a device without parallel compiles is a hitch of its own, so
+  // the game holds the warm-up through its opening shot and its rides (issue 265)
+  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null } = {}) {
     if (!renderer.compileAsync) return Promise.resolve();
-    const prev = renderer.getRenderTarget();
-    renderer.setRenderTarget(target);
-    try { return renderer.compileAsync(obj, camera, scene).catch(() => {}); } // (compiles now; the promise waits on the GPU)
-    catch (e) { return Promise.resolve(); }
-    finally { renderer.setRenderTarget(prev); }
+    const objs = [];
+    obj.traverse(o => { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) objs.push(o); });
+    // the render target and the clipping planes, set for a compile and put back after it
+    const bind = () => { const was = [renderer.getRenderTarget(), renderer.clippingPlanes]; renderer.setRenderTarget(target); if (clip) renderer.clippingPlanes = clip; return was; };
+    const unbind = ([t, c]) => { renderer.setRenderTarget(t); renderer.clippingPlanes = c; };
+    if (objs.length < SLICED) {
+      const was = bind();
+      try { return renderer.compileAsync(obj, camera, scene).catch(() => {}); } // (compiles now; the promise waits on the GPU)
+      catch (e) { return Promise.resolve(); }
+      finally { unbind(was); }
+    }
+    return (async () => {
+      const props = renderer.properties, mats = new Set(), t0 = performance.now();
+      let slices = 0, longest = 0;
+      for (let i = 0; i < objs.length;) {
+        while (behind && hold && hold()) await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+        const s0 = performance.now(), was = bind();
+        try {
+          // (every object, even one whose material has a program: this variant, for this target and
+          // these planes, may be new. One that is not costs a lookup; an object's children are in the
+          // list on their own, so they are looked up again, cheaply)
+          while (i < objs.length && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS)) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
+        } catch (e) { console.warn('compile', e); }
+        finally { unbind(was); }
+        slices++; longest = Math.max(longest, performance.now() - s0);
+        if (i < objs.length) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : idle());
+      }
+      // then wait for the GPU to finish them (KHR_parallel_shader_compile), as compileAsync does
+      await new Promise(done => {
+        const check = () => {
+          for (const m of mats) { const p = props.get(m).currentProgram; if (!p || !p.isReady || p.isReady()) mats.delete(m); }
+          if (mats.size) setTimeout(check, 10); else done();
+        };
+        check();
+      });
+      console.info(`compile: ${objs.length} objects in ${slices} slices, the longest ${Math.round(longest)} ms, ready after ${Math.round(performance.now() - t0)} ms`);
+    })().catch(e => console.warn('compile', e));
   }
 
   // Send an object's textures to the GPU before it is drawn (issue 201): a model streamed in once the game
@@ -1600,10 +1739,29 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     if (!pumping) pump();
     return Promise.all(waits).then(() => {});
   }
+  // A PCF shadow map as three.js (r186) makes it is a render target with an RGBA8 colour texture beside
+  // the depth texture it samples, and that colour is never read: 64 MB of GPU memory at 4096 px, 16 at
+  // 2048. WebGLShadowMap builds its own only while shadow.map is null, so the same target made here
+  // first, with a one-byte colour texture (a framebuffer still needs one the depth's size), is the one
+  // it keeps: drawn, cleared, resized and sampled as before, the shadows to the bit the same.
+  function leanShadowMap(renderer, shadow, size) {
+    if (shadow.map || !THREE.DepthTexture || !THREE.RedFormat) return;
+    const st = renderer.state && renderer.state.buffers && renderer.state.buffers.depth;
+    const reversed = !!(st && st.getReversed && st.getReversed());
+    const map = new THREE.WebGLRenderTarget(size, size, { format: THREE.RedFormat, type: THREE.UnsignedByteType,
+      minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
+    const d = map.depthTexture = new THREE.DepthTexture(size, size, THREE.UnsignedIntType);
+    d.name = 'sun.shadowMap';
+    d.format = THREE.DepthFormat;
+    d.compareFunction = reversed ? THREE.GreaterEqualCompare : THREE.LessEqualCompare;
+    d.minFilter = d.magFilter = THREE.LinearFilter;
+    shadow.map = map;
+  }
+
   // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
   function warm(renderer, obj, camera, opts) {
     return upload(renderer, obj).then(() => compile(renderer, obj, camera, opts));
   }
 
-  return { load, create, lin, smooth, compile, upload, warm };
+  return { load, loadLine, create, lin, smooth, compile, upload, warm };
 })();
