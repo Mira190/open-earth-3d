@@ -25,6 +25,7 @@ const [w, h] = size.split('x').map(Number);
   await ctx.addInitScript(on => {
     // the WebGL calls that block the main thread, timed where they are made
     const gl = window.__gl = { on, calls: {}, log: [] };
+    if (on) Error.stackTraceLimit = 60; // (past three.js's own frames, to the page's)
     const wrap = (proto, name) => {
       const f = proto[name];
       if (!f) return;
@@ -43,15 +44,25 @@ const [w, h] = size.split('x').map(Number);
     const linkP = WebGL2RenderingContext.prototype.linkProgram, logP = WebGL2RenderingContext.prototype.getProgramInfoLog;
     let seq = 0;
     gl.waits = [];
+    // (which material each program is: three.js names its shaders in "#define SHADER_NAME", with a pass's own uniforms)
+    const P2 = WebGL2RenderingContext.prototype, srcP = P2.shaderSource, attP = P2.attachShader, names = new WeakMap();
+    P2.shaderSource = function (sh, text) {
+      const nm = (/#define SHADER_NAME (.*)/.exec(text) || [])[1] || '?';
+      const own = [...new Set((text.match(/uniform\s+\w+\s+(u[A-Z]\w*|t[A-Z]\w*)/g) || []).map(u => u.split(/\s+/).pop()))].slice(0, 3).join(',');
+      if (/gl_FragColor|pc_fragColor|out highp vec4/.test(text)) names.set(sh, nm + (own ? ' {' + own + '}' : '') + ' #' + Math.round(text.length / 1024) + 'k');
+      return srcP.call(this, sh, text);
+    };
+    P2.attachShader = function (pr, sh) { if (names.has(sh)) pr.__name = names.get(sh); return attP.call(this, pr, sh); };
     WebGL2RenderingContext.prototype.linkProgram = function (pr) { pr.__oe = { id: ++seq, t: performance.now() }; return linkP.call(this, pr); };
     WebGL2RenderingContext.prototype.getProgramInfoLog = function (pr) {
       const t0 = performance.now(), r = logP.call(this, pr), dt = performance.now() - t0;
-      if (gl.on && pr.__oe && !pr.__oe.checked) { pr.__oe.checked = true; gl.waits.push({ prog: pr, t: t0, ms: +dt.toFixed(1), sinceLink: +(t0 - pr.__oe.t).toFixed(0) }); }
+      if (dt < 1) window.__drawing = null; // (only a draw's own wait is labelled with it)
+      if (gl.on && pr.__oe && !pr.__oe.checked) { pr.__oe.checked = true; gl.waits.push({ prog: pr, name: (pr.__name || '?') + (window.__drawing ? ' @ ' + window.__drawing : ''), t: t0, ms: +dt.toFixed(1), sinceLink: +(t0 - pr.__oe.t).toFixed(0), from: (new Error().stack || '').split('\n').filter(l => /https?:/.test(l) && !/vendor|start_profile|__puppeteer|<anonymous>/.test(l)).slice(0, 4).map(l => l.trim().replace(/^at /, '').replace(/https?:\/\/[^/]+\/(web\/)?/, '')).join(' < ') }); }
       return r;
     };
     for (const P of [WebGL2RenderingContext.prototype]) {
       for (const n of ['compileShader', 'linkProgram', 'getProgramParameter', 'getShaderParameter', 'getProgramInfoLog', 'useProgram',
-        'texImage2D', 'texSubImage2D', 'texImage3D', 'texStorage2D', 'compressedTexImage2D', 'generateMipmap', 'bufferData', 'bufferSubData', 'readPixels', 'getError', 'clientWaitSync']) wrap(P, n);
+        'texImage2D', 'texSubImage2D', 'texImage3D', 'texStorage2D', 'compressedTexImage2D', 'generateMipmap', 'bufferData', 'bufferSubData', 'readPixels', 'getError', 'clientWaitSync', 'getBufferSubData', 'fenceSync', 'finish']) wrap(P, n);
     }
     // the frames, from requestAnimationFrame, and the long tasks
     const fr = window.__frames = [];
@@ -59,6 +70,13 @@ const [w, h] = size.split('x').map(Number);
     requestAnimationFrame(tick);
     window.__long = [];
     try { new PerformanceObserver(l => { for (const e of l.getEntries()) window.__long.push({ t: e.startTime, ms: e.duration }); }).observe({ entryTypes: ['longtask'] }); } catch (e) { /* none */ }
+    // (the object being drawn, by the names up its parents, and its material's: the draw a program's first use is in)
+    if (on) addEventListener('three-ready', () => {
+      const O = window.THREE.Object3D.prototype, path = o => { const n = []; for (let q = o; q && n.length < 4; q = q.parent) n.push(q.name || q.type); return n.join('<'); };
+      const b = O.onBeforeRender, sh = O.onBeforeShadow;
+      O.onBeforeRender = function (r, s, c, g, m) { window.__drawing = path(this) + ' / ' + (m && (m.name || m.type)); return b && b.apply(this, arguments); };
+      if (sh) O.onBeforeShadow = function (r, o, c, sc, g, m) { window.__drawing = 'shadow ' + path(this) + ' / ' + (m && (m.name || m.type)); return sh.apply(this, arguments); };
+    });
     // the attributes flagged for upload after the click (needsUpdate), with their sizes and how often
     window.__ups = new Map();
     // the renderer, to count its programs, textures and geometries
@@ -77,14 +95,14 @@ const [w, h] = size.split('x').map(Number);
   // the loader's longest frames, each broken down: its GL work, and the functions it ran (self and inclusive)
   const loadProfile = async (cdp, top, sync) => {
     const { profile } = await cdp.send('Profiler.stop');
-    const [glLog, waits] = await p.evaluate(() => [window.__gl.log.slice(), window.__gl.waits.map(w => ({ t: w.t, ms: w.ms, sinceLink: w.sinceLink }))]);
+    const [glLog, waits] = await p.evaluate(() => [window.__gl.log.slice(), window.__gl.waits.map(w => ({ t: w.t, ms: w.ms, sinceLink: w.sinceLink, name: w.name, from: w.from }))]);
     const nodes = new Map(profile.nodes.map(n => [n.id, n])), parent = new Map();
     for (const n of profile.nodes) for (const c of n.children || []) parent.set(c, n.id);
     const label = n => { const c = n.callFrame; return `${c.functionName || '(anon)'} ${c.url.replace(/^.*\/web\//, '').replace(/^https?:\/\/[^/]+\//, '')}:${c.lineNumber + 1}`; };
     // (the profile's first sample is at the start the page's clock was read just after)
     const ts = []; let t = profile.startTime;
     for (let i = 0; i < profile.samples.length; i++) { t += profile.timeDeltas[i]; ts.push((t - profile.startTime) / 1000 + sync); }
-    for (const f of top.slice(0, 4)) {
+    for (const f of top.slice(0, +(process.env.TOPN || 4))) {
       const a = f.t, z = f.t + f.dt, self = new Map(), incl = new Map(), gls = new Map();
       for (let i = 0; i < ts.length; i++) {
         if (ts[i] < a || ts[i] > z) continue;
@@ -101,6 +119,7 @@ const [w, h] = size.split('x').map(Number);
       const best = (m, n) => [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => `${v.toFixed(0).padStart(6)}  ${k}`).join('\n');
       console.log(`\nframe of ${(f.dt / 1000).toFixed(1)} s at ${(a / 1000).toFixed(1)} s: GL ${[...gls.entries()].map(([k, g]) => `${k} ${g.n}x ${g.ms.toFixed(0)} ms`).join(', ') || 'none over 4 ms'}` +
         (w.length ? `; first-use waits ${w.length}, ${w.reduce((s, e) => s + e.ms, 0).toFixed(0)} ms` : ''));
+      for (const e of w.filter(e => e.ms > +(process.env.WAIT_MS || 100)).sort((x, y) => y.ms - x.ms).slice(0, 40)) console.log(`  waited ${Math.round(e.ms)} ms on ${e.name} (linked ${e.sinceLink} ms before) <= ${e.from}`);
       console.log('  self (ms):\n' + best(self, 10));
       console.log('  inclusive, the app\'s (ms):\n' + best(incl, 14));
     }
