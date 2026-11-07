@@ -236,6 +236,12 @@ void main() {
       for (const m of [mSpec, mH, mV, mAs]) m.dispose();
       geo.dispose();
     }
+    // its programs compiled off the frame, rather than by its first step on the city's first frame (issue 299)
+    if (window.OEWorld && OEWorld.compile) {
+      const g = new THREE.Group();
+      for (const m of [mSpec, mH, mV, mAs]) g.add(new THREE.Mesh(geo, m));
+      OEWorld.compile(renderer, g, cam, { target: work[0], shadows: false });
+    }
     return { N, C, step, disp, deriv, dispose, cascades, float };
   }
 

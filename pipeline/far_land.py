@@ -13,8 +13,12 @@ Sources (measured open data, newest releases; see docs/ARCHITECTURE.md "Past the
               (CANOPY_M, BUILT_M x their share of the cell) to stand for the bare ground.
   land cover  ESA WorldCover 10 m 2021 v200 (CC BY 4.0), its 40 m overview, as each class's share
               of a cell.
-  lights      NASA Black Marble 2016 (VIIRS day/night band, public domain) via NASA GIBS, about
-              500 m, sharpened by WorldCover's built-up share.
+  lights      The annual VIIRS night lights of 2024 (Annual VNL V2, Elvidge et al. 2021, Earth Observation
+              Group, Payne Institute, Colorado School of Mines; as Cloud-Optimized GeoTIFFs by Hengl,
+              OpenGeoHub, Zenodo doi 10.5281/zenodo.7750174, v0.4, CC BY 4.0), 500 m radiance read
+              anonymously by HTTP range requests, sharpened by WorldCover's built-up share. It replaced
+              NASA's Black Marble 2016 (GIBS), whose visual product saturates over a whole city (all of
+              Tokyo's 80 km box above its median): the radiance tells a core from a suburb.
 
 The land cover's colours are measured too: each class's colour is solved (least squares, held
 toward a default) from the city's own aerial photo inside the frame against the classes' shares
@@ -61,8 +65,13 @@ NH = 512   # the height grid (156 m in a city, 234 m at a reef site)
 NC = 1024  # the colour grid
 DEM_URL = "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM/Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM.tif"
 WC_URL = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{ns}{lat:02d}{ew}{lon:03d}_Map.tif"
-BM_WMS = ("https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0"
-          "&LAYERS=VIIRS_Black_Marble&STYLES=&CRS=EPSG:4326&BBOX={s},{w},{n},{e}&WIDTH={W}&HEIGHT={H}&FORMAT=image/png&TIME=2016-01-01")
+VNL_URL = ("https://zenodo.org/records/17294744/files/"
+           "nightlights.average_viirs.v21_m_500m_s_20240101_20241231_go_epsg4326_v20250904.tif")
+VNL_SCALE = 0.1    # the file's integers per nW/cm2/sr: x10
+VNL_FLOOR = 0.15   # nW/cm2/sr: the average's background over dark land
+VNL_KNEE = 1.9     # nW/cm2/sr: brightness 1 - exp(-GAIN (rad / KNEE) ^ GAMMA), fitted to Black Marble 2016
+VNL_GAMMA = 0.8    # where its visual product is not saturated (lum 0.25..0.95 against the radiance), then
+VNL_GAIN = 1.9     # rolling off over a city's core instead of clipping at 2 nW/cm2/sr as it does (the gain keeps its mean)
 UA = {"User-Agent": "open-earth-3d (https://github.com/Mira190/open-earth-3d)"}
 # WorldCover's classes, and a default colour for each (sRGB, as Sentinel-2 true colour shows them)
 CLASSES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100]
@@ -218,21 +227,22 @@ def palette(C, box, fr):
 
 
 def lights(box, built):
-    """Night lights on the height grid, 0..1: Black Marble's brightness, shared out within its
-    500 m pixel by the built-up land at 156 m (its visual product saturates over a city;
-    the share of built-up land is what tells a dense core from a suburb)."""
+    """Night lights on the height grid, 0..1: the annual VIIRS radiance of 2024 (VNL V2), toned to
+    a brightness and shared out within its 500 m pixel by the built-up land at 156 m (the share of
+    built-up land is what tells a lit street grid from the dark park beside it)."""
+    from rasterio.windows import from_bounds
     tr, shape = box.grid(NH)
-    W = max(64, int((box.e - box.w) * 111000 * math.cos(math.radians((box.s + box.n) / 2)) / 500))
-    H = max(64, int((box.n - box.s) * 111000 / 500))
-    r = requests.get(BM_WMS.format(s=box.s, w=box.w, n=box.n, e=box.e, W=W, H=H), headers=UA, timeout=120)
-    r.raise_for_status()
-    im = np.asarray(Image.open(io.BytesIO(r.content)).convert("RGB"), np.float32) / 255
-    lum = (0.2126 * im[..., 0] + 0.7152 * im[..., 1] + 0.0722 * im[..., 2]) ** 2.2  # to linear
-    src_tr = from_origin(box.w, box.n, (box.e - box.w) / W, (box.n - box.s) / H)
+    with rasterio.open("/vsicurl/" + VNL_URL) as r:
+        win = from_bounds(box.w, box.s, box.e, box.n, r.transform).round_offsets().round_lengths()
+        a = r.read(1, window=win, boundless=True, fill_value=0).astype(np.float32)
+        src_tr = r.window_transform(win)
+    rad = np.clip(np.where(a < 0, 0, a) * VNL_SCALE - VNL_FLOOR, 0, None)
+    lum = 1 - np.exp(-VNL_GAIN * (rad / VNL_KNEE) ** VNL_GAMMA)
     dst = np.zeros(shape, np.float32)
     reproject(lum, dst, src_transform=src_tr, src_crs="EPSG:4326", dst_transform=tr, dst_crs=box.C.proj, resampling=Resampling.bilinear)
     b = ndimage.zoom(built, NH / built.shape[0], order=1)
-    return np.clip(dst * (0.2 + 0.8 * np.clip(b, 0, 1)), 0, 1), {"black_marble_px": [W, H]}
+    return np.clip(dst * (0.2 + 0.8 * np.clip(b, 0, 1)), 0, 1), {"vnl_px": [int(win.width), int(win.height)],
+                                                                 "vnl_radiance_max": round(float(rad.max()), 1)}
 
 
 def stac_relief(box, rc):
@@ -326,9 +336,10 @@ def run(cid):
         "sources": {
             "relief": (fc["relief"]["name"] + "; Copernicus DEM GLO-30 past it; " if fc.get("relief") else "") + "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
             "land_cover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)" + (f"; colour from {fc['colour']['name']}" if fc.get("colour") else ""),
-            "lights": "NASA Black Marble 2016, VIIRS day/night band (public domain), via NASA GIBS",
+            "lights": "Annual VNL V2 2024, VIIRS day/night band (Earth Observation Group, Payne Institute, Colorado School of Mines; "
+                      "COGs by T. Hengl, OpenGeoHub, Zenodo doi 10.5281/zenodo.7750174; CC BY 4.0), extracted 2026-11-07",
         },
-        "black_marble": bm,
+        "night_lights": bm,
     }
     with open(os.path.join(C.out, "far.json"), "w") as f:
         json.dump(meta, f, indent=1)
