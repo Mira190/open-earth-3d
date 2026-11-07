@@ -50,8 +50,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1818117,
-   "game": 2721340
+   "model": 1896314,
+   "game": 2799537
   }
  },
  {
@@ -1090,7 +1090,7 @@
   ],
   "load_bytes": {
    "model": 4291927,
-   "game": 4844527
+   "game": 4844516
   },
   "group_meta": {
    "native": "\u6771\u4eac",
