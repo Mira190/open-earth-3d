@@ -720,6 +720,9 @@ def main():
     kerbside.tidy_places(C.out, roads)  # the mapped trees out of the carriageways too (places.json)
     plateau_veg.calibrate(C)  # the mapped street trees' heights from PLATEAU's surveyed trees (pipeline/plateau_veg.py)
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
+    if C.cfg.get("water", {}).get("inland"):
+        import inland_water
+        inland_water.build(C)  # the water above the sea at its own level (scene.json "inland", pipeline/inland_water.py)
     print(f"{restorey.mark(C.out)} one-floor records given storeys (buildings.json)")  # pipeline/restorey.py: a no-op on a fresh build
     print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
     print(f"{walls.mark(C.out, C.id)} precinct walls drawn as walls (buildings.json)")  # pipeline/walls.py
