@@ -2391,6 +2391,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const k = c => keys.has(c);
   on(window, 'keydown', e => {
     if (e.target.closest && e.target.closest('input, select, textarea')) return;
+    if (window.OEMetro && OEMetro.isOpen()) return; // the subway map has the keys (metro.js)
     const c = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(c)) e.preventDefault();
     if (e.repeat) { keys.add(c); return; }

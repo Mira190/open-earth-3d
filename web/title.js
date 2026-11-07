@@ -668,7 +668,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     lastInput = performance.now();
     if (!$('ts-about').hidden) { if (e.key === 'Escape') toggleAbout(false); return; }
     if (state === 'open') { if (e.target.closest && e.target.closest('button')) return; e.preventDefault(); skip(); return; } // a key on Sound or Skip is that button's
-    if (state !== 'menu') return;
+    if (state !== 'menu' || fullOpen()) return; // (the full-screen map has the keys: metro.js)
     const k = e.key.toLowerCase();
     if (k === 'arrowdown' || k === 's' || k === 'arrowright') { e.preventDefault(); select((sel + 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
