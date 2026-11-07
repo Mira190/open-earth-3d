@@ -2562,6 +2562,11 @@ SHINJUKU_SCREENS = [
      "clips": ["live", "music", "shinjuku", "movie"], "phase": 0.0, "pitch": 0.01, "hours": [7, 1], "toward": [380.0, 2830.0], "off": 0.8, "sync": False},
     {"name": "Unica Vision 3", "building": "新宿ユニカビル", "edge": [[365.2, 2762.1], [375.1, 2770.4]], "w": 13.12, "h": 7.38, "z": -4.0,
      "clips": ["live", "music", "shinjuku", "movie"], "phase": 0.0, "pitch": 0.01, "hours": [7, 1], "toward": [330.0, 2810.0], "off": 0.8, "sync": False},
+    # Tokyu Kabukicho Tower's screen over the café's steps on Cine City Plaza (#290; its size and place read from the
+    # photographs of 2024, cities/shinjuku/station.py KT["front"]): in the podium's black frame, on the mapped front
+    {"name": "Kabukicho Tower screen", "building": "東急歌舞伎町タワー", "edge": [[376.7, 3008.6], [387.6, 3047.9]], "w": 16.5, "h": 9.3, "z": 9.8,
+     "along": -5.3, "clips": ["movie", "live", "music", "wave"], "phase": 2.0, "pitch": 0.008, "hours": [9, 24], "toward": [434.0, 3020.0],
+     "off": 0.55, "frame": 0.15, "sync": False},
 ]
 MATERIALS["screens_east"] = dict(MATERIALS["screens"], map="screens_east.jpg")
 
