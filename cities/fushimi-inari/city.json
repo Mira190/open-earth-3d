@@ -59,7 +59,12 @@
   "water": {
     "classes": [],
     "min_area_m2": 5000,
-    "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
+    "note": "No sea: Kyoto is 25-80 m above it. The Kamo Canal and the ponds are drawn at their own level (inland, pipeline/inland_water.py).",
+    "inland": {
+      "note": "The Kamo Canal (Biwako Canal's Kamo River branch) between masonry walls about 2.5 m down to its water; ponds at the 5 m laser survey's level.",
+      "class_rules": {"canal": {"walls": "stone", "bank_to_water_m": 2.5, "water_m": 1.2}},
+      "classes": ["pond", "lake", "water", "river", "canal", "reservoir"], "min_area_m2": 250
+    }
   },
   "trees": {
     "mix": {

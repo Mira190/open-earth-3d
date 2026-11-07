@@ -433,7 +433,8 @@ vec3 nonPerturbedNormal = normal;`)
       }
       last.set(1e9, 0, 0); sortedAt = -1e9; // (re-sorted into the new meshes at the next update)
     }
-    let yozBloom = 0;
+    let yozBloom = 0, chochinOut = 0;
+    const chochinWindow = ((areas || []).find(a => a.lanterns === 'chochin') || {}).lantern_window || [-7, 14];
     const Y = yozakura();
     const PT = petals();
     const farCut = 1 + 127 * Math.min(1, Math.max(0, farKeep)); // (half[] is 1..254 for a wood's trees, 0 for the rest: never cut)
@@ -744,8 +745,10 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       pool.castShadow = false; pool.renderOrder = 1;
       const group = new THREE.Group(); group.name = 'yozakura'; group.visible = false;
       group.add(post, shade, cap, pool); if (!small) group.add(halo);
-      if (nC) { group.add(paper, rims, rope); if (!small) group.add(chHalo); }
-      world.add(group);
+      // the chochin hang for the festival (chochinWindow), by day too, and are lit after dark: a group of their own
+      const chGroup = new THREE.Group(); chGroup.name = 'chochin'; chGroup.visible = false;
+      if (nC) { chGroup.add(paper, rims, rope); if (!small) chGroup.add(chHalo); }
+      world.add(group, chGroup);
       // stand them on the ground (ground(x, y, z): the game's, after a reseat; else the data's heights)
       const place = ground => {
         const m4 = new THREE.Matrix4(), q0 = new THREE.Quaternion();
@@ -784,12 +787,13 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       };
       place(null);
       return {
-        group, place, lanterns: nL, chochin: nC, trees: nT,
-        // per frame: how lit they are (after dark, in the bloom), and the season (whether they are out at all)
-        set(k, out) {
-          group.visible = out;
+        group, chGroup, place, lanterns: nL, chochin: nC, trees: nT,
+        // per frame: how lit the uplights and bonbori are (after dark, in the bloom) and whether they are out at
+        // all; and the same for the chochin (after dark, in the festival's window)
+        set(k, out, kc = k, outC = out) {
+          group.visible = out; chGroup.visible = outC && nC > 0;
           shadeMat.emissiveIntensity = 2.6 * k; halo.material.opacity = 0.85 * k; poolMat.opacity = 0.32 * k;
-          paperMat.emissiveIntensity = 2.4 * k; chHalo.material.opacity = 0.8 * k;
+          paperMat.emissiveIntensity = 2.4 * kc; chHalo.material.opacity = 0.8 * kc;
         },
       };
     }
@@ -797,7 +801,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
     return {
       n, species: names, count,
       // the yozakura lights (#162): how many trees are lit and how many lanterns stand, for the tools
-      yozakura: () => (Y ? { trees: Y.trees, lanterns: Y.lanterns, chochin: Y.chochin, on: U.uYoz.value, out: Y.group.visible } : null),
+      yozakura: () => (Y ? { trees: Y.trees, lanterns: Y.lanterns, chochin: Y.chochin, on: U.uYoz.value, out: Y.group.visible, chochinOut: Y.chGroup.visible } : null),
       // the falling petals (#223): how many cards there are and round how many crowns they fall now, for the tools
       petals: () => (PT ? { cards: PT.mesh.geometry.instanceCount, crowns: PT.crowns(), visible: PT.mesh.visible } : null),
       // the season the trees show: flowering, autumn colour and how bare the deciduous ones are (0..1)
@@ -820,7 +824,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       update(camera, tSec) {
         U.uWind.value = tSec % 10000;
         if (imp && imp.meshes && ++impTick % 30 === 0) bakeFar(imp.renderer); // (the season's look changed: the atlas again)
-        if (Y) { const k = (night ? night.value : 0) * yozBloom; U.uYoz.value = k; Y.set(k, yozBloom > 0); }
+        if (Y) { const nv = night ? night.value : 0, k = nv * yozBloom; U.uYoz.value = k; Y.set(k, yozBloom > 0, nv * chochinOut, chochinOut > 0); }
         camera.getWorldPosition(cam);
         const d2 = cam.distanceToSquared(last);
         const turned = shB.on && sunOf && sunOf().dot(shB.dir) < 0.9986; // (the sun 3 degrees on since the sort)
@@ -869,6 +873,11 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
         // each variety on its own day, its bloom stretched by its own length (and the lit places' lights while
         // any of their cherries flower: the light-ups run from the first flowers to the petals' fall)
         yozBloom = 0;
+        // the chochin (#277): Nakameguro's lanterns go up for the cherry blossom festival and come down after it, a
+        // window round the opening day (lantern_window [from, to] days, a week before it to a fortnight after by
+        // default: about 18 March to 8 April in Tokyo), not every night the cherries are lit, nor only those
+        const dd = ((doy - open + 730 + 60) % 365) - 60;
+        chochinOut = +(dd >= chochinWindow[0] && dd <= chochinWindow[1]);
         for (const { v, off, len } of varieties) {
           const t = ((doy - open - off + 730 + 30) % 365 - 30) / len; // days since this variety opened
           U.uSakuraV.value[v] = t < 0 || t > 17 ? 0 : t < 7 ? 0.35 + 0.65 * t / 7 : t <= 12 ? 1 : 1 - (t - 12) / 5.5;

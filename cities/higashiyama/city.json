@@ -49,7 +49,13 @@
   "water": {
     "classes": [],
     "min_area_m2": 5000,
-    "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
+    "note": "No sea: Kyoto is 25-80 m above it. The ponds (Maruyama Park's, the temples') are drawn at their own level (inland, pipeline/inland_water.py); the hill streams are left to the photograph.",
+    "inland": {
+      "note": "Ponds at the 5 m laser survey's level.",
+      "classes": ["pond", "lake", "water", "river", "canal", "reservoir"], "min_area_m2": 250,
+      "skip": ["第１低区配水池", "第２低区配水池", "第１高区配水池", "第２高区配水地"],
+      "skip_note": "The Keage purification plant's distribution reservoirs are covered tanks."
+    }
   },
   "roofs": {"palette": {"清水寺": "#c4482a"}, "note": "pipeline/arcades.py: a precinct whose roofs on posts and gates take its own colour (Kiyomizu-dera's gates and pavilions are vermilion, though it is a temple)"},
   "trees": {
