@@ -289,8 +289,8 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   no bridge model (`bridges.py`), the ground stays over the channel as a deck with a
   slab edge, an underside and railings. Trees planted from the canopy over a channel
   (the Meguro's cherries reach across it) stand on its bank, 0.8 m behind the wall,
-  and the game lets them stand in that strip though a road's outline runs over it;
-  none stands in a pond. Walkers stop at a channel's railing and a pond's edge
+  though in the game one whose foot falls in a carriageway (the Meguro's bank lanes run
+  up to the railing in the road data) is left out, as any tree there is; none stands in a pond. Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 
   Live cities: Shibuya (the Meguro River, the Shibuya River's open stretch, 12 ponds),

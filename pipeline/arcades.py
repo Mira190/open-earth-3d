@@ -93,6 +93,7 @@ SHU = "#c4482a"  # a shrine's vermilion (朱), as the Fushimi Inari and Kiyomizu
 TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
 GLASS = "#7f95a0"  # a glass atrium's walls
 GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM, ATRIUM_GAP_M = "#5d7280", 4.5, 12.0, 300, 8.0  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
+SHED_TOP_DM = 45  # ...and only a shed's (a taller roof with eaves that low is a record to trust no further: a box)
 LOW_CLEAR_DM = 16  # the lowest underside a roof on posts keeps: under it a box (a 1.6 m cover over a well)
 OPEN_AT_M = 8.0  # a canopy named by a point (city.json roofs.open_at): no taller than this
 BORROWED_DM = 150  # a roof on posts taller than this with a neighbour's top: its height was the neighbour's
@@ -167,7 +168,7 @@ def open_roof(B, s, si, P, polys, solid_tree, eave, plain):
         # a shed's or a bicycle shelter's low roof (roofs.py's eaves at 2.0 m; a flat one 1.9-2.5 m tall): on posts all
         # the same, under a thin fascia, rather than a box from the ground (#277); lower than LOW_CLEAR_DM, a box
         lo = (eave - 2) if eave is not None else s[3] - 3
-        if lo < LOW_CLEAR_DM:
+        if lo < LOW_CLEAR_DM or s[3] > SHED_TOP_DM:
             return False
     s[2] = lo
     if len(meta) > 7:
