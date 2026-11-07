@@ -2,7 +2,11 @@
 
 - Commit as `Mira190 <163523387+Mira190@users.noreply.github.com>`. The container's global git
   identity is not the owner's, so set it for the clone before the first commit:
-  `git config user.name Mira190 && git config user.email 163523387+Mira190@users.noreply.github.com`.
+  `git config user.name Mira190 && git config user.email 163523387+Mira190@users.noreply.github.com && git config commit.gpgsign false`.
+  The container signs commits with a key registered to another identity, so a signed commit under
+  the owner's name shows as Unverified on GitHub anyway, and the container's stop hook then asks
+  for that other author. Unsigned commits carry no badge and keep the hook quiet. If the hook still
+  asks to change the author, leave the author as it is.
 - Commit messages are a subject and a body only: no trailer or footer lines of any kind
   (no author credits, session links or tool-generated signatures).
 - Pull request descriptions follow the same rule: no generated footers or session links. The

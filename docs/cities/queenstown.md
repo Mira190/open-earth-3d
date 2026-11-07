@@ -44,13 +44,37 @@ the model viewer's opening shot. The second is the tour's second stop. Matched t
   plans nor newer imagery are published, so the larger deck is not drawn.
 - **The way onto the deck.** The real deck is reached through the restaurant. The extension's five
   levels run from a lift level at the bottom to the deck on top (Otago Daily Times), and its builder
-  describes a glass elevator on a structural steel frame (Naylor Love's project page). Neither says
-  where the lift stands, so the game draws a glass lift on a steel frame where the deck's south-west
-  end meets the luge track, 15 m below (`cities/queenstown/city.py`, `LIFT`). <kbd>E</kbd> at its
-  door rides it, at a passenger lift's 1 m/s. The game starts on the deck (`game.start.z`), and
-  Aroha waits at the lift's foot, on the open luge track, where the welcome's gold line leads.
-  No road reaches the deck's level, so a taxi meets you at the lift's foot: `tools/game_check.js`
-  measures the start's kerb from there (138 m) when the start stands at a lift's top.
+  describes a glass elevator on a structural steel frame (Naylor Love's project page). No source
+  says where the lift stands: in November 2026 the opening coverage (ODT, Scoop, NZ Herald), the
+  builder's page and Commons' April 2026 photographs from the luge were checked again, and none
+  shows it. So the game still draws it where the deck's south-west end meets the luge track, 15 m
+  below (`cities/queenstown/city.py`, `LIFT`).
+- **The glass lift** (issue 265) is drawn as a panoramic machine-room-less traction lift, laid out
+  from KONE's MonoSpace 700 planning guide and its Scenic brochure:
+  - **The car** is 1,000 kg, 1.45 × 1.6 m and 2.35 m high. It is glazed on its long sides, with a
+    stainless handrail 70 mm off the glass, a stone floor, a lit ceiling and a car operating panel.
+    It has doors at both ends (through-car): the luge track's faces south-west, the deck's north-east.
+  - **The shaft** is glazed in panes between slim graphite mullions and transoms, on 150 mm corner
+    columns.
+  - **Each landing door** has a stainless surround, a floor indicator and a call panel.
+  - **The machinery**: the car rides T-rails in a sling with guide shoes. The counterweight runs on
+    its own rails on the back wall against the hill, so the view side stays clear (the side
+    counterweight scenic lifts use). The gearless machine and its sheave sit in the head under a
+    louvred cap, and the pit stands on a concrete plinth on the luge track.
+  - **The deck's balustrade** runs from each corner to the shaft's corner column and stops there.
+  - **Riding it**: <kbd>E</kbd> at either door rides it in its car (`web/game/game.js`
+    `rideLiftCar`). The car comes to you, the landing and car doors slide open, you step in and turn
+    to the glass, and the car runs at 1 m/s, shortened to at most 8 s. The counterweight passes it
+    the other way and the ropes pay out from the head, while the camera holds outside the glass.
+  - Stills (llvmpipe, desktop tier, 1440 × 900; phone 390 × 844):
+
+    | The lift from the deck | Riding it | Its foot on the luge track | The deck's LED strip at night | Phone, dusk |
+    |---|---|---|---|---|
+    | ![](../images/queenstown/lift-deck-day.jpg) | ![](../images/queenstown/lift-ride-day.jpg) | ![](../images/queenstown/lift-foot-day.jpg) | ![](../images/queenstown/deck-led-night.jpg) | ![](../images/queenstown/phone-lift-ride-dusk.jpg) |
+  - The game starts on the deck (`game.start.z`), and Aroha waits at the lift's foot, on the open
+    luge track, where the welcome's gold line leads. No road reaches the deck's level, so a taxi
+    meets you at the lift's foot: `tools/game_check.js` measures the start's kerb from there when
+    the start stands at a lift's top.
 - **The lake** is a saturated blue with turquoise over the shallows (`water.colour`,
   `shallow_colour`, `scatter`).
 - **The air** is clear: `far.clarity` 2.2 stretches every haze distance (the fog and the far
@@ -336,11 +360,17 @@ change applies to every city's woods; Queenstown's are where it counts.
 
 ## 7. Limitations and follow-ups
 
-- **The deck.** The 430 m² deck Skyline opened in March 2026 is not drawn: its plans are not
-  published and the photographs predate it. The glass lift's place is judged; the restaurant's
-  interior, through which the real deck is reached, is not modelled.
-- **The gondola's towers.** Doppelmayr give 10; the photographs show six structures, drawn as such.
-  No published profile says how the 10 are counted.
+- **The deck.** The 430 m² deck Skyline opened in March 2026 is still not drawn. Its plans are not
+  published, the aerial photographs predate it, and no photograph found (Commons to April 2026, the
+  opening coverage) shows its outline. The press gives its area (430 m², or 460 m² in the Queenstown
+  Times) but not its shape. Skyline says it reaches its full size only when the old complex is
+  rebuilt, around 2028–29. The glass lift's place is judged; the restaurant's interior, through
+  which the real deck is reached, is not modelled.
+- **The gondola's towers.** Doppelmayr give 10 (lift-world's data sheet too: 760 m inclined, 438 m
+  of rise, 35 cabins at 5 m/s). The photographs show six structures, and those are what is drawn.
+  The ODT's report of the build says three towers were flown in by helicopter and seven set by crane
+  and digger, but no published profile or data sheet places them or gives their heights, and
+  counting the portals' leg pairs as towers gives seven, not 10.
 - **The heritage landmarks.**
   - Eichardt's Moorish arch is drawn although no photograph since 2001 shows it.
   - St Peter's lych-gate stands where the LiDAR shows a roof over the path; QLDC's listing gives

@@ -124,12 +124,19 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
       },
       setSize(w, h) { if (rt) { rt.setSize(dim(w), dim(h)); U.uMirrorPx.value.set(1 / dim(w), 1 / dim(h)); } },
       // draw it once while the game loads, whatever the weather: the scene's materials compile again
-      // for the mirror's clipping plane, seconds of stall that would otherwise come with the first rain
-      warm(scene) {
+      // for the mirror's clipping plane, seconds of stall that would otherwise come with the first rain.
+      // Compiled first in slices (world.js compile), so that no one task builds them all; then drawn.
+      // Returns a promise where it compiles in slices.
+      warm(scene, { hold = null } = {}) {
         if (!rt) return;
-        const u = wetU() || own, w = u.value;
-        u.value = 1; api.every = true;
-        try { api.update(scene, 0); } finally { u.value = w; api.every = false; U.uMirrorOn.value = 0; U.uWetM.value = w; }
+        const draw = () => {
+          const u = wetU() || own, w = u.value;
+          u.value = 1; api.every = true;
+          try { api.update(scene, 0); } finally { u.value = w; api.every = false; U.uMirrorOn.value = 0; U.uWetM.value = w; }
+        };
+        if (!(window.OEWorld && OEWorld.compile)) return draw();
+        plane.constant = -(ground(camera.position.x, -camera.position.z) - 0.05);
+        return OEWorld.compile(renderer, scene, camera, { target: rt, clip: [plane], behind: true, hold }).then(draw);
       },
       dispose() { if (rt) rt.dispose(); blank.dispose(); },
     };

@@ -5,6 +5,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/start_profile.js sydney [WxH, 960x600] [seconds after the click, 20]
 // TIER=high (default) forces a quality tier, as the films and stills do. CONT=1 presses Continue.
+// LOAD=1 stops once the loader is gone, after printing its longest frames and the time to playable.
 // OUT=file.json also writes the frames, the GL work and the ranked functions as JSON. RAIN=1 then puts the
 // rain on and counts the shaders compiled for it (the wet street's reflection on the high tier, mirror.js).
 // Software WebGL (llvmpipe) makes the GPU's share far slower than a real device's: read the
@@ -76,6 +77,15 @@ const [w, h] = size.split('x').map(Number);
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction(() => window.__game && !document.querySelector('#g-title').hidden && document.querySelector('#g-loader').hidden, null, { timeout: 900000, polling: 500 });
   const loadS = (Date.now() - t0) / 1000;
+  // the loader's frames, from the first one to the loader gone: the longest, and the time they add up to
+  {
+    const lf = await p.evaluate(() => window.__frames.slice()), d = [];
+    for (let i = 1; i < lf.length; i++) d.push({ t: lf[i - 1], dt: lf[i] - lf[i - 1] });
+    const top = d.slice().sort((a, b) => b.dt - a.dt).slice(0, 8), over = d.filter(f => f.dt > 1000);
+    console.log(`${city} ${w}x${h} loader: playable after ${loadS.toFixed(1)} s; longest frames (s): ${top.map(f => (f.dt / 1000).toFixed(1)).join(' ')}; ` +
+      `${over.length} frames over 1 s, ${(over.reduce((s, f) => s + f.dt, 0) / 1000).toFixed(1)} s in them`);
+    if (process.env.LOAD) { await b.close(); return; } // LOAD=1: the loader only
+  }
   await p.waitForTimeout(4000); // the title orbit settles
   const info = () => p.evaluate(() => {
     const r = window.__renderer;
