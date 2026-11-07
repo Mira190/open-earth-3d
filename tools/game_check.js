@@ -781,19 +781,6 @@ const npcNight = require('./npc_night');
   for (const r of liftRides) check(r.offered && r.dz < 0.6 && r.d < 3 && r.walk, `the ${r.name} from ${r.from} to ${r.to} (offered at its door: ${r.offered}; ends ${r.d.toFixed(1)} m from the stop, ${r.dz.toFixed(2)} m off its level, on ${r.floor}${r.walk ? '' : ', not walkable'})`);
   for (const r of liftRides.filter(q => q.car)) check(r.rideFrames > 4 && r.off < 0.6 && r.floorOff < 0.1 && r.carAt < 0.05 && r.shut && r.mode === 'foot', `the ${r.name}'s car rides from ${r.from} to ${r.to} with you in it (${r.rideFrames} frames under way, at most ${r.off.toFixed(2)} m off its middle and ${r.floorOff.toFixed(2)} m off its floor; the car ${r.carAt.toFixed(2)} m from the far floor, doors ${r.shut ? 'shut' : 'open'}, ${r.mode})`);
 
-  // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
-  // your feet, on ground you can walk, near it
-  const hops = await p.evaluate(() => {
-    const g = window.__game, out = [];
-    for (const t of (g.G.travel || []).filter(t => t.check)) {
-      const ok = g.travelTo({ kind: 'place', id: t.id, name: t.name, at: t.at });
-      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
-      g.advance(0.5);
-      const pl = g.player;
-      out.push({ name: t.name, ok, mode: pl.mode, d: Math.hypot(t.at[0] - pl.x, t.at[1] - pl.y), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
-    }
-    return out;
-  });
   // the quests a city names for checking (quests[].check: a new walk): each place a step sends you to has
   // ground you can stand on within its radius, and each NPC a step names is there
   const goals = await p.evaluate(() => {
@@ -813,7 +800,6 @@ const npcNight = require('./npc_night');
     return out;
   });
   for (const o of goals) check(o.ok, `${o.quest}: ${o.text} (${o.why})`);
-  for (const h of hops) check(h.ok && h.mode === 'foot' && h.walk && h.d < 80, `travels to ${h.name} (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.walk ? 'on' : 'off'} walkable ground)`);
 
   // the big map zooms and pans: the wheel zooms about the pointer (here over the thickest landmark pins), and of
   // the landmarks then in view, at least as many are named as at the whole city, and more where any were left off;
@@ -1756,6 +1742,22 @@ const npcNight = require('./npc_night');
       check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''})`);
     }
   }
+
+  // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
+  // your feet, on ground you can walk, near it. Last of the walks and rides: each hop lays the traffic and the crowd
+  // round a new place, so the steps that measure them before it see the same run whatever points a city adds
+  const hops = await p.evaluate(() => {
+    const g = window.__game, out = [];
+    for (const t of (g.G.travel || []).filter(t => t.check)) {
+      const ok = g.travelTo({ kind: 'place', id: t.id, name: t.name, at: t.at });
+      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+      g.advance(0.5);
+      const pl = g.player;
+      out.push({ name: t.name, ok, mode: pl.mode, d: Math.hypot(t.at[0] - pl.x, t.at[1] - pl.y), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    return out;
+  });
+  for (const h of hops) check(h.ok && h.mode === 'foot' && h.walk && h.d < 80, `travels to ${h.name} (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.walk ? 'on' : 'off'} walkable ground)`);
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
