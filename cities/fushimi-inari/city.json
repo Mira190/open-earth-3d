@@ -129,6 +129,9 @@
   },
   "places": [],
   "place_labels": [],
+  "arrivals": {
+    "Inari-yama 稲荷山 233 m": {"at": [797, 138]}
+  },
   "osm_detail": {
     "inari": {
       "bbox": [
