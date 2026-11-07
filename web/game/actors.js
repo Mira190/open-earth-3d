@@ -1815,7 +1815,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return net.L[li].ow === -d ? null : [li, d];
     }
     function canReverse(c) {
-      if (c.line < 0 || c.rev || c.stuck === undefined || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
+      if (c.line < 0 || c.rev || c.stuck === undefined || c.revBan > 0 || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
       let line = c.line, dir = c.dir, run = c.dir > 0 ? c.s : net.L[c.line].len - c.s;
       for (let k = 0; k < 6 && run < REV_MAX; k++) {
         if (waysOut(c, line, dir).length) return true;
@@ -1851,7 +1851,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         for (const o of outs) { const a = Math.abs(Math.atan2(Math.sin(head(o) - c.h), Math.cos(head(o) - c.h))); if (a < bd) { bd = a; best = o; } }
         const line = best[0], dir = best[1] === 0 ? 1 : -1, L1 = net.L[line], s = dir > 0 ? Math.min(1, L1.len) : Math.max(0, L1.len - 1), lo = side * JN.shiftOf(L1, 0);
         lanePos(line, s, dir, tmp, lo);
-        if (overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 0.3, 0.1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) { R.wait += dt; if (R.wait > 20) { c.revEnd = 'no room on the way out'; c.rev = null; } return true; }
+        if (overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 0.3, 0.1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) { R.wait += dt; if (R.wait > 20) { c.revBan = 60; c.revEnd = 'no room on the way out'; c.rev = null; } return true; }
         c.line = line; c.s = s; c.dir = dir; c.ln = 0; c.lo = lo; c.off = 0; c.pv = null; c.rev = null;
         c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; c.inWallNow = false;
         c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.v = 0.5; // (its heading eased round to the new way's by its next steps, not swung at once)
@@ -1870,7 +1870,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         R.v = 0; R.wait += dt;
         // the car behind, stopped on this street and going its way: it backs out first
         if (bk && bk.line === c.line && bk.dir === c.dir && !bk.rev && bk.v < 0.5 && (c.s - bk.s) * c.dir > 0) reverse(bk);
-        if (R.wait > 20 || R.d > REV_MAX) { c.revEnd = R.d > REV_MAX ? 'backed out as far as it goes' : bk ? `held by car ${C.indexOf(bk)} (${bk.why}, v ${(+bk.v || 0).toFixed(1)}${bk.line === c.line ? '' : `, on piece ${bk.line}`})` : 'held by someone behind it'; c.rev = null; } // (it waits on as before; asked again if it stays stuck)
+        if (R.wait > 20 || R.d > REV_MAX) { c.revBan = 60; c.revEnd = R.d > REV_MAX ? 'backed out as far as it goes' : bk ? `held by car ${C.indexOf(bk)} (${bk.why}, v ${(+bk.v || 0).toFixed(1)}${bk.line === c.line ? '' : `, on piece ${bk.line}`})` : 'held by someone behind it'; c.rev = null; } // (it waits on as before; asked again if it stays stuck)
       }
       q.setFromAxisAngle(up, Math.PI - c.h);
       m4.compose(W(c.x, c.y, c.z), q, one);
@@ -1942,6 +1942,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const half = eye && Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) > FAR;
         if (half && (tick + i) & 1) { q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue; }
         const dt = half ? 2 * dt0 : dt0;
+        if (c.revBan > 0) c.revBan -= dt; // (having given up backing out, it doesn't try again for a minute: tried every 20 s, one stood backing in a junction's mouth, the junction's movements held a minute, Sydney's 461)
         if (c.rev && (c.mv || c.line < 0)) c.rev = null;
         if (c.rev && reverseStep(c, i, dt, cx, cy)) continue;
         const l = net.L[c.line];
@@ -2087,16 +2088,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // the move (live); one parked, at the kerb, is left to the blockers below (passed side by side, swung out
         // round, or braked for)
         let sawX = null, leadX = null, xQ = false, youBy = null; // (youBy: which of yours it brakes for, and how, for the checks)
-        c.xWaitT = c.mv && c.why === 'you' && c.v < 0.3 && c.youBy && / on its way$/.test(c.youBy) ? (c.xWaitT || 0) + dt : 0;
+        c.xWaitT = c.why === 'you' && c.v < 0.3 && c.youBy && / on its way$/.test(c.youBy) ? (c.xWaitT || 0) + dt : 0;
         if (np) for (const o of api.extra) {
           if (o.soft || (o.v < 0.3 && !o.live) || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
           // (a ride stopped at a junction's line, waiting its turn, is measured by its own size by a car crossing that
           // junction, not with the margins kept from one on the move: with them the car stood in the box for the
           // ride's nose while the ride waited at its line for that car's movement, each for the other, #243)
-          // (and one stopped a while in the way of a car crossing a junction, wherever it stands: measured by its own size
-          // too, after 8 s, so that a ride stood beside the car's way, within the margins only, holds it no longer: Tokyo's
-          // car 94 stood 71 s in junction 1465 for a ride on its way, #283)
-          const waiting = c.mv && !o.mv && o.v < 0.3 && ((o.toLine != null && o.toLine >= 0 && o.toLine < 6) || c.xWaitT > 8);
+          // (and one stopped a while in a car's way, wherever either stands: measured by its own size too, after 8 s, so that a
+          // ride stood beside the car's way, within the margins only, holds it no longer: Tokyo's car 94 stood 71 s in junction
+          // 1465 for a ride on its way, and at Fushimi Inari a car stood for the taxi coming for you, which waited on it in turn, #283)
+          const waiting = !o.mv && o.v < 0.3 && ((c.mv && o.toLine != null && o.toLine >= 0 && o.toLine < 6) || c.xWaitT > 8);
           const d = hitAt(P, np, o, o.half + (waiting ? 0.1 : 0.6), o.hw + c.hw + (waiting ? 0.05 : 0.25), step);
           if (d < 0) continue;
           (sawX || (sawX = new Set())).add(o.id);
