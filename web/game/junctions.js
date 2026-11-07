@@ -1241,6 +1241,10 @@ window.OEJunctions = (function () {
       });
     }
     for (const M of meshes) { M.instanceMatrix.needsUpdate = true; M.computeBoundingSphere && M.computeBoundingSphere(); }
+    // the poles, arms and housings never move: drawn by cell (buildings.js cellInstances, so the shadow map and
+    // the view take only the cells in sight) and kept in the sun's cached shadow (world.js shadowCache); the
+    // lenses, arrows and walk figures change colour and cast no shadow
+    for (const M of meshes) if (M.castShadow) { if (window.OEBuildings && OEBuildings.cellInstances) OEBuildings.cellInstances(M); M.userData.shadowStatic = true; }
     // the glow of the lit lamps after dark (and a little by day): one point per lantern, at its lit lamp
     const gpos = new Float32Array(lanterns.length * 3), gcol = new Float32Array(lanterns.length * 3);
     const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
