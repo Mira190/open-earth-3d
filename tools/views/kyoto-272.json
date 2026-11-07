@@ -1,0 +1,6 @@
+[
+ {"name": "granvia-front", "cam": [-205, -1795, 2.0], "tgt": [-178, -1852, 30], "agl": true, "date": [10, 30], "time": "11:00"},
+ {"name": "granvia-forecourt", "cam": [-245, -1805, 2.0], "tgt": [-180, -1852, 32], "agl": true, "date": [10, 30], "time": "11:00"},
+ {"name": "granvia-dusk", "cam": [-205, -1795, 2.0], "tgt": [-178, -1852, 30], "agl": true, "date": [10, 30], "time": "sunset+15"},
+ {"name": "granvia-night", "cam": [-205, -1795, 2.0], "tgt": [-178, -1852, 30], "agl": true, "date": [10, 30], "time": "21:00"}
+]

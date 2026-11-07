@@ -1,0 +1,8 @@
+[
+ {"name": "nihonbashi-river", "cam": [1290, 1590, 6], "tgt": [1400, 1562, 10], "date": [10, 30], "time": "13:00"},
+ {"name": "nihonbashi-river-dusk", "cam": [1290, 1590, 6], "tgt": [1400, 1562, 10], "date": [10, 30], "time": "sunset+15"},
+ {"name": "nihonbashi-river-night", "cam": [1290, 1590, 6], "tgt": [1400, 1562, 10], "date": [10, 30], "time": "21:00"},
+ {"name": "nihonbashi-south", "cam": [1396, 1522, 1.7], "tgt": [1405, 1575, 9], "agl": true, "date": [10, 30], "time": "13:00"},
+ {"name": "edobashi-jct", "cam": [1420, 1480, 70], "tgt": [1540, 1585, 10], "date": [10, 30], "time": "13:00"},
+ {"name": "c1-kandabashi", "cam": [520, 2010, 60], "tgt": [300, 2260, 10], "date": [10, 30], "time": "13:00"}
+]
