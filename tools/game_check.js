@@ -1592,6 +1592,10 @@ const npcNight = require('./npc_night');
   check(heldQ.held.length === 0, `no movement left standing in a junction for more than two cycles (${heldQ.watched} cars watched at their lines, ${heldQ.cycles} greens waited through${heldQ.held.length ? `; ${heldQ.held.length} standing` : ''})`);
   for (const h of heldQ.held.slice(0, 6)) console.log('  ' + h);
   const qNote = (what, L) => { if (L.length) console.log(`note ${what}: ${L.length}\n  ${L.slice(0, 3).join('\n  ')}`); };
+  // (a car at the mouth of a street too narrow for two, waiting on one coming the other way: never over 30 s, as on a
+  // single-track road, the one nearer its passing place first, #283; and a scramble's count of those at a kerb never below none)
+  check(heldQ.narrow.max <= 30, `no car waits over 30 s at a narrow stretch for one coming the other way (${heldQ.narrow.max} s at most${heldQ.narrow.over.length ? `: ${heldQ.narrow.over.join('; ')}` : ''})`);
+  check(heldQ.gates.min >= 0, `the scrambles' counts of those waiting at their kerbs never go below none (${heldQ.gates.min}${heldQ.gates.at ? ` at ${heldQ.gates.at}` : ''})`);
   qNote('a queue at a signal held through more than two greens', heldQ.queues);
   qNote('held at a signal by your car, a ride or you in the road (not the junction\'s doing)', heldQ.yours);
   qNote('held at a signal behind a car at a wall across its way', heldQ.walls);

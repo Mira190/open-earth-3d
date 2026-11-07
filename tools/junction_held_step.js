@@ -58,9 +58,19 @@ function heldStep({ T, max, chain: process_chain = false }) {
   // and a movement in a signalled junction whose car stands still in it longer than `max` of the
   // junction's cycles: one that never leaves (#150)
   const stillIn = new Map(), cycleOf = j => j.green[0] + j.green[1] + 2 * (j.amber + 2) + (j.scramble ? j.green[3] + (j.allred || 2) : 0); // (a scramble's walk too: a third turn in its cycle)
+  // (and, #283: a car waiting at the mouth of a narrow stretch for one coming the other way, its longest wait; and
+  // a scramble's kerbs whose count of those waiting there goes below none)
+  const narrowT = new Map(), narrow = { max: 0, over: [] }, gates = { min: 0, at: '' };
   for (let s = 0; s < T; s++) {
     g.advance(1);
     const now = g.t();
+    for (const c of C) {
+      const n = c.line >= 0 && c.why === 'narrow' && c.v < 0.3 ? (narrowT.get(c) || 0) + 1 : 0;
+      narrowT.set(c, n);
+      if (n > narrow.max) narrow.max = n;
+      if (n === 31 && narrow.over.length < 4) narrow.over.push(`car ${idx.get(c)} on piece ${c.line} (${L[c.line].c}) at ${c.x.toFixed(0)},${c.y.toFixed(0)}, for car ${idx.get(c.front)}: ${c.front ? `${c.front.why} v ${(c.front.v || 0).toFixed(1)}${c.front.q ? ' queueing' : ''} narrow ${(c.front.narrow || 0).toFixed(1)} in ${(c.front.narrowIn ?? NaN).toFixed(1)}` : ''}; its narrow ${(c.narrow || 0).toFixed(1)} in ${(c.narrowIn ?? NaN).toFixed(1)}`);
+    }
+    for (const pz of g.crowd.plazas || []) for (const h of pz.gates || []) if (h.n < gates.min) { gates.min = h.n; gates.at = `${pz.j ? `junction ${pz.j.id}` : 'a plaza'} kerb at ${h.x.toFixed(0)},${h.y.toFixed(0)}`; }
     const live = new Set();
     for (const j of JN.J) {
       if (!j.sig || j.mid != null) continue;
@@ -93,6 +103,6 @@ function heldStep({ T, max, chain: process_chain = false }) {
       }
     }
   }
-  return { watched, cleared, cycles, held, queues, yours, walls, beyond };
+  return { watched, cleared, cycles, held, queues, yours, walls, beyond, narrow, gates };
 }
 module.exports = { heldStep };
