@@ -20,7 +20,8 @@ window.OENav = (function () {
   function create(D, DSM) {
     const G = D.G, T = D.quays ? D.quays.raise(D.T) : D.T; // the ground as drawn: level up to a quay's wall
     // ---------------------------------------------------------- water (5 m, packed bits)
-    const wm = G.water, bytes = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0));
+    const bytesOf = b => (typeof b === 'string' ? Uint8Array.from(atob(b), c => c.charCodeAt(0)) : b); // (bytes from game.bin, base64 from game.json)
+    const wm = G.water, bytes = bytesOf(wm.bits);
     const isWaterCell = (r, c) => (bytes[(r * wm.nx + c) >> 3] >> (7 - ((r * wm.nx + c) & 7))) & 1;
     const x0 = DSM.x0, y1 = DSM.y1;
     // along a quay (quays.js) the water starts a few tens of centimetres short of the seawall's face,
@@ -81,8 +82,12 @@ window.OENav = (function () {
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     const solidMeshes = [];  // the meshes that are solid, for the collision world's finer cells (below)
     for (const m of D.LM.meshes || []) {
-      if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
       const mat = (D.LM.materials || {})[m.material] || {};
+      // walked on as a strip surface; its slab is added below. What stands on the strip's edge as a wall stays one
+      // (issue 265: a deck's glass balustrade, named for the deck, let walkers through it), though it carries the
+      // strip's name: glass, a balustrade, a railing or a barrier
+      const barrier = mat.opacity < 1 || /glass|balustrade|railing|barrier/.test(m.name);
+      if (strips.some(st => st.mesh && m.name.startsWith(st.mesh) && (m.name === st.mesh || !barrier))) continue;
       if (mat.decal) continue; // paving laid over a roof, which is the solid
       if (mat.solid === false) continue; // walls a city's fine walking levels hold walkers back at instead (game.json "patches")
       solidMeshes.push(m);
@@ -117,7 +122,7 @@ window.OENav = (function () {
     // interpolated, so that a wall stays a wall and a riser a step. Where a slab stands over the
     // paving (a forecourt over a colonnade), "upper" holds the slab's level: the ground is the slab,
     // and the floor under it is walked too (floorAt, groundBelow)
-    const int16 = s => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new Int16Array(b.buffer, 0, b.length >> 1); };
+    const int16 = s => { const b = bytesOf(s); return new Int16Array(b.buffer, b.byteOffset, b.length >> 1); };
     const patches = (G.patches || []).map(p => Object.assign({}, p, {
       z: int16(p.data), up: p.upper ? Object.assign({}, p.upper, { z: int16(p.upper.data) }) : null, x1: p.x0 + p.nx * p.cell, y1: p.y0 + p.ny * p.cell }));
     // the patch's levels at (x, y): [the floor, the slab over it or null], or null off the patches
@@ -392,7 +397,10 @@ window.OENav = (function () {
         const [u, v] = stripUV(s, x, y);
         if (Math.abs(v) > s.half_width + DSM.cell || u < s.us[0] - DSM.cell || u > s.us[s.us.length - 1] + DSM.cell) continue;
         const q = interp(s.us, s.zs, u);
-        if (q > h && q < h0 + 3.0) h = q;
+        // (and whatever stands at its very edge, within 1.5 m of its outline, however high it is over the ground:
+        // a balustrade, a lift's shaft against a deck's end, issue 265; their 2 m cells reached onto the deck)
+        const edge = Math.abs(v) <= s.half_width + 1.5 && u >= s.us[0] - 1.5 && u <= s.us[s.us.length - 1] + 1.5;
+        if (q > h && (q < h0 + 3.0 || edge)) h = q;
       }
       return h;
     };

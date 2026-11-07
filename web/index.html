@@ -136,8 +136,18 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .loader .track { width: 240px; height: 1px; background: var(--line); margin-top: 34px; overflow: hidden; }
 .loader .track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, rgba(255, 176, 102, 0.4), var(--accent)); transition: width 0.25s linear; }
 .loader small { display: block; margin-top: 14px; min-height: 1.4em; font: 400 9.5px/1.4 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+/* the stage the load is at (world.js loadLine): it says what the page is doing once the download is in,
+   while the packs decode and the shaders compile, and its dot pulses on the compositor, so it moves even
+   while a long frame holds the main thread */
+.loader .ld-stage { display: inline-flex; align-items: center; gap: 9px; margin-top: 12px; margin-right: -0.3em; font: 400 9px/1 var(--f-mono);
+  letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); opacity: 0.9; }
+.loader .ld-stage:empty { visibility: hidden; }
+.loader .ld-stage::before { content: ""; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 8px rgba(255, 176, 102, 0.6); animation: ld-pulse 1.1s ease-in-out infinite; will-change: transform, opacity; }
+@keyframes ld-pulse { 0%, 100% { opacity: 0.25; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .loader .ld-stage::before { animation: none; opacity: 0.8; } }
 .loader .ld-err { display: none; gap: 10px; margin-top: 26px; flex-wrap: wrap; justify-content: center; }
-.loader.err .track, .loader.err .ld-mode { display: none; }
+.loader.err .track, .loader.err .ld-mode, .loader.err .ld-stage { display: none; }
 .loader.err small { margin-top: 30px; max-width: 42ch; font: 400 13px/1.6 var(--f-body); letter-spacing: 0; text-transform: none; color: var(--ink-2); }
 .loader.err .ld-err { display: flex; }
 .loader.out { opacity: 0; pointer-events: none; }
@@ -864,6 +874,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <small class="ld-native" id="load-native" hidden></small>
       <div class="track"><i id="load-bar"></i></div>
       <small id="load-msg">Loading footprints</small>
+      <span class="ld-stage" id="load-stage" aria-hidden="true"></span>
       <div class="ld-err"><button class="btn primary" data-reload>Reload</button><a class="btn" href="#globe">Back to the globe</a></div>
     </div></div>
   </section>
@@ -1080,7 +1091,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
         <div class="row" id="gm-links"></div>
-        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-reset">Start again</button></div>
+        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-overture" hidden>Play the opening</button><button class="btn" id="gm-reset">Start again</button></div>
       </div>
     </div>
 
@@ -1115,6 +1126,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <small class="ld-native" id="g-load-native" hidden></small>
       <div class="track"><i id="g-load-bar"></i></div>
       <small id="g-load-msg">Loading</small>
+      <span class="ld-stage" id="g-load-stage" aria-hidden="true"></span>
       <div class="ld-err"><button class="btn primary" data-reload>Reload</button><a class="btn" href="#globe">Back to the globe</a></div>
     </div></div>
   </section>
@@ -1193,6 +1205,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/audio.js"></script>
 <script src="game/walkcalls.js"></script>
 <script src="game/places.js"></script>
+<script src="game/overture.js"></script>
 <script src="game/hud.js"></script>
 <script src="game/game.js"></script>
 <script>

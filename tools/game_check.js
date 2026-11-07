@@ -230,6 +230,45 @@ const npcNight = require('./npc_night');
   check(second.settled < 1.2 && !second.tour && /gold line|minimap shows the way/.test(second.toast),
     `on a later map the intro is skipped: a key settles the arrival (${second.settled.toFixed(1)} s), no tour, the guide's welcome ("${second.toast.slice(0, 90)}")`);
 
+  // the overture (overture.js, docs/OVERTURE.md), on a map that has one: it plays through to the player's
+  // shoulder, the walk at its signal turns green, and a key at any point eases down to the player in under a second
+  const ov = await p.evaluate(async () => {
+    const g = window.__game, o = g.overture();
+    if (!o) return null;
+    const out = {};
+    let done = null;
+    out.started = o.play(sk => { done = { skipped: sk }; });
+    if (!out.started && o.variant === 'day' && g.G.overture.day === false) return { off: true }; // (its day overture is off: the opening shot plays)
+    if (!out.started) return out;
+    let t = 0;
+    while (o.active && t < o.total + 3) { g.advance(0.25); t += 0.25; if (Math.round(t * 4) % 16 === 0) await new Promise(r => requestAnimationFrame(r)); }
+    for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(r)); // (a frame or two of the chase camera)
+    const e = o.end, head = g.player.z + 1.55, cam = g.camera.position;
+    out.t = t; out.total = o.total; out.done = done; out.kind = o.kind;
+    out.near = Math.hypot(cam.x - g.player.x, cam.z + g.player.y, cam.y - head);
+    out.at = Math.hypot(g.player.x - e[0], g.player.y - e[1]);
+    const sig = g.G.overture.shots.some(q => (q.cues || []).some(c => c[1] === 'green')) ? g.G.overture.signal : null; // (only an overture that turns its signal green)
+    if (sig) { const p0 = o.point(sig), j = g.junctions.J.filter(q => q.sig).sort((a, b) => Math.hypot(a.x - p0[0], a.y - p0[1]) - Math.hypot(b.x - p0[0], b.y - p0[1]))[0]; out.signal = j ? { d: Math.hypot(j.x - p0[0], j.y - p0[1]), ph: j.ph, st: j.st, scramble: !!j.scramble } : null; }
+    out.layer = !!document.querySelector('.ov-layer');
+    // skipped a few seconds in
+    done = null;
+    o.play(sk => { done = { skipped: sk }; });
+    g.advance(4);
+    o.skip();
+    let s = 0;
+    while (o.active && s < 3) { g.advance(0.1); s += 0.1; await new Promise(r => requestAnimationFrame(r)); }
+    out.skip = s; out.skipDone = done;
+    return out;
+  });
+  if (ov && ov.off) check(true, 'the overture is for after dark here; by day the opening shot plays');
+  else if (ov) {
+    check(ov.started && ov.done && !ov.done.skipped && ov.t <= ov.total + 1 && ov.near < 12 && ov.at < 3,
+      `the overture plays (${ov.total ? ov.total.toFixed(1) : '?'} s, guide ${ov.kind}) and hands over to the chase camera ${ov.near != null ? ov.near.toFixed(1) : '?'} m from the player's head, ${ov.at != null ? ov.at.toFixed(1) : '?'} m from its end spot`);
+    if (ov.signal !== undefined) check(ov.signal && ov.signal.d < 30 && ov.signal.st === 'g' && (ov.signal.scramble ? ov.signal.ph === 3 : ov.signal.ph === 1),
+      `the overture's signal turns the walk green as control comes to you (${JSON.stringify(ov.signal)})`);
+    check(ov.skipDone && ov.skipDone.skipped && ov.skip < 1.2, `a key during the overture eases down to the player (${ov.skip != null ? ov.skip.toFixed(1) : '?'} s)`);
+  }
+
   // walking: forward for four seconds
   const walk = await p.evaluate(() => {
     const g = window.__game, a = [g.player.x, g.player.y];
@@ -438,7 +477,7 @@ const npcNight = require('./npc_night');
     const g = window.__game, pl = g.player, P = (g.G.patches || [])[0];
     if (!P) return { none: true };
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
-    const b = Uint8Array.from(atob(P.data), c => c.charCodeAt(0)), Z = new Int16Array(b.buffer, 0, P.nx * P.ny);
+    const b = typeof P.data === 'string' ? Uint8Array.from(atob(P.data), c => c.charCodeAt(0)) : P.data, Z = new Int16Array(b.buffer, b.byteOffset, P.nx * P.ny);
     const at = (x, y) => { const i = Math.floor((x - P.x0) / P.cell), j = Math.floor((y - P.y0) / P.cell); return i < 0 || j < 0 || i >= P.nx || j >= P.ny || Z[j * P.nx + i] === -32768 ? null : Z[j * P.nx + i] / 100; };
     const go = (x, y, dx, dy, z, t) => {
       Object.assign(pl, { x, y, z, ground: true, vz: 0, speed: 0 });
@@ -545,7 +584,7 @@ const npcNight = require('./npc_night');
   // head does not pass between the soffit, clear_m over the floor, and the slab's top)
   const slabCam = await p.evaluate(() => {
     const g = window.__game, pl = g.player, out = [];
-    const dec = s => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new Int16Array(b.buffer, 0, b.length >> 1); };
+    const dec = s => { const b = typeof s === 'string' ? Uint8Array.from(atob(s), c => c.charCodeAt(0)) : s; return new Int16Array(b.buffer, b.byteOffset, b.length >> 1); };
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, pitch: g.cam.pitch };
     for (const P of g.G.patches || []) {
       const U = P.upper;
@@ -715,14 +754,28 @@ const npcNight = require('./npc_night');
       [pl.x, pl.y, pl.z] = a; pl.mode = 'foot'; g.advance(0.3);
       const act = g.currentAction && g.currentAction(), offered = !!(act && /lift/i.test(act.text || ''));
       g.rideLift(L, i, j);
-      for (let k = 0; k < 80 && g.cine.active; k++) g.advance(0.25);
+      // a lift ridden in its car (lifts[].car, Queenstown's): through the ride the player stands in the car's
+      // middle on its floor, and the car ends at the far stop's floor with that stop's doors shut again
+      const C = L.car && g.liftCar && g.liftCar(L), ride = { frames: 0, off: 0, floorOff: 0 };
+      for (let k = 0; k < 240 && (g.cine.active || pl.mode === 'lift'); k++) {
+        g.advance(0.25);
+        const R = g.liftRide && g.liftRide();
+        if (C && R && R.phase === 'ride') {
+          const floor = (L.stops[L.car.drawn_at].floor ?? L.stops[L.car.drawn_at].at[2]) + C.dz;
+          ride.frames++; ride.off = Math.max(ride.off, Math.hypot(pl.x - L.car.centre[0], pl.y - L.car.centre[1])); ride.floorOff = Math.max(ride.floorOff, Math.abs(pl.z - floor));
+        }
+      }
       g.advance(0.5);
-      out.push({ name: L.name, from: L.stops[i].name, to: L.stops[j].name, offered, dz: Math.abs(pl.z - b[2]), d: Math.hypot(pl.x - b[0], pl.y - b[1]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok, floor: pl.floor });
+      const o = { name: L.name, from: L.stops[i].name, to: L.stops[j].name, offered, dz: Math.abs(pl.z - b[2]), d: Math.hypot(pl.x - b[0], pl.y - b[1]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok, floor: pl.floor, mode: pl.mode };
+      if (C) Object.assign(o, { car: true, rideFrames: ride.frames, off: ride.off, floorOff: ride.floorOff,
+        carAt: Math.abs((L.stops[L.car.drawn_at].floor ?? L.stops[L.car.drawn_at].at[2]) + C.dz - (L.stops[j].floor ?? b[2])), shut: C.doors.every(d => d.k < 0.01) });
+      out.push(o);
     }
     g.spawn(); g.advance(0.5);
     return out;
   });
   for (const r of liftRides) check(r.offered && r.dz < 0.6 && r.d < 3 && r.walk, `the ${r.name} from ${r.from} to ${r.to} (offered at its door: ${r.offered}; ends ${r.d.toFixed(1)} m from the stop, ${r.dz.toFixed(2)} m off its level, on ${r.floor}${r.walk ? '' : ', not walkable'})`);
+  for (const r of liftRides.filter(q => q.car)) check(r.rideFrames > 4 && r.off < 0.6 && r.floorOff < 0.1 && r.carAt < 0.05 && r.shut && r.mode === 'foot', `the ${r.name}'s car rides from ${r.from} to ${r.to} with you in it (${r.rideFrames} frames under way, at most ${r.off.toFixed(2)} m off its middle and ${r.floorOff.toFixed(2)} m off its floor; the car ${r.carAt.toFixed(2)} m from the far floor, doors ${r.shut ? 'shut' : 'open'}, ${r.mode})`);
 
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it

@@ -76,6 +76,7 @@ window.OECine = (function () {
         if (!cur) { const p = pending; pending = null; return p; }
         const c = cur;
         if (c.t0 == null) c.t0 = t;
+        c.tNow = t;
         c.k = c.dur > 0 ? clamp01((t - c.t0) / c.dur) : 1;
         fire(c, c.k);
         const pose = c.shot(c.k);
@@ -94,6 +95,8 @@ window.OECine = (function () {
         return pending;
       },
       stop() { cur = null; pending = null; },
+      // move the playing shot to k (for tools that take stills of a long shot without playing it through)
+      seek(k) { if (cur && cur.t0 != null) cur.t0 = cur.tNow - clamp01(k) * cur.dur; },
       get active() { return !!cur; },
       get label() { return cur ? cur.label : ''; },
       get k() { return cur ? cur.k : 1; },
