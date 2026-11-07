@@ -35,7 +35,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
-| Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, NASA Black Marble, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
+| Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, VIIRS Annual VNL V2 2024, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
 | Landings past the frame | `outposts.py` | game.json `outposts`, `outpost_<id>.jpg`: a small tile of ground far from the model that a ferry calls at (Queenstown's Walter Peak, 13 km across Lake Wakatipu): its terrain on a 2 m grid, its water and building masks, its photo, its buildings and its wharf as a strip surface, from a STAC DEM and photo collection and Overture; the ferry legs that call there routed over Overture's lake past the frame (`web/outposts.js`) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
@@ -508,9 +508,12 @@ The views switch in place, without reloading the page.
     blocks and is cooled and darkened toward walls in sky light, and a pixel's
     footprint is the geometric mean of its two axes, so the grain does not vanish
     where a pixel is a few metres wide and hundreds deep. After dark the
-    built-up land glows: NASA's Black Marble at 500 m, raised to a power for
-    contrast (its visual product saturates over a city) and shared out by
-    WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
+    built-up land glows: the annual VIIRS night lights of 2024 at 500 m (Annual
+    VNL V2, as Cloud-Optimized GeoTIFFs on Zenodo), the radiance toned to a
+    brightness with `1 - exp(-1.9 (rad / 1.9 nW) ^ 0.8)` (fitted to the Black
+    Marble 2016 visual product where that is not saturated, then rolling off
+    instead of clipping, so a core still reads over its suburbs; the gain keeps
+    the old mean), and shared out by WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
     more of them the brighter the land, which fade into their mean where a pixel
     covers them. A point of light keeps its energy when it is drawn wider than
     itself, and since the lights shine every way, land seen at a low angle glows
@@ -1182,13 +1185,41 @@ waits for Shibuya's opening film.
   borrows a neighbour's (`plateau.veg_from`: Shinjuku Tokyo's, Higashiyama and
   Fushimi Kyoto's). The canopy height model was tried as the measure and sees almost
   none of them: none of Tokyo's 216, half of Kyoto's with a correlation of 0.4.
-  **Sydney:** the City of Sydney's tree register ("Trees", on Data.NSW and the
-  City's open data site) lists each street and park tree with its species, height,
-  canopy, age and trunk diameter, but its listings give no licence ("not specified"),
-  so it is not used until the City confirms its terms. NSW Spatial Services'
-  airborne lidar (point clouds and 1 m DEMs through the Elvis portal) is the open
-  alternative, through a height-above-ground surface at each mapped tree. Neither is
-  read yet (in the follow-up issue).
+  **Sydney (issue #300):** the City of Sydney's tree inventory, "Trees"
+  (services1.arcgis.com/cNVyNtjGVZybOQWZ, layer `Trees/FeatureServer/0`), lists each
+  street and park tree in the council's area with its species, height, canopy spread,
+  age and trunk diameter. Its Data.NSW mirror says "licence not specified", but the
+  publisher's own record (ArcGIS item 15c4713a688a48fcb604fc343118af05, owner
+  `cityofsydneyspatial`, updated 2026-11-06) gives CC BY 4.0 with the credit "City of
+  Sydney"; it was read anonymously on 2026-11-07 (11,786 trees in the bbox, 10,731 in
+  the frame). `trees.survey` in `city.json` names it, and `plateau_veg.py` then: gives
+  each mapped tree within 3 m of a surveyed one its measured height (1,383 of OSM's
+  6,026); plants, with its height, each surveyed tree no mapped tree stands within 4 m
+  of (`"add": true`: 8,906, since OSM maps about a fifth of the council's trees; moved
+  out of the carriageways by `kerbside.py`, 89 left out), and drops the 638 canopy
+  trees `woods.py` had put within 3 m of one; and draws the other street trees (The
+  Rocks, Barangaroo, the north shore, outside the council's area) from the inventory's
+  heights (median 10 m, 90th percentile 20 m). The old guesses had a correlation of
+  0.02 with the measured heights. The inventory's species shares by genus (brush box,
+  water gum, paperbarks and eucalypts 31%, plane trees 25%, deciduous broadleaves 21%,
+  evergreen broadleaves 11%, figs 5%, jacarandas 3%, palms 3%; its park trees: evergreen
+  broadleaves 27%, gums 22%, palms 20%, figs 12%) are the measured `trees.mix`, but
+  with them the game's check finds two cars holding each other in a CBD junction and a
+  bus edging into a lamp post (the trunks' sizes change with the species, and the
+  traffic's timing with them), so the guessed mix stays until that traffic hold is fixed
+  (follow-up issue). NSW Spatial Services' lidar is not used: its
+  files are in a requester-pays bucket. The canopy height models were measured
+  against the inventory (`tools/chm_check.py`, 3,000 trees, the highest canopy within
+  2.5 m of the trunk): Meta and WRI's v1 (2024) sees 45% of the trees, correlation
+  0.20, median error 8 m; their CHMv2 (2026, `s3://dataforgood-fb-data/forests/v2/`,
+  AWS Registry `dataforgood-fb-forestsv2`, CC BY 4.0, read anonymously) sees 59%,
+  correlation 0.30, median error 6 m. Neither reads a street tree well enough to stand
+  for one. ETH's global canopy height (Lang et al., 10 m) is coarser still and was not
+  tried for single trees.
+  **Queenstown:** no tree survey, but LINZ's 2021 LiDAR is open (`nz-elevation`, CC BY
+  4.0, anonymous): with `trees.lidar`, each of the 102 mapped trees takes the highest
+  return of the 1 m DSM within 2 m of it over the 1 m DEM there, where that lies between
+  3 and 40 m (97 of them; median 12.3 m, 90th percentile 26.2 m, the Gardens' conifers).
 - **The Gion weeping cherry on its own spot.** Maruyama Park's Gion shidarezakura
   stood on the park's nearest mapped trees, about 17 m off. Higashiyama's
   `landmark_meshes` now plants it as a landmark tree (`landmarks.json` `trees`,
