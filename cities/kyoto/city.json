@@ -5,7 +5,7 @@
   "country_code": "JP",
   "timezone": "Asia/Tokyo",
   "locale": "en-JP",
-  "description": "Central Kyoto from open data: Kyoto Station to the Imperial Palace, lit by the real sun, with measured building heights from Project PLATEAU.",
+  "description": "Central Kyoto, from Kyoto Station and its tower to the Imperial Palace gardens: temples among low tiled roofs, the Kamo River's banks, and streets laid out for an emperor in 794.",
   "bbox": [
     135.745,
     34.981,
@@ -206,8 +206,8 @@
   },
   "tour": [
     {
-      "title": "Kyoto from open data",
-      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs. The grid is Heian-kyo's: streets laid out in the year 794.",
+      "title": "The capital of a thousand years",
+      "text": "Emperor Kanmu laid out Heian-kyo here in 794, a grid copied from China's capital, and the city still lives on it. Children learn its streets from a song: Maru, Take, Ebisu, Ni, Oshi, Oike...",
       "cam": [
         1900,
         -3000,
@@ -228,7 +228,7 @@
     },
     {
       "title": "Kyoto Tower",
-      "text": "131 m to the spire, with the observation deck at 100 m: a steel tube with no frame inside it, finished in 1964. The model draws it from those figures; PLATEAU gives its footprint block as {landmark:kyoto_tower.plateau_m} m because it records the tower and the hotel below it as one building.",
+      "text": "A white-and-red candle of 131 m, lit for the city in 1964 and meant to look like a lighthouse over a sea of tiled roofs. Its deck at 100 m sees the whole basin to the hills.",
       "cam": [
         100,
         -1990,
@@ -249,7 +249,7 @@
     },
     {
       "title": "Higashi Honganji",
-      "text": "The Founder's Hall, the Goei-do, is one of the largest wooden buildings in the world. It stands among low roofs: most of this city is under 10 m.",
+      "text": "The Founder's Hall is one of the largest wooden buildings in the world. When it was rebuilt, women gave their hair to braid the ropes that hauled its beams; one rope is still on show.",
       "cam": [
         -330,
         -1620,
@@ -270,7 +270,7 @@
     },
     {
       "title": "A city that stays low",
-      "text": "{buildings} buildings, the median measured at 8.4 m. Only 1,340 reach above 31 m and 65 above 45 m. Kyoto's skyline rules hold the centre down, so Kyoto Tower and the station stand out.",
+      "text": "Kyoto keeps its skyline down by law, so temple roofs still rise over the houses and the hills stay in view from every street. Only the tower and the station stand out.",
       "cam": [
         -1100,
         -900,
@@ -290,8 +290,8 @@
       "hold": 10
     },
     {
-      "title": "A winter day on the roofs",
-      "text": "21 December, 8 am to 4 pm. The sun never climbs above 31.6° here, so even a 20 m block throws a shadow of 33 m at noon.",
+      "title": "Winter on the roofs",
+      "text": "The winter sun stays low over Kyoto, and long shadows fall across the tiled roofs all day. It's the season for hot tofu at Nanzen-ji and a quiet temple garden.",
       "cam": [
         -1500,
         -1700,
@@ -311,8 +311,8 @@
       "hold": 12
     },
     {
-      "title": "Imperial Gardens in winter",
-      "text": "On 21 December at noon, {sun:京都御苑|12-21|12:00}% of the Kyoto Gyoen gets direct sun; on 21 June, {sun:京都御苑|6-21|12:00}%.",
+      "title": "The Imperial Palace gardens",
+      "text": "Kyoto Gyoen, the palace's great park of gravel avenues, plum and cherry groves. On a winter noon {sun:京都御苑|12-21|12:00}% of it is in the sun, a good place for a bench and a can of hot coffee.",
       "date": [
         12,
         21
@@ -323,8 +323,8 @@
       "place": "京都御苑"
     },
     {
-      "title": "Kamo River at dusk",
-      "text": "Autumn, 4:20 pm. The sun sets behind the western hills and the river valley fills with shadow before the streets do.",
+      "title": "The Kamo River at dusk",
+      "text": "When the sun drops behind the western hills, Kyoto comes down to the river. Couples sit evenly spaced along the bank, and in summer the restaurants of Pontocho open their wooden terraces over the water.",
       "cam": [
         1500,
         -500,
