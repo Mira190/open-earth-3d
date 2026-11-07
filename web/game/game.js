@@ -408,7 +408,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // stood in the traffic, Tetsugaku's Philosopher's Path)
   const cwRoads = G.paths.road.filter(r => r.cw);
   const bankLanes = cwRoads.length && D.inland ? OEStreets.carriageways(cwRoads.map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw }))) : null;
-  const byWall = (x, y) => !!(bankLanes && D.inland.byWall(x, y, 1.2) && bankLanes.depth(x, y, nav.terrain(x, y), 3) > 0);
+  // (and not at a junction, where a car turning or backing out swings wider than its lane and a trunk is a post it
+  // waits on: within 12 m of a road's end the kerb's margin stands, Tetsugaku)
+  const ends = new Set(), EK = (x, y) => `${Math.floor(x / 12)},${Math.floor(y / 12)}`;
+  if (bankLanes) for (const r of G.paths.road) { const p = r.p, n = p.length; if (n >= 6) { ends.add(EK(p[0] / 10, p[1] / 10)); ends.add(EK(p[n - 3] / 10, p[n - 2] / 10)); } }
+  const nearEnd = (x, y) => { for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (ends.has(EK(x + a * 12, y + b * 12))) return true; return false; };
+  const byWall = (x, y) => !!(bankLanes && D.inland.byWall(x, y, 1.2) && bankLanes.depth(x, y, nav.terrain(x, y), 3) > 0 && !nearEnd(x, y));
   if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && (byWall(x, y) ? !(roadsNow.depth(x, y, g, 0.35) > 0) : !inRoad(x, y, g, 0.4)) && !underDeck(x, y, g, 8) ? g : null; });
   // night.js's poles, behind the kerb: where one would be in a wall, its lamp hangs on a bracket there
   // (and one beside a deck, in the road or under it, goes)
