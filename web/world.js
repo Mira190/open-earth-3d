@@ -1146,6 +1146,10 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
         coping: new THREE.MeshStandardMaterial({ color: lin(IW.coping || '#b3afa5'), roughness: 0.85, metalness: 0 }),
         rail: new THREE.MeshStandardMaterial({ color: lin(IW.rail || '#5d6a66'), roughness: 0.5, metalness: 0.5, side: THREE.DoubleSide }),
         slab: new THREE.MeshStandardMaterial({ color: lin(IW.concrete || '#a29f96'), roughness: 0.9, metalness: 0 }),
+        // a sunken promenade's floor and steps (the Horikawa): granite setts, 0.3 by 0.6 m
+        floor: (() => { const m = new THREE.MeshStandardMaterial({ color: lin(IW.paving || '#a39d92'), roughness: 0.88, metalness: 0 });
+          PATTERNS.ashlar(m, { course_m: 0.3, block_m: 0.6 }); const own = m.onBeforeCompile; m.onBeforeCompile = sh => { own(sh); streetLit(sh); };
+          m.customProgramCacheKey = () => 'inland|floor'; return m; })(),
       };
       PATTERNS.railing(mats.rail, { bar_m: 0.14, rails_m: [0.06, 1.05] });
       mats.coping.onBeforeCompile = mats.slab.onBeforeCompile = streetLit;

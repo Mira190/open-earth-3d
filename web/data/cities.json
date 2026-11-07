@@ -140,8 +140,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 6261234,
-   "game": 6643499
+   "model": 6265375,
+   "game": 6647771
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -247,7 +247,7 @@
   ],
   "load_bytes": {
    "model": 655365,
-   "game": 750796
+   "game": 750815
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
@@ -296,8 +296,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 739446,
-   "game": 877928
+   "model": 738848,
+   "game": 877400
   },
   "group_meta": {
    "summary": "Four maps of Kyoto on PLATEAU's measured heights: the centre from Kyoto Station to the Imperial Palace, Higashiyama's lanes to Kiyomizu-dera, the torii of Fushimi Inari, and the Philosopher's Path.",
@@ -1089,8 +1089,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 4300890,
-   "game": 4853479
+   "model": 4300849,
+   "game": 4853552
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1822,8 +1822,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 2468272,
-   "game": 2911578
+   "model": 2468250,
+   "game": 2911556
   },
   "group_meta": {
    "native": "\u6771\u4eac",

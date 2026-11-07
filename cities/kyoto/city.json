@@ -98,11 +98,13 @@
     "min_area_m2": 5000,
     "note": "No sea: Kyoto is 25-80 m above it. Its rivers, canals and ponds are drawn at their own level (inland, pipeline/inland_water.py); the Nijo Castle moats are the landmark's own.",
     "inland": {
-      "note": "The Kamo River in its bed at the 5 m laser survey's level; the Takase River, Shirakawa and the Misosogi between stone walls (about 1-2 m down to a shallow flow, read from photographs); the Kamo Canal and the Biwako Canal at Okazaki between stone walls about 2.5 and 1.8 m down. The Horikawa's sunken promenade is left to the photograph.",
+      "note": "The Kamo River in its bed at the 5 m laser survey's level; the Takase River, Shirakawa and the Misosogi between stone walls (about 1-2 m down to a shallow flow, read from photographs); the Kamo Canal and the Biwako Canal at Okazaki between stone walls about 2.5 and 1.8 m down. The Horikawa from Oshikoji up to the map's edge is a sunken promenade (Kyoto City's water restoration, 1997-2008): a paved floor between its stone walls about 2.6 m under the street, the stream down its middle, and steps down from the crossings (the depth and widths read from photographs, not measured).",
       "lines": [
         {"name": "高瀬川", "width_m": 4.5, "bank_to_water_m": 0.9, "water_m": 0.15, "walls": "stone"},
         {"name": "白川", "width_m": 5.0, "bank_to_water_m": 1.3, "water_m": 0.25, "walls": "stone"},
-        {"name": "みそそぎ川", "width_m": 4.0, "bank_to_water_m": 2.0, "water_m": 0.3, "walls": "stone"}
+        {"name": "みそそぎ川", "width_m": 4.0, "bank_to_water_m": 2.0, "water_m": 0.3, "walls": "stone"},
+        {"name": "堀川", "clip": [-1100, 900, -800, 2750], "width_m": 9.5, "bank_to_water_m": 2.95, "water_m": 0.15, "walls": "stone",
+         "terrace": {"stream_m": 2.4, "path_m": 0.35, "steps_m": 1.4}}
       ],
       "rules": {"鴨川運河": {"walls": "stone", "bank_to_water_m": 2.5, "water_m": 1.2}},
       "class_rules": {"canal": {"walls": "stone", "bank_to_water_m": 1.8, "water_m": 1.5}},

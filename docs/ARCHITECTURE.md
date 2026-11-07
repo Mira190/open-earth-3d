@@ -263,12 +263,27 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     may widen downstream (the Meguro River 9 to 13 m, the Shibuya River 8 m, the
     Kanda River 11 m, Kyoto's Takase River, Shirakawa and Misosogi, the canal's branch
     along the Philosopher's Path), and narrow river or canal polygons (under 15 m on
-    average) or ones a city names (the Kamo Canal, the Biwako Canal at Okazaki). The
-    bank is the ground either side just outside the walls (the laser survey dips into
-    a 10 m channel), the median of samples 3-8 m out, smoothed over 80 m and never
-    rising downstream; the water `bank_to_water_m` below it (4.5 m for the Meguro, a
-    metre for a Kyoto stream) and its bed `water_m` under that. Stretches in a culvert
-    (`tunnel=culvert`) are left out;
+    average) or ones a city names (the Kamo Canal, the Biwako Canal at Okazaki). Each
+    bank is the ground on its own side just outside the walls (the laser survey dips
+    into a 10 m channel): samples 3-8 m out on that side only, smoothed over 80 m and
+    never rising downstream. The water stands level across the channel, `bank_to_water_m`
+    under the lower bank (4.5 m for the Meguro, a metre for a Kyoto stream), its bed
+    `water_m` under that; the higher bank, on a slope, is at most 2.5 m over the lower,
+    a hillside behind it staying a slope (#300: one level for both banks stood the
+    Philosopher's Path canal's coping over the ground on its downhill side). Stretches in
+    a culvert (`tunnel=culvert`) are left out;
+  - *sunken promenades* (`terrace` on a line, #300): Kyoto's Horikawa from Oshikoji up
+    to the map's edge, restored by Kyoto City (1997-2008) with a stream, paths and
+    benches inside the old river and entrances from the pavements and crossings. Between
+    stone walls 9.5 m apart a paved floor (granite setts) stands 0.35 m over the water and
+    about 2.6 m under the street; the stream runs down its middle, 2.4 m wide between
+    low stone edges; at each crossing a flight of steps (0.16 m risers, 0.3 m treads, a
+    parapet on the open side) runs down along the wall from the crossing's downstream
+    face, on one bank and then the other. Kyoto City's summary gives the stretch, the
+    stream, the stepped weirs and the entrances but no dimensions: the depth and widths
+    are read from photographs. No other live city has one; a city adds
+    `"terrace": {"stream_m", "path_m", "steps_m"}` to a line in `water.inland.lines`.
+    Walkers do not go down yet: the promenade is drawn, not walked;
   - *natural* water (the Kamo River, the ponds): the survey interpolates across water,
     so its level is the survey's own inside the outline (the lowest fifth within 40 m
     along a river, a third of the way up for a pond, just under its shore);
@@ -287,10 +302,29 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   the water over it, level-shaded, its ripples drifting downstream with the sun's
   glitter (`water.js patchGlitter`) and the street lights. Where a road crosses with
   no bridge model (`bridges.py`), the ground stays over the channel as a deck with a
-  slab edge, an underside and railings. Trees planted from the canopy over a channel
-  (the Meguro's cherries reach across it) stand on its bank, 0.8 m behind the wall,
-  though in the game one whose foot falls in a carriageway (the Meguro's bank lanes run
-  up to the railing in the road data) is left out, as any tree there is; none stands in a pond. Walkers stop at a channel's railing and a pond's edge
+  slab edge, an underside and railings. Only a way that crosses is a deck: a piece over
+  the channel longer than 32 m, or one that does not reach over its middle, runs along
+  it (the Philosopher's Path itself, the Horikawa's promenade) and was covering stretches
+  of the canals with slabs. Trees planted from the canopy over a channel
+  (the Meguro's cherries reach across it) stand on its bank, 0.8 m behind the wall. The
+  lanes along a channel's banks are narrower than their class in the road data (the
+  Meguro's run up to the railing): `bank_lanes` gives such a road `w` in game.json, its
+  carriageway's width, keeping 1.8 m from the wall and no narrower than 5.4 m (the
+  traffic keeps 1.7 m off the line); `streets.js` takes its band as the carriageway and
+  0.3 m (no parking along the river) and the game draws the street that wide, so a
+  bank's cherries stand in the game as in the viewer, clear of the carriageway; none
+  stands in a pond.
+
+  After dark the street lights, the festival's chochin and the bonbori near the water
+  are seen in it (`inland.js glints`, #300), as a long-exposure photograph of Nakameguro
+  shows them: each light's mirror image under the water's level, where the line from the
+  eye to it meets the water, drawn out towards the eye over every part of the water whose
+  ripples tilt a reflected ray within 0.085 rad of it (from the elevation theta + 0.085
+  out to theta - 0.085, or the horizon), a lamp's width across, brightest at the image and
+  broken into drifting dashes further out, Fresnel-weighted and weaker for a far light.
+  One additive card per light, placed in the vertex shader for the camera: no second
+  render of the scene, as the sea's planar reflection is, so every tier has it, and where
+  a card runs past the water's edge it is under the bank and the ground hides it. Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 
   Live cities: Shibuya (the Meguro River, the Shibuya River's open stretch, 12 ponds),

@@ -33,7 +33,15 @@ window.OEInland = (function () {
       });
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (const [x, y] of rings[0]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-      return { id, name: b.name, kind: b.kind, walls: b.walls || null, water_m: b.water_m || 0.3, rings, bz, wz, box: [x0, y0, x1, y1] };
+      // a sunken promenade (the Horikawa): a floor terrace.path_m over the water between the walls, the stream down
+      // it in rings of its own (anticlockwise), and flights of steps down from the crossings
+      let terrace = null;
+      if (b.terrace && b.stream) {
+        const sr = b.stream.rings.map(pairs), swz = b.stream.wz.map(v => v.slice());
+        sr.forEach((r, k) => { if (area(r) < 0) { r.reverse(); swz[k].reverse(); } });
+        terrace = { path_m: b.terrace.path_m || 0.35, stream: sr, swz, steps: b.steps || [] };
+      }
+      return { id, name: b.name, kind: b.kind, walls: b.walls || null, water_m: b.water_m || 0.3, rings, bz, wz, box: [x0, y0, x1, y1], terrace };
     });
     const decks = (I.decks || []).map(pairs);
     const walled = bodies.filter(b => b.kind === 'walled'), natural = bodies.filter(b => b.kind === 'natural');
@@ -164,35 +172,102 @@ window.OEInland = (function () {
     }
 
     // ------------------------------------------------------------ meshes
-    // mats: {water(body), bed(body), wall(body), coping, rail, slab}: three.js materials (world.js makes them)
+    // mats: {water(body), bed(body), wall(body), coping, rail, slab, floor}: three.js materials (world.js makes them)
     function build(mats) {
       const group = new THREE.Group(); group.name = 'inland';
       const V = THREE.Vector2;
       let length = 0;
       for (const b of bodies) {
-        // the water and its bed: the polygon, triangulated, each point at its own level
-        const contour = b.rings[0].map(([x, y]) => new V(x, y)), holes = b.rings.slice(1).map(r => r.map(([x, y]) => new V(x, y)));
-        const tris = THREE.ShapeUtils.triangulateShape(contour, holes);
-        const pts = b.rings.flat(), WZ = b.wz.flat();
-        const sheet = dz => {
-          const pos = new Float32Array(pts.length * 3), uv = new Float32Array(pts.length * 2);
-          pts.forEach(([x, y], i) => { pos.set([x, WZ[i] + dz, -y], 3 * i); uv.set([x, y], 2 * i); });
+        // a sheet over rings (the first the outline, the rest holes) at the levels Z (one array a ring) + dz, its
+        // normals up (level water, whatever the triangles' slivers); null if it does not triangulate
+        const sheetOf = (R, Z, dz) => {
+          const tris = THREE.ShapeUtils.triangulateShape(R[0].map(([x, y]) => new V(x, y)), R.slice(1).map(r => r.map(([x, y]) => new V(x, y))));
+          if (!tris.length) return null;
+          const P = R.flat(), ZZ = Z.flat();
+          const pos = new Float32Array(P.length * 3), uv = new Float32Array(P.length * 2), nrm = new Float32Array(P.length * 3);
+          P.forEach(([x, y], i) => { pos.set([x, ZZ[i] + dz, -y], 3 * i); uv.set([x, y], 2 * i); nrm[3 * i + 1] = 1; });
           const g = new THREE.BufferGeometry();
           g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
           g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-          g.setIndex(tris.flat());
-          const nrm = new Float32Array(pts.length * 3);
-          for (let i = 0; i < pts.length; i++) nrm[3 * i + 1] = 1; // level water, whatever the triangles' slivers
           g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+          g.setIndex(tris.flat());
           return g;
         };
-        const w = new THREE.Mesh(sheet(0), mats.water(b));
-        w.name = 'inland_water'; w.receiveShadow = true; w.userData.body = b;
-        group.add(w);
+        const sheet = dz => sheetOf(b.rings, b.wz, dz);
+        const TR = b.terrace;
+        // the water and its bed: the polygon (a promenade's stream), triangulated, each point at its own level
+        const waters = TR ? TR.stream.map((r, k) => sheetOf([r], [TR.swz[k]], 0)).filter(Boolean) : [sheet(0)];
+        waters.forEach((g, k) => {
+          const w = new THREE.Mesh(g, mats.water(b));
+          w.name = 'inland_water'; w.receiveShadow = true; w.userData.body = b;
+          group.add(w);
+        });
         if (b.kind !== 'walled') continue;
-        const bed = new THREE.Mesh(sheet(-b.water_m), mats.bed(b));
-        bed.name = 'inland_bed'; bed.receiveShadow = true;
-        group.add(bed);
+        if (TR) {
+          // the promenade's floor round the stream, and the stream's own bed and its low stone edges
+          const floor = sheetOf([...b.rings, ...TR.stream.map(r => r.slice().reverse())], [...b.wz, ...TR.swz.map(z => z.slice().reverse())], TR.path_m);
+          if (floor) { const f = new THREE.Mesh(floor, mats.floor || mats.coping); f.name = 'inland_floor'; f.receiveShadow = true; group.add(f); }
+          for (let k = 0; k < TR.stream.length; k++) {
+            const g = sheetOf([TR.stream[k]], [TR.swz[k]], -b.water_m);
+            if (g) { const m = new THREE.Mesh(g, mats.bed(b)); m.name = 'inland_bed'; m.receiveShadow = true; group.add(m); }
+          }
+          const edge = [], euv = [];
+          TR.stream.forEach((r, k) => {
+            for (let i = 0, n = r.length; i < n; i++) {
+              const j = (i + 1) % n, [ax, ay] = r[i], [bx, by] = r[j], L = Math.hypot(bx - ax, by - ay);
+              if (L < 0.05) continue;
+              const wa = TR.swz[k][i], wb = TR.swz[k][j], ta = wa + TR.path_m, tb = wb + TR.path_m, fa = wa - b.water_m - 0.05, fb = wb - b.water_m - 0.05;
+              edge.push(ax, ta, -ay, bx, tb, -by, bx, fb, -by, ax, ta, -ay, bx, fb, -by, ax, fa, -ay);
+              euv.push(length, ta - wa, length + L, tb - wb, length + L, fb - wb, length, ta - wa, length + L, fb - wb, length, fa - wa);
+              length += L;
+            }
+          });
+          if (edge.length) {
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(edge, 3));
+            g.setAttribute('uv', new THREE.Float32BufferAttribute(euv, 2));
+            g.computeVertexNormals();
+            const m = new THREE.Mesh(g, mats.wall(b)); m.name = 'inland_stream_edge'; m.receiveShadow = true; group.add(m);
+          }
+          // the steps: a flight of stone treads down along the wall, solid to the floor, a low parapet on the open side
+          const st = [], par = [], puv = [];
+          const box = (cx, cy, ux, uy, nx, ny, hl, hw, z0, z1, out) => { // a box hl along (u) and hw across (n), z0..z1
+            const c = [];
+            for (const [a, w] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) c.push([cx + ux * a * hl + nx * w * hw, cy + uy * a * hl + ny * w * hw]);
+            const V3 = (q, z) => [q[0], z, -q[1]];
+            const quad = (p0, p1, p2, p3) => out.push(...p0, ...p1, ...p2, ...p0, ...p2, ...p3);
+            const T = c.map(q => V3(q, z1)), Bm = c.map(q => V3(q, z0));
+            const wind = (ux * ny - uy * nx) > 0; // (u, n) anticlockwise from above
+            const q4 = (a, b2, c2, d) => (wind ? quad(a, b2, c2, d) : quad(a, d, c2, b2));
+            q4(T[0], T[3], T[2], T[1]);
+            for (let e = 0; e < 4; e++) { const f = (e + 1) % 4; q4(Bm[e], Bm[f], T[f], T[e]); }
+          };
+          for (const [x, y, ux, uy, nx, ny, zt, zb, w, run] of TR.steps) {
+            const n = Math.max(2, Math.round((zt - zb) / 0.16)), rise = (zt - zb) / n, tread = run / n;
+            for (let i = 0; i < n; i++) {
+              const a = (i + 0.5) * tread;
+              box(x + ux * a, y + uy * a, ux, uy, nx, ny, tread / 2 + 0.01, w / 2, zb - 0.05, zt - (i + 1) * rise + 0.02, st);
+            }
+            // the parapet on the stream's side, from the top of the flight to its foot
+            const ox = x - nx * (w / 2 + 0.08), oy = y - ny * (w / 2 + 0.08), ex = ox + ux * run, ey = oy + uy * run;
+            for (const z of [0.9]) {
+              par.push(ox, zt + z, -oy, ex, zb + z, -ey, ex, zb, -ey, ox, zt + z, -oy, ex, zb, -ey, ox, zt, -oy);
+              puv.push(0, z, run, z, run, 0, 0, z, run, 0, 0, 0);
+            }
+          }
+          if (st.length) {
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(st, 3)); g.computeVertexNormals();
+            const m = new THREE.Mesh(g, mats.floor || mats.coping); m.name = 'inland_steps'; m.castShadow = m.receiveShadow = true; group.add(m);
+          }
+          if (par.length) {
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(par, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(puv, 2)); g.computeVertexNormals();
+            const m = new THREE.Mesh(g, mats.rail); m.name = 'inland_steps_rail'; group.add(m);
+          }
+        } else {
+          const bed = new THREE.Mesh(sheet(-b.water_m), mats.bed(b));
+          bed.name = 'inland_bed'; bed.receiveShadow = true;
+          group.add(bed);
+        }
         // the walls: from the bank to the bed along every edge, facing the water (on the left of each edge);
         // u metres along, v metres above the water
         const wall = [], wuv = [], cop = [], rail = [], ruv = [];
@@ -202,7 +277,8 @@ window.OEInland = (function () {
             const j = (i + 1) % n, [ax, ay] = r[i], [bx, by] = r[j], L = Math.hypot(bx - ax, by - ay);
             if (L < 0.05) continue;
             const ux = (bx - ax) / L, uy = (by - ay) / L, lx = -uy, ly = ux; // along, and to the left (the water)
-            const ta = b.bz[k][i], tb = b.bz[k][j], wa = b.wz[k][i], wb = b.wz[k][j], fa = wa - b.water_m - 0.1, fb = wb - b.water_m - 0.1;
+            // (a promenade's walls stand on its floor)
+            const ta = b.bz[k][i], tb = b.bz[k][j], wa = b.wz[k][i], wb = b.wz[k][j], foot = TR ? TR.path_m - 0.05 : -b.water_m - 0.1, fa = wa + foot, fb = wb + foot;
             // face (two triangles, seen from the water)
             wall.push(ax, ta, -ay, bx, tb, -by, bx, fb, -by, ax, ta, -ay, bx, fb, -by, ax, fa, -ay);
             wuv.push(length, ta - wa, length + L, tb - wb, length + L, fb - wb, length, ta - wa, length + L, fb - wb, length, fa - wa);
