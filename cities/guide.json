@@ -68,7 +68,23 @@
     "Kyoto": {
       "line": "Japan's capital for a thousand years, and it still keeps the old hours: temple bells at dawn, lanterns in the lanes at dusk, and some 1,600 temples tucked between the hills.",
       "local": ["Local", "Matcha and wagashi in a wooden machiya teahouse, and a maiko's footsteps on Gion's stones at dusk."],
-      "best": ["Dawn", "before the crowds"]
+      "best": ["Dawn", "before the crowds"],
+      "districts": {
+        "Kyoto Station": { "line": "The glass valley of Kyoto Station, its 171 steps to the sky garden, and Kyoto Tower's candle across the road.", "spots": ["Kyoto Station", "Kyoto Tower", "Skyway"] },
+        "Higashi Honganji": { "line": "One of the largest wooden halls in the world, a short walk from the station, and its hair rope still on show.", "spots": ["Founder's Hall", "Amida Hall", "Shosei-en"] },
+        "Shijo · Nishiki Market": { "line": "Kyoto's kitchen: pickles, tofu and grilled skewers down a narrow covered market, a few streets from the Kamo River.", "spots": ["Nishiki Market", "Shijo-dori", "Kamo River"] },
+        "Nijo Castle": { "line": "The shoguns' castle in the emperor's city: painted gold rooms and floors that sing like nightingales.", "spots": ["Ninomaru Palace", "Karamon", "The moat"] },
+        "Imperial Palace": { "line": "A thousand years of emperors behind long earthen walls, and Gyoen's gravel avenues under plum and cherry.", "spots": ["Kyoto Gosho", "Kyoto Gyoen", "Kenreimon"] },
+        "Gion · Yasaka Shrine": { "line": "The vermilion Romon at the end of Shijo-dori, the lanterns of the dance hall, and Gion's lanes beyond.", "spots": ["Yasaka Shrine", "Maruyama Park", "Hanamikoji"] },
+        "Yasaka Pagoda": { "line": "Five storeys over the tiled roofs: the pagoda every photograph of old Kyoto is framed around.", "spots": ["Yasaka Pagoda", "Yasaka Koshin-do", "Yasaka-dori"] },
+        "Ninenzaka · Sannenzaka": { "line": "Stone steps between wooden teahouses and pottery shops, lantern-lit at dusk, all the way up to Kiyomizu.", "spots": ["Ninenzaka", "Sannenzaka", "Kodai-ji"] },
+        "Kiyomizu-dera": { "line": "The wooden stage on its lattice of keyaki pillars, thirteen metres over the trees, and the Otowa spring below.", "spots": ["The Stage", "Otowa Falls", "Niomon"] },
+        "Fushimi Inari Taisha": { "line": "The Romon guarded by stone foxes, and the two tunnels of the Senbon Torii climbing into the woods.", "spots": ["The Romon", "Senbon Torii", "Fox shrines"] },
+        "Yotsutsuji · Mount Inari": { "line": "Halfway up Mount Inari through thousands of torii, the whole city spread out below at the crossroads.", "spots": ["Yotsutsuji", "The torii path", "Inari-yama"] },
+        "Ginkaku-ji": { "line": "The Silver Pavilion that was never silvered, its sand cone and its moss garden under the eastern hills.", "spots": ["Silver Pavilion", "Kogetsudai", "Moss garden"] },
+        "Philosopher's Path": { "line": "Two kilometres of stone path along a canal under cherry trees, the walk a philosopher took every morning.", "spots": ["The canal", "Cherry trees", "Honen-in"] },
+        "Nanzen-ji": { "line": "The great Sanmon gate, a red-brick aqueduct running through a Zen temple, and the old Keage Incline.", "spots": ["Sanmon", "Suirokaku", "Keage Incline"] }
+      }
     },
     "Tokyo": {
       "line": "Thirty-seven million people, and every station opens onto a different world. Pick a stop on the line and step out into it.",

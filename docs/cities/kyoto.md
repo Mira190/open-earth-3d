@@ -159,8 +159,8 @@ walk's 6 m, its underside at 4.5 m.
 **Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
 due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
 
-The other Kyoto maps: [Higashiyama](higashiyama.md) (Kiyomizu-dera, Sannenzaka, Ninenzaka) and
-[Fushimi Inari](fushimi-inari.md).
+This is the Central Kyoto 洛中 map, one of four districts of Kyoto ([Kyoto as maps](kyoto-maps.md)). The others: [Higashiyama](higashiyama.md) (Yasaka Shrine, Kiyomizu-dera, Sannenzaka, Ninenzaka),
+[Fushimi Inari](fushimi-inari.md) and the Philosopher's Path.
 
 ## 4. Sun on public places
 

@@ -785,6 +785,44 @@
       "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
     },
     "title": "The Philosopher's Path on Foot",
+    "travel": [
+      {
+        "id": "t-path",
+        "name": "The Philosopher's Path 哲学の道",
+        "at": [
+          291.2,
+          448.9
+        ],
+        "check": true
+      },
+      {
+        "id": "t-eikando",
+        "name": "Eikan-do 永観堂",
+        "at": [
+          157.5,
+          -370.3
+        ],
+        "check": true
+      },
+      {
+        "id": "t-nanzenji",
+        "name": "Nanzen-ji 南禅寺",
+        "at": [
+          93.0,
+          -761.3
+        ],
+        "check": true
+      },
+      {
+        "id": "t-keage",
+        "name": "Keage Incline 蹴上インクライン",
+        "at": [
+          -211.3,
+          -959.7
+        ],
+        "check": true
+      }
+    ],
     "local_name": "Kyoto local",
     "greeting": "おこしやす。",
     "water_name": "the Lake Biwa Canal",

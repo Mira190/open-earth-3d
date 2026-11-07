@@ -38,7 +38,7 @@ window.OpenEarthCity = async function main(cityId) {
 
   // page text from the city config: titles, hemisphere-aware date chips, time zone, protection rules
   function setupPage() {
-    document.title = `${CITY.name} · Open Earth 3D`;
+    document.title = `${CITY.place || CITY.name} · Open Earth 3D`;
     $('#city-name').textContent = CITY.name;
     $('#city-country').textContent = CITY.country || '';
     $('#city-desc').textContent = CITY.description || '';

@@ -56,7 +56,7 @@ window.OpenEarthGame = async function game(cityId) {
   gtTitle.textContent = tm ? tm[1] : G.title;
   if (tm) { const sm = document.createElement('small'); sm.textContent = tm[2]; gtTitle.append(sm); }
   if (G.blurb) $('#gt-blurb').textContent = G.blurb;
-  $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
+  $('#gt-city').textContent = `${CITY.place || CITY.name}, ${CITY.country}`;
   if (G.blurb) $('#g-title p').textContent = G.blurb;
   // neighbouring areas you can go on to, such as the bayside from the city (game.links)
   // and the other maps of the same group (Tokyo's districts: cities/index.json groups), as on the subway map
@@ -3070,7 +3070,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const g = out.getContext('2d');
     g.drawImage(canvas, 0, 0);
     const loc = S.utcToLocal(S.localToUtc(clock.y, clock.m, clock.d, clock.min)), fs = Math.max(12, Math.round(h * 0.017)), pad = Math.round(fs * 0.9);
-    const lines = [`${CITY.name} · ${clock.d} ${MONTHS[clock.m - 1]} ${clock.y}, ${fmtMin(clock.min)} ${loc.zone} · sun ${sun.altitude.toFixed(1)}° up`,
+    const lines = [`${CITY.place || CITY.name} · ${clock.d} ${MONTHS[clock.m - 1]} ${clock.y}, ${fmtMin(clock.min)} ${loc.zone} · sun ${sun.altitude.toFixed(1)}° up`,
       'Open Earth 3D · buildings and streets © OpenStreetMap contributors, via Overture Maps'];
     g.font = `600 ${fs}px "Public Sans", sans-serif`;
     const tw = Math.max(...lines.map(t => g.measureText(t).width));
