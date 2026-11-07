@@ -304,6 +304,10 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
   ![The Meguro River's channel by day from a deck: revetments, railings and chochin](images/water/meguro_day.jpg)
   ![The Meguro River at night in the festival](images/water/meguro_night.jpg)
+  ![Out of the festival (10 May): no chochin, the cherries in leaf](images/water/meguro_night_may.jpg)
+  ![On a phone: from a deck by day, dusk, the festival night, May, on foot, and Yoyogi's lawn](images/water/meguro_phone.jpg)
+  ![Kyoto: the canal basin at Okazaki between its stone walls](images/water/kyoto_okazaki.jpg)
+  ![Yoyogi Park's lawn by day, from the open lawn by the fountain pond (#277)](images/trees/yoyogi_lawn_day.jpg)
 
   The quay's level is the land behind it: the fine grid's points more than
   0.75 m in from the shore and above the water within 1.6 cells, nearer ones
