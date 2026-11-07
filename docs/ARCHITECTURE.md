@@ -308,7 +308,7 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   of the canals with slabs. Trees planted from the canopy over a channel
   (the Meguro's cherries reach across it) stand on its bank, 0.8 m behind the wall. The
   lanes along a channel's banks are narrower than their class in the road data (the
-  Meguro's run up to the railing): `bank_lanes` gives such a road `w` in game.json, its
+  Meguro's run up to the railing): `bank_lanes` gives such a road `cw` in game.json, its
   carriageway's width, keeping 1.8 m from the wall and no narrower than 5.4 m (the
   traffic keeps 1.7 m off the line); `streets.js` takes its band as the carriageway and
   0.3 m (no parking along the river) and the game draws the street that wide, so a

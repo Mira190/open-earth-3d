@@ -402,7 +402,7 @@ LANE_MIN_M = 5.4     # no narrower: the traffic keeps 1.7 m off the line (web/ga
 
 def bank_lanes(C, bodies):
     """The lanes along a walled channel's banks (the Meguro's, between the railing and the houses) are narrower
-    than their class's band in the game: a road beside a channel takes "w" in game.json, its carriageway's width,
+    than their class's band in the game: a road beside a channel takes "cw" in game.json, its carriageway's width,
     so that its edge keeps LANE_STRIP_M from the wall, where the bank's trees stand (web/streets.js reads it).
     Only minor roads that run along the channel for 15 m or more; a crossing keeps its width."""
     path = os.path.join(C.out, "game.json")
@@ -414,7 +414,9 @@ def bank_lanes(C, bodies):
     edge = W.boundary
     n = 0
     for r in g.get("paths", {}).get("road", []):
-        r.pop("w", None)
+        r.pop("cw", None)
+        if isinstance(r.get("w"), float):
+            r.pop("w")   # (an earlier run's name for cw, which the game reads as a wall flag)
         c = r.get("c")
         if c not in ("residential", "unclassified", "living_street"):
             continue
@@ -432,7 +434,7 @@ def bank_lanes(C, bodies):
         d = np.array([edge.distance(Point(q)) for q in xy])
         w = round(float(np.clip(2 * (np.percentile(d, 25) - LANE_STRIP_M), LANE_MIN_M, ROADW[c])), 1)
         if w < ROADW[c]:
-            r["w"] = w
+            r["cw"] = w
             n += 1
     json.dump(g, open(path, "w", encoding="utf8"), separators=(",", ":"))
     return n
@@ -526,7 +528,7 @@ def build(C):
         out["colour"] = cfg["colour"]
     scene["inland"] = out
     json.dump(scene, open(scene_path, "w"), separators=(",", ":"))
-    print(f"inland water: {bank_lanes(C, bodies)} bank lanes narrowed (game.json roads w)")
+    print(f"inland water: {bank_lanes(C, bodies)} bank lanes narrowed (game.json roads cw)")
     for b in bodies:
         wz = np.concatenate(b["wz"]); bz = np.concatenate(b["bz"])
         print(f"  {b['kind']:8s} {b['name'] or '-':24s} {b['_poly'].area:9.0f} m2  water {wz.min():6.1f}..{wz.max():6.1f} m"
