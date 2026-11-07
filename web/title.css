@@ -145,6 +145,13 @@
 .ts-item[aria-current="true"] .nm { transform: translateX(10px); color: #fff; }
 .ts-item[aria-current="true"]::before { width: 70%; }
 .ts-item:hover .nm { color: #fff; }
+/* a hover previews a destination: its row lights, the others dim (the chosen one less) */
+.ts-list.hovering .ts-item:not(.hot) { opacity: 0.32; }
+.ts-list.hovering .ts-item[aria-current="true"]:not(.hot) { opacity: 0.6; }
+.ts-list.hovering .ts-item.hot { opacity: 1; }
+.ts-item.hot .n { color: var(--amber); }
+.ts-item.hot .nm { transform: translateX(10px); color: #fff; }
+.ts-item.hot::before { width: 70%; }
 .ts-menu .ts-hint { margin: 22px 0 0; font: 400 9px/1.7 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx3); }
 .ts-hint kbd { font: inherit; color: var(--tx2); border: 1px solid var(--line); padding: 1px 5px; border-radius: 2px; margin: 0 2px; }
 

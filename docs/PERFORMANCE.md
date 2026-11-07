@@ -113,6 +113,25 @@ Two more, the same picture to the bit:
 What the shadow pass still draws is mostly instanced props, trees and people spread over the whole city. An
 instanced mesh is culled as a whole, so these are drawn in full however small the shadow box.
 
+## The far trees as impostors
+
+Past the mid distance (520 m; a wood's trees from 200 m) a tree was a trunk and an 80-triangle crown hull in its
+species' one colour. Now each species' mid-distance model (its real leaf cards, in the season's colours) is drawn
+once, at load, into an atlas from three heights (level, 40 and 80 degrees up; 256 px a view, 128 on a small
+screen), and each far tree is one camera-facing quad (`web/trees.js`, `bakeFar`). The quad blends the two
+nearest heights, is mirrored for every other tree and tinted per tree, and is lit by the sun as a round crown (a
+spheroid normal, as the near trees' cards are). Where a yozakura is lit after dark it is uplit too. The alpha is
+scaled by the mip level, so a crown keeps its density at a distance rather than thinning to twigs. The atlas is
+drawn again only when the season's look changes. `?impostors=off` keeps the hulls.
+
+Sydney's game on foot, high tier, 1440 x 900: **3.75 → 3.14 million triangles** a frame (−16%) and 456 → 450 draws.
+The stills from the air at day, dusk and night, on a desktop and a phone, show the far trees with their leaves,
+species colours and light, where the hulls were smooth green domes.
+
+Adopted from: octahedral impostors (Ryan Brucks, for Fortnite) and
+[agargaro/octahedral-impostor](https://github.com/agargaro/octahedral-impostor) (MIT) for the idea; no code was
+taken. A tree is near enough to round that three heights and a mirror do here instead of an octahedral grid.
+
 ## Next, by what it saves for what it risks
 
 Measured on Sydney's game, high tier, 1440 x 900, from the street, after the work above: 4.42 million triangles,
@@ -124,8 +143,7 @@ Measured on Sydney's game, high tier, 1440 x 900, from the street, after the wor
    Most of the 1.5 million shadow-pass triangles are these. No visual change.
 2. **A cached shadow map for what does not move.** Done (above), as a copy of the cached depth under each frame's
    moving casters rather than two maps, so the lit shaders are unchanged.
-3. **Impostors for the far trees** (section above): about 0.6 million triangles past 300 m in the view pass.
-   Each needs a baked atlas per species and season, and stills to match.
+3. **Impostors for the far trees.** Done (below).
 4. **The ocean's FFT** draws 45 full-screen passes a frame into 128 x 128 RGBA32F targets (256 x 256 on a large
    screen with a hardware GPU). Its outputs are already half float, and the butterflies stay 32-bit where the GPU
    can render to it, because seven butterfly stages in half float would put noise in the waves. At 128 x 128 the

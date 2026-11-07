@@ -1626,6 +1626,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); if (far) far.dispose(); },
     };
     if (trees && trees.shadowSun) trees.shadowSun(() => api.sunDir);
+    if (trees && trees.bakeFar && new URLSearchParams(location.search).get('impostors') !== 'off') trees.bakeFar(renderer);
     return api;
   }
 
