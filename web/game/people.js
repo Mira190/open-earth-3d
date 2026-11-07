@@ -253,11 +253,15 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       let mesh = null;
       g.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
       mesh.geometry.setAttribute('mat', mesh.geometry.getAttribute('_mat'));
-      lib.tpl[name] = { scene: g.scene, extras: mesh.userData, pack: info.characters[name].pack };
-      if (onMsg) onMsg(name);
-      return lib.tpl[name];
+      const tpl = { scene: g.scene, extras: mesh.userData, pack: info.characters[name].pack };
+      return warmPalette(lib, mesh).then(() => {
+        lib.tpl[name] = tpl;
+        if (onMsg) onMsg(name);
+        return tpl;
+      });
     }));
     lib.names = Object.keys(info.characters);
+    lib.warmPalette = () => warmPalette(lib);
     // the main characters (blender/build_people.py): textured, with their own clips and skeleton
     const H = info.heroes || {}, plain = lib.require;
     lib.heroes = H.characters || {};
@@ -375,6 +379,25 @@ ${PAT_GLSL}`)
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( (uPat > 0.5 && vCls > 3.5 && vCls < 4.5) ? oePattern(vPal, vObj, uPat, uPat2) : vPal, opacity );');
     };
     return mat;
+  }
+
+  // The palette material's program (one for every untextured person: the same patch, the same key),
+  // compiled, with its shadow pass's, before the first of them is shown (issue 266): person() makes the
+  // material per person, so warming the template (lib.warm) never reached it, and the first one drawn
+  // linked it in a frame. Once per library, on a stand-in for the first character that comes once the
+  // game is open (before then, the loader's compile of the scene covers whoever stands in it).
+  // (lib.warmPalette(): the same from a template already loaded, for the game to call once it sets lib.warm)
+  function warmPalette(lib, mesh) {
+    if (!lib.warm || lib.paletteWarm) return lib.paletteWarm || Promise.resolve();
+    if (!mesh) for (const t of Object.values(lib.tpl)) if (!t.textured && !mesh) t.scene.traverse(o => { if (o.isSkinnedMesh && !mesh) mesh = o; });
+    if (!mesh) return Promise.resolve();
+    const m = mesh.clone();
+    m.material = paletteMaterial(Array.from({ length: N }, () => new THREE.Vector3(0.5, 0.5, 0.5)), []);
+    litMaterial(m.material);
+    m.castShadow = m.receiveShadow = true;
+    m.frustumCulled = false;
+    m.children = [];
+    return (lib.paletteWarm = lib.warm(m).catch(() => {}));
   }
 
   // scratch objects, made on first use (three.js may load after this file)

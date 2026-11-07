@@ -3918,7 +3918,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   };
   Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(() => { warmRain(); })]).then(([flew]) => {
     if (flew) fromFlyover();
-    if (lib) lib.warm = warmFor; // the characters that come from now on are warmed before they are shown (people.js)
+    if (lib) { lib.warm = warmFor; if (lib.warmPalette) lib.warmPalette(); } // the characters that come from now on are warmed before they are shown (people.js)
     preTitle = false;
     $('#g-title').hidden = false;
     $('#g-loader').classList.add('out');

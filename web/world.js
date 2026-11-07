@@ -1658,36 +1658,52 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // hold: while it returns true, a compile behind the scene waits (a frame at a time) without compiling: a slice
   // can be no shorter than one program, which on a device without parallel compiles is a hitch of its own, so
   // the game holds the warm-up through its opening shot and its rides (issue 265)
-  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null } = {}) {
+  // shadows: the shadow pass's variant of each shadow caster too (the sun's depth program for its
+  // material, skinned for a person, double-sided for a sail), which three.js otherwise compiles in the first
+  // frame that draws the caster's shadow (issue 266); not for a mirror's or other pass that draws no shadows.
+  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null, shadows = !clip } = {}) {
     if (!renderer.compileAsync) return Promise.resolve();
-    const objs = [];
-    obj.traverse(o => { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) objs.push(o); });
+    const objs = [], casters = [];
+    obj.traverse(o => {
+      if (!((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material)) return;
+      objs.push(o);
+      if (shadows && o.castShadow && !o.isSprite) casters.push(o);
+    });
+    if (!(renderer.shadowMap && renderer.shadowMap.enabled && THREE.MeshDepthMaterial)) casters.length = 0;
     // the render target and the clipping planes, set for a compile and put back after it
     const bind = () => { const was = [renderer.getRenderTarget(), renderer.clippingPlanes]; renderer.setRenderTarget(target); if (clip) renderer.clippingPlanes = clip; return was; };
     const unbind = ([t, c]) => { renderer.setRenderTarget(t); renderer.clippingPlanes = c; };
     if (objs.length < SLICED) {
       const was = bind();
-      try { return renderer.compileAsync(obj, camera, scene).catch(() => {}); } // (compiles now; the promise waits on the GPU)
-      catch (e) { return Promise.resolve(); }
-      finally { unbind(was); }
+      let depth = [];
+      try {
+        return renderer.compileAsync(obj, camera, scene) // (compiles now; the promise waits on the GPU)
+          .then(() => { const ms = new Set(depth); for (const o of objs) for (const m of [].concat(o.material)) ms.add(m); firstUse(renderer, ms); }).catch(() => {});
+      } catch (e) { return Promise.resolve(); }
+      finally { unbind(was); if (casters.length) depth = compileDepth(renderer, casters, camera); }
     }
     return (async () => {
       const props = renderer.properties, mats = new Set(), t0 = performance.now();
       let slices = 0, longest = 0;
-      for (let i = 0; i < objs.length;) {
+      const n = objs.length + casters.length;
+      for (let i = 0; i < n;) {
         while (behind && hold && hold()) await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
         const s0 = performance.now(), was = bind();
         try {
           // (every object, even one whose material has a program: this variant, for this target and
           // these planes, may be new. One that is not costs a lookup; an object's children are in the
-          // list on their own, so they are looked up again, cheaply)
-          while (i < objs.length && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS)) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
+          // list on their own, so they are looked up again, cheaply. Then the casters' shadow variants)
+          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS)) {
+            if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
+            else { for (const m of compileDepth(renderer, [casters[i++ - objs.length]], camera)) mats.add(m); }
+          }
         } catch (e) { console.warn('compile', e); }
         finally { unbind(was); }
         slices++; longest = Math.max(longest, performance.now() - s0);
-        if (i < objs.length) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : idle());
+        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : idle());
       }
       // then wait for the GPU to finish them (KHR_parallel_shader_compile), as compileAsync does
+      const all = new Set(mats);
       await new Promise(done => {
         const check = () => {
           for (const m of mats) { const p = props.get(m).currentProgram; if (!p || !p.isReady || p.isReady()) mats.delete(m); }
@@ -1695,8 +1711,71 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         };
         check();
       });
+      firstUse(renderer, all);
       console.info(`compile: ${objs.length} objects in ${slices} slices, the longest ${Math.round(longest)} ms, ready after ${Math.round(performance.now() - t0)} ms`);
     })().catch(e => console.warn('compile', e));
+  }
+
+  // A program's first use reads back its link status, info log, uniforms and attributes: synchronous
+  // calls, each of which waits for the GPU to finish everything queued before it (Chromium runs GL in
+  // another process). In the frame that first draws a model that is a stall of the whole frame's GPU
+  // work, seconds on a software renderer (issue 266), and once per new program. Done here, once the
+  // programs are ready, it is one wait in a task of its own, off the frame, for all of them at once.
+  function firstUse(renderer, mats) {
+    for (const m of mats) {
+      const p = renderer.properties.get(m).currentProgram;
+      try { if (p && p.getUniforms && (!p.isReady || p.isReady())) { p.getUniforms(); p.getAttributes(); } } catch (e) { /* read on its first draw instead */ }
+    }
+  }
+
+  // The shadow pass's material for a caster's material, as WebGLShadowMap (r186) picks it: the caster's
+  // customDepthMaterial, else a depth material with the material's side flipped (its shadowSide where it
+  // has one), its map, alpha map, alpha test and displacement. One per combination of what picks the
+  // variant, here; three.js keeps one and clones it per material, which compiles to the same programs.
+  // Each is compiled for the caster, into a render target as the shadow map is, in the state the shadow
+  // pass draws in, so that the program is the one it looks up: no tone mapping and linear output (a render
+  // target), no fog (it draws with an empty scene), shadows on, and no lights counted (three.js draws the
+  // shadow maps before it sets up the frame's lights, so its depth programs are keyed with none). The
+  // last two from a scene holding only a bare THREE.Light that casts shadows: pushed as a shadow, counted
+  // as no kind of light.
+  const depthMats = new Map(), FLIP = {};
+  let depthRT = null, depthScene = null;
+  function depthOf(o, m) {
+    if (o.customDepthMaterial) return o.customDepthMaterial;
+    if (!FLIP[THREE.FrontSide]) { FLIP[THREE.FrontSide] = THREE.BackSide; FLIP[THREE.BackSide] = THREE.FrontSide; FLIP[THREE.DoubleSide] = THREE.DoubleSide; }
+    const side = m.shadowSide !== null && m.shadowSide !== undefined ? m.shadowSide : FLIP[m.side];
+    const alphaTest = m.alphaToCoverage === true ? 0.5 : m.alphaTest;
+    const key = [side, m.map ? m.map.channel || 0 : '-', m.alphaMap ? m.alphaMap.channel || 0 : '-', alphaTest > 0, !!(m.displacementMap && m.displacementScale !== 0), !!m.wireframe, !!m.clipShadows].join('|');
+    let d = depthMats.get(key);
+    if (!d) depthMats.set(key, d = new THREE.MeshDepthMaterial());
+    Object.assign(d, { visible: m.visible, wireframe: m.wireframe, side, alphaMap: m.alphaMap || null, alphaTest, map: m.map || null, clipShadows: m.clipShadows,
+      clippingPlanes: m.clippingPlanes, clipIntersection: m.clipIntersection, displacementMap: m.displacementMap || null,
+      displacementScale: m.displacementScale === undefined ? 1 : m.displacementScale, displacementBias: m.displacementBias || 0 });
+    return d;
+  }
+  function compileDepth(renderer, casters, camera) {
+    const out = [];
+    if (!depthRT) {
+      depthRT = new THREE.WebGLRenderTarget(1, 1);
+      depthScene = new THREE.Scene();
+      const caster = new THREE.Light();
+      caster.castShadow = true;
+      depthScene.add(caster);
+    }
+    const was = renderer.getRenderTarget();
+    renderer.setRenderTarget(depthRT);
+    try {
+      for (const o of casters) {
+        const mat = o.material;
+        o.material = Array.isArray(mat) ? mat.map(m => depthOf(o, m)) : depthOf(o, mat);
+        const kids = o.children;
+        o.children = []; // (just the caster: its children are casters of their own, or not)
+        try { for (const m of renderer.compile(o, camera, depthScene)) out.push(m); }
+        catch (e) { /* compiled by the shadow pass instead */ }
+        finally { o.material = mat; o.children = kids; }
+      }
+    } finally { renderer.setRenderTarget(was); }
+    return out;
   }
 
   // Send an object's textures to the GPU before it is drawn (issue 201): a model streamed in once the game
