@@ -36,7 +36,8 @@ const [w, h] = size.split('x').map(Number);
         c.n++; c.ms += dt; c.max = Math.max(c.max, dt);
         const bytes = name === 'bufferSubData' ? (a[4] != null ? a[4] * (a[2].BYTES_PER_ELEMENT || 1) : a[2] && a[2].byteLength) : 0;
         if (bytes) { c.bytes = (c.bytes || 0) + bytes; c.maxBytes = Math.max(c.maxBytes || 0, bytes); }
-        if (dt > 4) gl.log.push({ t: t0, name, ms: +dt.toFixed(1), kb: bytes ? Math.round(bytes / 1024) : undefined });
+        const src = /^tex/.test(name) ? a[a.length - 1] : null, size = src && src.width ? `${src.width}x${src.height}` : /^tex/.test(name) && typeof a[3] === 'number' && typeof a[4] === 'number' ? `${a[3]}x${a[4]}` : undefined;
+        if (dt > 4) gl.log.push({ t: t0, name, ms: +dt.toFixed(1), kb: bytes ? Math.round(bytes / 1024) : undefined, size });
         return r;
       };
     };
@@ -119,6 +120,7 @@ const [w, h] = size.split('x').map(Number);
       const best = (m, n) => [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => `${v.toFixed(0).padStart(6)}  ${k}`).join('\n');
       console.log(`\nframe of ${(f.dt / 1000).toFixed(1)} s at ${(a / 1000).toFixed(1)} s: GL ${[...gls.entries()].map(([k, g]) => `${k} ${g.n}x ${g.ms.toFixed(0)} ms`).join(', ') || 'none over 4 ms'}` +
         (w.length ? `; first-use waits ${w.length}, ${w.reduce((s, e) => s + e.ms, 0).toFixed(0)} ms` : ''));
+      for (const e of glLog.filter(e => e.t >= a && e.t <= z && e.size && e.ms > 200)) console.log(`  ${e.name} ${e.size} ${Math.round(e.ms)} ms`);
       for (const e of w.filter(e => e.ms > +(process.env.WAIT_MS || 100)).sort((x, y) => y.ms - x.ms).slice(0, 40)) console.log(`  waited ${Math.round(e.ms)} ms on ${e.name} (linked ${e.sinceLink} ms before) <= ${e.from}`);
       console.log('  self (ms):\n' + best(self, 10));
       console.log('  inclusive, the app\'s (ms):\n' + best(incl, 14));

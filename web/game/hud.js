@@ -12,7 +12,9 @@ window.OEHud = (function () {
     const G = D.G, f = D.scene.frame, PX = 2, w = Math.round((f.x[1] - f.x[0]) / PX), h = Math.round((f.y[1] - f.y[0]) / PX);
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
-    const g = cv.getContext('2d');
+    // (a canvas kept in memory, drawn by the CPU: one the GPU draws waits for its queue at each fill, and on a busy
+    // or software GPU this map took seconds of the loader, issue 299; it is only ever a source for the minimaps)
+    const g = cv.getContext('2d', { willReadFrequently: true });
     const X = x => (x - f.x[0]) / PX, Y = y => (f.y[1] - y) / PX;
     g.fillStyle = css('--gm-land'); g.fillRect(0, 0, w, h);
     // water from the 5 m mask: drawn a pixel a cell on a canvas of the mask's size, then scaled up without
@@ -21,7 +23,7 @@ window.OEHud = (function () {
     const wm = G.water, bytes = typeof wm.bits === 'string' ? Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0)) : wm.bits;
     const wc = new THREE.Color(css('--gm-water')), mc = document.createElement('canvas');
     mc.width = wm.nx; mc.height = wm.ny;
-    const mg = mc.getContext('2d'), img = mg.createImageData(wm.nx, wm.ny), px = new Uint32Array(img.data.buffer);
+    const mg = mc.getContext('2d', { willReadFrequently: true }), img = mg.createImageData(wm.nx, wm.ny), px = new Uint32Array(img.data.buffer);
     const rgba = new Uint8ClampedArray([wc.r * 255, wc.g * 255, wc.b * 255, 255]), one = new Uint32Array(rgba.buffer)[0];
     for (let k = 0, n = wm.nx * wm.ny; k < n; k++) if ((bytes[k >> 3] >> (7 - (k & 7))) & 1) px[k] = one;
     mg.putImageData(img, 0, 0);

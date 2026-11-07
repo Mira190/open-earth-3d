@@ -1708,7 +1708,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // program in one call, which on a software renderer, or a phone without parallel compiles, was one task
   // of 10 to 25 seconds. The caller holds its draws until this resolves, since a draw would compile the
   // rest in one frame again.
-  const SLICE_MS = 50, SLICED = 40;
+  const SLICE_MS = 50, SLICED = 40, FLIGHT = 6;
   // clip: the clipping planes it is drawn with (a mirror's), which also pick the variant. behind: it
   // compiles while the scene is on screen (behind the title), a short slice a frame, so frames keep coming.
   // hold: while it returns true, a compile behind the scene waits (a frame at a time) without compiling: a slice
@@ -1739,7 +1739,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       finally { unbind(was); if (casters.length) depth = compileDepth(renderer, casters, camera, scene); }
     }
     return (async () => {
-      const props = renderer.properties, mats = new Set(), t0 = performance.now();
+      const props = renderer.properties, mats = new Set(), t0 = performance.now(), flying = new Set();
+      const inFlight = () => { for (const p of flying) if (p.isReady()) flying.delete(p); return flying.size; };
       let slices = 0, longest = 0;
       const n = objs.length + casters.length;
       for (let i = 0; i < n;) {
@@ -1749,14 +1750,18 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           // (every object, even one whose material has a program: this variant, for this target and
           // these planes, may be new. One that is not costs a lookup; an object's children are in the
           // list on their own, so they are looked up again, cheaply. Then the casters' shadow variants)
-          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS)) {
-            if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) mats.add(m);
-            else { const j = i - objs.length, k = Math.min(casters.length, j + 24); for (const m of compileDepth(renderer, casters.slice(j, k), camera, scene)) mats.add(m); i += k - j; }
+          // (and no more than FLIGHT programs still being compiled at a time: the next shader's source otherwise waits
+          // in the call that sends it until the GPU has caught up, a stall of seconds on a software renderer or a
+          // device that compiles one at a time, issue 299; the slice ends and the next one waits for them instead)
+          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS) && inFlight() < FLIGHT) {
+            const add = m => { mats.add(m); const p = props.get(m).currentProgram; if (p && p.isReady && !p.isReady()) flying.add(p); };
+            if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) add(m);
+            else { const j = i - objs.length, k = Math.min(casters.length, j + 24); for (const m of compileDepth(renderer, casters.slice(j, k), camera, scene)) add(m); i += k - j; }
           }
         } catch (e) { console.warn('compile', e); }
         finally { unbind(was); }
         slices++; longest = Math.max(longest, performance.now() - s0);
-        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : idle());
+        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : inFlight() >= FLIGHT ? new Promise(r => setTimeout(r, 10)) : idle());
       }
       // then wait for the GPU to finish them (KHR_parallel_shader_compile), as compileAsync does
       const all = new Set(mats);
