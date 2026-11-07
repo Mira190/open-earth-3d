@@ -52,7 +52,8 @@ LIFT_DOOR = (-0.25, 0.65)                                  # the doors' clear op
 MATERIALS = {
     "skyline_wall": {"color": "#3e4347", "roughness": 0.55, "metalness": 0.2},
     "skyline_glass": {"color": "#26343c", "roughness": 0.08, "metalness": 0.5, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 3.6,
-                      "spandrel": "#3e4347", "mullion_m": 0.1, "frame": "#2a2e31", "lit_share": 0.8, "lit_k": 0.8},
+                      "spandrel": "#3e4347", "spandrel_frac": 0.1, "mullion_m": 0.1, "frame": "#2a2e31", "lit_share": 0.85, "lit_k": 0.5,
+                      "warm_share": 1.0},
     "skyline_roof": {"color": "#55595c", "roughness": 0.8},
     # the boards take the night's light (web/night.js): the warm pools landmark_glows puts along the balustrade
     "deck_timber": {"color": "#8d6c4c", "roughness": 0.85, "pattern": "granite", "joints_m": [0.14, 2.4], "street_lit": True},
@@ -64,7 +65,6 @@ MATERIALS = {
     # the planter along the deck's back edge and the planted bed behind it, back to the restaurant's glass
     "planter_steel": {"color": "#33373a", "roughness": 0.55, "metalness": 0.5},
     "planter_bed": {"color": "#3b3326", "roughness": 0.95, "pattern": "granite", "joints_m": [0, 0]},
-    "planter_tussock": {"color": "#a08d5c", "roughness": 0.9, "solid": False},
     "lift_frame": {"color": "#2b3034", "roughness": 0.42, "metalness": 0.55},
     "lift_steel": {"color": "#c3c8cc", "roughness": 0.26, "metalness": 0.9},
     "lift_rail": {"color": "#6d7378", "roughness": 0.4, "metalness": 0.75},
@@ -335,7 +335,7 @@ def back_fill(ground):
     c, ax, out, z = deck_frame(ground)
     L, D = DECK["length"], DECK["depth"]
     tiers = [Polygon(t["ring"]) for M in massing_data().values() for t in M["tiers"] if t["top"] > z + 1]
-    steel, bed, grass = Mesh("skyline_planter", "planter_steel", False), Mesh("skyline_planter_bed", "planter_bed", False, uv=True), Mesh("skyline_planter_tussock", "planter_tussock", False)
+    steel, bed = Mesh("skyline_planter", "planter_steel", False), Mesh("skyline_planter_bed", "planter_bed", False, uv=True)
     P = lambda u, v, h=0.0: [*(c + ax * u + out * v), z + h]
     us = np.linspace(-L / 2, L / 2, 27)
     back = []
@@ -358,21 +358,9 @@ def back_fill(ground):
         steel.quad(P(u0, v0f, -0.45), P(u1, v1f, -0.45), P(u1, v1f, 0), P(u0, v0f, 0))
     for u, b in ((us[0], back[0]), (us[-1], back[-1])):      # its ends
         steel.quad(P(u, -D / 2, -0.45), P(u, -D / 2 - b, -0.45), P(u, -D / 2 - b, hp), P(u, -D / 2, hp))
-    # the planting: clumps of tussock, a fan of blades each, scattered over the bed
-    rng = np.random.default_rng(265)
-    for k in range(len(us) - 1):
-        for _ in range(int(3 + 2.2 * (back[k] - 0.3))):
-            u = rng.uniform(us[k], us[k + 1])
-            v = -D / 2 - 0.25 - rng.uniform(0, max(0.1, back[k] - 0.5))
-            hgt, rad = rng.uniform(0.35, 0.6), rng.uniform(0.18, 0.3)
-            base = np.array(P(u, v, hp - 0.06))
-            for j in range(7):
-                th = rng.uniform(0, 2 * math.pi)
-                dv = np.array([math.cos(th), math.sin(th), 0.0])
-                side = np.array([-dv[1], dv[0], 0.0]) * 0.035
-                tip = base + dv * rad + np.array([0, 0, hgt])
-                grass.tri(list(base - side), list(base + side), list(tip))
-    return [steel, bed, grass]
+    # the planting: the shared tussock (blender/build_trees.py), scattered over the bed in the browser (city.json
+    # trees.tussock beds, web/world.js)
+    return [steel, bed]
 
 
 def lift_frame(ground):

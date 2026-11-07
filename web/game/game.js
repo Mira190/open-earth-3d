@@ -48,6 +48,7 @@ window.OpenEarthGame = async function game(cityId) {
     for (let r = 0; r < ny; r++) for (let k = 0; k < nx; k++) c[r * nx + k] = Tfine.data[(2 * r) * t.nx + 2 * k];
     D.T = { data: c, nx, ny, cell: t.cell * 2, x0: Tfine.x0, y1: Tfine.y1 };
     D.Tfine = Tfine; // the walls of the buildings reach down to whichever ground is drawn
+    if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.settleUnderFloors(D.T, Tfine, D.LM); // (the far ground under the landmarks' floors at every distance, #286; ?settle=off: without, to compare)
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
@@ -282,8 +283,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     };
     const foot = G.paths.foot.filter(f => inTile(f.p)), roads = G.paths.road.filter(r => inTile(r.p));
     for (const f of foot) { path(f.p); g.strokeStyle = '#b3ada1'; g.lineWidth = (FOOTW[f.c] || 3) / PX; g.stroke(); }
-    for (const r of roads) { path(r.p); g.strokeStyle = '#9d988d'; g.lineWidth = ((ROADW[r.c] || 7) + 1) / PX; g.stroke(); } // kerbs
-    for (const r of roads) { path(r.p); g.strokeStyle = '#4b4e52'; g.lineWidth = (ROADW[r.c] || 7) / PX; g.stroke(); }
+    for (const r of roads) { path(r.p); g.strokeStyle = '#9d988d'; g.lineWidth = ((r.cw || ROADW[r.c] || 7) + 1) / PX; g.stroke(); } // kerbs
+    for (const r of roads) { path(r.p); g.strokeStyle = '#4b4e52'; g.lineWidth = (r.cw || ROADW[r.c] || 7) / PX; g.stroke(); }
     g.setLineDash([3 / PX, 6 / PX]);
     for (const r of roads) if ((ROADW[r.c] || 0) >= 9) { path(r.p); g.strokeStyle = '#e6e2d6'; g.lineWidth = 0.15 / PX; g.stroke(); }
     g.setLineDash([]);
@@ -344,7 +345,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the roads as decks.js has laid them, on their bridges' and viaducts' decks (streets.js): the
   // columns under the decks stand clear of the roads below them, and of the buildings
-  const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10) })));
+  const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw })));
   // (a landmark's 2 m cells stand in for its fine ones here: laying the fine cells of the whole city
   // would cost seconds at the start, nav.js; paving, padded 0.3 m in those cells, stays under 0.45)
   const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
@@ -401,7 +402,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     G.props[k] = keep;
   }
-  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && !inRoad(x, y, g, 0.4) && !underDeck(x, y, g, 8) ? g : null; });
+  // (a tree on a channel's bank, by its wall, stands in the planting strip beside its lane: clear of the carriageway is
+  // enough there, a bank lane being no-parking and narrowed to it, game.json cw, inland_water.py bank_lanes)
+  const byWall = (x, y) => !!(D.inland && D.inland.byWall(x, y, 1.2));
+  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && (byWall(x, y) ? !(roadsNow.depth(x, y, g, 0.35) > 0) : !inRoad(x, y, g, 0.4)) && !underDeck(x, y, g, 8) ? g : null; });
   // night.js's poles, behind the kerb: where one would be in a wall, its lamp hangs on a bracket there
   // (and one beside a deck, in the road or under it, goes)
   if (Wd.night && Wd.night.hidePoles) Wd.night.hidePoles((x, y, z) => !inWall(x, y, z, 0.1) && !inRoad(x, y, z, 0.1) && !inRoad(x, y, nav.terrain(x, y), 0.1) && !underDeck(x, y, z, 7));

@@ -177,6 +177,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // those planted from the canopy; woods: the mix of the trees planted from a wood's canopy (the city's
   // own without its palms if not given)
   // fixed: the index from which the trees are a landmark's own, standing where it puts them (on a planter, a terrace)
+  // own: {from, species}: the trees from that index on are all that species (the tussock world.js plants)
   // yozakura (#162): an area with "yozakura" lights its cherries after dark while they flower: uplights at each
   // tree's foot (a pool of light round it) and bonbori, paper lanterns on posts, along its ways on foot (foot: the
   // city's night.json, whose foot and foot_pts are the mapped footways), or beside its trees where none is mapped;
@@ -185,7 +186,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // lit cherries stand (the Meguro River's festival lanterns, #241);
   // night: the uniform world.js sets after dark (0..1); small: the light tier (fewer lanterns, no glows);
   // farKeep: the share of a wood's far crowns (past 200 m, where half stand for all) the tier draws
-  function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, night = null, foot = null, small = false, farKeep = 1 } = {}) {
+  function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, own = null, night = null, foot = null, small = false, farKeep = 1 } = {}) {
     const I = lib.info, n = list.length / 4;
     const AT = I.atlas || {}, cells = AT.cells || {};
     const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, sakura: cells.sakura ?? -10, maple: cells.maple ?? 7 };
@@ -219,7 +220,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const inZone = (a, x, y) => a.polys.length ? a.polys.some(({ P, box }) => x >= box[0] && y >= box[1] && x <= box[2] && y <= box[3] && inPoly(x, y, P))
       : (x - a.at[0]) ** 2 + (y - a.at[1]) ** 2 < a.radius * a.radius;
     const woodMix = Object.entries(woods || {}).filter(([k, w]) => I.species[k] && w > 0);
-    const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix).concat(Object.keys(a.woods || {}))).concat(woodMix.map(([k]) => k)))]
+    const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix).concat(Object.keys(a.woods || {}))).concat(woodMix.map(([k]) => k), own ? [own.species] : []))]
       .filter(k => I.species[k] && !city.some(([c]) => c === k));
     const weights = city.concat(extra.map(k => [k, 0]));
     // a wood has no palms (unless the city has nothing else), unless the city gives its woods a mix of their own
@@ -260,13 +261,14 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     // which species each tree is, its matrix and its tint
     const lit = new Float32Array(n), litZone = new Int16Array(n).fill(-1), isCherry = new Set(varieties.map(o => o.sp)), litVar = new Set();
     const which = new Int16Array(n), far = new Float32Array(n).fill(1), half = new Uint8Array(n), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
-    const names = weights.map(([k]) => k), count = names.map(() => 0);
+    const names = weights.map(([k]) => k), count = names.map(() => 0), ownK = own ? names.indexOf(own.species) : -1;
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
       const wood = i >= measured && i < fixed; // (a landmark's own trees are each placed: never thinned out)
-      const zi = zones.findIndex(a => inZone(a, x, y));
-      const k = pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
+      const mine = own && i >= own.from && ownK >= 0; // (a species of their own: the tussock planted on the open hills, world.js)
+      const zi = mine ? -1 : zones.findIndex(a => inZone(a, x, y));
+      const k = mine ? ownK : pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (zi >= 0 && zones[zi].yozakura && isCherry.has(weights[k][0])) { lit[i] = 1; litZone[i] = zi; litVar.add(varieties.find(o => o.sp === weights[k][0]).v); }
       if (wood) { half[i] = 1 + Math.floor(hash(x + 5, y + 9) * 254); far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them

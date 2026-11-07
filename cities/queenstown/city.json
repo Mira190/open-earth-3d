@@ -110,7 +110,7 @@
       "evergreen": 0.08,
       "gum": 0.08
     },
-    "woods": {
+    "tussock": {"note": "Tussock (trees.json tussock, #286): in the Skyline deck's planted bed, and on the open hills above the town where no canopy stands, off the roads and their houses; denser round the Skyline site, where the game starts.", "beds": [{"mesh": "skyline_planter_bed", "per_m2": 2.6}], "slopes": {"above_m": 60, "per_ha": 16, "max": 9000, "near": [[-985, 480, 450, 110]]}}, "woods": {
       "pine": 0.38,
       "sugi": 0.42,
       "evergreen": 0.1,

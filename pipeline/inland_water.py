@@ -26,7 +26,10 @@ city.json water.inland:
   classes           polygon classes kept (default pond, lake, reservoir, basin, water, river, canal, moat)
   min_area_m2       the smallest polygon kept (default 250)
   lines             [{name, width_m (one value, or [start, end] along the flow), bank_to_water_m, water_m,
-                    walls}] rivers drawn from their centre line
+                    walls, also (other names of the same river), clip ([x0, y0, x1, y1]: only this stretch),
+                    terrace}] rivers drawn from their centre line; terrace {stream_m, path_m, steps_m}: a sunken
+                    promenade, a paved floor path_m over the water between the walls with the stream down its
+                    middle stream_m wide, and flights of steps down from the crossings (Kyoto's Horikawa)
   rules             {name: {walls, bank_to_water_m, water_m, flat}} for named polygons
   class_rules       {class: {...}} the same for every polygon of a class without a rule of its own
   narrow            {...} the same for a river's or a canal's polygon narrower than narrow.under_m on average
@@ -211,8 +214,82 @@ def line_body(C, at, line, spec, extent):
             b = np.where(side == 1, np.interp(st, s, sides[1]), np.interp(st, s, sides[0]))
             wz = np.interp(st, s, low) - spec["bank_to_water_m"]
             R.append(pts); BZ.append(b); WZ.append(wz)
-        out.append({"name": spec["name"], "kind": "walled", "walls": spec.get("walls", "concrete"), "rings": R, "bz": BZ, "wz": WZ,
-                    "water_m": spec.get("water_m", 0.3), "_poly": p, "_line": L})
+        body = {"name": spec["name"], "kind": "walled", "walls": spec.get("walls", "concrete"), "rings": R, "bz": BZ, "wz": WZ,
+                "water_m": spec.get("water_m", 0.3), "_poly": p, "_line": L}
+        if spec.get("terrace"):
+            body.update(terrace_of(L, p, s, low, sides, spec))
+        out.append(body)
+    return out
+
+
+def terrace_of(L, p, s, low, sides, spec):
+    """A sunken promenade (Kyoto's Horikawa): the channel between its walls is a paved floor path_m above the
+    water, with the stream down the middle in a narrow bed of its own (stream_m wide, along the line). The walls
+    stand from the bank down to that floor."""
+    T = spec["terrace"]
+    stream = L.buffer(T.get("stream_m", 2.5) / 2, cap_style="flat").intersection(p.buffer(-T.get("lip_m", 0.6)))
+    R, WZ = [], []
+    for sp in polygons(stream):
+        if sp.area < 4:
+            continue
+        for ring in [sp.exterior] + list(sp.interiors):
+            pts = ring_xy(ring, 2.0)
+            st = np.array([L.project(Point(x, y)) for x, y in pts])
+            R.append(pts); WZ.append(np.interp(st, s, low) - spec["bank_to_water_m"])
+    return {"terrace": {"path_m": T.get("path_m", 0.35), "steps_m": T.get("steps_m", 1.4)}, "stream": {"rings": R, "wz": WZ},
+            "_terrace": T, "_s": s, "_low": low, "_sides": sides}
+
+
+def steps_of(body, D, spec_d):
+    """Flights of steps down to a sunken promenade from the streets that cross it: beside each crossing, on its
+    downstream face, along the wall on one bank and then the other (the Horikawa's entrances open off the
+    pavements and the crossings, Kyoto City). [x, y, ux, uy (down the flight), nx, ny (to the wall), z top,
+    z bottom, width, run] per flight."""
+    L, p, s, low, sides = body["_line"], body["_poly"], body["_s"], body["_low"], body["_sides"]
+    T = body["_terrace"]
+    width, rise, tread = T.get("steps_m", 1.4), 0.16, 0.3
+    out, k = [], 0
+    spans = []
+    for d in D:
+        if not d.intersects(p):
+            continue
+        st = [L.project(Point(x, y)) for x, y in d.exterior.coords]
+        spans.append((min(st), max(st)))
+    spans.sort()
+    merged = []
+    for a, b in spans:   # (a crossing's carriageway and its pavements, one crossing)
+        if merged and a <= merged[-1][1] + 4.0:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    spans = merged
+    for i, (a, b) in enumerate(spans):
+        s0 = b + 0.3
+        half = None
+        side = 1 if k % 2 == 0 else -1
+        c = L.interpolate(min(L.length, s0))
+        q = L.interpolate(min(L.length, s0 + 1.0))
+        ux, uy = q.x - c.x, q.y - c.y
+        n = np.hypot(ux, uy) or 1.0
+        ux, uy = ux / n, uy / n
+        nx, ny = -uy * side, ux * side
+        # the wall on that side: out from the line until off the channel
+        for o in np.arange(0.5, 15.0, 0.25):
+            if not p.contains(Point(c.x + nx * o, c.y + ny * o)):
+                half = o
+                break
+        if half is None:
+            continue
+        sd = sides[1 if side == 1 else 0]
+        ztop = float(np.interp(s0, s, sd))
+        zbot = float(np.interp(s0, s, low)) - spec_d["bank_to_water_m"] + T.get("path_m", 0.35)
+        run = max(0.0, (ztop - zbot)) / rise * tread
+        nxt = spans[i + 1][0] if i + 1 < len(spans) else L.length
+        if s0 + run + 1.0 > nxt or ztop - zbot < 0.5:
+            continue
+        o = half - 0.08 - width / 2
+        out.append([c.x + nx * o, c.y + ny * o, ux, uy, nx, ny, ztop, zbot, width, run])
+        k += 1
     return out
 
 
@@ -265,6 +342,18 @@ def polygon_body(C, at, cell, name, cls, poly, rule):
     return {"name": name, "kind": "natural", "rings": R, "bz": BZ, "wz": WZ, "water_m": rule.get("water_m", 1.0), "_poly": poly}
 
 
+ALONG_M = 32.0   # a way's piece over a channel longer than this runs along it, not across
+
+
+def polygons_or_lines(g):
+    """The line parts of a geometry."""
+    if g.is_empty:
+        return []
+    if hasattr(g, "geoms"):
+        return [p for q in g.geoms for p in polygons_or_lines(q)]
+    return [g] if g.geom_type == "LineString" else []
+
+
 def decks(C, bodies, extent):
     """Where a road or a path crosses a walled channel and no bridge model stands (scene.json landmarks
     water_bridges): the ground kept as a deck over it, as wide as the road."""
@@ -277,6 +366,7 @@ def decks(C, bodies, extent):
     models = [Point(b["centre"]).buffer(max(6.0, b.get("length_m", 20) / 2)) for b in (lmk.get("water_bridges", []) if isinstance(lmk, dict) else [])]
     models = unary_union(models) if models else None
     W = unary_union([b["_poly"] for b in walled])
+    core = W.buffer(-0.8)   # a crossing reaches over the middle of the channel; a way grazing its edge does not
     out = []
     for name, cls, sub, flags, w in duckdb.sql(f"SELECT name, class, subtype, road_flags, wkb FROM '{path}'").fetchall():
         g = C.to_local(swkb.loads(bytes(w)))
@@ -288,8 +378,13 @@ def decks(C, bodies, extent):
         cross = g.intersection(W.buffer(0.5))
         if cross.is_empty:
             continue
+        # a way that runs along the channel, not across it (a promenade inside it, a road beside it that the outline
+        # grazes), is no deck: only its short crossings are
+        cross = [c for c in polygons_or_lines(cross) if c.length <= ALONG_M and core.contains(c.interpolate(0.5, normalized=True))]
+        if not cross:
+            continue
         half = ROAD_HALF.get(cls, 2.5)
-        d = cross.buffer(half, cap_style="flat")
+        d = unary_union([c.buffer(half, cap_style="flat") for c in cross])
         d = d.intersection(W.buffer(1.0))
         if models is not None:
             d = d.difference(models)
@@ -298,6 +393,51 @@ def decks(C, bodies, extent):
                 out.append(p)
     U = unary_union(out) if out else None
     return polygons(U) if U is not None else []
+
+
+ROADW = {"motorway": 14, "trunk": 12, "primary": 12, "secondary": 10, "tertiary": 9, "residential": 7, "unclassified": 6, "living_street": 5}
+LANE_STRIP_M = 1.8   # between a bank lane's carriageway and a channel's wall: the railing and the planting strip
+LANE_MIN_M = 5.4     # no narrower: the traffic keeps 1.7 m off the line (web/game/actors.js LANE), a car 1.8 m wide
+
+
+def bank_lanes(C, bodies):
+    """The lanes along a walled channel's banks (the Meguro's, between the railing and the houses) are narrower
+    than their class's band in the game: a road beside a channel takes "cw" in game.json, its carriageway's width,
+    so that its edge keeps LANE_STRIP_M from the wall, where the bank's trees stand (web/streets.js reads it).
+    Only minor roads that run along the channel for 15 m or more; a crossing keeps its width."""
+    path = os.path.join(C.out, "game.json")
+    walled = [b["_poly"] for b in bodies if b["kind"] == "walled"]
+    if not walled or not os.path.exists(path):
+        return 0
+    g = json.load(open(path, encoding="utf8"))
+    W = unary_union(walled)
+    edge = W.boundary
+    n = 0
+    for r in g.get("paths", {}).get("road", []):
+        r.pop("cw", None)
+        if isinstance(r.get("w"), float):
+            r.pop("w")   # (an earlier run's name for cw, which the game reads as a wall flag)
+        c = r.get("c")
+        if c not in ("residential", "unclassified", "living_street"):
+            continue
+        p = np.asarray(r["p"], float).reshape(-1, 3)[:, :2] / 10
+        if len(p) < 2:
+            continue
+        L = LineString(p)
+        if L.distance(W) > ROADW[c] / 2 + LANE_STRIP_M:
+            continue
+        near = L.intersection(W.buffer(ROADW[c] / 2 + LANE_STRIP_M)).difference(W.buffer(0.5))
+        if near.length < 15:
+            continue
+        pts = shapely.segmentize(near, 2.0)
+        xy = [q for part in (pts.geoms if hasattr(pts, "geoms") else [pts]) for q in part.coords]
+        d = np.array([edge.distance(Point(q)) for q in xy])
+        w = round(float(np.clip(2 * (np.percentile(d, 25) - LANE_STRIP_M), LANE_MIN_M, ROADW[c])), 1)
+        if w < ROADW[c]:
+            r["cw"] = w
+            n += 1
+    json.dump(g, open(path, "w", encoding="utf8"), separators=(",", ":"))
+    return n
 
 
 def main():
@@ -328,9 +468,11 @@ def build(C):
             tags = dict(tags or {})
             if tags.get("tunnel") in ("culvert", "yes", "flooded") or tags.get("covered") == "yes":
                 continue
-            if spec.get("name") is not None and name != spec["name"]:
+            if spec.get("name") is not None and name not in [spec["name"], *spec.get("also", [])]:
                 continue
             g = C.to_local(swkb.loads(bytes(w)))
+            if spec.get("clip") is not None:
+                g = g.intersection(shapely.box(*spec["clip"]))   # only this stretch (the open one)
             if spec.get("at") is not None and g.distance(Point(spec["at"])) > spec.get("within_m", 25):
                 continue   # an unnamed river, picked by a point on it
             if spec.get("name") is None and (name or cls not in spec.get("classes", ["river", "stream", "canal"])):
@@ -368,18 +510,25 @@ def build(C):
                     rule = nw
             bodies.append(polygon_body(C, at, cell, name or "", cls, p, rule or {}))
     D = decks(C, bodies, extent)
+    for b in bodies:
+        if b.get("_terrace"):
+            spec = next(l for l in cfg.get("lines", []) if l.get("name") == b["name"])
+            b["steps"] = steps_of(b, D, spec)
     q = lambda a: [round(float(v), 1) for v in np.asarray(a).ravel()]
     out = {"note": "Inland water at its own level, from pipeline/inland_water.py: rings [x, y, ...] local m (outer, then holes); "
                    "bz the bank's height and wz the water's at each ring point (m); water_m the water's depth over the bed; "
                    "decks: where a road crosses a walled channel without a bridge model, the ground kept over it.",
            "bodies": [{"name": b["name"], "kind": b["kind"], **({"walls": b["walls"]} if b.get("walls") else {}),
                        "water_m": b["water_m"], "rings": [q(r) for r in b["rings"]], "bz": [q(v) for v in b["bz"]],
-                       "wz": [q(v) for v in b["wz"]]} for b in bodies],
+                       "wz": [q(v) for v in b["wz"]],
+                       **({"terrace": b["terrace"], "stream": {"rings": [q(r) for r in b["stream"]["rings"]], "wz": [q(v) for v in b["stream"]["wz"]]},
+                           "steps": [[round(float(v), 2) for v in st] for st in b.get("steps", [])]} if b.get("terrace") else {})} for b in bodies],
            "decks": [q(np.asarray(p.exterior.coords)[:-1]) for p in D]}
     if cfg.get("colour"):
         out["colour"] = cfg["colour"]
     scene["inland"] = out
     json.dump(scene, open(scene_path, "w"), separators=(",", ":"))
+    print(f"inland water: {bank_lanes(C, bodies)} bank lanes narrowed (game.json roads cw)")
     for b in bodies:
         wz = np.concatenate(b["wz"]); bz = np.concatenate(b["bz"])
         print(f"  {b['kind']:8s} {b['name'] or '-':24s} {b['_poly'].area:9.0f} m2  water {wz.min():6.1f}..{wz.max():6.1f} m"
