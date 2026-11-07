@@ -72,6 +72,18 @@ Two more, the same picture to the bit:
   frame** (shadow pass 2.08 to 1.57, view 3.31 to 2.84) for 29 more draw calls. The viewer's software-rendered
   frame went from 269 to 121 ms.
 
+- **The static instanced props in cells** (`buildings.js` `cellInstances`): the rooftop plant, tanks, dormers,
+  chimney stacks and gables (`buildings.js`), the landmarks' street furniture (`world.js`) and the game's benches
+  and lamp posts (`game/game.js`). An instanced mesh is culled as a whole against a sphere round every instance,
+  so a city's plant boxes were drawn into the view and the shadow map wherever the camera stood. Each is now
+  split in place over a 400 m grid: the mesh keeps one cell's instances and takes the rest as child instanced
+  meshes with the same geometry and material, so the cells outside the view or the shadow box are dropped.
+  Each cell is a draw call, and on an old device draw calls cost the CPU more than small triangles cost the
+  GPU, so only a mesh of 30,000 triangles or more is split. A first try at 250 m on every mesh of 48 instances
+  or more saved 0.29 million triangles for up to 292 more draws, too many. Sydney from the street now draws
+  **4.31 → 4.09 and 4.75 → 4.58 million triangles** (two views facing each other) for 40 and 81 more draws.
+  The street lamps after dark were already drawn by cell (`night.js`).
+
 What the shadow pass still draws is mostly instanced props, trees and people spread over the whole city. An
 instanced mesh is culled as a whole, so these are drawn in full however small the shadow box.
 

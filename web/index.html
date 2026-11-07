@@ -248,6 +248,9 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .tc-districts a { font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 6px 9px; border: 1px solid rgba(236, 232, 225, 0.16); transition: color 0.3s, border-color 0.3s; }
 .tc-districts a:hover, .tc-districts a:focus-visible { color: var(--ink); border-color: rgba(236, 232, 225, 0.45); }
 .tc-districts a[aria-current="page"] { color: var(--accent); border-color: var(--accent); pointer-events: none; }
+.tc-districts .tc-metro { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); background: rgba(255, 176, 102, 0.08); padding: 6px 9px; border: 1px solid rgba(255, 176, 102, 0.45); border-radius: 0; transition: background 0.3s; }
+.tc-districts .tc-metro svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.tc-districts .tc-metro:hover, .tc-districts .tc-metro:focus-visible { background: rgba(255, 176, 102, 0.18); }
 .title-card h1 { margin-top: 8px; font: 300 clamp(22px, 2.3vw, 30px)/1.05 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
 .title-card h1 small { font: 500 0.56em/1 var(--f-jp); letter-spacing: 0.22em; color: var(--muted); margin-left: 0.6em; text-transform: none; vertical-align: 0.14em; }
 .title-card h1 small:lang(zh-Hant) { font-family: var(--f-tc); }
@@ -401,7 +404,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .inspector { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; }
   .hud-btns { top: 78px; left: 10px; right: 10px; max-width: none; justify-content: flex-start; gap: 4px; }
   .tc-districts { margin-top: 7px; gap: 4px; }
-  .tc-districts a { padding: 5px 7px; font-size: 8.5px; letter-spacing: 0.1em; }
+  .tc-districts a, .tc-districts .tc-metro { padding: 5px 7px; font-size: 8.5px; letter-spacing: 0.1em; }
   .stage:has(.tc-districts:not([hidden])) .hud-btns { top: 114px; }
   .hud-btns .chip-btn { padding: 8px 9px; font-size: 9px; letter-spacing: 0.1em; }
 }
@@ -1024,7 +1027,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
       <div class="g-hud g-sun" id="g-sun" data-s="sun" title="Ray-cast from where you stand"><i></i><span>In sun</span></div>
       <div class="g-hud g-gait" id="g-gait" data-g="run" hidden></div>
-      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-phone-btn" title="Order a ride, bring your car">Phone <kbd>N</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
+      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-phone-btn" title="Order a ride, bring your car">Phone <kbd>N</kbd></button><button class="chip-btn" id="g-metro-btn" hidden title="The subway map: go on to another district">Districts <kbd>B</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
     </div>
     <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
     <div class="g-prompt" id="g-prompt" hidden><span id="gp-main"><kbd id="gp-key">E</kbd><span id="gp-text"></span></span><button id="gp-alt" hidden><kbd>Y</kbd><span>Hail a taxi</span></button></div>
@@ -1089,6 +1092,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <tr><td><kbd>L</kbd></td><td>Show the route line for a few seconds when it is set to Only when I ask or Off (or tap Show route in the quest card)</td></tr>
           <tr><td><kbd>O</kbd></td><td>Photo mode: the world holds still; set the sun, the lens and the angle, and save a picture</td></tr>
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
+          <tr class="g-metro-key" hidden><td><kbd>B</kbd></td><td>The subway map: go on to another district</td></tr>
         </tbody></table>
         <div class="row" id="gm-links"></div>
         <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-overture" hidden>Play the opening</button><button class="btn" id="gm-reset">Start again</button></div>
@@ -1168,6 +1172,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="lens.js"></script>
 <script src="earth.js"></script>
 <script src="score.js"></script>
+<script src="metro.js"></script>
 <script src="title.js"></script>
 <script src="version.js"></script>
 <script src="film.js"></script>
@@ -1269,7 +1274,9 @@ window.dispatchEvent(new Event('three-ready'));
       $('city-group').textContent = district ? city.group : '';
       const nav = $('city-districts');
       nav.hidden = sibs.length < 2;
-      nav.innerHTML = sibs.length < 2 ? '' : sibs.map(c => `<a href="#${c.id}"${c.id === city.id ? ' aria-current="page"' : ''}>${c.district || c.name}</a>`).join('');
+      nav.innerHTML = sibs.length < 2 ? '' : sibs.map(c => `<a href="#${c.id}"${c.id === city.id ? ' aria-current="page"' : ''}>${c.district || c.name}</a>`).join('')
+        // a city drawn as a subway map (Tokyo): the map, full screen, to go on from here (metro.js)
+        + (city.group_meta.kind === 'metro' && window.OEMetro ? `<button type="button" class="tc-metro" data-metro="${city.id}" aria-label="The ${city.group} subway map: go to another district"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 4.5V1h3.5M7.5 1H11v3.5M11 7.5V11H7.5M4.5 11H1V7.5"/></svg>${city.group} map</button>` : '');
       OEPlate.play($('loader'), city);
       if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
       current = window.OpenEarthCity(city.id);
@@ -1284,6 +1291,9 @@ window.dispatchEvent(new Event('three-ready'));
   document.addEventListener('click', e => {
     if (e.target.closest('#back-globe')) { e.preventDefault(); location.hash = 'globe'; }
     if (e.target.closest('[data-reload]')) location.reload(); // a loader that failed
+    const mb = e.target.closest('[data-metro]');
+    const g = mb && window.OEMetro && OEMetro.group(cities, mb.dataset.metro);
+    if (g) OEMetro.full({ g, cities, here: mb.dataset.metro, play: false, backLabel: 'Back to the model' });
   });
   addEventListener('hashchange', show);
   if (!window.THREE) await new Promise(r => addEventListener('three-ready', r, { once: true })); // three.js loads as a module
