@@ -1361,7 +1361,9 @@ window.OECars = (function () {
       // it is, as a driver picking you up does, and you walk the last few metres
       // (a queue held at a signal is waited out, not taken for a jam, unless it stands 25 s: Kyoto's taxi stopped 39 m
       // from you behind a car waiting for its green, #243)
-      else if (end && !dry && st.held > (atSignal(st.block) ? 25 : 8) && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
+      else if (end && !dry && st.held > (atSignal(st.block) ? 25 : left < 30 ? 4 : 8) && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
+      // (and within 30 m of the end, after 4 s: a driver that close to the fare stops where it is, rather than wait to go
+      // round a car standing in the lane, Fushimi-inari's phoned ride 8 s late so, #264)
       // out round something stopped in the lane, and back in after it, at a crawl
       // (across no faster than its speed allows a car to steer, and easing in as it gets there, so
       // that it straightens out as a car does rather than snapping straight when it is across)

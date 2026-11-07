@@ -333,19 +333,21 @@ const npcNight = require('./npc_night');
     // (out in a carriageway on a crossing they may close in to shoulders brushing, to clear it: actors.js)
     const XS = g.crowd.crossings && g.crowd.crossings.byLine, inRoad = q => !!(XS && (XS.get(q.line) || []).some(x => Math.abs(x.s - q.s) < x.kerb));
     let close = 0, jumps = 0, n = 0;
+    const seen = [];
     for (let k = 0; k < 150; k++) {
       g.advance(1 / 30);
       const A = P.slice(0, g.crowd.active).filter(q => q.line >= 0 && q.state === 'walk' && Math.hypot(q.x - me.x, q.y - me.y) < 50);
+      for (const q of last.keys()) if (!A.includes(q)) last.delete(q); // (one out of the 50 m and back in is measured from its frame back in, not from where it went out)
       n = Math.max(n, A.length);
-      for (const q of A) { const l = last.get(q); if (l && Math.hypot(q.x - l[0], q.y - l[1]) > 0.25 && Math.hypot(q.x - l[0], q.y - l[1]) < 20) jumps++; last.set(q, [q.x, q.y]); }
+      for (const q of A) { const l = last.get(q), dj = l ? Math.hypot(q.x - l[0], q.y - l[1]) : 0; if (l && dj > 0.25 && dj < 20) { jumps++; if (seen.length < 3) seen.push(`${dj.toFixed(2)} m on line ${q.line} (was ${l[2]}) s ${(+q.s || 0).toFixed(1)} at ${q.x.toFixed(1)}, ${q.y.toFixed(1)}${q.mode ? ` ${q.mode}` : ''}${q.pz ? ' (a scramble crowd)' : ''}; a frame before: ${l[3]}`); } last.set(q, [q.x, q.y, q.line, `${q.state} ${q.mode || ''} line ${q.line} s ${(+q.s || 0).toFixed(1)} v ${(+q.v || 0).toFixed(2)} dir ${q.dir}${q.pz ? ` scramble ${q.ph}` : ''}${q.side != null ? ` side ${(+q.side).toFixed(2)}` : ''}`]); }
       for (let a = 0; a < A.length; a++) for (let b = a + 1; b < A.length; b++) {
         const q = A[a], r = A[b];
         if (Math.abs(q.z - r.z) < 1.5 && Math.hypot(q.x - r.x, q.y - r.y) < (inRoad(q) || inRoad(r) ? 0.3 : 0.45)) close++;
       }
     }
-    return { close, jumps, n };
+    return { close, jumps, n, seen };
   });
-  check(spacing.close === 0 && spacing.jumps === 0, `the crowd keeps out of each other (${spacing.close} frames with two walkers inside each other, ${spacing.jumps} jumps, of up to ${spacing.n} walkers near you)`);
+  check(spacing.close === 0 && spacing.jumps === 0, `the crowd keeps out of each other (${spacing.close} frames with two walkers inside each other, ${spacing.jumps} jumps${spacing.seen.length ? `: ${spacing.seen.join('; ')}` : ''}, of up to ${spacing.n} walkers near you)`);
 
   // the weather (weather.js): rain on, and the streaks are drawn, kept out from under cover by the
   // occlusion map, the ground wet, umbrellas up in the crowd, the HUD saying so, and the frame neither
@@ -1207,7 +1209,7 @@ const npcNight = require('./npc_night');
       for (; u < 120 && q.phase === 'coming'; u += 0.5) {
         g.advance(0.5);
         const st = q.drv.st;
-        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(+st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.junction === 'cross' && st.lineAt ? ` (in the junction: ${st.lineAt.j.active.map(o => `${o.c === st ? 'the ride' : g.cars.C.includes(o.c) ? `car ${g.cars.C.indexOf(o.c)}` : 'another vehicle'} arm ${o.k} to ${o.m}${o.forced ? ' over its line' : ''} v ${(+o.c.v || 0).toFixed(1)} ${o.c.why || ''} on ${o.c.line}${o.c.mv && o.c.mv.j !== st.lineAt.j ? ' (its next junction elsewhere)' : ''}`).join('; ') || 'nobody'})` : ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(+st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
+        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(+st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.junction === 'cross' && st.lineAt ? ` (in the junction: ${st.lineAt.j.active.map(o => `${o.c === st ? 'the ride' : g.cars.C.includes(o.c) ? `car ${g.cars.C.indexOf(o.c)}` : 'another vehicle'} arm ${o.k} to ${o.m}${o.forced ? ' over its line' : ''} v ${(+o.c.v || 0).toFixed(1)} ${o.c.why || ''} on ${o.c.line}${o.c.mv && o.c.mv.j !== st.lineAt.j ? ' (its next junction elsewhere)' : ''}`).join('; ') || 'nobody'})` : ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(+st.block.v || 0).toFixed(1)} ${st.block.why || ''}${st.block.heldBy ? ` (held: ${st.block.heldBy})` : ''}` : st.block.walker ? 'a walker' : st.block.id ? st.block.id : `something at ${(+st.block.x || 0).toFixed(0)}, ${(+st.block.y || 0).toFixed(0)}`}` : ''}${st.xBlock && st.xBlock !== st.block ? ` across ${st.xBlock.line != null ? `car ${g.cars.C.indexOf(st.xBlock)}` : 'something'}` : ''}`);
       }
       r.rideT = u; r.rideHere = q.phase === 'waiting';
       g.phoneShow(false);
