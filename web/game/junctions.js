@@ -750,7 +750,11 @@ window.OEJunctions = (function () {
       // (nor a movement whose car stands behind a queue that comes back to c: it can't clear the junction before c goes.
       // Kyoto's 327: a ride in the junction behind a bus behind the car waiting at its line for the ride's movement)
       const waitsOnMe = o => { for (let x = o.c, n = 0; x && n < 8; n++) { const f = x.front || x.block; if (f === c) return (o.c.v || 0) < 0.3; if (!f || f.line == null) return false; x = f; } return false; };
-      for (const o of j.active) if (o.c !== c && !behind(o) && ((o.k !== k || (o.m >> 4) !== (m >> 4)) && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o)) return 'cross';
+      // (and for a ride, not a movement whose car has stood 6 s held by another car in the box: a knot in the junction that
+      // its movement's way across can't clear; the ride's driver goes by in the room there is, its own eyes stopping it short
+      // of any car. The taxi coming for you stood 10 s so at Fushimi Inari's 39, #283)
+      const knot = o => !!c.P && (o.c.v || 0) < 0.3 && (o.c.still || 0) > 6 && (o.c.why === 'held' || o.c.why === 'car') && !!o.c.front && o.c.front.line != null && !!o.c.front.mv && o.c.front.mv.j === j;
+      for (const o of j.active) if (o.c !== c && !behind(o) && ((o.k !== k || (o.m >> 4) !== (m >> 4)) && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o) && !knot(o)) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
