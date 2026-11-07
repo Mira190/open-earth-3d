@@ -3,6 +3,9 @@
 // fade, plays a little, hides the tab and leaves, then reads the log and checks that the views, the loads
 // (ready, with a time), the time on screen with its frame rate, and the page's own timings all arrived,
 // that the report can be built from them, and that without the parameter an automated browser sends nothing.
+// Also the behaviour events: the model's tour stop by stop to its end, where the player is in the game
+// (spot and mode on every event, "dwell" by spot), the game started from its title, how the page ended
+// ("exit"), and a page left dead on screen by an earlier visit reported as a "crash".
 // Also checks that a game in progress keeps the player's position when the page is closed (the save).
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/telemetry_check.js [city] [out_dir]
@@ -41,7 +44,16 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
       must(sent.length === 0, 'no beacon sent when off', sent.length);
     }
     const ctx = await b.newContext({ viewport: { width: 1280, height: 800 } });
-    await ctx.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); } catch (e) { /* storage blocked */ } });
+    await ctx.addInitScript(() => {
+      try {
+        localStorage.setItem('oe3d-quality', 'low');
+        // an earlier page of the site that died on screen a minute ago: the first page load must report it
+        if (!sessionStorage.getItem('seeded')) {
+          sessionStorage.setItem('seeded', '1');
+          localStorage.setItem('oe3d-alive-0123456789abcdef01234567', JSON.stringify({ t: Date.now() - 60000, up: 300, ready: true, view: 'game', city: 'testville', spot: 'Test Wharf', mode: 'foot' }));
+        }
+      } catch (e) { /* storage blocked */ }
+    });
     const p = await ctx.newPage();
     const errors = [];
     p.on('pageerror', e => errors.push(String(e).slice(0, 200)));
@@ -52,13 +64,30 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     // the city's model, then its game
     await p.evaluate(c => { location.hash = c; }, city);
     await p.waitForFunction(() => { const l = document.getElementById('loader'); return l && l.classList.contains('out'); }, null, { timeout: 600000 });
-    await sleep(4000);
+    // the tour: wait for its first stop, step through every stop to its end, then take the view over
+    await p.waitForFunction(() => window.__city && window.__city.tour.i >= 0, null, { timeout: 60000 }).catch(() => {});
+    const stops = await p.evaluate(async () => {
+      const T = window.OETelemetry, n = document.querySelectorAll('#cap-bars span').length;
+      for (let i = 0; i < n + 1; i++) {
+        T.sample();
+        const b = document.getElementById('cap-skip');
+        if (b.hidden) break;
+        b.click();
+        await new Promise(r => setTimeout(r, 300));
+      }
+      T.sample();
+      return n;
+    });
+    const cityHere = await p.evaluate(() => window.OETelemetry.here());
+    await sleep(2500);
     await p.evaluate(c => { location.hash = `play-${c}`; }, city);
     await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return l && l.classList.contains('out'); }, null, { timeout: 600000 });
     // start a new game and stand somewhere, then close the page: the position must be saved
     await p.waitForFunction(() => { const b = document.getElementById('gt-play') || document.querySelector('#g-title button'); return b && b.offsetParent; }, null, { timeout: 120000 }).catch(() => {});
     const started = await p.evaluate(() => { const b = document.getElementById('gt-play') || document.querySelector('#g-title [data-start], #g-title button'); if (b) b.click(); return !!b; });
     await sleep(15000);
+    await p.evaluate(() => window.OETelemetry.sample());
+    const gameHere = await p.evaluate(() => window.OETelemetry.here());
     // a loaded software renderer can draw under a frame a second: play on until the frame rate has its samples
     await p.waitForFunction(() => window.OETelemetry.frames() >= 15, null, { timeout: 90000, polling: 1000 }).catch(() => {});
     await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
@@ -87,10 +116,27 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     must(of('page').length >= 1, 'page timings', of('page').map(e => `ttfb ${e.props.ttfb}`).join(','));
     must(ev.every(e => e.props.sid && e.props.device && e.props.tier), 'every event has its session, device and tier');
     must(!ev.some(e => JSON.stringify(e).includes('@')), 'no email-like value in any event');
+    // the behaviour events
+    const ts = of('tour', x => x.view === 'city' && x.action === 'stop').map(e => e.props.stop);
+    must(stops > 0 && ts.includes(1) && ts.includes(stops), 'the tour reports its stops', `${ts.join(',')} of ${stops}`);
+    must(of('tour', x => x.view === 'city' && x.action === 'end').length === 1, 'the tour reports its end');
+    must(cityHere && cityHere.stops === stops, 'the model view knows where the tour is', cityHere && JSON.stringify(cityHere).slice(0, 120));
+    must(of('time', x => x.view === 'city').some(e => e.props.tour === 'done'), 'events after the tour say it was watched to the end');
+    must(gameHere && gameHere.spot && gameHere.mode === 'foot', 'the game view knows the spot and the mode', gameHere && `${gameHere.spot} (${gameHere.mode})`);
+    must(of('mode', x => x.view === 'game' && x.start).length === 1, 'leaving the game\'s title screen is counted');
+    must(of('time', x => x.view === 'game').every(e => e.props.spot && e.props.mode), 'every play event carries its spot and mode');
+    const dw = of('dwell', x => x.view === 'game' && x.mode === 'foot');
+    must(dw.length >= 1 && dw.reduce((s, e) => s + e.props.s, 0) > 3, 'time on foot is summed by spot', dw.map(e => `${e.props.spot} ${e.props.s}s`).join('; '));
+    must(tg.every(e => e.props.eng_s != null), 'engaged time is counted');
+    const ex = of('exit');
+    must(ex.length === 1 && ex[0].props.view === 'game' && ex[0].props.page_s > 0, 'the page says how it ended', ex[0] && `page ${ex[0].props.page_s} s, idle ${ex[0].props.idle_s} s`);
+    const cr = of('crash');
+    must(cr.length === 1 && cr[0].props.prev_city === 'testville' && cr[0].props.prev_spot === 'Test Wharf', 'a page that died on screen is reported once by the next', cr.length);
+    must(of('view', x => x.view === 'game').every(e => e.props.from === `city:${city}`), 'a view says which view it came from');
     let rep = null;
     try { execFileSync('python3', [path.join(__dirname, 'slo_report.py'), log], { stdio: 'inherit' }); } catch (e) { /* a missed level exits 1 */ }
     try { rep = JSON.parse(execFileSync('python3', [path.join(__dirname, 'slo_report.py'), log, '--json']).toString()); } catch (e) { rep = e.stdout ? JSON.parse(e.stdout.toString()) : null; }
-    must(rep && rep.visitors === 1 && rep.players === 1 && rep.slo.length === 7, 'the SLO report reads the log', rep && `${rep.visitors} visitor, ${rep.play_hours} h`);
+    must(rep && rep.visitors === 1 && rep.players === 1 && rep.slo.length === 9 && rep.tour.ended === 1 && Object.keys(rep.minutes_by_spot).length > 0, 'the SLO report reads the log', rep && `${rep.visitors} visitor, ${rep.play_hours} h`);
     must(!errors.length, 'no page errors', errors.join(' | '));
     exit = fails.length ? 1 : 0;
   } catch (e) {
