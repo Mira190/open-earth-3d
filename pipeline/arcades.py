@@ -42,6 +42,8 @@ run opened, so it needs no rebuild of the scene):
 - a borrowed top (#258): a roof on posts over 15 m whose top is that of a building it touches (the height
   matching took the neighbour's) is held to a canopy's 8 m: Keio University Hospital's entrance canopy over its
   taxi drive stood at 51.6-53.1 m on posts, building 1's top.
+  A covered walk (an arcade) with a borrowed top is held to 6 m the same way (two beside a Kyoto hotel stood at
+  38.4-41.4 m, #263).
 - its colour: OSM building:colour when mapped; else its precinct's palette (cities/<id>/city.json
   "roofs" "palette", by precinct name: Kiyomizu-dera's vermilion); else a shrine's vermilion (SHU) in a
   Shinto precinct or on a Shinto building, a temple's aged timber (TIMBER) in a Buddhist one; else it
@@ -65,7 +67,8 @@ run opened, so it needs no rebuild of the scene):
   temple or a shrine, a hipped roof of grey kawara (a hip-and-gable's nearest; Yasaka-jinja's Buden stood
   as a slab on posts), its eaves no lower than 2.4 m and its fascia under them.
 - a roof the city names as closed (city.json "roofs" "closed", OSM ids: Shinjuku's Sumitomo Triangle
-  Plaza, a glass atrium) goes back to a glass building from the ground.
+  Plaza, a glass atrium) goes back to a glass building from the ground; one that comes in several parts has one
+  faceted glass roof over all of them, rising from its eaves to the tower (one_atrium_roof(), #263).
 
 Rewrites web/data/<city>/buildings.json in place; running it again changes nothing.
 """
@@ -84,8 +87,9 @@ FRAME = "#5b564f"  # a roof on posts: dark timber or painted steel, under a roof
 SHU = "#c4482a"  # a shrine's vermilion (朱), as the Fushimi Inari and Kiyomizu models' torii_shu under the grade
 TIMBER = "#6a5444"  # a temple's aged keyaki and hinoki
 GLASS = "#7f95a0"  # a glass atrium's walls
-GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM = "#5d7280", 4.5, 12.0, 300  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
+GLASS_ROOF, ATRIUM_EAVE_M, ATRIUM_NEAR_M, ATRIUM_PART_DM, ATRIUM_GAP_M = "#5d7280", 4.5, 12.0, 300, 8.0  # a glass roof; a closed atrium's eaves, and how near the tower its top corners stand
 BORROWED_DM = 150  # a roof on posts taller than this with a neighbour's top: its height was the neighbour's
+WALK_M = 6.0  # a covered walk with a borrowed top: held to a hotel's or a station's covered pavement, its underside 4.5 m up
 PITCH_DEG, PITCH_OVERHANG, PITCH_MAX_M2, PITCH_EAVE_M = 32.0, 0.5, 900.0, 2.4  # an open pavilion's pitched roof (pitched_roof())
 KAWARA, BARK = "#4c5156", "#4a4c50"  # a temple's grey tiles (kawara); a shrine pavilion's, a little darker (Yasaka-jinja's Buden, photographs)
 UTILITY = {"bicycle_parking", "motorcycle_parking", "parking", "parking_entrance", "smoking_area", "toilets", "waste_disposal",
@@ -342,6 +346,101 @@ def glass_atrium_roof(B, s, si, P, polys):
     return [si, top, lo, roofs.CODES["skillion"]] + pack_roof(pos, idx) + [len(tris)]
 
 
+def one_atrium_roof(B, bi, polys, eaves, new_roofs):
+    """One faceted glass roof over every part of a closed atrium (#263: Shinjuku's Sumitomo Triangle Plaza comes as
+    PLATEAU's pieces round the tower's foot, two of them with a faceted roof of their own and the rest flat at 14-26
+    m; the photograph shows one roof of glass over the plaza). The roof rises from its eaves round the plaza's edge,
+    ATRIUM_EAVE_M over the largest part's ground, to the largest part's top against the tower (the taller buildings
+    within ATRIUM_NEAR_M), each point by its distances to the two: a triangulated surface over points every few
+    metres. It is the largest part's roof; the other parts' walls stop at the same eaves under it. Returns the
+    number of changes."""
+    import numpy as np
+    import roofs
+    from build_scene import pack_roof
+    from shapely.ops import unary_union
+    parts = [si for si, s in enumerate(B["s"]) if s[0] == bi and polys[si] is not None and s[2] == 0]
+    main = max(parts, key=lambda i: polys[i].area)
+    s0 = B["s"][main]
+    g0, top, lo = s0[1], s0[3], round(10 * ATRIUM_EAVE_M)
+    # (closed over the strips PLATEAU leaves between its pieces, up to ATRIUM_GAP_M wide)
+    U = unary_union([shapely.make_valid(polys[i]).buffer(ATRIUM_GAP_M / 2, join_style="mitre") for i in parts]).buffer(-ATRIUM_GAP_M / 2, join_style="mitre")
+    U = unary_union([Polygon(g.exterior) for g in getattr(U, "geoms", [U]) if g.geom_type == "Polygon"])   # its holes too: the tower comes off below
+    hull = U.convex_hull
+    tall = [polys[j] for j, o in enumerate(B["s"]) if o[0] != bi and polys[j] is not None and o[1] + o[3] > g0 + top + 100
+            and polys[j].distance(U) < ATRIUM_NEAR_M and hull.contains(polys[j].centroid)]   # the tower it wraps, not a neighbour
+    if not tall or top - lo < 20:
+        return 0
+    T = unary_union(tall).buffer(0.3, join_style="mitre")
+    # the glass runs on to the tower's walls over the gaps PLATEAU leaves between its pieces and the tower
+    A = U.union(T.buffer(ATRIUM_NEAR_M * 0.5, join_style="mitre").intersection(hull)).difference(T).buffer(0)
+    if A.is_empty:
+        return 0
+    A = A.simplify(0.25)
+    eave = A.boundary.difference(T.buffer(1.2))      # the edge not against the tower: the eaves
+    if eave.is_empty:
+        return 0
+    pts = []
+    for g in getattr(A, "geoms", [A]):
+        for ring in [g.exterior] + list(g.interiors):
+            pts += list(shapely.segmentize(ring, 4.0).coords)[:-1]
+    x0, y0, x1, y1 = A.bounds
+    gx, gy = np.meshgrid(np.arange(x0 + 2.5, x1, 5.0), np.arange(y0 + 2.5, y1, 5.0))
+    inside = shapely.contains_xy(A.buffer(-1.5), gx, gy)
+    pts += list(zip(gx[inside], gy[inside]))
+    key = {}
+    verts = []
+    for x, y in pts:
+        k = (round(x * 10), round(y * 10))
+        if k not in key:
+            key[k] = len(verts)
+            verts.append(k)
+    tris = []
+    for t in shapely.delaunay_triangles(shapely.MultiPoint([(x / 10, y / 10) for x, y in verts])).geoms:
+        if not A.buffer(0.05).contains(t.centroid):
+            continue
+        c = list(t.exterior.coords)[:3]
+        ids = [key.get((round(x * 10), round(y * 10))) for x, y in c]
+        if None in ids:
+            continue
+        a, b, d = (np.array(verts[i], float) for i in ids)
+        if (b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]) < 0:    # counter-clockwise from above
+            ids = [ids[0], ids[2], ids[1]]
+        tris.append(ids)
+    if not tris:
+        return 0
+    pos = []
+    for x, y in verts:
+        p = shapely.Point(x / 10, y / 10)
+        de, dt = eave.distance(p), T.distance(p)
+        z = lo + (top - lo) * de / max(de + dt, 1e-6)
+        pos += [x, y, int(round(z))]
+    meta = B["b"][bi]
+    mats, shapes = B.get("roof_materials", []), B.get("roof_shapes", [])
+    if len(meta) > 15:
+        if "glass" in mats:
+            meta[13] = mats.index("glass")
+        if "skillion" in shapes:
+            meta[15] = shapes.index("skillion")
+        meta[8] = GLASS_ROOF
+    r = [main, top, lo, roofs.CODES["skillion"]] + pack_roof(pos, [i for t in tris for i in t]) + [len(tris)]
+    gone = set(parts)
+    old = [x for x in B.get("r", []) if x[0] in gone]
+    B["r"] = [x for x in B.get("r", []) if x[0] not in gone] + [r]
+    new_roofs[:] = [x for x in new_roofs if x[0] not in gone]
+    for si in parts:
+        eaves.pop(si, None)
+    eaves[main] = r
+    changed = old != [r]
+    for si in parts:   # the other parts' walls stop at the roof's eaves
+        if si != main:
+            s = B["s"][si]
+            want = max(5, g0 + lo - s[1])
+            if s[3] != want:
+                s[3] = want
+                changed = True
+    return 1 if changed else 0
+
+
 def borrowed_top(B, s, si, P, polys, solid_tree):
     """Whether a roof on posts has the top of a building it touches (within 0.5 m, over the ground or over
     its base): a height the matching took from the building beside it, not a measurement of the roof."""
@@ -509,6 +608,11 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
             if src in parts and parts[src] in by_osm and s[3] < ATRIUM_PART_DM and s[2] == 0:
                 s[0] = by_osm[parts[src]]
                 n += 1
+    count = {}
+    for si, s in enumerate(B["s"]):
+        if polys[si] is not None and (B["b"][s[0]][6] or "") in closed and s[2] == 0:
+            count[s[0]] = count.get(s[0], 0) + 1
+    multi, done_atria = {bi for bi, k in count.items() if k > 1}, set()
     for si, s in enumerate(B["s"]):
         meta = B["b"][s[0]]
         P = polys[si]
@@ -521,6 +625,11 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
                 if glass is not None and len(meta) > 10:
                     meta[10] = glass
                 n += 1
+            if s[0] in multi:
+                if s[0] not in done_atria:
+                    done_atria.add(s[0])
+                    n += one_atrium_roof(B, s[0], polys, eaves, new_roofs)
+                continue
             if si not in eaves and P is not None and P.area > 300:
                 r = glass_atrium_roof(B, s, si, P, polys)
                 if r is not None:
@@ -539,7 +648,19 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
             continue
         if (P.length >= 40 and 2 * P.area / P.length <= WIDTH_M and not is_gate(meta, P)
                 and sum(foot[i].intersection(P).length for i in foot_tree.query(P)) >= ALONG * P.length / 2):
-            continue  # an arcade: a covered street keeps its own colour
+            # an arcade: a covered street keeps its own colour; but a covered walk with the top of the building it
+            # runs along (#263: two beside a Kyoto hotel, w1316075664 and w1316075663, stood 38.4-41.4 m up on posts,
+            # the hotel's 41.4 m) is held to a covered walk's height
+            if (s[3] > BORROWED_DM and "height" not in tags.get(oid, {}) and meta[4] in MEASURED_TALL
+                    and borrowed_top(B, s, si, P, polys, solid_tree)):
+                r = eaves.get(si)
+                if r is not None:
+                    drop_roof(r, round(10 * WALK_M))
+                s[3] = round(10 * WALK_M)
+                s[2] = soffit_dm(WALK_M)
+                meta[2] = meta[9] = WALK_M
+                n += 1
+            continue
         t = tags.get(oid, {})
         name = (meta[0] or t.get("name") or "").strip()
         here = [p for Pg, p in prec if Pg.intersects(P) and Pg.intersection(P).area > 0.5 * P.area]

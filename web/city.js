@@ -21,7 +21,7 @@ window.OpenEarthCity = async function main(cityId) {
   const idle = () => new Promise(r => setTimeout(r, 0));
 
   // ------------------------------------------------------------ load
-  const loadMsg = (t, f) => { $('#load-msg').textContent = t; $('#load-bar').style.width = `${Math.round(f * 100)}%`; };
+  const loadMsg = OEWorld.loadLine(); // (index.html #load-msg, #load-bar and #load-stage)
   $('#stage').classList.add('intro'); // the HUD stays out of the establishing shot
   let D;
   try {
@@ -33,7 +33,7 @@ window.OpenEarthCity = async function main(cityId) {
   }
   const { scene, B, P, LM, UNC, T, CITY, ground } = D;
   setupPage();
-  loadMsg('Setting up the renderer', 0.25);
+  loadMsg('Setting up the renderer', 0.3);
   await idle();
 
   // page text from the city config: titles, hemisphere-aware date chips, time zone, protection rules
@@ -1006,7 +1006,7 @@ window.OpenEarthCity = async function main(cityId) {
   camera.position.copy(W(...st0.cam));
   controls.target.copy(W(...st0.tgt));
   controls.update();
-  loadMsg('Ready', 1);
+  loadMsg('Compiling the shaders for this view', 1);
   // the loader stays up until the scene has been drawn twice: the shaders compile on the first
   // draw, which can take seconds, and a loader that faded before it showed a black frame
   let framesDrawn = 0, firstDrawn;
@@ -1060,7 +1060,7 @@ window.OpenEarthCity = async function main(cityId) {
     updateLabels();
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  warm.finally(() => requestAnimationFrame(frame)); // (the first draw waits for the shaders, compiled in slices: world.js compile)
   window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower, Wd,
     cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour, renderer, world, care };
   // the router calls stop() before it shows another view
