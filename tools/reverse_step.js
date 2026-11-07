@@ -92,6 +92,8 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
       if (st.v < 0) r.back += Math.hypot(st.x - bx, st.y - by);
       bx = st.x; by = st.y;
       r.deep = Math.max(r.deep, A.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.9, o.C.hw * 0.9, 0));
+      // (what holds it, when it waits on the way: the cars within 8 m of where it goes next, for a failure's report)
+      if (o.turn && o.turn.held > 2 && !r.heldBy) { const T = o.turn, nx = T.poses[Math.min(T.i + 1, T.poses.length - 1)]; r.heldBy = `at pose ${T.i} of ${T.poses.length}: ` + (C.filter(c => c.line >= 0 && Math.hypot(c.x - nx.x, c.y - nx.y) < 8).map(c => `car ${C.indexOf(c)} ${c.why} v ${c.v.toFixed(1)} on piece ${c.line}${c.mv ? ` in junction ${c.mv.j.id}` : ''}${c.youBy ? ` (${c.youBy})` : ''}, ${Math.hypot(c.x - nx.x, c.y - nx.y).toFixed(1)} m off`).join('; ') || 'no car near'); }
     }
     r.done = !o.turn;
     const near = g.roadNet.nearest(o.drv.st.x, o.drv.st.y, 10, o.drv.st.z);

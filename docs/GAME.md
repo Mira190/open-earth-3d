@@ -1058,18 +1058,20 @@ yields. In this game every car's intent is exact, so:
   queued at its own line, which waits its turn once the other is in. One waiting there is no
   longer counted as queueing (it is not behind the other), so after 20 s it backs out or turns
   round; the check holds it to 30 s.
-- **Bends at a driver's speed.** The traffic took a junction's corner at its full 50 km/h: a
-  bus's heading swung 15 to 25 degrees in a tenth of a second. Now each car looks along its way
-  from its middle on and takes each bend at no more than 3.5 m/s² of sideways pull (a bus 1.6),
-  braking for it in time and gathering speed out of it gently, as the ride's driver already did: a
-  junction's corner at about 19 km/h. The bend is read over 6 m either side, since the roads'
-  lines meet at sharp corners; read over a step or two, a 30-degree corner between two pieces was a
-  tight bend and the traffic crawled through every junction, the taxis behind it late.
-  A bus at a tight corner, a turn on the kerb side, swings up to 1.5 m wide, its front axle
-  following that path (on past the next piece of road, which inside a junction can be a few metres
-  long) and its rear axle drawn after it along the body, so it comes round over its wheelbase.
-  `tools/bus_turn.js` in Tokyo: the biggest jump in heading 3 to 6 degrees a tenth of a second
-  (10 to 25 before), the rear axle's sideways slip 0.06 to 0.5 m/s, turns taken at 2 to 4 m/s.
+- **A bus takes a corner as a bus does.** The traffic took a junction's corner at its full
+  50 km/h: a bus's heading swung 15 to 25 degrees in a tenth of a second. Now a bus looks along its
+  way from its middle on and takes each bend at no more than 1.6 m/s² of sideways pull, braking for
+  it in time and gathering speed out of it gently (the bend read over 6 m either side, since the
+  roads' lines meet at sharp corners). At a tight corner, a turn on the kerb side, it swings up to
+  1.5 m wide, its front axle following that path (on past the next piece of road, which inside a
+  junction can be a few metres long) and its rear axle drawn after it along the body, so it comes
+  round over its wheelbase; where that would put its body into a post its lane's own pose keeps
+  clear of, it keeps to the lane's pose. `tools/bus_turn.js` in Tokyo: the biggest jump in heading
+  3 to 6 degrees a tenth of a second (10 to 25 before), the rear axle's sideways slip 0.06 to
+  0.5 m/s, turns taken at 2 to 4 m/s. The cars were slowed the same way at first (3.5 m/s², a
+  corner at 19 km/h, as a ride's driver takes it), but the queues at the lights grew with it and a
+  taxi in Shinjuku took 50 s to come, not 10: the junctions' timings want tuning to it first, so the
+  cars keep their speed round a corner for now (a follow-up).
 - **A short piece out of a signal clears first.** Shinjuku's junction 1103, 27 m from the scramble
   1105, has no signals; between its line and 1105's there is room for one car. A car out of 1105's
   turn waited there to give way, and the queue behind it at 1105 stood through its greens, a minute

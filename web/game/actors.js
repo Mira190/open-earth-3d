@@ -1313,7 +1313,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const PACE = 1.25;   // the traffic drives a quarter over the posted limit, as drivers do on an open street (the data's
                        // limits are the signs': 30 km/h on a side street reads as a crawl in play); a ride's route,
                        // its time and how it passes a queue stay on the limits (cars.js chauffeur)
-  const LAT_A = 3.5, BEND_B = 2.2, BEND_W = 6; // the sideways pull a car of the traffic takes a bend with (m/s²: a city driver's third of a g; a junction's corner at about 19 km/h, as a ride's driver takes it), how hard it brakes for one ahead, and how far either side it reads a bend (m)
+  const BUS_A = 1.6, BEND_B = 2.2, BEND_W = 6; // the sideways pull a bus takes a bend with (m/s²), how hard it brakes for one ahead, and how far either side it reads a bend (m)
   const STUCK = 20;    // seconds stopped behind a car that won't move (not queueing at a junction) before turning round
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
@@ -1731,7 +1731,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return net.L[li].ow === -d ? null : [li, d];
     }
     function canReverse(c) {
-      if (c.line < 0 || c.mv || c.rev || c.stuck === undefined) return false;
+      if (c.line < 0 || c.rev || c.stuck === undefined || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
       let line = c.line, dir = c.dir, run = c.dir > 0 ? c.s : net.L[c.line].len - c.s;
       for (let k = 0; k < 6 && run < REV_MAX; k++) {
         if (waysOut(c, line, dir).length) return true;
@@ -1911,22 +1911,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             Q[2 * nq] = pt[b3 - 3] + (pt[b3] - pt[b3 - 3]) * tt; Q[2 * nq + 1] = pt[b3 - 2] + (pt[b3 + 1] - pt[b3 - 2]) * tt; pathZ[nq] = pt[b3 - 1] + (pt[b3 + 2] - pt[b3 - 1]) * tt; nq++;
             si += di * step;
           }
-          // the speed it can take the bends of its way at (#283), from its middle on (a bend between its middle and
-          // its bumper is one it is still going round): round each, no more than LAT_A of sideways pull (a bus
-          // less), braking for it in time at BEND_B, and out of one gathering speed gently. The traffic took a
-          // junction's corner at its full 50 km/h, a bus's heading swinging 15 degrees in a tenth of a second
-          // (tools/bus_turn.js)
+          // the speed a bus can take the bends of its way at (#283), from its middle on (a bend between its middle and
+          // its bumper is one it is still going round): round each, no more than BUS_A of sideways pull, braking for it
+          // in time at BEND_B, and out of one gathering speed gently. It took a junction's corner at its full 50 km/h,
+          // its heading swinging 15 degrees in a tenth of a second (tools/bus_turn.js). (The cars keep their speed
+          // round a corner for now: slowed so, the queues at the lights grew and a taxi in Shinjuku came in 50 s,
+          // not 10; the junctions' timings want tuning to it first)
           {
             // (the turn read over BEND_W either side: the roads' lines meet at sharp corners, and read over a step or two a
             // corner of 30 degrees between two pieces was a tight bend, the traffic crawling through every junction)
-            const aLat = c.half > LONG_V ? 1.6 : LAT_A, kc = Math.round(Math.abs(c.s - sb) / step), w = Math.max(2, Math.round(BEND_W / step));
+            const aLat = BUS_A, kc = Math.round(Math.abs(c.s - sb) / step), w = Math.max(2, Math.round(BEND_W / step));
             let vb = Infinity;
-            for (let k = Math.max(w, kc); k + w < nq; k++) {
+            if (c.half > LONG_V) for (let k = Math.max(w, kc); k + w < nq; k++) {
               const h0 = Math.atan2(Q[2 * k] - Q[2 * (k - w)], Q[2 * k + 1] - Q[2 * (k - w) + 1]), h1 = Math.atan2(Q[2 * (k + w)] - Q[2 * k], Q[2 * (k + w) + 1] - Q[2 * k + 1]);
               let tk = h1 - h0;
               tk = Math.abs(tk > Math.PI ? tk - 2 * Math.PI : tk < -Math.PI ? tk + 2 * Math.PI : tk);
               if (tk < 0.08) continue;
-              const vk = Math.max(c.half > LONG_V ? 2 : 2.5, Math.sqrt(aLat * w * step / tk)), dk = Math.max(0, (k - kc) * step - c.half);
+              const vk = Math.max(2, Math.sqrt(aLat * w * step / tk)), dk = Math.max(0, (k - kc) * step - c.half);
               const vc = Math.sqrt(vk * vk + 2 * BEND_B * dk);
               if (vc < vb) vb = vc;
             }

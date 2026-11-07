@@ -1727,7 +1727,7 @@ const npcNight = require('./npc_night');
     const R = rev.ride;
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
-      check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto})`);
+      check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto}${R.heldBy ? `; held ${R.heldBy}` : ''})`);
       check(R.deep === 0 && R.drove > 10, `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most; ${R.drove.toFixed(0)} m on)`);
     }
   }
