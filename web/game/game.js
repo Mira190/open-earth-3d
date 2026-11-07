@@ -404,7 +404,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // (a tree on a channel's bank, by its wall, stands in the planting strip beside its lane: clear of the carriageway is
   // enough there, a bank lane being no-parking and narrowed to it, game.json cw, inland_water.py bank_lanes)
-  const byWall = (x, y) => !!(D.inland && D.inland.byWall(x, y, 1.2));
+  // (only beside a lane narrowed so: by any other road along a channel the kerb's margin stands, or a tree kept there
+  // stood in the traffic, Tetsugaku's Philosopher's Path)
+  const cwRoads = G.paths.road.filter(r => r.cw);
+  const bankLanes = cwRoads.length && D.inland ? OEStreets.carriageways(cwRoads.map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw }))) : null;
+  const byWall = (x, y) => !!(bankLanes && D.inland.byWall(x, y, 1.2) && bankLanes.depth(x, y, nav.terrain(x, y), 3) > 0);
   if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && (byWall(x, y) ? !(roadsNow.depth(x, y, g, 0.35) > 0) : !inRoad(x, y, g, 0.4)) && !underDeck(x, y, g, 8) ? g : null; });
   // night.js's poles, behind the kerb: where one would be in a wall, its lamp hangs on a bracket there
   // (and one beside a deck, in the road or under it, goes)
