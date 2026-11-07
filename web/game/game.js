@@ -1646,9 +1646,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // (a car of the traffic come into where it goes next: it waits there, as a driver does part way round, up
     // to 10 s; the traffic gives way to it, so the car is one already there or crossing, Queenstown, #264)
     const nx = P[Math.min(T.i + 1, P.length - 1)];
-    // (backing out of a one-way street it never goes on into one: after 3 s it asks it to back off, and after 40 s
-    // gives up the backing out where it is and drives on from there, #283)
-    if ((T.rev || !(T.held >= 10)) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) {
+    // (it never goes on into one, backing out of a one-way street or turning in the road: after 3 s it asks it to back off,
+    // and after 40 s gives up the turn where it is and drives on from there; a three-point turn went on into a queue after
+    // 10 s held, 1.8 m deep, Shibuya and Shinjuku, #283, #296)
+    if (nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) {
       T.held = (T.held || 0) + dt; st.v = 0; st.brake = true;
       if (T.held > 3 && junctions.makeWay) junctions.makeWay(nx.x, nx.y, st.z, nx.h, o.C.half, o.C.hw, 0.3);
       // (a car come into the street behind it since, stopped there for it: it backs out first, Fushimi Inari's piece 99)
@@ -1663,7 +1664,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
           if (rt2 && !(rt2.nodes && rt2.nodes.some(nd => nd.line === T.pl.line))) { Object.assign(T, { poses: R2.poses, i: 0, u: 0, wait: 0.4, rt: rt2, held: 0 }); return; }
         }
       }
-      if (T.rev && T.held > 40) { // (on from where it stands, by the nearest road's lane)
+      if (T.held > 40) { // (on from where it stands, by the nearest road's lane)
         const pl = placeOf(st), to = o.phase === 'coming' ? o.pickup : T.rt.to, rt2 = pl && to && roads.route(pl, to, 6000);
         const p0 = rt2 && rt2.pts[0], p1 = rt2 && rt2.pts[Math.min(1, rt2.pts.length - 1)], clear = p0 && cars.footprint(p0[0], p0[1], st.z, Math.atan2(p1[0] - p0[0], p1[1] - p0[1]), o.C.half, o.C.hw, 0.1) === 0; // (not on into a car where it takes up the lane)
         if (rt2 && clear) { const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 }); o.drv.leave(); o.drv = OECars.chauffeur(o.C, rt2, opts); o.drv.opts = opts; o.sig = []; o.scr = []; o.qArms = []; o.turn = null; o.qT = 0; o.qAt = null; o.rerouteT = clockT; }
