@@ -1,4 +1,5 @@
 // Choosing a destination on the title screen, with real pointer clicks and taps as a person makes them
+//   - a hover on the list lights the row, dims the others and turns the globe to it, with no card;
 // (a click focuses the button first, and that focus must not count as the first of two clicks):
 //   - the first click or tap on a destination opens its card; a city goes in on the second click;
 //   - a group of maps (Tokyo's districts) never goes in from the list: the second click opens its
@@ -30,6 +31,31 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/#globe`;
     await p.waitForSelector('.ts-item', { timeout: 120000 });
     await p.waitForTimeout(4000);
     const item = p.locator('.ts-item', { hasText: 'Tokyo' }).first();
+
+    // a hover on the list previews a destination: its row lights and the others dim, the globe
+    // turns to it, and no card comes up; leaving the list turns it back (title.js hover)
+    if (!phone) {
+      const markAt = () => p.evaluate(() => { const m = [...document.querySelectorAll('.ts-mark.live')].find(e => e.textContent.startsWith('Sydney'));
+        const r = m.getBoundingClientRect(); return { x: r.left, y: r.top }; });
+      const far = ({ x, y }) => Math.hypot(x - w * 0.62, y - h * 0.5);
+      // the opening is over and the orbit has settled on the menu's first framing
+      await p.waitForFunction(() => { const a = document.querySelector('.title-app'); return a && a.classList.contains('menu') && !a.classList.contains('opening'); }, null, { timeout: 60000 });
+      await p.waitForTimeout(3500);
+      const before = await markAt();
+      await p.locator('.ts-item', { hasText: 'Sydney' }).first().hover();
+      await p.waitForTimeout(3500);
+      const on = await p.evaluate(() => ({ hovering: document.querySelector('.ts-list').classList.contains('hovering'),
+        hot: (document.querySelector('.ts-item.hot') || {}).textContent || '', card: !!document.querySelector('.ts-card.on'),
+        dim: getComputedStyle([...document.querySelectorAll('.ts-item')].find(b => !b.classList.contains('hot'))).opacity }));
+      const after = await markAt();
+      check(name, 'hover on Sydney lights its row, dims the others, opens no card', on.hovering && /Sydney/i.test(on.hot) && !on.card && +on.dim < 0.5, on);
+      check(name, 'hover on Sydney turns the globe to it', far(after) < far(before) - 40, { before, after });
+      await p.mouse.move(w - 20, h * 0.5);
+      await p.waitForTimeout(3500);
+      const back = await markAt();
+      const off = await p.evaluate(() => document.querySelector('.ts-list').classList.contains('hovering'));
+      check(name, 'leaving the list turns the globe back and undims the rows', !off && far(back) > far(after) + 40, { after, back, off });
+    }
 
     await press(item);
     await p.waitForTimeout(1200);
