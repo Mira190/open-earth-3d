@@ -1293,5 +1293,50 @@ window.OEBuildings = (function () {
     return mat;
   }
 
-  return { create, STYLES, guessStyle, canopyPosts, POST };
+  // The city's walls and roofs are one geometry, which suits building it and picking a building in it but
+  // leaves the GPU nothing to skip: every frame drew all of it twice, for the view and for the sun's shadow
+  // map, though the shadow map covers a few hundred metres round the player and the view half the city at
+  // most. These are the same triangles as meshes over a grid of cells, sharing the one geometry's vertex
+  // buffers (nothing more is uploaded but the indices, the same count again), each with its own bounds, so
+  // three.js's frustum culling leaves out the cells behind the camera and outside the shadow camera's box.
+  // What is drawn is what was drawn, triangle for triangle; the cells' size keeps them to a few dozen draws.
+  function cells(mesh, target = 64) {
+    const g = mesh.geometry, P = g.attributes.position.array, I = g.index ? g.index.array : null;
+    if (!I || I.length < 3 * 20000) return null;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const bb = g.boundingBox, w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z;
+    const cell = Math.max(300, Math.sqrt(w * d / target)), nx = Math.max(1, Math.ceil(w / cell)), nz = Math.max(1, Math.ceil(d / cell));
+    const count = new Uint32Array(nx * nz), of = new Uint32Array(I.length / 3);
+    for (let t = 0, k = 0; t < I.length; t += 3, k++) {
+      const a = 3 * I[t], b = 3 * I[t + 1], c = 3 * I[t + 2];
+      const cx = Math.min(nx - 1, Math.floor(((P[a] + P[b] + P[c]) / 3 - bb.min.x) / cell));
+      const cz = Math.min(nz - 1, Math.floor(((P[a + 2] + P[b + 2] + P[c + 2]) / 3 - bb.min.z) / cell));
+      of[k] = cx * nz + cz; count[of[k]]++;
+    }
+    const big = g.attributes.position.count > 65535, idx = [], fill = new Uint32Array(nx * nz);
+    for (let i = 0; i < nx * nz; i++) idx.push(count[i] ? (big ? new Uint32Array(3 * count[i]) : new Uint16Array(3 * count[i])) : null);
+    for (let t = 0, k = 0; t < I.length; t += 3, k++) { const a = idx[of[k]], f = fill[of[k]]; a[f] = I[t]; a[f + 1] = I[t + 1]; a[f + 2] = I[t + 2]; fill[of[k]] = f + 3; }
+    const group = new THREE.Group();
+    group.name = 'buildings';
+    const v = new THREE.Vector3();
+    idx.forEach(a => {
+      if (!a) return;
+      const cg = new THREE.BufferGeometry();
+      for (const [name, attr] of Object.entries(g.attributes)) cg.setAttribute(name, attr); // (the same buffers)
+      cg.setIndex(new THREE.BufferAttribute(a, 1));
+      const box = new THREE.Box3();
+      for (let i = 0; i < a.length; i++) box.expandByPoint(v.fromArray(P, 3 * a[i]));
+      cg.boundingBox = box;
+      cg.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
+      const m = new THREE.Mesh(cg, mesh.material);
+      m.castShadow = mesh.castShadow; m.receiveShadow = mesh.receiveShadow;
+      m.renderOrder = mesh.renderOrder; m.name = 'buildings-cell';
+      m.matrixAutoUpdate = false; m.updateMatrix();
+      group.add(m);
+    });
+    group.matrixAutoUpdate = false;
+    return group;
+  }
+
+  return { create, cells, STYLES, guessStyle, canopyPosts, POST };
 })();

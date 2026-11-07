@@ -2,7 +2,7 @@
   "id": "tetsugaku",
   "name": "Philosopher's Path",
   "native": "哲学の道",
-  "description": "Kyoto's Philosopher's Path from open data: the canal walk under its cherries from Ginkaku-ji to Nanzen-ji, past Honen-in and Eikan-do to the brick aqueduct and the Keage incline, with measured heights from Project PLATEAU on GSI laser terrain.",
+  "description": "Kyoto's Philosopher's Path: a canal walk under the cherry trees from the Silver Pavilion to Nanzen-ji, past mossy temples, to the old brick aqueduct and the rails of the Keage Incline.",
   "bbox": [
     135.784,
     35.006,
@@ -659,8 +659,8 @@
   },
   "tour": [
     {
-      "title": "The Philosopher's Path from open data",
-      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs. The path follows the Lake Biwa Canal's branch about 2 km along the foot of the Higashiyama hills, from Ginkaku-ji to Nanzen-ji.",
+      "title": "The Philosopher's Path",
+      "text": "Two kilometres along a little canal at the foot of the eastern hills, from Ginkaku-ji to Nanzen-ji. In early April the cherries meet overhead; in November the maples burn red.",
       "cam": [
         -480,
         120,
@@ -681,7 +681,7 @@
     },
     {
       "title": "Ginkaku-ji",
-      "text": "The Silver Pavilion, Ashikaga Yoshimasa's retreat (1489), was never silvered. The path begins at the bridge below its approach.",
+      "text": "The Silver Pavilion, Ashikaga Yoshimasa's retreat of 1489, was never silvered. Its raked sand garden and moss are the purest Zen in Kyoto; the path begins at the bridge below.",
       "cam": [
         120,
         900,
@@ -702,7 +702,7 @@
     },
     {
       "title": "Along the canal",
-      "text": "The philosopher Nishida Kitaro walked here daily; the cherries were planted from 1922 by the painter Hashimoto Kansetsu and his wife. Early April turns the canal pink.",
+      "text": "The philosopher Nishida Kitaro walked here every day to think. Painter Hashimoto Kansetsu and his wife planted the cherries from 1922, and their petals still drift on the water each spring.",
       "cam": [
         160,
         260,
@@ -723,7 +723,7 @@
     },
     {
       "title": "Nanzen-ji and the aqueduct",
-      "text": "The Sanmon (1628) stands about 22 m high. Behind it the canal crosses the precinct on a brick aqueduct of 1888, Suirokaku.",
+      "text": "Climb the great Sanmon for the view a famous outlaw admired in kabuki: \"Spectacular, spectacular!\" Behind it, a red-brick Roman-style aqueduct carries the canal through the temple grounds.",
       "cam": [
         -150,
         -650,
@@ -744,7 +744,7 @@
     },
     {
       "title": "The Keage Incline",
-      "text": "From 1891 to 1948 boats rode cradles up and down 36 m on these rails between the canal's two levels. Today the rails are a walk under cherries.",
+      "text": "Boats once rode cradles up and down these rails between the canal's two levels. Now it's a walk under the cherries, and on a spring weekend the most photographed tracks in Japan.",
       "cam": [
         -420,
         -1150,

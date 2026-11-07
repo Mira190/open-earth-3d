@@ -11,6 +11,9 @@ checked in stills from the same viewpoints.
   generated one; `OWNERS=1` lists which mesh and material holds a texture of each size in the game.
 - `tools/far_cost.js` counts one frame's triangles and draw calls from a viewpoint, and for every mesh
   (each instance of an instanced one) how many of its triangles lie past 300 m, 800 m and 2 km.
+- `tools/frame_cost.js` lists every framebuffer one frame draws into (size, format, MSAA), the draws and
+  triangles into each, and the full-screen passes and the bytes they write (a 3- or 6-vertex draw counts as
+  one, so a sprite does too).
 - `tools/views/sydney-vram.json`: a street view and an aerial view at day and night, for
   `tools/game_shot.js` before and after.
 
@@ -48,6 +51,55 @@ for GPU memory. Both break the rule, so the photographs stay JPEG. KTX2 remains 
 textures authored for it in the Blender builds (where UASTC's size is close to the PNG it replaces),
 and real-time GPU block compression of a decoded JPEG (as Ludicon's spark.js does) would get the
 memory without the download; neither is done yet.
+
+## Work done for nothing each frame
+
+Two more, the same picture to the bit:
+
+- **The post stack's second multisampled buffer** (`world.js` `leanComposer`, used by the game, the viewer and
+  the title). An EffectComposer clones its target for the other half of its ping-pong pair, so with 4x MSAA every
+  full-screen pass after the scene (AO mix, highlights, bloom composite, lens, output) wrote four samples a
+  pixel into an RGBA16F target and resolved them. A triangle that covers the frame gives all four samples the
+  same value. Now only the scene draws into the multisampled target, and the passes take turns between two
+  single-sampled ones. The second MSAA colour-and-depth buffer is gone: 62 MB at 1440 x 900, about 250 MB
+  at 2880 x 1800 on a high-DPI screen.
+- **The buildings in cells** (`buildings.js` `cells`). The city's walls and roofs were one mesh (Sydney:
+  572,000 triangles across 5.7 km), so the GPU drew all of it twice every frame: once for the view and once for
+  the sun's shadow map, which covers 340 m round a walker. The same triangles now go out as meshes over a grid
+  of about 64 cells. They share the one geometry's vertex buffers (only the indices are new), and frustum
+  culling drops the cells behind the camera and outside the shadow box. The one mesh stays out of the scene,
+  for picking and its bounds tree. Sydney's game from the street went from **5.40 to 4.42 million triangles a
+  frame** (shadow pass 2.08 to 1.57, view 3.31 to 2.84) for 29 more draw calls. The viewer's software-rendered
+  frame went from 269 to 121 ms.
+
+What the shadow pass still draws is mostly instanced props, trees and people spread over the whole city. An
+instanced mesh is culled as a whole, so these are drawn in full however small the shadow box.
+
+## Next, by what it saves for what it risks
+
+Measured on Sydney's game, high tier, 1440 x 900, from the street, after the work above: 4.42 million triangles,
+849 draws, 78 full-screen passes.
+
+1. **Per-instance culling for the static instanced props** (rooftop plant, gable bodies, landmark street
+   furniture, benches, lamp posts). three.js r186's `BatchedMesh` culls each instance against the camera, the
+   shadow camera included (`perObjectFrustumCulled`), and sorts them; an `InstancedMesh` is all or nothing.
+   Most of the 1.5 million shadow-pass triangles are these. No visual change.
+2. **A cached shadow map for what does not move.** The buildings, landmarks and props cast the same shadow
+   until the sun moves by a texel or the shadow box slides. Unreal's virtual shadow maps cache static pages in
+   the same way. Draw the static casters into their own depth map only when the sun or the box moves; draw the
+   people, cars and vessels each frame into a small map round the player; take the nearer of the two in the
+   lit shaders. This needs a change to three.js's shadow lookup (`onBeforeCompile`), so it comes after 1.
+3. **Impostors for the far trees** (section above): about 0.6 million triangles past 300 m in the view pass.
+   Each needs a baked atlas per species and season, and stills to match.
+4. **The ocean's FFT** draws 45 full-screen passes a frame into 128 x 128 RGBA32F targets. Half-float targets
+   would halve those bytes, but only if the waves' heights keep their precision. Try it with stills of a calm
+   and a rough sea.
+5. **Shader precision on the low tier.** Mobile GPUs run `mediump` at twice the rate of `highp`. The world-space
+   maths (positions kilometres from the origin, the reversed depth) must stay `highp`; colour and lighting need
+   not. Go shader by shader, with stills.
+6. **4x MSAA on a high-DPI screen.** At two device pixels a CSS pixel the edges are already sampled twice in
+   each direction, so 2x MSAA there would likely look the same for half the samples. That is a visual change,
+   however small, so it needs stills side by side first.
 
 ## Far geometry: what games do, and what this game draws
 

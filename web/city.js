@@ -104,6 +104,7 @@ window.OpenEarthCity = async function main(cityId) {
   let bloom = null;
   if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2 && QC.post) {
     post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }));
+    OEWorld.leanComposer(post); // the scene alone multisampled (world.js)
     post.addPass(new THREE.RenderPass(world, camera));
     bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0);
     OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
@@ -426,9 +427,9 @@ window.OpenEarthCity = async function main(cityId) {
   });
   const TOUR = (CITY.tour || []).filter(s => !s.place || byName(s.place)).map(s => Object.assign({}, s,
     { from: S.hm(s.from), to: S.hm(s.to || s.from), text: () => fill(s.text) }));
-  if (!TOUR.length) TOUR.push({ title: `${CITY.name} from open data`, text: () => fill('{buildings} buildings from OpenStreetMap via Overture Maps.'),
+  if (!TOUR.length) TOUR.push({ title: CITY.name, text: () => CITY.description || '',
     cam: CITY.start.cam, tgt: CITY.start.tgt, date: CITY.start.date, from: S.hm(CITY.start.time), to: S.hm(CITY.start.time) + 60, hold: 10 });
-  $('#tour-intro').textContent = `${TOUR.length === 1 ? 'One stop' : `${TOUR.length} stops`} through the model. Drag the view at any time to take over; the tour waits for you.`;
+  $('#tour-intro').textContent = `A guided tour in ${TOUR.length === 1 ? 'one stop' : `${TOUR.length} stops`}. Drag the view at any time to take over; the tour waits for you.`;
   if (!placeInfo.length) $('[data-tab="access"]').hidden = true;
   if (!placeInfo.some(p => p.tested)) $('#tower-group').hidden = true;
   $('#tour-list').innerHTML = TOUR.map((s, i) => `<li><button data-i="${i}"><span class="n">${pad(i + 1)}</span><span><b>${s.title}</b><span>${s.date[1]} ${MONTHS[s.date[0] - 1]}, ${fmtMin(s.from)}</span></span></button></li>`).join('');
