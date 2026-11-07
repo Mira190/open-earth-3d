@@ -60,6 +60,9 @@ DATA_STEP = 5.0                # m: the data puts the other line about a level (
 OVER_RUN = 9.0                 # m: a run of samples this near another line's (the decks side by side or crossing)
 MAX_GRADE = 0.12               # rise over run between samples of one deck at most
 OVER = 3.5                     # m, in plan: a line this near another (decks overlapping), under it
+MAX_DROP = 9.0                 # m: a layer this far under the line's data height is a road under it (the data's levels are
+                               # 6-8 m too high at most where measured, #272)
+MAX_RISE = 1.0                 # m: and one this far over it is a deck over the line (the data never put a deck too low there)
 MIN_AREA = 0.003               # a sheet must hold this share of the lines' buffer to be fetched (about 30 m of line)
 
 
@@ -280,6 +283,9 @@ def measure(L):
             k0 = int(np.nonzero(h >= 0.7 * top)[0][0])
             zm = (e[k0] + e[k0 + 1]) / 2
             lay = z[np.abs(z - zm) <= 0.3]
+            if len(lay) >= MIN_N and not (c[2] - MAX_DROP <= np.median(lay) <= c[2] + MAX_RISE):   # a road under it, or a deck over it
+                line.append([c[0], c[1], None, int(len(lay)), c[2]])
+                continue
             line.append([c[0], c[1], float(np.median(lay)) if len(lay) >= MIN_N else None, int(len(lay)), c[2]])
         # drop jumps against the neighbours' median, then fill by interpolation along the line
         zs = np.array([q[2] if q[2] is not None else np.nan for q in line], float)

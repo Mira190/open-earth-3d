@@ -88,10 +88,10 @@ MATERIALS = {
     "st_kt_canopy": {"color": "#d9dcdf", "roughness": 0.35, "metalness": 0.6},
     # its podium (#290): brown cladding patterned in small scales, the screen's black frame, the arches' glazing,
     # the café's granite steps, the name's silver letters
-    "st_kt_clad": {"color": "#8c6c60", "roughness": 0.5, "metalness": 0.45, "pattern": "granite", "joints_m": [0.45, 0.3]},
+    "st_kt_clad": {"color": "#8c6c60", "roughness": 0.5, "metalness": 0.45, "pattern": "granite", "joints_m": [0.3, 0.3]},
     "st_kt_black": {"color": "#151619", "roughness": 0.35, "metalness": 0.3},
     "st_kt_win": {"color": "#3a434c", "roughness": 0.18, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.6, "storey_m": 4.3,
-                  "spandrel": 0.22, "mullion_m": 0.1, "frame": "#4a4a4c", "lit_share": 0.8, "lit_k": 0.9, "warm_share": 0.85},
+                  "spandrel": 0.22, "mullion_m": 0.1, "frame": "#4a4a4c", "lit_share": 0.55, "lit_k": 0.6, "warm_share": 0.85},
     "st_kt_paving": {"color": "#a6a5a1", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.6], "street_lit": True},
     "st_kt_step": {"color": "#9a9894", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "tread"},
     "st_kt_letters": {"color": "#e8eaec", "roughness": 0.3, "metalness": 0.7, "map": KT_LETTERS_FILE, "cutout": True, "emissive": "#fff4e6", "glow": 0.9},
