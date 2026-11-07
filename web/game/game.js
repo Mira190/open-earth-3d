@@ -4473,8 +4473,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (dt > 0) player.speed = Math.min(player.speed, moved / dt); // the speed is what the move achieved, so the walk cycle slows against a wall
     // an escalator (a surface with moving_ms) carries whoever stands on its moving stretch along its axis; the
-    // steps take you through whatever stands beside them (a well's rim, the floor you come up through)
-    const esc = player.ground && nav.strips.find(s => s.moving_ms && s.name === player.floor);
+    // steps take you through whatever stands beside them (a well's rim, the floor you come up through). Where its
+    // flat ends lie flush with a floor a hair higher than them (a landing's stone, a deck's boards), the floor is
+    // the one stood on, yet the steps under it still carry you
+    const esc = player.ground && (nav.strips.find(s => s.moving_ms && s.name === player.floor) ||
+      nav.strips.find(s => { if (!s.moving_ms) return false; const h = nav.stripHeight(s, player.x, player.y); return h != null && Math.abs(h - player.z) < 0.15; }));
     if (esc) {
       const [u] = nav.stripUV(esc, player.x, player.y), mu = esc.moving_u || [-Infinity, Infinity];
       if (u >= mu[0] && u <= mu[1]) {

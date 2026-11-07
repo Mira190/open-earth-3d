@@ -484,9 +484,18 @@ void main() {
       ps.sort((a, b) => b.zt - a.zt);
       const box = p => p.area < 300 && ps.some(q => q !== p && q.zt <= p.zt && q.zt > p.zt - 8 && p.area < 0.4 * q.area);
       const t = ps.find(p => !box(p)) || ps[0];
-      crowns.set(bi, { zt: t.zt, top: B.b[bi][2], ring: t.ring });
+      crowns.set(bi, { zt: t.zt, top: B.b[bi][2], ring: t.ring, parts: ps.filter(p => p !== t) });
     }
-    for (const [bi, { zt, top, ring }] of crowns) {
+    // is (x, y) inside a ring (decimetres)?
+    const inRing = (ring, x, y) => {
+      let inside = false;
+      for (let k = 0, n = ring.length / 2, j = n - 1; k < n; j = k++) {
+        const xi = ring[2 * k] / 10, yi = ring[2 * k + 1] / 10, xj = ring[2 * j] / 10, yj = ring[2 * j + 1] / 10;
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    for (const [bi, { zt, top, ring, parts: others }] of crowns) {
       if (rng(bi * 7 + 3)() > cr.share) continue; // the same towers lit on every visit
       const H = Math.min(14, Math.max(4, 0.08 * top)), c = crownColour(), n = ring.length / 2;
       crownsLit++;
@@ -497,6 +506,10 @@ void main() {
         const j = (k + 1) % n, ax = ring[2 * k] / 10, ay = ring[2 * k + 1] / 10, bx = ring[2 * j] / 10, by = ring[2 * j + 1] / 10, L = Math.hypot(bx - ax, by - ay);
         if (L < 0.5) continue;
         const ox = (by - ay) / L * out, oy = -(bx - ax) / L * out;
+        // not down the side of a notch in the roof whose floor is within the wash (SHIBUYA SKY's channels):
+        // outside this edge stands another part of the same tower, its roof less than H below the crown
+        const mx = (ax + bx) / 2 + ox * 4, my = (ay + by) / 2 + oy * 4;
+        if (others.some(p => p.zt > zt - H && inRing(p.ring, mx, my))) continue;
         const q = [W(ax + ox, ay + oy, zt - H), W(bx + ox, by + oy, zt - H), W(bx + ox, by + oy, zt + 0.15), W(ax + ox, ay + oy, zt + 0.15)];
         for (const i of [0, 1, 2, 0, 2, 3]) { cPos.push(q[i].x, q[i].y, q[i].z); cCol.push(c.r, c.g, c.b); cV.push(i < 2 ? 0 : 1); }
       }
