@@ -3637,8 +3637,6 @@ def sky_doors(K, X, sa, sb, tw, z0):
     for k in range(2):                                                                         # the leaves' pull bars
         sx = mid + (-1 if k == 0 else 1) * 0.12
         K("steel", "door").tube([X(sx, tw - 0.06, z0 + 0.8), X(sx, tw - 0.06, z0 + 1.6)], 0.016, 6)
-    K("steel_dark", "door").quad(X(d0 - 0.3, tw - 1.2, z0 + 0.025), X(d1 + 0.3, tw - 1.2, z0 + 0.025),
-                                 X(d1 + 0.3, tw - 0.02, z0 + 0.025), X(d0 - 0.3, tw - 0.02, z0 + 0.025))   # the mat before them
 
 
 def sky_channels(K, Q, F, z, z0):
@@ -4222,7 +4220,7 @@ def game_extras(scene):
     F = sky_flights(*s["half"])
     W2, _ = sky_uv(s)
     north = F["flights"][0]
-    land = W2(*north["uv"](-F["D"] / 2, F["W"] - 1.4))            # before 46F's doors at the foot of the north escalator
+    land = W2(*north["uv"](-F["D"] / 2, F["W"] - 2.2))            # before 46F's doors at the foot of the north escalator
     face = W2(*north["uv"](1.0, 0.0)) - W2(*north["uv"](0.0, 0.0))
     eu, ev = F["edge"]
     edge = W2(eu - 4.0, ev - 4.0)                                 # on the deck behind SKY EDGE
