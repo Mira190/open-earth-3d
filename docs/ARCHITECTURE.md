@@ -253,6 +253,62 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     behind the face), not at the 5 m water mask's bank, and the walker walks on
     the raised grid (`game/nav.js`).
 
+  **Inland water** (#277: `pipeline/inland_water.py`, `web/inland.js`, for the
+  viewer and the game). The sea's plane lies at the scene's 0 m, so water above
+  it (a river in an inland city, a park's pond) was drawn as ground under the aerial
+  photograph: the Meguro River ran between its railings as a strip of grey ground.
+  Each body now stands at its own level, from Overture's base water (OpenStreetMap,
+  ODbL) and the game's 5 m terrain (GSI DEM5A in Japan):
+  - *walled* channels: rivers mapped only as a centre line, buffered to a width that
+    may widen downstream (the Meguro River 9 to 13 m, the Shibuya River 8 m, the
+    Kanda River 11 m, Kyoto's Takase River, Shirakawa and Misosogi, the canal's branch
+    along the Philosopher's Path), and narrow river or canal polygons (under 15 m on
+    average) or ones a city names (the Kamo Canal, the Biwako Canal at Okazaki). The
+    bank is the ground either side just outside the walls (the laser survey dips into
+    a 10 m channel), the median of samples 3-8 m out, smoothed over 80 m and never
+    rising downstream; the water `bank_to_water_m` below it (4.5 m for the Meguro, a
+    metre for a Kyoto stream) and its bed `water_m` under that. Stretches in a culvert
+    (`tunnel=culvert`) are left out;
+  - *natural* water (the Kamo River, the ponds): the survey interpolates across water,
+    so its level is the survey's own inside the outline (the lowest fifth within 40 m
+    along a river, a third of the way up for a pond, just under its shore);
+  - water a landmark draws (the Nijo Castle moats, `kyoto_moat_water`) and a city's
+    `skip` list (the Keage plant's covered reservoirs) are left out.
+  In the browser the terrain grids are levelled first, in place (`raise`): every
+  point within 1.25 cells of a channel or inside it takes the bank's level, and under
+  natural water the ground drops below its level, so the ground drawn, the walls'
+  tops, the trees and what walkers stand on agree. Over a channel the ground is cut
+  away by a signed-distance mask (`holeMask`: the exact distance to the walls within
+  2.5 m, filtered, so its edge follows a wall to a few centimetres at 0.5 m texels;
+  a plain mask left a ragged fringe of ground at the coping), and the channel is drawn:
+  revetments from the bank to the bed (concrete cast in 1.5 m lifts and 10 m bays,
+  grime streaks, greener and wet towards the water; or Kyoto's dressed stone, the
+  `ashlar` pattern), a coping, a steel railing (the `railing` pattern), the bed, and
+  the water over it, level-shaded, its ripples drifting downstream with the sun's
+  glitter (`water.js patchGlitter`) and the street lights. Where a road crosses with
+  no bridge model (`bridges.py`), the ground stays over the channel as a deck with a
+  slab edge, an underside and railings. Trees planted from the canopy over a channel
+  (the Meguro's cherries reach across it) stand on its bank, 0.8 m behind the wall,
+  though in the game one whose foot falls in a carriageway (the Meguro's bank lanes run
+  up to the railing in the road data) is left out, as any tree there is; none stands in a pond. Walkers stop at a channel's railing and a pond's edge
+  (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
+
+  Live cities: Shibuya (the Meguro River, the Shibuya River's open stretch, 12 ponds),
+  Shinjuku (the Kanda River, Shinjuku Gyoen's and Meiji Jingu's ponds), Kyoto (the Kamo
+  River, Takase River, Shirakawa, Misosogi, the Kamo Canal, the Okazaki canal basin,
+  the Gyoen's ponds), the Philosopher's Path (the canal's branch, Shirakawa, the Biwako
+  Canal below Keage, the temple gardens' ponds), Fushimi Inari (the Kamo Canal, the
+  mountain's ponds) and Higashiyama (the ponds). The sea-level cities keep `water.js`.
+  Not drawn: Kyoto's Horikawa, whose stream runs in a sunken promenade with paths
+  beside it, a shape these channels don't make.
+
+  ![The Meguro River's channel by day from a deck: revetments, railings and chochin](images/water/meguro_day.jpg)
+  ![The Meguro River at night in the festival](images/water/meguro_night.jpg)
+  ![Out of the festival (10 May): no chochin, the cherries in leaf](images/water/meguro_night_may.jpg)
+  ![On a phone: from a deck by day, dusk, the festival night, May, on foot, and Yoyogi's lawn](images/water/meguro_phone.jpg)
+  ![Kyoto: the canal basin at Okazaki between its stone walls](images/water/kyoto_okazaki.jpg)
+  ![Yoyogi Park's lawn by day, from the open lawn by the fountain pond (#277)](images/trees/yoyogi_lawn_day.jpg)
+
   The quay's level is the land behind it: the fine grid's points more than
   0.75 m in from the shore and above the water within 1.6 cells, nearer ones
   counting more, at least 0.4 m. A shore whose land is more than 9 m up (a
@@ -968,6 +1024,14 @@ flower (from the first flowers to the petals' fall, the light-ups' season).
   a pink washi lantern between black lacquered rims on a cord from the rope, which
   sags between each two, with a halo and a small pool of light after dark. The
   Meguro River's festival lanterns are pink, hung along both railings.
+- **The chochin's season** (#277, decided): the Nakameguro lanterns are the cherry
+  blossom festival's, put up before the trees open and taken down after the petals
+  fall, so they follow the festival's window, not the light-up: they hang from
+  `lantern_window` [from, to] days round the city's opening day (`trees.cherry_open`,
+  else `sakuraOpen` for its latitude), a week before to a fortnight after by default
+  (about 18 March to 8 April in Tokyo), by day as well as at night, and are lit after
+  dark. The uplights and bonbori still follow the cherries' own bloom. Their own group
+  (`chochin`) carries the window (`trees.yozakura().chochinOut`).
 - **Where:** Chidorigafuchi and its Ryokudo (Tokyo; the Chiyoda Sakura
   Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama), the
   Meguro River (Shibuya, with chochin). Ueno's Sakura-dori and Osaka's Mint are

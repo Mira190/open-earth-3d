@@ -253,11 +253,15 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       let mesh = null;
       g.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
       mesh.geometry.setAttribute('mat', mesh.geometry.getAttribute('_mat'));
-      lib.tpl[name] = { scene: g.scene, extras: mesh.userData, pack: info.characters[name].pack };
-      if (onMsg) onMsg(name);
-      return lib.tpl[name];
+      const tpl = { scene: g.scene, extras: mesh.userData, pack: info.characters[name].pack };
+      return warmPalette(lib, mesh).then(() => {
+        lib.tpl[name] = tpl;
+        if (onMsg) onMsg(name);
+        return tpl;
+      });
     }));
     lib.names = Object.keys(info.characters);
+    lib.warmPalette = () => warmPalette(lib);
     // the main characters (blender/build_people.py): textured, with their own clips and skeleton
     const H = info.heroes || {}, plain = lib.require;
     lib.heroes = H.characters || {};
@@ -269,7 +273,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     // by the game once its loader has compiled the scene; issue 201): else the first frame that draws it
     // uploads them and links its program, a hitch of a frame or more each time someone new comes into view
     const ready = (name, tpl) => {
-      tpl.scene.traverse(o => { if (o.isSkinnedMesh) [].concat(o.material).forEach(litMaterial); }); // (the variant person() draws)
+      tpl.scene.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; [].concat(o.material).forEach(litMaterial); } }); // (the variant person() draws, its shadow's too)
       return (lib.warm ? lib.warm(tpl.scene).catch(() => {}) : Promise.resolve()).then(() => {
         lib.tpl[name] = tpl;
         if (onMsg) onMsg(name);
@@ -375,6 +379,39 @@ ${PAT_GLSL}`)
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( (uPat > 0.5 && vCls > 3.5 && vCls < 4.5) ? oePattern(vPal, vObj, uPat, uPat2) : vPal, opacity );');
     };
     return mat;
+  }
+
+  // The palette material's program (one for every untextured person: the same patch, the same key),
+  // compiled, with its shadow pass's, before the first of them is shown (issue 266): person() makes the
+  // material per person, so warming the template (lib.warm) never reached it, and the first one drawn
+  // linked it in a frame. Once per library, on a stand-in for the first character that comes once the
+  // game is open (before then, the loader's compile of the scene covers whoever stands in it).
+  // (lib.warmPalette(): the same from a template already loaded, for the game to call once it sets lib.warm.)
+  // The things people hold (stdMat: one program for every colour, and one for the clear umbrellas) come with
+  // the first of them too, since their shadows' variant is drawn by nothing in the scene the loader compiled.
+  function warmPalette(lib, mesh) {
+    if (!lib.warm) return Promise.resolve();
+    const waits = [];
+    if (!lib.propsWarm) {
+      const g = new THREE.Group();
+      for (const hex of ['#808080', 'clear']) { const q = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), stdMat(hex)); q.castShadow = true; g.add(q); }
+      lib.propsWarm = lib.warm(g).catch(() => {});
+    }
+    waits.push(lib.propsWarm);
+    if (!lib.paletteWarm) {
+      if (!mesh) for (const t of Object.values(lib.tpl)) if (!t.textured && !mesh) t.scene.traverse(o => { if (o.isSkinnedMesh && !mesh) mesh = o; });
+      if (mesh) {
+        const m = mesh.clone();
+        m.material = paletteMaterial(Array.from({ length: N }, () => new THREE.Vector3(0.5, 0.5, 0.5)), []);
+        litMaterial(m.material);
+        m.castShadow = m.receiveShadow = true;
+        m.frustumCulled = false;
+        m.children = [];
+        lib.paletteWarm = lib.warm(m).catch(() => {});
+      }
+    }
+    if (lib.paletteWarm) waits.push(lib.paletteWarm);
+    return Promise.all(waits);
   }
 
   // scratch objects, made on first use (three.js may load after this file)

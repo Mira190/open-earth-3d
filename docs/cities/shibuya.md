@@ -77,6 +77,14 @@ footprint along PLATEAU's roof faces, as in [Tokyo](tokyo.md#3-how-plateau-is-us
   median difference −0.01 m, 90th percentile 0.31 m, 97.7% within 1 m. That is the
   same agency's survey, so it checks the reading of the tiles more than the
   survey.
+- **The rivers** (#277). The Meguro River runs open from Ikejiri-Ohashi, where it leaves its culvert,
+  down through Nakameguro; the Shibuya River from south of the station to Tengenji. Both are concrete
+  channels drawn at their own level (`water.inland`, [Inland water](../ARCHITECTURE.md)): the Meguro
+  9 m between its walls at the head and 13 m at Nakameguro, its water 4.5 m under the street, from
+  about 10.5 m above Tokyo Bay at Ikejiri-Ohashi to 2.7 m at the map's south edge (the bank from the
+  5 m survey either side, smoothed). 30 streets cross the two without a bridge model; the ground stays
+  over them as decks. The widths are read from the railings and the depth from photographs, not measured
+  or surveyed at each bridge.
 
 ## 4. SHIBUYA SKY
 

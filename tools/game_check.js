@@ -1347,6 +1347,19 @@ const npcNight = require('./npc_night');
   });
   check(fx.none || (fx.on && fx.off), fx.none ? 'no post stack for the depth of field' : `photo mode focuses with a depth of field (${fx.on}), and play has none (${fx.off})`);
   if (fx.snd) check(fx.snd.junction != null, `the crossing's sound listens to its signals (junction ${fx.snd.junction})`);
+  // the city's constant beds are off in play (too loud): over a second of frames, the murmur and the
+  // screens' music are asked for silence only (the announcements and the walk calls still play)
+  const hush = await p.evaluate(async () => {
+    const g = window.__game, A = window.OEAudio, frame = () => new Promise(r => requestAnimationFrame(() => r()));
+    if (!A.on) A.start();
+    const loud = { murmur: 0, screens: 0 }, keep = {};
+    for (const k of Object.keys(loud)) { keep[k] = A[k]; A[k] = (v, ...a) => { if (v > 0) loud[k]++; return keep[k](v, ...a); }; }
+    const t0 = performance.now();
+    while (performance.now() - t0 < 1200) await frame();
+    Object.assign(A, keep);
+    return { loud, noise: g.cityNoise() };
+  });
+  check(!hush.noise && !hush.loud.murmur && !hush.loud.screens, `the city's constant beds are off in play (murmur ${hush.loud.murmur}, music ${hush.loud.screens})`);
 
   // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
   const lights = await p.evaluate(() => {
