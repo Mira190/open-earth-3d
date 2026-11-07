@@ -1437,7 +1437,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!OECars.queueing(c) && (c.stuck > 4 || (late && c.v < 2)) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v, of: c } : c);
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!OECars.queueing(c, o.phase !== 'coming') && (c.stuck > 4 || (late && c.v < 2)) ? // (on the way to you: only a queue at a junction is waited in, as before; with you in it, any queue held by a rule of the road)
+       { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v, of: c } : c);
     if (myCar) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
@@ -1474,6 +1475,68 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const fx = Math.sin(h0), fy = Math.cos(h0), ux = fy * keep, uy = -fx * keep;
     return loc.map(q => ({ x: x0 + ux * q.x + fx * q.y, y: y0 + uy * q.x + fy * q.y, h: h0 + keep * q.h, v: q.v, stop: q.stop }));
   }
+  // the way a ride backs out of a one-way street it can't turn round in (#283): back along its lane to the
+  // junction behind, the tail swung away from the way out it takes there, and forward into that way's lane.
+  // pl: where it is on the roads; ok(q): whether a pose has room. { poses, at: the place it sets off from on the
+  // way out, { line, s, dir } } or a reason why not
+  function reversePoses(o, pl, ok) {
+    const st = o.drv.st, l = roadNet.L[pl.line], back = pl.dir > 0 ? pl.s : l.len - pl.s;
+    if (back > 80) return `the junction behind is ${back.toFixed(0)} m back`;
+    const k = pl.dir > 0 ? 0 : l.pts.length / 3 - 1, av = roadNet.avoid;
+    const outs = (roadNet.nodes.get(roadNet.key(l.pts[3 * k], l.pts[3 * k + 1])) || []).filter(([li, e]) => li !== pl.line && roadNet.L[li].ow !== (e === 0 ? -1 : 1) && !(av && av[li]) && !(roadNet.fit && roadNet.fit[li] < o.C.hw));
+    if (!outs.length) return 'no other way out of the junction behind';
+    // its place across its lane, kept as it backs; the points along the street back to dIn from the junction
+    roadNet.at(pl.line, pl.s, rq);
+    const lat = (st.x - rq.x) * -rq.hy + (st.y - rq.y) * rq.hx, q = {};
+    const onA = sA => { roadNet.at(pl.line, sA, q); return { x: q.x - q.hy * lat, y: q.y + q.hx * lat, h: Math.atan2(q.hx * pl.dir, q.hy * pl.dir), v: -1 }; };
+    const R = TURN_R, D = 0.25;
+    for (const [li, e] of outs) {
+      const L1 = roadNet.L[li], dir = e === 0 ? 1 : -1, off = (junctions.centred && junctions.centred(li) ? 0 : OECars.LANE) * keepSign;
+      for (const dIn of [6, 4.5, 8, 3]) {
+        if (dIn >= back - 0.5) continue;
+        const legA = [];
+        for (let u = 0; u <= back - dIn; u += D) legA.push(Object.assign(onA(pl.s - pl.dir * u), { leg: true })); // (leg: on the straight back along the street)
+        if (legA.length < 2) continue;
+        const P0 = legA[legA.length - 1];
+        for (const dOut of [7, 10, 5]) {
+          if (dOut > L1.len - 2) continue;
+          roadNet.at(li, dir > 0 ? dOut : L1.len - dOut, q);
+          const hT = Math.atan2(q.hx * dir, q.hy * dir), T = { x: q.x - Math.cos(hT) * off, y: q.y + Math.sin(hT) * off, h: hT };
+          const turnBy = Math.atan2(Math.sin(hT - P0.h), Math.cos(hT - P0.h));
+          if (Math.abs(turnBy) > 2.4) continue; // (a way out behind it: a turn in the junction, not this)
+          for (const f of [0.75, 1, 0.5, 1.15]) {
+            // backing round: the nose swings towards the way out
+            const arc = [];
+            let x = P0.x, y = P0.y, h = P0.h;
+            const n = Math.max(1, Math.round(R * Math.abs(turnBy) * f / D)), sg = -Math.sign(turnBy);
+            for (let i = 0; i < n; i++) { x -= Math.sin(h) * D; y -= Math.cos(h) * D; h -= sg / R * D; arc.push({ x, y, h, v: -1 }); }
+            // then forward into its lane: a curve from there to T, as tight as its lock at most
+            const ax = T.x - x, ay = T.y - y, dist = Math.hypot(ax, ay);
+            if (dist < 2 || ax * Math.sin(h) + ay * Math.cos(h) < 0.3 * dist) continue;
+            const c1 = dist * 0.4, B0 = [x, y], B1 = [x + Math.sin(h) * c1, y + Math.cos(h) * c1], B2 = [T.x - Math.sin(T.h) * c1, T.y - Math.cos(T.h) * c1], B3 = [T.x, T.y];
+            const fw = [], m = Math.max(4, Math.ceil(dist * 1.6 / D));
+            let px = x, py = y, ph = h, worst = 0;
+            for (let i = 1; i <= m; i++) {
+              const t = i / m, a = (1 - t) ** 3, b = 3 * (1 - t) ** 2 * t, c = 3 * (1 - t) * t * t, d = t ** 3;
+              const qx = a * B0[0] + b * B1[0] + c * B2[0] + d * B3[0], qy = a * B0[1] + b * B1[1] + c * B2[1] + d * B3[1], run = Math.hypot(qx - px, qy - py);
+              if (run < 1e-3) continue;
+              const qh = Math.atan2(qx - px, qy - py);
+              worst = Math.max(worst, Math.abs(angDiff(qh, ph)) / run);
+              fw.push({ x: qx, y: qy, h: qh, v: 1 }); px = qx; py = qy; ph = qh;
+            }
+            if (!fw.length || worst > 1.15 / R) continue; // (no bend in it tighter than its lock)
+            const poses = legA.concat(arc);
+            poses[poses.length - 1].stop = true;
+            poses.push(...fw);
+            poses[poses.length - 1].h = T.h;
+            const bad = poses.findIndex(p => !ok(p));
+            if (bad < 0) return { poses, at: { line: li, s: dir > 0 ? dOut : L1.len - dOut, dir } };
+          }
+        }
+      }
+    }
+    return 'no room to back out';
+  }
   // (force: now, wherever it is, as tools/game_check.js asks for one through __game.turnRide; the street, the room
   // and the traffic are still asked)
   function turnRound(o, dt, force = false) {
@@ -1492,9 +1555,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else if (st.mv) { o.turnNo = 'in a junction'; return; }
     o.turnLook = clockT;
     const pl = placeOnRoute(st), to = o.phase === 'coming' ? o.pickup : st.route.to;
-    if (!pl || !to || (b && !force && b.line !== pl.line)) { o.turnNo = !pl || !to ? 'nowhere on the roads' : 'the queue is on the next piece'; return; } // (a queue on this piece of road only: one on the next, the reroute goes round)
+    if (!pl || !to) { o.turnNo = 'nowhere on the roads'; return; }
     const l = roadNet.L[pl.line];
-    if (l.ow || (pl.s < 6 || pl.s > l.len - 6)) { o.turnNo = l.ow ? 'a one-way street' : 'by a junction'; return; } // (a one-way street; or by the junction, where it would turn in the junction)
+    if (l.ow) { reverseOut(o, pl, to, b, force); return; } // (a one-way street: it backs out to the junction behind, #283)
+    if (b && !force && b.line !== pl.line) { o.turnNo = 'the queue is on the next piece'; return; } // (a queue on this piece of road only: one on the next, the reroute goes round)
+    if (pl.s < 6 || pl.s > l.len - 6) { o.turnNo = 'by a junction'; return; } // (by the junction, where it would turn in the junction)
     // nothing coming the other way on this street within 45 m, nor on the move within 15 m (about to turn into it)
     if (cars.C.some(c => c.line >= 0 && c !== b && Math.abs(c.z - st.z) < 3 && c.v > 0.3 && (c.line === pl.line ? c.dir !== pl.dir && Math.hypot(c.x - st.x, c.y - st.y) < 45 : Math.hypot(c.x - st.x, c.y - st.y) < 15))) { o.turnNo = 'a car coming'; return; }
     const half = ROAD_HALF[l.c] || 3.5, w = 2 * OECars.LANE;
@@ -1538,6 +1603,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     o.turned = (o.turned || 0) + 1;
     if (o.phase === 'driving' && player.vehicle === o) H.toast(`<b>${o.name}:</b> ${OEActors.pick(['This isn\'t moving. I\'ll turn round.', 'We\'re not getting through. Turning round.', 'Nothing\'s moving up there. Let\'s go back round.'])}`);
   }
+  // a ride on a one-way street blocked ahead backs out to the junction behind and goes on by another way from
+  // there (#283), the traffic stopped behind it on the street backing out first
+  function reverseOut(o, pl, to, b, force) {
+    const st = o.drv.st, z = st.z, mine = myCar && player.mode !== 'car' ? myCar.D.st : null, l = roadNet.L[pl.line];
+    // the cars of the traffic behind it on this street, stopped: they back out first (and it tries again in a moment)
+    const behind = cars.C.filter(c => c.line === pl.line && c.dir === pl.dir && (c.s - pl.s) * pl.dir < 0 && Math.abs(c.z - z) < 3);
+    if (behind.length) {
+      const moving = behind.filter(c => c.v > 0.5 && !c.rev);
+      if (moving.length) { o.turnNo = 'a car coming up behind'; return; }
+      let asked = 0;
+      for (const c of behind) if (c.rev || (cars.reverse && cars.reverse(c))) asked++;
+      o.turnNo = asked ? 'the cars behind back out first' : 'a car behind'; return;
+    }
+    const half = ROAD_HALF[l.c] || 3.5;
+    const ok = q => {
+      const fx = Math.sin(q.h), fy = Math.cos(q.h);
+      for (const [a, c] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const px = q.x + fx * a * o.C.half + fy * c * o.C.hw, py = q.y + fy * a * o.C.half - fx * c * o.C.hw;
+        if (!nav.room(px, py, z, 0.15, 1.2)) return false;
+        // (on the carriageway: the body's corners within its road's kerbs, or over them by less than a bumper)
+        const r = roadNet.nearest(px, py, 12, z);
+        if (!r || r.d > (ROAD_HALF[roadNet.L[r.line].c] || half) + 0.6) return false;
+      }
+      if (cars.footprint(q.x, q.y, z, q.h, o.C.half, o.C.hw, q.leg ? 0.1 : 0.8) > 0) return false; // (in the junction, room round it: a car close by there, held, would hold it in turn)
+      if (mine && Math.hypot(mine.x - q.x, mine.y - q.y) < o.C.half + myCar.C.half + 0.3) return false;
+      return true;
+    };
+    const R = reversePoses(o, pl, ok);
+    if (typeof R === 'string') { o.turnNo = R; return; }
+    const left = st.end - st.s, rt = roads.route(R.at, to, 6000, undefined, new Set([pl.line, ...jamAhead(st)]));
+    if (!rt || rt.len > left + (o.phase === 'driving' ? Math.max(500, left) : 500)) { o.turnNo = rt ? `the way round is ${rt.len.toFixed(0)} m` : 'no way round'; return; }
+    if (rt.nodes && rt.nodes.some(nd => nd.line === pl.line)) { o.turnNo = 'the way round comes back up this street'; return; }
+    o.turn = { poses: R.poses, i: 0, u: 0, wait: 0.4, rt, rev: true, pl, ok };
+    o.turned = (o.turned || 0) + 1; o.reversed = (o.reversed || 0) + 1;
+    if (o.phase === 'driving' && player.vehicle === o) H.toast(`<b>${o.name}:</b> ${OEActors.pick(['One-way and nothing\'s moving. I\'ll back out.', 'We\'re stuck in here. Backing up to the corner.', 'Can\'t turn round in this one. Reversing out.'])}`);
+  }
   function turnStep(o, dt) {
     const T = o.turn, st = o.drv.st, P = T.poses;
     st.brake = T.wait > 0; st.signal = 0;
@@ -1545,7 +1646,31 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // (a car of the traffic come into where it goes next: it waits there, as a driver does part way round, up
     // to 10 s; the traffic gives way to it, so the car is one already there or crossing, Queenstown, #264)
     const nx = P[Math.min(T.i + 1, P.length - 1)];
-    if (!(T.held >= 10) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) { T.held = (T.held || 0) + dt; st.v = 0; st.brake = true; return; }
+    // (backing out of a one-way street it never goes on into one: after 3 s it asks it to back off, and after 40 s
+    // gives up the backing out where it is and drives on from there, #283)
+    if ((T.rev || !(T.held >= 10)) && nx !== P[T.i] && cars.footprint(nx.x, nx.y, st.z, nx.h, o.C.half * 0.95, o.C.hw * 0.95, 0) > cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.95, o.C.hw * 0.95, 0) + 0.01) {
+      T.held = (T.held || 0) + dt; st.v = 0; st.brake = true;
+      if (T.held > 3 && junctions.makeWay) junctions.makeWay(nx.x, nx.y, st.z, nx.h, o.C.half, o.C.hw, 0.3);
+      // (a car come into the street behind it since, stopped there for it: it backs out first, Fushimi Inari's piece 99)
+      if (T.rev && T.held > 3 && T.pl && cars.reverse) for (const c of cars.C) if (c.line === T.pl.line && c.dir === T.pl.dir && c.v < 0.3 && !c.rev && Math.hypot(c.x - nx.x, c.y - nx.y) < 10) cars.reverse(c);
+      // (held 10 s on the way back: its way out worked out again from where it is, round what holds it now)
+      if (T.rev && T.held > 10 && !T.again && T.pl && P[T.i].leg) { // (still on the straight back: from there it can take up another way round from where it is, without a jump)
+        T.again = true;
+        const A = roadNet.L[T.pl.line], q = roadNet.nearest(st.x, st.y, 6, st.z, 3, 0, i => i !== T.pl.line);
+        if (q && A) {
+          const R2 = reversePoses(o, { line: T.pl.line, s: q.s, dir: T.pl.dir }, T.ok);
+          const rt2 = typeof R2 === 'string' ? null : roads.route(R2.at, T.rt.to, 6000, undefined, new Set([T.pl.line]));
+          if (rt2 && !(rt2.nodes && rt2.nodes.some(nd => nd.line === T.pl.line))) { Object.assign(T, { poses: R2.poses, i: 0, u: 0, wait: 0.4, rt: rt2, held: 0 }); return; }
+        }
+      }
+      if (T.rev && T.held > 40) { // (on from where it stands, by the nearest road's lane)
+        const pl = placeOf(st), to = o.phase === 'coming' ? o.pickup : T.rt.to, rt2 = pl && to && roads.route(pl, to, 6000);
+        const p0 = rt2 && rt2.pts[0], p1 = rt2 && rt2.pts[Math.min(1, rt2.pts.length - 1)], clear = p0 && cars.footprint(p0[0], p0[1], st.z, Math.atan2(p1[0] - p0[0], p1[1] - p0[1]), o.C.half, o.C.hw, 0.1) === 0; // (not on into a car where it takes up the lane)
+        if (rt2 && clear) { const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 }); o.drv.leave(); o.drv = OECars.chauffeur(o.C, rt2, opts); o.drv.opts = opts; o.sig = []; o.scr = []; o.qArms = []; o.turn = null; o.qT = 0; o.qAt = null; o.rerouteT = clockT; }
+      }
+      return;
+    }
+    T.held = 0;
     T.u += TURN_V * dt;
     while (T.u >= 0.25 && T.i < P.length - 1) {
       T.u -= 0.25;
@@ -4251,7 +4376,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // is across waits for it, never first by the give-way rule, nor swung round it as round a parked car)
       const turning = o === ride && !!ride.turn;
       blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: !turning && Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
-      if (turning) { cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true }); continue; }
+      if (turning) {
+        const gm = 0.7; // (turning round, a wide berth: a car creeping up to it at an angle touched it, Sydney, and one met a three-point turn in Shinjuku)
+        cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + gm, hw: o.C.hw + gm, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true });
+        // (backing out of a one-way street: where it goes next too, every 6 m of its way back from 3 m on, and where it stops backing,
+        // in the mouth of the junction behind, so that a car crossing that junction, or turning into the street, stops
+        // short of it rather than in its way, each then waiting for the other, #283)
+        const T = ride.turn;
+        const stopAt = T.rev ? T.poses.findIndex(p => p.stop) : -1, aheads = [];
+        if (T.rev) { for (let a = 12; T.i + a < stopAt; a += 24) aheads.push(a); aheads.push(stopAt - T.i); }
+        for (const ahead of aheads) { if (!(ahead > 0)) continue; const q = T.poses[Math.min(T.poses.length - 1, T.i + ahead)]; if (q !== T.poses[T.i]) cars.extra.push({ id, x: q.x, y: q.y, z: st.z, h: q.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true }); }
+        continue;
+      }
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
       const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft };

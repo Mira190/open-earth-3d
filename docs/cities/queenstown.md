@@ -140,7 +140,8 @@ Nothing was taken from either but that idea.
 | Footprints, roads, water, places | Overture Maps 2026-10-21.0 (OpenStreetMap and others) | ODbL and others, as Overture lists them |
 | The gondola | OpenStreetMap `aerialway=gondola` with its stations (via Overture); the towers from LINZ's 2026 urban aerial photos (their plinths and shadows) | ODbL; CC BY 4.0 |
 | Heritage landmarks | Heritage New Zealand Pouhere Taonga, New Zealand Heritage List entries 7439, 2341 and 2336 (read for facts, not copied); photographs on Wikimedia Commons (listed in section 3); the 2021 LiDAR for their outlines and heights | © HNZPT; CC BY-SA 3.0 / CC BY 2.0 / CC BY-SA 2.0; CC BY 4.0 |
-| The land past the frame | LINZ, New Zealand Contour-Interpolated 8m DEM (read at 32 m); LINZ, New Zealand 10m Satellite Imagery (2025–2026); ESA WorldCover 2021; NASA Black Marble | CC BY 4.0; CC BY 4.0; CC BY 4.0; public domain |
+| The land past the frame | LINZ, New Zealand Contour-Interpolated 8m DEM (read at 32 m); LINZ, New Zealand 10m Satellite Imagery (2025–2026); ESA WorldCover 2021; VIIRS Annual VNL V2 2024 night lights (EOG, Colorado School of Mines; OpenGeoHub COGs, Zenodo 10.5281/zenodo.7750174) | CC BY 4.0 |
+| Tree heights | LINZ, Otago - Queenstown LiDAR 1m DSM and DEM (2021): the crown top over the ground within 2 m of each mapped tree, 97 of 102 (extracted 2026-11-07) | CC BY 4.0 |
 | Climate | NIWA, Queenstown Airport, 1991–2020 normals (via Wikipedia's climate table) | — |
 | Walter Peak (past the frame) | LINZ New Zealand Contour-Interpolated 8m DEM (no LiDAR covers it); LINZ Otago 0.15m Rural Aerial Photos (2025–2026), RGBNIR, 16-bit, read at 0.5 m; Overture Maps 2026-10-21.0: Lake Wakatipu, the wharf, the ferry terminal and the buildings | CC BY 4.0; CC BY 4.0; ODbL |
 | The Skyline site's luge tracks, footways, paths | OpenStreetMap (API, November 2026), `cities/queenstown/site_osm.json` | ODbL |
@@ -405,13 +406,20 @@ change applies to every city's woods; Queenstown's are where it counts.
   opening coverage) shows its outline. The press gives its area (430 m², or 460 m² in the Queenstown
   Times) but not its shape. Skyline says it reaches its full size only when the old complex is
   rebuilt, around 2028–29. The glass lift's place is judged; the restaurant's interior, through
-  which the real deck is reached, is not modelled.
+  which the real deck is reached, is not modelled. Checked again on 2026-11-07 (issue #286): LINZ's
+  `nz-imagery` bucket has nothing newer over the town. The Otago 2025–26 collection (0.15 m RGBNIR,
+  31 October 2025 – 27 June 2026, still "ongoing") has 1,156 tiles, none on the town's sheets (CB11,
+  CC11); its nearest are on CB10, west of the town round Walter Peak.
 - **The gondola's towers.** Doppelmayr give 10 (lift-world's data sheet too: 760 m inclined, 438 m
   of rise, 35 cabins at 5 m/s). The photographs show six structures, and those are what is drawn.
   The ODT's report of the build says three towers were flown in by helicopter and seven set by crane
   and digger, but no published profile or data sheet places them or gives their heights, and
   counting the portals' leg pairs as towers gives seven, not 10. Searched again in November 2026
-  (Doppelmayr, lift-world, the ODT, QLDC consents): no positions or heights are published.
+  (Doppelmayr, lift-world, the ODT, QLDC consents): no positions or heights are published. The 2021
+  LiDAR (flown 12 March 2021) predates the new line: at the drawn towers' feet its surface stands
+  16 m over the ground at the lower portal, 11 and 17 m at the two upper portals and 20 m at the
+  tallest mast (s = 382 m, where the forest is as tall), but 0.8–1.0 m at the masts at s = 97 and
+  230 m. It shows no tower bases to redraw from, so the towers stay as the 2026 photographs place them.
 - **The heritage landmarks** (checked again for issue 269; Commons still refused with 600 s back-offs, so
   other sources were used):
   - **St Peter's spire.** Its tip is now 16 m, read from LINZ's 2021 1 m surface model (CC BY 4.0). The cell
@@ -428,5 +436,7 @@ change applies to every city's woods; Queenstown's are where it counts.
 - **Walter Peak.** No LiDAR covers it, so its ground is the 8 m national DEM, and its buildings'
   heights, walls and forms are judged; the gardens' trees are only in the photograph. The 2021 Queenstown LiDAR
   ends at 168.576°E, west of the town but east of Walter Peak (168.52°E). QLDC's district-wide LiDAR is due
-  in 2026–27. The crossing
+  in 2026–27. Checked on 2026-11-07: neither LINZ's national 1 m DEM mosaic (`new-zealand/new-zealand/dem_1m`,
+  to May 2026) nor the Southland 2020–23 LiDAR has a tile over Walter Peak (168.49–168.56°E,
+  45.09–45.14°S), so the 8 m DEM stays. The crossing
   runs at the Earnslaw's service speed (about 30 minutes) rather than the timetable's 45.
