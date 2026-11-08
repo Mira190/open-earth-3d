@@ -135,7 +135,8 @@
   "places": [],
   "place_labels": [],
   "arrivals": {
-    "Inari-yama 稲荷山 233 m": {"at": [797, 138]}
+    "Inari-yama 稲荷山 233 m": {"at": [797, 138]},
+    "Senbon Torii 千本鳥居": {"at": [-204.2, 107.3], "look": [-195.5, 99.0]}
   },
   "osm_detail": {
     "inari": {
@@ -281,8 +282,12 @@
         "id": "f-senbon",
         "name": "Senbon Torii 千本鳥居",
         "at": [
-          -181.4,
-          73.8
+          -204.2,
+          107.3
+        ],
+        "look": [
+          -195.5,
+          99.0
         ],
         "check": true
       },
