@@ -149,7 +149,18 @@ window.OELens = (function () {
 	gl_FragColor.rgb = min( gl_FragColor.rgb, vec3( 1024.0 ) );
 }`;
   }
-  if (window.THREE) guardShaders(); else addEventListener('three-ready', guardShaders, { once: true });
+  // The area lights (neon.js: up to 9, the screens' light) are a loop three.js unrolls, a copy of the
+  // linearly transformed cosines' evaluation for each light in every lit shader: on llvmpipe that was
+  // more than half of each program's compile (38 ms of a plain building's 38 ms against 16 without
+  // them, tools/shader_bench.js). Kept a loop, the shader compiles in 21 ms and draws the same: the
+  // lights are a uniform array of plain structs (no samplers), which GLSL ES 3.00 indexes at run time.
+  const unrolled = /#pragma unroll_loop_start(\s*for \( int i = 0; i < NUM_RECT_AREA_LIGHTS; i \+\+ \) \{[\s\S]*?\})\s*#pragma unroll_loop_end/;
+  function loopAreaLights() {
+    const C = THREE.ShaderChunk;
+    if (typeof C.lights_fragment_begin === 'string') C.lights_fragment_begin = C.lights_fragment_begin.replace(unrolled, '$1');
+  }
+  function patchChunks() { guardShaders(); loopAreaLights(); }
+  if (window.THREE) patchChunks(); else addEventListener('three-ready', patchChunks, { once: true });
 
   return { shader, sunOnScreen, tameBloom, guardShaders };
 })();

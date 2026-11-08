@@ -104,6 +104,9 @@ vec2 oeRipple(vec2 xz, float camD) {
 varying vec3 vOeW; varying vec3 vOeN;
 ${GLSL}`);
     const porous = (o.porous ?? 0.4).toFixed(3), puddles = o.puddles || '0.0', gloss = o.gloss || '1.0';
+    // (no puddles where none can stand, the people's clothes and skin: their noise and the ripples are left out of
+    // the shader, not multiplied by nothing, which a compiler cannot fold away)
+    const pools = !/^\s*0(\.0*)?\s*$/.test(puddles);
     if (!o.water) {
       sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 float oeCamD = distance(vOeW, cameraPosition);
@@ -113,12 +116,12 @@ float oeWet = uOeWet * oeOpen * (0.3 + 0.7 * oeUp);
 float oeGl = clamp(${gloss}, 0.0, 1.0) * oeWet;
 diffuseColor.rgb *= mix(1.0, 1.0 - ${porous}, oeWet);
 roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.42), oeGl);
-float oePd = uOeWet > 0.001 ? oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen : 0.0; // (dry: no noise to work out)
+${pools ? `float oePd = uOeWet > 0.001 ? oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen : 0.0; // (dry: no noise to work out)
 diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
-roughnessFactor = mix(roughnessFactor, 0.06, oePd);`)
+roughnessFactor = mix(roughnessFactor, 0.06, oePd);` : 'const float oePd = 0.0;'}`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-if (oePd > 0.0) { vec2 oeR = oeRipple(vOeW.xz, oeCamD);
-  normal = normalize(mix(normal, (viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz, oePd * 0.9) + (viewMatrix * vec4(oeR.x, 0.0, oeR.y, 0.0)).xyz * oePd); }`)
+${pools ? `if (oePd > 0.0) { vec2 oeR = oeRipple(vOeW.xz, oeCamD);
+  normal = normalize(mix(normal, (viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz, oePd * 0.9) + (viewMatrix * vec4(oeR.x, 0.0, oeR.y, 0.0)).xyz * oePd); }` : ''}`)
         // the sky a wet street reflects is mostly hidden by the street's own walls and trees: the
         // reflection of the open sky (the only one the environment map holds) is held well down
         .replace('#include <lights_fragment_maps>', `#include <lights_fragment_maps>
