@@ -77,13 +77,13 @@ MATERIALS = {
 
 # ---------------------------------------------------------------- shared parts
 
-def gable(K, P, u0, u1, v0, v1, z_eave, z_ridge, roof, wall, over=0.35, along_u=True, fascia=None):
+def gable(K, P, u0, u1, v0, v1, z_eave, z_ridge, roof, wall, over=0.35, along_u=True, fascia=None, ends=(True, True)):
     """A gabled roof over u0..u1 x v0..v1 (its ridge along u, or along v), the gable ends filled in
     `wall` up to the roof, the roof `over` m past the walls on every side. UVs: metres along the
     eaves and up the slope."""
     if not along_u:  # swap the axes through a frame that turns u into v
         Q = lambda u, v, z: P(v, u, z)
-        return gable(K, Q, v0, v1, u0, u1, z_eave, z_ridge, roof, wall, over, True, fascia)
+        return gable(K, Q, v0, v1, u0, u1, z_eave, z_ridge, roof, wall, over, True, fascia, ends)
     vm, half = (v0 + v1) / 2, (v1 - v0) / 2
     k = (z_ridge - z_eave) / half
     ze = z_eave - over * k
@@ -94,8 +94,9 @@ def gable(K, P, u0, u1, v0, v1, z_eave, z_ridge, roof, wall, over=0.35, along_u=
     m.quad(P(a0, v0 - over, ze), P(a1, v0 - over, ze), P(a1, vm, z_ridge), P(a0, vm, z_ridge), [[0, 0], [L, 0], [L, s], [0, s]])
     m.quad(P(a1, v1 + over, ze), P(a0, v1 + over, ze), P(a0, vm, z_ridge), P(a1, vm, z_ridge), [[0, 0], [L, 0], [L, s], [0, s]])
     w = K[wall]
-    for u in (u0, u1):
-        w.tri(P(u, v0, z_eave), P(u, v1, z_eave), P(u, vm, z_ridge), [[v0, z_eave], [v1, z_eave], [vm, z_ridge]])
+    for u, end in zip((u0, u1), ends):   # (an end drawn by its own wall, opened for a door, is left out)
+        if end:
+            w.tri(P(u, v0, z_eave), P(u, v1, z_eave), P(u, vm, z_ridge), [[v0, z_eave], [v1, z_eave], [vm, z_ridge]])
     if fascia:  # barge boards along the gables' slopes and the eaves' fascia
         f = K[fascia]
         for u in (a0, a1):
@@ -344,9 +345,9 @@ def hip(m, P, u0, u1, v0, v1, z_eave, z_ridge):
 
 # ---------------------------------------------------------------- St Peter's
 
-def lancet(K, P, a, b, centre, z0, w, h, pair=False, louvre=False):
+def lancet(K, P, a, b, centre, z0, w, h, pair=False, louvre=False, glass=True):
     """A Gothic lancet (or a pair under one hood) in a freestone surround, leaded lights or a belfry's
-    louvres."""
+    louvres; without glass, the surround of an open doorway."""
     a2, b2 = np.asarray(a, float), np.asarray(b, float)
     t = (b2 - a2) / np.linalg.norm(b2 - a2)
     n = np.array([t[1], -t[0]])
@@ -361,11 +362,14 @@ def lancet(K, P, a, b, centre, z0, w, h, pair=False, louvre=False):
         g = K["stp_lancet"]
         cz = (z0 + zs) / 2
         for (s0, za), (s1, zb) in zip(poly, poly[1:] + poly[:1]):
-            g.tri(Q(0, cz, 0.02), Q(s0, za, 0.02), Q(s1, zb, 0.02))
+            if glass:
+                g.tri(Q(0, cz, 0.02), Q(s0, za, 0.02), Q(s1, zb, 0.02))
         f = K["stp_freestone"]
         for (s0, za), (s1, zb) in zip(poly[1:], poly[2:] + poly[:1]):
             f.box(Q(s0, za, 0.08), Q(s1, zb, 0.08), 0.16, 0.16)
-        if louvre:
+        if not glass:
+            pass
+        elif louvre:
             for z in np.arange(z0 + 0.15, zs, 0.18):
                 K["stp_timber"].box(Q(-w / 2, z, 0.06), Q(w / 2, z, 0.06), 0.03, 0.12)
         else:  # the leaded lights' cames
@@ -405,10 +409,19 @@ def st_peters(K, ground):
     NU0, NU1, NV = -10.5, 1.5, 4.4
     CU1, CV = 9.8, 3.4
     E_N, R_N, E_C, R_C = 4.8 + rise, 8.5 + rise * 0.5, 4.5 + rise, 7.7 + rise * 0.5
-    ak.block(K[stone], P, NU0, NU1, -NV, NV, -0.4, E_N, top=False)
-    ak.block(K[stone], P, NU1, CU1, -CV, CV, -0.4, E_C, top=False)
+    # the walls, opened where the inside is walked into (interiors.py): the porch's doorway into the nave on the
+    # north, the chancel arch between the nave and the chancel (whose west face the nave's east wall is)
+    D = _interiors().stp_dims(rise)
+    F = D["F"]
+    s = 0.0
+    for a, b, holes in (((NU0, -NV), (NU1, -NV), []), ((NU1, -NV), (NU1, NV), [(NV, 3.6, F, F + 4.7, True)]),
+                        ((NU1, NV), (NU0, NV), [(NU1 - D["porch_u"], D["inner_w"], F, F + D["inner_h"], True)]), ((NU0, NV), (NU0, -NV), [])):
+        ak.holed_wall(K[stone], P, a, b, -0.4, E_N, holes, s0=s)
+        s += math.dist(a, b)
+    for a, b in (((NU1, -CV), (CU1, -CV)), ((CU1, -CV), (CU1, CV)), ((CU1, CV), (NU1, CV))):
+        s += ak.wall(K[stone], P, a[0], a[1], b[0], b[1], -0.4, E_C, s)
     gable(K, P, NU0, NU1, -NV, NV, E_N, R_N, slate, stone, over=0.3)
-    gable(K, P, NU1, CU1, -CV, CV, E_C, R_C, slate, stone, over=0.3)
+    gable(K, P, NU1, CU1, -CV, CV, E_C, R_C, slate, stone, over=0.3, ends=(False, True))   # (its west end is the nave's wall, open in the chancel arch)
     for (u0, u1, v) in ((NU0, NU1, NV), (NU1, CU1, CV)):  # the plinth course and the eaves' corbel table
         for s in (-1, 1):
             K[free].box(P(u0 - 0.05, s * (v + 0.08), 0.5), P(u1 + 0.05, s * (v + 0.08), 0.5), 0.16, 0.18)
@@ -479,13 +492,17 @@ def st_peters(K, ground):
     K[free].lathe([(g + spire_top - 0.15, 0.09), (g + spire_top + 0.1, 0.09), (g + spire_top + 0.1, 0.0)], (x, y), segs=8)
     K["stp_lead"].box((x, y, g + spire_top), (x, y, g + spire_top + 1.0), 0.07, 0.07)
     K["stp_lead"].box(P(tc[0] - 0.28, tc[1], spire_top + 0.7), P(tc[0] + 0.28, tc[1], spire_top + 0.7), 0.06, 0.06)
-    # the west porch on the north side, stone with a slate gable, its pointed door facing north
-    pu0, pu1, pv1 = -9.7, -6.7, NV + 3.0
-    ak.block(K[stone], P, pu0, pu1, NV, pv1, -0.4, 2.6, top=False)
-    gable(K, P, pu0, pu1, NV, pv1, 2.6, 4.3, slate, stone, over=0.25, along_u=False)
-    lancet(K, P, (pu1, pv1), (pu0, pv1), 1.5, 0.0, 1.1, 2.35)
-    for k in range(3):  # its steps down to the path
-        ak.block(K[free], P, pu0 + 0.2, pu1 - 0.2, pv1 + 0.3 * (2 - k), pv1 + 0.3 * (3 - k), -0.5, -0.15 * k, top=True)
+    # the west porch on the north side, stone with a slate gable, its pointed doorway facing north (its oak door and
+    # the steps up to it are the inside's, interiors.py)
+    pu0, pu1, pv1 = D["pu0"], D["pu1"], D["pv1"]
+    dr = D["door"]
+    half = (pu1 - pu0) / 2
+    north_top = lambda s: 2.6 + (4.3 - 2.6) * (1 - abs(s - half) / half)   # the north face up into its gable
+    for a, b, holes, top in (((pu1, NV), (pu1, pv1), [], 2.6), ((pu1, pv1), (pu0, pv1), [(pu1 - dr["c"], dr["w"], F, F + dr["h"], True)], north_top),
+                             ((pu0, pv1), (pu0, NV), [], 2.6)):
+        ak.holed_wall(K[stone], P, a, b, -0.4, top, holes)
+    gable(K, P, pu0, pu1, NV, pv1, 2.6, 4.3, slate, stone, over=0.25, along_u=False, ends=(True, False))
+    lancet(K, P, (pu1, pv1), (pu0, pv1), pu1 - dr["c"], F, dr["w"], dr["h"], glass=False)
     # the vestry on the south side of the chancel, under its own gable
     vu0, vu1, vv0 = 4.2, 8.2, -CV - 3.0
     ak.block(K[stone], P, vu0, vu1, vv0, -CV, -0.4, 3.2 + rise, top=False)
@@ -522,9 +539,24 @@ def williams(K, ground):
     board, ox, roof, stone, brick, win = "will_board", "will_oxblood", "will_roof", "will_stone", "will_brick", "will_window"
     # the cottage: a very high gable (ridge along v), a lean-to behind, the later rear room
     U0, U1, V0, V1 = -6.8, -0.8, -4.8, 2.4
-    ak.block(K[board], P, U0, U1, V0, V1, -0.6, 2.7, top=False)
+    # the walls, opened at the front door and the doorway through to the lean-to (interiors.py walks them)
+    D = _interiors().will_dims()
+    F, dr = D["F"], D["door"]
+    s = 0.0
+    for a, b, holes in (((U0, V0), (U1, V0), []), ((U1, V0), (U1, V1), [(D["inner_v"] - V0, D["inner_clear"], F, F + 2.0, False)]), ((U1, V1), (U0, V1), []),
+                        ((U0, V1), (U0, V0), [(V1 - dr["v"], dr["clear"], F, F + dr["h"], False)])):
+        ak.holed_wall(K[board], P, a, b, -0.6, 2.7, holes, s0=s)
+        s += math.dist(a, b)
+    # the doorways' last few centimetres of wall, drawn but open to walkers (interiors.py will_dims)
+    for a, b, c, w, wc, h in (((U0, V1), (U0, V0), V1 - dr["v"], dr["w"], dr["clear"], dr["h"]), ((U1, V0), (U1, V1), D["inner_v"] - V0, D["inner_w"], D["inner_clear"], 2.0)):
+        A, B = np.asarray(a, float), np.asarray(b, float)
+        t = (B - A) / np.linalg.norm(B - A)
+        for s0, s1 in ((c - wc / 2, c - w / 2), (c + w / 2, c + wc / 2)):
+            p0, p1 = A + t * s0, A + t * s1
+            K["will_board_soft"].quad(P(*p0, F), P(*p1, F), P(*p1, F + h), P(*p0, F + h), [[s0, F], [s1, F], [s1, F + h], [s0, F + h]])
     gable(K, P, U0, U1, V0, V1, 2.7, 5.9, roof, board, over=0.3, along_u=False, fascia=ox)
-    ak.block(K[board], P, U1, 4.5, V0, V1, -0.6, 2.35, top=False)
+    for a, b in (((U1, V0), (4.5, V0)), ((4.5, V0), (4.5, V1)), ((4.5, V1), (U1, V1))):   # the lean-to (its west wall is the cottage's)
+        ak.wall(K[board], P, a[0], a[1], b[0], b[1], -0.6, 2.35)
     for v in (V0, V1):  # the lean-to's end walls up to its roof
         K[board].tri(P(U1, v, 2.35), P(4.5, v, 2.35), P(U1, v, 3.2))
     skillion(K, lambda u, v, z: P(v, u, z), V0, V1, U1, 4.5, 3.2, 2.35, roof)
@@ -556,7 +588,9 @@ def williams(K, ground):
     front = ((U0, V1), (U0, V0))
     window(K, P, *front, 1.6, 0.6, 1.0, 1.4, win, ox, panes=(2, 2))
     window(K, P, *front, 5.6, 0.6, 1.0, 1.4, win, ox, panes=(2, 2))
-    ak.opening(K[ox], P, *front, 0.1, 0.9, 2.05, depth=0.03, centre=3.6)
+    hw = dr["w"] / 2
+    for s0, s1, z0, z1 in ((-hw - 0.1, -hw, F, F + dr["h"] + 0.1), (hw, hw + 0.1, F, F + dr["h"] + 0.1), (-hw - 0.1, hw + 0.1, F + dr["h"], F + dr["h"] + 0.12)):   # the architrave
+        ak.block(K["will_oxblood_soft"], P, U0 - 0.05, U0, dr["v"] + s0, dr["v"] + s1, z0, z1)   # (drawn, not a wall to walkers)
     for (a, b), cs in ((((U0, V0), (U1, V0)), (1.8, 4.2)), (((U1, V1), (U0, V1)), (3.0,)), (((4.5, -2.5), (7.3, -2.5)), (1.4,))):
         for c in cs:
             window(K, P, a, b, c, 0.75, 0.85, 1.35, win, ox, panes=(3, 2))
@@ -658,12 +692,25 @@ def steamer_wharf(K, ground, solids):
                             K["wharf_red"].box(G(ue + 1.9, vb - 3.0, 0.1), G(ue + 1.9, vb - 0.1, 3.1), 0.9, 0.12)
 
 
+def _interiors():
+    """interiors.py beside this module (the city's own modules are not on the path)."""
+    import importlib.util
+    import os
+    import sys
+    key = "queenstown_interiors"
+    if key not in sys.modules:
+        spec = importlib.util.spec_from_file_location(key, os.path.join(os.path.dirname(os.path.abspath(__file__)), "interiors.py"))
+        sys.modules[key] = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sys.modules[key])
+    return sys.modules[key]
+
+
 def meshes(ground):
     """The heritage landmarks' meshes, and the solids they replace."""
     solids = ak.load_solids("queenstown")
     K = ak.Kit("qt_heritage", floodlit=["eich_plaster", "eich_trim", "eich_window", "stp_greywacke", "stp_freestone", "stp_lancet",
                                         "will_window", "wharf_window"],
-               uv=["eich_plaster", "eich_roof", "eich_bal", "eich_iron", "stp_greywacke", "stp_slate", "will_board", "will_roof", "will_stone",
+               uv=["eich_plaster", "eich_roof", "eich_bal", "eich_iron", "stp_greywacke", "stp_slate", "will_board", "will_board_soft", "will_roof", "will_stone",
                    "will_brick", "wharf_green", "wharf_oxblood", "wharf_cream", "wharf_roof", "wharf_rail"])
     eichardts(K, ground)
     st_peters(K, ground)
@@ -673,5 +720,7 @@ def meshes(ground):
     return K.out(), hidden
 
 
+MATERIALS["will_board_soft"] = dict(MATERIALS["will_board"], solid=False)
+MATERIALS["will_oxblood_soft"] = dict(MATERIALS["will_oxblood"], solid=False)   # (a doorway's margin: drawn, not a wall to walkers)
 MATERIALS["will_flue"] = {"color": "#1d1f20", "roughness": 0.5, "metalness": 0.6}
 MATERIALS["eich_bal"] = {"color": "#f1eee6", "roughness": 0.7, "metalness": 0.0, "pattern": "railing", "bar_m": 0.2, "rails_m": [0.06, 0.94]}
