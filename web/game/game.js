@@ -3299,6 +3299,32 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // with a clear line of sight to its upper part through the 2 m surface model, lit from behind you
   // by day, facing it, with the camera low enough to take in its top.
   const landmarks = Object.entries(scene.labels || {}).map(([name, p]) => ({ kind: 'landmark', id: `lm-${name}`, name, at: [p[0], p[1]], top: p[2] }));
+  // ------------------------------------------------------------ the region round this map
+  // A city drawn as maps of its own (Kyoto, Tokyo: a metro group) is one world on the big map, as an open-world
+  // game's map is: zoom out past this map and the other districts are there where they really are, each map's
+  // extent framed, its stations pinned and the railway lines that join them drawn faintly underneath, so
+  // Kiyomizu-dera is found on the map from Kyoto Station rather than on another screen. A district there is
+  // picked like any place and Travel takes you into that map, at that station (index.html router, "@<travel id>").
+  // A district out of view is a chip at the map's edge, pointing to it with its distance, as games point to
+  // an objective off screen; "This district" and "All of <city>" over the map's corner switch between the two.
+  const region = (() => {
+    if (!metro || !scene.frame.lat0) return null;
+    const f = scene.frame, k = Math.cos(f.lat0 * Math.PI / 180);
+    const w = (la, lo) => [(lo - f.lon0) * 111320 * k, (la - f.lat0) * 110574]; // (the frame's transverse Mercator, near enough over a city)
+    const maps = metro.sites.filter(c => c.id !== cityId && c.game && c.frame_m).map(c => {
+      const [cx, cy] = w(c.lat, c.lon), m = c.frame_m;
+      return { id: c.id, name: c.district || c.name, native: c.native || '', x0: cx + m[0], x1: cx + m[1], y0: cy + m[2], y1: cy + m[3] };
+    });
+    if (!maps.length) return null;
+    const stations = metro.meta.districts.map((st, i) => {
+      const mp = maps.find(m => m.id === st.map);
+      return mp && { kind: 'district', id: `district-${i}`, name: st.name, native: st.native || '', at: w(st.lat, st.lon), map: mp, travel: st.travel || null, line: (st.guide || {}).line || '' };
+    }).filter(Boolean);
+    const lines = (metro.meta.lines || []).map(l => ({ colour: l.colour, loop: !!l.loop, pts: l.stops.map(([la, lo]) => w(la, lo)) }));
+    const all = maps.concat([{ x0: f.x[0], x1: f.x[1], y0: f.y[0], y1: f.y[1] }]);
+    const box = [Math.min(...all.map(m => m.x0)), Math.max(...all.map(m => m.x1)), Math.min(...all.map(m => m.y0)), Math.max(...all.map(m => m.y1))];
+    return { name: metro.name, native: metro.native || '', here: (me && (me.district || me.name)) || CITY.name, maps, stations, lines, box };
+  })();
   const dsmAt = (x, y) => {
     const c = Math.floor((x - DSM.x0) / DSM.cell), r = Math.floor((DSM.y1 - y) / DSM.cell);
     return c >= 0 && r >= 0 && c < DSM.nx && r < DSM.ny ? DSM.data[r * DSM.nx + c] : 0;
@@ -3602,6 +3628,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return lm ? { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: DECK_PITCH } : { x: p[0], y: p[1], z: p[2] };
   }
   function travelTo(d) { // a shot playing (the start, a survey) is skipped by the hop, which plays its cues
+    if (d.kind === 'district') { // another map of the city: saved here, then that map loads and you arrive at the station
+      save();
+      $('#g-bigmap').hidden = true; mapPop.hidden = true; picked = null;
+      H.toast(`To ${d.map.name}: ${d.name}…`);
+      location.hash = `play-${d.map.id}${d.travel ? `@${d.travel}` : ''}`;
+      return true;
+    }
     if (!['foot', 'car', 'ride'].includes(player.mode)) {
       H.toast({ heli: 'Land and get out of the helicopter first, then travel from the map.', ferry: 'Get off the ferry first (E at a wharf), then travel from the map.', rail: 'Get off first, then travel from the map.' }[player.mode] || 'Not now.');
       return false;
@@ -3653,6 +3686,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       ['Landmarks', landmarks],
       ['Trig stations', near(VP.map(v => ({ kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] })))],
       ['Ferry wharves', near(G.wharves.map(w => ({ kind: 'wharf', id: w.id, name: w.name, at: w.landing })))],
+      [region ? `Elsewhere in ${region.name}` : '', region ? near(region.stations.slice()) : []],
       ['Shortcuts', quick],
     ].filter(([, l]) => l.length);
   }
@@ -3664,7 +3698,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     travelKey = key; travelList = [];
     $('#g-travel').innerHTML = groups.map(([title, list]) => `<li class="g-tgroup"><h4>${title}</h4><ul>${list.map(d => {
       travelList.push(d);
-      return `<li><button data-k="${travelList.length - 1}"><span>${d.name}</span><span class="num">${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))}</span></button></li>`;
+      return `<li><button data-k="${travelList.length - 1}"${d.kind === 'district' ? ' class="g-tdistrict"' : ''}><span>${d.name}${d.kind === 'district' ? `<small>${d.map.name} map</small>` : ''}</span><span class="num">${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))}</span></button></li>`;
     }).join('')}</ul></li>`).join('');
   }
   // the card over the map for a picked pin or spot: travel there, or set a waypoint
@@ -3673,7 +3707,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#g-mappop-name').textContent = d.kind === 'point' ? 'Your pin' : d.name;
     const deck = d.kind === 'landmark' && deckOf(d) && deckStand(deckOf(d)), up = deck ? ` · travel takes you up to its deck, ${Math.round(deck[2] - Math.max(0, nav.terrain(deck[0], deck[1])))} m up` : '';
     $('#g-mappop-note').textContent = `${{ landmark: 'Landmark', place: 'Place', trig: 'Trig station', wharf: 'Ferry wharf', car: 'Your car', start: 'Where you started', point: 'Waypoint set' }[d.kind] || ''} · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away${up}`;
-    $('#g-mappop-way').hidden = d.kind === 'point';
+    if (d.kind === 'district') $('#g-mappop-note').textContent = `${d.map.name} map · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away · its own map loads`;
+    $('#g-mappop-line').textContent = d.kind === 'district' ? d.line : '';
+    $('#g-mappop-line').hidden = d.kind !== 'district' || !d.line;
+    $('#g-mappop-go').textContent = d.kind === 'district' ? `Go to ${d.map.name}` : 'Travel here';
+    $('#g-mappop-way').hidden = d.kind === 'point' || d.kind === 'district';
     mapPop.hidden = false;
     placePop(cx, cy);
     $('#g-mappop-go').focus({ preventScroll: true });
@@ -3688,21 +3726,52 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const mapZ = { z: 1, cx: null, cy: null }, touches = new Map();
   let mapDrag = null, dragged = false, bigNames = []; // a pan under way, and whether the press that ends it moved (then it is no click)
   const mapZMax = () => Math.max(4, 2 / (bigView ? bigView.fit : 0.25)); // up to about a metre a screen pixel
+  const mapZMin = () => (bigView ? bigView.zmin : 1); // below 1, the region round this map (region, above)
+  let bigChips = []; // the chips at the map's edge for the districts out of view: [x0, y0, x1, y1, map]
   function drawBig() {
     const box = bigCanvas.parentElement.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
     const cw = Math.round(box.width * dpr), ch = Math.round(box.height * dpr);
     if (bigCanvas.width !== cw || bigCanvas.height !== ch) { bigCanvas.width = cw; bigCanvas.height = ch; }
     const bw = base.canvas.width, bh = base.canvas.height, fit = Math.min(cw / bw, ch / bh);
-    mapZ.z = THREE.MathUtils.clamp(mapZ.z, 1, Math.max(4, 2 / fit));
+    // the extent that can be shown: this map, or with the region the whole city's maps (base-map pixels)
+    const ext = region ? [base.X(region.box[0]), base.Y(region.box[3]), base.X(region.box[1]), base.Y(region.box[2])] : [0, 0, bw, bh];
+    // (the whole city fits clear of the switch over the top corner and the zoom buttons at the side)
+    const zmin = region ? Math.min(1, Math.min((cw - 110 * dpr) / (ext[2] - ext[0]), (ch - 120 * dpr) / (ext[3] - ext[1])) / fit) : 1;
+    mapZ.z = THREE.MathUtils.clamp(mapZ.z, zmin, Math.max(4, 2 / fit));
     const g = bigCanvas.getContext('2d'), s = fit * mapZ.z;
-    // the centre held where the map still fills the frame on that axis (or centred where it is narrower)
-    const half = (c, n, full) => (n * s <= full ? n / 2 : THREE.MathUtils.clamp(c ?? n / 2, full / s / 2, n - full / s / 2));
-    mapZ.cx = half(mapZ.cx, bw, cw); mapZ.cy = half(mapZ.cy, bh, ch);
+    // the centre held where the extent still fills the frame on that axis (or centred where it is narrower); this map's centre by default
+    const half = (c, a, b, n, full) => ((b - a) * s <= full ? (n * s <= full && !(mapZ.z < 1 - 1e-3) ? n / 2 : (a + b) / 2) : THREE.MathUtils.clamp(c ?? n / 2, a + full / s / 2, b - full / s / 2));
+    mapZ.cx = half(mapZ.cx, ext[0], ext[2], bw, cw); mapZ.cy = half(mapZ.cy, ext[1], ext[3], bh, ch);
     const ox = cw / 2 - mapZ.cx * s, oy = ch / 2 - mapZ.cy * s;
-    bigView = { s, ox, oy, dpr, fit };
+    bigView = { s, ox, oy, dpr, fit, zmin };
     g.clearRect(0, 0, bigCanvas.width, bigCanvas.height);
-    g.drawImage(base.canvas, ox, oy, base.canvas.width * s, base.canvas.height * s);
     const P2 = (x, y) => [ox + base.X(x) * s, oy + base.Y(y) * s];
+    const out = mapZ.z < 1 - 1e-3; // zoomed out past this map, into the region
+    if (region) { // the other maps, under this one: their extents, and the railway lines joining them
+      g.save();
+      for (const m of region.maps) {
+        const [x0, y0] = P2(m.x0, m.y1), [x1, y1] = P2(m.x1, m.y0);
+        g.fillStyle = 'rgba(22, 29, 38, 0.92)'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+        const gr = g.createLinearGradient(x0, y0, x0, y1); gr.addColorStop(0, 'rgba(255, 176, 102, 0.07)'); gr.addColorStop(1, 'rgba(255, 176, 102, 0.015)');
+        g.fillStyle = gr; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      }
+      g.lineWidth = 2.2 * dpr; g.lineJoin = g.lineCap = 'round'; g.globalAlpha = 0.55;
+      for (const l of region.lines) {
+        g.strokeStyle = l.colour; g.beginPath();
+        l.pts.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+        if (l.loop) g.closePath();
+        g.stroke();
+      }
+      g.restore();
+    }
+    g.drawImage(base.canvas, ox, oy, base.canvas.width * s, base.canvas.height * s);
+    if (region) { // every map's edge over the lot: the others dashed, this one in gold once you are out past it
+      g.save(); g.lineWidth = 1.2 * dpr;
+      g.setLineDash([5 * dpr, 4 * dpr]); g.strokeStyle = 'rgba(255, 176, 102, 0.6)';
+      for (const m of region.maps) { const [x0, y0] = P2(m.x0, m.y1), [x1, y1] = P2(m.x1, m.y0); g.strokeRect(x0, y0, x1 - x0, y1 - y0); }
+      if (out) { g.setLineDash([]); g.strokeStyle = 'rgba(255, 210, 150, 0.9)'; g.lineWidth = 1.6 * dpr; g.strokeRect(ox, oy, bw * s, bh * s); }
+      g.restore();
+    }
     g.lineWidth = 2 * dpr;
     for (const r of G.ferries) { g.strokeStyle = 'rgba(30,91,58,0.75)'; g.setLineDash([6 * dpr, 4 * dpr]); for (const l of r.legs) { g.beginPath(); l.path.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); } }
     g.setLineDash([]);
@@ -3713,12 +3782,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     g.save(); g.scale(dpr, dpr);
     bigPins = [];
-    const marks = []; // every icon drawn, which the names keep clear of
+    const marks = [], ctl = []; // every icon drawn, which the names keep clear of, and the controls over the map
+    for (const el of [$('#g-mapzoom'), region && $('#g-mapscope')]) {
+      if (!el) continue;
+      const r = el.getBoundingClientRect(), c = bigCanvas.getBoundingClientRect();
+      if (r.width) ctl.push([r.left - c.left - 4, r.top - c.top - 4, r.right - c.left + 4, r.bottom - c.top + 4]);
+    }
     const icon = (ic, x, y, d) => { H.drawIcon(g, ic, x / dpr, y / dpr); marks.push([x / dpr - 7, y / dpr - 7, x / dpr + 7, y / dpr + 7]); if (d) bigPins.push({ x: x / dpr, y: y / dpr, d }); };
     // the landmarks and travel points; their names go on last, over everything but the player, the city's first
     // ones first, each beside its pin where it covers no other pin or name (else left off: a pin names itself when picked)
     const named = [...(G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at })), ...landmarks];
     for (const d of named) icon({ kind: d.kind }, ...P2(d.at[0], d.at[1]), d);
+    if (region) for (const d of region.stations) icon({ kind: 'district' }, ...P2(d.at[0], d.at[1]), d);
     for (const w of G.wharves) icon({ kind: 'wharf' }, ...P2(...w.terminal), { kind: 'wharf', id: w.id, name: w.name, at: w.landing });
     for (const h of G.helipads) icon({ kind: 'pad' }, ...P2(h.at[0], h.at[1]));
     for (const v of VP) icon({ kind: 'trig', done: !!trigDone()[v.id] }, ...P2(v.x, v.y), { kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] });
@@ -3743,12 +3818,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // the city's first five landmarks are named over anything but another pin; the rest keep clear of every icon,
     // and a landmark is named before a travel place, which the list beside the map names too
     const me = [px / dpr - 11, py / dpr - 11, px / dpr + 11, py / dpr + 11], pinBox = bigPins.map(q => [q.x - 7, q.y - 7, q.x + 7, q.y + 7]);
-    const taken = marks.concat([me]), first = new Set(landmarks.slice(0, 5)), firstTaken = pinBox.concat([me]);
+    const taken = marks.concat([me], ctl), first = new Set(landmarks.slice(0, 5)), firstTaken = pinBox.concat([me], ctl);
     g.font = '600 11px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     const said = []; // pins already named: a place and a landmark on the same spot take one name
-    const rank = q => (first.has(q.d) ? 2 : q.d.kind === 'landmark' ? 1 : 0); // then the landmarks, then the travel places
+    // the other districts' stations first when out in the region, which is what that view is for; else after this map's own
+    const rank = q => (q.d.kind === 'district' ? (out ? 3 : -1) : first.has(q.d) ? 2 : q.d.kind === 'landmark' ? 1 : 0); // then the landmarks, then the travel places
+    // the maps' own names, set in their top corner as a game's map names its regions
+    if (region) {
+      g.save(); g.textBaseline = 'top'; g.textAlign = 'left';
+      for (const m of region.maps.map(m => ({ ...m, me: false })).concat(out ? [{ name: region.here, native: '', x0: scene.frame.x[0], y1: scene.frame.y[1], x1: scene.frame.x[1], me: true }] : [])) {
+        const [x0, y0] = P2(m.x0, m.y1), [x1, y1] = P2(m.x1, m.me ? scene.frame.y[0] : m.y0);
+        if (x1 / dpr - x0 / dpr < 70) continue;
+        const t = m.name.toUpperCase().split('').join(String.fromCharCode(8202));
+        g.font = '500 10.5px "Zalando Sans Expanded", "Michroma", "Public Sans", sans-serif';
+        const tw = g.measureText(t).width, lw = tw + 4, L = [x0 / dpr, y0 / dpr, x1 / dpr, y1 / dpr];
+        // a corner of the map's frame clear of pins, in view and (for another map) off this one where it can be
+        const own = [P2(scene.frame.x[0], 0)[0] / dpr, P2(0, scene.frame.y[1])[1] / dpr, P2(scene.frame.x[1], 0)[0] / dpr, P2(0, scene.frame.y[0])[1] / dpr];
+        const hit = (r, list) => list.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]);
+        const corners = [[L[0] + 8, L[1] + 8], [L[2] - 8 - lw, L[1] + 8], [L[0] + 8, L[3] - 34], [L[2] - 8 - lw, L[3] - 34]]
+          .map(([x, y]) => ({ x, y, r: [x - 2, y - 2, x + lw + 2, y + 27] }))
+          .filter(c => c.r[0] > 2 && c.r[1] > 2 && c.r[2] < box.width - 2 && c.r[3] < box.height - 2);
+        const score = c => (hit(c.r, taken) ? 2 : 0) + (!m.me && !out && hit(c.r, [own]) ? 1 : 0);
+        const best = corners.sort((a, b) => score(a) - score(b))[0];
+        if (!best || score(best) >= 2) continue;
+        const X0 = best.x, Y0 = best.y;
+        g.strokeStyle = 'rgba(6, 10, 18, 0.85)'; g.lineWidth = 3.2; g.strokeText(t, X0, Y0);
+        g.fillStyle = m.me ? '#ffd296' : '#ffb066'; g.fillText(t, X0, Y0);
+        g.font = '400 9px "JetBrains Mono", ui-monospace, monospace';
+        const sub = m.me ? 'You are here' : `${m.native ? `${m.native} · ` : ''}another map`;
+        g.strokeText(sub, X0, Y0 + 15); g.fillStyle = 'rgba(244, 239, 230, 0.7)'; g.fillText(sub, X0, Y0 + 15);
+        taken.push([X0 - 2, Y0 - 2, X0 + Math.max(tw, g.measureText(sub).width) + 4, Y0 + 27]); firstTaken.push(taken[taken.length - 1]);
+      }
+      g.restore();
+      g.font = '600 11px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'; g.textBaseline = 'middle';
+    }
     for (const q of bigPins.slice().sort((a, b) => rank(b) - rank(a))) {
-      if ((q.d.kind !== 'landmark' && q.d.kind !== 'place') || said.some(o => Math.hypot(o.x - q.x, o.y - q.y) < 16)) continue;
+      if ((q.d.kind !== 'landmark' && q.d.kind !== 'place' && q.d.kind !== 'district') || said.some(o => Math.hypot(o.x - q.x, o.y - q.y) < 16)) continue;
       const w = g.measureText(q.d.name).width;
       // right, left, above or below its pin: [text x, text y, align]
       for (const [tx, ty, al] of [[q.x + 10, q.y, 'left'], [q.x - 10, q.y, 'right'], [q.x, q.y - 15, 'center'], [q.x, q.y + 15, 'center']]) {
@@ -3757,7 +3862,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         taken.push(r); firstTaken.push(r); said.push(q);
         g.textAlign = al;
         g.strokeStyle = 'rgba(6, 10, 18, 0.82)'; g.lineWidth = 3.2; g.strokeText(q.d.name, tx, ty);
-        g.fillStyle = q.d.kind === 'place' ? '#ffd9a8' : '#f4efe6'; g.fillText(q.d.name, tx, ty);
+        g.fillStyle = q.d.kind === 'district' ? '#ffb066' : q.d.kind === 'place' ? '#ffd9a8' : '#f4efe6'; g.fillText(q.d.name, tx, ty);
         break;
       }
     }
@@ -3766,12 +3871,47 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     g.fillStyle = '#ffffff'; g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg'); g.lineWidth = 2; // white on the gold route
     g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.stroke();
     g.restore();
+    edgeChips(g, P2, cw, ch, dpr);
     zoomUi();
     if (picked && !mapPop.hidden) { // the card follows its place as the map moves, and goes when it leaves the frame
       const q = picked.kind === 'point' ? waypoint || picked.at : picked.at, [cx, cy] = P2(q[0], q[1]);
       if (cx < 0 || cy < 0 || cx > cw || cy > ch) { mapPop.hidden = true; picked = null; } else placePop(cx / dpr, cy / dpr);
     }
     renderTravel();
+  }
+  // a district wholly out of view: a chip on the map's edge in its direction, its name and how far; picking it
+  // shows the whole region with that district's card
+  function edgeChips(g, P2, cw, ch, dpr) {
+    bigChips = [];
+    if (!region) return;
+    const W = cw / dpr, Hh = ch / dpr, cx = W / 2, cy = Hh / 2;
+    g.save(); g.scale(dpr, dpr);
+    g.font = '600 11px "Public Sans", "Noto Sans JP", sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left';
+    for (const m of region.maps) {
+      const [ax, ay] = P2(m.x0, m.y1), [bx, by] = P2(m.x1, m.y0);
+      if (bx / dpr > 0 && ax / dpr < W && by / dpr > 0 && ay / dpr < Hh) continue; // some of it in view
+      const mx = (ax + bx) / 2 / dpr, my = (ay + by) / 2 / dpr, dx = mx - cx, dy = my - cy;
+      const t = Math.min((W / 2 - 24) / Math.max(1e-6, Math.abs(dx)), (Hh / 2 - 22) / Math.max(1e-6, Math.abs(dy)));
+      const near = Math.hypot(Math.max(m.x0 - player.x, 0, player.x - m.x1), Math.max(m.y0 - player.y, 0, player.y - m.y1));
+      const label = `${m.name} · ${fmtDist(near)}`, tw = g.measureText(label).width, w = tw + 34, h = 26;
+      let x = cx + dx * t, y = cy + dy * t;
+      x = THREE.MathUtils.clamp(x - w / 2, 8, W - w - 52) ; y = THREE.MathUtils.clamp(y - h / 2, 8, Hh - h - 8);
+      for (const c of bigChips) if (x < c[2] + 4 && x + w > c[0] - 4 && y < c[3] + 4 && y + h > c[1] - 4) y = c[3] + 6; // stacked, not on top of one another
+      g.fillStyle = 'rgba(10, 14, 22, 0.88)'; g.strokeStyle = 'rgba(255, 176, 102, 0.75)'; g.lineWidth = 1;
+      g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, 13) : g.rect(x, y, w, h); g.fill(); g.stroke();
+      g.save(); g.translate(x + 14, y + h / 2); g.rotate(Math.atan2(dy, dx)); // an arrowhead, pointing to the district
+      g.fillStyle = '#ffb066'; g.beginPath(); g.moveTo(5, 0); g.lineTo(-3.5, -4.5); g.lineTo(-1.5, 0); g.lineTo(-3.5, 4.5); g.closePath(); g.fill(); g.restore();
+      g.fillStyle = '#f4efe6'; g.fillText(label, x + 25, y + h / 2 + 0.5);
+      bigChips.push([x, y, x + w, y + h, m]);
+    }
+    g.restore();
+  }
+  // the whole region in view (zoomMap's lower bound), or back to this map
+  function showRegion(on) {
+    if (!bigView) return;
+    if (on && region) { mapZ.z = 0; mapZ.cx = mapZ.cy = null; } else { mapZ.z = 1; mapZ.cx = mapZ.cy = null; }
+    mapPop.hidden = true; picked = null;
+    drawBig();
   }
   // a click picks the pin under it, or drops a waypoint there; a double click travels at once
   const mapHit = e => {
@@ -3789,7 +3929,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!bigView) return;
     const r = bigCanvas.getBoundingClientRect(), { s, ox, oy, dpr } = bigView;
     if (sx == null) { sx = r.width / 2; sy = r.height / 2; }
-    const z = THREE.MathUtils.clamp(mapZ.z * k, 1, mapZMax()), s2 = bigView.fit * z;
+    const z = THREE.MathUtils.clamp(mapZ.z * k, mapZMin(), mapZMax()), s2 = bigView.fit * z;
     const bx = (sx * dpr - ox) / s, by = (sy * dpr - oy) / s; // the base-map pixel under the point
     mapZ.z = z; mapZ.cx = bx - (sx * dpr - bigCanvas.width / 2) / s2; mapZ.cy = by - (sy * dpr - bigCanvas.height / 2) / s2;
     redrawBig();
@@ -3799,8 +3939,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const z = $('#g-mapzoom');
     if (!z) return;
     z.querySelector('[data-z="in"]').disabled = mapZ.z >= mapZMax() - 1e-3;
-    z.querySelector('[data-z="out"]').disabled = z.querySelector('[data-z="fit"]').disabled = mapZ.z <= 1 + 1e-3;
-    bigCanvas.style.cursor = mapDrag && mapDrag.moved ? 'grabbing' : mapZ.z > 1 + 1e-3 ? 'grab' : '';
+    z.querySelector('[data-z="out"]').disabled = mapZ.z <= mapZMin() + 1e-3;
+    z.querySelector('[data-z="fit"]').disabled = Math.abs(mapZ.z - 1) < 1e-3;
+    bigCanvas.style.cursor = mapDrag && mapDrag.moved ? 'grabbing' : mapZ.z > 1 + 1e-3 || mapZ.z < 1 - 1e-3 ? 'grab' : '';
+    const sc = $('#g-mapscope');
+    if (sc && region) { const o = mapZ.z < 1 - 1e-3; sc.querySelector('[data-scope="here"]').setAttribute('aria-pressed', String(!o)); sc.querySelector('[data-scope="all"]').setAttribute('aria-pressed', String(o)); }
   }
   // the wheel (or a trackpad's pinch, which comes as a wheel with ctrl) zooms; a drag pans; two fingers pinch and pan
   on(bigCanvas, 'wheel', e => {
@@ -3833,6 +3976,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const lift = e => { touches.delete(e.pointerId); if (!touches.size) { mapDrag = null; zoomUi(); } else if (touches.size === 1) { const [p] = touches.values(); mapDrag = { x: p[0], y: p[1], moved: true }; } };
   on(bigCanvas, 'pointerup', lift);
   on(bigCanvas, 'pointercancel', lift);
+  if (region) {
+    const sc = $('#g-mapscope');
+    sc.hidden = false;
+    sc.querySelector('[data-scope="here"]').textContent = region.here;
+    sc.querySelector('[data-scope="all"]').textContent = `All of ${region.name}`;
+    on(sc, 'click', e => { const b = e.target.closest('button[data-scope]'); if (b) showRegion(b.dataset.scope === 'all'); });
+    $('#g-lg-district').hidden = false;
+    $('#g-lg-district').lastChild.textContent = `Another district of ${region.name}: a map of its own`;
+  }
   on($('#g-mapzoom'), 'click', e => {
     const b = e.target.closest('button[data-z]');
     if (!b) return;
@@ -3842,12 +3994,28 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (dragged) { dragged = false; return; } // the end of a drag or a pinch is not a pick
     const h = mapHit(e);
     if (!h) return;
+    const chip = bigChips.find(c => h.cx >= c[0] && h.cx <= c[2] && h.cy >= c[1] && h.cy <= c[3]);
+    if (chip) { // out to the region, with that district's first station picked
+      showRegion(true);
+      const st = region.stations.find(d => d.map === chip[4] && !d.travel) || region.stations.find(d => d.map === chip[4]);
+      const q = st && bigPins.find(p => p.d === st);
+      if (q) pick(st, q.x, q.y);
+      return;
+    }
     if (h.pin) { pick(h.pin.d, h.pin.x, h.pin.y); return; }
+    const f = scene.frame;
+    if (h.at[0] < f.x[0] || h.at[0] > f.x[1] || h.at[1] < f.y[0] || h.at[1] > f.y[1]) { // off this map: in another, its nearest station
+      const m = region && region.maps.find(q => h.at[0] >= q.x0 && h.at[0] <= q.x1 && h.at[1] >= q.y0 && h.at[1] <= q.y1);
+      const st = m && region.stations.filter(d => d.map === m).sort((a, b) => Math.hypot(a.at[0] - h.at[0], a.at[1] - h.at[1]) - Math.hypot(b.at[0] - h.at[0], b.at[1] - h.at[1]))[0];
+      const q = st && bigPins.find(p => p.d === st);
+      if (q) pick(st, q.x, q.y);
+      return;
+    }
     waypoint = h.at;
     drawBig();
     pick({ kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint }, h.cx, h.cy);
   });
-  on(bigCanvas, 'dblclick', e => { if (dragged) return; const h = mapHit(e); if (h) travelTo(h.pin ? h.pin.d : { kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint || h.at }); });
+  on(bigCanvas, 'dblclick', e => { if (dragged) return; const h = mapHit(e); if (h && bigChips.some(c => h.cx >= c[0] && h.cx <= c[2] && h.cy >= c[1] && h.cy <= c[3])) return; const f = scene.frame; if (h && !h.pin && (h.at[0] < f.x[0] || h.at[0] > f.x[1] || h.at[1] < f.y[0] || h.at[1] > f.y[1])) return; if (h) travelTo(h.pin ? h.pin.d : { kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint || h.at }); });
   on($('#g-mappop-go'), 'click', () => { if (picked) travelTo(picked); });
   on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast(routeMode === 'on' ? 'Waypoint set. Follow the gold route there.' : 'Waypoint set. Its route is on the minimap; <kbd>L</kbd> shows it in the world.'); });
   on($('#g-travel'), 'click', e => { const b = e.target.closest('button[data-k]'); if (b && travelList[+b.dataset.k]) travelTo(travelList[+b.dataset.k]); });
@@ -5091,7 +5259,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
