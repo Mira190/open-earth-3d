@@ -106,10 +106,10 @@ the model viewer's opening shot. The second is the tour's second stop. Matched t
     | ![](../images/queenstown/site-before-day.jpg) | ![](../images/queenstown/site-floor-day.jpg) | ![](../images/queenstown/site-floor-dusk.jpg) | ![](../images/queenstown/site-floor-night.jpg) |
     | **From the air** | **The luge tracks** | **Phone, dusk** | |
     | ![](../images/queenstown/site-floor-air.jpg) | ![](../images/queenstown/site-luge-day.jpg) | ![](../images/queenstown/phone-site-dusk.jpg) | |
-- **Behind the deck.** The LiDAR's terraces stand 2–9 m back from the drawn deck, because the face is not
-  parallel to it. A graphite steel planter 0.45 m high now runs along the deck's back edge, with a planted bed
-  of tussock behind it out to the glass and a fascia under its edge. The planter is solid to the walkers,
-  who keep to the deck strip.
+- **Behind the deck.** The dining room's glass (section 3c) stands 1.25 m behind the deck's back edge. A
+  graphite steel planter 0.45 m high runs along the edge, with a planted bed of tussock behind it to the glass
+  and a fascia under it, open where the sliding doors are. The planter is solid to the walkers, who go in
+  through the doors.
 - **The deck after dark.** The boards take the night system's light (`street_lit`). Soft warm pools
   (`landmark_glows`, 2.6 m wide) lie along the balustrade where the handrail's LED strip and the new step
   lights at the posts' feet would put them down. They are kept dim (0.022), so the boards read warm, never
@@ -333,6 +333,49 @@ Phone (390 × 844): the crossing and Walter Peak, day, dusk and night.
 | The crossing | ![](../images/queenstown/phone-earnslaw-day.jpg) | ![](../images/queenstown/phone-earnslaw-dusk.jpg) | ![](../images/queenstown/phone-earnslaw-night.jpg) |
 | Walter Peak | ![](../images/queenstown/phone-walter-day.jpg) | ![](../images/queenstown/phone-walter-dusk.jpg) | ![](../images/queenstown/phone-walter-night.jpg) |
 
+## 3c. The interiors (issue #315)
+
+| St Peter's, the nave | The chancel, looking west | The restaurant, dusk | Williams Cottage, night |
+|---|---|---|---|
+| ![](../images/queenstown/interior-church-nave-day.jpg) | ![](../images/queenstown/interior-church-chancel-day.jpg) | ![](../images/queenstown/interior-restaurant-dusk.jpg) | ![](../images/queenstown/interior-cottage-night.jpg) |
+
+Three landmarks can be walked into (`cities/queenstown/interiors.py`; how the game does it is in
+[GAME.md](../GAME.md#doors-and-rooms)). Each is drawn inside the shell `heritage.py` and `city.py` already
+build from the LiDAR, in the same frame, with the shell opened where its doors are.
+
+- **St Peter's** (J. McDowall Smith, 1932). The plan, the windows and the levels are the shell's. The nave's
+  floor stands a little over the highest ground under it (0.65 m over the lowest), so the porch has four
+  steps up from the path, as a church on a slope does. Inside: lime plaster walls with the lancets in
+  splayed stone reveals and their leaded glass, the east window's centre light blue (the Call of St Peter,
+  the parish's memorial to its men lost in the Second World War); an open boarded roof on arch-braced rimu
+  trusses on stone corbels; rimu pews either side of a red runner; a stone font by the door; the pulpit and
+  a brass lectern at the chancel arch; the chancel up two steps, tiled, with choir stalls, the communion rail
+  and the altar. The porch's pair of oak doors swings in as you come up. Sources: Heritage NZ List 2341 for
+  the building and its stone; the window's dedication from the parish; a visitor guide's "carved rimu
+  interior and stained glass windows". No measured survey or published photograph set of the inside was
+  found that could be used (the Heritage NZ list page and the parish's site gave no interior text when read
+  in November 2026), so the fittings' arrangement is a parish church's of its date, at typical sizes.
+- **Williams Cottage** (1864, its lean-to 1866; Heritage NZ List 2336). The front room under the high gable is
+  a shop, with shelves and display tables, the lean-to behind it with the counter. Boarded floor, a painted
+  board dado with paper above, matchlined ceilings (flat in the front room, following the skillion in the
+  lean-to), and a schist fireplace in the chimney between them, its embers glowing. The front door is drawn
+  0.95 m wide, as an 1860s cottage door is; its swinging leaf and the last 17 cm of wall either side are not
+  walls to walkers, so the game's 0.7 m walker gets through.
+- **The Skyline restaurant.** A dining room behind the deck at the deck's level (474.6 m), 25 m along it and
+  12 m deep: floor-to-ceiling glass to the deck and the lake (Skyline's own description of Stratosfare:
+  floor-to-ceiling windows over the town, the lake and the mountains), sliding glass doors onto the deck, an
+  oak floor, a slatted ceiling with drum pendants, tables for four along the glass and round tables behind,
+  the buffet island and stations against a schist wall, and the bar. Its size is the deck's span and the
+  LiDAR's terrace behind it (massing.json tier 14, roof 478.5 m); the terraces are cut round it and what of
+  them stood higher stands on its roof. The planted bed of tussock between the deck and the glass stays,
+  open at the doors. No plan of the room is published, so the layout is a typical one.
+- **People who look local.** Seven more locals and visitors, cast from the shared Rocketbox characters
+  (MIT): Ana and Tom at a window table, Priya from Auckland, Rawiri the waiter, Margaret in a pew, the vicar,
+  and Lucy behind the cottage's counter. Their lines are the city's own (the 1932 stone off the lake shore,
+  the 1999 flood at the cottage's verandah).
+- **Checked:** `tools/game_check.js` walks into each room and out again (`tools/interior_step.js`); stills at
+  day, dusk and night on a desktop and a phone. Not checked: a real GPU, WebGPU, Safari, iOS.
+
 ## 4. Queenstown on Foot
 
 You start on the Skyline deck on Bob's Peak. Aroha waits at the foot of the glass lift on the luge track below, and there are three walks, in any order:
@@ -405,8 +448,8 @@ change applies to every city's woods; Queenstown's are where it counts.
   published, the aerial photographs predate it, and no photograph found (Commons to April 2026, the
   opening coverage) shows its outline. The press gives its area (430 m², or 460 m² in the Queenstown
   Times) but not its shape. Skyline says it reaches its full size only when the old complex is
-  rebuilt, around 2028–29. The glass lift's place is judged; the restaurant's interior, through
-  which the real deck is reached, is not modelled. Checked again on 2026-11-07 (issue #286): LINZ's
+  rebuilt, around 2028–29. The glass lift's place is judged. The restaurant's interior, through
+  which the real deck is reached, is drawn (section 3c) but its layout is judged. Checked again on 2026-11-07 (issue #286): LINZ's
   `nz-imagery` bucket has nothing newer over the town. The Otago 2025–26 collection (0.15 m RGBNIR,
   31 October 2025 – 27 June 2026, still "ongoing") has 1,156 tiles, none on the town's sheets (CB11,
   CC11); its nearest are on CB10, west of the town round Walter Peak.
@@ -432,7 +475,8 @@ change applies to every city's woods; Queenstown's are where it counts.
   - **Eichardt's Moorish arch.** Heritage NZ's List entry 7439 records the horseshoe-arched door on Ballarat
     Street and its balcony door as part of the 1929–36 Murchison alterations. No source says whether the 2001
     restoration kept them. It is drawn with them, and with the balustraded parapet back.
-  - Neither church nor cottage has its interior.
+  - The church's and the cottage's interiors (section 3c) are drawn from their shells and a parish church's
+    and a colonial cottage's usual fittings; no measured survey of either inside was found.
 - **Walter Peak.** No LiDAR covers it, so its ground is the 8 m national DEM, and its buildings'
   heights, walls and forms are judged; the gardens' trees are only in the photograph. The 2021 Queenstown LiDAR
   ends at 168.576°E, west of the town but east of Walter Peak (168.52°E). QLDC's district-wide LiDAR is due

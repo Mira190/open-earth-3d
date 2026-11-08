@@ -74,6 +74,18 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
 - **Trees:** OSM's 6,026 mapped trees, plus 8,906 more from the City of Sydney's tree
   inventory ("Trees", CC BY 4.0, extracted 2026-11-07), which OSM does not map; every tree
   the inventory surveys has its measured height (`pipeline/plateau_veg.py`, docs/ARCHITECTURE.md "Measured street-tree heights").
+- **Native grasses** (issue #315): the shared tussock (`trees.json` `tussock`, from Queenstown) is planted over
+  Barangaroo Reserve's outline (city.json `trees.tussock.places`, about 260 clumps a hectare), off its streets
+  and clear of its trees. The reserve's own species list (barangaroo.com, "Barangaroo botany": 84 species native
+  to Sydney, 75,000 plants on the six-hectare headland) names the tussock-forming Lomandra longifolia (mat rush)
+  and Danthonia richardsonii (wallaby grass); the shared model's straw is tinted (`tint`) to their green. The
+  list does not say where in the reserve each grows, so the clumps are scattered over the whole of it, lawns
+  included. Hyde Park, the Domain, the Royal Botanic Garden and Wynyard Park are mown lawn with exotic
+  plantings, so none is planted there.
+
+  | From above, day | Among the figs | Dusk |
+  |---|---|---|
+  | ![](../images/sydney/tussock-barangaroo-high-day.jpg) | ![](../images/sydney/tussock-barangaroo-low-day.jpg) | ![](../images/sydney/tussock-barangaroo-high-dusk.jpg) |
 - **Buildings:** 7,962 buildings and 8,308 solids. OSM building parts replace
   their outlines, so in the surface model Sydney Tower is a 290 m shaft, a
   240–270 m turret and a spire to 309 m, all from data. Each building records:

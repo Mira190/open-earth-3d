@@ -3,7 +3,8 @@
 //   light  the street lights' light on the ground where they stand (night.js lightAt, the luminance
 //          the ground and the walls add there; one lamp's pool peaks near 1), at least LIGHT_MIN
 //   sight  from how many of 16 directions a walker on their level (or a boat) 6 to 30 m away sees their head
-//          past the walls, and from how far; a nook seen only from close is hidden
+//          past the walls, and from how far; a nook seen only from close is hidden (not asked of someone
+//          indoors, in one of game.json's interiors)
 // Used by tools/game_check.js (one city) and on its own for every city:
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/npc_night.js [city ...]      # all the cities with a game by default
@@ -38,14 +39,16 @@ function survey() {
       }
       if (best) { dirs++; far = Math.max(far, best); }
     }
-    out.push({ id: n.id, name: n.name, at: [Math.round(n.x), Math.round(n.y)], moved: Math.hypot(n.x - n.at[0], n.y - n.at[1]), light, dirs, far });
+    // (someone in a room, game.json interiors, is seen through its door and windows, not across the street)
+    const room = g.doors && g.doors.roomAt(n.x, n.y, n.z);
+    out.push({ id: n.id, name: n.name, room: room ? room.id : null, at: [Math.round(n.x), Math.round(n.y)], moved: Math.hypot(n.x - n.at[0], n.y - n.at[1]), light, dirs, far });
   }
   return out;
 }
 const verdict = r => {
   const why = [];
   if (r.light != null && r.light < LIGHT_MIN) why.push(`dark (${r.light.toFixed(2)} < ${LIGHT_MIN})`);
-  if (r.dirs < SIGHT_MIN || r.far < FAR_MIN) why.push(`hidden (seen from ${r.dirs} of 16 directions, at most ${r.far} m)`);
+  if (!r.room && (r.dirs < SIGHT_MIN || r.far < FAR_MIN)) why.push(`hidden (seen from ${r.dirs} of 16 directions, at most ${r.far} m)`);
   return why;
 };
 module.exports = { survey, verdict, LIGHT_MIN, SIGHT_MIN, FAR_MIN };
