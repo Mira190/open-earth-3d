@@ -177,7 +177,8 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // those planted from the canopy; woods: the mix of the trees planted from a wood's canopy (the city's
   // own without its palms if not given)
   // fixed: the index from which the trees are a landmark's own, standing where it puts them (on a planter, a terrace)
-  // own: {from, species}: the trees from that index on are all that species (the tussock world.js plants)
+  // own: {from, species, tint}: the trees from that index on are all that species (the tussock world.js plants), tinted
+  // [r, g, b] if given (a city's own grass: Sydney's Poa and kangaroo grass greener than Otago's snow tussock)
   // yozakura (#162): an area with "yozakura" lights its cherries after dark while they flower: uplights at each
   // tree's foot (a pool of light round it) and bonbori, paper lanterns on posts, along its ways on foot (foot: the
   // city's night.json, whose foot and foot_pts are the mapped footways), or beside its trees where none is mapped;
@@ -262,7 +263,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const lit = new Float32Array(n), litZone = new Int16Array(n).fill(-1), isCherry = new Set(varieties.map(o => o.sp)), litVar = new Set();
     const which = new Int16Array(n), far = new Float32Array(n).fill(1), half = new Uint8Array(n), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
     const names = weights.map(([k]) => k), count = names.map(() => 0), ownK = own ? names.indexOf(own.species) : -1;
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color();
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color(), c2 = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
       const wood = i >= measured && i < fixed; // (a landmark's own trees are each placed: never thinned out)
@@ -282,6 +283,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       // each tree its own shade; a wood's deeper and more varied, as the crowns of a wood are in a photograph
       if (wood) { const l = 0.68 + 0.36 * hash(x, y + 1), w = hash(x + 2, y); c.setRGB(l * (0.93 + 0.1 * w), l, l * (0.98 - 0.08 * w)); }
       else c.setHSL(0, 0, 0.86 + 0.24 * hash(x, y + 1));
+      if (mine && own.tint) c.multiply(c2.setRGB(...own.tint)); // (the city's own grass's colour: city.json trees.tussock.tint)
       c.toArray(tint, 3 * i);
     }
     // per species and distance, one instanced mesh per material

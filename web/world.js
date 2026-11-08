@@ -1413,7 +1413,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           }
         }
       }
-      const SL = TU.slopes;
+      // and in the parks named (places: [{name, per_ha}], a native planting's tussock grasses: Sydney's Barangaroo Reserve),
+      // over the place's own outline (places.json), anywhere off its paths and clear of its trees and the landmarks
+      const SL = TU.slopes || (TU.places ? {} : null);
       if (SL) {
         const Tg = D.Tfine || D.T, F = scene.frame, roads = D.streets && D.streets.roads, W = scene.woods;
         let canopy = null; // the woods' canopy at 8 m: whether any crown stands there
@@ -1426,27 +1428,34 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         const lmHash = new Set(); // the landmarks' 8 m cells, and their neighbours
         for (const m of (LM && LM.meshes) || []) { const p = m.position; for (let i = 0; i < p.length; i += 9) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) lmHash.add((Math.floor(p[i] / 8) + a) * 100003 + Math.floor(p[i + 1] / 8) + b); }
         const max = Math.round((SL.max || 8000) * (small ? 0.35 : 1)), above = SL.above_m ?? 80;
-        const cand = (x, y, k) => {
+        const cand = (x, y, k, low = false) => {
           const z = S.terrainAt(Tg, x, y);
-          if (!(z > above) || (canopy && canopy(x, y)) || lmHash.has(Math.floor(x / 8) * 100003 + Math.floor(y / 8))) return;
+          if (!(low || z > above) || (canopy && canopy(x, y)) || lmHash.has(Math.floor(x / 8) * 100003 + Math.floor(y / 8))) return;
           const sx = S.terrainAt(Tg, x + 2, y) - S.terrainAt(Tg, x - 2, y), sy = S.terrainAt(Tg, x, y + 2) - S.terrainAt(Tg, x, y - 2);
           if (Math.hypot(sx, sy) / 4 > (SL.slope_max || 1.1)) return; // (a bluff: rock)
-          if (roads && roads.depth(x, y, null, 25) > 0) return;
+          if (roads && roads.depth(x, y, null, low ? 2 : 25) > 0) return; // (in a park, just off its streets)
           if (IN && IN.water(x, y)) return;
           pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), Math.round(10 * (0.6 + 0.45 * hsh(y, x + k))));
         };
         // near the places named, denser; then over the whole frame, each candidate on a jittered grid
-        const grid = (x0, y0, x1, y1, per_ha, inside) => {
+        const grid = (x0, y0, x1, y1, per_ha, inside, low = false) => {
           const step = 100 / Math.sqrt(per_ha);
           for (let y = y0; y < y1 && pts.length / 4 < max; y += step) for (let x = x0; x < x1 && pts.length / 4 < max; x += step) {
             const jx = x + (hsh(x, y) - 0.5) * step, jy = y + (hsh(y, x) - 0.5) * step;
-            if (!inside || inside(jx, jy)) cand(jx, jy, step);
+            if (!inside || inside(jx, jy)) cand(jx, jy, step, low);
           }
         };
-        for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
-        grid(F.x[0], F.y[0], F.x[1], F.y[1], SL.per_ha || 20, (x, y) => !(SL.near || []).some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r));
+        const inRing = (r, x, y) => { let k = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < r[j] + (y - r[j + 1]) / (r[i + 1] - r[j + 1]) * (r[i] - r[j])) k = !k; return k; };
+        for (const pl of TU.places || []) for (const q of (P.places || []).filter(o => o.name === pl.name)) for (const poly of q.polygons || []) {
+          const r = poly.map(v => v / 10), xs = r.filter((_, i) => i % 2 === 0), ys = r.filter((_, i) => i % 2 === 1);
+          grid(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), pl.per_ha || 400, (x, y) => inRing(r, x, y), true);
+        }
+        if (TU.slopes) {
+          for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
+          grid(F.x[0], F.y[0], F.x[1], F.y[1], SL.per_ha || 20, (x, y) => !(SL.near || []).some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r));
+        }
       }
-      if (pts.length) { own = { from: TR.length / 4, species: 'tussock' }; TR = TR.concat(pts); console.info(`tussock: ${pts.length / 4} planted`); }
+      if (pts.length) { own = { from: TR.length / 4, species: 'tussock', tint: TU.tint || null }; TR = TR.concat(pts); console.info(`tussock: ${pts.length / 4} planted`); }
     } catch (e) { console.warn('tussock: none planted', e); }
     const nT = TR.length / 4;
     let trees = null;
