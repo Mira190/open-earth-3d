@@ -85,7 +85,9 @@ FOOT = {"footway", "path", "steps", "pedestrian", "track"}
 # Senbon Torii's are 6号 and 7号 in photographs, measured against the 2 m width OpenStreetMap gives the
 # tunnels), the miniature ones left at the otsuka 1号 to 3号 (see docs/cities/fushimi-inari.md)
 SUN = 0.0303
-KINDS = {"senbon": (2.6, 1.5, 6.5 * SUN), "small": (2.4, 1.6, 5 * SUN), "mountain": (3.1, 2.0, 7 * SUN), "large": (4.6, 2.9, 10 * SUN),
+# Their heights keep the tie beam (at 0.7 of the height) well over a walker's head, as in photographs of
+# people under them: 2.3 m in the Senbon Torii, not the 1.8 m a 2.6 m torii gave, which grazed the hair.
+KINDS = {"senbon": (3.3, 1.5, 6.5 * SUN), "small": (3.1, 1.6, 5 * SUN), "mountain": (3.5, 2.0, 7 * SUN), "large": (4.8, 2.9, 10 * SUN),
          "votive": (0.62, 0.42, 1.5 * SUN)}
 # the side paths off the round, each a leg between two places OpenStreetMap names, torii-lined as the
 # round is; a leg keeps off the ways the round already takes

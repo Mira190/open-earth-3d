@@ -45,6 +45,11 @@ The sources are those of the other Kyoto maps:
   from 5号 to 10号 (the shrine's offering list; Japanese guides quote the same grades). Here: 5号 for
   the small path torii, 6.5号 in the Senbon Torii (photographs against the 2 m width OSM gives the
   tunnels), 7号 for the usual mountain torii, 10号 for the large ones, 1.5号 at the otsuka.
+  Heights: 3.3 m in the Senbon Torii, 3.1 m small, 3.5 m mountain, 4.8 m large, so that the tie beam
+  (at 0.7 of the height) is 2.2 to 2.5 m up, over a walker's head as in photographs of people under
+  them. At 2.6 m the Senbon Torii's beam was 1.8 m up and grazed the player's hair.
+- **Arriving**: travel to the Senbon Torii (the map's place or the landmark) puts you at the mouths
+  of the two tunnels, facing in (`game.travel` "look", `arrivals` "at" and "look").
 - **How the torii are drawn**:
   - Five sizes, instanced (`landmarks.json` "props").
   - Each is vermilion, with black feet and a black lintel, and a ring at the heads of its pillars (稲荷鳥居).

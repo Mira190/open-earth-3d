@@ -528,7 +528,9 @@ pipeline writes. The only city-specific code is landmark geometry in
     within `perch_m` where the birds stand. A quest step that visits a flock is
     given its position.
   - **Travel points and links:** fast-travel points on the ground, and
-    neighbouring cities named in the menu.
+    neighbouring cities named in the menu. You arrive at a travel point facing its `look`
+    `[x, y]` (`game.travel` in `city.json`: the Senbon Torii's mouths), or else the nearest
+    landmark's label within 200 m, not wherever you last faced.
 - **Opera House steps** (`city.py`): the Monumental Steps are 85 m wide and run
   17.6 m from the forecourt to a landing, as measured on the NSW aerial photo:
   three flights of 0.39 m treads and 15 cm risers, between landings 1.6 m deep.
@@ -828,6 +830,13 @@ pipeline writes. The only city-specific code is landmark geometry in
     - With 40 walkers on one footway, pairs walked through each other 2.8
       times a tick before, and never now. People used to freeze when you stood
       among them; now they walk round you.
+    - You never step aside for them, so a walker with you on its course goes round you
+      at once, a body's width clear where the footway allows, else sidling past shoulder
+      to shoulder; where there is no room at all (you in the middle of a torii tunnel
+      1.5 m wide) it turns back within a second, and whoever comes on behind it turns too.
+      Before, it stood in front of you for up to 13 s before it turned
+      (`tools/crowd_yield.js`: you stood on a footway, walkers sent at you along it).
+    - The NPCs you talk to stand as posts: the crowd walks round them, not through them.
   - **Benches:** the benches are smart objects.
     - 1,375 of Sydney's 1,862 benches and 891 of Melbourne's 1,181 can be
       reached from a footway in a straight line that is clear of walls, water
@@ -1689,7 +1698,9 @@ quality tier runs a third of the cars.
     the arrival keeps within `arc` degrees of it (70 by default), preferring straight in
     front; `dist` sets how far back to stand; `top` frames a lower part than the label's
     top, in metres above the ground (Kabuki-za's theatre rather than the tower behind it);
-    and `at` is a spot `[x, y]` in the local frame to stand on, facing the landmark.
+    and `at` is a spot `[x, y]` in the local frame to stand on, facing the landmark, or facing
+    `look` `[x, y]` where the landmark's middle is the wrong thing to face (Fushimi Inari's
+    Senbon Torii: at the mouths of the two tunnels, looking in, not at their middle in the woods).
     `python pipeline/scene_config.py --city <id>` copies them into `scene.json` without
     rebuilding the scene, and `node tools/arrival_probe.js <city> <names>` prints where
     each arrival lands, its best-scored spots, and a character map of the surface model,
