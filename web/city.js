@@ -1014,7 +1014,8 @@ window.OpenEarthCity = async function main(cityId) {
   const drawn = new Promise(r => { firstDrawn = r; });
   const warm = Promise.all([OEWorld.compile(renderer, world, camera, { target: post ? post.renderTarget1 : null }), // (the post stack's variant of each shader)
     post && OEWorld.warmPasses ? OEWorld.warmPasses(renderer, post) : null, // (and the post stack's own)
-    OEWorld.uploadSliced ? OEWorld.uploadSliced(renderer, world) : null]); // (and its textures sent, in slices too)
+    OEWorld.uploadSliced ? OEWorld.uploadSliced(renderer, world) : null, Wd.ready]) // (and its textures sent, in slices too, and the far trees' atlas drawn)
+    .then(() => OEWorld.uploadBuffers && OEWorld.uploadBuffers(renderer, world, camera, { target: post ? post.renderTarget1 : null })); // (then its vertex buffers, in slices)
   Promise.all([OEPlate.finish($('#loader')), warm.then(() => drawn)]).then(([flew]) => {
     $('#loader').classList.add('out');
     setTimeout(() => { $('#loader').hidden = true; OEPlate.stop($('#loader')); }, reduced ? 0 : 700);
