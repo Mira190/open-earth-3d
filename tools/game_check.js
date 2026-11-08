@@ -1037,8 +1037,8 @@ const npcNight = require('./npc_night');
     const q = g.guide();
     return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null, coach };
   });
-  // the first flight's coach (onboard.js): on the climb once the rotor is up, on to flying once it has climbed
-  check(heli.none || (heli.coach[0] === 'climb' && heli.coach[1] === 'fly'), heli.none ? 'no helicopter' : `the first flight's coach ticks off the rotor and the climb (${heli.coach.join(' then ')})`);
+  // the first flight's coach (onboard.js): on the rotor or the climb once seated, on to flying once it has climbed
+  check(heli.none || ((heli.coach[0] === 'spool' || heli.coach[0] === 'climb') && heli.coach[1] === 'fly'), heli.none ? 'no helicopter' : `the first flight's coach ticks off the rotor and the climb (${heli.coach.join(' then ')})`);
   check(heli.none || (heli.open > 0.9 && heli.shut === 0), heli.none ? 'no helicopter' : `climbs in through the door (open ${(+heli.open || 0).toFixed(2)}, then shut)`);
   check(heli.none || (heli.mode === 'heli' && heli.climbed > 10), heli.none ? 'no helicopter' : `flies the helicopter (climbed ${(+heli.climbed || 0).toFixed(1)} m)`);
   check(heli.none || route.none || (heli.flight != null && heli.flight > 20), heli.none ? 'no helicopter' : `the gold route in the air to a place to land${heli.flight != null ? ` (up to ${heli.flight.toFixed(0)} m)` : ''}`);
