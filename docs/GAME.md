@@ -1629,6 +1629,22 @@ quality tier runs a third of the cars.
     shells and the bridge deck.
   - **Buildings:** no shot puts the camera inside one. Each pose is kept 3 m above the
     surface model under it.
+- **The whole city on the big map** (`region` in `web/game/game.js`): a city drawn as maps
+  of its own (a metro group in `cities/index.json`: Kyoto, Tokyo) is one world on the big
+  map, as the world maps of Genshin Impact, Breath of the Wild and Ghost of Tsushima are:
+  the entry point you chose is no commitment, because the map always shows where else you
+  can go. Zoom out past this map, or press "All of Kyoto" over its corner, and the other
+  districts are where they really are: each map's frame (`frame_m` in `cities.json`, written
+  by `pipeline/build_scene.py`), dashed, its name in its corner, its stations as accent
+  diamonds and the railway lines between them drawn faintly underneath. A district wholly
+  out of view is a chip on the map's edge pointing to it with its distance, as games point
+  to an objective off screen; the travel list has them under "Elsewhere in Kyoto". Picking
+  one, or a spot inside another map, shows its card (the guide's line for it) and **Go to
+  Higashiyama** saves here and loads that map at that station (`#play-<map>@<travel id>`).
+  On the title screen, Play on such a city names the station it starts at
+  (`web/metro.js`), so it reads as a choice made, not a default. Check:
+  `tools/region_map_shot.js` (stills and the trip) and the region step of
+  `tools/game_check.js`.
 - **Map travel** (`travelTo` in `web/game/game.js`): the map lists every landmark the
   city labels (`scene.labels`), its travel points, trig stations and wharves, your car
   and the start, nearest first within a group; a pin on the map does the same, and a

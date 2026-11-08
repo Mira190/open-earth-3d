@@ -165,6 +165,11 @@ window.OEHud = (function () {
       g.fillStyle = 'rgba(6, 10, 18, 0.78)'; g.beginPath(); g.arc(0, 0, 6.5, 0, Math.PI * 2); g.fill();
       g.strokeStyle = ic.kind === 'landmark' ? '#f4efe6' : css('--sun'); g.lineWidth = 1.6; g.beginPath(); g.arc(0, 0, 5.2, 0, Math.PI * 2); g.stroke();
       g.fillStyle = ic.kind === 'landmark' ? css('--sun') : '#ffffff'; g.beginPath(); g.arc(0, 0, 2.6, 0, Math.PI * 2); g.fill();
+    } else if (ic.kind === 'district') { // another district of the city, a map of its own: a diamond, in the accent
+      g.rotate(Math.PI / 4);
+      g.fillStyle = 'rgba(6, 10, 18, 0.82)'; g.fillRect(-6, -6, 12, 12);
+      g.strokeStyle = css('--accent'); g.lineWidth = 1.6; g.strokeRect(-4.6, -4.6, 9.2, 9.2);
+      g.fillStyle = css('--accent'); g.fillRect(-2, -2, 4, 4);
     } else if (ic.kind === 'ferry' || ic.kind === 'heli' || ic.kind === 'wharf' || ic.kind === 'pad' || ic.kind === 'waypoint' || ic.kind === 'car' || ic.kind === 'ride') {
       const bg = { ferry: '#1e5b3a', heli: '#c62d2a', wharf: '#24577a', pad: '#c62d2a', waypoint: css('--accent'), car: '#2f5d8c', ride: '#d08a00' }[ic.kind];
       g.fillStyle = bg; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
