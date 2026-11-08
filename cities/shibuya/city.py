@@ -114,7 +114,7 @@ MATERIALS = {
     "steel": {"color": "#8d9399", "roughness": 0.5, "metalness": 0.5},
     "steel_dark": {"color": "#3a3e43", "roughness": 0.5, "metalness": 0.5},
     "pole": {"color": "#b8b5ad", "roughness": 0.9, "metalness": 0.0},
-    "wire": {"color": "#1e1e1e", "roughness": 0.6, "metalness": 0.2},
+    "wire": {"color": "#1e1e1e", "roughness": 0.6, "metalness": 0.2, "shadow": False},  # (finer than a shadow texel: no shadow)
     "paint_white": {"color": "#e9e7e0", "roughness": 0.7, "metalness": 0.0},
     "rope_red": {"color": "#b02a2a", "roughness": 0.9, "metalness": 0.0, "solid": False},  # the bell's rope: you take it in your hand
     "lamp": {"color": "#f6ecd2", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffcf80", "glow": 2.2},
@@ -3338,7 +3338,9 @@ MATERIALS.update({
     # escalator's grey steps edged in yellow, the stair's timber treads on white risers, white stone at 46F
     "frame_white": {"color": "#e3e5e6", "roughness": 0.4, "metalness": 0.25},
     "frame_air": {"color": "#e3e5e6", "roughness": 0.4, "metalness": 0.25, "solid": False},
-    "wire": {"color": "#d6d9dc", "roughness": 0.5, "metalness": 0.4, "solid": False},
+    # (its own name: as "wire" it took over the power lines' dark wire; and it casts no shadow, being far finer than
+    # a texel of the sun's shadow map, where its lines came and went as the map followed a walker: the flights flickered)
+    "fine_wire": {"color": "#d6d9dc", "roughness": 0.5, "metalness": 0.4, "solid": False, "shadow": False},
     "glass_clad": {"color": "#3a4856", "roughness": 0.32, "metalness": 0.08},
     "door_glass": {"color": "#7f8b93", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffd29a", "glow": 0.7},
     "esc_step": {"color": "#55595e", "roughness": 0.45, "metalness": 0.6},
@@ -3568,15 +3570,16 @@ def sky_meshes(s):
             cell = Polygon([(u0, v0), (u1, v0), (u1, v1), (u0, v1)])
             if abs((u0 + u1) / 2) < gc and abs((v0 + v1) / 2) < gc:
                 continue
+            T = D2 if tone.random() < 0.35 else D     # one tone a tile (a cut tile's triangles took one each: wedges)
             if cell.intersects(chan.buffer(0.3)):
                 cut = cell.difference(chan.buffer(0.3))
                 for part in getattr(cut, "geoms", [cut]):
                     if part.geom_type == "Polygon" and part.area > 0.05:
                         r = list(part.exterior.coords)[:-1]
                         for k in range(1, len(r) - 1):
-                            (D2 if tone.random() < 0.35 else D).tri(Q(*r[0], z + 0.03), Q(*r[k], z + 0.03), Q(*r[k + 1], z + 0.03))
+                            T.tri(Q(*r[0], z + 0.03), Q(*r[k], z + 0.03), Q(*r[k + 1], z + 0.03))
                 continue
-            (D2 if tone.random() < 0.35 else D).quad(Q(u0, v0, z + 0.03), Q(u1, v0, z + 0.03), Q(u1, v1, z + 0.03), Q(u0, v1, z + 0.03))
+            T.quad(Q(u0, v0, z + 0.03), Q(u1, v0, z + 0.03), Q(u1, v1, z + 0.03), Q(u0, v1, z + 0.03))
     # the glass fence round the deck's outer edge, on steel posts (the channels have their own glass)
     G, S = K("glass"), K("steel_dark")
     (nu0, nv0), (wu0, wv0) = F["north"][0], F["west"][0]
@@ -3681,7 +3684,9 @@ def sky_channels(K, Q, F, z, z0):
                                                    X(sb, tv, esc(sb) + 0.12), X(sa, tv, esc(sa) + 0.12))
         nst = int(round(F["run"] / 0.4))
         dz, ds = R / nst, F["run"] / nst
-        steps = [(sa, sa + 0.4, z0) for sa in np.arange(0.0, 2.0 - 0.01, 0.4)] + \
+        # (the landing plates at the foot 3 cm over 46F's stone, which is laid across the whole channel: level with it
+        # the stone covered them, and the two speckled through each other as the view moved)
+        steps = [(sa, sa + 0.4, z0 + 0.03) for sa in np.arange(0.0, 2.0 - 0.01, 0.4)] + \
                 [(2.0 + k * ds, 2.0 + (k + 1) * ds, z0 + (k + 1) * dz) for k in range(nst)] + \
                 [(sa, sa + 0.4, z) for sa in np.arange(2.0 + F["run"], L - 0.39, 0.4)]
         w0, w1 = e - (hw - 0.1), e + (hw - 0.1)
@@ -3774,7 +3779,7 @@ def sky_channels(K, Q, F, z, z0):
             K("frame_white", "cols").lathe([(z0, 0.17), (top, 0.17)], tuple(Q(*f["uv"](s_, T["col"]), 0)[:2]), 14)
             block(K("frame_air", "beams"), lambda a, b, zz: X(a, b, zz), s_ - 0.09, s_ + 0.09, 0.0, W, top, top + 0.28)
         # -- the net: fine wire from the outer glass's top rail to the cable over the rim (every 0.6 m)
-        wire = K("wire", "net")
+        wire = K("fine_wire", "net")
         ss = list(np.arange(-Dd, L - 0.01, 0.6)) + [L]
         nt = int(W / 0.6)
         h = lambda s_, t_: rail(s_) + 0.1 + (netz - rail(s_) - 0.1) * t_ / W
@@ -3793,8 +3798,8 @@ def sky_channels(K, Q, F, z, z0):
     n_ = 11
     bil = lambda a, b: O * (1 - a) * (1 - b) + A * a * (1 - b) + C * a * b + B * (1 - a) * b
     for i in range(n_ + 1):
-        K("wire", "net").tube([bil(i / n_, j / n_) for j in range(n_ + 1)], 0.008, 3)
-        K("wire", "net").tube([bil(j / n_, i / n_) for j in range(n_ + 1)], 0.008, 3)
+        K("fine_wire", "net").tube([bil(i / n_, j / n_) for j in range(n_ + 1)], 0.008, 3)
+        K("fine_wire", "net").tube([bil(j / n_, i / n_) for j in range(n_ + 1)], 0.008, 3)
 
 
 # ---------------------------------------------------------------- hooks
