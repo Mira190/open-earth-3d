@@ -1192,6 +1192,10 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
           PATTERNS.ashlar(m, { course_m: 0.3, block_m: 0.6 }); const own = m.onBeforeCompile; m.onBeforeCompile = sh => { own(sh); streetLit(sh); };
           m.customProgramCacheKey = () => 'inland|floor'; return m; })(),
       };
+      // a promenade's lawn (the Horikawa's 芝生広場), and the white water off its weirs
+      mats.lawn = new THREE.MeshStandardMaterial({ color: lin(IW.lawn || '#526b38'), roughness: 0.95, metalness: 0 });
+      mats.lawn.onBeforeCompile = streetLit;
+      mats.foam = new THREE.MeshStandardMaterial({ color: lin('#e9eef0'), roughness: 0.4, metalness: 0, transparent: true, opacity: 0.32, depthWrite: false });
       PATTERNS.railing(mats.rail, { bar_m: 0.14, rails_m: [0.06, 1.05] });
       mats.coping.onBeforeCompile = mats.slab.onBeforeCompile = streetLit;
       mats.bed().onBeforeCompile = streetLit;
@@ -1413,7 +1417,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           }
         }
       }
-      const SL = TU.slopes;
+      // and in the parks named (places: [{name, per_ha}], a native planting's tussock grasses: Sydney's Barangaroo Reserve),
+      // over the place's own outline (places.json), anywhere off its paths and clear of its trees and the landmarks
+      const SL = TU.slopes || (TU.places ? {} : null);
       if (SL) {
         const Tg = D.Tfine || D.T, F = scene.frame, roads = D.streets && D.streets.roads, W = scene.woods;
         let canopy = null; // the woods' canopy at 8 m: whether any crown stands there
@@ -1426,27 +1432,34 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         const lmHash = new Set(); // the landmarks' 8 m cells, and their neighbours
         for (const m of (LM && LM.meshes) || []) { const p = m.position; for (let i = 0; i < p.length; i += 9) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) lmHash.add((Math.floor(p[i] / 8) + a) * 100003 + Math.floor(p[i + 1] / 8) + b); }
         const max = Math.round((SL.max || 8000) * (small ? 0.35 : 1)), above = SL.above_m ?? 80;
-        const cand = (x, y, k) => {
+        const cand = (x, y, k, low = false) => {
           const z = S.terrainAt(Tg, x, y);
-          if (!(z > above) || (canopy && canopy(x, y)) || lmHash.has(Math.floor(x / 8) * 100003 + Math.floor(y / 8))) return;
+          if (!(low || z > above) || (canopy && canopy(x, y)) || lmHash.has(Math.floor(x / 8) * 100003 + Math.floor(y / 8))) return;
           const sx = S.terrainAt(Tg, x + 2, y) - S.terrainAt(Tg, x - 2, y), sy = S.terrainAt(Tg, x, y + 2) - S.terrainAt(Tg, x, y - 2);
           if (Math.hypot(sx, sy) / 4 > (SL.slope_max || 1.1)) return; // (a bluff: rock)
-          if (roads && roads.depth(x, y, null, 25) > 0) return;
+          if (roads && roads.depth(x, y, null, low ? 2 : 25) > 0) return; // (in a park, just off its streets)
           if (IN && IN.water(x, y)) return;
           pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), Math.round(10 * (0.6 + 0.45 * hsh(y, x + k))));
         };
         // near the places named, denser; then over the whole frame, each candidate on a jittered grid
-        const grid = (x0, y0, x1, y1, per_ha, inside) => {
+        const grid = (x0, y0, x1, y1, per_ha, inside, low = false) => {
           const step = 100 / Math.sqrt(per_ha);
           for (let y = y0; y < y1 && pts.length / 4 < max; y += step) for (let x = x0; x < x1 && pts.length / 4 < max; x += step) {
             const jx = x + (hsh(x, y) - 0.5) * step, jy = y + (hsh(y, x) - 0.5) * step;
-            if (!inside || inside(jx, jy)) cand(jx, jy, step);
+            if (!inside || inside(jx, jy)) cand(jx, jy, step, low);
           }
         };
-        for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
-        grid(F.x[0], F.y[0], F.x[1], F.y[1], SL.per_ha || 20, (x, y) => !(SL.near || []).some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r));
+        const inRing = (r, x, y) => { let k = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < r[j] + (y - r[j + 1]) / (r[i + 1] - r[j + 1]) * (r[i] - r[j])) k = !k; return k; };
+        for (const pl of TU.places || []) for (const q of (P.places || []).filter(o => o.name === pl.name)) for (const poly of q.polygons || []) {
+          const rings = poly.map(r => r.map(v => v / 10)), r = rings[0], xs = r.filter((_, i) => i % 2 === 0), ys = r.filter((_, i) => i % 2 === 1);   // (its outline, then its holes)
+          grid(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), pl.per_ha || 400, (x, y) => inRing(r, x, y) && !rings.slice(1).some(h => inRing(h, x, y)), true);
+        }
+        if (TU.slopes) {
+          for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
+          grid(F.x[0], F.y[0], F.x[1], F.y[1], SL.per_ha || 20, (x, y) => !(SL.near || []).some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r));
+        }
       }
-      if (pts.length) { own = { from: TR.length / 4, species: 'tussock' }; TR = TR.concat(pts); console.info(`tussock: ${pts.length / 4} planted`); }
+      if (pts.length) { own = { from: TR.length / 4, species: 'tussock', tint: TU.tint || null }; TR = TR.concat(pts); console.info(`tussock: ${pts.length / 4} planted`); }
     } catch (e) { console.warn('tussock: none planted', e); }
     const nT = TR.length / 4;
     let trees = null;
@@ -1499,7 +1512,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
-      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
+      userData: { glow: LM.materials[k].glow || 0.32, day: LM.materials[k].glow_day || 0 }, // (glow_day: lit by day too, as stained glass seen from inside is) onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
       defines: Object.assign({}, lmMats[k].defines),
       // its own program: a floodlit copy of a patterned material, or one lit from below (which wraps
       // the pattern, so the wrapper's text alone would not tell two programs apart)
@@ -1552,11 +1565,12 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     for (const m of LM.meshes || []) {
       const g = lmGeometry(m);
       const mesh = new THREE.Mesh(g, lmMaterial(m));
-      if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far); }
+      if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far * (small ? 0.6 : 1)); } // (a room's furnishings: nearer on a small device)
       mesh.castShadow = mesh.receiveShadow = true;
       if (['railing', 'lattice'].includes((LM.materials[m.material] || {}).pattern)) mesh.castShadow = false; // a cut-out strip; its shadow would be solid
       if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
       if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
+      if ((LM.materials[m.material] || {}).shadow === false) mesh.castShadow = false; // wire finer than a texel of the shadow map: its shadow would flicker as the map follows the view
       mesh.name = m.name;
       world.add(still(mesh)); // (a lift's car among them: the cache sees it move and draws it afresh)
       if ((LM.materials[m.material] || {}).pattern === 'led_screen') screenMeshes.push({ mesh, m: LM.materials[m.material], mat: lmMats[m.material] });
@@ -1767,7 +1781,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (night && night.skyglow) su.uNightHorizon.value.copy(night.skyglow).multiplyScalar(2.2);
         // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
-        for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
+        for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value + m.userData.day * (1 - U.uNight.value);
         LM_NIGHT.value = U.uNight.value;
         SCREEN.hour.value = U.uHour.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;

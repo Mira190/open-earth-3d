@@ -457,6 +457,7 @@ listed at the end.
 | **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 | **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
+| **Half-Life 2, The Last of Us, GTA V's enterable interiors** | Doors that open as you walk up to them, with no key to press, timed so they are open before you reach them; a room's name as you step in; seated people at their tables and in the pews. Ideas only: no code or assets taken. | Their rooms are designed. Here a room is the real one behind a real facade: St Peter's, Williams Cottage and the Skyline restaurant are drawn inside the shells measured from LiDAR, with their real doors and windows, and the restaurant's glass looks out over the lake as it is. |
 | **Tesla FSD** (AI Day 2021 and 2022: the planning talks) | The planner run for every car round it, not only for itself: each car's way ahead is known and read by the others, and where two ways meet one asserts and the other yields, by the same rule read from both sides, rather than both reacting to what is in front of them. A car that can no longer stop goes; one in the junction goes before one coming. Ideas only (its software is proprietary). | It learns from fleet video; here every car's intent is exact (its route, its movement through the junction), so nothing has to be guessed from a camera. |
 | **Baidu Apollo** (EM planner, Apache-2.0), **SUMO** (EPL-2.0), **A/B Street** (Apache-2.0), **Autonomous Intersection Management** (Dresner and Stone) | Apollo: another car's way projected onto your own as the stretch it blocks, and a go-first or yield decision on it. SUMO and A/B Street: keep the box clear (no car into a junction whose way across is blocked or whose exit has no room), and break a deadlock by someone backing off, never by driving through. AIM: a reservation for the way across, which `junctions.js` already makes. Re-written from the papers and documentation; no code taken. | They simulate traffic for planners to study. Here the same rules drive the taxi you are sitting in. |
 | **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
@@ -527,7 +528,9 @@ pipeline writes. The only city-specific code is landmark geometry in
     within `perch_m` where the birds stand. A quest step that visits a flock is
     given its position.
   - **Travel points and links:** fast-travel points on the ground, and
-    neighbouring cities named in the menu.
+    neighbouring cities named in the menu. You arrive at a travel point facing its `look`
+    `[x, y]` (`game.travel` in `city.json`: the Senbon Torii's mouths), or else the nearest
+    landmark's label within 200 m, not wherever you last faced.
 - **Opera House steps** (`city.py`): the Monumental Steps are 85 m wide and run
   17.6 m from the forecourt to a landing, as measured on the NSW aerial photo:
   three flights of 0.39 m treads and 15 cm risers, between landings 1.6 m deep.
@@ -827,6 +830,13 @@ pipeline writes. The only city-specific code is landmark geometry in
     - With 40 walkers on one footway, pairs walked through each other 2.8
       times a tick before, and never now. People used to freeze when you stood
       among them; now they walk round you.
+    - You never step aside for them, so a walker with you on its course goes round you
+      at once, a body's width clear where the footway allows, else sidling past shoulder
+      to shoulder; where there is no room at all (you in the middle of a torii tunnel
+      1.5 m wide) it turns back within a second, and whoever comes on behind it turns too.
+      Before, it stood in front of you for up to 13 s before it turned
+      (`tools/crowd_yield.js`: you stood on a footway, walkers sent at you along it).
+    - The NPCs you talk to stand as posts: the crowd walks round them, not through them.
   - **Benches:** the benches are smart objects.
     - 1,375 of Sydney's 1,862 benches and 891 of Melbourne's 1,181 can be
       reached from a footway in a straight line that is clear of walls, water
@@ -1688,7 +1698,9 @@ quality tier runs a third of the cars.
     the arrival keeps within `arc` degrees of it (70 by default), preferring straight in
     front; `dist` sets how far back to stand; `top` frames a lower part than the label's
     top, in metres above the ground (Kabuki-za's theatre rather than the tower behind it);
-    and `at` is a spot `[x, y]` in the local frame to stand on, facing the landmark.
+    and `at` is a spot `[x, y]` in the local frame to stand on, facing the landmark, or facing
+    `look` `[x, y]` where the landmark's middle is the wrong thing to face (Fushimi Inari's
+    Senbon Torii: at the mouths of the two tunnels, looking in, not at their middle in the woods).
     `python pipeline/scene_config.py --city <id>` copies them into `scene.json` without
     rebuilding the scene, and `node tools/arrival_probe.js <city> <names>` prints where
     each arrival lands, its best-scored spots, and a character map of the surface model,
@@ -1764,6 +1776,34 @@ quality tier runs a third of the cars.
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+
+### Doors and rooms
+
+A city can open its landmarks to walk into (Queenstown's St Peter's, Williams Cottage and the Skyline
+restaurant: `cities/queenstown/interiors.py`, issue #315). Its builder draws each room inside the
+landmark's shell, with the shell's walls cut where its door and windows are (`pipeline/archkit.py`
+`holed_wall`, `reveal`, `pane`), and gives the game three things:
+
+- **The floor**, a strip (game.json `surfaces`), so that a walker stands on it at its own level, whatever
+  the bare earth under the building does. Walls, pews, tables and counters are landmark meshes and stop a
+  walker as any landmark does (`web/game/nav.js`). The collision world's cells are a quarter of a metre and
+  a walker is 0.7 m across, so a doorway must leave about 1.25 m between its solid jambs; a narrower real
+  door (Williams Cottage's, 0.95 m) is drawn at its own width with the last few centimetres of wall either
+  side in a material that is not a wall to walkers (`solid: false`).
+- **The doors** (game.json `doors`: `{id, name, at, reach, time, leaves}`). Each leaf is the landmark's own
+  mesh, drawn shut, and not a wall. `web/game/doors.js` swings it on its hinge (`hinge`, `deg`) or slides it
+  (`slide`) as someone on foot comes within `reach` metres, sooner the faster they come, and shuts it a moment
+  after they have gone. Only you open them: the locals stand or sit where they are, and a diner at a table by the door would otherwise hold it open.
+- **The rooms** (game.json `interiors`: `{id, name, note, floor, height, ring, door, way}`). Stepping into
+  one shows its name. `way` is a walk from in front of the door to the room's middle, which
+  `tools/interior_step.js` (in `tools/game_check.js`) walks in and back out, checking the door was open in
+  the doorway, the walker ended on the room's floor, and the door shut behind.
+
+Inside, a room's meshes take only part of the sky's light (`Mesh.sky`) with the floor's colour coming back
+up. After dark its walls, floor and lamps glow warm (floodlit materials), and lamps and stained glass glow by
+day too (`glow_day`). The furnishings carry `far` (110 m; 60% of that on a small device, `web/world.js`), so
+a phone draws the room's shell and lit windows from across town and its pews and tables only nearby. An NPC
+with `sit` (`{face: [dx, dy]}`, at `[x, y, z]`) is placed exactly there, seated, facing that way.
 
 ## Routes
 

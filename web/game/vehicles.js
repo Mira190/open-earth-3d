@@ -342,7 +342,9 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         }
       }
       nx = m.x; ny = m.y;
-      if (nz > st.z && !nav.free(nx, ny, nz + 0.3, nz + 3.6, 3.2)) { nz = st.z; st.vz = Math.min(0, st.vz); } // up into something
+      // up into something: only what is over the rotor stops a climb (the slice it climbs into); a fence or a
+      // parapet its disc overhangs where it set down, already beside it, does not hold it on the ground
+      if (nz > st.z && !nav.free(nx, ny, st.z + 3.6, nz + 3.6, 3.2)) { nz = st.z; st.vz = Math.min(0, st.vz); }
       const floor = nav.groundBelow(nx, ny, nz);
       if (nz <= floor + 0.02) {
         nz = floor;

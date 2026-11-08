@@ -1,5 +1,6 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
-// it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
+// it, walk, walk right up to the things the city names to see up close (tools/close_step.js), into the rooms it
+// opens and out again (tools/interior_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
 // in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it (every
@@ -7,7 +8,7 @@
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
 // change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
-// (tools/scramble_step.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
+// (tools/scramble_step.js), walk down into a sunken promenade and back up (tools/promenade_walk.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
 // with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
 // a one-way street to the junction behind (tools/reverse_step.js), swing the
@@ -644,6 +645,17 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
+  // the rooms a city opens (game.json "interiors": the Skyline restaurant, St Peter's, Williams Cottage): from in
+  // front of each door, walk in through it (it must be open by the time you are in the doorway), stand in the room
+  // on its floor with its name shown, and walk back out, the door shutting behind you (tools/interior_step.js)
+  // (a city with none skips it whole, so that its traffic's run is the same as before)
+  if (await p.evaluate(() => (window.__game.G.interiors || []).length > 0)) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
+    const rooms = await require('./interior_step')(p, { outDir, prefix: `${city}-` });
+    for (const r of rooms) check(r.ok, `walks into ${r.name} and out again${r.dIn == null ? `: ${r.why}` : ` (the door ${(r.openIn * 100).toFixed(0)}% open in its doorway, ${r.dIn.toFixed(2)} m from the room's middle and ${r.dz.toFixed(2)} m off its floor, back out ${r.dOut.toFixed(2)} m from the start, the door ${r.shutAfter < 0.05 ? 'shut' : 'open'} after)${r.ok ? '' : `: ${r.why}`}`}`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
+  }
+
   // the flights of steps a city names for checking (game.json surfaces with check: true, a footbridge's): from
   // a metre past the foot, climb on foot to the top, and arrive within 0.35 m of the top's height, never
   // having dropped below the foot or risen above the top
@@ -803,6 +815,30 @@ const npcNight = require('./npc_night');
     return out;
   });
   for (const r of escRides) check(r.u >= r.end - 0.3 && Math.abs(r.rise - r.want) < 0.6 && r.t < r.need * 1.3 + 2 && r.walk && r.mode === 'foot', `the ${r.name} carries you ${r.rise >= 0 ? 'up' : 'down'} ${Math.abs(r.rise).toFixed(1)} m of its ${Math.abs(r.want).toFixed(1)} in ${r.t.toFixed(1)} s (its stretch takes ${r.need.toFixed(1)} s; ends ${(r.end - r.u).toFixed(2)} m short, ${r.walk ? 'standing' : 'not walkable'})`);
+
+  // and walked onto, as a player does: from the floor 2.5 m before its entry, walking along it for three seconds,
+  // then standing still; the steps take you to the far end and set you down on the floor past it
+  const escWalks = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, nav = g.nav, out = [];
+    if (!nav.strips.some(q => q.moving_ms)) return out;
+    const was = pl.walking;
+    for (const s of nav.strips.filter(q => q.moving_ms)) {
+      const u0 = s.us[0] - 2.5, x = s.origin[0] + s.axis[0] * u0, y = s.origin[1] + s.axis[1] * u0, f = nav.floorAt(x, y, s.zs[0] + 0.5);
+      [pl.x, pl.y, pl.z] = [x, y, f ? f.z : s.zs[0]]; pl.mode = 'foot'; pl.ground = true; pl.vz = 0; pl.walking = true; pl.escOff = null;
+      const h = Math.atan2(s.axis[0], s.axis[1]), z0 = pl.z;
+      pl.h = h;
+      for (let i = 0; i < 30; i++) { g.cam.yaw = h; g.advance(0.1, ['KeyW']); }
+      const on = nav.stripUV(s, pl.x, pl.y)[0];
+      const mu = s.moving_u || [s.us[0], s.us[s.us.length - 1]], need = (mu[1] - mu[0]) / s.moving_ms + 4;
+      for (let t = 0; t < need * 1.4; t += 0.5) g.advance(0.5);
+      const [u] = nav.stripUV(s, pl.x, pl.y);
+      out.push({ name: s.name, on, u, end: s.us[s.us.length - 1], rise: pl.z - z0, want: s.zs[s.zs.length - 1] - s.zs[0], walk: nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    pl.walking = was;
+    g.spawn(); g.advance(0.5);
+    return out;
+  });
+  for (const r of escWalks) check(r.on > 0 && r.u > r.end + 0.5 && Math.abs(r.rise - r.want) < 0.6 && r.walk, `the ${r.name} is walked onto from the floor before it (${r.on.toFixed(1)} m on after 3 s) and sets you down ${(r.u - r.end).toFixed(1)} m past its end, ${r.rise >= 0 ? 'up' : 'down'} ${Math.abs(r.rise).toFixed(1)} m of its ${Math.abs(r.want).toFixed(1)}${r.walk ? '' : ', not walkable'}`);
 
   // the quests a city names for checking (quests[].check: a new walk): each place a step sends you to has
   // ground you can stand on within its radius, and each NPC a step names is there
@@ -1007,10 +1043,14 @@ const npcNight = require('./npc_night');
     const open = g.heli.st.door;
     g.advance(2.6);
     const shut = g.heli.st.door, z0 = g.heli.st.z;
+    const c0 = g.heliCoach(), coach = [c0 && c0.id];
     g.advance(8, ['Space']);
+    coach.push(c0 && c0.id);
     const q = g.guide();
-    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null };
+    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null, coach };
   });
+  // the first flight's coach (onboard.js): on the rotor or the climb once seated, on to flying once it has climbed
+  check(heli.none || ((heli.coach[0] === 'spool' || heli.coach[0] === 'climb') && heli.coach[1] === 'fly'), heli.none ? 'no helicopter' : `the first flight's coach ticks off the rotor and the climb (${heli.coach.join(' then ')})`);
   check(heli.none || (heli.open > 0.9 && heli.shut === 0), heli.none ? 'no helicopter' : `climbs in through the door (open ${(+heli.open || 0).toFixed(2)}, then shut)`);
   check(heli.none || (heli.mode === 'heli' && heli.climbed > 10), heli.none ? 'no helicopter' : `flies the helicopter (climbed ${(+heli.climbed || 0).toFixed(1)} m)`);
   check(heli.none || route.none || (heli.flight != null && heli.flight > 20), heli.none ? 'no helicopter' : `the gold route in the air to a place to land${heli.flight != null ? ` (up to ${heli.flight.toFixed(0)} m)` : ''}`);
@@ -1027,6 +1067,27 @@ const npcNight = require('./npc_night');
     return { landed: g.heli.st.landed, mode: g.player.mode, door: g.heli.st.door, near: Math.hypot(g.player.x - g.heli.st.x, g.player.y - g.heli.st.y) };
   });
   check(out.none || (out.mode === 'foot' && out.door === 0 && out.near < 6), out.none ? 'no helicopter' : `lands and climbs out (${out.mode}, ${(+out.near || 0).toFixed(1)} m from it)`);
+
+  // and it takes off where it set down with its rotor's disc over a fence or a parapet (the climb is held only
+  // by something over the rotor): the nearest such spot within 25 m of its pad, where it can stand
+  const fence = await p.evaluate(() => {
+    const g = window.__game, s = g.heli && g.heli.st;
+    if (!s) return { none: true };
+    let spot = null;
+    for (let r = 3; r <= 25 && !spot; r += 1) for (let a = 0; a < 6.28 && !spot; a += 0.15) {
+      const x = s.x + Math.sin(a) * r, y = s.y + Math.cos(a) * r, z = g.nav.groundBelow(x, y, s.z + 2);
+      if (z < s.z - 4 || !g.nav.free(x, y, z + 0.3, z + 0.6, 1.5)) continue;
+      if (!g.nav.free(x, y, z + 0.3, z + 3.6, 3.2) && g.nav.free(x, y, z + 3.6, z + 60, 3.2)) spot = [x, y, z]; // (and open sky over it)
+    }
+    if (!spot) return { none: true, spot: false };
+    const keep = [s.x, s.y, s.z, s.on];
+    [s.x, s.y, s.z] = spot; s.on = true; s.rotor = 1; s.landed = true; s.vx = s.vy = s.vz = 0;
+    for (let i = 0; i < 40; i++) g.heli.update(0.1, { lift: 1 }, []);
+    const climbed = s.z - spot[2];
+    [s.x, s.y, s.z, s.on] = keep; s.vz = 0; s.landed = true;
+    return { climbed, at: spot.slice(0, 2).map(v => v.toFixed(0)).join(',') };
+  });
+  check(fence.none || fence.climbed > 10, fence.none ? `no spot by a fence near the pad${fence.spot === false ? '' : ' (no helicopter)'}` : `takes off beside a fence (at ${fence.at}, climbed ${fence.climbed.toFixed(1)} m)`);
 
   // the ferries run their routes
   const ferry = await p.evaluate(() => {
@@ -1665,6 +1726,12 @@ const npcNight = require('./npc_night');
     }
   }
 
+  // down into a sunken promenade and back up (Kyoto's Horikawa: inland.js promenade, nav.js; tools/promenade_walk.js)
+  {
+    const r = await require('./promenade_walk')(p);
+    if (!r.none) { for (const [ok, what] of r.checks) check(ok, what); await shot('promenade'); }
+  }
+
   // a ride with you in it turns round in the road (#199: one stuck in a queue on its own piece of road does,
   // after 20 s; here asked to at once through __game.turnRide): a ride ordered on the phone, boarded and under
   // way, turns round where the street is two-way, wide enough and clear (else a couple of seconds on, again):
@@ -1701,7 +1768,7 @@ const npcNight = require('./npc_night');
     r.turned = true; r.rev = !!o.turn.rev; // (on a one-way street it backs out instead: tools/reverse_step.js checks that)
     window.__turn = { o, r, h0: st0.h, u: 0 };
     // (half way round: a still from outside, the chase camera's)
-    for (; window.__turn.u < 40 && o.turn && o.turn.i < o.turn.poses.length * 0.45; window.__turn.u += 0.25) {
+    for (; window.__turn.u < (o.turn && o.turn.rev ? 70 : 40) && o.turn && o.turn.i < o.turn.poses.length * 0.45; window.__turn.u += 0.25) { // (backing out up to 80 m takes longer than a turn in the road)
       g.advance(0.25);
       const st = o.drv.st;
       r.overlap = Math.max(r.overlap, g.cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.9, o.C.hw * 0.9, 0));
@@ -1714,7 +1781,7 @@ const npcNight = require('./npc_night');
     await shot('turn');
     Object.assign(turn, await p.evaluate(() => {
       const g = window.__game, T = window.__turn, o = T.o, r = T.r, ad = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
-      for (; T.u < 40 && o.turn; T.u += 0.25) {
+      for (; T.u < (o.turn && o.turn.rev ? 70 : 40) && o.turn; T.u += 0.25) {
         g.advance(0.25);
         const st = o.drv.st;
         r.overlap = Math.max(r.overlap, g.cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.9, o.C.hw * 0.9, 0));
