@@ -778,6 +778,29 @@ keys each program on more than the material, so these rules hold for every page:
   50 ms, object by object, and yields between them; the loaders hold their first draw until it is
   done, since a draw would compile the rest in one frame. The mirror's clipped variant compiles the
   same way behind the title. The weather's warm-up compiles only the rain's own meshes.
+- **Keep the shaders small.** What a program costs to compile grows with the code the driver is
+  left with once the `#if`s are resolved, not with the text. three.js unrolls its light loops, and
+  the screens' area lights (`neon.js`, up to nine) put nine copies of the linearly transformed
+  cosines' evaluation into every lit shader: more than half of each program's compile on llvmpipe
+  (a plain building's 38 ms against 16 without them). `lens.js` keeps that loop a loop (the lights
+  are a uniform array of plain structs, which GLSL ES 3.00 indexes at run time; 21 ms, drawn the
+  same). A patch that does nothing on a material is left out of its shader rather than multiplied
+  by zero, which no compiler folds away: the weather's puddles and ripples only where water can
+  stand (`weather.js`, not on the people), the wet street's reflection only on the street's own
+  materials (`mirror.js`). `tools/shader_dump.js` writes out the shaders a city links, their size
+  before and after the preprocessor and the material they are; `tools/shader_bench.js` times one
+  compiled, linked and drawn, to weigh a change to it.
+- **Send the data ahead of the first draw, when the GPU is free.** three.js uploads a texture or a
+  geometry in the first frame that draws it. The loaders send the city's textures (`uploadSliced`)
+  and then its vertex buffers (`uploadBuffers`: each slice rendered with its draw calls held, which
+  sends its attributes, instance matrices and index and draws nothing) in slices of about 50 ms
+  before the first draw. Each slice waits for a fence first (`caughtUp`): an upload sent behind
+  queued compiles waits for them all in the call that sends it: a 1000×1200 image's `texSubImage2D`
+  took 6 s in Kyoto's loader (5 ms on an idle GPU), and six 2048 px textures sent behind 24 links
+  hold the main thread for a second in their calls, 84 ms with a fence passed before each
+  (`tools/upload_probe.js`). It was the queue, not the size, so the uploads are not cut in rows.
+  The far trees' atlas compiles its programs asynchronously and is drawn before the first frame
+  (`trees.js` `bakeFar`, `Wd.ready`).
 - **Share programs that differ only in uniforms.** Landmark materials key their programs by the text
   their `onBeforeCompile` chain writes (`byText` in `world.js`), not by name: in Sydney 128 landmark
   programs were 42 shaders.
@@ -796,6 +819,9 @@ and how it differs from the nearest earlier program (a light count, a flag, the 
 It also ranks the attributes uploaded after the click. `RAIN=1` then puts the rain on and counts
 the programs that compiles. llvmpipe compiles at first draw whatever was linked ahead, so the
 asynchronous half shows only on a real GPU. Count programs here, and time them on a device.
+`LOAD=1 PROFILE=1` profiles the loader instead: its longest frames, what each waited on, and the
+whole load's blocking GL work by call. `tools/link_sweep.sh` runs that over every live city, one
+line each, for a before and after (issue 313).
 
 ## Analyses
 
