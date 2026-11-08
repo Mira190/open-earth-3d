@@ -648,7 +648,8 @@ const npcNight = require('./npc_night');
   // the rooms a city opens (game.json "interiors": the Skyline restaurant, St Peter's, Williams Cottage): from in
   // front of each door, walk in through it (it must be open by the time you are in the doorway), stand in the room
   // on its floor with its name shown, and walk back out, the door shutting behind you (tools/interior_step.js)
-  {
+  // (a city with none skips it whole, so that its traffic's run is the same as before)
+  if (await p.evaluate(() => (window.__game.G.interiors || []).length > 0)) {
     const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
     const rooms = await require('./interior_step')(p, { outDir, prefix: `${city}-` });
     for (const r of rooms) check(r.ok, `walks into ${r.name} and out again${r.dIn == null ? `: ${r.why}` : ` (the door ${(r.openIn * 100).toFixed(0)}% open in its doorway, ${r.dIn.toFixed(2)} m from the room's middle and ${r.dz.toFixed(2)} m off its floor, back out ${r.dOut.toFixed(2)} m from the start, the door ${r.shutAfter < 0.05 ? 'shut' : 'open'} after)${r.ok ? '' : `: ${r.why}`}`}`);
