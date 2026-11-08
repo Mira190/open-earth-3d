@@ -693,16 +693,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const z0 = f ? f.z : Math.max(0, nav.terrain(n.at[0], n.at[1]));
     const clear = (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) && !inRoad(x, y, z0, 0.3) && !posts.pushOut(x, y, 0.45, z0).hit
       && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
-    const p = nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
+    // seated (game.json npcs[].sit, at a restaurant's table or in a pew: at its place exactly, the chair's seat over
+    // the root, facing sit.face), else stood where there is room
+    const p = n.sit && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } : nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
       { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
-    const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
+    const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: n.sit && n.sit.face ? Math.atan2(n.sit.face[0], n.sit.face[1]) : hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
-    o.marker.position.set(0, 2.45, 0);
+    o.marker.position.set(0, n.sit ? 1.95 : 2.45, 0);
     rig.root.add(o.marker);
     rig.root.position.copy(W(o.x, o.y, o.z));
     rig.root.rotation.y = Math.PI - o.h;
     npcs.push(o);
+    posts.add(o.x, o.y, o.z, 0.22, 'npc'); // (where they stand: the crowd walks round them, not through them)
   }
   const npcById = id => npcs.find(n => n.id === id);
   // an NPC's character, loaded and put in their place (or another realistic one if it can't be loaded)
@@ -777,6 +780,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // street door and a floor high up (game.json "lifts", from the city's landmarks)
   const places = window.OEPlaces ? OEPlaces.create({ G, W, camera, stage }) : null;
   const lifts = G.lifts || [];
+  // doors that open as you come up to them, and the rooms behind them (game.json "doors", "interiors": doors.js)
+  const doors = window.OEDoors ? OEDoors.create({ G, world }) : null;
+  let room = null; // the room you are in, for its name as you step in
   function liftStop(x, y, z) {
     for (const l of lifts) for (let i = 0; i < l.stops.length; i++) {
       const s = l.stops[i];
@@ -1154,12 +1160,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function planOn(rt, from, pickup) {
     const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true, now: rideClock };
     const P = OECars.path(rt.pts), sig = [], scr = [], scrJ = [], qArms = [];
+    let first = null; // (the first light on its way)
     for (const nd of rt.nodes || []) {
       const p = rt.pts[nd.k], a = p ? junctions.armAt(nd.line, nd.end) : null;
       if (!a) continue;
       const s = P.cum[Math.min(nd.k, P.cum.length - 1)];
       if (P.cum[Math.min(nd.k, P.cum.length - 1)] < 400) qArms.push({ s, a }); // (the queues on its way, near enough to stand when it comes)
       if (!a.j.sig) continue;
+      if (!first) first = { s, a };
       if (Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140) {
         sig.push(s);
         if (a.j.scramble) { scr.push(s); scrJ.push(a.j); } // (its walk: SCR_WAIT)
@@ -1168,7 +1176,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const m of rt.mids || []) if (m.X.sig && Math.hypot(m.X.x - pickup.x, m.X.y - pickup.y) < 140) sig.push(m.at); // (and the crossings' lights between junctions)
     sig.sort((p, q) => p - q);
     const drive = OECars.chauffeur(STUB, rt, opts).total();
-    return { rt, opts, drive, sig, scr, scrJ, qArms, T: drive + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
+    // (the first light on its way, red now and still red when it gets there, is waited out: the light's own change,
+    // not the second or so of an average light; Shinjuku's hailed taxi, 60 m short of a red, came in 42 s, not 12)
+    let firstW = 0;
+    if (first && first.s < 250 && junctions.light(first.a) !== 'g') firstW = Math.max(0, junctions.toGreen(first.a) - drive * first.s / Math.max(1, P.len));
+    return { rt, opts, drive, sig, scr, scrJ, qArms, firstSig: firstW > 0, T: drive + firstW + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
   }
   // what keeps a ride's driver out of the traffic's cars where you could see it (out of sight, as nothing
   // else holds a driver up there, it would only be late): never a step further into one (solid), and,
@@ -1305,7 +1317,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (d > 300 || d < 12) continue;
       const from = { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, plan = planRide(from, pickup);
       // (one stopped at a red light waits for its green first: a scramble's walk can be half a minute)
-      if (plan && c.v < 1 && c.lineArm && c.toLine < 12 && junctions.light(c.lineArm, c.lineEx) === 'r') plan.T += junctions.toGreen(c.lineArm);
+      if (plan && c.v < 1 && c.lineArm && c.toLine < 12 && !plan.firstSig && junctions.light(c.lineArm, c.lineEx) === 'r') plan.T += junctions.toGreen(c.lineArm);
       if (plan && plan.T <= RIDE_T[1] && (!best || plan.T < best.plan.T)) best = { c, from, plan };
     }
     let o = null;
@@ -1825,7 +1837,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // along its way, if the road behind it is clear, as a driver who pulled up too far does (#243: Shinjuku's
     // taxi stood 30 s so)
     if (!o.turn && !o.hold && st.v < 0.3 && !st.mv && !(st.backoff > 0)) {
-      const mutual = cars.C.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c : st.block === c) && Math.hypot(c.x - st.x, c.y - st.y) < 25);
+      const mutual = cars.C.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c || (st.block && st.block.of === c) : st.block === c || (st.block && st.block.of === c)) && Math.hypot(c.x - st.x, c.y - st.y) < 25); // (st.block: the car itself, or its stand-in as one stopped for good)
       o.mutJ = mutual ? (o.mutJ || 0) + dt : 0;
       if (o.mutJ > 2) { o.mutJ = -3; st.backoff = 1.5; o.yielded = (o.yielded || 0) + 1; }
     } else if (!(st.backoff > 0)) o.mutJ = 0;
@@ -2908,6 +2920,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const out = heli.toLocal(...p), near = out.distanceTo(heli.way.stand) < 2;
     boarding = { dir: -1, t: 0, out: near ? out : heli.way.stand.clone(), land: p };
     player.mode = 'board'; heli.st.on = false; heli.st.doorTo = 1;
+    if (coachHeli && coachHeli.active && coachHeli.id !== 'land') coachHeli.end(); // out before the end: again next flight
     if (cam.mode !== 'chase') { // from the cockpit or the bird's-eye view, a crane out to the chase camera
       const from = { pos: camera.position.clone(), look: live.look.clone() };
       cam.mode = 'chase'; camera.up.set(0, 1, 0);
@@ -2947,7 +2960,32 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.mode = 'heli'; heli.st.on = true; heli.st.doorTo = 0;
     player.rig.root.position.copy(heli.way.seat); player.rig.root.rotation.set(0, 0, 0);
     cam.mode = 'chase'; cam.distTo = 24; // pull back to the chase view; it swings behind once under way
-    H.toast('Door shut, rotor spooling up: it lifts at 90%. <kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> change view.');
+    if (!heliCoach()) H.toast('Door shut, rotor spooling up: it lifts at 90%. <kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> change view.');
+  }
+  // the first flight in this browser (any map): a short coach, a step at a time, each ticked off as you do
+  // it (onboard.js): wait for the rotor, climb, fly and turn, come down and land. Out before the end, it
+  // runs again on the next flight; finished or skipped, never again (the menu's Show the intro again resets it)
+  let coachHeli = null;
+  function heliCoach() {
+    if (coachHeli && coachHeli.active) return coachHeli;
+    const s = heli.st, z0 = s.z;
+    let top = z0, h0 = null, turned = 0, flew = false;
+    const watch = () => { top = Math.max(top, s.z); if (h0 != null) { turned = Math.max(turned, Math.abs(angDiff(s.h, h0))); } else if (!s.landed) h0 = s.h; if (s.speed > 10) flew = true; };
+    coachHeli = OEOnboard.coach('heli', [
+      { id: 'spool', title: 'The rotor spools up', done: () => { watch(); return s.rotor >= 0.9; },
+        text: 'The door is shut and the engine is starting. It can lift once the rotor reaches 90% (ROTOR, bottom left).',
+        touch: 'The door is shut and the engine is starting. It can lift once the rotor reaches 90% (ROTOR, bottom left).' },
+      { id: 'climb', title: 'Climb', done: () => { watch(); return top > z0 + 15; },
+        text: 'Hold <kbd>Space</kbd> to climb. Let go and it holds its height.',
+        touch: 'Hold <b>Up</b> to climb. Let go and it holds its height.' },
+      { id: 'fly', title: 'Fly and turn', done: () => { watch(); return flew && turned > 0.8; },
+        text: '<kbd>W</kbd> flies forward, <kbd>S</kbd> slows and backs off, <kbd>A</kbd>/<kbd>D</kbd> turn. <kbd>V</kbd> changes the view.',
+        touch: 'Push the stick forward to fly, back to slow down, and to either side to turn.' },
+      { id: 'land', title: 'Come down and land', done: () => { watch(); return s.landed && top > z0 + 15; },
+        text: 'Hold <kbd>C</kbd> to descend and set it down on open ground or a roof. Once down, <kbd>E</kbd> gets out.',
+        touch: 'Hold <b>Down</b> to descend and set it down on open ground or a roof. Once down, <b>E</b> gets out.' },
+    ], { label: 'First flight', onEnd: () => { coachHeli = null; } });
+    return coachHeli;
   }
   function stepOff() { // out: on your feet beside it, and the door swings shut
     const p = boarding.land;
@@ -3364,7 +3402,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // sun behind you by day
   // A city can steer it for the few landmarks the search gets wrong (city.json "arrivals", keyed by the label's
   // name): "front", the compass bearing its front faces (the arrival keeps within "arc" degrees of it, 70 if not
-  // given), "dist", how far back to stand in metres, or "at", a hand-picked spot [x, y] in the local frame.
+  // given), "dist", how far back to stand in metres, or "at", a hand-picked spot [x, y] in the local frame
+  // (with "look", the point [x, y] to face from it, where the landmark's middle is the wrong thing to face).
   // "top" frames a lower part than the label's top (metres above the ground): a theatre's front rather than the tower behind it.
   function standFor(lm, dbg = null) {
     const spec = ((scene.city && scene.city.arrivals) || {})[lm.name] || {};
@@ -3424,6 +3463,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       + (day ? 0.2 * Math.max(0, -((x - px) * sx + (y - py) * sy) / Math.hypot(x - px, y - py)) : 0);
     if (spec.at) { // a hand-picked spot: on it (or the nearest ground to it), facing the landmark
       const p = placeNear(spec.at[0], spec.at[1], Number.isFinite(spec.at[2]) ? spec.at[2] : null, null, 12);
+      if (p && spec.look) return { x: p[0], y: p[1], z: p[2], face: Math.atan2(spec.look[0] - p[0], spec.look[1] - p[1]), pitch: 0.2, tilt: 0 }; // (and what to face: a tunnel's mouth)
       if (p) { const v = view(p[0], p[1], p[2], true); return { x: p[0], y: p[1], z: p[2], face: v.face, pitch: v.pitch, tilt: v.tilt }; }
     }
     // room for the chase camera behind you: the line from your head to where it will stand, as the rig tests it
@@ -3625,7 +3665,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!p) return null;
     // high up on a landmark (a deck the city names as a place): facing out over the city, as from its deck
     const lm = p[2] - Math.max(0, nav.terrain(p[0], p[1])) > 60 && landmarks.find(l => deckOf(l) && Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) < 150);
-    return lm ? { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: DECK_PITCH } : { x: p[0], y: p[1], z: p[2] };
+    if (lm) return { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: DECK_PITCH };
+    // else facing what the place is for (game.travel "look": a gate's mouth, the view), or the landmark there
+    const look = d.kind === 'place' ? lookOf(d, p) : null;
+    return look ? { x: p[0], y: p[1], z: p[2], face: Math.atan2(look[0] - p[0], look[1] - p[1]), pitch: 0.2 } : { x: p[0], y: p[1], z: p[2] };
+  }
+  // what you face on arriving at a travel place: its own "look" [x, y], or else the nearest landmark's label
+  // within 200 m (not one you stand on), so you arrive looking at what you came for, not wherever you last faced
+  function lookOf(t, p = t.at) {
+    if (t.look) return t.look;
+    let best = null, bd = 200;
+    for (const q of Object.values(scene.labels || {})) { const e = Math.hypot(q[0] - p[0], q[1] - p[1]); if (e > 8 && e < bd) { bd = e; best = q; } }
+    return best;
   }
   function travelTo(d) { // a shot playing (the start, a survey) is skipped by the hop, which plays its cues
     if (d.kind === 'district') { // another map of the city: saved here, then that map loads and you arrive at the station
@@ -3682,7 +3733,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     quick.push({ kind: 'start', id: 'start', name: 'Where you started', at: G.start.at });
     const near = l => l.sort((a, b) => Math.hypot(a.at[0] - player.x, a.at[1] - player.y) - Math.hypot(b.at[0] - player.x, b.at[1] - player.y));
     return [
-      ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at }))],
+      ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look }))],
       ['Landmarks', landmarks],
       ['Trig stations', near(VP.map(v => ({ kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] })))],
       ['Ferry wharves', near(G.wharves.map(w => ({ kind: 'wharf', id: w.id, name: w.name, at: w.landing })))],
@@ -3791,7 +3842,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const icon = (ic, x, y, d) => { H.drawIcon(g, ic, x / dpr, y / dpr); marks.push([x / dpr - 7, y / dpr - 7, x / dpr + 7, y / dpr + 7]); if (d) bigPins.push({ x: x / dpr, y: y / dpr, d }); };
     // the landmarks and travel points; their names go on last, over everything but the player, the city's first
     // ones first, each beside its pin where it covers no other pin or name (else left off: a pin names itself when picked)
-    const named = [...(G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at })), ...landmarks];
+    const named = [...(G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look })), ...landmarks];
     for (const d of named) icon({ kind: d.kind }, ...P2(d.at[0], d.at[1]), d);
     if (region) for (const d of region.stations) icon({ kind: 'district' }, ...P2(d.at[0], d.at[1]), d);
     for (const w of G.wharves) icon({ kind: 'wharf' }, ...P2(...w.terminal), { kind: 'wharf', id: w.id, name: w.name, at: w.landing });
@@ -4064,7 +4115,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
   on($('#gm-sound'), 'change', e => A.setMuted(!e.target.checked));
-  on($('#gm-intro'), 'click', () => { $('#g-menu').hidden = true; startTour(); });
+  on($('#gm-intro'), 'click', () => { $('#g-menu').hidden = true; OEOnboard.forgetCoaches(); startTour(); }); // (and the first flight's coach again)
   // the map's overture again, from wherever you are: it ends where it always does (overture.js)
   on($('#gm-overture'), 'click', () => { $('#g-menu').hidden = true; if (overture && !overture.active && player.mode === 'foot') overture.play(null); });
   on($('#gm-reset'), 'click', () => {
@@ -4178,7 +4229,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
     const arrive = !cont && window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
-    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined);
+    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;
@@ -4486,6 +4537,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       A.engine(0.3 + Math.min(1, Math.abs(v.speed) / 9) * 0.7);
       player.rig.animate(dt, 0, 'ground', clockT);
     }
+    if (coachHeli) coachHeli.update(dt); // (on into the step out, once landed)
     if (player.mode !== 'heli') { heli.update(dt, {}, []); A.rotor(heli.st.rotor * Math.max(0, 1 - Math.hypot(heli.st.x - player.x, heli.st.y - player.y) / 300)); }
     if (player.mode !== 'heli' && player.mode !== 'board') heliToPad();
     if (waitFerry && (player.mode !== 'foot' || !nearWharf(player.x, player.y, 40))) waitFerry = null;
@@ -4518,12 +4570,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let gaze = null;
     for (const n of npcs) {
       const d = Math.hypot(player.x - n.x, player.y - n.y);
-      if (d < 5 && player.mode === 'foot') n.h += angDiff(Math.atan2(player.x - n.x, player.y - n.y), n.h) * Math.min(1, dt * 4);
+      if (d < 5 && player.mode === 'foot' && !n.sit) n.h += angDiff(Math.atan2(player.x - n.x, player.y - n.y), n.h) * Math.min(1, dt * 4);
       n.rig.root.rotation.y = Math.PI - n.h;
       // look at the player when close; the player looks at whoever they are talking to
       n.rig.lookTarget = d < 9 && player.mode === 'foot' ? n.eyes.copy(W(player.x, player.y, player.z + 1.55)) : null;
       if (n.talking) gaze = W(n.x, n.y, n.z + 1.55);
-      n.rig.animate(dt, 0, n.talking ? 'talk' : 'ground', clockT + n.pitch);
+      n.rig.animate(dt, 0, n.sit ? 'sit' : n.talking ? 'talk' : 'ground', clockT + n.pitch);
     }
     player.rig.lookTarget = gaze;
     const cx = player.mode === 'heli' ? heli.st.x : player.x, cy = player.mode === 'heli' ? heli.st.y : player.y;
@@ -4585,6 +4637,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const calm = active && !dlg.open && !uiOpen() && phone.el.hidden && !photo.on && !document.querySelector('[data-hush]:not([hidden])');
       places.update(dt, player.x, player.y, player.z, active, calm);
     }
+    if (doors && doors.doors.length) {
+      // (you open them: the locals stand or sit where they are, and one at a table near the door
+      // mustn't hold it open)
+      doors.update(dt, [player.mode === 'foot' ? player : null]);
+      const r = player.mode === 'foot' ? doors.roomAt(player.x, player.y, player.z) : null;
+      if (r !== room) { if (r && !cine.active) H.toast(`<b>${r.name}</b>${r.note ? `<span>${r.note}</span>` : ''}`); room = r; }
+    }
   }
 
   // on foot, m/s: a stroll, the default run (the surveyors' run clip is cut at 5.4 to 5.8 m/s, so it plays
@@ -4645,15 +4704,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // steps take you through whatever stands beside them (a well's rim, the floor you come up through). Where its
     // flat ends lie flush with a floor a hair higher than them (a landing's stone, a deck's boards), the floor is
     // the one stood on, yet the steps under it still carry you
+    // (and at its far end it sets you down on the landing, as the steps going under the comb do: on past the
+    // strip's end by a metre where the floor takes you, so that no one is left standing on the comb)
     const esc = player.ground && (nav.strips.find(s => s.moving_ms && s.name === player.floor) ||
-      nav.strips.find(s => { if (!s.moving_ms) return false; const h = nav.stripHeight(s, player.x, player.y); return h != null && Math.abs(h - player.z) < 0.15; }));
+      nav.strips.find(s => { if (!s.moving_ms) return false; const h = nav.stripHeight(s, player.x, player.y); return h != null && Math.abs(h - player.z) < 0.15; }) ||
+      (player.escOff && player.ground ? player.escOff : null));
     if (esc) {
-      const [u] = nav.stripUV(esc, player.x, player.y), mu = esc.moving_u || [-Infinity, Infinity];
-      if (u >= mu[0] && u <= mu[1]) {
+      const [u] = nav.stripUV(esc, player.x, player.y), mu = esc.moving_u || [-Infinity, Infinity], end = esc.us[esc.us.length - 1] + 1.0;
+      player.escOff = u > mu[1] && u < end ? esc : null;
+      if (u >= mu[0] && u < end) {
         const nx = player.x + esc.axis[0] * esc.moving_ms * dt, ny = player.y + esc.axis[1] * esc.moving_ms * dt;
-        if (nav.stripHeight(esc, nx, ny) != null) { player.x = nx; player.y = ny; }
+        if (nav.stripHeight(esc, nx, ny) != null) { player.x = nx; player.y = ny; } else if (u > mu[1]) {
+          const w = nav.walk(nx, ny, player.z);
+          if (w.ok && Math.abs(w.z - player.z) < 0.15) { player.x = nx; player.y = ny; } else player.escOff = null;
+        }
       }
-    }
+    } else player.escOff = null;
     const f = nav.floorAt(player.x, player.y, player.z);
     const floorZ = f ? f.z : player.z;
     if (f) player.floor = f.kind;
@@ -5260,7 +5326,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

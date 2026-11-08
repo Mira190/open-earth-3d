@@ -1083,14 +1083,15 @@ window.OECars = (function () {
         // (and one it has begun to swing out round stays one while it stands there: its held time is
         // reset at a red light, and the car would else drop out and back in from frame to frame)
         // (nor one whose car ahead is moving off: a queue that has begun to move, its tail not yet off)
-        const oq = queueing(o, ruledQ);
-        const stopped = !oq && !(o.front && (o.front.v || 0) >= 0.5) && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - (a + half) > 2 * C.half + 8 || !o.stay); // (not one parked where it is to pull in: one parked short of it, with room past it to pull back in to the kerb, it goes round, and pulls in beside you, not 20 m back behind it)
+        const oq = queueing(o, ruledQ), oc = o.of || o;
+        // (nor one that stands waiting on this very ride: it is not stopped for good, and the ride backs off for it instead, game.js)
+        const stopped = !oq && !(oc.why === 'you' && /^ride/.test(oc.youBy || '')) && !(o.front && (o.front.v || 0) >= 0.5) && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - (a + half) > 2 * C.half + 8 || !o.stay); // (not one parked where it is to pull in: one parked short of it, with room past it to pull back in to the kerb, it goes round, and pulls in beside you, not 20 m back behind it)
         // (side by side, clear; a stopped car in its lane is judged by the lane, not by where it has
         // swung out to: else, once out, it would count as clear, swing back in, and so on every frame)
         if (Math.abs(w - lane - (stopped ? 0 : st.shift)) >= room) continue;
         if (stopped) {
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
-          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); o.whyRound = o.still === true ? 'flagged still' : o.still > 6 ? `stood ${o.still.toFixed(0)} s` : st.held > 6 && (o.v || 0) < 0.1 ? `held ${st.held.toFixed(0)} s` : 'went round already'; continue; }
+          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); o.whyRound = (o.still === true ? 'flagged still' : o.still > 6 ? `stood ${o.still.toFixed(0)} s` : st.held > 6 && (o.v || 0) < 0.1 ? `held ${st.held.toFixed(0)} s` : 'went round already') + (o.why != null ? ` as ${o.why || '-'}${o.youBy ? ' (' + o.youBy + ')' : ''}${o.front ? ' behind ' + (o.front.why || '-') + (o.front.q ? ' q' : '') : ''}` : ''); continue; } // (and what it stood for, for the checks)
         }
         if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = oq; }
       }

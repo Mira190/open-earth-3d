@@ -100,11 +100,24 @@ def adjust_building(b, cls, g, geoms, ctx):
     return geoms
 
 
-def terraces(M):
-    """Each terrace of a measured building: walls glazed from its ground to its roof, a flat roof."""
+def terraces(M, cut=None, cut_top=None):
+    """Each terrace of a measured building: walls glazed from its ground to its roof, a flat roof. Where `cut` (a ring)
+    is drawn as a room of its own (the restaurant's dining room, interiors.py), the terraces are cut round it, and
+    what of a terrace stood over it above cut_top is kept, standing on the room's roof."""
+    from shapely.geometry import Polygon
     wall = Mesh("skyline_complex_glass", "skyline_glass", False, uv=True)
     roof = Mesh("skyline_complex_roof", "skyline_roof", False)
+    pieces = []
     for t in M["tiers"]:
+        if cut is None or not Polygon(t["ring"]).intersects(Polygon(cut)):
+            pieces.append(t)
+            continue
+        poly, hole = Polygon(t["ring"]).buffer(0), Polygon(cut)
+        for part, ground, top in [(poly.difference(hole), t["ground"], t["top"])] + ([(poly.intersection(hole), cut_top, t["top"])] if t["top"] > cut_top + 0.3 else []):
+            for g in getattr(part, "geoms", [part]):
+                if g.geom_type == "Polygon" and g.area > 2.0:
+                    pieces.append({"ring": [list(q) for q in list(g.exterior.coords)[:-1]], "ground": ground, "top": top})
+    for t in pieces:
         ring = t["ring"]
         area = 0.5 * sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:] + ring[:1]))
         if area < 0:
@@ -115,10 +128,9 @@ def terraces(M):
             L = math.hypot(b[0] - a[0], b[1] - a[1])
             wall.quad([a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], [[u, z0], [u + L, z0], [u + L, z1], [u, z1]])
             u += L
-        # the roof: a fan from the centroid (the terraces' outlines are cell unions, near convex pieces)
-        cx, cy = np.mean(ring, axis=0)
-        for a, b in zip(ring, ring[1:] + ring[:1]):
-            roof.tri([cx, cy, z1], [a[0], a[1], z1], [b[0], b[1], z1])
+        # the roof (ear-clipped: a terrace cut round the dining room is no longer near convex)
+        import archkit as ak
+        ak.cap(roof, lambda x, y, zz: (x, y, zz), [tuple(p) for p in ring], z1)
     return [wall, roof]
 
 
@@ -327,24 +339,26 @@ def deck_meshes(ground):
 
 
 def back_fill(ground):
-    """Between the deck's back edge and the restaurant's glass the LiDAR's terraces stand 2-9 m back (the face is
-    not parallel to the deck). That gap is closed by a graphite steel planter 0.45 m high along the deck's back
-    edge and a planted bed at its top behind it, out to the terraces' faces, with a fascia under its edge so
-    nothing opens beneath. The planter is solid to the game's walkers, who keep to the deck."""
-    from shapely.geometry import Point, Polygon
+    """Between the deck's back edge and the dining room's glass (interiors.py HALL), 1.25 m: a graphite steel planter
+    0.45 m high along the deck's back edge and a planted bed at its top behind it, back to the glass, with a fascia
+    under its edge so nothing opens beneath, open where the restaurant's doors are. The planter is solid to the
+    game's walkers, who keep to the deck and go in through the doors."""
     c, ax, out, z = deck_frame(ground)
     L, D = DECK["length"], DECK["depth"]
-    tiers = [Polygon(t["ring"]) for M in massing_data().values() for t in M["tiers"] if t["top"] > z + 1]
+    H = _sibling("interiors").HALL
     steel, bed = Mesh("skyline_planter", "planter_steel", False), Mesh("skyline_planter_bed", "planter_bed", False, uv=True)
     P = lambda u, v, h=0.0: [*(c + ax * u + out * v), z + h]
-    us = np.linspace(-L / 2, L / 2, 27)
-    back = []
-    for u in us:
-        d = 0.6
-        while d < 12 and not any(t.contains(Point(*(c + ax * u - out * (D / 2 + d)))) for t in tiers):
-            d += 0.1
-        back.append(min(d, 12) + 0.15)                       # into the wall a little, so no seam shows
+    gap = (H["door_u"] - H["door_w"] / 2 - 0.3, H["door_u"] + H["door_w"] / 2 + 0.3)
     hp = 0.45
+    for us in (np.linspace(-L / 2, gap[0], 12), np.linspace(gap[1], L / 2, 8)):
+        back = [-H["v0"] - D / 2 + 0.05] * len(us)
+        _planter(steel, bed, P, us, back, D, hp)
+    # the planting: the shared tussock (blender/build_trees.py), scattered over the bed in the browser (city.json
+    # trees.tussock beds, web/world.js)
+    return [steel, bed]
+
+
+def _planter(steel, bed, P, us, back, D, hp):
     for k in range(len(us) - 1):
         u0, u1, b0, b1 = us[k], us[k + 1], back[k], back[k + 1]
         v0f, v1f = -D / 2, -D / 2                             # the planter's face, at the deck's back edge
@@ -358,9 +372,6 @@ def back_fill(ground):
         steel.quad(P(u0, v0f, -0.45), P(u1, v1f, -0.45), P(u1, v1f, 0), P(u0, v0f, 0))
     for u, b in ((us[0], back[0]), (us[-1], back[-1])):      # its ends
         steel.quad(P(u, -D / 2, -0.45), P(u, -D / 2 - b, -0.45), P(u, -D / 2 - b, hp), P(u, -D / 2, hp))
-    # the planting: the shared tussock (blender/build_trees.py), scattered over the bed in the browser (city.json
-    # trees.tussock beds, web/world.js)
-    return [steel, bed]
 
 
 def lift_frame(ground):
@@ -543,17 +554,24 @@ def door_leaf(glass, frame, P, a, d0, d1, zd, h):
         cuboid(frame, P, a - 0.02, a + 0.02, b0, b1, z0, z1)
 
 
+def interiors(T):
+    """The rooms you walk into (interiors.py): (meshes, doors, rooms, surfaces, glows, seats)."""
+    return _sibling("interiors").build(T, deck_frame)
+
+
 def landmark_glows(scene):
     """The deck after dark: the warm light its handrail's LED strip and the step lights put down on the boards, in
-    soft pools along the balustrade (web/night.js; [x, y, radius m, colour, strength])."""
+    soft pools along the balustrade, and the lamps' pools on the rooms' floors (web/night.js; [x, y, radius m, colour,
+    strength])."""
     from archkit import Terrain
-    c, ax, out, z = deck_frame(Terrain("queenstown"))
+    T = Terrain("queenstown")
+    c, ax, out, z = deck_frame(T)
     L, D = DECK["length"], DECK["depth"]
     pts = []
     for u in np.arange(-L / 2 + 1.5, L / 2 - 1.0, 2.6):
         q = c + ax * u + out * (D / 2 - 1.1)
         pts.append([round(float(q[0]), 1), round(float(q[1]), 1), 2.6, "#ffe0bc", 0.022])
-    return pts
+    return pts + interiors(T)[4]
 
 
 def game_extras(scene):
@@ -575,7 +593,8 @@ def game_extras(scene):
            "slide": [round(float(-out[0] * (d1 - d0)), 3), round(float(-out[1] * (d1 - d0)), 3)],
            "doors": [{"stop": 1, "landing": ["skyline_lift_door_top", "skyline_lift_door_top_frame"], "car": ["skyline_lift_car_door_ne", "skyline_lift_car_door_ne_frame"]},
                      {"stop": 0, "landing": ["skyline_lift_door_foot", "skyline_lift_door_foot_frame"], "car": ["skyline_lift_car_door_sw", "skyline_lift_car_door_sw_frame"]}]}
-    return {"lifts": [{"id": "skyline-lift", "name": "Skyline glass lift", "line": "SKYLINE GLASS LIFT · LUGE TRACK → DECK", "m_per_min": LIFT["m_per_min"],
+    _, doors, rooms, _, _, _ = interiors(Terrain("queenstown"))
+    return {"doors": doors, "interiors": rooms, "lifts": [{"id": "skyline-lift", "name": "Skyline glass lift", "line": "SKYLINE GLASS LIFT · LUGE TRACK → DECK", "m_per_min": LIFT["m_per_min"],
                        "car": car,
                        "stops": [{"name": "The luge track", "at": foot, "face": face_sw, "floor": round(float(g), 2)},
                                  {"name": "The Skyline deck", "at": top, "face": face_out, "floor": round(float(z), 2)}]}]}
@@ -589,7 +608,7 @@ def game_surfaces(scene):
     return [{"name": "Skyline deck", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
              "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)], "half_width": DECK["depth"] / 2,
              "profile": [[-L / 2, round(z, 2)], [L / 2, round(z, 2)]], "thickness": 0.25, "mesh": "skyline_deck",
-             "drape": False, "fly_under": False, "label": "the Skyline deck"}]
+             "drape": False, "fly_under": False, "label": "the Skyline deck"}] + interiors(t)[3]
 
 
 def finalize(ctx):
@@ -613,12 +632,16 @@ def landmark_meshes(scene):
     meshes += deck_meshes(T)
     meshes += back_fill(T)
     meshes += lift_meshes(T)
+    inside = _sibling("interiors")
+    c, ax, out, z = deck_frame(T)
     for M in massing_data().values():
-        meshes += terraces(M)
+        meshes += terraces(M, cut=inside.hall_ring(c, ax, out, 0.25), cut_top=z + inside.HALL["roof"])
     heritage = _sibling("heritage")
     hm, hidden = heritage.meshes(T)
     site = _sibling("site")   # the drawn floor round the restaurant, with the photograph clipped from under it
-    return {**MATERIALS, **heritage.MATERIALS, **site.MATERIALS}, meshes + hm + [site.floor_mesh()] + site.luge_meshes(), {"hidden": hidden, "clip": site.clip_regions()}
+    im = interiors(T)[0]      # the rooms you walk into
+    return ({**MATERIALS, **heritage.MATERIALS, **site.MATERIALS, **inside.MATERIALS}, meshes + hm + im + [site.floor_mesh()] + site.luge_meshes(),
+            {"hidden": hidden, "clip": site.clip_regions()})
 
 
 def landmark_assets(out_dir, scene):

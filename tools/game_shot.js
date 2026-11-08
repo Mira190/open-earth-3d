@@ -16,7 +16,7 @@
 // "up": seconds up (or down, negative) between its rails, with the panel up: a screenshot of the page, not the canvas;
 // "street": true stands on the ground there rather than on the roof over it; "z": on the floor
 // nearest that level, as under a slab; "ferry": {to, at} aboard a vessel that far along its leg to that wharf;
-// "scramble": "walk" or "wait" runs on to that moment of the
+// "hide": [mesh names] leaves those landmark meshes out; "scramble": "walk" or "wait" runs on to that moment of the
 // nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera)
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
@@ -163,6 +163,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         if (v.yaw != null) Object.assign(g.cam, { yaw: v.yaw, yawTo: null, distTo: 0, dist: v.dist ?? g.cam.dist, pitch: v.pitch ?? g.cam.pitch });
         g.hold(true); g.advance(0.05);
       }
+      // "hide": [mesh names] not drawn, to see what shows through (a gap in a landmark)
+      for (const n of v.hide || []) { const o = g.Wd.world.getObjectByName(n); if (o) o.visible = false; }
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
         g.photoMode(true);

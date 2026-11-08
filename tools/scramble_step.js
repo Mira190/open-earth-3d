@@ -52,9 +52,11 @@ module.exports = async function scrambles(p, { all = false } = {}) {
           if (q.pz === pz && q.ph === 'wait' && w && w.n >= 3 + BACK) {
             waitLooks++;
             const b = w.past[0], tu = Math.abs(Math.atan2(Math.sin(q.h - b.h), Math.cos(q.h - b.h))) > 0.52, stp = Math.hypot(q.x - b.x, q.y - b.y) > 0.5;
-            if (tu || stp) { fidgets++; if (tu) turnsF++; if (stp) stepsF++; }
+            // (each turn or step counted once, as it begins: seen over 3 s, one shuffle is in six looks one after another)
+            if ((tu || stp) && !w.fid) { fidgets++; if (tu) turnsF++; if (stp) stepsF++; }
+            w.fid = tu || stp;
           }
-          if (q.pz === pz && q.ph === 'wait') { const past = w ? w.past : []; past.push({ h: q.h, x: q.x, y: q.y }); if (past.length > BACK) past.shift(); stood.set(q, { past, n: w ? w.n + 1 : 1 }); } else stood.delete(q); // (n: its looks waiting so far; the first second and a half, turning round to the road from the way it came, is arriving, not fidgeting)
+          if (q.pz === pz && q.ph === 'wait') { const past = w ? w.past : []; past.push({ h: q.h, x: q.x, y: q.y }); if (past.length > BACK) past.shift(); stood.set(q, { past, n: w ? w.n + 1 : 1, fid: w ? w.fid : false }); } else stood.delete(q); // (n: its looks waiting so far; the first second and a half, turning round to the road from the way it came, is arriving, not fidgeting)
         }
         const P = C.P.slice(0, C.active), out = P.filter(q => onPlaza(q) || onFoot(q));
         const shown = H && H.walkShown ? H.walkShown(j) : [];

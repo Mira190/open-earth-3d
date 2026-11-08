@@ -583,6 +583,115 @@
           "On a clear day you can see Walter Peak and Cecil Peak from right over the bay. The lake does the rest.",
           "Down the lake past the peninsula and back: ten minutes and the best view in Otago."
         ]
+      },
+      {
+        "id": "ana",
+        "name": "Ana",
+        "role": "Dining at the Skyline",
+        "at": [-980.98, 479.94, 474.6],
+        "sit": {"face": [0.649, -0.76]},
+        "look": {
+          "character": "R_Female_Adult_04",
+          "skin": "#c99a76",
+          "hair": "#1a1412",
+          "top": "#7a2f3a",
+          "legs": "#22252b",
+          "clip": "Drink"
+        },
+        "idle": ["We come up for the light. Watch the Remarkables go pink when the sun's behind Walter Peak.", "My nana worked the gondola in the seventies. Four-seater cabins then, painted orange."]
+      },
+      {
+        "id": "tom",
+        "name": "Tom",
+        "role": "Dining at the Skyline",
+        "at": [-979.56, 479.36, 474.6],
+        "sit": {"face": [-0.649, 0.76]},
+        "look": {
+          "character": "R_Male_Adult_06",
+          "skin": "#e2b99c",
+          "hair": "#4a3424",
+          "top": "#2b3a4a",
+          "legs": "#2a2c30",
+          "clip": "Talk"
+        },
+        "idle": ["Lamb from Central Otago and a pinot from Gibbston. Can't go wrong.", "The deck's new this year. You can see right down the luge track."]
+      },
+      {
+        "id": "priya",
+        "name": "Priya",
+        "role": "Visiting from Auckland",
+        "at": [-973.07, 486.69, 474.6],
+        "sit": {"face": [0.649, -0.76]},
+        "look": {
+          "character": "R_Female_Adult_17",
+          "skin": "#a87452",
+          "hair": "#0f0b0a",
+          "top": "#d9c7a8",
+          "legs": "#1e2126",
+          "clip": "Phone"
+        },
+        "idle": ["First time in Queenstown. The lake's bluer than the photos.", "We're doing the Earnslaw tomorrow, out to Walter Peak."]
+      },
+      {
+        "id": "rawiri",
+        "name": "Rawiri",
+        "role": "Skyline waiter",
+        "at": [-983.28, 484.71, 474.6],
+        "look": {
+          "character": "R_Male_Adult_09",
+          "skin": "#8f5b3c",
+          "hair": "#14100d",
+          "top": "#1b1c1f",
+          "legs": "#1b1c1f",
+          "clip": "Present"
+        },
+        "idle": ["Kia ora! The buffet's open till nine. The mussels are from the Marlborough Sounds.", "Best table's the corner by the glass. You get the Remarkables and the town both."]
+      },
+      {
+        "id": "margaret",
+        "name": "Margaret",
+        "role": "St Peter's parishioner",
+        "at": [34.41, -182.48, 5.07],
+        "sit": {"face": [0.861, 0.509]},
+        "look": {
+          "character": "R_Female_Adult_09_f011_grey",
+          "skin": "#efcfb8",
+          "hair": "#bdbdbd",
+          "top": "#3d4f6b",
+          "legs": "#2a2c30",
+          "clip": "Reading"
+        },
+        "idle": ["The stone came off the lake shore in 1932. My grandfather carted some of it.", "The east window's the Call of St Peter. It's for the parish's men lost in the war."]
+      },
+      {
+        "id": "david",
+        "name": "Reverend David",
+        "role": "Vicar of St Peter's",
+        "at": [38.98, -183.73, 5.07],
+        "look": {
+          "character": "R_Male_Adult_13_m017_grey",
+          "skin": "#e6c0a4",
+          "hair": "#9a9a9a",
+          "top": "#141518",
+          "legs": "#141518",
+          "clip": "Thoughtful"
+        },
+        "idle": ["Welcome. The church is open every day. The first St Peter's here was timber, in 1863.", "The roof's rimu and the font's older than the building. Have a look round."]
+      },
+      {
+        "id": "lucy",
+        "name": "Lucy",
+        "role": "Williams Cottage shopkeeper",
+        "at": [-11.5, -271.5, 2.21],
+        "look": {
+          "character": "R_Female_Adult_15",
+          "skin": "#ead0bc",
+          "hair": "#6b4a2e",
+          "top": "#c6a56b",
+          "legs": "#2b2f36",
+          "clip": "Work"
+        },
+        "idle": ["This is one of the oldest houses in Queenstown, 1864. The schist chimney's original.", "The flood in 1999 came right up to the verandah. The lake's only across the road."]
       }
     ],
     "lines": [
