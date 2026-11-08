@@ -57,6 +57,7 @@ SEG_M = 4.0        # ring vertices this far apart at most (a channel's level cha
 BANK_OUT_M = (2.5, 5.0, 8.0)  # a wall's bank: the highest ground this far outside it, on its own side
 SMOOTH_M = 80.0    # a channel's bank smoothed over this length along it
 BANK_RISE_M = 2.5  # a channel's higher bank (on a slope) at most this much over its lower one
+STEPS_CLEAR_M = 1.5  # a flight of steps down to a sunken promenade starts this far past its crossing's deck
 ROAD_HALF = {"motorway": 9.0, "trunk": 8.0, "primary": 7.0, "secondary": 6.0, "tertiary": 5.0, "residential": 3.5,
              "unclassified": 3.5, "living_street": 3.0, "service": 2.5, "pedestrian": 3.0, "footway": 1.5, "path": 1.2,
              "steps": 1.5, "cycleway": 1.5, "track": 2.0}
@@ -243,54 +244,106 @@ def terrace_of(L, p, s, low, sides, spec):
 def steps_of(body, D, spec_d):
     """Flights of steps down to a sunken promenade from the streets that cross it: beside each crossing, on its
     downstream face, along the wall on one bank and then the other (the Horikawa's entrances open off the
-    pavements and the crossings, Kyoto City). [x, y, ux, uy (down the flight), nx, ny (to the wall), z top,
-    z bottom, width, run] per flight."""
+    pavements and the crossings, Kyoto City). A crossing is a deck that cuts the channel in two (not a bank lane's
+    sliver of deck along one wall), and each flight starts STEPS_CLEAR_M past the deck's own edge on the flight's
+    line (clear of a mapped bridge's deck, which web/game/decks.js lays wider than the road), where the pavement
+    beside it opens onto its top through the railing (web/inland.js). [x, y, ux, uy (down the flight), nx, ny (to the wall),
+    z top, z bottom, width, run] per flight."""
     L, p, s, low, sides = body["_line"], body["_poly"], body["_s"], body["_low"], body["_sides"]
     T = body["_terrace"]
     width, rise, tread = T.get("steps_m", 1.4), 0.16, 0.3
     out, k = [], 0
-    spans = []
+    crossings = []
     for d in D:
         if not d.intersects(p):
             continue
+        rest = [q for q in polygons(p.difference(d)) if q.area > 15.0]
+        if len(rest) < 2:
+            continue   # (it does not reach across)
         st = [L.project(Point(x, y)) for x, y in d.exterior.coords]
-        spans.append((min(st), max(st)))
-    spans.sort()
+        crossings.append([min(st), max(st), d])
+    crossings.sort(key=lambda c: c[0])
     merged = []
-    for a, b in spans:   # (a crossing's carriageway and its pavements, one crossing)
+    for a, b, d in crossings:   # (a crossing's carriageway and its pavements, one crossing)
         if merged and a <= merged[-1][1] + 4.0:
             merged[-1][1] = max(merged[-1][1], b)
+            merged[-1][2] = merged[-1][2].union(d)
         else:
-            merged.append([a, b])
-    spans = merged
-    for i, (a, b) in enumerate(spans):
+            merged.append([a, b, d])
+    stream = L.buffer(T.get("stream_m", 2.5) / 2 + 0.3, cap_style="flat")
+    decked = unary_union(D) if D else None
+    inside = p.buffer(0.05)
+    for i, (a, b, dk) in enumerate(merged):
         s0 = b + 0.3
-        half = None
-        side = 1 if k % 2 == 0 else -1
+        nxt = merged[i + 1][0] if i + 1 < len(merged) else L.length
         c = L.interpolate(min(L.length, s0))
         q = L.interpolate(min(L.length, s0 + 1.0))
         ux, uy = q.x - c.x, q.y - c.y
         n = np.hypot(ux, uy) or 1.0
         ux, uy = ux / n, uy / n
-        nx, ny = -uy * side, ux * side
-        # the wall on that side: out from the line until off the channel
-        for o in np.arange(0.5, 15.0, 0.25):
-            if not p.contains(Point(c.x + nx * o, c.y + ny * o)):
-                half = o
-                break
-        if half is None:
-            continue
-        sd = sides[1 if side == 1 else 0]
-        ztop = float(np.interp(s0, s, sd))
-        zbot = float(np.interp(s0, s, low)) - spec_d["bank_to_water_m"] + T.get("path_m", 0.35)
-        run = max(0.0, (ztop - zbot)) / rise * tread
-        nxt = spans[i + 1][0] if i + 1 < len(spans) else L.length
-        if s0 + run + 1.0 > nxt or ztop - zbot < 0.5:
-            continue
-        o = half - 0.08 - width / 2
-        out.append([c.x + nx * o, c.y + ny * o, ux, uy, nx, ny, ztop, zbot, width, run])
-        k += 1
+        # on one bank and then the other; the other bank where the first will not take it (the channel narrows or
+        # bends, a deck runs on down it)
+        for side in ((1, -1) if k % 2 == 0 else (-1, 1)):
+            f = flight_at(L, p, s, low, sides, spec_d, T, c, ux, uy, side, dk, width, rise, tread)
+            if f is None:
+                continue
+            x0, y0, nx, ny, ztop, zbot, run, st0 = f
+            if st0 + run + 1.0 > nxt or ztop - zbot < 0.5:
+                continue
+            # its footprint and a landing past its foot: in the channel, clear of the stream and of every deck; and
+            # floor beside its foot to walk on from
+            vx, vy = -nx, -ny
+            rect = Polygon([(x0 + vx * sv * width / 2 + ux * su, y0 + vy * sv * width / 2 + uy * su)
+                            for su, sv in ((-0.4, -1), (run + 1.0, -1), (run + 1.0, 1), (-0.4, 1))])
+            foot = Point(x0 + ux * (run + 1.0) + vx * (width / 2 + 0.8), y0 + uy * (run + 1.0) + vy * (width / 2 + 0.8))
+            if not inside.contains(rect) or rect.intersects(stream) or (decked is not None and rect.intersects(decked)):
+                continue
+            if not inside.contains(foot) or stream.contains(foot) or (decked is not None and decked.contains(foot)):
+                continue
+            out.append([x0, y0, ux, uy, nx, ny, ztop, zbot, width, run])
+            k += 1
+            break
     return out
+
+
+def flight_at(L, p, s, low, sides, spec_d, T, c, ux, uy, side, dk, width, rise, tread):
+    """A flight of steps down along the wall on `side` of the line, STEPS_CLEAR_M past the crossing's deck dk: (x, y
+    of its top, nx, ny to the wall, z top, z bottom, run, its place along the line), or None."""
+    nx, ny = -uy * side, ux * side
+    half = None
+    for o in np.arange(0.5, 15.0, 0.25):   # the wall on that side: out from the line until off the channel
+        if not p.contains(Point(c.x + nx * o, c.y + ny * o)):
+            half = o
+            break
+    if half is None:
+        return None
+    o = half - 0.08 - width / 2
+    # the deck's edge on the flight's line: back up the channel until on the deck, then down to its edge
+    ax_, ay_ = c.x + nx * o, c.y + ny * o
+    on = lambda t: dk.contains(Point(ax_ + ux * t, ay_ + uy * t))
+    t = 0.0
+    while t > -12.0 and not on(t):
+        t -= 0.1
+    if t <= -12.0:
+        return None
+    while on(t + 0.05) and t < 12.0:
+        t += 0.05
+    t += STEPS_CLEAR_M
+    x0, y0 = ax_ + ux * t, ay_ + uy * t
+    st0 = L.project(Point(x0, y0))
+    ztop = float(np.interp(st0, s, sides[1 if side == 1 else 0]))
+    zbot = float(np.interp(st0, s, low)) - spec_d["bank_to_water_m"] + T.get("path_m", 0.35)
+    run = max(0.0, (ztop - zbot)) / rise * tread
+    # against the wall all along: the nearest the wall comes to the flight's line between its top and its foot
+    gap = []
+    for a in np.linspace(-0.4, run + 1.0, 8):
+        bx, by = x0 + ux * a, y0 + uy * a
+        g = next((e for e in np.arange(-1.5, 3.0, 0.05) if not p.contains(Point(bx + nx * e, by + ny * e))), None)
+        if g is None:
+            return None
+        gap.append(g)
+    shift = min(gap) - width / 2 - 0.08
+    return x0 + nx * shift, y0 + ny * shift, nx, ny, ztop, zbot, run, st0
 
 
 def polygon_body(C, at, cell, name, cls, poly, rule):
