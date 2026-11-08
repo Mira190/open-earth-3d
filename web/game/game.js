@@ -703,6 +703,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     rig.root.position.copy(W(o.x, o.y, o.z));
     rig.root.rotation.y = Math.PI - o.h;
     npcs.push(o);
+    posts.add(o.x, o.y, o.z, 0.22, 'npc'); // (where they stand: the crowd walks round them, not through them)
   }
   const npcById = id => npcs.find(n => n.id === id);
   // an NPC's character, loaded and put in their place (or another realistic one if it can't be loaded)
@@ -3390,7 +3391,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // sun behind you by day
   // A city can steer it for the few landmarks the search gets wrong (city.json "arrivals", keyed by the label's
   // name): "front", the compass bearing its front faces (the arrival keeps within "arc" degrees of it, 70 if not
-  // given), "dist", how far back to stand in metres, or "at", a hand-picked spot [x, y] in the local frame.
+  // given), "dist", how far back to stand in metres, or "at", a hand-picked spot [x, y] in the local frame
+  // (with "look", the point [x, y] to face from it, where the landmark's middle is the wrong thing to face).
   // "top" frames a lower part than the label's top (metres above the ground): a theatre's front rather than the tower behind it.
   function standFor(lm, dbg = null) {
     const spec = ((scene.city && scene.city.arrivals) || {})[lm.name] || {};
@@ -3450,6 +3452,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       + (day ? 0.2 * Math.max(0, -((x - px) * sx + (y - py) * sy) / Math.hypot(x - px, y - py)) : 0);
     if (spec.at) { // a hand-picked spot: on it (or the nearest ground to it), facing the landmark
       const p = placeNear(spec.at[0], spec.at[1], Number.isFinite(spec.at[2]) ? spec.at[2] : null, null, 12);
+      if (p && spec.look) return { x: p[0], y: p[1], z: p[2], face: Math.atan2(spec.look[0] - p[0], spec.look[1] - p[1]), pitch: 0.2, tilt: 0 }; // (and what to face: a tunnel's mouth)
       if (p) { const v = view(p[0], p[1], p[2], true); return { x: p[0], y: p[1], z: p[2], face: v.face, pitch: v.pitch, tilt: v.tilt }; }
     }
     // room for the chase camera behind you: the line from your head to where it will stand, as the rig tests it
@@ -3651,7 +3654,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!p) return null;
     // high up on a landmark (a deck the city names as a place): facing out over the city, as from its deck
     const lm = p[2] - Math.max(0, nav.terrain(p[0], p[1])) > 60 && landmarks.find(l => deckOf(l) && Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) < 150);
-    return lm ? { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: DECK_PITCH } : { x: p[0], y: p[1], z: p[2] };
+    if (lm) return { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: DECK_PITCH };
+    // else facing what the place is for (game.travel "look": a gate's mouth, the view), or the landmark there
+    const look = d.kind === 'place' ? lookOf(d, p) : null;
+    return look ? { x: p[0], y: p[1], z: p[2], face: Math.atan2(look[0] - p[0], look[1] - p[1]), pitch: 0.2 } : { x: p[0], y: p[1], z: p[2] };
+  }
+  // what you face on arriving at a travel place: its own "look" [x, y], or else the nearest landmark's label
+  // within 200 m (not one you stand on), so you arrive looking at what you came for, not wherever you last faced
+  function lookOf(t, p = t.at) {
+    if (t.look) return t.look;
+    let best = null, bd = 200;
+    for (const q of Object.values(scene.labels || {})) { const e = Math.hypot(q[0] - p[0], q[1] - p[1]); if (e > 8 && e < bd) { bd = e; best = q; } }
+    return best;
   }
   function travelTo(d) { // a shot playing (the start, a survey) is skipped by the hop, which plays its cues
     if (d.kind === 'district') { // another map of the city: saved here, then that map loads and you arrive at the station
@@ -3708,7 +3722,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     quick.push({ kind: 'start', id: 'start', name: 'Where you started', at: G.start.at });
     const near = l => l.sort((a, b) => Math.hypot(a.at[0] - player.x, a.at[1] - player.y) - Math.hypot(b.at[0] - player.x, b.at[1] - player.y));
     return [
-      ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at }))],
+      ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look }))],
       ['Landmarks', landmarks],
       ['Trig stations', near(VP.map(v => ({ kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] })))],
       ['Ferry wharves', near(G.wharves.map(w => ({ kind: 'wharf', id: w.id, name: w.name, at: w.landing })))],
@@ -3817,7 +3831,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const icon = (ic, x, y, d) => { H.drawIcon(g, ic, x / dpr, y / dpr); marks.push([x / dpr - 7, y / dpr - 7, x / dpr + 7, y / dpr + 7]); if (d) bigPins.push({ x: x / dpr, y: y / dpr, d }); };
     // the landmarks and travel points; their names go on last, over everything but the player, the city's first
     // ones first, each beside its pin where it covers no other pin or name (else left off: a pin names itself when picked)
-    const named = [...(G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at })), ...landmarks];
+    const named = [...(G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look })), ...landmarks];
     for (const d of named) icon({ kind: d.kind }, ...P2(d.at[0], d.at[1]), d);
     if (region) for (const d of region.stations) icon({ kind: 'district' }, ...P2(d.at[0], d.at[1]), d);
     for (const w of G.wharves) icon({ kind: 'wharf' }, ...P2(...w.terminal), { kind: 'wharf', id: w.id, name: w.name, at: w.landing });
@@ -4204,7 +4218,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
     const arrive = !cont && window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
-    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined);
+    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;
