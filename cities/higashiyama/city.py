@@ -117,9 +117,12 @@ BARE_TILE = dict(BARE, roof="kawara", ridge="kawara_ridge")
 # Yasaka-jinja's small shrines by name where a photograph shows them (#272): Ōkuninushi-sha in black lacquer with
 # gold fittings behind its stone torii (2023); Akuōji-sha (#290) in bare wood under copper gone grey-green
 # (KENPEI, CC BY-SA 3.0; Yanajin33, CC BY-SA 4.0). Ekijinja, Utsukushigozen-sha, Hiyoshi-sha and Kitamuki
-# Ebisu-sha are vermilion with white panels in their photographs (KENPEI; Yanajin33), as drawn.
+# Ebisu-sha are vermilion with white panels in their photographs (KENPEI; Yanajin33), as drawn. The two Inari shrines'
+# sanctuaries, Tamamitsu Inari-sha and Myōbu Inari-sha (#307: Another Believer, 2019, CC BY-SA 4.0), are vermilion with
+# white panels under a grey tiled roof.
 LACQUER = dict(VERMILION, post="urushi", wood="urushi", gable="urushi", screen_wood="urushi", wall="urushi")
-SHRINE_LOOK = {"大国主社": LACQUER, "悪王子社": dict(BARE, wall="timber", roof="doban", ridge="doban_ridge")}
+SHRINE_LOOK = {"大国主社": LACQUER, "悪王子社": dict(BARE, wall="timber", roof="doban", ridge="doban_ridge"),
+               "玉光稲荷社": VERMILION_TILE, "命婦稲荷社": VERMILION_TILE}
 
 # (OpenStreetMap way, kind, published height to the top in metres, toward: the point its front faces)
 KIYOMIZU = {

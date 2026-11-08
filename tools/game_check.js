@@ -8,7 +8,7 @@
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
 // change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
-// (tools/scramble_step.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
+// (tools/scramble_step.js), walk down into a sunken promenade and back up (tools/promenade_walk.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
 // with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
 // a one-way street to the junction behind (tools/reverse_step.js), swing the
@@ -1675,6 +1675,12 @@ const npcNight = require('./npc_night');
       if (r.notYet) { console.log(`     (not opened in the model yet: ${r.name}, way ${r.osm}: ${r.notYet})`); continue; }
       check(r.ok, `walks the passage ${r.name} (way ${r.osm}, ${r.cls}, ${r.len.toFixed(0)} m${r.rev ? ', back' : ''})${r.ok ? '' : `: ${r.why} at ${r.at}`}`);
     }
+  }
+
+  // down into a sunken promenade and back up (Kyoto's Horikawa: inland.js promenade, nav.js; tools/promenade_walk.js)
+  {
+    const r = await require('./promenade_walk')(p);
+    if (!r.none) { for (const [ok, what] of r.checks) check(ok, what); await shot('promenade'); }
   }
 
   // a ride with you in it turns round in the road (#199: one stuck in a queue on its own piece of road does,
