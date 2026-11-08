@@ -857,34 +857,6 @@ const npcNight = require('./npc_night');
   check(Math.hypot(mz.v2.cx - mz.v1.cx, mz.v2.cy - mz.v1.cy) > 5 && !mz.v2.picked, `a drag pans the map (${Math.hypot(mz.v2.cx - mz.v1.cx, mz.v2.cy - mz.v1.cy).toFixed(0)} map px) without picking a spot`);
   check(mz.v3.z === 1, 'the fit button shows the whole city again');
 
-  // a city drawn as maps of its own (a metro group: Kyoto, Tokyo): the big map's "whole city" zooms out past this map
-  // to the others, each district's station a pin; picking one offers to go to that map, at that station
-  // (the trip itself, loading the other map: tools/region_map_shot.js)
-  const rg = await p.evaluate(async () => {
-    const g = window.__game;
-    if (!g.region) return null;
-    g.toggleMap();
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    document.querySelector('#g-mapscope [data-scope="all"]').click();
-    const b = document.getElementById('g-bigmap-c').getBoundingClientRect();
-    const pins = g.mapPins().filter(q => q.d.kind === 'district'), inView = pins.filter(q => q.x > 0 && q.y > 0 && q.x < b.width && q.y < b.height);
-    const v = g.mapView(), maps = new Set(g.region.stations.map(d => d.map.id));
-    const q = inView[0];
-    if (q) q && document.getElementById('g-bigmap-c').dispatchEvent(new MouseEvent('click', { clientX: b.left + q.x, clientY: b.top + q.y, bubbles: true }));
-    const card = !document.getElementById('g-mappop').hidden && document.getElementById('g-mappop-go').textContent;
-    const listed = [...document.querySelectorAll('#g-travel .g-tdistrict')].length;
-    document.querySelector('#g-mapscope [data-scope="here"]').click();
-    const back = g.mapView().z;
-    document.getElementById('g-bigmap').hidden = true;
-    return { z: v.z, pins: pins.length, inView: inView.length, stations: g.region.stations.length, maps: maps.size, card, listed, back };
-  });
-  if (rg) {
-    check(rg.z < 1 && rg.inView === rg.stations, `the whole city zooms out to every other district (×${rg.z.toFixed(2)}; ${rg.inView} of ${rg.stations} stations of ${rg.maps} maps in view)`);
-    check(!!rg.card && /^Go to /.test(rg.card), `a district's pin offers to go to its map (${rg.card || 'no card'})`);
-    check(rg.listed === rg.stations, `the travel list has the other districts (${rg.listed})`);
-    check(rg.back === 1, '"This district" shows this map again');
-  }
-
   // the first quest giver: walk up and talk
   const talk = await p.evaluate(() => {
     const g = window.__game, q = g.quest(), n = q && g.npcs.find(n => n.id === q.giver);
@@ -1841,6 +1813,35 @@ const npcNight = require('./npc_night');
     const rainFirst = at(1) < 0 || (s[at(1)].far === false && s[at(1)].near === true && s[at(1)].px === 1);
     check(order && rainFirst, `a slow device sheds the rain's extras first, then the drops, the reflections and then pixels (${s.map(x => `${x.lvl}:${x.w ?? '-'}/${x.mirror ?? '-'}/${x.px}`).join(' ')})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
+  }
+
+  // (last, so that it moves nothing the traffic's lockstep run above plays through)
+  // a city drawn as maps of its own (a metro group: Kyoto, Tokyo): the big map's "whole city" zooms out past this map
+  // to the others, each district's station a pin; picking one offers to go to that map, at that station
+  // (the trip itself, loading the other map: tools/region_map_shot.js)
+  const rg = await p.evaluate(async () => {
+    const g = window.__game;
+    if (!g.region) return null;
+    g.toggleMap();
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    document.querySelector('#g-mapscope [data-scope="all"]').click();
+    const b = document.getElementById('g-bigmap-c').getBoundingClientRect();
+    const pins = g.mapPins().filter(q => q.d.kind === 'district'), inView = pins.filter(q => q.x > 0 && q.y > 0 && q.x < b.width && q.y < b.height);
+    const v = g.mapView(), maps = new Set(g.region.stations.map(d => d.map.id));
+    const q = inView[0];
+    if (q) q && document.getElementById('g-bigmap-c').dispatchEvent(new MouseEvent('click', { clientX: b.left + q.x, clientY: b.top + q.y, bubbles: true }));
+    const card = !document.getElementById('g-mappop').hidden && document.getElementById('g-mappop-go').textContent;
+    const listed = [...document.querySelectorAll('#g-travel .g-tdistrict')].length;
+    document.querySelector('#g-mapscope [data-scope="here"]').click();
+    const back = g.mapView().z;
+    document.getElementById('g-bigmap').hidden = true;
+    return { z: v.z, pins: pins.length, inView: inView.length, stations: g.region.stations.length, maps: maps.size, card, listed, back };
+  });
+  if (rg) {
+    check(rg.z < 1 && rg.inView === rg.stations, `the whole city zooms out to every other district (×${rg.z.toFixed(2)}; ${rg.inView} of ${rg.stations} stations of ${rg.maps} maps in view)`);
+    check(!!rg.card && /^Go to /.test(rg.card), `a district's pin offers to go to its map (${rg.card || 'no card'})`);
+    check(rg.listed === rg.stations, `the travel list has the other districts (${rg.listed})`);
+    check(rg.back === 1, '"This district" shows this map again');
   }
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
