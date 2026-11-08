@@ -1779,7 +1779,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     let redRuns = 0, revs = 0, laneChanges = 0, outOfRing = 0, squeezes = 0;
     const redLog = []; // (the last few cars over a crossing's line on red, how: tools/traffic_why.js)
-    const api = { mesh, fleet, C, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [] };
+    // The traffic as game.js reads it (#317 item 2: the step is to move to a Worker): `live`, the records of the cars
+    // on the roads as the last step left them, each the same object from one frame to the next (here the car itself;
+    // stepped in a Worker, a mirror its fields in VIEW are copied into each frame), and changes asked for by command
+    // (stop, reverse), never by writing to a record. game.js reads nothing else of the traffic's cars; the tools may
+    // (they run the main thread's step). `slots`: how many cars there can be, `active` how many are on now
+    const live = [];
+    const VIEW = ['line', 's', 'dir', 'x', 'y', 'z', 'h', 'v', 'half', 'hw', 'top', 'taxi', 'hex', 'why', 'youBy', 'heldBy', 'still', 'stuck', 'q', 'toLine', 'lineArm', 'lineEx', 'mv', 'front', 'rev'];
+    const api = { mesh, fleet, C, live, VIEW, slots: C.length, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [], stop: c => { c.v = 0; } };
     // who goes first where two cars' ways meet (car c's way comes into o's box d metres ahead of its
     // bumper, and o's into c's d2 ahead): read the same way by both, so that one goes and the other
     // waits and never both. A car that can no longer stop short of the place goes; then the one in
@@ -1972,9 +1979,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
       head.fill(-1); bhead.fill(-1); nb = 0;
       for (const a of onLine.values()) a.length = 0;
+      live.length = 0;
       for (let i = 0; i < api.active; i++) {
         const c = C[i];
         if (c.line < 0) continue;
+        live.push(c);
         const k = bucket(Math.floor(c.x / CELL), Math.floor(c.y / CELL));
         chain[i] = head[k]; head[k] = i;
         if (!onLine.has(c.line)) onLine.set(c.line, []);

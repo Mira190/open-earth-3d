@@ -939,9 +939,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the cars near (x, y) as boxes (cars.js), less one (the one you are in)
   function carBoxes(x, y, r, but = null) {
     const out = [];
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - x) < r + c.half && Math.abs(c.y - y) < r + c.half) {
+    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - x) < r + c.half && Math.abs(c.y - y) < r + c.half) {
       const b = OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5);
-      b.onHit = () => { c.v = 0; };
+      b.onHit = () => cars.stop(c);
       out.push(b);
     }
     for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
@@ -1132,7 +1132,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (at any junction on its way, signals or none; and a queue whose head has stood over 20 s waiting for room beyond,
   // a jam that spills back, counts JAM_WAIT more: Shibuya's taxi was sent down a one-way street into one, 150 s, #243)
   const JAM_WAIT = 30;
-  const queuedAt = a => { let n = 0, jam = false; for (const c of cars.C) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) { n++; if (c.why === 'room' && (c.still || 0) > 20 && c.toLine - c.half < 3) jam = true; } return n * Q_CLEAR + (jam ? JAM_WAIT : 0); };
+  const queuedAt = a => { let n = 0, jam = false; for (const c of cars.live) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) { n++; if (c.why === 'room' && (c.still || 0) > 20 && c.toLine - c.half < 3) jam = true; } return n * Q_CLEAR + (jam ? JAM_WAIT : 0); };
   const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += queuedAt(q.a); return t; };
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   // A way that crosses a scramble near you is timed with its walk (SCR_WAIT): where another way round it
@@ -1242,7 +1242,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (let k = 0; cand.length < 6 && k < 12; k++) { const pl = roads.around(pickup.x, pickup.y, 120, 280); if (pl) cand.push(pl); } // (a pick-up the search can't leave)
     let best = null;
     // (not where it would pull out into a car of the traffic, or a queue: one at a crawl or stopped close by)
-    const busy = pl => cars.C.some(c => c.line >= 0 && Math.abs(c.z - (pl.z ?? c.z)) < 3 && Math.hypot(c.x - pl.x, c.y - pl.y) < (c.v < 3 ? 25 : 12));
+    const busy = pl => cars.live.some(c => c.line >= 0 && Math.abs(c.z - (pl.z ?? c.z)) < 3 && Math.hypot(c.x - pl.x, c.y - pl.y) < (c.v < 3 ? 25 : 12));
     let any = false;
     const pick = list => {
       for (const pl of list) {
@@ -1297,7 +1297,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!pickup) { H.toast('Stand at the kerb of a street to hail a taxi.'); return; }
     if (player.rig.wave) player.rig.wave(clockT);
     let best = null;
-    for (const c of cars.C) {
+    for (const c of cars.live) {
       if (!c.taxi || c.line < 0) continue;
       if (c.v < 2 && (c.q || c.still > 2 || c.why === 'car')) continue; // (not one standing in a queue, nose to tail: it would sit there with you waiting; one from round the corner instead)
       if (c.front && c.front.line >= 0 && (c.front.v || 0) < 2 && Math.hypot(c.front.x - c.x, c.front.y - c.y) < 15 + c.v) continue; // (nor one about to stop behind a car standing close ahead: Shinjuku's taxi lost 10 s so)
@@ -1450,7 +1450,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!OECars.queueing(c, o.phase !== 'coming') && (c.stuck > 4 || (late && c.v < 2)) ? // (on the way to you: only a queue at a junction is waited in, as before; with you in it, any queue held by a rule of the road)
+    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!OECars.queueing(c, o.phase !== 'coming') && (c.stuck > 4 || (late && c.v < 2)) ? // (on the way to you: only a queue at a junction is waited in, as before; with you in it, any queue held by a rule of the road)
        { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v, of: c } : c);
     if (myCar) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
@@ -1553,7 +1553,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (force: now, wherever it is, as tools/game_check.js asks for one through __game.turnRide; the street, the room
   // and the traffic are still asked)
   function turnRound(o, dt, force = false) {
-    const st = o.drv.st, b = st.block && st.block.line >= 0 && cars.C.includes(st.block) ? st.block : null;
+    const st = o.drv.st, b = st.block && st.block.line >= 0 && cars.live.includes(st.block) ? st.block : null;
     if (!force) {
     const queued = !st.mv && st.v < 0.3 && b && b.v < 0.3 && !/^the line/.test(st.why || '');
     if (!queued) { o.qT = 0; o.qAt = null; return; }
@@ -1574,7 +1574,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (b && !force && b.line !== pl.line) { o.turnNo = 'the queue is on the next piece'; return; } // (a queue on this piece of road only: one on the next, the reroute goes round)
     if (pl.s < 6 || pl.s > l.len - 6) { o.turnNo = 'by a junction'; return; } // (by the junction, where it would turn in the junction)
     // nothing coming the other way on this street within 45 m, nor on the move within 15 m (about to turn into it)
-    if (cars.C.some(c => c.line >= 0 && c !== b && Math.abs(c.z - st.z) < 3 && c.v > 0.3 && (c.line === pl.line ? c.dir !== pl.dir && Math.hypot(c.x - st.x, c.y - st.y) < 45 : Math.hypot(c.x - st.x, c.y - st.y) < 15))) { o.turnNo = 'a car coming'; return; }
+    if (cars.live.some(c => c.line >= 0 && c !== b && Math.abs(c.z - st.z) < 3 && c.v > 0.3 && (c.line === pl.line ? c.dir !== pl.dir && Math.hypot(c.x - st.x, c.y - st.y) < 45 : Math.hypot(c.x - st.x, c.y - st.y) < 15))) { o.turnNo = 'a car coming'; return; }
     const half = ROAD_HALF[l.c] || 3.5, w = 2 * OECars.LANE;
     if (half < 3) { o.turnNo = 'a street too narrow'; return; } // (a lane too narrow to turn in)
     const gapAhead = b ? Math.hypot(b.x - st.x, b.y - st.y) - (b.half || 2.3) - o.C.half : Infinity;
@@ -1621,7 +1621,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function reverseOut(o, pl, to, b, force) {
     const st = o.drv.st, z = st.z, mine = myCar && player.mode !== 'car' ? myCar.D.st : null, l = roadNet.L[pl.line];
     // the cars of the traffic behind it on this street, stopped: they back out first (and it tries again in a moment)
-    const behind = cars.C.filter(c => c.line === pl.line && c.dir === pl.dir && (c.s - pl.s) * pl.dir < 0 && Math.abs(c.z - z) < 3);
+    const behind = cars.live.filter(c => c.line === pl.line && c.dir === pl.dir && (c.s - pl.s) * pl.dir < 0 && Math.abs(c.z - z) < 3);
     if (behind.length) {
       const moving = behind.filter(c => c.v > 0.5 && !c.rev);
       if (moving.length) { o.turnNo = 'a car coming up behind'; return; }
@@ -1666,7 +1666,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       T.held = (T.held || 0) + dt; st.v = 0; st.brake = true; T.by = cars.footBy; // (what holds it, for the checks)
       if (T.held > 3 && junctions.makeWay) junctions.makeWay(nx.x, nx.y, st.z, nx.h, o.C.half, o.C.hw, 0.3);
       // (a car come into the street behind it since, stopped there for it: it backs out first, Fushimi Inari's piece 99)
-      if (T.rev && T.held > 3 && T.pl && cars.reverse) for (const c of cars.C) if (c.line === T.pl.line && c.dir === T.pl.dir && c.v < 0.3 && !c.rev && Math.hypot(c.x - nx.x, c.y - nx.y) < 10) cars.reverse(c);
+      if (T.rev && T.held > 3 && T.pl && cars.reverse) for (const c of cars.live) if (c.line === T.pl.line && c.dir === T.pl.dir && c.v < 0.3 && !c.rev && Math.hypot(c.x - nx.x, c.y - nx.y) < 10) cars.reverse(c);
       // (held 10 s on the way back: its way out worked out again from where it is, round what holds it now)
       if (T.rev && T.held > 10 && !T.again && T.pl && P[T.i].leg) { // (still on the straight back: from there it can take up another way round from where it is, without a jump)
         T.again = true;
@@ -1710,7 +1710,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const nd of N) { const sN = P.cum[Math.min(nd.k, P.cum.length - 1)]; if (sN < st.s) continue; if (sN - st.s > 250) break; ahead.add(nd.line); }
     if (st.route.to && P.len - st.s < 250) ahead.add(st.route.to.line);
     if (!ahead.size) return out;
-    for (const c of cars.C) {
+    for (const c of cars.live) {
       if (c.line < 0 || !ahead.has(c.line) || !(c.still > 20)) continue;
       if (c.still > 40 || (c.mv && c.still > 20)) out.add(c.line);
     }
@@ -1754,7 +1754,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const P = o.drv.path, at = {};
       for (let s = Math.min(st.end - 0.5, st.s + 22); s > st.s + 6; s -= 4) {
         P.at(s, at);
-        if (!inView(at.x, at.y, at.z) && !cars.C.some(c => c.line >= 0 && Math.hypot(c.x - at.x, c.y - at.y) < (c.half || 2.4) + 3.5)) { o.drv.jump(s); break; }
+        if (!inView(at.x, at.y, at.z) && !cars.live.some(c => c.line >= 0 && Math.hypot(c.x - at.x, c.y - at.y) < (c.half || 2.4) + 3.5)) { o.drv.jump(s); break; }
       }
     }
     // coming for you up to a scramble whose walk is on, or about to start (its other road's amber or the all
@@ -1825,7 +1825,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // along its way, if the road behind it is clear, as a driver who pulled up too far does (#243: Shinjuku's
     // taxi stood 30 s so)
     if (!o.turn && !o.hold && st.v < 0.3 && !st.mv && !(st.backoff > 0)) {
-      const mutual = cars.C.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c : st.block === c) && Math.hypot(c.x - st.x, c.y - st.y) < 25);
+      const mutual = cars.live.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c : st.block === c) && Math.hypot(c.x - st.x, c.y - st.y) < 25);
       o.mutJ = mutual ? (o.mutJ || 0) + dt : 0;
       if (o.mutJ > 2) { o.mutJ = -3; st.backoff = 1.5; o.yielded = (o.yielded || 0) + 1; }
     } else if (!(st.backoff > 0)) o.mutJ = 0;
@@ -4041,7 +4041,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const b = e.target.closest('button');
     if (!b) return;
     settings.density = b.dataset.d;
-    applyDensity(); cars.active = Math.round(cars.C.length * density[b.dataset.d]);
+    applyDensity(); cars.active = Math.round(cars.slots * density[b.dataset.d]);
     $$('#gm-density button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
   on($('#gm-route'), 'click', e => { const b = e.target.closest('button'); if (b) setRouteMode(b.dataset.r); });
