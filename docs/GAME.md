@@ -1766,7 +1766,7 @@ landmark's shell, with the shell's walls cut where its door and windows are (`pi
 - **The doors** (game.json `doors`: `{id, name, at, reach, time, leaves}`). Each leaf is the landmark's own
   mesh, drawn shut, and not a wall. `web/game/doors.js` swings it on its hinge (`hinge`, `deg`) or slides it
   (`slide`) as someone on foot comes within `reach` metres, sooner the faster they come, and shuts it a moment
-  after they have gone. The locals open doors too.
+  after they have gone. Only you open them: the locals stand or sit where they are, and a diner at a table by the door would otherwise hold it open.
 - **The rooms** (game.json `interiors`: `{id, name, note, floor, height, ring, door, way}`). Stepping into
   one shows its name. `way` is a walk from in front of the door to the room's middle, which
   `tools/interior_step.js` (in `tools/game_check.js`) walks in and back out, checking the door was open in

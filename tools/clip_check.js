@@ -165,7 +165,9 @@ const TOL = {
     }
     for (const n of g.npcs) {
       let why = '';
-      if (H.inWall(n.x, n.y, n.z, 0.2)) why = 'in a wall';
+      // (someone seated is in their chair, at their table: their head and shoulders, over the chair's back, are what
+      // must be clear)
+      if (H.inWall(n.x, n.y, n.z + (n.sit ? 0.5 : 0), 0.2)) why = 'in a wall';
       else if (H.road(n.x, n.y, n.z, 0.25).deep > TOL.npcs.deep) why = 'in a carriageway';
       H.postsNear(n.x, n.y, 2, q => { if (!why && Math.abs(q.z - n.z) < 2 && Math.hypot(q.x - n.x, q.y - n.y) < q.r + 0.25 - TOL.npcs.deep) why = `in a ${q.kind}`; });
       for (const bn of H.benches) if (!why && Math.abs(bn.z - n.z) < 1 && H.boxCircle(H.benchBox(bn), n.x, n.y, 0.25) > TOL.npcs.deep) why = 'in a bench';

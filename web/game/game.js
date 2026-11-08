@@ -4422,7 +4422,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       places.update(dt, player.x, player.y, player.z, active, calm);
     }
     if (doors && doors.doors.length) {
-      doors.update(dt, [player.mode === 'foot' ? player : null, ...npcs]);
+      // (you open them: the locals stand or sit where they are, and one at a table near the door
+      // mustn't hold it open)
+      doors.update(dt, [player.mode === 'foot' ? player : null]);
       const r = player.mode === 'foot' ? doors.roomAt(player.x, player.y, player.z) : null;
       if (r !== room) { if (r && !cine.active) H.toast(`<b>${r.name}</b>${r.note ? `<span>${r.note}</span>` : ''}`); room = r; }
     }

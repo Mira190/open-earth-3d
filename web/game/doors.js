@@ -35,7 +35,7 @@ window.OEDoors = (function () {
         }
       }
     }
-    // who: the people who open doors this frame ([{x, y, z}]: you on foot, and the locals about)
+    // who: the people who open doors this frame ([{x, y, z, speed}]: you, on foot)
     function update(dt, who) {
       for (const d of doors) {
         // (someone running at it is sensed further off, so that it is open by the time they reach it)
