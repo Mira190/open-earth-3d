@@ -23,9 +23,16 @@ module.exports = async function promenadeWalk(p) {
       return false;
     };
     // the pavement beside a flight's top, through the gap in the railing: [x, y] on the bank, or null
+    // (the first place off the channel, within 5 m, where the street is within half a metre of the flight's top: a
+    // mapped bridge's approach can lie between)
     const pavement = f => {
       const u = Math.min(0.6, IN.FLIGHT_GATE / 2);
-      for (let v = f.w / 2 + 0.3; v < f.w / 2 + 4; v += 0.25) { const x = f.x + f.ux * u + f.nx * v, y = f.y + f.uy * u + f.ny * v; if (!IN.water(x, y)) return [x + f.nx * 0.8, y + f.ny * 0.8]; }
+      for (let v = f.w / 2 + 0.3; v < f.w / 2 + 5; v += 0.25) {
+        const x = f.x + f.ux * u + f.nx * v, y = f.y + f.uy * u + f.ny * v;
+        if (IN.water(x, y)) continue;
+        const q = [x + f.nx * 0.6, y + f.ny * 0.6], fl = nav.floorAt(q[0], q[1], f.zt + 0.3);
+        if (fl && fl.kind === 'ground' && Math.abs(fl.z - f.zt) < 0.5 && nav.walk(q[0], q[1], fl.z).ok) return q;
+      }
       return null;
     };
     // a flight with floor room past its foot (8 m on along it, not on another flight or in the stream)
@@ -55,7 +62,7 @@ module.exports = async function promenadeWalk(p) {
         const inWall = Math.abs(pl.z - z0) > 0.2 || !IN.water(pl.x, pl.y);
         checks.push([!inStream && !inWall, `stays on the floor at the stream's edge and at the wall (${inStream ? 'in the stream' : 'held at the stream'}, ${inWall ? `out through the wall at ${f2(pl.z)} m` : 'held at the wall'})`]);
         // back up the flight to the crossing
-        const up = go(...at(fl.run + 1.5)) && go(...at(0.6)) && go(...pv) && Math.abs(pl.z - fl.zt) < 0.4 && pl.floor === 'ground';
+        const up = go(...at(fl.run + 1.5)) && go(...at(0.6), 0.25) && go(...pv) && Math.abs(pl.z - fl.zt) < 0.4 && Math.hypot(pl.x - pv[0], pl.y - pv[1]) < 0.7;
         checks.push([up, `walks back up the steps to the pavement (feet ${f2(pl.z)} m on ${pl.floor} for ${f2(fl.zt)} m)`]);
       }
       // at the railing from the street: on the bank 2 m out from the wall beside the floor past the flight's foot,
@@ -73,6 +80,24 @@ module.exports = async function promenadeWalk(p) {
         checks.push([Math.abs(pl.z - z0) < 0.3 && !IN.water(pl.x, pl.y), `stops at the Horikawa's railing from the street (feet ${f2(pl.z)} m for ${f2(z0)} m)`]);
       }
     }
+    // up the seating steps along the wall (the Horikawa's between Nijo and Oshikoji) from the floor to the top tier,
+    // and down again
+    if (IN.seats && IN.seats.length) {
+      const q = IN.seats[Math.floor(IN.seats.length / 2)], mid = q.len / 2;
+      const at2 = d => [q.x + q.ux * mid - q.nx * d, q.y + q.uy * mid - q.ny * d];
+      const top = q.zf + q.rise * q.n;
+      let start = null;
+      for (let d = q.n * q.tread + 0.4; d < q.n * q.tread + 2.5 && !start; d += 0.2) { const pr = IN.promenade(...at2(d)); if (pr && !pr.flight && !pr.seat) start = d; }
+      if (start == null) checks.push([false, 'stands on the floor in front of the seating steps']);
+      else {
+        Object.assign(pl, { mode: 'foot', vehicle: null, x: at2(start)[0], y: at2(start)[1], z: IN.promenade(...at2(start)).z, ground: true, vz: 0, speed: 0 });
+        g.advance(0.1);
+        const up = go(...at2(q.tread * 0.4), 0.3) && Math.abs(pl.z - top) < 0.15;
+        const zUp = pl.z;
+        const down = go(...at2(start), 0.4) && Math.abs(pl.z - IN.promenade(...at2(start)).z) < 0.2;
+        checks.push([up && down, `climbs the seating steps to the top tier and back down (${q.n} tiers of ${q.rise} m: feet ${f2(zUp)} m for ${f2(top)} m, then ${f2(pl.z)} m)`]);
+      }
+    }
     // and every flight: down from its crossing to the floor and back up
     const bad = [];
     for (const [i, f] of IN.flights.entries()) {
@@ -83,7 +108,7 @@ module.exports = async function promenadeWalk(p) {
       g.advance(0.1);
       const fz = IN.promenade(...pt(f.run + 0.8));
       if (!go(...pt(0.6)) || !go(...pt(f.run + 0.8)) || !fz || Math.abs(pl.z - fz.z) > 0.25) { bad.push(`${i}: down, stopped at ${pl.x.toFixed(1)},${pl.y.toFixed(1)} ${f2(pl.z)} m`); continue; }
-      if (!go(...pt(f.run * 0.5)) || !go(...pt(0.6)) || !go(...q) || Math.abs(pl.z - st.z) > 0.3) bad.push(`${i}: up, stopped at ${pl.x.toFixed(1)},${pl.y.toFixed(1)} ${f2(pl.z)} m`);
+      if (!go(...pt(f.run * 0.5)) || !go(...pt(0.6), 0.25) || !go(...q) || Math.abs(pl.z - st.z) > 0.3) bad.push(`${i}: up, stopped at ${pl.x.toFixed(1)},${pl.y.toFixed(1)} ${f2(pl.z)} m`);
     }
     checks.push([!bad.length, `walks down and back up each of the Horikawa's ${IN.flights.length} flights of steps${bad.length ? ` (${bad.join('; ')})` : ''}`]);
     Object.assign(pl, { mode: keep.mode, x: keep.x, y: keep.y, z: keep.z, h: keep.h, ground: true, vz: 0, speed: 0 }); g.cam.yaw = keep.yaw;

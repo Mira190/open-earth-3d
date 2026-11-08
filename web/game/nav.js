@@ -826,7 +826,7 @@ window.OENav = (function () {
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
-      decksAt(x, y, (h, d) => { if (d.walk || cars) take(h, 'deck'); });
+      decksAt(x, y, (h, d) => { if ((d.walk || cars) && !(pr && pr.flight)) take(h, 'deck'); }); // (a flight of steps down, not a bridge's approach laid wider over its top)
       const bt = col.topAt(x, y, z + STEP, BUILDING);
       if (bt > -Infinity) take(bt, 'roof');
       // a landmark's floor within a step (a gate's stone base, a plinth, a platform), within FOOT: its floor

@@ -40,7 +40,9 @@ window.OEInland = (function () {
       if (b.terrace && b.stream) {
         const sr = b.stream.rings.map(pairs), swz = b.stream.wz.map(v => v.slice());
         sr.forEach((r, k) => { if (area(r) < 0) { r.reverse(); swz[k].reverse(); } });
-        terrace = { path_m: b.terrace.path_m || 0.35, stream: sr, swz, steps: b.steps || [] };
+        const lawn = b.terrace.lawn ? b.terrace.lawn.rings.map((r, k) => ({ ring: pairs(r), z: b.terrace.lawn.z[k] })) : [];
+        lawn.forEach(l => { if (area(l.ring) < 0) { l.ring.reverse(); l.z = l.z.slice().reverse(); } });
+        terrace = { path_m: b.terrace.path_m || 0.35, stream: sr, swz, steps: b.steps || [], lawn, seats: b.terrace.seats || [], weirs: b.terrace.weirs || [] };
       }
       return { id, name: b.name, kind: b.kind, walls: b.walls || null, water_m: b.water_m || 0.3, rings, bz, wz, box: [x0, y0, x1, y1], terrace };
     });
@@ -104,6 +106,7 @@ window.OEInland = (function () {
 
     // whether (x, y) is on the water (not on a deck over a channel)
     const onDeck = (x, y) => !!inDeck && inDeck.at(x, y) > 127;
+    const walledAt = (x, y) => !!inWalled && inWalled.at(x, y) > 127 && !onDeck(x, y); // over a walled channel's water
     function water(x, y) {
       if (inWalled && inWalled.at(x, y) > 127) return !onDeck(x, y);
       return !!inNatural && inNatural.at(x, y) > 127;
@@ -266,6 +269,40 @@ window.OEInland = (function () {
             const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(st, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2)); g.computeVertexNormals();
             const m = new THREE.Mesh(g, mats.floor || mats.coping); m.name = 'inland_steps'; m.castShadow = m.receiveShadow = true; group.add(m);
           }
+          // the seating steps: tiers of stone from the floor up towards the wall, solid to the floor
+          const se = [], seuv = [];
+          for (const [x, y, ux, uy, nx, ny, len, zf, n, rise, tread] of TR.seats) {
+            for (let k = 0; k < n; k++) {
+              const d0 = k * tread, d1 = Math.min((k + 1) * tread, n * tread) + (k === 0 ? 0.08 : 0), dm = (d0 + d1) / 2;
+              box(x + ux * len / 2 - nx * dm, y + uy * len / 2 - ny * dm, ux, uy, nx, ny, len / 2 + 0.01, (d1 - d0) / 2, zf - 0.05, zf + rise * (n - k), se, seuv, x - nx * d0, y - ny * d0);
+            }
+          }
+          if (se.length) {
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(se, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(seuv, 2)); g.computeVertexNormals();
+            const m = new THREE.Mesh(g, mats.floor || mats.coping); m.name = 'inland_seats'; m.castShadow = m.receiveShadow = true; group.add(m);
+          }
+          // the lawn, a hand's breadth over the floor
+          for (const l of TR.lawn) {
+            const g = sheetOf([l.ring], [l.z], 0.04);
+            if (g) { const m = new THREE.Mesh(g, mats.lawn || mats.floor); m.name = 'inland_lawn'; m.receiveShadow = true; group.add(m); }
+          }
+          // the stepped weirs: a granite sill across the stream, and the white water falling off it
+          const wr = [], wruv = [], fo = [];
+          for (const [x, y, ux, uy, w, z, drop] of TR.weirs) {
+            const nx = -uy, ny = ux;
+            box(x, y, ux, uy, nx, ny, 0.3, w / 2 + 0.05, z - b.water_m - 0.05, z + 0.06, wr, wruv, x, y);
+            const P = (u, v, h) => [x + ux * u + nx * v, z + h, -(y + uy * u + ny * v)];
+            const A = P(0.3, -w / 2, 0.04), B = P(0.3, w / 2, 0.04), C = P(1.9, w / 2, 0.01 - drop), D = P(1.9, -w / 2, 0.01 - drop);
+            fo.push(...A, ...B, ...C, ...A, ...C, ...D, ...A, ...C, ...B, ...A, ...D, ...C);
+          }
+          if (wr.length) {
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(wr, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(wruv, 2)); g.computeVertexNormals();
+            const m = new THREE.Mesh(g, mats.wall(b)); m.name = 'inland_weirs'; m.castShadow = m.receiveShadow = true; group.add(m);
+          }
+          if (fo.length && mats.foam) {
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(fo, 3)); g.computeVertexNormals();
+            const m = new THREE.Mesh(g, mats.foam); m.name = 'inland_foam'; m.renderOrder = 2; group.add(m);
+          }
           if (par.length) {
             const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(par, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(puv, 2)); g.computeVertexNormals();
             const m = new THREE.Mesh(g, mats.rail); m.name = 'inland_steps_rail'; group.add(m);
@@ -402,10 +439,22 @@ window.OEInland = (function () {
     function flightAt(x, y) {
       for (const f of flights) {
         const dx = x - f.x, dy = y - f.y, u = dx * f.ux + dy * f.uy, v = dx * f.nx + dy * f.ny;
-        // (and a landing at the street's level behind the top tread, under the pavement's edge)
-        // (and on the wall's side out over the strip to its face, the coping and the channel mask's half-metre cell, where
-        // a walker comes on from the pavement)
-        if (u >= -0.4 && u <= f.run && v >= -f.w / 2 && v <= f.w / 2 + 0.75) return u < 0 ? f.zt : f.zt - Math.min(f.n, Math.floor(u / f.tread) + 1) * f.rise;
+        // (and a landing at the street's level behind the top tread; and beside the top, where the flight opens to the
+        // pavement, at the street's level out over its wall's face, the coping and the channel mask's half-metre cells;
+        // further down, over the strip to its face)
+        if (u < -0.4 || u > f.run || v < -f.w / 2) continue;
+        if (v <= f.w / 2) return u < 0 ? f.zt : f.zt - Math.min(f.n, Math.floor(u / f.tread) + 1) * f.rise;
+        if (u <= FLIGHT_GATE && v <= f.w / 2 + 1.3) return f.zt;
+        if (v <= f.w / 2 + 0.75) return f.zt - Math.min(f.n, Math.floor(u / f.tread) + 1) * f.rise;
+      }
+      return null;
+    }
+    // seating steps along a promenade's wall (the Horikawa's between Nijo and Oshikoji): the tier under (x, y), or null
+    const seats = terraced.flatMap(b => b.terrace.seats.map(([x, y, ux, uy, nx, ny, len, zf, n, rise, tread]) => ({ x, y, ux, uy, nx, ny, len, zf, n, rise, tread })));
+    function seatAt(x, y) {
+      for (const q of seats) {
+        const dx = x - q.x, dy = y - q.y, u = dx * q.ux + dy * q.uy, d = -(dx * q.nx + dy * q.ny);
+        if (u >= -0.02 && u <= q.len + 0.02 && d >= -0.8 && d < q.n * q.tread) return q.zf + q.rise * (q.n - Math.max(0, Math.floor(d / q.tread)));
       }
       return null;
     }
@@ -413,6 +462,8 @@ window.OEInland = (function () {
       if (!inTerrace || onDeck(x, y)) return null;
       const s = flightAt(x, y);
       if (s != null) return { z: s, flight: true };
+      const st = seats.length ? seatAt(x, y) : null;
+      if (st != null && inWalled.at(x, y) > 127) return { z: st, flight: false, seat: true };
       // (in the channel as water() has it, so that the street's edge and the promenade's agree to the raster's cell)
       if (inTerrace.at(x, y) === 0 || !(inWalled.at(x, y) > 127) || inStream.at(x, y) > 127) return null;
       const n = nearest(x, y, 40, 'walled');
@@ -537,7 +588,7 @@ void main() {
       };
     }
 
-    return { bodies, decks, walled, natural, raise, water, level, onDeck, nearest, bank, byWall, promenade, flights, FLIGHT_GATE, holeMask, build, glints };
+    return { bodies, decks, walled: walledAt, walledBodies: walled, natural, raise, water, level, onDeck, nearest, bank, byWall, promenade, flights, seats, FLIGHT_GATE, holeMask, build, glints };
   }
 
   return { create };
