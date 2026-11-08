@@ -145,7 +145,13 @@ const [w, h] = size.split('x').map(Number);
     const top = d.slice().sort((a, b) => b.dt - a.dt).slice(0, 8), over = d.filter(f => f.dt > 1000);
     console.log(`${city} ${w}x${h} loader: playable after ${loadS.toFixed(1)} s; longest frames (s): ${top.map(f => (f.dt / 1000).toFixed(1)).join(' ')}; ` +
       `${over.length} frames over 1 s, ${(over.reduce((s, f) => s + f.dt, 0) / 1000).toFixed(1)} s in them`);
-    if (lcdp) await loadProfile(lcdp, top, lsync);
+    if (lcdp) {
+      // the whole load's blocking GL work, by call: what a change to the shaders or the uploads moves
+      const calls = await p.evaluate(() => window.__gl.calls);
+      const pick = ['getProgramInfoLog', 'getProgramParameter', 'linkProgram', 'compileShader', 'bufferData', 'texSubImage2D', 'texImage2D', 'texStorage2D', 'getBufferSubData', 'clientWaitSync'];
+      console.log('GL in the load (calls, ms, the longest): ' + pick.filter(k => calls[k]).map(k => `${k} ${calls[k].n}x ${calls[k].ms.toFixed(0)} ms max ${calls[k].max.toFixed(0)}`).join('; '));
+      await loadProfile(lcdp, top, lsync);
+    }
     if (process.env.LOAD) { await b.close(); return; } // LOAD=1: the loader only
   }
   await p.waitForTimeout(4000); // the title orbit settles
