@@ -184,8 +184,15 @@ the shrine the unnamed photograph of #272 showed, and is drawn so; Ekijinja (疫
 Hiyoshi-sha (日吉社) and Kitamuki Ebisu-sha (蛭子社) are vermilion with white panels, as drawn. The Inari shrines'
 photographs show only their vermilion shelter.
 
-Still not checked: the Tokiwa-den's and the reception halls' roofs and colours (Commons searched again in #290;
-nothing), and the two Inari shrines' own sanctuaries.
+The two Inari shrines' sanctuaries, Tamamitsu Inari-sha (玉光稲荷社) and Myōbu Inari-sha (命婦稲荷社) (#307,
+[Yasaka-jinja in Kyoto, Japan (2019) - 159.jpg](https://commons.wikimedia.org/wiki/File:Yasaka-jinja_in_Kyoto,_Japan_(2019)_-_159.jpg),
+Another Believer, CC BY-SA 4.0), are vermilion with white panels and painted beam ends under a grey tiled roof: drawn
+so, under tile rather than bark.
+
+![The Inari sanctuaries in the precinct, day, dusk and night (#307)](../images/higashiyama/inari-307.jpg)
+
+Still not checked: the Tokiwa-den's and the reception halls' roofs and colours (Commons and Flickr searched again in
+#307: nothing; a wedding review calls the reception hall stone-built from outside, nothing on its roof).
 
 | Photograph | Author | Licence |
 |---|---|---|

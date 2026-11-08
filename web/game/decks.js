@@ -163,9 +163,20 @@ window.OEDecks = (function () {
       let p = o.p, n = p.length / 3;
       const X = k => p[3 * k] / 10, Y = k => p[3 * k + 1] / 10;
       // what each point is on: 0 the ground, 1 a surface already built (a bridge's strip, steps, a pier), 2 a deck to build
-      let cls = new Uint8Array(n), zs = new Float32Array(n);
+      let cls = new Uint8Array(n), zs = new Float32Array(n), sunk = false;
       for (let k = 0; k < n; k++) {
-        const x = X(k), y = Y(k), z = p[3 * k + 2] / 10, g = nav.terrain(x, y), water = nav.isWater(x, y);
+        const x = X(k), y = Y(k), z = p[3 * k + 2] / 10, g = nav.terrain(x, y), IN = nav.inland;
+        // on a sunken promenade's floor or its steps (inland.js: the Horikawa's paths, which the terrain, carried at
+        // the street's level over the channel, would lift onto a deck in the air): on that surface
+        const pr = IN && IN.promenade ? IN.promenade(x, y) : null;
+        if (pr) { cls[k] = 1; zs[k] = pr.z; sunk = true; continue; }
+        // over an inland channel (inland.js): on the deck it keeps over it at the street's level (the ground drawn
+        // there), or over its water, laid from bank to bank (the data lifts a bridge there a level, a hump of 5 m over
+        // Kyoto's Horikawa)
+        // (and a vertex on a bank whose piece crosses such a deck: the data's two lifted ends of a crossing)
+        const across = j => j >= 0 && j < n && IN.onDeck((x + X(j)) / 2, (y + Y(j)) / 2);
+        if (IN && IN.onDeck && (IN.onDeck(x, y) || ((across(k - 1) || across(k + 1)) && !nav.isWater(x, y)))) { zs[k] = g; continue; }
+        const water = nav.isWater(x, y);
         let s = nav.surfaceAt(x, y, z);
         // a level over a raised deck that is drawn, or a metre off its edge: a bridge's sidewalk the data lifts a
         // level where the bridge itself is an area (Ebisubashi)
@@ -176,9 +187,13 @@ window.OEDecks = (function () {
         }
         // put on it by the data, or over the water on a pier, or lifted a level over it
         if (s > -Infinity && (Math.abs(s - z) < 1 || (water && z - s < 2 * RISE) || lifted)) { cls[k] = 1; zs[k] = s; }
+        else if (!water && IN && IN.walled && IN.walled(x, y)) { cls[k] = 2; zs[k] = g + 0.1; } // over a walled channel: at its banks' level
         else if (!water && z - g <= RISE) zs[k] = g; // on the ground drawn there
         else { cls[k] = 2; zs[k] = z; }
       }
+      // a path that goes down into a sunken promenade (the Horikawa's stairs and ramps, mapped from the pavement):
+      // on the ground until it is on the promenade, not on a deck the data's levels would lift over the street
+      if (sunk && kind === 'foot') for (let k = 0; k < n; k++) if (cls[k] === 2 && !nav.isWater(X(k), Y(k))) { cls[k] = 0; zs[k] = nav.terrain(X(k), Y(k)); }
       // a line that comes onto a built surface and ends under it, where the data stops short of a bridge it
       // does not map (Ebisubashi, an area in OpenStreetMap: the street's line ends at the river walk's level
       // under the deck): its loose end is on the surface with the point before it (not an end another line
