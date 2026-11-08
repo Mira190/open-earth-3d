@@ -1672,6 +1672,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (ea <= 0 || eb <= 0) return null;
       return ea < eb ? { x: fx * Math.sign(a || 1) * ea, y: fy * Math.sign(a || 1) * ea } : { x: -fy * Math.sign(b || 1) * eb, y: fx * Math.sign(b || 1) * eb };
     }
+    // and the step to the side that takes (x, y) out of car o's way (its footprint grown by m, a metre on ahead): null if clear
+    function aside(o, x, y, m) {
+      const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = x - o.x, dy = y - o.y, a = dx * fx + dy * fy, b = -dx * fy + dy * fx;
+      const eb = o.hw + m - Math.abs(b);
+      if (a < -o.half - m || a > o.half + m + 1 || eb <= 0) return null;
+      return { x: -fy * Math.sign(b || 1) * Math.min(eb, 0.05), y: fx * Math.sign(b || 1) * Math.min(eb, 0.05) }; // (a step at a time, 5 cm a frame)
+    }
     // (x, y) moved out of every car's footprint grown by r (of the cars on level z, if given)
     function pushOut(x, y, r, z = null) {
       for (let it = 0; it < 3; it++) {
@@ -2743,7 +2750,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const R = c.half + 0.5, a0 = Math.floor((c.x - R) / CELL), a1 = Math.floor((c.x + R) / CELL), b0 = Math.floor((c.y - R) / CELL), b1 = Math.floor((c.y + R) / CELL);
         for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) for (let j = bhead[bucket(a, b)]; j >= 0; j = bchain[j]) {
           if (bi[j] < 0 || Math.abs(bz[j] - c.z) >= LEVEL) continue;
-          const e = into(c, bx[j], by[j], 0.25), p = crowd.P[bi[j]];
+          // (the walker it has waited on over 5 s, stood just ahead of it: a step to the side, clear of its next metre too, as
+          // one does who sees a bus waiting on them; else the bus edged up and the walker, blocked by the bus, stood on, 55 s
+          // in Queenstown's junction 117)
+          const waited = c.pw > 5 && bi[j] === c.who, e = waited ? aside(c, bx[j], by[j], 0.9) : into(c, bx[j], by[j], 0.25), p = crowd.P[bi[j]];
           if (!e || p.state !== 'walk' || p.line < 0) continue;
           const x = bx[j] + e.x * 1.02, y = by[j] + e.y * 1.02;
           if (nav && !nav.walk(x, y, p.z).ok) continue;
