@@ -693,12 +693,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const z0 = f ? f.z : Math.max(0, nav.terrain(n.at[0], n.at[1]));
     const clear = (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) && !inRoad(x, y, z0, 0.3) && !posts.pushOut(x, y, 0.45, z0).hit
       && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
-    const p = nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
+    // seated (game.json npcs[].sit, at a restaurant's table or in a pew: at its place exactly, the chair's seat over
+    // the root, facing sit.face), else stood where there is room
+    const p = n.sit && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } : nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
       { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
-    const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
+    const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: n.sit && n.sit.face ? Math.atan2(n.sit.face[0], n.sit.face[1]) : hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
-    o.marker.position.set(0, 2.45, 0);
+    o.marker.position.set(0, n.sit ? 1.95 : 2.45, 0);
     rig.root.add(o.marker);
     rig.root.position.copy(W(o.x, o.y, o.z));
     rig.root.rotation.y = Math.PI - o.h;
@@ -778,6 +780,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // street door and a floor high up (game.json "lifts", from the city's landmarks)
   const places = window.OEPlaces ? OEPlaces.create({ G, W, camera, stage }) : null;
   const lifts = G.lifts || [];
+  // doors that open as you come up to them, and the rooms behind them (game.json "doors", "interiors": doors.js)
+  const doors = window.OEDoors ? OEDoors.create({ G, world }) : null;
+  let room = null; // the room you are in, for its name as you step in
   function liftStop(x, y, z) {
     for (const l of lifts) for (let i = 0; i < l.stops.length; i++) {
       const s = l.stops[i];
@@ -4559,12 +4564,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let gaze = null;
     for (const n of npcs) {
       const d = Math.hypot(player.x - n.x, player.y - n.y);
-      if (d < 5 && player.mode === 'foot') n.h += angDiff(Math.atan2(player.x - n.x, player.y - n.y), n.h) * Math.min(1, dt * 4);
+      if (d < 5 && player.mode === 'foot' && !n.sit) n.h += angDiff(Math.atan2(player.x - n.x, player.y - n.y), n.h) * Math.min(1, dt * 4);
       n.rig.root.rotation.y = Math.PI - n.h;
       // look at the player when close; the player looks at whoever they are talking to
       n.rig.lookTarget = d < 9 && player.mode === 'foot' ? n.eyes.copy(W(player.x, player.y, player.z + 1.55)) : null;
       if (n.talking) gaze = W(n.x, n.y, n.z + 1.55);
-      n.rig.animate(dt, 0, n.talking ? 'talk' : 'ground', clockT + n.pitch);
+      n.rig.animate(dt, 0, n.sit ? 'sit' : n.talking ? 'talk' : 'ground', clockT + n.pitch);
     }
     player.rig.lookTarget = gaze;
     const cx = player.mode === 'heli' ? heli.st.x : player.x, cy = player.mode === 'heli' ? heli.st.y : player.y;
@@ -4625,6 +4630,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const active = player.mode === 'foot' && !cine.active;
       const calm = active && !dlg.open && !uiOpen() && phone.el.hidden && !photo.on && !document.querySelector('[data-hush]:not([hidden])');
       places.update(dt, player.x, player.y, player.z, active, calm);
+    }
+    if (doors && doors.doors.length) {
+      // (you open them: the locals stand or sit where they are, and one at a table near the door
+      // mustn't hold it open)
+      doors.update(dt, [player.mode === 'foot' ? player : null]);
+      const r = player.mode === 'foot' ? doors.roomAt(player.x, player.y, player.z) : null;
+      if (r !== room) { if (r && !cine.active) H.toast(`<b>${r.name}</b>${r.note ? `<span>${r.note}</span>` : ''}`); room = r; }
     }
   }
 
@@ -5308,7 +5320,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

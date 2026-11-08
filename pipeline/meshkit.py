@@ -171,6 +171,8 @@ class Mesh:
         t = np.asarray(self.t, float)
         if self.keep_uv and len(t) == len(self.v):
             out["uv"] = np.round(t, 2).ravel().tolist()
+        if getattr(self, "far", None):
+            out["far"] = int(self.far)   # drawn only within this many metres (web/world.js): a room's furnishings
         if self.sky is not None:
             out["sky"] = round(float(self.sky), 2)
             if self.bounce:

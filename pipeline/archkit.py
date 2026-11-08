@@ -931,3 +931,94 @@ def measured_roofs(city_id):
         T = [tuple(V[i] for i in t) for t in idx]
         out[si] = {"eave": eave * k / 10, "top": top * k / 10, "roof": T[:n_roof], "rest": T[n_roof:]}
     return out
+
+
+# ---------------------------------------------------------------- walls with openings (interiors you walk into)
+
+def lancet_head(w, z0, h, k=6):
+    """A pointed (Gothic) head over an opening w wide from z0, h high to its point: the springing's height and
+    the arch's points from the right jamb up to the apex, as (s, z) with s across the opening from its middle."""
+    zs = z0 + h - w * 0.85
+    right = [(w / 2 * math.cos(x * math.pi / 2) ** 0.7, zs + (z0 + h - zs) * math.sin(x * math.pi / 2)) for x in np.linspace(0, 1, k)]
+    return zs, right
+
+
+def holed_wall(m, P, a, b, z0, z1, holes=(), z1b=None, s0=0.0):
+    """A wall face from a to b (2D, in the frame), z0 up to z1 (to z1b at b; or z1(s): a gable), with openings cut
+    through it: holes [(centre along a->b, width, bottom, top, pointed)]. A pointed hole is open to its springing
+    and the face fills round its arch. UVs: metres along (from s0) and up. Returns the openings' outlines as
+    [(s, z), ...] (along, up) for the reveals and the glass."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    L = float(np.linalg.norm(b - a))
+    t = (b - a) / L
+    Q = lambda s, z: P(*(a + t * s), z)
+    top = z1 if callable(z1) else (lambda s: z1 + (z1b - z1) * s / L) if z1b is not None else (lambda s: z1)   # (z1 may be a function of s: a gable)
+    cuts = sorted({0.0, L, *[min(L, max(0.0, c + d * w / 2)) for c, w, *_ in holes for d in (-1, 1)]})
+    outlines = []
+    rect = []
+    for c, w, zb, zt, pointed in holes:
+        if pointed:
+            zs, right = lancet_head(w, zb, zt - zb)
+            rect.append((c - w / 2, c + w / 2, zb, zs))
+            poly = [(c - w / 2, zb), (c + w / 2, zb)] + [(c + p[0], p[1]) for p in right] + [(c - p[0], p[1]) for p in right[::-1][1:]]
+            # the face round the arch: from each jamb's springing up to the face's top, fanned over the arch
+            for sgn in (1, -1):
+                pts = [(c + sgn * p[0], p[1]) for p in right]
+                corner = (c + sgn * w / 2, min(top(c + sgn * w / 2), max(zt, top(c))))
+                for p, q in zip(pts, pts[1:]):
+                    tri = (corner, p, q) if sgn > 0 else (corner, q, p)
+                    m.tri(*[Q(*r) for r in tri], [[s0 + r[0], r[1]] for r in tri])
+                zc = min(top(c), corner[1])
+                quad = [(c, zt), corner, (corner[0], top(corner[0])), (c, top(c))]
+                if top(c) > zt + 1e-3:
+                    if sgn > 0:
+                        m.quad(*[Q(*r) for r in quad], [[s0 + r[0], r[1]] for r in quad])
+                    else:
+                        m.quad(*[Q(*r) for r in quad[::-1]], [[s0 + r[0], r[1]] for r in quad[::-1]])
+            outlines.append(poly)
+        else:
+            rect.append((c - w / 2, c + w / 2, zb, zt))
+            outlines.append([(c - w / 2, zb), (c + w / 2, zb), (c + w / 2, zt), (c - w / 2, zt)])
+    for sa, sb in zip(cuts, cuts[1:]):
+        if sb - sa < 1e-4:
+            continue
+        mid = (sa + sb) / 2
+        spans = [(zb, zt) for (h0, h1, zb, zt) in rect if h0 - 1e-4 <= mid <= h1 + 1e-4]
+        # a pointed hole's head is filled above (by the fans), so its column stops at the arch's apex
+        for (c, w, zb, zt, pointed) in holes:
+            if pointed and c - w / 2 - 1e-4 <= mid <= c + w / 2 + 1e-4:
+                spans.append((lancet_head(w, zb, zt - zb)[0], max(top(sa), top(sb)) + 1))
+        z = z0
+        for zb, zt in sorted(spans) + [(None, None)]:
+            lo, hi_a, hi_b = z, top(sa) if zb is None else min(zb, top(sa)), top(sb) if zb is None else min(zb, top(sb))
+            if hi_a > lo + 1e-3 or hi_b > lo + 1e-3:
+                m.quad(Q(sa, lo), Q(sb, lo), Q(sb, max(lo, hi_b)), Q(sa, max(lo, hi_a)),
+                       [[s0 + sa, lo], [s0 + sb, lo], [s0 + sb, hi_b], [s0 + sa, hi_a]])
+            if zb is None:
+                break
+            z = max(z, zt)
+    return outlines
+
+
+def reveal(m, P, a, b, outline, d0, d1):
+    """The sides of an opening's outline [(s, z)] on the wall a->b, from depth d0 to d1 (along the wall's right-hand
+    normal, which points out of the room when a->b runs anticlockwise round it): its jambs, sill and head."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    t = (b - a) / np.linalg.norm(b - a)
+    n = np.array([t[1], -t[0]])
+    Q = lambda s, z, d: P(*(a + t * s + n * d), z)
+    for (sa, za), (sb, zb) in zip(outline, outline[1:] + outline[:1]):
+        L = math.hypot(sb - sa, zb - za)
+        m.quad(Q(sa, za, d0), Q(sb, zb, d0), Q(sb, zb, d1), Q(sa, za, d1), [[0, 0], [L, 0], [L, d1 - d0], [0, d1 - d0]])
+
+
+def pane(m, P, a, b, outline, d):
+    """A flat fill of an opening's outline [(s, z)] on the wall a->b, at depth d off it (glass, a door leaf)."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    t = (b - a) / np.linalg.norm(b - a)
+    n = np.array([t[1], -t[0]])
+    Q = lambda s, z: P(*(a + t * s + n * d), z)
+    cs = sum(p[0] for p in outline) / len(outline)
+    cz = sum(p[1] for p in outline) / len(outline)
+    for (sa, za), (sb, zb) in zip(outline, outline[1:] + outline[:1]):
+        m.tri(Q(cs, cz), Q(sa, za), Q(sb, zb), [[cs, cz], [sa, za], [sb, zb]])

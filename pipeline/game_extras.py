@@ -9,6 +9,7 @@ built from scene.json alone, so a change to a builder lands in the game in secon
           how near they must get (1.5 m unless given) and how near they cannot (its half-thickness);
           tools/game_check.js walks up to each (tools/close_step.js). A spot's own "reach" lists the
           same for the thing it is about, and its "look" frames the look closer (web/game/places.js).
+  doors   doors that open as someone comes up to them, and interiors, the rooms behind them (web/game/doors.js)
   keep_off  where walkers keep off without a word, rings [x, y, ...] in decimetres: a landmark's water
           that the city's water leaves out, such as a temple's moat (web/game/nav.js)
 
@@ -20,7 +21,7 @@ import os
 import bridges
 from cityctx import city_args
 
-KEYS = ("spots", "chatter", "close", "keep_off", "lifts")  # (city.json's own first, then the builders')
+KEYS = ("spots", "chatter", "close", "keep_off", "lifts", "doors", "interiors")  # (city.json's own first, then the builders')
 
 
 def apply(C, scene, out):
@@ -37,6 +38,12 @@ def apply(C, scene, out):
         for k, v in C.hook("game_extras")(scene).items():
             if k in KEYS:
                 out[k] = out.get(k, []) + v
+    # the NPCs placed as given (at [x, y, z]: up on a deck, in a room, seated at a table) need no raw data, so they are
+    # put in here too: replaced in place by id, the new ones after the rest
+    given = [n for n in gcfg.get("npcs", []) if len(n.get("at", [])) > 2]
+    if given and "npcs" in out:
+        by = {n["id"]: n for n in given}
+        out["npcs"] = [by.pop(n["id"], n) for n in out["npcs"]] + list(by.values())
     drop_kept_off(out)
     return out
 
