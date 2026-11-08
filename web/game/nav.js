@@ -859,7 +859,7 @@ window.OENav = (function () {
       const m = col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, skip);
       let o = m;
       if (api.movers) o = api.movers.pushOut(o.x, o.y, R, z); // (the cars on this level)
-      if (api.posts) o = api.posts.pushOut(o.x, o.y, R, z);
+      if (api.posts && !(f && f.kind === 'promenade')) o = api.posts.pushOut(o.x, o.y, R, z); // (none stand in a sunken promenade: the street's over it)
       if (o.x === m.x && o.y === m.y) return m;
       // pushed out of a car's side or round a post: keep that, unless it puts the walker in a wall
       if (!col.overlap(o.x, o.y, R, z + KNEE, z + HEAD, skip)) return { x: o.x, y: o.y, hit: m.hit };

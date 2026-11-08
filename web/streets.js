@@ -150,9 +150,7 @@ window.OEStreets = (function () {
 
   // ------------------------------------------------------------ posts: lamp posts and trunks, solid
   // add(x, y, z, r, kind) each, then near(x, y, r, fn) calls fn(post) for each post whose circle
-  // comes within r of (x, y) ({ x, y, z, r, kind }), and pushOut moves a circle out of them. With z, only the posts
-  // that stand on about that level: a foot up to 2.5 m under it, and not over a walker's head (a lamp on the street
-  // over a sunken promenade's steps)
+  // comes within r of (x, y) ({ x, y, z, r, kind }), and pushOut moves a circle out of them
   function posts() {
     const list = [], grid = new Map(), GC = 8, key = (cx, cy) => cx * 131071 + cy;
     let big = 0;
@@ -169,7 +167,7 @@ window.OEStreets = (function () {
         const R = r + big;
         for (let cx = Math.floor((x - R) / GC); cx <= Math.floor((x + R) / GC); cx++) for (let cy = Math.floor((y - R) / GC); cy <= Math.floor((y + R) / GC); cy++) {
           const g = grid.get(key(cx, cy));
-          if (g) for (const p of g) if (Math.abs(p.x - x) < r + p.r && Math.abs(p.y - y) < r + p.r && (z == null || (z - p.z < 2.5 && p.z - z < 1.7))) fn(p);
+          if (g) for (const p of g) if (Math.abs(p.x - x) < r + p.r && Math.abs(p.y - y) < r + p.r && (z == null || Math.abs(p.z - z) < 2.5)) fn(p);
         }
       },
       // a circle of radius r with its foot at z, out of every post it overlaps: { x, y, hit }

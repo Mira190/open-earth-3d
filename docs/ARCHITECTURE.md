@@ -313,7 +313,7 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     pavements; below that the wall beside it is solid, and any drop off the promenade more
     than a step (its walls, the open side of a flight) is a railing. On its floor the
     buildings mapped across the wall's line do not hold a walker, a lamp post on the
-    street over the steps does not push one on the treads below (`streets.js posts`), and
+    street over the steps does not push one on its floor or treads (`nav.js slide`), and
     the paths OpenStreetMap maps down the promenade lie on its floor and steps, not on a
     deck `decks.js` would lift into the air, so the crowd walks it too.
     `tools/promenade_walk.js` (in `tools/game_check.js`; alone, `tools/promenade_check.js`)
