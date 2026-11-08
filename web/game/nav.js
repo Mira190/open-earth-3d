@@ -394,9 +394,17 @@ window.OENav = (function () {
       for (const p of roofs) if (p.zlo <= h + 1.0 && p.zhi > h) h = p.zhi;
       return h;
     };
+    // (only by a strip laid over a building's roof, an escalator or a stair on a roof, so that the landmarks
+    // everywhere else are read as they always were)
+    const roofStrip = new Map();
+    const onRoof = s => {
+      if (!roofStrip.has(s)) { const x = (s.box[0] + s.box[2]) / 2, y = (s.box[1] + s.box[3]) / 2, g = terrain(x, y); roofStrip.set(s, roofUnder(x, y, g) > g + 3); }
+      return roofStrip.get(s);
+    };
+    const roofy = (x, y) => stripsAt(x, y).some(s => x >= s.box[0] - EDGE - 2 && x <= s.box[2] + EDGE + 2 && y >= s.box[1] - EDGE - 2 && y <= s.box[3] + EDGE + 2 && onRoof(s));
     const ref = (x, y) => {
       let h = terrain(x, y);
-      h = roofUnder(x, y, h);
+      if (roofy(x, y)) h = roofUnder(x, y, h);
       for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > h) h = pier.data[k];
@@ -411,18 +419,20 @@ window.OENav = (function () {
       let h = h0;
       for (const s of stripsAt(x, y)) {
         const [u, v] = stripUV(s, x, y);
-        if (Math.abs(v) > s.half_width + EDGE || u < s.us[0] - EDGE || u > s.us[s.us.length - 1] + EDGE) continue;
+        const m = onRoof(s) ? EDGE : DSM.cell, e = onRoof(s) ? EDGE : 1.5;
+        if (Math.abs(v) > s.half_width + m || u < s.us[0] - m || u > s.us[s.us.length - 1] + m) continue;
         const q = interp(s.us, s.zs, u);
         // (and whatever stands near its edge, however high it is over the ground: a balustrade, a lift's shaft
-        // against a deck's end, issue 265, whose 2 m cells reached onto the deck; within EDGE of its outline, a
-        // 2 m cell's diagonal and half a wall's piece (landmarkCells), so that no 2 m cell of it reaches the strip)
-        const edge = Math.abs(v) <= s.half_width + EDGE && u >= s.us[0] - EDGE && u <= s.us[s.us.length - 1] + EDGE;
+        // against a deck's end, issue 265, whose 2 m cells reached onto the deck; within 1.5 m of its outline, and
+        // by a strip on a roof within EDGE, a 2 m cell's diagonal and half a wall's piece (landmarkCells), so that
+        // no 2 m cell of it reaches the strip)
+        const edge = Math.abs(v) <= s.half_width + e && u >= s.us[0] - e && u <= s.us[s.us.length - 1] + e;
         if (q > h && (q < h0 + 3.0 || edge)) h = q;
       }
       // (and a roof a step away, up to 12 m over the floor under it, or any roof that what is read stands on: the
       // glass, rails and coping along the edge of a deck over a channel cut into it, SHIBUYA SKY's, stand on the
       // deck, not on the channel's floor 9 m down or the street 227 m down past the facade)
-      for (const [dx, dy] of NEAR) {
+      if (roofy(x, y)) for (const [dx, dy] of NEAR) {
         const q = roofUnder(x + dx, y + dy, terrain(x + dx, y + dy));
         if (q > h && (q < h0 + 12.0 || zlo >= q - 0.5)) h = q;
       }
@@ -460,10 +470,10 @@ window.OENav = (function () {
     const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
     function landmarkCells(meshes, slabs) {
       const coarse = new Map(slabs);
-      // a triangle within reach of a strip, cut into pieces no longer than a metre, each read on its own: a long
+      // a triangle within reach of a strip on a roof, cut into pieces no longer than a metre, each read on its own: a long
       // one is read at its middle, and the outer glass along SHIBUYA SKY's channel and its fence's top rail, their
       // middles a step too far from the escalator's head, stood as 2 m cells over the head, so no one could step on
-      const near = (x, y, m) => stripsAt(x, y).some(s => x >= s.box[0] - m && x <= s.box[2] + m && y >= s.box[1] - m && y <= s.box[3] + m);
+      const near = (x, y, m) => stripsAt(x, y).some(s => onRoof(s) && x >= s.box[0] - m && x <= s.box[2] + m && y >= s.box[1] - m && y <= s.box[3] + m);
       function nearStrip(P) {
         if (!P.some(q => near(q[0], q[1], EDGE + 1))) return [P];
         const out = [], cut = T => {
