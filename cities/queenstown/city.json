@@ -682,7 +682,7 @@
         "id": "lucy",
         "name": "Lucy",
         "role": "Williams Cottage shopkeeper",
-        "at": [-12.82, -270.02, 2.21],
+        "at": [-11.5, -271.5, 2.21],
         "look": {
           "character": "R_Female_Adult_15",
           "skin": "#ead0bc",
