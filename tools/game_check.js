@@ -1065,7 +1065,7 @@ const npcNight = require('./npc_night');
     for (let r = 3; r <= 25 && !spot; r += 1) for (let a = 0; a < 6.28 && !spot; a += 0.15) {
       const x = s.x + Math.sin(a) * r, y = s.y + Math.cos(a) * r, z = g.nav.groundBelow(x, y, s.z + 2);
       if (z < s.z - 4 || !g.nav.free(x, y, z + 0.3, z + 0.6, 1.5)) continue;
-      if (!g.nav.free(x, y, z + 0.3, z + 3.6, 3.2)) spot = [x, y, z];
+      if (!g.nav.free(x, y, z + 0.3, z + 3.6, 3.2) && g.nav.free(x, y, z + 3.6, z + 60, 3.2)) spot = [x, y, z]; // (and open sky over it)
     }
     if (!spot) return { none: true, spot: false };
     const keep = [s.x, s.y, s.z, s.on];

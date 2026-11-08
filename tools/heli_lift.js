@@ -50,7 +50,7 @@ const [vw, vh] = size.split('x').map(Number), phone = vw < 700;
     for (let r = 3; r <= 25; r += 1) for (let a = 0; a < 6.28; a += 0.15) {
       const x = s.x + Math.sin(a) * r, y = s.y + Math.cos(a) * r, z = g.nav.groundBelow(x, y, s.z + 2);
       if (z < s.z - 4 || !g.nav.free(x, y, z + 0.3, z + 0.6, 1.5)) continue;
-      if (!g.nav.free(x, y, z + 0.3, z + 3.6, 3.2)) return [x, y, s.h];
+      if (!g.nav.free(x, y, z + 0.3, z + 3.6, 3.2) && g.nav.free(x, y, z + 3.6, z + 60, 3.2)) return [x, y, s.h]; // (and open sky over it)
     }
     return null;
   });

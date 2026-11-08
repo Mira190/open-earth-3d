@@ -264,11 +264,6 @@ window.OECollision = (function () {
       return best;
     }
 
-    // every solid under (x, y) with the tag (0 any), each passed to fn(prism)
-    function prismsAt(x, y, tag, fn) {
-      visit(prCell, prMark, x, y, x, y, pi => { const p = prisms[pi]; if ((!tag || p.tag === tag) && inside(p, x, y)) fn(p); return false; });
-    }
-
     // the solid under (x, y) whose top is highest, or null
     function prismAt(x, y, tag = 0) {
       let best = null;
@@ -308,7 +303,7 @@ window.OECollision = (function () {
       return best;
     }
 
-    const api = { add, build, sweep, slide, depenetrate, overlap, topAt, prismAt, prismsAt, sweepSphere, inside, prisms, SKIN,
+    const api = { add, build, sweep, slide, depenetrate, overlap, topAt, prismAt, sweepSphere, inside, prisms, SKIN,
       get walls() { return nseg; }, set need(f) { need = f; }, get need() { return need; }, set fineTag(t) { fineTag = t; } };
     return api;
   }

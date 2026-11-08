@@ -383,15 +383,40 @@ window.OENav = (function () {
     // fences, newels and glass stood as 2 m cells over the escalators' ends, so that no one could step on).
     // Not the surface model's roofs: they include the measured solids a landmark draws instead, the temple
     // halls' own roofs in Kyoto, which would lay whole roofs into the fine cells; nor a canopy or a building
-    // over a road, which stand clear of the ground (col holds the buildings drawn, and is built for this first)
+    // over a road, which stand clear of the ground (col holds the buildings drawn by now)
+    // (the buildings' prisms by the strips' 64 m cells, gathered once and only where a strip is: a roof is
+    // read only by a strip, below, and building the whole collision grid twice for it cost a start 0.6 s)
     const roofs = [];
+    let roofCells = null;
+    const roofCellsOf = () => {
+      roofCells = new Map();
+      for (const p of col.prisms) {
+        if (p.tag !== BUILDING) continue;
+        for (let cx = Math.floor(p.x0 / SC); cx <= Math.floor(p.x1 / SC); cx++) for (let cy = Math.floor(p.y0 / SC); cy <= Math.floor(p.y1 / SC); cy++) {
+          const k = skey(cx, cy);
+          if (!stripGrid.has(k)) continue;
+          const l = roofCells.get(k); if (l) l.push(p); else roofCells.set(k, [p]);
+        }
+      }
+      return roofCells;
+    };
     const roofUnder = (x, y, g) => {
       roofs.length = 0;
-      col.prismsAt(x, y, BUILDING, p => roofs.push(p));
+      const l = (roofCells || roofCellsOf()).get(skey(Math.floor(x / SC), Math.floor(y / SC)));
+      if (l) for (const p of l) if (x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1 && col.inside(p, x, y)) roofs.push(p);
       if (!roofs.length) return g;
       roofs.sort((a, b) => a.zlo - b.zlo);
       let h = g;
       for (const p of roofs) if (p.zlo <= h + 1.0 && p.zhi > h) h = p.zhi;
+      return h;
+    };
+    // the roof over the ground at a point, read on a 0.25 m grid and kept (the pieces by a strip and the points a
+    // step round each read the same few metres over and over)
+    const roofMemo = new Map();
+    const roofAt = (x, y) => {
+      const qx = Math.round(x * 4), qy = Math.round(y * 4), k = (qx + 4194304) * 8388608 + (qy + 4194304);
+      let h = roofMemo.get(k);
+      if (h === undefined) { const X = qx / 4, Y = qy / 4; h = roofUnder(X, Y, terrain(X, Y)); roofMemo.set(k, h); }
       return h;
     };
     // (only by a strip laid over a building's roof, an escalator or a stair on a roof, so that the landmarks
@@ -401,10 +426,12 @@ window.OENav = (function () {
       if (!roofStrip.has(s)) { const x = (s.box[0] + s.box[2]) / 2, y = (s.box[1] + s.box[3]) / 2, g = terrain(x, y); roofStrip.set(s, roofUnder(x, y, g) > g + 3); }
       return roofStrip.get(s);
     };
-    const roofy = (x, y) => stripsAt(x, y).some(s => x >= s.box[0] - EDGE - 2 && x <= s.box[2] + EDGE + 2 && y >= s.box[1] - EDGE - 2 && y <= s.box[3] + EDGE + 2 && onRoof(s));
+    let roofBoxes = null; // (the strips on a roof, each box EDGE + 2 m wider: none in most cities, two in Shibuya)
+    const roofy = (x, y) => (roofBoxes || (roofBoxes = strips.filter(onRoof).map(s => [s.box[0] - EDGE - 2, s.box[1] - EDGE - 2, s.box[2] + EDGE + 2, s.box[3] + EDGE + 2])))
+      .some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
     const ref = (x, y) => {
       let h = terrain(x, y);
-      if (roofy(x, y)) h = roofUnder(x, y, h);
+      if (roofy(x, y)) h = Math.max(h, roofAt(x, y));
       for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > h) h = pier.data[k];
@@ -433,7 +460,7 @@ window.OENav = (function () {
       // glass, rails and coping along the edge of a deck over a channel cut into it, SHIBUYA SKY's, stand on the
       // deck, not on the channel's floor 9 m down or the street 227 m down past the facade)
       if (roofy(x, y)) for (const [dx, dy] of NEAR) {
-        const q = roofUnder(x + dx, y + dy, terrain(x + dx, y + dy));
+        const q = roofAt(x + dx, y + dy);
         if (q > h && (q < h0 + 12.0 || zlo >= q - 0.5)) h = q;
       }
       return h;
@@ -470,16 +497,28 @@ window.OENav = (function () {
     const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
     function landmarkCells(meshes, slabs) {
       const coarse = new Map(slabs);
-      // a triangle within reach of a strip on a roof, cut into pieces no longer than a metre, each read on its own: a long
+      // a triangle within reach of a strip on a roof, cut into pieces no longer than 2 m (a coarse cell), each read on its own: a long
       // one is read at its middle, and the outer glass along SHIBUYA SKY's channel and its fence's top rail, their
       // middles a step too far from the escalator's head, stood as 2 m cells over the head, so no one could step on
-      const near = (x, y, m) => stripsAt(x, y).some(s => onRoof(s) && x >= s.box[0] - m && x <= s.box[2] + m && y >= s.box[1] - m && y <= s.box[3] + m);
+      // (a piece is cut while its bounds come within reach of either end of a strip on a roof, where one steps on
+      // and off; the rest, the deck's floor and the flights' sides, is read whole, as before)
+      let ends = null;
+      const endsOf = () => strips.filter(onRoof).flatMap(s => [s.us[0], s.us[s.us.length - 1]].map(u => {
+        const r = s.half_width + EDGE + 2, x = s.origin[0] + s.axis[0] * u, y = s.origin[1] + s.axis[1] * u;
+        return [x - r, y - r, x + r, y + r];
+      }));
+      const nearT = T => {
+        const x0 = Math.min(T[0][0], T[1][0], T[2][0]), x1 = Math.max(T[0][0], T[1][0], T[2][0]), y0 = Math.min(T[0][1], T[1][1], T[2][1]), y1 = Math.max(T[0][1], T[1][1], T[2][1]);
+        return (ends || (ends = endsOf())).some(b => x1 >= b[0] && x0 <= b[2] && y1 >= b[1] && y0 <= b[3]);
+      };
+      // (nor a level piece, a floor or the top of a coping: read at its middle it is where it is)
+      const flat = T => Math.max(T[0][2], T[1][2], T[2][2]) - Math.min(T[0][2], T[1][2], T[2][2]) < 0.05;
       function nearStrip(P) {
-        if (!P.some(q => near(q[0], q[1], EDGE + 1))) return [P];
+        if (!nearT(P)) return [P];
         const out = [], cut = T => {
           const e = [0, 1, 2].map(i => Math.hypot(T[(i + 1) % 3][0] - T[i][0], T[(i + 1) % 3][1] - T[i][1], T[(i + 1) % 3][2] - T[i][2]));
           const i = e.indexOf(Math.max(...e));
-          if (e[i] <= 1.0) { out.push(T); return; }
+          if (e[i] <= 2.0 || flat(T) || !nearT(T)) { out.push(T); return; }
           const a = T[i], b = T[(i + 1) % 3], c = T[(i + 2) % 3], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
           cut([a, m, c]); cut([m, b, c]);
         };
@@ -785,7 +824,6 @@ window.OENav = (function () {
       const o = f.w / 2 + 0.08, g0 = inland.FLIGHT_GATE || 0, a = [f.x + f.nx * o + f.ux * g0, f.y + f.ny * o + f.uy * g0], b = [f.x + f.nx * o + f.ux * f.run, f.y + f.ny * o + f.uy * f.run], t = [f.nx * 0.12, f.ny * 0.12];
       col.add([[a[0], a[1], b[0], b[1], b[0] + t[0], b[1] + t[1], a[0] + t[0], a[1] + t[1]]], f.zb, f.zt + 1.1, SUNK, -1);
     }
-    col.build(); // (the buildings alone first: ref() reads their roofs; built again with the landmark cells)
     const tFine = performance.now();
     const coarse = landmarkCells(solidMeshes, slabs);
     startMs = performance.now() - tFine;
