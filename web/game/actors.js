@@ -1916,17 +1916,24 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const v = Math.min(REV_V, R.v + 1.2 * dt), sb = Math.max(0, Math.min(l.len, c.s - c.dir * v * dt));
       lanePos(c.line, sb, c.dir, tmp, c.off + c.lo);
       const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
-      if (bd === 0 && peopleIn(c, tmp.x - hx0 * 0.3, tmp.y - hy0 * 0.3, hx0, hy0) === 0) {
+      // (clear behind, or backing away from the one it is up against: a car ahead within its margins, backing out too, held
+      // the one behind it, which held it in turn, each "held by" the other, Sydney's piece 1192, #317)
+      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0;
+      if ((bd === 0 || away) && peopleIn(c, tmp.x - hx0 * 0.3, tmp.y - hy0 * 0.3, hx0, hy0) === 0) {
         R.d += Math.abs(sb - c.s); R.v = v; R.wait = 0;
         c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp);
         const dh = Math.atan2(Math.sin(Math.atan2(tmp.hx, tmp.hy) - c.h), Math.cos(Math.atan2(tmp.hx, tmp.hy) - c.h));
         c.h += dh * Math.min(1, dt * 6);
         c.ax = c.x; c.ay = c.y; c.idle = 0;
       } else {
-        R.v = 0; R.wait += dt;
+        R.v = 0; R.wait += bk && bk.rev ? dt * 0.25 : dt; R.by = bk; // (behind it one backing out too, waiting at the junction behind for room: it waits its turn, not giving up after 20 s)
         // the car behind, stopped on this street and going its way: it backs out first
         if (bk && bk.line === c.line && bk.dir === c.dir && !bk.rev && bk.v < 0.5 && (c.s - bk.s) * c.dir > 0) reverse(bk);
-        if (R.wait > 20 || R.d > REV_MAX) { c.revBan = 60; c.revEnd = R.d > REV_MAX ? 'backed out as far as it goes' : bk ? `held by car ${C.indexOf(bk)} (${bk.why}, v ${(+bk.v || 0).toFixed(1)}${bk.line === c.line ? '' : `, on piece ${bk.line}`})` : 'held by someone behind it'; c.rev = null; } // (it waits on as before; asked again if it stays stuck)
+        // (one stopped across its way back, at the junction behind or on the piece beyond: after 3 s it is asked to back off
+        // a metre or two, as one of two of the traffic is; else the car gave up after 20 s, held by one waiting at a line
+        // there that could have made it room, Fushimi Inari's piece 99)
+        else if (bk && !bk.rev && bk.v < 0.5 && R.wait > 3 && canBack(bk)) backOff(bk, 2);
+        if (R.wait > 20 || R.d > REV_MAX) { c.revBan = 60; c.revEnd = R.d > REV_MAX ? 'backed out as far as it goes' : bk ? `held by car ${C.indexOf(bk)} (${bk.why}, v ${(+bk.v || 0).toFixed(1)}${bk.line === c.line ? '' : `, on piece ${bk.line}`}${bk.rev && bk.rev.by ? `, itself held by car ${C.indexOf(bk.rev.by)} (${bk.rev.by.why}${bk.rev.by.line === bk.line ? '' : `, on piece ${bk.rev.by.line}`})` : ''})` : 'held by someone behind it'; c.rev = null; } // (it waits on as before; asked again if it stays stuck)
       }
       q.setFromAxisAngle(up, Math.PI - c.h);
       m4.compose(W(c.x, c.y, c.z), q, one);
@@ -2154,6 +2161,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // round, or braked for)
         let sawX = null, leadX = null, xQ = false, youBy = null; // (youBy: which of yours it brakes for, and how, for the checks)
         c.xWaitT = c.why === 'you' && c.v < 0.3 && c.youBy && / on its way$/.test(c.youBy) ? (c.xWaitT || 0) + dt : 0;
+        c.bonnetT = c.why === 'you' && c.v < 0.3 && c.youBy && / across its bonnet$/.test(c.youBy) ? (c.bonnetT || 0) + dt : c.v >= 0.3 ? 0 : c.bonnetT || 0; // (kept while it stands, once it no longer waits on it)
         if (np) for (const o of api.extra) {
           if ((o.ahead && c.inAhead) || o.soft || (o.v < 0.3 && !o.live) || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
           // (a ride stopped at a junction's line, waiting its turn, is measured by its own size by a car crossing that
@@ -2216,7 +2224,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const xo = api.extra.find(o => o.id === b.id);
             if (xo && xo.block && (xo.block === c || xo.block.of === c)) continue; // (not one held up by this car itself: the two would wait on each other)
             const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
-            if (a > 0 && a < c.half + b.half + 4 && Math.abs(w) < c.hw + (b.hw || 0.9) + 0.2 && a - b.half - c.half < gap) { gap = Math.max(0, a - b.half - c.half); byCar = true; front = null; why = 'you'; youBy = b.id + ' across its bonnet'; }
+            // (one stopped there a while, 6 s, holds it only if it is right up against it: the ride stood 18 s across the
+            // bonnet of a car it waited on in turn, then swung out round it, Sydney's queue at a red light, #317)
+            const reachB = c.bonnetT > 6 && (b.v || xo && xo.v || 0) < 0.3 ? 0.6 : 4;
+            if (a > 0 && a < c.half + b.half + reachB && Math.abs(w) < c.hw + (b.hw || 0.9) + 0.2 && a - b.half - c.half < gap) { gap = Math.max(0, a - b.half - c.half); byCar = true; front = null; why = 'you'; youBy = b.id + ' across its bonnet'; }
             continue;
           }
           const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
@@ -2569,7 +2580,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
           if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
-          if (away) { dir = -dir; c.stuck = 0; }
+          dir = -dir; c.stuck = 0; // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
         }
         if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
           c.stuck = 0;

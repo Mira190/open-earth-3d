@@ -1825,7 +1825,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // along its way, if the road behind it is clear, as a driver who pulled up too far does (#243: Shinjuku's
     // taxi stood 30 s so)
     if (!o.turn && !o.hold && st.v < 0.3 && !st.mv && !(st.backoff > 0)) {
-      const mutual = cars.C.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c : st.block === c) && Math.hypot(c.x - st.x, c.y - st.y) < 25);
+      const mutual = cars.C.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c || (st.block && st.block.of === c) : st.block === c || (st.block && st.block.of === c)) && Math.hypot(c.x - st.x, c.y - st.y) < 25); // (st.block: the car itself, or its stand-in as one stopped for good)
       o.mutJ = mutual ? (o.mutJ || 0) + dt : 0;
       if (o.mutJ > 2) { o.mutJ = -3; st.backoff = 1.5; o.yielded = (o.yielded || 0) + 1; }
     } else if (!(st.backoff > 0)) o.mutJ = 0;

@@ -1707,7 +1707,7 @@ const npcNight = require('./npc_night');
     r.turned = true; r.rev = !!o.turn.rev; // (on a one-way street it backs out instead: tools/reverse_step.js checks that)
     window.__turn = { o, r, h0: st0.h, u: 0 };
     // (half way round: a still from outside, the chase camera's)
-    for (; window.__turn.u < 40 && o.turn && o.turn.i < o.turn.poses.length * 0.45; window.__turn.u += 0.25) {
+    for (; window.__turn.u < (o.turn && o.turn.rev ? 70 : 40) && o.turn && o.turn.i < o.turn.poses.length * 0.45; window.__turn.u += 0.25) { // (backing out up to 80 m takes longer than a turn in the road)
       g.advance(0.25);
       const st = o.drv.st;
       r.overlap = Math.max(r.overlap, g.cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.9, o.C.hw * 0.9, 0));
@@ -1720,7 +1720,7 @@ const npcNight = require('./npc_night');
     await shot('turn');
     Object.assign(turn, await p.evaluate(() => {
       const g = window.__game, T = window.__turn, o = T.o, r = T.r, ad = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
-      for (; T.u < 40 && o.turn; T.u += 0.25) {
+      for (; T.u < (o.turn && o.turn.rev ? 70 : 40) && o.turn; T.u += 0.25) {
         g.advance(0.25);
         const st = o.drv.st;
         r.overlap = Math.max(r.overlap, g.cars.footprint(st.x, st.y, st.z, st.h, o.C.half * 0.9, o.C.hw * 0.9, 0));
