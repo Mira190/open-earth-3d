@@ -1310,8 +1310,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const d = Math.hypot(c.x - player.x, c.y - player.y);
       if (d > 300 || d < 12) continue;
       const from = { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, plan = planRide(from, pickup);
-      // (one stopped at a red light waits for its green first: a scramble's walk can be half a minute)
-      if (plan && c.v < 1 && c.lineArm && c.toLine < 12 && junctions.light(c.lineArm, c.lineEx) === 'r') plan.T += junctions.toGreen(c.lineArm);
+      // (one stopped at a red light waits for its green first: a scramble's walk can be half a minute; and one on its
+      // way to a light that is not green, there before it turns, waits what is left: Shinjuku's taxi at 13 m/s, 60 m
+      // short of a red, came in 42 s, not the 12 s it was picked for)
+      if (plan && c.lineArm && c.toLine != null && (c.v >= 1 || c.toLine < 12)) {
+        const lt = junctions.light(c.lineArm, c.lineEx);
+        if (lt != null && lt !== 'g') plan.T += Math.max(0, junctions.toGreen(c.lineArm) - (c.v < 1 ? 0 : c.toLine / c.v));
+      }
       if (plan && plan.T <= RIDE_T[1] && (!best || plan.T < best.plan.T)) best = { c, from, plan };
     }
     let o = null;
