@@ -70,6 +70,14 @@ MATERIALS = {
                  "spandrel": 0.45, "mullion_m": 0.18, "frame": "#b4b8bb", "lit_share": 0.55, "lit_k": 0.8},
     "ks_glass": {"color": "#4c5f6c", "roughness": 0.05, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
                  "spandrel": 0.0, "mullion_m": 0.06, "frame": "#e6e9eb", "lit_share": 0.9, "lit_k": 0.5},
+    # the building beside the Granvia's east corner (#307, granvia_neighbour): light grey aluminium spandrels, ribbons of
+    # glass between them (lit room by room after dark), a glazed ground storey, solar panels on the roof
+    "gv_band": {"color": "#c3c5c3", "roughness": 0.5, "metalness": 0.25, "pattern": "granite", "joints_m": [2.4, 1.6]},
+    "gv_glass": {"color": "#55636b", "roughness": 0.06, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 1.6, "storey_m": 3.8,
+                 "spandrel": 0.0, "mullion_m": 0.07, "frame": "#a9afb1", "lit_share": 0.5, "lit_k": 0.7},
+    "gv_shop": {"color": "#46535a", "roughness": 0.05, "metalness": 0.5, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.4,
+                "spandrel": 0.0, "mullion_m": 0.09, "frame": "#8d9496", "lit_share": 0.8, "lit_k": 0.6, "warm_share": 0.6},
+    "gv_solar": {"color": "#1d2a3a", "roughness": 0.2, "metalness": 0.5},
     # the Hotel Granvia's guest floors (#258): grey granite panels, and windows lit room by room after dark
     "ks_stone": {"color": "#85878a", "roughness": 0.7, "metalness": 0.05, "pattern": "granite", "joints_m": [1.8, 1.1]},
     "ks_room": {"color": "#3f4d58", "roughness": 0.06, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 1.65,
@@ -177,7 +185,24 @@ def landmark_meshes(scene):
     lathe(mast, x, y, z0, [(71, 3.4), (74, 2.0), (90, 0.9), (100 - BASE_M + 31, 0.12)], n=12)   # spire tip at 131 m above ground
     more, hidden = temples_and_palaces()
     st, st_hidden = kyoto_station()
-    return mats, [shaft, deck, cone, mast] + more + st, {"hidden": sorted(set(hidden + st_hidden)), "clip": moat_meshes()[1]}
+    nb, nb_hidden = granvia_neighbour()
+    return mats, [shaft, deck, cone, mast] + more + st + nb, {"hidden": sorted(set(hidden + st_hidden + nb_hidden + in_horikawa())),
+                                                              "clip": moat_meshes()[1]}
+
+
+def in_horikawa():
+    """Solids standing mostly in the Horikawa's sunken channel (a shed mapped across its wall, OSM w229155098, hung
+    out over the promenade at a flight of steps): not drawn, and not in walkers' way."""
+    from shapely.geometry import Polygon
+    ch = horikawa_channel(0.0)
+    if ch is None:
+        return []
+    out = []
+    for sd in ak.load_solids("kyoto"):
+        g = Polygon(sd["ring"]).buffer(0)
+        if g.area > 0 and g.intersects(ch) and g.intersection(ch).area > 0.3 * g.area:
+            out.append(sd["si"])
+    return out
 
 
 # ---------------------------------------------------------------- Kyoto Station
@@ -437,6 +462,137 @@ def kyoto_station():
     return K.out(), [S["sd"]["si"]] + station_strips(S, A1, vn)
 
 
+# the building beside the Hotel Granvia's east corner (#307): PLATEAU's solid w120374245, 31 x 50 m and 46 m tall, its
+# roof covered in solar panels (GSI's aerial photograph). The photograph from the drive-up road (Another Believer, 2019,
+# CC BY-SA 4.0, docs/cities/kyoto.md) shows it light grey in horizontal bands, proud aluminium spandrels over ribbons of
+# glass, its north-west corner (the one the road comes round) rounded. The corner's radius, the storeys and the bands
+# are read from that photograph, not measured
+NEIGHBOUR = {"osm": "w120374245", "corner_r": 6.0, "ground": 5.0, "storey": 3.8, "spandrel": 1.6, "proud": 0.22, "parapet": 1.4}
+
+
+def horikawa_channel(grow=2.0):
+    """The Horikawa's sunken promenade (scene.json inland, the body with a terrace), grown by `grow` m, or None."""
+    import json
+    import os
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "kyoto", "scene.json")
+    I = json.load(open(path)).get("inland", {}) if os.path.exists(path) else {}
+    polys = []
+    for b in I.get("bodies", []):
+        if b.get("terrace"):
+            R = [list(zip(r[0::2], r[1::2])) for r in b["rings"]]
+            polys.append(Polygon(R[0], R[1:]).buffer(0))
+    return unary_union(polys).buffer(grow) if polys else None
+
+
+def granvia_neighbour():
+    """The banded grey building NE of the Granvia (NEIGHBOUR): ribbon glass between proud spandrels on a rounded
+    footprint, a glazed ground storey set back under the first band, a parapet, and solar panels over the roof."""
+    solids = [sd for sd in ak.load_solids("kyoto") if sd["osm"] == NEIGHBOUR["osm"]]
+    if not solids:
+        return [], []
+    sd = max(solids, key=lambda d: abs(ak.ring_area(d["ring"])))
+    N = NEIGHBOUR
+    cx, cy, ax, L, W = ak.oriented(sd["ring"])
+    F = ak.Frame(cx, cy, ax, sd["ground"] + sd["base"])
+    H = sd["top"] - sd["base"]
+    K = ak.Kit("granvia_neighbour", uv={"gv_glass", "gv_shop", "gv_band"})
+    # the footprint in the frame, its north-west corner (the farthest north-west in the city's frame) rounded
+    hu, hv = L / 2, W / 2
+    corners = [(-hu, -hv), (hu, -hv), (hu, hv), (-hu, hv)]
+    nw = max(range(4), key=lambda k: (lambda x, y: y - x)(*F(*corners[k], 0)[:2]))
+    def ring(d, r):
+        """the footprint moved out by d (in: negative), the north-west corner rounded to radius r + d"""
+        out = []
+        for k, (u, v) in enumerate(corners):
+            su, sv = (1 if u > 0 else -1), (1 if v > 0 else -1)
+            u, v = u + su * d, v + sv * d
+            if k != nw:
+                out.append((u, v))
+                continue
+            rr = max(0.5, r + d)
+            cu, cv = u - su * rr, v - sv * rr
+            # from the tangent point on the edge before the corner to the one on the edge after it
+            tang = lambda q: math.atan2(sv, 0.0) if q[1] == corners[k][1] else math.atan2(0.0, su)
+            start, end = tang(corners[k - 1]), tang(corners[(k + 1) % 4])
+            dif = (end - start + math.pi) % (2 * math.pi) - math.pi
+            angs = [(cu + rr * math.cos(start + dif * j / 12), cv + rr * math.sin(start + dif * j / 12)) for j in range(13)]
+            out += angs
+        return out
+    R0 = ring(0.0, N["corner_r"])
+    Rg = ring(-N["proud"], N["corner_r"])           # the glass, behind the spandrels' faces
+    Rs = ring(-1.2, N["corner_r"])                  # the ground storey's glass, set back under the first band
+    def walls(m, R, z0, z1, v0=0.0):
+        """the walls round R from z0 to z1, UVs metres along and up from v0"""
+        s = 0.0
+        for k in range(len(R)):
+            a, b = R[k], R[(k + 1) % len(R)]
+            Lk = math.hypot(b[0] - a[0], b[1] - a[1])
+            m.quad(F(*a, z0), F(*b, z0), F(*b, z1), F(*a, z1), [[s, v0], [s + Lk, v0], [s + Lk, v0 + z1 - z0], [s, v0 + z1 - z0]])
+            s += Lk
+    def ledge(m, Ro, Ri, z, down=False):
+        """the flat strip between rings Ro (outer) and Ri (inner) at z, facing up (or down)"""
+        for k in range(len(Ro)):
+            a, b, c, d = Ro[k], Ro[(k + 1) % len(Ro)], Ri[(k + 1) % len(Ri)], Ri[k]
+            q = [F(*a, z), F(*b, z), F(*c, z), F(*d, z)]
+            m.quad(*(q if not down else q[::-1]))
+    ccw = ak.ring_area(R0) > 0
+    if not ccw:
+        R0, Rg, Rs = R0[::-1], Rg[::-1], Rs[::-1]
+    zg, sty, sp, top = N["ground"], N["storey"], N["spandrel"], H - N["parapet"]
+    # the ground storey: glass set back, the first band over it carried on its soffit
+    walls(K["gv_shop"], Rs, 0.0, zg - 0.6)
+    walls(K["gv_band"], Rs, zg - 0.6, zg)
+    ledge(K["gv_band"], R0, Rs, zg, down=True)
+    # the ribbons of glass, and a proud spandrel at the foot of every storey (its face, its sill and its soffit)
+    walls(K["gv_glass"], Rg, zg, top)
+    z = zg
+    while z < top - 0.5:
+        z1 = min(z + sp, top)
+        walls(K["gv_band"], R0, z, z1, v0=z)
+        ledge(K["gv_band"], R0, Rg, z1)
+        if z > zg:
+            ledge(K["gv_band"], R0, Rg, z, down=True)
+        z += sty
+    # the parapet round the roof, and the roof inside it
+    walls(K["gv_band"], R0, top, H)
+    Rp = ring(-0.3, N["corner_r"])
+    if not ccw:
+        Rp = Rp[::-1]
+    ledge(K["gv_band"], R0, Rp, H)
+    walls(K["gv_band"], Rp[::-1], H - 0.9, H)
+    ak.cap(K["ks_concrete"], F, Rp, H - 0.9)
+    # solar panels over the west two thirds of the roof (the aerial photograph), in rows running east-west tilted to
+    # the south, and the plant on the east third. (n, e): metres north and east in the frame's axes
+    o = F(0, 0, 0)
+    du, dv = [F(*q, 0)[0] - o[0] for q in ((1, 0), (0, 1))], [F(*q, 0)[1] - o[1] for q in ((1, 0), (0, 1))]
+    ns_u = abs(dv[0]) >= abs(dv[1])                       # u runs north-south
+    sn = (1 if dv[0] > 0 else -1) if ns_u else (1 if dv[1] > 0 else -1)   # +1: the frame's axis points north
+    se = (1 if du[1] > 0 else -1) if ns_u else (1 if du[0] > 0 else -1)   # +1: the other axis points east
+    hn, he = (hu, hv) if ns_u else (hv, hu)
+    uv_ = lambda n, e: (n * sn, e * se) if ns_u else (e * se, n * sn)
+    P2 = lambda n, e, z: F(*uv_(n, e), z)
+    zr = H - 0.9
+    ew = (-he + 2.0, he / 3)                              # the west two thirds
+    n = -hn + 2.5
+    while n < hn - 3.0:
+        p = [P2(n, ew[0], zr + 0.4), P2(n, ew[1], zr + 0.4), P2(n + 1.8, ew[1], zr + 1.0), P2(n + 1.8, ew[0], zr + 1.0)]  # (low to the south)
+        if ak.ring_area([F.local(*q[:2]) for q in p]) < 0:
+            p = p[::-1]
+        K["gv_solar"].quad(*p)
+        K["gv_solar"].quad(p[3], p[2], p[1], p[0])
+        for e in (ew[0] + 0.5, (ew[0] + ew[1]) / 2, ew[1] - 0.5):   # the frames under them
+            K["ks_concrete"].box(P2(n + 1.6, e, zr), P2(n + 1.6, e, zr + 0.95), 0.12, 0.12)
+        n += 2.6
+    def box_ne(n0, n1, e0, e1, z0, z1):
+        (ua, va), (ub, vb) = uv_(n0, e0), uv_(n1, e1)
+        ak.block(K["ks_concrete"], F, min(ua, ub), max(ua, ub), min(va, vb), max(va, vb), z0, z1)
+    box_ne(-hn * 0.4, hn * 0.3, he / 3 + 2.0, he - 3.0, zr, zr + 2.4)
+    box_ne(hn * 0.4, hn * 0.7, he / 3 + 2.5, he / 3 + 7.0, zr, zr + 3.2)
+    return K.out(), [sd["si"] for sd in solids]
+
+
 def hotel_front(S, A1):
     """The Hotel Granvia's north face (#290): the tall strip PLATEAU cut off the station's solid east of the
     atrium, as (west end, east end) in metres along the building, and its north side."""
@@ -558,7 +714,7 @@ def aprons(K, solids, T, around, mat, heights=None):
 def temples_and_palaces():
     import json
     import os
-    from shapely.geometry import Point, Polygon
+    from shapely.geometry import LineString, Point, Polygon
     import shapely
     import cityctx
     C = cityctx.City("kyoto")
@@ -644,8 +800,14 @@ def temples_and_palaces():
         hidden.append(sd["si"])
     # the ramparts: battered granite between the moat (or the lower court) and the court above, with the
     # plastered walls on them
+    # (not the Horikawa's own walls, which OpenStreetMap maps as retaining walls beside the castle, ways 379568048,
+    # 379748479, 379748488 and 379748501: the sunken promenade's walls draw them, inland_water.py, and a battered
+    # rampart on them stood out into its floor)
+    channel = horikawa_channel()
     for r in osm["nijo"]["ramparts"]:
         pts = loc(r["pts"])
+        if channel is not None and LineString(pts).intersection(channel).length > 0.5 * LineString(pts).length:
+            continue
         a, b = np.array(pts[0]), np.array(pts[-1])
         mid = np.mean(pts, axis=0)
         t = (b - a) / (np.linalg.norm(b - a) or 1)

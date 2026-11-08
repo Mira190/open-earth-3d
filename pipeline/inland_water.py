@@ -47,7 +47,7 @@ import shapely
 from scipy import ndimage
 from shapely import wkb as swkb
 from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import linemerge, unary_union
+from shapely.ops import linemerge, substring, unary_union
 
 from cityctx import city_args, polygons
 
@@ -57,6 +57,9 @@ SEG_M = 4.0        # ring vertices this far apart at most (a channel's level cha
 BANK_OUT_M = (2.5, 5.0, 8.0)  # a wall's bank: the highest ground this far outside it, on its own side
 SMOOTH_M = 80.0    # a channel's bank smoothed over this length along it
 BANK_RISE_M = 2.5  # a channel's higher bank (on a slope) at most this much over its lower one
+STEPS_CLEAR_M = 1.5  # a flight of steps down to a sunken promenade starts this far past its crossing's deck
+SEAT_PIECE_M = 6.0   # seating steps along a promenade's wall, in pieces this long that follow its line
+STEPS_OSM_M = 25.0   # mapped stairs this near a crossing (along the channel) put its flight on their bank and face
 ROAD_HALF = {"motorway": 9.0, "trunk": 8.0, "primary": 7.0, "secondary": 6.0, "tertiary": 5.0, "residential": 3.5,
              "unclassified": 3.5, "living_street": 3.0, "service": 2.5, "pedestrian": 3.0, "footway": 1.5, "path": 1.2,
              "steps": 1.5, "cycleway": 1.5, "track": 2.0}
@@ -228,6 +231,21 @@ def terrace_of(L, p, s, low, sides, spec):
     stand from the bank down to that floor."""
     T = spec["terrace"]
     stream = L.buffer(T.get("stream_m", 2.5) / 2, cap_style="flat").intersection(p.buffer(-T.get("lip_m", 0.6)))
+    water_z = lambda st: np.interp(st, s, low) - spec["bank_to_water_m"]
+    # over stepped weirs the stream lies level from one sill to the next and falls over each (a chute the length of a
+    # ring's step, about 2 m): its level the smooth one at the sill above
+    weir_s = []
+    if T.get("weirs"):
+        wa, wb = sorted(L.project(Point(*q)) for q in T["weirs"]["between"])
+        weir_s = list(np.arange(wa + T["weirs"].get("every_m", 12.0) / 2, wb, T["weirs"].get("every_m", 12.0)))
+    def stream_z(st):
+        st = np.atleast_1d(st)
+        z = water_z(st)
+        if len(weir_s) > 1:
+            k = np.searchsorted(weir_s, st, side="right") - 1
+            on = (k >= 0) & (k < len(weir_s) - 1)
+            z = np.where(on, water_z(np.array(weir_s)[np.clip(k, 0, len(weir_s) - 1)]), z)
+        return z
     R, WZ = [], []
     for sp in polygons(stream):
         if sp.area < 4:
@@ -235,61 +253,213 @@ def terrace_of(L, p, s, low, sides, spec):
         for ring in [sp.exterior] + list(sp.interiors):
             pts = ring_xy(ring, 2.0)
             st = np.array([L.project(Point(x, y)) for x, y in pts])
-            R.append(pts); WZ.append(np.interp(st, s, low) - spec["bank_to_water_m"])
-    return {"terrace": {"path_m": T.get("path_m", 0.35), "steps_m": T.get("steps_m", 1.4)}, "stream": {"rings": R, "wz": WZ},
+            R.append(pts); WZ.append(stream_z(st))
+    out = {"path_m": T.get("path_m", 0.35), "steps_m": T.get("steps_m", 1.4)}
+    floor_z = lambda st: np.interp(st, s, low) - spec["bank_to_water_m"] + T.get("path_m", 0.35)
+    span = lambda pts: sorted(L.project(Point(*q)) for q in pts)
+    def wall_at(st, bank):
+        """the point on the line at st, the unit vectors along it and to the wall on `bank` (+1 its left), and the
+        wall's distance from the line"""
+        c, q = L.interpolate(st), L.interpolate(min(L.length, st + 1.0))
+        ux, uy = q.x - c.x, q.y - c.y
+        n = np.hypot(ux, uy) or 1.0
+        ux, uy = ux / n, uy / n
+        nx, ny = -uy * bank, ux * bank
+        half = next((o for o in np.arange(0.5, 15.0, 0.1) if not p.contains(Point(c.x + nx * o, c.y + ny * o))), None)
+        return c, ux, uy, nx, ny, half
+    # a lawn on one bank's side of the stream (Kyoto City: the 芝生広場 between Shimochojamachi and Demizu), a paved
+    # strip kept along the stream and a margin along the wall
+    if T.get("lawn"):
+        a, b = span(T["lawn"]["between"])
+        band = substring(L, a, b).buffer(30.0, cap_style="flat")
+        bank = T["lawn"].get("bank", 1)
+        side = band.intersection(L.buffer(30.0, cap_style="flat", single_sided=True) if bank > 0 else L.buffer(-30.0, cap_style="flat", single_sided=True))
+        g = p.buffer(-T["lawn"].get("wall_m", 0.8)).intersection(side).difference(L.buffer(T.get("stream_m", 2.5) / 2 + T["lawn"].get("path_m", 1.4)))
+        out["lawn"] = {"rings": [], "z": []}
+        for lp in polygons(g):
+            if lp.area < 10:
+                continue
+            pts = ring_xy(lp.simplify(0.2).exterior, 2.0)
+            out["lawn"]["rings"].append(pts)
+            out["lawn"]["z"].append(floor_z(np.array([L.project(Point(x, y)) for x, y in pts])))
+    # seating steps along one wall (Kyoto City: 観覧席にもなる階段 between Nijo and Oshikoji, on the east bank in the
+    # photographs): tiers stepping up from the floor to the wall, in pieces SEAT_PIECE_M long that follow its line
+    if T.get("seats"):
+        S = T["seats"]
+        a, b = span(S["between"])
+        pieces = []
+        for st in np.arange(a + S.get("clear_m", 6.0), b - S.get("clear_m", 6.0), SEAT_PIECE_M):
+            c, ux, uy, nx, ny, half = wall_at(st, S.get("bank", 1))
+            if half is None:
+                continue
+            ln = min(SEAT_PIECE_M, b - S.get("clear_m", 6.0) - st)
+            pieces.append([c.x + nx * half, c.y + ny * half, ux, uy, nx, ny, ln, float(floor_z(st)), S.get("tiers", 4), S.get("rise_m", 0.4), S.get("tread_m", 0.7)])
+        out["seats"] = pieces
+    # stepped weirs in the stream (Kyoto City: 階段状の落差工 between Marutamachi and Takeyamachi): a granite sill
+    # across it every every_m, the stream falling over it to the next sill's level
+    if T.get("weirs"):
+        W = T["weirs"]
+        a, b = span(W["between"])
+        out["weirs"] = []
+        for i, st in enumerate(weir_s):
+            c, ux, uy, nx, ny, half = wall_at(st, 1)
+            # (the sill at the level above it; the fall to the level below, the next sill's)
+            nxt = weir_s[i + 1] if i + 1 < len(weir_s) else st + W.get("every_m", 12.0)
+            out["weirs"].append([c.x, c.y, ux, uy, T.get("stream_m", 2.5), float(water_z(st)), float(water_z(st) - water_z(nxt))])
+    return {"terrace": out, "stream": {"rings": R, "wz": WZ},
             "_terrace": T, "_s": s, "_low": low, "_sides": sides}
 
 
-def steps_of(body, D, spec_d):
+def terrace_json(t):
+    """A promenade's terrace for scene.json: its lawn's rings [x, y, ...] and levels to the decimetre and centimetre,
+    the seats' and weirs' figures to the centimetre."""
+    out = {k: v for k, v in t.items() if k not in ("lawn", "seats", "weirs")}
+    if t.get("lawn"):
+        out["lawn"] = {"rings": [[round(float(v), 1) for v in np.asarray(r).ravel()] for r in t["lawn"]["rings"]],
+                       "z": [[round(float(v), 2) for v in z] for z in t["lawn"]["z"]]}
+    for k in ("seats", "weirs"):
+        if t.get(k):
+            out[k] = [[round(float(v), 2) for v in row] for row in t[k]]
+    return out
+
+
+def steps_of(body, D, spec_d, osm_steps=None):
     """Flights of steps down to a sunken promenade from the streets that cross it: beside each crossing, on its
     downstream face, along the wall on one bank and then the other (the Horikawa's entrances open off the
-    pavements and the crossings, Kyoto City). [x, y, ux, uy (down the flight), nx, ny (to the wall), z top,
-    z bottom, width, run] per flight."""
+    pavements and the crossings, Kyoto City). A crossing is a deck that cuts the channel in two (not a bank lane's
+    sliver of deck along one wall), and each flight starts STEPS_CLEAR_M past the deck's own edge on the flight's
+    line (clear of a mapped bridge's deck, which web/game/decks.js lays wider than the road), where the pavement
+    beside it opens onto its top through the railing (web/inland.js). Where OpenStreetMap maps the stairs at a crossing
+    (osm_steps: highway=steps lines), the flight is on their bank and their face of it; elsewhere below the crossing,
+    on one bank and then the other. [x, y, ux, uy (down the flight), nx, ny (to the wall),
+    z top, z bottom, width, run] per flight."""
     L, p, s, low, sides = body["_line"], body["_poly"], body["_s"], body["_low"], body["_sides"]
     T = body["_terrace"]
     width, rise, tread = T.get("steps_m", 1.4), 0.16, 0.3
     out, k = [], 0
-    spans = []
+    crossings = []
     for d in D:
         if not d.intersects(p):
             continue
+        rest = [q for q in polygons(p.difference(d)) if q.area > 15.0]
+        if len(rest) < 2:
+            continue   # (it does not reach across)
         st = [L.project(Point(x, y)) for x, y in d.exterior.coords]
-        spans.append((min(st), max(st)))
-    spans.sort()
+        crossings.append([min(st), max(st), d])
+    crossings.sort(key=lambda c: c[0])
     merged = []
-    for a, b in spans:   # (a crossing's carriageway and its pavements, one crossing)
+    for a, b, d in crossings:   # (a crossing's carriageway and its pavements, one crossing)
         if merged and a <= merged[-1][1] + 4.0:
             merged[-1][1] = max(merged[-1][1], b)
+            merged[-1][2] = merged[-1][2].union(d)
         else:
-            merged.append([a, b])
-    spans = merged
-    for i, (a, b) in enumerate(spans):
-        s0 = b + 0.3
-        half = None
-        side = 1 if k % 2 == 0 else -1
-        c = L.interpolate(min(L.length, s0))
-        q = L.interpolate(min(L.length, s0 + 1.0))
-        ux, uy = q.x - c.x, q.y - c.y
-        n = np.hypot(ux, uy) or 1.0
-        ux, uy = ux / n, uy / n
-        nx, ny = -uy * side, ux * side
-        # the wall on that side: out from the line until off the channel
-        for o in np.arange(0.5, 15.0, 0.25):
-            if not p.contains(Point(c.x + nx * o, c.y + ny * o)):
-                half = o
-                break
-        if half is None:
-            continue
-        sd = sides[1 if side == 1 else 0]
-        ztop = float(np.interp(s0, s, sd))
-        zbot = float(np.interp(s0, s, low)) - spec_d["bank_to_water_m"] + T.get("path_m", 0.35)
-        run = max(0.0, (ztop - zbot)) / rise * tread
-        nxt = spans[i + 1][0] if i + 1 < len(spans) else L.length
-        if s0 + run + 1.0 > nxt or ztop - zbot < 0.5:
-            continue
-        o = half - 0.08 - width / 2
-        out.append([c.x + nx * o, c.y + ny * o, ux, uy, nx, ny, ztop, zbot, width, run])
-        k += 1
+            merged.append([a, b, d])
+    stream = L.buffer(T.get("stream_m", 2.5) / 2 + 0.3, cap_style="flat")
+    decked = unary_union(D) if D else None
+    inside = p.buffer(0.05)
+    # the stairs OpenStreetMap maps down into the channel (highway=steps with an end at its wall): where one is
+    # within STEPS_OSM_M of a crossing, that crossing's flight is on its bank and its face (upstream or downstream)
+    mapped = []
+    for g in osm_steps or []:
+        ends = [Point(g.coords[0]), Point(g.coords[-1])]
+        depth = [(1 if p.contains(e) else -1) * p.exterior.distance(e) for e in ends]
+        if min(depth) > 1.5 or max(depth) < -1.0:
+            continue   # (inside, away from the walls: the promenade's own steps beside its weirs; or off it)
+        out_end = ends[int(np.argmin(depth))]
+        so = L.project(out_end)
+        c0, c1 = L.interpolate(max(0.0, so - 1.0)), L.interpolate(min(L.length, so + 1.0))
+        bank = 1 if (c1.x - c0.x) * (out_end.y - c0.y) - (c1.y - c0.y) * (out_end.x - c0.x) > 0 else -1
+        mapped.append((L.project(g.interpolate(0.5, normalized=True)), bank))
+    for i, (a, b, dk) in enumerate(merged):
+        prv = merged[i - 1][1] if i > 0 else 0.0
+        nxt = merged[i + 1][0] if i + 1 < len(merged) else L.length
+        near = [(abs(sm - (a + b) / 2), sm, bank) for sm, bank in mapped if a - STEPS_OSM_M < sm < b + STEPS_OSM_M]
+        # (else on one bank and then the other below the crossing; the other bank where the first will not take it)
+        tries = [(1, 1), (1, -1)] if k % 2 == 0 else [(1, -1), (1, 1)]
+        if near:
+            _, sm, bank = min(near)
+            tries = [(1 if sm > (a + b) / 2 else -1, bank)] + tries
+        for face, bank in tries:
+            s0 = b + 0.3 if face > 0 else a - 0.3
+            c = L.interpolate(min(L.length, max(0.0, s0)))
+            q = L.interpolate(min(L.length, max(0.0, s0 + face * 1.0)))
+            ux, uy = q.x - c.x, q.y - c.y
+            n = np.hypot(ux, uy) or 1.0
+            ux, uy = ux / n, uy / n
+            f = flight_at(L, p, s, low, sides, spec_d, T, c, ux, uy, bank * face, bank, dk, width, rise, tread)
+            if f is None:
+                continue
+            x0, y0, nx, ny, ztop, zbot, run, st0 = f
+            if not prv < st0 + face * (run + 1.0) < nxt or ztop - zbot < 0.5:
+                continue
+            # its footprint and a landing past its foot: in the channel, clear of the stream and of every deck; and
+            # floor beside its foot to walk on from
+            vx, vy = -nx, -ny
+            rect = Polygon([(x0 + vx * sv * width / 2 + ux * su, y0 + vy * sv * width / 2 + uy * su)
+                            for su, sv in ((-0.4, -1), (run + 1.0, -1), (run + 1.0, 1), (-0.4, 1))])
+            foot = Point(x0 + ux * (run + 1.0) + vx * (width / 2 + 0.8), y0 + uy * (run + 1.0) + vy * (width / 2 + 0.8))
+            if not inside.contains(rect) or rect.intersects(stream) or (decked is not None and rect.intersects(decked)):
+                continue
+            if not inside.contains(foot) or stream.contains(foot) or (decked is not None and decked.contains(foot)):
+                continue
+            out.append([x0, y0, ux, uy, nx, ny, ztop, zbot, width, run])
+            k += 1
+            break
+    return out
+
+
+def flight_at(L, p, s, low, sides, spec_d, T, c, ux, uy, side, bank, dk, width, rise, tread):
+    """A flight of steps down (ux, uy) along the wall on `side` of it (the bank `bank` of the line: +1 its left),
+    STEPS_CLEAR_M past the crossing's deck dk: (x, y of its top, nx, ny to the wall, z top, z bottom, run, its place
+    along the line), or None."""
+    nx, ny = -uy * side, ux * side
+    half = None
+    for o in np.arange(0.5, 15.0, 0.25):   # the wall on that side: out from the line until off the channel
+        if not p.contains(Point(c.x + nx * o, c.y + ny * o)):
+            half = o
+            break
+    if half is None:
+        return None
+    o = half - 0.08 - width / 2
+    # the deck's edge on the flight's line: back up the channel until on the deck, then down to its edge
+    ax_, ay_ = c.x + nx * o, c.y + ny * o
+    on = lambda t: dk.contains(Point(ax_ + ux * t, ay_ + uy * t))
+    t = 0.0
+    while t > -12.0 and not on(t):
+        t -= 0.1
+    if t <= -12.0:
+        return None
+    while on(t + 0.05) and t < 12.0:
+        t += 0.05
+    t += STEPS_CLEAR_M
+    x0, y0 = ax_ + ux * t, ay_ + uy * t
+    st0 = L.project(Point(x0, y0))
+    ztop = float(np.interp(st0, s, sides[1 if bank == 1 else 0]))
+    zbot = float(np.interp(st0, s, low)) - spec_d["bank_to_water_m"] + T.get("path_m", 0.35)
+    run = max(0.0, (ztop - zbot)) / rise * tread
+    # against the wall all along: the nearest the wall comes to the flight's line between its top and its foot
+    gap = []
+    for a in np.linspace(-0.4, run + 1.0, 8):
+        bx, by = x0 + ux * a, y0 + uy * a
+        g = next((e for e in np.arange(-1.5, 3.0, 0.05) if not p.contains(Point(bx + nx * e, by + ny * e))), None)
+        if g is None:
+            return None
+        gap.append(g)
+    shift = min(gap) - width / 2 - 0.08
+    return x0 + nx * shift, y0 + ny * shift, nx, ny, ztop, zbot, run, st0
+
+
+def steps_lines(C, poly):
+    """The stairs OpenStreetMap maps at a channel (Overture segments of class steps within 2 m of it), as lines in
+    the local frame."""
+    path = os.path.join(C.raw, "overture_segment.parquet")
+    if not os.path.exists(path):
+        return []
+    out = []
+    for (w,) in duckdb.sql(f"SELECT wkb FROM '{path}' WHERE class = 'steps'").fetchall():
+        g = C.to_local(swkb.loads(bytes(w)))
+        if g.geom_type == "LineString" and g.distance(poly) < 2.0:
+            out.append(g)
     return out
 
 
@@ -367,10 +537,10 @@ def decks(C, bodies, extent):
     models = unary_union(models) if models else None
     W = unary_union([b["_poly"] for b in walled])
     core = W.buffer(-0.8)   # a crossing reaches over the middle of the channel; a way grazing its edge does not
-    out = []
+    pieces = []   # (piece of a way over the channel, its class)
     for name, cls, sub, flags, w in duckdb.sql(f"SELECT name, class, subtype, road_flags, wkb FROM '{path}'").fetchall():
         g = C.to_local(swkb.loads(bytes(w)))
-        if not g.intersects(W) or sub != "road":
+        if not g.intersects(W) or sub != "road" or cls == "steps":   # (stairs go down into a channel: #315)
             continue
         fl = json.dumps(flags) if flags is not None else ""
         if "is_tunnel" in fl:
@@ -379,12 +549,26 @@ def decks(C, bodies, extent):
         if cross.is_empty:
             continue
         # a way that runs along the channel, not across it (a promenade inside it, a road beside it that the outline
-        # grazes), is no deck: only its short crossings are
-        cross = [c for c in polygons_or_lines(cross) if c.length <= ALONG_M and core.contains(c.interpolate(0.5, normalized=True))]
-        if not cross:
+        # grazes), is no deck: only its short pieces over it that reach over its middle are (the others still join
+        # them up, below)
+        pieces += [(c, cls, core.contains(c.interpolate(0.5, normalized=True))) for c in polygons_or_lines(cross) if c.length <= ALONG_M]
+    # and over a sunken promenade only what crosses, from wall to wall: the pieces that join up (a bridge mapped as
+    # several ways, split over the water) and reach its walls at two places; not a path that ends inside it (the
+    # Horikawa's entrances, laid as slabs at the street's level over its promenade, #315)
+    walls = W.boundary.buffer(0.8)
+    sunk = unary_union([b["_poly"] for b in walled if b.get("_terrace")]) if any(b.get("_terrace") for b in walled) else None
+    groups = []
+    for c, cls, mid in pieces:
+        hit = [gp for gp in groups if gp["geom"].distance(c) < 0.5]
+        gp = {"geom": unary_union([c] + [h["geom"] for h in hit]), "items": [(c, cls, mid)] + [i for h in hit for i in h["items"]]}
+        groups = [h for h in groups if h not in hit] + [gp]
+    out = []
+    for gp in groups:
+        if not any(mid for _, _, mid in gp["items"]):
             continue
-        half = ROAD_HALF.get(cls, 2.5)
-        d = unary_union([c.buffer(half, cap_style="flat") for c in cross])
+        if sunk is not None and gp["geom"].intersects(sunk) and len(polygons_or_lines(gp["geom"].intersection(walls))) < 2:
+            continue
+        d = unary_union([c.buffer(ROAD_HALF.get(cls, 2.5), cap_style="flat") for c, cls, mid in gp["items"] if mid])
         d = d.intersection(W.buffer(1.0))
         if models is not None:
             d = d.difference(models)
@@ -513,7 +697,7 @@ def build(C):
     for b in bodies:
         if b.get("_terrace"):
             spec = next(l for l in cfg.get("lines", []) if l.get("name") == b["name"])
-            b["steps"] = steps_of(b, D, spec)
+            b["steps"] = steps_of(b, D, spec, steps_lines(C, b["_poly"]))
     q = lambda a: [round(float(v), 1) for v in np.asarray(a).ravel()]
     out = {"note": "Inland water at its own level, from pipeline/inland_water.py: rings [x, y, ...] local m (outer, then holes); "
                    "bz the bank's height and wz the water's at each ring point (m); water_m the water's depth over the bed; "
@@ -521,7 +705,7 @@ def build(C):
            "bodies": [{"name": b["name"], "kind": b["kind"], **({"walls": b["walls"]} if b.get("walls") else {}),
                        "water_m": b["water_m"], "rings": [q(r) for r in b["rings"]], "bz": [q(v) for v in b["bz"]],
                        "wz": [q(v) for v in b["wz"]],
-                       **({"terrace": b["terrace"], "stream": {"rings": [q(r) for r in b["stream"]["rings"]], "wz": [q(v) for v in b["stream"]["wz"]]},
+                       **({"terrace": terrace_json(b["terrace"]), "stream": {"rings": [q(r) for r in b["stream"]["rings"]], "wz": [q(v) for v in b["stream"]["wz"]]},
                            "steps": [[round(float(v), 2) for v in st] for st in b.get("steps", [])]} if b.get("terrace") else {})} for b in bodies],
            "decks": [q(np.asarray(p.exterior.coords)[:-1]) for p in D]}
     if cfg.get("colour"):

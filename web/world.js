@@ -1192,6 +1192,10 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
           PATTERNS.ashlar(m, { course_m: 0.3, block_m: 0.6 }); const own = m.onBeforeCompile; m.onBeforeCompile = sh => { own(sh); streetLit(sh); };
           m.customProgramCacheKey = () => 'inland|floor'; return m; })(),
       };
+      // a promenade's lawn (the Horikawa's 芝生広場), and the white water off its weirs
+      mats.lawn = new THREE.MeshStandardMaterial({ color: lin(IW.lawn || '#526b38'), roughness: 0.95, metalness: 0 });
+      mats.lawn.onBeforeCompile = streetLit;
+      mats.foam = new THREE.MeshStandardMaterial({ color: lin('#e9eef0'), roughness: 0.4, metalness: 0, transparent: true, opacity: 0.32, depthWrite: false });
       PATTERNS.railing(mats.rail, { bar_m: 0.14, rails_m: [0.06, 1.05] });
       mats.coping.onBeforeCompile = mats.slab.onBeforeCompile = streetLit;
       mats.bed().onBeforeCompile = streetLit;

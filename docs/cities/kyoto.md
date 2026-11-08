@@ -184,8 +184,16 @@ east. Laid over the aerial photograph, PLATEAU's outlines put it right:
   corner): drawn as a range of rooms to 56 m, the separate building in front of it.
 
 The vault, the gate and the entrance under its canopy now show from the forecourt as the photographs have them.
-Not done: the separate building (w120374245) is still drawn in the generic glass style; its banded grey face and
-rounded corner need a building style of its own (follow-up).
+
+**The Granvia's neighbour (#307).** The separate building (w120374245, 31 × 50 m, 46 m) is drawn as a landmark of its
+own (`granvia_neighbour` in `cities/kyoto/city.py`), its PLATEAU solid hidden: proud light grey aluminium spandrels
+1.6 m deep in every 3.8 m storey over ribbons of glass set 0.22 m back (lit room by room after dark), its north-west
+corner, the one the drive-up road comes round, rounded to 6 m; a glazed ground storey set 1.2 m back under the first
+band, a parapet, and solar panels in rows over the west two thirds of the roof with the plant on the east third, as
+GSI's aerial photograph shows the roof. The bands, the corner's radius and the storeys are read from the drive-up
+photograph (Another Believer, 2019, CC BY-SA 4.0, above), not measured; PLATEAU's footprint and height are kept.
+
+![Kyoto Station's banded neighbour from above the drive-up road, day, dusk and night (#307)](../images/kyoto/granvia-neighbour-307.jpg)
 
 ![The Granvia: the photograph from the taxi pool (Soramimi, CC BY-SA 4.0) and the model at day, dusk and night (#290)](../images/fidelity-290/granvia.jpg)
 ![From the forecourt and the east, desktop, day, dusk and night (#290)](../images/fidelity-290/kyoto-desktop.jpg)

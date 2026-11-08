@@ -278,12 +278,47 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     stone walls 9.5 m apart a paved floor (granite setts) stands 0.35 m over the water and
     about 2.6 m under the street; the stream runs down its middle, 2.4 m wide between
     low stone edges; at each crossing a flight of steps (0.16 m risers, 0.3 m treads, a
-    parapet on the open side) runs down along the wall from the crossing's downstream
-    face, on one bank and then the other. Kyoto City's summary gives the stretch, the
-    stream, the stepped weirs and the entrances but no dimensions: the depth and widths
-    are read from photographs. No other live city has one; a city adds
+    parapet on the open side) runs down along the wall below the crossing, on one bank and
+    then the other. A crossing is a deck that cuts the channel in two (a bank lane's sliver
+    of deck along one wall is not one); a flight starts 1.5 m past the deck's edge on its
+    own line (clear of a mapped bridge's deck, which `decks.js` lays wider than the road),
+    stands flush with the wall all its length, and is placed only where it and a landing
+    past its foot keep clear of the stream and of every deck, else on the other bank. Where
+    OpenStreetMap maps the stairs at a crossing (`highway=steps` with an end at the wall,
+    within 25 m), the flight is on their bank and their face of the crossing, upstream or
+    downstream (#315: eleven flights, eight of them where the stairs are mapped). Over a
+    promenade only a way that crosses from wall to wall is a deck (its pieces joined up, a
+    bridge mapped as several ways); OSM's stairs and the paths that end inside it had been
+    laid as slabs at the street's level over its floor (ten of them on the Horikawa). Kyoto City's summary
+    gives the stretch, the stream, the stepped weirs and the entrances but no dimensions:
+    the depth and widths are read from photographs. No other live city has one; a city adds
     `"terrace": {"stream_m", "path_m", "steps_m"}` to a line in `water.inland.lines`.
-    Walkers do not go down yet: the promenade is drawn, not walked;
+    Kyoto City's brochure for the restoration (堀川水辺環境整備事業, Construction Bureau)
+    places its features, and `terrace` draws them between two points on the line
+    (`between`): the lawn (芝生広場, `lawn`) between Shimochojamachi and Demizu, on the east
+    side of the stream; the stepped drops (階段状の落差工, `weirs`) between Marutamachi and
+    Takeyamachi, a granite sill across the stream every 14 m with the water level from one
+    to the next and falling over each, white water below; and the steps that serve as
+    seating (観覧席にもなる階段, `seats`) between Nijo and Oshikoji, four tiers of 0.4 by
+    0.7 m along the east wall as the photographs from Nijo bridge show them (Umeyou, CC
+    BY-SA 3.0), which walkers climb. No measured section is published: the brochure gives
+    the flow (6 t a minute) and the medians it runs in upstream (8-10 m); a maintenance
+    tender's 5,714 m² of bed over 580 m gives 9.9 m between the walls on average, as the
+    9.5 m drawn. The depth, the tiers and the spacing of the drops are read from
+    photographs;
+    The promenade is walked (#315): `nav.js` takes its floor and its flights (`inland.js
+    promenade`) as a `promenade` floor at their own level, not the street's ground the
+    terrain carries over the channel. A flight opens to the pavement through a gap in the
+    railing over its first 1.3 m (`FLIGHT_GATE`), as the Horikawa's entrances open off the
+    pavements; below that the wall beside it is solid, and any drop off the promenade more
+    than a step (its walls, the open side of a flight) is a railing. On its floor the
+    buildings mapped across the wall's line do not hold a walker, a lamp post on the
+    street over the steps does not push one on its floor or treads (`nav.js slide`), and
+    the paths OpenStreetMap maps down the promenade lie on its floor and steps, not on a
+    deck `decks.js` would lift into the air, so the crowd walks it too.
+    `tools/promenade_walk.js` (in `tools/game_check.js`; alone, `tools/promenade_check.js`)
+    walks down a flight, along the floor, at the stream and the wall, back up, at the
+    railing from the street, and down and up every flight;
   - *natural* water (the Kamo River, the ponds): the survey interpolates across water,
     so its level is the survey's own inside the outline (the lowest fifth within 40 m
     along a river, a third of the way up for a pond, just under its shore);
@@ -327,7 +362,14 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   a card runs past the water's edge it is under the bank and the ground hides it.
 
   ![The Meguro at night in the festival: the chochin in the water](images/water/meguro_reflections_night.jpg)
-  ![Kyoto's Horikawa: the sunken promenade from a crossing](images/water/horikawa_day.jpg) Walkers stop at a channel's railing and a pond's edge
+  ![Kyoto's Horikawa: the sunken promenade from a crossing](images/water/horikawa_day.jpg)
+  ![Going down into the Horikawa on foot, day, dusk and night (#315)](images/water/horikawa_steps_315.jpg)
+  ![The same on a phone (#315)](images/water/horikawa_steps_phone_315.jpg)
+  ![The seating steps between Nijo and Oshikoji, day, dusk and night (#315)](images/water/horikawa_seats_315.jpg)
+  ![The lawn between Shimochojamachi and Demizu (#315)](images/water/horikawa_lawn_315.jpg)
+  ![The stepped drops between Marutamachi and Takeyamachi (#315)](images/water/horikawa_weirs_315.jpg)
+  ![Seats, lawn and drops on a phone (#315)](images/water/horikawa_features_phone_315.jpg)
+  Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 
   Live cities: Shibuya (the Meguro River, the Shibuya River's open stretch, 12 ponds),
@@ -336,8 +378,6 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   the Gyoen's ponds), the Philosopher's Path (the canal's branch, Shirakawa, the Biwako
   Canal below Keage, the temple gardens' ponds), Fushimi Inari (the Kamo Canal, the
   mountain's ponds) and Higashiyama (the ponds). The sea-level cities keep `water.js`.
-  Not drawn: Kyoto's Horikawa, whose stream runs in a sunken promenade with paths
-  beside it, a shape these channels don't make.
 
   ![The Meguro River's channel by day from a deck: revetments, railings and chochin](images/water/meguro_day.jpg)
   ![The Meguro River at night in the festival](images/water/meguro_night.jpg)
