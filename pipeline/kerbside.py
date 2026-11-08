@@ -93,8 +93,28 @@ class Carriageways:
         return None
 
 
-# the room each kind keeps from a band: a lamp post's base, a bench's half length
+# the room each kind keeps from a band: a lamp post's base, a bench's half length, a trunk (at least)
 RADIUS = {"street_lamp": 0.25, "bench": 0.95, "tree": 0.7}
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+
+def tree_room(cid):
+    """The room a mapped tree of height h (m) keeps from a band in city cid: its trunk's radius at the
+    size web/trees.js draws it (0.78 to 1.22 of the species' own, by height), for the thickest trunk
+    of the species the city plants (its trees.mix, woods and areas), and a hand's width more; never
+    less than RADIUS["tree"]. A tall fig's trunk is 1.04 m across its middle (#312): with 0.7 its bark
+    stood in the lane where a car pulls in, and the cars braked for it as for a post."""
+    try:
+        sp = json.load(open(os.path.join(ROOT, "web", "assets", "trees", "trees.json")))["species"]
+        t = json.load(open(os.path.join(ROOT, "cities", cid, "city.json"))).get("trees") or {}
+    except (OSError, KeyError, ValueError):
+        return lambda h: RADIUS["tree"]
+    names = set(t.get("mix") or {}) | set(t.get("woods") or {})
+    for a in t.get("areas") or []:
+        names |= set(a.get("mix") or {}) | set(a.get("woods") or {})
+    rs = [sp[k].get("trunk_r", 0.35) for k in names if k in sp] or [0.45]  # (no mix: trees.js's default, planes and the like)
+    r0 = max(rs)
+    return lambda h: max(RADIUS["tree"], r0 * (0.78 + 0.44 * min(1, max(0, (h - 7) / 7))) + 0.1)
 
 
 def tidy(props, roads):
@@ -119,13 +139,14 @@ def tidy(props, roads):
     return out
 
 
-def tidy_trees(trees, roads):
+def tidy_trees(trees, roads, room=None):
     """places.json trees ([x, y, ground, height, ...] in decimetres) moved out of the roads'
-    carriageways, as web/streets.js tidy moves them: (trees, moved, dropped)."""
+    carriageways, as web/streets.js tidy moves them: (trees, moved, dropped). room(h): the room a
+    tree h m tall keeps (tree_room), RADIUS["tree"] if not given."""
     cw, keep, moved, dropped = Carriageways(roads), [], 0, 0
     for i in range(0, len(trees) - 3, 4):
         x, y, z = trees[i] / 10, trees[i + 1] / 10, trees[i + 2] / 10
-        q = cw.kerbside(x, y, z, RADIUS["tree"])
+        q = cw.kerbside(x, y, z, room(trees[i + 3] / 10) if room else RADIUS["tree"])
         if q is None:
             dropped += 1
             continue
@@ -143,9 +164,10 @@ def tidy_places(out_dir, roads, write=True):
     if not os.path.exists(path):
         return None
     places = json.load(open(path))
-    trees, moved, dropped = tidy_trees(places.get("trees", []), roads)
+    room = tree_room(os.path.basename(os.path.normpath(out_dir)))
+    trees, moved, dropped = tidy_trees(places.get("trees", []), roads, room)
     for _ in range(3):  # again, for the few a decimetre's rounding left on a band's edge
-        trees, m, d = tidy_trees(trees, roads)
+        trees, m, d = tidy_trees(trees, roads, room)
         dropped += d
         if not m:
             break
@@ -160,11 +182,12 @@ def main():
     import argparse
     ap = argparse.ArgumentParser(description="Move a city's mapped trees out of the carriageways (places.json).")
     ap.add_argument("--city")
-    ap.add_argument("--all", action="store_true", help="every city with a game.json")
+    ap.add_argument("--all", action="store_true", help="every live city with a game.json (not the parked ones)")
     ap.add_argument("--write", action="store_true", help="rewrite places.json")
     a = ap.parse_args()
     data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web", "data")
-    ids = sorted(c for c in os.listdir(data) if os.path.exists(os.path.join(data, c, "game.json"))) if a.all else [a.city]
+    parked = set(json.load(open(os.path.join(ROOT, "cities", "index.json"))).get("parked", []))
+    ids = sorted(c for c in os.listdir(data) if os.path.exists(os.path.join(data, c, "game.json")) and c not in parked) if a.all else [a.city]
     if ids == [None]:
         ap.error("give --city <id> or --all")
     for cid in ids:

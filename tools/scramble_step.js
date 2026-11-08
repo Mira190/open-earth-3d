@@ -37,9 +37,11 @@ module.exports = async function scrambles(p, { all = false } = {}) {
       // no signal pole or walk post stands on its crosswalks' stripes (about 8 m wide, a little past their ends)
       const onStripes = o => (j.walks || []).some(w => { const len = Math.hypot(w[2] - w[0], w[3] - w[1]); if (len < 4) return false; const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len, t = (o.x - w[0]) * ux + (o.y - w[1]) * uy; return t > 0 && t < len && Math.abs((o.x - w[0]) * uy - (o.y - w[1]) * ux) < 4; });
       const poles = H ? [...H.list, ...H.peds].filter(o => o.a.j === j && onStripes(o)).map(o => `${o.x.toFixed(1)},${o.y.toFixed(1)}`) : [];
-      // and those waiting at its kerbs stand still: not turning about, or breaking into a step and out of it, half a second to the next
-      // (once arrived: from their fourth look on, a second and a half after they came to their place)
-      const stood = new Map();
+      // and those waiting at its kerbs stand still: each one's own heading and place against where it was 3 s before (six looks
+      // back), once it has stood there 4.5 s: turned more than 30 degrees, or moved more than half a metre, it fidgets. (Measured
+      // from one look to the next, half a second apart, every settling turn and shuffle counted, and the count went from 310 to
+      // 987 between near-identical builds against a limit of a tenth, #317; over 3 s a walker that settles stands still)
+      const stood = new Map(), BACK = 6;
       let waitLooks = 0, fidgets = 0, turnsF = 0, stepsF = 0;
       for (let t = 0; t < 2 * 4 * (j.green[0] + j.green[1] + j.green[3] + 3 * (j.amber + j.allred)); t++) {
         g.advance(0.5);
@@ -47,8 +49,12 @@ module.exports = async function scrambles(p, { all = false } = {}) {
         last = j.ph;
         for (const q of C.P.slice(0, C.active)) {
           const w = stood.get(q);
-          if (q.pz === pz && q.ph === 'wait' && w && w.n >= 3) { waitLooks++; const tu = Math.abs(Math.atan2(Math.sin(q.h - w.h), Math.cos(q.h - w.h))) > 0.35, stp = w.m !== !!q.moving; if (tu || stp) { fidgets++; if (tu) turnsF++; if (stp) stepsF++; } }
-          if (q.pz === pz && q.ph === 'wait') stood.set(q, { h: q.h, m: !!q.moving, n: w ? w.n + 1 : 1 }); else stood.delete(q); // (n: its looks waiting so far; the first second and a half, turning round to the road from the way it came, is arriving, not fidgeting)
+          if (q.pz === pz && q.ph === 'wait' && w && w.n >= 3 + BACK) {
+            waitLooks++;
+            const b = w.past[0], tu = Math.abs(Math.atan2(Math.sin(q.h - b.h), Math.cos(q.h - b.h))) > 0.52, stp = Math.hypot(q.x - b.x, q.y - b.y) > 0.5;
+            if (tu || stp) { fidgets++; if (tu) turnsF++; if (stp) stepsF++; }
+          }
+          if (q.pz === pz && q.ph === 'wait') { const past = w ? w.past : []; past.push({ h: q.h, x: q.x, y: q.y }); if (past.length > BACK) past.shift(); stood.set(q, { past, n: w ? w.n + 1 : 1 }); } else stood.delete(q); // (n: its looks waiting so far; the first second and a half, turning round to the road from the way it came, is arriving, not fidgeting)
         }
         const P = C.P.slice(0, C.active), out = P.filter(q => onPlaza(q) || onFoot(q));
         const shown = H && H.walkShown ? H.walkShown(j) : [];

@@ -39,7 +39,11 @@ window.OECars = (function () {
   const LANE = 1.7; // the traffic's lane, off the centre line (actors.js)
   const WEDGE_GIVE = 20; // (s wedged against a car that won't move off, asked to again and again, neither able to back off, before a ride's driver goes on through it)
   const LOOK_STEP = 1.5, LOOK_N = 34; // a driver's way ahead, as the traffic's: points every 1.5 m from the bumper (up to 50 m)
-  const kerbOf = c => clamp((ROADW[c] || 7) / 2 - 0.1, 3.3, 6.5);
+  // how far off the line a car pulls in at the kerb of a road of class c: its kerb-side wheels on the band's edge;
+  // on a lane narrowed to a carriageway cw wide (a canal bank's lane, the Philosopher's Path: game.js draws it so,
+  // and its trees stand just past it, streets.js) its body's side at the carriageway's edge instead, never inside
+  // its lane: with the class's 3.3 m a taxi stopping there stood in the bank's trees (#315)
+  const kerbOf = (c, cw) => cw > 0 ? clamp(cw / 2 - 1.0, LANE, 6.5) : clamp((ROADW[c] || 7) / 2 - 0.1, 3.3, 6.5);
   // the cushions' height over the cabin floor (build_vehicles.py: the cushions 0.33 m over the floor pan, the carpet 0.1 on it)
   const CUSHION = 0.225;
 
@@ -691,7 +695,7 @@ window.OECars = (function () {
         for (const p of part) {
           const last = pts[pts.length - 1];
           if (last && Math.hypot(p[0] - last[0], p[1] - last[1]) < 0.3) continue;
-          pts.push([p[0], p[1], p[2], L[li].v || 11, L[li].c]);
+          pts.push([p[0], p[1], p[2], L[li].v || 11, L[li].c, L[li].cw || 0]);
         }
         if (n < segs.length - 1) nodes.push({ k: pts.length - 1, line: li, end: s1 > s0 ? 1 : 0 }); // the end of line li, at point k
       });
@@ -769,7 +773,7 @@ window.OECars = (function () {
         midsAlong(li, s, s1, run, out.mids);
         run += Math.abs(s1 - s);
         stretch(li, s, s1, part);
-        for (const p of part) out.push([p[0], p[1], p[2], l.v || 11, l.c]);
+        for (const p of part) out.push([p[0], p[1], p[2], l.v || 11, l.c, l.cw || 0]);
         out.nodes.push({ k: out.length - 1, line: li, end: dir > 0 ? 1 : 0 });
         left -= Math.abs(s1 - s);
         const nx = net.next(li, dir > 0 ? 1 : 0, true);
@@ -814,7 +818,7 @@ window.OECars = (function () {
       out.x = a[0] + (b[0] - a[0]) * t; out.y = a[1] + (b[1] - a[1]) * t;
       const vc = Math.min(VC, s, len - s);
       out.z = vc > 0.05 ? (zInt(s + vc) - zInt(s - vc)) / (2 * vc) : a[2] + (b[2] - a[2]) * t;
-      out.v = a[3]; out.c = a[4]; out.i = i;
+      out.v = a[3]; out.c = a[4]; out.cw = a[5] || 0; out.i = i;
       return out;
     }
     const p0 = {}, p1 = {};
@@ -991,8 +995,8 @@ window.OECars = (function () {
     }
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
-    const kerbStart = kerbOf(P.pos(0, q2).c);
-    let kerbEnd = kerbOf(P.pos(P.len, q2).c);
+    const kerbStart = kerbOf(P.pos(0, q2).c, q2.cw);
+    let kerbEnd = kerbOf(P.pos(P.len, q2).c, q2.cw);
     // the way it keeps off the centre line at s: the lane, easing in to the kerb at the end and out of it at the start
     // (the lane's place on each piece of road on the way: LANE off the line, or on it along a one-way
     // road of one lane, as the traffic drives it (junctions.js shiftOf, #177); eased over 6 m either side
@@ -1036,7 +1040,7 @@ window.OECars = (function () {
     // the end, brought forward (behind a car at the kerb it was to pull in at)
     function endAt(e) {
       st.end = clamp(e, st.s, P.len);
-      kerbEnd = kerbOf(P.pos(st.end, q2).c);
+      kerbEnd = kerbOf(P.pos(st.end, q2).c, q2.cw);
     }
     st.lat = lat(0);
     pose(0, q, st.lat);

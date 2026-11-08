@@ -1687,6 +1687,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const onWay = line => { for (let k = 0; k < pathNext.length; k += 2) if (pathNext[k] === line) return true; return false; }; // (the pieces of the way just worked out)
     // the cars on each line this frame (for the room beyond a junction)
     const onLine = new Map();
+    // the pieces of road a car has found too narrow for two to pass (in from a facade on its way: narrowF), for the far mouth
+    const narrowSeen = new Uint8Array(net.L.length);
     // a car coming up exit e's piece towards the junction, near, on a street too narrow for two to pass (one of
     // them in from a facade, narrowF): car c waits at its line for it rather than turn in and stop just inside,
     // nose to nose with it, as that one waits at its own line for c's movement to clear the junction (each for
@@ -1699,6 +1701,26 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (o === c || o.dir !== toward) continue;
         const d = toward < 0 ? o.s : ml.len - o.s;
         if (d < 30 && (o.narrowF > 0.2 || o.narrow > 0) && !(o.still > 20 && !(o.lineArm && o.toLine - o.half < 3))) return true; // (not one stood 20 s out on the piece, held there by something else: it is not coming)
+      }
+      // and the far mouth of a street the traffic has found too narrow for two (#317): a car crossing the junction there
+      // onto it, towards c, is coming; and of one waiting at a line there to turn onto it for the street alone and c, the
+      // one that has stood longer goes (of two as long, the one first in the traffic), read the same way at both ends. Read
+      // at this end alone, both went in, met in the middle and one of them backed out
+      if (!narrowSeen[m.line]) return false;
+      const far = JN.armAt(m.line, 1 - m.end);
+      if (!far) return false;
+      const ic = C.indexOf(c);
+      for (const a of far.j.arms) {
+        if (a === far || !a.in) continue;
+        for (const j of onLine.get(a.line) || []) {
+          const o = C[j];
+          if (o === c || o.v >= 0.3 && !o.mv) continue;
+          if (o.mv && o.mv.j === far.j && o.mv.e.m.line === m.line) return true;
+          if (o.lineArm === a && o.lineEx && o.lineEx.m.line === m.line && o.toLine - o.half < 3 && o.v < 0.3 && o.why === 'narrow') { // (held there by this street alone, not its light)
+            const so = o.still || 0, sc = c.still || 0;
+            if (so > sc + 0.5 || (Math.abs(so - sc) <= 0.5 && j < ic)) return true;
+          }
+        }
       }
       return false;
     }
@@ -1791,6 +1813,20 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // already backed off a good while without moving on since): whether it will
     // has it room on its piece to back off into (not at the very start of it)?
     const canBack = o => o.line >= 0 && (o.dir > 0 ? o.s > 0.5 : o.s < net.L[o.line].len - 0.5);
+    // of two cars of the traffic each stopped with the other as the one in front (braked for along its way, or
+    // held by it as it steps), which goes on: one rule, read the same way by both and by every place that parts
+    // such a pair (the face-off, the backing off, the squeeze below), so that the one each waits on is never the
+    // one that waits on it. The one that can't back off goes; then the one in a junction; of two in one, the one
+    // in first; then the one first in the traffic. (Read one way by the face-off, with the backing off a car
+    // could do, and another by the squeeze, without it, two in Sydney's junction 461 each waited on the other
+    // through every cycle, #312.)
+    const goesFirst = (c, o) => {
+      const cb = canBack(c), ob = canBack(o);
+      if (cb !== ob) return ob;
+      if (!!c.mv !== !!o.mv) return !!c.mv;
+      if (c.mv && c.mvT !== o.mvT) return c.mvT < o.mvT;
+      return C.indexOf(c) < C.indexOf(o);
+    };
     function backOff(o, t) {
       if (o.stuck === undefined || o.line < 0 || o.boSpent > 6) return false;
       o.backoff = Math.max(o.backoff || 0, t);
@@ -2057,9 +2093,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 // it), and of two as near, the one first in the traffic; but never a wait on one that stands outside the
                 // stretch held by something else (a queue at its own line, a light): it waits in turn once this one is in
                 const oHeld = !oIn && o.v < 0.3 && o.front !== c && o.why !== 'narrow';
-                const cFirst = cIn !== oIn ? cIn : o.narrow > 0 ? c.narrow < o.narrow - 0.5 || (Math.abs(c.narrow - o.narrow) <= 0.5 && i < j) : d2 >= d;
+                // (read the same way by both: with one of them clear of the stretch, narrow 0, read by one as nearer its end and by
+                // the other as not compared, each took itself as the one to go, and the two stood nose to nose, #317)
+                const kc = c.narrow > 0 ? c.narrow : 0, ko = o.narrow > 0 ? o.narrow : 0;
+                const cFirst = cIn !== oIn ? cIn : Math.abs(kc - ko) > 0.5 ? kc < ko : Math.abs(d2 - d) > 0.5 ? d2 > d : i < j;
                 let g = d + 0.6, w = 'car';
                 if (!cIn && c.narrowIn < Infinity && !cFirst && !oHeld) { const g2 = Math.max(0, c.narrowIn - 1.5); if (g2 < g) { g = g2; w = 'narrow'; } }
+                // (already nose to nose with it, both stopped, the other to go first: it is this one that gives way, and backs out
+                // after a while (below), as on a single-track road; both braked for each other as for a car ahead and stood there
+                // for good, 208 s in view in Shinjuku's piece 2601, #317)
+                if (!cFirst && w === 'car' && d < 3 && c.v < 0.3 && o.v < 0.3) w = 'narrow';
                 if (g < gap) { gap = g; byCar = true; front = o; why = w; }
                 continue;
               }
@@ -2108,6 +2151,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // frame: the two readings measure with different margins and could each give way to the other, a car
           // standing in Shinjuku's junction 1105 for the taxi coming for you while the taxi stood for it, 15 s, #254)
           if (o.xBlock && (o.xBlock === c || o.xBlock.of === c)) continue;
+          // (nor one stopped behind this very car in its lane, its gap ahead set by it: the ride stood queued 2.8 m
+          // behind a car in Shibuya's junction 940 while that car stood 44 s for the ride on its way, each waiting on
+          // the other, #180)
+          if (o.v < 0.3 && o.block && (o.block === c || o.block.of === c)) continue;
           const g = d + 0.6;
           if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; leadX = o; xQ = !!o.q && o.qBy !== c; youBy = o.id + ' on its way'; } // (a ride queueing for a junction: this car queues behind it)
         }
@@ -2125,14 +2172,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // other weren't there, and the other gives way to it when they touch (below; #144)
         // (or held by each other, a step each took back into the other: neither has the other on its way ahead, and the
         // two stood 63 s in Sydney's junction 461, out of neighbouring lanes of one arm, #243)
-        const fr = front || (c.why === 'held' && c.front && c.front.why === 'held' && c.front.front === c ? c.front : null);
-        if (fr && c.mv && fr.mv && fr.front === c && c.v < 0.3 && fr.v < 0.3) {
+        // (and any two each with the other as the one in front, whether braked for or held by it, in a junction or not,
+        // one of them in it or neither, by the one rule goesFirst: held by a step it took into the other, one stood with the
+        // other braked for on its way, and only two in a junction both held were parted, #312; not two coming at each other
+        // up a narrow street, which the single-track rule above parts, nor one waiting for the other there)
+        const fr = front && front.front === c ? front : c.why === 'held' && c.front && c.front.front === c && c.front.line >= 0 ? c.front : null;
+        const narrowPair = fr && (why === 'narrow' || fr.why === 'narrow' || (!c.mv && !fr.mv && fr.line === c.line && fr.dir !== c.dir));
+        if (fr && !narrowPair && c.v < 0.3 && fr.v < 0.3) {
           c.faceAll = c.faceCar === fr ? (c.faceAll || 0) + dt : 0;
           c.faceT = c.faceCar === fr ? (c.faceT || 0) + dt : 0; c.faceCar = fr;
-          const cb = canBack(c), fb = canBack(fr); // (the one that can't back off goes on, else the one in first)
-          if (c.faceT > 4 && (cb !== fb ? fb : c.mvT < fr.mvT || (c.mvT === fr.mvT && i < C.indexOf(fr)))) { c.passBy = fr; c.faceT = 0; }
+          if (c.faceT > 4 && goesFirst(c, fr)) { c.passBy = fr; c.passFace = true; c.faceT = 0; }
         } else { c.faceT = c.faceAll = 0; c.faceCar = null; }
-        if (c.passBy && (!c.mv || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4)) c.passBy = null;
+        if (c.passBy && ((!c.mv && !c.passFace) || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4 || c.passBy.line < 0)) { c.passBy = null; c.passFace = false; }
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
         // one left in the lane, as traffic goes round a stopped car; otherwise braked for like a car ahead
@@ -2440,6 +2491,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               c.wallGap = k * step; break;
             }
             // (a facade still beside it from before, further in: it keeps to that one until it is past it)
+            if (nF > 0.2 && !l.ow) narrowSeen[c.line] = 1;
             if (nF > 0) { if (!(c.narrow > 0) || nF >= c.narrowF) c.narrowF = nF; c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, nEnd); c.narrowIn = Math.min(c.narrow > 0 && c.narrowIn != null ? c.narrowIn : Infinity, nIn); c.narrowNow = true; } else c.narrowNow = false;
           }
           if (c.ln && (c.wallGap < 40 || c.narrowNow)) c.noL1 = 6; // (a facade by the second lane: back to the first)
@@ -2492,6 +2544,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // no such wait lasts half a minute, #283)
         c.narrowT = why === 'narrow' && c.v < 0.3 ? (c.narrowT || 0) + dt : 0;
         if (c.narrowT > 25 && !inView(c)) { c.narrowT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
+        c.narrowCarT = why === 'narrow' && byCar && c.v < 0.3 ? (c.narrowCarT || 0) + dt : 0; // (nose to nose in the stretch with one to go first: it backs out)
+        if (c.narrowCarT > 10 && !l.ow && reverse(c)) { c.narrowCarT = 0; reverseStep(c, i, dt, cx, cy); continue; }
         if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
           c.stuck = 0;
           if (!l.ow && !away && why !== 'you' && (why === 'narrow' || c.narrowF > 0.2) && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; } // (a street with no room to turn round in: backed out to the junction behind, as on a one-way street)
@@ -2550,9 +2604,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const heldBy0 = held ? holder : revBy;
         if (heldBy0 && heldBy0.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
           c.giveT = 5;
-          const mutual = heldBy0.front === c, j = C.indexOf(heldBy0);
-          const yieldC = c.mv && heldBy0.mv ? mutual && (c.mvT > heldBy0.mvT || (c.mvT === heldBy0.mvT && i > j)) : !c.mv && heldBy0.mv ? mutual : !c.mv && !heldBy0.mv && mutual && i > j;
-          let yl = yieldC ? c : heldBy0;
+          // (of two each held by or waiting on the other, the one goesFirst doesn't pick backs off; else the one in the way)
+          const mutual = heldBy0.front === c;
+          let yl = mutual && !goesFirst(c, heldBy0) ? c : heldBy0;
           if (!canBack(yl) && canBack(yl === c ? heldBy0 : c)) yl = yl === c ? heldBy0 : c; // (not one at the very start of its piece, with nowhere to back off to: the other)
           backOff(yl, 1.5);
         }
@@ -2568,7 +2622,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // that one too close for it to back off: it squeezes past then, not after the minute and a half)
         // (or, of two held by each other that backing off hasn't parted in 30 s, the one in the junction first: two head-on
         // at the mouth of a piece stood 61 s in Sydney's junction 472, the one that could back off boxed in behind, #243)
-        const stuckPair = heldBy0 && heldBy0.front === c && c.inHeld > 30 && (!heldBy0.mv || (c.mv && (c.mvT < heldBy0.mvT || (c.mvT === heldBy0.mvT && i < C.indexOf(heldBy0)))));
+        const stuckPair = heldBy0 && heldBy0.front === c && c.inHeld > 30 && goesFirst(c, heldBy0);
         const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20) || stuckPair);
         if (squeeze && !c.squeezing) squeezes++;
         c.squeezing = squeeze;

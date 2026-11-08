@@ -175,7 +175,7 @@ def kerbed(C, surveyed):
     k = (sx > F["x"][0]) & (sx < F["x"][1]) & (sy > F["y"][0]) & (sy < F["y"][1])
     z = ground_z(C, sx[k], sy[k])
     rows = np.c_[np.round(sx[k] * 10), np.round(sy[k] * 10), np.round(z * 10), np.round(S[k, 2] * 10)].astype(np.int64).ravel().tolist()
-    rows, moved, dropped = kerbside.tidy_trees(rows, json.load(open(os.path.join(C.out, "game.json")))["paths"]["road"])
+    rows, moved, dropped = kerbside.tidy_trees(rows, json.load(open(os.path.join(C.out, "game.json")))["paths"]["road"], kerbside.tree_room(os.path.basename(os.path.normpath(C.out))))
     return np.array(rows, np.int64).reshape(-1, 4), moved, dropped
 
 

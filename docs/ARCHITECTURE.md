@@ -1202,12 +1202,14 @@ waits for Shibuya's opening film.
   heights (median 10 m, 90th percentile 20 m). The old guesses had a correlation of
   0.02 with the measured heights. The inventory's species shares by genus (brush box,
   water gum, paperbarks and eucalypts 31%, plane trees 25%, deciduous broadleaves 21%,
-  evergreen broadleaves 11%, figs 5%, jacarandas 3%, palms 3%; its park trees: evergreen
-  broadleaves 27%, gums 22%, palms 20%, figs 12%) are the measured `trees.mix`, but
-  with them the game's check finds two cars holding each other in a CBD junction and a
-  bus edging into a lamp post (the trunks' sizes change with the species, and the
-  traffic's timing with them), so the guessed mix stays until that traffic hold is fixed
-  (follow-up issue). NSW Spatial Services' lidar is not used: its
+  evergreen broadleaves 11%, figs 5%, jacarandas 3%, palms 3%, she-oaks 1%; its park trees: evergreen
+  broadleaves 27%, gums 22%, palms 20%, figs 12%, deciduous broadleaves 9%, she-oaks 6%) are
+  `trees.mix` and `trees.woods` (deciduous broadleaves drawn as elm, she-oaks as casuarina). They
+  first set off two cars holding each other in a CBD junction (the trunks' sizes change with the
+  species, and the traffic's timing with them); the traffic's rule for such a pair was fixed
+  (#312: one rule, `goesFirst` in `actors.js`, read by every place that parts two cars each
+  waiting on the other), and `kerbside.py` keeps each mapped tree clear of the carriageways by the
+  thickest trunk the city plants at that tree's size (a tall fig's is 1.04 m), not a flat 0.7 m. NSW Spatial Services' lidar is not used: its
   files are in a requester-pays bucket. The canopy height models were measured
   against the inventory (`tools/chm_check.py`, 3,000 trees, the highest canopy within
   2.5 m of the trunk): Meta and WRI's v1 (2024) sees 45% of the trees, correlation
