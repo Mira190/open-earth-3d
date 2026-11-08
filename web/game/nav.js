@@ -378,11 +378,60 @@ window.OENav = (function () {
     const pool = [];
     const tileFloor = new Map(); // tile index -> the highest landmark floor within FOOT of each fine cell, lowest and highest ([2 * cell])
     let fineBoxes = 0, fineMs = 0, startMs = 0; // boxes laid so far, the time the tiles took, the time sorting took
-    // the floor under a point of a landmark: the ground, a strip or a pier. (Not a roof: the surface model's
-    // roofs include the measured solids a landmark draws instead, the temple halls' own roofs in Kyoto, which
-    // would lay whole roofs into the fine cells; a landmark on a raised platform walks on a strip instead)
+    // the floor under a point of a landmark: the ground, a strip, a pier, or the roof of a building drawn as
+    // published, solid from the ground up (a landmark on a roof: SHIBUYA SKY's deck and its channels, whose
+    // fences, newels and glass stood as 2 m cells over the escalators' ends, so that no one could step on).
+    // Not the surface model's roofs: they include the measured solids a landmark draws instead, the temple
+    // halls' own roofs in Kyoto, which would lay whole roofs into the fine cells; nor a canopy or a building
+    // over a road, which stand clear of the ground (col holds the buildings drawn by now)
+    // (the buildings' prisms by the strips' 64 m cells, gathered once and only where a strip is: a roof is
+    // read only by a strip, below, and building the whole collision grid twice for it cost a start 0.6 s)
+    const roofs = [];
+    let roofCells = null;
+    const roofCellsOf = () => {
+      roofCells = new Map();
+      for (const p of col.prisms) {
+        if (p.tag !== BUILDING) continue;
+        for (let cx = Math.floor(p.x0 / SC); cx <= Math.floor(p.x1 / SC); cx++) for (let cy = Math.floor(p.y0 / SC); cy <= Math.floor(p.y1 / SC); cy++) {
+          const k = skey(cx, cy);
+          if (!stripGrid.has(k)) continue;
+          const l = roofCells.get(k); if (l) l.push(p); else roofCells.set(k, [p]);
+        }
+      }
+      return roofCells;
+    };
+    const roofUnder = (x, y, g) => {
+      roofs.length = 0;
+      const l = (roofCells || roofCellsOf()).get(skey(Math.floor(x / SC), Math.floor(y / SC)));
+      if (l) for (const p of l) if (x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1 && col.inside(p, x, y)) roofs.push(p);
+      if (!roofs.length) return g;
+      roofs.sort((a, b) => a.zlo - b.zlo);
+      let h = g;
+      for (const p of roofs) if (p.zlo <= h + 1.0 && p.zhi > h) h = p.zhi;
+      return h;
+    };
+    // the roof over the ground at a point, read on a 0.25 m grid and kept (the pieces by a strip and the points a
+    // step round each read the same few metres over and over)
+    const roofMemo = new Map();
+    const roofAt = (x, y) => {
+      const qx = Math.round(x * 4), qy = Math.round(y * 4), k = (qx + 4194304) * 8388608 + (qy + 4194304);
+      let h = roofMemo.get(k);
+      if (h === undefined) { const X = qx / 4, Y = qy / 4; h = roofUnder(X, Y, terrain(X, Y)); roofMemo.set(k, h); }
+      return h;
+    };
+    // (only by a strip laid over a building's roof, an escalator or a stair on a roof, so that the landmarks
+    // everywhere else are read as they always were)
+    const roofStrip = new Map();
+    const onRoof = s => {
+      if (!roofStrip.has(s)) { const x = (s.box[0] + s.box[2]) / 2, y = (s.box[1] + s.box[3]) / 2, g = terrain(x, y); roofStrip.set(s, roofUnder(x, y, g) > g + 3); }
+      return roofStrip.get(s);
+    };
+    let roofBoxes = null; // (the strips on a roof, each box EDGE + 2 m wider: none in most cities, two in Shibuya)
+    const roofy = (x, y) => (roofBoxes || (roofBoxes = strips.filter(onRoof).map(s => [s.box[0] - EDGE - 2, s.box[1] - EDGE - 2, s.box[2] + EDGE + 2, s.box[3] + EDGE + 2])))
+      .some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
     const ref = (x, y) => {
       let h = terrain(x, y);
+      if (roofy(x, y)) h = Math.max(h, roofAt(x, y));
       for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > h) h = pier.data[k];
@@ -392,19 +441,31 @@ window.OENav = (function () {
     // to 3 m over that (a wall beside a raised floor, a tower's beside the loggia it flanks, is laid into fine cells
     // up to BAND over that floor, so that its 2 m cells do not come down to the head of someone on it; not a
     // bridge's deck high over the ground beside it)
-    const refBeside = (x, y, h0) => {
+    const EDGE = DSM.cell * Math.SQRT2 + 0.6;
+    const refBeside = (x, y, h0, zlo = -Infinity) => {
       let h = h0;
       for (const s of stripsAt(x, y)) {
         const [u, v] = stripUV(s, x, y);
-        if (Math.abs(v) > s.half_width + DSM.cell || u < s.us[0] - DSM.cell || u > s.us[s.us.length - 1] + DSM.cell) continue;
+        const m = onRoof(s) ? EDGE : DSM.cell, e = onRoof(s) ? EDGE : 1.5;
+        if (Math.abs(v) > s.half_width + m || u < s.us[0] - m || u > s.us[s.us.length - 1] + m) continue;
         const q = interp(s.us, s.zs, u);
-        // (and whatever stands at its very edge, within 1.5 m of its outline, however high it is over the ground:
-        // a balustrade, a lift's shaft against a deck's end, issue 265; their 2 m cells reached onto the deck)
-        const edge = Math.abs(v) <= s.half_width + 1.5 && u >= s.us[0] - 1.5 && u <= s.us[s.us.length - 1] + 1.5;
+        // (and whatever stands near its edge, however high it is over the ground: a balustrade, a lift's shaft
+        // against a deck's end, issue 265, whose 2 m cells reached onto the deck; within 1.5 m of its outline, and
+        // by a strip on a roof within EDGE, a 2 m cell's diagonal and half a wall's piece (landmarkCells), so that
+        // no 2 m cell of it reaches the strip)
+        const edge = Math.abs(v) <= s.half_width + e && u >= s.us[0] - e && u <= s.us[s.us.length - 1] + e;
         if (q > h && (q < h0 + 3.0 || edge)) h = q;
+      }
+      // (and a roof a step away, up to 12 m over the floor under it, or any roof that what is read stands on: the
+      // glass, rails and coping along the edge of a deck over a channel cut into it, SHIBUYA SKY's, stand on the
+      // deck, not on the channel's floor 9 m down or the street 227 m down past the facade)
+      if (roofy(x, y)) for (const [dx, dy] of NEAR) {
+        const q = roofAt(x + dx, y + dy);
+        if (q > h && (q < h0 + 12.0 || zlo >= q - 0.5)) h = q;
       }
       return h;
     };
+    const NEAR = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]];
     // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
     // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length squared
     const seg = (P, Q, step, fn) => { const n = Math.max(1, Math.ceil(Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]) / step));
@@ -436,6 +497,34 @@ window.OENav = (function () {
     const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
     function landmarkCells(meshes, slabs) {
       const coarse = new Map(slabs);
+      // a triangle within reach of a strip on a roof, cut into pieces no longer than 2 m (a coarse cell), each read on its own: a long
+      // one is read at its middle, and the outer glass along SHIBUYA SKY's channel and its fence's top rail, their
+      // middles a step too far from the escalator's head, stood as 2 m cells over the head, so no one could step on
+      // (a piece is cut while its bounds come within reach of either end of a strip on a roof, where one steps on
+      // and off; the rest, the deck's floor and the flights' sides, is read whole, as before)
+      let ends = null;
+      const endsOf = () => strips.filter(onRoof).flatMap(s => [s.us[0], s.us[s.us.length - 1]].map(u => {
+        const r = s.half_width + EDGE + 2, x = s.origin[0] + s.axis[0] * u, y = s.origin[1] + s.axis[1] * u;
+        return [x - r, y - r, x + r, y + r];
+      }));
+      const nearT = T => {
+        const x0 = Math.min(T[0][0], T[1][0], T[2][0]), x1 = Math.max(T[0][0], T[1][0], T[2][0]), y0 = Math.min(T[0][1], T[1][1], T[2][1]), y1 = Math.max(T[0][1], T[1][1], T[2][1]);
+        return (ends || (ends = endsOf())).some(b => x1 >= b[0] && x0 <= b[2] && y1 >= b[1] && y0 <= b[3]);
+      };
+      // (nor a level piece, a floor or the top of a coping: read at its middle it is where it is)
+      const flat = T => Math.max(T[0][2], T[1][2], T[2][2]) - Math.min(T[0][2], T[1][2], T[2][2]) < 0.05;
+      function nearStrip(P) {
+        if (!nearT(P)) return [P];
+        const out = [], cut = T => {
+          const e = [0, 1, 2].map(i => Math.hypot(T[(i + 1) % 3][0] - T[i][0], T[(i + 1) % 3][1] - T[i][1], T[(i + 1) % 3][2] - T[i][2]));
+          const i = e.indexOf(Math.max(...e));
+          if (e[i] <= 2.0 || flat(T) || !nearT(T)) { out.push(T); return; }
+          const a = T[i], b = T[(i + 1) % 3], c = T[(i + 2) % 3], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+          cut([a, m, c]); cut([m, b, c]);
+        };
+        cut(P);
+        return out;
+      }
       // the 2 m cells, one interval per mesh and cell as before
       function toCoarse(tris) {
         const mine = new Map();
@@ -449,12 +538,11 @@ window.OENav = (function () {
       }
       for (const m of meshes) {
         const p = m.position, idx = m.index, up = [], noFloor = ((D.LM.materials || {})[m.material] || {}).floor === false;
-        for (let t = 0; t < idx.length; t += 3) {
-          const P = [idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]);
+        for (let t = 0; t < idx.length; t += 3) for (const P of nearStrip([idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]))) {
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
           const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
           const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
-          const rlo = Math.min(...rs), zc = refBeside(cx, cy, Math.max(...rs)) + BAND;
+          const rlo = Math.min(...rs), zc = refBeside(cx, cy, Math.max(...rs), zlo) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor
           let below = [P];

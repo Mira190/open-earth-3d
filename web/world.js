@@ -1570,6 +1570,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       if (['railing', 'lattice'].includes((LM.materials[m.material] || {}).pattern)) mesh.castShadow = false; // a cut-out strip; its shadow would be solid
       if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
       if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
+      if ((LM.materials[m.material] || {}).shadow === false) mesh.castShadow = false; // wire finer than a texel of the shadow map: its shadow would flicker as the map follows the view
       mesh.name = m.name;
       world.add(still(mesh)); // (a lift's car among them: the cache sees it move and draws it afresh)
       if ((LM.materials[m.material] || {}).pattern === 'led_screen') screenMeshes.push({ mesh, m: LM.materials[m.material], mat: lmMats[m.material] });
