@@ -728,6 +728,14 @@ window.OENav = (function () {
     const PH = OEBuildings.POST / 2;
     const passages = new Set((D.B.passages || []).map(i => D.B.s[i])); // (a building over a road through it stands on no posts: pipeline/road_passages.py)
     for (const s of shown) if (!passages.has(s)) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]], D.B.no_posts && D.B.no_posts[s[0]], D.B.inner_posts && D.B.inner_posts[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
+    // a sunken promenade's flights of steps (inland.js): the wall beside each, from its foot to a railing's height over
+    // its top, so that a walker on the upper treads does not step sideways off them onto the street; but for its first
+    // FLIGHT_GATE m, where it opens to the pavement through the railing
+    const SUNK = 4;
+    if (inland && inland.flights) for (const f of inland.flights) {
+      const o = f.w / 2 + 0.08, g0 = inland.FLIGHT_GATE || 0, a = [f.x + f.nx * o + f.ux * g0, f.y + f.ny * o + f.uy * g0], b = [f.x + f.nx * o + f.ux * f.run, f.y + f.ny * o + f.uy * f.run], t = [f.nx * 0.12, f.ny * 0.12];
+      col.add([[a[0], a[1], b[0], b[1], b[0] + t[0], b[1] + t[1], a[0] + t[0], a[1] + t[1]]], f.zb, f.zt + 1.1, SUNK, -1);
+    }
     const tFine = performance.now();
     const coarse = landmarkCells(solidMeshes, slabs);
     startMs = performance.now() - tFine;
@@ -753,7 +761,9 @@ window.OENav = (function () {
     // what a walker with feet at z passes: buildings no taller than a step, and on a deck the buildings
     // under it (landmark lips below the knee are already outside the capsule's height range; on a landmark's
     // floor, raised, so is the rest of what it stands on)
-    const passes = (z, onDeck) => (i, p) => p.tag === BUILDING && (p.zhi <= z + STEP || (onDeck && underDeck[i] === 1));
+    // (on a sunken promenade's floor, all of them: its walls hold the walker in, and a shed mapped across the wall's
+    // line, Kyoto's w229155098 at a flight's foot, stands on the street above)
+    const passes = (z, onDeck, sunk = false) => (i, p) => p.tag === BUILDING && (sunk || p.zhi <= z + STEP || (onDeck && underDeck[i] === 1));
     // building top at (x, y), or -Infinity where there is no building
     function buildingTop(x, y) {
       const k = cellOf(x, y);
@@ -808,7 +818,11 @@ window.OENav = (function () {
     function floorAt(x, y, z, cars = false) {
       let best = null, kind = '';
       const take = (h, k) => { if (h <= z + STEP && (best === null || h > best)) { best = h; kind = k; } };
-      if (!offGround(x, y)) { take(terrain(x, y), 'ground'); const u = under(x, y); if (u !== null) take(u, 'ground'); }
+      // a sunken promenade (the Horikawa: inland.js promenade): its floor and its flights of steps at their own level,
+      // and not the street's ground, which the terrain carries over the channel (raised to its banks)
+      const pr = inland && inland.promenade ? inland.promenade(x, y) : null;
+      if (pr) take(pr.z, 'promenade');
+      else if (!offGround(x, y)) { take(terrain(x, y), 'ground'); const u = under(x, y); if (u !== null) take(u, 'ground'); }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
@@ -821,7 +835,7 @@ window.OENav = (function () {
       if (lt > -Infinity) take(lt, 'landmark');
       return best === null ? null : { z: best, kind };
     }
-    const isDeck = kind => kind !== 'ground' && kind !== 'pier' && kind !== 'roof' && kind !== 'landmark';
+    const isDeck = kind => kind !== 'ground' && kind !== 'pier' && kind !== 'roof' && kind !== 'landmark' && kind !== 'promenade';
     // can a walker whose feet are at z stand at (x, y)? Returns the new floor or a reason.
     function walk(x, y, z) {
       const f = floorAt(x, y, z);
@@ -830,8 +844,9 @@ window.OENav = (function () {
       if (nogo && f.kind !== 'pier' && nogo.data[cellOf(x, y)] > 0) return { ok: false, why: 'nogo' };
       if (keepOff && f.kind === 'ground' && keepOff(x, y)) return { ok: false, why: 'keep_off' };
       if (inland && f.kind === 'ground' && inland.water(x, y)) return { ok: false, why: 'keep_off' }; // a channel's edge, a pond's (inland.js)
+      if (f.kind === 'promenade' && f.z < z - STEP) return { ok: false, why: 'wall' }; // a promenade's railings: over its walls, beside its steps
       if (OP && f.kind === 'ground') { const o = OP.at(G, x, y); if (o && OP.blocked(o, x, y)) return { ok: false, why: 'wall' }; } // (a building there, or the far land's edge)
-      if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
+      if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind), f.kind === 'promenade'))) return { ok: false, why: 'wall' };
       if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD) && triHit(x, y, R, f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cell, and then its triangles, withoutFine)
       return { ok: true, z: f.z, kind: f.kind };
     }
@@ -839,7 +854,7 @@ window.OENav = (function () {
     // in `movers` (the traffic, which sets it) and the lamp posts and trunks in `posts`
     // (streets.js, which game.js sets): {x, y, hit}
     function slide(x, y, z, dx, dy) {
-      const f = floorAt(x, y, z), skip = passes(z, !!f && isDeck(f.kind));
+      const f = floorAt(x, y, z), skip = passes(z, !!f && isDeck(f.kind), !!f && f.kind === 'promenade');
       if (f && f.kind === 'landmark' && f.z > z) z = f.z; // stepping up onto a landmark's floor: the body clears its edge
       const m = col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, skip);
       let o = m;
@@ -863,7 +878,7 @@ window.OENav = (function () {
       if (!near) return false;
       const f = floorAt(x, y, z + 0.3), fz = f ? f.z : z;
       if (coarseOnly && solidCell(k, fz + KNEE, fz + HEAD) && triHit(x, y, r, fz + KNEE, fz + HEAD)) return true; // (a landmark's 2 m cell, and then its triangles, withoutFine)
-      return col.overlap(x, y, r, fz + KNEE, fz + HEAD, passes(fz, !!f && isDeck(f.kind)));
+      return col.overlap(x, y, r, fz + KNEE, fz + HEAD, passes(fz, !!f && isDeck(f.kind), !!f && f.kind === 'promenade'));
     }
     function solidCell(k, za, zb) { const l = solid0.get(k); if (!l) return false; for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) return true; return false; }
     // push a circle of radius r whose bottom is at z out of the walls it overlaps, between knee
@@ -871,7 +886,7 @@ window.OENav = (function () {
     function push(x, y, z, r, top = HEAD) {
       const f = floorAt(x, y, z);
       if (f && f.kind === 'landmark' && f.z > z) z = f.z;
-      return col.depenetrate(x, y, r, z + KNEE, z + top, passes(z, !!f && isDeck(f.kind)));
+      return col.depenetrate(x, y, r, z + KNEE, z + top, passes(z, !!f && isDeck(f.kind), !!f && f.kind === 'promenade'));
     }
     // lowest height a flying or floating body may occupy at (x, y): what is directly below
     function groundBelow(x, y, z) {
@@ -980,7 +995,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, passageFloor, passages: (D.LM && D.LM.passages) || [], tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, layAll, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
+    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, passageFloor, inland, passages: (D.LM && D.LM.passages) || [], tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, layAll, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
     return api;
   }
   return { create };

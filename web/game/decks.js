@@ -166,6 +166,10 @@ window.OEDecks = (function () {
       let cls = new Uint8Array(n), zs = new Float32Array(n);
       for (let k = 0; k < n; k++) {
         const x = X(k), y = Y(k), z = p[3 * k + 2] / 10, g = nav.terrain(x, y), water = nav.isWater(x, y);
+        // on a sunken promenade's floor or its steps (inland.js: the Horikawa's paths, which the terrain, carried at
+        // the street's level over the channel, would lift onto a deck in the air): on that surface
+        const pr = nav.inland && nav.inland.promenade ? nav.inland.promenade(x, y) : null;
+        if (pr) { cls[k] = 1; zs[k] = pr.z; continue; }
         let s = nav.surfaceAt(x, y, z);
         // a level over a raised deck that is drawn, or a metre off its edge: a bridge's sidewalk the data lifts a
         // level where the bridge itself is an area (Ebisubashi)

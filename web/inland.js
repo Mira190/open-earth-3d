@@ -17,6 +17,7 @@
 window.OEInland = (function () {
   const COPING = { w: 0.45, h: 0.12 }, RAIL_H = 1.1, RAIL_IN = 0.2, SLAB = 0.9; // m
   const HOLE_PAD = 0.06; // the ground's hole reaches this far past a wall's face, under its coping
+  const FLIGHT_GATE = 1.3; // a flight of steps down to a promenade opens to the pavement beside it over its first FLIGHT_GATE m
   const SDF_K = 40, SDF_BAND = 2.5; // the hole mask: 128 + SDF_K x signed distance (m, water positive), exact within SDF_BAND of an edge
 
   // scene: scene.json; returns null where the city has no inland water
@@ -230,23 +231,29 @@ window.OEInland = (function () {
             const m = new THREE.Mesh(g, mats.wall(b)); m.name = 'inland_stream_edge'; m.receiveShadow = true; group.add(m);
           }
           // the steps: a flight of stone treads down along the wall, solid to the floor, a low parapet on the open side
-          const st = [], par = [], puv = [];
-          const box = (cx, cy, ux, uy, nx, ny, hl, hw, z0, z1, out) => { // a box hl along (u) and hw across (n), z0..z1
+          const st = [], suv = [], par = [], puv = [];
+          // a box hl along (u) and hw across (n), z0..z1; UVs in metres for the setts' pattern: on its top across and
+          // along the flight from (fx, fy) (so that a tread's joint falls at its nosing), on its sides along and up
+          const box = (cx, cy, ux, uy, nx, ny, hl, hw, z0, z1, out, uvs, fx, fy) => {
             const c = [];
             for (const [a, w] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) c.push([cx + ux * a * hl + nx * w * hw, cy + uy * a * hl + ny * w * hw]);
             const V3 = (q, z) => [q[0], z, -q[1]];
-            const quad = (p0, p1, p2, p3) => out.push(...p0, ...p1, ...p2, ...p0, ...p2, ...p3);
+            const quad = (p0, p1, p2, p3, t0, t1, t2, t3) => { out.push(...p0, ...p1, ...p2, ...p0, ...p2, ...p3); uvs.push(...t0, ...t1, ...t2, ...t0, ...t2, ...t3); };
             const T = c.map(q => V3(q, z1)), Bm = c.map(q => V3(q, z0));
+            const top = c.map(q => [(q[0] - fx) * nx + (q[1] - fy) * ny, (q[0] - fx) * ux + (q[1] - fy) * uy]);
             const wind = (ux * ny - uy * nx) > 0; // (u, n) anticlockwise from above
-            const q4 = (a, b2, c2, d) => (wind ? quad(a, b2, c2, d) : quad(a, d, c2, b2));
-            q4(T[0], T[3], T[2], T[1]);
-            for (let e = 0; e < 4; e++) { const f = (e + 1) % 4; q4(Bm[e], Bm[f], T[f], T[e]); }
+            const q4 = (a, b2, c2, d, ta, tb, tc, td) => (wind ? quad(a, b2, c2, d, ta, tb, tc, td) : quad(a, d, c2, b2, ta, td, tc, tb));
+            q4(T[0], T[3], T[2], T[1], top[0], top[3], top[2], top[1]);
+            for (let e = 0; e < 4; e++) {
+              const f = (e + 1) % 4, L = Math.hypot(c[f][0] - c[e][0], c[f][1] - c[e][1]), s0 = top[e][0] + top[e][1];
+              q4(Bm[e], Bm[f], T[f], T[e], [s0, z0], [s0 + L, z0], [s0 + L, z1], [s0, z1]);
+            }
           };
           for (const [x, y, ux, uy, nx, ny, zt, zb, w, run] of TR.steps) {
             const n = Math.max(2, Math.round((zt - zb) / 0.16)), rise = (zt - zb) / n, tread = run / n;
             for (let i = 0; i < n; i++) {
               const a = (i + 0.5) * tread;
-              box(x + ux * a, y + uy * a, ux, uy, nx, ny, tread / 2 + 0.01, w / 2, zb - 0.05, zt - (i + 1) * rise + 0.02, st);
+              box(x + ux * a, y + uy * a, ux, uy, nx, ny, tread / 2 + 0.01, w / 2, zb - 0.05, zt - (i + 1) * rise + 0.02, st, suv, x - ux * 0.01, y - uy * 0.01);
             }
             // the parapet on the stream's side, from the top of the flight to its foot
             const ox = x - nx * (w / 2 + 0.08), oy = y - ny * (w / 2 + 0.08), ex = ox + ux * run, ey = oy + uy * run;
@@ -256,7 +263,7 @@ window.OEInland = (function () {
             }
           }
           if (st.length) {
-            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(st, 3)); g.computeVertexNormals();
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(st, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(suv, 2)); g.computeVertexNormals();
             const m = new THREE.Mesh(g, mats.floor || mats.coping); m.name = 'inland_steps'; m.castShadow = m.receiveShadow = true; group.add(m);
           }
           if (par.length) {
@@ -291,8 +298,13 @@ window.OEInland = (function () {
             const mx = (ax + bx) / 2 - lx * RAIL_IN, my = (ay + by) / 2 - ly * RAIL_IN;
             if (!onDeck(mx, my) && !onDeck(mx + lx * 1.5, my + ly * 1.5)) {
               const px = -lx * RAIL_IN, py = -ly * RAIL_IN, ra = ta + h, rb = tb + h;
-              rail.push(ax + px, ra, -(ay + py), bx + px, rb, -(by + py), bx + px, rb + RAIL_H, -(by + py), ax + px, ra, -(ay + py), bx + px, rb + RAIL_H, -(by + py), ax + px, ra + RAIL_H, -(ay + py));
-              ruv.push(length, 0, length + L, 0, length + L, RAIL_H, length, 0, length + L, RAIL_H, length, RAIL_H);
+              // (open over the top of a flight of steps down to a promenade: the way in from the pavement)
+              for (const [t0, t1] of TR ? railParts(ax + px, ay + py, bx + px, by + py, L, openAtWall) : [[0, 1]]) {
+                const x0 = ax + px + (bx - ax) * t0, y0 = ay + py + (by - ay) * t0, x1 = ax + px + (bx - ax) * t1, y1 = ay + py + (by - ay) * t1;
+                const z0 = ra + (rb - ra) * t0, z1 = ra + (rb - ra) * t1;
+                rail.push(x0, z0, -y0, x1, z1, -y1, x1, z1 + RAIL_H, -y1, x0, z0, -y0, x1, z1 + RAIL_H, -y1, x0, z0 + RAIL_H, -y0);
+                ruv.push(length + L * t0, 0, length + L * t1, 0, length + L * t1, RAIL_H, length + L * t0, 0, length + L * t1, RAIL_H, length + L * t0, RAIL_H);
+              }
             }
             length += L;
           }
@@ -374,6 +386,55 @@ window.OEInland = (function () {
       for (let a = 0; a < 8; a++) { const t = a * Math.PI / 4; if (inWalled.at(x + r * Math.cos(t), y + r * Math.sin(t)) > 127) return true; }
       return false;
     }
+
+    // ------------------------------------------------------------ a sunken promenade's floor, for walkers (nav.js)
+    // The Horikawa's paved floor between its walls and the flights of steps down to it from the crossings: the
+    // height a walker stands at (x, y) on them, or null off them (on the street, on a deck over the channel, in
+    // the stream's bed). On a flight, the tread under the point (rise and tread as drawn in build()); the floor
+    // under a flight is the flight's, which stands solid to it. {z, flight} (flight: on a flight of steps)
+    const terraced = walled.filter(b => b.terrace);
+    const inTerrace = terraced.length ? raster(terraced, 0.5, { grow: 1.0 }) : null; // (which channel: a promenade's, grown over the walled mask's cells)
+    const inStream = terraced.length ? raster(terraced.flatMap(b => b.terrace.stream.map(r => ({ rings: [r], box: boxOf(r) }))), 0.25) : null;
+    const flights = terraced.flatMap(b => b.terrace.steps.map(([x, y, ux, uy, nx, ny, zt, zb, w, run]) => {
+      const n = Math.max(2, Math.round((zt - zb) / 0.16));
+      return { x, y, ux, uy, nx, ny, zt, zb, w, run, n, rise: (zt - zb) / n, tread: run / n };
+    }));
+    function flightAt(x, y) {
+      for (const f of flights) {
+        const dx = x - f.x, dy = y - f.y, u = dx * f.ux + dy * f.uy, v = dx * f.nx + dy * f.ny;
+        // (and a landing at the street's level behind the top tread, under the pavement's edge)
+        // (and on the wall's side out over the strip to its face, the coping and the channel mask's half-metre cell, where
+        // a walker comes on from the pavement)
+        if (u >= -0.4 && u <= f.run && v >= -f.w / 2 && v <= f.w / 2 + 0.75) return u < 0 ? f.zt : f.zt - Math.min(f.n, Math.floor(u / f.tread) + 1) * f.rise;
+      }
+      return null;
+    }
+    function promenade(x, y) {
+      if (!inTerrace || onDeck(x, y)) return null;
+      const s = flightAt(x, y);
+      if (s != null) return { z: s, flight: true };
+      // (in the channel as water() has it, so that the street's edge and the promenade's agree to the raster's cell)
+      if (inTerrace.at(x, y) === 0 || !(inWalled.at(x, y) > 127) || inStream.at(x, y) > 127) return null;
+      const n = nearest(x, y, 40, 'walled');
+      return n && n.body.terrace ? { z: n.wz + n.body.terrace.path_m, flight: false } : null;
+    }
+
+    // the parts [t0, t1] of a railing from a to b (length L) that stand: all of it but where open(x, y) (the way onto a
+    // flight of steps down to a promenade), sampled every 0.1 m
+    function railParts(ax, ay, bx, by, L, open) {
+      if (!flights.length) return [[0, 1]];
+      const n = Math.max(1, Math.ceil(L / 0.1)), out = [];
+      let t0 = null;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n, shut = !open(ax + (bx - ax) * t, ay + (by - ay) * t);
+        if (shut && t0 === null) t0 = t;
+        if ((!shut || i === n) && t0 !== null) { const t1 = shut ? t : (i - 1) / n; if (t1 > t0 + 1e-3) out.push([t0, t1]); t0 = null; }
+      }
+      return out;
+    }
+    // where a flight of steps opens: from the pavement beside its top, through the railing over the wall
+    const flightUV = (f, x, y) => { const dx = x - f.x, dy = y - f.y; return [dx * f.ux + dy * f.uy, dx * f.nx + dy * f.ny]; };
+    const openAtWall = (x, y) => flights.some(f => { const [u, v] = flightUV(f, x, y); return u > -0.2 && u < FLIGHT_GATE && v > f.w / 2 - 0.4 && v < f.w / 2 + 1.2; });
 
     // ------------------------------------------------------------ the lights in the water at night
     // Each light near the water (a street lamp, a chochin, a bonbori) is seen in it as a streak: its mirror image
@@ -476,7 +537,7 @@ void main() {
       };
     }
 
-    return { bodies, decks, walled, natural, raise, water, level, onDeck, nearest, bank, byWall, holeMask, build, glints };
+    return { bodies, decks, walled, natural, raise, water, level, onDeck, nearest, bank, byWall, promenade, flights, FLIGHT_GATE, holeMask, build, glints };
   }
 
   return { create };
