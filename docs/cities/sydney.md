@@ -82,6 +82,10 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
   list does not say where in the reserve each grows, so the clumps are scattered over the whole of it, lawns
   included. Hyde Park, the Domain, the Royal Botanic Garden and Wynyard Park are mown lawn with exotic
   plantings, so none is planted there.
+
+  | From above, day | Among the figs | Dusk |
+  |---|---|---|
+  | ![](../images/sydney/tussock-barangaroo-high-day.jpg) | ![](../images/sydney/tussock-barangaroo-low-day.jpg) | ![](../images/sydney/tussock-barangaroo-high-dusk.jpg) |
 - **Buildings:** 7,962 buildings and 8,308 solids. OSM building parts replace
   their outlines, so in the surface model Sydney Tower is a 290 m shaft, a
   240–270 m turret and a spire to 309 m, all from data. Each building records:
