@@ -378,11 +378,25 @@ window.OENav = (function () {
     const pool = [];
     const tileFloor = new Map(); // tile index -> the highest landmark floor within FOOT of each fine cell, lowest and highest ([2 * cell])
     let fineBoxes = 0, fineMs = 0, startMs = 0; // boxes laid so far, the time the tiles took, the time sorting took
-    // the floor under a point of a landmark: the ground, a strip or a pier. (Not a roof: the surface model's
-    // roofs include the measured solids a landmark draws instead, the temple halls' own roofs in Kyoto, which
-    // would lay whole roofs into the fine cells; a landmark on a raised platform walks on a strip instead)
+    // the floor under a point of a landmark: the ground, a strip, a pier, or the roof of a building drawn as
+    // published, solid from the ground up (a landmark on a roof: SHIBUYA SKY's deck and its channels, whose
+    // fences, newels and glass stood as 2 m cells over the escalators' ends, so that no one could step on).
+    // Not the surface model's roofs: they include the measured solids a landmark draws instead, the temple
+    // halls' own roofs in Kyoto, which would lay whole roofs into the fine cells; nor a canopy or a building
+    // over a road, which stand clear of the ground (col holds the buildings drawn, and is built for this first)
+    const roofs = [];
+    const roofUnder = (x, y, g) => {
+      roofs.length = 0;
+      col.prismsAt(x, y, BUILDING, p => roofs.push(p));
+      if (!roofs.length) return g;
+      roofs.sort((a, b) => a.zlo - b.zlo);
+      let h = g;
+      for (const p of roofs) if (p.zlo <= h + 1.0 && p.zhi > h) h = p.zhi;
+      return h;
+    };
     const ref = (x, y) => {
       let h = terrain(x, y);
+      h = roofUnder(x, y, h);
       for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > h) h = pier.data[k];
@@ -392,19 +406,29 @@ window.OENav = (function () {
     // to 3 m over that (a wall beside a raised floor, a tower's beside the loggia it flanks, is laid into fine cells
     // up to BAND over that floor, so that its 2 m cells do not come down to the head of someone on it; not a
     // bridge's deck high over the ground beside it)
-    const refBeside = (x, y, h0) => {
+    const EDGE = DSM.cell * Math.SQRT2 + 0.6;
+    const refBeside = (x, y, h0, zlo = -Infinity) => {
       let h = h0;
       for (const s of stripsAt(x, y)) {
         const [u, v] = stripUV(s, x, y);
-        if (Math.abs(v) > s.half_width + DSM.cell || u < s.us[0] - DSM.cell || u > s.us[s.us.length - 1] + DSM.cell) continue;
+        if (Math.abs(v) > s.half_width + EDGE || u < s.us[0] - EDGE || u > s.us[s.us.length - 1] + EDGE) continue;
         const q = interp(s.us, s.zs, u);
-        // (and whatever stands at its very edge, within 1.5 m of its outline, however high it is over the ground:
-        // a balustrade, a lift's shaft against a deck's end, issue 265; their 2 m cells reached onto the deck)
-        const edge = Math.abs(v) <= s.half_width + 1.5 && u >= s.us[0] - 1.5 && u <= s.us[s.us.length - 1] + 1.5;
+        // (and whatever stands near its edge, however high it is over the ground: a balustrade, a lift's shaft
+        // against a deck's end, issue 265, whose 2 m cells reached onto the deck; within EDGE of its outline, a
+        // 2 m cell's diagonal and half a wall's piece (landmarkCells), so that no 2 m cell of it reaches the strip)
+        const edge = Math.abs(v) <= s.half_width + EDGE && u >= s.us[0] - EDGE && u <= s.us[s.us.length - 1] + EDGE;
         if (q > h && (q < h0 + 3.0 || edge)) h = q;
+      }
+      // (and a roof a step away, up to 12 m over the floor under it, or any roof that what is read stands on: the
+      // glass, rails and coping along the edge of a deck over a channel cut into it, SHIBUYA SKY's, stand on the
+      // deck, not on the channel's floor 9 m down or the street 227 m down past the facade)
+      for (const [dx, dy] of NEAR) {
+        const q = roofUnder(x + dx, y + dy, terrain(x + dx, y + dy));
+        if (q > h && (q < h0 + 12.0 || zlo >= q - 0.5)) h = q;
       }
       return h;
     };
+    const NEAR = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]];
     // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
     // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length squared
     const seg = (P, Q, step, fn) => { const n = Math.max(1, Math.ceil(Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]) / step));
@@ -436,6 +460,22 @@ window.OENav = (function () {
     const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
     function landmarkCells(meshes, slabs) {
       const coarse = new Map(slabs);
+      // a triangle within reach of a strip, cut into pieces no longer than a metre, each read on its own: a long
+      // one is read at its middle, and the outer glass along SHIBUYA SKY's channel and its fence's top rail, their
+      // middles a step too far from the escalator's head, stood as 2 m cells over the head, so no one could step on
+      const near = (x, y, m) => stripsAt(x, y).some(s => x >= s.box[0] - m && x <= s.box[2] + m && y >= s.box[1] - m && y <= s.box[3] + m);
+      function nearStrip(P) {
+        if (!P.some(q => near(q[0], q[1], EDGE + 1))) return [P];
+        const out = [], cut = T => {
+          const e = [0, 1, 2].map(i => Math.hypot(T[(i + 1) % 3][0] - T[i][0], T[(i + 1) % 3][1] - T[i][1], T[(i + 1) % 3][2] - T[i][2]));
+          const i = e.indexOf(Math.max(...e));
+          if (e[i] <= 1.0) { out.push(T); return; }
+          const a = T[i], b = T[(i + 1) % 3], c = T[(i + 2) % 3], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+          cut([a, m, c]); cut([m, b, c]);
+        };
+        cut(P);
+        return out;
+      }
       // the 2 m cells, one interval per mesh and cell as before
       function toCoarse(tris) {
         const mine = new Map();
@@ -449,12 +489,11 @@ window.OENav = (function () {
       }
       for (const m of meshes) {
         const p = m.position, idx = m.index, up = [], noFloor = ((D.LM.materials || {})[m.material] || {}).floor === false;
-        for (let t = 0; t < idx.length; t += 3) {
-          const P = [idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]);
+        for (let t = 0; t < idx.length; t += 3) for (const P of nearStrip([idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]))) {
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
           const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
           const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
-          const rlo = Math.min(...rs), zc = refBeside(cx, cy, Math.max(...rs)) + BAND;
+          const rlo = Math.min(...rs), zc = refBeside(cx, cy, Math.max(...rs), zlo) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor
           let below = [P];
@@ -728,6 +767,7 @@ window.OENav = (function () {
     const PH = OEBuildings.POST / 2;
     const passages = new Set((D.B.passages || []).map(i => D.B.s[i])); // (a building over a road through it stands on no posts: pipeline/road_passages.py)
     for (const s of shown) if (!passages.has(s)) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]], D.B.no_posts && D.B.no_posts[s[0]], D.B.inner_posts && D.B.inner_posts[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
+    col.build(); // (the buildings alone first: ref() reads their roofs; built again with the landmark cells)
     const tFine = performance.now();
     const coarse = landmarkCells(solidMeshes, slabs);
     startMs = performance.now() - tFine;

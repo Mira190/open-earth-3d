@@ -128,10 +128,12 @@ under a net, where an escalator and a broad stair climb beside the glass to the 
   floor and steps up each side), CLOUD HAMMOCK's nets, the 18 searchlights of
   CROSSING LIGHT, which the light show turns on after dark, and SKY EDGE: the
   deck's corner over the channels' feet, where the glass on the rim is lowest
-  (1.1 m) and seven lines of light set in the floor run out to it.
+  (1.1 m); its floor is plain, with no lines of light set in it.
 - **In the game** the lift lands you in front of the north door, facing the
   escalator up. The escalators move at 0.5 m/s and carry whoever stands on them,
-  up the north edge and down the west; the stairs are walked. The spot "The
+  up the north edge and down the west; you walk onto one from the floor before its
+  comb and it sets you down on the floor past the far end. The stairs are walked.
+  CROSSING LIGHT's searchlights stand clear of the 6 m before each flight's head. The spot "The
   escalator down to SKY EDGE" is at the head of the way down.
 - **Built.** `cities/shibuya/city.py` (`sky_flights`, `sky_channels`, `sky_doors`)
   draws the channels and cuts them into the roof when the scene is built;

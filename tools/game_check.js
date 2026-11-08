@@ -804,6 +804,30 @@ const npcNight = require('./npc_night');
   });
   for (const r of escRides) check(r.u >= r.end - 0.3 && Math.abs(r.rise - r.want) < 0.6 && r.t < r.need * 1.3 + 2 && r.walk && r.mode === 'foot', `the ${r.name} carries you ${r.rise >= 0 ? 'up' : 'down'} ${Math.abs(r.rise).toFixed(1)} m of its ${Math.abs(r.want).toFixed(1)} in ${r.t.toFixed(1)} s (its stretch takes ${r.need.toFixed(1)} s; ends ${(r.end - r.u).toFixed(2)} m short, ${r.walk ? 'standing' : 'not walkable'})`);
 
+  // and walked onto, as a player does: from the floor 2.5 m before its entry, walking along it for three seconds,
+  // then standing still; the steps take you to the far end and set you down on the floor past it
+  const escWalks = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, nav = g.nav, out = [];
+    if (!nav.strips.some(q => q.moving_ms)) return out;
+    const was = pl.walking;
+    for (const s of nav.strips.filter(q => q.moving_ms)) {
+      const u0 = s.us[0] - 2.5, x = s.origin[0] + s.axis[0] * u0, y = s.origin[1] + s.axis[1] * u0, f = nav.floorAt(x, y, s.zs[0] + 0.5);
+      [pl.x, pl.y, pl.z] = [x, y, f ? f.z : s.zs[0]]; pl.mode = 'foot'; pl.ground = true; pl.vz = 0; pl.walking = true; pl.escOff = null;
+      const h = Math.atan2(s.axis[0], s.axis[1]), z0 = pl.z;
+      pl.h = h;
+      for (let i = 0; i < 30; i++) { g.cam.yaw = h; g.advance(0.1, ['KeyW']); }
+      const on = nav.stripUV(s, pl.x, pl.y)[0];
+      const mu = s.moving_u || [s.us[0], s.us[s.us.length - 1]], need = (mu[1] - mu[0]) / s.moving_ms + 4;
+      for (let t = 0; t < need * 1.4; t += 0.5) g.advance(0.5);
+      const [u] = nav.stripUV(s, pl.x, pl.y);
+      out.push({ name: s.name, on, u, end: s.us[s.us.length - 1], rise: pl.z - z0, want: s.zs[s.zs.length - 1] - s.zs[0], walk: nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    pl.walking = was;
+    g.spawn(); g.advance(0.5);
+    return out;
+  });
+  for (const r of escWalks) check(r.on > 0 && r.u > r.end + 0.5 && Math.abs(r.rise - r.want) < 0.6 && r.walk, `the ${r.name} is walked onto from the floor before it (${r.on.toFixed(1)} m on after 3 s) and sets you down ${(r.u - r.end).toFixed(1)} m past its end, ${r.rise >= 0 ? 'up' : 'down'} ${Math.abs(r.rise).toFixed(1)} m of its ${Math.abs(r.want).toFixed(1)}${r.walk ? '' : ', not walkable'}`);
+
   // the quests a city names for checking (quests[].check: a new walk): each place a step sends you to has
   // ground you can stand on within its radius, and each NPC a step names is there
   const goals = await p.evaluate(() => {

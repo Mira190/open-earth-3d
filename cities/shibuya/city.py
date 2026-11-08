@@ -3316,8 +3316,8 @@ def crossing_wall_signs(K, lm):
 # a broad stair climb beside the glass to the deck: the escalator up the north edge (signed SKY STAGE,
 # ROOFTOP at its foot), and the way down the west edge, riding towards Shinjuku with the scramble far below
 # on the left. That ride, at sunset and in the blue hour, is the roof's most photographed view. On the deck:
-# SKY EDGE, the corner where the deck meets the channels, where the glass is lowest and lines of light in the
-# floor run out to it; GEO COMPASS, the highest point, a raised deck with a compass on its floor; CLOUD
+# SKY EDGE, the corner where the deck meets the channels, where the glass is lowest (its floor is plain: no
+# lines of light are set in it); GEO COMPASS, the highest point, a raised deck with a compass on its floor; CLOUD
 # HAMMOCK, nets to lie in; and CROSSING LIGHT, 18 searchlights after dark. The deck is put at PLATEAU's lower
 # roof tier and GEO COMPASS reaches its top; the channels follow the band along the west and north edges that
 # PLATEAU surveyed 9 m lower. The plan and the furniture are drawn from photographs (Wikimedia Commons, 2019-23).
@@ -3475,15 +3475,29 @@ def sky_searchlights(c, a1, a2, h1, h2):
                     c + a1 * (h1 - 2 * h1 * t) + a2 * (h2 - 1.0), c + a2 * (h2 - 2 * h2 * t) - a1 * (h1 - 1.0)][k % 4])
     F = sky_flights(h1, h2)
     eu, ev = F["edge"]
-    rim = []
+    (nu0, nv0), (nu1, _), _, _ = F["north"]
+    (wu0, wv0), _, (_, wv1), _ = F["west"]
+    clear = 6.0                                     # the floor kept free before a flight's head, where people step on
+    taken = []
     for q in out:
         u, v = float((q - c) @ a1), float((q - c) @ a2)
-        if u > eu - 0.5 and v > F["north"][0][1] - 0.5:
+        if u > eu - 0.5 and v > nv0 - 0.5:
             u = eu - 1.0
-        if v > ev - 0.5 and u > F["west"][0][0] - 0.5:
+        if v > ev - 0.5 and u > wu0 - 0.5:
             v = ev - 1.0
-        rim.append(c + a1 * u + a2 * v)
-    return rim
+        # not in the way onto a flight: on the line of the channel before its head, it goes on along the rim
+        if nu0 - 0.5 <= u <= nu1 + 0.5 and nv0 - clear < v <= nv0 + 0.5:
+            v = nv0 - clear
+        if wv0 - 0.5 <= v <= wv1 + 0.5 and wu0 - clear < u <= wu0 + 0.5:
+            u = wu0 - clear
+        # two that the rules put on one spot: the later moves 3 m along the edge it stands on, toward the middle
+        while any(math.hypot(u - a, v - b) < 2.0 for a, b in taken):
+            if abs(abs(u) - (h1 - 1.0)) < abs(abs(v) - (h2 - 1.0)):
+                v -= math.copysign(3.0, v)
+            else:
+                u -= math.copysign(3.0, u)
+        taken.append((u, v))
+    return [c + a1 * u + a2 * v for u, v in taken]
 
 
 def sky_record(s):
@@ -3586,15 +3600,6 @@ def sky_meshes(s):
             S.tube([Q(*pa, z), Q(*pa, z + hh)], 0.04, 6)
             S.tube([Q(*pa, z + hh), Q(*pb, z + hh)], 0.03, 4)
     sky_channels(K, Q, F, z, s["z0"])
-    # SKY EDGE: lines of light set in the deck, running out to its corner over the channels
-    eu, ev = F["edge"]
-    for k in range(7):
-        ang = math.radians(180 + 12 + k * 11)          # fanned across the deck's quarter behind the corner
-        du, dv = math.cos(ang), math.sin(ang)
-        a, b = 1.2, 1.2 + 14.0 + 4.0 * math.sin(k * 1.7) ** 2
-        nu, nv = -dv * 0.035, du * 0.035
-        K("led", "edge_lines").quad(Q(eu + du * a + nu, ev + dv * a + nv, z + 0.036), Q(eu + du * b + nu, ev + dv * b + nv, z + 0.036),
-                                    Q(eu + du * b - nu, ev + dv * b - nv, z + 0.036), Q(eu + du * a - nu, ev + dv * a - nv, z + 0.036))
     # GEO COMPASS: the raised deck in the middle, the compass on its floor, steps up each side
     zt = z + 2.0
     block(K("concrete", "compass"), Q, -gc, gc, -gc, gc, z - 0.5, zt - 0.02)

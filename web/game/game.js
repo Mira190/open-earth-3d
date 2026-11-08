@@ -4476,15 +4476,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // steps take you through whatever stands beside them (a well's rim, the floor you come up through). Where its
     // flat ends lie flush with a floor a hair higher than them (a landing's stone, a deck's boards), the floor is
     // the one stood on, yet the steps under it still carry you
+    // (and at its far end it sets you down on the landing, as the steps going under the comb do: on past the
+    // strip's end by a metre where the floor takes you, so that no one is left standing on the comb)
     const esc = player.ground && (nav.strips.find(s => s.moving_ms && s.name === player.floor) ||
-      nav.strips.find(s => { if (!s.moving_ms) return false; const h = nav.stripHeight(s, player.x, player.y); return h != null && Math.abs(h - player.z) < 0.15; }));
+      nav.strips.find(s => { if (!s.moving_ms) return false; const h = nav.stripHeight(s, player.x, player.y); return h != null && Math.abs(h - player.z) < 0.15; }) ||
+      (player.escOff && player.ground ? player.escOff : null));
     if (esc) {
-      const [u] = nav.stripUV(esc, player.x, player.y), mu = esc.moving_u || [-Infinity, Infinity];
-      if (u >= mu[0] && u <= mu[1]) {
+      const [u] = nav.stripUV(esc, player.x, player.y), mu = esc.moving_u || [-Infinity, Infinity], end = esc.us[esc.us.length - 1] + 1.0;
+      player.escOff = u > mu[1] && u < end ? esc : null;
+      if (u >= mu[0] && u < end) {
         const nx = player.x + esc.axis[0] * esc.moving_ms * dt, ny = player.y + esc.axis[1] * esc.moving_ms * dt;
-        if (nav.stripHeight(esc, nx, ny) != null) { player.x = nx; player.y = ny; }
+        if (nav.stripHeight(esc, nx, ny) != null) { player.x = nx; player.y = ny; } else if (u > mu[1]) {
+          const w = nav.walk(nx, ny, player.z);
+          if (w.ok && Math.abs(w.z - player.z) < 0.15) { player.x = nx; player.y = ny; } else player.escOff = null;
+        }
       }
-    }
+    } else player.escOff = null;
     const f = nav.floorAt(player.x, player.y, player.z);
     const floorZ = f ? f.z : player.z;
     if (f) player.floor = f.kind;
