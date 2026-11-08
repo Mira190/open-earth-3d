@@ -1447,8 +1447,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         };
         const inRing = (r, x, y) => { let k = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < r[j] + (y - r[j + 1]) / (r[i + 1] - r[j + 1]) * (r[i] - r[j])) k = !k; return k; };
         for (const pl of TU.places || []) for (const q of (P.places || []).filter(o => o.name === pl.name)) for (const poly of q.polygons || []) {
-          const r = poly.map(v => v / 10), xs = r.filter((_, i) => i % 2 === 0), ys = r.filter((_, i) => i % 2 === 1);
-          grid(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), pl.per_ha || 400, (x, y) => inRing(r, x, y), true);
+          const rings = poly.map(r => r.map(v => v / 10)), r = rings[0], xs = r.filter((_, i) => i % 2 === 0), ys = r.filter((_, i) => i % 2 === 1);   // (its outline, then its holes)
+          grid(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), pl.per_ha || 400, (x, y) => inRing(r, x, y) && !rings.slice(1).some(h => inRing(h, x, y)), true);
         }
         if (TU.slopes) {
           for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
