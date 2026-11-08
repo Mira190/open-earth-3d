@@ -1721,6 +1721,7 @@ const npcNight = require('./npc_night');
       }
       const st = o.drv.st;
       Object.assign(r, { secs: T.u, done: !o.turn, round: Math.abs(ad(st.h, T.h0)) });
+      if (o.turn) { const b = o.turn.by; r.heldTurn = `held ${(o.turn.held || 0).toFixed(0)} s at pose ${o.turn.i} of ${o.turn.poses.length}${b ? ` by car ${g.cars.C.indexOf(b)} ${b.why}${b.heldBy ? ' by ' + b.heldBy : ''} v ${(+b.v || 0).toFixed(1)}${b.front ? (b.front.id ? ' (in front: ' + b.front.id + ')' : ` (in front: car ${g.cars.C.indexOf(b.front)} ${b.front.why})`) : ''}${b.youBy ? ' (' + b.youBy + ')' : ''}${b.mv ? ' in a junction' : ''}` : ''}`; }
       let went = 0, px = st.x, py = st.y;
       let secs = 0; // (120 s at most: a red light or a queue on its new way may hold it a while, two of Shibuya's long cycles)
       const held = {}; // (what held it, as the driver says, and the nearest car of the traffic ahead: printed on a failure)
@@ -1729,7 +1730,7 @@ const npcNight = require('./npc_night');
         const fx = Math.cos(q.h), fy = Math.sin(q.h);
         let near = null;
         for (const c of g.cars.C) { if (c.line < 0) continue; const a = (c.x - q.x) * fx + (c.y - q.y) * fy, d = Math.hypot(c.x - q.x, c.y - q.y); if (a > 0 && d < 30 && (!near || d < near.d)) near = { d, c }; }
-        const k = `${(q.why || '-').replace(/[0-9.]+/g, '#')}${near ? ` | car ${g.cars.C.indexOf(near.c)} ${near.d.toFixed(0)} m ahead on road ${near.c.line}, v ${near.c.v.toFixed(1)}, ${near.c.why || '-'}, off ${(+near.c.off || 0).toFixed(1)}${near.c.inWallNow ? ', in from a wall' : ''}` : ''}`;
+        const k = `${(q.why || '-').replace(/[0-9.]+/g, '#')}${near ? ` | car ${g.cars.C.indexOf(near.c)} ${near.d.toFixed(0)} m ahead on road ${near.c.line}, v ${near.c.v.toFixed(1)}, ${near.c.why || '-'}, off ${(+near.c.off || 0).toFixed(1)}${near.c.inWallNow ? ', in from a wall' : ''}${near.c.youBy ? ` (${near.c.youBy})` : ''}, facing ${(Math.cos(near.c.h - q.h)).toFixed(1)}` : ''}${q.block ? (near && (q.block === near.c || q.block.of === near.c) ? ', its gap set by that car' : `, its gap set by ${q.block.id || (g.cars.C.indexOf(q.block.of || q.block) >= 0 ? 'car ' + g.cars.C.indexOf(q.block.of || q.block) : 'another')}`) : ''}`;
         held[k] = (held[k] || 0) + 1;
       }
       r.drove = went; r.driveSecs = secs; r.held = Object.entries(held).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => `${n} s: ${k}`);
@@ -1742,7 +1743,7 @@ const npcNight = require('./npc_night');
   if (turn.none) check(true, `a ride turns round in the road: not tried (${turn.none})`);
   else if (!turn.turned) console.log(`note a ride turns round in the road: nowhere to on its way in ${turn.tries} tries (${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')})`);
   else {
-    check(turn.done && (turn.rev || turn.round > 2.8), turn.rev ? `a ride turns round: on a one-way street, it backs out to the junction behind (in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}°)` : `a ride turns round in the road: a three-point turn in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}° (after ${turn.tries} tries${Object.keys(turn.why).length ? `: ${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')}` : ''})`);
+    check(turn.done && (turn.rev || turn.round > 2.8), turn.rev ? `a ride turns round: on a one-way street, it backs out to the junction behind (in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}°${turn.heldTurn ? '; ' + turn.heldTurn : ''})` : `a ride turns round in the road: a three-point turn in ${turn.secs.toFixed(1)} s, round ${(turn.round * 180 / Math.PI).toFixed(0)}° (after ${turn.tries} tries${Object.keys(turn.why).length ? `: ${Object.entries(turn.why).map(([k, n]) => `${k} ${n}`).join(', ')}` : ''})`);
     check(turn.overlap === 0, `and never into a car of the traffic as it turns (${turn.overlap.toFixed(2)} m deep at most)`);
     check(turn.drove > 10, `and drives on the other way (${turn.drove.toFixed(0)} m in ${turn.driveSecs} s)`);
     if (!(turn.drove > 10)) console.log(`  at ${turn.at}, held by: ${turn.held.join('\n  held by: ')}`);

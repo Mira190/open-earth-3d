@@ -50,9 +50,10 @@ const MIN = Number(process.env.MIN || 10);
         for (const [k, e] of run) if (!seen.has(k)) { if (e.t > MIN) out.push(`${e.t} s ${e.at}`); pairs++; run.delete(k); }
       }
       for (const [, e] of run) if (e.t > MIN) out.push(`${e.t} s (still) ${e.at}`);
-      return { out, pairs };
+      const S = g.cars.stats();
+      return { out, pairs, stats: `backed out ${S.revs}, squeezed past ${S.squeezes}, red runs ${S.redRuns}` };
     }, { T: Number(secs), site, MIN, MORE: !!process.env.MORE });
-    console.log(`${city} place ${site}: ${r.pairs} pairs held each other a moment; over ${MIN} s: ${r.out.length}`);
+    console.log(`${city} place ${site}: ${r.pairs} pairs held each other a moment; over ${MIN} s: ${r.out.length}; ${r.stats}`);
     for (const s of r.out) console.log('  ' + s);
     bad += r.out.length;
     await p.close();

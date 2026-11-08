@@ -1551,6 +1551,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     let depth = 0, most = 0, ahead = false, oc = null, ox0 = 0, oy0 = 0, ohx = 0, ohy = 0, mL = 0, mW = 0, mostCar = null, inSet = null, known = null, fresh = 0;
     const overlapTest = o => {
       if (o === oc || (o.soft && Math.sin(o.h) * ohx + Math.cos(o.h) * ohy < 0.5)) return; // (a ride on its way to you, but for one it follows: game.js)
+      // (where a ride backing out will be, not where it is: kept clear by a car not in it, but one already in it, in a
+      // junction, drives on out of the way rather than stand there, held by a place the ride has yet to reach, while the
+      // ride waits on it: a ride backing out in Higashiyama's junction 67 stood 90 s so, #317)
+      if (o.ahead && oc.inAhead) return;
       const dx = o.x - ox0, dy = o.y - oy0, ox = Math.sin(o.h), oy = Math.cos(o.h), cs = Math.abs(ox * ohx + oy * ohy), sn = Math.abs(-ox * ohy + oy * ohx);
       const ea = oc.half + cs * o.half + sn * o.hw + mL - Math.abs(dx * ohx + dy * ohy), eb = oc.hw + sn * o.half + cs * o.hw + mW - Math.abs(-dx * ohy + dy * ohx);
       if (ea > 0 && eb > 0) {
@@ -1568,6 +1572,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (known && !known.has(o)) fresh += d;
       }
     };
+    // do car c's box and o's (x, y, h, half, hw) overlap, on the axes of both?
+    function boxIn(c, o) {
+      if (Math.abs(o.x - c.x) > c.half + o.half + 1 || Math.abs(o.y - c.y) > c.half + o.half + 1) return false;
+      const hx = Math.sin(c.h), hy = Math.cos(c.h), ox = Math.sin(o.h), oy = Math.cos(o.h), dx = o.x - c.x, dy = o.y - c.y;
+      const cs = Math.abs(ox * hx + oy * hy), sn = Math.abs(-ox * hy + oy * hx);
+      return c.half + cs * o.half + sn * o.hw > Math.abs(dx * hx + dy * hy) && c.hw + sn * o.half + cs * o.hw > Math.abs(-dx * hy + dy * hx)
+        && o.half + cs * c.half + sn * c.hw > Math.abs(dx * ox + dy * oy) && o.hw + sn * c.half + cs * c.hw > Math.abs(-dx * oy + dy * ox);
+    }
     function overlaps(c, x, y, hx, hy, ml = 0.5, mw = 0.2, intoSet = null, knownSet = null) {
       depth = most = fresh = 0; ahead = false; mostCar = null; oc = c; ox0 = x; oy0 = y; ohx = hx; ohy = hy; mL = ml; mW = mw; inSet = intoSet; known = knownSet;
       near(x, y, c.half + 1, overlapTest, c.z);
@@ -1923,6 +1935,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       ownOnly = true;
       const d = overlaps(probe, x, y, Math.sin(h), Math.cos(h), m, m);
       ownOnly = false;
+      api.footBy = d > 0 ? mostCar : null; // (the car deepest in it, for the checks' logs)
       return d;
     }
     // a ride's driver nose to nose with cars of the traffic that won't move off (each waiting on the other):
@@ -1997,6 +2010,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           c.plan = c.ex ? c.ex.steps.slice(1) : null;
           c.nx = c.ex ? c.ex.steps[0] : net.next(c.line, end, true, c.hw);
         }
+        c.inAhead = !!c.mv && api.extra.length > 1 && api.extra.some(o => o.ahead && boxIn(c, o)); // (in a junction, in where a ride backing out will be)
         const left = c.dir > 0 ? l.len - c.s : c.s, nl = c.nx ? c.nx[0] : -1, nd = c.nx ? (c.nx[1] === 0 ? 1 : -1) : 0;
         let gap = 40, byCar = false, swerve = 0, front = null, why = '', walker = -1;
         // the road ends ahead in nothing (a stub at the map's edge, a dead end): it slows to turn round there
@@ -2134,7 +2148,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         let sawX = null, leadX = null, xQ = false, youBy = null; // (youBy: which of yours it brakes for, and how, for the checks)
         c.xWaitT = c.why === 'you' && c.v < 0.3 && c.youBy && / on its way$/.test(c.youBy) ? (c.xWaitT || 0) + dt : 0;
         if (np) for (const o of api.extra) {
-          if (o.soft || (o.v < 0.3 && !o.live) || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
+          if ((o.ahead && c.inAhead) || o.soft || (o.v < 0.3 && !o.live) || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
           // (a ride stopped at a junction's line, waiting its turn, is measured by its own size by a car crossing that
           // junction, not with the margins kept from one on the move: with them the car stood in the box for the
           // ride's nose while the ride waited at its line for that car's movement, each for the other, #243)
@@ -2545,7 +2559,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.narrowT = why === 'narrow' && c.v < 0.3 ? (c.narrowT || 0) + dt : 0;
         if (c.narrowT > 25 && !inView(c)) { c.narrowT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
         c.narrowCarT = why === 'narrow' && byCar && c.v < 0.3 ? (c.narrowCarT || 0) + dt : 0; // (nose to nose in the stretch with one to go first: it backs out)
-        if (c.narrowCarT > 10 && !l.ow && reverse(c)) { c.narrowCarT = 0; reverseStep(c, i, dt, cx, cy); continue; }
+        if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
+          c.narrowCarT = 0;
+          if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
+          if (away) { dir = -dir; c.stuck = 0; }
+        }
         if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
           c.stuck = 0;
           if (!l.ow && !away && why !== 'you' && (why === 'narrow' || c.narrowF > 0.2) && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; } // (a street with no room to turn round in: backed out to the junction behind, as on a one-way street)
