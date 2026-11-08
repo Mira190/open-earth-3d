@@ -1160,12 +1160,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function planOn(rt, from, pickup) {
     const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true, now: rideClock };
     const P = OECars.path(rt.pts), sig = [], scr = [], scrJ = [], qArms = [];
+    let first = null; // (the first light on its way)
     for (const nd of rt.nodes || []) {
       const p = rt.pts[nd.k], a = p ? junctions.armAt(nd.line, nd.end) : null;
       if (!a) continue;
       const s = P.cum[Math.min(nd.k, P.cum.length - 1)];
       if (P.cum[Math.min(nd.k, P.cum.length - 1)] < 400) qArms.push({ s, a }); // (the queues on its way, near enough to stand when it comes)
       if (!a.j.sig) continue;
+      if (!first) first = { s, a };
       if (Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140) {
         sig.push(s);
         if (a.j.scramble) { scr.push(s); scrJ.push(a.j); } // (its walk: SCR_WAIT)
@@ -1174,7 +1176,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const m of rt.mids || []) if (m.X.sig && Math.hypot(m.X.x - pickup.x, m.X.y - pickup.y) < 140) sig.push(m.at); // (and the crossings' lights between junctions)
     sig.sort((p, q) => p - q);
     const drive = OECars.chauffeur(STUB, rt, opts).total();
-    return { rt, opts, drive, sig, scr, scrJ, qArms, T: drive + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
+    // (the first light on its way, red now and still red when it gets there, is waited out: the light's own change,
+    // not the second or so of an average light; Shinjuku's hailed taxi, 60 m short of a red, came in 42 s, not 12)
+    let firstW = 0;
+    if (first && first.s < 250 && junctions.light(first.a) !== 'g') firstW = Math.max(0, junctions.toGreen(first.a) - drive * first.s / Math.max(1, P.len));
+    return { rt, opts, drive, sig, scr, scrJ, qArms, firstSig: firstW > 0, T: drive + firstW + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
   }
   // what keeps a ride's driver out of the traffic's cars where you could see it (out of sight, as nothing
   // else holds a driver up there, it would only be late): never a step further into one (solid), and,
@@ -1310,13 +1316,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const d = Math.hypot(c.x - player.x, c.y - player.y);
       if (d > 300 || d < 12) continue;
       const from = { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, plan = planRide(from, pickup);
-      // (one stopped at a red light waits for its green first: a scramble's walk can be half a minute; and one on its
-      // way to a light that is not green, there before it turns, waits what is left: Shinjuku's taxi at 13 m/s, 60 m
-      // short of a red, came in 42 s, not the 12 s it was picked for)
-      if (plan && c.lineArm && c.toLine != null && (c.v >= 1 || c.toLine < 12)) {
-        const lt = junctions.light(c.lineArm, c.lineEx);
-        if (lt != null && lt !== 'g') plan.T += Math.max(0, junctions.toGreen(c.lineArm) - (c.v < 1 ? 0 : c.toLine / c.v));
-      }
+      // (one stopped at a red light waits for its green first: a scramble's walk can be half a minute)
+      if (plan && c.v < 1 && c.lineArm && c.toLine < 12 && !plan.firstSig && junctions.light(c.lineArm, c.lineEx) === 'r') plan.T += junctions.toGreen(c.lineArm);
       if (plan && plan.T <= RIDE_T[1] && (!best || plan.T < best.plan.T)) best = { c, from, plan };
     }
     let o = null;
