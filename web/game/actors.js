@@ -1162,7 +1162,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (p.squeeze > 0) p.squeeze -= dt;
       seeJ = -1;
       const capPeople = cap, blkI = blk, blkA = blkAhead, blkL = blkLat;
-      if (player) see(player.x, player.y, pvx, pvy, BODY + (player.r || 0.15), 1.6); // give the player a little more room (a car more)
+      // (going round the player it steers by its detour, closest() below still keeping it out of them)
+      if (player && !(p.detourT > 0 && p.detourOf === -2)) see(player.x, player.y, pvx, pvy, BODY + (player.r || 0.15), 1.6); // give the player a little more room (a car more)
+      // the player on its course, close ahead (where it is, not where it will be: stood still face to face,
+      // the closing speed is nil and see() no longer counts them)
+      let pAhead = 0, pLat = 0, byPlayer = false;
+      if (player) { const dx = player.x - p.x, dy = player.y - p.y; pAhead = dx * hx + dy * hy; pLat = dx * -hy + dy * hx; byPlayer = pAhead > 0 && pAhead < 2.4 && Math.abs(pLat) < BODY + (player.r || 0.15); }
       gather(p.x, p.y, p, (p.steps = (p.steps || 0) + 1) % 2 === 0 || !p.cars, p.z);
       // the benches' two seats: step round them, without slowing (it may be passing to sit down)
       let cap0 = cap;
@@ -1203,6 +1208,30 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           else p.stuckT = 0; // (no way round: it waits, and in the end turns back)
         }
       }
+      // the player in its way (they never step aside for it): at once a detour round them, a body's width
+      // clear of them where the way is wide enough, else sidling past shoulder to shoulder (a torii tunnel
+      // two people wide), to the side with room; with no room at all (a lane between walls) it turns back
+      // after a moment rather than stand in front of them
+      const pStop = byPlayer && p.v < 0.6 && !(p.detourT > 0);
+      p.pStuck = pStop ? (p.pStuck || 0) + dt : 0;
+      if (pStop && p.pStuck > 0.2) {
+        const olat = p.lat + pLat, pr = player.r || 0.15, lo = -hw + 0.15, hi = Math.max(hw, side) + 0.3, own = side >= 0 ? 1 : -1;
+        if (clear) lineAt(p.line, p.s, tmp);
+        let best = null;
+        for (const gap of [BODY + pr + 0.12, CLOSE + pr + 0.1]) {
+          for (const sg of [own, -own]) {
+            const tl = olat + sg * gap;
+            if (tl < lo || tl > hi || (clear && Math.abs(wallFree(p, tl, hw) - tl) > 1e-6)) continue;
+            if (best == null || Math.abs(tl - p.lat) < Math.abs(best - p.lat) - 0.3) best = tl;
+          }
+          if (best != null) break;
+        }
+        if (best != null) { p.detourT = 3; p.detourLat = best; p.detourOf = -2; p.pStuck = 0; }
+        else if (p.pStuck > 0.9) { turn(p); p.pStuck = 0; p.still = 0; p.pBack = 3; }
+      }
+      // and whoever it then meets face to face, coming on behind it, sees the way is shut and turns too
+      if (p.pBack > 0) p.pBack -= dt;
+      if (stopped && blkI >= 0 && P[blkI].pBack > 0 && P[blkI].dir !== p.dir && p.stuckT > 0.3) { turn(p); p.stuckT = 0; p.still = 0; p.pBack = 3; }
       // slowed to a crawl by the crowd at a scramble's kerb, just ahead: one of them, standing where it is at the
       // back of them, as someone coming up to a crowd at a crossing does, rather than creeping into their backs
       // and in the end turning back (Shibuya: a tenth of the footways' walkers near you at any moment).
