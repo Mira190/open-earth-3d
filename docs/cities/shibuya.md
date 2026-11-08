@@ -92,8 +92,7 @@ footprint along PLATEAU's roof faces, as in [Tokyo](tokyo.md#3-how-plateau-is-us
 The open deck on the roof of Shibuya Scramble Square (opened 1 November 2019):
 about 2,500 m² at 229 m. Visitors ride the lifts of SKY GATE from 14F to 45F at
 360 m a minute and come out of the 46F gallery through glass doors at the foot of
-the roof's west and north edges, into a channel walled in glass and open to the sky
-under a net, where an escalator and a broad stair climb beside the glass to the deck.
+the roof's west and north edges, into a channel walled in glass and open to the sky, where an escalator and a broad stair climb beside the glass to the deck.
 
 | The way down at the blue hour | The way down at night |
 |---|---|
@@ -114,8 +113,9 @@ under a net, where an escalator and a broad stair climb beside the glass to the 
   carrying white beams over the channel every 4.5 m; the stair (timber treads on
   white risers, two legs of 30 risers of 0.15 m on 0.30 m goings with a landing,
   glass on the escalator's side, a handrail and a foot light on the wall); and the
-  deck's flank, clad in dark glass on white mullions. A net of fine wire spans from
-  the outer glass's top rail to a cable on posts over the deck's rim.
+  deck's flank, clad in dark glass on white mullions. The real channel has a safety
+  net of fine wire over it; it is left out, because at a game's distance it reads as
+  clutter and its hair-thin shadows shimmer.
 - **The doors** are a pair of sliding glass leaves, 0.9 m each and 2.4 m high, in
   white frames with fixed glass either side and a transom to 2.7 m, lit from the
   gallery after dark: one in each channel's flank at its foot.
