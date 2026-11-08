@@ -109,7 +109,7 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     let went = 0, qx = o.drv.st.x, qy = o.drv.st.y;
     // (a minute at most: a scramble's walk and the queue at its line on the new way may hold it a while)
     for (let k = 0; k < 60 && went <= 10; k++) { g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - qx, q.y - qy); qx = q.x; qy = q.y; }
-    r.queued = went <= 10 && !!o.drv.st.block && C.includes(o.drv.st.block) && o.drv.st.v < 0.5; // (on its new way, but in a queue behind a car of the traffic: the junction ahead's doing, not its backing out)
+    r.queued = went <= 10 && !!o.drv.st.block && (C.includes(o.drv.st.block) || C.includes(o.drv.st.block.of)) && o.drv.st.v < 0.5; // (on its new way, but in a queue behind a car of the traffic, or its stand-in as one stopped for good: the junction ahead's doing, not its backing out)
     r.drove = +went.toFixed(1); if (went <= 10) r.driveWhy = `${o.drv.st.why || ''} v ${o.drv.st.v.toFixed(1)}${o.drv.st.block ? (b => `, behind ${C.indexOf(b) >= 0 ? `car ${C.indexOf(b)} (${b.why})` : b.of && C.indexOf(b.of) >= 0 ? `car ${C.indexOf(b.of)} (${b.of.why}, as stopped for good)` : `${b.id || b.model || 'something'}${b.stay ? ' parked' : ''}${b.of ? ` of ${b.of.model || b.of.id || '?'}` : ''} v ${(+b.v || 0).toFixed(1)}`}`)(o.drv.st.block) : ''}`; r.secs = +r.secs.toFixed(1); r.back = +r.back.toFixed(1); r.deep = +r.deep.toFixed(2);
     out.ride = r;
     g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
