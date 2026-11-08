@@ -1,5 +1,6 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
-// it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
+// it, walk, walk right up to the things the city names to see up close (tools/close_step.js), into the rooms it
+// opens and out again (tools/interior_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
 // in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it (every
@@ -641,6 +642,16 @@ const npcNight = require('./npc_night');
       else check(r.ok, `walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}${r.keep ? `, not nearer than ${r.keep}` : ''}${r.on ? `, standing ${r.dz.toFixed(2)} m off the raised floor it is on` : ''})${r.ok ? '' : `: ${r.why}`}`}`);
     }
     if (!near.length) console.log('     (nothing named to walk up to)');
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
+  }
+
+  // the rooms a city opens (game.json "interiors": the Skyline restaurant, St Peter's, Williams Cottage): from in
+  // front of each door, walk in through it (it must be open by the time you are in the doorway), stand in the room
+  // on its floor with its name shown, and walk back out, the door shutting behind you (tools/interior_step.js)
+  {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
+    const rooms = await require('./interior_step')(p, { outDir, prefix: `${city}-` });
+    for (const r of rooms) check(r.ok, `walks into ${r.name} and out again${r.dIn == null ? `: ${r.why}` : ` (the door ${(r.openIn * 100).toFixed(0)}% open in its doorway, ${r.dIn.toFixed(2)} m from the room's middle and ${r.dz.toFixed(2)} m off its floor, back out ${r.dOut.toFixed(2)} m from the start, the door ${r.shutAfter < 0.05 ? 'shut' : 'open'} after)${r.ok ? '' : `: ${r.why}`}`}`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 

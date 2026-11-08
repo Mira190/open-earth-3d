@@ -1499,7 +1499,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
-      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
+      userData: { glow: LM.materials[k].glow || 0.32, day: LM.materials[k].glow_day || 0 }, // (glow_day: lit by day too, as stained glass seen from inside is) onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
       defines: Object.assign({}, lmMats[k].defines),
       // its own program: a floodlit copy of a patterned material, or one lit from below (which wraps
       // the pattern, so the wrapper's text alone would not tell two programs apart)
@@ -1552,7 +1552,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     for (const m of LM.meshes || []) {
       const g = lmGeometry(m);
       const mesh = new THREE.Mesh(g, lmMaterial(m));
-      if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far); }
+      if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far * (small ? 0.6 : 1)); } // (a room's furnishings: nearer on a small device)
       mesh.castShadow = mesh.receiveShadow = true;
       if (['railing', 'lattice'].includes((LM.materials[m.material] || {}).pattern)) mesh.castShadow = false; // a cut-out strip; its shadow would be solid
       if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
@@ -1767,7 +1767,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (night && night.skyglow) su.uNightHorizon.value.copy(night.skyglow).multiplyScalar(2.2);
         // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
-        for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
+        for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value + m.userData.day * (1 - U.uNight.value);
         LM_NIGHT.value = U.uNight.value;
         SCREEN.hour.value = U.uHour.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
