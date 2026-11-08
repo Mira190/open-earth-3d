@@ -358,9 +358,10 @@ window.OEJunctions = (function () {
       // its walk as long as its longest crosswalk takes at the crowd's brisk pace (SCR_V, actors.js xSpeed),
       // with a few seconds to step out, and no longer: the cars' red is the walk (#199)
       const longest = segs.reduce((m, w) => Math.max(m, Math.hypot(w[2] - w[0], w[3] - w[1])), 0);
-      j.green = [10, 8, 0, Math.max(SCR_MIN, Math.min(32, Math.ceil(longest / SCR_V + 5)))]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
-      // (its turns 10 s and 8 s: at 8 s and 6 s, a car through every 3 s from a standing start, the queues backed up
-      // through the junction behind, Shinjuku's 1105 arm 2 a minute and more, #264)
+      j.green = [12, 10, 0, Math.max(SCR_MIN, Math.min(32, Math.ceil(longest / SCR_V + 5)))]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
+      // (its turns 12 s and 10 s: at 8 s and 6 s, a car through every 3 s from a standing start, the queues backed up
+      // through the junction behind, Shinjuku's 1105 arm 2 a minute and more, #264; 10 s and 8 s with the cars slowing
+      // round its corners to 19 km/h, a turning car took a second longer across its box, #317)
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);

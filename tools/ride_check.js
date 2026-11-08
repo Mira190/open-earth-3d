@@ -26,6 +26,7 @@ const [,, city = 'hong-kong', trials = '10', only = ''] = process.argv;
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 400)));
   await pinClock(p, city);
   await p.addInitScript(seed => { let x = seed >>> 0 || 1; Math.random = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }, +(process.env.SEED || 1));
+  if (process.env.CAR_BEND === '0') await p.addInitScript(() => { window.__carBend = false; }); // (the cars keep their speed round bends: an A/B, #317)
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });
