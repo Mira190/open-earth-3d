@@ -323,12 +323,17 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     // (Ryan Brucks; agargaro/octahedral-impostor for three.js) take many more views; a tree is near enough to
     // round that three heights and a mirror do here, and seen from 200 m and further.
     const IMP_E = [0, 40, 80];
-    let imp = null, impTick = 0;
+    let imp = null, impStale = false;
     const seasonKey = () => [U.uBloom.value, U.uAutumn.value, U.uBare.value].concat(U.uSakuraV.value, U.uCherryBareV.value).map(v => (+v).toFixed(2)).join(',');
+    // The first bake (from world.create, behind the loader) compiles the cards' programs for the atlas first,
+    // asynchronously (they are lit by the bake's one ambient light, drawn into its target: programs of their
+    // own, 0.2 s compiled in the call on a software renderer, issue 313), and draws the atlas once they are
+    // ready; the far meshes are in the world from the start, so the loader's compile has their program too.
+    // Returns a promise of the atlas drawn.
     function bakeFar(renderer) {
-      if (!renderer || !THREE.WebGLRenderTarget) return;
+      if (!renderer || !THREE.WebGLRenderTarget) return Promise.resolve();
       const key = seasonKey();
-      if (imp && imp.key === key) return;
+      if (imp && imp.key === key) return imp.ready || Promise.resolve();
       const V = IMP_E.length, NS = names.length;
       let CELL = small ? 128 : 256;
       while (CELL > 64 && NS * CELL > renderer.capabilities.maxTextureSize) CELL /= 2;
@@ -338,7 +343,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         rt.texture.anisotropy = 4;
         const scene = new THREE.Scene();
         scene.add(new THREE.AmbientLight(0xffffff, Math.PI)); // (a Lambert surface under ambient π gives back its albedo)
-        imp = { rt, scene, renderer, species: [], key: '' };
+        imp = { rt, scene, renderer, species: [], key: '', cell: CELL };
         names.forEach((sp, k) => {
           const node = lib.gltf.scene.getObjectByName(`${sp}_LOD1`);
           if (!node || !count[k] || !meshes[k][2].length) { imp.species.push(null); return; }
@@ -360,6 +365,24 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
           imp.species.push({ k, parts, c, r, clear: lin(S.colour || '#4d6b34').multiplyScalar(0.55) });
         });
       }
+      imp.key = key;
+      if (!imp.ready) {
+        // (every species' cards in the bake's scene at once, compiled into its target, then drawn)
+        const all = imp.species.filter(Boolean).flatMap(sp => sp.parts), was = renderer.getRenderTarget(), cam0 = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 10);
+        for (const m of all) imp.scene.add(m);
+        let compiled;
+        try { renderer.setRenderTarget(imp.rt); compiled = renderer.compileAsync ? renderer.compileAsync(imp.scene, cam0) : Promise.resolve(); }
+        catch (e) { compiled = Promise.resolve(); }
+        finally { renderer.setRenderTarget(was); for (const m of all) imp.scene.remove(m); }
+        imp.ready = Promise.resolve(compiled).catch(() => {}).then(() => { imp.key = ''; drawAtlas(); });
+        makeFar();
+        return imp.ready;
+      }
+      drawAtlas();
+      return imp.ready;
+    }
+    function drawAtlas() {
+      const key = seasonKey(), V = IMP_E.length, NS = names.length, CELL = imp.cell;
       imp.key = key;
       const R = imp.renderer, prevRT = R.getRenderTarget(), prevC = R.getClearColor(new THREE.Color()), prevA = R.getClearAlpha(), prevSh = R.shadowMap.autoUpdate;
       R.shadowMap.autoUpdate = false;
@@ -384,8 +407,12 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       }
       imp.rt.scissorTest = false; imp.rt.viewport.set(0, 0, V * CELL, NS * CELL); imp.rt.scissor.set(0, 0, V * CELL, NS * CELL);
       R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); R.shadowMap.autoUpdate = prevSh;
-      if (!imp.meshes) imp.meshes = true; else return;
-      // the far meshes, once: one quad per tree, in place of the hulls
+    }
+    // the far meshes, once: one quad per tree, in place of the hulls
+    function makeFar() {
+      if (imp.meshes) return;
+      imp.meshes = true;
+      const V = IMP_E.length, NS = names.length;
       const quad = new THREE.PlaneGeometry(1, 1);
       for (const sp of imp.species) {
         if (!sp) continue;
@@ -839,7 +866,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       // after a jump of 120 m
       update(camera, tSec) {
         U.uWind.value = tSec % 10000;
-        if (imp && imp.meshes && ++impTick % 30 === 0) bakeFar(imp.renderer); // (the season's look changed: the atlas again)
+        if (impStale && imp && imp.meshes && imp.key) { impStale = false; bakeFar(imp.renderer); } // (the season's look changed: the atlas again, before this frame draws it)
         if (Y) { const nv = night ? night.value : 0, k = nv * yozBloom; U.uYoz.value = k; Y.set(k, yozBloom > 0, nv * chochinOut, chochinOut > 0); }
         camera.getWorldPosition(cam);
         const d2 = cam.distanceToSquared(last);
@@ -847,7 +874,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
         if (turned || (d2 > 144 && (d2 > 14400 || !(tSec - sortedAt < 0.2)))) { last.copy(cam); sortedAt = tSec; sort(cam); }
       },
       // the far trees as impostors, drawn with this renderer (and again when the season's look changes)
-      bakeFar(renderer) { try { bakeFar(renderer); } catch (e) { console.warn('far trees: hulls kept', e); } },
+      bakeFar(renderer) { try { return bakeFar(renderer); } catch (e) { console.warn('far trees: hulls kept', e); return Promise.resolve(); } },
       // where the sun is (a unit vector towards it), for the shadow pass to draw only the trees near its box
       shadowSun(f) { sunOf = f; sortedAt = -1e9; last.set(1e9, 0, 0); },
       // stand each tree on the ground at its foot: ground(x, y, z) for the height the data gives
@@ -872,6 +899,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       // for a fortnight from their opening day (sakuraOpen), opening over a week and shedding their petals over
       // five days, and leaf out as the petals fall
       setSeason(month, day) {
+        impStale = true; // (the far trees' atlas drawn again at the next update, if the look has changed)
         const doy = Math.round((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 864e5);
         U.uBloom.value = south ? +(doy >= 285 && doy <= 334) : +(doy >= 130 && doy <= 178);
         last.set(1e9, 0, 0); // the shedding cherries gathered again at the next update

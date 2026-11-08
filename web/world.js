@@ -1899,7 +1899,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); if (far) far.dispose(); },
     };
     if (trees && trees.shadowSun) trees.shadowSun(() => api.sunDir);
-    if (trees && trees.bakeFar && new URLSearchParams(location.search).get('impostors') !== 'off') trees.bakeFar(renderer);
+    const farTrees = trees && trees.bakeFar && new URLSearchParams(location.search).get('impostors') !== 'off' ? trees.bakeFar(renderer) : null;
+    api.ready = Promise.resolve(farTrees); // (what the first draw waits for besides the shaders: the far trees' atlas, trees.js)
     return api;
   }
 
@@ -2230,15 +2231,105 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // The textures of a big object (the city behind the loader), sent in slices of about SLICE_MS before
   // its first draw, which would otherwise upload them all, and build their mipmaps, in that one frame
   // (issue 266: 2.4 s of the longest frame of Shibuya's load). Shares upload()'s record of what is sent.
+  // Each slice is sent once the GPU has caught up (caughtUp): an upload's data goes through a transfer buffer
+  // the GPU process empties in order, so one sent behind the compiles queued before it waits for them all in
+  // the call that sends it (issue 313: a 1000x1200 image's texSubImage2D, 6 s in Kyoto's loader on a
+  // software renderer, is 5 ms sent to a GPU with nothing queued; tools/upload_probe.js).
   async function uploadSliced(renderer, obj) {
     if (!renderer || !renderer.initTexture || !obj) return;
     let s0 = performance.now();
+    await caughtUp(renderer);
     for (const tex of textures(obj)) {
       if (sent.has(tex)) continue;
       sent.add(tex);
       try { renderer.initTexture(tex); } catch (e) { /* uploaded on its first draw instead */ }
-      if (performance.now() - s0 > SLICE_MS) { await idle(); s0 = performance.now(); }
+      if (performance.now() - s0 > SLICE_MS) { await idle(); await caughtUp(renderer); s0 = performance.now(); }
     }
+  }
+  // Resolves once the GPU has done everything sent before the call: a fence, polled between tasks (WebGL updates
+  // a fence's status only then), so nothing waits on it. Resolves at once without fences or with a lost context.
+  function caughtUp(renderer) {
+    const gl = renderer.getContext && renderer.getContext();
+    if (!gl || !gl.fenceSync || gl.isContextLost()) return Promise.resolve();
+    let sync;
+    try { sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush(); } catch (e) { return Promise.resolve(); }
+    return new Promise(done => {
+      const poll = () => {
+        let st;
+        try { st = gl.isContextLost() ? gl.WAIT_FAILED : gl.clientWaitSync(sync, 0, 0); } catch (e) { st = gl.WAIT_FAILED; }
+        if (st === gl.TIMEOUT_EXPIRED) { setTimeout(poll, 4); return; }
+        try { gl.deleteSync(sync); } catch (e) { /* a lost context */ }
+        done();
+      };
+      setTimeout(poll, 0);
+    });
+  }
+
+  // The vertex buffers of a big object (the city behind the loader), sent in slices of about SLICE_MS before its
+  // first draw (issue 313). three.js uploads a geometry's attributes in the first frame that draws it
+  // (bufferData: 0.5 to 1.9 s of the loader's first frame on a software renderer) and has no call to do it
+  // sooner, so each slice is rendered with its draw calls held: its objects alone on a layer of their own
+  // (with the scene's lights, so every material keeps its program), culling off, the shadow pass, the
+  // background, the clear and the context's draw calls held. three.js's render then sends their attributes,
+  // instance matrices and index, binds their programs, and draws nothing. Into target, the render target
+  // the scene is drawn into (the programs' variant: call it once compile() is done, so nothing compiles).
+  // Objects hidden now are left for their first draw.
+  const LAYER = 31, bufSent = new WeakSet(), noop = () => {};
+  const DRAWS = ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'drawRangeElements'];
+  async function uploadBuffers(renderer, scene, camera, { target = null } = {}) {
+    if (!renderer || !renderer.render || !scene || !camera) return;
+    const objs = [], lights = [];
+    scene.traverseVisible(o => {
+      if (o.isLight) lights.push(o);
+      else if ((o.isMesh || o.isLine || o.isPoints) && !o.isBatchedMesh && o.geometry && o.material && !bufSent.has(o)) { bufSent.add(o); objs.push(o); }
+    });
+    if (!objs.length) return;
+    // (the bytes each object sends: its attributes, index and instance matrices not counted with another's already)
+    const counted = new WeakSet(), bytes = o => {
+      let n = 0;
+      for (const a of [o.geometry.index, o.instanceMatrix, o.instanceColor, ...Object.values(o.geometry.attributes)]) {
+        const d = a && (a.isInterleavedBufferAttribute ? a.data : a);
+        if (d && d.array && !counted.has(d)) { counted.add(d); n += d.array.byteLength; }
+      }
+      return n;
+    };
+    const t0 = performance.now();
+    let budget = 4 << 20, i = 0, slices = 0, longest = 0, total = 0;
+    const log = [];
+    while (i < objs.length) {
+      const slice = [];
+      let sb = 0;
+      while (i < objs.length && (sb < budget || !slice.length)) { const o = objs[i++]; sb += bytes(o); slice.push(o); }
+      await caughtUp(renderer); // (sent behind queued compiles, the uploads wait for them: uploadSliced)
+      const s0 = performance.now(), sm = renderer.shadowMap, keep = { render: sm.render, own: Object.prototype.hasOwnProperty.call(sm, 'render'), clear: renderer.autoClear, bg: scene.isScene ? scene.background : null, rt: renderer.getRenderTarget(), mask: camera.layers.mask };
+      const was = slice.map(o => o.frustumCulled), gl = renderer.getContext(), draws = DRAWS.filter(k => gl[k]);
+      try {
+        for (const o of slice) { o.layers.enable(LAYER); o.frustumCulled = false; }
+        for (const k of draws) gl[k] = noop;
+        for (const l of lights) l.layers.enable(LAYER);
+        sm.render = () => {};
+        renderer.autoClear = false;
+        if (scene.isScene) scene.background = null;
+        camera.layers.set(LAYER);
+        renderer.setRenderTarget(target);
+        renderer.render(scene, camera);
+      } catch (e) { console.warn('buffers', e); }
+      finally {
+        camera.layers.mask = keep.mask;
+        renderer.setRenderTarget(keep.rt);
+        if (scene.isScene) scene.background = keep.bg;
+        renderer.autoClear = keep.clear;
+        if (keep.own) sm.render = keep.render; else delete sm.render;
+        for (const l of lights) l.layers.disable(LAYER);
+        for (const k of draws) delete gl[k];
+        slice.forEach((o, k) => { o.layers.disable(LAYER); o.frustumCulled = was[k]; });
+      }
+      const dt = performance.now() - s0;
+      slices++; longest = Math.max(longest, dt); total += sb; log.push(`${(sb / 1048576).toFixed(1)}/${Math.round(dt)}`);
+      // (the next slice's size from this one's rate: about SLICE_MS of uploads a slice)
+      budget = Math.max(256 << 10, Math.min(64 << 20, sb * SLICE_MS / Math.max(dt, 1)));
+    }
+    console.info(`buffers: ${objs.length} objects, ${(total / 1048576).toFixed(0)} MB in ${slices} slices (MB/ms: ${log.slice(0, 8).join(' ')}), the longest ${Math.round(longest)} ms, done after ${Math.round(performance.now() - t0)} ms`);
   }
 
   // The sun's shadow map, cached for what does not move. The city's walls, roofs, rooftop plant, landmarks and
@@ -2396,5 +2487,5 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return n;
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, warm, leanComposer, readAsync, warmPasses, settleUnderFloors };
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, leanComposer, readAsync, warmPasses, settleUnderFloors };
 })();

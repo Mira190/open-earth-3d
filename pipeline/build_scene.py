@@ -1627,6 +1627,13 @@ def write_index():
                 c["buildings"] = sum(sc["height_sources"].values())
             x0, x1, y0, y1 = sc["extent_m"] if "extent_m" in sc else (*sc["frame"]["x"], *sc["frame"]["y"])
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
+            # the model's frame in metres east and north of its own lat, lon: the game's big map draws the
+            # neighbouring maps of a group where they are, round the one you are in (web/game/game.js region)
+            fr = sc.get("frame", {})
+            if "x" in fr:  # (the frame's own lat0, lon0 may sit off the listed point: Shibuya's, Shinjuku's)
+                dx = (fr.get("lon0", c["lon"]) - c["lon"]) * 111320 * math.cos(math.radians(c["lat"]))
+                dy = (fr.get("lat0", c["lat"]) - c["lat"]) * 110574
+                c["frame_m"] = [round(fr["x"][0] + dx), round(fr["x"][1] + dx), round(fr["y"][0] + dy), round(fr["y"][1] + dy)]
         if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
             size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
             # the buildings, landmarks, game, terrain, places and scene packed (pipeline/pack.py, issues 148, 201, 259) where the pack is
