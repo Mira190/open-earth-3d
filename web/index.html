@@ -621,6 +621,15 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-mapzoom button[data-z="fit"] { font-size: 14px; }
 .g-mapzoom button:hover:not(:disabled), .g-mapzoom button:focus-visible { background: var(--accent-wash); color: #fff; }
 .g-mapzoom button:disabled { color: var(--faint); cursor: default; }
+/* this district or the whole city (game.js region): over the map's top corner, as a game's map switches between a region and the world */
+.g-mapscope { position: absolute; left: 10px; top: 10px; z-index: 1; display: flex; padding: 3px; gap: 2px; background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); }
+.g-mapscope button { border: 0; background: none; color: var(--ink-2, var(--ink)); font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; cursor: pointer; transition: background 0.3s, color 0.3s; white-space: nowrap; }
+.g-mapscope button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink, #1a1206); }
+.g-mapscope button:hover:not([aria-pressed="true"]), .g-mapscope button:focus-visible { background: var(--accent-wash); color: #fff; }
+.g-lg-district { border-radius: 2px !important; width: 11px !important; height: 11px !important; margin: 0 1.5px; transform: rotate(45deg); background: rgba(6, 10, 18, 0.78); box-shadow: inset 0 0 0 1.6px var(--accent), inset 0 0 0 3.5px rgba(6, 10, 18, 0.78), inset 0 0 0 6px var(--accent); }
+.g-mappop-line { margin: 2px 0 4px; max-width: 300px; font-size: 12px; line-height: 1.45; color: var(--ink-2, var(--ink)); }
+#g-travel button small { display: block; margin-top: 2px; font: 400 9px/1.2 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
 .g-mapbody aside { display: grid; gap: 12px; align-content: start; overflow: auto; }
 .g-legend { display: grid; gap: 7px; font-size: 12px; color: var(--ink-2); }
 .g-legend div { display: flex; gap: 9px; align-items: center; }
@@ -1041,15 +1050,16 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
         <header><h2>Map</h2><span class="note">Pick a place to travel there · double-click to go at once</span><button class="x" id="g-bigmap-close" aria-label="Close the map">×</button></header>
         <div class="g-mapbody">
           <div class="g-mapcanvas"><canvas id="g-bigmap-c"></canvas>
+            <div class="g-mapscope" id="g-mapscope" role="group" aria-label="Show on the map" hidden><button data-scope="here" aria-pressed="true">This district</button><button data-scope="all" aria-pressed="false">The whole city</button></div>
             <div class="g-mapzoom" id="g-mapzoom" role="group" aria-label="Zoom the map"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="fit" aria-label="Show the whole city">⤢</button></div>
-            <div class="g-mappop" id="g-mappop" hidden role="dialog" aria-label="Travel"><b id="g-mappop-name"></b><span class="note" id="g-mappop-note"></span>
+            <div class="g-mappop" id="g-mappop" hidden role="dialog" aria-label="Travel"><b id="g-mappop-name"></b><span class="note" id="g-mappop-note"></span><p class="g-mappop-line" id="g-mappop-line" hidden></p>
               <div class="g-mappop-acts"><button class="btn primary" id="g-mappop-go">Travel here</button><button class="btn" id="g-mappop-way">Set waypoint</button></div></div></div>
           <aside>
             <h3>Legend</h3>
             <div class="g-legend">
               <div><i class="g-lg-pin"></i>Landmark: pick it to travel there</div><div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
               <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
-              <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#2f5d8c">C</i>Your car</div><div><i style="background:#d08a00">T</i>Your taxi or ride</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
+              <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#2f5d8c">C</i>Your car</div><div><i style="background:#d08a00">T</i>Your taxi or ride</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div id="g-lg-district" hidden><i class="g-lg-district"></i>Another district: a map of its own</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
             </div>
             <h3>Travel</h3>
             <p class="note">Go any time, on foot or in your car. Or pick any spot on the map. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>

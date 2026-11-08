@@ -198,6 +198,9 @@
 .ts-btn:hover { border-color: rgba(236, 232, 225, 0.45); background: rgba(236, 232, 225, 0.07); }
 .ts-btn.primary { background: var(--amber); border-color: var(--amber); color: #1a0f04; }
 .ts-btn.primary:hover { background: #ffc48c; border-color: #ffc48c; }
+/* Play on a city of districts names where it starts (metro.js pick): the station picked on the map, so Play is a choice made, not a default */
+.ts-btn .ts-bl { display: grid; gap: 4px; text-align: left; min-width: 0; }
+.ts-btn .ts-bl small { font: 500 11.5px/1.2 var(--t-ui); letter-spacing: 0; text-transform: none; color: inherit; opacity: 0.72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ts-btn kbd { font: 400 9px/1 var(--t-mono); letter-spacing: 0.06em; opacity: 0.6; }
 .ts-card.metro { gap: 12px; max-height: calc(100vh - 2 * max(26px, 5vh)); overflow: hidden auto; scrollbar-width: thin; }
 .ts-card.metro .sum { -webkit-line-clamp: 2; font-size: 12.5px; }

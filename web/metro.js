@@ -123,7 +123,7 @@
     const acts = !c ? ''
       : stay ? `<div class="ts-actions"><button class="ts-btn primary" data-close>Stay here <kbd>Esc</kbd></button></div>`
       : o.play === false ? `<div class="ts-actions"><button class="ts-btn primary" data-map="${c.id}" data-go="model">${label} <kbd>↵</kbd></button>${c.game ? `<button class="ts-btn" data-map="${c.id}" data-go="play"${arrive}>Play <kbd>P</kbd></button>` : ''}</div>`
-      : `<div class="ts-actions">${c.game ? `<button class="ts-btn primary" data-map="${c.id}" data-go="play"${arrive}>${label} <kbd>${travel ? '↵' : 'P'}</kbd></button>` : ''}<button class="ts-btn" data-map="${c.id}" data-go="model">Explore in 3D${travel ? '' : ' <kbd>↵</kbd>'}</button></div>`;
+      : `<div class="ts-actions">${c.game ? `<button class="ts-btn primary" data-map="${c.id}" data-go="play"${arrive}>${o.here ? label : `<span class="ts-bl">${label}<small>at ${escH(s.name)}</small></span>`} <kbd>${travel ? '↵' : 'P'}</kbd></button>` : ''}<button class="ts-btn" data-map="${c.id}" data-go="model">Explore in 3D${travel ? '' : ' <kbd>↵</kbd>'}</button></div>`;
     const tag = !c ? '<em class="next">Coming soon</em>' : stay ? '<em>You are here</em>' : `<em>${escH(c.name)} map</em>`;
     // as a travel guide reads (cities/guide.json): the district's hook and its sights, else the map's line
     const sg = s.guide || {};
