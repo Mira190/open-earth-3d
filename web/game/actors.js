@@ -1936,7 +1936,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         for (const o of outs) { const a = Math.abs(Math.atan2(Math.sin(head(o) - c.h), Math.cos(head(o) - c.h))); if (a < bd) { bd = a; best = o; } }
         const line = best[0], dir = best[1] === 0 ? 1 : -1, L1 = net.L[line], s = dir > 0 ? Math.min(1, L1.len) : Math.max(0, L1.len - 1), lo = side * JN.shiftOf(L1, 0);
         lanePos(line, s, dir, tmp, lo);
-        if (overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 0.3, 0.1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) { R.wait += dt; if (R.wait > 20) { c.revBan = 60; c.revEnd = 'no room on the way out'; c.rev = null; } return true; }
+        if (overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 0.3, 0.1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) {
+          const bk = mostCar; R.wait += dt; R.by = bk;
+          // (one stopped where it would pull out, able to back off a metre or two, is asked to, as on its way back)
+          if (bk && !bk.rev && bk.v < 0.5 && R.wait > 3 && canBack(bk)) backOff(bk, 2);
+          if (R.wait > 20) { c.revBan = 60; c.revEnd = `no room on the way out${bk ? ` (car ${C.indexOf(bk)}, ${bk.why}, v ${(+bk.v || 0).toFixed(1)}, on piece ${bk.line})` : ' (someone on foot)'}`; c.rev = null; }
+          return true;
+        }
         c.line = line; c.s = s; c.dir = dir; c.ln = 0; c.lo = lo; c.off = 0; c.pv = null; c.rev = null;
         c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; c.inWallNow = false;
         c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.v = 0.5; // (its heading eased round to the new way's by its next steps, not swung at once)
