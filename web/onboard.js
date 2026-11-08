@@ -11,6 +11,14 @@
 //     steps: [{ id, title, text, touch?, target? }]; target is an element, a selector or a function
 //     returning one (the step is centred when it is missing or hidden); text may hold <kbd>.
 //   OEOnboard.active()         a tour is showing (the area sign and the guide's dialogue wait for it)
+//   OEOnboard.coach(id, steps, { onEnd(how), label }) -> { update(dt), end(), skip(), get step(), get id(), get active() } or null
+//     A first-time coach for one control set (the helicopter: "heli"), learnt by doing: a card at the top of
+//     the screen with one step at a time, each ticked off when its done() returns true (read on the
+//     caller's update(dt), each frame), and a
+//     Skip. It holds nothing and takes no keys. Remembered (per browser, every map) once finished or
+//     skipped; end() leaves it unfinished, to run again next time. how: 'done', 'skipped' or 'left'.
+//     steps: [{ id, title, text, touch?, done() }]
+//   OEOnboard.coached(id)      that coach has been finished or skipped; forgetCoaches() runs them all again
 'use strict';
 window.OEOnboard = (function () {
   const KEY = 'oe3d-onboard';
@@ -54,6 +62,23 @@ window.OEOnboard = (function () {
 .ob-tour.in .ob-card { opacity: 1; } .ob-tour .ob-card { opacity: 0; }
 @media (max-width: 640px) { .ob-card { padding: 14px 15px 12px; } .ob-card h3 { font-size: 15.5px; } .ob-card p { font-size: 12.5px; } }
 @media (prefers-reduced-motion: reduce) { .ob-ring, .ob-card, .ob-veil { transition: none; } }
+.ob-coach { position: fixed; left: 50%; top: max(16px, 12vh); transform: translate(-50%, -8px); z-index: 55; width: min(380px, calc(100vw - 32px)); pointer-events: auto;
+  padding: 14px 16px 12px; border-radius: var(--r, 2px); background: var(--hud-solid, rgba(8, 12, 20, 0.9)); -webkit-backdrop-filter: var(--blur, blur(22px) saturate(1.15)); backdrop-filter: var(--blur, blur(22px) saturate(1.15));
+  border: 1px solid var(--line, rgba(236, 232, 225, 0.14)); box-shadow: var(--shadow, 0 12px 40px rgba(0, 0, 0, 0.35)); opacity: 0; transition: opacity .3s, transform .5s var(--ease, cubic-bezier(.16,1,.3,1));
+  font: 400 13px/1.5 var(--f-body, "Inter Tight", "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif); color: var(--ink, #ece8e1); -webkit-font-smoothing: antialiased; }
+.ob-coach.in { opacity: 1; transform: translate(-50%, 0); }
+.ob-coach::before, .ob-coach::after { content: ""; position: absolute; width: 10px; height: 10px; border: 0 solid var(--accent, #ffb066); pointer-events: none; }
+.ob-coach::before { left: -1px; top: -1px; border-width: 1px 0 0 1px; } .ob-coach::after { right: -1px; bottom: -1px; border-width: 0 1px 1px 0; }
+.ob-coach h3 { margin: 8px 0 5px; font: 400 16px/1.25 var(--f-display, "Zalando Sans Expanded", "Michroma", system-ui, sans-serif); letter-spacing: .02em; color: #fff; transition: color .3s; }
+.ob-coach.tick h3 { color: var(--accent, #ffb066); }
+.ob-coach p { margin: 0; color: var(--ink-2, #c3c6cc); }
+.ob-coach .ob-dots { margin: 12px 0 0; }
+.ob-coach .ob-r { display: flex; align-items: center; gap: 12px; }
+.ob-coach .ob-skip { margin: -6px -6px -6px 0; padding: 6px !important; min-height: 0; border: 0; color: var(--ink-2, #c3c6cc); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(236, 232, 225, 0.3); font: 400 9.5px/1.3 var(--f-mono, "JetBrains Mono", ui-monospace, Menlo, monospace); letter-spacing: .18em; text-transform: uppercase; cursor: pointer; }
+.ob-coach kbd { display: inline-block; min-width: 18px; padding: 1px 5px; margin: 0 1px; border: 1px solid var(--line-2, rgba(236, 232, 225, 0.3)); border-radius: 2px;
+  font: 400 10.5px/1.4 var(--f-mono, "JetBrains Mono", ui-monospace, Menlo, monospace); color: var(--ink, #ece8e1); text-align: center; background: rgba(236, 232, 225, 0.05); }
+@media (max-width: 640px) { .ob-coach { top: 31vh; padding: 12px 14px 11px; } .ob-coach h3 { font-size: 15px; } .ob-coach p { font-size: 12.5px; } } /* (below the objective and the buttons) */
+@media (prefers-reduced-motion: reduce) { .ob-coach { transition: none; } }
 `;
   let cur = null;
 
@@ -148,10 +173,70 @@ window.OEOnboard = (function () {
     return ctl;
   }
 
+  // the first-time coach for a set of controls (above): one step at a time, ticked off as the player does it
+  let coachCur = null;
+  function coach(id, steps, { onEnd = null, label = 'First time' } = {}) {
+    const seen = read().coached || {};
+    if (seen[id] || !steps.length) return null;
+    if (coachCur) coachCur.end();
+    if (!document.getElementById('ob-css')) { const st = document.createElement('style'); st.id = 'ob-css'; st.textContent = CSS; document.head.appendChild(st); }
+    const touch = touchScreen();
+    const el = document.createElement('div');
+    el.className = 'ob-coach';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.innerHTML = `<div class="ob-eb"><span></span><span class="ob-r"><span class="ob-n"></span><button class="ob-skip" type="button">Skip</button></span></div><h3></h3><p></p><div class="ob-dots">${steps.map(() => '<i></i>').join('')}</div>`;
+    el.querySelector('.ob-eb span').textContent = label;
+    document.body.appendChild(el);
+    const $ = q => el.querySelector(q);
+    let i = 0, ended = false, wait = 0;
+    const remember = () => { const o = read(); o.coached = Object.assign(o.coached || {}, { [id]: new Date().toISOString().slice(0, 10) }); write(o); };
+    function show() {
+      const st = steps[i];
+      el.classList.remove('tick');
+      $('.ob-n').textContent = `${i + 1} / ${steps.length}`;
+      $('h3').textContent = st.title;
+      $('p').innerHTML = touch && st.touch ? st.touch : st.text;
+      el.querySelectorAll('.ob-dots i').forEach((d, k) => d.classList.toggle('on', k < i));
+      el.dataset.step = st.id || String(i);
+    }
+    function finish(how) {
+      if (ended) return;
+      ended = true;
+      if (how !== 'left') remember();
+      el.classList.remove('in');
+      setTimeout(() => el.remove(), reduced() ? 0 : 320);
+      if (coachCur === ctl) coachCur = null;
+      if (onEnd) onEnd(how);
+    }
+    // each step's done() read on every update(dt) (the game's frame, so that it keeps the game's clock);
+    // once true, its dot and title light, and the next comes after a moment
+    function update(dt) {
+      if (ended) return;
+      if (wait > 0) { wait -= dt; if (wait <= 0) { if (i < steps.length - 1) { i++; show(); } else finish('done'); } return; }
+      let ok = false;
+      try { ok = !!steps[i].done(); } catch (e) { ok = false; }
+      if (!ok) return;
+      el.classList.add('tick');
+      el.querySelectorAll('.ob-dots i')[i].classList.add('on');
+      wait = reduced() ? 0.3 : 0.9;
+    }
+    const ctl = { update, end() { finish('left'); }, skip() { finish('skipped'); }, get step() { return ended ? -1 : i; }, get id() { return ended ? '' : steps[i].id || String(i); }, get active() { return !ended; }, el };
+    $('.ob-skip').addEventListener('click', () => ctl.skip());
+    coachCur = ctl;
+    show();
+    requestAnimationFrame(() => { if (!ended) el.classList.add('in'); });
+    return ctl;
+  }
+
   return {
     done: () => !!read().done,
     markDone(where) { write(Object.assign(read(), { done: 1, at: new Date().toISOString().slice(0, 10), where: where || '' })); },
-    forget() { const o = read(); delete o.done; write(o); },
+    forget() { const o = read(); delete o.done; delete o.coached; write(o); },
+    coach,
+    coached: id => !!(read().coached || {})[id],
+    forgetCoaches() { const o = read(); delete o.coached; write(o); },
+    coaching: () => coachCur,
     tour,
     active: () => !!(cur && cur.active),
     current: () => cur,

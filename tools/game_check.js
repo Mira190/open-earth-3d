@@ -1031,10 +1031,14 @@ const npcNight = require('./npc_night');
     const open = g.heli.st.door;
     g.advance(2.6);
     const shut = g.heli.st.door, z0 = g.heli.st.z;
+    const c0 = g.heliCoach(), coach = [c0 && c0.id];
     g.advance(8, ['Space']);
+    coach.push(c0 && c0.id);
     const q = g.guide();
-    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null };
+    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null, coach };
   });
+  // the first flight's coach (onboard.js): on the climb once the rotor is up, on to flying once it has climbed
+  check(heli.none || (heli.coach[0] === 'climb' && heli.coach[1] === 'fly'), heli.none ? 'no helicopter' : `the first flight's coach ticks off the rotor and the climb (${heli.coach.join(' then ')})`);
   check(heli.none || (heli.open > 0.9 && heli.shut === 0), heli.none ? 'no helicopter' : `climbs in through the door (open ${(+heli.open || 0).toFixed(2)}, then shut)`);
   check(heli.none || (heli.mode === 'heli' && heli.climbed > 10), heli.none ? 'no helicopter' : `flies the helicopter (climbed ${(+heli.climbed || 0).toFixed(1)} m)`);
   check(heli.none || route.none || (heli.flight != null && heli.flight > 20), heli.none ? 'no helicopter' : `the gold route in the air to a place to land${heli.flight != null ? ` (up to ${heli.flight.toFixed(0)} m)` : ''}`);
@@ -1051,6 +1055,27 @@ const npcNight = require('./npc_night');
     return { landed: g.heli.st.landed, mode: g.player.mode, door: g.heli.st.door, near: Math.hypot(g.player.x - g.heli.st.x, g.player.y - g.heli.st.y) };
   });
   check(out.none || (out.mode === 'foot' && out.door === 0 && out.near < 6), out.none ? 'no helicopter' : `lands and climbs out (${out.mode}, ${(+out.near || 0).toFixed(1)} m from it)`);
+
+  // and it takes off where it set down with its rotor's disc over a fence or a parapet (the climb is held only
+  // by something over the rotor): the nearest such spot within 25 m of its pad, where it can stand
+  const fence = await p.evaluate(() => {
+    const g = window.__game, s = g.heli && g.heli.st;
+    if (!s) return { none: true };
+    let spot = null;
+    for (let r = 3; r <= 25 && !spot; r += 1) for (let a = 0; a < 6.28 && !spot; a += 0.15) {
+      const x = s.x + Math.sin(a) * r, y = s.y + Math.cos(a) * r, z = g.nav.groundBelow(x, y, s.z + 2);
+      if (z < s.z - 4 || !g.nav.free(x, y, z + 0.3, z + 0.6, 1.5)) continue;
+      if (!g.nav.free(x, y, z + 0.3, z + 3.6, 3.2)) spot = [x, y, z];
+    }
+    if (!spot) return { none: true, spot: false };
+    const keep = [s.x, s.y, s.z, s.on];
+    [s.x, s.y, s.z] = spot; s.on = true; s.rotor = 1; s.landed = true; s.vx = s.vy = s.vz = 0;
+    for (let i = 0; i < 40; i++) g.heli.update(0.1, { lift: 1 }, []);
+    const climbed = s.z - spot[2];
+    [s.x, s.y, s.z, s.on] = keep; s.vz = 0; s.landed = true;
+    return { climbed, at: spot.slice(0, 2).map(v => v.toFixed(0)).join(',') };
+  });
+  check(fence.none || fence.climbed > 10, fence.none ? `no spot by a fence near the pad${fence.spot === false ? '' : ' (no helicopter)'}` : `takes off beside a fence (at ${fence.at}, climbed ${fence.climbed.toFixed(1)} m)`);
 
   // the ferries run their routes
   const ferry = await p.evaluate(() => {
