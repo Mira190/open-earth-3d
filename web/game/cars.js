@@ -561,7 +561,12 @@ window.OECars = (function () {
     // so that the wheel handed back finds the car moving as it was
     function follow(dt, c, o) {
       const ph = st.h, v0 = st.v;
-      st.x = c.x + (o ? o.x : 0); st.y = c.y + (o ? o.y : 0); st.z = c.z; st.h = c.h + (o ? o.h : 0);
+      st.x = c.x + (o ? o.x : 0); st.y = c.y + (o ? o.y : 0); st.h = c.h + (o ? o.h : 0);
+      // (on the ground a walker would stand on there, where it is within a step and a half of the road's own height: the
+      // wheel handed back must find the car on a floor its own step can drive on, and a road drawn a little under
+      // the ground's surface does not sink it)
+      const f = nav.floorAt(st.x, st.y, c.z + 1.6);
+      st.z = f && f.z > c.z - 1.5 ? (Math.abs(f.z - st.z) < 1 ? st.z + (f.z - st.z) * Math.min(1, dt * 12) : f.z) : c.z;
       st.v = c.v; st.vx = Math.sin(st.h) * c.v; st.vy = Math.cos(st.h) * c.v; st.speed = Math.abs(c.v);
       st.r = dt > 0 ? angDiff(st.h, ph) / dt : 0; st.steer = c.steer || 0; st.brake = !!c.brake; st.slip = 0; st.vz = 0; st.air = false; st.reverse = c.v < -0.05; st.grip = 1;
       const sp = Math.abs(st.v);

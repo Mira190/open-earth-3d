@@ -475,7 +475,9 @@ window.OEJunctions = (function () {
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
-    function choose(a, hw = 0, half = 0) {
+    let trips = null; // (where the traffic is going, trips.js: set by the game once the roads to keep off are known)
+    // (trip: the place the car is bound for, trips.js, or -1: its exits are weighed by how near each brings it)
+    function choose(a, hw = 0, half = 0, trip = -1) {
       let ex = exits(a);
       if (!ex.length) return null;
       if (hw && net.fit && ex.length > 1) { const w = ex.filter(e => net.fit[e.m.line] >= hw); if (w.length) ex = w; } // (not into a street too narrow for it, if there is another way: #202)
@@ -492,7 +494,11 @@ window.OEJunctions = (function () {
         if (on.length) ex = on;
       }
       let sum = 0;
-      const w = ex.map(e => { const v = (1 + 1.6 * Math.cos(e.turn)) * (0.6 + 0.2 * e.m.rank); sum += Math.max(0.15, v); return Math.max(0.15, v); });
+      // (bound for a place: each exit's cost of the way there against the best of them, 70 m dearer a third as likely;
+      // an exit with no way there next to never)
+      let near = null, best = Infinity;
+      if (trip >= 0 && trips && ex.length > 1) { near = ex.map(e => trips.cost(trip, e.m.line, e.m.end === 0 ? 1 : -1)); best = Math.min(...near); if (!(best < Infinity)) near = null; }
+      const w = ex.map((e, i) => { const v = Math.max(0.15, (1 + 1.6 * Math.cos(e.turn)) * (0.6 + 0.2 * e.m.rank)) * (near ? (near[i] < Infinity ? Math.exp(-(near[i] - best) / 64) : 1e-3) : 1); sum += v; return v; });
       let r = rnd() * sum;
       for (let i = 0; i < ex.length; i++) if ((r -= w[i]) < 0) return ex[i];
       return ex[ex.length - 1];
@@ -1032,7 +1038,7 @@ window.OEJunctions = (function () {
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
     net.midsOn = midsOn; // (the rides' router notes the crossings along a route: cars.js)
-    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, centred: line => centred(L[line]), mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, setTrips: t => { trips = t; }, trips: () => trips, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, centred: line => centred(L[line]), mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
