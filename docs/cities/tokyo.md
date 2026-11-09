@@ -295,7 +295,7 @@ high-speed train is not a copy of the real one:
 | Yamanote (tracks 2, 3) | E235: steel with yellow-green doors | 11 | stops |
 | Keihin-Tohoku (1, 4) | E233-1000: a sky blue band | 10 | stops; its rapid trains run through from 10:30 to 15:30 |
 | Tokaido Main | E233-3000: orange over green | 15 | runs past |
-| Tokaido Shinkansen | a high-speed train of this project's own design: pearl white, an 11 m nose in one curve with the windscreen flush in it, an indigo line over a fine vermilion one | 16 (400 m) | runs past |
+| Tokaido Shinkansen | a high-speed train of this project's own design: pearl white, an 11 m nose in one curve to a low, wide lip, its cross-section growing evenly from the tip, the windscreen flush in it, an indigo line over a fine vermilion one | 16 (400 m) | runs past |
 
 ![The high-speed train passing platform 4: a nose in one curve, the windscreen flush in it](../images/tokyo/yurakucho-high-speed-train.jpg)
 

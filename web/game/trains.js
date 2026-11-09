@@ -242,7 +242,7 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
   // The high-speed train: a design of this project's own, to the Tokaido Shinkansen's loading gauge (25 m cars,
   // 3.36 m wide, 3.6 m high, sixteen to a train) and no model of any operator's stock. A pearl-white shell on
   // full skirts; a nose of 11 m in one unbroken curve, the roof coming down and the sides drawing in from the
-  // saloon's own section to a small round tip, with nothing standing proud of it: the driver's windscreen is a
+  // saloon's own section to a low, wide, round lip, with nothing standing proud of it: the driver's windscreen is a
   // dark teardrop laid flush in the nose's back. One band of dark glass the length of each saloon; and along
   // the side an indigo line over a fine vermilion one, which run down the nose to its tip.
   function shinkansen(S, role) {
@@ -250,9 +250,14 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
     const Wd = 3.36, hw = Wd / 2, y0 = 0.26, top = 3.6, NOSE = 11;
     const nose = role === 'head' || role === 'tail', s = role === 'tail' ? -1 : 1, Z = z => s * z;
     const zb0 = -12.25, zb1 = nose ? 1.25 : 12.25, secs = [{ z: zb0, pts: section(hw, y0, top) }, { z: zb1, pts: section(hw, y0, top) }];
-    // the nose's lines: level with the roof where it leaves the saloon, falling away faster towards the tip
-    const wAt = t => Math.max(0.24, hw * Math.pow(1 - Math.pow(t, 2.3), 0.72)), lAt = t => y0 + 0.24 * t * t;
-    const hAt = t => Math.max(lAt(t) + 0.46, 0.86 + (top - 0.86) * Math.pow(1 - Math.pow(t, 1.75), 0.9));
+    // the nose's lines. Its cross-section grows from the tip to the saloon at an all but even rate (what softens
+    // the pressure wave a train pushes into a tunnel), so the width and the height each fall as a power of what
+    // is left of the nose, 0.38 and 0.62, which multiply to a straight line; t is eased so that the nose leaves
+    // the saloon without a crease. The width holds longer than the height: the tip is a low, wide, round lip
+    // (a metre across, under half a metre deep), not a point.
+    const left = t => 1 - Math.pow(t, 1.35), lAt = t => y0 + 0.22 * t * t;
+    const wAt = t => Math.max(0.5, hw * Math.pow(left(t), 0.38));
+    const hAt = t => Math.max(lAt(t) + 0.42, 0.8 + (top - 0.8) * Math.pow(left(t), 0.62));
     // the shell's height at x across it (section(): a flat crown between two round shoulders)
     const skin = (t, x) => { const w = wAt(t), r = Math.min(0.75, w * 0.45), e = Math.abs(x) - (w - r), y1 = hAt(t); return e <= 0 ? y1 : y1 - r + Math.sqrt(Math.max(0, r * r - e * e)); };
     if (nose) {
@@ -290,7 +295,7 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
       // drawn to a point ahead, wrapping a little way down each shoulder
       const t0 = 0.16, t1 = 0.46, nT = 14, nX = 8, pos = [], idx = [];
       for (let i = 0; i <= nT; i++) {
-        const u = i / nT, t = t0 + (t1 - t0) * u, half = wAt(t) * 0.86 * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.62)), 0.7);
+        const u = i / nT, t = t0 + (t1 - t0) * u, half = wAt(t) * 0.97 * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.62)), 0.7);
         for (let j = 0; j <= nX; j++) { const x = half * (2 * j / nX - 1); pos.push(x, skin(t, x) + 0.012, zb1 + NOSE * t); }
       }
       for (let i = 0; i < nT; i++) for (let j = 0; j < nX; j++) { const a0 = i * (nX + 1) + j, b0 = a0 + 1, c0 = a0 + nX + 1, d0 = c0 + 1; idx.push(a0, c0, b0, b0, c0, d0); }
