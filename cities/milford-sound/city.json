@@ -1,0 +1,650 @@
+{
+ "id": "milford-sound",
+ "name": "Milford Sound",
+ "native": "Piopiotahi",
+ "country": "New Zealand",
+ "country_code": "NZ",
+ "kind": "alpine",
+ "timezone": "Pacific/Auckland",
+ "locale": "en-NZ",
+ "description": "Milford Sound / Piopiotahi in Fiordland: the fiord from the Tasman Sea to the Cleddau, Mitre Peak a mile straight out of the water, Stirling and Lady Bowen Falls, the rainforest on the walls and a cruise vessel under them, rebuilt from LINZ's open terrain and imagery.",
+ "region": "Piopiotahi · Fiordland · Aotearoa New Zealand",
+ "bbox": [
+  167.7146,
+  -44.7099,
+  167.977,
+  -44.5215
+ ],
+ "origin": [
+  167.87,
+  -44.61
+ ],
+ "extent_m": [
+  -12160,
+  8320,
+  -10880,
+  9600
+ ],
+ "overture_release": "2026-10-21.0",
+ "vertical_datum": "m NZVD2016, shifted so the fiord's surface is 0",
+ "year": 2026,
+ "terrain": {
+  "type": "linz_cog",
+  "cell_m": 10,
+  "read_m": 8,
+  "url": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand/dem_1m/2193/{sheet}.tiff",
+  "fallback": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand-contour/dem_8m/2193/{sheet}.tiff",
+  "sheets": [
+   "CA08",
+   "CB08"
+  ],
+  "attribution": "Toitū Te Whenua LINZ, New Zealand LiDAR 1m DEM (CC BY 4.0) where a capture reaches; New Zealand Contour-Interpolated 8m DEM (Geographx, CC BY 4.0) over the rest of Fiordland"
+ },
+ "imagery": {
+  "type": "linz_cog",
+  "pixel_m": 10,
+  "url": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand_2025-2026_10m/rgb/2193/{sheet}.tiff",
+  "sheets": [
+   "CA08",
+   "CB08"
+  ],
+  "attribution": "Toitū Te Whenua LINZ, New Zealand 10m Satellite Imagery (2025-2026), Copernicus Sentinel-2 (CC BY 4.0)",
+  "deshadow": {
+   "bush_line_m": 950,
+   "note": "the mosaic's blue shade under the fiord's walls is replaced by the sunlit colour of what stands there (pipeline/build_alpine.py)"
+  }
+ },
+ "lakes": [
+  {
+   "id": "piopiotahi",
+   "name": "Milford Sound / Piopiotahi",
+   "seed": [
+    167.87,
+    -44.612
+   ],
+   "main": true,
+   "sea": true,
+   "max_depth_m": 291
+  }
+ ],
+ "pois": [
+  {
+   "id": "mitre-peak",
+   "name": "Mitre Peak / Rahotū",
+   "kind": "peak",
+   "lonlat": [
+    167.85489,
+    -44.63258
+   ],
+   "src": "osm",
+   "ele_m": 1683
+  },
+  {
+   "id": "the-lion",
+   "name": "The Lion",
+   "kind": "peak",
+   "lonlat": [
+    167.88421,
+    -44.60996
+   ],
+   "src": "osm",
+   "ele_m": 1302
+  },
+  {
+   "id": "the-elephant",
+   "name": "The Elephant",
+   "kind": "peak",
+   "lonlat": [
+    167.85994,
+    -44.59071
+   ],
+   "src": "osm",
+   "ele_m": 1517
+  },
+  {
+   "id": "mount-pembroke",
+   "name": "Puhipuhi-takiwai / Mount Pembroke",
+   "kind": "peak",
+   "lonlat": [
+    167.88563,
+    -44.56794
+   ],
+   "src": "osm",
+   "ele_m": 2015
+  },
+  {
+   "id": "footstool",
+   "name": "Footstool",
+   "kind": "peak",
+   "lonlat": [
+    167.87465,
+    -44.64451
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "cascade-peak",
+   "name": "Cascade Peak",
+   "kind": "peak",
+   "lonlat": [
+    167.92679,
+    -44.63924
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "stirling-falls",
+   "name": "Waimānu / Stirling Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.87118,
+    -44.60921
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "bowen-falls",
+   "name": "Hineteawa / Lady Bowen Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.9262,
+    -44.66511
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "fairy-falls",
+   "name": "Fairy Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.84564,
+    -44.61479
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "copper-point",
+   "name": "Copper Point",
+   "kind": "cape",
+   "lonlat": [
+    167.85146,
+    -44.61276
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "seal-rock",
+   "name": "Seal Rock",
+   "kind": "viewpoint",
+   "lonlat": [
+    167.8514,
+    -44.61277
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "dale-point",
+   "name": "Pukewahia / Dale Point",
+   "kind": "cape",
+   "lonlat": [
+    167.8188,
+    -44.59868
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "anita-bay",
+   "name": "Hupokeka / Anita Bay",
+   "kind": "bay",
+   "lonlat": [
+    167.79045,
+    -44.58364
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "st-anne-point",
+   "name": "Wharekohu / Saint Anne Point",
+   "kind": "cape",
+   "lonlat": [
+    167.78092,
+    -44.57379
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "harrison-cove",
+   "name": "Te Umukaroro / Harrison Cove",
+   "kind": "bay",
+   "lonlat": [
+    167.90912,
+    -44.62854
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "discovery-centre",
+   "name": "Milford Discovery Centre and Underwater Observatory",
+   "kind": "pier",
+   "lonlat": [
+    167.90414,
+    -44.62849
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "freshwater-basin",
+   "name": "Freshwater Basin (the cruise terminal)",
+   "kind": "gate",
+   "lonlat": [
+    167.92646,
+    -44.66787
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "foreshore",
+   "name": "Milford Foreshore Walk",
+   "kind": "lookout",
+   "lonlat": [
+    167.92374,
+    -44.67147
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "deepwater-basin",
+   "name": "Deepwater Basin",
+   "kind": "bay",
+   "lonlat": [
+    167.91994,
+    -44.68024
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "airport",
+   "name": "Milford Sound Airport",
+   "kind": "airport",
+   "lonlat": [
+    167.92393,
+    -44.67349
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "sandfly-point",
+   "name": "Sandfly Point (the end of the Milford Track)",
+   "kind": "gate",
+   "lonlat": [
+    167.90253,
+    -44.68356
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "wp-berth",
+   "name": "Off the terminal",
+   "kind": "water",
+   "xy": [
+    4415,
+    -6485
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-bowen",
+   "name": "Off Lady Bowen Falls",
+   "kind": "water",
+   "xy": [
+    4105,
+    -6035
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-sinbad",
+   "name": "Off Sinbad Gully",
+   "kind": "water",
+   "xy": [
+    1195,
+    -3325
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-mitre",
+   "name": "Under Mitre Peak",
+   "kind": "water",
+   "xy": [
+    -285,
+    -1355
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-copper",
+   "name": "Off Copper Point",
+   "kind": "water",
+   "xy": [
+    -1695,
+    95
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-dale",
+   "name": "Off Dale Point",
+   "kind": "water",
+   "xy": [
+    -4285,
+    2125
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-anita",
+   "name": "Off Anita Bay",
+   "kind": "water",
+   "xy": [
+    -5995,
+    3495
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-tasman",
+   "name": "The Tasman Sea",
+   "kind": "water",
+   "xy": [
+    -8195,
+    5195
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-north",
+   "name": "Under the north wall",
+   "kind": "water",
+   "xy": [
+    -4165,
+    2855
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-elephant",
+   "name": "Under The Elephant",
+   "kind": "water",
+   "xy": [
+    -1055,
+    365
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-stirling",
+   "name": "At Stirling Falls",
+   "kind": "water",
+   "xy": [
+    165,
+    -225
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-lion",
+   "name": "Under The Lion",
+   "kind": "water",
+   "xy": [
+    925,
+    -1485
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-harrison",
+   "name": "Off Harrison Cove",
+   "kind": "water",
+   "xy": [
+    2905,
+    -2505
+   ],
+   "src": "nominal"
+  },
+  {
+   "id": "wp-cascade",
+   "name": "Under Cascade Peak",
+   "kind": "water",
+   "xy": [
+    3365,
+    -4055
+   ],
+   "src": "nominal"
+  }
+ ],
+ "start": {
+  "x": -900,
+  "y": -600,
+  "z": 14,
+  "yaw": 205,
+  "pitch": 6
+ },
+ "biome": "fiordland",
+ "optics": {
+  "K": [
+   0.55,
+   0.2,
+   0.24
+  ],
+  "Rinf": [
+   0.006,
+   0.03,
+   0.036
+  ],
+  "g": 2.2,
+  "src": "provisional: a deep, clear fiord under a thin tannin-stained freshwater layer reads dark green-blue from the deck; no open in-water optics for Milford Sound were found, so these are set by eye against photographs of the fiord on a clear day"
+ },
+ "clouds": {
+  "field": {
+   "base_m": 1950,
+   "count": 80,
+   "radius_m": 34000,
+   "wind_deg": 250,
+   "wind_ms": 7,
+   "caps": [],
+   "amount": 0.55,
+   "note": "a fine summer day: fair-weather cumulus at about 1,950 m, drifting in on the westerly; the level is a judgement from photographs of the fiord (cloud a little over Mitre Peak's 1,683 m summit)"
+  }
+ },
+ "wind": 0.3,
+ "poi_sources": {
+  "osm": "OpenStreetMap contributors (ODbL), read through Overture Maps 2026-10-21.0 base theme; peak heights from the NZ Topo50 map (LINZ, CC BY 4.0)",
+  "nominal": "chosen for the viewer: points on the cruise's line, in open water"
+ },
+ "harbour": {
+  "traffic": [
+   {
+    "kind": "ship",
+    "name": "Piopiotahi",
+    "route": [
+     "wp-berth",
+     "wp-bowen",
+     "wp-sinbad",
+     "wp-mitre",
+     "wp-copper",
+     "wp-dale",
+     "wp-anita",
+     "wp-tasman",
+     "wp-north",
+     "wp-elephant",
+     "wp-stirling",
+     "wp-lion",
+     "wp-harrison",
+     "wp-cascade",
+     "wp-bowen",
+     "wp-berth"
+    ],
+    "loop": "repeat",
+    "dwell": 20,
+    "vmax": 4.6,
+    "start_at": "wp-mitre",
+    "note": "the day cruise's line: out along the south wall under Mitre Peak to the Tasman Sea, back along the north wall past Stirling Falls and Harrison Cove, at about 9 knots"
+   }
+  ],
+  "moorings": 0,
+  "nav_cell": 60
+ },
+ "falls": [
+  {
+   "id": "stirling-falls",
+   "name": "Waimānu / Stirling Falls",
+   "poi": "stirling-falls",
+   "height_m": 151,
+   "width_m": 14,
+   "flow": 1.0,
+   "src": "151 m: Department of Conservation, Milford Sound / Piopiotahi; the third-highest permanent fall in the fiord's catchment drops straight into the sea"
+  },
+  {
+   "id": "bowen-falls",
+   "name": "Hineteawa / Lady Bowen Falls",
+   "poi": "bowen-falls",
+   "height_m": 162,
+   "width_m": 12,
+   "flow": 0.9,
+   "src": "162 m: Department of Conservation"
+  },
+  {
+   "id": "fairy-falls",
+   "name": "Fairy Falls",
+   "poi": "fairy-falls",
+   "width_m": 6,
+   "flow": 0.5
+  }
+ ],
+ "birds": {
+  "gulls": 34,
+  "anchors": [
+   "ship",
+   "stirling-falls",
+   "seal-rock",
+   "freshwater-basin"
+  ],
+  "note": "tarāpunga (red-billed gulls) and karoro (southern black-backed gulls) follow the boats and work the fall's foot"
+ },
+ "flora": {
+  "lupins": [
+   {
+    "lonlat": [
+     167.9236,
+     -44.6718
+    ],
+    "r_m": 70,
+    "density": 0.8
+   },
+   {
+    "lonlat": [
+     167.9262,
+     -44.6742
+    ],
+    "r_m": 90,
+    "density": 0.7
+   },
+   {
+    "lonlat": [
+     167.93,
+     -44.677
+    ],
+    "r_m": 110,
+    "density": 0.7
+   }
+  ],
+  "note": "Russell lupins are a weed of the Cleddau's gravel flats and the roadsides into Milford; they flower from November into January"
+ },
+ "spawn": {
+  "aboard": "Piopiotahi",
+  "poi": "foreshore",
+  "heading": 320,
+  "note": "you arrive watching the Piopiotahi under Mitre Peak; on foot the start is the foreshore walk, facing down the fiord to Mitre Peak"
+ },
+ "shots": [
+  {
+   "id": "postcard",
+   "x": 4200,
+   "y": -6900,
+   "z": 4,
+   "yaw": 50,
+   "pitch": 6,
+   "fov": 45,
+   "time": "2026-01-15T01:00:00Z",
+   "note": "the foreshore view: Mitre Peak across Freshwater Basin, early afternoon in January"
+  },
+  {
+   "id": "aerial",
+   "x": 4000,
+   "y": -6000,
+   "z": 500,
+   "yaw": 50,
+   "pitch": 2,
+   "fov": 60,
+   "time": "2026-01-15T01:00:00Z",
+   "note": "from 500 m over the head of the fiord"
+  },
+  {
+   "id": "stirling",
+   "x": -250,
+   "y": -450,
+   "z": 10,
+   "yaw": 322,
+   "pitch": 14,
+   "fov": 55,
+   "time": "2026-01-15T22:30:00Z",
+   "note": "Stirling Falls from the water, mid-morning, the sun behind the eye for the rainbow in its spray"
+  },
+  {
+   "id": "dusk",
+   "x": 4000,
+   "y": -6000,
+   "z": 300,
+   "yaw": 50,
+   "pitch": 2,
+   "fov": 60,
+   "time": "2026-01-15T08:20:00Z",
+   "note": "the aerial at sunset"
+  }
+ ],
+ "sources": [
+  {
+   "what": "terrain",
+   "name": "New Zealand LiDAR 1 m DEM (national composite)",
+   "publisher": "LINZ",
+   "licence": "CC BY 4.0",
+   "url": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand/dem_1m/2193/collection.json",
+   "checked": "2026-11-09"
+  },
+  {
+   "what": "terrain where no LiDAR reaches",
+   "name": "New Zealand Contour-Interpolated 8 m DEM",
+   "publisher": "LINZ / Geographx",
+   "licence": "CC BY 4.0",
+   "url": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand-contour/dem_8m/2193/collection.json",
+   "checked": "2026-11-09"
+  },
+  {
+   "what": "ground imagery",
+   "name": "New Zealand 10 m Satellite Imagery (2025-2026)",
+   "publisher": "LINZ (Copernicus Sentinel-2)",
+   "licence": "CC BY 4.0",
+   "url": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand_2025-2026_10m/rgb/2193/collection.json",
+   "checked": "2026-11-09"
+  },
+  {
+   "what": "places, coast, water, woods, roads, buildings",
+   "name": "Overture Maps 2026-10-21.0",
+   "publisher": "Overture Maps Foundation (OpenStreetMap ODbL within)",
+   "licence": "ODbL / CDLA-Permissive-2.0",
+   "url": "https://overturemaps.org",
+   "checked": "2026-11-09"
+  }
+ ]
+}

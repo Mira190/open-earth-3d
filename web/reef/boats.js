@@ -8,7 +8,7 @@
 //
 // API (all on the returned object, also window.__boats):
 //   vessels            array of Vessel { id, name, kind, x, z (=-north), y, hdg (compass rad), speed, mode, root, desc }
-//                      kinds: yacht cat daycat tinnie seaplane helicopter pontoon helipad mooring
+//                      kinds: yacht cat daycat tinnie ship seaplane helicopter pontoon helipad mooring
 //   byName(s)          exact or partial name, or id ('yacht-3')
 //   board(id, player)  drive a boat (tinnie, yacht, cat, day cat) or fly the aircraft; installs ctx.controller and
 //                      restores the previous one on leave(); `player` (optional) gets .boarded, .group.visible=false, onBoard/onLeave
@@ -40,6 +40,7 @@ import { buildPontoon, buildHelipad, buildJetty, buildMooring } from './boats/ha
 import { createNav } from './boats/nav.js';
 import { Vessel, angDiff } from './boats/vessel.js';
 import { createControl } from './boats/control.js';
+import { buildShip } from './boats/ship.js';
 
 const rnd = (() => { let s = 12345; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); })();
 const pick = a => a[Math.floor(rnd() * a.length)];
@@ -99,7 +100,7 @@ export async function init(ctx) {
     const own = new Set(); for (const g of [desc.prop, desc.tail]) if (g) g.traverse(o => own.add(o));
     const parts = []; v.root.traverse(o => { if (o.isMesh && !own.has(o)) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); parts.push(o); } });
     parts.sort((a, b) => b.geometry.boundingSphere.radius - a.geometry.boundingSphere.radius);
-    v.detail = parts.slice(3); v.far = false;
+    v.detail = desc.setFar ? [] : parts.slice(3); v.far = false;        // (a model with its own far copy swaps to it: desc.setFar)
     return v;
   }
 
@@ -258,12 +259,17 @@ export async function init(ctx) {
     }
     return v;
   }
-  const make = (kind, name) => kind === 'daycat' ? add('daycat', name || 'Day cruiser', buildDayCat(), { mode: 'ai' }) : kind === 'cat' ? cat({ mode: 'ai' })
+  // the ship (boats/ship.js): one model, loaded only where a route asks for her
+  const shipDesc = (H.traffic || []).some(r => r.kind === 'ship') ? await buildShip().catch(e => { console.warn('the ship: not loaded', e); return null; }) : null;
+  const make = (kind, name) => kind === 'ship' ? (shipDesc ? add('ship', name || 'Ship', shipDesc, { mode: 'ai' }) : null) : kind === 'daycat' ? add('daycat', name || 'Day cruiser', buildDayCat(), { mode: 'ai' }) : kind === 'cat' ? cat({ mode: 'ai' })
     : kind === 'tinnie' ? tinnie(name || 'Tinnie', { mode: 'ai' }) : yacht({ mode: 'ai' });
   for (const r of H.traffic || []) {
     const pts = r.route.map(spot); if (pts.some(p => !p)) continue;
-    const v = make(r.kind, r.name); if (r.name && r.kind !== 'tinnie' && r.kind !== 'daycat') v.name = r.name;
-    traffic(v, chain(...pts), { loop: r.loop || 'pingpong', dwell: r.dwell ?? 40, vmax: r.vmax, hide: false });
+    const v = make(r.kind, r.name); if (!v) continue; if (r.name && r.kind !== 'tinnie' && r.kind !== 'daycat') v.name = r.name;
+    const line = chain(...pts), o = { loop: r.loop || 'pingpong', dwell: r.dwell ?? 40, vmax: r.vmax, hide: false };
+    // start_at: the POI on the route she is passing when the site opens
+    if (r.start_at && line && spot(r.start_at)) { const [sx, sn] = spot(r.start_at); let bi = 0, bd = 1e12; line.forEach((p, i) => { const dd = (p[0] - sx) ** 2 + (p[1] - sn) ** 2; if (dd < bd && i < line.length - 1) { bd = dd; bi = i; } }); o.startAt = bi / (line.length - 1) + 1e-6; o.f = 0; o.v0 = (r.vmax ?? 4) * 0.95; }
+    traffic(v, line, o);
   }
   // the pontoon's own day boat circulates between the pontoon, the moorings and back
   if (pontoon && pontoonMoorings.length) {
@@ -352,6 +358,7 @@ export async function init(ctx) {
     const v = refOf(id); if (!v) return null;
     if (v.kind === 'seaplane') return seaplaneApi.enter(player, v);
     if (v.kind === 'helicopter') return helicopterApi.enter(player, v);
+    if (v.kind === 'ship') { control.rideShip(v, player); return v; }
     if (!['yacht', 'cat', 'tinnie', 'daycat'].includes(v.kind)) return null;
     control.driveBoat(v, player); return v;
   }
@@ -409,8 +416,10 @@ export async function init(ctx) {
     for (const v of vessels) {
       const dist = Math.hypot(v.x - cam.x, v.z - cam.z);
       const near = dist < 1600 || v.mode === 'player';
-      const far = dist > 650 && v.mode !== 'player';
+      const far = dist > (v.desc.farAt || 650) && v.mode !== 'player';
       if (far !== v.far) { v.far = far; for (const m of v.detail) m.visible = !far; }
+      if (v.desc.setFar && far !== v.farDrawn) { v.farDrawn = far; v.desc.setFar(far); }
+      if (v.desc.tick) v.desc.tick(dt, t);
       if (v.lampsOn !== lampsOn) { v.lampsOn = lampsOn; for (const l of v.desc.lamps || []) l.visible = lampsOn; }
       switch (v.mode) {
         case 'ai': v.aiStep(dt, wnd); break;

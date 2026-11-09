@@ -7,7 +7,7 @@
 import * as THREE from 'three/webgpu';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Fn, uniform, float, int, vec2, vec3, vec4, mix, max, min, abs, floor, fract, smoothstep, clamp, texture, select,
-  positionWorld, positionLocal, normalWorld, cameraPosition, length, normalize, dot, sin, varying, mx_noise_float, exp, pow, fwidth } from 'three/tsl';
+  positionWorld, positionLocal, normalWorld, cameraPosition, length, normalize, dot, sin, varying, mx_noise_float, mx_noise_vec3, mx_worley_noise_float, exp, pow, fwidth } from 'three/tsl';
 import { CHUNK } from '../world.js';
 import { createRoadField, DASH_ON, DASH } from './roadfield.js';
 
@@ -78,6 +78,77 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     const ix = floor(fx), iz = floor(fz), ax = fx.sub(ix), az = fz.sub(iz);
     const at = (i, j) => texture(lookTex, vec2(texture(coverTex, vec2(ix.add(i + 0.5).div(cv.w), iz.add(j + 0.5).div(cv.h))).level(0).r.mul(255).add(0.5).floor().add(0.5).div(16), 0.5)).level(0);
     return mix(mix(at(0, 0), at(1, 0), ax), mix(at(0, 1), at(1, 1), ax), az);
+  };
+
+  // ---- a fiord's walls (scene.biome "fiordland"): rainforest and wet rock, which a 10 m photograph taken from above
+  // cannot show on ground that stands near the vertical. The shares by cover, blended like the looks above:
+  // r bush (forest), g scrub, b bare rock and scree
+  const FIORD = d.scene.biome === 'fiordland';
+  const LOOK2 = { 10: [1, 0, 0, 0], 9: [0.25, 1, 0, 0], 12: [0, 0.6, 0, 0], 4: [0, 0, 1, 0], 5: [0, 0, 1, 0], 3: [0, 0, 1, 0] };
+  const look2Tex = new THREE.DataTexture(new Uint8Array(64).map((_, i) => Math.round(((LOOK2[i >> 2] || [0, 0, 0, 0])[i & 3]) * 255)), 16, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
+  look2Tex.magFilter = look2Tex.minFilter = THREE.NearestFilter; look2Tex.needsUpdate = true;
+  const look2At = (x, z) => {
+    const fx = x.sub(t.x0).div(cv.px_m).sub(0.5), fz = z.add(t.y1).div(cv.px_m).sub(0.5);
+    const ix = floor(fx), iz = floor(fz), ax = fx.sub(ix), az = fz.sub(iz);
+    const at = (i, j) => texture(look2Tex, vec2(texture(coverTex, vec2(ix.add(i + 0.5).div(cv.w), iz.add(j + 0.5).div(cv.h))).level(0).r.mul(255).add(0.5).floor().add(0.5).div(16), 0.5)).level(0);
+    return mix(mix(at(0, 0), at(1, 0), ax), mix(at(0, 1), at(1, 1), ax), az);
+  };
+  const rataSeason = uniform(0);                                  // southern rata in flower: December to February
+  const RATA = [1, 0.8, 0.15, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.7];
+  // returns { alb, rockW }: the ground's colour with the bush canopy and the rock laid in
+  const fiordLook = (alb0, P, dist, isSnow) => {
+    const x = P.x, y = P.y, z = P.z, Ng = normalize(normalWorld);
+    const l2 = look2At(x, z);
+    const land = select(isSnow, float(0), float(1)).mul(smoothstep(0.2, 1.5, y));          // not the snow, not the bed under the water
+    const steep = smoothstep(0.68, 0.36, Ng.y);                    // 47 to 69 degrees: bush clings to anything less
+    const veg = l2.r.add(l2.g).min(1);
+    // bare faces break the bush where the wall is steepest (slips and slabs), in patches
+    const bare = smoothstep(0.5, 0.9, steep.mul(0.9).add(mx_noise_float(vec3(x, y.mul(0.6), z).div(70)).mul(0.5)));
+    // ---- rock: Fiordland's gneiss and granite, dark grey with a warm cast where it is dry; beds a few metres thick
+    // dipping across the face, flutes worn down it by water, dark seeps, and bush on the ledges the beds make
+    const sAx = dot(P, vec3(0.24, 0.96, 0.14));
+    const bed = mx_noise_float(vec3(sAx.mul(0.11), x.mul(0.004), z.mul(0.004))).mul(0.6).add(mx_noise_float(vec3(sAx.mul(0.45), x.mul(0.015), z.mul(0.015))).mul(0.4));
+    const ledge = smoothstep(0.1, 0.5, mx_noise_float(vec3(sAx.mul(0.05), x.mul(0.012), z.mul(0.012))).mul(0.5).add(mx_noise_float(P.div(55).add(9)).mul(0.6))).mul(float(1).sub(smoothstep(900, 1500, y)));
+    const bushW = veg.mul(float(1).sub(bare.mul(0.9))).add(ledge.mul(0.75).mul(float(1).sub(veg.mul(float(1).sub(bare))))).min(1).mul(land);
+    const rockW = l2.b.add(veg.mul(bare).mul(0.9)).add(steep.mul(float(1).sub(veg)).mul(0.8)).min(1).mul(float(1).sub(ledge.mul(0.75))).mul(land);
+    const tone = mx_noise_float(P.div(120)).mul(0.5).add(0.5);
+    let rock = mix(vec3(0.085, 0.082, 0.08), vec3(0.20, 0.185, 0.165), tone).toVar();
+    rock.mulAssign(float(1).add(bed.mul(0.28)));
+    const flute = mx_noise_float(vec3(x.mul(0.09), y.mul(0.007), z.mul(0.09))).mul(0.6).add(mx_noise_float(vec3(x.mul(0.33), y.mul(0.02), z.mul(0.33))).mul(0.4));
+    rock.mulAssign(float(1).add(flute.mul(0.3).mul(steep.mul(0.7).add(0.3))));
+    const seep = smoothstep(0.2, 0.7, mx_noise_float(vec3(x.mul(0.05), y.mul(0.004), z.mul(0.05)).add(40))).mul(steep);
+    rock.mulAssign(float(1).sub(seep.mul(0.45)));
+    const fineK = float(1).sub(smoothstep(500, 2200, dist));
+    rock.mulAssign(float(1).add(mx_noise_float(P.div(4.2)).mul(0.22).mul(fineK)));
+    // joints: thin dark lines down the face and along the beds, a few metres apart, seen within a kilometre or so
+    const jk = float(1).sub(smoothstep(300, 1400, dist));
+    const jv = abs(mx_noise_float(vec3(x.mul(0.21), y.mul(0.018), z.mul(0.21)).add(60))), jb = abs(mx_noise_float(vec3(sAx.mul(0.6), x.mul(0.03), z.mul(0.03)).add(80)));
+    rock.mulAssign(mix(float(1), mix(float(0.58), float(1), smoothstep(0.0, 0.05, jv)).mul(mix(float(0.66), float(1), smoothstep(0.0, 0.045, jb))), jk));
+    const moss = smoothstep(0.1, 0.6, mx_noise_float(P.div(24).add(5))).mul(float(1).sub(steep.mul(0.6)));
+    rock.assign(mix(rock, vec3(0.06, 0.095, 0.035), moss.mul(0.5)));
+    let alb = mix(alb0, mix(rock, alb0, 0.22), rockW).toVar();
+    // ---- bush: silver beech and podocarp canopy as domed crowns about 9 m across (a cell pattern in the wall's own
+    // space, so a crown is round on a cliff too), each lit on its sunward side and dark in the gaps between
+    const warp = mx_noise_vec3(P.div(6.5)).mul(0.3);
+    const pc = vec3(x, y.mul(0.8), z).div(8.5).add(warp);
+    const crownK = float(1).sub(smoothstep(0.25, 0.75, fwidth(pc.x).max(fwidth(pc.z)).max(fwidth(pc.y))));
+    const w0 = mx_worley_noise_float(pc), dome = float(1).sub(smoothstep(0.05, 0.95, w0));
+    const dome2 = float(1).sub(smoothstep(0.05, 0.95, mx_worley_noise_float(pc.add(vec3(lightU.sunDir).mul(0.22)))));
+    const sunny = clamp(dome.sub(dome2).mul(1.7).add(0.55), 0, 1);
+    const kind = mx_noise_float(P.div(38)).mul(0.5).add(0.5), kind2 = mx_noise_float(P.div(13).add(31)).mul(0.5).add(0.5);
+    let bush = mix(vec3(0.036, 0.068, 0.026), vec3(0.085, 0.135, 0.04), kind.mul(0.7).add(kind2.mul(0.3))).toVar();
+    bush.assign(mix(bush, alb0.mul(1.15), 0.4));
+    // tree ferns and broadleaf at the water's edge and in the gullies: a fresher green low down
+    bush.assign(mix(bush, bush.mul(vec3(0.95, 1.22, 0.8)), float(1).sub(smoothstep(20, 260, y)).mul(kind2)));
+    // near the eye a crown breaks into boughs and sprays of leaf (two finer octaves), so it is not one smooth dome
+    const leafK = float(1).sub(smoothstep(250, 900, dist));
+    const bough = mx_noise_float(P.div(2.3)).mul(0.5).add(mx_noise_float(P.div(0.8).add(3)).mul(0.5).mul(float(1).sub(smoothstep(60, 300, dist))));
+    const crown = mix(float(0.5), float(1.22), dome).mul(mix(float(0.6), float(1.16), sunny)).mul(float(1).add(bough.mul(0.42).mul(leafK)));
+    bush.mulAssign(mix(float(1), crown, crownK));
+    const rata = smoothstep(0.52, 0.62, mx_noise_float(P.div(10).add(20))).mul(smoothstep(-0.1, 0.25, mx_noise_float(P.div(260).add(3)))).mul(float(1).sub(smoothstep(500, 800, y))).mul(rataSeason);
+    bush.assign(mix(bush, vec3(0.36, 0.028, 0.03).mul(mix(float(0.7), float(1.25), dome)), rata.mul(0.85).mul(mix(float(0.6), dome, crownK))));
+    alb.assign(mix(alb, bush, bushW));
+    return { alb, rockW };
   };
 
   // ---- the aerial patches (alpine_detail.py): one at a time, the one nearest the camera, loaded when it comes near
@@ -235,7 +306,13 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       const ss = seasonSnow(x, z);
       const patchy = smoothstep(0.25, 0.75, ss.add(n1.mul(0.25)));
       alb.assign(mix(alb, vec3(0.84, 0.87, 0.92), patchy));
-      const N = detailNormal ? detailNormal(cls, near) : normalize(normalWorld);
+      let N = detailNormal ? detailNormal(cls, near) : normalize(normalWorld);
+      if (FIORD) {
+        const f = fiordLook(alb, P, dist, isSnow.or(patchy.greaterThan(0.5)));
+        alb.assign(f.alb);
+        // the rock's facets: buttresses and slabs tens of metres across, finer breaks nearer the eye
+        N = normalize(N.add(mx_noise_vec3(P.div(34)).mul(f.rockW.mul(0.5))).add(mx_noise_vec3(P.div(7.5)).mul(f.rockW.mul(0.3)).mul(float(1).sub(smoothstep(800, 3000, dist)))));
+      }
       // glints in the snow: facets catching the sun, a few per square metre, only close up
       const sp = select(isSnow.or(patchy.greaterThan(0.5)), float(1), look.a.mul(0.35));
       let c = light.shade(alb, N, P, { spec: sp }).toVar();
@@ -404,7 +481,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     detailUpdate(cam);
     roads.update(cam);
     const m = new Date((ctx_clock ? ctx_clock() : Date.now()) + 12 * 3600e3).getUTCMonth();   // New Zealand's month, near enough
-    if (m !== monthSeen) { monthSeen = m; snowSeason.value = SEASON[m]; }
+    if (m !== monthSeen) { monthSeen = m; snowSeason.value = SEASON[m]; rataSeason.value = RATA[m]; }
     centre.value.set(Math.round(cam.x / 8) * 8, Math.round(cam.z / 8) * 8);
     const si = Math.max(0, strips.findIndex(s => { const row = (cam.z + t.y1) / g.px_m; return row >= s.row0 && row < s.row0 + s.rows; }));
     // high above the land the patch is not worth drawing

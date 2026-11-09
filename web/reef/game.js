@@ -24,9 +24,9 @@ const RAD = Math.PI / 180;
 const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 const SHORT = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 // what the use key does next to each kind of vessel, and half the width of the part you climb onto
-const BOARD = { tinnie: 'board', yacht: 'board', cat: 'board', daycat: 'board', seaplane: 'fly', helicopter: 'fly' };
-const HALF = { tinnie: 1.3, yacht: 1.9, cat: 3.45, daycat: 4.2, seaplane: 1.7, helicopter: 1.4 };
-const KIND = { tinnie: 'tinnie', yacht: 'yacht', cat: 'catamaran', daycat: 'day boat', seaplane: 'seaplane', helicopter: 'helicopter' };
+const BOARD = { ship: 'board', tinnie: 'board', yacht: 'board', cat: 'board', daycat: 'board', seaplane: 'fly', helicopter: 'fly' };
+const HALF = { ship: 4.6, tinnie: 1.3, yacht: 1.9, cat: 3.45, daycat: 4.2, seaplane: 1.7, helicopter: 1.4 };
+const KIND = { ship: 'ship', tinnie: 'tinnie', yacht: 'yacht', cat: 'catamaran', daycat: 'day boat', seaplane: 'seaplane', helicopter: 'helicopter' };
 const wrap180 = a => ((a % 360) + 540) % 360 - 180;
 
 export async function init(ctx) {
@@ -378,7 +378,8 @@ export async function init(ctx) {
     boarded: null,
     get group() { return player ? player.rig.group : null; },
     onBoard(v) { aboard = v; if (hud) { hud.promptAuto(''); hud.hint('', 0); } emit('board', v); },
-    onLeave(v) { aboard = null; putBeside(v); cooldown = 0.7; emit('leave', v); }
+    // (off the ship you are put ashore at the site's start: she is under way in mid-fiord)
+    onLeave(v) { aboard = null; if (v.kind === 'ship' && Math.abs(v.speed) > 1.5) { spawnAt = null; const s0 = G.spawn(); player.teleport(s0.x, s0.north, undefined, s0.heading); } else putBeside(v); cooldown = 0.7; emit('leave', v); }
   };
   if (player && boats) board.it = addIt({ boardIt: true, get x() { return board.x; }, get north() { return board.north; }, radius: 3.4, get label() { return board.label; },
     enabled: () => !!board.v && !busy(), action: () => boardVessel(board.v) });
@@ -855,6 +856,11 @@ export async function init(ctx) {
     ctx.controller = arriveCtl;
     addEventListener('keydown', settleArrival, true); addEventListener('pointerdown', settleArrival, true);
   } else if (!testing && !q.get('still')) setTimeout(onboard, 900); // after the loader's fade
+  // a site that opens aboard its ship (scene.json spawn.aboard): you arrive watching her under way
+  if (S.spawn && S.spawn.aboard && boats && player && !testing && !q.get('cam') && q.get('aboard') !== '0') {
+    const v = boats.byName(S.spawn.aboard);
+    if (v) { if (arrival.on) { arrival.on = false; ctx.controller = playerCtl; removeEventListener('keydown', settleArrival, true); removeEventListener('pointerdown', settleArrival, true); if (!q.get('still')) setTimeout(onboard, 900); } boardVessel(v); }
+  }
   api0.arrival = arrival; api0.startTour = startTour; api0.settleArrival = settleArrival;
 
   // first objective, the site list in the background

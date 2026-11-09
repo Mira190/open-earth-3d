@@ -59,7 +59,7 @@ export function createControl(ctx, api) {
       const d = new THREE.Vector3(); camera.getWorldDirection(d);
       window.__reef.set({ yaw: Math.atan2(-d.x, -d.z), pitch: Math.asin(Math.max(-1, Math.min(1, d.y))) });
     }
-    v.mode = a.ctl.after || 'anchored'; v.speed = Math.min(v.speed, 1);
+    if (!a.ctl.passenger) { v.mode = a.ctl.after || 'anchored'; v.speed = Math.min(v.speed, 1); }   // (a passenger leaves the ship to sail on)
     if (a.ctl.onEnd) a.ctl.onEnd();
     return true;
   }
@@ -102,6 +102,42 @@ export function createControl(ctx, api) {
       }
     };
     if (isYacht) v.setSails('motor');
+    begin(v, ctl, '', player);
+    return ctl;
+  }
+
+  // ---- the ship: you ride her as a passenger while she keeps her course. V changes the view: off her quarter, wide
+  // off her beam (the ship small under the walls), from the foredeck rail, from high astern ----
+  function rideShip(v, player) {
+    const L = v.desc.L, sp = v.desc.spec || {};
+    const VIEWS = [{ n: 'off the quarter', d: L * 1.9, up: L * 0.12, yaw: 2.55, look: L * 0.14 }, { n: 'off the beam', d: L * 4.6, up: 2, yaw: 1.45, look: L * 0.5, low: true },
+      { n: 'at the rail', deck: true }, { n: 'from above', d: L * 3.2, up: L * 1.6, yaw: 3.0, look: 2 }];
+    let vi = 0;
+    const fd = (sp.spots && (sp.spots.find(s => /bow|fore/i.test(s.name || '')) || sp.spots[0])) || null;
+    const rail = fd && v.desc.toVessel ? v.desc.toVessel([fd.x ?? 0, (fd.y ?? 3) + 1.65, fd.z ?? 0]) : [L * 0.3, 5.2, 0];
+    const _p = new THREE.Vector3(), _e = new THREE.Euler(0, 0, 0, 'YXZ');
+    const ctl = {
+      passenger: true,
+      key(code) { if (code === 'KeyV') { vi = (vi + 1) % VIEWS.length; st.camInit = false; st.orbit.yaw = 0; st.orbit.pitch = 0; } },
+      update(dt) {
+        const W = VIEWS[vi];
+        if (W.deck) {
+          // standing at the rail: the ship's own motion carries the eye; drag to look round
+          v.root.updateMatrixWorld();
+          camera.position.copy(_p.set(rail[0], rail[1], rail[2]).applyMatrix4(v.root.matrixWorld));
+          camera.quaternion.setFromEuler(_e.set(-st.orbit.pitch * 0.8 + 0.02, -v.hdg + st.orbit.yaw, 0));
+        } else {
+          const h = v.hdg + W.yaw + st.orbit.yaw, el = (W.low ? 0.03 : 0.2) + st.orbit.pitch * 0.5;
+          const goal = _p.set(v.x - Math.sin(h) * W.d * Math.cos(el), v.y + W.up + W.d * Math.sin(el), v.z + Math.cos(h) * W.d * Math.cos(el));
+          goal.y = Math.max(goal.y, surf.heightAt(goal.x, goal.z, undefined, 3) + 1.4, ctx.height(goal.x, -goal.z) + 2);
+          if (!st.camInit) { st.cam.copy(goal); st.camInit = true; }
+          st.cam.lerp(goal, 1 - Math.exp(-dt / 0.25));
+          camera.position.copy(st.cam);
+          camera.lookAt(v.x, v.y + W.look, v.z);
+        }
+        setHud(`${v.name}\n${(v.speed * 1.944).toFixed(1)} kn · ${W.n}\nV view · drag to look · F go ashore`);
+      }
+    };
     begin(v, ctl, '', player);
     return ctl;
   }
@@ -211,5 +247,5 @@ export function createControl(ctx, api) {
     if (code === 'KeyF' && st.active && st.active.ctl.canLeave && !st.active.ctl.canLeave()) return;
     baseOnKey(code);
   };
-  return { driveBoat, flySeaplane, flyHeli, end, state: st, chase, isActive: () => !!st.active };
+  return { driveBoat, rideShip, flySeaplane, flyHeli, end, state: st, chase, isActive: () => !!st.active };
 }
