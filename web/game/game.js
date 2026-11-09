@@ -132,7 +132,7 @@ window.OpenEarthGame = async function game(cityId) {
   const uploadFor = obj => (OEWorld.upload ? OEWorld.upload(renderer, obj) : Promise.resolve());
   const warmFor = obj => uploadFor(obj).then(() => compileFor(obj));
   // the weather: dry, overcast, drizzle or rain, as the city's climate brings it for the date (weather.js)
-  const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {} }) : null;
+  const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {}, wind: (scene.water || {}).waves || null }) : null;
   if (atmos && atmos.composer) {
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
     const clear = Wd.world.userData.clarity || 1; // a city's clear air (far.json clarity, world.js)

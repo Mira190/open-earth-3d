@@ -392,7 +392,8 @@ const npcNight = require('./npc_night');
     if (cl) {
       let wet = 0, want = 0;
       for (let k = 0; k < 365; k++) { const t = new Date(Date.UTC(2026, 0, 1) + k * 864e5), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, d = t.getUTCDate();
-        if (W.season(y, m, d, 9 * 60).rain > 0.06 || W.season(y, m, d, 15 * 60).rain > 0.06) wet++; }
+        const am = W.season(y, m, d, 9 * 60), pm = W.season(y, m, d, 15 * 60);
+        if (am.rain > 0.06 || pm.rain > 0.06 || am.snow > 0.06 || pm.snow > 0.06) wet++; }
       for (let m = 1; m <= 12; m++) want += OEWeather.wetChance(cl, m) * [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
       out.year = { wet, want: Math.round(want) };
     }
@@ -408,6 +409,58 @@ const npcNight = require('./npc_night');
     check(rain.lum.mean > 18 && rain.lum.blown < 0.02, `the rain's frame is lit, not black or blown (luma ${rain.lum.mean.toFixed(0)}, ${(rain.lum.blown * 100).toFixed(1)}% blown)`);
     check(rain.after.rain === 0 && rain.after.wet === 0 && rain.dry, 'and clear again, dry');
     if (rain.year) check(Math.abs(rain.year.wet - rain.year.want) <= Math.max(8, rain.year.want / 3), `the season's weather keeps to the climate (${rain.year.wet} wet days in a year, normals ${rain.year.want})`);
+  }
+
+  // the weather's one state (OEWeather.S, docs/WEATHER.md): every kind can be set and is reached, its
+  // fields are numbers in their ranges, the wind blows and gusts, snow settles while it falls and melts
+  // after, the ground dries, and a listener hears the kind change
+  const wxState = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather, S = window.OEWeather && OEWeather.S;
+    if (!W || !S) return null;
+    const out = { kinds: {}, bad: [], heard: [] };
+    const stop = OEWeather.onChange(k => out.heard.push(k));
+    const tick = dt => W.update(dt, g.t()); // (the weather alone: the world's clock and its traffic stand as they were)
+    const num = ['cover', 'rate', 'rain', 'snow', 'storm', 'fog', 'gust', 'wet', 'snowDepth', 'day'];
+    for (const k of ['overcast', 'fog', 'drizzle', 'rain', 'storm', 'snow', 'clear']) {
+      W.set(k, { now: true }); tick(1);
+      out.kinds[k] = S.kind;
+      for (const f of num) if (!(S[f] >= 0 && S[f] <= 1)) out.bad.push(`${k}.${f}=${S[f]}`);
+      for (const f of ['mm', 'windSpeed', 'windMean', 'windFrom', 'visibility', 'temp', 'grip', 't']) if (!Number.isFinite(S[f])) out.bad.push(`${k}.${f}=${S[f]}`);
+      if (!Number.isFinite(S.wind.x) || !Number.isFinite(S.wind.z) || Math.abs(Math.hypot(S.wind.x, S.wind.z) - S.windSpeed) > 1e-6) out.bad.push(`${k}.wind`);
+      if (k === 'fog') out.fogVis = S.visibility;
+      if (k === 'storm') out.storm = { wind: S.windMean, mm: S.mm, grip: S.grip };
+      if (k === 'snow') out.snow = { precip: S.precip, temp: S.temp, d0: S.snowDepth };
+      if (k === 'clear') out.clear = { vis: S.visibility, precip: S.precip, grip: S.grip, wind: S.windMean, u: OEWeather.U.uOeWind.value.toArray() };
+    }
+    // snow settles from bare ground, then melts on a mild clear day
+    W.set({ snow: 0.9, cloud: 1, snowDepth: 0, now: true }); tick(0.5);
+    W.set({ snow: 0.9, cloud: 1 }); tick(20); tick(20);
+    out.settled = S.snowDepth; out.gripSnow = S.grip;
+    W.set({ rain: 0, cloud: 0, temp: 9 }); for (let i = 0; i < 12; i++) tick(30);
+    out.melted = S.snowDepth; out.meltWet = S.wet;
+    // gusts: the wind's speed varies over a minute
+    W.set('rain', { now: true });
+    tick(1);
+    let lo = 1e9, hi = 0; for (let i = 0; i < 120; i++) { const q = OEWeather.gustAt(i * 0.5); lo = Math.min(lo, q.gn); hi = Math.max(hi, q.gn); }
+    out.gusts = [lo, hi]; out.wetRain = S.wet;
+    W.set({ rain: 0, cloud: 0 }); for (let i = 0; i < 12; i++) tick(30);
+    out.dried = S.wet;
+    stop();
+    W.set('clear', { now: true }); tick(1);
+    W.set('live');
+    return out;
+  });
+  if (wxState) {
+    const wrong = Object.entries(wxState.kinds).filter(([k, v]) => k !== v).map(([k, v]) => `${k} gave ${v}`);
+    check(!wrong.length, `every weather can be set and is reached (${wrong.join(', ') || Object.keys(wxState.kinds).join(', ')})`);
+    check(!wxState.bad.length, `the weather state's fields are in range (${wxState.bad.slice(0, 4).join(', ') || 'all'})`);
+    check(wxState.fogVis < 400 && wxState.clear.vis > 15000 && wxState.storm.mm > 15 && wxState.storm.grip < 0.8 && wxState.clear.grip === 1 && wxState.storm.wind > wxState.clear.wind,
+      `fog shortens the view, a storm is windy and slippery (fog ${wxState.fogVis.toFixed(0)} m, clear ${(wxState.clear.vis / 1000).toFixed(0)} km; storm ${wxState.storm.mm.toFixed(0)} mm/h, grip ${wxState.storm.grip.toFixed(2)}, wind ${wxState.storm.wind.toFixed(1)} against ${wxState.clear.wind.toFixed(1)} m/s)`);
+    check(wxState.snow.precip === 'snow' && wxState.snow.temp <= 0 && wxState.settled > 0.3 && wxState.gripSnow < 0.6 && wxState.melted < 0.02 && wxState.meltWet >= 0,
+      `snow falls below freezing, settles and melts (${wxState.snow.temp.toFixed(1)}°, depth ${wxState.settled.toFixed(2)} then ${wxState.melted.toFixed(2)}, grip on snow ${wxState.gripSnow.toFixed(2)})`);
+    check(wxState.gusts[1] - wxState.gusts[0] > 0.3, `the wind gusts (${wxState.gusts[0].toFixed(2)} to ${wxState.gusts[1].toFixed(2)} of its swing over a minute)`);
+    check(wxState.wetRain > 0.5 && wxState.dried < 0.05, `the ground dries after rain (wet ${wxState.wetRain.toFixed(2)} then ${wxState.dried.toFixed(2)})`);
+    check(wxState.heard.includes('snow') && wxState.heard.includes('storm'), `a listener hears the weather change (${wxState.heard.length} changes)`);
   }
 
   // what a slow device sheds of the weather (weather.js shed, driven by game.js shed): first the far

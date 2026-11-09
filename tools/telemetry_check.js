@@ -94,8 +94,9 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     await sleep(15000);
     await p.evaluate(() => window.OETelemetry.sample());
     const gameHere = await p.evaluate(() => window.OETelemetry.here());
+    await p.evaluate(() => window.OETelemetry.set({ probe: 1 }));      // what a governor would report of itself
     // a loaded software renderer can draw under a frame a second: play on until the frame rate has its samples
-    await p.waitForFunction(() => window.OETelemetry.frames() >= 15, null, { timeout: 90000, polling: 1000 }).catch(() => {});
+    await p.waitForFunction(() => window.OETelemetry.frames() >= 20, null, { timeout: 90000, polling: 1000 }).catch(() => {});
     await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await p.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     const save = await p.evaluate(c => { try { return JSON.parse(localStorage.getItem(`oe3d-game-${c}`)); } catch (e) { return null; } }, city);
@@ -159,6 +160,18 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const dw = of('dwell', x => x.view === 'game' && x.mode === 'foot');
     must(dw.length >= 1 && dw.reduce((s, e) => s + e.props.s, 0) > 3, 'time on foot is summed by spot', dw.map(e => `${e.props.spot} ${e.props.s}s`).join('; '));
     must(tg.every(e => e.props.eng_s != null), 'engaged time is counted');
+    // the device and the frame's cost (version 4)
+    const t3 = of('time', x => x.view === 'game' && x.frames >= 10);
+    must(of('view').every(e => e.props.v >= 4 && e.props.os && e.props.browser && e.props.gpu_class), 'every event carries the device: system, browser, GPU class', JSON.stringify((of('view')[0] || {}).props || {}).slice(0, 0) + `${(of('view')[0] || { props: {} }).props.gpu} (${(of('view')[0] || { props: {} }).props.gpu_class})`);
+    must(t3.length && t3.every(e => e.props.f95 >= 2 && e.props.f99 >= e.props.f95 && e.props.fmax > 0 && e.props.hz >= 30 && e.props.bound), 'play time carries the frame\'s tail and what bound it', t3[0] && `f95 ${t3[0].props.f95} ms, f99 ${t3[0].props.f99} ms, max ${t3[0].props.fmax} ms, ${t3[0].props.hz} Hz, ${t3[0].props.bound}`);
+    must(t3.some(e => e.props.cpu_ms > 0), 'the main thread\'s work per frame is measured', t3.map(e => e.props.cpu_ms).join(', '));
+    must(t3.some(e => e.props.draws > 10 && e.props.tris_k > 1 && e.props.passes >= 1 && e.props.px_k > 0), 'a sampled frame\'s draw calls, triangles, passes and pixels are counted', t3.map(e => `${e.props.draws} draws, ${e.props.tris_k}k triangles, ${e.props.passes} passes, ${e.props.px_k}k px`).join('; '));
+    console.log(`     GPU time per frame: ${t3.map(e => e.props.gpu_ms).filter(x => x != null).join(', ') || 'no timer query in this browser'}`);
+    must(of('time', x => x.view === 'city' && x.frames >= 10).some(e => e.props.draws > 0), 'the model view counts its draws too');
+    const lgw = of('load', x => x.view === 'game' && x.ok)[0];
+    must(lgw && lgw.props.req > 0 && lgw.props.kb >= 0 && lgw.props.cached != null, 'a load says what it brought over the network', lgw && `${lgw.props.kb} kB in ${lgw.props.req} requests, ${lgw.props.cached} cached`);
+    must(of('dwell', x => x.view === 'game').some(e => e.props.fps > 0), 'the frame rate is counted by spot', of('dwell', x => x.view === 'game').map(e => `${e.props.spot} ${e.props.fps} fps`).join('; '));
+    must(of('quality', x => x.view === 'game').some(e => e.props.probe === 1), 'a view\'s own state (OETelemetry.set) is reported as it changes and rides on the time events', JSON.stringify(of('time', x => x.view === 'game').map(e => e.props.probe)));
     const ex = of('exit', x => x.view === 'game');
     must(ex.length === 1 && ex[0].props.view === 'game' && ex[0].props.page_s > 0, 'the page says how it ended', ex[0] && `page ${ex[0].props.page_s} s, idle ${ex[0].props.idle_s} s`);
     const cr = of('crash');

@@ -1,4 +1,4 @@
-// Travel between the Queensland reef sites, and back to the globe. The list is data: every entry of
+// Travel between this viewer's sites (the reef sites and the lakes), and back to the globe. The list is data: every entry of
 // web/data/cities.json whose `viewer` is this reef viewer, and a site counts as ready when its
 // web/data/<id>/scene.json answers, so a new site (Hardy Reef, Green Island, Lady Elliot Island ...) appears
 // as soon as the pipeline writes it. Travelling reloads the viewer with ?city=<id>, keeping the settings in
@@ -36,13 +36,13 @@ export function createTravel(ctx) {
   const here = ctx.site;
   let list = null, loading = null;
   const origin = ctx.S.origin ? { lon: ctx.S.origin[0], lat: ctx.S.origin[1] } : null;
-  // cities.json entries -> [{ id, name, lat, lon, summary, ready, current, km, bearing }]
+  // cities.json entries -> [{ id, name, lat, lon, summary, tagline, group, country, extent_km, ready, current, km, bearing }]
   async function build(entries, probe = id => fetch(new URL(`../../data/${id}/scene.json`, import.meta.url), { method: 'HEAD' }).then(r => r.ok, () => false)) {
     const reef = entries.filter(c => c && c.viewer === VIEWER);
     const out = await Promise.all(reef.map(async c => {
       const current = c.id === here;
       const ready = current || await probe(c.id);
-      const o = { id: c.id, name: c.name, lat: c.lat, lon: c.lon, summary: (c.guide && c.guide.hook) || c.tagline || c.summary || '', status: c.status || '', ready, current, km: null, bearing: null };
+      const o = { id: c.id, name: c.name, lat: c.lat, lon: c.lon, summary: (c.guide && c.guide.hook) || c.tagline || c.summary || '', tagline: c.tagline || '', group: c.group || '', country: c.country || '', extent_km: c.extent_km || null, status: c.status || '', ready, current, km: null, bearing: null };
       if (origin && Number.isFinite(c.lat) && Number.isFinite(c.lon)) { o.km = distanceKm(origin, c); o.bearing = bearingDeg(origin, c); }
       return o;
     }));

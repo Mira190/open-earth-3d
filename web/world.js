@@ -712,6 +712,9 @@ vec3 steepRock(vec3 c, float k) {
     Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 },
       uGold: { value: 0 }, uGoldBeltK: { value: 0 }, uGoldWarm: { value: new THREE.Color(1.0, 0.6, 0.3) }, uGoldCool: { value: new THREE.Color(0.24, 0.48, 1.0) }, uGoldCream: { value: new THREE.Color(1.0, 0.8, 0.6) },
       uGoldBelt: { value: new THREE.Color(0.86, 0.68, 0.7) }, uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
+    // the cloud layers, the Milky Way and shooting stars in place of the Sky's own cloud layer (clouds.js): off until
+    // the game turns them on (atmosphere.js); the viewer keeps a clear sky
+    const cloudsOn = !!(window.OEClouds && OEClouds.patch(sky.material));
     // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
     sky.material.vertexShader = sky.material.vertexShader
       .replace('gl_Position.z = gl_Position.w;', '#ifdef USE_REVERSED_DEPTH_BUFFER\n\tgl_Position.z = 0.0;\n#else\n\tgl_Position.z = gl_Position.w;\n#endif');
@@ -1860,6 +1863,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       try {
         const rt = hazeTarget(), prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
         su.uHazeOn.value = 0;
+        // (the haze is the clear sky's horizon: the clouds are left out of it, as hazeOf leaves them out)
+        const cov = su.cloudCoverage ? su.cloudCoverage.value : 0, ck = cloudsOn ? su.uCloudK.value.clone() : null;
+        if (cloudsOn) { su.cloudCoverage.value = 0; su.uCloudK.value.x = su.uCloudK.value.y = 0; }
         rt.scissorTest = true;
         [0.5, 1, 1.5].forEach((turn, i) => { // across from the sun and on either side
           const a = az + turn * Math.PI;
@@ -1871,6 +1877,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         rt.scissorTest = false; rt.viewport.set(0, 0, 6, 2); rt.scissor.set(0, 0, 6, 2);
         renderer.setRenderTarget(prev);
         su.uHazeOn.value = on;
+        if (cloudsOn) { su.cloudCoverage.value = cov; su.uCloudK.value.copy(ck); }
         renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx);
         let r = 0, g = 0, b = 0;
         for (let i = 0; i < 48; i += 4) { r += hazePx[i]; g += hazePx[i + 1]; b += hazePx[i + 2]; }
@@ -1949,16 +1956,20 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         }
         return out;
       }
-      return az => {
+      const state = () => {
         const sp = su.sunPosition.value, sl = Math.hypot(sp.x, sp.y, sp.z) || 1, sd = [sp.x / sl, sp.y / sl, sp.z / sl];
         const sunE = 1000 * Math.max(0, 1 - Math.exp(-((1.6110731556870734 - Math.acos(cl(sd[1], -1, 1))) / 1.5)));
         const fade = 1 - cl(1 - Math.exp(sp.y / 450000), 0, 1), rc = val('rayleigh', 1) - (1 - fade);
         const mieK = 0.434 * (0.2 * val('turbidity', 2) * 10e-18) * val('mieCoefficient', 0.005);
         const arr = v => (v ? [v.r, v.g, v.b] : [0, 0, 0]);
         const U_ = { sd, sunE, fade, bR: TR.map(t => t * rc), bM: MIE.map(m => m * mieK), g: val('mieDirectionalG', 0.8), disc: val('showSunDisc', 1),
-          cov: val('cloudCoverage', 0), cElev: val('cloudElevation', 0.5), cScale: val('cloudScale', 0.0002), cSpeed: val('cloudSpeed', 0.00002), cDensity: val('cloudDensity', 0.4), time: val('time', 0),
+          cov: cloudsOn ? 0 : val('cloudCoverage', 0), cElev: val('cloudElevation', 0.5), cScale: val('cloudScale', 0.0002), cSpeed: val('cloudSpeed', 0.00002), cDensity: val('cloudDensity', 0.4), time: val('time', 0),
           tw: arr(su.twilight.value), sat: val('uSkySat', 1), gold: val('uGold', 0), beltK: val('uGoldBeltK', 0), warm: arr(su.uGoldWarm.value), cool: arr(su.uGoldCool.value),
           cream: arr(su.uGoldCream.value), belt: arr(su.uGoldBelt.value), night: val('uNightSky', 0), nz: arr(su.uNightZenith.value), nh: arr(su.uNightHorizon.value) };
+        return U_;
+      };
+      const haze = az => {
+        const U_ = state();
         // readHaze's three views (8° wide, 1.5° up; across from the sun and on either side), 2 x 2 pixels each, at
         // their pixels' centres
         const el = 1.5 * RAD, t = Math.tan(4 * RAD) * 0.5, sum = [0, 0, 0];
@@ -1975,6 +1986,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         const r = sum[0] / 12, g = sum[1] / 12, b = sum[2] / 12;
         return r + g + b > 0 && isFinite(r + g + b) ? hazeC.setRGB(r, g, b) : null;
       };
+      // the clear sky's colour in a unit direction as the dome draws it now, for what is keyed to the sky (the clouds' colours)
+      haze.sky = (dx, dy, dz) => skyAt(dx, dy, dz, state());
+      return haze;
     })();
     // the water closes over the bottom under what is drawn over it: the aerial photograph has the same
     // bridge or expressway on the riverbed, and the shallow water of a river shows it through (the
@@ -2071,6 +2085,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         hemi.intensity = Math.PI * ((night ? 0.02 : 0.07) + 0.25 * day + 0.1 * tw * (1 - day) + amb * (1 - day));
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
+        hemi.groundColor.setHex(0x4d463a);
+        if (api.shadeLight) api.shadeLight(hemi, sunLight, day); // a region's look: the shade's colour, the ground's bounce (game/atmosphere.js)
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         if (far) far.setNight(U.uNight.value);
         if (outposts && outposts.userData.setNight) outposts.userData.setNight(U.uNight.value); // (a landing's lit windows, outposts.js)
@@ -2114,6 +2130,13 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         // by day the sky's own horizon; through dusk back to the night's blue, which the sky's red night horizon would not give
         if (api.skyHaze && hazeOk) su.uHaze.value.copy(world.fog.color.lerp(hazeC, smooth(0.15, 0.6, day)));
         su.uHazeH.value = 0.05 + 0.2 * (1 - day); // at night a deeper glow, as far from the dark sky's colour as it is
+        // the clouds' colours for this hour, keyed to the sky's own zenith and its horizon across from the sun (the game's
+        // atmosphere sets api.cloudLight; clouds.js light), before the light from the sky is taken from the dome
+        if (cloudsOn && api.cloudLight) {
+          const ca = az + Math.PI * 0.5, ce = 5 * RAD;
+          api.skyRef = { zen: hazeOf.sky(0, 1, 0), hor: hazeOf.sky(Math.sin(ca) * Math.cos(ce), Math.sin(ce), -Math.cos(ca) * Math.cos(ce)) };
+          api.cloudLight(sp.altitude, api.skyRef);
+        }
         if (newSky) {
           envKey = key; envAt = now;
           if (envRT) envRT.dispose();
