@@ -113,7 +113,8 @@ window.OEAudio = (function () {
     s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.08);
   }
   function horn() { blip(196, 1.3, 'sawtooth', 0.06); blip(247, 1.3, 'sawtooth', 0.04); }
-  function honk() { blip(415, 0.32, 'square', 0.045); blip(523, 0.32, 'square', 0.035); }
+  // your horn; another driver's at a gain (its distance) and a pitch (a bus's is lower)
+  function honk(gain = 1, pitch = 1) { blip(415 * pitch, 0.32, 'square', 0.045 * gain); blip(523 * pitch, 0.32, 'square', 0.035 * gain); }
   function shutter() { // a focal-plane shutter: two short clicks
     if (!ctx || muted) return;
     for (const [at, f] of [[0, 3200], [0.06, 2400]]) {

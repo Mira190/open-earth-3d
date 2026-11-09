@@ -29,10 +29,13 @@ const [,, city = 'shibuya', outDir = '.', nSpots = '3'] = process.argv;
   await p.evaluate(() => window.__game.advance(3));
   // take over the frame loop: the game asks for its next frame, and the film calls it at a fixed step
   await p.evaluate(() => {
-    window.__frames = { cb: null, t: performance.now() };
-    window.requestAnimationFrame = cb => { window.__frames.cb = cb; return 1; };
+    // (every callback asked for in a frame, not only the last: a one-off animation's, a toast fading, asked after the
+    // game's own frame would otherwise take its place, and the game would stop)
+    window.__frames = { cbs: [], t: performance.now() };
+    window.requestAnimationFrame = cb => { window.__frames.cbs.push(cb); return window.__frames.cbs.length; };
+    window.__frames.step = t => { const q = window.__frames.cbs; window.__frames.cbs = []; for (const f of q) f(t); };
   });
-  await p.waitForFunction(() => window.__frames.cb, null, { timeout: 30000 });
+  await p.waitForFunction(() => window.__frames.cbs.length, null, { timeout: 30000 });
   const spots = await p.evaluate(n => {
     const g = window.__game, V = (x, y, z) => new THREE.Vector3(x, z, -y), x0 = g.player.x, y0 = g.player.y, out = [];
     for (let k = 0; k < 400 && out.length < n; k++) {
@@ -53,7 +56,7 @@ const [,, city = 'shibuya', outDir = '.', nSpots = '3'] = process.argv;
     const g = window.__game, F = window.__frames;
     if (each) g.cam.yaw += each;
     keys.forEach(k => g.keys.add(k));
-    const cb = F.cb; F.cb = null; F.t += 1000 / 30; cb(F.t);
+    F.t += 1000 / 30; F.step(F.t);
     keys.forEach(k => g.keys.delete(k));
     return document.getElementById('game-gl').toDataURL('image/jpeg', 0.85);
   }, { each, keys });
