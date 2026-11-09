@@ -11,7 +11,8 @@
 // (tools/scramble_step.js), walk down into a sunken promenade and back up (tools/promenade_walk.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
 // with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
-// a one-way street to the junction behind (tools/reverse_step.js), swing the
+// a one-way street to the junction behind (tools/reverse_step.js), send your own car somewhere on its autopilot
+// (tools/autopilot_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
 // (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
@@ -30,6 +31,7 @@ const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { reverseStep } = require('./reverse_step');
+const { autopilotStep, autopilotChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -2028,6 +2030,16 @@ const npcNight = require('./npc_night');
     check(!!rg.card && /^Go to /.test(rg.card), `a district's pin offers to go to its map (${rg.card || 'no card'})`);
     check(rg.listed === rg.stations, `the travel list has the other districts (${rg.listed})`);
     check(rg.back === 1, '"This district" shows this map again');
+  }
+
+  // the autopilot of your own car (#355, tools/autopilot_step.js): sent to a place a few hundred metres off by
+  // road, it sets off, shows its screen, hands the car back at a touch of the wheel, drives clear of the traffic
+  // and the red lights, and pulls in there
+  {
+    const ap = await p.evaluate(autopilotStep, { log: !!process.env.CHAIN });
+    for (const l of ap.log || []) console.log(`  autopilot: ${l}`);
+    for (const [ok, what] of autopilotChecks(ap)) check(ok, what);
+    await shot('autopilot');
   }
 
   // the traffic dodges your car (issue 335): your car put in a moving car's lane 26 m ahead, coming at it at
