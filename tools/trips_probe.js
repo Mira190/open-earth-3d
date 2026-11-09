@@ -44,10 +44,11 @@ const [,, city = 'sydney', secs = '300'] = process.argv;
     }
     return { hour: g.clock.min / 60, places: T ? T.places.map(q => `${q.kind} ${L[q.line].c} ${Math.round(q.x)},${Math.round(q.y)}`) : null, share: T ? T.inbound(g.clock.min / 60) : null,
       main: o.main / o.all, inb: o.inb, outb: o.outb, stood: o.stood / o.all, longest: o.longest, v: o.v / o.all, cars: o.all / secs,
-      onTrip: A.C.filter(c => c.line >= 0 && c.trip >= 0).length, parked: A.C.filter(c => c.line >= 0 && c.park).length, parkedIn: A.C.reduce((s, c) => s + (c.parkedIn || 0), 0), left: A.C.reduce((s, c) => s + (c.left || 0), 0), deep: o.deep, ps: A.parkStats, ended: A.C.reduce((s, c) => s + (c.trips || 0), 0), mainRoads: L.filter(l => MAIN[l.c]).reduce((s, l) => s + l.len, 0) / L.reduce((s, l) => s + l.len, 0) };
+      onTrip: A.C.filter(c => c.line >= 0 && c.trip >= 0).length, parked: A.C.filter(c => c.line >= 0 && c.park).length, parkedIn: A.C.reduce((s, c) => s + (c.parkedIn || 0), 0), left: A.C.reduce((s, c) => s + (c.left || 0), 0), deep: o.deep, ps: A.parkStats, bus: [A.busStops.size, A.busStopped, g.crowd.boarded, g.crowd.alighted, A.deliveries, A.C.filter(c => c.bus).length, A.C.filter(c => c.van).length], ended: A.C.reduce((s, c) => s + (c.trips || 0), 0), mainRoads: L.filter(l => MAIN[l.c]).reduce((s, l) => s + l.len, 0) / L.reduce((s, l) => s + l.len, 0) };
   }, { secs: +secs, off: process.env.TRIPS === '0', min: hm ? +hm[1] * 60 + +hm[2] : null });
   if (process.env.PLACES) console.log(r.places);
   if (r.ps) console.log(JSON.stringify(r.ps));
+  if (r.bus) console.log(`bus stops on ${r.bus[0]} pieces of road; ${r.bus[5]} buses stopped ${r.bus[1]} times, ${r.bus[2]} people got on and ${r.bus[3]} off; ${r.bus[6]} vans made ${r.bus[4]} deliveries`);
   console.log(`${city} ${Math.floor(r.hour)}:${String(Math.round(r.hour % 1 * 60)).padStart(2, '0')} ${process.env.TRIPS === '0' ? 'random turns' : `trips (${Math.round(r.share * 100)}% into town, ${r.places.length} places)`}: ${(r.main * 100).toFixed(0)}% of car time on main roads (${(r.mainRoads * 100).toFixed(0)}% of the road length), across a cordon 300 m round you ${r.inb} in : ${r.outb} out (${(r.inb / Math.max(1, r.inb + r.outb) * 100).toFixed(0)}% in), ${(r.stood * 100).toFixed(0)}% standing, longest ${r.longest.toFixed(0)} s, mean ${(r.v * 3.6).toFixed(0)} km/h, ${r.cars.toFixed(0)} cars, ${r.onTrip} on a trip, ${r.ended} trips ended, ${r.parked} at the kerb (${r.parkedIn} pulled in, ${r.left} pulled out), deepest overlap ${(r.deep || 0).toFixed(2)} m`);
   await b.close();
 })();

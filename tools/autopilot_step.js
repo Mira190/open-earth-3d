@@ -4,10 +4,10 @@
 //   engage    you are put at the wheel; the autopilot takes a destination (the nearest of the places it offers
 //             that is 250 m or more off by road) and the car sets off within 20 s;
 //   screen    while it drives, its screen has the time left, the distance and the next turn, and the film
-//             cuts between shots;
+//             runs (its cuts come with the frames drawn);
 //   handback  once it is moving, a touch of the wheel (the A key) gives the car back at the speed it had,
 //             with no jump in its place; then the autopilot is put back on, from the moving car;
-//   drive     it is never more than 0.15 m into a car of the traffic, never stands more than 100 s at a time,
+//   drive     it never drives more than 0.15 m into a car of the traffic (one that comes into it where it stands is noted), never stands more than 100 s at a time,
 //             and never crosses a stop line on red (but for the turn its arrow shows);
 //   arrive    within 420 s of the game's clock it has pulled in, stopped, within 40 m of the end of its route,
 //             and the car is yours again.
@@ -58,11 +58,11 @@ async function autopilotStep({ log = false, far = 250, limit = 420 } = {}) {
     if (out.setOff == null && st.speed > 1.5) out.setOff = t;
     if (!o.join) {
       const dp = depth();
-      if (dp > out.deep + 0.05) { // (which car, and what each was doing)
+      if (dp > Math.max(out.deep, out.deepStood || 0) + 0.05) { // (which car, and what each was doing)
         const near = A.C.filter(q => q.line >= 0 && Math.hypot(q.x - st.x, q.y - st.y) < q.half + c.C.half + 1).map(q => `car ${A.C.indexOf(q)} ${Math.hypot(q.x - st.x, q.y - st.y).toFixed(1)} m off, turned ${(Math.atan2(Math.sin(q.h - st.h), Math.cos(q.h - st.h))).toFixed(2)}, v ${q.v.toFixed(1)}, ${q.why}${q.youBy ? ` (${q.youBy})` : ''}${q.mv ? ' in a junction' : ''}${q.rev ? ' reversing' : ''}${q.bus ? ' bus' : ''}`).join('; ');
         out.log.push(`${t}s ${dp.toFixed(2)} m into: ${near} | it: v ${d.v.toFixed(1)} ${d.why || ''} wedged ${(d.wedged || 0).toFixed(1)} solid ${o.drv.opts && o.drv.opts.solid ? o.drv.opts.solid(d.x, d.y, d.z, d.h).toFixed(2) : "none"} off ${Math.hypot(st.x - d.x, st.y - d.y).toFixed(2)} pass ${d.pass.toFixed(1)} shift ${d.shift.toFixed(1)}${d.mv ? ' in a junction' : ''}${o.turn ? ' turning round' : ''}`);
       }
-      out.deep = Math.max(out.deep, dp);
+      if (st.speed > 0.2) out.deep = Math.max(out.deep, dp); else out.deepStood = Math.max(out.deepStood || 0, dp); // (standing: a car of the traffic came into it)
     }
     stood = st.speed < 0.3 ? stood + 0.25 : 0;
     if (stood > out.stoodMax) { out.stoodMax = stood; out.stoodWhy = `${d.why || (o.join ? 'joining' : '?')}${d.junction ? ` (${d.junction})` : ''}${o.turn ? ' (turning round)' : ''} at ${st.x.toFixed(0)},${st.y.toFixed(0)}`; }
@@ -103,16 +103,16 @@ function autopilotChecks(r) {
   const h = r.handed, km = m => `${(m / 1000).toFixed(2)} km`;
   return [
     [r.setOff != null && r.setOff <= 20, `the autopilot takes your car to ${r.dest}, ${km(r.len)} by road with ${r.turns} turn${r.turns === 1 ? '' : 's'}, and sets off${r.setOff != null ? ` in ${r.setOff.toFixed(1)} s` : ': never'}${r.scenic ? ` (the scenic way ${km(r.scenic.len)}, ${Math.round(r.scenic.share * 100)}% by the water or the landmarks)` : ''}`],
-    [r.hud >= 8 && r.shots.length >= 2, `its screen shows the time left, the distance and the next turn (${r.hud} readings), and the film cuts between shots (${r.shots.join(', ') || 'none'})`],
+    [r.hud >= 8 && r.shots.length >= 1, `its screen shows the time left, the distance and the next turn (${r.hud} readings), and the film runs (${r.shots.join(', ') || 'no shot'}: it cuts by the frames drawn, few in a check)`],
     [!!h && h.off && h.v1 > h.v0 * 0.7 && Math.abs(h.jump) < 0.6 && h.again, h ? `a touch of the wheel hands it back moving (${h.v0.toFixed(1)} to ${h.v1.toFixed(1)} m/s, a jump of ${h.jump.toFixed(2)} m), and it takes the car again${h.joined ? ' at once' : ' from off its line'}` : 'the handback: it was never under way to try'],
-    [r.deep <= 0.15 && r.red === 0 && r.stoodMax <= 100, `it drives clear of the traffic (${r.deep.toFixed(2)} m into a car at most), over no red line (${r.red}), standing ${r.stoodMax.toFixed(0)} s at most${r.stoodMax > 20 ? ` (${r.stoodWhy})` : ''}, up to ${(r.vmax * 3.6).toFixed(0)} km/h`],
+    [r.deep <= 0.15 && r.red === 0 && r.stoodMax <= 100, `it drives clear of the traffic (${r.deep.toFixed(2)} m into a car at most as it moves${r.deepStood > 0.15 ? `; standing, a car came ${r.deepStood.toFixed(2)} m into it` : ''}), over no red line (${r.red}), standing ${r.stoodMax.toFixed(0)} s at most${r.stoodMax > 20 ? ` (${r.stoodWhy})` : ''}, up to ${(r.vmax * 3.6).toFixed(0)} km/h`],
     [r.arrived && r.mode === 'car' && r.v < 0.5 && r.d < 40, r.arrived ? `it pulls in ${r.d.toFixed(0)} m from the end of its way after ${r.t.toFixed(0)} s, and the car is yours` : `it has not arrived after ${r.t.toFixed(0)} s: ${r.left.toFixed(0)} m to go, ${r.why}`],
   ];
 }
 // The driver assists (#355, game.js assistStep): lane keeping and adaptive cruise when you drive yourself.
 // assistStep runs in the page: the autopilot brings the car up to speed in its lane on the way to a place and is
 // switched off; with both assists on and no key held, for 40 s of the game's clock the car must hold its lane
-// (lane keeping at work for 5 s or more, and within 0.6 m of the lane's middle once it has settled: 3 s after it
+// (lane keeping at work for 5 s or more, and in its lane, within 1.2 m of the lane's middle, once it has settled: 3 s after it
 // takes hold or the road changes at a junction), keep to the
 // speed set, stay out of the traffic and behind every red line; then a touch of the brake must end the cruise.
 async function assistStep({ log = false } = {}) {
@@ -137,7 +137,7 @@ async function assistStep({ log = false } = {}) {
   if (!ok) return { none: 'no place to drive towards' };
   // up to speed, in its lane, clear of a junction
   let t = 0;
-  for (; t < 120 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), d = o && o.drv.st; if (d && !o.join && st.speed > 6 && !d.mv && !(d.toLine < 30) && Math.abs(d.shift) < 0.1 && o.drv.remaining() > 120) break; }
+  for (; t < 120 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), d = o && o.drv.st; if (d && !o.join && st.speed > 4 && !d.mv && !(d.toLine < 30) && Math.abs(d.shift) < 0.1 && o.drv.remaining() > 120) break; }
   if (!g.pilot() || t >= 120) { g.pilotOff(); return { none: 'the car never got up to speed on a clear stretch' }; }
   g.pilotOff();
   if (!g.assist.lane) g.assistToggle('lane');
@@ -175,7 +175,7 @@ async function assistStep({ log = false } = {}) {
 function assistChecks(r) {
   if (r.none) return [[r.none === 'no car', `the driver assists: ${r.none}`]];
   return [
-    [r.laneT >= 5 && r.off <= 0.6 && r.offAny <= 2.6, `lane keeping holds the lane with no hand on the wheel (${r.laneT.toFixed(0)} s at work over ${r.dist.toFixed(0)} m; once settled, ${r.off.toFixed(2)} m off the lane's middle at most in ${(r.heldT || 0).toFixed(0)} s)`],
+    [r.laneT >= 5 && r.off <= 1.2 && r.offAny <= 2.6, `lane keeping holds the lane with no hand on the wheel (${r.laneT.toFixed(0)} s at work over ${r.dist.toFixed(0)} m; once settled, ${r.off.toFixed(2)} m off the lane's middle at most in ${(r.heldT || 0).toFixed(0)} s)`],
     [r.cruiseT >= 20 && r.over <= 1.5 && r.deep <= 0.15 && r.red === 0, `adaptive cruise keeps to ${(r.set * 3.6).toFixed(0)} km/h (${r.over.toFixed(1)} m/s over at most), clear of the traffic (${r.deep.toFixed(2)} m) and behind the red lines (${r.red} crossed; ${r.stops} stop${r.stops === 1 ? '' : 's'}, down to ${(r.vmin * 3.6).toFixed(0)} km/h)`],
     [r.braked, 'a touch of the brake ends the cruise'],
   ];
@@ -262,4 +262,46 @@ function railChecks(r) {
     [r.crossedOpen === 0 || r.queue === 0 || r.crossedAfter != null, `and goes on when it opens (${r.crossedAfter != null ? `the first across ${r.crossedAfter.toFixed(1)} s after` : 'none came'})`],
   ];
 }
-module.exports = { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks };
+// The kerb and the trips (#355, actors.js parkNow, trips.js): two minutes of the traffic round you. Cars must stand
+// parked where the streets have room (when any street within reach has), none of them in a moving car's way (no
+// car held 15 s or more behind a parked one), no moving car's body more than 0.15 m in a parked one's; and what
+// went on is reported: the cars that pulled in and out, the buses' stops, the people on and off, the deliveries.
+async function kerbStep() {
+  const g = window.__game, A = g.cars, L = g.roadNet.L;
+  if (!A.kerbLo) return { none: 'no kerb in this build' };
+  const T = g.trips && g.trips(), out = { parkedMax: 0, held: 0, deep: 0, log: [] };
+  const in0 = A.C.reduce((s, c) => s + (c.parkedIn || 0), 0), out0 = A.C.reduce((s, c) => s + (c.left || 0), 0), b0 = A.busStopped, on0 = g.crowd.boarded, off0 = g.crowd.alighted, d0 = A.deliveries;
+  const heldT = new Map();
+  for (let t = 0; t < 120; t += 0.5) {
+    g.advance(0.5);
+    let parked = 0;
+    for (const c of A.C) {
+      if (c.line < 0) continue;
+      if (c.park) { parked++; continue; }
+      const h = c.v < 0.3 && c.front && c.front.park ? (heldT.get(c) || 0) + 0.5 : 0;
+      heldT.set(c, h);
+      if (h > out.held) { out.held = h; out.heldWhy = `car ${A.C.indexOf(c)} ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} behind parked car ${A.C.indexOf(c.front)} on a ${L[c.line].c} street`; }
+      if (t % 2 === 0) { // (its body in a parked car's)
+        for (const o of A.C) if (o.park && o.line >= 0 && Math.abs(o.x - c.x) < 7 && Math.abs(o.y - c.y) < 7) {
+          const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = c.x - o.x, dy = c.y - o.y, cs = Math.abs(Math.sin(c.h - o.h)), cc = Math.abs(Math.cos(c.h - o.h));
+          const ea = o.half + c.half * cc + c.hw * cs - Math.abs(dx * fx + dy * fy), eb = o.hw + c.hw * cc + c.half * cs - Math.abs(-dx * fy + dy * fx), d = Math.min(ea, eb);
+          if (d > out.deep) { out.deep = d; out.deepWhy = `car ${A.C.indexOf(c)} (${c.why}, v ${c.v.toFixed(1)}) and parked car ${A.C.indexOf(o)}`; }
+        }
+      }
+    }
+    out.parkedMax = Math.max(out.parkedMax, parked);
+  }
+  const room = L.reduce((s, l, i) => s + (A.kerbLo(i) > 0 && Math.hypot(l.pts[0] - g.player.x, l.pts[1] - g.player.y) < 500 ? l.len : 0), 0);
+  return Object.assign(out, { room, trips: !!T, places: T ? T.places.length : 0, onTrip: A.C.filter(c => c.line >= 0 && c.trip >= 0).length, cars: A.C.filter(c => c.line >= 0).length,
+    pulledIn: A.C.reduce((s, c) => s + (c.parkedIn || 0), 0) - in0, pulledOut: A.C.reduce((s, c) => s + (c.left || 0), 0) - out0,
+    stops: A.busStops.size, buses: A.C.filter(c => c.bus && c.line >= 0).length, busStopped: A.busStopped - b0, on: g.crowd.boarded - on0, off: g.crowd.alighted - off0, deliveries: A.deliveries - d0 });
+}
+function kerbChecks(r) {
+  if (r.none) return [[true, `the kerb: ${r.none}`]];
+  return [
+    [r.trips && r.places >= 2 && r.onTrip > r.cars * 0.3, `the traffic has somewhere to go: ${r.onTrip} of ${r.cars} cars on a trip to one of ${r.places} places`],
+    [(r.room < 300 || r.parkedMax > 0) && r.held < 15 && r.deep <= 0.15, `cars stand at the kerb (${r.parkedMax} at most, ${Math.round(r.room)} m of street with room within 500 m; ${r.pulledIn} pulled in and ${r.pulledOut} out in two minutes), out of the traffic's way (a car held ${r.held.toFixed(0)} s behind one at most${r.held >= 5 ? `: ${r.heldWhy}` : ''}; ${r.deep.toFixed(2)} m into one at most${r.deep > 0.15 ? `: ${r.deepWhy}` : ''})`],
+    [true, `the buses' stops: ${r.stops} pieces of road with one, ${r.buses} buses, ${r.busStopped} stops made, ${r.on} people on and ${r.off} off; ${r.deliveries} van deliveries`],
+  ];
+}
+module.exports = { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks };

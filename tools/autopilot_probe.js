@@ -2,7 +2,7 @@
 //   GAME_TIME=10:00 xvfb-run -a node tools/autopilot_probe.js sydney     (OUT=dir: a still at the end)
 const { chromium } = require('playwright');
 const { pinClock } = require('./pin_clock');
-const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks } = require('./autopilot_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const [,, city = 'sydney'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: !process.env.DISPLAY, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -22,6 +22,12 @@ const [,, city = 'sydney'] = process.argv;
   console.log(JSON.stringify(r));
   let bad = 0;
   for (const [ok, what] of autopilotChecks(r)) { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; }
+  if (!process.env.ONLY || process.env.ONLY === 'kerb') {
+    const kb = await p.evaluate(kerbStep);
+    console.log(JSON.stringify(kb));
+    for (const [ok, what] of kerbChecks(kb)) { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; }
+    if (process.env.ONLY === 'kerb') { await b.close(); process.exit(bad ? 1 : 0); }
+  }
   if (!process.env.ONLY || process.env.ONLY === 'rail') {
     const rl = await p.evaluate(railStep);
     console.log(JSON.stringify(rl));

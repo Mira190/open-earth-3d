@@ -31,7 +31,7 @@ const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { reverseStep } = require('./reverse_step');
-const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks } = require('./autopilot_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1983,9 +1983,9 @@ const npcNight = require('./npc_night');
   // road, it sets off, shows its screen, hands the car back at a touch of the wheel, drives clear of the traffic
   // and the red lights, and pulls in there
   {
-    const ap = await p.evaluate(autopilotStep, { log: !!process.env.CHAIN });
-    for (const l of ap.log || []) console.log(`  autopilot: ${l}`);
-    for (const [ok, what] of autopilotChecks(ap)) check(ok, what);
+    const ap = await p.evaluate(autopilotStep, { log: true }), apc = autopilotChecks(ap);
+    if (process.env.CHAIN || apc.some(([ok]) => !ok)) for (const l of ap.log || []) console.log(`  autopilot: ${l}`); // (its log, when a check of it fails)
+    for (const [ok, what] of apc) check(ok, what);
     await shot('autopilot');
     // and the driver assists when you drive yourself: lane keeping and adaptive cruise, hands off for 40 s
     const as = await p.evaluate(assistStep, { log: !!process.env.CHAIN });
@@ -1993,6 +1993,8 @@ const npcNight = require('./npc_night');
     for (const [ok, what] of assistChecks(as)) check(ok, what);
     // and the weather on the road: the same traffic dry and in the rain (slower, longer gaps, lamps on, spray)
     for (const [ok, what] of wetChecks(await p.evaluate(wetStep))) check(ok, what);
+    // the kerb and the trips: cars parked where the streets have room and out of the traffic's way, the buses' stops
+    for (const [ok, what] of kerbChecks(await p.evaluate(kerbStep))) check(ok, what);
     // and a level crossing on a busy street: stopped at while it is shut, its rails never queued across
     for (const [ok, what] of railChecks(await p.evaluate(railStep))) check(ok, what);
   }
