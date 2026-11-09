@@ -1158,8 +1158,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const Q_CLEAR = 1.8;
   // (at any junction on its way, signals or none; and a queue whose head has stood over 20 s waiting for room beyond,
   // a jam that spills back, counts JAM_WAIT more: Shibuya's taxi was sent down a one-way street into one, 150 s, #243)
-  const JAM_WAIT = 30;
-  const queuedAt = a => { let n = 0, jam = false; for (const c of cars.live) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) { n++; if (c.why === 'room' && (c.still || 0) > 20 && c.toLine - c.half < 3) jam = true; } return n * Q_CLEAR + (jam ? JAM_WAIT : 0); };
+  const JAM_WAIT = 30, PASS_WAIT = 10;
+  // (and a queue at a red waits for its green before any of it moves: the light's own change, junctions.toGreen. Without it a
+  // taxi was sent from behind a queue at Shinjuku's scramble 1106, and one at 1105 after it, timed 20 s and there in 132, #331)
+  // (and one whose head waits at its line for room beyond, however briefly: a third of that, for the
+  // queue that is forming; Shibuya's hailed taxi was sent behind a car just stopped so at 824, timed 21 s and there in 70)
+  const queuedAt = a => { let n = 0, jam = 0; for (const c of cars.live) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) { n++; if (c.why === 'room' && c.toLine - c.half < 3) jam = Math.max(jam, c.why === 'room' && (c.still || 0) > 20 ? JAM_WAIT : JAM_WAIT / 3); } return n * Q_CLEAR + jam + (n && a.j.sig && junctions.light(a) !== 'g' ? junctions.toGreen(a) : 0); };
   const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += queuedAt(q.a); return t; };
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   // A way that crosses a scramble near you is timed with its walk (SCR_WAIT): where another way round it
@@ -1201,7 +1205,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // not the second or so of an average light; Shinjuku's hailed taxi, 60 m short of a red, came in 42 s, not 12)
     let firstW = 0;
     if (first && first.s < 250 && junctions.light(first.a) !== 'g') firstW = Math.max(0, junctions.toGreen(first.a) - drive * first.s / Math.max(1, P.len));
-    return { rt, opts, drive, sig, scr, scrJ, qArms, firstSig: firstW > 0, T: drive + firstW + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
+    // (and your car left standing in its way, which it pulls out round when nothing comes the other way: a taxi in
+    // Queenstown stood 13 s behind it so, timed 22 s and there in 40, #331)
+    let parkedW = 0;
+    const mc = myCar && player.mode !== 'car' ? myCar.D.st : null;
+    if (mc) { const e = {}; for (let s = 0; s < P.len; s += 3) { P.at(s, e); if (Math.hypot(e.x - mc.x, e.y - mc.y) < 2.5) { parkedW = PASS_WAIT; break; } } }
+    return { rt, opts, drive, sig, scr, scrJ, qArms, firstSig: firstW > 0, T: drive + firstW + parkedW + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
   }
   // what keeps a ride's driver out of the traffic's cars where you could see it (out of sight, as nothing
   // else holds a driver up there, it would only be late): never a step further into one (solid), and,

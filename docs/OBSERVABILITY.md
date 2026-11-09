@@ -10,9 +10,11 @@ already exposes (`window.__city`, `window.__game`, `window.__reef`).
 | Event | When | Main fields |
 |---|---|---|
 | `view` | the page opens, or the hash changes to the globe, a city's model (`#<id>`), its game (`#play-<id>`), or a reef site (`reef/?city=<id>`) | `view`, `city`, `first`, `new_visitor`, `visit_n` (page loads in this browser), `days_since` (since the last), `from` / `from_s` (the view before, and its seconds) |
-| `load` | the view's loader fades (`ok: true`), shows its error (`why: "error"`), or the visitor leaves first (`why: "left"` / `"closed"`, with what the loader said); the title screen, which has no loader, when the first frame of its opening or menu is drawn | `ok`, `ms` (from the hash change; the page's first view counts from the navigation itself), and the stages (below): `fetch_ms`, `decode_ms`, `build_ms`, `frame_ms` |
-| `time` | the tab is put away, the view changes, the page closes, and every 5 minutes | `s` (seconds on screen and ready since the last one), `eng_s` (of those, engaged), `fps` (median), `slow` (share of frames over 50 ms), `frames`, `inp` (the slowest tap or key, ms, if over 40), `heap_mb` (Chromium) |
-| `dwell` | with each `time` | `spot`, `mode`, `s`, `eng_s`: the same seconds split by where the visitor was and how they moved |
+| `load` (also `kb`, `req`, `cached`: kilobytes transferred, requests, and the share from the cache) | the view's loader fades (`ok: true`), shows its error (`why: "error"`), or the visitor leaves first (`why: "left"` / `"closed"`, with what the loader said); the title screen, which has no loader, when the first frame of its opening or menu is drawn | `ok`, `ms` (from the hash change; the page's first view counts from the navigation itself), and the stages (below): `fetch_ms`, `decode_ms`, `build_ms`, `frame_ms` |
+| `time` | half a minute into a view, when the tab is put away, the view changes, the page closes, and every 5 minutes | `s` (seconds on screen and ready since the last one), `eng_s` (of those, engaged), `fps` (median), `slow` (share of frames over 50 ms), `frames`, `inp` (the slowest tap or key, ms, if over 40), `heap_mb` (Chromium), and the frame's tail and cost ([below](#what-a-frame-costs)) |
+| `dwell` | with each `time` | `spot`, `mode`, `s`, `eng_s`: the same seconds split by where the visitor was and how they moved, with the frame rate there (`fps`, `slow`) |
+| `jank` | with each `time` that had a frame of 150 ms or more | the worst long frame of the piece: `ms`, `block_ms`, `script` (the file and function that took most of it), `script_ms`, `style_ms` (Long Animation Frames; Chromium) |
+| `quality` | the view changes its own quality (`OETelemetry.set`, 30 a view at most) | what the view said: a governor's `scale`, what it has shed; `at_s` (seconds into the view). The same fields ride on the `time` events |
 | `tour` | the model's tour reaches a stop, ends, or is taken over | `action` (`stop` / `end` / `leave`), `stop`, `stops` |
 | `mode` | the game leaves its title screen (`start: true`), or the player changes how they move (on foot, car, ride, heli, ferry, rail, photo; at a reef: walk, swim, snorkel, scuba, boat) | `from`, `to` |
 | `quest` | the game's tracked quest moves a step, or a quest is done | `action` (`step` / `done`), `from`, `stamps` |
@@ -25,7 +27,12 @@ already exposes (`window.__city`, `window.__game`, `window.__reef`).
 Every event carries a random visitor id (`oe3d-vid` in localStorage), a page-load id (`sid`), the device
 class (phone / tablet / desktop from the pointer and screen size), the quality tier (`web/quality.js`),
 WebGL 2 and software-renderer flags, WebGPU support, the viewport, the language, the referring site and
-the deployed version.
+the deployed version. From version 4 also the device, coarsely: `gpu` (the GPU's family and model as the
+browser names it, such as `apple m1 pro` or `intel iris xe graphics`, with the driver version, device id
+and API level cut away), `gpu_class` (apple, intel, amd, nvidia, adreno, mali, powervr, software, other),
+`cores` and `mem` (what the browser reports, itself rounded), `max_tex`, `os`, `browser` and its major
+version, and `net` (the connection's class, where the browser says). These group devices; they are not
+kept to tell one visitor from another, and no canvas, font or audio fingerprint is taken.
 
 Every event also carries where the visitor is in the view, once the view is ready: `spot`, `mode`, and in
 the model viewer `tour` (`3/8` while stop 3 of 8 plays, `left 3/8` once the visitor took the view over
@@ -94,6 +101,30 @@ The report and the dashboard answer:
 
 `tools/slo_report.py` computes these values. A level with fewer than 20 samples is shown but not judged.
 
+### What a frame costs
+
+A frame rate says that a device is slow, not why. From version 4 each `time` event also carries:
+
+| Field | What | How |
+|---|---|---|
+| `f95`, `f99`, `fmax`, `hitch` | the frame 95% and 99% of frames are no slower than, the longest (ms), and the frames over 100 ms | the same `requestAnimationFrame` histogram as `fps` |
+| `hz` | the display's rate as the device showed it | the fastest rate a twentieth of the frames kept, snapped to a common rate |
+| `cpu_ms`, `cpu95` | the main thread's work per frame: script, style and layout | this script's frame callback runs before the view's (it loads first), and a task it posts runs when the frame's work is done; one frame in four |
+| `gpu_ms`, `gpu95` | the GPU's time per frame | a timer query (`EXT_disjoint_timer_query_webgl2`) from one of this script's callbacks to the next, one frame in thirty; Chromium on desktop has it, Safari and Firefox do not |
+| `draws`, `tris_k`, `passes` | draw calls, thousands of triangles and full-screen passes in a frame | the context's draw calls are wrapped for one frame in 120 and counted; a three-vertex draw without an index is a pass |
+| `px_k` | thousands of pixels in the canvas | its drawing buffer |
+| `bound` | what held the frame rate | `ok` within a tenth of `hz`; else `gpu` or `cpu`, whichever time is the larger; `gpu?` when the frame is slow, the script does not account for it and there is no timer |
+| `loaf`, `block_ms` | long frames, and the time they kept input waiting | Long Animation Frames (Chromium) |
+
+All of it is measured from outside: the script notes each WebGL 2 context as a view makes it, so the
+renderers carry no telemetry code. The reef and alpine sites draw with WebGPU and report the frame's
+tail and the main thread only. A view may add its own state with `OETelemetry.set({ ... })` (the
+resolution scale a governor settled on, what it shed): the fields ride on `time`, and each change is a
+`quality` event.
+
+What the measuring itself costs a view: one posted task every fourth frame, one query every
+thirtieth, and five wrapped functions for one frame in 120.
+
 | SLO | Target | Definition |
 |---|---|---|
 | Load success | ≥ 99% | city, game and reef views that become ready ÷ (ready + loader errors + visitors who waited 20 s or more and left) |
@@ -108,8 +139,9 @@ The report and the dashboard answer:
 
 The report also lists unique visitors (in total and by day), new visitors, views by kind and city, play
 time (in total, the median and p90 per player, and by city), devices, tiers, referrers, the main load
-failures and the main errors, the load stages (p75 of each by view and device) and the levels by release
-(`app`). It reads the collector's log, or with `--posthog` the last `--days` (7) of events from PostHog
+failures and the main errors, the load stages (p75 of each by view and device), the levels by release
+(`app`), and the frame's cost by GPU and by city and tier, what held the frame rate, the slowest spots and
+the scripts behind the worst long frames. It reads the collector's log, or with `--posthog` the last `--days` (7) of events from PostHog
 (`POSTHOG_PERSONAL_API_KEY`, a key with query read access). It exits 1 when a judged level misses its
 target, so it can run on a schedule.
 
@@ -169,7 +201,11 @@ dashboard write access; `--check` runs each query and changes nothing. The dashb
   - lost WebGL contexts;
   - pages that died on screen, by view;
   - returning visitors;
-  - engaged play, by view.
+  - engaged play, by view;
+  - the frame's cost (issue 351): by GPU, by city and tier and by release (fps, the 95th percentile
+    frame, slow frames, main-thread and GPU ms, draws, triangles, passes, pixels); what holds the frame
+    rate; the slowest spots; long frames by script; load weight by city; and the median fps by GPU class,
+    GPU ms by city and main-thread ms by city.
 
 - **Release comparison** (issue 298): every event carries the deployed version (`app`, `web/version.json`),
   so a regression points to the release that brought it:
