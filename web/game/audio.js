@@ -42,7 +42,7 @@ window.OEAudio = (function () {
     const wn = noiseSource(), wl = ctx.createBiquadFilter(), wg = ctx.createGain();
     wl.type = 'bandpass'; wl.frequency.value = 900; wl.Q.value = 0.4; wg.gain.value = 0;
     wn.connect(wl); wl.connect(wg); wg.connect(master);
-    ch.wind = wg;
+    ch.wind = wg; ch.windF = wl;
     // a car's engine: two saws a fifth apart through a low-pass that opens with the throttle
     const co = ctx.createOscillator(), c2 = ctx.createOscillator(), cl = ctx.createBiquadFilter(), cv = ctx.createGain();
     co.type = c2.type = 'sawtooth'; co.frequency.value = 40; c2.frequency.value = 60; cl.type = 'lowpass'; cl.frequency.value = 300; cl.Q.value = 2; cv.gain.value = 0;
@@ -74,7 +74,8 @@ window.OEAudio = (function () {
     ramp(ch.rotor.chop.frequency, 4 + spin * 16, 0.4);
   }
   function engine(level) { if (ctx) { ramp(ch.engine.vol.gain, level * 0.09); ramp(ch.engine.osc.frequency, 42 + level * 18, 0.6); } }
-  function wind(level) { if (ctx) ramp(ch.wind.gain, Math.min(0.12, level * 0.12)); }
+  // level 0..1: the air's rush (a helicopter's speed, or the weather's wind and its gusts, whichever is louder)
+  function wind(level, gust = 0) { if (!ctx) return; ramp(ch.wind.gain, Math.min(0.14, level * 0.12), 0.4); if (ch.windF) ramp(ch.windF.frequency, 500 + 700 * level + 500 * gust, 0.5); }
   // rpm 0..1 (idle to the red line), throttle 0..1, level 0..1 (0 off; lower from the back seat)
   function car(rpm, throttle = 0, level = 1) {
     if (!ctx) return;
@@ -86,6 +87,34 @@ window.OEAudio = (function () {
   function skid(level) { if (ctx) ramp(ch.skid.gain, Math.min(0.06, level * 0.06), 0.06); }
   // level 0..1 (drizzle to a downpour); roof: under one, which drums; inside: a car or a cabin, muffled
   let dripAt = 0;
+  // thunder from dist metres: near, a crack and a long roll; far, only the low rumble, later and softer
+  function thunder(dist = 2000, inside = false) {
+    if (!ctx || muted) return;
+    const near = Math.max(0, 1 - dist / 2500), far = Math.max(0.12, 1 - dist / 16000), t = ctx.currentTime, len = 3.5 + 5 * (1 - near);
+    const src = noiseSource(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(inside ? 300 : 180 + 2600 * near * near, t); lp.frequency.exponentialRampToValueAtTime(70, t + len * 0.8);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime((0.22 + 0.5 * near) * far * (inside ? 0.6 : 1), t + 0.03 + 0.25 * (1 - near));
+    // the roll: the sound of the channel's far parts arriving later, in swells
+    for (let k = 1; k <= 4; k++) g.gain.exponentialRampToValueAtTime((0.05 + 0.18 * Math.random()) * far * (1 - k / 6), t + len * k / 5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    src.connect(lp); lp.connect(g); g.connect(master);
+    setTimeout(() => { try { src.stop(); src.disconnect(); g.disconnect(); } catch (e) { /* already gone */ } }, (len + 0.5) * 1000);
+  }
+  // summer's cicadas, level 0..1: a high, narrow band of noise rattling at a wing's rate, swelling and
+  // fading every few seconds; made the first time it is asked for, so a winter's game never builds it
+  function cicadas(level) {
+    if (!ctx) return;
+    if (!ch.cicada) {
+      if (!(level > 0.01)) return;
+      const n = noiseSource(), bp = ctx.createBiquadFilter(), am = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), sw = ctx.createOscillator(), sg = ctx.createGain(), out = ctx.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = 5400; bp.Q.value = 11; am.gain.value = 0.5; out.gain.value = 0;
+      lfo.type = 'sawtooth'; lfo.frequency.value = 58; lg.gain.value = 0.45; sw.type = 'sine'; sw.frequency.value = 0.19; sg.gain.value = 0.3;
+      n.connect(bp); bp.connect(am); am.connect(out); out.connect(master); lfo.connect(lg); lg.connect(am.gain); sw.connect(sg); sg.connect(am.gain); lfo.start(); sw.start();
+      ch.cicada = out;
+    }
+    ramp(ch.cicada.gain, Math.min(1, level) * 0.022, 2);
+  }
   function rain(level, roof = false, inside = false) {
     if (!ctx || !ch.rain) return;
     const k = inside ? 0.35 : 1;
@@ -265,5 +294,5 @@ window.OEAudio = (function () {
   }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, cicadas, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

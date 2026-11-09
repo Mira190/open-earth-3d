@@ -297,7 +297,7 @@
   "radar_test_building": "Quay Quarter Tower",
   "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
   "game": {
-    "weather": {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 7.9], "threshold_mm": 1.0, "drizzle": 0.3, "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm"},
+    "weather": {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 7.9], "threshold_mm": 1.0, "drizzle": 0.3, "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm", "temp_max": [27.0, 26.8, 25.7, 23.6, 20.9, 18.3, 17.9, 19.3, 21.6, 23.2, 24.2, 25.7], "temp_min": [20.0, 19.9, 18.4, 15.3, 12.3, 10.0, 8.9, 9.7, 12.3, 14.6, 16.6, 18.4], "wind_ms": [3.7, 3.5, 3.2, 3.1, 3.2, 3.5, 3.9, 4.3, 4.3, 4.3, 4.2, 4.1], "wind_from_deg": 45, "thunder_days": [2.3, 2.1, 1.8, 1.7, 1.3, 0.9, 0.9, 1.3, 1.7, 2.3, 2.6, 3.1], "fog_days": [0.3, 0.6, 1.3, 1.9, 2.9, 2.2, 1.9, 1.6, 0.9, 0.6, 0.6, 0.3], "more": "Sydney: temperatures the Bureau's 1991-2020 statistics for Observatory Hill (066062); wind the mean of its 9 am and 3 pm speeds (1955-1992); thunder and fog days as pipeline/weather_climate.py says (annual totals from Wikipedia's Climate of Sydney, the split by month a secondary table's shape)."},
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
     "water_name": "the harbour",

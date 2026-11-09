@@ -44,7 +44,7 @@ window.OEWeather = (function () {
     storm: { rain: 1, cloud: 1, storm: 1, windK: 2.4 },
     snow: { rain: 0, snow: 0.8, cloud: 0.95, windK: 0.7, tempMax: -1 },
   };
-  const NAMES = { live: 'As the season brings it', clear: 'Clear', overcast: 'Overcast', fog: 'Fog', drizzle: 'Drizzle', rain: 'Rain', storm: 'Thunderstorm', snow: 'Snow', off: 'Off' };
+  const NAMES = { live: 'As the season brings it', now: 'Live, as it is there now', clear: 'Clear', overcast: 'Overcast', fog: 'Fog', drizzle: 'Drizzle', rain: 'Rain', storm: 'Thunderstorm', snow: 'Snow', off: 'Off' };
   // ------------------------------------------------------------ the one weather state
   // OEWeather.S: what the weather is now, eased frame by frame by the game's weather (create().update).
   // Everything that depends on the weather reads this (the sky and clouds, the trees, the water, the
@@ -77,6 +77,35 @@ window.OEWeather = (function () {
   };
   // the wind's unsteadiness at a time (seconds): gn 0..1, slow lulls and swells, and gust 0..1, its peaks
   const gustAt = t => { const gn = vnoise(t * 0.11) * 0.6 + vnoise(t * 0.37 + 9.1) * 0.3 + vnoise(t * 1.3 + 3.7) * 0.1; return { gn, gust: smooth(0.52, 0.85, gn) }; };
+  // ------------------------------------------------------------ live weather (opt-in)
+  // The city's conditions now, from Open-Meteo (open-meteo.com: no key, CORS open, data CC BY 4.0). It is
+  // a request from the visitor's browser to a third party, so it is made only when the visitor picks
+  // "Live" in the menu (or the address says ?weather=now), carries nothing but the city's own
+  // coordinates rounded to 0.01 degree (never the visitor's), sends no cookies or referrer, is kept for
+  // 15 minutes (the service's own step), and when it fails the season's weather carries on, silently.
+  // WMO weather codes: 0-1 clear, 2 fair, 3 overcast, 45/48 fog, 51-57 drizzle, 61-67 and 80-82 rain,
+  // 71-77 and 85-86 snow, 95-99 thunderstorm.
+  const NOW_KEY = 'oe3d-weather-now', NOW_TTL = 15 * 60e3;
+  const nowUrl = (lat, lon) => `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&current=temperature_2m,precipitation,snowfall,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,visibility&wind_speed_unit=ms`;
+  // an Open-Meteo "current" block as the amounts the weather eases to
+  function fromNow(c) {
+    if (!c || typeof c !== 'object') return null;
+    const n = v => (Number.isFinite(+v) ? +v : 0), code = n(c.weather_code), mm = n(c.precipitation) * 4, vis = c.visibility == null ? 40000 : n(c.visibility); // (precipitation: the last 15 minutes' sum)
+    const snowy = (code >= 71 && code <= 77) || code === 85 || code === 86 || n(c.snowfall) > 0, stormy = code >= 95 && code <= 99;
+    const drizzly = code >= 51 && code <= 57, rainy = (code >= 61 && code <= 67) || (code >= 80 && code <= 82) || stormy;
+    const amount = Math.max(mm > 0 ? Math.min(1, Math.sqrt(mm / 9)) : 0, snowy ? 0.3 : stormy ? 0.8 : rainy ? 0.45 : drizzly ? 0.15 : 0);
+    const foggy = code === 45 || code === 48 || vis < 1000;
+    return { rain: snowy ? 0 : amount, snow: snowy ? Math.max(0.25, amount) : 0, storm: stormy ? 0.9 : 0, fog: foggy ? Math.max(0.35, Math.min(0.95, 1 - vis / 1400)) : vis < 5000 ? 0.2 * (1 - vis / 5000) : 0,
+      cloud: Math.max(n(c.cloud_cover) / 100, amount > 0.05 ? 0.85 : 0, code === 3 ? 0.85 : 0), temp: n(c.temperature_2m), wind: n(c.wind_speed_10m), windFrom: n(c.wind_direction_10m), code };
+  }
+  function fetchNow(lat, lon) {
+    const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+    try { const k = JSON.parse(localStorage.getItem(NOW_KEY) || 'null'); if (k && k.key === key && Date.now() - k.at < NOW_TTL && k.at <= Date.now()) return Promise.resolve(fromNow(k.cur)); } catch (e) { /* storage blocked */ }
+    return fetch(nowUrl(lat, lon), { credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { const cur = j && j.current; if (!cur) return null; try { localStorage.setItem(NOW_KEY, JSON.stringify({ key, at: Date.now(), cur })); } catch (e) { /* storage blocked */ } return fromNow(cur); })
+      .catch(() => null);
+  }
   const listeners = [];
   // call f(kind, S) whenever the kind changes (clear to rain, rain to storm...); returns a function that stops it
   function onChange(f) { listeners.push(f); return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; }
@@ -93,9 +122,12 @@ window.OEWeather = (function () {
   const ihash = (n, salt) => { let x = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(salt + 0x632be5ab, 0xc2b2ae35); x ^= x >>> 16; x = Math.imul(x, 0x7feb352d); x ^= x >>> 15; x = Math.imul(x, 0x846ca68b); x ^= x >>> 16; return (x >>> 0) / 4294967296; };
   const vnoise = x => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash(i) * (1 - u) + hash(i + 1) * u; };
 
+  const hash2 = (x, y) => { const q = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return q - Math.floor(q); };
+  const vnoise2 = (x, y) => { const i = Math.floor(x), j = Math.floor(y), f = x - i, g = y - j, u = f * f * (3 - 2 * f), v = g * g * (3 - 2 * g);
+    return (hash2(i, j) * (1 - u) + hash2(i + 1, j) * u) * (1 - v) + (hash2(i, j + 1) * (1 - u) + hash2(i + 1, j + 1) * u) * v; };
   // ------------------------------------------------------------ shared GLSL
   const GLSL = `
-uniform float uOeWet; uniform float uOeRain; uniform float uOeT;
+uniform float uOeWet; uniform float uOeRain; uniform float uOeT; uniform float uOeSnow; uniform float uOeSnowfall; uniform vec4 uOeWind;
 uniform sampler2D uOeOcc; uniform vec4 uOeOccBox; uniform float uOeOccOn; uniform float uOeOccBase;
 // 1 where something stands over p (a roof, a deck, a tree) by more than lift metres, from the
 // occlusion map round the camera; 0 in the open or beyond the map
@@ -114,6 +146,16 @@ float oePuddle(vec2 xz) {
   float n = oeN(xz * 0.21) * 0.58 + oeN(xz * 0.67 + 7.3) * 0.3 + oeN(xz * 2.3 + 1.7) * 0.12;
   float fill = smoothstep(0.25, 1.0, uOeWet);
   return smoothstep(0.71 - 0.09 * fill, 0.77 - 0.09 * fill, n) * fill;
+}
+// settled snow on a surface, 0..1: on what faces up and lies open to the sky, first on the flat and, as it
+// deepens, on slopes too, patchy at its edges (after the world-normal snow masks of Unreal's and Godot's
+// material examples; no geometry). tread 0..1: where wheels and feet keep it thin (roads, paving)
+float oeSnowOn(vec3 p, vec3 n, float open, float tread) {
+  if (uOeSnow < 0.004 || open <= 0.0) return 0.0;
+  float nz = oeN(p.xz * 0.31) * 0.6 + oeN(p.xz * 1.7 + 3.1) * 0.4;
+  float deep = smoothstep(0.0, 0.55, uOeSnow) * (1.0 - 0.55 * tread * (1.0 - smoothstep(0.6, 1.0, uOeSnow)));
+  float need = mix(1.04, 0.3, deep);
+  return smoothstep(need - 0.1, need + 0.12, n.y + (nz - 0.5) * 0.3) * open * smoothstep(0.0, 0.1, deep - tread * 0.25 * nz);
 }
 // rain ripples: in each cell of three offset grids a drop lands at a random moment and spot and a
 // ring runs out from it and fades; returns the slope of the water (x, z)
@@ -153,22 +195,28 @@ vec2 oeRipple(vec2 xz, float camD) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 varying vec3 vOeW; varying vec3 vOeN;
 ${GLSL}`);
-    const porous = (o.porous ?? 0.4).toFixed(3), puddles = o.puddles || '0.0', gloss = o.gloss || '1.0';
+    const porous = (o.porous ?? 0.4).toFixed(3), puddles = o.puddles || '0.0', gloss = o.gloss || '1.0', tread = o.tread || '0.0';
     // (no puddles where none can stand, the people's clothes and skin: their noise and the ripples are left out of
     // the shader, not multiplied by nothing, which a compiler cannot fold away)
     const pools = !/^\s*0(\.0*)?\s*$/.test(puddles);
     if (!o.water) {
       sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 float oeCamD = distance(vOeW, cameraPosition);
-float oeOpen = 1.0 - oeCover(vOeW, 0.6);
 float oeUp = smoothstep(0.15, 0.75, vOeN.y), oeFlat = smoothstep(0.96, 0.995, vOeN.y);
-float oeWet = uOeWet * oeOpen * (0.3 + 0.7 * oeUp);
+// (a wall: is the air in front of it open; and the map's texels are broken up at a roof's edge, where snow and rain blow in a little)
+float oeOpen = uOeWet + uOeSnow > 0.001 ? 1.0 - oeCover(vOeW + vec3(vOeN.x, 0.0, vOeN.z) * (0.8 * (1.0 - oeUp)) + vec3(oeN(vOeW.xz * 2.7) - 0.5, 0.0, oeN(vOeW.zx * 2.7 + 11.0) - 0.5) * 0.9, 0.6) : 1.0;
+// a wall takes the rain in streaks down it, and less of it than what faces the sky
+float oeWet = uOeWet * oeOpen * mix(0.22 + 0.3 * oeN(vec2(dot(vOeW.xz, vec2(0.83, 0.56)) * 0.9, vOeW.y * 0.07)), 1.0, oeUp);
 float oeGl = clamp(${gloss}, 0.0, 1.0) * oeWet;
 diffuseColor.rgb *= mix(1.0, 1.0 - ${porous}, oeWet);
 roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.42), oeGl);
 ${pools ? `float oePd = uOeWet > 0.001 ? oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen : 0.0; // (dry: no noise to work out)
 diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
-roughnessFactor = mix(roughnessFactor, 0.06, oePd);` : 'const float oePd = 0.0;'}`)
+roughnessFactor = mix(roughnessFactor, 0.06, oePd);` : 'const float oePd = 0.0;'}
+float oeSn = oeSnowOn(vOeW, vOeN, oeOpen, clamp(${tread}, 0.0, 1.0));
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.84, 0.9) * (0.9 + 0.14 * oeN(vOeW.xz * 0.9 + 5.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
+roughnessFactor = mix(roughnessFactor, 0.82, oeSn);`)
+        .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= 1.0 - oeSn;')
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 ${pools ? `if (oePd > 0.0) { vec2 oeR = oeRipple(vOeW.xz, oeCamD);
   normal = normalize(mix(normal, (viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz, oePd * 0.9) + (viewMatrix * vec4(oeR.x, 0.0, oeR.y, 0.0)).xyz * oePd); }` : ''}`)
@@ -176,7 +224,7 @@ ${pools ? `if (oePd > 0.0) { vec2 oeR = oeRipple(vOeW.xz, oeCamD);
         // reflection of the open sky (the only one the environment map holds) is held well down
         .replace('#include <lights_fragment_maps>', `#include <lights_fragment_maps>
 #if defined( RE_IndirectSpecular )
-  radiance *= mix(1.0, 0.42, max(oeGl, oePd));
+  radiance *= mix(1.0, 0.42, max(oeGl, oePd)) * (1.0 - 0.6 * oeSn);
 #endif`);
     } else {
       sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -197,8 +245,11 @@ roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.1), smoothstep(0.0
     if (!mat || mat.userData.oeWeather) return;
     mat.userData.oeWeather = true;
     const own = mat.onBeforeCompile, ownKey = mat.customProgramCacheKey;
+    // (three.js's default key is the text of onBeforeCompile, which is this wrapper's from here on: the text of the
+    // material's own patch is kept in its place, so two materials with different patches never share a program)
+    const plain = ownKey === THREE.Material.prototype.customProgramCacheKey, ownText = plain && own ? own.toString() : '';
     mat.onBeforeCompile = function (sh, r) { if (own) own.call(this, sh, r); patch(sh, o); };
-    mat.customProgramCacheKey = function () { return `${ownKey ? ownKey.call(this) : ''}|oew|${key}`; };
+    mat.customProgramCacheKey = function () { return `${plain ? ownText : ownKey.call(this)}|oew|${key}`; };
     mat.needsUpdate = true;
   }
 
@@ -207,7 +258,7 @@ roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.1), smoothstep(0.0
 attribute vec4 aSeed;
 uniform vec3 uCam; uniform vec3 uVel; uniform vec3 uFwd; uniform vec3 uBox;
 uniform float uSpeed; uniform float uShutter; uniform float uWidth; uniform float uCount; uniform float uAlpha;
-uniform vec2 uWind; uniform vec2 uRes;
+uniform vec2 uWind; uniform vec2 uDrift; uniform vec2 uRes;
 varying vec2 vUv; varying float vA;
 ${GLSL}
 void main() {
@@ -217,7 +268,8 @@ void main() {
   float rnd = fract(aSeed.x * 91.7 + aSeed.z * 13.3 + aSeed.y * 5.1);
   vec3 B = uBox * 2.0, c = uCam + uFwd * vec3(uBox.x, 0.0, uBox.z) * 0.6;
   vec3 fall = vec3(uWind.x, -uSpeed * (0.85 + 0.3 * rnd), uWind.y);
-  vec3 p = aSeed.xyz * B + fall * uOeT;
+  // (carried by the wind's run so far, uDrift, not wind x time: a gust slants the drops without moving them all at once)
+  vec3 p = aSeed.xyz * B + vec3(uDrift.x, fall.y * uOeT, uDrift.y);
   p = c + mod(p - c + 0.5 * B, B) - 0.5 * B;
   vec3 e = abs(p - c) / uBox;
   float edge = max(e.x, max(e.y, e.z));
@@ -242,6 +294,42 @@ void main() {
   float a = vA * (1.0 - vUv.x * vUv.x) * smoothstep(0.0, 0.3, vUv.y) * (0.55 + 0.45 * smoothstep(1.0, 0.2, vUv.y));
   if (a < 0.002) discard;
   gl_FragColor = vec4(uCol * a, a * 0.55);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+  // a snowflake: a soft dot facing the camera, falling slowly, carried by the wind and fluttering; in the
+  // rain's shells (the same instances), kept out from under cover by the same occlusion map
+  const FLAKE_VS = `
+attribute vec4 aSeed;
+uniform vec3 uCam; uniform vec3 uFwd; uniform vec3 uBox;
+uniform float uCount; uniform float uSize; uniform float uAlpha; uniform vec2 uDrift; uniform vec2 uRes;
+varying vec2 vUv; varying float vA;
+${GLSL}
+void main() {
+  vUv = vec2(position.x, position.y * 2.0 - 1.0); vA = 0.0;
+  gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+  if (aSeed.w > uCount) return;
+  float rnd = fract(aSeed.x * 91.7 + aSeed.z * 13.3 + aSeed.y * 5.1), r2 = fract(rnd * 57.3);
+  vec3 B = uBox * 2.0, c = uCam + uFwd * vec3(uBox.x, 0.0, uBox.z) * 0.6;
+  vec3 p = aSeed.xyz * B + vec3(uDrift.x * (0.8 + 0.4 * r2), -(0.75 + 0.8 * rnd) * uOeT, uDrift.y * (0.8 + 0.4 * r2));
+  p.xz += vec2(sin(uOeT * (0.9 + r2) + rnd * 40.0), cos(uOeT * (0.7 + rnd) + r2 * 31.0)) * (0.1 + 0.12 * r2);
+  p = c + mod(p - c + 0.5 * B, B) - 0.5 * B;
+  vec3 e = abs(p - c) / uBox;
+  float edge = max(e.x, max(e.y, e.z));
+  if (oeCover(p, 0.05) > 0.5) return;
+  vec4 h = projectionMatrix * viewMatrix * vec4(p, 1.0);
+  if (h.w < 0.35) return;
+  float rpx = uSize * (0.6 + 0.9 * rnd) * projectionMatrix[1][1] * 0.5 * uRes.y / h.w, r = max(rpx, 1.1);
+  vA = uAlpha * min(1.0, rpx / r * 1.6) * smoothstep(1.0, 0.75, edge) * smoothstep(0.35, 1.2, h.w) * (0.7 + 0.3 * r2);
+  h.xy += vUv * r / (0.5 * uRes) * h.w;
+  gl_Position = h;
+}`;
+  const FLAKE_FS = `
+uniform vec3 uCol; varying vec2 vUv; varying float vA;
+void main() {
+  float a = vA * smoothstep(1.0, 0.25, length(vUv));
+  if (a < 0.004) discard;
+  gl_FragColor = vec4(uCol * a, a * 0.9);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
@@ -344,13 +432,19 @@ void main() {
     const dayN = Math.floor(Date.UTC(y, m - 1, d) / 864e5), salt = Math.round(cl.rain_days.reduce((p, q) => p + q, 0) * 10);
     const rd = Math.max(0.5, cl.rain_days[m - 1]), h = min / 60;
     // a snow day (the normals' days with snowfall, among the wet ones): what falls is snow, and the day is cold
-    if (cl.snow_days && ihash(dayN, salt + 7) < Math.min(1, cl.snow_days[m - 1] / rd) && a.wet) {
-      out.snow = Math.min(1, a.rain0 * 1.6 + 0.12 * a.wetDay); out.rain = 0; out.temp = Math.min(out.temp, 0.5 - 2.5 * ihash(dayN, salt + 8)); out.windK = 0.8;
+    // (the count is of days on which any snow was seen, flurries and sleet among them: half of them, at most
+    // seven wet days in ten, bring snow that falls as snow, and of those the colder ones settle)
+    if (cl.snow_days && ihash(dayN, salt + 7) < Math.min(0.7, (cl.snow_share ?? 0.5) * cl.snow_days[m - 1] / rd) && a.wet) {
+      out.snow = Math.min(1, a.rain0 * 1.6 + 0.12 * a.wetDay); out.rain = 0; out.temp = Math.min(out.temp, 2.6 - 4.5 * ihash(dayN, salt + 8)); out.windK = 0.8;
     } else if (!cl.snow_days && out.temp < 0.8 && out.rain > 0) { out.snow = out.rain; out.rain = 0; } // (no table: by the thermometer)
     // a thunderstorm day (days with thunder): the day's hardest showers are storms, mostly after noon
     if (cl.thunder_days && !out.snow && a.wet && ihash(dayN, salt + 9) < Math.min(1, cl.thunder_days[m - 1] / rd)) {
       out.storm = smooth(0.45, 0.8, a.rain0) * (0.6 + 0.4 * smooth(11, 15, h));
       out.rain = Math.min(1, out.rain + 0.5 * out.storm); out.windK = 1.2 + 1.4 * out.storm;
+    }
+    // a typhoon's day (typhoon_days: the days a month one passes near): rain without a break, a gale, thunder in it
+    if (cl.typhoon_days && a.wet && !out.snow && ihash(dayN, salt + 12) < Math.min(0.5, cl.typhoon_days[m - 1] / rd)) {
+      out.rain = Math.min(1, 0.7 + 0.3 * a.rain0); out.cloud = 1; out.storm = Math.max(out.storm, 0.5 * smooth(0.3, 0.7, a.rain0)); out.windK = 3.4 + 1.2 * a.rain0; out.typhoon = 1;
     }
     // a foggy morning (days with fog): thickest before sunrise, gone by mid morning; and on any calm,
     // clear dawn a little mist
@@ -387,7 +481,7 @@ void main() {
 
   // ------------------------------------------------------------ the game's weather
   // Wd: the world (world.js); atmos: atmosphere.js; climate: game.json weather; QC: OEQuality.city()
-  function create(Wd, renderer, camera, { climate = null, QC = null, sky = {}, wind: windCfg = null } = {}) {
+  function create(Wd, renderer, camera, { climate = null, QC = null, sky = {}, wind: windCfg = null, geo = null } = {}) {
     const world = Wd.world, su = Wd.su;
     const tier = (QC && QC.name) || 'high';
     const T = { high: { near: 6000, far: 9000, splash: 700, occ: 256 }, medium: { near: 4000, far: 5000, splash: 420, occ: 256 }, low: { near: 2200, far: 2200, splash: 200, occ: 128 } }[tier] || { near: 4000, far: 5000, splash: 420, occ: 256 };
@@ -407,6 +501,28 @@ void main() {
       if (Wd.waterMat) wrap(Wd.waterMat, { water: true }, 'waterMat');
       armSea();
       onArm.forEach(f => f());
+      dress();
+    }
+    // Everything else that stands in the weather: roofs and walls, the landmarks, the trees' crowns and
+    // trunks, the cars and the street furniture take the same patch without puddles, so snow settles on
+    // what faces the sky and walls darken in the rain. Called again as the world fills (dress(obj) for
+    // something just loaded, before it is first compiled; a walk of the world every few seconds for the rest).
+    // Left out: what the weather does not touch or what has its own (glass and anything see-through,
+    // lit screens, the sea, the people, whose normals are skinned).
+    let dressAt = -9;
+    function dress(root = world) {
+      if (!armed) return 0;
+      let n = 0;
+      if (Wd.groundMeshes) for (const g of Wd.groundMeshes) g.material.userData.oeWeather = true; // (the ground's own patch has it: game.js)
+      root.traverse(o => {
+        if (!o.isMesh || o.isSkinnedMesh || o.userData.oeNoOcc || o === Wd.sky || (Wd.sea && o === Wd.sea.mesh)) return;
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+          if (!m || !m.isMeshStandardMaterial || m.userData.oeWeather || m.userData.oeDry) continue;
+          if (m.transparent || m.depthWrite === false || m.side === THREE.BackSide || m.emissiveIntensity > 1.2 || m.transmission > 0) { m.userData.oeDry = true; continue; }
+          wrap(m, { porous: 0.26, gloss: '0.4' }, 'dress'); n++;
+        }
+      });
+      return n;
     }
     // the sea's own shader (water.js) works out its normal itself: its ripples go in there
     function armSea() {
@@ -450,7 +566,7 @@ void main() {
     // rain itself, two shells round the camera
     const QV = [-1, 0, 0, 1, 0, 0, -1, 1, 0, 1, 1, 0], QI = [0, 1, 2, 2, 1, 3];
     const shared = Object.assign({ uCam: { value: new THREE.Vector3() }, uVel: { value: new THREE.Vector3() }, uFwd: { value: new THREE.Vector3() },
-      uWind: { value: new THREE.Vector2(0.6, 0.3) }, uRes: { value: new THREE.Vector2(1, 1) }, uCol: { value: new THREE.Color(0.8, 0.85, 0.9) } }, U);
+      uWind: { value: new THREE.Vector2(0.6, 0.3) }, uDrift: { value: new THREE.Vector2(0, 0) }, uRes: { value: new THREE.Vector2(1, 1) }, uCol: { value: new THREE.Color(0.8, 0.85, 0.9) } }, U);
     const streaks = (n, box, width, alpha) => {
       const mat = new THREE.ShaderMaterial({
         uniforms: Object.assign({}, shared, { uBox: { value: new THREE.Vector3(box[0], box[1], box[0]) }, uSpeed: { value: 8 }, uShutter: { value: 0.025 },
@@ -462,6 +578,18 @@ void main() {
       return m;
     };
     const near = streaks(T.near, [9, 7], 0.0045, 0.6), far = streaks(T.far, [30, 18], 0.006, 0.4);
+    // the snow: the same instances as the rain's two shells, drawn as flakes (never both at once at full count)
+    const snowCol = { value: new THREE.Color(1, 1, 1) };
+    const flakes = (rain, box, size, alpha) => {
+      const mat = new THREE.ShaderMaterial({
+        uniforms: Object.assign({}, shared, { uCol: snowCol, uBox: { value: new THREE.Vector3(box[0], box[1], box[0]) }, uSize: { value: size }, uCount: { value: 0 }, uAlpha: { value: alpha } }),
+        vertexShader: FLAKE_VS, fragmentShader: FLAKE_FS, transparent: true, depthWrite: false, premultipliedAlpha: true, blending: THREE.NormalBlending, fog: false });
+      const m = new THREE.Mesh(rain.geometry, mat);
+      m.frustumCulled = false; m.renderOrder = 5; m.visible = false; m.userData.oeNoOcc = true;
+      world.add(m);
+      return m;
+    };
+    const fNear = flakes(near, [8, 6], 0.011, 0.95), fFar = flakes(far, [26, 16], 0.026, 0.8);
     const SV = [-1, -1, 0, 1, -1, 0, -1, 1, 0, 1, 1, 0, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 1], SI = [0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7];
     const splashMat = new THREE.ShaderMaterial({
       uniforms: Object.assign({}, shared, { uCount: { value: 0 }, uR: { value: 16 }, uAlpha: { value: 0.5 } }),
@@ -473,9 +601,10 @@ void main() {
     // state
     const params = new URLSearchParams(location.search);
     const asked = params.get('weather');
-    let mode = KINDS[asked] || asked === 'live' || asked === 'off' ? asked : navigator.webdriver ? 'clear' : 'live';
+    const known = v => !!(KINDS[v] || v === 'live' || v === 'off' || v === 'now');
+    let mode = known(asked) ? asked : navigator.webdriver ? 'clear' : 'live';
     let chosen = !!asked; // the visitor (or the page's address) chose the weather: the guard never turns it off then
-    try { if (!asked && !navigator.webdriver) { const v = localStorage.getItem('oe3d-weather'); if (v && (KINDS[v] || v === 'live' || v === 'off')) { mode = v; chosen = true; } } } catch (e) { /* storage blocked */ }
+    try { if (!asked && !navigator.webdriver) { const v = localStorage.getItem('oe3d-weather'); if (v && known(v)) { mode = v; chosen = true; } } } catch (e) { /* storage blocked */ }
     // Weather the device cannot carry is not started. Rain costs a second render of the scene for the
     // wet street's reflections (mirror.js, high tier), a pass from above for the occlusion map, and
     // thousands of streaks; a wet street costs its puddles' noise and reflections for minutes after
@@ -510,8 +639,19 @@ void main() {
       remember(l === 0 ? 'off' : l === 1 ? 'light' : null);
       if (note) { guardNote = note; if (api.onGuard) { api.onGuard(note); guardNote = null; } }
     }
+    // the live conditions (mode 'now'): asked for when the mode is picked and every 15 minutes while it stays
+    let nowWx = null, nowAt = -1e12, nowBusy = false;
+    function askNow() {
+      if (nowBusy || !geo || !Number.isFinite(geo.lat) || performance.now() - nowAt < NOW_TTL) return;
+      nowBusy = true; nowAt = performance.now();
+      fetchNow(geo.lat, geo.lon).then(w => { nowWx = w; nowBusy = false; if (api.onNow) api.onNow(w); });
+    }
     const cur = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 }, target = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 };
-    let custom = null, wetPin = null, depthPin = null, lastKind = 'clear', windRun = 0;
+    let custom = null, wetPin = null, depthPin = null, lastKind = 'clear', windRun = 0, runX = 0, runZ = 0;
+    // the light as the hour and the weather left it (light, air), which a lightning flash adds to and gives back
+    const lit = { hemi: 0, exp: 1, flash: 0, fog: new THREE.Color(), haze: new THREE.Color() };
+    // lightning: the flash in play (its strokes: [start s, peak 0..1]), the next one's time, the thunder still on its way
+    const bolt = { next: -1, strokes: null, t0: 0, dist: 0, thunder: [], count: 0, last: null };
     // the wind: the season's mean (the climate's monthly wind_ms, or the wind the city's waves were made
     // for, water.waves), from the prevailing bearing, wandering a little, with gusts on top
     const windBase = () => (climate && climate.wind_ms != null ? (clockAt ? monthly(climate.wind_ms, clockAt[1], clockAt[2]) : monthly(climate.wind_ms, 6, 15)) : windCfg && windCfg.wind_ms != null ? windCfg.wind_ms * 0.7 : 3.2);
@@ -520,8 +660,135 @@ void main() {
     const lastCam = new THREE.Vector3().copy(camera.position), vel = new THREE.Vector3();
     const baseClouds = su && su.cloudCoverage ? [su.cloudCoverage.value, su.cloudDensity.value] : null;
     const readBuf = new Float32Array(4), readHalf = new Uint16Array(4);
+    // ---- lightning (docs/WEATHER.md): a flash is two to five return strokes 40-80 ms apart, the first or
+    // second the brightest, over 0.2-0.6 s; one in three reaches the ground (a drawn bolt), the rest light
+    // the cloud from inside. It lights the sky's light, the air and the exposure for those frames (no light
+    // is added to the scene, no pass), and its thunder comes when sound has covered the distance (343 m/s).
+    const BOLT_N = 96;
+    const boltGeo = new THREE.BufferGeometry();
+    boltGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(BOLT_N * 4 * 3), 3));
+    boltGeo.setAttribute('aDir', new THREE.BufferAttribute(new Float32Array(BOLT_N * 4 * 3), 3));
+    boltGeo.setAttribute('aSide', new THREE.BufferAttribute(new Float32Array(BOLT_N * 4 * 2), 2));
+    { const ix = []; for (let i = 0; i < BOLT_N; i++) ix.push(4 * i, 4 * i + 1, 4 * i + 2, 4 * i + 2, 4 * i + 1, 4 * i + 3); boltGeo.setIndex(ix); }
+    const boltMat = new THREE.ShaderMaterial({
+      uniforms: { uFlash: U.uOeFlash, uRes: shared.uRes },
+      vertexShader: `attribute vec3 aDir; attribute vec2 aSide; uniform vec2 uRes; varying float vS; varying float vW;
+        void main() { vS = aSide.x; vW = aSide.y;
+          vec4 a = projectionMatrix * viewMatrix * vec4(position, 1.0), b = projectionMatrix * viewMatrix * vec4(position + aDir, 1.0);
+          vec2 d = normalize((b.xy / max(b.w, 1e-3) - a.xy / max(a.w, 1e-3)) * uRes + 1e-5);
+          a.xy += vec2(-d.y, d.x) * aSide.x * max(1.6, aSide.y * uRes.y * projectionMatrix[1][1] * 0.5 / max(a.w, 1.0)) / (0.5 * uRes) * a.w;
+          gl_Position = a; }`,
+      fragmentShader: `uniform float uFlash; varying float vS; varying float vW;
+        void main() { float c = 1.0 - abs(vS); gl_FragColor = vec4(vec3(0.82, 0.88, 1.0) * (c * c * 26.0 * uFlash * (0.35 + 0.65 * min(1.0, vW / 2.0))), 1.0); }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, toneMapped: false });
+    const boltMesh = new THREE.Mesh(boltGeo, boltMat);
+    boltMesh.frustumCulled = false; boltMesh.visible = false; boltMesh.renderOrder = 4; boltMesh.userData.oeNoOcc = true;
+    world.add(boltMesh);
+    // a bolt from the cloud base to the ground: a path displaced at its midpoints again and again, with a
+    // few branches that leave it going down and stop short (the oldest way to draw one; Reed and Wyvill 1994)
+    function forge(x, z, top, ground, rnd) {
+      const P = boltGeo.attributes.position.array, D = boltGeo.attributes.aDir.array, Sd = boltGeo.attributes.aSide.array;
+      let n = 0;
+      const seg = (a, b, w) => { if (n >= BOLT_N) return; const o = 12 * n, d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        for (let k = 0; k < 4; k++) { const e = k < 2 ? a : b; P[o + 3 * k] = e[0]; P[o + 3 * k + 1] = e[1]; P[o + 3 * k + 2] = e[2]; D[o + 3 * k] = d[0]; D[o + 3 * k + 1] = d[1]; D[o + 3 * k + 2] = d[2];
+          Sd[8 * n + 2 * k] = k % 2 ? 1 : -1; Sd[8 * n + 2 * k + 1] = w; } n++; };
+      const path = (a, b, depth, sway) => { let pts = [a, b];
+        for (let it = 0; it < depth; it++) { const q = [pts[0]]; for (let i = 1; i < pts.length; i++) { const u = pts[i - 1], v = pts[i], L = Math.hypot(v[0] - u[0], v[1] - u[1], v[2] - u[2]) * sway;
+          q.push([(u[0] + v[0]) / 2 + (rnd() - 0.5) * L, (u[1] + v[1]) / 2 + (rnd() - 0.5) * L * 0.3, (u[2] + v[2]) / 2 + (rnd() - 0.5) * L], v); } pts = q; }
+        return pts; };
+      const main = path([x + (rnd() - 0.5) * 400, top, z + (rnd() - 0.5) * 400], [x, ground, z], 5, 0.42);
+      for (let i = 1; i < main.length; i++) seg(main[i - 1], main[i], 2.4);
+      for (let b = 0; b < 4; b++) { const i = 4 + Math.floor(rnd() * (main.length - 10)), a = main[i], len = (0.15 + 0.3 * rnd()) * (a[1] - ground);
+        const br = path(a, [a[0] + (rnd() - 0.5) * len * 1.6, a[1] - len, a[2] + (rnd() - 0.5) * len * 1.6], 3, 0.4);
+        for (let k = 1; k < br.length; k++) seg(br[k - 1], br[k], 0.9); }
+      boltGeo.setDrawRange(0, n * 6);
+      boltGeo.attributes.position.needsUpdate = boltGeo.attributes.aDir.needsUpdate = boltGeo.attributes.aSide.needsUpdate = true;
+    }
+    let boltSeed = 7;
+    const brnd = () => ((boltSeed = (boltSeed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    // strike now (the checks and the films ask for one): dist m away on bearing a (radians), to the ground or not
+    function strike(tSec, { dist = 300 + 5200 * brnd() * brnd(), bearing = brnd() * 6.2832, ground = brnd() < 0.36 } = {}) {
+      const n = 2 + Math.floor(brnd() * 4), strokes = [];
+      let t = 0;
+      for (let i = 0; i < n; i++) { strokes.push([t, i === (brnd() < 0.6 ? 0 : 1) ? 1 : 0.35 + 0.5 * brnd()]); t += 0.04 + 0.05 * brnd() + (brnd() < 0.2 ? 0.12 : 0); }
+      strokes[Math.min(1, n - 1)][1] = Math.max(strokes[0][1], strokes[Math.min(1, n - 1)][1]) >= 1 ? strokes[Math.min(1, n - 1)][1] : 1;
+      const x = camera.position.x + Math.sin(bearing) * dist, z = camera.position.z - Math.cos(bearing) * dist;
+      Object.assign(bolt, { strokes, t0: tSec, dist, ground, count: bolt.count + 1, last: { dist, bearing, ground, strokes: n, at: tSec } });
+      boltMesh.visible = ground && level > 0 && !dropless;
+      if (boltMesh.visible) forge(x, z, (Wd.groundY ?? 0) + 1400 + 500 * brnd(), (Wd.groundY ?? 0), brnd);
+      if (dist < 16000) bolt.thunder.push({ at: performance.now() + dist / 343 * 1000, dist });
+      return bolt.last;
+    }
+    function storms(dt, tSec) {
+      const st = cur.storm;
+      if (st > 0.25 && !reduced) {
+        if (bolt.next < 0 || tSec < bolt.next - 60) bolt.next = tSec + 1.5 + 5 * brnd();
+        if (tSec >= bolt.next) { strike(tSec); bolt.next = tSec + (2.5 + 14 * brnd()) / (0.4 + st); }
+      } else bolt.next = -1;
+      let fl = 0;
+      if (bolt.strokes) {
+        const e = tSec - bolt.t0;
+        for (const [t0, pk] of bolt.strokes) if (e >= t0) fl = Math.max(fl, pk * Math.exp(-(e - t0) / 0.045));
+        if (e > bolt.strokes[bolt.strokes.length - 1][0] + 0.35 || e < 0) { bolt.strokes = null; boltMesh.visible = false; fl = 0; }
+        fl *= 1 / (1 + (bolt.dist / 2500) * (bolt.dist / 2500)); // a far flash is a flicker on the horizon
+        if (reduced) fl *= 0.25;
+      }
+      U.uOeFlash.value = S.flash = fl;
+      // the flash on the scene: the sky's light, the air and the lens, added to what light() and air() left
+      if (fl > 0 || lit.flash > 0) {
+        const night = 1 - (Wd.day ?? 1), k = fl * (0.5 + 1.1 * night);
+        if (Wd.hemi) Wd.hemi.intensity = lit.hemi * (1 + 2.2 * k) + 0.9 * k;
+        renderer.toneMappingExposure = lit.exp * (1 + 0.35 * k);
+        if (world.fog) world.fog.color.copy(lit.fog).lerp(new THREE.Color(0.62, 0.68, 0.85), Math.min(0.7, 0.55 * k));
+        if (su && su.uHaze) su.uHaze.value.copy(lit.haze).lerp(new THREE.Color(0.7, 0.76, 0.95), Math.min(0.8, 0.7 * k));
+        lit.flash = fl;
+      }
+      // thunder, when it arrives
+      const now = performance.now();
+      for (let i = bolt.thunder.length - 1; i >= 0; i--) if (now >= bolt.thunder[i].at) { const th = bolt.thunder.splice(i, 1)[0]; if (api.onThunder) api.onThunder(th.dist); }
+    }
+    // ---- the rainbow: when the sun comes out low (under 42 degrees) with rain still falling or just gone,
+    // a bow 42 degrees round the point opposite the sun, red outside, with the fainter second bow at 51 and
+    // Alexander's darker band between them. One thin ring of quads far out, added to the frame; nothing
+    // else is drawn for it.
+    const BOW_SEG = 72, bowGeo = new THREE.BufferGeometry();
+    { const v = [], ix = []; for (let i = 0; i <= BOW_SEG; i++) { const a = i / BOW_SEG * Math.PI * 2; v.push(Math.cos(a), Math.sin(a), 0, Math.cos(a), Math.sin(a), 1); if (i < BOW_SEG) ix.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 2, 2 * i + 1, 2 * i + 3); }
+      bowGeo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); bowGeo.setIndex(ix); }
+    const bowMat = new THREE.ShaderMaterial({
+      uniforms: { uK: { value: 0 }, uAxis: { value: new THREE.Vector3(0, 0, 1) }, uX: { value: new THREE.Vector3(1, 0, 0) }, uY: { value: new THREE.Vector3(0, 1, 0) }, uCam: shared.uCam },
+      vertexShader: `uniform vec3 uAxis, uX, uY, uCam; varying float vA; varying float vUp;
+        void main() { float ang = radians(mix(38.5, 54.5, position.z)); vA = mix(38.5, 54.5, position.z);
+          vec3 d = normalize(uAxis * cos(ang) + (uX * position.x + uY * position.y) * sin(ang)); vUp = d.y;
+          gl_Position = projectionMatrix * viewMatrix * vec4(uCam + d * 9000.0, 1.0); gl_Position.z = gl_Position.w * 0.99999; }`,
+      fragmentShader: `uniform float uK; varying float vA; varying float vUp;
+        vec3 hue(float t) { return clamp(vec3(abs(t * 6.0 - 3.0) - 1.0, 2.0 - abs(t * 6.0 - 2.0), 2.0 - abs(t * 6.0 - 4.0)), 0.0, 1.0); }
+        void main() {
+          float p = smoothstep(40.2, 40.7, vA) * smoothstep(42.6, 42.1, vA), s2 = smoothstep(50.2, 51.0, vA) * smoothstep(53.6, 52.8, vA);
+          vec3 c = hue(0.78 * (1.0 - clamp((vA - 40.4) / 2.0, 0.0, 1.0))) * p + hue(0.78 * clamp((vA - 50.4) / 3.0, 0.0, 1.0)) * s2 * 0.3;
+          c += vec3(0.05) * smoothstep(40.6, 38.6, vA); // the sky inside the bow is a little brighter
+          gl_FragColor = vec4(c * uK * smoothstep(-0.01, 0.07, vUp), 1.0); }`,
+      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, fog: false, toneMapped: false, side: THREE.DoubleSide });
+    const bow = new THREE.Mesh(bowGeo, bowMat);
+    bow.frustumCulled = false; bow.visible = false; bow.renderOrder = 3; bow.userData.oeNoOcc = true;
+    world.add(bow);
+    let bowK = 0, rainAgo = 1e9;
+    function rainbow(dt) {
+      rainAgo = cur.rain > 0.08 ? 0 : rainAgo + dt;
+      const sd = Wd.sunDir, alt = sd ? Math.asin(Math.max(-1, Math.min(1, sd.y))) * 180 / Math.PI : -9;
+      // rain in the air (now or within the last minutes), the sun out and low
+      const want = api.bowPin != null ? api.bowPin : smooth(1, 6, alt) * (1 - smooth(34, 42, alt)) * (1 - smooth(0.45, 0.8, cur.cloud)) * (1 - smooth(60, 240, rainAgo)) * (Wd.day ?? 1);
+      bowK += (want - bowK) * Math.min(1, dt * 0.25);
+      bow.visible = bowK > 0.01 && level > 0 && !!sd;
+      S.rainbow = bow.visible ? bowK : 0;
+      if (!bow.visible) return;
+      const ax = bowMat.uniforms.uAxis.value.copy(sd).negate().normalize(), x = bowMat.uniforms.uX.value.set(0, 1, 0).cross(ax);
+      if (x.lengthSq() < 1e-6) x.set(1, 0, 0);
+      x.normalize(); bowMat.uniforms.uY.value.copy(ax).cross(x).normalize();
+      bowMat.uniforms.uK.value = bowK * 0.16 * (0.4 + 0.6 * (Wd.day ?? 1));
+      shared.uCam.value.copy(camera.position);
+    }
     const api = {
-      U, kinds: Object.keys(KINDS), names: NAMES, meshes: { near, far, splash }, occ: occRT,
+      U, kinds: Object.keys(KINDS), names: NAMES, meshes: { near, far, splash, fNear, fFar }, occ: occRT, dress,
       get mode() { return mode; },
       get kind() { return kindOf(cur); },
       // how much a slow device has shed (0 nothing, 1 light, 2 off or, for a chosen weather, no drops):
@@ -540,6 +807,10 @@ void main() {
       onArm(f) { onArm.push(f); },
       // what was shed, to say once the game can show it
       onGuard: null,
+      // lightning: strike(t, {dist, bearing, ground}) makes one now; onThunder(dist m) is called as its thunder arrives
+      strike, onThunder: null, bolt, bowPin: null,
+      // live weather: called with what came back (null: nothing did, the season carries on)
+      onNow: null, get now() { return nowWx; },
       takeNote() { const n = guardNote; guardNote = null; return n; },
       guardState: () => ({ level, mode, chosen, dropless, tier }),
       // for the checks: the device rules on or off, and forget what was remembered and shed
@@ -560,8 +831,9 @@ void main() {
           if (now || m.now) snap = true;
           return;
         }
-        if (!(KINDS[m] || m === 'live' || m === 'off')) return;
+        if (!known(m)) return;
         mode = m; wetPin = null; depthPin = null;
+        if (m === 'now') { nowAt = -1e12; askNow(); }
         if (now || m === 'off') snap = true;
         if (m !== 'off') { arm(); if (level === 0) level = 1; } // asked for: back on, light until the device shows it can carry more
         if (keep) {
@@ -580,7 +852,7 @@ void main() {
       light() {
         const o = cur.cloud, r = cur.rain, day = Wd.day ?? 1;
         U.uOeOvercast.value = o;
-        if (!(o > 0.001)) return;
+        if (!(o > 0.001)) { api.air(); return; }
         if (Wd.sunLight) Wd.sunLight.intensity *= 1 - 0.82 * o;
         if (Wd.hemi) {
           Wd.hemi.intensity *= 1 + (0.9 - 0.3 * r) * o * day;
@@ -596,14 +868,53 @@ void main() {
         }
         if (su && su.uHaze && su.uHazeOn && su.uHazeOn.value > 0.5) su.uHaze.value.lerp(fog.color, 0.6 * o);
         renderer.toneMappingExposure *= 1 + 0.38 * o * day;
+        api.air();
+      },
+      // fog, mist, falling snow and summer haze, through the scene's own fog and the sky's haze band (no pass
+      // of its own): the view shortens to the state's visibility, the air takes a pale tone (the hour's own
+      // colour half kept, so a dawn mist is warm and a night fog holds the city's glow), and the sky goes
+      // into it from the horizon up. From above the layer (a helicopter, a tower) one sees further.
+      // Called after light() and on its own when only the air has changed.
+      air() {
+        const f = cur.fog, sn = cur.snow, day = Wd.day ?? 1, fog = world.fog;
+        const heat = smooth(27, 34, cur.temp) * day * (1 - cur.cloud);
+        const thick = Math.max(f, sn * 0.6, heat * 0.3);
+        if (fog && thick > 0.002) {
+          const mist = fog.color.clone().lerp(new THREE.Color(0.8, 0.83, 0.86).multiplyScalar(0.12 + 0.88 * day), 0.55);
+          if (heat > 0) mist.lerp(new THREE.Color(0.86, 0.84, 0.78), 0.3 * heat);
+          fog.color.lerp(mist, Math.min(1, thick * 1.2));
+          const above = 1 + Math.max(0, camera.position.y - (Wd.groundY ?? 0) - 40) / 90 * Math.max(f, sn * 0.5);
+          const vis = S.visibility * above * (1 - 0.45 * heat);
+          fog.far = Math.min(fog.far, vis * 1.7);
+          fog.near = Math.min(fog.near, fog.far * 0.02 + fog.near * Math.max(0, 1 - 1.6 * thick));
+          if (Wd.sunLight) Wd.sunLight.intensity *= 1 - 0.65 * f - 0.25 * sn;
+          if (Wd.hemi) Wd.hemi.intensity *= 1 + 0.35 * f * day;
+          if (su && su.uHaze && su.uHazeOn) {
+            if (su.uHazeOn.value < 0.5) su.uHaze.value.copy(fog.color); else su.uHaze.value.lerp(fog.color, Math.min(1, thick * 1.3));
+            su.uHazeOn.value = Math.max(su.uHazeOn.value, Math.min(1, thick * 1.6));
+            su.uHazeH.value += (1.6 - su.uHazeH.value) * Math.min(1, thick * thick * 1.4);
+          }
+        }
+        // settled snow lifts the light from below (its albedo), a little
+        if (Wd.hemi && S.snowDepth > 0.05) Wd.hemi.intensity *= 1 + 0.18 * Math.min(1, S.snowDepth * 2) * day;
+        lit.hemi = Wd.hemi ? Wd.hemi.intensity : 0; lit.exp = renderer.toneMappingExposure; lit.flash = 0;
+        if (fog) lit.fog.copy(fog.color);
+        if (su && su.uHaze) lit.haze.copy(su.uHaze.value);
       },
       update(dt, tSec, focus) {
         // what the weather should be now
-        const want = mode === 'live' ? (clockAt ? season(climate, ...clockAt) : { rain: 0, cloud: 0.2 }) : mode === 'custom' ? custom : KINDS[mode] || KINDS.clear; // (off: a clear sky, dry streets)
+        if (mode === 'now') askNow();
+        const live = mode === 'now' && nowWx;
+        let want = live ? nowWx : mode === 'live' || mode === 'now' ? (clockAt ? season(climate, ...clockAt) : { rain: 0, cloud: 0.2 }) : mode === 'custom' ? custom : KINDS[mode] || KINDS.clear; // (off: a clear sky, dry streets)
         // the temperature: the season's for the hour, held under what a pinned weather needs (snow: below freezing)
         const tSeason = clockAt ? tempAt(climate, ...clockAt, want.cloud) : 15;
+        // showers and storms come in cells some hundreds of metres across that ride the wind over the map:
+        // the rain is heavier under one and lighter between them (a steady rain or a drizzle hardly varies)
+        const cell = vnoise2((camera.position.x - runX * 6) / 520, (camera.position.z - runZ * 6) / 520), cellK = (want.storm || 0) > 0.1 || mode === 'live' || mode === 'now' ? 0.5 * Math.max(want.storm || 0, 0.5) : 0;
+        want = cellK > 0 && want.rain > 0.3 ? Object.assign({}, want, { rain: Math.min(1, want.rain * (1 - cellK + 2 * cellK * smooth(0.25, 0.75, cell))) }) : want;
+        S.cell = cell;
         target.rain = want.rain; target.cloud = want.cloud; target.snow = want.snow || 0; target.fog = want.fog || 0; target.storm = want.storm || 0;
-        target.windK = want.windK ?? 1; target.temp = want.temp ?? (want.tempMax != null ? Math.min(tSeason, want.tempMax) : mode === 'live' || !(want.rain > 0.06) ? tSeason : Math.max(tSeason, 2));
+        target.windK = want.windK ?? 1; target.temp = want.temp ?? (want.tempMax != null ? Math.min(tSeason, want.tempMax) : mode === 'live' || mode === 'now' || !(want.rain > 0.06) ? tSeason : Math.max(tSeason, 2));
         if (snap) {
           Object.assign(cur, target);
           U.uOeWet.value = target.rain > 0.05 ? Math.min(1, 0.5 + target.rain) : 0;
@@ -621,10 +932,10 @@ void main() {
         cur.temp = ease(cur.temp, target.temp, 0.2);
         const day = Wd.day ?? 1, sunOut = day * (1 - cur.cloud);
         // the wind: a steady part, slow lulls and gusts (three octaves of noise over the seconds), a bearing that wanders
-        const wMean = mode === 'custom' && custom.wind != null ? custom.wind : windBase() * cur.windK * (0.75 + 0.5 * vnoise(tSec / 240 + 3.3));
+        const wMean = live ? nowWx.wind : mode === 'custom' && custom.wind != null ? custom.wind : windBase() * cur.windK * (0.75 + 0.5 * vnoise(tSec / 240 + 3.3));
         const { gn, gust } = gustAt(tSec);
         const wSpeed = wMean * (0.72 + 0.5 * gn + 0.75 * gust * Math.min(1, 0.35 + wMean / 12));
-        const from = (mode === 'custom' && custom.windFrom != null ? custom.windFrom : windFrom0 + 50 * (vnoise(tSec / 300 + 1.7) - 0.5) + 14 * (vnoise(tSec / 23 + 5.1) - 0.5) + 360) % 360;
+        const from = (live ? nowWx.windFrom + 14 * (vnoise(tSec / 23 + 5.1) - 0.5) + 360 : mode === 'custom' && custom.windFrom != null ? custom.windFrom : windFrom0 + 50 * (vnoise(tSec / 300 + 1.7) - 0.5) + 14 * (vnoise(tSec / 23 + 5.1) - 0.5) + 360) % 360;
         const wb = (from + 180) * Math.PI / 180, wx = Math.sin(wb) * wSpeed, wz = -Math.cos(wb) * wSpeed;
         if (dt > 0) windRun += wSpeed * Math.min(dt, 0.1) * (reduced ? 0.3 : 1);
         U.uOeWind.value.set(wx, wz, gust, windRun);
@@ -649,8 +960,11 @@ void main() {
         S.temp = cur.temp; S.wet = U.uOeWet.value; S.day = day; S.t = tSec; S.flash = U.uOeFlash.value;
         S.visibility = 1 / (1 / 40000 + cur.cloud * cur.cloud / 60000 + cur.fog * cur.fog / 140 + cur.rain * cur.rain / 3500 + cur.storm * cur.rain / 2500 + cur.snow * cur.snow / 700);
         S.grip = Math.max(0.35, 1 - 0.3 * Math.min(1, S.wet * 1.5) - 0.45 * smooth(0.05, 0.4, S.snowDepth) - (cur.temp < 0 && S.wet > 0.2 ? 0.15 : 0));
-        S.source = mode === 'live' ? 'season' : mode === 'off' ? 'off' : 'pinned';
+        S.source = live ? 'live' : mode === 'live' || mode === 'now' ? 'season' : mode === 'off' ? 'off' : 'pinned';
         if (kind !== lastKind) { lastKind = kind; for (const f of listeners.slice()) try { f(kind, S); } catch (e) { console.warn(e); } }
+        if (dt > 0) { runX += wx * Math.min(dt, 0.1); runZ += wz * Math.min(dt, 0.1); }
+        storms(dt, tSec);
+        rainbow(dt);
         if (su && su.cloudCoverage && baseClouds) {
           const ct = su.cloudTrim || 0; // (more cloud for a shot: the overture's sunset sky, overture.js)
           su.cloudCoverage.value = Math.min(0.97, baseClouds[0] + ct + (0.97 - baseClouds[0] - ct) * smooth(0, 1, cur.cloud));
@@ -660,9 +974,13 @@ void main() {
         if (dt > 0) { const v = camera.position.clone().sub(lastCam).divideScalar(dt); if (v.length() > 80) v.set(0, 0, 0); vel.lerp(v, Math.min(1, dt * 8)); }
         lastCam.copy(camera.position);
         // light (shed 1): no far streaks or splashes; a chosen weather shed further: no drops at all
-        const raining = cur.rain > 0.01, light = level < 2;
+        const raining = cur.rain > 0.01, snowing = cur.snow > 0.01, light = level < 2, falling = raining || snowing;
         near.visible = raining && !dropless; far.visible = splash.visible = raining && !light;
-        if (!raining) { occOn.value = 0; return; }
+        fNear.visible = snowing && !dropless; fFar.visible = snowing && !light;
+        if (tSec - dressAt > 3 || tSec < dressAt) { dressAt = tSec; dress(); }
+        // (while the ground is wet or snow lies, the map of what is under cover is kept, redrawn only as the camera moves)
+        if (!falling && !(S.snowDepth > 0.004) && !(U.uOeWet.value > 0.004)) { occOn.value = 0; return; }
+        if (dt > 0) shared.uDrift.value.set(shared.uDrift.value.x + wx * 0.55 * Math.min(dt, 0.1), shared.uDrift.value.y + wz * 0.55 * Math.min(dt, 0.1));
         const fwd = camera.getWorldDirection(new THREE.Vector3());
         const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
         shared.uCam.value.copy(camera.position); shared.uVel.value.copy(vel); shared.uFwd.value.copy(fwd); shared.uRes.value.copy(sz);
@@ -677,12 +995,14 @@ void main() {
           u.uShutter.value = 0.03;
         }
         splashMat.uniforms.uCount.value = Math.min(1, cur.rain * 1.1) * (0.25 + 0.75 * heavy);
-        shared.uWind.value.set(0.5 + 0.9 * heavy, 0.25 + 0.4 * heavy);
+        for (const m of [fNear, fFar]) m.material.uniforms.uCount.value = Math.min(1, cur.snow * 1.2);
+        shared.uWind.value.set(wx * 0.55, wz * 0.55); // the drops ride the wind near the ground (about half the 10 m wind)
         // the light on the drops: the haze's colour, brighter by day, warm from the city at night
         const fc = world.fog ? world.fog.color : new THREE.Color(0.7, 0.75, 0.8);
         shared.uCol.value.copy(fc).multiplyScalar(1.0 + 0.9 * day).add(new THREE.Color(0.16, 0.13, 0.09).multiplyScalar(1 - day));
+        snowCol.value.copy(fc).multiplyScalar(1.5 + 1.1 * day).add(new THREE.Color(0.3, 0.26, 0.2).multiplyScalar(1 - day)); // flakes: lighter than the air behind them
         // the occlusion map, when the camera has moved or a little time has passed
-        if (occRT && (tSec - occT > (light ? 2 : 0.5) || camera.position.distanceTo(occAt) > (light ? 8 : 4))) {
+        if (occRT && ((falling && tSec - occT > (light ? 2 : 0.5)) || occOn.value < 0.5 || tSec < occT || camera.position.distanceTo(occAt) > (light || !falling ? 8 : 4))) {
           occT = tSec; occAt.copy(camera.position);
           renderOcc(tSec);
         }
@@ -694,12 +1014,12 @@ void main() {
       // compiled again for the screen, a variant nothing drew with, in one task (issue 259)
       warm(compile) {
         if (api.shed >= 2) return;
-        const was = [near.visible, far.visible, splash.visible];
-        near.visible = far.visible = splash.visible = true;
+        const all = [near, far, splash, fNear, fFar, boltMesh, bow], was = all.map(m => m.visible);
+        all.forEach(m => { m.visible = true; });
         try {
-          if (compile) for (const m of [near, far, splash]) compile(m);
+          if (compile) for (const m of all) compile(m);
           else renderer.compile(world, camera);
-        } finally { [near.visible, far.visible, splash.visible] = was; }
+        } finally { all.forEach((m, i) => { m.visible = was[i]; }); }
         // the occlusion map's programs compiled off the frame, then one map drawn (its target and depth buffer
         // made) without a read back: nothing is read from it until the rain comes (issue 299)
         if (!occRT) return;
@@ -711,7 +1031,7 @@ void main() {
       },
       // is a point under cover (a roof within a few metres overhead)? from the last occlusion map
       covered: () => cover.roof,
-      dispose() { if (occRT) occRT.dispose(); for (const m of [near, far, splash]) { world.remove(m); m.geometry.dispose(); m.material.dispose(); } },
+      dispose() { if (occRT) occRT.dispose(); for (const m of [near, far, splash, fNear, fFar, boltMesh, bow]) { world.remove(m); if (m !== fNear && m !== fFar) m.geometry.dispose(); m.material.dispose(); } },
     };
     // what the camera should not see from above: the sky, the stars and the moon, sprites and
     // labels, the rain itself, and whatever draws its own pass (a mirror)
@@ -793,5 +1113,5 @@ void main() {
     return api;
   }
 
-  return { create, patch, wrap, season, tempAt, wetChance, U, S, onChange, describe, gustAt, GLSL, KINDS, NAMES };
+  return { create, patch, wrap, season, tempAt, wetChance, U, S, onChange, describe, gustAt, fromNow, nowUrl, GLSL, KINDS, NAMES };
 })();

@@ -445,6 +445,34 @@ const npcNight = require('./npc_night');
     W.set({ rain: 0, cloud: 0 }); for (let i = 0; i < 12; i++) tick(30);
     out.dried = S.wet;
     stop();
+    const frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    // snow: flakes drawn; a thunderstorm: a flash that lights the frame for a moment, a bolt, then dark again
+    W.set('snow', { now: true }); tick(0.1);
+    out.flakes = W.meshes.fNear.visible && W.meshes.fNear.material.uniforms.uCount.value > 0.5 && !W.meshes.near.visible;
+    W.set('storm', { now: true }); tick(0.1);
+    const t1 = g.t(), hit = W.strike(t1, { dist: 700, bearing: 0.5, ground: true });
+    W.update(0.016, t1 + 0.012);
+    out.flash = { on: S.flash, bolt: W.meshes && g.Wd.world.children.some(o => o.visible && o.material && o.material.uniforms && o.material.uniforms.uFlash), strokes: hit.strokes };
+    W.update(0.5, t1 + 3);
+    out.flash.off = S.flash;
+    // fog through the scene's own fog: the far distance comes in to a few hundred metres, and goes back out
+    W.set('fog', { now: true }); await frames(24);
+    out.fogFar = g.Wd.world.fog ? g.Wd.world.fog.far : 0;
+    W.set('clear', { now: true }); await frames(24);
+    out.clearFar = g.Wd.world.fog ? g.Wd.world.fog.far : 0;
+    // live weather: one request, to Open-Meteo, with the city's coordinates to 0.01 degree and nothing else;
+    // what comes back is the weather; when nothing does, the season's carries on
+    const realFetch = window.fetch, asked = [];
+    try { localStorage.removeItem('oe3d-weather-now'); } catch (e) { /* storage blocked */ }
+    window.fetch = (u, o) => { asked.push([String(u), o || {}]); return Promise.resolve({ ok: true, json: () => Promise.resolve({ current: { weather_code: 73, temperature_2m: -2, precipitation: 0.3, snowfall: 0.2, cloud_cover: 100, wind_speed_10m: 4, wind_direction_10m: 300, visibility: 900 } }) }); };
+    W.set('now', { now: true }); await new Promise(r => setTimeout(r, 60)); tick(1); tick(1);
+    out.live = { kind: S.kind, source: S.source, temp: S.temp, n: asked.length, url: asked[0] && asked[0][0], cred: asked[0] && asked[0][1].credentials, ref: asked[0] && asked[0][1].referrerPolicy };
+    try { localStorage.removeItem('oe3d-weather-now'); } catch (e) { /* storage blocked */ }
+    window.fetch = () => Promise.reject(new Error('offline'));
+    W.set('clear', { now: true }); W.set('now', { now: true }); await new Promise(r => setTimeout(r, 60)); tick(1);
+    out.liveDown = { source: S.source, kind: S.kind };
+    window.fetch = realFetch;
+    try { localStorage.removeItem('oe3d-weather-now'); } catch (e) { /* storage blocked */ }
     W.set('clear', { now: true }); tick(1);
     W.set('live');
     return out;
@@ -459,6 +487,14 @@ const npcNight = require('./npc_night');
       `snow falls below freezing, settles and melts (${wxState.snow.temp.toFixed(1)}°, depth ${wxState.settled.toFixed(2)} then ${wxState.melted.toFixed(2)}, grip on snow ${wxState.gripSnow.toFixed(2)})`);
     check(wxState.gusts[1] - wxState.gusts[0] > 0.3, `the wind gusts (${wxState.gusts[0].toFixed(2)} to ${wxState.gusts[1].toFixed(2)} of its swing over a minute)`);
     check(wxState.wetRain > 0.5 && wxState.dried < 0.05, `the ground dries after rain (wet ${wxState.wetRain.toFixed(2)} then ${wxState.dried.toFixed(2)})`);
+    check(wxState.flakes, 'snow falls as flakes, not streaks');
+    check(wxState.flash.on > 0.3 && wxState.flash.bolt && wxState.flash.off === 0, `lightning flashes and is gone (flash ${wxState.flash.on.toFixed(2)} then ${wxState.flash.off}, ${wxState.flash.strokes} strokes, bolt drawn ${wxState.flash.bolt})`);
+    check(wxState.fogFar > 0 && wxState.fogFar < 700 && wxState.clearFar > 3 * wxState.fogFar, `fog closes the view in and clears (the far distance ${wxState.fogFar.toFixed(0)} m in fog, ${wxState.clearFar.toFixed(0)} m clear)`);
+    const u = wxState.live.url ? new URL(wxState.live.url) : null, q = u ? [...u.searchParams.keys()].sort().join() : '';
+    check(wxState.live.n === 1 && u && u.host === 'api.open-meteo.com' && q === 'current,latitude,longitude,wind_speed_unit' && /^-?\d+\.\d\d$/.test(u.searchParams.get('latitude')) && /^-?\d+\.\d\d$/.test(u.searchParams.get('longitude')) && wxState.live.cred === 'omit' && wxState.live.ref === 'no-referrer',
+      `live weather asks once, for the city's coordinates only (${wxState.live.n} request, ${u ? u.host : 'none'}, ${q})`);
+    check(wxState.live.kind === 'snow' && wxState.live.source === 'live' && wxState.live.temp < 0, `and what comes back is the weather (${wxState.live.kind}, ${wxState.live.temp.toFixed(1)}°, from ${wxState.live.source})`);
+    check(wxState.liveDown.source === 'season', `with no answer the season's weather carries on (${wxState.liveDown.kind}, from ${wxState.liveDown.source})`);
     check(wxState.heard.includes('snow') && wxState.heard.includes('storm'), `a listener hears the weather change (${wxState.heard.length} changes)`);
   }
 

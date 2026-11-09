@@ -125,13 +125,14 @@ window.OpenEarthGame = async function game(cityId) {
   if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
   // shaders compiled before their first frame, in the variant the post stack draws with (world.js compile):
   // the scene behind the loader, and what comes once the game is open (the helicopter's model)
-  const compileFor = (obj, scene = world) => OEWorld.compile(renderer, obj, camera, { scene, target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null });
+  const compileFor = (obj, scene = world) => { if (weather && obj && obj.traverse) weather.dress(obj); return compileFor0(obj, scene); }; // (what has just loaded takes the weather's patch before its first compile)
+  const compileFor0 = (obj, scene = world) => OEWorld.compile(renderer, obj, camera, { scene, target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null });
   // a model that comes once the game is open: its textures sent in idle time, a texture a frame, then its
   // shaders compiled, before it is shown (issue 201; world.js upload)
   const uploadFor = obj => (OEWorld.upload ? OEWorld.upload(renderer, obj) : Promise.resolve());
   const warmFor = obj => uploadFor(obj).then(() => compileFor(obj));
   // the weather: dry, overcast, drizzle or rain, as the city's climate brings it for the date (weather.js)
-  const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {}, wind: (scene.water || {}).waves || null }) : null;
+  const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {}, wind: (scene.water || {}).waves || null, geo: scene.city && Number.isFinite(scene.city.lat) ? { lat: scene.city.lat, lon: scene.city.lon } : null }) : null;
   if (atmos && atmos.composer) {
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
     const clear = Wd.world.userData.clarity || 1; // a city's clear air (far.json clarity, world.js)
@@ -254,7 +255,7 @@ diffuseColor.rgb *= mix(1.0, 0.86 + 0.26 * agg, roadway * near);
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
 diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * pnear));`);
     // in the rain: darker, glossier ground, and puddles on the roads and the paving (weather.js)
-    if (window.OEWeather && (!weather || weather.armed)) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', porous: 0.42 });
+    if (window.OEWeather && (!weather || weather.armed)) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', tread: '1.0 - green', porous: 0.42 });
     Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
   };
   // the ground's program with the wet look and without it are two programs; the weather compiles
@@ -4179,6 +4180,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     weather.set(b.dataset.w, { keep: true });
     menuSync();
     const s = weather.season(clock.y, clock.m, clock.d, clock.min);
+    if (b.dataset.w === 'now') {
+      weather.onNow = w => H.toast(w ? `Live weather: ${OEWeather.describe(Object.assign({}, OEWeather.S, { kind: w.storm ? 'storm' : w.snow > 0.06 ? 'snow' : w.rain > 0.5 ? 'rain' : w.rain > 0.06 ? 'drizzle' : w.fog > 0.3 ? 'fog' : w.cloud > 0.6 ? 'overcast' : 'clear', cover: w.cloud, rain: w.rain, snow: w.snow, fog: w.fog, temp: w.temp, windSpeed: w.wind }))}. <a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a>` : 'Live weather could not be reached: the season\'s weather carries on.');
+      H.toast('Live weather: asking Open-Meteo for this city\'s conditions (only the city\'s coordinates are sent).');
+      return;
+    }
     H.toast(b.dataset.w === 'live' ? `Weather as the season brings it: ${s.rain > 0.5 ? 'rain' : s.rain > 0.06 ? 'drizzle' : s.cloud > 0.6 ? 'overcast' : 'fair'} now` : `Weather: ${OEWeather.NAMES[b.dataset.w]}`);
   });
   setRouteMode(routeMode);
@@ -4505,8 +4511,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       sunState = sun.altitude <= 0 ? 'night' : S.sunlit(DSM, px, py, pz, sun) ? 'sun' : 'shade';
       $('#g-sun').dataset.s = sunState;
       const wx = weather ? weather.state : null;
-      if (wx && wx.rain > 0.06) { sunState = 'rain'; $('#g-sun').dataset.s = 'rain'; }
-      $('#g-sun span').textContent = sunState === 'rain' ? `${wx.kind === 'rain' ? 'Rain' : 'Drizzle'} · ${wx.covered ? 'under cover' : 'in the open'}`
+      if (wx && (wx.rain > 0.06 || wx.snow > 0.06)) { sunState = 'rain'; $('#g-sun').dataset.s = 'rain'; }
+      else if (wx && wx.kind === 'fog') { sunState = 'fog'; $('#g-sun').dataset.s = 'shade'; }
+      $('#g-sun span').textContent = sunState === 'rain' ? `${wx.kind === 'storm' ? 'Thunderstorm' : wx.kind === 'snow' ? 'Snow' : wx.kind === 'rain' ? 'Rain' : 'Drizzle'} · ${wx.covered ? 'under cover' : 'in the open'}`
+        : sunState === 'fog' ? `Fog · ${Math.round(wx.temp)}°`
         : sunState === 'night' ? 'Sun down' : sunState === 'sun' ? `In sun · ${sun.altitude.toFixed(0)}°` : `In shade · sun ${sun.altitude.toFixed(0)}°`;
       if (!paused) checkSteps();
     }
@@ -4616,8 +4624,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const fx = player.mode === 'heli' ? heli.st.x : player.mode === 'ferry' ? player.vehicle.x : player.x, fy = player.mode === 'heli' ? heli.st.y : player.mode === 'ferry' ? player.vehicle.y : player.y;
     const fz = player.mode === 'heli' ? heli.st.z + 1 : player.mode === 'ferry' ? 3 : player.z + 1.7;
     weather.update(dt, clockT, W(fx, fy, fz));
-    if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(weather.state.rain);
-    if (A.rain) A.rain(titleOn ? 0 : weather.state.rain, weather.covered() && player.mode === 'foot', player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli');
+    const wS = OEWeather.S, inside = player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli';
+    if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(Math.max(wS.rain, wS.snow * 0.7)); // (umbrellas go up in the snow too)
+    if (A.rain) A.rain(titleOn ? 0 : wS.rain, weather.covered() && player.mode === 'foot', inside);
+    // the cicadas of a hot day: from 25 degrees up, by daylight, silent in the rain
+    if (A.cicadas) A.cicadas(titleOn ? 0 : Math.max(0, Math.min(1, (wS.temp - 24.5) / 4)) * wS.day * (1 - Math.min(1, wS.rate * 4)) * (inside ? 0.2 : 1));
+    if (!weather.onThunder) weather.onThunder = d => { if (A.thunder && $('#g-title').hidden) A.thunder(d, player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli'); };
+    // the wind's own sound, from a fresh breeze up, louder in the gusts (the helicopter's rush of air is its own: simulate)
+    if (A.wind && player.mode !== 'heli') A.wind(titleOn ? 0 : Math.max(0, Math.min(1, (wS.windSpeed - 4.5) / 14)) * (inside ? 0.35 : 1), wS.gust);
   }
   function simulate(dt) {
     const fwd = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;
