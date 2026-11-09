@@ -1898,6 +1898,23 @@ const npcNight = require('./npc_night');
     return out;
   });
   for (const h of hops) check(h.ok && h.mode === 'foot' && h.walk && h.d < 80, `travels to ${h.name} (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.walk ? 'on' : 'off'} walkable ground)`);
+  // a place at its best in a season (travel[].best: the jacarandas over Circular Quay): arriving out of it, the
+  // date moves into it and its trees flower; a place with its own level ([x, y, z], a roof) lands you up there
+  const seasons = await p.evaluate(() => {
+    const g = window.__game, out = [], c = g.clock, was = [c.y, c.m, c.d, c.min], best = (g.G.travel || []).filter(t => t.best);
+    if (!best.length) return out; // (the clock untouched: the steps after it see the same run)
+    for (const t of best) {
+      g.setClock(c.y, 7, 1, 13 * 60);
+      const ok = g.travelTo({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best });
+      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+      g.advance(0.5);
+      const S = g.Wd.trees && g.Wd.trees.season ? g.Wd.trees.season() : null;
+      out.push({ name: t.name, ok, m: c.m, d: c.d, want: t.best.date, bloom: S ? S.bloom : null, dz: Math.abs(g.player.z - t.at[2]), d2: Math.hypot(t.at[0] - g.player.x, t.at[1] - g.player.y) });
+    }
+    g.setClock(...was);
+    return out;
+  });
+  for (const h of seasons) check(h.ok && h.m === h.want[0] && h.d === h.want[1] && h.bloom !== 0 && h.dz < 1.5 && h.d2 < 20, `travels to ${h.name} out of season: the date moves to ${h.d}/${h.m} (its best ${h.want[1]}/${h.want[0]}), its trees ${h.bloom === null ? 'not looked at' : h.bloom ? 'in flower' : 'not in flower'}, ${h.d2.toFixed(0)} m from it and ${h.dz.toFixed(1)} m off its level`);
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
