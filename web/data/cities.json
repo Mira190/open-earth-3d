@@ -158,8 +158,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 5745932,
-   "game": 6128576
+   "model": 5756588,
+   "game": 6139232
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -1986,7 +1986,7 @@
   ],
   "load_bytes": {
    "model": 1791088,
-   "game": 2266734
+   "game": 2266979
   },
   "flyover": {
    "video": "flyover.mp4",

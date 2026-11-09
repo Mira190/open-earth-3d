@@ -1,0 +1,101 @@
+{
+ "kyoto": [
+  {
+   "name": "horikawa-stage",
+   "cam": [
+    -955.0,
+    2699,
+    51.0
+   ],
+   "tgt": [
+    -962,
+    2630,
+    48.2
+   ],
+   "free": true
+  },
+  {
+   "name": "horikawa-meander",
+   "cam": [
+    -962.0,
+    2571,
+    49.5
+   ],
+   "tgt": [
+    -958,
+    2505,
+    46.7
+   ],
+   "free": true
+  },
+  {
+   "name": "horikawa-stones",
+   "cam": [
+    -958.0,
+    2408.5,
+    47.7
+   ],
+   "tgt": [
+    -960,
+    2417,
+    46.2
+   ],
+   "free": true
+  },
+  {
+   "name": "horikawa-zone-b",
+   "cam": [
+    -962.5,
+    1466,
+    39.0
+   ],
+   "tgt": [
+    -957.5,
+    1545,
+    38.6
+   ],
+   "free": true
+  },
+  {
+   "name": "horikawa-zone-c",
+   "cam": [
+    -958.5,
+    2062,
+    45.1
+   ],
+   "tgt": [
+    -958,
+    2120,
+    43.6
+   ],
+   "free": true
+  }
+ ],
+ "tokyo": [
+  {
+   "name": "daikancho"
+  },
+  {
+   "name": "takebashi"
+  },
+  {
+   "name": "miyakezaka"
+  }
+ ],
+ "shinjuku": [
+  {
+   "name": "keio-canopy",
+   "cam": [
+    1975,
+    1400,
+    95
+   ],
+   "tgt": [
+    1942,
+    1425,
+    31
+   ]
+  }
+ ],
+ "game_note": "tokyo and shinjuku: game views (tools/game_shot.js), the expressway's decks being the game's"
+}

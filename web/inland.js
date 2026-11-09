@@ -42,7 +42,16 @@ window.OEInland = (function () {
         sr.forEach((r, k) => { if (area(r) < 0) { r.reverse(); swz[k].reverse(); } });
         const lawn = b.terrace.lawn ? b.terrace.lawn.rings.map((r, k) => ({ ring: pairs(r), z: b.terrace.lawn.z[k] })) : [];
         lawn.forEach(l => { if (area(l.ring) < 0) { l.ring.reverse(); l.z = l.z.slice().reverse(); } });
-        terrace = { path_m: b.terrace.path_m || 0.35, stream: sr, swz, steps: b.steps || [], lawn, seats: b.terrace.seats || [], weirs: b.terrace.weirs || [] };
+        // the floor in pieces, each at its own levels (cut across where it steps down with the stream's drops, #322),
+        // outer rings anticlockwise and holes clockwise; the risers at its steps; the slabs and stepping stones over
+        // the stream; and its level along the channel's line, for walkers (axis: x, y, z, ...)
+        const floor = (b.terrace.floor || []).map(f => {
+          const R = f.rings.map(pairs), Z = f.z.map(v => v.slice());
+          R.forEach((r, k) => { if ((area(r) > 0) !== (k === 0)) { r.reverse(); Z[k].reverse(); } });
+          return { rings: R, z: Z };
+        });
+        terrace = { path_m: b.terrace.path_m || 0.35, stream: sr, swz, steps: b.steps || [], lawn, seats: b.terrace.seats || [], weirs: b.terrace.weirs || [],
+          floor, risers: b.terrace.risers || [], crossings: b.terrace.crossings || [], axis: b.terrace.axis || null };
       }
       return { id, name: b.name, kind: b.kind, walls: b.walls || null, water_m: b.water_m || 0.3, rings, bz, wz, box: [x0, y0, x1, y1], terrace };
     });
@@ -217,8 +226,9 @@ window.OEInland = (function () {
         if (b.kind !== 'walled') continue;
         if (TR) {
           // the promenade's floor round the stream, and the stream's own bed and its low stone edges
-          const floor = sheetOf([...b.rings, ...TR.stream.map(r => r.slice().reverse())], [...b.wz, ...TR.swz.map(z => z.slice().reverse())], TR.path_m);
-          if (floor) { const f = new THREE.Mesh(floor, mats.floor || mats.coping); f.name = 'inland_floor'; f.receiveShadow = true; group.add(f); }
+          const floors = TR.floor.length ? TR.floor.map(f => sheetOf(f.rings, f.z, 0))
+            : [sheetOf([...b.rings, ...TR.stream.map(r => r.slice().reverse())], [...b.wz, ...TR.swz.map(z => z.slice().reverse())], TR.path_m)];
+          for (const floor of floors) if (floor) { const f = new THREE.Mesh(floor, mats.floor || mats.coping); f.name = 'inland_floor'; f.receiveShadow = true; group.add(f); }
           for (let k = 0; k < TR.stream.length; k++) {
             const g = sheetOf([TR.stream[k]], [TR.swz[k]], -b.water_m);
             if (g) { const m = new THREE.Mesh(g, mats.bed(b)); m.name = 'inland_bed'; m.receiveShadow = true; group.add(m); }
@@ -293,6 +303,21 @@ window.OEInland = (function () {
           for (const l of TR.lawn) {
             const g = sheetOf([l.ring], [l.z], 0.04);
             if (g) { const m = new THREE.Mesh(g, mats.lawn || mats.floor); m.name = 'inland_lawn'; m.receiveShadow = true; group.add(m); }
+          }
+          // the floor's steps where it drops with the stream (#322): a granite riser across it, wall to stream; the slabs
+          // over the stream, flush with the floor, and the stepping stones standing in it
+          const ri = [], riuv = [];
+          for (const [ax, ay, bx, by, zt, zb] of TR.risers) {
+            const L = Math.hypot(bx - ax, by - ay);
+            if (L < 0.05 || zt - zb < 0.01) continue;
+            box((ax + bx) / 2, (ay + by) / 2, (bx - ax) / L, (by - ay) / L, (ay - by) / L, (bx - ax) / L, L / 2, 0.03, zb - 0.05, zt + 0.005, ri, riuv, ax, ay);
+          }
+          for (const [x, y, ux, uy, len, w, zt, kind] of TR.crossings) {
+            box(x, y, ux, uy, uy, -ux, len / 2, w / 2, kind ? zt - 0.6 : zt - 0.25, zt, ri, riuv, x - ux * len / 2, y - uy * len / 2);
+          }
+          if (ri.length) {
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ri, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(riuv, 2)); g.computeVertexNormals();
+            const m = new THREE.Mesh(g, mats.wall(b)); m.name = 'inland_risers'; m.castShadow = m.receiveShadow = true; group.add(m);
           }
           // the stepped weirs: a granite sill across the stream, and the white water falling off it
           const wr = [], wruv = [], fo = [];
@@ -466,6 +491,42 @@ window.OEInland = (function () {
       }
       return null;
     }
+    // the slabs and stepping stones over a promenade's stream (#322): the top under (x, y), or null
+    // (a walker strides over the gaps between a row's stones: each stone holds one a stride's half-gap round it)
+    const crossings = terraced.flatMap(b => b.terrace.crossings.map(([x, y, ux, uy, len, w, zt, kind]) => ({ x, y, ux, uy, len, w, zt, m: kind ? 0.22 : 0.05 })));
+    function crossingAt(x, y) {
+      for (const c of crossings) {
+        const dx = x - c.x, dy = y - c.y;
+        if (Math.abs(dx * c.ux + dy * c.uy) <= c.len / 2 + c.m && Math.abs(dx * c.uy - dy * c.ux) <= c.w / 2 + 0.05) return c.zt;
+      }
+      return null;
+    }
+    // the floor's level along a promenade's line (terrace.axis: it steps down with the stream's drops, #322), found
+    // through 8 m cells of the line's segments: the level at the nearest point of the line, or null
+    const AX = 8, axisCells = new Map(), axes = [];
+    for (const b of terraced) {
+      const a = b.terrace.axis;
+      if (!a) continue;
+      const k = axes.push(a) - 1;
+      for (let i = 0; i + 5 < a.length; i += 3) {
+        const c0 = Math.floor((Math.min(a[i], a[i + 3]) - 8) / AX), c1 = Math.floor((Math.max(a[i], a[i + 3]) + 8) / AX);
+        const r0 = Math.floor((Math.min(a[i + 1], a[i + 4]) - 8) / AX), r1 = Math.floor((Math.max(a[i + 1], a[i + 4]) + 8) / AX);
+        for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) { const key = c * 65536 + r, l = axisCells.get(key); if (l) l.push(k, i); else axisCells.set(key, [k, i]); }
+      }
+    }
+    function axisZ(x, y) {
+      const l = axisCells.get(Math.floor(x / AX) * 65536 + Math.floor(y / AX));
+      if (!l) return null;
+      let best = Infinity, z = null;
+      for (let j = 0; j < l.length; j += 2) {
+        const a = axes[l[j]], i = l[j + 1], ax = a[i], ay = a[i + 1], bx = a[i + 3], by = a[i + 4];
+        const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
+        const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
+        const d = Math.hypot(x - ax - ex * t, y - ay - ey * t);
+        if (d < best - 1e-6) { best = d; z = a[i + 2] + (a[i + 5] - a[i + 2]) * t; }
+      }
+      return z;
+    }
     function promenade(x, y) {
       if (!inTerrace || onDeck(x, y)) return null;
       const s = flightAt(x, y);
@@ -473,7 +534,10 @@ window.OEInland = (function () {
       const st = seats.length ? seatAt(x, y) : null;
       if (st != null && inWalled.at(x, y) > 127) return { z: st, flight: false, seat: true };
       // (in the channel as water() has it, so that the street's edge and the promenade's agree to the raster's cell)
-      if (inTerrace.at(x, y) === 0 || !(inWalled.at(x, y) > 127) || inStream.at(x, y) > 127) return null;
+      if (inTerrace.at(x, y) === 0 || !(inWalled.at(x, y) > 127)) return null;
+      if (inStream.at(x, y) > 127) { const c = crossings.length ? crossingAt(x, y) : null; return c != null ? { z: c, flight: false, crossing: true } : null; }
+      const az = axes.length ? axisZ(x, y) : null;
+      if (az != null) return { z: az, flight: false };
       const n = nearest(x, y, 40, 'walled');
       return n && n.body.terrace ? { z: n.wz + n.body.terrace.path_m, flight: false } : null;
     }
@@ -596,7 +660,7 @@ void main() {
       };
     }
 
-    return { bodies, decks, walled: walledAt, walledBodies: walled, natural, raise, water, level, onDeck, nearest, bank, byWall, promenade, flights, seats, FLIGHT_GATE, holeMask, build, glints };
+    return { bodies, decks, walled: walledAt, walledBodies: walled, natural, raise, water, level, onDeck, nearest, bank, byWall, promenade, flights, seats, crossings, FLIGHT_GATE, holeMask, build, glints };
   }
 
   return { create };

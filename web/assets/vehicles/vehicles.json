@@ -74,9 +74,9 @@
    ],
    "open_deg": 70
   },
-  "lod1_triangles": 12442,
+  "lod1_triangles": 12281,
   "lod1_m": 90,
-  "triangles": 105364
+  "triangles": 103904
  },
  "ferry": {
   "file": "ferry.glb",
