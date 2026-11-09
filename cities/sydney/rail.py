@@ -65,6 +65,7 @@ MATERIALS = {
     "rail_wire": {"color": "#3c3a36", "roughness": 0.5, "metalness": 0.7, "shadow": False},
     "rail_lamp": {"color": "#f4f6ee", "roughness": 0.4, "metalness": 0.0, "emissive": "#fff3dc", "glow": 2.6, "glow_day": 0.9},
     "rail_sign": {"color": "#ffffff", "roughness": 0.5, "metalness": 0.0, "map": "rail_signs.png", "emissive_map": True, "glow": 1.2, "glow_day": 0.35},
+    "rail_name_box": {"color": "#f06e14", "roughness": 0.5, "metalness": 0.0, "emissive": "#f06e14", "glow": 0.9, "glow_day": 0.25},
     "rail_bench": {"lamp_lit": True, "color": "#8a5a3a", "roughness": 0.7, "metalness": 0.0},
     "rail_bin": {"lamp_lit": True, "color": "#c9ccc8", "roughness": 0.4, "metalness": 0.6},
 }
@@ -234,7 +235,7 @@ def meshes(Mesh):
     if not L:
         return {}, []
     T, deck, rz, roof_z, g0 = L["T"], L["deck"], L["rail_z"], L["roof_z"], L["ground"]
-    K = Kit(Mesh, "rail", MATERIALS, flood=("rail_shop", "rail_lamp", "rail_sign"), sky={"rail_soffit": 0.35, "rail_column": 0.6, "rail_frame": 0.6})
+    K = Kit(Mesh, "rail", MATERIALS, flood=("rail_shop", "rail_lamp", "rail_sign", "rail_name_box"), sky={"rail_soffit": 0.35, "rail_column": 0.6, "rail_frame": 0.6})
     S = lambda key: sign_uv(SIGNS, SHEET, key)
     zt, zs, zp = rz - 0.2, rz - SLAB, rz + PLAT
     slots = shapely.union_all([stair_slot(st, 0.2) for st in L["stairs"]])
@@ -358,13 +359,13 @@ def meshes(Mesh):
             for k in range(1, len(row) - 3, 3):
                 a, b = row[k], row[k + 2]
                 K["rail_lamp"].box([*(a + (b - a) * 0.06), roof_z - 1.16], [*(b - (b - a) * 0.06), roof_z - 1.16], 0.16, 0.05)
-        # the station's name and the platform's boards, hung over the middle, read from both ways along it
+        # the platform's board and its indicator by turns, hung over the middle, read from both ways along it
         for k, s in enumerate(np.arange(14.0, mid.length - 10.0, 26.0)):
             c0, t = along(s)
             t = t / np.linalg.norm(t)
             if holes.buffer(1.5).contains(Point(*c0)):
                 continue
-            key, w, h = (("name", 3.2, 0.64), (f"plat{p['no']}", 3.2, 0.5), (f"led{p['no']}", 2.0, 0.6))[k % 3]
+            key, w, h = ((f"plat{p['no']}", 3.2, 0.5), (f"led{p['no']}", 2.0, 0.6))[k % 2]
             za = zp + 2.5
             a, b = c0 - np.array([-t[1], t[0]]) * w / 2, c0 + np.array([-t[1], t[0]]) * w / 2
             K["rail_dark"].box([*a, za + h / 2], [*b, za + h / 2], 0.1, h + 0.06)
@@ -372,19 +373,20 @@ def meshes(Mesh):
                 sign(K["rail_sign"], S(key), c0, t * face, w, za, h, 0.056)
             for e in (a, b):
                 K["rail_frame"].box([*e, za + h], [*e, roof_z - 1.1], 0.04, 0.04)
-        # and the name again facing the tracks, hung by the platform's edge, as it is read from the other platform
-        for s in np.arange(27.0, mid.length - 20.0, 39.0):
+        # the station's name: an orange box lit from inside, white letters on both faces, hung from the roof by the
+        # platform's edge and facing across the tracks, between the boards so that neither hides the other
+        for s in np.arange(27.0, mid.length - 20.0, 52.0):
             c0, t = along(s)
             t = t / np.linalg.norm(t)
             n = np.array([-t[1], t[0]]) * o
             c0 = c0 - n * (PLAT_W / 2 - 1.3)
             if holes.buffer(1.0).contains(Point(*c0)):
                 continue
-            K["rail_dark"].box([*(c0 - t * 1.5), zp + 2.82], [*(c0 + t * 1.5), zp + 2.82], 0.08, 0.66)
+            K["rail_name_box"].box([*(c0 - t * 1.8), zp + 2.86], [*(c0 + t * 1.8), zp + 2.86], 0.16, 0.72)
             for face in (1, -1):
-                sign(K["rail_sign"], S("name"), c0, n * face, 3.0, zp + 2.52, 0.6, 0.06)
-            for e in (-1.3, 1.3):
-                K["rail_frame"].box([*(c0 + t * e), zp + 3.12], [*(c0 + t * e), roof_z - 1.1], 0.04, 0.04)
+                sign(K["rail_sign"], S("name"), c0, n * face, 3.6, zp + 2.5, 0.72, 0.085)
+            for e in (-1.5, 1.5):
+                K["rail_frame"].box([*(c0 + t * e), zp + 3.22], [*(c0 + t * e), roof_z - 1.1], 0.05, 0.05)
         # benches along the back, facing the track, the station's name on their backs; a bin by every third
         for k, s in enumerate(np.arange(9.0, mid.length - 8.0, 12.5)):
             c0, t = along(s)
