@@ -1595,6 +1595,7 @@ kept beside it for browsers without AVIF (Safari before 16.4); `world.js` tests 
 | City | tiles | JPEG | AVIF |
 |---|---|---|---|
 | Shibuya | 20 | 7.24 MB | 4.52 MB |
+| Queenstown | 28 | 6.60 MB | 4.64 MB |
 | Shinjuku | 15 | 5.23 MB | 3.32 MB |
 | Kyoto | 15 | 4.61 MB | 2.85 MB |
 | Tokyo | 16 | 4.51 MB | 2.85 MB |
