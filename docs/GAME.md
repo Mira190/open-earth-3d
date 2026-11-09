@@ -455,7 +455,7 @@ listed at the end.
 | **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
 | **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
-| **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
+| **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. The day in parts, the ranks and the calendar came later, learned from its design ([Daily life](#daily-life-the-day-the-diary-bonds-skills-and-jobs)): here the calendar is the real one, the clock is the real sun, nothing has a deadline, and the people are our own. No combat. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 | **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
 | **Half-Life 2, The Last of Us, GTA V's enterable interiors** | Doors that open as you walk up to them, with no key to press, timed so they are open before you reach them; a room's name as you step in; seated people at their tables and in the pews. Ideas only: no code or assets taken. | Their rooms are designed. Here a room is the real one behind a real facade: St Peter's, Williams Cottage and the Skyline restaurant are drawn inside the shells measured from LiDAR, with their real doors and windows, and the restaurant's glass looks out over the lake as it is. |
@@ -575,6 +575,67 @@ and sell a dish or a keepsake, each with a line about it. The **calendar** is ev
 real places on their real dates, with the hours they run: walk up while one is on and
 <kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
 
+### The score
+
+`web/game/music.js` composes the music in code with Web Audio: no recordings and nothing taken
+from any game or artist. The owner's direction (9 November): soothing light music, close and
+quiet like ASMR, so that playing is restful. So every voice is soft (felt piano, soft electric
+keys, marimba and kalimba, a breathy flute, warm chorused pads, a sine bass), every attack is
+slow, nothing is plucked or struck hard, and almost no energy is left above 4 kHz
+(`tools/music_check.js` fails a case with more than 3%). A low room tone breathes under it, and
+rain adds sparse soft drops.
+
+| Part of the day | Tempo and mode (default palette) | By palette |
+|---|---|---|
+| Morning | 71 bpm, C lydian | Tokyo B flat major, Kyoto D yo, Sydney D lydian, Queenstown F lydian |
+| Daytime | 75 bpm, G major | Tokyo F, Kyoto D yo, Sydney A, Queenstown C |
+| Evening | 64 bpm, D dorian | Tokyo D minor, Kyoto D in, Sydney E mixolydian, Queenstown G dorian |
+| Night | 54 bpm, A minor | Tokyo G minor, Kyoto D in, Sydney B dorian, Queenstown D minor |
+
+Rain slows it by about 6%, closes the tone and drops the last of the percussion; a car adds a
+soft pulse; a talk ducks it 5 dB; a calendar event lifts it a little. A change is taken up on
+the next bar line and cross-fades over three or four bars. A new day, a rank, a job done and a
+message each have a soft sting of two or three notes in the key that is playing. The game
+tells it the state once a second (`life.js`); it starts with the game's sound, is silenced by
+the Sound switch, and has its own **Music** volume in the menu (kept in the browser).
+`OEMusic.bounce(seconds, states)` renders it offline for a film or a test.
+
+### Fireworks
+
+An event can put fireworks in the sky while it is on and the sun is down (`"fx": "fireworks"`,
+`web/game/fx.js`): Sydney's New Year's Eve over the Harbour Bridge, Jingu Gaien's August
+display on the Shinjuku map, Queenstown's New Year over the lake. One additive cloud of points,
+nothing allocated after the first shell, nothing running when no such event is on.
+
+### The walks of Tokyo and Kyoto, in lines
+
+The Tokyo and Kyoto maps had their walks in one chain, or hardly any. They now run in lines as
+Sydney's do (a welcome, lines side by side in any order, a report back):
+
+- **Tokyo (Marunouchi-Ginza):** welcome (Haruka) → Marunouchi and the Palace (Kenji, Daichi,
+  Sachiko) | Ginza and Yurakucho (Yui; a new walk under the arches with Ishikawa) | the water
+  and the air (Ishikawa, Captain Aoki, Ren) → report back.
+- **Kyoto:** welcome at the station (Haruka) → the temple and the low city (Sozen, Tanaka) |
+  the market (Mrs Nakamura, ending at Nishiki's painted shutters after dark) | the castle and
+  the winter sun (Ken, Yui) → report back.
+- **Higashiyama:** the pagoda → the lanes | the temple → below the pagoda after dark.
+- **Fushimi Inari:** the Romon → the gates | the mountain → the Romon after dark.
+- **The Philosopher's Path:** welcome (Haruka) → the water (Kenji, under the aqueduct) | the
+  incline (Sumire, under the Sanmon) → a last walk with Haruka.
+
+Shibuya and Shinjuku already had theirs. Every live map now has a `life.json` as well: four
+people to know (three on the two small Kyoto maps), four or five jobs, counters and a calendar.
+
+### What is left
+
+- Trains: a "catch the right train" job waits for trains that keep a timetable (the Enoden).
+- The autopilot (issue #355) could drive a fare or a delivery; the jobs only set the waypoint.
+- A forecast ability (tomorrow's weather in the diary) waits for the weather's forecast.
+- A room or an album for keepsakes: they are listed in the passport, not shown.
+- The people's models do not change place by the hour; their hours gate the talk, not where
+  they stand.
+- Not checked: a real GPU, Safari and iOS, and the music by ear on phone speakers.
+
 ### The phone
 
 The phone (<kbd>N</kbd>) is the hub: beside the ride app it lists Messages, Diary, Work, Map
@@ -590,6 +651,8 @@ is free, something on the calendar has started, something is on tomorrow.
 | `web/game/bonds.js` | ranks, hours, requests, abilities, the People page |
 | `web/game/jobs.js` | the four kinds of job, counters, events, the Work page, the passport's skills |
 | `web/game/phone.js` | the phone's home rows and messages |
+| `web/game/music.js` | the score |
+| `web/game/fx.js` | fireworks for the calendar |
 | `web/game/style.js`, `web/game/life.css` | the banner for a rank, a level and a job done; every style of the above |
 | `cities/<id>/life.json` | a map's people, jobs, counters and calendar, written by hand |
 | `pipeline/life.py` | checks it and writes `web/data/<id>/life.json` |
@@ -601,7 +664,7 @@ diary, the skills and the wallet.
 
 **Writing a map's life.** Copy the shape of `cities/shibuya/life.json`. Places are never
 measured: `{"npc": id}`, `{"spot": id}`, `{"travel": id}`, `{"label": "QFRONT"}`,
-`{"wharf": id}` or `{"lonlat": [lon, lat]}`, with `"d": [dx, dy]` to step aside; the game
+`{"wharf": id}`, `{"viewpoint": id}` or `{"lonlat": [lon, lat]}`, with `"d": [dx, dy]` to step aside; the game
 stands each on the nearest firm ground. `python pipeline/life.py --city <id>` fails on a person
 who is not one of the map's NPCs, fewer than five ranks, a rank without a fact, an event
 without a source, a place outside the map, and any line that talks about the data
@@ -1997,6 +2060,7 @@ quality tier runs a third of the cars.
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+  - the score is its own module (`web/game/music.js`, see [The score](#the-score)).
 
 ### Doors and rooms
 
