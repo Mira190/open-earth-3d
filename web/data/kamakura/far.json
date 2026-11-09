@@ -1,9 +1,11 @@
 {
- "half_m": 40000,
+ "half_m": 80000,
  "cx": 0.0,
  "cy": 0.0,
- "nh": 512,
- "nc": 1024,
+ "nh": 1024,
+ "nc": 2048,
+ "mesh": 640,
+ "clarity": 1.8,
  "height": "(r * 256 + g) / 4 - 100 m, north up; under the sea at -6",
  "lights": "b = sqrt(lights 0..1)",
  "palette": {
@@ -20,10 +22,10 @@
   "moss and lichen": "#787860"
  },
  "palette_samples": 1275,
- "land_share": 0.509,
+ "land_share": 0.612,
  "relief_m": [
   -6.0,
-  1636.2
+  3384.4
  ],
  "sources": {
   "relief": "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
@@ -32,9 +34,9 @@
  },
  "night_lights": {
   "vnl_px": [
-   217,
-   178
+   431,
+   352
   ],
-  "vnl_radiance_max": 39.1
+  "vnl_radiance_max": 49.0
  }
 }

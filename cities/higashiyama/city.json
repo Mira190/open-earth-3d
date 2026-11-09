@@ -30,7 +30,11 @@
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 18,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -52,13 +56,47 @@
     "note": "No sea: Kyoto is 25-80 m above it. The ponds (Maruyama Park's, the temples') are drawn at their own level (inland, pipeline/inland_water.py); the hill streams are left to the photograph.",
     "inland": {
       "note": "Ponds at the 5 m laser survey's level.",
-      "classes": ["pond", "lake", "water", "river", "canal", "reservoir"], "min_area_m2": 250,
-      "skip": ["第１低区配水池", "第２低区配水池", "第１高区配水池", "第２高区配水地"],
+      "classes": [
+        "pond",
+        "lake",
+        "water",
+        "river",
+        "canal",
+        "reservoir"
+      ],
+      "min_area_m2": 250,
+      "skip": [
+        "第１低区配水池",
+        "第２低区配水池",
+        "第１高区配水池",
+        "第２高区配水地"
+      ],
       "skip_note": "The Keage purification plant's distribution reservoirs are covered tanks."
     }
   },
-  "roofs": {"palette": {"清水寺": "#c4482a"}, "note": "pipeline/arcades.py: a precinct whose roofs on posts and gates take its own colour (Kiyomizu-dera's gates and pavilions are vermilion, though it is a temple)"},
-  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
+  "roofs": {
+    "palette": {
+      "清水寺": "#c4482a"
+    },
+    "note": "pipeline/arcades.py: a precinct whose roofs on posts and gates take its own colour (Kiyomizu-dera's gates and pavilions are vermilion, though it is a temple)"
+  },
+  "trees": {
+    "susuki": {
+      "note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).",
+      "open": [
+        {
+          "land": [
+            "grassland",
+            "meadow"
+          ],
+          "land_use": [
+            "meadow"
+          ],
+          "per_ha": 5200,
+          "min_m2": 20
+        }
+      ]
+    },
     "mix": {
       "zelkova": 0.2,
       "ginkgo": 0.14,
@@ -99,7 +137,10 @@
       },
       {
         "name": "Gion weeping cherry",
-        "at": [-100.8, 763.5],
+        "at": [
+          -100.8,
+          763.5
+        ],
         "radius": 3,
         "mix": {
           "shidarezakura": 1

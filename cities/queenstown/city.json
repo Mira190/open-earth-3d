@@ -35,7 +35,11 @@
       "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/otago/queenstown_2021_0.1m/rgb/2193/collection.json",
       "pixel_m": 0.84
     },
-    "attribution": "LINZ Queenstown 0.1m Urban Aerial Photos (2026), Toitū Te Whenua Land Information New Zealand (CC BY 4.0)"
+    "attribution": "LINZ Queenstown 0.1m Urban Aerial Photos (2026), Toitū Te Whenua Land Information New Zealand (CC BY 4.0)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "stac_cog",
@@ -110,7 +114,29 @@
       "evergreen": 0.08,
       "gum": 0.08
     },
-    "tussock": {"note": "Tussock (trees.json tussock, #286): in the Skyline deck's planted bed, and on the open hills above the town where no canopy stands, off the roads and their houses; denser round the Skyline site, where the game starts.", "beds": [{"mesh": "skyline_planter_bed", "per_m2": 2.6}], "slopes": {"above_m": 60, "per_ha": 16, "max": 9000, "near": [[-985, 480, 450, 110]]}}, "woods": {
+    "tussock": {
+      "note": "Tussock (trees.json tussock, #286): in the Skyline deck's planted bed, and on the open hills above the town where no canopy stands, off the roads and their houses; denser round the Skyline site, where the game starts.",
+      "beds": [
+        {
+          "mesh": "skyline_planter_bed",
+          "per_m2": 2.6
+        }
+      ],
+      "slopes": {
+        "above_m": 60,
+        "per_ha": 16,
+        "max": 9000,
+        "near": [
+          [
+            -985,
+            480,
+            450,
+            110
+          ]
+        ]
+      }
+    },
+    "woods": {
       "pine": 0.38,
       "sugi": 0.42,
       "evergreen": 0.1,
@@ -588,8 +614,17 @@
         "id": "ana",
         "name": "Ana",
         "role": "Dining at the Skyline",
-        "at": [-980.98, 479.94, 474.6],
-        "sit": {"face": [0.649, -0.76]},
+        "at": [
+          -980.98,
+          479.94,
+          474.6
+        ],
+        "sit": {
+          "face": [
+            0.649,
+            -0.76
+          ]
+        },
         "look": {
           "character": "R_Female_Adult_04",
           "skin": "#c99a76",
@@ -598,14 +633,26 @@
           "legs": "#22252b",
           "clip": "Drink"
         },
-        "idle": ["We come up for the light. Watch the Remarkables go pink when the sun's behind Walter Peak.", "My nana worked the gondola in the seventies. Four-seater cabins then, painted orange."]
+        "idle": [
+          "We come up for the light. Watch the Remarkables go pink when the sun's behind Walter Peak.",
+          "My nana worked the gondola in the seventies. Four-seater cabins then, painted orange."
+        ]
       },
       {
         "id": "tom",
         "name": "Tom",
         "role": "Dining at the Skyline",
-        "at": [-979.56, 479.36, 474.6],
-        "sit": {"face": [-0.649, 0.76]},
+        "at": [
+          -979.56,
+          479.36,
+          474.6
+        ],
+        "sit": {
+          "face": [
+            -0.649,
+            0.76
+          ]
+        },
         "look": {
           "character": "R_Male_Adult_06",
           "skin": "#e2b99c",
@@ -614,14 +661,26 @@
           "legs": "#2a2c30",
           "clip": "Talk"
         },
-        "idle": ["Lamb from Central Otago and a pinot from Gibbston. Can't go wrong.", "The deck's new this year. You can see right down the luge track."]
+        "idle": [
+          "Lamb from Central Otago and a pinot from Gibbston. Can't go wrong.",
+          "The deck's new this year. You can see right down the luge track."
+        ]
       },
       {
         "id": "priya",
         "name": "Priya",
         "role": "Visiting from Auckland",
-        "at": [-973.07, 486.69, 474.6],
-        "sit": {"face": [0.649, -0.76]},
+        "at": [
+          -973.07,
+          486.69,
+          474.6
+        ],
+        "sit": {
+          "face": [
+            0.649,
+            -0.76
+          ]
+        },
         "look": {
           "character": "R_Female_Adult_17",
           "skin": "#a87452",
@@ -630,13 +689,20 @@
           "legs": "#1e2126",
           "clip": "Phone"
         },
-        "idle": ["First time in Queenstown. The lake's bluer than the photos.", "We're doing the Earnslaw tomorrow, out to Walter Peak."]
+        "idle": [
+          "First time in Queenstown. The lake's bluer than the photos.",
+          "We're doing the Earnslaw tomorrow, out to Walter Peak."
+        ]
       },
       {
         "id": "rawiri",
         "name": "Rawiri",
         "role": "Skyline waiter",
-        "at": [-983.28, 484.71, 474.6],
+        "at": [
+          -983.28,
+          484.71,
+          474.6
+        ],
         "look": {
           "character": "R_Male_Adult_09",
           "skin": "#8f5b3c",
@@ -645,14 +711,26 @@
           "legs": "#1b1c1f",
           "clip": "Present"
         },
-        "idle": ["Kia ora! The buffet's open till nine. The mussels are from the Marlborough Sounds.", "Best table's the corner by the glass. You get the Remarkables and the town both."]
+        "idle": [
+          "Kia ora! The buffet's open till nine. The mussels are from the Marlborough Sounds.",
+          "Best table's the corner by the glass. You get the Remarkables and the town both."
+        ]
       },
       {
         "id": "margaret",
         "name": "Margaret",
         "role": "St Peter's parishioner",
-        "at": [34.41, -182.48, 5.07],
-        "sit": {"face": [0.861, 0.509]},
+        "at": [
+          34.41,
+          -182.48,
+          5.07
+        ],
+        "sit": {
+          "face": [
+            0.861,
+            0.509
+          ]
+        },
         "look": {
           "character": "R_Female_Adult_09_f011_grey",
           "skin": "#efcfb8",
@@ -661,13 +739,20 @@
           "legs": "#2a2c30",
           "clip": "Reading"
         },
-        "idle": ["The stone came off the lake shore in 1932. My grandfather carted some of it.", "The east window's the Call of St Peter. It's for the parish's men lost in the war."]
+        "idle": [
+          "The stone came off the lake shore in 1932. My grandfather carted some of it.",
+          "The east window's the Call of St Peter. It's for the parish's men lost in the war."
+        ]
       },
       {
         "id": "david",
         "name": "Reverend David",
         "role": "Vicar of St Peter's",
-        "at": [38.98, -183.73, 5.07],
+        "at": [
+          38.98,
+          -183.73,
+          5.07
+        ],
         "look": {
           "character": "R_Male_Adult_13_m017_grey",
           "skin": "#e6c0a4",
@@ -676,13 +761,20 @@
           "legs": "#141518",
           "clip": "Thoughtful"
         },
-        "idle": ["Welcome. The church is open every day. The first St Peter's here was timber, in 1863.", "The roof's rimu and the font's older than the building. Have a look round."]
+        "idle": [
+          "Welcome. The church is open every day. The first St Peter's here was timber, in 1863.",
+          "The roof's rimu and the font's older than the building. Have a look round."
+        ]
       },
       {
         "id": "lucy",
         "name": "Lucy",
         "role": "Williams Cottage shopkeeper",
-        "at": [-11.5, -271.5, 2.21],
+        "at": [
+          -11.5,
+          -271.5,
+          2.21
+        ],
         "look": {
           "character": "R_Female_Adult_15",
           "skin": "#ead0bc",
@@ -691,7 +783,10 @@
           "legs": "#2b2f36",
           "clip": "Work"
         },
-        "idle": ["This is one of the oldest houses in Queenstown, 1864. The schist chimney's original.", "The flood in 1999 came right up to the verandah. The lake's only across the road."]
+        "idle": [
+          "This is one of the oldest houses in Queenstown, 1864. The schist chimney's original.",
+          "The flood in 1999 came right up to the verandah. The lake's only across the road."
+        ]
       }
     ],
     "lines": [

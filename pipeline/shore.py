@@ -170,6 +170,10 @@ def shore_map(C, con, raw, rows, raster_mask, polygons, sea, extent, cfg):
             g = g.buffer(2.0)
         if g.intersects(extent):
             (sand if r["subtype"] == "sand" else rock).extend(polygons(g.intersection(extent)))
+    # a beach the map does not have (city.json water.sand: [{ring: [[lon, lat], ...], note}]), which would otherwise be
+    # shored as a quay
+    for b in cfg.get("water", {}).get("sand", []):
+        sand.extend(polygons(C.to_local(shapely.Polygon(b["ring"])).buffer(0).intersection(extent)))
     # structures the terrain raises (breakwaters) are rock armour
     rock += [p for r in rows(con, raw("infrastructure")) if r["class"] in raised_classes(cfg)
              for p in polygons(C.to_local(swkb.loads(bytes(r["wkb"]))).intersection(extent))]

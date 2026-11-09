@@ -6,9 +6,22 @@
   "timezone": "Australia/Sydney",
   "locale": "en-AU",
   "description": "Central Sydney, a harbour city of sails and sandstone: the Opera House on Bennelong Point, the Harbour Bridge, The Rocks where the colony began, and the ferries of Circular Quay.",
-  "bbox": [151.195, -33.884, 151.228, -33.84],
-  "origin": [151.2115, -33.862],
-  "extent_m": [-1500, 1500, -2400, 2400],
+  "bbox": [
+    151.195,
+    -33.884,
+    151.228,
+    -33.84
+  ],
+  "origin": [
+    151.2115,
+    -33.862
+  ],
+  "extent_m": [
+    -1500,
+    1500,
+    -2400,
+    2400
+  ],
   "overture_release": "2026-10-21.0",
   "vertical_datum": "m AHD",
   "year": 2026,
@@ -17,7 +30,11 @@
     "url": "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer/tile/{z}/{y}/{x}",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "NSW Spatial Services NSW_Imagery (CC BY 4.0; includes (c) AAM and (c) Jacobs imagery)"
+    "attribution": "NSW Spatial Services NSW_Imagery (CC BY 4.0; includes (c) AAM and (c) Jacobs imagery)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "arcgis_image",
@@ -33,7 +50,14 @@
     "name": "Geoscience Australia 5 m LiDAR DEM"
   },
   "bridges": {
-    "skip": ["Aquarium Wharf", "Barangaroo Pontoon", "Rowntrees Dock", "Festival Pontoon", "Heritage Pontoon", "Pyrmont Bay Wharf"],
+    "skip": [
+      "Aquarium Wharf",
+      "Barangaroo Pontoon",
+      "Rowntrees Dock",
+      "Festival Pontoon",
+      "Heritage Pontoon",
+      "Pyrmont Bay Wharf"
+    ],
     "note": "Darling Harbour's bridges; the wharves' and pontoons' gangways float and are left out.",
     "forms": {
       "Pyrmont Bridge": {
@@ -54,18 +78,154 @@
       "high_water_m": 0.9,
       "note": "Sydney Harbour and Darling Harbour: Hawkesbury sandstone ashlar and its concrete repairs under a sandstone or concrete coping; the tide ranges about 1.8 m."
     },
-    "classes": ["ocean", "bay", "water"],
+    "classes": [
+      "ocean",
+      "bay",
+      "water"
+    ],
     "min_area_m2": 5000,
     "note": "Sydney Harbour is mapped as a water polygon (Port Jackson); the Overture ocean polygon stops at the Heads.",
-    "waves": {"wind_ms": 5.0, "wind_from_deg": 45, "fetch_km": 4.0, "depth_m": 15, "cascades_m": [157, 33.3, 7.1], "choppiness": 0.9,
-              "note": "A typical afternoon north-easterly sea breeze over the 4 km reach from Bradleys Head to the bridge; chosen values, not a measurement."},
-    "colour": "#0c446d", "shallow_colour": "#2b7b86", "clarity_m": 3.5, "scatter": 0.55,
+    "waves": {
+      "wind_ms": 5.0,
+      "wind_from_deg": 45,
+      "fetch_km": 4.0,
+      "depth_m": 15,
+      "cascades_m": [
+        157,
+        33.3,
+        7.1
+      ],
+      "choppiness": 0.9,
+      "note": "A typical afternoon north-easterly sea breeze over the 4 km reach from Bradleys Head to the bridge; chosen values, not a measurement."
+    },
+    "colour": "#0c446d",
+    "shallow_colour": "#2b7b86",
+    "clarity_m": 3.5,
+    "scatter": 0.55,
     "colour_note": "Harbour water has a few metres of visibility. Seen from the air on a clear day it reads a deep blue, teal near the shore: the colours and the light the water gives back (scatter) were matched to aerial photographs of the Opera House (Wikimedia Commons, \"Sydney (AU), Opera House -- 2019 -- 2896.jpg\"). The NSW aerial photo, taken straight down, shows it darker and greener."
   },
-  "trees": {"tussock": {"note": "Tussock (trees.json tussock, #315, #326): the native grasses of Barangaroo Reserve's headland (its list, barangaroo.com Botany: Themeda, Poa and Danthonia among its 84 Sydney species; 68,000 grasses were planted), in the Reserve's own planted beds only: OpenStreetMap's natural=scrub inside its outline, not its named lawns, paths and sandstone (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Tinted from the shared snow tussock's straw to their green. The parks and the Domain are mown lawn, so none there.", "open": [{"land": ["scrub"], "within": "Barangaroo Reserve", "per_ha": 3400, "min_m2": 10}], "tint": [0.7, 0.98, 0.78]}, "lomandra": {"note": "Lomandra (trees.json lomandra, #326): spiny-headed mat-rush, Lomandra longifolia, the strappy tussock among the Reserve's grasses (6,000 of them in its planting), in the same beds (OpenStreetMap's natural=scrub inside Barangaroo Reserve; pipeline/grasses.py).", "open": [{"land": ["scrub"], "within": "Barangaroo Reserve", "per_ha": 1300, "min_m2": 10}]}, "mix": {"gum": 0.31, "plane": 0.25, "elm": 0.205, "evergreen": 0.107, "fig": 0.054, "jacaranda": 0.034, "palm": 0.03, "casuarina": 0.009}, "woods": {"evergreen": 0.27, "gum": 0.22, "palm": 0.2, "fig": 0.12, "elm": 0.09, "casuarina": 0.06, "plane": 0.02, "jacaranda": 0.02}, "note": "The mix is the City of Sydney inventory's (trees.survey) species shares by genus: its street trees for mix (gums: brush box, water gum, paperbarks, eucalypts and angophoras 31%, plane trees 25%, deciduous broadleaves 20.5% as elm, evergreen broadleaves 10.7%, figs 5.4%, jacarandas 3.4%, palms 3%, she-oaks 0.9% as casuarina), its park trees for woods.", "survey": {"arcgis": "https://services1.arcgis.com/cNVyNtjGVZybOQWZ/arcgis/rest/services/Trees/FeatureServer/0", "height": "TreeHeight", "add": true, "attribution": "City of Sydney, Trees (CC BY 4.0), extracted 2026-11-07: the street and park trees it surveys, with their measured heights"}, "areas": [{"name": "First Fleet Park", "osm": "W4354692", "mix": {"jacaranda": 0.9, "fig": 0.1}, "note": "First Fleet Park, between the Museum of Contemporary Art and the wharves: Destination NSW's jacaranda trail names it as the place to see them against the Harbour Bridge and the Opera House (sydney.com, 'Where to see jacarandas in Sydney'). The council's inventory surveys its street trees, not the park's, so the park's mix is the trail's jacarandas with a few figs and palms."}, {"name": "Circular Quay West, by the MCA", "xy": [[-205, 168], [-174, 168], [-174, 268], [-205, 268]], "mix": {"jacaranda": 0.85, "fig": 0.15}, "note": "The promenade between the Museum of Contemporary Art and the water: Destination NSW's photographs of the trail show 'jacarandas outside the Museum of Contemporary Art, Circular Quay'. Not in the council's inventory, so its trees take the trail's jacarandas."}, {"name": "Wendy Whiteley's Secret Garden", "osm": "W73551128", "mix": {"jacaranda": 0.45, "fig": 0.3, "palm": 0.25}, "note": "Wendy Whiteley's garden on the old railway land above Lavender Bay: Moreton Bay figs, palms and jacarandas, the Harbour Bridge beyond."}]},
-  "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
+  "trees": {
+    "tussock": {
+      "note": "Tussock (trees.json tussock, #315, #326): the native grasses of Barangaroo Reserve's headland (its list, barangaroo.com Botany: Themeda, Poa and Danthonia among its 84 Sydney species; 68,000 grasses were planted), in the Reserve's own planted beds only: OpenStreetMap's natural=scrub inside its outline, not its named lawns, paths and sandstone (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Tinted from the shared snow tussock's straw to their green. The parks and the Domain are mown lawn, so none there.",
+      "open": [
+        {
+          "land": [
+            "scrub"
+          ],
+          "within": "Barangaroo Reserve",
+          "per_ha": 3400,
+          "min_m2": 10
+        }
+      ],
+      "tint": [
+        0.7,
+        0.98,
+        0.78
+      ]
+    },
+    "lomandra": {
+      "note": "Lomandra (trees.json lomandra, #326): spiny-headed mat-rush, Lomandra longifolia, the strappy tussock among the Reserve's grasses (6,000 of them in its planting), in the same beds (OpenStreetMap's natural=scrub inside Barangaroo Reserve; pipeline/grasses.py).",
+      "open": [
+        {
+          "land": [
+            "scrub"
+          ],
+          "within": "Barangaroo Reserve",
+          "per_ha": 1300,
+          "min_m2": 10
+        }
+      ]
+    },
+    "mix": {
+      "gum": 0.31,
+      "plane": 0.25,
+      "elm": 0.205,
+      "evergreen": 0.107,
+      "fig": 0.054,
+      "jacaranda": 0.034,
+      "palm": 0.03,
+      "casuarina": 0.009
+    },
+    "woods": {
+      "evergreen": 0.27,
+      "gum": 0.22,
+      "palm": 0.2,
+      "fig": 0.12,
+      "elm": 0.09,
+      "casuarina": 0.06,
+      "plane": 0.02,
+      "jacaranda": 0.02
+    },
+    "note": "The mix is the City of Sydney inventory's (trees.survey) species shares by genus: its street trees for mix (gums: brush box, water gum, paperbarks, eucalypts and angophoras 31%, plane trees 25%, deciduous broadleaves 20.5% as elm, evergreen broadleaves 10.7%, figs 5.4%, jacarandas 3.4%, palms 3%, she-oaks 0.9% as casuarina), its park trees for woods.",
+    "survey": {
+      "arcgis": "https://services1.arcgis.com/cNVyNtjGVZybOQWZ/arcgis/rest/services/Trees/FeatureServer/0",
+      "height": "TreeHeight",
+      "add": true,
+      "attribution": "City of Sydney, Trees (CC BY 4.0), extracted 2026-11-07: the street and park trees it surveys, with their measured heights"
+    },
+    "areas": [
+      {
+        "name": "First Fleet Park",
+        "osm": "W4354692",
+        "mix": {
+          "jacaranda": 0.9,
+          "fig": 0.1
+        },
+        "note": "First Fleet Park, between the Museum of Contemporary Art and the wharves: Destination NSW's jacaranda trail names it as the place to see them against the Harbour Bridge and the Opera House (sydney.com, 'Where to see jacarandas in Sydney'). The council's inventory surveys its street trees, not the park's, so the park's mix is the trail's jacarandas with a few figs and palms."
+      },
+      {
+        "name": "Circular Quay West, by the MCA",
+        "xy": [
+          [
+            -205,
+            168
+          ],
+          [
+            -174,
+            168
+          ],
+          [
+            -174,
+            268
+          ],
+          [
+            -205,
+            268
+          ]
+        ],
+        "mix": {
+          "jacaranda": 0.85,
+          "fig": 0.15
+        },
+        "note": "The promenade between the Museum of Contemporary Art and the water: Destination NSW's photographs of the trail show 'jacarandas outside the Museum of Contemporary Art, Circular Quay'. Not in the council's inventory, so its trees take the trail's jacarandas."
+      },
+      {
+        "name": "Wendy Whiteley's Secret Garden",
+        "osm": "W73551128",
+        "mix": {
+          "jacaranda": 0.45,
+          "fig": 0.3,
+          "palm": 0.25
+        },
+        "note": "Wendy Whiteley's garden on the old railway land above Lavender Bay: Moreton Bay figs, palms and jacarandas, the Harbour Bridge beyond."
+      }
+    ]
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
   "architecture": "sydney",
-  "building_styles": {"Sydney Harbour Bridge - South Pylons": "stone", "Sydney Harbour Bridge - North Pylons": "stone"},
+  "building_styles": {
+    "Sydney Harbour Bridge - South Pylons": "stone",
+    "Sydney Harbour Bridge - North Pylons": "stone"
+  },
   "labels": {
     "Sydney Tower": "Sydney Tower",
     "Salesforce Tower": "Salesforce Tower",
@@ -81,11 +241,27 @@
     "Chifley Tower": "Chifley Tower"
   },
   "arrivals": {
-    "Town Hall": {"front": 90},
-    "Customs House": {"front": 0}
+    "Town Hall": {
+      "front": 90
+    },
+    "Customs House": {
+      "front": 0
+    }
   },
-  "minor_labels": ["Customs House", "Queen Victoria Building", "Town Hall", "St Mary's Cathedral"],
-  "place_labels": ["Hyde Park", "Martin Place", "Barangaroo Reserve", "Royal Botanic Garden", "Wynyard Park", "The Domain"],
+  "minor_labels": [
+    "Customs House",
+    "Queen Victoria Building",
+    "Town Hall",
+    "St Mary's Cathedral"
+  ],
+  "place_labels": [
+    "Hyde Park",
+    "Martin Place",
+    "Barangaroo Reserve",
+    "Royal Botanic Garden",
+    "Wynyard Park",
+    "The Domain"
+  ],
   "protection": {
     "title": "Sydney LEP 2012, clause 6.18",
     "summary": "Development may not add to the total shadow on these public places across their protected hours.",
@@ -96,7 +272,14 @@
     "unprotected_label": "not LEP-listed"
   },
   "places": [
-    {"name": "Hyde Park", "class": "park", "period": "all", "from": "10:00", "to": "14:00", "protected": true},
+    {
+      "name": "Hyde Park",
+      "class": "park",
+      "period": "all",
+      "from": "10:00",
+      "to": "14:00",
+      "protected": true
+    },
     {
       "name": "Martin Place",
       "class": "pedestrian",
@@ -121,30 +304,92 @@
       "to": "14:00",
       "protected": true
     },
-    {"name": "Lang Park", "class": "park", "period": "all", "from": "12:00", "to": "14:00", "protected": true},
-    {"name": "Pitt Street Mall", "class": "pedestrian", "protected": true},
-    {"name": "Belmore Park", "class": "park", "protected": true},
-    {"name": "The Domain", "class": "park", "protected": true},
-    {"name": "Royal Botanic Garden", "class": "garden", "protected": true},
-    {"name": "Barangaroo Reserve", "class": "park", "protected": false}
+    {
+      "name": "Lang Park",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "14:00",
+      "protected": true
+    },
+    {
+      "name": "Pitt Street Mall",
+      "class": "pedestrian",
+      "protected": true
+    },
+    {
+      "name": "Belmore Park",
+      "class": "park",
+      "protected": true
+    },
+    {
+      "name": "The Domain",
+      "class": "park",
+      "protected": true
+    },
+    {
+      "name": "Royal Botanic Garden",
+      "class": "garden",
+      "protected": true
+    },
+    {
+      "name": "Barangaroo Reserve",
+      "class": "park",
+      "protected": false
+    }
   ],
-  "analysis_region": [-1100, 700, -1800, 900],
-  "sun_hours_region": [-1150, 750, -1750, 1000],
-  "reference_heights": {"file": "reference_heights.csv", "source": "Wikipedia, List of tallest buildings in Sydney (October 2026)"},
+  "analysis_region": [
+    -1100,
+    700,
+    -1800,
+    900
+  ],
+  "sun_hours_region": [
+    -1150,
+    750,
+    -1750,
+    1000
+  ],
+  "reference_heights": {
+    "file": "reference_heights.csv",
+    "source": "Wikipedia, List of tallest buildings in Sydney (October 2026)"
+  },
   "verified_heights": "verified_heights.csv",
   "start": {
-    "date": [3, 21],
+    "date": [
+      3,
+      21
+    ],
     "time": "08:40",
-    "cam": [2600, 3200, 1700],
-    "tgt": [-180, -380, 30]
+    "cam": [
+      2600,
+      3200,
+      1700
+    ],
+    "tgt": [
+      -180,
+      -380,
+      30
+    ]
   },
   "tour": [
     {
       "title": "Sydney Harbour",
       "text": "Gadigal Country, where the First Fleet dropped anchor in 1788. Today the harbour is the city's living room: ferries crossing, sails on the water, and a flat white on the quay.",
-      "cam": [1750, 2250, 1150],
-      "tgt": [-180, -380, 30],
-      "date": [3, 21],
+      "cam": [
+        1750,
+        2250,
+        1150
+      ],
+      "tgt": [
+        -180,
+        -380,
+        30
+      ],
+      "date": [
+        3,
+        21
+      ],
       "from": "08:40",
       "to": "09:40",
       "hold": 8
@@ -152,9 +397,20 @@
     {
       "title": "Sydney Opera House",
       "text": "Jørn Utzon's sails, each shell cut from a single sphere, covered in a million Swedish tiles that wash themselves in the rain. Catch a show, or just sit on the steps at sunset.",
-      "cam": [135.4, 717.1, 70],
-      "tgt": [335.4, 542.1, 24],
-      "date": [3, 21],
+      "cam": [
+        135.4,
+        717.1,
+        70
+      ],
+      "tgt": [
+        335.4,
+        542.1,
+        24
+      ],
+      "date": [
+        3,
+        21
+      ],
       "from": "17:25",
       "to": "17:55",
       "hold": 8
@@ -162,9 +418,20 @@
     {
       "title": "Sydney Harbour Bridge",
       "text": "The Coathanger, opened in 1932: climb the arch 134 m above the water, walk across from The Rocks to Milsons Point, or watch the fireworks pour off it at New Year.",
-      "cam": [-616.3, 1017.9, 95],
-      "tgt": [-76.3, 1077.9, 70],
-      "date": [3, 21],
+      "cam": [
+        -616.3,
+        1017.9,
+        95
+      ],
+      "tgt": [
+        -76.3,
+        1077.9,
+        70
+      ],
+      "date": [
+        3,
+        21
+      ],
       "from": "18:05",
       "to": "18:25",
       "hold": 8
@@ -172,9 +439,20 @@
     {
       "title": "Winter among the towers",
       "text": "In June the sun stays low over the city and the towers throw long shadows across the streets. The light is gold all day: a good season for the harbour walk from the Quay to the Botanic Garden.",
-      "cam": [-1750, -1650, 760],
-      "tgt": [-260, -620, 40],
-      "date": [6, 21],
+      "cam": [
+        -1750,
+        -1650,
+        760
+      ],
+      "tgt": [
+        -260,
+        -620,
+        40
+      ],
+      "date": [
+        6,
+        21
+      ],
       "from": "08:00",
       "to": "16:00",
       "hold": 12
@@ -182,7 +460,10 @@
     {
       "title": "Martin Place at lunchtime",
       "place": "Martin Place",
-      "date": [6, 21],
+      "date": [
+        6,
+        21
+      ],
       "from": "12:30",
       "to": "13:15",
       "hold": 9,
@@ -191,7 +472,10 @@
     {
       "title": "Hyde Park",
       "place": "Hyde Park",
-      "date": [6, 21],
+      "date": [
+        6,
+        21
+      ],
       "from": "10:00",
       "to": "14:00",
       "hold": 10,
@@ -221,9 +505,20 @@
     {
       "title": "After dark",
       "text": "The city lights up window by window and the bridge glows over the water. Drag to explore, or open Sun access to test a tower of your own.",
-      "cam": [900, 1900, 700],
-      "tgt": [-200, -350, 40],
-      "date": [9, 22],
+      "cam": [
+        900,
+        1900,
+        700
+      ],
+      "tgt": [
+        -200,
+        -350,
+        40
+      ],
+      "date": [
+        9,
+        22
+      ],
       "from": "19:05",
       "to": "19:50",
       "hold": 10
@@ -232,149 +527,504 @@
   "renders": [
     {
       "name": "overview",
-      "cam": [1750, 2250, 1150],
-      "tgt": [-180, -380, 30],
-      "date": [2026, 3, 21],
+      "cam": [
+        1750,
+        2250,
+        1150
+      ],
+      "tgt": [
+        -180,
+        -380,
+        30
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
       "time": "08:50"
     },
     {
       "name": "opera",
-      "cam": [135.4, 717.1, 70],
-      "tgt": [335.4, 542.1, 24],
-      "date": [2026, 3, 21],
+      "cam": [
+        135.4,
+        717.1,
+        70
+      ],
+      "tgt": [
+        335.4,
+        542.1,
+        24
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
       "time": "17:35"
     },
     {
       "name": "bridge",
-      "cam": [-616.3, 1017.9, 95],
-      "tgt": [-76.3, 1077.9, 70],
-      "date": [2026, 3, 21],
+      "cam": [
+        -616.3,
+        1017.9,
+        95
+      ],
+      "tgt": [
+        -76.3,
+        1077.9,
+        70
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
       "time": "18:10"
     },
     {
       "name": "winter",
-      "cam": [-1750, -1650, 760],
-      "tgt": [-260, -620, 40],
-      "date": [2026, 6, 21],
+      "cam": [
+        -1750,
+        -1650,
+        760
+      ],
+      "tgt": [
+        -260,
+        -620,
+        40
+      ],
+      "date": [
+        2026,
+        6,
+        21
+      ],
       "time": "12:00"
     },
     {
       "name": "terraces",
-      "cam": [-640, 330, 95],
-      "tgt": [-760, 440, 15],
-      "date": [2026, 3, 21],
+      "cam": [
+        -640,
+        330,
+        95
+      ],
+      "tgt": [
+        -760,
+        440,
+        15
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
       "time": "15:00"
     },
     {
       "name": "towers",
-      "cam": [380, -1250, 260],
-      "tgt": [-180, -560, 60],
-      "date": [2026, 3, 21],
+      "cam": [
+        380,
+        -1250,
+        260
+      ],
+      "tgt": [
+        -180,
+        -560,
+        60
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
       "time": "15:30"
     },
     {
       "name": "towers_night",
-      "cam": [600, -200, 220],
-      "tgt": [-250, -500, 80],
-      "date": [2026, 3, 21],
+      "cam": [
+        600,
+        -200,
+        220
+      ],
+      "tgt": [
+        -250,
+        -500,
+        80
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
       "time": "20:15"
     },
     {
       "name": "harbour",
-      "cam": [-105, 395, 14],
-      "tgt": [-25, 600, 16],
-      "date": [2026, 3, 21],
+      "cam": [
+        -105,
+        395,
+        14
+      ],
+      "tgt": [
+        -25,
+        600,
+        16
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
       "time": "17:20"
     }
   ],
   "check_points": {
-    "Martin Place": [151.2093, -33.8677],
-    "Sydney Tower base": [151.20929, -33.87048],
-    "Hyde Park": [151.211, -33.8735],
-    "Observatory Hill": [151.2046, -33.8597],
-    "Circular Quay": [151.2112, -33.8613]
+    "Martin Place": [
+      151.2093,
+      -33.8677
+    ],
+    "Sydney Tower base": [
+      151.20929,
+      -33.87048
+    ],
+    "Hyde Park": [
+      151.211,
+      -33.8735
+    ],
+    "Observatory Hill": [
+      151.2046,
+      -33.8597
+    ],
+    "Circular Quay": [
+      151.2112,
+      -33.8613
+    ]
   },
   "radar_test_building": "Quay Quarter Tower",
-  "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
+  "sources": {
+    "landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"
+  },
   "game": {
-    "weather": {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 7.9], "threshold_mm": 1.0, "drizzle": 0.3, "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm"},
+    "weather": {
+      "rain_days": [
+        8.2,
+        9.0,
+        10.1,
+        7.9,
+        7.9,
+        9.3,
+        7.2,
+        5.6,
+        5.8,
+        7.6,
+        8.7,
+        7.9
+      ],
+      "threshold_mm": 1.0,
+      "drizzle": 0.3,
+      "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm"
+    },
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
     "water_name": "the harbour",
     "blurb": "Walk Sydney under the real sun. Talk to the people who know it, ride the ferries round the harbour, and fly under the Harbour Bridge.",
     "under_bridge_note": "49 m of clearance, and you used it.",
-    "shade_landmarks": ["opera", "sydney_tower"],
-    "ferry_style": {"model": "harbour", "length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",
-                    "note": "Sydney Ferries' green and cream with a gold band; the dimensions are approximate."},
+    "shade_landmarks": [
+      "opera",
+      "sydney_tower"
+    ],
+    "ferry_style": {
+      "model": "harbour",
+      "length_m": 36,
+      "beam_m": 10,
+      "hull": "#1e5b3a",
+      "trim": "#e2b22b",
+      "upper": "#efe6cc",
+      "flag": "#a8322a",
+      "note": "Sydney Ferries' green and cream with a gold band; the dimensions are approximate."
+    },
     "climate": {
-      "mean_max_c": [26.0, 25.8, 24.8, 22.5, 19.5, 17.0, 16.4, 17.9, 20.1, 22.2, 23.7, 25.3],
+      "mean_max_c": [
+        26.0,
+        25.8,
+        24.8,
+        22.5,
+        19.5,
+        17.0,
+        16.4,
+        17.9,
+        20.1,
+        22.2,
+        23.7,
+        25.3
+      ],
       "source": "Bureau of Meteorology, Sydney (Observatory Hill) 066062, mean maximum temperature 1859-2020"
     },
     "start": {
-      "at": [-183, 212],
-      "facing": [120, 640],
+      "at": [
+        -183,
+        212
+      ],
+      "facing": [
+        120,
+        640
+      ],
       "time": "live"
     },
     "wharves": [
-      {"id": "circular-quay", "name": "Circular Quay, Wharf 4", "terminal": "Circular Quay 4A"},
-      {"id": "milsons-point", "name": "Milsons Point", "terminal": "Milsons Point Wharf"},
-      {"id": "mcmahons-point", "name": "McMahons Point", "terminal": "McMahons Point Wharf"},
-      {"id": "barangaroo", "name": "Barangaroo, Wharf 1", "terminal": "Barangaroo, Wharf 1"},
-      {"id": "pyrmont-bay", "name": "Pyrmont Bay", "terminal": "Pyrmont Bay Wharf"},
-      {"id": "kirribilli", "name": "Kirribilli", "terminal": "Kirribilli"},
-      {"id": "north-sydney", "name": "North Sydney (High Street)", "terminal": "North Sydney"},
-      {"id": "neutral-bay", "name": "Neutral Bay", "terminal": "Neutral Bay"}
+      {
+        "id": "circular-quay",
+        "name": "Circular Quay, Wharf 4",
+        "terminal": "Circular Quay 4A"
+      },
+      {
+        "id": "milsons-point",
+        "name": "Milsons Point",
+        "terminal": "Milsons Point Wharf"
+      },
+      {
+        "id": "mcmahons-point",
+        "name": "McMahons Point",
+        "terminal": "McMahons Point Wharf"
+      },
+      {
+        "id": "barangaroo",
+        "name": "Barangaroo, Wharf 1",
+        "terminal": "Barangaroo, Wharf 1"
+      },
+      {
+        "id": "pyrmont-bay",
+        "name": "Pyrmont Bay",
+        "terminal": "Pyrmont Bay Wharf"
+      },
+      {
+        "id": "kirribilli",
+        "name": "Kirribilli",
+        "terminal": "Kirribilli"
+      },
+      {
+        "id": "north-sydney",
+        "name": "North Sydney (High Street)",
+        "terminal": "North Sydney"
+      },
+      {
+        "id": "neutral-bay",
+        "name": "Neutral Bay",
+        "terminal": "Neutral Bay"
+      }
     ],
     "ferries": [
       {
         "route": "Cross Harbour West",
-        "stops": ["circular-quay", "milsons-point", "mcmahons-point", "barangaroo", "pyrmont-bay"],
-        "vessels": ["Sirius", "Supply", "Golden Grove"]
+        "stops": [
+          "circular-quay",
+          "milsons-point",
+          "mcmahons-point",
+          "barangaroo",
+          "pyrmont-bay"
+        ],
+        "vessels": [
+          "Sirius",
+          "Supply",
+          "Golden Grove"
+        ]
       },
       {
         "route": "Cross Harbour East",
-        "stops": ["circular-quay", "kirribilli", "north-sydney", "neutral-bay"],
-        "vessels": ["Charlotte", "Friendship"]
+        "stops": [
+          "circular-quay",
+          "kirribilli",
+          "north-sydney",
+          "neutral-bay"
+        ],
+        "vessels": [
+          "Charlotte",
+          "Friendship"
+        ]
       }
     ],
     "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Routes are generated through open water, and the stops follow the inner-harbour services, but the timetable is not real. Ferries run at 1.5 times their real speed (9 m/s) and wait 20 s at each wharf. The vessel names are those of the First Fleet class ferries. At a wharf you can skip the wait.",
     "helipads": [
-      {"id": "first-fleet-pad", "name": "First Fleet Park pad (game)", "at": [-215, 140, 3.4], "heading": 40},
-      {"id": "kirribilli-pad", "name": "Kirribilli helipad", "from_data": true}
+      {
+        "id": "first-fleet-pad",
+        "name": "First Fleet Park pad (game)",
+        "at": [
+          -215,
+          140,
+          3.4
+        ],
+        "heading": 40
+      },
+      {
+        "id": "kirribilli-pad",
+        "name": "Kirribilli helipad",
+        "from_data": true
+      }
     ],
     "vehicles": {
       "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). Pick a livery from vehicles.json or give your own colours; the registration defaults to the country's. The ferries take their colours and length from ferry_style.",
-      "helicopter": {"livery": "survey"},
-      "cars": {"taxi": {"colours": ["#f3f3f0", "#c9ccd0", "#1c1d1f", "#e8e6df"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#2a5caa"}, "note": "Sydney's taxis come in any colour, mostly white, silver or black, with a roof sign; the buses are white with a blue band (approximate)."}
+      "helicopter": {
+        "livery": "survey"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#f3f3f0",
+            "#c9ccd0",
+            "#1c1d1f",
+            "#e8e6df"
+          ],
+          "share": 0.1
+        },
+        "bus": {
+          "colour": "#eef0ef",
+          "band": "#2a5caa"
+        },
+        "note": "Sydney's taxis come in any colour, mostly white, silver or black, with a roof sign; the buses are white with a blue band (approximate)."
+      }
     },
-    "travel": [{"id": "jacaranda-lookout", "name": "Jacaranda lookout, Circular Quay", "at": [-160, 86, 17.8], "look": [-120, 1000], "pitch": 0.05, "best": {"from": [10, 13], "to": [11, 30], "date": [11, 8], "what": "The jacarandas"}, "note": "Above Circular Quay station, where the Cahill Walk looks over the quay: First Fleet Park's jacarandas below, the Harbour Bridge ahead and the Opera House across the water, the view of the postcards (sydney.com, 'Where to see jacarandas in Sydney'). Out of season, arriving moves the date into the bloom."}, {"id": "jacaranda-walk", "name": "Jacaranda walk, by the MCA", "at": [-178, 232], "look": [150, 760], "pitch": 0.06, "best": {"from": [10, 13], "to": [11, 30], "date": [11, 8], "what": "The jacarandas"}, "note": "Under the jacarandas on Circular Quay West, outside the Museum of Contemporary Art, looking across the quay to the Opera House."}],
+    "travel": [
+      {
+        "id": "jacaranda-lookout",
+        "name": "Jacaranda lookout, Circular Quay",
+        "at": [
+          -160,
+          86,
+          17.8
+        ],
+        "look": [
+          -120,
+          1000
+        ],
+        "pitch": 0.05,
+        "best": {
+          "from": [
+            10,
+            13
+          ],
+          "to": [
+            11,
+            30
+          ],
+          "date": [
+            11,
+            8
+          ],
+          "what": "The jacarandas"
+        },
+        "note": "Above Circular Quay station, where the Cahill Walk looks over the quay: First Fleet Park's jacarandas below, the Harbour Bridge ahead and the Opera House across the water, the view of the postcards (sydney.com, 'Where to see jacarandas in Sydney'). Out of season, arriving moves the date into the bloom."
+      },
+      {
+        "id": "jacaranda-walk",
+        "name": "Jacaranda walk, by the MCA",
+        "at": [
+          -178,
+          232
+        ],
+        "look": [
+          150,
+          760
+        ],
+        "pitch": 0.06,
+        "best": {
+          "from": [
+            10,
+            13
+          ],
+          "to": [
+            11,
+            30
+          ],
+          "date": [
+            11,
+            8
+          ],
+          "what": "The jacarandas"
+        },
+        "note": "Under the jacarandas on Circular Quay West, outside the Museum of Contemporary Art, looking across the quay to the Opera House."
+      }
+    ],
     "viewpoints": [
-      {"id": "bridge-arch", "name": "Harbour Bridge, mid-arch", "at": [-76.2, 1077.8]},
-      {"id": "observatory-hill", "name": "Observatory Hill", "at": [-546.2, 307.6]},
-      {"id": "barangaroo-reserve", "name": "Barangaroo Reserve", "at": [-891.4, 568.9]},
-      {"id": "mrs-macquaries-chair", "name": "Mrs Macquarie's Chair", "at": [1015.2, 252.3]},
-      {"id": "opera-steps", "name": "Opera House steps", "at": [306.5, 465.8]}
+      {
+        "id": "bridge-arch",
+        "name": "Harbour Bridge, mid-arch",
+        "at": [
+          -76.2,
+          1077.8
+        ]
+      },
+      {
+        "id": "observatory-hill",
+        "name": "Observatory Hill",
+        "at": [
+          -546.2,
+          307.6
+        ]
+      },
+      {
+        "id": "barangaroo-reserve",
+        "name": "Barangaroo Reserve",
+        "at": [
+          -891.4,
+          568.9
+        ]
+      },
+      {
+        "id": "mrs-macquaries-chair",
+        "name": "Mrs Macquarie's Chair",
+        "at": [
+          1015.2,
+          252.3
+        ]
+      },
+      {
+        "id": "opera-steps",
+        "name": "Opera House steps",
+        "at": [
+          306.5,
+          465.8
+        ]
+      }
     ],
     "flocks": [
       {
         "id": "opera-bar-gulls",
         "kind": "silver_gull",
         "name": "Silver gulls",
-        "at": [243, 458],
+        "at": [
+          243,
+          458
+        ],
         "count": 9,
         "perch_m": 14,
         "note": "Silver gulls (Chroicocephalus novaehollandiae) are common throughout Australia: 40 to 45 cm long, with a white head, tail and underparts, a light grey back and black-tipped wings, and in adults a bright orange-red bill, legs and eye-ring. They readily pester people for scraps and pilfer from unattended food (Australian Museum). Juveniles have brown patterns on their wings and a dark bill (Wikipedia). The flock, its box of hot chips and where it works the broadwalk by the Opera Bar are a game scene, not a survey.",
         "source": "Australian Museum, Silver Gull; Wikipedia, Silver gull"
       }
     ],
-    "crowd": {"pedestrians": 360, "cars": 150, "radius_m": 450},
+    "crowd": {
+      "pedestrians": 360,
+      "cars": 150,
+      "radius_m": 450
+    },
     "npcs": [
       {
         "id": "ava",
         "name": "Ava",
         "role": "Circular Quay guide",
-        "at": [-178, 225],
-        "look": {"character": "R_Female_Adult_08", "skin": "#c68a64", "hair": "#2a1d17", "top": "#9aa0a6", "legs": "#2b3a4a", "shirt": "#9aa0a6", "pants": "#2b3a4a", "clip": "Documents"},
+        "at": [
+          -178,
+          225
+        ],
+        "look": {
+          "character": "R_Female_Adult_08",
+          "skin": "#c68a64",
+          "hair": "#2a1d17",
+          "top": "#9aa0a6",
+          "legs": "#2b3a4a",
+          "shirt": "#9aa0a6",
+          "pants": "#2b3a4a",
+          "clip": "Documents"
+        },
         "idle": [
           "The Manly ferry goes from Wharf 3. Half an hour across the harbour, and the best view in Sydney for the price of a ticket.",
           "There are five trig stations round the harbour, a triangle on the map for each. Climb up to one for the view."
@@ -384,41 +1034,107 @@
         "id": "marco",
         "name": "Marco",
         "role": "Opera House guide",
-        "at": [298, 432],
-        "look": {"character": "R_Business_Male_03", "skin": "#e0b392", "hair": "#4a3426", "top": "#1f2328", "legs": "#1e1e22", "shirt": "#1f2328", "pants": "#1e1e22", "clip": "Present"},
-        "idle": ["Each shell is a triangle cut from one sphere, 75.2 m in radius. Utzon's 'spherical solution', 1961.",
-        "Mind your chips on the broadwalk. The gulls by the Opera Bar will have them out of your hand."]
+        "at": [
+          298,
+          432
+        ],
+        "look": {
+          "character": "R_Business_Male_03",
+          "skin": "#e0b392",
+          "hair": "#4a3426",
+          "top": "#1f2328",
+          "legs": "#1e1e22",
+          "shirt": "#1f2328",
+          "pants": "#1e1e22",
+          "clip": "Present"
+        },
+        "idle": [
+          "Each shell is a triangle cut from one sphere, 75.2 m in radius. Utzon's 'spherical solution', 1961.",
+          "Mind your chips on the broadwalk. The gulls by the Opera Bar will have them out of your hand."
+        ]
       },
       {
         "id": "lena",
         "name": "Lena",
         "role": "Bridge climber",
-        "at": [-70, 1430],
-        "look": {"character": "R_Medical_Female_03_plain", "skin": "#f1c8a6", "hair": "#c9a35b", "top": "#2a50c8", "legs": "#3b4a52", "shirt": "#2a50c8", "pants": "#3b4a52"},
-        "idle": ["The arch spans 503 m. The deck is {landmark:harbour_bridge.deck_width_m} m wide and 49 m above the water."]
+        "at": [
+          -70,
+          1430
+        ],
+        "look": {
+          "character": "R_Medical_Female_03_plain",
+          "skin": "#f1c8a6",
+          "hair": "#c9a35b",
+          "top": "#2a50c8",
+          "legs": "#3b4a52",
+          "shirt": "#2a50c8",
+          "pants": "#3b4a52"
+        },
+        "idle": [
+          "The arch spans 503 m. The deck is {landmark:harbour_bridge.deck_width_m} m wide and 49 m above the water."
+        ]
       },
       {
         "id": "sam",
         "name": "Sam",
         "role": "Helicopter pilot",
-        "at": [728, 1160],
-        "look": {"character": "R_Pilot_Male_01_m007", "skin": "#8d5a3c", "hair": "#111111", "top": "#1f2328", "legs": "#1f2a33", "shirt": "#1f2328", "pants": "#1f2a33"},
-        "idle": ["Under the deck, keep it below 45 m. The rotor needs the room."]
+        "at": [
+          728,
+          1160
+        ],
+        "look": {
+          "character": "R_Pilot_Male_01_m007",
+          "skin": "#8d5a3c",
+          "hair": "#111111",
+          "top": "#1f2328",
+          "legs": "#1f2a33",
+          "shirt": "#1f2328",
+          "pants": "#1f2a33"
+        },
+        "idle": [
+          "Under the deck, keep it below 45 m. The rotor needs the room."
+        ]
       },
       {
         "id": "priya",
         "name": "Priya",
         "role": "Planner",
-        "at": [-204, -632],
-        "look": {"character": "R_Business_Female_04_f011", "skin": "#a8714f", "hair": "#1b1311", "top": "#2b2f3a", "legs": "#26303a", "shirt": "#2b2f3a", "pants": "#26303a", "clip": "Documents"},
-        "idle": ["Martin Place is protected from 1 September to 31 May, 12:00 to 14:00. Winter isn't covered."]
+        "at": [
+          -204,
+          -632
+        ],
+        "look": {
+          "character": "R_Business_Female_04_f011",
+          "skin": "#a8714f",
+          "hair": "#1b1311",
+          "top": "#2b2f3a",
+          "legs": "#26303a",
+          "shirt": "#2b2f3a",
+          "pants": "#26303a",
+          "clip": "Documents"
+        },
+        "idle": [
+          "Martin Place is protected from 1 September to 31 May, 12:00 to 14:00. Winter isn't covered."
+        ]
       },
       {
         "id": "tom",
         "name": "Tom",
         "role": "Hyde Park regular",
-        "at": [-46, -1262],
-        "look": {"character": "R_Male_Adult_11", "skin": "#f0c4a0", "hair": "#7a4b2a", "top": "#2f3a2c", "legs": "#4a3b2c", "shirt": "#2f3a2c", "pants": "#4a3b2c", "clip": "LookAround"},
+        "at": [
+          -46,
+          -1262
+        ],
+        "look": {
+          "character": "R_Male_Adult_11",
+          "skin": "#f0c4a0",
+          "hair": "#7a4b2a",
+          "top": "#2f3a2c",
+          "legs": "#4a3b2c",
+          "shirt": "#2f3a2c",
+          "pants": "#4a3b2c",
+          "clip": "LookAround"
+        },
         "idle": [
           "The Archibald Fountain's been here since 1932. A newspaperman left the money, to remember France and Australia in the Great War.",
           "Think you can judge a height by eye? Aim at a building and press G. I'm usually out by twenty metres."
@@ -428,53 +1144,119 @@
         "id": "noor",
         "name": "Noor",
         "role": "Barista",
-        "at": [-905, 230],
-        "look": {"character": "R_Female_Party_02", "skin": "#9b6a4c", "hair": "#120d0b", "top": "#4a3a40", "legs": "#3a2f2a", "shirt": "#4a3a40", "pants": "#3a2f2a", "clip": "Drink", "acc": ["apron"], "apron": "#6b4a32"},
-        "idle": ["Barangaroo Reserve was a container wharf until 2015. Now it's sandstone and fig trees.", "It's {time} here. {sun_line}"]
+        "at": [
+          -905,
+          230
+        ],
+        "look": {
+          "character": "R_Female_Party_02",
+          "skin": "#9b6a4c",
+          "hair": "#120d0b",
+          "top": "#4a3a40",
+          "legs": "#3a2f2a",
+          "shirt": "#4a3a40",
+          "pants": "#3a2f2a",
+          "clip": "Drink",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#6b4a32"
+        },
+        "idle": [
+          "Barangaroo Reserve was a container wharf until 2015. Now it's sandstone and fig trees.",
+          "It's {time} here. {sun_line}"
+        ]
       },
       {
         "id": "kev",
         "name": "Kev",
         "role": "Fisherman",
-        "at": [-262, 905],
-        "look": {"character": "R_Male_Adult_05", "skin": "#d9a27e", "hair": "#9a9a9a", "top": "#3d5a2a", "legs": "#4b4b40", "shirt": "#3d5a2a", "pants": "#4b4b40"},
-        "idle": ["Bream under the bridge in the mornings. {sun_line}"]
+        "at": [
+          -262,
+          905
+        ],
+        "look": {
+          "character": "R_Male_Adult_05",
+          "skin": "#d9a27e",
+          "hair": "#9a9a9a",
+          "top": "#3d5a2a",
+          "legs": "#4b4b40",
+          "shirt": "#3d5a2a",
+          "pants": "#4b4b40"
+        },
+        "idle": [
+          "Bream under the bridge in the mornings. {sun_line}"
+        ]
       },
       {
         "id": "jess",
         "name": "Jess",
         "role": "Opera Bar waiter",
-        "at": [239, 444],
-        "look": {"character": "R_Female_Adult_13", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#5f646b", "legs": "#2c2c30", "shirt": "#5f646b", "pants": "#2c2c30", "clip": "Drink", "acc": ["apron"], "apron": "#1f1f22"},
-        "idle": ["Forty to forty-five centimetres of gull, and every one of them knows where the chips are.", "It's {time} here. {sun_line}"]
+        "at": [
+          239,
+          444
+        ],
+        "look": {
+          "character": "R_Female_Adult_13",
+          "skin": "#e8b896",
+          "hair": "#6b3a1f",
+          "top": "#5f646b",
+          "legs": "#2c2c30",
+          "shirt": "#5f646b",
+          "pants": "#2c2c30",
+          "clip": "Drink",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#1f1f22"
+        },
+        "idle": [
+          "Forty to forty-five centimetres of gull, and every one of them knows where the chips are.",
+          "It's {time} here. {sun_line}"
+        ]
       }
     ],
     "lines": [
-      {"id": "start", "title": "Welcome"},
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
       {
         "id": "harbour",
         "title": "The harbour",
-        "after": ["start"]
+        "after": [
+          "start"
+        ]
       },
       {
         "id": "air",
         "title": "The air",
-        "after": ["start"]
+        "after": [
+          "start"
+        ]
       },
       {
         "id": "ground",
         "title": "The ground",
-        "after": ["start"]
+        "after": [
+          "start"
+        ]
       },
       {
         "id": "locals",
         "title": "The locals",
-        "after": ["start"]
+        "after": [
+          "start"
+        ]
       },
       {
         "id": "finale",
         "title": "Report back",
-        "after": ["harbour", "air", "ground"],
+        "after": [
+          "harbour",
+          "air",
+          "ground"
+        ],
         "on_open": "<b>All three walks done.</b> Report back to Ava at Circular Quay."
       }
     ],
@@ -485,11 +1267,27 @@
         "giver": "ava",
         "title": "Welcome to the Quay",
         "stamp": "Circular Quay",
-        "talk": ["G'day, welcome to the Quay! I'm Ava; I show people round the harbour. It's {season} here, and the water looks good {now}.", "Three walks, any order. The harbour: Marco at the Opera House, then a ferry and the bridge. The air: Sam flies from the Kirribilli helipad. The ground: Priya, in Martin Place, knows where the sun falls at lunch.", "The helicopter's on the lawn of First Fleet Park behind you, ferries leave from the wharves along the quay, and a hand up at the kerb (Y) stops a taxi. WASD to walk, E to talk, T to switch walks. Which first?"],
+        "talk": [
+          "G'day, welcome to the Quay! I'm Ava; I show people round the harbour. It's {season} here, and the water looks good {now}.",
+          "Three walks, any order. The harbour: Marco at the Opera House, then a ferry and the bridge. The air: Sam flies from the Kirribilli helipad. The ground: Priya, in Martin Place, knows where the sun falls at lunch.",
+          "The helicopter's on the lawn of First Fleet Park behind you, ferries leave from the wharves along the quay, and a hand up at the kerb (Y) stops a taxi. WASD to walk, E to talk, T to switch walks. Which first?"
+        ],
         "choices": [
-          {"text": "The harbour: Marco, at the Opera House", "action": "track", "line": "harbour"},
-          {"text": "The air: Sam, at the Kirribilli helipad", "action": "track", "line": "air"},
-          {"text": "The ground: Priya, in Martin Place", "action": "track", "line": "ground"}
+          {
+            "text": "The harbour: Marco, at the Opera House",
+            "action": "track",
+            "line": "harbour"
+          },
+          {
+            "text": "The air: Sam, at the Kirribilli helipad",
+            "action": "track",
+            "line": "air"
+          },
+          {
+            "text": "The ground: Priya, in Martin Place",
+            "action": "track",
+            "line": "ground"
+          }
         ],
         "steps": []
       },
@@ -499,12 +1297,20 @@
         "giver": "marco",
         "title": "Shells from one sphere",
         "stamp": "Sydney Opera House",
-        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest stands 67 m above the water. The tiles came from Sweden, over a million of them, in gloss white and matt cream.", "First, climb the Monumental Steps up to the podium. They're nearly 100 m wide, and everyone who comes here sits on them.", "Then see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
+        "talk": [
+          "Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.",
+          "The highest stands 67 m above the water. The tiles came from Sweden, over a million of them, in gloss white and matt cream.",
+          "First, climb the Monumental Steps up to the podium. They're nearly 100 m wide, and everyone who comes here sits on them.",
+          "Then see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."
+        ],
         "steps": [
           {
             "type": "surface",
             "surface": "Opera House steps",
-            "u": [-6, 1],
+            "u": [
+              -6,
+              1
+            ],
             "text": "Climb the Monumental Steps to the podium"
           },
           {
@@ -513,7 +1319,11 @@
             "to": "milsons-point",
             "text": "Take a ferry from Circular Quay to Milsons Point"
           },
-          {"type": "talk", "npc": "lena", "text": "Find Lena at Milsons Point"}
+          {
+            "type": "talk",
+            "npc": "lena",
+            "text": "Find Lena at Milsons Point"
+          }
         ]
       },
       {
@@ -522,12 +1332,19 @@
         "giver": "lena",
         "title": "Over the arch",
         "stamp": "Sydney Harbour Bridge",
-        "talk": ["Nice ride? Now look up. The arch spans 503 m, and its crown is 134 m above the water.", "Walk up the approach from here to the middle of the arch. Locals call it the Coathanger.", "That's the harbour done once you're up there. Sam keeps a helicopter at the Kirribilli helipad, along the shore, if you want to see it from above."],
+        "talk": [
+          "Nice ride? Now look up. The arch spans 503 m, and its crown is 134 m above the water.",
+          "Walk up the approach from here to the middle of the arch. Locals call it the Coathanger.",
+          "That's the harbour done once you're up there. Sam keeps a helicopter at the Kirribilli helipad, along the shore, if you want to see it from above."
+        ],
         "steps": [
           {
             "type": "surface",
             "surface": "Sydney Harbour Bridge deck",
-            "u": [-30, 30],
+            "u": [
+              -30,
+              30
+            ],
             "text": "Walk up onto the bridge and reach the middle of the arch"
           }
         ]
@@ -538,10 +1355,21 @@
         "giver": "sam",
         "title": "Under the bridge",
         "stamp": "Harbour by air",
-        "talk": ["Ava said you'd come. Hop in. The helicopter's on the pad.", "Fly under the bridge deck. It clears the water by 49 m, so stay below 45. Then set down in the Domain.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
+        "talk": [
+          "Ava said you'd come. Hop in. The helicopter's on the pad.",
+          "Fly under the bridge deck. It clears the water by 49 m, so stay below 45. Then set down in the Domain.",
+          "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."
+        ],
         "steps": [
-          {"type": "under_bridge", "text": "Fly under the Harbour Bridge deck"},
-          {"type": "land", "place": "The Domain", "text": "Land in the Domain"}
+          {
+            "type": "under_bridge",
+            "text": "Fly under the Harbour Bridge deck"
+          },
+          {
+            "type": "land",
+            "place": "The Domain",
+            "text": "Land in the Domain"
+          }
         ]
       },
       {
@@ -550,19 +1378,44 @@
         "giver": "priya",
         "title": "A place in the sun",
         "stamp": "Martin Place",
-        "talk": ["The planning rule says new towers may not add shadow to Martin Place between 12:00 and 14:00, from September to May.", "Winter isn't protected. On 21 June at 12:30, only {sun:Martin Place|6-21|12:30}% of the place gets direct sun. On 21 December it's {sun:Martin Place|12-21|12:30}%.", "Find a sunny spot here at lunchtime on 21 June, like the office workers do. The sun meter under the map tells you when you're in it."],
+        "talk": [
+          "The planning rule says new towers may not add shadow to Martin Place between 12:00 and 14:00, from September to May.",
+          "Winter isn't protected. On 21 June at 12:30, only {sun:Martin Place|6-21|12:30}% of the place gets direct sun. On 21 December it's {sun:Martin Place|12-21|12:30}%.",
+          "Find a sunny spot here at lunchtime on 21 June, like the office workers do. The sun meter under the map tells you when you're in it."
+        ],
         "choices": [
           {
             "text": "Show me 21 June at 12:30",
             "action": "set_time",
-            "date": [6, 21],
+            "date": [
+              6,
+              21
+            ],
             "time": "12:30"
           },
-          {"text": "I'll set the time myself"}
+          {
+            "text": "I'll set the time myself"
+          }
         ],
         "steps": [
-          {"type": "sun", "place": "Martin Place", "date": [6, 21], "window": ["12:00", "14:00"], "text": "Stand in direct sun in Martin Place, 12:00 to 14:00 on 21 June"},
-          {"type": "talk", "npc": "tom", "text": "Meet Tom in Hyde Park"}
+          {
+            "type": "sun",
+            "place": "Martin Place",
+            "date": [
+              6,
+              21
+            ],
+            "window": [
+              "12:00",
+              "14:00"
+            ],
+            "text": "Stand in direct sun in Martin Place, 12:00 to 14:00 on 21 June"
+          },
+          {
+            "type": "talk",
+            "npc": "tom",
+            "text": "Meet Tom in Hyde Park"
+          }
         ]
       },
       {
@@ -571,9 +1424,21 @@
         "giver": "tom",
         "title": "Hyde Park",
         "stamp": "Hyde Park",
-        "talk": ["Priya sent you? Sit down a minute. Governor Macquarie named Hyde Park in 1810, and the colony ran its first horse races here that same year. It's the oldest public park in the country.", "The fig avenue runs right down the middle. And across College Street is St Mary's: they only finished its spires in 2000, a hundred and thirty years after they started.", "Go and stand under them."],
+        "talk": [
+          "Priya sent you? Sit down a minute. Governor Macquarie named Hyde Park in 1810, and the colony ran its first horse races here that same year. It's the oldest public park in the country.",
+          "The fig avenue runs right down the middle. And across College Street is St Mary's: they only finished its spires in 2000, a hundred and thirty years after they started.",
+          "Go and stand under them."
+        ],
         "steps": [
-          {"type": "visit", "at": [173.0, -1018.8], "radius": 70, "text": "Cross College Street to St Mary's Cathedral"}
+          {
+            "type": "visit",
+            "at": [
+              173.0,
+              -1018.8
+            ],
+            "radius": 70,
+            "text": "Cross College Street to St Mary's Cathedral"
+          }
         ]
       },
       {
@@ -582,7 +1447,12 @@
         "giver": "jess",
         "title": "Hot chips at the Quay",
         "stamp": "Silver gull",
-        "talk": ["Watch your chips! See that lot down by the water? Silver gulls. Everyone calls them seagulls.", "White head and tail, a light grey back, black-tipped wings, and the bill, legs and eye-ring a bright orange-red. The ones with brown on their wings and a dark bill are young.", "Someone's dropped a box of hot chips on the broadwalk, so that's lunch for the whole flock. The Australian Museum says they're 'readily pestering humans for handouts of scraps'. Look away and they're in your box.", "Go and have a look. Just don't feed them."],
+        "talk": [
+          "Watch your chips! See that lot down by the water? Silver gulls. Everyone calls them seagulls.",
+          "White head and tail, a light grey back, black-tipped wings, and the bill, legs and eye-ring a bright orange-red. The ones with brown on their wings and a dark bill are young.",
+          "Someone's dropped a box of hot chips on the broadwalk, so that's lunch for the whole flock. The Australian Museum says they're 'readily pestering humans for handouts of scraps'. Look away and they're in your box.",
+          "Go and have a look. Just don't feed them."
+        ],
         "steps": [
           {
             "type": "visit",
@@ -598,7 +1468,10 @@
         "giver": "ava",
         "title": "The harbour city",
         "stamp": "Sydneysider",
-        "talk": ["That's the lot: the water, the bridge, the air and the sun at lunchtime. You've seen more of it in a day than most of us do in a year.", "The city's yours. Change the time of day, take any ferry, or fly anywhere. Sunset on the Opera House steps is hard to beat."],
+        "talk": [
+          "That's the lot: the water, the bridge, the air and the sun at lunchtime. You've seen more of it in a day than most of us do in a year.",
+          "The city's yours. Change the time of day, take any ferry, or fly anywhere. Sunset on the Opera House steps is hard to beat."
+        ],
         "steps": []
       }
     ]

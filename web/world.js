@@ -764,6 +764,7 @@ vec3 steepRock(vec3 c, float k) {
     // distance stretches by it, so the mountains across the lake stand out as they do in a photograph
     const clarity = (farMeta && farMeta.clarity) || 1;
     world.userData.clarity = clarity;
+    world.userData.farHalf = (farMeta && farMeta.half_m) || 0; // (how far the land past the frame reaches: a camera's far plane must take it in)
     FAR_AIR = ((window.OEFarLand || {}).AIR || 30000) * clarity; FAR_AIR_LOW = 15000 * clarity;
     if (farMeta && farMeta.half_m) FAR_HALF = farMeta.half_m;
     world.fog.near *= clarity; world.fog.far *= clarity;
