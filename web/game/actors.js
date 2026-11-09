@@ -113,7 +113,7 @@ window.OEActors = (function () {
     // it reads as the shadowed inside of a car, not as a hole through it
     if (cars) { mat.defines = Object.assign({}, mat.defines, { TONE_CARS: '' }); mat.side = THREE.DoubleSide; }
     mat.onBeforeCompile = sh => {
-      sh.uniforms.uTime = U.uTime; sh.uniforms.uNight = U.uNight;
+      sh.uniforms.uTime = U.uTime; sh.uniforms.uNight = U.uNight; sh.uniforms.uLamps = U.uLamps || (U.uLamps = { value: 0 }); // (uLamps: headlamps on by day, in rain, snow or fog)
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
 attribute float tone; attribute float part; attribute vec3 aC0; attribute vec3 aC1; attribute vec3 aC2; attribute vec3 aC3; attribute vec3 aAnim;
@@ -137,7 +137,7 @@ vAO = ao; vTone = tone;
 #endif`);
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
-uniform float uNight; varying vec3 vCol; varying float vEmit;
+uniform float uNight; uniform float uLamps; varying vec3 vCol; varying float vEmit;
 #ifdef TONE_CARS
 varying float vAO; varying float vTone;
 #endif`)
@@ -159,7 +159,7 @@ metalnessFactor = vTone > 8.5 && vTone < 10.5 ? 0.9 : 0.0;
 reflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;
 #endif`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
+totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * max(uNight, 0.45 * uLamps));`);
     };
     return mat;
   }
@@ -1425,6 +1425,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // elsewhere). The crowd keeps out of the cars' footprints (cars.near), and opts.nav stops the
   // player walking into one (nav.movers).
   const LANE = 1.7;    // a lane's centre, on the keep side of the road's line (m)
+  const DRY = { grip: 1, pace: 1, corner: 1, headway: 1 }; // (a dry day, where cars.js is not loaded)
   // your car on a course into one (issue 335): a driver notices it up to DODGE_T s before it would hit,
   // swings up to DODGE_OUT m out of its way (to the kerb, or out over the centre line with nothing coming
   // when you pass on the kerb side), brakes hard unless you come up from behind, and keeps that up for
@@ -2183,6 +2184,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       JN.update(dt, t);
       const TR = JN.trips && JN.trips(); // (where the traffic is going, trips.js)
+      const WXT = (window.OECars && OECars.weather) || DRY; // (the weather as drivers meet it)
       const you = api.extra.find(o => o.id === 'car' && !o.ahead && o.v > 3); // your car on the move (dodged, below)
       for (const b of blockers) if (!b.half) addBlocker(b.x, b.y, b.z, 0.4); // the player on foot and the NPCs (your car and a ride: below)
       if (crowd) for (let i = 0; i < crowd.active; i++) { const p = crowd.P[i]; if (p.line >= 0) addBlocker(p.x, p.y, p.z, 0.3, i); }
@@ -2710,9 +2712,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               hold = lt === 'r' || (lt === 'y' && can);
               if (lt === 'r' && X.ph === 1 && toStop > 0 && toStop - c.v * dt <= 0 && !pass) { redRuns++; if (redLog.length < 20) redLog.push(`crossing ${X.id}: v ${c.v.toFixed(1)} to its line ${toStop.toFixed(2)} ${why} gap ${gap.toFixed(1)} t ${X.t.toFixed(1)}`); }
             } else if (crowd && !(c.zebraOff > 0) && c.v * c.v / 8 < toStop + 0.5) hold = onStripes(X);
+            // a level crossing (junctions.js addRail), open: the rails kept clear. With whatever is ahead (a queue, a
+            // red light beyond) leaving no room for the whole car past the far rail, it waits at the line, never on them
+            if (!hold && X.rail && toStop > 0.3 && gap < 39.5 && gap < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5 && !(front && front.v > 3)) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
             if (hold) {
               const g = toStop + 2.4;
-              if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.sig ? 'light' : 'zebra'; }
+              if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.rail ? 'rails' : X.sig ? 'light' : 'zebra'; }
             }
             break; // (the nearest one ahead rules)
           }
@@ -2829,7 +2834,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.tangleT > 4 && Math.hypot(c.x - cx, c.y - cy) > 140) { JN.forget(c); c.line = -1; c.tangleT = 0; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         const free = c.tangleT > 4, behind = tangled > 0 && ahead && !free;
         // up to the limit, and braking in time for what is ahead (gently from far off, at most 3.5 m/s²)
-        const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v * PACE, c.vBend, (gap - 2.6) * 0.9, Math.sqrt(7 * (gap - 2.6)) + 0.5);
+        // (in the weather, cars.js setWeather: slower on a wet or snowy road and in fog, slower still through a bend, and braking for a gap from farther back)
+        const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v * PACE * WXT.pace, c.vBend * WXT.corner, (gap - 2.6) * 0.9 / WXT.headway, Math.sqrt(7 * WXT.grip * (gap - 2.6)) + 0.5);
         // and what it closes on, by the Intelligent Driver Model's interaction term (Treiber, Hennecke and
         // Helbing 2000): the gap it wants grows with its speed and with how fast it closes, so it starts to
         // brake early and gently for a queue or a red line seen from 40 m, rather than at the last moment at
@@ -2837,7 +2843,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         let dv = Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
         if (gap < 40 && !(tangled > 0 && !behind)) {
           const ld = front || leadX, vl = ld ? (ld.v || 0) * (Math.sin(ld.h) * fx + Math.cos(ld.h) * fy) : 0;
-          dv = Math.min(dv, idm(c.v, gap, vl, 2.6, 0.8, 2.5, 3) * dt);
+          dv = Math.min(dv, idm(c.v, gap, vl, 2.6, 0.8 * WXT.headway, 2.5, 3) * dt); // (a longer time gap in the wet)
         }
         if (c.dodgeBrake) dv = Math.min(dv, -6.5 * dt); // (an emergency stop for your car)
         c.v = Math.max(0, c.v + Math.max(-8 * dt, dv)); // (never below a stop: braking for what is close ahead took a stopped car's speed below 0, and it ran away backwards, at up to 17 m/s into the walls, #202)

@@ -44,6 +44,83 @@ window.OECars = (function () {
   // and its trees stand just past it, streets.js) its body's side at the carriageway's edge instead, never inside
   // its lane: with the class's 3.3 m a taxi stopping there stood in the bank's trees (#315)
   const kerbOf = (c, cw) => cw > 0 ? clamp(cw / 2 - 1.0, LANE, 6.5) : clamp((ROADW[c] || 7) / 2 - 0.1, 3.3, 6.5);
+  // The weather as drivers meet it (#355), from the weather's one state (weather.js, set by the game each quarter
+  // second: setWeather). grip: the tyres' against a dry road's (the state's own number where it has one; else 0.7
+  // wet, 0.4 on settled snow); pace: the share of a dry day's speed drivers keep (grip, and how far they can see in
+  // fog); corner: the same through a bend (the square root of the grip, as the speed a bend can be taken at goes);
+  // headway: how much longer the gap to the car ahead is; lamps: headlamps on in rain, snow or fog by day; spray: how
+  // much the wheels throw up (a wet road, not a snowy one)
+  const WX = { grip: 1, pace: 1, corner: 1, headway: 1, lamps: 0, spray: 0, wet: 0, rain: 0, snow: 0, vis: 40000 };
+  function setWeather(s) {
+    const n = v => (v > 0 ? Math.min(1, v) : 0);
+    WX.rain = s ? n(s.rain) : 0; WX.snow = s ? n(s.snow) : 0; WX.wet = s ? n(s.wet ?? s.rain) : 0;
+    const lying = s ? n(s.snowDepth) : 0;
+    WX.grip = s && s.grip > 0 ? clamp(s.grip, 0.3, 1) : 1 - Math.max(0.3 * WX.wet, 0.6 * Math.max(lying, WX.snow * 0.5));
+    WX.vis = s && s.visibility > 0 ? s.visibility : s && s.fog > 0 ? 40000 * Math.pow(1 - n(s.fog), 4) + 60 : 40000;
+    WX.pace = (0.6 + 0.4 * WX.grip) * clamp(WX.vis / 180, 0.55, 1);
+    WX.corner = Math.sqrt(WX.grip);
+    WX.headway = 1 + 0.9 * (1 - WX.grip) + (WX.vis < 300 ? 0.3 : 0);
+    WX.lamps = WX.rain > 0.12 || WX.snow > 0.1 || WX.vis < 1500 ? 1 : 0;
+    WX.spray = WX.wet * (1 - lying);
+    return WX;
+  }
+  // Spray (#355): on a wet road every car near you throws up a mist behind its rear wheels, more the faster it goes.
+  // One set of points for all of them (one draw, 192 at most, no texture), each a soft round puff that rises, drifts
+  // back and fades in 0.8 s. sprayStep(dt, { world, cars, eye, night }): cars is a list of { x, y, z, h, v, hw, half };
+  // the ones within 70 m of the eye and over 5 m/s get puffs, by turns, in the pool's budget.
+  let SPRAY = null;
+  function sprayStep(dt, { world, cars, eye, night = 0 }) {
+    const wet = WX.spray;
+    if (!SPRAY) {
+      if (wet < 0.25) return;
+      const N = 192, geo = new THREE.BufferGeometry(), pos = new Float32Array(3 * N), life = new Float32Array(N);
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('aLife', new THREE.BufferAttribute(life, 1));
+      const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { uCol: { value: new THREE.Color(0.5, 0.53, 0.57) }, uScale: { value: 600 }, uAmt: { value: 1 } },
+        vertexShader: 'attribute float aLife; varying float vA; uniform float uScale; void main() { vA = aLife; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = (0.7 + 1.9 * (1.0 - aLife)) * uScale / max(1.0, -mv.z); gl_Position = projectionMatrix * mv; }',
+        fragmentShader: 'uniform vec3 uCol; uniform float uAmt; varying float vA; void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.08, d) * vA * 0.3 * uAmt; if (a < 0.004) discard; gl_FragColor = vec4(uCol, a); }' });
+      const pts = new THREE.Points(geo, mat);
+      pts.frustumCulled = false; pts.renderOrder = 3;
+      world.add(pts);
+      SPRAY = { N, pts, pos, life, vel: new Float32Array(3 * N), next: 0, acc: 0, turn: 0, live: 0 };
+    }
+    const S = SPRAY, P = S.pos, V = S.vel, Lf = S.life;
+    // the puffs there are: up, back and out, and fading
+    let live = 0;
+    for (let i = 0; i < S.N; i++) {
+      if (Lf[i] <= 0) continue;
+      Lf[i] = Math.max(0, Lf[i] - dt / 0.8);
+      if (Lf[i] <= 0) { P[3 * i + 1] = -9999; continue; }
+      P[3 * i] += V[3 * i] * dt; P[3 * i + 1] += V[3 * i + 1] * dt; P[3 * i + 2] += V[3 * i + 2] * dt;
+      V[3 * i] *= 1 - 1.6 * dt; V[3 * i + 2] *= 1 - 1.6 * dt; V[3 * i + 1] -= 1.1 * dt;
+      live++;
+    }
+    S.live = live;
+    S.pts.visible = live > 0 || wet >= 0.25;
+    if (wet >= 0.25 && cars.length) {
+      // new ones: up to 150 a second, shared out among the cars near the eye
+      S.acc = Math.min(12, S.acc + dt * 150 * wet);
+      const ex = eye.position.x, ey = -eye.position.z;
+      for (let k = 0; k < cars.length && S.acc >= 1; k++) {
+        const c = cars[(S.turn + k) % cars.length];
+        if (!(c.v > 5) || Math.abs(c.x - ex) > 70 || Math.abs(c.y - ey) > 70) continue;
+        const fx = Math.sin(c.h), fy = Math.cos(c.h), sd = Math.random() < 0.5 ? -1 : 1, hw = (c.hw || 0.9) - 0.15, back = (c.half || 2.2) * 0.62;
+        const i = S.next; S.next = (S.next + 1) % S.N; S.acc -= 1;
+        const x = c.x - fx * back + fy * sd * hw, y = c.y - fy * back - fx * sd * hw, up = 0.5 + Math.min(1.6, c.v * 0.07);
+        P[3 * i] = x; P[3 * i + 1] = c.z + 0.12; P[3 * i + 2] = -y;
+        // (world: x east, y up, z south; thrown back at a fifth of the car's speed, a little out to its side)
+        V[3 * i] = fx * c.v * 0.25 + fy * sd * 0.5 + (Math.random() - 0.5) * 0.6; V[3 * i + 1] = up * (0.7 + 0.6 * Math.random()); V[3 * i + 2] = -(fy * c.v * 0.25 - fx * sd * 0.5) + (Math.random() - 0.5) * 0.6;
+        Lf[i] = Math.min(1, 0.45 + c.v * 0.035);
+      }
+      S.turn = (S.turn + 7) % Math.max(1, cars.length);
+    }
+    if (live || wet >= 0.25) {
+      const u = S.pts.material.uniforms, lum = 0.18 + 0.82 * (1 - Math.min(1, night));
+      u.uCol.value.setRGB(0.5 * lum, 0.53 * lum, 0.57 * lum); u.uAmt.value = Math.min(1, 0.4 + wet);
+      u.uScale.value = 300 * (window.innerHeight || 800) / 800;
+      S.pts.geometry.attributes.position.needsUpdate = true; S.pts.geometry.attributes.aLife.needsUpdate = true;
+    }
+  }
   // the cushions' height over the cabin floor (build_vehicles.py: the cushions 0.33 m over the floor pan, the carpet 0.1 on it)
   const CUSHION = 0.225;
 
@@ -377,6 +454,9 @@ window.OECars = (function () {
   // the model's performance: top speed (m/s) and pull off the line (m/s2)
   const PERF = { Car_Sedan: [58, 7.6], Car_Taxi: [55, 7.2], Car_Hatch: [52, 7.8], Car_SUV: [53, 7.0], Car_Van: [42, 5.8] };
   const SHIFT = [0, 13, 23, 33, 44, 80]; // speeds (m/s) at which it changes up, for the engine note
+  // your own car's tyres in the weather: a little over half of what the grip loses is felt (0.87 wet, 0.73 on snow), so that
+  // a bend runs wider and a stop takes longer without the car turning undrivable
+  const GW = () => 0.55 + 0.45 * WX.grip;
   function drive(C, nav, at) {
     const [VMAX, A0] = PERF[C.name] || [52, 7.4];
     const st = { x: at.x, y: at.y, z: at.z, h: at.h, vx: 0, vy: 0, r: 0, steer: 0, vz: 0, air: false, v: 0, speed: 0, slip: 0, gear: 1, rpm: 0, brake: false,
@@ -419,7 +499,7 @@ window.OECars = (function () {
       if (!st.air) {
         if (st.reverse) a += power * 4.5 * (1 - clamp(-vf / 9, 0, 1));
         else a += power * A0 * (1 - Math.pow(clamp(vf / VMAX, 0, 1), 1.6));
-        const stop = braking * 12.5 + (hb ? 6 : 0) + 0.35 + 0.0009 * vf * vf + (fwd === 0 ? 0.6 : 0);
+        const stop = braking * 12.5 * GW() + (hb ? 6 : 0) + 0.35 + 0.0009 * vf * vf + (fwd === 0 ? 0.6 : 0); // (longer to stop on a wet road)
         const dv = a * dt, dec = stop * dt;
         vf += dv;
         vf = Math.abs(vf) <= dec ? (Math.abs(dv) > dec ? vf : 0) : vf - Math.sign(vf) * dec;
@@ -434,7 +514,7 @@ window.OECars = (function () {
       st.grip += ((hb ? 0.3 : 1) - st.grip) * Math.min(1, dt * (hb ? 9 : 2.2));
       if (!st.air) {
         const kin = vf * Math.tan(st.steer) / C.wheelbase * (hb ? 1.6 : 1);
-        const cap = (st.grip < 0.9 ? 2.3 : 1.12) * 9.5 / Math.max(2, sv) + (sv < 6 ? 2 : 0);
+        const cap = (st.grip < 0.9 ? 2.3 : 1.12) * 9.5 * GW() / Math.max(2, sv) + (sv < 6 ? 2 : 0);
         st.r += (clamp(kin, -cap, cap) - st.r) * Math.min(1, dt * 7);
       } else st.r *= 1 - Math.min(1, dt * 0.5);
       st.vx = fx * vf + lx * vl; st.vy = fy * vf + ly * vl;
@@ -442,7 +522,7 @@ window.OECars = (function () {
       const sp = Math.hypot(st.vx, st.vy);
       if (sp > 1e-3 && !st.air) {
         const back = st.reverse && vf < 0, along = st.h + (back ? Math.PI : 0), dir = Math.atan2(st.vx, st.vy), off = angDiff(along, dir);
-        const turn = sp < 2.5 ? off : clamp(off * (1 - Math.exp(-dt * 9)), -9.5 * st.grip / sp * dt, 9.5 * st.grip / sp * dt);
+        const gw = 9.5 * st.grip * GW(), turn = sp < 2.5 ? off : clamp(off * (1 - Math.exp(-dt * 9)), -gw / sp * dt, gw / sp * dt);
         const keep = 1 - Math.abs(Math.sin(off)) * (0.3 + 0.5 * (1 - st.grip)) * dt;
         st.vx = Math.sin(dir + turn) * sp * keep; st.vy = Math.cos(dir + turn) * sp * keep;
         st.slip = sp * Math.abs(Math.sin(off - turn));
@@ -1254,7 +1334,7 @@ window.OECars = (function () {
     // traffic: actors.js), and after 15 s held there by someone standing on them it edges on
     // for 6 s, braking for them as for anyone in the road. Infinity if it needn't.
     let zebraT = 0, zebraOff = 0;
-    function midGap(dt) {
+    function midGap(dt, carGap = Infinity) {
       const M = route.mids;
       if (!lights || !M || !M.length) return Infinity;
       if (zebraOff > 0) zebraOff -= dt;
@@ -1268,10 +1348,12 @@ window.OECars = (function () {
           hold = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < front - 0.3);
           if (priority && lt === 'g' && lights.priority) lights.priority(m.a); // (its green held while it comes: never the walkers' cut short)
         } else if (lights.onStripes && !(zebraOff > 0) && st.v * st.v / 14 < front + 0.5) hold = lights.onStripes(m.X); // (if it can stop by then, braking as hard as it does: update)
+        // (a level crossing, open: never onto the rails without room for the whole car beyond them, junctions.js addRail)
+        if (!hold && m.X.rail && front > 0.3 && carGap < front + m.a.back + m.X.rail.w / 2 + 2 * C.half + 1.5 && !(st.block && (st.block.v || 0) > 3)) hold = true;
         zebraT = hold && !m.X.sig && st.v < 0.3 ? zebraT + dt : 0;
         if (zebraT > 15) { zebraT = 0; zebraOff = 6; }
         if (!hold) return Infinity;
-        st.junction = m.X.sig ? 'crossing red' : 'zebra'; st.lineAt = m.a;
+        st.junction = m.X.rail ? (lights.light(m.a) === 'g' ? 'rails kept clear' : 'level crossing red') : m.X.sig ? 'crossing red' : 'zebra'; st.lineAt = m.a;
         return front + 2.6;
       }
       return Infinity;
@@ -1339,13 +1421,13 @@ window.OECars = (function () {
       // how fast: the limit (or the cruise), bends ahead, the end of the route, the gap ahead
       P.pos(st.s, q);
       const hz = hurry ? hurry(st, dry) : 1;
-      let want = Math.min(cruise, q.v || cruise) * hz;
-      for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
+      let want = Math.min(cruise, q.v || cruise) * hz * WX.pace; // (slower in the wet, on snow and in fog)
+      for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) { const cv = P.corner[i] * WX.corner; if (cv < want) want = Math.min(want, Math.sqrt(cv * cv + 2 * 3 * WX.grip * (P.cum[i] - st.s))); } // (a bend taken slower on a slippery road, and braked for from farther back)
       // (and a corner just behind: it is still turning it, the route's line being taken as a curve over some metres)
-      for (let i = q.i; i > 0 && st.s - P.cum[i] < 8; i--) if (P.corner[i] < want) want = P.corner[i];
+      for (let i = q.i; i > 0 && st.s - P.cum[i] < 8; i--) if (P.corner[i] * WX.corner < want) want = P.corner[i] * WX.corner;
       // the cars ahead, and the line at a red light or a stop sign
       let carGap = gapAhead(others, dt);
-      const line = obey && !dry ? Math.min(lineGap(dt), midGap(dt)) : Infinity;
+      const line = obey && !dry ? Math.min(lineGap(dt), midGap(dt, carGap)) : Infinity;
       // and along its way, the cars at an angle to it (crossGap): the nearer rules
       if (!dry) look(); else st.np = 0;
       const laneGap = carGap, xGap = dry ? Infinity : crossGap(others);
@@ -1361,7 +1443,7 @@ window.OECars = (function () {
       if (end && still && carGap < line && carGap < Infinity && st.s + carGap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, carGap - 3.2)));
       let left = st.end - st.s;
       if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
-      const gap = Math.min(carGap, line), w0 = want, room = gap < 2.8 || st.mirror ? 0 : (gap - 2.8) * 0.9;
+      const gap = Math.min(carGap, line), w0 = want, room = gap < 2.8 || st.mirror ? 0 : (gap - 2.8) * 0.9 / WX.headway; // (a longer gap at any speed in the wet)
       if (room < want) want = room;
       st.why = want < w0 ? `${line <= carGap ? 'the line' : 'gap'} ${gap.toFixed(1)} m` : `${w0.toFixed(1)} m/s ahead`; // what sets the speed (for the game check)
       // held up behind cars (never at the line: a red light is waited out) it counts the time while it
@@ -1496,5 +1578,5 @@ window.OECars = (function () {
     return { st, update, finish, jump, leave, poseAt, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
-  return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
+  return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF, weather: WX, setWeather, sprayStep, sprayState: () => SPRAY };
 })();

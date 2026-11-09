@@ -31,7 +31,7 @@ const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { reverseStep } = require('./reverse_step');
-const { autopilotStep, autopilotChecks, assistStep, assistChecks } = require('./autopilot_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1991,6 +1991,10 @@ const npcNight = require('./npc_night');
     const as = await p.evaluate(assistStep, { log: !!process.env.CHAIN });
     for (const l of as.log || []) console.log(`  assist: ${l}`);
     for (const [ok, what] of assistChecks(as)) check(ok, what);
+    // and the weather on the road: the same traffic dry and in the rain (slower, longer gaps, lamps on, spray)
+    for (const [ok, what] of wetChecks(await p.evaluate(wetStep))) check(ok, what);
+    // and a level crossing on a busy street: stopped at while it is shut, its rails never queued across
+    for (const [ok, what] of railChecks(await p.evaluate(railStep))) check(ok, what);
   }
 
   // the traffic dodges your car (issue 335): your car put in a moving car's lane 26 m ahead, coming at it at

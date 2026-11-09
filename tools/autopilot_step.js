@@ -180,4 +180,86 @@ function assistChecks(r) {
     [r.braked, 'a touch of the brake ends the cruise'],
   ];
 }
-module.exports = { autopilotStep, autopilotChecks, assistStep, assistChecks };
+// The weather on the road (#355, cars.js setWeather): 25 s of the traffic on a dry road, then 25 s in the rain. In
+// the rain the drivers' numbers must change (pace under 1, the gap's factor over 1, headlamps on by day), the cars
+// on the move must be slower on average than they were dry, and the cars near you must throw up spray.
+async function wetStep() {
+  const g = window.__game, W = g.weather, C = window.OECars;
+  if (!W || !C || !C.setWeather) return { none: 'no weather' };
+  const A = g.cars, X = C.weather;
+  const run = secs => { let v = 0, n = 0, near = 0; for (let t = 0; t < secs; t += 0.5) { g.advance(0.5); for (const c of A.C) if (c.line >= 0 && !c.park && c.v > 4) { v += c.v / (g.roadNet.L[c.line].v || 11); n++; if (Math.hypot(c.x - g.player.x, c.y - g.player.y) < 60) near++; } } return { v: n ? v / n : 0, n, near }; };
+  W.set('clear', { now: true }); g.advance(6);
+  const dry = run(25), d0 = { pace: X.pace, lamps: X.lamps };
+  W.set('rain', { now: true }); g.advance(6);
+  const wet = run(25), sp = C.sprayState && C.sprayState();
+  const out = { dry: dry.v, wet: wet.v, n: Math.min(dry.n, wet.n), near: wet.near, pace: X.pace, headway: X.headway, grip: X.grip, lamps: X.lamps, dryPace: d0.pace, dryLamps: d0.lamps, spray: sp ? sp.live : 0, night: g.U ? g.U.uNight.value : null };
+  W.set('clear', { now: true }); g.advance(3);
+  return out;
+}
+function wetChecks(r) {
+  if (r.none) return [[true, `the weather on the road: ${r.none}`]];
+  return [
+    [r.dryPace === 1 && r.dryLamps === 0 && r.pace < 0.95 && r.headway > 1.1 && r.lamps === 1, `in the rain the drivers keep ${(r.pace * 100).toFixed(0)}% of their dry pace and ${(r.headway * 100 - 100).toFixed(0)}% more gap on ${(r.grip * 100).toFixed(0)}% of the grip, headlamps on (dry: ${(r.dryPace * 100).toFixed(0)}%, lamps ${r.dryLamps ? 'on' : 'off'})`],
+    [r.n < 200 || r.wet < r.dry * 0.985, `and the traffic on the move is slower: ${(r.wet * 100).toFixed(0)}% of the limit against ${(r.dry * 100).toFixed(0)}% dry (${r.n} car-samples)`],
+    [r.near < 20 || r.spray > 0, `the cars near you throw up spray (${r.spray} puffs in the air; ${r.near} car-samples within 60 m)`],
+  ];
+}
+// Level crossings (#355, junctions.js addRail): a crossing is put on a busy street near you (a map with a railway
+// has its own; this one is the check's, its state set from here) and run open for 30 s, through 3 s of warning,
+// shut for 30 s and open again. While it is shut (from 4 s in) no car may be on the rails; none may ever stand on
+// them 3 s or more, open or shut (the rails are kept clear of a queue); and the traffic must cross again within
+// 20 s of its opening.
+async function railStep() {
+  const g = window.__game, A = g.cars, J = g.junctions, L = g.roadNet.L;
+  if (!J.addRail) return { none: 'no level crossings in this build' };
+  // the street: the one with the most cars on the move within 400 m, long enough, with no crossing of its own
+  const n = new Map();
+  for (let t = 0; t < 20; t++) { g.advance(1); for (const c of A.C) if (c.line >= 0 && !c.park && c.v > 2 && Math.hypot(c.x - g.player.x, c.y - g.player.y) < 400) n.set(c.line, (n.get(c.line) || 0) + 1); }
+  let X = null, state = 'open';
+  for (const [line] of [...n.entries()].sort((a, b) => b[1] - a[1])) {
+    const l = L[line];
+    if (l.len < 90 || (J.midsOn(line) || []).length) continue;
+    const q = {}; g.roadNet.at(line, l.len / 2, q);
+    X = J.addRail({ x: q.x, y: q.y, z: q.z, w: 6, state: () => state });
+    if (X) break;
+  }
+  if (!X) return { none: 'no street near you busy and long enough for a crossing' };
+  const w = X.rail.w, out = { line: X.line, cls: L[X.line].c, crossedOpen: 0, onShut: 0, stoodOn: 0, waited: 0, crossedAfter: null, kept: 0, log: [] };
+  const was = new Map(), stood = new Map();
+  const step = (secs, tag) => {
+    for (let t = 0; t < secs; t += 0.25) {
+      g.advance(0.25);
+      for (const c of A.C) {
+        if (c.line !== X.line || c.park) { was.delete(c); stood.delete(c); continue; }
+        const d = (c.s - X.mid) * c.dir, p = was.get(c); // (past the crossing's middle when positive)
+        if (p != null && p < 0 && d >= 0) { if (tag === 'open') out.crossedOpen++; if (tag === 'after' && out.crossedAfter == null) out.crossedAfter = t; }
+        was.set(c, d);
+        const on = Math.abs(d) < w / 2 + c.half - 0.3; // (any of its body over the corridor)
+        if (on && tag === 'shut' && t >= 4) { out.onShut++; if (out.log.length < 6) out.log.push(`shut ${t}s: car ${A.C.indexOf(c)} ${d.toFixed(1)} m past the middle, v ${c.v.toFixed(1)}, ${c.why}`); }
+        const st = on && c.v < 0.3 ? (stood.get(c) || 0) + 0.25 : 0;
+        stood.set(c, st);
+        if (st === 3) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''}`); }
+        if (tag === 'shut' && c.why === 'light' && c.v < 0.3 && d < 0 && d > -30) out.waited = Math.max(out.waited, 1);
+        if (c.why === 'rails') out.kept++;
+      }
+    }
+  };
+  step(30, 'open');
+  state = 'warning'; step(3, 'warning');
+  state = 'closed'; step(30, 'shut');
+  out.queue = A.C.filter(c => c.line === X.line && !c.park && c.v < 0.3 && (c.s - X.mid) * c.dir < 0 && (c.s - X.mid) * c.dir > -60).length;
+  state = 'open'; step(30, 'after');
+  // (the check's crossing is left open and out of the way: taken off its street)
+  const on = J.midsOn(X.line); if (on) { const i = on.indexOf(X); if (i >= 0) on.splice(i, 1); }
+  { const i = J.rails.indexOf(X); if (i >= 0) J.rails.splice(i, 1); }
+  X.rail.state = () => 'open';
+  return out;
+}
+function railChecks(r) {
+  if (r.none) return [[true, `level crossings: ${r.none}`]];
+  return [
+    [r.onShut === 0 && r.stoodOn === 0, `at a level crossing on a ${r.cls} street the traffic stops for the alarm and keeps the rails clear (${r.crossedOpen} crossed while it was open; shut, ${r.queue} queued and ${r.onShut} car-steps on the rails; ${r.stoodOn} stood on them; held back for room beyond ${r.kept} car-steps)${r.log.length ? `: ${r.log.join('; ')}` : ''}`],
+    [r.crossedOpen === 0 || r.queue === 0 || r.crossedAfter != null, `and goes on when it opens (${r.crossedAfter != null ? `the first across ${r.crossedAfter.toFixed(1)} s after` : 'none came'})`],
+  ];
+}
+module.exports = { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks };

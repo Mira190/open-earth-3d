@@ -784,6 +784,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   for (const w of G.wharves) { const p = nav.stand(w.terminal[0], w.terminal[1], 2, { rMax: 90, room: 100 }); w.landing = p ? [p.x, p.y] : w.terminal.slice(); }
   // street trams and a funicular, where the city has them (rail.js)
   const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
+  // a railway's level crossings, to the traffic (junctions.js addRail): shut while the alarm is on, its first three
+  // seconds a warning (rail.js crossings: closed, on; a track along a street, kind 'street', is no crossing)
+  if (rail && rail.crossings) for (const c of rail.crossings) if (c.kind !== 'street') junctions.addRail({ x: c.x, y: c.y, z: c.z, w: 2 * (c.half_m || 3),
+    state: () => (!c.closed ? 'open' : c.on >= 0 && c.on < 3 ? 'warning' : 'closed') });
   const railRide = () => (G.rail && (G.rail.funicular || G.rail.gondola)) || {}; // the line a rider takes: a funicular or a gondola
   const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
   // neighbourhood signs, things to look at and conversations to overhear (places.js), and lifts between a
@@ -937,6 +941,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // your car's model comes after the game can be played (issue 335): parked where it was to be as soon as it has
   // come, fetched then (afterPlayable) or at once when asked for later
   let myCar = null, ride = null, parkWait = null, carsHeld = true;
+  const sprayCars = [];
   let pilot = null; // the autopilot driving your car (pilotTo, below): a driver as a ride's is, at your own wheel
   const parkLater = () => vlib.loadCars().then(() => {
     const p = parkWait; parkWait = null;
@@ -1276,7 +1281,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       myCar.C.place(st.x, st.y, st.z, st.h, st.pitch, st.roll);
       if (pilot && !mine) pilotOff();
       const drvSt = pilot && !pilot.join ? pilot.drv.st : null; // (the autopilot signals as a driver does: out of the kerb, into it, round a car)
-      myCar.C.animate(dt, { v: mine ? st.v : 0, h: st.h, steer: st.steer, brake: mine && (st.brake || (Math.abs(st.v) < 0.3 && k('KeyS'))), signal: drvSt ? drvSt.signal || 0 : 0, night, on: mine, inside: mine && cam.mode === 'cabin' });
+      myCar.C.animate(dt, { v: mine ? st.v : 0, h: st.h, steer: st.steer, brake: mine && (st.brake || (Math.abs(st.v) < 0.3 && k('KeyS'))), signal: drvSt ? drvSt.signal || 0 : 0, night: Math.max(night, 0.45 * OECars.weather.lamps), on: mine, inside: mine && cam.mode === 'cabin' });
     }
     if (ride) rideStep(dt, night);
     youAtLights(dt);
@@ -2072,6 +2077,31 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         }
       }
     }
+    // a junction that won't clear (#355): stood 25 s at its line with no red light to wait for, for a movement across
+    // it that never ends (a car stuck in the junction), the driver takes another way from where it stands, however
+    // much longer (up to three times what was left and 400 m); with you in it, or at your own wheel, not on its way
+    // to you (a ride late for you has its own ways on, above)
+    if (o.phase === 'driving' && !o.turn && !o.hold && !st.mv && o.drv.opts) {
+      const a = st.lineAt, waiting = st.v < 0.3 && a && /^the line/.test(st.why || '') && !/red|amber/.test(st.junction || '') && junctions.light(a, st.lineEx) !== 'r';
+      o.boxT = waiting ? (o.boxT || 0) + dt : 0;
+      if (o.boxT > 25 && clockT - (o.boxLook || 0) > 5) {
+        o.boxLook = clockT;
+        // (out of it by another exit than the one it waits for, which may be clear of what stands there; with none,
+        // or stood 45 s, it turns round in the road and goes on from there: turnRound)
+        const N = st.route.nodes || [], P = st.P, i = N.findIndex(nd => P.cum[Math.min(nd.k, P.cum.length - 1)] >= st.s - 0.5), to = st.route.to;
+        const exitLine = i >= 0 && N[i + 1] ? N[i + 1].line : to ? to.line : null, pl = placeOnRoute(st);
+        const left = st.end - st.s, rt = pl && to && exitLine != null && o.boxT < 45 ? roads.route(pl, to, 9000, undefined, new Set([exitLine])) : null;
+        if (rt && rt.len < left * 3 + 400 && !(rt.nodes || []).slice(0, 3).some(nd => nd.line === exitLine)) {
+          const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 });
+          o.drv.leave();
+          o.drv = OECars.chauffeur(o.C, rt, opts);
+          o.drv.opts = opts;
+          st = o.drv.st;
+          o.sig = []; o.scr = []; o.qArms = []; o.boxT = 0; o.rerouted = (o.rerouted || 0) + 1; o.boxRound = (o.boxRound || 0) + 1;
+          if (player.vehicle === o) H.toast(`<b>${o.name}:</b> That junction's not moving. I'll go another way.`);
+        } else if (o.boxT > 40) { turnRound(o, 0, true); st = o.drv.st; if (o.turn) { o.boxT = 0; o.boxRound = (o.boxRound || 0) + 1; } }
+      }
+    }
     if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }
     // at a junction's line, waiting for a car crossing in it, which stands in the junction for this ride's
     // nose (actors.js, why 'you'), or stopped behind a car that stands for it in turn: each waits on the
@@ -2088,7 +2118,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function rideStep(dt, night) {
     const o = ride, st = driverStep(o, dt);
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
-    o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
+    o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night: Math.max(night, 0.45 * OECars.weather.lamps), on: true,
       inside: player.vehicle === o && cam.mode === 'cabin', near: st.gap,
       sign: o.kind === 'taxi' && (o.phase === 'coming' || o.phase === 'leaving') });
     o.driver.animate(dt, 0, 'sit', clockT);
@@ -4971,7 +5001,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (R && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null, xBlock: st.xBlock || null, block: st.block || null });
       cars.extra.push(x);
     }
+    // the weather as drivers meet it (cars.js setWeather): the traffic, the rides and your own tyres read it from there;
+    // headlamps on by day in rain, snow or fog
+    (U.uLamps || (U.uLamps = { value: 0 })).value = OECars.setWeather(weather ? weather.state : null).lamps;
     cars.update(dt, cx, cy, clockT, blockers);
+    // on a wet road the cars near you throw up spray behind their wheels (cars.js sprayStep: nothing made until it first rains)
+    if (OECars.weather.spray >= 0.25 || OECars.sprayState()) {
+      sprayCars.length = 0;
+      for (const c of cars.live) if (c.v > 5) sprayCars.push(c);
+      for (const o of [myCar, ride]) if (o) { const st = stOf(o); sprayCars.push({ x: st.x, y: st.y, z: st.z, h: st.h, v: Math.abs(st.v), hw: o.C.hw, half: o.C.half }); }
+      OECars.sprayStep(dt, { world, cars: sprayCars, eye: camera, night: U.uNight.value });
+    }
     // a driver getting out of your car's way sounds its horn, fainter the farther off (actors.js DODGE_T)
     for (const h of cars.honks.splice(0)) A.honk(Math.max(0.15, 1 - h.d / 40) * 0.8, h.bus ? 0.72 : 0.9 + Math.random() * 0.2);
     if (places) {
