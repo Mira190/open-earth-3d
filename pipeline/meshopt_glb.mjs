@@ -1,6 +1,7 @@
 // Compress the geometry and animation of shared .glb models with EXT_meshopt_compression (issue 148).
 //   node pipeline/meshopt_glb.mjs web/assets/vehicles/*.glb ...
 //   node pipeline/meshopt_glb.mjs --check web/assets/...      exit 1 if any file is still uncompressed
+//   node pipeline/meshopt_glb.mjs --again web/assets/...      filter the rotation keys of files compressed before
 // The last step of blender/build_vehicles.py, build_trees.py and build_people.py, run on what Blender wrote.
 // Every buffer view of vertex attributes, indices and animation is meshopt-encoded in place (no quantisation
 // to integers, no reordering, no merging, every node and name kept): integers and indices losslessly (a
@@ -9,7 +10,10 @@
 // float32), so the code that reads the geometry (cars.js, people.js) is unchanged. Images stay as they are. The decoded
 // views live in a fallback buffer with no data, as gltfpack writes them; three.js r186 decodes them with
 // MeshoptDecoder (web/vendor/three/addons/libs/meshopt_decoder.module.js), set on each GLTFLoader.
-// A file already compressed is left alone. The encoder is meshoptimizer's own (MIT, pipeline/vendor/).
+// The clips' rotation keys go through the quaternion filter at QBITS (as gltfpack's default for animation),
+// when that comes out smaller: about half the size of the unfiltered keys on the crowd's clips.
+// A file already compressed is left alone, unless --again: then its rotation keys are filtered where they were
+// not, and every other view keeps the bytes it has. The encoder is meshoptimizer's own (MIT, pipeline/vendor/).
 import fs from 'fs';
 import { MeshoptEncoder } from './vendor/meshoptimizer/meshopt_encoder.mjs';
 import { MeshoptDecoder } from './vendor/meshoptimizer/meshopt_decoder.mjs';
@@ -19,6 +23,7 @@ const SIZE = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
 const COMPS = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 };
 const align = (n, a = 4) => Math.ceil(n / a) * a;
 const BITS = 16; // the exponential filter's mantissa: 1/65536 of a float attribute's range, a tenth of a millimetre on a car
+const QBITS = 12; // the quaternion filter's: a few hundredths of a degree on a joint
 
 function readGlb(buf) {
   if (buf.readUInt32LE(0) !== 0x46546c67) throw new Error('not a GLB');
@@ -55,6 +60,9 @@ function uses(json) {
     for (const t of p.targets || []) for (const a of Object.values(t)) mark(a, 'vertex');
   }
   for (const an of json.animations || []) for (const s of an.samplers || []) { mark(s.input, 'anim'); mark(s.output, 'anim'); }
+  for (const an of json.animations || []) for (const c of an.channels || []) if (c.target && c.target.path === 'rotation') {
+    const s = (an.samplers || [])[c.sampler]; if (s) mark(s.output, 'rotation');
+  }
   for (const s of json.skins || []) mark(s.inverseBindMatrices, 'other');
   const views = new Map();
   (json.accessors || []).forEach((a, i) => {
@@ -88,16 +96,70 @@ function close(back, src, a) {
   return true;
 }
 
-async function compress(file) {
+// rotation keys (int16 normalised) as floats, each made unit length
+function quats(raw, a) {
+  const n = a.count, f = new Float32Array(4 * n);
+  const src = new Int16Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + 8 * n)), k = 1 / 32767;
+  for (let i = 0; i < n; i++) {
+    let l = 0;
+    for (let c = 0; c < 4; c++) { const x = Math.max(src[4 * i + c] * k, -1); f[4 * i + c] = x; l += x * x; }
+    l = Math.sqrt(l);
+    if (l < 1e-6) { f[4 * i] = f[4 * i + 1] = f[4 * i + 2] = 0; f[4 * i + 3] = 1; } else for (let c = 0; c < 4; c++) f[4 * i + c] /= l;
+  }
+  return f;
+}
+// the quaternion filter's keys: each within a tenth of a degree of what was written (the filter's own error
+// at QBITS is a few hundredths; the int16 the keys decode to adds its rounding)
+function closeQuat(back, src) {
+  const q = new Int16Array(back.buffer, back.byteOffset, src.length);
+  for (let i = 0; i < src.length; i += 4) {
+    let d = 0, l = 0;
+    for (let c = 0; c < 4; c++) { const x = q[i + c] / 32767; d += x * src[i + c]; l += x * x; }
+    if (!(Math.abs(d) / Math.sqrt(l) > Math.cos(0.1 * Math.PI / 360))) return false;
+  }
+  return true;
+}
+// a rotation view as the quaternion filter has it, encoded; null when it is not one, or not smaller than `than` bytes
+function quatPlan(raw, a, u, than) {
+  if (!u.kinds.has('rotation') || u.kinds.size !== 2 || a.type !== 'VEC4' || a.componentType !== 5122 || !a.normalized) return null; // (int16 keys: the filter writes the same layout)
+  const src = quats(raw, a), data = Buffer.from(MeshoptEncoder.encodeFilterQuat(src, a.count, 8, QBITS));
+  const enc = MeshoptEncoder.encodeGltfBuffer(new Uint8Array(data.buffer, data.byteOffset, data.length), a.count, 8, 'ATTRIBUTES');
+  if (enc.length >= than) return null;
+  const back = new Uint8Array(a.count * 8);
+  MeshoptDecoder.decodeGltfBuffer(back, a.count, 8, enc, 'ATTRIBUTES', 'QUATERNION');
+  if (!closeQuat(back, src)) throw new Error(`accessor ${a.name || ''}: quaternion keys do not decode to themselves`);
+  return { enc, size: a.count * 8 };
+}
+
+async function compress(file, again = false) {
   const buf = fs.readFileSync(file), { json, bin } = readGlb(buf);
-  if ((json.extensionsUsed || []).includes(EXT)) return { file, skipped: 'already compressed', before: buf.length, after: buf.length };
-  if ((json.buffers || []).length !== 1 || !bin) return { file, skipped: 'not one embedded buffer', before: buf.length, after: buf.length };
+  const packedBefore = (json.extensionsUsed || []).includes(EXT);
+  if (packedBefore && !again) return { file, skipped: 'already compressed', before: buf.length, after: buf.length };
+  const nbuf = (json.buffers || []).length - (packedBefore && ((json.buffers[1] || {}).extensions || {})[EXT] ? 1 : 0); // (a compressed file's fallback buffer)
+  if (nbuf !== 1 || !bin) return { file, skipped: 'not one embedded buffer', before: buf.length, after: buf.length };
   const views = uses(json), images = new Set((json.images || []).map(m => m.bufferView).filter(v => v != null));
   const out = [], fallback = []; // the new BIN's parts, and the decoded views' places in the fallback buffer
   let outLen = 0, fbLen = 0, packed = 0;
   const put = data => { const pad = align(outLen) - outLen; if (pad) { out.push(Buffer.alloc(pad)); outLen += pad; } const o = outLen; out.push(Buffer.from(data)); outLen += data.length; return o; };
+  let changed = 0;
   json.bufferViews.forEach((v, vi) => {
-    const raw = bin.subarray(v.byteOffset || 0, (v.byteOffset || 0) + v.byteLength), list = views.get(vi);
+    const list = views.get(vi), old = (v.extensions || {})[EXT];
+    if (old) { // (--again) a view encoded already: its bytes as they are, or its rotation keys filtered now
+      const enc0 = bin.subarray(old.byteOffset || 0, (old.byteOffset || 0) + old.byteLength);
+      let q = null;
+      if (!old.filter && old.mode === 'ATTRIBUTES' && old.byteStride === 8 && list && list.length === 1 && !(list[0].a.byteOffset > 0)) {
+        const back = new Uint8Array(old.count * old.byteStride);
+        MeshoptDecoder.decodeGltfBuffer(back, old.count, old.byteStride, enc0, old.mode);
+        q = quatPlan(Buffer.from(back), list[0].a, list[0].u, enc0.length);
+      }
+      const at = put(q ? q.enc : enc0);
+      fbLen = align(fbLen, 16);
+      v.buffer = 1; v.byteOffset = fbLen; fbLen += v.byteLength;
+      v.extensions = Object.assign({}, v.extensions, { [EXT]: Object.assign({}, old, { buffer: 0, byteOffset: at, byteLength: (q ? q.enc : enc0).length }, q ? { filter: 'QUATERNION' } : {}) });
+      packed++; if (q) changed++;
+      return;
+    }
+    const raw = bin.subarray(v.byteOffset || 0, (v.byteOffset || 0) + v.byteLength);
     let plan = null;
     if (!images.has(vi) && list && list.length === 1 && !(list[0].a.byteOffset > 0)) {
       const { a, u } = list[0], el = SIZE[a.componentType] * COMPS[a.type];
@@ -125,11 +187,13 @@ async function compress(file) {
     }
     if (plan) {
       const src = plan.filter ? plan.filter.data : plan.data;
-      const enc = MeshoptEncoder.encodeGltfBuffer(new Uint8Array(src.buffer, src.byteOffset, src.length), plan.count, plan.stride, plan.mode);
+      let enc = MeshoptEncoder.encodeGltfBuffer(new Uint8Array(src.buffer, src.byteOffset, src.length), plan.count, plan.stride, plan.mode);
+      const q = plan.stride === 8 && !plan.filter ? quatPlan(raw, list[0].a, list[0].u, enc.length) : null;
+      if (q) { enc = q.enc; plan.filter = { name: 'QUATERNION' }; changed++; }
       if (enc.length < plan.data.length) {
         const back = new Uint8Array(plan.count * plan.stride);
         MeshoptDecoder.decodeGltfBuffer(back, plan.count, plan.stride, enc, plan.mode, plan.filter && plan.filter.name);
-        if (plan.filter ? !close(back, plan.filter.src, list[0].a) : !same(back, plan, list[0].a)) throw new Error(`${file}: view ${vi} does not decode to itself`);
+        if (!q && (plan.filter ? !close(back, plan.filter.src, list[0].a) : !same(back, plan, list[0].a))) throw new Error(`${file}: view ${vi} does not decode to itself`);
         const at = put(enc);
         fbLen = align(fbLen, 16);
         fallback.push(vi);
@@ -144,6 +208,7 @@ async function compress(file) {
     v.byteOffset = put(raw); v.buffer = 0; // as it was, in the new BIN
   });
   if (!packed) return { file, skipped: 'nothing to compress', before: buf.length, after: buf.length };
+  if (packedBefore && !changed) return { file, skipped: 'no rotation keys to filter', before: buf.length, after: buf.length };
   const bin2 = Buffer.concat(out);
   json.buffers = [{ byteLength: align(bin2.length) }, { byteLength: fbLen, extensions: { [EXT]: { fallback: true } } }];
   json.extensionsUsed = [...new Set([...(json.extensionsUsed || []), EXT])];
@@ -154,7 +219,7 @@ async function compress(file) {
   return { file, before: buf.length, after: glb.length, packed, views: json.bufferViews.length };
 }
 
-const args = process.argv.slice(2), check = args.includes('--check'), files = args.filter(a => !a.startsWith('--'));
+const args = process.argv.slice(2), check = args.includes('--check'), again = args.includes('--again'), files = args.filter(a => !a.startsWith('--'));
 await MeshoptEncoder.ready; await MeshoptDecoder.ready;
 let bad = 0, b0 = 0, b1 = 0;
 for (const f of files) {
@@ -163,7 +228,7 @@ for (const f of files) {
     if (!(json.extensionsUsed || []).includes(EXT) && (json.meshes || json.animations)) { console.log(`FAIL ${f}: not meshopt-compressed (node pipeline/meshopt_glb.mjs ${f})`); bad++; }
     continue;
   }
-  const r = await compress(f);
+  const r = await compress(f, again);
   b0 += r.before; b1 += r.after;
   console.log(`${f}: ${(r.before / 1e6).toFixed(2)} -> ${(r.after / 1e6).toFixed(2)} MB${r.skipped ? ` (${r.skipped})` : ` (${r.packed} of ${r.views} views)`}`);
 }
