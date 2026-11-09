@@ -1,0 +1,28 @@
+// The autopilot of your own car (#355), alone: tools/autopilot_step.js's checks in a city, with its log.
+//   GAME_TIME=10:00 xvfb-run -a node tools/autopilot_probe.js sydney     (OUT=dir: a still at the end)
+const { chromium } = require('playwright');
+const { pinClock } = require('./pin_clock');
+const { autopilotStep, autopilotChecks } = require('./autopilot_step');
+const [,, city = 'sydney'] = process.argv;
+(async () => {
+  const b = await chromium.launch({ headless: !process.env.DISPLAY, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
+  const p = await b.newPage({ viewport: { width: +(process.env.W || 1100), height: +(process.env.H || 650) } });
+  p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 400)));
+  p.on('console', m => { if (m.type() === 'error') console.log('error', m.text().slice(0, 300)); });
+  await pinClock(p, city);
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
+  await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
+  const play = await p.$('#gt-play');
+  if (play) await play.click().catch(() => {});
+  await p.evaluate(() => { const g = window.__game; for (let t = 0; g.arriving() && t < 10; t += 0.25) g.advance(0.25); g.advance(2); });
+  const r = await p.evaluate(autopilotStep, { log: true, limit: +(process.env.LIMIT || 420) });
+  for (const l of r.log || []) console.log(l);
+  delete r.log;
+  console.log(JSON.stringify(r));
+  let bad = 0;
+  for (const [ok, what] of autopilotChecks(r)) { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; }
+  if (process.env.OUT) { require('fs').mkdirSync(process.env.OUT, { recursive: true }); await p.waitForTimeout(500); await p.screenshot({ path: `${process.env.OUT}/${city}-autopilot.png` }); }
+  await b.close();
+  process.exit(bad ? 1 : 0);
+})();
