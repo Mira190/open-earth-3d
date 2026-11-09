@@ -211,23 +211,30 @@ ${GLSL}`);
     // the shader, not multiplied by nothing, which a compiler cannot fold away)
     const pools = !/^\s*0(\.0*)?\s*$/.test(puddles);
     if (!o.water) {
+      // (all of it inside one test of the state: on a dry day with no snow lying a fragment pays for that test and
+      // nothing else, so the buildings, trees and cars that now carry the patch cost what they did)
       sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 float oeCamD = distance(vOeW, cameraPosition);
-vec3 oeNw = gl_FrontFacing ? vOeN : -vOeN; // (the face seen: the underside of a thin roof faces down)
-float oeUp = smoothstep(0.15, 0.75, oeNw.y), oeFlat = smoothstep(0.96, 0.995, oeNw.y);
-// (a wall: is the air in front of it open; and the map's texels are broken up at a roof's edge, where snow and rain blow in a little)
-float oeOpen = uOeWet + uOeSnow > 0.001 ? 1.0 - oeCover(vOeW + vec3(oeNw.x, 0.0, oeNw.z) * (0.8 * (1.0 - oeUp)) + vec3(oeN(vOeW.xz * 2.7) - 0.5, 0.0, oeN(vOeW.zx * 2.7 + 11.0) - 0.5) * 0.45, 0.6) : 1.0;
-// a wall takes the rain in streaks down it, and less of it than what faces the sky
-float oeWet = uOeWet * oeOpen * mix(0.22 + 0.3 * oeN(vec2(dot(vOeW.xz, vec2(0.83, 0.56)) * 0.9, vOeW.y * 0.07)), 1.0, oeUp);
-float oeGl = clamp(${gloss}, 0.0, 1.0) * oeWet;
-diffuseColor.rgb *= mix(1.0, 1.0 - ${porous}, oeWet);
-roughnessFactor = mix(roughnessFactor, min(roughnessFactor, mix(0.42, 0.2, uOeGlint)), oeGl); // (uOeGlint: the sun out on a street still wet, its film at its smoothest)
-${pools ? `float oePd = uOeWet > 0.001 ? oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen : 0.0; // (dry: no noise to work out)
-diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
-roughnessFactor = mix(roughnessFactor, 0.06, oePd);` : 'const float oePd = 0.0;'}
-float oeSn = oeSnowOn(vOeW, oeNw, oeOpen, clamp(${tread}, 0.0, 1.0))${o.card ? ' * 0.62' : ''}; // (a far tree's card: frosted, not buried)
-diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.76, 0.83) * (0.86 + 0.2 * oeN(vOeW.xz * 0.9 + 5.0)) * (0.93 + 0.1 * oeN(vOeW.xz * 0.07 + 2.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
-roughnessFactor = mix(roughnessFactor, 0.82, oeSn);`)
+float oeUp = 0.0, oeFlat = 0.0, oeOpen = 1.0, oeWet = 0.0, oeGl = 0.0, oePd = 0.0, oeSn = 0.0;
+if (uOeWet + uOeSnow > 0.001) {
+  vec3 oeNw = gl_FrontFacing ? vOeN : -vOeN; // (the face seen: the underside of a thin roof faces down)
+  oeUp = smoothstep(0.15, 0.75, oeNw.y); oeFlat = smoothstep(0.96, 0.995, oeNw.y);
+  // (a wall: is the air in front of it open; and the map's texels are broken up at a roof's edge, where snow and rain blow in a little)
+  oeOpen = 1.0 - oeCover(vOeW + vec3(oeNw.x, 0.0, oeNw.z) * (0.8 * (1.0 - oeUp)) + vec3(oeN(vOeW.xz * 2.7) - 0.5, 0.0, oeN(vOeW.zx * 2.7 + 11.0) - 0.5) * 0.45, 0.6);
+  // a wall takes the rain in streaks down it, and less of it than what faces the sky
+  oeWet = uOeWet * oeOpen * mix(0.22 + 0.3 * oeN(vec2(dot(vOeW.xz, vec2(0.83, 0.56)) * 0.9, vOeW.y * 0.07)), 1.0, oeUp);
+  oeGl = clamp(${gloss}, 0.0, 1.0) * oeWet;
+  diffuseColor.rgb *= mix(1.0, 1.0 - ${porous}, oeWet);
+  roughnessFactor = mix(roughnessFactor, min(roughnessFactor, mix(0.42, 0.2, uOeGlint)), oeGl); // (uOeGlint: the sun out on a street still wet, its film at its smoothest)
+${pools ? `  if (uOeWet > 0.001) { // (dry: no noise to work out)
+    oePd = oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen;
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
+    roughnessFactor = mix(roughnessFactor, 0.06, oePd);
+  }` : ''}
+  oeSn = oeSnowOn(vOeW, oeNw, oeOpen, clamp(${tread}, 0.0, 1.0))${o.card ? ' * 0.62' : ''}; // (a far tree's card: frosted, not buried)
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.76, 0.83) * (0.86 + 0.2 * oeN(vOeW.xz * 0.9 + 5.0)) * (0.93 + 0.1 * oeN(vOeW.xz * 0.07 + 2.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
+  roughnessFactor = mix(roughnessFactor, 0.82, oeSn);
+}`)
         .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= 1.0 - oeSn;')
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 ${pools ? `if (oePd > 0.0) { vec2 oeR = oeRipple(vOeW.xz, oeCamD);
