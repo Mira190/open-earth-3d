@@ -2067,6 +2067,31 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         }
       }
     }
+    // a junction that won't clear (#355): stood 25 s at its line with no red light to wait for, for a movement across
+    // it that never ends (a car stuck in the junction), the driver takes another way from where it stands, however
+    // much longer (up to three times what was left and 400 m); with you in it, or at your own wheel, not on its way
+    // to you (a ride late for you has its own ways on, above)
+    if (o.phase === 'driving' && !o.turn && !o.hold && !st.mv && o.drv.opts) {
+      const a = st.lineAt, waiting = st.v < 0.3 && a && /^the line/.test(st.why || '') && !/red|amber/.test(st.junction || '') && junctions.light(a, st.lineEx) !== 'r';
+      o.boxT = waiting ? (o.boxT || 0) + dt : 0;
+      if (o.boxT > 25 && clockT - (o.boxLook || 0) > 5) {
+        o.boxLook = clockT;
+        // (out of it by another exit than the one it waits for, which may be clear of what stands there; with none,
+        // or stood 45 s, it turns round in the road and goes on from there: turnRound)
+        const N = st.route.nodes || [], P = st.P, i = N.findIndex(nd => P.cum[Math.min(nd.k, P.cum.length - 1)] >= st.s - 0.5), to = st.route.to;
+        const exitLine = i >= 0 && N[i + 1] ? N[i + 1].line : to ? to.line : null, pl = placeOnRoute(st);
+        const left = st.end - st.s, rt = pl && to && exitLine != null && o.boxT < 45 ? roads.route(pl, to, 9000, undefined, new Set([exitLine])) : null;
+        if (rt && rt.len < left * 3 + 400 && !(rt.nodes || []).slice(0, 3).some(nd => nd.line === exitLine)) {
+          const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 });
+          o.drv.leave();
+          o.drv = OECars.chauffeur(o.C, rt, opts);
+          o.drv.opts = opts;
+          st = o.drv.st;
+          o.sig = []; o.scr = []; o.qArms = []; o.boxT = 0; o.rerouted = (o.rerouted || 0) + 1; o.boxRound = (o.boxRound || 0) + 1;
+          if (player.vehicle === o) H.toast(`<b>${o.name}:</b> That junction's not moving. I'll go another way.`);
+        } else if (o.boxT > 40) { turnRound(o, 0, true); st = o.drv.st; if (o.turn) { o.boxT = 0; o.boxRound = (o.boxRound || 0) + 1; } }
+      }
+    }
     if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }
     // at a junction's line, waiting for a car crossing in it, which stands in the junction for this ride's
     // nose (actors.js, why 'you'), or stopped behind a car that stands for it in turn: each waits on the
