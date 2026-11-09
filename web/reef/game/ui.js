@@ -82,13 +82,49 @@ const CSS = `
 .rg-panel .empty { color: var(--muted); padding: 6px 2px; }
 .rg-panel .foot { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--edge); display: flex; gap: 8px; align-items: center; font: 400 9px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .rg-panel .foot button { margin-left: auto; flex: none; white-space: nowrap; }
-.rg-map { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
-.rg-map canvas { display: block; width: 100%; height: auto; aspect-ratio: 1;   /* index.html sizes every canvas to the viewport */
-  border-radius: 2px; border: 1px solid var(--edge); background: #0a1722; }
-.rg-near li { padding: 6px 10px; } .rg-near li span:first-child { font-size: 12.5px; }
-.rg-map .legend { display: block; margin-top: 6px; font: 400 9px/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); } .rg-map .legend i { font-style: normal; margin: 0 2px 0 8px; }
-.rg-map .legend i:first-child { margin-left: 0; } .rg-map .me, .rg-map .tg { color: var(--accent); } .rg-map .np { color: #ece8e1; } .rg-map .sg { color: #d9cfae; }
-@media (max-width: 640px) { .rg-map { grid-template-columns: 1fr; } .rg-map canvas { max-width: 300px; margin: 0 auto; } }
+.rg-panel[data-kind="map"] { width: min(96vw, 1080px); max-height: min(94vh, 880px); }
+.rg-panel[data-kind="map"] .body { padding-top: 12px; }
+/* the map: two scales as tabs, the map itself, the card on it, and the list beside it (the cities' big map) */
+.rg-map { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 10px 16px; }
+.rg-tabs { grid-column: 1 / -1; display: flex; gap: 6px; }
+.rg-tabs button { flex: 0 1 240px; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 14px 11px; border-radius: 2px; border: 1px solid var(--edge); border-bottom-width: 2px; background: rgba(236,232,225,.02);
+  color: var(--ink2); cursor: pointer; text-align: left; transition: border-color .3s, background .3s, color .3s; }
+.rg-tabs button b { font: 400 11px/1.2 var(--display); letter-spacing: .16em; text-transform: uppercase; }
+.rg-tabs button small { font: 400 9px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.rg-tabs button:hover { border-color: var(--edge2); color: #fff; }
+.rg-tabs button.on { border-color: rgba(255,176,102,.6); border-bottom-color: var(--accent); background: var(--wash); color: #fff; } .rg-tabs button.on small { color: var(--accent); }
+.rg-mapwrap { position: relative; height: min(62vh, 600px); min-height: 260px; border-radius: 2px; border: 1px solid var(--edge); background: #0a1722; overflow: hidden; }
+.rg-map canvas { display: block; width: 100%; height: 100%;   /* index.html sizes every canvas to the viewport */
+  touch-action: none; cursor: grab; }
+.rg-zoom { position: absolute; top: 10px; right: 10px; display: grid; gap: 1px; background: var(--edge); border: 1px solid var(--edge); border-radius: 2px; }
+.rg-zoom button { width: 32px; height: 32px; border: 0; background: rgba(6,10,18,.88); color: var(--ink2); font: 400 15px/1 var(--mono); cursor: pointer; } .rg-zoom button:hover { color: #fff; background: rgba(20,26,38,.95); }
+@media (pointer: coarse) { .rg-zoom button { width: 36px; height: 36px; } }
+.rg-hint { position: absolute; left: 10px; bottom: 10px; max-width: min(430px, calc(100% - 250px)); padding: 6px 9px; border-radius: 2px; background: rgba(4,6,11,.72); font: 400 9px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+.rg-hint[hidden], .rg-pop[hidden] { display: none; }
+.rg-pop { position: absolute; left: 10px; bottom: 10px; width: min(360px, calc(100% - 20px)); display: grid; gap: 5px; padding: 13px 15px 14px; border-radius: 2px; background: var(--solid); border: 1px solid var(--edge2); border-top: 2px solid var(--accent); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.rg-pop b { font: 500 15px/1.25 "Inter Tight", system-ui, sans-serif; color: #fff; }
+.rg-pop small { font: 400 9px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.rg-pop p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink2); } .rg-pop p[hidden] { display: none; }
+.rg-pop .acts { display: flex; gap: 8px; margin-top: 8px; } .rg-pop .act { min-height: 36px; padding: 10px 16px; } .rg-pop .act[hidden] { display: none; }
+.rg-panel .act.ghost { background: none; color: var(--ink2); border-color: var(--edge2); } .rg-panel .act.ghost:hover { background: var(--wash); color: #fff; border-color: rgba(255,176,102,.6); }
+.rg-side { position: relative; min-height: 0; } .rg-side .in { position: absolute; inset: 0; overflow: auto; padding-right: 4px; }
+.rg-list h3 { margin: 14px 0 6px; } .rg-list h3:first-child { margin-top: 2px; }
+.rg-list li { padding: 0; border: 0; background: none; }
+.rg-list li.empty { padding: 6px 2px; }
+.rg-list button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 8px 11px; border-radius: 2px; border: 1px solid var(--edge); background: rgba(236,232,225,.02); color: #ece8e1; cursor: pointer; text-align: left;
+  font: 500 13px/1.3 "Inter Tight", system-ui, sans-serif; transition: border-color .3s, background .3s; }
+.rg-list button > span:first-child { flex: 1; min-width: 0; }
+.rg-list button small { display: block; margin-top: 2px; font: 400 11px/1.35 "Inter Tight", system-ui, sans-serif; letter-spacing: 0; color: var(--muted); }
+.rg-list button .num { flex: none; font: 400 9.5px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; } .rg-list button .num.ok { color: var(--good); }
+.rg-list button:hover, .rg-list button:focus-visible { background: var(--wash); border-color: rgba(255,176,102,.5); outline: none; }
+.rg-list button.on { border-color: var(--accent); background: var(--wash); } .rg-list button.on .num { color: var(--accent); }
+.rg-list button.here { border-color: rgba(99,211,154,.4); }
+.rg-list button.more .num { font-size: 15px; color: var(--accent); }
+.rg-side .foot { flex-direction: column; align-items: flex-start; } .rg-side .foot button { margin-left: 0; }
+.rg-map .legend { grid-column: 1 / -1; display: block; font: 400 9px/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); } .rg-map .legend i { font-style: normal; margin-right: 4px; } .rg-map .legend span { display: inline-block; white-space: nowrap; margin-right: 14px; }
+ .rg-map .me { color: #fff; } .rg-map .tp, .rg-map .tg { color: var(--accent); } .rg-map .np { color: #ece8e1; } .rg-map .sg { color: #d9cfae; }
+@media (max-width: 820px) { .rg-map { grid-template-columns: 1fr; } .rg-tabs button { flex: 1 1 0; min-width: 0; padding: 9px 10px 10px; } .rg-tabs button b { letter-spacing: .1em; } .rg-mapwrap { height: min(46vh, 92vw); }
+  .rg-side .in { position: static; overflow: visible; padding: 0; } .rg-map .legend { order: 3; } .rg-side { order: 4; } .rg-hint { max-width: calc(100% - 150px); } }
 .rg-time .now { display: flex; align-items: baseline; gap: 12px; margin-top: 12px; } .rg-time .now b { font: 200 30px/1 var(--display); letter-spacing: .04em; color: #fff; font-variant-numeric: tabular-nums; }
 .rg-time .now small { font: 400 9.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .rg-time .pre { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 6px; }
@@ -122,7 +158,7 @@ const CSS = `
 @media (max-width: 760px), (max-aspect-ratio: 1/1) { .rg-dlg { left: 50%; transform: translateX(-50%) translateY(8px); width: min(94vw, 560px); } .rg-dlg.on { transform: translateX(-50%); } }
 @media (max-width: 940px) { .rg-obj { top: 70px; } .rg-toast { top: 166px; } }
 @media (max-width: 640px) { .rg-dlg { bottom: 176px; padding: 12px 14px 10px; max-height: calc(100vh - 290px); } .rg-dlg .txt { font-size: 14px; } .rg-btns { top: 70px; flex-direction: column; align-items: flex-end; } .rg-btns .bg { order: 1; } .rg-obj { width: min(calc(100vw - 154px), 320px); } .rg-toast { top: 190px; }
-  .rg-panel { width: 96vw; max-height: 80vh; top: 46%; } .rg-panel header { margin: 0 16px; } .rg-panel .body { padding: 6px 16px 16px; } }
+  .rg-panel, .rg-panel[data-kind="map"] { width: 96vw; max-height: 80vh; top: 46%; } .rg-panel header { margin: 0 16px; } .rg-panel .body { padding: 6px 16px 16px; } }
 @media (prefers-reduced-motion: reduce) { .rg-obj, .rg-dlg, .rg-toast, .rg-fade, .rg-btns button { transition: none; } }
 `;
 
@@ -133,7 +169,7 @@ export function createUI(on) {
   const el = document.createElement('div');
   el.className = 'rg';
   el.innerHTML = `
-  <div class="rg-btns"><button class="bg" title="Back to the globe, every city in Open Earth 3D">← Globe</button><button class="bj" title="Journal (J)"><kbd>J</kbd>Journal<b></b></button><button class="bm" title="Reef sites (T)"><kbd>T</kbd>Map</button><button class="bk" title="Time of day (K)"><kbd>K</kbd>Time</button></div>
+  <div class="rg-btns"><button class="bg" title="Back to the globe, every city in Open Earth 3D">← Globe</button><button class="bj" title="Journal (J)"><kbd>J</kbd>Journal<b></b></button><button class="bm" title="Map and travel (T)"><kbd>T</kbd>Map</button><button class="bk" title="Time of day (K)"><kbd>K</kbd>Time</button></div>
   <div class="rg-obj"></div><div class="rg-mark">◆</div><div class="rg-toast"></div>
   <div class="rg-dlg" role="dialog" aria-live="polite"><div class="who"><b></b><small></small><em></em><button class="x" aria-label="Close (Esc)">✕</button></div><div class="txt"></div><div class="src"></div><div class="ch"></div><div class="more"></div></div>
   <div class="rg-panel" role="dialog"><header><h2></h2><small></small><button aria-label="Close">✕</button></header><div class="body"></div></div>

@@ -169,7 +169,7 @@ export function ranger(G, o = {}) {
       survey: { say: G2 => [{ t: `Yes please. Put a mask on, snorkel over the reef and log ${surveySize(G2)} species you can get within a few metres of. E when you're close.`, src: ['model-life'] }],
         do: G2 => G2.start('survey'), next: 'end' },
       surveyDone: surveyDoneNode(),
-      travel: { say: 'The other Queensland reef sites are on the map: T, or the Map button.', do: null, choices: [{ text: 'Open the map', do: G2 => G2.openPanel('map'), go: 'end' }, { text: 'Thanks', go: 'end' }] }
+      travel: { say: 'Every other site is on the map: T, or the Map button, then All sites.', do: null, choices: [{ text: 'Open the map', do: G2 => G2.openPanel('map'), go: 'end' }, { text: 'Thanks', go: 'end' }] }
     }, o.nodes || {})
   };
 }

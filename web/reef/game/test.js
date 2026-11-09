@@ -290,21 +290,45 @@ export async function gametest(api, ctx) {
     const href = api.travel.href('hardy-reef', { pathname: '/reef/index.html', search: '?city=whitsundays&x=10&y=20&yaw=4&gl=1&mute=1&gametest=1&exp=1.2' });
     must(href === '/reef/index.html?city=hardy-reef&gl=1&mute=1&exp=1.2', 'travel keeps settings, drops position and test keys', href);
     key('KeyT'); await new Promise(r => setTimeout(r, 30));
-    must(api.ui.panelKind === 'map' && /You are here/.test(dom('.rg-panel .body').innerHTML), 'T opens the map panel', api.ui.panelKind);
+    const mv = () => api.mapView, rows = k => [...document.querySelectorAll(`.rg-list button[data-kind="${k}"]`)];
+    must(api.ui.panelKind === 'map' && mv() && mv().scale === 'local' && dom('.rg-tabs button.on').dataset.scale === 'local', 'T opens the map panel on this site', api.ui.panelKind);
     const globe = api.travel.globeHref();
     must(/\/index\.html#globe$/.test(globe) && new URL(globe).pathname === new URL('../index.html', location.href).pathname && dom('.rg-btns .bg') && dom('.rg-panel .foot [data-act="globe"]'),
       'a way back to the globe: the button and the map panel', globe);
+    // every named place is a pin on the map and a row of the list; the people and you are on it
+    dom('.rg-zoom [data-z="fit"]').click(); await new Promise(r => setTimeout(r, 400)); mv().redraw();   // out to the whole model
+    const np = rows('place').length, pins = mv().hits.filter(h => h.ref.kind === 'place').length;
+    must(np === pins, 'every travel point of the list is a pin on the whole map', `${np} rows, ${pins} pins`);
+    // All sites: the regions, this site marked, another one picked gives a card with Travel
+    dom('.rg-tabs button[data-scale="world"]').click(); await new Promise(r => setTimeout(r, 30)); mv().redraw();
+    const cur = rows('site').find(b => b.dataset.id === ctx.site), other = rows('site').find(b => b.dataset.id !== ctx.site && list.find(s => s.id === b.dataset.id).ready);
+    must(mv().scale === 'world' && cur && /You are here/.test(cur.textContent) && rows('site').length === list.filter(s => Number.isFinite(s.lat)).length, 'All sites lists every site by region, this one marked', [...document.querySelectorAll('.rg-list h3')].map(h => h.textContent).join(' | '));
+    if (other) {
+      other.click();
+      const go = dom('.rg-pop .go');
+      must(!dom('.rg-pop').hidden && !go.disabled && /^Travel to /.test(go.textContent) && mv().selected.id === other.dataset.id, 'picking another site offers Travel on its card', `${dom('.rg-pop b').textContent}: ${go.textContent}`);
+    }
+    cur.click(); dom('.rg-pop .go').click();
+    must(mv().scale === 'local', 'this site\'s card opens its own map');
     key('KeyT');
-    must(!api.ui.panelKind, 'T again closes it');
-    // 8b. the map's Go buttons: straight to a named place (dry ground nearest it, or the water over a reef), then back
+    must(!api.ui.panelKind && !api.mapView, 'T again closes it');
+    // 8b. the map's travel points: pick one, then Travel here goes straight to a named place (dry ground nearest it, or the water over a reef), then back
     key('KeyT'); await new Promise(r => setTimeout(r, 30));
     // a place far enough away to tell that Go moved you (the spawn can be beside the first one: Heron's jetty)
-    const go = [...document.querySelectorAll('.rg-panel [data-act="goto"]')].find(b => G.poi(b.dataset.arg) && G.dist(G.here(), G.poi(b.dataset.arg)) > 200) || dom('.rg-panel [data-act="goto"]');
-    if (go) {
-      const h0 = G.here(), to = G.poi(go.dataset.arg);
-      go.click(); run(0.3);
+    const row = [...document.querySelectorAll('.rg-list button[data-kind="place"]')].find(b => G.poi(b.dataset.id) && G.dist(G.here(), G.poi(b.dataset.id)) > 200);
+    if (row) {
+      const h0 = G.here(), to = G.poi(row.dataset.id);
+      row.click();
+      must(!dom('.rg-pop').hidden && dom('.rg-pop b').textContent === to.name && row.classList.contains('on') && !dom('.rg-pop .go').disabled, `picking ${to.name} shows its card with Travel here`, dom('.rg-pop small').textContent);
+      // the same pick from the map: a still press on its pin
+      await new Promise(r => setTimeout(r, 400)); api.mapView.select('place', ''); api.mapView.redraw();   // (the map has eased over to show it)
+      const hit = api.mapView.hits.find(h => h.ref.kind === 'place' && h.ref.id === to.id), cv = dom('.rg-map canvas'), box = cv.getBoundingClientRect();
+      const ev = t => cv.dispatchEvent(new PointerEvent(t, { pointerId: 7, clientX: box.left + hit.x, clientY: box.top + hit.y, bubbles: true }));
+      if (hit) { ev('pointerdown'); ev('pointerup'); }
+      must(hit && api.mapView.selected && api.mapView.selected.id === to.id && !dom('.rg-pop').hidden, 'a press on its pin picks it too', dom('.rg-pop b').textContent);
+      dom('.rg-pop .go').click(); run(0.3);
       const d = G.dist(G.here(), to);
-      must(!api.ui.panelKind && d < 900 && G.dist(G.here(), h0) > 30, `Go on the map takes you to ${to.name}`, `${G.km(d)} from it, ${player.state}`);
+      must(!api.ui.panelKind && d < 900 && G.dist(G.here(), h0) > 30, `Travel here takes you to ${to.name}`, `${G.km(d)} from it, ${player.state}`);
       player.teleport(h0.x, h0.north); run(0.3);
     } else { must(true, 'no named place far enough to go to'); key('KeyT'); }
 
