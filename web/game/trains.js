@@ -86,6 +86,7 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
       roof: std({ color: lin('#8d9194'), roughness: 0.7, metalness: 0.2 }),
       under: std({ color: lin('#26292c'), roughness: 0.8, metalness: 0.2 }),
       black: std({ color: lin('#101214'), roughness: 0.35, metalness: 0.3 }),
+      screen: std({ color: lin('#06090c'), roughness: 0.92, metalness: 0.0, envMapIntensity: 0.04, side: THREE.DoubleSide }), // a windscreen flush in a nose
       white: std({ color: lin('#f3f5f4'), roughness: 0.3, metalness: 0.15 }),
       blue: std({ color: lin('#123f8c'), roughness: 0.35, metalness: 0.1 }),
       // a saloon seen through its windows: dark glass by day; as the light goes its lamps show
@@ -240,17 +241,26 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
 
   // The high-speed train: a design of this project's own, to the Tokaido Shinkansen's loading gauge (25 m cars,
   // 3.36 m wide, 3.6 m high, sixteen to a train) and no model of any operator's stock. A pearl-white shell on
-  // full skirts; a spearhead nose of 9.5 m that draws in to a rounded point, with the driver's canopy a dark
-  // teardrop raised on its back; one band of dark glass the length of each saloon; and along the side an indigo
-  // line over a fine vermilion one, which run down the nose to its tip.
+  // full skirts; a nose of 11 m in one unbroken curve, the roof coming down and the sides drawing in from the
+  // saloon's own section to a small round tip, with nothing standing proud of it: the driver's windscreen is a
+  // dark teardrop laid flush in the nose's back. One band of dark glass the length of each saloon; and along
+  // the side an indigo line over a fine vermilion one, which run down the nose to its tip.
   function shinkansen(S, role) {
     const K = OEKit, M = mats(), out = [], add = (m, g) => out.push([m, g]);
-    const Wd = 3.36, hw = Wd / 2, y0 = 0.26, top = 3.6, NOSE = 9.5;
+    const Wd = 3.36, hw = Wd / 2, y0 = 0.26, top = 3.6, NOSE = 11;
     const nose = role === 'head' || role === 'tail', s = role === 'tail' ? -1 : 1, Z = z => s * z;
-    const zb0 = -12.25, zb1 = nose ? 2.75 : 12.25, secs = [{ z: zb0, pts: section(hw, y0, top) }, { z: zb1, pts: section(hw, y0, top) }];
-    const wAt = t => Math.max(0.2, hw * Math.pow(1 - Math.pow(t, 2.1), 0.8)), bump = t => 0.3 * Math.exp(-Math.pow((t - 0.3) / 0.13, 2));
-    const hAt = t => top - (top - 1.0) * Math.pow(t, 1.2) + bump(t) * (1 - t), lAt = t => y0 + 0.3 * t * t;
-    if (nose) for (let k = 1, N = 18; k <= N; k++) { const t = k / N; secs.push({ z: zb1 + NOSE * t, pts: section(wAt(t), lAt(t), Math.max(lAt(t) + 0.5, hAt(t))) }); }
+    const zb0 = -12.25, zb1 = nose ? 1.25 : 12.25, secs = [{ z: zb0, pts: section(hw, y0, top) }, { z: zb1, pts: section(hw, y0, top) }];
+    // the nose's lines: level with the roof where it leaves the saloon, falling away faster towards the tip
+    const wAt = t => Math.max(0.24, hw * Math.pow(1 - Math.pow(t, 2.3), 0.72)), lAt = t => y0 + 0.24 * t * t;
+    const hAt = t => Math.max(lAt(t) + 0.46, 0.86 + (top - 0.86) * Math.pow(1 - Math.pow(t, 1.75), 0.9));
+    // the shell's height at x across it (section(): a flat crown between two round shoulders)
+    const skin = (t, x) => { const w = wAt(t), r = Math.min(0.75, w * 0.45), e = Math.abs(x) - (w - r), y1 = hAt(t); return e <= 0 ? y1 : y1 - r + Math.sqrt(Math.max(0, r * r - e * e)); };
+    if (nose) {
+      for (let k = 1, N = 22; k <= N; k++) { const t = k / N; secs.push({ z: zb1 + NOSE * t, pts: section(wAt(t), lAt(t), hAt(t)) }); }
+      // and the tip closes on itself in a quarter round, with no cap to show
+      const last = secs[secs.length - 1].pts, mid = (hAt(1) + lAt(1)) / 2;
+      for (const q of [0.3, 0.55, 0.75, 0.9, 0.98]) { const c = Math.cos(q * Math.PI / 2); secs.push({ z: zb1 + NOSE + 0.42 * Math.sin(q * Math.PI / 2), pts: last.map(([x, y]) => [x * c, mid + (y - mid) * c]) }); }
+    }
     const g = loft(secs);
     if (s < 0) g.rotateY(Math.PI);
     add(M.white, g);
@@ -259,7 +269,7 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
         add(m, K.box(0.03, 2 * r, b - a, sx * (hw + 0.008), y, Z((a + b) / 2)));
         if (!nose) continue;
         let p = [sx * (hw + 0.01), y, Z(b)];
-        for (let k = 0; k <= 14; k++) { const t = k / 15, q = [sx * (wAt(t) + 0.012), y - (y - 0.72) * t * t, Z(zb1 + NOSE * t)]; add(m, K.rod(p, q, r, r, 5)); p = q; }
+        for (let k = 1; k <= 20; k++) { const t = k / 21, q = [sx * (wAt(t) + 0.012), y - (y - 0.74) * t * t, Z(zb1 + NOSE * t)]; add(m, K.rod(p, q, r, r, 5)); p = q; }
       }
     };
     line(paint('#1d2f6f'), 1.5, 0.075); line(paint('#d8432b'), 1.33, 0.022);
@@ -275,9 +285,19 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
     add(M.roof, K.box(1.3, 0.06, nose ? 13 : 23.4, 0, top + 0.01, Z(nose ? -5.2 : 0)));
     add(M.under, K.box(Wd * 0.7, 2.4, 0.5, 0, 1.9, Z(zb0 - 0.12))); // the gangway's bellows
     if (role === 'pan') { for (const sx of [-1, 1]) add(M.white, K.box(0.12, 0.55, 5.4, sx * 1.25, top + 0.22, 3.0)); pantograph(out, top + 0.06, 3.0); } // between its two shields
-    if (nose) { // the canopy on the nose's back, and the lamps' housings low on its shoulders
-      add(M.glass, K.ellipsoid(0.78, 0.34, 1.7, 14, 8).rotateX(-0.2 * s).translate(0, hAt(0.3) - 0.12, Z(zb1 + NOSE * 0.33)));
-      for (const sx of [-1, 1]) add(M.black, K.ellipsoid(0.2, 0.09, 0.5, 10, 6).translate(sx * wAt(0.62) * 0.72, hAt(0.62) - 0.2, Z(zb1 + NOSE * 0.62)));
+    if (nose) {
+      // the windscreen: a teardrop of dark glass a centimetre over the shell's own surface, wide behind and
+      // drawn to a point ahead, wrapping a little way down each shoulder
+      const t0 = 0.16, t1 = 0.46, nT = 14, nX = 8, pos = [], idx = [];
+      for (let i = 0; i <= nT; i++) {
+        const u = i / nT, t = t0 + (t1 - t0) * u, half = wAt(t) * 0.86 * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.62)), 0.7);
+        for (let j = 0; j <= nX; j++) { const x = half * (2 * j / nX - 1); pos.push(x, skin(t, x) + 0.012, zb1 + NOSE * t); }
+      }
+      for (let i = 0; i < nT; i++) for (let j = 0; j < nX; j++) { const a0 = i * (nX + 1) + j, b0 = a0 + 1, c0 = a0 + nX + 1, d0 = c0 + 1; idx.push(a0, c0, b0, b0, c0, d0); }
+      const wg = new THREE.BufferGeometry();
+      wg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); wg.setIndex(idx); wg.computeVertexNormals();
+      if (s < 0) wg.rotateY(Math.PI);
+      add(M.screen, wg);
     }
     return out;
   }
@@ -429,8 +449,8 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
           K.n++;
           if (o.listener) { const l = o.listener(), dd = Math.hypot((fwd.x + aft.x) / 2 - l.x, (fwd.y + aft.y) / 2 - l.y, fwd.z + 1.5 - l.z); if (dd < tr.near) { tr.near = dd; tr.nx = (fwd.x + aft.x) / 2; tr.ny = (fwd.y + aft.y) / 2; } }
           if (i === 0 || i === s.cars - 1) { // white at the head, red at the tail
-            const e = i === 0 ? 1 : -1, hx = (fwd.x - aft.x) / (2 * half), hy = (fwd.y - aft.y) / (2 * half), ex = (fwd.x + aft.x) / 2 + hx * e * (s.S.shinkansen ? 11.3 : 9.85), ey = (fwd.y + aft.y) / 2 + hy * e * (s.S.shinkansen ? 11.3 : 9.85);
-            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * (s.S.shinkansen ? 0.42 : 0.95), ey + hx * sd * (s.S.shinkansen ? 0.42 : 0.95), fwd.z + (s.S.shinkansen ? 0.95 : s.S.deck2 ? 1.5 : 1.25), i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
+            const e = i === 0 ? 1 : -1, hx = (fwd.x - aft.x) / (2 * half), hy = (fwd.y - aft.y) / (2 * half), ex = (fwd.x + aft.x) / 2 + hx * e * (s.S.shinkansen ? 10.2 : 9.85), ey = (fwd.y + aft.y) / 2 + hy * e * (s.S.shinkansen ? 10.2 : 9.85);
+            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * (s.S.shinkansen ? 0.5 : 0.95), ey + hx * sd * (s.S.shinkansen ? 0.5 : 0.95), fwd.z + (s.S.shinkansen ? 1.0 : s.S.deck2 ? 1.5 : 1.25), i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
           }
         }
       }
