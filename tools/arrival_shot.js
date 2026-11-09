@@ -1,6 +1,7 @@
 // The game's arrival camera, measured and filmed (#89): load a city's game (at "@<travel id>" if given), start it,
 // and follow the camera frame by frame on the game clock through the arrival from the title shot down to the
-// player, then through a map hop to a travel point. Prints each move's length, its peak turn rate (the view's
+// player, then through a map hop to a travel point. With a travel id, checks that the title is set there (named
+// for it, the player standing at it). Prints each move's length, its peak turn rate (the view's
 // bearing, in degrees a second), its peak pitch rate, its roll and whether it ever reversed its turn, and saves
 // stills along the way (<out>/<city>[@point]-<size>-arrive-<n>.png, -hop-<n>.png) and the tour's first card.
 //   python3 -m http.server 8800 --directory web &
@@ -72,6 +73,16 @@ const VIEW = { desktop: { width: 1440, height: 900 }, phone: { width: 390, heigh
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${tag} ${m.label}: ${m.dur.toFixed(2)} s, ${m.frames} frames, peak turn ${m.peak.toFixed(1)}°/s, peak pitch ${m.peakP.toFixed(1)}°/s, roll ${m.roll.toFixed(2)}°, ${m.flips} reversals`);
     if (!ok) fails.push(m.label);
   };
+  // a link to a travel point sets the title there: the player already stands at it, and the title names it
+  if (point) {
+    const t = await p.evaluate(id => {
+      const g = window.__game, q = (g.G.travel || []).find(x => x.id === id);
+      return q && { name: q.name, d: Math.hypot(g.player.x - q.at[0], g.player.y - q.at[1]), head: document.getElementById('gt-title').textContent, now: document.getElementById('gt-now').textContent };
+    }, point);
+    const ok = !!t && t.d < 20 && t.name.startsWith(t.head.replace(/[\u3000-\u9fff\uff00-\uffef]+$/, '').trim()) && t.now.includes(t.head.replace(/[\u3000-\u9fff\uff00-\uffef]+$/, '').trim());
+    console.log(`${ok ? 'ok  ' : 'FAIL'} the title is set at ${point}: ${t ? `"${t.head}", ${t.now}, the player ${t.d.toFixed(1)} m from it` : 'no such point'}`);
+    if (!ok) fails.push('title at the point');
+  }
   report(await follow(() => document.getElementById('gt-play').click(), null, 'arrive', 4.5), 4.5);
   await p.waitForTimeout(800);
   const tour = await p.evaluate(() => { const t = window.OEOnboard.current(); return t ? t.id : ''; });
