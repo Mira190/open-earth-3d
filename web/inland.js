@@ -100,7 +100,7 @@ window.OEInland = (function () {
       const r = Math.ceil(reach / B), cx = Math.floor(x / B) - gx0, cy = Math.floor(y / B) - gy0;
       const i0 = Math.max(0, cx - r), i1 = Math.min(gnx - 1, cx + r), j0 = Math.max(0, cy - r), j1 = Math.min(gny - 1, cy + r);
       let bl = null, bk = -1, bd = reach * reach;
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { // (x outer, as the Map's lookups went: ties go the same way)
         const l = grid[i + j * gnx];
         if (!l) continue;
         for (let k = 0; k < l.length; k += 5) {
