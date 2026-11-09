@@ -1584,8 +1584,8 @@ quality tier runs a third of the cars.
     the frame time: at speed with uneven frames the helicopter wobbled in the
     picture by 6 cm a frame (now 1 mm). The camera swings back behind it 0.9 s
     after you let go of the mouse (1.6 s before), faster the faster it flies,
-    and looks a little ahead into a turn. It pulls back by up to 8 m and the
-    lens widens by up to 10° with speed.
+    and looks a little ahead into a turn. It sits 20 m back (24 before), pulls
+    back by up to 4 m and the lens widens by up to 6° with speed.
   - **Changing view** (<kbd>V</kbd>: chase, cockpit, bird's-eye) is a 0.45 s
     ease-out from the old view to the new, which travels with the helicopter,
     not a cut. The reef sites' helicopter (`reef/boats/control.js`) also turns
