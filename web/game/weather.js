@@ -1040,7 +1040,7 @@ void main() {
         snowCol.value.copy(fc).multiplyScalar(1.4 + 1.2 * day).add(new THREE.Color(0.07, 0.065, 0.06).multiplyScalar(1 - day)); // flakes: lighter than the air behind them; at night only as the city's glow lights them
         fFar.material.uniforms.uAlpha.value = 0.25 + 0.35 * day; // (far flakes against a night sky read as stars: held down after dark) // flakes: lighter than the air behind them
         // the occlusion map, when the camera has moved or a little time has passed
-        if (occRT && ((falling && tSec - occT > (light ? 2 : 0.5)) || occOn.value < 0.5 || tSec < occT || camera.position.distanceTo(occAt) > (light || !falling ? 8 : 4))) {
+        if (occRT && ((falling && tSec - occT > (light ? 2 : 0.5)) || occOn.value < 0.5 || tSec < occT || camera.position.distanceTo(occAt) > (!falling ? 14 : light ? 8 : 4))) {
           occT = tSec; occAt.copy(camera.position);
           renderOcc(tSec);
         }

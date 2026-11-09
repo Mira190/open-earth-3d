@@ -170,6 +170,52 @@ The state's uniforms, `OEWeather.U` (above), are what every patched shader reads
 wet; `OEWeather.GLSL` has `oePuddle(xz)` and `oeRipple(xz, camD)` for a city's own look (Shibuya's
 wet-street reflections, #112, read the same wetness).
 
+## What it costs a frame
+
+No weather adds a full-screen pass or a render of the scene. What each adds:
+
+| Part | Draws | Triangles | Per pixel |
+| --- | --- | --- | --- |
+| Rain streaks and splashes (as before) | 3 | high 32,800, medium 19,700, low 9,600 | blended quads a pixel or two wide |
+| Snowflakes | 2 (light: 1) | high 21,000 at full fall (the far shell at half), medium 13,000, low 6,600 | blended dots |
+| Lightning bolt | 1, for the half second of a ground flash | at most 192 | a line a pixel or two wide |
+| Rainbow | 1 while it shows | 144 | a thin ring, added |
+| Settled snow, wet walls and roofs | 0 | 0 | a term in the materials' own shaders, behind one test of the state: on a dry day with no snow lying a fragment pays for the test alone; in the weather, one fetch of the cover map and four to seven value noises |
+| Fog, mist, haze, the flash's light | 0 | 0 | none: the scene's fog distances and colours, the sky's haze band, a light's intensity |
+| Wind in the trees and on the sea | 0 | 0 | a few multiplies in vertex shaders that ran already |
+| The cover map from above (as before, for the rain) | the scene's opaque meshes within 40 m, into 256² (low 128²) | | redrawn every half second or 4 m while something falls (light: 2 s or 8 m); while the ground is only wet or snow only lies, when the camera has moved 14 m. Before #356 a wet street after rain had no map and so was wet under roofs too |
+| The wet street's mirror (high tier, as before) | the scene again at half size while the ground is wet | | unchanged; snow alone does not turn it on |
+
+Measured with `tools/weather_cost.js kyoto` (where Kyoto's game opens, the median of 14 frames a state, each
+state set at once, on Mesa's llvmpipe with other renders running beside it: the milliseconds only compare
+one state with another on the same run; the counts transfer). Against a clear sky:
+
+| State | high (1280×800) | medium (1280×800) | low (390×844) |
+| --- | --- | --- | --- |
+| clear | 2,467 ms, 420 draws, 3.27M triangles | 2,317 ms, 416, 3.27M | 500 ms, 350, 2.61M |
+| overcast | −50 ms, +3 draws, +28k | +16 ms, +3, +22k | −33 ms, −2, −4k |
+| fog | +16 ms, +3, −7k | +66 ms, +3, −7k | −50 ms, +1, +18k |
+| rain | +266 ms, +36, +412k | +283 ms, +36, +398k | 0 ms, +22, +183k |
+| thunderstorm | +333 ms, +29, +277k | +316 ms, +37, +383k | −17 ms, +15, +161k |
+| after rain, wet and drying | +250 ms, +17, +84k | +216 ms, +25, +201k | +17 ms, +17, +210k |
+| snow falling | +166 ms, +24, +246k | +233 ms, +32, +345k | −17 ms, +18, +221k |
+| snow lying, clear | +366 ms, +15, +145k | +350 ms, +23, +261k | +17 ms, +21, +229k |
+
+How to read it. The draws and triangles beyond the few in the first table are the cover map: at two seconds
+a frame it is redrawn in most frames of a run (in play at 60 frames a second, once in thirty while it rains
+and not at all while the camera stands on lying snow), so on a GPU the steady cost of falling snow is two
+draws and the shader term. The milliseconds on the high and medium tiers are that map plus the shader
+term over every pixel on a software renderer, 7 to 15% of the frame; rain cost as much before. On the low
+tier (no post stack, a smaller map) nothing measurable. The pass count was 80, 78 and 74 a frame on the
+three tiers with a clear sky and one more from the second state on, on the high and medium tiers only; the
+weather's code makes no full-screen draw, and where that one comes from was not traced. Fog and overcast
+are within the run's noise of a clear sky.
+
+What sheds (`weather.shed`, driven by `shed()` in `web/game/game.js` until the frame-budget stream's
+governor replaces it): light drops the far flakes with the far streaks and splashes and slows the cover
+map; off drops everything, the bolt and the bow included, and for a season's weather the material terms too
+(a clear sky, dry and bare). The low tier still starts with the season's weather off.
+
 ## What was surveyed, and what was adopted
 
 Nothing was copied; the techniques are the published ones, written for this engine.
