@@ -14,7 +14,8 @@
 // a one-way street to the junction behind (tools/reverse_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
-// (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
+// (no movement left standing in one for more than two cycles), live a day of the daily life (tools/life_step.js: the day
+// passing, a rank earned, a job done, the save read back), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
@@ -1895,6 +1896,10 @@ const npcNight = require('./npc_night');
     return out;
   });
   for (const h of seasons) check(h.ok && h.m === h.want[0] && h.d === h.want[1] && h.bloom !== 0 && h.dz < 1.5 && h.d2 < 20, `travels to ${h.name} out of season: the date moves to ${h.d}/${h.m} (its best ${h.want[1]}/${h.want[0]}), its trees ${h.bloom === null ? 'not looked at' : h.bloom ? 'in flower' : 'not in flower'}, ${h.d2.toFixed(0)} m from it and ${h.dz.toFixed(1)} m off its level`);
+
+  // the daily life (issue #357, tools/life_step.js): a day passing, a rank earned, a job done, the save read back
+  await require('./life_step').lifeStep(p, check, city);
+  await shot('life');
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)

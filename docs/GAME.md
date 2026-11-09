@@ -462,6 +462,48 @@ listed at the end.
 | **Baidu Apollo** (EM planner, Apache-2.0), **SUMO** (EPL-2.0), **A/B Street** (Apache-2.0), **Autonomous Intersection Management** (Dresner and Stone) | Apollo: another car's way projected onto your own as the stretch it blocks, and a go-first or yield decision on it. SUMO and A/B Street: keep the box clear (no car into a junction whose way across is blocked or whose exit has no room), and break a deadlock by someone backing off, never by driving through. AIM: a reservation for the way across, which `junctions.js` already makes. Re-written from the papers and documentation; no code taken. | They simulate traffic for planners to study. Here the same rules drive the taxi you are sitting in. |
 | **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
 
+## Daily life: the day, the diary, bonds, skills and jobs
+
+Issue #357. Until this, the game was a place without a loop: quests gave stamps, and there was
+no progression, no one to get to know, no calendar, no money and no reason to come back
+tomorrow. The loop below is learned from daily-life games, Persona 5 first among them, and from
+what works in a browser in a short session. Their designs were studied; nothing of their look,
+characters, music or assets is used.
+
+### What was studied, and what was adopted
+
+| Game | How its loop works | Adopted here | Left out, and why |
+|---|---|---|---|
+| **Persona 5 / Royal** (Atlus) | A calendar whose days have slots, and nearly every choice spends one. Confidants deepen over ten ranks; each rank is a scene and unlocks an ability. They keep weekdays and weather (one is out only when it rains, others stay in). Five social stats with named levels, raised by daily acts, gate some ranks. Part-time jobs pay and raise stats. Rain is a bonus (more from studying), not a lock. One theme re-arranged for rain and night. The interface is treated as entertainment in itself: one key colour, lines that lead the eye, everything in motion. | The day in four slots (morning, daytime, evening, night). Bonds with ranks, each rank a short scene, a true fact about the street you stand on, and at set ranks an ability. People free at their own hours, on their own days, some only in the rain. Five skills with named levels that gate some ranks and jobs. Jobs that pay. Rain and night as bonuses. A score that changes with the hour and the weather. A card for the new day and motion in every menu, in this project's own type and its one accent (the sun's amber). | The deadline. Critics call its calendar the most stressful thing in it, with content missed for good, and its own mobile spin-off dropped the calendar. Here spending a slot is the player's choice ("pass the time"), nobody can be missed for good, and no day is ever lost. Ten ranks become five: a browser session is ten minutes, not a hundred hours. No combat, no arcana, none of its art, type or music. |
+| **Yakuza / Like a Dragon** substories | Found by walking past them: a small zone, two people arguing. Tone is budgeted between comic and moving. Rewards are small and useful. | Requests and events start where you walk into them (a spot's prompt, a line in a bubble), not from a list. The diary lists them only after you have met them. Small, useful rewards: a discount, a key, a shortcut. | Their length and fights. |
+| **Shenmue** | People and shops keep hours on a running clock. The first game left players standing about until an appointment; the second added a wait that skips to the hour, and jobs to fill the time. | Shops and people keep hours; the diary says who is about and when. "Pass the time" from the first day, and jobs are there to fill it. | A mandatory job. |
+| **A Short Hike** | A tiny world where exploring pays with something unique each time, so the player is never "just travelling". | Each skill grows only the first time a thing is done in a place (a spot read, a line ridden, a dish tried), so going somewhere new always pays. | |
+| **Alba: A Wildlife Adventure** | Photograph the island's animals to fill a book; an hour or two long. | The photo job: a list of real subjects to photograph, with more for the hour that suits each. | |
+| **GeoGuessr** | A guess scored by distance from the truth. Players build real knowledge: the sun's side, the driving side, the street furniture. | The guide job: point the way to a landmark by its true bearing, scored by the angle you are off. The sun and the streets are the real ones, so the knowledge is real. (The height challenge already scored a guess against the data's own error.) | |
+| **Pokémon GO, Ingress** | Stops at real places of note; a streak that restarts rather than breaks; weather and the hour change what appears; events on real dates, announced ahead. | Events at real places on their real dates, listed ahead in the diary ("in 5 days"). Weather and the hour change who is free. A count of days in each city that never resets and never breaks. | Streak pressure, and anything that asks for a location. |
+| **Animal Crossing** | The real clock and calendar; shops with hours; events on real dates; people change the clock to escape waiting. | The game opens on the city's real date and hour, so its calendar is the real one. Changing the clock is in the menu and is no cheat: every event can be visited by setting its date. | Locking events to the device's clock. |
+| **Wordle** | One small thing a day, the same for everyone, done in three minutes. | Today's page in the diary is the same for everyone in that city on that date: the same weather, the same events, the same people free. | |
+
+Sources for the above are listed under [Sources](#sources) ("Daily life").
+
+### The design in one page
+
+- **Time gates what is on, never whether you may explore.** The streets, the ferries and the
+  helicopter are open at every hour. The hour changes who is free to talk, which shops are open,
+  which jobs are offered and what is on.
+- **The calendar is the real one.** The game opens on the city's own date and hour. Events are
+  at their real places on their real dates; the menu's date takes you to any of them.
+- **A slot is spent by choice.** Time passes on the running clock (a day in 48 minutes at 30×),
+  or at once with "pass the time" in the diary. Getting to know someone takes the rest of the
+  slot.
+- **Everything is a true thing about a real place.** A rank's scene carries a fact that can be
+  checked; a job is a real bearing, a real distance, a real hour of light.
+- **Short sessions.** Something finishes within ten minutes: a rank, a job, a dish, a page of
+  the diary.
+
+`web/game/life.js` is the store and the event bus, `web/game/day.js` the slots, the calendar,
+the day card and the diary. A map's own content is `cities/<id>/life.json`.
+
 ## How it works
 
 All of this is driven by `cities/<id>/city.json` (`game` block) and the files the
@@ -2750,3 +2792,14 @@ deadlock or a meeting at a shared berth takes to show.
   actuated control ([FHWA signal timing manual](https://ops.fhwa.dot.gov/publications/fhwahop08024/chapter5.htm));
   box junctions ([Highway Code rule 174](https://theorytest.org.uk/hwc/highway-code/rule-174.html)); dispatch
   ([Uber matching](https://www.uber.com/us/en/marketplace/matching/)).
+
+**Daily life** (issue #357; read for their design, nothing taken from their art, characters or music):
+
+- Persona 5 Royal's confidants, ranks and abilities: [GGRecon](https://ggrecon.com/guides/persona-5-royal-confidant-guide-igor-fool); who is free on which days and in which weather: [ClutchPoints](https://clutchpoints.com/gaming/sadayo-kawakami-confidant-guide); the five social stats and the ranks they gate: [Push Square](https://www.pushsquare.com/guides/persona-5-royal-confidants-guide-where-to-find-all-confidants-and-how-to-rank-up-fast); rain as a bonus: [RPG Site](https://www.rpgsite.net/feature/13328-persona-5-royal-stats-guide-increase-knowledge-guts-proficiency-kindness-and-charm-fast); part-time jobs: [RPG Site](https://www.rpgsite.net/feature/5481-persona-5-royal-jobs-guide-part-time-job-list-unlocks); the rain arrangement of its night theme: [Megami Tensei Wiki](https://megatenwiki.com/wiki/Persona_5_Original_Soundtrack).
+- Its interface as "graphical entertainment", one key colour and lines that lead the eye: Masayoshi Suto, via [Siliconera](https://www.siliconera.com/?p=668266); how hard its menus were to make readable: Katsura Hashino, via [PC Gamer](https://www.pcgamer.com/games/rpg/persona-series-director-says-atluss-flashy-menus-are-actually-really-annoying-to-design).
+- The calendar as pressure: [Vice](https://vice.com/en/article/persona-5-is-the-most-stressful-game-ive-played-in-years), [Gamers with Glasses](https://www.gamerswithglasses.com/features/take-your-time-scheduling-life-in-the-persona-series); the mobile game that dropped it: [PC Gamer](https://www.pcgamer.com/games/rpg/persona-5-the-phantom-x-had-a-hard-time-doing-away-with-the-series-iconic-calendar-system-it-was-very-difficult-to-convince-the-team).
+- Yakuza's substories, found by walking into them: [TheSixthAxis](https://www.thesixthaxis.com/2018/10/16/the-yakuza-series-greatest-strength-is-the-people-you-meet-on-the-street/); their tone budgeted: [Automaton](https://automaton-media.com/en/interviews/like-a-dragon-infinite-wealths-sicko-snap-was-created-to-solve-a-very-real-problem-during-development/).
+- Shenmue's schedules: [PC Gamer](https://pcgamer.com/the-secret-lives-of-shenmues-npcs); the wait it lacked: [Push Square](https://www.pushsquare.com/news/2018/04/shenmue_i_and_ii_will_not_add_time_skip_to_the_first_game); its jobs: [Kotaku](https://kotaku.com/shenmues-much-hated-forklifts-feel-revolutionary-today-1833817433).
+- A Short Hike: "Crafting a Tiny Open World", [GDC 2020](https://gdcvault.com/play/1026613/Independent-Games-Summit-Crafting-A); rewards that make exploring more than travelling: [GamesRadar](https://www.gamesradar.com/games/open-world/some-open-world-games-can-make-it-feel-like-youre-not-really-exploring-youre-just-traveling-a-short-hike-creator-says-finding-unique-ways-of-rewarding-players-is-key-which-dark-souls-and-breath-of-the-wild-nailed). Alba: [Game Informer](https://gameinformer.com/review/alba-a-wildlife-adventure/alba-a-wildlife-adventure-review-a-good-deed).
+- GeoGuessr's ladder of real knowledge: [GeoTips](https://geotips.net/). Pokémon GO's daily bonus and weather: [Niantic](https://niantic.helpshift.com/hc/en/6-pokemon-go/faq/105-daily-bonuses/), [Pokémon](https://www.pokemon.com/uk/strategy/work-with-weather-in-pokemon-go). Animal Crossing's hours and dated events: [Nookipedia](https://nookipedia.com/wiki/Event/New_Horizons). Wordle: [Pocket Gamer](https://www.pocketgamer.biz/news/78481/gdc-josh-wardle-shares-his-incorrect-tips-for-wordles-success/).
+- The calendars' dates: each event in `cities/<id>/life.json` carries its own `source`.
