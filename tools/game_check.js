@@ -1871,8 +1871,9 @@ const npcNight = require('./npc_night');
   // a place at its best in a season (travel[].best: the jacarandas over Circular Quay): arriving out of it, the
   // date moves into it and its trees flower; a place with its own level ([x, y, z], a roof) lands you up there
   const seasons = await p.evaluate(() => {
-    const g = window.__game, out = [], c = g.clock, was = [c.y, c.m, c.d, c.min];
-    for (const t of (g.G.travel || []).filter(t => t.best)) {
+    const g = window.__game, out = [], c = g.clock, was = [c.y, c.m, c.d, c.min], best = (g.G.travel || []).filter(t => t.best);
+    if (!best.length) return out; // (the clock untouched: the steps after it see the same run)
+    for (const t of best) {
       g.setClock(c.y, 7, 1, 13 * 60);
       const ok = g.travelTo({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best });
       for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
