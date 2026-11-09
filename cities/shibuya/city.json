@@ -74,7 +74,7 @@
     "open_at": [[469.5, -908.2], [492.8, -1010.2]],
     "note": "pipeline/arcades.py (#234): two low PLATEAU-only solids in pedestrian squares (tools/square_huts.py) that the aerial photograph shows are canopies, not huts: a covered walk 3 m wide and 4.1 m tall along the footway by the Yamanote tracks north of the station, and a 2.6 m shelter on an island of the east exit's bus terminal. Each is named by a point inside it, as PLATEAU's footprints have no OSM id."
   },
-  "trees": {
+  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
     "mix": {
       "zelkova": 0.35,
       "ginkgo": 0.25,
@@ -664,7 +664,12 @@
         "at": [
           -2470.4,
           -2864.7
-        ]
+        ],
+        "look": [
+          -2469.2,
+          -2858.0
+        ],
+        "blurb": "Sangenjaya's backstreets, the Yongen-Jaya of a famous game: the snack bar New Marina whose front became its café, Chiyo-no-yu and the coin laundry across the lane, Hanamasa's yellow sign, and Carrot Tower over the station."
       },
       {
         "id": "t-harajuku",

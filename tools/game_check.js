@@ -657,6 +657,24 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
+  // the doorways' frames (game.json doors[].frames, #326): the collision world's quarter-metre cells took up to a cell
+  // more of a wall each side of a narrow doorway at an angle to them, so the jambs now stand as exact boxes from the
+  // frame. A walker's body (nav R) stands in the middle of each opening with room to spare, and the wall a little
+  // past each jamb, beside the opening and on the wall's line, is solid to it (both once the tiles round it are laid)
+  const doorways = await p.evaluate(() => {
+    const g = window.__game, nav = g.nav, out = [];
+    nav.layAll();
+    for (const d of g.G.doors || []) for (const f of d.frames || []) {
+      const dx = f.b[0] - f.a[0], dy = f.b[1] - f.a[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, z = f.z0;
+      const mid = [f.a[0] + dx / 2, f.a[1] + dy / 2], at = s => [f.a[0] + ux * s, f.a[1] + uy * s];
+      const roomy = nav.room(mid[0], mid[1], z, Math.min(nav.R, L / 2 - 0.05));
+      const jamb = [at(-0.2), at(L + 0.2)].map(([x, y]) => nav.col.overlap(x, y, 0.05, z + 0.5, z + 1.5));
+      out.push({ name: f.name || d.name, w: L, roomy, jambs: jamb.every(Boolean) });
+    }
+    return out;
+  });
+  for (const r of doorways) check(r.roomy && r.jambs, `the doorway of ${r.name} (${r.w.toFixed(2)} m): a walker stands in it, ${r.roomy ? 'clear' : 'NOT clear'}; its jambs ${r.jambs ? 'solid' : 'NOT solid'}`);
+
   // the flights of steps a city names for checking (game.json surfaces with check: true, a footbridge's): from
   // a metre past the foot, climb on foot to the top, and arrive within 0.35 m of the top's height, never
   // having dropped below the foot or risen above the top
@@ -1931,6 +1949,48 @@ const npcNight = require('./npc_night');
     check(rg.listed === rg.stations, `the travel list has the other districts (${rg.listed})`);
     check(rg.back === 1, '"This district" shows this map again');
   }
+
+  // the traffic dodges your car (issue 335): your car put in a moving car's lane 26 m ahead, coming at it at
+  // 10 m/s; within the second it swings out of the lane, brakes hard and sounds its horn. Last of the steps: it
+  // stirs the traffic up (cars braking and swinging out round your car), which the taxi, ride and backing-out
+  // steps above would otherwise meet
+  const dodge = await p.evaluate(() => {
+    const g = window.__game, c = g.myCar && g.myCar();
+    if (!c) return { none: true };
+    const st = c.D.st, s = g.KEEP === 'left' ? 1 : -1;
+    g.player.x = st.x + Math.cos(st.h) * 2.6 * s; g.player.y = st.y - Math.sin(st.h) * 2.6 * s; g.player.z = st.z;
+    g.advance(0.3); g.enterCar();
+    for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
+    if (g.player.mode !== 'car') return { none: true, why: 'not in the car' };
+    const C = g.cars.C, r = { tried: 0 };
+    // a car on the move, on a straight stretch, with room for your car ahead of it in its lane
+    const cands = C.filter(o => o.line >= 0 && o.v > 5 && !o.mv && Math.abs(o.z - st.z) < 3 && !(o.dodgeT > 0)).sort((a, b) => Math.hypot(a.x - st.x, a.y - st.y) - Math.hypot(b.x - st.x, b.y - st.y));
+    for (const o of cands.slice(0, 6)) {
+      r.tried++;
+      const fx = Math.sin(o.h), fy = Math.cos(o.h);
+      Object.assign(st, { x: o.x + fx * 26, y: o.y + fy * 26, z: o.z, h: o.h + Math.PI, vx: -fx * 10, vy: -fy * 10, v: 10, speed: 10, r: 0, steer: 0 });
+      o.honkAt = null;
+      const v0 = o.v, off0 = o.off;
+      let dodged = false, maxOff = 0, blocked = false;
+      for (let i = 0; i < 10; i++) {
+        g.advance(0.1, ['KeyW']);
+        if (!i && st.v < 5) { blocked = true; break; } // (your car put down on something there: stopped dead, nothing to dodge; the next)
+        if (o.dodgeT > 0) dodged = true;
+        maxOff = Math.max(maxOff, Math.abs(o.off - off0));
+        if (o.line < 0) break;
+      }
+      if (o.line < 0 || blocked) continue;
+      Object.assign(r, { dodged, v0, v1: o.v, off: maxOff, honked: o.honkAt != null, // (game.js sounds and empties cars.honks each frame)
+ model: o.model });
+      break;
+    }
+    for (let i = 0; i < 60 && st.speed > 0.3; i++) g.advance(0.1, ['Space']);
+    g.advance(0.3); g.exitCar(); g.advance(0.5);
+    return r;
+  });
+  check(dodge.none || dodge.dodged == null || (dodge.dodged && dodge.v1 < dodge.v0 - 2 && dodge.off > 0.4 && dodge.honked),
+    dodge.none ? 'no car' : dodge.dodged == null ? `no car on the move to dodge yours (${dodge.tried} tried)`
+      : `a car coming at yours dodges it (${dodge.model}: ${dodge.v0.toFixed(1)} -> ${dodge.v1.toFixed(1)} m/s, ${dodge.off.toFixed(2)} m aside, ${dodge.honked ? 'horn' : 'no horn'})`);
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));

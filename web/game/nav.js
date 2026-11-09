@@ -372,6 +372,23 @@ window.OENav = (function () {
     const MARGIN = 1, APRON = 8; // in cells: a floor cell's margin, and the apron round a tile that it reads (2 m, so
     // that anything smaller than FLOOR_M2 across a tile's edge is seen whole)
     const FNX = DSM.nx * Math.round(DSM.cell / FINE), TPC = Math.round(TILE / FINE); // fine cells a row; and a tile's side
+    // the doorways (game.json "doorways" and each door's "frames": [{a: [x, y], b: [x, y], t, z0, z1, top}]: the opening's two jambs' faces on the
+    // wall's middle line, the wall's thickness, the sill, the head and the wall's top), each with its frame along and
+    // across the wall; and whether a point is in one's zone, where its own boxes stand for the wall (below)
+    const DOOR_EXT = 0.6, DOOR_PAD = 0.3;
+    const doorways = [...(G.doorways || []), ...(G.doors || []).flatMap(d => d.frames || [])].map(d => {
+      const dx = d.b[0] - d.a[0], dy = d.b[1] - d.a[1], len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+      const t = d.t || 0.2, top = d.top ?? d.z1 + 0.5, r = len / 2 + DOOR_EXT + t / 2 + DOOR_PAD;
+      return { a: d.a, ux, uy, nx: -uy, ny: ux, len, t, z0: d.z0, z1: d.z1, top, cx: d.a[0] + dx / 2, cy: d.a[1] + dy / 2, r };
+    });
+    const doorZone = (x, y, z) => {
+      for (const d of doorways) {
+        if (Math.abs(x - d.cx) > d.r || Math.abs(y - d.cy) > d.r || z < d.z0 + 0.12 || z > d.top + 0.3) continue; // (the sill and the floor stay)
+        const px = x - d.a[0], py = y - d.a[1], s = px * d.ux + py * d.uy, v = px * d.nx + py * d.ny;
+        if (s >= -DOOR_EXT && s <= d.len + DOOR_EXT && Math.abs(v) <= d.t / 2 + DOOR_PAD) return true;
+      }
+      return false;
+    };
     const TNX = Math.ceil(DSM.nx * DSM.cell / TILE), TNY = Math.ceil(DSM.ny * DSM.cell / TILE);
     const tileTris = new Map(); // tile index -> [[A, B, C], ...]: the triangles (or their parts) the tile's fine cells take
     const tileDone = new Uint8Array(TNX * TNY); // 0 not built, 1 being built, 2 built
@@ -586,6 +603,7 @@ window.OENav = (function () {
         const c = Math.floor((x - x0) / FINE) - cA, r = Math.floor((y1 - y) / FINE) - rA;
         if (c < 0 || r < 0 || c >= W || r >= W || c + cA < 0 || r + rA < 0 || c + cA >= FNX) return;
         if (tStrips.length) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && z <= h + 0.15) return; }
+        if (doorways.length && doorZone(x, y, z)) return; // (a doorway's own boxes stand there)
         const q = r * W + c, n = cnt[q], b = q * IV;
         if (inside) anyInside = true;
         for (let i = 0; i < n; i++) if (z >= lo[b + i] - GAP && z <= hi[b + i] + GAP) { if (z < lo[b + i]) lo[b + i] = z; if (z > hi[b + i]) hi[b + i] = z; if (inside) ins[b + i] = 1; else wall[b + i] = 1; return; }
@@ -823,6 +841,19 @@ window.OENav = (function () {
     if (inland && inland.flights) for (const f of inland.flights) {
       const o = f.w / 2 + 0.08, g0 = inland.FLIGHT_GATE || 0, a = [f.x + f.nx * o + f.ux * g0, f.y + f.ny * o + f.uy * g0], b = [f.x + f.nx * o + f.ux * f.run, f.y + f.ny * o + f.uy * f.run], t = [f.nx * 0.12, f.ny * 0.12];
       col.add([[a[0], a[1], b[0], b[1], b[0] + t[0], b[1] + t[1], a[0] + t[0], a[1] + t[1]]], f.zb, f.zt + 1.1, SUNK, -1);
+    }
+    // a doorway's jambs and head from its own frame (game.json "doorways", from a city's landmark builder, #326): the
+    // fine cells are a quarter-metre grid, and a wall at an angle to it takes up to a cell more each side of a doorway
+    // in it, so a narrow one lost its jambs to walkers (Williams Cottage's had to be drawn as not walls). Within
+    // DOOR_EXT along the wall either side and DOOR_PAD off its faces, from the sill to the wall's top, the fine cells
+    // are left out (doorZone, tileBuild); the jambs stand there instead as exact boxes on the wall's own line, its
+    // thickness t, and the head over the opening from z1 to the top
+    for (const d of doorways) {
+      const { a, ux, uy, nx, ny, len, t, z0, z1, top } = d, h = t / 2;
+      const box = (s0, s1) => { const P = (s, v) => [a[0] + ux * s + nx * v, a[1] + uy * s + ny * v]; return [[...P(s0, -h), ...P(s1, -h), ...P(s1, h), ...P(s0, h)]]; };
+      col.add(box(-DOOR_EXT, 0), z0 - MZ, top, LFINE, -1);
+      col.add(box(len, len + DOOR_EXT), z0 - MZ, top, LFINE, -1);
+      if (top > z1) col.add(box(0, len), z1, top, LFINE, -1);
     }
     const tFine = performance.now();
     const coarse = landmarkCells(solidMeshes, slabs);

@@ -1026,6 +1026,17 @@ yields. In this game every car's intent is exact, so:
   with the model it crept up a stop-and-go queue more slowly, was held long enough to read a car in
   the queue as stopped for good, and went round it.) It is never faster than the old limit, so the queues and the waits at the lights are as
   before; only the braking is earlier and softer, as a passenger feels it.
+- **Get out of your way.** Driving at the traffic, your car used to meet a car that only braked for
+  something in its own lane ahead. Now a driver watches where your car will pass it (issue 335,
+  `actors.js` `DODGE_T`). If that point is within 2.2 s and close enough to touch, the driver swings
+  1.2 m out of the way. It swings to the kerb, or out over the centre line when you pass on the kerb
+  side and nothing is coming the other way. It brakes hard unless you are coming up from behind,
+  keeps this up for at least 1.2 s, and sounds its horn. A bus's horn is lower, and a far one is
+  fainter (`audio.js` `honk(gain, pitch)`). The idea is taken from the reaction step in
+  [Slop New York](https://github.com/mrdoob/slop-newyork) (MIT; `traffic.js`, where a driver notices
+  the player a set time before contact and keeps the move up for a minimum time). No code is copied.
+  `tools/game_check.js` puts your car 26 m ahead of a moving car in its lane, coming at it at
+  10 m/s. Within a second that car must slow by at least 2 m/s, move 0.4 m aside and sound its horn.
 - **Break the rings.** Round Shibuya station the queues waited for room behind queues that waited
   for room, round a block and back, and nothing moved: one car stood 220 s at its line. The
   traffic wanders, so a car held 5 s at its line for want of room, its light green, takes another
@@ -1552,7 +1563,33 @@ quality tier runs a third of the cars.
     other for good.
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids. It slides along a wall it meets at a glancing angle and
-    bounces off a hard hit.
+    bounces off a hard hit. The flight handles the way the helicopters of
+    open-world games do (GTA V, Just Cause), the way a pilot flies a
+    coordinated turn (issue 335; `vehicles.js` `helicopter`, measured by
+    `tools/heli_feel.js`, filmed by `tools/heli_film.js`):
+    - the way it goes follows the nose: the sideways slip dies away in a
+      quarter of a second. Before, the old velocity carried on as it turned,
+      so after a turn at speed it drifted backwards and sideways like a puck
+      on ice (160° off its nose; now 12°);
+    - let go of the stick and it settles to a hover in 3.5 s (it coasted for
+      10.6 s). Pull back while going forward and it brakes hard (2 s from top
+      speed) before it backs away, slowly (12 m/s at most);
+    - it turns 1.3 rad/s at a hover and 0.75 at top speed, in a banked arc,
+      rather than spinning at the same rate however fast it went;
+    - the attitude comes from the flight: nose down to speed up and to hold
+      speed against the drag, nose up (a flare) to brake, and banked by as much
+      as the turn needs (tan bank = speed × turn rate / g, up to about 29°).
+  - **The chase camera in the air** rides on the helicopter, its climbs eased.
+    Before, a lag behind it, eased frame by frame, grew with its speed and with
+    the frame time: at speed with uneven frames the helicopter wobbled in the
+    picture by 6 cm a frame (now 1 mm). The camera swings back behind it 0.9 s
+    after you let go of the mouse (1.6 s before), faster the faster it flies,
+    and looks a little ahead into a turn. It sits 20 m back (24 before), pulls
+    back by up to 4 m and the lens widens by up to 6° with speed.
+  - **Changing view** (<kbd>V</kbd>: chase, cockpit, bird's-eye) is a 0.45 s
+    ease-out from the old view to the new, which travels with the helicopter,
+    not a cut. The reef sites' helicopter (`reef/boats/control.js`) also turns
+    more slowly at speed and banks by what the turn needs.
   - **Getting in,** as in GTA and Sketchbook: <kbd>E</kbd> walks you round to
     the pilot's door (round the nose from the far side). The door swings open
     on its hinge, you step up onto the skid and slide into the seat, and the
@@ -1560,10 +1597,47 @@ quality tier runs a third of the cars.
     swings round to watch, and the rotor spools up until it can lift at 90%.
     Getting out is the same the other way round, once you have landed. The
     moves are in the helicopter's own frame, so they work wherever it lands.
-  - **The cockpit view** (<kbd>V</kbd>): the pilot's eyes, pitching and
-    banking with the cabin, past the instrument panel and through the
-    windscreen. Drag to look round; in flight the view drifts back to
-    straight ahead.
+  - **The cockpit view** (<kbd>V</kbd>): the pilot's eyes, pitching with the
+    cabin and banking with it by half: the bank still reads, but the whole
+    city doesn't swing round the screen. The view looks past the instrument
+    panel and through the windscreen. Drag to look round; in flight the view
+    drifts back to straight ahead.
+    - **What the pilot sees** (issue 335). Flight sims' pilot views (MSFS's VFR
+      view) show mostly the world outside, and their players' most common
+      complaint is an eye too low, too close to the panel, or looking at the
+      controls. Ours had the opposite fault: the eye was level with the
+      windscreen's top under a low cabin roof, 0.4 m behind the glass. A centre
+      post ran down the middle 0.8 m away, and the painted nose cap closed the
+      view ahead. The cabin was rebuilt in `blender/build_vehicles.py`:
+      - **A one-piece bubble windscreen**, as the H125's and H130's are. The
+        windscreen runs on over the nose cap almost to the tip. Its two halves
+        overlap over the middle, and its gasket runs round the outside only, so
+        there is no centre post.
+      - **The instrument panel and glare shield** sit 10 cm lower and are
+        shallower.
+      - **`Eye_Pilot`** moves 0.14 m forward and 0.10 m down: leaning to the
+        cyclic, under the windscreen's top.
+      - **In the game** (`game.js` `COCKPIT`): a 66° lens looking almost level.
+        While the view is up, the glass is thinned to faint reflections (its
+        clear coat mirrored the sky from inside), and the outer skin is drawn
+        from outside only, so the gap in the lining under the nose is a chin
+        window onto the ground. The lining is a cabin's dark grey, not near
+        black.
+      - **The pitot tubes** are short and sit on the roof's front edge, above the
+        pilot's view, as on the H125. They ran half a metre forward over the
+        glass, two bars across the cockpit view.
+      - **The foot of the view** is cleared. The game leaves out the gaskets
+        (a black arc round the nose), the lining of the nose's lower half, and
+        the wire cutter under the nose (a grey fin through the chin window),
+        all built as their own materials (`Gasket_Chin`, `Lining_Nose`,
+        `Cutter`). With them gone the pilot looks down through the nose to
+        the ground. From outside they are all there. `PICK` in
+        `tools/cockpit_shot.js` names what of the helicopter is under a point
+        of the picture, which found them.
+      What still frames the view is the A-pillar between the windscreen and the
+      pilot's door, which the door's seam leaves no room to narrow.
+      `tools/cockpit_shot.js` takes stills of the variants from the same place
+      over Sydney Harbour.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The city's `ferry_style` picks the model (`"model": "harbour"` or
     `"river"`, else by its length) and the livery: Sydney Ferries' green and
@@ -1786,11 +1860,17 @@ landmark's shell, with the shell's walls cut where its door and windows are (`pi
 
 - **The floor**, a strip (game.json `surfaces`), so that a walker stands on it at its own level, whatever
   the bare earth under the building does. Walls, pews, tables and counters are landmark meshes and stop a
-  walker as any landmark does (`web/game/nav.js`). The collision world's cells are a quarter of a metre and
-  a walker is 0.7 m across, so a doorway must leave about 1.25 m between its solid jambs; a narrower real
-  door (Williams Cottage's, 0.95 m) is drawn at its own width with the last few centimetres of wall either
-  side in a material that is not a wall to walkers (`solid: false`).
-- **The doors** (game.json `doors`: `{id, name, at, reach, time, leaves}`). Each leaf is the landmark's own
+  walker as any landmark does (`web/game/nav.js`). The collision world's cells are a quarter of a metre, and
+  a wall at an angle to them takes up to a cell more each side of a doorway in it: a real door narrower than
+  about 1.25 m (Williams Cottage's, 0.95 m, on walls at 44 degrees to the grid) would not let a walker 0.7 m
+  across through. So a door gives its doorway's frame (`frames`: `{a, b, t, z0, z1, top}`, the two jambs'
+  faces on the wall's middle line, the wall's thickness, the sill, the head and the wall's top;
+  `interiors.py doorway()`), and nav.js leaves the quarter-metre cells out within 0.6 m of the opening along
+  the wall and 0.3 m off its faces, from the sill up, and stands the jambs and the head there as exact boxes
+  (#326). `tools/game_check.js` checks each frame: a walker stands in the opening, and the wall 0.2 m past
+  each jamb is solid. The Skyline restaurant's 1.8 m sliding doors give none: its planted bed comes within
+  the frame's reach of the glass.
+- **The doors** (game.json `doors`: `{id, name, at, reach, time, leaves, frames}`). Each leaf is the landmark's own
   mesh, drawn shut, and not a wall. `web/game/doors.js` swings it on its hinge (`hinge`, `deg`) or slides it
   (`slide`) as someone on foot comes within `reach` metres, sooner the faster they come, and shuts it a moment
   after they have gone. Only you open them: the locals stand or sit where they are, and a diner at a table by the door would otherwise hold it open.

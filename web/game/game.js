@@ -1009,7 +1009,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     H.toast(`Your car is at the kerb, ${Math.round(Math.hypot(k.pose.x - player.x, k.pose.y - player.y))} m away.`);
     save();
   }
-  let bumpCar = -9, carFov = 0;
+  let bumpCar = -9, carFov = 0, heliFov = 0;
   // your car over a stop line on red (junctions.js), with the cross road's green: a word about it
   const redRq = {};
   let redLast = -99, redAt = null, redT = 0;
@@ -2693,14 +2693,57 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   let skip = false, waitFerry = null, lastDock = null;
   // V: the chase camera and the bird's-eye view, and in the helicopter the pilot's own view between them
+  // the pilot's view (issue 335): the lens, the look ahead's pitch, and any move of the eye from the model's Eye_Pilot
+  // (+x left, +y up, +z forward, m). As in the flight sims' pilot views (MSFS's VFR view), most of the picture is
+  // the world outside: the eye (blender/build_vehicles.py) leaning to the cyclic under the line of the windscreen's
+  // top, looking ahead through the bubble nose, the low glare shield a band along the bottom
+  const COCKPIT = { fov: 66, pitch: -0.08, eye: new THREE.Vector3(0, 0, 0) };
+  // and from the seat (while the cockpit view is up; put back after): the glass all but clear, as the flight sims
+  // show the pilot only faint reflections (its clear coat mirrored the bright sky from inside); the outer skin
+  // drawn from outside only, so that where the cabin's lining leaves a gap under the nose the pilot sees down
+  // through it, not the white paint's inside, which showed as a white disc under the panel; and the lining a
+  // cabin's dark grey rather than near black, which in the cabin's shade drew every frame as a black mask
+  let cabinKept = null;
+  function cockpitGlass(on) {
+    if (on && !cabinKept) {
+      cabinKept = [];
+      const seen = new Set();
+      heli.group.traverse(o => { for (const m of [].concat(o.material || [])) {
+        if (seen.has(m)) continue;
+        seen.add(m);
+        if (m.isMeshPhysicalMaterial && m.transparent && !m.depthWrite && m.clearcoat > 0.5) { cabinKept.push([m, { opacity: m.opacity, clearcoat: m.clearcoat }]); m.opacity = 0.08; m.clearcoat = 0.12; }
+        else if (/^Paint_|^Stripe/.test(m.name)) { cabinKept.push([m, { side: m.side }]); m.side = THREE.FrontSide; m.needsUpdate = true; }
+        else if (m.name === 'Lining' || m.name === 'Interior') { cabinKept.push([m, { color: m.color.clone() }]); m.color.setRGB(0.045, 0.05, 0.055); }
+        // (and what showed at the foot of the view, below the panel: the windscreen's and the chin windows' gaskets, a
+        // black arc round the nose; the lining of the nose's lower half, a grey wedge between the windscreen's two lower
+        // edges; the wire cutter under the nose. Left out from the seat, so the pilot looks down through the nose to the
+        // ground, and kept from outside)
+        else if (/^Gasket/.test(m.name) || m.name === 'Lining_Nose' || m.name === 'Cutter') { cabinKept.push([m, { visible: m.visible }]); m.visible = false; }
+      } });
+    } else if (!on && cabinKept) {
+      for (const [m, was] of cabinKept) { if (was.color) m.color.copy(was.color); else Object.assign(m, was); if ('side' in was) m.needsUpdate = true; }
+      cabinKept = null;
+    }
+  }
   const VIEWS = { chase: ['Chase view', 'chase view'], cockpit: ['Cockpit view: drag to look round', 'cockpit'], bird: ["Bird's-eye view: scroll to change height", "bird's-eye"] };
   const viewOrder = () => (player.mode === 'heli' ? ['chase', 'cockpit', 'bird'] : ['chase', 'bird']);
   const nextViewOf = m => { const o = viewOrder(); return o[(o.indexOf(m) + 1) % o.length]; };
   function nextView() {
     cam.mode = nextViewOf(cam.mode);
-    if (cam.mode === 'cockpit') { cam.lookYaw = 0; cam.lookPitch = -0.1; }
+    if (cam.mode === 'cockpit') { cam.lookYaw = 0; cam.lookPitch = COCKPIT.pitch; }
     camera.up.set(0, 1, 0);
+    blendFrom(); // (a short move from the old view to the new, not a cut; issue 335)
     H.toast(VIEWS[cam.mode][0]);
+  }
+  // the camera eased from where it is to the new view over VIEW_BLEND s (an ease-out, as games move between
+  // their views): the view it left is held where it was and the new one runs on, so nothing in it lags
+  // (the view left is held where it was relative to you, so that at speed in the air it travels with you)
+  const VIEW_BLEND = 0.45, viewBlend = { t: 1, pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(), fov: BASE_FOV, at: new THREE.Vector3() };
+  const focusW = out => (player.mode === 'heli' ? out.copy(W(heli.st.x, heli.st.y, heli.st.z)) : out.copy(W(player.x, player.y, player.z)));
+  function blendFrom() {
+    viewBlend.t = 0; focusW(viewBlend.at);
+    viewBlend.pos.copy(camera.position).sub(viewBlend.at); viewBlend.up.copy(camera.up); viewBlend.fov = camera.fov;
+    camera.getWorldDirection(viewBlend.look).multiplyScalar(30).add(camera.position).sub(viewBlend.at);
   }
 
   // ------------------------------------------------------------ interaction
@@ -2963,7 +3006,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     boarding = null;
     player.mode = 'heli'; heli.st.on = true; heli.st.doorTo = 0;
     player.rig.root.position.copy(heli.way.seat); player.rig.root.rotation.set(0, 0, 0);
-    cam.mode = 'chase'; cam.distTo = 24; // pull back to the chase view; it swings behind once under way
+    cam.mode = 'chase'; cam.distTo = 20; // pull back to the chase view (near enough that the helicopter fills a sixth of the picture's height); it swings behind once under way
     if (!heliCoach()) H.toast('Door shut, rotor spooling up: it lifts at 90%. <kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> change view.');
   }
   // the first flight in this browser (any map): a short coach, a step at a time, each ticked off as you do
@@ -4201,6 +4244,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (typeof groundLod === 'function' && Wd.groundMeshes[0].material.userData.street) groundLod(player.x, player.y);
   }
   spawn();
+  // a link to a district of the map ("#play-shibuya@t-sancha", from the subway map or shared): the title
+  // screen is set there, over that place and under its name, and the game starts there, not at the map's start
+  const DISTRICT = window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+  if (DISTRICT) {
+    spawn(DISTRICT.at, DISTRICT.at[2] != null ? DISTRICT.at[2] + 0.5 : undefined, lookOf(DISTRICT));
+    const nm = /^(.*?)\s+([\u3000-\u9fff\uff00-\uffef][^A-Za-z]*)$/.exec(DISTRICT.name) || [0, DISTRICT.name]; // (the name in its own script after it, if it ends the name)
+    gtTitle.textContent = nm[1];
+    if (nm[2]) { const sm = document.createElement('small'); sm.lang = 'ja'; sm.textContent = nm[2]; gtTitle.append(sm); }
+    $('#gt-city').textContent = `${G.title.replace(/\s+[\u3000-\u9fff].*$/, '')} · ${CITY.place || CITY.name}, ${CITY.country}`;
+    if (DISTRICT.blurb) { $('#gt-blurb').textContent = DISTRICT.blurb; $('#g-title p').textContent = DISTRICT.blurb; }
+    document.title = `${nm[1]} · ${G.title} · Open Earth 3D`;
+  }
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
@@ -4232,7 +4287,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
-    const arrive = !cont && window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+    const arrive = !cont && DISTRICT;
     if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
@@ -4301,7 +4356,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#gt-continue'), 'click', () => startGame(true));
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
-  $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
+  $('#gt-now').textContent = `Now in ${DISTRICT ? gtTitle.firstChild.textContent : CITY.name} (${fmtMin(nowLoc.minutes)})`;
   // the loader (its plate, plate.js) fades onto the title orbit; the title card is held back until
   // then, so it never shows over the loader, while the scene under it waits as on the title screen
   // (preTitle). fromFlyover() is for a recorded flyover that ends on the orbit's first pose
@@ -4407,7 +4462,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
-    if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : titleYaw + dt * 0.05; }
+    if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : DISTRICT ? titleYaw0 + 0.3 * Math.sin(titleT * 0.05) : titleYaw + dt * 0.05; }
     if (simHold) { /* (held by a harness: the camera too, which the traffic reads, what is in view; advance() moves it) */ } else if (photo.on) photoCamera(dt); else if (closeup && !titleOn) closeupCamera(dt); else updateCamera(dt, titleOn);
     placeNightFill();
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
@@ -4634,6 +4689,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       cars.extra.push(x);
     }
     cars.update(dt, cx, cy, clockT, blockers);
+    // a driver getting out of your car's way sounds its horn, fainter the farther off (actors.js DODGE_T)
+    for (const h of cars.honks.splice(0)) A.honk(Math.max(0.15, 1 - h.d / 40) * 0.8, h.bus ? 0.72 : 0.9 + Math.random() * 0.2);
     if (places) {
       // the area caption waits for a quiet screen: no conversation, menu, map, phone, photo mode or
       // onboarding (anything marked data-hush that is showing holds it too)
@@ -4750,23 +4807,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the most open foreground (openYaw) or, after a loading flyover, from the video's last frame
   // (FLY_END, where tools/flyover.js ends it: 420 m south and 210 m up, the orbit the videos were
   // made under), easing out to the orbit's own radius and height.
-  const ORBIT = { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
-  let titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null, titleT = 0;
+  // (arriving at a district: a closer orbit, so its own streets fill the title and not the skyline beyond)
+  const ORBIT = DISTRICT ? { r: 300, h: 115 } : { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
+  let titleYaw0 = 0, titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null, titleT = 0;
   if (OPENING) { titleR = openingView().r; titleH = OPENING.h; } // (no ease into the opening's own height on the first frame)
   // the orbit's centre: north-east of the start, or with an opening shot (game.start.shot, #110) the point it
   // looks at (Shibuya's: the screen over the scramble), the camera then swaying gently behind the start's view
   // and not orbiting, so the crane down from it to over the player's shoulder never swings round
-  const titleAt = () => (openingHere() ? OPENING.look : [player.x + 120, player.y + 160, player.z + 20]);
+  const titleAt = () => (openingHere() ? OPENING.look : DISTRICT ? [player.x + 30, player.y + 40, player.z + 12] : [player.x + 120, player.y + 160, player.z + 20]);
   const titlePose = () => { const c = titleAt(), yaw = openingHere() ? openingView().yaw : FLY_END.yaw; return { look: c,
     cam: [c[0] - Math.sin(yaw) * FLY_END.r, c[1] - Math.cos(yaw) * FLY_END.r, c[2] + FLY_END.h] }; };
-  function fromFlyover() { titleYaw = openingHere() ? openingView().yaw : FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }
+  function fromFlyover() { if (DISTRICT) return; titleYaw = openingHere() ? openingView().yaw : FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }
   // where the title orbit starts: the bearing with the most open foreground (the least building
   // over the nearer part of the line of sight), so the title does not open on one big flat roof
+  // (for a district near the map's edge, Sangenjaya's: only the bearings that look back into the map, the camera
+  // over it and the city behind what it looks at, not the haze past the edge)
   function openYaw(cx, cy, r) {
     let best = 0, least = Infinity;
+    const F = scene.frame, inMap = (x, y) => x > F.x[0] && x < F.x[1] && y > F.y[0] && y < F.y[1];
     for (let k = 0; k < 24; k++) {
       const a = k / 24 * 2 * Math.PI, x0 = cx - Math.sin(a) * r, y0 = cy - Math.cos(a) * r;
-      let h = 0;
+      let h = DISTRICT && !(inMap(x0, y0) && inMap(cx + Math.sin(a) * 900, cy + Math.cos(a) * 900)) ? 1e9 : 0;
       for (let i = 1; i <= 12; i++) { const t = i / 12 * 0.7, x = x0 + (cx - x0) * t, y = y0 + (cy - y0) * t; h += roofBelow(x, y) - nav.terrain(x, y); }
       if (h < least) { least = h; best = a; }
     }
@@ -4784,7 +4845,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (titleOn) { // slow orbit near the start for the title screen, low enough to see the skyline against the sky
       const c = titleAt();
       const O = openingHere() ? openingView() : ORBIT;
-      if (titleYaw == null) titleYaw = O !== ORBIT ? O.yaw : openYaw(c[0], c[1], ORBIT.r);
+      if (titleYaw == null) titleYaw = titleYaw0 = O !== ORBIT ? O.yaw : openYaw(c[0], c[1], ORBIT.r);
       const k = Math.min(1, dt * 0.4);
       titleR += (O.r - titleR) * k; titleH += (O.h - titleH) * k;
       titleLook.copy(W(c[0], c[1], c[2]));
@@ -4802,7 +4863,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (veh) player.rig.root.visible = cam.mode !== 'cabin';
     // the cockpit view takes a wider lens, as cockpit views in games do, and a near plane inside the cabin
     const shot = cine.step(clockT), cockpit = !shot && player.mode === 'heli' && cam.mode === 'cockpit';
-    const fov = shot && cine.label === 'overture' ? overture.fov : shot && cine.label === 'survey' ? surveyFov : cockpit ? 72 : BASE_FOV + (shot ? 0 : Math.round(carFov * 4) / 4), near = cockpit ? 0.12 : 0.3;
+    // (and in the helicopter's chase view with its speed, up to 6 degrees at top speed: the sense of speed in the air)
+    heliFov += ((player.mode === 'heli' && cam.mode === 'chase' ? Math.min(6, heli.st.speed * 0.12) : 0) - heliFov) * Math.min(1, dt * 1.5);
+    const fov = shot && cine.label === 'overture' ? overture.fov : shot && cine.label === 'survey' ? surveyFov : cockpit ? COCKPIT.fov : BASE_FOV + (shot ? 0 : Math.round((carFov + heliFov) * 4) / 4), near = cockpit ? 0.12 : 0.3;
     if (camera.fov !== fov || camera.near !== near) { camera.fov = fov; camera.near = near; camera.updateProjectionMatrix(); }
     if (shot) {
       camera.up.set(0, 1, 0);
@@ -4820,29 +4883,41 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     camera.up.copy(live.up);
     camera.position.copy(live.pos);
-    camera.lookAt(live.look);
+    if (viewBlend.t < 1) { // (between two views: from the one left to this one)
+      viewBlend.t = Math.min(1, viewBlend.t + dt / VIEW_BLEND);
+      const e = 1 - Math.pow(1 - viewBlend.t, 3), at = focusW(blendAt);
+      const lk = blendLook.copy(viewBlend.look).add(at).lerp(live.look, e);
+      camera.position.copy(viewBlend.pos).add(at).lerp(live.pos, e);
+      camera.up.lerpVectors(viewBlend.up, live.up, e).normalize();
+      const f = viewBlend.fov + (camera.fov - viewBlend.fov) * e;
+      if (Math.abs(f - camera.fov) > 0.01) { camera.fov = f; camera.updateProjectionMatrix(); }
+      camera.lookAt(lk);
+    } else camera.lookAt(live.look);
     Wd.fitShadow(live.look, live.half);
   }
-  const cabinQ = new THREE.Quaternion(), camProbe = new THREE.Vector3();
+  const blendLook = new THREE.Vector3(), blendAt = new THREE.Vector3();
+  const cabinQ = new THREE.Quaternion(), camProbe = new THREE.Vector3(), UP_Y = new THREE.Vector3(0, 1, 0);
   const CAM_LIFTS = [0, 0.15, 0.3, 0.45, 0.6, 0.8]; // the chase camera's lifts over a wall behind, in radians of pitch
   function rig(dt) {
     const k2 = Math.min(1, dt * 6);
+    cockpitGlass(player.mode === 'heli' && cam.mode === 'cockpit' && !photo.on);
     if (player.mode === 'heli' && cam.mode === 'cockpit') {
       // the pilot's eyes, pitching and banking with the cabin; drag to look round. In flight the
       // view drifts back to straight ahead when you let it be
-      if (clockT - cam.lastInput > 2.5 && heli.st.speed > 3) { const r = Math.min(1, dt * 1.2); cam.lookYaw -= cam.lookYaw * r; cam.lookPitch += (-0.1 - cam.lookPitch) * r; }
+      if (clockT - cam.lastInput > 2.5 && heli.st.speed > 3) { const r = Math.min(1, dt * 1.2); cam.lookYaw -= cam.lookYaw * r; cam.lookPitch += (COCKPIT.pitch - cam.lookPitch) * r; }
       heli.group.updateMatrixWorld();
-      live.pos.copy(heli.way.eye).applyMatrix4(heli.group.matrixWorld);
+      live.pos.copy(heli.way.eye).add(COCKPIT.eye).applyMatrix4(heli.group.matrixWorld);
       heli.group.getWorldQuaternion(cabinQ);
       const cp = Math.cos(cam.lookPitch);
       live.look.set(Math.sin(cam.lookYaw) * cp, Math.sin(cam.lookPitch), Math.cos(cam.lookYaw) * cp).applyQuaternion(cabinQ).add(live.pos);
-      live.up.set(0, 1, 0).applyQuaternion(cabinQ);
+      // (the horizon tilts with the cabin's bank by half: the bank still reads, without the whole city swinging)
+      live.up.set(0, 1, 0).applyQuaternion(cabinQ).lerp(UP_Y, 0.5).normalize();
       live.half = 520;
       return;
     }
     if (player.mode === 'heli' && cam.mode === 'bird') {
       const st = heli.st, g = nav.groundBelow(st.x, st.y, st.z);
-      live.pos.lerp(W(st.x, st.y, Math.max(st.z, g) + cam.birdAlt), k2);
+      live.pos.lerp(W(st.x, st.y, Math.max(st.z, g) + cam.birdAlt), 1 - Math.exp(-dt * 6)); // (eased the same at any frame time)
       live.up.set(Math.sin(st.h), 0, -Math.cos(st.h));
       live.look.copy(W(st.x, st.y, st.z));
       live.half = Math.min(2400, cam.birdAlt * 1.4);
@@ -4852,22 +4927,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const veh = player.mode === 'car' ? myCar : player.mode === 'ride' ? ride : null, vs = veh && stOf(veh);
     if (veh && cam.mode === 'cabin') { cabinView(dt, veh, vs); return; }
     let tx, ty, tz, follow;
-    if (player.mode === 'heli') { tx = heli.st.x; ty = heli.st.y; tz = heli.st.z + 2.5; follow = heli.st.h; }
+    // (in the helicopter it looks a little ahead into a turn, as a chase camera leads a vehicle round a bend)
+    if (player.mode === 'heli') { tx = heli.st.x; ty = heli.st.y; tz = heli.st.z + 2.5; follow = heli.st.h + heli.st.yawRate * 0.3 * Math.min(1, heli.st.speed / 15); }
     else if (player.mode === 'ferry') { tx = player.vehicle.x; ty = player.vehicle.y; tz = 5; follow = null; }
     else if (player.mode === 'rail') { tx = player.vehicle.x; ty = player.vehicle.y; tz = player.vehicle.z + 3; follow = null; }
     else if (veh) { tx = vs.x; ty = vs.y; tz = vs.z + 1.5; follow = vs.h; }
     else { tx = player.x; ty = player.y; tz = player.z + 1.55; follow = player.h; }
     // drift behind the direction of travel when the player is not steering the camera (in a car, sooner and faster)
     const moving = veh ? Math.abs(vs.v) > 1 : player.mode === 'heli' ? heli.st.speed > 3 : player.speed > 1;
-    if (follow != null && clockT - cam.lastInput > (veh ? 0.9 : 1.6) && moving) cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * (veh ? 2.6 : player.mode === 'heli' ? 1.6 : 0.9));
+    const air = player.mode === 'heli';
+    if (follow != null && clockT - cam.lastInput > (veh || air ? 0.9 : 1.6) && moving) cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * (veh ? 2.6 : air ? 1.4 + Math.min(1.6, heli.st.speed * 0.04) : 0.9));
     if (cam.distTo) { cam.dist += (cam.distTo - cam.dist) * Math.min(1, dt * 2.5); if (Math.abs(cam.distTo - cam.dist) < 0.05) cam.distTo = 0; } // easing in or out
     if (cam.yawTo != null) { const d = angDiff(cam.yawTo, cam.yaw); cam.yaw += d * Math.min(1, dt * 2.5); if (Math.abs(d) < 0.01) cam.yawTo = null; }
-    const dist = player.mode === 'heli' ? Math.max(cam.distTo ? cam.dist : 14, cam.dist) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : veh ? Math.max(5, cam.dist) + Math.min(2.5, Math.abs(vs.v) * 0.05) : cam.dist;
+    const dist = player.mode === 'heli' ? Math.max(cam.distTo ? cam.dist : 14, cam.dist) + Math.min(4, heli.st.speed * 0.08) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : veh ? Math.max(5, cam.dist) + Math.min(2.5, Math.abs(vs.v) * 0.05) : cam.dist;
     const close = player.mode === 'foot' || player.mode === 'board';
     // (at the wheel: on the car along the ground, its bumps eased; a lag behind a moving car that is
     // eased frame by frame grows and shrinks with the frame time, and the car seems to lurch back and
     // forth in the picture whenever the frames come unevenly)
     if (veh) { const w = W(tx, ty, tz); camTarget.set(w.x, camTarget.y + (w.y - camTarget.y) * (1 - Math.exp(-dt * 14)), w.z); }
+    // (the helicopter too: on it across, its climbs eased; a lag eased frame by frame grew with its speed and
+    // with the frame time, so it jittered back and forth in the picture at speed, issue 335)
+    else if (air) { const w = W(tx, ty, tz); camTarget.set(w.x, camTarget.y + (w.y - camTarget.y) * (1 - Math.exp(-dt * 6)), w.z); }
     else camTarget.lerp(W(tx, ty, tz), close ? 1 : k2);
     // keep the camera out of walls and cars: first rise over them (look down on the player), then come
     // closer. The lift and the pull-in are eased at a bounded rate rather than switched between steps,
@@ -4899,7 +4979,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // swing round, the lift and the pull-in are eased
     camWant.subVectors(camPos, camTarget);
     if (jumped || camSmooth.distanceTo(camPos) > 60 || camOff.distanceTo(camWant) > 60) camOff.copy(camWant);
-    camOff.lerp(camWant, close ? 1 - Math.exp(-dt * 10) : veh ? 1 - Math.exp(-dt * 16) : 1);
+    camOff.lerp(camWant, close ? 1 - Math.exp(-dt * 10) : veh ? 1 - Math.exp(-dt * 16) : air ? 1 - Math.exp(-dt * 7) : 1);
     camPos.addVectors(camTarget, camOff);
     camSmooth.copy(camPos);
     // the floor under the camera: the ground (or the water; under a slab, the floor) at once, steps and
@@ -5330,7 +5410,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

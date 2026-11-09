@@ -275,7 +275,7 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   - *sunken promenades* (`terrace` on a line, #300): Kyoto's Horikawa from Oshikoji up
     to the map's edge, restored by Kyoto City (1997-2008) with a stream, paths and
     benches inside the old river and entrances from the pavements and crossings. Between
-    stone walls 9.5 m apart a paved floor (granite setts) stands 0.35 m over the water and
+    stone walls 9.9 m apart a paved floor (granite setts) stands 0.35 m over the water and
     about 2.6 m under the street; the stream runs down its middle, 2.4 m wide between
     low stone edges; at each crossing a flight of steps (0.16 m risers, 0.3 m treads, a
     parapet on the open side) runs down along the wall below the crossing, on one bank and
@@ -293,19 +293,37 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     gives the stretch, the stream, the stepped weirs and the entrances but no dimensions:
     the depth and widths are read from photographs. No other live city has one; a city adds
     `"terrace": {"stream_m", "path_m", "steps_m"}` to a line in `water.inland.lines`.
-    Kyoto City's brochure for the restoration (堀川水辺環境整備事業, Construction Bureau)
-    places its features, and `terrace` draws them between two points on the line
-    (`between`): the lawn (芝生広場, `lawn`) between Shimochojamachi and Demizu, on the east
-    side of the stream; the stepped drops (階段状の落差工, `weirs`) between Marutamachi and
-    Takeyamachi, a granite sill across the stream every 14 m with the water level from one
-    to the next and falling over each, white water below; and the steps that serve as
-    seating (観覧席にもなる階段, `seats`) between Nijo and Oshikoji, four tiers of 0.4 by
-    0.7 m along the east wall as the photographs from Nijo bridge show them (Umeyou, CC
-    BY-SA 3.0), which walkers climb. No measured section is published: the brochure gives
-    the flow (6 t a minute) and the medians it runs in upstream (8-10 m); a maintenance
-    tender's 5,714 m² of bed over 580 m gives 9.9 m between the walls on average, as the
-    9.5 m drawn. The depth, the tiers and the spacing of the drops are read from
-    photographs;
+    Kyoto City's summary of the restoration (堀川水辺環境整備事業概要, Construction Bureau,
+    2010; viewable only, not reused) places its features in five zones lettered from the
+    south, A (Nijo-Oshikoji) to E (Motoseiganji-Ichijo), and `terrace` draws them between
+    two points on the line (`between`): the steps that serve as seating (観覧席にもなる階段,
+    `seats`) in zone A, four tiers of 0.4 by 0.7 m along the east wall as the photographs
+    from Nijo bridge show them (Umeyou, CC BY-SA 3.0); in zone B (Marutamachi-Takeyamachi)
+    the stream along the west wall (`course` `wall`, as the zone's photograph looking north
+    shows it) and the stepped drops (階段状の落差工, `weirs`), a granite sill across the
+    stream every 14 m with the water level from one to the next and falling over each,
+    white water below, and the whole floor stepping down with them (`weirs.floor`: the
+    floor in pieces cut across at each drop, a granite riser of 0.06-0.29 m at each, the
+    photograph's pale bands across it); the lawn (芝生広場, `lawn`) between Shimochojamachi
+    and Demizu (zone C), on the east side of the stream, with a flat granite slab over the
+    stream (`crossings`); in zone D (Ichijo-Nakadachiuri) the stream winding across the
+    floor (`course` `meander_m` 2 m, `wave_m` 44 m) under two more slabs, and below
+    Modoribashi "a wide space that serves as a stage and steps that serve as the audience's
+    seats" (the summary's words): the stream along the east wall there, the audience's four
+    tiers along the west wall and the floor between them as the stage (Yacàwotçã's
+    photograph from Modoribashi, CC BY 2.0, 2022); and stepping stones across the stream by
+    Horikawa Daiichi-bashi (Culturegeeks and Higashiyama2, CC BY-SA 3.0, 2014): three
+    granite blocks 0.55 by 1 m standing 0.22 m out of the water, which a walker strides
+    over. The bed raised upstream of Modoribashi (the summary's 河床を上げる) is beyond the
+    map's northern edge (2.7 km). No measured section is published: the summary gives the
+    flow (6 t a minute) and the medians it runs in upstream (8-10 m); a maintenance tender's
+    5,714 m² of bed over 580 m gives 9.85 m between the walls on average, the only measured
+    figure, and the walls stand 9.9 m apart (9.5 m before #322, read from photographs; GSI's
+    0.5 m aerial photographs cannot tell the two apart under the trees). A records request to
+    the city's river section for the drawings would settle the wall height and the widths;
+    it is left in #322. The depth, the tiers and the spacing of the drops are read from
+    photographs. Walkers stand on the floor at its own level along the line (`axis`, which
+    steps down with it), on the slabs and the stones (`inland.js crossingAt`);
     The promenade is walked (#315): `nav.js` takes its floor and its flights (`inland.js
     promenade`) as a `promenade` floor at their own level, not the street's ground the
     terrain carries over the channel. A flight opens to the pavement through a gap in the
@@ -318,7 +336,9 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     deck `decks.js` would lift into the air, so the crowd walks it too.
     `tools/promenade_walk.js` (in `tools/game_check.js`; alone, `tools/promenade_check.js`)
     walks down a flight, along the floor, at the stream and the wall, back up, at the
-    railing from the street, and down and up every flight;
+    railing from the street, up and down each block of seats, over every slab and row of
+    stepping stones and back, down and up each step of the floor, and down and up every
+    flight;
   - *natural* water (the Kamo River, the ponds): the survey interpolates across water,
     so its level is the survey's own inside the outline (the lowest fifth within 40 m
     along a river, a third of the way up for a pond, just under its shore);
@@ -369,6 +389,8 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   ![The lawn between Shimochojamachi and Demizu (#315)](images/water/horikawa_lawn_315.jpg)
   ![The stepped drops between Marutamachi and Takeyamachi (#315)](images/water/horikawa_weirs_315.jpg)
   ![Seats, lawn and drops on a phone (#315)](images/water/horikawa_features_phone_315.jpg)
+  ![The Horikawa by zone, main and after, day, dusk and night (#322)](images/fidelity-322/horikawa-desktop.jpg)
+  ![The same on a phone (#322)](images/fidelity-322/horikawa-phone.jpg)
   Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 
@@ -904,7 +926,7 @@ Two more scripts build what every city shares, from code, with no stock assets:
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
 - `blender/build_trees.py`: twenty-one tree species grown from points in their
-  crown shapes and a grass, with a leaf atlas it draws itself (4 x 6 cells, each
+  crown shapes and three grasses, with a leaf atlas it draws itself (4 x 7 cells, each
   cell's colours bled within the cell), in three levels of detail, into
   `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
   (`tools/trees_lineup_shot.js`) shows them in a row as the game draws them.
@@ -919,6 +941,71 @@ Two more scripts build what every city shares, from code, with no stock assets:
     Skyline deck's bed (which replaces the blade fans `city.py` drew) and over Bob's
     Peak and the hills, about 9,000 tufts; the light tier plants a third. Any city
     with open grassland can add it (`trees.mix` too, as a species).
+  - *susuki* and *lomandra* (#326): see "The grasses" below.
+
+### The grasses: susuki and Lomandra (issue #326)
+
+Three grasses share the tussock's way of being drawn: a fountain of blade cards
+round a short foot (`grow_tussock`), each from its own atlas cell, instanced,
+swayed and lit by `web/trees.js` like the trees, with the same three levels of
+detail and far impostors.
+
+- **Susuki** (*Miscanthus sinensis*, Japanese silver grass): broad arching leaves
+  with the genus's pale midrib to about 1.25 m (cell 24), and eight flowering culms
+  standing to 1.75 m on plume cards (cell 25), each card three stalks with a fan of
+  silky racemes. The plumes stand only in their season: `uPlume` (trees.js
+  `setSeason`) brings them out from mid August to early September and keeps them,
+  dry, through the winter until the old stems go down between late March and
+  April; a plume card is discarded per card and per clump past that share, as the
+  deciduous leaves fall. Its leaves turn straw-gold with the autumn (`FALL.susuki`)
+  and its heads from silver to buff (`FALL.plume`). 24 leaf cards and 16 plume
+  cards near, 6 and 4 at the middle distance, three crossed cards far.
+- **Lomandra** (*Lomandra longifolia*, spiny-headed mat-rush): stiff, flat, glossy
+  dark green straps 0.6-1 m, arching but not drooping, the tips split and browned
+  (cell 26); evergreen.
+
+Where they grow is open data. `pipeline/grasses.py` reads Overture's base land and
+land use (OpenStreetMap, ODbL) over the city's box and writes the outlines each
+grass grows over into places.json `grass` (by the rules in city.json
+`trees.<grass>.open`: classes, `near_water_m`, `within` a named place, `per_ha`);
+`web/world.js` plants each grass over its outlines on a jittered grid, off the
+roads and the water and clear of the landmarks (under the canopy too: a bed or a
+sandbar is mapped as what grows there).
+
+| Map | Grass | From (OpenStreetMap) | Area | Clumps |
+| --- | --- | --- | --- | --- |
+| Kyoto | susuki | `natural=scrub`/`grassland` within 12 m of the Kamo's water: its banks and sandbars, unmown between the paths and the river; and mapped grassland | 14,500 m² | 7,500 |
+| Tokyo (Marunouchi-Ginza) | susuki | `natural=grassland` | 875 m² | 455 |
+| Shibuya | susuki | `natural=grassland` (Yoyogi) | 1,890 m² | 980 |
+| Tetsugaku | susuki | `natural=grassland` | 92 m² | 48 |
+| Sydney | tussock and Lomandra | `natural=scrub` inside Barangaroo Reserve: its planted beds, not its named lawns (Walumil, Stargazer...), paths and sandstone | 3,880 m² | 1,250 and 470 |
+
+Shinjuku, Higashiyama and Fushimi Inari map no open grassland in their frames,
+so none grows there. The Katsura River lies west of every live Kyoto map (the
+nearest edge is at 135.745 E), so its banks wait for a map that reaches it.
+Barangaroo's own planting plan (PWP Landscape Architecture; 68,000 grasses and
+6,000 Lomandras among 75,000 plants of 84 Sydney species) is not published bed by
+bed, so OpenStreetMap's scrub inside the Reserve stands for its beds; the tussock
+was spread over the whole Reserve's outline before (#315).
+
+**Research** (what runs in a browser):
+
+| Work | What it does | Taken |
+| --- | --- | --- |
+| [al-ro, *Grass*](https://al-ro.github.io/projects/grass) | 100,000 instanced blades, each a strip of triangles bent and swayed in the vertex shader | The idea that the sway belongs in the vertex shader, which trees.js already does; not the per-blade geometry: it suits a mown lawn seen close, and costs by area, where susuki stands in clumps over a few hectares |
+| Ghost of Tsushima's grass (GDC 2021, Sucker Punch) | Blades generated on the GPU per tile, with wind and LOD | As above: a field of blades is the next step for lawns, not for tall clumps |
+| SpeedTree-style card clumps (as in most games' tall grass and reeds) | Cards with a painted spray of blades round a base, instanced, with LOD and impostors | Adopted: the shared trees' own pipeline (instancing, wind, seasons, quality tiers, far impostors) with a blade-card cell per grass |
+| Three.js Grassworks (commercial), CK42BB's procedural grass (licence not confirmed) | Instanced blade fields for three.js with LOD | Not used: no code or assets taken |
+
+Nothing was copied: the cells are drawn by `build_trees.py` (`blades`, `plumes`).
+
+![Susuki on the Kamo's bank in October, its heads out](images/kyoto/susuki-kamo-october.jpg)
+![The same bank in July, all leaf](images/kyoto/susuki-kamo-july.jpg)
+![In December, the leaves straw and the heads buff](images/kyoto/susuki-kamo-december.jpg)
+![At night](images/kyoto/susuki-kamo-night.jpg)
+![The Kamo's band of susuki from above](images/kyoto/susuki-kamo-from-above.jpg)
+![Tussock and Lomandra in a Barangaroo Reserve bed](images/sydney/barangaroo-beds-lomandra.jpg)
+![Susuki on Shibuya's mapped grassland](images/shibuya/susuki-yoyogi.jpg)
 
 ## The far ground under the landmarks
 
@@ -1528,6 +1615,31 @@ not compressed.
 | the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
 | the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
 | all 87 shared models | 60.28 MB | 35.98 MB |
+
+Issue 335 took this further after a look at [Slop New York](https://github.com/mrdoob/slop-newyork)
+(MIT). It draws all of Manhattan from 1.44 MB of its own code and data, gzipped: footprints and heights
+extruded in the browser, facades, cars and trees made in code and shaders, and no textures or models.
+Our cities are measured and hand-modelled, so that approach doesn't carry over. Three steps did:
+
+- **Pictures as WebP** (`pipeline/webtex.py`). A city's landmark textures (`landmarks.json` materials'
+  `map`) and its woods mask (`scene.json` `woods`) go out as WebP. A drawn atlas or screen sheet that
+  was JPEG becomes lossy WebP at quality 88, about 40 dB PSNR against the JPEG. A PNG cut-out, or the
+  woods mask whose channels are data, becomes lossless WebP with `exact`, so it decodes to the same
+  values. A file is replaced only when the WebP is at least a tenth smaller. `pipeline/landmarks.py`
+  and `pipeline/woods.py` call it, so builds write WebP. The aerial ground tiles stay JPEG, where WebP
+  saves only about a tenth. Savings: 2.0 MB on Shibuya, 3.2 MB on Shinjuku, and 0.1-0.7 MB on each
+  other live city.
+- **The clips' rotation keys through meshopt's quaternion filter** at 12 bits (gltfpack's default for
+  animation; each key within a tenth of a degree) wherever that encodes smaller (`meshopt_glb.mjs`,
+  `--again` for files already compressed). `R_clips_f.glb` + `_m` drop from 2.01 to 1.35 MB.
+- **The leaf atlas without the colour under clear pixels** (`glb_webp.py` `exact=False`; the cut-out
+  alpha is still exact, and the leaves draw with alphaTest 0.5). `trees.glb` drops from 2.53 to 2.25 MB.
+
+Weighed and left: meshopt's codecs on the roof meshes in `buildings.bin` save only 0.2 MB on Shibuya
+over the pack's own delta and byte-plane coding (1.46 MB of roof vertices against meshopt's 1.41, and
+0.52 MB of triangles against 0.34), not worth a decoder in the pack Worker. Fetching the cars, trees
+and the first people after the game opens would take 5-6 MB off the wait, but the traffic and the
+crowd show from the first frame, so that waits on stand-ins that look right.
 
 What the game downloads before Shibuya can be played (`tools/load_size.js shibuya play 40`), main before
 issue 148 against the three steps (packed buildings, deferred helicopter and NPCs, meshopt):

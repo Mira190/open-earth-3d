@@ -22,6 +22,24 @@ const same = (a, b, at) => {
   }
   return Object.is(a, b) || (a === 0 && b === 0) ? null : `${at}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`;
 };
+// the roof triangles (buildings "r" position 7) each as the smallest of its three rotations: meshoptimizer's
+// index codec may start a triangle at another corner, the same triangle wound the same way (pipeline/pack.py)
+const corners = B => {
+  if (!B || !B.r) return B;
+  for (const r of B.r) {
+    const xyz = r[6] instanceof Uint8Array ? r[6] : Buffer.from(r[6], 'base64');
+    const raw = r[7] instanceof Uint8Array ? r[7] : new Uint8Array(Buffer.from(r[7], 'base64'));
+    const t = xyz.length / 6 > 255 ? new Uint16Array(raw.slice().buffer) : raw.slice();
+    for (let i = 0; i < t.length; i += 3) {
+      let best = [t[i], t[i + 1], t[i + 2]];
+      for (const c of [[t[i + 1], t[i + 2], t[i]], [t[i + 2], t[i], t[i + 1]]])
+        if (c[0] < best[0] || (c[0] === best[0] && (c[1] < best[1] || (c[1] === best[1] && c[2] < best[2])))) best = c;
+      t[i] = best[0]; t[i + 1] = best[1]; t[i + 2] = best[2];
+    }
+    r[7] = Buffer.from(t.buffer, t.byteOffset, t.byteLength).toString('base64');
+  }
+  return B;
+};
 (async () => {
   const NAMES = ['buildings', 'landmarks', 'game', 'terrain', 'places', 'scene'];
   const ids = process.argv.slice(2).length ? process.argv.slice(2)
@@ -34,7 +52,7 @@ const same = (a, b, at) => {
     const ref = JSON.parse(js), tj = performance.now() - t;
     t = performance.now();
     const got = await decode(bin), tb = performance.now() - t;
-    const diff = same(got, ref, `${c}/${n}`);
+    const diff = n === 'buildings' ? same(corners(got), corners(ref), `${c}/${n}`) : same(got, ref, `${c}/${n}`);
     if (diff) bad++;
     console.log(`${diff ? 'FAIL' : 'ok  '} ${c}/${n}: ${(bin.length / 1e6).toFixed(2)} MB packed, ${(js.length / 1e6).toFixed(2)} MB JSON; decode ${tb.toFixed(0)} ms, JSON.parse ${tj.toFixed(0)} ms${diff ? '; differs at ' + diff : ''}`);
   }

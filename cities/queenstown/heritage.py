@@ -543,17 +543,10 @@ def williams(K, ground):
     D = _interiors().will_dims()
     F, dr = D["F"], D["door"]
     s = 0.0
-    for a, b, holes in (((U0, V0), (U1, V0), []), ((U1, V0), (U1, V1), [(D["inner_v"] - V0, D["inner_clear"], F, F + 2.0, False)]), ((U1, V1), (U0, V1), []),
-                        ((U0, V1), (U0, V0), [(V1 - dr["v"], dr["clear"], F, F + dr["h"], False)])):
+    for a, b, holes in (((U0, V0), (U1, V0), []), ((U1, V0), (U1, V1), [(D["inner_v"] - V0, D["inner_w"], F, F + 2.0, False)]), ((U1, V1), (U0, V1), []),
+                        ((U0, V1), (U0, V0), [(V1 - dr["v"], dr["w"], F, F + dr["h"], False)])):
         ak.holed_wall(K[board], P, a, b, -0.6, 2.7, holes, s0=s)
         s += math.dist(a, b)
-    # the doorways' last few centimetres of wall, drawn but open to walkers (interiors.py will_dims)
-    for a, b, c, w, wc, h in (((U0, V1), (U0, V0), V1 - dr["v"], dr["w"], dr["clear"], dr["h"]), ((U1, V0), (U1, V1), D["inner_v"] - V0, D["inner_w"], D["inner_clear"], 2.0)):
-        A, B = np.asarray(a, float), np.asarray(b, float)
-        t = (B - A) / np.linalg.norm(B - A)
-        for s0, s1 in ((c - wc / 2, c - w / 2), (c + w / 2, c + wc / 2)):
-            p0, p1 = A + t * s0, A + t * s1
-            K["will_board_soft"].quad(P(*p0, F), P(*p1, F), P(*p1, F + h), P(*p0, F + h), [[s0, F], [s1, F], [s1, F + h], [s0, F + h]])
     gable(K, P, U0, U1, V0, V1, 2.7, 5.9, roof, board, over=0.3, along_u=False, fascia=ox)
     for a, b in (((U1, V0), (4.5, V0)), ((4.5, V0), (4.5, V1)), ((4.5, V1), (U1, V1))):   # the lean-to (its west wall is the cottage's)
         ak.wall(K[board], P, a[0], a[1], b[0], b[1], -0.6, 2.35)
@@ -590,7 +583,7 @@ def williams(K, ground):
     window(K, P, *front, 5.6, 0.6, 1.0, 1.4, win, ox, panes=(2, 2))
     hw = dr["w"] / 2
     for s0, s1, z0, z1 in ((-hw - 0.1, -hw, F, F + dr["h"] + 0.1), (hw, hw + 0.1, F, F + dr["h"] + 0.1), (-hw - 0.1, hw + 0.1, F + dr["h"], F + dr["h"] + 0.12)):   # the architrave
-        ak.block(K["will_oxblood_soft"], P, U0 - 0.05, U0, dr["v"] + s0, dr["v"] + s1, z0, z1)   # (drawn, not a wall to walkers)
+        ak.block(K[ox], P, U0 - 0.05, U0, dr["v"] + s0, dr["v"] + s1, z0, z1)
     for (a, b), cs in ((((U0, V0), (U1, V0)), (1.8, 4.2)), (((U1, V1), (U0, V1)), (3.0,)), (((4.5, -2.5), (7.3, -2.5)), (1.4,))):
         for c in cs:
             window(K, P, a, b, c, 0.75, 0.85, 1.35, win, ox, panes=(3, 2))
@@ -710,7 +703,7 @@ def meshes(ground):
     solids = ak.load_solids("queenstown")
     K = ak.Kit("qt_heritage", floodlit=["eich_plaster", "eich_trim", "eich_window", "stp_greywacke", "stp_freestone", "stp_lancet",
                                         "will_window", "wharf_window"],
-               uv=["eich_plaster", "eich_roof", "eich_bal", "eich_iron", "stp_greywacke", "stp_slate", "will_board", "will_board_soft", "will_roof", "will_stone",
+               uv=["eich_plaster", "eich_roof", "eich_bal", "eich_iron", "stp_greywacke", "stp_slate", "will_board", "will_roof", "will_stone",
                    "will_brick", "wharf_green", "wharf_oxblood", "wharf_cream", "wharf_roof", "wharf_rail"])
     eichardts(K, ground)
     st_peters(K, ground)
@@ -720,7 +713,5 @@ def meshes(ground):
     return K.out(), hidden
 
 
-MATERIALS["will_board_soft"] = dict(MATERIALS["will_board"], solid=False)
-MATERIALS["will_oxblood_soft"] = dict(MATERIALS["will_oxblood"], solid=False)   # (a doorway's margin: drawn, not a wall to walkers)
 MATERIALS["will_flue"] = {"color": "#1d1f20", "roughness": 0.5, "metalness": 0.6}
 MATERIALS["eich_bal"] = {"color": "#f1eee6", "roughness": 0.7, "metalness": 0.0, "pattern": "railing", "bar_m": 0.2, "rails_m": [0.06, 0.94]}
