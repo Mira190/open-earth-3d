@@ -51,7 +51,7 @@ const [,, city = 'shibuya', outDir = 'life-shots', size = '1440x900', time = '17
   if (has.bonds) {
     await p.evaluate(() => { const g = window.__game, L = g.life, b = L.data.bonds[0], n = g.npcs.find(x => x.id === b.npc); window.__b = { b, n };
       if (b.hours && b.hours.slots && !b.hours.slots.includes(L.day.slot)) { g.clock.frozen = false; g.setClock(g.clock.y, g.clock.m, g.clock.d, L.day.bounds()[b.hours.slots[0]] + 20); g.clock.frozen = true; }
-      g.player.x = n.x + 1.6; g.player.y = n.y - 1.2; g.player.z = n.z; g.cam.yaw = Math.atan2(n.x - g.player.x, n.y - g.player.y); });
+    }); // (talked to from where you stand: the stills are of the screens, over the street as it is)
     await p.waitForTimeout(3500);
     await p.evaluate(() => document.querySelectorAll('.lf-card').forEach(e => e.remove()));
     await act('bond-invite', () => { const g = window.__game; g.life.bonds.talk(window.__b.n); for (let i = 0; i < 3 && !g.dlg.hasChoices; i++) g.dlg.next(false); });

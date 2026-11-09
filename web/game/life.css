@@ -158,14 +158,14 @@
 /* ---- the passport's skills */
 .lf-skills { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
 .lf-skills ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.lf-skills li { display: grid; grid-template-columns: 96px 1fr auto; gap: 2px 12px; align-items: baseline; }
+.lf-skills li { display: grid; grid-template-columns: 136px 1fr auto; gap: 2px 12px; align-items: baseline; }
 .lf-skills li b { font: 300 15px/1.2 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
 .lf-skills .lv { color: var(--accent-2); font-size: 13px; }
 .lf-skills .pips { display: flex; gap: 4px; } .lf-skills .pips i { width: 16px; height: 4px; background: var(--line-2); transform: skewX(-24deg); } .lf-skills .pips i.on { background: var(--accent); }
 .lf-skills .bar { grid-column: 1 / -1; margin-top: 4px; }
 .lf-skills .what { grid-column: 1 / -1; font: 400 9.5px/1.4 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .lf-skills .note { color: var(--muted); font-size: 12px; margin: 0; }
-@media (max-width: 560px) { .lf-skills li { grid-template-columns: 84px 1fr; } .lf-skills .pips { grid-column: 1 / -1; } .lf-job { top: auto; bottom: 168px; } }
+@media (max-width: 560px) { .lf-skills li { grid-template-columns: 124px 1fr; } .lf-skills .pips { grid-column: 1 / -1; } .lf-job { top: auto; bottom: 168px; } }
 
 /* ---- the phone's messages */
 #g-phone-btn { position: relative; }
