@@ -23,9 +23,28 @@ const mesh = (g, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, m); o.
 const tube = (pts, r, m, seg = 24) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V(...p))), seg, r, 6, false), m);
 
 // ---- headwear
+// a sun hat made to a real head (T.head.fit, people.js: the skull's half-width a and half-depth b where the band sits,
+// its middle and its crown): an oval band that touches the head all round, a soft rounded crown just clear of the
+// scalp, and a brim that droops a little; worn as hats are, low on the forehead and lower still at the nape
+function fittedHat(T, o) {
+  const F = T.head.fit, g = new THREE.Group(), c = o.color || '#d9c9a0';
+  const ease = 0.007, a = F.a + ease, b = F.b + ease, h = F.top - F.y + 0.022;
+  const bw = Math.max(0.06, Math.min((o.brim ?? 0.27) - 0.185, 0.085)), R = 1 + bw / a;   // (the old hats give a radius from the middle)
+  const prof = [[0, h], [0.3, h * 0.985], [0.58, h * 0.93], [0.8, h * 0.8], [0.93, h * 0.6], [0.99, h * 0.35], [1, 0.03], [1.005, 0],
+    [1 + (R - 1) * 0.5, -0.006], [R, -0.022], [R + 0.03, -0.026], [R, -0.016], [1 + (R - 1) * 0.5, 0.001], [1.0, -0.003]];
+  const m = mat(c, { rough: 0.92, double: true });
+  const shell = new THREE.Mesh(new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 36), m);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(1.004, 1.012, 0.026, 36, 1, true), mat(o.band || '#2b2f36', { rough: 0.8, double: true }));
+  band.position.y = 0.016;
+  for (const p of [shell, band]) { p.scale.set(a, 1, b); g.add(p); }
+  g.position.set(F.cx, F.y, F.cz);
+  g.rotation.x = -0.09;
+  return { obj: g, bone: 'Head' };
+}
 function hat(T, o) {
+  if (T.head.fit) return fittedHat(T, o);
   const g = new THREE.Group(), c = o.color || '#d9c9a0';
-  const R = Math.min(o.brim ?? 0.27, T.head.brim ?? 1);   // (a real head's hat: a sun hat's brim, not a sombrero's)
+  const R = o.brim ?? 0.27;
   // crown and brim as one lathe: a slightly drooping brim
   const prof = [[0, 0.105], [0.09, 0.11], [0.122, 0.098], [0.13, 0.03], [0.136, 0.0], [R * 0.6, -0.008], [R, -0.03], [R + 0.008, -0.034], [R, -0.024], [R * 0.6, 0.0], [0.13, -0.004]];
   const m = mat(c, { rough: 0.9, double: true });
@@ -34,9 +53,7 @@ function hat(T, o) {
   // square over the middle of the skull (a touch forward of it, where the band meets the brow), seated down to
   // just above the brows, the front of the brim dipped a few degrees as a hat is worn (a brim tipped up at the
   // front reads as a hat pushed back off the head)
-  // (T.head.hat, T.head.seat: a real avatar's head is smaller than the old characters', and its brow is lower)
-  g.position.set(T.head.cx, T.head.top - (T.head.seat ?? 0.095), (T.head.mid ?? T.head.cz) + 0.012);
-  g.scale.setScalar(T.head.hat || 1);
+  g.position.set(T.head.cx, T.head.top - 0.095, (T.head.mid ?? T.head.cz) + 0.012);
   g.rotation.x = 0.05;
   return { obj: g, bone: 'Head' };
 }

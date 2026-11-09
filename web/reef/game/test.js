@@ -46,6 +46,16 @@ export async function gametest(api, ctx) {
     const ids = G.content.npcs.map(n => n.id);
     await Promise.all(ids.map(id => G.npc(id) && G.npc(id).npc.ready));
     must(ids.every(id => G.npc(id) && G.npc(id).npc.rig), 'NPCs spawned and loaded', ids.join(','));
+    // 1a. the people are real (Rocketbox avatars, people.js), the visitor too, each a different person; a hat is made
+    // to the head it is on (gear.js fittedHat: its band within a centimetre of the skull's width)
+    {
+      const rigs = ids.map(id => G.npc(id).npc.rig), names = rigs.map(r => r.look.character);
+      must(rigs.every(r => r.real) && player.rig.real, 'the people and the visitor are real avatars', [player.rig.look.character, ...names].join(','));
+      must(new Set(names).size === names.length, 'no two of the people here are the same person', names.join(','));
+      const hats = [player.rig, ...rigs].filter(r => r.acc.hat), fit = hats.map(r => r.T.head.fit);
+      must(fit.every(f => f && f.a > 0.06 && f.a < 0.11 && f.top - f.y > 0.04 && f.top - f.y < 0.12), 'hats are made to the heads they are on', fit.map(f => f ? `${(f.a * 200).toFixed(1)} cm wide, crown ${((f.top - f.y) * 100).toFixed(1)} cm` : 'no fit').join('; '));
+      must(!!player.rig.actions.Run && !!player.rig.bones.UpperLegL && !!player.rig.bones.FootR, 'the visitor has a run and the bones the swim poses', Object.keys(player.rig.actions).join(','));
+    }
     const sp = G.spawn(), at = id => { const p = G.npc(id).npc.group.position; return { x: p.x, north: -p.z, up: p.y }; };
     const first = ids[0];
     must(G.dist(at(first), sp) < 60, `${first} by the spawn`, G.km(G.dist(at(first), sp)));

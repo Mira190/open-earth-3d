@@ -187,5 +187,8 @@ The owner should not be the one who finds the bug.
   `cities/<id>/city.json`: `character` `R_<avatar>[_<head>][_<tag>...]` and `clip`. Build them
   with `python blender/build_people.py --npcs`, then `python pipeline/npc_looks.py` to copy the
   looks into `web/data/<id>/game.json`. A character several cities name is one shared file.
+- The reef and alpine sites' people and the visitor you play there are the same avatars: `web/reef/looks.js` `REAL`
+  names each role's, `web/reef/game/<site>.js` a site's own (`look: { character: 'R_...' }`), and
+  `build_people.py --npcs` builds what they name (docs/GAME_REEF.md, "The people").
 - `web/game/vehicles.js` and `web/game/cars.js` run on three.js r128 and r186. Keep them
   free of version-specific calls, so they stay shared whichever version a branch uses.

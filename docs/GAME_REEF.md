@@ -148,8 +148,7 @@ land, they stand on the pontoon deck.
 
 ## Lake Pukaki (an alpine site)
 
-`game/lake-pukaki.js`. The people are real: a site casts a Microsoft Rocketbox avatar with `look: { character: 'R_…', clip }`
-(people.json `npcs`), which `people.js` builds with its sex's clips in place of the role's Quaternius character.
+`game/lake-pukaki.js`. The people are real, as at every site (see [The people](#the-people)).
 There is no reef here, so the site has no fish survey, dive slate or yachts; the gametest skips
 those on an alpine site and checks the glacial flour's light instead. People stand on dry land at any height (`G.landSpot`
 on an alpine site).
@@ -164,6 +163,32 @@ on an alpine site).
 
 The sources and what each line says are in `game/lake-pukaki.js` `SOURCES` and in
 [docs/cities/lake-pukaki.md](cities/lake-pukaki.md).
+
+## The people
+
+![The visitor you play (man and woman, in stinger suits), a skipper, two guides, two rangers and two dive instructors](images/reef/people.jpg)
+
+Everyone at a reef or alpine site is a Microsoft Rocketbox avatar (MIT, `web/assets/people/LICENSE-Rocketbox.txt`), as
+the cities' people are: the visitor you play, and each skipper, guide, ranger and dive instructor.
+`web/reef/looks.js` `REAL` names the avatar of each role, and a site gives its own people a face of their own with
+`look: { character: 'R_…', clip }` in `game/<site>.js`. `blender/build_people.py --npcs` reads both and builds them
+(`python pipeline/fetch_rocketbox.py` first); `people.json` `npcs` lists them.
+
+- **The visitor** is Rocketbox's swimmer, dressed at build time by a `SUIT` tag that paints cloth over the body's
+  texture from the collar to the wrists and ankles: `stinger` (full-body lycra, in the marine stinger season), `rash`
+  (a rash vest and boardshorts, out of it), and on an alpine site a walker in a jacket and boots. The dive
+  instructors wear `wetsuit`. `TOP` tags recolour a shirt (a ranger's `khaki`).
+- **Clips.** Each sex's motion-captured clips drive every avatar of that sex (`R_clips_f.glb`, `R_clips_m.glb`). The
+  visitor also runs, from a second small file (`R_clips_field_*.glb`, `people.json` `npcs.field`).
+- **Kit.** The hat, sunglasses, mask, snorkel, fins and scuba set are built in `gear.js` from measurements
+  `people.js` takes of each avatar's rest pose. A hat is made to the head it is on: the skull's width where the band
+  sits, its crown and its brow give an oval band, a rounded crown just clear of the scalp and a drooping brim.
+- **Swimming** has no clip: the kick, the arms, the pointed toes and the lifted head are posed on the bones over the
+  walk clip (`people.js` `swim`), for both kinds of rig.
+- The older low-polygon Quaternius characters (CC0) remain as the fallback when an avatar's file is missing, and as
+  the demo crowd.
+- Not changed by a look on a real avatar: skin and hair colours (`?skin=`, `?hair=`), and the suit's colour when
+  the scuba set goes on.
 
 ## Where every fact comes from
 

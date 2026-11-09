@@ -165,7 +165,7 @@ export const isReal = name => /^R_/.test(name || '') && !!(lib && lib.info.npcs 
 // the Quaternius bones' names (gear.js, swim) on the 3ds Max Biped
 const BIPED = { Head: 'Bip01_Head', Neck: 'Bip01_Neck', Chest: 'Bip01_Spine2', Torso: 'Bip01_Spine1', Hips: 'Bip01_Pelvis',
   UpperLegL: 'Bip01_L_Thigh', LowerLegL: 'Bip01_L_Calf', FootL: 'Bip01_L_Foot', UpperLegR: 'Bip01_R_Thigh', LowerLegR: 'Bip01_R_Calf', FootR: 'Bip01_R_Foot',
-  UpperArmL: 'Bip01_L_UpperArm', LowerArmL: 'Bip01_L_Forearm', UpperArmR: 'Bip01_R_UpperArm', LowerArmR: 'Bip01_R_Forearm' };
+  ClavicleL: 'Bip01_L_Clavicle', ClavicleR: 'Bip01_R_Clavicle', UpperArmL: 'Bip01_L_UpperArm', LowerArmL: 'Bip01_L_Forearm', UpperArmR: 'Bip01_R_UpperArm', LowerArmR: 'Bip01_R_Forearm' };
 const bipedRegion = n => /Head|Eye|Jaw|Lip|Brow|Cheek|Nose|Tongue|Teeth|Lid|Ponytail/.test(n) ? REG.head : /Neck/.test(n) ? REG.head
   : /Hand|Finger/.test(n) ? REG.hand : /UpperArm|Clavicle/.test(n) ? REG.upperArm : /Forearm/.test(n) ? REG.foreArm
   : /Thigh/.test(n) ? REG.thigh : /Calf/.test(n) ? REG.shin : /Foot|Toe/.test(n) ? REG.foot : REG.torso;
@@ -176,7 +176,7 @@ function realTemplate(name) {
   const info = lib.info.npcs.characters[name];
   return REAL.tpl[name] || (REAL.tpl[name] = lib.get(info.file).then(gl => {
     gl.scene.updateMatrixWorld(true);
-    const restWorld = {}, bonePos = {}, pts = [], regs = [];
+    const restWorld = {}, bonePos = {}, pts = [], regs = [], card = [];
     const m = new THREE.Matrix4(), v = new THREE.Vector3(), acc = new THREE.Vector3(), t = new THREE.Vector3();
     gl.scene.traverse(o => { if (o.isBone) { restWorld[o.name] = o.matrixWorld.clone(); bonePos[o.name] = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld); } });
     for (const [k, n] of Object.entries(BIPED)) if (restWorld[n]) { restWorld[k] = restWorld[n]; bonePos[k] = bonePos[n]; }
@@ -190,7 +190,7 @@ function realTemplate(name) {
         let best = 0, bw = -1, tot = 0;
         for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k), j = si.getComponent(i, k); if (w <= 0) continue; acc.add(t.copy(v).applyMatrix4(mats[j]).multiplyScalar(w)); tot += w; if (w > bw) { bw = w; best = j; } }
         if (tot > 0) acc.multiplyScalar(1 / tot);
-        pts.push(acc.x, acc.y, acc.z); regs.push(reg[best]);
+        pts.push(acc.x, acc.y, acc.z); regs.push(reg[best]); card.push(/_opacity$/.test(o.material.name || '') ? 1 : 0);   // (hair cards and lashes)
       }
     });
     const tpl = { name, scene: gl.scene, geometry: { getAttribute: () => new THREE.BufferAttribute(new Float32Array(pts), 3) }, reg: Uint8Array.from(regs),
@@ -205,8 +205,16 @@ function realTemplate(name) {
     for (let i = 0; i < regs.length; i++) if (regs[i] === REG.head && Math.abs(pts[i * 3 + 1] - H.eye) < 0.022) { front = Math.max(front, pts[i * 3 + 2]); half = Math.max(half, Math.abs(pts[i * 3] - H.cx)); }
     // (the skull's middle is a hand's breadth behind the brow: the back of the head may be a ponytail)
     if (front > -1e8) { H.front = front; H.halfW = Math.min(half, 0.095); H.cz = front - 0.1; H.mid = front - 0.122; }
-    // a hat made for the old characters' big heads, cut down to this one, and worn on the forehead, clear of the eyes
-    H.hat = THREE.MathUtils.clamp(H.halfW / 0.108, 0.78, 0.92); H.seat = 0.066; H.brim = 0.225;
+    // a hat is made to this head (gear.js hat, T.head.fit): the skull under the hair cards, measured where the band
+    // sits, across the forehead above the ears: its half-width there, its crown, and the brow in front. A head is about
+    // a quarter longer than it is wide; the back is not measured (it may be a ponytail or a bun).
+    const yb = H.eye + 0.05; let a = 0, bf = -1e9, crown = -1e9;
+    for (let i = 0; i < regs.length; i++) if (regs[i] === REG.head && !card[i]) {
+      const y = pts[i * 3 + 1];
+      if (Math.abs(pts[i * 3] - H.cx) < 0.11) crown = Math.max(crown, y);
+      if (Math.abs(y - yb) < 0.012) { a = Math.max(a, Math.abs(pts[i * 3] - H.cx)); bf = Math.max(bf, pts[i * 3 + 2]); }
+    }
+    if (a > 0.05 && a < 0.12) { const b = a * 1.24; H.fit = { y: yb, a, b, cx: H.cx, cz: bf - b, top: Math.max(crown, yb + 0.05) }; }
     if (eL && eR) H.ipd = Math.abs(eL.x - eR.x) / 2;
     return tpl;
   }));
@@ -231,8 +239,8 @@ async function createRealPerson(look, opts) {
   for (const [k, n] of Object.entries(BIPED)) if (byName[n]) bones[k] = byName[n];
   look.scale = 1; look.character = name;
   // the avatar is dressed already: of a role's accessories it takes the kit and the sun's (a cap would sit on its own
-  // hair or hat, thongs under its shoes)
-  look.accessories = (look.accessories || []).filter(a => !/^(cap|thongs)$/.test(a.type));
+  // hair or hat, thongs under its shoes, a badge and a radio made for a flat chest off its shirt)
+  look.accessories = (look.accessories || []).filter(a => !/^(cap|thongs|badge|radio)$/.test(a.type));
   const rig = { group, pivot, model, look, tpl, bones, acc: {}, mixer: new THREE.AnimationMixer(model), actions: {}, cur: null, T,
     heading: 0, targetHeading: null, speech: null, extra: {}, proc: { k: 0, mode: 'none', phase: 0, amp: 0, fin: 1, pitch: 0, headUp: 0, stroke: 0, bcd: 0 }, real: true, hipY: tpl.hipY, hip: tpl.hipY };
   model.position.y = -tpl.hipY; pivot.position.y = tpl.hipY;   // the pivot at the hips: a swimmer turns level about them
@@ -364,17 +372,19 @@ function kit(rig, { T, bones, restWorld, model, onHat }) {
 // or the offsets pile up frame on frame and the head spins. o: { bones (by the Quaternius names), model, pivot,
 // foot(side, plantar, keep) for a rig whose feet hang off the root and must be carried with the shins }
 function swim(rig, { bones, model, pivot, foot }) {
-  const posed = new Map();
+  const posed = new Map(), _tA = new THREE.Matrix4(), _tB = new THREE.Matrix4();
   const keep = bone => { if (!posed.has(bone)) posed.set(bone, [bone.position.clone(), bone.quaternion.clone(), bone.scale.clone()]); };
   const unpose = () => { for (const [b, [p, q, s]] of posed) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(s); } posed.clear(); };
   const twist = (bone, axis, ang) => {
     if (!bone || !ang) return;
     keep(bone);
     model.updateMatrixWorld(false);
-    bone.parent.getWorldQuaternion(_q); model.getWorldQuaternion(_q2);
-    _q.premultiply(_q2.clone().invert());                       // parent's orientation in model space
-    _q3.setFromAxisAngle(axis, ang);
-    bone.quaternion.premultiply(_q).premultiply(_q3).premultiply(_q.clone().invert());   // P^-1 * D * P * q
+    // the turn D about a model-space axis, seen from the bone's parent: P^-1 * D * P, with P the parent's frame in model
+    // space as a matrix (a Biped's bones are mirrored from left to right: a quaternion cannot carry that, and the
+    // similarity of a rotation by a mirrored frame is still a rotation)
+    _tA.copy(model.matrixWorld).invert().multiply(bone.parent.matrixWorld).setPosition(0, 0, 0);
+    _tB.makeRotationAxis(axis, ang).multiply(_tA).premultiply(_tA.invert());
+    bone.quaternion.premultiply(_q3.setFromRotationMatrix(_tB));
     bone.updateMatrixWorld(true);
   };
   rig.setSwim = (k, o = {}) => { Object.assign(rig.proc, o); rig.proc.k = k; pivot.position.y = rig.hip * (1 - k); };
@@ -402,7 +412,9 @@ function swim(rig, { bones, model, pivot, foot }) {
       if (foot) foot(side, plantar, keep); else twist(B['Foot' + side], AX, plantar * 0.75);
     }
     // neck: the head comes up so a face-down swimmer looks ahead and down, not straight at the sea floor
-    twist(B.Neck, AX, -0.55 * k * (1 - proc.headUp * 0.3)); twist(B.Head, AX, -0.35 * k);
+    const nk = -0.55 * k * (1 - proc.headUp * 0.3);
+    twist(B.Neck, AX, nk); twist(B.Head, AX, -0.35 * k);
+    twist(B.ClavicleL, AX, -nk); twist(B.ClavicleR, AX, -nk);   // (a Biped's shoulders hang off its neck: they stay where they were)
     twist(B.Torso, AX, -0.1 * k * Math.sin(ph) * 0.3);
   }
   return { unpose, apply, keep };
