@@ -1906,16 +1906,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const [li, e] = at[0], d = e === 1 ? 1 : -1; // (arriving at its end 1: it ran along it the way of its points)
       return net.L[li].ow === -d ? null : [li, d];
     }
-    // is a car let into the junction behind car c (at the start of its piece, going `dir`) coming out onto that piece?
-    // Backing out then takes the room it was let in for, and it stands in that junction's box with the queue behind it:
-    // Shinjuku's 1120, whose cars stood 70 s in it behind cars backing out of the queue at 1108 on piece 2479, #330
-    function inflow(c, line, dir) {
-      const a = JN.armBy(line, dir > 0 ? 0 : 1);
-      return !!a && a.j.active.some(o => o.c !== c && (o.m & 15) === a.i);
-    }
     function canReverse(c) {
       if (c.line < 0 || c.rev || c.stuck === undefined || c.revBan > 0 || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
-      if (inflow(c, c.line, c.dir)) return false;
       let line = c.line, dir = c.dir, run = c.dir > 0 ? c.s : net.L[c.line].len - c.s;
       for (let k = 0; k < 6 && run < REV_MAX; k++) {
         if (waysOut(c, line, dir).length) return true;
@@ -1969,7 +1961,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // standing 75 s in the junction behind it, Shinjuku #330)
       const ab = JN.armBy(c.line, c.dir > 0 ? 0 : 1), rear = s0 => (c.dir > 0 ? s0 : l.len - s0) - c.half;
       if (ab && rear(sb) < ab.back && rear(c.s) >= ab.back - 0.05 && ab.j.active.some(o => o.c !== c)) {
-        R.v = 0; R.wait += dt; R.by = null;
+        R.v = 0; R.wait += dt * 0.25; R.by = null; // (patient, as behind one backing out: the box clears in a cycle or two; giving up, it held the queue it backed out for)
         if (R.wait > 20) { c.revBan = 60; c.revEnd = `the junction behind (${ab.j.id}) busy`; c.rev = null; }
         q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c);
         return true;
@@ -2475,7 +2467,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                   if (r) { JN.wait(c, jArm, jEx, t); c.wj = jArm.j; } // its turn comes: it waits for the way across, not for a light or room
                   // (and at the junction just after, crossed with this one, for its way across there too: else the cars turning
                   // there across its way, one after another, took every green from it; Shinjuku's 1103 arm 0, on 1105's turns, #331)
-                  if (r && a2 && c.ex2 && c.ex2.e && a2.j !== jArm.j) { JN.wait(c, a2, c.ex2.e, t); c.wj2 = a2.j; }
+                  if (r && a2 && a2.j.sig && c.ex2 && c.ex2.e && a2.j !== jArm.j) { JN.wait(c, a2, c.ex2.e, t); c.wj2 = a2.j; }
                 }
               }
             }
@@ -2647,11 +2639,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // no such wait lasts half a minute, #283)
         c.narrowT = why === 'narrow' && c.v < 0.3 ? (c.narrowT || 0) + dt : 0;
         if (c.narrowT > 25 && !inView(c)) { c.narrowT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
-        c.narrowCarT = why === 'narrow' && byCar && c.v < 0.3 ? (c.narrowCarT || 0) + dt : 0; // (nose to nose in the stretch with one to go first: it backs out)
+        c.narrowCarT = why === 'narrow' && byCar && c.v < 0.3 ? (c.narrowCarT || 0) + dt : 0;
+        if (why !== 'narrow') c.narrowTries = 0; // (nose to nose in the stretch with one to go first: it backs out)
         if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
           if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
-          dir = -dir; c.stuck = 0; // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
+          // (no junction near enough behind it to back out to: the one it faces backs out instead, if it can. Turned round
+          // where it stood, nose to nose with it, it would only have swung into it, and was held so: a car in Higashiyama
+          // stood 46 s at a narrow stretch for one queued behind it, #331)
+          // (after a first try at turning round has come to nothing: the second time it asks)
+          c.narrowTries = (c.narrowTries || 0) + 1;
+          const o = c.narrowTries > 1 && front && front.line === c.line && front.dir !== c.dir && !front.rev && front.v < 0.3 ? front : null;
+          if (o && reverse(o)) { c.narrowTries = 0; /* it backs out of the way */ }
+          else { dir = -dir; c.stuck = 0; } // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
         }
         if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
           c.stuck = 0;

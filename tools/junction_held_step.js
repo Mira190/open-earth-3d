@@ -60,7 +60,7 @@ function heldStep({ T, max, chain: process_chain = false }) {
   const stillIn = new Map(), cycleOf = j => j.green[0] + j.green[1] + 2 * (j.amber + 2) + (j.scramble ? j.green[3] + (j.allred || 2) : 0); // (a scramble's walk too: a third turn in its cycle)
   // (and, #283: a car waiting at the mouth of a narrow stretch for one coming the other way, its longest wait; and
   // a scramble's kerbs whose count of those waiting there goes below none)
-  const narrowT = new Map(), narrow = { max: 0, over: [] }, gates = { min: 0, at: '' };
+  const narrowT = new Map(), narrow = { max: 0, over: [], hist: [] }, gates = { min: 0, at: '' }, narrowH = new Map();
   for (let s = 0; s < T; s++) {
     g.advance(1);
     const now = g.t();
@@ -68,6 +68,9 @@ function heldStep({ T, max, chain: process_chain = false }) {
       const n = c.line >= 0 && c.why === 'narrow' && c.v < 0.3 ? (narrowT.get(c) || 0) + 1 : 0;
       narrowT.set(c, n);
       if (n > narrow.max) narrow.max = n;
+      // (with chain on: each car's last 40 s, printed for one that waits past 30 s, to see why nothing parted the two)
+      if (process_chain) { const H = narrowH.get(c) || []; H.push(`${s}:${c.why}${c.rev ? `(rev d ${c.rev.d.toFixed(1)} w ${c.rev.wait.toFixed(1)})` : ''} v${c.v.toFixed(1)} nCT ${(c.narrowCarT || 0).toFixed(1)} nT ${(c.narrowT || 0).toFixed(1)} ban ${(c.revBan || 0).toFixed(0)}${c.revEnd ? ' end ' + c.revEnd : ''} f ${c.front ? idx.get(c.front) : '-'} line ${c.line}/${c.dir}`); if (H.length > 40) H.shift(); narrowH.set(c, H); }
+      if (n === 31 && process_chain) narrow.hist.push(`car ${idx.get(c)}:\n    ${(narrowH.get(c) || []).join('\n    ')}\n  its front car ${idx.get(c.front)}:\n    ${(narrowH.get(c.front) || []).join('\n    ')}`);
       if (n === 31 && narrow.over.length < 4) narrow.over.push(`car ${idx.get(c)} on piece ${c.line} (${L[c.line].c}) at ${c.x.toFixed(0)},${c.y.toFixed(0)}, for car ${idx.get(c.front)}: ${c.front ? `${c.front.why} v ${(c.front.v || 0).toFixed(1)}${c.front.q ? ' queueing' : ''} narrow ${(c.front.narrow || 0).toFixed(1)} in ${(c.front.narrowIn ?? NaN).toFixed(1)}` : ''}; its narrow ${(c.narrow || 0).toFixed(1)} in ${(c.narrowIn ?? NaN).toFixed(1)}`);
     }
     for (const pz of g.crowd.plazas || []) for (const h of pz.gates || []) if (h.n < gates.min) { gates.min = h.n; gates.at = `${pz.j ? `junction ${pz.j.id}` : 'a plaza'} kerb at ${h.x.toFixed(0)},${h.y.toFixed(0)}`; }
