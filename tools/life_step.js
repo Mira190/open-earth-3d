@@ -89,6 +89,16 @@ async function lifeStep(p, check, city) {
         if (a && a.act) { a.act(); talkOut(); }
         out.kept = !!L.city().events[e.id];
       }
+      // ---- fireworks, where the calendar has them
+      const fw = L.data.events.find(x => x.fx === 'fireworks' && x.at);
+      if (fw && L.fx) {
+        const md = fw.dates ? fw.dates[0] : fw.days[0];
+        g.setClock(c.y, md[0], md[1], fw.hours ? +fw.hours[0].slice(0, 2) * 60 + +fw.hours[0].slice(3) + 2 : D.bounds()[(fw.slots || ['night'])[0]] + 5);
+        for (let i = 0; i < 8; i++) g.advance(0.5);
+        out.fireworks = L.fx.alive(); out.fwOn = !!L.fx.on;
+        g.setClock(c.y, md[0], md[1], 720); for (let i = 0; i < 12; i++) g.advance(0.5);
+        out.fwOff = L.fx.alive();
+      }
       // ---- the score: it starts with the sound and follows the hour and the weather
       if (L.music && g.life.ctx.A.start) {
         L.ctx.A.start();
@@ -139,6 +149,7 @@ async function lifeStep(p, check, city) {
   if (r.shops) check(r.counter && r.dish > 0 && r.taste > 0, `a counter: a dish bought (${r.dish}) grows the taste`);
   if (r.events) check(r.listed && r.eventAct && r.kept, 'the calendar: an event is listed on its date, joined at its place and kept');
   if (r.music != null) check(r.music && r.want && r.want.slot === 'night' && r.want.rain > 0.2 && !!r.want.palette === /Japan|Australia|New Zealand/.test(r.country || 'Japan') && r.vol, `the score plays with the sound and follows the hour and the weather ("${r.score0}" to "${r.score1}"), with its own volume`);
+  if (r.fireworks != null) check(r.fwOn && r.fireworks > 50 && r.fwOff === 0, `the calendar's fireworks go up while their event is on (${r.fireworks} sparks) and stop after`);
   check(r.reloaded && r.restored, 'the save: skills, wallet, ranks, jobs and days read back as they were');
   return r;
 }

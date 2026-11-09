@@ -2425,11 +2425,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const life = window.OELife ? OELife.create({ cityId, cityName: CITY.place || CITY.name, country: CITY.country, G, S, H, A, dlg, $, on, stage, touch, reduced, signal: ac.signal,
     clock, setClock: (...a) => setClock(...a), player, npcs, npcById: id => npcById(id), fmtMin, said: t => said(t), fill: t => fill(t), get weather() { return weather; },
     get sun() { return sun; }, now: () => clockT, labels: () => scene.labels || {}, travel: () => G.travel || [],
-    waypoint: w => { waypoint = w; }, held: () => simHold, place: (x, y, z) => placeNear(x, y, z, null, 30), ground: (x, y) => nav.terrain(x, y), get cam() { return cam; }, map: () => toggleMap(), photo: () => photoMode(true), camera, W: (...a) => W(...a), car: () => myCar, ride: () => ride,
+    waypoint: w => { waypoint = w; }, held: () => simHold, place: (x, y, z) => placeNear(x, y, z, null, 30), ground: (x, y) => nav.terrain(x, y), get cam() { return cam; }, world, map: () => toggleMap(), photo: () => photoMode(true), camera, W: (...a) => W(...a), car: () => myCar, ride: () => ride,
     busy: kind => (kind === 'pass' ? player.mode !== 'foot' && !(player.mode === 'car' && myCar.D.st.speed < 1) : cine.active || (overture && overture.active) || OEOnboard.active() || dlg.open || uiOpen() || photo.on || !!closeup || !!arriving) }) : null;
   if (life) {
     if (window.OEDay) OEDay.create(life);
-    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEPhone']) if (window[k]) window[k].create(life);
+    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEPhone', 'OEFx']) if (window[k]) window[k].create(life);
     fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
   function renderPassport() {

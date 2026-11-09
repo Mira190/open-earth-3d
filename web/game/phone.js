@@ -30,6 +30,11 @@ window.OEPhone = (function () {
     // as a part of the day begins: who is free that you know, and what is on
     L.on('slot', o => {
       const day = L.day, key = `${o.date}|${o.slot}`;
+      // the first day on a map: where the loop is
+      if (L.city().days === 1 && !L.city().flags.hello) {
+        L.city().flags.hello = 1;
+        post('Diary', `Day 1 in ${ctx.cityName}. People here keep their hours and so do the counters: your diary (${ctx.touch ? 'the Diary button' : 'J'}) has today's page, who is free to talk and what work is going.`, 'hello');
+      }
       for (const b of (L.bonds ? L.bonds.ready() : [])) {
         const s = L.bonds.st(b.npc), n = ctx.npcs.find(x => x.id === b.npc);
         if (!s.rank || !n) continue;

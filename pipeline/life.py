@@ -208,6 +208,9 @@ def build(city):
         if not e.get('source'):
             errs.append(f'{w}: needs a "source" for its dates')
         at(e, 'at', w, need=False)
+        at(e, 'fx_at', w, need=False)  # where its fireworks burst, when not over the event itself
+        if e.get('fx') not in (None, 'fireworks'):
+            errs.append(f'{w}: fx is "fireworks"')
         if e.get('skill') and e['skill'] not in SKILLS:
             errs.append(f'{w}: unknown skill')
         said += [(w, t) for t in e.get('lines', [])]
