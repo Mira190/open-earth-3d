@@ -4199,14 +4199,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   spawn();
   // a link to a district of the map ("#play-shibuya@t-sancha", from the subway map or shared): the title
   // screen is set there, over that place and under its name, and the game starts there, not at the map's start
-  const ARRIVE = window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
-  if (ARRIVE) {
-    spawn(ARRIVE.at, ARRIVE.at[2] != null ? ARRIVE.at[2] + 0.5 : undefined, lookOf(ARRIVE));
-    const nm = /^(.*?)\s*([\u3000-\u9fff\uff00-\uffef].*)?$/.exec(ARRIVE.name);
+  const DISTRICT = window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+  if (DISTRICT) {
+    spawn(DISTRICT.at, DISTRICT.at[2] != null ? DISTRICT.at[2] + 0.5 : undefined, lookOf(DISTRICT));
+    const nm = /^(.*?)\s+([\u3000-\u9fff\uff00-\uffef][^A-Za-z]*)$/.exec(DISTRICT.name) || [0, DISTRICT.name]; // (the name in its own script after it, if it ends the name)
     gtTitle.textContent = nm[1];
     if (nm[2]) { const sm = document.createElement('small'); sm.lang = 'ja'; sm.textContent = nm[2]; gtTitle.append(sm); }
     $('#gt-city').textContent = `${G.title.replace(/\s+[\u3000-\u9fff].*$/, '')} · ${CITY.place || CITY.name}, ${CITY.country}`;
-    if (ARRIVE.blurb) { $('#gt-blurb').textContent = ARRIVE.blurb; $('#g-title p').textContent = ARRIVE.blurb; }
+    if (DISTRICT.blurb) { $('#gt-blurb').textContent = DISTRICT.blurb; $('#g-title p').textContent = DISTRICT.blurb; }
     document.title = `${nm[1]} · ${G.title} · Open Earth 3D`;
   }
   presetTime('live');
@@ -4240,7 +4240,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
-    const arrive = !cont && ARRIVE;
+    const arrive = !cont && DISTRICT;
     if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
@@ -4309,7 +4309,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#gt-continue'), 'click', () => startGame(true));
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
-  $('#gt-now').textContent = `Now in ${ARRIVE ? gtTitle.firstChild.textContent : CITY.name} (${fmtMin(nowLoc.minutes)})`;
+  $('#gt-now').textContent = `Now in ${DISTRICT ? gtTitle.firstChild.textContent : CITY.name} (${fmtMin(nowLoc.minutes)})`;
   // the loader (its plate, plate.js) fades onto the title orbit; the title card is held back until
   // then, so it never shows over the loader, while the scene under it waits as on the title screen
   // (preTitle). fromFlyover() is for a recorded flyover that ends on the orbit's first pose
@@ -4415,7 +4415,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
-    if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : titleYaw + dt * 0.05; }
+    if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : DISTRICT ? titleYaw0 + 0.3 * Math.sin(titleT * 0.05) : titleYaw + dt * 0.05; }
     if (simHold) { /* (held by a harness: the camera too, which the traffic reads, what is in view; advance() moves it) */ } else if (photo.on) photoCamera(dt); else if (closeup && !titleOn) closeupCamera(dt); else updateCamera(dt, titleOn);
     placeNightFill();
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
@@ -4759,23 +4759,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (FLY_END, where tools/flyover.js ends it: 420 m south and 210 m up, the orbit the videos were
   // made under), easing out to the orbit's own radius and height.
   // (arriving at a district: a closer orbit, so its own streets fill the title and not the skyline beyond)
-  const ORBIT = ARRIVE ? { r: 300, h: 115 } : { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
-  let titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null, titleT = 0;
+  const ORBIT = DISTRICT ? { r: 300, h: 115 } : { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
+  let titleYaw0 = 0, titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null, titleT = 0;
   if (OPENING) { titleR = openingView().r; titleH = OPENING.h; } // (no ease into the opening's own height on the first frame)
   // the orbit's centre: north-east of the start, or with an opening shot (game.start.shot, #110) the point it
   // looks at (Shibuya's: the screen over the scramble), the camera then swaying gently behind the start's view
   // and not orbiting, so the crane down from it to over the player's shoulder never swings round
-  const titleAt = () => (openingHere() ? OPENING.look : ARRIVE ? [player.x + 30, player.y + 40, player.z + 12] : [player.x + 120, player.y + 160, player.z + 20]);
+  const titleAt = () => (openingHere() ? OPENING.look : DISTRICT ? [player.x + 30, player.y + 40, player.z + 12] : [player.x + 120, player.y + 160, player.z + 20]);
   const titlePose = () => { const c = titleAt(), yaw = openingHere() ? openingView().yaw : FLY_END.yaw; return { look: c,
     cam: [c[0] - Math.sin(yaw) * FLY_END.r, c[1] - Math.cos(yaw) * FLY_END.r, c[2] + FLY_END.h] }; };
-  function fromFlyover() { titleYaw = openingHere() ? openingView().yaw : FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }
+  function fromFlyover() { if (DISTRICT) return; titleYaw = openingHere() ? openingView().yaw : FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }
   // where the title orbit starts: the bearing with the most open foreground (the least building
   // over the nearer part of the line of sight), so the title does not open on one big flat roof
+  // (for a district near the map's edge, Sangenjaya's: only the bearings that look back into the map, the camera
+  // over it and the city behind what it looks at, not the haze past the edge)
   function openYaw(cx, cy, r) {
     let best = 0, least = Infinity;
+    const F = scene.frame, inMap = (x, y) => x > F.x[0] && x < F.x[1] && y > F.y[0] && y < F.y[1];
     for (let k = 0; k < 24; k++) {
       const a = k / 24 * 2 * Math.PI, x0 = cx - Math.sin(a) * r, y0 = cy - Math.cos(a) * r;
-      let h = 0;
+      let h = DISTRICT && !(inMap(x0, y0) && inMap(cx + Math.sin(a) * 900, cy + Math.cos(a) * 900)) ? 1e9 : 0;
       for (let i = 1; i <= 12; i++) { const t = i / 12 * 0.7, x = x0 + (cx - x0) * t, y = y0 + (cy - y0) * t; h += roofBelow(x, y) - nav.terrain(x, y); }
       if (h < least) { least = h; best = a; }
     }
@@ -4793,7 +4796,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (titleOn) { // slow orbit near the start for the title screen, low enough to see the skyline against the sky
       const c = titleAt();
       const O = openingHere() ? openingView() : ORBIT;
-      if (titleYaw == null) titleYaw = O !== ORBIT ? O.yaw : openYaw(c[0], c[1], ORBIT.r);
+      if (titleYaw == null) titleYaw = titleYaw0 = O !== ORBIT ? O.yaw : openYaw(c[0], c[1], ORBIT.r);
       const k = Math.min(1, dt * 0.4);
       titleR += (O.r - titleR) * k; titleH += (O.h - titleH) * k;
       titleLook.copy(W(c[0], c[1], c[2]));
