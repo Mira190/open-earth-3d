@@ -1,7 +1,8 @@
 """Re-encode the PNG textures inside a .glb as WebP (EXT_texture_webp), as blender/build_people.py's
 export already writes the people's (issue 148). blender/build_trees.py runs it on trees.glb before
-pipeline/meshopt.py: the leaf atlas is 1.3 MB as a PNG and 0.29 MB as a WebP at quality 92 with its
-alpha (the leaves' cut-out) kept exact. Every browser the site runs on decodes WebP.
+pipeline/meshopt.py. The leaves' alpha (their cut-out) is kept exact; the colour under fully clear pixels
+is not (exact=False lets the encoder smooth it): the leaves draw with alphaTest 0.5, so it never shows,
+and the 1024 x 3072 atlas is 0.92 MB instead of 1.17 MB (issue 335). Every browser the site runs on decodes WebP.
 
     python pipeline/glb_webp.py web/assets/trees/trees.glb [--quality 92]
 """
@@ -28,7 +29,7 @@ def webp(path, quality=92):
         v = j["bufferViews"][im["bufferView"]]
         src = Image.open(io.BytesIO(blob[v.get("byteOffset", 0):v.get("byteOffset", 0) + v["byteLength"]]))
         out = io.BytesIO()
-        src.save(out, "WEBP", quality=quality, alpha_quality=100, method=6, exact=True)
+        src.save(out, "WEBP", quality=quality, alpha_quality=100, method=6, exact=False)
         done[im["bufferView"]] = out.getvalue()
         im["mimeType"] = "image/webp"
     if not done:
