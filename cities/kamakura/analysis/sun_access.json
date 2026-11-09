@@ -1,0 +1,12 @@
+{
+ "year": 2026,
+ "dsm": {
+  "cell_m": 2,
+  "nx": 1900,
+  "ny": 850,
+  "build_ms": 98
+ },
+ "places": [],
+ "rays": 0,
+ "ray_ms": 0
+}
