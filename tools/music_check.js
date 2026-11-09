@@ -1,6 +1,6 @@
 // Check the game's score (web/game/music.js): render it offline for every time of day, dry and in
-// rain, in every palette, and look at the samples. A render must have no NaN, peak under 0.9 and
-// over 0.02, sit in a sane loudness, never fall silent for two seconds after the first two, differ
+// rain, in every palette, and look at the samples. A render must have no NaN, peak under -8 dBFS
+// and over 0.02, sit in a sane loudness, stay dark (under 3% of its energy above 4 kHz), never fall silent for two seconds after the first two, differ
 // between dry and rain and between palettes, and come out the same when rendered twice (to within
 // float rounding: a browser sums the notes on a bus in no fixed order, so the last bits vary). Then the
 // travel modes, the talking duck, the stings, a timed change of state, and a live run on a real
@@ -55,8 +55,20 @@ function wav(pcm, rate) {
       }
       let quiet = Infinity; // the quietest two seconds after the first two
       for (let a = 2 * rate; a + 2 * rate <= n; a += rate) { let s = 0; for (let i = a; i < a + 2 * rate; i++) s += L[i] * L[i] + R[i] * R[i]; quiet = Math.min(quiet, Math.sqrt(s / (4 * rate))); }
+      // the share of the energy above 4 kHz: a fourth-order high-pass (two biquads) over both channels
+      const w = 2 * Math.PI * 4000 / rate, cs = Math.cos(w), al = Math.sin(w) / (2 * Math.SQRT1_2), a0 = 1 + al;
+      const b0 = (1 + cs) / 2 / a0, b1 = -(1 + cs) / a0, a1 = -2 * cs / a0, a2 = (1 - al) / a0;
+      let high = 0;
+      for (const ch of [L, R]) {
+        let x1 = 0, x2 = 0, y1 = 0, y2 = 0, u1 = 0, u2 = 0, v1 = 0, v2 = 0;
+        for (let i = 0; i < n; i++) {
+          const x = ch[i], y = b0 * x + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = x; y2 = y1; y1 = y;
+          const v = b0 * y + b1 * u1 + b0 * u2 - a1 * v1 - a2 * v2; u2 = u1; u1 = y; v2 = v1; v1 = v;
+          high += v * v;
+        }
+      }
       window.__keep[name] = new Float32Array(L);
-      const res = { peak, rms: Math.sqrt(sum / (2 * n)), nan, quiet };
+      const res = { peak, rms: Math.sqrt(sum / (2 * n)), nan, quiet, high: high / (sum || 1) };
       if (pcm) { // interleaved 16-bit, as base64
         const i16 = new Int16Array(n * 2);
         for (let i = 0; i < n; i++) { i16[2 * i] = Math.max(-32768, Math.min(32767, Math.round(L[i] * 32767))); i16[2 * i + 1] = Math.max(-32768, Math.min(32767, Math.round(R[i] * 32767))); }
@@ -83,9 +95,10 @@ function wav(pcm, rate) {
   const judge = (name, r) => {
     const bad = [];
     if (r.nan) bad.push(`${r.nan} NaN samples`);
-    if (!(r.peak < 0.9)) bad.push(`peak ${r.peak.toFixed(3)} >= 0.9`);
+    if (!(r.peak < 0.4)) bad.push(`peak ${r.peak.toFixed(3)} >= 0.4 (-8 dBFS)`);
+    if (!(r.high < 0.03)) bad.push(`${(r.high * 100).toFixed(2)}% of the energy is above 4 kHz`);
     if (!(r.peak > 0.02)) bad.push(`peak ${r.peak.toFixed(4)} <= 0.02`);
-    if (!(r.rms > 0.008 && r.rms < 0.25)) bad.push(`rms ${r.rms.toFixed(4)} outside 0.008..0.25`);
+    if (!(r.rms > 0.008 && r.rms < 0.2)) bad.push(`rms ${r.rms.toFixed(4)} outside 0.008..0.2`);
     if (!(r.quiet > 0.002)) bad.push(`silent for 2 s (rms ${r.quiet.toFixed(5)})`);
     if (bad.length) fail(name, bad.join('; '));
     return !bad.length;
@@ -101,7 +114,7 @@ function wav(pcm, rate) {
         const far = await p.evaluate(n => window.__far(n, 'again'), name), ok = judge(name, r), same = far < 2e-5; // under a 16-bit step
         if (!same) fail(name, `two renders of the same state differ by ${far.toExponential(1)}`);
         const says = await p.evaluate(st => OEMusic.describe(st), state);
-        console.log(`${ok && same ? 'ok  ' : 'FAIL'} ${name.padEnd(24)} peak ${db(r.peak)} dB  rms ${db(r.rms)} dB  quietest 2 s ${db(r.quiet)} dB  twice ${far ? far.toExponential(0) : '0'}  ${says}`);
+        console.log(`${ok && same ? 'ok  ' : 'FAIL'} ${name.padEnd(24)} peak ${db(r.peak)} dB  rms ${db(r.rms)} dB  quietest 2 s ${db(r.quiet)} dB  above 4 kHz ${(r.high * 100).toFixed(3)}%  twice ${far ? far.toExponential(0) : '0'}  ${says}`);
       }
       const d = await p.evaluate(([a, c]) => window.__diff(a, c), [`${slot}-${palette}-dry`, `${slot}-${palette}-rain`]);
       if (!(d > 0.003)) fail(`${slot}-${palette}`, `dry and rain are alike (difference ${d.toFixed(5)})`);
@@ -122,7 +135,7 @@ function wav(pcm, rate) {
     const d = await p.evaluate(([a, c]) => window.__diff(a, c), ['evening-foot', `evening-${name}`]);
     if (!(d > 0.002)) fail(`evening-${name}`, `no different from on foot (difference ${d.toFixed(5)})`);
     if (name === 'talking') { const drop = 20 * Math.log10(r.rms / foot.rms); if (!(drop < -4 && drop > -6)) fail('evening-talking', `ducked by ${drop.toFixed(1)} dB, not 5`); }
-    console.log(`${ok ? 'ok  ' : 'FAIL'} ${('evening-' + name).padEnd(24)} peak ${db(r.peak)} dB  rms ${db(r.rms)} dB  differs from foot by ${db(d)} dB`);
+    console.log(`${ok ? 'ok  ' : 'FAIL'} ${('evening-' + name).padEnd(24)} peak ${db(r.peak)} dB  rms ${db(r.rms)} dB  above 4 kHz ${(r.high * 100).toFixed(3)}%  differs from foot by ${db(d)} dB`);
   }
   // a palette nobody knows plays the default
   await render('evening-unknown', Object.assign({ palette: 'nowhere' }, base));
@@ -132,7 +145,7 @@ function wav(pcm, rate) {
   const stung = await render('evening-stings', Object.assign({ stings: info.stings.map((k, i) => [2 + i * 2.2, k]) }, base)); judge('evening-stings', stung);
   const ds = await p.evaluate(() => window.__diff('evening-foot', 'evening-stings'));
   if (!(ds > 0.002)) fail('evening-stings', 'the stings make no sound');
-  console.log(`${ds > 0.002 ? 'ok  ' : 'FAIL'} ${'evening-stings'.padEnd(24)} peak ${db(stung.peak)} dB  rms ${db(stung.rms)} dB  differs from foot by ${db(ds)} dB`);
+  console.log(`${ds > 0.002 ? 'ok  ' : 'FAIL'} ${'evening-stings'.padEnd(24)} peak ${db(stung.peak)} dB  rms ${db(stung.rms)} dB  above 4 kHz ${(stung.high * 100).toFixed(3)}%  differs from foot by ${db(ds)} dB`);
   const turn = await render('morning-to-night', [{ at: 0, slot: 'morning' }, { at: 8, slot: 'night', rain: 0.7 }], 32), okTurn = judge('morning-to-night', turn);
   console.log(`${okTurn ? 'ok  ' : 'FAIL'} ${'morning-to-night'.padEnd(24)} peak ${db(turn.peak)} dB  rms ${db(turn.rms)} dB  quietest 2 s ${db(turn.quiet)} dB`);
 
