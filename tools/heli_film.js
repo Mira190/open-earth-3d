@@ -25,9 +25,18 @@ const [VW, VH] = size.split('x').map(Number);
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; if (g.heli && g.heli.want) await g.heli.want(); });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
-  await p.evaluate(() => window.__game.advance(3));
+  // (the title comes up once the loader has drawn the scene twice; a click before it does nothing: as tools/game_shot.js)
+  await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
+  for (let i = 0; i < 60 && !(await p.evaluate(() => { const t = document.getElementById('g-title'); return !t || t.hidden; })); i++) {
+    await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });
+    await p.waitForTimeout(1000);
+  }
+  await p.evaluate(async () => {
+    const g = window.__game;
+    for (let t = 0; t < 10 && (!g.arriving || !g.arriving()); t += 0.25) await new Promise(r => setTimeout(r, 250));
+    for (let t = 0; t < 10 && g.arriving && g.arriving(); t += 0.25) { g.settleArrival(); g.advance(0.25); await new Promise(r => requestAnimationFrame(r)); }
+    g.advance(1);
+  });
   // aboard and up to about 120 m (not filmed)
   const ok = await p.evaluate(() => {
     const g = window.__game, st = g.heli.st, d = g.heli.doorAt();
