@@ -58,7 +58,7 @@
     }
   },
   "roofs": {"palette": {"清水寺": "#c4482a"}, "note": "pipeline/arcades.py: a precinct whose roofs on posts and gates take its own colour (Kiyomizu-dera's gates and pavilions are vermilion, though it is a temple)"},
-  "trees": {
+  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
     "mix": {
       "zelkova": 0.2,
       "ginkgo": 0.14,

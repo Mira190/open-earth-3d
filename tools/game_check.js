@@ -666,6 +666,24 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
+  // the doorways' frames (game.json doors[].frames, #326): the collision world's quarter-metre cells took up to a cell
+  // more of a wall each side of a narrow doorway at an angle to them, so the jambs now stand as exact boxes from the
+  // frame. A walker's body (nav R) stands in the middle of each opening with room to spare, and the wall a little
+  // past each jamb, beside the opening and on the wall's line, is solid to it (both once the tiles round it are laid)
+  const doorways = await p.evaluate(() => {
+    const g = window.__game, nav = g.nav, out = [];
+    nav.layAll();
+    for (const d of g.G.doors || []) for (const f of d.frames || []) {
+      const dx = f.b[0] - f.a[0], dy = f.b[1] - f.a[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, z = f.z0;
+      const mid = [f.a[0] + dx / 2, f.a[1] + dy / 2], at = s => [f.a[0] + ux * s, f.a[1] + uy * s];
+      const roomy = nav.room(mid[0], mid[1], z, Math.min(nav.R, L / 2 - 0.05));
+      const jamb = [at(-0.2), at(L + 0.2)].map(([x, y]) => nav.col.overlap(x, y, 0.05, z + 0.5, z + 1.5));
+      out.push({ name: f.name || d.name, w: L, roomy, jambs: jamb.every(Boolean) });
+    }
+    return out;
+  });
+  for (const r of doorways) check(r.roomy && r.jambs, `the doorway of ${r.name} (${r.w.toFixed(2)} m): a walker stands in it, ${r.roomy ? 'clear' : 'NOT clear'}; its jambs ${r.jambs ? 'solid' : 'NOT solid'}`);
+
   // the flights of steps a city names for checking (game.json surfaces with check: true, a footbridge's): from
   // a metre past the foot, climb on foot to the top, and arrive within 0.35 m of the top's height, never
   // having dropped below the foot or risen above the top

@@ -34,10 +34,13 @@
    "yae": 20,
    "scaevola": 21,
    "argusia": 22,
-   "tussock": 23
+   "tussock": 23,
+   "susuki": 24,
+   "plume": 25,
+   "lomandra": 26
   },
   "columns": 4,
-  "rows": 6,
+  "rows": 7,
   "sakura_cells": [
    17,
    18,
@@ -487,6 +490,43 @@
    "cell": 23,
    "trunk_r": 0.04,
    "note": "Tussock (snow tussock, Chionochloa rigida, and hard tussock, Festuca novae-zelandiae): a dense fountain of fine rolled blades about a metre high, olive at the base and straw to bleached gold above; the grassland of Otago's open hills round Queenstown, and a planted bed's grass"
+  },
+  "susuki": {
+   "height_m": 1.75,
+   "crown": [
+    0.6,
+    0.8,
+    0.7
+   ],
+   "colour": "#7d8e4c",
+   "bark": "#6d6440",
+   "triangles": [
+    88,
+    20,
+    6
+   ],
+   "cell": 24,
+   "trunk_r": 0.05,
+   "note": "Susuki (Miscanthus sinensis, Japanese silver grass): a clump of broad arching leaves with a pale midrib about 1.2 m high, through which the flowering culms stand to 1.7-2 m with fan-shaped silky heads, red-tinged in late August, silver in October and buff through the winter, when the leaves are straw; the open grass of the Kamo's banks and of Tokyo's park meadows",
+   "autumn_colour": "#b59b5c"
+  },
+  "lomandra": {
+   "height_m": 0.85,
+   "crown": [
+    0.4,
+    0.5,
+    0.45
+   ],
+   "colour": "#3f5f2f",
+   "bark": "#4a4630",
+   "triangles": [
+    52,
+    12,
+    6
+   ],
+   "cell": 26,
+   "trunk_r": 0.05,
+   "note": "Spiny-headed mat-rush (Lomandra longifolia): a dense tussock of stiff, flat, glossy dark green strap leaves 0.6-1 m long, arching but not drooping, with split brown tips; the strappy native of Sydney's sandstone gullies and its planted beds"
   }
  }
 }

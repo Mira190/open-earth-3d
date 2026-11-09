@@ -1399,74 +1399,93 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       }
       TR = keep;
     }
-    // tussock (trees.json "tussock", city.json trees.tussock, #286): in a landmark's planted beds (beds: [{mesh, per_m2}],
-    // scattered over the faces of that mesh) and on the open hills (slopes: {above_m, per_ha, max, near: [[x, y, r,
-    // per_ha]]}): above the town, where no canopy stands (woods.png), off the roads and their houses (25 m) and clear of
-    // the landmarks, on ground no steeper than rock; standing where they are put, all of them tussock
-    let own = null;
-    const TU = (scene.trees || {}).tussock;
-    if (TU && window.OETrees) try {
-      const pts = [], hsh = (x, y) => { const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return v - Math.floor(v); };
-      for (const bed of TU.beds || []) for (const m of (LM && LM.meshes) || []) {
-        if (m.name !== bed.mesh) continue;
-        const p = m.position, ix = m.index;
-        for (let i = 0; i + 2 < ix.length; i += 3) {
-          const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
-          const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], area = Math.abs(ux * vy - uy * vx) / 2;
-          let n = area * (bed.per_m2 || 2);
-          for (let j = 0; n > 0; j++, n--) {
-            if (n < 1 && hsh(p[a] + j, p[a + 1]) > n) break;
-            let u = hsh(p[a] + j * 1.7, p[b] + i), v = hsh(p[c] - j * 2.3, p[a + 1] + i);
-            if (u + v > 1) { u = 1 - u; v = 1 - v; }
-            const x = p[a] + ux * u + vx * v, y = p[a + 1] + uy * u + vy * v, z = p[a + 2] + (p[b + 2] - p[a + 2]) * u + (p[c + 2] - p[a + 2]) * v;
-            pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), Math.round(10 * (0.55 + 0.35 * hsh(x, y))));
+    // the grasses (#286, #326): tussock, susuki and Lomandra (trees.json; city.json trees.tussock, trees.susuki,
+    // trees.lomandra, each its own settings), standing where they are put, all of them that species:
+    // - in a landmark's planted beds (beds: [{mesh, per_m2}], scattered over the faces of that mesh);
+    // - on the open hills (slopes: {above_m, per_ha, max, near: [[x, y, r, per_ha]]}): above the town, where no
+    //   canopy stands (woods.png), off the roads and their houses (25 m) and clear of the landmarks, on ground no
+    //   steeper than rock;
+    // - in the parks named (places: [{name, per_ha}]), over the place's own outline (places.json), off its paths and
+    //   clear of its trees and the landmarks;
+    // - and over the outlines open data maps for it (open: true): places.json "grass"[species], [{per_ha, polygons}],
+    //   written by pipeline/grasses.py (a river's banks and sandbars, a park's meadow, a reserve's planted beds)
+    const own = [];
+    const hsh = (x, y) => { const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return v - Math.floor(v); };
+    let canopy, lmHash = null; // the woods' canopy at 8 m (whether any crown stands there), and the landmarks' 8 m cells and their neighbours
+    const inRing = (r, x, y) => { let k = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < r[j] + (y - r[j + 1]) / (r[i + 1] - r[j + 1]) * (r[i] - r[j])) k = !k; return k; };
+    const GRASS_H = { susuki: 1.75, lomandra: 0.85 }; // (their models' heights, trees.json, for a city with an older trees.json)
+    ['tussock', 'susuki', 'lomandra'].forEach((species, si) => {
+      const TU = (scene.trees || {})[species];
+      if (!TU || !window.OETrees) return;
+      try {
+        const pts = [], seed = si * 17.31; // (each grass its own jitter: two in the same bed do not stand on the same spots)
+        // (the heights, dm, each clump's own: the tussock's as before, from 0.6 to 1.05 m; the others' from 0.7 to 1.15
+        // times their model's, trees.json height_m, which trees.js scales each one by)
+        const hOf = (u, lo = 0.6, span = 0.45) => Math.round(10 * (species === 'tussock' ? lo + span * u : (TU.height_m || GRASS_H[species] || 1) * (0.7 + 0.45 * u)));
+        for (const bed of TU.beds || []) for (const m of (LM && LM.meshes) || []) {
+          if (m.name !== bed.mesh) continue;
+          const p = m.position, ix = m.index;
+          for (let i = 0; i + 2 < ix.length; i += 3) {
+            const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
+            const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], area = Math.abs(ux * vy - uy * vx) / 2;
+            let n = area * (bed.per_m2 || 2);
+            for (let j = 0; n > 0; j++, n--) {
+              if (n < 1 && hsh(p[a] + j + seed, p[a + 1]) > n) break;
+              let u = hsh(p[a] + j * 1.7 + seed, p[b] + i), v = hsh(p[c] - j * 2.3, p[a + 1] + i + seed);
+              if (u + v > 1) { u = 1 - u; v = 1 - v; }
+              const x = p[a] + ux * u + vx * v, y = p[a + 1] + uy * u + vy * v, z = p[a + 2] + (p[b + 2] - p[a + 2]) * u + (p[c + 2] - p[a + 2]) * v;
+              pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), hOf(hsh(x, y), 0.55, 0.35));
+            }
           }
         }
-      }
-      // and in the parks named (places: [{name, per_ha}], a native planting's tussock grasses: Sydney's Barangaroo Reserve),
-      // over the place's own outline (places.json), anywhere off its paths and clear of its trees and the landmarks
-      const SL = TU.slopes || (TU.places ? {} : null);
-      if (SL) {
-        const Tg = D.Tfine || D.T, F = scene.frame, roads = D.streets && D.streets.roads, W = scene.woods;
-        let canopy = null; // the woods' canopy at 8 m: whether any crown stands there
-        if (woodsTex && woodsTex.image && W) {
-          const cw = Math.ceil(W.nx / 4), ch = Math.ceil(W.ny / 4), cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
-          const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(woodsTex.image, 0, 0, cw, ch);
-          const px = g.getImageData(0, 0, cw, ch).data, c8 = W.cell * 4;
-          canopy = (x, y) => { const i = Math.floor((x - W.x0) / c8), j = Math.floor((W.y1 - y) / c8); return i >= 0 && j >= 0 && i < cw && j < ch && px[4 * (j * cw + i) + 1] > 0; };
-        }
-        const lmHash = new Set(); // the landmarks' 8 m cells, and their neighbours
-        for (const m of (LM && LM.meshes) || []) { const p = m.position; for (let i = 0; i < p.length; i += 9) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) lmHash.add((Math.floor(p[i] / 8) + a) * 100003 + Math.floor(p[i + 1] / 8) + b); }
-        const max = Math.round((SL.max || 8000) * (small ? 0.35 : 1)), above = SL.above_m ?? 80;
-        const cand = (x, y, k, low = false) => {
-          const z = S.terrainAt(Tg, x, y);
-          if (!(low || z > above) || (canopy && canopy(x, y)) || lmHash.has(Math.floor(x / 8) * 100003 + Math.floor(y / 8))) return;
-          const sx = S.terrainAt(Tg, x + 2, y) - S.terrainAt(Tg, x - 2, y), sy = S.terrainAt(Tg, x, y + 2) - S.terrainAt(Tg, x, y - 2);
-          if (Math.hypot(sx, sy) / 4 > (SL.slope_max || 1.1)) return; // (a bluff: rock)
-          if (roads && roads.depth(x, y, null, low ? 2 : 25) > 0) return; // (in a park, just off its streets)
-          if (IN && IN.water(x, y)) return;
-          pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), Math.round(10 * (0.6 + 0.45 * hsh(y, x + k))));
-        };
-        // near the places named, denser; then over the whole frame, each candidate on a jittered grid
-        const grid = (x0, y0, x1, y1, per_ha, inside, low = false) => {
-          const step = 100 / Math.sqrt(per_ha);
-          for (let y = y0; y < y1 && pts.length / 4 < max; y += step) for (let x = x0; x < x1 && pts.length / 4 < max; x += step) {
-            const jx = x + (hsh(x, y) - 0.5) * step, jy = y + (hsh(y, x) - 0.5) * step;
-            if (!inside || inside(jx, jy)) cand(jx, jy, step, low);
+        const opens = TU.open ? ((P.grass || {})[species] || []) : [];
+        const SL = TU.slopes || (TU.places || opens.length ? {} : null);
+        if (SL) {
+          const Tg = D.Tfine || D.T, F = scene.frame, roads = D.streets && D.streets.roads, W = scene.woods;
+          if (canopy === undefined) {
+            canopy = null;
+            if (woodsTex && woodsTex.image && W) {
+              const cw = Math.ceil(W.nx / 4), ch = Math.ceil(W.ny / 4), cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+              const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(woodsTex.image, 0, 0, cw, ch);
+              const px = g.getImageData(0, 0, cw, ch).data, c8 = W.cell * 4;
+              canopy = (x, y) => { const i = Math.floor((x - W.x0) / c8), j = Math.floor((W.y1 - y) / c8); return i >= 0 && j >= 0 && i < cw && j < ch && px[4 * (j * cw + i) + 1] > 0; };
+            }
           }
-        };
-        const inRing = (r, x, y) => { let k = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < r[j] + (y - r[j + 1]) / (r[i + 1] - r[j + 1]) * (r[i] - r[j])) k = !k; return k; };
-        for (const pl of TU.places || []) for (const q of (P.places || []).filter(o => o.name === pl.name)) for (const poly of q.polygons || []) {
-          const rings = poly.map(r => r.map(v => v / 10)), r = rings[0], xs = r.filter((_, i) => i % 2 === 0), ys = r.filter((_, i) => i % 2 === 1);   // (its outline, then its holes)
-          grid(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), pl.per_ha || 400, (x, y) => inRing(r, x, y) && !rings.slice(1).some(h => inRing(h, x, y)), true);
+          if (!lmHash) { lmHash = new Set(); for (const m of (LM && LM.meshes) || []) { const p = m.position; for (let i = 0; i < p.length; i += 9) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) lmHash.add((Math.floor(p[i] / 8) + a) * 100003 + Math.floor(p[i + 1] / 8) + b); } }
+          const max = Math.round((TU.max || SL.max || 8000) * (small ? 0.35 : 1)), above = SL.above_m ?? 80;
+          const cand = (x, y, k, low = false, shade = true) => {
+            const z = S.terrainAt(Tg, x, y);
+            if (!(low || z > above) || (shade && canopy && canopy(x, y)) || lmHash.has(Math.floor(x / 8) * 100003 + Math.floor(y / 8))) return;
+            const sx = S.terrainAt(Tg, x + 2, y) - S.terrainAt(Tg, x - 2, y), sy = S.terrainAt(Tg, x, y + 2) - S.terrainAt(Tg, x, y - 2);
+            if (Math.hypot(sx, sy) / 4 > (SL.slope_max || 1.1)) return; // (a bluff: rock)
+            if (roads && roads.depth(x, y, null, low ? 2 : 25) > 0) return; // (in a park, just off its streets)
+            if (IN && IN.water(x, y)) return;
+            pts.push(Math.round(x * 10), Math.round(y * 10), Math.round(z * 10), hOf(hsh(y, x + k)));
+          };
+          // near the places named, denser; then over the whole frame, each candidate on a jittered grid
+          const grid = (x0, y0, x1, y1, per_ha, inside, low = false, shade = true) => {
+            const step = 100 / Math.sqrt(per_ha);
+            for (let y = y0; y < y1 && pts.length / 4 < max; y += step) for (let x = x0; x < x1 && pts.length / 4 < max; x += step) {
+              const jx = x + (hsh(x + seed, y) - 0.5) * step, jy = y + (hsh(y, x + seed) - 0.5) * step;
+              if (!inside || inside(jx, jy)) cand(jx, jy, step, low, shade);
+            }
+          };
+          const over = (poly, per_ha, shade) => { // (an outline in decimetres, then its holes)
+            const rings = poly.map(r => r.map(v => v / 10)), r = rings[0], xs = r.filter((_, i) => i % 2 === 0), ys = r.filter((_, i) => i % 2 === 1);
+            grid(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), per_ha, (x, y) => inRing(r, x, y) && !rings.slice(1).some(h => inRing(h, x, y)), true, shade);
+          };
+          for (const pl of TU.places || []) for (const q of (P.places || []).filter(o => o.name === pl.name)) for (const poly of q.polygons || []) over(poly, pl.per_ha || 400, true);
+          // (a river's sandbar or a bed is mapped as what grows there: the canopy over it is its own willows' and gums', not a
+          // reason to leave the grass out)
+          for (const o of opens) for (const poly of o.polygons || []) over(poly, o.per_ha || TU.per_ha || 1500, false);
+          if (TU.slopes) {
+            for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
+            grid(F.x[0], F.y[0], F.x[1], F.y[1], SL.per_ha || 20, (x, y) => !(SL.near || []).some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r));
+          }
         }
-        if (TU.slopes) {
-          for (const [cx, cy, r, ph] of SL.near || []) grid(cx - r, cy - r, cx + r, cy + r, ph, (x, y) => Math.hypot(x - cx, y - cy) < r);
-          grid(F.x[0], F.y[0], F.x[1], F.y[1], SL.per_ha || 20, (x, y) => !(SL.near || []).some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r));
-        }
-      }
-      if (pts.length) { own = { from: TR.length / 4, species: 'tussock', tint: TU.tint || null }; TR = TR.concat(pts); console.info(`tussock: ${pts.length / 4} planted`); }
-    } catch (e) { console.warn('tussock: none planted', e); }
+        if (pts.length) { own.push({ from: TR.length / 4, to: (TR.length + pts.length) / 4, species, tint: TU.tint || null }); TR = TR.concat(pts); console.info(`${species}: ${pts.length / 4} planted`); }
+      } catch (e) { console.warn(`${species}: none planted`, e); }
+    });
     const nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
