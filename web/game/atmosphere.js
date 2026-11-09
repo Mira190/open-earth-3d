@@ -448,8 +448,9 @@ window.OEAtmos = (function () {
         if (painted) {
           // the layers drift with the weather's wind (weather.js; in real seconds, a little quickened so that it shows),
           // and change shape slowly; all of it wraps where the noise repeats
-          const W = (window.OEWeather && OEWeather.wind) || wind, dt = drift.t == null ? 0 : Math.max(0, Math.min(0.25, tSec - drift.t)), D = su.uCloudDrift.value;
-          drift.t = tSec;
+          // (api.skyTime: seconds on a film's own clock, for a time-lapse: tools/day_film.js)
+          const ts = api.skyTime ?? tSec, W = (window.OEWeather && OEWeather.wind) || wind, dt = drift.t == null ? 0 : Math.max(0, Math.min(api.skyTime != null ? 600 : 0.25, ts - drift.t)), D = su.uCloudDrift.value;
+          drift.t = ts;
           const k = dt * 3 * (W.speed ?? 4) / 9000;
           drift.x = (drift.x - (W.x ?? 0.94) * k + 100) % 100; drift.z = (drift.z - (W.z ?? -0.34) * k + 100) % 100;
           drift.e = (drift.e + dt * 0.0016) % 100; drift.w = (drift.w + dt * 0.00012 * (W.speed ?? 4) / 4) % 100;

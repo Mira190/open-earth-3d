@@ -25,6 +25,52 @@ Before building, we looked at what renders in a browser on ordinary hardware in 
 | Screen-space planar reflections (Far Cry 5's, Unity URP SSPR) | a planar reflection by scattering the frame along the mirror | various | Not adopted: it needs compute or atomics that WebGL 2 lacks. |
 | Light probes (three.js `LightProbe`, irradiance volumes) | baked indirect light | MIT | Not needed yet: the scramble's indirect light at night is mostly the screens' and the shopfronts', which the area lights and the light card carry directly. |
 
+### The sky, the grade and an animated film's look: the second survey (issue 353)
+
+Before the clouds, the per-region look and the light shafts were built, we looked at what draws a sky and
+grades a picture in a browser, and at what is written about how animated films and games reach the look of
+a painted background. Nothing below was copied as code or as art; where a source could not be opened, or its
+licence could not be read, it says so.
+
+| Work | What it does | Licence | Here |
+|---|---|---|---|
+| three.js `Sky` cloud layer (`examples/jsm/objects/Sky.js`, r186) | one layer of 2D gradient noise in the sky's shader: a four-octave fbm and a coverage sample (five noise calls, about twenty lattice hashes a pixel), Beer-powder shade, a Henyey-Greenstein silver lining | MIT | **Replaced** (`web/clouds.js`): its place in the dome's shader, its coverage and density uniforms and its forward lobe are kept; the shapes and the light are new. |
+| Schneider and Vos, [*The Real-time Volumetric Cloudscapes of Horizon Zero Dawn*](https://www.advances.realtimerendering.com/s2015/The%20Real-time%20Volumetric%20Cloudscapes%20of%20Horizon%20-%20Zero%20Dawn%20-%20ARTR.pdf) (SIGGRAPH 2015) | Perlin-Worley noise for cumulus shapes, the Beer-powder term, a ray march of up to 64 samples | slides, no code | **Adopted in its noise only**: the texture's billow channel is a Perlin field with Worley heads on it. No march: a phone cannot pay for one in the sky. |
+| [takram three-geospatial](https://github.com/takram-design-engineering/three-geospatial) (three-clouds, three-atmosphere) | volumetric clouds and Bruneton's precomputed scattering for three.js | MIT | Not adopted: a ray march and several targets of its own. |
+| Shadertoy's cloud shaders (ray-marched volumes) | volumetric noise marched per pixel | CC BY-NC-SA 3.0 unless a shader says otherwise (from the headers of copies; Shadertoy's own terms could not be opened) | Not read for code and not adopted: the licence is non-commercial, and a march is too dear. |
+| Hosek and Wilkie, [*An Analytic Model for Full Spectral Sky-Dome Radiance*](https://cgg.mff.cuni.cz/projects/SkylightModelling/) (2012) | a better fit than Preetham at sunset and in haze | the reference code is BSD 3-clause (as carried in Blender; not read here) | Not adopted now: the dome keeps Preetham with the hour's hue laid over it (golden hour, the blue hour, the night), which is where a painted sky departs from a measured one anyway. |
+| Bruneton, [precomputed atmospheric scattering](https://github.com/ebruneton/precomputed_atmospheric_scattering); Hillaire, [*A Scalable and Production Ready Sky and Atmosphere*](https://github.com/sebh/UnrealEngineSkyAtmosphere) (EGSR 2020) | look-up tables for the whole atmosphere | BSD 3-clause; MIT | Not adopted: the tables are a render of their own at set-up and on a change of weather; no WebGL 2 port of Hillaire's was found. |
+| Mitchell, [*Volumetric Light Scattering as a Post-Process*](https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-13-volumetric-light-scattering-post-process) (GPU Gems 3, ch. 13) | light shafts: samples summed along the screen ray from a pixel to the light | book text | **Adopted** in the lens pass (`web/lens.js` `OE_SHAFTS`), without its occlusion pass: the bright sky is the light, 6 taps (4 on the medium tier, none on the low), jittered per pixel. |
+| three.js `GodRaysShader`, [pmndrs `GodRaysEffect`](https://github.com/pmndrs/postprocessing), [three-good-godrays](https://github.com/Ameobea/three-good-godrays) | shafts as three blur passes, as a render of the light into its own target (60 samples), or as a march of the shadow map | MIT; zlib; zlib-style | Not adopted: each is one or more passes or renders. |
+| Jimenez, [*Next Generation Post Processing in Call of Duty: Advanced Warfare*](https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/) (SIGGRAPH 2014) | interleaved gradient noise | slides | **Adopted** (already the motion blur's): the shafts' taps are offset by it, so six read as haze. |
+| [Khronos PBR Neutral](https://github.com/KhronosGroup/ToneMapping) | the tone curve the title's lens is built on | Apache-2.0 | Kept. The look is laid on it as a split tone, a lift and a vibrance, not as another curve. |
+| AgX (Sobotka; three.js `AgXToneMapping`), [Narkowicz's ACES fit](https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/), Uchimura's Gran Turismo curve ([glsl-tone-map](https://github.com/dmnsgn/glsl-tone-map)) | other LUT-free curves | MIT (three.js); CC0 or MIT; MIT | Not adopted: a second curve would part the game from the title screen and the films, which share this one. |
+| [Tony McMapface](https://github.com/h3r2tic/tony-mc-mapface) | a display transform shipped as a LUT | MIT or Apache-2.0 | Not adopted: a LUT is a texture and a fetch more a pixel. |
+| [HYG star database](https://codeberg.org/astronexus/hyg) | 119,614 stars | CC BY-SA 4.0 | Not adopted: the bright stars here are a hand list of 41 and the rest are scattered towards the galactic plane; the Milky Way is drawn from the clouds' own noise. |
+
+What is written about the look of Makoto Shinkai's backgrounds, and what was taken from it. No frame, painting
+or asset of any film or game was used, and none is imitated shot for shot:
+
+- Shade takes the colour of what surrounds it (Shinkai, as quoted in
+  [*The World of Makoto Shinkai*](https://tulip651989.wordpress.com/2014/11/20/the-world-of-makoto-shinkai/): under
+  a blue sky the shadow is adjusted towards blue), and lens flares are tinted the same way. Here: the light in the
+  shade is the sky's colour, the lens lifts the deepest shade towards blue or violet, and the flare takes the sun's
+  colour for the hour.
+- The clouds and the light carry the feeling of a scene
+  ([Hikawa Ryusuke, nippon.com, 2016](https://www.nippon.com/en/views/b06802/the-independent-vision-of-anime-filmmaker-shinkai-makoto.html)).
+  Here: the sky is where the work went first.
+- Twilight is gradients of violet, magenta and deep gold that reach into the shadows; shadows are rich but open,
+  never crushed; the highlights have a soft shoulder; colour is dense in the mid-tones
+  ([a colourist's reading of *Your Name*](https://colorculture.org/your-name-cinematography-analysis/): one
+  person's analysis, not a statement by the studio). Here: the clouds' palette at dusk, the shade lift, the
+  existing highlight roll-off, and vibrance rather than plain saturation.
+- Rain is an event: puddles that mirror the street's lights, drops and rings drawn as shapes
+  ([Shinkai, JAXA's, no. 80](https://global.jaxa.jp/activity/pr/jaxas/no080/01.html)). Here: already the weather's
+  and the wet street's work; the sky under rain is now a sheet with form in it rather than white.
+- Nothing was found from the makers on how Genshin Impact, Breath of the Wild or Sky draw their clouds, nor on
+  Persona 5's colour design; what circulates is fans' reconstruction. Persona 5 is a reference for design in
+  [GAME.md](GAME.md)'s work, never for this picture.
+
 ## What was built
 
 ### The grade through the day (`web/game/atmosphere.js`)
@@ -36,6 +82,72 @@ rather than the street going grey; at night (−12°) the deepest contrast, with
 taking the shadows to blue and the lights to amber as before. Bloom keeps its high threshold
 (6 by day, 1.6 at night), so lit walls do not bloom; only lamps, signs and screens do. A city
 keys its own: `game.look.grade: {night, blue, golden, day}`, each `{ev, tint, sat, contrast}`.
+
+### The sky and its clouds (`web/clouds.js`, issue 353)
+
+The Sky's own cloud layer was one sheet of soft noise. In its place, in the same shader of the same dome (no
+pass, no target, no draw), four layers are composed far to near:
+
+- **cirrus** at 9 km, curved streaks;
+- **towers**: cumulus congestus standing on the horizon all round, shaped in azimuth and elevation like a painted
+  backdrop's layer (they are tens of kilometres off, so they do not shift as you walk): a skyline of masses with
+  heads on them, lit on the side the sun is on, wholly lit when the sun is behind you, rim-lit when it is behind
+  them, their feet in the horizon's air;
+- **altocumulus** at 5 km, a dappled sheet here and there;
+- **the cumulus deck** at 1.5 km, on a sphere's shell, so it closes on the horizon 140 km off instead of running
+  to infinity: banks and clear gaps, a lit side found by a second lookup of the density towards the sun, a shaded
+  base in the sky's colour, a silver lining towards the sun, and the sun's glow through thin cloud.
+
+All of it reads one tileable 256 x 256 texture made once on the CPU (billows, cells, streaks, regions; each
+channel spread evenly by rank, so a cover of 0.3 hides three tenths of the sky): 10 bilinear lookups a sky pixel
+against the 20 lattice hashes of the layer it replaces. The layers drift with the wind (the weather's when it
+gives one, `OEWeather.wind`) and change shape slowly; the cover and density are the weather's
+(`cloudCoverage`, `cloudDensity`, as before). After dark the fair-weather cumulus thins out and softens.
+
+The clouds' colours are not worked out per pixel. For each hour `OEClouds.light` sets a lit colour, a shade
+colour and a rim colour from the sky's own zenith and horizon (worked out on the CPU, as the haze is), by a
+palette keyed on the sun's height: cream and a clear blue shade by day, peach and violet in the golden hour,
+rose over indigo after sunset, a pale slate over the city's glow at night, a luminous grey sheet with form in it
+under an overcast, darker in rain. A cloud keyed to its sky holds its look through the tone curve at any exposure
+and is never grey. The light from the sky (PMREM) is taken from the same dome, so the city is lit by the sky it
+stands under; the haze at the model's edge is still the clear sky's horizon.
+
+At night the stars go out behind cloud (each star looks up the cover in its vertex), the **Milky Way** lies where
+it is that night (the galactic plane, brightest towards Sagittarius, with its rift), and on a clear night a
+**shooting star** crosses now and then; both are a few lines of the dome's shader behind a uniform test.
+
+### A look per region (`game.look.preset`, `web/game/atmosphere.js` `LOOKS`)
+
+Two presets: `shinkai` on every Japanese map (any city whose `country_code` is `JP`, so a new one has it without
+a line of configuration) and `film` everywhere else; `game.look.preset` in `cities/<id>/city.json` names another,
+and `game.look.grade`, `game.look.light` and `game.sky` still override single numbers. A preset is only numbers
+for what is already drawn:
+
+| | `film` | `shinkai` |
+|---|---|---|
+| Sky | saturation 1.7, low towers, soft edges | saturation 1.95, towers at full height, drawn edges, a stronger rim and glow |
+| Clouds' palette | natural: cream, a grey-blue shade | cream to rose lit sides, blue to violet shade |
+| Night sky | a faint Milky Way, 6 shooting stars an hour | the Milky Way at full strength, 24 an hour |
+| Grade (`lens.js`) | the hour's keys with a little vibrance | more vibrance, a cooler shade and warmer light (the split tone), the deepest shade lifted towards blue by day and violet at dusk |
+| Light in the shade (`world.js` `shadeLight`) | the sky's colour, a little | the sky's colour, more; sunlit ground throws warm light back up onto walls (the hemisphere light's ground colour) |
+| The sun in the lens | flare 0.55, shafts 0.5 | flare 0.9, shafts 1.0 |
+
+The lens pass (`web/lens.js`) gained uniforms, not passes: `uShade` and `uHiTint` (the split tone, formerly two
+constants), `uShadeLift`, `uVibrance`, `uSunSeen` and `uShafts`. The flare, which the game never drove, now
+follows the sun; how much of the sun's disc the frame really shows is read at five points in the lens's *vertex*
+shader (twenty lookups a frame, none a pixel), so a building or a cloud in front of the sun puts the flare and the
+shafts out. The shafts run only while the sun is in or near the frame and above the horizon, and are compiled
+out on the low tier. The Kuwahara lens stays the overture's.
+
+Frame cost against main (`tools/frame_cost.js`, Shibuya on foot, high tier, 1440 x 900): 420 draws, 7.60M
+triangles and 70 full-screen passes writing 80.0 MB a frame, before and after: the same passes, targets and
+bytes. What changed is the work inside two shaders that already ran: the sky's (fewer operations: lookups for
+hashes) and the lens's (the same by night and with the sun out of frame; six more lookups a pixel on the high
+tier while the sun is in it). A software renderer's frame times do not tell these apart; a real GPU was not
+available.
+
+Not built here: glints on overhead wires and rails (the maps draw neither as their own material yet), and a
+bounce that knows which ground is near which wall (the hemisphere light's is the same everywhere).
 
 ### The screens light the street (`web/neon.js`)
 
