@@ -348,14 +348,14 @@
  "lake_ids": "lakes.png",
  "optics": {
   "K": [
-   0.55,
-   0.2,
-   0.24
+   0.6,
+   0.24,
+   0.28
   ],
   "Rinf": [
-   0.006,
-   0.03,
-   0.036
+   0.004,
+   0.02,
+   0.026
   ],
   "g": 2.2,
   "src": "provisional: a deep, clear fiord under a thin tannin-stained freshwater layer reads dark green-blue from the deck; no open in-water optics for Milford Sound were found, so these are set by eye against photographs of the fiord on a clear day"
@@ -744,6 +744,42 @@
    "src": "nominal",
    "x": 3365,
    "y": -4055
+  },
+  {
+   "id": "four-sisters",
+   "name": "Four Sisters",
+   "kind": "waterfall",
+   "lonlat": [
+    167.86302,
+    -44.62312
+   ],
+   "src": "osm",
+   "x": -554,
+   "y": -1458
+  },
+  {
+   "id": "wairereata-falls",
+   "name": "Wairereata Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.90968,
+    -44.59141
+   ],
+   "src": "osm",
+   "x": 3151,
+   "y": 2065
+  },
+  {
+   "id": "camp-oven-falls",
+   "name": "Camp Oven Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.88597,
+    -44.68582
+   ],
+   "src": "osm",
+   "x": 1266,
+   "y": -8426
   }
  ],
  "spawn": {
@@ -788,19 +824,7 @@
   "nav_cell": 60
  },
  "region": "Piopiotahi \u00b7 Fiordland \u00b7 Aotearoa New Zealand",
- "clouds": {
-  "field": {
-   "base_m": 1950,
-   "count": 80,
-   "radius_m": 34000,
-   "wind_deg": 250,
-   "wind_ms": 7,
-   "caps": [],
-   "amount": 0.55,
-   "note": "a fine summer day: fair-weather cumulus at about 1,950 m, drifting in on the westerly; the level is a judgement from photographs of the fiord (cloud a little over Mitre Peak's 1,683 m summit)"
-  }
- },
- "wind": 0.3,
+ "wind": 0.38,
  "falls": [
   {
    "id": "stirling-falls",
@@ -826,6 +850,27 @@
    "poi": "fairy-falls",
    "width_m": 6,
    "flow": 0.5
+  },
+  {
+   "id": "four-sisters",
+   "name": "Four Sisters",
+   "poi": "four-sisters",
+   "width_m": 5,
+   "flow": 0.4
+  },
+  {
+   "id": "wairereata-falls",
+   "name": "Wairereata Falls",
+   "poi": "wairereata-falls",
+   "width_m": 7,
+   "flow": 0.6
+  },
+  {
+   "id": "camp-oven-falls",
+   "name": "Camp Oven Falls",
+   "poi": "camp-oven-falls",
+   "width_m": 6,
+   "flow": 0.5
   }
  ],
  "birds": {
@@ -837,6 +882,29 @@
    "freshwater-basin"
   ],
   "note": "tar\u0101punga (red-billed gulls) and karoro (southern black-backed gulls) follow the boats and work the fall's foot"
+ },
+ "mist": {
+  "wisps": 22,
+  "top_m": 600,
+  "opacity": 0.2,
+  "note": "bands of cloud on the walls, 90 to 840 m up: the fiord's wet air on a fine day"
+ },
+ "grade": {
+  "contrast": 1.06,
+  "sat": 1.0,
+  "note": "a touch more contrast than the lakes' print"
+ },
+ "clouds": {
+  "field": {
+   "base_m": 1950,
+   "count": 80,
+   "radius_m": 34000,
+   "wind_deg": 250,
+   "wind_ms": 7,
+   "caps": [],
+   "amount": 0.55,
+   "note": "a fine summer day: fair-weather cumulus at about 1,950 m, drifting in on the westerly; the level is a judgement from photographs of the fiord (cloud a little over Mitre Peak's 1,683 m summit)"
+  }
  },
  "flora": {
   "lupins": [

@@ -421,6 +421,36 @@
     -4055
    ],
    "src": "nominal"
+  },
+  {
+   "id": "four-sisters",
+   "name": "Four Sisters",
+   "kind": "waterfall",
+   "lonlat": [
+    167.86302,
+    -44.62312
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "wairereata-falls",
+   "name": "Wairereata Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.90968,
+    -44.59141
+   ],
+   "src": "osm"
+  },
+  {
+   "id": "camp-oven-falls",
+   "name": "Camp Oven Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.88597,
+    -44.68582
+   ],
+   "src": "osm"
   }
  ],
  "start": {
@@ -433,14 +463,14 @@
  "biome": "fiordland",
  "optics": {
   "K": [
-   0.55,
-   0.2,
-   0.24
+   0.6,
+   0.24,
+   0.28
   ],
   "Rinf": [
-   0.006,
-   0.03,
-   0.036
+   0.004,
+   0.02,
+   0.026
   ],
   "g": 2.2,
   "src": "provisional: a deep, clear fiord under a thin tannin-stained freshwater layer reads dark green-blue from the deck; no open in-water optics for Milford Sound were found, so these are set by eye against photographs of the fiord on a clear day"
@@ -457,7 +487,7 @@
    "note": "a fine summer day: fair-weather cumulus at about 1,950 m, drifting in on the westerly; the level is a judgement from photographs of the fiord (cloud a little over Mitre Peak's 1,683 m summit)"
   }
  },
- "wind": 0.3,
+ "wind": 0.38,
  "poi_sources": {
   "osm": "OpenStreetMap contributors (ODbL), read through Overture Maps 2026-10-21.0 base theme; peak heights from the NZ Topo50 map (LINZ, CC BY 4.0)",
   "nominal": "chosen for the viewer: points on the cruise's line, in open water"
@@ -520,6 +550,27 @@
    "poi": "fairy-falls",
    "width_m": 6,
    "flow": 0.5
+  },
+  {
+   "id": "four-sisters",
+   "name": "Four Sisters",
+   "poi": "four-sisters",
+   "width_m": 5,
+   "flow": 0.4
+  },
+  {
+   "id": "wairereata-falls",
+   "name": "Wairereata Falls",
+   "poi": "wairereata-falls",
+   "width_m": 7,
+   "flow": 0.6
+  },
+  {
+   "id": "camp-oven-falls",
+   "name": "Camp Oven Falls",
+   "poi": "camp-oven-falls",
+   "width_m": 6,
+   "flow": 0.5
   }
  ],
  "birds": {
@@ -573,10 +624,10 @@
    "x": 0,
    "y": 0,
    "z": 20,
-   "fov": 45,
+   "fov": 30,
    "time": "2026-01-15T01:00:00Z",
    "mods": "boats,alpine/fiord",
-   "query": "boatcam=Piopiotahi&warm=30&bd=190&baz=250&bel=1&bh=30",
+   "query": "boatcam=Piopiotahi&warm=30&bd=340&baz=265&bel=0.5&bh=50",
    "note": "the ship under the north wall with Stirling Falls beyond: the brief's picture, on a fine day"
   },
   {
@@ -723,5 +774,16 @@
    "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/southland/southland_2023_0.25m/rgb/2193/",
    "src": "Toitū Te Whenua LINZ, Southland 0.25m Rural Aerial Photos (2023), CC BY 4.0"
   }
- ]
+ ],
+ "mist": {
+  "wisps": 22,
+  "top_m": 600,
+  "opacity": 0.2,
+  "note": "bands of cloud on the walls, 90 to 840 m up: the fiord's wet air on a fine day"
+ },
+ "grade": {
+  "contrast": 1.06,
+  "sat": 1.0,
+  "note": "a touch more contrast than the lakes' print"
+ }
 }

@@ -12,11 +12,13 @@
 | ![](../images/milford-sound/postcard.jpg) | ![](../images/milford-sound/stirling.jpg) |
 | **The village, the airstrip and Lady Bowen Falls** | **On the phone** |
 | ![](../images/milford-sound/village.jpg) | ![](../images/milford-sound/phone.jpg) |
+| **Off her bow** | **Over her quarter** |
+| ![](../images/milford-sound/ship-close.jpg) | ![](../images/milford-sound/ship-deck.jpg) |
 
 ## 1. Which water, and why
 
 The brief was a real ship in a real seascape under towering walls, on a fine day: blue sky, white cloud, birds and
-flowers. Milford Sound is the place on Earth that picture describes. Mitre Peak rises 1,683 m from the sea in about
+flowers. Milford Sound is the place on Earth that picture describes. Mitre Peak rises about 1,690 m from the sea in about
 2 km, the walls are clad in rainforest to the bush line, two falls of 150 m and more run all year, and New Zealand
 publishes the terrain and the imagery openly. It is also next door to the project's other alpine sites, so it runs on
 the same viewer (`web/reef/`, site kind `alpine`) and the same pipeline, each extended here for a fiord.
@@ -70,8 +72,11 @@ python blender/build_ship.py                              # the ship (needs pip 
   pixels on a wall that stands near the vertical. Bush is drawn as a canopy of domed crowns about 9 m across, in the
   wall's own space so a crown is round on a cliff, each lit on its sunward side with dark gaps between, breaking into
   boughs near the eye; southern rātā flowers crimson through the canopy below 700 m from December to February. Where
-  the wall passes 47 to 69° the bush gives way in patches to rock: beds dipping across the face, flutes worn down it,
-  dark seeps, joints, moss, and bush again on the ledges.
+  the wall passes 47 to 69° the bush gives way in broad patches to rock: pale gneiss and granite, lit in vertical
+  ribs, with soft flutes down the face and bush on the widest shelves. The rock is kept clean on purpose: fine
+  mottling, moss blotches, drawn joints and strata lines were all tried and all read as dirt, and came out.
+- **Mist** (`alpine/fiord.js`, `mist`): a few white bands on the walls, seen across the fiord from the water; they
+  thin to nothing as the eye comes near or rises above them.
 - **The sky** (`alpine/clouds.js`, `clouds.field`). Fair-weather cumulus at one condensation level over 68 km, each
   cloud a heap of soft puffs with a flat base, shaded as one body (white on its sunward side and top, blue-grey
   beneath, a bright rim against the sun), drifting on the westerly and coming round again. One mesh, one draw call,
@@ -100,8 +105,8 @@ Point to the Tasman Sea, back under the north wall to Stirling Falls, Harrison C
 is planned over the model's own depths (`boats/nav.js`). She rides the same wave field the sea is drawn from, leaves
 a wake in it, turns her radar, flies her ensign, and shows her lights at dusk.
 
-The site opens aboard her (`spawn.aboard`): <kbd>V</kbd> changes the view (off the quarter, wide off the beam, at
-the foredeck rail, from above), dragging looks round, <kbd>F</kbd> puts you ashore on the foreshore walk.
+The site opens aboard her (`spawn.aboard`): <kbd>V</kbd> changes the view (a long lens off her seaward beam with the wall behind her, off the bow, off the quarter,
+wide off the beam, at the foredeck rail, from above), dragging looks round, <kbd>F</kbd> puts you ashore on the foreshore walk.
 
 ## 6. What is not real, and what was not checked
 

@@ -277,7 +277,7 @@ async function main() {
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight)); renderer.setSize(innerWidth, innerHeight); });
 
-  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom });
+  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom, grade: S.grade || null });
 
   // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
   const ctx = { THREE, tier, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes,

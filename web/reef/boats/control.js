@@ -106,13 +106,17 @@ export function createControl(ctx, api) {
     return ctl;
   }
 
-  // ---- the ship: you ride her as a passenger while she keeps her course. V changes the view: off her bow, off her quarter, wide
+  // ---- the ship: you ride her as a passenger while she keeps her course. V changes the view: a long lens, off her bow, off her quarter, wide
   // off her beam (the ship small under the walls), from the foredeck rail, from high astern ----
   function rideShip(v, player) {
     const L = v.desc.L, sp = v.desc.spec || {};
-    const VIEWS = [{ n: 'off the bow', d: L * 2.6, up: 2.5, yaw: -2.0, look: L * 0.42, low: true }, { n: 'off the quarter', d: L * 1.9, up: L * 0.12, yaw: 0.6, look: L * 0.14 }, { n: 'off the beam', d: L * 4.6, up: 2, yaw: 1.45, look: L * 0.5, low: true },
+    // (the first is the long lens from far off her seaward beam: the ship small, the wall behind her filling the frame)
+    const VIEWS = [{ n: 'a long lens off the beam', d: L * 8.5, up: 2.2, look: L * 1.25, low: true, fov: 30, wall: true }, { n: 'off the bow', d: L * 2.6, up: 2.5, yaw: -2.0, look: L * 0.42, low: true }, { n: 'off the quarter', d: L * 1.9, up: L * 0.12, yaw: 0.6, look: L * 0.14 }, { n: 'off the beam', d: L * 4.6, up: 2, yaw: 1.45, look: L * 0.5, low: true },
       { n: 'at the rail', deck: true }, { n: 'from above', d: L * 3.2, up: L * 1.6, yaw: 3.0, look: 2 }];
-    let vi = 0;
+    let vi = 0, wallSide = 0, wallT = 0;
+    const fov0 = camera.fov, setFov = f => { if (camera.fov !== f) { camera.fov = f; camera.updateProjectionMatrix(); } };
+    // which beam the nearer wall is on (+1 starboard): the eye goes to the other one
+    const nearWall = () => { const sx = Math.cos(v.hdg), sn = -Math.sin(v.hdg); for (let r = 150; r < 2400; r += 150) { const a = ctx.height(v.x + sx * r, -v.z + sn * r) > 40, b = ctx.height(v.x - sx * r, -v.z - sn * r) > 40; if (a !== b) return a ? 1 : -1; if (a && b) break; } return wallSide || 1; };
     // the foredeck spot of the model's passenger_spots (the one furthest forward), at eye height
     const fd = (sp.passenger_spots || []).slice().sort((a, b) => b[2] - a[2])[0] || null;
     const rail = fd && v.desc.toVessel ? v.desc.toVessel([fd[0], fd[1] + (sp.eye_height_m ?? 1.65), fd[2]]) : [L * 0.3, 5.2, 0];
@@ -122,13 +126,16 @@ export function createControl(ctx, api) {
       key(code) { if (code === 'KeyV') { vi = (vi + 1) % VIEWS.length; st.camInit = false; st.orbit.yaw = 0; st.orbit.pitch = 0; } },
       update(dt) {
         const W = VIEWS[vi];
+        setFov(W.fov || fov0);
         if (W.deck) {
           // standing at the rail: the ship's own motion carries the eye; drag to look round
           v.root.updateMatrixWorld();
           camera.position.copy(_p.set(rail[0], rail[1], rail[2]).applyMatrix4(v.root.matrixWorld));
           camera.quaternion.setFromEuler(_e.set(-st.orbit.pitch * 0.8 + 0.02, -v.hdg + st.orbit.yaw, 0));
         } else {
-          const h = v.hdg + W.yaw + st.orbit.yaw, el = (W.low ? 0.03 : 0.2) + st.orbit.pitch * 0.5;
+          if (W.wall && ((wallT -= dt) <= 0 || !wallSide)) { wallT = 4; wallSide = nearWall(); }
+          // (the eye stands behind `h`: with the wall to starboard it stands off the port beam, looking across her at it)
+          const h = v.hdg + (W.wall ? wallSide * 1.45 : W.yaw) + st.orbit.yaw, el = (W.low ? 0.03 : 0.2) + st.orbit.pitch * 0.5;
           const goal = _p.set(v.x - Math.sin(h) * W.d * Math.cos(el), v.y + W.up + W.d * Math.sin(el), v.z + Math.cos(h) * W.d * Math.cos(el));
           goal.y = Math.max(goal.y, surf.heightAt(goal.x, goal.z, undefined, 3) + 1.4, ctx.height(goal.x, -goal.z) + 2);
           if (!st.camInit) { st.cam.copy(goal); st.camInit = true; }
@@ -140,6 +147,7 @@ export function createControl(ctx, api) {
         if (hud) hud.style.bottom = '104px';      // clear of the walker's key list, which stays up
       }
     };
+    ctl.onEnd = () => setFov(fov0);
     begin(v, ctl, '', player);
     return ctl;
   }

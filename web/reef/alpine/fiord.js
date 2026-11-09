@@ -153,6 +153,59 @@ export async function init(ctx) {
   }
   if (q.get('falls') !== '0') for (const F of S.falls || []) { const f = buildFall(F); if (f) falls.push(f); }
 
+  // ------------------------------------------------------------------ the mist on the walls
+  // Milford's air is wet even on a fine day: bands of cloud hang on the walls a few hundred metres up, where the bush
+  // breathes out into the cool of a gully. They are what gives the walls their size: a band in front of a face, the
+  // face going on above it. Each is a long soft sheet standing upright and turned to the eye about the vertical,
+  // set against a wall found by walking from the water toward the land until the ground reaches the band's height.
+  const M = S.mist;
+  if (M && q.get('mist') !== '0') {
+    const t0 = S.terrain, N = M.wisps ?? 56, wisps = [];
+    for (let i = 0, tries = 0; wisps.length < N && tries < N * 40; tries++, i++) {
+      const x = t0.x0 + (0.12 + 0.76 * hash(i, 31)) * t0.w * t0.cell_m, n = t0.y1 - (0.12 + 0.76 * hash(i, 32)) * t0.h * t0.cell_m;
+      if (ctx.depth(x, n) < 20) continue;
+      const a = hash(i, 33) * 6.283, alt = 90 + hash(i, 34) ** 1.5 * (M.top_m ?? 750);
+      for (let r = 60; r < 1500; r += 60) {
+        const px = x + Math.cos(a) * r, pn = n + Math.sin(a) * r;
+        if (ctx.height(px, pn) >= alt) { wisps.push({ x: px - Math.cos(a) * 90, n: pn - Math.sin(a) * 90, y: alt, w: 320 + hash(i, 35) * 620, h: 45 + hash(i, 36) * 110, s: hash(i, 37) * 50 }); break; }
+      }
+    }
+    const pos = [], uvs = [], aC = [], aS = [], idx = [];
+    wisps.forEach((w, i) => {
+      for (const [cx, cy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { pos.push(cx, cy, 0); uvs.push(cx, cy); aC.push(w.x, w.y, -w.n); aS.push(w.w, w.h, w.s); }
+      const o = i * 4; idx.push(o, o + 1, o + 2, o, o + 2, o + 3);
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setAttribute('aC', new THREE.Float32BufferAttribute(aC, 3)); geo.setAttribute('aS', new THREE.Float32BufferAttribute(aS, 3)); geo.setIndex(idx);
+    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const C = attribute('aC', 'vec3'), Sz = attribute('aS', 'vec3');
+    mat.positionNode = Fn(() => {
+      const p = attribute('position', 'vec3');
+      // upright, turned about the vertical to face the eye
+      const to = normalize(vec3(cameraPosition.x.sub(C.x), 0, cameraPosition.z.sub(C.z))), side = vec3(to.z, 0, to.x.negate());
+      return C.add(side.mul(p.x.mul(Sz.x))).add(vec3(0, 1, 0).mul(p.y.mul(Sz.y)));
+    })();
+    // (white: a band stands out from the wall into the sun, whatever shade the rock behind it is in)
+    mat.colorNode = Fn(() => vec3(light.u.sunE).mul(0.8).add(vec3(light.u.skyE)).mul(1.05 / Math.PI))();
+    mat.opacityNode = Fn(() => {
+      const p = uv();
+      const drift = time.mul(0.012);
+      const n1 = mx_noise_float(vec3(p.x.mul(2.2).add(drift), p.y.mul(1.4), Sz.z)), n2 = mx_noise_float(vec3(p.x.mul(6).add(drift.mul(1.7)), p.y.mul(3.5), Sz.z.add(9)));
+      // (both fall to nothing inside the sheet's own edge, whatever the noise does: a sheet never shows its outline)
+      const band = float(1).sub(smoothstep(0.05, 0.95, abs(p.y.add(n1.mul(0.4))))).pow(1.6).mul(float(1).sub(smoothstep(0.7, 0.98, abs(p.y))));
+      const ends = float(1).sub(smoothstep(0.4, 0.95, abs(p.x).add(abs(n1).mul(0.2))));
+      const body = band.mul(ends).mul(smoothstep(-0.5, 0.3, n1.add(n2.mul(0.5))));
+      const d = length(positionWorld.sub(cameraPosition));
+      // a band is a thing seen from the water, across the fiord: it thins as the eye comes within a few of its own
+      // widths, and as the eye rises above it (a sheet seen from over its top edge is a line)
+      const rise = abs(cameraPosition.y.sub(C.y)).div(length(vec2(cameraPosition.x.sub(C.x), cameraPosition.z.sub(C.z))).max(1));
+      return body.mul(M.opacity ?? 0.42).mul(smoothstep(Sz.x.mul(1.2), Sz.x.mul(3.2), d)).mul(float(1).sub(smoothstep(0.12, 0.3, rise))).mul(smoothstep(0.02, 0.15, vec3(light.u.sunDir).y).mul(0.6).add(0.4));
+    })();
+    const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; mesh.renderOrder = 4; mesh.name = 'mist';
+    group.add(mesh);
+  }
+
   // ------------------------------------------------------------------ the gulls
   const gulls = [];
   const B = S.birds;
