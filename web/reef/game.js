@@ -7,7 +7,7 @@
 // the model while you play (depths, distances, the light left at your depth, the sun, the wind) or carries a cited
 // source (game/sources.js); the source shows under the line and the journal keeps it with the note.
 //
-// Keys: E talk / board / fly (the player's use key; F steps off a boat), 1-4 answer, J journal, T reef sites, K time of day,
+// Keys: E talk / board / fly (the player's use key; F steps off a boat), 1-4 answer, J journal, T map and travel, K time of day,
 // Esc close. Touch: the Journal, Map and Time buttons, tap a line to go on, tap an answer.
 // Query: gametest=1 (a scripted run: "[gametest] PASS/FAIL" lines, window.__gametest), gameshot=<scene> (set a scene up
 // for a screenshot, see game/test.js), lifestub=1 (a stand-in ctx.life near the spawn), gamesite=<file> (content from
@@ -17,7 +17,7 @@ import * as THREE from 'three/webgpu';
 import { createUI, esc } from './game/ui.js';
 import { createTravel } from './game/travel.js';
 import { SOURCES, srcLabel } from './game/sources.js';
-import { drawSiteMap } from './game/map.js';
+import { createMapView } from './game/map.js';
 import { waterTemp } from './dive.js';
 
 const RAD = Math.PI / 180;
@@ -524,8 +524,11 @@ export async function init(ctx) {
   G.content = content;
 
   // ------------------------------------------------------------ journal and map panels
+  let mapView = null;                                       // the map panel's map (game/map.js), while it is open
+  const dropMap = () => { if (mapView) { mapView.destroy(); mapView = null; } };
   function openPanel(kind) {
     if (D) closeDialogue();
+    dropMap();
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
     if (kind === 'journal') { unread = 0; ui.badge(0); ui.panel('journal', 'Journal', `${S.name || ctx.site} · ${G.clock()}`, journalHtml()); }
     else if (kind === 'time') {
@@ -537,15 +540,13 @@ export async function init(ctx) {
       }
     }
     else {
-      ui.panel('map', 'Map', `${S.name || ctx.site} · ${G.clock()}`, mapHtml());
-      const cv = ui.el.querySelector('.rg-map canvas');
-      if (cv) { const dpr = Math.min(devicePixelRatio || 1, 1.5), w = Math.round((cv.clientWidth || 300) * dpr); cv.width = cv.height = w; try { drawSiteMap(cv, G, mapMarks(), Object.assign(here(), { heading: heading() })); } catch (e) { console.warn('game: map', e); } }
-      const fill = l => { const ul = ui.el.querySelector('.rg-sites'); if (ul) ul.innerHTML = sitesHtml(l); };
-      fill(travel.list); travel.load().then(l => { if (ui.panelKind === 'map') fill(l); });
+      ui.panel('map', 'Map', `${S.name || ctx.site} · ${G.clock()}`, '');
+      mapView = createMapView({ host: ui.el.querySelector('.rg-panel .body'), G, travel, site: { id: ctx.site, name: S.name || ctx.site }, places: mapPlaces, marks: mapMarks,
+        me: () => Object.assign(here(), { heading: heading() }), go: goTo, travelTo: id => panelAct('travel', id), touch: matchMedia('(pointer: coarse)').matches });
     }
     freeze(true);
   }
-  function closePanel() { ui.panel(null); freeze(!!D); }
+  function closePanel() { dropMap(); ui.panel(null); freeze(!!D); }
   function togglePanel(kind) { if (ui.panelKind === kind) closePanel(); else openPanel(kind); }
   function toGlobe() { save(); location.href = travel.globeHref(); }
   function panelAct(act, arg) {
@@ -624,34 +625,18 @@ export async function init(ctx) {
   // the people, signs, aircraft and tracked target on the site map
   function mapMarks() {
     const out = [];                                         // drawn in this order: aircraft and signs under the people
-    for (const v of boats ? boats.vessels : []) if ((v.kind === 'helicopter' || v.kind === 'seaplane') && v.mode !== 'orbit') out.push({ x: v.x, north: -v.z, glyph: v.kind === 'helicopter' ? 'H' : 'S', color: '#d9cfae', fit: false });
+    for (const v of boats ? boats.vessels : []) if ((v.kind === 'helicopter' || v.kind === 'seaplane') && v.mode !== 'orbit') out.push({ x: v.x, north: -v.z, glyph: v.kind === 'helicopter' ? 'H' : 'S', craft: true, fit: false });
     for (const sg of SIGNS.values()) out.push({ x: sg.x, north: sg.north, kind: 'sign', done: !!st.signs[sg.def.id], fit: false });
     for (const r of NPCS.values()) if (!r.hidden && r.it) { const p = r.npc.group.position; out.push({ x: p.x, north: -p.z, label: r.def.name, glyph: r.def.name[0] }); }
     const id = st.track && isActive(st.track) ? st.track : null, step = id && stepOf(id), tgt = step && step.target ? resolveTarget(step.target, qs(id).d) : null;
     if (tgt) out.push({ x: tgt.x, north: tgt.north, kind: 'target', label: tgt.name || '' });
     return out;
   }
-  function sitesHtml(list) {
-    if (!list) return '<li class="empty">Loading the list of sites…</li>';
-    return list.map(s => `<li class="${s.current ? 'track' : ''}"><div class="row"><b>${esc(s.name)}</b>${s.km !== null && !s.current ? `<span class="tag">${Math.round(s.km)} km ${dirShort(s.bearing)}</span>` : ''}
-      ${s.current ? '<span class="tag here">You are here</span>' : s.ready ? `<button class="act" data-act="travel" data-arg="${esc(s.id)}">Travel</button>` : '<button class="act" disabled>Being built</button>'}</div>
-      ${s.summary ? `<p>${esc(s.summary)}</p>` : ''}</li>`).join('') || '<li class="empty">No reef sites listed.</li>';
-  }
-  function mapHtml() {
-    return `<div class="rg-map"><div><h3>${esc(S.name || ctx.site)} at this tide</h3><canvas width="300" height="300" aria-label="Map of the site"></canvas>
-      <small class="legend"><i class="me">▲</i> you <i class="np">●</i> people <i class="sg">■</i> signs <i class="tg">◆</i> objective</small></div>
-      <div><h3>Queensland reef sites</h3><ul class="rg-sites">${sitesHtml(travel.list)}</ul>
-      <div class="foot"><span>More reef sites appear here as their data is built. Fly the seaplane or the helicopter off the edge of the model to go to the nearest one.</span><button class="act" data-act="globe">Back to the globe</button></div>
-      <h3>Go to a named place</h3><ul class="rg-near">${nearHtml()}</ul></div></div>`;
-  }
-  // the named places (OpenStreetMap names in scene.json), nearest first, with distance and bearing from you and a
-  // Go button: a boat run there in a fade, any time you are not aboard something
+  // the named places (OpenStreetMap names in scene.json) the map offers as travel points: a boat run there in a fade,
+  // any time you are not aboard something
   const PLACE_KINDS = /^(beach|bay|inlet|lookout|island|peak|marina|reef|pontoon|town|cultural|dive)$/;
-  function nearHtml() {
-    const a = here();
-    return (S.pois || []).map(p => poi(p.id)).filter(p => p && PLACE_KINDS.test(p.kind)).map(p => ({ p, d: dist(a, p) })).sort((x, y) => x.d - y.d).slice(0, 10)
-      .map(({ p, d }) => `<li><div class="row"><span>${esc(p.name)}</span><span class="tag">${esc(km(d))} ${dirShort(bearing(a, p))}</span>${d > 60 ? `<button class="act" data-act="goto" data-arg="${esc(p.id)}">Go</button>` : ''}</div></li>`).join('');
-  }
+  let placeList = null;
+  const mapPlaces = () => placeList || (placeList = (S.pois || []).map(p => poi(p.id)).filter(p => p && PLACE_KINDS.test(p.kind)));
   // where a place puts you: in the water over a reef, dive site or pontoon deep enough to swim in, else on dry
   // ground (above the tide, gentle enough to stand on) nearest it, facing it
   function goTo(id) {
@@ -679,6 +664,7 @@ export async function init(ctx) {
     if (c === 'KeyJ' && !e.repeat) togglePanel('journal');
     else if (c === 'KeyT' && !e.repeat) togglePanel('map');
     else if (c === 'KeyK' && !e.repeat) togglePanel('time');
+    else if ((c === 'Enter' || c === 'NumpadEnter') && mapView && !e.repeat) mapView.confirm();
   });
 
   // ------------------------------------------------------------ objective line, compass marker, floating marker
@@ -785,8 +771,8 @@ export async function init(ctx) {
     { id: 'journal', title: 'Your journal', target: '.rg-btns .bj',
       text: '<kbd>J</kbd>: your quests, what you have learnt and where every fact comes from.', touch: '<b>Journal</b>: your quests, what you have learnt and where every fact comes from.' },
     { id: 'map', title: 'The map and travel', target: '.rg-btns .bm',
-      text: '<kbd>T</kbd>: the places here, with <b>Go</b> to take a short boat run to one, and the other reef sites, with <b>Travel</b> to go there.',
-      touch: '<b>Map</b>: the places here, with <b>Go</b> to take a short boat run to one, and the other reef sites, with <b>Travel</b> to go there.' },
+      text: '<kbd>T</kbd> opens the map. Pick a place on it and <b>Travel here</b> takes you there by a short boat run; <b>All sites</b> shows every other site to travel to.',
+      touch: '<b>Map</b>: pick a place on it and <b>Travel here</b> takes you there by a short boat run; <b>All sites</b> shows every other site to travel to.' },
     { id: 'time', title: 'Time and tide', target: '.rg-btns .bk',
       text: '<kbd>K</kbd> sets the time of day: the sun, the moon and the predicted tide follow it. <b>Show the intro again</b> is in the journal.',
       touch: '<b>Time</b> sets the time of day: the sun, the moon and the predicted tide follow it. <b>Show the intro again</b> is in the journal.' },
@@ -860,7 +846,7 @@ export async function init(ctx) {
   // first objective, the site list in the background
   refreshObjective(true);
   travel.load();
-  const api = Object.defineProperties(api0, Object.getOwnPropertyDescriptors({ update, G, ui, travel, rider, board, surv, light, get aboard() { return aboard; }, get state() { return st; } })); // (getters kept live)
+  const api = Object.defineProperties(api0, Object.getOwnPropertyDescriptors({ update, G, ui, travel, rider, board, surv, light, get aboard() { return aboard; }, get mapView() { return mapView; }, get state() { return st; } })); // (getters kept live)
   window.__game = api;
   if (q.get('gametest') === '1' || q.get('gameshot')) {
     const T = await import('./game/test.js');
