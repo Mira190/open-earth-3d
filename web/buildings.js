@@ -473,9 +473,10 @@ window.OEBuildings = (function () {
     // an awning over a shopfront: a slab 2.6 m deep under the first floor
     function awning(ring, k, g0, bi) {
       const P = BI[bi], n = ring.length / 2, j = (k + 1) % n;
+      if (!(k < n)) return; // (a front past its ring's end, from data packed before its ring changed: NaN corners hung the build)
       const ax = ring[2 * k], ay = ring[2 * k + 1], bx = ring[2 * j], by = ring[2 * j + 1];
       const l = Math.hypot(bx - ax, by - ay);
-      if (l < 3) return;
+      if (!(l >= 3)) return;
       const ux = (bx - ax) / l, uy = (by - ay) / l, nx = uy, ny = -ux;
       const depth = 2.4 + 0.5 * P.u, z0 = g0 + Math.min(P.ground, 4.6) - 0.55, z1 = z0 + 0.28;
       const e0 = 0.25, e1 = l - 0.25;

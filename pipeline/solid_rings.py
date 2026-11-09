@@ -84,11 +84,42 @@ def valid_rings(rings):
     return [_flat(q.exterior.coords)] if q is not None and q.area >= 1 and Polygon(q.exterior).is_valid else None
 
 
+def _edges(r):
+    p = _pts(r)
+    return [(p[k], p[(k + 1) % len(p)]) for k in range(len(p))]
+
+
+def remap_edges(old, new, ks):
+    """The edges of the outer ring `new` that stand where the edges `ks` of `old` stood: each to the edge of the same
+    direction whose midpoint is nearest, within a metre (10 dm), else None. A shopfront row (buildings.json "f") names
+    the edges of its solid's outer ring by index, and the browser reads them from the ring it is given."""
+    oe, ne = _edges(old), _edges(new)
+    out = []
+    for k in ks:
+        if k >= len(oe):
+            out.append(None)
+            continue
+        (ax, ay), (bx, by) = oe[k]
+        mx, my, dx, dy = (ax + bx) / 2, (ay + by) / 2, bx - ax, by - ay
+        best, bd = None, 10.0
+        for j, ((cx, cy), (ex, ey)) in enumerate(ne):
+            fx, fy = ex - cx, ey - cy
+            if dx * fx + dy * fy <= 0.9 * (dx * dx + dy * dy) ** 0.5 * (fx * fx + fy * fy) ** 0.5:
+                continue
+            d = ((cx + ex) / 2 - mx) ** 2 + ((cy + ey) / 2 - my) ** 2
+            d = d ** 0.5
+            if d < bd:
+                best, bd = j, d
+        out.append(best)
+    return out
+
+
 def repair(city):
     path = os.path.join(ROOT, "web", "data", city, "buildings.json")
     B = json.load(open(path, encoding="utf8"))
     fixed = lost = 0
-    for s in B["s"]:
+    fronts = {f[0]: f for f in B.get("f", [])}
+    for si, s in enumerate(B["s"]):
         rings = s[4:]
         out = valid_rings(rings)
         if out is None:
@@ -96,8 +127,19 @@ def repair(city):
             lost += 1
             continue
         if out != rings:
+            f = fronts.get(si)
+            if f is not None and out[0] != rings[0]:
+                ks, fl = f[1::2], f[2::2]
+                to = remap_edges(rings[0], out[0], ks)
+                kept = {}
+                for k, v in zip(to, fl):
+                    if k is not None:
+                        kept[k] = kept.get(k, 0) | v
+                f[1:] = [x for k in sorted(kept) for x in (k, kept[k])]
             s[4:] = out
             fixed += 1
+    if "f" in B:
+        B["f"] = [f for f in B["f"] if len(f) > 1]
     if fixed:
         json.dump(B, open(path, "w", encoding="utf8"), separators=(",", ":"))
     print(f"{city}: {fixed} of {len(B['s'])} solids made valid, {lost} left as they were (nothing left of them)")
@@ -107,6 +149,7 @@ def repair(city):
 def check(city):
     B = json.load(open(os.path.join(ROOT, "web", "data", city, "buildings.json"), encoding="utf8"))
     bad = [i for i, s in enumerate(B["s"]) if valid_rings(s[4:]) != s[4:]]
+    bad += [f[0] for f in B.get("f", []) if any(k >= len(B["s"][f[0]][4]) // 2 for k in f[1::2])]  # (a front past its ring's end)
     print(f"{'FAIL' if bad else 'ok  '} {city}: {len(bad)} of {len(B['s'])} solids not valid on their grid"
           + (f" (first {bad[:5]}; python pipeline/solid_rings.py {city}, then pipeline/pack.py)" if bad else ""))
     return not bad
