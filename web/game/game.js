@@ -1252,7 +1252,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       } else if (o.joinT > 16) { pilotOff('The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.'); return null; }
       else { const lead = leadOf(st, 5); return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5); }
     }
-    const c = driverStep(o, dt);
+    driverStep(o, dt);
+    const c = o.drv.st; // (the driver's state now: a turn in the road that has just ended has a new driver)
     // (a turn in the road, or backing out of a one-way street, held half a minute by what stands in its way: the car
     // is handed back where it is, rather than taken on from another place as a ride out of your sight is)
     if (o.turn && o.turn.held > 30) { pilotOff('The autopilot can\'t get round here. You have the wheel.'); return null; }
@@ -4408,7 +4409,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   });
   on(bigCanvas, 'dblclick', e => { if (dragged) return; const h = mapHit(e); if (h && bigChips.some(c => h.cx >= c[0] && h.cx <= c[2] && h.cy >= c[1] && h.cy <= c[3])) return; const f = scene.frame; if (h && !h.pin && (h.at[0] < f.x[0] || h.at[0] > f.x[1] || h.at[1] < f.y[0] || h.at[1] > f.y[1])) return; if (h) travelTo(h.pin ? h.pin.d : { kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint || h.at }); });
   on($('#g-mappop-go'), 'click', () => { if (picked) travelTo(picked); });
-  on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast(routeMode === 'on' ? 'Waypoint set. Follow the gold route there.' : 'Waypoint set. Its route is on the minimap; <kbd>L</kbd> shows it in the world.'); });
+  on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast(player.mode === 'car' && !pilot ? 'Waypoint set. <kbd>J</kbd>: the autopilot drives you there.' : routeMode === 'on' ? 'Waypoint set. Follow the gold route there.' : 'Waypoint set. Its route is on the minimap; <kbd>L</kbd> shows it in the world.'); });
   on($('#g-travel'), 'click', e => { const b = e.target.closest('button[data-k]'); if (b && travelList[+b.dataset.k]) travelTo(travelList[+b.dataset.k]); });
   $('#g-bigmap header .note').textContent = touch ? 'Tap a place to travel there · pinch to zoom' : 'Pick a place to travel there · double-click to go at once · scroll to zoom, drag to pan';
   on($('#g-map-btn'), 'click', toggleMap);
@@ -5008,7 +5009,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // the weather as drivers meet it (cars.js setWeather): the traffic, the rides and your own tyres read it from there;
     // headlamps on by day in rain, snow or fog
-    (U.uLamps || (U.uLamps = { value: 0 })).value = OECars.setWeather(weather ? weather.state : null).lamps;
+    (U.uLamps || (U.uLamps = { value: 0 })).value = OECars.setWeather(weather ? (window.OEWeather && OEWeather.S) || weather.state : null).lamps; // (the weather's one state, weather.js S: grip, wet, visibility)
     cars.update(dt, cx, cy, clockT, blockers);
     // on a wet road the cars near you throw up spray behind their wheels (cars.js sprayStep: nothing made until it first rains)
     if (OECars.weather.spray >= 0.25 || OECars.sprayState()) {

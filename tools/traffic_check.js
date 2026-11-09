@@ -11,6 +11,7 @@
 // (WAITS_JSON=file appends a line of the figures for each city, WAITS_LABEL=before names them).
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/traffic_check.js sydney [seconds per place] [places]
+//   GAME_TIME=08:00 CLOCK_HOLD=1 ... sydney 1800 1    (a soak: half an hour at that hour, the clock held there; tools/traffic_soak.sh)
 const { chromium } = require('playwright');
 const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
 // the mean and the 95th percentile of a list of waits (s), and how many
@@ -31,7 +32,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
     const play = await p.$('#gt-play');
     if (play) await play.click().catch(() => {});
-    const r = await p.evaluate(([T, site]) => {
+    const r = await p.evaluate(([T, site, hold]) => {
       window.requestAnimationFrame = () => 0; // the game's frame loop stops: the run steps only here
       const g = window.__game, A = g.cars, C = A.C, L = A.netL;
       if (site > 0) { // a place on the roads, the same each time: the middle of a road piece some way from the start
@@ -43,6 +44,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
           for (const o of [6, -6, 9, -9, 12, -12, 16, -16]) if (!g.roadNet.nearest(l.pts[k] - ey / el * o, l.pts[k + 1] + ex / el * o, 5)) { off = o; break; }
           g.player.x = l.pts[k] - ey / el * off; g.player.y = l.pts[k + 1] + ex / el * off; g.player.z = l.pts[k + 2]; }
       }
+      if (hold) g.clock.scale = 1; // (CLOCK_HOLD=1: the hour held for a long run, a soak at 08:00 stays at 08:00; the game's day runs 30 times faster)
       g.advance(1);
       // the traffic update's cost: the time in A.update per call (a frame's), timed from here
       const upd = A.update; let ut = 0, un = 0;
@@ -133,7 +135,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
       A.update = upd;
       if (A.stats) Object.assign(out, A.stats());
       return out;
-    }, [Number(secs), site]);
+    }, [Number(secs), site, !!process.env.CLOCK_HOLD]);
     await p.close();
     runs.push(r);
     const f = (v, n = 2) => v.toFixed(n);

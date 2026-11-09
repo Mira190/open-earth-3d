@@ -1749,6 +1749,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     // can car c stand at the kerb of line at s, facing dir? (clear of the junctions and crossings, of the other cars
     // by a bumper's room, of people, posts and walls): its pose in tmp if so
     const kerbNo = {}; // (why a place at the kerb was not free, counted: for the checks)
+    let youX = 1e9, youY = 1e9; // (where you are: update)
     function kerbFree(c, line, s, dir) {
       const k = kerbLo(line), l = net.L[line];
       if (!k) return false;
@@ -1759,6 +1760,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       if (JN.shutNow && JN.shutNow(line, dir)) return no('shut');
       lanePos(line, s, dir, tmp, side * k);
       if (JN.inScramble && JN.inScramble(tmp.x, tmp.y)) return no('scramble');
+      if (Math.hypot(tmp.x - youX, tmp.y - youY) < 25) return no('you'); // (not at the kerb where you stand: a taxi you hail pulls in there)
       const z0 = c.z;
       c.z = tmp.z;
       const why = overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 1.1, 0.25) > 0 ? 'car' : peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0 ? (inPosts > 0 ? 'post' : 'person')
@@ -2250,6 +2252,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       }
       JN.update(dt, t);
       const TR = JN.trips && JN.trips(); // (where the traffic is going, trips.js)
+      youX = cx; youY = cy;
       const WXT = (window.OECars && OECars.weather) || DRY; // (the weather as drivers meet it)
       const you = api.extra.find(o => o.id === 'car' && !o.ahead && o.v > 3); // your car on the move (dodged, below)
       for (const b of blockers) if (!b.half) addBlocker(b.x, b.y, b.z, 0.4); // the player on foot and the NPCs (your car and a ride: below)
