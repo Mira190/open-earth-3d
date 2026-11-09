@@ -532,6 +532,9 @@ vec3 scrCell(float cell, vec2 uv) {
 	// the far land takes its own air, not the view's fog (which is whole by 26 km and laid a band of
 	// one tone over the plain from a tower); it closes to the haze only toward its outer edge
 	fogFactor = max( oeFar, smoothstep( ${n(FAR_HALF * 0.6)}, ${n(FAR_HALF * 0.97)}, length( vEdgeXZ - ${c} ) ) );
+	// (in fog, falling snow or heavy rain the view's own fog has come in to a few kilometres or less, game/weather.js:
+	// the far land goes into it as everything else does, and is not left standing as a dark shore beyond the mist)
+	fogFactor = max( fogFactor, smoothstep( fogNear, fogFar, vFogDepth ) * ( 1.0 - smoothstep( 6000.0, 20000.0, fogFar ) ) );
 #endif
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
 #ifdef OE_SEA
