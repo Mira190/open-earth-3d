@@ -926,7 +926,7 @@ Two more scripts build what every city shares, from code, with no stock assets:
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
 - `blender/build_trees.py`: twenty-one tree species grown from points in their
-  crown shapes and a grass, with a leaf atlas it draws itself (4 x 6 cells, each
+  crown shapes and three grasses, with a leaf atlas it draws itself (4 x 7 cells, each
   cell's colours bled within the cell), in three levels of detail, into
   `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
   (`tools/trees_lineup_shot.js`) shows them in a row as the game draws them.
@@ -941,6 +941,71 @@ Two more scripts build what every city shares, from code, with no stock assets:
     Skyline deck's bed (which replaces the blade fans `city.py` drew) and over Bob's
     Peak and the hills, about 9,000 tufts; the light tier plants a third. Any city
     with open grassland can add it (`trees.mix` too, as a species).
+  - *susuki* and *lomandra* (#326): see "The grasses" below.
+
+### The grasses: susuki and Lomandra (issue #326)
+
+Three grasses share the tussock's way of being drawn: a fountain of blade cards
+round a short foot (`grow_tussock`), each from its own atlas cell, instanced,
+swayed and lit by `web/trees.js` like the trees, with the same three levels of
+detail and far impostors.
+
+- **Susuki** (*Miscanthus sinensis*, Japanese silver grass): broad arching leaves
+  with the genus's pale midrib to about 1.25 m (cell 24), and eight flowering culms
+  standing to 1.75 m on plume cards (cell 25), each card three stalks with a fan of
+  silky racemes. The plumes stand only in their season: `uPlume` (trees.js
+  `setSeason`) brings them out from mid August to early September and keeps them,
+  dry, through the winter until the old stems go down between late March and
+  April; a plume card is discarded per card and per clump past that share, as the
+  deciduous leaves fall. Its leaves turn straw-gold with the autumn (`FALL.susuki`)
+  and its heads from silver to buff (`FALL.plume`). 24 leaf cards and 16 plume
+  cards near, 6 and 4 at the middle distance, three crossed cards far.
+- **Lomandra** (*Lomandra longifolia*, spiny-headed mat-rush): stiff, flat, glossy
+  dark green straps 0.6-1 m, arching but not drooping, the tips split and browned
+  (cell 26); evergreen.
+
+Where they grow is open data. `pipeline/grasses.py` reads Overture's base land and
+land use (OpenStreetMap, ODbL) over the city's box and writes the outlines each
+grass grows over into places.json `grass` (by the rules in city.json
+`trees.<grass>.open`: classes, `near_water_m`, `within` a named place, `per_ha`);
+`web/world.js` plants each grass over its outlines on a jittered grid, off the
+roads and the water and clear of the landmarks (under the canopy too: a bed or a
+sandbar is mapped as what grows there).
+
+| Map | Grass | From (OpenStreetMap) | Area | Clumps |
+| --- | --- | --- | --- | --- |
+| Kyoto | susuki | `natural=scrub`/`grassland` within 12 m of the Kamo's water: its banks and sandbars, unmown between the paths and the river; and mapped grassland | 14,500 m² | 7,500 |
+| Tokyo (Marunouchi-Ginza) | susuki | `natural=grassland` | 875 m² | 455 |
+| Shibuya | susuki | `natural=grassland` (Yoyogi) | 1,890 m² | 980 |
+| Tetsugaku | susuki | `natural=grassland` | 92 m² | 48 |
+| Sydney | tussock and Lomandra | `natural=scrub` inside Barangaroo Reserve: its planted beds, not its named lawns (Walumil, Stargazer...), paths and sandstone | 3,880 m² | 1,250 and 470 |
+
+Shinjuku, Higashiyama and Fushimi Inari map no open grassland in their frames,
+so none grows there. The Katsura River lies west of every live Kyoto map (the
+nearest edge is at 135.745 E), so its banks wait for a map that reaches it.
+Barangaroo's own planting plan (PWP Landscape Architecture; 68,000 grasses and
+6,000 Lomandras among 75,000 plants of 84 Sydney species) is not published bed by
+bed, so OpenStreetMap's scrub inside the Reserve stands for its beds; the tussock
+was spread over the whole Reserve's outline before (#315).
+
+**Research** (what runs in a browser):
+
+| Work | What it does | Taken |
+| --- | --- | --- |
+| [al-ro, *Grass*](https://al-ro.github.io/projects/grass) | 100,000 instanced blades, each a strip of triangles bent and swayed in the vertex shader | The idea that the sway belongs in the vertex shader, which trees.js already does; not the per-blade geometry: it suits a mown lawn seen close, and costs by area, where susuki stands in clumps over a few hectares |
+| Ghost of Tsushima's grass (GDC 2021, Sucker Punch) | Blades generated on the GPU per tile, with wind and LOD | As above: a field of blades is the next step for lawns, not for tall clumps |
+| SpeedTree-style card clumps (as in most games' tall grass and reeds) | Cards with a painted spray of blades round a base, instanced, with LOD and impostors | Adopted: the shared trees' own pipeline (instancing, wind, seasons, quality tiers, far impostors) with a blade-card cell per grass |
+| Three.js Grassworks (commercial), CK42BB's procedural grass (licence not confirmed) | Instanced blade fields for three.js with LOD | Not used: no code or assets taken |
+
+Nothing was copied: the cells are drawn by `build_trees.py` (`blades`, `plumes`).
+
+![Susuki on the Kamo's bank in October, its heads out](images/kyoto/susuki-kamo-october.jpg)
+![The same bank in July, all leaf](images/kyoto/susuki-kamo-july.jpg)
+![In December, the leaves straw and the heads buff](images/kyoto/susuki-kamo-december.jpg)
+![At night](images/kyoto/susuki-kamo-night.jpg)
+![The Kamo's band of susuki from above](images/kyoto/susuki-kamo-from-above.jpg)
+![Tussock and Lomandra in a Barangaroo Reserve bed](images/sydney/barangaroo-beds-lomandra.jpg)
+![Susuki on Shibuya's mapped grassland](images/shibuya/susuki-yoyogi.jpg)
 
 ## The far ground under the landmarks
 
