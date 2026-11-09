@@ -1711,8 +1711,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
-    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.park || (!OECars.queueing(c, o.phase !== 'coming') && (c.stuck > 4 || (late && c.v < 2))) ? // (one parked at the kerb: there for good) // (on the way to you: only a queue at a junction is waited in, as before; with you in it, any queue held by a rule of the road)
-       { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: !!c.park || c.stuck > 10, line: c.line, v: c.v, of: c } : c);
+    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.why === 'parked' || (!OECars.queueing(c, o.phase !== 'coming') && (c.stuck > 4 || (late && c.v < 2))) ? // (one parked at the kerb, actors.js parkNow: there for good; read by its why, one of the fields game.js may read, actors.js VIEW) // (on the way to you: only a queue at a junction is waited in, as before; with you in it, any queue held by a rule of the road)
+       { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.why === 'parked' || c.stuck > 10, line: c.line, v: c.v, of: c } : c);
     if (myCar && o !== pilot) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
     // (the autopilot sees a ride as the ride sees your car: one pulled in for you is driven round)
     if (o === pilot && ride) { const rs = ride.drv.st, parked = (ride.phase === 'waiting' || ride.phase === 'arrived' || !!ride.hold) && rs.v < 0.3; out.push({ x: rs.x, y: rs.y, half: ride.C.half, hw: ride.C.hw, v: Math.max(0, rs.v), still: parked, stay: parked }); }
