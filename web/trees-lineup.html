@@ -53,6 +53,7 @@ rows.forEach(back => names.forEach((sp, k) => {
 const world = new T.Group(); scene.add(world);
 const trees = OETrees.create(world, lib, list, { mix: { [names[0]]: 1 }, areas, south: false });
 const [m, d] = (q.get('date') || '7,1').split(',').map(Number); trees.setSeason(m, d);
+await trees.loadNear(); // (the near models: the lineup shows them, not the mid ones that stand in until they come)
 const camera = new T.PerspectiveCamera(30, innerWidth / innerHeight, 1, 5000);
 const ch = q.has("look") ? +q.get("look") : 7; camera.position.set(0, ch, -dist); camera.lookAt(0, ch + 0.5, 0);
 $('names').innerHTML = names.map(n => `<span>${n}</span>`).join('');

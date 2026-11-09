@@ -1742,3 +1742,34 @@ wire; main before issue 335 against both steps; what moved to after the loader i
 | Tetsugaku | 119 | 12.3 | 118 | 11.8 |
 | Fushimi Inari | 120 | 11.7 | 119 | 11.3 |
 
+### After playable: the near models and the NPCs (issue 335)
+
+What the first view doesn't need comes once the game can be played (`afterPlayable` in game.js, 0.7 s after
+the loader starts to fade), as the helicopter does:
+
+- **Cars.** `pipeline/split_glb.mjs` writes `cars_far.glb` (every car's far model, `_LOD2`, 0.2 MB) from
+  `cars.glb` (2.3 MB). The traffic starts on the far models, which stand in for the near and mid ones
+  (`actors.js` traffic); `vehicles.js` `loadCars()` then fetches `cars.glb` and `upgrade()` swaps the near and
+  mid meshes in where the cars stand. Each car is sized by its near model's exact box (`extras.near_box` on the
+  far file's nodes, from the decoded positions), so the traffic drives the same before and after. Your own car
+  is parked as soon as `cars.glb` has come; a taxi or a ride asked for before then says it is on its way.
+- **Trees.** `trees_far.glb` (the mid and far models and the leaf atlas, 1.3 MB) loads with the city;
+  `trees_near.glb` (the near models, 0.9 MB, no atlas) after, through `trees.js` `loadNear()` (the game and
+  the city viewer call it); the mid model stands in until then. `trees.json` `parts` names them.
+- **NPCs.** The characters of the NPCs within 300 m of the start load after the loader, nearest first; the
+  rest as you come near them (issue 148).
+
+The build scripts write the parts after the model (`pipeline/meshopt.py` `split`); `tools/check.sh` fails on a
+part that is not its model's. `tools/late_shot.js` holds the late files back at the network and takes the same
+view with the stand-ins and with the near models.
+
+| `#play`, 40 Mbps (`tools/load_size.js <city> play 40`) | main | after |
+|---|---|---|
+| Shibuya, before playable | 144 files, 25.4 MB on the wire | 138 files, 19.5 MB |
+| Shibuya, playable at | 29.0 s | 27.2 s |
+| Shibuya, main thread's long tasks before playable | 14.7 s, the longest frame 1.9 s | 11.2 s, 1.2 s |
+| Kyoto, before playable | 128 files, 21.2 MB | 126 files, 17.0 MB |
+| Kyoto, playable at | 32.5 s | 30.2 s |
+| Kyoto, main thread's long tasks before playable | 19.1 s, the longest frame 4.9 s | 12.5 s, 1.9 s |
+
+On llvmpipe the time to playable is held by compiling the shaders, not the network.

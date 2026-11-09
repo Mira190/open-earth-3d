@@ -72,7 +72,7 @@ const npcNight = require('./npc_night');
   const lockstep = process.env.GAME_LOCKSTEP !== '0';
   // (the tiles round you laid by advance() while held, game.js, and the route network built, route.js: the roads it finds a car
   // can't get along are kept off by the traffic as it finds them, so a run started before it is done meets another traffic)
-  if (lockstep) await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.heli && g.heli.want) await g.heli.want(); }); // (and the helicopter on its pad: fetched while the title shows, it may be there or not by the time the check holds the game)
+  if (lockstep) await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.heli && g.heli.want) await g.heli.want(); if (g.lateReady) await g.lateReady(); }); // (and the cars' near models, your car and the near trees, issue 335; and the helicopter on its pad: fetched while the title shows, it may be there or not by the time the check holds the game)
   await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
   // the lights in the scene by kind, as three.js counts them for its shaders (one under a hidden parent does
   // not count). The count is built into every lit material's shader, so it must stay what it was on the
@@ -114,6 +114,16 @@ const npcNight = require('./npc_night');
   });
   check(lazy.pending === 0 && lazy.drawn >= lazy.wanted - 1, `the NPCs' characters load after the game opens (${lazy.open} of ${lazy.n} still to come at the start; all in place after ${lazy.s.toFixed(1)} s, ${lazy.drawn} of ${lazy.wanted} as their own characters)`);
   check(lazy.heli, 'the helicopter\'s model comes after the game opens and stands on its pad');
+  // and what the first frame doesn't need, fetched once the game can be played (issue 335): the cars' near models (their
+  // far ones stand in), your car parked by the start, the near trees (the mid ones stand in)
+  const late = await p.evaluate(async () => {
+    const g = window.__game, t = performance.now(), before = g.late(), was = g.held ? g.held() : false;
+    g.hold(true);
+    try { await g.lateReady(); } finally { g.hold(was); }
+    return { before, after: g.late(), s: (performance.now() - t) / 1000 };
+  });
+  check(late.after.carsFull && late.after.fleetNear && late.after.myCar && late.after.treesNear,
+    `the cars' and trees' near models come after the game opens and take the stand-ins' places, your car parked (${late.s.toFixed(1)} s; ${JSON.stringify(late.after)}; at Play ${JSON.stringify(late.before)})`);
   if (process.env.DIGEST) console.log(`digest lazy: ${await digest()}`);
   await lightsKept('once the helicopter has come');
 

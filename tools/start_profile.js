@@ -65,6 +65,12 @@ const [w, h] = size.split('x').map(Number);
       for (const n of ['compileShader', 'linkProgram', 'getProgramParameter', 'getShaderParameter', 'getProgramInfoLog', 'useProgram',
         'texImage2D', 'texSubImage2D', 'texImage3D', 'texStorage2D', 'compressedTexImage2D', 'generateMipmap', 'bufferData', 'bufferSubData', 'readPixels', 'getError', 'clientWaitSync', 'getBufferSubData', 'fenceSync', 'finish']) wrap(P, n);
     }
+    // the loader's messages as they change (the build's steps, issue 327): [time, text]
+    window.__steps = [];
+    addEventListener('DOMContentLoaded', () => {
+      const m = document.getElementById('g-load-msg');
+      if (m) new MutationObserver(() => { const t = m.textContent, l = window.__steps[window.__steps.length - 1]; if (!l || l[1] !== t) window.__steps.push([performance.now(), t]); }).observe(m, { childList: true, characterData: true, subtree: true });
+    });
     // the frames, from requestAnimationFrame, and the long tasks
     const fr = window.__frames = [];
     const tick = t => { fr.push(t); requestAnimationFrame(tick); };
@@ -118,12 +124,12 @@ const [w, h] = size.split('x').map(Number);
       for (const e of glLog) if (e.t >= a && e.t <= z) { const g = gls.get(e.name) || { n: 0, ms: 0 }; g.n++; g.ms += e.ms; gls.set(e.name, g); }
       const w = waits.filter(e => e.t >= a && e.t <= z);
       const best = (m, n) => [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => `${v.toFixed(0).padStart(6)}  ${k}`).join('\n');
-      console.log(`\nframe of ${(f.dt / 1000).toFixed(1)} s at ${(a / 1000).toFixed(1)} s: GL ${[...gls.entries()].map(([k, g]) => `${k} ${g.n}x ${g.ms.toFixed(0)} ms`).join(', ') || 'none over 4 ms'}` +
+      console.log(`\n${f.whole ? 'the build (decoded to built),' : 'frame of'} ${(f.dt / 1000).toFixed(1)} s at ${(a / 1000).toFixed(1)} s: GL ${[...gls.entries()].map(([k, g]) => `${k} ${g.n}x ${g.ms.toFixed(0)} ms`).join(', ') || 'none over 4 ms'}` +
         (w.length ? `; first-use waits ${w.length}, ${w.reduce((s, e) => s + e.ms, 0).toFixed(0)} ms` : ''));
       for (const e of glLog.filter(e => e.t >= a && e.t <= z && e.size && e.ms > 200)) console.log(`  ${e.name} ${e.size} ${Math.round(e.ms)} ms`);
       for (const e of w.filter(e => e.ms > +(process.env.WAIT_MS || 100)).sort((x, y) => y.ms - x.ms).slice(0, 40)) console.log(`  waited ${Math.round(e.ms)} ms on ${e.name} (linked ${e.sinceLink} ms before) <= ${e.from}`);
-      console.log('  self (ms):\n' + best(self, 10));
-      console.log('  inclusive, the app\'s (ms):\n' + best(incl, 14));
+      console.log('  self (ms):\n' + best(self, f.whole ? 30 : 10));
+      console.log('  inclusive, the app\'s (ms):\n' + best(incl, f.whole ? 40 : 14));
     }
   };
   const errors = [];
@@ -145,12 +151,23 @@ const [w, h] = size.split('x').map(Number);
     const top = d.slice().sort((a, b) => b.dt - a.dt).slice(0, 8), over = d.filter(f => f.dt > 1000);
     console.log(`${city} ${w}x${h} loader: playable after ${loadS.toFixed(1)} s; longest frames (s): ${top.map(f => (f.dt / 1000).toFixed(1)).join(' ')}; ` +
       `${over.length} frames over 1 s, ${(over.reduce((s, f) => s + f.dt, 0) / 1000).toFixed(1)} s in them`);
+    // the load's stages (telemetry.js: oe:fetched, decoded, built, frame), and the loader's steps between
+    // decoded and built, each with how long its message stood (issue 327); "first draw" is the loader's end
+    const st = await p.evaluate(() => ({ marks: performance.getEntriesByType('mark').filter(m => /^oe:/.test(m.name)).map(m => [m.name.slice(3), m.startTime]),
+      steps: window.__steps.slice(), now: performance.now() }));
+    const mk = Object.fromEntries(st.marks);
+    console.log('stages (s): ' + st.marks.map(([k, v]) => `${k} ${(v / 1000).toFixed(1)}`).join(', '));
+    if (mk.decoded != null) {
+      const end = mk.built ?? st.now, steps = st.steps.map((x, i) => [x[1], x[0], (st.steps[i + 1] || [st.now])[0]]).filter(x => x[2] > mk.decoded && x[1] < end);
+      console.log(`build (decoded to built), ${((end - mk.decoded) / 1000).toFixed(1)} s, by the loader's step:`);
+      for (const [msg, a, z] of steps) { const d = Math.min(z, end) - Math.max(a, mk.decoded); if (d >= 50) console.log(`  ${(d / 1000).toFixed(2).padStart(6)} s  ${msg.slice(0, 90)}`); }
+    }
     if (lcdp) {
       // the whole load's blocking GL work, by call: what a change to the shaders or the uploads moves
       const calls = await p.evaluate(() => window.__gl.calls);
       const pick = ['getProgramInfoLog', 'getProgramParameter', 'linkProgram', 'compileShader', 'bufferData', 'texSubImage2D', 'texImage2D', 'texStorage2D', 'getBufferSubData', 'clientWaitSync'];
       console.log('GL in the load (calls, ms, the longest): ' + pick.filter(k => calls[k]).map(k => `${k} ${calls[k].n}x ${calls[k].ms.toFixed(0)} ms max ${calls[k].max.toFixed(0)}`).join('; '));
-      await loadProfile(lcdp, top, lsync);
+      await loadProfile(lcdp, (mk.decoded != null && mk.built != null ? [{ t: mk.decoded, dt: mk.built - mk.decoded, whole: true }] : []).concat(top), lsync);
     }
     if (process.env.LOAD) { await b.close(); return; } // LOAD=1: the loader only
   }

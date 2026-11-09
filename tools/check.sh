@@ -213,6 +213,13 @@ EOF
   # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
   if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
   else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi
+  # the parts of the shared models loaded before playable and after (pipeline/split_glb.mjs, issue 335): as their model
+  # splits now, so a rebuilt model can't leave the pages loading old parts of it
+  mkdir -p "$OUT/parts"
+  if python3 pipeline/meshopt.py split web/assets/vehicles/cars.glb web/assets/trees/trees.glb --out "$OUT/parts" >"$OUT/parts.log" 2>&1 \
+    && for p in "$OUT"/parts/*.glb; do cmp -s "$p" "web/assets/$(case $(basename "$p") in cars*) echo vehicles;; *) echo trees;; esac)/$(basename "$p")" || { echo "FAIL $(basename "$p") is not its model's part: python3 pipeline/meshopt.py split web/assets/*/<model>.glb" >>"$OUT/parts.log"; false; }; done; then
+    echo "ok   parts  $(ls "$OUT"/parts/*.glb | wc -l) parts of the shared models up to date"
+  else echo "FAIL parts  $(grep '^FAIL' "$OUT/parts.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/parts.log)"; fi
   # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
   if [ ${#cities[@]} -gt 0 ]; then
     if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"

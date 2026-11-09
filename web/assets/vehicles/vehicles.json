@@ -608,6 +608,7 @@
    "Dash": 8
   },
   "file": "cars.glb",
+  "far_file": "cars_far.glb",
   "lod1_m": 35,
   "lod2_m": 110,
   "note": "Paint takes each car's colour, Paint2 a second (a taxi's or bus's band); 'tones' maps materials to the traffic shader's slots"

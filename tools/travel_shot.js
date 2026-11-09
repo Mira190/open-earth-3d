@@ -36,6 +36,7 @@ const [,, city = 'sydney', outDir = '.', width = '1440', height = '900'] = proce
   const t0 = Date.now();
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
+  await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   // the title card comes up once the loader has faded, which on a loaded machine is well after window.__game:
   // wait for it, then play (through the DOM, which a busy page cannot time out)

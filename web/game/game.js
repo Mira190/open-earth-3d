@@ -116,6 +116,10 @@ window.OpenEarthGame = async function game(cityId) {
   nightFill.name = 'night fill';
   world.add(nightFill);
   nightFill.userData.cd = 4; // its strength at full night: about 1.3 on the ground under it, a third of the brightest street light's pool
+  // the car's headlamp and the helicopter's searchlight (cars.js, vehicles.js) in the world from here too, dark until
+  // used: with every light of the game in place this early, the city's shaders compile behind the rest of the set-up
+  // (earlyWarm, below) in the variant the game draws (three.js builds the number of lights into each), issue 327
+  const earlyLamps = { head: OECars.headlamp(world), search: OEVehicles.searchlight ? OEVehicles.searchlight(world) : null };
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {}, look: G.look || {} }) : null;
   if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
@@ -324,6 +328,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const m of Wd.groundMeshes) mirror.patch(m.material);
     for (const [k, m] of Object.entries((D.LM && D.LM.materials) || {})) if (m.street_lit || m.decal || m.pattern === 'deck_zones') { mirror.patch(Wd.lmMats[k]); mirror.patch(Wd.floodMats[k]); }
   }
+  // the city's shaders compiled from here, behind the rest of the set-up (the surface model, the footways, the
+  // people and the traffic: seconds of the CPU's time, issue 327) rather than all after it: where the GPU compiles
+  // in parallel (KHR_parallel_shader_compile, or a GPU process of its own) the two overlap. Every light is in place
+  // (earlyLamps); what joins the world later is compiled with the rest before the first frame (warm, below)
+  const earlyWarm = Promise.resolve(Wd.skyReady).then(() => OEWorld.compile(renderer, world, camera, { scene: world, target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null, behind: true, flight: 1 }));
   // landmark solids (the Opera House shells) and walkable strips (the bridge deck) shade the ground too
   for (const [name, m] of Object.entries(nav.tops)) if ((G.shade_landmarks || []).some(p => name.startsWith(p))) for (const [k, z] of m) if (z > DSM.data[k]) DSM.data[k] = z;
   for (const s of nav.strips) for (let i = 0; i < s.us.length - 1; i++) {
@@ -333,7 +342,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the helicopter, ferries and cars every city shares (vehicles.js); the box-built ones if they can't be loaded
   let vlib = null;
   // (the helicopter's model after the game opens, when a pad is in range: heliToPad, enterHeli; issue 148)
-  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 && (G.ferry_style || {}), heli: 'later' }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
+  // (and the cars' near models after it too: their far ones before, issue 335; afterPlayable)
+  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 && (G.ferry_style || {}), heli: 'later', cars: 'later' }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
   // decks under the mapped bridges and viaducts (decks.js): drawn, walked, and in the shade model. A
   // bridge over a ferry's course clears the boats with someone standing on the upper deck
   const FI = vlib && vlib.ferryInfo, fstyle = G.ferry_style || {};
@@ -520,7 +530,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let playerChar = 'W_Worker';
   try { if (PLAYER_LOOKS[localStorage.getItem(PLAYER_KEY)]) playerChar = localStorage.getItem(PLAYER_KEY); } catch (e) { /* storage blocked */ }
   let lib = null;
-  const NPC_LOAD_M = 300, nearStart = n => !G.start || Math.hypot(n.at[0] - G.start.at[0], n.at[1] - G.start.at[1]) < NPC_LOAD_M;
+  const NPC_LOAD_M = 300;
   try {
     lib = await OEPeople.load('assets/people/');
     if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
@@ -536,9 +546,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const pl = PLAYER_LOOKS[playerChar];
     if (pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
     await lib.require(pl.character).catch(e => console.warn(`${pl.character} unavailable:`, e));
-    // the NPCs near the start before the game opens, the others as you first come within NPC_LOAD_M of
-    // them (npcStream; issue 148)
-    await Promise.all(G.npcs.filter(nearStart).map(n => n.look.character).filter(Boolean).map(c => lib.require(c).catch(e => console.warn(`${c} unavailable:`, e))));
+    // the NPCs' characters once the game can be played, nearest the start first (afterPlayable, issue 335), and as
+    // you first come within NPC_LOAD_M of them (npcStream; issue 148)
   }
   // a character that is loaded for one that is not: of the same sex, textured (an NPC's or a
   // surveyor's) before the crowd's, at its own size (the crowd's run large)
@@ -727,7 +736,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const npcsReady = () => Promise.all(npcs.map(npcLoad)); // every NPC in place (for the tools that look at them)
 
   // ------------------------------------------------------------ vehicles
-  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea, compile: compileFor, upload: uploadFor };
+  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea, compile: compileFor, upload: uploadFor, searchlight: earlyLamps.search };
   // a pad the data puts on the ground inside a building's footprint is on its roof (a hospital's, a
   // tower's): there, if the roof is clear above for the rotor, else on the nearest open ground with
   // clear sky (pipeline/game_data.py snaps new data the same way)
@@ -812,7 +821,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (a street whose lane has room for no vehicle anywhere along it, by the width pass above, is one a car can't
   // get along, as one the data runs through a building is: kept off by the traffic and the routes alike, #202)
   for (let i = 0; i < roadNet.L.length; i++) if (roadNet.fit[i] === 0) ways.drive[i] = 1;
-  const roads = OECars.router(roadNet, { avoid: ways.drive }), headlamp = CARS_OK ? OECars.headlamp(world) : null, rq = {};
+  const roads = OECars.router(roadNet, { avoid: ways.drive }), headlamp = CARS_OK ? earlyLamps.head : null, rq = {};
+  if (!CARS_OK) world.remove(earlyLamps.head, earlyLamps.head.target);
   // a pose at the kerb of a place on the roads (router.place), facing the way it goes
   function kerbPose(pl, off) {
     roadNet.at(pl.line, pl.s, rq);
@@ -919,9 +929,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const g = roads.group(a.line), b = (z != null && roads.place(x, y, 300, keepSign, z, g)) || roads.place(x, y, 800, keepSign, null, g);
     return b && (roads.route(a, b, 30000) || roads.route(a, Object.assign({}, b, { dir: -b.dir }), 30000));
   }
-  let myCar = null, ride = null;
+  // your car's model comes after the game can be played (issue 335): parked where it was to be as soon as it has
+  // come, fetched then (afterPlayable) or at once when asked for later
+  let myCar = null, ride = null, parkWait = null, carsHeld = true;
+  const parkLater = () => vlib.loadCars().then(() => {
+    const p = parkWait; parkWait = null;
+    if (!(p && vlib.carsFull) || myCar) return;
+    parkMyCar(p);
+    const g = myCar && myCar.C.group; // (shown once its shaders are compiled and its textures sent, not compiled in the frame that draws it)
+    if (g) { g.visible = false; warmFor(g).catch(() => {}).then(() => { g.visible = true; }); }
+  });
   function parkMyCar(pose) {
     if (!CARS_OK || !vlib.info.cars.models[carCfg.model]) return;
+    if (!myCar && !vlib.carsFull) { parkWait = pose; if (!carsHeld) parkLater(); return; }
     if (!myCar) {
       const C = OECars.car(world, vlib, carCfg.model, { colours: { paint: carCfg.colour, seat: carCfg.seat }, keep: KEEP });
       myCar = { C, D: OECars.drive(C, nav, pose) };
@@ -1229,6 +1249,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (a taxi you hail pulls in beside you, at most across the street: only a ride ordered on the phone has
   // its pick-up moved round the corner, #209)
   function rideFromAround(kind, pickup, dest, move = true) {
+    if (!vlib.carsFull) { vlib.loadCars(); return null; } // (the cars' near models still to come, issue 335)
     let best = bestFrom(pickup);
     // none can reach that kerb in time (a dead end the near side of the street faces into, a stub no
     // road feeds): the kerb across the street and the streets round it too, as a ride app moves the
@@ -1304,6 +1325,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function hail() {
     if (player.mode !== 'foot' || player.auto) return;
     if (!CARS_OK) { H.toast('There are no taxis to hail here.'); return; }
+    if (!vlib.carsFull) { vlib.loadCars(); H.toast('The taxis are still on their way into town: try again in a moment.'); return; } // (issue 335)
     if (ride && ride.phase !== 'leaving') { H.toast(ride.phase === 'coming' ? `${ride.name} is on the way.` : `${ride.name} is waiting for you.`); return; }
     if (backIn(ride)) { backAgain(); H.toast(`<b>${ride.name}</b> is still here: <kbd>E</kbd> to get back in.`); return; }
     const pickup = pickupNear(player.x, player.y, player.z, 40);
@@ -4241,6 +4263,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (typeof groundLod === 'function' && Wd.groundMeshes[0].material.userData.street) groundLod(player.x, player.y);
   }
   spawn();
+  // a link to a district of the map ("#play-shibuya@t-sancha", from the subway map or shared): the title
+  // screen is set there, over that place and under its name, and the game starts there, not at the map's start
+  const DISTRICT = window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+  if (DISTRICT) {
+    spawn(DISTRICT.at, DISTRICT.at[2] != null ? DISTRICT.at[2] + 0.5 : undefined, lookOf(DISTRICT));
+    const nm = /^(.*?)\s+([\u3000-\u9fff\uff00-\uffef][^A-Za-z]*)$/.exec(DISTRICT.name) || [0, DISTRICT.name]; // (the name in its own script after it, if it ends the name)
+    gtTitle.textContent = nm[1];
+    if (nm[2]) { const sm = document.createElement('small'); sm.lang = 'ja'; sm.textContent = nm[2]; gtTitle.append(sm); }
+    $('#gt-city').textContent = `${G.title.replace(/\s+[\u3000-\u9fff].*$/, '')} · ${CITY.place || CITY.name}, ${CITY.country}`;
+    if (DISTRICT.blurb) { $('#gt-blurb').textContent = DISTRICT.blurb; $('#g-title p').textContent = DISTRICT.blurb; }
+    document.title = `${nm[1]} · ${G.title} · Open Earth 3D`;
+  }
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
@@ -4272,7 +4306,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
-    const arrive = !cont && window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+    const arrive = !cont && DISTRICT;
     if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
@@ -4341,7 +4375,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#gt-continue'), 'click', () => startGame(true));
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
-  $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
+  $('#gt-now').textContent = `Now in ${DISTRICT ? gtTitle.firstChild.textContent : CITY.name} (${fmtMin(nowLoc.minutes)})`;
   // the loader (its plate, plate.js) fades onto the title orbit; the title card is held back until
   // then, so it never shows over the loader, while the scene under it waits as on the title screen
   // (preTitle). fromFlyover() is for a recorded flyover that ends on the orbit's first pose
@@ -4353,7 +4387,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (and the passes the title doesn't draw: the opening shot's depth of field and motion blur, atmosphere.js)
   try { performance.mark('oe:built', { detail: { view: 'game', city: cityId } }); } catch (e) { /* no User Timing */ } // the scene built (telemetry.js)
   loadMsg('Compiling the shaders for this view', 1);
-  const warm = Promise.all([compileFor(world), atmos && atmos.warm ? atmos.warm() : null, OEWorld.uploadSliced ? OEWorld.uploadSliced(renderer, world) : null, Wd.ready]) // (and its textures sent, in slices too, and the far trees' atlas drawn)
+  const warm = Promise.all([earlyWarm.then(() => compileFor(world)), atmos && atmos.warm ? atmos.warm() : null, OEWorld.uploadSliced ? OEWorld.uploadSliced(renderer, world) : null, Wd.ready]) // (and its textures sent, in slices too, and the far trees' atlas drawn)
     .then(() => OEWorld.uploadBuffers && OEWorld.uploadBuffers(renderer, world, camera, { target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null })); // (then its vertex buffers, in slices)
   // and behind the loader the rain's passes are drawn once too (its streaks, the occlusion map from
   // above and the wet street's mirror), so that the first rain of a visit comes on without a stall; the
@@ -4370,18 +4404,38 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn).then(() => { warmRain(); })]).then(([flew]) => {
     if (flew) fromFlyover();
     if (lib) { lib.warm = warmFor; if (lib.warmPalette) lib.warmPalette(); } // the characters that come from now on are warmed before they are shown (people.js)
+    setTimeout(afterPlayable, reduced ? 0 : 700); // (once the loader has faded)
     preTitle = false;
     $('#g-title').hidden = false;
     $('#g-loader').classList.add('out');
     setTimeout(() => {
       $('#g-loader').hidden = true; OEPlate.stop($('#g-loader'));
-      if (Wd.groundPictures) Wd.groundPictures.release(); // the aerial tiles further out, now the game is open (issue 335)
     }, reduced ? 0 : 700);
     // the helicopter's model while the title is up, if it waits within reach of the start (it is left out of the
     // loader's wait, issue 148): fetched, built, its shaders compiled and its textures sent now, not during the
     // opening shot; it lands on its pad once the game opens (heliToPad), not in the title's shot
     setTimeout(() => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) heli.prefetch(); }, reduced ? 0 : 900);
   });
+  // What the first frame doesn't need, fetched once the game can be played, as the helicopter's model is (issue 335):
+  // the aerial tiles beyond a kilometre of the start; the NPCs' characters, nearest the start first; the traffic's near and mid cars (their far models stand in until
+  // then: actors.js upgrade) and the car you drive; the near trees (trees.js loadNear: the mid ones stand in)
+  let lateOn = null;
+  function afterPlayable() {
+    if (lateOn) return lateOn;
+    if (Wd.groundPictures) Wd.groundPictures.release(); // the aerial tiles further out (world.js groundPictures)
+    const near = lib ? npcs.filter(n => n.rig.pending && Math.hypot(n.x - player.x, n.y - player.y) < NPC_LOAD_M)
+      .sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)).map(npcLoad) : [];
+    carsHeld = false;
+    const carsIn = vlib && vlib.loadCars && !vlib.carsFull ? Promise.all([vlib.loadCars().then(g => { if (g && vlib.carsFull && cars.upgrade) cars.upgrade(g); }), parkWait ? parkLater() : null]) : null;
+    const treesIn = Wd.trees && Wd.trees.loadNear ? Wd.trees.loadNear() : null;
+    return (lateOn = Promise.all([...near, carsIn, treesIn]));
+  }
+  // (for the tools: what afterPlayable fetches, come and in place: the world then as it was at the start before, issue 335)
+  const lateReady = () => afterPlayable().then(() => new Promise(r => setTimeout(r, 0)));
+  const late = () => ({ carsFull: !vlib || !vlib.cars || !!vlib.carsFull, myCar: !parkWait, // (your car parked, or none to park)
+   
+    fleetNear: !cars.fleet || Object.values(cars.fleet).every(f => f[0].geometry.index.count > f[2].geometry.index.count),
+    treesNear: !Wd.trees || !Wd.trees.nearReady || Wd.trees.nearReady(), npcsPending: npcs.filter(n => n.rig.pending).length });
   renderPassport();
 
   // ------------------------------------------------------------ the loop
@@ -4450,7 +4504,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
-    if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : titleYaw + dt * 0.05; }
+    if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : DISTRICT ? titleYaw0 + 0.3 * Math.sin(titleT * 0.05) : titleYaw + dt * 0.05; }
     if (simHold) { /* (held by a harness: the camera too, which the traffic reads, what is in view; advance() moves it) */ } else if (photo.on) photoCamera(dt); else if (closeup && !titleOn) closeupCamera(dt); else updateCamera(dt, titleOn);
     placeNightFill();
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
@@ -4795,23 +4849,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the most open foreground (openYaw) or, after a loading flyover, from the video's last frame
   // (FLY_END, where tools/flyover.js ends it: 420 m south and 210 m up, the orbit the videos were
   // made under), easing out to the orbit's own radius and height.
-  const ORBIT = { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
-  let titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null, titleT = 0;
+  // (arriving at a district: a closer orbit, so its own streets fill the title and not the skyline beyond)
+  const ORBIT = DISTRICT ? { r: 300, h: 115 } : { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
+  let titleYaw0 = 0, titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null, titleT = 0;
   if (OPENING) { titleR = openingView().r; titleH = OPENING.h; } // (no ease into the opening's own height on the first frame)
   // the orbit's centre: north-east of the start, or with an opening shot (game.start.shot, #110) the point it
   // looks at (Shibuya's: the screen over the scramble), the camera then swaying gently behind the start's view
   // and not orbiting, so the crane down from it to over the player's shoulder never swings round
-  const titleAt = () => (openingHere() ? OPENING.look : [player.x + 120, player.y + 160, player.z + 20]);
+  const titleAt = () => (openingHere() ? OPENING.look : DISTRICT ? [player.x + 30, player.y + 40, player.z + 12] : [player.x + 120, player.y + 160, player.z + 20]);
   const titlePose = () => { const c = titleAt(), yaw = openingHere() ? openingView().yaw : FLY_END.yaw; return { look: c,
     cam: [c[0] - Math.sin(yaw) * FLY_END.r, c[1] - Math.cos(yaw) * FLY_END.r, c[2] + FLY_END.h] }; };
-  function fromFlyover() { titleYaw = openingHere() ? openingView().yaw : FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }
+  function fromFlyover() { if (DISTRICT) return; titleYaw = openingHere() ? openingView().yaw : FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }
   // where the title orbit starts: the bearing with the most open foreground (the least building
   // over the nearer part of the line of sight), so the title does not open on one big flat roof
+  // (for a district near the map's edge, Sangenjaya's: only the bearings that look back into the map, the camera
+  // over it and the city behind what it looks at, not the haze past the edge)
   function openYaw(cx, cy, r) {
     let best = 0, least = Infinity;
+    const F = scene.frame, inMap = (x, y) => x > F.x[0] && x < F.x[1] && y > F.y[0] && y < F.y[1];
     for (let k = 0; k < 24; k++) {
       const a = k / 24 * 2 * Math.PI, x0 = cx - Math.sin(a) * r, y0 = cy - Math.cos(a) * r;
-      let h = 0;
+      let h = DISTRICT && !(inMap(x0, y0) && inMap(cx + Math.sin(a) * 900, cy + Math.cos(a) * 900)) ? 1e9 : 0;
       for (let i = 1; i <= 12; i++) { const t = i / 12 * 0.7, x = x0 + (cx - x0) * t, y = y0 + (cy - y0) * t; h += roofBelow(x, y) - nav.terrain(x, y); }
       if (h < least) { least = h; best = a; }
     }
@@ -4829,7 +4887,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (titleOn) { // slow orbit near the start for the title screen, low enough to see the skyline against the sky
       const c = titleAt();
       const O = openingHere() ? openingView() : ORBIT;
-      if (titleYaw == null) titleYaw = O !== ORBIT ? O.yaw : openYaw(c[0], c[1], ORBIT.r);
+      if (titleYaw == null) titleYaw = titleYaw0 = O !== ORBIT ? O.yaw : openYaw(c[0], c[1], ORBIT.r);
       const k = Math.min(1, dt * 0.4);
       titleR += (O.r - titleR) * k; titleH += (O.h - titleH) * k;
       titleLook.copy(W(c[0], c[1], c[2]));
@@ -5395,7 +5453,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
