@@ -82,26 +82,34 @@ window.OEInland = (function () {
     function boxOf(r) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of r) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } return [x0, y0, x1, y1]; }
 
     // ------------------------------------------------------------ levels: the nearest ring point's
-    const B = 8, hash = new Map(); // ring points in 8 m buckets
+    // ring points in 8 m buckets, a dense grid over their box (a Map keyed by strings was 1.2 s of Kyoto's and
+    // Shibuya's build on raise's million lookups, issue 327): per bucket a list of x, y, bz, wz, body
+    const B = 8;
+    let gx0 = Infinity, gy0 = Infinity, gx1 = -Infinity, gy1 = -Infinity;
+    for (const b of bodies) for (const r of b.rings) for (const [x, y] of r) {
+      const cx = Math.floor(x / B), cy = Math.floor(y / B);
+      if (cx < gx0) gx0 = cx; if (cx > gx1) gx1 = cx; if (cy < gy0) gy0 = cy; if (cy > gy1) gy1 = cy;
+    }
+    const gnx = gx1 - gx0 + 1, gny = gy1 - gy0 + 1, grid = new Array(Math.max(0, gnx * gny));
     for (const b of bodies) b.rings.forEach((r, k) => r.forEach(([x, y], i) => {
-      const key = Math.floor(x / B) + ',' + Math.floor(y / B);
-      let l = hash.get(key); if (!l) hash.set(key, l = []);
-      l.push(x, y, b.bz[k][i], b.wz[k][i], b.id);
+      const g = (Math.floor(x / B) - gx0) + (Math.floor(y / B) - gy0) * gnx;
+      (grid[g] || (grid[g] = [])).push(x, y, b.bz[k][i], b.wz[k][i], b.id);
     }));
     // {d, bz, wz, body} of the nearest ring point within `reach` m (of `kind` when given), or null
     function nearest(x, y, reach = 12, kind = null) {
-      const r = Math.ceil(reach / B), cx = Math.floor(x / B), cy = Math.floor(y / B);
-      let best = null, bd = reach * reach;
-      for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
-        const l = hash.get((cx + i) + ',' + (cy + j));
+      const r = Math.ceil(reach / B), cx = Math.floor(x / B) - gx0, cy = Math.floor(y / B) - gy0;
+      const i0 = Math.max(0, cx - r), i1 = Math.min(gnx - 1, cx + r), j0 = Math.max(0, cy - r), j1 = Math.min(gny - 1, cy + r);
+      let bl = null, bk = -1, bd = reach * reach;
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const l = grid[i + j * gnx];
         if (!l) continue;
         for (let k = 0; k < l.length; k += 5) {
           if (kind && bodies[l[k + 4]].kind !== kind) continue;
           const d = (l[k] - x) ** 2 + (l[k + 1] - y) ** 2;
-          if (d < bd) { bd = d; best = k; best = { d: Math.sqrt(d), bz: l[k + 2], wz: l[k + 3], body: bodies[l[k + 4]] }; }
+          if (d < bd) { bd = d; bl = l; bk = k; }
         }
       }
-      return best;
+      return bl ? { d: Math.sqrt(bd), bz: bl[bk + 2], wz: bl[bk + 3], body: bodies[bl[bk + 4]] } : null;
     }
 
     // whether (x, y) is on the water (not on a deck over a channel)
