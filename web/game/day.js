@@ -112,8 +112,10 @@ window.OEDay = (function () {
       for (const [n, e] of D.soon(7)) out.push({ t: e.title, s: n === 1 ? 'Tomorrow' : `In ${n} days` });
       return out.slice(0, max);
     }
+    const quiet = /[?&]cards=0\b/.test(location.search); // (a film or a still of the world alone: ?cards=0 leaves the cards out)
     function card(day) {
       if (cardEl) cardEl.remove();
+      if (quiet) { shown = { n: shown.n + 1, kind: day ? 'day' : 'slot', date: D.date, slot: D.slot }; return; }
       const b = bounds(), slot = D.slot, wx = D.weather(), ci = L.city();
       const k = clamp((c.min - b.sunrise) / Math.max(1, b.sunset - b.sunrise), -0.25, 1.25); // the sun along its day
       const el = cardEl = document.createElement('div');
