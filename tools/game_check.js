@@ -2036,9 +2036,9 @@ const npcNight = require('./npc_night');
   // road, it sets off, shows its screen, hands the car back at a touch of the wheel, drives clear of the traffic
   // and the red lights, and pulls in there
   {
-    const ap = await p.evaluate(autopilotStep, { log: !!process.env.CHAIN });
-    for (const l of ap.log || []) console.log(`  autopilot: ${l}`);
-    for (const [ok, what] of autopilotChecks(ap)) check(ok, what);
+    const ap = await p.evaluate(autopilotStep, { log: true }), apc = autopilotChecks(ap);
+    if (process.env.CHAIN || apc.some(([ok]) => !ok)) for (const l of ap.log || []) console.log(`  autopilot: ${l}`); // (its log, when a check of it fails)
+    for (const [ok, what] of apc) check(ok, what);
     await shot('autopilot');
     // and the driver assists when you drive yourself: lane keeping and adaptive cruise, hands off for 40 s
     const as = await p.evaluate(assistStep, { log: !!process.env.CHAIN });
