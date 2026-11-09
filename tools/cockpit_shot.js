@@ -24,6 +24,7 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
   });
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
+  p.on('console', m => { if (m.type() === 'error') console.log(`error: ${m.text().slice(0, 300)}`); });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; if (g.heli && g.heli.want) await g.heli.want(); });
@@ -42,6 +43,7 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
     for (let i = 0; i < 80 && st.z < alt; i++) g.advance(0.5, ['Space']);
     for (let i = 0; i < 6; i++) g.advance(0.5, ['KeyW']);
     while (g.cam.mode !== 'cockpit') g.nextView();
+    window.__g0 = g;
     return g.player.mode === 'heli';
   }, +(process.env.ALT || 150));
   if (!ok) { console.log('not aboard'); await b.close(); return; }
@@ -59,7 +61,7 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
       if (!C.base.eye) C.base.eye = C.eye.toArray();
       C.fov = v.fov ?? C.base.fov; C.pitch = v.pitch ?? C.base.pitch; C.eye.fromArray(v.eye || C.base.eye);
       g.cam.lookYaw = v.yaw || 0; g.cam.lookPitch = C.pitch; g.viewBlend.t = 1;
-      for (let i = 0; i < 30; i++) { const cb = F.cb; F.cb = null; if (typeof cb !== 'function') return 'error: the game stopped asking for frames (' + (window.__lastErr || '?') + ')'; F.t += 1000 / 30; g.keys.add('KeyW'); cb(F.t); g.keys.delete('KeyW'); g.heli.st.vx *= 0.97; g.heli.st.vy *= 0.97; }
+      for (let i = 0; i < 30; i++) { const cb = F.cb; F.cb = null; if (typeof cb !== 'function') return `error: the game stopped asking for frames at step ${i} (${window.__lastErr || '?'}; same game ${window.__game === window.__g0}, ${location.hash}, mode ${g.player.mode}, at ${g.heli.st.x.toFixed(0)}, ${g.heli.st.y.toFixed(0)}, ${g.heli.st.z.toFixed(0)})`; F.t += 1000 / 30; g.keys.add('KeyW'); cb(F.t); g.keys.delete('KeyW'); g.heli.st.vx *= 0.97; g.heli.st.vy *= 0.97; }
       return document.getElementById('game-gl').toDataURL('image/jpeg', 0.9);
     }, v);
     if (url.startsWith('error')) { console.log(v.name, url); continue; }

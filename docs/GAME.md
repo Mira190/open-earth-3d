@@ -1602,6 +1602,26 @@ quality tier runs a third of the cars.
     city doesn't swing round the screen. The view looks past the instrument
     panel and through the windscreen. Drag to look round; in flight the view
     drifts back to straight ahead.
+    - **What the pilot sees** (issue 335). Flight sims' pilot views (MSFS's VFR
+      view) show mostly the world outside, and their players' most common
+      complaint is an eye too low, too close to the panel, or looking at the
+      controls. Ours had the opposite fault. At the model's `Eye_Pilot`, the eye
+      sat level with the windscreen's top under a low cabin roof, 0.4 m behind
+      the glass, so the frame and the roof filled half the picture. Four things
+      changed:
+      - **The eye** (`game.js` `COCKPIT`) moves 0.40 m forward and 0.14 m down.
+        The windscreen's top is now above the line of sight, and the glare
+        shield is a band along the bottom.
+      - **The view**: a 66° lens, looking almost level.
+      - **The glass**: while the view is up, the glass is thinned to faint
+        reflections. Its clear coat mirrored the sky from inside.
+      - **The cabin**: the outer skin is drawn from outside only, so a gap in
+        the lining under the nose is a chin window onto the ground, not the
+        white paint's inside. The lining is a cabin's dark grey, not near black.
+      `tools/cockpit_shot.js` took stills of the variants tried from the same
+      place over Sydney Harbour. With the eye further forward the camera
+      clipped into the door pillar. With it higher it went through the roof.
+      Hiding the lining opened the view but left stray slivers of the shell.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The city's `ferry_style` picks the model (`"model": "harbour"` or
     `"river"`, else by its length) and the livery: Sydney Ferries' green and
