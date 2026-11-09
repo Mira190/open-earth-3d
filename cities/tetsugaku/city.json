@@ -102,7 +102,7 @@
       "note": "Eikan-do, Nanzen-ji, the aqueduct, the Keage incline and the path's south half: pipeline/osm_detail.py"
     }
   },
-  "trees": {
+  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
     "mix": {
       "cherry": 0.2,
       "maple": 0.22,

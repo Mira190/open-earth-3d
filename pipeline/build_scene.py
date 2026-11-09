@@ -1603,7 +1603,10 @@ def build(C):
                             "h_dm", "angle_cdeg", "base_dm (absolute; else the solid's deck)",
                             "dormers: count, step_dm along the angle, bitmask of bays left empty"], "p": prop_rows},
               open(os.path.join(C.out, "buildings.json"), "w"), separators=(",", ":"))
-    json.dump({"piers": piers, "places": places, "trees": trees}, open(os.path.join(C.out, "places.json"), "w"), separators=(",", ":"))
+    # (the grasses' outlines, pipeline/grasses.py, kept until it is run again)
+    old_places = os.path.join(C.out, "places.json")
+    grass = json.load(open(old_places)).get("grass") if os.path.exists(old_places) else None
+    json.dump({"piers": piers, "places": places, "trees": trees} | ({"grass": grass} if grass else {}), open(old_places, "w"), separators=(",", ":"))
     print("wet buildings: %d deck solids hidden, %d vessels given a hull" % wet_buildings.mark(C, wet))
     write_index()
     for f in sorted(os.listdir(C.out)):

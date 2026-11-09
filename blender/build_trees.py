@@ -1,14 +1,16 @@
 """Build the street and park trees every city shares: web/assets/trees/trees.glb and
 trees.json.
 
-Twenty-one species and a grass: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
+Twenty-one species and three grasses: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
 Island date palm and Japanese maple (momiji, red in autumn: web/trees.js); Japan's black pine,
 cryptomeria (sugi), camphor, zelkova and ginkgo (the last two turn in autumn too) and the
 Somei-yoshino cherry (pale pink on bare branches for a fortnight in spring) with three other
 cherries on their own dates: the weeping shidarezakura, the February kawazu-zakura and the mid-April
 yaezakura, all on bark banded with lenticels (web/trees.js draws the bands); an evergreen
 broadleaf for Hong Kong's hills and the laurel forest of the shrine groves; and the coral cays'
-pisonia and she-oak (casuarina); and tussock, Otago's grass of the open hills, a fountain of blade cards. Each is grown,
+pisonia and she-oak (casuarina); and three grasses, each a fountain of blade cards: tussock, Otago's grass of the
+open hills; susuki (Miscanthus sinensis), the silver grass of Japan's river banks, with its plumes from late summer to
+spring; and Lomandra, the strappy mat-rush of Sydney's beds. Each is grown,
 not sculpted: points are scattered through the shell of
 the species' crown shape, clustered into limbs and twigs, and branches are grown from the
 trunk out to each cluster; every point carries a card with a spray of leaves from a leaf
@@ -44,17 +46,19 @@ OUT = os.path.join(ROOT, "web", "assets", "trees")
 DOCS = os.path.join(ROOT, "docs", "images", "trees")
 
 # ------------------------------------------------------------ the leaf atlas
-# 4 x 6 cells, each a spray of leaves growing up from the middle of its bottom edge. The jacaranda's
+# 4 x 7 cells, each a spray of leaves growing up from the middle of its bottom edge. The jacaranda's
 # bloom cell stays right of its leaf cell ("bloom" beside "jacaranda"): web/trees.js swaps one for the other
 # with the season. The cherries' bloom cells follow each other from "sakura" (SAKURA_CELLS, in that order:
 # the Somei-yoshino, the weeping cherry, the kawazu-zakura and the yaezakura) and all show the cherry's
-# leaf cell ("cherry") out of flower. Cells 21 and 22 are the coral cays' beach scrub; 23 a tussock's fountain of blades.
-ATLAS_W, ATLAS_H, CW, CH = 1024, 3072, 256, 512
+# leaf cell ("cherry") out of flower. Cells 21 and 22 are the coral cays' beach scrub; 23 a tussock's fountain of blades;
+# 24 susuki's broad arching blades, 25 its plumes (cards web/trees.js shows only from late summer to spring) and 26
+# Lomandra's strap leaves.
+ATLAS_W, ATLAS_H, CW, CH = 1024, 3584, 256, 512
 COLS, ROWS = ATLAS_W // CW, ATLAS_H // CH
 CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7,
          "pine": 8, "sugi": 9, "camphor": 10, "zelkova": 11, "ginkgo": 12, "evergreen": 13, "pisonia": 14, "casuarina": 15,
          "cherry": 16, "sakura": 17, "shidare": 18, "kawazu": 19, "yae": 20,
-         "scaevola": 21, "argusia": 22, "tussock": 23}
+         "scaevola": 21, "argusia": 22, "tussock": 23, "susuki": 24, "plume": 25, "lomandra": 26}
 SAKURA_CELLS = ["sakura", "shidare", "kawazu", "yae"]
 
 
@@ -290,6 +294,19 @@ SPRAYS = {
     # ones straw and the tips bleached gold, as Otago's snow tussock and hard tussock stand on the hills
     "tussock": dict(leaf="blade", base=["#5d6438", "#6b6c3e", "#56603a"], mid=["#9c8a52", "#a99556", "#8f8150", "#b29d60"],
                     tip=["#d2bb7c", "#c9b070", "#ddc88e", "#bfa468"], n=150),
+    # susuki's leaves (Miscanthus sinensis): broad (1-2 cm) and long, arching over from half way and hanging, a
+    # mid green with the pale midrib that marks the genus, the outer ones yellowing and the oldest dry at the tips
+    "susuki": dict(leaf="blade", base=["#4f6a34", "#57713a", "#4a6431"], mid=["#6f8a45", "#7a924c", "#68833f", "#83975a"],
+                   tip=["#a7a46a", "#9a9a5c", "#b3ab74", "#8f9254"], n=80, wmul=2.0, lean_sd=0.55, droop=2.4, dead=0.12,
+                   midrib="#d8dcc0", L=(0.62, 0.98)),
+    # its flowering culms' heads: a fan of a dozen or more silky racemes from a short axis, silver-white with a
+    # flush of red-purple when fresh, on a thin straw-coloured stalk (the card's lower half)
+    "plume": dict(leaf="plume", stalk="#b9ad7c", silk=["#b4a994", "#a99d88", "#bdb29d", "#a1937d"], flush=["#977c6b", "#8c7166", "#a18673"]),
+    # Lomandra longifolia (spiny-headed mat-rush): stiff flat strap leaves 8-12 mm wide, a glossy dark green to
+    # the base, arching but not hanging, the tips split and browned
+    "lomandra": dict(leaf="blade", base=["#2f4a26", "#34502a", "#2b4423"], mid=["#3f6130", "#466a34", "#3a5a2d", "#4d7038"],
+                     tip=["#6f7a44", "#7d7a4a", "#66743f", "#8a8452"], n=110, wmul=1.6, lean_sd=0.45, droop=0.6, dead=0.06,
+                     L=(0.6, 0.95)),
 }
 
 
@@ -299,27 +316,70 @@ def blades(img, spec, rng, S=2):
     dr = ImageDraw.Draw(img)
     bx, by = CW * S / 2, CH * S - 4 * S
     lerp = lambda a, b, t: tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+    rib = hexrgb(spec["midrib"]) if spec.get("midrib") else None
+    Lr = spec.get("L", (0.55, 0.97))
     for k in range(spec["n"]):
-        dead = rng.random() < 0.3
-        lean = rng.normal(0, 0.42)                       # radians from the vertical
-        L = CH * S * rng.uniform(0.55, 0.97) * (0.8 if dead else 1.0)
-        droop = rng.uniform(0.6, 1.6) * (1.0 + abs(lean))
+        dead = rng.random() < spec.get("dead", 0.3)
+        lean = rng.normal(0, spec.get("lean_sd", 0.42))  # radians from the vertical
+        L = CH * S * rng.uniform(*Lr) * (0.8 if dead else 1.0)
+        droop = rng.uniform(0.6, 1.6) * (1.0 + abs(lean)) * spec.get("droop", 1.0)
         x0 = bx + rng.normal(0, 7) * S
         cb = hexrgb(spec["base"][rng.integers(len(spec["base"]))])
         cm = hexrgb(spec["mid"][rng.integers(len(spec["mid"]))], 1.08 if dead else 1.0)
         ct = hexrgb(spec["tip"][rng.integers(len(spec["tip"]))], 1.05 if dead else 1.0)
         n = 22
         x, y, a = x0, by, -math.pi / 2 + lean * 0.6
-        w0 = rng.uniform(2.2, 3.4) * S
+        w0 = rng.uniform(2.2, 3.4) * S * spec.get("wmul", 1.0)
         for i in range(n):
             t = i / n
             a += (lean * 0.05 + (math.copysign(1, lean) * droop * 0.035 * t * t)) if abs(lean) > 0.05 else rng.normal(0, 0.01)
             nx_, ny_ = x + math.cos(a) * L / n, y + math.sin(a) * L / n
-            nx_ = min(max(nx_, 8 * S), (CW - 8) * S)
+            if not (8 * S <= nx_ <= (CW - 8) * S):   # (out of the cell: the blade stops, rather than run down its edge)
+                break
             ny_ = max(ny_, 36 * S)
             col = lerp(cb, cm, min(1, t * 2.2)) if t < 0.45 else lerp(cm, ct, (t - 0.45) / 0.55)
-            dr.line([(x, y), (nx_, ny_)], fill=col + (255,), width=max(1, int(w0 * (1 - 0.75 * t))))
+            wl = max(1, int(w0 * (1 - 0.75 * t)))
+            dr.line([(x, y), (nx_, ny_)], fill=col + (255,), width=wl)
+            if rib and wl >= 3 and not dead:   # the pale midrib down the leaf
+                dr.line([(x, y), (nx_, ny_)], fill=lerp(col, rib, 0.7 * (1 - t)) + (255,), width=max(1, wl // 4))
             x, y = nx_, ny_
+
+
+def plumes(img, spec, rng, S=2):
+    """Susuki's flower heads: three culms from the bottom of the cell, straw stalks to different heights, each topped
+    by a fan of silky racemes, each a slightly curved line of fluff thinning to its tip, the fan leaning to one side
+    as the heads do in the wind; silver-white, some with the red-purple of a fresh head."""
+    dr = ImageDraw.Draw(img)
+    lerp = lambda a, b, t: tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+    stalk = hexrgb(spec["stalk"])
+    for c in range(3):
+        bx, by = CW * S * (0.5 + 0.17 * (c - 1)) + rng.normal(0, 4) * S, CH * S - 4 * S
+        top = (bx + (c - 1) * 14 * S + rng.normal(0, 6) * S, CH * S * rng.uniform(0.3, 0.46))
+        dr.line([(bx, by), top], fill=stalk + (255,), width=int(2.4 * S))
+        tilt = rng.normal(0, 0.15) + 0.15 * (c - 1)
+        fresh = rng.random() < 0.25
+        for k in range(22):
+            a = -math.pi / 2 + tilt + rng.normal(0, 0.24)
+            L = CH * S * rng.uniform(0.16, 0.27)
+            x, y = top[0] + rng.normal(0, 2) * S, top[1] + rng.uniform(0, 0.06) * CH * S
+            silk = hexrgb(spec["silk"][rng.integers(len(spec["silk"]))])
+            if fresh:
+                silk = lerp(silk, hexrgb(spec["flush"][rng.integers(len(spec["flush"]))]), rng.uniform(0.3, 0.65))
+            bend = rng.normal(0, 0.012) + 0.012 * math.copysign(1, a + math.pi / 2)
+            n = 16
+            for i in range(n):
+                t = i / n
+                a += bend
+                nx_, ny_ = x + math.cos(a) * L / n, y + math.sin(a) * L / n
+                if not (6 * S <= nx_ <= (CW - 6) * S) or ny_ < 8 * S:
+                    break
+                w = (5.5 - 3.5 * t) * S
+                dr.line([(x, y), (nx_, ny_)], fill=lerp(stalk, silk, 0.7) + (255,), width=max(1, int(1.3 * S)))
+                for j in range(5):   # the fluff: dots either side of the raceme's axis
+                    ox, oy = rng.normal(0, w * 0.4), rng.normal(0, w * 0.3)
+                    r = rng.uniform(1.0, 2.0) * S
+                    dr.ellipse([nx_ + ox - r, ny_ + oy - r, nx_ + ox + r, ny_ + oy + r], fill=lerp(silk, (255, 255, 255), rng.uniform(0, 0.12)) + (255,))
+                x, y = nx_, ny_
 
 
 def build_atlas(path):
@@ -330,6 +390,8 @@ def build_atlas(path):
         cell = Image.new("RGBA", (CW * S, CH * S), (0, 0, 0, 0))
         if SPRAYS[name].get("leaf") == "blade":
             blades(cell, SPRAYS[name], rng, S)
+        elif SPRAYS[name].get("leaf") == "plume":
+            plumes(cell, SPRAYS[name], rng, S)
         else:
             spray(cell, k, SPRAYS[name], rng, S)
         # fade the last few texels at the cell's edge, so a card never shows a straight cut
@@ -456,6 +518,19 @@ SPECIES = {
                     note="Tussock (snow tussock, Chionochloa rigida, and hard tussock, Festuca novae-zelandiae): a dense fountain "
                          "of fine rolled blades about a metre high, olive at the base and straw to bleached gold above; the "
                          "grassland of Otago's open hills round Queenstown, and a planted bed's grass"),
+    # (#326) the grasses of the Japanese cities' river banks and open ground, and a Sydney bed's strappy one
+    "susuki": dict(H=1.75, leaf_h=1.25, trunk=0.0, r0=0.05, crown=("tussock", 0.6, 0.8, 0.7), n=24, size=1.0, leaf="susuki",
+                   bark="#6d6440", lean=0.0, colour="#7d8e4c", autumn_colour="#b59b5c", tilt=((0.4, 0.8), (0.08, 0.3)), base_r=0.1,
+                   aspect=0.75, plumes=8,
+                   note="Susuki (Miscanthus sinensis, Japanese silver grass): a clump of broad arching leaves with a pale "
+                        "midrib about 1.2 m high, through which the flowering culms stand to 1.7-2 m with fan-shaped "
+                        "silky heads, red-tinged in late August, silver in October and buff through the winter, when the "
+                        "leaves are straw; the open grass of the Kamo's banks and of Tokyo's park meadows"),
+    "lomandra": dict(H=0.85, trunk=0.0, r0=0.05, crown=("tussock", 0.4, 0.5, 0.45), n=22, size=1.0, leaf="lomandra",
+                     bark="#4a4630", lean=0.0, colour="#3f5f2f", tilt=((0.3, 0.62), (0.05, 0.22)), base_r=0.09, aspect=0.66,
+                     note="Spiny-headed mat-rush (Lomandra longifolia): a dense tussock of stiff, flat, glossy dark green "
+                          "strap leaves 0.6-1 m long, arching but not drooping, with split brown tips; the strappy native "
+                          "of Sydney's sandstone gullies and its planted beds"),
 }
 
 
@@ -875,23 +950,44 @@ def grow_palm(name, sp, rng, lod):
 def grow_tussock(name, sp, rng, lod):
     """A tussock: blade cards round a tight base, leaning out more the further round the outside, so it reads as a
     fountain from every side; a short dark crown of old leaf bases at the foot. lod 1: a ring of six; 2: three
-    crossed cards."""
+    crossed cards. The other grasses grow the same way from their own cells (sp "leaf"), leaning out by sp "tilt"
+    (radians, the outer cards and the inner) from a base sp "base_r" across; susuki adds its flowering culms
+    (sp "plumes"): a stalk and its head on a card of the plume cell, standing up out of the leaves, two crossed
+    cards each near, one a little further off, none far (web/trees.js shows them from late summer to spring)."""
     T = Tree()
     H = sp["H"]
-    crown_c, crown_r = np.array([0, 0, H * 0.35]), H * 0.6
+    leafH = sp.get("leaf_h", H)
+    crown_c, crown_r = np.array([0, 0, leafH * 0.35]), leafH * 0.6
     count = sp["n"] if lod == 0 else 6 if lod == 1 else 3
+    (o0, o1), (i0, i1) = sp.get("tilt", ((0.28, 0.55), (0.0, 0.18)))
+    br = sp.get("base_r", 0.06)
+    cell = CELLS[sp["leaf"]]
     for k in range(count):
         a = TAU * k / count + (rng.uniform(-0.25, 0.25) if lod == 0 else 0)
         outer = (k % 3 != 0) if lod == 0 else lod == 1
-        tilt = rng.uniform(0.28, 0.55) if outer else rng.uniform(0.0, 0.18)
+        tilt = rng.uniform(o0, o1) if outer else rng.uniform(i0, i1)
         d = Vector((math.cos(a), math.sin(a), 0))
         up = (Vector((0, 0, 1)) * math.cos(tilt) + d * math.sin(tilt)).normalized()
-        at = Vector((math.cos(a) * 0.06, math.sin(a) * 0.06, -0.04))
+        at = Vector((math.cos(a) * br, math.sin(a) * br, -0.04))
         out = Vector((-math.sin(a), math.cos(a), 0)) if lod < 2 else d
-        size = H * rng.uniform(0.85, 1.08) * (1.1 if lod else 1.0)
-        card(T, at, up, out, size, CELLS["tussock"], crown_c, crown_r, rng, aspect=0.62, sway=0.8)
+        size = leafH * rng.uniform(0.85, 1.08) * (1.1 if lod else 1.0)
+        card(T, at, up, out, size, cell, crown_c, crown_r, rng, aspect=sp.get("aspect", 0.62), sway=0.8)
+    np_ = sp.get("plumes", 0)
+    if np_ and lod < 2:
+        for k in range(np_ if lod == 0 else max(3, np_ // 2)):
+            a = rng.uniform(0, TAU)
+            r = rng.uniform(0.0, br * 2.5)
+            tilt = rng.uniform(0.0, 0.22)
+            d = Vector((math.cos(a), math.sin(a), 0))
+            up = (Vector((0, 0, 1)) * math.cos(tilt) + d * math.sin(tilt)).normalized()
+            size = (H - leafH * 0.45) * rng.uniform(0.66, 0.84)
+            at = Vector((math.cos(a) * r, math.sin(a) * r, H - size - 0.02)) - up * 0.0
+            face = rng.uniform(0, math.pi)
+            for f in ((face, face + math.pi / 2) if lod == 0 else (face,)):
+                out = Vector((math.cos(f), math.sin(f), 0))
+                card(T, at, up, out, size, CELLS["plume"], crown_c, crown_r * 1.4, rng, aspect=0.5, sway=1.0)
     if lod == 0:   # the foot: a squat cone of old bases, so it does not stand on a point
-        segs, r = 8, 0.16
+        segs, r = 8, max(0.16, br * 2.6)
         ring = [T.vert(Vector((math.cos(TAU * i / segs) * r, math.sin(TAU * i / segs) * r, -0.03)), 0.45, 0.0) for i in range(segs)]
         top = T.vert(Vector((0, 0, 0.14)), 0.4, 0.05)
         for i in range(segs):
