@@ -193,7 +193,7 @@
       "text": "Each 25 April the town gathers in the dark at the Memorial Gates on Marine Parade; in recent years the dawn service has begun at 6.30am.",
       "lines": ["Half past six, cold and still dark. A good part of the town is standing on Marine Parade facing the Memorial Gates, and the lake behind them is black.", "After the Last Post and the silence, the parade forms up and marches to the Memorial Centre, where the wreaths are laid."],
       "skill": "bearings", "xp": 4, "source": "https://www.qldc.govt.nz/2026/april/2026-anzac-day-services-in-queenstown-lakes/" },
-    { "id": "nye", "title": "New Year's Eve on the lakefront", "stamp": "Midnight on the lake", "where": "Earnslaw Park", "dates": [[12, 31], [12, 31]], "slots": ["evening", "night"],
+    { "id": "nye", "fx": "fireworks", "title": "New Year's Eve on the lakefront", "stamp": "Midnight on the lake", "where": "Earnslaw Park", "dates": [[12, 31], [12, 31]], "slots": ["evening", "night"],
       "at": { "lonlat": [168.6584, -45.0329] }, "radius": 40, "verb": "Join the crowd on the lakefront",
       "text": "The town's free New Year's Eve: bands on a stage in Earnslaw Park through the evening, and fireworks over the lake at midnight.",
       "lines": ["A stage on the grass at Earnslaw Park, a band playing, and most of the town between it and the water. It is light until nearly ten at this time of year.", "At midnight the fireworks go up over the bay, and the hills throw every bang back a second later."],

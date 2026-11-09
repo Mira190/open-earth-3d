@@ -201,7 +201,7 @@
       "text": "Okinawa's Bon dance, drummed through the streets on both sides of the station on the last Saturday of July: the 25th in 2026.",
       "lines": ["You hear it from inside the station: barrel drums and hand drums, a sanshin over a loudspeaker, and a shout on every fourth beat.", "Some twenty troupes, more than a thousand dancers, drumming as they march. Eisa is how Okinawa sees its ancestors off at Bon; Shinjuku has borrowed it on the last Saturday of July since 2002."],
       "skill": "bearings", "xp": 4, "source": "https://www.city.shinjuku.lg.jp/kucho/diary/diary_202607_03.html" },
-    { "id": "gaien-hanabi", "title": "Jingu Gaien fireworks", "native": "神宮外苑花火大会", "stamp": "Fireworks over the stadiums", "where": "Jingu Gaien, by the ginkgo avenue", "days": [[8, 8]], "slots": ["evening", "night"],
+    { "id": "gaien-hanabi", "fx": "fireworks", "title": "Jingu Gaien fireworks", "native": "神宮外苑花火大会", "stamp": "Fireworks over the stadiums", "where": "Jingu Gaien, by the ginkgo avenue", "days": [[8, 8]], "slots": ["evening", "night"],
       "at": [2155, 529], "radius": 60, "verb": "Look up with everyone else",
       "text": "About ten thousand shells over the stadiums of the Outer Garden, from 19:30 for an hour, on a Saturday in August in most years: the 8th in 2026.",
       "lines": ["Yukata on the avenue, fans in every belt, and nobody looking where they walk. The first shell goes up at half past seven.", "About ten thousand shells in an hour, fired from among the stadiums. These are the only big fireworks you can watch from the middle of the city, and half of Aoyama watches from its roofs."],

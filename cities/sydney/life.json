@@ -179,7 +179,7 @@
       "text": "Three weeks of light on the harbour's buildings each winter, from late May to mid-June: 28 May to 19 June in 2027.",
       "lines": ["At dusk the sails stop being white. Colour runs up them from the podium, and the forecourt goes quiet for a second before every phone comes out.", "Vivid began in 2009, when Brian Eno lit these shells. It has run in late May and June in most years since, right round the Quay."],
       "skill": "light", "xp": 5, "source": "https://www.vividsydney.com/" },
-    { "id": "nye", "title": "New Year's Eve on the harbour", "stamp": "Midnight on the harbour", "where": "Mrs Macquarie's Chair", "dates": [[12, 31], [12, 31]], "slots": ["evening", "night"],
+    { "id": "nye", "fx": "fireworks", "fx_at": {"label": "Sydney Harbour Bridge"}, "title": "New Year's Eve on the harbour", "stamp": "Midnight on the harbour", "where": "Mrs Macquarie's Chair", "dates": [[12, 31], [12, 31]], "slots": ["evening", "night"],
       "at": [1015.2, 252.3], "radius": 40, "verb": "Find a patch of grass and wait for midnight",
       "text": "Fireworks over the harbour at 9pm and again at midnight, with the Harbour Bridge in the middle of them.",
       "lines": ["Picnic rugs, edge to edge. Nobody gives up a spot here: at most of the harbour's vantage points, if you leave you do not get back in.", "At nine the first fireworks go up. At midnight the bridge itself goes off, the whole arch at once, and the harbour answers."],

@@ -9,7 +9,8 @@ turns every place it names into the map's own metres, so the writer never measur
     "at": {"spot": "hachiko"}          a spot of the game (game.json "spots")
     "at": {"travel": "t-sancha"}       a travel point
     "at": {"label": "QFRONT"}          a landmark's label (scene.json "labels"; the start of the name will do)
-    "at": {"wharf": "circular-quay"}   a wharf's landing
+    "at": {"wharf": "circular-quay"}   a wharf
+    "at": {"viewpoint": "observatory-hill"}   a trig station
     "at": {"lonlat": [139.7005, 35.6590]}   anywhere real, by its longitude and latitude
 
 The game then stands each on the nearest firm ground. What is checked: every person named is one
@@ -85,14 +86,19 @@ def build(city):
             s = [w for w in game.get('wharves', []) if w['id'] == v['wharf']]
             if not s:
                 raise Bad(f'{where}: no wharf "{v["wharf"]}"')
-            p = list(s[0]['landing'])
+            p = list(s[0].get('landing') or s[0]['terminal'])[:2]  # (the landing is worked out in the browser; the terminal is beside it)
+        elif 'viewpoint' in v:
+            s = [w for w in game.get('viewpoints', []) if v['viewpoint'] in (w.get('id'), w.get('name'))]
+            if not s:
+                raise Bad(f'{where}: no trig station "{v["viewpoint"]}"')
+            p = [s[0]['x'], s[0]['y']] if 'x' in s[0] else list(s[0]['at'])[:2]
         elif 'lonlat' in v:
             if proj is None:
                 from pyproj import Transformer
                 proj = Transformer.from_crs('EPSG:4326', fr['proj'], always_xy=True)
             p = list(proj.transform(*v['lonlat']))
         else:
-            raise Bad(f'{where}: a place is [x, y] or one of npc, spot, travel, label, wharf, lonlat')
+            raise Bad(f'{where}: a place is [x, y] or one of npc, spot, travel, label, wharf, viewpoint, lonlat')
         if isinstance(v, dict) and 'd' in v:
             p[0] += v['d'][0]
             p[1] += v['d'][1]
@@ -135,6 +141,7 @@ def build(city):
         if b.get('npc') not in npcs:
             errs.append(f'{w}: not one of the map\'s NPCs')
         when(b.get('hours'), w)
+        said.append((w, b.get('busy', '')))
         if len(b.get('ranks', [])) != RANKS:
             errs.append(f'{w}: needs {RANKS} ranks, has {len(b.get("ranks", []))}')
         for i, r in enumerate(b.get('ranks', [])):
@@ -159,6 +166,7 @@ def build(city):
                     at(g, 'at', wr)
             q = r.get('request')
             if q:
+                said += [(wr, q.get('text', '')), (wr, q.get('ask', ''))]
                 if q.get('type') not in REQUESTS or not q.get('text'):
                     errs.append(f'{wr}: a request needs a type of {sorted(REQUESTS)} and a text')
                 if q.get('type') == 'visit':
@@ -192,7 +200,7 @@ def build(city):
             errs.append(f'{w}: needs subjects')
         if j.get('skill') and j['skill'] not in SKILLS:
             errs.append(f'{w}: unknown skill')
-        said.append((w, j.get('text', '')))
+        said += [(w, j.get(k, '')) for k in ('text', 'blurb', 'done', 'who', 'title')]
     for s in life.get('shops', []):
         w = f'shop {s.get("id")}'
         at(s, 'at', w)
@@ -213,7 +221,7 @@ def build(city):
             errs.append(f'{w}: fx is "fireworks"')
         if e.get('skill') and e['skill'] not in SKILLS:
             errs.append(f'{w}: unknown skill')
-        said += [(w, t) for t in e.get('lines', [])]
+        said += [(w, t) for t in e.get('lines', [])] + [(w, e.get('text', ''))]
     for b in life.get('bonds', []):
         for r in b.get('ranks', []):
             g, q = r.get('gives') or {}, r.get('request') or {}

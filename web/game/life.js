@@ -119,8 +119,8 @@ window.OELife = (function () {
     let saveT = 5;
     // what grows which skill (once a thing where it says "first")
     const RULES = {
-      guess: o => L.gain('eye', Math.max(1, Math.round((o.score || 0) / 20)), o.score >= 80 ? 'as good as the data' : ''),
-      survey: o => L.gain('bearings', o.first ? 6 : 1, o.first ? `${o.name} surveyed` : ''),
+      guess: o => L.gain('eye', Math.max(1, Math.round((o.score || 0) / 20)), o.score >= 80 ? 'a guess inside the margin' : ''),
+      survey: o => L.gain('bearings', o.first ? 6 : 1, o.first ? `${o.name}: the whole view taken in` : ''),
       spot: o => { if (L.first('spot', o.id)) L.gain('bearings', 1); },
       area: o => { if (L.first('area', o.id)) L.gain('bearings', 1); },
       stamp: o => L.gain('bearings', 2),

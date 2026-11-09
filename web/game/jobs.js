@@ -149,8 +149,10 @@ window.OEJobs = (function () {
     function action() {
       if (P.mode !== 'foot') return null;
       if (cur && cur.phase === 'run' && cur.j.type === 'point') return { key: 'E', text: `That way: ${cur.j.targets[cur.i].name}`, act: pointAt };
+      // (a counter first: it is a few steps wide, and an event's ground may take it in)
+      for (const s of shops()) if (dist(s.at) < (s.radius || 4.5) && L.day.onNow(s)) return { key: 'E', text: `Order at ${s.name}`, act: () => order(s) };
       for (const e of L.day.today()) if (e.at && dist(e.at) < (e.radius || 14) && L.day.onNow(e)) return { key: 'E', text: e.verb || `Join ${e.title}`, act: () => attend(e) };
-      for (const s of shops()) if (dist(s.at) < (s.radius || 4.5)) return L.day.onNow(s) ? { key: 'E', text: `Order at ${s.name}`, act: () => order(s) } : { key: '', text: `${s.name}: open ${L.day.whenOn(s)}` };
+      for (const s of shops()) if (dist(s.at) < (s.radius || 4.5)) return { key: '', text: `${s.name}: open ${L.day.whenOn(s)}` };
       return null;
     }
 

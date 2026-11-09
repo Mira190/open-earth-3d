@@ -83,6 +83,7 @@ async function lifeStep(p, check, city) {
         const md = e.dates ? e.dates[0] : e.days[0], b2 = () => D.bounds();
         g.setClock(c.y, md[0], md[1], 720); g.advance(1);
         if (e.slots) { g.setClock(c.y, md[0], md[1], b2()[e.slots[0]] + 5); g.advance(1); }
+        if (e.hours) { g.setClock(c.y, md[0], md[1], +e.hours[0].slice(0, 2) * 60 + +e.hours[0].slice(3) + 5); g.advance(1); }
         out.listed = D.today().some(x => x.id === e.id);
         g.player.x = e.at[0]; g.player.y = e.at[1]; if (e.at[2] != null) g.player.z = e.at[2];
         const a = L.action(); out.eventAct = !!(a && a.act);
