@@ -24,6 +24,8 @@ meshes(Mesh)       the viaduct (deck, track, the brick arches and the concrete f
 surfaces()         the platforms and the stairs, for the game to walk on
 trains()           game.json "trains": each track's course and what runs on it (web/game/trains.js)
 assets(out_dir)    the signs' sheet (rail_signs.png)
+glows()            the station's own light on its platforms after dark
+demolished()       the city's low solids under the platforms
 """
 import json
 import math
@@ -50,28 +52,28 @@ MATERIALS = {
     "rail_bed": {"color": "#6a625a", "roughness": 0.95, "metalness": 0.0, "pattern": "deck_zones", "zones": [[2.7, "rail"]]},
     "rail_steel": {"color": "#8d8478", "roughness": 0.32, "metalness": 0.85},
     "rail_brick": {"color": "#8c4a38", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.085, "block_m": 0.23},
-    "rail_stone": {"color": "#968f82", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.3, "block_m": 0.62},
-    "rail_concrete": {"color": "#a8a59c", "roughness": 0.85, "metalness": 0.0},
+    "rail_stone": {"lamp_lit": True, "color": "#968f82", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.3, "block_m": 0.62},
+    "rail_concrete": {"lamp_lit": True, "color": "#a8a59c", "roughness": 0.85, "metalness": 0.0},
     "rail_soffit": {"color": "#8f8c85", "roughness": 0.9, "metalness": 0.0},
     "rail_girder": {"color": "#7b9086", "roughness": 0.55, "metalness": 0.35},
     "rail_shop": {"color": "#2b2f33", "roughness": 0.25, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 1.3, "storey_m": 3.4,
                   "spandrel": 0.16, "frame": "#3a332c", "mullion_m": 0.1, "lit_share": 0.9, "lit_k": 1.5, "warm_share": 0.92},
-    "rail_shutter": {"color": "#8d8f8c", "roughness": 0.6, "metalness": 0.4},
+    "rail_shutter": {"lamp_lit": True, "color": "#8d8f8c", "roughness": 0.6, "metalness": 0.4},
     "rail_mast": {"color": "#6f7c7a", "roughness": 0.6, "metalness": 0.5},
     "rail_wire": {"color": "#3c3a36", "roughness": 0.5, "metalness": 0.7, "shadow": False},
     "rail_platform": {"color": "#b4aea4", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.3], "street_lit": True},
-    "rail_stairs": {"color": "#a9a49b", "roughness": 0.8, "metalness": 0.0},
-    "rail_yellow": {"color": "#e8c21c", "roughness": 0.7, "metalness": 0.0, "decal": True},
-    "rail_white": {"color": "#ecebe6", "roughness": 0.6, "metalness": 0.0, "decal": True},
+    "rail_stairs": {"lamp_lit": True, "color": "#a9a49b", "roughness": 0.8, "metalness": 0.0},
+    "rail_yellow": {"lamp_lit": True, "color": "#e8c21c", "roughness": 0.7, "metalness": 0.0, "decal": True},
+    "rail_white": {"lamp_lit": True, "color": "#ecebe6", "roughness": 0.6, "metalness": 0.0, "decal": True},
     "rail_roof": {"color": "#c4c8c6", "roughness": 0.5, "metalness": 0.5},
-    "rail_ceiling": {"color": "#e4e2da", "roughness": 0.7, "metalness": 0.0},
-    "rail_frame": {"color": "#a9b7b8", "roughness": 0.55, "metalness": 0.4},
+    "rail_ceiling": {"lamp_lit": True, "color": "#e4e2da", "roughness": 0.7, "metalness": 0.0},
+    "rail_frame": {"lamp_lit": True, "color": "#a9b7b8", "roughness": 0.55, "metalness": 0.4},
     "rail_lamp": {"color": "#f4f6ee", "roughness": 0.4, "metalness": 0.0, "emissive": "#f2fbe9", "glow": 2.6, "glow_day": 0.9},
-    "rail_psd": {"color": "#eceeed", "roughness": 0.45, "metalness": 0.2},
+    "rail_psd": {"lamp_lit": True, "color": "#eceeed", "roughness": 0.45, "metalness": 0.2},
     "rail_psd_glass": {"color": "#bcd3d6", "roughness": 0.08, "metalness": 0.3, "opacity": 0.32},
-    "rail_psd_line": {"color": "#7cc142", "roughness": 0.5, "metalness": 0.0},
+    "rail_psd_line": {"lamp_lit": True, "color": "#7cc142", "roughness": 0.5, "metalness": 0.0},
     "rail_sign": {"color": "#ffffff", "roughness": 0.5, "metalness": 0.0, "map": "rail_signs.png", "emissive_map": True, "glow": 1.25, "glow_day": 0.35},
-    "rail_bench": {"color": "#3d6f9a", "roughness": 0.6, "metalness": 0.1},
+    "rail_bench": {"lamp_lit": True, "color": "#3d6f9a", "roughness": 0.6, "metalness": 0.1},
     "rail_dark": {"color": "#16181a", "roughness": 0.9, "metalness": 0.0},
 }
 
@@ -720,7 +722,7 @@ def station(L, K, Mesh):
             else:              # a drinks machine, lit, either side
                 for sgn, kk in ((-1, "vending"), (1, "vending2")):
                     c0 = m + n * sgn * 0.02
-                    K["rail_psd"].box([*(c0 - t * 0.55 + n * sgn * 0.36), zp + 0.92], [*(c0 + t * 0.55 + n * sgn * 0.36), zp + 0.92], 0.7, 1.84)
+                    K["rail_shutter"].box([*(c0 - t * 0.55 + n * sgn * 0.36), zp + 0.92], [*(c0 + t * 0.55 + n * sgn * 0.36), zp + 0.92], 0.7, 1.84)
                     sign(K, c0, n * sgn, 1.04, zp + 0.06, 1.74, kk, 0.72)
         # ---- the stairs: treads between two walls, a balustrade round the well on the platform
         for st in st_here:
@@ -887,3 +889,21 @@ def demolished():
     """The city's low solids under the platforms, which the viaduct stands in for (landmarks.json "demolished")."""
     L = layout()
     return L["gone"] if L else []
+
+
+def glows():
+    """The light of the platforms' tube lights and the concourse's on what stands under them after dark
+    (landmarks.json "glows": [x, y, radius m, colour, strength], web/night.js)."""
+    L = layout()
+    if not L:
+        return []
+    out = []
+    for p in L["plats"]:
+        fr = p["frames"]
+        for f in [f for f in fr if fr[0][0] + 24 < f[0] < fr[-1][0] - 24][2::5]:
+            out.append([round(float(f[1][0]), 1), round(float(f[1][1]), 1), 9.0, "#f1f6e8", 0.36])
+    p0, t, n = L["frame"](L["mid"])
+    for v in (-12, 0, 12, 24):
+        c = p0 + n * v
+        out.append([round(float(c[0]), 1), round(float(c[1]), 1), 11.0, "#f1f6e8", 0.34])
+    return out

@@ -182,8 +182,9 @@ def landmark_meshes(scene):
 
 
 def landmark_glows(scene):
-    """The Shuto's deck lamps over the Nihonbashi River (cities/tokyo/shuto.py)."""
-    return SHUTO.glows()
+    """The Shuto's deck lamps over the Nihonbashi River (cities/tokyo/shuto.py), and Yurakucho's platform
+    lights (cities/tokyo/rail.py)."""
+    return SHUTO.glows() + RAIL.glows()
 
 
 def landmark_assets(out_dir, scene):

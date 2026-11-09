@@ -24,6 +24,7 @@ window.OETrains = (function () {
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   const ACC = 0.9, DWELL = 26;
+  const HEAR = 240; // a train is heard from this far (m): from the station and the streets beside the line, not across the city
 
   // a course in decimetres [x, y, z, ...] -> { L, at(d) }: the position and bearing d metres along it
   function course(p) {
@@ -55,6 +56,23 @@ window.OETrains = (function () {
     n700s: { len: 25, shinkansen: true, pan: [4, 11] },
   };
   let MATS = null;
+  function saloon(yb, yt) {
+    const m = new THREE.MeshStandardMaterial({ color: lin('#10171d'), roughness: 0.06, metalness: 0.4, emissive: lin('#ffdcae'), emissiveIntensity: 0.03 });
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLit; varying float vCar;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLit = position;\n#ifdef USE_INSTANCING\n  vCar = float( gl_InstanceID );\n#else\n  vCar = 0.0;\n#endif');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vLit; varying float vCar;\nfloat litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }')
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+  { // someone in every other half metre, seated or standing: a head and shoulders against the light
+    float u = vLit.z / 0.52 + vCar * 3.7, c = floor( u ), fx = ( fract( u ) - 0.5 ) * 0.52, y = vLit.y - ${yb.toFixed(3)};
+    float tall = 0.26 + 0.5 * litHash( c + 9.0 );
+    float who = step( litHash( c ), 0.55 ) * max( step( abs( fx ), 0.19 ) * step( y, tall - 0.11 ), step( length( vec2( fx, y - tall ) ), 0.115 ) );
+    float up = clamp( y / ${(yt - yb).toFixed(3)}, 0.0, 1.0 );
+    totalEmissiveRadiance *= ( 0.6 + 0.55 * up ) * ( 1.0 - 0.74 * who ); }`);
+    };
+    m.customProgramCacheKey = () => `train-saloon|${yb}`;
+    return m;
+  }
   function mats() {
     if (MATS) return MATS;
     const std = o => new THREE.MeshStandardMaterial(o);
@@ -66,8 +84,9 @@ window.OETrains = (function () {
       black: std({ color: lin('#101214'), roughness: 0.35, metalness: 0.3 }),
       white: std({ color: lin('#f3f5f4'), roughness: 0.3, metalness: 0.15 }),
       blue: std({ color: lin('#123f8c'), roughness: 0.35, metalness: 0.1 }),
-      // a commuter car's saloon: lit all day, seen through the windows
-      lit: std({ color: lin('#10171d'), roughness: 0.06, metalness: 0.4, emissive: lin('#ffd49a'), emissiveIntensity: 0.03 }),
+      // a saloon seen through its windows: dark glass by day; as the light goes its lamps show, with the people
+      // in it dark against them (a commuter car's windows from 1.93 m over the rail, a Shinkansen's from 1.99 m)
+      lit: saloon(1.93, 2.85), litS: saloon(1.99, 2.51),
       glass,
       paint: {},
     };
@@ -183,9 +202,9 @@ window.OETrains = (function () {
       const x = sx * (hw + 0.008);
       add(M.blue, K.box(0.03, 0.13, b - a, x, 1.62, Z((a + b) / 2)));
       add(M.blue, K.box(0.03, 0.04, b - a, x, 1.47, Z((a + b) / 2)));
-      for (let z = a + 1.7; z < (nose ? zb1 - 0.4 : b - 1.6); z += 1.04) add(M.lit, K.box(0.02, 0.52, 0.58, x, 2.25, Z(z)));
+      for (let z = a + 1.7; z < (nose ? zb1 - 0.4 : b - 1.6); z += 1.04) add(M.litS, K.box(0.02, 0.52, 0.58, x, 2.25, Z(z)));
       add(M.white, K.box(0.03, 1.95, 0.75, x, 1.55, Z(a + 0.7))); // a door at the car's end
-      add(M.lit, K.box(0.036, 0.4, 0.3, x, 2.3, Z(a + 0.7)));
+      add(M.litS, K.box(0.036, 0.4, 0.3, x, 2.3, Z(a + 0.7)));
     }
     add(M.roof, K.box(1.2, 0.08, (nose ? 12 : 23), 0, top + 0.02, Z(nose ? -5.5 : 0)));
     if (role === 'pan') { add(M.white, K.box(2.6, 0.5, 5.0, 0, top + 0.2, 3.0)); pantograph(out, top + 0.3, 3.0); } // behind its noise shields
@@ -202,13 +221,15 @@ window.OETrains = (function () {
       capEl = document.createElement('div');
       capEl.id = 'g-announce';
       capEl.setAttribute('aria-live', 'polite');
-      Object.assign(capEl.style, { position: 'fixed', left: '50%', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 118px)', transform: 'translateX(-50%)', maxWidth: 'min(86vw, 720px)',
-        padding: '9px 16px 10px', borderRadius: '10px', background: 'rgba(8, 12, 18, 0.62)', backdropFilter: 'blur(10px)', webkitBackdropFilter: 'blur(10px)', color: '#f4efe6',
+      const small = window.innerWidth < 560;
+      Object.assign(capEl.style, { position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'fit-content', bottom: `calc(env(safe-area-inset-bottom, 0px) + ${small ? 150 : 118}px)`, maxWidth: 'min(88vw, 720px)',
+        padding: small ? '7px 12px 8px' : '9px 16px 10px', borderRadius: '10px', background: 'rgba(8, 12, 18, 0.62)', backdropFilter: 'blur(10px)', webkitBackdropFilter: 'blur(10px)', color: '#f4efe6',
         font: '500 14px/1.4 "Inter Tight", "Public Sans", system-ui, sans-serif', letterSpacing: '0.01em', textAlign: 'center', pointerEvents: 'none', zIndex: 30,
         borderLeft: '3px solid #8fc31f', opacity: 0, transition: 'opacity 0.35s ease' });
       (document.getElementById('game') || document.body).appendChild(capEl);
     }
-    capEl.innerHTML = `<div lang="ja" style="font-size:15px">${ja}</div><div style="opacity:0.78;font-size:13px">${en}</div>`;
+    const small = window.innerWidth < 560;
+    capEl.innerHTML = `<div lang="ja" style="font-size:${small ? 12 : 15}px">${ja}</div><div style="opacity:0.78;font-size:${small ? 11 : 13}px">${en}</div>`;
     capEl.style.opacity = 1;
     capT = 4 + ja.length * 0.16;
   }
@@ -319,7 +340,7 @@ window.OETrains = (function () {
     api.at = at;
 
     function place(live) {
-      { const n = OEKit.shared.night.value; mats().lit.emissiveIntensity = 0.03 + 1.5 * n * Math.sqrt(n); } // the saloons' light shows as the day goes
+      { const n = OEKit.shared.night.value, M = mats(); M.lit.emissiveIntensity = M.litS.emissiveIntensity = 0.03 + 1.9 * n * Math.sqrt(n); } // the saloons' light shows as the day goes
       for (const k of Object.values(kinds)) k.n = 0;
       let lamps = 0;
       for (const tr of live) {
@@ -391,12 +412,12 @@ window.OETrains = (function () {
       const right = cam ? new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion) : null;
       const panOf = (x, y) => { if (!right) return 0; const dx = x - l.x, dy = y - l.y, d = Math.hypot(dx, dy) || 1; return Math.max(-1, Math.min(1, (dx * right.x - dy * right.z) / d)) * 0.85; };
       // the three nearest trains have a voice each (their rumble, joints and motors)
-      const near = live.filter(tr => tr.near < 420 && tr.v > 0.05).sort((a, b) => a.near - b.near).slice(0, 3);
+      const near = live.filter(tr => tr.near < HEAR && tr.v > 0.05).sort((a, b) => a.near - b.near).slice(0, 3);
       api.voices = [0, 0, 0];
       if (A && A.train) for (let i = 0; i < 3; i++) {
         const tr = near[i];
         if (!tr) { A.train(i, 0); continue; }
-        const level = Math.pow(Math.max(0, 1 - tr.near / 420), 2.2) * (1 + 0.6 * Math.max(0, 1 - tr.near / 30)), pan = panOf(tr.nx, tr.ny);
+        const level = Math.pow(Math.max(0, 1 - tr.near / HEAR), 2.2) * (1 + 0.6 * Math.max(0, 1 - tr.near / 30)), pan = panOf(tr.nx, tr.ny);
         A.train(i, level, pan, tr.v, tr.a, !!tr.s.S.shinkansen); api.voices[i] = level;
         // the wheels over a joint: a bogie's two axles, a car length apart, as the train's speed brings them
         if (!tr.s.S.shinkansen && tr.v > 1.5) {

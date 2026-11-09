@@ -202,7 +202,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         g.advance(0.1);
       }
     }, v);
-    await (v.closer ? grabPage : grab)(v.name);
+    await (v.closer || v.page ? grabPage : grab)(v.name); // ("page": the page with its HUD, not the canvas alone)
     // "pick": [[u, v], ...] points on the frame (0..1 from its top left): what the camera sees there, printed
     // (the mesh's name, its material's, and where it is hit), to find which surface draws a fault in the still
     if (v.pick) console.log(JSON.stringify(await p.evaluate(pts => {

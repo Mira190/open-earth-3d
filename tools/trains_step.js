@@ -102,7 +102,9 @@ module.exports = async function trainsStep(p) {
     A.setMuted(wasMuted);
     g.advance(0.3);
     // back where you were, far from the line: no train has a voice
-    checks.push([Math.max(...T.voices) < 0.05 || Math.hypot(keep.x - st.at[0], keep.y - st.at[1]) < 500, `away from the line no train is heard (${Math.max(...T.voices).toFixed(2)})`]);
+    g.advance(2.5); // (the chase camera, which hears, snaps back with you)
+    const nearest = Math.min(Infinity, ...T.live.filter(o => o.v > 0.05).map(o => o.near));
+    checks.push([nearest < 240 || Math.max(...T.voices) === 0, `away from the line no train is heard (the nearest moving train ${nearest.toFixed(0)} m off, its voice ${Math.max(...T.voices).toFixed(2)})`]);
     return { checks };
   });
 };

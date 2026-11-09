@@ -205,6 +205,10 @@ it: 1.6 km of viaduct for eight tracks, Yurakucho Station on it, and the courses
   model, not modelled inside.
 - Ten low solids under the platforms come down (`landmarks.json` "demolished").
 
+![Yurakucho's platforms by day: the stairs down to the concourse, a Yamanote train at track 2 and a Shinkansen passing](../images/tokyo/yurakucho-platform-day.jpg)
+
+![The brick arches under the station after dark](../images/tokyo/yurakucho-arches-night.jpg)
+
 The trains are the game's (section 6).
 
 ## 2. Sources
@@ -303,6 +307,8 @@ and always shown as a caption. The melody is this game's own; the railway's melo
 composers'. A train near you is heard: its rumble, its wheels over the rail joints, its motors' whine
 as it pulls away, a Shinkansen's rush of air. There is no ambient bed: between trains the station is
 quiet. Three people stand on the platform: an attendant, a commuter and a train photographer.
+
+![Platforms 3 and 4 after dark: a Tokaido Line train running past on the left, a Yamanote train at track 3](../images/tokyo/yurakucho-platform-dusk.jpg)
 
 ## 7. Limits
 
