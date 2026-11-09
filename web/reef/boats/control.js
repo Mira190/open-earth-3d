@@ -174,7 +174,8 @@ export function createControl(ctx, api) {
         const fwdT = kd('KeyW', 'KeyS') * (kd('KeyW', 'KeyS') > 0 ? 28 : 8) + (down('ShiftLeft') && down('KeyW') ? 14 : 0);
         const strafeT = kd('KeyE', 'KeyQ') * 9;
         const climbT = kd('Space', 'KeyC') * 5;
-        const yawT = kd('KeyD', 'KeyA') * 0.9;
+        // (at speed a wider, banked turn rather than a spin on the spot, as the city's helicopter turns: issue 335)
+        const yawT = kd('KeyD', 'KeyA') * (0.9 - 0.35 * Math.min(1, Math.abs(P.fwd) / 28));
         const landed = P.alt <= g.y + 0.02 && !g.water;
         const engineOn = down('KeyW') || down('KeyS') || down('Space') || P.alt > g.y + 0.05 || down('KeyE') || down('KeyQ');
         P.rpm += ((engineOn ? 1 : 0) - P.rpm) * Math.min(1, dt * 0.6);
@@ -191,7 +192,7 @@ export function createControl(ctx, api) {
         let nx = v.x + (fx * P.fwd + sx * P.side) * dt, nz = v.z + (-fy * P.fwd + sz * P.side) * dt;
         v.x = nx; v.z = nz;
         v.air = P.alt; v.rpm = P.rpm;
-        v.api.placeAir(v, P.alt, -P.fwd * 0.011 - (P.vs > 0 ? 0 : 0), P.side * 0.014 + P.yaw * 0.12);
+        v.api.placeAir(v, P.alt, -P.fwd * 0.011 - (P.vs > 0 ? 0 : 0), P.side * 0.014 + Math.max(-0.45, Math.min(0.45, Math.atan(P.fwd * P.yaw / 9.81))) + P.yaw * 0.05); // (banked by what the turn needs)
         if (v.desc.prop) v.desc.prop.rotation.y += (P.rpm * 38) * dt;
         if (v.desc.tail) v.desc.tail.rotation.z += P.rpm * 50 * dt;
         chase(v, 22, 5, dt, 1.5, 6);

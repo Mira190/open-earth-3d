@@ -1563,7 +1563,33 @@ quality tier runs a third of the cars.
     other for good.
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids. It slides along a wall it meets at a glancing angle and
-    bounces off a hard hit.
+    bounces off a hard hit. The flight handles the way the helicopters of
+    open-world games do (GTA V, Just Cause), the way a pilot flies a
+    coordinated turn (issue 335; `vehicles.js` `helicopter`, measured by
+    `tools/heli_feel.js`, filmed by `tools/heli_film.js`):
+    - the way it goes follows the nose: the sideways slip dies away in a
+      quarter of a second. Before, the old velocity carried on as it turned,
+      so after a turn at speed it drifted backwards and sideways like a puck
+      on ice (160° off its nose; now 12°);
+    - let go of the stick and it settles to a hover in 3.5 s (it coasted for
+      10.6 s). Pull back while going forward and it brakes hard (2 s from top
+      speed) before it backs away, slowly (12 m/s at most);
+    - it turns 1.3 rad/s at a hover and 0.75 at top speed, in a banked arc,
+      rather than spinning at the same rate however fast it went;
+    - the attitude comes from the flight: nose down to speed up and to hold
+      speed against the drag, nose up (a flare) to brake, and banked by as much
+      as the turn needs (tan bank = speed × turn rate / g, up to about 29°).
+  - **The chase camera in the air** rides on the helicopter, its climbs eased.
+    Before, a lag behind it, eased frame by frame, grew with its speed and with
+    the frame time: at speed with uneven frames the helicopter wobbled in the
+    picture by 6 cm a frame (now 1 mm). The camera swings back behind it 0.9 s
+    after you let go of the mouse (1.6 s before), faster the faster it flies,
+    and looks a little ahead into a turn. It pulls back by up to 8 m and the
+    lens widens by up to 10° with speed.
+  - **Changing view** (<kbd>V</kbd>: chase, cockpit, bird's-eye) is a 0.45 s
+    ease-out from the old view to the new, which travels with the helicopter,
+    not a cut. The reef sites' helicopter (`reef/boats/control.js`) also turns
+    more slowly at speed and banks by what the turn needs.
   - **Getting in,** as in GTA and Sketchbook: <kbd>E</kbd> walks you round to
     the pilot's door (round the nose from the far side). The door swings open
     on its hinge, you step up onto the skid and slide into the seat, and the
@@ -1571,10 +1597,11 @@ quality tier runs a third of the cars.
     swings round to watch, and the rotor spools up until it can lift at 90%.
     Getting out is the same the other way round, once you have landed. The
     moves are in the helicopter's own frame, so they work wherever it lands.
-  - **The cockpit view** (<kbd>V</kbd>): the pilot's eyes, pitching and
-    banking with the cabin, past the instrument panel and through the
-    windscreen. Drag to look round; in flight the view drifts back to
-    straight ahead.
+  - **The cockpit view** (<kbd>V</kbd>): the pilot's eyes, pitching with the
+    cabin and banking with it by half: the bank still reads, but the whole
+    city doesn't swing round the screen. The view looks past the instrument
+    panel and through the windscreen. Drag to look round; in flight the view
+    drifts back to straight ahead.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The city's `ferry_style` picks the model (`"model": "harbour"` or
     `"river"`, else by its length) and the livery: Sydney Ferries' green and
