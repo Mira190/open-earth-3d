@@ -131,6 +131,10 @@ target, so it can run on a schedule.
   hosted option, and the one in use (EU Cloud). The free tier covers 1M events a month, and the project key is public by design.
   Events go through the `/batch/` capture API with `$process_person_profile: false`, so they stay
   anonymous. PostHog's insights show unique users, sums of `s` and percentiles of `ms` and `fps`.
+  Each `view` also goes as PostHog's standard `$pageview` (with `$session_id`, a UUIDv7 kept per tab and
+  renewed after 30 idle minutes, `$referrer`, screen and device fields), so PostHog's built-in Web Analytics
+  shows visitors, pages, referrers, countries and devices. The dashboard and SLO queries read only the
+  site's own events (`OURS` in `tools/posthog_dashboard.py`), so the `$pageview` copies do not count twice.
 - **Self-hosted** (`format: 'jsonl'`, `endpoint: 'https://<your host>/e'`): run
   `python3 tools/telemetry_server.py --port 8890 --out telemetry.jsonl` behind HTTPS. It uses only the
   standard library, writes one JSON line per event and keeps no IP. Then run
