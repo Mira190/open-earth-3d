@@ -71,6 +71,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
 | <kbd>T</kbd> | Switch which walk the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
+| <kbd>J</kbd> | Diary: today's date, weather and calendar, who is free, the work on offer, and pass the time (see [Daily life](#daily-life-the-day-the-diary-bonds-skills-and-jobs)) |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
@@ -501,8 +502,112 @@ Sources for the above are listed under [Sources](#sources) ("Daily life").
 - **Short sessions.** Something finishes within ten minutes: a rank, a job, a dish, a page of
   the diary.
 
-`web/game/life.js` is the store and the event bus, `web/game/day.js` the slots, the calendar,
-the day card and the diary. A map's own content is `cities/<id>/life.json`.
+### The day and the diary
+
+A day has four parts, set by the sun of the city's own date (`web/game/day.js`): **morning**
+from half an hour before sunrise, **daytime** from 10:30, **evening** from golden hour and
+**night** from the end of dusk. A card comes up for each new day (the weekday, the date, the
+sun's arc from sunrise to sunset with the sun on it, the weather, what is on) and a smaller one
+for each new part of it. The card never takes the controls.
+
+The **diary** (<kbd>J</kbd>, or **Diary** beside Map and Passport) opens on today: the date,
+the hour and the weather, your wallet, the four parts of the day with their hours, what is on
+the calendar today and in the next three weeks, who is free to talk now, what work and which
+counters are open, and **pass the time**: on to the start of any other part of the day,
+tomorrow's if today's has gone. Its other pages are People, Work and Pages (what you did, day
+by day). Each city counts your days in it; the count never resets.
+
+### Bonds
+
+A map's cast are people to get to know (`web/game/bonds.js`). Each has **five ranks**. When
+someone is free (their own parts of the day, their weekdays, some only when it is dry or only
+when it rains) and has nothing waiting on you, talking to them offers the time: "Spend the
+evening with Aoi". The scene is two or three lines, a question, and one fact about the place
+that goes into the diary. A good answer to the question means the hour did not slip by;
+otherwise the clock moves on to the next part of the day. Between ranks they may ask something
+of you (see where the river comes back up, guess a tower's height, photograph 109, run a
+jacket across the scramble), and some ranks give an ability:
+
+| Ability | What it does |
+|---|---|
+| `fare` | A share off every taxi and ride on that map |
+| `tip` | A share more for every job |
+| `job` | A job of theirs, in the diary under Work |
+| `xp` | Points in a skill |
+| `filter` | Night film: photographs after sunset come out tungsten-balanced, and the caption says so |
+
+Quests always come first: a person who has a walk to give you gives it, whatever the hour.
+Nobody is ever missed for good, and there is no deadline.
+
+### The passport's skills
+
+Five skills grow by what you do, most of all the first time you do a thing in a place
+(`web/game/life.js`), and are drawn under the stamps in the passport:
+
+| Skill | Grows by | Levels |
+|---|---|---|
+| **Eye** | the height challenge, by how close the guess | Rough guess · To the storey · To the metre · Plumb line · Surveyor's eye |
+| **Bearings** | trig stations, spots read, stamps, pointing the way | Visitor · Finds the way · Knows the streets · Walking map · True north |
+| **Light** | sun studies, photographs at golden or blue hour | Daylight · Reads the shade · Golden hour · Blue hour · Master of light |
+| **Lines** | ferries, the funicular and the gondola, lifts, taxis and rides, each route the first time | Passenger · Commuter · Regular · Knows the timetable · Line captain |
+| **Taste** | dishes tried at the counters | Curious · A second helping · Regular · Knows the counter · Local palate |
+
+Skills and the wallet (one per currency) go with you from map to map; the people, the jobs and
+the diary belong to each map. A skill's level gates a few ranks and jobs.
+
+### Work, counters and the calendar
+
+Jobs are taken from the diary's Work page, one at a time and once in each part of the day
+(`web/game/jobs.js`). Each uses what the game already had:
+
+- **Delivery:** from one real door to another against a clock, by any means. A taxi is quicker
+  and costs its fare. On time pays in full, with time to spare a quarter more, late six tenths.
+- **Cab fare:** in your own car: stop at the pick-up, drive your passenger where they say.
+- **Show the way:** a visitor asks where a landmark is; turn to face its true bearing and
+  press <kbd>E</kbd>. Within 8° pays in full, and the answer says how far off you were and how
+  far away it is.
+- **Photographs:** a list of real subjects to take in photo mode, a quarter more for each taken
+  at golden or blue hour.
+
+Money is in the city's own (yen, dollars). Taxis and rides now charge a fare on arrival (flag
+fall and a rate a kilometre); short of it, the driver lets the rest go. **Counters** keep hours
+and sell a dish or a keepsake, each with a line about it. The **calendar** is events at their
+real places on their real dates, with the hours they run: walk up while one is on and
+<kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
+
+### The phone
+
+The phone (<kbd>N</kbd>) is the hub: beside the ride app it lists Messages, Diary, Work, Map
+and Camera (`web/game/phone.js`). Messages come as a part of the day begins: someone you know
+is free, something on the calendar has started, something is on tomorrow.
+
+### How it is built
+
+| File | What it holds |
+|---|---|
+| `web/game/life.js` | the save (`oe3d-life` in `localStorage`), the event bus (`life.emit`), the skills' rules, the wallet and fares |
+| `web/game/day.js` | the parts of the day, the calendar, the cards, the diary and its pages |
+| `web/game/bonds.js` | ranks, hours, requests, abilities, the People page |
+| `web/game/jobs.js` | the four kinds of job, counters, events, the Work page, the passport's skills |
+| `web/game/phone.js` | the phone's home rows and messages |
+| `web/game/style.js`, `web/game/life.css` | the banner for a rank, a level and a job done; every style of the above |
+| `cities/<id>/life.json` | a map's people, jobs, counters and calendar, written by hand |
+| `pipeline/life.py` | checks it and writes `web/data/<id>/life.json` |
+
+`game.js` only lends these the clock, the HUD and the player, tells them what happens
+(`life.emit('guess' | 'survey' | 'spot' | 'stamp' | 'sun' | 'photo' | 'ride' | ...)`) and asks
+what <kbd>E</kbd> does at a place of theirs. A map without a `life.json` still has the day, the
+diary, the skills and the wallet.
+
+**Writing a map's life.** Copy the shape of `cities/shibuya/life.json`. Places are never
+measured: `{"npc": id}`, `{"spot": id}`, `{"travel": id}`, `{"label": "QFRONT"}`,
+`{"wharf": id}` or `{"lonlat": [lon, lat]}`, with `"d": [dx, dy]` to step aside; the game
+stands each on the nearest firm ground. `python pipeline/life.py --city <id>` fails on a person
+who is not one of the map's NPCs, fewer than five ranks, a rank without a fact, an event
+without a source, a place outside the map, and any line that talks about the data
+(`tools/voice_check.py`'s list). `tools/life_step.js` plays a day, a rank, a job, a dish, an
+event and the save in `tools/game_check.js`; `tools/life_shot.js <city> <out> [WxH]` takes
+stills of every screen.
 
 ## How it works
 

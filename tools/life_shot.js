@@ -23,20 +23,21 @@ const [,, city = 'shibuya', outDir = 'life-shots', size = '1440x900', time = '17
   await p.waitForFunction('window.__game && window.__game.life', null, { timeout: 600000 });
   await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return !l || l.hidden; }, null, { timeout: 900000, polling: 500 });
   const tag = phone ? 'phone' : 'desktop';
-  const shot = async name => { await p.waitForTimeout(1500); await p.screenshot({ path: path.join(outDir, `${city}-${name}-${tag}.png`) }); console.log(`${city}-${name}-${tag}`); };
+  const shot = async name => { await p.waitForTimeout(1500); await p.screenshot({ path: path.join(outDir, `${city}-${name}-${tag}.png`), timeout: 240000 }); console.log(`${city}-${name}-${tag}`); };
   await p.evaluate(([time, date]) => {
     const g = window.__game, c = g.clock, [hh, mm] = time.split(':').map(Number), [m, d] = date ? date.split('-').map(Number) : [c.m, c.d];
     g.setClock(c.y, m, d, hh * 60 + mm);
     if (g.weather) g.weather.set('clear', { now: true });
-    c.frozen = true;
     document.getElementById('gt-play').click();
+    window.__setClock = () => { g.setClock(c.y, m, d, hh * 60 + mm); c.frozen = true; };
   }, [time, date]);
   await p.waitForTimeout(1200);
   await p.evaluate(() => { const g = window.__game; if (g.overture() && g.overture().active) g.overture().skip(); g.settleArrival(); if (g.cine.active) g.cine.skip(); });
+  await p.evaluate(() => window.__setClock());
   await p.waitForTimeout(2500);
   await p.evaluate(() => window.__game.life.day.card());
   await shot('day-card');
-  await p.evaluate(() => { const d = window.__game.life.day; d.close(); d.show(); });
+  await p.evaluate(() => { document.querySelectorAll('.lf-card').forEach(e => e.remove()); const d = window.__game.life.day; d.close(); d.show(); });
   await shot('diary-today');
   const tabs = await p.evaluate(() => [...document.querySelectorAll('.lf-tabs button')].map(b => b.dataset.tab));
   for (const t of tabs.slice(1)) { await p.evaluate(t => document.querySelector(`.lf-tabs button[data-tab="${t}"]`).click(), t); await shot(`diary-${t}`); }
