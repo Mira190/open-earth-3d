@@ -8,7 +8,8 @@
 // "face": "sun" or "away" turns that camera to the sun's bearing or away from it; "js" is evaluated
 // with C = window.__city before the frame, to take a part away and compare)
 // in the city's local frame (x east, y north, z up, metres); "agl": true measures z from the ground, "agl": "top"
-// from whatever stands there (a roof); a camera that would stand inside a building is lifted over its roof. Writes out_dir/<name>.png and
+// from whatever stands there (a roof); a camera that would stand inside a building is lifted over its roof ("free": true
+// keeps it where it is: down in a sunken promenade, under the street the surface model carries over it). Writes out_dir/<name>.png and
 // prints the page's errors and the frame time of each view.
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -72,7 +73,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       const tgt = v.tgt && v.agl ? [v.tgt[0], v.tgt[1], v.tgt[2] + base(v.tgt[0], v.tgt[1])] : v.tgt;
       // a camera inside a building draws its walls' backs, or nothing (an empty frame, as a height over the
       // ground under a roof gave): lift it out over the roof, and say so
-      if (cam && cam[2] < top(cam[0], cam[1]) - 0.5) {
+      if (cam && !v.free && cam[2] < top(cam[0], cam[1]) - 0.5) { // ("free": true keeps it: a camera down in a sunken channel, under the street's surface model)
         console.warn(`${v.name}: the camera was inside a building (${cam[2].toFixed(1)} m under a top at ${top(cam[0], cam[1]).toFixed(1)} m); lifted over it`);
         cam = [cam[0], cam[1], top(cam[0], cam[1]) + 2];
       }
