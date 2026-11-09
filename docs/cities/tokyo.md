@@ -142,7 +142,8 @@ name or class: a vent's or a stair's cover. It was drawn as a one-storey house w
 it is drawn plain now, and so is the M8 exit's own cover (`pipeline/arcades.py`, low structures). Not
 checked against a photograph: Wikimedia Commons refused this session's requests. (#290: Commons answered, but its photographs of the Marunouchi north side
 show the station's dome and the plaza from far off; none shows the block. GSI's aerial photograph has a pale
-rectangle there, consistent with a low cover. Left plain.)
+rectangle there, consistent with a low cover. Left plain.) (#323: M8 is the stair up to the north bus and taxi stands of the Marunouchi plaza, beside the
+Shin-Marunouchi Building (Yahoo! transit's exit list); Commons and Openverse have no photograph of it. Left plain.)
 
 ### The Imperial Palace
 

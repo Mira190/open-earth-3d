@@ -275,7 +275,7 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   - *sunken promenades* (`terrace` on a line, #300): Kyoto's Horikawa from Oshikoji up
     to the map's edge, restored by Kyoto City (1997-2008) with a stream, paths and
     benches inside the old river and entrances from the pavements and crossings. Between
-    stone walls 9.5 m apart a paved floor (granite setts) stands 0.35 m over the water and
+    stone walls 9.9 m apart a paved floor (granite setts) stands 0.35 m over the water and
     about 2.6 m under the street; the stream runs down its middle, 2.4 m wide between
     low stone edges; at each crossing a flight of steps (0.16 m risers, 0.3 m treads, a
     parapet on the open side) runs down along the wall below the crossing, on one bank and
@@ -293,19 +293,37 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     gives the stretch, the stream, the stepped weirs and the entrances but no dimensions:
     the depth and widths are read from photographs. No other live city has one; a city adds
     `"terrace": {"stream_m", "path_m", "steps_m"}` to a line in `water.inland.lines`.
-    Kyoto City's brochure for the restoration (堀川水辺環境整備事業, Construction Bureau)
-    places its features, and `terrace` draws them between two points on the line
-    (`between`): the lawn (芝生広場, `lawn`) between Shimochojamachi and Demizu, on the east
-    side of the stream; the stepped drops (階段状の落差工, `weirs`) between Marutamachi and
-    Takeyamachi, a granite sill across the stream every 14 m with the water level from one
-    to the next and falling over each, white water below; and the steps that serve as
-    seating (観覧席にもなる階段, `seats`) between Nijo and Oshikoji, four tiers of 0.4 by
-    0.7 m along the east wall as the photographs from Nijo bridge show them (Umeyou, CC
-    BY-SA 3.0), which walkers climb. No measured section is published: the brochure gives
-    the flow (6 t a minute) and the medians it runs in upstream (8-10 m); a maintenance
-    tender's 5,714 m² of bed over 580 m gives 9.9 m between the walls on average, as the
-    9.5 m drawn. The depth, the tiers and the spacing of the drops are read from
-    photographs;
+    Kyoto City's summary of the restoration (堀川水辺環境整備事業概要, Construction Bureau,
+    2010; viewable only, not reused) places its features in five zones lettered from the
+    south, A (Nijo-Oshikoji) to E (Motoseiganji-Ichijo), and `terrace` draws them between
+    two points on the line (`between`): the steps that serve as seating (観覧席にもなる階段,
+    `seats`) in zone A, four tiers of 0.4 by 0.7 m along the east wall as the photographs
+    from Nijo bridge show them (Umeyou, CC BY-SA 3.0); in zone B (Marutamachi-Takeyamachi)
+    the stream along the west wall (`course` `wall`, as the zone's photograph looking north
+    shows it) and the stepped drops (階段状の落差工, `weirs`), a granite sill across the
+    stream every 14 m with the water level from one to the next and falling over each,
+    white water below, and the whole floor stepping down with them (`weirs.floor`: the
+    floor in pieces cut across at each drop, a granite riser of 0.06-0.29 m at each, the
+    photograph's pale bands across it); the lawn (芝生広場, `lawn`) between Shimochojamachi
+    and Demizu (zone C), on the east side of the stream, with a flat granite slab over the
+    stream (`crossings`); in zone D (Ichijo-Nakadachiuri) the stream winding across the
+    floor (`course` `meander_m` 2 m, `wave_m` 44 m) under two more slabs, and below
+    Modoribashi "a wide space that serves as a stage and steps that serve as the audience's
+    seats" (the summary's words): the stream along the east wall there, the audience's four
+    tiers along the west wall and the floor between them as the stage (Yacàwotçã's
+    photograph from Modoribashi, CC BY 2.0, 2022); and stepping stones across the stream by
+    Horikawa Daiichi-bashi (Culturegeeks and Higashiyama2, CC BY-SA 3.0, 2014): three
+    granite blocks 0.55 by 1 m standing 0.22 m out of the water, which a walker strides
+    over. The bed raised upstream of Modoribashi (the summary's 河床を上げる) is beyond the
+    map's northern edge (2.7 km). No measured section is published: the summary gives the
+    flow (6 t a minute) and the medians it runs in upstream (8-10 m); a maintenance tender's
+    5,714 m² of bed over 580 m gives 9.85 m between the walls on average, the only measured
+    figure, and the walls stand 9.9 m apart (9.5 m before #322, read from photographs; GSI's
+    0.5 m aerial photographs cannot tell the two apart under the trees). A records request to
+    the city's river section for the drawings would settle the wall height and the widths;
+    it is left in #322. The depth, the tiers and the spacing of the drops are read from
+    photographs. Walkers stand on the floor at its own level along the line (`axis`, which
+    steps down with it), on the slabs and the stones (`inland.js crossingAt`);
     The promenade is walked (#315): `nav.js` takes its floor and its flights (`inland.js
     promenade`) as a `promenade` floor at their own level, not the street's ground the
     terrain carries over the channel. A flight opens to the pavement through a gap in the
@@ -318,7 +336,9 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     deck `decks.js` would lift into the air, so the crowd walks it too.
     `tools/promenade_walk.js` (in `tools/game_check.js`; alone, `tools/promenade_check.js`)
     walks down a flight, along the floor, at the stream and the wall, back up, at the
-    railing from the street, and down and up every flight;
+    railing from the street, up and down each block of seats, over every slab and row of
+    stepping stones and back, down and up each step of the floor, and down and up every
+    flight;
   - *natural* water (the Kamo River, the ponds): the survey interpolates across water,
     so its level is the survey's own inside the outline (the lowest fifth within 40 m
     along a river, a third of the way up for a pond, just under its shore);
