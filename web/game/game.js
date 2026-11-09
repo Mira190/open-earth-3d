@@ -4491,6 +4491,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let fpsWarned = false;
   gov.on((extras, scale, extrasChanged) => {
     resize();
+    if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras }); // (each step is a "quality" event: telemetry.js)
     if (!extrasChanged) return;
     console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`);
     if (weather) { const lv = extras >= 1 ? 0 : extras > 0 ? 1 : 2; if (weather.shed < lv) weather.shed = lv; } // (weather.js keeps what it shed)
