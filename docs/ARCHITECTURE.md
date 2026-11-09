@@ -1680,3 +1680,18 @@ the far tiles come in. The loader's plate shows the overview instead of every ti
 loads every tile at once, as before, but as AVIF. The film and still tools wait for every tile
 (`__game.groundShown()`).
 
+What each live city's game downloads before it can be played (`tools/load_size.js <city> play 0`, on the
+wire; main before issue 335 against both steps; what moved to after the loader is the far tiles):
+
+| City | before: files | MB | after: files | MB |
+|---|---|---|---|---|
+| Shibuya | 144 | 25.4 | 132 | 19.7 |
+| Queenstown | 152 | 28.0 | 132 | 23.3 |
+| Kyoto | 128 | 21.2 | 122 | 17.7 |
+| Shinjuku | 139 | 21.4 | 131 | 17.6 |
+| Tokyo | 133 | 19.3 | 124 | 16.0 |
+| Sydney | 126 | 16.8 | 123 | 14.6 |
+| Higashiyama | 119 | 12.4 | 120 | 12.1 |
+| Tetsugaku | 119 | 12.3 | 118 | 11.8 |
+| Fushimi Inari | 120 | 11.7 | 119 | 11.3 |
+
