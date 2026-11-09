@@ -1623,9 +1623,12 @@ quality tier runs a third of the cars.
         from outside only, so the gap in the lining under the nose is a chin
         window onto the ground. The lining is a cabin's dark grey, not near
         black.
+      - **The pitot tubes** are short and sit on the roof's front edge, above the
+        pilot's view, as on the H125. They ran half a metre forward over the
+        glass, two bars across the cockpit view.
       What still frames the view is the A-pillar between the windscreen and the
-      pilot's door, which the door's seam leaves no room to narrow, the pitot
-      tubes over the glass, and the wire cutter under the nose.
+      pilot's door, which the door's seam leaves no room to narrow, and the wire
+      cutter under the nose.
       `tools/cockpit_shot.js` takes stills of the variants from the same place
       over Sydney Harbour.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.

@@ -863,8 +863,10 @@ def build_helicopter():
                          [Vector((2.50 + a * 0.4, b * 0.4, 2.40)) for a, b in airfoil(0.3, 0.06)]])
     loft(body, "Metal", [[Vector((3.62 + a * 0.4, b * 0.4, 0.70)) for a, b in airfoil(0.4, 0.06)],
                          [Vector((3.74 + a * 0.4, b * 0.4, 0.42)) for a, b in airfoil(0.2, 0.06)]])
-    for y in (-0.18, 0.18):
-        tube(body, "Metal", [(2.55, y, 2.02), (2.78, y, 2.06), (3.05, y, 2.07)], 0.011, segs=6)
+    # (the pitot tubes: short, on the roof's front edge over the windscreen's top, out of the pilot's view as on the
+    # H125; issue 335: they ran half a metre forward over the glass, two bars across the cockpit view)
+    for y in (-0.16, 0.16):
+        tube(body, "Metal", [(2.36, y, 2.10), (2.50, y, 2.115), (2.64, y, 2.12)], 0.009, segs=6)
     # door handles (the pilot's on the door) and the sliding door rail
     for side in (1, -1):
         for x in (1.42, -0.32):
