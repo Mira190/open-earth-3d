@@ -20,9 +20,9 @@ window.OEStyle = (function () {
       stage.appendChild(el);
       shown.push(o); if (shown.length > 8) shown.shift();
       setTimeout(() => el.classList.add('out'), o.hold || 3400);
-      setTimeout(() => { el.remove(); cur = null; next(); }, (o.hold || 3400) + 650);
+      setTimeout(() => { el.remove(); if (cur === el) { cur = null; next(); } }, (o.hold || 3400) + 650);
     }
-    L.ui = { banner(o) { queue.push(o); next(); }, shown: () => shown, esc };
+    L.ui = { banner(o) { queue.push(o); next(); }, shown: () => shown, esc, clear() { queue.length = 0; if (cur) { cur.remove(); cur = null; } } };
     return L.ui;
   }
   return { create };

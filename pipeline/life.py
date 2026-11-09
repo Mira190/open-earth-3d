@@ -255,6 +255,17 @@ def main():
             with open(out, 'w', encoding='utf-8') as f:
                 f.write(text)
             print(f'life {c}: {len(text) / 1024:.1f} kB')
+    # which maps have one: the game asks for a map's life.json only if it is listed (web/data/life.json)
+    idx = os.path.join(ROOT, 'web', 'data', 'life.json')
+    have = sorted(c for c in os.listdir(os.path.join(ROOT, 'web', 'data')) if os.path.exists(os.path.join(ROOT, 'web', 'data', c, 'life.json')))
+    text = json.dumps({'maps': have})
+    old = open(idx).read() if os.path.exists(idx) else None
+    if old != text:
+        if a.check:
+            print('FAIL life: web/data/life.json is stale (python pipeline/life.py)')
+            bad += 1
+        else:
+            open(idx, 'w').write(text)
     sys.exit(1 if bad else 0)
 
 

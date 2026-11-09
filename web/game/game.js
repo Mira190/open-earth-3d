@@ -2421,7 +2421,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (life) {
     if (window.OEDay) OEDay.create(life);
     for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEPhone']) if (window[k]) window[k].create(life);
-    fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => (r.ok ? r.json() : null)).then(d => life.load(d)).catch(() => {});
+    fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
   function renderPassport() {
     $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {

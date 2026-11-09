@@ -129,6 +129,41 @@ window.OELife = (function () {
       ride: o => { if (o.kind === 'cab') o = Object.assign({}, o, { kind: 'taxi' }); const k = `${o.kind}:${o.from || ''}>${o.to || ''}`; L.gain('lines', L.first('ride', k) ? (o.kind === 'taxi' || o.kind === 'lift' ? 2 : 4) : 1, L.first('ridekind', o.kind) ? `first ${o.kind === 'rail' ? 'train' : o.kind}` : ''); },
       dish: o => { if (!city().dishes.includes(o.id)) { city().dishes.push(o.id); L.gain('taste', 3, o.name); } },
     };
+    // ---- the score (music.js): the hour, the weather, the place and what you are doing, told to it once a second.
+    // It starts with the game's sound (a browser allows none before a click or a key) and has its own volume in the menu
+    if (window.OEMusic) {
+      const music = L.music = OEMusic.create();
+      const KYOTO = /^(kyoto|higashiyama|fushimi-inari|tetsugaku)$/;
+      const palette = () => (data.music && data.music.palette) || (KYOTO.test(ctx.cityId) ? 'kyoto' : { Japan: 'tokyo', Australia: 'sydney', 'New Zealand': 'alpine' }[ctx.country] || null);
+      let t = 0;
+      L.use({ tick(dt, paused, titled) {
+        if ((t += dt) < 1) return;
+        t = 0;
+        const A = ctx.A;
+        if (!A.on || !A.ctx || !A.musicBus) return;
+        if (!music.playing && !music.off && !titled) music.start(A.ctx, A.musicBus());
+        if (!music.playing) return;
+        const wx = L.day ? L.day.weather() : { rain: 0 }, on = L.day ? L.day.today().find(e => L.day.onNow(e)) : null;
+        music.set({ slot: L.day ? L.day.slot : null, hour: ctx.clock.min / 60, rain: wx.rain, snow: wx.kind === 'snow', palette: palette(), district: ctx.cityId,
+          mode: ['car', 'ride', 'ferry', 'heli', 'rail'].includes(ctx.player.mode) ? ctx.player.mode : 'foot', talking: ctx.dlg.open, event: on ? on.id : null });
+      } });
+      ctx.signal.addEventListener('abort', () => music.stop());
+      // the menu's row: the music's own volume, beside the Sound switch (which silences everything)
+      const snd = ctx.$('#gm-sound');
+      if (snd && !ctx.$('#gm-music')) {
+        const f = document.createElement('div');
+        f.className = 'field';
+        f.innerHTML = '<label for="gm-music"><span>Music</span><output class="num" id="gm-music-v"></output></label><input type="range" id="gm-music" min="0" max="100" step="5" aria-label="Music volume">';
+        snd.closest('label').after(f);
+      }
+      const sl = ctx.$('#gm-music'), out = ctx.$('#gm-music-v');
+      if (sl) {
+        const show = () => { sl.value = String(Math.round(music.volume() * 100)); out.textContent = music.off ? 'Off' : music.playing ? music.describe() : `${sl.value}%`; };
+        ctx.on(sl, 'input', () => { music.volume(+sl.value / 100); if (!music.off && !music.playing && ctx.A.ctx) music.start(ctx.A.ctx, ctx.A.musicBus()); show(); });
+        ctx.on(ctx.$('#g-menu'), 'pointerenter', show);
+        show();
+      }
+    }
     window.addEventListener('pagehide', () => { if (dirty) L.save(); }, { signal: ctx.signal });
     return L;
   }

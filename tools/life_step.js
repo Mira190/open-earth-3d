@@ -89,6 +89,14 @@ async function lifeStep(p, check, city) {
         if (a && a.act) { a.act(); talkOut(); }
         out.kept = !!L.city().events[e.id];
       }
+      // ---- the score: it starts with the sound and follows the hour and the weather
+      if (L.music && g.life.ctx.A.start) {
+        L.ctx.A.start();
+        g.advance(1.2); g.advance(1.2);
+        out.music = L.music.playing; out.score0 = L.music.describe();
+        if (out.music) { D.passTo('night'); if (g.weather) g.weather.set('rain', { now: true }); g.advance(1.2); g.advance(1.2); out.want = L.music.state; await new Promise(r => setTimeout(r, 6000)); out.score1 = L.music.describe(); if (g.weather) g.weather.set('clear', { now: true }); }
+        out.vol = (() => { const v = L.music.volume(); L.music.volume(0); const off = L.music.off; L.music.volume(v); return off && L.music.volume() === v; })();
+      }
       // ---- the save, read back
       L.save();
       const snap = JSON.stringify([L.store.skills, L.store.wallets, L.city().bonds, L.city().jobs, L.city().days]);
@@ -130,6 +138,7 @@ async function lifeStep(p, check, city) {
   }
   if (r.shops) check(r.counter && r.dish > 0 && r.taste > 0, `a counter: a dish bought (${r.dish}) grows the taste`);
   if (r.events) check(r.listed && r.eventAct && r.kept, 'the calendar: an event is listed on its date, joined at its place and kept');
+  if (r.music != null) check(r.music && r.want && r.want.slot === 'night' && r.want.rain > 0.2 && !!r.want.palette === /Japan|Australia|New Zealand/.test(r.country || 'Japan') && r.vol, `the score plays with the sound and follows the hour and the weather ("${r.score0}" to "${r.score1}"), with its own volume`);
   check(r.reloaded && r.restored, 'the save: skills, wallet, ranks, jobs and days read back as they were');
   return r;
 }

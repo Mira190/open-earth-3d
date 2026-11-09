@@ -23,6 +23,8 @@ const [,, city = 'shibuya', outDir = 'life-shots', size = '1440x900', time = '17
   await p.waitForFunction('window.__game && window.__game.life', null, { timeout: 600000 });
   await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return !l || l.hidden; }, null, { timeout: 900000, polling: 500 });
   const tag = phone ? 'phone' : 'desktop';
+  // (a software renderer takes seconds over a screenshot: the banners hold until each still is taken)
+  await p.evaluate(() => { const ui = window.__game.life.ui, b = ui.banner; ui.banner = o => b(Object.assign({}, o, { hold: 25000 })); });
   const shot = async name => { await p.waitForTimeout(1500); await p.screenshot({ path: path.join(outDir, `${city}-${name}-${tag}.png`), timeout: 240000 }); console.log(`${city}-${name}-${tag}`); };
   await p.evaluate(([time, date]) => {
     const g = window.__game, c = g.clock, [hh, mm] = time.split(':').map(Number), [m, d] = date ? date.split('-').map(Number) : [c.m, c.d];
@@ -59,7 +61,7 @@ const [,, city = 'shibuya', outDir = 'life-shots', size = '1440x900', time = '17
     await p.evaluate(() => { const g = window.__game, k = window.__b.b.ranks[0].ask ? window.__b.b.ranks[0].ask.options.findIndex(o => o.good) : 0; g.dlg.choose(Math.max(0, k)); for (let i = 0; i < 30 && g.dlg.open; i++) g.dlg.next(false); });
     await p.waitForTimeout(700);
     await shot('rank-up');
-    await p.waitForTimeout(5000);
+    await p.evaluate(() => window.__game.life.ui.clear());
     await quiet();
     await act('diary-people-known', () => { const d = window.__game.life.day; d.show(); document.querySelector('.lf-tabs button[data-tab="people"]').click(); });
     await quiet();
@@ -72,7 +74,7 @@ const [,, city = 'shibuya', outDir = 'life-shots', size = '1440x900', time = '17
     await p.evaluate(() => { const g = window.__game, L = g.life; while (L.jobs.active && L.jobs.active.j.type === 'point') L.jobs.pointAt(); });
     await p.waitForTimeout(900);
     await shot('job-done');
-    await p.waitForTimeout(3500);
+    await p.evaluate(() => window.__game.life.ui.clear());
   }
   await act('phone', () => { window.__game.life.phone.post('Calendar', 'The diary has today: who is free, what is on.', 'shot'); window.__game.phoneShow('home'); });
   await act('phone-messages', () => window.__game.phoneShow('messages'));
