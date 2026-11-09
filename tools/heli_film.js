@@ -49,10 +49,13 @@ const [VW, VH] = size.split('x').map(Number);
   });
   if (!ok) { console.log('not aboard'); await b.close(); return; }
   await p.evaluate(() => {
-    window.__frames = { cb: null, t: performance.now() };
-    window.requestAnimationFrame = cb => { window.__frames.cb = cb; return 1; };
+    // (every callback asked for in a frame, not only the last: a one-off animation's, a toast fading, asked after the
+    // game's own frame would otherwise take its place, and the game would stop)
+    window.__frames = { cbs: [], t: performance.now(), get cb() { return this.cbs.length ? () => {} : null; } };
+    window.requestAnimationFrame = cb => { window.__frames.cbs.push(cb); return window.__frames.cbs.length; };
+    window.__frames.step = t => { const q = window.__frames.cbs; window.__frames.cbs = []; for (const f of q) f(t); };
   });
-  await p.waitForFunction(() => window.__frames.cb, null, { timeout: 30000 });
+  await p.waitForFunction(() => window.__frames.cbs.length, null, { timeout: 30000 });
   const dir = path.join(outDir, `${city}-heli`);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
@@ -61,7 +64,7 @@ const [VW, VH] = size.split('x').map(Number);
     const g = window.__game, F = window.__frames;
     if (press) { window.dispatchEvent(new KeyboardEvent('keydown', { code: press, key: press })); window.dispatchEvent(new KeyboardEvent('keyup', { code: press, key: press })); g.keys.delete(press); }
     keys.forEach(k => g.keys.add(k));
-    const cb = F.cb; F.cb = null; F.t += 1000 / 30; cb(F.t);
+    F.t += 1000 / 30; F.step(F.t);
     keys.forEach(k => g.keys.delete(k));
     return document.getElementById('game-gl').toDataURL('image/jpeg', 0.85);
   }, { keys, press });

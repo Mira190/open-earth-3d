@@ -1605,23 +1605,29 @@ quality tier runs a third of the cars.
     - **What the pilot sees** (issue 335). Flight sims' pilot views (MSFS's VFR
       view) show mostly the world outside, and their players' most common
       complaint is an eye too low, too close to the panel, or looking at the
-      controls. Ours had the opposite fault. At the model's `Eye_Pilot`, the eye
-      sat level with the windscreen's top under a low cabin roof, 0.4 m behind
-      the glass, so the frame and the roof filled half the picture. Four things
-      changed:
-      - **The eye** (`game.js` `COCKPIT`) moves 0.40 m forward and 0.14 m down.
-        The windscreen's top is now above the line of sight, and the glare
-        shield is a band along the bottom.
-      - **The view**: a 66° lens, looking almost level.
-      - **The glass**: while the view is up, the glass is thinned to faint
-        reflections. Its clear coat mirrored the sky from inside.
-      - **The cabin**: the outer skin is drawn from outside only, so a gap in
-        the lining under the nose is a chin window onto the ground, not the
-        white paint's inside. The lining is a cabin's dark grey, not near black.
-      `tools/cockpit_shot.js` took stills of the variants tried from the same
-      place over Sydney Harbour. With the eye further forward the camera
-      clipped into the door pillar. With it higher it went through the roof.
-      Hiding the lining opened the view but left stray slivers of the shell.
+      controls. Ours had the opposite fault: the eye was level with the
+      windscreen's top under a low cabin roof, 0.4 m behind the glass. A centre
+      post ran down the middle 0.8 m away, and the painted nose cap closed the
+      view ahead. The cabin was rebuilt in `blender/build_vehicles.py`:
+      - **A one-piece bubble windscreen**, as the H125's and H130's are. The
+        windscreen runs on over the nose cap almost to the tip. Its two halves
+        overlap over the middle, and its gasket runs round the outside only, so
+        there is no centre post.
+      - **The instrument panel and glare shield** sit 10 cm lower and are
+        shallower.
+      - **`Eye_Pilot`** moves 0.14 m forward and 0.10 m down: leaning to the
+        cyclic, under the windscreen's top.
+      - **In the game** (`game.js` `COCKPIT`): a 66° lens looking almost level.
+        While the view is up, the glass is thinned to faint reflections (its
+        clear coat mirrored the sky from inside), and the outer skin is drawn
+        from outside only, so the gap in the lining under the nose is a chin
+        window onto the ground. The lining is a cabin's dark grey, not near
+        black.
+      What still frames the view is the A-pillar between the windscreen and the
+      pilot's door, which the door's seam leaves no room to narrow, the pitot
+      tubes over the glass, and the wire cutter under the nose.
+      `tools/cockpit_shot.js` takes stills of the variants from the same place
+      over Sydney Harbour.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The city's `ferry_style` picks the model (`"model": "harbour"` or
     `"river"`, else by its length) and the livery: Sydney Ferries' green and

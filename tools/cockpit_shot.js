@@ -49,10 +49,13 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
   if (!ok) { console.log('not aboard'); await b.close(); return; }
   await p.evaluate(() => {
     window.addEventListener('error', e => { window.__lastErr = String(e.message || e.error); });
-    window.__frames = { cb: null, t: performance.now() };
-    window.requestAnimationFrame = cb => { window.__frames.cb = cb; return 1; };
+    // (every callback asked for in a frame, not only the last: a one-off animation's, a toast fading, asked after the
+    // game's own frame would otherwise take its place, and the game would stop)
+    window.__frames = { cbs: [], t: performance.now(), get cb() { return this.cbs.length ? () => {} : null; } };
+    window.requestAnimationFrame = cb => { window.__frames.cbs.push(cb); return window.__frames.cbs.length; };
+    window.__frames.step = t => { const q = window.__frames.cbs; window.__frames.cbs = []; for (const f of q) f(t); };
   });
-  await p.waitForFunction(() => window.__frames.cb, null, { timeout: 30000 });
+  await p.waitForFunction(() => window.__frames.cbs.length, null, { timeout: 30000 });
   fs.mkdirSync(outDir, { recursive: true });
   for (const v of variants) {
     const url = await p.evaluate(v => {
@@ -61,7 +64,7 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
       if (!C.base.eye) C.base.eye = C.eye.toArray();
       C.fov = v.fov ?? C.base.fov; C.pitch = v.pitch ?? C.base.pitch; C.eye.fromArray(v.eye || C.base.eye);
       g.cam.lookYaw = v.yaw || 0; g.cam.lookPitch = C.pitch; g.viewBlend.t = 1;
-      for (let i = 0; i < 30; i++) { const cb = F.cb; F.cb = null; if (typeof cb !== 'function') return `error: the game stopped asking for frames at step ${i} (${window.__lastErr || '?'}; same game ${window.__game === window.__g0}, ${location.hash}, mode ${g.player.mode}, at ${g.heli.st.x.toFixed(0)}, ${g.heli.st.y.toFixed(0)}, ${g.heli.st.z.toFixed(0)})`; F.t += 1000 / 30; g.keys.add('KeyW'); cb(F.t); g.keys.delete('KeyW'); g.heli.st.vx *= 0.97; g.heli.st.vy *= 0.97; }
+      for (let i = 0; i < 30; i++) { if (!F.cbs.length) return `error: the game stopped asking for frames at step ${i} (${window.__lastErr || '?'})`; F.t += 1000 / 30; g.keys.add('KeyW'); F.step(F.t); g.keys.delete('KeyW'); g.heli.st.vx *= 0.97; g.heli.st.vy *= 0.97; }
       return document.getElementById('game-gl').toDataURL('image/jpeg', 0.9);
     }, v);
     if (url.startsWith('error')) { console.log(v.name, url); continue; }

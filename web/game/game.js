@@ -2689,13 +2689,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   let skip = false, waitFerry = null, lastDock = null;
   // V: the chase camera and the bird's-eye view, and in the helicopter the pilot's own view between them
-  // the pilot's view (issue 335): the lens, the look ahead's pitch, and the eye moved from the model's Eye_Pilot
+  // the pilot's view (issue 335): the lens, the look ahead's pitch, and any move of the eye from the model's Eye_Pilot
   // (+x left, +y up, +z forward, m). As in the flight sims' pilot views (MSFS's VFR view), most of the picture is
-  // the world outside: the eye forward and a little lower in the seat, near the windscreen and under the line of
-  // its top, looking ahead, the panel's glare shield a band along the bottom. At Eye_Pilot as built, 0.4 m further
-  // back and level with the windscreen's top under a low cabin roof, the frame and the roof filled half the
-  // picture (tools/cockpit_shot.js, the variants compared in docs/GAME.md)
-  const COCKPIT = { fov: 66, pitch: -0.08, eye: new THREE.Vector3(0.05, -0.14, 0.40) };
+  // the world outside: the eye (blender/build_vehicles.py) leaning to the cyclic under the line of the windscreen's
+  // top, looking ahead through the bubble nose, the low glare shield a band along the bottom
+  const COCKPIT = { fov: 66, pitch: -0.08, eye: new THREE.Vector3(0, 0, 0) };
   // and from the seat (while the cockpit view is up; put back after): the glass all but clear, as the flight sims
   // show the pilot only faint reflections (its clear coat mirrored the bright sky from inside); the outer skin
   // drawn from outside only, so that where the cabin's lining leaves a gap under the nose the pilot sees down

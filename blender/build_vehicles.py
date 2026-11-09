@@ -552,10 +552,14 @@ def nose_xs():
 
 
 # glazing in (x, theta) for the right side; the left side mirrors theta -> pi - theta. The windscreen
-# stays two grid cells clear of the pilot's door, so their cuts never share a grid point
+# stays two grid cells clear of the pilot's door, so their cuts never share a grid point. It runs on over the
+# nose cap nearly to the tip, a bubble nose as the light single-engine helicopters have (the H125's and H130's),
+# so the pilot sees ahead and down past the glare shield (issue 335: it stopped at x 3.74, and the painted cap
+# in front of it closed the view ahead in the cockpit). Its two halves overlap over the middle: one piece of glass
+# with no centre post, as the H130's windscreen is (the post, 0.8 m from the pilot's eye, cut the view in two)
 WINDOWS = {
-    "windscreen": [(2.51, HALF - 0.035), (2.51, 1.02), (2.79, 0.55), (3.05, -0.06), (3.36, -0.30), (3.58, -0.30),
-                   (3.70, 0.30), (3.74, HALF - 0.035)],
+    "windscreen": [(2.51, HALF + 0.12), (2.51, 1.02), (2.79, 0.55), (3.05, -0.06), (3.36, -0.30), (3.62, -0.32),
+                   (3.82, -0.05), (3.95, 0.40), (3.975, HALF + 0.12)],
     "front_door": [(1.34, -0.04), (1.34, 0.97), (2.30, 0.97), (2.56, 0.52), (2.84, -0.04)],
     "chin": [(3.04, -0.66), (3.42, -0.52), (3.60, -0.62), (3.56, -0.98), (3.12, -1.10)],
     "rear_door": [(-0.38, 0.04), (-0.38, 0.97), (1.02, 0.97), (1.02, 0.04)],
@@ -566,7 +570,7 @@ SEAMS = {  # door and panel outlines, right side
     "rear_door": ([(-0.48, -0.70), (-0.48, 1.07), (1.12, 1.07), (1.12, -0.70)], True),
     "rail": ([(-0.48, -0.74), (-1.40, -0.74)], False),
     "tail_cone": ([(-2.55, th) for th in np.linspace(0, TAU, 40, endpoint=False)], True),
-    "nose": ([(3.80, th) for th in np.linspace(-1.9, 0.25, 30)], False),
+    "nose": ([(3.80, th) for th in np.linspace(-1.9, -0.45, 22)], False),  # (below the windscreen, which reaches over the cap)
 }
 STRIPE = [(3.82, -0.46), (3.45, -0.40), (2.90, -0.34), (2.10, -0.31), (0.80, -0.30), (-0.60, -0.30), (-1.40, -0.25),
           (-2.10, -0.10), (-2.80, 0.02), (-3.60, 0.05), (-4.95, 0.05)]
@@ -730,11 +734,12 @@ def build_helicopter():
     seat(2.00, 0.40)
     for y in (-0.48, 0.0, 0.48):
         seat(0.30, y, w=0.44)
-    # instrument panel under a glare shield, three screens a side, centre console
-    box(body, "Panel", (0.32, 1.30, 0.42), T((2.80, 0, 1.36), (0, 0.32, 0)), bevel=0.03)
-    box(body, "Panel", (0.42, 1.36, 0.06), T((2.74, 0, 1.60), (0, 0.10, 0)), bevel=0.02)
+    # instrument panel under a glare shield, three screens a side, centre console: low and shallow, as a light
+    # helicopter's is, so the pilot looks out over it through the bubble (issue 335: it stood 10 cm higher)
+    box(body, "Panel", (0.30, 1.26, 0.36), T((2.80, 0, 1.27), (0, 0.32, 0)), bevel=0.03)
+    box(body, "Panel", (0.34, 1.30, 0.05), T((2.76, 0, 1.48), (0, 0.10, 0)), bevel=0.02)
     for y in (-0.42, -0.14, 0.14, 0.42):
-        box(body, "Screen", (0.01, 0.22, 0.18), T((2.635, y, 1.38), (0, 0.32, 0)))
+        box(body, "Screen", (0.01, 0.22, 0.16), T((2.645, y, 1.29), (0, 0.32, 0)))
     box(body, "Panel", (0.80, 0.24, 0.30), T((2.30, 0, 0.98)), bevel=0.03)
     for y in (-0.40, 0.40):
         cyl(body, "Metal_Dark", 0.016, 0.42, T((2.30, y, 1.05), (0, 0.18, 0)), segs=8)
@@ -881,10 +886,14 @@ def build_helicopter():
         c = min(1.0, -p.y / w) ** (1 / e)
         s = min(1.0, abs(p.z - zc) / (ht if up else hb)) ** (1 / e)
         return in_door(p.x, math.atan2(s if up else -s, c))
-    # gaskets on both faces of the skin, framing the panes outside and in
+    # gaskets on both faces of the skin, framing the panes outside and in (round the one-piece windscreen, not
+    # down its middle, where its two halves meet: open along that edge)
     for name, poly in win.items():
+        ws = name.startswith("windscreen")
+        half = [(x, min(th, HALF)) for x, th in WINDOWS["windscreen"]]  # (each half's gasket ends on the middle line, meeting the other's)
+        line = chaikin(half if name == "windscreen" else mirror(half), 3, False) if ws else poly
         for off in (0.006, -0.006):
-            F.band(door_trim if name == "front_door" else trim, poly, 0.036, "Gasket", offset=off, across=2, closed=True, step=0.025)
+            F.band(door_trim if name == "front_door" else trim, line, 0.036, "Gasket", offset=off, across=2, closed=not ws, step=0.025)
     for name, (poly, closed) in SEAMS.items():
         for k, pts in enumerate((poly, mirror(poly))):
             F.band(door_trim if name == "front_door" and k == 0 else trim, chaikin(pts, 2, closed) if closed and name != "tail_cone" else pts,
@@ -967,9 +976,11 @@ def build_helicopter():
 
     # the way in: stand by the door (Door), up onto the step on the front cross tube (Step), and sit
     # down: Seat_Pilot is on the floor under the pilot's hips, where a seated person's feet rest
-    # (the seat's cushion is 38 cm above it), and Eye_Pilot is where the pilot's eyes are
+    # (the seat's cushion is 38 cm above it), and Eye_Pilot is where the pilot's eyes are: leaning a little to
+    # the cyclic, as a pilot sits, under the line of the windscreen's top (issue 335: at 2.02, 1.90 it was level
+    # with it, and the frame and the roof filled the cockpit view)
     anchors = dict(lights)
-    anchors.update({"Seat_Pilot": (1.93, -0.40, zf), "Eye_Pilot": (2.02, -0.40, 1.90), "Door": (1.45, -1.55, 0.0),
+    anchors.update({"Seat_Pilot": (1.93, -0.40, zf), "Eye_Pilot": (2.16, -0.40, 1.80), "Door": (1.45, -1.55, 0.0),
                     "Step": (1.20, -0.90, 0.39), "Searchlight": (1.38, -0.42, 0.54), "Landing_Light": (3.50, 0, 0.76)})
     for k, p in anchors.items():
         objs[k] = empty(k, p)
@@ -2353,7 +2364,7 @@ def main():
     })
     shots = {"helicopter": [("front34", (8.6, -6.4, 2.6), (-0.6, 0, 1.55), 42), ("side", (0.2, -14.5, 1.9), (-1.0, 0, 1.6), 40),
                             ("rear34", (-12.5, 7.5, 3.6), (-1.4, 0, 1.7), 40), ("top", (-0.5, 0.01, 19), (-0.5, 0, 0), 35),
-                            ("cockpit", (5.0, -2.7, 1.9), (2.3, 0, 1.3), 35)],
+                            ("cockpit", (5.0, -2.7, 1.9), (2.3, 0, 1.3), 35), ("pilot", (2.16, -0.40, 1.80), (8.0, -0.6, 0.9), 14)],
              "ferry": [("front34", (34, -26, 9), (0, 0, 3), 40), ("side", (0, -48, 5), (0, 0, 3.2), 40),
                        ("end", (40, 4, 6), (0, 0, 3.5), 45), ("deck", (16, -9, 7.5), (4, 0, 4.5), 30)],
              "ferry_steamer": [("front34", (46, -36, 10), (0, 0, 5), 40), ("side", (0, -70, 6), (0, 0, 5), 40),
