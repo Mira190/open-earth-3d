@@ -2,7 +2,8 @@
 // landmarks, game, terrain, places and scene .bin) back to the object its JSON source holds, so that nothing that reads it
 // changes, except that base64 columns packed as bytes (the roof meshes, buildings.json "r" positions 6
 // and 7) and the terrain grid (terrain.json "data") arrive as Uint8Array, and the landmark meshes' vertex lists (list columns flagged "ta") as
-// typed arrays. The page decodes in a Worker (pack-worker.js, decodeIn below) where it can.
+// typed arrays. The roof meshes go through meshoptimizer's vertex and index codecs (issue 335; its decoder,
+// MIT, is loaded when a pack has them), so a roof triangle may start at another corner. The page decodes in a Worker (pack-worker.js, decodeIn below) where it can.
 // The file is gzip-wrapped; DecompressionStream inflates it (a server that already sent it with
 // Content-Encoding: gzip is handled too). Works in a page (window.OEPack) and in Node (require).
 'use strict';
@@ -47,7 +48,14 @@
       case 'q': { const s = 10 ** d.k, v = ints(d.c, blob); if (s === 1) return v; const f = new Float64Array(v.length); for (let i = 0; i < v.length; i++) f[i] = v[i] / s; return f; }
       case 'f': { const b = blob.slice(d.o, d.o + 8 * d.n); return new Float64Array(b.buffer, b.byteOffset, d.n); }
       case 's': { const t = d.tab, v = ints(d.c, blob), a = new Array(v.length); for (let i = 0; i < v.length; i++) a[i] = t[v[i]]; return a; }
+      case 'p': { const t = d.tab, p = ints(d.c, blob), v = ints(d.v, blob), a = new Array(p.length); for (let i = 0; i < p.length; i++) a[i] = v[i] >= 0 ? t[p[i]] + v[i] : t[p[i]]; return a; }
+      case 'x': { // "#rrggbb" colours as integers, or as indices into a palette of them
+        const v = ints(d.c, blob), pal = d.p ? ints(d.p, blob) : null, a = new Array(v.length);
+        for (let i = 0; i < v.length; i++) a[i] = '#' + (0x1000000 + (pal ? pal[v[i]] : v[i])).toString(16).slice(1);
+        return a;
+      }
       case 'b': {
+        if (d.m) return meshoptBytes(d, blob);
         let cat, o = 0;
         if (d.e) { const v = ints(d.c, blob), a = new Int16Array(v.length); a.set(v); cat = new Uint8Array(a.buffer); } // int16 elements
         else { cat = blob; o = d.o; }
@@ -85,6 +93,51 @@
     throw new Error(`pack: unknown column type ${d.t}`);
   }
 
+  // roof meshes through meshoptimizer's codecs (pipeline/pack.py meshopt_column): the vertices (int16 x, y, z,
+  // padded to four) or the triangles (uint32 indices into every row's vertices) of all the rows at once, cut
+  // back into each row's bytes as its JSON had them (int16 xyz; uint8 indices below 256 vertices, else uint16)
+  let M = null; // the decoder, loaded by decode() when a pack needs it
+  function meshoptBytes(d, blob) {
+    const enc = blob.subarray(d.o, d.o + d.nb), L = ints(d.len, blob), out = new Array(L.length);
+    if (d.m === 'v') {
+      const q = new Int16Array(4 * d.n);
+      M.decodeVertexBuffer(new Uint8Array(q.buffer), d.n, 8, enc);
+      for (let i = 0, v = 0; i < L.length; i++) {
+        const nv = L[i] / 6, a = new Int16Array(3 * nv);
+        for (let k = 0; k < nv; k++, v++) { a[3 * k] = q[4 * v]; a[3 * k + 1] = q[4 * v + 1]; a[3 * k + 2] = q[4 * v + 2]; }
+        out[i] = new Uint8Array(a.buffer);
+      }
+      return out;
+    }
+    const idx = new Uint32Array(d.n), VL = ints(d.vl, blob);
+    M.decodeIndexBuffer(new Uint8Array(idx.buffer), d.n, 4, enc);
+    for (let i = 0, o = 0, base = 0; i < L.length; i++) {
+      const nv = VL[i] / 6, a = nv > 255 ? new Uint16Array(L[i] / 2) : new Uint8Array(L[i]);
+      for (let k = 0; k < a.length; k++) a[k] = idx[o + k] - base;
+      o += a.length; base += nv;
+      out[i] = a instanceof Uint8Array ? a : new Uint8Array(a.buffer);
+    }
+    return out;
+  }
+  // meshoptimizer's decoder (MIT): three.js's copy, in WebAssembly, where there is WebAssembly; its
+  // JavaScript reference decoder where there is none (iOS Lockdown Mode); the pipeline's copy in Node
+  async function meshopt() {
+    if (M) return M;
+    if (isNode) {
+      const url = require('url').pathToFileURL(require('path').join(__dirname, '..', 'pipeline', 'vendor', 'meshoptimizer', 'meshopt_decoder.mjs')).href;
+      M = (await import(url)).MeshoptDecoder;
+    } else {
+      const at = f => new URL(f, base).href;
+      let D = null;
+      if (typeof WebAssembly === 'object') {
+        try { D = (await import(at('vendor/three/addons/libs/meshopt_decoder.module.js'))).MeshoptDecoder; await D.ready; } catch (e) { D = null; }
+      }
+      M = D || (await import(at('vendor/meshoptimizer/meshopt_decoder_reference.js'))).MeshoptDecoder;
+    }
+    await M.ready;
+    return M;
+  }
+
   // bytes as base64 text again (the game's height grids and water mask, which its code reads as text)
   function b64(u) {
     if (typeof btoa !== 'function') return Buffer.from(u).toString('base64');
@@ -105,6 +158,7 @@
     if (dv.getUint32(0, true) !== MAGIC) throw new Error('pack: not an OEPK file');
     const hl = dv.getUint32(4, true), head = JSON.parse(new TextDecoder().decode(u.subarray(8, 8 + hl)));
     const start = 8 + hl + ((8 - (8 + hl) % 8) % 8), blob = u.subarray(start);
+    if (!M && /"m":"[vi]"/.test(new TextDecoder().decode(u.subarray(8, 8 + hl)))) await meshopt();
     return obj(head.keys, blob);
   }
 
@@ -112,6 +166,8 @@
   // decode in a Worker (pack-worker.js, next to this file), the buffer handed over; on the main thread
   // where there is no Worker or it fails. One worker, made when first needed, decodes the packs in turn.
   const here = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : null;
+  const isNode = typeof module === 'object' && !!module.exports && typeof require === 'function' && typeof __dirname === 'string';
+  const base = here || (typeof self !== 'undefined' && self.location ? self.location.href : null); // web/ (pack.js or pack-worker.js)
   let worker = null, seq = 0;
   const waiting = new Map();
   function decodeIn(buf) {
