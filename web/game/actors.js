@@ -1434,6 +1434,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                        // limits are the signs': 30 km/h on a side street reads as a crawl in play); a ride's route,
                        // its time and how it passes a queue stay on the limits (cars.js chauffeur)
   const BUS_A = 1.6, BEND_B = 2.2, BEND_W = 6; // the sideways pull a bus takes a bend with (m/s²), how hard it brakes for one ahead, and how far either side it reads a bend (m)
+  const CAR_A = 3.5, CAR_R = 25; // and a car's (#317: about 19 km/h round a junction's corner, as a ride's driver takes it), on a bend of radius under CAR_R (m) only
+  const CAR_BEND = typeof window === 'undefined' || window.__carBend !== false; // (window.__carBend = false: the cars keep their speed round bends, for an A/B)
   const STUCK = 20;    // seconds stopped behind a car that won't move (not queueing at a junction) before turning round
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
@@ -2138,27 +2140,32 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             Q[2 * nq] = pt[b3 - 3] + (pt[b3] - pt[b3 - 3]) * tt; Q[2 * nq + 1] = pt[b3 - 2] + (pt[b3 + 1] - pt[b3 - 2]) * tt; pathZ[nq] = pt[b3 - 1] + (pt[b3 + 2] - pt[b3 - 1]) * tt; nq++;
             si += di * step;
           }
-          // the speed a bus can take the bends of its way at (#283), from its middle on (a bend between its middle and
-          // its bumper is one it is still going round): round each, no more than BUS_A of sideways pull, braking for it
-          // in time at BEND_B, and out of one gathering speed gently. It took a junction's corner at its full 50 km/h,
-          // its heading swinging 15 degrees in a tenth of a second (tools/bus_turn.js). (The cars keep their speed
-          // round a corner for now: slowed so, the queues at the lights grew and a taxi in Shinjuku came in 50 s,
-          // not 10; the junctions' timings want tuning to it first)
+          // the speed a bus or a car can take the bends of its way at (#283, #317), from its middle on (a bend between its
+          // middle and its bumper is one it is still going round): round each, no more than BUS_A (a bus) or CAR_A (a car)
+          // of sideways pull, braking for it in time at BEND_B, and out of one gathering speed gently. Both took a junction's
+          // corner at their full 50 km/h. (Slowed so at first, the queues at the lights grew and Shinjuku's taxi came in
+          // 50 s, not 10; with the junctions' rules since, measured A/B in Shinjuku (tools/traffic_check.js, two places of
+          // 150 s), the cars stood 21% and 20% of the time against 23% and 19%, jammed 2.6% against 3.1%, waited at a red
+          // 5.3 s against 5.7 s on average)
           {
             // (the turn read over BEND_W either side: the roads' lines meet at sharp corners, and read over a step or two a
             // corner of 30 degrees between two pieces was a tight bend, the traffic crawling through every junction)
-            const aLat = BUS_A, kc = Math.round(Math.abs(c.s - sb) / step), w = Math.max(2, Math.round(BEND_W / step));
+            const aLat = c.half > LONG_V ? BUS_A : CAR_A, kc = Math.round(Math.abs(c.s - sb) / step), w = Math.max(2, Math.round(BEND_W / step));
             let vb = Infinity;
-            if (c.half > LONG_V) for (let k = Math.max(w, kc); k + w < nq; k++) {
+            const bendNow = c.half > LONG_V || (CAR_BEND && ((tick + i) & 3) === 0); // (a car's read every fourth frame, a bus's every frame: 1.2 ms a frame for 200 cars read every frame)
+            if (bendNow) for (let k = Math.max(w, kc); k + w < nq; k++) {
               const h0 = Math.atan2(Q[2 * k] - Q[2 * (k - w)], Q[2 * k + 1] - Q[2 * (k - w) + 1]), h1 = Math.atan2(Q[2 * (k + w)] - Q[2 * k], Q[2 * (k + w) + 1] - Q[2 * k + 1]);
               let tk = h1 - h0;
               tk = Math.abs(tk > Math.PI ? tk - 2 * Math.PI : tk < -Math.PI ? tk + 2 * Math.PI : tk);
               if (tk < 0.08) continue;
+              // (a car slows only for a bend tighter than CAR_R, a junction's corner, a hairpin: slowed for every gentle
+              // curve as well, its junctions' throughput fell and queues that had cleared in a green spilled back, #334)
+              if (c.half <= LONG_V && w * step / tk >= CAR_R) continue;
               const vk = Math.max(2, Math.sqrt(aLat * w * step / tk)), dk = Math.max(0, (k - kc) * step - c.half);
               const vc = Math.sqrt(vk * vk + 2 * BEND_B * dk);
               if (vc < vb) vb = vc;
             }
-            c.vBend = Math.min(vb, (c.vBend ?? Infinity) + 1.5 * dt);
+            if (bendNow) c.vBend = Math.min(vb, (c.vBend ?? Infinity) + 1.5 * dt * (c.half > LONG_V ? 1 : 4));
           }
           // offset into the lane by the direction over two steps either side; the first point kept is the front bumper
           const k0 = Math.round((Math.abs(c.s - sb) + c.half) / step);

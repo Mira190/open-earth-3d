@@ -1090,10 +1090,15 @@ yields. In this game every car's intent is exact, so:
   round over its wheelbase; where that would put its body into a post its lane's own pose keeps
   clear of, it keeps to the lane's pose. `tools/bus_turn.js` in Tokyo: the biggest jump in heading
   3 to 6 degrees a tenth of a second (10 to 25 before), the rear axle's sideways slip 0.06 to
-  0.5 m/s, turns taken at 2 to 4 m/s. The cars were slowed the same way at first (3.5 m/s², a
-  corner at 19 km/h, as a ride's driver takes it), but the queues at the lights grew with it and a
-  taxi in Shinjuku took 50 s to come, not 10: the junctions' timings want tuning to it first, so the
-  cars keep their speed round a corner for now (a follow-up).
+  0.5 m/s, turns taken at 2 to 4 m/s. The cars slow the same way (3.5 m/s², a
+  corner at about 19 km/h, as a ride's driver takes it; #317), read every fourth frame. Tried first
+  with the junctions as they were, the queues at the lights grew and a taxi in Shinjuku took 50 s to
+  come, not 10. With the junctions' rules since (one rule for two cars that wait on each other, the
+  single-track rule) and a scramble's turns given 12 s and 10 s instead of 10 s and 8 s, measured A/B
+  in Shinjuku: the cars stand 19% to 20% of the time (19% to 23% with the corners at full speed),
+  jammed 1.7% (2.7% to 3.1%), and a ride comes in a median 19 s (18 s), none over 30 s in 11
+  (`tools/ride_check.js`, `tools/traffic_check.js`; `CAR_BEND=0` runs them with the cars at full
+  speed round corners).
 - **A short piece out of a signal clears first.** Shinjuku's junction 1103, 27 m from the scramble
   1105, has no signals; between its line and 1105's there is room for one car. A car out of 1105's
   turn waited there to give way, and the queue behind it at 1105 stood through its greens, a minute
