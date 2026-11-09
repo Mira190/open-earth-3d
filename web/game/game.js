@@ -86,14 +86,23 @@ window.OpenEarthGame = async function game(cityId) {
   // thing drawn to the canvas is the lens's triangle, which has no edge to smooth)
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias && !(QC.post && window.OELens && window.OEAtmos && (G.sky || {}).post !== false), powerPreference: 'high-performance', reversedDepthBuffer: true });
   const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
-  let pxScale = 1; // the share of the tier's pixels drawn: shed() lowers it on a device that can't keep up
+  // The frame-time governor (quality.js): how much of the canvas's resolution the scene is drawn at, and how much
+  // of what a frame can do without (governor.extras), both ways as the frame time allows. Its ceiling is the
+  // tier's budget of scene pixels on this canvas. The frame-rate cap is the player's (the menu: 60 unless asked).
+  const gov = OEQuality.governor({ cap: (() => { try { const v = localStorage.getItem('oe3d-fps'); return v === null ? 60 : Math.max(0, +v || 0); } catch (e) { return 60; } })() });
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
-    const w = stage.clientWidth, h = stage.clientHeight;
-    renderer.setPixelRatio(Math.max(0.6, QC.pixelRatio(w, h) * pxScale)); // (pxScale: shed, below)
+    const w = stage.clientWidth, h = stage.clientHeight, pr = QC.pixelRatio(w, h);
+    gov.max = QC.sceneScale ? Math.max(gov.min, QC.sceneScale(w * pr, h * pr)) : 1;
+    if (gov.scale > gov.max) gov.scale = gov.max;
+    // (the post stack draws the scene at the governor's scale into its own target and the lens brings it up to the
+    // canvas, sharpened; without the stack the canvas itself is scaled)
+    const stack = !!(atmos && atmos.setScale && atmos.composer);
+    renderer.setPixelRatio(stack ? pr : Math.max(0.6, pr * gov.scale));
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
+    if (stack) atmos.setScale(gov.scale);
     if (atmos) atmos.setSize(w, h);
     if (mirror) { const z = renderer.getDrawingBufferSize(new THREE.Vector2()); mirror.setSize(z.x, z.y); }
   }
@@ -4174,6 +4183,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     applyDensity(); cars.active = Math.round(cars.slots * density[b.dataset.d]);
     $$('#gm-density button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
+  // the frame-rate cap (the governor's): the display's own rate, 60 or 30 a second; kept for the next visit
+  $$('#gm-fps button').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.f === gov.cap)));
+  on($('#gm-fps'), 'click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    gov.cap = +b.dataset.f; gov.reset();
+    try { localStorage.setItem('oe3d-fps', String(gov.cap)); } catch (err) { /* storage blocked */ }
+    $$('#gm-fps button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  });
   on($('#gm-route'), 'click', e => { const b = e.target.closest('button'); if (b) setRouteMode(b.dataset.r); });
   on($('#gm-weather'), 'click', e => {
     const b = e.target.closest('button');
@@ -4452,27 +4470,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   renderPassport();
 
   // ------------------------------------------------------------ the loop
-  let last = performance.now(), clockT = 0, sunTimer = 0, sunState = 'sun', fpsAcc = [performance.now(), 0], fpsWarned = false, stepPhase = 0, bumpT = -9, waterT = -99;
+  let last = performance.now(), clockT = 0, sunTimer = 0, sunState = 'sun', stepPhase = 0, bumpT = -9, waterT = -99;
   const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camSmooth = new THREE.Vector3(), camOff = new THREE.Vector3(), camWant = new THREE.Vector3();
-  // What a device that can't keep up gives up, a step every four seconds below 24 frames a second,
-  // nice-to-haves first: the far rain and its splashes, then the weather altogether (weather.js: dry
-  // streets, its shaders left out, and remembered for the next visit; a weather the player chose keeps
-  // its wet streets and grey sky and loses only the drops), then the wet street's reflections, then
-  // pixels, down to 70% of the tier's. The people
-  // keep their models and the city its detail: a crowd of boxes is not a city. False when there is
-  // nothing left to shed.
-  let shedLevel = 0;
-  function shed() {
-    const steps = [
-      () => weather && weather.shed < 1 && (weather.shed = 1),
-      () => weather && weather.shed < 2 && (weather.shed = 2),
-      () => mirror && mirror.on && !mirror.off && (mirror.off = true),
-      () => pxScale > 0.85 && ((pxScale = 0.85), resize(), true),
-      () => pxScale > 0.7 && ((pxScale = 0.7), resize(), true),
-    ];
-    while (shedLevel < steps.length) if (steps[shedLevel++]()) { console.info(`Running slowly: shed step ${shedLevel}`); return true; }
-    return false;
-  }
+  // What a device that can't keep up gives up, and gets back when it can (the governor, quality.js): resolution
+  // first, a step at a time, which the lens's sharpened upscale hides; then the extras (the far rain and its
+  // splashes, the wet street's reflections, the fuller contact shadows; then the weather altogether: weather.js,
+  // remembered for the next visit, and a weather the player chose keeps its wet streets and grey sky and loses
+  // only the drops); then resolution to its floor. The people keep their models and the city its detail: a
+  // crowd of boxes is not a city. Resolution, the reflections and the contact shadows come back as the frame
+  // time allows; the weather's own steps stay as they are until the next visit (its note to the player says so).
+  let fpsWarned = false;
+  gov.on((extras, scale, extrasChanged) => {
+    resize();
+    if (!extrasChanged) return;
+    console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`);
+    if (weather) { const lv = extras >= 1 ? 0 : extras > 0 ? 1 : 2; if (weather.shed < lv) weather.shed = lv; } // (weather.js keeps what it shed)
+    if (mirror && mirror.on) mirror.off = extras < 1;
+    if (atmos && atmos.ao && atmos.ao.limit) atmos.ao.limit(extras >= 1 ? 2 : extras > 0 ? 1 : 0);
+    if (extras === 0 && !fpsWarned && !navigator.webdriver) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
+  });
   let running = true;
   // a harness's hold (__game.hold): the world stands still between its steps while it waits on something
   // that only takes time to load (tools/game_check.js), so a slower load doesn't send the traffic down
@@ -4491,6 +4507,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function frame(now) {
     if (!running) return;
     if (care.lost) { last = now; requestAnimationFrame(frame); return; } // the game holds still until the picture is back
+    gov.raf(now);
+    if (!gov.due(now)) { requestAnimationFrame(frame); return; } // (the frame-rate cap on a faster display: this frame is not drawn)
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
     last = now; if (!simHold) clockT += dt; // (a harness's hold: only advance() moves the world's clock)
     U.uTime.value = clockT;
@@ -4586,12 +4604,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       vehicleHud();
       if (player.mode !== 'foot') gaitChip('');
     }
-    // a low frame rate: shed the extras first (shed), and only then hint at the crowd (slowroads does the same)
-    if (titleOn || paused || framesDrawn < 2) fpsAcc = [now, 0];
-    else if (++fpsAcc[1] && now - fpsAcc[0] > 4000 && !navigator.webdriver) { // (not for the tools' stills, films and checks on a software renderer: game_check calls shed itself)
-      if (fpsAcc[1] * 1000 / (now - fpsAcc[0]) < 24 && !shed() && !fpsWarned) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
-      fpsAcc = [now, 0];
-    }
+    // the frame's time, for the governor: in play only (the title's orbit and a menu are lighter than play)
+    gov.tick(now, !titleOn && !paused && framesDrawn >= 2 && !document.hidden);
     if (player.rig.hideHead) player.rig.hideHead(player.mode === 'heli' && cam.mode === 'cockpit' && !photo.on && !(cine.active && cine.label !== 'crane'));
     // depth of field in photo mode, and with the camera's motion blur in the opening shot; never in play
     if (atmos && atmos.camFx) atmos.camFx(overture && overture.active ? overture.fx : photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
@@ -5466,7 +5480,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

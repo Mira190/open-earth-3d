@@ -17,11 +17,9 @@
 // It is the approach of N8AO (N8python, CC0), written here for three.js r186's reversed float
 // depth, which N8AO does not read. See docs/LOOK.md for the survey and what was adopted.
 //
-// A frame-time budget watches the frame: on a GPU that cannot keep up, AO steps down to half the
-// samples and one blur, then off; if stepping down did not make the frame faster, AO was not the
-// cost and its level comes back. A software renderer (only ever on a forced tier, for stills and
-// films) keeps it on. ?ao=0 in the page's address turns it off, ?ao=1 keeps it on whatever the budget,
-// ?ao=show shows the occlusion alone.
+// The frame-time governor (quality.js, through game.js) sets its ceiling on a device that cannot keep up:
+// half the samples and one blur, then off, and back as the frame time allows (limit()). ?ao=0 in the
+// page's address turns it off, ?ao=1 keeps it on whatever the governor says, ?ao=show shows the occlusion alone.
 'use strict';
 window.OEAO = (function () {
   const LEVELS = [
@@ -127,13 +125,12 @@ float oeShade(vec2 uv) {
   return mix(1.0, a.r, uAOStrength * (1.0 - smoothstep(uFadeNear, uFadeFar, a.g)));
 }`;
 
-  function create(renderer, camera, { tier = 'medium', budgetMs = null } = {}) {
+  function create(renderer, camera, { tier = 'medium' } = {}) {
     const q = new URLSearchParams(location.search).get('ao');
     let level = q === '0' ? 0 : tier === 'high' ? 2 : 1;
     const show = q === 'show'; // the occlusion alone, to look at
     const top = level, pinned = q === '1' || q === 'show';
-    let software = !!(window.OEQuality && OEQuality.probe().software);
-    let budget = budgetMs || (tier === 'high' ? 1000 / 50 : 1000 / 40);
+    let asked = level; // the level set (the tier's, or a still's or the menu's): the governor's ceiling is over it
     const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     const tri = new THREE.BufferGeometry(); // one triangle over the frame: no diagonal seam shaded twice
     tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
@@ -153,24 +150,6 @@ float oeShade(vec2 uv) {
     // what the pass that reads the scene takes (UPSAMPLE): shared objects, so one write here reaches every material
     const uniforms = Object.assign(common(), { tAO: { value: null }, uHalfPx: { value: new THREE.Vector2() }, uAOStrength: { value: 0 }, uFadeNear: { value: 160 }, uFadeFar: { value: 420 } });
     let night = 0;
-    // the frame-time budget: an average over about a second; over budget for 3 s steps down once,
-    // and 3 s later a step that bought nothing is taken back and the budget rests, a minute, then two...
-    const B$ = { ema: 0, over: 0, last: 0, trial: null, rest: 0, misses: 0, sim: false };
-    function watch(now) {
-      const ms = B$.last ? now - B$.last : 0;
-      B$.last = now;
-      if (!ms || ms > 250) return; // the first frame, or back from a hidden tab
-      B$.ema = B$.ema ? B$.ema * 0.95 + ms * 0.05 : ms;
-      if (pinned || software || now < B$.rest) return;
-      if (B$.trial && now - B$.trial.t > 3000) {
-        if (B$.ema > B$.trial.ema * 0.92) { level = B$.trial.from; B$.rest = now + 60000 * 2 ** B$.misses++; } // not the AO's cost: back as it was, and a longer rest each time
-        B$.trial = null; B$.over = 0;
-        return;
-      }
-      if (B$.trial || level === 0) return;
-      B$.over = B$.ema > budget ? B$.over + ms : 0;
-      if (B$.over > 3000) { B$.trial = { from: level, ema: B$.ema, t: now }; level -= 1; B$.over = 0; }
-    }
     // (the stack's entry for it: on or off, its size, and what the warm-up compiles: atmosphere.js)
     const pass = {
       enabled: level > 0, materials: [mats[1], mats[2], blurMat], quadGeometry: tri,
@@ -208,28 +187,13 @@ float oeShade(vec2 uv) {
     }
     return {
       pass, compute, uniforms, show,
-      // per frame from atmosphere.js, drawn or not: how far into the night it is (0..1), and the budget
-      update(n) { night = n; if (!B$.sim) watch(performance.now()); pass.enabled = level > 0; },
+      // per frame from atmosphere.js, drawn or not: how far into the night it is (0..1)
+      update(n) { night = n; pass.enabled = level > 0; },
       // 0 off, 1 lite, 2 full (no higher than the tier's own); for stills, films and the menu
-      set(v) { level = Math.max(0, Math.min(top || 2, v | 0)); pass.enabled = level > 0; B$.trial = null; B$.over = 0; },
+      set(v) { asked = level = Math.max(0, Math.min(top || 2, v | 0)); pass.enabled = level > 0; },
+      // the governor's ceiling (0, 1 or 2) on the level set; lifted again with limit(2)
+      limit(v) { if (!pinned) level = Math.min(asked, Math.max(0, v | 0)); pass.enabled = level > 0; },
       get level() { return level; },
-      get frameMs() { return B$.ema; },
-      // for tools/ao_cost.js: a budget in ms that also holds on a software renderer
-      testBudget(ms) { budget = ms; software = false; B$.rest = 0; B$.misses = 0; B$.trial = null; B$.over = 0; },
-      // for tools/ao_cost.js: the budget fed frames of the given lengths (ms) on a clock of its own,
-      // as a GPU would show them; frameOf(level) gives each frame's length at the level then set.
-      // Returns the level after each simulated second. The real frames are not watched meanwhile.
-      testFrames(seconds, frameOf) {
-        B$.sim = true; Object.assign(B$, { ema: 0, over: 0, last: 0, trial: null, rest: 0, misses: 0 });
-        const seen = []; let t = 1e6;
-        for (let s = 0; s < seconds; s++) {
-          for (const end = t + 1000; t < end;) { t += frameOf(level); watch(t); }
-          seen.push(level);
-        }
-        B$.sim = false; B$.last = 0; B$.ema = 0; B$.rest = 0; B$.trial = null; B$.over = 0;
-        pass.enabled = level > 0;
-        return seen.join('');
-      },
     };
   }
   return { create, LEVELS, UPSAMPLE, COARSE };

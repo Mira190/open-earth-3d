@@ -392,12 +392,21 @@ window.OEAtmos = (function () {
       // scene, the occlusion and the bloom are drawn as above whatever follows; what follows them, the tail, is
       // any pass with an EffectComposer pass's render(renderer, writeBuffer, readBuffer).
       let pingA = null, pingB = null; // two full-size targets for a tail longer than the lens, made when one first is
+      // The scene's share of the canvas's resolution (the governor's, quality.js; api.setScale): the scene, and
+      // with it the occlusion and the bloom, are drawn at scale times the canvas's size, and the lens, which
+      // writes the canvas at its own size, brings them up with a sharpening (lens.js uSharp).
+      let sceneScale = 1, sizedW = 0, sizedH = 0;
       const passes = [scenePass, ...(ao ? [ao.pass] : []), bloom, camFx, lens, anime];
       composer = {
         renderer, passes, renderTarget1: rt, renderTarget2: rt,
         addPass(p) { passes.push(p); if (p.setSize) p.setSize(rt.width, rt.height); },
         removePass(p) { const i = passes.indexOf(p); if (i >= 0) passes.splice(i, 1); },
-        setSize(w, h) {
+        setSize(W, H) {
+          const w = Math.max(2, Math.round(W * sceneScale)), h = Math.max(2, Math.round(H * sceneScale));
+          lens.uniforms.uSrcPx.value.set(1 / w, 1 / h);
+          lens.uniforms.uSharp.value = sceneScale < 0.999 ? Math.min(0.7, 0.3 + (1 - sceneScale)) : 0;
+          if (sizedW === w && sizedH === h) return; // (nothing to make again: a resize that changed nothing)
+          sizedW = w; sizedH = h;
           rt.setSize(w, h);
           if (pingA) { pingA.setSize(w, h); pingB.setSize(w, h); }
           for (const p of passes) if (p !== bloom && p.setSize) p.setSize(w, h);
@@ -431,6 +440,8 @@ window.OEAtmos = (function () {
           renderer.setRenderTarget(null);
           renderer.autoClear = autoClear;
         },
+        setScale(v) { sceneScale = Math.max(0.25, Math.min(1, v)); },
+        get scale() { return sceneScale; },
         dispose() { rt.dispose(); if (pingA) { pingA.dispose(); pingB.dispose(); } bloom.dispose(); bloom.materialHighPassFilter.dispose(); bloom.mergeMaterial.dispose(); lens.merged.dispose(); tri.dispose(); },
       };
       lens.uniforms.tDiffuse.value = rt.texture;
@@ -450,7 +461,7 @@ window.OEAtmos = (function () {
         S.matrixWorldNeedsUpdate = true;
         S.material.uniforms.uOpacity.value = night * (1 - 0.6 * clouds) * (1 - ov);
         S.material.uniforms.uTime.value = tSec;
-        S.material.uniforms.uScale.value = renderer.getPixelRatio() * ((lens && lens.trim && lens.trim.stars) || 1); // (a shot's starrier sky: overture.js)
+        S.material.uniforms.uScale.value = renderer.getPixelRatio() * (composer ? composer.scale : 1) * ((lens && lens.trim && lens.trim.stars) || 1); // (a shot's starrier sky: overture.js)
         S.visible = night > 0.02;
         const md = moonRaDec(utcMs), dir = eq(md.ra, md.dec).applyMatrix4(basis).normalize();
         M.visible = dir.y > -0.02;
@@ -490,6 +501,8 @@ window.OEAtmos = (function () {
         }
       },
       setSize(w, h) { if (composer) { const z = renderer.getDrawingBufferSize(new THREE.Vector2()); composer.setSize(z.x, z.y); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
+      // the scene's share of the canvas's resolution (0.25..1): takes effect at the next setSize
+      setScale(v) { if (composer) composer.setScale(v); },
       // draw the frame: through the post stack, or plainly
       // photo mode and the opening shot: {focus: m, aperture: 0..1, blur: 0..1}, or null (off, as in play)
       camFx(o) { if (o && !fx) o.fresh = true; fx = o && camFx ? o : null; },

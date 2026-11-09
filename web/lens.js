@@ -48,7 +48,8 @@ window.OELens = (function () {
         }`;
   const NOSHADE = 'float oeShade(vec2 uv) { return 1.0; }';
   const VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
-  const merged = () => ({ tBloom: { value: null }, uBloom: { value: 0 }, uCap: { value: 8 }, uKnee: { value: 0.55 }, uShadeShow: { value: 0 } });
+  const merged = () => ({ tBloom: { value: null }, uBloom: { value: 0 }, uCap: { value: 8 }, uKnee: { value: 0.55 }, uShadeShow: { value: 0 },
+    uSharp: { value: 0 }, uSrcPx: { value: new THREE.Vector2() } });
 
   // the scene with its contact shadows, rolled-off highlights and bloom, in linear HDR, for a pass that is not the lens
   function merge({ shade = NOSHADE } = {}) {
@@ -164,15 +165,33 @@ window.OELens = (function () {
           return c * uSunVis * uFlare;
         }
         ${TAP}
-        ${merge ? `uniform sampler2D tBloom; uniform float uBloom, uShadeShow;
+        ${merge ? `uniform sampler2D tBloom; uniform float uBloom, uShadeShow, uSharp; uniform vec2 uSrcPx;
         ${ROLLOFF}
-        ${shade}` : ''}
+        ${shade}
+        // A scene drawn below the canvas's size (the frame-time governor, quality.js) is brought up here, and
+        // sharpened as it is: the centre against its four neighbours in the scene's own texels, as AMD's
+        // FidelityFX RCAS does (robust contrast-adaptive sharpening, MIT: the lobe is limited by the local
+        // minimum and maximum so that nothing rings), on colours brought into 0..1 first (c / (1 + peak)) so a
+        // lamp against the night does not ring either. Returns the gain for the pixel's colour; uSharp 0..1.
+        vec3 squash(vec3 c) { c = max(c, 0.0); return c / (1.0 + max(c.r, max(c.g, c.b))); }
+        float sharpen(vec2 uv, vec3 centre) {
+          vec3 e = squash(centre), a = squash(tap(uv + vec2(0.0, -uSrcPx.y))), b = squash(tap(uv + vec2(-uSrcPx.x, 0.0)));
+          vec3 c = squash(tap(uv + vec2(uSrcPx.x, 0.0))), d = squash(tap(uv + vec2(0.0, uSrcPx.y)));
+          const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
+          float le = dot(e, Y), la = dot(a, Y), lb = dot(b, Y), lc = dot(c, Y), ld = dot(d, Y);
+          float mn = min(le, min(min(la, lb), min(lc, ld))), mx = max(le, max(max(la, lb), max(lc, ld)));
+          float hitMin = mn / (4.0 * mx + 1e-5), hitMax = (1.0 - mx) / (4.0 * mn - 4.0 - 1e-5);
+          float lobe = max(-0.1875, min(max(-hitMin, hitMax), 0.0)) * uSharp;
+          float l = (lobe * (la + lb + lc + ld) + le) / (4.0 * lobe + 1.0);
+          return clamp(l / max(le, 1e-5), 0.5, 2.0);
+        }` : ''}
         void main() {
           vec2 uv = vUv, dc = uv - 0.5;
           vec2 off = dc * uCA * (0.0015 + 0.03 * dot(dc, dc));
           ${merge ? `// the scene as the passes before the lens used to hand it over: contact shadows, highlights rolled off, bloom
           float k = oeShade(uv);
           vec3 col = uShadeShow > 0.5 ? vec3(k) : vec3(rolloff(tap(uv - off) * k).r, rolloff(tap(uv) * k).g, rolloff(tap(uv + off) * k).b);
+          if (uSharp > 0.0 && uShadeShow < 0.5) col *= sharpen(uv, tap(uv));
           if (uBloom > 0.0) col = min(col + texture2D(tBloom, uv).rgb, vec3(1024.0));` : 'vec3 col = vec3(tap(uv - off).r, tap(uv).g, tap(uv + off).b);'}
           if (uSunVis > 0.0) col += flare(uv);
           col = film(col * uExposure * uTint);
