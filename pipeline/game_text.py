@@ -77,6 +77,8 @@ def update(city):
         for k in ("spots", "chatter"):
             if k in extras or k in g:
                 game[k] = json.loads(json.dumps(g.get(k, []) + extras.get(k, [])))
+    import fishing
+    fishing.apply(city, game)  # the fishing block and fishing.json, from city.json as it is now (pipeline/fishing.py)
     if json.dumps(game, sort_keys=True) == before:
         return False
     json.dump(game, open(out, "w"), separators=(",", ":"))  # as game_data.py writes it

@@ -714,6 +714,8 @@ def main():
     import game_extras
     game_extras.drop_kept_off(out)
     import outposts
+    import fishing
+    fishing.apply(C.id, out)  # the fishing spots at the water's edge, and fishing.json (pipeline/fishing.py)
     outposts.apply(C, out)  # landings past the frame, their wharves and the ferry legs to them (pipeline/outposts.py)  # the crowd's footways over a landmark's water (game_extras "keep_off")
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
