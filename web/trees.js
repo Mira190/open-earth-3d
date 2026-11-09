@@ -23,7 +23,9 @@ window.OETrees = (function () {
   // own lightness: the maple keeps its crimson-to-gold range below; the ginkgo goes a clear gold, the zelkova rust,
   // the plane a dull yellow-brown and the elm yellow
   // and the cherry an orange-red
-  const FALL = { ginkgo: [3.1, 2.35, 0.35], zelkova: [1.5, 0.82, 0.36], plane: [1.55, 1.2, 0.45], elm: [2.0, 1.7, 0.4], cherry: [2.5, 0.72, 0.3] };
+  // and the cherry an orange-red; susuki's leaves go straw-gold and its plumes from silver to buff (#326)
+  const FALL = { ginkgo: [3.1, 2.35, 0.35], zelkova: [1.5, 0.82, 0.36], plane: [1.55, 1.2, 0.45], elm: [2.0, 1.7, 0.4], cherry: [2.5, 0.72, 0.3],
+    susuki: [1.75, 1.45, 0.72], plume: [1.2, 1.0, 0.7] };
   // the varieties' bloom, for a trees.json without them: each cherry's offset (days) from the Somei-yoshino's
   // opening, and how much longer its bloom lasts
   const VARIETY = { cherry: [0, 1], shidarezakura: [-4, 1], kawazu: [-37, 1.7], yaezakura: [16, 1.15] };
@@ -54,6 +56,7 @@ window.OETrees = (function () {
   const VERT_HEAD = `#include <common>
 attribute vec4 tc; uniform float uWind; uniform float uBloom; uniform float uSakuraV[SAKURA_N]; varying float vAO; varying float vCell; varying float vTurn; varying float vCard; varying float vPetal; varying vec3 vLocal;
 attribute float aLit; uniform float uYoz; varying float vLit; varying float vUpH; varying float vNy;`;
+  // (susuki's plume cards, CELL_PLUME, stand only in their season: uPlume, the share of its heads out, 0..1)
   // the atlas cell a leaf card shows (CELLS columns x ROWS; glTF v runs down): the jacaranda's bloom
   // cell swaps to its leaf cell, one to the left, out of season, and each cherry's bloom cell (SAKURA_N of them
   // from CELL_SAKURA, one per variety) to the cherry's leaf cell (CELL_CHERRY); the cells that turn in
@@ -90,22 +93,23 @@ vTurn = fract(sin(dot(ip.xz, vec2(12.9898, 78.233))) * 43758.5453);`;
   function shader(U, leaves, depth, A) {
     return sh => {
       sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uSakuraV = U.uSakuraV; sh.uniforms.uCherryBareV = U.uCherryBareV; sh.uniforms.uAutumn = U.uAutumn; sh.uniforms.uFall = U.uFall;
-      sh.uniforms.uBare = U.uBare; sh.uniforms.uDecid = U.uDecid; sh.uniforms.uYoz = U.uYoz; sh.uniforms.uYozCol = U.uYozCol;
-      sh.defines = Object.assign(sh.defines || {}, { ATLAS_COLS: A.cols.toFixed(1), ATLAS_ROWS: A.rows.toFixed(1), CELL_BLOOM: A.bloom.toFixed(1), CELL_SAKURA: A.sakura.toFixed(1), CELL_CHERRY: A.cherry.toFixed(1), SAKURA_N: A.sakuraN, CELL_MAPLE: A.maple.toFixed(1), ATLAS_CELLS: A.cols * A.rows });
+      sh.uniforms.uBare = U.uBare; sh.uniforms.uDecid = U.uDecid; sh.uniforms.uYoz = U.uYoz; sh.uniforms.uYozCol = U.uYozCol; sh.uniforms.uPlume = U.uPlume;
+      sh.defines = Object.assign(sh.defines || {}, { ATLAS_COLS: A.cols.toFixed(1), ATLAS_ROWS: A.rows.toFixed(1), CELL_BLOOM: A.bloom.toFixed(1), CELL_SAKURA: A.sakura.toFixed(1), CELL_CHERRY: A.cherry.toFixed(1), SAKURA_N: A.sakuraN, CELL_MAPLE: A.maple.toFixed(1), CELL_PLUME: A.plume.toFixed(1), ATLAS_CELLS: A.cols * A.rows });
       if (leaves) sh.defines.LEAVES = '';
       sh.vertexShader = sh.vertexShader.replace('#include <common>', VERT_HEAD).replace('#include <uv_vertex>', VERT_UV).replace('#include <begin_vertex>', VERT_WIND);
       // in winter a deciduous tree's cards fall, in the camera's pass and the shadow's alike: each card at its
       // own time (vCard), each tree a little ahead of or behind the others (vTurn); a cherry's cards in flower
       // (vPetal) stay on its bare branches, and its leaves keep to its variety's own time (uCherryBareV)
-      const BARE = `uniform float uBare; uniform float uCherryBareV[SAKURA_N]; uniform float uDecid[ATLAS_CELLS]; varying float vCell; varying float vTurn; varying float vCard; varying float vPetal;`;
+      const BARE = `uniform float uBare; uniform float uPlume; uniform float uCherryBareV[SAKURA_N]; uniform float uDecid[ATLAS_CELLS]; varying float vCell; varying float vTurn; varying float vCard; varying float vPetal;`;
       if (leaves) sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', depth ? '#include <common>\n' + BARE : '#include <common>\nuniform float uBare; uniform float uCherryBareV[SAKURA_N]; uniform float uDecid[ATLAS_CELLS]; varying float vCard; varying float vPetal;')
+        .replace('#include <common>', depth ? '#include <common>\n' + BARE : '#include <common>\nuniform float uBare; uniform float uPlume; uniform float uCherryBareV[SAKURA_N]; uniform float uDecid[ATLAS_CELLS]; varying float vCard; varying float vPetal;')
         .replace('#include <alphatest_fragment>', `{ int bc = int(vCell + 0.5);
   float sv = vCell - CELL_SAKURA; bool sakura = sv > -0.5 && sv < float(SAKURA_N) - 0.5;
   float cb = uCherryBareV[int(clamp(sv + 0.5, 0.0, float(SAKURA_N) - 0.5))];
   float bare = sakura ? (vPetal > 0.5 ? 0.0 : cb) : uBare;
   if (sakura && vPetal < 0.5 && cb > 0.999) discard; // a cherry in winter and in flower: no leaf at all
-  if (bare > 0.0 && bc >= 0 && bc < ATLAS_CELLS && uDecid[bc] > 0.5 && fract(vCard * 7.13 + vTurn * 0.37) < bare * (0.85 + 0.3 * vTurn)) discard; }
+  if (bare > 0.0 && bc >= 0 && bc < ATLAS_CELLS && uDecid[bc] > 0.5 && fract(vCard * 7.13 + vTurn * 0.37) < bare * (0.85 + 0.3 * vTurn)) discard;
+  if (abs(vCell - CELL_PLUME) < 0.5 && fract(vCard * 5.71 + vTurn * 0.53) >= uPlume * (0.8 + 0.4 * vTurn)) discard; }
 #include <alphatest_fragment>`);
       if (depth) return;
       // leaves right at the camera dither away (as games clear foliage off the lens): a chase camera behind you in a
@@ -180,8 +184,9 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // those planted from the canopy; woods: the mix of the trees planted from a wood's canopy (the city's
   // own without its palms if not given)
   // fixed: the index from which the trees are a landmark's own, standing where it puts them (on a planter, a terrace)
-  // own: {from, species, tint}: the trees from that index on are all that species (the tussock world.js plants), tinted
-  // [r, g, b] if given (a city's own grass: Sydney's Poa and kangaroo grass greener than Otago's snow tussock)
+  // own: {from, to, species, tint}, or a list of them: the trees from that index (to the next's, or the end) are all that
+  // species (the grasses world.js plants: tussock, susuki, Lomandra), tinted [r, g, b] if given (a city's own grass:
+  // Sydney's Poa and kangaroo grass greener than Otago's snow tussock)
   // yozakura (#162): an area with "yozakura" lights its cherries after dark while they flower: uplights at each
   // tree's foot (a pool of light round it) and bonbori, paper lanterns on posts, along its ways on foot (foot: the
   // city's night.json, whose foot and foot_pts are the mapped footways), or beside its trees where none is mapped;
@@ -193,7 +198,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   function create(world, lib, list, { mix = null, woods = null, south = true, lat = null, cherry = null, measured = Infinity, keep = 1, areas = [], fixed = Infinity, own = null, night = null, foot = null, small = false, farKeep = 1 } = {}) {
     const I = lib.info, n = list.length / 4;
     const AT = I.atlas || {}, cells = AT.cells || {};
-    const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, sakura: cells.sakura ?? -10, maple: cells.maple ?? 7 };
+    const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, sakura: cells.sakura ?? -10, maple: cells.maple ?? 7, plume: cells.plume ?? -10 };
     A.cherry = cells.cherry ?? A.sakura - 1; A.sakuraN = (AT.sakura_cells || [A.sakura]).length;
     // the cherry's cards are its bloom cell's ("sakura"): they turn and fall as its own leaves
     const cellOf = sp => (I.species[sp] && I.species[sp].cell != null ? I.species[sp].cell : cells[sp]);
@@ -205,10 +210,11 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     }).filter(Boolean);
     const fallOf = sp => FALL[sp] || (varieties.some(o => o.sp === sp) ? FALL.cherry : null);
     for (const sp of Object.keys(I.species)) if (fallOf(sp) && cellOf(sp) != null && cellOf(sp) < fall.length) fall[cellOf(sp)].set(...fallOf(sp));
+    if (A.plume >= 0 && A.plume < fall.length) fall[A.plume].set(...FALL.plume);
     // the cells of the deciduous species (trees.json deciduous): bare in winter
     const decid = Array.from({ length: A.cols * A.rows }, () => 0);
     for (const [sp, S] of Object.entries(I.species)) if (S.deciduous && cellOf(sp) != null && cellOf(sp) < decid.length) decid[cellOf(sp)] = 1;
-    const U = { uYoz: { value: 0 }, uYozCol: { value: new THREE.Color(1.0, 0.8, 0.74).multiplyScalar(1.5) }, uWind: { value: 0 }, uBloom: { value: 0 }, uSakuraV: { value: new Array(A.sakuraN).fill(0) }, uCherryBareV: { value: new Array(A.sakuraN).fill(0) }, uAutumn: { value: 0 }, uFall: { value: fall }, uBare: { value: 0 }, uDecid: { value: decid } };
+    const U = { uYoz: { value: 0 }, uYozCol: { value: new THREE.Color(1.0, 0.8, 0.74).multiplyScalar(1.5) }, uWind: { value: 0 }, uBloom: { value: 0 }, uSakuraV: { value: new Array(A.sakuraN).fill(0) }, uCherryBareV: { value: new Array(A.sakuraN).fill(0) }, uAutumn: { value: 0 }, uFall: { value: fall }, uBare: { value: 0 }, uDecid: { value: decid }, uPlume: { value: 0 } };
     const petalFall = new Array(A.sakuraN).fill(0); // how fast each cherry variety sheds its petals (0..1)
     const city = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0);
     // the species drawn: the city's, then any only an area plants (weight 0 in the city's own mix)
@@ -224,7 +230,8 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const inZone = (a, x, y) => a.polys.length ? a.polys.some(({ P, box }) => x >= box[0] && y >= box[1] && x <= box[2] && y <= box[3] && inPoly(x, y, P))
       : (x - a.at[0]) ** 2 + (y - a.at[1]) ** 2 < a.radius * a.radius;
     const woodMix = Object.entries(woods || {}).filter(([k, w]) => I.species[k] && w > 0);
-    const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix).concat(Object.keys(a.woods || {}))).concat(woodMix.map(([k]) => k), own ? [own.species] : []))]
+    const owns = (Array.isArray(own) ? own : own ? [own] : []).filter(o => o && I.species[o.species]);
+    const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix).concat(Object.keys(a.woods || {}))).concat(woodMix.map(([k]) => k), owns.map(o => o.species)))]
       .filter(k => I.species[k] && !city.some(([c]) => c === k));
     const weights = city.concat(extra.map(k => [k, 0]));
     // a wood has no palms (unless the city has nothing else), unless the city gives its woods a mix of their own
@@ -265,14 +272,17 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     // which species each tree is, its matrix and its tint
     const lit = new Float32Array(n), litZone = new Int16Array(n).fill(-1), isCherry = new Set(varieties.map(o => o.sp)), litVar = new Set();
     const which = new Int16Array(n), far = new Float32Array(n).fill(1), half = new Uint8Array(n), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
-    const names = weights.map(([k]) => k), count = names.map(() => 0), ownK = own ? names.indexOf(own.species) : -1;
+    const names = weights.map(([k]) => k), count = names.map(() => 0);
+    for (const o of owns) o.k = names.indexOf(o.species);
+    const own0 = owns.length ? Math.min(...owns.map(o => o.from)) : Infinity;
+    const ownAt = i => { if (i < own0) return null; for (const o of owns) if (i >= o.from && i < (o.to ?? Infinity) && o.k >= 0) return o; return null; };
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color(), c2 = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
       const wood = i >= measured && i < fixed; // (a landmark's own trees are each placed: never thinned out)
-      const mine = own && i >= own.from && ownK >= 0; // (a species of their own: the tussock planted on the open hills, world.js)
+      const mine = ownAt(i); // (a species of their own: the grasses world.js plants, on the open hills, in beds, on a river's banks)
       const zi = mine ? -1 : zones.findIndex(a => inZone(a, x, y));
-      const k = mine ? ownK : pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
+      const k = mine ? mine.k : pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (zi >= 0 && zones[zi].yozakura && isCherry.has(weights[k][0])) { lit[i] = 1; litZone[i] = zi; litVar.add(varieties.find(o => o.sp === weights[k][0]).v); }
       if (wood) { half[i] = 1 + Math.floor(hash(x + 5, y + 9) * 254); far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
@@ -286,7 +296,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       // each tree its own shade; a wood's deeper and more varied, as the crowns of a wood are in a photograph
       if (wood) { const l = 0.68 + 0.36 * hash(x, y + 1), w = hash(x + 2, y); c.setRGB(l * (0.93 + 0.1 * w), l, l * (0.98 - 0.08 * w)); }
       else c.setHSL(0, 0, 0.86 + 0.24 * hash(x, y + 1));
-      if (mine && own.tint) c.multiply(c2.setRGB(...own.tint)); // (the city's own grass's colour: city.json trees.tussock.tint)
+      if (mine && mine.tint) c.multiply(c2.setRGB(...mine.tint)); // (the city's own grass's colour: city.json trees.tussock.tint)
       c.toArray(tint, 3 * i);
     }
     // per species and distance, one instanced mesh per material
@@ -327,7 +337,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     // round that three heights and a mirror do here, and seen from 200 m and further.
     const IMP_E = [0, 40, 80];
     let imp = null, impStale = false;
-    const seasonKey = () => [U.uBloom.value, U.uAutumn.value, U.uBare.value].concat(U.uSakuraV.value, U.uCherryBareV.value).map(v => (+v).toFixed(2)).join(',');
+    const seasonKey = () => [U.uBloom.value, U.uAutumn.value, U.uBare.value, U.uPlume.value].concat(U.uSakuraV.value, U.uCherryBareV.value).map(v => (+v).toFixed(2)).join(',');
     // The first bake (from world.create, behind the loader) compiles the cards' programs for the atlas first,
     // asynchronously (they are lit by the bake's one ambient light, drawn into its target: programs of their
     // own, 0.2 s compiled in the call on a software renderer, issue 313), and draws the atlas once they are
@@ -915,6 +925,10 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
         U.uBare.value = d >= 328 ? clamp((d - 328) / 20) : d < 80 ? 1 : clamp((104 - d) / 24);
         // turned from 304-318 until the leaves have fallen; new leaves are green
         U.uAutumn.value = d >= 304 ? clamp((d - 304) / ramp) : d < 80 ? 1 : 0;
+        // susuki's heads (#326): the first push out of the leaves in mid August, all are out by early September, and
+        // they stand, dry and buff, through the winter until the old stems are cut or broken down in spring (21
+        // March to 20 April in the north)
+        U.uPlume.value = d >= 226 ? clamp((d - 226) / 24) : d < 80 ? 1 : clamp((110 - d) / 30) * +(d < 110);
         // a cherry's leaves: none until its petals start to fall (whatever the other trees do), then out as they go
         // (hazakura), and after that as the others'
         // each variety on its own day, its bloom stretched by its own length (and the lit places' lights while

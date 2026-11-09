@@ -17,7 +17,8 @@
 // "street": true stands on the ground there rather than on the roof over it; "z": on the floor
 // nearest that level, as under a slab; "ferry": {to, at} aboard a vessel that far along its leg to that wharf;
 // "hide": [mesh names] leaves those landmark meshes out; "scramble": "walk" or "wait" runs on to that moment of the
-// nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera)
+// nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera; [x, y] from
+// "eyeUp" metres, 1.6 by default, over the ground where you stand)
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -64,10 +65,28 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
     };
   });
   const grabPage = async name => { await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))); await p.screenshot({ path: path.join(outDir, `${name}.png`) }); console.log(name); };
+  // a frame of the game's canvas; one that comes out black (nearly every pixel dark: a frame grabbed before the
+  // game drew the view, which Sydney's large first frames from the air did on a software renderer, #326) is taken
+  // again a few frames later, up to 12 times, and a canvas whose WebGL context is lost says so
   const grab = async name => {
-    const png = await p.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => res(document.getElementById('game-gl').toDataURL('image/png'))))));
+    let png = null, dark = 1, tries = 0;
+    for (; tries < 12; tries++) {
+      ({ png, dark } = await p.evaluate(async n => {
+        for (let i = 0; i < n; i++) await new Promise(r => requestAnimationFrame(r));
+        const c = document.getElementById('game-gl'), s = document.createElement('canvas'); s.width = 64; s.height = 40;
+        const g = s.getContext('2d'); g.drawImage(c, 0, 0, 64, 40);
+        const d = g.getImageData(0, 0, 64, 40).data;
+        let k = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] < 6) k++;
+        return { png: c.toDataURL('image/png'), dark: k / (d.length / 4) };
+      }, tries ? 20 : 2));
+      if (dark < 0.97) break;
+    }
+    if (dark >= 0.97) {
+      const lost = await p.evaluate(() => { const c = document.getElementById('game-gl'), gl = c.getContext('webgl2') || c.getContext('webgl'); return !gl || gl.isContextLost(); });
+      console.log(`${name}: still black after ${tries} tries${lost ? ' (the WebGL context is lost)' : ''}`);
+    }
     fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
-    console.log(name);
+    console.log(name + (tries ? ` (black at first: taken again ${tries}x)` : ''));
   };
   // from the air, over the title screen (its scripted camera drives only the title's view)
   const air = views.filter(v => v.cam), foot = views.filter(v => !v.cam);
@@ -168,7 +187,9 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
         g.photoMode(true);
-        const P = g.photo, lz = v.lookZ ?? (g.player.z + 1.2), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = v.eye[2] - lz, d = Math.hypot(dx, dy);
+        // (a 2-element eye, [x, y], stands it eyeUp metres, 1.6 by default, over where you stand)
+        const ez = v.eye.length > 2 ? v.eye[2] : g.player.z + (v.eyeUp ?? 1.6);
+        const P = g.photo, lz = v.lookZ ?? (g.player.z + 1.2), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = ez - lz, d = Math.hypot(dx, dy);
         P.focus.set(v.look[0], lz, -v.look[1]); P.anchor.copy(P.focus);
         Object.assign(P, { az: Math.atan2(dx, dy), pitch: Math.atan2(h, d), dist: Math.hypot(d, h) });
         if (v.fov) P.fov = v.fov;
