@@ -3732,9 +3732,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // high up on a landmark (a deck the city names as a place): facing out over the city, as from its deck
     const lm = p[2] - Math.max(0, nav.terrain(p[0], p[1])) > 60 && landmarks.find(l => deckOf(l) && Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) < 150);
     if (lm) return { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: DECK_PITCH };
-    // else facing what the place is for (game.travel "look": a gate's mouth, the view), or the landmark there
+    // else facing what the place is for (game.travel "look": a gate's mouth, the view; "pitch" the camera's, if its own), or the landmark there
     const look = d.kind === 'place' ? lookOf(d, p) : null;
-    return look ? { x: p[0], y: p[1], z: p[2], face: Math.atan2(look[0] - p[0], look[1] - p[1]), pitch: 0.2 } : { x: p[0], y: p[1], z: p[2] };
+    return look ? { x: p[0], y: p[1], z: p[2], face: Math.atan2(look[0] - p[0], look[1] - p[1]), pitch: d.pitch ?? 0.2 } : { x: p[0], y: p[1], z: p[2] };
   }
   // what you face on arriving at a travel place: its own "look" [x, y], or else the nearest landmark's label
   // within 200 m (not one you stand on), so you arrive looking at what you came for, not wherever you last faced
@@ -3767,6 +3767,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const park = was === 'car' && myCar && !kerb ? kerbNear(to.x, to.y, null, 0, 1500) : null;
     const carYaw = kerb && (d.kind === 'landmark' ? Math.atan2(d.at[0] - kerb.pose.x, d.at[1] - kerb.pose.y) : to.face ?? kerb.pose.h);
     const cue = () => {
+      inSeason(d);
       if (kerb) { // the car comes too, facing along the street
         parkMyCar(kerb.pose);
         Object.assign(player, { x: kerb.pose.x, y: kerb.pose.y, z: kerb.pose.z, h: kerb.pose.h, speed: 0 });
@@ -3791,6 +3792,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       { cue, yaw: kerb ? carYaw : to.face != null ? to.face + 0.12 : null, pitch: kerb ? Math.max(0.08, to.pitch ?? 0.2) : to.pitch });
     return true;
   }
+  // a place at its best in a season of its own (game.travel "best": {from, to, date [m, d], what}: the jacarandas
+  // over Circular Quay in late spring): arriving out of it, the clock's date moves to that day, the time kept
+  function inSeason(d) {
+    const b = d.kind === 'place' && d.best;
+    if (!b || !b.date) return;
+    const md = (m, dd) => m * 100 + dd, now = md(clock.m, clock.d), f = md(...b.from), t = md(...b.to);
+    if (f <= t ? now >= f && now <= t : now >= f || now <= t) return;
+    setClock(clock.y, b.date[0], b.date[1], clock.min);
+    H.toast(`${b.what || d.name} flower from ${b.from[1]} ${MONTHS[b.from[0] - 1]} to ${b.to[1]} ${MONTHS[b.to[0] - 1]}: the date is now ${b.date[1]} ${MONTHS[b.date[0] - 1]}.`);
+  }
   // everywhere the map offers, in groups, nearest first within a group except the landmarks (the city's own order)
   function travelGroups() {
     const quick = [];
@@ -3799,7 +3810,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     quick.push({ kind: 'start', id: 'start', name: 'Where you started', at: G.start.at });
     const near = l => l.sort((a, b) => Math.hypot(a.at[0] - player.x, a.at[1] - player.y) - Math.hypot(b.at[0] - player.x, b.at[1] - player.y));
     return [
-      ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look }))],
+      ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best }))],
       ['Landmarks', landmarks],
       ['Trig stations', near(VP.map(v => ({ kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] })))],
       ['Ferry wharves', near(G.wharves.map(w => ({ kind: 'wharf', id: w.id, name: w.name, at: w.landing })))],
@@ -3908,7 +3919,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const icon = (ic, x, y, d) => { H.drawIcon(g, ic, x / dpr, y / dpr); marks.push([x / dpr - 7, y / dpr - 7, x / dpr + 7, y / dpr + 7]); if (d) bigPins.push({ x: x / dpr, y: y / dpr, d }); };
     // the landmarks and travel points; their names go on last, over everything but the player, the city's first
     // ones first, each beside its pin where it covers no other pin or name (else left off: a pin names itself when picked)
-    const named = [...(G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look })), ...landmarks];
+    const named = [...(G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best })), ...landmarks];
     for (const d of named) icon({ kind: d.kind }, ...P2(d.at[0], d.at[1]), d);
     if (region) for (const d of region.stations) icon({ kind: 'district' }, ...P2(d.at[0], d.at[1]), d);
     for (const w of G.wharves) icon({ kind: 'wharf' }, ...P2(...w.terminal), { kind: 'wharf', id: w.id, name: w.name, at: w.landing });

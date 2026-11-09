@@ -427,7 +427,8 @@ def main():
         print(f"footways crossing no-go areas dropped: {n0 - len(foot)}")
 
     # ---------------------------------------------------------- places to travel to once visited, with the ground under them
-    travel = [dict(t, at=[t["at"][0], t["at"][1], round(ground(*t["at"]), 1)]) for t in gcfg.get("travel", [])]
+    # (a point with its own level, [x, y, z], stands on a roof or a deck there: kept)
+    travel = [dict(t, at=[t["at"][0], t["at"][1], round(t["at"][2] if len(t["at"]) > 2 else ground(*t["at"][:2]), 1)]) for t in gcfg.get("travel", [])]
 
     # ---------------------------------------------------------- ferry routes through open water
     rr, cc = np.nonzero(nav)

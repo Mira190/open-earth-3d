@@ -52,7 +52,8 @@ def main(cities):
             changed.append("title")
         if "travel" in gcfg:
             ground = ground_fn(data)
-            travel = [dict(t, at=[t["at"][0], t["at"][1], round(ground(*t["at"][:2]), 1)]) for t in gcfg["travel"]]
+            # (a point with its own level, [x, y, z], stands on a roof or a deck there: kept)
+            travel = [dict(t, at=[t["at"][0], t["at"][1], round(t["at"][2] if len(t["at"]) > 2 else ground(*t["at"][:2]), 1)]) for t in gcfg["travel"]]
             # keep the points city.json does not name (city.py game_extras adds some: a deck up a tower)
             own = {t["id"] for t in travel}
             travel += [t for t in game.get("travel", []) if t["id"] not in own]
