@@ -2702,6 +2702,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
           if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
+          // (over 90 m off, on its second try, it comes back elsewhere, as a car stuck on a one-way street does there: in sight
+          // that far off, it neither backed out nor, out of view, came back elsewhere, and stood 114 s nose to nose at the
+          // mouth of Higashiyama's piece 126)
+          if (away && (c.narrowTries || 0) >= 1) { c.narrowTries = 0; respawn(c, cx, cy, radius * 0.6); continue; }
           // (no junction near enough behind it to back out to: the one it faces backs out instead, if it can. Turned round
           // where it stood, nose to nose with it, it would only have swung into it, and was held so: a car in Higashiyama
           // stood 46 s at a narrow stretch for one queued behind it, #331)
