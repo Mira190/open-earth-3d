@@ -10,7 +10,8 @@ buildings.bin is made for every city; the others for the live cities (cities/ind
 less "parked") and for any city that already has one. The JSON stays the pipeline's source: every step
 reads and writes it. Each pack is derived from it and decodes (web/pack.js) to the very same object, so
 nothing downstream changes, except that
-  - the roof meshes' base64 strings (buildings.json "r" columns 6 and 7) arrive as bytes (Uint8Array);
+  - the roof meshes' base64 strings (buildings.json "r" columns 6 and 7) arrive as bytes (Uint8Array), and
+    a roof triangle may start at another of its corners (meshoptimizer's index codec; wound the same way);
   - the landmark meshes' vertex lists (landmarks.json meshes[].position, .index, .uv) arrive as typed
     arrays (Float64Array or Int32Array) that a Worker hands over without copying (web/pack-worker.js);
   - the terrain grids (terrain.json "data"; game.json terrain, patches and upper "data", base64 int16)
@@ -29,7 +30,13 @@ else a column in the blob. A column of N values is one of
     {"t": "f", "n", "o"}                  float64
     {"t": "s", "tab": [...], "c": int}    strings: a table of the distinct ones and an index column
     {"t": "b", "len": int col, "o", "n"}  base64 strings as their bytes (decoded to Uint8Array), or with
-                                           "e" (element type, "<i2") and "c" (int column) the elements
+                                           "e" (element type, "<i2") and "c" (int column) the elements, or
+                                           with "m" the roof meshes through meshoptimizer's codecs (issue 335):
+                                           "v" the vertices, "i" the triangles ("vl": the vertices' "len"),
+                                           "n" elements in "nb" bytes at "o" (Writer.meshopt_column)
+    {"t": "p", "tab", "c", "v": int cols}  ids like "w310627517": a table of prefixes, an index, the numbers
+                                           (-1: none)
+    {"t": "x", "c": int col, "p"?: int col} "#rrggbb" colours as integers, or (p) a palette and indices
     {"t": "l", "len": int col, "c": col}  lists of one scalar type, flattened
     {"t": "r", "len": int col, "c": [col for each position]}   rows (lists of mixed types), by position
     {"t": "d", "n", "k": {key: {"has": int col (absent: every row has it), "c": col}}}
@@ -45,7 +52,9 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import struct
+import subprocess
 import sys
 import zlib
 
@@ -61,10 +70,25 @@ BYTES = {"buildings.json": {("r", 6): "<i2", ("r", 7): None},  # base64 columns 
 RAW = {"terrain.json": {("data",)},
        "game.json": {("terrain", "data"), ("patches", "data"), ("upper", "data"), ("water", "bits")}}
 # numeric lists decoded as typed arrays (list columns flagged "ta"): (list, key) in a list of objects
+# bytes columns sent through meshoptimizer's codecs (issue 335): (table, position): the roof vertices
+# (int16 x, y, z, padded to four for the codec) and their triangles (indices into the vertices of the row's
+# column "vertex", uint8 below 256 vertices else uint16), encoded across all the rows at once
+MESHOPT = {"buildings.json": {("r", 6): "vertex", ("r", 7): "index"}}
+# string columns that may go as numbers (issue 335): ids like "w310627517" as a prefix and an integer,
+# "#rrggbb" colours as 24-bit integers (or a palette of them and an index, whichever is smaller)
+FINE_STRINGS = {"buildings.json"}
 TYPED = {"landmarks.json": {("meshes", "position"), ("meshes", "index"), ("meshes", "uv")}}
 NAMES = ("buildings.json", "landmarks.json", "game.json", "terrain.json", "places.json", "scene.json")
 SMALL = 4096  # a value whose JSON is shorter than this stays JSON
 MAGIC = b"OEPK"
+ID = re.compile(r"^([^0-9]*)([1-9][0-9]{0,9}|0|)$")  # a prefix and a number (int32: checked), or none
+HEX = re.compile(r"^#[0-9a-f]{6}$")
+MJS = os.path.join(ROOT, "pipeline", "meshopt_pack.mjs")
+
+
+def meshopt(mode, data, count, stride=4):
+    """meshoptimizer's codecs (pipeline/meshopt_pack.mjs, Node)."""
+    return subprocess.run(["node", MJS, mode, str(count), str(stride)], input=data, stdout=subprocess.PIPE, check=True).stdout
 
 
 def _is_int(v):
@@ -131,6 +155,65 @@ class Writer:
         desc["o"] = self.put(b)
         return desc
 
+    def strings(self, vals):
+        tab, idx = {}, []
+        for v in vals:
+            idx.append(tab.setdefault(v, len(tab)))
+        return {"t": "s", "tab": list(tab), "c": self.ints(idx)}
+
+    def fine_strings(self, vals):
+        """The smallest of: a table of the strings and an index (as before); for ids made of a prefix and a
+        number ("w310627517", "r51", ""), a table of prefixes, an index and the numbers; for "#rrggbb"
+        colours, the colours as integers, or a palette of them (sorted) and an index."""
+        ways = [lambda w: w.strings(vals)]
+        m = [ID.match(v) for v in vals]
+        if all(m) and len(vals) >= 64 and all(not x.group(2) or int(x.group(2)) < 2 ** 31 for x in m):
+            def ids(w):
+                tab, pre, num = {}, [], []
+                for x in m:
+                    pre.append(tab.setdefault(x.group(1), len(tab)))
+                    num.append(int(x.group(2)) if x.group(2) else -1)
+                return {"t": "p", "tab": list(tab), "c": w.ints(pre), "v": w.ints(num)}
+            ways.append(ids)
+        if all(HEX.match(v) for v in vals) and len(vals) >= 64:
+            rgb = [int(v[1:], 16) for v in vals]
+            ways.append(lambda w: {"t": "x", "c": w.ints(rgb)})
+            pal = sorted(set(rgb))
+            at = {c: i for i, c in enumerate(pal)}
+            ways.append(lambda w: {"t": "x", "p": w.ints(pal), "c": w.ints([at[c] for c in rgb])})
+        if len(ways) == 1:
+            return ways[0](self)
+
+        def cost(way):
+            w = Writer()
+            w.__dict__.update({k: v for k, v in self.__dict__.items() if k not in ("parts", "size")})
+            d = way(w)
+            return len(zlib.compress(json.dumps(d, separators=(",", ":")).encode() + b"".join(w.parts), 9))
+        return min(ways, key=cost)(self)
+
+    def meshopt_column(self, vals, path):
+        """Base64 roof meshes through meshoptimizer's codecs (pipeline/meshopt_pack.mjs), all the rows as
+        one buffer: the vertices (int16 x, y, z) padded to four int16, then the triangles as one list of
+        uint32 indices into all the vertices. The index codec may start a triangle at another of its
+        corners (the same triangle, wound the same way); nothing that draws or rasterises a roof minds."""
+        raw = [base64.b64decode(v) for v in vals]
+        lens = self.ints([len(r) for r in raw])
+        if self.meshopt[path] == "vertex":
+            q = np.frombuffer(b"".join(raw), "<i2").reshape(-1, 3)
+            v4 = np.zeros((len(q), 4), "<i2")
+            v4[:, :3] = q
+            enc = meshopt("encode-vertex", v4.tobytes(), len(q), 8)
+            self.vertex_lens = (lens, [len(r) // 6 for r in raw])
+            return {"t": "b", "m": "v", "len": lens, "n": len(q), "o": self.put(enc), "nb": len(enc)}
+        vlens, counts = self.vertex_lens
+        idx, base = [], 0
+        for r, nv in zip(raw, counts):
+            idx.append(np.frombuffer(r, "u1" if nv <= 255 else "<u2").astype("<u4") + base)
+            base += nv
+        idx = np.concatenate(idx) if idx else np.zeros(0, "<u4")
+        enc = meshopt("encode-index", idx.tobytes(), len(idx))
+        return {"t": "b", "m": "i", "len": lens, "vl": vlens, "n": len(idx), "o": self.put(enc), "nb": len(enc)}
+
     def column(self, vals, path=()):
         """A column for these values; path (table, position) picks out the base64 columns."""
         if all(_is_int(v) for v in vals):
@@ -142,6 +225,8 @@ class Writer:
                 return {"t": "q", "k": k, "c": self.ints([int(round(v * 10 ** k)) for v in vals])}
             return {"t": "f", "n": len(vals), "o": self.put(np.asarray(vals, dtype="<f8").tobytes())}
         if all(type(v) is str for v in vals):
+            if path in self.meshopt:
+                return self.meshopt_column(vals, path)
             if path in self.bytes_cols:
                 raw = [base64.b64decode(v) for v in vals]
                 lens, cat, dt = self.ints([len(r) for r in raw]), b"".join(raw), self.bytes_cols[path]
@@ -149,10 +234,9 @@ class Writer:
                 if dt:  # an array of numbers: as integers, so that they can be delta-coded and shuffled
                     return {"t": "b", "len": lens, "e": dt, "c": self.ints(np.frombuffer(cat, dt).tolist()), **s64}
                 return {"t": "b", "len": lens, "o": self.put(cat), "n": len(vals), **s64}
-            tab, idx = {}, []
-            for v in vals:
-                idx.append(tab.setdefault(v, len(tab)))
-            return {"t": "s", "tab": list(tab), "c": self.ints(idx)}
+            if self.fine:
+                return self.fine_strings(vals)
+            return self.strings(vals)
         if vals and all(type(v) is list for v in vals):
             flat = [x for v in vals for x in v]
             lens = self.ints([len(v) for v in vals])
@@ -193,11 +277,12 @@ class Writer:
         return {"j": v}
 
 
-def encode(obj, bytes_cols=(), typed=(), deep=False, raw=()):
+def encode(obj, bytes_cols=(), typed=(), deep=False, raw=(), meshopt_cols=(), fine=False):
     """deep: objects and lists of objects packed by key too (landmarks.json, game.json); buildings.json
     keeps the layout of its first packs, its top-level lists as columns and the rest as JSON."""
     w = Writer()
     w.bytes_cols, w.typed, w.deep, w.raw = dict(bytes_cols), set(typed), deep, set(raw)
+    w.meshopt, w.fine = dict(meshopt_cols), fine
     keys = {}
     for k, v in obj.items():
         if deep:
@@ -237,6 +322,35 @@ def _dec(d, blob):
         return np.frombuffer(blob[d["o"]:d["o"] + 8 * d["n"]], "<f8").tolist()
     if t == "s":
         return [d["tab"][i] for i in _dec_ints(d["c"], blob)]
+    if t == "p":
+        return [d["tab"][p] + (str(v) if v >= 0 else "") for p, v in zip(_dec_ints(d["c"], blob), _dec_ints(d["v"], blob))]
+    if t == "x":
+        c = _dec_ints(d["c"], blob)
+        if "p" in d:
+            pal = _dec_ints(d["p"], blob)
+            c = [pal[i] for i in c]
+        return ["#%06x" % v for v in c]
+    if t == "b" and "m" in d:
+        enc = blob[d["o"]:d["o"] + d["nb"]]
+        lens = _dec_ints(d["len"], blob)
+        if d["m"] == "v":
+            cat = np.frombuffer(meshopt("decode-vertex", enc, d["n"], 8), "<i2").reshape(-1, 4)[:, :3].tobytes()
+        else:
+            idx = np.frombuffer(meshopt("decode-index", enc, d["n"]), "<u4")
+            parts, base, o = [], 0, 0
+            for n, vl in zip(lens, _dec_ints(d["vl"], blob)):
+                nv = vl // 6
+                dt = "u1" if nv <= 255 else "<u2"
+                k = n // np.dtype(dt).itemsize
+                parts.append((idx[o:o + k] - base).astype(dt).tobytes())
+                o += k
+                base += nv
+            cat = b"".join(parts)
+        out, o = [], 0
+        for n in lens:
+            out.append(base64.b64encode(cat[o:o + n]).decode())
+            o += n
+        return out
     if t == "b":
         if "e" in d:
             cat, o = np.asarray(_dec_ints(d["c"], blob), dtype=d["e"]).tobytes(), 0
@@ -288,11 +402,28 @@ def decode(data):
     return head, {k: _val(d, blob) for k, d in head["keys"].items()}
 
 
+def same_corners(obj):
+    """buildings.json with each roof triangle as the smallest of its rotations (winding kept): the index codec
+    may start a triangle at another corner, so a pack is compared with its source this way."""
+    if not obj.get("r"):
+        return obj
+    rows = []
+    for r in obj["r"]:
+        nv = len(base64.b64decode(r[6])) // 6
+        t = np.frombuffer(base64.b64decode(r[7]), "u1" if nv <= 255 else "<u2").reshape(-1, 3)
+        if len(t):  # the smallest of its three rotations (a degenerate triangle repeats its smallest index)
+            rot = np.stack([np.roll(t, -j, axis=1) for j in range(3)])
+            key = (rot[:, :, 0].astype(np.int64) << 32) + (rot[:, :, 1].astype(np.int64) << 16) + rot[:, :, 2]
+            t = rot[np.argmin(key, axis=0), np.arange(len(t))]
+        rows.append(r[:7] + [base64.b64encode(t.tobytes()).decode()] + r[8:])
+    return {**obj, "r": rows}
+
+
 def pack_file(src, dst, name="buildings.json"):
     raw = open(src, "rb").read()
     obj = json.loads(raw)
     w, keys = encode(obj, BYTES.get(name, ()), TYPED.get(name, ()), deep=name != "buildings.json",
-                     raw=RAW.get(name, ()))
+                     raw=RAW.get(name, ()), meshopt_cols=MESHOPT.get(name, ()), fine=name in FINE_STRINGS)
     head = json.dumps({"format": "oe-pack", "v": 1, "source": name, "sha256": hashlib.sha256(raw).hexdigest(),
                        "keys": keys}, separators=(",", ":"), ensure_ascii=False).encode()
     pre = MAGIC + struct.pack("<I", len(head)) + head
@@ -300,6 +431,8 @@ def pack_file(src, dst, name="buildings.json"):
     body = pre + b"".join(w.parts)
     out = gzip.compress(body, 9, mtime=0)
     _, back = decode(out)
+    if name in MESHOPT:
+        back, obj = same_corners(back), same_corners(obj)
     if back != obj:
         bad = [k for k in obj if back.get(k) != obj[k]]
         raise SystemExit(f"{src}: the pack does not decode to the source ({', '.join(bad)})")
