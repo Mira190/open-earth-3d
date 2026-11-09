@@ -1979,9 +1979,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const ab = JN.armBy(c.line, c.dir > 0 ? 0 : 1), rear = s0 => (c.dir > 0 ? s0 : l.len - s0) - c.half;
       // (busy for it: a car let in onto this piece, or one crossing the box within 10 m of its mouth)
       const mk = c.dir > 0 ? 0 : l.pts.length - 3, mx = l.pts[mk], my = l.pts[mk + 1];
-      if (ab && rear(sb) < ab.back && rear(c.s) >= ab.back - 0.05 && ab.j.active.some(o => o.c !== c && ((o.m & 15) === ab.i || Math.hypot(o.c.x - mx, o.c.y - my) < 10))) {
-        R.v = 0; R.wait += dt * 0.25; R.by = null; // (patient, as behind one backing out: the box clears in a cycle or two; giving up, it held the queue it backed out for)
-        if (R.wait > 20) { c.revBan = 60; c.revEnd = `the junction behind (${ab.j.id}) busy`; c.rev = null; }
+      // (12 s at most: a box busy all the time, a scramble's, it backs into as before, the cars there stopping for it)
+      if (ab && rear(sb) < ab.back && rear(c.s) >= ab.back - 0.05 && (R.boxT || 0) < 12 && ab.j.active.some(o => o.c !== c && ((o.m & 15) === ab.i || Math.hypot(o.c.x - mx, o.c.y - my) < 10))) {
+        R.v = 0; R.boxT = (R.boxT || 0) + dt; R.by = null;
         q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c);
         return true;
       }
@@ -1998,13 +1998,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.ax = c.x; c.ay = c.y; c.idle = 0;
       } else {
         R.v = 0; R.wait += bk && bk.rev ? dt * 0.25 : dt; R.by = bk; // (behind it one backing out too, waiting at the junction behind for room: it waits its turn, not giving up after 20 s)
-        // (one coming onto this piece out of the junction behind, still in its box, let in for the room there was: it can't
-        // give way there, so this one gives up at once and waits on as before, rather than hold it in that box, #330. One
-        // already on the piece behind it backs out first, as any does, below)
         // (nor for a ride or your car behind it: it won't back off for the traffic, and a ride coming for you stood 7 s
         // behind three cars backing out towards it, one after another, in Fushimi Inari)
         if (bk && !bk.rev && bk.stuck === undefined && R.wait > 1) { c.revBan = 60; c.revEnd = 'a ride or your car behind it'; c.rev = null; }
-        else if (bk && !bk.rev && bk.mv && bk.mv.e && bk.mv.e.m.line === c.line && bk.line !== c.line) { c.revBan = 60; c.revEnd = `in the way of car ${C.indexOf(bk)} coming onto this piece`; c.rev = null; }
         // the car behind, stopped on this street and going its way: it backs out first
         else if (bk && bk.line === c.line && bk.dir === c.dir && !bk.rev && bk.v < 0.5 && (c.s - bk.s) * c.dir > 0) reverse(bk);
         // (one stopped across its way back, at the junction behind or on the piece beyond: after 3 s it is asked to back off
