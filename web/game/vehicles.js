@@ -313,6 +313,19 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       if (best) best.z = nav.stripHeight(best.s, best.s.origin[0] + best.s.axis[0] * best.u, best.s.origin[1] + best.s.axis[1] * best.u);
       return best;
     };
+    // the floor under the skids, not only under the mast: on a roof with a step or a raised tier under one skid, the
+    // highest point under them (a helicopter set down at the foot of a tier sank into it to the cabin). A point more
+    // than a metre over the cabin's floor is a wall beside it, which the slide above keeps it off, not ground
+    const SKID = [[0, 0], [1.9, 0.95], [1.9, -0.95], [-1.4, 0.95], [-1.4, -0.95], [0.25, 0.95], [0.25, -0.95]];
+    const skidFloor = (x, y, z) => {
+      const fx = Math.sin(st.h), fy = Math.cos(st.h); // forward; right is (fy, -fx)
+      let g = -Infinity;
+      for (const [a, b] of SKID) {
+        const h = nav.groundBelow(x + fx * a + fy * b, y + fy * a - fx * b, z);
+        if (h <= z + 1 && h > g) g = h;
+      }
+      return g === -Infinity ? nav.groundBelow(x, y, z) : g;
+    };
     function update(dt, inp, events) {
       if (swap) swap();
       st.door += clamp(st.doorTo - st.door, -dt / 0.35, dt / 0.35); // a third of a second each way
@@ -359,7 +372,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       // up into something: only what is over the rotor stops a climb (the slice it climbs into); a fence or a
       // parapet its disc overhangs where it set down, already beside it, does not hold it on the ground
       if (nz > st.z && !nav.free(nx, ny, st.z + 3.6, nz + 3.6, 3.2)) { nz = st.z; st.vz = Math.min(0, st.vz); }
-      const floor = nav.groundBelow(nx, ny, nz);
+      const floor = skidFloor(nx, ny, nz);
       if (nz <= floor + 0.02) {
         nz = floor;
         if (st.vz < 0) st.vz = 0;

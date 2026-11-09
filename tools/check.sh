@@ -10,6 +10,7 @@
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
 #   - checks that every city's buildings.bin, and each live city's other packs (landmarks, game, terrain, places, scene), is packed
 #     from its JSON as it is now and decodes to the same values (pipeline/pack.py --check, tools/pack_check.js);
+#   - checks that every live city's building solids are valid polygons on their decimetre grid (pipeline/solid_rings.py --check);
 #   - checks that every shared model in web/assets is meshopt-compressed (pipeline/meshopt_glb.mjs --check);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
@@ -204,6 +205,11 @@ EOF
   if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
     echo "ok   pack   $(grep -c ' MB packed' "$OUT/pack.log") packs (buildings, landmarks, game, terrain, places, scene) up to date and decoded to their JSON"
   else echo "FAIL pack   $(grep '^FAIL' "$OUT/pack.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/pack.log)"; fi
+  # every live city's solids valid on the decimetre grid they are stored on (pipeline/solid_rings.py): else the browser
+  # draws one shape and the collision tests another, and a walker or a helicopter stands inside a drawn block
+  if python3 pipeline/solid_rings.py --check $(bash tools/live_cities.sh) >"$OUT/rings.log" 2>&1; then
+    echo "ok   rings  $(grep -c '^ok' "$OUT/rings.log") live cities' solids valid on their grid"
+  else echo "FAIL rings  $(grep '^FAIL' "$OUT/rings.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/rings.log)"; fi
   # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
   if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
   else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi
