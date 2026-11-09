@@ -44,11 +44,18 @@ window.OETrees = (function () {
     return c;
   };
 
+  // The models come in two parts (issue 335, pipeline/split_glb.mjs): the mid and far models with the leaf atlas
+  // (trees.json parts.far) before the city can be shown, and the near ones (parts.near, 0.9 MB) after, when the
+  // page calls loadNear() on what create() returns; the mid model stands in for the near one until then. Without
+  // parts in trees.json, the whole file at once.
   async function load(base = 'assets/trees/') {
     if (!THREE.GLTFLoader) throw new Error('GLTFLoader is not available');
     const info = await (await fetch(base + 'trees.json')).json();
-    const gltf = await new Promise((res, rej) => new THREE.GLTFLoader().load(base + info.file, res, null, rej));
-    return { info, gltf };
+    const get = f => new Promise((res, rej) => new THREE.GLTFLoader().load(base + f, res, null, rej));
+    const parts = info.parts && info.parts.far && info.parts.near ? info.parts : null;
+    const gltf = await get(parts ? parts.far : info.file);
+    let nearP = null;
+    return { info, gltf, near: () => (parts ? nearP || (nearP = get(parts.near)) : Promise.resolve(null)) };
   }
 
   // the colour attribute carries ambient occlusion (r), how far the wind moves a vertex (g)
@@ -299,9 +306,12 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       if (mine && mine.tint) c.multiply(c2.setRGB(...mine.tint)); // (the city's own grass's colour: city.json trees.tussock.tint)
       c.toArray(tint, 3 * i);
     }
-    // per species and distance, one instanced mesh per material
-    const meshes = names.map((sp, k) => [0, 1, 2].map(lod => {
-      const node = lib.gltf.scene.getObjectByName(`${sp}_LOD${lod}`), out = [];
+    // per species and distance, one instanced mesh per material; the near model the mid one until it comes (loadNear)
+    const nodeOf = (gltf, sp, lod) => gltf.scene.getObjectByName(`${sp}_LOD${lod}`);
+    const standIn = names.map(sp => !nodeOf(lib.gltf, sp, 0));
+    const meshes = names.map((sp, k) => [0, 1, 2].map(lod => parts(k, lod, nodeOf(lib.gltf, sp, lod) || (lod === 0 && nodeOf(lib.gltf, sp, 1)))));
+    function parts(k, lod, node) {
+      const out = [];
       if (!node || !count[k]) return out;
       node.traverse(o => {
         if (!o.isMesh) return;
@@ -323,7 +333,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         out.push(im);
       });
       return out;
-    }));
+    }
     // ------------------------------------------------------------ the far trees as impostors
     // Past the mid distance (520 m, a wood's from 200 m) a tree was a trunk and an 80-triangle crown hull in its
     // species' one colour: no blossom, no autumn, the same dome for every species. Here each species' mid-distance
@@ -536,10 +546,27 @@ vec3 nonPerturbedNormal = normal;`)
       while (lo < hi) { const mid = (lo + hi) >> 1; if (keys[mid] <= bound) lo = mid + 1; else hi = mid; }
       return lo;
     }
-    for (const per of meshes) for (const parts of per.slice(0, 2)) for (const im of parts) {
-      if (!im.castShadow) continue;
+    function shadowHooks(im) {
+      if (!im.castShadow) return;
       im.onBeforeShadow = (r, o, cam, shc) => { const k = shadowCount(im, shc); if (k < im.count) { im.userData.shFull = im.count; im.count = k; } };
       im.onAfterShadow = () => { if (im.userData.shFull != null) { im.count = im.userData.shFull; im.userData.shFull = null; } };
+    }
+    for (const per of meshes) for (const ps of per.slice(0, 2)) ps.forEach(shadowHooks);
+    // the near models, come (loadNear): each species' stand-in meshes replaced, the trees sorted into them at the next update
+    function addNear(gltf) {
+      if (!gltf) return 0;
+      let swapped = 0;
+      names.forEach((sp, k) => {
+        const node = standIn[k] && nodeOf(gltf, sp, 0);
+        if (!node) return;
+        const fresh = parts(k, 0, node);
+        if (!fresh.length) return;
+        for (const im of meshes[k][0]) { world.remove(im); im.geometry.dispose(); }
+        fresh.forEach(shadowHooks);
+        meshes[k][0] = fresh; standIn[k] = false; swapped++;
+      });
+      if (swapped) last.set(1e9, 0, 0);
+      return swapped;
     }
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
@@ -852,8 +879,16 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       };
     }
 
+    let nearP = null;
     return {
       n, species: names, count,
+      // the near models, after the page can be played (issue 335): resolves with how many species took theirs. They
+      // take the stand-ins' materials, whose programs are compiled already
+      loadNear() {
+        return nearP || (nearP = (lib.near ? lib.near() : Promise.resolve(null)).then(addNear)
+          .catch(e => { console.warn('Near tree models unavailable:', e); return 0; }));
+      },
+      nearReady: () => !standIn.some((v, k) => v && count[k]),
       // the yozakura lights (#162): how many trees are lit and how many lanterns stand, for the tools
       // the lit lanterns, for the inland water's reflections: {heads, lit, placed} or null
       lanterns: () => (Y ? { heads: Y.heads, lit: Y.lit, placed: Y.placed, chochin: Y.chochin, bonbori: Y.lanterns } : null),

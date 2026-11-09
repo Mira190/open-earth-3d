@@ -39,7 +39,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_vehicles import MAT, ROOT, TAU, Mesh, camera, ground_plane, material, render, select, setup_render, sun_lamp  # noqa: E402
-from meshopt import compress  # noqa: E402  (build_vehicles puts pipeline/ on the path)
+from meshopt import compress, split as split_parts  # noqa: E402  (build_vehicles puts pipeline/ on the path)
 from glb_webp import webp  # noqa: E402
 
 OUT = os.path.join(ROOT, "web", "assets", "trees")
@@ -1113,12 +1113,13 @@ def main():
                               export_animations=False)
     webp(path)  # the leaf atlas as a WebP (a fifth of the PNG), then meshopt
     compress(path)
+    split_parts(path)  # the parts loaded before the game can be played and after (issue 335)
     print(f"  {os.path.relpath(path, ROOT)}: {os.path.getsize(path) / 1e6:.2f} MB")
     manifest = {
         "note": "The trees every city shares, built by blender/build_trees.py. Nodes are <species>_LOD0..2; colour red is ambient "
                 "occlusion, green how far the wind moves a vertex, blue a phase for the leaves' flutter. A city picks its mix of "
                 "species in city.json 'trees'.",
-        "file": "trees.glb", "lod_m": [130, 520], "atlas": {"cells": CELLS, "columns": COLS, "rows": ROWS,
+        "file": "trees.glb", "parts": {"far": "trees_far.glb", "near": "trees_near.glb"}, "lod_m": [130, 520], "atlas": {"cells": CELLS, "columns": COLS, "rows": ROWS,
                                                      "sakura_cells": [CELLS[k] for k in SAKURA_CELLS]},
         "mix": {"plane": 0.3, "gum": 0.25, "elm": 0.15, "fig": 0.1, "jacaranda": 0.1, "palm": 0.1},
         "species": info,

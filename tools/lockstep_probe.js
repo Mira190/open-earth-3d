@@ -11,6 +11,7 @@ async function run(b) {
   const pinned = await pinClock(p, city);
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
+  await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); });
   if (process.env.NOPREFETCH) await p.evaluate(() => { window.__game.nav.prefetch = () => true; });
   if (process.env.FIRST) await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // (a first-time player, as tools/game_check.js plays)

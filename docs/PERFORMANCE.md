@@ -192,3 +192,45 @@ Next, in order of value: impostors for the far trees (the largest share, and the
 built for), screen-size culling for small instanced props once they are under a pixel, and limiting the
 shadow pass to casters whose shadow lands inside the shadow camera's sharp range. Each must pass the
 same before-and-after stills.
+
+## The build stage (issue 327)
+
+The telemetry's desktop loads spent about 10 s between "decoded" and "built". `tools/start_profile.js LOAD=1
+PROFILE=1` now prints the load's stages, the build's time by the loader's step and a profile of the build as a
+whole; `tools/stage_sweep.sh` gives one line a city; `tools/reef_load.js` does the same for a reef or alpine
+site. What the build spent its time on (Kyoto, llvmpipe), and what was done:
+
+- **A GPU read back, 5.1 s.** The haze at the model's edge was read from twelve pixels of the sky drawn on the
+  GPU (`readPixels`), which waited for every shader and upload queued before it; an asynchronous read only moved
+  the wait to `getBufferSubData`. world.js now evaluates the sky's shader (three.js r186's Sky with this app's
+  changes, clouds included) for those pixels on the CPU (`hazeOf`). `tools/haze_check.js` holds it to the GPU's
+  read: 80 of 80 suns, clear and cloudy, within 0.03 of a 2% tolerance. A clock set from the menu no longer
+  stalls a frame either.
+- **The inland water's levels, 1.2 s.** `inland.js` looked its ring points up through a Map keyed by strings,
+  a million times in `raise()`: a dense grid now.
+- **The city's shaders, after everything else.** They now compile from the moment every light is in place
+  (the car's headlamp and the helicopter's searchlight are put in the world at the start for that), behind
+  the surface model, the footways, the people and the traffic, one program in flight at a time (a synchronous
+  GL call there waits for one at most). Where the GPU compiles in parallel the two overlap.
+- Still on the CPU: the buildings (4 s in Kyoto, already in slices between frames), the surface model and the
+  walking network (nav.js, 2 to 3 s), the footways (1.5 s). The next step would be a Worker for the buildings'
+  geometry (follow-up issue).
+
+Every live city, llvmpipe, 960×600, high tier, the median of two runs (`tools/stage_sweep.sh`), main → after:
+
+| city | playable (s) | build, decoded → built (s) |
+|---|---|---|
+| fushimi-inari | 9.4 → 8.5 | 3.3 → 2.7 |
+| higashiyama | 11.8 → 10.1 | 5.6 → 3.2 |
+| kyoto | 27.9 → 23.8 | 18.1 → 9.9 |
+| queenstown | 17.1 → 15.4 | 7.6 → 5.7 |
+| shibuya | 21.5 → 19.4 | 12.1 → 9.2 |
+| shinjuku | 18.9 → 16.3 | 9.7 → 6.8 |
+| sydney | 17.2 → 15.9 | 7.3 → 6.5 |
+| tetsugaku | 10.8 → 9.4 | 5.0 → 3.3 |
+| tokyo | 20.3 → 20.0 | 12.3 → 8.9 |
+
+The reef and alpine sites build in 1.7 to 4.3 s; their wait is after "built", in three.js's WebGL backend
+compiling (`_completeCompile`, 11.6 s of Lake Tekapo's load), much of it in the first frame after
+`compileAsync`, and in Tekapo's detail photograph (`terrain.prepare`). On a device with WebGPU, as the
+telemetry's desktop has, the backend is another one; a follow-up issue holds it.

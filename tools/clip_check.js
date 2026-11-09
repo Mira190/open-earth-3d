@@ -52,6 +52,7 @@ const TOL = {
   const t0 = Date.now();
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
+  await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   // the numbers need no pictures: stop drawing frames, so the simulation runs as fast as it can
