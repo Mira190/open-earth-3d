@@ -84,10 +84,30 @@ window.OETelemetry = (function () {
   const base = () => Object.assign({ v: VERSION, sid, device, webgpu: !!navigator.gpu, lang: navigator.language || '', ref,
     app: (window.OE_VERSION && window.OE_VERSION.version) || '', w: innerWidth, h: innerHeight, dpr: Math.round(devicePixelRatio * 100) / 100 }, tierOf());
 
+  // PostHog's own session for its Web Analytics: a UUIDv7 kept in sessionStorage for the tab, renewed after
+  // 30 minutes without an event (PostHog's own rule), so its sessions, bounce rate and session length add up
+  let phs = null;
+  const uuid7 = () => {
+    const b = new Uint8Array(16); crypto.getRandomValues(b);
+    let t = Date.now(); for (let i = 5; i >= 0; i--) { b[i] = t % 256; t = Math.floor(t / 256); }
+    b[6] = (b[6] & 0x0f) | 0x70; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  };
+  function phSession() {
+    const t = Date.now();
+    if (!phs) { try { phs = JSON.parse(sessionStorage.getItem('oe3d-phs') || 'null'); } catch (e) { phs = null; } }
+    if (!phs || !phs.id || t - phs.t > 30 * 60e3) phs = { id: uuid7(), t };
+    phs.t = t;
+    try { sessionStorage.setItem('oe3d-phs', JSON.stringify(phs)); } catch (e) { /* storage blocked */ }
+    return phs.id;
+  }
+  const referrer = (() => { try { return document.referrer && new URL(document.referrer).host !== location.host ? document.referrer : ''; } catch (e) { return ''; } })();
+
   // ---------------------------------------------------------------- the queue
   let queue = [];
   function track(event, props) {
-    queue.push({ event, ts: new Date().toISOString(), props: Object.assign(base(), cur ? { view: cur.kind, city: cur.city } : {}, snap(), props || {}) });
+    queue.push({ event, ts: new Date().toISOString(), url: location.origin + location.pathname + location.hash, props: Object.assign(base(), cur ? { view: cur.kind, city: cur.city } : {}, snap(), props || {}) });
     if (queue.length >= 20) flush();
   }
   function flush() {
@@ -96,8 +116,21 @@ window.OETelemetry = (function () {
     if (debug) { console.info('[telemetry]', events); if (!endpoint) return; }
     let body;
     if (format === 'posthog') {
-      body = JSON.stringify({ api_key: CONFIG.key, batch: events.map(e => ({ event: e.event, timestamp: e.ts,
-        properties: Object.assign({ distinct_id: vid, $process_person_profile: false, $current_url: location.origin + location.pathname + location.hash, $referring_domain: ref || '$direct' }, e.props) })) });
+      // every "view" also goes as PostHog's standard $pageview, which its Web Analytics reads (visitors, pages,
+      // referrers, countries, devices); the site's own events stay as they are for the dashboard and SLOs
+      const session = phSession(), batch = [];
+      for (const e of events) {
+        const common = { distinct_id: vid, $process_person_profile: false, $session_id: session, $current_url: e.url,
+          $host: location.host, $pathname: location.pathname, $referring_domain: ref || '$direct' };
+        batch.push({ event: e.event, timestamp: e.ts, properties: Object.assign({}, common, e.props) });
+        if (e.event === 'view') {
+          batch.push({ event: '$pageview', timestamp: e.ts, properties: Object.assign({}, common, {
+            $referrer: referrer || '$direct', $title: document.title, $screen_width: screen.width, $screen_height: screen.height,
+            $viewport_width: innerWidth, $viewport_height: innerHeight, $device_type: device === 'desktop' ? 'Desktop' : device === 'phone' ? 'Mobile' : 'Tablet',
+            $lib: 'oe3d-telemetry', view: e.props.view, city: e.props.city, first: e.props.first, app: e.props.app }) });
+        }
+      }
+      body = JSON.stringify({ api_key: CONFIG.key, batch });
     } else {
       body = JSON.stringify({ vid, events });
     }
