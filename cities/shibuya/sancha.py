@@ -24,6 +24,7 @@ MATERIALS = {
     "yongen": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "yongen.jpg", "emissive_map": True, "glow": 1.1},
     "awning_red": {"color": "#c2343a", "roughness": 0.62, "metalness": 0.0},
     "awning_trim": {"color": "#f1ece2", "roughness": 0.7, "metalness": 0.0},
+    "awning_pale": {"color": "#d6d3c8", "roughness": 0.7, "metalness": 0.0},
     "render_grey": {"color": "#8d8982", "roughness": 0.95, "metalness": 0.0},
     "duct_rust": {"color": "#6f4330", "roughness": 0.7, "metalness": 0.3},
     "ac_white": {"color": "#d9d8d2", "roughness": 0.6, "metalness": 0.1},
@@ -35,8 +36,8 @@ PX = 128   # pixels a metre on the sheet
 # (key, width m, height m): each drawn at PX and packed on shelves
 CELLS = [("brick", 2.0, 3.0), ("white", 1.6, 3.0), ("shutter", 1.6, 2.3), ("door", 0.8, 2.05), ("sudare", 0.45, 1.5),
          ("tako", 3.3, 2.25), ("paving", 5.6, 1.7), ("name", 1.5, 0.62), ("lantern", 0.34, 0.6), ("round", 0.5, 0.5),
-         ("notice", 0.3, 0.42), ("grille", 0.8, 0.6)]
-FINE = {"tako": 2, "name": 3, "lantern": 4, "round": 4}   # the lettered cells, drawn that many times finer
+         ("notice", 0.3, 0.42), ("grille", 0.8, 0.6), ("goodday", 1.5, 0.75)]
+FINE = {"tako": 2, "name": 3, "lantern": 4, "round": 4, "goodday": 3}   # the lettered cells, drawn that many times finer
 SHEET, SHEET_H = 1024, 2048
 
 
@@ -152,6 +153,13 @@ def draw(path, font):
     f = font("yomogi", 80)
     d.text((x + w // 2, y + h // 2 - 40), "たこ", font=f, fill=(40, 30, 26), anchor="mm")
     d.text((x + w // 2, y + h // 2 + 44), "はる", font=f, fill=(40, 30, 26), anchor="mm")
+    # the left bay's name on its pale awning: green serif, stepped down to the right, SINCE 1986 under it
+    x, y, w, h = R["goodday"]
+    d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(214, 211, 200))
+    f = font("mincho", 92)
+    d.text((x + int(w * 0.36), y + int(h * 0.24)), "Good-day", font=f, fill=(40, 110, 70), anchor="mm")
+    d.text((x + int(w * 0.6), y + int(h * 0.56)), "Good-day", font=f, fill=(40, 110, 70), anchor="mm")
+    d.text((x + int(w * 0.62), y + int(h * 0.86)), "SINCE 1986", font=font("mincho", 44), fill=(150, 132, 84), anchor="mm")
     # a notice taped to the brick: lines of small print, a red heading (not to be read)
     x, y, w, h = R["notice"]
     d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(244, 242, 236))
@@ -172,7 +180,7 @@ def meshes(K, m):
     n = n / np.hypot(*n)
     t = np.array([-n[1], n[0]])                    # along the wall, left to right seen from the lane
     hl = L / 2 - 0.05
-    P = lambda a, u, zz: np.array([*(mid + t * a + n * u), z + zz])   # a along the wall, u out from it, zz above the paving
+    P = lambda a, u, zz: np.array([*(mid + t * a + n * (u + 0.1)), z + zz])   # a along the wall, u out from it (a hand clear of the surveyed wall, which is not quite straight), zz above the paving
 
     def box(mat, a0, a1, u0, u1, z0, z1):
         c = [P(a, u, zz) for zz in (z0, z1) for u in (u0, u1) for a in (a0, a1)]   # index z*4 + u*2 + a
@@ -183,7 +191,7 @@ def meshes(K, m):
         mat.quad(P(a0, u, z0), P(a1, u, z0), P(a1, u, z1), P(a0, u, z1), uv(key, crop))
 
     Y, Yl = K("yongen"), K("yongen", "lit")
-    split = min(1.0, hl - 2.4)                     # the bar's front to the left of it, the takoyaki stand to the right
+    split = hl - 0.9                               # the house's two bays to the left of it, the takoyaki stand's fence to the right
     # --- the ground floor's skin: brick tile, the shutter, the pier, the white surround and the door
     zf = 2.95                                      # the upper floor's underside
     a_sh0, a_sh1 = split - 3.4, split - 1.8        # the shutter
@@ -192,7 +200,7 @@ def meshes(K, m):
     face(Y, a_sh0, a_sh1, 0.03, 0, 2.3, "shutter")
     face(Y, a_sh0, a_sh1, 0.06, 2.3, zf, "brick", (0, 0.72, 0.8, 0.94))
     face(Y, a_sh1, a_sh1 + 0.3, 0.08, 0, zf, "brick", (0.8, 0, 0.95, zf / 3.0))            # the pier
-    box(K("render_grey"), a_sh1, a_sh1 + 0.3, 0.0, 0.08, 0, zf)
+    box(K("render_grey"), a_sh1, a_sh1 + 0.3, -0.1, 0.08, 0, zf)
     face(Y, a_sh1 + 0.3, a_d0, 0.06, 0, zf, "white", (0, 0, (a_d0 - a_sh1 - 0.3) / 1.6, zf / 3.0))
     face(Y, a_d0, a_d1, 0.0, 0, 2.05, "door")
     face(Y, a_d0, a_d1, 0.06, 2.05, zf, "white", (0.3, 0.7, 0.8, 1.0))
@@ -204,61 +212,80 @@ def meshes(K, m):
     face(Y, a_d1 + 0.12, min(split - 0.05, a_d1 + 0.57), 0.085, 0.55, 2.05, "sudare")
     box(K("wood_dark"), a_d1 + 0.02, a_d1 + 0.1, 0.06, 0.1, 1.25, 1.75)                     # the small wooden plate by the door
     # --- the upper floor stepping out over the bar, rendered grey, and its windows' sills
-    box(K("render_grey"), -hl, split + 0.2, 0.0, 0.62, zf, zf + 1.35)
-    box(K("render_grey"), -hl, split + 0.2, 0.0, 0.16, zf + 1.35, min(m["top_m"], zf + 4.4))
+    box(K("render_grey"), -hl, split + 0.2, -0.1, 0.62, zf, zf + 1.35)
+    box(K("render_grey"), -hl, split + 0.2, -0.1, 0.16, zf + 1.35, min(m["top_m"], zf + 4.4))
     box(K("steel_dark"), a_sh1 - 0.9, a_sh1 + 1.3, 0.16, 0.2, zf + 1.75, zf + 3.0)          # the upper window
     box(K("ac_white"), a_sh1 - 0.95, a_sh1 + 1.35, 0.16, 0.26, zf + 1.66, zf + 1.75)
     # --- the dome awning over the shutter: eight ribbed gores, a scalloped edge with a white trim, the name on it
-    ac, Rr, D, Hh, zb = (a_sh0 + a_sh1) / 2, (a_sh1 - a_sh0) / 2 + 0.22, 1.02, 0.86, 2.22
-    dome = lambda ph, th, k=1.0: P(ac - Rr * k * math.cos(ph) * math.cos(th), 0.05 + D * k * math.sin(ph) * math.cos(th), zb + Hh * k * math.sin(th))
-    G, T = 8, 5
+    def awning(ac, Rr, D, Hh, zb, A, trim):
+        dome = lambda ph, th, k=1.0: P(ac - Rr * k * math.cos(ph) * math.cos(th), 0.05 + D * k * math.sin(ph) * math.cos(th), zb + Hh * k * math.sin(th))
+        G, T = 8, 5
+        for g in range(G):
+            p0, p1 = math.pi * g / G, math.pi * (g + 1) / G
+            for j in range(T):
+                t0, t1 = math.pi / 2 * j / T, math.pi / 2 * (j + 1) / T
+                A.quad(dome(p0, t0), dome(p1, t0), dome(p1, t1), dome(p0, t1))
+            # the valance: two scallops a gore, each a shallow curve of three facets
+            for s_ in range(2):
+                q0, q1 = p0 + (p1 - p0) * s_ / 2, p0 + (p1 - p0) * (s_ + 1) / 2
+                for e in range(5):
+                    r0, r1 = q0 + (q1 - q0) * e / 5, q0 + (q1 - q0) * (e + 1) / 5
+                    d0, d1 = 0.09 + 0.08 * math.sin(math.pi * e / 5) ** 0.6, 0.09 + 0.08 * math.sin(math.pi * (e + 1) / 5) ** 0.6
+                    top0, top1 = dome(r0, 0), dome(r1, 0)
+                    A.quad(top0 - [0, 0, d0], top1 - [0, 0, d1], top1, top0)
+                    trim.quad(top0 - [0, 0, d0 + 0.018], top1 - [0, 0, d1 + 0.018], top1 - [0, 0, d1], top0 - [0, 0, d0])
+        return dome
+
+    def wrap(dome, p0, p1, t0, t1, key, N=8, M=3):
+        """Lettering laid on an awning: in strips that follow its curve, a finger clear of the cloth."""
+        for i in range(N):
+            for j in range(M):
+                a, b, c, e = p0 + (p1 - p0) * i / N, p0 + (p1 - p0) * (i + 1) / N, t0 + (t1 - t0) * j / M, t0 + (t1 - t0) * (j + 1) / M
+                Y.quad(dome(a, c, 1.02), dome(b, c, 1.02), dome(b, e, 1.02), dome(a, e, 1.02), uv(key, (i / N, j / M, (i + 1) / N, (j + 1) / M)))
+
     A = K("awning_red")
-    for g in range(G):
-        p0, p1 = math.pi * g / G, math.pi * (g + 1) / G
-        for j in range(T):
-            t0, t1 = math.pi / 2 * j / T, math.pi / 2 * (j + 1) / T
-            A.quad(dome(p0, t0), dome(p1, t0), dome(p1, t1), dome(p0, t1))
-        # the valance: two scallops a gore, each a shallow curve of three facets
-        for s in range(2):
-            q0, q1 = p0 + (p1 - p0) * s / 2, p0 + (p1 - p0) * (s + 1) / 2
-            for e in range(3):
-                r0, r1 = q0 + (q1 - q0) * e / 3, q0 + (q1 - q0) * (e + 1) / 3
-                d0, d1 = 0.1 + 0.07 * math.sin(math.pi * e / 3), 0.1 + 0.07 * math.sin(math.pi * (e + 1) / 3)
-                top0, top1 = dome(r0, 0), dome(r1, 0)
-                A.quad(top0 - [0, 0, d0], top1 - [0, 0, d1], top1, top0)
-                K("awning_trim").quad(top0 - [0, 0, d0 + 0.018], top1 - [0, 0, d1 + 0.018], top1 - [0, 0, d1], top0 - [0, 0, d0])
+    dome = awning((a_sh0 + a_sh1) / 2, (a_sh1 - a_sh0) / 2 + 0.22, 1.02, 0.86, 2.22, A, K("awning_trim"))
     # (the name: on the gores that face down the lane to the right, where the photograph has it)
     na, nb = math.pi * 0.52, math.pi * 0.86
-    Yl.quad(dome(na, 0.12, 1.02), dome(nb, 0.12, 1.02), dome(nb, 0.62, 1.02), dome(na, 0.62, 1.02), uv("name"))
+    wrap(dome, na, nb, 0.12, 0.62, "name")
+    # --- the left bay, Good-day Good-day SINCE 1986: a wide shutter under a pale dome awning in a dark frame
+    a_g1 = a_sh0 - 0.9
+    a_g0 = max(-hl + 0.5, a_g1 - 2.3)
+    face(Y, a_g0, a_g1, 0.075, 0, 2.3, "shutter")
+    gd = awning((a_g0 + a_g1) / 2, (a_g1 - a_g0) / 2 + 0.15, 0.95, 0.9, 2.22, K("awning_pale"), K("steel_dark"))
+    wrap(gd, math.pi * 0.3, math.pi * 0.7, 0.1, 0.7, "goodday")
+    box(K("steel_dark"), a_g0 - 0.38, a_g0 - 0.1, 0.06, 0.1, 1.2, 1.75)                       # the notice case on the corner pier
+    K("ac_white").tube([P(a_g0 - 0.05, 0.12, 2.9), P(a_g0 - 0.05, 0.12, 0.1)], 0.04, 8)     # its drain pipe
     # --- the duct hood on the wall, rust brown, turning down over the awning's left
     a_du = a_sh0 - 0.75
     box(K("duct_rust"), a_du, a_du + 0.55, 0.06, 0.5, 2.0, zf + 0.1)
     box(K("duct_rust"), a_du - 0.04, a_du + 0.59, 0.06, 0.56, 1.86, 2.0)
     # --- at the left: the downpipe, the outdoor unit on its blocks, two notices on the brick
-    K("ac_white").tube([P(a_sh0 - 0.12, 0.14, 2.3), P(a_sh0 - 0.12, 0.14, 1.05), P(a_sh0 - 0.2, 0.3, 0.85)], 0.045, 8)
-    if a_sh0 - 1.0 > -hl:
-        a_ac0, a_ac1 = max(-hl + 0.05, a_sh0 - 1.25), a_sh0 - 0.3
+    K("ac_white").tube([P(a_sh0 - 0.08, 0.14, 2.3), P(a_sh0 - 0.08, 0.14, 1.05), P(a_sh0 - 0.2, 0.3, 0.85)], 0.045, 8)
+    if True:
+        a_ac0, a_ac1 = a_sh0 - 0.88, a_sh0 - 0.14
         box(K("stone"), a_ac0 + 0.05, a_ac1 - 0.05, 0.5, 0.86, 0.0, 0.12)
         box(K("ac_white"), a_ac0, a_ac1, 0.48, 0.88, 0.12, 0.82)
         face(Y, a_ac0 + 0.04, a_ac1 - 0.04, 0.885, 0.16, 0.78, "grille")
-        for k, zz in enumerate((1.05, 1.62)):
-            face(Y, a_ac0 + 0.1, a_ac0 + 0.4, 0.075, zz, zz + 0.42, "notice")
+        for k, zz in enumerate((0.95, 1.4)):
+            face(Y, a_ac0 + 0.15, a_ac0 + 0.45, 0.075, zz, zz + 0.42, "notice")
     # --- a lamp over the door: the warm light the front is remembered by
     box(K("steel_dark"), a_d0 + 0.3, a_d0 + 0.5, 0.06, 0.2, 2.34, 2.38)
     box(K("door_lamp", "lit"), a_d0 + 0.32, a_d0 + 0.48, 0.09, 0.19, 2.2, 2.34)
     # --- the takoyaki stand: its plank front, the red awning, the round sign, the lantern, the table and stools
-    a_t1 = min(hl, split + 3.3)
+    a_t1 = split + 3.3                             # (its fence runs on past this house's corner, along its own lot)
     face(Y, split + 0.02, a_t1, 0.1, 0, 2.25, "tako", (0, 0, (a_t1 - split) / 3.3, 1))
     box(K("wood_dark"), split, split + 0.06, 0.0, 0.14, 0, 2.3)
-    box(K("steel_dark"), split, a_t1, 0.0, 0.5, 2.3, 2.42)                                   # its eave
+    box(K("steel_dark"), split, a_t1, 0.0, 0.3, 2.3, 2.38)                                   # its eave
     for k in range(2):                                                                       # the awning, let down at a slope
         a0, a1 = split + 0.05 + k * (a_t1 - split - 0.05) / 2, split + 0.05 + (k + 1) * (a_t1 - split - 0.05) / 2
-        A.quad(P(a0, 0.95, 2.36), P(a1, 0.95, 2.36), P(a1, 0.1, 2.7), P(a0, 0.1, 2.7))
-        A.quad(P(a0, 0.95, 2.24), P(a1, 0.95, 2.24), P(a1, 0.95, 2.36), P(a0, 0.95, 2.36))
+        A.quad(P(a0, 0.8, 2.3), P(a1, 0.8, 2.3), P(a1, 0.05, 2.52), P(a0, 0.05, 2.52))
+        A.quad(P(a1, 0.8, 2.3), P(a0, 0.8, 2.3), P(a0, 0.05, 2.52), P(a1, 0.05, 2.52))   # (its underside, seen from the table)
+        A.quad(P(a0, 0.8, 2.19), P(a1, 0.8, 2.19), P(a1, 0.8, 2.3), P(a0, 0.8, 2.3))
     ar = split + 0.45                                                                        # the round sign, read from both ways along the lane
     box(K("steel_dark"), ar - 0.015, ar + 0.015, 0.1, 0.75, 2.12, 2.15)
-    Yl.quad(P(ar + 0.02, 0.2, 1.6), P(ar + 0.02, 0.7, 1.6), P(ar + 0.02, 0.7, 2.1), P(ar + 0.02, 0.2, 2.1), uv("round"))
-    Yl.quad(P(ar - 0.02, 0.7, 1.6), P(ar - 0.02, 0.2, 1.6), P(ar - 0.02, 0.2, 2.1), P(ar - 0.02, 0.7, 2.1), uv("round"))
+    Yl.quad(P(ar + 0.02, 0.7, 1.6), P(ar + 0.02, 0.2, 1.6), P(ar + 0.02, 0.2, 2.1), P(ar + 0.02, 0.7, 2.1), uv("round"))
+    Yl.quad(P(ar - 0.02, 0.2, 1.6), P(ar - 0.02, 0.7, 1.6), P(ar - 0.02, 0.7, 2.1), P(ar - 0.02, 0.2, 2.1), uv("round"))
     al = a_t1 - 0.55                                                                         # the lantern under the eave
     lx, ly, _ = P(al, 0.42, 0)
     K("lantern_red", "lit").lathe([(z + 1.52, 0.05), (z + 1.57, 0.14), (z + 1.78, 0.17), (z + 2.0, 0.14), (z + 2.05, 0.05)], (float(lx), float(ly)), 12)
@@ -276,15 +303,17 @@ def meshes(K, m):
         sx, sy, _ = P(a, 1.3, 0)
         K("steel_dark").lathe([(z, 0.17), (z + 0.03, 0.17), (z + 0.04, 0.03), (z + 0.66, 0.03), (z + 0.68, 0.16), (z + 0.74, 0.16)], (float(sx), float(sy)), 12)
     # --- the forecourt's pavers, from the wall out to the lane's kerb
-    Y.quad(P(-hl, 1.75, 0.035), P(min(hl, split + 1.3), 1.75, 0.035), P(min(hl, split + 1.3), 0.0, 0.035), P(-hl, 0.0, 0.035),
-           uv("paving", (0, 0, min(1.0, (min(hl, split + 1.3) + hl) / 5.6), 1)))
-    return {"door": [float(v) for v in P((a_d0 + a_d1) / 2, 0, 0)[:2]], "awning": [float(v) for v in P(ac, 0.6, 0)[:2]]}
+    for a0 in np.arange(-hl, split, 5.6):
+        a1 = min(split, a0 + 5.6)
+        Y.quad(P(a0, 1.75, 0.035), P(a1, 1.75, 0.035), P(a1, 0.0, 0.035), P(a0, 0.0, 0.035), uv("paving", (0, 0, (a1 - a0) / 5.6, 1)))
+    box(K("stone"), -hl, split, 1.75, 1.87, -0.05, 0.05)                                     # the kerb to the lane
+    return {"door": [float(v) for v in P((a_d0 + a_d1) / 2, 0, 0)[:2]]}
 
 
 def glows(m):
     """The door lamp's pool on the pavers and the lantern's red, from dusk to closing."""
     mid, n = np.asarray(m["at"], float), np.asarray(m["normal"], float)
     t = np.array([-n[1], n[0]])
-    split = min(1.0, m["len"] / 2 - 2.45)
-    door, lant = mid + t * (split - 0.55) + n * 1.0, mid + t * (split + 2.6) + n * 0.8
-    return [[round(float(door[0]), 1), round(float(door[1]), 1), 5.0, "#ffc27a", 0.34], [round(float(lant[0]), 1), round(float(lant[1]), 1), 3.5, "#ff6a4a", 0.22]]
+    split = m["len"] / 2 - 0.95
+    door, lant = mid + t * (split - 0.5) + n * 1.3, mid + t * (split + 2.75) + n * 0.8
+    return [[round(float(door[0]), 1), round(float(door[1]), 1), 6.5, "#ffc27a", 0.6], [round(float(lant[0]), 1), round(float(lant[1]), 1), 4.0, "#ff6a4a", 0.3]]
