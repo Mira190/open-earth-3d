@@ -12,6 +12,10 @@ async function lifeStep(p, check, city) {
     const kept = localStorage.getItem('oe3d-life'), c = g.clock, was = { y: c.y, m: c.m, d: c.d, min: c.min, frozen: c.frozen, x: g.player.x, y0: g.player.y, z: g.player.z };
     const held = g.held();
     g.hold(true);
+    // (the steps before may leave you in a cab or your car: the day's life is lived on foot, so for this step you are,
+    // and afterwards you are back where you were, in what you were in)
+    const mode0 = g.player.mode;
+    g.player.mode = 'foot';
     L.wipe();
     const D = L.day, talkOut = () => { for (let i = 0; i < 40 && g.dlg.open && !g.dlg.hasChoices; i++) { g.dlg.next(false); g.dlg.tick(5); } };
     try {
@@ -122,6 +126,7 @@ async function lifeStep(p, check, city) {
     if (!L.reload()) L.wipe();
     if (g.weather) g.weather.set('live');
     g.setClock(was.y, was.m, was.d, was.min); c.frozen = was.frozen;
+    g.player.mode = mode0;
     g.player.x = was.x; g.player.y = was.y0; g.player.z = was.z;
     g.waypoint(null);
     g.advance(0.2);
