@@ -578,8 +578,7 @@
             "radius": 12,
             "text": "Walk back down and into Ninenzaka"
           }
-        ],
-        "check": true
+        ]
       },
       {
         "id": "gate",
@@ -648,8 +647,7 @@
             "after_dark": true,
             "text": "Stand on Yasaka-dori below the pagoda after dark"
           }
-        ],
-        "check": true
+        ]
       }
     ]
   }
