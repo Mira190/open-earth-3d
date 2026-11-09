@@ -1850,6 +1850,10 @@ def districts_finalize(ctx):
     mx, my = ctx.city.fwd.transform(*MARINA_LL)
     if in_map(mx, my):
         ctx.labels["Yongen-Jaya: Sangenjaya 三軒茶屋"] = [round(mx, 1), round(my, 1), round(gz(mx, my) + 40, 1)]
+        # the snack bar itself, named at its door: the front a game gave its café is what visitors come to find
+        if "marina" in shops:
+            sm = shops["marina"]
+            ctx.labels["New Marina ニューマリーナ: the café's front"] = [round(sm["at"][0] + sm["normal"][0] * 1.5, 1), round(sm["at"][1] + sm["normal"][1] * 1.5, 1), round(sm["z"] - 2.4, 1)]  # (labels are drawn 6 m over their point: this one just over the door, in view in the lane)
     # Shinjuku: the Kabukicho Ichibangai arch, the Docomo tower's clock and mast
     kb = [r["geom"] for r in roads if (r["name"] or "") == KABUKI_ST]
     if kb:

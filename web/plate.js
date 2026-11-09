@@ -18,7 +18,8 @@ window.OEPlate = (function () {
   const short = s => String(s || '').split(/[(:;,]/)[0].replace(/\s+/g, ' ').trim();
 
   // show the plate in a loader (the game's or the model viewer's) as soon as the city is chosen
-  function play(loader, city) {
+  // (district: a district of the city's map the visitor is going to, named on the plate with its map)
+  function play(loader, city, district) {
     stop(loader);
     if (!loader || !city) return;
     const plate = document.createElement('figure'); // not a div: the loader styles its div, the progress card
@@ -27,7 +28,7 @@ window.OEPlate = (function () {
     plate.innerHTML = `<div class="plate-map"></div><div class="plate-scan"></div><div class="plate-shade"></div>
       <div class="plate-hud">
         <span class="ph-c tl"></span><span class="ph-c tr"></span><span class="ph-c bl"></span><span class="ph-c br"></span>
-        <span class="ph-t tl">Survey plate · <b>${esc(city.name)}</b></span>
+        <span class="ph-t tl">Survey plate · <b>${esc(district ? `${district.name} · on the ${city.name} map` : city.name)}</b></span>
         <span class="ph-t tr">${esc(fmtLL(city))}</span>
         <span class="ph-t bl"><i class="ph-scale"><s></s><em></em></i></span>
         <span class="ph-t br"></span>

@@ -33,12 +33,14 @@ window.OEWorld = (function () {
     // the size cities.json gives for the model or the game (raw bytes, as the streams deliver them)
     const entry = (window.OE_CITIES || []).find(c => c.id === cityId) || {};
     const want = (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
+    // a district that shares a bigger map (index.html route: Sangenjaya, on Shibuya's): the loader says both
+    const D = game && window.OE_DISTRICT, what = D ? `${D.name}, on the ${entry.name} map` : entry.name || 'the city';
     let got = 0, shown = 0;
     const report = () => {
       const now = performance.now();
       if (now - shown < 80) return;
       shown = now;
-      onMsg(want ? `Downloading ${entry.name || 'the city'}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
+      onMsg(want ? `Downloading ${what}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
         0.02 + 0.26 * (want ? Math.min(1, got / want) : 0), 'Downloading');
     };
     // once every file is in, the packs are still decoding (in a Worker) and the JSON parsing: said so,
@@ -47,7 +49,7 @@ window.OEWorld = (function () {
     // the load's stages for the telemetry (telemetry.js markOf): every file in, then every file decoded
     const view = { view: game ? 'game' : 'city', city: cityId };
     const mark = s => { try { performance.mark(`oe:${s}`, { detail: view }); } catch (e) { /* no User Timing */ } };
-    const unpack = () => { if (--open === 0) mark('fetched'); if (open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
+    const unpack = () => { if (--open === 0) mark('fetched'); if (open === 0) onMsg(`Unpacking ${what}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
     const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
       if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
@@ -73,7 +75,7 @@ window.OEWorld = (function () {
       }
       return getJSON(name + '.json');
     };
-    onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
+    onMsg(want ? `Downloading ${what}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
     // the terrain grid: int16 heights, as bytes from its pack or as base64 text from its JSON
     const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
       return u.byteOffset % 2 ? u.slice().buffer : u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); };
