@@ -28,7 +28,7 @@ def clean(v, depth=0):
     if isinstance(v, bool) or v is None or isinstance(v, (int, float)):
         return v
     if isinstance(v, dict) and depth < 2:
-        return {str(k)[:40]: clean(x, depth + 1) for k, x in list(v.items())[:40]}
+        return {str(k)[:40]: clean(x, depth + 1) for k, x in list(v.items())[:96]}
     return None
 
 

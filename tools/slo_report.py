@@ -297,9 +297,54 @@ def behaviour(events):
     games['first_mode'] = dict(games['first_mode'])
     r['game'] = games
     views = [e for e in events if e['event'] == 'view']
+    r['performance'] = performance(events)
     r['returning_visitors'] = len({e['vid'] for e in views if (e['props'].get('visit_n') or 1) > 1})
     r['flows'] = dict(Counter(f"{e['props']['from']} -> {place(e['props'])}" for e in views if e['props'].get('from')).most_common(10))
     return r
+
+
+def performance(events):
+    """Where the frame rate goes (telemetry version 4): by GPU, by what bound the frame, and the spots that run worst."""
+    times = [e for e in events if e['event'] == 'time' and e['props'].get('view') in LOADING and (e['props'].get('frames') or 0) >= 10]
+
+    def rows(key, top=12):
+        g = defaultdict(list)
+        for e in times:
+            k = key(e['props'])
+            if k:
+                g[k].append(e['props'])
+        out = {}
+        for k, ps in sorted(g.items(), key=lambda kv: -sum(float(p.get('s') or 0) for p in kv[1]))[:top]:
+            sec = sum(float(p.get('s') or 0) for p in ps)
+            fr = sum(p.get('frames') or 0 for p in ps)
+            med = lambda f: (lambda v: round(pct(v, 0.5), 1) if v else None)([p[f] for p in ps if p.get(f) is not None])
+            out[k] = {'minutes': round(sec / 60, 1), 'visitors': len({p.get('sid') for p in ps}), 'fps': med('fps'), 'f95_ms': med('f95'),
+                      'slow_frames': round(sum((p.get('slow') or 0) * (p.get('frames') or 0) for p in ps) / fr, 3) if fr else None,
+                      'cpu_ms': med('cpu_ms'), 'gpu_ms': med('gpu_ms'), 'draws': med('draws'), 'tris_k': med('tris_k'), 'passes': med('passes'), 'px_k': med('px_k')}
+        return out
+
+    sec = sum(float(e['props'].get('s') or 0) for e in times if e['props'].get('bound'))
+    bound = Counter()
+    for e in times:
+        if e['props'].get('bound'):
+            bound[e['props']['bound']] += float(e['props'].get('s') or 0)
+    spots = defaultdict(lambda: [0.0, 0.0, 0.0])      # seconds, frames (as seconds x fps), slow frames
+    for e in events:
+        p = e['props']
+        if e['event'] == 'dwell' and p.get('fps') and p.get('view') in LOADING:
+            k = f"{p.get('view')}:{p.get('city') or ''} {p.get('spot') or ''} ({p.get('mode') or ''})"
+            n = float(p.get('s') or 0) * p['fps']
+            spots[k][0] += float(p.get('s') or 0); spots[k][1] += n; spots[k][2] += n * (p.get('slow') or 0)
+    worst = sorted(((k, v) for k, v in spots.items() if v[0] >= 20), key=lambda kv: kv[1][1] / kv[1][0])[:12]
+    jank = Counter()
+    for e in events:
+        if e['event'] == 'jank' and e['props'].get('script'):
+            jank[e['props']['script']] += 1
+    return {'by_gpu': rows(lambda p: p.get('gpu') or p.get('gpu_class')), 'by_gpu_class': rows(lambda p: p.get('gpu_class')),
+            'by_city': rows(lambda p: f"{p.get('view')}:{p.get('city') or ''} {p.get('tier') or ''}"),
+            'bound': {k: round(v / sec, 3) for k, v in bound.most_common()} if sec else {},
+            'worst_spots': {k: {'minutes': round(v[0] / 60, 1), 'fps': round(v[1] / v[0], 1), 'slow_frames': round(v[2] / v[1], 3) if v[1] else None} for k, v in worst},
+            'jank_scripts': dict(jank.most_common(10))}
 
 
 def show(r):
@@ -328,6 +373,20 @@ def show(r):
         for v, x in list(r['releases'].items())[:8]:
             f = lambda q: '—' if q is None else f'{q * 100:.1f}%'
             print(f"  {v:<10} {x['page_loads']:>5} · {'—' if x['load_p75_s'] is None else str(x['load_p75_s']) + ' s':>7} · {f(x['crash_rate'])} · {f(x['error_rate'])} · {f(x['gl_lost_rate'])} · {x['fps_median'] or '—'} · {f(x['slow_frames'])}")
+    pf = r.get('performance') or {}
+    if pf.get('by_gpu'):
+        col = lambda x: '—' if x is None else str(x)
+        pc = lambda x: '—' if x is None else f'{x * 100:.1f}%'
+        for title, key in (('By GPU', 'by_gpu'), ('By view, city and tier', 'by_city')):
+            print(f'\n{title}: minutes · median fps · p95 frame ms · slow frames · main thread ms · GPU ms · draws · triangles (k) · passes · pixels (k)')
+            for k, x in pf[key].items():
+                print(f"  {k:<40} {x['minutes']:>6} · {col(x['fps'])} · {col(x['f95_ms'])} · {pc(x['slow_frames'])} · {col(x['cpu_ms'])} · {col(x['gpu_ms'])} · {col(x['draws'])} · {col(x['tris_k'])} · {col(x['passes'])} · {col(x['px_k'])}")
+        if pf['bound']:
+            print('What held the frame rate (share of time): ' + ', '.join(f'{k} {v * 100:.0f}%' for k, v in pf['bound'].items()))
+        if pf['worst_spots']:
+            print('Slowest spots (20 s or more): ' + '; '.join(f"{k} {v['fps']} fps" for k, v in pf['worst_spots'].items()))
+        if pf['jank_scripts']:
+            print('Scripts behind the worst long frames: ' + ', '.join(f'{k} ×{n}' for k, n in pf['jank_scripts'].items()))
     print('\nWhere visitors stay (minutes by spot)')
     for k, v in r['minutes_by_spot'].items():
         print(f'  {v:>7}  {k}')
