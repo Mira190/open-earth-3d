@@ -40,6 +40,14 @@ module.exports = async function trainsStep(p) {
       g.setClock(g.clock.y, g.clock.m, g.clock.d, 18 * 60);
       checks.push([day && rapid.every(s => T.stopsNow(s)), `the rapid trains run through at noon and stop at six in the evening (${rapid.map(s => s.track).join(', ')})`]);
     }
+    // no column of a deck over the line (an expressway on the station's roof) stands in a train's way
+    { const q = {}; let worst = Infinity, n = 0;
+      for (const r of g.deckPlan.runs) for (const c of r.cols || []) for (const tr of Object.values(T.tracks)) {
+        tr.c.at(0, q); if (c.z1 < q.z + 1 || c.z0 > q.z + 4) continue;
+        let best = Infinity; for (let d = 0; d <= tr.c.L; d += 0.5) { tr.c.at(d, q); best = Math.min(best, Math.hypot(q.x - c.x, q.y - c.y)); }
+        if (best < 12) { n++; worst = Math.min(worst, best - Math.max(c.hx, c.hy)); }
+      }
+      checks.push([worst > 1.6, `the columns of the decks over the line stand clear of the trains (${n} by the tracks${n ? `, the nearest face ${worst.toFixed(2)} m from a track's middle` : ''})`]); }
     // ---- on the platform: where the map's travel point puts you
     const st = T.station, tp = (g.G.travel || []).find(q => Math.hypot(q.at[0] - st.at[0], q.at[1] - st.at[1]) < 200) || { at: st.at };
     const f = g.nav.floorAt(tp.at[0], tp.at[1], tp.at[2] + 0.5);
@@ -85,7 +93,7 @@ module.exports = async function trainsStep(p) {
     const said = T.said.filter(o => o.track === sv.track).map(o => o.what), n = sv.tr.platform, first = T.said.find(o => o.track === sv.track && o.what === 'approach');
     const cap = document.getElementById('g-announce');
     checks.push([standing === 1 && drawn > 0 && offTrack === 0, `a train stands at track ${n}: ${drawn} cars drawn on the line${offTrack ? `, ${offTrack} off their track` : ''}`]);
-    checks.push([['approach', 'arrive', 'close'].every(w => said.includes(w)) && !!first && first.ja.includes(`${n}番線`) && first.en.includes(`track ${n}`) && !!cap && cap.textContent.length > 10,
+    checks.push([['approach', 'arrive', 'close'].every(w => said.includes(w)) && !!first && (!first.ja || first.ja.includes(`${n}番線`)) && new RegExp(`(track|platform) ${n}\\b`).test(first.en) && !!cap && cap.textContent.length > 10,
       `the platform announces the train on track ${n}, the station and the doors (${said.join(', ') || 'nothing'}; "${first ? first.en : ''}")`]);
     checks.push([voice > 0.2, `the train is heard from the platform (its voice up to ${voice.toFixed(2)})`]);
     if (ss && window.SpeechSynthesisUtterance && ss.getVoices().length) checks.push([spoken.length > 0, `and spoken by the browser's voices (${spoken.length} utterances: ${[...new Set(spoken)].join(', ')})`]);

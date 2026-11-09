@@ -558,7 +558,10 @@ pipeline writes. The only city-specific code is landmark geometry in
   other comes down, and they pass at the loop. You ride it like a ferry, from
   station to station, and the HUD shows your height and the gradient.
 - **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
-  `game.json` "trains" carries (Tokyo's, through Yurakucho: `cities/tokyo/rail.py`).
+  `game.json` "trains" carries (Tokyo's through Yurakucho, `cities/tokyo/rail.py`; Sydney's City
+  Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
+  A station's `style` picks its announcements: JR East's in Japanese and English, or Sydney
+  Trains' in English.
   - A service is a stock, a number of cars, a headway and an offset; a train's place is a
     function of the time alone (cruise, brake at 0.9 m/s², stand, pull away), so there is no
     state to keep and a harness can ask where any train is at any second.
@@ -572,7 +575,7 @@ pipeline writes. The only city-specific code is landmark geometry in
     always captioned (`#g-announce`). Nothing sounds between trains.
   - A strip the data knows nothing of (a platform, its stairs) is marked `"mapped": false`:
     `decks.js` then leaves the mapped footways that pass under it on the ground.
-  - Check: `xvfb-run -a node tools/trains_check.js tokyo` (the step `tools/game_check.js`
+  - Check: `xvfb-run -a node tools/trains_check.js tokyo` (or `sydney`) (the step `tools/game_check.js`
     runs, on its own).
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)

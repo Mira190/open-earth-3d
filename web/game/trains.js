@@ -54,23 +54,27 @@ window.OETrains = (function () {
     e233k: { len: 20, band: ['#00a7e3'], door: null, face: '#00a7e3', pan: [1, 4, 7] },            // Keihin-Tohoku: a sky blue band
     e233t: { len: 20, band: ['#f68b1e', '#0d6b38'], door: null, face: '#f68b1e', pan: [2, 5, 8, 11, 13] }, // Tokaido: orange over green
     n700s: { len: 25, shinkansen: true, pan: [4, 11] },
+    // Sydney Trains' Waratah (A and B sets): eight double-deck cars of 20.4 m, 3.03 m wide and 4.41 m high, steel
+    // with yellow doors and a yellow front
+    waratah: { len: 20.4, deck2: true, door: '#f5a800', face: '#f5a800', pan: [2, 5] },
   };
   let MATS = null;
   function saloon(yb, yt) {
-    const m = new THREE.MeshStandardMaterial({ color: lin('#10171d'), roughness: 0.06, metalness: 0.4, emissive: lin('#ffdcae'), emissiveIntensity: 0.03 });
+    const m = new THREE.MeshStandardMaterial({ color: lin('#10171d'), roughness: 0.06, metalness: 0.4, emissive: lin('#fff0d6'), emissiveIntensity: 0.03 });
     m.onBeforeCompile = sh => {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLit; varying float vCar;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLit = position;\n#ifdef USE_INSTANCING\n  vCar = float( gl_InstanceID );\n#else\n  vCar = 0.0;\n#endif');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vLit; varying float vCar;\nfloat litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }')
+      // The saloon behind the glass is only its light: brighter towards the lamps along the ceiling, a little
+      // uneven from pane to pane. No figures are drawn in it: shapes painted on the glass read as cut-outs.
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vLit; varying float vCar;
+float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  { // someone in every other half metre, seated or standing: a head and shoulders against the light
-    float u = vLit.z / 0.52 + vCar * 3.7, c = floor( u ), fx = ( fract( u ) - 0.5 ) * 0.52, y = vLit.y - ${yb.toFixed(3)};
-    float tall = 0.26 + 0.5 * litHash( c + 9.0 );
-    float who = step( litHash( c ), 0.55 ) * max( step( abs( fx ), 0.19 ) * step( y, tall - 0.11 ), step( length( vec2( fx, y - tall ) ), 0.115 ) );
-    float up = clamp( y / ${(yt - yb).toFixed(3)}, 0.0, 1.0 );
-    totalEmissiveRadiance *= ( 0.6 + 0.55 * up ) * ( 1.0 - 0.74 * who ); }`);
+  { float up = clamp( ( vLit.y - ${yb.toFixed(3)} ) / ${(yt - yb).toFixed(3)}, 0.0, 1.0 );
+    float pane = 0.9 + 0.2 * litHash( floor( vLit.z / 1.6 ) + vCar * 3.7 );
+    totalEmissiveRadiance *= ( 0.55 + 0.3 * up + 0.4 * smoothstep( 0.84, 1.0, up ) ) * pane; }`);
     };
-    m.customProgramCacheKey = () => `train-saloon|${yb}`;
+    m.customProgramCacheKey = () => `train-saloon4|${yb}`;
     return m;
   }
   function mats() {
@@ -84,9 +88,9 @@ window.OETrains = (function () {
       black: std({ color: lin('#101214'), roughness: 0.35, metalness: 0.3 }),
       white: std({ color: lin('#f3f5f4'), roughness: 0.3, metalness: 0.15 }),
       blue: std({ color: lin('#123f8c'), roughness: 0.35, metalness: 0.1 }),
-      // a saloon seen through its windows: dark glass by day; as the light goes its lamps show, with the people
-      // in it dark against them (a commuter car's windows from 1.93 m over the rail, a Shinkansen's from 1.99 m)
-      lit: saloon(1.93, 2.85), litS: saloon(1.99, 2.51),
+      // a saloon seen through its windows: dark glass by day; as the light goes its lamps show
+      // (a commuter car's windows from 1.93 m over the rail, a Shinkansen's from 1.99 m)
+      lit: saloon(1.93, 2.85), litS: saloon(1.99, 2.51), litLo: saloon(1.2, 2.04), litUp: saloon(2.66, 3.46),
       glass,
       paint: {},
     };
@@ -146,8 +150,65 @@ window.OETrains = (function () {
     return out;
   }
 
-  function pantograph(out, y, z) { // a single-arm pantograph, raised to the wire at 5.0 m
-    const K = OEKit, M = mats(), up = 5.0 - y - 0.06;
+  // Sydney's Waratah, a double-deck car (20.4 m over couplers, 3.03 m wide, 4.41 m high), after photographs of the
+  // A sets at Circular Quay and Central: a steel shell with round shoulders into a dark roof, its sides carried
+  // down as skirts to 0.4 m over the rail the whole length of the car, so the bogies are hidden and no wheel
+  // shows from a platform; a thin yellow line along the foot of the side. Over each bogie a vestibule with a
+  // pair of yellow plug doors a side; between them the two decks, the lower windows starting at the platform's
+  // level, the upper under the roof's curve, each row one band of dark glass, and a plain steel band between
+  // them. An end car's cab leans back from a yellow nose, its windscreen in a black mask.
+  function doubledeck(S, role) {
+    const K = OEKit, M = mats(), out = [], add = (m, g) => out.push([m, g]);
+    const L = 19.9, Wd = 3.03, hw = Wd / 2, top = 4.41, f = 1.15, skirt = 0.4, zw = 5.3;
+    const cab = role === 'head' || role === 'tail', s = role === 'tail' ? -1 : 1, Z = z => s * z;
+    const secs = [], sec = (z, y0, k = 1, y1 = top) => secs.push({ z, pts: section(hw * k, y0, y1) });
+    sec(-L / 2, skirt);
+    if (cab) { sec(L / 2 - 1.5, skirt); sec(L / 2 - 0.9, skirt, 0.99, top - 0.1); sec(L / 2 - 0.35, skirt + 0.05, 0.96, top - 0.42); sec(L / 2, skirt + 0.15, 0.9, top - 0.95); }
+    else sec(L / 2, skirt);
+    const shell = loft(secs);
+    if (s < 0) shell.rotateY(Math.PI);
+    add(M.steel, shell);
+    add(M.roof, K.box(Wd * 0.8, 0.07, L - (cab ? 2.2 : 0.3), 0, top - 0.015, Z(cab ? -0.95 : 0))); // the roof, dark between the shoulders
+    for (const z of [-7.6, 7.6]) add(M.roof, K.box(2.0, 0.12, 2.8, 0, top + 0.04, z)); // the air conditioners' grilles over the vestibules
+    add(M.under, K.box(Wd * 0.72, 2.6, 0.5, 0, 2.3, -L / 2 - 0.2)); // the gangway to the next car
+    for (const z of [-7.2, 7.2]) add(M.under, K.box(2.3, 0.5, 3.2, 0, 0.42, z)); // the bogies, in the shadow behind the skirts
+    for (const sx of [-1, 1]) {
+      const x = sx * (hw + 0.006);
+      add(paint(S.door), K.box(0.012, 0.045, L - (cab ? 1.7 : 0.2), x, 0.66, Z(cab ? -0.75 : 0))); // the yellow line along the foot of the side
+      // the two rows of windows, each one band of dark glass with slim black pillars
+      for (const [y0, y1, mat] of [[1.2, 2.04, M.litLo], [2.66, 3.46, M.litUp]]) {
+        add(M.black, K.box(0.012, y1 - y0 + 0.1, 2 * zw - 0.3, x, (y0 + y1) / 2, 0));
+        for (let k = 0; k < 5; k++) add(mat, K.box(0.02, y1 - y0, 1.98, x, (y0 + y1) / 2, -zw + 0.2 + 1.02 + k * 2.04));
+      }
+      for (const dz of [-6.95, 6.95]) { // the doors: two yellow leaves, each with a tall window, in a black frame
+        add(M.black, K.box(0.012, 2.08, 1.64, x, f + 1.04, dz));
+        for (const e of [-0.39, 0.39]) {
+          add(paint(S.door), K.box(0.02, 2.0, 0.74, x, f + 1.03, dz + e));
+          add(M.black, K.box(0.026, 1.3, 0.44, x, f + 1.25, dz + e));
+          add(M.lit, K.box(0.03, 1.22, 0.38, x, f + 1.25, dz + e));
+        }
+      }
+      for (const dz of cab ? [-s * 8.85] : [-8.85, 8.85]) { add(M.black, K.box(0.012, 0.9, 0.9, x, f + 1.55, dz)); add(M.lit, K.box(0.02, 0.8, 0.8, x, f + 1.55, dz)); } // a window at the car's end
+      if (cab) { // the driver's door and side window, and the yellow of the nose wrapped round onto the side
+        add(paint(S.face), K.box(0.014, 2.3, 0.5, sx * (hw * 0.985), 1.75, Z(L / 2 - 0.42)));
+        add(M.black, K.box(0.02, 1.0, 0.8, sx * (hw * 0.992), f + 1.7, Z(L / 2 - 1.25)));
+      }
+    }
+    if (role === 'pan') pantograph(out, top + 0.02, -7.4, 4.95);
+    if (cab) { // the nose, leaning back: yellow, with the windscreen in a black mask and the destination over it
+      const lean = 0.25, face = (m, w, h, y, d) => add(m, K.box(w, h, 0.05).rotateX(-lean * s).translate(0, y, Z(L / 2 + d - (y - f) * Math.tan(lean))));
+      face(paint(S.face), Wd * 0.9, 2.9, f + 0.95, 0.2);
+      face(M.black, Wd * 0.8, 1.5, f + 1.75, 0.22);
+      face(M.glass, Wd * 0.74, 1.25, f + 1.8, 0.25);
+      face(M.lit, 1.4, 0.24, f + 2.75, 0.26);
+      add(M.under, K.box(Wd * 0.8, 0.5, 0.5, 0, 0.75, Z(L / 2 + 0.05))); // the coupler's pocket, black under the nose
+      add(M.under, K.box(0.4, 0.3, 0.6, 0, 0.8, Z(L / 2 + 0.4)));
+    }
+    return out;
+  }
+
+  function pantograph(out, y, z, wire = 5.0) { // a single-arm pantograph, raised to the wire at 5.0 m
+    const K = OEKit, M = mats(), up = Math.max(0.3, wire - y - 0.06);
     out.push([M.under, K.box(1.3, 0.1, 1.8, 0, y, z)]);
     out.push([M.under, K.rod([0, y, z - 0.7], [0, y + up * 0.5, z + 0.5], 0.035)]);
     out.push([M.under, K.rod([0, y + up * 0.5, z + 0.5], [0, y + up, z - 0.2], 0.03)]);
@@ -229,9 +290,9 @@ window.OETrains = (function () {
       (document.getElementById('game') || document.body).appendChild(capEl);
     }
     const small = window.innerWidth < 560;
-    capEl.innerHTML = `<div lang="ja" style="font-size:${small ? 12 : 15}px">${ja}</div><div style="opacity:0.78;font-size:${small ? 11 : 13}px">${en}</div>`;
+    capEl.innerHTML = ja ? `<div lang="ja" style="font-size:${small ? 12 : 15}px">${ja}</div><div style="opacity:0.78;font-size:${small ? 11 : 13}px">${en}</div>` : `<div style="font-size:${small ? 12 : 15}px">${en}</div>`;
     capEl.style.opacity = 1;
-    capT = 4 + ja.length * 0.16;
+    capT = 4 + (ja.length || en.length * 0.4) * 0.16;
   }
   let voices = null;
   function voice(lang, deep) {
@@ -248,7 +309,7 @@ window.OETrains = (function () {
     if (ss.speaking || ss.pending) return false; // one announcement at a time: a second is only shown
     let any = false;
     for (const [text, lang, rate] of [[ja, 'ja', 1.05], [en, 'en', 1.0]]) {
-      const v = voice(lang, deep);
+      const v = text && voice(lang, deep);
       if (!v) continue;
       const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, ''));
       u.voice = v; u.lang = v.lang; u.rate = rate; u.pitch = deep ? 0.85 : 1.1; u.volume = Math.min(1, level);
@@ -287,7 +348,7 @@ window.OETrains = (function () {
     function kind(stockId, role) {
       const key = `${stockId}|${role}`;
       if (kinds[key]) return kinds[key];
-      const S = STOCK[stockId], parts = (S.shinkansen ? shinkansen : commuter)(S, role), by = new Map();
+      const S = STOCK[stockId], parts = (S.shinkansen ? shinkansen : S.deck2 ? doubledeck : commuter)(S, role), by = new Map();
       for (const [m, g] of parts) { const q = g.index ? g.toNonIndexed() : g; for (const a of Object.keys(q.attributes)) if (a !== 'position' && a !== 'normal') q.deleteAttribute(a); if (!by.has(m)) by.set(m, []); by.get(m).push(q); }
       const cap = 2 * Math.max(...services.filter(s => s.stock === stockId).map(s => s.cars)) * services.filter(s => s.stock === stockId).length;
       const meshes = [];
@@ -340,7 +401,7 @@ window.OETrains = (function () {
     api.at = at;
 
     function place(live) {
-      { const n = OEKit.shared.night.value, M = mats(); M.lit.emissiveIntensity = M.litS.emissiveIntensity = 0.03 + 1.9 * n * Math.sqrt(n); } // the saloons' light shows as the day goes
+      { const n = OEKit.shared.night.value, M = mats(); M.lit.emissiveIntensity = M.litS.emissiveIntensity = M.litLo.emissiveIntensity = M.litUp.emissiveIntensity = 0.03 + 1.35 * n * Math.sqrt(n); } // the saloons' light shows as the day goes
       for (const k of Object.values(kinds)) k.n = 0;
       let lamps = 0;
       for (const tr of live) {
@@ -362,7 +423,7 @@ window.OETrains = (function () {
           if (o.listener) { const l = o.listener(), dd = Math.hypot((fwd.x + aft.x) / 2 - l.x, (fwd.y + aft.y) / 2 - l.y, fwd.z + 1.5 - l.z); if (dd < tr.near) { tr.near = dd; tr.nx = (fwd.x + aft.x) / 2; tr.ny = (fwd.y + aft.y) / 2; } }
           if (i === 0 || i === s.cars - 1) { // white at the head, red at the tail
             const e = i === 0 ? 1 : -1, hx = (fwd.x - aft.x) / (2 * half), hy = (fwd.y - aft.y) / (2 * half), ex = (fwd.x + aft.x) / 2 + hx * e * (s.S.shinkansen ? 9.5 : 9.85), ey = (fwd.y + aft.y) / 2 + hy * e * (s.S.shinkansen ? 9.5 : 9.85);
-            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * (s.S.shinkansen ? 0.75 : 0.95), ey + hx * sd * (s.S.shinkansen ? 0.75 : 0.95), fwd.z + (s.S.shinkansen ? 1.55 : 1.25), i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
+            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * (s.S.shinkansen ? 0.75 : 0.95), ey + hx * sd * (s.S.shinkansen ? 0.75 : 0.95), fwd.z + (s.S.shinkansen ? 1.55 : s.S.deck2 ? 1.5 : 1.25), i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
           }
         }
       }
@@ -375,6 +436,26 @@ window.OETrains = (function () {
     function announce(tr, what, level, pan) {
       const s = tr.s, n = s.tr.platform, A = window.OEAudio, deep = n % 2 === 1;
       let ja = '', en = '';
+      if (st.style === 'sydney') { // Sydney Trains' platforms: English, a chime, no melody
+        if (what === 'approach') {
+          en = `The next train to arrive on platform ${n} goes to ${s.for.en}. First stop, ${s.first}.`;
+          if (A && A.on) A.platformChime(level, pan);
+        } else if (what === 'pass') {
+          en = `The next train on platform ${n} does not stop here. Please stand behind the yellow line.`;
+          if (A && A.on) A.platformChime(level, pan);
+        } else if (what === 'arrive') {
+          en = `This is ${st.name}. The train on platform ${n} goes to ${s.for.en}.`;
+        } else if (what === 'melody') return;
+        else if (what === 'close') {
+          en = 'Doors closing. Please stand clear.';
+          if (A && A.on) A.doorChime(level, pan);
+        }
+        caption('', en);
+        const spoken = say('', en, level, deep);
+        api.said.push({ t: api.t, track: s.track, what, ja, en, spoken });
+        if (api.said.length > 40) api.said.shift();
+        return;
+      }
       if (what === 'approach') {
         ja = `まもなく、${num(n)}番線に、${s.line.ja}、${s.for.ja}行きが、まいります。危ないですから、黄色い点字ブロックまで、お下がりください。`;
         en = `The ${s.line.en} train for ${s.for.en} is arriving on track ${n}. Please stand behind the yellow blocks.`;

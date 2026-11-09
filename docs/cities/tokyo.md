@@ -296,6 +296,8 @@ run on the eight tracks, each to its real length and livery:
 | Tokaido Main | E233-3000: orange over green | 15 | runs past |
 | Tokaido Shinkansen | N700S: white, two blue lines, a 10.7 m nose | 16 (400 m) | runs past |
 
+After dark the cars' windows show their saloons' light. No figures are drawn in them.
+
 A stopping train brakes at 0.9 m/s², stands 26 s and pulls away. The headways are a few times shorter
 than the timetable's, so there is always a train to watch. Each train's place is a function of the
 time alone. The cars are instanced: one draw call per material of each kind of car.

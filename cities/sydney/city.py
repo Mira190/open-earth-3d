@@ -70,6 +70,18 @@ from shapely.geometry.polygon import orient
 
 from meshkit import Mesh
 
+
+def _load(name):
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location(f"sydney_{name}", os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+RAIL = _load("rail")   # Circular Quay Station and the City Circle's trains (cities/sydney/rail.py)
+
 OPERA = "Sydney Opera House"
 PYLONS = ("Sydney Harbour Bridge - South Pylons", "Sydney Harbour Bridge - North Pylons")
 BRIDGE_DECK_TOP = 52.0  # 49 m clearance plus the deck structure
@@ -533,7 +545,7 @@ def game_surfaces(scene):
         out.append({"name": f"Opera House steps, {HALL_NAMES[hall]}", "type": "strip", "origin": st["origin"], "axis": st["axis"],
                     "half_width": st["half_width"], "profile": st["profile"], "thickness": round(st["z_top"] - st["base_m"], 1),
                     "mesh": f"opera_steps_{hall}"})
-    return out
+    return out + RAIL.surfaces()   # and Circular Quay's platforms and stairs (cities/sydney/rail.py)
 
 
 def game_ground(grid, gx, gy, water, scene):
@@ -664,14 +676,25 @@ def game_extras(scene):
             if face:
                 m, n, _ = face
                 close.append(close_to("Sydney Tower, Westfield's doors on Pitt Street Mall", m, T(*m), m + n * 5.0, 1.0, 0.1))
-    return {"close": close}
+    tr = RAIL.trains()
+    return {"close": close, **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
+
+
+def landmark_demolished(scene):
+    """Circular Quay Station's box, which the station built in its place stands in for (cities/sydney/rail.py)."""
+    return RAIL.demolished()
+
+
+def landmark_assets(out_dir, scene):
+    """The station's signs (cities/sydney/rail.py)."""
+    return RAIL.assets(out_dir)
 
 
 def landmark_glows(scene):
     """The pools of light the Lower Concourse's downlights throw on its flags (web/night.js), from
     the downlights landmark_meshes laid."""
     R, hexc, k = DOWNLIGHT_POOL
-    return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS]
+    return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS] + RAIL.glows()
 
 
 def landmark_meshes(scene):
@@ -704,7 +727,9 @@ def landmark_meshes(scene):
         m, extra = bennelong_meshes(lm["bennelong"], lm.get("opera_house"), scene.get("ground", []))
         meshes += m
         mats["garden_edge"] = dict(MATERIALS["garden_edge"])  # (bennelong_meshes gives it its ground tile)
-    return mats, meshes, extra
+    rm, rmesh = RAIL.meshes(Mesh)   # Circular Quay Station on its viaduct (cities/sydney/rail.py)
+    mats.update({k: dict(v) for k, v in rm.items()})
+    return mats, meshes + rmesh, extra
 
 
 # ---------------------------------------------------------------- Opera House
