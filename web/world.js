@@ -1967,6 +1967,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         hemi.intensity = Math.PI * ((night ? 0.02 : 0.07) + 0.25 * day + 0.1 * tw * (1 - day) + amb * (1 - day));
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
+        hemi.groundColor.setHex(0x4d463a);
+        if (api.shadeLight) api.shadeLight(hemi, sunLight, day); // a region's look: the shade's colour, the ground's bounce (game/atmosphere.js)
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         if (far) far.setNight(U.uNight.value);
         if (outposts && outposts.userData.setNight) outposts.userData.setNight(U.uNight.value); // (a landing's lit windows, outposts.js)
