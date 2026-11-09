@@ -1054,6 +1054,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // the autopilot: at the wheel itself (true), or bringing the car onto its lane through the pedals (its inputs)
     const auto = pilot ? pilotStep(dt, fwd, side) : null;
     if (auto && auto !== true) { fwd = auto.fwd; side = auto.turn; }
+    else if (!pilot && (assist.lane || assist.cruise)) { const a = assistStep(fwd, side); fwd = a.fwd; side = a.turn; }
+    else assist.on.lane = assist.on.cruise = false;
     if (auto !== true) D.step(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), handbrake: k('Space') },
       { boxes: carBoxes(st.x, st.y, 14, myCar), people: peopleNear(st.x, st.y, 12), posts: postsNear(st.x, st.y, 10) }, ev);
     for (const e of ev) {
@@ -1150,6 +1152,73 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (let i = 0; i < crowd.active; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - st.x) < reach + 4 && Math.abs(q.y - st.y) < reach + 4) see(q.x, q.y, q.z, 0.3, 0.3, 0, null); }
     for (const n of npcs) if (Math.abs(n.x - st.x) < reach + 4 && Math.abs(n.y - st.y) < reach + 4) see(n.x, n.y, n.z, 0.3, 0.3, 0, null);
     return best;
+  }
+  // ------------------------------------------------------------ the driver assists (I, K)
+  // When you drive yourself: lane keeping (I) holds the car in the lane of the road it is on, and adaptive cruise
+  // (K) holds the speed it was set at, keeps a time gap to the car ahead, slows for a bend and stops at a red
+  // line (autopilot.js laneKeep, cruise). Each is a toggle; your own wheel past half lock wins over the lane, the
+  // accelerator adds to the cruise, and the brake or the handbrake ends it. On a phone the Lens button at the wheel
+  // steps through them: lane keeping, both, none.
+  const assist = { lane: false, cruise: false, set: 0, on: { lane: false, cruise: false }, lead: null, line: null, here: null };
+  // the lane of the road your car is on, the way it faces: { line, s, dir, len, v (the road's speed), d (how far the
+  // car is to the right of the lane's middle), dh (its heading against the lane's), curv (the bend 8 m on, + right) }
+  function laneHere(st) {
+    const q = roadNet.nearest(st.x, st.y, 6, st.z, 2.5);
+    if (!q) return null;
+    roadNet.at(q.line, q.s, rq);
+    const l = roadNet.L[q.line], dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1, hx = rq.hx * dir, hy = rq.hy * dir;
+    const off = (junctions.centred && junctions.centred(q.line) ? 0 : OECars.LANE) * keepSign, lx = rq.x - hy * off, ly = rq.y + hx * off, h0 = Math.atan2(hx, hy);
+    const out = { line: q.line, s: q.s, dir, len: l.len, v: l.v || 11, d: (st.x - lx) * hy - (st.y - ly) * hx, dh: angDiff(st.h, h0), curv: 0 };
+    const s2 = Math.max(0, Math.min(l.len, q.s + 8 * dir));
+    if (Math.abs(s2 - q.s) > 2) { roadNet.at(q.line, s2, rq); out.curv = angDiff(Math.atan2(rq.hx * dir, rq.hy * dir), h0) / Math.abs(s2 - q.s); }
+    return out;
+  }
+  // how far ahead of the car's nose a line it must stop at is (a red or amber light it can stop for), or null
+  function redLineAhead(st, L) {
+    const half = myCar.C.half, v = Math.max(0, st.v);
+    let line = null;
+    const see = (a, d) => {
+      if (!a || !(d > -1.5 && d < 90)) return;
+      const lt = junctions.light(a);
+      if (lt === 'g' || (lt === 'y' && v * v / (2 * Math.max(0.5, d - half)) > 4)) return; // (amber, too close to stop for: on through)
+      line = Math.min(line ?? Infinity, Math.max(0, d - half));
+    };
+    const a = junctions.armAt(L.line, L.dir > 0 ? 1 : 0);
+    if (a && a.j.sig) see(a, (L.dir > 0 ? L.len - L.s : L.s) - a.back);
+    for (const X of junctions.midsOn(L.line) || []) { const xa = X.sig && X.arms.find(b => b.end === (L.dir > 0 ? 1 : 0)); if (xa) see(xa, (X.mid - L.s) * L.dir - xa.back); }
+    return line;
+  }
+  function assistStep(fwd, side) {
+    const st = myCar.D.st, L = assist.here = laneHere(st);
+    assist.on.lane = assist.on.cruise = false;
+    // (in the lane, near enough along it: turning across a junction or changing lanes, it lets go)
+    if (assist.lane && L && st.v > 2 && Math.abs(L.dh) < 0.6 && Math.abs(L.d) < 2.6 && Math.abs(side) <= 0.5) { side = OEAutopilot.laneKeep(st, L, side); assist.on.lane = true; }
+    if (assist.cruise) {
+      if (fwd < -0.1 || k('Space')) { assist.cruise = false; H.toast('Cruise off.'); }
+      else {
+        const lead = assist.lead = leadOf(st, 70, 0.1), line = assist.line = L ? redLineAhead(st, L) : null;
+        const bend = L && Math.abs(L.curv) > 0.004 ? Math.sqrt(2.2 / Math.abs(L.curv)) : Infinity; // (2.2 m/s² across a bend)
+        const pedal = OEAutopilot.cruise(st, Math.min(assist.set, bend), lead, line, { headway: 1.4 });
+        fwd = fwd > 0.1 ? Math.max(fwd, pedal) : pedal;
+        assist.on.cruise = true;
+      }
+    }
+    return { fwd, turn: side };
+  }
+  function assistToggle(what) {
+    if (player.mode !== 'car' || !myCar) return;
+    if (pilot) { H.toast('The autopilot is driving. <kbd>J</kbd> to take the car back first.'); return; }
+    const st = myCar.D.st;
+    if (what === 'lane') { assist.lane = !assist.lane; H.toast(assist.lane ? '<b>Lane keeping on.</b> It holds the lane; your own steering wins. <kbd>I</kbd> turns it off.' : 'Lane keeping off.'); }
+    else if (what === 'cruise') {
+      assist.cruise = !assist.cruise;
+      if (assist.cruise) { const L = laneHere(st); assist.set = Math.max(st.v > 5 ? st.v : (L ? L.v : 11), 8.3); }
+      H.toast(assist.cruise ? `<b>Adaptive cruise on</b> at ${Math.round(assist.set * 3.6)} km/h. It follows the car ahead and stops at red lights; the brake ends it. <kbd>K</kbd> turns it off.` : 'Cruise off.');
+    } else { // (a phone's one button: lane keeping, both, none)
+      const next = !assist.lane ? [true, false] : !assist.cruise ? [true, true] : [false, false];
+      if (assist.lane !== next[0]) assistToggle('lane');
+      if (assist.cruise !== next[1]) assistToggle('cruise');
+    }
   }
   // what the autopilot's screen says (twice a second): the next turn, how far, how long
   function pilotHud(o) {
@@ -2804,6 +2873,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (c === 'KeyV' && (player.mode === 'car' || player.mode === 'ride')) { cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; cam.lastInput = -10; if (cam.mode === 'cabin') cam.pitch = 0.2; }
     else if (c === 'KeyR' && player.mode === 'car') resetCar();
     else if (c === 'KeyJ' && player.mode === 'car') pilotAsk(e.shiftKey);
+    else if (c === 'KeyI' && player.mode === 'car') assistToggle('lane');
+    else if (c === 'KeyK' && player.mode === 'car') assistToggle('cruise');
     else if (c === 'KeyQ') lens();
     else if (c === 'KeyG') guessStart();
     else if (c === 'KeyT') cycleTrack();
@@ -2860,7 +2931,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     hold('#gt-down', () => { if (player.mode === 'heli') touchLift = -1; else if (player.mode === 'car') A.honk(); else guessStart(); }, () => { touchLift = 0; }); // Down in the air, the horn in a car, Guess on foot
     hold('#gt-run', () => { if (player.mode === 'car') { pilotAsk(); return; } keys.has('ShiftLeft') ? keys.delete('ShiftLeft') : keys.add('ShiftLeft'); $('#gt-run').setAttribute('aria-pressed', String(keys.has('ShiftLeft'))); });
     hold('#gt-cam', () => { if (player.mode === 'car' || player.mode === 'ride') cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; else nextView(); });
-    hold('#gt-lens', () => lens());
+    hold('#gt-lens', () => (player.mode === 'car' ? assistToggle() : lens()));
   }
   let skip = false, waitFerry = null, lastDock = null;
   // V: the chase camera and the bird's-eye view, and in the helicopter the pilot's own view between them
@@ -5553,6 +5624,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const run = $('#gt-run'), txt = player.mode === 'car' ? 'Auto' : 'Run';
       if (run.textContent !== txt) run.textContent = txt;
       run.setAttribute('aria-pressed', String(player.mode === 'car' ? !!pilot : keys.has('ShiftLeft')));
+      const ln = $('#gt-lens'), lt = player.mode === 'car' ? (assist.lane && assist.cruise ? 'Lane + cruise' : assist.lane ? 'Lane keep' : 'Assist') : 'Lens';
+      if (ln.textContent !== lt) ln.textContent = lt;
     }
     if (player.mode === 'heli') {
       const st = heli.st, g = nav.groundBelow(st.x, st.y, st.z);
@@ -5579,7 +5652,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       } else
       el.innerHTML = `<div><b class="num">${Math.round(st.speed * 3.6)}</b><span>km/h</span></div><div><b class="num">${st.gear === 0 ? 'R' : st.speed < 0.3 ? 'N' : st.gear}</b><span>gear</span></div>
         <div><b class="num">${Math.round(st.z)} m</b><span>altitude</span></div><div><b class="num">${Math.round(st.rpm * 7000 / 100) * 100}</b><span>rpm</span></div>
-        <p class="note">W/S drive, brake, reverse · A/D steer · Space handbrake · J autopilot · H horn · V ${cam.mode === 'cabin' ? 'chase view' : 'from the seat'} · R back on the road${st.speed < 1.5 ? ' · E get out' : ''}</p>`;
+        <p class="note">${assist.lane || assist.cruise ? `<b class="intent">${[assist.lane ? `Lane keeping${assist.on.lane ? '' : ' (standing by)'}` : '', assist.cruise ? `Cruise ${Math.round(assist.set * 3.6)} km/h${assist.line != null ? ' · red light ahead' : assist.lead && assist.lead.gap < 40 ? ' · following' : ''}` : ''].filter(Boolean).join(' · ')}</b>` : ''}W/S drive, brake, reverse · A/D steer · Space handbrake · J autopilot · I lane keeping · K cruise · H horn · V ${cam.mode === 'cabin' ? 'chase view' : 'from the seat'} · R back on the road${st.speed < 1.5 ? ' · E get out' : ''}</p>`;
     } else if (player.mode === 'ride' && ride) {
       const o = ride, st = o.drv.st;
       el.hidden = false;
@@ -5636,7 +5709,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { pilot: () => pilot, pilotTo, pilotOff, pilotAsk, destinations, scenicWeights, groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
+  window.__game = { pilot: () => pilot, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {

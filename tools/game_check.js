@@ -31,7 +31,7 @@ const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { reverseStep } = require('./reverse_step');
-const { autopilotStep, autopilotChecks } = require('./autopilot_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -2040,6 +2040,10 @@ const npcNight = require('./npc_night');
     for (const l of ap.log || []) console.log(`  autopilot: ${l}`);
     for (const [ok, what] of autopilotChecks(ap)) check(ok, what);
     await shot('autopilot');
+    // and the driver assists when you drive yourself: lane keeping and adaptive cruise, hands off for 40 s
+    const as = await p.evaluate(assistStep, { log: !!process.env.CHAIN });
+    for (const l of as.log || []) console.log(`  assist: ${l}`);
+    for (const [ok, what] of assistChecks(as)) check(ok, what);
   }
 
   // the traffic dodges your car (issue 335): your car put in a moving car's lane 26 m ahead, coming at it at

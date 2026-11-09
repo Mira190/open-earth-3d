@@ -53,7 +53,7 @@ window.OEAutopilot = (function () {
   const turnGlyph = n => (!n ? '' : n.end ? '◎' : n.turn === 2 ? '↶' : n.turn < 0 ? '↰' : '↱');
 
   // ------------------------------------------------------------ the scenic way
-  // A weight for each piece of road of net (actors.js network): 0.42 where water lies within 60 m of it
+  // A weight for each piece of road of net (actors.js network): 0.42 where water lies within 100 m of it
   // (a quay, a harbour road, a river bank), 0.55 within 70 m of a landmark (marks: [x, y]), 1 elsewhere.
   // The router multiplies a piece's cost by it, so a scenic route takes the waterfront while that is
   // less than about twice as far.
@@ -65,7 +65,7 @@ window.OEAutopilot = (function () {
       let wet = 0, seen = 0, n = 0;
       for (let s = Math.min(l.len / 2, 10); s < l.len; s += 40) {
         net.at(i, s, q); n++;
-        if (water) for (let k = 0; k < 8 && !(wet > n - 1); k++) if (water(q.x + Math.sin(k * 0.785) * 60, q.y + Math.cos(k * 0.785) * 60) || water(q.x + Math.sin(k * 0.785) * 30, q.y + Math.cos(k * 0.785) * 30)) { wet++; break; }
+        if (water) for (let k = 0; k < 8 && !(wet > n - 1); k++) if (water(q.x + Math.sin(k * 0.785) * 100, q.y + Math.cos(k * 0.785) * 100) || water(q.x + Math.sin(k * 0.785) * 45, q.y + Math.cos(k * 0.785) * 45)) { wet++; break; }
         for (const m of marks) if (Math.abs(m[0] - q.x) < 70 && Math.hypot(m[0] - q.x, m[1] - q.y) < 70) { seen++; break; }
       }
       if (n && wet / n >= 0.5) w[i] = 0.42;
@@ -145,8 +145,10 @@ window.OEAutopilot = (function () {
   // replaced, and past half lock yours wins).
   function laneKeep(st, lane, hand = 0) {
     if (!lane || Math.abs(hand) > 0.5) return hand;
-    const v = Math.max(2, Math.abs(st.v)), lock = 0.62 / (1 + v / 13);
-    const curv = (lane.curv || 0) - 0.11 * lane.d / Math.max(1, v * 0.35) - 0.9 * lane.dh / Math.max(4, v * 0.8);
+    const v = Math.max(3, Math.abs(st.v)), lock = 0.62 / (1 + v / 13);
+    // (the offset's error obeys d'' = -kd v^2 d - kh v d': a spring of 1.1 rad/s, a little over critically damped
+    // to cover the wheel's own lag, at any speed)
+    const W = 1.1, curv = (lane.curv || 0) - W * W * lane.d / (v * v) - 2.3 * W * lane.dh / v;
     const pull = clamp(Math.atan(curv * 2.6) / lock, -0.8, 0.8);
     return clamp(hand + pull * (1 - Math.abs(hand) * 2), -1, 1);
   }
