@@ -1933,14 +1933,15 @@ const npcNight = require('./npc_night');
       Object.assign(st, { x: o.x + fx * 26, y: o.y + fy * 26, z: o.z, h: o.h + Math.PI, vx: -fx * 10, vy: -fy * 10, v: 10, speed: 10, r: 0, steer: 0 });
       o.honkAt = null;
       const v0 = o.v, off0 = o.off;
-      let dodged = false, maxOff = 0;
+      let dodged = false, maxOff = 0, blocked = false;
       for (let i = 0; i < 10; i++) {
         g.advance(0.1, ['KeyW']);
+        if (!i && st.v < 5) { blocked = true; break; } // (your car put down on something there: stopped dead, nothing to dodge; the next)
         if (o.dodgeT > 0) dodged = true;
         maxOff = Math.max(maxOff, Math.abs(o.off - off0));
         if (o.line < 0) break;
       }
-      if (o.line < 0) continue;
+      if (o.line < 0 || blocked) continue;
       Object.assign(r, { dodged, v0, v1: o.v, off: maxOff, honked: o.honkAt != null, // (game.js sounds and empties cars.honks each frame)
  model: o.model });
       break;
