@@ -1913,6 +1913,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     function canReverse(c) {
       if (c.line < 0 || c.rev || c.stuck === undefined || c.revBan > 0 || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
+      // (nor one with a ride or your car close behind it: they don't back off for the traffic, and a ride coming for you
+      // stood behind three cars backing out towards it, one after another, in Fushimi Inari)
+      { const hx = Math.sin(c.h), hy = Math.cos(c.h); for (const o of api.extra) { const a = (o.x - c.x) * hx + (o.y - c.y) * hy; if (a < 0 && a > -(c.half + (o.half || 2.3) + 12) && Math.abs((o.x - c.x) * hy - (o.y - c.y) * hx) < 3.5) return false; } }
       let line = c.line, dir = c.dir, run = c.dir > 0 ? c.s : net.L[c.line].len - c.s;
       for (let k = 0; k < 6 && run < REV_MAX; k++) {
         if (waysOut(c, line, dir).length) return true;
@@ -1965,7 +1968,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // is clear, as it would at a line. Backed in, it stood across 1120's way onto piece 2481, two cars let in for it
       // standing 75 s in the junction behind it, Shinjuku #330)
       const ab = JN.armBy(c.line, c.dir > 0 ? 0 : 1), rear = s0 => (c.dir > 0 ? s0 : l.len - s0) - c.half;
-      if (ab && rear(sb) < ab.back && rear(c.s) >= ab.back - 0.05 && ab.j.active.some(o => o.c !== c)) {
+      // (busy for it: a car let in onto this piece, or one crossing the box within 10 m of its mouth)
+      const mk = c.dir > 0 ? 0 : l.pts.length - 3, mx = l.pts[mk], my = l.pts[mk + 1];
+      if (ab && rear(sb) < ab.back && rear(c.s) >= ab.back - 0.05 && ab.j.active.some(o => o.c !== c && ((o.m & 15) === ab.i || Math.hypot(o.c.x - mx, o.c.y - my) < 10))) {
         R.v = 0; R.wait += dt * 0.25; R.by = null; // (patient, as behind one backing out: the box clears in a cycle or two; giving up, it held the queue it backed out for)
         if (R.wait > 20) { c.revBan = 60; c.revEnd = `the junction behind (${ab.j.id}) busy`; c.rev = null; }
         q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c);
@@ -1984,9 +1989,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.ax = c.x; c.ay = c.y; c.idle = 0;
       } else {
         R.v = 0; R.wait += bk && bk.rev ? dt * 0.25 : dt; R.by = bk; // (behind it one backing out too, waiting at the junction behind for room: it waits its turn, not giving up after 20 s)
-        // (one coming the other way onto this piece out of the junction behind, let in for the room there was: it can't
-        // give way, so this one gives up at once and waits on as before, rather than hold it in that junction's box, #330)
-        if (bk && !bk.rev && bk.mv && bk.mv.e && bk.mv.e.m.line === c.line && (bk.line !== c.line || bk.dir === c.dir)) { c.revBan = 60; c.revEnd = `in the way of car ${C.indexOf(bk)} coming onto this piece`; c.rev = null; }
+        // (one coming onto this piece out of the junction behind, still in its box, let in for the room there was: it can't
+        // give way there, so this one gives up at once and waits on as before, rather than hold it in that box, #330. One
+        // already on the piece behind it backs out first, as any does, below)
+        // (nor for a ride or your car behind it: it won't back off for the traffic, and a ride coming for you stood 7 s
+        // behind three cars backing out towards it, one after another, in Fushimi Inari)
+        if (bk && !bk.rev && bk.stuck === undefined && R.wait > 1) { c.revBan = 60; c.revEnd = 'a ride or your car behind it'; c.rev = null; }
+        else if (bk && !bk.rev && bk.mv && bk.mv.e && bk.mv.e.m.line === c.line && bk.line !== c.line) { c.revBan = 60; c.revEnd = `in the way of car ${C.indexOf(bk)} coming onto this piece`; c.rev = null; }
         // the car behind, stopped on this street and going its way: it backs out first
         else if (bk && bk.line === c.line && bk.dir === c.dir && !bk.rev && bk.v < 0.5 && (c.s - bk.s) * c.dir > 0) reverse(bk);
         // (one stopped across its way back, at the junction behind or on the piece beyond: after 3 s it is asked to back off
