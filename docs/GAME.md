@@ -1626,9 +1626,16 @@ quality tier runs a third of the cars.
       - **The pitot tubes** are short and sit on the roof's front edge, above the
         pilot's view, as on the H125. They ran half a metre forward over the
         glass, two bars across the cockpit view.
+      - **The foot of the view** is cleared. The game leaves out the gaskets
+        (a black arc round the nose), the lining of the nose's lower half, and
+        the wire cutter under the nose (a grey fin through the chin window),
+        all built as their own materials (`Gasket_Chin`, `Lining_Nose`,
+        `Cutter`). With them gone the pilot looks down through the nose to
+        the ground. From outside they are all there. `PICK` in
+        `tools/cockpit_shot.js` names what of the helicopter is under a point
+        of the picture, which found them.
       What still frames the view is the A-pillar between the windscreen and the
-      pilot's door, which the door's seam leaves no room to narrow, and the wire
-      cutter under the nose.
+      pilot's door, which the door's seam leaves no room to narrow.
       `tools/cockpit_shot.js` takes stills of the variants from the same place
       over Sydney Harbour.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.

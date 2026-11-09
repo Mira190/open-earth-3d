@@ -4,6 +4,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/cockpit_shot.js sydney out_dir variants.json [WxH]
 // variants.json: [{"name": "now"}, {"name": "low", "fov": 60, "pitch": -0.2, "eye": [0, -0.05, 0.2]}, ...]
+// PICK="0.39,0.59;0.3,0.71" prints what of the helicopter is under those points of the picture (fractions across and down).
 // (eye: moved from the model's Eye_Pilot, +x left, +y up, +z forward, m; fov: vertical, degrees; pitch: radians)
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
@@ -24,7 +25,8 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
   });
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
-  p.on('console', m => { if (m.type() === 'error') console.log(`error: ${m.text().slice(0, 300)}`); });
+  p.on('console', m => { if (m.type() === 'error' || m.text().startsWith('picks ')) console.log(m.type() === 'error' ? `error: ${m.text().slice(0, 300)}` : m.text()); });
+  if (process.env.PICK) await p.addInitScript(pk => { window.__pick = pk; }, process.env.PICK.split(';').map(q => q.split(',').map(Number)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; if (g.heli && g.heli.want) await g.heli.want(); });
@@ -65,6 +67,13 @@ const variants = vfile ? JSON.parse(fs.readFileSync(vfile, 'utf8')) : [{ name: '
       C.fov = v.fov ?? C.base.fov; C.pitch = v.pitch ?? C.base.pitch; C.eye.fromArray(v.eye || C.base.eye);
       g.cam.lookYaw = v.yaw || 0; g.cam.lookPitch = C.pitch; g.viewBlend.t = 1;
       for (let i = 0; i < 30; i++) { if (!F.cbs.length) return `error: the game stopped asking for frames at step ${i} (${window.__lastErr || '?'})`; F.t += 1000 / 30; g.keys.add('KeyW'); F.step(F.t); g.keys.delete('KeyW'); g.heli.st.vx *= 0.97; g.heli.st.vy *= 0.97; }
+      // PICK="x,y;x,y" (fractions of the picture): what of the helicopter is under each point, nearest first
+      const picks = (window.__pick || []).map(([px, py]) => {
+        const rc = new THREE.Raycaster(), cam = g.camera;
+        rc.setFromCamera(new THREE.Vector2(px * 2 - 1, 1 - py * 2), cam);
+        return `${px},${py}: ` + rc.intersectObject(g.heli.group, true).slice(0, 3).map(h => `${h.object.name}/${[].concat(h.object.material)[h.face ? h.face.materialIndex || 0 : 0].name} ${h.distance.toFixed(2)} m`).join(' | ');
+      });
+      if (picks.length) console.log('picks ' + picks.join('\n'));
       return document.getElementById('game-gl').toDataURL('image/jpeg', 0.9);
     }, v);
     if (url.startsWith('error')) { console.log(v.name, url); continue; }

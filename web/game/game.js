@@ -2710,6 +2710,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         if (m.isMeshPhysicalMaterial && m.transparent && !m.depthWrite && m.clearcoat > 0.5) { cabinKept.push([m, { opacity: m.opacity, clearcoat: m.clearcoat }]); m.opacity = 0.08; m.clearcoat = 0.12; }
         else if (/^Paint_|^Stripe/.test(m.name)) { cabinKept.push([m, { side: m.side }]); m.side = THREE.FrontSide; m.needsUpdate = true; }
         else if (m.name === 'Lining' || m.name === 'Interior') { cabinKept.push([m, { color: m.color.clone() }]); m.color.setRGB(0.045, 0.05, 0.055); }
+        // (and what showed at the foot of the view, below the panel: the windscreen's and the chin windows' gaskets, a
+        // black arc round the nose; the lining of the nose's lower half, a grey wedge between the windscreen's two lower
+        // edges; the wire cutter under the nose. Left out from the seat, so the pilot looks down through the nose to the
+        // ground, and kept from outside)
+        else if (/^Gasket/.test(m.name) || m.name === 'Lining_Nose' || m.name === 'Cutter') { cabinKept.push([m, { visible: m.visible }]); m.visible = false; }
       } });
     } else if (!on && cabinKept) {
       for (const [m, was] of cabinKept) { if (was.color) m.color.copy(was.color); else Object.assign(m, was); if ('side' in was) m.needsUpdate = true; }
