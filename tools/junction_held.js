@@ -56,6 +56,8 @@ const MAX = Number(process.env.MAX_GREENS || 2);
     for (const h of r.yours) console.log('  (by you) ' + h);
     for (const h of r.walls) console.log('  (wall) ' + h);
     for (const h of r.beyond) console.log('  (beyond) ' + h);
+    if (r.narrow && r.narrow.hist) for (const h of r.narrow.hist) console.log('  narrow history: ' + h);
+    if (r.narrow) console.log(`  narrow: longest ${r.narrow.max} s${r.narrow.over.length ? ": " + r.narrow.over.join("; ") : ""}`);
     bad += r.held.length + r.queues.length;
     await p.close();
   }
