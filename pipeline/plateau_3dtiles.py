@@ -115,6 +115,10 @@ def buildings_in_tile(blob, city):
         if not height:
             continue
         extra = {key: at.get(attr) for key, attr in (("name", "gml:name"), ("usage", "bldg:usage"), ("storeys", "bldg:storeysAboveGround"))}
+        if not 0 < (extra.get("storeys") or 0) < 200:  # 9999: PLATEAU's "unknown" (2024's v4 tiles carry it)
+            extra.pop("storeys", None)
+        if not 0 < float(height) < 1000:   # -9999: no survey record
+            continue
         out.append((at.get("gml:id", ""), float(height), {k: v for k, v in extra.items() if v not in (None, "")}, g))
     return out
 
@@ -171,6 +175,14 @@ def roof_of(P, F, foot):
     return {"roof": shape, "pitch": round(float(pitch), 1), "roof_h": round(float(ridge - eave), 2)}
 
 
+def no_lod2(at):
+    """True where the building's record says no LOD2 model was made for it (uro:geometrySrcDescLod2 "未作成",
+    code 999): from 2024 a city's LOD2 tileset carries every building, the LOD1 block standing in where
+    only part of the city was modelled (Kamakura's coast), and a block is not a measured flat roof."""
+    q = at.get("uro:DataQualityAttribute")
+    return any(isinstance(d, dict) and str(d.get("uro:geometrySrcDescLod2_code")) == "999" for d in (q if isinstance(q, list) else [q]))
+
+
 def roofs_in_tile(blob, city):
     """{gml:id: roof_of(...)} for the buildings of one LOD2 tile."""
     bt, ecef, faces, bid = decode_b3dm(blob)
@@ -181,6 +193,8 @@ def roofs_in_tile(blob, city):
     out = {}
     for k in np.unique(fb):
         if k >= len(bt):
+            continue
+        if no_lod2(bt[k]):
             continue
         F = faces[fb == k]
         a, b, c = (P[F[:, i], :2] for i in range(3))
@@ -205,20 +219,22 @@ def read(city, cfg):
         return local.z
     z = archive()
     names = set(z.namelist())
-    root = next(n for n in names if n.endswith("/") and n.count("/") == 1)
-    wards = sorted({m.group(1) for n in names if (m := re.match(re.escape(root) + r"(bldg_\d+_[a-z-]+)_lod\d", n))})
+    # the building tilesets, by ward: "<root>/bldg_<code>_<ward>_lod1/" in the releases up to 2023, and
+    # "<prefix>_bldg_3dtiles_lod1/" with no root folder and the whole city as one set from 2024 (v4)
+    sets = {}
+    for n in names:
+        if (m := re.match(r"(.*bldg(?:_\d+_[a-z-]+)?(?:_3dtiles)?)_(lod1|lod2_no_texture|lod2)/tileset\.json$", n)):
+            sets.setdefault(m.group(1), set()).add(m.group(2))
+    wards = sorted(sets)
     w, s, e, n = city.cfg["bbox"]
     bbox = [w - 0.002, s - 0.002, e + 0.002, n + 0.002]
     jobs, roof_jobs = [], []
     for ward in wards:
-        for lv in LEVELS:
-            ts = f"{root}{ward}_{lv}/tileset.json"
-            if ts in names:
-                jobs += [f"{root}{ward}_{lv}/{uri}" for uri in tile_uris(json.loads(z.read(ts)), bbox)]
-                break
-        ts = f"{root}{ward}_lod2_no_texture/tileset.json"
-        if cfg.get("roofs") and ts in names:
-            roof_jobs += [f"{root}{ward}_lod2_no_texture/{uri}" for uri in tile_uris(json.loads(z.read(ts)), bbox)]
+        lv = next(lv for lv in LEVELS if lv in sets[ward])
+        jobs += [f"{ward}_{lv}/{uri}" for uri in tile_uris(json.loads(z.read(f"{ward}_{lv}/tileset.json")), bbox)]
+        if cfg.get("roofs") and "lod2_no_texture" in sets[ward]:
+            ts = f"{ward}_lod2_no_texture/tileset.json"
+            roof_jobs += [f"{ward}_lod2_no_texture/{uri}" for uri in tile_uris(json.loads(z.read(ts)), bbox)]
     print(f"{len(jobs)} tiles in {len(wards)} wards" + (f", and {len(roof_jobs)} LOD2 tiles for the roofs" if roof_jobs else ""))
     out, seen, roofs = [], set(), {}
     with ThreadPoolExecutor(min(os.cpu_count() or 4, 8)) as ex:

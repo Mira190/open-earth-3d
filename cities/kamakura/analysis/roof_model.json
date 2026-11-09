@@ -1,0 +1,92 @@
+{
+ "note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. The check predicts each mapped roof as if it were not mapped.",
+ "counts": {
+  "prior:gabled": 3143,
+  "prior:gabled_across": 469,
+  "prior:hipped": 1696,
+  "prior:flat": 1547,
+  "rule:flat": 177,
+  "fallback_flat": 13,
+  "too_low": 135,
+  "mapped:skillion": 5,
+  "mapped:flat": 1,
+  "mapped:gabled": 15,
+  "prior:skillion": 3,
+  "measured:flat": 112,
+  "measured:gabled": 132,
+  "measured:gabled_across": 60,
+  "mapped:hipped": 10,
+  "measured:hipped": 25,
+  "measured:half-hipped": 12,
+  "measured:skillion": 16,
+  "mapped:pyramidal": 1,
+  "mapped:gabled_across": 7,
+  "mapped:saltbox": 1
+ },
+ "check": {
+  "n": 40,
+  "flat_vs_pitched_accuracy": 0.9,
+  "exact_shape_accuracy": 0.475,
+  "family_accuracy": 0.5,
+  "pitched_recall": 0.897,
+  "flat_recall": 1.0,
+  "confusion_pitched": {
+   "true_pitched_pred_pitched": 35,
+   "true_pitched_pred_flat": 4,
+   "true_flat_pred_flat": 1,
+   "true_flat_pred_pitched": 0
+  },
+  "truth": {
+   "gabled": 23,
+   "hipped": 11,
+   "skillion": 5,
+   "flat": 1
+  },
+  "vs_measured": {
+   "n": 370,
+   "flat_vs_pitched_accuracy": 0.676,
+   "exact_shape_accuracy": 0.338,
+   "family_accuracy": 0.451,
+   "pitched_recall": 0.782,
+   "flat_recall": 0.368,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 215,
+    "true_pitched_pred_flat": 60,
+    "true_flat_pred_flat": 35,
+    "true_flat_pred_pitched": 60
+   },
+   "truth": {
+    "gabled": 209,
+    "flat": 95,
+    "hipped": 45,
+    "skillion": 21
+   }
+  },
+  "measured_vs_mapped": {
+   "n": 16,
+   "flat_vs_pitched_accuracy": 1.0,
+   "exact_shape_accuracy": 0.562,
+   "family_accuracy": 0.938,
+   "pitched_recall": 1.0,
+   "flat_recall": 0.0,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 16,
+    "true_pitched_pred_flat": 0,
+    "true_flat_pred_flat": 0,
+    "true_flat_pred_pitched": 0
+   },
+   "truth": {
+    "gabled": 13,
+    "hipped": 3
+   }
+  }
+ },
+ "roofs_built": 5595,
+ "rooftop_props": 183,
+ "frontage_solids": 30,
+ "skeleton_failures": {
+  "short": 10,
+  "active": 6,
+  "steps": 3
+ }
+}
