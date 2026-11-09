@@ -1367,7 +1367,8 @@ def build(C):
         # measured heights first, so a city's hooks see (and may hide) the measured solids
         geoms, s_floors = survey.apply(geoms, ctx.hidden, b["id"])
         if adjust:
-            geoms = adjust(b, cls, g, geoms, ctx)
+            changed = adjust(b, cls, g, geoms, ctx)
+            geoms = geoms if changed is None else changed  # (None: kept as it is, as docs/ADDING_A_CITY.md says)
         for q, h0, h1, src, pname, *_ in geoms:
             if pname in labels_cfg and labels_cfg[pname] not in ctx.labels:
                 c = q.centroid

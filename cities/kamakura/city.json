@@ -509,6 +509,64 @@
         ]
       }
     ],
+    "rail": {
+      "train": {
+        "class": "light_rail",
+        "name": "Enoden",
+        "native": "江ノ電",
+        "operator": "Enoshima Electric Railway",
+        "gauge_m": 1.067,
+        "min_length_m": 40,
+        "stations": [
+          {
+            "id": "enoshima",
+            "name": "Enoshima",
+            "native": "江ノ島"
+          },
+          {
+            "id": "koshigoe",
+            "name": "Koshigoe",
+            "native": "腰越"
+          },
+          {
+            "id": "kamakurakokomae",
+            "name": "Kamakurakokomae",
+            "native": "鎌倉高校前"
+          },
+          {
+            "id": "shichirigahama",
+            "name": "Shichirigahama",
+            "native": "七里ヶ浜"
+          },
+          {
+            "id": "inamuragasaki",
+            "name": "Inamuragasaki",
+            "native": "稲村ヶ崎"
+          }
+        ],
+        "crossing_names": {
+          "Kamakurakokomae No. 1": [
+            -446,
+            122
+          ]
+        },
+        "towards": [
+          "Fujisawa",
+          "Kamakura"
+        ],
+        "scenic_bearing_deg": 190,
+        "headway_s": 720,
+        "speed_ms": 12.5,
+        "street_speed_ms": 4.2,
+        "sets": 2,
+        "series": [
+          "enoden_300",
+          "enoden_1000",
+          "enoden_500"
+        ],
+        "note": "The Enoshima Electric Railway: 1,067 mm gauge, 600 V DC overhead, a single track with passing loops at Enoshima, Minegahara and Inamuragasaki, 45 km/h at most and 15 km/h in the street at Koshigoe; a train each way every 12 minutes here (14 on the real timetable since 2023), two-car articulated sets coupled in twos."
+      }
+    },
     "start_note": "You start on the hill road (Nissaka) above the Kamakurakokomae crossing, looking down it to the sea. Your car is parked on the level street to the east: the hill is an 11% grade."
   },
   "osm_detail": {

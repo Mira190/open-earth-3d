@@ -174,6 +174,8 @@ The owner should not be the one who finds the bug.
   script (`pipeline/meshopt.py`, needs Node); `tools/check.sh` fails on one that is not. A model
   written another way: `node pipeline/meshopt_glb.mjs <file.glb>`. Every `GLTFLoader` the pages make
   has three.js's `MeshoptDecoder` set (`web/index.html`, `web/reef/people.js`).
+- The trains (`web/assets/vehicles/trains.glb`, the Enoden's stock) are built by `python blender/build_trains.py`;
+  `web/game/rail.js` runs them on any map with `game.rail.train`.
 - To change a vehicle for every city, edit `blender/build_vehicles.py` and rebuild with
   `python blender/build_vehicles.py` (or `--only cars`, needs `pip install bpy==5.2.3`).
   For the trees, edit `blender/build_trees.py` and run `python blender/build_trees.py`.

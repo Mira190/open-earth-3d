@@ -159,6 +159,8 @@ window.OEAudio = (function () {
   }
   function chime() { [660, 880, 1320].forEach((f, i) => setTimeout(() => blip(f, 0.35, 'sine', 0.07), i * 110)); }
   // a tram's foot gong, struck twice ("ding ding")
+  // a level crossing's electronic bell, one stroke: 700 and 750 Hz together, cut off short (130 strokes a minute, rail.js)
+  function kan(vol = 1) { if (vol > 0.01) { blip(700, 0.2, 'triangle', 0.09 * vol); blip(750, 0.2, 'triangle', 0.09 * vol); blip(1450, 0.08, 'sine', 0.02 * vol); } }
   function bell() { [0, 320].forEach(d => setTimeout(() => { blip(1180, 0.8, 'sine', 0.06); blip(2840, 0.45, 'sine', 0.02); }, d)); }
   // ---------------------------------------------------------------- a busy crossing (game.look.sound)
   // the crowd's murmur: noise through two voice bands, a little of it pulsing at a syllable's rate,
@@ -265,5 +267,5 @@ window.OEAudio = (function () {
   }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, kan, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();
