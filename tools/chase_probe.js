@@ -16,6 +16,7 @@ const [,, city = 'tokyo'] = process.argv;
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
+  await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });

@@ -12,6 +12,7 @@ const city = process.argv[2] || 'kyoto';
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
+  await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   await p.waitForTimeout(3000);
   const r = await p.evaluate(() => {
     const g = window.__game, c = g.myCar && g.myCar();

@@ -20,6 +20,7 @@ const MIN = Number(process.env.MIN || 20);
   await p.addInitScript(seed => { let x = seed >>> 0 || 1; Math.random = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }, +(process.env.SEED || 1));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
+  await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });

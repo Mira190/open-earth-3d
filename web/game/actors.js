@@ -235,6 +235,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       g.setAttribute('ao', new THREE.Float32BufferAttribute(ao, 1));
       g.setIndex(idx);
       g.computeBoundingBox();
+      if (node.userData.near_box) g.userData.nearBox = node.userData.near_box; // (a far model's: the near one's box, pipeline/split_glb.mjs)
       const [model, lod] = node.name.split('_LOD');
       (out[model] = out[model] || [])[lod ? +lod : 0] = g;
     }
@@ -1447,10 +1448,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const JN = junctions || OEJunctions.create(net, { keep, lane: LANE, signals: [] });
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
-    let mesh = null, fleet = null;
+    let mesh = null, fleet = null, mat = null;
     const oncoming = (c, fx, fy, reach) => oncomingIn(C, c, fx, fy, reach);
     if (I) {
-      const geos = carGeometries(lib.cars, I.tones), names = Object.keys(I.models).filter(k => geos[k] && geos[k].length === 3);
+      // (with only the far models come yet, vehicles.js cars: 'later', each stands in for the nearer two until upgrade())
+      const geos = carGeometries(lib.cars, I.tones), names = Object.keys(I.models).filter(k => geos[k] && geos[k][2]);
+      // (each car sized by its near model's box, come or not: the traffic drives the same either way)
+      const boxes = {};
+      for (const k of names) {
+        const nb = geos[k][2].userData.nearBox;
+        boxes[k] = geos[k][0] ? geos[k][0].boundingBox : nb ? new THREE.Box3(new THREE.Vector3(nb[0], nb[1], nb[2]), new THREE.Vector3(nb[3], nb[4], nb[5])) : geos[k][2].boundingBox;
+        for (const l of [1, 0]) if (!geos[k][l]) geos[k][l] = geos[k][l + 1].clone();
+      }
       const taxi = Object.assign({}, I.liveries.taxi, cfg.taxi), bus = Object.assign({}, I.liveries.bus, cfg.bus);
       const own = names.filter(k => !I.models[k].taxi && !I.models[k].bus), sum = own.reduce((a, k) => a + I.models[k].weight, 0);
       const share = k => (I.models[k].taxi ? taxi.share : I.models[k].bus ? bus.share : (1 - taxi.share - bus.share) * I.models[k].weight / sum);
@@ -1458,11 +1467,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) {
         let r = rnd(), k = names[names.length - 1];
         for (const name of names) { if ((r -= share(name)) < 0) { k = name; break; } }
-        const M = I.models[k], box = geos[k][0].boundingBox, hex = M.taxi ? pick(taxi.colours) : M.bus ? bus.colour : pick(colours);
+        const M = I.models[k], box = boxes[k], hex = M.taxi ? pick(taxi.colours) : M.bus ? bus.colour : pick(colours);
         C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, ln: 0, lo: 0, model: k, half: (box.max.z - box.min.z) / 2, hw: (box.max.x - box.min.x) / 2, top: box.max.y,
           stuck: 0, taxi: !!M.taxi, hex, c0: lin(hex), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
       }
-      const mat = toneMaterial(U, { cars: true });
+      mat = toneMaterial(U, { cars: true });
       fleet = {};
       for (const k of names) {
         const cap = C.filter(c => c.model === k).length;
@@ -2833,7 +2842,25 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
       }
     }
-    return Object.assign(api, { update, take, footprint, reverse, canReverse, stats: () => Object.assign(JN.stats(), { revs, redRuns, redLog, laneChanges, outOfRing, squeezes, conflicts: JN.conflicts() }) });
+    // the near and mid models, come after the far ones (vehicles.js loadCars, issue 335): each model's stand-ins
+    // replaced, the cars put into them at the next update. Returns the meshes put in the world
+    function upgrade(gltf) {
+      if (!fleet || !gltf) return [];
+      const full = carGeometries(gltf, I.tones), added = [];
+      for (const k in fleet) for (const l of [0, 1]) {
+        const g = full[k] && full[k][l], old = fleet[k][l];
+        if (!g || !old) continue;
+        const m = instanced(g, mat, old.instanceMatrix.count);
+        // (the cars where they stand now, so the swap shows in the next frame drawn, whether or not the traffic moves)
+        m.count = old.count;
+        m.instanceMatrix.array.set(old.instanceMatrix.array); m.instanceMatrix.needsUpdate = true;
+        for (const a of ['aC0', 'aC1', 'aC2', 'aC3', 'aAnim']) { m.geometry.attributes[a].array.set(old.geometry.attributes[a].array); m.geometry.attributes[a].needsUpdate = true; }
+        world.add(m); world.remove(old); old.geometry.dispose();
+        fleet[k][l] = m; added.push(m);
+      }
+      return added;
+    }
+    return Object.assign(api, { update, take, footprint, reverse, canReverse, upgrade, stats: () => Object.assign(JN.stats(), { revs, redRuns, redLog, laneChanges, outOfRing, squeezes, conflicts: JN.conflicts() }) });
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)

@@ -54,12 +54,18 @@ window.OEVehicles = (function () {
     const style = typeof ferry === 'object' ? ferry : {};
     const river = style.model ? style.model === 'river' : style.length_m < 28;
     const ferryInfo = ferry ? (style.model === 'steamer' && info.ferry_steamer) || (river && info.ferry_river) || info.ferry : null;
-    // the traffic's cars are optional: without them the streets keep their box cars
-    const car = cars && info.cars ? get(info.cars.file).catch(e => { console.warn('Car models unavailable:', e); return null; }) : null;
-    let heliP = null;
+    // the traffic's cars are optional: without them the streets keep their box cars. cars: 'later' loads only their
+    // far models (vehicles.json cars.far_file, 0.2 MB of 2.3, issue 335) before the game can be played: lib.cars is
+    // then that file, lib.carsFull false, and lib.loadCars() fetches the whole one (the near models, the cabins
+    // and the steering wheels: the car you drive, a taxi you ride, the traffic close up) and puts it in lib.cars
+    const farFirst = cars === 'later' && info.cars && info.cars.far_file;
+    const car = cars && info.cars ? get(farFirst ? info.cars.far_file : info.cars.file).catch(e => { console.warn('Car models unavailable:', e); return null; }) : null;
+    let heliP = null, carsP = null;
     const loadHeli = () => heliP || (heliP = get(info.helicopter.file).then(g => (lib.heli = g)));
+    const loadCars = () => carsP || (carsP = !lib.cars || lib.carsFull ? Promise.resolve(lib.cars)
+      : get(info.cars.file).then(g => { lib.cars = g; lib.carsFull = true; return g; }, e => { console.warn('Car models unavailable:', e); return null; }));
     const [h, fer, carLib] = await Promise.all([heli === 'later' ? null : loadHeli(), ferryInfo ? get(ferryInfo.file) : null, car]);
-    const lib = { info, heli: h, ferry: fer, ferryInfo, cars: carLib, loadHeli };
+    const lib = { info, heli: h, ferry: fer, ferryInfo, cars: carLib, carsFull: !!carLib && !farFirst, loadHeli, loadCars };
     return lib;
   }
   // a livery by name, or the city's own colours over the default
@@ -260,7 +266,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     // the searchlight is in the world from the start, whether or not the model has come (heliModel carries
     // it to its lamp): three.js builds the number of lights into every lit material's shader, so a light
     // that joined once the game was open recompiled the whole city at once, seconds of frozen frames
-    const mopts = Object.assign({}, opts, { searchlight: searchlight(world) });
+    const mopts = Object.assign({}, opts, { searchlight: opts.searchlight || searchlight(world) }); // (opts.searchlight: one put in the world earlier)
     // a model that comes later has its shaders compiled before it is shown, off the frame (where the GPU
     // compiles in parallel, KHR_parallel_shader_compile), not in the first frame that draws it
     // (opts.compile: the page's own, which compiles the variant its post stack draws with: world.js compile)
@@ -1449,5 +1455,5 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     return { g, labelY: 9.4, deck: { fwd: 5, right: 2.2, up: 4.2 }, animate(dt, t) { flag.rotation.y = Math.sin(t * 3) * 0.3; } };
   }
 
-  return { load, helicopter, ferries, livery };
+  return { load, helicopter, ferries, livery, searchlight };
 })();

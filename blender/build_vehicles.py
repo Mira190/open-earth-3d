@@ -54,7 +54,7 @@ import numpy as np
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pipeline"))
-from meshopt import compress  # noqa: E402  (meshopt-compress each model written: issue 148)
+from meshopt import compress, split as split_parts  # noqa: E402  (meshopt-compress each model written: issue 148)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "web", "assets", "vehicles")
@@ -2400,8 +2400,9 @@ def main():
             bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_vertex_color="ACTIVE",
                                       export_materials="EXPORT", export_cameras=False, export_lights=False, export_animations=False)
             compress(path)
+            split_parts(path)  # the parts loaded before the game can be played and after (issue 335)
             print(f"  {os.path.relpath(path, ROOT)}: {os.path.getsize(path) / 1e6:.2f} MB")
-            info.update({"file": "cars.glb", "lod1_m": 35, "lod2_m": 110,
+            info.update({"file": "cars.glb", "far_file": "cars_far.glb", "lod1_m": 35, "lod2_m": 110,
                          "note": "Paint takes each car's colour, Paint2 a second (a taxi's or bus's band); 'tones' maps materials to the "
                                  "traffic shader's slots"})
             manifest[kind] = info

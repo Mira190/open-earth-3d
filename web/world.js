@@ -1648,12 +1648,17 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // skyHaze); the viewer fogs after it and keeps its fixed colours.
     let hazeRT = null, hazeOk = false, fogBase = null, hazeKey = null;
     const hazeCam = new THREE.PerspectiveCamera(8, 1, 0.1, 100), hazeC = new THREE.Color(), hazePx = new Float32Array(48);
+    const hazeTarget = () => hazeRT || (hazeRT = new THREE.WebGLRenderTarget(6, 2, { type: THREE.FloatType }));
+    // the sky's program as the light from the sky (PMREM) draws it, with no lights and into a target, compiled now,
+    // off the frame, rather than by the first new sky in the middle of the game's set-up (issue 299), where it would
+    // also wait behind the city's shaders compiling then (issue 327)
+    const skyReady = renderer.capabilities.isWebGL2 ? compile(renderer, envScene, hazeCam, { target: hazeTarget(), shadows: false }) : Promise.resolve();
     // The pixels hazeOf works out, drawn and read back from the GPU (synchronously: it waits for the GPU's queue): only
     // for tools/haze_check.js (api.hazeProbe), which holds the CPU's sum to this one. The three views side by side in
     // one target. Returns the colour, or null.
     function readHaze(az) {
       try {
-        const rt = hazeRT || (hazeRT = new THREE.WebGLRenderTarget(6, 2, { type: THREE.FloatType })), prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
+        const rt = hazeTarget(), prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
         su.uHazeOn.value = 0;
         rt.scissorTest = true;
         [0.5, 1, 1.5].forEach((turn, i) => { // across from the sun and on either side
@@ -1835,6 +1840,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
       world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
       hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
@@ -2041,7 +2047,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // shadows: the shadow pass's variant of each shadow caster too (the sun's depth program for its
   // material, skinned for a person, double-sided for a sail), which three.js otherwise compiles in the first
   // frame that draws the caster's shadow (issue 266); not for a mirror's or other pass that draws no shadows.
-  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null, shadows = !clip } = {}) {
+  // flight: how many programs may be compiling at once (FLIGHT); fewer behind other work, whose own synchronous GL calls
+  // wait for every program queued before them on a GPU that compiles one at a time (issue 327)
+  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null, shadows = !clip, flight = FLIGHT } = {}) {
     if (!renderer.compileAsync) return Promise.resolve();
     const objs = [], casters = [];
     obj.traverse(o => {
@@ -2077,7 +2085,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           // (and no more than FLIGHT programs still being compiled at a time: the next shader's source otherwise waits
           // in the call that sends it until the GPU has caught up, a stall of seconds on a software renderer or a
           // device that compiles one at a time, issue 299; the slice ends and the next one waits for them instead)
-          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS) && inFlight() < FLIGHT) {
+          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS) && inFlight() < flight) {
             const add = m => { mats.add(m); const p = props.get(m).currentProgram; if (p && p.isReady && !p.isReady()) flying.add(p); };
             if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) add(m);
             else { const j = i - objs.length, k = Math.min(casters.length, j + 24); for (const m of compileDepth(renderer, casters.slice(j, k), camera, scene)) add(m); i += k - j; }
@@ -2085,7 +2093,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         } catch (e) { console.warn('compile', e); }
         finally { unbind(was); }
         slices++; longest = Math.max(longest, performance.now() - s0);
-        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : inFlight() >= FLIGHT ? new Promise(r => setTimeout(r, 10)) : idle());
+        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : inFlight() >= flight ? new Promise(r => setTimeout(r, 10)) : idle());
       }
       // then wait for the GPU to finish them (KHR_parallel_shader_compile), as compileAsync does
       const all = new Set(mats);

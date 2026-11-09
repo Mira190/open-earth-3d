@@ -32,6 +32,7 @@ const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
   };
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
+  await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   const t0 = Date.now();
   await p.waitForFunction('window.__game.ways.ready', null, { timeout: 300000 });
   const stats = await p.evaluate(() => window.__game.ways.stats());
