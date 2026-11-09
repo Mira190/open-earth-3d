@@ -332,17 +332,31 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       const spool = st.on ? 1 : 0;
       st.rotor += (spool - st.rotor) * Math.min(1, dt / 1.2);
       const ready = st.rotor > 0.9;
-      // controls: forward thrust along the heading, yaw, climb; the assists do the rest
+      // controls: forward thrust along the heading, yaw, climb; the assists do the rest (issue 335). The
+      // flight is assisted, as the helicopters of open-world games fly (GTA V's, Just Cause's) and as a
+      // pilot flies a coordinated turn: the way it goes follows the nose (the sideways slip dies away in
+      // a quarter of a second, rather than the old drift on ice), let go of the stick and it comes to a
+      // hover in about three seconds (it coasted for ten), back on it while going forward and it brakes
+      // hard before it backs (slowly), and at speed it turns in a wider, banked arc rather than spinning
+      // on the spot as it does at a hover
       const fwd = st.on ? (inp.fwd || 0) : 0, turn = st.on ? (inp.turn || 0) : 0, lift = st.on && ready ? (inp.lift || 0) : 0;
       const hx = Math.sin(st.h), hy = Math.cos(st.h);
-      const accel = 15, drag = 0.3;
-      st.vx += (hx * fwd * accel - st.vx * drag) * dt;
-      st.vy += (hy * fwd * accel - st.vy * drag) * dt;
-      if (st.landed && lift <= 0) { st.vx *= 0.8; st.vy *= 0.8; }
-      st.yawRate += (turn * 1.3 - st.yawRate) * Math.min(1, dt * 4);
+      let u = st.vx * hx + st.vy * hy, w = st.vx * hy - st.vy * hx; // along the nose, and to its right
+      const u0 = u;
+      const ACCEL = 15, DRAG = 0.3, HOVER = 0.9, BRAKE = 22, BACK = 12, SLIP = 4;
+      if (fwd > 0 || (fwd < 0 && u <= 0.5)) u += (fwd * ACCEL - u * DRAG) * dt; // (on, or backing: top speed 50 m/s forward)
+      else if (fwd < 0) u = Math.max(0, u - BRAKE * -fwd * dt); // going forward: brakes first
+      else u -= u * Math.min(1, HOVER * dt); // let go: to a hover
+      if (u < -BACK) u = -BACK;
+      w -= w * Math.min(1, SLIP * dt);
+      if (st.landed && lift <= 0) { u *= 0.8; w *= 0.8; }
+      st.vx = hx * u + hy * w; st.vy = hy * u - hx * w;
+      st.acc = st.landed ? 0 : (u - u0) / Math.max(dt, 1e-3); // (along the nose: the pitch below)
+      const yawMax = 1.3 - 0.55 * Math.min(1, Math.abs(u) / 50); // rad/s: 1.3 at a hover, 0.75 at top speed
+      st.yawRate += (turn * yawMax - st.yawRate) * Math.min(1, dt * 4);
       if (!st.landed || lift > 0) st.h += st.yawRate * dt;
       const vzTarget = lift * 8;
-      st.vz += (vzTarget - st.vz) * Math.min(1, dt * 3);
+      st.vz += (vzTarget - st.vz) * Math.min(1, dt * 3.5);
       if (!st.on && !st.landed) st.vz -= 6 * dt; // no power: settle
       let nx = st.x + st.vx * dt, ny = st.y + st.vy * dt, nz = Math.min(900, st.z + st.vz * dt);
       const m = nav.col.slide(st.x, st.y, nx - st.x, ny - st.y, 3.2, st.z + 0.3, st.z + 3.6);
@@ -379,10 +393,12 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       st.speed = Math.hypot(st.vx, st.vy);
       st.fwd += (fwd - st.fwd) * Math.min(1, dt * 3);
       st.lift += (lift - st.lift) * Math.min(1, dt * 3);
-      // visual attitude: nose down when accelerating forward, bank into turns
+      // the attitude the flight asks for: nose down to speed up and to hold speed against the drag, nose up
+      // (a flare) to brake; banked into a turn by as much as the turn needs (tan bank = speed x turn rate / g)
       const along = st.vx * hx + st.vy * hy;
-      st.pitch += ((st.landed ? 0 : clamp(fwd * 0.22 + along * 0.002, -0.35, 0.35)) - st.pitch) * Math.min(1, dt * 3);
-      st.roll += ((st.landed ? 0 : -st.yawRate * 0.18 * Math.min(1, st.speed / 10)) - st.roll) * Math.min(1, dt * 3);
+      st.accS = (st.accS || 0) + ((st.acc || 0) - (st.accS || 0)) * Math.min(1, dt * 4);
+      st.pitch += ((st.landed ? 0 : clamp(st.accS * 0.022 + along * 0.0035, -0.32, 0.38)) - st.pitch) * Math.min(1, dt * 3);
+      st.roll += ((st.landed ? 0 : -clamp(Math.atan(along * st.yawRate / 9.81), -0.5, 0.5) - st.yawRate * 0.06) - st.roll) * Math.min(1, dt * 3);
       g.position.copy(W(st.x, st.y, st.z));
       g.rotation.set(0, 0, 0);
       g.rotateY(Math.PI - st.h);

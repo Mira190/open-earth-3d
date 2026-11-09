@@ -192,7 +192,9 @@ so, under tile rather than bark.
 ![The Inari sanctuaries in the precinct, day, dusk and night (#307)](../images/higashiyama/inari-307.jpg)
 
 Still not checked: the Tokiwa-den's and the reception halls' roofs and colours (Commons and Flickr searched again in
-#307: nothing; a wedding review calls the reception hall stone-built from outside, nothing on its roof).
+#307 and #323: nothing; a wedding review calls the reception hall stone-built from outside, nothing on its roof). The
+shrine's builder, Shinwa Kensetsu, lists both as reinforced-concrete buildings of 1997 (sinwakensetu.co.jp, works),
+which fits a concrete hall dressed in the precinct's colours; nothing more is published.
 
 | Photograph | Author | Licence |
 |---|---|---|

@@ -30,10 +30,13 @@ const [,, city = 'shibuya', outDir = '.', secs = '40', ax, ay] = process.argv;
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => { const g = window.__game; if (g.cine && g.cine.active) g.cine.skip(); g.advance(3); });
   await p.evaluate(() => {
-    window.__frames = { cb: null, t: performance.now() };
-    window.requestAnimationFrame = cb => { window.__frames.cb = cb; return 1; };
+    // (every callback asked for in a frame, not only the last: a one-off animation's, a toast fading, asked after the
+    // game's own frame would otherwise take its place, and the game would stop)
+    window.__frames = { cbs: [], t: performance.now() };
+    window.requestAnimationFrame = cb => { window.__frames.cbs.push(cb); return window.__frames.cbs.length; };
+    window.__frames.step = t => { const q = window.__frames.cbs; window.__frames.cbs = []; for (const f of q) f(t); };
   });
-  await p.waitForFunction(() => window.__frames.cb, null, { timeout: 30000 });
+  await p.waitForFunction(() => window.__frames.cbs.length, null, { timeout: 30000 });
   await p.evaluate(([ax, ay]) => {
     const g = window.__game;
     if (ax != null) { const s = g.nav.stand(+ax, +ay, 0, { rMax: 3 }); if (s) { g.player.x = s.x; g.player.y = s.y; g.player.z = s.z; } }
@@ -43,7 +46,7 @@ const [,, city = 'shibuya', outDir = '.', secs = '40', ax, ay] = process.argv;
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   let n = 0;
-  const tick = async save => { await p.waitForFunction(() => window.__frames.cb, null, { timeout: 60000 }); return step(save); };
+  const tick = async save => { await p.waitForFunction(() => window.__frames.cbs.length, null, { timeout: 60000 }); return step(save); };
   const step = save => p.evaluate(save => {
     const g = window.__game, F = window.__frames, P = g.crowd.P, me = g.player;
     // aim at the thickest of the crowd within 18 m, eased
@@ -51,7 +54,7 @@ const [,, city = 'shibuya', outDir = '.', secs = '40', ax, ay] = process.argv;
     for (let i = 0; i < g.crowd.active; i++) { const q = P[i]; if (q.line < 0) continue; const d = Math.hypot(q.x - me.x, q.y - me.y); if (d > 3 && d < 18) { let c = 0; for (let j = 0; j < g.crowd.active; j++) { const o = P[j]; if (o.line >= 0 && Math.abs(o.x - q.x) < 3 && Math.abs(o.y - q.y) < 3) c++; } if (c > bn) { bn = c; bx = q.x; by = q.y; } } }
     if (bn) { const yaw = Math.atan2(bx - me.x, by - me.y); const w = window.__aim == null ? yaw : window.__aim + Math.atan2(Math.sin(yaw - window.__aim), Math.cos(yaw - window.__aim)) * 0.01; window.__aim = w; }
     g.cam.mode = 'chase'; g.cam.dist = 8; g.cam.pitch = 0.42; if (window.__aim != null) { g.cam.yaw = window.__aim; me.h = window.__aim; }
-    const cb = F.cb; F.cb = null; F.t += 1000 / 30; cb(F.t);
+    F.t += 1000 / 30; F.step(F.t);
     return save ? document.getElementById('game-gl').toDataURL('image/jpeg', 0.85) : null;
   }, save);
   for (let i = 0; i < 30; i++) await tick(false);

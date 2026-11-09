@@ -1424,6 +1424,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // elsewhere). The crowd keeps out of the cars' footprints (cars.near), and opts.nav stops the
   // player walking into one (nav.movers).
   const LANE = 1.7;    // a lane's centre, on the keep side of the road's line (m)
+  // your car on a course into one (issue 335): a driver notices it up to DODGE_T s before it would hit,
+  // swings up to DODGE_OUT m out of its way (to the kerb, or out over the centre line with nothing coming
+  // when you pass on the kerb side), brakes hard unless you come up from behind, and keeps that up for
+  // at least DODGE_HOLD s; a horn at most every HONK_GAP s a car
+  const DODGE_T = 2.2, DODGE_OUT = 1.2, DODGE_HOLD = 1.2, HONK_GAP = 5;
   const PACE = 1.25;   // the traffic drives a quarter over the posted limit, as drivers do on an open street (the data's
                        // limits are the signs': 30 km/h on a side street reads as a crawl in play); a ride's route,
                        // its time and how it passes a queue stay on the limits (cars.js chauffeur)
@@ -1665,7 +1670,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (JN.inScramble && JN.inScramble(tmp.x, tmp.y)) continue;
         c.z = tmp.z;
         if (!clear(tmp.x, tmp.y, 12, c, tmp.z) || overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 3, 1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) continue; // (and not on your car or a ride)
-        c.line = line; c.s = s; c.dir = dir; c.v = L1.v * 0.7; c.stuck = 0; c.rev = null; c.vBend = Infinity; c.nx = undefined; c.plan = c.ex = c.ex2 = c.exA = c.pv = null; c.halt = false; c.q = false; c.off = 0;
+        c.line = line; c.s = s; c.dir = dir; c.v = L1.v * 0.7; c.stuck = 0; c.dodgeT = 0; c.dodgeBrake = false; c.rev = null; c.vBend = Infinity; c.nx = undefined; c.plan = c.ex = c.ex2 = c.exA = c.pv = null; c.halt = false; c.q = false; c.off = 0;
         c.ln = ln; c.lo = lo; c.lcT = 0; c.lnWait = 0;
         c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; // (a wall seen where it was is not one here: looked for at once)
         c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = Math.atan2(tmp.hx, tmp.hy);
@@ -1822,7 +1827,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // (they run the main thread's step). `slots`: how many cars there can be, `active` how many are on now
     const live = [];
     const VIEW = ['line', 's', 'dir', 'x', 'y', 'z', 'h', 'v', 'half', 'hw', 'top', 'taxi', 'hex', 'why', 'youBy', 'heldBy', 'still', 'stuck', 'q', 'toLine', 'lineArm', 'lineEx', 'mv', 'front', 'rev'];
-    const api = { mesh, fleet, C, live, VIEW, slots: C.length, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [], stop: c => { c.v = 0; } };
+    const api = { mesh, fleet, C, live, VIEW, slots: C.length, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [], honks: [], stop: c => { c.v = 0; } };
     // who goes first where two cars' ways meet (car c's way comes into o's box d metres ahead of its
     // bumper, and o's into c's d2 ahead): read the same way by both, so that one goes and the other
     // waits and never both. A car that can no longer stop short of the place goes; then the one in
@@ -2039,6 +2044,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         onLine.get(c.line).push(i);
       }
       JN.update(dt, t);
+      const you = api.extra.find(o => o.id === 'car' && !o.ahead && o.v > 3); // your car on the move (dodged, below)
       for (const b of blockers) if (!b.half) addBlocker(b.x, b.y, b.z, 0.4); // the player on foot and the NPCs (your car and a ride: below)
       if (crowd) for (let i = 0; i < crowd.active; i++) { const p = crowd.P[i]; if (p.line >= 0) addBlocker(p.x, p.y, p.z, 0.3, i); }
       for (let i = 0; i < n; i++) {
@@ -2294,6 +2300,36 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; youQ = !!b.q && b.qBy !== c; youBy = (b.id || 'you on foot') + (b.parked ? ' parked' : '') + ' ahead'; } // (a ride pulling in still reaches into the lane)
         }
+        // your car coming at it: where the two will be closest, if that is soon and close enough to touch,
+        // it gets out of the way (DODGE_T above): sideways from where your car will pass it, and braking
+        // unless you come up from behind
+        if (you && Math.abs(you.z - c.z) < LEVEL) {
+          const px = you.x - c.x, py = you.y - c.y;
+          if (px * px + py * py < 3600) {
+            const yx = Math.sin(you.h) * you.v, yy = Math.cos(you.h) * you.v, ux = yx - fx * c.v, uy = yy - fy * c.v, uu = ux * ux + uy * uy;
+            const tc = uu > 4 ? -(px * ux + py * uy) / uu : -1;
+            if (tc > 0 && tc < DODGE_T) {
+              const mx = px + ux * tc, my = py + uy * tc, ma = mx * fx + my * fy, mw = -mx * fy + my * fx;
+              if (Math.abs(mw) < c.hw + you.hw + 0.8 && Math.abs(ma) < c.half + you.half + 0.8) {
+                const behindMe = px * fx + py * fy < -c.half && yx * fx + yy * fy > 0; // (you come up from behind it)
+                if (!(c.dodgeT > 0)) {
+                  c.dodgeW = mw; // (where you pass it: + its left; it picks a side once and keeps to it)
+                  if (t - (c.honkAt ?? -HONK_GAP) >= HONK_GAP && px * px + py * py < 1600) { c.honkAt = t; api.honks.push({ x: c.x, y: c.y, z: c.z, d: Math.sqrt(px * px + py * py), bus: c.half > 4 }); }
+                }
+                c.dodgeT = DODGE_HOLD; c.dodgeBrake = !behindMe;
+              }
+            }
+          }
+        }
+        if (c.dodgeT > 0) {
+          c.dodgeT -= dt;
+          // to the kerb (side: + is the left, keeping left), unless you pass it on that side: then out
+          // over the centre line, if nothing is coming the other way
+          const kerb = (c.dodgeW || 0) * side > 0.3 ? 0 : side;
+          const out = kerb ? kerb * DODGE_OUT : oncoming(c, fx, fy, 30) ? 0 : -side * DODGE_OUT;
+          if (Math.abs(out) > Math.abs(swerve)) swerve = out;
+          if (c.dodgeT <= 0) c.dodgeBrake = false;
+        }
         // a lamp post or a trunk in the way (at a corner taken wide): braked for like a car stopped there
         // (along its way ahead, P, round a corner as it will drive it: a line straight on from its heading
         // crossed the corner of a turn, and a car braked to a stop in the junction for the walk-signal post
@@ -2335,7 +2371,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // (and such a street is single file there: it counts as in a narrow stretch, so that one coming the other
         // way waits short of it, in its lane, as the narrow rule makes moving cars do, rather than brush past, #264)
         if (c.inWallNow) { c.narrowF = Math.max(c.narrowF || 0, 0.5); c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, 2 * c.half + 1.5); c.narrowIn = 0; }
-        c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
+        c.off += (swerve - c.off) * Math.min(1, dt * (c.dodgeT > 0 ? 4 : c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner; out of your way at once)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
         let atLine = false, lineGap = Infinity;
@@ -2607,6 +2643,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const ld = front || leadX, vl = ld ? (ld.v || 0) * (Math.sin(ld.h) * fx + Math.cos(ld.h) * fy) : 0;
           dv = Math.min(dv, idm(c.v, gap, vl, 2.6, 0.8, 2.5, 3) * dt);
         }
+        if (c.dodgeBrake) dv = Math.min(dv, -6.5 * dt); // (an emergency stop for your car)
         c.v = Math.max(0, c.v + Math.max(-8 * dt, dv)); // (never below a stop: braking for what is close ahead took a stopped car's speed below 0, and it ran away backwards, at up to 17 m/s into the walls, #202)
         let s = c.s + c.dir * c.v * dt, line = c.line, dir = c.dir;
         const away = !eye || Math.hypot(eye.position.x - c.x, -eye.position.z - c.y) > 90;

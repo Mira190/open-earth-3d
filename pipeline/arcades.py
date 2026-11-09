@@ -599,7 +599,8 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
     palette = rcfg.get("palette", {})
     closed = set(rcfg.get("closed", []))
     glazed = set(rcfg.get("glazed", []))
-    glass = B["styles"].index("glass") if "glass" in B.get("styles", []) else None
+    canopies = rcfg.get("canopies", {})
+    glass =B["styles"].index("glass") if "glass" in B.get("styles", []) else None
     eaves = {r[0]: r for r in B.get("r", [])}
     road_lines = []
     for o in G.get("paths", {}).get("road", []):
@@ -741,7 +742,23 @@ def finish(out_dir, B, G, polys, solid_tree, foot, foot_tree):
                 s[2] = max(MIN_CLEAR_DM, lo)
                 meta[2] = meta[9] = round(s[3] / 10, 1)
                 n += 1
-        if si not in eaves and P.area <= PITCH_MAX_M2:
+        # a canopy checked against a photograph (city.json roofs.canopies, by OSM id: top_m, soffit_m, colour of its
+        # fascia and posts, roof): #323, Keio University Hospital's drop-off canopy, dark charcoal and flat, a storey up
+        cn = canopies.get(oid)
+        if cn:
+            want_top, want_lo = round(10 * cn["top_m"]), round(10 * cn.get("soffit_m", cn["top_m"] - 0.9))
+            if (s[3], s[2]) != (want_top, want_lo):
+                r = eaves.get(si)
+                if r is not None:
+                    drop_roof(r, want_top)
+                s[3], s[2] = want_top, want_lo
+                meta[2] = meta[9] = round(want_top / 10, 1)
+                n += 1
+            for k, key in ((7, "colour"), (8, "roof")):
+                if cn.get(key) and len(meta) > k and meta[k] != cn[key]:
+                    meta[k] = cn[key]
+                    n += 1
+        if si not in eaves and P.area <= PITCH_MAX_M2 and not cn:
             r = pitched_roof(B, s, si, P, t, here, colour)
             if r is not None:
                 new_roofs.append(r)

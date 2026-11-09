@@ -82,8 +82,11 @@ module.exports = async function promenadeWalk(p) {
     }
     // up the seating steps along the wall (the Horikawa's between Nijo and Oshikoji) from the floor to the top tier,
     // and down again
-    if (IN.seats && IN.seats.length) {
-      const q = IN.seats[Math.floor(IN.seats.length / 2)], mid = q.len / 2;
+    // (each block of them: the pieces that follow one another along a wall)
+    const blocks = [];
+    for (const q of IN.seats || []) { const l = blocks[blocks.length - 1]; if (l && Math.hypot(q.x - l[l.length - 1].x, q.y - l[l.length - 1].y) < 8) l.push(q); else blocks.push([q]); }
+    for (const blk of blocks) {
+      const q = blk[Math.floor(blk.length / 2)], mid = q.len / 2;
       const at2 = d => [q.x + q.ux * mid - q.nx * d, q.y + q.uy * mid - q.ny * d];
       const top = q.zf + q.rise * q.n;
       let start = null;
@@ -95,9 +98,46 @@ module.exports = async function promenadeWalk(p) {
         const up = go(...at2(q.tread * 0.4), 0.3) && Math.abs(pl.z - top) < 0.15;
         const zUp = pl.z;
         const down = go(...at2(start), 0.4) && Math.abs(pl.z - IN.promenade(...at2(start)).z) < 0.2;
-        checks.push([up && down, `climbs the seating steps to the top tier and back down (${q.n} tiers of ${q.rise} m: feet ${f2(zUp)} m for ${f2(top)} m, then ${f2(pl.z)} m)`]);
+        checks.push([up && down, `climbs the seating steps at ${q.x.toFixed(0)},${q.y.toFixed(0)} to the top tier and back down (${q.n} tiers of ${q.rise} m: feet ${f2(zUp)} m for ${f2(top)} m, then ${f2(pl.z)} m)`]);
       }
     }
+    // across the stream on each slab and each row of stepping stones (#322), from the floor on one side to the floor
+    // on the other and back, never down in the stream
+    const rows = [];
+    for (const c of IN.crossings || []) {
+      const r = rows.find(r => Math.hypot(r.x - c.x, r.y - c.y) < 1.6 && (r.m > 0.1) === (c.m > 0.1));
+      if (r) { r.k++; r.x += (c.x - r.x) / r.k; r.y += (c.y - r.y) / r.k; r.half = Math.max(r.half, Math.hypot(c.x - r.x, c.y - r.y) + c.len / 2); } else rows.push({ x: c.x, y: c.y, ux: c.ux, uy: c.uy, half: c.len / 2, zt: c.zt, m: c.m, k: 1 });
+    }
+    const crossBad = [];
+    for (const r of rows) {
+      const side = s => { for (let d = r.half + 0.4; d < r.half + 3; d += 0.2) { const q = [r.x + r.ux * d * s, r.y + r.uy * d * s], pr = IN.promenade(...q); if (pr && !pr.flight && !pr.crossing) return [q, pr.z]; } return null; };
+      const a = side(-1), b = side(1), what = r.m > 0.1 ? 'stones' : 'slab';
+      if (!a || !b) { crossBad.push(`${what} at ${r.x.toFixed(0)},${r.y.toFixed(0)}: no floor either side`); continue; }
+      Object.assign(pl, { mode: 'foot', vehicle: null, x: a[0][0], y: a[0][1], z: a[1], ground: true, vz: 0, speed: 0 });
+      g.advance(0.1);
+      let low = Infinity;
+      const track = (tx, ty) => { for (let i = 0; i < 200; i++) { const d = Math.hypot(tx - pl.x, ty - pl.y); if (d < 0.3) return true; pl.h = g.cam.yaw = Math.atan2(tx - pl.x, ty - pl.y); g.advance(0.05, ['KeyW']); low = Math.min(low, pl.z); } return false; };
+      const over = track(...b[0]) && Math.abs(pl.z - b[1]) < 0.15, back = over && track(...a[0]) && Math.abs(pl.z - a[1]) < 0.15;
+      if (!over || !back || low < r.zt - 0.12) crossBad.push(`${what} at ${r.x.toFixed(0)},${r.y.toFixed(0)}: ${over ? (back ? `down to ${f2(low)} m for a top at ${f2(r.zt)} m` : 'not back') : `stopped at ${f2(pl.z)} m`}`);
+    }
+    if (rows.length) checks.push([!crossBad.length, `walks over the Horikawa's ${rows.length} slabs and rows of stepping stones and back${crossBad.length ? ` (${crossBad.join('; ')})` : ''}`]);
+    // down and up the floor's steps where it drops with the stream (#322): over the widest riser of each, both ways
+    const steps = [];
+    for (const b of IN.walledBodies || []) for (const [ax, ay, bx, by, zt, zb] of (b.terrace && b.terrace.risers) || []) {
+      const L = Math.hypot(bx - ax, by - ay);
+      if (L > 2 && !IN.onDeck((ax + bx) / 2, (ay + by) / 2) && !IN.onDeck(ax + (bx - ax) * 0.25, ay + (by - ay) * 0.25)) steps.push({ mx: (ax + bx) / 2, my: (ay + by) / 2, nx: (ay - by) / L, ny: (bx - ax) / L, zt, zb, L });
+    }
+    const stepBad = [];
+    for (const s of steps) {
+      const p0 = [s.mx + s.nx * 1.2, s.my + s.ny * 1.2], p1 = [s.mx - s.nx * 1.2, s.my - s.ny * 1.2];
+      const z0 = IN.promenade(...p0), z1 = IN.promenade(...p1);
+      if (!z0 || !z1) { stepBad.push(`${s.mx.toFixed(0)},${s.my.toFixed(0)}: no floor`); continue; }
+      Object.assign(pl, { mode: 'foot', vehicle: null, x: p0[0], y: p0[1], z: z0.z, ground: true, vz: 0, speed: 0 });
+      g.advance(0.1);
+      const ok = go(...p1, 0.3) && Math.abs(pl.z - z1.z) < 0.05 && go(...p0, 0.3) && Math.abs(pl.z - z0.z) < 0.05;
+      if (!ok || Math.abs(Math.abs(z0.z - z1.z) - (s.zt - s.zb)) > 0.03) stepBad.push(`${s.mx.toFixed(0)},${s.my.toFixed(0)}: feet ${f2(pl.z)} m, floor ${f2(z0.z)} / ${f2(z1.z)} m for a step of ${f2(s.zt - s.zb)} m`);
+    }
+    if (steps.length) checks.push([!stepBad.length, `walks down and up the Horikawa floor's ${steps.length} steps with its drops${stepBad.length ? ` (${stepBad.join('; ')})` : ''}`]);
     // and every flight: down from its crossing to the floor and back up
     const bad = [];
     for (const [i, f] of IN.flights.entries()) {
