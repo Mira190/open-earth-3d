@@ -236,7 +236,7 @@ ${pools ? `if (oePd > 0.0) { vec2 oeR = oeRipple(vOeW.xz, oeCamD);
         // reflection of the open sky (the only one the environment map holds) is held well down
         .replace('#include <lights_fragment_maps>', `#include <lights_fragment_maps>
 #if defined( RE_IndirectSpecular )
-  radiance *= mix(1.0, 0.42, max(oeGl, oePd)) * (1.0 - 0.6 * oeSn);
+  radiance *= mix(1.0, mix(0.42, 0.95, uOeGlint), max(oeGl, oePd)) * (1.0 - 0.6 * oeSn); // (and when the sun is back out the sky it mirrors is bright again)
 #endif`);
     } else {
       sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -662,7 +662,7 @@ void main() {
     const cur = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 }, target = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 };
     let custom = null, wetPin = null, depthPin = null, lastKind = 'clear', windRun = 0, runX = 0, runZ = 0;
     // the light as the hour and the weather left it (light, air), which a lightning flash adds to and gives back
-    const lit = { hemi: 0, exp: 1, flash: 0, fog: new THREE.Color(), haze: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color() };
+    const lit = { hemi: 0, exp: 1, flash: 0, hazeOn: 0, hazeH: 0.05, fog: new THREE.Color(), haze: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color() };
     // lightning: the flash in play (its strokes: [start s, peak 0..1]), the next one's time, the thunder still on its way
     const bolt = { next: -1, strokes: null, t0: 0, dist: 0, thunder: [], count: 0, last: null };
     // the wind: the season's mean (the climate's monthly wind_ms, or the wind the city's waves were made
@@ -693,7 +693,7 @@ void main() {
           gl_Position = a; }`,
       fragmentShader: `uniform float uFlash; varying float vS; varying float vW;
         void main() { float c = 1.0 - abs(vS); gl_FragColor = vec4(vec3(0.82, 0.88, 1.0) * (c * c * 26.0 * uFlash * (0.35 + 0.65 * min(1.0, vW / 2.0))), 1.0); }`,
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, toneMapped: false });
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, toneMapped: false, side: THREE.DoubleSide }); // (its quads face either way as the channel turns)
     const boltMesh = new THREE.Mesh(boltGeo, boltMat);
     boltMesh.frustumCulled = false; boltMesh.visible = false; boltMesh.renderOrder = 4; boltMesh.userData.oeNoOcc = true;
     world.add(boltMesh);
@@ -760,7 +760,11 @@ void main() {
         }
         renderer.toneMappingExposure = lit.exp * (1 + 0.35 * k);
         if (world.fog) world.fog.color.copy(lit.fog).lerp(new THREE.Color(0.62, 0.68, 0.85), Math.min(0.7, 0.55 * k));
-        if (su && su.uHaze) su.uHaze.value.copy(lit.haze).lerp(new THREE.Color(0.7, 0.76, 0.95), Math.min(0.8, 0.7 * k));
+        if (su && su.uHaze) { // (the sky: its haze band takes the flash and reaches higher up the dome for those frames)
+          su.uHaze.value.copy(lit.haze).lerp(new THREE.Color(0.7, 0.76, 0.95), Math.min(0.8, 0.7 * k));
+          if (su.uHazeOn) su.uHazeOn.value = Math.max(lit.hazeOn, Math.min(1, 0.9 * k));
+          if (su.uHazeH) su.uHazeH.value = lit.hazeH + 0.55 * Math.min(1, k);
+        }
         lit.flash = fl;
       }
       // thunder, when it arrives
@@ -924,7 +928,7 @@ void main() {
         if (Wd.hemi) { lit.sky.copy(Wd.hemi.color); if (Wd.hemi.groundColor) lit.ground.copy(Wd.hemi.groundColor); }
         lit.hemi = Wd.hemi ? Wd.hemi.intensity : 0; lit.exp = renderer.toneMappingExposure; lit.flash = 0;
         if (fog) lit.fog.copy(fog.color);
-        if (su && su.uHaze) lit.haze.copy(su.uHaze.value);
+        if (su && su.uHaze) { lit.haze.copy(su.uHaze.value); lit.hazeOn = su.uHazeOn ? su.uHazeOn.value : 0; lit.hazeH = su.uHazeH ? su.uHazeH.value : 0.05; }
       },
       update(dt, tSec, focus) {
         // what the weather should be now
