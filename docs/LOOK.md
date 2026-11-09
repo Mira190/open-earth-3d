@@ -34,7 +34,8 @@ sun's height: by day a little warmth and contrast; in the golden hour (sun at 3�
 blue hour (−4°) a lift and a cool balance, so the dusk sky and the first lights read together
 rather than the street going grey; at night (−12°) the deepest contrast, with `uNightTone`
 taking the shadows to blue and the lights to amber as before. Bloom keeps its high threshold
-(6 by day, 1.6 at night), so lit walls do not bloom; only lamps, signs and screens do. A city
+(6 by day, 1.6 at night), so lit walls do not bloom; only lamps, signs and screens do. All of
+it is uniforms of the one pass that ends the frame (`web/lens.js`): a look costs no pass. A city
 keys its own: `game.look.grade: {night, blue, golden, day}`, each `{ev, tint, sat, contrast}`.
 
 ### The screens light the street (`web/neon.js`)
@@ -95,20 +96,21 @@ lower roughness, the screens' area lights.
 ### Contact shadows (`web/game/ao.js`, issue 138)
 
 By day the facades and street corners read flat because nothing darkened where they meet. On
-the medium and high tiers one pass after the scene is drawn (before the bloom) adds ambient
-occlusion from the depth buffer alone, the city is not drawn a second time: at half the screen's
-size each pixel's position comes from depth and its normal from its neighbours, a spiral of 16
-samples (8 on the medium tier) in a disc of up to 1.8 m near the camera and a little more further
-off gathers the occlusion with SAO's falloff, two depth-aware blurs take the noise out, and a
-depth-aware upsample darkens the frame by it. It fades out between 160 and 420 m, so the far city
-keeps the photograph's light, and is a third weaker at night, when the light is the street's own.
-The low tier is untouched.
+the medium and high tiers ambient occlusion is gathered from the depth buffer alone (the city is
+not drawn a second time): at half the screen's size each pixel's position comes from depth and its
+normal from its neighbours, a spiral of 16 samples (8 on the medium tier) in a disc of up to 1.8 m
+near the camera and a little more further off gathers the occlusion with SAO's falloff, and two
+depth-aware blurs take the noise out. The frame's one full-resolution pass, the lens, darkens each
+pixel by it as it reads the scene, upsampled by depth (issue 352: before, a pass of its own drew
+the whole frame again for this). It fades out between 160 and 420 m, so the far city keeps the
+photograph's light, and is a third weaker at night, when the light is the street's own. The low
+tier is untouched.
 
-A frame-time budget (20 ms on the high tier, 25 ms on the medium) watches the frame: over it for
-three seconds, AO steps down to the lite level and then off; when stepping down did not make the
-frame faster, AO was not the cost and comes back. `?ao=0` turns it off, `?ao=1` keeps it whatever
-the budget, `?ao=show` shows the occlusion alone; stills take `"ao"` in their views
-(`tools/game_shot.js`) and `tools/ao_cost.js` measures what each level costs.
+The frame-time governor (`web/quality.js`, [PERFORMANCE.md](PERFORMANCE.md)) sets its ceiling on a
+device that cannot keep up: the lite level, then off, and back when the frame time allows. `?ao=0`
+turns it off, `?ao=1` keeps it whatever the governor says, `?ao=show` shows the occlusion alone;
+stills take `"ao"` in their views (`tools/game_shot.js`) and `tools/ao_cost.js` measures what each
+level costs.
 
 ### The crowd (`web/game/game.js`, `game.crowd`)
 
