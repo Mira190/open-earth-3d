@@ -139,6 +139,70 @@
     return S;
   }
 
-  const api = { CELL, model, tier, sweep };
+  // ---- the sun's shadow of the whole city as a height field (issue 358, B4)
+  // G: a surface model { nx, ny, cell, data (tops, m), built (1 where a building stands) }, rows from the north.
+  // (ex, ny): the horizontal direction to the sun, east and north; tanEl: the tangent of its elevation.
+  // Returns { w, h, data: Uint16Array of half floats, two a texel }: the height under which the sun is hidden,
+  //   first as a roof sees it (its own building's top counts), then as the ground and the walls do (under a
+  //   building: the open ground beside it), at `scale` cells a texel.
+  // One pass: a cell's shadow height is the higher of the top and the shadow height one step towards the sun,
+  // less the sun's climb over that step (between two cells there, their mean by how near each is).
+  function sunShadow(G, ex, en, tanEl, scale = 2) {
+    const { nx, ny, cell, data: top, built } = G, hs = new Float32Array(nx * ny), NONE = -1e4;
+    const ux = ex, ur = -en, col = Math.abs(ux) >= Math.abs(ur); // (rows go south)
+    const major = col ? ux : ur, minor = (col ? ur : ux) / Math.abs(major), drop = cell * Math.sqrt(1 + minor * minor) * tanEl;
+    const N1 = col ? nx : ny, N2 = col ? ny : nx, dir = major > 0 ? -1 : 1; // towards the sun is +major: start at that edge
+    const at = col ? (a, b) => b * nx + a : (a, b) => a * nx + b;
+    const f0 = Math.floor(minor), fr = minor - f0;
+    for (let k = 0, a = dir > 0 ? 0 : N1 - 1; k < N1; k++, a += dir) {
+      const up = a - dir; // the line one step towards the sun
+      for (let b = 0; b < N2; b++) {
+        let v = NONE;
+        if (up >= 0 && up < N1) {
+          const b0 = b + f0, b1 = b0 + 1;
+          const v0 = b0 >= 0 && b0 < N2 ? Math.max(top[at(up, b0)], hs[at(up, b0)]) : NONE, v1 = b1 >= 0 && b1 < N2 ? Math.max(top[at(up, b1)], hs[at(up, b1)]) : NONE;
+          v = (fr > 0 ? v0 + (v1 - v0) * fr : v0) - drop;
+          if (v < NONE) v = NONE;
+        }
+        hs[at(a, b)] = v;
+      }
+    }
+    // for the ground and the walls: a built cell takes the lowest of the open cells round it, a few rings deep
+    const gr = hs.slice();
+    if (built) {
+      let open = Uint8Array.from(built, v => (v ? 0 : 1));
+      for (let pass = 0; pass < 3; pass++) {
+        const next = open.slice();
+        for (let r = 1; r < ny - 1; r++) for (let c = 1; c < nx - 1; c++) {
+          const i = r * nx + c;
+          if (open[i]) continue;
+          let m = Infinity;
+          if (open[i - 1] && gr[i - 1] < m) m = gr[i - 1];
+          if (open[i + 1] && gr[i + 1] < m) m = gr[i + 1];
+          if (open[i - nx] && gr[i - nx] < m) m = gr[i - nx];
+          if (open[i + nx] && gr[i + nx] < m) m = gr[i + nx];
+          if (m < Infinity) { gr[i] = m; next[i] = 1; }
+        }
+        open = next;
+      }
+    }
+    const w = Math.floor(nx / scale), h = Math.floor(ny / scale), out = new Uint16Array(2 * w * h), n = scale * scale;
+    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+      let a = 0, g = 0;
+      for (let j = 0; j < scale; j++) for (let i = 0; i < scale; i++) { const q = (r * scale + j) * nx + c * scale + i; a += hs[q]; g += gr[q]; }
+      out[2 * (r * w + c)] = half(a / n); out[2 * (r * w + c) + 1] = half(g / n);
+    }
+    return { w, h, data: out };
+  }
+  // a number as a 16-bit float (the texture's type: filtered on every WebGL 2 device, which 32-bit ones are not)
+  const F32 = new Float32Array(1), U32 = new Uint32Array(F32.buffer);
+  function half(v) {
+    F32[0] = Math.max(-60000, Math.min(60000, v));
+    const x = U32[0], s = (x >> 16) & 0x8000, e = ((x >> 23) & 0xff) - 112, m = x & 0x7fffff;
+    if (e <= 0) return e < -10 ? s : s | ((m | 0x800000) >> (14 - e)); // (small: a subnormal half, or zero)
+    return e >= 31 ? s | 0x7bff : s | (e << 10) | (m >> 13);
+  }
+
+  const api = { CELL, model, tier, sweep, sunShadow };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.OEVisSweep = api;
 })(typeof self !== 'undefined' ? self : this);

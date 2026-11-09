@@ -7,7 +7,8 @@ scene.json into landmarks.bin, game.bin, terrain.bin, places.bin and scene.bin.
     python pipeline/pack.py --check         # exit 1 if any pack is missing or stale
 
 It also keeps each live city's vis.bin (the occluder raster of pipeline/visibility.py, which the page's
-visibility sweep reads) in step with its buildings.json: made when missing or stale, and checked by --check.
+visibility sweep reads) and skyvis.webp (the sky its ground sees, pipeline/skyvis.py) in step with its
+buildings.json: made when missing or stale, and checked by --check.
 
 buildings.bin is made for every city; the others for the live cities (cities/index.json
 less "parked") and for any city that already has one. The JSON stays the pipeline's source: every step
@@ -504,10 +505,12 @@ def main(argv):
             raise SystemExit(f"no buildings.json for {c}")
     every = [(c, n) for c in (named or cities()) for n in packs(c)]
     sys.path.insert(0, os.path.join(ROOT, "pipeline"))
+    import skyvis
     import visibility
     if check:
         bad = [(c, n, s) for c, n in every if (s := stale(c, n))]
         bad += [(c, "vis.json", s) for c in vis_cities(named) if (s := visibility.stale(c))]
+        bad += [(c, "skyvis.json", s) for c in vis_cities(named) if (s := skyvis.stale(c))]
         for c, n, s in bad:
             print(f"FAIL pack   {c}: {n[:-5]}.bin {s}; run python pipeline/pack.py {c}")
         if not bad:
@@ -524,6 +527,10 @@ def main(argv):
     vis = [c for c in vis_cities(named) if named or visibility.stale(c)]
     if vis:
         visibility.main(vis)
+    # and the sky its ground sees (skyvis.webp, pipeline/skyvis.py), from its buildings and terrain: seconds
+    sky = [c for c in vis_cities(named) if named or skyvis.stale(c)]
+    if sky:
+        skyvis.main(sky)
     return 0
 
 

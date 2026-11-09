@@ -4,7 +4,7 @@
 // with S null when the eye stands in an occluder.
 'use strict';
 importScripts('visibility-sweep.js');
-let M = null;
+let M = null, DSM = null;
 
 async function load(url, terrain, keep) {
   const res = await fetch(url);
@@ -25,6 +25,14 @@ self.onmessage = async e => {
   if (d.init) {
     try { const head = await load(d.init.url, d.init.terrain, d.init.keep); self.postMessage({ ready: true, head, grid: M.grid }); }
     catch (err) { self.postMessage({ failed: String(err && err.message || err) }); }
+    return;
+  }
+  // the sun's shadow height field (world.js farSun): { sunInit: surface model } once, then { sun: { id, ex, en, tanEl, scale } }
+  if (d.sunInit) { DSM = d.sunInit; return; }
+  if (d.sun) {
+    if (!DSM) return;
+    const t0 = performance.now(), r = self.OEVisSweep.sunShadow(DSM, d.sun.ex, d.sun.en, d.sun.tanEl, d.sun.scale);
+    self.postMessage({ sun: d.sun.id, w: r.w, h: r.h, data: r.data, ms: performance.now() - t0 }, [r.data.buffer]);
     return;
   }
   if (!M) return;
