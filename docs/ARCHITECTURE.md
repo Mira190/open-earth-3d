@@ -977,6 +977,14 @@ was spread over the whole Reserve's outline before (#315).
 
 Nothing was copied: the cells are drawn by `build_trees.py` (`blades`, `plumes`).
 
+![Susuki on the Kamo's bank in October, its heads out](images/kyoto/susuki-kamo-october.jpg)
+![The same bank in July, all leaf](images/kyoto/susuki-kamo-july.jpg)
+![In December, the leaves straw and the heads buff](images/kyoto/susuki-kamo-december.jpg)
+![At night](images/kyoto/susuki-kamo-night.jpg)
+![The Kamo's band of susuki from above](images/kyoto/susuki-kamo-from-above.jpg)
+![Tussock and Lomandra in a Barangaroo Reserve bed](images/sydney/barangaroo-beds-lomandra.jpg)
+![Susuki on Shibuya's mapped grassland](images/shibuya/susuki-yoyogi.jpg)
+
 ## The far ground under the landmarks
 
 The game draws its ground from the 5 m grid near the player and from every second
