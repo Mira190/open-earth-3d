@@ -11,17 +11,110 @@
 //   uLift       how far black is lifted to space's #04060b: 1 on the title, less for a city at night
 //   uNightTone  a city at night (0..1): its shadows to blue and its lights to amber, as night photographs
 //               are graded, so the dark between the lights is deep blue rather than grey
+//
+// The game's frame has one full-resolution pass after the scene, and this is it (issue 352):
+// shader({ merge: true, shade }) reads the scene's own target and does, on the way to the grade,
+// what three passes before it used to do each into a full-size half-float target: the contact
+// shadows (shade: GLSL for float oeShade(vec2 uv), ao.js UPSAMPLE), the highlights' roll-off (uCap,
+// uKnee: atmosphere.js) and the bloom (tBloom, the bloom chain's half-size composite; uBloom 0 or 1).
+// merge() is the same without the lens, into a target, for the frames a camera effect comes between
+// (photo mode, an opening shot), and bright() the bloom's first pass, which rolls the highlights off
+// for itself. main() below reads top to bottom as the frame is made: the taps, then the grade from
+// film() down, where a look is keyed at no pass of its own.
 'use strict';
 window.OELens = (function () {
-  function shader() {
+  // a NaN texel would show as a black dot and an infinite one turns the tone curve to NaN; the
+  // test is on the bits, which a compiler's fast maths cannot fold away as it can isnan()
+  const TAP = `
+        vec3 tap(vec2 uv) {
+          vec3 c = texture2D(tDiffuse, uv).rgb;
+          if (any(greaterThan(floatBitsToUint(c) & 0x7fffffffu, uvec3(0x7f800000u)))) return vec3(0.0);
+          return min(c, vec3(1024.0));
+        }`;
+  // Highlights that never blow out (in every view of the game, by day and by night): before the bloom and the
+  // tone curve, each pixel brighter than a knee is rolled off towards a ceiling, scaled as a whole so its hue
+  // holds (an orange lamp stays orange rather than going to a flat yellow-white slab), as hue-preserving tone
+  // mappers do (Polyphony's GT curve, AgX with its emissive-colour option) and as games author emissive light:
+  // a lamp, a lit window or a sign is bright but its face keeps its colour and shape, and only the bloom round
+  // it says how bright it is. The ceiling follows the exposure (uCap, in scene units, atmosphere.js): 2.0
+  // after it, which the tone curve takes to about 0.96, just short of white.
+  const ROLLOFF = `
+        uniform float uCap, uKnee;
+        vec3 rolloff(vec3 c) {
+          c = max(c, 0.0);
+          float peak = max(c.r, max(c.g, c.b)), k = uKnee * uCap;
+          if (peak > k) { float r = uCap - k; c *= (k + r * (1.0 - exp(-(peak - k) / r))) / peak; }
+          return c;
+        }`;
+  const NOSHADE = 'float oeShade(vec2 uv) { return 1.0; }';
+  const VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+  const merged = () => ({ tBloom: { value: null }, uBloom: { value: 0 }, uCap: { value: 8 }, uKnee: { value: 0.55 }, uShadeShow: { value: 0 } });
+
+  // the scene with its contact shadows, rolled-off highlights and bloom, in linear HDR, for a pass that is not the lens
+  function merge({ shade = NOSHADE } = {}) {
     return {
-      uniforms: {
+      uniforms: Object.assign({ tDiffuse: { value: null } }, merged()),
+      vertexShader: VERT,
+      fragmentShader: `
+        uniform sampler2D tDiffuse, tBloom; uniform float uBloom, uShadeShow; varying vec2 vUv;
+        ${TAP}
+        ${ROLLOFF}
+        ${shade}
+        void main() {
+          float k = oeShade(vUv);
+          vec3 col = uShadeShow > 0.5 ? vec3(k) : rolloff(tap(vUv) * k);
+          if (uBloom > 0.0) col += texture2D(tBloom, vUv).rgb;
+          gl_FragColor = vec4(col, 1.0);
+        }`,
+    };
+  }
+
+  // The bloom's first pass, drawn at half the frame's size (uSpread 0.5: each pixel the mean of the four under it)
+  // or a quarter (uSpread 1: four bilinear taps, the sixteen under it): what the frame's one pass will show before
+  // the bloom (shadowed, rolled off), kept where it is brighter than the threshold with a soft knee
+  // (luminosityThreshold, smoothWidth: three.js's LuminosityHighPassShader, whose uniforms these are).
+  // A pixel brighter than a half-float target holds (the sun's glint on glass or water) is stored
+  // as infinite, and a pixel whose maths went wrong on one GPU (a zero-length normal, say) is NaN.
+  // The bloom's blur carried either across the frame: the tone curve turned it into NaN and the
+  // frame went black, and where a GPU's min() returns the number for a NaN (IEEE minNum) the old
+  // ceiling of 60000 turned one bad pixel into a ball of light that flashed as the camera and the
+  // sun moved. tap() drops NaN by its bits, before any arithmetic, and the highlight keeps its colour
+  // but its peak is held to CEIL: far above anything the cities light (their lamps, windows and
+  // sparkles peak near 16), so they bloom as before, while a glint blooms as a small star rather
+  // than a ball.
+  const BLOOM_CEIL = 64.0;
+  function bright({ shade = NOSHADE } = {}) {
+    return {
+      uniforms: { tDiffuse: { value: null }, uSrcPx: { value: new THREE.Vector2() }, uSpread: { value: 0.5 }, luminosityThreshold: { value: 1 }, smoothWidth: { value: 0.01 },
+        uCap: { value: 8 }, uKnee: { value: 0.55 } },
+      vertexShader: VERT,
+      fragmentShader: `
+        uniform sampler2D tDiffuse; uniform vec2 uSrcPx; uniform float uSpread, luminosityThreshold, smoothWidth; varying vec2 vUv;
+        ${TAP}
+        ${ROLLOFF}
+        ${shade}
+        void main() {
+          float k = oeShade(vUv);
+          vec2 o = uSrcPx * uSpread;
+          vec3 c = (rolloff(tap(vUv + vec2(-o.x, -o.y)) * k) + rolloff(tap(vUv + vec2(o.x, -o.y)) * k)
+            + rolloff(tap(vUv + vec2(-o.x, o.y)) * k) + rolloff(tap(vUv + o) * k)) * 0.25;
+          float a = smoothstep(luminosityThreshold, luminosityThreshold + smoothWidth, dot(c, vec3(0.2126, 0.7152, 0.0722)));
+          c *= a;
+          c *= ${BLOOM_CEIL.toFixed(1)} / max(max(max(c.r, c.g), c.b), ${BLOOM_CEIL.toFixed(1)});
+          gl_FragColor = vec4(c, a);
+        }`,
+    };
+  }
+
+  function shader({ merge = false, shade = NOSHADE } = {}) {
+    return {
+      uniforms: Object.assign(merge ? merged() : {}, {
         tDiffuse: { value: null }, uAspect: { value: 1 }, uTime: { value: 0 }, uExposure: { value: 1 }, uFade: { value: 1 }, uFlash: { value: 0 },
         uCA: { value: 0.2 }, uGrain: { value: 0.03 }, uVignette: { value: 0.16 }, uLift: { value: 1 },
         uSunUv: { value: new THREE.Vector2(-9, -9) }, uSunVis: { value: 0 }, uFlare: { value: 1 }, uFlareTint: { value: new THREE.Color(1, 0.8, 0.6) },
         uLetterbox: { value: 0 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uSat: { value: 1 }, uContrast: { value: 0.1 }, uNightTone: { value: 0 },
-      },
-      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      }),
+      vertexShader: VERT,
       fragmentShader: `
         uniform sampler2D tDiffuse; uniform float uAspect; uniform float uTime; uniform float uExposure; uniform float uFade; uniform float uFlash;
         uniform float uCA; uniform float uGrain; uniform float uVignette; uniform float uLift;
@@ -70,17 +163,17 @@ window.OELens = (function () {
           c += ghost(p, s + axis * 2.1, 0.1, vec3(0.6, 0.45, 1.0) * 0.006);
           return c * uSunVis * uFlare;
         }
-        // a NaN texel would show as a black dot and an infinite one turns the tone curve to NaN; the
-        // test is on the bits, which a compiler's fast maths cannot fold away as it can isnan()
-        vec3 tap(vec2 uv) {
-          vec3 c = texture2D(tDiffuse, uv).rgb;
-          if (any(greaterThan(floatBitsToUint(c) & 0x7fffffffu, uvec3(0x7f800000u)))) return vec3(0.0);
-          return min(c, vec3(1024.0));
-        }
+        ${TAP}
+        ${merge ? `uniform sampler2D tBloom; uniform float uBloom, uShadeShow;
+        ${ROLLOFF}
+        ${shade}` : ''}
         void main() {
           vec2 uv = vUv, dc = uv - 0.5;
           vec2 off = dc * uCA * (0.0015 + 0.03 * dot(dc, dc));
-          vec3 col = vec3(tap(uv - off).r, tap(uv).g, tap(uv + off).b);
+          ${merge ? `// the scene as the passes before the lens used to hand it over: contact shadows, highlights rolled off, bloom
+          float k = oeShade(uv);
+          vec3 col = uShadeShow > 0.5 ? vec3(k) : vec3(rolloff(tap(uv - off) * k).r, rolloff(tap(uv) * k).g, rolloff(tap(uv + off) * k).b);
+          if (uBloom > 0.0) col = min(col + texture2D(tBloom, uv).rgb, vec3(1024.0));` : 'vec3 col = vec3(tap(uv - off).r, tap(uv).g, tap(uv + off).b);'}
           if (uSunVis > 0.0) col += flare(uv);
           col = film(col * uExposure * uTint);
           col = max(mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, uSat), 0.0);
@@ -111,16 +204,7 @@ window.OELens = (function () {
     return { u: tmp.x * 0.5 + 0.5, v: tmp.y * 0.5 + 0.5, front: tmp.z < 1 && sunDir.dot(camera.getWorldDirection(new THREE.Vector3())) > 0 };
   }
 
-  // A pixel brighter than a half-float target holds (the sun's glint on glass or water) is stored
-  // as infinite, and a pixel whose maths went wrong on one GPU (a zero-length normal, say) is NaN.
-  // The bloom's blur carried either across the frame: the tone curve turned it into NaN and the
-  // frame went black, and where a GPU's min() returns the number for a NaN (IEEE minNum) the old
-  // ceiling of 60000 turned one bad pixel into a ball of light that flashed as the camera and the
-  // sun moved. The bright pass now drops NaN by its bits, before any arithmetic, and keeps a
-  // highlight's colour but holds its peak to CEIL: far above anything the cities light (their
-  // lamps, windows and sparkles peak near 16), so they bloom as before, while a glint blooms as a
-  // small star rather than a ball.
-  const BLOOM_CEIL = 64.0;
+  // the same guard for three.js's own bright pass (the viewer's and the title's bloom): see bright() above
   function tameBloom(bloom) {
     const m = bloom && bloom.materialHighPassFilter, end = 'gl_FragColor = mix( outputColor, texel, alpha );';
     if (!m || !m.fragmentShader.includes(end)) return;
@@ -162,5 +246,5 @@ window.OELens = (function () {
   function patchChunks() { guardShaders(); loopAreaLights(); }
   if (window.THREE) patchChunks(); else addEventListener('three-ready', patchChunks, { once: true });
 
-  return { shader, sunOnScreen, tameBloom, guardShaders };
+  return { shader, merge, bright, sunOnScreen, tameBloom, guardShaders };
 })();

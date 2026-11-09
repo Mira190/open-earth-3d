@@ -82,7 +82,9 @@ window.OpenEarthGame = async function game(cityId) {
   // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries;
   // reversed depth (where the GPU has EXT_clip_control) with the post stack's float depth buffer (atmosphere.js)
   const QC = window.OEQuality.city();
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias, powerPreference: 'high-performance', reversedDepthBuffer: true });
+  // (the canvas itself is multisampled only where the scene is drawn straight to it: with the post stack the one
+  // thing drawn to the canvas is the lens's triangle, which has no edge to smooth)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias && !(QC.post && window.OELens && window.OEAtmos && (G.sky || {}).post !== false), powerPreference: 'high-performance', reversedDepthBuffer: true });
   const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
   let pxScale = 1; // the share of the tier's pixels drawn: shed() lowers it on a device that can't keep up
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up

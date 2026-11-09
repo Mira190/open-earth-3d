@@ -2,11 +2,22 @@
 // Clouds drift over the city (the r186 Sky's own cloud layer; the model viewer keeps a
 // clear sky for its analysis). After dark the stars come out where they really are for the
 // city and the time (bright named stars, the Southern Cross among them, and a scatter of
-// fainter ones), and the moon rises in its place in its real phase. The frame goes through
-// a post stack: contact shadows (ao.js, on the medium and high tiers), HDR bloom (lamps at
-// night, glints on the water by day), then the title screen's lens (lens.js: its tone curve,
-// grade, grain and vignette), or without it the world's own tone curve, a slight grade and a
-// vignette.
+// fainter ones), and the moon rises in its place in its real phase.
+//
+// The frame (issue 352: a budget of pixels, not a list of passes). The scene is drawn once into a
+// half-float target, multisampled by the tier. Nothing after it runs at the frame's full size but
+// the last pass, the title screen's lens (lens.js), which writes the canvas:
+//   scene   -> S    full size, RGBA16F (+ depth), the tier's MSAA
+//   AO      S.depth -> half size   contact shadows on the medium and high tiers (ao.js)
+//   bloom   S -> half size and below   the bright pass rolls the highlights off as it reads; five
+//           blurred levels and their sum (three.js's UnrealBloomPass's materials and targets, driven
+//           here). The low tier: from a quarter size, four levels, and only from dusk to dawn.
+//   lens    S, AO, bloom -> canvas   the contact shadows upsampled by depth, the highlights' roll-off,
+//           the bloom added, then the tone curve, the hour's grade, grain and vignette
+// Before: AO mix, highlights, the bloom's blend and the lens each drew the whole frame into a
+// full-size half-float target, one after another. A camera effect (photo mode's depth of field, an
+// opening shot's motion blur, an overture's painted look) or a film's own lens (tools/film) brings a
+// full-size pass or two back for as long as it is on: merge -> the effect -> the lens.
 'use strict';
 window.OEAtmos = (function () {
   const RAD = Math.PI / 180;
@@ -109,22 +120,6 @@ window.OEAtmos = (function () {
     m.renderOrder = -1;
     return m;
   }
-
-  // a grade and vignette after tone mapping (sRGB in, sRGB out)
-  const GRADE = {
-    uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.22 }, uSat: { value: 1.14 }, uContrast: { value: 1.08 } },
-    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; uniform float uVignette; uniform float uSat; uniform float uContrast; varying vec2 vUv;
-      void main() {
-        vec4 c = texture2D(tDiffuse, vUv);
-        float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-        c.rgb = mix(vec3(l), c.rgb, uSat);
-        c.rgb = (c.rgb - 0.5) * uContrast + 0.5;
-        vec2 q = vUv - 0.5;
-        c.rgb *= 1.0 - uVignette * smoothstep(0.25, 0.85, dot(q, q) * 2.2);
-        gl_FragColor = vec4(clamp(c.rgb, 0.0, 1.0), c.a);
-      }`,
-  };
 
   // The grade through the day, under the title's lens: keyed on the sun's height (degrees), each key
   // an exposure (ev, on the world's own), a white balance (tint), a saturation and the curve's
@@ -291,26 +286,6 @@ window.OEAtmos = (function () {
       }`,
   });
 
-  // Highlights that never blow out (in every view of the game, by day and by night): before the bloom and the
-  // title's tone curve, each pixel brighter than a knee is rolled off towards a ceiling, scaled as a whole so
-  // its hue holds (an orange lamp stays orange rather than going to a flat yellow-white slab), as hue-preserving
-  // tone mappers do (Polyphony's GT curve, AgX with its emissive-colour option) and as games author emissive
-  // light: a lamp, a lit window or a sign is bright but its face keeps its colour and shape, and only the bloom
-  // round it says how bright it is. The ceiling follows the exposure (uCap, in scene units): 2.0 after it,
-  // which the title's curve takes to about 0.96, just short of white. A small lamp a pixel or two across still
-  // blooms; a lantern filling the frame from a metre away is a soft warm glow, not a white wall.
-  const HIGHLIGHT = () => ({
-    uniforms: { tDiffuse: { value: null }, uCap: { value: 8 }, uKnee: { value: 0.55 } },
-    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; uniform float uCap, uKnee; varying vec2 vUv;
-      void main() {
-        vec4 t = texture2D(tDiffuse, vUv); vec3 c = max(t.rgb, 0.0);
-        float peak = max(c.r, max(c.g, c.b)), k = uKnee * uCap;
-        if (peak > k) { float r = uCap - k, np = k + r * (1.0 - exp(-(peak - k) / r)); c *= np / peak; }
-        gl_FragColor = vec4(c, t.a);
-      }`,
-  });
-
   // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density}); look: game.look ({grade})
   function create(Wd, renderer, camera, { city, sky = {}, look = {} } = {}) {
     const keys = {};
@@ -327,12 +302,13 @@ window.OEAtmos = (function () {
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
-    let highlight = null, composer = null, bloom = null, grade = null, lens = null, anime = null, camFx = null, fx = null, ao = null, rt = null, wantAO = false, sceneDepth = null;
+    let highlight = null, composer = null, bloom = null, lens = null, anime = null, camFx = null, fx = null, ao = null, rt = null, wantAO = false, sceneDepth = null;
+    let night = 0;
     const FAR = 3000, prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4(); // (FAR: the camera effects' depth of field reaches 3 km)
     const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
-    const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
+    const canPost = THREE.ShaderPass && THREE.UnrealBloomPass && window.OELens && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
     if (canPost) {
-      const size = renderer.getSize(new THREE.Vector2());
+      const size = renderer.getDrawingBufferSize(new THREE.Vector2());
       // with the game's reversed depth buffer (game.js), a 32-bit float depth: it resolves a few
       // millimetres at two kilometres, where 24 bits behind a 0.3 m near plane resolve a metre, so
       // distant walls and roofs no longer fight over the same pixels as the camera moves
@@ -340,49 +316,127 @@ window.OEAtmos = (function () {
       // resolved from the multisampled buffer into the texture; elsewhere only its format is wanted
       // the camera's effects (CAMFX) read it too, while they are on
       wantAO = !!window.OEAO && QC.name !== 'low' && sky.ao !== false;
-      const wantFx = !!window.OELens && sky.lens !== false;
-      const deep = renderer.capabilities.reversedDepthBuffer ? new THREE.DepthTexture(size.x, size.y, THREE.FloatType)
-        : wantAO || wantFx ? new THREE.DepthTexture(size.x, size.y, THREE.UnsignedIntType) : null;
+      const deep = new THREE.DepthTexture(size.x, size.y, renderer.capabilities.reversedDepthBuffer ? THREE.FloatType : THREE.UnsignedIntType);
       rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: QC.samples, depthTexture: deep });
-      if (deep) rt.resolveDepthBuffer = wantAO;
-      composer = new THREE.EffectComposer(renderer, rt);
-      if (window.OEWorld && OEWorld.leanComposer) OEWorld.leanComposer(composer); // the scene alone multisampled (world.js)
-      // the scene's pass, noting which target's depth it drew (the composer's two targets take turns)
-      const scenePass = new THREE.RenderPass(world, camera), drawScene = scenePass.render.bind(scenePass);
-      scenePass.render = (r, wb, rb, ...rest) => { sceneDepth = rb.depthTexture || null; return drawScene(r, wb, rb, ...rest); };
-      composer.addPass(scenePass);
-      if (wantAO) { ao = OEAO.create(renderer, camera, { tier: QC.name }); composer.addPass(ao.pass); }
-      if (window.OELens && sky.lens !== false) { highlight = new THREE.ShaderPass(HIGHLIGHT()); composer.addPass(highlight); }
-      bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
-      if (window.OELens) OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
-      composer.addPass(bloom);
-      if (window.OELens && sky.lens !== false) {
-        // the title screen's lens (lens.js): its tone curve, grade, grain and vignette, so the city
-        // looks as the Earth does on the title and as the city does in its film
-        lens = new THREE.ShaderPass(OELens.shader());
-        Object.assign(lens.uniforms, { uGrain: { value: 0.03 }, uCA: { value: 0.15 }, uVignette: { value: 0.18 } });
-        lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
-        camFx = new THREE.ShaderPass(CAMFX());
-        camFx.enabled = false;
-        camFx.uniforms.uReversed.value = renderer.capabilities.reversedDepthBuffer ? 1 : 0;
-        const drawFx = camFx.render.bind(camFx);
-        camFx.render = (...a) => { camFx.uniforms.tDepth.value = sceneDepth; return drawFx(...a); }; // (the depth this frame's scene was drawn with)
-        composer.addPass(camFx);
-        composer.addPass(lens);
-        anime = new THREE.ShaderPass(ANIME());
-        anime.enabled = false;
-        anime.uniforms.uReversed.value = renderer.capabilities.reversedDepthBuffer ? 1 : 0;
-        const drawAnime = anime.render.bind(anime);
-        anime.render = (...a) => { anime.uniforms.tDepth.value = sceneDepth; anime.uniforms.uDepth.value = sceneDepth && anime.depthOn ? 1 : 0; anime.uniforms.uInvProj.value.copy(camera.projectionMatrixInverse); return drawAnime(...a); };
-        composer.addPass(anime);
-      } else {
-        composer.addPass(new THREE.OutputPass());
-        grade = new THREE.ShaderPass(GRADE);
-        composer.addPass(grade);
-      }
+      rt.resolveDepthBuffer = wantAO;
+      sceneDepth = deep;
+      const scenePass = new THREE.RenderPass(world, camera);
+      if (wantAO) ao = OEAO.create(renderer, camera, { tier: QC.name });
+      const shade = ao ? { upsample: OEAO.UPSAMPLE, coarse: OEAO.COARSE } : {};
+      // one triangle over the frame, for every pass drawn here
+      const tri = new THREE.BufferGeometry();
+      tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+      tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
+      const quad = new THREE.Mesh(tri), quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      quad.frustumCulled = false;
+      const draw = (mat, target, clear = true) => { quad.material = mat; renderer.setRenderTarget(target); if (clear && target) renderer.clear(); renderer.render(quad, quadCam); };
+      const mat = (sh, more) => new THREE.ShaderMaterial(Object.assign({ uniforms: sh.uniforms, vertexShader: sh.vertexShader, fragmentShader: sh.fragmentShader, depthTest: false, depthWrite: false }, more));
+      // the bloom: three.js's levels, blurs and sum, with the bright pass of lens.js in place of its own (the
+      // highlights rolled off and the contact shadows in, as the lens will show them) and without its blend onto
+      // the frame, which the lens does as it reads. On the low tier from a quarter of the frame, and four levels.
+      const lowBloom = QC.name === 'low';
+      bloom = new THREE.UnrealBloomPass(lowBloom ? size.clone().multiplyScalar(0.5) : size.clone(), 0.15, 0.4, 6.0);
+      bloom.levels = lowBloom ? 4 : bloom.nMips;
+      if (lowBloom) bloom.compositeMaterial.uniforms.bloomFactors.value = [0.8, 0.6, 0.4, 0.2, 0.0]; // (the half-size level's share left out, the rest as they were)
+      bloom.materialHighPassFilter.dispose(); bloom.blendMaterial.dispose(); bloom._basic.dispose();
+      const brightSh = OELens.bright({ shade: shade.coarse });
+      bloom.highPassUniforms = brightSh.uniforms;
+      bloom.materialHighPassFilter = mat(brightSh);
+      bloom.blendMaterial = bloom._basic = { dispose() {} }; // (never drawn: nothing to compile)
+      bloom.uniforms = { tBloom: { value: bloom.renderTargetsHorizontal[0].texture }, uBloom: { value: 0 } };
+      const drawBloom = () => {
+        const H = bloom.highPassUniforms;
+        H.tDiffuse.value = rt.texture; H.uSrcPx.value.set(1 / rt.width, 1 / rt.height); H.uSpread.value = lowBloom ? 1 : 0.5;
+        H.luminosityThreshold.value = bloom.threshold;
+        draw(bloom.materialHighPassFilter, bloom.renderTargetBright);
+        let input = bloom.renderTargetBright;
+        for (let i = 0; i < bloom.levels; i++) {
+          const m = bloom.separableBlurMaterials[i];
+          m.uniforms.colorTexture.value = input.texture; m.uniforms.direction.value = THREE.UnrealBloomPass.BlurDirectionX;
+          draw(m, bloom.renderTargetsHorizontal[i]);
+          m.uniforms.colorTexture.value = bloom.renderTargetsHorizontal[i].texture; m.uniforms.direction.value = THREE.UnrealBloomPass.BlurDirectionY;
+          draw(m, bloom.renderTargetsVertical[i]);
+          input = bloom.renderTargetsVertical[i];
+        }
+        const C = bloom.compositeMaterial.uniforms;
+        C.bloomStrength.value = bloom.strength; C.bloomRadius.value = bloom.radius;
+        draw(bloom.compositeMaterial, bloom.renderTargetsHorizontal[0]);
+      };
+      // the title screen's lens (lens.js): its tone curve, grade, grain and vignette, so the city looks as the
+      // Earth does on the title and as the city does in its film. lens.merged is the frame's one full-size pass
+      // (it reads the scene, the occlusion and the bloom); lens.material the plain lens, after a camera effect.
+      lens = new THREE.ShaderPass(OELens.shader({ merge: true, shade: shade.upsample }));
+      Object.assign(lens.uniforms, { uGrain: { value: 0.03 }, uCA: { value: 0.15 }, uVignette: { value: 0.18 } });
+      lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
+      highlight = { uniforms: { uCap: lens.uniforms.uCap, uKnee: lens.uniforms.uKnee } };
+      Object.assign(lens.uniforms, bloom.uniforms, ao ? ao.uniforms : {});
+      Object.assign(bloom.highPassUniforms, highlight.uniforms, ao ? { tAO: ao.uniforms.tAO, uAOStrength: ao.uniforms.uAOStrength, uFadeNear: ao.uniforms.uFadeNear, uFadeFar: ao.uniforms.uFadeFar } : {});
+      lens.merged = lens.material;
+      lens.merged.depthTest = lens.merged.depthWrite = false;
+      lens.material = mat(OELens.shader(), { uniforms: lens.uniforms });
+      const mergeSh = OELens.merge({ shade: shade.upsample });
+      bloom.mergeMaterial = mat(mergeSh, { uniforms: Object.assign(mergeSh.uniforms, { uCap: lens.uniforms.uCap, uKnee: lens.uniforms.uKnee, uShadeShow: lens.uniforms.uShadeShow }, bloom.uniforms, ao ? ao.uniforms : {}) });
+      if (ao && ao.show) lens.uniforms.uShadeShow.value = 1; // (?ao=show: the occlusion alone)
+      camFx = new THREE.ShaderPass(CAMFX());
+      camFx.enabled = false;
+      camFx.uniforms.uReversed.value = renderer.capabilities.reversedDepthBuffer ? 1 : 0;
+      const drawFx = camFx.render.bind(camFx);
+      camFx.render = (...a) => { camFx.uniforms.tDepth.value = sceneDepth; return drawFx(...a); }; // (the depth this frame's scene was drawn with)
+      anime = new THREE.ShaderPass(ANIME());
+      anime.enabled = false;
+      anime.uniforms.uReversed.value = renderer.capabilities.reversedDepthBuffer ? 1 : 0;
+      const drawAnime = anime.render.bind(anime);
+      anime.render = (...a) => { anime.uniforms.tDepth.value = sceneDepth; anime.uniforms.uDepth.value = sceneDepth && anime.depthOn ? 1 : 0; anime.uniforms.uInvProj.value.copy(camera.projectionMatrixInverse); return drawAnime(...a); };
+      // The stack, in the shape of an EffectComposer for those who list or change its passes (the films' director
+      // ends it on a lens of its own, the checks look a pass up, the warm-up compiles each pass's materials): the
+      // scene, the occlusion and the bloom are drawn as above whatever follows; what follows them, the tail, is
+      // any pass with an EffectComposer pass's render(renderer, writeBuffer, readBuffer).
+      let pingA = null, pingB = null; // two full-size targets for a tail longer than the lens, made when one first is
+      const passes = [scenePass, ...(ao ? [ao.pass] : []), bloom, camFx, lens, anime];
+      composer = {
+        renderer, passes, renderTarget1: rt, renderTarget2: rt,
+        addPass(p) { passes.push(p); if (p.setSize) p.setSize(rt.width, rt.height); },
+        removePass(p) { const i = passes.indexOf(p); if (i >= 0) passes.splice(i, 1); },
+        setSize(w, h) {
+          rt.setSize(w, h);
+          if (pingA) { pingA.setSize(w, h); pingB.setSize(w, h); }
+          for (const p of passes) if (p !== bloom && p.setSize) p.setSize(w, h);
+          bloom.setSize(lowBloom ? Math.round(w / 2) : w, lowBloom ? Math.round(h / 2) : h);
+          bloom.uniforms.tBloom.value = bloom.renderTargetsHorizontal[0].texture;
+        },
+        render() {
+          const autoClear = renderer.autoClear;
+          const has = p => !!p && p.enabled !== false && passes.includes(p);
+          scenePass.render(renderer, null, rt);
+          renderer.autoClear = false;
+          if (ao && !(has(ao.pass) && ao.compute(renderer, rt.depthTexture))) ao.uniforms.uAOStrength.value = 0;
+          // (the low tier's bloom from dusk to dawn only: by day nothing reaches its threshold but the sun's glints)
+          const glow = has(bloom) && bloom.strength > 0 && (!lowBloom || night > 0.02);
+          bloom.uniforms.uBloom.value = glow ? 1 : 0;
+          if (glow) drawBloom();
+          const tail = passes.filter(p => p !== scenePass && p !== bloom && !(ao && p === ao.pass) && p.enabled !== false);
+          if (tail.length === 1 && tail[0] === lens) draw(lens.merged, null, false);
+          else {
+            if (!pingA) { const t = () => new THREE.WebGLRenderTarget(rt.width, rt.height, { type: THREE.HalfFloatType, depthBuffer: false }); pingA = t(); pingB = t(); }
+            bloom.mergeMaterial.uniforms.tDiffuse.value = rt.texture;
+            draw(bloom.mergeMaterial, pingA);
+            let read = pingA, write = pingB;
+            tail.forEach((p, i) => {
+              p.renderToScreen = i === tail.length - 1;
+              p.render(renderer, write, read);
+              if (p.needsSwap !== false) { const t = read; read = write; write = t; }
+            });
+          }
+          lens.merged.uniforms.tDiffuse.value = rt.texture; // (a tail's lens read a target of its own)
+          renderer.setRenderTarget(null);
+          renderer.autoClear = autoClear;
+        },
+        dispose() { rt.dispose(); if (pingA) { pingA.dispose(); pingB.dispose(); } bloom.dispose(); bloom.materialHighPassFilter.dispose(); bloom.mergeMaterial.dispose(); lens.merged.dispose(); tri.dispose(); },
+      };
+      lens.uniforms.tDiffuse.value = rt.texture;
+      composer.setSize(size.x, size.y);
     }
     const q = new THREE.Quaternion();
-    let night = 0;
     const api = {
       composer, lens, ao, stars: S, moon: M, keys, // (keys: the grade by the hour, for a film's lens: tools/film/director.js)
       // per frame: the sky's turn for this moment, the moon's place and phase, the clouds' drift
@@ -435,7 +489,7 @@ window.OEAtmos = (function () {
           }
         }
       },
-      setSize(w, h) { if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
+      setSize(w, h) { if (composer) { const z = renderer.getDrawingBufferSize(new THREE.Vector2()); composer.setSize(z.x, z.y); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
       // draw the frame: through the post stack, or plainly
       // photo mode and the opening shot: {focus: m, aperture: 0..1, blur: 0..1}, or null (off, as in play)
       camFx(o) { if (o && !fx) o.fresh = true; fx = o && camFx ? o : null; },
@@ -458,7 +512,7 @@ window.OEAtmos = (function () {
       render(scene, cam) {
         if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0) && !!rt.depthTexture;
         // the scene's depth resolved from the multisampled buffer while something reads it (the ambient occlusion, the camera's effects)
-        if (rt) composer.renderTarget1.resolveDepthBuffer = composer.renderTarget2.resolveDepthBuffer = wantAO || !!(camFx && camFx.enabled) || !!(anime && anime.enabled && anime.depthOn);
+        if (rt) rt.resolveDepthBuffer = !!(ao && ao.pass.enabled) || !!(camFx && camFx.enabled) || !!(anime && anime.enabled && anime.depthOn);
         if (camFx && camFx.enabled) {
           const z = renderer.getDrawingBufferSize(new THREE.Vector2()), F = camFx.uniforms;
           cam.updateMatrixWorld();
@@ -471,7 +525,7 @@ window.OEAtmos = (function () {
         if (camFx) { cam.updateMatrixWorld(); prevVP.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); }
         if (composer) composer.render(); else renderer.render(scene, cam);
       },
-      dispose() { if (ao) ao.pass.dispose(); if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },
+      dispose() { if (ao) ao.pass.dispose(); if (composer) composer.dispose(); },
     };
     return api;
   }
