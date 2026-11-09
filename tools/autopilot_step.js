@@ -104,4 +104,70 @@ function autopilotChecks(r) {
     [r.arrived && r.mode === 'car' && r.v < 0.5 && r.d < 40, r.arrived ? `it pulls in ${r.d.toFixed(0)} m from the end of its way after ${r.t.toFixed(0)} s, and the car is yours` : `it has not arrived after ${r.t.toFixed(0)} s: ${r.left.toFixed(0)} m to go, ${r.why}`],
   ];
 }
-module.exports = { autopilotStep, autopilotChecks };
+// The driver assists (#355, game.js assistStep): lane keeping and adaptive cruise when you drive yourself.
+// assistStep runs in the page: the autopilot brings the car up to speed in its lane on the way to a place and is
+// switched off; with both assists on and no key held, for 40 s of the game's clock the car must hold its lane
+// (lane keeping at work for 5 s or more, and within 0.6 m of the lane's middle once it has settled: 4 s after it
+// takes hold or the road changes at a junction), keep to the
+// speed set, stay out of the traffic and behind every red line; then a touch of the brake must end the cruise.
+async function assistStep({ log = false } = {}) {
+  const g = window.__game, c = g.myCar && g.myCar();
+  if (!c || !g.assistToggle) return { none: 'no car' };
+  const A = g.cars, st = c.D.st, out = { log: [] };
+  if (g.ride && g.ride() && g.cancelRide) g.cancelRide();
+  if (g.player.mode !== 'car') {
+    const s = g.KEEP === 'left' ? 1 : -1;
+    g.player.x = st.x + Math.cos(st.h) * 2.6 * s; g.player.y = st.y - Math.sin(st.h) * 2.6 * s; g.player.z = st.z;
+    g.advance(0.3); g.enterCar();
+    for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
+  }
+  if (g.player.mode !== 'car') return { none: 'could not get into the car' };
+  let ok = false;
+  for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) if (g.pilotTo(d, { quiet: true }) && g.pilot().len > 200) { ok = true; break; }
+  if (!ok) return { none: 'no place to drive towards' };
+  // up to speed, in its lane, clear of a junction
+  let t = 0;
+  for (; t < 120 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), d = o && o.drv.st; if (d && !o.join && st.speed > 6 && !d.mv && !(d.toLine < 30) && Math.abs(d.shift) < 0.1 && o.drv.remaining() > 120) break; }
+  if (!g.pilot() || t >= 120) { g.pilotOff(); return { none: 'the car never got up to speed on a clear stretch' }; }
+  g.pilotOff();
+  if (!g.assist.lane) g.assistToggle('lane');
+  if (!g.assist.cruise) g.assistToggle('cruise');
+  Object.assign(out, { set: g.assist.set, off: 0, laneT: 0, cruiseT: 0, over: 0, deep: 0, red: 0, stops: 0, vmin: st.speed, dist: 0 });
+  let last = null, x0 = st.x, y0 = st.y, stopped = false, settle = 4, lineWas = null;
+  for (t = 0; t < 40; t += 0.1) {
+    g.advance(0.1);
+    const L = g.assist.here;
+    // (settled: 4 s after it takes hold, and after the road it reads changes at a junction, where the lane's middle steps)
+    if (!g.assist.on.lane || !L || L.line !== lineWas) settle = 4;
+    lineWas = L ? L.line : null; settle -= 0.1;
+    if (g.assist.on.lane && L) { out.laneT += 0.1; out.offAny = Math.max(out.offAny || 0, Math.abs(L.d)); if (settle <= 0) { out.heldT = (out.heldT || 0) + 0.1; out.off = Math.max(out.off, Math.abs(L.d)); } }
+    if (g.assist.on.cruise) { out.cruiseT += 0.1; out.over = Math.max(out.over, st.speed - g.assist.set); }
+    out.deep = Math.max(out.deep, A.footprint(st.x, st.y, st.z, st.h, c.C.half * 0.95, c.C.hw * 0.95, 0));
+    out.vmin = Math.min(out.vmin, st.speed);
+    out.dist += Math.hypot(st.x - x0, st.y - y0); x0 = st.x; y0 = st.y;
+    if (st.speed < 0.3 && !stopped) { stopped = true; out.stops++; out.log.push(`${t.toFixed(1)}s stopped: ${g.assist.line != null ? `a red line ${g.assist.line.toFixed(1)} m ahead` : g.assist.lead ? `a car ${g.assist.lead.gap.toFixed(1)} m ahead` : 'nothing seen'}`); } else if (st.speed > 1) stopped = false;
+    // over a stop line on red
+    const a = L && g.junctions.armAt(L.line, L.dir > 0 ? 1 : 0), d = a && a.j.sig ? (L.dir > 0 ? L.len - L.s : L.s) - a.back : null;
+    if (last && a && last.a === a && last.d > 0.5 && d <= -1 && g.junctions.light(a) === 'r') { out.red++; out.log.push(`${t.toFixed(1)}s over the line of junction ${a.j.id} on red`); }
+    last = d != null ? { a, d } : null;
+    if (log && Math.round(t * 10) % 20 === 0) out.log.push(`${t.toFixed(0)}s v=${st.speed.toFixed(1)} lane ${g.assist.on.lane ? (L ? L.d.toFixed(2) : '?') : 'off'} ${g.assist.line != null ? `line ${g.assist.line.toFixed(0)} m` : ''} ${g.assist.lead ? `lead ${g.assist.lead.gap.toFixed(0)} m v ${g.assist.lead.v.toFixed(1)}` : ''}`);
+  }
+  window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's' }));
+  g.advance(0.3);
+  window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', key: 's' }));
+  out.braked = !g.assist.cruise;
+  if (g.assist.lane) g.assistToggle('lane');
+  if (g.assist.cruise) g.assistToggle('cruise');
+  for (let i = 0; i < 20 && st.speed > 0.3; i++) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's' })); g.advance(0.25); }
+  window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', key: 's' }));
+  return out;
+}
+function assistChecks(r) {
+  if (r.none) return [[r.none === 'no car', `the driver assists: ${r.none}`]];
+  return [
+    [r.laneT >= 5 && (r.heldT || 0) >= 3 && r.off <= 0.6 && r.offAny <= 2.6, `lane keeping holds the lane with no hand on the wheel (${r.laneT.toFixed(0)} s at work over ${r.dist.toFixed(0)} m; once settled, ${r.off.toFixed(2)} m off the lane's middle at most in ${(r.heldT || 0).toFixed(0)} s)`],
+    [r.cruiseT >= 20 && r.over <= 1.5 && r.deep <= 0.15 && r.red === 0, `adaptive cruise keeps to ${(r.set * 3.6).toFixed(0)} km/h (${r.over.toFixed(1)} m/s over at most), clear of the traffic (${r.deep.toFixed(2)} m) and behind the red lines (${r.red} crossed; ${r.stops} stop${r.stops === 1 ? '' : 's'}, down to ${(r.vmin * 3.6).toFixed(0)} km/h)`],
+    [r.braked, 'a touch of the brake ends the cruise'],
+  ];
+}
+module.exports = { autopilotStep, autopilotChecks, assistStep, assistChecks };

@@ -966,7 +966,7 @@ pipeline writes. The only city-specific code is landmark geometry in
     `pilotTo`, `pilotStep`). A route from the piece of road the car is on, the way it
     faces, to the kerb nearest the place (`cars.js` router). The scenic way is the same
     search with each piece of road's cost weighted (`autopilot.js scenic`): 0.42 where
-    water lies within 60 m of it, 0.55 within 70 m of a landmark; it is taken where it
+    water lies within 100 m of it, 0.55 within 70 m of a landmark; it is taken where it
     is no more than twice as far and does run more by the water. Parked at the kerb
     where the route starts, the car pulls out as a taxi does. Anywhere else it is first
     driven onto the lane through its own pedals, by pure pursuit of a point 5 m and a

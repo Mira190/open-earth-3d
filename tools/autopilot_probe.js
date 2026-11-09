@@ -2,7 +2,7 @@
 //   GAME_TIME=10:00 xvfb-run -a node tools/autopilot_probe.js sydney     (OUT=dir: a still at the end)
 const { chromium } = require('playwright');
 const { pinClock } = require('./pin_clock');
-const { autopilotStep, autopilotChecks } = require('./autopilot_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks } = require('./autopilot_step');
 const [,, city = 'sydney'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: !process.env.DISPLAY, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -16,12 +16,17 @@ const [,, city = 'sydney'] = process.argv;
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => { const g = window.__game; for (let t = 0; g.arriving() && t < 10; t += 0.25) g.advance(0.25); g.advance(2); });
-  const r = await p.evaluate(autopilotStep, { log: true, limit: +(process.env.LIMIT || 420) });
+  const r = process.env.ONLY === 'assist' ? { none: 'no car' } : await p.evaluate(autopilotStep, { log: true, limit: +(process.env.LIMIT || 420) });
   for (const l of r.log || []) console.log(l);
   delete r.log;
   console.log(JSON.stringify(r));
   let bad = 0;
   for (const [ok, what] of autopilotChecks(r)) { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; }
+  const as = await p.evaluate(assistStep, { log: true });
+  for (const l of as.log || []) console.log(`assist: ${l}`);
+  delete as.log;
+  console.log(JSON.stringify(as));
+  for (const [ok, what] of assistChecks(as)) { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) bad++; }
   if (process.env.OUT) { require('fs').mkdirSync(process.env.OUT, { recursive: true }); await p.waitForTimeout(500); await p.screenshot({ path: `${process.env.OUT}/${city}-autopilot.png` }); }
   await b.close();
   process.exit(bad ? 1 : 0);
