@@ -33,7 +33,7 @@ import os
 
 import numpy as np
 import shapely
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
+from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import substring
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -646,8 +646,7 @@ def station(L, K, Mesh):
         cols = cov[2::4]
         for f in cols:   # a column every 8 m, its arms up to the eaves, a purlin across
             m, n = f[1], f[3]
-            if holes.buffer(0.5).contains(Point(*m)):
-                m = m + n * (1.5 + 0.3) * (1 if pi == 0 else -1) * 0   # (the stairs' walls carry the roof there)
+            if holes.buffer(0.5).contains(Point(*m)):   # over a stair well its walls carry the roof: a post on each
                 for sgn in (-1, 1):
                     K["rail_frame"].box([*(m + n * sgn * 1.75), zp + 1.2], [*(m + n * sgn * 1.75), zp + hc + 0.2], 0.16, 0.16)
             else:
@@ -659,7 +658,6 @@ def station(L, K, Mesh):
         # ---- platform doors along both edges: cabinets between the doors, glazed leaves at each door
         for sgn in (-1, 1):
             tr = track_at("keihin" if (sgn < 0) == (pi == 0) else "yamanote", (sgn > 0) if pi == 0 else (sgn > 0))
-            mid_s = (fr[0][0] + fr[-1][0]) / 2
             edge = LineString([f[1] + f[3] * sgn * (f[4] / 2 - 0.42) for f in fr])
             cars = 10 if tr["line"] == "keihin" else 11
             door_u = sorted(edge.length / 2 + (k - (cars - 1) / 2) * CAR + dd for k in range(cars) for dd in DOORS)
@@ -681,7 +679,6 @@ def station(L, K, Mesh):
                     K["rail_psd"].box(at(u - 1.0, zp + 1.26), at(u + 1.0, zp + 1.26), 0.06, 0.05)
                     K["rail_psd"].box(at(u, zp + 0.02), at(u, zp + 1.28), 0.07, 0.07)
                 prev = u + 1.0
-            _ = mid_s
         # ---- signs hung from the roof: the platform boards and the departure boards, back to back over the middle
         nums = (1, 2) if pi == 0 else (3, 4)
         for f in cov[8::18]:
@@ -839,7 +836,6 @@ def trains():
             o["platform"] = no
         o["hide_m"] = [round(SHED - 6.0, 1), round(g.length - SHED + 6.0, 1)]   # its cars are drawn between these: the sheds' mouths
         tracks.append(o)
-    mid = L["plats"][0]["frames"][len(L["plats"][0]["frames"]) // 2][1]
     c = (L["plats"][0]["frames"][len(L["plats"][0]["frames"]) // 2][1] + L["plats"][1]["frames"][len(L["plats"][1]["frames"]) // 2][1]) / 2
     return {
         "note": "The JR lines past Yurakucho (cities/tokyo/rail.py): courses in decimetres at rail level, in the direction of travel.",
