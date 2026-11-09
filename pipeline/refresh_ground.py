@@ -17,7 +17,7 @@ import numpy as np
 import shapely
 from PIL import Image
 
-from build_scene import SYNTH, paint_rings, raster_mask
+from build_scene import AVIF_QUALITY, AVIF_SPEED, SYNTH, paint_rings, raster_mask
 from cityctx import city_args
 
 TOL = 0.035  # how far (in shares of the brightness) a pixel may be off the "over" colour and still be it
@@ -52,7 +52,10 @@ def main():
             a2 = a + wgt[..., None] * (k[..., None] * (fill - over))
             n = int((wgt > 0.5).sum())
             if n > 16:  # (a few pixels' JPEG noise on a second run is not a fill)
-                Image.fromarray(np.clip(np.round(a2), 0, 255).astype(np.uint8)).save(path, quality=80, optimize=True)
+                out = Image.fromarray(np.clip(np.round(a2), 0, 255).astype(np.uint8))
+                out.save(path, quality=80, optimize=True)
+                if t.get("avif"):  # (and its AVIF, build_scene.save_tile)
+                    out.save(os.path.join(C.out, t["avif"]), quality=AVIF_QUALITY, speed=AVIF_SPEED)
                 changed += n
         print(f"{C.id}: {rule.get('name', 'paint')}: {changed} px from {rule['over']} to {rule['fill']}")
 

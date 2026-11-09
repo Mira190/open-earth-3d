@@ -625,9 +625,43 @@ vec3 steepRock(vec3 c, float k) {
     };
   }
 
+  // The aerial ground pictures (issue 335): AVIF where the browser decodes it (Chrome 85, Firefox 93, Safari
+  // 16.4), else the JPEG; the tiles within near metres of at first, in order of distance, and the rest once
+  // release() is called; the whole frame's overview (scene.json ground_lo, 6 m a pixel) at once. Each picture
+  // is a promise of a decoded <img>, or null if it failed. buildings.js draws the roofs' photo from the same ones.
+  let avifOK = null;
+  function avif() {
+    return avifOK || (avifOK = new Promise(res => {
+      const im = new Image();
+      im.onload = () => res(im.width === 1);
+      im.onerror = () => res(false);
+      im.src = 'data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADrbWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAAAAAAAOcGl0bQAAAAAAAQAAAB5pbG9jAAAAAEQAAAEAAQAAAAEAAAETAAAAHgAAAChpaW5mAAAAAAABAAAAGmluZmUCAAAAAAEAAGF2MDFDb2xvcgAAAABqaXBycAAAAEtpcGNvAAAAFGlzcGUAAAAAAAAAAQAAAAEAAAAQcGl4aQAAAAADCAgIAAAADGF2MUOBAAwAAAAAE2NvbHJuY2x4AAEADQAGgAAAABdpcG1hAAAAAAAAAAEAAQQBAoMEAAAAJm1kYXQSAAoIGAAGiAhoNCAyEBlHh4Yhh5555oAAAJBAzeg='; // a 1 x 1 AVIF
+    }));
+  }
+  function groundPictures(scene, dir, { at = null, near = 1000 } = {}) {
+    const tiles = scene.ground || [];
+    const load = t => avif().then(ok => new Promise(res => {
+      const im = new Image(), tryJpeg = () => { if (im.src.endsWith(t.file)) return res(null); im.src = dir + t.file; };
+      im.decoding = 'async';
+      im.onload = () => (im.decode ? im.decode() : Promise.resolve()).then(() => res(im), () => res(im));
+      im.onerror = tryJpeg;
+      im.src = dir + (ok && t.avif ? t.avif : t.file);
+    }));
+    const dist = t => at ? Math.hypot(Math.max(t.x0 - at[0], 0, at[0] - t.x1), Math.max(t.y0 - at[1], 0, at[1] - t.y1)) : 0;
+    const first = tiles.map(t => !at || !scene.ground_lo || dist(t) <= near);
+    let release;
+    const later = new Promise(r => { release = r; });
+    const order = tiles.map((t, i) => i).sort((a, b) => dist(tiles[a]) - dist(tiles[b]));
+    const out = new Array(tiles.length);
+    for (const i of order) out[i] = first[i] ? load(tiles[i]) : later.then(() => load(tiles[i]));
+    return { tiles: out, first, overview: scene.ground_lo ? load(scene.ground_lo) : null, release, all: () => Promise.all(out) };
+  }
+
   // small: the lighter set for a weaker device (quality.js); shadow: the sun's shadow map size;
   // game: the game's world, whose own cars take over from the night's traffic within nearCars metres of the camera
-  async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0, game = false, nearCars = 0 } = {}) {
+  // groundAt: where the visit starts ([x, y]): the ground tiles within groundNear metres of it load first, the
+  // others when the caller calls api.groundPictures.release() (the game, once it opens); without it, all at once
+  async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0, game = false, nearCars = 0, groundAt = null, groundNear = 1000 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     // the mapped lamps, benches and trees out of the carriageways, before any of them is drawn (streets.js)
     if (window.OEStreets) OEStreets.tidy(D);
@@ -743,13 +777,19 @@ vec3 steepRock(vec3 c, float k) {
     const texLoader = new THREE.TextureLoader();
     const groundMeshes = [];
     const PG = { value: new THREE.Vector4(0, 1, 1, 0) }, stats = photoStats();
-    let tilesLeft = scene.ground.length;
-    const tileLoaded = tex => {
-      stats.add(tex.image);
+    // the aerial pictures (groundPictures): the tiles near the start now, the rest when the game says
+    // (pics.release), the whole frame's overview on a tile until its own arrives
+    const pics = groundPictures(scene, D.DATA, { at: groundAt, near: groundNear });
+    // the photo's grade from every tile, or at once from the overview where there is one (the same
+    // pictures at a sixteenth of the pixels), so that it doesn't change when the far tiles come in
+    let tilesLeft = pics.overview ? 1 : scene.ground.length;
+    const tileLoaded = img => {
+      stats.add(img);
       if (--tilesLeft > 0) return;
       const gr = stats.grade();
       if (gr) PG.value.set(gr[0], gr[1], gr[2], 1);
     };
+    if (pics.overview) pics.overview.then(tileLoaded);
     // Where the ground is not drawn (landmarks.json "clip", rasterised at half a metre): under a
     // landmark's paving, which it would show through, and out in front of a seawall, where on a
     // 5 or 10 m grid it slopes up out of the water between the last point on land and the first in
@@ -1017,17 +1057,41 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       if (g.userData.underlay) m.add(new THREE.Mesh(g.userData.underlay, quayBed));
       return m;
     }
-    for (const t of scene.ground) {
-      const g = tileGeometry(t, T);
-      const tex = texLoader.load(D.DATA + t.file, tileLoaded, undefined, () => tileLoaded({ image: null }));
+    const photoTex = img => {
+      const tex = new THREE.Texture(img);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      if (img) tex.needsUpdate = true;
+      return tex;
+    };
+    const lo = scene.ground_lo, loTex = pics.overview && photoTex(null);
+    if (loTex) pics.overview.then(img => { if (img) { loTex.image = img; loTex.needsUpdate = true; } });
+    const shown = []; // (every tile's own picture on screen: pics.shown, which the film and still tools wait for)
+    scene.ground.forEach((t, i) => {
+      const g = tileGeometry(t, T);
+      let tex;
+      if (loTex && !pics.first[i]) { // the overview's part under this tile, until its picture comes (one image on the GPU for them all)
+        tex = loTex.clone();
+        tex.repeat.set((t.x1 - t.x0) / (lo.x1 - lo.x0), (t.y1 - t.y0) / (lo.y1 - lo.y0));
+        tex.offset.set((t.x0 - lo.x0) / (lo.x1 - lo.x0), (t.y0 - lo.y0) / (lo.y1 - lo.y0));
+      } else tex = photoTex(null);
       const m = groundMesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
+      shown.push(pics.tiles[i].then(async img => {
+        if (!pics.overview) tileLoaded(img);
+        if (!img) return;
+        if (pics.first[i]) { tex.image = img; tex.needsUpdate = true; return; }
+        // a far tile, after the game opened: sent to the GPU between frames, then swapped in
+        const own = photoTex(img);
+        await idle();
+        try { renderer.initTexture(own); } catch (e) { /* sent on its first draw */ }
+        m.material.map = own;
+      }));
       m.material.onBeforeCompile = gradePhoto;
       m.receiveShadow = true;
       world.add(m);
       groundMeshes.push(m);
-    }
+    });
+    pics.shown = () => Promise.all(shown);
 
     // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
     // the old see-through sheet with ripples. On land the terrain covers it either way.
@@ -1317,7 +1381,7 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     const foot = (x, y) => Math.min(S.terrainTri(T, x, y), D.Tfine ? S.terrainTri(D.Tfine, x, y) : Infinity);
     U.uPhotoGrade = PG;
     if (NU) Object.assign(U, NU);
-    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, foot, photoGrade: PHOTO_GRADE, night: NIGHT,
+    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, foot, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
       progress: f => loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5 + 0.14 * f) });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
@@ -1858,7 +1922,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
       hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)

@@ -50,6 +50,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   // and the loader gone: the game draws its first frame only once its shaders and uploads are done (world.js
   // compile), so a view from the air grabbed before that was black (issue 313)
   await p.waitForFunction(() => { const l = document.getElementById('g-loader'); return !l || l.hidden; }, null, { timeout: 900000, polling: 500 });
+  await p.evaluate(() => window.__game.groundShown && window.__game.groundShown()); // (the far aerial tiles, which come after the loader)
   // the view's day and time on the game's clock
   await p.evaluate(() => {
     window.__shotClock = v => {

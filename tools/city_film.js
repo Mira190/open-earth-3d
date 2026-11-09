@@ -66,6 +66,7 @@ async function open(site) {
   await p.goto(`http://localhost:${PORT}/index.html#play-${city}`);
   console.log('WebGL:', await p.evaluate(() => { const gl = document.createElement('canvas').getContext('webgl2'); const d = gl && gl.getExtension('WEBGL_debug_renderer_info'); return gl ? gl.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : 'none'; }));
   await p.waitForFunction(() => window.__game && document.getElementById('g-loader') && document.getElementById('g-loader').classList.contains('out'), null, { timeout: 900000, polling: 1000 });
+  await p.evaluate(() => window.__game.groundShown && window.__game.groundShown()); // (the far aerial tiles, which come after the loader)
   console.log('Tier:', await p.evaluate(() => { const q = OEQuality.city(), c = document.getElementById('game-gl'); return `${q.name}, ${c.width}x${c.height}`; }));
   for (const f of ['lens.js']) await p.addScriptTag({ path: path.join(ROOT, 'web', f) });
   await p.addScriptTag({ path: path.join(__dirname, 'film', 'director.js') });

@@ -236,7 +236,7 @@ window.OEBuildings = (function () {
   // progress(f): how far the walls are, 0..1. The walls are raised in slices of about SLICE ms, yielding between
   // them, so the loader's frames keep coming (issue 299: one frame of 2.5 s in Shibuya); resolves with the meshes
   const SLICE = 40, pause = () => new Promise(r => setTimeout(r, 0));
-  async function create(D, { lin, U, renderer, SRC, small = false, foot = null, photoGrade = null, night = null, progress = null }) {
+  async function create(D, { lin, U, renderer, SRC, small = false, foot = null, photoGrade = null, night = null, progress = null, pictures = null }) {
     const t0 = performance.now();
     const { B, T, scene } = D;
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
@@ -767,8 +767,7 @@ window.OEBuildings = (function () {
     }
 
     // ------------------------------------------------------------ the aerial photo for flat roofs
-    if (photoOK) loadPhoto(scene, renderer).then(tex => {
-      if (!tex) return;
+    if (photoOK) loadPhoto(scene, renderer, pictures, tex => {
       U.uPhoto.value = tex;
       U.uPhotoOn.value = 1;
     });
@@ -780,8 +779,10 @@ window.OEBuildings = (function () {
     return { mesh, geometry, material, props, styles: STYLES, info: BI };
   }
 
-  // the ground tiles drawn into one canvas (at most 4096 px a side) for flat roofs
-  function loadPhoto(scene, renderer) {
+  // the ground tiles drawn into one canvas (at most 4096 px a side) for flat roofs: from world.js's ground
+  // pictures (pics: the overview first, then the tiles near the start, then the rest once they come, issue 335),
+  // sent to the GPU when each of those three is in rather than at every tile; or, without them, every tile
+  function loadPhoto(scene, renderer, pics, show) {
     const fr = scene.frame, w = fr.x[1] - fr.x[0], h = fr.y[1] - fr.y[0];
     const max = Math.min(4096, renderer.capabilities.maxTextureSize || 4096);
     const k = Math.min(1, max / Math.max(w, h));
@@ -789,17 +790,29 @@ window.OEBuildings = (function () {
     cv.width = Math.round(w * k); cv.height = Math.round(h * k);
     const g = cv.getContext('2d');
     const dir = `data/${scene.city.id}/`;
-    return Promise.all(scene.ground.map(t => new Promise(res => {
+    const draw = (t, im) => { if (im) g.drawImage(im, (t.x0 - fr.x[0]) * k, (fr.y[1] - t.y1) * k, (t.x1 - t.x0) * k, (t.y1 - t.y0) * k); return !!im; };
+    let tex = null;
+    const sent = () => {
+      if (!tex) {
+        tex = new THREE.CanvasTexture(cv);
+        if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace; else tex.encoding = THREE.sRGBEncoding;
+        tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        show(tex);
+      } else tex.needsUpdate = true;
+    };
+    const tiles = pics ? pics.tiles : scene.ground.map(t => new Promise(res => {
       const im = new Image();
-      im.onload = () => { g.drawImage(im, (t.x0 - fr.x[0]) * k, (fr.y[1] - t.y1) * k, (t.x1 - t.x0) * k, (t.y1 - t.y0) * k); res(true); };
-      im.onerror = () => res(false);
+      im.onload = () => res(im);
+      im.onerror = () => res(null);
       im.src = dir + t.file;
-    }))).then(ok => {
-      if (!ok.some(Boolean)) return null;
-      const tex = new THREE.CanvasTexture(cv);
-      if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace; else tex.encoding = THREE.sRGBEncoding;
-      tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-      return tex;
+    }));
+    const lo = pics && pics.overview ? pics.overview.then(im => draw(scene.ground_lo, im)) : Promise.resolve(false);
+    const draws = scene.ground.map((t, i) => lo.then(() => tiles[i]).then(im => draw(t, im))); // (each tile over the overview)
+    const part = which => Promise.all(draws.filter((d, i) => which(i))).then(ok => ok.some(Boolean));
+    const first = pics ? i => pics.first[i] : () => true;
+    Promise.all([lo, part(first)]).then(([low, any]) => {
+      if (any || low) sent(); // (the overview, at least, if it came)
+      if (pics && pics.first.some(f => !f)) part(i => !first(i)).then(more => { if (more) sent(); });
     });
   }
 
