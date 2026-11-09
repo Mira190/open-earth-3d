@@ -73,72 +73,29 @@
  ],
  "tokyo": [
   {
-   "name": "takebashi-jct",
-   "cam": [
-    -150,
-    2180,
-    70
-   ],
-   "tgt": [
-    -400,
-    2310,
-    18
-   ]
+   "name": "daikancho"
   },
   {
-   "name": "daikancho",
-   "cam": [
-    -900,
-    2020,
-    60
-   ],
-   "tgt": [
-    -1080,
-    2120,
-    18
-   ]
+   "name": "takebashi"
   },
   {
-   "name": "miyakezaka-jct",
-   "cam": [
-    -950,
-    1120,
-    70
-   ],
-   "tgt": [
-    -1080,
-    990,
-    15
-   ]
-  },
-  {
-   "name": "hanzomon-ramp",
-   "cam": [
-    -1430,
-    1220,
-    70
-   ],
-   "tgt": [
-    -1560,
-    1100,
-    28
-   ]
+   "name": "miyakezaka"
   }
  ],
  "shinjuku": [
   {
    "name": "keio-canopy",
    "cam": [
-    1985,
-    1360,
-    14
+    1975,
+    1400,
+    95
    ],
    "tgt": [
-    1938,
+    1942,
     1425,
-    3
-   ],
-   "agl": true
+    31
+   ]
   }
- ]
+ ],
+ "game_note": "tokyo and shinjuku: game views (tools/game_shot.js), the expressway's decks being the game's"
 }

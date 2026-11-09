@@ -107,6 +107,8 @@ floor's windows, so city.json `roofs.canopies` holds it at 5.0 m with a 0.7 m fa
 (`pipeline/arcades.py`). No closer open photograph or published dimension was found (the hospital is by Kume Sekkei
 and Takenaka; its separate entrance building and drop-off opened in May 2022).
 
+![Keio's canopy from above, main (8 m, grey) and now (5 m, charcoal) (#323)](../images/fidelity-322/keio-desktop.jpg)
+
 
 
 PLATEAU gives the six OpenStreetMap parts of the No. 1 building (Kenzo Tange,

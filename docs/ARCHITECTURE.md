@@ -389,6 +389,8 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   ![The lawn between Shimochojamachi and Demizu (#315)](images/water/horikawa_lawn_315.jpg)
   ![The stepped drops between Marutamachi and Takeyamachi (#315)](images/water/horikawa_weirs_315.jpg)
   ![Seats, lawn and drops on a phone (#315)](images/water/horikawa_features_phone_315.jpg)
+  ![The Horikawa by zone, main and after, day, dusk and night (#322)](images/fidelity-322/horikawa-desktop.jpg)
+  ![The same on a phone (#322)](images/fidelity-322/horikawa-phone.jpg)
   Walkers stop at a channel's railing and a pond's edge
   (`nav.js`, `keep_off`). `?inland=off` draws without, to compare.
 

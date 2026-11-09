@@ -126,6 +126,21 @@ decks stack over tunnels, are the least certain.
 
 ![The C1's stacked viaducts by Ginza, on their measured heights (game, #290)](../images/fidelity-290/shuto-ginza.jpg)
 
+**The junctions by the moats, checked (#307, #322 round).** The result of #290's `shuto.py --game` never reached
+`game.json` (the commit carried the samples, not the game data), and the lines' data heights changed in a later
+rebuild, so the samples no longer matched the lines they were taken on. `shuto_lidar.py` measured again against the
+current lines (3,403 samples) and `shuto.py --game` put 1,506 points on them (median 1.1 m down, a quarter 3.9 m or
+more; no grade over 12% made steeper). `tools/shuto_moat_layers.py` then compared every line by Takebashi,
+Daikancho, Miyakezaka and Hanzomon with the layers of the survey's points over it (12 m steps, the dense layers of
+a road deck): by Daikancho the C1 had stood 2–3 m over the deck the survey sees along the moat and now lies on it;
+by Takebashi the Route 5 ramps had stood up to 13 m over their decks, and most of their length now lies on them.
+Still off: the middle of one Takebashi ramp (its data 35.7 m; 16 m measured beside it: about 3 m high still, where the
+measure reached only 11 of its 47 points), and west of Miyakezaka a line under the ground's rising level towards
+Hanzomon, under a deck the survey sees 8 m over the ground there; whether it is Route 4 in its tunnel or on that
+deck wants a photograph. Both are in #323.
+
+![The Shuto by Daikancho, Takebashi and Miyakezaka in the game, main and after, at day, dusk and night (#307)](../images/fidelity-322/shuto-desktop.jpg)
+
 ### The Nihonbashi River in the viewer (#246)
 
 In software stills (llvmpipe) the water seemed to add nothing over the Nihonbashi River. Measured again: at
