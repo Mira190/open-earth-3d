@@ -6,6 +6,9 @@ scene.json into landmarks.bin, game.bin, terrain.bin, places.bin and scene.bin.
     python pipeline/pack.py shibuya osaka   # these cities' (packed again even when up to date)
     python pipeline/pack.py --check         # exit 1 if any pack is missing or stale
 
+It also keeps each live city's vis.bin (the occluder raster of pipeline/visibility.py, which the page's
+visibility sweep reads) in step with its buildings.json: made when missing or stale, and checked by --check.
+
 buildings.bin is made for every city; the others for the live cities (cities/index.json
 less "parked") and for any city that already has one. The JSON stays the pipeline's source: every step
 reads and writes it. Each pack is derived from it and decodes (web/pack.js) to the very same object, so
@@ -486,6 +489,13 @@ def update_index(ids):
     write_index()
 
 
+def vis_cities(named):
+    """The cities whose occluder raster (vis.bin, pipeline/visibility.py: what the page's visibility sweep
+    reads, issue 358) is kept with their packs: the live cities with a game."""
+    live = [c for c in cities() if c not in parked() and os.path.exists(os.path.join(DATA, c, "game.json"))]
+    return [c for c in live if not named or c in named]
+
+
 def main(argv):
     check = "--check" in argv
     named = [a for a in argv if not a.startswith("--")]
@@ -493,8 +503,11 @@ def main(argv):
         if c not in cities():
             raise SystemExit(f"no buildings.json for {c}")
     every = [(c, n) for c in (named or cities()) for n in packs(c)]
+    sys.path.insert(0, os.path.join(ROOT, "pipeline"))
+    import visibility
     if check:
         bad = [(c, n, s) for c, n in every if (s := stale(c, n))]
+        bad += [(c, "vis.json", s) for c in vis_cities(named) if (s := visibility.stale(c))]
         for c, n, s in bad:
             print(f"FAIL pack   {c}: {n[:-5]}.bin {s}; run python pipeline/pack.py {c}")
         if not bad:
@@ -507,6 +520,10 @@ def main(argv):
         print(f"{c}: {n} {raw / 1e6:.2f} MB ({gz / 1e6:.2f} MB gzipped) -> {n[:-5]}.bin {out / 1e6:.2f} MB")
     if todo:
         update_index([c for c, _ in todo])
+    # the occluder raster of each live city, from its buildings (a minute or two for a large city)
+    vis = [c for c in vis_cities(named) if named or visibility.stale(c)]
+    if vis:
+        visibility.main(vis)
     return 0
 
 

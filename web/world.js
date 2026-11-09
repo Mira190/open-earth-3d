@@ -751,6 +751,13 @@ vec3 steepRock(vec3 c, float k) {
     leanShadowMap(renderer, sunLight.shadow, SHADOW);
     const shadowStill = new URLSearchParams(location.search).get('shadowcache') === 'off' ? null : shadowCache(renderer, sunLight);
     const still = o => { if (shadowStill && o) shadowStill.mark(o); return o; };
+    // what the camera cannot see is hidden from the view (visibility.js), but the sun's shadow needs every
+    // caster: they are shown again round the shadow pass (outside the cache, which reads what is shown)
+    if (window.OEVis && !renderer.shadowMap.__vis) {
+      const SM = renderer.shadowMap, inner = SM.render;
+      SM.__vis = true;
+      SM.render = function (lights, sc, cam) { OEVis.shadow(true); try { return inner.call(this, lights, sc, cam); } finally { OEVis.shadow(false); } };
+    }
     world.add(sunLight, sunLight.target);
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
@@ -1400,6 +1407,7 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     }
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
+    if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
 
     // piers and wharves: 2.2 m concrete decks, or level with the quay they meet where that is up to
     // 4 m higher (a seawall promenade), so that stepping down onto a pier is never a step you can't
