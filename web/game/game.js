@@ -1138,7 +1138,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (at any junction on its way, signals or none; and a queue whose head has stood over 20 s waiting for room beyond,
   // a jam that spills back, counts JAM_WAIT more: Shibuya's taxi was sent down a one-way street into one, 150 s, #243)
   const JAM_WAIT = 30;
-  const queuedAt = a => { let n = 0, jam = false; for (const c of cars.live) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) { n++; if (c.why === 'room' && (c.still || 0) > 20 && c.toLine - c.half < 3) jam = true; } return n * Q_CLEAR + (jam ? JAM_WAIT : 0); };
+  // (and a queue at a red waits for its green before any of it moves: the light's own change, junctions.toGreen. Without it a
+  // taxi was sent from behind a queue at Shinjuku's scramble 1106, and one at 1105 after it, timed 20 s and there in 132, #331)
+  const queuedAt = a => { let n = 0, jam = false; for (const c of cars.live) if (c.line >= 0 && c.lineArm === a && OECars.queueing(c)) { n++; if (c.why === 'room' && (c.still || 0) > 20 && c.toLine - c.half < 3) jam = true; } return n * Q_CLEAR + (jam ? JAM_WAIT : 0) + (n && a.j.sig && junctions.light(a) !== 'g' ? junctions.toGreen(a) : 0); };
   const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += queuedAt(q.a); return t; };
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   // A way that crosses a scramble near you is timed with its walk (SCR_WAIT): where another way round it

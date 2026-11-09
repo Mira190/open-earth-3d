@@ -361,6 +361,11 @@ window.OEJunctions = (function () {
       j.green = [10, 8, 0, Math.max(SCR_MIN, Math.min(32, Math.ceil(longest / SCR_V + 5)))]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
       // (its turns 10 s and 8 s: at 8 s and 6 s, a car through every 3 s from a standing start, the queues backed up
       // through the junction behind, Shinjuku's 1105 arm 2 a minute and more, #264)
+      // (the cross road's turn as long as the main road's when a road as great comes in on it: Shinjuku's 1105, whose arm 2
+      // is Shinjuku-dori from 1106 as its arm 1 is, gave it 8 s against 10, and the queue it fed backed up through 1106,
+      // 1108 and 1120 to the game's start, #331)
+      const topIn = p => j.arms.reduce((m, a) => a.in && a.phase === p ? Math.max(m, a.rank) : m, -1);
+      if (topIn(1) >= topIn(0)) j.green[1] = j.green[0];
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);
@@ -709,10 +714,13 @@ window.OEJunctions = (function () {
     // the scramble 1105 by piece 2452, 6 m between the lines, held a car of 1105's turn on the piece while it gave way,
     // and 1105's queue behind stood through its turn's greens, a minute at a time)
     const KEEP = 12;
-    function rankOf(a) {
+    // (the short piece's first place is for a car on it, clearing the box behind: not for one still at that junction's
+    // line, crossing the two together, which can wait there. Given it, the stream out of 1105's turn into 1103 never
+    // let 1103's arm 0, waiting on the same turn, in: car c, when given, is the one asking)
+    function rankOf(a, c = null) {
       if (a.sign) return 0;
       if (a.keep === undefined) { const b = armOf.get(a.line * 2 + 1 - a.end); a.keep = !a.j.sig && !!b && b.j !== a.j && !!b.j.sig && L[a.line].len - a.back - b.back < KEEP; }
-      return a.rank + (a.keep ? 3 : 0);
+      return a.rank + (a.keep && !(c && c.line >= 0 && c.line !== a.line) ? 3 : 0);
     }
     // a car coming up arm a, `eta` seconds from its stop line, to leave by exit m (or -1): seen by
     // the signals (a call for its phase) and by cars giving way to it
@@ -720,7 +728,7 @@ window.OEJunctions = (function () {
       const j = a.j;
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       // (the cars coming this frame; the requests before them in the frame see the last frame's)
-      j.near.push({ c, k: a.i, m, eta, rank: rankOf(a) });
+      j.near.push({ c, k: a.i, m, eta, rank: rankOf(a, c) });
       if (eta < 12) ping(j, a.phase);
       if (j.arrow && a.phase === 0 && eta < 6 && m >= 0) { const e = wayFor(j, a.i, m); if (e && e.across) ping(j, 2); } // a car to turn across: the arrow
     }
@@ -754,20 +762,29 @@ window.OEJunctions = (function () {
       // its movement's way across can't clear; the ride's driver goes by in the room there is, its own eyes stopping it short
       // of any car. The taxi coming for you stood 10 s so at Fushimi Inari's 39, #283)
       const knot = o => !!c.P && (o.c.v || 0) < 0.3 && (o.c.still || 0) > 6 && (o.c.why === 'held' || o.c.why === 'car') && !!o.c.front && o.c.front.line != null && !!o.c.front.mv && o.c.front.mv.j === j;
-      for (const o of j.active) if (o.c !== c && !behind(o) && ((o.k !== k || (o.m >> 4) !== (m >> 4)) && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o) && !knot(o)) return 'cross';
+      // (a long vehicle stood a while in the box for someone on foot no longer sweeps the whole junction: only its own way
+      // across counts, as anyone's does. A bus held so in Shinjuku's 1105 by a walker kept every arm out a whole cycle, #331)
+      const stood = o => o.c.half > LONG && (o.c.v || 0) < 0.3 && (o.c.still || 0) > 4 && (o.c.why === 'person' || o.c.why === 'walk' || o.c.heldBy === 'person');
+      for (const o of j.active) if (o.c !== c && !behind(o) && ((o.k !== k || (o.m >> 4) !== (m >> 4)) && (c.half > LONG || o.c.half > LONG) && !stood(o) || conflict(j, k, m, o.k, o.m)) && !waitsOnMe(o) && !knot(o)) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
         if (j.sig && light(j.arms[o.k], o.m) === 'r') continue; // (its light has turned red since)
-        if (!j.sig && rankOf(a) > rankOf(j.arms[o.k]) + 2) continue; // (one waiting on another arm doesn't hold a piece too short to wait on clearing the box behind it: rankOf)
+        if (!j.sig && rankOf(a, c) > rankOf(j.arms[o.k]) + 2) continue; // (one waiting on another arm doesn't hold a piece too short to wait on clearing the box behind it: rankOf)
         if (c.P && o.c.why === 'you') continue; // (a car of the traffic standing for a ride, or for you, doesn't hold a ride's turn: each waited on the other, half a minute in Shinjuku's game check)
         if (c.P && (o.c.why === 'cross' || o.c.why === 'room') && (o.c.still || 0) > 4) continue; // (nor one that has stood held by others for a while: its turn can't be taken, and the ride waited on it for 40 s under load)
         if (o.c.why === 'room' && (o.c.still || 0) > 4) continue;
         if (o.c.why === 'narrow' && (o.c.still || 0) > 4) continue; // (nor one waiting at its line for a car coming up a way out too narrow for both: that car may be the one waiting on it here, each for the other, 69 s at Fushimi Inari, #283) // (nor, for anyone, one waiting for room beyond the junction: it can't take its turn, and the movements across its way stood behind it, 96 s at Shinjuku's 1195 at 18:00, #178)
+        // (nor one crossing this junction with a signalled one just after, too close to wait between, whose light
+        // there is not green: it can't take its turn. Read as waiting for room, it was passed over for good, and
+        // as waiting for its turn, the cars from that junction's box stood in it behind the one at this line:
+        // Shinjuku's 1103, whose arm 0 waits on 1105's turn 6 m on, stood 389 s so, #331)
+        const x2 = o.c.ex2, e0 = x2 && x2.e ? wayFor(j, o.k, o.m) : null;
+        if (e0 && x2.a.line === e0.m.line && x2.a.j.sig && light(x2.a, x2.e) !== 'g') continue;
         if (conflict(j, k, m, o.k, o.m)) return 'turn';
       }
       if (!j.sig && j.seen >= frame - 1 && !(mine && t - mine.since > 3 * WAITED)) { // give way to the main road: a car on a greater arm coming, not stopped
-        const me = rankOf(a);
+        const me = rankOf(a, c);
         for (const o of j.near) if (o.c !== c && o.rank > me && o.eta < 3.2 && o.c.v > 1.5 && (o.m < 0 || conflict(j, k, m, o.k, o.m))) return 'give';
       }
       return true;
@@ -812,6 +829,7 @@ window.OEJunctions = (function () {
     }
     function unwait(c) { // no longer waiting at a line
       if (c.wj) { const P = c.wj.pend, i = P.findIndex(o => o.c === c); if (i >= 0) P.splice(i, 1); c.wj = null; }
+      if (c.wj2) { const P = c.wj2.pend, i = P.findIndex(o => o.c === c); if (i >= 0) P.splice(i, 1); c.wj2 = null; }
     }
     function forget(c) { // the car leaves the traffic (or turns round): out of every junction it is in or waiting at
       release(c); release(c, 'mv0');
@@ -834,7 +852,7 @@ window.OEJunctions = (function () {
       for (const j of J) {
         if (j.sig) for (const a of j.arms) { a.qn = a.qn1 || 0; a.full = !!a.full1; a.lost = !!a.lost1; a.qn1 = 0; a.full1 = a.lost1 = false; } // (last frame's queues, counted by the traffic as it went)
         if (j.active.length) for (let i = j.active.length - 1; i >= 0; i--) { const o = j.active[i]; if (o.c.line < 0 || (!o.c.mv || o.c.mv.j !== j) && (!o.c.mv0 || o.c.mv0.j !== j)) j.active.splice(i, 1); }
-        if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
+        if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || (o.c.wj !== j && o.c.wj2 !== j) || t - o.since > 180) j.pend.splice(i, 1); }
         for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
           const p = j.active[x], q = j.active[y];
           const pair = `${j.id}:${carId(p.c)}:${p.k}:${p.m}:${carId(q.c)}:${q.k}:${q.m}`; // (a pair once: a car asks again every frame while it waits, or crosses two close junctions together)
@@ -889,7 +907,10 @@ window.OEJunctions = (function () {
           // (a scramble's turns too, which are short so that its walk comes round soon: a queue there that far outweighs
           // the other road's runs its green on to SCR_MP times its length, as a busy junction's does, rather than queue
           // through three greens of 8 s, Shinjuku's 1106, #264)
-          j.mpOn = j.cut == null && mine >= 3 && mine > 2 * next + 1 && j.t < Math.min(gLen * (j.scramble ? SCR_MP : MP_MAX), cap - FLASH);
+          // (at a scramble, as soon as its queues outnumber the other turn's by a few: its cycle is the walk's, long, and its
+          // turn of 10 s let 3 cars a minute out of Shinjuku's 1105 arm 2, the queue backing up through 1106 to 1120. So,
+          // 61 cars in 900 s against 42, and car-seconds stood 30 s or more round there 6041 against 8332, #331)
+          j.mpOn = j.cut == null && mine >= 3 && mine > (j.scramble ? next + 2 : 2 * next + 1) && j.t < Math.min(gLen * (j.scramble ? SCR_MP : MP_MAX), cap - FLASH);
           if (was && !j.mpOn && j.cut == null && j.t > gLen - FLASH) { j.cut = j.t + FLASH; j.mpExt = true; } // (run on past its green: it ends after the walkers' flash, never at once)
         } else j.mpOn = false;
         const end = j.gEnd = Math.min(j.cut != null ? (j.mpExt ? j.cut : Math.min(gLen, j.cut)) : j.mpOn ? Infinity : gLen, cap);
@@ -901,7 +922,9 @@ window.OEJunctions = (function () {
             j.nxt = j.ph === 0 ? (arrowCall && !W(1) ? 2 : 1) : j.ph === 2 ? (W(1) ? 1 : 0) : j.ph === 1 && j.scramble ? 3 : 0;
           }
         } else if (j.st === 'y' && j.t >= (j.mid != null && j.ph === 1 ? MID_CLEAR : j.amber)) { j.st = 'r'; j.t = 0; dirty.add(j); } // (a crossing's walk ends in its flashing, not a car's amber)
-        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 25) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; j.mpExt = j.mpOn = false; if (j.skip === j.ph) j.skip = null; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
+        // (the walk's all-red is held 10 s at most for the last of its crowd, not 25: one walker lingering on the road
+        // kept every arm of Shinjuku's 1105 red a further 6 to 10 s a cycle, and the cars stop for anyone in their way)
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 10) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; j.mpExt = j.mpOn = false; if (j.skip === j.ph) j.skip = null; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
         j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > end - FLASH);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
