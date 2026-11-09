@@ -63,17 +63,21 @@ window.OEPlate = (function () {
       lines.push(`<line x1="0" y1="${py.toFixed(1)}" x2="1000" y2="${py.toFixed(1)}" class="${km ? 'km' : ''}"/>`);
       if (km && y) ticks.push(`<span class="plate-tick y" style="top:${Y(y)}">${y > 0 ? '+' : '−'}${Math.abs(y / 1000)} km N</span>`);
     }
-    // the model's own ground imagery, each tile shown as it arrives
-    const tiles = (scene.ground || []).map((t, i) =>
+    // the model's own ground imagery: its overview where it has one (scene.json ground_lo, one picture of the
+    // whole frame, so that the plate doesn't fetch the far tiles the game loads only once it is open: issue
+    // 335), else each tile, shown as it arrives
+    const pics = scene.ground_lo ? [scene.ground_lo] : (scene.ground || []);
+    const tiles = pics.map((t, i) =>
       `<img alt="" decoding="async" data-i="${i}" style="left:${X(t.x0)};top:${Y(t.y1)};width:${((t.x1 - t.x0) / mw * 100).toFixed(3)}%;height:${((t.y1 - t.y0) / mh * 100).toFixed(3)}%">`).join('');
     // the landmarks, marked one after another
     const labels = Object.entries(scene.labels || {}).filter(([, p]) => p[0] > f.x[0] && p[0] < f.x[1] && p[1] > f.y[0] && p[1] < f.y[1]).slice(0, 14)
       .map(([name, p], i) => `<span class="plate-pin" style="left:${X(p[0])};top:${Y(p[1])};animation-delay:${(0.9 + i * 0.32).toFixed(2)}s"><i></i>${esc(name)}</span>`).join('');
     map.innerHTML = `${tiles}<svg class="plate-grid" viewBox="0 0 1000 1000" preserveAspectRatio="none">${lines.join('')}</svg>${ticks.join('')}${labels}`;
     map.querySelectorAll('img').forEach(img => {
-      const t = scene.ground[+img.dataset.i];
+      const t = pics[+img.dataset.i], jpeg = `data/${city.id}/${t.file}`;
       img.onload = () => img.classList.add('in');
-      img.src = `data/${city.id}/${t.file}`;
+      img.onerror = () => { if (!img.src.endsWith(jpeg)) img.src = jpeg; }; // (no AVIF here: the JPEG)
+      img.src = t.avif ? `data/${city.id}/${t.avif}` : jpeg;
       run.imgs.push(img);
     });
     const src = scene.sources || {};

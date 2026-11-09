@@ -43,6 +43,7 @@ async function open() {
   await p.goto(`http://localhost:${PORT}/index.html?overture=1#play-${city}`);
   await p.waitForFunction(() => window.__game && document.getElementById('g-loader') && document.getElementById('g-loader').classList.contains('out'), null, { timeout: 900000, polling: 1000 })
     .catch(e => { console.error(errs.join('\n')); throw e; });
+  await p.evaluate(() => window.__game.groundShown && window.__game.groundShown()); // (the far aerial tiles, which come after the loader)
   // the day and the hour: the guide follows the season on the game's clock
   await p.evaluate(({ m, d, time }) => {
     const G = __game, y = G.clock.y, L = Sun.dayLimits(y, m, d);

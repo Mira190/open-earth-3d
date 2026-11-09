@@ -1543,3 +1543,74 @@ geometry, not the network, takes most of them; on a GPU the download is the larg
 The helicopter (1.7 MB) is no longer among them: it is fetched when the player comes within 800 m of
 its pad or boards it. NPCs whose characters no one within 300 m of the start wears load after the
 game opens.
+
+### Issue 335: roofs, ids, colours and the aerial tiles
+
+The reference was mrdoob's Slop New York (MIT), which fits Manhattan's buildings into 440 KB by shipping
+footprints and heights alone and drawing the rest in shaders. Ours keep measured roofs, landmarks and an
+aerial photograph, so the work here is in how those bytes are encoded and when they are fetched.
+
+**Roof meshes** (`buildings.bin` column `r`, positions 6 and 7: each pitched roof's int16 x, y, z and its
+triangles). `pipeline/pack.py` sends them through meshoptimizer's vertex codec (format v1, level 2, the
+vertices padded to four int16) and index codec, all the roofs as one buffer, before the file's gzip
+(`pipeline/meshopt_pack.mjs`, meshoptimizer 1.x, MIT, vendored in `pipeline/vendor/meshoptimizer/`).
+`web/pack.js` decodes them with three.js's copy of the same decoder in WebAssembly, or with the reference
+JavaScript decoder where there is none (both MIT, already shipped for the models), loaded only for a pack
+that has them; packs written before decode as they did. The index codec may start a triangle at another
+of its corners, wound the same way, so `pack.py` and `tools/pack_check.js` compare roofs with each
+triangle at its smallest rotation. The issue's estimate (0.8 MB on Shibuya) was against plain gzip of the
+bytes; against the pack's own delta-coded, byte-plane-split integers the codecs save less, the vertices
+5% and the triangles 30%.
+
+Tried, not adopted: the vertices as separate x, y and z streams (2% smaller, not worth a second layout),
+and predicting roof vertices from the footprint ring (only 24% of them lie on it).
+
+**Ids and colours** (`buildings.json` `b`: `osm_id`, `wall`, `roof`). A string column now takes the
+smallest of a table and an index (as before); for ids such as `w310627517` a table of prefixes, an index
+and the numbers; for `#rrggbb` colours the 24-bit integers or a sorted palette and an index. On Shibuya
+the ids' 45,560 distinct strings had been 70 KB of the gzipped header.
+
+| City | `buildings.bin` before | after |
+|---|---|---|
+| Shibuya | 3.73 MB | 3.42 MB |
+| Kyoto | 5.28 MB | 4.77 MB |
+| Shinjuku | 1.85 MB | 1.71 MB |
+| Tokyo (Marunouchi-Ginza) | 0.94 MB | 0.90 MB |
+| Sydney | 0.85 MB | 0.74 MB |
+| Higashiyama, Queenstown, Tetsugaku, Fushimi Inari | 1.78 MB | 1.60 MB |
+| the 9 live cities | 14.44 MB | 13.14 MB |
+
+Decoding takes as long as before (Shibuya 0.34 s in Node).
+
+**Aerial ground tiles.** Surveyed: WebP (Pillow's libwebp, BSD-3-Clause), AVIF (libavif with libaom
+through Pillow 12, BSD-2-Clause) and KTX2/Basis (tried before, above under GPU memory: ETC1S blurs the
+photograph, UASTC is 3.5 times the JPEG). Measured on Shibuya's tiles drawn again from the source
+imagery (the JPEG comes out the same, pixel for pixel), at the JPEG's own error against that source
+(34.6-35.7 dB PSNR, JPEG quality 82): WebP needs 90-100% of the JPEG's bytes, AVIF about 60% (quality
+66, speed 4). Re-encoding the JPEGs instead saves only a quarter, because the encoder then spends its bits
+on the JPEG's own blocks. Adopted: AVIF, encoded from the source by `build_scene.save_tile`, with the JPEG
+kept beside it for browsers without AVIF (Safari before 16.4); `world.js` tests for AVIF once with a
+1-pixel image. `python pipeline/ground_avif.py --city <id>` adds them to a built city.
+
+| City | tiles | JPEG | AVIF |
+|---|---|---|---|
+| Shibuya | 20 | 7.24 MB | 4.52 MB |
+| Shinjuku | 15 | 5.23 MB | 3.32 MB |
+| Kyoto | 15 | 4.61 MB | 2.85 MB |
+| Tokyo | 16 | 4.51 MB | 2.85 MB |
+| Sydney | 12 | 3.76 MB | 2.44 MB |
+| Tetsugaku | 6 | 1.68 MB | 1.18 MB |
+| Higashiyama | 4 | 1.41 MB | 1.01 MB |
+| Fushimi Inari | 6 | 1.27 MB | 0.87 MB |
+
+The tiles are also streamed: the game passes its start (`game.start.at`) to `OEWorld.create`
+(`groundAt`), and only the tiles within a kilometre of it load before the game opens, nearest first. A
+far tile shows its part of the whole frame's overview (`scene.json` `ground_lo`, 6 m a pixel, AVIF
+quality 45, 10-75 KB) until its own picture comes, fetched once the loader has gone
+(`groundPictures.release`), sent to the GPU between frames and swapped in. The roofs' photo
+(`buildings.js` `loadPhoto`) draws from the same pictures, the overview first, and is sent to the GPU
+twice rather than once a tile. The photo's grade is taken from the overview, so it doesn't change when
+the far tiles come in. The loader's plate shows the overview instead of every tile. The city viewer
+loads every tile at once, as before, but as AVIF. The film and still tools wait for every tile
+(`__game.groundShown()`).
+

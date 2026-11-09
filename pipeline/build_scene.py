@@ -216,10 +216,33 @@ def ground_tiles(C):
             rgb = np.stack([map_coordinates(mosaic[:, :, k], [py, px], order=1).reshape(h, w) for k in range(3)], -1)
             hh, ww = min(h, ortho.shape[0] - j * h), min(w, ortho.shape[1] - i * w)
             ortho[j * h:j * h + hh, i * w:i * w + ww] = rgb[:hh, :ww]
-            name = f"ground_{i}_{j}.jpg"
-            Image.fromarray(rgb).save(os.path.join(C.out, name), quality=82, optimize=True)
-            tiles.append({"file": name, "x0": float(tx0), "x1": float(tx0 + TILE_W), "y0": float(ty0 - TILE_H), "y1": float(ty0)})
+            tiles.append(save_tile(C, f"ground_{i}_{j}", rgb, 82) | {"x0": float(tx0), "x1": float(tx0 + TILE_W), "y0": float(ty0 - TILE_H), "y1": float(ty0)})
     return tiles, ortho
+
+
+# The ground tiles as AVIF too (issue 335): at the JPEG's own error against the source imagery (34-36 dB PSNR
+# on Shibuya's, JPEG quality 82) AVIF takes about 60% of the bytes; WebP, 90%. Browsers without AVIF
+# (Safari before 16.4) load the JPEG. Encoded by libavif through Pillow (BSD-2-Clause; libaom, BSD-2-Clause).
+AVIF_QUALITY, AVIF_SPEED = 66, 4
+# the whole frame at 6 m a pixel, at a lower AVIF quality (about 70 KB): shown on a far tile until its own
+# picture arrives after the game opens, and on the loader's plate (world.js, plate.js)
+OVERVIEW_M, OVERVIEW_QUALITY = 6, 45
+
+
+def save_tile(C, stem, rgb, quality, avif=AVIF_QUALITY):
+    """A ground picture as JPEG (the fallback) and AVIF; its scene.json entry, less its extent."""
+    im = Image.fromarray(rgb)
+    im.save(os.path.join(C.out, stem + ".jpg"), quality=quality, optimize=True)
+    im.save(os.path.join(C.out, stem + ".avif"), quality=avif, speed=AVIF_SPEED)
+    return {"file": stem + ".jpg", "avif": stem + ".avif"}
+
+
+def ground_overview(C, ortho):
+    """The whole frame's ground at OVERVIEW_M a pixel (scene.json "ground_lo")."""
+    h, w = ortho.shape[0] // OVERVIEW_M, ortho.shape[1] // OVERVIEW_M
+    small = np.asarray(Image.fromarray(ortho).resize((w, h), Image.LANCZOS))
+    return save_tile(C, "ground_lo", small, 75, OVERVIEW_QUALITY) | {"x0": float(C.x0), "x1": float(C.x0 + w * OVERVIEW_M),
+                                                   "y0": float(C.y1 - h * OVERVIEW_M), "y1": float(C.y1)}
 
 
 # the ground drawn from the vector data, for cities without open aerial imagery
@@ -344,9 +367,7 @@ def synth_ground(C, con, raw, extent):
             tile = np.full((th, tw, 3), 128, np.uint8)
             part = ortho[j * th:(j + 1) * th, i * tw:(i + 1) * tw]
             tile[:part.shape[0], :part.shape[1]] = part
-            name = f"ground_{i}_{j}.jpg"
-            Image.fromarray(tile).save(os.path.join(C.out, name), quality=80, optimize=True)
-            tiles.append({"file": name, "x0": float(tx0), "x1": float(tx0 + TILE_W), "y0": float(ty0 - TILE_H), "y1": float(ty0)})
+            tiles.append(save_tile(C, f"ground_{i}_{j}", tile, 80) | {"x0": float(tx0), "x1": float(tx0 + TILE_W), "y0": float(ty0 - TILE_H), "y1": float(ty0)})
     return tiles, ortho
 
 
@@ -1217,8 +1238,9 @@ def build(C):
     ctx.sea = sea  # the water polygons, for a hook that follows the shore (a seawall)
 
     tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] in ("xyz", "stac_cog") else synth_ground(C, con, raw, extent)
-    for f in set(os.listdir(C.out)) - {t["file"] for t in tiles}:   # tiles of an earlier, larger extent
-        if f.startswith("ground_") and f.endswith(".jpg"):
+    ground_lo = ground_overview(C, ortho)
+    for f in set(os.listdir(C.out)) - {n for t in tiles + [ground_lo] for n in (t["file"], t["avif"])}:   # tiles of an earlier, larger extent
+        if f.startswith("ground_") and f.endswith((".jpg", ".avif")):
             os.remove(os.path.join(C.out, f))
 
     # piers and wharves as thin decks just above high water
@@ -1530,6 +1552,7 @@ def build(C):
         "terrain": {"file": "terrain.json", "nx": tg.shape[1], "ny": tg.shape[0], "cell": TERRAIN_CELL, "scale": 0.1,
                     "origin": "north-west, row-major, rows go south", "bare_earth": cfg["terrain"].get("bare_earth", False)},
         "ground": tiles,
+        "ground_lo": ground_lo,
         "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],

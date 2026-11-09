@@ -37,6 +37,7 @@ const frames = fs.mkdtempSync(path.join(os.tmpdir(), `flyover-${city}-`));
   p.on('pageerror', e => errs.push(String(e).slice(0, 300)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
+  await p.evaluate(() => window.__game.groundShown && window.__game.groundShown()); // (every aerial tile, the far ones too)
   const [y, m, d] = date.split('-').map(Number), [hh, mm] = time.split(':').map(Number);
   // the path, in the local frame (x east, y north, z up): the look point moves from the model's
   // centre to the title orbit's centre while the camera spirals in over 200 degrees and comes down
