@@ -4197,6 +4197,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (typeof groundLod === 'function' && Wd.groundMeshes[0].material.userData.street) groundLod(player.x, player.y);
   }
   spawn();
+  // a link to a district of the map ("#play-shibuya@t-sancha", from the subway map or shared): the title
+  // screen is set there, over that place and under its name, and the game starts there, not at the map's start
+  const ARRIVE = window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+  if (ARRIVE) {
+    spawn(ARRIVE.at, ARRIVE.at[2] != null ? ARRIVE.at[2] + 0.5 : undefined, lookOf(ARRIVE));
+    const nm = /^(.*?)\s*([\u3000-\u9fff\uff00-\uffef].*)?$/.exec(ARRIVE.name);
+    gtTitle.textContent = nm[1];
+    if (nm[2]) { const sm = document.createElement('small'); sm.lang = 'ja'; sm.textContent = nm[2]; gtTitle.append(sm); }
+    $('#gt-city').textContent = `${G.title.replace(/\s+[\u3000-\u9fff].*$/, '')} · ${CITY.place || CITY.name}, ${CITY.country}`;
+    if (ARRIVE.blurb) { $('#gt-blurb').textContent = ARRIVE.blurb; $('#g-title p').textContent = ARRIVE.blurb; }
+    document.title = `${nm[1]} · ${G.title} · Open Earth 3D`;
+  }
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
@@ -4228,7 +4240,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
-    const arrive = !cont && window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+    const arrive = !cont && ARRIVE;
     if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
@@ -4297,7 +4309,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#gt-continue'), 'click', () => startGame(true));
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
-  $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
+  $('#gt-now').textContent = `Now in ${ARRIVE ? gtTitle.firstChild.textContent : CITY.name} (${fmtMin(nowLoc.minutes)})`;
   // the loader (its plate, plate.js) fades onto the title orbit; the title card is held back until
   // then, so it never shows over the loader, while the scene under it waits as on the title screen
   // (preTitle). fromFlyover() is for a recorded flyover that ends on the orbit's first pose
@@ -4746,13 +4758,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the most open foreground (openYaw) or, after a loading flyover, from the video's last frame
   // (FLY_END, where tools/flyover.js ends it: 420 m south and 210 m up, the orbit the videos were
   // made under), easing out to the orbit's own radius and height.
-  const ORBIT = { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
+  // (arriving at a district: a closer orbit, so its own streets fill the title and not the skyline beyond)
+  const ORBIT = ARRIVE ? { r: 300, h: 115 } : { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
   let titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null, titleT = 0;
   if (OPENING) { titleR = openingView().r; titleH = OPENING.h; } // (no ease into the opening's own height on the first frame)
   // the orbit's centre: north-east of the start, or with an opening shot (game.start.shot, #110) the point it
   // looks at (Shibuya's: the screen over the scramble), the camera then swaying gently behind the start's view
   // and not orbiting, so the crane down from it to over the player's shoulder never swings round
-  const titleAt = () => (openingHere() ? OPENING.look : [player.x + 120, player.y + 160, player.z + 20]);
+  const titleAt = () => (openingHere() ? OPENING.look : ARRIVE ? [player.x + 30, player.y + 40, player.z + 12] : [player.x + 120, player.y + 160, player.z + 20]);
   const titlePose = () => { const c = titleAt(), yaw = openingHere() ? openingView().yaw : FLY_END.yaw; return { look: c,
     cam: [c[0] - Math.sin(yaw) * FLY_END.r, c[1] - Math.cos(yaw) * FLY_END.r, c[2] + FLY_END.h] }; };
   function fromFlyover() { titleYaw = openingHere() ? openingView().yaw : FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }

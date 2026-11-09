@@ -664,7 +664,12 @@
         "at": [
           -2470.4,
           -2864.7
-        ]
+        ],
+        "look": [
+          -2469.2,
+          -2858.0
+        ],
+        "blurb": "Sangenjaya's backstreets, the Yongen-Jaya of a famous game: the snack bar New Marina whose front became its café, Chiyo-no-yu and the coin laundry across the lane, Hanamasa's yellow sign, and Carrot Tower over the station."
       },
       {
         "id": "t-harajuku",
