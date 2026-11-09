@@ -138,7 +138,8 @@ async function lifeStep(p, check, city) {
   check(!r.error, `daily life: the step ran${r.error ? ` (${r.error})` : ''}`);
   check(r.cards0 >= 1 && r.days0 === 1, `the day: a card for day 1 as play begins (${r.slot0})`);
   check(r.slot1 !== r.slot0 && r.cards1 > r.cards0, `the day: passing the time moves on to the next part of it (${r.slot0} to ${r.slot1}), with its card`);
-  check(r.newDay && r.days1 === r.days0 + 1 && r.slot2 === 'morning' && r.cardKind === 'day', `the day: on to tomorrow morning, day ${r.days1}`);
+  check(r.newDay && r.days1 > r.days0 && r.days1 <= r.days0 + 2 && r.slot2 === 'morning' && r.cardKind === 'day', `the day: on to tomorrow morning, day ${r.days1}`);
+  // (from the night, the next part of the day is already tomorrow's morning: two days on)
   check(r.diary && r.tabs.includes('today') && r.tabs.includes('people') && r.tabs.includes('work') && r.tabs.includes('log'), `the diary opens on today, with its pages (${(r.tabs || []).join(', ')})`);
   check(r.eye > 0 && r.passport === 5, `the passport: a good guess grows the eye (+${r.eye}), and its five skills are drawn`);
   if (r.bonds) {
