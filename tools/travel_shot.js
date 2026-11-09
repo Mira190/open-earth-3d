@@ -4,7 +4,8 @@
 // or trees; under 30% is a MISS), how far from it, on what floor, and whether its centre was in frame.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/travel_shot.js sydney out_dir [width height]     # llvmpipe; without xvfb-run, SwiftShader
-// env: ONLY="Opera,Tower" (names containing these), LIMIT=6 (the first n landmarks), TIME=17:30 and DATE=6-21
+// env: ONLY="Opera,Tower" (names containing these), LIMIT=6 (the first n landmarks), PLACES="jacaranda-lookout,..."
+// (the city's travel places with these ids, "all" for every one, in place of the landmarks), TIME=17:30 and DATE=6-21
 // (the local clock), CAR=1 (travel in your car), TIER=high|medium|low, ARRIVALS='{"HEP FIVE": {"front": 154}}' (city.json
 // "arrivals" entries to try before they go in).
 const { chromium } = require('playwright');
@@ -75,6 +76,26 @@ const [,, city = 'sydney', outDir = '.', width = '1440', height = '900'] = proce
     g.player.x = c.D.st.x + 2; g.player.y = c.D.st.y; g.player.z = c.D.st.z; g.enterCar();
     for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
   });
+  // the city's own travel places (game.travel), through the map's own travel, as the list beside the map offers them
+  const places = (process.env.PLACES || '').split(',').filter(Boolean);
+  if (places.length) {
+    const got = await p.evaluate(ids => {
+      const g = window.__game, all = (g.travelGroups().find(([t]) => t === 'Places') || [, []])[1];
+      return all.filter(d => ids.includes('all') || ids.includes(d.id)).map(d => d.id);
+    }, places);
+    for (const id of got) {
+      const r = await p.evaluate(id => {
+        const g = window.__game, d = g.travelGroups().find(([t]) => t === 'Places')[1].find(q => q.id === id), ok = g.travelTo(d);
+        for (let k = 0; k < 40 && g.cine.active; k++) g.advance(0.25);
+        g.advance(0.5);
+        const pl = g.player;
+        return { ok, name: d.name, mode: pl.mode, dist: Math.hypot(d.at[0] - pl.x, d.at[1] - pl.y), z: pl.z, date: `${g.clock.d}/${g.clock.m}`, toast: [...document.querySelectorAll('.g-toast')].map(e => e.textContent).join(' | ') };
+      }, id);
+      console.log(`${r.ok ? 'ok  ' : 'MISS'} ${r.name}: ${r.mode}, ${r.dist.toFixed(0)} m away, z ${r.z.toFixed(1)}, date ${r.date}${r.toast ? `, "${r.toast.trim().slice(0, 140)}"` : ''}`);
+      await shot(`place-${id}`);
+    }
+    list.length = 0;
+  }
   for (const d of list) {
     const r = await p.evaluate(i => {
       const g = window.__game, lm = g.landmarks[i], ok = g.travelTo(lm);

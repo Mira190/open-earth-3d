@@ -62,8 +62,11 @@ attribute float aLit; uniform float uYoz; varying float vLit; varying float vUpH
 float cell = floor(tuv.x * ATLAS_COLS) + floor(tuv.y * ATLAS_ROWS) * ATLAS_COLS;
 vCell = cell;
 if (uBloom < 0.5 && abs(cell - CELL_BLOOM) < 0.5) tuv.x -= 1.0 / ATLAS_COLS;
-// a cherry's card flowers while its variety's bloom has reached it (the same order its leaves fall in), else it is a leaf
 float turn0 = fract(sin(dot(vec2(instanceMatrix[3][0], instanceMatrix[3][2]), vec2(12.9898, 78.233))) * 43758.5453);
+// in full bloom a jacaranda's crown is nearly all flowers, its new leaves coming as they fall: most of its leaf
+// cards (the cell left of the bloom cell) flower too, a few more or less on each tree
+if (uBloom > 0.5 && abs(cell - CELL_BLOOM + 1.0) < 0.5 && fract(tc.b * 5.31 + turn0 * 0.43) < 0.55 + 0.3 * turn0) tuv.x += 1.0 / ATLAS_COLS;
+// a cherry's card flowers while its variety's bloom has reached it (the same order its leaves fall in), else it is a leaf
 float sv = cell - CELL_SAKURA;
 bool sakura = sv > -0.5 && sv < float(SAKURA_N) - 0.5;
 vPetal = (sakura && fract(tc.b * 7.13 + turn0 * 0.37) < uSakuraV[int(clamp(sv + 0.5, 0.0, float(SAKURA_N) - 0.5))] * (0.85 + 0.3 * turn0)) ? 1.0 : 0.0;
