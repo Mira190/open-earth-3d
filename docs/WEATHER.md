@@ -10,6 +10,56 @@ crowd under umbrellas, the pond) and phone:
 ![Shinjuku in the rain, desktop](images/weather/shinjuku-rain-desktop.jpg)
 ![Shinjuku in the rain, phone](images/weather/shinjuku-rain-phone.jpg)
 
+## The weather state
+
+One object, `OEWeather.S` (`web/game/weather.js`), is what the weather is now. Everything that depends
+on the weather reads it: the sky and clouds, the trees, the water, the traffic, the sound, the diary.
+Nothing keeps its own copy. It exists as soon as the script has loaded (a clear, calm day until the game's
+weather starts), so a reader needs no more than `const wx = window.OEWeather && OEWeather.S`. The
+game's weather eases every field frame by frame (`update`); readers only read.
+
+| Field | Range | What it is |
+| --- | --- | --- |
+| `kind` | `clear` `overcast` `fog` `drizzle` `rain` `storm` `snow` | the weather in a word |
+| `cover` | 0..1 | cloud cover |
+| `precip` | `none` `rain` `snow` | what is falling |
+| `rate` | 0..1 | how hard it falls (rain or snow) |
+| `rain`, `snow` | 0..1 | the same, split |
+| `mm` | mm/h | water falling, roughly: a drizzle 0.5, rain 4, a storm 25 |
+| `storm` | 0..1 | a thunderstorm over the city |
+| `flash` | 0..1 | lightning's light this frame |
+| `wind.x`, `wind.z` | m/s | where the wind blows **to**, in the world's x and z (three.js: −z is north), gusts included |
+| `windSpeed` | m/s | its length now |
+| `windMean` | m/s | the steady wind under the gusts |
+| `windFrom` | degrees | the compass bearing it blows **from** |
+| `gust` | 0..1 | 0 in a lull, 1 at a gust's peak |
+| `fog` | 0..1 | fog or mist |
+| `visibility` | metres | how far one sees: clear 40 km, rain 3 km, snow 1 km, fog under 200 m |
+| `temp` | °C | the air's temperature |
+| `wet` | 0..1 | how wet the ground is: lags the rain, dries by sun and wind |
+| `snowDepth` | 0..1 | settled snow (1 is about 12 cm) |
+| `grip` | 0.35..1 | tyre grip against a dry road's: wet 0.7, snow 0.4, ice less |
+| `day` | 0..1 | daylight |
+| `t` | seconds | the weather's clock |
+| `source` | `season` `pinned` `live` `off` | who decided it |
+
+- `OEWeather.onChange(f)` calls `f(kind, S)` when the kind changes and returns a function that stops it.
+- `OEWeather.describe()` gives a line for a HUD or a diary: "Light snow, -1°".
+- Shaders read the same state as uniforms, `OEWeather.U`: `uOeWet`, `uOeRain`, `uOeOvercast`, `uOeSnow`
+  (settled), `uOeSnowfall`, `uOeFog`, `uOeFlash`, `uOeT`, and `uOeWind` (a vec4: x and z in m/s, the gust
+  0..1, and the metres of air that have gone by, which is what a swaying or drifting thing should
+  multiply rather than time, so that a gust speeds it up without a jump).
+- The game sets it: `__game.weather.set('snow')`, or exact amounts for a still or a film,
+  `set({rain, snow, fog, storm, cloud, wet, snowDepth, temp, wind, windFrom, now})`.
+
+How each field moves: cloud eases in over a few seconds and rain or snow waits for its cloud; thunder
+waits for its rain; the wind is the season's mean (the climate's `wind_ms`, or the wind the city's waves
+were made for) times the weather's own factor (fog 0.25, rain 1.4, a storm 2.4), with lulls and gusts
+from three octaves of noise and a bearing that wanders; the ground wets in the rain and from melting
+snow and dries faster in sun, wind and warmth; snow settles while it falls at 1.5° or below and melts
+with warmth, sun and rain; the temperature is the normals' daily minimum near dawn and maximum in the
+mid afternoon, each day a little off the mean and flatter under cloud.
+
 ## What decides it
 
 - **The season.** `game.weather` in `cities/<id>/city.json` holds the city's mean number of days a
@@ -21,7 +71,7 @@ crowd under umbrellas, the pond) and phone:
   in ten: the tsuyu.
 - **A choice.** The pause menu's Weather row (kept for the next visit), a quest choice
   (`"action": "set_weather", "weather": "rain", "date": [6, 18], "time": "08:10"`), or the page's
-  `?weather=clear|overcast|drizzle|rain|live|off`.
+  `?weather=clear|overcast|fog|drizzle|rain|storm|snow|live|off`.
 - **Automated runs** (`navigator.webdriver`: the checks, stills and films) keep a clear sky unless
   they ask, so their frames stay comparable. `tools/game_shot.js` takes `"weather"` per view.
 
@@ -71,8 +121,7 @@ quest's `choices`) into `web/data/<id>/game.json`. `pipeline/game_data.py` passe
 | Umbrellas | The crowd puts them up as the rain comes on (fewer in a drizzle): Tokyo, Kyoto and Osaka mostly clear vinyl, elsewhere black, navy and a few colours; on the skinned people near you and the instanced crowd further off | all |
 | Sound | Rain hiss and patter (synthesised noise), a drumming roof and drips under one, muffled in a car or the helicopter | all |
 
-One shared state, `OEWeather.U` (`uOeWet`, `uOeRain`, `uOeOvercast`, `uOeT`), is what every patched
-shader reads. `OEWeather.patch(shader, {puddles, porous, water})` makes any `MeshStandardMaterial`
+The state's uniforms, `OEWeather.U` (above), are what every patched shader reads. `OEWeather.patch(shader, {puddles, porous, water})` makes any `MeshStandardMaterial`
 wet; `OEWeather.GLSL` has `oePuddle(xz)` and `oeRipple(xz, camD)` for a city's own look (Shibuya's
 wet-street reflections, #112, read the same wetness).
 

@@ -28,15 +28,65 @@
 'use strict';
 window.OEWeather = (function () {
   const U = { uOeWet: { value: 0 }, uOeRain: { value: 0 }, uOeOvercast: { value: 0 }, uOeT: { value: 0 },
+    // settled snow and falling snow (0..1), fog (0..1), lightning (0..1), and the wind: x, z in m/s, the
+    // gust 0..1 and the distance the air has travelled (metres, for whatever sways or drifts with it)
+    uOeSnow: { value: 0 }, uOeSnowfall: { value: 0 }, uOeFog: { value: 0 }, uOeFlash: { value: 0 }, uOeWind: { value: null },
     // the rain occlusion map (heights of the tops of things round the camera, from above) and its frame
     uOeOcc: { value: null }, uOeOccBox: { value: null }, uOeOccOn: { value: 0 }, uOeOccBase: { value: 0 } };
+  // what each weather asks for: rain, snow, fog and storm 0..1, cloud cover 0..1, the wind as a
+  // multiple of the season's mean, and (snow) a temperature it may not rise above
   const KINDS = {
     clear: { rain: 0, cloud: 0 },
     overcast: { rain: 0, cloud: 0.85 },
+    fog: { rain: 0, cloud: 0.55, fog: 0.85, windK: 0.25 },
     drizzle: { rain: 0.3, cloud: 0.95 },
-    rain: { rain: 0.85, cloud: 1 },
+    rain: { rain: 0.85, cloud: 1, windK: 1.4 },
+    storm: { rain: 1, cloud: 1, storm: 1, windK: 2.4 },
+    snow: { rain: 0, snow: 0.8, cloud: 0.95, windK: 0.7, tempMax: -1 },
   };
-  const NAMES = { live: 'As the season brings it', clear: 'Clear', overcast: 'Overcast', drizzle: 'Drizzle', rain: 'Rain', off: 'Off' };
+  const NAMES = { live: 'As the season brings it', clear: 'Clear', overcast: 'Overcast', fog: 'Fog', drizzle: 'Drizzle', rain: 'Rain', storm: 'Thunderstorm', snow: 'Snow', off: 'Off' };
+  // ------------------------------------------------------------ the one weather state
+  // OEWeather.S: what the weather is now, eased frame by frame by the game's weather (create().update).
+  // Everything that depends on the weather reads this (the sky and clouds, the trees, the water, the
+  // traffic, the sound, the diary); nothing keeps its own copy. It is there before the game starts
+  // (a clear, calm day) and on pages with no weather at all, so a reader needs no guard beyond
+  // `window.OEWeather && OEWeather.S`. docs/WEATHER.md, "The weather state", has the table.
+  const S = {
+    kind: 'clear',      // clear | overcast | fog | drizzle | rain | storm | snow
+    cover: 0,           // cloud cover, 0..1
+    precip: 'none',     // none | rain | snow: what is falling
+    rate: 0,            // how hard it falls, 0..1 (rain or snow, whichever falls)
+    rain: 0, snow: 0,   // the same, split: 0..1 each
+    mm: 0,              // millimetres an hour of water, roughly (a drizzle 0.5, rain 4, a storm 25)
+    storm: 0,           // a thunderstorm over the city, 0..1
+    flash: 0,           // lightning's light this frame, 0..1 (a few frames at a time)
+    wind: { x: 0, z: 0 }, // where the wind blows TO, metres a second in the world's x and z (three.js: -z north), gusts in it
+    windSpeed: 0,       // its length now, m/s
+    windMean: 0,        // the steady wind under the gusts, m/s
+    windFrom: 0,        // compass bearing it blows FROM, degrees
+    gust: 0,            // 0..1: 0 in a lull, 1 at a gust's peak
+    fog: 0,             // fog or mist, 0..1
+    visibility: 40000,  // how far one sees, metres
+    temp: 15,           // air temperature, degrees C
+    wet: 0,             // how wet the ground is, 0..1 (lags the rain, dries by sun and wind)
+    snowDepth: 0,       // settled snow, 0..1 (1 about 12 cm)
+    grip: 1,            // tyre grip against a dry road's, 0.35..1 (wet 0.7, snow 0.4)
+    day: 1,             // daylight, 0..1
+    t: 0,               // the weather's own seconds
+    source: 'season',   // season | pinned | live | off: who decided it
+  };
+  // the wind's unsteadiness at a time (seconds): gn 0..1, slow lulls and swells, and gust 0..1, its peaks
+  const gustAt = t => { const gn = vnoise(t * 0.11) * 0.6 + vnoise(t * 0.37 + 9.1) * 0.3 + vnoise(t * 1.3 + 3.7) * 0.1; return { gn, gust: smooth(0.52, 0.85, gn) }; };
+  const listeners = [];
+  // call f(kind, S) whenever the kind changes (clear to rain, rain to storm...); returns a function that stops it
+  function onChange(f) { listeners.push(f); return () => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); }; }
+  // a few words for a HUD or a diary line: 'Light snow, -1°', 'Thunderstorm, 24°'
+  function describe(s = S) {
+    const w = s.kind === 'snow' ? (s.snow < 0.35 ? 'Light snow' : s.snow > 0.75 ? 'Heavy snow' : 'Snow')
+      : s.kind === 'storm' ? 'Thunderstorm' : s.kind === 'rain' ? (s.rain > 0.8 ? 'Heavy rain' : 'Rain') : s.kind === 'drizzle' ? 'Drizzle'
+        : s.kind === 'fog' ? (s.fog > 0.6 ? 'Fog' : 'Mist') : s.kind === 'overcast' ? 'Overcast' : s.cover > 0.3 ? 'Fair' : 'Clear';
+    return `${w}${s.windSpeed > 10 ? ', windy' : ''}, ${Math.round(s.temp)}°`;
+  }
   const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
   // a well-mixed hash of an integer (a day) and a salt, 0..1
@@ -269,8 +319,47 @@ void main() {
     const k = cl.threshold_mm >= 1 ? 1 : cl.threshold_mm >= 0.5 ? 0.9 : 0.78;
     return Math.min(0.85, cl.rain_days[m - 1] / days * k);
   }
-  // the weather the season brings at a local time: {rain 0..1, cloud 0..1}
+  const MDAYS = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  // a monthly table read at a date, eased between the middles of the months
+  function monthly(a, m, d) {
+    if (!Array.isArray(a)) return a;
+    const x = m - 1 + (d - 0.5) / MDAYS[m - 1] - 0.5, i = Math.floor(x), f = x - i;
+    return a[(i + 12) % 12] * (1 - f) + a[(i + 13) % 12] * f;
+  }
+  // the air's temperature at a local time: the normals' daily minimum near dawn and maximum in the
+  // mid afternoon, each day a little off the mean (a hash of its date), cooler under cloud by day
+  function tempAt(cl, y, m, d, min, cloud = 0) {
+    const tx = cl && cl.temp_max ? monthly(cl.temp_max, m, d) : 20, tn = cl && cl.temp_min ? monthly(cl.temp_min, m, d) : 11;
+    const dayN = Math.floor(Date.UTC(y, m - 1, d) / 864e5), salt = cl && cl.rain_days ? Math.round(cl.rain_days.reduce((a, b) => a + b, 0) * 10) : 7;
+    const off = (ihash(dayN, salt + 5) + ihash(dayN, salt + 6) - 1) * 3.5;
+    const k = 0.5 - 0.5 * Math.cos((min / 60 - 5) / 24 * 2 * Math.PI + 0.9 * Math.sin((min / 60 - 5) / 24 * 2 * Math.PI) * 0.5); // min at 05:00, max near 14:30
+    const range = (tx - tn) * (1 - 0.45 * cloud);
+    return tn + off + (tx - tn - range) * 0.5 + range * k;
+  }
+  // the weather the season brings at a local time: {rain, snow, fog, storm, cloud 0..1, temp C, windK}
   function season(cl, y, m, d, min) {
+    const a = season0(cl, y, m, d, min);
+    const out = { rain: a.rain, cloud: a.cloud, snow: 0, fog: 0, storm: 0, windK: 1 + 0.6 * a.rain, temp: tempAt(cl, y, m, d, min, a.cloud) };
+    if (!cl || !cl.rain_days) return out;
+    const dayN = Math.floor(Date.UTC(y, m - 1, d) / 864e5), salt = Math.round(cl.rain_days.reduce((p, q) => p + q, 0) * 10);
+    const rd = Math.max(0.5, cl.rain_days[m - 1]), h = min / 60;
+    // a snow day (the normals' days with snowfall, among the wet ones): what falls is snow, and the day is cold
+    if (cl.snow_days && ihash(dayN, salt + 7) < Math.min(1, cl.snow_days[m - 1] / rd) && a.wet) {
+      out.snow = Math.min(1, a.rain0 * 1.6 + 0.12 * a.wetDay); out.rain = 0; out.temp = Math.min(out.temp, 0.5 - 2.5 * ihash(dayN, salt + 8)); out.windK = 0.8;
+    } else if (!cl.snow_days && out.temp < 0.8 && out.rain > 0) { out.snow = out.rain; out.rain = 0; } // (no table: by the thermometer)
+    // a thunderstorm day (days with thunder): the day's hardest showers are storms, mostly after noon
+    if (cl.thunder_days && !out.snow && a.wet && ihash(dayN, salt + 9) < Math.min(1, cl.thunder_days[m - 1] / rd)) {
+      out.storm = smooth(0.45, 0.8, a.rain0) * (0.6 + 0.4 * smooth(11, 15, h));
+      out.rain = Math.min(1, out.rain + 0.5 * out.storm); out.windK = 1.2 + 1.4 * out.storm;
+    }
+    // a foggy morning (days with fog): thickest before sunrise, gone by mid morning; and on any calm,
+    // clear dawn a little mist
+    const dawn = smooth(1.5, 4.5, h) * (1 - smooth(7, 9.5, h));
+    if (cl.fog_days && ihash(dayN, salt + 10) < cl.fog_days[m - 1] / MDAYS[m - 1]) { out.fog = 0.85 * dawn; out.windK = Math.min(out.windK, 1 - 0.7 * dawn); }
+    else if (!a.wet && a.cloud < 0.4) out.fog = 0.22 * dawn * (0.4 + 0.6 * ihash(dayN, salt + 11));
+    return out;
+  }
+  function season0(cl, y, m, d, min) {
     if (!cl || !cl.rain_days) return { rain: 0, cloud: 0.2 };
     const dayN = Math.floor(Date.UTC(y, m - 1, d) / 864e5), h = dayN * 24 + min / 60;
     const salt = Math.round(cl.rain_days.reduce((a, b) => a + b, 0) * 10); // each climate its own run of days
@@ -282,22 +371,23 @@ void main() {
     };
     const at = n => {
       const D = day(n);
-      if (!D.wet) return { rain: 0, cloud: D.grey ? 0.55 + 0.3 * vnoise(h / 5 + n) : 0.1 + 0.25 * vnoise(h / 4 + n) };
+      if (!D.wet) return { rain: 0, rain0: 0, wet: false, wetDay: 0, cloud: D.grey ? 0.55 + 0.3 * vnoise(h / 5 + n) : 0.1 + 0.25 * vnoise(h / 4 + n) };
       const s = smooth(0.32, 0.72, vnoise(h / 2.6 + n * 3.1) * 0.75 + vnoise(h / 0.7 + n) * 0.25);
-      return { rain: s * D.cap, cloud: 0.75 + 0.25 * smooth(0, 0.3, s) };
+      return { rain: s * D.cap, rain0: s, wet: true, wetDay: 1, cloud: 0.75 + 0.25 * smooth(0, 0.3, s) };
     };
     const a = at(dayN);
     // a day's weather runs into the next across midnight
     const edge = min < 120 ? at(dayN - 1) : min > 1320 ? at(dayN + 1) : null;
     if (!edge) return a;
     const k = min < 120 ? 0.5 * (1 - min / 120) : 0.5 * (min - 1320) / 120;
-    return { rain: a.rain + (edge.rain - a.rain) * k, cloud: a.cloud + (edge.cloud - a.cloud) * k };
+    return { rain: a.rain + (edge.rain - a.rain) * k, rain0: a.rain0 + (edge.rain0 - a.rain0) * k, wet: a.wet, wetDay: a.wetDay, cloud: a.cloud + (edge.cloud - a.cloud) * k };
   }
-  const kindOf = s => (s.rain > 0.5 ? 'rain' : s.rain > 0.06 ? 'drizzle' : s.cloud > 0.6 ? 'overcast' : 'clear');
+  const kindOf = s => ((s.storm || 0) > 0.4 && s.rain > 0.3 ? 'storm' : (s.snow || 0) > 0.06 ? 'snow' : s.rain > 0.5 ? 'rain' : s.rain > 0.06 ? 'drizzle'
+    : (s.fog || 0) > 0.3 ? 'fog' : s.cloud > 0.6 ? 'overcast' : 'clear');
 
   // ------------------------------------------------------------ the game's weather
   // Wd: the world (world.js); atmos: atmosphere.js; climate: game.json weather; QC: OEQuality.city()
-  function create(Wd, renderer, camera, { climate = null, QC = null, sky = {} } = {}) {
+  function create(Wd, renderer, camera, { climate = null, QC = null, sky = {}, wind: windCfg = null } = {}) {
     const world = Wd.world, su = Wd.su;
     const tier = (QC && QC.name) || 'high';
     const T = { high: { near: 6000, far: 9000, splash: 700, occ: 256 }, medium: { near: 4000, far: 5000, splash: 420, occ: 256 }, low: { near: 2200, far: 2200, splash: 200, occ: 128 } }[tier] || { near: 4000, far: 5000, splash: 420, occ: 256 };
@@ -344,6 +434,7 @@ void main() {
     const occCam = new THREE.OrthographicCamera(-OCC_R, OCC_R, OCC_R, -OCC_R, 1, 4000);
     occCam.up.set(0, 0, -1);
     if (!U.uOeOccBox.value) U.uOeOccBox.value = new THREE.Vector4(0, 0, 1, 1); // (THREE is there once the game starts, not when this file loads)
+    if (!U.uOeWind.value) U.uOeWind.value = new THREE.Vector4(0, 0, 0, 0);
     const occBase = U.uOeOccBase, occBox = U.uOeOccBox, occOn = U.uOeOccOn;
     U.uOeOcc.value = occRT ? occRT.texture : null;
     const occMat = new THREE.ShaderMaterial({
@@ -415,12 +506,16 @@ void main() {
     const remember = v => { if (!guardOn) return; try { if (v) localStorage.setItem(GUARD_KEY, v); else localStorage.removeItem(GUARD_KEY); } catch (e) { /* storage blocked */ } };
     function setLevel(l, note) {
       level = l;
-      if (l === 0) { mode = 'off'; snap = true; wetPin = null; custom = null; } // (a pinned wetness too: dry streets)
+      if (l === 0) { mode = 'off'; snap = true; wetPin = null; depthPin = null; custom = null; } // (a pinned wetness too: dry streets)
       remember(l === 0 ? 'off' : l === 1 ? 'light' : null);
       if (note) { guardNote = note; if (api.onGuard) { api.onGuard(note); guardNote = null; } }
     }
-    const cur = { rain: 0, cloud: 0 }, target = { rain: 0, cloud: 0 };
-    let custom = null, wetPin = null;
+    const cur = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 }, target = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 };
+    let custom = null, wetPin = null, depthPin = null, lastKind = 'clear', windRun = 0;
+    // the wind: the season's mean (the climate's monthly wind_ms, or the wind the city's waves were made
+    // for, water.waves), from the prevailing bearing, wandering a little, with gusts on top
+    const windBase = () => (climate && climate.wind_ms != null ? (clockAt ? monthly(climate.wind_ms, clockAt[1], clockAt[2]) : monthly(climate.wind_ms, 6, 15)) : windCfg && windCfg.wind_ms != null ? windCfg.wind_ms * 0.7 : 3.2);
+    const windFrom0 = (climate && climate.wind_from_deg) ?? (windCfg && windCfg.wind_from_deg) ?? 250;
     let clockAt = null, snap = true, cover = { roof: false, h: 0, at: 0 }, occT = -9, occAt = new THREE.Vector3(1e9, 0, 0), hideList = [], hideAt = -99;
     const lastCam = new THREE.Vector3().copy(camera.position), vel = new THREE.Vector3();
     const baseClouds = su && su.cloudCoverage ? [su.cloudCoverage.value, su.cloudDensity.value] : null;
@@ -450,20 +545,23 @@ void main() {
       // for the checks: the device rules on or off, and forget what was remembered and shed
       guardForce(v) { guardOn = !!v; },
       guardReset() { remember(null); level = 2; dropless = false; chosen = false; if (mode === 'off') mode = 'live'; arm(); },
-      get state() { return { mode, level, kind: kindOf(cur), rain: cur.rain, cloud: cur.cloud, wet: U.uOeWet.value, covered: cover.roof, coverH: cover.h }; },
-      // pin a weather ('clear', 'overcast', 'drizzle', 'rain'), or exact amounts ({rain, cloud, wet}
-      // 0..1, for a still or a film), or follow the season ('live'); now: no easing in; keep:
-      // remember it for the next visit
+      S,
+      get state() { return { mode, level, kind: kindOf(cur), rain: cur.rain, snow: cur.snow, fog: cur.fog, storm: cur.storm, cloud: cur.cloud, wet: U.uOeWet.value, snowDepth: S.snowDepth, temp: S.temp, wind: S.windSpeed, covered: cover.roof, coverH: cover.h }; },
+      // pin a weather ('clear', 'overcast', 'fog', 'drizzle', 'rain', 'storm', 'snow'), or exact amounts
+      // ({rain, snow, fog, storm, cloud, wet, snowDepth 0..1, temp C, wind m/s, windFrom degrees}, for
+      // a still or a film), or follow the season ('live'); now: no easing in; keep: remember it for the
+      // next visit
       set(m, { now = false, keep = false } = {}) {
         if (m && typeof m === 'object') {
-          const k = m.rain > 0.5 ? 'rain' : m.rain > 0.06 ? 'drizzle' : (m.cloud ?? 0) > 0.6 ? 'overcast' : 'clear';
-          custom = { rain: m.rain ?? KINDS[k].rain, cloud: m.cloud ?? Math.max(KINDS[k].cloud, m.rain > 0.06 ? 0.9 : 0) };
-          mode = 'custom'; wetPin = m.wet ?? null; arm();
+          const k = kindOf({ rain: m.rain || 0, snow: m.snow, fog: m.fog, storm: m.storm, cloud: m.cloud ?? 0 }), K = KINDS[k];
+          custom = { rain: m.rain ?? K.rain, snow: m.snow ?? 0, fog: m.fog ?? 0, storm: m.storm ?? 0, cloud: m.cloud ?? Math.max(K.cloud, (m.rain > 0.06 || m.snow > 0.06) ? 0.9 : 0),
+            windK: K.windK, tempMax: K.tempMax, temp: m.temp, wind: m.wind, windFrom: m.windFrom };
+          mode = 'custom'; wetPin = m.wet ?? null; depthPin = m.snowDepth ?? null; arm();
           if (now || m.now) snap = true;
           return;
         }
         if (!(KINDS[m] || m === 'live' || m === 'off')) return;
-        mode = m; wetPin = null;
+        mode = m; wetPin = null; depthPin = null;
         if (now || m === 'off') snap = true;
         if (m !== 'off') { arm(); if (level === 0) level = 1; } // asked for: back on, light until the device shows it can carry more
         if (keep) {
@@ -502,15 +600,57 @@ void main() {
       update(dt, tSec, focus) {
         // what the weather should be now
         const want = mode === 'live' ? (clockAt ? season(climate, ...clockAt) : { rain: 0, cloud: 0.2 }) : mode === 'custom' ? custom : KINDS[mode] || KINDS.clear; // (off: a clear sky, dry streets)
-        target.rain = want.rain; target.cloud = want.cloud;
-        if (snap) { cur.rain = target.rain; cur.cloud = target.cloud; U.uOeWet.value = target.rain > 0.05 ? Math.min(1, 0.5 + target.rain) : 0; snap = false; }
+        // the temperature: the season's for the hour, held under what a pinned weather needs (snow: below freezing)
+        const tSeason = clockAt ? tempAt(climate, ...clockAt, want.cloud) : 15;
+        target.rain = want.rain; target.cloud = want.cloud; target.snow = want.snow || 0; target.fog = want.fog || 0; target.storm = want.storm || 0;
+        target.windK = want.windK ?? 1; target.temp = want.temp ?? (want.tempMax != null ? Math.min(tSeason, want.tempMax) : mode === 'live' || !(want.rain > 0.06) ? tSeason : Math.max(tSeason, 2));
+        if (snap) {
+          Object.assign(cur, target);
+          U.uOeWet.value = target.rain > 0.05 ? Math.min(1, 0.5 + target.rain) : 0;
+          S.snowDepth = target.snow > 0.05 ? Math.min(1, 0.35 + target.snow * 0.6) : 0;
+          snap = false;
+        }
         const ease = (a, b, rate) => a + (b - a) * Math.min(1, dt * rate);
         cur.cloud = ease(cur.cloud, target.cloud, 0.25);
-        cur.rain = cur.cloud > 0.55 || target.rain === 0 ? ease(cur.rain, target.rain, 0.35) : ease(cur.rain, 0, 0.35); // rain waits for its clouds
-        const wet = U.uOeWet.value;
-        U.uOeWet.value = wetPin != null ? wetPin : cur.rain > 0.04 ? Math.min(1, wet + dt * (0.02 + 0.1 * cur.rain)) : Math.max(0, wet - dt / 150);
+        const clouded = cur.cloud > 0.55;
+        cur.rain = clouded || target.rain === 0 ? ease(cur.rain, target.rain, 0.35) : ease(cur.rain, 0, 0.35); // rain waits for its clouds
+        cur.snow = clouded || target.snow === 0 ? ease(cur.snow, target.snow, 0.3) : ease(cur.snow, 0, 0.3);
+        cur.storm = cur.rain > 0.4 || target.storm === 0 ? ease(cur.storm, target.storm, 0.2) : ease(cur.storm, 0, 0.2); // and thunder for its rain
+        cur.fog = ease(cur.fog, target.fog, 0.12);
+        cur.windK = ease(cur.windK, target.windK, 0.15);
+        cur.temp = ease(cur.temp, target.temp, 0.2);
+        const day = Wd.day ?? 1, sunOut = day * (1 - cur.cloud);
+        // the wind: a steady part, slow lulls and gusts (three octaves of noise over the seconds), a bearing that wanders
+        const wMean = mode === 'custom' && custom.wind != null ? custom.wind : windBase() * cur.windK * (0.75 + 0.5 * vnoise(tSec / 240 + 3.3));
+        const { gn, gust } = gustAt(tSec);
+        const wSpeed = wMean * (0.72 + 0.5 * gn + 0.75 * gust * Math.min(1, 0.35 + wMean / 12));
+        const from = (mode === 'custom' && custom.windFrom != null ? custom.windFrom : windFrom0 + 50 * (vnoise(tSec / 300 + 1.7) - 0.5) + 14 * (vnoise(tSec / 23 + 5.1) - 0.5) + 360) % 360;
+        const wb = (from + 180) * Math.PI / 180, wx = Math.sin(wb) * wSpeed, wz = -Math.cos(wb) * wSpeed;
+        if (dt > 0) windRun += wSpeed * Math.min(dt, 0.1) * (reduced ? 0.3 : 1);
+        U.uOeWind.value.set(wx, wz, gust, windRun);
+        // wet ground: fills in the rain (and from melting snow), dries by sun and wind
+        const wet = U.uOeWet.value, melting = S.snowDepth > 0.02 && cur.temp > 0.5 ? Math.min(1, cur.temp / 6 + 0.5 * sunOut) : 0;
+        const dry = (0.45 + 1.1 * sunOut + Math.min(1, wSpeed / 10) * 0.6 + Math.max(0, cur.temp - 15) / 30) / 150;
+        U.uOeWet.value = wetPin != null ? wetPin : cur.rain > 0.04 ? Math.min(1, wet + dt * (0.02 + 0.1 * cur.rain)) : melting > 0 ? Math.max(wet - dt * dry, Math.min(0.7, wet + dt * 0.03 * melting)) : Math.max(0, wet - dt * dry);
+        // settled snow: builds while it snows at or below about a degree, melts with warmth, sun and rain
+        if (depthPin != null) S.snowDepth = depthPin;
+        else if (cur.snow > 0.04 && cur.temp < 1.5) S.snowDepth = Math.min(1, S.snowDepth + dt * cur.snow / 70);
+        else if (S.snowDepth > 0) S.snowDepth = Math.max(0, S.snowDepth - dt * (0.002 + Math.max(0, cur.temp) / 400 + sunOut / 220 + cur.rain / 40));
         U.uOeRain.value = cur.rain;
+        U.uOeSnow.value = S.snowDepth; U.uOeSnowfall.value = cur.snow; U.uOeFog.value = cur.fog;
         U.uOeT.value = reduced ? tSec * 0.3 : tSec;
+        // the state everything else reads (OEWeather.S)
+        const kind = kindOf(cur);
+        S.kind = kind; S.cover = cur.cloud; S.rain = cur.rain; S.snow = cur.snow; S.storm = cur.storm; S.fog = cur.fog;
+        S.precip = cur.snow > 0.02 && cur.snow >= cur.rain ? 'snow' : cur.rain > 0.02 ? 'rain' : 'none';
+        S.rate = Math.max(cur.rain, cur.snow);
+        S.mm = cur.snow > cur.rain ? 2.5 * cur.snow * cur.snow : 0.3 * cur.rain + 5.5 * cur.rain * cur.rain + 20 * cur.storm * cur.rain;
+        S.wind.x = wx; S.wind.z = wz; S.windSpeed = wSpeed; S.windMean = wMean; S.windFrom = from; S.gust = gust;
+        S.temp = cur.temp; S.wet = U.uOeWet.value; S.day = day; S.t = tSec; S.flash = U.uOeFlash.value;
+        S.visibility = 1 / (1 / 40000 + cur.cloud * cur.cloud / 60000 + cur.fog * cur.fog / 140 + cur.rain * cur.rain / 3500 + cur.storm * cur.rain / 2500 + cur.snow * cur.snow / 700);
+        S.grip = Math.max(0.35, 1 - 0.3 * Math.min(1, S.wet * 1.5) - 0.45 * smooth(0.05, 0.4, S.snowDepth) - (cur.temp < 0 && S.wet > 0.2 ? 0.15 : 0));
+        S.source = mode === 'live' ? 'season' : mode === 'off' ? 'off' : 'pinned';
+        if (kind !== lastKind) { lastKind = kind; for (const f of listeners.slice()) try { f(kind, S); } catch (e) { console.warn(e); } }
         if (su && su.cloudCoverage && baseClouds) {
           const ct = su.cloudTrim || 0; // (more cloud for a shot: the overture's sunset sky, overture.js)
           su.cloudCoverage.value = Math.min(0.97, baseClouds[0] + ct + (0.97 - baseClouds[0] - ct) * smooth(0, 1, cur.cloud));
@@ -539,7 +679,7 @@ void main() {
         splashMat.uniforms.uCount.value = Math.min(1, cur.rain * 1.1) * (0.25 + 0.75 * heavy);
         shared.uWind.value.set(0.5 + 0.9 * heavy, 0.25 + 0.4 * heavy);
         // the light on the drops: the haze's colour, brighter by day, warm from the city at night
-        const day = Wd.day ?? 1, fc = world.fog ? world.fog.color : new THREE.Color(0.7, 0.75, 0.8);
+        const fc = world.fog ? world.fog.color : new THREE.Color(0.7, 0.75, 0.8);
         shared.uCol.value.copy(fc).multiplyScalar(1.0 + 0.9 * day).add(new THREE.Color(0.16, 0.13, 0.09).multiplyScalar(1 - day));
         // the occlusion map, when the camera has moved or a little time has passed
         if (occRT && (tSec - occT > (light ? 2 : 0.5) || camera.position.distanceTo(occAt) > (light ? 8 : 4))) {
@@ -653,5 +793,5 @@ void main() {
     return api;
   }
 
-  return { create, patch, wrap, season, wetChance, U, GLSL, KINDS, NAMES };
+  return { create, patch, wrap, season, tempAt, wetChance, U, S, onChange, describe, gustAt, GLSL, KINDS, NAMES };
 })();
