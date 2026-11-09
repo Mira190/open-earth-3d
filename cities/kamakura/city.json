@@ -1,0 +1,552 @@
+{
+  "id": "kamakura",
+  "name": "Shichirigahama",
+  "native": "七里ヶ浜",
+  "description": "Kamakura's Shonan coast along the Enoden: from Koshigoe's street-running rails past the Kamakurakokomae crossing and Shichirigahama's surf to the cape at Inamuragasaki, with Enoshima and Mount Fuji across Sagami Bay.",
+  "bbox": [
+    139.4861,
+    35.2978,
+    139.5279,
+    35.3132
+  ],
+  "origin": [
+    139.507,
+    35.3055
+  ],
+  "extent_m": [
+    -1900,
+    1900,
+    -850,
+    850
+  ],
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "en-JP",
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P. (Tokyo Peil)",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 18,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey (GSI terms of use, compatible with CC BY 4.0)",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "zip": "https://assets.cms.plateau.reearth.io/assets/b8/bdcec8-fa53-4f0f-a350-830fb9d52aee/14204_kamakura-shi_city_2024_3dtiles_mvt_1_op.zip",
+    "attribution": "Project PLATEAU Kamakura City 2024 (MLIT, CC BY 4.0): building heights and roofs measured from aerial survey",
+    "source": "Project PLATEAU Kamakura City 2024 (MLIT, CC BY 4.0)",
+    "roofs": true
+  },
+  "water": {
+    "classes": [
+      "ocean",
+      "bay",
+      "sea",
+      "water",
+      "river"
+    ],
+    "min_area_m2": 3000,
+    "note": "Sagami Bay. The Koshigoe fishing harbour's basin is part of the mapped sea.",
+    "waves": {
+      "wind_ms": 5.0,
+      "wind_from_deg": 200,
+      "fetch_km": 60.0,
+      "depth_m": 8,
+      "cascades_m": [
+        157,
+        33.3,
+        7.1
+      ],
+      "choppiness": 1.0,
+      "swell_m": 0.8,
+      "swell_from_deg": 190,
+      "swell_wind_ms": 11,
+      "note": "A typical afternoon south-south-westerly sea breeze over Sagami Bay, with the Pacific swell that makes Shichirigahama a surf beach coming in from the south; chosen values, not a measurement."
+    },
+    "colour": "#0f4a6b",
+    "shallow_colour": "#3b8c8a",
+    "clarity_m": 3.0,
+    "colour_note": "Sagami Bay off Shichirigahama reads a deep blue from the hill and green-grey over the dark volcanic sand near the shore; chosen colours, not measured.",
+    "seawall": {
+      "stone": "#8d8a84",
+      "coping": "#a9a69f",
+      "course_m": 0.6,
+      "block_m": 1.2,
+      "high_water_m": 0.8,
+      "note": "Route 134's sea wall and Koshigoe harbour's quays: concrete."
+    }
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "trees": {
+    "mix": {
+      "pine": 0.3,
+      "evergreen": 0.25,
+      "camphor": 0.12,
+      "cherry": 0.1,
+      "zelkova": 0.08,
+      "palm": 0.08,
+      "maple": 0.07
+    },
+    "woods": {
+      "evergreen": 0.5,
+      "camphor": 0.14,
+      "pine": 0.16,
+      "sugi": 0.08,
+      "zelkova": 0.06,
+      "cherry": 0.06
+    },
+    "note": "Species are not mapped; the mix is a guess from the Shonan coast's planting: Japanese black pines along Route 134 and the capes, evergreen oaks and camphors on the hills behind, a few palms by the car parks."
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "15:40",
+    "cam": [
+      -420,
+      -700,
+      330
+    ],
+    "tgt": [
+      -560,
+      60,
+      10
+    ]
+  },
+  "game": {
+    "title": "Shichirigahama on Foot",
+    "local_name": "Kamakura local",
+    "water_name": "Sagami Bay",
+    "greeting": "こんにちは!",
+    "smalltalk": [
+      "こんにちは!",
+      "すみません。",
+      "どうも。",
+      "Excuse me!"
+    ],
+    "blurb": "Walk Kamakura's Shonan coast under the real sun: down the hill to the Kamakurakokomae crossing as the Enoden passes, along Shichirigahama's surf, with Enoshima and Mount Fuji across the bay.",
+    "start": {
+      "at": [
+        -446,
+        168
+      ],
+      "facing": [
+        -446,
+        60
+      ],
+      "time": "live",
+      "car": [
+        -330,
+        136
+      ]
+    },
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "kokomae-pad",
+        "name": "Kamakura High School ground pad (game)",
+        "at": [
+          -330,
+          220
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 220,
+      "cars": 90,
+      "radius_m": 450,
+      "style": "tokyo"
+    },
+    "travel": [
+      {
+        "id": "t-crossing",
+        "name": "The Kamakurakokomae crossing 鎌倉高校前1号踏切",
+        "at": [
+          -446,
+          150
+        ]
+      },
+      {
+        "id": "t-kokomae",
+        "name": "Kamakurakokomae Station 鎌倉高校前駅",
+        "at": [
+          -572,
+          140
+        ]
+      },
+      {
+        "id": "t-enoshima",
+        "name": "Enoshima Station 江ノ島駅",
+        "at": [
+          -1760,
+          600
+        ]
+      },
+      {
+        "id": "t-koshigoe",
+        "name": "Koshigoe Station 腰越駅",
+        "at": [
+          -1254,
+          330
+        ]
+      },
+      {
+        "id": "t-harbour",
+        "name": "Koshigoe fishing harbour 腰越漁港",
+        "at": [
+          -1480,
+          80
+        ]
+      },
+      {
+        "id": "t-shichirigahama",
+        "name": "Shichirigahama Station 七里ヶ浜駅",
+        "at": [
+          282,
+          95
+        ]
+      },
+      {
+        "id": "t-beach",
+        "name": "Shichirigahama beach 七里ヶ浜",
+        "at": [
+          330,
+          -60
+        ]
+      },
+      {
+        "id": "t-inamuragasaki",
+        "name": "Inamuragasaki Station 稲村ヶ崎駅",
+        "at": [
+          1354,
+          -115
+        ]
+      },
+      {
+        "id": "t-cape",
+        "name": "Inamuragasaki cape park 稲村ヶ崎公園",
+        "at": [
+          1620,
+          -290
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "sato",
+        "name": "Sato 佐藤",
+        "role": "Enoden station attendant",
+        "at": [
+          -585,
+          140
+        ],
+        "look": {
+          "character": "R_Pilot_Male_01_m008_grey",
+          "skin": "#e9c3a3",
+          "hair": "#3a3a3a",
+          "top": "#1f2a44",
+          "legs": "#1b2233",
+          "shirt": "#1f2a44",
+          "pants": "#1b2233",
+          "clip": "LookAround"
+        },
+        "idle": [
+          "One track, both ways. The trains pass each other at the loops, so if one is late, they all wait.",
+          "From this platform you see Enoshima, and on a clear winter morning, Fuji behind it. {time}."
+        ]
+      },
+      {
+        "id": "mio",
+        "name": "Mio 澪",
+        "role": "Kamakura High School student",
+        "at": [
+          -440,
+          160
+        ],
+        "look": {
+          "character": "R_Female_Adult_12_f013",
+          "skin": "#f6dcc4",
+          "hair": "#1c1411",
+          "top": "#f4f4f0",
+          "legs": "#1f2a44",
+          "shirt": "#f4f4f0",
+          "pants": "#1f2a44",
+          "clip": "Phone",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Every day people stand right here with a camera, waiting for the green train. We just want to get to class.",
+          "Wait behind the yellow line when the bell goes. The gates come down fast."
+        ]
+      },
+      {
+        "id": "kai",
+        "name": "Kai 海",
+        "role": "Surfer",
+        "at": [
+          330,
+          -70
+        ],
+        "look": {
+          "character": "R_Sports_Male_02_m008",
+          "skin": "#d9a77f",
+          "hair": "#2a1d12",
+          "top": "#1d1d22",
+          "legs": "#2b5d8a",
+          "shirt": "#1d1d22",
+          "pants": "#2b5d8a",
+          "clip": "Stretch"
+        },
+        "idle": [
+          "Shichirigahama breaks on a south swell. Small today, but it's still better than the office.",
+          "The sand here is dark. Iron in it. They used to make swords from it."
+        ]
+      },
+      {
+        "id": "genzo",
+        "name": "Genzo 源三",
+        "role": "Koshigoe fisherman",
+        "at": [
+          -1490,
+          70
+        ],
+        "look": {
+          "character": "R_Gardener_Male_01",
+          "skin": "#d2a27c",
+          "hair": "#8a8a86",
+          "top": "#3d5a66",
+          "legs": "#2c2c2c",
+          "shirt": "#3d5a66",
+          "pants": "#2c2c2c",
+          "clip": "Work"
+        },
+        "idle": [
+          "Shirasu. Whitebait. We land it in the morning and it's on rice by noon, raw if the sea was kind.",
+          "The train runs down the middle of our street. You learn to listen for it."
+        ]
+      },
+      {
+        "id": "yuki",
+        "name": "Yuki 由紀",
+        "role": "Photographer",
+        "at": [
+          1620,
+          -285
+        ],
+        "look": {
+          "character": "R_Female_Adult_17_f011",
+          "skin": "#f2cdb4",
+          "hair": "#2a1d17",
+          "top": "#b5651d",
+          "legs": "#2b3440",
+          "shirt": "#b5651d",
+          "pants": "#2b3440",
+          "clip": "Photo"
+        },
+        "idle": [
+          "From this cape the sun sets beside Fuji in winter and into the sea in summer.",
+          "Sunset today is at {sunset}. Come back then."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "coast",
+        "title": "The coast",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "sato",
+        "title": "Kamakurakokomae",
+        "stamp": "Kamakurakokomae",
+        "talk": [
+          "Welcome to Kamakurakokomae. One platform, one track, and the whole of Sagami Bay in front of it.",
+          "Everyone asks for the crossing. It's just along the track to the east, where the road comes down the hill. Mio from the high school is usually there. WASD to walk, Shift to run, E to talk."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "mio",
+            "text": "Walk east along the track to the crossing and find Mio"
+          }
+        ]
+      },
+      {
+        "id": "crossing",
+        "line": "start",
+        "giver": "mio",
+        "title": "The crossing",
+        "stamp": "The crossing",
+        "talk": [
+          "This is it. The road falls to the sea, the gates, the train, Enoshima behind. Stand up the hill a little and look down.",
+          "When the bell starts, stay behind the line and watch the train pass. Then go and see Kai on the beach at Shichirigahama, the next station east."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -446,
+              175
+            ],
+            "radius": 14,
+            "text": "Stand on the hill road above the crossing and look down to the sea"
+          },
+          {
+            "type": "talk",
+            "npc": "kai",
+            "text": "Find Kai on the beach at Shichirigahama"
+          }
+        ]
+      },
+      {
+        "id": "beach",
+        "line": "coast",
+        "giver": "kai",
+        "title": "Seven ri of sand",
+        "stamp": "Shichirigahama",
+        "talk": [
+          "Seven ri of beach, they called it. It isn't, but nobody argues with a good name.",
+          "Walk east to the cape at Inamuragasaki. Yuki is there every evening with her tripod."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "yuki",
+            "text": "Walk to the cape at Inamuragasaki and find Yuki"
+          }
+        ]
+      },
+      {
+        "id": "cape",
+        "line": "coast",
+        "giver": "yuki",
+        "title": "The cape at sunset",
+        "stamp": "Inamuragasaki",
+        "talk": [
+          "Enoshima, and Fuji over its shoulder when the air is clear. This is the picture.",
+          "Stay until the sun is down."
+        ],
+        "choices": [
+          {
+            "text": "Wait for sunset",
+            "action": "dusk"
+          }
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              1620,
+              -290
+            ],
+            "radius": 60,
+            "after_dark": true,
+            "text": "Be at the cape after sunset"
+          }
+        ]
+      },
+      {
+        "id": "harbour",
+        "line": "coast",
+        "giver": "genzo",
+        "title": "Whitebait",
+        "stamp": "Koshigoe",
+        "talk": [
+          "You came all the way down to the harbour. Good. Most people only see the train.",
+          "Walk up to Koshigoe Station along the street with the rails in it. Mind the train."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -1254,
+              330
+            ],
+            "radius": 40,
+            "text": "Walk the street with the rails in it up to Koshigoe Station"
+          }
+        ]
+      }
+    ],
+    "start_note": "You start on the hill road (Nissaka) above the Kamakurakokomae crossing, looking down it to the sea. Your car is parked on the level street to the east: the hill is an 11% grade."
+  },
+  "osm_detail": {
+    "koshigoe": {
+      "bbox": [
+        139.4861,
+        35.2978,
+        139.497,
+        35.3132
+      ],
+      "note": "Enoshima and Koshigoe stations, the street-running track, the fishing harbour, Manpuku-ji: pipeline/osm_detail.py"
+    },
+    "kokomae": {
+      "bbox": [
+        139.497,
+        35.2978,
+        139.508,
+        35.3132
+      ],
+      "note": "Kamakurakokomae station and its crossings, the high school, Minegahara's loop"
+    },
+    "shichirigahama": {
+      "bbox": [
+        139.508,
+        35.2978,
+        139.5185,
+        35.3132
+      ],
+      "note": "Shichirigahama station, the beach car park, the Yukiai river"
+    },
+    "inamura": {
+      "bbox": [
+        139.5185,
+        35.2978,
+        139.5279,
+        35.3132
+      ],
+      "note": "Inamuragasaki station and the cape, the Gokurakuji depot"
+    }
+  }
+}

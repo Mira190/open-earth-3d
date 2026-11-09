@@ -1922,6 +1922,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     function canReverse(c) {
       if (c.line < 0 || c.rev || c.stuck === undefined || c.revBan > 0 || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
+      // (nor one with a ride or your car close behind it: they don't back off for the traffic, and a ride coming for you
+      // stood behind three cars backing out towards it, one after another, in Fushimi Inari)
+      { const hx = Math.sin(c.h), hy = Math.cos(c.h); for (const o of api.extra) { const a = (o.x - c.x) * hx + (o.y - c.y) * hy; if (a < 0 && a > -(c.half + (o.half || 2.3) + 12) && Math.abs((o.x - c.x) * hy - (o.y - c.y) * hx) < 3.5) return false; } }
       let line = c.line, dir = c.dir, run = c.dir > 0 ? c.s : net.L[c.line].len - c.s;
       for (let k = 0; k < 6 && run < REV_MAX; k++) {
         if (waysOut(c, line, dir).length) return true;
@@ -1941,7 +1944,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // a step of a reversing car: whether it took it (the frame's update for the car is done)
     function reverseStep(c, i, dt, cx, cy) {
       const R = c.rev, l = net.L[c.line], hx0 = Math.sin(c.h), hy0 = Math.cos(c.h);
-      c.why = 'reversing'; c.heldBy = ''; c.front = null; c.q = false; c.stuck = 0; c.still = 0; c.v = 0; c.toLine = undefined; c.np = 0;
+      c.why = 'reversing'; c.heldBy = ''; c.front = null; c.q = false; c.stuck = 0; c.still = 0; c.v = 0; c.toLine = undefined; c.lineArm = c.lineEx = null; c.np = 0; // (at no line while it backs: read at one, its distance to it was NaN, #330)
       const atEnd = c.dir > 0 ? c.s <= 0.05 : c.s >= l.len - 0.05;
       if (atEnd) {
         const outs = waysOut(c, c.line, c.dir);
@@ -1970,6 +1973,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         return false; // (on its way from here this frame, as any car)
       }
       const v = Math.min(REV_V, R.v + 1.2 * dt), sb = Math.max(0, Math.min(l.len, c.s - c.dir * v * dt));
+      // (not back into the box of the junction behind while others are let into it: it waits short of it until the box
+      // is clear, as it would at a line. Backed in, it stood across 1120's way onto piece 2481, two cars let in for it
+      // standing 75 s in the junction behind it, Shinjuku #330)
+      const ab = JN.armBy(c.line, c.dir > 0 ? 0 : 1), rear = s0 => (c.dir > 0 ? s0 : l.len - s0) - c.half;
+      // (busy for it: a car let in onto this piece, or one crossing the box within 10 m of its mouth)
+      const mk = c.dir > 0 ? 0 : l.pts.length - 3, mx = l.pts[mk], my = l.pts[mk + 1];
+      // (12 s at most: a box busy all the time, a scramble's, it backs into as before, the cars there stopping for it)
+      if (ab && rear(sb) < ab.back && rear(c.s) >= ab.back - 0.05 && (R.boxT || 0) < 12 && ab.j.active.some(o => o.c !== c && ((o.m & 15) === ab.i || Math.hypot(o.c.x - mx, o.c.y - my) < 10))) {
+        R.v = 0; R.boxT = (R.boxT || 0) + dt; R.by = null;
+        q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c);
+        return true;
+      }
       lanePos(c.line, sb, c.dir, tmp, c.off + c.lo);
       const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
       // (clear behind, or backing away from the one it is up against: a car ahead within its margins, backing out too, held
@@ -1983,13 +1998,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.ax = c.x; c.ay = c.y; c.idle = 0;
       } else {
         R.v = 0; R.wait += bk && bk.rev ? dt * 0.25 : dt; R.by = bk; // (behind it one backing out too, waiting at the junction behind for room: it waits its turn, not giving up after 20 s)
+        // (nor for a ride or your car behind it: it won't back off for the traffic, and a ride coming for you stood 7 s
+        // behind three cars backing out towards it, one after another, in Fushimi Inari)
+        if (bk && !bk.rev && bk.stuck === undefined && R.wait > 1) { c.revBan = 60; c.revEnd = 'a ride or your car behind it'; c.rev = null; }
         // the car behind, stopped on this street and going its way: it backs out first
-        if (bk && bk.line === c.line && bk.dir === c.dir && !bk.rev && bk.v < 0.5 && (c.s - bk.s) * c.dir > 0) reverse(bk);
+        else if (bk && bk.line === c.line && bk.dir === c.dir && !bk.rev && bk.v < 0.5 && (c.s - bk.s) * c.dir > 0) reverse(bk);
         // (one stopped across its way back, at the junction behind or on the piece beyond: after 3 s it is asked to back off
         // a metre or two, as one of two of the traffic is; else the car gave up after 20 s, held by one waiting at a line
         // there that could have made it room, Fushimi Inari's piece 99)
         else if (bk && !bk.rev && bk.v < 0.5 && R.wait > 3 && canBack(bk)) backOff(bk, 2);
-        if (R.wait > 20 || R.d > REV_MAX) { c.revBan = 60; c.revEnd = R.d > REV_MAX ? 'backed out as far as it goes' : bk ? `held by car ${C.indexOf(bk)} (${bk.why}, v ${(+bk.v || 0).toFixed(1)}${bk.line === c.line ? '' : `, on piece ${bk.line}`}${bk.rev && bk.rev.by ? `, itself held by car ${C.indexOf(bk.rev.by)} (${bk.rev.by.why}${bk.rev.by.line === bk.line ? '' : `, on piece ${bk.rev.by.line}`})` : ''})` : 'held by someone behind it'; c.rev = null; } // (it waits on as before; asked again if it stays stuck)
+        if (c.rev && (R.wait > 20 || R.d > REV_MAX)) { c.revBan = 60; c.revEnd = R.d > REV_MAX ? 'backed out as far as it goes' : bk ? `held by car ${C.indexOf(bk)} (${bk.why}, v ${(+bk.v || 0).toFixed(1)}${bk.line === c.line ? '' : `, on piece ${bk.line}`}${bk.rev && bk.rev.by ? `, itself held by car ${C.indexOf(bk.rev.by)} (${bk.rev.by.why}${bk.rev.by.line === bk.line ? '' : `, on piece ${bk.rev.by.line}`})` : ''})` : 'held by someone behind it'; c.rev = null; } // (it waits on as before; asked again if it stays stuck)
       }
       q.setFromAxisAngle(up, Math.PI - c.h);
       m4.compose(W(c.x, c.y, c.z), q, one);
@@ -2451,10 +2469,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               if (!inLane) go = false;
               // a junction just after, too close to wait between: crossed with this one, its way chosen now
               const a2 = go ? JN.after(jEx, 2 * c.half + 3) : null;
+              let light2 = false; // (held by that one's light: waiting for it, as at a red here, not for room)
               if (a2) {
                 if (!c.ex2 || c.ex2.a !== a2) c.ex2 = { a: a2, e: JN.choose(a2, c.hw, c.half) };
                 const lt2 = JN.light(a2, c.ex2.e);
-                if (!c.ex2.e || !(lt2 == null || lt2 === 'g') || a2.sign === 'stop' || !room(c, c.ex2.e)) go = false;
+                if (!c.ex2.e || !(lt2 == null || lt2 === 'g') || a2.sign === 'stop') go = false;
+                else if (!room(c, c.ex2.e)) { go = false; noRoom = true; } // (no room beyond the second: another way out after 5 s, as for the first's, below; Shinjuku's 1103 arm 0 stood 198 s for room past 1105, #331)
+                if (c.ex2.e && lt2 && lt2 !== 'g') light2 = true;
                 // (held at this line by the next one's light: a call for its phase, as if at its line, and the time
                 // counted lost on this green, junctions.js; a 6 s green at Shinjuku's 1105 went by on 1103's red, #264)
                 if (c.ex2.e && lt2 && lt2 !== 'g') { if (!a2.j.scramble) JN.want(a2); if (toLine - c.half < 3 && jArm.j.sig) jArm.lost1 = true; }
@@ -2470,14 +2491,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               if (r !== true) {
                 const g = toLine - c.half + 2.4;
                 lineGap = Math.min(lineGap, g);
-                if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = r || (lt === 'r' || lt === 'y' ? 'light' : jArm.sign === 'stop' && !c.halt ? 'stop' : !inLane ? 'lane' : narrowOut ? 'narrow' : 'room'); }
+                if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = r || (lt === 'r' || lt === 'y' || light2 ? 'light' : jArm.sign === 'stop' && !c.halt ? 'stop' : !inLane ? 'lane' : narrowOut ? 'narrow' : 'room'); }
                 // no room on its way out for 5 s, at its line with its light green: another way out with room, if
                 // there is one (the traffic wanders, so any way will do). A queue that waits for room behind a queue
                 // that waits for room, round a block and back, is a ring that never moves: Shibuya's station streets
                 // had a car stand 220 s at its line so. Taking another way out breaks the ring, as drivers do
                 c.roomT = noRoom && toLine - c.half < 2.5 && c.v < 0.6 && !c.mv ? (c.roomT || 0) + dt : 0;
                 if (c.roomT > 5) {
-                  c.roomT = 0;
+                  c.roomT = 0; c.ex2 = null; // (its way across the junction just after chosen again too)
                   // (as JN.choose weighs them: ahead before a turn, a main road before a lane; never a turn back, a road
                   // the data runs through a building, a lesser road than the one it meant to take, or a one-way street
                   // that leads nowhere)
@@ -2494,6 +2515,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 if (toLine - c.half < 2.5 && c.v < 0.6) {
                   if (jArm.sign === 'stop') c.halt = true;
                   if (r) { JN.wait(c, jArm, jEx, t); c.wj = jArm.j; } // its turn comes: it waits for the way across, not for a light or room
+                  // (and at the junction just after, crossed with this one, for its way across there too: else the cars turning
+                  // there across its way, one after another, took every green from it; Shinjuku's 1103 arm 0, on 1105's turns, #331)
+                  if (r && a2 && a2.j.sig && c.ex2 && c.ex2.e && a2.j !== jArm.j) { JN.wait(c, a2, c.ex2.e, t); c.wj2 = a2.j; }
                 }
               }
             }
@@ -2666,11 +2690,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // no such wait lasts half a minute, #283)
         c.narrowT = why === 'narrow' && c.v < 0.3 ? (c.narrowT || 0) + dt : 0;
         if (c.narrowT > 25 && !inView(c)) { c.narrowT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
-        c.narrowCarT = why === 'narrow' && byCar && c.v < 0.3 ? (c.narrowCarT || 0) + dt : 0; // (nose to nose in the stretch with one to go first: it backs out)
+        c.narrowCarT = why === 'narrow' && byCar && c.v < 0.3 ? (c.narrowCarT || 0) + dt : 0;
+        if (why !== 'narrow') c.narrowTries = 0; // (nose to nose in the stretch with one to go first: it backs out)
         if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
           if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
-          dir = -dir; c.stuck = 0; // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
+          // (no junction near enough behind it to back out to: the one it faces backs out instead, if it can. Turned round
+          // where it stood, nose to nose with it, it would only have swung into it, and was held so: a car in Higashiyama
+          // stood 46 s at a narrow stretch for one queued behind it, #331)
+          // (after a first try at turning round has come to nothing: the second time it asks)
+          c.narrowTries = (c.narrowTries || 0) + 1;
+          const o = c.narrowTries > 1 && front && front.line === c.line && front.dir !== c.dir && !front.rev && front.v < 0.3 ? front : null;
+          if (o && reverse(o)) { c.narrowTries = 0; /* it backs out of the way */ }
+          else { dir = -dir; c.stuck = 0; } // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
         }
         if (c.stuck > (tangled > 0 ? 2 : why === 'narrow' ? 10 : STUCK)) { // a jam that won't clear: turn round, or out of sight on a one-way street, come back elsewhere
           c.stuck = 0;
