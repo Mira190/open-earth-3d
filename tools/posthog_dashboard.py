@@ -18,7 +18,7 @@ import urllib.request
 
 HOST = os.environ.get('POSTHOG_HOST', 'https://eu.posthog.com')
 DASHBOARD = 'Open Earth 3D: visitors and service levels'
-OURS = "event IN ('view', 'load', 'time', 'page', 'error', 'gl_lost', 'dwell', 'tour', 'mode', 'quest', 'exit', 'crash') AND coalesce(toString(properties.view), '') != 'test'"
+OURS = "event IN ('view', 'load', 'time', 'page', 'error', 'gl_lost', 'dwell', 'tour', 'mode', 'quest', 'exit', 'crash', 'jank', 'quality') AND coalesce(toString(properties.view), '') != 'test'"
 D3 = "properties.view IN ('city', 'game', 'reef')"
 NOT_TEST = [{'key': 'view', 'value': ['test'], 'operator': 'is_not', 'type': 'event'}]
 PLAY = [{'key': 'view', 'value': ['game', 'reef'], 'operator': 'exact', 'type': 'event'}]
@@ -154,6 +154,43 @@ def stages(days):
             "GROUP BY view, device ORDER BY view, device")
 
 
+PERF = ("round(sum(toFloat(properties.s)) / 60, 1) AS minutes, count(DISTINCT distinct_id) AS visitors, round(quantile(0.5)(toFloat(properties.fps))) AS fps, "
+        "round(quantile(0.5)(toFloat(properties.f95))) AS p95_frame_ms, round(100 * sum(toFloat(properties.slow) * toFloat(properties.frames)) / nullIf(sum(toFloat(properties.frames)), 0), 1) AS slow_pct, "
+        "round(quantile(0.5)(toFloat(properties.cpu_ms)), 1) AS main_thread_ms, round(quantile(0.5)(toFloat(properties.gpu_ms)), 1) AS gpu_ms, "
+        "round(quantile(0.5)(toFloat(properties.draws))) AS draws, round(quantile(0.5)(toFloat(properties.tris_k))) AS triangles_k, "
+        "round(quantile(0.5)(toFloat(properties.passes))) AS passes, round(quantile(0.5)(toFloat(properties.px_k))) AS pixels_k")
+
+
+def perf_by(col, days, where=''):
+    return (f"SELECT {col}, {PERF} FROM events WHERE event = 'time' AND {D3} AND toFloat(properties.frames) >= 10 AND toFloat(properties.v) >= 4 {where} "
+            f"AND timestamp > now() - INTERVAL {days} DAY GROUP BY ALL ORDER BY minutes DESC LIMIT 40")
+
+
+def bound(days):
+    return (f"SELECT properties.view AS view, properties.city AS city, properties.tier AS tier, coalesce(toString(properties.bound), 'not known') AS held_by, "
+            f"round(sum(toFloat(properties.s)) / 60, 1) AS minutes, round(quantile(0.5)(toFloat(properties.fps))) AS fps FROM events WHERE event = 'time' AND {D3} "
+            f"AND toFloat(properties.frames) >= 10 AND toFloat(properties.v) >= 4 AND timestamp > now() - INTERVAL {days} DAY GROUP BY ALL ORDER BY minutes DESC LIMIT 60")
+
+
+def slow_spots(days):
+    return (f"SELECT properties.view AS view, properties.city AS city, properties.spot AS spot, properties.mode AS mode, round(sum(toFloat(properties.s)) / 60, 1) AS minutes, "
+            f"round(sum(toFloat(properties.s) * toFloat(properties.fps)) / nullIf(sum(toFloat(properties.s)), 0)) AS fps, "
+            f"round(100 * sum(toFloat(properties.s) * toFloat(properties.fps) * toFloat(properties.slow)) / nullIf(sum(toFloat(properties.s) * toFloat(properties.fps)), 0), 1) AS slow_pct "
+            f"FROM events WHERE event = 'dwell' AND {D3} AND properties.fps IS NOT NULL AND timestamp > now() - INTERVAL {days} DAY GROUP BY ALL HAVING minutes >= 0.5 ORDER BY fps ASC LIMIT 40")
+
+
+def jank(days):
+    return (f"SELECT properties.script AS script, properties.view AS view, count() AS times, round(quantile(0.5)(toFloat(properties.ms))) AS median_ms, round(max(toFloat(properties.ms))) AS worst_ms, "
+            f"round(quantile(0.5)(toFloat(properties.script_ms))) AS script_ms, round(quantile(0.5)(toFloat(properties.style_ms))) AS style_ms, count(DISTINCT distinct_id) AS visitors "
+            f"FROM events WHERE event = 'jank' AND coalesce(toString(properties.view), '') != 'test' AND timestamp > now() - INTERVAL {days} DAY GROUP BY ALL ORDER BY times DESC LIMIT 40")
+
+
+def weight(days):
+    return (f"SELECT properties.view AS view, properties.city AS city, count() AS loads, round(quantile(0.5)(toFloat(properties.kb)) / 1024, 1) AS mb_median, round(quantile(0.9)(toFloat(properties.kb)) / 1024, 1) AS mb_p90, "
+            f"round(quantile(0.5)(toFloat(properties.req))) AS requests, round(100 * avg(toFloat(properties.cached))) AS cached_pct, round(quantile(0.75)(toFloat(properties.ms)) / 1000, 1) AS load_p75_s "
+            f"FROM events WHERE event = 'load' AND toString(properties.ok) = 'true' AND {D3} AND properties.kb IS NOT NULL AND timestamp > now() - INTERVAL {days} DAY GROUP BY ALL ORDER BY loads DESC LIMIT 40")
+
+
 def trends(series, display='ActionsLineGraph', breakdown=None, date_from='-30d', interval='day', formula=None, props=None):
     src = {'kind': 'TrendsQuery', 'series': series, 'interval': interval, 'dateRange': {'date_from': date_from},
            'properties': props if props is not None else NOT_TEST, 'filterTestAccounts': False,
@@ -217,6 +254,21 @@ INSIGHTS = [
     ('Engaged play (%) by view', 'Share of time on screen with input in the last minute or a tour or camera move playing (not a tab left open).',
      trends([ev('time', 'sum', 'eng_s', THREE_D, 'Engaged s'), ev('time', 'sum', 's', THREE_D + [{'key': 'eng_s', 'operator': 'is_set', 'value': 'is_set', 'type': 'event'}], 'Seconds')],
             breakdown='view', formula='100 * A / B')),
+    # where the frame rate goes (issue 351): telemetry version 4
+    ('Frame cost by GPU, last 30 days', 'By the GPU as the browser names it (family and model): minutes, median fps, the 95th percentile frame, slow frames, the main thread\'s work and the GPU\'s time per frame (ms), '
+     'and a sampled frame\'s draw calls, triangles, full-screen passes and pixels.', sql(perf_by('properties.gpu_class AS gpu_class, properties.gpu AS gpu, properties.os AS os, properties.device AS device', 30))),
+    ('Frame cost by city and tier, last 30 days', 'The same figures by view, city and quality tier: which maps cost what, and whether the tier a device was given suits it.',
+     sql(perf_by('properties.view AS view, properties.city AS city, properties.tier AS tier', 30))),
+    ('Frame cost by release, last 30 days', 'The same figures by deployed version, in the game: what each release did to the frame.',
+     sql(perf_by('properties.app AS release', 30, "AND properties.view = 'game'"))),
+    ('What holds the frame rate, last 30 days', 'Time by what bound the frame: ok (within a tenth of the display\'s rate), gpu (the GPU\'s time is the larger), cpu (the main thread\'s), '
+     'gpu? (slow, the script does not account for it, and the browser has no GPU timer).', sql(bound(30))),
+    ('Slowest spots, last 30 days', 'Frame rate by neighbourhood or landmark and mode (on foot, car, heli...), slowest first, with half a minute or more of play.', sql(slow_spots(30))),
+    ('Long frames by script, last 30 days', 'The worst long frame of each piece of play: the script and function that took most of it (Long Animation Frames; Chromium).', sql(jank(30))),
+    ('Load weight by city, last 30 days', 'Megabytes transferred and requests before the loader goes, the share served from the cache, and the load time.', sql(weight(30))),
+    ('Frame rate (median fps) by GPU class', 'Apple, Intel, AMD, NVIDIA, Adreno, Mali, software.', trends([ev('time', 'median', 'fps', THREE_D, 'fps')], breakdown='gpu_class')),
+    ('GPU time per frame (median ms) by city', 'From a timer query, one frame in thirty, where the browser has one.', trends([ev('time', 'median', 'gpu_ms', THREE_D, 'GPU ms')], breakdown='city')),
+    ('Main thread per frame (median ms) by city', 'Script, style and layout from the frame\'s start, one frame in four.', trends([ev('time', 'median', 'cpu_ms', THREE_D, 'ms')], breakdown='city')),
     # release comparison (issue 298): every event carries the deployed version as "app"
     ('Release comparison, last 30 days', 'By deployed version (newest first): page loads, load p75 by device and each load stage (s), pages that died, '
      'page loads with a script error or a lost WebGL context (%), median fps and slow frames (%).', sql(releases(30))),

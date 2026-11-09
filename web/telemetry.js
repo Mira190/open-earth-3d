@@ -14,6 +14,13 @@
 //     cost no events of their own; the title screen, which has no loader, reports its "load" at "oe:ready";
 //   - frame times are taken from requestAnimationFrame while the view is ready and visible: the median
 //     frame rate and the share of frames slower than 50 ms (a dropped-frame stutter a person notices);
+//     with them the frame's tail (the 95th and 99th percentile frame, the longest, the hitches over 100 ms),
+//     and what the frame cost and why: the main thread's work per frame, the GPU's time per frame where the
+//     browser has a timer query, the draw calls, triangles and full-screen passes of a frame sampled now and
+//     then, and the pixels drawn, so each "time" event says whether the device was held back by its GPU or by
+//     the page's script ("bound"); frames the browser calls long name the script that held them ("jank");
+//   - the device, coarsely: the GPU's family and model as the browser names it (no driver version or device
+//     id), the cores and memory the browser reports, the system and the browser;
 //   - script errors, unhandled rejections and lost WebGL contexts are counted, a few per page at most;
 //   - where in the view the visitor is and what they are doing is read once a second from the views' own
 //     handles (window.__city, window.__game, window.__reef: the tour stop, the neighbourhood or nearest
@@ -39,7 +46,10 @@ window.OETelemetry = (function () {
     format: 'posthog',     // 'posthog' or 'jsonl'
     key: 'phc_v8YPULU9RMwSuJD4K3WYDM8KaGck9Z2XeAFdKeVRD95B',   // the project's public capture key (it only writes events)
   };
-  const VERSION = 3;   // 3: load stages (fetch_ms, decode_ms, build_ms, frame_ms) and the title screen's load
+  const VERSION = 4;   // 4: the device (gpu, cores, mem, os, browser), the frame's tail and cost (f95, f99, cpu_ms, gpu_ms,
+                       //    draws, tris_k, passes, px_k, bound), "jank" and "quality" events, the load's weight (kb, req),
+                       //    frame rate by spot on "dwell", and a first "time" half a minute into a view
+                       // 3: load stages (fetch_ms, decode_ms, build_ms, frame_ms) and the title screen's load
   const q = new URLSearchParams(location.search);
   const arg = q.get('telemetry');
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -49,7 +59,7 @@ window.OETelemetry = (function () {
   const asked = (arg && arg !== 'off') && (debug || endpoint !== CONFIG.endpoint);
   const optOut = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
   const on = arg !== 'off' && !optOut && (debug || (!!endpoint && (asked || !navigator.webdriver)));
-  const noop = { on: false, track() {}, flush() {}, view() {}, here() { return null; } };
+  const noop = { on: false, track() {}, flush() {}, view() {}, set() {}, here() { return null; } };
   if (!on) return noop;
 
   const now = () => performance.now();
@@ -78,11 +88,41 @@ window.OETelemetry = (function () {
     if (gpu) return gpu;
     const Q = window.OEQuality;
     if (!Q) return {};
-    try { const t = Q.tier(); gpu = { tier: t.name, tier_chosen: t.chosen, gl2: !!Q.probe().gl2, software: !!Q.probe().software }; } catch (e) { gpu = {}; }
+    try {
+      const t = Q.tier(), c = Q.probe();
+      gpu = { tier: t.name, tier_chosen: t.chosen, gl2: !!c.gl2, software: !!c.software, gpu: gpuName(c.renderer) || undefined, gpu_class: gpuClass(c.renderer),
+        cores: c.cores || undefined, mem: c.memory || undefined, max_tex: c.maxTex || undefined };
+    } catch (e) { gpu = {}; }
     return gpu;
   };
+  // the GPU as the browser names it, cut down to its family and model: "ANGLE (Intel, Intel(R) Iris(R) Xe
+  // Graphics (0x000046A6) Direct3D11 vs_5_0 ps_5_0, D3D11)" becomes "intel iris xe graphics". No driver
+  // version, device id or API level is kept: the name is for grouping devices, not telling them apart.
+  function gpuName(r) {
+    let s = String(r || '');
+    const m = /^ANGLE \((.*)\)$/.exec(s);
+    if (m) { const parts = m[1].split(','); s = parts.length > 1 ? parts[1] : parts[0]; }
+    return s.replace(/ANGLE Metal Renderer:/i, '').replace(/\((R|TM|C)\)/gi, '').replace(/\(0x[0-9a-f]+\)/gi, '')
+      .replace(/\b(Direct3D|OpenGL|Vulkan|D3D)\S*.*$/i, '').replace(/\/PCIe.*$/i, '').replace(/,? or similar/i, '')
+      .replace(/\bvs_\S+|\bps_\S+/g, '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 48);
+  }
+  function gpuClass(r) {
+    const s = String(r || '').toLowerCase();
+    if (!s) return undefined;
+    if (/swiftshader|llvmpipe|softpipe|software|basic render/.test(s)) return 'software';
+    for (const [k, re] of [['apple', /apple/], ['nvidia', /nvidia|geforce|quadro|rtx|gtx/], ['amd', /amd|radeon|ati /], ['intel', /intel|iris|uhd|hd graphics/],
+      ['adreno', /adreno|qualcomm/], ['mali', /mali|immortalis/], ['powervr', /powervr|imagination/], ['xclipse', /xclipse|samsung/]]) if (re.test(s)) return k;
+    return 'other';
+  }
+  const ua = navigator.userAgent || '';
+  const os = /Android/.test(ua) ? 'android' : (/iPhone|iPad|iPod/.test(ua) || (/Mac OS X/.test(ua) && navigator.maxTouchPoints > 1)) ? 'ios' : /Mac OS X/.test(ua) ? 'mac'
+    : /Windows/.test(ua) ? 'windows' : /CrOS/.test(ua) ? 'chromeos' : /Linux/.test(ua) ? 'linux' : 'other';
+  const bm = /(Edg|OPR|Firefox|Chrome|Version)\/(\d+)/.exec(ua);
+  const browser = bm ? { Edg: 'edge', OPR: 'opera', Firefox: 'firefox', Chrome: 'chrome', Version: /Safari\//.test(ua) ? 'safari' : 'other' }[bm[1]] : 'other';
+  const conn = navigator.connection || {};
   const base = () => Object.assign({ v: VERSION, sid, device, webgpu: !!navigator.gpu, lang: navigator.language || '', ref,
-    app: (window.OE_VERSION && window.OE_VERSION.version) || '', w: innerWidth, h: innerHeight, dpr: Math.round(devicePixelRatio * 100) / 100 }, tierOf());
+    app: (window.OE_VERSION && window.OE_VERSION.version) || '', w: innerWidth, h: innerHeight, dpr: Math.round(devicePixelRatio * 100) / 100,
+    os, browser, browser_v: bm ? Number(bm[2]) : undefined, net: conn.effectiveType || undefined, save_data: conn.saveData || undefined }, tierOf());
 
   // PostHog's own session for its Web Analytics: a UUIDv7 kept in sessionStorage for the tab, renewed after
   // 30 minutes without an event (PostHog's own rule), so its sessions, bounce rate and session length add up
@@ -154,7 +194,11 @@ window.OETelemetry = (function () {
   let cur = null;           // { kind, city, t0, ready, failed, active, since, frames }
   let sinceFlush = 0;       // ms of active time in this view not yet sent
   let engFlush = 0;         // seconds of it the visitor was engaged (input in the last minute, or a tour playing)
-  let slice = { inp: 0, heap: 0 };   // the slowest interaction (ms) and the most memory (MB) since the last "time"
+  // the slowest interaction (ms) and the most memory (MB) since the last "time"; the long frames the browser
+  // reported (their count, the time they blocked input, and the worst with the script that held it)
+  const fresh0 = () => ({ inp: 0, heap: 0, block: 0, loaf: 0, worst: null });
+  let slice = fresh0();
+  let extra = {};           // what the view says of its own state (OETelemetry.set): the governor's scale, what it shed
 
   function activeNow() { return cur && cur.ready && !document.hidden; }
   function bank() {         // move the running stretch of active time into the view's tally
@@ -172,18 +216,52 @@ window.OETelemetry = (function () {
       props.fps = Math.round(1000 / Math.max(med, 1));
       props.slow = Math.round(f.slow / n * 1000) / 1000;
       props.frames = n;
+      // the tail: the frame 95% and 99% are no slower than (the upper edge of its 2 ms bin), the longest, and
+      // the hitches a person feels (over 100 ms); the fastest rate the device kept for a twentieth of its frames
+      const at = p => { let c = 0; for (let i = 0; i < f.bins.length; i++) { c += f.bins[i]; if (c >= n * p) return (i + 1) * 2; } return 200; };
+      props.f95 = at(0.95); props.f99 = at(0.99); props.fmax = Math.round(f.max); props.hitch = f.hitch;
+      const hz = 1000 / (at(0.05) - 1);
+      props.hz = [30, 60, 72, 75, 90, 120, 144, 165, 240].reduce((a, b) => (Math.abs(b - hz) < Math.abs(a - hz) ? b : a));
+      // what the frame cost: the main thread's work and the GPU's time (medians and the 95th percentile, ms),
+      // a sampled frame's draw calls, triangles and full-screen passes, and the pixels of the canvas
+      const r1 = x => Math.round(x * 10) / 10;
+      const c50 = qt(f.cpu, 0.5), g50 = qt(f.gpu, 0.5);
+      if (c50 != null) { props.cpu_ms = r1(c50); props.cpu95 = r1(qt(f.cpu, 0.95)); }
+      if (g50 != null) { props.gpu_ms = r1(g50); props.gpu95 = r1(qt(f.gpu, 0.95)); }
+      const dr = qt(f.draws, 0.5);
+      if (dr != null) { props.draws = Math.round(dr); props.tris_k = Math.round(qt(f.tris, 0.5) / 1000); props.passes = Math.round(qt(f.passes, 0.5)); }
+      if (f.px) props.px_k = Math.round(f.px / 1000);
+      // what held the frame rate: nothing ("ok": within a tenth of the display's rate), the GPU or the script.
+      // Without a GPU timer, a slow frame the script does not account for is put down to the GPU ("gpu?").
+      props.bound = props.fps >= props.hz * 0.9 ? 'ok' : g50 != null ? (g50 >= (c50 || 0) ? 'gpu' : 'cpu') : c50 != null ? (c50 > med * 0.6 ? 'cpu' : 'gpu?') : undefined;
     }
     props.eng_s = Math.round(engFlush / 100) / 10;
     if (slice.inp) props.inp = slice.inp;
     if (slice.heap) props.heap_mb = slice.heap;
+    if (slice.loaf) { props.loaf = slice.loaf; props.block_ms = Math.round(slice.block); }
     if (final) props.final = true;
-    sinceFlush = 0; engFlush = 0; slice = { inp: 0, heap: 0 }; cur.frames = frames();
-    if (props.s > 0 || final) track('time', props);
+    const worst = slice.worst;
+    sinceFlush = 0; engFlush = 0; slice = fresh0(); cur.frames = frames();
+    if (props.s > 0 || final) track('time', Object.assign(props, extra));
+    if (worst && (props.s > 0 || final)) track('jank', worst);
     // the time by spot and mode since the last one
-    for (const [k, d] of cur.dwell) if (d.s >= 1) track('dwell', { spot: d.spot, mode: d.mode, s: Math.round(d.s * 10) / 10, eng_s: Math.round(d.eng * 10) / 10 });
-    cur.dwell.clear();
+    for (const [k, d] of cur.dwell) if (d.s >= 1) track('dwell', Object.assign({ spot: d.spot, mode: d.mode, s: Math.round(d.s * 10) / 10, eng_s: Math.round(d.eng * 10) / 10 },
+      d.fn >= 10 ? { fps: Math.round(1000 * d.fn / d.fms), slow: Math.round(d.fslow / d.fn * 1000) / 1000 } : {}));
+    cur.dwell.clear(); cur.dk = null;
   }
-  const frames = () => ({ n: 0, slow: 0, bins: new Uint32Array(100) });
+  // a reservoir of samples (240 kept, each as likely as any other), for a median and a 95th percentile
+  const pool = () => ({ a: new Float32Array(240), n: 0 });
+  const put = (r, v) => { if (r.n < r.a.length) r.a[r.n] = v; else { const j = Math.random() * (r.n + 1) | 0; if (j < r.a.length) r.a[j] = v; } r.n++; };
+  const qt = (r, p) => { const m = Math.min(r.n, r.a.length); if (m < 1) return null; const s = Array.from(r.a.subarray(0, m)).sort((x, y) => x - y); return s[Math.min(m - 1, Math.floor(p * m))]; };
+  const frames = () => ({ n: 0, slow: 0, hitch: 0, max: 0, bins: new Uint32Array(100), cpu: pool(), gpu: pool(), draws: pool(), tris: pool(), passes: pool(), px: 0 });
+  // the view's own state, for the "time" events: OETelemetry.set({ scale: 0.85, shed: 2 }). A change is also an
+  // event of its own ("quality"), so a governor's steps can be read in order; at most 30 a view.
+  function set(o) {
+    if (!cur || !o) return;
+    let changed = false;
+    for (const k in o) if (extra[k] !== o[k]) { extra[k] = o[k]; changed = true; }
+    if (changed && cur.ready && (cur.qn = (cur.qn || 0) + 1) <= 30) track('quality', Object.assign({ at_s: Math.round(cur.active / 1000) }, extra));
+  }
 
   function leave(why) {
     if (!cur) return;
@@ -193,7 +271,7 @@ window.OETelemetry = (function () {
     }
     sendTime(true);
     prev = { from: `${cur.kind}${cur.city ? `:${cur.city}` : ''}`, from_s: Math.round(cur.active / 1000) };
-    cur = null;
+    cur = null; extra = {}; glDrop();
   }
   let prev = {};
   function view(restored) {
@@ -232,6 +310,13 @@ window.OETelemetry = (function () {
     for (const k in STAGES) { const t = markOf(k, v); if (t != null) o[STAGES[k]] = Math.round(t - v.t0); }
     return o;
   }
+  // what the load brought over the network: kilobytes transferred, requests, and the share served from the cache
+  try { performance.setResourceTimingBufferSize(3000); } catch (e) { /* the default 250 then */ }
+  function weight(v) {
+    let b = 0, n = 0, hit = 0;
+    try { for (const r of performance.getEntriesByType('resource')) if (r.startTime >= v.t0) { n++; b += r.transferSize || 0; if (!r.transferSize && r.decodedBodySize) hit++; } } catch (e) { /* no Resource Timing */ }
+    return n ? { kb: Math.round(b / 1024), req: n, cached: Math.round(hit / n * 100) / 100 } : {};
+  }
   // the title screen has no loader: it is ready at its "oe:ready" mark (title.js), reported once per globe view
   function globeReady() {
     const v = cur;
@@ -256,7 +341,7 @@ window.OETelemetry = (function () {
       if (!el || v !== cur) return false;
       if (!v.ready && (el.classList.contains('out') || el.classList.contains('done'))) {
         v.ready = true; bank();
-        if (!v.restored) { track('load', Object.assign({ ok: true, ms: Math.round(now() - v.t0) }, stages(v))); flush(); }
+        if (!v.restored) { track('load', Object.assign({ ok: true, ms: Math.round(now() - v.t0) }, stages(v), weight(v))); flush(); }
         return true;
       }
       if (!v.failed && el.classList.contains('err')) {
@@ -273,16 +358,110 @@ window.OETelemetry = (function () {
   }
 
   // ---------------------------------------------------------------- frames
-  let last = 0;
+  // This script loads first and asks for its frame first, so in every frame its callback runs before the
+  // view's own: the time from here to a task posted from here (which the browser runs once the frame's
+  // callbacks, style and layout are done) is the main thread's work for the frame, and whatever the view
+  // draws falls between one of these callbacks and the next.
+  let last = 0, fno = 0, cpuAt = 0;
+  const ch = new MessageChannel();
+  ch.port1.onmessage = () => { if (cpuAt && activeNow()) put(cur.frames.cpu, now() - cpuAt); cpuAt = 0; };
   function tick(t) {
-    if (last && activeNow()) {
+    const live = activeNow();
+    if (last && live) {
       const d = t - last;
-      if (d < 1000) { const f = cur.frames; f.n++; if (d > 50) f.slow++; f.bins[Math.min(99, d / 2 | 0)]++; }
+      if (d < 1000) {
+        const f = cur.frames; f.n++; if (d > 50) f.slow++; if (d > 100) f.hitch++; if (d > f.max) f.max = d; f.bins[Math.min(99, d / 2 | 0)]++;
+        const k = cur.dk; if (k) { k.fn++; k.fms += d; if (d > 50) k.fslow++; }
+      }
     }
+    fno++;
+    try { glTick(live); } catch (e) { glDrop(); }
+    if (live && fno % 4 === 0) { cpuAt = now(); ch.port2.postMessage(0); }
     last = document.hidden ? 0 : t;
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+
+  // ---------------------------------------------------------------- what the GPU is asked for
+  // The views' WebGL 2 contexts are noted as they are made (this script loads before any of them), so the
+  // frame can be measured from outside without a line in the renderers:
+  //   - the GPU's time for a frame, with a timer query (EXT_disjoint_timer_query_webgl2, where the browser has
+  //     it: Chromium on desktop) begun in one of this script's callbacks and ended in the next, one frame in
+  //     thirty; a query the view itself has open is left alone;
+  //   - the draw calls, triangles and full-screen passes (a three-vertex draw with no index is one) of one
+  //     frame in a hundred and twenty, counted by wrapping the context's draw calls for that frame only;
+  //   - the canvas's pixels.
+  // The reef and alpine sites draw with WebGPU and report none of these.
+  const CANVAS = { globe: 'globe-gl', city: 'gl', game: 'game-gl' };
+  const ctxs = new WeakMap();
+  try {
+    const get = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type) {
+      const c = get.apply(this, arguments);
+      if (c && type === 'webgl2') { try { ctxs.set(this, c); } catch (e) { /* not a context we can key */ } }
+      return c;
+    };
+  } catch (e) { /* no canvas prototype: no GPU figures */ }
+  const DRAWS = ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'drawRangeElements'];
+  let tq = null, cnt = null;     // an open timer query { gl, ext, q, run }; a frame being counted { gl, draws, tris, passes }
+  function glDrop() {
+    if (cnt) { for (const k of DRAWS) delete cnt.gl[k]; cnt = null; }
+    if (tq) { try { if (tq.run) tq.gl.endQuery(tq.ext.TIME_ELAPSED_EXT); tq.gl.deleteQuery(tq.q); } catch (e) { /* the context has gone */ } tq = null; }
+  }
+  function glTick(live) {
+    // close what the last frame opened
+    if (cnt) {
+      for (const k of DRAWS) delete cnt.gl[k];
+      if (live && cnt.draws) { const f = cur.frames; put(f.draws, cnt.draws); put(f.tris, cnt.tris); put(f.passes, cnt.passes); }
+      cnt = null;
+    }
+    if (tq) {
+      const { gl, ext } = tq;
+      if (gl.isContextLost()) { tq = null; }
+      else if (tq.run) { gl.endQuery(ext.TIME_ELAPSED_EXT); tq.run = false; }
+      else if (gl.getQueryParameter(tq.q, gl.QUERY_RESULT_AVAILABLE)) {
+        const ns = gl.getQueryParameter(tq.q, gl.QUERY_RESULT), bad = gl.getParameter(ext.GPU_DISJOINT_EXT);
+        gl.deleteQuery(tq.q); tq = null;
+        if (live && !bad && ns > 0) put(cur.frames.gpu, ns / 1e6);
+      }
+    }
+    if (!live || cur.frames.n < 10) return;
+    const el = document.getElementById(CANVAS[cur.kind] || ''), gl = el && ctxs.get(el);
+    if (!gl || gl.isContextLost()) return;
+    cur.frames.px = el.width * el.height;
+    if (fno % 120 === 45 || (!cur.frames.draws.n && !tq)) {     // and once early in each piece of time
+      const c = cnt = { gl, draws: 0, tris: 0, passes: 0 };
+      const tri = (mode, n, inst) => (mode === 4 ? n / 3 : mode === 5 || mode === 6 ? Math.max(0, n - 2) : 0) * inst;
+      gl.drawArrays = function (m, a, n) { c.draws++; c.tris += tri(m, n, 1); if (n === 3) c.passes++; return WebGL2RenderingContext.prototype.drawArrays.call(this, m, a, n); };
+      gl.drawElements = function (m, n, t, o) { c.draws++; c.tris += tri(m, n, 1); return WebGL2RenderingContext.prototype.drawElements.call(this, m, n, t, o); };
+      gl.drawRangeElements = function (m, s0, e0, n, t, o) { c.draws++; c.tris += tri(m, n, 1); return WebGL2RenderingContext.prototype.drawRangeElements.call(this, m, s0, e0, n, t, o); };
+      gl.drawArraysInstanced = function (m, a, n, i) { c.draws++; c.tris += tri(m, n, i); return WebGL2RenderingContext.prototype.drawArraysInstanced.call(this, m, a, n, i); };
+      gl.drawElementsInstanced = function (m, n, t, o, i) { c.draws++; c.tris += tri(m, n, i); return WebGL2RenderingContext.prototype.drawElementsInstanced.call(this, m, n, t, o, i); };
+    } else if (!tq && fno % 30 === 0) {
+      const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+      if (!ext || gl.getQuery(ext.TIME_ELAPSED_EXT, gl.CURRENT_QUERY)) return;
+      gl.getParameter(ext.GPU_DISJOINT_EXT);      // reading it clears it
+      const q = gl.createQuery();
+      gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
+      tq = { gl, ext, q, run: true };
+    }
+  }
+  // the frames the browser calls long (over 50 ms from its start to its paint; the Long Animation Frames API,
+  // Chromium): how many, how long they blocked input, and the worst with the script that took most of it
+  try {
+    new PerformanceObserver(l => {
+      for (const e of l.getEntries()) {
+        if (!activeNow()) continue;
+        slice.loaf++; slice.block += e.blockingDuration || 0;
+        if (e.duration < 150 || (slice.worst && e.duration <= slice.worst.ms)) continue;
+        let top = null;
+        for (const x of e.scripts || []) if (!top || x.duration > top.duration) top = x;
+        slice.worst = { ms: Math.round(e.duration), block_ms: Math.round(e.blockingDuration || 0),
+          script: top ? `${String(top.sourceURL || '').replace(location.origin, '').replace(/[?#].*$/, '').slice(-60)}:${top.sourceFunctionName || top.invokerType || ''}`.slice(0, 100) : '',
+          script_ms: top ? Math.round(top.duration) : 0, style_ms: e.styleAndLayoutStart ? Math.round(e.startTime + e.duration - e.styleAndLayoutStart) : 0 };
+      }
+    }).observe({ type: 'long-animation-frame' });
+  } catch (e) { /* no Long Animation Frames here (Safari, Firefox) */ }
 
   // ---------------------------------------------------------------- where the visitor is, and what they are doing
   // Read from the views' own handles once a second while the view is ready and on screen; each view's code
@@ -365,8 +544,11 @@ window.OETelemetry = (function () {
     if (eng) engFlush += dt * 1000;
     const k = `${h.spot}\u0001${h.mode}`;
     let d = cur.dwell.get(k);
-    if (!d) cur.dwell.set(k, d = { spot: h.spot, mode: h.mode, s: 0, eng: 0 });
+    if (!d) cur.dwell.set(k, d = { spot: h.spot, mode: h.mode, s: 0, eng: 0, fn: 0, fms: 0, fslow: 0 });
     d.s += dt; if (eng) d.eng += dt;
+    cur.dk = d;      // the frames until the next sample count towards this spot and mode
+    // a first "time" half a minute in, so a visit too short for the five-minute one still says how it ran
+    if (!cur.early && cur.active + (cur.since != null ? t - cur.since : 0) > 30000) { cur.early = true; sendTime(false); flush(); cur.dk = null; }
     // the steps: a tour stop reached, the tour ended or taken over; on foot to a car or a helicopter; a quest step done
     if (h.stops) {
       if (h.mode === 'tour' && (!was || was.stop !== h.stop || was.mode !== 'tour')) { cur.tourMax = Math.max(cur.tourMax, h.stop); track('tour', { action: 'stop', stop: h.stop, stops: h.stops }); }
@@ -447,5 +629,5 @@ window.OETelemetry = (function () {
   // the first view once the page's scripts are in (so its events carry the quality tier)
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', view, { once: true }); else view();
   alive();
-  return { on: true, track, flush, view, frames: () => (cur ? cur.frames.n : 0), here: () => (cur ? cur.here : null), sample };   // frames, here, sample: for tools/telemetry_check.js
+  return { on: true, track, flush, view, set, gpuName, frames: () => (cur ? cur.frames.n : 0), here: () => (cur ? cur.here : null), sample };   // frames, here, sample: for tools/telemetry_check.js
 })();
