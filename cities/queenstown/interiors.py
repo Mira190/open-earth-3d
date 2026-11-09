@@ -200,11 +200,11 @@ def chair(R, P, u, v, z, face, mat="sky_chair", leg="sky_steel"):
     _prism_world(m, back, zw + 0.48, zw + 0.9)
 
 
-def doorway(P, a, b, t, z0, z1, top):
+def doorway(P, a, b, t, z0, z1, top, name):
     """A doorway's frame as game.json carries it (doors[].frames, web/game/nav.js): its two jambs' faces a and b (u, v) on
-    the wall's middle line, the wall's thickness t, the sill z0, the head z1 and the wall's top, over the frame's ground."""
+    the wall's middle line, the wall's thickness t, the sill z0, the head z1 and the wall's top, over the frame's ground; its name for the checks."""
     pa, pb = P(*a, z0), P(*b, z0)
-    return {"a": [round(pa[0], 3), round(pa[1], 3)], "b": [round(pb[0], 3), round(pb[1], 3)], "t": round(t, 3),
+    return {"name": name, "a": [round(pa[0], 3), round(pa[1], 3)], "b": [round(pb[0], 3), round(pb[1], 3)], "t": round(t, 3),
             "z0": round(pa[2], 2), "z1": round(P(*a, z1)[2], 2), "top": round(P(*a, top)[2], 2)}
 
 
@@ -382,7 +382,7 @@ def st_peters(heritage, ground):
         leaves.append({"meshes": [leaf.name, iron.name], "hinge": [round(hx, 2), round(hy, 2)], "deg": 100 * sgn})   # (in, towards the nave)
     # the doorway's frame (web/game/nav.js): the porch's north wall, 0.3 m from its outer face at pv1, the opening its
     # lancet's (w - 0.04) to the arch's springing and a little over, where a walker's head is well clear of the arch
-    frames = [doorway(P, (c0 - (w / 2 - 0.02), pv1 - 0.15), (c0 + (w / 2 - 0.02), pv1 - 0.15), 0.3, F, F + 2.4, F + 2.6)]
+    frames = [doorway(P, (c0 - (w / 2 - 0.02), pv1 - 0.15), (c0 + (w / 2 - 0.02), pv1 - 0.15), 0.3, F, F + 2.4, F + 2.6, "St Peter's porch door")]
     doors = [{"id": "st-peters", "name": "St Peter's porch doors", "at": [round(P(c0, pv1, 0)[0], 2), round(P(c0, pv1, 0)[1], 2), round(g + F, 2)],
               "reach": 3.2, "time": 0.9, "leaves": leaves, "frames": frames}]
     # the strips: the nave, the chancel, the porch, the steps down from its door
@@ -536,8 +536,8 @@ def williams(heritage, ground):
     # the doorways' frames, whose jambs and heads the walkers meet as exact boxes rather than the landmark's quarter-metre
     # cells (web/game/nav.js): the front door through the front wall (its outer face at U0, its inner at iu0) and the way
     # through to the lean-to (the wall between iu1 and U1 + T / 2)
-    frames = [doorway(P, (U0 + T / 2, door["v"] - door["w"] / 2), (U0 + T / 2, door["v"] + door["w"] / 2), T, F, F + door["h"], F + CW),
-              doorway(P, (U1, iv - iw), (U1, iv + iw), T, F, F + 2.0, F + min(CW, LW0))]
+    frames = [doorway(P, (U0 + T / 2, door["v"] - door["w"] / 2), (U0 + T / 2, door["v"] + door["w"] / 2), T, F, F + door["h"], F + CW, "Williams Cottage's front door"),
+              doorway(P, (U1, iv - iw), (U1, iv + iw), T, F, F + 2.0, F + min(CW, LW0), "Williams Cottage's doorway to the lean-to")]
     doors = [{"id": "williams-cottage", "name": "Williams Cottage's front door", "at": [round(P(U0, door["v"], 0)[0], 2), round(P(U0, door["v"], 0)[1], 2), round(g + F, 2)],
               "reach": 2.6, "time": 0.8, "leaves": [{"meshes": [leaf.name, brass.name], "hinge": [round(hx, 2), round(hy, 2)], "deg": 100}], "frames": frames}]
     surfaces = [strip("will_int_floor_int_boards", P, iu0, ilu1, iv0, iv1, F, label="Williams Cottage"),

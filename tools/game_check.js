@@ -668,11 +668,11 @@ const npcNight = require('./npc_night');
       const mid = [f.a[0] + dx / 2, f.a[1] + dy / 2], at = s => [f.a[0] + ux * s, f.a[1] + uy * s];
       const roomy = nav.room(mid[0], mid[1], z, Math.min(nav.R, L / 2 - 0.05));
       const jamb = [at(-0.2), at(L + 0.2)].map(([x, y]) => nav.col.overlap(x, y, 0.05, z + 0.5, z + 1.5));
-      out.push({ name: d.name, w: L, roomy, jambs: jamb.every(Boolean) });
+      out.push({ name: f.name || d.name, w: L, roomy, jambs: jamb.every(Boolean) });
     }
     return out;
   });
-  for (const r of doorways) check(r.roomy && r.jambs, `${r.name}'s doorway (${r.w.toFixed(2)} m): a walker stands in it, ${r.roomy ? 'clear' : 'NOT clear'}; its jambs ${r.jambs ? 'solid' : 'NOT solid'}`);
+  for (const r of doorways) check(r.roomy && r.jambs, `the doorway of ${r.name} (${r.w.toFixed(2)} m): a walker stands in it, ${r.roomy ? 'clear' : 'NOT clear'}; its jambs ${r.jambs ? 'solid' : 'NOT solid'}`);
 
   // the flights of steps a city names for checking (game.json surfaces with check: true, a footbridge's): from
   // a metre past the foot, climb on foot to the top, and arrive within 0.35 m of the top's height, never
