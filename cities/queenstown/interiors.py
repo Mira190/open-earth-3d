@@ -200,15 +200,12 @@ def chair(R, P, u, v, z, face, mat="sky_chair", leg="sky_steel"):
     _prism_world(m, back, zw + 0.48, zw + 0.9)
 
 
-def soft_jambs(R, P, a, b, c, w_vis, w_clear, z0, z1, layers):
-    """The strips of a wall a->b either side of a doorway centred c along it, between its drawn width w_vis and the
-    width open to walkers w_clear, in layers [(material, z0, z1)] (materials that are not walls: solid False)."""
-    A, B = np.asarray(a, float), np.asarray(b, float)
-    t = (B - A) / np.linalg.norm(B - A)
-    Q = lambda s, z: P(*(A + t * s), z)
-    for s0, s1 in ((c - w_clear / 2, c - w_vis / 2), (c + w_vis / 2, c + w_clear / 2)):
-        for mat, za, zb in layers:
-            R.m(mat).quad(Q(s0, za), Q(s1, za), Q(s1, zb), Q(s0, zb), [[s0, za], [s1, za], [s1, zb], [s0, zb]])
+def doorway(P, a, b, t, z0, z1, top):
+    """A doorway's frame as game.json carries it (doors[].frames, web/game/nav.js): its two jambs' faces a and b (u, v) on
+    the wall's middle line, the wall's thickness t, the sill z0, the head z1 and the wall's top, over the frame's ground."""
+    pa, pb = P(*a, z0), P(*b, z0)
+    return {"a": [round(pa[0], 3), round(pa[1], 3)], "b": [round(pb[0], 3), round(pb[1], 3)], "t": round(t, 3),
+            "z0": round(pa[2], 2), "z1": round(P(*a, z1)[2], 2), "top": round(P(*a, top)[2], 2)}
 
 
 def _prism_world(m, ring, z0, z1):
@@ -383,8 +380,11 @@ def st_peters(heritage, ground):
         iron.tube([P(c0 + sgn * 0.12 + 0.07 * math.cos(a), dv + 0.05, F + 1.05 + 0.07 * math.sin(a)) for a in np.linspace(0, 2 * math.pi, 9)], 0.01, sides=4)
         hx, hy, _ = P(jamb - sgn * 0.03, dv, 0)
         leaves.append({"meshes": [leaf.name, iron.name], "hinge": [round(hx, 2), round(hy, 2)], "deg": 100 * sgn})   # (in, towards the nave)
+    # the doorway's frame (web/game/nav.js): the porch's north wall, 0.3 m from its outer face at pv1, the opening its
+    # lancet's (w - 0.04) to the arch's springing and a little over, where a walker's head is well clear of the arch
+    frames = [doorway(P, (c0 - (w / 2 - 0.02), pv1 - 0.15), (c0 + (w / 2 - 0.02), pv1 - 0.15), 0.3, F, F + 2.4, F + 2.6)]
     doors = [{"id": "st-peters", "name": "St Peter's porch doors", "at": [round(P(c0, pv1, 0)[0], 2), round(P(c0, pv1, 0)[1], 2), round(g + F, 2)],
-              "reach": 3.2, "time": 0.9, "leaves": leaves}]
+              "reach": 3.2, "time": 0.9, "leaves": leaves, "frames": frames}]
     # the strips: the nave, the chancel, the porch, the steps down from its door
     surfaces = [strip("stp_int_floor_nave_int_boards", P, iu0, NU1, -inv, inv, F, label="St Peter's nave"),
                 strip("stp_int_floor_chancel_int_tiles", P, NU1, icu1, -icv, icv, FC, label="St Peter's chancel"),
@@ -447,16 +447,16 @@ def williams(heritage, ground):
     rooms_walls = [
         ((iu0, iv0), (iu1, iv0), [win(-5.0 - iu0, 0.85, 0.75, 1.35), win(-2.6 - iu0, 0.85, 0.75, 1.35)], CW, CW),
         ((iu1, iv0), (iu1, -3.55), [], CW, CW),
-        ((iu1, -2.45), (iu1, D["inner_v"] - D["inner_clear"] / 2), [], CW, CW),
-        ((iu1, D["inner_v"] + D["inner_clear"] / 2), (iu1, iv1), [], CW, CW),
+        ((iu1, -2.45), (iu1, D["inner_v"] - D["inner_w"] / 2), [], CW, CW),
+        ((iu1, D["inner_v"] + D["inner_w"] / 2), (iu1, iv1), [], CW, CW),
         ((iu1, iv1), (iu0, iv1), [win(iu1 - (-3.8), 0.85, 0.75, 1.35)], CW, CW),
-        ((iu0, iv1), (iu0, iv0), [win(iv1 - 0.8, 1.0, 0.6, 1.4), win(iv1 - (-3.2), 1.0, 0.6, 1.4), (iv1 - door["v"], door["clear"], F, F + door["h"], False)], CW, CW),
+        ((iu0, iv1), (iu0, iv0), [win(iv1 - 0.8, 1.0, 0.6, 1.4), win(iv1 - (-3.2), 1.0, 0.6, 1.4), (iv1 - door["v"], door["w"], F, F + door["h"], False)], CW, CW),
         # the lean-to: its ceiling follows the skillion, falling from the front room's wall to the back
         ((U1 + T / 2, iv0), (ilu1, iv0), [(2.6 - (U1 + T / 2), 0.85, F, F + 2.0, False)], LW0, LW1),
         ((ilu1, iv0), (ilu1, iv1), [], LW1, LW1),
         ((ilu1, iv1), (U1 + T / 2, iv1), [], LW1, LW0),
-        ((U1 + T / 2, iv1), (U1 + T / 2, D["inner_v"] + D["inner_clear"] / 2), [], LW0, LW0),
-        ((U1 + T / 2, D["inner_v"] - D["inner_clear"] / 2), (U1 + T / 2, iv0), [], LW0, LW0),
+        ((U1 + T / 2, iv1), (U1 + T / 2, D["inner_v"] + D["inner_w"] / 2), [], LW0, LW0),
+        ((U1 + T / 2, D["inner_v"] - D["inner_w"] / 2), (U1 + T / 2, iv0), [], LW0, LW0),
     ]
     for a, b, holes, za, zb in rooms_walls:
         za, zb = F + za, F + zb
@@ -480,25 +480,17 @@ def williams(heritage, ground):
                 R.m("will_shelf").box(Q(s, F + 0.07, -0.01), Q(g0, F + 0.07, -0.01), 0.03, 0.14)      # the skirting
             s = max(s, g1)
         for o, (c, w, zb_, zt, p) in zip(outl, hz):
-            if zb_ <= F + 0.01:   # the front door: the wall's last few centimetres either side drawn but open to walkers
-                vis = door["w"]
-                soft_jambs(R, P, a, b, c, vis, w, F, F + door["h"], (("will_dado_soft", F, F + 0.95), ("will_paper_soft", F + 0.95, F + door["h"])))
-                o = [(c - vis / 2, F), (c + vis / 2, F), (c + vis / 2, F + door["h"]), (c - vis / 2, F + door["h"])]
-                ak.reveal(R.m("will_shelf_soft"), P, a, b, o, 0.0, T)
-                continue
             ak.reveal(R.m("will_shelf"), P, a, b, o, 0.0, T)
-            if zb_ > F + 0.01:   # the window: its glass, the sash bars, lit from outside by day
+            if zb_ > F + 0.01:   # (a window: its glass, the sash bars, lit from outside by day; the front door has none)
                 ak.pane(R.m("will_glass"), P, a, b, o, T - 0.04)
     # the ceilings: matchlining, flat in the front room, the lean-to's following its skillion
     ceil.quad(P(iu0, iv0, F + CW), P(iu0, iv1, F + CW), P(iu1, iv1, F + CW), P(iu1, iv0, F + CW), [[iu0, iv0], [iu0, iv1], [iu1, iv1], [iu1, iv0]])
     ceil.quad(P(U1 + T / 2, iv0, F + LW0), P(U1 + T / 2, iv1, F + LW0), P(ilu1, iv1, F + LW1), P(ilu1, iv0, F + LW1), [[0, iv0], [0, iv1], [5, iv1], [5, iv0]])
     # the wall between them above the doorway and its jambs' thickness
-    iw, iv, ic = D["inner_w"] / 2, D["inner_v"], D["inner_clear"] / 2
-    ak.reveal(R.m("will_shelf_soft"), P, (iu1, iv + iw), (iu1, iv - iw), [(0, F), (2 * iw, F), (2 * iw, F + 2.0), (0, F + 2.0)], 0.0, T)
-    paper.quad(P(iu1, iv - ic, F + 2.0), P(iu1, iv + ic, F + 2.0), P(iu1, iv + ic, F + CW), P(iu1, iv - ic, F + CW))
-    paper.quad(P(U1 + T / 2, iv + ic, F + 2.0), P(U1 + T / 2, iv - ic, F + 2.0), P(U1 + T / 2, iv - ic, F + LW0), P(U1 + T / 2, iv + ic, F + LW0))
-    for a, b in (((iu1, iv - ic), (iu1, iv + ic)), ((U1 + T / 2, iv + ic), (U1 + T / 2, iv - ic))):
-        soft_jambs(R, P, a, b, ic, 2 * iw, 2 * ic, F, F + 2.0, (("will_dado_soft", F, F + 0.95), ("will_paper_soft", F + 0.95, F + 2.0)))
+    iw, iv = D["inner_w"] / 2, D["inner_v"]
+    ak.reveal(R.m("will_shelf"), P, (iu1, iv + iw), (iu1, iv - iw), [(0, F), (2 * iw, F), (2 * iw, F + 2.0), (0, F + 2.0)], 0.0, T)
+    paper.quad(P(iu1, iv - iw, F + 2.0), P(iu1, iv + iw, F + 2.0), P(iu1, iv + iw, F + CW), P(iu1, iv - iw, F + CW))
+    paper.quad(P(U1 + T / 2, iv + iw, F + 2.0), P(U1 + T / 2, iv - iw, F + 2.0), P(U1 + T / 2, iv - iw, F + LW0), P(U1 + T / 2, iv + iw, F + LW0))
     # the fireplace in the chimney breast between the rooms: a schist surround, the dark firebox and its embers, a mantel
     st = R.m("will_stone")
     cuboid(st, P, iu1 - 0.6, iu1, -3.55, -2.45, F, F + CW, top=False)
@@ -541,8 +533,13 @@ def williams(heritage, ground):
     x, y, _ = P(du + 0.07, door["v"] - door["w"] / 2 + 0.12, 0)
     brass.lathe([(g + F + 0.98, 0.0), (g + F + 0.98, 0.03), (g + F + 1.03, 0.03), (g + F + 1.06, 0.0)], (x, y), segs=8)
     hx, hy, _ = P(du, hv, 0)
+    # the doorways' frames, whose jambs and heads the walkers meet as exact boxes rather than the landmark's quarter-metre
+    # cells (web/game/nav.js): the front door through the front wall (its outer face at U0, its inner at iu0) and the way
+    # through to the lean-to (the wall between iu1 and U1 + T / 2)
+    frames = [doorway(P, (U0 + T / 2, door["v"] - door["w"] / 2), (U0 + T / 2, door["v"] + door["w"] / 2), T, F, F + door["h"], F + CW),
+              doorway(P, (U1, iv - iw), (U1, iv + iw), T, F, F + 2.0, F + min(CW, LW0))]
     doors = [{"id": "williams-cottage", "name": "Williams Cottage's front door", "at": [round(P(U0, door["v"], 0)[0], 2), round(P(U0, door["v"], 0)[1], 2), round(g + F, 2)],
-              "reach": 2.6, "time": 0.8, "leaves": [{"meshes": [leaf.name, brass.name], "hinge": [round(hx, 2), round(hy, 2)], "deg": 100}]}]
+              "reach": 2.6, "time": 0.8, "leaves": [{"meshes": [leaf.name, brass.name], "hinge": [round(hx, 2), round(hy, 2)], "deg": 100}], "frames": frames}]
     surfaces = [strip("will_int_floor_int_boards", P, iu0, ilu1, iv0, iv1, F, label="Williams Cottage"),
                 strip("will_verandah", P, U0 - 1.9, U0 + 0.02, V0, V1, 0.15, label="Williams Cottage's verandah")]
     rooms = [{"id": "williams-cottage", "name": "Williams Cottage", "note": "1864, one of the oldest houses in Queenstown: its schist chimney, the lean-to of 1866",
@@ -558,21 +555,12 @@ def will_dims():
     """Williams Cottage's shell, as heritage.williams draws it, and the inside: F, the floor over the frame's ground (the
     verandah's boards at 0.15 m); T, the walls' boards and studs; the front door and the doorway through to the lean-to."""
     return {"U0": -6.8, "U1": -0.8, "V0": -4.8, "V1": 2.4, "LU1": 4.5, "F": 0.2, "T": 0.14,
-            # the front door 1.15 m between its jambs and the doorway through 1.3 m (a walker's 0.7 m and the collision
-            # world's quarter-metre cells pass them, web/game/nav.js)
-            # the doorways are drawn at their own widths (the front door 0.95 m, the way through 1.0 m) and a little
-            # more is open to the walkers: the last 0.17 m of the wall either side is not a wall to them (_soft
-            # materials), so that a walker's 0.7 m and the collision world's quarter-metre cells, here on walls at
-            # 44 degrees to them, pass (web/game/nav.js)
-            "door": {"v": 2.4 - 3.6, "w": 0.95, "h": 2.1, "clear": 1.3}, "inner_v": 0.9, "inner_w": 1.0, "inner_clear": 1.35}
+            # the doorways at their own widths, the front door 0.95 m between its jambs and the way through 1.0 m: walls at
+            # 44 degrees to the collision world's quarter-metre cells, whose jambs the walkers meet as exact boxes from
+            # the frames (williams() "frames", web/game/nav.js), so that a walker's 0.7 m passes
+            "door": {"v": 2.4 - 3.6, "w": 0.95, "h": 2.1}, "inner_v": 0.9, "inner_w": 1.0}
 
 
-for _k in ("will_dado", "will_paper", "will_shelf"):   # (the doorways' margins: drawn, not walls to walkers)
-    MATERIALS[_k + "_soft"] = dict(MATERIALS[_k], solid=False)
-    if _k in UV:
-        UV.add(_k + "_soft")
-    if _k in FLOODLIT:
-        FLOODLIT.add(_k + "_soft")
 MATERIALS["will_glass"] = {"color": "#d8e2e4", "roughness": 0.1, "metalness": 0.0, "emissive": "#fff4e2", "glow": 0.2, "glow_day": 0.9}
 FLOODLIT.add("will_glass")
 MATERIALS["will_stone"] = {"color": "#b4a37f", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.22, "block_m": 0.38}

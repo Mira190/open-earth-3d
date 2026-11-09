@@ -10,7 +10,8 @@
 // Last of Us's proximity doors read, without a key to press.
 //   doors:     [{id, name, at: [x, y, z], reach, time, leaves: [{meshes: [...], hinge: [x, y], deg} |
 //              {meshes: [...], slide: [dx, dy]}]}]: at, the doorway's middle at its sill; reach (m),
-//              how near someone must come; time (s), how long it takes to open
+//              how near someone must come; time (s), how long it takes to open; frames: [{a, b, t, z0, z1, top}],
+//              its doorway's jambs and head, which the walkers meet as exact boxes (web/game/nav.js, #326)
 //   interiors: [{id, name, floor, height, ring: [x, y, ...], door, lit}]: each room's outline (m), its
 //              floor's level and height, and the door that leads into it (for the toast as you step in)
 // The landmark's interior furnishings carry "far" in landmarks.json (web/world.js), and the low tier
