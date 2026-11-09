@@ -33,9 +33,9 @@ the log teaches as it fills. Every fish goes back. You keep a log, not a bag.
 5. **Fight.** Hold to wind while the fish rests; let go when it runs, or the tension passes the
    end of the bar and the line parts after 0.7 s. A run takes line whatever you do, so a strong
    fish can also empty the spool. Tension held in the green band tires it more than twice as
-   fast. A call, a ring on the water and the hint line say a run is coming 0.45 s before it
+   fast. A beep, a ring on the water and the hint line say a run is coming 0.45 s before it
    does. Fights last 8 to 30 seconds and end by themselves at 40.
-6. **The catch.** The fish comes up on the line with its card: species, length and weight,
+6. **The catch.** The camera comes round to the fish's side as it comes up on the line with its card: species, length and weight,
    whether it would be legal to keep, your best, and one thing worth knowing about it.
    <kbd>E</kbd> lets it go.
 
@@ -90,13 +90,13 @@ kept:
 | Stage | When | What is loaded or drawn |
 |---|---|---|
 | 0 | Every city, always | Nothing. A city without `game.fishing` has no fishing code in the page: `fishing.js` is not in `index.html`. A city with it carries its spots' places in `game.json` (about 200 bytes), a label each, and one distance check a second. |
-| 1 | On foot within 160 m of a spot | `game/fishing.js` (37 KB, 11 KB gzipped) and `data/<id>/fishing.json` (4 to 8 KB), fetched once. If they fail (offline), they are asked for again after 30 s. |
+| 1 | On foot within 160 m of a spot | `game/fishing.js` (48 KB, 16 KB gzipped) and `data/<id>/fishing.json` (4 to 8 KB), fetched once. If they fail (offline), they are asked for again after 30 s. |
 | 2 | Within 70 m | Rises on the water: one instanced mesh of 8 rings (5 on the low tier), one draw call, drawn only while a ring is live. |
-| 3 | The first cast | The rod, the line, the float and the fish: four meshes, about 900 triangles together, vertex colours only. **No textures**, so no GPU texture memory. The panel's DOM and its style sheet are made now. |
+| 3 | The first cast | The rod, the line, the float and the fish: four meshes, about 700 triangles together (1,200 with the rings), vertex colours only. **No textures**, so no GPU texture memory. The panel's DOM and its style sheet are made now. |
 | 4 | 220 m from every spot | Their geometries and materials are disposed. The code stays (it is small); the next visit builds them again. |
 
 With a line out that is **five draw calls** at most (`tools/game_check.js` fails on a sixth)
-in a frame that draws 450 to 850, and under a thousand triangles in one that draws three to
+in a frame that draws 450 to 850, and about a thousand triangles in one that draws three to
 five million.
 
 Inside the frame:
@@ -117,7 +117,15 @@ Inside the frame:
   how much help you are getting.
 
 The character's right hand goes to the rod by the same two-bone reach the umbrellas use
-(`people.js` `rig.hold`).
+(`people.js` `rig.hold`). A spot is kept 4 to 8 m clear of the mapped trees, benches and lamp posts
+(`pipeline/fishing.py` `clutter`), so nobody casts through a bench or with a trunk in front of the
+camera, and the first time you walk up to one a line says what it is.
+
+| A tailor on at Blues Point, dusk | A kingfish at Beulah Street Wharf |
+|---|---|
+| ![](images/sydney/fishing-fight.jpg) | ![](images/sydney/fishing-catch.jpg) |
+| **The log** | **On a phone: the Gardens shore** |
+| ![](images/sydney/fishing-log.jpg) | ![](images/queenstown/fishing-phone.jpg) |
 
 ## Balance
 

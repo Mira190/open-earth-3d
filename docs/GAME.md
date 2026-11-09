@@ -72,6 +72,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>T</kbd> | Switch which walk the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
+| <kbd>E</kbd> at a `≈` | Fish from the shore, at the spots Sydney and Queenstown have for now: <kbd>Space</kbd> casts, strikes and winds ([docs/FISHING.md](FISHING.md)) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |

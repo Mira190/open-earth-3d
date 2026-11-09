@@ -295,7 +295,7 @@ window.OEFishing = (function () {
     }
     function freeGear() {
       for (const o of gear ? [gear.rod, gear.line, gear.float, gear.fish.mesh] : []) { world.remove(o); o.geometry.dispose(); o.material.dispose(); }
-      if (rings) { world.remove(rings); rings.geometry.dispose(); rings.material.dispose(); rings.dispose(); }
+      if (rings) { world.remove(rings); rings.geometry.dispose(); rings.material.dispose(); if (rings.dispose) rings.dispose(); }
       gear = rings = null;
       if (player.rig) player.rig.hold = null;
     }
@@ -501,7 +501,7 @@ window.OEFishing = (function () {
         seen[sp.id] = 1;
         if (!ctx.ui()) H.toast(`<b>${sp.name}</b><span>${sp.note}</span>`);
       }
-      if (S.st === 'off') { if (gear && !data.spots.some(sp => Math.hypot(sp.at[0] - player.x, sp.at[1] - player.y) < 220)) freeGear(); return; }
+      if (S.st === 'off') { if ((gear || rings) && !data.spots.some(sp => Math.hypot(sp.at[0] - player.x, sp.at[1] - player.y) < 220)) freeGear(); return; }
       if (S.st === 'walk') return;
       if (player.mode !== 'foot' || Math.hypot(player.x - S.fx, player.y - S.fy) > 2.5) { stop(true); return; }   // carried off (the map, a ride): the line comes in
       S.t += dt;
@@ -531,10 +531,7 @@ window.OEFishing = (function () {
         if (S.dip > 0) S.dip -= dt;
         floatY = S.dip > 0 ? -0.06 * Math.sin(Math.PI * (1 - S.dip / 0.32)) : 0;
         setHint(S.dip > 0 ? 'nib' : 'wait' + gear.float.visible, S.dip > 0 ? 'A nibble… <b>wait</b>' : gear.float.visible ? 'Watch the float. Strike when it goes right under.' : 'Feel for the take. Strike when the rod tip pulls down.');
-        if (!paused && press) {
-          if (S.dip > 0 && !save.assist) { lost('early'); return; }
-          if (S.dip <= 0) { S.st = 'aim'; S.t = 0; S.power = 0; gear.float.visible = false; S.hintKey = ''; return; }   // wound in to cast again
-        }
+        if (!paused && press && S.dip > 0 && !save.assist) { lost('early'); return; }   // struck at a nibble (a press on a still float does nothing: E winds in)
         if (S.t > S.wait && S.dip <= 0) { S.st = 'bite'; S.t = 0; ring(S.x, S.y, 0.9); A.beep(660); A.beep(990); if (navigator.vibrate) try { navigator.vibrate(30); } catch (e) { /* not allowed */ } }
       } else if (S.st === 'bite') {
         pitch = 0.62; bendTo = 0.16; floatY = -0.2; slack = 0.2;
@@ -588,6 +585,7 @@ window.OEFishing = (function () {
       }
       const night = ctx.sun() && ctx.sun().altitude < -2;
       gear.floatMat.emissiveIntensity = night ? 0.3 : 0;
+      gear.line.material.opacity = night ? 0.3 : 0.8;   // (unlit: a white line would glow after dark)
     }
 
     function dispose() { stop(true); freeGear(); if (hud) { hud.el.remove(); hud.card.remove(); hud.book.remove(); hud = null; } }
