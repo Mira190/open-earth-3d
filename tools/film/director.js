@@ -115,6 +115,9 @@ window.OEFilmDirector = (function () {
       s.agl_done = true;
     }
     if (s.ferry) s.vessel = cast(s.ferry);
+    // "train": {at: [x, y], in: seconds, dir}: the railway's next train (of that direction) passes that point of its
+    // line that many seconds into the shot (rail.js cue)
+    if (s.train && G.rail && G.rail.cue) G.rail.cue(G.rail.sNear(s.train.at[0], s.train.at[1]), s.train.in ?? 8, s.train.dir || 0);
     const a = s.people || s.anchor || (s.vessel ? [s.vessel.x, s.vessel.y] : (s.at || s.look || s.to || s.from).slice(0, 2));
     G.spawn([a[0], a[1]]);
     G.player.speed = 0;
