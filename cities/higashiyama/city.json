@@ -500,48 +500,90 @@
         ]
       }
     ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "lanes",
+        "title": "The stone lanes",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "temple",
+        "title": "Kiyomizu-dera",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "The pagoda at dusk",
+        "after": [
+          "lanes",
+          "temple"
+        ],
+        "on_open": "<b>Both walks done.</b> Go back down to Aiko on Yasaka-dori, below the pagoda."
+      }
+    ],
     "quests": [
       {
         "id": "pagoda",
+        "line": "start",
         "giver": "aiko",
         "title": "The pagoda at the top of the street",
         "stamp": "Yasaka Pagoda",
         "talk": [
           "おこしやす, welcome to Higashiyama. That's the Yasaka Pagoda: five storeys, 46 m, rebuilt in 1440. Every photo of Kyoto has it somewhere.",
-          "Before you climb, look at the coloured charms at Koshin-do, just here: Conan fans know them. Then walk up past the pagoda into Ninenzaka and the steps of Sannenzaka. Mr. Fujii keeps a pottery shop on the way. WASD to walk, Shift to run, E to talk."
+          "Before you climb, look at the coloured charms at Koshin-do, just here: Conan fans know them. WASD to walk, Shift to run, E to talk.",
+          "After that, two walks, either one first: the stone lanes, where Mr. Fujii keeps a pottery shop on Sannenzaka, and the temple, where Ryosen waits at the red gate."
         ],
         "steps": [
           {
             "type": "spot",
             "spot": "koshindo",
             "text": "See the kukurizaru at Yasaka Koshin-do"
-          },
-          {
-            "type": "talk",
-            "npc": "fujii",
-            "text": "Climb Ninenzaka and Sannenzaka to Mr. Fujii's pottery shop"
           }
         ]
       },
       {
         "id": "lanes",
+        "line": "lanes",
         "giver": "fujii",
         "title": "Three years' luck",
         "stamp": "Sannenzaka",
         "talk": [
           "Ah, a visitor. These lanes have been preserved by law since 1976: the stone, the wooden fronts, the lattices, no tall signs.",
-          "Keep going up Kiyomizu-zaka to the red gate. Ryosen will be at the Deva Gate."
+          "Climb the steps outside to the top, and mind your feet. Then come back down and turn into Ninenzaka, the quieter lane. Look at the fronts, not the shops."
         ],
         "steps": [
           {
-            "type": "talk",
-            "npc": "ryosen",
-            "text": "Walk up Kiyomizu-zaka to Ryosen at the Deva Gate"
+            "type": "visit",
+            "at": [
+              -96.3,
+              -58.3
+            ],
+            "radius": 12,
+            "text": "Climb the steps of Sannenzaka to the top"
+          },
+          {
+            "type": "visit",
+            "at": [
+              -92.2,
+              136.5
+            ],
+            "radius": 12,
+            "text": "Walk back down and into Ninenzaka"
           }
-        ]
+        ],
+        "check": true
       },
       {
         "id": "gate",
+        "line": "temple",
         "giver": "ryosen",
         "title": "The red gate",
         "stamp": "Kiyomizu-dera",
@@ -559,6 +601,7 @@
       },
       {
         "id": "conan",
+        "line": "temple",
         "giver": "mika",
         "title": "One truth prevails",
         "stamp": "The Stage",
@@ -583,6 +626,30 @@
             "text": "Drink from the Otowa Falls"
           }
         ]
+      },
+      {
+        "id": "dusk",
+        "line": "finale",
+        "giver": "aiko",
+        "title": "After dark",
+        "stamp": "The pagoda at dusk",
+        "talk": [
+          "おかえりやす. Up to the temple and down again in one piece: no falls on Sannenzaka, I hope.",
+          "Now wait for the best part. When the sun has gone, the lanterns come on along the street and the pagoda goes dark against the sky. Stand in the road just below it and look up."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -294.8,
+              173.4
+            ],
+            "radius": 30,
+            "after_dark": true,
+            "text": "Stand on Yasaka-dori below the pagoda after dark"
+          }
+        ],
+        "check": true
       }
     ]
   }
