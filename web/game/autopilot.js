@@ -54,7 +54,7 @@ window.OEAutopilot = (function () {
 
   // ------------------------------------------------------------ the scenic way
   // A weight for each piece of road of net (actors.js network): 0.42 where water lies within 60 m of it
-  // (a quay, a harbour road, a river bank), 0.55 within 110 m of a landmark (marks: [x, y]), 1 elsewhere.
+  // (a quay, a harbour road, a river bank), 0.55 within 70 m of a landmark (marks: [x, y]), 1 elsewhere.
   // The router multiplies a piece's cost by it, so a scenic route takes the waterfront while that is
   // less than about twice as far.
   function scenic(net, { water = null, marks = [] } = {}) {
@@ -66,7 +66,7 @@ window.OEAutopilot = (function () {
       for (let s = Math.min(l.len / 2, 10); s < l.len; s += 40) {
         net.at(i, s, q); n++;
         if (water) for (let k = 0; k < 8 && !(wet > n - 1); k++) if (water(q.x + Math.sin(k * 0.785) * 60, q.y + Math.cos(k * 0.785) * 60) || water(q.x + Math.sin(k * 0.785) * 30, q.y + Math.cos(k * 0.785) * 30)) { wet++; break; }
-        for (const m of marks) if (Math.abs(m[0] - q.x) < 110 && Math.hypot(m[0] - q.x, m[1] - q.y) < 110) { seen++; break; }
+        for (const m of marks) if (Math.abs(m[0] - q.x) < 70 && Math.hypot(m[0] - q.x, m[1] - q.y) < 70) { seen++; break; }
       }
       if (n && wet / n >= 0.5) w[i] = 0.42;
       else if (n && seen / n >= 0.5) w[i] = 0.55;

@@ -135,6 +135,22 @@ Every city's game has the same three ways to go by road:
   the water's edge, and follows kerbs, ramps and bridge decks. In the driver's
   seat (<kbd>V</kbd>) you see the dashboard and the wheel turning. The phone
   brings it to the nearest kerb if you have walked far from it.
+- **The autopilot** (<kbd>J</kbd> at the wheel, **Auto** on a phone): the car drives
+  itself. With a waypoint set on the map it goes there; with none it asks where to,
+  by name (the next step of your walk, the nearest landmarks, the wharves, where you
+  started), and which way: the quickest, or the scenic one by the water and the
+  landmark streets (<kbd>Shift</kbd>+<kbd>J</kbd> asks even with a waypoint set). It is
+  the taxis' driver at your own wheel: it pulls out from the kerb, keeps its lane,
+  queues, waits at red lights, gives way at junctions, goes round a jam and pulls in
+  at the kerb when it gets there. <kbd>J</kbd> again, the wheel, the brake or the
+  handbrake gives the car back to you as it is moving, at the speed it had. The
+  screen shows where it is going, how long and how far, the next turn and what the
+  driver is doing; the gold route on the map and the
+  minimap is its own. While it drives the camera is a film of the drive: behind, a
+  front quarter, a crane, the side, an orbit, with a cut between them; a drag of the
+  view gives the camera back to you for eight seconds, and <kbd>V</kbd> sits you in
+  the seat. Set a new waypoint while it drives to the old one and it goes on to the
+  new.
 - **A taxi:** stand at the kerb and press <kbd>Y</kbd>. You raise your hand, and
   the quickest free taxi coming your way, by road, pulls in on your side of the
   street with its hazard lights on. If none is close, one comes round the corner.
@@ -440,6 +456,7 @@ listed at the end.
 | **Sketchbook** (three.js sandbox) | Assisted helicopter flight: the rotor cancels gravity so it hovers with no input, levels itself, damps drift and spools up before take-off. You walk to the door instead of teleporting in, and <kbd>E</kbd> to use. | Its world is an empty sandbox. Here the world is a real city with things to do. |
 | **GTA V** | A clock running 30 times real time, so a day lasts 48 minutes. A minimap with a GPS route along the street network, which in a car keeps to the roads. A waypoint you click on the map. A crowd and traffic density setting. Hailing a taxi at the kerb, telling the driver where to go, and skipping the trip. A view from the driver's seat. | Its city is a caricature. Here the streets, wharves and sun are real, the traffic keeps to the city's side of the road at Overture speed limits, and crowds keep left as Australians do. |
 | **GTA VI** (trailers and previews; it comes out on 19 November 2026) | Ryde Me, the ride-hailing app on the phone: say where, and a car comes for you. Cars with interiors you can see into, and bodies that move on their springs. | Its taxi driver can talk to you on the way. Here what the driver says is a fact about the street you are on, worked out from the model. |
+| **Red Dead Redemption 2** (the cinematic camera on a waypoint), **Final Fantasy XV** (the Regalia's Auto, with Ignis at the wheel) | A waypoint on the map, one button, and the ride goes there by road while the camera cuts between film shots; touching the controls gives it back at once. Auto and Manual as two ways to use one car, with the time to each place shown. | Their roads are empty enough to follow a line. Here the car is in the traffic: it queues, waits at the lights and gives way by the same rules as every other car, and its screen says what it is doing and why. |
 | **Arcade racers** (Need for Speed, Burnout, Forza Horizon) | Handling for fun rather than a tyre model: speed-sensitive steering, grip of about 1 g that bends the car's path round to where it points, a handbrake drift, a view that widens with speed, and an engine note that climbs through the gears. | They are set on closed roads. Here you drive the real streets, among traffic that keeps to its lane. |
 | **Ship Simulator Extremes** | Docking as the skill moment: the ferry runs on autopilot across open water, then you bring her alongside and are scored. | Reviewers found its long cruises boring. Here the open-water legs can be skipped, and docking is optional. |
 | **Assassin's Creed Discovery Tour** | Guided learning by place: each stop is a person who explains what is in front of you, with "behind the data" honesty. | Its narration was called dry. Here the lines are short and come from the model, such as the share of Martin Place in sun on 21 June at 12:30, computed while you stand there. |
@@ -945,6 +962,30 @@ pipeline writes. The only city-specific code is landmark geometry in
     car is brought to a kerb clear of the traffic, the posts and the trees.
     Your car meets another as a box against a box, corners included. The crowd
     keeps out of your car and a ride as it does the traffic's.
+  - **The autopilot is that driver in your own car** (`autopilot.js`, `game.js`
+    `pilotTo`, `pilotStep`). A route from the piece of road the car is on, the way it
+    faces, to the kerb nearest the place (`cars.js` router). The scenic way is the same
+    search with each piece of road's cost weighted (`autopilot.js scenic`): 0.42 where
+    water lies within 60 m of it, 0.55 within 70 m of a landmark; it is taken where it
+    is no more than twice as far and does run more by the water. Parked at the kerb
+    where the route starts, the car pulls out as a taxi does. Anywhere else it is first
+    driven onto the lane through its own pedals, by pure pursuit of a point 5 m and a
+    second ahead (`autopilot.js join`, Coulter 1992), at 4 m/s and stopping for
+    anything in front; within 1.2 m and 0.45 rad of the lane the driver takes it, and
+    the last of the offset is eased out over a second. From then on the car is carried
+    along the driver's line (`cars.js drive.follow`), its own state kept up to date, so
+    that the wheel handed back finds it moving as it was. The driver is the ride's
+    (`game.js driverStep`: the way round a jam, the three-point turn, backing off for a
+    car that waits on it), in a strict mode (`cars.js chauffeur`, `strict`): its guard
+    against stepping into a car reads its body as it is turned as well as along its
+    way, and by any step at all, so that creeping out of a tangle it never clips a car
+    on a bend. The traffic reads it as it reads a ride with you in it (its way ahead,
+    its way across a junction), under its own name. It asks for no green ahead: it
+    waits at lights as you would. The next turn is read from the route
+    (`autopilot.js turns`: the heading 12 m after each junction against 12 m before;
+    0.42 rad is a turn, 2.5 a U-turn). The film is six shots on the chase camera's own
+    rig, so it stays out of walls as that does (`autopilot.js film`); with reduced
+    motion the shots hold still and there is no orbit.
   - **A ride drives like a car** (`cars.js` path, chauffeur): its route is taken
     as a curve, the points averaged over a few metres (more the further it is
     held off the line), so the heading turns smoothly and always faces the way
@@ -2736,6 +2777,14 @@ deadlock or a meeting at a shared berth takes to show.
 - Tesla FSD planning: AI Day 2021
   ([video](https://www.youtube.com/watch?v=j0z4FweCy4M), planning from about 1:13:00) and AI Day 2022
   ([video](https://www.youtube.com/watch?v=ODSJsviD_SU), interaction search from about 1:04:00).
+- Red Dead Redemption 2's cinematic camera riding to a waypoint:
+  [GameSpot](https://gamespot.com/articles/red-dead-2-guide-heres-how-to-set-your-horse-to-fo/1100-6462864/).
+  Final Fantasy XV's Auto and Manual driving: [Fextralife](https://finalfantasyxv.wiki.fextralife.com/Regalia).
+- Pure pursuit (the autopilot's steering onto its lane): R. C. Coulter, *Implementation of the Pure Pursuit
+  Path Tracking Algorithm*, CMU-RI-TR-92-01, 1992
+  ([Robotics Institute](https://www.ri.cmu.edu/publications/implementation-of-the-pure-pursuit-path-tracking-algorithm/)).
+  Lane centring and adaptive cruise as two separate assists, each handed back by the wheel or the brake:
+  [openpilot](https://github.com/commaai/openpilot) (MIT; its design read, no code taken).
 - Baidu Apollo EM motion planner: [arXiv 1807.08048](https://arxiv.org/abs/1807.08048),
   [source](https://github.com/ApolloAuto/apollo) (Apache-2.0).
 - SUMO junctions and keep-clear: [Intersections](https://sumo.dlr.de/docs/Simulation/Intersections.html),

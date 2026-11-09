@@ -5573,7 +5573,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (pilot) {
         // the autopilot's screen, as a navigator's: where to and when, the next turn, and what the driver is doing
         const o = pilot, c = o.drv.st, { nt, left, eta: t } = o.hud || pilotHud(o);
-        el.innerHTML = `<div><b>Autopilot</b><span>${o.scenic && o.share > 0.15 ? 'the scenic way' : 'on'}</span></div><div><b>${o.dest.name}</b><span>in ${fmtSec(Math.ceil(t))} · ${fmtMin((clock.min + (clock.frozen ? 0 : t / 60 * clock.scale)) % 1440)}</span></div>
+        el.innerHTML = `<div><b>Autopilot</b><span>${o.scenic && o.share > 0.15 ? 'the scenic way' : 'on'}</span></div><div><b>${o.dest.name}</b><span>in ${fmtSec(Math.ceil(t))}</span></div>
           <div><b class="num">${(left / 1000).toFixed(1)} km</b><span>to go</span></div><div><b class="num">${Math.round(st.speed * 3.6)}</b><span>km/h</span></div>
           <p class="note"><b class="intent">${nt ? `${OEAutopilot.turnGlyph(nt)} ${OEAutopilot.turnText(nt)}` : 'Pulling out onto the lane'}${c.intent && !o.join ? ` · ${c.intent}` : ''}</b>J, the wheel or the brake: you drive · V ${cam.mode === 'cabin' ? 'the film' : 'from the seat'} · drag to look around</p>`;
       } else
