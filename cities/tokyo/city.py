@@ -20,6 +20,8 @@ Parametric landmark (called by pipeline/landmarks.py):
   National Diet Building  on its 26 mapped solids, in granite, with its tower (cities/tokyo/diet.py).
   The Imperial Palace  its wings round their courts under green copper outline roofs (cities/tokyo/palace.py).
   The Shuto Expressway  the Inner Circular Route's viaduct over the Nihonbashi River (cities/tokyo/shuto.py).
+  The JR viaduct  from Tokyo Station to Shimbashi on OpenStreetMap's tracks, with Yurakucho Station's platforms,
+               and the courses of the trains that stop there and run past (cities/tokyo/rail.py).
   The palace moats  water at their published levels, walled in dressed stone; the ground under them
                brought down to their beds (cities/tokyo/moats.py).
 """
@@ -45,6 +47,7 @@ DIET = _load("diet")
 MOATS = _load("moats")
 PALACE = _load("palace")
 SHUTO = _load("shuto")
+RAIL = _load("rail")
 
 TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
@@ -173,7 +176,9 @@ def landmark_meshes(scene):
     mats.update({k: dict(v) for k, v in pm.items()})
     sm, smesh = SHUTO.meshes(Mesh)  # the Shuto Expressway over the Nihonbashi River (cities/tokyo/shuto.py)
     mats.update({k: dict(v) for k, v in sm.items()})
-    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh, {"hidden": hidden + dh + ph, "clip": MOATS.clip(), "water_cover": SHUTO.cover()}
+    rm, rmesh = RAIL.meshes(Mesh)  # the JR viaduct, Yurakucho Station and the track (cities/tokyo/rail.py)
+    mats.update({k: dict(v) for k, v in rm.items()})
+    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh + rmesh, {"hidden": hidden + dh + ph, "clip": MOATS.clip(), "water_cover": SHUTO.cover()}
 
 
 def landmark_glows(scene):
@@ -181,9 +186,20 @@ def landmark_glows(scene):
     return SHUTO.glows()
 
 
+def landmark_assets(out_dir, scene):
+    """The station's signs (cities/tokyo/rail.py)."""
+    return RAIL.assets(out_dir)
+
+
+def landmark_demolished(scene):
+    """The old station's rooms under Yurakucho's platforms, where the viaduct now stands (cities/tokyo/rail.py)."""
+    return RAIL.demolished()
+
+
 def game_surfaces(scene):
-    """The Shuto's decks over the Nihonbashi River, driven and passed under (cities/tokyo/shuto.py)."""
-    return SHUTO.surfaces()
+    """The Shuto's decks over the Nihonbashi River, driven and passed under (cities/tokyo/shuto.py), and
+    Yurakucho Station's platforms and stairs (cities/tokyo/rail.py)."""
+    return SHUTO.surfaces() + RAIL.surfaces()
 
 
 def adjust_terrain(dem, C, cell):
@@ -391,4 +407,5 @@ def game_extras(scene):
         F, vf, g, zs = KZ_FRONT["F"], KZ_FRONT["vf"], KZ_FRONT["g"], KZ_FRONT["zs"]
         # under the porch to the glass doors of the main entrance (1.5 m in from the street face)
         close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + zs, F(0, vf + 5.5, 0), 1.0, on=True))
-    return {"close": close}
+    tr = RAIL.trains()   # the JR lines past Yurakucho, and the platform to travel to (cities/tokyo/rail.py)
+    return {"close": close, **({"trains": tr, "travel": RAIL.travel()} if tr else {})}

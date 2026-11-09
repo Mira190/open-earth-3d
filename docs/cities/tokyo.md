@@ -174,6 +174,39 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 
 ![Kabuki-za's roof garden](../images/tokyo/kabukiza-roof-garden.jpg)
 
+### The JR viaduct and Yurakucho Station
+
+The railway from Tokyo Station to Shimbashi was a strip of track in the aerial photograph, flat on
+the ground, with the old station's rooms standing on it as grey boxes. `cities/tokyo/rail.py` builds
+it: 1.6 km of viaduct for eight tracks, Yurakucho Station on it, and the courses of the trains.
+
+- **Laid out on the map's own tracks.** `pipeline/rail_osm.py` reads OpenStreetMap's running lines
+  above ground (the Yamanote, Keihin-Tohoku, Tokaido Main and Tokaido Shinkansen lines), the platform
+  outlines and the stopping points into `cities/tokyo/rail_osm.json`. Each line's pieces join into two
+  through tracks. The deck is the ground under the tracks and platforms; the rail is level at
+  9.2 m T.P., about six and a half metres over the streets.
+- **Under the deck** it is closed where nothing passes: brick arches on the west, the side of the
+  1910 elevated line, most of them a lit front (the bars and shops under the tracks), some shuttered;
+  a concrete frame on the east, the Shinkansen's side (1964). Every street and footway of the game's
+  network that crosses the corridor is an opening, with dressed-stone abutments and plate girders on
+  the deck's edges over it.
+- **The station.** Two island platforms on OpenStreetMap's outlines, 1.1 m over the rail: 1 and 4 the
+  Keihin-Tohoku Line, 2 and 3 the Yamanote Line. Butterfly canopies on a row of columns with two rows
+  of tube lights a side, open to the sky for the last 24 m at each end; the yellow tactile strip;
+  platform doors along all four edges, their doors set for an 11-car Yamanote train and a 10-car
+  Keihin-Tohoku train; JR East's name boards, platform boards and departure boards
+  (`rail_signs.webp`, lettered in IPA Gothic); benches and drinks machines. The concourse runs
+  straight across under the tracks at the platforms' middle, with an entrance on each side and two
+  flights of stairs up to each platform.
+- **The overhead line**: portal gantries every 48 m, and a contact wire under its messenger over each
+  track, 5.0 m over the rail.
+- **Each end** is a train shed's mouth, a roof over the tracks with a dark wall behind it, where the
+  trains come from and go to: Tokyo Station's and Shimbashi's own platforms are solids of the city
+  model, not modelled inside.
+- Ten low solids under the platforms come down (`landmarks.json` "demolished").
+
+The trains are the game's (section 6).
+
 ## 2. Sources
 
 | Layer | Source | Licence |
@@ -183,6 +216,7 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 | Terrain | GSI DEM5A, 5 m airborne laser survey, bare earth (10 m DEM where 5A has no data) | GSI terms of use |
 | Aerial photos | GSI seamless photos, zoom 17 | GSI terms of use |
 | Shuto Expressway (every elevated line in the map) | Overture Maps segments (OpenStreetMap); road heights from the Tokyo Metropolitan Government's airborne LiDAR (`tokyopc-23ku-2024`, G空間情報センター) | ODbL; CC BY 4.0 |
+| JR tracks, platform outlines and stopping points, Tokyo Station to Shimbashi | OpenStreetMap, read track by track (`pipeline/rail_osm.py`) | ODbL |
 | Palace moats' water levels | Ministry of the Environment, Kokyo Gaien National Garden Office: 皇居外苑濠 濠別管理方針 (March 2010) | Government publication, cited |
 
 ## 3. How PLATEAU is used
@@ -247,6 +281,29 @@ Chidorigafuchi and along its moat walk, in Kitanomaru, Hibiya and Shiba parks an
 streets. The pads on the Marunouchi plaza (where the game now starts, in front of the station) and in Hibiya Park are game devices; no real
 heliport is in the area.
 
+**The railway at Yurakucho** (`web/game/trains.js`, `game.json` "trains"). From the map, travel to
+"Yurakucho Station, platform 4", or walk in under the tracks and up the stairs. Four kinds of train
+run on the eight tracks, each to its real length and livery:
+
+| Line | Stock | Cars | At Yurakucho |
+|---|---|---|---|
+| Yamanote (tracks 2, 3) | E235: steel with yellow-green doors | 11 | stops |
+| Keihin-Tohoku (1, 4) | E233-1000: a sky blue band | 10 | stops; its rapid trains run through from 10:30 to 15:30 |
+| Tokaido Main | E233-3000: orange over green | 15 | runs past |
+| Tokaido Shinkansen | N700S: white, two blue lines, a 10.7 m nose | 16 (400 m) | runs past |
+
+A stopping train brakes at 0.9 m/s², stands 26 s and pulls away. The headways are a few times shorter
+than the timetable's, so there is always a train to watch. Each train's place is a function of the
+time alone. The cars are instanced: one draw call per material of each kind of car.
+
+The platform announces each train as JR East's do, in Japanese and English: a chime and
+「まもなく、3番線に、山手線、品川・渋谷方面行きが、まいります」, the station's name as the doors open, a
+departure melody, and 「ドアが閉まります」. It is spoken by the browser's own voices where it has them
+and always shown as a caption. The melody is this game's own; the railway's melodies are their
+composers'. A train near you is heard: its rumble, its wheels over the rail joints, its motors' whine
+as it pulls away, a Shinkansen's rush of air. There is no ambient bed: between trains the station is
+quiet. Three people stand on the platform: an attendant, a commuter and a train photographer.
+
 ## 7. Limits
 
 - The aerial photos are not true orthophotos, and tall towers lean in them; roof
@@ -256,3 +313,10 @@ heliport is in the area.
   tint under **Height sources**.
 - Names from OpenStreetMap are mostly Japanese; English labels were added by hand
   for about twenty landmarks.
+- The viaduct is one level and one height for its whole length. The real one steps between the brick
+  arches and the Shinkansen's deck, and carries shops whose fronts are not modelled one by one.
+- Yurakucho's platform doors do not open, and you cannot board: the trains are to watch and to hear.
+- Tokyo Station's and Shimbashi's platforms are not modelled; the trains run into a shed's mouth
+  short of each.
+- The announcements' voices are the browser's. A device without a Japanese voice shows the caption
+  and plays the chimes only.
