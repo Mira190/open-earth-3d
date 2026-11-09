@@ -301,7 +301,7 @@ SPRAYS = {
                    midrib="#d8dcc0", L=(0.62, 0.98)),
     # its flowering culms' heads: a fan of a dozen or more silky racemes from a short axis, silver-white with a
     # flush of red-purple when fresh, on a thin straw-coloured stalk (the card's lower half)
-    "plume": dict(leaf="plume", stalk="#b9ad7c", silk=["#c8bca8", "#bdb09a", "#d0c5b1", "#b3a58e"], flush=["#a88a78", "#9c7f74", "#b39582"]),
+    "plume": dict(leaf="plume", stalk="#b9ad7c", silk=["#b4a994", "#a99d88", "#bdb29d", "#a1937d"], flush=["#977c6b", "#8c7166", "#a18673"]),
     # Lomandra longifolia (spiny-headed mat-rush): stiff flat strap leaves 8-12 mm wide, a glossy dark green to
     # the base, arching but not hanging, the tips split and browned
     "lomandra": dict(leaf="blade", base=["#2f4a26", "#34502a", "#2b4423"], mid=["#3f6130", "#466a34", "#3a5a2d", "#4d7038"],
@@ -980,7 +980,7 @@ def grow_tussock(name, sp, rng, lod):
             tilt = rng.uniform(0.0, 0.22)
             d = Vector((math.cos(a), math.sin(a), 0))
             up = (Vector((0, 0, 1)) * math.cos(tilt) + d * math.sin(tilt)).normalized()
-            size = (H - leafH * 0.45) * rng.uniform(0.82, 1.05)
+            size = (H - leafH * 0.45) * rng.uniform(0.66, 0.84)
             at = Vector((math.cos(a) * r, math.sin(a) * r, H - size - 0.02)) - up * 0.0
             face = rng.uniform(0, math.pi)
             for f in ((face, face + math.pi / 2) if lod == 0 else (face,)):
