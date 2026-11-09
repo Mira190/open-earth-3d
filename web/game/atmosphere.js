@@ -372,10 +372,15 @@ window.OEAtmos = (function () {
       su.uCloudTex.value = OEClouds.texture();
       su.uCloudK.value.set(SK.towers, SK.high, SK.edge, SK.glow);
       // the clouds' colours for the hour, keyed to the sky (world.js setSun calls it before it takes the sky's light)
-      Wd.cloudLight = (alt, ref) => OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: window.OEWeather ? OEWeather.U.uOeOvercast.value : 0, rain: window.OEWeather ? OEWeather.U.uOeRain.value : 0 });
+      // (under a thunderstorm the sheet is darker still, and lightning lights it from within: weather.js S.storm, S.flash)
+      Wd.cloudLight = (alt, ref) => {
+        const WS = (window.OEWeather && OEWeather.S) || {}, WU = window.OEWeather ? OEWeather.U : null;
+        OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)) });
+        if (WS.flash > 0) { su.uCloudShade.value.multiplyScalar(1 + 5 * WS.flash); su.uCloudLit.value.multiplyScalar(1 + 3 * WS.flash); }
+      };
     }
     const skySat = SK.saturation; // a blue sky rather than a white one (world.js)
-    const wind = { x: 0.94, z: -0.34, speed: 4 }, drift = { x: 0, z: 0, e: 0, w: 0, t: null }; // (a light west-south-westerly unless the weather has its own)
+    const wind = { x: 3.8, z: -1.4 }, drift = { x: 0, z: 0, e: 0, w: 0, t: null }; // (a light west-south-westerly, m/s, unless the weather has its own: weather.js S.wind)
     const meteor = { next: -1, t0: 0, dur: 0 }, galPole = eq(192.86 * RAD, 27.13 * RAD), galCentre = eq(266.4 * RAD, -28.94 * RAD);
     const S = stars(su), M = moon();
     world.add(S, M);
@@ -449,11 +454,11 @@ window.OEAtmos = (function () {
           // the layers drift with the weather's wind (weather.js; in real seconds, a little quickened so that it shows),
           // and change shape slowly; all of it wraps where the noise repeats
           // (api.skyTime: seconds on a film's own clock, for a time-lapse: tools/day_film.js)
-          const ts = api.skyTime ?? tSec, W = (window.OEWeather && OEWeather.wind) || wind, dt = drift.t == null ? 0 : Math.max(0, Math.min(api.skyTime != null ? 600 : 0.25, ts - drift.t)), D = su.uCloudDrift.value;
+          const ts = api.skyTime ?? tSec, WS = window.OEWeather && OEWeather.S, W = WS && WS.wind && Math.hypot(WS.wind.x, WS.wind.z) > 0.3 ? WS.wind : wind, dt = drift.t == null ? 0 : Math.max(0, Math.min(api.skyTime != null ? 600 : 0.25, ts - drift.t)), D = su.uCloudDrift.value;
           drift.t = ts;
-          const k = dt * 3 * (W.speed ?? 4) / 9000;
-          drift.x = (drift.x - (W.x ?? 0.94) * k + 100) % 100; drift.z = (drift.z - (W.z ?? -0.34) * k + 100) % 100;
-          drift.e = (drift.e + dt * 0.0016) % 100; drift.w = (drift.w + dt * 0.00012 * (W.speed ?? 4) / 4) % 100;
+          const k = dt * 3 / 9000, sp = Math.hypot(W.x, W.z); // (W: where the wind blows to, m/s)
+          drift.x = (drift.x - W.x * k + 100) % 100; drift.z = (drift.z - W.z * k + 100) % 100;
+          drift.e = (drift.e + dt * 0.0016) % 100; drift.w = (drift.w + dt * 0.00012 * sp / 4) % 100;
           D.set(drift.x, drift.z, drift.e, drift.w);
           su.uCloudK.value.z = SK.edge * (1 - 0.75 * night); // softer after dark
           su.uCloudFair.value = 1 - 0.6 * night;            // and fewer: fair-weather cumulus thins out with the sun gone

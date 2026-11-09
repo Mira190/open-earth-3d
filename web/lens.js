@@ -44,7 +44,7 @@ window.OELens = (function () {
               vec2 o = i == 0 ? vec2(0.0) : vec2(i < 3 ? 0.0035 : 0.0, i < 3 ? 0.0 : 0.0035) * (i == 1 || i == 3 ? 1.0 : -1.0);
               vec2 q = uSunUv + o * vec2(1.0 / uAspect, 1.0);
               vec3 c = all(greaterThan(q, vec2(0.0))) && all(lessThan(q, vec2(1.0))) ? textureLod(tDiffuse, q, 0.0).rgb : vec3(1e3);
-              seen += smoothstep(1.3, 1.9, min(dot(c, vec3(0.2126, 0.7152, 0.0722)), 64.0) * uExposure);
+              seen += smoothstep(0.6, 1.1, min(dot(c, vec3(0.2126, 0.7152, 0.0722)), 64.0) * uExposure);
             }
             vSun *= mix(1.0, seen * 0.2, uSunSeen);
           }

@@ -100,8 +100,8 @@ pass, no target, no draw), four layers are composed far to near:
 
 All of it reads one tileable 256 x 256 texture made once on the CPU (billows, cells, streaks, regions; each
 channel spread evenly by rank, so a cover of 0.3 hides three tenths of the sky): 10 bilinear lookups a sky pixel
-against the 20 lattice hashes of the layer it replaces. The layers drift with the wind (the weather's when it
-gives one, `OEWeather.wind`) and change shape slowly; the cover and density are the weather's
+against the 20 lattice hashes of the layer it replaces. The layers drift with the weather's wind (`OEWeather.S.wind`, [WEATHER.md](WEATHER.md)); under a thunderstorm the
+sheet darkens and lightning lights it from within. They change shape slowly; the cover and density are the weather's
 (`cloudCoverage`, `cloudDensity`, as before). After dark the fair-weather cumulus thins out and softens.
 
 The clouds' colours are not worked out per pixel. For each hour `OEClouds.light` sets a lit colour, a shade
