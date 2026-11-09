@@ -30,7 +30,7 @@ window.OEWeather = (function () {
   const U = { uOeWet: { value: 0 }, uOeRain: { value: 0 }, uOeOvercast: { value: 0 }, uOeT: { value: 0 },
     // settled snow and falling snow (0..1), fog (0..1), lightning (0..1), and the wind: x, z in m/s, the
     // gust 0..1 and the distance the air has travelled (metres, for whatever sways or drifts with it)
-    uOeSnow: { value: 0 }, uOeSnowfall: { value: 0 }, uOeFog: { value: 0 }, uOeFlash: { value: 0 }, uOeWind: { value: null },
+    uOeGlint: { value: 0 }, uOeSnow: { value: 0 }, uOeSnowfall: { value: 0 }, uOeFog: { value: 0 }, uOeFlash: { value: 0 }, uOeWind: { value: null },
     // the rain occlusion map (heights of the tops of things round the camera, from above) and its frame
     uOeOcc: { value: null }, uOeOccBox: { value: null }, uOeOccOn: { value: 0 }, uOeOccBase: { value: 0 } };
   // what each weather asks for: rain, snow, fog and storm 0..1, cloud cover 0..1, the wind as a
@@ -127,7 +127,7 @@ window.OEWeather = (function () {
     return (hash2(i, j) * (1 - u) + hash2(i + 1, j) * u) * (1 - v) + (hash2(i, j + 1) * (1 - u) + hash2(i + 1, j + 1) * u) * v; };
   // ------------------------------------------------------------ shared GLSL
   const GLSL = `
-uniform float uOeWet; uniform float uOeRain; uniform float uOeT; uniform float uOeSnow; uniform float uOeSnowfall; uniform vec4 uOeWind;
+uniform float uOeWet; uniform float uOeRain; uniform float uOeT; uniform float uOeSnow; uniform float uOeSnowfall; uniform vec4 uOeWind; uniform float uOeGlint;
 uniform sampler2D uOeOcc; uniform vec4 uOeOccBox; uniform float uOeOccOn; uniform float uOeOccBase;
 // 1 where something stands over p (a roof, a deck, a tree) by more than lift metres, from the
 // occlusion map round the camera; 0 in the open or beyond the map
@@ -155,7 +155,10 @@ float oeSnowOn(vec3 p, vec3 n, float open, float tread) {
   float nz = oeN(p.xz * 0.31) * 0.6 + oeN(p.xz * 1.7 + 3.1) * 0.4;
   float deep = smoothstep(0.0, 0.55, uOeSnow) * (1.0 - 0.55 * tread * (1.0 - smoothstep(0.6, 1.0, uOeSnow)));
   float need = mix(1.04, 0.3, deep);
-  return smoothstep(need - 0.1, need + 0.12, n.y + (nz - 0.5) * 0.3) * open * smoothstep(0.0, 0.1, deep - tread * 0.25 * nz);
+  float on = smoothstep(need - 0.1, need + 0.12, n.y + (nz - 0.5) * 0.3) * open * smoothstep(0.0, 0.1, deep - tread * 0.25 * nz);
+  // where wheels and feet go it is worn to slush in patches until it lies deep
+  if (tread > 0.01) on *= mix(1.0, smoothstep(0.34, 0.62, oeN(p.xz * 0.55 + 9.0) * 0.6 + oeN(p.xz * 2.7) * 0.4 + (uOeSnow - 0.62) * 1.1), tread);
+  return on;
 }
 // rain ripples: in each cell of three offset grids a drop lands at a random moment and spot and a
 // ring runs out from it and fades; returns the slope of the water (x, z)
@@ -191,8 +194,16 @@ vec2 oeRipple(vec2 xz, float camD) {
   oeP = instanceMatrix * oeP; oeNo = mat3(instanceMatrix) * oeNo;
 #endif
   vOeW = (modelMatrix * oeP).xyz; vOeN = normalize(mat3(modelMatrix) * oeNo); }`);
+      // a material that projects its vertices itself (the far trees' cards, trees.js): its position is the world's
+      // already, and a card has no normal to speak of; snow takes its upper part first
+      if (sh.vertexShader.indexOf('vOeW = ') < 0) {
+        const at = sh.vertexShader.lastIndexOf('}');
+        sh.vertexShader = `${sh.vertexShader.slice(0, at)}  vOeW = transformed; vOeN = vec3(0.0, ${o.card ? '0.62 + 0.62 * position.y' : '1.0'}, 0.0);
+}${sh.vertexShader.slice(at + 1)}`;
+      }
     }
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+    // (a material the mirror patched first carries the mirror's stand-in for oePuddle: the weather's own takes its place)
+    sh.fragmentShader = sh.fragmentShader.replace(/\nfloat oePuddle\(vec2 xz\) \{[^\n]*\}/, '').replace('#include <common>', `#include <common>
 varying vec3 vOeW; varying vec3 vOeN;
 ${GLSL}`);
     const porous = (o.porous ?? 0.4).toFixed(3), puddles = o.puddles || '0.0', gloss = o.gloss || '1.0', tread = o.tread || '0.0';
@@ -202,19 +213,20 @@ ${GLSL}`);
     if (!o.water) {
       sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 float oeCamD = distance(vOeW, cameraPosition);
-float oeUp = smoothstep(0.15, 0.75, vOeN.y), oeFlat = smoothstep(0.96, 0.995, vOeN.y);
+vec3 oeNw = gl_FrontFacing ? vOeN : -vOeN; // (the face seen: the underside of a thin roof faces down)
+float oeUp = smoothstep(0.15, 0.75, oeNw.y), oeFlat = smoothstep(0.96, 0.995, oeNw.y);
 // (a wall: is the air in front of it open; and the map's texels are broken up at a roof's edge, where snow and rain blow in a little)
-float oeOpen = uOeWet + uOeSnow > 0.001 ? 1.0 - oeCover(vOeW + vec3(vOeN.x, 0.0, vOeN.z) * (0.8 * (1.0 - oeUp)) + vec3(oeN(vOeW.xz * 2.7) - 0.5, 0.0, oeN(vOeW.zx * 2.7 + 11.0) - 0.5) * 0.9, 0.6) : 1.0;
+float oeOpen = uOeWet + uOeSnow > 0.001 ? 1.0 - oeCover(vOeW + vec3(oeNw.x, 0.0, oeNw.z) * (0.8 * (1.0 - oeUp)) + vec3(oeN(vOeW.xz * 2.7) - 0.5, 0.0, oeN(vOeW.zx * 2.7 + 11.0) - 0.5) * 0.45, 0.6) : 1.0;
 // a wall takes the rain in streaks down it, and less of it than what faces the sky
 float oeWet = uOeWet * oeOpen * mix(0.22 + 0.3 * oeN(vec2(dot(vOeW.xz, vec2(0.83, 0.56)) * 0.9, vOeW.y * 0.07)), 1.0, oeUp);
 float oeGl = clamp(${gloss}, 0.0, 1.0) * oeWet;
 diffuseColor.rgb *= mix(1.0, 1.0 - ${porous}, oeWet);
-roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.42), oeGl);
+roughnessFactor = mix(roughnessFactor, min(roughnessFactor, mix(0.42, 0.2, uOeGlint)), oeGl); // (uOeGlint: the sun out on a street still wet, its film at its smoothest)
 ${pools ? `float oePd = uOeWet > 0.001 ? oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen : 0.0; // (dry: no noise to work out)
 diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
 roughnessFactor = mix(roughnessFactor, 0.06, oePd);` : 'const float oePd = 0.0;'}
-float oeSn = oeSnowOn(vOeW, vOeN, oeOpen, clamp(${tread}, 0.0, 1.0));
-diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.84, 0.9) * (0.9 + 0.14 * oeN(vOeW.xz * 0.9 + 5.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
+float oeSn = oeSnowOn(vOeW, oeNw, oeOpen, clamp(${tread}, 0.0, 1.0))${o.card ? ' * 0.62' : ''}; // (a far tree's card: frosted, not buried)
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.76, 0.83) * (0.86 + 0.2 * oeN(vOeW.xz * 0.9 + 5.0)) * (0.93 + 0.1 * oeN(vOeW.xz * 0.07 + 2.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
 roughnessFactor = mix(roughnessFactor, 0.82, oeSn);`)
         .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= 1.0 - oeSn;')
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -496,7 +508,7 @@ void main() {
       armed = true;
       if (Wd.lmMats) for (const [k, m] of Object.entries(Wd.lmMats)) {
         if (/pond|water|pool|moat/i.test(k)) wrap(m, { water: true }, k);
-        else if (m.userData.paving || /pav|plaza|flagstone|^sk_stone|gravel|path/i.test(k)) wrap(m, { puddles: '0.6', porous: 0.35 }, k);
+        else if (m.userData.paving || /pav|plaza|flagstone|^sk_stone|gravel|path/i.test(k)) wrap(m, { puddles: '0.6', porous: 0.35, tread: '0.85' }, k); // (walked and driven on: its snow wears to slush)
       }
       if (Wd.waterMat) wrap(Wd.waterMat, { water: true }, 'waterMat');
       armSea();
@@ -519,7 +531,8 @@ void main() {
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
           if (!m || !m.isMeshStandardMaterial || m.userData.oeWeather || m.userData.oeDry) continue;
           if (m.transparent || m.depthWrite === false || m.side === THREE.BackSide || m.emissiveIntensity > 1.2 || m.transmission > 0) { m.userData.oeDry = true; continue; }
-          wrap(m, { porous: 0.26, gloss: '0.4' }, 'dress'); n++;
+          const card = /-far$/.test(o.name || '') && o.isInstancedMesh && m.alphaTest > 0; // (a far tree's card)
+          wrap(m, { porous: 0.26, gloss: '0.4', card }, card ? 'card' : 'dress'); n++;
         }
       });
       return n;
@@ -649,7 +662,7 @@ void main() {
     const cur = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 }, target = { rain: 0, cloud: 0, snow: 0, fog: 0, storm: 0, windK: 1, temp: 15 };
     let custom = null, wetPin = null, depthPin = null, lastKind = 'clear', windRun = 0, runX = 0, runZ = 0;
     // the light as the hour and the weather left it (light, air), which a lightning flash adds to and gives back
-    const lit = { hemi: 0, exp: 1, flash: 0, fog: new THREE.Color(), haze: new THREE.Color() };
+    const lit = { hemi: 0, exp: 1, flash: 0, fog: new THREE.Color(), haze: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color() };
     // lightning: the flash in play (its strokes: [start s, peak 0..1]), the next one's time, the thunder still on its way
     const bolt = { next: -1, strokes: null, t0: 0, dist: 0, thunder: [], count: 0, last: null };
     // the wind: the season's mean (the climate's monthly wind_ms, or the wind the city's waves were made
@@ -713,10 +726,10 @@ void main() {
       for (let i = 0; i < n; i++) { strokes.push([t, i === (brnd() < 0.6 ? 0 : 1) ? 1 : 0.35 + 0.5 * brnd()]); t += 0.04 + 0.05 * brnd() + (brnd() < 0.2 ? 0.12 : 0); }
       strokes[Math.min(1, n - 1)][1] = Math.max(strokes[0][1], strokes[Math.min(1, n - 1)][1]) >= 1 ? strokes[Math.min(1, n - 1)][1] : 1;
       const x = camera.position.x + Math.sin(bearing) * dist, z = camera.position.z - Math.cos(bearing) * dist;
-      Object.assign(bolt, { strokes, t0: tSec, dist, ground, count: bolt.count + 1, last: { dist, bearing, ground, strokes: n, at: tSec } });
+      Object.assign(bolt, { strokes, t0: tSec, dist, ground, count: bolt.count + 1, last: { dist, bearing, ground, strokes: n, at: tSec }, cam: camera.position.clone() });
       boltMesh.visible = ground && level > 0 && !dropless;
       if (boltMesh.visible) forge(x, z, (Wd.groundY ?? 0) + 1400 + 500 * brnd(), (Wd.groundY ?? 0), brnd);
-      if (dist < 16000) bolt.thunder.push({ at: performance.now() + dist / 343 * 1000, dist });
+      if (dist < 16000 && api.flashPin == null) bolt.thunder.push({ at: performance.now() + dist / 343 * 1000, dist });
       return bolt.last;
     }
     function storms(dt, tSec) {
@@ -733,11 +746,18 @@ void main() {
         fl *= 1 / (1 + (bolt.dist / 2500) * (bolt.dist / 2500)); // a far flash is a flicker on the horizon
         if (reduced) fl *= 0.25;
       }
+      // (a still's held flash: struck again from where the camera now is, if it has been moved since)
+      if (api.flashPin != null && bolt.last && bolt.cam && bolt.cam.distanceTo(camera.position) > 30) strike(tSec, { dist: bolt.last.dist, bearing: bolt.last.bearing, ground: bolt.last.ground });
+      if (api.flashPin != null) { fl = api.flashPin; boltMesh.visible = fl > 0 && !!(bolt.last && bolt.last.ground) && level > 0; } // (a still: the flash held)
       U.uOeFlash.value = S.flash = fl;
       // the flash on the scene: the sky's light, the air and the lens, added to what light() and air() left
       if (fl > 0 || lit.flash > 0) {
         const night = 1 - (Wd.day ?? 1), k = fl * (0.5 + 1.1 * night);
-        if (Wd.hemi) Wd.hemi.intensity = lit.hemi * (1 + 2.2 * k) + 0.9 * k;
+        if (Wd.hemi) { // (the night's sky light is nearly black: the flash brings its own blue-white, from above and off the wet ground)
+          Wd.hemi.intensity = lit.hemi * (1 + 1.2 * k) + 1.5 * k;
+          Wd.hemi.color.copy(lit.sky).lerp(new THREE.Color(0.78, 0.84, 1.0), Math.min(0.92, 1.3 * k));
+          if (Wd.hemi.groundColor) Wd.hemi.groundColor.copy(lit.ground).lerp(new THREE.Color(0.4, 0.44, 0.55), Math.min(0.8, k));
+        }
         renderer.toneMappingExposure = lit.exp * (1 + 0.35 * k);
         if (world.fog) world.fog.color.copy(lit.fog).lerp(new THREE.Color(0.62, 0.68, 0.85), Math.min(0.7, 0.55 * k));
         if (su && su.uHaze) su.uHaze.value.copy(lit.haze).lerp(new THREE.Color(0.7, 0.76, 0.95), Math.min(0.8, 0.7 * k));
@@ -777,14 +797,14 @@ void main() {
       const sd = Wd.sunDir, alt = sd ? Math.asin(Math.max(-1, Math.min(1, sd.y))) * 180 / Math.PI : -9;
       // rain in the air (now or within the last minutes), the sun out and low
       const want = api.bowPin != null ? api.bowPin : smooth(1, 6, alt) * (1 - smooth(34, 42, alt)) * (1 - smooth(0.45, 0.8, cur.cloud)) * (1 - smooth(60, 240, rainAgo)) * (Wd.day ?? 1);
-      bowK += (want - bowK) * Math.min(1, dt * 0.25);
+      bowK = api.bowPin != null ? want : bowK + (want - bowK) * Math.min(1, dt * 0.25);
       bow.visible = bowK > 0.01 && level > 0 && !!sd;
       S.rainbow = bow.visible ? bowK : 0;
       if (!bow.visible) return;
       const ax = bowMat.uniforms.uAxis.value.copy(sd).negate().normalize(), x = bowMat.uniforms.uX.value.set(0, 1, 0).cross(ax);
       if (x.lengthSq() < 1e-6) x.set(1, 0, 0);
       x.normalize(); bowMat.uniforms.uY.value.copy(ax).cross(x).normalize();
-      bowMat.uniforms.uK.value = bowK * 0.16 * (0.4 + 0.6 * (Wd.day ?? 1));
+      bowMat.uniforms.uK.value = bowK * 0.22 * (0.4 + 0.6 * (Wd.day ?? 1));
       shared.uCam.value.copy(camera.position);
     }
     const api = {
@@ -808,7 +828,7 @@ void main() {
       // what was shed, to say once the game can show it
       onGuard: null,
       // lightning: strike(t, {dist, bearing, ground}) makes one now; onThunder(dist m) is called as its thunder arrives
-      strike, onThunder: null, bolt, bowPin: null,
+      strike, onThunder: null, bolt, bowPin: null, flashPin: null, // (bowPin, flashPin: a rainbow or a flash held at that strength, for a still)
       // live weather: called with what came back (null: nothing did, the season carries on)
       onNow: null, get now() { return nowWx; },
       takeNote() { const n = guardNote; guardNote = null; return n; },
@@ -880,7 +900,10 @@ void main() {
         const heat = smooth(27, 34, cur.temp) * day * (1 - cur.cloud);
         const thick = Math.max(f, sn * 0.6, heat * 0.3);
         if (fog && thick > 0.002) {
-          const mist = fog.color.clone().lerp(new THREE.Color(0.8, 0.83, 0.86).multiplyScalar(0.12 + 0.88 * day), 0.55);
+          // (pale, and lit by the low sun where there is one: a dawn mist is warm, not grey)
+          const pale = new THREE.Color(0.82, 0.85, 0.88).multiplyScalar(0.14 + 0.86 * day);
+          if (Wd.sunLight && Wd.sunDir && Wd.sunDir.y > -0.02) pale.lerp(Wd.sunLight.color.clone().multiplyScalar(0.3 + 0.6 * day), 0.45 * (1 - smooth(0.25, 0.6, Wd.sunDir.y)));
+          const mist = fog.color.clone().lerp(pale, 0.6);
           if (heat > 0) mist.lerp(new THREE.Color(0.86, 0.84, 0.78), 0.3 * heat);
           fog.color.lerp(mist, Math.min(1, thick * 1.2));
           const above = 1 + Math.max(0, camera.position.y - (Wd.groundY ?? 0) - 40) / 90 * Math.max(f, sn * 0.5);
@@ -889,6 +912,7 @@ void main() {
           fog.near = Math.min(fog.near, fog.far * 0.02 + fog.near * Math.max(0, 1 - 1.6 * thick));
           if (Wd.sunLight) Wd.sunLight.intensity *= 1 - 0.65 * f - 0.25 * sn;
           if (Wd.hemi) Wd.hemi.intensity *= 1 + 0.35 * f * day;
+          renderer.toneMappingExposure *= 1 + 0.16 * f * day; // (fog scatters the light it takes from the sun: the frame stays as bright)
           if (su && su.uHaze && su.uHazeOn) {
             if (su.uHazeOn.value < 0.5) su.uHaze.value.copy(fog.color); else su.uHaze.value.lerp(fog.color, Math.min(1, thick * 1.3));
             su.uHazeOn.value = Math.max(su.uHazeOn.value, Math.min(1, thick * 1.6));
@@ -897,6 +921,7 @@ void main() {
         }
         // settled snow lifts the light from below (its albedo), a little
         if (Wd.hemi && S.snowDepth > 0.05) Wd.hemi.intensity *= 1 + 0.18 * Math.min(1, S.snowDepth * 2) * day;
+        if (Wd.hemi) { lit.sky.copy(Wd.hemi.color); if (Wd.hemi.groundColor) lit.ground.copy(Wd.hemi.groundColor); }
         lit.hemi = Wd.hemi ? Wd.hemi.intensity : 0; lit.exp = renderer.toneMappingExposure; lit.flash = 0;
         if (fog) lit.fog.copy(fog.color);
         if (su && su.uHaze) lit.haze.copy(su.uHaze.value);
@@ -948,6 +973,7 @@ void main() {
         else if (cur.snow > 0.04 && cur.temp < 1.5) S.snowDepth = Math.min(1, S.snowDepth + dt * cur.snow / 70);
         else if (S.snowDepth > 0) S.snowDepth = Math.max(0, S.snowDepth - dt * (0.002 + Math.max(0, cur.temp) / 400 + sunOut / 220 + cur.rain / 40));
         U.uOeRain.value = cur.rain;
+        U.uOeGlint.value = Math.min(1, U.uOeWet.value * 1.5) * sunOut * (1 - Math.min(1, cur.rain * 3)); // light after rain
         U.uOeSnow.value = S.snowDepth; U.uOeSnowfall.value = cur.snow; U.uOeFog.value = cur.fog;
         U.uOeT.value = reduced ? tSec * 0.3 : tSec;
         // the state everything else reads (OEWeather.S)
@@ -995,12 +1021,13 @@ void main() {
           u.uShutter.value = 0.03;
         }
         splashMat.uniforms.uCount.value = Math.min(1, cur.rain * 1.1) * (0.25 + 0.75 * heavy);
-        for (const m of [fNear, fFar]) m.material.uniforms.uCount.value = Math.min(1, cur.snow * 1.2);
+        fNear.material.uniforms.uCount.value = Math.min(1, cur.snow * 1.2); fFar.material.uniforms.uCount.value = Math.min(0.5, cur.snow * 0.6); // (the far shell at half: more read as noise)
         shared.uWind.value.set(wx * 0.55, wz * 0.55); // the drops ride the wind near the ground (about half the 10 m wind)
         // the light on the drops: the haze's colour, brighter by day, warm from the city at night
         const fc = world.fog ? world.fog.color : new THREE.Color(0.7, 0.75, 0.8);
         shared.uCol.value.copy(fc).multiplyScalar(1.0 + 0.9 * day).add(new THREE.Color(0.16, 0.13, 0.09).multiplyScalar(1 - day));
-        snowCol.value.copy(fc).multiplyScalar(1.5 + 1.1 * day).add(new THREE.Color(0.3, 0.26, 0.2).multiplyScalar(1 - day)); // flakes: lighter than the air behind them
+        snowCol.value.copy(fc).multiplyScalar(1.4 + 1.2 * day).add(new THREE.Color(0.07, 0.065, 0.06).multiplyScalar(1 - day)); // flakes: lighter than the air behind them; at night only as the city's glow lights them
+        fFar.material.uniforms.uAlpha.value = 0.25 + 0.35 * day; // (far flakes against a night sky read as stars: held down after dark) // flakes: lighter than the air behind them
         // the occlusion map, when the camera has moved or a little time has passed
         if (occRT && ((falling && tSec - occT > (light ? 2 : 0.5)) || occOn.value < 0.5 || tSec < occT || camera.position.distanceTo(occAt) > (light || !falling ? 8 : 4))) {
           occT = tSec; occAt.copy(camera.position);

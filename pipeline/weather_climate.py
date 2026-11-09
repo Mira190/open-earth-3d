@@ -72,7 +72,18 @@ SYDNEY = {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 
           "thunder_days": [2.3, 2.1, 1.8, 1.7, 1.3, 0.9, 0.9, 1.3, 1.7, 2.3, 2.6, 3.1],
           "fog_days": [0.3, 0.6, 1.3, 1.9, 2.9, 2.2, 1.9, 1.6, 0.9, 0.6, 0.6, 0.3],
           "more": "Sydney: temperatures the Bureau's 1991-2020 statistics for Observatory Hill (066062); wind the mean of its 9 am and 3 pm speeds (1955-1992); thunder and fog days as pipeline/weather_climate.py says (annual totals from Wikipedia's Climate of Sydney, the split by month a secondary table's shape)."}
+# Kamakura has no JMA station with normals of its own; Yokohama (47670), 17 km north on the same bay shore, stands for it.
+KAMAKURA = {"rain_days": [5.7, 6.3, 11.0, 10.7, 11.1, 13.5, 12.0, 8.8, 12.7, 12.1, 8.6, 6.2], "threshold_mm": 0.5,
+            "drizzle": 0.55, "source": f"Yokohama, for Kamakura: {JMA}",
+            "temp_max": [10.2, 10.8, 14.0, 18.9, 23.1, 25.5, 29.4, 31.0, 27.3, 22.0, 17.1, 12.5],
+            "temp_min": [2.7, 3.1, 6.0, 10.7, 15.5, 19.1, 22.9, 24.3, 21.0, 15.7, 10.1, 5.2],
+            "wind_ms": [3.6, 3.7, 3.9, 3.9, 3.6, 3.2, 3.4, 3.4, 3.4, 3.4, 3.3, 3.4], "wind_from_deg": 0,
+            "snow_days": [4.9, 7.0, 3.4, 0.1, 0, 0, 0, 0, 0, 0, 0, 2.3], "snow_share": 0.3,
+            "thunder_days": [0.2, 0.3, 0.9, 1.1, 1.5, 0.8, 2.0, 2.8, 2.3, 0.8, 0.6, 0.5],
+            "fog_days": [0.1, 0.4, 0.6, 0.6, 0.3, 0.3, 0.2, 0.2, 0.2, 0.3, 0.7, 0.1], "typhoon_days": TYPHOON,
+            "more": f"Yokohama, for Kamakura: {JMA_MORE}. The wind's bearing is the commonest of the year (north; south-west from June to August). A smaller share of its snow days bring snow that falls as snow (snow_share): the coast is milder than the station."}
 CLIMATE = {
+    "kamakura": KAMAKURA,
     "tokyo": TOKYO, "shibuya": TOKYO, "shinjuku": TOKYO, "asakusa": TOKYO, "akihabara": TOKYO, "ueno": TOKYO, "ikebukuro": TOKYO, "jinbocho": TOKYO, "roppongi": TOKYO, "tsukishima": TOKYO, "odaiba": TOKYO, "shinagawa": TOKYO,
     "osaka": {"rain_days": [6.4, 7.3, 10.3, 10.0, 10.4, 12.3, 11.3, 7.8, 10.6, 9.2, 7.0, 7.1], "threshold_mm": 0.5,
               "drizzle": 0.5, "source": f"Osaka: {JMA}"},

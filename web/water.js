@@ -494,7 +494,8 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   vec3 wSun = reflectedLight.directSpecular; // the sun's glints, as facets (oeGlitter)
   vec3 outgoingLight = (totalDiffuse + totalEmissiveRadiance) * wAlpha * (1.0 - wF) + totalSpecular - wSun + oeGlitter(wSun, vXZ, camD, clamp(lost / float(${C}), 0.0, 1.0), uTime);
 #ifdef USE_FOG
-  outgoingLight = mix(outgoingLight, fogColor, uMist * (1.0 - exp(-camD / 260.0)) * 0.8); // mist on the water
+  { float mp = camD * min(1.0, 22.0 / max(cameraPosition.y, 22.0)); // the path through a layer some 20 m deep: short when seen from above
+    outgoingLight = mix(outgoingLight, fogColor, uMist * (1.0 - exp(-mp / 420.0)) * 0.7); } // mist on the water
 #endif`)
         .replace('#include <opaque_fragment>', 'gl_FragColor = vec4(outgoingLight, 1.0 - (1.0 - wAlpha) * (1.0 - wF));')
         .replace('#include <premultiplied_alpha_fragment>', '');
@@ -564,7 +565,7 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
         u.uSea.value = sea; u.uHs.value = Hs * sea; u.uWind.value = builtWind * sea;
       }
       // mist lies on water before it lies on land: the weather's fog and dawn mist, doubled over the sea
-      u.uMist.value = wx ? Math.min(1, wx.fog * 2.2) : 0;
+      u.uMist.value = wx ? Math.min(1, wx.fog * 1.8) : 0;
       fft.step(t, dt);
       for (let c = 0; c < C; c++) { u.uDisp.value[c] = fft.disp(c); u.uDeriv.value[c] = fft.deriv(c); }
       u.uTime.value = t;

@@ -452,8 +452,9 @@ const npcNight = require('./npc_night');
     out.flakes = W.meshes.fNear.visible && W.meshes.fNear.material.uniforms.uCount.value > 0.5 && !W.meshes.near.visible;
     W.set('storm', { now: true }); tick(0.1);
     const t1 = g.t(), hit = W.strike(t1, { dist: 700, bearing: 0.5, ground: true });
-    W.update(0.016, t1 + 0.012);
-    out.flash = { on: S.flash, bolt: W.meshes && g.Wd.world.children.some(o => o.visible && o.material && o.material.uniforms && o.material.uniforms.uFlash), strokes: hit.strokes };
+    let peak = 0; for (let k = 1; k <= 30; k++) { W.update(0.01, t1 + 0.01 * k); peak = Math.max(peak, S.flash); } // (its brightest stroke may be the second)
+    W.update(0.004, t1 + 0.004);
+    out.flash = { on: peak, bolt: W.meshes && g.Wd.world.children.some(o => o.visible && o.material && o.material.uniforms && o.material.uniforms.uFlash), strokes: hit.strokes };
     W.update(0.5, t1 + 3);
     out.flash.off = S.flash;
     // fog through the scene's own fog: the far distance comes in to a few hundred metres, and goes back out

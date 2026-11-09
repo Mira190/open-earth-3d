@@ -987,7 +987,7 @@ vec3 woodsFloor(vec3 c) {
   vec3 path = vec3(0.29, 0.26, 0.21) * (0.86 + 0.28 * woodN(p * 8.0));
   g = mix(g, path, smoothstep(0.2, 0.6, m.b));
   return mix(c, g, k);
-}`).replace('#include <emissivemap_fragment>', 'diffuseColor.rgb = woodsFloor(diffuseColor.rgb);\n#include <emissivemap_fragment>');
+}`).replace('#include <emissivemap_fragment>', `diffuseColor.rgb = ${/float oeSn\b/.test(sh.fragmentShader) ? 'mix(woodsFloor(diffuseColor.rgb), diffuseColor.rgb, oeSn)' : 'woodsFloor(diffuseColor.rgb)'};\n#include <emissivemap_fragment>`); // (settled snow, game/weather.js, lies over the wood's floor)
     };
     const gradePhoto = sh => {
       clipGround(sh);
