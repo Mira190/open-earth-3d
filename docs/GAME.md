@@ -1026,6 +1026,17 @@ yields. In this game every car's intent is exact, so:
   with the model it crept up a stop-and-go queue more slowly, was held long enough to read a car in
   the queue as stopped for good, and went round it.) It is never faster than the old limit, so the queues and the waits at the lights are as
   before; only the braking is earlier and softer, as a passenger feels it.
+- **Get out of your way.** Driving at the traffic, your car used to meet a car that only braked for
+  something in its own lane ahead. Now a driver watches where your car will pass it (issue 335,
+  `actors.js` `DODGE_T`). If that point is within 2.2 s and close enough to touch, the driver swings
+  1.2 m out of the way. It swings to the kerb, or out over the centre line when you pass on the kerb
+  side and nothing is coming the other way. It brakes hard unless you are coming up from behind,
+  keeps this up for at least 1.2 s, and sounds its horn. A bus's horn is lower, and a far one is
+  fainter (`audio.js` `honk(gain, pitch)`). The idea is taken from the reaction step in
+  [Slop New York](https://github.com/mrdoob/slop-newyork) (MIT; `traffic.js`, where a driver notices
+  the player a set time before contact and keeps the move up for a minimum time). No code is copied.
+  `tools/game_check.js` puts your car 26 m ahead of a moving car in its lane, coming at it at
+  10 m/s. Within a second that car must slow by at least 2 m/s, move 0.4 m aside and sound its horn.
 - **Break the rings.** Round Shibuya station the queues waited for room behind queues that waited
   for room, round a block and back, and nothing moved: one car stood 220 s at its line. The
   traffic wanders, so a car held 5 s at its line for want of room, its light green, takes another

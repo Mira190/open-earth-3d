@@ -4630,6 +4630,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       cars.extra.push(x);
     }
     cars.update(dt, cx, cy, clockT, blockers);
+    // a driver getting out of your car's way sounds its horn, fainter the farther off (actors.js DODGE_T)
+    for (const h of cars.honks.splice(0)) A.honk(Math.max(0.15, 1 - h.d / 40) * 0.8, h.bus ? 0.72 : 0.9 + Math.random() * 0.2);
     if (places) {
       // the area caption waits for a quiet screen: no conversation, menu, map, phone, photo mode or
       // onboarding (anything marked data-hush that is showing holds it too)

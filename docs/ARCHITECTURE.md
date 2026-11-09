@@ -1529,6 +1529,31 @@ not compressed.
 | the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
 | all 87 shared models | 60.28 MB | 35.98 MB |
 
+Issue 335 took this further after a look at [Slop New York](https://github.com/mrdoob/slop-newyork)
+(MIT). It draws all of Manhattan from 1.44 MB of its own code and data, gzipped: footprints and heights
+extruded in the browser, facades, cars and trees made in code and shaders, and no textures or models.
+Our cities are measured and hand-modelled, so that approach doesn't carry over. Three steps did:
+
+- **Pictures as WebP** (`pipeline/webtex.py`). A city's landmark textures (`landmarks.json` materials'
+  `map`) and its woods mask (`scene.json` `woods`) go out as WebP. A drawn atlas or screen sheet that
+  was JPEG becomes lossy WebP at quality 88, about 40 dB PSNR against the JPEG. A PNG cut-out, or the
+  woods mask whose channels are data, becomes lossless WebP with `exact`, so it decodes to the same
+  values. A file is replaced only when the WebP is at least a tenth smaller. `pipeline/landmarks.py`
+  and `pipeline/woods.py` call it, so builds write WebP. The aerial ground tiles stay JPEG, where WebP
+  saves only about a tenth. Savings: 2.0 MB on Shibuya, 3.2 MB on Shinjuku, and 0.1-0.7 MB on each
+  other live city.
+- **The clips' rotation keys through meshopt's quaternion filter** at 12 bits (gltfpack's default for
+  animation; each key within a tenth of a degree) wherever that encodes smaller (`meshopt_glb.mjs`,
+  `--again` for files already compressed). `R_clips_f.glb` + `_m` drop from 2.01 to 1.35 MB.
+- **The leaf atlas without the colour under clear pixels** (`glb_webp.py` `exact=False`; the cut-out
+  alpha is still exact, and the leaves draw with alphaTest 0.5). `trees.glb` drops from 2.53 to 2.25 MB.
+
+Weighed and left: meshopt's codecs on the roof meshes in `buildings.bin` save only 0.2 MB on Shibuya
+over the pack's own delta and byte-plane coding (1.46 MB of roof vertices against meshopt's 1.41, and
+0.52 MB of triangles against 0.34), not worth a decoder in the pack Worker. Fetching the cars, trees
+and the first people after the game opens would take 5-6 MB off the wait, but the traffic and the
+crowd show from the first frame, so that waits on stand-ins that look right.
+
 What the game downloads before Shibuya can be played (`tools/load_size.js shibuya play 40`), main before
 issue 148 against the three steps (packed buildings, deferred helicopter and NPCs, meshopt):
 
