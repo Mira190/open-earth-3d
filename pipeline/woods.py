@@ -368,9 +368,11 @@ def build(C, write=True):
     if not write:
         return rgb, trees
     Image.fromarray(rgb, 'RGBA').save(os.path.join(C.out, "woods.png"), optimize=True)
+    import webtex
+    woods_file = webtex.convert(C.out, "woods.png")   # lossless WebP, the same values (pipeline/webtex.py)
     places["woods"] = trees
     json.dump(places, open(places_path, "w"), separators=(",", ":"))
-    scene["woods"] = {"file": "woods.png", "cell": CELL, "nx": W, "ny": H, "x0": x0, "y1": y1, "trees": len(trees) // 4,
+    scene["woods"] = {"file": woods_file, "cell": CELL, "nx": W, "ny": H, "x0": x0, "y1": y1, "trees": len(trees) // 4,
                       "floor": C.cfg.get("trees", {}).get("floor") or FLOOR.get(C.cfg.get("country_code"), "earth"),
                       "encoding": "r: ground cover under the canopy (0-255), g: canopy height x 8 (m), b: a footway under the canopy, a: in a wood or park",
                       "source": CHM_SOURCE + "; " + WC_SOURCE}

@@ -25,6 +25,7 @@ import json
 import os
 
 import bridges
+import webtex
 from cityctx import city_args
 
 
@@ -37,7 +38,10 @@ def main():
     bm, bmeshes = bridges.meshes(scene)   # the bridges over the water the city does not draw itself (bridges.py)
     materials, meshes = {**materials, **bm}, list(meshes) + bmeshes
     if city.hook("landmark_assets"):
-        for f in city.hook("landmark_assets")(city.out, scene) or []:
+        files = city.hook("landmark_assets")(city.out, scene) or []
+        done = webtex.landmark_maps(city.out, materials, files)   # shipped as WebP (pipeline/webtex.py)
+        for f in files:
+            f = done.get(f, f)
             print(f"{f}: {os.path.getsize(os.path.join(city.out, f)) / 1e6:.2f} MB")
     # a material whose image this city never writes and no mesh uses (one a shared module defines for another
     # city: Shibuya's Hachiko lilyturf in Shinjuku) is left out, or the viewer asks for the missing image
