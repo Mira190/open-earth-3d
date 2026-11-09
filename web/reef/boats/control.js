@@ -53,7 +53,7 @@ export function createControl(ctx, api) {
     ctx.controller = st.prev; st.prev = null; st.active = null;
     const p = st.player; st.player = null;
     if (p) { if (p.group) p.group.visible = true; p.boarded = null; if (p.onLeave) p.onLeave(v); }
-    setHud('');
+    setHud(''); if (hud) hud.style.bottom = '16px';
     // hand the camera back to free-fly without a jump: main.js keeps its own yaw/pitch
     if (!ctx.controller && window.__reef && window.__reef.set) {
       const d = new THREE.Vector3(); camera.getWorldDirection(d);
@@ -106,15 +106,16 @@ export function createControl(ctx, api) {
     return ctl;
   }
 
-  // ---- the ship: you ride her as a passenger while she keeps her course. V changes the view: off her quarter, wide
+  // ---- the ship: you ride her as a passenger while she keeps her course. V changes the view: off her bow, off her quarter, wide
   // off her beam (the ship small under the walls), from the foredeck rail, from high astern ----
   function rideShip(v, player) {
     const L = v.desc.L, sp = v.desc.spec || {};
-    const VIEWS = [{ n: 'off the quarter', d: L * 1.9, up: L * 0.12, yaw: 2.55, look: L * 0.14 }, { n: 'off the beam', d: L * 4.6, up: 2, yaw: 1.45, look: L * 0.5, low: true },
+    const VIEWS = [{ n: 'off the bow', d: L * 2.6, up: 2.5, yaw: -2.0, look: L * 0.42, low: true }, { n: 'off the quarter', d: L * 1.9, up: L * 0.12, yaw: 0.6, look: L * 0.14 }, { n: 'off the beam', d: L * 4.6, up: 2, yaw: 1.45, look: L * 0.5, low: true },
       { n: 'at the rail', deck: true }, { n: 'from above', d: L * 3.2, up: L * 1.6, yaw: 3.0, look: 2 }];
     let vi = 0;
-    const fd = (sp.spots && (sp.spots.find(s => /bow|fore/i.test(s.name || '')) || sp.spots[0])) || null;
-    const rail = fd && v.desc.toVessel ? v.desc.toVessel([fd.x ?? 0, (fd.y ?? 3) + 1.65, fd.z ?? 0]) : [L * 0.3, 5.2, 0];
+    // the foredeck spot of the model's passenger_spots (the one furthest forward), at eye height
+    const fd = (sp.passenger_spots || []).slice().sort((a, b) => b[2] - a[2])[0] || null;
+    const rail = fd && v.desc.toVessel ? v.desc.toVessel([fd[0], fd[1] + (sp.eye_height_m ?? 1.65), fd[2]]) : [L * 0.3, 5.2, 0];
     const _p = new THREE.Vector3(), _e = new THREE.Euler(0, 0, 0, 'YXZ');
     const ctl = {
       passenger: true,
@@ -136,6 +137,7 @@ export function createControl(ctx, api) {
           camera.lookAt(v.x, v.y + W.look, v.z);
         }
         setHud(`${v.name}\n${(v.speed * 1.944).toFixed(1)} kn · ${W.n}\nV view · drag to look · F go ashore`);
+        if (hud) hud.style.bottom = '104px';      // clear of the walker's key list, which stays up
       }
     };
     begin(v, ctl, '', player);

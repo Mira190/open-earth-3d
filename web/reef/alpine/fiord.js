@@ -115,7 +115,7 @@ export async function init(ctx) {
     })();
     const body = Fn(() => {
       const p = uv(), r = length(p).add(mx_noise_float(vec3(p.mul(1.6), C.w.mul(40).add(time.mul(0.15)))).mul(0.3));
-      return smoothstep(0.95, 0.2, r).mul(smoothstep(0.0, 0.12, life)).mul(float(1).sub(smoothstep(0.45, 1.0, life)));
+      return smoothstep(0.95, 0.1, r).pow(1.5).mul(smoothstep(0.0, 0.12, life)).mul(float(1).sub(smoothstep(0.3, 1.0, life)));
     })();
     mat.colorNode = Fn(() => {
       const base = lit(positionWorld, 0.95);
@@ -128,7 +128,7 @@ export async function init(ctx) {
       return base.add(bow.mul(sunLit).mul(2.6));
     })();
     // (thin round the eye: inside the plume the sheets would stack to a white wall)
-    mat.opacityNode = body.mul(0.34 * Math.min(1, 0.5 + fall.flow * 0.5)).mul(smoothstep(10, 90, length(positionWorld.sub(cameraPosition))));
+    mat.opacityNode = body.mul(0.3 * Math.min(1, 0.5 + fall.flow * 0.5)).mul(smoothstep(10, 90, length(positionWorld.sub(cameraPosition))));
     const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; mesh.renderOrder = 6; mesh.name = `spray-${fall.id}`;
     group.add(mesh); fall.spray = mesh;
   }

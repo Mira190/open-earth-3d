@@ -569,15 +569,49 @@
  },
  "shots": [
   {
-   "id": "postcard",
-   "x": 4200,
-   "y": -6900,
-   "z": 4,
-   "yaw": 50,
-   "pitch": 6,
+   "id": "ship",
+   "x": 0,
+   "y": 0,
+   "z": 20,
    "fov": 45,
    "time": "2026-01-15T01:00:00Z",
-   "note": "the foreshore view: Mitre Peak across Freshwater Basin, early afternoon in January"
+   "mods": "boats,alpine/fiord",
+   "query": "boatcam=Piopiotahi&warm=30&bd=190&baz=250&bel=1&bh=30",
+   "note": "the ship under the north wall with Stirling Falls beyond: the brief's picture, on a fine day"
+  },
+  {
+   "id": "ship-bow",
+   "x": 0,
+   "y": 0,
+   "z": 20,
+   "fov": 60,
+   "time": "2026-01-15T01:00:00Z",
+   "mods": "boats,alpine/fiord",
+   "query": "boatcam=Piopiotahi&warm=30&bd=48&baz=35&bel=5&bh=5",
+   "note": "off her bow"
+  },
+  {
+   "id": "ship-deck",
+   "x": 0,
+   "y": 0,
+   "z": 20,
+   "fov": 50,
+   "time": "2026-01-15T01:00:00Z",
+   "mods": "boats,alpine/fiord",
+   "query": "boatcam=Piopiotahi&warm=30&bd=30&baz=150&bel=12&bh=6",
+   "note": "over her quarter: the decks, the boats, the ensign"
+  },
+  {
+   "id": "postcard",
+   "x": 4261,
+   "y": -6832,
+   "z": 5.3,
+   "yaw": 40,
+   "pitch": 5,
+   "fov": 50,
+   "time": "2026-01-15T03:30:00Z",
+   "mods": "alpine/flora,alpine/landmarks,boats,alpine/fiord",
+   "note": "the foreshore walk in lupin season: Mitre Peak across Freshwater Basin, mid-afternoon in January"
   },
   {
    "id": "aerial",
@@ -588,7 +622,20 @@
    "pitch": 2,
    "fov": 60,
    "time": "2026-01-15T01:00:00Z",
+   "mods": "alpine/flora,alpine/landmarks,boats,alpine/fiord",
    "note": "from 500 m over the head of the fiord"
+  },
+  {
+   "id": "village",
+   "x": 4300,
+   "y": -7400,
+   "z": 260,
+   "yaw": 10,
+   "pitch": -22,
+   "fov": 55,
+   "time": "2026-01-15T01:00:00Z",
+   "mods": "alpine/flora,alpine/landmarks,boats,alpine/fiord",
+   "note": "the village, the airstrip, Freshwater Basin and Lady Bowen Falls"
   },
   {
    "id": "stirling",
@@ -599,7 +646,8 @@
    "pitch": 14,
    "fov": 55,
    "time": "2026-01-15T22:30:00Z",
-   "note": "Stirling Falls from the water, mid-morning, the sun behind the eye for the rainbow in its spray"
+   "mods": "alpine/fiord",
+   "note": "Stirling Falls from the water, mid-morning"
   },
   {
    "id": "dusk",
@@ -610,7 +658,20 @@
    "pitch": 2,
    "fov": 60,
    "time": "2026-01-15T08:20:00Z",
+   "mods": "alpine/flora,alpine/landmarks,boats,alpine/fiord",
    "note": "the aerial at sunset"
+  },
+  {
+   "id": "night",
+   "x": 4000,
+   "y": -6000,
+   "z": 300,
+   "yaw": 50,
+   "pitch": 8,
+   "fov": 60,
+   "time": "2026-01-15T11:30:00Z",
+   "mods": "alpine/flora,alpine/landmarks,boats,alpine/fiord",
+   "note": "the same under the stars"
   }
  ],
  "sources": [
@@ -645,6 +706,22 @@
    "licence": "ODbL / CDLA-Permissive-2.0",
    "url": "https://overturemaps.org",
    "checked": "2026-11-09"
+  }
+ ],
+ "detail": [
+  {
+   "id": "foreshore",
+   "centre": [
+    167.9245,
+    -44.6715
+   ],
+   "size_m": [
+    3000,
+    3000
+   ],
+   "px_m": 0.75,
+   "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/southland/southland_2023_0.25m/rgb/2193/",
+   "src": "Toitū Te Whenua LINZ, Southland 0.25m Rural Aerial Photos (2023), CC BY 4.0"
   }
  ]
 }

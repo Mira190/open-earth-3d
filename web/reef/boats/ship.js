@@ -19,11 +19,11 @@ export async function buildShip(model = 'ship_scow') {
     loader.loadAsync(new URL(`${model}_far.glb`, base).href).catch(() => null)]);
   const group = new THREE.Group(); group.name = 'ship';
   // the shared models face +z with +x to port (assets/vehicles/vehicles.json); a quarter turn sets the bow on +X
-  const turn = /\+x\s*(forward|ahead|bow)/i.test(spec.axes || '') ? 0 : Math.PI / 2;
+  const turn = /\+x\s*(forward|ahead|bow)/i.test(spec.frame || spec.axes || '') ? 0 : Math.PI / 2;
   const hi = near.scene, lo = far ? far.scene : null;
   hi.rotation.y = turn; group.add(hi);
   if (lo) { lo.rotation.y = turn; lo.visible = false; group.add(lo); }
-  const L = spec.length_m ?? spec.loa_m ?? 40, B = spec.beam_m ?? 9, draft = spec.draft_m ?? 2.6;
+  const L = spec.length_overall_m ?? spec.length_m ?? 40, B = spec.beam_m ?? 9, draft = spec.draft_m ?? 2.6;
   const find = n => hi.getObjectByName(n) || null;
   const radar = find('radar'), flag = find('flag');
   const flagT = uniform(0);
@@ -56,7 +56,7 @@ export async function buildShip(model = 'ship_scow') {
   const desc = {
     kind: 'ship', group, L, B, draft, spec,
     // the stern's wash (one broad trail) and the points the hull floats on (bow, stern, the beam ends)
-    trails: [[-sx * 0.94, 0, B * 0.62]],
+    trails: [[-sx * 0.94, 0, B * 0.42]],
     buoy: [[sx * 0.8, 0], [-sx * 0.8, 0], [0, sz * 0.8], [0, -sz * 0.8], [sx * 0.4, sz * 0.6], [sx * 0.4, -sz * 0.6], [-sx * 0.4, sz * 0.6], [-sx * 0.4, -sz * 0.6]],
     float: { k: 0.35 },                 // 400 tonnes: she follows a fiord's chop very little
     lamps: [], casters: [],

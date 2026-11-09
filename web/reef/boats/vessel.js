@@ -14,7 +14,7 @@ const TAUS = { ship: 1.8, tinnie: 0.18, yacht: 0.35, cat: 0.5, daycat: 0.7, seap
 const SPECS = {   // max speed (m/s), turn rate (rad/s), acceleration (m/s^2), trail life and width
   yacht: { vmax: 3.9, turn: 0.35, acc: 0.35, life: 14 }, cat: { vmax: 4.8, turn: 0.3, acc: 0.4, life: 14 },
   daycat: { vmax: 15, turn: 0.22, acc: 0.9, life: 26 },
-  ship: { vmax: 5.2, turn: 0.075, acc: 0.14, life: 60 }, tinnie: { vmax: 16, turn: 0.9, acc: 3.2, life: 18 }, seaplane: { vmax: 28, turn: 0.35, acc: 1.5, life: 20 }
+  ship: { vmax: 5.2, turn: 0.075, acc: 0.14, life: 38 }, tinnie: { vmax: 16, turn: 0.9, acc: 3.2, life: 18 }, seaplane: { vmax: 28, turn: 0.35, acc: 1.5, life: 20 }
 };
 
 export class Vessel {
@@ -186,12 +186,13 @@ export class Vessel {
       tr.rebuild(t, near && !this.api.noRibbon);
     }
     if (near && this.speed > 0.8 && field) {
-      const sp = Math.min(1, this.speed / (this.kind === 'ship' ? 5 : 8)), L = this.desc.L, B = Math.min(this.desc.B, this.kind === 'ship' ? 10 : 6);
+      const sp = Math.min(1, this.speed / 8), L = this.desc.L, B = Math.min(this.desc.B, 6);
+      const fk = this.kind === 'ship' ? 0.45 : 1;      // a displacement hull at 9 knots: a bow wave and a stern wash, no sheet of foam round her
       const hulls = this.desc.trails.length ? this.desc.trails.map(p => p[1]) : [0];
       for (const hz of hulls) {
-        this.toWorld(L * 0.42, hz, w); field.stamp(w[0], w[1], 1.6 + B * 0.2, 0.012 * sp * dt * 30 * (this.kind === 'daycat' ? 2 : 1), 0.2 * sp, t);
-        this.toWorld(0, hz, w); field.stamp(w[0], w[1], 1.2 + B * 0.18, -0.006 * sp * dt * 30, 0.12 * sp, t);
-        this.toWorld(-L * 0.45, hz, w); field.stamp(w[0], w[1], 1.4 + B * 0.2, 0.012 * sp * dt * 30, 0.5 * sp, t);
+        this.toWorld(L * 0.42, hz, w); field.stamp(w[0], w[1], 1.6 + B * 0.2, 0.012 * sp * dt * 30 * (this.kind === 'daycat' ? 2 : 1), 0.2 * sp * fk, t);
+        if (fk === 1) { this.toWorld(0, hz, w); field.stamp(w[0], w[1], 1.2 + B * 0.18, -0.006 * sp * dt * 30, 0.12 * sp, t); }
+        this.toWorld(-L * 0.45, hz, w); field.stamp(w[0], w[1], 1.4 + B * 0.2, 0.012 * sp * dt * 30, 0.5 * sp * fk, t);
       }
     }
   }

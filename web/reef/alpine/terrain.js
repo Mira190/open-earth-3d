@@ -120,10 +120,6 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     rock.mulAssign(float(1).sub(seep.mul(0.45)));
     const fineK = float(1).sub(smoothstep(500, 2200, dist));
     rock.mulAssign(float(1).add(mx_noise_float(P.div(4.2)).mul(0.22).mul(fineK)));
-    // joints: thin dark lines down the face and along the beds, a few metres apart, seen within a kilometre or so
-    const jk = float(1).sub(smoothstep(300, 1400, dist));
-    const jv = abs(mx_noise_float(vec3(x.mul(0.21), y.mul(0.018), z.mul(0.21)).add(60))), jb = abs(mx_noise_float(vec3(sAx.mul(0.6), x.mul(0.03), z.mul(0.03)).add(80)));
-    rock.mulAssign(mix(float(1), mix(float(0.58), float(1), smoothstep(0.0, 0.05, jv)).mul(mix(float(0.66), float(1), smoothstep(0.0, 0.045, jb))), jk));
     const moss = smoothstep(0.1, 0.6, mx_noise_float(P.div(24).add(5))).mul(float(1).sub(steep.mul(0.6)));
     rock.assign(mix(rock, vec3(0.06, 0.095, 0.035), moss.mul(0.5)));
     let alb = mix(alb0, mix(rock, alb0, 0.22), rockW).toVar();

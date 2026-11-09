@@ -875,5 +875,17 @@
    }
   ],
   "note": "Russell lupins are a weed of the Cleddau's gravel flats and the roadsides into Milford; they flower from November into January"
- }
+ },
+ "detail": [
+  {
+   "id": "foreshore",
+   "file": "detail_foreshore.webp",
+   "x0": 2822,
+   "y1": -5336,
+   "w": 4000,
+   "h": 4000,
+   "px_m": 0.75,
+   "src": "Toit\u016b Te Whenua LINZ, Southland 0.25m Rural Aerial Photos (2023), CC BY 4.0"
+  }
+ ]
 }
