@@ -1,5 +1,6 @@
 // Where one frame of the game goes, pass by pass: every framebuffer the frame draws into (its size and
-// format), the draw calls and triangles into it, the full-screen passes (a draw of 3 or 6 vertices), the
+// format), the draw calls and triangles into it, the full-screen passes (a draw of 3 or 6 vertices into a target
+// with no depth buffer, or the only draw into one), the
 // pixels those passes shade and the bytes they write; and the JavaScript time of the game's own step.
 // A software renderer gives no GPU timings worth reading, so this counts the work instead: on a phone's
 // tile-based GPU the full-screen passes and their bytes are what cost, and on any GPU the triangles.
@@ -116,6 +117,8 @@ const [w, h] = size.split('x').map(Number);
   const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1];
   console.log(`${city} ${size} ${process.env.TIER || 'high'} ${time}: viewport ${out.px.join(' x ')}, pixel scale ${out.pxScale}; frame-to-frame ${out.frameMs.map(x => x.toFixed(0)).join(', ')} ms (software GL)`);
   for (const e of out.passes) {
+    // (a 6-vertex draw among a depth-tested target's geometry is a sprite or a sign in the scene, not a pass over the frame)
+    if (e.depth && e.draws > e.full) e.full = e.fullPx = e.fullBytes = 0;
     full += e.full; bytes += e.fullBytes; tris += e.tris; draws += e.draws;
     shaded += e.fullPx + (e.draws > e.full && e.color ? e.color.w * e.color.h * (e.color.samples || 1) : 0);
     console.log(`  ${fmt(e.color).padEnd(26)} depth ${fmt(e.depth).padEnd(16)} ${String(e.draws).padStart(4)} draws ${M(e.tris).padStart(6)}M tris  ${e.full ? `${e.full} full-screen, ${M(e.fullPx)} Mpx, ${(e.fullBytes / 1048576).toFixed(1)} MB written` : ''}`);

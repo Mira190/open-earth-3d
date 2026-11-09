@@ -12,8 +12,8 @@ checked in stills from the same viewpoints.
 - `tools/far_cost.js` counts one frame's triangles and draw calls from a viewpoint, and for every mesh
   (each instance of an instanced one) how many of its triangles lie past 300 m, 800 m and 2 km.
 - `tools/frame_cost.js` lists every framebuffer one frame draws into (size, format, MSAA), the draws and
-  triangles into each, and the full-screen passes and the bytes they write (a 3- or 6-vertex draw counts as
-  one, so a sprite does too).
+  triangles into each, the full-screen passes and the bytes they write, the pixels shaded and the main thread's
+  time a frame; `tools/frame_sweep.sh` makes a table of it for every live city and tier.
 - `tools/views/sydney-vram.json`: a street view and an aerial view at day and night, for
   `tools/game_shot.js` before and after.
 
@@ -131,6 +131,59 @@ species colours and light, where the hulls were smooth green domes.
 Adopted from: octahedral impostors (Ryan Brucks, for Fortnite) and
 [agargaro/octahedral-impostor](https://github.com/agargaro/octahedral-impostor) (MIT) for the idea; no code was
 taken. A tree is near enough to round that three heights and a mirror do here instead of an octahedral grid.
+
+## The frame budget (issue 352)
+
+A frame costs the pixels shaded times the work on each, the draws and triangles submitted, and the main
+thread's time. `tools/frame_cost.js` prints all of them (the pixels shaded: every full-screen pass's
+viewport, and each target the scene's geometry is drawn into once per MSAA sample; the main thread: the time
+inside the frame's `requestAnimationFrame` callbacks), and `tools/frame_sweep.sh` runs it on foot, with the
+clock held, for every live city on each tier. Software-renderer frame times are not in the tables: they only
+compare one build with another.
+
+### One full-resolution pass after the scene
+
+After the scene was drawn, four passes each drew the whole frame again into a full-size RGBA16F target: the
+contact shadows' mix, the highlights' roll-off, the bloom's blend and the lens. Each did a few arithmetic
+operations a pixel; what they cost was the 8 bytes a pixel written and read back four times, which is what a
+phone's tile-based GPU and any integrated GPU's memory bandwidth pay for.
+
+Now (`web/game/atmosphere.js`, `web/lens.js`, `web/game/ao.js`) nothing after the scene runs at the frame's
+full size but the last pass, the lens, which writes the canvas. As it reads the scene's own target it applies
+the contact shadows (upsampled by depth from their half-size texture), rolls the highlights off and adds the
+bloom's half-size composite, then grades as before. The bloom's bright pass, at half size, reads the scene
+directly and rolls the highlights off for itself (four taps, each rolled off, so a one-pixel glint blooms as
+it did). The game no longer builds an `EffectComposer`; the stack keeps a composer's shape (`passes`,
+`addPass`, `render`) for the films' director and the checks. A camera effect (photo mode's depth of field,
+an opening shot's motion blur, an overture's painted look) or a film's own lens brings a full-size pass or two
+back for as long as it is on, through two targets that are only made then (20 MB at 1440 x 900 that play no
+longer holds).
+
+With it:
+
+- The low tier's bloom ran in full although `TIERS.low.bloom` says none. It now runs from a quarter of the
+  frame (four levels in place of five from a half), and only from dusk to dawn: by day nothing reaches its
+  threshold but the sun's glints. Night stills on the low tier match main's.
+- The canvas was created multisampled on the medium and high tiers, though with the post stack the only thing
+  drawn to it is the lens's triangle. It is now single-sampled there (the scene's own target keeps the tier's
+  MSAA): at 1440 x 900 that is a 4x colour and depth buffer the browser no longer allocates and resolves.
+- The contact shadows' passes draw one triangle over the frame, as the others do, rather than two (no
+  diagonal seam shaded twice).
+
+Sydney's game on foot, high tier, 1440 x 900, 15:30 (`FOOT=1 FREEZE=1 tools/frame_cost.js sydney`):
+
+| | main | after |
+|---|---|---|
+| full-size passes after the scene | 4 | 1 |
+| full-screen passes in all (45 of them the ocean's 128 px transform) | 69 | 66 |
+| bytes the full-screen passes write a frame | 70.1 MB | 40.4 MB |
+| pixels shaded (passes, and geometry targets per sample) | 31.3 M | 27.4 M |
+| draws, triangles | 420, 3.33 M | 416, 3.31 M |
+
+Stills of the same views before and after (a street by day, at dusk and at night on each tier, and the city
+from the air by day and at night) differ only in what moves between two runs: the clouds, the trees in the
+wind, the waves and the traffic. Not measurable here: what the bandwidth saved is worth in milliseconds on a
+phone's GPU or an integrated one.
 
 ## Next, by what it saves for what it risks
 
