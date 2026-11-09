@@ -175,3 +175,5 @@
 .lf-msgs li.new { border-left-color: var(--accent); }
 .lf-msgs b { font-weight: 500; color: #fff; } .lf-msgs .num { font-size: 9.5px; color: var(--faint); }
 .lf-msgs p { grid-column: 1 / -1; margin: 0; color: var(--ink-2); font-size: 12.5px; line-height: 1.45; }
+
+.lf-tomorrow { margin: 0; color: var(--ink-2); font-size: 14px; }

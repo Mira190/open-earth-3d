@@ -55,7 +55,18 @@ window.OEDay = (function () {
       weather() {
         const w = ctx.weather, st = w && w.state;
         const kind = (st && st.kind) || 'clear', names = (window.OEWeather && OEWeather.NAMES) || {};
-        return { kind, name: names[kind] || kind[0].toUpperCase() + kind.slice(1), wet: !!(st && st.rain > 0.06), rain: st ? st.rain || 0 : 0 };
+        const said = window.OEWeather && OEWeather.describe ? OEWeather.describe() : ''; // ("Light snow, -1°": weather.js, one state for the whole game)
+        return { kind, name: said || names[kind] || kind[0].toUpperCase() + kind.slice(1), wet: !!(st && (st.rain > 0.06 || st.snow > 0.06)), rain: st ? st.rain || 0 : 0 };
+      },
+      // tomorrow, as the climate brings it for the date (weather.season is a pure function of the date): the day's worst at 09:00, 15:00 and 21:00
+      tomorrow() {
+        const w = ctx.weather;
+        if (!w || !w.season) return '';
+        const t = new Date(Date.UTC(c.y, c.m - 1, c.d + 1)), f = [540, 900, 1260].map(m => w.season(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), m)).filter(Boolean);
+        if (!f.length) return '';
+        const mx = k => Math.max(...f.map(o => o[k] || 0)), temp = f.map(o => o.temp).filter(v => v != null);
+        const sky = mx('storm') > 0.3 ? 'Thunderstorms' : mx('snow') > 0.2 ? 'Snow' : mx('rain') > 0.5 ? 'Rain' : mx('rain') > 0.15 ? 'Showers' : mx('fog') > 0.4 ? 'Fog' : mx('cloud') > 0.6 ? 'Overcast' : 'Clear';
+        return `${sky}${temp.length ? `, ${Math.round(Math.min(...temp))}° to ${Math.round(Math.max(...temp))}°` : ''}`;
       },
       // is something that keeps hours on now? { slots, days (0 = Monday), hours: ["11:00", "22:00"], weather: "rain"|"dry", dates/days as an event }
       onNow(o, at = c.min) {
@@ -200,6 +211,7 @@ window.OEDay = (function () {
         + `<h3>On today</h3>${today.length ? `<ul class="lf-list">${today.map(e => `<li class="${D.onNow(e) ? 'on' : ''}"><b>${esc(e.title)}${e.native ? ` <span class="jp">${esc(e.native)}</span>` : ''}</b><span>${esc(e.where || '')}${e.slots ? ` · ${e.slots.map(s => SLOT_NAME[s]).join(', ')}` : ''}${ci.events[e.id] ? ' · been' : ''}</span><p>${esc(e.text || '')}</p></li>`).join('')}</ul>` : '<p class="note">Nothing on the calendar today. The city is its ordinary self, which is the point.</p>'}`
         + (around.length ? `<h3>Around ${SLOT_NAME[slot].toLowerCase() === 'night' ? 'tonight' : `this ${SLOT_NAME[slot].toLowerCase()}`}</h3><ul class="lf-list">${around.map(a => `<li class="${a.on ? 'on' : ''}"><b>${esc(a.title)}</b><span>${esc(a.note || '')}</span></li>`).join('')}</ul>` : '')
         + (soon.length ? `<h3>Coming up</h3><ul class="lf-list soon">${soon.slice(0, 4).map(([n, e]) => `<li><b>${esc(e.title)}</b><span>${n === 1 ? 'Tomorrow' : `In ${n} days`} · ${e.dates ? `${e.dates[0][1]} ${MON[e.dates[0][0] - 1]}` : ''}${e.where ? ` · ${esc(e.where)}` : ''}</span></li>`).join('')}</ul>` : '')
+        + (D.tomorrow() ? `<h3>Tomorrow</h3><p class="lf-tomorrow">${esc(D.tomorrow())}</p>` : '')
         + `<h3>Pass the time</h3><div class="lf-pass-row">${passes.map(s => `<button class="btn" data-pass="${s}">Until ${SLOT_NAME[s].toLowerCase()}<span class="num">${hm(b[s])}${b[s] <= c.min ? ' +1' : ''}</span></button>`).join('')}</div>`
         + '<p class="note">The clock is the city\'s own. Nothing closes the streets: the hour only changes who is about and what is on.</p>';
     }
@@ -234,7 +246,8 @@ window.OEDay = (function () {
         acc = 0;
         check(false);
       },
-      key(code) { if (code === 'KeyJ') { diary ? closeDiary() : openDiary(); return true; } return false; },
+      // (at the wheel J is the autopilot's, issue #355: the diary is its button there)
+      key(code) { if (code === 'KeyJ' && (diary || ctx.player.mode !== 'car')) { diary ? closeDiary() : openDiary(); return true; } return false; },
       get open() { return !!diary; },
       close: closeDiary,
       reset() { last = { date: '', slot: '' }; },
