@@ -1018,7 +1018,7 @@ window.OpenEarthCity = async function main(cityId) {
     .then(() => OEWorld.uploadBuffers && OEWorld.uploadBuffers(renderer, world, camera, { target: post ? post.renderTarget1 : null })); // (then its vertex buffers, in slices)
   Promise.all([OEPlate.finish($('#loader')), warm.then(() => drawn)]).then(([flew]) => {
     $('#loader').classList.add('out');
-    setTimeout(() => { $('#loader').hidden = true; OEPlate.stop($('#loader')); }, reduced ? 0 : 700);
+    setTimeout(() => { $('#loader').hidden = true; OEPlate.stop($('#loader')); if (Wd.trees && Wd.trees.loadNear) Wd.trees.loadNear(); }, reduced ? 0 : 700); // (and then the near trees: the mid ones stand in, issue 335)
     playIntro(flew);
   });
 

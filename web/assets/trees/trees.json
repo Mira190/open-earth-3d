@@ -1,6 +1,10 @@
 {
  "note": "The trees every city shares, built by blender/build_trees.py. Nodes are <species>_LOD0..2; colour red is ambient occlusion, green how far the wind moves a vertex, blue a phase for the leaves' flutter. A city picks its mix of species in city.json 'trees'.",
  "file": "trees.glb",
+ "parts": {
+  "far": "trees_far.glb",
+  "near": "trees_near.glb"
+ },
  "lod_m": [
   130,
   520

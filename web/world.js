@@ -1661,20 +1661,21 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const shX = new THREE.Vector3(), shY = new THREE.Vector3(), shAt = new THREE.Vector3(), shTmp = new THREE.Vector3(), shZ = new THREE.Vector3();
     let shR = 0;
     // The haze at the model's edge in the colour of the sky at the horizon (away from the sun's
-    // glare, read back from a few pixels of the sky), and the sky's last few degrees above the
+    // glare: a few pixels of the sky, hazeOf below), and the sky's last few degrees above the
     // horizon in that haze: the city fades into the sky instead of ending in a grey band. Only
     // where the fog is mixed in linear light before the tone curve (the game's post stack sets
     // skyHaze); the viewer fogs after it and keeps its fixed colours.
-    let hazeRT = null, hazeOk = false, fogBase = null, hazeKey = null, hazeBusy = false;
+    let hazeRT = null, hazeOk = false, fogBase = null, hazeKey = null;
     const hazeCam = new THREE.PerspectiveCamera(8, 1, 0.1, 100), hazeC = new THREE.Color(), hazePx = new Float32Array(48);
     const hazeTarget = () => hazeRT || (hazeRT = new THREE.WebGLRenderTarget(6, 2, { type: THREE.FloatType }));
-    // the sky's program as this read and the light from the sky (PMREM) draw it, with no lights and into a target,
-    // compiled now, off the frame, rather than by the first read in the middle of the game's set-up (issue 299)
-    if (renderer.capabilities.isWebGL2) compile(renderer, envScene, hazeCam, { target: hazeTarget(), shadows: false });
-    // The three views side by side in one target, read back at once without stalling the frame (readAsync: a
-    // synchronous read waited for all the GPU's queued work, 1.8 s of the loader on a software renderer, issue 299),
-    // or at once (sync). Calls back with whether it is usable.
-    function readHaze(az, done, sync = false) {
+    // the sky's program as the light from the sky (PMREM) draws it, with no lights and into a target, compiled now,
+    // off the frame, rather than by the first new sky in the middle of the game's set-up (issue 299), where it would
+    // also wait behind the city's shaders compiling then (issue 327)
+    const skyReady = renderer.capabilities.isWebGL2 ? compile(renderer, envScene, hazeCam, { target: hazeTarget(), shadows: false }) : Promise.resolve();
+    // The pixels hazeOf works out, drawn and read back from the GPU (synchronously: it waits for the GPU's queue): only
+    // for tools/haze_check.js (api.hazeProbe), which holds the CPU's sum to this one. The three views side by side in
+    // one target. Returns the colour, or null.
+    function readHaze(az) {
       try {
         const rt = hazeTarget(), prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
         su.uHazeOn.value = 0;
@@ -1689,19 +1690,111 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         rt.scissorTest = false; rt.viewport.set(0, 0, 6, 2); rt.scissor.set(0, 0, 6, 2);
         renderer.setRenderTarget(prev);
         su.uHazeOn.value = on;
-        const use = px => {
-          let r = 0, g = 0, b = 0;
-          for (let i = 0; i < 48; i += 4) { r += px[i]; g += px[i + 1]; b += px[i + 2]; }
-          if (!(r + g + b > 0) || !isFinite(r + g + b)) return done(false);
-          hazeC.setRGB(r / 12, g / 12, b / 12);
-          done(true);
-        };
-        if (sync) { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); return; }
-        readAsync(renderer, rt, 0, 0, 6, 2, hazePx).then(use, () => {
-          try { renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx); use(hazePx); } catch (e) { done(false); } // (no fences: WebGL 1)
-        });
-      } catch (e) { done(false); }
+        renderer.readRenderTargetPixels(rt, 0, 0, 6, 2, hazePx);
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < 48; i += 4) { r += hazePx[i]; g += hazePx[i + 1]; b += hazePx[i + 2]; }
+        return r + g + b > 0 && isFinite(r + g + b) ? new THREE.Color(r / 12, g / 12, b / 12) : null;
+      } catch (e) { return null; }
     }
+    // The same haze worked out on the CPU (issue 327): the sky's shader (three.js's Sky, r186, with the changes made
+    // to it above) evaluated for the twelve pixels readHaze reads, from the uniforms as they stand. Nothing is read back
+    // from the GPU, so a new hour never waits for the GPU's queue: a synchronous read did, for every shader and upload
+    // queued before it (5 s of Kyoto's build on a software renderer), and an asynchronous one only moved that wait to
+    // its getBufferSubData. tools/haze_check.js holds it to the GPU's read (hazeProbe).
+    const hazeOf = (() => {
+      const TR = [5.804542996261093e-6, 1.3562911419845635e-5, 3.0265902468824876e-5], MIE = [1.8399918514433978e14, 2.7798023919660528e14, 4.0790479543861094e14];
+      const fract = x => x - Math.floor(x), mix = (a, b, t) => a + (b - a) * t, cl = (x, a, b) => Math.min(b, Math.max(a, x));
+      const sstep = (a, b, x) => { const t = cl((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+      const grad = (ix, iy) => { // Sky.js gradient(): its sinless hash
+        let p0 = fract(ix * 0.1031), p1 = fract(iy * 0.1030), p2 = fract(ix * 0.0973);
+        const d = p0 * (p1 + 33.33) + p1 * (p2 + 33.33) + p2 * (p0 + 33.33); p0 += d; p1 += d; p2 += d;
+        return [fract((p0 + p1) * p2) * 2 - 1, fract((p0 + p2) * p1) * 2 - 1];
+      };
+      const noise = (x, y) => {
+        const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+        const ux = fx * fx * fx * (fx * (fx * 6 - 15) + 10), uy = fy * fy * fy * (fy * (fy * 6 - 15) + 10);
+        const dg = (gx, gy, ox, oy) => { const g = grad(ix + gx, iy + gy); return g[0] * (fx - ox) + g[1] * (fy - oy); };
+        return mix(mix(dg(0, 0, 0, 0), dg(1, 0, 1, 0), ux), mix(dg(0, 1, 0, 1), dg(1, 1, 1, 1), ux), uy) * 1.6;
+      };
+      const fbm = (x, y, drift) => { let r = 0, a = 1; for (let i = 0; i < 4; i++) { r += a * noise(x, y); a *= 0.5; x = x * 2 + drift; y = y * 2 + drift; } return r; };
+      const val = (k, d = 0) => (su[k] ? su[k].value : d);
+      // the colour of the sky in the unit direction (dx, dy, dz), as the shader draws it with uHazeOn 0
+      function skyAt(dx, dy, dz, U_) {
+        const { sd, sunE, fade, bR, bM } = U_;
+        const zen = Math.acos(Math.max(0, dy)), inv = 1 / (Math.cos(zen) + 0.15 * Math.pow(93.885 - zen * 180 / Math.PI, -1.253));
+        const sR = 8.4e3 * inv, sM = 1.25e3 * inv, cosT = dx * sd[0] + dy * sd[1] + dz * sd[2];
+        const rP = 0.05968310365946075 * (1 + (cosT * 0.5 + 0.5) ** 2), g = U_.g, g2 = g * g;
+        const mP = 0.07957747154594767 * (1 - g2) / Math.pow(1 - 2 * g * cosT + g2, 1.5);
+        const disc = cl((cosT - 0.999956676946448443553574619906976478926848692873900859324) * 50000, 0, 1) * U_.disc;
+        const lo = cl(Math.pow(1 - sd[1], 5), 0, 1), out = [0, 0, 0], Fex = [0, 0, 0], Lin = [0, 0, 0], L0 = [0, 0, 0];
+        for (let c = 0; c < 3; c++) {
+          Fex[c] = Math.exp(-(bR[c] * sR + bM[c] * sM));
+          const ph = (bR[c] * rP + bM[c] * mP) / (bR[c] + bM[c]);
+          Lin[c] = Math.pow(sunE * ph * (1 - Fex[c]), 1.5) * mix(1, Math.pow(sunE * ph * Fex[c], 0.5), lo);
+          L0[c] = 0.1 * Fex[c] + sunE * 19000 * Fex[c] * disc;
+          out[c] = (Lin[c] + L0[c]) * 0.04 + [0, 0.0003, 0.00075][c];
+        }
+        if (dy > 0 && U_.cov > 0) { // the clouds
+          const elev = mix(1, 0.1, U_.cElev), ux = dx / (dy * elev) * U_.cScale + U_.time * U_.cSpeed, uy = dz / (dy * elev) * U_.cScale + U_.time * U_.cSpeed;
+          const cn = cl(fbm(ux * 1000, uy * 1000, U_.time * U_.cSpeed * 300) * 0.7 + 0.5, 0, 1), region = noise(ux * 300, uy * 300) * 0.37 + 0.5;
+          const cov = cl(U_.cov + (region - 0.5) * 0.6, 0, 1), th = 1 - cov, hf = sstep(0, 0.03 + 0.06 * U_.cElev, dy);
+          const mask = sstep(th, th + 0.3, cn) * hf, dayF = sstep(-0.08, 0.3, sd[1]), depth = Math.max(0, cn - th), beer = Math.exp(depth * -4);
+          const shade = mix(0.45, 1, cl(beer * (1 - beer * beer) * 2.6, 0, 1)), silver = cl(0.51 / Math.pow(1.49 - cosT * 1.4, 1.5), 0, 3), edge = mask * (1 - mask) * 4;
+          const alpha = (1 - Math.exp(depth * U_.cDensity * -12)) * hf;
+          for (let c = 0; c < 3; c++) {
+            const sunC = sunE * Fex[c] * 0.22 * 0.04, amb = Lin[c] * 0.04 + [0, 0.0003, 0.00075][c];
+            const cloud = (amb + sunC * shade + sunC * silver * edge * 0.6) * Math.max(dayF, 0.03);
+            out[c] -= L0[c] * 0.04 * alpha;
+            out[c] = mix(out[c], mix(out[c], cloud, Fex[c]), alpha);
+          }
+        }
+        // the changes made to the shader above: the tone curve and twilight, the saturation, golden hour, the night
+        const k = 1 / (1.2 + 1.2 * fade), tw = U_.tw, twK = 0.45 + 0.55 * Math.pow(1 - Math.max(dy, 0), 2);
+        for (let c = 0; c < 3; c++) out[c] = Math.pow(out[c], k) + tw[c] * twK;
+        const lum = v => 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+        let L = lum(out);
+        for (let c = 0; c < 3; c++) out[c] = Math.max(mix(L, out[c], U_.sat), 0);
+        if (U_.gold) {
+          L = lum(out);
+          const hl = Math.hypot(dx, dz) || 1e-4, sl = Math.hypot(sd[0], sd[2]) || 1e-4, dot = (dx * sd[0] + dz * sd[2]) / (Math.max(hl, 1e-4) * Math.max(sl, 1e-4));
+          const gTo = cl(0.5 + 0.5 * dot, 0, 1) ** 2, gLow = 1 - sstep(0, 0.5, Math.max(dy, 0)), gBand = 1 - sstep(0, 0.12, Math.max(dy, 0));
+          const hue = [0, 1, 2].map(c => mix(mix(mix(U_.cool[c], U_.cream[c], 0.9 * gBand), U_.belt[c], U_.beltK * gLow * gLow * (1 - gTo)), U_.warm[c], gTo * mix(0.25, 1, gLow * gLow)));
+          const hL = lum(hue);
+          for (let c = 0; c < 3; c++) out[c] = mix(out[c], hue[c] / hL * L, U_.gold);
+        }
+        if (U_.night) {
+          const t = Math.pow(cl(dy, 0, 1), 0.6);
+          for (let c = 0; c < 3; c++) out[c] = mix(out[c], mix(U_.nh[c], U_.nz[c], t), U_.night);
+        }
+        return out;
+      }
+      return az => {
+        const sp = su.sunPosition.value, sl = Math.hypot(sp.x, sp.y, sp.z) || 1, sd = [sp.x / sl, sp.y / sl, sp.z / sl];
+        const sunE = 1000 * Math.max(0, 1 - Math.exp(-((1.6110731556870734 - Math.acos(cl(sd[1], -1, 1))) / 1.5)));
+        const fade = 1 - cl(1 - Math.exp(sp.y / 450000), 0, 1), rc = val('rayleigh', 1) - (1 - fade);
+        const mieK = 0.434 * (0.2 * val('turbidity', 2) * 10e-18) * val('mieCoefficient', 0.005);
+        const arr = v => (v ? [v.r, v.g, v.b] : [0, 0, 0]);
+        const U_ = { sd, sunE, fade, bR: TR.map(t => t * rc), bM: MIE.map(m => m * mieK), g: val('mieDirectionalG', 0.8), disc: val('showSunDisc', 1),
+          cov: val('cloudCoverage', 0), cElev: val('cloudElevation', 0.5), cScale: val('cloudScale', 0.0002), cSpeed: val('cloudSpeed', 0.00002), cDensity: val('cloudDensity', 0.4), time: val('time', 0),
+          tw: arr(su.twilight.value), sat: val('uSkySat', 1), gold: val('uGold', 0), beltK: val('uGoldBeltK', 0), warm: arr(su.uGoldWarm.value), cool: arr(su.uGoldCool.value),
+          cream: arr(su.uGoldCream.value), belt: arr(su.uGoldBelt.value), night: val('uNightSky', 0), nz: arr(su.uNightZenith.value), nh: arr(su.uNightHorizon.value) };
+        // readHaze's three views (8° wide, 1.5° up; across from the sun and on either side), 2 x 2 pixels each, at
+        // their pixels' centres
+        const el = 1.5 * RAD, t = Math.tan(4 * RAD) * 0.5, sum = [0, 0, 0];
+        for (const turn of [0.5, 1, 1.5]) {
+          const a = az + turn * Math.PI, f = [Math.sin(a) * Math.cos(el), Math.sin(el), -Math.cos(a) * Math.cos(el)];
+          const rl = Math.hypot(f[2], f[0]), r = [-f[2] / rl, 0, f[0] / rl]; // right = forward x up
+          const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+          for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+            const d = [0, 1, 2].map(c => f[c] + sx * t * r[c] + sy * t * u[c]), dl = Math.hypot(...d);
+            const col = skyAt(d[0] / dl, d[1] / dl, d[2] / dl, U_);
+            for (let c = 0; c < 3; c++) sum[c] += col[c];
+          }
+        }
+        const r = sum[0] / 12, g = sum[1] / 12, b = sum[2] / 12;
+        return r + g + b > 0 && isFinite(r + g + b) ? hazeC.setRGB(r, g, b) : null;
+      };
+    })();
     // the water closes over the bottom under what is drawn over it: the aerial photograph has the same
     // bridge or expressway on the riverbed, and the shallow water of a river shows it through (the
     // Nihonbashi River under the Shuto, issues 65 and 234). The landmarks' up-facing faces over the
@@ -1766,6 +1859,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
       world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
+      hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -1817,24 +1912,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         // would otherwise rebuild it nearly every frame. The one held back waits for tick.
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`, now = performance.now();
         let newSky = key !== envKey && now - envAt >= (api.envEvery || 0);
-        // the haze read back without a stall (readHaze): the first sky is made at once, without it (what is compiled
-        // next needs a sky to be lit by, not its haze), and made again when it comes; a later one waits for it
-        // the haze read back: for a sky a step on from the last (the sun moving in play) without a stall, the new sky
-        // waiting the frame or two for it; for the first sky, made at once without it (what is compiled next needs a
-        // sky to be lit by, not its haze) and made again when it comes; for a jump (the clock set from the menu, a
-        // still, a film) at once, as before, so that the very next frame is the new hour's
+        // the haze for this sky, worked out at once (hazeOf), so the sky is made with its own haze
         if (newSky && api.skyHaze && hazeKey !== key) {
-          const first = !envRT, [ka, kz] = key.split('|').map(Number), [ea, ez] = envKey ? envKey.split('|').map(Number) : [NaN, NaN];
-          const step = !first && Math.abs(ka - ea) <= 1 && (Math.abs(kz - ez) <= 1 || Math.abs(kz - ez) >= 59);
-          if (!first && !step) readHaze(az, ok => { hazeOk = ok; hazeKey = key; }, true);
-          else {
-            const again = { sp: Object.assign({}, sp), minutes };
-            if (!hazeBusy) {
-              hazeBusy = true;
-              readHaze(az, ok => { hazeOk = ok; hazeKey = key; hazeBusy = false; if (first && ok) { envKey = ''; envWait = envWait || again; } });
-            }
-            if (!first) newSky = false;
-          }
+          hazeOk = !!hazeOf(az); hazeKey = key;
         }
         envWait = key !== envKey && !newSky ? { sp: Object.assign({}, sp), minutes } : null;
         su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
@@ -1986,7 +2066,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // shadows: the shadow pass's variant of each shadow caster too (the sun's depth program for its
   // material, skinned for a person, double-sided for a sail), which three.js otherwise compiles in the first
   // frame that draws the caster's shadow (issue 266); not for a mirror's or other pass that draws no shadows.
-  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null, shadows = !clip } = {}) {
+  // flight: how many programs may be compiling at once (FLIGHT); fewer behind other work, whose own synchronous GL calls
+  // wait for every program queued before them on a GPU that compiles one at a time (issue 327)
+  function compile(renderer, obj, camera, { scene = obj, target = null, clip = null, behind = false, hold = null, shadows = !clip, flight = FLIGHT } = {}) {
     if (!renderer.compileAsync) return Promise.resolve();
     const objs = [], casters = [];
     obj.traverse(o => {
@@ -2022,7 +2104,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           // (and no more than FLIGHT programs still being compiled at a time: the next shader's source otherwise waits
           // in the call that sends it until the GPU has caught up, a stall of seconds on a software renderer or a
           // device that compiles one at a time, issue 299; the slice ends and the next one waits for them instead)
-          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS) && inFlight() < FLIGHT) {
+          while (i < n && performance.now() - s0 < (behind ? SLICE_MS / 2 : SLICE_MS) && inFlight() < flight) {
             const add = m => { mats.add(m); const p = props.get(m).currentProgram; if (p && p.isReady && !p.isReady()) flying.add(p); };
             if (i < objs.length) for (const m of renderer.compile(objs[i++], camera, scene)) add(m);
             else { const j = i - objs.length, k = Math.min(casters.length, j + 24); for (const m of compileDepth(renderer, casters.slice(j, k), camera, scene)) add(m); i += k - j; }
@@ -2030,7 +2112,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         } catch (e) { console.warn('compile', e); }
         finally { unbind(was); }
         slices++; longest = Math.max(longest, performance.now() - s0);
-        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : inFlight() >= FLIGHT ? new Promise(r => setTimeout(r, 10)) : idle());
+        if (i < n) await (behind ? new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))) : inFlight() >= flight ? new Promise(r => setTimeout(r, 10)) : idle());
       }
       // then wait for the GPU to finish them (KHR_parallel_shader_compile), as compileAsync does
       const all = new Set(mats);
