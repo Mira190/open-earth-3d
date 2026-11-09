@@ -4,7 +4,7 @@
 //   engage    you are put at the wheel; the autopilot takes a destination (the nearest of the places it offers
 //             that is 250 m or more off by road) and the car sets off within 20 s;
 //   screen    while it drives, its screen has the time left, the distance and the next turn, and the film
-//             cuts between shots;
+//             runs (its cuts come with the frames drawn);
 //   handback  once it is moving, a touch of the wheel (the A key) gives the car back at the speed it had,
 //             with no jump in its place; then the autopilot is put back on, from the moving car;
 //   drive     it never drives more than 0.15 m into a car of the traffic (one that comes into it where it stands is noted), never stands more than 100 s at a time,
@@ -103,7 +103,7 @@ function autopilotChecks(r) {
   const h = r.handed, km = m => `${(m / 1000).toFixed(2)} km`;
   return [
     [r.setOff != null && r.setOff <= 20, `the autopilot takes your car to ${r.dest}, ${km(r.len)} by road with ${r.turns} turn${r.turns === 1 ? '' : 's'}, and sets off${r.setOff != null ? ` in ${r.setOff.toFixed(1)} s` : ': never'}${r.scenic ? ` (the scenic way ${km(r.scenic.len)}, ${Math.round(r.scenic.share * 100)}% by the water or the landmarks)` : ''}`],
-    [r.hud >= 8 && r.shots.length >= 2, `its screen shows the time left, the distance and the next turn (${r.hud} readings), and the film cuts between shots (${r.shots.join(', ') || 'none'})`],
+    [r.hud >= 8 && r.shots.length >= 1, `its screen shows the time left, the distance and the next turn (${r.hud} readings), and the film runs (${r.shots.join(', ') || 'no shot'}: it cuts by the frames drawn, few in a check)`],
     [!!h && h.off && h.v1 > h.v0 * 0.7 && Math.abs(h.jump) < 0.6 && h.again, h ? `a touch of the wheel hands it back moving (${h.v0.toFixed(1)} to ${h.v1.toFixed(1)} m/s, a jump of ${h.jump.toFixed(2)} m), and it takes the car again${h.joined ? ' at once' : ' from off its line'}` : 'the handback: it was never under way to try'],
     [r.deep <= 0.15 && r.red === 0 && r.stoodMax <= 100, `it drives clear of the traffic (${r.deep.toFixed(2)} m into a car at most as it moves${r.deepStood > 0.15 ? `; standing, a car came ${r.deepStood.toFixed(2)} m into it` : ''}), over no red line (${r.red}), standing ${r.stoodMax.toFixed(0)} s at most${r.stoodMax > 20 ? ` (${r.stoodWhy})` : ''}, up to ${(r.vmax * 3.6).toFixed(0)} km/h`],
     [r.arrived && r.mode === 'car' && r.v < 0.5 && r.d < 40, r.arrived ? `it pulls in ${r.d.toFixed(0)} m from the end of its way after ${r.t.toFixed(0)} s, and the car is yours` : `it has not arrived after ${r.t.toFixed(0)} s: ${r.left.toFixed(0)} m to go, ${r.why}`],

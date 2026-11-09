@@ -1243,7 +1243,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       else { const lead = leadOf(st, 5); return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5); }
     }
     const c = driverStep(o, dt);
+    // (a turn in the road, or backing out of a one-way street, held half a minute by what stands in its way: the car
+    // is handed back where it is, rather than taken on from another place as a ride out of your sight is)
+    if (o.turn && o.turn.held > 30) { pilotOff('The autopilot can\'t get round here. You have the wheel.'); return null; }
     if (o.drv !== o.turnsOf) { // (another way round a jam, or after turning round in the road)
+      // (the new way may start a little off where the car is: eased onto it from there, never put there)
+      o.off = { x: st.x - c.x, y: st.y - c.y, h: angDiff(st.h, c.h) };
       o.turns = OEAutopilot.turns(c.route, o.drv.path); o.turnsOf = o.drv; o.len = o.meter + c.end;
       if ((o.rerouted || 0) > (o.told || 0)) { o.told = o.rerouted; H.toast('<b>Autopilot:</b> traffic ahead, taking another way.'); }
     }

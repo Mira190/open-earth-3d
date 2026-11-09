@@ -2649,6 +2649,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             if (far) { respawn(c, cx, cy, radius * 0.6); continue; }
             c.stuck = STUCK + 1; // (turned round below, as from a jam; on a one-way street it waits to be out of sight)
           }
+          // (stood at a wall inside a junction, where it can neither turn round nor wait without holding every movement
+          // across it: after 20 s it leaves the traffic, in your sight or not. Fushimi Inari's junction 37 stood shut
+          // six minutes behind one, #355)
+          c.wallHold = why === 'wall' && c.v < 0.1 && c.mv ? (c.wallHold || 0) + dt : 0;
+          if (c.wallHold > 20) { c.wallHold = 0; respawn(c, cx, cy, radius * 0.6); continue; }
         }
         c.q = atLine || (why === 'person' && walker >= 0 && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q && !(front.line === c.line && front.dir !== c.dir) : why === 'you' && youQ)); // (not behind one coming the other way, queued at its own line: a wait on that is a narrow street's, turned round in the end, #283) // queueing at a junction (behind a car, or a ride, queueing there; or held by the crowd crossing at its line, not by you, who may stand there for good)
         // counted at its arm for the signals' max-pressure (junctions.js): queued, and whether the head of the queue waits for room beyond
