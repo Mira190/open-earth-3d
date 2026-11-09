@@ -94,7 +94,7 @@ async function lifeStep(p, check, city) {
       const fw = L.data.events.find(x => x.fx === 'fireworks' && x.at);
       if (fw && L.fx) {
         const md = fw.dates ? fw.dates[0] : fw.days[0];
-        g.setClock(c.y, md[0], md[1], fw.hours ? +fw.hours[0].slice(0, 2) * 60 + +fw.hours[0].slice(3) + 2 : D.bounds()[(fw.slots || ['night'])[0]] + 5);
+        g.setClock(c.y, md[0], md[1], fw.hours ? +fw.hours[0].slice(0, 2) * 60 + +fw.hours[0].slice(3) + 2 : D.bounds().night + 30);
         for (let i = 0; i < 8; i++) g.advance(0.5);
         out.fireworks = L.fx.alive(); out.fwOn = !!L.fx.on;
         g.setClock(c.y, md[0], md[1], 720); for (let i = 0; i < 12; i++) g.advance(0.5);

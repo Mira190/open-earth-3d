@@ -35,7 +35,7 @@ window.OEFx = (function () {
       if (ctx.A.thump && rnd() < 0.5) ctx.A.thump();
     }
     function tick(dt, paused, titled) {
-      if ((acc += dt) >= 1) { acc = 0; on = titled ? null : L.day.today().find(e => e.fx === 'fireworks' && e.at && L.day.onNow(e)) || null; }
+      if ((acc += dt) >= 1) { acc = 0; on = titled ? null : L.day.today().find(e => e.fx === 'fireworks' && e.at && L.day.onNow(e) && ctx.sun && ctx.sun.altitude < -2) || null; } // (after dark)
       if (!on && !pts) return;
       if (on && !pts) build();
       if (on && !paused && (next -= dt) <= 0) { next = 0.5 + rnd() * 1.1; launch(on); }
