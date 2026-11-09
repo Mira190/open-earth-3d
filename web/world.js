@@ -704,7 +704,13 @@ vec3 steepRock(vec3 c, float k) {
     const sunLight = new THREE.DirectionalLight(0xffffff, 2 * Math.PI); // intensities are physical since r155: π × the old values
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(SHADOW, SHADOW);
-    sunLight.shadow.bias = -0.0003;
+    // the depth bias moves what is lit towards the light, by bias × (far − near) metres: 2.7 m here. three.js's PCF
+    // lookup adds it to the depth as it is, so with a reversed depth buffer (the game's, where the light's depth runs
+    // from 1 at its near plane to 0 at its far one) the same number moves it 2.7 m away from the light instead: every
+    // surface then shadowed itself, in bands of light and dark wherever the sun was low over a flat roof (SHIBUYA
+    // SKY's deck in the morning). There a small bias the right way, 0.18 m, and the normal bias does the rest.
+    const depthR = renderer.state && renderer.state.buffers && renderer.state.buffers.depth;
+    sunLight.shadow.bias = depthR && depthR.getReversed && depthR.getReversed() ? 0.00002 : -0.0003;
     sunLight.shadow.normalBias = 1.0;
     const shCam = sunLight.shadow.camera;
     shCam.near = 10; shCam.far = 9000;

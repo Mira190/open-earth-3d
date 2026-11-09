@@ -37,6 +37,7 @@ import typology
 import wet_buildings
 from measured import IGNHeights
 from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons, trees_cfg
+from solid_rings import valid_rings
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, decks, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
@@ -1355,17 +1356,21 @@ def build(C):
             q = q.simplify(0.15, preserve_topology=True)
             if q.is_empty or q.area < 2 or h1 <= h0:
                 continue
+            q = shapely.geometry.polygon.orient(q, 1.0)
+            # valid on the decimetre grid it is stored on, or the browser draws one shape and the collision tests
+            # another (solid_rings.py)
+            rings = valid_rings([ring(q.exterior.coords)] + [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
+            if rings is None:
+                continue
             if hidden:
                 hidden_solids.append(len(solids))
             if bare:
                 bare_solids.add(len(solids))
-            q = shapely.geometry.polygon.orient(q, 1.0)
             cs = np.asarray(q.exterior.coords)
             # a building of a class that floats (water.floating: Amsterdam's houseboats) sits on the
             # water; others stand on the lowest ground under them
             zb = 0.0 if cls in floating or wet.get(b["id"], {}).get("kind") == "vessel" else max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
-            solids.append([bi, round(zb * 10), round(h0 * 10), round(h1 * 10), ring(q.exterior.coords)] +
-                          [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
+            solids.append([bi, round(zb * 10), round(h0 * 10), round(h1 * 10)] + rings)
             r0 = rec[0] if rec else b  # roof tags of the part, else of the building
             sinfo.append({k: r0.get(k) for k in ("roof_shape", "roof_height", "roof_direction", "roof_orientation", "roof_material", "num_floors")}
                          | {"parametric": src == "parametric", "part": bool(rec) and r0 is not b,
