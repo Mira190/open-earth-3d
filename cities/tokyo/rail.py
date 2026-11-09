@@ -766,9 +766,9 @@ SERVICES = [
      "line": {"ja": "東海道線", "en": "Tokaido Line"}},
     {"track": "tokaido-s", "stock": "e233t", "cars": 15, "every_s": 150, "offset_s": 4, "stops": False, "v_ms": 24,
      "line": {"ja": "東海道線", "en": "Tokaido Line"}},
-    {"track": "shinkansen-n", "stock": "n700s", "cars": 16, "every_s": 118, "offset_s": 88, "stops": False, "v_ms": 29,
+    {"track": "shinkansen-n", "stock": "hayate", "cars": 16, "every_s": 118, "offset_s": 88, "stops": False, "v_ms": 29,
      "line": {"ja": "東海道新幹線", "en": "Tokaido Shinkansen"}},
-    {"track": "shinkansen-s", "stock": "n700s", "cars": 16, "every_s": 118, "offset_s": 24, "stops": False, "v_ms": 29,
+    {"track": "shinkansen-s", "stock": "hayate", "cars": 16, "every_s": 118, "offset_s": 24, "stops": False, "v_ms": 29,
      "line": {"ja": "東海道新幹線", "en": "Tokaido Shinkansen"}},
 ]
 

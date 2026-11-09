@@ -287,14 +287,15 @@ heliport is in the area.
 
 **The railway at Yurakucho** (`web/game/trains.js`, `game.json` "trains"). From the map, travel to
 "Yurakucho Station, platform 4", or walk in under the tracks and up the stairs. Four kinds of train
-run on the eight tracks, each to its real length and livery:
+run on the eight tracks, each to its real length. The three commuter kinds wear their lines' colours; the
+high-speed train is not a copy of the real one:
 
 | Line | Stock | Cars | At Yurakucho |
 |---|---|---|---|
 | Yamanote (tracks 2, 3) | E235: steel with yellow-green doors | 11 | stops |
 | Keihin-Tohoku (1, 4) | E233-1000: a sky blue band | 10 | stops; its rapid trains run through from 10:30 to 15:30 |
 | Tokaido Main | E233-3000: orange over green | 15 | runs past |
-| Tokaido Shinkansen | N700S: white, two blue lines, a 10.7 m nose | 16 (400 m) | runs past |
+| Tokaido Shinkansen | a high-speed train of this project's own design: pearl white, a 9.5 m spearhead nose, an indigo line over a fine vermilion one | 16 (400 m) | runs past |
 
 After dark the cars' windows show their saloons' light. No figures are drawn in them.
 

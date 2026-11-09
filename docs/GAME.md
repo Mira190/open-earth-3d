@@ -2687,7 +2687,8 @@ deadlock or a meeting at a shared berth takes to show.
   ([2021](https://www.jreast.co.jp/press/2021/20210406_ho01.pdf)) and
   [鉄道コム on Yurakucho's](https://www.tetsudo.com/report/105/) (the Yamanote Line's in 2014),
   [Wikipedia, E235 series](https://en.wikipedia.org/wiki/E235_series) (20 m cars, 2.95 m wide, 3.62 m
-  high), JR Central's figures for the N700S (25 m cars, 3.36 m wide, a 10.7 m nose, 16 cars).
+  high), the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 16 cars); the high-speed
+  train drawn on it is this project's own design, not a model of an operator's stock.
 - Scrambles: [LIVE JAPAN on Shibuya Crossing](https://livejapan.com/en/in-tokyo/in-pref-tokyo/in-shibuya/article-a0002128/)
   (the cycle and the walk), [Wikipedia, Shibuya Crossing](https://en.wikipedia.org/wiki/Shibuya_Crossing)
   (1,000 to 3,000 people a walk), [乗りものニュース on its single diagonal](https://trafficnews.jp/post/122022),

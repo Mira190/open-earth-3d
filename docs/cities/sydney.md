@@ -357,7 +357,7 @@ drawn over it. `cities/sydney/rail.py` builds what the box stood for, on OpenStr
   are open along their backs behind a glass balustrade, between the columns that carry the roof:
   from platform 1 you look across the tracks and platform 2 to Sydney Cove, the Harbour Bridge on
   the left and the Opera House on the right. Benches with the station's name on their backs, the
-  name in white on orange hung over the platforms and facing the tracks, the platforms' boards and
+  name in white on a lit orange box hung by each platform's edge and facing across the tracks, the platforms' boards and
   indicators (`rail_signs.webp`), tube lights under the roof; blue tactile tiles and a yellow line along each edge.
 - **Stairs** from the concourse up to each platform; a tunnel's mouth at each end of the viaduct,
   where the City Circle goes underground.

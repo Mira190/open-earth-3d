@@ -47,13 +47,13 @@ window.OETrains = (function () {
   // Model frame: +z forward, +y up from the top of the rail, +x to the left. Each kind of car is a list of
   // [material, geometry]; the materials are shared by every kind.
   // Dimensions: JR East's 20 m commuter stock (E233, E235: 19.5 m body, 2.95 m wide, 3.62 m to the roof,
-  // floor 1.13 m over the rail, four pairs of doors a side 1.3 m wide) and JR Central's N700S (25 m cars,
-  // 3.36 m wide, 3.6 m high, the end cars 27.35 m with a nose of 10.7 m).
+  // floor 1.13 m over the rail, four pairs of doors a side 1.3 m wide); the high-speed train is a design of
+  // this project's own, to the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 3.6 m high).
   const STOCK = {
     e235: { len: 20, band: null, door: '#8fc31f', face: '#8fc31f', pan: [1, 4, 7, 9] },            // Yamanote: yellow-green doors and face
     e233k: { len: 20, band: ['#00a7e3'], door: null, face: '#00a7e3', pan: [1, 4, 7] },            // Keihin-Tohoku: a sky blue band
     e233t: { len: 20, band: ['#f68b1e', '#0d6b38'], door: null, face: '#f68b1e', pan: [2, 5, 8, 11, 13] }, // Tokaido: orange over green
-    n700s: { len: 25, shinkansen: true, pan: [4, 11] },
+    hayate: { len: 25, shinkansen: true, pan: [4, 11] }, // this project's own high-speed train (see shinkansen())
     // Sydney Trains' Waratah (A and B sets): eight double-deck cars of 20.4 m, 3.03 m wide and 4.41 m high, steel
     // with yellow doors and a yellow front
     waratah: { len: 20.4, deck2: true, door: '#f5a800', face: '#f5a800', pan: [2, 5] },
@@ -238,39 +238,46 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
     return g;
   }
 
+  // The high-speed train: a design of this project's own, to the Tokaido Shinkansen's loading gauge (25 m cars,
+  // 3.36 m wide, 3.6 m high, sixteen to a train) and no model of any operator's stock. A pearl-white shell on
+  // full skirts; a spearhead nose of 9.5 m that draws in to a rounded point, with the driver's canopy a dark
+  // teardrop raised on its back; one band of dark glass the length of each saloon; and along the side an indigo
+  // line over a fine vermilion one, which run down the nose to its tip.
   function shinkansen(S, role) {
     const K = OEKit, M = mats(), out = [], add = (m, g) => out.push([m, g]);
-    const Wd = 3.36, hw = Wd / 2, y0 = 0.28, top = 3.6;
-    const nose = role === 'head' || role === 'tail', s = role === 'tail' ? -1 : 1;
-    // the body: 24.5 m for a middle car; an end car's saloon is 14 m and its nose 10.7 m
-    const zb0 = nose ? -12.25 : -12.25, zb1 = nose ? 1.6 : 12.25, secs = [{ z: zb0, pts: section(hw, y0, top) }, { z: zb1, pts: section(hw, y0, top) }];
-    if (nose) { // the nose: the roof comes down in a long curve, the sides draw in, the tip a low wide lip
-      const N = 12;
-      for (let k = 1; k <= N; k++) {
-        const t = k / N, z = zb1 + 10.7 * t;
-        const h = top - (top - 1.05) * Math.pow(t, 1.35), w = hw * (1 - 0.72 * Math.pow(t, 2.6)), lift = y0 + 0.22 * t * t;
-        secs.push({ z, pts: section(Math.max(0.32, w), lift, Math.max(lift + 0.55, h)) });
-      }
-    }
+    const Wd = 3.36, hw = Wd / 2, y0 = 0.26, top = 3.6, NOSE = 9.5;
+    const nose = role === 'head' || role === 'tail', s = role === 'tail' ? -1 : 1, Z = z => s * z;
+    const zb0 = -12.25, zb1 = nose ? 2.75 : 12.25, secs = [{ z: zb0, pts: section(hw, y0, top) }, { z: zb1, pts: section(hw, y0, top) }];
+    const wAt = t => Math.max(0.2, hw * Math.pow(1 - Math.pow(t, 2.1), 0.8)), bump = t => 0.3 * Math.exp(-Math.pow((t - 0.3) / 0.13, 2));
+    const hAt = t => top - (top - 1.0) * Math.pow(t, 1.2) + bump(t) * (1 - t), lAt = t => y0 + 0.3 * t * t;
+    if (nose) for (let k = 1, N = 18; k <= N; k++) { const t = k / N; secs.push({ z: zb1 + NOSE * t, pts: section(wAt(t), lAt(t), Math.max(lAt(t) + 0.5, hAt(t))) }); }
     const g = loft(secs);
     if (s < 0) g.rotateY(Math.PI);
     add(M.white, g);
-    const Z = z => s * z;
-    // bogies under the skirts, the blue lines under the windows, the windows
-    for (const z of nose ? [-8.6, 1.0] : [-8.75, 8.75]) add(M.under, K.box(2.4, 0.5, 3.0, 0, 0.35, Z(z)));
-    const a = zb0 + 0.3, b = nose ? zb1 + 3.2 : zb1 - 0.3;
+    const a = zb0 + 0.3, b = nose ? zb1 - 0.2 : zb1 - 0.3, line = (m, y, r) => { // a line along the side, and on down the nose to its tip
+      for (const sx of [-1, 1]) {
+        add(m, K.box(0.03, 2 * r, b - a, sx * (hw + 0.008), y, Z((a + b) / 2)));
+        if (!nose) continue;
+        let p = [sx * (hw + 0.01), y, Z(b)];
+        for (let k = 0; k <= 14; k++) { const t = k / 15, q = [sx * (wAt(t) + 0.012), y - (y - 0.72) * t * t, Z(zb1 + NOSE * t)]; add(m, K.rod(p, q, r, r, 5)); p = q; }
+      }
+    };
+    line(paint('#1d2f6f'), 1.5, 0.075); line(paint('#d8432b'), 1.33, 0.022);
     for (const sx of [-1, 1]) {
       const x = sx * (hw + 0.008);
-      add(M.blue, K.box(0.03, 0.13, b - a, x, 1.62, Z((a + b) / 2)));
-      add(M.blue, K.box(0.03, 0.04, b - a, x, 1.47, Z((a + b) / 2)));
-      for (let z = a + 1.7; z < (nose ? zb1 - 0.4 : b - 1.6); z += 1.04) add(M.litS, K.box(0.02, 0.52, 0.58, x, 2.25, Z(z)));
-      add(M.white, K.box(0.03, 1.95, 0.75, x, 1.55, Z(a + 0.7))); // a door at the car's end
-      add(M.litS, K.box(0.036, 0.4, 0.3, x, 2.3, Z(a + 0.7)));
+      // the saloon's windows: one dark band, its panes lit from inside
+      add(M.black, K.box(0.014, 0.66, b - a - 3.0, x, 2.25, Z((a + b) / 2 + 0.3)));
+      for (let z = a + 2.1; z < b - 1.5; z += 1.3) add(M.litS, K.box(0.022, 0.52, 1.14, x, 2.25, Z(z)));
+      add(M.white, K.box(0.03, 1.95, 0.8, x, 1.6, Z(a + 0.75))); // a door at the car's end, its small window
+      add(M.black, K.box(0.034, 2.0, 0.03, x, 1.6, Z(a + 0.33))); add(M.black, K.box(0.034, 2.0, 0.03, x, 1.6, Z(a + 1.17)));
+      add(M.litS, K.box(0.036, 0.42, 0.3, x, 2.3, Z(a + 0.75)));
     }
-    add(M.roof, K.box(1.2, 0.08, (nose ? 12 : 23), 0, top + 0.02, Z(nose ? -5.5 : 0)));
-    if (role === 'pan') { add(M.white, K.box(2.6, 0.5, 5.0, 0, top + 0.2, 3.0)); pantograph(out, top + 0.3, 3.0); } // behind its noise shields
-    if (nose) { // the driver's windows high on the nose, and the lamps on its shoulders
-      add(M.glass, K.ellipsoid(0.82, 0.3, 1.25, 12, 8).rotateX(-0.36 * s).translate(0, 2.86, Z(zb1 + 2.75)));
+    add(M.roof, K.box(1.3, 0.06, nose ? 13 : 23.4, 0, top + 0.01, Z(nose ? -5.2 : 0)));
+    add(M.under, K.box(Wd * 0.7, 2.4, 0.5, 0, 1.9, Z(zb0 - 0.12))); // the gangway's bellows
+    if (role === 'pan') { for (const sx of [-1, 1]) add(M.white, K.box(0.12, 0.55, 5.4, sx * 1.25, top + 0.22, 3.0)); pantograph(out, top + 0.06, 3.0); } // between its two shields
+    if (nose) { // the canopy on the nose's back, and the lamps' housings low on its shoulders
+      add(M.glass, K.ellipsoid(0.78, 0.34, 1.7, 14, 8).rotateX(-0.2 * s).translate(0, hAt(0.3) - 0.12, Z(zb1 + NOSE * 0.33)));
+      for (const sx of [-1, 1]) add(M.black, K.ellipsoid(0.2, 0.09, 0.5, 10, 6).translate(sx * wAt(0.62) * 0.72, hAt(0.62) - 0.2, Z(zb1 + NOSE * 0.62)));
     }
     return out;
   }
@@ -422,8 +429,8 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
           K.n++;
           if (o.listener) { const l = o.listener(), dd = Math.hypot((fwd.x + aft.x) / 2 - l.x, (fwd.y + aft.y) / 2 - l.y, fwd.z + 1.5 - l.z); if (dd < tr.near) { tr.near = dd; tr.nx = (fwd.x + aft.x) / 2; tr.ny = (fwd.y + aft.y) / 2; } }
           if (i === 0 || i === s.cars - 1) { // white at the head, red at the tail
-            const e = i === 0 ? 1 : -1, hx = (fwd.x - aft.x) / (2 * half), hy = (fwd.y - aft.y) / (2 * half), ex = (fwd.x + aft.x) / 2 + hx * e * (s.S.shinkansen ? 9.5 : 9.85), ey = (fwd.y + aft.y) / 2 + hy * e * (s.S.shinkansen ? 9.5 : 9.85);
-            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * (s.S.shinkansen ? 0.75 : 0.95), ey + hx * sd * (s.S.shinkansen ? 0.75 : 0.95), fwd.z + (s.S.shinkansen ? 1.55 : s.S.deck2 ? 1.5 : 1.25), i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
+            const e = i === 0 ? 1 : -1, hx = (fwd.x - aft.x) / (2 * half), hy = (fwd.y - aft.y) / (2 * half), ex = (fwd.x + aft.x) / 2 + hx * e * (s.S.shinkansen ? 11.3 : 9.85), ey = (fwd.y + aft.y) / 2 + hy * e * (s.S.shinkansen ? 11.3 : 9.85);
+            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * (s.S.shinkansen ? 0.42 : 0.95), ey + hx * sd * (s.S.shinkansen ? 0.42 : 0.95), fwd.z + (s.S.shinkansen ? 0.95 : s.S.deck2 ? 1.5 : 1.25), i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
           }
         }
       }
