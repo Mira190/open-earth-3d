@@ -1860,11 +1860,17 @@ landmark's shell, with the shell's walls cut where its door and windows are (`pi
 
 - **The floor**, a strip (game.json `surfaces`), so that a walker stands on it at its own level, whatever
   the bare earth under the building does. Walls, pews, tables and counters are landmark meshes and stop a
-  walker as any landmark does (`web/game/nav.js`). The collision world's cells are a quarter of a metre and
-  a walker is 0.7 m across, so a doorway must leave about 1.25 m between its solid jambs; a narrower real
-  door (Williams Cottage's, 0.95 m) is drawn at its own width with the last few centimetres of wall either
-  side in a material that is not a wall to walkers (`solid: false`).
-- **The doors** (game.json `doors`: `{id, name, at, reach, time, leaves}`). Each leaf is the landmark's own
+  walker as any landmark does (`web/game/nav.js`). The collision world's cells are a quarter of a metre, and
+  a wall at an angle to them takes up to a cell more each side of a doorway in it: a real door narrower than
+  about 1.25 m (Williams Cottage's, 0.95 m, on walls at 44 degrees to the grid) would not let a walker 0.7 m
+  across through. So a door gives its doorway's frame (`frames`: `{a, b, t, z0, z1, top}`, the two jambs'
+  faces on the wall's middle line, the wall's thickness, the sill, the head and the wall's top;
+  `interiors.py doorway()`), and nav.js leaves the quarter-metre cells out within 0.6 m of the opening along
+  the wall and 0.3 m off its faces, from the sill up, and stands the jambs and the head there as exact boxes
+  (#326). `tools/game_check.js` checks each frame: a walker stands in the opening, and the wall 0.2 m past
+  each jamb is solid. The Skyline restaurant's 1.8 m sliding doors give none: its planted bed comes within
+  the frame's reach of the glass.
+- **The doors** (game.json `doors`: `{id, name, at, reach, time, leaves, frames}`). Each leaf is the landmark's own
   mesh, drawn shut, and not a wall. `web/game/doors.js` swings it on its hinge (`hinge`, `deg`) or slides it
   (`slide`) as someone on foot comes within `reach` metres, sooner the faster they come, and shuts it a moment
   after they have gone. Only you open them: the locals stand or sit where they are, and a diner at a table by the door would otherwise hold it open.
