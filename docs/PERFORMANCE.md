@@ -613,12 +613,22 @@ own; a copy cannot happen inside a pass, so the backend ends the pass, copies, a
 tile-based GPU (every Apple one, every phone) a pass that ends stores all four samples of colour and depth to memory
 and one that begins loads them back: 96 bytes a pixel each time. On the M3's full-screen Retina canvas (5.9 million
 pixels) that was about 3.4 GB of memory traffic a frame before anything was shaded, a third of a 100 GB/s memory's
-second, which alone holds a frame near 30 ms. Milford Sound at 960 x 540 (the same counts at any size, in proportion):
+second, which alone holds a frame near 30 ms. Each site's start at 960 x 540, high tier, the governor at its ceiling
+(`tools/reef_frame.js <site> start high 2`; the counts scale with the pixels; before: main as the telemetry saw it,
+b0313a6e; after: this work merged with main's lighter land shader). Pixels in targets: every pass's target, each sample
+counted; bytes: what those targets hold, which a pass that is ended and begun again stores and loads:
 
-| | passes | over the whole frame | pixels in targets | bytes the passes' targets hold |
-|---|---|---|---|---|
-| before | 49 | 13 | 17.0 M | 185 MB |
-| after | 44 | 8 | 6.6 M | 67 MB |
+| site | passes (over the whole frame) | pixels in targets | bytes | draws | triangles | SwiftShader GPU ms |
+|---|---|---|---|---|---|---|
+| Milford Sound | 49 (13) → 44 (8) | 17.0 M → 6.6 M | 185 → 67 MB | 362 | 0.95 M | 35 500 → 24 900 |
+| Lake Pukaki | 49 (13) → 44 (8) | 16.9 M → 6.5 M | 184 → 65 MB | 716 | 3.6 M | 15 600 → 15 700 |
+| Whitsundays | 47 (12) → 42 (7) | 15.9 M → 5.5 M | 177 → 58 MB | 196 | 1.6 M | 5 580 → 5 440 |
+| Hardy Reef | 47 (12) → 42 (7) | 15.9 M → 5.5 M | 177 → 58 MB | 170 | 0.38 M | 4 920 → 4 800 |
+
+SwiftShader's times barely move, as they should not: a CPU has no tile memory to store and reload, and the land is
+shaded the same at the same pixels (runs here vary by a fifth or more under load, so Milford's drop says little; main's
+land shader is measured in the section above). What the bytes save is a tile GPU's memory traffic, which only a real
+device's telemetry can time; what the governor saves is pixels, which the lab holds at its ceiling.
 
 By object (`ABLATE=1`, Milford Sound's start, after main's lighter land shader of the section above): the land is
 88% of the frame's GPU time, the water and its mirror (which draws the land again) 14%, the sky and the far land 7%
