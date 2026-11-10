@@ -81,11 +81,11 @@ MATERIALS = {
     "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.3, "chevron_m": 1.8, "emissive": "#fff4e6", "glow": 1.0},
     "tile_edge": {"color": "#d6ccb8", "roughness": 0.7, "metalness": 0.0},
     # topaz glass on bronze mullions, lit warm from the foyers after dark
-    "glass": {"color": "#3a2616", "roughness": 0.05, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.16, "opacity": 0.5,
+    "glass": {"color": "#4a3018", "roughness": 0.16, "metalness": 0.0, "emissive": "#ffc27a", "glow": 0.12, "opacity": 0.42,
               "pattern": "topaz_glass", "frame": "#4a3a2a", "transom_m": 2.7},
     "mullion": {"color": "#4d3c2b", "roughness": 0.5, "metalness": 0.7},
     # under the tiles: the precast ribs, off-form concrete, lit warm from the foyers after dark
-    "rib": {"color": "#cfc5b3", "roughness": 0.9, "metalness": 0.0, "emissive": "#ffc98a", "glow": 0.42},
+    "rib": {"color": "#c9bca6", "roughness": 0.9, "metalness": 0.0, "emissive": "#ffc98a", "glow": 0.42},
     # the bronze louvre walls round the nested shells: blades every 0.3 m
     "louvre": {"color": "#4a3a2b", "roughness": 0.5, "metalness": 0.6, "pattern": "granite", "joints_m": [0.0, 0.3]},
     # reconstituted granite (u, v metres): the podium's panels; treads with a pale nosing; risers
@@ -892,7 +892,7 @@ def opera_house(o, gaps=()):
     rims, caps = Mesh("opera_shell_rims", "tile_edge", False), Mesh("opera_shell_ridges", "tile_edge", True)
     glass = Mesh("opera_glass", "glass", False, floodlit=True, uv=True)
     ribs = Mesh("opera_shell_ribs", "rib", True, floodlit=True, uv=True)
-    ribs.sky, ribs.bounce = 0.5, MATERIALS["granite"]["color"]
+    ribs.sky, ribs.bounce = 0.34, "#a08468"
     louvres = Mesh("opera_louvres", "louvre", False, uv=True)
     deep = RIB_M[2] + 0.1
     for hall, ridges in o["halls"].items():

@@ -1,6 +1,6 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), into the rooms it
-// opens and out again (tools/interior_step.js), travel
+// opens and out again (tools/interior_step.js), take a seat and watch what plays before it (tools/seat_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
 // in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it (every
@@ -719,6 +719,17 @@ const npcNight = require('./npc_night');
     const rooms = await require('./interior_step')(p, { outDir, prefix: `${city}-` });
     for (const r of rooms) check(r.ok, `walks into ${r.name} and out again${r.dIn == null ? `: ${r.why}` : ` (the door ${(r.openIn * 100).toFixed(0)}% open in its doorway, ${r.dIn.toFixed(2)} m from the room's middle and ${r.dz.toFixed(2)} m off its floor, back out ${r.dOut.toFixed(2)} m from the start, the door ${r.shutAfter < 0.05 ? 'shut' : 'open'} after)${r.ok ? '' : `: ${r.why}`}`}`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
+  }
+
+  // the seats a city offers (game.json "seats": the Opera House's stalls, its foyers' chairs, a table at Bennelong):
+  // E takes each kind and you look out from it through your own eyes, E stands you up again; before a stage (game.json
+  // "shows") the performance begins, the house lights go down, the singer sings and the first line's surtitle shows
+  // (tools/seat_step.js). (a city with none skips it whole)
+  if (await p.evaluate(() => (window.__game.G.seats || []).length > 0)) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
+    const seats = await require('./seat_step')(p, { outDir, prefix: `${city}-` });
+    for (const r of seats) check(r.ok, `takes a seat: ${r.name}${r.ok ? ` (eyes ${r.eye.toFixed(2)} m over it${r.show ? `; the show runs to beat ${r.beat.toFixed(1)}, "${r.title}"` : ''})` : `: ${r.why}`}`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { mode: 'foot', x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
   // the doorways' frames (game.json doors[].frames, #326): the collision world's quarter-metre cells took up to a cell

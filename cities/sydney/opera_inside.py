@@ -44,7 +44,7 @@ FAR = 140   # the furnishings are drawn within this many metres
 MATERIALS = {
     # what the foyers are made of: brush box (the auditorium's carcass, the bars, the stairs), off-form concrete,
     # the signature carpets, bronze
-    "oh_brushbox": {"color": "#8a5a3c", "roughness": 0.5, "metalness": 0.0, "pattern": "granite", "joints_m": [2.4, 0.13], "emissive": "#ffc98a", "glow": 0.16, "glow_day": 0.06},
+    "oh_brushbox": {"color": "#8a5a3c", "roughness": 0.5, "metalness": 0.0, "pattern": "granite", "joints_m": [0.45, 0.0], "emissive": "#ffc98a", "glow": 0.16, "glow_day": 0.06},
     "oh_brushbox_floor": {"color": "#94603f", "roughness": 0.42, "metalness": 0.0, "pattern": "granite", "joints_m": [0.13, 2.4], "decal": True, "emissive": "#ffc98a", "glow": 0.1, "glow_day": 0.03},
     "oh_carpet_red": {"color": "#8e1f26", "roughness": 1.0, "metalness": 0.0, "decal": True, "emissive": "#ffb07a", "glow": 0.1, "glow_day": 0.02},
     "oh_carpet_purple": {"color": "#6a2460", "roughness": 1.0, "metalness": 0.0, "decal": True, "emissive": "#ffb0c8", "glow": 0.1, "glow_day": 0.02},
@@ -53,7 +53,7 @@ MATERIALS = {
     "oh_black": {"color": "#141314", "roughness": 0.9, "metalness": 0.0},
     "oh_velour": {"color": "#0d0c0e", "roughness": 1.0, "metalness": 0.0, "solid": False},
     "oh_birch": {"color": "#d9c49c", "roughness": 0.45, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "emissive": "#ffdcae", "glow": 0.3, "glow_day": 0.14},
-    "oh_birch_seat": {"color": "#d9c49c", "roughness": 0.5, "metalness": 0.0},
+    "oh_birch_seat": {"color": "#a8926c", "roughness": 0.5, "metalness": 0.0},
     "oh_wool_red": {"color": "#a3161d", "roughness": 1.0, "metalness": 0.0, "emissive": "#ff6a5a", "glow": 0.1, "glow_day": 0.05},
     "oh_wool_magenta": {"color": "#b01f6e", "roughness": 1.0, "metalness": 0.0, "emissive": "#ff6ab0", "glow": 0.1, "glow_day": 0.05},
     "oh_petal": {"color": "#c0207a", "roughness": 0.35, "metalness": 0.0, "emissive": "#ff5aa8", "glow": 0.35, "glow_day": 0.2},
@@ -97,7 +97,7 @@ UV = {k for k, v in MATERIALS.items() if "pattern" in v}
 HALLS = {
     "joan_sutherland": {"name": "Joan Sutherland Theatre", "id": "jst", "carpet": "oh_carpet_red", "wool": "oh_wool_red", "lining": "oh_black",
                         "stage": (29.5, 46.0, 8.6), "house": (73.5, 11.4), "rake": 2.5, "opening": (11.35, 7.1), "stage_m": 1.1,
-                        "ceiling": (6.6, 10.4), "bounce": "#5a1a1c", "kind": "theatre"},
+                        "ceiling": (6.6, 10.4), "bounce": "#7a5a48", "kind": "theatre"},
     "concert": {"name": "Concert Hall", "id": "ch", "carpet": "oh_carpet_purple", "wool": "oh_wool_magenta", "lining": "oh_brushbox",
                 "stage": (40.5, 55.0, 9.6), "house": (91.0, 14.6), "rake": 3.2, "opening": None, "stage_m": 0.9,
                 "ceiling": (9.0, 15.0), "bounce": "#6a4a30", "kind": "concert"},
@@ -341,10 +341,10 @@ def seat_model(wool):
     """A theatre seat facing +x: a white birch shell, wool on its seat and back."""
     shell, pad = Mesh("seat_shell", "oh_birch_seat", False), Mesh("seat_pad", wool, False, floodlit=True)
     I = ak.WORLD
-    ak.block(shell, I, -0.3, 0.22, -0.26, 0.26, 0.0, 0.4)
-    ak.block(shell, I, -0.34, -0.26, -0.26, 0.26, 0.4, 1.0)
+    ak.block(shell, I, -0.3, 0.2, -0.26, 0.26, 0.12, 0.4)
+    ak.block(shell, I, -0.34, -0.27, -0.26, 0.26, 0.2, 0.9)
     ak.block(pad, I, -0.26, 0.24, -0.23, 0.23, 0.4, 0.47)
-    ak.block(pad, I, -0.265, -0.2, -0.23, 0.23, 0.47, 0.98)
+    ak.block(pad, I, -0.275, -0.2, -0.23, 0.23, 0.47, 0.88)
     for m in (shell, pad):
         m.sky, m.bounce = 0.12, "#3a2a22"
     return [shell, pad]
@@ -354,10 +354,9 @@ def patron_model(cloth, hair):
     """Someone seated, facing +x: shoulders, neck and head over the seat's back, as the row behind sees them."""
     body, head, hr = Mesh("patron_body", cloth, False), Mesh("patron_head", "oh_skin", True), Mesh("patron_hair", hair, True)
     I = ak.WORLD
-    ak.block(body, I, -0.2, 0.06, -0.21, 0.21, 0.47, 1.02)
-    ak.block(body, I, -0.05, 0.3, -0.19, 0.19, 0.47, 0.62)
-    head.lathe([(1.02, 0.0), (1.02, 0.05), (1.1, 0.085), (1.18, 0.095), (1.25, 0.08)], (-0.06, 0.0), segs=8)
-    hr.lathe([(1.2, 0.097), (1.27, 0.085), (1.31, 0.05), (1.32, 0.0)], (-0.07, 0.0), segs=8)
+    ak.block(body, I, -0.2, 0.04, -0.21, 0.21, 0.47, 1.0)
+    head.lathe([(1.0, 0.045), (1.06, 0.05), (1.12, 0.085), (1.2, 0.092)], (-0.06, 0.0), segs=6)
+    hr.lathe([(1.17, 0.097), (1.25, 0.094), (1.3, 0.06), (1.32, 0.0)], (-0.07, 0.0), segs=6)
     for m in (body, head, hr):
         m.sky, m.bounce = 0.12, "#3a2a22"
     return [body, head, hr]
@@ -365,7 +364,7 @@ def patron_model(cloth, hair):
 
 # ---------------------------------------------------------------- a hall
 
-def hall_inside(key, shells, exterior, z0):
+def hall_inside(key, shells, exterior, z0, deck=None):
     """One hall's rooms. shells: city.hall_shells(); exterior: the shells' own meshes (for the envelope).
     Returns a dict: meshes, doors, rooms, surfaces, props, seats, gaps (where the glass walls stand open for the
     doors), and the places the game's people and its show stand (people)."""
@@ -390,7 +389,13 @@ def hall_inside(key, shells, exterior, z0):
 
     # ---- the floors: the signature carpet through the foyers
     outline = [(1.2, 0.0)] + [(pu[k], peds[k] - 0.5) for k in range(len(shells))] + [(Ltot - 0.8, 0.0)] + [(pu[k], -peds[k] + 0.5) for k in range(len(shells) - 1, -1, -1)]
-    flat(R.m(C["carpet"], "floor"), P, outline, 0.05)
+    carpet = Polygon(outline)
+    if deck is not None:   # and on to the podium's edge under the northern glass, which leans out from it
+        north = Polygon([(pu[-1], -peds[-1] + 0.5), (Ltot + 20, -peds[-1] + 0.5), (Ltot + 20, peds[-1] - 0.5), (pu[-1], peds[-1] - 0.5)])
+        edge = Polygon([loc(np.array(q, float)) for q in deck]).buffer(-0.45)
+        carpet = shapely.unary_union([carpet, north.intersection(edge)]).buffer(0.01)
+        carpet = max(getattr(carpet, "geoms", [carpet]), key=lambda g: g.area)
+    flat(R.m(C["carpet"], "floor"), P, list(carpet.exterior.coords)[:-1], 0.05)
     # (the game walks the hall's floor as a strip on the podium's roof: near one, web/game/nav.js reads the walls, the
     # doors and the furniture finely, from the deck up, and not as 2 m cells from the ground under the podium)
     out["surfaces"].append(strip(f"oh_{hid}_floor_{C['carpet']}", P, -5.0, Ltot + 2.5, -max(peds) - 1.0, max(peds) + 1.0, [(-5.0, 0.0), (Ltot + 2.5, 0.0)], C["name"]))
@@ -418,7 +423,7 @@ def hall_inside(key, shells, exterior, z0):
     T = 0.35
     for sgn in (-1, 1):
         env_wall(car, P, E, (us0, sgn * (hs + T)), (up, sgn * (hs + T)), 14.0)
-        env_wall(car, P, E, (up, sgn * (hs + T)), (up, sgn * (ha + T)), 12.0)
+        env_wall(car, P, E, (up - 0.25, sgn * (hs + T)), (up - 0.25, sgn * (ha + T)), 12.0)
         env_wall(lin, P, E, (us0, sgn * hs), (up, sgn * hs), 14.0)
     env_wall(car, P, E, (us0 - T, -hs - T), (us0 - T, hs + T), 14.0)
     env_wall(lin, P, E, (us0, -hs), (us0, hs), 14.0)
@@ -460,6 +465,12 @@ def hall_inside(key, shells, exterior, z0):
         grid.append(row)
     cm.grid(grid, [[[i * 2.0, j * 2.0 * ha / nv_] for j in range(nv_ + 1)] for i in range(nu_ + 1)])
     ceil_at = lambda u, v: min(c0 + (c1 - c0) * (1 - (v / ha) ** 2), E(u, v) - 0.9)
+    # and over the stage: the theatre's fly tower as high as the shell lets it stand, the hall's ceiling carried on over its platform
+    fly = 13.0 if C["kind"] == "theatre" else c1
+    sg = [[np.array(P(us0 + (up - us0) * i / 6, -hs + 2 * hs * j / 6, min(fly if C["kind"] == "theatre" else c0 + (c1 - c0) * (1 - ((-hs + 2 * hs * j / 6) / ha) ** 2),
+                                                                         E(us0 + (up - us0) * i / 6, -hs + 2 * hs * j / 6) - 0.9))) for j in range(7)] for i in range(7)]
+    cm.grid(sg, [[[i * 2.0, j * 2.0] for j in range(7)] for i in range(7)])
+    stage_top = lambda u, v: min(fly, E(u, v) - 0.9)
     # the house lights: downlights in the ceiling, dim
     for u in np.arange(up + 4, ur - 2, 5.0):
         for v in np.linspace(-ha + 3, ha - 3, 4):
@@ -497,7 +508,7 @@ def hall_inside(key, shells, exterior, z0):
             if keep_free:
                 out["seats"].append({"id": f"{hid}-stalls-{len(out['seats']) + 1}", "name": f"{C['name']}, the stalls", "verb": "Take your seat",
                                      "at": [round(x, 2), round(y, 2), round(z, 2)], "face": [round(float(-ax[0]), 4), round(float(-ax[1]), 4)],
-                                     "eye": 1.14, "pitch": -0.02, "show": f"{hid}-show"})
+                                     "eye": 1.14, "pitch": -0.02, **({"show": f"{hid}-show"} if C["kind"] == "theatre" else {})})
     out["props"].append(dict(name=f"oh_{hid}_seat", at=seats, parts=[m.dump() for m in seat_model(C["wool"])], far=110))
     for k, (cloth, hair) in enumerate((("oh_patron_dark", "oh_hair"), ("oh_patron_warm", "oh_hair"), ("oh_patron_pale", "oh_patron_pale"))):
         out["props"].append(dict(name=f"oh_{hid}_patron{k}", at=patrons[k], parts=[m.dump() for m in patron_model(cloth, hair)], far=90))
@@ -538,8 +549,9 @@ def hall_inside(key, shells, exterior, z0):
         # tiled eave, a blue sky cloth behind
         S = A.m
         sk = S("oh_set_sky", "set")
-        top = min(11.0, E(us0 + 1, 0) - 1.0)
-        sk.quad(P(us0 + 0.5, -hs + 0.3, sm), P(us0 + 0.5, hs - 0.3, sm), P(us0 + 0.5, hs - 0.3, top), P(us0 + 0.5, -hs + 0.3, top))
+        for j in range(6):   # the sky cloth, up into the flies
+            va, vb = -hs + 0.1 + (2 * hs - 0.2) * j / 6, -hs + 0.1 + (2 * hs - 0.2) * (j + 1) / 6
+            sk.quad(P(us0 + 0.5, va, sm), P(us0 + 0.5, vb, sm), P(us0 + 0.5, vb, stage_top(us0 + 0.5, vb)), P(us0 + 0.5, va, stage_top(us0 + 0.5, va)))
         wall_u = us0 + 4.0
         ak.holed_wall(S("oh_set_white", "set"), P, (wall_u, -hs + 0.3), (wall_u, 2.5), sm, sm + 5.4, [(hs - 0.3 - 4.2, 2.6, sm + 0.54, sm + 4.2, True)])
         box(S("oh_set_tile", "set"), P, wall_u - 0.25, wall_u + 0.45, -hs + 0.3, 2.5, sm + 5.4, sm + 5.75)
@@ -572,8 +584,10 @@ def hall_inside(key, shells, exterior, z0):
         cs = P(us0 + 12.6, -1.2, sm)
         out["people"][f"{hid}-carmen"] = [round(cs[0], 2), round(cs[1], 2), round(cs[2], 2)]
         sc = P(up, 0, sm + 1.6)
+        import json
+        score = json.load(open(os.path.join(HERE, "opera_score.json"), encoding="utf8"))
         out["show"] = {"id": f"{hid}-show", "venue": C["name"], "stage": [round(sc[0], 2), round(sc[1], 2), round(sc[2], 2)],
-                       "curtain": f"{hid}-curtain", "singer": f"{hid}-carmen"}
+                       "curtain": f"{hid}-curtain", "singer": f"{hid}-carmen", "dim": [f"oh_{hid}_aud_fit_oh_lamp"], **score}
     else:
         # the platform, the choir stalls rising behind it, and the Grand Organ on the south wall
         box(st, P, us0, us0 + 3.4, -hs, hs, sm, sm + 1.6)
@@ -729,29 +743,30 @@ def bennelong_inside(shells, exterior, z0):
     # the dining room: resin tables lit from within, along both arms of the glass and down the middle
     k = 0
     for u in np.arange(6.0, pu[0] + 2.5, 2.7):
-        w = peds[0] * min(1.0, u / pu[0]) - 2.0
+        w = peds[0] * min(1.0, u / pu[0]) - 3.4
         vs = [-w, w] if w > 1.6 else [0.0]
         if w > 5.2:
             vs += [-w + 3.0, w - 3.0] if w > 7.5 else [0.0]
         for v in vs:
-            if E(u, v) < 2.6 or abs(u - c[0]) < 3.0 and abs(v - c[1]) < 3.4:
+            if E(u, v) < 2.2 or abs(u - c[0]) < 3.0 and abs(v - c[1]) < 3.4:
                 continue
             table(R, P, u, v, 0.45)
             out_dir = np.array([-0.35, 1.0 if v > 0 else -1.0]) if abs(v) > 0.5 else np.array([-1.0, 0.0])
             out_dir /= np.linalg.norm(out_dir)
-            for sgn, mat in ((1, "oh_leather"), (-1, "oh_leather")):
-                side = np.array([-out_dir[1], out_dir[0]]) * 0.75 * sgn
-                q = np.array([u, v]) + side - out_dir * 0.25
-                f = (np.array([u, v]) - q) / np.linalg.norm(np.array([u, v]) - q)
-                k += 1
-                if k in (3, 8) and v < 0:   # a place for you, facing out over Circular Quay
-                    s = P(*q, 0)
-                    fw = ax * out_dir[0] + east * out_dir[1]
-                    out["seats"].append({"id": f"bennelong-{k}", "name": "Bennelong, a table by the glass", "verb": "Sit at the table",
-                                         "at": [round(s[0], 2), round(s[1], 2), round(s[2] + 0.02, 2)], "face": [round(float(fw[0]), 4), round(float(fw[1]), 4)], "eye": 1.12, "pitch": 0.0})
-                    chair(R, P, q[0], q[1], tuple(out_dir), "oh_felt")
-                else:
-                    chair(R, P, q[0], q[1], tuple(f))
+            k += 1
+            mine = k in (2, 5) and abs(v) > 0.5 and v < 0   # a place for you on the room's side of the table: the glass and Circular Quay before you
+            for sgn in (1, -1):
+                side = np.array([-out_dir[1], out_dir[0]]) * 0.78 * sgn
+                q = np.array([u, v]) + side
+                f = -side / np.linalg.norm(side)
+                chair(R, P, q[0], q[1], tuple(f))
+            if mine:
+                q = np.array([u, v]) - out_dir * 0.85
+                s = P(*q, 0)
+                fw = ax * out_dir[0] + east * out_dir[1]
+                out["seats"].append({"id": f"bennelong-{k}", "name": "Bennelong, a table by the glass", "verb": "Sit at the table",
+                                     "at": [round(s[0], 2), round(s[1], 2), round(s[2] + 0.02, 2)], "face": [round(float(fw[0]), 4), round(float(fw[1]), 4)], "eye": 1.12, "pitch": -0.06})
+                chair(R, P, q[0], q[1], tuple(out_dir), "oh_felt")
     for u, v in ((8.0, 0.0), (13.0, -3.0), (13.0, 3.0), (18.0, 0.0), (t0 + 4.0, 0.5)):
         if E(u, v) > 3.4:
             sphere_lamp(R, P, u, v, 2.6, 0.22)
@@ -766,7 +781,8 @@ def build(o, hall_shells, exterior):
     for key in ("joan_sutherland", "concert"):
         if key in o["halls"]:
             z0 = o["podium"]["top_m"]
-            parts.append(hall_inside(key, hall_shells(key, o["halls"][key], z0), exterior, z0))
+            deck = max(o["podium"]["decks"][1], key=lambda r: abs(Polygon(r).area))
+            parts.append(hall_inside(key, hall_shells(key, o["halls"][key], z0), exterior, z0, deck))
     if "restaurant" in o["halls"]:
         z0 = o["podium"]["low_m"]
         parts.append(bennelong_inside(hall_shells("restaurant", o["halls"]["restaurant"], z0), exterior, z0))
