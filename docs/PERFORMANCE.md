@@ -339,7 +339,14 @@ own beside it. Both are replaced by one governor (`web/quality.js` `OEQuality.go
   the interface stay at the display's resolution, and the lens upscales with a contrast-adaptive sharpening
   (the limiter of AMD's FidelityFX RCAS, MIT, written here: four more taps, only while the scale is under 1).
 - `governor.extras` (1, 0.5, 0) is how much of what a frame can do without is drawn: at 0.5 no far rain or
-  splashes, no wet-street mirror, the lighter contact shadows; at 0 no weather's drops and no contact shadows.
+  splashes, no wet-street mirror, the lighter contact shadows and two MSAA samples in place of four; at 0 no
+  weather's drops, no contact shadows and no MSAA (the sharpened upscale and the lens's grain hide the edges
+  there more cheaply than four samples a pixel).
+- The display's interval is taken only from gaps between animation frames shorter than a 60 Hz display's (a
+  90, 120 or 144 Hz display); otherwise it is a 60 Hz display's. The first version took the shortest gap seen,
+  and on a device that cannot keep up that gap is the frame's own time: it aimed at the slowness itself and
+  stopped stepping down after one step (found with `tools/governor_probe.js` once the software renderer's
+  frames had become fast enough to fall under the 100 ms it accepted).
 - Down: resolution to 0.8, then the extras, then resolution to 0.6. Up: vertical sync hides headroom, so after
   four calm seconds it tries a step up; a try that does not fit is taken back and the next waits twice as long
   (to a minute). Extras return at full resolution after a longer calm (the weather keeps what it shed until
