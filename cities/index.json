@@ -364,6 +364,20 @@
       "summary": "Lake Tekapo / Takapō, 36 by 52 km of the Mackenzie: LINZ's 1 m LiDAR terrain and aerial photos, the Church of the Good Shepherd, the sheepdog statue and Mt John's observatory modelled from the survey, lupins in their season and the dark-sky reserve's stars. Start at the church's postcard view, climb Mt John, find the Southern Cross."
     },
     {
+      "id": "milford-sound",
+      "name": "Milford Sound",
+      "native": "Piopiotahi",
+      "country": "New Zealand",
+      "lat": -44.635,
+      "lon": 167.9,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "district": "Fiordland National Park, Southland",
+      "tagline": "Mitre Peak a mile out of the sea, and a ship under the falls",
+      "timezone": "Pacific/Auckland",
+      "summary": "Milford Sound / Piopiotahi, 20 by 20 km of Fiordland: the fiord from the Tasman Sea to the Cleddau on LINZ's open terrain and imagery, rainforest on walls a kilometre high, Stirling Falls with a rainbow in its spray, fair-weather cumulus, gulls, lupins on the river flats, and a 40 m ship that sails the day cruise's line. Ride her out under Mitre Peak."
+    },
+    {
       "id": "new-york",
       "name": "New York",
       "country": "United States",

@@ -143,6 +143,7 @@
     ]
   },
   "game": {
+    "weather": {"rain_days": [5.7, 6.3, 11.0, 10.7, 11.1, 13.5, 12.0, 8.8, 12.7, 12.1, 8.6, 6.2], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Yokohama, for Kamakura: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm", "temp_max": [10.2, 10.8, 14.0, 18.9, 23.1, 25.5, 29.4, 31.0, 27.3, 22.0, 17.1, 12.5], "temp_min": [2.7, 3.1, 6.0, 10.7, 15.5, 19.1, 22.9, 24.3, 21.0, 15.7, 10.1, 5.2], "wind_ms": [3.6, 3.7, 3.9, 3.9, 3.6, 3.2, 3.4, 3.4, 3.4, 3.4, 3.3, 3.4], "wind_from_deg": 0, "snow_days": [4.9, 7.0, 3.4, 0.1, 0, 0, 0, 0, 0, 0, 0, 2.3], "snow_share": 0.3, "thunder_days": [0.2, 0.3, 0.9, 1.1, 1.5, 0.8, 2.0, 2.8, 2.3, 0.8, 0.6, 0.5], "fog_days": [0.1, 0.4, 0.6, 0.6, 0.3, 0.3, 0.2, 0.2, 0.2, 0.3, 0.7, 0.1], "typhoon_days": [0, 0, 0, 0, 0.1, 0.2, 0.4, 0.9, 1.0, 0.6, 0.1, 0], "more": "Yokohama, for Kamakura: temperatures, wind, and days with snow (any solid precipitation seen, sleet and flurries among them), thunder and fog: the same JMA 1991-2020 table (data.jma.go.jp/stats/etrn/view/nml_sfc_ym.php), read November 2026. The wind's bearing is the commonest of the year (north; south-west from June to August). A smaller share of its snow days bring snow that falls as snow (snow_share): the coast is milder than the station."},
     "title": "Shichirigahama on Foot",
     "local_name": "Kamakura local",
     "water_name": "Sagami Bay",
