@@ -1,9 +1,10 @@
 {
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#2b4e86"},
   "spots": [
     {"id": "crossing", "name": "The Kamakurakokomae crossing", "native": "鎌倉高校前1号踏切", "at": [-446, 178], "look": [-446, 60], "lookUp": -4, "lines": {"any": ["The crossing at Kamakurakokomae, from the hill road. The road drops to the rails, and past the rails there is only the sea."]}},
-    {"id": "platform", "name": "Kamakurakokomae Station", "native": "鎌倉高校前駅", "at": [-572, 143], "look": [-1900, -250], "lookUp": 8, "lines": {"any": ["Kamakurakokomae Station. One platform, one track, and the whole of Sagami Bay in front of it, with Enoshima to the west."]}},
+    {"id": "platform", "plush": {"mode": "held"}, "name": "Kamakurakokomae Station", "native": "鎌倉高校前駅", "at": [-572, 143], "look": [-1900, -250], "lookUp": 8, "lines": {"any": ["Kamakurakokomae Station. One platform, one track, and the whole of Sagami Bay in front of it, with Enoshima to the west."]}},
     {"id": "beach", "name": "Shichirigahama beach", "native": "七里ヶ浜", "at": [330, -60], "look": [-1900, -250], "lookUp": 20, "lines": {"any": ["Shichirigahama. Dark sand, a long swell coming in, and Enoshima lying on the horizon."]}},
     {"id": "cape", "name": "Inamuragasaki", "native": "稲村ヶ崎", "at": [1640, -318], "look": [-1900, -250], "lookUp": 25, "lines": {"any": ["Inamuragasaki. From the cape the coast road runs west along the bay, all the way to Enoshima."], "dusk": ["People come to the cape for this hour: Enoshima goes black against the sky, and on a clear evening Fuji stands behind it."]}},
-    {"id": "harbour", "name": "Koshigoe fishing harbour", "native": "腰越漁港", "at": [-1477.5, 22.5], "look": [-1900, -250], "lookUp": 12, "lines": {"any": ["The sea wall at Koshigoe's fishing harbour. Enoshima is so near from here that you could row to it."]}}
+    {"id": "harbour", "plush": {"mode": "held"}, "name": "Koshigoe fishing harbour", "native": "腰越漁港", "at": [-1477.5, 22.5], "look": [-1900, -250], "lookUp": 12, "lines": {"any": ["The sea wall at Koshigoe's fishing harbour. Enoshima is so near from here that you could row to it."]}}
   ]
 }

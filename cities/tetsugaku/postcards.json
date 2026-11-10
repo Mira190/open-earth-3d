@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#e58fa6"},
   "spots": [
     {"id": "start", "name": "The Philosopher's Path, the north end", "native": "哲学の道", "at": [203.2, 1030.6], "look": [204, 930], "lookUp": 2, "lines": {"any": ["The north end of the Philosopher's Path. A professor used to walk here every day to think. I mostly thought about lunch."]}},
     {"id": "path", "name": "The Philosopher's Path", "native": "哲学の道", "at": [178.3, 298.1], "look": [204, 400], "lookUp": 1, "lines": {"any": ["On the Philosopher's Path. The canal beside it runs north, which feels wrong in Kyoto, and the trees lean in from both banks."]}},

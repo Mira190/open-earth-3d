@@ -57,6 +57,12 @@ const src = {};
 for (const id of games) { const f = path.join(ROOT, 'cities', id, 'postcards.json'); if (fs.existsSync(f)) src[id] = JSON.parse(fs.readFileSync(f, 'utf8')).spots; }
 const stale = Object.keys(M.cities).filter(id => !src[id] || M.cities[id].some(s => { const q = src[id].find(x => x.id === s.id); return !q || q.name !== s.name || JSON.stringify(q.lines || {}) !== JSON.stringify(s.lines) || q.at[0] !== s.at[0] || q.at[1] !== s.at[1]; }));
 check('data: the index is up to date with cities/<id>/postcards.json (python pipeline/postcards.py index)', !stale.length, stale);
+// the traveller in every map's stills, who signs its cards, is one tools/plush.js can make
+{
+  const kinds = fs.readFileSync(path.join(ROOT, 'tools/plush.js'), 'utf8');
+  const bad = Object.keys(M.cities).filter(id => { const f = (M.friends || {})[id]; return !f || !f.name || !f.what || !new RegExp(`\\n    ${f.kind}: \\{`).test(kinds); });
+  check('data: every map names its traveller in the index, of a kind tools/plush.js makes', !bad.length, bad);
+}
 
 // ------------------------------------------------------------ the journey
 {
@@ -137,13 +143,13 @@ check('data: the index is up to date with cities/<id>/postcards.json (python pip
     const card = () => p.evaluate(() => {
       const v = document.getElementById('ts-postview'), img = v.querySelector('.pv-photo img'), r = v.querySelector('.pv-card').getBoundingClientRect(), g = v.querySelector('.pv-go').getBoundingClientRect();
       return { open: !v.hidden, src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth === 960, where: v.querySelector('.pv-where').textContent, name: v.querySelector('h2').textContent,
-        when: v.querySelector('.pv-when').textContent, line: v.querySelector('.pv-line').textContent, n: v.querySelector('.pv-n').textContent, thumbs: v.querySelectorAll('.pv-album button').length,
+        when: v.querySelector('.pv-when').textContent, line: v.querySelector('.pv-line').textContent, from: v.querySelector('.pv-from').textContent, n: v.querySelector('.pv-n').textContent, thumbs: v.querySelectorAll('.pv-album button').length,
         wide: Math.round(r.width), over: Math.round(Math.max(0, r.right - innerWidth, -r.left)), go: [Math.round(g.width), Math.round(g.height)], sel: (document.querySelector('.ts-item[aria-current="true"] .nm') || {}).textContent || '' };
     });
     await p.waitForFunction(() => { const i = document.querySelector('.pv-photo img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 30000 }).catch(() => {});
     const c1 = await card();
     check(`${name}: opening it shows the oldest unread card, its picture loaded, with its place, time and line`,
-      c1.open && c1.loaded && c1.where && c1.name && /\d\d:\d\d .*Sun \d+° (up|down)/.test(c1.when) && c1.line.length > 30 && c1.n === '2 / 4' && c1.thumbs === 4, c1); // (the album's second card: one was read before, three are new)
+      c1.open && c1.loaded && c1.where && c1.name && /\d\d:\d\d .*Sun \d+° (up|down)/.test(c1.when) && c1.line.length > 30 && /^From the road · \S+, the /.test(c1.from) && c1.n === '2 / 4' && c1.thumbs === 4, c1); // (the album's second card: one was read before, three are new)
     check(`${name}: the card fits the screen, and Go there is a thumb's size`, c1.over === 0 && c1.go[1] >= 44, c1);
     await p.keyboard.press('ArrowRight');
     await p.waitForTimeout(300);

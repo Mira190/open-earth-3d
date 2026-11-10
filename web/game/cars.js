@@ -565,7 +565,30 @@ window.OECars = (function () {
         if (events && vn < -1.5) events.push({ type: 'bump', what, speed: -vn });
       }
     }
-    return { st, step, box: () => boxOf(st, C.half, C.hw, C.top) };
+    // carried along by a driver's state c (a chauffeur's st: the autopilot), off by o { x, y, h } while it eases
+    // onto the driver's line: the place, the heading and the speed are the driver's, kept here as this car's own,
+    // so that the wheel handed back finds the car moving as it was
+    function follow(dt, c, o) {
+      const ph = st.h, v0 = st.v;
+      st.x = c.x + (o ? o.x : 0); st.y = c.y + (o ? o.y : 0); st.h = c.h + (o ? o.h : 0);
+      // (on the ground a walker would stand on there, where it is within a step and a half of the road's own height: the
+      // wheel handed back must find the car on a floor its own step can drive on, and a road drawn a little under
+      // the ground's surface does not sink it)
+      const f = nav.floorAt(st.x, st.y, c.z + 1.6);
+      st.z = f && f.z > c.z - 1.5 ? (Math.abs(f.z - st.z) < 1 ? st.z + (f.z - st.z) * Math.min(1, dt * 12) : f.z) : c.z;
+      st.v = c.v; st.vx = Math.sin(st.h) * c.v; st.vy = Math.cos(st.h) * c.v; st.speed = Math.abs(c.v);
+      st.r = dt > 0 ? angDiff(st.h, ph) / dt : 0; st.steer = c.steer || 0; st.brake = !!c.brake; st.slip = 0; st.vz = 0; st.air = false; st.reverse = c.v < -0.05; st.grip = 1;
+      const sp = Math.abs(st.v);
+      let k = 1;
+      while (k < SHIFT.length - 1 && sp > SHIFT[k]) k++;
+      st.gear = st.v < -0.3 ? 0 : k;
+      const band = st.gear ? (sp - SHIFT[k - 1]) / (SHIFT[k] - SHIFT[k - 1]) : sp / 9, pull = dt > 0 ? clamp((st.v - v0) / dt / 2.6, 0, 1) : 0;
+      st.rpm += (clamp(0.18 + 0.72 * band + 0.12 * pull, 0.15, 1) - st.rpm) * Math.min(1, dt * 6);
+      st.pull = pull;
+      st.pitch += ((c.pitch || 0) - st.pitch) * Math.min(1, dt * 8);
+      st.roll += (0 - st.roll) * Math.min(1, dt * 8);
+    }
+    return { st, step, follow, box: () => boxOf(st, C.half, C.hw, C.top) };
   }
 
   // ------------------------------------------------------------ the road network: routes
@@ -652,7 +675,8 @@ window.OECars = (function () {
     // shun: lines to keep off where there is another way (a ride re-routing round a jam).
     // loose: on the search along any street, against a one-way street and through a banned turn at no extra
     // cost, as before (the way a ride comes for you, out of your sight; with you in it, never)
-    function route(a, b, limit = 6000, edges = adj, shun = null, loose = false) {
+    // (weight: a factor on each piece's cost, by line, or null: the autopilot's scenic way, autopilot.js scenic)
+    function route(a, b, limit = 6000, edges = adj, shun = null, loose = false, weight = null) {
       const la = L[a.line], lb = L[b.line], segs = [];
       if (a.line === b.line && a.dir === b.dir && (b.s - a.s) * a.dir >= 0) segs.push([a.line, a.s, b.s]);
       else {
@@ -681,11 +705,11 @@ window.OECars = (function () {
             // way found keeps to the one-way streets but for the fewest metres it must: a navigator's way
             // in to a street the map lets no car reach, not 300 m against the traffic)
             const wrong = edges !== adj && !loose && L[li].ow && L[li].ow !== dir ? WRONG : 1;
-            const nd = d + L[li].len * (loose ? 1 : ROUTE_CLS[L[li].c] || 1.3) * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? UTURN : 0) + (ban && edges !== adj && !loose ? 400 : 0) + (p && !back && !loose ? turnCost(p[1], p[2], li, dir) : 0);
+            const nd = d + L[li].len * (loose ? 1 : ROUTE_CLS[L[li].c] || 1.3) * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) * (weight ? weight[li] : 1) + (back ? UTURN : 0) + (ban && edges !== adj && !loose ? 400 : 0) + (p && !back && !loose ? turnCost(p[1], p[2], li, dir) : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
-        if (!found) return edges === adj ? route(a, b, loose ? limit : limit * 3 + 12000, all, shun, loose) : null;
+        if (!found) return edges === adj ? route(a, b, loose ? limit : limit * 3 + 12000, all, shun, loose, weight) : null;
         const chain = [];
         for (let v = goal; v !== start; v = prev.get(v)[0]) chain.push(prev.get(v));
         chain.reverse();
@@ -964,7 +988,10 @@ window.OECars = (function () {
     }
     return changed ? Object.assign({}, route, { pts, nodes, mids, len: pts.reduce((s, q, i) => s + (i ? Math.hypot(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1]) : 0), 0) }) : route;
   }
-  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, makeWay = null, wedge = WEDGE_GIVE, lights = null, priority = false, now = null } = {}) {
+  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, makeWay = null, wedge = WEDGE_GIVE, lights = null, priority = false, now = null, strict = false, id = 'ride' } = {}) {
+    // (strict: the autopilot of your own car, always in your sight: its guard against stepping into a car reads its
+    // body as it is turned, not only as its way is, so that creeping on out of a tangle it never clips one on a bend.
+    // id: its name among the traffic's blockers, game.js: a car that stands for it is not one stopped for good)
     route = uTurns(route, keep);
     const ruledQ = !hurry; // (a queue held by a rule of the road, not only one at a junction, is waited in: with you in it, not on the way to you, which keeps its time)
     const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, held: 0, end: P.len, route, P,
@@ -1094,7 +1121,7 @@ window.OECars = (function () {
         // (nor one whose car ahead is moving off: a queue that has begun to move, its tail not yet off)
         const oq = queueing(o, ruledQ), oc = o.of || o;
         // (nor one that stands waiting on this very ride: it is not stopped for good, and the ride backs off for it instead, game.js)
-        const stopped = !oq && !(oc.why === 'you' && /^ride/.test(oc.youBy || '')) && !(o.front && (o.front.v || 0) >= 0.5) && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - (a + half) > 2 * C.half + 8 || !o.stay); // (not one parked where it is to pull in: one parked short of it, with room past it to pull back in to the kerb, it goes round, and pulls in beside you, not 20 m back behind it)
+        const stopped = !oq && !(oc.why === 'you' && (oc.youBy || '').startsWith(id)) && !(o.front && (o.front.v || 0) >= 0.5) && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - (a + half) > 2 * C.half + 8 || !o.stay); // (not one parked where it is to pull in: one parked short of it, with room past it to pull back in to the kerb, it goes round, and pulls in beside you, not 20 m back behind it)
         // (side by side, clear; a stopped car in its lane is judged by the lane, not by where it has
         // swung out to: else, once out, it would count as clear, swing back in, and so on every frame)
         if (Math.abs(w - lane - (stopped ? 0 : st.shift)) >= room) continue;
@@ -1424,12 +1451,17 @@ window.OECars = (function () {
       // two (makeWay), every 2 s; only after WEDGE_GIVE, a knot nothing undoes, does it go on at a crawl
       if (solid && !dry && st.s > s0) { // (swinging out round a car too: its line keeps a hand's width clear of the one it goes round, but not of one stopped across it beyond, or coming nose to nose)
         const d1 = solid(q.x, q.y, q.z, Math.atan2(q.hx, q.hy));
-        if (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01 && (st.wedged += dt) < wedge) {
+        // (strict: deeper too as the body is turned now, where its way bends and the body has yet to come round)
+        // (and by any step at all: a hundredth of a metre a step let it in at a crawl)
+        const d2 = strict ? solid(q.x, q.y, q.z, st.h) : 0, deeper = strict ? (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.ph ?? st.h) + 5e-4) || (d2 > 0.02 && d2 > solid(st.x, st.y, st.z, st.h) + 5e-4)
+          : d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01;
+        if (deeper && (st.wedged += dt) < wedge) {
           if (makeWay && st.wedged > 2 && Math.floor(st.wedged / 2) !== Math.floor((st.wedged - dt) / 2)) makeWay(q.x, q.y, q.z, Math.atan2(q.hx, q.hy), C.half, C.hw);
           st.s = s0; st.lat = lat0; st.v = 0; st.brake = true;
           pose(st.s, q, st.lat);
-        } else if (d1 <= 0.02) st.wedged = 0;
+        } else if (d1 <= 0.02 && d2 <= 0.02) st.wedged = 0;
       }
+      st.ph = Math.atan2(q.hx, q.hy);
       // it faces the way it moves, never round to a step that goes back (a car does not spin on the spot)
       const h0 = st.h, mh = Math.atan2(q.x - st.x + q.hx * 0.01, q.y - st.y + q.hy * 0.01);
       // and turns no faster than its steering lets it at its speed (a turning circle of 4.5 m)
@@ -1468,7 +1500,9 @@ window.OECars = (function () {
       return T[lo] + (T[hi] - T[lo]) * (s - S[lo]) / Math.max(1e-6, S[hi] - S[lo]);
     }
     const timeLeft = () => (st.done ? 0 : Math.max(0, timeAt(st.end) - timeAt(st.s)) + (st.end < P.len - 1 ? 1.5 : 0));
-    return { st, update, finish, jump, leave, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
+    // where it would be at s on its own line (the lane, the kerbs at the ends): out { x, y, z, hx, hy }
+    const poseAt = (s, out) => pose(s, out, lat(s));
+    return { st, update, finish, jump, leave, poseAt, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
   return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };

@@ -11,7 +11,8 @@
 // (tools/scramble_step.js), walk down into a sunken promenade and back up (tools/promenade_walk.js), hear the walk signals' calls (tools/walkcalls_step.js), watch and hear the trains at a station (tools/trains_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
 // with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
-// a one-way street to the junction behind (tools/reverse_step.js), swing the
+// a one-way street to the junction behind (tools/reverse_step.js), send your own car somewhere on its autopilot
+// (tools/autopilot_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
 // (no movement left standing in one for more than two cycles), live a day of the daily life (tools/life_step.js: the day
@@ -32,6 +33,7 @@ const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1170,6 +1172,11 @@ const npcNight = require('./npc_night');
     out.single = !other; // (a city whose first map this is: its other districts are still to build, greyed)
     const prim = el && el.querySelector('.mt-pick .primary');
     out.travel = !!prim && !!other && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    // a district that shares this map (Sangenjaya, on Shibuya's): named as on this map, not as the map itself
+    // (the hop to it stays in the map: tools/district_title_shot.js makes it)
+    const meta = ((window.OE_CITIES || []).find(c => c.group_meta && c.group_meta.kind === 'metro' && [...el.querySelectorAll('.mt-chip')].some(b => b.dataset.mapid === c.id)) || {}).group_meta;
+    const share = el && meta && [...el.querySelectorAll('.mt-stn.here')].find(st => !st.querySelector('.mt-you') && meta.districts[+st.dataset.district].travel);
+    if (share) { share.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })); const em = el.querySelector('.mt-pick .mt-name em'), b = el.querySelector('.mt-pick .primary'); out.shared = !!em && /^On the .+ map$/.test(em.textContent) && !!b && !!b.dataset.arrive; }
     key('Escape', 'Escape');
     out.closed = !document.querySelector('.ts-mfull') && !OEMetro.isOpen() && document.getElementById('g-menu').hidden;
     btn.click(); out.byButton = OEMetro.isOpen(); OEMetro.close();
@@ -1178,7 +1185,7 @@ const npcNight = require('./npc_night');
     out.byMenu = OEMetro.isOpen() && document.getElementById('g-menu').hidden; OEMetro.close();
     return out;
   });
-  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, Esc closes it (${JSON.stringify(mt)})`);
+  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.shared !== false && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, one that shares this map says so, Esc closes it (${JSON.stringify(mt)})`);
 
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
@@ -2111,6 +2118,20 @@ const npcNight = require('./npc_night');
     check(!!rg.card && /^Go to /.test(rg.card), `a district's pin offers to go to its map (${rg.card || 'no card'})`);
     check(rg.listed === rg.stations, `the travel list has the other districts (${rg.listed})`);
     check(rg.back === 1, '"This district" shows this map again');
+  }
+
+  // the autopilot of your own car (#355, tools/autopilot_step.js): sent to a place a few hundred metres off by
+  // road, it sets off, shows its screen, hands the car back at a touch of the wheel, drives clear of the traffic
+  // and the red lights, and pulls in there
+  {
+    const ap = await p.evaluate(autopilotStep, { log: true }), apc = autopilotChecks(ap);
+    if (process.env.CHAIN || apc.some(([ok]) => !ok)) for (const l of ap.log || []) console.log(`  autopilot: ${l}`); // (its log, when a check of it fails)
+    for (const [ok, what] of apc) check(ok, what);
+    await shot('autopilot');
+    // and the driver assists when you drive yourself: lane keeping and adaptive cruise, hands off for 40 s
+    const as = await p.evaluate(assistStep, { log: !!process.env.CHAIN });
+    for (const l of as.log || []) console.log(`  assist: ${l}`);
+    for (const [ok, what] of assistChecks(as)) check(ok, what);
   }
 
   // the traffic dodges your car (issue 335): your car put in a moving car's lane 26 m ahead, coming at it at
