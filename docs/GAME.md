@@ -58,6 +58,11 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
 | ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
 
+A game can also start from a postcard: the title screen's pile of them
+([POSTCARDS.md](POSTCARDS.md)) opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
+where the photograph was taken, with "As on the postcard" offered as the time to start at. A
+map's passport lists the postcards that have come from it.
+
 ## Playing
 
 | Keys | What they do |
