@@ -391,24 +391,66 @@ test and upload only the slots taken (`actors.js`).
   replaced with the same words is still a style and layout pass); the minimap repaints 30 times a second at
   most (`game.js`, `hud.js`).
 
-### Before and after
+### Lights that are dark
 
-On foot at the start, 15:30, clock held, high tier, 1440 x 900 (`FOOT=1 FREEZE=1 tools/frame_cost.js`); main is
-0dd48803:
+Every light in the scene is in every lit shader whatever its intensity. `tools/light_cost.js` takes them out and
+measures (Shibuya's scramble at 13:00, high tier, software renderer, median frame): the two spotlights (the
+car's headlamp, the helicopter's searchlight) and the night's fill, dark by day, cost nothing that can be
+measured. The screens' eight area lights and the light card did: 3,557 ms with them, 3,058 ms without, a seventh
+of the frame, for a light held to 6% of its night's strength by day. Rather than a second set of programs for
+the day (compiled ahead, twice the shaders), the area lights' loop passes over a light whose colour is zero
+(`lens.js` `loopAreaLights`: a test of a uniform), and the screens' light fades to nothing in full daylight
+(`neon.js`). The same view then takes 3,053 ms with every dark light in the scene, and taking them out gains
+nothing more. Day, dusk and night stills of the scramble match.
 
-| | Sydney, main | Sydney, after | Shibuya, main | Shibuya, after |
-|---|---|---|---|---|
-| full-screen passes | 69 | 66 | 71 | 18 |
-| full-size passes after the scene | 4 | 1 | 4 | 1 |
-| bytes the full-screen passes write a frame | 70 MB | 40 MB | 90 MB | 29 MB |
-| draws | 420 | 416 | 420 | 360 |
-| triangles | 3.33 M | 3.26 M | 7.61 M | 4.34 M |
-| pixels shaded | 31.3 M | 27.4 M | 33.7 M | 26.4 M |
+### Every live city, before and after
 
-Sydney keeps its sea (the harbour is in the frame); Shibuya, with no ground at sea level, loses the ocean's 45
-passes and its sheet, and two fifths of its triangles were walkers and cars outside the frame. Stills of
-the scramble by day and in the rain at night, and of Sydney's quay and the city from the air, match main's:
-the same people in the same places.
+On foot at the start, 15:30, clock held, 1440 x 900 (`tools/frame_sweep.sh`), main (0dd48803) → after
+(90aa3ea0; Kamakura is new since). The sea's cities (Sydney, Tokyo, Queenstown, Kamakura) keep the ocean's 45
+small passes while water is in the frame; the others have none. The low tier's frame by day in a city with no
+sea is the scene and one pass.
+
+| city | tier | full-screen passes | draws | triangles (M) | pixels shaded (M) | passes write (MB) |
+|---|---|---|---|---|---|---|
+| fushimi-inari | high | 69 → 18 | 260 → 194 | 2.06 → 0.74 | 31.06 → 26.39 | 70 → 29 |
+| fushimi-inari | medium | 67 → 16 | 284 → 196 | 2.06 → 0.75 | 15.24 → 10.57 | 65 → 24 |
+| fushimi-inari | low | 63 → 1 | 243 → 198 | 1.90 → 0.56 | 11.44 → 6.69 | 47 → 5 |
+| higashiyama | high | 69 → 18 | 323 → 235 | 2.85 → 1.33 | 31.06 → 26.39 | 70 → 29 |
+| higashiyama | medium | 67 → 16 | 316 → 228 | 2.83 → 1.31 | 15.24 → 10.57 | 65 → 24 |
+| higashiyama | low | 63 → 1 | 310 → 210 | 2.75 → 1.20 | 11.44 → 6.69 | 47 → 5 |
+| kamakura | high | new: 66 | new: 196 | new: 0.69 | new: 27.18 | new: 40 |
+| kamakura | medium | new: 64 | new: 216 | new: 0.69 | new: 11.35 | new: 36 |
+| kamakura | low | new: 49 | new: 194 | new: 0.55 | new: 7.48 | new: 16 |
+| kyoto | high | 69 → 18 | 373 → 279 | 2.91 → 1.78 | 31.06 → 26.39 | 70 → 29 |
+| kyoto | medium | 67 → 16 | 333 → 277 | 2.83 → 1.77 | 15.24 → 10.57 | 65 → 24 |
+| kyoto | low | 63 → 1 | 322 → 293 | 2.63 → 1.66 | 11.44 → 6.69 | 47 → 5 |
+| queenstown | high | 69 → 66 | 610 → 555 | 3.82 → 2.77 | 31.33 → 27.44 | 70 → 40 |
+| queenstown | medium | 67 → 64 | 608 → 549 | 3.78 → 2.73 | 15.50 → 11.61 | 65 → 36 |
+| queenstown | low | 63 → 49 | 632 → 525 | 2.50 → 1.40 | 11.70 → 7.74 | 47 → 16 |
+| shibuya | high | 69 → 18 | 415 → 360 | 7.60 → 3.50 | 31.06 → 26.39 | 70 → 29 |
+| shibuya | medium | 67 → 16 | 417 → 372 | 7.61 → 3.53 | 15.24 → 10.57 | 65 → 24 |
+| shibuya | low | 63 → 1 | 373 → 304 | 4.23 → 2.47 | 11.44 → 6.69 | 47 → 5 |
+| shinjuku | high | 69 → 18 | 370 → 301 | 3.99 → 2.43 | 31.06 → 26.39 | 70 → 29 |
+| shinjuku | medium | 67 → 16 | 356 → 310 | 3.96 → 2.46 | 15.24 → 10.57 | 65 → 24 |
+| shinjuku | low | 63 → 1 | 317 → 253 | 3.69 → 2.17 | 11.44 → 6.69 | 47 → 5 |
+| sydney | high | 69 → 66 | 419 → 416 | 3.19 → 2.17 | 31.33 → 27.44 | 70 → 40 |
+| sydney | medium | 67 → 64 | 417 → 414 | 3.19 → 2.16 | 15.50 → 11.61 | 65 → 36 |
+| sydney | low | 63 → 49 | 436 → 386 | 3.13 → 2.02 | 11.70 → 7.74 | 47 → 16 |
+| tetsugaku | high | 69 → 18 | 452 → 386 | 2.91 → 1.97 | 31.06 → 26.39 | 70 → 29 |
+| tetsugaku | medium | 67 → 16 | 450 → 384 | 2.90 → 1.96 | 15.24 → 10.57 | 65 → 24 |
+| tetsugaku | low | 63 → 1 | 503 → 374 | 2.59 → 1.66 | 11.44 → 6.69 | 47 → 5 |
+| tokyo | high | 69 → 66 | 595 → 596 | 4.35 → 2.68 | 31.33 → 27.44 | 70 → 40 |
+| tokyo | medium | 67 → 64 | 593 → 586 | 4.35 → 2.66 | 15.50 → 11.61 | 65 → 36 |
+| tokyo | low | 63 → 49 | 542 → 554 | 3.98 → 2.35 | 11.70 → 7.74 | 47 → 16 |
+
+The main thread's time in the frame's callbacks was 10 to 105 ms before and 12 to 105 ms after on the software
+renderer, with a run-to-run spread as large as any difference (the rasteriser's threads share the cores): it
+says nothing either way here. What changed on the main thread is in "The main thread" above; a browser's
+profiler on a real device is where to measure it.
+
+Stills of the same views before and after differ only in what moves between two runs: Sydney's quay at day,
+dusk and night on each tier and on a phone, the city from the air, Shibuya's scramble by day, at dusk, at
+night and in the rain (the same people in the same places).
 
 ## Next, by what it saves for what it risks
 
