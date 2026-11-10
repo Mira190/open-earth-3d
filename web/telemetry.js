@@ -449,7 +449,7 @@ window.OETelemetry = (function () {
     }
   }
   // a view's own account of its GPU frame (the WebGPU pages): ms per frame, draws, triangles, passes, canvas pixels
-  function gpu(o) {
+  function gpuFrame(o) {
     if (!o || !activeNow() || cur.frames.n < 10) return;
     const f = cur.frames;
     if (o.ms > 0 && o.ms < 1000) put(f.gpu, o.ms);
@@ -639,5 +639,5 @@ window.OETelemetry = (function () {
   // the first view once the page's scripts are in (so its events carry the quality tier)
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', view, { once: true }); else view();
   alive();
-  return { on: true, track, flush, view, set, gpu, gpuName, frames: () => (cur ? cur.frames.n : 0), here: () => (cur ? cur.here : null), sample };   // frames, here, sample: for tools/telemetry_check.js
+  return { on: true, track, flush, view, set, gpu: gpuFrame, gpuName, frames: () => (cur ? cur.frames.n : 0), here: () => (cur ? cur.here : null), sample };   // frames, here, sample: for tools/telemetry_check.js
 })();
