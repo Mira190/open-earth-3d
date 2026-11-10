@@ -1424,10 +1424,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       for (let i = 0; i < api.active && k < n; i++) {
         const p = P[i];
         if (p.line < 0 || p.state !== 'walk' || p.pz || p.kerbNext || p.kerbBack || Math.abs(p.z - door.z) > 1.5 || Math.hypot(p.x - door.x, p.y - door.y) > 16) continue;
-        if (nav && !nav.walk(door.x, door.y, p.z).ok) break; // (a door no walker can reach: over a wall, in the road's middle)
+        if (wall && wall(door.x, door.y, p.z)) break; // (a door no walker can reach: in a wall)
         p.state = 'board'; p.seat = { x: door.x, y: door.y, z: door.z, h: 0, by: i, open }; p.bt = 0; k++;
       }
-      const q = m > 0 ? nearest(door.x, door.y, 14) : null;
+      const q = m > 0 && net.nearest ? net.nearest(door.x, door.y, 14, door.z) : null; // (the footway by the door)
       for (let i = api.active - 1, j = 0; q && i >= 0 && j < m; i--) {
         const p = P[i];
         if (p.line < 0 || p.state !== 'walk' || p.pz || Math.hypot(p.x - cx, p.y - cy) < radius * 0.55) continue;
@@ -2832,7 +2832,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
             } else if (crowd && !(c.zebraOff > 0) && c.v * c.v / 8 < toStop + 0.5) hold = onStripes(X);
             // a level crossing (junctions.js addRail), open: the rails kept clear. With whatever is ahead (a queue, a
             // red light beyond) leaving no room for the whole car past the far rail, it waits at the line, never on them
-            if (!hold && X.rail && toStop > 0.3 && gap < 39.5 && gap < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5 && !(front && front.v > 3)) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
+            // (the room the car ahead will make in a second or so counts, not its going on: one that stopped in a queue
+            // just past left the car behind it on the rails, Queenstown)
+            if (!hold && X.rail && toStop > -0.3 && gap < 39.5 && gap + (front ? Math.min(front.v, 8) * 1.2 : 0) < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
             if (hold) {
               const g = toStop + 2.4;
               if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.rail ? 'rails' : X.sig ? 'light' : 'zebra'; }

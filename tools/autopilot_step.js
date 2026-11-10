@@ -117,7 +117,10 @@ async function autopilotStep({ log = false, far = 250, limit = 420, fresh = true
     }
     if (log && t % 5 === 0) out.log.push(`${t}s s=${d.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.speed.toFixed(1)} ${o.join ? 'joining' : d.why || ''} ${o.hud ? `[${o.hud.turn} · ${Math.round(o.hud.eta)} s]` : ''} film ${o.film.name}`);
     // the handback: a touch of the wheel, once it is well under way
-    if (!handed && !o.join && st.speed > 4 && t > 6 && !d.mv) {
+    // (where the car's body has room, and the next 6 m ahead of it: a few streets pinch narrower than a car where a landmark's fine walls stand
+    // into them, which the road's width pass does not see; the autopilot passes on its line, a car you drive does not)
+    const fits = () => { const fx = Math.sin(st.h), fy = Math.cos(st.h); for (const k of [c.C.half - c.C.hw, 0, c.C.hw - c.C.half, 2, 4, 6]) { const x = st.x + fx * k, y = st.y + fy * k, q = g.nav.push(x, y, st.z, c.C.hw + 0.04, 1.6); if (Math.hypot(q.x - x, q.y - y) > 0.02) return false; } return true; };
+    if (!handed && !o.join && st.speed > 4 && t > 6 && !d.mv && fits()) {
       const v0 = st.speed, x0 = st.x, y0 = st.y;
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', key: 'a' }));
       g.advance(0.1);
@@ -171,46 +174,74 @@ async function assistStep({ log = false, fresh = true } = {}) {
   // (from the kerb by the map's first landmark, as the autopilot's check starts)
   if (fresh && g.landmarks && g.landmarks[0] && g.travelTo && g.travelTo(g.landmarks[0])) { for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25); g.advance(8); if (g.player.mode !== 'car') seat(); }
   if (g.player.mode !== 'car') return { none: 'not at the wheel after travelling to a landmark' };
-  // up to speed, in its lane (as lane keeping reads it), clear of a junction: towards each place offered in turn, a minute each (after 30 s
-  // a shorter clear stretch will do: lanes with a junction every 50 m)
-  let t = 0, up = false, tried = 0;
-  for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) {
-    if (tried >= 3) break;
-    if (!(g.pilotTo(d, { quiet: true }) && g.pilot().len > 200)) { g.pilotOff(); continue; }
-    tried++;
-    for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st; if (q && !o.join && st.speed > (t < 30 ? 4 : 3) && !q.mv && !(q.toLine < (t < 30 ? 30 : 12)) && Math.abs(q.shift) < 0.1 && o.drv.remaining() > (t < 30 ? 120 : 60) && (() => { const L = g.laneHere(st); if (!L || Math.abs(L.d) >= 0.8 || Math.abs(L.dh) >= 0.3) return false;
-      // (and no wall across the way 60 m on: a street shut off at its end, where lane keeping goes straight on)
-      const fx = Math.sin(st.h), fy = Math.cos(st.h);
-      for (let a = 3; a < 60; a += 2) { const x = st.x + fx * a, y = st.y + fy * a, w = g.nav.push(x, y, st.z, 0.3, 1.6); if (Math.hypot(w.x - x, w.y - y) > 0.01) return false; }
-      return true; })()) { up = true; break; } }
-    if (up) break;
-    g.pilotOff();
-  }
-  if (!tried) return { none: 'no place to drive towards' };
-  if (!up) { g.pilotOff(); return { none: 'the car never got up to speed on a clear stretch' }; }
-  // handed over where your car rolls on by itself for a second: a wall on a narrow street can stand into the lane
-  // its driver follows (the autopilot's car goes by it on the lane's line; the car that you drive meets it). If it
-  // stops, the autopilot takes it on 60 m and hands it over again, four times at most
-  out.walls = 0;
-  for (let k = 0; ; k++) {
-    const o = g.pilot(), dest = o && o.dest;
-    g.pilotOff();
-    const v0 = st.speed;
-    for (let i = 0; i < 4; i++) g.advance(0.25);
-    if (st.speed > v0 * 0.6 || k >= 4 || !dest) break;
-    out.walls++;
-    if (!g.pilotTo(dest, { quiet: true })) break;
-    for (let i = 0; i < 160 && g.pilot() && (g.pilot().join || g.pilot().drv.st.s < 60 || st.speed < 3); i++) g.advance(0.25);
-    if (!g.pilot()) break;
-  }
+  const getGoing = () => {
+    // up to speed, in its lane (as lane keeping reads it), clear of a junction: towards each place offered in turn, a minute each (after 30 s
+    // a shorter clear stretch will do: lanes with a junction every 50 m)
+    let up = false, tried = 0, t = 0;
+    for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) {
+      if (tried >= 3) break;
+      if (!(g.pilotTo(d, { quiet: true }) && g.pilot().len > 200)) { g.pilotOff(); continue; }
+      tried++;
+      for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st; if (q && !o.join && st.speed > (t < 30 ? 4 : 3) && !q.mv && !(q.toLine < (t < 30 ? 30 : 12)) && Math.abs(q.shift) < 0.1 && o.drv.remaining() > (t < 30 ? 120 : 60) && (() => { const L = g.laneHere(st); if (!L || Math.abs(L.d) >= 0.8 || Math.abs(L.dh) >= 0.3) return false;
+        // (and no wall across the way 60 m on: a street shut off at its end, where lane keeping goes straight on)
+        // (along the way it is driving, not straight ahead: a winding street meets a facade at every bend)
+        const P = o.drv.path, at = {};
+        for (let a = 3; a < 60; a += 2) { P.at(Math.min(P.len, q.s + a), at); const w = g.nav.push(at.x, at.y, st.z, 0.3, 1.6); if (Math.hypot(w.x - at.x, w.y - at.y) > 0.01) return false; }
+        // (and straight ahead for 25 m, where lane keeping goes on as the way turns: a street shut off at its end, Kyoto)
+        const fx = Math.sin(st.h), fy = Math.cos(st.h);
+        for (let a = 3; a < 25; a += 2) { const x = st.x + fx * a, y = st.y + fy * a, w = g.nav.push(x, y, st.z, 0.3, 1.6); if (Math.hypot(w.x - x, w.y - y) > 0.01) return false; }
+        return true; })()) { up = true; break; } }
+      if (up) break;
+      g.pilotOff();
+    }
+    if (!tried) return 'no place to drive towards';
+    if (!up) { g.pilotOff(); return 'the car never got up to speed on a clear stretch'; }
+    // handed over where your car rolls on by itself for a second: a wall on a narrow street can stand into the lane
+    // its driver follows (the autopilot's car goes by it on the lane's line; the car that you drive meets it). If it
+    // stops, the autopilot takes it on 60 m and hands it over again, four times at most
+    out.walls = out.walls || 0;
+    for (let k = 0; ; k++) {
+      const o = g.pilot(), dest = o && o.dest;
+      g.pilotOff();
+      const v0 = st.speed;
+      for (let i = 0; i < 4; i++) g.advance(0.25);
+      if (st.speed > v0 * 0.6 || k >= 4 || !dest) break;
+      out.walls++;
+      if (!g.pilotTo(dest, { quiet: true })) break;
+      for (let i = 0; i < 160 && g.pilot() && (g.pilot().join || g.pilot().drv.st.s < 60 || st.speed < 3); i++) g.advance(0.25);
+      if (!g.pilot()) break;
+    }
+    return null;
+  };
+  { const no = getGoing(); if (no) return { none: no }; }
   if (!g.assist.lane) g.assistToggle('lane');
   if (!g.assist.cruise) g.assistToggle('cruise');
   Object.assign(out, { set: g.assist.set, off: 0, laneT: 0, cruiseT: 0, over: 0, deep: 0, red: 0, stops: 0, vmin: st.speed, dist: 0 });
   let last = null, x0 = st.x, y0 = st.y, stopped = false, settle = 3, lineWas = null, offWas = null;
   let offRoad = 0;
-  for (t = 0; t < 40 || (out.dist < 150 && t < 120); t += 0.1) { // (40 s, and on up to two minutes if it has stood in a queue most of them)
+  let t = 0, stuck = 0;
+  out.stretches = 1;
+  for (; t < 40 + 40 * (out.stretches - 1) || (out.dist < 150 && t < 120); t += 0.1) { // (40 s, and on up to two minutes if it has stood in a queue most of them)
     g.advance(0.1);
     const L = g.assist.here;
+    // (stood 6 s with no red line ahead and no car ahead to wait for, or a wall across the way: where it should stop,
+    // on a street that ends, or one that pinches narrower than the car. Lane keeping is judged on another stretch,
+    // the autopilot taking the car there, three stretches at most)
+    stuck = st.speed < 0.3 && g.assist.line == null && (g.assist.wall != null || !g.assist.lead) ? stuck + 0.1 : 0;
+    if (stuck > 6 && out.stretches < 3) {
+      stuck = 0; out.stretches++;
+      out.log.push(`${t.toFixed(1)}s stood at ${st.x.toFixed(0)},${st.y.toFixed(0)} (${g.assist.wall != null ? 'a wall' : 'nothing seen'}): on to another stretch`);
+      if (g.assist.lane) g.assistToggle('lane');
+      if (g.assist.cruise) g.assistToggle('cruise');
+      // (backed out first, a car's length, so the autopilot can join its lane)
+      for (let i = 0; i < 12; i++) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's' })); g.advance(0.25); }
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', key: 's' }));
+      if (getGoing()) break;
+      if (!g.assist.lane) g.assistToggle('lane');
+      if (!g.assist.cruise) g.assistToggle('cruise');
+      x0 = st.x; y0 = st.y; last = null; settle = 3; lineWas = null; offWas = null; offRoad = 0;
+      continue;
+    }
     // (off the end of the roads it can read, 2 s: lane keeping, as a car's own, follows the lane and not a route, and
     // goes straight on where a street ends at a junction. The window ends there, once it has worked 10 s and the
     // cruise 20 s)
@@ -244,7 +275,7 @@ async function assistStep({ log = false, fresh = true } = {}) {
 function assistChecks(r) {
   if (r.none) return [[r.none === 'no car', `the driver assists: ${r.none}`]];
   return [
-    [r.laneT >= 5 && r.off <= 1.2 && r.offAny <= 2.6, `lane keeping holds the lane with no hand on the wheel (${r.laneT.toFixed(0)} s at work over ${r.dist.toFixed(0)} m; once settled, ${r.off.toFixed(2)} m off the lane's middle at most in ${(r.heldT || 0).toFixed(0)} s${r.ended ? `; ended ${r.ended}` : ''}${r.walls ? `; handed over again ${r.walls} time${r.walls > 1 ? 's' : ''} where a wall stood into the lane` : ''})`],
+    [r.laneT >= 5 && r.off <= 1.2 && r.offAny <= 2.6, `lane keeping holds the lane with no hand on the wheel (${r.laneT.toFixed(0)} s at work over ${r.dist.toFixed(0)} m; once settled, ${r.off.toFixed(2)} m off the lane's middle at most in ${(r.heldT || 0).toFixed(0)} s${r.stretches > 1 ? `, over ${r.stretches} stretches` : ''}${r.ended ? `; ended ${r.ended}` : ''}${r.walls ? `; handed over again ${r.walls} time${r.walls > 1 ? 's' : ''} where a wall stood into the lane` : ''})`],
     [r.cruiseT >= 20 && r.over <= 1.5 && r.deep <= 0.15 && r.red === 0, `adaptive cruise keeps to ${(r.set * 3.6).toFixed(0)} km/h (${r.over.toFixed(1)} m/s over at most), clear of the traffic (${r.deep.toFixed(2)} m) and behind the red lines (${r.red} crossed; ${r.stops} stop${r.stops === 1 ? '' : 's'}, down to ${(r.vmin * 3.6).toFixed(0)} km/h)`],
     [r.braked, 'a touch of the brake ends the cruise'],
   ];
@@ -256,12 +287,13 @@ async function wetStep() {
   const g = window.__game, W = g.weather, C = window.OECars;
   if (!W || !C || !C.setWeather) return { none: 'no weather' };
   const A = g.cars, X = C.weather;
-  const run = secs => { let v = 0, n = 0, near = 0; for (let t = 0; t < secs; t += 0.5) { g.advance(0.5); for (const c of A.C) if (c.line >= 0 && !c.park && c.v > 4) { v += c.v / (g.roadNet.L[c.line].v || 11); n++; if (Math.hypot(c.x - g.player.x, c.y - g.player.y) < 60) near++; } } return { v: n ? v / n : 0, n, near }; };
+  let puffs = 0; // (the most in the air at once through the run: at any one moment no car may be going fast near the eye)
+  const run = secs => { let v = 0, n = 0, near = 0; for (let t = 0; t < secs; t += 0.5) { g.advance(0.5); if (C.sprayState && C.sprayState()) puffs = Math.max(puffs, C.sprayState().live || 0); for (const c of A.C) if (c.line >= 0 && !c.park && c.v > 4) { v += c.v / (g.roadNet.L[c.line].v || 11); n++; if (Math.hypot(c.x - g.player.x, c.y - g.player.y) < 60) near++; } } return { v: n ? v / n : 0, n, near }; };
   W.set('clear', { now: true }); g.advance(6);
   const dry = run(25), d0 = { pace: X.pace, lamps: X.lamps };
   W.set('rain', { now: true }); g.advance(6);
   const wet = run(25), sp = C.sprayState && C.sprayState();
-  const out = { dry: dry.v, wet: wet.v, n: Math.min(dry.n, wet.n), near: wet.near, pace: X.pace, headway: X.headway, grip: X.grip, lamps: X.lamps, dryPace: d0.pace, dryLamps: d0.lamps, spray: sp ? sp.live : 0, night: g.U ? g.U.uNight.value : null };
+  const out = { dry: dry.v, wet: wet.v, n: Math.min(dry.n, wet.n), near: wet.near, pace: X.pace, headway: X.headway, grip: X.grip, lamps: X.lamps, dryPace: d0.pace, dryLamps: d0.lamps, spray: Math.max(puffs, sp ? sp.live : 0), night: g.U ? g.U.uNight.value : null };
   W.set('clear', { now: true }); g.advance(3);
   return out;
 }
@@ -307,7 +339,8 @@ async function railStep() {
         if (on && tag === 'shut' && t >= 4) { out.onShut++; if (out.log.length < 6) out.log.push(`shut ${t}s: car ${A.C.indexOf(c)} ${d.toFixed(1)} m past the middle, v ${c.v.toFixed(1)}, ${c.why}`); }
         const st = on && c.v < 0.3 ? (stood.get(c) || 0) + 0.25 : 0;
         stood.set(c, st);
-        if (st === 3) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''}`); }
+        // (not one already there when the check laid the crossing down under it)
+        if (st === 3 && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''}`); }
         if (tag === 'shut' && c.why === 'light' && c.v < 0.3 && d < 0 && d > -30) out.waited = Math.max(out.waited, 1);
         if (c.why === 'rails') out.kept++;
       }

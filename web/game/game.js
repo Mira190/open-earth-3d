@@ -1374,6 +1374,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     { const q = o.drv.st, a = q.lineAt, red = a && junctions.light(a, q.lineEx) === 'r';
       o.stoodT = !o.join && q.v < 0.3 && !red && !q.done ? (o.stoodT || 0) + dt : q.v > 1 || red ? 0 : o.stoodT || 0;
       if (o.stoodT > (o.jamT > 0 ? 75 : 110) || q.wedged > 30) { pilotOff('<b>Autopilot:</b> the road ahead is blocked. You have the wheel.', 'blocked'); return null; } }
+    // (crawling: under 30 m along its way in 90 s of the clock, red lights not counted, as nose to nose with one car
+    // after another on a street one car wide, Fushimi Inari's by junction 51: it takes another way round the street it
+    // is on, twice at most, and with none hands the car back, rather than inch on for minutes)
+    { const q = o.drv.st, a = q.lineAt, red = a && junctions.light(a, q.lineEx) === 'r';
+      if (!o.crawl || o.crawl.drv !== o.drv || q.s - o.crawl.s > 30) o.crawl = { drv: o.drv, s: q.s, t: 0 };
+      else if (!o.join && !red && !q.done && (o.crawl.t += dt) > 90) {
+        const pl = placeOnRoute(q), to = q.route.to, rt = pl && to && (o.crawled || 0) < 2 ? roads.route(pl, to, 9000, undefined, new Set([pl.line])) : null;
+        if (!rt || rt.len > (q.end - q.s) * 3 + 600) { pilotOff('<b>Autopilot:</b> the road ahead is blocked. You have the wheel.', 'blocked'); return null; }
+        const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: q.v });
+        o.drv.leave(); o.drv = OECars.chauffeur(o.C, rt, opts); o.drv.opts = opts;
+        o.sig = []; o.scr = []; o.qArms = []; o.crawled = (o.crawled || 0) + 1;
+        H.toast(`<b>Autopilot:</b> slow going here. Taking another way.`);
+      } }
     if (o.drv !== o.turnsOf) { // (another way round a jam, or after turning round in the road)
       // (the new way may start a little off where the car is: eased onto it from there, never put there)
       o.off = { x: st.x - c.x, y: st.y - c.y, h: angDiff(st.h, c.h) };

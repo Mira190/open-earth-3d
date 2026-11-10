@@ -61,7 +61,7 @@ window.OECars = (function () {
     WX.corner = Math.sqrt(WX.grip);
     WX.headway = 1 + 0.9 * (1 - WX.grip) + (WX.vis < 300 ? 0.3 : 0);
     WX.lamps = WX.rain > 0.12 || WX.snow > 0.1 || WX.vis < 1500 ? 1 : 0;
-    WX.spray = WX.wet * (1 - lying);
+    WX.spray = Math.max(WX.wet, 0.8 * WX.rain) * (1 - lying); // (a road that the rain falls on throws spray at once, before it is wet through: weather.js wets it over minutes)
     return WX;
   }
   // Spray (#355): on a wet road every car near you throws up a mist behind its rear wheels, more the faster it goes.
@@ -460,7 +460,7 @@ window.OECars = (function () {
   function drive(C, nav, at) {
     const [VMAX, A0] = PERF[C.name] || [52, 7.4];
     const st = { x: at.x, y: at.y, z: at.z, h: at.h, vx: 0, vy: 0, r: 0, steer: 0, vz: 0, air: false, v: 0, speed: 0, slip: 0, gear: 1, rpm: 0, brake: false,
-      reverse: false, grip: 1, pitch: 0, roll: 0 };
+      reverse: false, grip: 1, pitch: 0, roll: 0, wpx: 0, wpy: 0 };
     const rad = C.hw + 0.04, offs = [C.half - C.hw, 0, -(C.half - C.hw)];
     // the floor under the car: what a walker would step onto (a kerb, a ramp, a deck), not a wall
     const floor = (x, y, z) => { const f = nav.floorAt(x, y, z + 0.1); return f ? f.z : null; };
@@ -642,6 +642,20 @@ window.OECars = (function () {
     function follow(dt, c, o) {
       const ph = st.h, v0 = st.v;
       st.x = c.x + (o ? o.x : 0); st.y = c.y + (o ? o.y : 0); st.h = c.h + (o ? o.h : 0);
+      // (and out of a facade that stands into the driver's line on a narrow street, as the walls push a car that is
+      // driven: the three circles down the body, eased so the car slides along the wall rather than jumps. Driven
+      // through it, the car you are handed back was pushed out at once and stood, Fushimi Inari)
+      {
+        const fx = Math.sin(st.h), fy = Math.cos(st.h);
+        let px = 0, py = 0;
+        for (let it = 0; it < 2; it++) for (const k of offs) {
+          const cx = st.x + px + fx * k, cy = st.y + py + fy * k, q = nav.push(cx, cy, st.z, rad, 1.6);
+          px += q.x - cx; py += q.y - cy;
+        }
+        const e = Math.min(1, dt * 10); // (towards the whole push out of the line's own pose)
+        st.wpx += (px - st.wpx) * e; st.wpy += (py - st.wpy) * e;
+        st.x += st.wpx; st.y += st.wpy;
+      }
       // (on the ground a walker would stand on there, where it is within a step and a half of the road's own height: the
       // wheel handed back must find the car on a floor its own step can drive on, and a road drawn a little under
       // the ground's surface does not sink it)
