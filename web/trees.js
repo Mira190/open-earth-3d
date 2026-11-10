@@ -61,7 +61,7 @@ window.OETrees = (function () {
   // the colour attribute carries ambient occlusion (r), how far the wind moves a vertex (g)
   // and a flutter phase (b); renamed so no material reads it as a colour
   const VERT_HEAD = `#include <common>
-attribute vec4 tc; uniform float uWind; uniform float uBloom; uniform float uSakuraV[SAKURA_N]; varying float vAO; varying float vCell; varying float vTurn; varying float vCard; varying float vPetal; varying vec3 vLocal;
+attribute vec4 tc; uniform float uWind; uniform vec3 uGale; uniform float uBloom; uniform float uSakuraV[SAKURA_N]; varying float vAO; varying float vCell; varying float vTurn; varying float vCard; varying float vPetal; varying vec3 vLocal;
 attribute float aLit; uniform float uYoz; varying float vLit; varying float vUpH; varying float vNy;`;
   // (susuki's plume cards, CELL_PLUME, stand only in their season: uPlume, the share of its heads out, 0..1)
   // the atlas cell a leaf card shows (CELLS columns x ROWS; glTF v runs down): the jacaranda's bloom
@@ -87,11 +87,15 @@ if (vPetal < 0.5 && sakura) tuv += vec2(mod(CELL_CHERRY, ATLAS_COLS) - mod(cell,
   const VERT_WIND = `#include <begin_vertex>
 vec3 ip = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
 float ph = dot(ip.xz, vec2(0.071, 0.053));
-float sw = tc.g * tc.g * (0.65 + 0.35 * sin(uWind * 0.31 + ph * 0.5));
+// (uGale: the weather's wind, x and z a lean down the wind in metres at the crown's edge, z the sway's
+// size against a light breeze's; uWind runs faster in a stronger wind)
+float sw = tc.g * tc.g * (0.65 + 0.35 * sin(uWind * 0.31 + ph * 0.5)) * uGale.z;
 transformed.x += sin(uWind * 1.15 + ph) * 0.32 * sw;
 transformed.z += cos(uWind * 0.93 + ph * 1.7) * 0.22 * sw;
+{ vec3 gl = vec3(uGale.x, 0.0, uGale.y) * mat3(instanceMatrix);
+  transformed += gl / max(dot(instanceMatrix[0].xyz, instanceMatrix[0].xyz), 1e-4) * tc.g * tc.g * (0.75 + 0.25 * sin(uWind * 0.47 + ph)); }
 #ifdef LEAVES
-transformed += normal * sin(uWind * 6.0 + tc.b * 6.2832 + ph) * 0.05 * tc.g;
+transformed += normal * sin(uWind * 6.0 + tc.b * 6.2832 + ph) * 0.05 * tc.g * min(uGale.z, 1.8);
 #endif
 vAO = tc.r;
 vLocal = position; // (the tree's own frame, before its instance's turn and scale: the bark's bands)
@@ -99,7 +103,7 @@ vCard = tc.b; // a leaf card's own phase: which cards fall first
 vTurn = fract(sin(dot(ip.xz, vec2(12.9898, 78.233))) * 43758.5453);`;
   function shader(U, leaves, depth, A) {
     return sh => {
-      sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uSakuraV = U.uSakuraV; sh.uniforms.uCherryBareV = U.uCherryBareV; sh.uniforms.uAutumn = U.uAutumn; sh.uniforms.uFall = U.uFall;
+      sh.uniforms.uWind = U.uWind; sh.uniforms.uGale = U.uGale; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uSakuraV = U.uSakuraV; sh.uniforms.uCherryBareV = U.uCherryBareV; sh.uniforms.uAutumn = U.uAutumn; sh.uniforms.uFall = U.uFall;
       sh.uniforms.uBare = U.uBare; sh.uniforms.uDecid = U.uDecid; sh.uniforms.uYoz = U.uYoz; sh.uniforms.uYozCol = U.uYozCol; sh.uniforms.uPlume = U.uPlume;
       sh.defines = Object.assign(sh.defines || {}, { ATLAS_COLS: A.cols.toFixed(1), ATLAS_ROWS: A.rows.toFixed(1), CELL_BLOOM: A.bloom.toFixed(1), CELL_SAKURA: A.sakura.toFixed(1), CELL_CHERRY: A.cherry.toFixed(1), SAKURA_N: A.sakuraN, CELL_MAPLE: A.maple.toFixed(1), CELL_PLUME: A.plume.toFixed(1), ATLAS_CELLS: A.cols * A.rows });
       if (leaves) sh.defines.LEAVES = '';
@@ -221,7 +225,8 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     // the cells of the deciduous species (trees.json deciduous): bare in winter
     const decid = Array.from({ length: A.cols * A.rows }, () => 0);
     for (const [sp, S] of Object.entries(I.species)) if (S.deciduous && cellOf(sp) != null && cellOf(sp) < decid.length) decid[cellOf(sp)] = 1;
-    const U = { uYoz: { value: 0 }, uYozCol: { value: new THREE.Color(1.0, 0.8, 0.74).multiplyScalar(1.5) }, uWind: { value: 0 }, uBloom: { value: 0 }, uSakuraV: { value: new Array(A.sakuraN).fill(0) }, uCherryBareV: { value: new Array(A.sakuraN).fill(0) }, uAutumn: { value: 0 }, uFall: { value: fall }, uBare: { value: 0 }, uDecid: { value: decid }, uPlume: { value: 0 } };
+    let windAt = null, windAt0 = null, windPh = 0;
+    const U = { uYoz: { value: 0 }, uYozCol: { value: new THREE.Color(1.0, 0.8, 0.74).multiplyScalar(1.5) }, uWind: { value: 0 }, uGale: { value: new THREE.Vector3(0, 0, 1) }, uBloom: { value: 0 }, uSakuraV: { value: new Array(A.sakuraN).fill(0) }, uCherryBareV: { value: new Array(A.sakuraN).fill(0) }, uAutumn: { value: 0 }, uFall: { value: fall }, uBare: { value: 0 }, uDecid: { value: decid }, uPlume: { value: 0 } };
     const petalFall = new Array(A.sakuraN).fill(0); // how fast each cherry variety sheds its petals (0..1)
     const city = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0);
     // the species drawn: the city's, then any only an area plants (weight 0 in the city's own mix)
@@ -614,7 +619,11 @@ vec3 nonPerturbedNormal = normal;`)
     // 3,000 cards (900 on a light device) of 2 triangles; nothing is drawn out of flower.
     function petals() {
       const spV = names.map(sp => { const o = varieties.find(v => v.sp === sp); return o ? o.v : -1; });
-      if (!spV.some(v => v >= 0) || !which.some(k => spV[k] >= 0)) return null;
+      // (and in autumn the same cards are the leaves coming off the deciduous trees: momiji-chiri, ginkgo yellow)
+      const decidSp = names.map(sp => !!(I.species[sp] && I.species[sp].deciduous) && !/tussock|lomandra|susuki|grass/i.test(sp));
+      const cherries = spV.some(v => v >= 0) && which.some(k => spV[k] >= 0);
+      if (!cherries && !which.some(k => decidSp[k])) return null;
+      const uW = { value: new THREE.Vector2(0.94, 0.34) }, uLeaf = { value: 0 }, uT = { value: 0 };
       const K = 12, N = small ? 900 : 3000;
       const uC = { value: Array.from({ length: K }, () => new THREE.Vector4()) }, uD = { value: Array.from({ length: K }, () => new THREE.Vector4()) };
       const uN = { value: 0 };
@@ -628,10 +637,10 @@ vec3 nonPerturbedNormal = normal;`)
       g.instanceCount = N;
       const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(1.0, 0.86, 0.89), roughness: 0.75, side: THREE.DoubleSide, alphaTest: 0.5 });
       mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uPT: U.uWind, uPC: uC, uPD: uD, uPN: uN, uPYoz: U.uYoz });
+        Object.assign(sh.uniforms, { uPT: uT, uPC: uC, uPD: uD, uPN: uN, uPYoz: U.uYoz, uPW: uW, uPLeaf: uLeaf });
         sh.vertexShader = sh.vertexShader
           .replace('#include <common>', `#include <common>
-attribute vec4 aSeed; uniform float uPT; uniform vec4 uPC[${K}]; uniform vec4 uPD[${K}]; uniform float uPN; varying vec2 vPUv; varying float vPLit;
+attribute vec4 aSeed; uniform float uPT; uniform vec4 uPC[${K}]; uniform vec4 uPD[${K}]; uniform float uPN; uniform vec2 uPW; uniform float uPLeaf; varying vec2 vPUv; varying float vPLit; varying float vPSeed;
 float ph(float n) { return fract(sin(n) * 43758.5453); }
 mat3 prot(vec3 a, float t) { a = normalize(a); float c = cos(t), s = sin(t), k = 1.0 - c;
   return mat3(c + a.x*a.x*k, a.y*a.x*k + a.z*s, a.z*a.x*k - a.y*s, a.x*a.y*k - a.z*s, c + a.y*a.y*k, a.z*a.y*k + a.x*s, a.x*a.z*k + a.y*s, a.y*a.z*k - a.x*s, c + a.z*a.z*k); }`)
@@ -648,36 +657,49 @@ float py0 = pD.x + (pD.y - pD.x) * r4 / max(pD.z, 1e-3);   // from a height in t
 float pv = (py0 + 0.1) / (pL - 1.5), pfall = pt * pv, py = max(py0 - pfall, 0.03);   // 0.6-1.9 m/s
 float pland = step(py0 - 0.03, pfall);                     // on the ground: it lies there until its turn ends
 float pft = min(pfall, py0) / pv;                              // how long it has been falling (s)
-vec3 pw = vec3(0.94, 0.0, 0.34) * pft * (0.9 + 0.7 * aSeed.z); // the breeze carries it 1-1.6 m/s while it falls,
-pw += vec3(-0.34, 0.0, 0.94) * pft * (aSeed.w - 0.5) * 0.8;    // spread across it
+vec3 pw = vec3(uPW.x, 0.0, uPW.y) * pft * (0.9 + 0.7 * aSeed.z); // the wind carries it while it falls (a breeze: 1-1.6 m/s),
+pw += vec3(-uPW.y, 0.0, uPW.x) / max(length(uPW), 0.3) * pft * (aSeed.w - 0.5) * 0.8;    // spread across it
 vec3 pP = pC.xyz + vec3(cos(pa) * pr, py, sin(pa) * pr) + pw
         + vec3(sin(pt * 1.7 + aSeed.x * 6.0), 0.0, cos(pt * 1.3 + aSeed.y * 6.0)) * 0.6 * (1.0 - pland);
 mat3 pR = pland > 0.5 ? mat3(1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0) : prot(vec3(aSeed.x - 0.5, 0.6, aSeed.w - 0.5), pt * (2.5 + 3.0 * aSeed.z) + aSeed.y * 6.0);
-float pS = pOn * smoothstep(0.0, 0.6, pt) * (1.0 - smoothstep(pL - 1.2, pL, pt)) * (0.75 + 0.5 * aSeed.x);
+float pS = pOn * smoothstep(0.0, 0.6, pt) * (1.0 - smoothstep(pL - 1.2, pL, pt)) * (0.75 + 0.5 * aSeed.x) * (1.0 + 0.8 * uPLeaf); vPSeed = aSeed.w;
 objectNormal = pR * objectNormal;`)
           .replace('#include <begin_vertex>', `#include <begin_vertex>
-transformed = pP + pR * (position * pS); vPUv = uv; vPLit = pD.w * (1.0 - smoothstep(4.0, 9.0, length(pw)));`);
+transformed = pP + pR * (position * pS); vPUv = uv; vPLit = pD.w * (1.0 - smoothstep(4.0, 9.0, length(pw))) * (1.0 - uPLeaf);`);
         sh.fragmentShader = sh.fragmentShader
-          .replace('#include <common>', '#include <common>\nvarying vec2 vPUv; varying float vPLit; uniform float uPYoz;')
+          .replace('#include <common>', '#include <common>\nvarying vec2 vPUv; varying float vPLit; varying float vPSeed; uniform float uPYoz; uniform float uPLeaf;')
           .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.8, 0.74) * 0.7 * vPLit * uPYoz;')
           .replace('#include <alphatest_fragment>', `vec2 pq = vPUv * 2.0 - 1.0;
 float pin = 1.0 - length(vec2(pq.x * (1.15 - 0.35 * pq.y), pq.y));       // an obovate, wider at its tip
 if (pin < 0.0 || (pq.y > 0.55 && abs(pq.x) < 0.16 * (pq.y - 0.55) / 0.45 + 0.02)) discard;   // the notch
-diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, pq.y));`);
+diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, pq.y));
+// (a leaf: the maples' red to the ginkgos' yellow, card by card)
+diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.62, 0.11, 0.05), vec3(0.9, 0.62, 0.1), smoothstep(0.25, 0.75, vPSeed)) * (0.8 + 0.3 * pin), uPLeaf);`);
       };
       const mesh = new THREE.Mesh(g, mat);
       mesh.frustumCulled = false; mesh.castShadow = false; mesh.receiveShadow = true; mesh.visible = false; mesh.name = 'petals';
       world.add(mesh);
       const near = [];
       return {
-        mesh, crowns: () => (mesh.visible ? near.length : 0),
+        mesh, crowns: () => (mesh.visible ? near.length : 0), leaf: () => uLeaf.value,
+        // per frame: the cards' own clock and the wind that carries them (eased: a gust bends their paths, it does not jump them)
+        tick(tSec, wx) {
+          const dt = Math.max(0, Math.min(0.1, tSec - (uT.at ?? tSec))); uT.at = tSec; uT.value = tSec % 10000;
+          const k = Math.min(1, dt * 0.6), sp = wx && wx.t > 0 ? Math.min(1, 4.5 / Math.max(wx.windSpeed, 0.1)) * 0.4 : 0;
+          const tx = wx && wx.t > 0 ? wx.wind.x * sp : 0.94, tz = wx && wx.t > 0 ? wx.wind.z * sp : 0.34;
+          uW.value.set(uW.value.x + (tx - uW.value.x) * k, uW.value.y + (tz - uW.value.y) * k);
+        },
         // the K nearest drawn cherries whose variety is shedding, within 90 m
         gather(eye) {
           near.length = 0;
-          if (!petalFall.some(v => v > 0)) { mesh.visible = false; uN.value = 0; return; }
+          const petalsNow = cherries && petalFall.some(v => v > 0);
+          // leaves: from the turn of the colour until the branches are bare, more of them in a wind
+          const wx = window.OEWeather && OEWeather.S, leafFall = petalsNow ? 0 : Math.min(1, Math.max(0, U.uAutumn.value - 0.3) * 2) * (1 - U.uBare.value) * Math.min(1, 0.35 + (wx ? wx.windSpeed : 3) / 9);
+          uLeaf.value = leafFall > 0.02 ? 1 : 0;
+          if (!petalsNow && !(leafFall > 0.02)) { mesh.visible = false; uN.value = 0; return; }
           for (let i = 0; i < n; i++) {
-            const v = spV[which[i]];
-            if (v < 0 || !(petalFall[v] > 0) || (M[16 * i] === 0 && M[16 * i + 2] === 0)) continue;
+            const v = petalsNow ? spV[which[i]] : decidSp[which[i]] ? 0 : -1;
+            if (v < 0 || (petalsNow && !(petalFall[v] > 0)) || (M[16 * i] === 0 && M[16 * i + 2] === 0)) continue;
             const d2 = (pos[3 * i] - eye.x) ** 2 + (pos[3 * i + 2] - eye.z) ** 2;
             if (d2 > 8100) continue;
             if (near.length < K) near.push([d2, i]); else if (d2 < near[K - 1][0]) near[K - 1] = [d2, i]; else continue;
@@ -686,7 +708,7 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
           near.forEach(([, i], j) => {
             const h = list[4 * i + 3] / 10, foot = pos[3 * i + 1] - 4, v = spV[which[i]];
             uC.value[j].set(pos[3 * i], foot, pos[3 * i + 2], 0.55 * h);
-            uD.value[j].set(0.35 * h, 0.9 * h, petalFall[v], lit[i]); // (lit: a yozakura tree's uplights catch its petals after dark)
+            uD.value[j].set(0.35 * h, 0.9 * h, petalsNow ? petalFall[v] : leafFall, lit[i]); // (lit: a yozakura tree's uplights catch its petals after dark)
           });
           uN.value = near.length; mesh.visible = near.length > 0;
         },
@@ -913,7 +935,16 @@ diffuseColor.rgb *= mix(vec3(1.0, 0.82, 0.86), vec3(1.0), smoothstep(-1.0, 0.2, 
       // second while it keeps moving (a sort walks every tree: a fast move made it most frames' work), at once
       // after a jump of 120 m
       update(camera, tSec) {
-        U.uWind.value = tSec % 10000;
+        // the wind (game/weather.js OEWeather.S): the sway runs faster and wider as it rises, the crowns lean
+        // down the wind and further in a gust; without a weather, the light breeze there always was
+        const wx = window.OEWeather && OEWeather.S, ws = wx && wx.t > 0 ? wx.windSpeed : 3.3, dtW = windAt == null ? 0 : Math.max(0, Math.min(0.1, tSec - windAt));
+        windAt = tSec;
+        if (windAt0 == null) { windAt0 = 1; windPh = tSec % 10000; }
+        windPh = (windPh + dtW * (0.45 + ws / 6)) % 10000;
+        U.uWind.value = windPh;
+        if (PT) PT.tick(tSec, wx);
+        const lean = Math.min(0.9, ws * ws / 260), wl = ws > 0.01 && wx ? lean / ws : 0;
+        U.uGale.value.set(wx ? wx.wind.x * wl : 0, wx ? wx.wind.z * wl : 0, Math.min(3, 0.4 + ws / 5.5));
         if (impStale && imp && imp.meshes && imp.key) { impStale = false; bakeFar(imp.renderer); } // (the season's look changed: the atlas again, before this frame draws it)
         if (Y) { const nv = night ? night.value : 0, k = nv * yozBloom; U.uYoz.value = k; Y.set(k, yozBloom > 0, nv * chochinOut, chochinOut > 0); }
         camera.getWorldPosition(cam);

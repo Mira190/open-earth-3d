@@ -544,11 +544,12 @@ ${PAT_GLSL}`)
     // wrist) round the handle. The clip's arm is kept to be put back before the next frame.
     let umbGrip = null, armHeld = null;
     const armBack = () => { if (armHeld) { const a = arms[1]; a.ua.quaternion.copy(armHeld[0]); a.la.quaternion.copy(armHeld[1]); armHeld = null; } };
-    function holdUmbrella() {
+    // (at: a point in the world for the fist instead, rig.hold: a fishing rod's grip, game/fishing.js)
+    function holdUmbrella(at) {
       const a = arms[1];
       armHeld = [a.ua.quaternion.clone(), a.la.quaternion.clone()];
       root.updateMatrixWorld(true);
-      const fist = r2.copy(umbGrip).applyMatrix4(ref.Chest.inv).applyMatrix4(bones.Chest.matrixWorld);
+      const fist = at ? r2.copy(at) : r2.copy(umbGrip).applyMatrix4(ref.Chest.inv).applyMatrix4(bones.Chest.matrixWorld);
       const sh = a.ua.getWorldPosition(r3), el = a.la.getWorldPosition(r4);
       const L1 = sh.distanceTo(el), L2 = el.distanceTo(a.wr.getWorldPosition(r1)), L3 = L2 + 0.075 * model.getWorldScale(sa).y;
       const to = sd2.subVectors(fist, sh), d = Math.min(Math.max(to.length(), Math.abs(L1 - L3) + 1e-3), L1 + L3 - 1e-3);
@@ -645,6 +646,10 @@ ${PAT_GLSL}`)
       : thigh.getWorldPosition(out).add(sb.set(0, crown * model.getWorldScale(sa).y, 0)));
     // a view through this person's eyes: the head, and whatever is on it, shrinks out of the way
     rig.hideHead = on => { if (head) head.scale.setScalar(on ? 1e-3 : 1); };
+    // something held out in the right hand: rig.hold is where the fist goes (a point in the world, or null), and
+    // rig.fist(out) where the wrist is as posed
+    rig.hold = null;
+    rig.fist = out => (reaches ? arms[1].wr.getWorldPosition(out) : null);
     // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the
     // root is where the feet rest: thighs forward, shins down, the hips a chair's height above it
     rig.animate = (dt, speed, mode = 'ground', t = 0) => {
@@ -665,6 +670,7 @@ ${PAT_GLSL}`)
       armBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
+      else if (rig.hold && reaches) holdUmbrella(rig.hold);
       else if (umbGrip && reaches && bones.Chest) holdUmbrella();
       // the walk cycle as a phase, two steps per cycle (footsteps)
       const d = cur.getClip().duration, tt = cur.time / d;
@@ -759,8 +765,32 @@ transformed = crowdPose(transformed, false);`);
 
   // Draws actors.crowd's pedestrians: a skinned person for the nearest few, an instance
   // of the character's low-detail copy for everyone else.
-  function crowdRenderer(world, lib, U, P, { near = 14, nearR = 32, style = null } = {}) {
+  // Each character's instances are kept packed (issue 352): the ones drawn this frame are the first mesh.count
+  // slots, and only that range of the matrices and the gait is sent to the GPU. A walker that is not drawn (out
+  // for the hour, near enough to be a skinned person, or out of the camera's sight by more than a shadow's
+  // length) changes places with the last one drawn, their colours and all, so it costs no vertex work at all:
+  // before, every slot was drawn every frame, the hidden ones as a model scaled to nothing, in the view and
+  // again in the sun's shadow map, and every buffer was sent whole. camera: the view to cull against (none:
+  // no culling).
+  function crowdRenderer(world, lib, U, P, { near = 14, nearR = 32, style = null, camera = null } = {}) {
     const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    const UP = new THREE.Vector3(0, 1, 0), at = new THREE.Vector3(), frustum = new THREE.Frustum(), vp = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), camAt = new THREE.Vector3(1e9, 0, 0);
+    let culling = false;
+    const SWAP = ['iSkin', 'iHair', 'iTop', 'iLegs', 'iPat', 'aAnim', 'iUmb'];
+    function swap(mesh, a, b) {
+      const who = mesh.userData.who, pa = who[a], pb = who[b];
+      who[a] = pb; who[b] = pa; pa.slot = b; pb.slot = a;
+      const M = mesh.instanceMatrix.array;
+      for (let k = 0; k < 16; k++) { const t = M[a * 16 + k]; M[a * 16 + k] = M[b * 16 + k]; M[b * 16 + k] = t; }
+      for (const name of SWAP) {
+        const A = mesh.geometry.attributes[name], n = A.itemSize, D = A.array;
+        for (let k = 0; k < n; k++) { const t = D[a * n + k]; D[a * n + k] = D[b * n + k]; D[b * n + k] = t; }
+      }
+      mesh.userData.swapped = true;
+    }
+    // into the drawn range, or out of it
+    function show(p) { const m = p.mesh; if (p.slot >= m.count) { if (p.slot !== m.count) swap(m, p.slot, m.count); m.count++; } }
+    function unshow(p) { const m = p.mesh; if (p.slot < m.count) { if (p.slot !== m.count - 1) swap(m, p.slot, m.count - 1); m.count--; } }
     for (const p of P) {
       p.look = randomLook(lib, pickCharacter(lib, style), style);
       const gs = lib.info.ground_speed[lib.info.characters[p.look.character].pack].Walk, ex = lib.lod[p.look.character].extras;
@@ -782,6 +812,9 @@ transformed = crowdPose(transformed, false);`);
       geo.attributes.aAnim.setUsage(THREE.DynamicDrawUsage);
       mesh.castShadow = mesh.receiveShadow = true;
       mesh.frustumCulled = false;
+      mesh.userData.who = ps.slice(); // the walker in each slot
+      mesh.userData.slots = n;
+      mesh.count = 0;                 // (none drawn until placed)
       ps.forEach((p, k) => {
         p.mesh = mesh; p.slot = k;
         geo.attributes.iPat.setX(k, PAT[p.look.pattern] || 0);
@@ -821,6 +854,13 @@ transformed = crowdPose(transformed, false);`);
     let dtNow = 0, tNow = 0;
     function begin(dt, cx, cy, t, nActive) {
       dtNow = dt; tNow = t;
+      // the camera's frustum as it was last drawn, for this frame's culling; not across a cut (the camera somewhere else)
+      culling = false;
+      if (camera) {
+        culling = camera.position.distanceToSquared(camAt) < 400;
+        camAt.copy(camera.position);
+        frustum.setFromProjectionMatrix(vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse), camera.coordinateSystem, camera.reversedDepth);
+      }
       const want = [];
       for (let i = 0; i < nActive; i++) { const p = P[i]; if (p.line < 0) continue; const d = Math.hypot(p.x - cx, p.y - cy); if (d < nearR) want.push([d, i]); }
       want.sort((a, b) => a[0] - b[0]);
@@ -843,8 +883,8 @@ transformed = crowdPose(transformed, false);`);
       if (r) {
         const u = wantUmb(p);
         if (u !== !!r.umbOn) { r.umbOn = u; r.setLook({ acc: u ? [...(p.look.acc || []), 'umbrella_open'] : p.look.acc || null }); }
-        p.mesh.setMatrixAt(p.slot, zero);
-        r.root.position.copy(W(p.x, p.y, p.z));
+        unshow(p);
+        r.root.position.set(p.x, p.z, -p.y);
         r.root.rotation.y = Math.PI - p.h;
         if (p.wave) { p.wave = false; r.wave(tNow); }
         r.animate(dtNow, moving ? Math.max(0.2, p.av ?? p.v ?? p.speed) : 0, p.mode === 'sit' ? 'sit' : 'ground', tNow);
@@ -852,9 +892,13 @@ transformed = crowdPose(transformed, false);`);
       }
       p.wave = false;
       const sit = p.mode === 'sit';
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI - p.h);
+      at.set(p.x, p.z - (sit ? p.thigh : 0), -p.y);
+      // out of sight by more than the longest shadow reaches back into it: not drawn (30 m: a sun 4 degrees up)
+      if (culling && !frustum.intersectsSphere(ball)) { unshow(p); return; }
+      show(p);
+      q.setFromAxisAngle(UP, Math.PI - p.h);
       sc.setScalar(p.look.scale);
-      m4.compose(W(p.x, p.y, p.z - (sit ? p.thigh : 0)), q, sc);
+      m4.compose(at, q, sc);
       p.mesh.setMatrixAt(p.slot, m4);
       const held = umbOn && wantUmb(p);
       if (held) { umbMesh(p.look.umbrella === 'clear').setMatrixAt(i, m4); umbMesh('shaft').setMatrixAt(i, m4); }
@@ -868,13 +912,21 @@ transformed = crowdPose(transformed, false);`);
     }
     function hide(i) {
       const p = P[i];
-      p.mesh.setMatrixAt(p.slot, zero);
+      unshow(p);
       if (umbOn) for (const c of UMB_KEYS) umbMeshes[c] && umbMeshes[c].setMatrixAt(i, zero);
       const r = active.get(i);
       if (r) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }
     }
+    // what changed, to the GPU: the drawn range of the matrices and the gait, and after a change of places the colours too
+    const range = (a, n) => { if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, n * a.itemSize); } a.needsUpdate = true; };
     function end() {
-      for (const m of meshes) { m.instanceMatrix.needsUpdate = true; m.geometry.attributes.aAnim.needsUpdate = true; }
+      for (const m of meshes) {
+        const A = m.geometry.attributes, moved = m.userData.swapped;
+        m.userData.swapped = false;
+        if (moved) { for (const name of SWAP) { if (A[name].clearUpdateRanges) A[name].clearUpdateRanges(); A[name].needsUpdate = true; } m.instanceMatrix.clearUpdateRanges && m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.needsUpdate = true; continue; }
+        if (!m.count) continue;
+        range(m.instanceMatrix, m.count); range(A.aAnim, m.count);
+      }
       for (const m of Object.values(umbMeshes)) if (m.visible) m.instanceMatrix.needsUpdate = true;
     }
     // the rain, 0..1 (weather.js): umbrellas go up as it comes on

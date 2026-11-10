@@ -1,27 +1,25 @@
 // Open Earth 3D ambient occlusion: contact shadows where facades meet the street, under eaves,
 // awnings, benches, cars and trees, and in the corners of a square, on the medium and high tiers.
 //
-// One pass in the game's post stack (atmosphere.js), straight after the scene is drawn and before
-// the bloom. It needs nothing but the depth buffer the scene was drawn with (the composer's target
-// resolves it for this; the reversed float depth of game.js or an ordinary one), so the city is
-// not drawn a second time:
+// It needs nothing but the depth buffer the scene was drawn with (the scene's target resolves it for
+// this; the reversed float depth of game.js or an ordinary one), so the city is not drawn a second time,
+// and it adds no full-resolution pass of its own (issue 352):
 //   1. at half the screen's size, each pixel's position is rebuilt from depth and its normal from
 //      the neighbour on each side that lies nearest its plane (so an edge does not bend it); a
 //      spiral of samples round it in a disc of a few metres, rotated per pixel by interleaved
 //      gradient noise, gathers the occlusion with the falloff of McGuire's Scalable Ambient
 //      Obscurance (f = (R^2 - v.v)^3 * max(v.n - bias, 0) / (v.v + e));
 //   2. two depth-aware blurs at half size take the noise out without bleeding across an edge;
-//   3. a depth-aware upsample (of the four half-size texels round each pixel, those at its own
-//      depth) darkens the frame by it, fading out with distance so the far city and the sky keep
-//      the photograph's look, and a little at night, when the light is the street's own.
+//   3. the frame's one full-resolution pass, the lens (lens.js, atmosphere.js), darkens each pixel by
+//      it as it reads the scene: a depth-aware upsample (UPSAMPLE below: of the four half-size texels
+//      round the pixel, those at its own depth), fading out with distance so the far city and the
+//      sky keep the photograph's look, and a little at night, when the light is the street's own.
 // It is the approach of N8AO (N8python, CC0), written here for three.js r186's reversed float
 // depth, which N8AO does not read. See docs/LOOK.md for the survey and what was adopted.
 //
-// A frame-time budget watches the frame: on a GPU that cannot keep up, AO steps down to half the
-// samples and one blur, then off; if stepping down did not make the frame faster, AO was not the
-// cost and its level comes back. A software renderer (only ever on a forced tier, for stills and
-// films) keeps it on. ?ao=0 in the page's address turns it off, ?ao=1 keeps it on whatever the budget,
-// ?ao=show shows the occlusion alone.
+// The frame-time governor (quality.js, through game.js) sets its ceiling on a device that cannot keep up:
+// half the samples and one blur, then off, and back as the frame time allows (limit()). ?ao=0 in the
+// page's address turns it off, ?ao=1 keeps it on whatever the governor says, ?ao=show shows the occlusion alone.
 'use strict';
 window.OEAO = (function () {
   const LEVELS = [
@@ -98,37 +96,46 @@ void main() {
   }
   gl_FragColor = vec4(sum / w, c.g, 0.0, 1.0);
 }`;
-  // the frame darkened by it, upsampled by depth
-  const MIX = `
+  // The occlusion at a full-resolution pixel, for the pass that reads the scene (the lens, or the merge before the
+  // camera's effects): 1 where there is none. Upsampled by depth: the four half-size texels round the pixel, each
+  // by its bilinear weight and how near its depth is. With uAOStrength 0 (off, or no depth) it costs no texture read.
+  const UPSAMPLE = `
 ${DEPTH}
-uniform sampler2D tColor, tAO; uniform vec2 uHalfPx; uniform float uStrength, uFadeNear, uFadeFar, uShow;
-varying vec2 vUv;
-void main() {
-  vec4 col = texture2D(tColor, vUv);
-  float d = oeD(vUv);
-  if (oeSky(d)) { gl_FragColor = col; return; }
-  float dist = -oeView(vUv, d).z;
-  // the four half-size texels round the pixel, each by its bilinear weight and how near its depth is
-  vec2 st = vUv / uHalfPx - 0.5, f = fract(st), b = (floor(st) + 0.5) * uHalfPx;
+uniform sampler2D tAO; uniform vec2 uHalfPx; uniform float uAOStrength, uFadeNear, uFadeFar;
+float oeShade(vec2 uv) {
+  if (uAOStrength <= 0.0) return 1.0;
+  float d = oeD(uv);
+  if (oeSky(d)) return 1.0;
+  float dist = -oeView(uv, d).z;
+  vec2 st = uv / uHalfPx - 0.5, f = fract(st), b = (floor(st) + 0.5) * uHalfPx;
   vec2 t00 = texture2D(tAO, b).rg, t10 = texture2D(tAO, b + vec2(uHalfPx.x, 0.0)).rg;
   vec2 t01 = texture2D(tAO, b + vec2(0.0, uHalfPx.y)).rg, t11 = texture2D(tAO, b + uHalfPx).rg;
   vec4 w = vec4((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y);
   vec4 dz = abs(vec4(t00.g, t10.g, t01.g, t11.g) - dist) / (0.02 * dist + 0.05);
   w *= 1.0 / (1.0 + dz * dz) + 1e-4;
   float ao = dot(w, vec4(t00.r, t10.r, t01.r, t11.r)) / dot(w, vec4(1.0));
-  float k = uStrength * (1.0 - smoothstep(uFadeNear, uFadeFar, dist));
-  gl_FragColor = vec4(uShow > 0.5 ? vec3(mix(1.0, ao, k)) : col.rgb * mix(1.0, ao, k), col.a);
+  return mix(1.0, ao, uAOStrength * (1.0 - smoothstep(uFadeNear, uFadeFar, dist)));
+}`;
+  // the same for the bloom's bright pass, which is drawn at the occlusion's own size: its texel, as it is
+  const COARSE = `
+uniform sampler2D tAO; uniform float uAOStrength, uFadeNear, uFadeFar;
+float oeShade(vec2 uv) {
+  if (uAOStrength <= 0.0) return 1.0;
+  vec2 a = texture2D(tAO, uv).rg;
+  return mix(1.0, a.r, uAOStrength * (1.0 - smoothstep(uFadeNear, uFadeFar, a.g)));
 }`;
 
-  function create(renderer, camera, { tier = 'medium', budgetMs = null } = {}) {
+  function create(renderer, camera, { tier = 'medium' } = {}) {
     const q = new URLSearchParams(location.search).get('ao');
     let level = q === '0' ? 0 : tier === 'high' ? 2 : 1;
     const show = q === 'show'; // the occlusion alone, to look at
     const top = level, pinned = q === '1' || q === 'show';
-    let software = !!(window.OEQuality && OEQuality.probe().software);
-    let budget = budgetMs || (tier === 'high' ? 1000 / 50 : 1000 / 40);
+    let asked = level; // the level set (the tier's, or a still's or the menu's): the governor's ceiling is over it
     const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+    const tri = new THREE.BufferGeometry(); // one triangle over the frame: no diagonal seam shaded twice
+    tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+    tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
+    const quad = new THREE.Mesh(tri);
     quad.frustumCulled = false;
     const draw = (mat, target) => { quad.material = mat; renderer.setRenderTarget(target); renderer.render(quad, quadCam); };
     const half = () => new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
@@ -140,88 +147,54 @@ void main() {
         uRadius: { value: 1.8 }, uGrow: { value: 0.016 }, uMaxR: { value: 0.12 }, uIntensity: { value: 3.0 }, uFadeFar: { value: 420 } }) });
     const mats = { 1: aoMat(LEVELS[1].samples), 2: aoMat(LEVELS[2].samples) };
     const blurMat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: BLUR, depthTest: false, depthWrite: false, uniforms: { tAO: { value: null }, uStep: { value: new THREE.Vector2() } } });
-    const mixMat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: MIX, depthTest: false, depthWrite: false,
-      uniforms: Object.assign(common(), { tColor: { value: null }, tAO: { value: null }, uHalfPx: { value: new THREE.Vector2() }, uStrength: { value: 0.85 }, uShow: { value: 0 }, uFadeNear: { value: 160 }, uFadeFar: { value: 420 } }) });
+    // what the pass that reads the scene takes (UPSAMPLE): shared objects, so one write here reaches every material
+    const uniforms = Object.assign(common(), { tAO: { value: null }, uHalfPx: { value: new THREE.Vector2() }, uAOStrength: { value: 0 }, uFadeNear: { value: 160 }, uFadeFar: { value: 420 } });
     let night = 0;
-    // the frame-time budget: an average over about a second; over budget for 3 s steps down once,
-    // and 3 s later a step that bought nothing is taken back and the budget rests, a minute, then two...
-    const B$ = { ema: 0, over: 0, last: 0, trial: null, rest: 0, misses: 0, sim: false };
-    function watch(now) {
-      const ms = B$.last ? now - B$.last : 0;
-      B$.last = now;
-      if (!ms || ms > 250) return; // the first frame, or back from a hidden tab
-      B$.ema = B$.ema ? B$.ema * 0.95 + ms * 0.05 : ms;
-      if (pinned || software || now < B$.rest) return;
-      if (B$.trial && now - B$.trial.t > 3000) {
-        if (B$.ema > B$.trial.ema * 0.92) { level = B$.trial.from; B$.rest = now + 60000 * 2 ** B$.misses++; } // not the AO's cost: back as it was, and a longer rest each time
-        B$.trial = null; B$.over = 0;
-        return;
-      }
-      if (B$.trial || level === 0) return;
-      B$.over = B$.ema > budget ? B$.over + ms : 0;
-      if (B$.over > 3000) { B$.trial = { from: level, ema: B$.ema, t: now }; level -= 1; B$.over = 0; }
-    }
+    // (the stack's entry for it: on or off, its size, and what the warm-up compiles: atmosphere.js)
     const pass = {
-      enabled: level > 0, needsSwap: true, clear: false, renderToScreen: false,
-      materials: [mats[1], mats[2], blurMat, mixMat], quadGeometry: quad.geometry, // (what the post stack's warm-up compiles: atmosphere.js)
+      enabled: level > 0, materials: [mats[1], mats[2], blurMat], quadGeometry: tri,
       setSize(w, h) {
         const hw = Math.max(2, Math.ceil(w / 2)), hh = Math.max(2, Math.ceil(h / 2));
         A.setSize(hw, hh); B.setSize(hw, hh);
         for (const m of Object.values(mats)) { m.uniforms.uTexel.value.set(1 / w, 1 / h); m.uniforms.uAspect.value = w / Math.max(1, h); }
-        mixMat.uniforms.uHalfPx.value.set(1 / hw, 1 / hh);
+        uniforms.uHalfPx.value.set(1 / hw, 1 / hh);
       },
-      render(r, writeBuffer, readBuffer) {
-        const L = LEVELS[level];
-        mixMat.uniforms.uStrength.value = 0; // (without a depth buffer the frame passes through)
-        const prevAuto = r.autoClear;
-        r.autoClear = false;
-        camera.updateMatrixWorld();
-        const depth = readBuffer.depthTexture;
-        for (const m of [mats[1], mats[2], mixMat]) { m.uniforms.tDepth.value = depth; m.uniforms.uInvProj.value.copy(camera.projectionMatrixInverse); }
-        if (L && depth) {
-          const m = mats[level];
-          m.uniforms.uProj.value.copy(camera.projectionMatrix);
-          draw(m, A);
-          const sx = 1 / A.width, sy = 1 / A.height;
-          for (let i = 0; i < L.blurs; i++) {
-            blurMat.uniforms.tAO.value = A.texture; blurMat.uniforms.uStep.value.set(sx, 0); draw(blurMat, B);
-            blurMat.uniforms.tAO.value = B.texture; blurMat.uniforms.uStep.value.set(0, sy); draw(blurMat, A);
-          }
-          mixMat.uniforms.uStrength.value = 0.85 * (1 - 0.35 * night);
-        }
-        mixMat.uniforms.tColor.value = readBuffer.texture;
-        mixMat.uniforms.uShow.value = show ? 1 : 0;
-        mixMat.uniforms.tAO.value = A.texture;
-        draw(mixMat, this.renderToScreen ? null : writeBuffer);
-        r.autoClear = prevAuto;
-      },
-      dispose() { A.dispose(); B.dispose(); for (const m of [mats[1], mats[2], blurMat, mixMat]) m.dispose(); quad.geometry.dispose(); },
+      dispose() { A.dispose(); B.dispose(); for (const m of [mats[1], mats[2], blurMat]) m.dispose(); tri.dispose(); },
     };
+    // The occlusion for this frame from the scene's depth, into the half-size texture the lens reads. False (and
+    // a strength of 0, so the lens reads nothing) when it is off or there is no depth to read.
+    function compute(r, depth) {
+      const L = LEVELS[level];
+      uniforms.uAOStrength.value = 0;
+      if (!L || !depth || !pass.enabled) return false;
+      const prevAuto = r.autoClear;
+      r.autoClear = false;
+      camera.updateMatrixWorld();
+      const m = mats[level];
+      m.uniforms.tDepth.value = uniforms.tDepth.value = depth;
+      m.uniforms.uInvProj.value.copy(camera.projectionMatrixInverse); uniforms.uInvProj.value.copy(camera.projectionMatrixInverse);
+      m.uniforms.uProj.value.copy(camera.projectionMatrix);
+      draw(m, A);
+      const sx = 1 / A.width, sy = 1 / A.height;
+      for (let i = 0; i < L.blurs; i++) {
+        blurMat.uniforms.tAO.value = A.texture; blurMat.uniforms.uStep.value.set(sx, 0); draw(blurMat, B);
+        blurMat.uniforms.tAO.value = B.texture; blurMat.uniforms.uStep.value.set(0, sy); draw(blurMat, A);
+      }
+      uniforms.tAO.value = A.texture;
+      uniforms.uAOStrength.value = 0.85 * (1 - 0.35 * night);
+      r.autoClear = prevAuto;
+      return true;
+    }
     return {
-      pass,
-      // per frame from atmosphere.js, drawn or not: how far into the night it is (0..1), and the budget
-      update(n) { night = n; if (!B$.sim) watch(performance.now()); pass.enabled = level > 0; },
+      pass, compute, uniforms, show,
+      // per frame from atmosphere.js, drawn or not: how far into the night it is (0..1)
+      update(n) { night = n; pass.enabled = level > 0; },
       // 0 off, 1 lite, 2 full (no higher than the tier's own); for stills, films and the menu
-      set(v) { level = Math.max(0, Math.min(top || 2, v | 0)); pass.enabled = level > 0; B$.trial = null; B$.over = 0; },
+      set(v) { asked = level = Math.max(0, Math.min(top || 2, v | 0)); pass.enabled = level > 0; },
+      // the governor's ceiling (0, 1 or 2) on the level set; lifted again with limit(2)
+      limit(v) { if (!pinned) level = Math.min(asked, Math.max(0, v | 0)); pass.enabled = level > 0; },
       get level() { return level; },
-      get frameMs() { return B$.ema; },
-      // for tools/ao_cost.js: a budget in ms that also holds on a software renderer
-      testBudget(ms) { budget = ms; software = false; B$.rest = 0; B$.misses = 0; B$.trial = null; B$.over = 0; },
-      // for tools/ao_cost.js: the budget fed frames of the given lengths (ms) on a clock of its own,
-      // as a GPU would show them; frameOf(level) gives each frame's length at the level then set.
-      // Returns the level after each simulated second. The real frames are not watched meanwhile.
-      testFrames(seconds, frameOf) {
-        B$.sim = true; Object.assign(B$, { ema: 0, over: 0, last: 0, trial: null, rest: 0, misses: 0 });
-        const seen = []; let t = 1e6;
-        for (let s = 0; s < seconds; s++) {
-          for (const end = t + 1000; t < end;) { t += frameOf(level); watch(t); }
-          seen.push(level);
-        }
-        B$.sim = false; B$.last = 0; B$.ema = 0; B$.rest = 0; B$.trial = null; B$.over = 0;
-        pass.enabled = level > 0;
-        return seen.join('');
-      },
     };
   }
-  return { create, LEVELS };
+  return { create, LEVELS, UPSAMPLE, COARSE };
 })();

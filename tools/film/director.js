@@ -34,6 +34,8 @@ window.OEFilmDirector = (function () {
   const nz = (t, seed) => { let v = 0, a = 1; for (let o = 0; o < 3; o++) { v += Math.sin(t * (0.9 + o * 1.7) * (1 + seed * 0.13) + seed * 7.1 + o * 2.3) * a; a *= 0.5; } return v / 1.75; };
 
   let G, spec, lens, cur = null, fov = 40, year = 2026;
+  let wxKey = '';
+  const struck = new Set();
   const pose = { pos: new V3(), look: new V3() };
   const probe = new THREE.PerspectiveCamera(40, 1, 1, 50000);
 
@@ -186,6 +188,18 @@ window.OEFilmDirector = (function () {
     const date = s.date || spec.date || [3, 21];
     const min = lerp(m0, m1, EASE[s.timeEase || 'linear'](k));
     G.setClock(s.year || year, date[0], date[1], min);
+    // a shot's weather in time: "weather": [[k, kind or amounts], ...] sets each as the shot reaches k (0..1) and the
+    // game's weather eases to it (game/weather.js); "strikes": [[k, {dist, bearing (degrees), ground}], ...] is lightning
+    if (G.weather && s.weather) {
+      let key = null;
+      for (const q of s.weather) if (k >= q[0]) key = q;
+      const id = `${s.id}:${key ? key[0] : ''}`;
+      if (key && id !== wxKey) { wxKey = id; G.weather.set(key[1]); }
+    }
+    if (G.weather && s.strikes) for (const [kk, o] of s.strikes) {
+      const id = `${s.id}:${kk}`;
+      if (k >= kk && !struck.has(id)) { struck.add(id); G.weather.strike(G.t(), Object.assign({}, o, { bearing: (o.bearing || 0) * Math.PI / 180 })); }
+    }
     shotPose(s, k);
     fov = ch(s.fov ?? 40, k, EASE[s.ease || 'glide']);
     G.camera.updateProjectionMatrix(); // the game re-applies its own fov only when it changes, so set the film's here
