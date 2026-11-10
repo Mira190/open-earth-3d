@@ -56,8 +56,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1863357,
-   "game": 2769432
+   "model": 1863330,
+   "game": 2775951
   }
  },
  {
@@ -116,8 +116,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1294002,
-   "game": 1729032
+   "model": 1293972,
+   "game": 1729161
   }
  },
  {
@@ -158,8 +158,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 5756738,
-   "game": 6140552
+   "model": 5756703,
+   "game": 6140517
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -620,8 +620,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1024776,
-   "game": 1144171
+   "model": 1024749,
+   "game": 1144144
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1076,8 +1076,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 630027,
-   "game": 726229
+   "model": 630003,
+   "game": 726205
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1532,8 +1532,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 697192,
-   "game": 837159
+   "model": 697160,
+   "game": 837127
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1965,7 +1965,7 @@
   "summary": "Kamakura's Shonan coast on PLATEAU's 2024 survey: ride the Enoden from Koshigoe's street-running rails to Inamuragasaki, wait at the Kamakurakokomae crossing as the train passes with Enoshima behind, and watch Mount Fuji across Sagami Bay.",
   "built": true,
   "game": true,
-  "buildings": 7366,
+  "buildings": 7380,
   "extent_km": [
    3.8,
    1.7
@@ -1985,12 +1985,11 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 863360,
-   "game": 1004179
+   "model": 813032,
+   "game": 941793
   },
   "group_meta": {
    "native": "\u938c\u5009",
-   "kind": "metro",
    "summary": "Kamakura along the Enoden, the single-track electric railway between Fujisawa and Kamakura: the Shonan coast at Shichirigahama first, with Enoshima, Hase and the Great Buddha, and Tsurugaoka Hachimangu to follow as maps of their own.",
    "note": "Districts are the Enoden's stations and the sights by them (OpenStreetMap positions inside the Shichirigahama map; the others are approximate until their maps are built). The line is the Enoshima Electric Railway's, with the JR Yokosuka Line at Kamakura and the Shonan Monorail at Enoshima.",
    "districts": [
@@ -2197,8 +2196,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 2038098,
-   "game": 2520025
+   "model": 2038076,
+   "game": 2520003
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -2951,8 +2950,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 3966098,
-   "game": 4519894
+   "model": 3966075,
+   "game": 4519871
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3691,8 +3690,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 2327011,
-   "game": 2770806
+   "model": 2326984,
+   "game": 2770779
   },
   "group_meta": {
    "native": "\u6771\u4eac",

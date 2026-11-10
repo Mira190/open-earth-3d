@@ -1,0 +1,9 @@
+{
+  "spots": [
+    {"id": "bobs", "name": "Bob's Peak", "at": [-1044.1, 466.5], "look": [150, -600], "lookUp": -150, "lines": {"any": ["Bob's Peak, by the top of the gondola. Lake Wakatipu bends away below like a river that forgot to stop."]}},
+    {"id": "skyline", "name": "The Skyline terrace", "at": [-975.9, 475.8], "look": [150, -600], "z": 474.6, "lookUp": -120, "lines": {"any": ["From the Skyline terrace: the town, the bay, the Gardens on their point, and the Remarkables across the lake."], "dusk": ["The Remarkables hold the last light for a few minutes after the town has lost it. The whole terrace went quiet to watch."]}},
+    {"id": "gardens", "name": "Queenstown Gardens, the point", "at": [-110, -698], "look": [3000, -1500], "lookUp": 250, "lines": {"any": ["The point of the Queenstown Gardens, with the Remarkables over the trees. Ten minutes' walk from the main street and nobody here."]}},
+    {"id": "parade", "name": "Marine Parade", "at": [-116, -226], "look": [-300, -420], "lookUp": 10, "lines": {"any": ["Marine Parade, on the bay. The water is so clear at the edge that the stones look dry, and the old steamer berths just along the shore."]}},
+    {"id": "church", "name": "St Peter's", "at": [20, -138], "look": [36, -183], "lookUp": 6, "lines": {"any": ["St Peter's, a stone church with a small spire, a street back from the lake. Its door was open."]}}
+  ]
+}
