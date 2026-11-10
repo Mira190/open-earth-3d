@@ -9,11 +9,14 @@ The NPCs (--npcs) are Rocketbox avatars too: every R_<avatar>[_<head>][_<tag>...
 city's game.npcs names (pipeline/fetch_rocketbox.py, npc_cast). An avatar can wear another
 avatar's head (by its model code: R_Pilot_Female_01_f003 is the pilot with Female_Adult_03's
 head; every avatar of a sex has the same skeleton, so a head fits any body), and tags retouch
-it: HAIR recolours the hair, CLOTH the clothes, PATTERN prints a pattern over the top, "bare"
-takes off a hat or helmet, "plain" covers lettering and badges (INSIGNIA); a swapped head's
-skin tone carries to the hands. The NPCs carry no clips of their own: one file per sex
+it: HAIR recolours the hair, CLOTH the clothes, TOP the top, PATTERN prints a pattern over it, "bare"
+takes off a hat or helmet, "plain" covers lettering and badges (INSIGNIA), SUIT dresses a
+swimmer's bare body in lycra or neoprene (a stinger suit, a rash vest and boardshorts, a
+wetsuit); a swapped head's skin tone carries to the hands. The NPCs carry no clips of their own: one file per sex
 (R_clips_f.glb, R_clips_m.glb) holds the gestures and what each NPC does while it waits
-(NPC_CLIPS, city.json look.clip), and drives them all.
+(NPC_CLIPS, city.json look.clip), and drives them all. The reef and alpine sites (web/reef)
+cast their people and the visitor you play from the same avatars; someone who runs there
+takes FIELD_CLIPS, in a second small file per sex (R_clips_field_f.glb, R_clips_field_m.glb).
 
     pip install bpy==5.2.3                       # Blender as a Python module
     python pipeline/fetch_rocketbox.py           # the avatars and clips, into data/raw/rocketbox (once)
@@ -73,11 +76,26 @@ NPC_CLIPS = {"Idle": ("idle_neutral_01", "static"), "Idle_Neutral": ("idle_neutr
              "Present": ("gestic_presentation_left_01", "static"), "Cheer": ("cheer_01", "static"),
              "LookAround": ("idle_look_around_01", "static"), "Thoughtful": ("gestic_thoughtful_01", "static")}
 NPC_BASE = ["Idle", "Idle_Neutral", "Walk", "Wave", "Talk", "Listen", "Nod"]
+# what the visitor you play at a reef or alpine site needs beyond those (web/reef/people.js): the fast run
+FIELD_CLIPS = {"Run": ("run_fast_01", "xy")}
 LOOPS |= set(NPC_CLIPS) - {"Wave", "Nod"}   # what an NPC does while it waits goes round and round
 # hair tags: the colour the hair (and the brows) takes, in sRGB
 HAIR = {"grey": (0.60, 0.60, 0.62), "white": (0.80, 0.80, 0.80), "brown": (0.33, 0.19, 0.10)}
 # cloth tags: light, unsaturated cloth (a white shirt or robe) dyed this colour
 CLOTH = {"dark": (0.085, 0.085, 0.095), "navy": (0.07, 0.09, 0.17)}
+# top tags: the top's own colour (a coloured shirt) taken to this one, its folds kept: a ranger's khaki
+TOP = {"khaki": (0.50, 0.46, 0.33)}
+# suit tags, for an avatar with a bare body (the swimmers, Sports_Male_01 and Sports_Female_01): cloth painted over
+# the skin of the body's texture, the hands, feet and head left bare. top and legs in sRGB; legs "ankle" (a full
+# suit) or "knee" (shorts over bare shins); arms: another colour for the sleeves; trim: the cuffs and the collar
+SUIT = {
+    # a stinger suit: full-body lycra, worn on the Great Barrier Reef in the marine stinger season
+    "stinger": {"top": (0.086, 0.196, 0.310), "legs": (0.086, 0.196, 0.310), "to": "ankle", "trim": (0.16, 0.42, 0.55)},
+    # a long-sleeved rash vest over boardshorts
+    "rash": {"top": (0.87, 0.35, 0.19), "legs": (0.114, 0.208, 0.341), "to": "knee", "trim": (0.95, 0.93, 0.88)},
+    # a dive instructor's 3 mm wetsuit: black neoprene, blue sleeves
+    "wetsuit": {"top": (0.075, 0.08, 0.09), "legs": (0.075, 0.08, 0.09), "to": "ankle", "arms": (0.10, 0.27, 0.42), "trim": (0.03, 0.03, 0.035)},
+}
 # the "plain" tag: lettering and badges that say who the avatar was (SECURITY, PARAMEDIC, another
 # country's flag), and any weapon, go. The badges by texture: boxes (x0, y0, x1, y1, from the top left, as a fraction of the
 # texture) each covered with the cloth (dx, dy) beside it
@@ -728,8 +746,15 @@ def print_pattern(mesh, kind):
         bare = uv_mask(mesh, [p for p in mine if any(weight(i, hands) > 0.3 for i in p.vertices)], w, h, grow=2)
         pos, cov = position_map(mesh, mat, w, h)
         m = cov * np.clip(1 - (np.linalg.norm(px[..., :3] - seed, axis=-1) - 0.08) / 0.06, 0, 1) * (1 - bare)
+        if kind in TOP:   # all of the cloth on the trunk and the arms, whatever its folds do to its colour; never the skin
+            tops = group(tuple(TOP_BONES) + ("Bip01 Pelvis",))   # (a shirt's tails hang over the hips)
+            on_top = uv_mask(mesh, [p for p in mine if sum(weight(i, tops) for i in p.vertices) > 0.5 * len(p.vertices)], w, h, grow=0)
+            d = np.linalg.norm(px[..., :3] / np.maximum(luma(px), 0.02)[..., None] - seed / max(luma(seed), 0.02), axis=-1)   # by hue, not by shade
+            m = cov * on_top * np.clip(1 - (d - 0.22) / 0.1, 0, 1) * (1 - bare)
         x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
-        if kind == "leopard":   # tan, with black rosettes round brown hearts; the grid of the old characters' shader, warped
+        if kind in TOP:   # the cloth's colour changed, lit as it was
+            col = np.array(TOP[kind]) * np.ones_like(pos)
+        elif kind == "leopard":   # tan, with black rosettes round brown hearts; the grid of the old characters' shader, warped
             f = 52
             sv = np.sin(x * f + 0.7 * np.sin(y * f * 1.7)) * np.sin(y * f + 1.7 + 0.7 * np.sin(z * f * 1.3)) * np.sin(z * f - 0.6 + 0.7 * np.sin(x * f * 1.9))
             ss = lambda a, b, v: np.clip((v - a) / (b - a), 0, 1) ** 2 * (3 - 2 * np.clip((v - a) / (b - a), 0, 1))
@@ -739,9 +764,67 @@ def print_pattern(mesh, kind):
         else:   # the marinière: Breton stripes, navy on white, round the body
             band = np.clip((np.abs(np.mod(y * 28, 1) - 0.5) - 0.15) / 0.04, 0, 1)
             col = np.array([0.94, 0.93, 0.90]) * (1 - band[..., None]) + np.array([0.10, 0.13, 0.26]) * band[..., None]
-        shade = np.clip(luma(px) / max(1e-3, np.median(luma(px)[m > 0.5])), 0.7, 1.25)[..., None]   # the folds, not a print underneath
+        lo, hi = (0.35, 1.6) if kind in TOP else (0.7, 1.25)   # the folds, not a print underneath
+        shade = np.clip(luma(px) / max(1e-3, np.median(luma(px)[m > 0.5])), lo, hi)[..., None]
         px[..., :3] = px[..., :3] * (1 - m[..., None]) + np.clip(col * shade, 0, 1) * m[..., None]
         put_pixels(node.image, px)
+
+
+def suit(arm, mesh, kind):
+    """Dress a bare body (SUIT[kind]): the cloth's colour over the body's texture from the collar
+    to the wrists and to the ankles or the knees, by where each texel is on the body in the bind
+    pose; the swimwear painted there goes under it, and its seams leave the normal map. (A
+    bikini modelled over the body stays, under the cloth: there is no skin beneath its faces.)"""
+    S = SUIT[kind]
+    vs = mesh.data.vertices
+    group = lambda names: {mesh.vertex_groups[n].index for n in mesh.vertex_groups.keys() if any(k in n for k in names)}
+    bare_g, arm_g = group((" Hand", " Finger", " Foot", " Toe")), group(("UpperArm", "Forearm"))
+    weight = lambda i, gs: sum(g.weight for g in vs[i].groups if g.group in gs)
+    bone = lambda n: (arm.matrix_world @ arm.data.bones[n].head_local).z
+    neck, waist, knee = bone("Bip01 Neck"), bone("Bip01 Pelvis") + 0.035, bone("Bip01 L Calf")
+    for slot in mesh.material_slots:
+        mat = slot.material
+        # (the head's texture carries the neck and the top of the chest: the collar is on it)
+        node = mat and (mat.name.endswith("_body") or mat.name.endswith("_head")) and base_image(mat)
+        if not node:
+            continue
+        w, h = node.image.size
+        mine = [p for p in mesh.data.polygons if mesh.material_slots[p.material_index].material is mat]
+        px = pixels(node.image)
+        bare = uv_mask(mesh, [p for p in mine if sum(weight(i, bare_g) for i in p.vertices) > 0.5 * len(p.vertices)], w, h, grow=0)
+        sleeve = uv_mask(mesh, [p for p in mine if sum(weight(i, arm_g) for i in p.vertices) > 0.5 * len(p.vertices)], w, h, grow=0)
+        pos, cov = position_map(mesh, mat, w, h)
+        y = pos[..., 1]
+        hem = knee + 0.07 if S["to"] == "knee" else -1
+        on = cov & (bare < 0.5) & (y < neck + 0.012) & (y > hem)
+        top = on & ((y >= waist) | (sleeve > 0.5))
+        col = np.where(top[..., None], np.array(S["top"]), np.array(S["legs"])) * np.ones_like(pos)
+        if "arms" in S:
+            col[sleeve > 0.5] = S["arms"]
+        from PIL import Image, ImageFilter
+        if "trim" in S:   # a band at the collar and, on shorts, the hem; the cuffs are where the bare hands and feet begin
+            edge = np.asarray(Image.fromarray(((bare > 0.5) * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(2 * max(2, w // 170) + 1))) > 127
+            band = on & (edge | (y > neck - 0.006) | ((y < hem + 0.022) if hem > 0 else False))
+            col[band] = S["trim"]
+        rng = np.random.default_rng(7)
+        col = col * (0.97 + 0.06 * rng.random((h, w, 1)))   # the knit, not a flat fill
+        px[..., :3] = np.where(on[..., None], col, px[..., :3])
+        # the texels just outside the faces take the cloth beside them, so the seams of the UV islands do not show skin
+        done = on.copy()
+        for _ in range(max(6, w // 48)):
+            for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                src = np.roll(done, (dy, dx), (0, 1)) & ~done & ~cov
+                px[src, :3] = np.roll(px[..., :3], (dy, dx), (0, 1))[src]
+                done |= src
+        m = done[..., None]
+        put_pixels(node.image, px)
+        for n in mat.node_tree.nodes:   # the trunks' or the bikini's seams, and the navel, flattened out of the normal map
+            im = n.image if n.type == "TEX_IMAGE" else None
+            if im and "_normal" in os.path.basename(im.filepath):
+                nx = pixels(im)
+                mm = m if nx.shape[:2] == m.shape[:2] else np.asarray(Image.fromarray(done).resize((nx.shape[1], nx.shape[0])))[..., None]
+                nx[..., :3] = np.where(mm, nx[..., :3] * 0.12 + np.array([0.5, 0.5, 1.0]) * 0.88, nx[..., :3])
+                put_pixels(im, nx)
 
 
 def skin_like(px):
@@ -818,10 +901,12 @@ def build_npc(cid, spec):
         elif tag == "plain":
             drop_faces(mesh, lambda n: bool(WEAPON.search(n)))
             plain(mesh)
-        elif tag in PATTERN:
+        elif tag in PATTERN or tag in TOP:
             print_pattern(mesh, tag)
+        elif tag in SUIT:
+            suit(arm, mesh, tag)
         elif tag != "bare":
-            raise SystemExit(f"{cid}: no tag {tag} (HAIR, CLOTH, PATTERN, bare or plain)")
+            raise SystemExit(f"{cid}: no tag {tag} (HAIR, CLOTH, PATTERN, TOP, SUIT, bare or plain)")
     same_skeleton(cid, arm, spec["sex"])
     arm.name = f"{cid}_Rig"
     return arm, mesh
@@ -860,6 +945,17 @@ def build_npcs(only=None, clips=True):
         speeds = animate(rig, sex, {c: NPC_CLIPS[c] for c in names})
         export(rig, os.path.join(out, f"R_clips_{sex}.glb"), mesh=False, shared=True)
         clip_files[sex] = {"file": f"R_clips_{sex}.glb", "clips": [t.name for t in rig.animation_data.nla_tracks], "ground_speed": speeds}
+    # the run, for the sexes of the people the reef and alpine sites cast
+    field = dict(sec.get("field", {}))
+    for sex in sorted({s["sex"] for s in cast.values() if "reef" in s["cities"]}):
+        if not clips and os.path.exists(os.path.join(out, f"R_clips_field_{sex}.glb")):   # (--no-clips: only a missing one)
+            continue
+        avatar = next(s["avatar"] for s in cast.values() if s["sex"] == sex)
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        rig = load_avatar(f"R_clips_field_{sex}", {"avatar": avatar})
+        speeds = animate(rig, sex, FIELD_CLIPS)
+        export(rig, os.path.join(out, f"R_clips_field_{sex}.glb"), mesh=False, shared=True)
+        field[sex] = {"file": f"R_clips_field_{sex}.glb", "clips": [t.name for t in rig.animation_data.nla_tracks], "ground_speed": speeds}
     if not only:   # files of characters no city names any more
         for f in glob.glob(os.path.join(out, "R_*.glb")):
             name = os.path.basename(f)[:-4]
@@ -868,10 +964,12 @@ def build_npcs(only=None, clips=True):
                 print("removed", f)
     info["npcs"] = {
         "note": "The NPCs: Microsoft Rocketbox avatars built by blender/build_people.py --npcs for the characters the cities' "
-                "game.npcs name (R_<avatar>[_<head>][_<tag>...]). Each sex's clips are in one file that drives them all.",
+                "game.npcs name, and the reef and alpine sites' people (web/reef) (R_<avatar>[_<head>][_<tag>...]). Each sex's clips are "
+                "in one file that drives them all; \"field\" is the run of the visitor you play at a reef or alpine site.",
         "source": "Microsoft Rocketbox (MIT, (c) 2020 Microsoft): avatars and animations; see LICENSE-Rocketbox.txt",
         "bones": BONE_ALIAS,
         "clips": clip_files,
+        "field": field,
         "characters": {k: chars[k] for k in sorted(chars) if chars[k]},
     }
     json.dump(info, open(path, "w"), indent=1)
