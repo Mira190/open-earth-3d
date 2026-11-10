@@ -144,6 +144,8 @@ window.OpenEarthGame = async function game(cityId) {
   const uploadFor = obj => (OEWorld.upload ? OEWorld.upload(renderer, obj) : Promise.resolve());
   const warmFor = obj => uploadFor(obj).then(() => compileFor(obj));
   // the weather: dry, overcast, drizzle or rain, as the city's climate brings it for the date (weather.js)
+  // a far land that reaches past the default far plane (Kamakura's, out to Mount Fuji at 70 km): the camera takes it in
+  if ((Wd.world.userData.farHalf || 0) * 1.45 > camera.far) { camera.far = Wd.world.userData.farHalf * 1.45; camera.updateProjectionMatrix(); }
   const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {}, wind: (scene.water || {}).waves || null, geo: scene.city && Number.isFinite(scene.city.lat) ? { lat: scene.city.lat, lon: scene.city.lon } : null }) : null;
   if (atmos && atmos.composer) {
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
@@ -809,10 +811,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   for (const w of G.wharves) { const p = nav.stand(w.terminal[0], w.terminal[1], 2, { rMax: 90, room: 100 }); w.landing = p ? [p.x, p.y] : w.terminal.slice(); }
   // street trams and a funicular, where the city has them (rail.js)
   const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
+  if (rail && rail.gateAhead) crowd.gate = rail.gateAhead; // (the crowd waits at a closed level crossing)
+  // a railway's trains: the modelled stock in place of the stand-ins, when it has loaded
+  if (rail && rail.useModels) new THREE.GLTFLoader().load('assets/vehicles/trains.glb', g => { try { rail.useModels(g.scene); } catch (e) { console.warn('Train models unavailable, using simple ones:', e); } }, undefined, e => console.warn('Train models unavailable, using simple ones:', e));
   // a main line's trains past its station, where the city has them (trains.js): heard from the camera
   const trains = G.trains && window.OETrains ? OETrains.create(world, G, { hour: () => clock.min / 60, listener: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }) }) : null;
-  const railRide = () => (G.rail && (G.rail.funicular || G.rail.gondola)) || {}; // the line a rider takes: a funicular or a gondola
-  const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
+  const railRide = () => (G.rail && (G.rail.funicular || G.rail.gondola || G.rail.train)) || {}; // the line a rider takes: a funicular or a gondola
+  const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < (st.r || r)) : null);
   // neighbourhood signs, things to look at and conversations to overhear (places.js), and lifts between a
   // street door and a floor high up (game.json "lifts", from the city's landmarks)
   const places = window.OEPlaces ? OEPlaces.create({ G, W, camera, stage }) : null;
@@ -1017,6 +1022,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       out.push(b);
     }
     for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
+    if (rail && rail.trainBoxes) for (const b of rail.trainBoxes()) if (Math.abs(b.x - x) < r + b.hl && Math.abs(b.y - y) < r + b.hl) out.push(b); // (a train's bodies)
+    if (rail && rail.gateBoxes) for (const b of rail.gateBoxes(x, y, r)) out.push(b); // (and a closed crossing's arms)
     return out;
   }
   // the lamp posts and trunks near (x, y), for a car to hit
@@ -2353,7 +2360,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // ------------------------------------------------------------ wildlife: little penguins on their colony's rocks (penguins.js)
   const colonies = (G.wildlife || []).map(c => OEPenguins.create(world, c, A, nav.terrain)).filter(Boolean);
   // and silver gulls round a dropped box of chips by the water (gulls.js), marked on the map
-  const flocks = (G.flocks || []).map(f => OEGulls.create(world, f, A, nav));
+  const flocks = (G.flocks || []).map(f => (f.kind === 'black_kite' ? OEGulls.kites(world, f) : OEGulls.create(world, f, A, nav)));
   // ------------------------------------------------------------ fishing from the shore (docs/FISHING.md). Only where the spots are
   // comes with the game (game.json "fishing", a city that has it: pipeline/fishing.py). fishing.js and the city's
   // fishing.json are fetched the first time you are on foot within sight of a spot, and what they draw is made on
@@ -2832,7 +2839,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   for (const w of G.wharves) addLabel(`<span class="tag f">F</span>${w.name}`, () => W(w.terminal[0], w.terminal[1], 6), 300, 'wharf');
   for (const h of G.helipads) addLabel(`<span class="tag h">H</span>${h.name}`, () => W(h.at[0], h.at[1], h.at[2] + 6), 400, 'wharf');
   for (const v of VP) addLabel(`<span class="tag t">△</span>${v.name}`, () => W(v.x, v.y, v.z + 3.2), 260, 'wharf');
-  for (const f of flocks) addLabel(`<span class="tag g">${GULL}</span>${f.flock.name}`, () => W(f.at[0], f.at[1], f.at[2] + 3.4), 220, 'wharf');
+  for (const f of flocks) if (!f.soaring) addLabel(`<span class="tag g">${GULL}</span>${f.flock.name}`, () => W(f.at[0], f.at[1], f.at[2] + 3.4), 220, 'wharf');
   if (fish) for (const sp of fish.spots) { const p = W(sp.at[0], sp.at[1], Math.max(0, nav.terrain(sp.at[0], sp.at[1])) + 3.2); addLabel(`<span class="tag f">≈</span>${sp.name}`, () => p, 240, 'wharf'); }
   for (const n of npcs) addLabel(`${n.name}<span class="role">${n.role}</span>`, () => W(n.x, n.y, n.z + (n.marker.visible ? 3.0 : 2.15)), 40, 'npc');
   const tmpV = new THREE.Vector3();
@@ -3070,6 +3077,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (c === 'KeyN') phoneShow(phone.el.hidden ? undefined : false);
     else if (c === 'KeyH' && player.mode === 'car') A.honk();
     else if (c === 'KeyV' && (player.mode === 'car' || player.mode === 'ride')) { cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; cam.lastInput = -10; if (cam.mode === 'cabin') cam.pitch = 0.2; }
+    else if (c === 'KeyV' && onTrain()) nextView();
     else if (c === 'KeyR' && player.mode === 'car') resetCar();
     else if (c === 'KeyJ' && player.mode === 'car') pilotAsk(e.shiftKey);
     else if (c === 'KeyI' && player.mode === 'car') assistToggle('lane');
@@ -3100,6 +3108,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (photo.on) { photo.az += dx * 0.006; photo.pitch = Math.max(-0.35, Math.min(1.5, photo.pitch + dy * 0.005)); photoSync(); return; }
     if (closeup) { closeup.c.turn(-dx * 0.004, -dy * 0.003); return; }
     if (player.mode === 'heli' && cam.mode === 'cockpit') { cam.lookYaw = Math.max(-2.4, Math.min(2.4, cam.lookYaw - dx * 0.005)); cam.lookPitch = Math.max(-1.1, Math.min(0.8, cam.lookPitch - dy * 0.004)); }
+    else if (onTrain() && cam.mode !== 'chase') { cam.lookYaw = Math.max(-2.6, Math.min(2.6, cam.lookYaw + dx * 0.005)); cam.lookPitch = Math.max(-0.9, Math.min(0.8, cam.lookPitch - dy * 0.004)); }
     else if (player.mode === 'seat') { cam.lookYaw = Math.max(-1.9, Math.min(1.9, cam.lookYaw + dx * 0.004)); cam.lookPitch = Math.max(-0.7, Math.min(0.9, cam.lookPitch - dy * 0.0035)); } // in a seat: you turn your head
     else { cam.yawTo = null; cam.yaw += dx * 0.006; cam.pitch = Math.max(-0.25, Math.min(1.35, cam.pitch + dy * 0.005)); }
     cam.lastInput = clockT;
@@ -3134,7 +3143,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     hold('#gt-cam', () => { if (player.mode === 'car' || player.mode === 'ride') cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; else nextView(); });
     hold('#gt-lens', () => (player.mode === 'car' ? assistToggle() : lens()));
   }
-  let skip = false, waitFerry = null, lastDock = null, lastBoard = null;
+  let nearXing = null; // (the closed level crossing you stand at)
+  let skip = false, waitFerry = null, lastDock = null, lastBoard = null, waitRail = null; // (waitRail: the station whose next train you are waiting for, the railway's clock run fast)
   // V: the chase camera and the bird's-eye view, and in the helicopter the pilot's own view between them
   // the pilot's view (issue 335): the lens, the look ahead's pitch, and any move of the eye from the model's Eye_Pilot
   // (+x left, +y up, +z forward, m). As in the flight sims' pilot views (MSFS's VFR view), most of the picture is
@@ -3168,12 +3178,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       cabinKept = null;
     }
   }
-  const VIEWS = { chase: ['Chase view', 'chase view'], cockpit: ['Cockpit view: drag to look round', 'cockpit'], bird: ["Bird's-eye view: scroll to change height", "bird's-eye"] };
-  const viewOrder = () => (player.mode === 'heli' ? ['chase', 'cockpit', 'bird'] : ['chase', 'bird']);
+  const VIEWS = { chase: ['Chase view', 'chase view'], cockpit: ['Cockpit view: drag to look round', 'cockpit'], bird: ["Bird's-eye view: scroll to change height", "bird's-eye"],
+    cabin: ['From the window seat: drag to look round', 'window seat'], cab: ['Behind the driver: drag to look round', 'cab'] };
+  const onTrain = () => player.mode === 'rail' && player.vehicle && player.vehicle.train;
+  const viewOrder = () => (player.mode === 'heli' ? ['chase', 'cockpit', 'bird'] : onTrain() ? (rail.train.modelled ? ['chase', 'cabin', 'cab'] : ['chase']) : ['chase', 'bird']);
   const nextViewOf = m => { const o = viewOrder(); return o[(o.indexOf(m) + 1) % o.length]; };
   function nextView() {
     cam.mode = nextViewOf(cam.mode);
     if (cam.mode === 'cockpit') { cam.lookYaw = 0; cam.lookPitch = COCKPIT.pitch; }
+    if (onTrain()) { cam.lookYaw = 0; cam.lookPitch = -0.04; }
     camera.up.set(0, 1, 0);
     blendFrom(); // (a short move from the old view to the new, not a cut; issue 335)
     H.toast(VIEWS[cam.mode][0]);
@@ -3242,8 +3255,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 10 && Math.abs(heli.st.z - player.z) < 3) return { key: 'E', text: 'Board the helicopter', act: enterHeli };
     const st = railStation(player.x, player.y);
     if (st && rail.cars.length) {
-      const car = rail.cars.find(c => rail.stationOf(c.id) === st), other = rail.stations.find(o => o !== st);
-      if (car) return { key: 'E', text: `Board the ${railRide().name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
+      // (a railway's station: the train standing nearest you, of the two directions' at a loop)
+      const car = rail.cars.filter(c => rail.stationOf(c.id) === st).sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y))[0], other = rail.stations.find(o => o !== st);
+      if (car) return { key: 'E', text: car.train ? `Board the ${railRide().name || 'train'} for ${rail.towards(car)}` : `Board the ${railRide().name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
+      if (st.train) return { key: 'E', text: `${st.name}: the next train in ${fmtSec(rail.eta(st))} · ${waitRail === st ? 'stop waiting' : 'wait for it'}`, act: () => { waitRail = waitRail === st ? null : st; } };
       return { key: '', text: `${st.name}: the next car is due in ${fmtSec(rail.eta())}` };
     }
     const ls_ = liftStop(player.x, player.y, player.z);
@@ -3333,18 +3348,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     A.engine(0.5);
   }
   function boardRail(car, st) {
-    player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id;
+    player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id; waitRail = null;
     cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
+    if (car.train) { const nx = rail.nextStop(car); H.toast(`Aboard the ${railRide().name || 'train'} for ${rail.towards(car)}${nx ? `. Next stop: ${nx.name}` : ''}. <kbd>V</kbd> for the window seat and the cab, <kbd>F</kbd> to skip ahead.`); return; }
     H.toast(`Aboard the ${railRide().name || 'funicular'}. ${railRide().note || ''} <kbd>F</kbd> to skip ahead.`);
   }
   function alightRail() {
     const car = player.vehicle, here = rail.stationOf(car.id);
-    const p = placeNear(here.x, here.y, here.z + 1) || placeNear(car.x, car.y, car.z + 1);
+    const off = rail.alightAt && car.train && rail.alightAt(car); // (a train: onto the platform of its side)
+    const p = (off && placeNear(off[0], off[1], off[2] + 0.5, null, 6)) || placeNear(here.x, here.y, here.z + 1) || placeNear(car.x, car.y, car.z + 1);
     if (!p) { H.toast('No safe way off here.'); return; }
     car.rider = false; skip = false;
+    if (cam.mode === 'cabin' || cam.mode === 'cab') { cam.mode = 'chase'; blendFrom(); }
+    player.rig.root.visible = true;
     player.mode = 'foot'; player.vehicle = null;
     [player.x, player.y, player.z] = p;
-    if (life && car.moved) life.emit('ride', { kind: 'rail', to: here.id, name: here.name });
+    if (life && car.moved) life.emit('ride', { kind: 'rail', from: car.from, to: here.id, name: here.name });
     for (const l of [tracked(), ...openLines()].filter(Boolean)) {
       const s = stepOf(l);
       if (s && s.type === 'rail' && car.from === s.from && here.id === s.to) { completeStep(l); break; }
@@ -4211,6 +4230,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const carYaw = kerb && (d.kind === 'landmark' ? Math.atan2(d.at[0] - kerb.pose.x, d.at[1] - kerb.pose.y) : to.face ?? kerb.pose.h);
     const cue = () => {
       inSeason(d);
+      // (a place to watch a train from: the next one is that many seconds off as you arrive, rail.js cue)
+      const tv = (G.travel || []).find(t => t.id === d.id);
+      if (tv && tv.train && rail && rail.cue && player.mode !== 'rail') rail.cue(rail.sNear(tv.at[0], tv.at[1]), tv.train.in ?? 40, tv.train.dir || 0);
       if (kerb) { // the car comes too, facing along the street
         parkMyCar(kerb.pose);
         Object.assign(player, { x: kerb.pose.x, y: kerb.pose.y, z: kerb.pose.z, h: kerb.pose.h, speed: 0 });
@@ -4239,7 +4261,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // over Circular Quay in late spring): arriving out of it, the clock's date moves to that day, the time kept
   function inSeason(d) {
     const b = d.kind === 'place' && d.best;
-    if (!b || !b.date) return;
+    if (!b || !b.date || ![...b.from, ...b.to].every((v, i) => v >= 1 && v <= (i % 2 ? 31 : 12)) || b.date[0] > 12) return; // (a window that is not months and days is none)
     const md = (m, dd) => m * 100 + dd, now = md(clock.m, clock.d), f = md(...b.from), t = md(...b.to);
     if (f <= t ? now >= f && now <= t : now >= f || now <= t) return;
     setClock(clock.y, b.date[0], b.date[1], clock.min);
@@ -4256,6 +4278,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best }))],
       ['Landmarks', landmarks],
       ['Trig stations', near(VP.map(v => ({ kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] })))],
+      ['Fishing spots', fish ? near(fish.spots.map(f => ({ kind: 'fish', id: `fish-${f.id}`, name: f.name, at: f.at }))) : []],
       ['Ferry wharves', near(G.wharves.map(w => ({ kind: 'wharf', id: w.id, name: w.name, at: w.landing })))],
       [region ? `Elsewhere in ${region.name}` : '', region ? near(region.stations.slice()) : []],
       ['Shortcuts', quick],
@@ -4277,7 +4300,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     picked = d;
     $('#g-mappop-name').textContent = d.kind === 'point' ? 'Your pin' : d.name;
     const deck = d.kind === 'landmark' && deckOf(d) && deckStand(deckOf(d)), up = deck ? ` · travel takes you up to its deck, ${Math.round(deck[2] - Math.max(0, nav.terrain(deck[0], deck[1])))} m up` : '';
-    $('#g-mappop-note').textContent = `${{ landmark: 'Landmark', place: 'Place', trig: 'Trig station', wharf: 'Ferry wharf', car: 'Your car', start: 'Where you started', point: 'Waypoint set' }[d.kind] || ''} · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away${up}`;
+    $('#g-mappop-note').textContent = `${{ landmark: 'Landmark', place: 'Place', trig: 'Trig station', fish: 'Fishing spot', wharf: 'Ferry wharf', car: 'Your car', start: 'Where you started', point: 'Waypoint set' }[d.kind] || ''} · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away${up}`;
     if (d.kind === 'district') $('#g-mappop-note').textContent = `${d.map.name} map · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away · its own map loads`;
     $('#g-mappop-line').textContent = d.kind === 'district' ? d.line : '';
     $('#g-mappop-line').hidden = d.kind !== 'district' || !d.line;
@@ -4368,7 +4391,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const w of G.wharves) icon({ kind: 'wharf' }, ...P2(...w.terminal), { kind: 'wharf', id: w.id, name: w.name, at: w.landing });
     for (const h of G.helipads) icon({ kind: 'pad' }, ...P2(h.at[0], h.at[1]));
     for (const v of VP) icon({ kind: 'trig', done: !!trigDone()[v.id] }, ...P2(v.x, v.y), { kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] });
-    for (const f of flocks) icon({ kind: 'gull' }, ...P2(f.at[0], f.at[1]));
+    if (fish) for (const f of fish.spots) icon({ kind: 'fish' }, ...P2(f.at[0], f.at[1]), { kind: 'fish', id: `fish-${f.id}`, name: f.name, at: f.at });
+    for (const f of flocks) if (!f.soaring) icon({ kind: 'gull' }, ...P2(f.at[0], f.at[1]));
     for (const v of fer.vessels) icon({ kind: 'ferry' }, ...P2(v.x, v.y));
     if (player.mode !== 'heli') icon({ kind: 'heli' }, ...P2(heli.st.x, heli.st.y));
     if (myCar && player.mode !== 'car') icon({ kind: 'car' }, ...P2(myCar.D.st.x, myCar.D.st.y), { kind: 'car', id: 'car', name: 'Your car', at: [myCar.D.st.x, myCar.D.st.y] });
@@ -4424,7 +4448,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       g.font = '600 11px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'; g.textBaseline = 'middle';
     }
     for (const q of bigPins.slice().sort((a, b) => rank(b) - rank(a))) {
-      if ((q.d.kind !== 'landmark' && q.d.kind !== 'place' && q.d.kind !== 'district') || said.some(o => Math.hypot(o.x - q.x, o.y - q.y) < 16)) continue;
+      if ((q.d.kind !== 'landmark' && q.d.kind !== 'place' && q.d.kind !== 'district' && q.d.kind !== 'fish') || said.some(o => Math.hypot(o.x - q.x, o.y - q.y) < 16)) continue;
       const w = g.measureText(q.d.name).width;
       // right, left, above or below its pin: [text x, text y, align]
       for (const [tx, ty, al] of [[q.x + 10, q.y, 'left'], [q.x - 10, q.y, 'right'], [q.x, q.y - 15, 'center'], [q.x, q.y + 15, 'center']]) {
@@ -4433,7 +4457,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         taken.push(r); firstTaken.push(r); said.push(q);
         g.textAlign = al;
         g.strokeStyle = 'rgba(6, 10, 18, 0.82)'; g.lineWidth = 3.2; g.strokeText(q.d.name, tx, ty);
-        g.fillStyle = q.d.kind === 'district' ? '#ffb066' : q.d.kind === 'place' ? '#ffd9a8' : '#f4efe6'; g.fillText(q.d.name, tx, ty);
+        g.fillStyle = q.d.kind === 'district' ? '#ffb066' : q.d.kind === 'place' ? '#ffd9a8' : q.d.kind === 'fish' ? '#9fd8ee' : '#f4efe6'; g.fillText(q.d.name, tx, ty);
         break;
       }
     }
@@ -5036,7 +5060,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (const w of G.wharves) icons.push({ kind: 'wharf', x: w.terminal[0], y: w.terminal[1] });
       for (const h of G.helipads) icons.push({ kind: 'pad', x: h.at[0], y: h.at[1] });
       for (const v of VP) icons.push({ kind: 'trig', x: v.x, y: v.y, done: !!trigDone()[v.id] });
-      for (const f of flocks) icons.push({ kind: 'gull', x: f.at[0], y: f.at[1] });
+      if (fish) for (const f of fish.spots) icons.push({ kind: 'fish', x: f.at[0], y: f.at[1] });
+      for (const f of flocks) if (!f.soaring) icons.push({ kind: 'gull', x: f.at[0], y: f.at[1] });
       for (const v of fer.vessels) icons.push({ kind: 'ferry', x: v.x, y: v.y });
       if (player.mode !== 'heli') icons.push({ kind: 'heli', x: heli.st.x, y: heli.st.y });
       if (myCar && player.mode !== 'car') icons.push({ kind: 'car', x: myCar.D.st.x, y: myCar.D.st.y });
@@ -5151,16 +5176,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     fer.update(dt, skip && player.mode === 'ferry' ? FERRY_SKIP : 1, clockT, waitFerry ? FERRY_WAIT : 1);
     if (trains) trains.update(dt, camera);
     if (rail) {
-      rail.update(dt, clockT, [player.mode === 'foot' ? player : null, ...npcs], player.mode === 'rail' && skip);
+      if (waitRail && (player.mode !== 'foot' || railStation(player.x, player.y) !== waitRail || rail.cars.some(c => rail.stationOf(c.id) === waitRail))) { if (player.mode === 'foot' && railStation(player.x, player.y) === waitRail) H.toast(`The train is in. <kbd>E</kbd> to board.`); waitRail = null; }
+      rail.ear = player;
+      if (rail.crossingClosed) { // (a crossing's alarm starting beside you: said once)
+        const xc = player.mode === 'foot' ? rail.crossingClosed(player.x, player.y, 12) : null;
+        if (xc && xc !== nearXing) H.toast(xc.arms.length ? 'The crossing is closing: wait behind the barrier until the train has passed.' : 'A train is coming: keep off the rails.');
+        nearXing = xc;
+      }
+      rail.update(dt, clockT, [player.mode === 'foot' ? player : null, ...npcs], (player.mode === 'rail' && skip) || !!waitRail);
       for (const ev of rail.events.splice(0)) {
         if (player.mode !== 'rail') continue;
         const car = player.vehicle;
+        if (ev.car && ev.car !== car) continue;
         if (ev.type === 'depart') car.moved = true;
         if (ev.type === 'arrive' && car.moved) { skip = false; H.toast(`${rail.stationOf(car.id).name}. <kbd>E</kbd> to get off.`); }
       }
       if (player.mode === 'rail') { // standing in the car, by the downhill window
         const c = player.vehicle;
-        if (rail.riderPos) { const q = rail.riderPos(c); player.x = q.x; player.y = q.y; player.z = q.z; player.h = q.h + Math.PI; } // in a gondola cabin
+        const q = rail.riderPos && rail.riderPos(c);
+        // (a train leaving the map: off at its last station here, as its doors close)
+        if (c.train && c.moved && rail.stationOf(c.id) && !rail.nextStop(c) && rail.departsIn(c) < 2) { H.toast(`${rail.stationOf(c.id).name} is the last stop on this map: the train goes on to ${rail.towards(c)}.`); alightRail(); }
+        else if (q) { player.x = q.x; player.y = q.y; player.z = q.z; player.h = q.h + Math.PI; } // in a gondola cabin, in a train
         else { player.x = c.x + Math.sin(c.h) * 3; player.y = c.y + Math.cos(c.h) * 3; player.z = c.z + 0.6 + Math.sin(c.pitch) * 3; player.h = c.h + Math.PI; }
       }
     }
@@ -5203,6 +5239,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // the move is left to its driver (soft: the traffic doesn't wait on it), so that one swinging out
     // round a queue and a car coming the other way never wait on each other for good
     cars.extra.length = 0;
+    if (rail && rail.trainBoxes) { // a railway, to the traffic: each body of its trains, and a closed crossing as a bar across the road
+      for (const b of rail.trainBoxes()) if (Math.abs(b.x - cx) < 700 && Math.abs(b.y - cy) < 700) cars.extra.push({ id: 'train', x: b.x, y: b.y, z: b.z, h: b.h, half: b.hl + 0.4, hw: b.hw + 0.3, v: 0, line: 0, top: b.top, soft: false, ps: null, np: 0, mv: null, live: true });
+      for (const c of rail.crossings) {
+        if (c.kind !== 'gated' || !c.closed) { c.barred = false; continue; }
+        // (barred once nothing of the traffic is between the gates, so that a car caught there drives out)
+        if (!c.barred) c.barred = c.on >= 2 && !cars.live.some(q => q.line >= 0 && Math.hypot(q.x - c.x, q.y - c.y) < c.half_m + (q.half || 2.3) + 0.5);
+        if (c.barred && Math.abs(c.x - cx) < 700 && Math.abs(c.y - cy) < 700) cars.extra.push({ id: 'gate', x: c.x, y: c.y, z: c.z, h: c.h, half: c.width_m / 2 + 2, hw: c.half_m + 0.6, v: 0, line: 0, top: 1.2, soft: false, ps: null, np: 0, mv: null, live: true });
+      }
+    }
     for (const o of [myCar, ride]) if (o) {
       // (your car with the autopilot at its wheel is read as a ride with you in it is: by its driver's own state, its way
       // ahead and its way across a junction, under its own name, so that a ride near it is still told from it)
@@ -5410,11 +5455,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const veh = player.mode === 'car' ? myCar.D.st : player.mode === 'ride' && ride ? ride.drv.st : null;
     carFov += ((veh ? (cam.mode === 'cabin' ? 8 : Math.max(0, Math.min(13, ((veh.speed ?? Math.abs(veh.v)) - 9) * 0.32))) : 0) - carFov) * Math.min(1, dt * 2);
     if (veh) player.rig.root.visible = cam.mode !== 'cabin';
+    const seated = onTrain() && cam.mode !== 'chase'; // (in a train, from the window seat or the cab)
+    if (onTrain()) player.rig.root.visible = !seated;
     // the cockpit view takes a wider lens, as cockpit views in games do, and a near plane inside the cabin
     const shot = cine.step(clockT), cockpit = !shot && player.mode === 'heli' && cam.mode === 'cockpit';
     // (and in the helicopter's chase view with its speed, up to 6 degrees at top speed: the sense of speed in the air)
     heliFov += ((player.mode === 'heli' && cam.mode === 'chase' ? Math.min(6, heli.st.speed * 0.12) : 0) - heliFov) * Math.min(1, dt * 1.5);
-    const fov = shot && cine.label === 'overture' ? overture.fov : shot && cine.label === 'survey' ? surveyFov : cockpit ? COCKPIT.fov : BASE_FOV + (shot ? 0 : Math.round((carFov + heliFov) * 4) / 4), near = cockpit ? 0.12 : 0.3;
+    const fov = shot && cine.label === 'overture' ? overture.fov : shot && cine.label === 'survey' ? surveyFov : cockpit ? COCKPIT.fov : BASE_FOV + (shot ? 0 : Math.round((carFov + heliFov) * 4) / 4) + (seated && !shot ? 6 : 0), near = cockpit || seated ? 0.12 : 0.3;
     if (camera.fov !== fov || camera.near !== near) { camera.fov = fov; camera.near = near; camera.updateProjectionMatrix(); }
     if (shot) {
       camera.up.set(0, 1, 0);
@@ -5475,6 +5522,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     live.up.set(0, 1, 0);
     const veh = player.mode === 'car' ? myCar : player.mode === 'ride' ? ride : null, vs = veh && stOf(veh);
     if (veh && cam.mode === 'cabin') { cabinView(dt, veh, vs); return; }
+    if (onTrain() && cam.mode !== 'chase') { // the eyes of someone in the train (rail.js eye), looking where you drag
+      const e = rail.eye(player.vehicle, cam.mode), yaw = e.h + cam.lookYaw, p = cam.lookPitch + e.pitch * Math.cos(cam.lookYaw);
+      eye.copy(W(e.x, e.y, e.z));
+      live.pos.copy(eye);
+      live.look.set(eye.x + Math.sin(yaw) * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z - Math.cos(yaw) * Math.cos(p) * 10);
+      live.half = 170;
+      camTarget.copy(eye); camSmooth.copy(eye);
+      return;
+    }
     if (player.mode === 'seat' && shows && shows.seat) { // from the seat, through your own eyes
       const st = shows.seat, yaw = st.h + cam.lookYaw, p = cam.lookPitch;
       eye.copy(W(st.at[0] + st.face[0] * 0.08, st.at[1] + st.face[1] * 0.08, st.at[2] + (st.eye || 1.12)));
@@ -5951,7 +6007,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else if (player.mode === 'rail') {
       const c = player.vehicle, F = rail.funicular, here = rail.stationOf(c.id);
       el.hidden = false;
-      el.innerHTML = `<div><b>${railRide().name || 'Funicular'}</b><span>${c.name}</span></div><div><b class="num">${Math.round(c.z)} m</b><span>above the datum</span></div>
+      if (c.train) {
+        const nx = rail.nextStop(c);
+        el.innerHTML = `<div><b>${railRide().name || 'Train'}</b><span>${c.name} · for ${rail.towards(c)}</span></div><div><b class="num">${(c.speed * 3.6).toFixed(0)}</b><span>km/h</span></div>
+        <div><b>${here ? here.name : nx ? nx.name : rail.towards(c)}</b><span>${here ? 'standing at' : 'next stop'}</span></div>
+        <p class="note">${here ? `${c.moved ? 'E get off · ' : ''}departs in ${fmtSec(rail.departsIn(c))} · ` : ''}V ${VIEWS[nextViewOf(cam.mode)][1]} · F ${skip ? 'normal speed' : 'skip ahead'}${cam.mode === 'chase' ? '' : ' · drag to look round'}</p>`;
+      } else el.innerHTML = `<div><b>${railRide().name || 'Funicular'}</b><span>${c.name}</span></div><div><b class="num">${Math.round(c.z)} m</b><span>above the datum</span></div>
         <div><b class="num">${Math.round(Math.tan(Math.abs(c.pitch)) * 100)}%</b><span>gradient</span></div><div><b class="num">${(c.speed * 3.6).toFixed(0)}</b><span>km/h</span></div>
         <p class="note">${here ? (c.moved ? 'E get off · ' : `Departs in ${fmtSec(F.cyc.t)} · `) : ''}F ${skip ? 'normal speed' : 'skip ahead'} · drag to look around</p>`;
     } else el.hidden = true;
@@ -5994,7 +6055,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

@@ -188,3 +188,9 @@ The button is held 65% to 84% of a fight.
 - NSW Department of Primary Industries, [Fishing in Sydney Harbour](https://www.dpi.nsw.gov.au/fishing/recreational/fishing-skills/fishing-in-sydney-harbour) and [Saltwater bag and size limits](https://www.dpi.nsw.gov.au/fishing/recreational/fishing-rules-and-regs/saltwater-bag-and-size-limits)
 - Otago Fish & Game, [Lake Wakatipu](https://fishandgame.org.nz/freshwater-fishing-in-new-zealand/where-to-fish/regional-info/otago/lake-wakatipu) and the [weekly report of 18 December 2025](https://www.fishandgame.org.nz/freshwater-fishing-in-new-zealand/follow-the-fish/regional-fishing-reports/otago-weekly-fishing-report-18-december-2025/)
 - Man of Many, [Best fishing spots in Sydney](https://manofmany.com/culture/travel/best-fishing-spots-sydney): Beulah Street Wharf and Blues Point Reserve
+
+## On the map
+
+Each spot is a blue fish pin on the big map and the minimap, named beside its pin when there is room,
+listed under "Fishing spots" in the map's travel list, and Travel puts you on the spot. `tools/fishing_map.js`
+checks the pins, the list and the travel for a city (`xvfb-run -a node tools/fishing_map.js sydney out_dir [WxH]`).

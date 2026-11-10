@@ -1,0 +1,68 @@
+{
+ "note": "The trains the Japanese maps share, built by blender/build_trains.py: one body of each two-car articulated set, its cab at +z; web/game/rail.js stands two back to back as a set and couples sets into trains.",
+ "axes": "+z forward (the cab), +y up, +x left; origin on the rail head under the body's middle",
+ "models": {
+  "Enoden_300": {
+   "number": "305",
+   "seat_m": -0.29,
+   "set_m": 24.1,
+   "body_m": 11.93,
+   "width_m": 2.4,
+   "roof_m": 3.41,
+   "floor_m": 1.1,
+   "bogie_centres_m": 8.7,
+   "wheelbase_m": 1.65,
+   "wheel_m": 0.86,
+   "side": "dwDwwwwwDwww",
+   "livery": {
+    "body": "#3f7a52",
+    "band": "#efe3bf",
+    "roof": "#8b908c"
+   },
+   "triangles": 17100,
+   "lod1_triangles": 2161
+  },
+  "Enoden_1000": {
+   "number": "1001",
+   "seat_m": -0.91,
+   "set_m": 25.4,
+   "body_m": 12.58,
+   "width_m": 2.4,
+   "roof_m": 3.4,
+   "floor_m": 1.07,
+   "bogie_centres_m": 9.5,
+   "wheelbase_m": 1.6,
+   "wheel_m": 0.86,
+   "side": "dwDwwwDww",
+   "livery": {
+    "body": "#1f5a3c",
+    "band": "#f1e7c6",
+    "roof": "#9a9d9a",
+    "line": "#c9a84a"
+   },
+   "triangles": 16768,
+   "lod1_triangles": 2308
+  },
+  "Enoden_500": {
+   "number": "501",
+   "seat_m": -0.93,
+   "set_m": 25.4,
+   "body_m": 12.58,
+   "width_m": 2.5,
+   "roof_m": 3.515,
+   "floor_m": 1.07,
+   "bogie_centres_m": 9.5,
+   "wheelbase_m": 1.65,
+   "wheel_m": 0.86,
+   "side": "dwDwwwDww",
+   "livery": {
+    "body": "#2a6a47",
+    "band": "#f3ead0",
+    "roof": "#a4a8a6",
+    "line": "#c9a84a"
+   },
+   "triangles": 16644,
+   "lod1_triangles": 2109
+  }
+ }
+}

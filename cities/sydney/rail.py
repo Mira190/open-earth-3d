@@ -527,7 +527,6 @@ def travel():
     a = np.array(mid.interpolate(mid.length * 0.3).coords[0])
     return [{"id": "circular-quay-platform", "name": "Circular Quay Station, platform 1", "at": [round(float(a[0]), 1), round(float(a[1]), 1), L["rail_z"] + PLAT],
              "look": [round(float(a[0]) - 30, 1), round(float(a[1]) + 400, 1)], "pitch": 0.02,
-             "best": {"from": [18, 30], "to": [19, 30], "date": [11, 8], "what": "The harbour at dusk"},
              "note": "Across the tracks, platform 2 is open to Sydney Cove: the Harbour Bridge to the left, the ferries at the wharves below, the Opera House to the right."}]
 
 

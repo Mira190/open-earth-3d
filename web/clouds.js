@@ -133,9 +133,14 @@ vec3 oeClouds( vec3 d, vec3 s, float cosT, vec3 bg ) {
   if ( uCloudK.y > 0.0 ) {                                                      // cirrus, 9 km
     float t = 18000.0 / ( sqrt( y * y + 0.002825 ) + y );
     vec2 uv = d.xz * t / 42000.0 + uCloudDrift.xy * 0.35;
-    uv.y += 0.11 * sin( uv.x * 5.3 + uv.y * 1.7 );                              // (the streaks curve)
-    vec4 n = texture2D( uCloudTex, uv * vec2( 0.8, 1.25 ) + 0.17 );
-    float a = smoothstep( 0.55, 1.0, n.b * ( 0.45 + 0.8 * n.a ) ) * smoothstep( 0.45, 0.8, n.a ) * uCloudK.y * ( 1.0 - 0.6 * cover ) * exp( -t / 170000.0 ) * up;
+    // the streaks bent by a slow field (a domain warp from the regions channel) so that they sweep and hook rather than
+    // run straight, and broken along their length into strokes by a second, crosswise lookup of the same channel
+    // (a coarse mip of the streaks: the finest ridges, bent, read as contour lines rather than wisps)
+    vec4 w = texture2D( uCloudTex, uv * 0.11 + 0.61 );
+    uv += ( w.ag - 0.5 ) * vec2( 0.18, 0.32 );
+    vec4 n = textureLod( uCloudTex, uv * vec2( 0.8, 1.25 ) + 0.17, 2.2 );
+    float strokes = smoothstep( 0.25, 0.7, texture2D( uCloudTex, uv.yx * vec2( 1.4, 0.45 ) + 0.43 ).a );
+    float a = smoothstep( 0.5, 0.9, n.b * ( 0.45 + 0.8 * n.a ) ) * smoothstep( 0.45, 0.8, n.a ) * strokes * uCloudK.y * ( 1.0 - 0.6 * cover ) * exp( -t / 170000.0 ) * up;
     col = mix( col, mix( uCloudShade, uCloudLit, 0.8 ) + uCloudRim * fwd * 0.5, a * 0.42 );
   }
   if ( uCloudK.x > 0.0 ) {                                                      // towers on the horizon

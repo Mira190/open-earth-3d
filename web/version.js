@@ -5,7 +5,9 @@
 (function () {
   const REPO = 'https://github.com/Mira190/open-earth-3d';
   if (location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return;
-  fetch('version.json', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(v => {
+  // (from the page's own folder up to the site's root: reef/index.html loads this too, for the telemetry's app version)
+  const root = document.currentScript ? new URL('.', document.currentScript.src).href : '';
+  fetch(root + 'version.json', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(v => {
     if (!v || !v.version) return;
     window.OE_VERSION = v;
     const sha = (v.commit || '').slice(0, 7);
