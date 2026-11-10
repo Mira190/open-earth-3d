@@ -57,6 +57,9 @@ async function fishingStep(p, shot) {
   const fails = [], F = await p.evaluate(() => { const f = window.__game.fishing && window.__game.fishing(); return f ? { spots: f.spots.map(s => s.id), api: !!f.api, code: !!window.OEFishing, near: !!f.near } : null; });
   if (!F) return fails;                                   // a city without fishing
   if ((F.code || F.api) && !F.near) fails.push('fishing.js was loaded though the player has not been within sight of a spot');   // (an earlier step may have walked past one)
+  // every spot is on the map's travel list (and so a pin there: tools/fishing_map.js looks at the pins)
+  const listed = await p.evaluate(() => window.__game.travelGroups().flatMap(g => g[1]).filter(d => d.kind === 'fish').map(d => d.id));
+  for (const id of F.spots) if (!listed.includes(`fish-${id}`)) fails.push(`fishing ${id}: not on the map's travel list`);
   let first = true;
   for (const id of F.spots) {
     const at = await goTo(p, id);
