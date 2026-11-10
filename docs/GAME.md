@@ -796,6 +796,21 @@ pipeline writes. The only city-specific code is landmark geometry in
   - The cars ride on their two bogies along the course and are instanced, one draw call per
     material of each kind of car. They are drawn only between the sheds' mouths at the ends
     (`hide_m`).
+  - The commuter cars (E233 and E235) and Sydney's Waratah are modelled in Blender
+    (`blender/build_railstock.py` -> `web/assets/vehicles/railstock.glb`): a real cross-section
+    with widened sides, windows and doors set back in the skin, a cab face raked back with its
+    black glazed mask wrapped round the corners, headlamp clusters, a snowplough skirt and a
+    tight-lock coupler, bolsterless bogies with coil springs, air springs, motors and brake
+    units, underfloor equipment, the air conditioners and a single-arm pantograph on its
+    insulators. Occlusion is baked into the vertex colours; a decimated copy is drawn beyond
+    60 to 85 m (40 m on the low tier). One model serves every line: the surfaces that take a
+    line's colour (`Door`, `Band`, `Band2`, `Top`, `Face`) are painted from the stock in
+    `STOCK`. Until the file has come, or where it cannot, the cars are box models drawn in code.
+    The high-speed train is still drawn in code.
+  - The windows show the saloon by interior mapping: each pixel of the glass follows the ray
+    from the eye into a box the size of the car's inside and shades the floor, the ceiling
+    and its lamps, the bench seats and far windows, and the adverts over them; dim behind the
+    reflections by day, the carriage's own light after dark. A double-decker has two decks.
   - Sound (`audio.js`): the three nearest trains have a voice each (rumble, rail joints,
     motors, a Shinkansen's air), panned left or right of the camera. Within the station's
     hearing the platform plays its chime, announcement, door chime and departure melody. The
@@ -2918,6 +2933,14 @@ deadlock or a meeting at a shared berth takes to show.
   [Wikipedia, E235 series](https://en.wikipedia.org/wiki/E235_series) (20 m cars, 2.95 m wide, 3.62 m
   high), the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 16 cars); the high-speed
   train drawn on it is this project's own design, not a model of an operator's stock.
+  The modelled cars (`blender/build_railstock.py`): the Japanese Wikipedia articles on the
+  [E233](https://ja.wikipedia.org/wiki/JR東日本E233系電車) and [E235](https://ja.wikipedia.org/wiki/JR東日本E235系電車)
+  series (body 19.5 m, 2.95 m over the widened sides, floor 1.13 m, doors 1.3 m by 1.85 m 4.82 m
+  apart, bogie centres 13.8 m, wheelbase 2.1 m, 860 mm wheels), Wikipedia's
+  [Sydney Trains A & B sets](https://en.wikipedia.org/wiki/Sydney_Trains_A_%26_B_sets) (20.4 m,
+  3.03 m, 4.41 m), and photographs on Wikimedia Commons for the faces, roofs, bogies and
+  underfloor equipment; no logo, lettering or number is reproduced. Interior mapping after
+  Joost van Dongen's "Interior Mapping" (2008), written here from the idea.
 - Scrambles: [LIVE JAPAN on Shibuya Crossing](https://livejapan.com/en/in-tokyo/in-pref-tokyo/in-shibuya/article-a0002128/)
   (the cycle and the walk), [Wikipedia, Shibuya Crossing](https://en.wikipedia.org/wiki/Shibuya_Crossing)
   (1,000 to 3,000 people a walk), [乗りものニュース on its single diagonal](https://trafficnews.jp/post/122022),
