@@ -854,27 +854,77 @@
       {"id": "tetsu", "name": "Tetsuko 鉄子", "role": "Train photographer 撮り鉄", "at": [346.5, 521.5, 10.3], "look": {"character": "R_Female_Adult_15_f013", "skin": "#f6d8c6", "hair": "#17120f", "top": "#3f51a0", "legs": "#3a4358", "shirt": "#3f51a0", "pants": "#3a4358", "clip": "Photo", "acc": ["backpack"]}, "idle": ["The end of platform 4 is the spot: the Yamanote's green E235, the blue Keihin-Tohoku, the orange and green Tokaido, and the white Shinkansen, all in one frame.", "Come back at dusk. The cars' windows light up before the sky goes dark, and the towers behind them start to glitter."]},
       {"id": "mori", "name": "Mori 森", "role": "Commuter 通勤客", "at": [409.0, 579.5, 10.3], "look": {"character": "R_Business_Male_02", "skin": "#e9bf9d", "hair": "#141010", "top": "#1d2b4a", "legs": "#1b1d22", "shirt": "#1d2b4a", "pants": "#1b1d22", "clip": "Phone"}, "idle": ["Two minutes between trains on the Yamanote. Miss one and the next is already at Shimbashi.", "Listen for the melody: when it stops, the doors close. Every station has its own."]}
     ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "palace",
+        "title": "Marunouchi and the Palace",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "ginza",
+        "title": "Ginza and Yurakucho",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "bay",
+        "title": "The water and the air",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "palace",
+          "ginza",
+          "bay"
+        ],
+        "on_open": "<b>All three walks done.</b> Report back to Haruka at Tokyo Station."
+      }
+    ],
     "quests": [
       {
         "id": "eki",
+        "line": "start",
         "giver": "haruka",
         "title": "Welcome to Tokyo Station",
         "stamp": "Tokyo Station",
         "talk": [
           "ようこそ。Welcome to Tokyo Station. I'm Haruka; I work the Marunouchi gates. Red brick, 1914, and in 2012 they gave it back the domes it lost in the war.",
-          "Behind it, the glass towers. Kenji works in one of them, on Marunouchi Naka-dori: ask him why the towers are so tall and the station so low.",
-          "The helicopter is on the plaza's north side, taxis wait in the rotary (a hand up at the kerb, Y), and the water buses leave from Hamarikyu, a taxi ride south. WASD to walk, Shift to run, E to talk."
+          "Three walks, any order. Marunouchi and the Palace: Kenji, on Naka-dori, knows why the towers are tall and the station low. Ginza: Yui, under the clock at 4-chome. The water and the air: Ishikawa-san, at his grill under the Yurakucho tracks.",
+          "The helicopter is on the plaza's north side, taxis wait in the rotary (a hand up at the kerb, Y), and the water buses leave from Hamarikyu, a taxi ride south. WASD to walk, Shift to run, E to talk, T to switch walks. Which first?"
         ],
-        "steps": [
+        "steps": [],
+        "choices": [
           {
-            "type": "talk",
-            "npc": "kenji",
-            "text": "Meet Kenji on Marunouchi Naka-dori"
+            "text": "Marunouchi and the Palace: Kenji, on Naka-dori",
+            "action": "track",
+            "line": "palace"
+          },
+          {
+            "text": "Ginza: Yui, under the clock at 4-chome",
+            "action": "track",
+            "line": "ginza"
+          },
+          {
+            "text": "The water and the air: Ishikawa-san, under the tracks",
+            "action": "track",
+            "line": "bay"
           }
         ]
       },
       {
         "id": "air",
+        "line": "palace",
         "giver": "kenji",
         "title": "The air above the station",
         "stamp": "Marunouchi",
@@ -884,12 +934,21 @@
           "Stand on the plaza in front of the station and look back: brick below, glass above. Then go and find Daichi on the Palace plaza. He runs there every day."
         ],
         "steps": [
-          {"type": "visit", "place": "Marunouchi Central Plaza", "text": "Stand on the plaza in front of the station"},
-          {"type": "talk", "npc": "daichi", "text": "Find Daichi on the Palace plaza"}
+          {
+            "type": "visit",
+            "place": "Marunouchi Central Plaza",
+            "text": "Stand on the plaza in front of the station"
+          },
+          {
+            "type": "talk",
+            "npc": "daichi",
+            "text": "Find Daichi on the Palace plaza"
+          }
         ]
       },
       {
         "id": "loop",
+        "line": "palace",
         "giver": "daichi",
         "title": "Round the Palace",
         "stamp": "Imperial Palace",
@@ -907,6 +966,7 @@
       },
       {
         "id": "sun",
+        "line": "palace",
         "giver": "sachiko",
         "title": "A bench in the sun",
         "stamp": "Hibiya Park",
@@ -941,21 +1001,17 @@
               "13:00"
             ],
             "text": "Stand in direct sun in Hibiya Park, 12:00 to 13:00 on 22 December"
-          },
-          {
-            "type": "talk",
-            "npc": "yui",
-            "text": "Meet Yui in Ginza"
           }
         ]
       },
       {
         "id": "ginza",
+        "line": "ginza",
         "giver": "yui",
         "title": "Lunch in Ginza",
         "stamp": "Ginza",
         "talk": [
-          "Finally, someone who counts shadows! Ginza's main street keeps its rooflines at 56 m: the Ginza Rules, 銀座ルール.",
+          "Counting rooflines? Good, somebody should. Ginza's main street keeps them at 56 m: the Ginza Rules, 銀座ルール. The clock over my shoulder has kept the corner's time since 1932.",
           "Skip the department store, though. Ishikawa-san grills under the tracks at Yurakucho, and his yakitori is the real lunch."
         ],
         "steps": [
@@ -967,13 +1023,37 @@
         ]
       },
       {
+        "id": "arches",
+        "line": "ginza",
+        "giver": "ishikawa",
+        "title": "Under the arches",
+        "stamp": "Yurakucho",
+        "talk": [
+          "Yui sent you? Then eat first. These arches are red brick from 1910, and the trains have run over our heads ever since. Every arch between here and Shimbashi is somebody's counter.",
+          "Follow the arches north, two minutes. The glass hall shaped like a ship is the Forum: 1997, sixty metres of glass, on the ground where Tokyo's city hall stood until it moved to Shinjuku in 1991.",
+          "Walk in under the glass and look up. Then come back hungry."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              415,
+              765
+            ],
+            "radius": 70,
+            "text": "Walk north along the arches to the Tokyo International Forum"
+          }
+        ]
+      },
+      {
         "id": "water",
+        "line": "bay",
         "giver": "ishikawa",
         "title": "Water bus",
         "stamp": "Water bus",
         "talk": [
           "いらっしゃい! Eat. Tokyo is a city of water: the Palace moat, the canals, and the bay out there. Most people forget.",
-          "Walk down to Hamarikyu, the shogun's garden. The water bus leaves from the pier. Ride it to Hinode Pier, and tell Captain Aoki I sent you."
+          "Walk down to Hamarikyu, the shogun's garden. The water bus leaves from the pier there. Ride it to Hinode Pier, then come back round by Harumi and find Captain Aoki on the Hamarikyu landing. Tell him I sent you."
         ],
         "steps": [
           {
@@ -985,12 +1065,13 @@
           {
             "type": "talk",
             "npc": "aoki",
-            "text": "Find Captain Aoki at Hinode Pier"
+            "text": "Find Captain Aoki back on the Hamarikyu landing"
           }
         ]
       },
       {
         "id": "heli",
+        "line": "bay",
         "giver": "aoki",
         "title": "Tokyo Tower from the air",
         "stamp": "Tokyo by air",
@@ -1018,29 +1099,25 @@
       },
       {
         "id": "tower",
+        "line": "bay",
         "giver": "ren",
         "title": "333 metres",
         "stamp": "Tokyo Tower",
         "talk": [
           "You flew in? Then you've seen it: {landmark:tokyo_tower.height} m, and the main deck at {landmark:tokyo_tower.main_deck} m. Six hundred steps up, if you'd rather walk.",
           "On a clear winter morning you can see Mt Fuji from the top deck.",
-          "Report back to Haruka at the station. You've walked the whole loop."
+          "That's the water and the air, both. When your other walks are done, Haruka will want to hear about it at the station."
         ],
-        "steps": [
-          {
-            "type": "talk",
-            "npc": "haruka",
-            "text": "Report back to Haruka at Tokyo Station"
-          }
-        ]
+        "steps": []
       },
       {
         "id": "done",
+        "line": "finale",
         "giver": "haruka",
         "title": "The whole loop",
         "stamp": "東京 Tokyo",
         "talk": [
-          "お疲れ様でした。That's the whole loop: the station, the air above it, the Palace, the sun, the water and the tower.",
+          "お疲れ様でした。That's all three walks: the station and the air above it, the Palace and the sun, Ginza and the arches, the water and the tower.",
           "The city is yours. Change the time of day, take the water bus, or fly anywhere. Come back to the station after dark: the brick is lit."
         ],
         "steps": []
