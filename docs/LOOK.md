@@ -133,6 +133,10 @@ for what is already drawn:
 | Light in the shade (`world.js` `shadeLight`) | the sky's colour, a little | the sky's colour, more; sunlit ground throws warm light back up onto walls (the hemisphere light's ground colour) |
 | The sun in the lens | flare 0.55, shafts 0.5 | flare 0.9, shafts 1.0 |
 
+A thunderstorm by day has its own key on top of the preset: the exposure down by three tenths and a harder
+curve (`OEWeather.S.storm`), since the weather lifts the exposure under cloud so that an overcast is never grey,
+which left a storm's sky pale. At night it changes nothing.
+
 The lens pass (`web/lens.js`) gained uniforms, not passes: `uShade` and `uHiTint` (the split tone, formerly two
 constants), `uShadeLift`, `uVibrance`, `uSunSeen` and `uShafts`. The flare, which the game never drove, now
 follows the sun; how much of the sun's disc the frame really shows is read at five points in the lens's *vertex*

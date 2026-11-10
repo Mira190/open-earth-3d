@@ -587,6 +587,10 @@ window.OEAtmos = (function () {
           L.uNightTone.value = night;                              // blue between the lights, amber in them
           L.uSat.value = (gr.sat - 0.1 * ov) * (trim ? trim.sat : 1);                        // under cloud a little cooler and softer, not grey
           L.uContrast.value += 0.05 * ov;
+          // a thunderstorm by day is dark: the weather lifts the exposure under cloud so that an overcast is never grey
+          // (weather.js light()), which left a storm's sky pale; its key is lower and harder (weather.js S.storm)
+          const storm = (window.OEWeather && OEWeather.S && OEWeather.S.storm) || 0;
+          if (storm > 0) { L.uExposure.value *= 1 - 0.3 * storm * (1 - night); L.uContrast.value += 0.07 * storm; }
           L.uTint.value.set(gr.tint[0] * (trim ? trim.tint[0] : 1), gr.tint[1] * (trim ? trim.tint[1] : 1), gr.tint[2] * (trim ? trim.tint[2] : 1));
           L.uTime.value = tSec;
           L.uShade.value.fromArray(gr.shade); L.uHiTint.value.fromArray(gr.hi); L.uVibrance.value = gr.vib * (1 - 0.5 * ov);

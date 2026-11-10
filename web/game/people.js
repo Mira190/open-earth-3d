@@ -544,11 +544,12 @@ ${PAT_GLSL}`)
     // wrist) round the handle. The clip's arm is kept to be put back before the next frame.
     let umbGrip = null, armHeld = null;
     const armBack = () => { if (armHeld) { const a = arms[1]; a.ua.quaternion.copy(armHeld[0]); a.la.quaternion.copy(armHeld[1]); armHeld = null; } };
-    function holdUmbrella() {
+    // (at: a point in the world for the fist instead, rig.hold: a fishing rod's grip, game/fishing.js)
+    function holdUmbrella(at) {
       const a = arms[1];
       armHeld = [a.ua.quaternion.clone(), a.la.quaternion.clone()];
       root.updateMatrixWorld(true);
-      const fist = r2.copy(umbGrip).applyMatrix4(ref.Chest.inv).applyMatrix4(bones.Chest.matrixWorld);
+      const fist = at ? r2.copy(at) : r2.copy(umbGrip).applyMatrix4(ref.Chest.inv).applyMatrix4(bones.Chest.matrixWorld);
       const sh = a.ua.getWorldPosition(r3), el = a.la.getWorldPosition(r4);
       const L1 = sh.distanceTo(el), L2 = el.distanceTo(a.wr.getWorldPosition(r1)), L3 = L2 + 0.075 * model.getWorldScale(sa).y;
       const to = sd2.subVectors(fist, sh), d = Math.min(Math.max(to.length(), Math.abs(L1 - L3) + 1e-3), L1 + L3 - 1e-3);
@@ -645,6 +646,10 @@ ${PAT_GLSL}`)
       : thigh.getWorldPosition(out).add(sb.set(0, crown * model.getWorldScale(sa).y, 0)));
     // a view through this person's eyes: the head, and whatever is on it, shrinks out of the way
     rig.hideHead = on => { if (head) head.scale.setScalar(on ? 1e-3 : 1); };
+    // something held out in the right hand: rig.hold is where the fist goes (a point in the world, or null), and
+    // rig.fist(out) where the wrist is as posed
+    rig.hold = null;
+    rig.fist = out => (reaches ? arms[1].wr.getWorldPosition(out) : null);
     // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the
     // root is where the feet rest: thighs forward, shins down, the hips a chair's height above it
     rig.animate = (dt, speed, mode = 'ground', t = 0) => {
@@ -665,6 +670,7 @@ ${PAT_GLSL}`)
       armBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
+      else if (rig.hold && reaches) holdUmbrella(rig.hold);
       else if (umbGrip && reaches && bones.Chest) holdUmbrella();
       // the walk cycle as a phase, two steps per cycle (footsteps)
       const d = cur.getClip().duration, tt = cur.time / d;
