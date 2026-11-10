@@ -3,7 +3,8 @@
 // visibility (web/visibility.js) is given time to answer, and the frame is drawn twice in the same instant
 // of the held game, with the gates and without. The two must match to the pixel. The camera is also moved
 // off the point the sweep was made for, by up to its margin, as a moving camera is between two sweeps.
-// Prints the triangles and draw calls of both, per city.
+// The crowd and the cars, culled in the game's step, are stepped (by no time) for each of the two.
+// Prints the triangles, the draw calls and the walkers drawn of both, per city.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/vis_check.js shibuya [stops=24] [WxH=960x600]
 // TIER=low|medium|high (default high). TIME=HH:MM (default 15:30). OUT=dir keeps the two frames of a mismatch.
@@ -68,6 +69,9 @@ const [w, h] = size.split('x').map(Number);
   for (const s of pick(G.paths.foot || [], Math.ceil(n / 2), 1.65)) views.push({ kind: 'walk', ...s });
   for (const s of pick(G.paths.foot || [], Math.ceil(n / 4), 3.6)) views.push({ kind: 'behind a walker', ...s });
   for (const s of pick(G.paths.road || [], Math.ceil(n / 2), 1.3)) views.push({ kind: 'drive', ...s });
+  // and among the crowd, which keeps within a few hundred metres of the player: footways near the start
+  const [sx0, sy0] = G.start.at, nearby = (G.paths.foot || []).filter(q => Math.hypot(q.p[0] / 10 - sx0, q.p[1] / 10 - sy0) < 300);
+  for (const s of pick(nearby, Math.ceil(n / 2), 1.65)) views.push({ kind: 'in the crowd', ...s });
   let worst = 0, bad = 0, drawn = 0, skipped = 0;
   const sum = { gt: 0, gc: 0, ut: 0, uc: 0, hidden: 0, gated: 0 };
   for (const [vi, v] of views.entries()) {
@@ -95,9 +99,17 @@ const [w, h] = size.split('x').map(Number);
         if (k && g.nav.blocked && g.nav.blocked(v.x + ox, v.y + oy)) continue;
         pose(ox, oy, k * Math.PI / 2); OEVis.forget(); OEVis.at(cam);
         if (!OEVis.live) { out.lost = (out.lost || 0) + 1; continue; }
+        // the crowd and the cars are culled in the game's step (people.js, actors.js): a step of no time for each
+        // frame, twice, as the first after the camera has jumped culls nothing
+        const walkers = () => { const cd = g.crowdDraw && g.crowdDraw(); return cd ? cd.meshes.reduce((n, m) => n + m.count, 0) : 0; };
+        // (a step also puts the camera back behind the player: it is posed again before and after each)
+        const here = () => { pose(ox, oy, k * Math.PI / 2); OEVis.forget(); OEVis.at(cam); }, step = () => { here(); g.frame(0); here(); g.frame(0); here(); };
+        step(); out.wg = (out.wg || 0) + walkers();
+        if (!OEVis.live) { out.lost = (out.lost || 0) + 1; continue; }
         const A = frame();
         OEVis.hold('check', true);
-        const B = frame(), C = frame(); // (twice: what differs between two ungated frames is not the gates')
+        step(); out.wu = (out.wu || 0) + walkers();
+        const B = frame(); step(); const C = frame(); // (twice, with a step between: what differs between two ungated frames is not the gates', a signal's lamp or a near walker's pose that a step moves)
         OEVis.hold('check', false);
         let d = 0, noise = 0;
         for (let i = 0; i < A.px.length; i += 4) {
@@ -123,7 +135,7 @@ const [w, h] = size.split('x').map(Number);
             out.eye = { x: +cam.position.x.toFixed(2), y: +(-cam.position.z).toFixed(2), z: +cam.position.y.toFixed(2), sweep: OEVis.where() };
           }
           if (v.keep) { // the two frames again, as pictures, and where they differ
-            const cv = Rn.domElement; frame(); out.a = cv.toDataURL('image/png'); OEVis.hold('check', true); frame(); out.b = cv.toDataURL('image/png'); OEVis.hold('check', false);
+            const cv = Rn.domElement; step(); frame(); out.a = cv.toDataURL('image/png'); OEVis.hold('check', true); step(); frame(); out.b = cv.toDataURL('image/png'); OEVis.hold('check', false);
             const W2 = gl.drawingBufferWidth, H2 = gl.drawingBufferHeight, c2 = document.createElement('canvas'); c2.width = W2; c2.height = H2;
             const x2 = c2.getContext('2d'), im = x2.createImageData(W2, H2);
             for (let i = 0; i < A.px.length; i += 4) { const y = H2 - 1 - Math.floor(i / 4 / W2), o = 4 * (y * W2 + (i / 4) % W2); const df = A.px[i] !== B.px[i] || A.px[i + 1] !== B.px[i + 1] || A.px[i + 2] !== B.px[i + 2]; im.data[o] = df ? 255 : B.px[i] >> 2; im.data[o + 1] = df ? 0 : B.px[i + 1] >> 2; im.data[o + 2] = df ? 255 : B.px[i + 2] >> 2; im.data[o + 3] = 255; }
@@ -138,6 +150,7 @@ const [w, h] = size.split('x').map(Number);
     if (r.skipped) { skipped++; continue; }
     drawn += r.shots;
     for (const k of ['gt', 'gc', 'ut', 'uc']) sum[k] += r[k];
+    sum.wg = (sum.wg || 0) + (r.wg || 0); sum.wu = (sum.wu || 0) + (r.wu || 0);
     sum.hidden += r.hidden; sum.gated = r.gated;
     if (r.diff && process.env.OUT) for (const k of ['a', 'b', 'd']) if (r[k]) fs.writeFileSync(`${process.env.OUT}/${city}_${vi}_${{ a: 'gated', b: 'all', d: 'diff' }[k]}.png`, Buffer.from(r[k].split(',')[1], 'base64'));
     if (r.diff) { bad++; worst = Math.max(worst, r.diff); console.log(`  ${v.kind} at (${v.x.toFixed(0)}, ${v.y.toFixed(0)}): ${r.diff} pixels differ (view ${r.at}, margin ${r.eps} m); missing ${JSON.stringify(r.what)} from ${JSON.stringify(r.eye)}`); }
@@ -145,7 +158,7 @@ const [w, h] = size.split('x').map(Number);
   }
   const M = x => (x / Math.max(1, drawn) / 1e6).toFixed(2), C = x => Math.round(x / Math.max(1, drawn));
   console.log(`${bad ? 'FAIL' : 'ok  '} vis    ${city} ${size} ${process.env.TIER || 'high'}: ${drawn} frames at ${views.length - skipped} stops (${skipped} with no answer), ${bad} stops with a difference${bad ? ` (the worst ${worst} pixels)` : ''}; ` +
-    `a frame ${M(sum.ut)}M triangles and ${C(sum.uc)} draws without the gates, ${M(sum.gt)}M and ${C(sum.gc)} with; ${Math.round(sum.hidden / Math.max(1, views.length - skipped))} of ${sum.gated} static meshes hidden on average`);
+    `a frame ${M(sum.ut)}M triangles and ${C(sum.uc)} draws without the gates, ${M(sum.gt)}M and ${C(sum.gc)} with; ${C(sum.wu || 0)} walkers drawn as instances without, ${C(sum.wg || 0)} with; ${Math.round(sum.hidden / Math.max(1, views.length - skipped))} of ${sum.gated} static meshes hidden on average`);
   if (errors.length) console.log('page errors:', errors.slice(0, 3).join(' | '));
   await b.close();
   process.exit(bad || errors.length ? 1 : 0);
