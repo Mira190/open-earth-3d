@@ -49,7 +49,7 @@ module.exports = async function trainsStep(p) {
       }
       checks.push([worst > 1.6, `the columns of the decks over the line stand clear of the trains (${n} by the tracks${n ? `, the nearest face ${worst.toFixed(2)} m from a track's middle` : ''})`]); }
     // ---- on the platform: where the map's travel point puts you
-    const st = T.station, tp = (g.G.travel || []).find(q => Math.hypot(q.at[0] - st.at[0], q.at[1] - st.at[1]) < 200) || { at: st.at };
+    const st = T.station, tp = (g.G.travel || []).find(q => Math.hypot(q.at[0] - st.at[0], q.at[1] - st.at[1]) < 200 && Math.abs((q.at[2] ?? 1e9) - st.at[2]) < 1) || { at: st.at };
     const f = g.nav.floorAt(tp.at[0], tp.at[1], tp.at[2] + 0.5);
     checks.push([!!f && Math.abs(f.z - st.at[2]) < 0.15, `the platform is a floor at ${st.at[2].toFixed(1)} m (${f ? f.z.toFixed(2) : 'none'} m at the place to travel to)`]);
     // the service that stops at the nearest track, and a second before its train is announced
