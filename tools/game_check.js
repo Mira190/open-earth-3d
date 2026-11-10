@@ -2071,11 +2071,11 @@ const npcNight = require('./npc_night');
     const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
     const top = G.scale;
     for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
-    const slow = G.simulate(1, () => 60).pop(), size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const slow = G.simulate(1, () => 60).pop(), slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
     const back = G.simulate(120, () => 8).pop();
     await frames(2);
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
-    const end = { scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
+    const end = { slowMsaa, msaa: g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
     return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
   });
@@ -2086,6 +2086,7 @@ const npcNight = require('./npc_night');
     const rainFirst = !first || first.w === null || first.ex === 0 || (first.far === false && first.near === true);
     check(order && rainFirst, `a slow device gives up resolution to 0.8, then the rain's extras and the reflections, the drops, and then resolution to 0.6 (${s.map(x => `${x.px.toFixed(2)}/${x.ex}:${x.w ?? '-'}/${x.mirror ?? '-'}`).join(' ')})`);
     check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
+    check(!e.slowMsaa, `and without multisampling at the floor (${e.slowMsaa ?? '-'} samples there, ${e.msaa ?? '-'} again after)`);
     check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
   }

@@ -110,41 +110,81 @@ window.OEOverture = (function () {
   // lifts it, the Milky Way as a band of soft noise with its dark lanes, stars in two scales that twinkle, and
   // thin clouds low down lit from below by the city. All in the shader: no texture, a few hundred bytes.
   function nightSky(o = {}) {
+    const RADc = Math.PI / 180, cm = o.comet || null;
+    // the comet: where its head is (compass bearing and height, degrees) and the way its tails stream (degrees round
+    // from straight up, clockwise as seen), the tails' length in degrees
+    const dirOf = (az, alt) => new THREE.Vector3(Math.sin(az * RADc) * Math.cos(alt * RADc), Math.sin(alt * RADc), -Math.cos(az * RADc) * Math.cos(alt * RADc));
+    const cDir = cm ? dirOf(cm.az ?? 0, cm.alt ?? 40) : new THREE.Vector3(0, 1, 0), cTail = new THREE.Vector3(0, 1, 0);
+    if (cm) {
+      const up = new THREE.Vector3(0, 1, 0).addScaledVector(cDir, -cDir.y).normalize(), right = new THREE.Vector3().crossVectors(up, cDir).normalize(), a = (cm.tail ?? 20) * RADc;
+      cTail.copy(up).multiplyScalar(Math.cos(a)).addScaledVector(right, Math.sin(a)).normalize();
+    }
     const mat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 }, uK: { value: 0 }, uMilky: { value: o.milky ?? 1 }, uStars: { value: o.stars ?? 1 }, uClouds: { value: o.clouds ?? 0.6 },
         uZen: { value: new THREE.Color(...(o.zenith || [0.008, 0.014, 0.05])) }, uMid: { value: new THREE.Color(...(o.mid || [0.03, 0.045, 0.13])) },
-        uHor: { value: new THREE.Color(...(o.horizon || [0.32, 0.2, 0.26])) }, uPole: { value: new THREE.Vector3(...(o.pole || [0.35, 0.55, -0.76])).normalize() } },
+        uLow: { value: new THREE.Color(...(o.low || o.mid || [0.03, 0.045, 0.13])) }, uLowK: { value: o.low ? 0.85 : 0 },
+        uHor: { value: new THREE.Color(...(o.horizon || [0.32, 0.2, 0.26])) }, uCity: { value: new THREE.Color(...(o.city || o.horizon || [0.32, 0.2, 0.26])) }, uPole: { value: new THREE.Vector3(...(o.pole || [0.35, 0.55, -0.76])).normalize() },
+        uRim: { value: new THREE.Color(...(o.rim || [0.34, 0.4, 0.7])) }, uBank: { value: o.banks ?? 0 },
+        uComet: { value: cm ? (cm.k ?? 1) : 0 }, uCometDir: { value: cDir }, uCometTail: { value: cTail }, uCometLen: { value: ((cm && cm.len) || 24) * RADc } },
       vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
       fragmentShader: `
-        uniform float uTime, uK, uMilky, uStars, uClouds; uniform vec3 uZen, uMid, uHor, uPole; varying vec3 vW;
+        uniform float uTime, uK, uMilky, uStars, uClouds, uLowK, uBank, uComet, uCometLen; uniform vec3 uZen, uMid, uLow, uHor, uCity, uPole, uRim, uCometDir, uCometTail; varying vec3 vW;
         float h31(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
         float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y),
                      mix(mix(h31(i + vec3(0,0,1)), h31(i + vec3(1,0,1)), f.x), mix(h31(i + vec3(0,1,1)), h31(i + vec3(1,1,1)), f.x), f.y), f.z); }
         float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * vn(p); p = p * 2.03 + 1.7; a *= 0.5; } return v; }
-        float stars(vec3 d, float scale, float density) {
+        // stars: one to a cell at most, its colour from blue-white to a warm one, the rare bright ones larger
+        vec3 stars(vec3 d, float scale, float density) {
           vec3 p = d * scale, c = floor(p), f = fract(p) - 0.5;
           float r = h31(c);
-          if (r > density) return 0.0;
+          if (r > density) return vec3(0.0);
           vec3 o = vec3(h31(c + 11.1), h31(c + 23.7), h31(c + 37.3)) - 0.5;
-          float dd = length(f - o * 0.6), b = pow(h31(c + 5.3), 5.0) * 6.0 + 0.6;
+          float big = pow(h31(c + 5.3), 5.0), dd = length(f - o * 0.6), b = big * 6.0 + 0.6;
           float tw = 0.75 + 0.25 * sin(uTime * (1.5 + 3.0 * h31(c + 9.9)) + r * 40.0);
-          return b * tw * smoothstep(0.2, 0.0, dd);
+          vec3 tint = mix(vec3(0.72, 0.82, 1.0), vec3(1.0, 0.86, 0.7), smoothstep(0.55, 0.95, h31(c + 2.2)));
+          return tint * b * tw * smoothstep(0.2 + 0.1 * big, 0.0, dd);
         }
         void main() {
           vec3 d = normalize(vW - cameraPosition);
           float h = d.y, up = clamp(h, 0.0, 1.0);
           vec3 col = mix(uMid, uZen, smoothstep(0.08, 0.75, up));
+          col = mix(col, uLow, exp(-max(h, 0.0) * 5.0) * uLowK);                   // the belt of clearer blue under the indigo
           col = mix(col, uHor, exp(-max(h, -0.02) * 14.0) * 0.9);                 // the glow over the city along the horizon
+          col = mix(col, uCity, exp(-max(h, -0.01) * 70.0) * 0.75);              // and, only where the sky meets the skyline, the city's own warm light
           float band = dot(d, uPole), mw = exp(-band * band / 0.05) * smoothstep(-0.02, 0.25, h);
           float n = fbm(d * 7.0), lanes = smoothstep(0.45, 0.75, fbm(d * 13.0 + 4.0));
-          col += vec3(0.36, 0.38, 0.66) * mw * (0.3 + 1.1 * n * n) * (1.0 - 0.8 * lanes) * 0.42 * uMilky;   // the Milky Way, its dust lanes
-          float st = stars(d, 160.0, 0.10) + stars(d, 330.0, 0.05 + 0.2 * mw) * 0.6;
-          col += vec3(0.85, 0.9, 1.0) * st * uStars * smoothstep(0.0, 0.18, h);
+          vec3 mwc = mix(vec3(0.36, 0.38, 0.66), vec3(0.62, 0.5, 0.56), exp(-band * band / 0.008) * n);   // its core warmer than its edges
+          col += mwc * mw * (0.3 + 1.1 * n * n) * (1.0 - 0.8 * lanes) * 0.42 * uMilky;   // the Milky Way, its dust lanes
+          vec3 st = stars(d, 160.0, 0.10) + stars(d, 330.0, 0.05 + 0.2 * mw) * 0.6 + stars(d, 90.0, 0.012) * 2.2;
+          col += st * uStars * smoothstep(0.0, 0.18, h);
+          // a comet, still in the sky as a comet is: its head, a straight blue tail of gas blown by the sun's wind, and a
+          // broad pale tail of dust curving away from it
+          float cd = dot(d, uCometDir);
+          if (uComet > 0.0 && cd > 0.3) {
+            vec3 v = d - uCometDir * cd, t2 = normalize(cross(uCometDir, uCometTail));
+            float a = dot(v, uCometTail), b = dot(v, t2), r = length(v), L = uCometLen;
+            float head = exp(-r * r / 0.0000035) * 2.2 + exp(-r * r / 0.00004) * 0.45 + exp(-r / 0.012) * 0.08;   // (a star-like point in a small coma: not a disc)
+            float along = max(a, 0.0), tail = smoothstep(-0.002, 0.004, a);
+            float w1 = 0.0025 + along * 0.03, ion = tail * exp(-b * b / (w1 * w1)) * exp(-along / (L * 0.55));
+            ion *= 0.72 + 0.28 * vn(vec3(b / w1 * 2.5, along * 60.0, 3.0));       // (streamers along it)
+            float bc = b - 0.6 * along * along / L - along * 0.2, w2 = 0.006 + along * 0.1;
+            float dust = tail * exp(-bc * bc / (w2 * w2)) * exp(-along / (L * 0.4));
+            col += (vec3(0.4, 0.72, 1.0) * ion * 0.95 + vec3(1.0, 0.88, 0.78) * dust * 0.5 + vec3(0.86, 0.95, 1.0) * head) * uComet * smoothstep(0.0, 0.1, h);
+          }
           // thin clouds low in the sky, lit from below by the city: dark blue bodies with warm undersides
           vec2 cp = d.xz / max(h + 0.08, 0.05);
           float cl = smoothstep(0.52, 0.8, fbm(vec3(cp * 0.9, 1.3) + vec3(uTime * 0.004, 0.0, 0.0))) * smoothstep(0.42, 0.04, h) * smoothstep(-0.01, 0.04, h);
           col = mix(col, mix(vec3(0.04, 0.05, 0.11), uHor * 0.9, smoothstep(0.3, 0.0, h) * 0.8), cl * uClouds);
+          // banks of cumulus standing over the horizon: deep blue bodies, their undersides warmed by the city under them,
+          // and their edges, where they are thin, bright with the sky's light behind them
+          if (uBank > 0.0) {
+            vec2 bp = d.xz / max(h + 0.16, 0.1);
+            float bn = fbm(vec3(bp * 0.62, 7.0) + vec3(uTime * 0.0025, 0.0, 0.0)) + 0.16 * smoothstep(0.3, 0.0, h);
+            float mask = smoothstep(0.5, 0.6, bn) * smoothstep(0.55, 0.12, h) * smoothstep(-0.01, 0.03, h), core = smoothstep(0.58, 0.78, bn);
+            vec3 body = mix(vec3(0.035, 0.05, 0.13), uHor * 0.85, smoothstep(0.2, 0.0, h) * 0.85);
+            col = mix(col, mix(uRim * (0.7 + 0.9 * up), body, core), mask * uBank);
+          }
           gl_FragColor = vec4(col, uK);
         }`,
       side: THREE.BackSide, depthWrite: false, depthTest: true, transparent: true, fog: false,
@@ -551,7 +591,7 @@ window.OEOverture = (function () {
           const a0 = s.gFrom ?? 0, a1 = s.gTo ?? 1, u = clamp((k - a0) / Math.max(1e-3, a1 - a0)), life = Math.sin(Math.PI * u);
           const px = d => d * Math.tan(fov * RAD / 2) * 2 / 900; // (metres a pixel at d, on 900 lines)
           glow.material.opacity = 0.95 * Math.pow(life, 0.6);
-          glow.scale.setScalar(px(camD) * 26 * K.size / 2.2);
+          glow.scale.setScalar(px(camD) * 15 * K.size / 2.2); // (a small head: a large one reads as a moon)
           const n = tail.length, len = (s.tailLen ?? 0.32) * (a1 - a0);
           glow.material.opacity *= 0.85 + 0.15 * Math.sin(t * 47.0) * Math.sin(t * 31.0); // (its head flickers as it burns)
           tail.forEach((sp, i) => {
@@ -560,8 +600,8 @@ window.OEOverture = (function () {
             if (!sp.visible) return;
             sp.position.copy(q);
             const f = 1 - (i + 1) / n, d = pose.pos.distanceTo(q);
-            sp.material.opacity = 0.8 * Math.pow(f, 1.6) * Math.pow(life, 0.6);
-            sp.scale.setScalar(px(d) * (2.5 + 9 * f * f));
+            sp.material.opacity = 0.5 * Math.pow(f, 1.6) * Math.pow(life, 0.6);
+            sp.scale.setScalar(Math.max(px(d) * (2.5 + 9 * f * f), 2.2 * q.distanceTo(i ? tail[i - 1].position : gp))); // (never smaller than the gap to the one before it: a line, not a row of dots)
           });
         }
         if (g) gprev.copy(g);
@@ -609,7 +649,7 @@ window.OEOverture = (function () {
       // the animated film's lens (atmosphere.js anime): painted, graded, rays from the sun; lighter on a weaker tier
       const an = spec.anime || {}, rad = { high: 3, medium: 2 }[tier] || 0;
       if (ctx.atmos.anime && rad) ctx.atmos.anime({ k: (an.paint ?? 0.85) * w, radius: rad, grade: (an.grade ?? 1) * w, rays: (an.rays ?? 1) * w, sunVis: flareVis, sunUv: sunUv.set(on.u, on.v),
-        haze: (an.haze || 0) * w, hazeD: an.haze_m, hazeC: an.haze_rgb, rim: (an.rim || 0) * w, rimC: an.rim_rgb });
+        haze: (an.haze || 0) * w, hazeD: an.haze_m, hazeC: an.haze_rgb, rim: (an.rim || 0) * w, rimC: an.rim_rgb, streak: (an.streak || 0) * w });
       // depth of field on the guide when it is near the lens (the camera's own effect, atmosphere.js camFx), not on a weak tier
       // focus: on the guide when it is near the lens, or on the shot's own point (a statue), a wide aperture
       const gd = s._focus ? cam.position.distanceTo(W(...s._focus)) : (hero ? hero.visible : glow && glow.visible) ? cam.position.distanceTo(gprev) : 999, fstop = s.fstop ?? 2.8;
@@ -658,7 +698,7 @@ window.OEOverture = (function () {
           m.parts.forEach((sp, j) => {
             sp.visible = on;
             if (!on) return;
-            sp.position.copy(m.a).addScaledVector(m.v, (t - m.t0) - j * 0.022);
+            sp.position.copy(m.a).addScaledVector(m.v, (t - m.t0) - j * 0.008);
             const dd = cam.position.distanceTo(sp.position), px = dd * Math.tan(fov * RAD / 2) * 2 / 900, f = 1 - j / 12;
             sp.scale.setScalar(px * (j ? 3 + 7 * f : 12)); sp.material.opacity = (j ? 0.55 * f * f : 0.9) * life;
           });
@@ -687,6 +727,23 @@ window.OEOverture = (function () {
       }
       drift.instanceMatrix.needsUpdate = true;
     }
+    // the stage for it: streets wet from a shower that has passed, under a clear sky (spec.wet: 0..1, not on the low tier;
+    // the weather goes back to what it was afterwards and the streets dry as they would), and the map's light show
+    // on whatever the hour (spec.show)
+    let wetWas = null, showWas = false;
+    function stageSet() {
+      const we = ctx.weather;
+      if (spec.wet && we && we.set && tier !== 'low') {
+        const st = we.state || {};
+        wetWas = st.mode || 'live';
+        we.set({ rain: 0, cloud: spec.wet_cloud ?? 0.08, wet: spec.wet, fog: 0 }, { now: true });
+      }
+      if (spec.show && ctx.show && ctx.show.force) { showWas = true; ctx.show.force(true, ctx.clock.min); }
+    }
+    function stageUnset() {
+      if (wetWas != null && ctx.weather) { ctx.weather.set(wetWas === 'custom' ? 'live' : wetWas); wetWas = null; }
+      if (showWas && ctx.show) { ctx.show.force(false, ctx.clock.min); showWas = false; }
+    }
     // returns false (and leaves everything as it was) if the spec does not fit the map: a landmark it
     // names is missing after a rebuild, say; the game then plays its plain crane instead
     function play(done) {
@@ -699,6 +756,7 @@ window.OEOverture = (function () {
       overlay();
       ctx.stage.classList.add('letterbox', 'overture');
       wasFrozen = ctx.clock.frozen; ctx.clock.frozen = true; clock0 = ctx.clock.min;
+      stageSet();
       const c = spec.crowd_at ? point(spec.crowd_at) : endAt;
       crowdAround(c, spec.crowd_r || 120);
       if (scoreBuf) startScore(0); else prepareScore().then(() => { if (active && !settling) startScore(t); }); // (late: joined where the picture is)
@@ -724,6 +782,7 @@ window.OEOverture = (function () {
     function finish(skipped) {
       if (!active) return;
       active = false;
+      stageUnset();
       if (!skipped) fadeScore(3);
       ctx.clock.frozen = wasFrozen;
       unlook();

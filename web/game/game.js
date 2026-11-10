@@ -107,6 +107,8 @@ window.OpenEarthGame = async function game(cityId) {
   // of what a frame can do without (governor.extras), both ways as the frame time allows. Its ceiling is the
   // tier's budget of scene pixels on this canvas. The frame-rate cap is the player's (the menu: 60 unless asked).
   const gov = OEQuality.governor({ cap: (() => { try { const v = localStorage.getItem('oe3d-fps'); return v === null ? 60 : Math.max(0, +v || 0); } catch (e) { return 60; } })() });
+  const GOV_KEY = `oe3d-gov-${cityId}`;
+  if (gov.auto) try { const v = +localStorage.getItem(GOV_KEY); if (v >= gov.min && v < 1) gov.scale = Math.round(v * 20) / 20; } catch (e) { /* storage blocked */ }
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight, pr = QC.pixelRatio(w, h);
@@ -1584,21 +1586,35 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     o.drv = OECars.chauffeur(C, plan.rt, opts);
     o.drv.opts = opts; // (for a new route round a jam)
     o.T0 = plan.T; o.sig = plan.sig; o.scr = plan.scr || []; o.scrJ = plan.scrJ || []; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
-    const look = driverLook();
+    let look = driverLook();
     o.driver = makeRig(look, {});
     C.sit(o.driver, 'driver');
+    // (a tall character, or one in a hat, can stand out through the roof even shrunk as far as a seat shrinks
+    // anyone: another of the crowd's characters at the wheel then, a few tries at most)
+    for (let k = 0; k < 4 && look.character && C.clearance && C.clearance(o.driver, 'driver') < 0; k++) {
+      if (o.driver.root.parent) o.driver.root.parent.remove(o.driver.root);
+      look = driverLook();
+      o.driver = makeRig(look, {});
+      C.sit(o.driver, 'driver');
+    }
     // none of the crowd's characters loaded yet (a ride in the first seconds of a game): a simple
     // figure at the wheel for now, and one of them as soon as it has loaded
+    // (one that does not fit under the roof is passed over for the next, as above)
     if (!look.character && lib) {
       const names = Object.keys(lib.info.characters).filter(n => !PLAYER_LOOKS[n]);
-      const name = names[Math.floor(Math.random() * names.length)];
-      if (name) Promise.resolve(lib.require(name)).then(() => {
-        if (ride !== o || !lib.tpl[name]) return;
-        const rig = makeRig(OEPeople.randomLook(lib, name, CR.style), {});
-        if (o.driver.root.parent) o.driver.root.parent.remove(o.driver.root);
-        o.driver = rig;
-        C.sit(rig, 'driver');
-      }).catch(() => {});
+      const next = tries => {
+        const name = names[Math.floor(Math.random() * names.length)];
+        if (name) Promise.resolve(lib.require(name)).then(() => {
+          if (ride !== o || !lib.tpl[name]) return;
+          const rig = makeRig(OEPeople.randomLook(lib, name, CR.style), {});
+          const was = o.driver;
+          if (was.root.parent) was.root.parent.remove(was.root);
+          C.sit(rig, 'driver');
+          if (C.clearance && C.clearance(rig, 'driver') < 0 && tries > 0) { if (rig.root.parent) rig.root.parent.remove(rig.root); C.sit(was, 'driver'); next(tries - 1); return; }
+          o.driver = rig;
+        }).catch(() => {});
+      };
+      next(4);
     }
     return o;
   }
@@ -4819,7 +4835,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
-    junctions, crowd, footNet, crowdNet, nav, clock, setClock, player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, get atmos() { return atmos; },
+    junctions, crowd, footNet, crowdNet, nav, clock, setClock, player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, weather, show, get atmos() { return atmos; },
     walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } }) : null;
   if (overture && OEOverture.due(CITY.id)) overture.prepareScore();
   if (overture) $('#gm-overture').hidden = false;
@@ -5003,12 +5019,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let fpsWarned = false;
   gov.on((extras, scale, extrasChanged) => {
     resize();
-    if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras }); // (each step is a "quality" event: telemetry.js)
+    if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras, msaa: atmos && atmos.composer ? atmos.composer.samples : QC.samples || 0, cap: gov.cap }); // (each step is a "quality" event: telemetry.js)
+    // what this device held on this map, for the next visit to start from (it climbs again from there if it can)
+    if (gov.auto) try { localStorage.setItem(GOV_KEY, String(+scale.toFixed(2))); } catch (e) { /* storage blocked */ }
     if (!extrasChanged) return;
     console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`);
     if (weather) weather.shed = extras >= 1 ? 0 : extras > 0 ? 1 : 2; // (two-way: weather.js gives back what this session's shedding took, and keeps off what started off)
     if (mirror && mirror.on) mirror.off = extras < 1;
     if (atmos && atmos.ao && atmos.ao.limit) atmos.ao.limit(extras >= 1 ? 2 : extras > 0 ? 1 : 0);
+    // the scene's multisampling with them: the tier's (four on high) with every extra, two at half, none at the floor,
+    // where the sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
+    if (atmos && atmos.setSamples && QC.samples) atmos.setSamples(extras >= 1 ? QC.samples : extras > 0 ? Math.min(2, QC.samples) : 0);
     if (extras === 0 && !fpsWarned && !navigator.webdriver) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
   });
   // The frame's own writes to the page (issue 352): each of the HUD's nodes is looked up once, and its text is
@@ -5138,7 +5159,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (player.mode !== 'foot') gaitChip('');
     }
     // the frame's time, for the governor: in play only (the title's orbit and a menu are lighter than play)
-    gov.tick(now, !titleOn && !paused && framesDrawn >= 2 && !document.hidden);
+    // (the title's orbit too: the telemetry's slowest frames were a city's title screen, where nothing held them)
+    gov.tick(now, !simHold && framesDrawn >= 2 && !document.hidden);
     if (player.rig.hideHead) player.rig.hideHead(player.mode === 'heli' && cam.mode === 'cockpit' && !photo.on && !(cine.active && cine.label !== 'crane'));
     // depth of field in photo mode, and with the camera's motion blur in the opening shot; never in play
     if (atmos && atmos.camFx) atmos.camFx(overture && overture.active ? overture.fx : photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
@@ -5223,7 +5245,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (trains) trains.update(dt, camera);
     if (rail) {
       if (waitRail && (player.mode !== 'foot' || railStation(player.x, player.y) !== waitRail || rail.cars.some(c => rail.stationOf(c.id) === waitRail))) { if (player.mode === 'foot' && railStation(player.x, player.y) === waitRail) H.toast(`The train is in. <kbd>E</kbd> to board.`); waitRail = null; }
-      rail.ear = player;
+      rail.ear = { x: camera.position.x, y: -camera.position.z }; // (the trains' detail is by the camera: in a film it is not where you stand)
       if (rail.crossingClosed) { // (a crossing's alarm starting beside you: said once)
         const xc = player.mode === 'foot' ? rail.crossingClosed(player.x, player.y, 12) : null;
         if (xc && xc !== nearXing) H.toast(xc.arms.length ? 'The crossing is closing: wait behind the barrier until the train has passed.' : 'A train is coming: keep off the rails.');

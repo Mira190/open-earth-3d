@@ -193,12 +193,12 @@ Coordinates are the Geospatial Information Authority's for the lot's address, or
 
 | Stop | In the game | The real place | As it stands | Built |
 |---|---|---|---|---|
-| 1 | The street the hero arrives on, the yakisoba shop | Pukuichi ぷくいち, Hiroshima Fuchu-yaki, 2-11-14 (35.64233, 139.66934) | Trading; an ochre awning over two bays | Not yet |
+| 1 | The street the hero arrives on, the yakisoba shop | Pukuichi ぷくいち, Hiroshima Fuchu-yaki, 2-11-14 (35.64233, 139.66934) | Trading, 17:00 to 24:00, closed Mondays; an ochre awning over two bays | **Yes**: the shutters, the awning and its name, the corner sign, the stair; a spot and a label. Placed on the model's three-storey building facing the lane, 15 m from the address point (no map service gave the shop itself) |
 | 2 | The café's lane and its front | The snack bar New Marina スナック ニューマリーナ, 2-14-21 (35.64279, 139.66936, OSM): a red dome awning with a scalloped edge and the name in white, over a steel shutter; brick tile, the door in white-painted brick; red clay pavers | Trading in the evening | **Yes** (`cities/shibuya/sancha.py`) |
 | 2 | The shop beside it, "Good-Bye Good-Bye" | Good-day Good-day SINCE 1986, the same house's left bay: a pale dome awning in a dark frame, green lettering | Shutter down in every photograph | **Yes** |
 | 2 | Where the café itself stands | The lot to the right: a walled garden until 2019; since 2024 the takoyaki stand Takoharu たこはる, a dark plank fence chalked NANIWANO AJI, a round sign, a red lantern | Evenings | **Yes** |
 | 2 | (not in the game) | RAIN ON THE ROOF, the café upstairs next door, 2-14-22: where pilgrims go for coffee and curry | Open | Its sign |
-| 3 | The bathhouse and the laundromat | Chiyo-no-yu 千代の湯, 2-12-7 (35.64274, 139.66954), across the lane: a hand-painted board over a slot in a corrugated fence, a passage to the door, the coin laundry on its right, the chimney behind | Closed to bathers since 2021; the passage boarded up by 2024, the board and chimney still there | The front, as open (to be redrawn as it stands) |
+| 3 | The bathhouse and the laundromat | Chiyo-no-yu 千代の湯, 2-12-7 (35.64274, 139.66954), across the lane: a hand-painted board over a slot in a corrugated fence, a passage to the door, the coin laundry on its right, the chimney behind | Closed to bathers since 2021; the passage boarded up by 2024, the board and chimney still there | **Yes**, as it stands: the fence, the boarded alley, the board, the chimney (its height an estimate) |
 | 4 | The corner where the old couple talk | A pale blue-grey house with an outside stair at the bend of the lane | There | Not yet |
 | 5 | The fork with the bar signs, the short cut to the station | The fork past it; a covered, tiled passage under a building to the shopping street | There | Not yet |
 | 6 | The supermarket | Niku no Hanamasa 肉のハナマサ, 2-14-6 (35.64291, 139.66899): a yellow sign wall two storeys high, navy brush lettering | Trading, 24 hours | Its sign |
@@ -212,7 +212,12 @@ the cages. It is best after dark, when the signs are lit; by day the shutters ar
 
 What the game adds to the real front is light and framing, and that is what is taken from it: the lane
 seen from the Good-day corner with both awnings receding, the same lane from the stand looking back,
-and a warm lamp over the door after dark (`sancha.glows`).
+and a warm lamp over the door after dark (`sancha.glows`). The district's link (`#play-shibuya@t-sancha`)
+arrives at that corner, looking down the lane.
+
+What the game says changes with the places: Chiyo-no-yu's spot, its chatter and Mr Tanaka's quest say the
+bath has closed and point to its board; its vending machines, which stood in the boarded alley, are no
+longer a spot.
 
 Two things are left out on purpose: the Godzilla head on the Toho building and
 Okamoto Taro's mural *Myth of Tomorrow* in the station passage are artworks the
@@ -226,7 +231,7 @@ model does not reproduce. The green Aoi-gaeru train car that stood by Hachiko un
 | The scramble from the air at 20:15 | CROSSING LIGHT over SHIBUYA SKY, 20:31 |
 |---|---|
 | ![](../images/shibuya/crossing-aerial-night.jpg) | ![](../images/shibuya/crossing-light.jpg) |
-| **Hachiko Square, the hoarding round the Toyoko site behind it** | |
+| **Hachiko Square (taken with the works' hoarding, since removed)** | |
 | ![](../images/shibuya/hachiko-night.jpg) | |
 
 The scramble is lit by its screens. Each one stands on its own building at its published size,
@@ -266,12 +271,17 @@ them, and are dark after that.
 - **Light on the street.** Each screen throws a pool of light on the street in front of it, in
   the mean colour of its programme. No street-lamp pole stands in the scramble.
 - **The old Tokyu Toyoko site.** The West and South buildings behind Hachiko closed in 2020 and
-  have been pulled down. The South building was gone by January 2026. The second phase of Shibuya
-  Scramble Square has been building on the site since May 2025, due in fiscal 2031. PLATEAU's
-  survey still has the twelve solids standing, and OpenStreetMap has removed them. They are left
-  out here (`landmarks.json` `demolished`), and the site is a construction site: a hoarding with
-  the developer's notice, floodlights and a tower crane. The crane's place and height are
-  illustrative.
+  have been pulled down (the South building by January 2026) for the second phase of Shibuya
+  Scramble Square, building since May 2025 and due in fiscal 2031; the site is a hoarding, floodlights
+  and a crane. **By the owner's choice the square is drawn as it stood before the works**: the twelve
+  solids PLATEAU surveyed stand behind Hachiko, and there is no hoarding. This is the one place where
+  the map is not as it stands in November 2026. `TOYOKO_WORKS` in `cities/shibuya/city.py` draws the
+  site as it is (the buildings left out through `landmarks.json` `demolished`, the hoarding with the
+  developer's notice, the floodlights and a tower crane, whose place and height are illustrative);
+  then `python pipeline/landmarks.py --city shibuya` and `python pipeline/pack.py`.
+- **Hachiko's light.** After dark a small warm light card stands 4 m up before him, aimed at him
+  (`game.look.fill` with `aim`): the square's lamps are drawn as points and as pools on the paving,
+  which leave a bronze black. It stands for their light and the shopfronts'; no luminaire is there.
 - **Hachiko Square.** Hachiko's pedestal was lowered in May 1989 so people could touch him. He
   looks north-east, toward the station's Hachiko exit, with the bus street at his back: photographs
   from 2020, 2021 and July 2025 show him from behind looking toward QFRONT's side, in profile from the
@@ -318,7 +328,7 @@ are, checked against photographs from the same viewpoints (the comparison stills
 | The station's Hachiko side | OSM maps the whole station as one 15 to 29 m building, which the generic styles drew as a yellow stone palace. It is drawn as the works site it is: pale panel walls, hoardings with the works notice at its foot, a scaffold over the square carrying an advert | OSM's outline and heights; photographs 2024-25 | The scaffold's size |
 | The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands | PLATEAU, photographs | All the brands are invented |
 | The bookshop on Center Gai's corner | The shop that has stood on the corner since 1912, on the block's chamfer facing the crossing and 3.4 m of its south side: white clapboard to the first floor, the shop window and door, a blue awning with the name in white, and the big white box sign, lit from inside, wrapping round the corner: the name in heavy blue characters inside a red outline of an open book (its spine at the corner), the romanised name in red, a blue edge at its foot. The name is invented, 大昇堂書店 (BOOKS TAISHODO), in the real one's pattern: five characters, □□堂書店, two on the side and three on the front, in the same colours. The block's corner screen and Rakuten Vision stand above the sign (7.4 m and 12.9 m) | OSM's outline (w136690966 is the whole block); photographs 2021 and 2024 | The awning (3.0-3.45 m) and the sign (3.6-6.9 m), scaled from the door |
-| Hachiko | The bronze Akita sculpted as signed distance fields (ellipsoids, tapered limbs, a collar, the curled tail, joined with smooth unions) and meshed by surface nets (`pipeline/sculptkit.py`, `cities/shibuya/hachiko.py`), 13,000 triangles with smooth normals and a cast surface's unevenness. He sits up, forelegs straight, ears up; the forelegs and paws are rubbed bright by hands. On a speckled grey granite plinth (0.95 × 0.95 × 1.15 m) with its bronze plate, 忠犬ハチ公 set vertically, on a dark granite step clad in small tiles (1.55 m square, 0.38 m) | Photographs, July 2025 (front and three-quarter); the first statue (1934) was 162 cm on a 180 cm pedestal | All the sizes, scaled from the plinth: the dog about 0.95 m from paws to ears |
+| Hachiko | The bronze Akita sculpted as signed distance fields and meshed by surface nets (`pipeline/sculptkit.py`, `cities/shibuya/hachiko.py`), 27,600 triangles. Remodelled in November 2026 against photographs from the front, the side and behind, after the first version read as a cat: a heavy, broad head raised about 13 degrees and turned a little to his left, a short blunt muzzle with its bridge and nose, small thick ears set wide on the corners of the skull (the left one bent forward, as it was in life), a thick neck straight into a broad chest, the flat strap collar round it with its tab hanging at the front, long straight forelegs, thick thighs at his sides, the tail curled over his back, all on a rough bronze slab cast with him. The real forelegs and paws are rubbed bright by hands; here, by the owner's choice, the bronze is one even colour. On a speckled grey granite plinth (0.95 x 0.95 x 1.15 m) with its bronze plate, 忠犬ハチ公 set vertically, on a dark granite step clad in small tiles (1.55 m square, 0.38 m) | Photographs: the front (2025-07), the side and the square behind (2025-11), the crowd (2023); the first statue (1934) was 162 cm on a 180 cm pedestal | The sizes, scaled from the plinth: the dog 1.09 m from his paws to his ears, the forelegs' outer edges 0.44 m apart, the collar 0.57 m up |
 | Hachiko's corner of the square | Round him, grey granite setts laid in arcs (6.6 m out, with two dark bands), carried on out across the planters' half of the square as the photographs show (the clay pavers start beyond); behind him a curved bed (2.4-4.4 m out, round his back) behind a 0.48 m granite wall people sit on, with two stainless rails along it and five lamps set in its face, and in the bed rocks, clumps of lilyturf and a Kasuga lantern, kept low on purpose: the real bed's garden pines and maple are left out so that nothing stands over Hachiko; on his left the memorial stone with its plate. Out on the square two round planters of upright granite strips (2.7 m across) ringed by stainless rails, each with a Somei-yoshino cherry. The lilyturf is the square's own (`cities/shibuya/hachiko_garden.py`: crossed cards cut out of a drawn atlas, `hachiko_garden.png`); the cherries are the shared trees', in flower from 24 March, turning in autumn and bare in winter (`trees.areas` in city.json). Four cherry-blossom inlays of pale stone in the setts | Photographs 2020-25 | All positions and sizes. The lilyturf's height |
 
 **Side by side.** Each still stands the camera where the photographer stood and is cropped to the

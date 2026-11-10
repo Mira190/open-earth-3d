@@ -360,7 +360,14 @@ own beside it. Both are replaced by one governor (`web/quality.js` `OEQuality.go
   the interface stay at the display's resolution, and the lens upscales with a contrast-adaptive sharpening
   (the limiter of AMD's FidelityFX RCAS, MIT, written here: four more taps, only while the scale is under 1).
 - `governor.extras` (1, 0.5, 0) is how much of what a frame can do without is drawn: at 0.5 no far rain or
-  splashes, no wet-street mirror, the lighter contact shadows; at 0 no weather's drops and no contact shadows.
+  splashes, no wet-street mirror, the lighter contact shadows and two MSAA samples in place of four; at 0 no
+  weather's drops, no contact shadows and no MSAA (the sharpened upscale and the lens's grain hide the edges
+  there more cheaply than four samples a pixel).
+- The display's interval is taken only from gaps between animation frames shorter than a 60 Hz display's (a
+  90, 120 or 144 Hz display); otherwise it is a 60 Hz display's. The first version took the shortest gap seen,
+  and on a device that cannot keep up that gap is the frame's own time: it aimed at the slowness itself and
+  stopped stepping down after one step (found with `tools/governor_probe.js` once the software renderer's
+  frames had become fast enough to fall under the 100 ms it accepted).
 - Down: resolution to 0.8, then the extras, then resolution to 0.6. Up: vertical sync hides headroom, so after
   four calm seconds it tries a step up; a try that does not fit is taken back and the next waits twice as long
   (to a minute). Extras return at full resolution after a longer calm (the weather keeps what it shed until
@@ -370,6 +377,11 @@ own beside it. Both are replaced by one governor (`web/quality.js` `OEQuality.go
   pixels on a 4K display, 14.7 million on a 5K one at 2x. The canvas is now held to a 4K display's pixels and
   the scene inside it to 2560 x 1440's (the governor's ceiling), so a 4K display draws the scene at two
   thirds of its size and the lens brings it up.
+
+- It runs on the title's orbit as well as in play (the telemetry's slowest frames were Shibuya's title screen,
+  where nothing held them), reports each step to the telemetry (scale, what was shed, MSAA, the cap) and keeps
+  the scale the device held on each map (`localStorage` `oe3d-gov-<city>`), so the next visit starts there
+  and climbs again if it can.
 
 `tools/governor_probe.js` feeds it frames on a clock of its own (fast: it stays; 40 ms: 1.00 to 0.80, extras
 to 0, 0.60, then half rate and back up; fast again: 1.00 with every extra) and takes stills at 1.0, 0.8 and
@@ -401,7 +413,10 @@ still run, in the view and in the shadow map), and every instance buffer was upl
 for the hour, near enough to be a skinned person, or out of the camera's sight by more than a shadow's
 length (30 m) changes places with the last one drawn, colours and all, and only the drawn range of the
 matrices and the gait is uploaded. The cars' models were already packed each frame; they take the same sight
-test and upload only the slots taken (`actors.js`).
+test and upload only the slots taken (`actors.js`). Both also ask the precomputed visibility
+(`visibility.js` `OEVis.seen`, issue 358) with the shadow's reach for the sun's height: a walker or a car
+behind the buildings, whose shadow cannot reach anything seen, takes no slot. Shibuya's scramble on foot then
+draws 2.91 million triangles in 315 draws (7.60 million in 415 on main at the start of this issue).
 
 ### The main thread
 

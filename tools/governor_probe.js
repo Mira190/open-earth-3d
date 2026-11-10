@@ -39,7 +39,9 @@ const [w, h] = size.split('x').map(Number);
     const G = window.__game.governor, cost = base => (s, e) => base * (0.35 + 0.5 * s * s + 0.15 * e);
     const out = { max: G.max, fast: G.simulate(10, cost(10)).pop() };
     out.slow = G.simulate(40, cost(40)).filter((x, i, a) => !i || x !== a[i - 1]).join(' ');
+    const C = window.__game.atmos.composer; out.msaaSlow = C ? C.samples : null;
     out.recovered = G.simulate(240, cost(9)).pop();
+    out.msaaBack = C ? C.samples : null;
     G.set(0.6, 1);
     const c = window.__game.atmos.composer;
     out.target = c ? `${c.renderTarget1.width}x${c.renderTarget1.height} of ${c.renderer.domElement.width}x${c.renderer.domElement.height}` : 'no post stack';
@@ -50,6 +52,7 @@ const [w, h] = size.split('x').map(Number);
   await shot('scale-0.80');
   console.log(JSON.stringify(res), errs.length ? `errors: ${errs.join(' | ')}` : '');
   await b.close();
-  const ok = res.fast === `${res.max.toFixed(2)}/1` && /0\.60\/0/.test(res.slow) && res.recovered === `${res.max.toFixed(2)}/1` && !errs.length;
+  const ok = res.fast === `${res.max.toFixed(2)}/1` && /0\.60\/0/.test(res.slow) && res.recovered === `${res.max.toFixed(2)}/1` && !errs.length
+    && (res.msaaSlow == null || res.msaaSlow === 0) && (res.msaaBack == null || res.msaaBack === (process.env.TIER === 'medium' ? 2 : process.env.TIER === 'low' ? 0 : 4));
   if (!ok) { console.log('FAIL'); process.exit(1); }
 })();

@@ -565,9 +565,10 @@
     },
     "look": {
       "neon": 1,
-      "fill": [{ "at": [368.7, -1000.6], "z": 12, "w": 60, "h": 56, "colour": "#ffe4c8", "k": 1.2 }],
+      "fill": [{ "at": [368.7, -1000.6], "z": 12, "w": 60, "h": 56, "colour": "#ffe4c8", "k": 1.2 },
+               { "at": [376.6, -1043.4], "z": 4.2, "w": 3.4, "h": 3.4, "colour": "#ffd0a0", "k": 8, "aim": [373.78, -1047.42, 2.2] }],
       "sound": { "at": [368.7, -1000.6], "r": 170, "signal": "piyo", "station": [430.0, -1070.0] },
-      "note": "neon: the screens' light on the street (web/neon.js); fill: after dark, the light the crossing's shopfronts, floodlights and signs put on the middle of the scramble, where no street lamp stands (a light card over it, medium and high tiers); sound: the crossing's murmur, its screens' music, the walk signal's bird calls and the station's announcements (web/game/audio.js)"
+      "note": "neon: the screens' light on the street (web/neon.js); fill: after dark, the light the crossing's shopfronts, floodlights and signs put on the middle of the scramble, where no street lamp stands (a light card over it, medium and high tiers), the light the square's lamps and shopfronts put on Hachiko from his front (a small warm card aimed at him: the lamps are drawn as points, which do not light a bronze); both are estimates of the light, not luminaires that stand there; sound: the crossing's murmur, its screens' music, the walk signal's bird calls and the station's announcements (web/game/audio.js)"
     },
     "vehicles": {
       "helicopter": {
@@ -963,7 +964,7 @@
         "stamp": "Sangenjaya",
         "talk": [
           "Sangenjaya, three tea houses. In a game it's Yongen-Jaya, four: the same backstreets with one more tea house.",
-          "The game's café has the front of a snack bar here, New Marina. The bathhouse is Chiyo-no-yu, across the lane.",
+          "The game's café has the front of a snack bar here, New Marina. The bathhouse was Chiyo-no-yu, across the lane: closed now, its board still up.",
           "Take it slow. These are people's homes and small shops."
         ],
         "steps": [
@@ -986,9 +987,9 @@
         "title": "Chiyo-no-yu",
         "stamp": "Sentō",
         "talk": [
-          "Forty years a regular. The curtain says ゆ: hot water. Men on one side, women on the other.",
-          "Coin laundry beside it, vending machines out front. Everything a backstreet needs.",
-          "Come back after dark. The signs light up the triangle between Setagaya-dori and Route 246."
+          "Forty years a regular, until it closed in 2021. The board's still up. 千代の湯 入口, Chiyo-no-yu, this way.",
+          "The coin laundry was down the alley, vending machines by the door. They boarded it up in the end.",
+          "Come back after dark anyway. The signs light up the triangle between Setagaya-dori and Route 246."
         ],
         "steps": [
           {
@@ -1037,24 +1038,25 @@
       "anime": {"paint": 0.85, "grade": 1.0, "rays": 1.0, "haze": 0.45, "haze_m": 1600, "haze_rgb": [0.62, 0.55, 0.58], "rim": 0.18, "rim_rgb": [1.0, 0.8, 0.6]},
       "night": {
     "below": -6,
-    "note": "After dark: a meteor crosses the sky over Shibuya's lights, from the stars down to the skyline, as a film's trailer would show the city. Every shot is from the air or across the city; none comes near the crowd.",
+    "note": "After dark: the night after rain, under a falling star. From the stars down to SHIBUYA SKY and its searchlights, over the edge of the roof and down to the scramble, to Hachiko under the lamps, the screens in the wet street, the hush before the lights change, and the crossing itself. The crowd is seen from above and from across the junction; no shot stands among it. wet: the streets wet from a shower that has passed, under a clear sky. show: CROSSING LIGHT on whatever the hour. One meteor crosses the sky, and only where the sky is empty (from the roof, and over the title), never with the searchlights' beams in shot: a comet standing among the searchlights' beams read as a moon throwing light (the owner, November 2026).",
     "guide": "meteor",
+    "wet": 1,
+    "show": true,
     "title": {"name": "渋谷", "reading": "Shibuya", "line": "星降る夜  ·  A night of falling stars"},
-    "grade": {"tint": [1.0, 0.98, 1.05], "sat": 1.15, "ev": 1.1, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]], "bloom": 1.3},
-    "anime": {"paint": 0.6, "grade": 0.8, "rays": 0, "haze": 0.55, "haze_m": 1400, "haze_rgb": [0.16, 0.15, 0.32], "rim": 0.22, "rim_rgb": [0.55, 0.5, 0.95]},
-    "score": {"root": 49, "scale": [0, 2, 4, 5, 7, 9, 11], "chords": [[5, 7, 9], [3, 5, 7], [0, 2, 4], [4, 6, 8]], "motif": [4, 2, 1, 0, 2], "tempo": 66, "voice": "piano", "air": "none", "arp": true, "chirp": false, "title_shot": "stars", "title_at": 0.5, "finale_shot": "skyline", "finale_at": 0.22, "clean": true},
+    "grade": {"tint": [0.98, 0.99, 1.06], "sat": 1.2, "ev": 1.14, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]], "bloom": 1.5},
+    "anime": {"paint": 0.5, "grade": 0.85, "rays": 0, "haze": 0.62, "haze_m": 1500, "haze_rgb": [0.07, 0.15, 0.36], "rim": 0.24, "rim_rgb": [0.45, 0.66, 1.0], "streak": 1.0},
+    "score": {"root": 49, "scale": [0, 2, 4, 5, 7, 9, 11], "chords": [[5, 7, 9], [3, 5, 7], [0, 2, 4], [4, 6, 8]], "motif": [4, 2, 1, 0, 2], "tempo": 66, "voice": "piano", "air": "none", "arp": true, "chirp": false, "title_shot": "stars", "title_at": 0.55, "finale_shot": "screens", "finale_at": 0.6, "hush_shot": "screens", "hush_at": [0.0, 0.6], "clean": true},
     "shots": [
-      {"id": "stars", "dur": 6.5, "type": "move", "from": ["@shibuya_sky", -370, -580, -40], "to": ["@shibuya_sky", -360, -560, -45], "lookFrom": ["@shibuya_sky", 0, 0, 900], "lookTo": ["@shibuya_sky", 0, 0, -60], "fov": 42, "ease": "inOut", "fadeIn": 2.0, "guide": [["@shibuya_sky", -1100, 1100, 650], ["@shibuya_sky", 0, 1300, 560], ["@shibuya_sky", 1200, 900, 430]], "gFrom": 0.2, "gTo": 0.75, "guideEase": "in", "drift": 0, "arc": 0.06, "tailLen": 0.34},
-      {"id": "tower", "dur": 5, "type": "orbit", "at": ["@shibuya_sky", 0, 0, -10], "az": [302, 318], "dist": [270, 255], "h": [-55, -48], "fov": 34, "ease": "linear", "guide": [["@shibuya_sky", 900, -900, 520], ["@shibuya_sky", 200, -1500, 470], ["@shibuya_sky", -500, -1800, 400]], "gFrom": 0.25, "gTo": 0.85, "guideEase": "in", "drift": 0, "arc": 0.06, "tailLen": 0.34},
-      {"id": "hachiko", "dur": 5, "type": "move", "from": ["@hachiko", -3.3, 1.5, 1.7], "to": ["@hachiko", -3.1, 2.0, 1.65], "lookFrom": ["@hachiko", 0.2, -0.1, 2.2], "lookTo": ["@hachiko", 0.2, -0.1, 2.3], "focus": ["@hachiko", 0, 0, 1.9], "fstop": 1.6, "fov": 34, "ease": "linear", "drift": 0, "caption": {"eyebrow": "忠犬ハチ公 · Hachiko", "text": "He met his master's train here every evening, and went on waiting for nine years after he was gone.", "at": 0.1, "until": 0.95}},
-      {"id": "crossing", "dur": 6, "type": "move", "from": ["@scramble", -8, 24, 46], "to": ["@scramble", -6, 19, 43], "lookFrom": ["@scramble", 12, -24, 0], "lookTo": ["@scramble", 13, -27, 0], "fov": 50, "ease": "linear", "drift": 0, "caption": {"eyebrow": "渋谷スクランブル交差点 · The scramble", "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.", "at": 0.1, "until": 0.95}},
-      {"id": "lane", "dur": 5, "type": "move", "from": ["@center_gai", 44, -12, 58], "to": ["@center_gai", 40, -6, 54], "lookFrom": ["@center_gai", 12, 52, 0], "lookTo": ["@center_gai", 8, 60, 0], "fov": 38, "ease": "linear", "drift": 0, "shower": 0},
-      {"id": "gymnasium", "dur": 5, "type": "orbit", "at": ["label:Yoyogi National Gymnasium", 0, 0, 30], "az": [140, 152], "dist": [230, 215], "h": [-10, -8], "look": ["label:Yoyogi National Gymnasium", 0, 0, 70], "fov": 38, "ease": "linear", "drift": 0, "guide": [["label:Yoyogi National Gymnasium", -611, 336, 300], ["label:Yoyogi National Gymnasium", -390, 557, 270], ["label:Yoyogi National Gymnasium", -107, 689, 220]], "gFrom": 0.2, "gTo": 0.8, "guideEase": "in", "arc": 0.06, "tailLen": 0.34},
-      {"id": "forest", "dur": 5.5, "type": "move", "from": ["label:Yoyogi National Gymnasium", -250, 60, 48], "to": ["label:Yoyogi National Gymnasium", -238, 40, 46], "lookFrom": ["@shibuya_sky", 0, 0, -120], "lookTo": ["@shibuya_sky", 0, 0, -125], "fov": 30, "ease": "linear", "drift": 0, "guide": [["@shibuya_sky", -900, 300, 300], ["@shibuya_sky", -200, 0, 260], ["@shibuya_sky", 600, -300, 220]], "gFrom": 0.3, "gTo": 0.9, "guideEase": "in", "arc": 0.06, "tailLen": 0.34},
-      {"id": "skyline", "dur": 9, "type": "move", "from": ["@scramble", 60, 560, 200], "to": ["@scramble", 70, 470, 185], "lookFrom": ["@scramble", 100, -110, 150], "lookTo": ["@scramble", 100, -110, 135], "fov": 40, "ease": "inOut", "drift": 0, "fadeOut": 1.8, "title": {"at": 0.22, "until": 0.86}, "guide": [["@shibuya_sky", -1300, -500, 300], ["@shibuya_sky", -300, -900, 260], ["@shibuya_sky", 800, -1000, 220]], "gFrom": 0.05, "gTo": 0.55, "guideEase": "in", "arc": 0.06, "tailLen": 0.34}
+      {"id": "stars", "dur": 6.5, "type": "move", "from": ["@shibuya_sky", 380, -330, -60], "to": ["@shibuya_sky", 368, -318, -64], "lookFrom": ["@shibuya_sky", 0, 0, 760], "lookTo": ["@shibuya_sky", 0, 0, 30], "fov": 42, "ease": "inOut", "fadeIn": 2.2, "drift": 0},
+      {"id": "deck", "dur": 6, "type": "move", "from": ["@shibuya_sky", -26.2, 16.6, 1.5], "to": ["@shibuya_sky", -28.6, 18.9, 1.62], "lookFrom": ["@scramble", -330, 330, 260], "lookTo": ["@scramble", -200, 150, 60], "fov": 46, "ease": "inOut", "drift": 0, "guide": [["@scramble", -1500, 900, 620], ["@scramble", -900, 1500, 520], ["@scramble", -100, 1900, 380]], "gFrom": 0.2, "gTo": 0.8, "guideEase": "in", "arc": 0.06, "tailLen": 0.34, "caption": {"eyebrow": "SHIBUYA SKY · 229 m", "text": "The roof of Scramble Square after the rain, above the busiest crossing in the world.", "at": 0.1, "until": 0.92}},
+      {"id": "fall", "dur": 5.5, "type": "move", "from": ["@shibuya_sky", -34, 52, 8], "to": ["@scramble", 78, -56, 92], "lookFrom": ["@scramble", -30, 30, 0], "lookTo": ["@scramble", 0, 0, 0], "fov": [50, 40], "ease": "inOut", "drift": 0, "shower": 0, "cues": [[0.0, "red"]]},
+      {"id": "hachiko", "dur": 5, "type": "move", "from": ["@hachiko", 6.9, 0.1, 1.42], "to": ["@hachiko", 6.8, 0.8, 1.46], "lookFrom": ["@hachiko", 0, 0, 2.2], "lookTo": ["@hachiko", 0, 0, 2.28], "focus": ["@hachiko", 0, 0, 2.2], "fstop": 1.4, "fov": 20, "ease": "linear", "drift": 0, "shower": 0, "caption": {"eyebrow": "忠犬ハチ公 · Hachiko", "text": "He met his master's train here every evening, and went on waiting for nine years after he was gone.", "at": 0.1, "until": 0.95}},
+      {"id": "screens", "dur": 4.5, "type": "move", "from": ["@scramble", 8.4, -8.4, 0.4], "to": ["@scramble", 7.8, -7.3, 0.45], "lookFrom": ["label:QFRONT", 0, 0, 2], "lookTo": ["label:QFRONT", 0, 0, 22], "fov": 34, "ease": "linear", "drift": 0, "shower": 0, "cues": [[0.6, "green"]]},
+      {"id": "above", "dur": 6.5, "type": "orbit", "at": ["@scramble"], "az": [296, 318], "dist": [40, 34], "h": [46, 38], "look": ["@scramble", 0, 0, 0], "fov": 46, "ease": "linear", "drift": 0, "shower": 0},
+      {"id": "wide", "dur": 9, "type": "move", "from": ["@scramble", 44, -3, 30], "to": ["@scramble", 64, -14, 52], "lookFrom": ["@scramble", -10, 2, 2], "lookTo": ["@scramble", -160, 30, 74], "fov": [44, 40], "ease": "inOut", "drift": 0, "fadeOut": 1.8, "title": {"at": 0.34, "until": 0.86}, "guide": [["@scramble", -1400, 500, 560], ["@scramble", -900, 1300, 470], ["@scramble", -100, 1700, 360]], "gFrom": 0.35, "gTo": 0.85, "guideEase": "in", "arc": 0.06, "tailLen": 0.34, "caption": {"eyebrow": "渋谷スクランブル交差点 · The scramble", "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.", "at": 0.04, "until": 0.2}}
     ],
-    "sky": {"zenith": [0.008, 0.014, 0.05], "mid": [0.03, 0.045, 0.13], "horizon": [0.3, 0.19, 0.25], "milky": 1.0, "stars": 1.0, "clouds": 0.6, "pole": [0.35, 0.55, -0.76]},
-    "shower": 1.1
+    "sky": {"zenith": [0.003, 0.01, 0.042], "mid": [0.012, 0.042, 0.16], "low": [0.03, 0.12, 0.32], "horizon": [0.2, 0.36, 0.58], "city": [0.42, 0.3, 0.24], "rim": [0.42, 0.58, 0.92], "milky": 1.15, "stars": 1.1, "clouds": 0.45, "banks": 0.9, "pole": [0.35, 0.55, -0.76]},
+    "shower": 0
   }
     }
   }

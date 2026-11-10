@@ -29,6 +29,10 @@ MATERIALS = {
     "duct_rust": {"color": "#6f4330", "roughness": 0.7, "metalness": 0.3},
     "ac_white": {"color": "#d9d8d2", "roughness": 0.6, "metalness": 0.1},
     "lantern_red": {"color": "#d8242a", "roughness": 0.7, "metalness": 0.0, "emissive": "#ff4a30", "glow": 1.5},
+    "awning_ochre": {"color": "#c4a048", "roughness": 0.75, "metalness": 0.0},
+    "stucco_beige": {"color": "#cdbfa8", "roughness": 0.95, "metalness": 0.0},
+    "wood_weathered": {"color": "#6b5a48", "roughness": 0.92, "metalness": 0.0},
+    "concrete_stain": {"color": "#8f8a80", "roughness": 0.95, "metalness": 0.0},
     "door_lamp": {"color": "#fff0d0", "roughness": 0.5, "metalness": 0.0, "emissive": "#ffc070", "glow": 2.4},
 }
 
@@ -36,9 +40,11 @@ PX = 128   # pixels a metre on the sheet
 # (key, width m, height m): each drawn at PX and packed on shelves
 CELLS = [("brick", 2.0, 3.0), ("white", 1.6, 3.0), ("shutter", 1.6, 2.3), ("door", 0.8, 2.05), ("sudare", 0.45, 1.5),
          ("tako", 3.3, 2.25), ("paving", 5.6, 1.7), ("name", 1.5, 0.62), ("lantern", 0.34, 0.6), ("round", 0.5, 0.5),
-         ("notice", 0.3, 0.42), ("grille", 0.8, 0.6), ("goodday", 1.5, 0.75)]
-FINE = {"tako": 2, "name": 3, "lantern": 4, "round": 4, "goodday": 3}   # the lettered cells, drawn that many times finer
-SHEET, SHEET_H = 1024, 2048
+         ("notice", 0.3, 0.42), ("grille", 0.8, 0.6), ("goodday", 1.5, 0.75),
+         ("corr_brown", 1.6, 2.2), ("corr_rust", 2.0, 2.4), ("corr_galv", 2.0, 2.6), ("chiyo_board", 1.55, 0.68),
+         ("puku_awn", 7.8, 0.72), ("puku_v", 0.75, 3.1), ("noren", 1.0, 0.9)]
+FINE = {"tako": 2, "name": 3, "lantern": 4, "round": 4, "goodday": 3, "chiyo_board": 3, "puku_v": 2, "noren": 2}   # the lettered cells, drawn that many times finer
+SHEET, SHEET_H = 1024, 4096
 
 
 def layout():
@@ -160,6 +166,72 @@ def draw(path, font):
     d.text((x + int(w * 0.36), y + int(h * 0.24)), "Good-day", font=f, fill=(40, 110, 70), anchor="mm")
     d.text((x + int(w * 0.6), y + int(h * 0.56)), "Good-day", font=f, fill=(40, 110, 70), anchor="mm")
     d.text((x + int(w * 0.62), y + int(h * 0.86)), "SINCE 1986", font=font("mincho", 44), fill=(150, 132, 84), anchor="mm")
+    # Chiyo-no-yu's fence: corrugated sheet, its ribs 7.6 cm apart, each in its own weather
+    def corrugated(rect, base, rust):
+        x, y, w, h = rect
+        d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=base)
+        for xx in range(x, x + w, 10):
+            d.line([(xx, y), (xx, y + h)], fill=tuple(max(0, v - 34) for v in base), width=3)
+            d.line([(xx + 5, y), (xx + 5, y + h)], fill=tuple(min(255, v + 22) for v in base), width=2)
+        for k in range(int(w * h * rust / 900)):       # rust and streaks, run down from the fixings
+            rx, ry = x + int(rng.integers(0, w)), y + int(rng.integers(0, h))
+            d.line([(rx, ry), (rx + int(rng.integers(-2, 3)), min(y + h, ry + int(rng.integers(8, 60))))], fill=(118, 70, 40), width=int(rng.integers(1, 4)))
+        for yy in (y + 18, y + h - 22):                 # the screws along the rails
+            for xx in range(x + 14, x + w, 40):
+                d.ellipse([xx - 2, yy - 2, xx + 2, yy + 2], fill=(70, 60, 54))
+    corrugated(R["corr_brown"], (112, 82, 70), 0.05)
+    corrugated(R["corr_rust"], (128, 104, 86), 1.0)
+    corrugated(R["corr_galv"], (168, 174, 178), 0.06)
+    # the hand-painted board over the boarded alley: 千代の湯 in green and 入口 in red, (コインランドリー),
+    # and the request to keep off a private way
+    x, y, w, h = R["chiyo_board"]
+    d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(226, 220, 204))
+    d.rectangle([x + 4, y + 4, x + w - 4, y + h - 4], outline=(160, 150, 130), width=4)
+    for k in range(18):                                 # its weathering
+        rx, ry = x + int(rng.integers(0, w)), y + int(rng.integers(0, h))
+        d.ellipse([rx, ry, rx + 6, ry + 4], fill=(196, 188, 170))
+    f = font("klee", 62)
+    d.text((x + int(w * 0.36), y + int(h * 0.2)), "千代の湯", font=f, fill=(46, 104, 52), anchor="mm")
+    d.text((x + int(w * 0.72), y + int(h * 0.2)), "入口", font=f, fill=(178, 40, 36), anchor="mm")
+    d.text((x + w // 2, y + int(h * 0.47)), "（コインランドリー）", font=font("klee", 50), fill=(46, 104, 52), anchor="mm")
+    f = font("klee", 36)
+    d.text((x + w // 2, y + int(h * 0.71)), "私有地に付き利用者以外", font=f, fill=(34, 32, 30), anchor="mm")
+    d.text((x + w // 2, y + int(h * 0.88)), "の通行はお断り致します", font=f, fill=(34, 32, 30), anchor="mm")
+    # Pukuichi's awning: ochre canvas, white lettering, the round gold crest with 福一 between ぷく and いち
+    x, y, w, h = R["puku_awn"]
+    d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(196, 160, 72))
+    for xx in range(x, x + w, int(w / 7.8)):          # the canvas's seams, about a metre apart
+        d.line([(xx, y), (xx, y + h)], fill=(182, 146, 62), width=2)
+    d.text((x + w // 2, y + int(h * 0.15)), "鉄板・広島府中焼き", font=font("mincho", 13), fill=(250, 246, 232), anchor="mm")
+    def crest(cx, cy, r, ring, ink):
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=ring)
+        d.ellipse([cx - r + 3, cy - r + 3, cx + r - 3, cy + r - 3], outline=ink, width=2)
+        d.ellipse([cx - r * 0.72, cy - r * 0.72, cx + r * 0.72, cy + r * 0.72], outline=ink, width=2)
+        d.text((cx, cy), "福一", font=font("mincho", int(r * 0.7)), fill=ink, anchor="mm")
+    f = font("kurenaido", 54)
+    d.text((x + w // 2 - 46, y + int(h * 0.6)), "ぷく", font=f, fill=(250, 246, 232), anchor="rm")
+    crest(x + w // 2, y + int(h * 0.58), 36, (214, 176, 84), (250, 238, 200))
+    d.text((x + w // 2 + 46, y + int(h * 0.6)), "いち", font=f, fill=(250, 246, 232), anchor="lm")
+    # its vertical sign on the corner: orange-red, 鉄板 広島府中焼き small, then ぷく, the crest, いち
+    x, y, w, h = R["puku_v"]
+    d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(222, 74, 40))
+    d.rectangle([x + 4, y + 4, x + w - 4, y + h - 4], outline=(246, 230, 214), width=3)
+    f = font("mincho", 30)
+    for i, (a_, b_) in enumerate((("鉄", "広"), ("板", "島"), ("", "府"), ("", "中"), ("", "焼"), ("", "き"))):
+        if a_: d.text((x + w * 0.7, y + 30 + i * 34), a_, font=f, fill=(250, 244, 236), anchor="mm")
+        d.text((x + w * 0.38, y + 30 + i * 34), b_, font=f, fill=(250, 244, 236), anchor="mm")
+    f = font("kurenaido", 112)
+    d.text((x + w // 2, y + int(h * 0.42)), "ぷ", font=f, fill=(250, 244, 236), anchor="mm")
+    d.text((x + w // 2, y + int(h * 0.55)), "く", font=f, fill=(250, 244, 236), anchor="mm")
+    crest(x + w // 2, y + int(h * 0.68), 54, (240, 160, 70), (250, 238, 214))
+    d.text((x + w // 2, y + int(h * 0.81)), "い", font=f, fill=(250, 244, 236), anchor="mm")
+    d.text((x + w // 2, y + int(h * 0.93)), "ち", font=f, fill=(250, 244, 236), anchor="mm")
+    # white noren over the glass, in five panels, the crest faint on the middle one
+    x, y, w, h = R["noren"]
+    d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(240, 238, 230))
+    for k in range(1, 5):
+        d.line([(x + w * k / 5, y + 16), (x + w * k / 5, y + h)], fill=(196, 194, 186), width=3)
+    d.rectangle([x, y, x + w, y + 10], fill=(214, 212, 204))
     # a notice taped to the brick: lines of small print, a red heading (not to be read)
     x, y, w, h = R["notice"]
     d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(244, 242, 236))
@@ -308,6 +380,119 @@ def meshes(K, m):
         Y.quad(P(a0, 1.75, 0.035), P(a1, 1.75, 0.035), P(a1, 0.0, 0.035), P(a0, 0.0, 0.035), uv("paving", (0, 0, (a1 - a0) / 5.6, 1)))
     box(K("stone"), -hl, split, 1.75, 1.87, -0.05, 0.05)                                     # the kerb to the lane
     return {"door": [float(v) for v in P((a_d0 + a_d1) / 2, 0, 0)[:2]]}
+
+
+def chiyo(K, c):
+    """Chiyo-no-yu's street face as it stands (photographs of 2019 to 2025): not a building front but a fence of
+    corrugated sheet on a timber frame, across the lane from New Marina. The alley through it to the bath and the
+    coin laundry is boarded up with brown ribbed sheet (since 2024; the bath has been closed since 2021), under the
+    hand-painted board that still names it. Rusty sheet with timber battens to the left, galvanised to the right,
+    and the bath's chimney behind (its height is an estimate: no figure is published)."""
+    mid, n, z = np.asarray(c["at"], float), np.asarray(c["normal"], float), c["z"]
+    n = n / np.hypot(*n)
+    t = np.array([-n[1], n[0]])
+    P = lambda a, u, zz: np.array([*(mid + t * a + n * (u + 0.35)), z + zz])
+    Y, W = K("yongen"), K("wood_weathered")
+
+    def box(mat, a0, a1, u0, u1, z0, z1):
+        cc = [P(a, u, zz) for zz in (z0, z1) for u in (u0, u1) for a in (a0, a1)]
+        for i, j, k, l in ((0, 1, 5, 4), (3, 2, 6, 7), (1, 3, 7, 5), (2, 0, 4, 6), (4, 5, 7, 6), (2, 3, 1, 0)):
+            mat.quad(cc[i], cc[j], cc[k], cc[l])
+
+    def sheet(key, a0, a1, z1, w_m, u=0.0):
+        """Corrugated sheet from a0 to a1, z1 high, its image repeated every w_m metres along."""
+        a = a0
+        while a < a1 - 1e-3:
+            b = min(a1, a + w_m)
+            Y.quad(P(a, u, 0), P(b, u, 0), P(b, u, z1), P(a, u, z1), uv(key, (0, 0, (b - a) / w_m, 1)))
+            a = b
+
+    s0, s1 = -1.95, -0.35                          # the boarded alley, 1.6 m wide
+    L = c["len"] / 2
+    a_l, a_r = max(-L + 0.3, s0 - 5.0), min(L - 0.3, s1 + 4.5)
+    sheet("corr_rust", a_l, s0 - 0.12, 2.4, 2.0)
+    sheet("corr_brown", s0, s1, 2.2, 1.6, u=-0.04)
+    sheet("corr_galv", s1 + 0.12, a_r, 2.6, 2.0)
+    for a in (s0 - 0.12, s1):                      # the alley's posts, its lintel and the rail along the top
+        box(W, a, a + 0.12, -0.08, 0.06, 0, 2.95)
+    box(W, s0 - 0.25, s1 + 0.25, -0.08, 0.06, 2.2, 2.32)
+    box(W, a_l, s0 - 0.12, 0.0, 0.06, 2.36, 2.46)
+    for zz in (0.62, 1.55):                        # battens across the rusty sheet
+        box(W, a_l + 0.1, s0 - 0.2, 0.0, 0.05, zz, zz + 0.1)
+    bw = 1.55                                      # the board, on two struts over the lintel
+    bc = (s0 + s1) / 2
+    Y.quad(P(bc - bw / 2, 0.1, 2.3), P(bc + bw / 2, 0.1, 2.3), P(bc + bw / 2, 0.1, 2.98), P(bc - bw / 2, 0.1, 2.98), uv("chiyo_board"))
+    box(W, bc - bw / 2 - 0.03, bc + bw / 2 + 0.03, -0.02, 0.07, 2.27, 3.01)   # (3 cm behind the picture: no depth fight)
+    # the chimney behind: a tapering concrete stack, stained, its top banded
+    cx, cy, _ = P(-0.6, -9.0, 0)
+    K("concrete_stain").lathe([(z, 0.75), (z + 17.0, 0.48), (z + 17.2, 0.56), (z + 17.6, 0.56), (z + 17.6, 0.0)], (float(cx), float(cy)), 4)
+    return {"alley": [float(v) for v in P(bc, 0.6, 0)[:2]]}
+
+
+# Pukuichi (鉄板・広島府中焼き ぷくいち, 三軒茶屋2-11-14, 土屋ビル1F): where the street the pilgrims start on runs
+# north from Route 246. The model's building there (three storeys, 11.1 m) has a 13.6 m face onto the lane,
+# east, with the Darts Cafe's corner across it, as in the photographs (rinblog 2025, zukkazu 2019); its lot's
+# address (GSI) is 15 m away. No source gives the frontage: four shutters, about 2 m each, read off the photos.
+PUKUICHI = {"at": [-2467.2, -2888.4], "normal": [0.946, -0.323], "len": 13.6, "z": 33.8, "top_m": 11.1}
+
+
+def pukuichi(K, w=PUKUICHI):
+    """The front as it stands: four roller shutters across two bays under one long ochre canvas awning with the
+    shop's name, the vertical sign on the south corner, an outside stair at the north end."""
+    mid, n, z = np.asarray(w["at"], float), np.asarray(w["normal"], float), w["z"]
+    n = n / np.hypot(*n)
+    t = np.array([-n[1], n[0]])                    # north along the lane
+    P = lambda a, u, zz: np.array([*(mid + t * a + n * (u + 0.08)), z + zz])
+    Y, Yl, S = K("yongen"), K("yongen", "lit"), K("stucco_beige")
+
+    def box(mat, a0, a1, u0, u1, z0, z1):
+        cc = [P(a, u, zz) for zz in (z0, z1) for u in (u0, u1) for a in (a0, a1)]
+        for i, j, k, l in ((0, 1, 5, 4), (3, 2, 6, 7), (1, 3, 7, 5), (2, 0, 4, 6), (4, 5, 7, 6), (2, 3, 1, 0)):
+            mat.quad(cc[i], cc[j], cc[k], cc[l])
+
+    hl = w["len"] / 2
+    a0 = -hl + 0.35                                # the south corner, where the vertical sign stands
+    bays = [(a0 + 0.3, a0 + 2.3), (a0 + 2.45, a0 + 4.45), (a0 + 4.9, a0 + 6.9), (a0 + 7.05, a0 + 9.05)]
+    a1 = a0 + 9.35
+    edges = [a0] + [v for b in bays for v in b] + [a1]
+    for k in range(0, len(edges), 2):              # the piers between the shutters, and the band over them
+        box(S, edges[k], edges[k + 1], -0.05, 0.16, 0, 2.7)
+    box(S, a0, a1, -0.05, 0.16, 2.55, 2.75)
+    for b0, b1 in bays:                            # the shutters, set back 4 cm in their openings
+        Y.quad(P(b0, 0.12, 0), P(b1, 0.12, 0), P(b1, 0.12, 2.55), P(b0, 0.12, 2.55), uv("shutter"))
+    # the awning: a sloped canvas top and a vertical valance with the name, the length of the two bays
+    zt, zb, out = 3.95, 2.75, 0.95                 # (the valance a metre tall, as in the photographs)
+    A = K("awning_ochre")
+    zv = zt - 0.15
+    A.quad(P(a0, 0.16, zt), P(a1, 0.16, zt), P(a1, out, zv), P(a0, out, zv))
+    A.quad(P(a1, 0.16, zt), P(a0, 0.16, zt), P(a0, out, zv), P(a1, out, zv))
+    A.quad(P(a1, out, zb), P(a0, out, zb), P(a0, 0.16, zb), P(a1, 0.16, zb))    # its underside
+    Y.quad(P(a0, out, zb), P(a1, out, zb), P(a1, out, zv), P(a0, out, zv), uv("puku_awn"))
+    A.quad(P(a0, 0.16, zt), P(a0, out, zv), P(a0, out, zb), P(a0, 0.16, zb))     # its ends
+    A.quad(P(a1, out, zv), P(a1, 0.16, zt), P(a1, 0.16, zb), P(a1, out, zb))
+    # the vertical sign, standing out from the corner, read from both ways along the lane (each face on the side it faces)
+    av, zv0, zv1 = a0 + 0.05, 3.9, 7.0
+    box(K("steel_dark"), av - 0.06, av + 0.06, 0.1, 0.95, zv0 - 0.05, zv1 + 0.05)
+    Yl.quad(P(av + 0.065, 0.95, zv0), P(av + 0.065, 0.2, zv0), P(av + 0.065, 0.2, zv1), P(av + 0.065, 0.95, zv1), uv("puku_v"))
+    Yl.quad(P(av - 0.065, 0.2, zv0), P(av - 0.065, 0.95, zv0), P(av - 0.065, 0.95, zv1), P(av - 0.065, 0.2, zv1), uv("puku_v"))
+    # the outside stair at the north end, a steel flight with a white rail up to the first floor
+    s0, s1 = a1 + 0.3, min(hl - 0.1, a1 + 3.6)
+    St = K("steel_dark")
+    for k in range(14):
+        a = s0 + (s1 - s0) * k / 14
+        box(St, a, a + (s1 - s0) / 14 + 0.02, 0.1, 1.05, 0.22 * k + 0.18, 0.22 * k + 0.22)
+    K("ac_white").tube([P(s0, 1.08, 0.95), P(s1, 1.08, 3.1 + 0.95)], 0.025, 6)
+    return {"front": [float(v) for v in P((a0 + a1) / 2, 2.0, 0)[:2]]}
+
+
+def pukuichi_spot():
+    """Where to stand to look at the front, and the label over it."""
+    w = PUKUICHI
+    mid, n = np.asarray(w["at"], float), np.asarray(w["normal"], float)
+    t = np.array([-n[1], n[0]])
+    a = -w["len"] / 2 + 0.35 + 4.7
+    at = mid + t * a + n * 2.2
+    return [round(float(at[0]), 2), round(float(at[1]), 2), w["z"]]
 
 
 def glows(m):

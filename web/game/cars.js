@@ -369,10 +369,19 @@ window.OECars = (function () {
         if (rig.headTop) {
           rig.animate(0, 0, 'sit', 0);
           body.updateWorldMatrix(true, true);
-          const head = body.worldToLocal(rig.headTop()), room = roofOver(head) - 0.06;
+          let head = body.worldToLocal(rig.headTop()), room = roofOver(head) - 0.06;
           let over = head.y - room;
           if (over > 0) { const sink = Math.min(0.08, over); rig.root.position.y -= sink; head.y -= sink; over -= sink; }
-          if (over > 0) rig.root.scale.setScalar(Math.max(0.8, (room - rig.root.position.y) / Math.max(0.3, head.y - rig.root.position.y)));
+          // (smaller about the seat moves the head along the roof too, and at the driver's seat that is towards the
+          // windscreen's slope, where the roof is lower: so measured again under the roof where the head now is,
+          // a few times, and never smaller than 0.72)
+          for (let k = 0; k < 4 && over > 0.002; k++) {
+            const sc = rig.root.scale.x * Math.max(0.72 / rig.root.scale.x, (room - rig.root.position.y) / Math.max(0.3, head.y - rig.root.position.y));
+            if (Math.abs(sc - rig.root.scale.x) < 1e-4) break;
+            rig.root.scale.setScalar(sc);
+            body.updateWorldMatrix(true, true);
+            head = body.worldToLocal(rig.headTop()); room = roofOver(head) - 0.06; over = head.y - room;
+          }
         }
       },
       // how far under the roof over it the top of a seated person's head is (m; negative: through it), or null

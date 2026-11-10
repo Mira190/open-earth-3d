@@ -2582,7 +2582,7 @@ is the city's (`game_rail` in `city.py`), the cable's profile with its sag betwe
 
 **The trains** (`assets/vehicles/trains.glb`, 1.0 MB, `blender/build_trains.py`) are the Enoshima
 Electric Railway's stock, one body of each two-car articulated set, about 17,000 triangles each with
-a 2,200-triangle copy for distance (past 170 m): the 300 series' last set (305, 1960; 24.1 m, 2.4 m
+a 7,000 to 8,400-triangle copy for distance past 170 m (its outside only, flat faces merged): the 300 series' last set (305, 1960; 24.1 m, 2.4 m
 wide, pale green and cream, three windows in a flat face), the 1000 series (1979; 25.4 m, dark green
 and cream with a gold line) and the second 500 series (2006; 25.4 m, 2.5 m wide, one curved
 windscreen, a single-arm pantograph). Lengths, widths, roof heights, bogie centres (8.7 and 9.5 m),

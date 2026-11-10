@@ -144,7 +144,12 @@
     1.0,
     0.94
    ],
-   "sat": 1.06
+   "sat": 1.06,
+   "clear_cars": [
+    -449,
+    193,
+    9
+   ]
   },
   {
    "id": "passing",
@@ -197,7 +202,12 @@
     1.0,
     0.92
    ],
-   "sat": 1.06
+   "sat": 1.06,
+   "clear_cars": [
+    -437,
+    132,
+    5
+   ]
   }
  ],
  "note": "Thirty seconds at the Kamakurakokomae crossing in the golden hour of 22 November (sunset 16:31 JST): the coast and Enoshima, the train passing the crossing from up the hill road, and from beside the gate. Each crossing shot cues the railway's clock (train)."

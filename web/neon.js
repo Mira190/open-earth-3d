@@ -72,7 +72,7 @@ window.OENeon = (function () {
 
   // Wd: the world (world.js); tier: 'high' | 'medium' | 'low'; gain: a city's own scale on the light;
   // fill: light cards over a plaza after dark (game.look.fill: [{at: [x, y], z: height over the
-  // ground, w, h metres, colour, k}]), the light its shopfronts, floodlights and signs put on the
+  // ground, w, h metres, colour, k, aim: [x, y, z over the ground] for a card that does not face straight down}]), the light its shopfronts, floodlights and signs put on the
   // middle of a square that no street lamp stands in (Shibuya's scramble); ground(x, y): the ground's height
   async function create(Wd, renderer, { tier = 'low', gain = 1, fill = [], ground = () => 0 } = {}) {
     const n = COUNT[tier] || 0, info = Wd.screens;
@@ -88,7 +88,8 @@ window.OENeon = (function () {
       const L = new THREE.RectAreaLight(new THREE.Color(f.colour || '#ffd9b0').convertSRGBToLinear(), 0, f.w || 60, f.h || 60);
       const gz = ground(f.at[0], f.at[1]);
       L.position.set(f.at[0], gz + (f.z || 30), -f.at[1]);
-      L.lookAt(f.at[0], gz - 10, -f.at[1]);
+      if (f.aim) L.lookAt(f.aim[0], gz + (f.aim[2] || 0), -f.aim[1]); // (a card that lights something from its side: a statue)
+      else L.lookAt(f.at[0], gz - 10, -f.at[1]);
       L.userData.k = f.k ?? 1;
       Wd.world.add(L);
       return L;

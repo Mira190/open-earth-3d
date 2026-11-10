@@ -27,7 +27,12 @@ window.OELights = (function () {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vBeamZ;')
       .replace('#include <project_vertex>', '#include <project_vertex>\n  vBeamZ = -mvPosition.z;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vBeamZ;')
-      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n  gl_FragColor.a *= smoothstep(25.0, 140.0, vBeamZ);');
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n  gl_FragColor.a *= smoothstep(25.0, 140.0, vBeamZ) * vBeamSoft;');
+    // a beam is light scattered by the air inside a cone: most where the eye looks through the cone's middle and none
+    // at its edge, where the way through it is nothing. The cone's faces take that from the angle they are seen at
+    sh.vertexShader = sh.vertexShader.replace('varying float vBeamZ;', 'varying float vBeamZ; varying float vBeamSoft;')
+      .replace('vBeamZ = -mvPosition.z;', 'vBeamZ = -mvPosition.z;\n  vBeamSoft = pow(abs(dot(normalize(normalMatrix * normal), normalize(mvPosition.xyz))), 1.6);');
+    sh.fragmentShader = sh.fragmentShader.replace('varying float vBeamZ;', 'varying float vBeamZ; varying float vBeamSoft;');
   }
 
   function create(world, D, Wd) {
@@ -74,23 +79,25 @@ window.OELights = (function () {
     }
     const flood = Object.values(Wd.floodMats || {});
     const own = flood.map(m => m.emissive.clone()); // each floodlight's colour, for after the show
-    let minute = 0, on = false;
+    let minute = 0, on = false, forced = false;
     const api = {
       cfg,
+      // the show on whatever the hour, while a map's opening plays (game/overture.js spec.show)
+      force(k, min) { forced = !!k; api.setClock(min ?? minute); },
       active: () => on,
       // the local clock, minutes after midnight; the show runs from start for len minutes after dark
       setClock(min) {
         const was = on;
         const at = showAt(min);
-        on = Wd.U.uNight.value > 0.5 && at !== null;
-        if (on) s0 = at;
+        on = Wd.U.uNight.value > 0.5 && (at !== null || forced);
+        if (on) s0 = at !== null ? at : min - 1;
         minute = min;
         group.visible = on;
         if (was && !on) flood.forEach((m, i) => m.emissive.copy(own[i]));
       },
       tick(t) {
         if (!on) return;
-        const s = t / 1000, ramp = Math.min(1, (minute - s0) * 2, (s0 + len - minute) * 2);
+        const s = t / 1000, ramp = forced ? 1 : Math.min(1, (minute - s0) * 2, (s0 + len - minute) * 2);
         for (const b of beams) {
           const az = b.phase + Math.sin(s * b.speed + b.phase) * 0.9, el = 1.05 + 0.32 * Math.sin(s * b.speed * 1.7 + b.phase);
           b.m.rotation.set(0, 0, 0);

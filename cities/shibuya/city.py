@@ -1856,6 +1856,8 @@ def districts_finalize(ctx):
     mx, my = ctx.city.fwd.transform(*MARINA_LL)
     if in_map(mx, my):
         ctx.labels["Yongen-Jaya: Sangenjaya 三軒茶屋"] = [round(mx, 1), round(my, 1), round(gz(mx, my) + 40, 1)]
+        pk = sancha.pukuichi_spot()   # Pukuichi, where the pilgrims' walk starts (sancha.py)
+        ctx.labels["Pukuichi ぷくいち: where the walk starts"] = [pk[0], pk[1], round(pk[2] + 0.5, 1)]
         # the snack bar itself, named at its door: the front a game gave its café is what visitors come to find
         if "marina" in shops:
             sm = shops["marina"]
@@ -1962,6 +1964,8 @@ def hachiko(K, h):
     v, t, worn = hachiko_sculpt()
     W = np.array([P(a, b, c + zt) for a, b, c in v])
     for mat, sel in (("hk_bronze", ~worn), ("hk_worn", worn)):
+        if not sel.any():
+            continue
         m = K(mat, "statue")
         m.smooth, m.digits = True, 3
         tt = t[sel]
@@ -2017,23 +2021,13 @@ def facade_panel(m, mid, n, w, z0, z1, key, off=0.25, along=0.0):
 
 
 def yongen(K, y):
-    """Sangenjaya's backstreet: Chiyo-no-yu's curtain, sign, laundry and vending machines; Hanamasa's yellow
-    sign; New Marina's lit box and its door; the cafe's sign upstairs."""
+    """Sangenjaya's backstreet: Chiyo-no-yu's fence and board and New Marina's front (sancha.py); Hanamasa's yellow
+    sign; the cafe's sign upstairs."""
+    if CITY == "shibuya":
+        sancha.pukuichi(K)   # Pukuichi's front, where the walk starts (sancha.py)
     c = y.get("chiyo")
     if c:
-        mid, n, z = np.asarray(c["at"]), np.asarray(c["normal"]), c["z"]
-        facade_panel(K("atlas"), mid, n, 1.9, z + 1.9, z + 3.0, "noren_yu", off=0.35, along=-1.2)
-        facade_panel(K("atlas", "lit"), mid, n, 3.4, z + 3.3, z + 4.15, "chiyo", off=0.2, along=-1.2)
-        facade_panel(K("atlas", "lit"), mid, n, 3.0, z + 2.5, z + 3.25, "laundry", off=0.2, along=min(2.4, c["len"] / 2 - 1.5))
-        t = np.array([-n[1], n[0]])
-        P = frame(mid + n * 0.6 + t * (-1.2), n)
-        block(K("wood_dark"), P, -0.1, 0.05, -1.2, 1.2, z + 3.0, z + 3.12)       # the curtain rod's lintel
-        for k, along in enumerate((-3.2, -4.25)):   # vending machines beside the door
-            Q = frame(mid + t * along + n * 0.45, n)
-            block(K("steel_dark"), Q, -0.75, 0.0, -0.48, 0.48, z, z + 1.83)
-            facade_panel(K("atlas", "lit"), mid + t * along, n, 0.9, z + 0.05, z + 1.78, f"vend{k}", off=0.455)
-        Q = frame(mid + n * 0.1, n)
-        block(K("corrugated"), Q, 0.0, 0.08, -c["len"] / 2 + 0.3, c["len"] / 2 - 0.3, z + 4.4, z + min(c["top_m"] - 0.5, 7.5))
+        sancha.chiyo(K, c)   # its fence and boarded alley as they stand, under the board that still names it (sancha.py)
     h = y.get("hanamasa")
     if h:
         facade_panel(K("atlas", "lit"), h["at"], h["normal"], min(6.5, h["len"] * 0.8), h["z"] + 3.4, h["z"] + 4.8, "hanamasa", off=0.25)
@@ -2124,7 +2118,8 @@ def districts_meshes(lm):
     if "scramble" in lm:
         CROSSING.meshes(K, lm["scramble"]["node"])
         crossing_signs(K, lm)
-        toyoko_site(K, lm)
+        if TOYOKO_WORKS:
+            toyoko_site(K, lm)
         # (QFRONT itself, its glass and its signs: scramble.py)
         if "signs" in lm:
             crossing_wall_signs(K, lm)
@@ -2140,8 +2135,11 @@ def districts_meshes(lm):
     if "signs" in lm:
         node = lm.get("scramble", {}).get("node")
         avoid = [place(sc, np.asarray(node, float))[0] for sc in CROSSING_SIGNS + CROSSING_SCREENS] if node else []
-        if "marina" in lm.get("yongen", {}):   # New Marina's own front is drawn as it stands (sancha.py)
-            avoid = avoid + [np.asarray(lm["yongen"]["marina"]["at"], float)]
+        for k in ("marina", "chiyo"):   # New Marina's front and Chiyo-no-yu's fence are drawn as they stand (sancha.py)
+            if k in lm.get("yongen", {}):
+                avoid = avoid + [np.asarray(lm["yongen"][k]["at"], float) + np.asarray(lm["yongen"][k]["normal"], float) * 0.5]
+        if CITY == "shibuya":   # and Pukuichi's
+            avoid = avoid + [np.asarray(sancha.PUKUICHI["at"], float) + t_ for t_ in (np.zeros(2), np.array([-1.4, -4.4]), np.array([1.4, 4.4]))]
         shop_signs(K, open_fronts(lm["signs"]["sites"]), avoid)
     poles_and_wires(K, lm.get("poles", []))
     return K.meshes()
@@ -2167,8 +2165,8 @@ MATERIALS.update({
     # Hachiko and his corner (hachiko_square): the bronze, dark brown, and where hands have rubbed it to gold;
     # the plinth's speckled grey granite and the step's dark tiles; the setts laid in arcs round him, their
     # dark bands and pale blossoms; the planters' walls of upright granite strips and their caps; stainless rails
-    "hk_bronze": {"color": "#4a3a2b", "roughness": 0.52, "metalness": 0.75},
-    "hk_worn": {"color": "#75593a", "roughness": 0.34, "metalness": 0.88},
+    "hk_bronze": {"color": "#5a4430", "roughness": 0.48, "metalness": 0.75},
+    "hk_worn": {"color": "#75593a", "roughness": 0.44, "metalness": 0.85},
     "hk_plinth": {"color": "#77746f", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0]},
     "hk_step": {"color": "#45474a", "roughness": 0.6, "metalness": 0.0, "pattern": "granite", "joints_m": [0.2, 0.2]},
     "hk_setts": {"color": "#696b6e", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.11, 0.11], "decal": True, "street_lit": True},
@@ -2937,6 +2935,11 @@ def crossing_signs(K, lm):
 # what stands there now: a hoarding round it with the developer's notice, lit at night, the site's floodlights,
 # and a tower crane (its position and height illustrative).
 
+# The owner's choice (November 2026): the square is drawn as it stood before the works, with the Toyoko buildings
+# PLATEAU surveyed standing behind Hachiko and no hoarding, floodlights or crane. Set TOYOKO_WORKS to True for the
+# site as it is.
+TOYOKO_WORKS = False
+
 TOYOKO_SITE = [[354.0, -1056.0], [420.0, -1056.0], [434.0, -1080.0], [452.0, -1160.0], [405.0, -1168.0], [372.0, -1112.0], [354.0, -1075.0]]
 CRANE = {"at": [404.0, -1100.0], "mast_m": 62.0, "jib_m": 48.0, "counter_m": 14.0, "jib_deg": 205.0}
 
@@ -2955,7 +2958,7 @@ def demolished_solids():
 
 def landmark_demolished(scene):
     """The Toyoko buildings pulled down since PLATEAU's survey (web/world.js leaves them out)."""
-    return demolished_solids() if "scramble" in scene["landmarks"] else []
+    return demolished_solids() if TOYOKO_WORKS and "scramble" in scene["landmarks"] else []
 
 
 def toyoko_site(K, lm):
@@ -4145,12 +4148,16 @@ def districts_extras(lm, spots, chatter, close):
         c = y["chiyo"]
         mid, n = np.asarray(c["at"]), np.asarray(c["normal"])
         t_ = np.array([-n[1], n[0]])
-        spots.append(spot("chiyo", "Chiyo-no-yu 千代の湯", mid + n * 1.6 - t_ * 1.2, c["z"], "Look at the bathhouse", [
-            "千代の湯, a neighbourhood sentō. The curtain says ゆ, hot water. Tokyo sets the price of a bath at every sentō in the city.",
-            "Coin laundry beside it, vending machines out front: everything a backstreet needs. A game put its bathhouse here, across from the café."], 3.0))
-        spots.append(spot("vending", "Vending machines 自販機", mid + n * 1.4 - t_ * 3.7, c["z"], "Buy a drink", [
-            "A can of cold green tea rolls out. 150 yen.", "Hot milk tea in a can. In October, already.", "A bottle of water. There are about two million of these machines in Japan."], 2.2, pick=1))
-        chatter.append(talk(mid + n * 3.0, c["z"], [["", "(from inside) Ka-kon... a wooden bucket on tiles."], ["Regular", "Ahh. Just right."]], 9, False))
+        spots.append(spot("chiyo", "Chiyo-no-yu 千代の湯", mid + n * 1.95 - t_ * 1.15, c["z"], "Look at the bathhouse's board", [
+            "千代の湯 入口: Chiyo-no-yu, this way. The board is still up, but the alley under it is boarded shut and the bath has been closed since 2021.",
+            "A game put its bathhouse here, across from the café, with the coin laundry in the passage. Pilgrims still come to stand where it was. The chimney behind the trees is the bath's."], 3.0))
+        # (its vending machines stood inside the alley, boarded up since 2024: no longer a spot)
+    if CITY == "shibuya":
+        pk = sancha.pukuichi_spot()
+        spots.append(spot("pukuichi", "Pukuichi ぷくいち", pk[:2], pk[2], "Look at the shop", [
+            "鉄板・広島府中焼き: Fuchu-yaki, the okonomiyaki of Fuchu in Hiroshima, made with minced pork for crunch instead of sliced belly. Open from five in the evening till midnight, closed Mondays; by day the shutters are down.",
+            "A game's hero walks up this street on his first day in town, past a yakisoba shop on the left. This is the shop it was drawn from; the café's lane is round the corner to the north."], 3.0))
+        chatter.append(talk(mid + n * 3.0, c["z"], [["Pilgrim", "Is this it? The bathhouse?"], ["Local", "Was. Closed a few years now. The sign's all that's left out here."]], 9, False))
     if "marina" in y:
         m = y["marina"]
         spots.append(spot("marina", "New Marina ニューマリーナ", np.asarray(m["at"]) + np.asarray(m["normal"]) * 1.5, m["z"], "Look at the snack bar", [
