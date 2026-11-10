@@ -374,20 +374,24 @@ function blob(detail, seed, amp = 0.18) { return lumpy(detail, 6, amp, seed, -2,
 
 // eucalypt (carbeen, Corymbia tessellaris): a straight pale trunk for half its height, then an open crown of clumps
 export function eucalypt(lod) {
-  // a clear bole for about half the height, a few limbs, and an open, irregular crown of foliage clumps
+  // a clear bole for about half the height, a few limbs, and an open, irregular crown of foliage clumps. Every clump
+  // sits on wood: a limb runs from the bole into the middle of each (at every level of detail: a crown seen over a
+  // ridge, its bole hidden, must not hang in the air), and the bole itself runs up into the crown
   const b = new Build(), r = rng(hash(201, lod)), H = 20, seg = lod === 2 ? 6 : 4;
-  b.add(new THREE.CylinderGeometry(0.2, 0.38, 10.5, seg, 1, true), at(0, 5.25, 0), trunkAux(H));
-  const limbs = lod === 2 ? 4 : 3, n = lod === 2 ? 11 : 3;
+  b.add(new THREE.CylinderGeometry(0.16, 0.38, 13, seg, 1, true), at(0, 6.5, 0), trunkAux(H));
+  const limbs = lod === 2 ? 4 : 3, n = lod === 2 ? 11 : 3, fork = new V(0, 9.6, 0);
   const ends = [];
   for (let k = 0; k < limbs; k++) {
-    const t = (k / limbs) * TAU + r() * 0.8, rr = 2 + r() * 2.2, e = new V(Math.cos(t) * rr, 14 + r() * 3, Math.sin(t) * rr);
+    const t = (k / limbs) * TAU + r() * 0.8, rr = (lod === 2 ? 2 : 1.5) + r() * (lod === 2 ? 2.2 : 1.5), e = new V(Math.cos(t) * rr, 14 + r() * 3, Math.sin(t) * rr);
     ends.push(e);
-    if (lod === 2) b.add(new THREE.CylinderGeometry(0.07, 0.15, e.distanceTo(new V(0, 9.8, 0)), 4, 1, true), between(new V(0, 9.8, 0), e), trunkAux(H));
+    b.add(new THREE.CylinderGeometry(lod === 2 ? 0.07 : 0.1, lod === 2 ? 0.15 : 0.2, e.distanceTo(fork), lod === 2 ? 4 : 3, 1, true), between(fork, e), trunkAux(H));
   }
   for (let k = 0; k < n; k++) {
-    const e = ends[k % limbs], jx = (r() - 0.5) * 3.4, jz = (r() - 0.5) * 3.4, y = e.y + (r() - 0.3) * 2.6;
-    const s = lod === 2 ? 1.5 + r() * 1.1 : 2.4 + r() * 0.9;
-    b.add(blob(lod === 2 ? 1 : 0, hash(202, k, lod), 0.3), at(e.x + jx, y, e.z + jz, 0, r() * TAU, 0, s * 2.0, s * 1.15, s * 2.0), leafAux(H));
+    const e = ends[k % limbs], s = lod === 2 ? 1.5 + r() * 1.1 : 2.4 + r() * 0.9;
+    // the first clump of each limb is on its end; the others hang off it on a twig of their own
+    const own = k < limbs, j = own ? 0.5 : 3.4, c = new V(e.x + (r() - 0.5) * j, e.y + (own ? 0.1 + r() * 0.4 : (r() - 0.3) * 2.6), e.z + (r() - 0.5) * j);
+    if (!own && lod === 2) b.add(new THREE.CylinderGeometry(0.04, 0.07, Math.max(0.2, c.distanceTo(e)), 3, 1, true), between(e, c), trunkAux(H));
+    b.add(blob(lod === 2 ? 1 : 0, hash(202, k, lod), 0.3), at(c.x, c.y, c.z, 0, r() * TAU, 0, s * 2.0, s * 1.15, s * 2.0), leafAux(H));
   }
   return b.geometry();
 }
@@ -440,14 +444,17 @@ export function casuarina(lod) {
   for (let k = 0; k < n; k++) {
     const f = k / (n - 1), y = 5.5 + f * (H - 6.5), reach = (1 - f) * 2.2 + 0.5 + r() * 0.6, t = k * 2.4 + r();
     const s = 1.1 + (1 - f) * 1.0 + r() * 0.4;
-    b.add(blob(lod === 2 ? 1 : 0, hash(208, k, lod), 0.35), at(Math.cos(t) * reach, y - s * 0.4, Math.sin(t) * reach, 0, r() * TAU, 0, s * 1.5, s * 2.0, s * 1.5), leafAux(H));
+    // each clump hangs from a branch off the trunk; the simple tree's clumps close round the trunk itself
+    const rc = lod === 2 ? reach : Math.min(reach, s * 0.45);
+    if (lod === 2) b.add(new THREE.CylinderGeometry(0.03, 0.07, Math.hypot(rc, 0.5), 3, 1, true), between(new V(0, y - 0.3, 0), new V(Math.cos(t) * rc, y + 0.2, Math.sin(t) * rc)), trunkAux(H));
+    b.add(blob(lod === 2 ? 1 : 0, hash(208, k, lod), 0.35), at(Math.cos(t) * rc, y - s * 0.4, Math.sin(t) * rc, 0, r() * TAU, 0, s * 1.5, s * 2.0, s * 1.5), leafAux(H));
   }
   return b.geometry();
 }
 // mangrove (Rhizophora stylosa): arching stilt roots and a dense, rounded dark crown
 export function mangrove(lod) {
   const b = new Build(), r = rng(hash(208, lod)), H = 7;
-  b.add(new THREE.CylinderGeometry(0.1, 0.16, 3.2, lod === 2 ? 5 : 3, 1, true), at(0, 2.6, 0), trunkAux(H));
+  b.add(new THREE.CylinderGeometry(0.1, 0.16, 4.2, lod === 2 ? 5 : 3, 1, true), at(0, 2.9, 0), trunkAux(H));
   if (lod === 2) for (let k = 0; k < 7; k++) {
     const t = k / 7 * TAU + r() * 0.4, R = 1.1 + r() * 0.7, top = new V(0, 1.4 + r() * 0.5, 0), mid = new V(Math.cos(t) * R * 0.55, 1.5, Math.sin(t) * R * 0.55), foot = new V(Math.cos(t) * R, -0.3, Math.sin(t) * R);
     b.add(new THREE.CylinderGeometry(0.04, 0.05, top.distanceTo(mid), 3, 1, true), between(top, mid), trunkAux(H));
@@ -475,7 +482,9 @@ export function pisonia(lod) {
   for (let k = 0; k < n; k++) {
     const t = tops[k % tops.length], a = r() * TAU, rr = (lod === 2 ? 1.2 : 1.6) + r() * 2.2, y = 6.2 + r() * 1.6 - rr * 0.25;
     const s = lod === 2 ? 2.2 + r() * 1.0 : 3.2 + r() * 0.8;
-    b.add(blob(lod === 2 ? 1 : 0, hash(212, k, lod), 0.22), at(t.x * 0.6 + Math.cos(a) * rr, y, t.z * 0.6 + Math.sin(a) * rr, 0, r() * TAU, 0, s * 2.1, s * 1.05, s * 2.1), leafAux(H));
+    const c = new V(t.x * 0.6 + Math.cos(a) * rr, y, t.z * 0.6 + Math.sin(a) * rr);
+    b.add(new THREE.CylinderGeometry(lod === 2 ? 0.06 : 0.1, lod === 2 ? 0.14 : 0.2, c.distanceTo(t) + 0.3, 3, 1, true), between(new V(t.x, t.y - 0.3, t.z), c), trunkAux(H));   // a limb into the clump
+    b.add(blob(lod === 2 ? 1 : 0, hash(212, k, lod), 0.22), at(c.x, c.y, c.z, 0, r() * TAU, 0, s * 2.1, s * 1.05, s * 2.1), leafAux(H));
   }
   return b.geometry();
 }
@@ -487,7 +496,7 @@ export function octopusBush(lod) {
   const n = lod === 2 ? 7 : 3;
   for (let k = 0; k < n; k++) {
     const a = k / n * TAU + r() * 0.6, rr = k === 0 ? 0.2 : 0.9 + r() * 1.2, tip = new V(Math.cos(a) * rr, (k === 0 ? 2.3 : 1.3) + r() * 0.7, Math.sin(a) * rr);
-    if (lod === 2) b.add(new THREE.CylinderGeometry(0.04, 0.1, tip.length(), 4, 1, true), between(new V(0, 0, 0), tip), trunkAux(H));
+    b.add(new THREE.CylinderGeometry(0.04, 0.1, tip.length() + 0.3, lod === 2 ? 4 : 3, 1, true), between(new V(0, -0.3, 0), tip), trunkAux(H));
     const s = (lod === 2 ? 0.95 + r() * 0.35 : 1.35 + r() * 0.3) * (k === 0 ? 1.15 : 1);
     b.add(blob(lod === 2 ? 1 : 0, hash(214, k, lod), 0.2), at(tip.x, tip.y, tip.z, 0, r() * TAU, 0, s * 1.9, s * 1.25, s * 1.9), leafAux(H));
   }
@@ -530,10 +539,14 @@ export function sharedTree(scene, sp, lod) {
 
 // any tree far away: a coarse spindle, stretched per instance (crown width, height) and coloured per species
 export function farTree() {
-  // ten triangles: a pentagonal crown, rounded at the top; no trunk (it is a few pixels away)
+  // a pentagonal crown, rounded at the top, on a three-sided stem (aux.w 1: the bark's colour): across a bay a crown
+  // without one hangs a few pixels above its hill
   const b = new Build(), ring = [], top = b.vert(0, 1, 0, 0, 1, 0, [1, 0, 0, 0]), bot = b.vert(0, 0.25, 0, 0, -1, 0, [0.3, 0, 0, 0]);
   for (let k = 0; k < 5; k++) { const a = k / 5 * TAU, x = Math.cos(a) * 0.5, z = Math.sin(a) * 0.5; ring.push(b.vert(x, 0.62, z, x, 0.35, z, [0.62, 0, 0, 0])); }
   for (let k = 0; k < 5; k++) { b.tri(top, ring[(k + 1) % 5], ring[k]); b.tri(bot, ring[k], ring[(k + 1) % 5]); }
+  const stem = [];
+  for (let k = 0; k < 3; k++) { const a = k / 3 * TAU, x = Math.cos(a), z = Math.sin(a); stem.push([b.vert(x * 0.035, -0.02, z * 0.035, x, 0, z, [0, 0, 0, 1]), b.vert(x * 0.025, 0.4, z * 0.025, x, 0, z, [0.4, 0, 0, 1])]); }
+  for (let k = 0; k < 3; k++) { const p = stem[k], q = stem[(k + 1) % 3]; b.tri(p[0], q[0], p[1]); b.tri(q[0], q[1], p[1]); }
   return b.geometry();
 }
 
