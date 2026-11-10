@@ -209,9 +209,10 @@ async function assistStep({ log = false, fresh = true } = {}) {
     g.advance(0.1);
     const L = g.assist.here;
     // (off the end of the roads it can read, 2 s: lane keeping, as a car's own, follows the lane and not a route, and
-    // goes straight on where a street ends at a junction. The window ends there, once it has worked 10 s)
+    // goes straight on where a street ends at a junction. The window ends there, once it has worked 10 s and the
+    // cruise 20 s)
     offRoad = L ? 0 : offRoad + 0.1;
-    if (offRoad > 2 && out.laneT >= 10) { out.ended = `off the mapped road at ${st.x.toFixed(0)},${st.y.toFixed(0)}`; break; }
+    if (offRoad > 2 && out.laneT >= 10 && out.cruiseT >= 20) { out.ended = `off the mapped road at ${st.x.toFixed(0)},${st.y.toFixed(0)}`; break; }
     // (settled: 3 s after it takes hold, and after the road it reads changes at a junction, where the lane's middle steps)
     if (!g.assist.on.lane || !L || L.line !== lineWas || (L.off != null && offWas != null && Math.abs(L.off - offWas) > 0.3)) settle = 3; // (and where the line it keeps steps nearer the middle of a narrowed street, or back)
     lineWas = L ? L.line : null; offWas = L ? L.off : null; settle -= 0.1;
