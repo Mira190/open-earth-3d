@@ -563,3 +563,32 @@ The reef and alpine sites build in 1.7 to 4.3 s; their wait is after "built", in
 compiling (`_completeCompile`, 11.6 s of Lake Tekapo's load), much of it in the first frame after
 `compileAsync`, and in Tekapo's detail photograph (`terrain.prepare`). On a device with WebGPU, as the
 telemetry's desktop has, the backend is another one; a follow-up issue holds it.
+
+## The alpine sites' frame (Milford Sound)
+
+The owner found Milford Sound slow on a desktop with WebGPU. Where a frame went (`tools/reef_parts.js`, llvmpipe, the
+view from 500 m over the head of the fiord, without the mirror and the post chain): the land's shader, two thirds of
+it. What was done, for every alpine site (Tekapo, Pukaki and Milford share `alpine/terrain.js`):
+
+- **Branches on what a fragment shows.** The land's shader computed every layer for every fragment and chose with
+  `select` and `mix`: the close-up grain (five noises, wanted within 60 m), the chipseal and its lines (beyond the
+  roads), the bump of the relief (sixteen hash reads and eight texture reads, wanted within 900 m), a fiord's rock
+  (eight noises) on the bush and its bush on the rock. Each is now inside an `If` on its weight or its distance. The
+  branches follow the picture in big coherent regions, so a GPU's threads agree and the skipped work is not paid.
+  Derivatives (`fwidth`) and implicit-level texture reads stay outside them (`toVar()` puts a node on the stack where
+  it is made): WGSL refuses both in non-uniform control flow, and the terrain's shadow is read at level 0 for that.
+- **The crowns.** A fiord's bush was four MaterialX worley noises a fragment (27 cells each). It is now one
+  2 × 2 × 2 cellular noise of two octaves that also returns the direction to the nearest point, which is the crown's
+  slope, so the sunlit side needs no second pair of evaluations: about a fortieth of the work for the same picture.
+- **Pixels.** The high tier drew the display's own pixels at up to 2× however large the window, so a Retina laptop at
+  full screen drew 13 million pixels four samples each. It now stops at a 1440p display's pixels, as the cities' scene
+  does (`reef/tier.js`).
+- **The governor.** The viewer now runs `OEQuality.governor()` as the cities' game does: the scene's resolution follows
+  the frame time, down to half the tier's pixel ratio and back up when there is room. Stills, films and the checks
+  keep the tier's pixels.
+
+Frame time at equal pixels, llvmpipe, 1200 × 750, high tier (`tools/reef_cost.js`), before → after: the ship shot
+1743 → 1205 ms, the aerial 2927 → 1440 ms. The base's own runs varied by a fifth between passes. Not measured: a real
+GPU. `tools/reef_webgpu.js` runs the page on WebGPU here (Chromium's Dawn over lavapipe, headless) and checks that
+every WGSL module compiles: 101 for Milford's game, 281 for Tekapo's, none with an error, and naga agrees. It cannot
+take a still (the canvas reads back empty), so the picture is checked with `tools/reef_shot.js` on WebGL2.

@@ -37,11 +37,12 @@
 .lf-arc { position: relative; height: 44px; width: min(360px, 100%); margin: 10px 0 4px; border-bottom: 1px solid var(--line-2); overflow: hidden; }
 .lf-arc::before { content: ""; position: absolute; left: 8%; right: 8%; top: 8px; height: 200%; border: 1px dashed rgba(255, 176, 102, 0.4); border-radius: 50%; }
 .lf-arc i { position: absolute; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 14px 3px rgba(255, 176, 102, 0.55);
-  left: calc(8% + 84% * clamp(0, var(--k), 1) - 5px); top: calc(8px + 72px * (1 - sin(clamp(0, var(--k), 1) * 180deg)) - 5px); }
+  left: calc(8% + 84% * var(--k, 0.5) - 5px); top: calc(8px + 36px * var(--y, 0) - 5px); opacity: calc(1 - 0.75 * var(--down, 0)); }
+.lf-arc::before { height: calc(200% - 16px); }
 .lf-arc span { position: absolute; bottom: 3px; font: 400 9px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .lf-arc .a { left: 0; } .lf-arc .b { right: 0; } .lf-arc .g { left: 50%; transform: translateX(-50%); color: var(--accent-2); }
 .lf-arc.wide { width: 100%; height: 56px; }
-.lf-arc.wide::before { top: 10px; } .lf-arc.wide i { top: calc(10px + 92px * (1 - sin(clamp(0, var(--k), 1) * 180deg)) - 5px); }
+.lf-arc.wide::before { top: 10px; height: calc(200% - 20px); } .lf-arc.wide i { top: calc(10px + 46px * var(--y, 0) - 5px); }
 
 /* ---- the diary */
 .lf-diary { z-index: 7; }
