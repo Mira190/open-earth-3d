@@ -1,0 +1,959 @@
+{
+ "id": "milford-sound",
+ "name": "Milford Sound",
+ "native": "Piopiotahi",
+ "kind": "alpine",
+ "origin": [
+  167.87,
+  -44.61
+ ],
+ "timezone": "Pacific/Auckland",
+ "extent_m": [
+  -12160,
+  8320,
+  -10880,
+  9600
+ ],
+ "vertical_datum": "m NZVD2016, shifted so the fiord's surface is 0",
+ "terrain": {
+  "file": "terrain.bin.gz",
+  "w": 2048,
+  "h": 2048,
+  "cell_m": 10,
+  "x0": -12160,
+  "y1": 9600,
+  "units_m": 0.125,
+  "datum_m": 0.0,
+  "bytes": 8388608,
+  "encoding": "plane-residual, byte planes, gzip"
+ },
+ "ground": {
+  "strips": [
+   {
+    "file": "ground_0.webp",
+    "row0": 0,
+    "rows": 2048
+   }
+  ],
+  "w": 2048,
+  "h": 2048,
+  "px_m": 10
+ },
+ "cover": {
+  "file": "cover.png",
+  "w": 1024,
+  "h": 1024,
+  "px_m": 20,
+  "classes": {
+   "0": "lake",
+   "1": "river and stream",
+   "2": "snow and ice",
+   "3": "debris-covered ice",
+   "4": "rock and cliff",
+   "5": "scree and moraine",
+   "6": "riverbed gravel",
+   "7": "tussock grassland",
+   "8": "alpine herbfield",
+   "9": "shrub and scrub",
+   "10": "forest",
+   "11": "pasture",
+   "12": "wetland",
+   "13": "road",
+   "14": "built",
+   "15": "shore"
+  }
+ },
+ "lakes": [
+  {
+   "id": "piopiotahi",
+   "name": "Milford Sound / Piopiotahi",
+   "main": true,
+   "level_nzvd": 0.0,
+   "area_km2": 81.799,
+   "max_depth_m": 291.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -12160,
+    -8520,
+    4650,
+    9600
+   ],
+   "centre": [
+    0,
+    -222
+   ],
+   "level": 0.0
+  },
+  {
+   "id": "lake-ronald",
+   "name": "Lake Ronald",
+   "main": false,
+   "level_nzvd": 434.0,
+   "area_km2": 0.367,
+   "max_depth_m": 24.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -12160,
+    -3290,
+    -11690,
+    -1980
+   ],
+   "centre": [
+    -12333,
+    -2812
+   ],
+   "level": 434.0
+  },
+  {
+   "id": "lake-3",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1161.0,
+   "area_km2": 0.078,
+   "max_depth_m": 11.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -12160,
+    -10650,
+    -11790,
+    -10320
+   ],
+   "centre": [
+    -12095,
+    -10484
+   ],
+   "level": 1161.0
+  },
+  {
+   "id": "lake-moreton",
+   "name": "Lake Moreton",
+   "main": false,
+   "level_nzvd": 851.0,
+   "area_km2": 0.415,
+   "max_depth_m": 25.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -11200,
+    -9240,
+    -10460,
+    -8090
+   ],
+   "centre": [
+    -10757,
+    -8713
+   ],
+   "level": 851.0
+  },
+  {
+   "id": "lake-5",
+   "name": null,
+   "main": false,
+   "level_nzvd": 519.36,
+   "area_km2": 0.552,
+   "max_depth_m": 29.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -6780,
+    -10880,
+    -5980,
+    -9520
+   ],
+   "centre": [
+    -6197,
+    -10263
+   ],
+   "level": 519.36
+  },
+  {
+   "id": "lake-6",
+   "name": null,
+   "main": false,
+   "level_nzvd": 344.0,
+   "area_km2": 0.065,
+   "max_depth_m": 10.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4520,
+    -9780,
+    -4250,
+    -9380
+   ],
+   "centre": [
+    -4363,
+    -9613
+   ],
+   "level": 344.0
+  },
+  {
+   "id": "te-moana-o-nohorua-/-lake-ada",
+   "name": "Te Moana-o-Nohorua / Lake Ada",
+   "main": false,
+   "level_nzvd": 43.0,
+   "area_km2": 0.812,
+   "max_depth_m": 36.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -1160,
+    -10880,
+    880,
+    -9640
+   ],
+   "centre": [
+    -1356,
+    -11663
+   ],
+   "level": 43.0
+  },
+  {
+   "id": "lake-8",
+   "name": null,
+   "main": false,
+   "level_nzvd": 398.0,
+   "area_km2": 0.516,
+   "max_depth_m": 28.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    2670,
+    8430,
+    3720,
+    9230
+   ],
+   "centre": [
+    3315,
+    8847
+   ],
+   "level": 398.0
+  },
+  {
+   "id": "pukutahi-lake",
+   "name": "Pukutahi Lake",
+   "main": false,
+   "level_nzvd": 1090.0,
+   "area_km2": 0.127,
+   "max_depth_m": 14.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5240,
+    5920,
+    5780,
+    6470
+   ],
+   "centre": [
+    5448,
+    6192
+   ],
+   "level": 1090.0
+  },
+  {
+   "id": "lake-never-never",
+   "name": "Lake Never-never",
+   "main": false,
+   "level_nzvd": 770.0,
+   "area_km2": 0.25,
+   "max_depth_m": 20.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    6190,
+    5580,
+    7050,
+    6210
+   ],
+   "centre": [
+    6562,
+    5899
+   ],
+   "level": 770.0
+  },
+  {
+   "id": "lake-11",
+   "name": null,
+   "main": false,
+   "level_nzvd": 17.94,
+   "area_km2": 0.029,
+   "max_depth_m": 6.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1650,
+    -8930,
+    2080,
+    -8590
+   ],
+   "centre": [
+    1709,
+    -8762
+   ],
+   "level": 17.94
+  },
+  {
+   "id": "lake-12",
+   "name": null,
+   "main": false,
+   "level_nzvd": 18.59,
+   "area_km2": 0.035,
+   "max_depth_m": 7.5,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1610,
+    -9170,
+    2070,
+    -8890
+   ],
+   "centre": [
+    1751,
+    -9035
+   ],
+   "level": 18.59
+  },
+  {
+   "id": "lake-13",
+   "name": null,
+   "main": false,
+   "level_nzvd": 19.41,
+   "area_km2": 0.03,
+   "max_depth_m": 6.9,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1200,
+    -9270,
+    1660,
+    -9140
+   ],
+   "centre": [
+    1444,
+    -9202
+   ],
+   "level": 19.41
+  },
+  {
+   "id": "lake-14",
+   "name": null,
+   "main": false,
+   "level_nzvd": 21.61,
+   "area_km2": 0.067,
+   "max_depth_m": 10.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    540,
+    -9570,
+    1200,
+    -9110
+   ],
+   "centre": [
+    992,
+    -9345
+   ],
+   "level": 21.61
+  }
+ ],
+ "lake_ids": "lakes.png",
+ "optics": {
+  "K": [
+   0.6,
+   0.24,
+   0.28
+  ],
+  "Rinf": [
+   0.004,
+   0.02,
+   0.026
+  ],
+  "g": 2.2,
+  "src": "provisional: a deep, clear fiord under a thin tannin-stained freshwater layer reads dark green-blue from the deck; no open in-water optics for Milford Sound were found, so these are set by eye against photographs of the fiord on a clear day"
+ },
+ "roads": "roads.json",
+ "structures": "structures.json",
+ "start": {
+  "x": -900,
+  "y": -600,
+  "z": 14,
+  "yaw": 205,
+  "pitch": 6
+ },
+ "biome": "fiordland",
+ "sources": [
+  "Toit\u016b Te Whenua LINZ, New Zealand LiDAR 1m DEM (CC BY 4.0) where a capture reaches; New Zealand Contour-Interpolated 8m DEM (Geographx, CC BY 4.0) over the rest of Fiordland",
+  "Toit\u016b Te Whenua LINZ, New Zealand 10m Satellite Imagery (2025-2026), Copernicus Sentinel-2 (CC BY 4.0)",
+  "OpenStreetMap contributors via Overture Maps (ODbL): glaciers, scree, scrub, woods, water, roads, buildings, places",
+  "synthesised from the lake's area (no open survey)"
+ ],
+ "pois": [
+  {
+   "id": "mitre-peak",
+   "name": "Mitre Peak / Rahot\u016b",
+   "kind": "peak",
+   "lonlat": [
+    167.85489,
+    -44.63258
+   ],
+   "src": "osm",
+   "ele_m": 1683,
+   "x": -1199,
+   "y": -2509
+  },
+  {
+   "id": "the-lion",
+   "name": "The Lion",
+   "kind": "peak",
+   "lonlat": [
+    167.88421,
+    -44.60996
+   ],
+   "src": "osm",
+   "ele_m": 1302,
+   "x": 1128,
+   "y": 4
+  },
+  {
+   "id": "the-elephant",
+   "name": "The Elephant",
+   "kind": "peak",
+   "lonlat": [
+    167.85994,
+    -44.59071
+   ],
+   "src": "osm",
+   "ele_m": 1517,
+   "x": -799,
+   "y": 2144
+  },
+  {
+   "id": "mount-pembroke",
+   "name": "Puhipuhi-takiwai / Mount Pembroke",
+   "kind": "peak",
+   "lonlat": [
+    167.88563,
+    -44.56794
+   ],
+   "src": "osm",
+   "ele_m": 2015,
+   "x": 1242,
+   "y": 4674
+  },
+  {
+   "id": "footstool",
+   "name": "Footstool",
+   "kind": "peak",
+   "lonlat": [
+    167.87465,
+    -44.64451
+   ],
+   "src": "osm",
+   "x": 369,
+   "y": -3835
+  },
+  {
+   "id": "cascade-peak",
+   "name": "Cascade Peak",
+   "kind": "peak",
+   "lonlat": [
+    167.92679,
+    -44.63924
+   ],
+   "src": "osm",
+   "x": 4506,
+   "y": -3251
+  },
+  {
+   "id": "stirling-falls",
+   "name": "Waim\u0101nu / Stirling Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.87118,
+    -44.60921
+   ],
+   "src": "osm",
+   "x": 94,
+   "y": 88
+  },
+  {
+   "id": "bowen-falls",
+   "name": "Hineteawa / Lady Bowen Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.9262,
+    -44.66511
+   ],
+   "src": "osm",
+   "x": 4457,
+   "y": -6126
+  },
+  {
+   "id": "fairy-falls",
+   "name": "Fairy Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.84564,
+    -44.61479
+   ],
+   "src": "osm",
+   "x": -1934,
+   "y": -533
+  },
+  {
+   "id": "copper-point",
+   "name": "Copper Point",
+   "kind": "cape",
+   "lonlat": [
+    167.85146,
+    -44.61276
+   ],
+   "src": "osm",
+   "x": -1472,
+   "y": -307
+  },
+  {
+   "id": "seal-rock",
+   "name": "Seal Rock",
+   "kind": "viewpoint",
+   "lonlat": [
+    167.8514,
+    -44.61277
+   ],
+   "src": "osm",
+   "x": -1476,
+   "y": -308
+  },
+  {
+   "id": "dale-point",
+   "name": "Pukewahia / Dale Point",
+   "kind": "cape",
+   "lonlat": [
+    167.8188,
+    -44.59868
+   ],
+   "src": "osm",
+   "x": -4065,
+   "y": 1257
+  },
+  {
+   "id": "anita-bay",
+   "name": "Hupokeka / Anita Bay",
+   "kind": "bay",
+   "lonlat": [
+    167.79045,
+    -44.58364
+   ],
+   "src": "osm",
+   "x": -6318,
+   "y": 2926
+  },
+  {
+   "id": "st-anne-point",
+   "name": "Wharekohu / Saint Anne Point",
+   "kind": "cape",
+   "lonlat": [
+    167.78092,
+    -44.57379
+   ],
+   "src": "osm",
+   "x": -7076,
+   "y": 4020
+  },
+  {
+   "id": "harrison-cove",
+   "name": "Te Umukaroro / Harrison Cove",
+   "kind": "bay",
+   "lonlat": [
+    167.90912,
+    -44.62854
+   ],
+   "src": "osm",
+   "x": 3104,
+   "y": -2061
+  },
+  {
+   "id": "discovery-centre",
+   "name": "Milford Discovery Centre and Underwater Observatory",
+   "kind": "pier",
+   "lonlat": [
+    167.90414,
+    -44.62849
+   ],
+   "src": "osm",
+   "x": 2709,
+   "y": -2055
+  },
+  {
+   "id": "freshwater-basin",
+   "name": "Freshwater Basin (the cruise terminal)",
+   "kind": "gate",
+   "lonlat": [
+    167.92646,
+    -44.66787
+   ],
+   "src": "osm",
+   "x": 4477,
+   "y": -6432
+  },
+  {
+   "id": "foreshore",
+   "name": "Milford Foreshore Walk",
+   "kind": "lookout",
+   "lonlat": [
+    167.92374,
+    -44.67147
+   ],
+   "src": "osm",
+   "x": 4261,
+   "y": -6832
+  },
+  {
+   "id": "deepwater-basin",
+   "name": "Deepwater Basin",
+   "kind": "bay",
+   "lonlat": [
+    167.91994,
+    -44.68024
+   ],
+   "src": "osm",
+   "x": 3959,
+   "y": -7807
+  },
+  {
+   "id": "airport",
+   "name": "Milford Sound Airport",
+   "kind": "airport",
+   "lonlat": [
+    167.92393,
+    -44.67349
+   ],
+   "src": "osm",
+   "x": 4276,
+   "y": -7057
+  },
+  {
+   "id": "sandfly-point",
+   "name": "Sandfly Point (the end of the Milford Track)",
+   "kind": "gate",
+   "lonlat": [
+    167.90253,
+    -44.68356
+   ],
+   "src": "osm",
+   "x": 2579,
+   "y": -8175
+  },
+  {
+   "id": "wp-berth",
+   "name": "Off the terminal",
+   "kind": "water",
+   "src": "nominal",
+   "x": 4415,
+   "y": -6485
+  },
+  {
+   "id": "wp-bowen",
+   "name": "Off Lady Bowen Falls",
+   "kind": "water",
+   "src": "nominal",
+   "x": 4105,
+   "y": -6035
+  },
+  {
+   "id": "wp-sinbad",
+   "name": "Off Sinbad Gully",
+   "kind": "water",
+   "src": "nominal",
+   "x": 1195,
+   "y": -3325
+  },
+  {
+   "id": "wp-mitre",
+   "name": "Under Mitre Peak",
+   "kind": "water",
+   "src": "nominal",
+   "x": -285,
+   "y": -1355
+  },
+  {
+   "id": "wp-copper",
+   "name": "Off Copper Point",
+   "kind": "water",
+   "src": "nominal",
+   "x": -1695,
+   "y": 95
+  },
+  {
+   "id": "wp-dale",
+   "name": "Off Dale Point",
+   "kind": "water",
+   "src": "nominal",
+   "x": -4285,
+   "y": 2125
+  },
+  {
+   "id": "wp-anita",
+   "name": "Off Anita Bay",
+   "kind": "water",
+   "src": "nominal",
+   "x": -5995,
+   "y": 3495
+  },
+  {
+   "id": "wp-tasman",
+   "name": "The Tasman Sea",
+   "kind": "water",
+   "src": "nominal",
+   "x": -8195,
+   "y": 5195
+  },
+  {
+   "id": "wp-north",
+   "name": "Under the north wall",
+   "kind": "water",
+   "src": "nominal",
+   "x": -4165,
+   "y": 2855
+  },
+  {
+   "id": "wp-elephant",
+   "name": "Under The Elephant",
+   "kind": "water",
+   "src": "nominal",
+   "x": -1055,
+   "y": 365
+  },
+  {
+   "id": "wp-stirling",
+   "name": "At Stirling Falls",
+   "kind": "water",
+   "src": "nominal",
+   "x": 165,
+   "y": -225
+  },
+  {
+   "id": "wp-lion",
+   "name": "Under The Lion",
+   "kind": "water",
+   "src": "nominal",
+   "x": 925,
+   "y": -1485
+  },
+  {
+   "id": "wp-harrison",
+   "name": "Off Harrison Cove",
+   "kind": "water",
+   "src": "nominal",
+   "x": 2905,
+   "y": -2505
+  },
+  {
+   "id": "wp-cascade",
+   "name": "Under Cascade Peak",
+   "kind": "water",
+   "src": "nominal",
+   "x": 3365,
+   "y": -4055
+  },
+  {
+   "id": "four-sisters",
+   "name": "Four Sisters",
+   "kind": "waterfall",
+   "lonlat": [
+    167.86302,
+    -44.62312
+   ],
+   "src": "osm",
+   "x": -554,
+   "y": -1458
+  },
+  {
+   "id": "wairereata-falls",
+   "name": "Wairereata Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.90968,
+    -44.59141
+   ],
+   "src": "osm",
+   "x": 3151,
+   "y": 2065
+  },
+  {
+   "id": "camp-oven-falls",
+   "name": "Camp Oven Falls",
+   "kind": "waterfall",
+   "lonlat": [
+    167.88597,
+    -44.68582
+   ],
+   "src": "osm",
+   "x": 1266,
+   "y": -8426
+  }
+ ],
+ "spawn": {
+  "aboard": "Piopiotahi",
+  "poi": "foreshore",
+  "heading": 320,
+  "note": "you arrive watching the Piopiotahi under Mitre Peak; on foot the start is the foreshore walk, facing down the fiord to Mitre Peak",
+  "x": 4261,
+  "y": -6832
+ },
+ "harbour": {
+  "traffic": [
+   {
+    "kind": "ship",
+    "name": "Piopiotahi",
+    "route": [
+     "wp-berth",
+     "wp-bowen",
+     "wp-sinbad",
+     "wp-mitre",
+     "wp-copper",
+     "wp-dale",
+     "wp-anita",
+     "wp-tasman",
+     "wp-north",
+     "wp-elephant",
+     "wp-stirling",
+     "wp-lion",
+     "wp-harrison",
+     "wp-cascade",
+     "wp-bowen",
+     "wp-berth"
+    ],
+    "loop": "repeat",
+    "dwell": 20,
+    "vmax": 4.6,
+    "start_at": "wp-mitre",
+    "note": "the day cruise's line: out along the south wall under Mitre Peak to the Tasman Sea, back along the north wall past Stirling Falls and Harrison Cove, at about 9 knots"
+   }
+  ],
+  "moorings": 0,
+  "nav_cell": 60
+ },
+ "region": "Piopiotahi \u00b7 Fiordland \u00b7 Aotearoa New Zealand",
+ "wind": 0.38,
+ "falls": [
+  {
+   "id": "stirling-falls",
+   "name": "Waim\u0101nu / Stirling Falls",
+   "poi": "stirling-falls",
+   "height_m": 151,
+   "width_m": 14,
+   "flow": 1.0,
+   "src": "151 m: Department of Conservation, Milford Sound / Piopiotahi; the third-highest permanent fall in the fiord's catchment drops straight into the sea"
+  },
+  {
+   "id": "bowen-falls",
+   "name": "Hineteawa / Lady Bowen Falls",
+   "poi": "bowen-falls",
+   "height_m": 162,
+   "width_m": 12,
+   "flow": 0.9,
+   "src": "162 m: Department of Conservation"
+  },
+  {
+   "id": "fairy-falls",
+   "name": "Fairy Falls",
+   "poi": "fairy-falls",
+   "width_m": 6,
+   "flow": 0.5
+  },
+  {
+   "id": "four-sisters",
+   "name": "Four Sisters",
+   "poi": "four-sisters",
+   "width_m": 5,
+   "flow": 0.4
+  },
+  {
+   "id": "wairereata-falls",
+   "name": "Wairereata Falls",
+   "poi": "wairereata-falls",
+   "width_m": 7,
+   "flow": 0.6
+  },
+  {
+   "id": "camp-oven-falls",
+   "name": "Camp Oven Falls",
+   "poi": "camp-oven-falls",
+   "width_m": 6,
+   "flow": 0.5
+  }
+ ],
+ "birds": {
+  "gulls": 34,
+  "anchors": [
+   "ship",
+   "stirling-falls",
+   "seal-rock",
+   "freshwater-basin"
+  ],
+  "note": "tar\u0101punga (red-billed gulls) and karoro (southern black-backed gulls) follow the boats and work the fall's foot"
+ },
+ "mist": {
+  "wisps": 22,
+  "top_m": 600,
+  "opacity": 0.2,
+  "note": "bands of cloud on the walls, 90 to 840 m up: the fiord's wet air on a fine day"
+ },
+ "grade": {
+  "contrast": 1.06,
+  "sat": 1.0,
+  "note": "a touch more contrast than the lakes' print"
+ },
+ "clouds": {
+  "field": {
+   "base_m": 1950,
+   "count": 80,
+   "radius_m": 34000,
+   "wind_deg": 250,
+   "wind_ms": 7,
+   "caps": [],
+   "amount": 0.55,
+   "note": "a fine summer day: fair-weather cumulus at about 1,950 m, drifting in on the westerly; the level is a judgement from photographs of the fiord (cloud a little over Mitre Peak's 1,683 m summit)"
+  }
+ },
+ "flora": {
+  "lupins": [
+   {
+    "lonlat": [
+     167.9236,
+     -44.6718
+    ],
+    "r_m": 70,
+    "density": 0.8,
+    "id": "lupins-0",
+    "x": 4250,
+    "y": -6869
+   },
+   {
+    "lonlat": [
+     167.9262,
+     -44.6742
+    ],
+    "r_m": 90,
+    "density": 0.7,
+    "id": "lupins-1",
+    "x": 4456,
+    "y": -7136
+   },
+   {
+    "lonlat": [
+     167.93,
+     -44.677
+    ],
+    "r_m": 110,
+    "density": 0.7,
+    "id": "lupins-2",
+    "x": 4757,
+    "y": -7447
+   }
+  ],
+  "note": "Russell lupins are a weed of the Cleddau's gravel flats and the roadsides into Milford; they flower from November into January"
+ },
+ "detail": [
+  {
+   "id": "foreshore",
+   "file": "detail_foreshore.webp",
+   "x0": 2822,
+   "y1": -5336,
+   "w": 4000,
+   "h": 4000,
+   "px_m": 0.75,
+   "src": "Toit\u016b Te Whenua LINZ, Southland 0.25m Rural Aerial Photos (2023), CC BY 4.0"
+  }
+ ]
+}

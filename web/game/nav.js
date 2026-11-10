@@ -345,7 +345,7 @@ window.OENav = (function () {
     function stripBeside(x, y, m) {
       const seen = new Set();
       for (const [dx, dy] of [[0, 0], [m, m], [-m, m], [m, -m], [-m, -m]]) for (const s of stripsAt(x + dx, y + dy)) {
-        if (seen.has(s) || s.drape) continue;
+        if (seen.has(s) || s.drape || s.mapped === false) continue;
         seen.add(s);
         const [u, v] = stripUV(s, x, y);
         if (u >= s.us[0] && u <= s.us[s.us.length - 1] && Math.abs(v) <= s.half_width + m) return interp(s.us, s.zs, u);
@@ -902,10 +902,13 @@ window.OENav = (function () {
     // the highest surface already built at (x, y), a deck strip or a pier (-Infinity for none)
     // the highest built surface at (x, y) (a pier, a strip), or with `near`, the one nearest that height (a
     // bridge's deck under the expressway's that crosses it: the Shuto over Nihonbashi)
-    function surfaceAt(x, y, near) {
+    // (lines: for a mapped line, which is never on a strip the data knows nothing of: a station's platforms and
+    // stairs, "mapped": false, built over the footways that pass under them)
+    function surfaceAt(x, y, near, lines) {
       const k = cellOf(x, y);
       let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
       for (const s of stripsAt(x, y)) {
+        if (lines && s.mapped === false) continue;
         const z = stripHeight(s, x, y);
         if (z != null && (near == null ? z > h : Math.abs(z - near) < Math.abs(h - near))) h = z;
       }

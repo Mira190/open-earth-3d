@@ -1,0 +1,3 @@
+[{"name": "over-the-roofs-morning", "at": [376.9, -1013.1], "look": [-300, -700, 20], "eye": [450, -1150, 110], "time": "09:00"},
+ {"name": "over-the-roofs-afternoon", "at": [376.9, -1013.1], "look": [-300, -700, 20], "eye": [450, -1150, 110], "time": "15:00"},
+ {"name": "dogenzaka-morning", "at": [250, -1060], "look": [-100, -1150], "time": "09:00", "dist": 7, "pitch": 0.12}]
