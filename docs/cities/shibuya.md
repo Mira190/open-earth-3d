@@ -193,7 +193,7 @@ Coordinates are the Geospatial Information Authority's for the lot's address, or
 
 | Stop | In the game | The real place | As it stands | Built |
 |---|---|---|---|---|
-| 1 | The street the hero arrives on, the yakisoba shop | Pukuichi ぷくいち, Hiroshima Fuchu-yaki, 2-11-14 (35.64233, 139.66934) | Trading; an ochre awning over two bays | Not yet |
+| 1 | The street the hero arrives on, the yakisoba shop | Pukuichi ぷくいち, Hiroshima Fuchu-yaki, 2-11-14 (35.64233, 139.66934) | Trading, 17:00 to 24:00, closed Mondays; an ochre awning over two bays | **Yes**: the shutters, the awning and its name, the corner sign, the stair; a spot and a label. Placed on the model's three-storey building facing the lane, 15 m from the address point (no map service gave the shop itself) |
 | 2 | The café's lane and its front | The snack bar New Marina スナック ニューマリーナ, 2-14-21 (35.64279, 139.66936, OSM): a red dome awning with a scalloped edge and the name in white, over a steel shutter; brick tile, the door in white-painted brick; red clay pavers | Trading in the evening | **Yes** (`cities/shibuya/sancha.py`) |
 | 2 | The shop beside it, "Good-Bye Good-Bye" | Good-day Good-day SINCE 1986, the same house's left bay: a pale dome awning in a dark frame, green lettering | Shutter down in every photograph | **Yes** |
 | 2 | Where the café itself stands | The lot to the right: a walled garden until 2019; since 2024 the takoyaki stand Takoharu たこはる, a dark plank fence chalked NANIWANO AJI, a round sign, a red lantern | Evenings | **Yes** |

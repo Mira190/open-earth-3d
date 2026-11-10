@@ -1856,6 +1856,8 @@ def districts_finalize(ctx):
     mx, my = ctx.city.fwd.transform(*MARINA_LL)
     if in_map(mx, my):
         ctx.labels["Yongen-Jaya: Sangenjaya 三軒茶屋"] = [round(mx, 1), round(my, 1), round(gz(mx, my) + 40, 1)]
+        pk = sancha.pukuichi_spot()   # Pukuichi, where the pilgrims' walk starts (sancha.py)
+        ctx.labels["Pukuichi ぷくいち: where the walk starts"] = [pk[0], pk[1], round(pk[2] + 0.5, 1)]
         # the snack bar itself, named at its door: the front a game gave its café is what visitors come to find
         if "marina" in shops:
             sm = shops["marina"]
@@ -2019,6 +2021,8 @@ def facade_panel(m, mid, n, w, z0, z1, key, off=0.25, along=0.0):
 def yongen(K, y):
     """Sangenjaya's backstreet: Chiyo-no-yu's fence and board and New Marina's front (sancha.py); Hanamasa's yellow
     sign; the cafe's sign upstairs."""
+    if CITY == "shibuya":
+        sancha.pukuichi(K)   # Pukuichi's front, where the walk starts (sancha.py)
     c = y.get("chiyo")
     if c:
         sancha.chiyo(K, c)   # its fence and boarded alley as they stand, under the board that still names it (sancha.py)
@@ -2131,6 +2135,8 @@ def districts_meshes(lm):
         for k in ("marina", "chiyo"):   # New Marina's front and Chiyo-no-yu's fence are drawn as they stand (sancha.py)
             if k in lm.get("yongen", {}):
                 avoid = avoid + [np.asarray(lm["yongen"][k]["at"], float) + np.asarray(lm["yongen"][k]["normal"], float) * 0.5]
+        if CITY == "shibuya":   # and Pukuichi's
+            avoid = avoid + [np.asarray(sancha.PUKUICHI["at"], float) + t_ for t_ in (np.zeros(2), np.array([-1.4, -4.4]), np.array([1.4, 4.4]))]
         shop_signs(K, open_fronts(lm["signs"]["sites"]), avoid)
     poles_and_wires(K, lm.get("poles", []))
     return K.meshes()
@@ -4138,6 +4144,11 @@ def districts_extras(lm, spots, chatter, close):
             "千代の湯 入口: Chiyo-no-yu, this way. The board is still up, but the alley under it is boarded shut and the bath has been closed since 2021.",
             "A game put its bathhouse here, across from the café, with the coin laundry in the passage. Pilgrims still come to stand where it was. The chimney behind the trees is the bath's."], 3.0))
         # (its vending machines stood inside the alley, boarded up since 2024: no longer a spot)
+    if CITY == "shibuya":
+        pk = sancha.pukuichi_spot()
+        spots.append(spot("pukuichi", "Pukuichi ぷくいち", pk[:2], pk[2], "Look at the shop", [
+            "鉄板・広島府中焼き: Fuchu-yaki, the okonomiyaki of Fuchu in Hiroshima, made with minced pork for crunch instead of sliced belly. Open from five in the evening till midnight, closed Mondays; by day the shutters are down.",
+            "A game's hero walks up this street on his first day in town, past a yakisoba shop on the left. This is the shop it was drawn from; the café's lane is round the corner to the north."], 3.0))
         chatter.append(talk(mid + n * 3.0, c["z"], [["Pilgrim", "Is this it? The bathhouse?"], ["Local", "Was. Closed a few years now. The sign's all that's left out here."]], 9, False))
     if "marina" in y:
         m = y["marina"]
