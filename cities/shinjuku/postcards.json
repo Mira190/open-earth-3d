@@ -1,0 +1,9 @@
+{
+  "spots": [
+    {"id": "ichibangai", "name": "Kabukicho, past the arch", "native": "歌舞伎町", "at": [418, 2838], "look": [445, 2935], "lookUp": 9, "lines": {"any": ["Past the arch, Ichibangai runs north between the signs. Every doorway is somebody's idea of a good night out."]}},
+    {"id": "arch", "name": "Kabukicho Ichibangai", "native": "歌舞伎町一番街", "at": [400.5, 2777.5], "look": [409.2, 2811.0], "lookUp": 5.6, "lines": {"any": ["The red arch of Kabukicho Ichibangai. It has stood at the mouth of the street since 1969."], "night": ["Kabukicho's arch with its bulbs on. Everything behind it is a sign for something."]}},
+    {"id": "kaiju", "name": "The head over Central Road", "at": [462, 2826], "look": [501.8, 2938.7], "lookUp": 42, "lines": {"any": ["The head over Central Road. Twelve metres of it on a terrace eight floors up, glaring down the street since 2015."]}},
+    {"id": "gyoen", "name": "Shinjuku Gyoen, the pond", "native": "新宿御苑", "at": [1116.7, 1782.9], "look": [1066, 1791], "lookUp": 1.5, "lines": {"any": ["Shinjuku Gyoen, by the pond. The towers stand behind the trees and none of their noise gets in."]}},
+    {"id": "shinano", "name": "The Shinanomachi footbridge", "native": "信濃町", "at": [2106, 1224.5], "look": [498, 1642], "z": 39.9, "lookUp": 50, "lines": {"any": ["The footbridge at Shinanomachi. The tower with the clock stands on the skyline, small and exact."]}}
+  ]
+}

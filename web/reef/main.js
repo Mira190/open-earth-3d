@@ -48,7 +48,9 @@ async function main() {
   // the scene is drawn at (post.js brings it up, sharpened) and how much of what a frame can do without is drawn,
   // both ways as the frame time allows, at an even rate under the frame-rate cap (the game's setting: 60 unless asked)
   const Q = window.OEQuality;
-  const gov = Q && Q.governor ? Q.governor({ cap: (() => { try { const v = localStorage.getItem('oe3d-fps'); return v === null ? 60 : Math.max(0, +v || 0); } catch (e) { return 60; } })() }) : null;
+  // (?gov=0: none. Its floor is half the canvas's resolution here, as the alpine land's shader is the heaviest on the site;
+  // the extras go at 0.7)
+  const gov = Q && Q.governor && q.get('gov') !== '0' ? Q.governor({ min: 0.5, mid: 0.7, cap: (() => { try { const v = localStorage.getItem('oe3d-fps'); return v === null ? 60 : Math.max(0, +v || 0); } catch (e) { return 60; } })() }) : null;
   let post = null;
   const fit = () => {
     const pr = tier.pixelRatio(innerWidth, innerHeight);
@@ -349,7 +351,7 @@ async function main() {
   stage('First frames', 0.98);
   let last = performance.now(), frames = 0, gpuAt = 0, gpuWait = false;
   // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
-  window.__reef = { camera, env, renderer, d, ctx, tier, governor: gov, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
+  window.__reef = { camera, env, renderer, d, ctx, tier, governor: gov, gov, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
     // (under the frame-rate cap a faster display draws every second or third of its frames, evenly)
     if (gov) { gov.raf(now); if (!gov.due(now)) return; }

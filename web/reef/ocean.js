@@ -144,7 +144,10 @@ export function createOcean(d, env, heightTex) {
     // the sea reflects only its sky
     let refl;
     if (env.mirror) {
-      env.mirror.uvNode = env.mirror.uvNode.add(vec2(N.x, N.z).mul(0.06));
+      // (the bend fades with distance: past a few hundred metres the ripples average out under a pixel and a calm fiord's
+      // far reflection is near sharp. Held at 6% of the screen out to the far shore, it pulled the mirror's lookup across
+      // the waterline into the part of the image where nothing is reflected, and the shore showed a row of white dashes)
+      env.mirror.uvNode = env.mirror.uvNode.add(vec2(N.x, N.z).mul(0.06).mul(float(1).sub(smoothstep(150, 1200, dist).mul(0.92))));
       // the wind breaks the mirror up: the more of it, the more the reflection is a blur of sky than an image
       // the mirror's image of the sun is held to a bright sky's level: the sun on the water is the glitter's (below),
       // and the disc's full radiance, smeared by the waves, read as a white slab across the lake
