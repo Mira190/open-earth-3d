@@ -1,0 +1,62 @@
+{
+ "id": "kamakura",
+ "name": "Shichirigahama",
+ "duration": 30,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/kamakura.mp4",
+ "poster": "films/kamakura.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "coast",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "The coast"
+  },
+  {
+   "id": "crossing",
+   "t0": 5.5,
+   "t1": 21.5,
+   "chapter": "The crossing"
+  },
+  {
+   "id": "passing",
+   "t0": 21.5,
+   "t1": 30,
+   "chapter": "The Enoden"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.5,
+   "t1": 5.2,
+   "kind": "main",
+   "name": "Shichirigahama",
+   "native": "七里ヶ浜",
+   "sub": "Kamakura, Japan",
+   "figures": "7,366 buildings · 3.8 × 1.7 km · the Enoden's single track along Sagami Bay"
+  },
+  {
+   "t0": 6.3,
+   "t1": 12,
+   "kind": "lower",
+   "eyebrow": "Kamakurakokomae No. 1 crossing",
+   "head": "鎌倉高校前1号踏切",
+   "text": "The hill road falls 11% to the sea; the bell starts 26 seconds before the train."
+  },
+  {
+   "t0": 24.7,
+   "t1": 29.5,
+   "kind": "caption",
+   "lines": [
+    "35.31°N 139.50°E",
+    "The Enoden, a train each way every twelve minutes",
+    "Enoshima across Sagami Bay"
+   ]
+  }
+ ]
+}
