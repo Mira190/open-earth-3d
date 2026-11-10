@@ -200,8 +200,11 @@ light shafts are compiled out.
 
 ![Ten maps at a phone's size](images/look/phone.jpg)
 
-A day in 24 seconds, from before sunrise to night, over Shibuya's scramble and over Higashiyama:
-`xvfb-run -a node tools/day_film.js shibuya out.mp4` (see the tool's header for the view).
+A day in 24 seconds, from before sunrise to night, over Shibuya and over Higashiyama (960 x 540, 12 frames a
+second, the clouds at twelve seconds a frame): [images/look/shibuya-day.mp4](images/look/shibuya-day.mp4) and
+[images/look/higashiyama-day.mp4](images/look/higashiyama-day.mp4), made with
+`xvfb-run -a node tools/day_film.js shibuya out.mp4 960x540 24 12` (see the tool's header for the view). Both
+start from the same sky: the clouds' drift begins at the same place on every map.
 
 Not built here: glints on overhead wires and rails (the maps draw neither as their own material yet), and a
 bounce that knows which ground is near which wall (the hemisphere light's is the same everywhere).
