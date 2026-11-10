@@ -30,7 +30,11 @@
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -63,18 +67,64 @@
     "inland": {
       "note": "Concrete revetments about 4.5-5 m from the street down to a shallow flow (read from photographs, not measured); the Meguro about 9 m between its walls at Ikejiri-Ohashi and 13 m at Nakameguro, the Shibuya River about 8 m. The ponds at the 5 m laser survey's level.",
       "lines": [
-        {"name": "目黒川", "width_m": [9.0, 13.0], "bank_to_water_m": 4.5, "water_m": 0.3, "walls": "concrete"},
-        {"name": "渋谷川", "width_m": 8.0, "bank_to_water_m": 5.0, "water_m": 0.2, "walls": "concrete"}
+        {
+          "name": "目黒川",
+          "width_m": [
+            9.0,
+            13.0
+          ],
+          "bank_to_water_m": 4.5,
+          "water_m": 0.3,
+          "walls": "concrete"
+        },
+        {
+          "name": "渋谷川",
+          "width_m": 8.0,
+          "bank_to_water_m": 5.0,
+          "water_m": 0.2,
+          "walls": "concrete"
+        }
       ],
-      "classes": ["pond", "lake", "water", "river", "canal"],
+      "classes": [
+        "pond",
+        "lake",
+        "water",
+        "river",
+        "canal"
+      ],
       "min_area_m2": 250
     }
   },
   "roofs": {
-    "open_at": [[469.5, -908.2], [492.8, -1010.2]],
+    "open_at": [
+      [
+        469.5,
+        -908.2
+      ],
+      [
+        492.8,
+        -1010.2
+      ]
+    ],
     "note": "pipeline/arcades.py (#234): two low PLATEAU-only solids in pedestrian squares (tools/square_huts.py) that the aerial photograph shows are canopies, not huts: a covered walk 3 m wide and 4.1 m tall along the footway by the Yamanote tracks north of the station, and a 2.6 m shelter on an island of the east exit's bus terminal. Each is named by a point inside it, as PLATEAU's footprints have no OSM id."
   },
-  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
+  "trees": {
+    "susuki": {
+      "note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).",
+      "open": [
+        {
+          "land": [
+            "grassland",
+            "meadow"
+          ],
+          "land_use": [
+            "meadow"
+          ],
+          "per_ha": 5200,
+          "min_m2": 20
+        }
+      ]
+    },
     "mix": {
       "zelkova": 0.35,
       "ginkgo": 0.25,
@@ -448,7 +498,15 @@
     "fonts": "Ema, plaques and signs drawn with Google Fonts under the SIL Open Font License: Yomogi, Zen Kurenaido, Klee One, Yuji Syuku, Shippori Mincho, DotGothic16, RocknRoll One, Ma Shan Zheng, ZCOOL KuaiLe, Long Cang, LXGW WenKai TC, Nanum Pen Script, Caveat, Kalam"
   },
   "osm_detail": {
-    "scramble": {"bbox": [139.697, 35.6575, 139.703, 35.6615], "note": "the scramble and the first 150 m of the streets off it: pipeline/osm_detail.py"}
+    "scramble": {
+      "bbox": [
+        139.697,
+        35.6575,
+        139.703,
+        35.6615
+      ],
+      "note": "the scramble and the first 150 m of the streets off it: pipeline/osm_detail.py"
+    }
   },
   "light_show": {
     "name": "CROSSING LIGHT",
@@ -483,7 +541,25 @@
     "note": "clear: no street-lamp pole stands in the scramble, whose paved crossing is far wider than its four streets"
   },
   "game": {
-    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "weather": {
+      "rain_days": [
+        5.3,
+        6.1,
+        10.3,
+        10.9,
+        11.1,
+        12.8,
+        12.0,
+        9.4,
+        12.3,
+        11.8,
+        8.2,
+        5.8
+      ],
+      "threshold_mm": 0.5,
+      "drizzle": 0.55,
+      "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
+    },
     "title": "Tokyo Pilgrimage: Shibuya 東京巡礼・渋谷",
     "local_name": "Tokyoite",
     "water_name": "the river",
@@ -546,15 +622,104 @@
     "wharves": [],
     "ferries": [],
     "scrambles": [
-      {"name": "道玄坂下 Dogenzaka-shita", "at": [268.0, -998.6], "note": "In front of 109, where Dogenzaka and Bunkamura-dori fork; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings)."},
-      {"name": "井ノ頭通り入口 Inokashira-dori Iriguchi", "at": [391.4, -894.8], "note": "Koen-dori at Seibu; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."},
-      {"name": "神南一丁目 Jinnan 1-chome", "at": [392.3, -819.0], "note": "Koen-dori, the next crossing up; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."},
-      {"name": "勤労福祉会館前 Kinro Fukushi Kaikan-mae", "at": [251.7, -680.2], "note": "Koen-dori, about 200 m further; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."}
+      {
+        "name": "道玄坂下 Dogenzaka-shita",
+        "at": [
+          268.0,
+          -998.6
+        ],
+        "note": "In front of 109, where Dogenzaka and Bunkamura-dori fork; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings)."
+      },
+      {
+        "name": "井ノ頭通り入口 Inokashira-dori Iriguchi",
+        "at": [
+          391.4,
+          -894.8
+        ],
+        "note": "Koen-dori at Seibu; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."
+      },
+      {
+        "name": "神南一丁目 Jinnan 1-chome",
+        "at": [
+          392.3,
+          -819.0
+        ],
+        "note": "Koen-dori, the next crossing up; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."
+      },
+      {
+        "name": "勤労福祉会館前 Kinro Fukushi Kaikan-mae",
+        "at": [
+          251.7,
+          -680.2
+        ],
+        "note": "Koen-dori, about 200 m further; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."
+      }
     ],
     "crowd": {
       "pedestrians": 640,
       "pedestrians_peak": 1600,
-      "hours": [[0, 0.32], [1, 0.16], [3, 0.07], [5, 0.1], [7, 0.42], [8, 0.72], [9, 0.55], [11, 0.55], [12, 0.7], [14, 0.62], [16, 0.72], [18, 0.88], [20, 0.86], [22, 0.66], [23, 0.5]],
+      "hours": [
+        [
+          0,
+          0.32
+        ],
+        [
+          1,
+          0.16
+        ],
+        [
+          3,
+          0.07
+        ],
+        [
+          5,
+          0.1
+        ],
+        [
+          7,
+          0.42
+        ],
+        [
+          8,
+          0.72
+        ],
+        [
+          9,
+          0.55
+        ],
+        [
+          11,
+          0.55
+        ],
+        [
+          12,
+          0.7
+        ],
+        [
+          14,
+          0.62
+        ],
+        [
+          16,
+          0.72
+        ],
+        [
+          18,
+          0.88
+        ],
+        [
+          20,
+          0.86
+        ],
+        [
+          22,
+          0.66
+        ],
+        [
+          23,
+          0.5
+        ]
+      ],
       "weekend_night": 1.15,
       "weekend": 1.15,
       "note": "hours: the share of the peak crowd out, by the hour: the morning commute, lunch, and the evening, busiest from 18:00 to 21:00 and busier still on Friday and Saturday nights and at the weekend (Shibuya Redevelopment Association, 2014: 260,000 people a day on weekdays, 390,000 on holidays); few after the last trains (about 00:30)",
@@ -564,8 +729,31 @@
     },
     "look": {
       "neon": 1,
-      "fill": [{ "at": [368.7, -1000.6], "z": 12, "w": 60, "h": 56, "colour": "#ffe4c8", "k": 1.2 }],
-      "sound": { "at": [368.7, -1000.6], "r": 170, "signal": "piyo", "station": [430.0, -1070.0] },
+      "fill": [
+        {
+          "at": [
+            368.7,
+            -1000.6
+          ],
+          "z": 12,
+          "w": 60,
+          "h": 56,
+          "colour": "#ffe4c8",
+          "k": 1.2
+        }
+      ],
+      "sound": {
+        "at": [
+          368.7,
+          -1000.6
+        ],
+        "r": 170,
+        "signal": "piyo",
+        "station": [
+          430.0,
+          -1070.0
+        ]
+      },
       "note": "neon: the screens' light on the street (web/neon.js); fill: after dark, the light the crossing's shopfronts, floodlights and signs put on the middle of the scramble, where no street lamp stands (a light card over it, medium and high tiers); sound: the crossing's murmur, its screens' music, the walk signal's bird calls and the station's announcements (web/game/audio.js)"
     },
     "vehicles": {
@@ -1015,44 +1203,1039 @@
     ],
     "overture": {
       "note": "The overture (docs/OVERTURE.md, web/game/overture.js): Crossing. A petal (a ginkgo leaf in autumn, a snowflake in winter, a mote of light in summer) leaves the edge of SHIBUYA SKY, falls 229 m to the scramble, passes Hachiko, and the screens, and ends on the scramble from across it, into the sun, before the game begins at the kerb (game.start). Crowds are kept at a distance: no shot comes close to them. Points name the landmarks in scene.json, so a rebuilt map moves them.",
-      "title": {"name": "渋谷", "reading": "Shibuya", "line": "交差  ·  Crossing"},
-      "guides": [["sakura", [3, 18], [4, 20]], ["mote", [4, 21], [10, 24]], ["ginkgo", [10, 25], [12, 20]], ["snow", [12, 21], [3, 17]]],
-      "signal": ["@scramble"],
-      "crowd_at": ["@scramble"],
+      "title": {
+        "name": "渋谷",
+        "reading": "Shibuya",
+        "line": "交差  ·  Crossing"
+      },
+      "guides": [
+        [
+          "sakura",
+          [
+            3,
+            18
+          ],
+          [
+            4,
+            20
+          ]
+        ],
+        [
+          "mote",
+          [
+            4,
+            21
+          ],
+          [
+            10,
+            24
+          ]
+        ],
+        [
+          "ginkgo",
+          [
+            10,
+            25
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        [
+          "snow",
+          [
+            12,
+            21
+          ],
+          [
+            3,
+            17
+          ]
+        ]
+      ],
+      "signal": [
+        "@scramble"
+      ],
+      "crowd_at": [
+        "@scramble"
+      ],
       "crowd_r": 90,
       "crowd_near": 0,
-      "grade": {"tint": [1.06, 1.0, 0.92], "sat": 1.12, "ev": 1.05, "flare": 1.0, "sky_sat": 1.25, "clouds": 0.25},
-      "score": {"root": 52, "scale": [0, 2, 4, 5, 7, 9, 11], "chords": [[0, 2, 4], [4, 6, 8], [5, 7, 9], [3, 5, 7]], "motif": [4, 2, 1, 0, 2], "tempo": 76, "voice": "piano", "air": "none", "arp": true, "chirp": false, "title_shot": "fall", "title_at": 0.12, "finale_shot": "wide", "finale_at": 0.12, "hush_shot": "above", "hush_at": [0.35, 1.0], "clean": true},
+      "grade": {
+        "tint": [
+          1.06,
+          1.0,
+          0.92
+        ],
+        "sat": 1.12,
+        "ev": 1.05,
+        "flare": 1.0,
+        "sky_sat": 1.25,
+        "clouds": 0.25
+      },
+      "score": {
+        "root": 52,
+        "scale": [
+          0,
+          2,
+          4,
+          5,
+          7,
+          9,
+          11
+        ],
+        "chords": [
+          [
+            0,
+            2,
+            4
+          ],
+          [
+            4,
+            6,
+            8
+          ],
+          [
+            5,
+            7,
+            9
+          ],
+          [
+            3,
+            5,
+            7
+          ]
+        ],
+        "motif": [
+          4,
+          2,
+          1,
+          0,
+          2
+        ],
+        "tempo": 76,
+        "voice": "piano",
+        "air": "none",
+        "arp": true,
+        "chirp": false,
+        "title_shot": "fall",
+        "title_at": 0.12,
+        "finale_shot": "wide",
+        "finale_at": 0.12,
+        "hush_shot": "above",
+        "hush_at": [
+          0.35,
+          1.0
+        ],
+        "clean": true
+      },
       "shots": [
-        {"id": "sky", "dur": 7, "type": "move", "from": ["@shibuya_sky", -12.03, 25.35, 2.3], "to": ["@shibuya_sky", -14.24, 28.25, 2.1], "lookFrom": ["@scramble", -400, 300, 100], "lookTo": ["@scramble", -160, 130, 70], "fov": [38, 46], "ease": "inOut", "guide": [["@shibuya_sky", -18.12, 29.74, 1.36], ["@shibuya_sky", -19.58, 32.06, 2.4], ["@shibuya_sky", -21.87, 36.53, 1.8]], "rest": 0.55, "flutter": 0.6, "drift": 0.15, "fadeIn": 2.0, "caption": {"eyebrow": "SHIBUYA SKY · 229 m", "text": "The wind on the roof of Scramble Square, above the busiest crossing in the world.", "at": 0.12, "until": 0.7}, "fstop": 4},
-        {"id": "fall", "dur": 8, "type": "chase", "dist": [2.0, 1.6], "h": [0.5, 0.35], "side": 0.4, "lead": 1.2, "look": ["@scramble", 0, 0, 0], "lookMix": [0.15, 0.45], "guide": [["@shibuya_sky", -21.87, 36.53, 1.8], ["@shibuya_sky", -40.4, 56.3, -26.8], ["@shibuya_sky", -66.4, 72.3, -71.8], ["@scramble", 56.3, -39.4, 100], ["@scramble", 33.3, -29.4, 55], ["@scramble", 19.3, -21.4, 30], ["@hachiko", 4.2, 17.4, 16]], "guideEase": "inOut", "fov": [50, 44], "ease": "inOut", "drift": [0.3, 0.7], "title": {"at": 0.12, "until": 0.72}},
-        {"id": "hachiko", "dur": 3, "type": "orbit", "at": ["@hachiko", 0, 0, 1.0], "az": [108, 118], "dist": [10, 9.5], "h": 0.1, "look": ["@hachiko", 0, 0, 1.5], "fov": 32, "guide": [["@hachiko", 10.0, -3.6, 2.3], ["@hachiko", 10.3, -1.8, 1.9], ["@hachiko", 10.7, 0.3, 1.5]], "drift": 0.7, "caption": {"eyebrow": "忠犬ハチ公 · Hachiko", "text": "He met his master's train here every evening, and went on waiting for nine years after he was gone.", "at": 0.08, "until": 0.95}, "fstop": 2.0},
-        {"id": "screens", "dur": 3.5, "type": "move", "from": ["@scramble", 8.0, -17.5, 1.6], "to": ["@scramble", 7.6, -15.8, 1.6], "lookFrom": ["label:QFRONT", 0, 0, 26], "lookTo": ["label:QFRONT", 0, 0, 33], "fov": 30, "guide": [["@scramble", 6.2, -14.6, 2.4], ["@scramble", 7.8, -14.2, 2.7], ["@scramble", 9.6, -14.8, 2.3]], "drift": 0.8, "fstop": 2.0},
-        {"id": "above", "dur": 6, "type": "orbit", "at": ["@scramble"], "az": [205, 232], "dist": [16, 13], "h": [118, 104], "fov": 42, "ease": "linear", "lapse": 20, "drift": 0.25},
-        {"id": "wide", "dur": 9.5, "type": "move", "from": ["@scramble", 110, -10, 55], "to": ["@scramble", 92, -6, 50], "lookFrom": ["@scramble", -160, 30, 28], "lookTo": ["@scramble", -160, 30, 24], "fov": [38, 33], "ease": "inOut", "guide": [["@scramble", 108, -9.6, 54.6], ["@scramble", 100, -7.5, 53.0], ["@scramble", 78, -2, 49], ["@scramble", 40, 6, 42]], "guideEase": "inOut", "focusFar": 7, "drift": [0.6, 0.3], "fadeOut": 1.8, "caption": {"eyebrow": "渋谷スクランブル交差点 · The scramble", "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.", "at": 0.15, "until": 0.72}}
+        {
+          "id": "sky",
+          "dur": 7,
+          "type": "move",
+          "from": [
+            "@shibuya_sky",
+            -12.03,
+            25.35,
+            2.3
+          ],
+          "to": [
+            "@shibuya_sky",
+            -14.24,
+            28.25,
+            2.1
+          ],
+          "lookFrom": [
+            "@scramble",
+            -400,
+            300,
+            100
+          ],
+          "lookTo": [
+            "@scramble",
+            -160,
+            130,
+            70
+          ],
+          "fov": [
+            38,
+            46
+          ],
+          "ease": "inOut",
+          "guide": [
+            [
+              "@shibuya_sky",
+              -18.12,
+              29.74,
+              1.36
+            ],
+            [
+              "@shibuya_sky",
+              -19.58,
+              32.06,
+              2.4
+            ],
+            [
+              "@shibuya_sky",
+              -21.87,
+              36.53,
+              1.8
+            ]
+          ],
+          "rest": 0.55,
+          "flutter": 0.6,
+          "drift": 0.15,
+          "fadeIn": 2.0,
+          "caption": {
+            "eyebrow": "SHIBUYA SKY · 229 m",
+            "text": "The wind on the roof of Scramble Square, above the busiest crossing in the world.",
+            "at": 0.12,
+            "until": 0.7
+          },
+          "fstop": 4
+        },
+        {
+          "id": "fall",
+          "dur": 8,
+          "type": "chase",
+          "dist": [
+            2.0,
+            1.6
+          ],
+          "h": [
+            0.5,
+            0.35
+          ],
+          "side": 0.4,
+          "lead": 1.2,
+          "look": [
+            "@scramble",
+            0,
+            0,
+            0
+          ],
+          "lookMix": [
+            0.15,
+            0.45
+          ],
+          "guide": [
+            [
+              "@shibuya_sky",
+              -21.87,
+              36.53,
+              1.8
+            ],
+            [
+              "@shibuya_sky",
+              -40.4,
+              56.3,
+              -26.8
+            ],
+            [
+              "@shibuya_sky",
+              -66.4,
+              72.3,
+              -71.8
+            ],
+            [
+              "@scramble",
+              56.3,
+              -39.4,
+              100
+            ],
+            [
+              "@scramble",
+              33.3,
+              -29.4,
+              55
+            ],
+            [
+              "@scramble",
+              19.3,
+              -21.4,
+              30
+            ],
+            [
+              "@hachiko",
+              4.2,
+              17.4,
+              16
+            ]
+          ],
+          "guideEase": "inOut",
+          "fov": [
+            50,
+            44
+          ],
+          "ease": "inOut",
+          "drift": [
+            0.3,
+            0.7
+          ],
+          "title": {
+            "at": 0.12,
+            "until": 0.72
+          }
+        },
+        {
+          "id": "hachiko",
+          "dur": 3,
+          "type": "orbit",
+          "at": [
+            "@hachiko",
+            0,
+            0,
+            1.0
+          ],
+          "az": [
+            108,
+            118
+          ],
+          "dist": [
+            10,
+            9.5
+          ],
+          "h": 0.1,
+          "look": [
+            "@hachiko",
+            0,
+            0,
+            1.5
+          ],
+          "fov": 32,
+          "guide": [
+            [
+              "@hachiko",
+              10.0,
+              -3.6,
+              2.3
+            ],
+            [
+              "@hachiko",
+              10.3,
+              -1.8,
+              1.9
+            ],
+            [
+              "@hachiko",
+              10.7,
+              0.3,
+              1.5
+            ]
+          ],
+          "drift": 0.7,
+          "caption": {
+            "eyebrow": "忠犬ハチ公 · Hachiko",
+            "text": "He met his master's train here every evening, and went on waiting for nine years after he was gone.",
+            "at": 0.08,
+            "until": 0.95
+          },
+          "fstop": 2.0
+        },
+        {
+          "id": "screens",
+          "dur": 3.5,
+          "type": "move",
+          "from": [
+            "@scramble",
+            8.0,
+            -17.5,
+            1.6
+          ],
+          "to": [
+            "@scramble",
+            7.6,
+            -15.8,
+            1.6
+          ],
+          "lookFrom": [
+            "label:QFRONT",
+            0,
+            0,
+            26
+          ],
+          "lookTo": [
+            "label:QFRONT",
+            0,
+            0,
+            33
+          ],
+          "fov": 30,
+          "guide": [
+            [
+              "@scramble",
+              6.2,
+              -14.6,
+              2.4
+            ],
+            [
+              "@scramble",
+              7.8,
+              -14.2,
+              2.7
+            ],
+            [
+              "@scramble",
+              9.6,
+              -14.8,
+              2.3
+            ]
+          ],
+          "drift": 0.8,
+          "fstop": 2.0
+        },
+        {
+          "id": "above",
+          "dur": 6,
+          "type": "orbit",
+          "at": [
+            "@scramble"
+          ],
+          "az": [
+            205,
+            232
+          ],
+          "dist": [
+            16,
+            13
+          ],
+          "h": [
+            118,
+            104
+          ],
+          "fov": 42,
+          "ease": "linear",
+          "lapse": 20,
+          "drift": 0.25
+        },
+        {
+          "id": "wide",
+          "dur": 9.5,
+          "type": "move",
+          "from": [
+            "@scramble",
+            110,
+            -10,
+            55
+          ],
+          "to": [
+            "@scramble",
+            92,
+            -6,
+            50
+          ],
+          "lookFrom": [
+            "@scramble",
+            -160,
+            30,
+            28
+          ],
+          "lookTo": [
+            "@scramble",
+            -160,
+            30,
+            24
+          ],
+          "fov": [
+            38,
+            33
+          ],
+          "ease": "inOut",
+          "guide": [
+            [
+              "@scramble",
+              108,
+              -9.6,
+              54.6
+            ],
+            [
+              "@scramble",
+              100,
+              -7.5,
+              53.0
+            ],
+            [
+              "@scramble",
+              78,
+              -2,
+              49
+            ],
+            [
+              "@scramble",
+              40,
+              6,
+              42
+            ]
+          ],
+          "guideEase": "inOut",
+          "focusFar": 7,
+          "drift": [
+            0.6,
+            0.3
+          ],
+          "fadeOut": 1.8,
+          "caption": {
+            "eyebrow": "渋谷スクランブル交差点 · The scramble",
+            "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.",
+            "at": 0.15,
+            "until": 0.72
+          }
+        }
       ],
-      "anime": {"paint": 0.85, "grade": 1.0, "rays": 1.0, "haze": 0.45, "haze_m": 1600, "haze_rgb": [0.62, 0.55, 0.58], "rim": 0.18, "rim_rgb": [1.0, 0.8, 0.6]},
+      "anime": {
+        "paint": 0.85,
+        "grade": 1.0,
+        "rays": 1.0,
+        "haze": 0.45,
+        "haze_m": 1600,
+        "haze_rgb": [
+          0.62,
+          0.55,
+          0.58
+        ],
+        "rim": 0.18,
+        "rim_rgb": [
+          1.0,
+          0.8,
+          0.6
+        ]
+      },
       "night": {
-    "below": -6,
-    "note": "After dark: a meteor crosses the sky over Shibuya's lights, from the stars down to the skyline, as a film's trailer would show the city. Every shot is from the air or across the city; none comes near the crowd.",
-    "guide": "meteor",
-    "title": {"name": "渋谷", "reading": "Shibuya", "line": "星降る夜  ·  A night of falling stars"},
-    "grade": {"tint": [1.0, 0.98, 1.05], "sat": 1.15, "ev": 1.1, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]], "bloom": 1.3},
-    "anime": {"paint": 0.6, "grade": 0.8, "rays": 0, "haze": 0.55, "haze_m": 1400, "haze_rgb": [0.16, 0.15, 0.32], "rim": 0.22, "rim_rgb": [0.55, 0.5, 0.95]},
-    "score": {"root": 49, "scale": [0, 2, 4, 5, 7, 9, 11], "chords": [[5, 7, 9], [3, 5, 7], [0, 2, 4], [4, 6, 8]], "motif": [4, 2, 1, 0, 2], "tempo": 66, "voice": "piano", "air": "none", "arp": true, "chirp": false, "title_shot": "stars", "title_at": 0.5, "finale_shot": "skyline", "finale_at": 0.22, "clean": true},
-    "shots": [
-      {"id": "stars", "dur": 6.5, "type": "move", "from": ["@shibuya_sky", -370, -580, -40], "to": ["@shibuya_sky", -360, -560, -45], "lookFrom": ["@shibuya_sky", 0, 0, 900], "lookTo": ["@shibuya_sky", 0, 0, -60], "fov": 42, "ease": "inOut", "fadeIn": 2.0, "guide": [["@shibuya_sky", -1100, 1100, 650], ["@shibuya_sky", 0, 1300, 560], ["@shibuya_sky", 1200, 900, 430]], "gFrom": 0.2, "gTo": 0.75, "guideEase": "in", "drift": 0, "arc": 0.06, "tailLen": 0.34},
-      {"id": "tower", "dur": 5, "type": "orbit", "at": ["@shibuya_sky", 0, 0, -10], "az": [302, 318], "dist": [270, 255], "h": [-55, -48], "fov": 34, "ease": "linear", "guide": [["@shibuya_sky", 900, -900, 520], ["@shibuya_sky", 200, -1500, 470], ["@shibuya_sky", -500, -1800, 400]], "gFrom": 0.25, "gTo": 0.85, "guideEase": "in", "drift": 0, "arc": 0.06, "tailLen": 0.34},
-      {"id": "hachiko", "dur": 5, "type": "move", "from": ["@hachiko", -3.3, 1.5, 1.7], "to": ["@hachiko", -3.1, 2.0, 1.65], "lookFrom": ["@hachiko", 0.2, -0.1, 2.2], "lookTo": ["@hachiko", 0.2, -0.1, 2.3], "focus": ["@hachiko", 0, 0, 1.9], "fstop": 1.6, "fov": 34, "ease": "linear", "drift": 0, "caption": {"eyebrow": "忠犬ハチ公 · Hachiko", "text": "He met his master's train here every evening, and went on waiting for nine years after he was gone.", "at": 0.1, "until": 0.95}},
-      {"id": "crossing", "dur": 6, "type": "move", "from": ["@scramble", -8, 24, 46], "to": ["@scramble", -6, 19, 43], "lookFrom": ["@scramble", 12, -24, 0], "lookTo": ["@scramble", 13, -27, 0], "fov": 50, "ease": "linear", "drift": 0, "caption": {"eyebrow": "渋谷スクランブル交差点 · The scramble", "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.", "at": 0.1, "until": 0.95}},
-      {"id": "lane", "dur": 5, "type": "move", "from": ["@center_gai", 44, -12, 58], "to": ["@center_gai", 40, -6, 54], "lookFrom": ["@center_gai", 12, 52, 0], "lookTo": ["@center_gai", 8, 60, 0], "fov": 38, "ease": "linear", "drift": 0, "shower": 0},
-      {"id": "gymnasium", "dur": 5, "type": "orbit", "at": ["label:Yoyogi National Gymnasium", 0, 0, 30], "az": [140, 152], "dist": [230, 215], "h": [-10, -8], "look": ["label:Yoyogi National Gymnasium", 0, 0, 70], "fov": 38, "ease": "linear", "drift": 0, "guide": [["label:Yoyogi National Gymnasium", -611, 336, 300], ["label:Yoyogi National Gymnasium", -390, 557, 270], ["label:Yoyogi National Gymnasium", -107, 689, 220]], "gFrom": 0.2, "gTo": 0.8, "guideEase": "in", "arc": 0.06, "tailLen": 0.34},
-      {"id": "forest", "dur": 5.5, "type": "move", "from": ["label:Yoyogi National Gymnasium", -250, 60, 48], "to": ["label:Yoyogi National Gymnasium", -238, 40, 46], "lookFrom": ["@shibuya_sky", 0, 0, -120], "lookTo": ["@shibuya_sky", 0, 0, -125], "fov": 30, "ease": "linear", "drift": 0, "guide": [["@shibuya_sky", -900, 300, 300], ["@shibuya_sky", -200, 0, 260], ["@shibuya_sky", 600, -300, 220]], "gFrom": 0.3, "gTo": 0.9, "guideEase": "in", "arc": 0.06, "tailLen": 0.34},
-      {"id": "skyline", "dur": 9, "type": "move", "from": ["@scramble", 60, 560, 200], "to": ["@scramble", 70, 470, 185], "lookFrom": ["@scramble", 100, -110, 150], "lookTo": ["@scramble", 100, -110, 135], "fov": 40, "ease": "inOut", "drift": 0, "fadeOut": 1.8, "title": {"at": 0.22, "until": 0.86}, "guide": [["@shibuya_sky", -1300, -500, 300], ["@shibuya_sky", -300, -900, 260], ["@shibuya_sky", 800, -1000, 220]], "gFrom": 0.05, "gTo": 0.55, "guideEase": "in", "arc": 0.06, "tailLen": 0.34}
-    ],
-    "sky": {"zenith": [0.008, 0.014, 0.05], "mid": [0.03, 0.045, 0.13], "horizon": [0.3, 0.19, 0.25], "milky": 1.0, "stars": 1.0, "clouds": 0.6, "pole": [0.35, 0.55, -0.76]},
-    "shower": 1.1
-  }
+        "below": -6,
+        "note": "After dark: a meteor crosses the sky over Shibuya's lights, from the stars down to the skyline, as a film's trailer would show the city. Every shot is from the air or across the city; none comes near the crowd.",
+        "guide": "meteor",
+        "title": {
+          "name": "渋谷",
+          "reading": "Shibuya",
+          "line": "星降る夜  ·  A night of falling stars"
+        },
+        "grade": {
+          "tint": [
+            1.0,
+            0.98,
+            1.05
+          ],
+          "sat": 1.15,
+          "ev": 1.1,
+          "flare": 0,
+          "sky_sat": 1.0,
+          "clouds": 0,
+          "stars": 2.4,
+          "night_sky": [
+            [
+              0.004,
+              0.011,
+              0.04
+            ],
+            [
+              0.05,
+              0.06,
+              0.13
+            ]
+          ],
+          "bloom": 1.3
+        },
+        "anime": {
+          "paint": 0.6,
+          "grade": 0.8,
+          "rays": 0,
+          "haze": 0.55,
+          "haze_m": 1400,
+          "haze_rgb": [
+            0.16,
+            0.15,
+            0.32
+          ],
+          "rim": 0.22,
+          "rim_rgb": [
+            0.55,
+            0.5,
+            0.95
+          ]
+        },
+        "score": {
+          "root": 49,
+          "scale": [
+            0,
+            2,
+            4,
+            5,
+            7,
+            9,
+            11
+          ],
+          "chords": [
+            [
+              5,
+              7,
+              9
+            ],
+            [
+              3,
+              5,
+              7
+            ],
+            [
+              0,
+              2,
+              4
+            ],
+            [
+              4,
+              6,
+              8
+            ]
+          ],
+          "motif": [
+            4,
+            2,
+            1,
+            0,
+            2
+          ],
+          "tempo": 66,
+          "voice": "piano",
+          "air": "none",
+          "arp": true,
+          "chirp": false,
+          "title_shot": "stars",
+          "title_at": 0.5,
+          "finale_shot": "skyline",
+          "finale_at": 0.22,
+          "clean": true
+        },
+        "shots": [
+          {
+            "id": "stars",
+            "dur": 6.5,
+            "type": "move",
+            "from": [
+              "@shibuya_sky",
+              -370,
+              -580,
+              -40
+            ],
+            "to": [
+              "@shibuya_sky",
+              -360,
+              -560,
+              -45
+            ],
+            "lookFrom": [
+              "@shibuya_sky",
+              0,
+              0,
+              900
+            ],
+            "lookTo": [
+              "@shibuya_sky",
+              0,
+              0,
+              -60
+            ],
+            "fov": 42,
+            "ease": "inOut",
+            "fadeIn": 2.0,
+            "guide": [
+              [
+                "@shibuya_sky",
+                -1100,
+                1100,
+                650
+              ],
+              [
+                "@shibuya_sky",
+                0,
+                1300,
+                560
+              ],
+              [
+                "@shibuya_sky",
+                1200,
+                900,
+                430
+              ]
+            ],
+            "gFrom": 0.2,
+            "gTo": 0.75,
+            "guideEase": "in",
+            "drift": 0,
+            "arc": 0.06,
+            "tailLen": 0.34
+          },
+          {
+            "id": "tower",
+            "dur": 5,
+            "type": "orbit",
+            "at": [
+              "@shibuya_sky",
+              0,
+              0,
+              -10
+            ],
+            "az": [
+              302,
+              318
+            ],
+            "dist": [
+              270,
+              255
+            ],
+            "h": [
+              -55,
+              -48
+            ],
+            "fov": 34,
+            "ease": "linear",
+            "guide": [
+              [
+                "@shibuya_sky",
+                900,
+                -900,
+                520
+              ],
+              [
+                "@shibuya_sky",
+                200,
+                -1500,
+                470
+              ],
+              [
+                "@shibuya_sky",
+                -500,
+                -1800,
+                400
+              ]
+            ],
+            "gFrom": 0.25,
+            "gTo": 0.85,
+            "guideEase": "in",
+            "drift": 0,
+            "arc": 0.06,
+            "tailLen": 0.34
+          },
+          {
+            "id": "hachiko",
+            "dur": 5,
+            "type": "move",
+            "from": [
+              "@hachiko",
+              -3.3,
+              1.5,
+              1.7
+            ],
+            "to": [
+              "@hachiko",
+              -3.1,
+              2.0,
+              1.65
+            ],
+            "lookFrom": [
+              "@hachiko",
+              0.2,
+              -0.1,
+              2.2
+            ],
+            "lookTo": [
+              "@hachiko",
+              0.2,
+              -0.1,
+              2.3
+            ],
+            "focus": [
+              "@hachiko",
+              0,
+              0,
+              1.9
+            ],
+            "fstop": 1.6,
+            "fov": 34,
+            "ease": "linear",
+            "drift": 0,
+            "caption": {
+              "eyebrow": "忠犬ハチ公 · Hachiko",
+              "text": "He met his master's train here every evening, and went on waiting for nine years after he was gone.",
+              "at": 0.1,
+              "until": 0.95
+            }
+          },
+          {
+            "id": "crossing",
+            "dur": 6,
+            "type": "move",
+            "from": [
+              "@scramble",
+              -8,
+              24,
+              46
+            ],
+            "to": [
+              "@scramble",
+              -6,
+              19,
+              43
+            ],
+            "lookFrom": [
+              "@scramble",
+              12,
+              -24,
+              0
+            ],
+            "lookTo": [
+              "@scramble",
+              13,
+              -27,
+              0
+            ],
+            "fov": 50,
+            "ease": "linear",
+            "drift": 0,
+            "caption": {
+              "eyebrow": "渋谷スクランブル交差点 · The scramble",
+              "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.",
+              "at": 0.1,
+              "until": 0.95
+            }
+          },
+          {
+            "id": "lane",
+            "dur": 5,
+            "type": "move",
+            "from": [
+              "@center_gai",
+              44,
+              -12,
+              58
+            ],
+            "to": [
+              "@center_gai",
+              40,
+              -6,
+              54
+            ],
+            "lookFrom": [
+              "@center_gai",
+              12,
+              52,
+              0
+            ],
+            "lookTo": [
+              "@center_gai",
+              8,
+              60,
+              0
+            ],
+            "fov": 38,
+            "ease": "linear",
+            "drift": 0,
+            "shower": 0
+          },
+          {
+            "id": "gymnasium",
+            "dur": 5,
+            "type": "orbit",
+            "at": [
+              "label:Yoyogi National Gymnasium",
+              0,
+              0,
+              30
+            ],
+            "az": [
+              140,
+              152
+            ],
+            "dist": [
+              230,
+              215
+            ],
+            "h": [
+              -10,
+              -8
+            ],
+            "look": [
+              "label:Yoyogi National Gymnasium",
+              0,
+              0,
+              70
+            ],
+            "fov": 38,
+            "ease": "linear",
+            "drift": 0,
+            "guide": [
+              [
+                "label:Yoyogi National Gymnasium",
+                -611,
+                336,
+                300
+              ],
+              [
+                "label:Yoyogi National Gymnasium",
+                -390,
+                557,
+                270
+              ],
+              [
+                "label:Yoyogi National Gymnasium",
+                -107,
+                689,
+                220
+              ]
+            ],
+            "gFrom": 0.2,
+            "gTo": 0.8,
+            "guideEase": "in",
+            "arc": 0.06,
+            "tailLen": 0.34
+          },
+          {
+            "id": "forest",
+            "dur": 5.5,
+            "type": "move",
+            "from": [
+              "label:Yoyogi National Gymnasium",
+              -250,
+              60,
+              48
+            ],
+            "to": [
+              "label:Yoyogi National Gymnasium",
+              -238,
+              40,
+              46
+            ],
+            "lookFrom": [
+              "@shibuya_sky",
+              0,
+              0,
+              -120
+            ],
+            "lookTo": [
+              "@shibuya_sky",
+              0,
+              0,
+              -125
+            ],
+            "fov": 30,
+            "ease": "linear",
+            "drift": 0,
+            "guide": [
+              [
+                "@shibuya_sky",
+                -900,
+                300,
+                300
+              ],
+              [
+                "@shibuya_sky",
+                -200,
+                0,
+                260
+              ],
+              [
+                "@shibuya_sky",
+                600,
+                -300,
+                220
+              ]
+            ],
+            "gFrom": 0.3,
+            "gTo": 0.9,
+            "guideEase": "in",
+            "arc": 0.06,
+            "tailLen": 0.34
+          },
+          {
+            "id": "skyline",
+            "dur": 9,
+            "type": "move",
+            "from": [
+              "@scramble",
+              60,
+              560,
+              200
+            ],
+            "to": [
+              "@scramble",
+              70,
+              470,
+              185
+            ],
+            "lookFrom": [
+              "@scramble",
+              100,
+              -110,
+              150
+            ],
+            "lookTo": [
+              "@scramble",
+              100,
+              -110,
+              135
+            ],
+            "fov": 40,
+            "ease": "inOut",
+            "drift": 0,
+            "fadeOut": 1.8,
+            "title": {
+              "at": 0.22,
+              "until": 0.86
+            },
+            "guide": [
+              [
+                "@shibuya_sky",
+                -1300,
+                -500,
+                300
+              ],
+              [
+                "@shibuya_sky",
+                -300,
+                -900,
+                260
+              ],
+              [
+                "@shibuya_sky",
+                800,
+                -1000,
+                220
+              ]
+            ],
+            "gFrom": 0.05,
+            "gTo": 0.55,
+            "guideEase": "in",
+            "arc": 0.06,
+            "tailLen": 0.34
+          }
+        ],
+        "sky": {
+          "zenith": [
+            0.008,
+            0.014,
+            0.05
+          ],
+          "mid": [
+            0.03,
+            0.045,
+            0.13
+          ],
+          "horizon": [
+            0.3,
+            0.19,
+            0.25
+          ],
+          "milky": 1.0,
+          "stars": 1.0,
+          "clouds": 0.6,
+          "pole": [
+            0.35,
+            0.55,
+            -0.76
+          ]
+        },
+        "shower": 1.1
+      }
     }
   }
 }

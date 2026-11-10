@@ -6,9 +6,22 @@
   "timezone": "Asia/Hong_Kong",
   "locale": "en-HK",
   "description": "Victoria Harbour from open data: Central, Admiralty and Wan Chai, Tsim Sha Tsui and the Peak, every building at the height the Lands Department surveyed, on the government's LiDAR terrain and under the real sun.",
-  "bbox": [114.143, 22.2635, 114.184, 22.3085],
-  "origin": [114.1635, 22.286],
-  "extent_m": [-2000, 2000, -2400, 2400],
+  "bbox": [
+    114.143,
+    22.2635,
+    114.184,
+    22.3085
+  ],
+  "origin": [
+    114.1635,
+    22.286
+  ],
+  "extent_m": [
+    -2000,
+    2000,
+    -2400,
+    2400
+  ],
   "overture_release": "2026-10-21.0",
   "vertical_datum": "mPD",
   "year": 2026,
@@ -17,7 +30,11 @@
     "url": "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/WGS84/{z}/{x}/{y}.png",
     "zoom": 18,
     "format": "png",
-    "attribution": "Aerial photograph from Lands Department, (c) The Government of the Hong Kong SAR, through the Lands Department Map API (GeoData Store)"
+    "attribution": "Aerial photograph from Lands Department, (c) The Government of the Hong Kong SAR, through the Lands Department Map API (GeoData Store)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "tile_index",
@@ -30,21 +47,240 @@
     "level": [
       {
         "name": "Peak Tower's forecourt, on the Peak Galleria side",
-        "ring": [[114.150131, 22.271098], [114.150022, 22.271081], [114.149898, 22.271095], [114.1498, 22.271132], [114.149729, 22.27117], [114.149678, 22.271207], [114.149647, 22.271245], [114.149637, 22.271281], [114.149649, 22.271316], [114.149763, 22.271295], [114.149753, 22.271273], [114.149764, 22.271248], [114.149793, 22.271225], [114.149839, 22.271206], [114.149895, 22.271195], [114.149951, 22.271191], [114.15, 22.271187], [114.150055, 22.27118]],
+        "ring": [
+          [
+            114.150131,
+            22.271098
+          ],
+          [
+            114.150022,
+            22.271081
+          ],
+          [
+            114.149898,
+            22.271095
+          ],
+          [
+            114.1498,
+            22.271132
+          ],
+          [
+            114.149729,
+            22.27117
+          ],
+          [
+            114.149678,
+            22.271207
+          ],
+          [
+            114.149647,
+            22.271245
+          ],
+          [
+            114.149637,
+            22.271281
+          ],
+          [
+            114.149649,
+            22.271316
+          ],
+          [
+            114.149763,
+            22.271295
+          ],
+          [
+            114.149753,
+            22.271273
+          ],
+          [
+            114.149764,
+            22.271248
+          ],
+          [
+            114.149793,
+            22.271225
+          ],
+          [
+            114.149839,
+            22.271206
+          ],
+          [
+            114.149895,
+            22.271195
+          ],
+          [
+            114.149951,
+            22.271191
+          ],
+          [
+            114.15,
+            22.271187
+          ],
+          [
+            114.150055,
+            22.27118
+          ]
+        ],
         "z_m": 396.5,
         "feather_m": 3,
         "note": "The laser's ground filter took Peak Tower out and the gap was interpolated from the slope below it to the plaza above, so round its south and west faces the ground fell 4 to 5 m in the 6 m out to the forecourt (391 m at the glass, 396 m beyond). The forecourt is one level with the Peak Galleria's plaza and the road at the west end (396.0 to 398.5 m in the mapped walkways), and the Peak Tram's upper terminus in the tower is at 396 m: from 4 m inside the body to 8 m out, along its south and west faces, it is levelled to 396.5 m. Its south-east corner, between the forecourt and the east end 13 m lower, is left to the DEM's slope."
       },
       {
         "name": "Peak Tower's north side, over Findlay Road",
-        "ring": [[114.149719, 22.271354], [114.149768, 22.271375], [114.14983, 22.271393], [114.149908, 22.271408], [114.150002, 22.27141], [114.150094, 22.271391], [114.150168, 22.271363], [114.150225, 22.271334], [114.150269, 22.271305], [114.150174, 22.271288], [114.150134, 22.271304], [114.150086, 22.271315], [114.150037, 22.271319], [114.149993, 22.27132], [114.14995, 22.271326], [114.1499, 22.271331], [114.149851, 22.271329], [114.149809, 22.271321]],
+        "ring": [
+          [
+            114.149719,
+            22.271354
+          ],
+          [
+            114.149768,
+            22.271375
+          ],
+          [
+            114.14983,
+            22.271393
+          ],
+          [
+            114.149908,
+            22.271408
+          ],
+          [
+            114.150002,
+            22.27141
+          ],
+          [
+            114.150094,
+            22.271391
+          ],
+          [
+            114.150168,
+            22.271363
+          ],
+          [
+            114.150225,
+            22.271334
+          ],
+          [
+            114.150269,
+            22.271305
+          ],
+          [
+            114.150174,
+            22.271288
+          ],
+          [
+            114.150134,
+            22.271304
+          ],
+          [
+            114.150086,
+            22.271315
+          ],
+          [
+            114.150037,
+            22.271319
+          ],
+          [
+            114.149993,
+            22.27132
+          ],
+          [
+            114.14995,
+            22.271326
+          ],
+          [
+            114.1499,
+            22.271331
+          ],
+          [
+            114.149851,
+            22.271329
+          ],
+          [
+            114.149809,
+            22.271321
+          ]
+        ],
         "z_m": 377.5,
         "feather_m": 3,
         "note": "The same interpolation on the downhill side: 377.6 m at the glass falling to 373.9 m 6 m out. The tower's lower floors stand on a terrace there at the level of its foot (377.2 to 378.1 m round the north face), from 4 m inside the body to 6 m out."
       },
       {
         "name": "Peak Tower's east end",
-        "ring": [[114.150286, 22.27129], [114.1503, 22.271274], [114.150309, 22.271258], [114.150315, 22.271241], [114.150315, 22.271226], [114.150311, 22.27121], [114.150303, 22.271195], [114.15029, 22.271181], [114.150273, 22.271168], [114.150181, 22.271196], [114.150196, 22.271204], [114.150208, 22.271213], [114.150215, 22.271223], [114.150219, 22.271234], [114.150218, 22.271245], [114.150212, 22.271257], [114.150203, 22.271268], [114.150189, 22.271279]],
+        "ring": [
+          [
+            114.150286,
+            22.27129
+          ],
+          [
+            114.1503,
+            22.271274
+          ],
+          [
+            114.150309,
+            22.271258
+          ],
+          [
+            114.150315,
+            22.271241
+          ],
+          [
+            114.150315,
+            22.271226
+          ],
+          [
+            114.150311,
+            22.27121
+          ],
+          [
+            114.150303,
+            22.271195
+          ],
+          [
+            114.15029,
+            22.271181
+          ],
+          [
+            114.150273,
+            22.271168
+          ],
+          [
+            114.150181,
+            22.271196
+          ],
+          [
+            114.150196,
+            22.271204
+          ],
+          [
+            114.150208,
+            22.271213
+          ],
+          [
+            114.150215,
+            22.271223
+          ],
+          [
+            114.150219,
+            22.271234
+          ],
+          [
+            114.150218,
+            22.271245
+          ],
+          [
+            114.150212,
+            22.271257
+          ],
+          [
+            114.150203,
+            22.271268
+          ],
+          [
+            114.150189,
+            22.271279
+          ]
+        ],
         "z_m": 383.5,
         "feather_m": 3,
         "note": "Round the east end the ground ran from 380 m on its north side to 387 m on its south within 10 m of the tip; it is levelled to 383.5 m, the ground at the tip (383 to 384.5 m in the LiDAR), from 4 m inside the body to 6 m out."
@@ -76,8 +312,12 @@
       "status": "Status",
       "date": "DateCreate"
     },
-    "keep_status": ["Active"],
-    "skip_kinds": ["Temporary Structure"],
+    "keep_status": [
+      "Active"
+    ],
+    "skip_kinds": [
+      "Temporary Structure"
+    ],
     "absolute": true,
     "attribution": "Lands Department, Building dataset (building block outlines with surveyed top and base levels in mPD, and storeys), CSDI portal, (c) The Government of the Hong Kong SAR"
   },
@@ -90,7 +330,11 @@
       "high_water_m": 1.6,
       "note": "Victoria Harbour's reclamations: precast concrete blockwork seawalls under a concrete coping; water is drawn at about the lowest tide, so the wet band is tall."
     },
-    "classes": ["ocean", "bay", "strait"],
+    "classes": [
+      "ocean",
+      "bay",
+      "strait"
+    ],
     "min_area_m2": 5000,
     "note": "Victoria Harbour is OpenStreetMap's coastline polygon (Overture 'ocean') plus the typhoon shelters. Water is drawn at 0 mPD, about the lowest tide: mean sea level is about 1.3 mPD.",
     "waves": {
@@ -98,7 +342,11 @@
       "wind_from_deg": 90,
       "fetch_km": 6.0,
       "depth_m": 14,
-      "cascades_m": [157, 33.3, 7.1],
+      "cascades_m": [
+        157,
+        33.3,
+        7.1
+      ],
       "choppiness": 1.0,
       "note": "The prevailing easterly blowing down the harbour from Lei Yue Mun, over about 6 km of open water, 12-15 m deep. Chosen values, not a measurement; the harbour's real chop comes as much from ferry wakes."
     },
@@ -107,7 +355,16 @@
     "clarity_m": 2.0,
     "colour_note": "Victoria Harbour is green-grey and turbid, with a couple of metres of visibility; colours picked from the Lands Department aerial photo."
   },
-  "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
   "labels": {
     "環球貿易廣場 International Commerce Centre": "ICC",
     "國際金融中心二期 Two International Finance Centre": "Two IFC",
@@ -132,56 +389,192 @@
     "M+": "M+"
   },
   "arrivals": {
-    "TST Star Ferry Pier": {"front": 120, "arc": 60, "dist": 120},
-    "Legislative Council": {"front": 0, "arc": 60},
-    "Hopewell Centre": {"top": 216, "front": 25, "arc": 50}
+    "TST Star Ferry Pier": {
+      "front": 120,
+      "arc": 60,
+      "dist": 120
+    },
+    "Legislative Council": {
+      "front": 0,
+      "arc": 60
+    },
+    "Hopewell Centre": {
+      "top": 216,
+      "front": 25,
+      "arc": 50
+    }
   },
-  "minor_labels": ["Legislative Council", "Court of Final Appeal", "Ocean Terminal", "Central Star Ferry Pier", "TST Star Ferry Pier", "Xiqu Centre", "M+", "Cultural Centre", "Jardine House", "Exchange Square", "Lippo Centre", "Hopewell Centre", "The Center", "Cheung Kong Center"],
+  "minor_labels": [
+    "Legislative Council",
+    "Court of Final Appeal",
+    "Ocean Terminal",
+    "Central Star Ferry Pier",
+    "TST Star Ferry Pier",
+    "Xiqu Centre",
+    "M+",
+    "Cultural Centre",
+    "Jardine House",
+    "Exchange Square",
+    "Lippo Centre",
+    "Hopewell Centre",
+    "The Center",
+    "Cheung Kong Center"
+  ],
   "places": [
-    {"name": "皇后像廣場 Statue Square", "label": "Statue Square", "class": "park"},
-    {"name": "遮打花園 Chater Garden", "label": "Chater Garden", "class": "garden"},
-    {"name": "香港公園 Hong Kong Park", "label": "Hong Kong Park", "class": "park"},
-    {"name": "添馬公園 Tamar Park", "label": "Tamar Park", "class": "park"},
+    {
+      "name": "皇后像廣場 Statue Square",
+      "label": "Statue Square",
+      "class": "park"
+    },
+    {
+      "name": "遮打花園 Chater Garden",
+      "label": "Chater Garden",
+      "class": "garden"
+    },
+    {
+      "name": "香港公園 Hong Kong Park",
+      "label": "Hong Kong Park",
+      "class": "park"
+    },
+    {
+      "name": "添馬公園 Tamar Park",
+      "label": "Tamar Park",
+      "class": "park"
+    },
     {
       "name": "中環海濱活動空間 Central Harbourfront Event Space",
       "label": "Central Harbourfront Event Space",
       "class": "recreation_ground"
     },
-    {"name": "愛丁堡廣場 Edinburgh Place", "label": "Edinburgh Place", "class": "plaza"},
-    {"name": "夏慤花園 Harcourt Garden", "label": "Harcourt Garden", "class": "garden"},
-    {"name": "九龍公園 Kowloon Park", "label": "Kowloon Park", "class": "park"},
-    {"name": "尖沙咀海濱花園 Tsim Sha Tsui Promenade", "label": "Tsim Sha Tsui Promenade", "class": "park"},
-    {"name": "梳士巴利花園二期 Salisbury Garden Phase II", "label": "Salisbury Garden Phase II", "class": "garden"},
-    {"name": "市政局百周年紀念花園 Centenary Garden", "label": "Centenary Garden", "class": "garden"},
-    {"name": "中山紀念公園 Sun Yat Sen Memorial Park", "label": "Sun Yat Sen Memorial Park", "class": "park"},
+    {
+      "name": "愛丁堡廣場 Edinburgh Place",
+      "label": "Edinburgh Place",
+      "class": "plaza"
+    },
+    {
+      "name": "夏慤花園 Harcourt Garden",
+      "label": "Harcourt Garden",
+      "class": "garden"
+    },
+    {
+      "name": "九龍公園 Kowloon Park",
+      "label": "Kowloon Park",
+      "class": "park"
+    },
+    {
+      "name": "尖沙咀海濱花園 Tsim Sha Tsui Promenade",
+      "label": "Tsim Sha Tsui Promenade",
+      "class": "park"
+    },
+    {
+      "name": "梳士巴利花園二期 Salisbury Garden Phase II",
+      "label": "Salisbury Garden Phase II",
+      "class": "garden"
+    },
+    {
+      "name": "市政局百周年紀念花園 Centenary Garden",
+      "label": "Centenary Garden",
+      "class": "garden"
+    },
+    {
+      "name": "中山紀念公園 Sun Yat Sen Memorial Park",
+      "label": "Sun Yat Sen Memorial Park",
+      "class": "park"
+    },
     {
       "name": "灣仔臨時海濱花園 Wan Chai Temporary Promenade",
       "label": "Wan Chai Temporary Promenade",
       "class": "park"
     },
-    {"name": "山頂公園 Victoria Peak Garden", "label": "Victoria Peak Garden", "class": "park"},
-    {"name": "卜公花園 Blake Garden", "label": "Blake Garden", "class": "park"}
+    {
+      "name": "山頂公園 Victoria Peak Garden",
+      "label": "Victoria Peak Garden",
+      "class": "park"
+    },
+    {
+      "name": "卜公花園 Blake Garden",
+      "label": "Blake Garden",
+      "class": "park"
+    }
   ],
-  "place_labels": ["Statue Square", "Hong Kong Park", "Tamar Park", "Kowloon Park", "Tsim Sha Tsui Promenade", "Victoria Peak Garden", "Chater Garden"],
+  "place_labels": [
+    "Statue Square",
+    "Hong Kong Park",
+    "Tamar Park",
+    "Kowloon Park",
+    "Tsim Sha Tsui Promenade",
+    "Victoria Peak Garden",
+    "Chater Garden"
+  ],
   "start": {
-    "date": [11, 15],
+    "date": [
+      11,
+      15
+    ],
     "time": "14:30",
-    "cam": [-1450, -2150, 700],
-    "tgt": [-150, 250, 60]
+    "cam": [
+      -1450,
+      -2150,
+      700
+    ],
+    "tgt": [
+      -150,
+      250,
+      60
+    ]
   },
-  "analysis_region": [-1400, 1400, -1300, 1500],
-  "sun_hours_region": [-1500, 1500, -1400, 1600],
+  "analysis_region": [
+    -1400,
+    1400,
+    -1300,
+    1500
+  ],
+  "sun_hours_region": [
+    -1500,
+    1500,
+    -1400,
+    1600
+  ],
   "game": {
-    "weather": {"rain_days": [5.7, 7.97, 10.5, 11.37, 15.37, 19.33, 18.43, 17.5, 14.9, 7.83, 5.7, 5.3], "threshold_mm": 0.1, "drizzle": 0.3, "source": "Hong Kong Observatory, 1991-2020 normals, days with at least 0.1 mm"},
+    "weather": {
+      "rain_days": [
+        5.7,
+        7.97,
+        10.5,
+        11.37,
+        15.37,
+        19.33,
+        18.43,
+        17.5,
+        14.9,
+        7.83,
+        5.7,
+        5.3
+      ],
+      "threshold_mm": 0.1,
+      "drizzle": 0.3,
+      "source": "Hong Kong Observatory, 1991-2020 normals, days with at least 0.1 mm"
+    },
     "title": "Hong Kong on Foot",
     "local_name": "Hongkonger",
     "greeting": "Néih hóu.",
     "blurb": "Cross the harbour on the Star Ferry, ride the Peak Tram up to the lookout for the 8 pm light show, and fly between the towers of Central. Talk to the people who know the city.",
-    "smalltalk": ["Néih hóu.", "Sihk jó faahn meih a? Have you eaten yet?", "Mh gōi. Thanks.", "Nice view of the harbour, isn't it?"],
+    "smalltalk": [
+      "Néih hóu.",
+      "Sihk jó faahn meih a? Have you eaten yet?",
+      "Mh gōi. Thanks.",
+      "Nice view of the harbour, isn't it?"
+    ],
     "water_name": "Victoria Harbour",
     "start": {
-      "at": [-262, 92],
-      "facing": [513, 839],
+      "at": [
+        -262,
+        92
+      ],
+      "facing": [
+        513,
+        839
+      ],
       "time": "live"
     },
     "wharves": [
@@ -189,21 +582,45 @@
         "id": "central",
         "name": "Central, Pier 7",
         "terminal": "中環 Central",
-        "near": [-249, 124]
+        "near": [
+          -249,
+          124
+        ]
       },
-      {"id": "tst", "name": "Tsim Sha Tsui", "terminal": "尖沙咀天星碼頭 Tsim Sha Tsui Star Ferry Pier"},
-      {"id": "wan-chai", "name": "Wan Chai", "terminal": "灣仔碼頭 Wan Chai Pier"}
+      {
+        "id": "tst",
+        "name": "Tsim Sha Tsui",
+        "terminal": "尖沙咀天星碼頭 Tsim Sha Tsui Star Ferry Pier"
+      },
+      {
+        "id": "wan-chai",
+        "name": "Wan Chai",
+        "terminal": "灣仔碼頭 Wan Chai Pier"
+      }
     ],
     "ferries": [
       {
         "route": "Central – Tsim Sha Tsui",
-        "stops": ["central", "tst"],
-        "vessels": ["Morning Star", "Night Star", "Solar Star"]
+        "stops": [
+          "central",
+          "tst"
+        ],
+        "vessels": [
+          "Morning Star",
+          "Night Star",
+          "Solar Star"
+        ]
       },
       {
         "route": "Wan Chai – Tsim Sha Tsui",
-        "stops": ["wan-chai", "tst"],
-        "vessels": ["Meridian Star", "World Star"]
+        "stops": [
+          "wan-chai",
+          "tst"
+        ],
+        "vessels": [
+          "Meridian Star",
+          "World Star"
+        ]
       }
     ],
     "ferry_note": "Piers, berths and the heliport are from OpenStreetMap via Overture. The Star Ferry's two routes are real; the vessel names are from its fleet, but which vessel runs which route, and the timetable, are not. Ferries run at 1.5 times their service speed and wait 20 s at each pier. At a pier you can skip the wait.",
@@ -220,24 +637,44 @@
     },
     "vehicles": {
       "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). Hong Kong registers its aircraft B-H..., not under China's B- prefix. The ferries take their colours and length from ferry_style.",
-      "helicopter": {"livery": "survey", "registration": "B-HOE"},
+      "helicopter": {
+        "livery": "survey",
+        "registration": "B-HOE"
+      },
       "cars": {
         "taxi": {
-          "colours": ["#c8102e"],
+          "colours": [
+            "#c8102e"
+          ],
           "band": "#c8102e",
           "share": 0.16
         },
-        "bus": {"colour": "#f2c500", "band": "#c8102e"},
+        "bus": {
+          "colour": "#f2c500",
+          "band": "#c8102e"
+        },
         "note": "The urban taxis are red, and common; Citybus's buses are yellow with a red band (approximate), and single-deck here, where most of Hong Kong's are double-deckers."
       }
     },
     "helipads": [
-      {"id": "harbourfront-pad", "name": "Central Harbourfront pad (game)", "at": [-220, -60, 6.5], "heading": 60},
+      {
+        "id": "harbourfront-pad",
+        "name": "Central Harbourfront pad (game)",
+        "at": [
+          -220,
+          -60,
+          6.5
+        ],
+        "heading": 60
+      },
       {
         "id": "hkcec",
         "name": "Hong Kong Convention and Exhibition Centre heliport",
         "from_data": true,
-        "near": [1120, -137]
+        "near": [
+          1120,
+          -137
+        ]
       }
     ],
     "crowd": {
@@ -245,10 +682,56 @@
       "cars": 170,
       "radius_m": 420,
       "style": {
-        "skin": ["#f6d8c6", "#f3cfb5", "#f0c7aa", "#efc6a8", "#e9bf9d", "#e3b08d", "#d49c76", "#c18661", "#8f5b3d"],
-        "hair": ["#141010", "#141010", "#17120f", "#1b1512", "#1b1512", "#231915", "#33241b", "#4a3222", "#8c8580", "#cfcac4", "#8d6339"],
-        "tops": ["#f2f0ea", "#e9e6df", "#e9e6df", "#cfdbe6", "#9fb7cc", "#1f2328", "#1d2b4a", "#2b2f3a", "#9aa3a8", "#d7c6a5", "#c94f3d", "#355c7d", "#e4b7b2", "#46604f"],
-        "legs": ["#1b1d22", "#1d1f24", "#2b3440", "#24384f", "#33415c", "#4b5563", "#c7b89a", "#3a3026"],
+        "skin": [
+          "#f6d8c6",
+          "#f3cfb5",
+          "#f0c7aa",
+          "#efc6a8",
+          "#e9bf9d",
+          "#e3b08d",
+          "#d49c76",
+          "#c18661",
+          "#8f5b3d"
+        ],
+        "hair": [
+          "#141010",
+          "#141010",
+          "#17120f",
+          "#1b1512",
+          "#1b1512",
+          "#231915",
+          "#33241b",
+          "#4a3222",
+          "#8c8580",
+          "#cfcac4",
+          "#8d6339"
+        ],
+        "tops": [
+          "#f2f0ea",
+          "#e9e6df",
+          "#e9e6df",
+          "#cfdbe6",
+          "#9fb7cc",
+          "#1f2328",
+          "#1d2b4a",
+          "#2b2f3a",
+          "#9aa3a8",
+          "#d7c6a5",
+          "#c94f3d",
+          "#355c7d",
+          "#e4b7b2",
+          "#46604f"
+        ],
+        "legs": [
+          "#1b1d22",
+          "#1d1f24",
+          "#2b3440",
+          "#24384f",
+          "#33415c",
+          "#4b5563",
+          "#c7b89a",
+          "#3a3026"
+        ],
         "weights": {
           "M_Casual2": 3,
           "M_Hoodie": 1,
@@ -264,7 +747,11 @@
           "W_Adventurer": 0.8,
           "W_Punk": 0.2
         },
-        "acc": {"umbrella": 0.06, "mask": 0.05, "backpack": 0.06},
+        "acc": {
+          "umbrella": 0.06,
+          "mask": 0.05,
+          "backpack": 0.06
+        },
         "note": "Central's office crowd: shirts and suits in light colours for the heat, a few umbrellas against the sun and masks (approximate)."
       }
     },
@@ -279,7 +766,16 @@
         "speed_ms": 6.0,
         "spacing_m": 230,
         "stop_every_m": 250,
-        "liveries": ["#0f6b3a", "#0f6b3a", "#0f6b3a", "#b5202e", "#1d4f91", "#e8a317", "#6a2c91", "#f2f2ee"],
+        "liveries": [
+          "#0f6b3a",
+          "#0f6b3a",
+          "#0f6b3a",
+          "#b5202e",
+          "#1d4f91",
+          "#e8a317",
+          "#6a2c91",
+          "#f2f2ee"
+        ],
         "note": "Hong Kong Tramways' double-deck cars on the tracks OpenStreetMap maps. A car is about 8.9 m long, 2.0 m wide and 4.5 m tall (CPTDB; a 1967 report gives 29 ft by 14 ft 9 in); the running speed and stop spacing are approximate, the colours a mix of the green livery and advertising wraps.",
         "min_length_m": 300
       },
@@ -287,7 +783,16 @@
         "class": "funicular",
         "climb": true,
         "name": "Peak Tram",
-        "stations": [{"id": "garden-road", "name": "Garden Road"}, {"id": "the-peak", "name": "The Peak"}],
+        "stations": [
+          {
+            "id": "garden-road",
+            "name": "Garden Road"
+          },
+          {
+            "id": "the-peak",
+            "name": "The Peak"
+          }
+        ],
         "gauge_m": 1.524,
         "length_m": 33,
         "width_m": 2.8,
@@ -296,7 +801,10 @@
         "trim": "#efe3c4",
         "speed_ms": 6.0,
         "dwell_s": 40,
-        "car_names": ["Car 1", "Car 2"],
+        "car_names": [
+          "Car 1",
+          "Car 2"
+        ],
         "note": "1,277 m of track, climbing 358 m to the Peak."
       }
     },
@@ -305,7 +813,10 @@
         "id": "kayan",
         "name": "Ka-yan",
         "role": "Central local",
-        "at": [-268, 80],
+        "at": [
+          -268,
+          80
+        ],
         "look": {
           "character": "R_Female_Adult_04_f003",
           "skin": "#e2b48f",
@@ -316,13 +827,18 @@
           "pants": "#2b3440",
           "clip": "Documents"
         },
-        "idle": ["Sihk jó faahn meih a? Have you eaten yet? It's how we say hello. A bowl of wonton noodles fixes most things."]
+        "idle": [
+          "Sihk jó faahn meih a? Have you eaten yet? It's how we say hello. A bowl of wonton noodles fixes most things."
+        ]
       },
       {
         "id": "wing",
         "name": "Wing",
         "role": "Tsim Sha Tsui local",
-        "at": [612, 812],
+        "at": [
+          612,
+          812
+        ],
         "look": {
           "character": "R_Male_Adult_10",
           "skin": "#d8a47e",
@@ -333,13 +849,18 @@
           "pants": "#2a2f36",
           "clip": "LookAround"
         },
-        "idle": ["Every night at eight the towers across the water put on the Symphony of Lights. The best seats are right here on the promenade."]
+        "idle": [
+          "Every night at eight the towers across the water put on the Symphony of Lights. The best seats are right here on the promenade."
+        ]
       },
       {
         "id": "leung",
         "name": "Mr Leung",
         "role": "Star Ferry deckhand",
-        "at": [530, 820],
+        "at": [
+          530,
+          820
+        ],
         "look": {
           "character": "R_Construction_Male_05_m008_bare",
           "skin": "#c98d68",
@@ -349,13 +870,18 @@
           "shirt": "#1f4fa8",
           "pants": "#1d3557"
         },
-        "idle": ["Central to Tsim Sha Tsui, about a kilometre of harbour. Mind the gangway."]
+        "idle": [
+          "Central to Tsim Sha Tsui, about a kilometre of harbour. Mind the gangway."
+        ]
       },
       {
         "id": "grace",
         "name": "Grace",
         "role": "Helicopter pilot",
-        "at": [1098, -150],
+        "at": [
+          1098,
+          -150
+        ],
         "look": {
           "character": "R_Pilot_Female_01_f013",
           "skin": "#e9bf9c",
@@ -365,13 +891,18 @@
           "shirt": "#f2f0ea",
           "pants": "#3b4a52"
         },
-        "idle": ["The International Commerce Centre tops out at 484 m. Give it a wide berth."]
+        "idle": [
+          "The International Commerce Centre tops out at 484 m. Give it a wide berth."
+        ]
       },
       {
         "id": "mei",
         "name": "Mei",
         "role": "Planner",
-        "at": [-372, -530],
+        "at": [
+          -372,
+          -530
+        ],
         "look": {
           "character": "R_Business_Female_03",
           "skin": "#e3b896",
@@ -382,13 +913,18 @@
           "pants": "#24323f",
           "clip": "Documents"
         },
-        "idle": ["Hong Kong has no rule that protects the sun on its squares. The planning guidelines protect a view instead: a band of green below the Peak's ridgeline, seen from the harbour."]
+        "idle": [
+          "Hong Kong has no rule that protects the sun on its squares. The planning guidelines protect a view instead: a band of green below the Peak's ridgeline, seen from the harbour."
+        ]
       },
       {
         "id": "keung",
         "name": "Ah Keung",
         "role": "Tram fan",
-        "at": [-430, -470],
+        "at": [
+          -430,
+          -470
+        ],
         "look": {
           "character": "R_Male_Adult_13_m017_grey",
           "skin": "#c99470",
@@ -399,13 +935,18 @@
           "pants": "#4b5563",
           "clip": "Photo"
         },
-        "idle": ["Ding ding! The trams have run along this shore since 1904. The sea used to come right up to Des Voeux Road."]
+        "idle": [
+          "Ding ding! The trams have run along this shore since 1904. The sea used to come right up to Des Voeux Road."
+        ]
       },
       {
         "id": "siu",
         "name": "Siu-man",
         "role": "Peak Tram guide",
-        "at": [-398, -905],
+        "at": [
+          -398,
+          -905
+        ],
         "look": {
           "character": "R_Security_Female_01_f003_plain",
           "skin": "#d9a882",
@@ -416,13 +957,18 @@
           "pants": "#2b2b30",
           "clip": "Present"
         },
-        "idle": ["The Peak Tram climbs some 360 metres from Garden Road. Stand at the back and the towers lean the wrong way."]
+        "idle": [
+          "The Peak Tram climbs some 360 metres from Garden Road. Stand at the back and the towers lean the wrong way."
+        ]
       },
       {
         "id": "fong",
         "name": "Mrs Fong",
         "role": "Lookout regular",
-        "at": [-1215, -1595],
+        "at": [
+          -1215,
+          -1595
+        ],
         "look": {
           "character": "R_Female_Adult_09_f011_grey",
           "skin": "#e6b994",
@@ -433,7 +979,9 @@
           "pants": "#3a3a40",
           "clip": "Idle_Neutral"
         },
-        "idle": ["It's {time} up here. {sun_line}"]
+        "idle": [
+          "It's {time} up here. {sun_line}"
+        ]
       }
     ],
     "quests": [
@@ -442,7 +990,11 @@
         "giver": "kayan",
         "title": "Across the harbour",
         "stamp": "Star Ferry",
-        "talk": ["Néih hóu! Welcome to Central. I'm Ka-yan. I've crossed this harbour twice a day since school, and the Star Ferry is still the best ten minutes in Hong Kong.", "Take it over to Tsim Sha Tsui: Wing is waiting by the Clock Tower. Or go as you like. The helicopter is on the harbourfront lawn, a minute's walk east, and a hand up at the kerb (Y) stops a red taxi.", "WASD or the arrow keys to move, Shift to sprint, drag to look around. E to talk, or to wait for the ferry."],
+        "talk": [
+          "Néih hóu! Welcome to Central. I'm Ka-yan. I've crossed this harbour twice a day since school, and the Star Ferry is still the best ten minutes in Hong Kong.",
+          "Take it over to Tsim Sha Tsui: Wing is waiting by the Clock Tower. Or go as you like. The helicopter is on the harbourfront lawn, a minute's walk east, and a hand up at the kerb (Y) stops a red taxi.",
+          "WASD or the arrow keys to move, Shift to sprint, drag to look around. E to talk, or to wait for the ferry."
+        ],
         "steps": [
           {
             "type": "ride",
@@ -450,7 +1002,11 @@
             "to": "tst",
             "text": "Take the Star Ferry from Central to Tsim Sha Tsui"
           },
-          {"type": "talk", "npc": "wing", "text": "Meet Wing at the Clock Tower"}
+          {
+            "type": "talk",
+            "npc": "wing",
+            "text": "Meet Wing at the Clock Tower"
+          }
         ]
       },
       {
@@ -458,11 +1014,28 @@
         "giver": "wing",
         "title": "The Clock Tower",
         "stamp": "Clock Tower",
-        "talk": ["The Clock Tower is all that's left of the old Kowloon-Canton Railway terminus: 1915, 44 metres of red brick and granite. The trains moved to Hung Hom in 1975.", "Walk along the promenade, east past the Cultural Centre, and look back across the water at Central. That's the view on every postcard.", "Then take the ferry to Wan Chai. Grace keeps a helicopter at the Convention Centre."],
+        "talk": [
+          "The Clock Tower is all that's left of the old Kowloon-Canton Railway terminus: 1915, 44 metres of red brick and granite. The trains moved to Hung Hom in 1975.",
+          "Walk along the promenade, east past the Cultural Centre, and look back across the water at Central. That's the view on every postcard.",
+          "Then take the ferry to Wan Chai. Grace keeps a helicopter at the Convention Centre."
+        ],
         "steps": [
-          {"type": "visit", "place": "Tsim Sha Tsui Promenade", "text": "Walk east along the Tsim Sha Tsui promenade"},
-          {"type": "ride", "from": "tst", "to": "wan-chai", "text": "Take the Star Ferry from Tsim Sha Tsui to Wan Chai"},
-          {"type": "talk", "npc": "grace", "text": "Meet Grace at the Convention Centre heliport"}
+          {
+            "type": "visit",
+            "place": "Tsim Sha Tsui Promenade",
+            "text": "Walk east along the Tsim Sha Tsui promenade"
+          },
+          {
+            "type": "ride",
+            "from": "tst",
+            "to": "wan-chai",
+            "text": "Take the Star Ferry from Tsim Sha Tsui to Wan Chai"
+          },
+          {
+            "type": "talk",
+            "npc": "grace",
+            "text": "Meet Grace at the Convention Centre heliport"
+          }
         ]
       },
       {
@@ -470,10 +1043,22 @@
         "giver": "grace",
         "title": "Between the towers",
         "stamp": "Victoria Harbour",
-        "talk": ["Ready? Two IFC stands 412 m on the Central waterfront, and the ICC 484 m across the water. Give them both plenty of room.", "Fly west along the shore and set down in Tamar Park, by the Government Headquarters. Mei will meet you in Statue Square.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
+        "talk": [
+          "Ready? Two IFC stands 412 m on the Central waterfront, and the ICC 484 m across the water. Give them both plenty of room.",
+          "Fly west along the shore and set down in Tamar Park, by the Government Headquarters. Mei will meet you in Statue Square.",
+          "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."
+        ],
         "steps": [
-          {"type": "land", "place": "Tamar Park", "text": "Land in Tamar Park"},
-          {"type": "talk", "npc": "mei", "text": "Meet Mei in Statue Square"}
+          {
+            "type": "land",
+            "place": "Tamar Park",
+            "text": "Land in Tamar Park"
+          },
+          {
+            "type": "talk",
+            "npc": "mei",
+            "text": "Meet Mei in Statue Square"
+          }
         ]
       },
       {
@@ -481,25 +1066,44 @@
         "giver": "mei",
         "title": "Winter sun on Statue Square",
         "stamp": "Statue Square",
-        "talk": ["Statue Square sits among the bank towers: HSBC to the south, the Bank of China behind it. At midwinter the sun is only 44° up at noon, and it comes from the south, over them.", "On 21 December at noon, {sun:Statue Square|12-21|12:00}% of the square is in direct sun. Go and find a sunny spot.", "Nothing in Hong Kong's rules protects that sun. Enjoy it while you can."],
+        "talk": [
+          "Statue Square sits among the bank towers: HSBC to the south, the Bank of China behind it. At midwinter the sun is only 44° up at noon, and it comes from the south, over them.",
+          "On 21 December at noon, {sun:Statue Square|12-21|12:00}% of the square is in direct sun. Go and find a sunny spot.",
+          "Nothing in Hong Kong's rules protects that sun. Enjoy it while you can."
+        ],
         "choices": [
           {
             "text": "Show me 21 December at noon",
             "action": "set_time",
-            "date": [12, 21],
+            "date": [
+              12,
+              21
+            ],
             "time": "12:00"
           },
-          {"text": "I'll set the time myself"}
+          {
+            "text": "I'll set the time myself"
+          }
         ],
         "steps": [
           {
             "type": "sun",
             "place": "Statue Square",
-            "date": [12, 21],
-            "window": ["11:00", "14:00"],
+            "date": [
+              12,
+              21
+            ],
+            "window": [
+              "11:00",
+              "14:00"
+            ],
             "text": "Stand in direct sun in Statue Square, 11:00 to 14:00 on 21 December"
           },
-          {"type": "talk", "npc": "siu", "text": "Find Siu-man at the Peak Tram's Garden Road terminus"}
+          {
+            "type": "talk",
+            "npc": "siu",
+            "text": "Find Siu-man at the Peak Tram's Garden Road terminus"
+          }
         ]
       },
       {
@@ -507,7 +1111,10 @@
         "giver": "siu",
         "title": "Up the Peak",
         "stamp": "Peak Tram",
-        "talk": ["The Peak Tram has climbed from Garden Road to the Peak since 1888, the first funicular in Asia. The new cars came in 2022 and hold 210 people.", "Ride it to the top. Mrs Fong is up there every evening; she'll show you the view."],
+        "talk": [
+          "The Peak Tram has climbed from Garden Road to the Peak since 1888, the first funicular in Asia. The new cars came in 2022 and hold 210 people.",
+          "Ride it to the top. Mrs Fong is up there every evening; she'll show you the view."
+        ],
         "steps": [
           {
             "type": "rail",
@@ -515,7 +1122,11 @@
             "to": "the-peak",
             "text": "Ride the Peak Tram from Garden Road to the Peak"
           },
-          {"type": "talk", "npc": "fong", "text": "Find Mrs Fong at the lookout by the Peak Tram terminus"}
+          {
+            "type": "talk",
+            "npc": "fong",
+            "text": "Find Mrs Fong at the lookout by the Peak Tram terminus"
+          }
         ]
       },
       {
@@ -523,15 +1134,24 @@
         "giver": "fong",
         "title": "The view",
         "stamp": "Victoria Peak",
-        "talk": ["That's the whole harbour: the ferry, the towers, the trams and the hill.", "Down there: Central, the harbour, and Kowloon with its hills behind. Kowloon means nine dragons, for the eight peaks and an emperor.", "Stay for the evening. At eight the towers light up for the Symphony of Lights."],
+        "talk": [
+          "That's the whole harbour: the ferry, the towers, the trams and the hill.",
+          "Down there: Central, the harbour, and Kowloon with its hills behind. Kowloon means nine dragons, for the eight peaks and an emperor.",
+          "Stay for the evening. At eight the towers light up for the Symphony of Lights."
+        ],
         "choices": [
           {
             "text": "Show me 8 pm",
             "action": "set_time",
-            "date": [11, 15],
+            "date": [
+              11,
+              15
+            ],
             "time": "19:58"
           },
-          {"text": "Not now"}
+          {
+            "text": "Not now"
+          }
         ],
         "steps": []
       }
@@ -552,9 +1172,20 @@
     {
       "title": "Victoria Harbour from open data",
       "text": "{buildings} buildings from OpenStreetMap and the Lands Department, standing on the government's 2020 LiDAR terrain under the real sun. {share:survey}% of the footprint area has a surveyed top level, and {share:lidar}% more is measured from the LiDAR.",
-      "cam": [-1450, -2150, 700],
-      "tgt": [-150, 250, 60],
-      "date": [11, 15],
+      "cam": [
+        -1450,
+        -2150,
+        700
+      ],
+      "tgt": [
+        -150,
+        250,
+        60
+      ],
+      "date": [
+        11,
+        15
+      ],
       "from": "14:00",
       "to": "15:00",
       "hold": 9
@@ -583,9 +1214,20 @@
     {
       "title": "Bank of China Tower",
       "text": "I. M. Pei's tower is a 52 m square cut along its diagonals into four triangular shafts that stop at four heights, the lowest on the harbour side, the last at the 315 m roof. Its faces are turned {landmark:bank_of_china.bearing_deg}° from north, measured on its footprint. The masts reach 367.4 m.",
-      "cam": [300, -1000, 330],
-      "tgt": [-199, -745, 190],
-      "date": [11, 15],
+      "cam": [
+        300,
+        -1000,
+        330
+      ],
+      "tgt": [
+        -199,
+        -745,
+        190
+      ],
+      "date": [
+        11,
+        15
+      ],
       "from": "10:30",
       "to": "11:30",
       "hold": 9
@@ -594,7 +1236,10 @@
       "title": "Statue Square at midwinter",
       "text": "On 21 December the noon sun stands 44° above the southern horizon, behind the bank towers. {sun:Statue Square|12-21|12:00}% of Statue Square is in direct sun at noon. Hong Kong has no rule that protects the sun on its public squares; the model can still measure it.",
       "place": "Statue Square",
-      "date": [12, 21],
+      "date": [
+        12,
+        21
+      ],
       "from": "11:00",
       "to": "14:00",
       "hold": 10
@@ -602,9 +1247,20 @@
     {
       "title": "The Star Ferry crossing",
       "text": "About a kilometre of harbour between Central's Pier 7 and Tsim Sha Tsui. The water moves with an easterly blowing down the harbour; the piers and the shoreline are OpenStreetMap's.",
-      "cam": [150, 350, 140],
-      "tgt": [520, 840, 8],
-      "date": [11, 15],
+      "cam": [
+        150,
+        350,
+        140
+      ],
+      "tgt": [
+        520,
+        840,
+        8
+      ],
+      "date": [
+        11,
+        15
+      ],
       "from": "15:30",
       "to": "16:30",
       "hold": 9
@@ -612,9 +1268,20 @@
     {
       "title": "Two IFC and the ICC",
       "text": "The two tallest buildings in the model face each other across the harbour: Two IFC at 412 m and the ICC at 484 m, built to their published heights and crowns. The Lands Department's survey puts their main roofs 11 m and 1 m from those figures.",
-      "cam": [1200, -1600, 800],
-      "tgt": [-386, 923, 170],
-      "date": [11, 15],
+      "cam": [
+        1200,
+        -1600,
+        800
+      ],
+      "tgt": [
+        -386,
+        923,
+        170
+      ],
+      "date": [
+        11,
+        15
+      ],
       "from": "16:00",
       "to": "17:00",
       "hold": 9
@@ -622,9 +1289,20 @@
     {
       "title": "The Peak at dusk",
       "text": "The Peak Tram climbs some 360 m from Garden Road to the Peak Tower, whose crescent roof stands 428 m above the datum. After dark the towers' windows light up across the water.",
-      "cam": [-1250, -1400, 500],
-      "tgt": [-250, 300, 90],
-      "date": [11, 15],
+      "cam": [
+        -1250,
+        -1400,
+        500
+      ],
+      "tgt": [
+        -250,
+        300,
+        90
+      ],
+      "date": [
+        11,
+        15
+      ],
       "from": "17:15",
       "to": "18:30",
       "hold": 11
@@ -634,9 +1312,41 @@
     "name": "A Symphony of Lights",
     "start": "20:00",
     "minutes": 10,
-    "beams": ["bank_of_china", "hsbc", "ifc2", "central_plaza", "icc"],
-    "lasers": [["icc", "ifc2"], ["icc", "bank_of_china"], ["icc", "central_plaza"]],
+    "beams": [
+      "bank_of_china",
+      "hsbc",
+      "ifc2",
+      "central_plaza",
+      "icc"
+    ],
+    "lasers": [
+      [
+        "icc",
+        "ifc2"
+      ],
+      [
+        "icc",
+        "bank_of_china"
+      ],
+      [
+        "icc",
+        "central_plaza"
+      ]
+    ],
     "note": "A Symphony of Lights has run at 8 pm nightly since 2004, with lights on some 40 buildings on both sides of the harbour (Wikipedia; Tourism Commission). In February 2026 the government said it would be retired in the second half of 2026 (Hong Kong Free Press, 27 February 2026); it was still running in September. The beams, lasers and colours here are illustrative, not the show's choreography."
   },
-  "trees": {"mix": {"fig": 0.4, "evergreen": 0.35, "camphor": 0.15, "palm": 0.1}, "woods": {"evergreen": 0.75, "camphor": 0.15, "fig": 0.1}, "note": "Species are not mapped; the mix is a guess. The streets' and parks' big trees are Chinese banyans (Ficus microcarpa; the fig stands in), with camphors and palms; the hills' woods are secondary evergreen broadleaf forest (Schima, Machilus and the like: the evergreen species)."}
+  "trees": {
+    "mix": {
+      "fig": 0.4,
+      "evergreen": 0.35,
+      "camphor": 0.15,
+      "palm": 0.1
+    },
+    "woods": {
+      "evergreen": 0.75,
+      "camphor": 0.15,
+      "fig": 0.1
+    },
+    "note": "Species are not mapped; the mix is a guess. The streets' and parks' big trees are Chinese banyans (Ficus microcarpa; the fig stands in), with camphors and palms; the hills' woods are secondary evergreen broadleaf forest (Schima, Machilus and the like: the evergreen species)."
+  }
 }

@@ -30,7 +30,11 @@
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -257,7 +261,25 @@
     "note": "The bars' signs and Keyakizaka's LEDs are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
   },
   "game": {
-    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "weather": {
+      "rain_days": [
+        5.3,
+        6.1,
+        10.3,
+        10.9,
+        11.1,
+        12.8,
+        12.0,
+        9.4,
+        12.3,
+        11.8,
+        8.2,
+        5.8
+      ],
+      "threshold_mm": 0.5,
+      "drizzle": 0.55,
+      "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
+    },
     "title": "Roppongi on Foot",
     "local_name": "Tokyoite",
     "water_name": "the Mohri Garden pond",

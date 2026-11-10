@@ -30,7 +30,11 @@
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -68,13 +72,24 @@
   "bridges": {
     "note": "Central Tokyo's bridges over the rivers and the Imperial Palace's moats; forms from each bridge's record (Tokyo Metropolitan Government, Chiyoda and Chuo wards).",
     "road_min_m": 2.0,
-    "widths": {"和田倉橋": 7.5, "皇居正門鉄橋 「二重橋」": 10.0},
+    "widths": {
+      "和田倉橋": 7.5,
+      "皇居正門鉄橋 「二重橋」": 10.0
+    },
     "forms": {
-      "勝鬨橋": {"form": "kachidoki", "colour": "#8ea8a6", "note": "1940, the bascule between two tied arches"},
+      "勝鬨橋": {
+        "form": "kachidoki",
+        "colour": "#8ea8a6",
+        "note": "1940, the bascule between two tied arches"
+      },
       "築地大橋": {
         "form": "half_through",
         "colour": "#eeeeea",
-        "span_m": [50, 145, 50],
+        "span_m": [
+          50,
+          145,
+          50
+        ],
         "rise_m": 22.0,
         "rail": "painted",
         "lamps": 6,
@@ -86,7 +101,10 @@
         "stone": "#b8b0a0",
         "lamps": 2,
         "lamp_style": "bronze",
-        "statues": {"middle": "kirin", "ends": "lion"},
+        "statues": {
+          "middle": "kirin",
+          "ends": "lion"
+        },
         "lamp": "#ffe2b0",
         "note": "1911, a granite double arch (Tsumaki Yorinaka; bronzes by Watanabe Osao): the two lamp standards over the pier with their kirin back to back, the four end pillars with their lamps and the lions holding the city's crest (Chuo City; photographs)"
       },
@@ -98,13 +116,46 @@
         "lamp_style": "bronze",
         "note": "1926, a two-span arch faced in stone"
       },
-      "一石橋": {"form": "girder", "colour": "#8c9296", "spans": 2, "note": "2000, two continuous girders"},
-      "江戸橋": {"form": "girder", "colour": "#8c9296", "spans": 3},
-      "神田橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e", "note": "1925, stone and concrete"},
-      "一ツ橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e", "note": "1925, stone and concrete"},
-      "鎌倉橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8", "note": "1929, concrete"},
-      "錦橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8", "note": "1927, a concrete arch"},
-      "竹橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8"},
+      "一石橋": {
+        "form": "girder",
+        "colour": "#8c9296",
+        "spans": 2,
+        "note": "2000, two continuous girders"
+      },
+      "江戸橋": {
+        "form": "girder",
+        "colour": "#8c9296",
+        "spans": 3
+      },
+      "神田橋": {
+        "form": "stone_arch",
+        "spans": 1,
+        "stone": "#b4ad9e",
+        "note": "1925, stone and concrete"
+      },
+      "一ツ橋": {
+        "form": "stone_arch",
+        "spans": 1,
+        "stone": "#b4ad9e",
+        "note": "1925, stone and concrete"
+      },
+      "鎌倉橋": {
+        "form": "stone_arch",
+        "spans": 1,
+        "stone": "#b9b4a8",
+        "note": "1929, concrete"
+      },
+      "錦橋": {
+        "form": "stone_arch",
+        "spans": 1,
+        "stone": "#b9b4a8",
+        "note": "1927, a concrete arch"
+      },
+      "竹橋": {
+        "form": "stone_arch",
+        "spans": 1,
+        "stone": "#b9b4a8"
+      },
       "和田倉橋": {
         "form": "girder",
         "colour": "#cfcabd",
@@ -127,7 +178,10 @@
         "rail": "painted",
         "lamps": 2,
         "lamp_style": "bronze",
-        "deck_z": [16.7, 16.7],
+        "deck_z": [
+          16.7,
+          16.7
+        ],
         "crown_m": 0.0,
         "note": "1964 steel, to the 1888 iron bridge's design, black; a level deck between the moat's walls at the Seimon terrace's height (16.7 m, GSI's laser over the flat terrace at its south end; the palace side is 16.5 to 17 m), the walls standing to it (cities/tokyo/moats.py WALLED)"
       }
@@ -153,7 +207,154 @@
     ],
     "min_area_m2": 3000
   },
-  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, "mix": {"ginkgo": 0.3, "zelkova": 0.2, "plane": 0.2, "camphor": 0.12, "evergreen": 0.12, "pine": 0.06, "cherry": 0.08}, "woods": {"evergreen": 0.25, "camphor": 0.2, "zelkova": 0.18, "pine": 0.12, "ginkgo": 0.1, "maple": 0.08, "sugi": 0.07, "cherry": 0.04}, "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.", "areas": [{"name": "Chidorigafuchi", "osm": "W43941104", "mix": {"cherry": 0.85, "zelkova": 0.15}, "yozakura": true, "note": "Chidorigafuchi Park: the cherries leaning out over the moat by the boat pier (photographs). Lit after dark in the bloom (the Chiyoda Sakura Festival's light-up)."}, {"name": "Chidorigafuchi Ryokudo", "osm": "W133037881", "buffer": 14, "mix": {"cherry": 0.9, "zelkova": 0.1}, "yozakura": true, "note": "The 700 m footpath along the moat under some 260 cherries (Chiyoda City)."}, {"name": "Kitanomaru Park", "osm": "W624081603", "mix": {"cherry": 0.25, "zelkova": 0.2, "evergreen": 0.2, "camphor": 0.15, "maple": 0.1, "ginkgo": 0.1}}, {"name": "Kokyo Gaien", "find": "皇居外苑", "floor": "lawn", "mix": {"pine": 0.8, "camphor": 0.1, "zelkova": 0.1}, "note": "About two thousand black pines on the outer garden's lawns (the Ministry of the Environment's guide)."}, {"name": "Kokyo Higashi Gyoen", "find": "皇居東御苑", "mix": {"evergreen": 0.3, "pine": 0.2, "maple": 0.15, "camphor": 0.15, "zelkova": 0.1, "sugi": 0.1, "cherry": 0.03, "kawazu": 0.01, "yaezakura": 0.01}, "note": "The East Gardens' woods and lawns; by the Ninomaru garden a grove of the prefectures' cherries, from the February kawazu-zakura to the late double ones."}, {"name": "Kokyo", "find": "皇居", "mix": {"evergreen": 0.45, "camphor": 0.2, "zelkova": 0.15, "pine": 0.1, "sugi": 0.1}, "note": "The palace's own woods (Fukiage): mostly the laurel forest's evergreen broadleaves."}, {"name": "Hibiya Park", "find": "日比谷公園", "mix": {"ginkgo": 0.25, "plane": 0.2, "zelkova": 0.2, "camphor": 0.15, "pine": 0.1, "maple": 0.1, "cherry": 0.1}}, {"name": "Hama-rikyu", "find": "浜離宮恩賜庭園", "mix": {"pine": 0.45, "evergreen": 0.25, "camphor": 0.15, "maple": 0.15}}, {"name": "Shiba Park", "find": "芝公園", "mix": {"evergreen": 0.25, "camphor": 0.2, "sugi": 0.15, "ginkgo": 0.15, "zelkova": 0.15, "maple": 0.1, "cherry": 0.12}}]},
+  "trees": {
+    "susuki": {
+      "note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).",
+      "open": [
+        {
+          "land": [
+            "grassland",
+            "meadow"
+          ],
+          "land_use": [
+            "meadow"
+          ],
+          "per_ha": 5200,
+          "min_m2": 20
+        }
+      ]
+    },
+    "mix": {
+      "ginkgo": 0.3,
+      "zelkova": 0.2,
+      "plane": 0.2,
+      "camphor": 0.12,
+      "evergreen": 0.12,
+      "pine": 0.06,
+      "cherry": 0.08
+    },
+    "woods": {
+      "evergreen": 0.25,
+      "camphor": 0.2,
+      "zelkova": 0.18,
+      "pine": 0.12,
+      "ginkgo": 0.1,
+      "maple": 0.08,
+      "sugi": 0.07,
+      "cherry": 0.04
+    },
+    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.",
+    "areas": [
+      {
+        "name": "Chidorigafuchi",
+        "osm": "W43941104",
+        "mix": {
+          "cherry": 0.85,
+          "zelkova": 0.15
+        },
+        "yozakura": true,
+        "note": "Chidorigafuchi Park: the cherries leaning out over the moat by the boat pier (photographs). Lit after dark in the bloom (the Chiyoda Sakura Festival's light-up)."
+      },
+      {
+        "name": "Chidorigafuchi Ryokudo",
+        "osm": "W133037881",
+        "buffer": 14,
+        "mix": {
+          "cherry": 0.9,
+          "zelkova": 0.1
+        },
+        "yozakura": true,
+        "note": "The 700 m footpath along the moat under some 260 cherries (Chiyoda City)."
+      },
+      {
+        "name": "Kitanomaru Park",
+        "osm": "W624081603",
+        "mix": {
+          "cherry": 0.25,
+          "zelkova": 0.2,
+          "evergreen": 0.2,
+          "camphor": 0.15,
+          "maple": 0.1,
+          "ginkgo": 0.1
+        }
+      },
+      {
+        "name": "Kokyo Gaien",
+        "find": "皇居外苑",
+        "floor": "lawn",
+        "mix": {
+          "pine": 0.8,
+          "camphor": 0.1,
+          "zelkova": 0.1
+        },
+        "note": "About two thousand black pines on the outer garden's lawns (the Ministry of the Environment's guide)."
+      },
+      {
+        "name": "Kokyo Higashi Gyoen",
+        "find": "皇居東御苑",
+        "mix": {
+          "evergreen": 0.3,
+          "pine": 0.2,
+          "maple": 0.15,
+          "camphor": 0.15,
+          "zelkova": 0.1,
+          "sugi": 0.1,
+          "cherry": 0.03,
+          "kawazu": 0.01,
+          "yaezakura": 0.01
+        },
+        "note": "The East Gardens' woods and lawns; by the Ninomaru garden a grove of the prefectures' cherries, from the February kawazu-zakura to the late double ones."
+      },
+      {
+        "name": "Kokyo",
+        "find": "皇居",
+        "mix": {
+          "evergreen": 0.45,
+          "camphor": 0.2,
+          "zelkova": 0.15,
+          "pine": 0.1,
+          "sugi": 0.1
+        },
+        "note": "The palace's own woods (Fukiage): mostly the laurel forest's evergreen broadleaves."
+      },
+      {
+        "name": "Hibiya Park",
+        "find": "日比谷公園",
+        "mix": {
+          "ginkgo": 0.25,
+          "plane": 0.2,
+          "zelkova": 0.2,
+          "camphor": 0.15,
+          "pine": 0.1,
+          "maple": 0.1,
+          "cherry": 0.1
+        }
+      },
+      {
+        "name": "Hama-rikyu",
+        "find": "浜離宮恩賜庭園",
+        "mix": {
+          "pine": 0.45,
+          "evergreen": 0.25,
+          "camphor": 0.15,
+          "maple": 0.15
+        }
+      },
+      {
+        "name": "Shiba Park",
+        "find": "芝公園",
+        "mix": {
+          "evergreen": 0.25,
+          "camphor": 0.2,
+          "sugi": 0.15,
+          "ginkgo": 0.15,
+          "zelkova": 0.15,
+          "maple": 0.1,
+          "cherry": 0.12
+        }
+      }
+    ]
+  },
   "storey": {
     "res": [
       3.0,
@@ -187,9 +388,20 @@
     "The Okura Prestige Tower": "Okura Prestige Tower"
   },
   "arrivals": {
-    "Kabuki-za 歌舞伎座": {"front": 215, "arc": 30, "dist": 95, "top": 28},
-    "National Diet 国会議事堂": {"front": 90},
-    "Wako 和光 (Ginza 4-chome)": {"front": 150, "arc": 40, "dist": 60}
+    "Kabuki-za 歌舞伎座": {
+      "front": 215,
+      "arc": 30,
+      "dist": 95,
+      "top": 28
+    },
+    "National Diet 国会議事堂": {
+      "front": 90
+    },
+    "Wako 和光 (Ginza 4-chome)": {
+      "front": 150,
+      "arc": 40,
+      "dist": 60
+    }
   },
   "minor_labels": [
     "和光",
@@ -524,7 +736,25 @@
     "landmarks": "Tokyo Tower: parametric from published dimensions (333 m; decks at 150 m and 250 m; 80 m base), anchored at its published coordinates"
   },
   "game": {
-    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "weather": {
+      "rain_days": [
+        5.3,
+        6.1,
+        10.3,
+        10.9,
+        11.1,
+        12.8,
+        12.0,
+        9.4,
+        12.3,
+        11.8,
+        8.2,
+        5.8
+      ],
+      "threshold_mm": 0.5,
+      "drizzle": 0.55,
+      "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
+    },
     "title": "Tokyo Pilgrimage: Marunouchi & Ginza 東京巡礼・丸の内・銀座",
     "local_name": "Tokyoite",
     "water_name": "Tokyo Bay",
@@ -534,8 +764,14 @@
       "tower_"
     ],
     "start": {
-      "at": [553, 1195],
-      "facing": [660, 1212],
+      "at": [
+        553,
+        1195
+      ],
+      "facing": [
+        660,
+        1212
+      ],
       "time": "live"
     },
     "wharves": [
@@ -560,7 +796,16 @@
         "terminal": "晴海五丁目船着場"
       }
     ],
-    "ferry_style": {"model": "harbour", "length_m": 32, "beam_m": 9, "hull": "#f2f2ee", "trim": "#123b6d", "upper": "#f7f7f4", "flag": "#123b6d", "note": "The shared harbour ferry stands in for the water buses and the bay boats; the white and navy are approximate."},
+    "ferry_style": {
+      "model": "harbour",
+      "length_m": 32,
+      "beam_m": 9,
+      "hull": "#f2f2ee",
+      "trim": "#123b6d",
+      "upper": "#f7f7f4",
+      "flag": "#123b6d",
+      "note": "The shared harbour ferry stands in for the water buses and the bay boats; the white and navy are approximate."
+    },
     "ferries": [
       {
         "route": "Water Bus 水上バス",
@@ -591,7 +836,16 @@
     "ferry_note": "Piers are from OpenStreetMap via Overture. Routes are generated through open water; the stops follow the real water-bus piers, but the timetable is not real, and the vessel names are those of Tokyo Cruise boats. Boats run at 1.5 times their real speed and wait 20 s at each pier. At a pier you can skip the wait.",
     "helipads_from_data": false,
     "helipads": [
-      {"id": "marunouchi-pad", "name": "Marunouchi Ekimae Plaza pad (game)", "at": [545, 1270, 2.9], "heading": 90},
+      {
+        "id": "marunouchi-pad",
+        "name": "Marunouchi Ekimae Plaza pad (game)",
+        "at": [
+          545,
+          1270,
+          2.9
+        ],
+        "heading": 90
+      },
       {
         "id": "hibiya-pad",
         "name": "Hibiya Park pad (game)",
@@ -602,7 +856,14 @@
       }
     ],
     "scrambles": [
-      {"name": "数寄屋橋 Sukiyabashi", "at": [385.0, 279.8], "note": "Harumi-dori and Sotobori-dori in Ginza; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."}
+      {
+        "name": "数寄屋橋 Sukiyabashi",
+        "at": [
+          385.0,
+          279.8
+        ],
+        "note": "Harumi-dori and Sotobori-dori in Ginza; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."
+      }
     ],
     "crowd": {
       "pedestrians": 520,
@@ -615,7 +876,10 @@
         "id": "haruka",
         "name": "Haruka 遥",
         "role": "Station attendant 駅員",
-        "at": [563, 1203],
+        "at": [
+          563,
+          1203
+        ],
         "look": {
           "character": "R_Security_Female_01_f003_plain",
           "skin": "#f0c7aa",

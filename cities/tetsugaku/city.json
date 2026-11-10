@@ -31,7 +31,11 @@
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 18,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -54,12 +58,43 @@
     "inland": {
       "note": "The canal's branch (疏水分線) about 3.5 m wide between stone walls 1 m down to its flow; the Shirakawa 4 m wide, 1.2 m down; the Biwako Canal below Keage between stone walls about 1.8 m down; ponds at the 5 m laser survey's level.",
       "lines": [
-        {"name": "疏水分線", "width_m": 3.5, "bank_to_water_m": 1.0, "water_m": 0.5, "walls": "stone"},
-        {"name": "白川", "width_m": 4.0, "bank_to_water_m": 1.2, "water_m": 0.25, "walls": "stone"}
+        {
+          "name": "疏水分線",
+          "width_m": 3.5,
+          "bank_to_water_m": 1.0,
+          "water_m": 0.5,
+          "walls": "stone"
+        },
+        {
+          "name": "白川",
+          "width_m": 4.0,
+          "bank_to_water_m": 1.2,
+          "water_m": 0.25,
+          "walls": "stone"
+        }
       ],
-      "class_rules": {"canal": {"walls": "stone", "bank_to_water_m": 1.8, "water_m": 1.5}},
-      "classes": ["pond", "lake", "water", "river", "canal", "reservoir"], "min_area_m2": 250,
-      "skip": ["第１低区配水池", "第２低区配水池", "第１高区配水池", "第２高区配水地"],
+      "class_rules": {
+        "canal": {
+          "walls": "stone",
+          "bank_to_water_m": 1.8,
+          "water_m": 1.5
+        }
+      },
+      "classes": [
+        "pond",
+        "lake",
+        "water",
+        "river",
+        "canal",
+        "reservoir"
+      ],
+      "min_area_m2": 250,
+      "skip": [
+        "第１低区配水池",
+        "第２低区配水池",
+        "第１高区配水池",
+        "第２高区配水地"
+      ],
       "skip_note": "The Keage purification plant's distribution reservoirs are covered tanks."
     }
   },
@@ -102,7 +137,23 @@
       "note": "Eikan-do, Nanzen-ji, the aqueduct, the Keage incline and the path's south half: pipeline/osm_detail.py"
     }
   },
-  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
+  "trees": {
+    "susuki": {
+      "note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).",
+      "open": [
+        {
+          "land": [
+            "grassland",
+            "meadow"
+          ],
+          "land_use": [
+            "meadow"
+          ],
+          "per_ha": 5200,
+          "min_m2": 20
+        }
+      ]
+    },
     "mix": {
       "cherry": 0.2,
       "maple": 0.22,

@@ -30,7 +30,11 @@
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15
+    }
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -65,12 +69,62 @@
     "note": "No sea. The Shibuya River runs in a culvert; the Kanda River's concrete channel in the north-west corner and the ponds of Shinjuku Gyoen and Meiji Jingu are drawn at their own level (inland, pipeline/inland_water.py).",
     "inland": {
       "note": "The Kanda River about 11 m between concrete revetments 5 m down to a shallow flow (read from photographs, not measured); ponds at the 5 m laser survey's level.",
-      "lines": [{"name": "神田川", "width_m": 11.0, "bank_to_water_m": 5.0, "water_m": 0.3, "walls": "concrete"}],
-      "classes": ["pond", "lake", "water", "river", "canal"], "min_area_m2": 250
+      "lines": [
+        {
+          "name": "神田川",
+          "width_m": 11.0,
+          "bank_to_water_m": 5.0,
+          "water_m": 0.3,
+          "walls": "concrete"
+        }
+      ],
+      "classes": [
+        "pond",
+        "lake",
+        "water",
+        "river",
+        "canal"
+      ],
+      "min_area_m2": 250
     }
   },
-  "roofs": {"closed": ["r11664668"], "atrium_parts": {"r9215167": "r11664668"}, "glazed": ["w787547154"], "canopies": {"w1409752350": {"top_m": 5.0, "soffit_m": 4.3, "colour": "#3b3c3e", "roof": "#46474a"}}, "note": "pipeline/arcades.py: Sumitomo Triangle Plaza (r11664668) is a glass atrium closed on every side, not a roof on posts: its glass slopes from low eaves up to the tower (photograph, #258), and the tower's own low solids (r9215167 under 30 m, which PLATEAU files with the tower) are the atrium's other wings; the Opera City Galleria's roof (w787547154, 186 x 13 m at 26 m between the New National Theatre and Opera City) is a glazed roof spanning the walkway, with no posts under it (#258); Keio University Hospital's drop-off canopy (w1409752350) is dark charcoal and flat, its top about one storey up, under the first floor's windows (Niveous Johann's 2022 photograph from the visitors' car park, Wikimedia Commons, CC BY-SA 4.0, #323): 5.0 m, its fascia 0.7 m deep"},
-  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
+  "roofs": {
+    "closed": [
+      "r11664668"
+    ],
+    "atrium_parts": {
+      "r9215167": "r11664668"
+    },
+    "glazed": [
+      "w787547154"
+    ],
+    "canopies": {
+      "w1409752350": {
+        "top_m": 5.0,
+        "soffit_m": 4.3,
+        "colour": "#3b3c3e",
+        "roof": "#46474a"
+      }
+    },
+    "note": "pipeline/arcades.py: Sumitomo Triangle Plaza (r11664668) is a glass atrium closed on every side, not a roof on posts: its glass slopes from low eaves up to the tower (photograph, #258), and the tower's own low solids (r9215167 under 30 m, which PLATEAU files with the tower) are the atrium's other wings; the Opera City Galleria's roof (w787547154, 186 x 13 m at 26 m between the New National Theatre and Opera City) is a glazed roof spanning the walkway, with no posts under it (#258); Keio University Hospital's drop-off canopy (w1409752350) is dark charcoal and flat, its top about one storey up, under the first floor's windows (Niveous Johann's 2022 photograph from the visitors' car park, Wikimedia Commons, CC BY-SA 4.0, #323): 5.0 m, its fascia 0.7 m deep"
+  },
+  "trees": {
+    "susuki": {
+      "note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).",
+      "open": [
+        {
+          "land": [
+            "grassland",
+            "meadow"
+          ],
+          "land_use": [
+            "meadow"
+          ],
+          "per_ha": 5200,
+          "min_m2": 20
+        }
+      ]
+    },
     "mix": {
       "zelkova": 0.3,
       "ginkgo": 0.3,
@@ -448,11 +502,37 @@
     "fonts": "Ema, plaques and signs drawn with Google Fonts under the SIL Open Font License: Yomogi, Zen Kurenaido, Klee One, Yuji Syuku, Shippori Mincho, DotGothic16, RocknRoll One, Ma Shan Zheng, ZCOOL KuaiLe, Long Cang, LXGW WenKai TC, Nanum Pen Script, Caveat, Kalam"
   },
   "osm_detail": {
-    "kabukicho": {"bbox": [139.699, 35.6895, 139.705, 35.6965], "note": "Kabukicho from Yasukuni-dori to Cine City Plaza and the east exit's plaza: pipeline/osm_detail.py"}
+    "kabukicho": {
+      "bbox": [
+        139.699,
+        35.6895,
+        139.705,
+        35.6965
+      ],
+      "note": "Kabukicho from Yasukuni-dori to Cine City Plaza and the east exit's plaza: pipeline/osm_detail.py"
+    }
   },
   "night_ambient": 0.08,
   "game": {
-    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "weather": {
+      "rain_days": [
+        5.3,
+        6.1,
+        10.3,
+        10.9,
+        11.1,
+        12.8,
+        12.0,
+        9.4,
+        12.3,
+        11.8,
+        8.2,
+        5.8
+      ],
+      "threshold_mm": 0.5,
+      "drizzle": 0.55,
+      "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
+    },
     "title": "Tokyo Pilgrimage: Shinjuku 東京巡礼・新宿",
     "local_name": "Tokyoite",
     "water_name": "the river",
@@ -491,10 +571,38 @@
     "wharves": [],
     "ferries": [],
     "scrambles": [
-      {"name": "新宿駅東口 Alta-mae", "at": [392.1, 2658.6], "note": "The first of four scramble crossings in a row along Shinjuku-dori from Alta (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."},
-      {"name": "新宿通り Shinjuku-dori, the second", "at": [477.1, 2635.2], "note": "The second of the four; diagonals mapped in OSM."},
-      {"name": "新宿通り Shinjuku-dori, the third", "at": [551.9, 2595.3], "note": "The third of the four; diagonals mapped in OSM."},
-      {"name": "新宿通り Shinjuku-dori, the fourth", "at": [650.3, 2541.2], "note": "The fourth of the four; diagonals mapped in OSM."}
+      {
+        "name": "新宿駅東口 Alta-mae",
+        "at": [
+          392.1,
+          2658.6
+        ],
+        "note": "The first of four scramble crossings in a row along Shinjuku-dori from Alta (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."
+      },
+      {
+        "name": "新宿通り Shinjuku-dori, the second",
+        "at": [
+          477.1,
+          2635.2
+        ],
+        "note": "The second of the four; diagonals mapped in OSM."
+      },
+      {
+        "name": "新宿通り Shinjuku-dori, the third",
+        "at": [
+          551.9,
+          2595.3
+        ],
+        "note": "The third of the four; diagonals mapped in OSM."
+      },
+      {
+        "name": "新宿通り Shinjuku-dori, the fourth",
+        "at": [
+          650.3,
+          2541.2
+        ],
+        "note": "The fourth of the four; diagonals mapped in OSM."
+      }
     ],
     "crowd": {
       "pedestrians": 640,
@@ -1326,7 +1434,10 @@
             "text": "Wait for the rain in the shelter",
             "action": "set_weather",
             "weather": "rain",
-            "date": [6, 18],
+            "date": [
+              6,
+              18
+            ],
             "time": "08:10"
           },
           {

@@ -254,5 +254,72 @@ window.OEGulls = (function () {
     const onGround = (x, y, r) => G.filter(g => !g.air && Math.hypot(g.x - x, g.y - y) < r).length;
     return { flock: F, birds: G, update, onGround, get flying() { return G.filter(g => g.air).length; }, at: [sx, sy, sz] };
   }
-  return { create };
+  // Black kites (tobi, Milvus migrans) soaring over a coast, as over Kamakura's beaches and Enoshima: each wheels on
+  // a thermal on set wings, 1.5 m across, climbing a little with every turn and then gliding off to the next, with
+  // a few lazy beats now and then. f: { at: [x, y], count, radius_m, height_m: [low, high] } (game.json "flocks",
+  // kind "black_kite"). Three instanced meshes: bodies and each wing. They roost after dark.
+  function kiteParts() {
+    const DARK = lin('#4a3a2c'), MID = lin('#6b5540'), PALE = lin('#a58d6c'), BILL = lin('#d8c040');
+    const b = new THREE.SphereGeometry(0.1, 10, 8); b.scale(0.75, 0.6, 2.6); // the body, 0.55 m
+    const head = new THREE.SphereGeometry(0.055, 8, 6); head.translate(0, 0.01, 0.27);
+    const bill = new THREE.ConeGeometry(0.014, 0.05, 5); bill.rotateX(Math.PI / 2); bill.translate(0, 0, 0.34);
+    // the tail: long, a shallow fork, fanned a little
+    const tail = new THREE.BufferGeometry();
+    tail.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, -0.2, 0.13, 0, -0.56, 0, 0, -0.5, 0, 0, -0.2, 0, 0, -0.5, -0.13, 0, -0.56]), 3));
+    const body = parts([[b, (x, y) => (y < -0.02 ? MID : DARK)], [head, () => PALE], [bill, () => BILL], [tail, () => DARK]]);
+    // a wing, from the shoulder out along +x: the arm, then the hand swept back with its fingers, a pale patch under them
+    const w = new THREE.BufferGeometry(), P = [[0, 0, 0.12], [0.36, 0, 0.14], [0.36, 0, -0.14], [0, 0, -0.12], [0.75, 0, 0.04], [0.75, 0, -0.2], [0.62, 0, -0.17]];
+    const idx = [0, 3, 2, 0, 2, 1, 1, 2, 6, 1, 6, 4, 4, 6, 5], pos = [];
+    for (const i of idx) pos.push(...P[i]);
+    w.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    const wing = parts([[w, (x) => (x > 0.4 && x < 0.66 ? PALE : DARK)]]);
+    return { body, wing };
+  }
+  function kites(world, f) {
+    const n = Math.max(1, f.count || 6), [h0, h1] = f.height_m || [35, 90], R = f.radius_m || 220, g = kiteParts();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
+    const body = new THREE.InstancedMesh(g.body, mat, n), wl = new THREE.InstancedMesh(g.wing, mat, n), wr = new THREE.InstancedMesh(g.wing, mat, n);
+    for (const m of [body, wl, wr]) { m.frustumCulled = false; m.castShadow = false; world.add(m); }
+    const B = [];
+    for (let i = 0; i < n; i++) {
+      const a = rnd() * 6.28, d = Math.sqrt(rnd()) * R;
+      B.push({ cx: f.at[0] + Math.sin(a) * d, cy: f.at[1] + Math.cos(a) * d, r: 22 + rnd() * 30, ph: rnd() * 6.28, dir: rnd() < 0.5 ? 1 : -1, z: h0 + rnd() * (h1 - h0), v: 8 + rnd() * 3, t: rnd() * 40, flap: 0, k: 0.9 + rnd() * 0.25 });
+    }
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s3 = new THREE.Vector3(), wm = new THREE.Matrix4(), sh = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    function update(dt, x, y, onFoot, night) {
+      const up = night < 0.6;
+      body.visible = wl.visible = wr.visible = up;
+      if (!up) return;
+      B.forEach((b, i) => {
+        b.t += dt;
+        // round the thermal, rising; every so often off on a long glide to another, sinking, kept over the place
+        b.ph += b.dir * b.v / b.r * dt;
+        b.z += (b.glide > 0 ? -0.9 : 0.55) * dt;
+        if (b.glide > 0) { b.glide -= dt; b.cx += b.gx * dt; b.cy += b.gy * dt; }
+        else if (b.z > h1 || b.t > 50 + i * 7) {
+          const a = Math.atan2(f.at[0] - b.cx, f.at[1] - b.cy) + (rnd() - 0.5) * 2.2, v = 7;
+          b.glide = 6 + rnd() * 8; b.gx = Math.sin(a) * v; b.gy = Math.cos(a) * v; b.t = 0; b.flap = 1.6;
+        }
+        if (b.z < h0) { b.z = h0; b.glide = 0; }
+        b.flap = Math.max(0, b.flap - dt);
+        const px = b.cx + Math.sin(b.ph) * b.r, py = b.cy + Math.cos(b.ph) * b.r, h = b.ph + b.dir * Math.PI / 2;
+        const bank = -b.dir * Math.atan(b.v * b.v / (9.8 * b.r));
+        q.setFromEuler(e.set(-0.05, Math.PI - h, bank, 'YXZ'));
+        m4.compose(W(px, py, b.z), q, s3.set(b.k, b.k, b.k));
+        body.setMatrixAt(i, m4);
+        // the wings: held a little above level, their tips flexing in the air; a slow beat after leaving a thermal
+        const beat = b.flap > 0 ? Math.sin(b.flap * 9) * 0.45 : 0, lift = 0.1 + Math.sin(b.t * 0.7 + i) * 0.03 + beat;
+        for (const [m, sgn] of [[wl, 1], [wr, -1]]) {
+          sh.makeTranslation(sgn * 0.06, 0.03, 0.05);
+          wm.makeRotationZ(sgn * lift).multiply(new THREE.Matrix4().makeScale(sgn, 1, 1));
+          m.setMatrixAt(i, new THREE.Matrix4().multiplyMatrices(m4, sh).multiply(wm));
+        }
+      });
+      for (const m of [body, wl, wr]) m.instanceMatrix.needsUpdate = true;
+    }
+    for (const m of [body, wl, wr]) for (let i = 0; i < n; i++) m.setMatrixAt(i, zero);
+    update(0, 1e9, 1e9, false, 0);
+    return { flock: f, birds: B, update, onGround: () => 0, soaring: true, get flying() { return n; }, at: [f.at[0], f.at[1], h0] };
+  }
+  return { create, kites };
 })();
