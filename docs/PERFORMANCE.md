@@ -350,6 +350,11 @@ own beside it. Both are replaced by one governor (`web/quality.js` `OEQuality.go
   the scene inside it to 2560 x 1440's (the governor's ceiling), so a 4K display draws the scene at two
   thirds of its size and the lens brings it up.
 
+- It runs on the title's orbit as well as in play (the telemetry's slowest frames were Shibuya's title screen,
+  where nothing held them), reports each step to the telemetry (scale, what was shed, MSAA, the cap) and keeps
+  the scale the device held on each map (`localStorage` `oe3d-gov-<city>`), so the next visit starts there
+  and climbs again if it can.
+
 `tools/governor_probe.js` feeds it frames on a clock of its own (fast: it stays; 40 ms: 1.00 to 0.80, extras
 to 0, 0.60, then half rate and back up; fast again: 1.00 with every extra) and takes stills at 1.0, 0.8 and
 0.6; `tools/game_check.js` checks the order and the way back in every city. Not checkable here: how it
@@ -380,7 +385,10 @@ still run, in the view and in the shadow map), and every instance buffer was upl
 for the hour, near enough to be a skinned person, or out of the camera's sight by more than a shadow's
 length (30 m) changes places with the last one drawn, colours and all, and only the drawn range of the
 matrices and the gait is uploaded. The cars' models were already packed each frame; they take the same sight
-test and upload only the slots taken (`actors.js`).
+test and upload only the slots taken (`actors.js`). Both also ask the precomputed visibility
+(`visibility.js` `OEVis.seen`, issue 358) with the shadow's reach for the sun's height: a walker or a car
+behind the buildings, whose shadow cannot reach anything seen, takes no slot. Shibuya's scramble on foot then
+draws 2.91 million triangles in 315 draws (7.60 million in 415 on main at the start of this issue).
 
 ### The main thread
 
