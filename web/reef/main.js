@@ -146,6 +146,17 @@ async function main() {
     env.mirror.reflector.getVirtualCamera(camera).layers.set(0);
     env.mirror.target.rotateX(-Math.PI / 2);
     scene.add(env.mirror.target);
+    // the mirror is a second render of the land, the heaviest shader on the site: while the eye is still it is drawn every
+    // third frame (what it shows then changes with the clouds and the sun, slowly; the ripples that bend it are the water's
+    // own and move every frame), and every frame as soon as the eye moves (issue 382, as the cities' sea does)
+    const R = env.mirror.reflector, upd = R.updateBefore.bind(R), lastM = new THREE.Matrix4();
+    let skipped = 0;
+    R.updateBefore = frame => {
+      const still = lastM.equals(camera.matrixWorld);
+      if (still && skipped < 2 && q.get('still') === null) { skipped++; return; }
+      skipped = 0; lastM.copy(camera.matrixWorld);
+      return upd(frame);
+    };
   }
   const ocean = createOcean(d, env, hTex);
   ocean.mesh.name = 'water';

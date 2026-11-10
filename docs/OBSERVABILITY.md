@@ -117,8 +117,12 @@ A frame rate says that a device is slow, not why. From version 4 each `time` eve
 | `loaf`, `block_ms` | long frames, and the time they kept input waiting | Long Animation Frames (Chromium) |
 
 All of it is measured from outside: the script notes each WebGL 2 context as a view makes it, so the
-renderers carry no telemetry code. The reef and alpine sites draw with WebGPU and report the frame's
-tail and the main thread only. A view may add its own state with `OETelemetry.set({ ... })` (the
+renderers carry no telemetry code. The reef and alpine sites draw with WebGPU, which cannot be timed from outside:
+their page reports its own frame with `OETelemetry.gpu({ ms, draws, tris, px })` (`reef/main.js`: the GPU's time from
+three.js's timestamp queries summed over sixteen frames, where the adapter has `timestamp-query`, so Chromium on a
+desktop; a frame's draws and triangles from the renderer's `info`; the canvas's pixels), so `bound` there is `gpu` or
+`cpu` rather than `gpu?`. Their events also carry `site` (`marine` or `alpine`) and, as every page now loads
+`version.js`, the release in `app`. A view may add its own state with `OETelemetry.set({ ... })` (the
 resolution scale a governor settled on, what it shed): the fields ride on `time`, and each change is a
 `quality` event.
 

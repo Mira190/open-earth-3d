@@ -14,6 +14,9 @@ checked in stills from the same viewpoints.
 - `tools/frame_cost.js` lists every framebuffer one frame draws into (size, format, MSAA), the draws and
   triangles into each, the full-screen passes and the bytes they write, the pixels shaded and the main thread's
   time a frame; `tools/frame_sweep.sh` makes a table of it for every live city and tier.
+- `tools/reef_frame.js` does the same for a reef or alpine site on the WebGPU backend the visitors get: every render
+  and compute pass of a frame with who asked for it, its target, draws, triangles, pixels and bytes written, and the
+  GPU's time inside it by timestamp query; `ABLATE=1` adds what each thing in the scene costs.
 - `tools/views/sydney-vram.json`: a street view and an aerial view at day and night, for
   `tools/game_shot.js` before and after.
 
@@ -575,9 +578,9 @@ it. What was done, for every alpine site (Tekapo, Pukaki and Milford share `alpi
 - **Pixels.** The high tier drew the display's own pixels at up to 2× however large the window, so a Retina laptop at
   full screen drew 13 million pixels four samples each. It now stops at a 1440p display's pixels, as the cities' scene
   does (`reef/tier.js`).
-- **The governor.** The viewer now runs `OEQuality.governor()` as the cities' game does: the scene's resolution follows
-  the frame time, down to half the tier's pixel ratio and back up when there is room. Stills, films and the checks
-  keep the tier's pixels.
+- **The governor.** The viewer now runs `OEQuality.governor()` as the cities' game does (its form since issue 382 is in
+  the next section: the scene's target scaled inside the canvas and sharpened up, under the frame-rate cap, from an
+  opening budget). Stills, films and the checks keep the tier's pixels.
 
 Frame time at equal pixels, llvmpipe, 1200 × 750, high tier (`tools/reef_cost.js`), before → after: the ship shot
 1743 → 1205 ms, the aerial 2927 → 1440 ms. The base's own runs varied by a fifth between passes. Not measured: a real
