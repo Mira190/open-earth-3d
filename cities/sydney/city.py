@@ -31,6 +31,10 @@ from the data:
                       under them, are taken from a photograph of the Concert Hall side on
                       (Wikimedia Commons, "Sydney Opera House Sails.jpg"): an approximation,
                       not survey data.
+                      Under the tiles each half's precast ribs are built, fanning from its
+                      pedestal (The Arup Journal, 1973, issue 3); bronze louvre walls close the
+                      mouths round the nested shells, and glass you can see through the first and
+                      the last. The rooms under them are cities/sydney/opera_inside.py.
                       The shells carry "a subtle chevron pattern composed of 1,056,006
                       tiles in two colours: glossy white and matte cream", laid in sheets
                       on the ground (Wikipedia, Sydney Opera House, revision 1382109423);

@@ -105,7 +105,7 @@ window.OEShow = (function () {
     const el = document.createElement('div');
     el.className = 'g-surtitle'; el.hidden = true;
     el.style.cssText = 'position:absolute;left:50%;top:9%;transform:translateX(-50%);max-width:min(86vw,720px);text-align:center;pointer-events:none;z-index:6;' +
-      'font:500 clamp(15px,2.1vw,22px)/1.35 "Cormorant Garamond",Georgia,serif;color:#f3ead8;text-shadow:0 1px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.9);letter-spacing:.01em;transition:opacity .35s';
+      'font:500 clamp(15px,2.1vw,22px)/1.35 var(--f-body,Georgia,serif);color:var(--ink,#ece8e1);text-shadow:0 1px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.9);letter-spacing:.01em;transition:opacity .35s'; // (the page's own type and ink, web/index.html)
     el.innerHTML = '<div class="fr" style="font-style:italic;opacity:.82;font-size:.86em"></div><div class="en"></div>';
     host.appendChild(el);
     let cur = null;
