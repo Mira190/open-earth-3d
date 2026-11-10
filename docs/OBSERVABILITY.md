@@ -155,6 +155,17 @@ target, so it can run on a schedule.
   key there is PostHog's public capture key: it can write events but cannot read them. To stop sending
   events, empty `CONFIG.endpoint`.
 
+### Other requests to third parties
+
+Besides the events above, the pages make one kind of request to another party's server, and only when
+the visitor asks for it: **live weather** (the game menu's Weather row, **Live**, or `?weather=now`;
+docs/WEATHER.md). The browser then asks `api.open-meteo.com` for the current conditions at the city's
+own coordinates, rounded to 0.01°, at most once every 15 minutes while Live stays picked. The request
+carries no cookie, no referrer and nothing about the visitor or where they are; as with any request,
+Open-Meteo's server sees the visitor's IP address (its terms say its logs may hold coordinates and are
+deleted after 90 days). Nothing from the answer is sent on in telemetry. Without the pick, no request
+is made.
+
 ## Where the events go
 
 `CONFIG` at the top of `web/telemetry.js` chooses the destination:

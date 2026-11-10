@@ -139,7 +139,7 @@ window.OEWorld = (function () {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, { uLid: { value: m.lid_m || 2.6 }, uChev: { value: m.chevron_m || 1.8 },
-          uGloss: { value: lin('#f5f3ed') }, uCream: { value: lin('#e8ddc6') } });
+          uGloss: { value: lin('#f6f2e8') }, uCream: { value: lin('#dfd0b4') } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uLid, uChev; uniform vec3 uGloss, uCream; float pCream;')
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bay = fract(vUv.x) - 0.5, c = vUv.y - abs(bay) * uChev, lid = fract(c / uLid);
@@ -147,9 +147,13 @@ window.OEWorld = (function () {
     float cream = max(1.0 - smoothstep(0.07, 0.16, edge), 1.0 - smoothstep(0.02, 0.06, (0.5 - abs(bay)) * uChev));
     float grout = 1.0 - smoothstep(0.0, 0.02 + fw, edge);
     float near = 1.0 - smoothstep(0.08, 0.5, fw);
-    pCream = mix(0.18, cream, near);
+    // further off the lids still read, as in photographs from across the water: each lid a shade creamer towards its
+    // edges and the ribs' lines between the bays, until a lid is a pixel or two
+    float soft = pow(1.0 - edge / (0.5 * uLid), 3.0), rib = pow(abs(bay) * 2.0, 8.0);
+    float mid = 1.0 - smoothstep(0.5, 1.5, max(fw, fwidth(vUv.x) * 4.0));
+    pCream = mix(mix(0.18, 0.1 + 0.55 * max(soft, rib), mid), cream, near);
     diffuseColor.rgb = mix(uGloss, uCream, pCream) * (1.0 - 0.06 * grout * near); }`)
-          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.14, 0.6, pCream);');
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.3, 0.6, pCream);');
       };
     },
     // reconstituted granite (u, v metres): the aggregate's speckle and the joints between slabs
@@ -342,7 +346,8 @@ float tgHash(vec2 c) { return fract(sin(dot(c, vec2(27.17, 113.93))) * 31718.927
     pFrame = mix(max(max(mull, 0.8 * sec), tr), 0.2, far);
     vec2 cell = floor(vec2(u * 2.0, z / uTransom));
     diffuseColor.rgb = mix(diffuseColor.rgb * mix(0.8 + 0.4 * tgHash(cell), 1.0, far), uFrame, pFrame);
-    pLitK = (1.0 - pFrame) * mix(0.5 + 0.5 * tgHash(cell + 3.1), 0.75, far); }`)
+    pLitK = (1.0 - pFrame) * mix(0.5 + 0.5 * tgHash(cell + 3.1), 0.75, far);
+    diffuseColor.a = mix(diffuseColor.a, 1.0, pFrame); }`) // (see-through glass, "opacity": its frames are not)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.45, pFrame);')
           .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = mix(metalnessFactor, 0.55, pFrame);')
           .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= pLitK;');
@@ -532,6 +537,9 @@ vec3 scrCell(float cell, vec2 uv) {
 	// the far land takes its own air, not the view's fog (which is whole by 26 km and laid a band of
 	// one tone over the plain from a tower); it closes to the haze only toward its outer edge
 	fogFactor = max( oeFar, smoothstep( ${n(FAR_HALF * 0.6)}, ${n(FAR_HALF * 0.97)}, length( vEdgeXZ - ${c} ) ) );
+	// (in fog, falling snow or heavy rain the view's own fog has come in to a few kilometres or less, game/weather.js:
+	// the far land goes into it as everything else does, and is not left standing as a dark shore beyond the mist)
+	fogFactor = max( fogFactor, smoothstep( fogNear, fogFar, vFogDepth ) * ( 1.0 - smoothstep( 6000.0, 20000.0, fogFar ) ) );
 #endif
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
 #ifdef OE_SEA
@@ -997,7 +1005,7 @@ vec3 woodsFloor(vec3 c) {
   vec3 path = vec3(0.29, 0.26, 0.21) * (0.86 + 0.28 * woodN(p * 8.0));
   g = mix(g, path, smoothstep(0.2, 0.6, m.b));
   return mix(c, g, k);
-}`).replace('#include <emissivemap_fragment>', 'diffuseColor.rgb = woodsFloor(diffuseColor.rgb);\n#include <emissivemap_fragment>');
+}`).replace('#include <emissivemap_fragment>', `diffuseColor.rgb = ${/oeSn = oeSnowOn/.test(sh.fragmentShader) ? 'mix(woodsFloor(diffuseColor.rgb), diffuseColor.rgb, oeSn)' : 'woodsFloor(diffuseColor.rgb)'};\n#include <emissivemap_fragment>`); // (settled snow, game/weather.js, lies over the wood's floor)
     };
     const gradePhoto = sh => {
       clipGround(sh);
@@ -1746,7 +1754,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
       // a bridge's deck, or paving ("street_lit"), under the street lights and the screens' glow
-      if ((m.pattern === 'deck_zones' || m.street_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
+      // (and "lamp_lit": what stands in that light without being ground, a platform's doors and its canopy's posts)
+      if ((m.pattern === 'deck_zones' || m.street_lit || m.lamp_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
       if (m.pattern === 'deck_zones' || m.street_lit) lmMats[k].userData.paving = true; // ground you walk on: it gets wet in the rain (weather.js)
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
@@ -1833,7 +1842,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       let r = 0;
       for (const a of pr.at) r = Math.max(r, c.distanceTo(W(a[0], a[1], a[2])));
       for (const part of pr.parts) {
-        const im = new THREE.InstancedMesh(lmGeometry(part), byText(part.floodlit ? floodlit(part.material) : lmMats[part.material]), pr.at.length);
+        const im = new THREE.InstancedMesh(lmGeometry(part), lmMaterial(part), pr.at.length); // (sheltered, as a mesh is: a hall's seats in the dark)
         pr.at.forEach((a, i) => {
           imP.set(a[0], a[2], -a[1]); imQ.setFromAxisAngle(UP, a[3]); imS.set(a[4] || 1, 1, a[4] || 1);
           im.setMatrixAt(i, im4.compose(imP, imQ, imS));

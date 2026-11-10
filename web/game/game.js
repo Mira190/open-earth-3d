@@ -137,13 +137,14 @@ window.OpenEarthGame = async function game(cityId) {
   if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
   // shaders compiled before their first frame, in the variant the post stack draws with (world.js compile):
   // the scene behind the loader, and what comes once the game is open (the helicopter's model)
-  const compileFor = (obj, scene = world) => OEWorld.compile(renderer, obj, camera, { scene, target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null });
+  const compileFor = (obj, scene = world) => { if (weather && obj && obj.traverse) weather.dress(obj); return compileFor0(obj, scene); }; // (what has just loaded takes the weather's patch before its first compile)
+  const compileFor0 = (obj, scene = world) => OEWorld.compile(renderer, obj, camera, { scene, target: atmos && atmos.composer ? atmos.composer.renderTarget1 : null });
   // a model that comes once the game is open: its textures sent in idle time, a texture a frame, then its
   // shaders compiled, before it is shown (issue 201; world.js upload)
   const uploadFor = obj => (OEWorld.upload ? OEWorld.upload(renderer, obj) : Promise.resolve());
   const warmFor = obj => uploadFor(obj).then(() => compileFor(obj));
   // the weather: dry, overcast, drizzle or rain, as the city's climate brings it for the date (weather.js)
-  const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {}, wind: (scene.water || {}).waves || null }) : null;
+  const weather = window.OEWeather ? OEWeather.create(Wd, renderer, camera, { climate: G.weather || null, QC, sky: G.sky || {}, wind: (scene.water || {}).waves || null, geo: scene.city && Number.isFinite(scene.city.lat) ? { lat: scene.city.lat, lon: scene.city.lon } : null }) : null;
   if (atmos && atmos.composer) {
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
     const clear = Wd.world.userData.clarity || 1; // a city's clear air (far.json clarity, world.js)
@@ -266,7 +267,7 @@ diffuseColor.rgb *= mix(1.0, 0.86 + 0.26 * agg, roadway * near);
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
 diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * pnear));`);
     // in the rain: darker, glossier ground, and puddles on the roads and the paving (weather.js)
-    if (window.OEWeather && (!weather || weather.armed)) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', porous: 0.42 });
+    if (window.OEWeather && (!weather || weather.armed)) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', tread: '1.0 - green', porous: 0.42 });
     Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
     if (Wd.skyLit) Wd.skyLit(sh); // the sky the ground sees, on its ambient light (world.js, issue 358)
   };
@@ -375,6 +376,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // would cost seconds at the start, nav.js; paving, padded 0.3 m in those cells, stays under 0.45)
   const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
   deckPlan.columns = OEDecks.clearColumns(deckPlan.runs, (x, y, z, r) => roadsNow.depth(x, y, z, r), inWall);
+  // a deck over a railway (the expressway on Circular Quay Station's roof): the station carries it on its own
+  // columns, and none of the deck's stands within a train's width of a track
+  if (G.trains) {
+    const near = (c, t) => { const p = t.p, rz = p[2] / 10; if (c.z1 < rz + 1 || c.z0 > rz + 4) return false; const r = 3.2 + Math.max(c.hx, c.hy);
+      for (let k = 0; k + 5 < p.length; k += 3) { const ax = p[k] / 10, ay = p[k + 1] / 10, bx = p[k + 3] / 10 - ax, by = p[k + 4] / 10 - ay, u = Math.max(0, Math.min(1, ((c.x - ax) * bx + (c.y - ay) * by) / (bx * bx + by * by || 1)));
+        if (Math.hypot(c.x - ax - bx * u, c.y - ay - by * u) < r) return true; } return false; };
+    for (const r of deckPlan.runs) if (r.cols) r.cols = r.cols.filter(c => !G.trains.tracks.some(t => near(c, t)));
+  }
   world.add(OEDecks.mesh(deckPlan.runs, OEWorld.lin));
   // under the decks drawn over the water, the photograph of the same bridge or expressway lies on the bottom
   // and showed through the water as a road on the riverbed (Tokyo's Nihonbashi under the Shuto, issue 65):
@@ -439,7 +448,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (bankLanes) for (const r of G.paths.road) { const p = r.p, n = p.length; if (n >= 6) { ends.add(EK(p[0] / 10, p[1] / 10)); ends.add(EK(p[n - 3] / 10, p[n - 2] / 10)); } }
   const nearEnd = (x, y) => { for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (ends.has(EK(x + a * 12, y + b * 12))) return true; return false; };
   const byWall = (x, y) => !!(bankLanes && D.inland.byWall(x, y, 1.2) && bankLanes.depth(x, y, nav.terrain(x, y), 3) > 0 && !nearEnd(x, y));
-  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && (byWall(x, y) ? !(roadsNow.depth(x, y, g, 0.35) > 0) : !inRoad(x, y, g, 0.4)) && !underDeck(x, y, g, 8) ? g : null; });
+  // (nor beside a station's open platform, a strip the data knows nothing of: its crown would stand in through the side)
+  const byPlatform = (x, y, g) => nav.strips.some(st => { if (st.mapped !== false || st.zs[0] - g > 14) return false; const [u, v] = nav.stripUV(st, x, y); return u >= st.us[0] - 6 && u <= st.us[st.us.length - 1] + 6 && Math.abs(v) <= st.half_width + 6; });
+  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !byPlatform(x, y, g) && !inWall(x, y, g, 0.3) && (byWall(x, y) ? !(roadsNow.depth(x, y, g, 0.35) > 0) : !inRoad(x, y, g, 0.4)) && !underDeck(x, y, g, 8) ? g : null; });
   // night.js's poles, behind the kerb: where one would be in a wall, its lamp hangs on a bracket there
   // (and one beside a deck, in the road or under it, goes)
   if (Wd.night && Wd.night.hidePoles) Wd.night.hidePoles((x, y, z) => !inWall(x, y, z, 0.1) && !inRoad(x, y, z, 0.1) && !inRoad(x, y, nav.terrain(x, y), 0.1) && !underDeck(x, y, z, 7));
@@ -719,9 +730,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
     // seated (game.json npcs[].sit, at a restaurant's table or in a pew: at its place exactly, the chair's seat over
     // the root, facing sit.face), else stood where there is room
-    const p = n.sit && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } : nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
+    const p = (n.sit || n.stand) && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } /* ("stand": on their feet at that place exactly, facing stand.face: behind a bar, on a stage) */ : nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
       { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
-    const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: n.sit && n.sit.face ? Math.atan2(n.sit.face[0], n.sit.face[1]) : hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
+    const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: (n.sit || n.stand || {}).face ? Math.atan2((n.sit || n.stand).face[0], (n.sit || n.stand).face[1]) : hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
     o.marker.position.set(0, n.sit ? 1.95 : 2.45, 0);
@@ -798,6 +809,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   for (const w of G.wharves) { const p = nav.stand(w.terminal[0], w.terminal[1], 2, { rMax: 90, room: 100 }); w.landing = p ? [p.x, p.y] : w.terminal.slice(); }
   // street trams and a funicular, where the city has them (rail.js)
   const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
+  // a main line's trains past its station, where the city has them (trains.js): heard from the camera
+  const trains = G.trains && window.OETrains ? OETrains.create(world, G, { hour: () => clock.min / 60, listener: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }) }) : null;
   const railRide = () => (G.rail && (G.rail.funicular || G.rail.gondola)) || {}; // the line a rider takes: a funicular or a gondola
   const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
   // neighbourhood signs, things to look at and conversations to overhear (places.js), and lifts between a
@@ -807,6 +820,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // doors that open as you come up to them, and the rooms behind them (game.json "doors", "interiors": doors.js)
   const doors = window.OEDoors ? OEDoors.create({ G, world }) : null;
   let room = null; // the room you are in, for its name as you step in
+  // seats you can take (a table by the glass, a chair in a foyer, the stalls), and what plays before one (show.js)
+  const shows = window.OEShow && ((G.seats || []).length || (G.shows || []).length) ? OEShow.create({ G, A, world, host: $('#g-toasts').parentNode, toast: (...a) => H.toast(...a), npcs: () => npcs }) : null;
+  function sitDown(st) {
+    player.seatFrom = { x: player.x, y: player.y, z: player.z, h: player.h };
+    Object.assign(player, { mode: 'seat', x: st.at[0], y: st.at[1], z: st.at[2], h: st.h, speed: 0, ground: true, vz: 0 });
+    cam.lookYaw = 0; cam.lookPitch = st.pitch || 0; cam.lastInput = -10;
+    shows.sit(st);
+  }
+  function standUp() {
+    const st = shows.seat, f = player.seatFrom;
+    shows.stand();
+    const p = (f && nav.stand(f.x, f.y, f.z + 0.5, { rMax: 3 })) || nav.stand(player.x, player.y, player.z + 0.5, { rMax: 4 }) || f || player;
+    Object.assign(player, { mode: 'foot', x: p.x, y: p.y, z: p.z, h: st ? st.h : player.h, speed: 0, ground: true, vz: 0 });
+    cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.3; cam.dist = 5.5;
+    player.rig.root.visible = true;
+  }
   function liftStop(x, y, z) {
     for (const l of lifts) for (let i = 0; i < l.stops.length; i++) {
       const s = l.stops[i];
@@ -2324,6 +2353,30 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const colonies = (G.wildlife || []).map(c => OEPenguins.create(world, c, A, nav.terrain)).filter(Boolean);
   // and silver gulls round a dropped box of chips by the water (gulls.js), marked on the map
   const flocks = (G.flocks || []).map(f => OEGulls.create(world, f, A, nav));
+  // ------------------------------------------------------------ fishing from the shore (docs/FISHING.md). Only where the spots are
+  // comes with the game (game.json "fishing", a city that has it: pipeline/fishing.py). fishing.js and the city's
+  // fishing.json are fetched the first time you are on foot within sight of a spot, and what they draw is made on
+  // the first cast and freed when you walk away, so nobody pays for fishing they do not do.
+  const fish = G.fishing && G.fishing.spots && G.fishing.spots.length ? { spots: G.fishing.spots, api: null, loading: null, look: 0 } : null;
+  const fishSpot = r => (player.mode === 'foot' ? fish.spots.find(sp => Math.hypot(sp.at[0] - player.x, sp.at[1] - player.y) < r) : null);
+  function fishLoad() {
+    if (fish.loading) return fish.loading;
+    const code = window.OEFishing ? Promise.resolve() : new Promise((ok, no) => { const el = document.createElement('script'); el.src = 'game/fishing.js'; el.onload = ok; el.onerror = () => no(new Error('game/fishing.js did not load')); document.head.appendChild(el); });
+    fish.loading = Promise.all([code, fetch(D.DATA + G.fishing.file).then(r => { if (!r.ok) throw new Error(`${G.fishing.file}: ${r.status}`); return r.json(); })]).then(([, data]) => {
+      if (!running) return null;
+      fish.api = OEFishing.create({ THREE, world, nav, player, cam, camera, H, A, data, cityId, clock, sun: () => sun, rain: () => (weather ? weather.state.rain : 0), tier: QC.name, reduced, touch, stage,
+        key: k, time: () => clockT, ui: () => dlg.open || uiOpen() || cine.active || photo.on,
+        walkTo: (x, y, label, then, cancel) => { player.auto = { x, y, t: 0, label, then, cancel }; },
+        stamp: (stamp, title) => { const id = `fish-${stamp.toLowerCase().replace(/\W+/g, '-')}`; if (!qs.stamps.some(q => q.id === id)) { qs.stamps.push({ id, stamp, title, at: fmtMin(clock.min) }); renderPassport(); save(); } A.thump(); H.stamp(stamp, title); } });
+      return fish.api;
+    }).catch(e => { fish.loading = null; fish.look = clockT + 30; console.warn(`fishing: ${e.message}`); return null; }); // (offline, say: asked for again in half a minute)
+    return fish.loading;
+  }
+  // each step: fetch it when a spot comes within sight, and then run it (the rises on the water, a line that is out)
+  function fishTick(dt, side) {
+    if (fish.api) fish.api.step(dt, side);
+    else if (clockT > fish.look) { fish.look = clockT + 1; if (fishSpot(160)) { fish.near = true; fishLoad(); } }
+  }
   let dayLim = null; // sunrise and sunset for the game's date, worked out once a day
   const dayLimits = () => { const k = `${clock.y}-${clock.m}-${clock.d}`; if (!dayLim || dayLim.k !== k) dayLim = Object.assign({ k }, S.dayLimits(clock.y, clock.m, clock.d)); return dayLim; };
   let viewingNoted = false;
@@ -2514,6 +2567,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function presetTime(kind) {
     clock.scale = clock.scale === 1 ? 1 : 30;
     if (kind === 'live') { const now = S.utcToLocal(Date.now()); return setClock(now.y, now.m, now.d, now.minutes); }
+    if (kind === 'postcard') return setClock(clock.y, clock.m, clock.d, OEPostcards.lightTime(DISTRICT.light, clock.y, clock.m, clock.d)); // (the light of the postcard you came by)
     setClock(clock.y, clock.m, clock.d, S.presetTime(kind, clock.y, clock.m, clock.d) ?? 600);
   }
   // the buttons for those, each with its clock time on the clock's date (the title's choice and the menu's row)
@@ -2736,7 +2790,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // ------------------------------------------------------------ daily life (life.js and the modules on it: the day
   // and its diary, bonds, jobs, the phone). The game lends them the clock, the HUD and the player, tells them what
   // happens (life.emit) and asks them what E does at a place of theirs; none of them draws the world.
-  const life = window.OELife ? OELife.create({ cityId, cityName: CITY.place || CITY.name, country: CITY.country, G, S, H, A, dlg, $, on, stage, touch, reduced, signal: ac.signal,
+  const life = window.OELife ? OELife.create({ quiet: () => !!(window.__game && window.__game.shows && window.__game.shows.playing), cityId, cityName: CITY.place || CITY.name, country: CITY.country, G, S, H, A, dlg, $, on, stage, touch, reduced, signal: ac.signal,
     clock, setClock: (...a) => setClock(...a), player, npcs, npcById: id => npcById(id), fmtMin, said: t => said(t), fill: t => fill(t), get weather() { return weather; },
     get sun() { return sun; }, now: () => clockT, labels: () => scene.labels || {}, travel: () => G.travel || [],
     waypoint: w => { waypoint = w; }, held: () => simHold, place: (x, y, z) => placeNear(x, y, z, null, 30), ground: (x, y) => nav.terrain(x, y), get cam() { return cam; }, world, map: () => toggleMap(), photo: () => photoMode(true), camera, W: (...a) => W(...a), car: () => myCar, ride: () => ride,
@@ -2755,6 +2809,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         + `<span><b>Trig stations</b><span class="note">${n ? VP.filter(v => trigDone()[v.id]).map(v => v.name).join(', ') : 'Survey the view from each one'}</span></span></li>`; })() : '');
     $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id)).length}/${Q.length}`;
     if (life && life.passport) life.passport($('#g-pass .g-panel')); // the skills, under the stamps (jobs.js)
+    // the postcards that have come from this map (the title screen's pile, postcards.js), newest first
+    if (window.OEPostcards) OEPostcards.album(CITY.id, window.OE_CITIES || []).then(cards => {
+      const box = $('#gp-post');
+      if (!box) return;
+      box.hidden = !cards.length;
+      const list = box.querySelector('ol');
+      list.textContent = '';
+      for (const k of cards) {
+        const li = document.createElement('li'), img = new Image(240, 160), b = document.createElement('b'), n = document.createElement('span');
+        img.src = k.src; img.alt = ''; img.loading = 'lazy';
+        b.textContent = k.spot.name; n.className = 'note'; n.textContent = `${k.date} · ${k.time}`;
+        li.append(img, b, n); list.append(li);
+      }
+    }).catch(() => {});
   }
   // labels: landmarks, wharves, the helipad, NPC names
   const labelsEl = $('#g-labels'), labels = [];
@@ -2764,6 +2832,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   for (const h of G.helipads) addLabel(`<span class="tag h">H</span>${h.name}`, () => W(h.at[0], h.at[1], h.at[2] + 6), 400, 'wharf');
   for (const v of VP) addLabel(`<span class="tag t">△</span>${v.name}`, () => W(v.x, v.y, v.z + 3.2), 260, 'wharf');
   for (const f of flocks) addLabel(`<span class="tag g">${GULL}</span>${f.flock.name}`, () => W(f.at[0], f.at[1], f.at[2] + 3.4), 220, 'wharf');
+  if (fish) for (const sp of fish.spots) { const p = W(sp.at[0], sp.at[1], Math.max(0, nav.terrain(sp.at[0], sp.at[1])) + 3.2); addLabel(`<span class="tag f">≈</span>${sp.name}`, () => p, 240, 'wharf'); }
   for (const n of npcs) addLabel(`${n.name}<span class="role">${n.role}</span>`, () => W(n.x, n.y, n.z + (n.marker.visible ? 3.0 : 2.15)), 40, 'npc');
   const tmpV = new THREE.Vector3();
   function updateLabels() {
@@ -2992,6 +3061,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       return;
     }
     if (!phone.el.hidden && /^Digit[1-9]$/.test(c) && phone.acts[+c.slice(5) - 1]) { phone.acts[+c.slice(5) - 1](); return; }
+    if (fish && fish.api && fish.api.busy() && fish.api.key(c)) return; // the rod's own keys while a line is out
     if (c === 'KeyE' || c === 'KeyF' && !(player.mode === 'ferry' || player.mode === 'rail' || player.mode === 'ride')) interact();
     else if (c === 'KeyF' && (player.mode === 'ferry' || player.mode === 'rail')) skip = !skip;
     else if (c === 'KeyF' && player.mode === 'ride') skipRide();
@@ -3029,6 +3099,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (photo.on) { photo.az += dx * 0.006; photo.pitch = Math.max(-0.35, Math.min(1.5, photo.pitch + dy * 0.005)); photoSync(); return; }
     if (closeup) { closeup.c.turn(-dx * 0.004, -dy * 0.003); return; }
     if (player.mode === 'heli' && cam.mode === 'cockpit') { cam.lookYaw = Math.max(-2.4, Math.min(2.4, cam.lookYaw - dx * 0.005)); cam.lookPitch = Math.max(-1.1, Math.min(0.8, cam.lookPitch - dy * 0.004)); }
+    else if (player.mode === 'seat') { cam.lookYaw = Math.max(-1.9, Math.min(1.9, cam.lookYaw + dx * 0.004)); cam.lookPitch = Math.max(-0.7, Math.min(0.9, cam.lookPitch - dy * 0.0035)); } // in a seat: you turn your head
     else { cam.yawTo = null; cam.yaw += dx * 0.006; cam.pitch = Math.max(-0.25, Math.min(1.35, cam.pitch + dy * 0.005)); }
     cam.lastInput = clockT;
   });
@@ -3134,6 +3205,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function currentAction() {
     if (closeup) return { key: 'E', text: 'Step back', act: closeupEnd };
     if (dlg.open || uiOpen() || cine.active || OEOnboard.active()) return null; // nothing to start while the tour is showing
+    if (player.mode === 'seat') return { key: 'E', text: 'Stand up', act: standUp };
+    if (fish && fish.api && fish.api.busy()) return fish.api.action(); // a line is out (fishing.js)
     if (player.mode === 'lift') return { key: '', text: liftRide && liftRide.phase === 'ride' ? `To ${liftRide.b.name}…` : liftRide && liftRide.phase === 'call' ? 'The car is coming…' : '' };
     if (player.mode === 'board') return { key: '', text: boarding.dir > 0 ? (boarding.t < 0.3 ? 'Opening the door…' : 'Climbing aboard…') : (boarding.t < 0.25 ? 'Engine off. Opening the door…' : 'Climbing out…') };
     if (player.mode === 'heli') {
@@ -3156,6 +3229,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let bn = null, bd = 3.2;
     for (const n of npcs) { const d = Math.hypot(n.x - player.x, n.y - player.y); if (d < bd && Math.abs(n.z - player.z) < 2) { bd = d; bn = n; } }
     if (bn) return { key: 'E', text: `Talk to ${bn.name}`, act: () => talkTo(bn) };
+    if (fish) { // at a fishing spot (the first time, the code comes with the key press)
+      const sp = fish.api ? null : fishSpot(14), a = fish.api ? fish.api.action() : sp && { key: 'E', text: `Fish at ${sp.name}`, act: () => fishLoad().then(api => (api ? api.start() : H.toast('The tackle did not arrive. Try again in a moment.'))) };
+      if (a) return a;
+    }
     if (ride && (ride.phase === 'waiting' || backIn(ride)) && offCar(ride, player.x, player.y) < 4 && Math.abs(ride.drv.st.z - player.z) < 2) {
       const again = ride.phase === 'leaving' || ride.prev ? 'back ' : '';
       return { key: 'E', text: ride.kind === 'taxi' ? `Get ${again}in the taxi` : `Get ${again}in ${ride.name}'s ${rideCar(ride)}`, act: () => { if (ride.phase === 'leaving') backAgain(); boardRide(); } };
@@ -3170,6 +3247,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     const ls_ = liftStop(player.x, player.y, player.z);
     if (ls_) { const to = (ls_.i + 1) % ls_.l.stops.length; return { key: 'E', text: `Take the lift to ${ls_.l.stops[to].name}`, act: () => rideLift(ls_.l, ls_.i, to) }; }
+    const seatHere = shows && shows.near(player.x, player.y, player.z);
+    if (seatHere) return { key: 'E', text: seatHere.verb || 'Sit down', act: () => sitDown(seatHere) };
     const sp = places && places.spotNear(player.x, player.y, player.z);
     if (sp) return { key: 'E', text: sp.verb || `Look at ${sp.name}`, act: () => lookAt(sp) };
     const tv = VP.find(v => Math.hypot(v.x - player.x, v.y - player.y) < 7 && Math.abs(v.z - player.z) < 3);
@@ -4551,6 +4630,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     weather.set(b.dataset.w, { keep: true });
     menuSync();
     const s = weather.season(clock.y, clock.m, clock.d, clock.min);
+    if (b.dataset.w === 'now') {
+      weather.onNow = w => H.toast(w ? `Live weather: ${OEWeather.describe(Object.assign({}, OEWeather.S, { kind: w.storm ? 'storm' : w.snow > 0.06 ? 'snow' : w.rain > 0.5 ? 'rain' : w.rain > 0.06 ? 'drizzle' : w.fog > 0.3 ? 'fog' : w.cloud > 0.6 ? 'overcast' : 'clear', cover: w.cloud, rain: w.rain, snow: w.snow, fog: w.fog, temp: w.temp, windSpeed: w.wind }))}. <a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a>` : 'Live weather could not be reached: the season\'s weather carries on.');
+      H.toast('Live weather: asking Open-Meteo for this city\'s conditions (only the city\'s coordinates are sent).');
+      return;
+    }
     H.toast(b.dataset.w === 'live' ? `Weather as the season brings it: ${s.rain > 0.5 ? 'rain' : s.rain > 0.06 ? 'drizzle' : s.cloud > 0.6 ? 'overcast' : 'fair'} now` : `Weather: ${OEWeather.NAMES[b.dataset.w]}`);
   });
   setRouteMode(routeMode);
@@ -4649,7 +4733,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   spawn();
   // a link to a district of the map ("#play-shibuya@t-sancha", from the subway map or shared): the title
   // screen is set there, over that place and under its name, and the game starts there, not at the map's start
-  const DISTRICT = window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+  // or where a postcard was taken ("#play-kyoto@pc-gate.dusk", from the title screen's postcards: postcards.js):
+  // the game starts on the photographer's spot, looking the way the photograph does, in its light
+  const DISTRICT = window.OE_ARRIVE && ((G.travel || []).find(t => t.id === window.OE_ARRIVE)
+    || (/^pc-/.test(window.OE_ARRIVE) && window.OEPostcards ? OEPostcards.arrival(await OEPostcards.load(), CITY.id, window.OE_ARRIVE) : null));
   if (DISTRICT) {
     spawn(DISTRICT.at, DISTRICT.at[2] != null ? DISTRICT.at[2] + 0.5 : undefined, lookOf(DISTRICT));
     const nm = /^(.*?)\s+([\u3000-\u9fff\uff00-\uffef][^A-Za-z]*)$/.exec(DISTRICT.name) || [0, DISTRICT.name]; // (the name in its own script after it, if it ends the name)
@@ -4670,6 +4757,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (sun.altitude < -2) { // arriving at night shows little; offer the morning first
     presetTime('morning');
     $$('#gt-timechoice button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === 'morning')));
+  }
+  if (DISTRICT && DISTRICT.postcard) { // a postcard's light, offered first: the place as the photograph has it
+    presetTime('postcard');
+    $$('#gt-timechoice button').forEach(b => b.setAttribute('aria-pressed', 'false'));
+    const b = document.createElement('button');
+    b.dataset.t = 'postcard'; b.dataset.label = 'As on the postcard'; b.setAttribute('aria-pressed', 'true');
+    b.innerHTML = `As on the postcard<span class="num">${fmtMin(clock.min)}</span>`;
+    $('#gt-now').after(b);
   }
   const saved = loadSave();
   if (saved) $('#gt-continue').hidden = false;
@@ -4834,14 +4929,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // remembered for the next visit, and a weather the player chose keeps its wet streets and grey sky and loses
   // only the drops); then resolution to its floor. The people keep their models and the city its detail: a
   // crowd of boxes is not a city. Resolution, the reflections and the contact shadows come back as the frame
-  // time allows; the weather's own steps stay as they are until the next visit (its note to the player says so).
+  // time allows, and so does the weather this session's shedding took (weather.js shed: a device that began with it off keeps it off).
   let fpsWarned = false;
   gov.on((extras, scale, extrasChanged) => {
     resize();
     if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras }); // (each step is a "quality" event: telemetry.js)
     if (!extrasChanged) return;
     console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`);
-    if (weather) { const lv = extras >= 1 ? 0 : extras > 0 ? 1 : 2; if (weather.shed < lv) weather.shed = lv; } // (weather.js keeps what it shed)
+    if (weather) weather.shed = extras >= 1 ? 0 : extras > 0 ? 1 : 2; // (two-way: weather.js gives back what this session's shedding took, and keeps off what started off)
     if (mirror && mirror.on) mirror.off = extras < 1;
     if (atmos && atmos.ao && atmos.ao.limit) atmos.ao.limit(extras >= 1 ? 2 : extras > 0 ? 1 : 0);
     if (extras === 0 && !fpsWarned && !navigator.webdriver) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
@@ -4888,14 +4983,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       sunState = sun.altitude <= 0 ? 'night' : S.sunlit(DSM, px, py, pz, sun) ? 'sun' : 'shade';
       $('#g-sun').dataset.s = sunState;
       const wx = weather ? weather.state : null;
-      if (wx && wx.rain > 0.06) { sunState = 'rain'; $('#g-sun').dataset.s = 'rain'; }
-      $('#g-sun span').textContent = sunState === 'rain' ? `${wx.kind === 'rain' ? 'Rain' : 'Drizzle'} · ${wx.covered ? 'under cover' : 'in the open'}`
+      if (wx && (wx.rain > 0.06 || wx.snow > 0.06)) { sunState = 'rain'; $('#g-sun').dataset.s = 'rain'; }
+      else if (wx && wx.kind === 'fog') { sunState = 'fog'; $('#g-sun').dataset.s = 'shade'; }
+      $('#g-sun span').textContent = sunState === 'rain' ? `${wx.kind === 'storm' ? 'Thunderstorm' : wx.kind === 'snow' ? 'Snow' : wx.kind === 'rain' ? 'Rain' : 'Drizzle'} · ${wx.covered ? 'under cover' : 'in the open'}`
+        : sunState === 'fog' ? `Fog · ${Math.round(wx.temp)}°`
         : sunState === 'night' ? 'Sun down' : sunState === 'sun' ? `In sun · ${sun.altitude.toFixed(0)}°` : `In shade · sun ${sun.altitude.toFixed(0)}°`;
       if (!paused) checkSteps();
     }
     if (!paused) simulate(dt);
     if (!paused) { crossingSound(dt); if (!(overture && overture.active)) walkCalls.update(dt, camera); } // (the overture's score has the birds' calls in it)
-    else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
+    else { if (places) places.hush(); if (trains) trains.hush(); } // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli' && !simHold) nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame (held by a harness: advance() lays them, below)
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     if (titleOn && titleYaw != null && !simHold) { titleT += dt; titleYaw = openingHere() ? openingView().yaw + OPENING.sway * Math.sin(titleT * 0.06) : DISTRICT ? titleYaw0 + 0.3 * Math.sin(titleT * 0.05) : titleYaw + dt * 0.05; }
@@ -4951,7 +5048,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         // on foot, the minimap opens out to show the car coming and the pick-up, as the app's map does
         if (player.mode === 'foot') radius = Math.max(radius, Math.min(480, 1.18 * Math.max(Math.hypot(st.x - player.x, st.y - player.y), Math.hypot(ride.pickup.x - player.x, ride.pickup.y - player.y))));
       }
-      for (const n of npcs) { const hot = wantsTalk(n); n.marker.visible = hot && !dlg.open && !(overture && overture.active); if (hot) icons.push({ kind: 'npc', x: n.x, y: n.y, color: '#e0a21a', pin: true }); }
+      for (const n of npcs) { const hot = wantsTalk(n); n.marker.visible = hot && !dlg.open && !photo.on && !(overture && overture.active); if (hot) icons.push({ kind: 'npc', x: n.x, y: n.y, color: '#e0a21a', pin: true }); }
       for (const o of sideObjectives()) icons.push({ kind: 'quest2', x: o.at[0], y: o.at[1] });
       if (ob && ob.at) icons.push({ kind: 'quest', x: ob.at[0], y: ob.at[1], pin: true });
       if (waypoint) icons.push({ kind: 'waypoint', x: waypoint[0], y: waypoint[1], pin: true });
@@ -4997,15 +5094,24 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!idle) { const n = weather.takeNote(); if (n) H.toast(n); }
     const fx = player.mode === 'heli' ? heli.st.x : player.mode === 'ferry' ? player.vehicle.x : player.x, fy = player.mode === 'heli' ? heli.st.y : player.mode === 'ferry' ? player.vehicle.y : player.y;
     const fz = player.mode === 'heli' ? heli.st.z + 1 : player.mode === 'ferry' ? 3 : player.z + 1.7;
+    weather.groundY = W(fx, fy, Math.max(0, nav.terrain(fx, fy))).y; // (the ground where you are: fog thins above it, lightning strikes down to it)
     weather.update(dt, clockT, W(fx, fy, fz));
-    if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(weather.state.rain);
-    if (A.rain) A.rain(titleOn ? 0 : weather.state.rain, weather.covered() && player.mode === 'foot', player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli');
+    const wS = OEWeather.S, inside = player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli';
+    if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(Math.max(wS.rain, wS.snow * 0.7)); // (umbrellas go up in the snow too)
+    if (A.rain) A.rain(titleOn ? 0 : wS.rain, weather.covered() && player.mode === 'foot', inside);
+    // the cicadas of a hot day: from 25 degrees up, by daylight, silent in the rain
+    if (A.cicadas) A.cicadas(titleOn ? 0 : Math.max(0, Math.min(1, (wS.temp - 24.5) / 4)) * wS.day * (1 - Math.min(1, wS.rate * 4)) * (inside ? 0.2 : 1));
+    if (!weather.onThunder) weather.onThunder = d => { if (A.thunder && $('#g-title').hidden) A.thunder(d, player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli'); };
+    // the wind's own sound, from a fresh breeze up, louder in the gusts (the helicopter's rush of air is its own: simulate)
+    if (A.wind && player.mode !== 'heli') A.wind(titleOn ? 0 : Math.max(0, Math.min(1, (wS.windSpeed - 4.5) / 14)) * (inside ? 0.35 : 1), wS.gust);
   }
   function simulate(dt) {
     const fwd = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;
     const side = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0) + joy.x;
     const held = dlg.open || !!closeup || cine.label === 'hop' || cine.label === 'survey' || cine.label === 'closer' || (cine.active && cine.label === 'overture');
-    if (player.mode === 'foot') walkStep(dt, held ? 0 : fwd, held ? 0 : side);
+    const angling = !!fish && !!fish.api && fish.api.on(); // standing with a line out: the rod has the keys
+    if (player.mode === 'foot' && angling) { player.speed = 0; gaitChip(player.walking ? 'walk' : 'run'); player.rig.animate(dt, 0, 'ground', clockT); }
+    else if (player.mode === 'foot') walkStep(dt, held ? 0 : fwd, held ? 0 : side);
     else if (player.mode === 'board') boardStep(dt);
     else if (player.mode === 'heli') {
       const lift = (k('Space') ? 1 : 0) - (k('KeyC') || k('ShiftLeft') || k('ShiftRight') ? 1 : 0) + touchLift;
@@ -5017,6 +5123,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       }
       A.rotor(heli.st.rotor, Math.abs(lift) + Math.abs(fwd) * 0.5);
       A.wind(Math.min(1, heli.st.speed / 60));
+      player.rig.animate(dt, 0, 'sit', clockT);
+    } else if (player.mode === 'seat') {
       player.rig.animate(dt, 0, 'sit', clockT);
     } else if (player.mode === 'lift') {
       liftStep(dt);
@@ -5031,6 +5139,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       A.engine(0.3 + Math.min(1, Math.abs(v.speed) / 9) * 0.7);
       player.rig.animate(dt, 0, 'ground', clockT);
     }
+    if (fish) fishTick(dt, held ? 0 : Math.max(-1, Math.min(1, side)));
     if (coachHeli) coachHeli.update(dt); // (on into the step out, once landed)
     if (player.mode !== 'heli') { heli.update(dt, {}, []); A.rotor(heli.st.rotor * Math.max(0, 1 - Math.hypot(heli.st.x - player.x, heli.st.y - player.y) / 300)); }
     if (player.mode !== 'heli' && player.mode !== 'board') heliToPad();
@@ -5039,6 +5148,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const here = waitFerry && fer.vessels.find(q => fer.stopOf(q) === waitFerry && (!wantTo || q.stops.includes(wantTo)));
     if (here) { waitFerry = null; H.toast(`${here.name} is alongside. <kbd>E</kbd> to board.`); }
     fer.update(dt, skip && player.mode === 'ferry' ? FERRY_SKIP : 1, clockT, waitFerry ? FERRY_WAIT : 1);
+    if (trains) trains.update(dt, camera);
     if (rail) {
       rail.update(dt, clockT, [player.mode === 'foot' ? player : null, ...npcs], player.mode === 'rail' && skip);
       for (const ev of rail.events.splice(0)) {
@@ -5128,6 +5238,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     cars.update(dt, cx, cy, clockT, blockers);
     // a driver getting out of your car's way sounds its horn, fainter the farther off (actors.js DODGE_T)
     for (const h of cars.honks.splice(0)) A.honk(Math.max(0.15, 1 - h.d / 40) * 0.8, h.bus ? 0.72 : 0.9 + Math.random() * 0.2);
+    if (shows) shows.update(dt);
     if (places) {
       // the area caption waits for a quiet screen: no conversation, menu, map, phone, photo mode or
       // onboarding (anything marked data-hush that is showing holds it too)
@@ -5138,8 +5249,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (doors && doors.doors.length) {
       // (you open them: the locals stand or sit where they are, and one at a table near the door
       // mustn't hold it open)
-      doors.update(dt, [player.mode === 'foot' ? player : null]);
-      const r = player.mode === 'foot' ? doors.roomAt(player.x, player.y, player.z) : null;
+      doors.update(dt, [player.mode === 'foot' || player.mode === 'seat' ? player : null]); // (seated in the stalls, the curtain stays up)
+      const r = player.mode === 'foot' || player.mode === 'seat' ? doors.roomAt(player.x, player.y, player.z) : null;
       if (r !== room) { if (r && !cine.active) H.toast(`<b>${r.name}</b>${r.note ? `<span>${r.note}</span>` : ''}`); room = r; if (window.OEVis) OEVis.hold('room', !!r); }
     }
   }
@@ -5363,6 +5474,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     live.up.set(0, 1, 0);
     const veh = player.mode === 'car' ? myCar : player.mode === 'ride' ? ride : null, vs = veh && stOf(veh);
     if (veh && cam.mode === 'cabin') { cabinView(dt, veh, vs); return; }
+    if (player.mode === 'seat' && shows && shows.seat) { // from the seat, through your own eyes
+      const st = shows.seat, yaw = st.h + cam.lookYaw, p = cam.lookPitch;
+      eye.copy(W(st.at[0] + st.face[0] * 0.08, st.at[1] + st.face[1] * 0.08, st.at[2] + (st.eye || 1.12)));
+      live.pos.copy(eye);
+      live.look.set(eye.x + Math.sin(yaw) * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z - Math.cos(yaw) * Math.cos(p) * 10);
+      live.half = 170;
+      camTarget.copy(eye); camSmooth.copy(eye);
+      player.rig.root.visible = photo.on; // (through your own eyes: your hard hat is not in them)
+      return;
+    }
     let tx, ty, tz, follow;
     // (in the helicopter it looks a little ahead into a turn, as a chase camera leads a vehicle round a bend)
     if (player.mode === 'heli') { tx = heli.st.x; ty = heli.st.y; tz = heli.st.z + 2.5; follow = heli.st.h + heli.st.yawRate * 0.3 * Math.min(1, heli.st.speed / 15); }
@@ -5779,7 +5900,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (touch) {
       $('#gt-down').hidden = player.mode === 'ferry' || player.mode === 'ride';
       $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : player.mode === 'car' ? 'Horn' : 'Guess';
-      $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : 'Jump';
+      $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : (fish && fish.api && fish.api.button()) || 'Jump'; // (Cast and Reel with a line out: fishing.js)
       // (at the wheel there is nothing to run: the button is the autopilot's)
       const run = $('#gt-run'), txt = player.mode === 'car' ? 'Auto' : 'Run';
       if (run.textContent !== txt) run.textContent = txt;
@@ -5870,10 +5991,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
+  window.__game = { pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
   return {
-    stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
+    stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
 };

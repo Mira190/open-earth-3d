@@ -112,14 +112,25 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
     Joan Sutherland Theatre, turned 22° from it, and the Bennelong restaurant's
     back-to-back pair. Each shell is two spherical triangles of Utzon's 75.2 m
     sphere, mirror images that share the ridge, with their ribs fanning out
-    from the pedestals where the legs of the shell's arch stand. Side shells,
+    from the pedestals where the legs of the shell's arch stand. Under the
+    tiles the ribs are built: each half shell's precast ribs side by side,
+    fanning from its pedestal and deepening towards the ridge beam (The Arup
+    Journal, 1973, issue 3: the ribs' centre lines 3.65° apart, their section
+    from a solid T at the pedestal to an open Y; photographs of the ribs from
+    below, Wikimedia Commons, "Precast concrete panels and concrete ribs that
+    hold the roof - Sydney Opera House (16634956472).jpg", CC BY 2.0, a
+    reference only). Round the shells nested in the mouths of the ones behind
+    (A2, A3, B2, B3) stand bronze louvre walls, as built; the others' mouths
+    are glass (the same paper: "every shell mouth has a glass wall except"). Side shells,
     with glass under them, roof the flanks between the shells that stand back
     to back. How wide each shell spans is measured from the outline of the OSM
     roof parts. The shells carry the chevron pattern of glossy white and matte
     cream tiles, with tile lids between the ribs. The glass walls hang from the
     arches: topaz glass on bronze mullions, drawn on the glass by its shader
     (`topaz_glass` in `web/world.js`) with a thinner mullion between and
-    transoms every 2.7 m, each pane its own reflection. After dark the foyers
+    transoms every 2.7 m, each pane its own reflection. The glass is see-through
+    (the panes; the frames are not): from outside the ribs and the foyers show
+    behind it, from inside the harbour. After dark the foyers
     light them pane by pane, and the floodlit shells are the brightest thing in
     the view, as in night photographs.
   - **Bennelong Point round it** (`bennelong()` in `cities/sydney/city.py`): the
@@ -343,6 +354,42 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
   and the Blender scene all read the same `web/data/sydney` files. What you see is
   what is analysed.
 
+### Circular Quay Station
+
+The station was one box 15.6 m high (OpenStreetMap way 51065527) with the Cahill Expressway's deck
+drawn over it. `cities/sydney/rail.py` builds what the box stood for, on OpenStreetMap's two tracks
+("City Inner", "City Outer") and the station's two platform edges (`pipeline/rail_osm.py`,
+`cities/sydney/rail_osm.json`):
+
+- **Three levels.** The quay's paving and a concourse where a shop block stood, open through from
+  Alfred Street to the wharves; the railway on its deck, the rail 6.8 m under the roof; and the roof
+  at the box's own height, the expressway's level, so the Cahill Walk's lookout stands as it did.
+- **The platforms**: 170 m, the mapped edges, 6.5 m wide, one either side of the two tracks. Both
+  are open along their backs behind a glass balustrade, between the columns that carry the roof:
+  from platform 1 you look across the tracks and platform 2 to Sydney Cove, the Harbour Bridge on
+  the left and the Opera House on the right. Benches with the station's name on their backs, the
+  name in white on a lit orange box hung by each platform's edge and facing across the tracks, the platforms' boards and
+  indicators (`rail_signs.webp`), tube lights under the roof; blue tactile tiles and a yellow line along each edge.
+- **Stairs** from the concourse up to each platform; a tunnel's mouth at each end of the viaduct,
+  where the City Circle goes underground.
+- **The trains** (`web/game/trains.js`): Waratah sets, eight double-deck cars modelled after photographs
+  of the A sets (steel shell, skirts that hide the bogies, a yellow line along the foot, yellow doors), one each way every
+  five minutes and never both at once, so the harbour is in view between them. Platform 1 goes to
+  Central by Wynyard and Town Hall, platform 2 by St James and Museum. The platform announces each
+  in English ("The next train to arrive on platform 2 goes to Central, via St James and Museum"),
+  and the train is heard as it comes in. There is no ambient bed.
+- From the map: "Circular Quay Station, platform 1". Three people stand on platform 2.
+
+![Circular Quay from platform 1 at dusk: platform 2's benches, the cove and the Harbour Bridge](../images/sydney/circular-quay-platform-dusk.jpg)
+
+![Platform 2: the Opera House across the cove](../images/sydney/circular-quay-platform-2.jpg)
+
+![A Waratah set at platform 2: skirts over the bogies, the two rows of windows, yellow doors](../images/sydney/circular-quay-waratah.jpg)
+
+Not modelled: lifts and escalators, the ticket gates, the shops' fronts under the viaduct one by
+one. The platforms have no doors, as the real ones have none; a clear wall at the edge keeps a
+walker off the track. You cannot board.
+
 ## 4. Replicating it in Blender
 
 `blender/build_scene.py` imports `bpy`, builds the scene from `web/data/sydney` and
@@ -549,6 +596,55 @@ it can only show a picture of it.
 - In headless Chromium with software rendering (SwiftShader), it loads and
   builds in about 10 s. A GPU browser is much faster.
 
+### Inside the Opera House
+
+The halls, their foyers and the restaurant can be walked into
+(`cities/sydney/opera_inside.py`; the game's doors, rooms, seats and the
+performance are in docs/GAME.md, "Doors and rooms" and "Seats and shows").
+
+What is published, and where it was read:
+
+| | figure | source |
+|---|---|---|
+| Plan | Concert Hall west, Joan Sutherland Theatre east, Bennelong under the smallest shells to the south-west; the foyers "completely encircle" each venue, the northern ones look down the harbour | venue technical specifications (Sydney Opera House, 2024); Conservation Management Plan, 4th edition (Croker, 2017) |
+| Levels (AHD) | forecourt 3.60, Box Office 9.14, podium and bars 12.80, northern foyer mural level 15.54, "granite" level 18.59 | CMP, table 5.1 |
+| Joan Sutherland Theatre | 1,503 seats (stalls 865, circle 466, boxes 158); proscenium opening 11.35 m wide, up to 7.10 m high; a flat stage, wings "extremely limited"; pit for up to 70 players; walls and ceiling of carabeen plywood painted matt black, brush box floor, white birch seats in red wool; black velour house curtain | technical specification, 28 March 2024 |
+| Concert Hall | stage front 14.5 m wide, 12.3 m deep, 0.9 m over the stalls; ceiling 15 m over the stage at the middle; brush box walls and floor, white birch ceiling, white birch seats in magenta wool; 18 magenta petals over the stage since 2022; the Grand Organ 15 m high, 13 m wide, 109 tin pipes in its front | technical specification, January 2024; Hall, "The Design of the Concert Hall" (1973); Sydney Opera House, "Preserving the Grand Organ" |
+| Foyers | red for the theatre and its foyers, purple for the Concert Hall's; brush box bars with polycarbonate spheres on poles; the auditoria's brush-box-clad "carcass", the pedestals standing in the side foyers; Olsen's *Salute to Five Bells* (about 21 × 3 m) in the Concert Hall's northern foyer, Jagamara's *Possum Dreaming* (10 × 1.8 m) in the theatre's | CMP |
+| Bennelong | terraces that continue the steps outside, the ribs bare overhead | Tonkin Zulaikha Greer's fit-out, 2015 (tzg.com.au) |
+
+How it is drawn from that:
+
+- **Fitted under the shells as built here.** The shells stand on the ridges
+  OpenStreetMap maps at sizes read from photographs (section 8), and no
+  measured survey of the inside is published in a form to redraw. So each
+  hall is laid out in its own frame along its ridges, and every wall and
+  ceiling stops half a metre to a metre short of the ribs and louvres over
+  it: the exterior's own meshes are sampled on a half-metre grid
+  (`Envelope`), and a wall is as high as that leaves room for. The theatre's
+  house is 22.8 m wide and 27.5 m long, the Concert Hall's 29.2 m by 36 m.
+- **One level.** The floors are the podium's deck at 14.7 m, the level the
+  Monumental Steps reach here. The real foyers climb two storeys from the
+  southern foyer (12.80 m) to the northern one (18.59 m), and the real
+  auditoria have a circle and boxes over the stalls: here each hall has its
+  stalls on one rake (693 seats in the theatre, 1,320 in the Concert Hall,
+  nearly two thirds of them taken), and the pit is at the stalls' level
+  behind its rail, not sunk.
+- **The route** is the real one: up the steps, through the glass doors of
+  the southern foyer under the first shell, north along a side foyer past
+  the carcass and the pedestals' fans, and into the northern foyer with its
+  bar against the auditorium's rear wall and chairs along the glass. The
+  stalls' doors open off the side foyers onto the cross aisle before the
+  first row; the stage is at the south end.
+- **The stage** of the theatre carries a set for *Carmen*'s first act drawn
+  for this page (a square in Seville: a whitewashed wall with the factory's
+  arched gate, a guardhouse, a fountain, a sky cloth), not a production's.
+  The murals are panels in each work's ground colour: the paintings are in
+  copyright and are not reproduced.
+- **The budget:** 2,013 seats and 1,274 seated figures are 9 instanced
+  draws (40 and 82 triangles each), drawn within 110 and 90 m; the rooms'
+  fittings within 140 m; landmarks.bin grew from 0.20 to 0.31 MB.
+
 ### The Opera House precinct, and the budget it keeps
 
 The brief was a precinct as faithful as an open-world game's hero landmark
@@ -605,6 +701,9 @@ numbers stay valid because the geometry they depend on is unchanged.
 
 ## 8. Limitations
 
+- **Inside the Opera House.** One level where the building has four, no
+  circle or boxes, and rooms sized to the shells as modelled here, not to
+  the building's own drawings (see "Inside the Opera House").
 - **Opera House shell layout.** The sphere radius and the Concert Hall's 67 m
   are published, and the Joan Sutherland Theatre's 61 m was measured with
   LiDAR by others. The ridges are OSM traces of an aerial photo that is not a

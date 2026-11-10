@@ -35,6 +35,14 @@ game take the same tier. [docs/TITLE.md](docs/TITLE.md) covers the sequence, the
 references it draws on (Flight Simulator, Death Stranding, Hitman), the
 rendering and the tiers.
 
+While you are away, the other surveyor keeps travelling and sends postcards: a
+photograph from a real spot in a live city, in the light the real sun gave it at
+the minute it is dated, with a line of their diary. They wait in a small pile on
+the menu, and **Go there** on one starts the game on that spot.
+[docs/POSTCARDS.md](docs/POSTCARDS.md) covers the idea, the journey and the stills.
+
+![A postcard on the title screen](docs/images/title/postcard.jpg)
+
 | Sydney in the browser | Height sources | Testing a tower against the planning rule |
 |---|---|---|
 | ![](docs/images/sydney/screenshot-overview.jpg) | ![](docs/images/sydney/screenshot-provenance.jpg) | ![](docs/images/sydney/screenshot-tower.jpg) |
@@ -164,6 +172,10 @@ behind you, and you can fly it from the cockpit (<kbd>V</kbd>).
 - what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the
   Discovery Tour;
 - where this game does better than they do.
+
+[docs/FISHING.md](docs/FISHING.md): fishing from the shore, a pilot in Sydney Harbour and on
+Lake Wakatipu, with the harbour's and the lake's own fish, legal lengths and seasons. Its code
+and data load only when you walk up to a spot.
 
 [docs/ENGINES.md](docs/ENGINES.md) studies what to take from Unreal Engine and
 other engines: movement, cameras, crowds, interaction and gameplay. Three of

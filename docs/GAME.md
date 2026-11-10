@@ -58,6 +58,11 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
 | ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
 
+A game can also start from a postcard: the title screen's pile of them
+([POSTCARDS.md](POSTCARDS.md)) opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
+where the photograph was taken, with "As on the postcard" offered as the time to start at. A
+map's passport lists the postcards that have come from it.
+
 ## Playing
 
 | Keys | What they do |
@@ -73,6 +78,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>J</kbd> | Diary: today's date, weather and calendar, who is free, the work on offer, and pass the time (see [Daily life](#daily-life-the-day-the-diary-bonds-skills-and-jobs)) |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
+| <kbd>E</kbd> at a `≈` | Fish from the shore, at the spots Sydney and Queenstown have for now: <kbd>Space</kbd> casts, strikes and winds ([docs/FISHING.md](FISHING.md)) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
@@ -461,6 +467,7 @@ listed at the end.
 | **Arcade racers** (Need for Speed, Burnout, Forza Horizon) | Handling for fun rather than a tyre model: speed-sensitive steering, grip of about 1 g that bends the car's path round to where it points, a handbrake drift, a view that widens with speed, and an engine note that climbs through the gears. | They are set on closed roads. Here you drive the real streets, among traffic that keeps to its lane. |
 | **Ship Simulator Extremes** | Docking as the skill moment: the ferry runs on autopilot across open water, then you bring her alongside and are scored. | Reviewers found its long cruises boring. Here the open-water legs can be skipped, and docking is optional. |
 | **Assassin's Creed Discovery Tour** | Guided learning by place: each stop is a person who explains what is in front of you, with "behind the data" honesty. | Its narration was called dry. Here the lines are short and come from the model, such as the share of Martin Place in sun on 21 June at 12:30, computed while you stand there. |
+| **Mini Tokyo 3D** (MIT; three.js on a map) and **Densha de GO!** | From Mini Tokyo 3D: every train of a line drawn on its real track from a timetable, as a function of the clock. From Densha de GO!: the station as the place where the railway is felt, with its chime, its announcement and the melody before the doors close. Ideas only; no code or assets. | Mini Tokyo 3D draws trains as coloured boxes on a map seen from above. Here you stand on the platform: the cars have their doors and liveries, and you hear them pass. |
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
 | **Assassin's Creed viewpoints** | Climb to a high point, and the camera turns once round you while the names fill in. | Its viewpoints reveal what designers placed there. Here what is named is what is in sight from that spot: a line of sight through the model to each roof, with the source of each height. |
 | **GTA V character switch** | The fast-travel camera goes up, across the city and down onto the player, instead of cutting. | Its sky camera hides streaming. Here it keeps the city in one piece, and the cruise height clears the tallest roof on the route. |
@@ -795,6 +802,41 @@ pipeline writes. The only city-specific code is landmark geometry in
   they pull away. A funicular's two cars hang on one cable: one climbs while the
   other comes down, and they pass at the loop. You ride it like a ferry, from
   station to station, and the HUD shows your height and the gradient.
+- **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
+  `game.json` "trains" carries (Tokyo's through Yurakucho, `cities/tokyo/rail.py`; Sydney's City
+  Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
+  A station's `style` picks its announcements: JR East's in Japanese and English, or Sydney
+  Trains' in English.
+  - A service is a stock, a number of cars, a headway and an offset; a train's place is a
+    function of the time alone (cruise, brake at 0.9 m/s², stand, pull away), so there is no
+    state to keep and a harness can ask where any train is at any second.
+  - The cars ride on their two bogies along the course and are instanced, one draw call per
+    material of each kind of car. They are drawn only between the sheds' mouths at the ends
+    (`hide_m`).
+  - The commuter cars (E233 and E235) and Sydney's Waratah are modelled in Blender
+    (`blender/build_railstock.py` -> `web/assets/vehicles/railstock.glb`): a real cross-section
+    with widened sides, windows and doors set back in the skin, a cab face raked back with its
+    black glazed mask wrapped round the corners, headlamp clusters, a snowplough skirt and a
+    tight-lock coupler, bolsterless bogies with coil springs, air springs, motors and brake
+    units, underfloor equipment, the air conditioners and a single-arm pantograph on its
+    insulators. Occlusion is baked into the vertex colours; a decimated copy is drawn beyond
+    60 to 85 m (40 m on the low tier). One model serves every line: the surfaces that take a
+    line's colour (`Door`, `Band`, `Band2`, `Top`, `Face`) are painted from the stock in
+    `STOCK`. Until the file has come, or where it cannot, the cars are box models drawn in code.
+    The high-speed train is still drawn in code.
+  - The windows show the saloon by interior mapping: each pixel of the glass follows the ray
+    from the eye into a box the size of the car's inside and shades the floor, the ceiling
+    and its lamps, the bench seats and far windows, and the adverts over them; dim behind the
+    reflections by day, the carriage's own light after dark. A double-decker has two decks.
+  - Sound (`audio.js`): the three nearest trains have a voice each (rumble, rail joints,
+    motors, a Shinkansen's air), panned left or right of the camera. Within the station's
+    hearing the platform plays its chime, announcement, door chime and departure melody. The
+    words are spoken by `speechSynthesis` where the browser has a voice for the language, and
+    always captioned (`#g-announce`). Nothing sounds between trains.
+  - A strip the data knows nothing of (a platform, its stairs) is marked `"mapped": false`:
+    `decks.js` then leaves the mapped footways that pass under it on the ground.
+  - Check: `xvfb-run -a node tools/trains_check.js tokyo` (or `sydney`) (the step `tools/game_check.js`
+    runs, on its own).
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
@@ -2148,6 +2190,45 @@ up. After dark its walls, floor and lamps glow warm (floodlit materials), and la
 day too (`glow_day`). The furnishings carry `far` (110 m; 60% of that on a small device, `web/world.js`), so
 a phone draws the room's shell and lit windows from across town and its pews and tables only nearby. An NPC
 with `sit` (`{face: [dx, dy]}`, at `[x, y, z]`) is placed exactly there, seated, facing that way.
+One with `stand` (`{face}`, at `[x, y, z]`) stands exactly there on their feet: behind a bar, on a stage.
+
+A hall on a podium that is itself a building (the Opera House's) gives its floor as a strip too, level with the
+roof it lies on: near a strip on a roof `web/game/nav.js` reads the landmark's walls, doors and furniture into
+its quarter-metre cells from the deck up, and not as 2 m cells from the ground under the building. A room may
+open off another (the stalls off the foyers): `tools/interior_step.js` asks only that you have left the room
+you walked out of.
+
+### Seats and shows
+
+A city can offer seats to take and a performance to watch from them (game.json `seats` and `shows`, from its
+landmark builder; `web/game/show.js`). Sydney's are in the Opera House (`cities/sydney/opera_inside.py`): the
+stalls of both halls, chairs along the northern foyers' glass, a table at Bennelong.
+
+- **A seat** (`{id, name, verb, at, face, eye, pitch, show}`): within a metre and a half, <kbd>E</kbd> offers
+  its `verb` ("Take your seat", "Sit at the table"). Seated you look out through your own eyes from `eye`
+  metres over the seat, the way it faces; drag to turn your head; <kbd>E</kbd> stands you up where you were.
+  Your own figure is not drawn from the seat (photo mode draws it again).
+- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, bars, lines}`)
+  begins when you take a seat that names it. The house lights (`dim`, mesh names) go down as the oboe gives
+  the A, the house claps the conductor in, and the scene is sung by the NPC `singer` on the stage, with its
+  lines as surtitles: the line as sung and, under it, in English. It ends in applause and plays again while
+  you keep your seat. The city's score rests while it plays (`web/game/life.js`).
+- **Nothing is recorded.** The voice is synthesised in the browser as a source and filter: a sawtooth
+  through five formant band-passes (the alto table in the Csound manual's appendix "Formant Values": numbers,
+  used as data), with vibrato that comes in a fifth of a second after a note's start, a glide between slurred
+  notes, a breath of noise and a lift near 3 kHz, the singer's formant. Under it the cellos' ostinato and
+  pizzicato strings are plucked triangle and sawtooth tones, the tambourine and the applause are filtered
+  noise, and the hall is a convolution with 1.5 s of decaying noise. Sydney's show is the Habanera from
+  *Carmen* (Bizet, 1875; libretto by Meilhac and Halévy; the tune after Iradier's *El arreglito*, 1863): music
+  and words are in the public domain. The notes (`cities/sydney/opera_score.json`) were transcribed from a lead
+  sheet and checked against the themes in Barlow and Morgenstern's dictionary; the syllables under them outside
+  the first phrase and the refrain were set by count, not from the vocal score, and the major-key repeat, the
+  chorus's in the opera, is given to the soloist. The English lines are this project's own. What was looked at
+  and not adopted: Pink Trombone (Neil Thapen, MIT), an articulatory model, heavier than a formant voice needs.
+- `tools/seat_step.js` (in `tools/game_check.js`; on its own, `tools/seat_probe.js`) takes one seat of each
+  kind: the action must offer it, you must be seated at it looking its way with your eyes 0.8 to 1.5 m over
+  it, and stand up on foot; at a show the clock must run, the lights go down, the singer sing and the first
+  line's surtitle read as written.
 
 ## Routes
 
@@ -2925,6 +3006,21 @@ deadlock or a meeting at a shared berth takes to show.
 
 ## Sources
 
+- Trains: [Mini Tokyo 3D](https://github.com/nagix/mini-tokyo-3d) (Akihiko Kusanagi, MIT: trains on
+  their tracks from the timetable; ideas only), JR East's releases on platform doors
+  ([2021](https://www.jreast.co.jp/press/2021/20210406_ho01.pdf)) and
+  [鉄道コム on Yurakucho's](https://www.tetsudo.com/report/105/) (the Yamanote Line's in 2014),
+  [Wikipedia, E235 series](https://en.wikipedia.org/wiki/E235_series) (20 m cars, 2.95 m wide, 3.62 m
+  high), the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 16 cars); the high-speed
+  train drawn on it is this project's own design, not a model of an operator's stock.
+  The modelled cars (`blender/build_railstock.py`): the Japanese Wikipedia articles on the
+  [E233](https://ja.wikipedia.org/wiki/JR東日本E233系電車) and [E235](https://ja.wikipedia.org/wiki/JR東日本E235系電車)
+  series (body 19.5 m, 2.95 m over the widened sides, floor 1.13 m, doors 1.3 m by 1.85 m 4.82 m
+  apart, bogie centres 13.8 m, wheelbase 2.1 m, 860 mm wheels), Wikipedia's
+  [Sydney Trains A & B sets](https://en.wikipedia.org/wiki/Sydney_Trains_A_%26_B_sets) (20.4 m,
+  3.03 m, 4.41 m), and photographs on Wikimedia Commons for the faces, roofs, bogies and
+  underfloor equipment; no logo, lettering or number is reproduced. Interior mapping after
+  Joost van Dongen's "Interior Mapping" (2008), written here from the idea.
 - Scrambles: [LIVE JAPAN on Shibuya Crossing](https://livejapan.com/en/in-tokyo/in-pref-tokyo/in-shibuya/article-a0002128/)
   (the cycle and the walk), [Wikipedia, Shibuya Crossing](https://en.wikipedia.org/wiki/Shibuya_Crossing)
   (1,000 to 3,000 people a walk), [乗りものニュース on its single diagonal](https://trafficnews.jp/post/122022),
