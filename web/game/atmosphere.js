@@ -255,10 +255,10 @@ window.OEAtmos = (function () {
     uniforms: { tDiffuse: { value: null }, tDepth: { value: null }, uReversed: { value: 0 }, uInvProj: { value: new THREE.Matrix4() }, uDepth: { value: 0 },
       uHaze: { value: new THREE.Vector3(0.2, 0.22, 0.4) }, uHazeD: { value: 1500 }, uHazeK: { value: 0 }, uRim: { value: 0 }, uRimC: { value: new THREE.Vector3(0.7, 0.6, 1.0) },
       uRes: { value: new THREE.Vector2(1, 1) }, uK: { value: 0 }, uRadius: { value: 3 }, uGrade: { value: 0 },
-      uSunUv: { value: new THREE.Vector2(0.5, 0.5) }, uSunVis: { value: 0 }, uRays: { value: 0 }, uWarm: { value: new THREE.Vector3(1.0, 0.82, 0.62) } },
+      uSunUv: { value: new THREE.Vector2(0.5, 0.5) }, uSunVis: { value: 0 }, uRays: { value: 0 }, uStreak: { value: 0 }, uWarm: { value: new THREE.Vector3(1.0, 0.82, 0.62) } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
-      uniform sampler2D tDiffuse, tDepth; uniform vec2 uRes, uSunUv; uniform float uK, uRadius, uGrade, uSunVis, uRays, uReversed, uDepth, uHazeD, uHazeK, uRim;
+      uniform sampler2D tDiffuse, tDepth; uniform vec2 uRes, uSunUv; uniform float uK, uRadius, uGrade, uSunVis, uRays, uStreak, uReversed, uDepth, uHazeD, uHazeK, uRim;
       uniform vec3 uWarm, uHaze, uRimC; uniform mat4 uInvProj; varying vec2 vUv;
       float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
       // the distance of what the pixel shows (1e6 for the sky), from the scene's depth (reversed or not)
@@ -300,6 +300,17 @@ window.OEAtmos = (function () {
           float w0 = 1.0 / (1e-5 + v0 * v0 * 4e3), w1 = 1.0 / (1e-5 + v1 * v1 * 4e3), w2 = 1.0 / (1e-5 + v2 * v2 * 4e3), w3 = 1.0 / (1e-5 + v3 * v3 * 4e3);
           vec3 k = (m0 * w0 + m1 * w1 + m2 * w2 + m3 * w3) / (w0 + w1 + w2 + w3);
           c = mix(c, k, uK);
+        }
+        // after dark, the lens a film's night is shot through: each lamp, lit sign and headlight drawn out sideways into
+        // a thin streak in its own colour (an anamorphic lens's flare), longer the brighter it is
+        if (uStreak > 0.0) {
+          vec2 px = vec2(uRes.y / 900.0) / uRes; vec3 acc = vec3(0.0);
+          for (int i = 1; i <= 14; i++) {
+            float f = float(i), w = exp(-f * 0.24); vec2 o = vec2(f * f * 0.5 + f * 2.0, 0.0) * px;
+            vec3 a = texture2D(tDiffuse, vUv + o).rgb, b = texture2D(tDiffuse, vUv - o).rgb;
+            acc += (a * smoothstep(0.8, 1.0, max(a.r, max(a.g, a.b))) + b * smoothstep(0.8, 1.0, max(b.r, max(b.g, b.b)))) * w;
+          }
+          c += acc * 0.075 * uStreak * vec3(0.85, 0.93, 1.12);
         }
         // light: rays from the sun over the bright pixels on the way to it, and a halation of the brightest
         if (uSunVis > 0.0 && uRays > 0.0) {
@@ -552,7 +563,7 @@ window.OEAtmos = (function () {
         if (!o) return true;
         const A = anime.uniforms, z = renderer.getDrawingBufferSize(new THREE.Vector2());
         A.uRes.value.set(z.x, z.y); A.uK.value = o.k || 0; A.uRadius.value = o.radius ?? 3; A.uGrade.value = o.grade || 0;
-        A.uRays.value = o.rays || 0; A.uSunVis.value = o.sunVis || 0; if (o.sunUv) A.uSunUv.value.copy(o.sunUv);
+        A.uRays.value = o.rays || 0; A.uSunVis.value = o.sunVis || 0; if (o.sunUv) A.uSunUv.value.copy(o.sunUv); A.uStreak.value = o.streak || 0;
         anime.depthOn = !!(rt && rt.depthTexture) && ((o.haze || 0) > 0 || (o.rim || 0) > 0);
         A.uHazeK.value = o.haze || 0; A.uRim.value = o.rim || 0; if (o.hazeD) A.uHazeD.value = o.hazeD;
         if (o.hazeC) A.uHaze.value.set(...o.hazeC); if (o.rimC) A.uRimC.value.set(...o.rimC);

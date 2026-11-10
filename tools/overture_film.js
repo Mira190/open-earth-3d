@@ -5,7 +5,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/overture_film.js shibuya --stills [--k 0.1,0.5,0.9]   # stills of each shot
 //   xvfb-run -a node tools/overture_film.js shibuya                            # the film, with its score
-// Options: --size 1440x900 (or 390x844 for a phone), --fps 24, --date 4-2 (month-day; the guide follows
+// Options: --shots a,b (stills of those shots only), --size 1440x900 (or 390x844 for a phone), --fps 24, --date 4-2 (month-day; the guide follows
 // the season: a petal, a leaf, a flake or a mote), --time sunset-25 (HH:MM, or sunrise/sunset +- minutes),
 // --frames <dir> (kept, so an interrupted film resumes), --out <file.mp4>, --tier high, PORT (8800).
 // It also checks the cut: the camera's clearance over the roofs and that it sees the guide, shot by shot.
@@ -95,7 +95,9 @@ async function stills() {
   const ks = String(opt('k', '0.1,0.5,0.9')).split(',').map(Number);
   const dir = path.join(FRAMES, 'stills');
   fs.mkdirSync(dir, { recursive: true });
+  const pick = opt('shots', null);
   for (const s of info.shots) {
+    if (pick && !String(pick).split(',').includes(s.id)) continue;
     for (const k of ks) {
       const t = s.t0 + k * s.dur;
       // seek the overture's shot there, then let a few frames settle the ground's detail and the type

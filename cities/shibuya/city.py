@@ -2165,7 +2165,7 @@ MATERIALS.update({
     # the plinth's speckled grey granite and the step's dark tiles; the setts laid in arcs round him, their
     # dark bands and pale blossoms; the planters' walls of upright granite strips and their caps; stainless rails
     "hk_bronze": {"color": "#4a3a2b", "roughness": 0.52, "metalness": 0.75},
-    "hk_worn": {"color": "#75593a", "roughness": 0.34, "metalness": 0.88},
+    "hk_worn": {"color": "#75593a", "roughness": 0.44, "metalness": 0.85},
     "hk_plinth": {"color": "#77746f", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0]},
     "hk_step": {"color": "#45474a", "roughness": 0.6, "metalness": 0.0, "pattern": "granite", "joints_m": [0.2, 0.2]},
     "hk_setts": {"color": "#696b6e", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.11, 0.11], "decal": True, "street_lit": True},
