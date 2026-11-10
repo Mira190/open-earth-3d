@@ -146,6 +146,63 @@ hashes) and the lens's (the same by night and with the sun out of frame; six mor
 tier while the sun is in it). A software renderer's frame times do not tell these apart; a real GPU was not
 available.
 
+#### Stills: before and after, every live map
+
+Each sheet is one map from where its game starts, on foot, at 1440 x 900 on the high tier: 13:00, 35 minutes before
+sunset, 18 minutes after it, 21:30, and 15:00 in rain. The upper row is main before this work (60ff3b75), the
+lower row the same views after it. The eight Japanese maps have the `shinkai` preset, Sydney and Queenstown
+`film`.
+
+**Shibuya**
+
+![Shibuya: main above, the look below; day, golden hour, blue hour, night, rain](images/look/shibuya.jpg)
+
+**Tokyo (Marunouchi and Ginza)**
+
+![Tokyo (Marunouchi and Ginza): main above, the look below; day, golden hour, blue hour, night, rain](images/look/tokyo.jpg)
+
+**Shinjuku**
+
+![Shinjuku: main above, the look below; day, golden hour, blue hour, night, rain](images/look/shinjuku.jpg)
+
+**Kyoto**
+
+![Kyoto: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kyoto.jpg)
+
+**Higashiyama**
+
+![Higashiyama: main above, the look below; day, golden hour, blue hour, night, rain](images/look/higashiyama.jpg)
+
+**Fushimi Inari**
+
+![Fushimi Inari: main above, the look below; day, golden hour, blue hour, night, rain](images/look/fushimi-inari.jpg)
+
+**Tetsugaku-no-michi**
+
+![Tetsugaku-no-michi: main above, the look below; day, golden hour, blue hour, night, rain](images/look/tetsugaku.jpg)
+
+**Kamakura**
+
+![Kamakura: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kamakura.jpg)
+
+**Sydney**
+
+![Sydney: main above, the look below; day, golden hour, blue hour, night, rain](images/look/sydney.jpg)
+
+**Queenstown**
+
+![Queenstown: main above, the look below; day, golden hour, blue hour, night, rain](images/look/queenstown.jpg)
+
+The same views at a phone's size (390 x 844, the look only; five hours across, a map to each block: Fushimi
+Inari, Higashiyama, Kamakura, Kyoto, Queenstown, Shibuya, Shinjuku, Sydney, Tetsugaku-no-michi, Tokyo). These were
+drawn on the high tier at a phone's frame, not on a phone: a phone picks its own tier, and on the low one the
+light shafts are compiled out.
+
+![Ten maps at a phone's size](images/look/phone.jpg)
+
+A day in 24 seconds, from before sunrise to night, over Shibuya's scramble and over Higashiyama:
+`xvfb-run -a node tools/day_film.js shibuya out.mp4` (see the tool's header for the view).
+
 Not built here: glints on overhead wires and rails (the maps draw neither as their own material yet), and a
 bounce that knows which ground is near which wall (the hemisphere light's is the same everywhere).
 
