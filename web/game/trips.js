@@ -21,8 +21,9 @@ window.OETrips = (function () {
   const inbound = h => (h >= 6.5 && h < 9.5 ? 0.75 : h >= 16 && h < 19.5 ? 0.25 : h >= 22 || h < 5 ? 0.6 : 0.5);
 
   // net: the road network (actors.js network); centres: [x, y] of the places in town; hour: () => the hour of the
-  // day; avoid: per line, 1 for a road to keep off
-  function create(net, { centres = [], hour = () => 12, rnd = Math.random, avoid = null, parkable = null, maxEdges = 8, maxCentres = 16 } = {}) {
+  // day; avoid: per line, 1 for a road to keep off; slow(i): how much dearer a piece is to drive for what the class
+  // does not say (a street a facade narrows to one car at a time: through traffic keeps to the roads it can pass on)
+  function create(net, { centres = [], hour = () => 12, rnd = Math.random, avoid = null, parkable = null, slow = null, maxEdges = 8, maxCentres = 16 } = {}) {
     const L = net.L, n = L.length, ids = new Map(), arrive = [], q = {};
     const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; let i = ids.get(k); if (i == null) { i = arrive.length; ids.set(k, i); arrive.push([]); } return i; };
     // a state is a piece driven one way: 2 * line + (1 forward, 0 back). from[s], to[s]: the nodes it leaves and comes to
@@ -32,7 +33,7 @@ window.OETrips = (function () {
       const l = L[i], P = l.pts, m = P.length / 3, a = node(P[0], P[1]), b = node(P[3 * m - 3], P[3 * m - 2]);
       from[2 * i + 1] = a; to[2 * i + 1] = b; from[2 * i] = b; to[2 * i] = a;
       deg[a] = (deg[a] || 0) + 1; deg[b] = (deg[b] || 0) + 1;
-      const cost = l.len * (CLS[l.c] || 1.3) * (avoid && avoid[i] ? 20 : 1);
+      const cost = l.len * (CLS[l.c] || 1.3) * (avoid && avoid[i] ? 20 : 1) * (slow ? slow(i) : 1);
       w[2 * i + 1] = l.ow === -1 ? Infinity : cost; w[2 * i] = l.ow === 1 ? Infinity : cost;
       if (w[2 * i + 1] < Infinity) arrive[b].push(2 * i + 1);
       if (w[2 * i] < Infinity) arrive[a].push(2 * i);

@@ -893,7 +893,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const groundZ0 = (x, y) => { const f = nav.floorAt(x, y, Math.max(0, nav.terrain(x, y)) + 1); return f ? f.z : null; };
   // where the traffic is going (trips.js): out to the main roads' ends at the map's edge, or into town, to the streets
   // by the places the map names, the wharves and where you start; into town in the morning, out in the evening
-  if (window.OETrips) junctions.setTrips(OETrips.create(roadNet, { avoid: ways.drive, parkable: i => cars.kerbLo(i) > 0, hour: () => { try { return clock.min / 60; } catch (e) { return 12; } }, // (the clock is set up further down)
+  if (window.OETrips) junctions.setTrips(OETrips.create(roadNet, { avoid: ways.drive, parkable: i => cars.kerbLo(i) > 0, slow: i => (roadNet.fit && roadNet.fit[i] < 9 ? 2.5 : 1), // (a street a facade narrows: Fushimi Inari's and Higashiyama's lanes, jammed nose to nose)
+     hour: () => { try { return clock.min / 60; } catch (e) { return 12; } }, // (the clock is set up further down)
     centres: [G.start.at].concat((G.travel || []).map(t => t.at), G.wharves.map(w => w.terminal), Object.values(scene.labels || {})).filter(Boolean).map(p => [p[0], p[1], p[2] ?? groundZ0(p[0], p[1])]) }));
   const roads = OECars.router(roadNet, { avoid: ways.drive }), headlamp = CARS_OK ? earlyLamps.head : null, rq = {};
   if (!CARS_OK) world.remove(earlyLamps.head, earlyLamps.head.target);
