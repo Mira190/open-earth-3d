@@ -11,6 +11,22 @@ crowd under umbrellas, the pond) and phone:
 ![Shinjuku in the rain, desktop](images/weather/shinjuku-rain-desktop.jpg)
 ![Shinjuku in the rain, phone](images/weather/shinjuku-rain-phone.jpg)
 
+Snow at Kiyomizu-dera and over Queenstown, fog at dawn at the Harbour Bridge, a thunderstorm over Shinjuku
+and the light after rain at the Opera House (issue #356), on a desktop and, below, on a phone:
+
+![Kiyomizu-dera in snow](images/weather/356-kiyomizu-snow.jpg)
+![Queenstown in snow](images/weather/356-bay-snow.jpg)
+![The Harbour Bridge in dawn fog](images/weather/356-bridge-dawn-fog.jpg)
+![Lightning over Shinjuku](images/weather/356-skyline-storm-flash.jpg)
+![The Opera House after rain, with a rainbow](images/weather/356-opera-house-after-rain.jpg)
+![The same five on a phone](images/weather/356-phone.jpg)
+
+The views are `tools/views/weather-356-<city>.json` (`xvfb-run -a node tools/game_shot.js <city> <views> <out> [390x844]`;
+a view's `"flash"` and `"rainbow"` hold a lightning flash and a bow for the still). A film of a storm arriving
+over Sydney Harbour and clearing is `cities/sydney/storm_film.json`
+(`xvfb-run -a node tools/city_film.js sydney --spec cities/sydney/storm_film.json --out <dir>`): a shot's
+`"weather": [[k, kind or amounts], ...]` sets the weather as the shot reaches k and `"strikes"` is its lightning.
+
 ## The weather state
 
 One object, `OEWeather.S` (`web/game/weather.js`), is what the weather is now. Everything that depends
