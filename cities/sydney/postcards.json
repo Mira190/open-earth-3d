@@ -6,6 +6,6 @@
     {"id": "steps", "name": "The Opera House forecourt", "at": [293.9, 391.3], "look": [330, 520], "lookUp": 22, "lines": {"any": ["The sails are bigger than the photographs say, and not quite white: close up, the tiles are cream and they shine."], "dusk": ["Last light on the shells. The steps were still warm when I sat down on them."]}},
     {"id": "dawes", "name": "Dawes Point", "at": [-250, 915], "look": [-76, 1078], "lookUp": 45, "lines": {"any": ["Under the bridge at Dawes Point. You hear a train cross before you see it, and the whole deck hums."]}},
     {"id": "quay", "name": "Circular Quay", "at": [-178, 232], "look": [300, 470], "lookUp": 20, "lines": {"any": ["Circular Quay from the west side. A ferry leaves every few minutes, and each one swings past the Opera House on its way out."]}},
-    {"id": "bar", "name": "The Opera Bar", "at": [239, 444], "look": [-76, 1078], "lookUp": 50, "lines": {"any": ["A table by the sea wall at the Opera Bar, the bridge across the water. The gulls here watch every chip."], "night": ["The bridge lit from end to end, and its lights broken up on the water. Nobody at the bar was in a hurry."]}}
+    {"id": "bar", "plush": {"mode": "held"}, "name": "The Opera Bar", "at": [239, 444], "look": [-76, 1078], "lookUp": 50, "lines": {"any": ["A table by the sea wall at the Opera Bar, the bridge across the water. The gulls here watch every chip."], "night": ["The bridge lit from end to end, and its lights broken up on the water. Nobody at the bar was in a hurry."]}}
   ]
 }

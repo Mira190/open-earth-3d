@@ -155,7 +155,7 @@ python pipeline/postcards.py index     # the index alone, after a change to name
 `tools/postcards.sh` runs `tools/game_shot.js` on the views `pipeline/postcards.py views` writes: each
 spot at four lights (25 minutes after sunrise, 11:00, 8 minutes after sunset, 100 minutes after sunset) on the day it is
 run, through the game's own sky, haze and post stack at the desktop tier, in photo mode from the
-photographer's eye, once nobody in the crowd or the town's cast is within 10 m of the lens, with Mugi sat in
+photographer's eye, once nobody in the crowd is within 10 m of the lens and none of the town's characters within 40 m, with Mugi sat in
 it and the lens down at its eye (a spot's `"plush": {"side": -1, "dist", "far", "y", "x", "turn", "tilt",
 "fstop", "eyeUp"}` moves it, `"mode": "held"` holds it up to the lens instead, `false` leaves it out; by
 default it alternates sides from spot to spot). `pipeline/postcards.py pack`
