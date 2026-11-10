@@ -11,8 +11,9 @@
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, mix, max, min, abs, smoothstep, clamp, texture, positionLocal, positionWorld,
   cameraPosition, normalize, dot, reflect, sin, cos, pow, exp, sqrt, select, length, mx_noise_float, uniform, frontFacing,
-  fwidth, log2, exp2, floor, fract, screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, logarithmicDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
+  fwidth, log2, exp2, floor, fract, screenUV, perspectiveDepthToViewZ, logarithmicDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
 import { gridUV } from './world.js';
+import { behindColour, behindDepth } from './behind.js';
 
 export function createOcean(d, env, heightTex) {
   const u = env.u, waves = env.waves;
@@ -201,13 +202,13 @@ export function createOcean(d, env, heightTex) {
     const Nv = cameraViewMatrix.mul(vec4(N, 0)).xyz;
     const zS = positionView.z;
     const toViewZ = dd => env.logDepth ? logarithmicDepthToViewZ(dd, cameraNear, cameraFar) : perspectiveDepthToViewZ(dd, cameraNear, cameraFar);
-    const zB0 = toViewZ(viewportDepthTexture(screenUV).x);
+    const zB0 = toViewZ(behindDepth(screenUV).x);
     const thick = zS.sub(zB0).max(0);
     const shift = vec2(Nv.x, Nv.y).mul(clamp(thick, 0, 4).mul(0.11).div(zS.negate().max(1))).clamp(-0.04, 0.04);
     const uvR = screenUV.add(shift);
-    const zB = toViewZ(viewportDepthTexture(uvR).x);
+    const zB = toViewZ(behindDepth(uvR).x);
     const uvB = select(zB.lessThan(zS), uvR, screenUV);
-    const behind = viewportSharedTexture(uvB).rgb;
+    const behind = behindColour(uvB).rgb;
     // (glacial flour scatters so much light back out of the lake that its own colour holds against the reflection)
     // and a wind-roughened lake reflects less at a grazing view than a flat one would: its facets face higher, into the sky)
     let above_c = mix(behind, refl, (env.mirror ? F.min(0.32) : F).mul(edge)).add(glint.mul(edge)).add(glow.mul(edge)).toVar();
