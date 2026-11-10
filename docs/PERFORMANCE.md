@@ -132,6 +132,146 @@ Adopted from: octahedral impostors (Ryan Brucks, for Fortnite) and
 [agargaro/octahedral-impostor](https://github.com/agargaro/octahedral-impostor) (MIT) for the idea; no code was
 taken. A tree is near enough to round that three heights and a mirror do here instead of an octahedral grid.
 
+## What cannot be seen is not drawn (issue 358, B1)
+
+From a street the street wall hides most of the city, and the city never changes. Frustum culling cannot
+know that: it drops what is behind the camera, not what is behind a building.
+
+**Measured first** (`tools/far_cost.js`, the street, high tier, 1440 x 900): Shibuya draws 7.74 million
+triangles a frame. The crowd's instanced meshes are about 2.5 million of the view and 2.5 million again of the
+shadow pass (about 1,500 triangles a walker, every mesh drawn at its full count with the walkers out of
+reach scaled to nothing); the buildings' cells are 0.89 million of the view (0.76 million of them past
+300 m) and 0.24 million of the shadow pass. Sydney draws 2.71 million, 0.13 million of them buildings. So
+hiding buildings alone is worth a twentieth of Shibuya's frame; the crowd and the cars are the prize, and
+they need the instance compaction of issue 352 before a hidden walker stops costing its vertices.
+
+**Tried first, not adopted: a set per cell, computed offline** (the potentially visible set of Quake, Teller
+and Sequin 1991; for cities, Wonka, Wimmer and Schmalstieg 2000, "Visibility preprocessing with occluder
+fusion for urban walkthroughs"). For it to be conservative for a whole 64 m viewer cell, the occluders must be
+shrunk by the spacing of the eye points sampled in the cell, and the cell's answer is the union over all of
+them. On Shibuya that hid a walker in 13 to 17% of the ground cells within 270 m, where a single eye point hides
+81%: Tokyo's buildings are 6 to 10 m wide, shrinking by 2 m leaves 12% of the frame as occluder against 33%,
+and a 64 m cell sees round every corner in it. Without the shrinking (no longer conservative) it reached 42 to
+58%. Smaller cells mean megabytes of sets per map, and an hour of baking for each.
+
+**Adopted: the occluders baked offline, the sweep from where the camera is.** What is static and expensive to
+get right is the occluder model, so that is what the pipeline distils:
+
+- `pipeline/visibility.py` writes `web/data/<city>/vis.bin` (made by `python pipeline/pack.py` with the packs,
+  checked by `--check`): the height of the buildings at 1 m, one byte a pixel. Only solids that stand on the
+  ground, are not replaced by a landmark's model, are not canopies and have no road through them, up to their
+  eaves; only pixels wholly inside them (the union, with walls that meet within 4 cm as one, shrunk by half a
+  0.5 m pixel's diagonal, then each 1 m pixel the lowest of its four and the ring round them). Landmarks, trees,
+  bridges, vehicles and people hide nothing. 60 to 660 kB a city, 1.1 MB for Shibuya, fetched by the Worker after
+  play has begun; Queenstown has too few buildings (1.6% of its frame) to be worth one and gets a header.
+- `web/visibility-sweep.js` (in `visibility-worker.js`): from the camera, 720 wedges march outward over a
+  min-pyramid of that raster and the terrain, keeping the horizon. Behind an occluder of top *o* at distance
+  *d*, nothing below *e + (o - e) r / d* can be seen at distance *r* (occluder shadows, Wonka and Schmalstieg
+  1999). A wedge's occluder is the lowest along the whole chord across it, so it holds for every ray inside.
+  The answer is a grid of 16 m cells: the height under which nothing in the cell can be seen. 13 to 19 ms in
+  Node on this machine, off the main thread.
+- `web/visibility.js` (`OEVis`): asks for a sweep when the camera nears the edge of the last one's margin. The
+  occluders are shrunk by that margin first (1, 2, 4 or 8 m, by the camera's speed), which makes what is hidden
+  from the sweep's point hidden from every point within the margin (occluder shrinking, from the same 2000
+  paper), and the eye is taken a metre higher than the camera, since a higher eye sees everything a lower one
+  does. An answer is used only while the camera is within its margin and no higher: outside it, with no
+  answer yet, inside a building or a room, or faster than a sweep can follow, everything is drawn as before.
+  So the worst case is the old frame. `OEVis.gate(mesh)` hides a static mesh (layer 0 off, so that a prop
+  cell's child cells are still drawn) while every 16 m cell it touches is hidden to its height there;
+  `OEVis.seen(x, y, top, reach)` is the same question for one moving thing, for the crowd and the cars.
+- The sun's shadow needs every caster, seen or not (a tower behind the street wall still shades the street):
+  `world.js` shows the gated meshes again round the shadow pass, outside the shadow cache. The view's list is
+  made before the shadow pass in the same render call, so it keeps the gates. The water's and the wet street's
+  mirrors take the gates as they are: in a 2.5D city what a mirror in the ground shows of a thing can be seen
+  directly too.
+
+No code was taken from the papers; the method is theirs, the 2.5D horizon form is the old viewshed sweep of
+terrain analysis.
+
+**Proof.** `tools/vis_unit.js` (in `tools/check.sh`): in every live city, exact rays from eyes anywhere within
+a sweep's margin to random points up to 1.5 km away; of 2,600 to 6,600 rays a city that reach their point, none
+is reported hidden. `tools/vis_check.js`: walks and drives each map's own footways and roads, and at each stop
+draws the same held instant with the gates and without, four ways round, from the sweep's point and from the
+edge of its margin; the two frames must match to the pixel (the page's clock is stopped for the pair, or the
+water's waves differ between any two frames).
+
+What the harness measured, 960 x 600, high tier, 15:30, a mean over about 96 frames a map from a walker's eye,
+a camera behind one and a driver's (every pass of the frame: the view, the shadow map, the reflections):
+
+| Map | Stops | Frames compared | Frames that differ | Triangles a frame, all drawn → gated | Draws | Static meshes hidden |
+|---|---|---|---|---|---|---|
+| Shibuya | 25 | 100 | 0 | 7.58 → 7.25 M | 389 → 354 | 129 of 205 |
+| Shinjuku | 24 | 96 | 0 | 4.07 → 3.89 M | 324 → 295 | 109 of 180 |
+| Tokyo (Marunouchi) | 24 | 96 | 0 | 3.73 → 3.57 M | 400 → 375 | 90 of 178 |
+| Kyoto | 24 | 95 | 0 | 3.82 → 3.42 M | 459 → 450 | 31 of 74 |
+| Sydney | 23 | 92 | 0 | 3.84 → 3.79 M | 497 → 479 | 67 of 148 |
+| Higashiyama | 25 | 98 | 0 | 3.47 → 3.44 M | 270 → 266 | 14 of 42 |
+| Philosopher's Path | 25 | 100 | 0 | 3.21 → 3.18 M | 366 → 361 | 16 of 47 |
+| Fushimi Inari | 25 | 100 | 0 | 3.62 → 3.61 M | 295 → 290 | 18 of 42 |
+| Queenstown | no raster: nothing gated | | | | | |
+
+Shibuya again at 21:30 (15 stops, 60 frames, none differ: 7.43 → 7.06 M, 355 → 317 draws) and on the low tier
+at 390 x 844 (15 stops, 60 frames, none differ: 3.66 → 3.55 M, 27 of 72 static meshes hidden). Kamakura came
+onto main while this ran: its raster is baked and passes the exact-ray check; the harness has not walked it.
+
+So the static meshes alone give 1 to 10% of the triangles and up to 35 draws: the street wall hides half to two
+thirds of them, but they were a small part of the frame. A stop where the camera stood inside a building's
+footprint (a footway mapped through a block: five of 195) got no answer and drew everything, as it should; the
+first run of the harness found exactly that case as missing towers in Sydney, which is why the camera is now
+tested against the solids themselves.
+
+**What it does not do yet.** The trees are re-sorted every 12 m the camera moves, further than an answer holds,
+so they are not gated; the far ones are two triangles each already. The landmarks are one mesh a material
+across the map and cannot be hidden in parts. The crowd and the cars are the next and largest step (above).
+Not checked: a real GPU, Safari or iOS (the Worker needs `DecompressionStream`: Safari 16.4), a phone's memory
+with the 18 MB raster of the largest map and its shrunk copy (the low tier keeps one copy, the others two).
+
+## The rest of issue 358's Layer B and C, as measured
+
+**B2, the sky the ground sees** (`pipeline/skyvis.py`, `web/data/<city>/skyvis.webp`; `?skyvis=on`, off by default
+until the look is agreed in issue 353). For each point of the ground, the horizon in 16 directions out to 300 m
+over the 2 m surface model, and from it the share of a uniform sky's light on a level surface there (the mean of
+cos² of the horizon's elevation: horizon-based ambient occlusion, Bavoil, Sainz and Dimitrov 2008, on a height
+field as Timonen and Westerholm 2010; the method only). One channel, 4 m a pixel, lossy WebP at quality 80
+(234 kB for Shibuya, 3 in 255 off on average; lossless was six times that, and a second height and the ground's
+level in the other channels three times, for things only a tree's crown would read). `world.js` `skyLit` reads
+it in the materials that take the street lights (the ground and what is paved on it) and multiplies the indirect
+diffuse light alone, within 500 m of the camera: further off the aerial photograph carries its own shade. Shibuya's
+ground sees 54% of the sky on average, a canyon like Center Gai a third. It is the soft shade that screen-space
+AO gave only within a few metres of each pixel and computed again every frame; with it the AO pass can shrink to
+contact shadows (issue 352's to decide). The walls already carried a per-vertex openness (`buildings.js`).
+
+**B4, the sun's shadow past the shadow map** (`visibility-sweep.js` `sunShadow`, `world.js` `farSun`; a prototype,
+`?farsun=on`, or `?farsun=all` to see the field everywhere). The shadow map covers 180 to 340 m round the
+player; past it nothing was shaded by the sun, and a tower outside the box threw no shadow into it. Instead of
+horizon angles stored per texel for every azimuth of the sun's track (megabytes a map), a Worker sweeps the
+game's own 2 m surface model once along the sun's direction: a cell's shadow height is the higher of the top and
+the shadow height one step towards the sun, less the sun's climb over the step. 1 to 1.6 s for Shibuya on this
+machine under a software renderer's load, off the main thread, again when the sun has turned 0.4 degrees; the
+result is an RG16F texture at 4 m (4.4 MB), the height under which the sun is hidden, as a roof sees it and as
+the ground and walls do. The lit materials of the ground and the buildings multiply the sun's light by it
+outside the shadow map's box. At 13:00 on 10 November it shades 54% of Shibuya's open ground. **Not judged yet:**
+the stills taken so far (from over the roofs, and in two alleys inside the box) show no artefact and little
+of the far ground; it needs views down long streets and a film at walking, driving and flying speed before it
+is on by default, and the shadow box could then shrink (issue 352, item 5).
+
+**B3, a far shell of the buildings: measured, not built.** The buildings' cells are 0.89 of Shibuya's 7.7 million
+triangles from the street and 0.5 once B1 hides what the street wall covers; Sydney's are 0.13 of 2.7. A shell
+of flat-roofed blocks merged by height within 500 m cells comes to 584,000 triangles for Shibuya against the
+1.96 million drawn now (37,576 polygons from 49,950 solids: Tokyo's houses stand apart and differ in height,
+so merging buys little) and 122,000 against 455,000 for Sydney. Drawn in place of the cells past 500 m it would save about 0.3 million
+triangles a frame on Shibuya, 4%, for a megabyte more to download or a second build at load, and a second
+facade to keep equal at day, dusk and night (the far windows are lit by the facade's shader). The walls'
+splits at 8, 24, 48 m (for the openness) are another 0.1 million. Worth doing after the crowd (2.5 million in
+the view and as many in the shadow pass) no longer dwarfs it.
+
+**C1, a cached far layer: not built, for the same reason.** With the crowd within 450 m and the near field
+drawn every frame, a cube map of what lies past 250 m, one face a frame, would replace about 0.5 million
+triangles a frame on Shibuya (7%) and the shading of the far pixels, against a seam between two layers under
+4x MSAA, the water, the night's additive lights and everything that moves out there at a sixth of the frame
+rate. The frame is fill-bound on the measured device (issue 358's telemetry), which the pixel budget of issue
+352 addresses directly.
+
 ## Next, by what it saves for what it risks
 
 Measured on Sydney's game, high tier, 1440 x 900, from the street, after the work above: 4.42 million triangles,

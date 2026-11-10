@@ -508,11 +508,11 @@ def main(argv):
     import skyvis
     import visibility
     if check:
-        bad = [(c, n, s) for c, n in every if (s := stale(c, n))]
-        bad += [(c, "vis.json", s) for c in vis_cities(named) if (s := visibility.stale(c))]
-        bad += [(c, "skyvis.json", s) for c in vis_cities(named) if (s := skyvis.stale(c))]
+        bad = [(c, n[:-5] + ".bin", s) for c, n in every if (s := stale(c, n))]
+        bad += [(c, "vis.bin", s) for c in vis_cities(named) if (s := visibility.stale(c))]
+        bad += [(c, "skyvis.webp", s) for c in vis_cities(named) if (s := skyvis.stale(c))]
         for c, n, s in bad:
-            print(f"FAIL pack   {c}: {n[:-5]}.bin {s}; run python pipeline/pack.py {c}")
+            print(f"FAIL pack   {c}: {n} {s}; run python pipeline/pack.py {c}")
         if not bad:
             print(f"ok   pack   {len(every)} packs in {len(named or cities())} cities match their JSON")
         return 1 if bad else 0
