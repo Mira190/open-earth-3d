@@ -1295,16 +1295,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // none of the crowd's characters loaded yet (a ride in the first seconds of a game): a simple
     // figure at the wheel for now, and one of them as soon as it has loaded
+    // (one that does not fit under the roof is passed over for the next, as above)
     if (!look.character && lib) {
       const names = Object.keys(lib.info.characters).filter(n => !PLAYER_LOOKS[n]);
-      const name = names[Math.floor(Math.random() * names.length)];
-      if (name) Promise.resolve(lib.require(name)).then(() => {
-        if (ride !== o || !lib.tpl[name]) return;
-        const rig = makeRig(OEPeople.randomLook(lib, name, CR.style), {});
-        if (o.driver.root.parent) o.driver.root.parent.remove(o.driver.root);
-        o.driver = rig;
-        C.sit(rig, 'driver');
-      }).catch(() => {});
+      const next = tries => {
+        const name = names[Math.floor(Math.random() * names.length)];
+        if (name) Promise.resolve(lib.require(name)).then(() => {
+          if (ride !== o || !lib.tpl[name]) return;
+          const rig = makeRig(OEPeople.randomLook(lib, name, CR.style), {});
+          const was = o.driver;
+          if (was.root.parent) was.root.parent.remove(was.root);
+          C.sit(rig, 'driver');
+          if (C.clearance && C.clearance(rig, 'driver') < 0 && tries > 0) { if (rig.root.parent) rig.root.parent.remove(rig.root); C.sit(was, 'driver'); next(tries - 1); return; }
+          o.driver = rig;
+        }).catch(() => {});
+      };
+      next(4);
     }
     return o;
   }
