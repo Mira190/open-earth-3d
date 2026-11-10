@@ -205,10 +205,10 @@ def meshes(K, m):
     face(Y, a_d0, a_d1, 0.0, 0, 2.05, "door")
     face(Y, a_d0, a_d1, 0.06, 2.05, zf, "white", (0.3, 0.7, 0.8, 1.0))
     face(Y, a_d1, split, 0.06, 0, zf, "white", (0.5, 0, 0.5 + (split - a_d1) / 1.6, zf / 3.0))
-    for a in (a_d0, a_d1):                         # the door's reveals
-        s = 1 if a == a_d0 else -1
-        Y.quad(P(a, 0.06, 0), P(a, 0.0, 0), P(a, 0.0, 2.05), P(a, 0.06, 2.05), uv("white", (0, 0, 0.05, 0.68))) if s > 0 else \
-            Y.quad(P(a, 0.0, 0), P(a, 0.06, 0), P(a, 0.06, 2.05), P(a, 0.0, 2.05), uv("white", (0, 0, 0.05, 0.68)))
+    Wp = K("awning_trim")                          # the door's reveals, in the surround's white paint
+    Wp.quad(P(a_d0, 0.06, 0), P(a_d0, 0.0, 0), P(a_d0, 0.0, 2.05), P(a_d0, 0.06, 2.05))
+    Wp.quad(P(a_d1, 0.0, 0), P(a_d1, 0.06, 0), P(a_d1, 0.06, 2.05), P(a_d1, 0.0, 2.05))
+    Wp.quad(P(a_d0, 0.0, 2.05), P(a_d1, 0.0, 2.05), P(a_d1, 0.06, 2.05), P(a_d0, 0.06, 2.05))
     face(Y, a_d1 + 0.12, min(split - 0.05, a_d1 + 0.57), 0.085, 0.55, 2.05, "sudare")
     box(K("wood_dark"), a_d1 + 0.02, a_d1 + 0.1, 0.06, 0.1, 1.25, 1.75)                     # the small wooden plate by the door
     # --- the upper floor stepping out over the bar, rendered grey, and its windows' sills
