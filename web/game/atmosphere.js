@@ -524,6 +524,12 @@ window.OEAtmos = (function () {
           // and change shape slowly; all of it wraps where the noise repeats
           // (api.skyTime: seconds on a film's own clock, for a time-lapse: tools/day_film.js)
           const ts = api.skyTime ?? tSec, WS = window.OEWeather && OEWeather.S, W = WS && WS.wind && Math.hypot(WS.wind.x, WS.wind.z) > 0.3 ? WS.wind : wind, dt = drift.t == null ? 0 : Math.max(0, Math.min(api.skyTime != null ? 600 : 0.25, ts - drift.t)), D = su.uCloudDrift.value;
+          if (drift.t == null) {
+            // where the clouds start: from the place and the day, so two maps at the same hour, and the same map on two
+            // days, do not show the same sky (a day's sky still comes back as it was on that day's next visit)
+            const day = Math.floor(utcMs / 864e5), h = k => { let x = Math.imul((day + k * 7919) ^ Math.round((city.lat || 0) * 1e3), 0x9e3779b1) ^ Math.imul(Math.round((city.lon || 0) * 1e3) + k, 0x85ebca6b); x ^= x >>> 15; x = Math.imul(x, 0x2c1b3c6d); x ^= x >>> 12; return (x >>> 0) / 4294967296; };
+            drift.x = h(1) * 100; drift.z = h(2) * 100; drift.e = h(3) * 100; drift.w = h(4) * 100;
+          }
           drift.t = ts;
           const k = dt * 3 / 9000, sp = Math.hypot(W.x, W.z); // (W: where the wind blows to, m/s)
           drift.x = (drift.x - W.x * k + 100) % 100; drift.z = (drift.z - W.z * k + 100) % 100;
