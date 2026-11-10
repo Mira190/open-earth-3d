@@ -13,6 +13,7 @@
   "vertical_datum": "mPD",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/WGS84/{z}/{x}/{y}.png",
     "zoom": 18,

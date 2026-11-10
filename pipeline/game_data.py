@@ -648,6 +648,9 @@ def main():
     # they stand and look out
     flocks = []
     for fc in gcfg.get("flocks", []):
+        if fc.get("kind") == "black_kite":  # soaring over a place, not working the ground: as configured
+            flocks.append(dict(fc))
+            continue
         x, y, moved = snap(*fc["at"])
         r0, c0 = cell(x, y)
         reach, perches = fc.get("perch_m", 14.0), []

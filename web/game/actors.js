@@ -1288,6 +1288,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         p.gw = held ? (p.gw || 0) + dt : 0;
         if (held) atKerb = true;
       }
+      // a level crossing's alarm sounding ahead (rail.js gateAhead, set as api.gate by the game): up to its line and
+      // wait there, as at a kerb; someone between the gates when it starts walks on out
+      if (api.gate) { const g = api.gate(p.x, p.y, hx, hy); if (g != null) { atKerb = true; cap = Math.min(cap, g * 1.5); } }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
       // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
       if (atKerb) p.kw = (p.kw || 0) + dt;
@@ -1500,7 +1503,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
       if (!fleet) { mesh.setMatrixAt(i, m4); return; }
       const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
-      if (culling && !frustum.intersectsSphere(ball)) return;
+      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 3.6, 3.6)))) return; // (or behind the street wall: visibility.js; 3.6 m: a bus)
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);

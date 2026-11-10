@@ -33,12 +33,14 @@ window.OEWorld = (function () {
     // the size cities.json gives for the model or the game (raw bytes, as the streams deliver them)
     const entry = (window.OE_CITIES || []).find(c => c.id === cityId) || {};
     const want = (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
+    // a district that shares a bigger map (index.html route: Sangenjaya, on Shibuya's): the loader says both
+    const D = game && window.OE_DISTRICT, what = D ? `${D.name}, on the ${entry.name} map` : entry.name || 'the city';
     let got = 0, shown = 0;
     const report = () => {
       const now = performance.now();
       if (now - shown < 80) return;
       shown = now;
-      onMsg(want ? `Downloading ${entry.name || 'the city'}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
+      onMsg(want ? `Downloading ${what}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
         0.02 + 0.26 * (want ? Math.min(1, got / want) : 0), 'Downloading');
     };
     // once every file is in, the packs are still decoding (in a Worker) and the JSON parsing: said so,
@@ -47,7 +49,7 @@ window.OEWorld = (function () {
     // the load's stages for the telemetry (telemetry.js markOf): every file in, then every file decoded
     const view = { view: game ? 'game' : 'city', city: cityId };
     const mark = s => { try { performance.mark(`oe:${s}`, { detail: view }); } catch (e) { /* no User Timing */ } };
-    const unpack = () => { if (--open === 0) mark('fetched'); if (open === 0) onMsg(`Unpacking ${entry.name || 'the city'}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
+    const unpack = () => { if (--open === 0) mark('fetched'); if (open === 0) onMsg(`Unpacking ${what}: buildings, terrain and landmarks`, 0.29, 'Unpacking the city'); };
     const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
       if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
@@ -73,7 +75,7 @@ window.OEWorld = (function () {
       }
       return getJSON(name + '.json');
     };
-    onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
+    onMsg(want ? `Downloading ${what}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
     // the terrain grid: int16 heights, as bytes from its pack or as base64 text from its JSON
     const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
       return u.byteOffset % 2 ? u.slice().buffer : u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); };
@@ -782,6 +784,7 @@ vec3 steepRock(vec3 c, float k) {
     // distance stretches by it, so the mountains across the lake stand out as they do in a photograph
     const clarity = (farMeta && farMeta.clarity) || 1;
     world.userData.clarity = clarity;
+    world.userData.farHalf = (farMeta && farMeta.half_m) || 0; // (how far the land past the frame reaches: a camera's far plane must take it in)
     FAR_AIR = ((window.OEFarLand || {}).AIR || 30000) * clarity; FAR_AIR_LOW = 15000 * clarity;
     if (farMeta && farMeta.half_m) FAR_HALF = farMeta.half_m;
     world.fog.near *= clarity; world.fog.far *= clarity;
@@ -1023,8 +1026,8 @@ vec3 woodsFloor(vec3 c) {
     // from screen-space AO, computed again every frame from a few metres round each pixel. One texture read in
     // the materials that take the street lights (the same ground-level surfaces); it multiplies the indirect
     // diffuse light alone, near the camera (far off the aerial photograph carries its own shade). uSkyVisK is
-    // its strength: 0 until the texture has come, and the look's to drive (issue 353). `?skyvis=on` for now.
-    const SKYVIS = new URLSearchParams(location.search).get('skyvis') === 'on' ? { uSkyVis: { value: null }, uSkyVisF: { value: new THREE.Vector4(0, 0, 1, 1) }, uSkyVisK: { value: 0 } } : null;
+    // its strength: 0 until the texture has come, then 0.6, constant (agreed with issue 353). `?skyvis=off` leaves it out.
+    const SKYVIS = new URLSearchParams(location.search).get('skyvis') !== 'off' ? { uSkyVis: { value: null }, uSkyVisF: { value: new THREE.Vector4(0, 0, 1, 1) }, uSkyVisK: { value: 0 } } : null;
     if (SKYVIS) {
       const px = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); px.needsUpdate = true;
       SKYVIS.uSkyVis.value = px;

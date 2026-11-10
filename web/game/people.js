@@ -894,7 +894,7 @@ transformed = crowdPose(transformed, false);`);
       const sit = p.mode === 'sit';
       at.set(p.x, p.z - (sit ? p.thigh : 0), -p.y);
       // out of sight by more than the longest shadow reaches back into it: not drawn (30 m: a sun 4 degrees up)
-      if (culling && !frustum.intersectsSphere(ball)) { unshow(p); return; }
+      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 2.3, 2.3)))) { unshow(p); return; } // (or behind the street wall: visibility.js)
       show(p);
       q.setFromAxisAngle(UP, Math.PI - p.h);
       sc.setScalar(p.look.scale);

@@ -418,10 +418,10 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 /* the HUD fades out for the title and for camera shots (fast travel, surveys) and back in as play resumes */
 .g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens { transition: opacity 0.7s ease, visibility 0.7s; }
 .game-stage.titled :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels),
+.game-stage.cine :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-vhud, .g-lens) { opacity: 0; visibility: hidden; }
 /* the arrival with reduced motion: a cut from the title shot to the player, under a short fade (game.js craneIn) */
 .game-stage.arrive-fade #game-gl { animation: g-arrive-fade .5s ease-out; }
 @keyframes g-arrive-fade { from { opacity: 0; } }
-.game-stage.cine :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-vhud, .g-lens) { opacity: 0; visibility: hidden; }
 .g-bars { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .g-bars::before, .g-bars::after { content: ""; position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height 0.6s ease; }
 .g-bars::before { top: 0; } .g-bars::after { bottom: 0; }
@@ -1287,6 +1287,11 @@ window.dispatchEvent(new Event('three-ready'));
     if (movedTo) { history.replaceState(null, '', `#play-${movedTo}@${arrive}`); return show(); }
     // "#play-<city>@<travel point>": start the game at a district of a map (the Tokyo subway map, title.js)
     window.OE_ARRIVE = play && arrive ? arrive : null;
+    // the district it names, if the city's subway map has it (a district that shares a bigger map, as Sangenjaya
+    // shares Shibuya's): the loader, the plate and the title are then the district's, and say whose map it is on
+    const dcity = window.OE_ARRIVE && cities.find(c => c.id === cid), dmeta = dcity && dcity.group_meta;
+    const dist = dmeta && (dmeta.districts || []).find(s => s.map === cid && s.travel === arrive) || null;
+    window.OE_DISTRICT = dist && { name: dist.name, native: dist.native || '', map: dcity.name };
     const from = lastId;
     lastId = cid;
     let city = cities.find(c => c.id === cid && c.built && (!play || c.game));
@@ -1299,9 +1304,9 @@ window.dispatchEvent(new Event('three-ready'));
     for (const x of ids) $(x).hidden = true;
     if (city && play) {
       pane('game-app').hidden = false;
-      $('g-load-title').textContent = city.name;
-      native($('g-load-native'), city);
-      OEPlate.play($('g-loader'), city); // the loading plate: the city's aerial survey assembling (plate.js)
+      $('g-load-title').textContent = dist ? dist.name : city.name;
+      native($('g-load-native'), dist ? { id: city.id, native: dist.native } : city);
+      OEPlate.play($('g-loader'), city, dist); // the loading plate: the city's aerial survey assembling (plate.js)
       $('gm-model').href = `#${city.id}`;
       current = window.OpenEarthGame(city.id);
     } else if (city) {

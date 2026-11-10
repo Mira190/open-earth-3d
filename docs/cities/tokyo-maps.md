@@ -7,7 +7,7 @@ station goes into that district.
 | Map | id | Districts on the subway map | Landmarks built in code |
 |---|---|---|---|
 | Marunouchi & Ginza 丸の内・銀座 | `tokyo` | Marunouchi, Ginza | Tokyo Tower |
-| Shibuya 渋谷 | `shibuya` | Shibuya, Harajuku, Sangen-jaya | SHIBUYA SKY, the scramble and Hachiko, Center Gai's arch, Yoyogi's gymnasiums |
+| Shibuya 渋谷 | `shibuya` | Shibuya, Harajuku, Sangenjaya | SHIBUYA SKY, the scramble and Hachiko, Center Gai's arch, Yoyogi's gymnasiums |
 | Shinjuku 新宿 | `shinjuku` | Shinjuku, Yotsuya | Suga Shrine's stairs, Kabukicho's arch, the east exit's screens, the Docomo tower's clock |
 | Asakusa 浅草 | `asakusa` | Asakusa, Oshiage · Skytree | Senso-ji (Kaminarimon, Hozomon, pagoda, main hall), Tokyo Skytree, the Asahi flame |
 | Akihabara 秋葉原 | `akihabara` | Akihabara | Electric Town's signs and prints, Kanda Myojin's Zuishinmon, Nikolai-do's dome |

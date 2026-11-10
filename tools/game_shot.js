@@ -208,6 +208,20 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         const ph = v.scramble === 'walk' ? 3 : 1, at = v.phaseT ?? (ph === 3 ? 9 : 8);
         for (let i = 0; j && i < 600 && !(j.ph === ph && j.st === 'g' && j.t >= at); i++) g.advance(0.25);
       }
+      // "train": {at: [x, y], in: seconds, dir} sets the railway's clock so that the next train's nose (of that direction,
+      // +1 with the line's rising distance, or of either) is at the point of the line nearest `at` in that many seconds
+      // (negative: it passed that long ago); "ride": {from: a station's id, dir, run: seconds, view: "chase", "cabin" or
+      // "cab", look: radians to the right} boards the train standing there and rides on that long (rail.js)
+      if (v.train && g.rail && g.rail.cue) { g.rail.cue(g.rail.sNear(v.train.at[0], v.train.at[1]), v.train.in ?? 0, v.train.dir || 0); g.advance(0.05); }
+      if (v.ride && g.rail && g.rail.cueStation) {
+        const car = g.rail.cueStation(v.ride.from, v.ride.dir || 1, 2), st = g.rail.stations.find(o => o.id === v.ride.from);
+        if (car) {
+          g.boardRail(car, st);
+          for (let t = 0; t < (v.ride.run ?? 40); t += 0.5) g.advance(0.5);
+          Object.assign(g.cam, { mode: v.ride.view || 'chase', lookYaw: v.ride.look || 0, lookPitch: v.pitch ?? -0.04, yaw: car.h + (v.yaw ?? 0.9), pitch: v.pitch ?? 0.25, dist: v.dist ?? 30, distTo: 0, yawTo: null, lastInput: -10 });
+          g.advance(0.3);
+        }
+      }
       // "ferry": {to: a wharf's id, at: 0..1} aboard the first vessel that calls there, that far along its leg to it
       // (Queenstown's Earnslaw on the lake past the frame); "yaw" turns the chase camera off her heading (radians)
       if (v.ferry) {

@@ -136,3 +136,50 @@ if __name__ == "__main__":
     out, rep = clean(rgb, a["x0"], a["y1"], a["px_m"], out_dir)
     Image.fromarray(out).save(os.path.join(out_dir, name), quality=80, method=6)
     print(name, rep)
+
+
+def soften(rgb, x0, y1, px, buildings, roads, sigma_m=6.0, keep=0.15):
+    """The open ground of an aerial photograph without its blotches (issue #354; city.json imagery.soften).
+
+    Draped over a hillside and seen from eye level or low from the air, a 0.5 m photograph of scrub, grass, gardens
+    and sand reads as dirt: every crown and its shadow, every roof that leans out of its footprint, each a smear. Off
+    the buildings and the roads the ground keeps its colour at the scale of a slope or a field (the photograph
+    blurred over `sigma_m`, among the open ground's own pixels only, so that no roof or road bleeds into it) and
+    `keep` of its detail; the game's ground shader lays its own grain on it by what kind of ground the colour says.
+    The roads, with their painted lines, the buildings' roofs, and anything vividly coloured (a running track, a
+    court, a pool) stay as photographed.
+
+    buildings: footprints ([[x, y], ...] rings); roads: [(points, width_m)]. Returns the photograph and the open share.
+    """
+    H, W = rgb.shape[:2]
+    built = _raster(buildings, x0, y1, px, (H, W), fill=True)
+    built = ndimage.binary_dilation(built, iterations=max(1, int(round(2.0 / px))))
+    sealed = np.zeros((H, W), bool)
+    for w in sorted({round(w, 1) for _, w in roads}):
+        sealed |= _raster([p for p, ww in roads if round(ww, 1) == w], x0, y1, px, (H, W), width_m=w + 2.0)
+    open_ = ~(built | sealed)
+    # painted and made surfaces stay too: a running track, a hard court, a pool, artificial turf are far more
+    # saturated than any planted or bare ground in a photograph
+    f = rgb.astype(np.float32)
+    mx, mn = f.max(axis=2), f.min(axis=2)
+    vivid = ((mx - mn) / np.maximum(mx, 1) > 0.42) & (mx > 70)
+    vivid = ndimage.binary_opening(vivid, iterations=max(1, int(round(1.0 / px))))
+    open_ &= ~ndimage.binary_dilation(vivid, iterations=max(1, int(round(2.0 / px))))
+    s = sigma_m / px
+    den = ndimage.gaussian_filter(open_.astype(np.float32), s)
+    out = rgb.astype(np.float32)
+    soft = ndimage.gaussian_filter(open_.astype(np.float32), 1.0 / px) * open_
+    for k in range(3):
+        low = ndimage.gaussian_filter(out[..., k] * open_, s) / np.maximum(den, 0.02)
+        out[..., k] += soft * (1 - keep) * (low - out[..., k])
+    return np.clip(np.round(out), 0, 255).astype(np.uint8), float(open_.mean())
+
+
+def blotch(rgb, open_, px, sigma_m=6.0):
+    """How blotchy the open ground is: the mean absolute difference of its brightness from its own 6 m blur, in
+    8-bit levels. About 3 reads as clean from eye level; 8 and more as dirt."""
+    lum = rgb.astype(np.float32) @ np.array([0.299, 0.587, 0.114], np.float32)
+    s = sigma_m / px
+    den = np.maximum(ndimage.gaussian_filter(open_.astype(np.float32), s), 0.02)
+    low = ndimage.gaussian_filter(lum * open_, s) / den
+    return float(np.abs(lum - low)[open_].mean()) if open_.any() else 0.0

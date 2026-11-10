@@ -26,6 +26,7 @@
   "vertical_datum": "m T.P.",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
@@ -661,6 +662,7 @@
       {
         "id": "t-sancha",
         "name": "Sangenjaya 三軒茶屋",
+        "place": "Setagaya, Tokyo",
         "at": [
           -2470.4,
           -2864.7

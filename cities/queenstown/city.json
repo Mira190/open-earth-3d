@@ -27,6 +27,7 @@
   "vertical_datum": "m above Lake Wakatipu",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "stac_cog",
     "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/otago/queenstown_2026_0.1m/rgb/2193/collection.json",
     "crs": "EPSG:2193",
