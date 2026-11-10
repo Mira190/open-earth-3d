@@ -36,7 +36,13 @@ const FPS = 12, SUB = 2; // saved frames a second, game frames to each
     g.life.wipe();
     window.__frames = { cbs: [], t: performance.now() };
     window.requestAnimationFrame = cb => { window.__frames.cbs.push(cb); return window.__frames.cbs.length; };
-    window.__frames.step = t => { const q = window.__frames.cbs; window.__frames.cbs = []; for (const f of q) f(t); };
+    // (and the page's timeouts run on the film's clock too: a banner held 3.4 s, a toast, a card's exit are seconds of
+    // the film, not of the minutes a software renderer takes over them)
+    const F = window.__frames, timers = F.timers = [];
+    window.setTimeout = (f, ms = 0, ...a) => { const id = 1e9 + timers.length + Math.floor(Math.random() * 1e6); timers.push({ id, at: F.t + ms, f: () => f(...a) }); return id; };
+    const clr = window.clearTimeout.bind(window);
+    window.clearTimeout = id => { const i = timers.findIndex(x => x.id === id); if (i >= 0) timers.splice(i, 1); else clr(id); };
+    F.step = t => { const q = F.cbs; F.cbs = []; for (const f of q) f(t); for (const x of timers.filter(x => x.at <= t)) { timers.splice(timers.indexOf(x), 1); x.f(); } };
     // helpers for the script
     const L = g.life, b = L.data.bonds[0], n = b && g.npcs.find(x => x.id === b.npc);
     window.__f = {

@@ -58,6 +58,11 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
 | ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
 
+A game can also start from a postcard: the title screen's pile of them
+([POSTCARDS.md](POSTCARDS.md)) opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
+where the photograph was taken, with "As on the postcard" offered as the time to start at. A
+map's passport lists the postcards that have come from it.
+
 ## Playing
 
 | Keys | What they do |
@@ -73,6 +78,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>J</kbd> | Diary: today's date, weather and calendar, who is free, the work on offer, and pass the time (see [Daily life](#daily-life-the-day-the-diary-bonds-skills-and-jobs)) |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
+| <kbd>E</kbd> at a `≈` | Fish from the shore, at the spots Sydney and Queenstown have for now: <kbd>Space</kbd> casts, strikes and winds ([docs/FISHING.md](FISHING.md)) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
