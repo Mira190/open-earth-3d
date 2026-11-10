@@ -1042,7 +1042,7 @@
     "show": true,
     "title": {"name": "渋谷", "reading": "Shibuya", "line": "星降る夜  ·  A night of falling stars"},
     "grade": {"tint": [0.98, 0.99, 1.06], "sat": 1.2, "ev": 1.14, "flare": 0, "sky_sat": 1.0, "clouds": 0, "stars": 2.4, "night_sky": [[0.004, 0.011, 0.04], [0.05, 0.06, 0.13]], "bloom": 1.5},
-    "anime": {"paint": 0.5, "grade": 0.85, "rays": 0, "haze": 0.66, "haze_m": 1500, "haze_rgb": [0.12, 0.15, 0.38], "rim": 0.24, "rim_rgb": [0.5, 0.55, 1.0], "streak": 1.0},
+    "anime": {"paint": 0.5, "grade": 0.85, "rays": 0, "haze": 0.62, "haze_m": 1500, "haze_rgb": [0.07, 0.15, 0.36], "rim": 0.24, "rim_rgb": [0.45, 0.66, 1.0], "streak": 1.0},
     "score": {"root": 49, "scale": [0, 2, 4, 5, 7, 9, 11], "chords": [[5, 7, 9], [3, 5, 7], [0, 2, 4], [4, 6, 8]], "motif": [4, 2, 1, 0, 2], "tempo": 66, "voice": "piano", "air": "none", "arp": true, "chirp": false, "title_shot": "stars", "title_at": 0.55, "finale_shot": "screens", "finale_at": 0.6, "hush_shot": "screens", "hush_at": [0.0, 0.6], "clean": true},
     "shots": [
       {"id": "stars", "dur": 6.5, "type": "move", "from": ["@shibuya_sky", 380, -330, -60], "to": ["@shibuya_sky", 368, -318, -64], "lookFrom": ["@shibuya_sky", 0, 0, 760], "lookTo": ["@shibuya_sky", 0, 0, 30], "fov": 42, "ease": "inOut", "fadeIn": 2.2, "drift": 0},
@@ -1053,7 +1053,7 @@
       {"id": "above", "dur": 6.5, "type": "orbit", "at": ["@scramble"], "az": [296, 318], "dist": [40, 34], "h": [46, 38], "look": ["@scramble", 0, 0, 0], "fov": 46, "ease": "linear", "drift": 0, "shower": 0},
       {"id": "wide", "dur": 9, "type": "move", "from": ["@scramble", 44, -3, 30], "to": ["@scramble", 64, -14, 52], "lookFrom": ["@scramble", -10, 2, 2], "lookTo": ["@scramble", -160, 30, 74], "fov": [44, 40], "ease": "inOut", "drift": 0, "fadeOut": 1.8, "title": {"at": 0.34, "until": 0.86}, "guide": [["@scramble", -1400, 500, 560], ["@scramble", -900, 1300, 470], ["@scramble", -100, 1700, 360]], "gFrom": 0.35, "gTo": 0.85, "guideEase": "in", "arc": 0.06, "tailLen": 0.34, "caption": {"eyebrow": "渋谷スクランブル交差点 · The scramble", "text": "When the lights change, up to three thousand people cross at once. Tonight, one of them is you.", "at": 0.04, "until": 0.2}}
     ],
-    "sky": {"zenith": [0.005, 0.011, 0.045], "mid": [0.018, 0.04, 0.15], "low": [0.03, 0.105, 0.25], "horizon": [0.38, 0.19, 0.3], "rim": [0.32, 0.4, 0.72], "milky": 1.15, "stars": 1.1, "clouds": 0.45, "banks": 0.9, "pole": [0.35, 0.55, -0.76]},
+    "sky": {"zenith": [0.003, 0.01, 0.042], "mid": [0.012, 0.042, 0.16], "low": [0.03, 0.12, 0.32], "horizon": [0.2, 0.36, 0.58], "city": [0.42, 0.3, 0.24], "rim": [0.42, 0.58, 0.92], "milky": 1.15, "stars": 1.1, "clouds": 0.45, "banks": 0.9, "pole": [0.35, 0.55, -0.76]},
     "shower": 0
   }
     }

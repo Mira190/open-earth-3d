@@ -1952,6 +1952,8 @@ def hachiko(K, h):
     v, t, worn = hachiko_sculpt()
     W = np.array([P(a, b, c + zt) for a, b, c in v])
     for mat, sel in (("hk_bronze", ~worn), ("hk_worn", worn)):
+        if not sel.any():
+            continue
         m = K(mat, "statue")
         m.smooth, m.digits = True, 3
         tt = t[sel]
@@ -2165,7 +2167,7 @@ MATERIALS.update({
     # Hachiko and his corner (hachiko_square): the bronze, dark brown, and where hands have rubbed it to gold;
     # the plinth's speckled grey granite and the step's dark tiles; the setts laid in arcs round him, their
     # dark bands and pale blossoms; the planters' walls of upright granite strips and their caps; stainless rails
-    "hk_bronze": {"color": "#4a3a2b", "roughness": 0.52, "metalness": 0.75},
+    "hk_bronze": {"color": "#5a4430", "roughness": 0.48, "metalness": 0.75},
     "hk_worn": {"color": "#75593a", "roughness": 0.44, "metalness": 0.85},
     "hk_plinth": {"color": "#77746f", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0]},
     "hk_step": {"color": "#45474a", "roughness": 0.6, "metalness": 0.0, "pattern": "granite", "joints_m": [0.2, 0.2]},

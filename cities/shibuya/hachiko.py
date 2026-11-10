@@ -6,8 +6,8 @@ round it, his heavy head raised and turned a little to his left, a short blunt m
 ears set wide, the left one bent forward; his thighs thick at his sides and his tail curled over his
 back; all of it on a rough bronze slab cast with him. From
 photographs (Wikimedia Commons, July 2025, front and three-quarter views; see docs/cities/shibuya.md):
-the bronze is dark brown with a green bloom in its hollows, and his forelegs and paws are rubbed to
-gold by the hands that touch them. He sits on a speckled grey granite plinth with a bronze plate,
+the bronze is a warm brown with a green bloom in its hollows (his forelegs and paws, rubbed to gold
+by the hands that touch them, are drawn the same bronze as the rest: the owner's choice). He sits on a speckled grey granite plinth with a bronze plate,
 忠犬ハチ公 set vertically, on a darker granite step clad in small square tiles.
 
 Sizes: the 1934 statue was published as 162 cm on a 180 cm pedestal; the pedestal was lowered in 1989.
@@ -134,6 +134,6 @@ def sculpt():
     # the rubbed bronze: his forelegs and paws (the front of the legs, below the elbow), not the slab
     nrm = np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])
     nrm /= np.linalg.norm(nrm, axis=1, keepdims=True) + 1e-12
-    # (the faces turned towards the people in front of him, and the tops of the paws, rubbed most)
-    worn = (c[:, 0] > 0.14) & (z > 0.005) & (z < 0.42) & (np.abs(c[:, 1]) < 0.18) & ((nrm[:, 0] > 0.35) | (z < 0.07))
+    # (the real forelegs are rubbed bright by hands; the owner asked for one even bronze, so none is marked)
+    worn = np.zeros(len(t), bool)
     return v, t, worn

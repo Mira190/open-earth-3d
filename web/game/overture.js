@@ -123,12 +123,12 @@ window.OEOverture = (function () {
       uniforms: { uTime: { value: 0 }, uK: { value: 0 }, uMilky: { value: o.milky ?? 1 }, uStars: { value: o.stars ?? 1 }, uClouds: { value: o.clouds ?? 0.6 },
         uZen: { value: new THREE.Color(...(o.zenith || [0.008, 0.014, 0.05])) }, uMid: { value: new THREE.Color(...(o.mid || [0.03, 0.045, 0.13])) },
         uLow: { value: new THREE.Color(...(o.low || o.mid || [0.03, 0.045, 0.13])) }, uLowK: { value: o.low ? 0.85 : 0 },
-        uHor: { value: new THREE.Color(...(o.horizon || [0.32, 0.2, 0.26])) }, uPole: { value: new THREE.Vector3(...(o.pole || [0.35, 0.55, -0.76])).normalize() },
+        uHor: { value: new THREE.Color(...(o.horizon || [0.32, 0.2, 0.26])) }, uCity: { value: new THREE.Color(...(o.city || o.horizon || [0.32, 0.2, 0.26])) }, uPole: { value: new THREE.Vector3(...(o.pole || [0.35, 0.55, -0.76])).normalize() },
         uRim: { value: new THREE.Color(...(o.rim || [0.34, 0.4, 0.7])) }, uBank: { value: o.banks ?? 0 },
         uComet: { value: cm ? (cm.k ?? 1) : 0 }, uCometDir: { value: cDir }, uCometTail: { value: cTail }, uCometLen: { value: ((cm && cm.len) || 24) * RADc } },
       vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
       fragmentShader: `
-        uniform float uTime, uK, uMilky, uStars, uClouds, uLowK, uBank, uComet, uCometLen; uniform vec3 uZen, uMid, uLow, uHor, uPole, uRim, uCometDir, uCometTail; varying vec3 vW;
+        uniform float uTime, uK, uMilky, uStars, uClouds, uLowK, uBank, uComet, uCometLen; uniform vec3 uZen, uMid, uLow, uHor, uCity, uPole, uRim, uCometDir, uCometTail; varying vec3 vW;
         float h31(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
         float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y),
@@ -151,6 +151,7 @@ window.OEOverture = (function () {
           vec3 col = mix(uMid, uZen, smoothstep(0.08, 0.75, up));
           col = mix(col, uLow, exp(-max(h, 0.0) * 5.0) * uLowK);                   // the belt of clearer blue under the indigo
           col = mix(col, uHor, exp(-max(h, -0.02) * 14.0) * 0.9);                 // the glow over the city along the horizon
+          col = mix(col, uCity, exp(-max(h, -0.01) * 70.0) * 0.75);              // and, only where the sky meets the skyline, the city's own warm light
           float band = dot(d, uPole), mw = exp(-band * band / 0.05) * smoothstep(-0.02, 0.25, h);
           float n = fbm(d * 7.0), lanes = smoothstep(0.45, 0.75, fbm(d * 13.0 + 4.0));
           vec3 mwc = mix(vec3(0.36, 0.38, 0.66), vec3(0.62, 0.5, 0.56), exp(-band * band / 0.008) * n);   // its core warmer than its edges
