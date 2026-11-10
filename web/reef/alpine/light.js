@@ -54,7 +54,8 @@ export function createLight(renderer, d, env, atm, heightTex) {
     return true;
   }
   const shadowTex = texture(rt.texture);
-  const sunVis = Fn(([P]) => shadowTex.sample(vec2(P.x.sub(t.x0).div(W * t.cell_m), P.z.add(t.y1).div(H * t.cell_m))).r);
+  // (at level 0, which is all the target has: an explicit level may be read inside a branch, where WGSL refuses an implicit one)
+  const sunVis = Fn(([P]) => shadowTex.sample(vec2(P.x.sub(t.x0).div(W * t.cell_m), P.z.add(t.y1).div(H * t.cell_m))).level(0).r);
 
   // ---- shading: albedo (linear) and a world normal -> radiance, before the air (the fog node adds the air)
   // spec: a glossy share (snow, wet gravel, ice), ao: the ground's own occlusion
