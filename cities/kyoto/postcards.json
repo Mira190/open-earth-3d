@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "rabbit", "name": "Mochi", "what": "the rabbit"},
   "spots": [
     {"id": "tower", "name": "Kyoto Tower", "at": [-260.1, -1829.9], "look": [-277, -1739], "lookUp": 50, "fov": 62, "lines": {"any": ["Kyoto Tower, straight out of the station. 131 metres, and nothing else in the city comes close. People here say it is how they know they are home."]}},
     {"id": "gate", "name": "Higashi Honganji, the Founder's Hall Gate", "native": "御影堂門", "at": [-222, -1331], "look": [-281, -1331], "lookUp": 10, "lines": {"any": ["The Founder's Hall Gate of Higashi Honganji, on Karasuma-dori. It is so large that the street in front of it feels like part of the temple."]}},

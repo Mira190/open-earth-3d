@@ -440,7 +440,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     menuShownAt = clock();
     postcards();
   }
-  // postcards from the road (postcards.js): what the other surveyor has sent since the last visit, as a pile
+  // postcards from the road (postcards.js): what the plush friends have sent since the last visit, as a pile
   // on the menu; "Go there" on one dives to its city and starts the game on that spot, in that light
   let post = null, postAsked = false;
   const postOpen = () => !!(post && post.isOpen());

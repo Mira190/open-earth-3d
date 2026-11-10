@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "calico", "name": "Mike", "what": "the calico cat"},
   "spots": [
     {"id": "ichibangai", "name": "Kabukicho, past the arch", "native": "歌舞伎町", "at": [418, 2838], "look": [445, 2935], "lookUp": 9, "lines": {"any": ["Past the arch, Ichibangai runs north between the signs. Every doorway is somebody's idea of a good night out."]}},
     {"id": "arch", "name": "Kabukicho Ichibangai", "native": "歌舞伎町一番街", "at": [400.5, 2777.5], "look": [409.2, 2811.0], "lookUp": 5.6, "lines": {"any": ["The red arch of Kabukicho Ichibangai. It has stood at the mouth of the street since 1969."], "night": ["Kabukicho's arch with its bulbs on. Everything behind it is a sign for something."]}},

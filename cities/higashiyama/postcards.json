@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "tanuki", "name": "Pon", "what": "the tanuki"},
   "spots": [
     {"id": "pagoda", "name": "Yasaka Pagoda from Yasaka-dori", "native": "八坂の塔", "at": [-314.3, 176.1], "look": [-251, 173], "lookUp": 22, "lines": {"any": ["Yasaka Pagoda at the top of the stone street: five storeys, 46 metres, rebuilt in 1440. Every photograph of Kyoto has it in somewhere, and now mine does."], "dusk": ["Dusk on Yasaka-dori. The pagoda goes dark against the sky and the street empties in ten minutes."]}},
     {"id": "niomon", "name": "Kiyomizu-dera, the Nio Gate", "native": "仁王門", "at": [128.8, -198], "look": [165, -212], "lookUp": 10, "lines": {"any": ["The Nio Gate of Kiyomizu-dera, vermilion at the top of the hill. After the climb through the lanes, it is the first thing that lets you stop."]}},

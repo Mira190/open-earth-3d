@@ -1,8 +1,9 @@
 # Postcards from the road
 
-While you are away, the other surveyor keeps travelling. When you come back, the title screen has a
-small pile of postcards: a photograph from a real spot in one of the live cities, where and when it was
-taken, the sun there at that minute, and a line of their diary. **Go there** on a card dives to that
+While you are away, the plush friends keep travelling, one in each map. When you come back, the title
+screen has a small pile of postcards: a photograph from a real spot in one of the live cities, the
+friend held up in front of the view the way travellers photograph their own soft toys, where and when it
+was taken, the sun there at that minute, and a line of its diary. **Go there** on a card dives to that
 city and starts the game on the photographer's spot, in the photograph's light.
 
 ![A postcard from the Senbon Torii](images/title/postcard.jpg)
@@ -26,7 +27,8 @@ side dilute each other, so only the absence is taken, and it is made to serve th
 
 | From Travel Frog | Here |
 |---|---|
-| The traveller leaves when it likes; you only find out | The other surveyor (the one you do not play) travels on real time; nothing to manage |
+| The traveller leaves when it likes; you only find out | A plush friend in each map travels on real time; nothing to manage |
+| The frog is in its own photographs | The friend is held up in the corner of each one, the place sharp enough behind it to know |
 | Photographs arrive while you are away | A postcard every six hours away, three at most at a visit |
 | An album | The album strip under the card, and a page in each map's passport |
 | Packing food and charms, clover as currency, a lottery | Left out: a second loop to tend would be a second game |
@@ -42,13 +44,66 @@ What only this project can do: the postcard is true. A card dated 17:42 in Kyoto
 light the real sun gave it at 17:42 that day, by the same NOAA equations the cities use, and the place
 in the picture is the place you land in.
 
+## Who is in the picture
+
+At first nobody was: the photographs were the ones the other surveyor took. But a passer-by near the
+lens at the edge of a still read as the surveyor, a figure that took the picture away from the place
+without being anyone you knew. Reasoned from what the card is for:
+
+- **Why anyone at all.** Travel Frog works because someone you care about went, and the photograph is
+  their proof (players share the frog's snapshots, not the views: Culture Trip, The Next Web, below). A
+  bare view is a stock photograph, or a screenshot of the game; it does not say who went.
+- **Why a toy and not a person.** A doll held up against a view (*nuidori*, ぬい撮り) is how people take
+  this kind of picture now; it is personal without a face, it never poses awkwardly, and a soft toy in
+  the foreground, sharp, with the place soft behind it, is the one composition that makes a still of a
+  real-time world read as a photograph. A different friend in each map makes the album a set of
+  characters as well as places.
+- **How big.** In *nuidori* the doll is the subject and fills half the frame; here the place is
+  ("Go there" takes you into it), so the toy is the supporting subject: in the lower corner of one side
+  third, its head about a quarter of the frame's height, 0.65 m from the lens, focused on, the view
+  behind through an f/5.6 blur (6 px on a 640 px card) that keeps a landmark recognisable. Plush
+  photography guides agree on the rest: the rule of thirds, the toy's eye level or a little below, soft
+  light rather than hard sun (Otakumode, Super Cute Kawaii, Canon Snapshot, below).
+
+The cast, original designs (`tools/plush.js`, in each map's `postcards.json` `plush`):
+
+| Map | Friend |
+|---|---|
+| Fushimi Inari | Kon, a white Inari fox with red markings and a red bib (the shrine's fox messengers) |
+| Higashiyama | Pon, a tanuki |
+| Kyoto | Mochi, a white rabbit in a red scarf |
+| Philosopher's Path | Tetsu, a grey tabby (the path is known for its cats) |
+| Shichirigahama | Poppo, a dove in a sailor collar |
+| Sydney | Gumnut, a koala |
+| Queenstown | Merri, a sheep with a bell |
+| Shibuya | Hachi, an akita |
+| Shinjuku | Mike, a calico cat |
+| Tokyo | Rinrin, a panda |
+
+What makes a toy read as plush rather than plastic is its pile: an outline broken by fibres, light caught
+along them at a grazing angle, roots in their own shade, and the colour of what is around it thrown back
+on it. So every fleece part has 18 fur shells (Lengyel, Praun, Finkelstein and Hoppe, *Real-time fur over
+arbitrary surfaces*, 2001, the way games draw short fur): copies pushed out along the normal, 3 mm of pile
+(4.5 for the koala, 4 for the wool), tapered strands about a millimetre apart, darker at the roots. The
+face is embroidered on a panel of the head (a canvas texture: eyes with a glint, nose, mouth, markings).
+In a still the toy takes a bounce of the frame's own mean colour over its albedo (red in the torii, blue
+by the harbour), and after dark a little light of its own.
+
+`node tools/plush_shot.js out.png [kinds]` shows the cast side by side in a studio light.
+
+Sources: [Culture Trip on Travel Frog](https://theculturetrip.com/asia/china/articles/china-obsessed-game-traveling-frog/),
+[The Next Web](https://thenextweb.com/news/this-tiny-buddhist-frog-is-haunting-me),
+[Otakumode, plushie photos](https://otakumode.com/news/6992b8d70acfe9001efcfdee/Level-Up-Your-Plushie-Photos-PART-ONE),
+[Super Cute Kawaii, tiny plush photography](https://www.supercutekawaii.com/2021/08/tiny-plush-photography-tips),
+[Canon Snapshot, nuidori](https://snapshot.asia.canon/en/article/tell-a-tale-with-your-beloved-soft-toy-a-basic-guide-to-getting-cute-nuidori-photos).
+
 ## What the player sees
 
 - **The pile** on the title's menu: up to three cards fanned, "From the road", how many are new and
   where the newest is from. Bottom left on a desktop, under the logo on a phone.
 - **The card**: the photograph on a paper edge with a postmark (the map, the date, the minute), the
   map and the spot's name (in its own script too), the local date and time with the sun's height, one
-  line of the diary, and **Go there**. Arrows, the album strip, or ← → change the card; Esc closes.
+  line of the diary, who sent it, and **Go there**. Arrows, the album strip, or ← → change the card; Esc closes.
 - **Go there**: the title's dive to that city, then the game's own title card over that spot, with
   "As on the postcard" chosen as the time to start at. Play starts you where the photographer stood.
 - **The passport** of each map lists the postcards that came from it.
@@ -97,7 +152,9 @@ python pipeline/postcards.py index     # the index alone, after a change to name
 `tools/postcards.sh` runs `tools/game_shot.js` on the views `pipeline/postcards.py views` writes: each
 spot at four lights (25 minutes after sunrise, 11:00, 8 minutes after sunset, 100 minutes after sunset) on the day it is
 run, through the game's own sky, haze and post stack at the desktop tier, in photo mode from the
-photographer's eye, once nobody in the crowd is within 7 m of the lens. `pipeline/postcards.py pack`
+photographer's eye, once nobody in the crowd is within 10 m of the lens, with the map's friend held up
+in it (a spot's `"plush": {"side": -1, "x", "y", "tilt", "fstop", "dist"}` moves it; `false` leaves it out;
+by default it alternates sides from spot to spot). `pipeline/postcards.py pack`
 crops each to 3:2 and writes `web/data/<id>/postcards/<spot>-<light>.webp` (960 × 640, about 50 kB), and
 `index` writes `web/data/postcards.json`, which the pages read. A spot without all four stills is left
 out of the index.
@@ -130,9 +187,7 @@ one command; choosing among several seasons by the card's date is not built.
 
 ## Not built yet
 
-- The traveller in the frame. The photographs are the ones they took, so nobody is in them; a
-  self-timer shot with the surveyor you did not pick standing in the view would need the stills in
-  both characters.
+- The friend sitting on things (a railing, a step, a bench) rather than held up, and more than one pose.
 - Seasons: one set of stills, from the day they were rendered.
 - The reef sites, which have their own game and journal, and parked cities.
 - Sending a card: sharing a postcard as a link that opens on that spot for someone else. The link

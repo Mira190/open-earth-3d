@@ -35,7 +35,7 @@ game take the same tier. [docs/TITLE.md](docs/TITLE.md) covers the sequence, the
 references it draws on (Flight Simulator, Death Stranding, Hitman), the
 rendering and the tiers.
 
-While you are away, the other surveyor keeps travelling and sends postcards: a
+While you are away, the plush friends keep travelling, one in each map, and send postcards: a
 photograph from a real spot in a live city, in the light the real sun gave it at
 the minute it is dated, with a line of their diary. They wait in a small pile on
 the menu, and **Go there** on one starts the game on that spot.

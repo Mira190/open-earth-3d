@@ -1,7 +1,8 @@
 // Postcards from the road (docs/POSTCARDS.md).
 //
-// While you are away, the other surveyor keeps travelling: one photograph every six hours of real
-// time, from a spot in one of the live cities, with a line of their diary. The title screen shows
+// While you are away, the plush friends keep travelling, one to each map (a white Inari fox at Fushimi
+// Inari, a koala in Sydney...): one photograph every six hours of real time, from a spot in one of the
+// live cities, the friend held up in front of the view, with a line of its diary. The title screen shows
 // what has come since the last visit (three at most) as a small pile of postcards; opening one shows
 // the picture, where and when it was taken and the sun there at that minute, and "Go there" starts
 // the city's game on that spot, in that light.
@@ -105,9 +106,10 @@
     const loc = S.utcToLocal(card.t, city.timezone), alt = S.position(card.t, city.lat, city.lon).altitude;
     const hh = Math.floor(loc.minutes / 60), mm = Math.floor(loc.minutes % 60), pad = v => String(v).padStart(2, '0');
     const wd = WD[new Date(Date.UTC(loc.y, loc.m - 1, loc.d)).getUTCDay()];
-    const lines = [].concat(spot.lines[card.l] || spot.lines.any || []);
+    const lines = [].concat(spot.lines[card.l] || spot.lines.any || []), f = (M.friends || {})[card.c];
     return {
       city, spot,
+      from: f ? `${f.name}, ${f.what}` : 'a friend on the road',
       where: city.district ? `${city.group} · ${city.district}` : city.name,
       date: `${wd} ${loc.d} ${MO[loc.m - 1]}`, day: `${loc.d} ${MO[loc.m - 1]} ${loc.y}`,
       time: `${pad(hh)}:${pad(mm)}`, zone: loc.zone,
@@ -171,7 +173,7 @@
         <h2></h2>
         <p class="pv-when ts-mono" aria-live="polite"></p>
         <p class="pv-line"></p>
-        <p class="pv-from ts-mono">From the road · your fellow surveyor</p>
+        <p class="pv-from ts-mono"></p>
         <div class="pv-act"><button class="pv-go">Go there<kbd>↵</kbd></button><button class="pv-nav" data-d="1" aria-label="The one before">←</button><span class="pv-n ts-mono"></span><button class="pv-nav" data-d="-1" aria-label="The next one">→</button></div>
       </div>
       <ol class="pv-album" aria-label="The album"></ol>
@@ -205,6 +207,7 @@
       $('h2').innerHTML = esc(k.spot.name) + (k.spot.native ? `<small lang="ja">${esc(k.spot.native)}</small>` : '');
       $('.pv-when').textContent = `${k.date} · ${k.time} ${k.zone} · ${k.sun}`;
       $('.pv-line').textContent = k.line;
+      $('.pv-from').textContent = `From the road · ${k.from}`;
       $('.pv-n').textContent = `${cards.length - at} / ${cards.length}`;
       if (!k.card.seen) { k.card.seen = 1; write(state); drawPile(); }
       drawAlbum();

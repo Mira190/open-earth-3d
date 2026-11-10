@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "koala", "name": "Gumnut", "what": "the koala"},
   "spots": [
     {"id": "chair", "name": "Mrs Macquarie's Chair", "at": [990, 300], "look": [320, 480], "lookUp": 10, "lines": {"any": ["Sat where Mrs Macquarie used to sit and watch for ships. From her bench the sails and the bridge line up as if somebody planned it."], "dusk": ["The sun goes down behind the bridge from here. Everyone on the point stopped talking for about a minute."], "night": ["The sails are lit and the bridge is a string of lamps. I stayed on the point longer than I meant to."]}},
     {"id": "lookout", "name": "The Cahill Walk", "at": [-160, 92], "look": [-120, 1000], "z": 17.8, "lookUp": 14, "up": 2.4, "lines": {"any": ["Up on the Cahill Walk, over the station. The whole quay is below, ferries in and out, and the bridge is straight ahead."]}},

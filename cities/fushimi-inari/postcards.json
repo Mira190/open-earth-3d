@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "fox", "name": "Kon", "what": "the Inari fox"},
   "spots": [
     {"id": "omotesando", "name": "The Omotesando", "native": "表参道", "at": [-530.9, 115.9], "look": [-430, 123], "lookUp": 10, "lines": {"any": ["The approach to Fushimi Inari from the station. You see the first great torii from the street, and everybody walks a little faster."]}},
     {"id": "romon", "name": "The Romon", "native": "楼門", "at": [-444, 129], "look": [-410, 125], "lookUp": 8, "lines": {"any": ["The Romon, the shrine's tower gate. Hideyoshi gave it in 1589, they say in thanks for his mother getting well. Two stone foxes keep it."]}},

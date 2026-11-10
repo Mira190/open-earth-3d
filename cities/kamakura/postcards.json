@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "dove", "name": "Poppo", "what": "the dove"},
   "spots": [
     {"id": "crossing", "name": "The Kamakurakokomae crossing", "native": "鎌倉高校前1号踏切", "at": [-446, 178], "look": [-446, 60], "lookUp": -4, "lines": {"any": ["The crossing at Kamakurakokomae, from the hill road. The road drops to the rails, and past the rails there is only the sea."]}},
     {"id": "platform", "name": "Kamakurakokomae Station", "native": "鎌倉高校前駅", "at": [-572, 143], "look": [-1900, -250], "lookUp": 8, "lines": {"any": ["Kamakurakokomae Station. One platform, one track, and the whole of Sagami Bay in front of it, with Enoshima to the west."]}},

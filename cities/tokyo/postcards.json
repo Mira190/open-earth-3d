@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "panda", "name": "Rinrin", "what": "the panda"},
   "spots": [
     {"id": "station", "name": "Tokyo Station, the Marunouchi side", "native": "東京駅", "at": [512.6, 1214.5], "look": [660, 1205], "lookUp": 10, "lines": {"any": ["Tokyo Station from the Marunouchi side. Red brick from 1914, the domes it lost in the war put back in 2012, and glass towers all round it."]}},
     {"id": "nijubashi", "name": "Nijubashi", "native": "二重橋", "at": [-326.9, 1054.9], "look": [-470, 1135], "lookUp": 6, "lines": {"any": ["Nijubashi, the stone bridge to the Palace. The moat is so still that the bridge is drawn twice."]}},
