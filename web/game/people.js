@@ -772,12 +772,10 @@ transformed = crowdPose(transformed, false);`);
   // before, every slot was drawn every frame, the hidden ones as a model scaled to nothing, in the view and
   // again in the sun's shadow map, and every buffer was sent whole. camera: the view to cull against (none:
   // no culling).
-  // reach: metres a walker's shadow can reach now (0 at night), for the visibility's answer (visibility.js OEVis.seen):
-  // a walker behind the buildings, whose shadow cannot reach anything seen either, is not drawn.
-  function crowdRenderer(world, lib, U, P, { near = 14, nearR = 32, style = null, camera = null, reach = null } = {}) {
+  function crowdRenderer(world, lib, U, P, { near = 14, nearR = 32, style = null, camera = null } = {}) {
     const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
     const UP = new THREE.Vector3(0, 1, 0), at = new THREE.Vector3(), frustum = new THREE.Frustum(), vp = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), camAt = new THREE.Vector3(1e9, 0, 0);
-    let culling = false, reachNow = 40;
+    let culling = false;
     const SWAP = ['iSkin', 'iHair', 'iTop', 'iLegs', 'iPat', 'aAnim', 'iUmb'];
     function swap(mesh, a, b) {
       const who = mesh.userData.who, pa = who[a], pb = who[b];
@@ -858,7 +856,6 @@ transformed = crowdPose(transformed, false);`);
       dtNow = dt; tNow = t;
       // the camera's frustum as it was last drawn, for this frame's culling; not across a cut (the camera somewhere else)
       culling = false;
-      reachNow = reach ? reach() : 40;
       if (camera) {
         culling = camera.position.distanceToSquared(camAt) < 400;
         camAt.copy(camera.position);
@@ -897,7 +894,7 @@ transformed = crowdPose(transformed, false);`);
       const sit = p.mode === 'sit';
       at.set(p.x, p.z - (sit ? p.thigh : 0), -p.y);
       // out of sight by more than the longest shadow reaches back into it: not drawn (30 m: a sun 4 degrees up)
-      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seen(p.x, p.y, p.z + 2.2, reachNow)))) { unshow(p); return; }
+      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 2.3, 2.3)))) { unshow(p); return; } // (or behind the street wall: visibility.js)
       show(p);
       q.setFromAxisAngle(UP, Math.PI - p.h);
       sc.setScalar(p.look.scale);

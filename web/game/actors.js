@@ -1288,6 +1288,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         p.gw = held ? (p.gw || 0) + dt : 0;
         if (held) atKerb = true;
       }
+      // a level crossing's alarm sounding ahead (rail.js gateAhead, set as api.gate by the game): up to its line and
+      // wait there, as at a kerb; someone between the gates when it starts walks on out
+      if (api.gate) { const g = api.gate(p.x, p.y, hx, hy); if (g != null) { atKerb = true; cap = Math.min(cap, g * 1.5); } }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
       // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
       if (atKerb) p.kw = (p.kw || 0) + dt;
@@ -1449,7 +1452,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     return false;
   }
-  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null, posts = null, junctions = null, reach = null } = {}) {
+  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null, posts = null, junctions = null } = {}) {
     const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const JN = junctions || OEJunctions.create(net, { keep, lane: LANE, signals: [] });
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
@@ -1495,12 +1498,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // (issue 352: a car out of the eye's sight by more than its shadow reaches back into it, 30 m, takes no slot,
     // so it is not drawn into the view or the shadow map; and only the slots taken are sent to the GPU)
     const at = new THREE.Vector3(), frustum = new THREE.Frustum(), fm = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), eyeAt = new THREE.Vector3(1e9, 0, 0);
-    let culling = false, reachNow = 40;
+    let culling = false;
     const sendRange = (a, n) => { if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, n * a.itemSize); } a.needsUpdate = true; };
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
       if (!fleet) { mesh.setMatrixAt(i, m4); return; }
       const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
-      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seen(c.x, c.y, c.z + (c.top || 2), reachNow)))) return; // (behind the buildings, shadow and all: visibility.js)
+      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 3.6, 3.6)))) return; // (or behind the street wall: visibility.js; 3.6 m: a bus)
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);
@@ -2066,7 +2069,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
       // the eye's frustum as it was last drawn, to leave out the cars it cannot see; not across a cut
       culling = !!(fleet && eye && eye.isCamera && eye.position.distanceToSquared(eyeAt) < 400);
-      reachNow = reach ? reach() : 40;
       if (fleet && eye && eye.isCamera) { eyeAt.copy(eye.position); frustum.setFromProjectionMatrix(fm.multiplyMatrices(eye.projectionMatrix, eye.matrixWorldInverse), eye.coordinateSystem, eye.reversedDepth); }
       head.fill(-1); bhead.fill(-1); nb = 0;
       for (const a of onLine.values()) a.length = 0;

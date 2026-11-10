@@ -58,6 +58,7 @@ import rasterio.windows  # noqa: E402
 from rasterio.transform import from_origin  # noqa: E402
 from rasterio.warp import Resampling, reproject  # noqa: E402
 
+EARTH_R, REFRACTION = 6371000.0, 0.13   # for far.curvature
 HALF_M = {"city": 40000, "marine": 60000, "alpine": 100000}  # web/world.js reads it from far.json
 # an alpine site is seen from its peaks and over 80 km of lake and basin: a wider ring, finer grids (195 m, 98 m)
 GRIDS = {"alpine": (1024, 2048)}
@@ -315,6 +316,13 @@ def run(cid):
     sea = (water > 0.5) & (dem < 3)
     h = np.where(sea, -6.0, np.maximum(h, 1.5 * (dem > 0)))
     h = np.where((dem <= 0) & ~sea & (water > 0.2), -6.0, h)
+    if fc.get("curvature"):
+        # a far peak stands lower than a flat map draws it: the Earth's curve, less what the air bends the sight line
+        # back (refraction, a seventh of it), taken off the land's height by its distance from the frame's centre.
+        # Mount Fuji from Kamakura, 70 km: 335 m lower, 2.8 degrees over the horizon rather than 3.1
+        ax = (np.arange(NH) + 0.5) / NH * 2 * box.half - box.half
+        d2 = ax[None, :] ** 2 + ax[::-1][:, None] ** 2
+        h = np.where(h > 0, np.maximum(1.5, h - (1 - REFRACTION) * d2 / (2 * EARTH_R)), h)
     q = np.clip(np.round((h + 100) * 4), 0, 65535).astype(np.uint16)
     glow, bm = lights(box, fr[CLASSES.index(50)])
     png = np.stack([(q >> 8).astype(np.uint8), (q & 255).astype(np.uint8), np.round(np.sqrt(glow) * 255).astype(np.uint8)], axis=-1)
