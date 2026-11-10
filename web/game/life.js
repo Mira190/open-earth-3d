@@ -141,6 +141,7 @@ window.OELife = (function () {
         t = 0;
         const A = ctx.A;
         if (!A.on || !A.ctx || !A.musicBus) return;
+        if (ctx.quiet && ctx.quiet()) { if (music.playing) music.stop(); return; } // (a performance is on: the score rests)
         if (!music.playing && !music.off && !titled) music.start(A.ctx, A.musicBus());
         if (!music.playing) return;
         const wx = L.day ? L.day.weather() : { rain: 0 }, on = L.day ? L.day.today().find(e => L.day.onNow(e)) : null;

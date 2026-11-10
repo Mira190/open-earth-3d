@@ -82,7 +82,7 @@ module.exports = async function trainsStep(p) {
       const tr = T.live.find(o => o.s === sv && o.ph === 'stand');
       if (tr && !standing) {
         standing = 1;
-        for (const K of Object.values(T.kinds)) for (const m of K.meshes.slice(0, 1)) for (let i = 0; i < m.count; i++) {
+        for (const K of Object.values(T.kinds)) for (const L of K.lods) for (const m of L.meshes.slice(0, 1)) for (let i = 0; i < m.count; i++) {
           m.getMatrixAt(i, m4); v3.setFromMatrixPosition(m4); drawn++;
           let best = Infinity;
           for (const s of T.services) for (let d = 0; d <= s.tr.c.L; d += 0.5) { s.tr.c.at(d, q); const dd = Math.hypot(q.x - v3.x, q.y + v3.z); if (dd < best) best = dd; }
@@ -93,6 +93,11 @@ module.exports = async function trainsStep(p) {
     const said = T.said.filter(o => o.track === sv.track).map(o => o.what), n = sv.tr.platform, first = T.said.find(o => o.track === sv.track && o.what === 'approach');
     const cap = document.getElementById('g-announce');
     checks.push([standing === 1 && drawn > 0 && offTrack === 0, `a train stands at track ${n}: ${drawn} cars drawn on the line${offTrack ? `, ${offTrack} off their track` : ''}`]);
+    // the Blender cars (assets/vehicles/railstock.glb) have taken the box models' place
+    if (T.services.some(s => s.S.model)) {
+      const glb = Object.values(T.kinds).filter(K => K.glb), drawnGlb = glb.reduce((a, K) => a + K.lods.reduce((b, L) => b + L.n, 0), 0);
+      checks.push([T.models && glb.length > 0 && drawnGlb > 0, `the trains are the modelled cars (${glb.length} kinds, ${drawnGlb} cars drawn${T.models ? '' : '; railstock.glb not loaded'})`]);
+    }
     checks.push([['approach', 'arrive', 'close'].every(w => said.includes(w)) && !!first && (!first.ja || first.ja.includes(`${n}番線`)) && new RegExp(`(track|platform) ${n}\\b`).test(first.en) && !!cap && cap.textContent.length > 10,
       `the platform announces the train on track ${n}, the station and the doors (${said.join(', ') || 'nothing'}; "${first ? first.en : ''}")`]);
     checks.push([voice > 0.2, `the train is heard from the platform (its voice up to ${voice.toFixed(2)})`]);

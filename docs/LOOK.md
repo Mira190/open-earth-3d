@@ -89,7 +89,8 @@ keys its own: `game.look.grade: {night, blue, golden, day}`, each `{ev, tint, sa
 The Sky's own cloud layer was one sheet of soft noise. In its place, in the same shader of the same dome (no
 pass, no target, no draw), four layers are composed far to near:
 
-- **cirrus** at 9 km, curved streaks;
+- **cirrus** at 9 km: streaks bent by a slow field (a domain warp) so that they sweep and hook, broken along their
+  length into strokes, and read from a coarse mip so that they are wisps rather than fine lines;
 - **towers**: cumulus congestus standing on the horizon all round, shaped in azimuth and elevation like a painted
   backdrop's layer (they are tens of kilometres off, so they do not shift as you walk): a skyline of masses with
   heads on them, lit on the side the sun is on, wholly lit when the sun is behind you, rim-lit when it is behind
@@ -103,7 +104,8 @@ All of it reads one tileable 256 x 256 texture made once on the CPU (billows, ce
 channel spread evenly by rank, so a cover of 0.3 hides three tenths of the sky): 10 bilinear lookups a sky pixel
 against the 20 lattice hashes of the layer it replaces. The layers drift with the weather's wind (`OEWeather.S.wind`, [WEATHER.md](WEATHER.md)); under a thunderstorm the
 sheet darkens and lightning lights it from within. They change shape slowly; the cover and density are the weather's
-(`cloudCoverage`, `cloudDensity`, as before). After dark the fair-weather cumulus thins out and softens.
+(`cloudCoverage`, `cloudDensity`, as before). Where the layers start is a hash of the map's latitude and longitude and the day, so two maps
+at the same hour, or one map on two days, do not show the same sky. After dark the fair-weather cumulus thins out and softens.
 
 The clouds' colours are not worked out per pixel. For each hour `OEClouds.light` sets a lit colour, a shade
 colour and a rim colour from the sky's own zenith and horizon (worked out on the CPU, as the haze is), by a
@@ -208,8 +210,7 @@ light shafts are compiled out.
 A day in 24 seconds, from before sunrise to night, over Shibuya and over Higashiyama (960 x 540, 12 frames a
 second, the clouds at twelve seconds a frame): [images/look/shibuya-day.mp4](images/look/shibuya-day.mp4) and
 [images/look/higashiyama-day.mp4](images/look/higashiyama-day.mp4), made with
-`xvfb-run -a node tools/day_film.js shibuya out.mp4 960x540 24 12` (see the tool's header for the view). Both
-start from the same sky: the clouds' drift begins at the same place on every map.
+`xvfb-run -a node tools/day_film.js shibuya out.mp4 960x540 24 12` (see the tool's header for the view). (Made before the clouds were seeded by place and day, so both start from the same sky.)
 
 Not built here: glints on overhead wires and rails (the maps draw neither as their own material yet), and a
 bounce that knows which ground is near which wall (the hemisphere light's is the same everywhere).
