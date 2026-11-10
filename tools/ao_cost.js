@@ -1,9 +1,8 @@
 // What the game's contact shadows (web/game/ao.js) cost: the mean frame time in a city's game at
 // each AO level (off, lite, full), on the same view, the tier forced (high unless TIER is set).
 // On a software renderer the numbers say how the levels compare, not what a GPU takes. Then the
-// frame-time budget is fed simulated GPU frames on a clock of its own and must step down when the
-// AO is what slows the frame, take a step back when it is not, and hold when under budget (the
-// levels after each simulated second). Exits 1 if the budget misbehaves or the page throws.
+// frame-time governor's ceiling on it (quality.js: extras 1, 0.5, 0) must take it to lite, to off and
+// back. Exits 1 if it does not or the page throws.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/ao_cost.js shibuya [frames] [WxH]
 const { chromium } = require('playwright');
@@ -23,6 +22,7 @@ const [,, city = 'shibuya', frames = '40', size = '1440x900'] = process.argv;
   const out = await p.evaluate(async n => {
     const g = window.__game, ao = g.atmos.ao, res = {};
     if (!ao) return { ao: 'none on this tier' };
+    const top = ao.level;
     const frame = () => new Promise(r => requestAnimationFrame(r));
     for (const lv of [0, 1, 2, 0]) {
       ao.set(lv);
@@ -31,18 +31,10 @@ const [,, city = 'shibuya', frames = '40', size = '1440x900'] = process.argv;
       for (let i = 0; i < n; i++) await frame();
       res[`level ${lv}${res[`level ${lv}`] ? ' again' : ''}`] = +((performance.now() - t0) / n).toFixed(1);
     }
-    // the budget, fed frames on a clock of its own (a software renderer's 2 s frames say nothing
-    // about it): 30 ms frames against the high tier's 20 ms budget
-    ao.testBudget(20);
-    // a GPU the AO slows: 30 ms at full, 22 ms at lite, 17 ms off; it steps 2 to 1 to 0 and stays
-    ao.set(2); res.budgetSlowAO = ao.testFrames(12, lv => [17, 22, 30][lv]);
-    // a frame slow for another reason (30 ms at every level): each step is taken back, then a rest
-    ao.set(2); res.budgetNotAO = ao.testFrames(12, () => 30);
-    // under budget: it never steps
-    ao.set(2); res.budgetFast = ao.testFrames(8, () => 12);
-    ao.testBudget(1e9); ao.set(2);
-    const ok = /^2+1+0+$/.test(res.budgetSlowAO) && /^2+1+2+$/.test(res.budgetNotAO) && /^2+$/.test(res.budgetFast);
-    res.budget = ok ? 'ok' : 'FAIL';
+    // the governor's ceiling: full with every extra, lite at half of them, off with none, and back
+    const seen = [2, 1, 0, 2].map(v => { ao.limit(v); return ao.level; });
+    res.limit = seen.join('');
+    res.budget = res.limit === `${Math.min(2, top)}${Math.min(1, top)}0${Math.min(2, top)}` ? 'ok' : 'FAIL';
     return res;
   }, +frames);
   console.log(JSON.stringify(out), errs.length ? `errors: ${errs.join(' | ')}` : '');
