@@ -505,14 +505,14 @@ Sources for the above are listed under [Sources](#sources) ("Daily life").
 | The card for a new day | The diary's page for today |
 |---|---|
 | ![](images/life/day-card.jpg) | ![](images/life/diary-today.jpg) |
-| **A question in a talk (Kyoto)** | **A rank earned** |
-| ![](images/life/bond-ask.jpg) | ![](images/life/rank-up.jpg) |
-| **The work on offer** | **The passport's skills, under the stamps** |
-| ![](images/life/diary-work.jpg) | ![](images/life/passport.jpg) |
+| **A rank earned (Kyoto)** | **The passport's skills, under the stamps** |
+| ![](images/life/rank-up.jpg) | ![](images/life/passport.jpg) |
+| **A job in hand: which way is the Imperial Palace?** | |
+| ![](images/life/job.jpg) | |
 
-| On a phone: the day's card | The people you know | A job in hand | A rank | Messages |
-|---|---|---|---|---|
-| ![](images/life/day-card-phone.jpg) | ![](images/life/people-phone.jpg) | ![](images/life/job-phone.jpg) | ![](images/life/rank-up-phone.jpg) | ![](images/life/messages-phone.jpg) |
+| On a phone: the day's card | The people you know | The work on offer | A job in hand | A rank | Messages |
+|---|---|---|---|---|---|
+| ![](images/life/day-card-phone.jpg) | ![](images/life/people-phone.jpg) | ![](images/life/work-phone.jpg) | ![](images/life/job-phone.jpg) | ![](images/life/rank-up-phone.jpg) | ![](images/life/messages-phone.jpg) |
 
 ### The day and the diary
 
