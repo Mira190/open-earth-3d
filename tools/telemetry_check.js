@@ -110,7 +110,7 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
       await p.goto(`http://localhost:${PORT}/reef/?city=${reef}&telemetry=${T}`, { waitUntil: 'load', timeout: 120000 });
       await p.waitForFunction(() => window.__ready === true, null, { timeout: 600000 }).catch(() => {});
       // (frames enough for the page's own GPU report, every sixteenth frame from the tenth on: reef/main.js)
-      await p.waitForFunction(() => window.__reef && window.__reef.renderer.info.frame > 60, null, { timeout: 120000 }).catch(() => {});
+      await p.waitForFunction(() => window.OETelemetry && window.OETelemetry.frames() > 40, null, { timeout: 300000 }).catch(() => {});
       await sleep(1500);
       await p.goto('about:blank');
       await sleep(1500);
