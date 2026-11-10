@@ -4871,7 +4871,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (trains) trains.update(dt, camera);
     if (rail) {
       if (waitRail && (player.mode !== 'foot' || railStation(player.x, player.y) !== waitRail || rail.cars.some(c => rail.stationOf(c.id) === waitRail))) { if (player.mode === 'foot' && railStation(player.x, player.y) === waitRail) H.toast(`The train is in. <kbd>E</kbd> to board.`); waitRail = null; }
-      rail.ear = player;
+      rail.ear = { x: camera.position.x, y: -camera.position.z }; // (the trains' detail is by the camera: in a film it is not where you stand)
       if (rail.crossingClosed) { // (a crossing's alarm starting beside you: said once)
         const xc = player.mode === 'foot' ? rail.crossingClosed(player.x, player.y, 12) : null;
         if (xc && xc !== nearXing) H.toast(xc.arms.length ? 'The crossing is closing: wait behind the barrier until the train has passed.' : 'A train is coming: keep off the rails.');
