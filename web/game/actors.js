@@ -1837,6 +1837,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const live = [];
     const VIEW = ['line', 's', 'dir', 'x', 'y', 'z', 'h', 'v', 'half', 'hw', 'top', 'taxi', 'hex', 'why', 'youBy', 'heldBy', 'still', 'stuck', 'q', 'toLine', 'lineArm', 'lineEx', 'mv', 'front', 'rev'];
     const api = { mesh, fleet, C, live, VIEW, slots: C.length, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [], honks: [], stop: c => { c.v = 0; } };
+    let eyeAt = [0, 0]; // (where the traffic was last centred: unjam's respawn)
     // who goes first where two cars' ways meet (car c's way comes into o's box d metres ahead of its
     // bumper, and o's into c's d2 ahead): read the same way by both, so that one goes and the other
     // waits and never both. A car that can no longer stop short of the place goes; then the one in
@@ -1868,6 +1869,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
     // in it, or still moving within r of its node, comes back elsewhere, out past r, rather than being
     // caught in the box by the crowd stepping off the kerbs
+    // a car that holds a driver up for good (game.js, the chauffeur at a jam that no light explains): it backs out to
+    // the junction behind if it can, as from a narrow street; one that cannot (in a junction's box, a car behind it)
+    // leaves the traffic and comes back elsewhere, as does one asked a second time
+    api.unjam = (c, hard) => { // (hard: asked before, and it stands there yet)
+      if (!c || c.line < 0 || c.park || !C.includes(c)) return '';
+      if (!hard && reverse(c)) return 'backs out';
+      respawn(c, eyeAt[0], eyeAt[1], radius * 0.6);
+      return 'gone';
+    };
     api.clearBox = (x, y, r) => {
       let k = 0;
       for (const c of C) {
@@ -2054,6 +2064,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return d < 12 || (d < 200 && (h < 0.3 ? d < 150 : (dx * look.x - dy * look.z) / (d * h) > 0.3)); // (sim y is -z)
     }
     function update(dt0, cx, cy, t, blockers) {
+      eyeAt[0] = cx; eyeAt[1] = cy;
       const dt = dt0;
       tick++;
       if (eye) eye.getWorldDirection(look);

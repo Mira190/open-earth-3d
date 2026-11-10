@@ -18,7 +18,7 @@ async function autopilotStep({ log = false, far = 250, limit = 420 } = {}) {
   if (!c || !g.pilotTo) return { none: 'no car' };
   const A = g.cars, st = c.D.st, out = { log: [] };
   const seat = (() => { // out of a ride if you are in one, and into your car's driver's seat
-    for (let t = 0; t < 40 && g.player.mode === 'ride'; t++) { g.leaveRide(); g.advance(0.5); }
+    for (let t = 0; t < 400 && g.player.mode === 'ride'; t++) { g.leaveRide(); g.advance(0.5); } // (a ride on its way lets you out when it next stops)
     if (g.ride && g.ride() && g.cancelRide) g.cancelRide();
     for (let k = 0; k < 2 && g.player.mode !== 'car'; k++) {
       const s = (g.KEEP === 'left' ? 1 : -1) * (k ? -1 : 1); // (the kerb side first; then the road side, where a wall is at the kerb)
@@ -77,7 +77,7 @@ async function autopilotStep({ log = false, far = 250, limit = 420 } = {}) {
       const name = q => (A.C.includes(q) ? `car ${A.C.indexOf(q)}` : q && q.id ? q.id : 'other'), one = q => `${name(q)} v ${(+q.v || 0).toFixed(1)} ${q.why || ''}${q.youBy ? ` (${q.youBy})` : ''}${q.heldBy ? ` by ${q.heldBy}` : ''}${q.mv ? ` in j${q.mv.j.id}` : ''}${q.lineArm ? ` at j${q.lineArm.j.id} light ${g.junctions.light(q.lineArm, q.lineEx)}` : ''}${q.rev ? ' reversing' : ''} ${Math.hypot(q.x - st.x, q.y - st.y).toFixed(0)} m off`;
       const ch = [];
       for (let q = d.block && d.block.of ? d.block.of : d.block, k = 0; q && k < 6; q = q.front, k++) ch.push(one(q));
-      out.log.push(`${t}s STOOD ${stood.toFixed(0)} s: ${d.why} held ${(d.held || 0).toFixed(0)} q ${!!d.q} xMutual ${!!d.xMutual} ${d.mv ? `in j${d.mv.j.id}` : d.lineAt ? `at j${d.lineAt.j.id} (${d.junction || ''}) light ${g.junctions.light(d.lineAt, d.lineEx)}` : ''} turn ${o.turnNo || (o.turn ? 'turning' : '')} | ${ch.join(' < ') || 'no block'}`);
+      out.log.push(`${t}s STOOD ${stood.toFixed(0)} s: ${d.why} held ${(d.held || 0).toFixed(0)} q ${!!d.q} xMutual ${!!d.xMutual} ${d.mv ? `in j${d.mv.j.id}` : d.lineAt ? `at j${d.lineAt.j.id} (${d.junction || ''}) light ${g.junctions.light(d.lineAt, d.lineEx)}` : ''} turn ${o.turnNo || (o.turn ? 'turning' : '')} jam ${(o.jamT || 0).toFixed(0)} s${o.unjammed ? `, asked out:${o.unjammed}` : ''} | ${ch.join(' < ') || 'no block'}`);
     }
     if (log && t % 5 === 0) out.log.push(`${t}s s=${d.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.speed.toFixed(1)} ${o.join ? 'joining' : d.why || ''} ${o.hud ? `[${o.hud.turn} · ${Math.round(o.hud.eta)} s]` : ''} film ${o.film.name}`);
     // the handback: a touch of the wheel, once it is well under way
@@ -120,7 +120,7 @@ async function assistStep({ log = false } = {}) {
   if (!c || !g.assistToggle) return { none: 'no car' };
   const A = g.cars, st = c.D.st, out = { log: [] };
   const seat = () => { // (as autopilotStep's)
-    for (let t = 0; t < 40 && g.player.mode === 'ride'; t++) { g.leaveRide(); g.advance(0.5); }
+    for (let t = 0; t < 400 && g.player.mode === 'ride'; t++) { g.leaveRide(); g.advance(0.5); } // (a ride on its way lets you out when it next stops)
     if (g.ride && g.ride() && g.cancelRide) g.cancelRide();
     for (let k = 0; k < 2 && g.player.mode !== 'car'; k++) {
       const s = (g.KEEP === 'left' ? 1 : -1) * (k ? -1 : 1);
@@ -132,13 +132,19 @@ async function assistStep({ log = false } = {}) {
   };
   const noSeat = seat();
   if (noSeat) return { none: noSeat };
-  let ok = false;
-  for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) if (g.pilotTo(d, { quiet: true }) && g.pilot().len > 200) { ok = true; break; }
-  if (!ok) return { none: 'no place to drive towards' };
-  // up to speed, in its lane, clear of a junction
-  let t = 0;
-  for (; t < 120 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), d = o && o.drv.st; if (d && !o.join && st.speed > 4 && !d.mv && !(d.toLine < 30) && Math.abs(d.shift) < 0.1 && o.drv.remaining() > 120) break; }
-  if (!g.pilot() || t >= 120) { g.pilotOff(); return { none: 'the car never got up to speed on a clear stretch' }; }
+  // up to speed, in its lane, clear of a junction: towards each place offered in turn, a minute each (after 30 s
+  // a shorter clear stretch will do: lanes with a junction every 50 m)
+  let t = 0, up = false, tried = 0;
+  for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) {
+    if (tried >= 3) break;
+    if (!(g.pilotTo(d, { quiet: true }) && g.pilot().len > 200)) { g.pilotOff(); continue; }
+    tried++;
+    for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st; if (q && !o.join && st.speed > (t < 30 ? 4 : 3) && !q.mv && !(q.toLine < (t < 30 ? 30 : 12)) && Math.abs(q.shift) < 0.1 && o.drv.remaining() > (t < 30 ? 120 : 60)) { up = true; break; } }
+    if (up) break;
+    g.pilotOff();
+  }
+  if (!tried) return { none: 'no place to drive towards' };
+  if (!up) { g.pilotOff(); return { none: 'the car never got up to speed on a clear stretch' }; }
   g.pilotOff();
   if (!g.assist.lane) g.assistToggle('lane');
   if (!g.assist.cruise) g.assistToggle('cruise');
