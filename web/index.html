@@ -666,6 +666,12 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-stamps .stamp { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 10px; border: 1px dashed var(--line-2);
   font: 300 10px/1.15 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
 .g-stamps li.got .stamp { border: 3px double var(--accent); color: var(--accent); transform: rotate(-8deg); background: var(--accent-wash); box-shadow: 0 0 24px rgba(255, 176, 102, 0.15); }
+.g-postcards { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.g-postcards h3 { margin: 0 0 6px; font: 400 10px/1 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-2); }
+.g-postcards ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.g-postcards li { display: grid; gap: 5px; font-size: 12px; color: var(--ink-2); }
+.g-postcards img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border: 3px solid #ece8e1; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); margin-bottom: 4px; }
+.g-postcards b { color: var(--ink); font-weight: 600; }
 .g-stamps li > span:last-child { display: grid; gap: 2px; font-size: 12px; color: var(--ink-2); }
 .g-settings { display: grid; gap: 16px; }
 .g-settings .field { display: grid; gap: 7px; }
@@ -1073,7 +1079,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     <div class="g-overlay" id="g-pass" hidden>
       <div class="g-panel"><header><h2>Survey passport</h2><button class="x" id="g-pass-close" aria-label="Close the passport">×</button></header>
         <p class="note">One stamp for each part of the survey. Stamps are saved in this browser.</p>
-        <ol class="g-stamps" id="gp-stamps"></ol></div>
+        <ol class="g-stamps" id="gp-stamps"></ol>
+        <div class="g-postcards" id="gp-post" hidden><h3>Postcards from here</h3><p class="note">Sent by your fellow surveyor while you were away. They wait on the title screen, and each one can take you to where it was taken.</p><ol></ol></div></div>
     </div>
     <div class="g-overlay" id="g-menu" hidden>
       <div class="g-panel"><header><h2>Paused</h2><button class="x" id="g-menu-close" aria-label="Resume">×</button></header>
@@ -1185,6 +1192,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="earth.js"></script>
 <script src="score.js"></script>
 <script src="metro.js"></script>
+<script src="postcards.js"></script>
 <script src="title.js"></script>
 <script src="version.js"></script>
 <script src="film.js"></script>

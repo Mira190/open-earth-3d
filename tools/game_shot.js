@@ -18,7 +18,9 @@
 // nearest that level, as under a slab; "ferry": {to, at} aboard a vessel that far along its leg to that wharf;
 // "hide": [mesh names] leaves those landmark meshes out; "scramble": "walk" or "wait" runs on to that moment of the
 // nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera; [x, y] from
-// "eyeUp" metres, 1.6 by default, over the ground where you stand)
+// "eyeUp" metres, 1.6 by default, over the ground where you stand; "lookUp": the point looked at that far over it,
+// as up a tower's side)
+// "clear": metres within which the stand moves to the clearest view of "look" (see below);
 // "js": a statement run in the page before a view from the air is taken (g: the game), e.g. a clear sky for the stars;
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
@@ -43,7 +45,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
     };
   });
   const logs = [];
-  p.on('console', m => { if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
+  p.on('console', m => { if (m.text().startsWith('[clear]')) console.log(m.text()); else if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ""}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -130,6 +132,46 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       for (let i = 0; i < 40 && g.arriving && g.arriving(); i++) { g.settleArrival(); g.advance(0.1); } // an arrival that began late
       if (g.cine.active) g.cine.skip();
       window.__shotClock(v);
+      // "clear": metres. The stand (and an "eye" over it) moves to the place within that far of "at" with the
+      // clearest view of "look": from each place someone can stand, the trees within 45 m in the frame's width count
+      // against it, the nearer and the nearer the middle the more, and so does a building met within 40 m by rays
+      // over the frame. The place taken is printed, to write back into the view.
+      if (v.clear) {
+        const rc = new THREE.Raycaster(), RAD = Math.PI / 180;
+        rc.far = 40;
+        const T = window.__trunks || (window.__trunks = g.Wd.trees && g.Wd.trees.trunks ? g.Wd.trees.trunks() : []);
+        const score = (x, y) => {
+          const p = g.nav.stand(x, y, v.z != null ? v.z + 0.5 : g.nav.terrain(x, y) + 0.5, { rMax: 0.5 });
+          if (!p || g.nav.isWater(p.x, p.y) || (v.z != null && Math.abs(p.z - v.z) > 2)) return null;
+          const ez = p.z + (v.eyeUp ?? 1.6), d = Math.hypot(v.look[0] - p.x, v.look[1] - p.y);
+          const yaw0 = Math.atan2(v.look[0] - p.x, v.look[1] - p.y), pit0 = Math.atan2((v.lookZ ?? p.z + (v.lookUp ?? 1.2)) - ez, d);
+          let n = 0;
+          for (let i = 0; i < T.length; i += 4) {
+            const dx = T[i] - p.x, dy = T[i + 1] - p.y, td = Math.hypot(dx, dy);
+            if (td > 45 || td > d) continue;
+            if (td < 5) { n += 6; continue; } // under its crown
+            const a = Math.abs(((Math.atan2(dx, dy) - yaw0) / RAD + 540) % 360 - 180);
+            if (a < 30) n += (1 - td / 45) * (1 + 2 * (1 - a / 30));
+          }
+          for (const yo of [-18, -9, 0, 9, 18]) for (const po of [0, 8]) {
+            const yaw = yaw0 + yo * RAD, pit = pit0 + po * RAD;
+            rc.set(new THREE.Vector3(p.x, ez, -p.y), new THREE.Vector3(Math.sin(yaw) * Math.cos(pit), Math.sin(pit), -Math.cos(yaw) * Math.cos(pit)));
+            const hit = g.Wd.buildings && rc.intersectObject(g.Wd.buildings)[0];
+            if (hit) n += 3 * (1 - hit.distance / 40) * (yo ? 1 : 2);
+          }
+          return { p, n: n + 0.02 * Math.hypot(p.x - v.at[0], p.y - v.at[1]) };
+        };
+        let best = null;
+        for (let r = 0; r <= v.clear; r += 3) for (let k = 0, m = r ? Math.round(r * 1.6) : 1; k < m; k++) {
+          const s = score(v.at[0] + r * Math.sin(2 * Math.PI * k / m), v.at[1] + r * Math.cos(2 * Math.PI * k / m));
+          if (s && (!best || s.n < best.n)) best = s;
+        }
+        if (best) {
+          console.log(`[clear] ${v.name} ${JSON.stringify([+best.p.x.toFixed(1), +best.p.y.toFixed(1)])} z ${best.p.z.toFixed(1)} score ${best.n.toFixed(2)}`);
+          if (v.eye && v.eye.length === 2) v.eye = [best.p.x, best.p.y];
+          v.at = [best.p.x, best.p.y];
+        } else console.log(`[clear] ${v.name}: nowhere to stand within ${v.clear} m`);
+      }
       const [x, y] = v.at, f = g.nav.floorAt(x, y, v.z != null ? v.z + 0.5 : v.street ? g.nav.terrain(x, y) + 0.5 : 200); // (the roof there, the street under a canopy, or the floor nearest z)
       const place = () => {
         g.player.x = x; g.player.y = y; g.player.z = f ? f.z : 0;
@@ -189,10 +231,14 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       for (const n of v.hide || []) { const o = g.Wd.world.getObjectByName(n); if (o) o.visible = false; }
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
+        // "apart": metres. The world runs on until nobody in the crowd is that near the eye
+        // (a face filling the frame), and no car within twice that (a bonnet across it)
+        if (v.apart) for (let i = 0; i < 80 && (g.crowd.P.some(o => o.line >= 0 && Math.hypot(o.x - v.eye[0], o.y - v.eye[1]) < v.apart)
+          || ((g.cars && g.cars.C) || []).some(c => Number.isFinite(c.x) && Math.hypot(c.x - v.eye[0], c.y - v.eye[1]) < 2 * v.apart)); i++) g.advance(0.5);
         g.photoMode(true);
         // (a 2-element eye, [x, y], stands it eyeUp metres, 1.6 by default, over where you stand)
         const ez = v.eye.length > 2 ? v.eye[2] : g.player.z + (v.eyeUp ?? 1.6);
-        const P = g.photo, lz = v.lookZ ?? (g.player.z + 1.2), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = ez - lz, d = Math.hypot(dx, dy);
+        const P = g.photo, lz = v.lookZ ?? (g.player.z + (v.lookUp ?? 1.2)), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = ez - lz, d = Math.hypot(dx, dy);
         P.focus.set(v.look[0], lz, -v.look[1]); P.anchor.copy(P.focus);
         Object.assign(P, { az: Math.atan2(dx, dy), pitch: Math.atan2(h, d), dist: Math.hypot(d, h) });
         if (v.fov) P.fov = v.fov;

@@ -18,6 +18,8 @@
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
 #     (tools/title_check.js), and fails a frame that ends black or a page that throws;
+#   - checks the title's postcards (tools/postcards_check.js): the journey, every still and line, the pile, the
+#     viewer and Go there into the game;
 #   - opens Sydney's game and model and checks the hand-over from the loading screen
 #     (tools/load_check.js): the 3D view must be drawn, not black, when the loader starts to fade.
 # Prints one line per check and exits 1 if any failed. Logs and screenshots go to $CHECK_OUT.
@@ -85,6 +87,7 @@ else
   for f in $changed; do
     case "$f" in
       cities/index.json|web/data/cities.json) title=1 ;;   # the globe's list of cities
+      cities/*/postcards.json|web/data/*/postcards/*|web/data/postcards.json|web/postcards.js|tools/postcards_*|tools/postcards.sh|pipeline/postcards.py) title=1 ;;   # the title's postcards (tools/postcards_check.js), not the cities' games
       cities/*/*|web/data/*/*)
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
@@ -194,6 +197,10 @@ EOF
   if timeout 900 $X node tools/title_pick_check.js >"$OUT/title-pick.log" 2>&1; then
     echo "ok   title picks  $(grep -c ': ' "$OUT/title-pick.log") steps: card first, in on the second click, districts from the map"
   else echo "FAIL title picks  $(grep -E 'FAIL|Error' "$OUT/title-pick.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/title-pick.log)"; fi
+  # the postcards: the journey over six weeks, the stills and the index, then the pile, the viewer and Go there
+  if timeout 1500 $X node tools/postcards_check.js >"$OUT/postcards.log" 2>&1; then
+    echo "ok   postcards  $(grep -c ': ok' "$OUT/postcards.log") steps: the journey, the stills, the pile and the card, Go there into the game"
+  else echo "FAIL postcards  $(grep -E 'FAIL|Error' "$OUT/postcards.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/postcards.log)"; fi
 }
 
 {
