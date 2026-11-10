@@ -8,7 +8,9 @@ characters use, and the licence (MIT, (c) 2020 Microsoft).
 The NPCs are the characters named R_<avatar>[_<head>][_<tag>...] in the cities' game.npcs
 (cities/*/city.json): the Rocketbox avatar, optionally wearing another avatar's head (named by
 its Rocketbox model code, such as f003 or m024) and retouched by tags (build_people.py: HAIR,
-CLOTH, PATTERN, "bare", "plain"). npc_cast() reads them; build_people.py builds the same list.
+CLOTH, TOP, PATTERN, SUIT, "bare", "plain"). The reef and alpine sites name theirs in web/reef
+(looks.js for the roles and the visitor you play, game/<site>.js for a site's own people).
+npc_cast() reads them all; build_people.py builds the same list.
 """
 import ast
 import glob
@@ -72,11 +74,24 @@ def npc_cast(listing):
             spec["cities"].add(city)
             if look.get("clip"):
                 spec["clips"].add(look["clip"])
+    # the reef and alpine sites' people: every 'R_...' the viewer's scripts name, with the clip beside it if any
+    for path in sorted(glob.glob(os.path.join(ROOT, "web", "reef", "*.js")) + glob.glob(os.path.join(ROOT, "web", "reef", "game", "*.js"))):
+        for m2 in re.finditer(r"""['"](R_[A-Za-z0-9_]+)['"](?:\s*,\s*clip:\s*['"](\w+)['"])?""", open(path, encoding="utf8").read()):
+            cid = m2.group(1)
+            m = NPC_ID.match(cid)
+            if not m or m.group(1) not in by_name or (m.group(2) and m.group(2) not in by_code):
+                raise SystemExit(f"{os.path.relpath(path, ROOT)}: no Rocketbox avatar for {cid}")
+            spec = cast.setdefault(cid, {"avatar": by_name[m.group(1)], "head": by_code[m.group(2)] if m.group(2) else None,
+                                         "tags": [t for t in m.group(3).split("_") if t],
+                                         "sex": "f" if "Female" in m.group(1) else "m", "clips": set(), "cities": set()})
+            spec["cities"].add("reef")
+            if m2.group(2):
+                spec["clips"].add(m2.group(2))
     return cast
 
 
 def main():
-    characters, clips, npc_clips = literals("CHARACTERS", "CLIPS", "NPC_CLIPS")
+    characters, clips, npc_clips, field_clips = literals("CHARACTERS", "CLIPS", "NPC_CLIPS", "FIELD_CLIPS")
     if not os.path.isdir(os.path.join(DST, ".git")):
         subprocess.run(["git", "clone", "--depth", "1", "--filter=blob:none", "--no-checkout", REPO, DST], check=True)
     listing = git("ls-tree", "-r", "--name-only", "HEAD", "Assets/Avatars").split("\n")
@@ -97,6 +112,7 @@ def main():
     # the main characters' clips for their sex, and the NPCs' for every sex in the cast
     wanted = [(spec["sex"], clip) for spec in characters.values() for clip in clips.values()]
     wanted += [(sex, clip) for sex in {s["sex"] for s in cast.values()} for clip in npc_clips.values()]
+    wanted += [(sex, clip) for sex in {s["sex"] for s in cast.values() if "reef" in s["cities"]} for clip in field_clips.values()]
     for sex, (clip, kind) in wanted:
         paths.append(f"/Assets/Animations/all_animations_max_motextr_{kind}/{sex}_{clip}.max.fbx")
     git("sparse-checkout", "set", "--no-cone", *sorted(set(paths)))

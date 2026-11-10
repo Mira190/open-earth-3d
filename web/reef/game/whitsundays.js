@@ -184,7 +184,7 @@ export default function whitsundays(G) {
 
   // ------------------------------------------------------------ Mia, the guide at Hill Inlet Lookout
   const mia = {
-    id: 'guide', role: 'guide', name: 'Mia', title: 'Reef guide', gender: 'W', animation: 'Idle_Neutral',
+    id: 'guide', role: 'guide', name: 'Mia', title: 'Reef guide', gender: 'W', animation: 'Idle_Neutral', look: { character: 'R_Female_Adult_03' },
     at: G => {
       const p = P('hill-inlet-lookout'), inl = P('hill-inlet');
       const s = G.landSpot(p.x, p.north, { msl: true, minH: 3, maxH: 400, maxSlope: 0.6, maxR: 40, toward: inl });
