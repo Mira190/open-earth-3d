@@ -161,7 +161,10 @@ The owner should not be the one who finds the bug.
   `landmarks.bin` and `game.bin`, decoded in a Worker. The JSON stays the pipeline's source; after
   any step that writes `buildings.json`, `landmarks.json` or `game.json`, run `python pipeline/pack.py`
   (it packs what is stale and updates `cities.json`). `tools/check.sh` fails on a stale pack. Never
-  hand-merge a `.bin`: repack it.
+  hand-merge a `.bin`: repack it. The same command makes each live city's `vis.bin` and `skyvis.webp`
+  again when its `buildings.json` changed (`pipeline/visibility.py`: the occluder raster the page's
+  visibility sweep reads, a minute or two for a large city; `pipeline/skyvis.py`: the sky its ground
+  sees; docs/PERFORMANCE.md).
 
 - Every city shares the helicopter, ferry, river shuttle and car models
   (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and the people

@@ -1994,7 +1994,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
       // (clear behind, or backing away from the one it is up against: a car ahead within its margins, backing out too, held
       // the one behind it, which held it in turn, each "held by" the other, Sydney's piece 1192, #317)
-      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0;
+      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0
+        && !bk.rev; // (never one backing out too: at the end of its piece, turning out of it, the one in front of it read as ahead, and backed 0.65 m into it, Kyoto's piece 739)
       if ((bd === 0 || away) && peopleIn(c, tmp.x - hx0 * 0.3, tmp.y - hy0 * 0.3, hx0, hy0) === 0) {
         R.d += Math.abs(sb - c.s); R.v = v; R.wait = 0;
         c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp);
@@ -2703,6 +2704,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
           if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
+          // (over 90 m off, on its second try, it comes back elsewhere, as a car stuck on a one-way street does there: in sight
+          // that far off, it neither backed out nor, out of view, came back elsewhere, and stood 114 s nose to nose at the
+          // mouth of Higashiyama's piece 126)
+          if (away && (c.narrowTries || 0) >= 1) { c.narrowTries = 0; respawn(c, cx, cy, radius * 0.6); continue; }
           // (no junction near enough behind it to back out to: the one it faces backs out instead, if it can. Turned round
           // where it stood, nose to nose with it, it would only have swung into it, and was held so: a car in Higashiyama
           // stood 46 s at a narrow stretch for one queued behind it, #331)

@@ -632,7 +632,13 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-mappop-line { margin: 2px 0 4px; max-width: 300px; font-size: 12px; line-height: 1.45; color: var(--ink-2, var(--ink)); }
 #g-travel button small { display: block; margin-top: 2px; font: 400 9px/1.2 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
 .g-mapbody aside { display: grid; gap: 12px; align-content: start; overflow: auto; }
-.g-legend { display: grid; gap: 7px; font-size: 12px; color: var(--ink-2); }
+.g-legend { display: grid; margin-top: 10px; gap: 7px; font-size: 12px; color: var(--ink-2); }
+/* the legend is folded away over the list: where you can go comes first, and a pin says what it is when picked */
+.g-legendbox summary { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); cursor: pointer; list-style: none;
+  font: 400 8.5px/1.2 var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.2em; }
+.g-legendbox summary::-webkit-details-marker { display: none; }
+.g-legendbox summary::after { content: "+"; font-size: 12px; letter-spacing: 0; } .g-legendbox[open] summary::after { content: "−"; }
+.g-legendbox summary:hover, .g-legendbox summary:focus-visible { color: var(--ink); border-color: rgba(255, 176, 102, 0.6); outline: none; }
 .g-legend div { display: flex; gap: 9px; align-items: center; }
 .g-legend i { width: 14px; height: 14px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font: 700 8px/1 var(--f-body); font-style: normal; flex: none; }
 #g-travel, #g-travel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -745,7 +751,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-vhud .note { display: none; }
   .g-lens { left: 10px; right: 10px; width: auto; top: auto; bottom: 200px; }
   .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 1.3fr) minmax(0, 1fr); gap: 14px; }
-  .g-mapbody aside > h3:first-child, .g-legend { display: none; } /* on a phone the map and the travel list; the pins say what they are when picked */
+  .g-legendbox { display: none; } /* on a phone the map and the travel list; the pins say what they are when picked */
   .g-mappop-acts .btn { flex: 1; padding: 10px 8px; letter-spacing: 0.12em; }
   .g-panel { padding: 18px 16px 18px; }
   .g-reticle { display: none; }
@@ -1058,12 +1064,12 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
             <div class="g-mappop" id="g-mappop" hidden role="dialog" aria-label="Travel"><b id="g-mappop-name"></b><span class="note" id="g-mappop-note"></span><p class="g-mappop-line" id="g-mappop-line" hidden></p>
               <div class="g-mappop-acts"><button class="btn primary" id="g-mappop-go">Travel here</button><button class="btn" id="g-mappop-way">Set waypoint</button></div></div></div>
           <aside>
-            <h3>Legend</h3>
+            <details class="g-legendbox"><summary>Legend</summary>
             <div class="g-legend">
               <div><i class="g-lg-pin"></i>Landmark: pick it to travel there</div><div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
               <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
               <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#2f5d8c">C</i>Your car</div><div><i style="background:#d08a00">T</i>Your taxi or ride</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div id="g-lg-district" hidden><i class="g-lg-district"></i>Another district: a map of its own</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
-            </div>
+            </div></details>
             <h3>Travel</h3>
             <p class="note">Go any time, on foot or in your car. Or pick any spot on the map. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>
             <ul id="g-travel"></ul>
@@ -1192,6 +1198,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="film.js"></script>
 <script src="plate.js"></script>
 <script src="water.js"></script>
+<script src="visibility.js"></script>
 <script src="buildings.js"></script>
 <script src="streets.js"></script>
 <script src="trees.js"></script>

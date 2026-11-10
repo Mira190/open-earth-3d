@@ -194,6 +194,29 @@ on an alpine site).
 The sources and what each line says are in `game/lake-pukaki.js` `SOURCES` and in
 [docs/cities/lake-pukaki.md](cities/lake-pukaki.md).
 
+## Milford Sound / Piopiotahi (a fiord)
+
+`game/milford-sound.js`, an alpine site whose water is the sea. The gametest checks a fiord's light (red goes first,
+green carries furthest, light left at 1 m) in place of the glacial flour's, and runs the site's own steps (4e).
+- **Jess**, a DOC ranger on the Milford Foreshore Walk at the spawn, covers the fiord (a fiord, not a sound; its
+  length and depth; the names Piopiotahi and the piopio, and Tū Te Rakiwhanoa, as the cited pages give them), Mitre
+  Peak (the published 1,690 m beside the map's tag and the height of the terrain here, and how high its top stands
+  from where you are), the rain, the freshwater layer and the black coral under it, the beech forest and its tree
+  avalanches, the rātā and the lupins in their months.
+- **Finn**, the Piopiotahi's nature guide at the Freshwater Basin terminal, covers the cruise (the ship's own line,
+  measured), Stirling and Lady Bowen Falls (the published heights beside the drops `alpine/fiord.js` traces), the
+  seals, dolphins and tawaki, the Tasman Sea and why Cook sailed past. He works out the rainbow from the clock: the
+  sun's altitude and bearing, whether the mountains shade the foot of Stirling Falls, whether the spray stands 40 to
+  42 degrees from the point opposite the sun as seen from the ship's stop, and when it next will today. He puts you
+  aboard, and while you ride he calls out each place the ship comes to (kept in the journal with its sources).
+- **Signs** on the foreshore (the peaks in sight over the terrain, the park and Te Wāhipounamu) and at Freshwater Basin.
+- **Quests:** Mitre Peak from the foreshore; to Stirling Falls on the Piopiotahi (unavailable in a build without the
+  ship's model); the lupins on the river flats (September to February).
+
+The sources and what each page says are in `game/milford-sound.js` `SOURCES` (fetched 2026-11-09). Wikipedia has no
+page for Stirling Falls, and DOC's Milford Sound / Piopiotahi page could not be read, so the fall's 151 m and its
+naming are cited from Wikipedia's Milford Sound page.
+
 ## The people
 
 ![The visitor you play (man and woman, in stinger suits), a skipper, two guides, two rangers and two dive instructors](images/reef/people.jpg)
