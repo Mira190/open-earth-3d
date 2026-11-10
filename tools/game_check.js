@@ -721,6 +721,17 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
+  // fishing (game.json "fishing", docs/FISHING.md): nothing of it loaded until you are near a spot; then at each
+  // spot E takes you to the edge, a cast lands on the water, a bite comes, an easy fish is landed with the one
+  // button and logged, five draw calls at most with the line out, and nothing left drawn once you have walked away
+  // (tools/fishing_step.js). A city without spots skips it whole.
+  if (await p.evaluate(() => !!(window.__game.fishing && window.__game.fishing()))) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, dist: g.cam.dist, pitch: g.cam.pitch }; });
+    const bad = await require('./fishing_step').fishingStep(p, shot);
+    check(!bad.length, `fishes every spot: a cast, a bite, a fish landed, logged and let go${bad.length ? `: ${bad.join('; ')}` : ''}`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); Object.assign(g.cam, { yaw: k.yaw, yawTo: null, dist: k.dist, distTo: 0, pitch: k.pitch }); g.advance(0.2); }, keep);
+  }
+
   // the doorways' frames (game.json doors[].frames, #326): the collision world's quarter-metre cells took up to a cell
   // more of a wall each side of a narrow doorway at an angle to them, so the jambs now stand as exact boxes from the
   // frame. A walker's body (nav R) stands in the middle of each opening with room to spare, and the wall a little
