@@ -14,6 +14,9 @@ checked in stills from the same viewpoints.
 - `tools/frame_cost.js` lists every framebuffer one frame draws into (size, format, MSAA), the draws and
   triangles into each, the full-screen passes and the bytes they write, the pixels shaded and the main thread's
   time a frame; `tools/frame_sweep.sh` makes a table of it for every live city and tier.
+- `tools/reef_frame.js` does the same for a reef or alpine site on the WebGPU backend the visitors get: every render
+  and compute pass of a frame with who asked for it, its target, draws, triangles, pixels and bytes written, and the
+  GPU's time inside it by timestamp query; `ABLATE=1` adds what each thing in the scene costs.
 - `tools/views/sydney-vram.json`: a street view and an aerial view at day and night, for
   `tools/game_shot.js` before and after.
 
@@ -555,3 +558,111 @@ The reef and alpine sites build in 1.7 to 4.3 s; their wait is after "built", in
 compiling (`_completeCompile`, 11.6 s of Lake Tekapo's load), much of it in the first frame after
 `compileAsync`, and in Tekapo's detail photograph (`terrain.prepare`). On a device with WebGPU, as the
 telemetry's desktop has, the backend is another one; a follow-up issue holds it.
+
+## The alpine sites' frame (Milford Sound)
+
+The owner found Milford Sound slow on a desktop with WebGPU. Where a frame went (`tools/reef_parts.js`, llvmpipe, the
+view from 500 m over the head of the fiord, without the mirror and the post chain): the land's shader, two thirds of
+it. What was done, for every alpine site (Tekapo, Pukaki and Milford share `alpine/terrain.js`):
+
+- **Branches on what a fragment shows.** The land's shader computed every layer for every fragment and chose with
+  `select` and `mix`: the close-up grain (five noises, wanted within 60 m), the chipseal and its lines (beyond the
+  roads), the bump of the relief (sixteen hash reads and eight texture reads, wanted within 900 m), a fiord's rock
+  (eight noises) on the bush and its bush on the rock. Each is now inside an `If` on its weight or its distance. The
+  branches follow the picture in big coherent regions, so a GPU's threads agree and the skipped work is not paid.
+  Derivatives (`fwidth`) and implicit-level texture reads stay outside them (`toVar()` puts a node on the stack where
+  it is made): WGSL refuses both in non-uniform control flow, and the terrain's shadow is read at level 0 for that.
+- **The crowns.** A fiord's bush was four MaterialX worley noises a fragment (27 cells each). It is now one
+  2 × 2 × 2 cellular noise of two octaves that also returns the direction to the nearest point, which is the crown's
+  slope, so the sunlit side needs no second pair of evaluations: about a fortieth of the work for the same picture.
+- **Pixels.** The high tier drew the display's own pixels at up to 2× however large the window, so a Retina laptop at
+  full screen drew 13 million pixels four samples each. It now stops at a 1440p display's pixels, as the cities' scene
+  does (`reef/tier.js`).
+- **The governor.** The viewer now runs `OEQuality.governor()` as the cities' game does (its form since issue 382 is in
+  the next section: the scene's target scaled inside the canvas and sharpened up, under the frame-rate cap, from an
+  opening budget). Stills, films and the checks keep the tier's pixels.
+
+Frame time at equal pixels, llvmpipe, 1200 × 750, high tier (`tools/reef_cost.js`), before → after: the ship shot
+1743 → 1205 ms, the aerial 2927 → 1440 ms. The base's own runs varied by a fifth between passes. Not measured: a real
+GPU. `tools/reef_webgpu.js` runs the page on WebGPU here (Chromium's Dawn over lavapipe, headless) and checks that
+every WGSL module compiles: 101 for Milford's game, 281 for Tekapo's, none with an error, and naga agrees. It cannot
+take a still (the canvas reads back empty), so the picture is checked with `tools/reef_shot.js` on WebGL2.
+
+## The reef and alpine sites on WebGPU (issue 382)
+
+The telemetry's first day with frame costs named the device behind the slowest samples: an Apple M3 at a pixel
+ratio of 2, tier high, on the WebGPU pages (the Whitsundays at 20 to 30 frames a second, Lake Pukaki at 12, Milford
+Sound at 5) with the main thread idle. Those pages had no pixel budget, no governor and no frame cap, and the telemetry
+could not see inside their frames.
+
+### Measuring a WebGPU frame
+
+`tools/reef_frame.js` runs a site on the WebGPU backend (Chromium's Dawn on SwiftShader here, which has
+`timestamp-query`) and wraps the page's WebGPU calls from outside: each render and compute pass of one frame with the
+node or file that asked for it, its target (size, formats, samples), its draws and triangles, the pixels its target
+holds per sample, the bytes its attachments take, and the GPU's time inside it. `ABLATE=1` hides each thing in the
+scene in turn and prints what the passes cost without it. SwiftShader is a CPU: its times compare one pass with another
+and one build with another; the counts are exact.
+
+### What it found
+
+The scene's pass, at four samples of half-float colour and depth, was **ended and begun again six times a frame**.
+The sea's refraction (`ocean.js`) reads the frame behind the water through three.js's viewport nodes, and each of its
+two depth reads and its colour read, for the water's back faces and again for its front, copied the framebuffer on its
+own; a copy cannot happen inside a pass, so the backend ends the pass, copies, and begins it again with `load`. On a
+tile-based GPU (every Apple one, every phone) a pass that ends stores all four samples of colour and depth to memory
+and one that begins loads them back: 96 bytes a pixel each time. On the M3's full-screen Retina canvas (5.9 million
+pixels) that was about 3.4 GB of memory traffic a frame before anything was shaded, a third of a 100 GB/s memory's
+second, which alone holds a frame near 30 ms. Each site's start at 960 x 540, high tier, the governor at its ceiling
+(`tools/reef_frame.js <site> start high 2`; the counts scale with the pixels; before: main as the telemetry saw it,
+b0313a6e; after: this work merged with main's lighter land shader). Pixels in targets: every pass's target, each sample
+counted; bytes: what those targets hold, which a pass that is ended and begun again stores and loads:
+
+| site | passes (over the whole frame) | pixels in targets | bytes | draws | triangles | SwiftShader GPU ms |
+|---|---|---|---|---|---|---|
+| Milford Sound | 49 (13) → 44 (8) | 17.0 M → 6.6 M | 185 → 67 MB | 362 | 0.95 M | 35 500 → 24 900 |
+| Lake Pukaki | 49 (13) → 44 (8) | 16.9 M → 6.5 M | 184 → 65 MB | 716 | 3.6 M | 15 600 → 15 700 |
+| Whitsundays | 47 (12) → 42 (7) | 15.9 M → 5.5 M | 177 → 58 MB | 196 | 1.6 M | 5 580 → 5 440 |
+| Hardy Reef | 47 (12) → 42 (7) | 15.9 M → 5.5 M | 177 → 58 MB | 170 | 0.38 M | 4 920 → 4 800 |
+
+SwiftShader's times barely move, as they should not: a CPU has no tile memory to store and reload, and the land is
+shaded the same at the same pixels (runs here vary by a fifth or more under load, so Milford's drop says little; main's
+land shader is measured in the section above). What the bytes save is a tile GPU's memory traffic, which only a real
+device's telemetry can time; what the governor saves is pixels, which the lab holds at its ceiling.
+
+By object (`ABLATE=1`, Milford Sound's start, after main's lighter land shader of the section above): the land is
+88% of the frame's GPU time, the water and its mirror (which draws the land again) 14%, the sky and the far land 7%
+each; at Lake Pukaki the land, the plants and the mirror lead. So what pays is fewer of the land's pixels, drawn once.
+
+### What was done
+
+- **One copy behind the water** (`reef/behind.js`): one node pair for the colour and the depth behind the water,
+  copied once a render, both in the one break of the pass. The sea looks as it did (stills below).
+- **The governor** (`OEQuality.governor`, the city game's, unchanged): the scene's pass is drawn at `governor.scale`
+  of the canvas and the last pass brings it up with the contrast-adaptive sharpening of the game's lens (RCAS, MIT),
+  so the canvas, the interface and the edges stay at the display's resolution. Its ceiling is the tier's scene
+  budget (2560 x 1440 on high, the cities' own; the canvas within a 4K display's pixels), its floor half the canvas.
+  Its extras are the lake's mirror at half its size again and the two ripple tiles at every second frame (third at
+  0). It runs under the game's frame-rate cap (60 unless the player chose otherwise), so a 120 Hz laptop draws every
+  second frame, evenly.
+- **Start low, remember.** A device new to a site starts within an opening budget (1920 x 1080 of scene pixels on
+  high), not at the ceiling, and is granted more as its frames allow; the scale it held is kept for its next visit
+  (`localStorage` `oe3d-scale:<site>:<tier>`). The M3's first frames at Milford were its slowest.
+- **The mirror while the eye is still**: redrawn every third frame (it renders the land again); every frame as soon as
+  the camera moves.
+- **Telemetry**: the page reports its own GPU frame (`OETelemetry.gpu`; docs/OBSERVABILITY.md), the release
+  (`version.js` now loads on the reef page and finds `version.json` from its own folder) and the kind of site.
+
+Together, on the M3 at full screen: the scene's pixels from 5.9 million (one frame before main's budget) to 2.1
+million at the start, the ceiling 3.7 million, the floor 1.5 million; the memory traffic of the breaks from about 3.4 GB
+a frame to 0.2 GB at the start. Main's lighter land shader (the section above) cut the shading of each of those
+pixels by a third to a half on top.
+
+The reef gametest steps the governor on every site (slow frames take the resolution down and shed the extras, fast
+frames bring them back, the scene's target following each step); `tools/telemetry_check.js` checks that a reef site's
+time events carry its kind and its own draws, triangles and pixels; `tools/reef_pair.sh` compares stills of two builds.
+Stills of Milford Sound, Lake Pukaki, the Whitsundays and Hardy Reef at day and dusk, on a desktop (1440 x 900) and a
+phone (390 x 844), match main's to the pixel (at most 0.01% of pixels differ by more than 8 of 255, on the sea); the
+governor stands still at its ceiling under automation, so these are the full-resolution picture. Not checked here: a
+real GPU, Safari, iOS. The owner's own play, read back from PostHog (`fps`, `gpu_ms`, `bound`, `scale` by `site`), is
+the real check.

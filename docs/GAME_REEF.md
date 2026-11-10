@@ -213,6 +213,13 @@ green carries furthest, light left at 1 m) in place of the glacial flour's, and 
 - **Quests:** Mitre Peak from the foreshore; to Stirling Falls on the Piopiotahi (unavailable in a build without the
   ship's model); the lupins on the river flats (September to February).
 
+The walls (`alpine/terrain.js` `fiordLook`): the national land cover maps much of them as "rock and cliff", but below
+the bushline they are bush on near-vertical faces, with bare rock in the strips tree avalanches leave. Drawn as rock
+in full they were whole walls of pale grey, brighter than the bush by several times. Below about 1,000 m that class
+is now drawn as bush with rock in narrow strips down the wall, the rock is the dark grey of wet gneiss, and steepness
+alone no longer strips a face. The summits' snow is blended over the cover map's four nearest pixels instead of
+being cut in 20 m squares.
+
 The sources and what each page says are in `game/milford-sound.js` `SOURCES` (fetched 2026-11-09). Wikipedia has no
 page for Stirling Falls, and DOC's Milford Sound / Piopiotahi page could not be read, so the fall's 151 m and its
 naming are cited from Wikipedia's Milford Sound page.
@@ -335,6 +342,9 @@ Queensland Parks and Wildlife Service pages on the Ngaro Sea Trail could not be 
 - `?gameshot=dialogue|journal|map|lookout|red|board` sets up the screenshots (`dialogue` takes `shotnpc`,
   `shotnode`, `shotpage`, `shotyaw`, `shotpitch`, `shotcam`).
 - `?lifestub=1` installs `game/life_stub.js`; `?gamereset=1` forgets progress.
+- The frame budget (docs/PERFORMANCE.md, issue 382): the page runs `OEQuality.governor` (`window.__reef.governor`,
+  `ctx.governor`); `?gov=0` turns it off, `?scale=0.7` holds the scene at that share of the canvas (for stills of a
+  scaled frame). `tools/reef_frame.js` lists a frame's WebGPU passes; the gametest steps the governor on every site.
 
 ```bash
 cd web && python3 -m http.server 8813 &
