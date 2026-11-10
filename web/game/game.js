@@ -3037,7 +3037,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.rig.root.visible = true;
     player.mode = 'foot'; player.vehicle = null;
     [player.x, player.y, player.z] = p;
-    if (life && car.moved) life.emit('ride', { kind: 'rail', to: here.id, name: here.name });
+    if (life && car.moved) life.emit('ride', { kind: 'rail', from: car.from, to: here.id, name: here.name });
     for (const l of [tracked(), ...openLines()].filter(Boolean)) {
       const s = stepOf(l);
       if (s && s.type === 'rail' && car.from === s.from && here.id === s.to) { completeStep(l); break; }
