@@ -1991,7 +1991,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
       // (clear behind, or backing away from the one it is up against: a car ahead within its margins, backing out too, held
       // the one behind it, which held it in turn, each "held by" the other, Sydney's piece 1192, #317)
-      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0;
+      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0
+        && !bk.rev; // (never one backing out too: at the end of its piece, turning out of it, the one in front of it read as ahead, and backed 0.65 m into it, Kyoto's piece 739)
       if ((bd === 0 || away) && peopleIn(c, tmp.x - hx0 * 0.3, tmp.y - hy0 * 0.3, hx0, hy0) === 0) {
         R.d += Math.abs(sb - c.s); R.v = v; R.wait = 0;
         c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp);

@@ -45,12 +45,12 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
       const step = Math.hypot(c.x - w.x, c.y - w.y);
       if (step > 0.01) w.moved = t;
       w.went += step; w.x = c.x; w.y = c.y;
-      if (c.rev) w.deep = Math.max(w.deep, depth(c));
+      if (c.rev) { const d = depth(c); if (d > w.deep) { w.deep = d; const b = A.footBy; w.deepAt = `${(c.rev.boxT || 0) > 0 ? `waited ${c.rev.boxT.toFixed(1)} s at the box behind, ` : ''}${c.rev.d.toFixed(1)} m back, ${b ? `car ${C.indexOf(b)} ${b.why} v ${(+b.v || 0).toFixed(1)}${b.mv ? ' in junction ' + b.mv.j.id : ''}${b.rev ? ` reversing (d ${b.rev.d.toFixed(1)} wait ${b.rev.wait.toFixed(1)})` : ''}; it on ${c.line}/${c.dir} s ${c.s.toFixed(1)}, that on ${b.line}/${b.dir} s ${b.s.toFixed(1)}, ${t.toFixed(1)} s in` : ''}`; } }
       w.t = t;
       if (!c.rev) { w.done = c.line !== w.line; w.gaveUp = !w.done; if (w.gaveUp) w.still = `gave up: ${c.revEnd || '?'}`; w.onto = c.line; w.why = c.why; }
     }
   }
-  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back)` : '') }));
+  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), deepAt: w.deepAt, done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back)` : '') }));
   if (!tryRide) return out;
   // the ride, put on a one-way street near you and asked to turn round (one ordered and boarded first, as
   // game_check.js's turn step does, if none is under way)
