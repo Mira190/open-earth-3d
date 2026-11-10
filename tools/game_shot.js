@@ -5,7 +5,7 @@
 //     tools/flyover.js records with, to see the world the viewer and the game share (world.js,
 //     water.js) whole, as tools/city_shot.js does for the viewer.
 // Each at the clock time given (HH:MM local, or relative to the day's sun: "sunset+20", "sunrise-15");
-// "date" [month, day] sets the day; "weather" the weather (clear unless given); "ao" the contact shadows
+// "date" [month, day] sets the day; "weather" the weather (clear unless given; "flash" and "rainbow" hold a lightning flash and a bow); "ao" the contact shadows
 // (game/ao.js: 0 off, 1 lite, 2 full, the default). The views from the air are taken first, while the title is up.
 // Prints the page's errors.
 //   cd web && python3 -m http.server 8800 &
@@ -21,7 +21,8 @@
 // "eyeUp" metres, 1.6 by default, over the ground where you stand; "lookUp": the point looked at that far over it,
 // as up a tower's side)
 // "clear": metres within which the stand moves to the clearest view of "look" (see below);
-// "js": a statement run in the page before a view from the air is taken (g: the game), e.g. a clear sky for the stars;
+// "js": a statement run in the page before a view is taken (g: the game), e.g. a clear sky for the stars, or the
+// railway at a second of its timetable ("g.trains.t = 131; g.trains.update(0, g.camera)");
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -64,7 +65,13 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       if (rel && g.dayLimits) min = Math.round(g.dayLimits()[rel[1]] + (+rel[2] || 0));
       else if (v.time) { const [hh, mm] = v.time.split(':').map(Number); min = hh * 60 + mm; }
       g.setClock(c.y, m, d, min);
-      if (g.weather) g.weather.set(v.weather || 'clear', { now: true }); // "weather": clear, overcast, drizzle, rain (weather.js)
+      if (g.weather) {
+        g.weather.set(v.weather || 'clear', { now: true }); // "weather": clear, overcast, fog, drizzle, rain, storm, snow, or amounts (weather.js)
+        // "flash": {dist, bearing (degrees from north), ground, k} holds a lightning flash at strength k; "rainbow": 0..1 holds a bow
+        g.weather.flashPin = v.flash ? v.flash.k ?? 0.8 : null;
+        if (v.flash) g.weather.strike(g.t(), { dist: v.flash.dist ?? 900, bearing: (v.flash.bearing ?? 0) * Math.PI / 180, ground: v.flash.ground !== false });
+        g.weather.bowPin = v.rainbow ?? null;
+      }
       if (g.atmos && g.atmos.ao) g.atmos.ao.set(v.ao ?? 2); // "ao": 0 off, 1 lite, 2 full (game/ao.js), to compare
     };
   });
@@ -74,6 +81,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   // again a few frames later, up to 12 times, and a canvas whose WebGL context is lost says so
   const grab = async name => {
     let png = null, dark = 1, tries = 0;
+    // the sun's far shadow field for this view's hour, where the page makes one in a Worker (world.js farSun): wait for it
+    await p.waitForFunction(() => { const f = window.__game && window.__game.Wd && window.__game.Wd.farSun; return !f || (!f.pending && !f.want); }, null, { timeout: 60000 }).catch(() => {});
     for (; tries < 12; tries++) {
       ({ png, dark } = await p.evaluate(async n => {
         for (let i = 0; i < n; i++) await new Promise(r => requestAnimationFrame(r));
@@ -229,6 +238,9 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       }
       // "hide": [mesh names] not drawn, to see what shows through (a gap in a landmark)
       for (const n of v.hide || []) { const o = g.Wd.world.getObjectByName(n); if (o) o.visible = false; }
+      // "js": run with g = window.__game before the frame (the railway at a second of its timetable:
+      // "g.trains.t = 131; g.trains.update(0, g.camera)")
+      if (v.js) new Function('g', v.js)(g);
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
         // "apart": metres. The world runs on until nobody in the crowd is that near the eye
@@ -247,7 +259,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         g.advance(0.1);
       }
     }, v);
-    await (v.closer ? grabPage : grab)(v.name);
+    await (v.closer || v.page ? grabPage : grab)(v.name); // ("page": the page with its HUD, not the canvas alone)
     // "pick": [[u, v], ...] points on the frame (0..1 from its top left): what the camera sees there, printed
     // (the mesh's name, its material's, and where it is hit), to find which surface draws a fault in the still
     if (v.pick) console.log(JSON.stringify(await p.evaluate(pts => {

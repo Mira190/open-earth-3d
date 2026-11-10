@@ -295,9 +295,14 @@
     "Circular Quay": [151.2112, -33.8613]
   },
   "radar_test_building": "Quay Quarter Tower",
+  "rail_osm": {
+    "bbox": [151.207, -33.8632, 151.2135, -33.8598],
+    "lines": ["City Inner", "City Outer"],
+    "note": "The City Circle's two tracks over Circular Quay and the station's platform edges (pipeline/rail_osm.py -> cities/sydney/rail_osm.json; cities/sydney/rail.py builds the station and the trains' courses from it)."
+  },
   "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
   "game": {
-    "weather": {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 7.9], "threshold_mm": 1.0, "drizzle": 0.3, "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm"},
+    "weather": {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 7.9], "threshold_mm": 1.0, "drizzle": 0.3, "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm", "temp_max": [27.0, 26.8, 25.7, 23.6, 20.9, 18.3, 17.9, 19.3, 21.6, 23.2, 24.2, 25.7], "temp_min": [20.0, 19.9, 18.4, 15.3, 12.3, 10.0, 8.9, 9.7, 12.3, 14.6, 16.6, 18.4], "wind_ms": [3.7, 3.5, 3.2, 3.1, 3.2, 3.5, 3.9, 4.3, 4.3, 4.3, 4.2, 4.1], "wind_from_deg": 45, "thunder_days": [2.3, 2.1, 1.8, 1.7, 1.3, 0.9, 0.9, 1.3, 1.7, 2.3, 2.6, 3.1], "fog_days": [0.3, 0.6, 1.3, 1.9, 2.9, 2.2, 1.9, 1.6, 0.9, 0.6, 0.6, 0.3], "more": "Sydney: temperatures the Bureau's 1991-2020 statistics for Observatory Hill (066062); wind the mean of its 9 am and 3 pm speeds (1955-1992); thunder and fog days as pipeline/weather_climate.py says (annual totals from Wikipedia's Climate of Sydney, the split by month a secondary table's shape)."},
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
     "water_name": "the harbour",
@@ -447,7 +452,10 @@
         "at": [239, 444],
         "look": {"character": "R_Female_Adult_13", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#5f646b", "legs": "#2c2c30", "shirt": "#5f646b", "pants": "#2c2c30", "clip": "Drink", "acc": ["apron"], "apron": "#1f1f22"},
         "idle": ["Forty to forty-five centimetres of gull, and every one of them knows where the chips are.", "It's {time} here. {sun_line}"]
-      }
+      },
+      {"id": "dee", "name": "Dee", "role": "Commuter", "at": [-128.0, 86.3, 12.1], "look": {"character": "R_Business_Female_04_f011", "skin": "#a8714f", "hair": "#1b1311", "top": "#2b2f3a", "legs": "#26303a", "shirt": "#2b2f3a", "pants": "#26303a", "clip": "Phone"}, "idle": ["Best platform in Sydney, this one. I've missed trains on purpose just to watch the ferries come in.", "Platform 2 goes round by St James and Museum, platform 1 by Wynyard and Town Hall. Either way you end up at Central."]},
+      {"id": "bill", "name": "Bill", "role": "Station staff", "at": [-40.0, 76.5, 12.1], "look": {"character": "R_Pilot_Male_01_m007", "skin": "#8d5a3c", "hair": "#111111", "top": "#1f2328", "legs": "#1f2a33", "shirt": "#1f2328", "pants": "#1f2a33", "clip": "LookAround"}, "idle": ["Opened in 1956, the last piece of the City Circle. They had the tunnels dug either side thirty years before the station was built.", "The road on our roof is the Cahill Expressway. People have wanted it gone since the day it opened, and it's still the best free lookout on the quay.", "Stand behind the yellow line, mate. The double-deckers come in quicker than you'd think."]},
+      {"id": "mia", "name": "Mia", "role": "Visitor", "at": [-96.0, 82.0, 12.1], "look": {"character": "R_Female_Adult_13", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#5f646b", "legs": "#2c2c30", "shirt": "#5f646b", "pants": "#2c2c30", "clip": "Photo", "acc": ["apron"], "apron": "#1f1f22"}, "idle": ["Bridge on the left, Opera House on the right, a ferry in the middle. I don't even need to leave the station.", "They say come at dusk, when the sky goes pink behind the bridge."]}
     ],
     "lines": [
       {"id": "start", "title": "Welcome"},

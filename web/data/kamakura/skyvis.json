@@ -1,0 +1,16 @@
+{
+ "note": "Sky visibility of the ground (pipeline/skyvis.py, issue 358): the share of the sky's light that reaches a level surface 1.5 m above the ground, 0..255, north up, over x..y.",
+ "v": 1,
+ "x": [
+  -1900,
+  1900.0
+ ],
+ "y": [
+  -850.0,
+  850
+ ],
+ "px": 4.0,
+ "eye_m": 1.5,
+ "mean": 0.879,
+ "sha256": "a19e5cf97e24d42787499c872f8f09aa84018478a9200ba4d85cf4f4d37aa390"
+}
