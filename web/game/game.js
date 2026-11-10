@@ -2193,12 +2193,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // a jam that no light explains (#355): stood 40 s behind cars of the traffic whose head stands too, at no red
     // light (two cars each waiting on the other in a junction, one facing it in a street one car wide), with no
-    // way to turn round. The head of the jam is asked out of the way (actors.js unjam), and again 20 s on.
+    // way to turn round. The head of the jam is asked out of the way (actors.js unjam), and again 20 s on. (Its own
+    // light counts only short of its line: inside the junction, a car that waits on it there is a knot, not a queue)
     if (o.phase === 'driving' && !o.hold && cars && cars.unjam) {
       let q = st.block && st.block.of ? st.block.of : st.block, head = null;
       if (st.v < 0.3 && q && cars.C.includes(q)) { const seen = new Set(); head = q; while (head.front && cars.C.includes(head.front) && !seen.has(head.front) && seen.size < 8) { seen.add(head); head = head.front; } }
       const lit = c => c.lineArm && !c.mv && /^[ra]$/.test(junctions.light(c.lineArm, c.lineEx) || '');
-      o.jamT = head && head.v < 0.1 && !head.park && !lit(head) && !lit(q) && !(st.lineAt && junctions.light(st.lineAt, st.lineEx) === 'r') ? (o.jamT || 0) + dt : st.v > 1 ? 0 : Math.max(0, (o.jamT || 0) - dt); // (eased down, not reset: what holds it flickers between the car and the junction)
+      o.jamT = head && head.v < 0.1 && !head.park && !lit(head) && !lit(q) && !(st.lineAt && !st.mv && junctions.light(st.lineAt, st.lineEx) === 'r') ? (o.jamT || 0) + dt : st.v > 1 ? 0 : Math.max(0, (o.jamT || 0) - dt); // (eased down, not reset: what holds it flickers between the car and the junction)
       if (o.jamT > 40) { o.jamT = 20; o.unjam = cars.unjam(head, o.unjamWas === head); o.unjamWas = head; o.unjammed = `${(o.unjammed || '')} ${o.unjam || 'not'}`; }
     }
     if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }

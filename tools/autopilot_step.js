@@ -12,7 +12,7 @@
 //             and never crosses a stop line on red (but for the turn its arrow shows);
 //   blocked   a road that will not clear (stood 75 s, no red light) is said so and the car handed back: the check
 //             goes on from the next landmark, twice at most;
-//   arrive    within 420 s of the game's clock it has pulled in, stopped, within 40 m of the end of its route,
+//   arrive    within 420 s (longer for a way over 1.5 km, where no place nearer is offered: 120 s and 8 m/s) of the game's clock it has pulled in, stopped, within 40 m of the end of its route,
 //             and the car is yours again.
 // It also reports the scenic way to the same place (how much of it runs by the water or the landmarks).
 // tools/game_check.js runs it; alone: GAME_TIME=10:00 xvfb-run -a node tools/autopilot_probe.js sydney
@@ -64,6 +64,9 @@ async function autopilotStep({ log = false, far = 250, limit = 420, fresh = true
   out.scenic = g.pilot() ? { len: g.pilot().len, share: g.pilot().share } : null;
   g.pilotTo(dest, { scenic: false, quiet: true });
   if (!g.pilot()) return Object.assign(out, { none: 'the autopilot would not take the place twice' });
+  // (the time allowed: for a way of up to 1.5 km, as asked; a longer one, where no place offered is nearer, at 8 m/s
+  // on average and two minutes for the lights)
+  limit = Math.max(limit, 120 + g.pilot().len / 8);
   const depth = () => { return A.footprint(st.x, st.y, st.z, st.h, c.C.half * 0.95, c.C.hw * 0.95, 0); };
   const shots = new Set();
   let t = 0, stood = 0, moved0 = null, red = 0, lastLine = null, handed = null, hud = 0;
