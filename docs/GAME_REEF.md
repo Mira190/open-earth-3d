@@ -342,6 +342,9 @@ Queensland Parks and Wildlife Service pages on the Ngaro Sea Trail could not be 
 - `?gameshot=dialogue|journal|map|lookout|red|board` sets up the screenshots (`dialogue` takes `shotnpc`,
   `shotnode`, `shotpage`, `shotyaw`, `shotpitch`, `shotcam`).
 - `?lifestub=1` installs `game/life_stub.js`; `?gamereset=1` forgets progress.
+- The frame budget (docs/PERFORMANCE.md, issue 382): the page runs `OEQuality.governor` (`window.__reef.governor`,
+  `ctx.governor`); `?gov=0` turns it off, `?scale=0.7` holds the scene at that share of the canvas (for stills of a
+  scaled frame). `tools/reef_frame.js` lists a frame's WebGPU passes; the gametest steps the governor on every site.
 
 ```bash
 cd web && python3 -m http.server 8813 &
