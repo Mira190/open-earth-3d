@@ -13,6 +13,7 @@ of the day it is rendered: dawn, day, dusk and night. The page shows the one who
 over that city at the minute the postcard is dated.
 """
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -29,7 +30,7 @@ def spots(city):
 
 
 def friend(city):
-    """The map's plush friend (tools/plush.js), who holds itself up in front of every view: {kind, name, what}."""
+    """The traveller in the map's stills (tools/plush.js, Mugi) and its colour there: {kind, name, what, scarf}."""
     return json.loads((ROOT / "cities" / city / "postcards.json").read_text()).get("plush")
 
 
@@ -45,7 +46,14 @@ def views(city, draft=False):
                 v["clear"] = s["clear"]  # the stand moved to the clearest view within that far, and printed
             if toy:  # a spot's "plush" moves it: {"side": -1 | 1, "x", "y", "tilt", "fstop"}; false leaves it out
                 if s.get("plush") is not False:
-                    v["plush"] = {"kind": toy["kind"], "side": 1 if i % 2 == 0 else -1, "glow": GLOW[light], **(s.get("plush") or {})}
+                    v["plush"] = {"kind": toy["kind"], "scarf": toy.get("scarf"), "side": 1 if i % 2 == 0 else -1, "glow": GLOW[light], **(s.get("plush") or {})}
+                    # from a deck, a roof or a lookout (a railing between it and the view), or tilted up steeply at a
+                    # tower, it is held up to the view; elsewhere it sits in the scene
+                    up = math.degrees(math.atan2(s.get("lookUp", 1.65) - 0.38, math.hypot(s["look"][0] - s["at"][0], s["look"][1] - s["at"][1])))
+                    if "mode" not in v["plush"] and ("z" in s or up > 20):
+                        v["plush"]["mode"] = "held"
+                    if v["plush"].get("mode") != "held":  # the lens down at the traveller's eye, as a photograph of a toy is taken
+                        v["eyeUp"] = v["plush"].get("eyeUp", 0.38)
                 v["apart"] = 10  # (and nobody close to the lens: a stranger at the frame's edge took the picture from the toy)
             if "z" in s:
                 v["z"] = s["z"]

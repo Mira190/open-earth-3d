@@ -57,11 +57,11 @@ const src = {};
 for (const id of games) { const f = path.join(ROOT, 'cities', id, 'postcards.json'); if (fs.existsSync(f)) src[id] = JSON.parse(fs.readFileSync(f, 'utf8')).spots; }
 const stale = Object.keys(M.cities).filter(id => !src[id] || M.cities[id].some(s => { const q = src[id].find(x => x.id === s.id); return !q || q.name !== s.name || JSON.stringify(q.lines || {}) !== JSON.stringify(s.lines) || q.at[0] !== s.at[0] || q.at[1] !== s.at[1]; }));
 check('data: the index is up to date with cities/<id>/postcards.json (python pipeline/postcards.py index)', !stale.length, stale);
-// every map's plush friend, who is in its stills and signs its cards, is one tools/plush.js can make
+// the traveller in every map's stills, who signs its cards, is one tools/plush.js can make
 {
   const kinds = fs.readFileSync(path.join(ROOT, 'tools/plush.js'), 'utf8');
   const bad = Object.keys(M.cities).filter(id => { const f = (M.friends || {})[id]; return !f || !f.name || !f.what || !new RegExp(`\\n    ${f.kind}: \\{`).test(kinds); });
-  check('data: every map has a plush friend in the index, of a kind tools/plush.js makes', !bad.length, bad);
+  check('data: every map names its traveller in the index, of a kind tools/plush.js makes', !bad.length, bad);
 }
 
 // ------------------------------------------------------------ the journey

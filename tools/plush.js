@@ -1,17 +1,14 @@
-// The plush friends who send the postcards (docs/POSTCARDS.md): one soft toy for each map, held up in front of
-// the view the way travellers photograph their own toys. tools/game_shot.js loads this into the game's page for
-// a view with "plush" and builds the toy there, in the game's own light, an arm's length from the lens.
+// Mugi, the plush cat who travels while you are away and sends the postcards (docs/POSTCARDS.md, "Who is in
+// the picture"). tools/game_shot.js loads this into the game's page for a view with "plush" and builds it there,
+// in the game's own light, sat in the scene.
 //
-//   OEPlush.build(kind) -> THREE.Group, the head's middle at its origin, the face towards +z, in metres
-//   OEPlush.KINDS       -> the kinds, each with its colours and face
+//   OEPlush.build('mugi', {scarf}) -> THREE.Group, the head's middle at its origin, the face towards +z, metres
+//   OEPlush.KINDS                  -> the characters (one), with their colours
+//   OEPlush.R                      -> the head's radius before its squash
 //
-// Every toy is made of the same few parts, the way a plush is sewn: a wide soft head, a small body under it
-// (mostly below the frame), ears, a muzzle where the animal has one, and a face embroidered on a panel of the
-// head (a canvas texture on a cap that sits on the head's surface: eyes, nose, mouth, markings). The cloth is
-// a fleece: a rough, sheened material with a fine fibre normal map. Original designs, one per place:
-//   fox (Fushimi Inari: the white fox messengers of Inari, red markings and a red bib), tanuki (Higashiyama),
-//   rabbit (Kyoto), tabby (the Philosopher's Path and its cats), dove (Kamakura), koala (Sydney), sheep
-//   (Queenstown), akita (Shibuya), calico (Shinjuku), panda (Tokyo).
+// Sewn the way a plush is: a wide soft head and a small body in a ginger-and-white coat (a canvas texture),
+// bead eyes, a nose and cheeks, ears, paws, a tail, a neckerchief and a bundle on its back; a face panel on
+// the head carries the thread (mouth, blush). The cloth is fleece with fur shells over it.
 (function (root) {
   'use strict';
   const R = 0.08; // the head's radius before its squash: a toy about 22 cm wide across the head
@@ -135,67 +132,6 @@
 
   // the face panel, drawn on a 1024 canvas: (0, 0) top left, the head's front at (512, 512), the cap's edge at the
   // canvas's edge. Thread colours and shapes by kind.
-  function faceTexture(k) {
-    const T = window.THREE, n = 1024, c = document.createElement('canvas');
-    c.width = c.height = n;
-    const g = c.getContext('2d'), F = k.face;
-    const ell = (x, y, rx, ry, fill, rot = 0) => { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); g.fillStyle = fill; g.fill(); };
-    // markings under everything else
-    (F.marks || []).forEach(m => {
-      g.save();
-      g.fillStyle = m.c;
-      g.filter = m.soft ? `blur(${m.soft}px)` : 'none';
-      g.beginPath(); g.ellipse(m.x, m.y, m.rx, m.ry, (m.rot || 0) * Math.PI / 180, 0, Math.PI * 2); g.fill();
-      g.restore();
-    });
-    // blush
-    if (F.blush) for (const sx of [-1, 1]) { g.save(); g.filter = 'blur(14px)'; ell(512 + sx * F.blush[0], F.blush[1], 58, 34, F.blushC || 'rgba(255,128,150,0.55)'); g.restore(); }
-    // eyes: embroidered, a white, an iris, a pupil and a glint, each edged with a darker thread
-    const E = Object.assign({}, F.eye); // (eyes a third larger than drawn: a toy's eyes are its face)
-    E.w *= 1.32; E.h *= 1.32; E.dx *= 1.06;
-    for (const sx of [-1, 1]) {
-      const x = 512 + sx * E.dx, y = E.y;
-      g.save();
-      g.translate(x, y); g.rotate(sx * (E.tilt || 0) * Math.PI / 180);
-      if (E.white) { ell(0, 0, E.w + 9, E.h + 9, E.edge || '#2a2a30'); ell(0, 0, E.w, E.h, E.white); }
-      const ix = E.white ? sx * (E.look || 0) : 0, iw = E.white ? E.w * E.iris : E.w, ih = E.white ? E.h * E.iris * 0.92 : E.h;
-      ell(ix, E.white ? E.h * 0.08 : 0, iw, ih, E.iris_c || '#1d1d22');
-      if (E.ring) { g.lineWidth = 7; g.strokeStyle = E.ring; g.beginPath(); g.ellipse(ix, E.white ? E.h * 0.08 : 0, iw * 0.82, ih * 0.82, 0, 0, Math.PI * 2); g.stroke(); }
-      if (E.pupil === 'slit') ell(ix, E.white ? E.h * 0.08 : 0, iw * 0.16, ih * 0.66, '#121216');
-      else if (E.pupil) ell(ix, E.white ? E.h * 0.1 : 0, iw * 0.42, ih * 0.42, '#121216');
-      ell(ix - iw * 0.35, -ih * 0.32, Math.max(9, iw * 0.24), Math.max(9, ih * 0.2), '#ffffff');
-      ell(ix + iw * 0.3, ih * 0.38, Math.max(5, iw * 0.1), Math.max(5, ih * 0.08), 'rgba(255,255,255,0.8)');
-      g.restore();
-      if (E.lash) { // a stitched lash at the outer corner
-        g.strokeStyle = '#26262c'; g.lineWidth = 9; g.lineCap = 'round';
-        g.beginPath(); g.moveTo(x + sx * E.w * 0.85, y - E.h * 0.55); g.lineTo(x + sx * (E.w + 34), y - E.h * 0.85); g.stroke();
-      }
-    }
-    // the nose (when it is not a part of its own) and the mouth, in thread
-    if (F.nose) { const [x, y, rx, ry, col] = F.nose; g.beginPath(); g.moveTo(x - rx, y - ry * 0.6); g.quadraticCurveTo(x, y - ry * 1.3, x + rx, y - ry * 0.6); g.quadraticCurveTo(x + rx * 0.3, y + ry, x, y + ry); g.quadraticCurveTo(x - rx * 0.3, y + ry, x - rx, y - ry * 0.6); g.fillStyle = col; g.fill(); }
-    g.strokeStyle = F.thread || '#26262c'; g.lineWidth = F.lw || 11; g.lineCap = 'round'; g.lineJoin = 'round';
-    const M = F.mouth;
-    if (M) {
-      const [x, y, w] = M.at;
-      g.beginPath();
-      if (M.kind === 'w') { // ω
-        g.moveTo(x - w, y - w * 0.25); g.quadraticCurveTo(x - w * 0.5, y + w * 0.75, x, y); g.quadraticCurveTo(x + w * 0.5, y + w * 0.75, x + w, y - w * 0.25);
-      } else if (M.kind === 'smile') {
-        g.moveTo(x - w, y); g.quadraticCurveTo(x, y + w * 0.8, x + w, y);
-      } else if (M.kind === 'y') { // a short seam down from the nose, then the two cheeks of a smile
-        g.moveTo(x, y - w * 0.6); g.lineTo(x, y);
-        g.moveTo(x - w, y - w * 0.1); g.quadraticCurveTo(x - w * 0.5, y + w * 0.55, x, y); g.quadraticCurveTo(x + w * 0.5, y + w * 0.55, x + w, y - w * 0.1);
-      }
-      g.stroke();
-    }
-    (F.lines || []).forEach(l => { g.lineWidth = l.w || 14; g.strokeStyle = l.c; g.beginPath(); g.moveTo(l.p[0], l.p[1]); for (let i = 2; i < l.p.length; i += 2) g.lineTo(l.p[i], l.p[i + 1]); g.stroke(); });
-    const t = new T.CanvasTexture(c);
-    t.colorSpace = T.SRGBColorSpace;
-    t.anisotropy = 8;
-    return t;
-  }
-
-  // a soft cone with a round tip and a round base: an ear, a beak, a tail's tip
   function softCone(r, h, seg = 24) {
     const T = window.THREE, pts = [];
     for (let i = 0; i <= 16; i++) {
@@ -206,188 +142,138 @@
     return new T.LatheGeometry(pts, seg);
   }
 
-  // The cast. col: the cloth; face: the embroidered panel; ears: 'tri' (cat, fox, dog), 'round', 'long', 'floppy';
-  // muzzle: a sewn-on snout; extras: a bib, a scarf, a collar and bell, a wool cap, a big nose
-  const W = '#f6f1e8';
-  const KINDS = {
-    fox: {
-      name: 'Kon', what: 'the Inari fox', col: '#f7f3ea', inner: '#d8352a', ears: 'tri', earH: 1.05, squash: [1.14, 0.94, 1], muzzle: { c: W, s: [0.5, 0.36, 0.42], y: -0.36, z: 0.72 }, noseBall: '#2a2224',
-      bib: '#c92a22', bell: true,
-      face: { eye: { dx: 205, y: 470, w: 74, h: 86, white: '#ffffff', iris: 0.66, iris_c: '#7a3d1c', ring: '#b8692a', pupil: 'slit', tilt: 12, look: 6 },
-        marks: [{ x: 300, y: 380, rx: 58, ry: 22, rot: -28, c: '#d8352a' }, { x: 724, y: 380, rx: 58, ry: 22, rot: 28, c: '#d8352a' }, { x: 512, y: 250, rx: 26, ry: 52, c: '#d8352a' }],
-        mouth: { kind: 'w', at: [512, 770, 44] }, blush: [300, 640] },
-    },
-    tanuki: {
-      name: 'Pon', what: 'the tanuki', col: '#9a7552', inner: '#4a382c', ears: 'round', earS: 0.34, squash: [1.16, 0.95, 1], muzzle: { c: '#f3e6cf', s: [0.46, 0.34, 0.4], y: -0.34, z: 0.74 }, noseBall: '#231c1a',
-      scarf: '#3d6a8c', belly: '#f3e6cf',
-      face: { eye: { dx: 195, y: 480, w: 58, h: 60, iris_c: '#1c1816', pupil: false },
-        marks: [{ x: 320, y: 500, rx: 120, ry: 92, rot: -18, c: '#3e2f25', soft: 6 }, { x: 704, y: 500, rx: 120, ry: 92, rot: 18, c: '#3e2f25', soft: 6 }, { x: 512, y: 300, rx: 150, ry: 70, c: '#f3e6cf', soft: 20 }],
-        mouth: { kind: 'y', at: [512, 790, 36] }, blush: [330, 650] },
-    },
-    rabbit: {
-      name: 'Mochi', what: 'the rabbit', col: '#fbf8f3', inner: '#f2a6b5', ears: 'long', squash: [1.1, 0.96, 1],
-      scarf: '#c8323c',
-      face: { eye: { dx: 195, y: 500, w: 52, h: 60, iris_c: '#3a1f24', ring: '#8c3a46', pupil: true },
-        nose: [512, 650, 34, 22, '#ef8fa2'], mouth: { kind: 'y', at: [512, 712, 40] }, blush: [320, 640], blushC: 'rgba(255,120,150,0.6)' },
-    },
-    tabby: {
-      name: 'Tetsu', what: 'the path cat', col: '#a8a39d', inner: '#f0c7c4', ears: 'tri', earH: 0.9, squash: [1.17, 0.93, 1], scarf: '#2f5f9e',
-      face: { eye: { dx: 200, y: 490, w: 70, h: 80, white: '#ffffff', iris: 0.7, iris_c: '#6fa04a', ring: '#3e6a2a', pupil: 'slit', look: 4 },
-        marks: [{ x: 512, y: 860, rx: 270, ry: 210, c: W, soft: 10 }],
-        lines: [{ c: '#5f5a55', w: 22, p: [512, 160, 512, 300] }, { c: '#5f5a55', w: 22, p: [440, 180, 456, 290] }, { c: '#5f5a55', w: 22, p: [584, 180, 568, 290] },
-          { c: '#5f5a55', w: 18, p: [70, 470, 160, 500] }, { c: '#5f5a55', w: 18, p: [954, 470, 864, 500] }],
-        nose: [512, 640, 30, 20, '#e48a96'], mouth: { kind: 'w', at: [512, 700, 40] }, blush: [300, 650] },
-    },
-    dove: {
-      name: 'Poppo', what: 'the dove', col: '#fbfaf6', ears: null, squash: [1.08, 1.0, 1.02], beak: '#f0a23a', wings: true, sailor: '#2b4e86',
-      face: { eye: { dx: 170, y: 470, w: 50, h: 56, iris_c: '#1d1d22', pupil: false }, blush: [280, 600], blushC: 'rgba(255,140,150,0.6)' },
-    },
-    koala: {
-      name: 'Gumnut', what: 'the koala', col: '#9da3a8', inner: '#f6f3ee', ears: 'round', earS: 0.5, pile: 0.0045, fluffyEars: true, squash: [1.18, 0.95, 1], bigNose: '#2b2b30',
-      belly: '#eeeae4', scarf: '#2f7d6a',
-      face: { eye: { dx: 210, y: 470, w: 46, h: 52, iris_c: '#1d1d22', pupil: false }, mouth: { kind: 'smile', at: [512, 820, 34] }, blush: [300, 640] },
-    },
-    sheep: {
-      name: 'Merri', what: 'the sheep', col: '#efe2cc', inner: '#d9b9a3', ears: 'floppy', squash: [1.08, 0.98, 1], wool: '#fbf7ee', pile: 0.004,
-      bell: true, collar: '#3f7bbf',
-      face: { eye: { dx: 185, y: 520, w: 46, h: 50, iris_c: '#2a221e', pupil: false, lash: true },
-        nose: [512, 690, 30, 18, '#c89585'], mouth: { kind: 'y', at: [512, 750, 34] }, blush: [300, 660] },
-    },
-    akita: {
-      name: 'Hachi', what: 'the akita', col: '#d28a4c', inner: '#f6ead6', ears: 'tri', earH: 0.78, earW: 1.15, squash: [1.15, 0.95, 1], muzzle: { c: '#f8efe0', s: [0.5, 0.36, 0.44], y: -0.36, z: 0.72 }, noseBall: '#231d1b',
-      collar: '#c43a2e', curlTail: true,
-      face: { eye: { dx: 195, y: 470, w: 50, h: 54, iris_c: '#2a1d16', pupil: false },
-        marks: [{ x: 512, y: 860, rx: 330, ry: 260, c: '#f8efe0', soft: 12 }, { x: 330, y: 380, rx: 34, ry: 22, c: '#f8efe0' }, { x: 694, y: 380, rx: 34, ry: 22, c: '#f8efe0' }],
-        mouth: { kind: 'w', at: [512, 820, 40] }, blush: [300, 650] },
-    },
-    calico: {
-      name: 'Mike', what: 'the calico cat', col: '#fbf7ef', inner: '#f4b9b9', ears: 'tri', earH: 0.92, earCols: ['#e08a3c', '#2b2726'], squash: [1.16, 0.93, 1],
-      collar: '#d33a3a', bell: true,
-      face: { eye: { dx: 205, y: 480, w: 72, h: 82, white: '#ffffff', iris: 0.7, iris_c: '#d39a2a', ring: '#9b6614', pupil: 'slit', look: 4 },
-        marks: [{ x: 250, y: 260, rx: 220, ry: 150, rot: 20, c: '#e08a3c', soft: 4 }, { x: 790, y: 230, rx: 170, ry: 120, rot: -15, c: '#2b2726', soft: 4 }],
-        nose: [512, 640, 30, 20, '#ee95a0'], mouth: { kind: 'w', at: [512, 700, 42] }, blush: [300, 650] },
-    },
-    panda: {
-      name: 'Rinrin', what: 'the panda', col: '#fbfaf6', inner: '#26262a', ears: 'round', earS: 0.36, earCol: '#26262a', squash: [1.16, 0.95, 1], muzzle: { c: '#fbfaf6', s: [0.42, 0.3, 0.36], y: -0.34, z: 0.76 }, noseBall: '#26262a',
-      limbs: '#26262a', scarf: '#5a9c4a',
-      face: { eye: { dx: 205, y: 480, w: 40, h: 44, iris_c: '#1a1a1e', pupil: false },
-        marks: [{ x: 300, y: 500, rx: 92, ry: 118, rot: -35, c: '#26262a', soft: 3 }, { x: 724, y: 500, rx: 92, ry: 118, rot: 35, c: '#26262a', soft: 3 }],
-        mouth: { kind: 'w', at: [512, 830, 34] }, blush: [270, 700] },
-    },
-  };
-  // the eyes of the panda sit in its patches: a white glint ring makes them read
-  KINDS.panda.face.eye.ring = '#f4f4f4';
+  // Mugi's coat on the head and the body, as an equirectangular canvas (SphereGeometry's u = 0.25 is the front,
+  // +z): ginger over the crown, the ears' line and the back, white below, the white running up between the eyes
+  // in a narrow blaze, the line passing just under the eyes so that they sit in the ginger; three darker tabby
+  // stripes on the forehead.
+  function coatTexture(c1, c2, stripe) {
+    const T = window.THREE, w = 1024, h = 512, c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.fillStyle = c2; g.fillRect(0, 0, w, h);
+    g.save(); g.filter = 'blur(5px)';
+    g.beginPath(); g.moveTo(-10, 0);
+    for (let x = -10; x <= w + 10; x += 4) {
+      const u = x / w, du = Math.min(Math.abs(u - 0.25), Math.abs(u - 1.25), Math.abs(u + 0.75)); // round the head from the front
+      const side = 290 + 50 * Math.min(1, Math.max(0, (du - 0.12) / 0.2)); // under the eyes in front, lower round the back
+      const blaze = 110 * Math.exp(-Math.pow(du / 0.022, 2)); // the white up between the eyes
+      g.lineTo(x, side - blaze);
+    }
+    g.lineTo(w + 10, 0); g.closePath(); g.fillStyle = c1; g.fill();
+    g.restore();
+    // tabby stripes on the forehead (u about 0.25, from the crown down) and a few round the back
+    g.strokeStyle = stripe; g.lineCap = 'round';
+    for (const [du, y0, y1, lw] of [[0, 70, 165, 16], [-0.03, 85, 160, 13], [0.03, 85, 160, 13]]) { g.lineWidth = lw; g.beginPath(); g.moveTo((0.25 + du) * w, y0); g.lineTo((0.25 + du * 1.15) * w, y1); g.stroke(); }
+    for (let i = 0; i < 6; i++) { const u = 0.55 + i * 0.07; g.lineWidth = 18; g.beginPath(); g.moveTo(u * w, 60); g.quadraticCurveTo((u + 0.015) * w, 150, u * w, 240); g.stroke(); }
+    const t = new T.CanvasTexture(c);
+    t.colorSpace = T.SRGBColorSpace; t.anisotropy = 8;
+    return t;
+  }
 
-  function build(kind) {
-    const T = window.THREE, k = KINDS[kind];
-    if (!k) throw new Error(`no plush "${kind}"`);
+  // the thread on the face panel: the mouth (a small ω under the nose), the blush, the whisker pores
+  function faceTexture() {
+    const T = window.THREE, n = 1024, c = document.createElement('canvas');
+    c.width = c.height = n;
+    const g = c.getContext('2d');
+    for (const sx of [-1, 1]) { g.save(); g.filter = 'blur(16px)'; g.beginPath(); g.ellipse(512 + sx * 300, 640, 66, 40, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(255,120,140,0.5)'; g.fill(); g.restore(); }
+    g.strokeStyle = '#5a3a34'; g.lineWidth = 10; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(512, 640); g.lineTo(512, 676); // the seam down from the nose
+    g.moveTo(462, 662); g.quadraticCurveTo(486, 702, 512, 676); g.quadraticCurveTo(538, 702, 562, 662); g.stroke();
+    g.fillStyle = 'rgba(120,80,70,0.55)';
+    for (const sx of [-1, 1]) for (const [dx, dy] of [[0, 0], [26, -14], [30, 16]]) { g.beginPath(); g.arc(512 + sx * (118 + dx), 650 + dy, 5, 0, Math.PI * 2); g.fill(); }
+    const t = new T.CanvasTexture(c);
+    t.colorSpace = T.SRGBColorSpace; t.anisotropy = 8;
+    return t;
+  }
+
+  // The traveller. One character, the way Travel Frog has one frog: attachment needs someone, not a cast.
+  // Designed to the baby schema (Lorenz's Kindchenschema): a big round head on a small body, big glossy bead
+  // eyes set below the head's middle and well apart, a small nose and mouth close under them, plump cheeks,
+  // short limbs; warm colours (ginger and white) that do not go grey in the blue of a sky; bead eyes rather than
+  // printed ones, because a bead catches the real light and a print looks dead (the eyes of good plush: Jellycat,
+  // San-X). A neckerchief takes each map's colour (opts.scarf).
+  const KINDS = {
+    mugi: { name: 'Mugi', what: 'the travelling cat', ginger: '#e8a05a', white: '#fbf6ee', stripe: '#c97a3a', inner: '#f3b3b8', nose: '#ee8f9c', scarf: '#c8323c' },
+  };
+
+  function build(kind = 'mugi', opts = {}) {
+    const T = window.THREE, k = Object.assign({}, KINDS[kind], opts);
+    if (!KINDS[kind]) throw new Error(`no plush "${kind}"`);
     const root = new T.Group(); root.name = `plush-${kind}`;
-    const mat = cloth(k.col), add = (geo, m, pos, scale, rot) => {
+    const add = (geo, m, pos, scale, rot) => {
       const o = new T.Mesh(geo, m);
       if (pos) o.position.set(...pos);
       if (scale) o.scale.set(...scale);
       if (rot) o.rotation.set(...rot);
-      o.castShadow = false; o.receiveShadow = false;
       return o;
     };
-    const ball = new T.SphereGeometry(1, 48, 32);
-    // the head, wide and a little flat, as a plush's is
-    const head = add(ball, mat, [0, 0, 0], k.squash.map(s => s * R));
+    const ball = new T.SphereGeometry(1, 64, 40);
+    const coat = cloth('#ffffff'); coat.map = coatTexture(k.ginger, k.white, k.stripe);
+    const white = cloth(k.white), ginger = cloth(k.ginger);
+    // the head: wide, a little flat, as a plush's is
+    const hs = [1.22 * R, 0.98 * R, 1.04 * R];
+    const head = add(ball, coat, [0, 0, 0], hs);
     root.add(head);
-    // the face panel on its surface
-    const faceMat = new T.MeshPhysicalMaterial({ map: faceTexture(k), transparent: true, roughness: 0.9, sheen: 0.6, sheenRoughness: 0.6, sheenColor: new T.Color(0xffffff), depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
-    const face = new T.Mesh(cap(1.045, 62), faceMat); face.renderOrder = 2;
+    const onHead = (u, v, out = 1) => { const z = Math.sqrt(Math.max(0, 1 - u * u - v * v)); return new T.Vector3(u * hs[0] * out, v * hs[1] * out, z * hs[2] * out); };
+    const normalAt = (u, v) => { const p = onHead(u, v); return new T.Vector3(p.x / (hs[0] * hs[0]), p.y / (hs[1] * hs[1]), p.z / (hs[2] * hs[2])).normalize(); };
+    const facing = (mesh, n) => { mesh.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), n); return mesh; };
+    // the face panel over the pile: mouth, blush, whisker pores
+    const faceMat = new T.MeshPhysicalMaterial({ map: faceTexture(), transparent: true, roughness: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const face = new T.Mesh(cap(1.045, 62), faceMat); face.renderOrder = 3;
     head.add(face);
-    const hs = k.squash.map(s => s * R); // the head's half sizes
-    const onHead = (u, v, out = 1) => { // a point on the head's surface: u across (-1..1), v up, towards the front
-      const x = u, y = v, z = Math.sqrt(Math.max(0, 1 - x * x - y * y));
-      return [x * hs[0] * out, y * hs[1] * out, z * hs[2] * out];
-    };
-    // a muzzle: a soft ball on the lower face, with a nose at its front
-    if (k.muzzle) {
-      const m = k.muzzle, mz = add(ball, cloth(m.c), onHead(0, m.y, 0.86), m.s.map((s, i) => s * hs[i] * (i === 2 ? 0.9 : 1)));
-      root.add(mz);
-      if (k.noseBall) {
-        const p = mz.position, n = add(ball, cloth(k.noseBall, 'satin'), [p.x, p.y + m.s[1] * hs[1] * 0.45, p.z + m.s[2] * hs[2] * 0.82], [R * 0.13, R * 0.085, R * 0.08]);
-        root.add(n);
-        // the mouth's seam, under the nose, as a short dark thread
-        const seam = add(new T.CylinderGeometry(R * 0.012, R * 0.012, m.s[1] * hs[1] * 0.6, 8), cloth(k.noseBall, 'felt'), [p.x, p.y - m.s[1] * hs[1] * 0.05, p.z + m.s[2] * hs[2] * 0.97]);
-        root.add(seam);
-      }
-    }
-    if (k.bigNose) root.add(add(ball, cloth(k.bigNose, 'satin'), onHead(0, -0.2, 0.98), [R * 0.24, R * 0.3, R * 0.2]));
-    // ears
-    const earMat = cloth(k.earCol || k.col), innerMat = cloth(k.inner || k.col, 'felt');
+    // the muzzle: two plump white cheeks either side under the nose, the "mochi" of a cat's face
+    for (const sx of [-1, 1]) root.add(add(ball, white, onHead(sx * 0.16, -0.42, 0.9).toArray(), [R * 0.25, R * 0.2, R * 0.19]));
+    root.add(add(ball, white, onHead(0, -0.55, 0.88).toArray(), [R * 0.16, R * 0.12, R * 0.14])); // (the chin)
+    // the nose: a small rounded triangle, satin pink
+    const nose = facing(add(softCone(1, 1), cloth(k.nose, 'satin'), onHead(0, -0.27, 1.035).toArray(), [R * 0.085, R * 0.075, R * 0.05]), normalAt(0, -0.27));
+    nose.rotateZ(Math.PI);
+    root.add(nose);
+    // the eyes: glossy black beads, domed, low and wide, each with a glint of its own (a white disc: the bead's
+    // reflection of a sky it may not have in the game's light) and a smaller one across from it
+    const bead = new T.MeshPhysicalMaterial({ color: 0x17110f, roughness: 0.06, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, sheen: 0 });
+    const glint = new T.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
     for (const sx of [-1, 1]) {
-      const em = k.earCols ? cloth(k.earCols[sx < 0 ? 0 : 1]) : earMat;
-      if (k.ears === 'tri') {
-        const h = R * 0.9 * (k.earH || 1), w = R * 0.42 * (k.earW || 1);
-        const e = add(softCone(1, 1), em, onHead(sx * 0.58, 0.72, 0.9), [w, h, w * 0.45], [0, 0, -sx * 0.42]);
-        const i = add(softCone(1, 1), innerMat, [0, 0.06, 0.62], [0.62, 0.78, 0.5]);
-        e.add(i);
-        root.add(e);
-      } else if (k.ears === 'round') {
-        const s = R * (k.earS || 0.35);
-        const e = add(ball, em, onHead(sx * 0.72, 0.62, 0.92), [s, s, s * 0.45], [0, -sx * 0.3, 0]);
-        e.add(add(ball, k.fluffyEars ? cloth(k.inner) : innerMat, [0, 0, 0.42], [0.7, 0.7, 0.5]));
-        root.add(e);
-      } else if (k.ears === 'long') {
-        const e = add(ball, earMat, onHead(sx * 0.4, 0.8, 0.92), [R * 0.22, R * 0.95, R * 0.12], [0.05, 0, -sx * 0.18]);
-        e.position.y += R * 0.75;
-        e.add(add(ball, innerMat, [0, 0, 0.55], [0.6, 0.86, 0.55]));
-        root.add(e);
-      } else if (k.ears === 'floppy') {
-        const e = add(ball, cloth(k.inner), onHead(sx * 0.94, 0.25, 0.95), [R * 0.36, R * 0.14, R * 0.18], [0, sx * 0.2, sx * -0.45]);
-        e.position.x += sx * R * 0.18;
-        root.add(e);
-      }
+      const u = sx * 0.41, v = -0.09, n = normalAt(u, v);
+      const eye = facing(add(ball, bead, onHead(u, v, 1.03).toArray(), [R * 0.155, R * 0.17, R * 0.09]), n);
+      eye.add(add(new T.CircleGeometry(1, 24), glint, [-0.36, 0.38, 0.97], [0.26, 0.26, 1]));
+      eye.add(add(new T.CircleGeometry(1, 16), glint, [0.34, -0.36, 0.95], [0.1, 0.1, 1]));
+      root.add(eye);
     }
-    // a wool cap of soft bumps over the crown and the back
-    if (k.wool) {
-      const wm = cloth(k.wool);
-      let s = 3; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-      for (let i = 0; i < 46; i++) {
-        const a = rnd() * Math.PI * 2, b = 0.25 + rnd() * 1.1; // around the vertical, down from the crown
-        const x = Math.sin(b) * Math.sin(a), y = Math.cos(b), z = Math.sin(b) * Math.cos(a);
-        if (z > 0.15 && y < 0.62) continue; // the face stays clear
-        const r = R * (0.2 + rnd() * 0.1);
-        root.add(add(ball, wm, [x * hs[0] * 0.98, y * hs[1] * 0.98 + R * 0.04, z * hs[2] * 0.98], [r, r, r]));
-      }
-    }
-    // a dove's beak and wings
-    if (k.beak) {
-      const b = add(softCone(1, 1), cloth(k.beak, 'satin'), onHead(0, -0.08, 0.95), [R * 0.16, R * 0.26, R * 0.12], [Math.PI / 2, 0, 0]);
-      root.add(b);
-    }
-    // the body: small under the big head, mostly below the frame
-    const body = add(ball, mat, [0, -R * 1.3, -R * 0.05], [R * 0.78, R * 0.82, R * 0.7]);
-    root.add(body);
-    if (k.belly) root.add(add(ball, cloth(k.belly), [0, -R * 1.38, R * 0.32], [R * 0.52, R * 0.56, R * 0.4]));
-    const limb = cloth(k.limbs || k.col);
+    // the ears: small, set wide and tipped outward, pink inside
     for (const sx of [-1, 1]) {
-      if (k.wings) root.add(add(ball, mat, [sx * R * 0.78, -R * 1.2, -R * 0.02], [R * 0.2, R * 0.5, R * 0.36], [0, 0, sx * 0.5]));
-      else root.add(add(ball, limb, [sx * R * 0.72, -R * 1.25, R * 0.18], [R * 0.2, R * 0.4, R * 0.2], [0.4, 0, sx * 0.85]));
+      const e = add(softCone(1, 1), ginger, onHead(sx * 0.58, 0.7, 0.86).toArray(), [R * 0.44, R * 0.64, R * 0.19], [0.1, 0, -sx * 0.5]);
+      e.add(add(softCone(1, 1), cloth(k.inner, 'felt'), [0, 0.06, 0.75], [0.6, 0.72, 0.4]));
+      root.add(e);
     }
-    // around the neck: a bib, a scarf or a collar, with a bell where the toy has one
-    const neckY = -R * 0.86;
-    if (k.bib) {
-      const bib = add(cap(1, 55), cloth(k.bib, 'satin'), [0, neckY - R * 0.05, R * 0.02], [R * 0.75, R * 0.6, R * 0.72], [0.3, 0, 0]);
-      root.add(bib);
+    // the body: small under the head, ginger back and white front, paws up under the chin, a tail curled round
+    root.add(add(ball, coat, [0, -R * 1.12, -R * 0.08], [R * 0.74, R * 0.68, R * 0.64]));
+    root.add(add(ball, white, [0, -R * 1.2, R * 0.28], [R * 0.48, R * 0.5, R * 0.36])); // (the belly)
+    for (const sx of [-1, 1]) {
+      root.add(add(ball, white, [sx * R * 0.36, -R * 0.93, R * 0.5], [R * 0.19, R * 0.16, R * 0.18], [0, 0, sx * 0.3]));
+      root.add(add(ball, white, [sx * R * 0.34, -R * 1.62, R * 0.36], [R * 0.2, R * 0.13, R * 0.24])); // (the feet)
     }
-    const band = k.scarf || k.collar;
-    if (band) root.add(add(new T.TorusGeometry(R * 0.66, R * (k.scarf ? 0.13 : 0.07), 16, 48), cloth(band, k.scarf ? 'fleece' : 'satin'), [0, neckY, -R * 0.03], [1, 1, 0.9], [Math.PI / 2 - 0.12, 0, 0]));
-    if (k.sailor) { // a sailor collar's tie
-      root.add(add(new T.TorusGeometry(R * 0.64, R * 0.08, 16, 48), cloth(k.sailor, 'satin'), [0, neckY, -R * 0.03], [1, 1, 0.9], [Math.PI / 2 - 0.12, 0, 0]));
-      for (const sx of [-1, 1]) root.add(add(ball, cloth('#c8323c', 'satin'), [sx * R * 0.12, neckY - R * 0.1, R * 0.62], [R * 0.14, R * 0.08, R * 0.05], [0, 0, sx * 0.6]));
-    }
-    if (k.bell) {
-      const bell = new T.Mesh(new T.SphereGeometry(R * 0.11, 24, 16), new T.MeshStandardMaterial({ color: 0xe8b84a, metalness: 1, roughness: 0.28 }));
-      bell.position.set(0, neckY - R * (k.bib ? 0.32 : 0.12), R * (k.bib ? 0.58 : 0.66));
-      root.add(bell);
-    }
-    if (k.curlTail) root.add(add(new T.TorusGeometry(R * 0.22, R * 0.11, 12, 32, Math.PI * 1.6), mat, [R * 0.3, -R * 1.05, -R * 0.65], [1, 1, 1], [0, 0.6, 0.3]));
-    root.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false; } });
-    // the pile on every fleece part (not on a torus: a scarf's knit is flat enough)
+    // the tail: out from the back, along the side and up, its tip curled over and white
+    const tc = new T.CatmullRomCurve3([[0.15, -1.55, -0.5], [0.62, -1.5, -0.52], [0.98, -1.2, -0.42], [1.04, -0.82, -0.3], [0.86, -0.62, -0.22]].map(p => new T.Vector3(...p).multiplyScalar(R)));
+    root.add(add(new T.TubeGeometry(tc, 48, R * 0.115, 14, false), ginger));
+    root.add(add(ball, white, tc.getPoint(1).toArray(), [R * 0.125, R * 0.125, R * 0.125]));
+    root.add(add(ball, ginger, tc.getPoint(0).toArray(), [R * 0.12, R * 0.12, R * 0.12])); // (where it leaves the body)
+    // the neckerchief: a soft cotton triangle, knotted behind, in the map's colour
+    const kerchief = add(cap(1, 52), cloth(k.scarf, 'felt'), [0, -R * 0.84, R * 0.0], [R * 0.74, R * 0.5, R * 0.7], [0.42, 0, 0]);
+    root.add(kerchief);
+    root.add(add(new T.TorusGeometry(R * 0.66, R * 0.05, 12, 48), cloth(k.scarf, 'felt'), [0, -R * 0.8, -R * 0.04], [1, 1, 0.92], [Math.PI / 2 - 0.1, 0, 0]));
+    // the furoshiki: a travelling bundle on its back, the cloth spotted, the two corners knotted on top. From
+    // behind (where most cards see it) it is Mugi's silhouette: ears, the bundle, the curled tail
+    const dots = document.createElement('canvas'); dots.width = 256; dots.height = 128;
+    { const g = dots.getContext('2d'); g.fillStyle = k.scarf; g.fillRect(0, 0, 256, 128); g.fillStyle = '#fbf6ee';
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 16; x++) { g.beginPath(); g.arc(x * 16 + (y % 2) * 8 + 4, y * 16 + 8, 3.2, 0, Math.PI * 2); g.fill(); } }
+    const dt = new T.CanvasTexture(dots); dt.colorSpace = T.SRGBColorSpace; dt.wrapS = dt.wrapT = T.RepeatWrapping; dt.repeat.set(2, 2);
+    const bundleMat = cloth('#ffffff', 'felt'); bundleMat.map = dt;
+    const bundle = add(ball, bundleMat, [0, -R * 0.9, -R * 0.72], [R * 0.54, R * 0.44, R * 0.26], [0.25, 0, 0]);
+    root.add(bundle);
+    for (const sx of [-1, 1]) root.add(add(softCone(1, 1), bundleMat, [sx * R * 0.12, -R * 0.62, -R * 0.82], [R * 0.13, R * 0.24, R * 0.08], [0.3, 0, -sx * 0.7]));
+    for (const sx of [-1, 1]) root.add(add(new T.TorusGeometry(R * 0.62, R * 0.035, 8, 32, Math.PI * 0.9), cloth(k.scarf, 'felt'), [sx * R * 0.05, -R * 0.95, -R * 0.2], [1, 1.1, 1], [0, sx * Math.PI / 2, Math.PI * 0.55])); // (the straps over the shoulders)
+    root.traverse(o => { if (o.isMesh) { o.castShadow = !o.material.transparent; o.receiveShadow = true; o.frustumCulled = false; } });
+    // the pile on every fleece part (not on a torus: a tail and a knot are too thin for it)
     root.updateMatrixWorld(true);
     const parts = [];
     root.traverse(o => { if (o.isMesh && o.material.normalMap && !o.geometry.parameters.tube) parts.push(o); });

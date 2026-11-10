@@ -1,8 +1,7 @@
 // Postcards from the road (docs/POSTCARDS.md).
 //
-// While you are away, the plush friends keep travelling, one to each map (a white Inari fox at Fushimi
-// Inari, a koala in Sydney...): one photograph every six hours of real time, from a spot in one of the
-// live cities, the friend held up in front of the view, with a line of its diary. The title screen shows
+// While you are away, Mugi (a small plush cat) keeps travelling: one photograph every six hours of real
+// time, from a spot in one of the live cities with Mugi sat in it, with a line of its diary. The title screen shows
 // what has come since the last visit (three at most) as a small pile of postcards; opening one shows
 // the picture, where and when it was taken and the sun there at that minute, and "Go there" starts
 // the city's game on that spot, in that light.

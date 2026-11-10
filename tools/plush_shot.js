@@ -1,4 +1,4 @@
-// The postcards' plush friends (tools/plush.js) side by side in a soft studio light, to judge their faces and
+// The postcards' plush traveller (tools/plush.js) side by side in a soft studio light, to judge its face and
 // proportions before they go into the stills.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/plush_shot.js out.png [kind,kind,...] [WxH]
@@ -25,9 +25,9 @@ document.body.append(r.domElement);
 const s = new THREE.Scene(); s.background = new THREE.Color(0xcfd6dc);
 s.add(new THREE.HemisphereLight(0xdfe8f2, 0x6b6258, 2.2));
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.2); sun.position.set(2, 3, 2.5); s.add(sun);
-const kinds = ${JSON.stringify(only)} ? ${JSON.stringify(only)}.split(',') : Object.keys(OEPlush.KINDS);
+const spec = ${JSON.stringify(only)} ? ${JSON.stringify(only)}.split(',') : Object.keys(OEPlush.KINDS), kinds = spec.map(s => s.split('@')[0]), turns = spec.map(s => s.split('@')[1]); // (kind@radians: turned that far)
 const gap = 0.26;
-kinds.forEach((k, i) => { const o = OEPlush.build(k); o.position.x = (i - (kinds.length - 1) / 2) * gap; o.rotation.y = (i % 2 ? -1 : 1) * 0.18; s.add(o); });
+kinds.forEach((k, i) => { const o = OEPlush.build(k); o.position.x = (i - (kinds.length - 1) / 2) * gap; o.rotation.y = turns[i] !== undefined ? +turns[i] : [0.0, 0.45, -0.45, 0.9][i % 4]; o.rotation.z = turns[i] !== undefined ? 0 : [0, -0.16, 0.16, 0][i % 4]; s.add(o); });
 const c = new THREE.PerspectiveCamera(22, ${w / h}, 0.05, 50);
 const span = kinds.length * gap; c.position.set(0, 0.02, Math.max(0.9, span / 2 / Math.tan(11 * Math.PI / 180) / ${w / h} * 1.05)); c.lookAt(0, -0.03, 0);
 r.render(s, c); window.__done = true;

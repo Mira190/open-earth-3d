@@ -20,8 +20,8 @@
 // nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera; [x, y] from
 // "eyeUp" metres, 1.6 by default, over the ground where you stand; "lookUp": the point looked at that far over it,
 // as up a tower's side)
-// "plush": {kind, side, tilt, fstop} a plush friend (tools/plush.js) held up in front of an "eye" view, an arm's
-// length from the lens on that side of the frame (-1 left, 1 right), in focus, the view behind it soft;
+// "plush": {kind, scarf, side, ...} the plush traveller (tools/plush.js) sat in an "eye" view on one side third
+// (-1 left, 1 right), in focus (see below);
 // "clear": metres within which the stand moves to the clearest view of "look" (see below);
 // "js": a statement run in the page before a view is taken (g: the game), e.g. a clear sky for the stars, or the
 // railway at a second of its timetable ("g.trains.t = 131; g.trains.update(0, g.camera)");
@@ -41,7 +41,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
-  await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, 'plush.js'), 'utf8') }); // (the plush friends, for "plush")
+  await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, 'plush.js'), 'utf8') }); // (the plush traveller, for "plush")
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type, opts) {
@@ -265,17 +265,63 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         P.fstop = v.fstop ?? 16; // (photo mode's depth of field: sharp unless a still asks for it)
         g.player.rig.root.visible = false;
         g.advance(0.1);
-        // "plush": the toy in the foreground, in focus at its distance, the view behind it through the lens's blur
+        // "plush": the traveller in the picture (tools/plush.js). As in Travel Frog's photographs it is in the
+        // place, not held up to the lens: sat on the real ground "dist" metres ahead (1.35 by default), on one
+        // side third ("side": -1 left, 1 right), turned towards what the view looks at, a little round towards
+        // the lens ("turn", 0..1: 0 its back to us, 1 facing us), casting its shadow, in focus at its distance.
+        // "mode": "held" holds it up an arm's length from the lens instead.
         if (v.plush) {
-          const T = window.THREE, q = v.plush, c = g.camera, D = q.dist ?? 0.65, side = q.side ?? 1;
+          const T = window.THREE, q = v.plush, c = g.camera, side = q.side ?? 1, held = q.mode === 'held';
           window.__plushes = window.__plushes || {};
-          const toy = window.__plushes[q.kind] = window.__plushes[q.kind] || window.OEPlush.build(q.kind);
-          // carried by the camera (put in the scene for it), so that it stays where it is held as the view settles
+          const key = q.kind + (q.scarf || ''), toy = window.__plushes[key] = window.__plushes[key] || window.OEPlush.build(q.kind, q.scarf ? { scarf: q.scarf } : {});
           const W = g.Wd.world, fov = v.fov || g.photo.fov || c.fov;
-          if (!c.parent) W.add(c);
-          const half = D * Math.tan(fov * Math.PI / 360); // half the frame's height at the toy's distance
-          toy.position.set(side * half * c.aspect * (q.x ?? 0.42), half * (q.y ?? -0.42), -D);
-          toy.quaternion.setFromEuler(new T.Euler(0.16, -side * 0.32, side * (q.tilt ?? 0.09), 'YXZ'));
+          const Wv = (x, y, z) => new T.Vector3(x, z, -y); // (the city's frame, x east, y north, z up, in three.js's)
+          let D = q.dist ?? 0.65;
+          if (held) { // carried by the camera (put in the scene for it), so that it stays where it is held as the view settles
+            if (!c.parent) W.add(c);
+            const half = D * Math.tan(fov * Math.PI / 360);
+            toy.position.set(side * half * c.aspect * (q.x ?? 0.42), half * (q.y ?? -0.42), -D);
+            toy.quaternion.setFromEuler(new T.Euler(-0.05, Math.PI + side * (q.turn ?? 0.55), side * (q.tilt ?? 0.1), 'YXZ')); // (its back to us, looking out at the view, a cheek round)
+            if (toy.parent !== c) c.add(toy);
+          } else {
+            const fx0 = v.look[0] - v.eye[0], fy0 = v.look[1] - v.eye[1], fl = Math.hypot(fx0, fy0), fx = fx0 / fl, fy = fy0 / fl;
+            toy.visible = false;
+            // the still's own camera, from the view itself (the game's camera reaches it only on the next frame)
+            const cam = new T.PerspectiveCamera(fov, 960 / 640, 0.05, 5000);
+            cam.position.copy(Wv(v.eye[0], v.eye[1], g.player.z + (v.eyeUp ?? 1.6)));
+            cam.lookAt(Wv(v.look[0], v.look[1], v.lookZ ?? (g.player.z + (v.lookUp ?? 1.2)))); cam.updateMatrixWorld();
+            const eyeGround = g.player.z, rc = new T.Raycaster(); rc.camera = c;
+            // a place "d" metres ahead on its side third, on the surface drawn there (a ray down from a metre over
+            // the photographer's feet: the paving, a step, a kerb; the walking floor can lie under what is drawn)
+            const seat = d => {
+              const lat = d * Math.tan(fov * Math.PI / 360) * (960 / 640) * (q.x ?? 0.36) * side; // (the still's frame is 3:2)
+              const x = v.eye[0] + fx * d + fy * lat, y = v.eye[1] + fy * d - fx * lat; // (right of the view: (fy, -fx))
+              rc.set(Wv(x, y, eyeGround + 1.0), new T.Vector3(0, -1, 0)); rc.far = 4;
+              const hit = rc.intersectObjects(W.children, true).find(h => h.object.visible && h.object.isMesh && !h.object.isInstancedMesh && !(h.object.material && h.object.material.transparent));
+              // (a surface well off the walking floor is something passing, a car or a leaf: the floor then)
+              const f = g.nav.floorAt(x, y, eyeGround + 0.6), fz = f ? f.z : g.nav.terrain(x, y), floor = hit && Math.abs(hit.point.y - fz) < 0.6 ? hit.point.y : fz;
+              return { x, y, z: floor + (q.lift ?? 0) + 1.75 * window.OEPlush.R }; // (its seat on the floor)
+            };
+            // as far ahead as puts its head "y" (0.5 by default) of the way from the frame's middle to its foot,
+            // whatever the camera's tilt and the ground's slope: tried every 10 cm from 0.8 m
+            let best = null;
+            if (q.dist) best = seat(q.dist);
+            else for (let d = 0.8; d <= 3.5 + 1e-6; d += 0.1) {
+              // (no further than "far", 2 m, where a toy is still more than a speck, unless only further off
+              // keeps it in the frame: a view tilted up at a tall hall)
+              const p = seat(d), ndc = Wv(p.x, p.y, p.z).project(cam), e = Math.abs(ndc.y + (q.y ?? 0.62)) + (d > (q.far ?? 2) ? 0.5 + d : 0) + (ndc.y < -0.8 ? 10 : 0);
+              if (!best || e < best.e) best = Object.assign(p, { e });
+            }
+            const { x, y, z } = best;
+            toy.position.copy(Wv(x, y, z));
+            // turned towards the view's subject, and round towards the lens by "turn"
+            const toL = new T.Vector2(v.look[0] - x, v.look[1] - y).normalize(), toC = new T.Vector2(v.eye[0] - x, v.eye[1] - y).normalize();
+            const t = q.turn ?? 0.45, d = toL.multiplyScalar(1 - t).add(toC.multiplyScalar(t)).normalize();
+            toy.lookAt(Wv(x + d.x, y + d.y, z));
+            toy.rotateZ(-side * (q.tilt ?? 0.08));
+            if (toy.parent !== W) W.add(toy);
+            D = cam.position.distanceTo(toy.position);
+          }
           // the light the place throws back on it: the frame's own mean colour (the street, the torii, the water
           // around it), as a soft bounce over its albedo; and after dark a little light of its own, as from a
           // lamp or a phone, so that it is not a silhouette
@@ -284,12 +330,11 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
           const px = x2.getImageData(0, 0, 32, 20).data, lin = v => Math.pow(v / 255, 2.2), avg = [0, 0, 0];
           for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) avg[j] += lin(px[i + j]) / (px.length / 4);
           const lum = 0.2126 * avg[0] + 0.7152 * avg[1] + 0.0722 * avg[2]; // (half its colour: the bounce is from all round, not only what is in frame)
-          const bounce = new T.Color(avg[0], avg[1], avg[2]).lerp(new T.Color(lum, lum, lum), 0.5).multiplyScalar(q.bounce ?? 0.45).add(new T.Color(q.glow ?? 0, q.glow ?? 0, q.glow ?? 0));
+          const bounce = new T.Color(avg[0], avg[1], avg[2]).lerp(new T.Color(lum, lum, lum), 0.5).multiplyScalar(q.bounce ?? (held ? 0.45 : 0.25)).add(new T.Color(q.glow ?? 0, q.glow ?? 0, q.glow ?? 0));
           toy.traverse(o => { if (o.isMesh && o.material.userData.plush) { o.material.emissive = o.material.color.clone().multiply(bounce); o.material.emissiveIntensity = 1; } });
-          if (toy.parent !== c) c.add(toy);
           toy.visible = true;
           if (!g.atmos.__plushFx) { const fx = g.atmos.camFx.bind(g.atmos); g.atmos.camFx = o => fx(window.__plushFx || o); g.atmos.__plushFx = true; }
-          const f = 0.012 / Math.tan(fov * Math.PI / 360), N = q.fstop ?? 5.6;
+          const f = 0.012 / Math.tan(fov * Math.PI / 360), N = q.fstop ?? (held ? 5.6 : 4);
           window.__plushFx = { focus: D, aperture: f * f / (N * Math.max(0.05, D - f)) / 0.024, fresh: true };
           g.advance(0.05);
         }

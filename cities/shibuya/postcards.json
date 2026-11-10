@@ -1,5 +1,5 @@
 {
-  "plush": {"kind": "akita", "name": "Hachi", "what": "the akita"},
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#e0a63a"},
   "spots": [
     {"id": "scramble", "name": "The scramble", "native": "スクランブル交差点", "at": [385, -1032], "look": [358, -994], "lookUp": 5, "lines": {"any": ["The scramble. When the lights change, up to three thousand people cross at once from every corner, and nobody touches anybody."]}},
     {"id": "hachiko", "name": "Hachiko", "native": "忠犬ハチ公", "at": [381.8, -1042.4], "look": [374.79, -1046.45], "lookUp": 1.3, "lines": {"any": ["Hachiko. He met his master here every evening, and kept coming for almost ten years after his master died. Tokyo still says 'meet at Hachiko'."]}},
