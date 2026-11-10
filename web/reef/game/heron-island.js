@@ -61,7 +61,7 @@ export default function heronIsland(G) {
 
   // ------------------------------------------------------------ Kai, a visiting scientist by the research station
   const kai = {
-    id: 'scientist', role: 'guide', name: 'Kai', title: 'Visiting reef scientist', gender: 'M',
+    id: 'scientist', role: 'guide', name: 'Kai', title: 'Visiting reef scientist', gender: 'M', look: { character: 'R_Sports_Male_04_m024' },
     at: G2 => { const s = P('research-station') || P('heron-island'), p = standNear(G2, s.x, s.north, { maxR: 120 }); return Object.assign(p, { heading: p.vessel ? 0 : G2.bearing(p, G2.spawn()) }); },
     nodes: {
       hello: { say: [{ t: 'Hello! I\'m Kai, here for a few weeks at the research station.', src: null },
