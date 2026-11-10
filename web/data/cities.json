@@ -1985,8 +1985,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 863346,
-   "game": 1004165
+   "model": 863360,
+   "game": 1004179
   },
   "group_meta": {
    "native": "\u938c\u5009",
@@ -2312,7 +2312,7 @@
      }
     },
     {
-     "name": "Sangen-jaya",
+     "name": "Sangenjaya",
      "native": "\u4e09\u8ed2\u8336\u5c4b",
      "lat": 35.6437,
      "lon": 139.6702,
@@ -2951,8 +2951,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 3966098,
-   "game": 4519894
+   "model": 3971629,
+   "game": 4525447
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3060,7 +3060,7 @@
      }
     },
     {
-     "name": "Sangen-jaya",
+     "name": "Sangenjaya",
      "native": "\u4e09\u8ed2\u8336\u5c4b",
      "lat": 35.6437,
      "lon": 139.6702,
@@ -3800,7 +3800,7 @@
      }
     },
     {
-     "name": "Sangen-jaya",
+     "name": "Sangenjaya",
      "native": "\u4e09\u8ed2\u8336\u5c4b",
      "lat": 35.6437,
      "lon": 139.6702,

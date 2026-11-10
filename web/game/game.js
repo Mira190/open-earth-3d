@@ -76,7 +76,24 @@ window.OpenEarthGame = async function game(cityId) {
     $('#g-menu').hidden = true; $('#g-bigmap').hidden = true; $('#g-pass').hidden = true;
     if (!phone.el.hidden) phoneShow(false);
     keys.clear();
-    OEMetro.full({ g: metro, cities: window.OE_CITIES, here: cityId, backLabel: 'Back to the game', backWord: 'Back to the game' });
+    // which of this map's stations you are at (a map can hold several districts: Sangenjaya is on Shibuya's): the
+    // nearest one within a kilometre, else the map's own
+    const F = scene.frame, ds = metro.meta.districts;
+    let hereAt = -1, bd = 1000;
+    ds.forEach((s, i) => {
+      if (s.map !== cityId || !playing) return;
+      const e = Math.hypot((s.lon - F.lon0) * 111320 * Math.cos(F.lat0 * Math.PI / 180) - player.x, (s.lat - F.lat0) * 110950 - player.y);
+      if (e < bd) { bd = e; hereAt = i; }
+    });
+    OEMetro.full({ g: metro, cities: window.OE_CITIES, here: cityId, hereAt, backLabel: 'Back to the game', backWord: 'Back to the game',
+      // another district of the map you are on: a hop across it, not the whole map loaded again
+      onGo: (c, play, arrive) => {
+        OEMetro.close();
+        const t = c.id === cityId && play && playing && (arrive ? (G.travel || []).find(x => x.id === arrive) : { id: 'start', name: CITY.name, at: G.start.at, look: G.start.facing });
+        if (t && travelTo({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best })) { history.replaceState(null, '', `#play-${cityId}${arrive ? `@${arrive}` : ''}`); return; }
+        if (t) return; // (not now: in the helicopter, on the ferry; the game has said so)
+        location.hash = play ? `play-${c.id}${arrive ? `@${arrive}` : ''}` : c.id;
+      } });
   }
   const stage = $('#game-stage'), canvas = $('#game-gl');
   // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries;
@@ -980,6 +997,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // your car's model comes after the game can be played (issue 335): parked where it was to be as soon as it has
   // come, fetched then (afterPlayable) or at once when asked for later
   let myCar = null, ride = null, parkWait = null, carsHeld = true;
+  let pilot = null; // the autopilot driving your car (pilotTo, below): a driver as a ride's is, at your own wheel
   const parkLater = () => vlib.loadCars().then(() => {
     const p = parkWait; parkWait = null;
     if (!(p && vlib.carsFull) || myCar) return;
@@ -988,6 +1006,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (g) { g.visible = false; warmFor(g).catch(() => {}).then(() => { g.visible = true; }); }
   });
   function parkMyCar(pose) {
+    if (pilot) pilotOff(); // (moved by the phone, the map or R: the autopilot's way is no longer its way)
     if (!CARS_OK || !vlib.info.cars.models[carCfg.model]) return;
     if (!myCar && !vlib.carsFull) { parkWait = pose; if (!carsHeld) parkLater(); return; }
     if (!myCar) {
@@ -1099,7 +1118,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function carStep(dt, fwd, side) {
     const D = myCar.D, st = D.st, ev = [];
-    D.step(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), handbrake: k('Space') },
+    // the autopilot: at the wheel itself (true), or bringing the car onto its lane through the pedals (its inputs)
+    const auto = pilot ? pilotStep(dt, fwd, side) : null;
+    if (auto && auto !== true) { fwd = auto.fwd; side = auto.turn; }
+    else if (!pilot && (assist.lane || assist.cruise)) { const a = assistStep(fwd, side); fwd = a.fwd; side = a.turn; }
+    else assist.on.lane = assist.on.cruise = false;
+    if (auto !== true) D.step(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), handbrake: k('Space') },
       { boxes: carBoxes(st.x, st.y, 14, myCar), people: peopleNear(st.x, st.y, 12), posts: postsNear(st.x, st.y, 10) }, ev);
     for (const e of ev) {
       if (e.speed > 2.5) A.thump();
@@ -1109,10 +1133,258 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (e.type === 'edge') H.toast(nav.isWater(st.x + Math.sin(st.h) * 5, st.y + Math.cos(st.h) * 5) ? `That's the edge of ${G.water_name || 'the water'}.` : 'Too steep a drop.');
     }
     Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.speed });
-    redLight(st);
-    A.car(st.rpm, Math.abs(fwd), 1);
+    if (!pilot) redLight(st);
+    A.car(st.rpm, auto === true ? st.pull || 0 : Math.abs(fwd), 1);
     A.skid(Math.min(1, Math.max(0, st.slip - 2.2) / 6));
     player.rig.animate(dt, 0, 'sit', clockT);
+  }
+  // ------------------------------------------------------------ the autopilot of your own car (J)
+  // Set a waypoint on the map, or pick a place by name, and the car drives there itself: the taxis' driver
+  // (cars.js chauffeur, driverStep) at your own wheel, so it keeps its lane, queues, waits at the lights, gives
+  // way at junctions, goes round a jam and pulls in at the kerb as they do. J again, the wheel, the brake or the
+  // handbrake hands the car back as it is moving. The scenic way prefers the waterfront and the streets by the
+  // landmarks (autopilot.js scenic). From wherever the car stands it is first driven onto its lane through its
+  // own pedals (autopilot.js join); from then on it is carried along the driver's line (cars.js drive follow).
+  let pilotScenic = false, scenicW = null;
+  const scenicWeights = () => scenicW || (scenicW = OEAutopilot.scenic(roadNet, { water: (x, y) => nav.isWater(x, y),
+    marks: Object.values(scene.labels || {}).concat((G.travel || []).map(t => t.at), G.wharves.map(w => w.terminal)).filter(Boolean) }));
+  const pilotOpts = () => Object.assign(rideGuard(myCar.C), { keep: keepSign, lights: junctions, now: rideClock, strict: true, id: 'pilot', wedge: Infinity }); // (never on through a car, as a ride out of your sight may go: wedged half a minute, it hands the car back)
+  function pilotTo(dest, { scenic = pilotScenic, quiet = false } = {}) {
+    if (!myCar || player.mode !== 'car') return false;
+    if (pilot) pilotOff();
+    const st = myCar.D.st, a = roads.place(st.x, st.y, 60, keepSign, st.z);
+    if (!a || a.d > 25) { H.toast('The autopilot needs a street: drive onto one first.'); return false; }
+    roadNet.at(a.line, a.s, rq);
+    if (!roadNet.L[a.line].ow) a.dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1; // (the way the car faces)
+    let rt = driveTo(a, dest.at[0], dest.at[1]), share = 0;
+    if (!rt) { H.toast(`No road from here reaches ${dest.name}.`); return false; }
+    if (rt.len < 30) { H.toast(`${dest.name} is right here.`); return false; }
+    if (scenic) {
+      // (the scenic way, where it is no more than twice as far and does run more along the water or the landmarks)
+      const w = scenicWeights(), sc = roads.route(a, rt.to, 30000, undefined, null, false, w), s0 = OEAutopilot.scenicShare(rt, roadNet, w);
+      share = s0;
+      if (sc && sc.len < rt.len * 2 + 300) { const s1 = OEAutopilot.scenicShare(sc, roadNet, w); if (s1 > s0 + 0.04) { rt = sc; share = s1; } }
+    }
+    const mk = from => { const opts = Object.assign(pilotOpts(), { from, v: 0 }), d = OECars.chauffeur(myCar.C, rt, opts); d.opts = opts; return d; };
+    const offOf = c => ({ x: st.x - c.x, y: st.y - c.y, h: angDiff(st.h, c.h) }), close = o => Math.hypot(o.x, o.y) < 1.2 && Math.abs(o.h) < 0.45;
+    // parked at the kerb where its way starts: out from the kerb, as a taxi pulls out; else onto the lane first
+    let drv = mk('kerb'), join = false, off;
+    drv.jump(0);
+    if (!close(off = offOf(drv.st)) || st.speed > 1) {
+      drv.leave(); drv = mk('lane');
+      const at = OEAutopilot.onLane(drv.poseAt, drv.path.len, st.x, st.y, st.h, 0, 40);
+      drv.jump(at.s);
+      if (close(off = offOf(drv.st))) drv.st.v = Math.max(0, st.v); else join = true;
+    }
+    pilot = { kind: 'auto', blockId: 'pilot', name: 'Autopilot', C: myCar.C, drv, dest, phase: 'driving', t0: clockT, meter: 0, scenic: !!scenic, share, join, joinT: 0, joinS: 0,
+      off: join ? { x: 0, y: 0, h: 0 } : off, film: OEAutopilot.film({ reduced }), turns: OEAutopilot.turns(rt, drv.path), turnsOf: drv, len: rt.len, sig: [], scr: [], qArms: [], way: waypoint && dest.id === 'waypoint' ? waypoint.slice() : null };
+    if (cam.mode === 'chase') cam.lastInput = -10; // (the film starts at once)
+    A.chime();
+    if (!quiet) H.toast(`<b>Autopilot</b> to ${dest.name}: ${(rt.len / 1000).toFixed(1)} km${scenic ? (rt.len > 0 && share > 0.15 ? ', the scenic way' : ', no scenic way from here') : ''}. <kbd>J</kbd>, the wheel or the brake takes it back.`);
+    return true;
+  }
+  let pilotEnd = ''; // (how the last drive ended: 'arrived', 'blocked', or '' for the wheel taken or switched off)
+  function pilotOff(say = null, why = '') {
+    const o = pilot;
+    if (!o) return;
+    pilotEnd = why;
+    o.drv.leave(); pilot = null;
+    if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
+    if (say) H.toast(say);
+  }
+  // J: off if it is on; to your waypoint if one is set; else it asks where to (and which way: the quickest or the scenic)
+  function pilotAsk(ask = false) {
+    if (pilot) { pilotOff('Autopilot off. You have the wheel.'); return; }
+    if (player.mode !== 'car' || !myCar) return;
+    const st = myCar.D.st, list = destinations(st.x, st.y).filter(d => d.id !== 'car');
+    if (!ask && waypoint && list[0] && list[0].id === 'waypoint') { pilotTo(list[0]); return; }
+    if (!list.length) { H.toast('Nowhere to drive to from here.'); return; }
+    dlg.show({ name: 'Autopilot', role: 'Your car', color: '#7fd1c8', pitch: 210 }, ['Where to?'],
+      list.slice(0, 7).map(d => ({ text: `${d.name}${d.note ? ` <span class="note">· ${d.note}</span>` : ''}`, dest: d }))
+        .concat([{ text: `Route: <b>${pilotScenic ? 'scenic' : 'quickest'}</b> <span class="note">· change to ${pilotScenic ? 'the quickest' : 'the scenic way, by the water and the landmarks'}</span>`, flip: true }, { text: 'Not now. I\'ll drive.', dest: null }]),
+      c => { if (c && c.flip) { pilotScenic = !pilotScenic; pilotAsk(true); } else if (c && c.dest && player.mode === 'car') pilotTo(c.dest); });
+  }
+  // what is in the way of your car just ahead of it (the traffic, a ride, people): the nearest, as { gap, v }, or null
+  function leadOf(st, reach, wide = 0.25) {
+    const fx = Math.sin(st.h), fy = Math.cos(st.h), half = myCar.C.half, hw = myCar.C.hw;
+    let best = null;
+    const see = (x, y, z, h2, w2, v, h) => {
+      if (Math.abs(z - st.z) > 2.5) return;
+      const dx = x - st.x, dy = y - st.y, a = dx * fx + dy * fy, w = Math.abs(-dx * fy + dy * fx);
+      // (a car across the way is as long across as it is: its half length counts sideways by how far it is turned)
+      const turned = h == null ? 0 : Math.abs(Math.sin(h - st.h)), across = w2 + (h2 - w2) * turned, along = h2 + (w2 - h2) * turned;
+      const gap = a - along - half;
+      if (a > 0 && gap < reach && w < hw + across + wide && (!best || gap < best.gap)) best = { gap: Math.max(0, gap), v: h == null ? 0 : Math.max(0, v * Math.cos(h - st.h)) };
+    };
+    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < reach + 12 && Math.abs(c.y - st.y) < reach + 12) see(c.x, c.y, c.z, c.half, c.hw || 0.9, c.v, c.h);
+    if (ride) { const r = ride.drv.st; see(r.x, r.y, r.z, ride.C.half, ride.C.hw, r.v, r.h); }
+    for (let i = 0; i < crowd.active; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - st.x) < reach + 4 && Math.abs(q.y - st.y) < reach + 4) see(q.x, q.y, q.z, 0.3, 0.3, 0, null); }
+    for (const n of npcs) if (Math.abs(n.x - st.x) < reach + 4 && Math.abs(n.y - st.y) < reach + 4) see(n.x, n.y, n.z, 0.3, 0.3, 0, null);
+    return best;
+  }
+  // ------------------------------------------------------------ the driver assists (I, K)
+  // When you drive yourself: lane keeping (I) holds the car in the lane of the road it is on, and adaptive cruise
+  // (K) holds the speed it was set at, keeps a time gap to the car ahead, slows for a bend and stops at a red
+  // line (autopilot.js laneKeep, cruise). Each is a toggle; your own wheel past half lock wins over the lane, the
+  // accelerator adds to the cruise, and the brake or the handbrake ends it. On a phone the Lens button at the wheel
+  // steps through them: lane keeping, both, none.
+  const assist = { lane: false, cruise: false, set: 0, on: { lane: false, cruise: false }, lead: null, line: null, here: null };
+  // the lane of the road your car is on, the way it faces: { line, s, dir, len, v (the road's speed), d (how far the
+  // car is to the right of the lane's middle), dh (its heading against the lane's), curv (the bend 8 m on, + right) }
+  // (of the roads within 6 m and 2.5 m of height, the one the car runs along: a ramp beside a road, or a road
+  // crossing it, is nearer at times than the one it is on. Scored by the distance to its lane's middle and the
+  // angle to it, and the road it was on last kept while it still fits)
+  let laneWas = -1, laneNarrow = { line: -1, until: 0 };
+  function laneHere(st) {
+    const hx0 = Math.sin(st.h), hy0 = Math.cos(st.h), seen = new Set();
+    let q = null, best = Infinity;
+    for (let k = 0; k < 4; k++) {
+      const c = roadNet.nearest(st.x, st.y, 6, st.z, 2.5, 0, i => seen.has(i));
+      if (!c) break;
+      seen.add(c.line);
+      roadNet.at(c.line, c.s, rq);
+      const al = Math.abs(hx0 * rq.hx + hy0 * rq.hy), side = Math.abs(Math.abs((st.x - rq.x) * rq.hy - (st.y - rq.y) * rq.hx) - (junctions.centred && junctions.centred(c.line) ? 0 : OECars.LANE));
+      const score = side + 6 * (1 - al) - (c.line === laneWas ? 0.8 : 0);
+      if (score < best) { best = score; q = c; }
+    }
+    if (!q) { laneWas = -1; return null; }
+    laneWas = q.line;
+    roadNet.at(q.line, q.s, rq);
+    const l = roadNet.L[q.line], dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1, hx = rq.hx * dir, hy = rq.hy * dir;
+    let off = (junctions.centred && junctions.centred(q.line) ? 0 : OECars.LANE) * keepSign;
+    // (a street that a facade narrows, with no room for the car at its lane's middle 4 m on but room at the road's:
+    // nearer the middle, as the traffic keeps there)
+    // (held 3 s on that road once found, so that the line it keeps does not flick between the two by each doorway)
+    if (off) {
+      const ax = rq.x + hx * 4, ay = rq.y + hy * 4, w = myCar.C.hw * 0.8;
+      if (!nav.room(ax - hy * off, ay + hx * off, st.z, w, 1.4, false) && nav.room(ax - hy * off * 0.3, ay + hx * off * 0.3, st.z, w, 1.4, false)) laneNarrow = { line: q.line, until: clockT + 3 };
+      if (laneNarrow.line === q.line && clockT < laneNarrow.until) off *= 0.3;
+    }
+    const lx = rq.x - hy * off, ly = rq.y + hx * off, h0 = Math.atan2(hx, hy);
+    const out = { line: q.line, s: q.s, dir, len: l.len, v: l.v || 11, off, d: (st.x - lx) * hy - (st.y - ly) * hx, dh: angDiff(st.h, h0), curv: 0 };
+    const s2 = Math.max(0, Math.min(l.len, q.s + 8 * dir));
+    if (Math.abs(s2 - q.s) > 2) { roadNet.at(q.line, s2, rq); out.curv = angDiff(Math.atan2(rq.hx * dir, rq.hy * dir), h0) / Math.abs(s2 - q.s); }
+    return out;
+  }
+  // how far ahead of the car's nose a line it must stop at is (a red or amber light it can stop for), or null
+  function redLineAhead(st, L) {
+    const half = myCar.C.half, v = Math.max(0, st.v);
+    let line = null;
+    const see = (a, d) => {
+      if (!a || !(d > -1.5 && d < 90)) return;
+      const lt = junctions.light(a);
+      if (lt === 'g' || (lt === 'y' && v * v / (2 * Math.max(0.5, d - half)) > 4)) return; // (amber, too close to stop for: on through)
+      line = Math.min(line ?? Infinity, Math.max(0, d - half));
+    };
+    const a = junctions.armAt(L.line, L.dir > 0 ? 1 : 0);
+    if (a && a.j.sig) see(a, (L.dir > 0 ? L.len - L.s : L.s) - a.back);
+    for (const X of junctions.midsOn(L.line) || []) { const xa = X.sig && X.arms.find(b => b.end === (L.dir > 0 ? 1 : 0)); if (xa) see(xa, (X.mid - L.s) * L.dir - xa.back); }
+    return line;
+  }
+  // a wall across the way ahead (a street shut off at its end, a gate): the gap to it along the heading, up to
+  // reach, read every 0.2 s (three points across the car's width), or null
+  let wallSeen = { t: -1, gap: null };
+  function wallAhead(st, reach = 40) {
+    if (clockT - wallSeen.t < 0.2) return wallSeen.gap;
+    wallSeen.t = clockT; wallSeen.gap = null;
+    const fx = Math.sin(st.h), fy = Math.cos(st.h), half = myCar.C.half, hw = myCar.C.hw * 0.8;
+    for (let a = half + 1; a <= half + reach; a += 1.5) {
+      let hit = 0;
+      for (const w of [-hw, 0, hw]) { const x = st.x + fx * a - fy * w, y = st.y + fy * a + fx * w, q = nav.push(x, y, st.z, 0.3, 1.6); if (Math.hypot(q.x - x, q.y - y) > 0.01) hit++; }
+      if (hit >= 2) { wallSeen.gap = a - half - 0.3; break; }
+    }
+    return wallSeen.gap;
+  }
+  function assistStep(fwd, side) {
+    const st = myCar.D.st, L = assist.here = laneHere(st);
+    assist.on.lane = assist.on.cruise = false;
+    // (in the lane, near enough along it: turning across a junction or changing lanes, it lets go)
+    if (assist.lane && L && st.v > 2 && Math.abs(L.dh) < 0.6 && Math.abs(L.d) < 2.6 && Math.abs(side) <= 0.5) { side = OEAutopilot.laneKeep(st, L, side); assist.on.lane = true; }
+    if (assist.cruise) {
+      if (fwd < -0.1 || k('Space')) { assist.cruise = false; H.toast('Cruise off.'); }
+      else {
+        let lead = assist.lead = leadOf(st, 70, 0.1);
+        const line = assist.line = L ? redLineAhead(st, L) : null;
+        // (and a wall across the lane, as a car standing there: it stops short of a street shut off)
+        const wall = assist.wall = st.v > 0.5 ? wallAhead(st, Math.min(40, 4 + st.v * st.v / 4)) : null;
+        if (wall != null && (!lead || wall < lead.gap)) lead = { gap: wall, v: 0 };
+        const bend = L && Math.abs(L.curv) > 0.004 ? Math.sqrt(2.2 / Math.abs(L.curv)) : Infinity; // (2.2 m/s² across a bend)
+        const pedal = OEAutopilot.cruise(st, Math.min(assist.set, bend), lead, line, { headway: 1.4 });
+        fwd = fwd > 0.1 ? Math.max(fwd, pedal) : pedal;
+        assist.on.cruise = true;
+      }
+    }
+    return { fwd, turn: side };
+  }
+  function assistToggle(what) {
+    if (player.mode !== 'car' || !myCar) return;
+    if (pilot) { H.toast('The autopilot is driving. <kbd>J</kbd> to take the car back first.'); return; }
+    const st = myCar.D.st;
+    if (what === 'lane') { assist.lane = !assist.lane; H.toast(assist.lane ? '<b>Lane keeping on.</b> It holds the lane; your own steering wins. <kbd>I</kbd> turns it off.' : 'Lane keeping off.'); }
+    else if (what === 'cruise') {
+      assist.cruise = !assist.cruise;
+      if (assist.cruise) { const L = laneHere(st); assist.set = Math.max(st.v > 5 ? st.v : (L ? L.v : 11), 8.3); }
+      H.toast(assist.cruise ? `<b>Adaptive cruise on</b> at ${Math.round(assist.set * 3.6)} km/h. It follows the car ahead and stops at red lights; the brake ends it. <kbd>K</kbd> turns it off.` : 'Cruise off.');
+    } else { // (a phone's one button: lane keeping, both, none)
+      const next = !assist.lane ? [true, false] : !assist.cruise ? [true, true] : [false, false];
+      if (assist.lane !== next[0]) assistToggle('lane');
+      if (assist.cruise !== next[1]) assistToggle('cruise');
+    }
+  }
+  // what the autopilot's screen says (twice a second): the next turn, how far, how long
+  function pilotHud(o) {
+    const c = o.drv.st, nt = o.join ? null : OEAutopilot.nextTurn(o.turns, c.s);
+    return (o.hud = { nt, turn: nt ? OEAutopilot.turnText(nt) : '', left: o.join ? o.drv.path.len : o.drv.remaining(), eta: o.join ? o.drv.total() : eta(o), intent: c.intent || '' });
+  }
+  // a step of the autopilot. Returns true (it has driven the car this step), the pedals for the car's own
+  // step (onto the lane), or null (it is off again)
+  function pilotStep(dt, fwd, side) {
+    const o = pilot, D = myCar.D, st = D.st;
+    // your hands on the wheel, your foot on the brake or the handbrake: the car is yours again, as it moves
+    if (Math.abs(side) > 0.25 || fwd < -0.25 || k('Space')) { pilotOff('You have the wheel.'); return null; }
+    // a new waypoint set on the map while it drives to the old one: on to the new
+    if (o.way && waypoint && (waypoint[0] !== o.way[0] || waypoint[1] !== o.way[1])) { const d = Object.assign({}, o.dest, { at: waypoint.slice(0, 2) }), sc = o.scenic; pilotOff(); if (!pilotTo(d, { scenic: sc, quiet: true })) return null; H.toast('<b>Autopilot:</b> on to the new waypoint.'); return pilotStep(dt, fwd, side); }
+    if (o.join) {
+      const len = o.drv.path.len, at = OEAutopilot.onLane(o.drv.poseAt, len, st.x, st.y, st.h, o.joinS, 40);
+      o.joinT += dt; o.joinS = Math.max(o.joinS, at.s - 4);
+      if ((at.dist < 1.2 && Math.abs(at.dh) < 0.45) || (o.joinT > 9 && at.dist < 4 && st.speed < 1.5)) {
+        o.drv.jump(at.s); o.drv.st.v = Math.max(0, st.v);
+        o.off = { x: st.x - o.drv.st.x, y: st.y - o.drv.st.y, h: angDiff(st.h, o.drv.st.h) }; o.join = false;
+      } else if (o.joinT > 16) { pilotOff('The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.'); return null; }
+      else { const lead = leadOf(st, 5); return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5); }
+    }
+    const c = driverStep(o, dt);
+    // (a turn in the road, or backing out of a one-way street, held half a minute by what stands in its way: the car
+    // is handed back where it is, rather than taken on from another place as a ride out of your sight is)
+    if (o.turn && o.turn.held > 30) { pilotOff('The autopilot can\'t get round here. You have the wheel.', 'blocked'); return null; }
+    // (stood 75 s with no red light to wait for, the cars that hold it asked out of the way and still there (110 s behind
+    // anything else): a road
+    // that will not clear. It says so and hands the car back, as a driver's assist does, rather than sit there)
+    { const q = o.drv.st, a = q.lineAt, red = a && junctions.light(a, q.lineEx) === 'r';
+      o.stoodT = !o.join && q.v < 0.3 && !red && !q.done ? (o.stoodT || 0) + dt : q.v > 1 || red ? 0 : o.stoodT || 0;
+      if (o.stoodT > (o.jamT > 0 ? 75 : 110) || q.wedged > 30) { pilotOff('<b>Autopilot:</b> the road ahead is blocked. You have the wheel.', 'blocked'); return null; } }
+    if (o.drv !== o.turnsOf) { // (another way round a jam, or after turning round in the road)
+      // (the new way may start a little off where the car is: eased onto it from there, never put there)
+      o.off = { x: st.x - c.x, y: st.y - c.y, h: angDiff(st.h, c.h) };
+      o.turns = OEAutopilot.turns(c.route, o.drv.path); o.turnsOf = o.drv; o.len = o.meter + c.end;
+      if ((o.rerouted || 0) > (o.told || 0)) { o.told = o.rerouted; H.toast('<b>Autopilot:</b> traffic ahead, taking another way.'); }
+    }
+    // (eased onto the driver's line from where it took the car over)
+    const e = Math.exp(-dt * 2.4);
+    o.off.x *= e; o.off.y *= e; o.off.h *= e;
+    D.follow(dt, c, o.off);
+    o.meter += Math.max(0, c.v) * dt;
+    if ((o.hudT = (o.hudT || 0) - dt) <= 0) { o.hudT = 0.5; pilotHud(o); }
+    if (c.done) {
+      o.drv.leave(); pilot = null;
+      Object.assign(st, { vx: 0, vy: 0, v: 0, speed: 0, r: 0 });
+      if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
+      A.chime();
+      pilotEnd = 'arrived';
+      H.toast(`<b>Autopilot:</b> you have arrived: ${o.dest.name}, ${(o.meter / 1000).toFixed(1)} km.`);
+      save();
+    }
+    return true;
   }
   // your car, a ride, and the people in them: where they are and what their lamps and wheels do
   function carsTick(dt) {
@@ -1120,7 +1392,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (myCar) {
       const st = myCar.D.st, mine = player.mode === 'car';
       myCar.C.place(st.x, st.y, st.z, st.h, st.pitch, st.roll);
-      myCar.C.animate(dt, { v: mine ? st.v : 0, h: st.h, steer: st.steer, brake: mine && (st.brake || (Math.abs(st.v) < 0.3 && k('KeyS'))), night, on: mine, inside: mine && cam.mode === 'cabin' });
+      if (pilot && !mine) pilotOff();
+      const drvSt = pilot && !pilot.join ? pilot.drv.st : null; // (the autopilot signals as a driver does: out of the kerb, into it, round a car)
+      myCar.C.animate(dt, { v: mine ? st.v : 0, h: st.h, steer: st.steer, brake: mine && (st.brake || (Math.abs(st.v) < 0.3 && k('KeyS'))), signal: drvSt ? drvSt.signal || 0 : 0, night, on: mine, inside: mine && cam.mode === 'cabin' });
     }
     if (ride) rideStep(dt, night);
     youAtLights(dt);
@@ -1546,7 +1820,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
     for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!OECars.queueing(c, o.phase !== 'coming') && (c.stuck > 4 || (late && c.v < 2)) ? // (on the way to you: only a queue at a junction is waited in, as before; with you in it, any queue held by a rule of the road)
        { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v, of: c } : c);
-    if (myCar) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
+    if (myCar && o !== pilot) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
+    // (the autopilot sees a ride as the ride sees your car: one pulled in for you is driven round)
+    if (o === pilot && ride) { const rs = ride.drv.st, parked = (ride.phase === 'waiting' || ride.phase === 'arrived' || !!ride.hold) && rs.v < 0.3; out.push({ x: rs.x, y: rs.y, half: ride.C.half, hw: ride.C.hw, v: Math.max(0, rs.v), still: parked, stay: parked }); }
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
   }
@@ -1835,8 +2111,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     frustum.setFromProjectionMatrix(projView);
     return frustum.containsPoint(W(x, y, z + 1));
   }
-  function rideStep(dt, night) {
-    const o = ride;
+  // a driver's step along its way: the drive itself, a way round a scramble's walk or a jam, turning round in
+  // the road, backing off for a car that waits on it. A ride's driver (rideStep), and the autopilot at the
+  // wheel of your own car (pilotStep): one driver, so that what one learns the other has
+  function driverStep(o, dt) {
     let st = o.drv.st;
     if (o.hold) st.v = 0; // (waiting in its lane for you to get back in)
     else if (o.turn) turnStep(o, dt);
@@ -1912,6 +2190,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         }
       }
     }
+    // a junction that won't clear (#355): stood 25 s at its line with no red light to wait for, for a movement across
+    // it that never ends (a car stuck in the junction), the driver takes another way from where it stands, however
+    // much longer (up to three times what was left and 400 m); with you in it, or at your own wheel, not on its way
+    // to you (a ride late for you has its own ways on, above)
+    if (o.phase === 'driving' && !o.turn && !o.hold && !st.mv && o.drv.opts) {
+      const a = st.lineAt, waiting = st.v < 0.3 && a && /^the line/.test(st.why || '') && !/red|amber/.test(st.junction || '') && junctions.light(a, st.lineEx) !== 'r';
+      o.boxT = waiting ? (o.boxT || 0) + dt : 0;
+      if (o.boxT > 25 && clockT - (o.boxLook || 0) > 5) {
+        o.boxLook = clockT;
+        // (out of it by another exit than the one it waits for, which may be clear of what stands there; with none,
+        // or stood 45 s, it turns round in the road and goes on from there: turnRound)
+        const N = st.route.nodes || [], P = st.P, i = N.findIndex(nd => P.cum[Math.min(nd.k, P.cum.length - 1)] >= st.s - 0.5), to = st.route.to;
+        const exitLine = i >= 0 && N[i + 1] ? N[i + 1].line : to ? to.line : null, pl = placeOnRoute(st);
+        const left = st.end - st.s, rt = pl && to && exitLine != null && o.boxT < 45 ? roads.route(pl, to, 9000, undefined, new Set([exitLine])) : null;
+        if (rt && rt.len < left * 3 + 400 && !(rt.nodes || []).slice(0, 3).some(nd => nd.line === exitLine)) {
+          const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: 0 });
+          o.drv.leave();
+          o.drv = OECars.chauffeur(o.C, rt, opts);
+          o.drv.opts = opts;
+          st = o.drv.st;
+          o.sig = []; o.scr = []; o.qArms = []; o.boxT = 0; o.rerouted = (o.rerouted || 0) + 1; o.boxRound = (o.boxRound || 0) + 1;
+          if (player.vehicle === o) H.toast(`<b>${o.name}:</b> That junction's not moving. I'll go another way.`);
+        } else if (o.boxT > 40) { turnRound(o, 0, true); st = o.drv.st; if (o.turn) { o.boxT = 0; o.boxRound = (o.boxRound || 0) + 1; } }
+      }
+    }
+    // a jam that no light explains (#355): stood 40 s behind cars of the traffic whose head stands too, at no red
+    // light (two cars each waiting on the other in a junction, one facing it in a street one car wide), with no
+    // way to turn round. The head of the jam is asked out of the way (actors.js unjam), and again 20 s on. (Its own
+    // light counts only short of its line: inside the junction, a car that waits on it there is a knot, not a queue)
+    if (o.phase === 'driving' && !o.hold && cars && cars.unjam) {
+      let q = st.block && st.block.of ? st.block.of : st.block, head = null;
+      if (st.v < 0.3 && q && cars.C.includes(q)) { const seen = new Set(); head = q; while (head.front && cars.C.includes(head.front) && !seen.has(head.front) && seen.size < 8) { seen.add(head); head = head.front; } }
+      const lit = c => c.lineArm && !c.mv && /^[ra]$/.test(junctions.light(c.lineArm, c.lineEx) || '');
+      o.jamT = head && head.v < 0.1 && !head.park && !lit(head) && !lit(q) && !(st.lineAt && !st.mv && junctions.light(st.lineAt, st.lineEx) === 'r') ? (o.jamT || 0) + dt : st.v > 1 ? 0 : Math.max(0, (o.jamT || 0) - dt); // (eased down, not reset: what holds it flickers between the car and the junction)
+      if (o.jamT > 40) { o.jamT = 20; o.unjam = cars.unjam(head, o.unjamWas === head); o.unjamWas = head; o.unjammed = `${(o.unjammed || '')} ${o.unjam || 'not'}`; }
+    }
     if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }
     // at a junction's line, waiting for a car crossing in it, which stands in the junction for this ride's
     // nose (actors.js, why 'you'), or stopped behind a car that stands for it in turn: each waits on the
@@ -1919,10 +2233,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // along its way, if the road behind it is clear, as a driver who pulled up too far does (#243: Shinjuku's
     // taxi stood 30 s so)
     if (!o.turn && !o.hold && st.v < 0.3 && !st.mv && !(st.backoff > 0)) {
-      const mutual = cars.live.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && /^ride/.test(c.youBy || '') && (c.mv ? /^the line/.test(st.why || '') || st.block === c || (st.block && st.block.of === c) : st.block === c || (st.block && st.block.of === c)) && Math.hypot(c.x - st.x, c.y - st.y) < 25); // (st.block: the car itself, or its stand-in as one stopped for good)
+      const mutual = cars.live.some(c => c.line >= 0 && c.v < 0.3 && c.why === 'you' && (c.youBy || '').startsWith(o.blockId || 'ride') && (c.mv ? /^the line/.test(st.why || '') || st.block === c || (st.block && st.block.of === c) : st.block === c || (st.block && st.block.of === c)) && Math.hypot(c.x - st.x, c.y - st.y) < 25); // (st.block: the car itself, or its stand-in as one stopped for good)
       o.mutJ = mutual ? (o.mutJ || 0) + dt : 0;
       if (o.mutJ > 2) { o.mutJ = -3; st.backoff = 1.5; o.yielded = (o.yielded || 0) + 1; }
     } else if (!(st.backoff > 0)) o.mutJ = 0;
+    return st;
+  }
+  function rideStep(dt, night) {
+    const o = ride, st = driverStep(o, dt);
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
     o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
       inside: player.vehicle === o && cam.mode === 'cabin', near: st.gap,
@@ -2615,6 +2933,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       }
       return null;
     }
+    if (m === 'car' && pilot && !pilot.join) return { pts: drape(laneOf(pilot.drv.path.pts), 0.1), width: 1.3 }; // (the autopilot's own way)
     if (m === 'car' && myCar) {
       const st = myCar.D.st, a = roads.place(st.x, st.y, 200, keepSign, st.z);
       if (!a) return null;
@@ -2648,12 +2967,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function updateRoute(t, target, ob, titled) {
     const m = player.mode, me = m === 'heli' ? heli.st : m === 'ferry' ? player.vehicle : player;
-    const goal = !titled ? routeGoal(target, ob) : null;
+    const auto = m === 'car' && pilot ? pilot : null; // (the autopilot's destination is the route's, whatever the walk's is)
+    const goal = titled ? null : auto ? { x: auto.dest.at[0], y: auto.dest.at[1], z: null, kind: 'pilot' } : routeGoal(target, ob);
     const here = goal && Math.hypot(goal.x - me.x, goal.y - me.y) < (m === 'heli' ? 30 : 12) && (m !== 'heli' || heli.st.landed);
     if (!goal || here || m === 'rail' || m === 'board') { if (guide.pts) gold.set(null); guide.key = ''; guide.pts = null; return; }
     const off = gold.follow(me.x, me.y, m === 'heli' ? me.z : null);
-    const key = `${m}|${Math.round(goal.x)},${Math.round(goal.y)}|${goal.kind}|${m === 'ride' && ride ? `${ride.phase}${ride.drv.path ? (ride.drv.path.rid ??= ++guide.n) : ''}` : ''}|${m === 'ferry' && me ? me.ci : ''}`;
-    const stray = { foot: 6, car: 14, heli: 70 }[m] ?? Infinity;
+    const key = `${m}|${Math.round(goal.x)},${Math.round(goal.y)}|${goal.kind}|${m === 'ride' && ride ? `${ride.phase}${ride.drv.path ? (ride.drv.path.rid ??= ++guide.n) : ''}` : auto ? `${auto.join ? 'join' : (auto.drv.path.rid ??= ++guide.n)}` : ''}|${m === 'ferry' && me ? me.ci : ''}`;
+    const stray = auto ? Infinity : { foot: 6, car: 14, heli: 70 }[m] ?? Infinity;
     if (key === guide.key && (off < stray || t - guide.at < (guide.fail ? 3 : 0.6))) return;
     if ((m === 'foot' || m === 'heli') && !ways.ready) return;
     guide.key = key; guide.at = t;
@@ -2776,6 +3096,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (c === 'KeyV' && (player.mode === 'car' || player.mode === 'ride')) { cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; cam.lastInput = -10; if (cam.mode === 'cabin') cam.pitch = 0.2; }
     else if (c === 'KeyV' && onTrain()) nextView();
     else if (c === 'KeyR' && player.mode === 'car') resetCar();
+    else if (c === 'KeyJ' && player.mode === 'car') pilotAsk(e.shiftKey);
+    else if (c === 'KeyI' && player.mode === 'car') assistToggle('lane');
+    else if (c === 'KeyK' && player.mode === 'car') assistToggle('cruise');
     else if (c === 'KeyQ') lens();
     else if (c === 'KeyG') guessStart();
     else if (c === 'KeyT') cycleTrack();
@@ -2833,9 +3156,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     hold('#gt-act', () => (dlg.open ? dlg.next(false) : interact()));
     hold('#gt-jump', () => { if (player.mode === 'heli') touchLift = 1; else keys.add('Space'); }, () => { touchLift = 0; keys.delete('Space'); });
     hold('#gt-down', () => { if (player.mode === 'heli') touchLift = -1; else if (player.mode === 'car') A.honk(); else guessStart(); }, () => { touchLift = 0; }); // Down in the air, the horn in a car, Guess on foot
-    hold('#gt-run', () => { keys.has('ShiftLeft') ? keys.delete('ShiftLeft') : keys.add('ShiftLeft'); $('#gt-run').setAttribute('aria-pressed', String(keys.has('ShiftLeft'))); });
+    hold('#gt-run', () => { if (player.mode === 'car') { pilotAsk(); return; } keys.has('ShiftLeft') ? keys.delete('ShiftLeft') : keys.add('ShiftLeft'); $('#gt-run').setAttribute('aria-pressed', String(keys.has('ShiftLeft'))); });
     hold('#gt-cam', () => { if (player.mode === 'car' || player.mode === 'ride') cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; else nextView(); });
-    hold('#gt-lens', () => lens());
+    hold('#gt-lens', () => (player.mode === 'car' ? assistToggle() : lens()));
   }
   let nearXing = null; // (the closed level crossing you stand at)
   let skip = false, waitFerry = null, lastDock = null, lastBoard = null, waitRail = null; // (waitRail: the station whose next train you are waiting for, the railway's clock run fast)
@@ -4461,9 +4784,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const nm = /^(.*?)\s+([\u3000-\u9fff\uff00-\uffef][^A-Za-z]*)$/.exec(DISTRICT.name) || [0, DISTRICT.name]; // (the name in its own script after it, if it ends the name)
     gtTitle.textContent = nm[1];
     if (nm[2]) { const sm = document.createElement('small'); sm.lang = 'ja'; sm.textContent = nm[2]; gtTitle.append(sm); }
-    $('#gt-city').textContent = `${G.title.replace(/\s+[\u3000-\u9fff].*$/, '')} · ${CITY.place || CITY.name}, ${CITY.country}`;
+    // under the game's name without its map's ("Tokyo Pilgrimage"), and where the district is, if not where the map is
+    // (game.travel "place": Sangenjaya is in Setagaya, on Shibuya's map)
+    const series = G.title.replace(/\s+[\u3000-\u9fff].*$/, '').replace(/:.*$/, '');
+    $('#gt-city').textContent = `${series} · ${DISTRICT.place || CITY.place || CITY.name}, ${CITY.country}`;
     if (DISTRICT.blurb) { $('#gt-blurb').textContent = DISTRICT.blurb; $('#g-title p').textContent = DISTRICT.blurb; }
-    document.title = `${nm[1]} · ${G.title} · Open Earth 3D`;
+    document.title = `${nm[1]} · ${series} · Open Earth 3D`;
   }
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
@@ -4944,25 +5270,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       }
     }
     for (const o of [myCar, ride]) if (o) {
-      const st = stOf(o), id = o === ride ? 'ride' : 'car';
+      // (your car with the autopilot at its wheel is read as a ride with you in it is: by its driver's own state, its way
+      // ahead and its way across a junction, under its own name, so that a ride near it is still told from it)
+      const R = o === ride ? ride : pilot && !pilot.join ? pilot : null, st = R ? R.drv.st : stOf(o), id = o === ride ? 'ride' : R ? 'pilot' : 'car';
       // (a ride on its way, stopped for a moment, is not parked: the traffic gives way to it, or not, by the rule
       // it reads of a ride on the move, as the ride reads it, never one by one rule and the other by another)
       // (on its way to you, a ride is left to its own driver as before, soft: the traffic doesn't wait on it,
       // so that it comes in good time; with you in it, it is read by the rule, never stepped into)
       // (and one coming for you, stopped on its way, is not parked either: read so, a car crossing a junction in front
       // of it stood for it as for a car parked across its bonnet while the ride waited for that car, #243)
-      const live = o === ride && !st.done && (ride.phase === 'driving' || ride.phase === 'leaving' || (ride.phase === 'coming' && !ride.turn)), soft = o === ride && ride.phase === 'coming' && Math.abs(st.v) >= 0.3;
+      const live = !!R && !st.done && (R.phase === 'driving' || R.phase === 'leaving' || (R.phase === 'coming' && !R.turn)), soft = o === ride && ride.phase === 'coming' && Math.abs(st.v) >= 0.3;
       // (turning round in the road: its way is no way ahead, so it goes to the traffic with none, and a car whose way it
       // is across waits for it, never first by the give-way rule, nor swung round it as round a parked car)
-      const turning = o === ride && !!ride.turn;
-      blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: !turning && Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
+      const turning = !!R && !!R.turn;
+      blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: !turning && Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: !!R && !!st.q, qBy: R ? st.qBy : null });
       if (turning) {
         const gm = 0.7; // (turning round, a wide berth: a car creeping up to it at an angle touched it, Sydney, and one met a three-point turn in Shinjuku)
         cars.extra.push({ id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half + gm, hw: o.C.hw + gm, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true });
         // (backing out of a one-way street: where it goes next too, every 6 m of its way back from 3 m on, and where it stops backing,
         // in the mouth of the junction behind, so that a car crossing that junction, or turning into the street, stops
         // short of it rather than in its way, each then waiting for the other, #283)
-        const T = ride.turn;
+        const T = R.turn;
         const stopAt = T.rev ? T.poses.findIndex(p => p.stop) : -1, aheads = [];
         if (T.rev) { for (let a = 12; T.i + a < stopAt; a += 24) aheads.push(a); aheads.push(stopAt - T.i); }
         for (const ahead of aheads) { if (!(ahead > 0)) continue; const q = T.poses[Math.min(T.poses.length - 1, T.i + ahead)]; if (q !== T.poses[T.i]) cars.extra.push({ id, x: q.x, y: q.y, z: st.z, h: q.h, half: o.C.half + 0.3, hw: o.C.hw + 0.3, v: 0, line: 0, top: o.C.top, soft: false, ps: null, np: 0, mv: null, live: true, ahead: true }); }
@@ -4971,7 +5299,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
       const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft };
-      if (o === ride && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null, xBlock: st.xBlock || null, block: st.block || null });
+      if (R && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null, xBlock: st.xBlock || null, block: st.block || null });
       cars.extra.push(x);
     }
     cars.update(dt, cx, cy, clockT, blockers);
@@ -5241,6 +5569,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (player.mode === 'rail') { tx = player.vehicle.x; ty = player.vehicle.y; tz = player.vehicle.z + 3; follow = null; }
     else if (veh) { tx = vs.x; ty = vs.y; tz = vs.z + 1.5; follow = vs.h; }
     else { tx = player.x; ty = player.y; tz = player.z + 1.55; follow = player.h; }
+    // the autopilot's film (autopilot.js film): shots round the car on this same rig, a cut between them; a drag
+    // of the view gives it back to you for eight seconds
+    const shot = pilot && veh === myCar && !pilot.join && clockT - cam.lastInput > 8 ? pilot.film.step(dt) : null;
+    if (shot) {
+      follow = vs.h + shot.yaw;
+      if (shot.cut) { cam.yaw = follow; cam.dist = shot.dist; cam.pitch = shot.pitch; cam.snap = true; cam.distTo = 0; }
+      else { cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * 5); cam.dist += (shot.dist - cam.dist) * Math.min(1, dt * 2); cam.pitch += (shot.pitch - cam.pitch) * Math.min(1, dt * 2); }
+      cam.filmOut = false; follow = null;
+    } else if (cam.filmOut) { cam.pitch += (0.2 - cam.pitch) * Math.min(1, dt * 2.5); if (Math.abs(cam.pitch - 0.2) < 0.01 || !veh) cam.filmOut = false; }
     // drift behind the direction of travel when the player is not steering the camera (in a car, sooner and faster)
     const moving = veh ? Math.abs(vs.v) > 1 : player.mode === 'heli' ? heli.st.speed > 3 : player.speed > 1;
     const air = player.mode === 'heli';
@@ -5642,6 +5979,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       $('#gt-down').hidden = player.mode === 'ferry' || player.mode === 'ride';
       $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : player.mode === 'car' ? 'Horn' : 'Guess';
       $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : (fish && fish.api && fish.api.button()) || 'Jump'; // (Cast and Reel with a line out: fishing.js)
+      // (at the wheel there is nothing to run: the button is the autopilot's)
+      const run = $('#gt-run'), txt = player.mode === 'car' ? 'Auto' : 'Run';
+      if (run.textContent !== txt) run.textContent = txt;
+      run.setAttribute('aria-pressed', String(player.mode === 'car' ? !!pilot : keys.has('ShiftLeft')));
+      const ln = $('#gt-lens'), lt = player.mode === 'car' ? (assist.lane && assist.cruise ? 'Lane + cruise' : assist.lane ? 'Lane keep' : 'Assist') : 'Lens';
+      if (ln.textContent !== lt) ln.textContent = lt;
     }
     if (player.mode === 'heli') {
       const st = heli.st, g = nav.groundBelow(st.x, st.y, st.z);
@@ -5659,9 +6002,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else if (player.mode === 'car') {
       const st = myCar.D.st;
       el.hidden = false;
+      if (pilot) {
+        // the autopilot's screen, as a navigator's: where to and when, the next turn, and what the driver is doing
+        const o = pilot, c = o.drv.st, { nt, left, eta: t } = o.hud || pilotHud(o);
+        el.innerHTML = `<div><b>Autopilot</b><span>${o.scenic && o.share > 0.15 ? 'the scenic way' : 'on'}</span></div><div><b>${o.dest.name}</b><span>in ${fmtSec(Math.ceil(t))}</span></div>
+          <div><b class="num">${(left / 1000).toFixed(1)} km</b><span>to go</span></div><div><b class="num">${Math.round(st.speed * 3.6)}</b><span>km/h</span></div>
+          <p class="note"><b class="intent">${nt ? `${OEAutopilot.turnGlyph(nt)} ${OEAutopilot.turnText(nt)}` : 'Pulling out onto the lane'}${c.intent && !o.join ? ` · ${c.intent}` : ''}</b>J, the wheel or the brake: you drive · V ${cam.mode === 'cabin' ? 'the film' : 'from the seat'} · drag to look around</p>`;
+      } else
       el.innerHTML = `<div><b class="num">${Math.round(st.speed * 3.6)}</b><span>km/h</span></div><div><b class="num">${st.gear === 0 ? 'R' : st.speed < 0.3 ? 'N' : st.gear}</b><span>gear</span></div>
         <div><b class="num">${Math.round(st.z)} m</b><span>altitude</span></div><div><b class="num">${Math.round(st.rpm * 7000 / 100) * 100}</b><span>rpm</span></div>
-        <p class="note">W/S drive, brake, reverse · A/D steer · Space handbrake · H horn · V ${cam.mode === 'cabin' ? 'chase view' : 'from the seat'} · R back on the road${st.speed < 1.5 ? ' · E get out' : ''}</p>`;
+        <p class="note">${assist.lane || assist.cruise ? `<b class="intent">${[assist.lane ? `Lane keeping${assist.on.lane ? '' : ' (standing by)'}` : '', assist.cruise ? `Cruise ${Math.round(assist.set * 3.6)} km/h${assist.line != null ? ' · red light ahead' : assist.lead && assist.lead.gap < 40 ? ' · following' : ''}` : ''].filter(Boolean).join(' · ')}</b>` : ''}W/S drive, brake, reverse · A/D steer · Space handbrake · J autopilot · I lane keeping · K cruise · H horn · V ${cam.mode === 'cabin' ? 'chase view' : 'from the seat'} · R back on the road${st.speed < 1.5 ? ' · E get out' : ''}</p>`;
     } else if (player.mode === 'ride' && ride) {
       const o = ride, st = o.drv.st;
       el.hidden = false;
@@ -5724,7 +6074,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
+  window.__game = { pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
   return {
