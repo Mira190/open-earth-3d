@@ -92,6 +92,37 @@ guideline defines both the same-call and the different-call forms). At a scrambl
 crossing walks at once, so both birds call together. Whether each crosswalk at Shibuya's
 scramble has a speaker, and which call it gives, has not been checked on site.
 
+### After dark: 星降る夜 · A night of falling stars
+
+When the sun is more than 6° down at the hour the game starts, the map plays its night overture
+(`overture.night`: what differs after dark, with its own shots, sky, grade and score). Shibuya's is
+the night after rain, under a comet.
+
+| # | Shot | s | Picture |
+|---|---|---|---|
+| 1 | `stars` | 6.5 | Fade up on the Milky Way; the camera tilts down to Scramble Square, its eighteen searchlights reaching into the sky, a comet over the horizon's glow and a meteor crossing |
+| 2 | `deck` | 6 | At SKY EDGE on the roof, 229 m: from the comet down over the glass to the city's lights. Caption: *SHIBUYA SKY · 229 m* |
+| 3 | `fall` | 5.5 | Over the edge and down the tower's face towards the scramble, the signs coming up out of the dark. The walk signals turn red and the crowd begins to gather |
+| 4 | `hachiko` | 5 | Hachiko in profile on a long lens, lit warm, the wet street and the lit fronts behind him out of focus. Caption: his nine years |
+| 5 | `screens` | 4.5 | From the kerb, low over the wet crosswalk, up QFRONT to its screens; the crowd waits across the junction. **The hush**; then on the downbeat every crossing turns green at once |
+| 6 | `above` | 6.5 | Over the scramble as the crowd crosses from every kerb |
+| 7 | `wide` | 9 | Up and back over the station side as they cross, 109 and the screens down Dogenzaka, the sky opening above. **Title: 渋谷 / Shibuya / 星降る夜**. Fade to the kerb, where control is yours |
+
+![The night overture, shot by shot](images/shibuya/overture-night.jpg)
+
+What makes a night in these films, taken apart, and what answers it here:
+
+| | The films | Here |
+|---|---|---|
+| The sky is the picture | two thirds of the frame; indigo at the top, a clearer blue lower, a rose glow where the city lifts it; stars beyond counting, cloud with lit edges | a sky painted in a shader for the overture (`overture.night.sky`, `nightSky` in `web/game/overture.js`): the gradient in four bands, the Milky Way with a warmer core, stars in three sizes and two colours, thin cloud lit from below and banks of cumulus whose thin edges take the sky's light (`banks`, `rim`) |
+| Something rare in it | a comet, a meteor shower | a comet that stays where it is from shot to shot, as a comet does (`sky.comet`: bearing, height, the tails' turn and length): a straight blue tail of gas and a broad pale one of dust that curves away, which is how real comets look; the guide is a meteor, with a shower of smaller ones |
+| After rain | wet asphalt carrying every sign as a long reflection | `wet: 1`: the streets wet from a shower that has passed under a clear sky (the weather's own wet look and the mirror of `web/mirror.js`; not on the low tier); the weather goes back to what it was when the overture ends and the streets dry as they would |
+| Light as an event | searchlights, signals, screens | `show: true` turns CROSSING LIGHT on whatever the hour; the beams are soft cones now, brightest through their middle (`web/lights.js`); the green lands on the score's downbeat |
+| The lens | glow round every lamp, streaks | more bloom (`grade.bloom`), and `anime.streak`: each lamp, sign and headlight drawn out sideways into a thin streak of its own colour, as an anamorphic lens does (`ANIME` in `web/game/atmosphere.js`) |
+| Depth | the far city sinking into blue | `anime.haze`: distance into a blue-violet air, so the horizon's lights sit under the sky's glow rather than as a band |
+
+The crowd is seen from across the junction and from above; no shot stands among it.
+
 ### The guide by season (on the game's clock)
 
 | Dates | Guide | Why |
@@ -138,11 +169,13 @@ scramble has a speaker, and which call it gives, has not been checked on site.
    map moves the overture with it.
 3. **The shots.** `orbit`, `move`, `chase` (behind the guide) and a last `land`; a guide path per
    shot; `drift`, `fov`, `lapse`, `title`, `caption`, `cues` (`red`, `green` on the map's
-   `signal` junction). Keep it to about forty seconds and seven shots.
+   `signal` junction). Keep it to about forty seconds and seven shots. A night overture may add
+   `sky` (with `comet`, `banks`), `wet`, `show` and `anime.streak`.
 4. **The score.** `score` in the film's terms (`root`, `scale`, `chords`, `tempo`, `voice`) with
    `arp`, `hush_shot`/`hush_at` and `chirp` where they fit.
 5. **Check.** `xvfb-run -a node tools/overture_film.js <city> --stills` prints each shot's
-   clearance over the roofs and how often a roof hides the guide, and takes a still per shot;
+   clearance over the roofs and how often a roof hides the guide, and takes a still per shot
+   (`--shots a,b` for some of them);
    then take it at a phone's size (`--size 390x844`) and at night (`--time 19:30`), and render
    the film to watch it with its sound.
 6. **Copy it** into the game: `python pipeline/game_text.py <city>`.

@@ -161,7 +161,8 @@ light (`night.js`) stay for the far city and the low tier.
 
 A square with no street lamp in it (the scramble) gets a light card after dark
 (`game.look.fill`): a large area light over its middle, standing for the shopfronts,
-floodlights and signs round it.
+floodlights and signs round it. A card may be aimed (`aim`) to light one thing from its
+side: a small warm one lights Hachiko's bronze, which lamps drawn as points leave black.
 
 ### The camera (`web/game/atmosphere.js` camFx)
 

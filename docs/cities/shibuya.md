@@ -193,7 +193,7 @@ model does not reproduce. The green Aoi-gaeru train car that stood by Hachiko un
 | The scramble from the air at 20:15 | CROSSING LIGHT over SHIBUYA SKY, 20:31 |
 |---|---|
 | ![](../images/shibuya/crossing-aerial-night.jpg) | ![](../images/shibuya/crossing-light.jpg) |
-| **Hachiko Square, the hoarding round the Toyoko site behind it** | |
+| **Hachiko Square (taken with the works' hoarding, since removed)** | |
 | ![](../images/shibuya/hachiko-night.jpg) | |
 
 The scramble is lit by its screens. Each one stands on its own building at its published size,
@@ -233,12 +233,17 @@ them, and are dark after that.
 - **Light on the street.** Each screen throws a pool of light on the street in front of it, in
   the mean colour of its programme. No street-lamp pole stands in the scramble.
 - **The old Tokyu Toyoko site.** The West and South buildings behind Hachiko closed in 2020 and
-  have been pulled down. The South building was gone by January 2026. The second phase of Shibuya
-  Scramble Square has been building on the site since May 2025, due in fiscal 2031. PLATEAU's
-  survey still has the twelve solids standing, and OpenStreetMap has removed them. They are left
-  out here (`landmarks.json` `demolished`), and the site is a construction site: a hoarding with
-  the developer's notice, floodlights and a tower crane. The crane's place and height are
-  illustrative.
+  have been pulled down (the South building by January 2026) for the second phase of Shibuya
+  Scramble Square, building since May 2025 and due in fiscal 2031; the site is a hoarding, floodlights
+  and a crane. **By the owner's choice the square is drawn as it stood before the works**: the twelve
+  solids PLATEAU surveyed stand behind Hachiko, and there is no hoarding. This is the one place where
+  the map is not as it stands in November 2026. `TOYOKO_WORKS` in `cities/shibuya/city.py` draws the
+  site as it is (the buildings left out through `landmarks.json` `demolished`, the hoarding with the
+  developer's notice, the floodlights and a tower crane, whose place and height are illustrative);
+  then `python pipeline/landmarks.py --city shibuya` and `python pipeline/pack.py`.
+- **Hachiko's light.** After dark a small warm light card stands 4 m up before him, aimed at him
+  (`game.look.fill` with `aim`): the square's lamps are drawn as points and as pools on the paving,
+  which leave a bronze black. It stands for their light and the shopfronts'; no luminaire is there.
 - **Hachiko Square.** Hachiko's pedestal was lowered in May 1989 so people could touch him. He
   looks north-east, toward the station's Hachiko exit, with the bus street at his back: photographs
   from 2020, 2021 and July 2025 show him from behind looking toward QFRONT's side, in profile from the
