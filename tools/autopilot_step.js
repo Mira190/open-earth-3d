@@ -186,6 +186,9 @@ async function assistStep({ log = false, fresh = true } = {}) {
         // (and no wall across the way 60 m on: a street shut off at its end, where lane keeping goes straight on)
         // (along the way it is driving, not straight ahead: a winding street meets a facade at every bend)
         const P = o.drv.path, at = {};
+        // (and on the one road for the next 40 m of its way: lane keeping lets go at a junction, as a car's own does, and
+        // a map of short pieces, Tetsugaku's, left it seconds of lane at a time)
+        for (let a = 5; a <= 40; a += 5) { P.at(Math.min(P.len, q.s + a), at); const n = g.roadNet.nearest(at.x, at.y, 3, st.z, 2.5); if (!n || n.line !== L.line) return false; }
         for (let a = 3; a < 60; a += 2) { P.at(Math.min(P.len, q.s + a), at); const w = g.nav.push(at.x, at.y, st.z, 0.3, 1.6); if (Math.hypot(w.x - at.x, w.y - at.y) > 0.01) return false; }
         // (and straight ahead for 25 m, where lane keeping goes on as the way turns: a street shut off at its end, Kyoto)
         const fx = Math.sin(st.h), fy = Math.cos(st.h);

@@ -1263,7 +1263,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!q) { laneWas = -1; return null; }
     laneWas = q.line;
     roadNet.at(q.line, q.s, rq);
-    const l = roadNet.L[q.line], dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1, hx = rq.hx * dir, hy = rq.hy * dir;
+    const l = roadNet.L[q.line], dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1;
+    // (the road's way along as the mean of 4 m either side, turning smoothly through a bend's corner: the heading of the
+    // one segment there jumped at each vertex, and lane keeping let go there as at a turn off, Tetsugaku's road 192)
+    const px = rq.x, py = rq.y, pz = rq.z, tan = (s0, out) => { const a = {}, b = {}; roadNet.at(q.line, Math.max(0, Math.min(l.len, s0 - 4)), a); roadNet.at(q.line, Math.max(0, Math.min(l.len, s0 + 4)), b); const ex = (b.x - a.x) * dir, ey = (b.y - a.y) * dir, n = Math.hypot(ex, ey) || 1; out.x = ex / n; out.y = ey / n; return out; };
+    const T0 = tan(q.s, {}), hx = T0.x, hy = T0.y;
+    rq.x = px; rq.y = py; rq.z = pz;
     let off = (junctions.centred && junctions.centred(q.line) ? 0 : OECars.LANE) * keepSign;
     // (a street that a facade narrows, with no room for the car at its lane's middle 4 m on but room at the road's:
     // nearer the middle, as the traffic keeps there)
@@ -1276,7 +1281,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const lx = rq.x - hy * off, ly = rq.y + hx * off, h0 = Math.atan2(hx, hy);
     const out = { line: q.line, s: q.s, dir, len: l.len, v: l.v || 11, off, d: (st.x - lx) * hy - (st.y - ly) * hx, dh: angDiff(st.h, h0), curv: 0 };
     const s2 = Math.max(0, Math.min(l.len, q.s + 8 * dir));
-    if (Math.abs(s2 - q.s) > 2) { roadNet.at(q.line, s2, rq); out.curv = angDiff(Math.atan2(rq.hx * dir, rq.hy * dir), h0) / Math.abs(s2 - q.s); }
+    if (Math.abs(s2 - q.s) > 2) { const T2 = tan(s2, {}); out.curv = angDiff(Math.atan2(T2.x, T2.y), h0) / Math.abs(s2 - q.s); }
     return out;
   }
   // how far ahead of the car's nose a line it must stop at is (a red or amber light it can stop for), or null
@@ -1312,7 +1317,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const st = myCar.D.st, L = assist.here = laneHere(st);
     assist.on.lane = assist.on.cruise = false;
     // (in the lane, near enough along it: turning across a junction or changing lanes, it lets go)
-    if (assist.lane && L && st.v > 2 && Math.abs(L.dh) < 0.6 && Math.abs(L.d) < 2.6 && Math.abs(side) <= 0.5) { side = OEAutopilot.laneKeep(st, L, side); assist.on.lane = true; }
+    // (and on a bend sharper than it steers, more than 2.8 m/s² across at this speed or under a 14 m radius, it lets go
+    // as a car's lane centring does, and takes hold again after: Tetsugaku's S-bend on road 192 took it 2.2 m wide)
+    const tight = L && (Math.abs(L.curv) > 0.07 || Math.abs(L.curv) * st.v * st.v > 2.8);
+    if (assist.lane && L && st.v > 2 && !tight && Math.abs(L.dh) < 0.6 && Math.abs(L.d) < 2.6 && Math.abs(side) <= 0.5) { side = OEAutopilot.laneKeep(st, L, side); assist.on.lane = true; }
     if (assist.cruise) {
       if (fwd < -0.1 || k('Space')) { assist.cruise = false; H.toast('Cruise off.'); }
       else {
