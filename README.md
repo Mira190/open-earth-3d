@@ -173,6 +173,10 @@ behind you, and you can fly it from the cockpit (<kbd>V</kbd>).
   Discovery Tour;
 - where this game does better than they do.
 
+[docs/FISHING.md](docs/FISHING.md): fishing from the shore, a pilot in Sydney Harbour and on
+Lake Wakatipu, with the harbour's and the lake's own fish, legal lengths and seasons. Its code
+and data load only when you walk up to a spot.
+
 [docs/ENGINES.md](docs/ENGINES.md) studies what to take from Unreal Engine and
 other engines: movement, cameras, crowds, interaction and gameplay. Three of
 its steps are built:

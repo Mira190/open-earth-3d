@@ -14,6 +14,8 @@
 #     occluder raster (vis.bin, pipeline/visibility.py) is made from its buildings as they are (with the packs);
 #   - checks that every live city's building solids are valid polygons on their decimetre grid (pipeline/solid_rings.py --check);
 #   - checks that every shared model in web/assets is meshopt-compressed (pipeline/meshopt_glb.mjs --check);
+#   - checks each fishing water's data against its city.json and plays its fights for balance
+#     (pipeline/fishing.py --check, tools/fishing_sim.js; the game check fishes each spot);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - checks each map's daily life (pipeline/life.py --check: people, ranks, places, sourced events, built);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
@@ -100,6 +102,8 @@ else
       web/telemetry.js|tools/telemetry_*|tools/slo_*) title=1; telemetry=1 ;;   # watches every page, sends nothing
       web/index.html|web/quality.js) all_cities; title=1; loader=1; telemetry=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1; telemetry=1 ;;
+      web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
+        for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done ;;
       web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
       tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
     esac
@@ -219,6 +223,11 @@ EOF
   if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
     echo "ok   pack   $(grep -c ' MB packed' "$OUT/pack.log") packs (buildings, landmarks, game, terrain, places, scene) up to date and decoded to their JSON"
   else echo "FAIL pack   $(grep '^FAIL' "$OUT/pack.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/pack.log)"; fi
+  # fishing (docs/FISHING.md): each city's fishing.json and game.json pointer as pipeline/fishing.py writes them
+  # from city.json now, and the rules' balance (tools/fishing_sim.js: three players against every species). Seconds.
+  if python3 pipeline/fishing.py --check >"$OUT/fishing.log" 2>&1 && node tools/fishing_sim.js >>"$OUT/fishing.log" 2>&1; then
+    echo "ok   fishing  $(ls web/data/*/fishing.json | wc -l | tr -d ' ') waters' data up to date, and the fights balanced"
+  else echo "FAIL fishing  $(grep -E 'FAIL|stale' "$OUT/fishing.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/fishing.log)"; fi
   # the visibility sweep (web/visibility-sweep.js over each live city's vis.bin, issue 358) against exact rays:
   # nothing a ray reaches may be reported hidden. Half a minute.
   if EYES=12 node tools/vis_unit.js >"$OUT/vis.log" 2>&1; then echo "ok   vis    $(grep -c '^ok' "$OUT/vis.log") live cities: the sweep hides nothing an exact ray reaches"
