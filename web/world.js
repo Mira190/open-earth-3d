@@ -1015,8 +1015,8 @@ vec3 woodsFloor(vec3 c) {
     // from screen-space AO, computed again every frame from a few metres round each pixel. One texture read in
     // the materials that take the street lights (the same ground-level surfaces); it multiplies the indirect
     // diffuse light alone, near the camera (far off the aerial photograph carries its own shade). uSkyVisK is
-    // its strength: 0 until the texture has come, and the look's to drive (issue 353). `?skyvis=on` for now.
-    const SKYVIS = new URLSearchParams(location.search).get('skyvis') === 'on' ? { uSkyVis: { value: null }, uSkyVisF: { value: new THREE.Vector4(0, 0, 1, 1) }, uSkyVisK: { value: 0 } } : null;
+    // its strength: 0 until the texture has come, then 0.6, constant (agreed with issue 353). `?skyvis=off` leaves it out.
+    const SKYVIS = new URLSearchParams(location.search).get('skyvis') !== 'off' ? { uSkyVis: { value: null }, uSkyVisF: { value: new THREE.Vector4(0, 0, 1, 1) }, uSkyVisK: { value: 0 } } : null;
     if (SKYVIS) {
       const px = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); px.needsUpdate = true;
       SKYVIS.uSkyVis.value = px;

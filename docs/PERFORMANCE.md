@@ -228,8 +228,8 @@ with the 18 MB raster of the largest map and its shrunk copy (the low tier keeps
 
 ## The rest of issue 358's Layer B and C, as measured
 
-**B2, the sky the ground sees** (`pipeline/skyvis.py`, `web/data/<city>/skyvis.webp`; `?skyvis=on`, off by default
-until the look is agreed in issue 353). For each point of the ground, the horizon in 16 directions out to 300 m
+**B2, the sky the ground sees** (`pipeline/skyvis.py`, `web/data/<city>/skyvis.webp`; on by default since the look stream (issue 353)
+agreed to it at 0.6, a pure scalar; `?skyvis=off` leaves it out). For each point of the ground, the horizon in 16 directions out to 300 m
 over the 2 m surface model, and from it the share of a uniform sky's light on a level surface there (the mean of
 cos² of the horizon's elevation: horizon-based ambient occlusion, Bavoil, Sainz and Dimitrov 2008, on a height
 field as Timonen and Westerholm 2010; the method only). One channel, 4 m a pixel, lossy WebP at quality 80
