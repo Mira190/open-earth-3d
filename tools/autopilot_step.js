@@ -168,14 +168,14 @@ async function assistStep({ log = false, fresh = true } = {}) {
   // (from the kerb by the map's first landmark, as the autopilot's check starts)
   if (fresh && g.landmarks && g.landmarks[0] && g.travelTo && g.travelTo(g.landmarks[0])) { for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25); g.advance(8); if (g.player.mode !== 'car') seat(); }
   if (g.player.mode !== 'car') return { none: 'not at the wheel after travelling to a landmark' };
-  // up to speed, in its lane, clear of a junction: towards each place offered in turn, a minute each (after 30 s
+  // up to speed, in its lane (as lane keeping reads it), clear of a junction: towards each place offered in turn, a minute each (after 30 s
   // a shorter clear stretch will do: lanes with a junction every 50 m)
   let t = 0, up = false, tried = 0;
   for (const d of g.destinations(st.x, st.y).filter(d => d.id !== 'car')) {
     if (tried >= 3) break;
     if (!(g.pilotTo(d, { quiet: true }) && g.pilot().len > 200)) { g.pilotOff(); continue; }
     tried++;
-    for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st; if (q && !o.join && st.speed > (t < 30 ? 4 : 3) && !q.mv && !(q.toLine < (t < 30 ? 30 : 12)) && Math.abs(q.shift) < 0.1 && o.drv.remaining() > (t < 30 ? 120 : 60)) { up = true; break; } }
+    for (t = 0; t < 60 && g.pilot(); t += 0.25) { g.advance(0.25); const o = g.pilot(), q = o && o.drv.st; if (q && !o.join && st.speed > (t < 30 ? 4 : 3) && !q.mv && !(q.toLine < (t < 30 ? 30 : 12)) && Math.abs(q.shift) < 0.1 && o.drv.remaining() > (t < 30 ? 120 : 60) && (() => { const L = g.laneHere(st); return L && Math.abs(L.d) < 0.8 && Math.abs(L.dh) < 0.3; })()) { up = true; break; } }
     if (up) break;
     g.pilotOff();
   }
@@ -202,7 +202,7 @@ async function assistStep({ log = false, fresh = true } = {}) {
     const a = L && g.junctions.armAt(L.line, L.dir > 0 ? 1 : 0), d = a && a.j.sig ? (L.dir > 0 ? L.len - L.s : L.s) - a.back : null;
     if (last && a && last.a === a && last.d > 0.5 && d <= -1 && g.junctions.light(a) === 'r') { out.red++; out.log.push(`${t.toFixed(1)}s over the line of junction ${a.j.id} on red`); }
     last = d != null ? { a, d } : null;
-    if (log && Math.round(t * 10) % 20 === 0) out.log.push(`${t.toFixed(0)}s v=${st.speed.toFixed(1)} lane ${g.assist.on.lane ? (L ? L.d.toFixed(2) : '?') : 'off'} ${g.assist.line != null ? `line ${g.assist.line.toFixed(0)} m` : ''} ${g.assist.lead ? `lead ${g.assist.lead.gap.toFixed(0)} m v ${g.assist.lead.v.toFixed(1)}` : ''}`);
+    if (log && Math.round(t * 10) % 20 === 0) out.log.push(`${t.toFixed(0)}s v=${st.speed.toFixed(1)} gear ${st.gear ?? ''} hb ${st.hand ?? st.handbrake ?? ''} brake ${st.brake ? 1 : 0} on ${g.assist.on.cruise ? 'cruise' : ''}/${g.assist.lane ? 'L' : ''}${g.assist.cruise ? 'C' : ''} set ${(+g.assist.set || 0).toFixed(1)} mode ${g.player.mode} at ${st.x.toFixed(0)},${st.y.toFixed(0)},${st.z.toFixed(1)} h ${st.h.toFixed(2)} L ${L ? `${L.line} d ${L.d.toFixed(2)} dh ${L.dh.toFixed(2)}` : 'none'} lane ${g.assist.on.lane ? (L ? L.d.toFixed(2) : '?') : 'off'} ${g.assist.line != null ? `line ${g.assist.line.toFixed(0)} m` : ''} ${g.assist.lead ? `lead ${g.assist.lead.gap.toFixed(0)} m v ${g.assist.lead.v.toFixed(1)}` : ''}`);
   }
   window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's' }));
   g.advance(0.3);

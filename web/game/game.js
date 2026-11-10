@@ -1178,9 +1178,24 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const assist = { lane: false, cruise: false, set: 0, on: { lane: false, cruise: false }, lead: null, line: null, here: null };
   // the lane of the road your car is on, the way it faces: { line, s, dir, len, v (the road's speed), d (how far the
   // car is to the right of the lane's middle), dh (its heading against the lane's), curv (the bend 8 m on, + right) }
+  // (of the roads within 6 m and 2.5 m of height, the one the car runs along: a ramp beside a road, or a road
+  // crossing it, is nearer at times than the one it is on. Scored by the distance to its lane's middle and the
+  // angle to it, and the road it was on last kept while it still fits)
+  let laneWas = -1;
   function laneHere(st) {
-    const q = roadNet.nearest(st.x, st.y, 6, st.z, 2.5);
-    if (!q) return null;
+    const hx0 = Math.sin(st.h), hy0 = Math.cos(st.h), seen = new Set();
+    let q = null, best = Infinity;
+    for (let k = 0; k < 4; k++) {
+      const c = roadNet.nearest(st.x, st.y, 6, st.z, 2.5, 0, i => seen.has(i));
+      if (!c) break;
+      seen.add(c.line);
+      roadNet.at(c.line, c.s, rq);
+      const al = Math.abs(hx0 * rq.hx + hy0 * rq.hy), side = Math.abs(Math.abs((st.x - rq.x) * rq.hy - (st.y - rq.y) * rq.hx) - (junctions.centred && junctions.centred(c.line) ? 0 : OECars.LANE));
+      const score = side + 6 * (1 - al) - (c.line === laneWas ? 0.8 : 0);
+      if (score < best) { best = score; q = c; }
+    }
+    if (!q) { laneWas = -1; return null; }
+    laneWas = q.line;
     roadNet.at(q.line, q.s, rq);
     const l = roadNet.L[q.line], dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1, hx = rq.hx * dir, hy = rq.hy * dir;
     const off = (junctions.centred && junctions.centred(q.line) ? 0 : OECars.LANE) * keepSign, lx = rq.x - hy * off, ly = rq.y + hx * off, h0 = Math.atan2(hx, hy);
