@@ -46,6 +46,16 @@ export async function gametest(api, ctx) {
     const ids = G.content.npcs.map(n => n.id);
     await Promise.all(ids.map(id => G.npc(id) && G.npc(id).npc.ready));
     must(ids.every(id => G.npc(id) && G.npc(id).npc.rig), 'NPCs spawned and loaded', ids.join(','));
+    // 1a. the people are real (Rocketbox avatars, people.js), the visitor too, each a different person; a hat is made
+    // to the head it is on (gear.js fittedHat: its band within a centimetre of the skull's width)
+    {
+      const rigs = ids.map(id => G.npc(id).npc.rig), names = rigs.map(r => r.look.character);
+      must(rigs.every(r => r.real) && player.rig.real, 'the people and the visitor are real avatars', [player.rig.look.character, ...names].join(','));
+      must(new Set(names).size === names.length, 'no two of the people here are the same person', names.join(','));
+      const hats = [player.rig, ...rigs].filter(r => r.acc.hat), fit = hats.map(r => r.T.head.fit);
+      must(fit.every(f => f && f.a > 0.06 && f.a < 0.11 && f.top - f.y > 0.04 && f.top - f.y < 0.12), 'hats are made to the heads they are on', fit.map(f => f ? `${(f.a * 200).toFixed(1)} cm wide, crown ${((f.top - f.y) * 100).toFixed(1)} cm` : 'no fit').join('; '));
+      must(!!player.rig.actions.Run && !!player.rig.bones.UpperLegL && !!player.rig.bones.FootR, 'the visitor has a run and the bones the swim poses', Object.keys(player.rig.actions).join(','));
+    }
     const sp = G.spawn(), at = id => { const p = G.npc(id).npc.group.position; return { x: p.x, north: -p.z, up: p.y }; };
     const first = ids[0];
     must(G.dist(at(first), sp) < 60, `${first} by the spawn`, G.km(G.dist(at(first), sp)));
@@ -67,6 +77,20 @@ export async function gametest(api, ctx) {
       for (const s of p.src || []) if (!G.srcOf(s)) lint.push(`${d.id}.${k}: unknown source ${s}`);
     }
     must(!lint.length, 'every line renders and every cited source resolves', lint.length ? lint.slice(0, 5).join(' | ') : `${nPages} pages`);
+    // the frame budget (issue 382): the page runs the governor the city game runs (quality.js). Frames of 40 ms take
+    // the scene's resolution down, then the extras, then the resolution to its floor; fast frames bring all of it
+    // back; and the scene's target follows the governor's scale each time
+    const gov = ctx.governor, post = ctx.post;
+    must(gov && typeof gov.simulate === 'function' && post && typeof post.getScale === 'function', 'frame budget: the page has the governor and a scene target to scale');
+    if (gov && gov.simulate && post && post.getScale) {
+      const s0 = gov.scale, e0 = gov.extras;
+      gov.set(gov.max, 1);
+      const down = gov.simulate(40, () => 40), low = gov.scale, lowE = gov.extras, lowT = post.getScale();
+      const up = gov.simulate(240, () => 4);
+      must(low < gov.max - 0.15 && lowE === 0 && Math.abs(lowT - low) < 1e-6, 'frame budget: slow frames take the resolution down and shed the extras', `${down[0]} .. ${down[down.length - 1]}, scene target ${lowT.toFixed(2)}`);
+      must(Math.abs(gov.scale - gov.max) < 1e-6 && gov.extras === 1 && Math.abs(post.getScale() - gov.max) < 1e-6, 'frame budget: fast frames bring it back', `${up[up.length - 1]} of ${gov.max.toFixed(2)}`);
+      gov.set(s0, e0);
+    }
 
     // 1b. solid things: the start is clear of every sign, the kit and the people; nobody stands inside anyone or anything;
     // a sign stops you; a landmark's walls stand on the ground with no gap under them
@@ -221,6 +245,56 @@ export async function gametest(api, ctx) {
       }
     }
 
+    // 4e. Milford Sound: the model's own heights beside the published ones, the rainbow from the sun, Mitre Peak from the
+    // foreshore, the lupins in their season, and the ship (when her model is in the build)
+    if (G.quest('mitre-view') && G.npc('naturalist')) {
+      const say = (id, node) => { near(id, 1.6); run(0.3); player.interact(); G.show(node); const t = G.dialogue() ? G.dialogue().pages.map(p => p.t).join(' ') : ''; G.closeDialogue(); run(0.5); return t; };
+      const fs = G.poi('foreshore'), dry = id => { const p = at(id); return G.depth(p.x, p.north) < 0 && p.up > ctx.env.u.tide.value + 0.2; };
+      must(G.dist(sp, fs) < 30 && dry('ranger') && dry('naturalist'), 'the spawn is the foreshore walk; Jess and Finn stand on dry ground', `ranger up ${at('ranger').up.toFixed(1)} m, naturalist up ${at('naturalist').up.toFixed(1)} m`);
+      if (G.poi('freshwater-basin')) must(G.dist(at('naturalist'), G.poi('freshwater-basin')) < 160, 'Finn at the Freshwater Basin terminal', G.km(G.dist(at('naturalist'), G.poi('freshwater-basin'))));
+      const mt = say('ranger', 'mitre'), mm = /the top stands ([\d,]+) m/.exec(mt), top = mm ? +mm[1].replace(/,/g, '') : 0;
+      must(/1,690 m/.test(mt) && top > 1500 && top < 1800 && /° above the horizontal/.test(mt), 'Jess gives Mitre Peak\'s published height beside the model\'s', mt.slice(mt.indexOf('The page gives'), mt.indexOf('The page gives') + 170));
+      const ft = say('naturalist', 'falls');
+      must(/151 m/.test(ft) && /162 m/.test(ft) && (!ctx.fiord || /drops [\d,]+ m here/.test(ft)), 'Finn gives the falls\' published heights' + (ctx.fiord ? ' beside the drops traced on the model' : ''), ft.slice(0, 200));
+      const rb = say('naturalist', 'rainbow');
+      must(/40 to 42 degrees/.test(rb) && /(sun is \d+° up in the|sun is down now)/.test(rb), 'Finn works the rainbow out from the sun now', rb.slice(rb.indexOf('Right now') < 0 ? 0 : rb.indexOf('Right now')).slice(0, 260));
+      // Mitre Peak from the foreshore: the sign, then the turn
+      G.start('mitre-view');
+      const sg = G.sign('foreshore');
+      if (sg) { const c = sg.collider, x = sg.x - c.un * 1.4, north = sg.north + c.ux * 1.4; player.teleport(x, north, undefined, G.bearing({ x, north }, sg)); run(0.4);
+        must(player.interact() && G.dialogue() && /In sight from here.*Mitre Peak/.test(G.dialogue().pages.map(p => p.t).join(' ')), 'the foreshore sign lists Mitre Peak in sight, with its model height', (G.dialogue() && G.dialogue().pages.map(p => p.t).join(' ').slice(140, 330)) || around());
+        key('Escape'); run(0.5); }
+      must(G.stepIndex('mitre-view') === 1, 'reading the sign counts for the view', JSON.stringify(G.state('mitre-view')));
+      player.teleport(sp.x, sp.north, undefined, G.bearing(sp, G.poi('mitre-peak'))); run(0.2);
+      for (let i = 0; i < 12 && !G.isDone('mitre-view'); i++) { S.camYaw = (G.bearing(G.here(), G.poi('mitre-peak')) + i * 2 - 8) * Math.PI / 180; run(2, V()); }
+      must(G.isDone('mitre-view'), 'facing Mitre Peak from the foreshore completes it', JSON.stringify(G.state('mitre-view')));
+      // the lupins, September to February
+      const lq = G.quest('lupins');
+      if (lq.available(G)) {
+        G.start('lupins'); const l = lq.steps[0].target(G); player.teleport(l.x, l.north, undefined, 0); run(0.6);
+        must(G.stepIndex('lupins') === 1, 'walking into the lupins on the flats', `${G.km(G.dist(sp, l))} from the start, ${JSON.stringify(G.state('lupins'))}`);
+        near('ranger', 1.6); run(0.3); player.interact();
+        must(G.isDone('lupins') && G.dialogue() && G.dialogue().id === 'lupinsDone', 'telling Jess completes the lupins', G.dialogue() && G.dialogue().id);
+        G.closeDialogue(); run(0.5);
+      } else must(!G.start('lupins'), 'out of season the lupins quest does not start', G.month());
+      // the ship: Finn puts you aboard, she comes to Stirling Falls, you step off ashore
+      const v = G.vessels().find(b => b.kind === 'ship'), cq = G.quest('cruise');
+      if (v) {
+        const home = { x: v.x, z: v.z };
+        near('naturalist', 1.6); run(0.3); player.interact(); pagesToChoices();
+        const ci = G.dialogue() ? G.dialogue().choices.findIndex(c => /Take me out/.test(c.text)) : -1;
+        if (ci >= 0) key('Digit' + (ci + 1));
+        run(0.5);
+        must(ci >= 0 && api.aboard === v && G.stepIndex('cruise') === 1, 'Finn puts you aboard the ship and the cruise is under way', `${v.name}, ${JSON.stringify(G.state('cruise'))}`);
+        const w = G.poi('wp-stirling'); v.x = w.x; v.z = -w.north; run(0.6);
+        must(G.isDone('cruise'), 'the ship at Stirling Falls completes the cruise', JSON.stringify(G.state('cruise')));
+        v.x = home.x; v.z = home.z;
+        ctx.boats.leave(); run(0.5);
+        must(ctx.controller === playerCtl && !api.aboard && !S.water, 'stepping off the ship puts you ashore', `${player.state}, ${G.km(G.dist(G.here(), sp))} from the start`);
+      } else must(cq && !cq.available(G) && !G.start('cruise'), 'no ship in this build: the cruise is unavailable, not broken');
+      player.teleport(sp.x, sp.north, undefined, sp.heading); run(0.3);
+    }
+
     // 5. boarding a boat and stepping off beside it
     if (ctx.boats) {
       const y = ctx.boats.vessels.find(v => v.kind === 'yacht' && v.mode === 'anchored');
@@ -324,7 +398,10 @@ export async function gametest(api, ctx) {
 
     // 9. light at depth, the dive slate's numbers
     const L = G.light(8);
-    if (ctx.S.kind === 'alpine') {   // glacial flour: the light is gone within a metre or two, and the lake is no place to dive
+    if (ctx.S.biome === 'fiordland') {   // a fiord's dark, clear water: red goes first and green carries furthest; there is still light at 1 m
+      const L1 = G.light(1);
+      must(L1.r < L1.b && L1.b < L1.g && L1.g > 0.5 && L.r < 0.05 && L.g > L.r, 'a fiord: red goes first, green carries furthest, light left at 1 m', `1 m: r ${(L1.r * 100).toFixed(1)}% g ${(L1.g * 100).toFixed(1)}% b ${(L1.b * 100).toFixed(1)}%; 8 m: r ${(L.r * 100).toFixed(1)}% g ${(L.g * 100).toFixed(1)}%`);
+    } else if (ctx.S.kind === 'alpine') {   // glacial flour: the light is gone within a metre or two, and the lake is no place to dive
       const L1 = G.light(1);
       must(L1.g < 0.1 && L1.r <= L1.g && L.g < 1e-6, 'glacial flour: under 10% of the light left at 1 m, none at 8 m', `1 m: r ${(L1.r * 100).toFixed(1)}% g ${(L1.g * 100).toFixed(1)}% b ${(L1.b * 100).toFixed(1)}%`);
     } else
@@ -389,7 +466,7 @@ export async function gametest(api, ctx) {
         const t = ctx.traffic.stats();
         must(t.n > 0 && t.left === t.n && t.ground === t.n, 'traffic on the highway keeps left, on the ground', `${t.n} cars, ${t.left} in the left lane, ${t.ground} on the ground`);
       }
-      else must(G.quest('survey') && !G.quest('survey').available(G), 'no ctx.life: the survey is unavailable, not broken');
+      else if (ctx.S.kind !== 'alpine') must(G.quest('survey') && !G.quest('survey').available(G), 'no ctx.life: the survey is unavailable, not broken');
     }
 
     // 11b. swimming and the duck-dive hold the body's pose: the swim offsets are put back each frame, not piled up

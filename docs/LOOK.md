@@ -80,7 +80,8 @@ sun's height: by day a little warmth and contrast; in the golden hour (sun at 3�
 blue hour (−4°) a lift and a cool balance, so the dusk sky and the first lights read together
 rather than the street going grey; at night (−12°) the deepest contrast, with `uNightTone`
 taking the shadows to blue and the lights to amber as before. Bloom keeps its high threshold
-(6 by day, 1.6 at night), so lit walls do not bloom; only lamps, signs and screens do. A city
+(6 by day, 1.6 at night), so lit walls do not bloom; only lamps, signs and screens do. All of
+it is uniforms of the one pass that ends the frame (`web/lens.js`): a look costs no pass. A city
 keys its own: `game.look.grade: {night, blue, golden, day}`, each `{ev, tint, sat, contrast}`.
 
 ### The sky and its clouds (`web/clouds.js`, issue 353)
@@ -88,7 +89,8 @@ keys its own: `game.look.grade: {night, blue, golden, day}`, each `{ev, tint, sa
 The Sky's own cloud layer was one sheet of soft noise. In its place, in the same shader of the same dome (no
 pass, no target, no draw), four layers are composed far to near:
 
-- **cirrus** at 9 km, curved streaks;
+- **cirrus** at 9 km: streaks bent by a slow field (a domain warp) so that they sweep and hook, broken along their
+  length into strokes, and read from a coarse mip so that they are wisps rather than fine lines;
 - **towers**: cumulus congestus standing on the horizon all round, shaped in azimuth and elevation like a painted
   backdrop's layer (they are tens of kilometres off, so they do not shift as you walk): a skyline of masses with
   heads on them, lit on the side the sun is on, wholly lit when the sun is behind you, rim-lit when it is behind
@@ -102,7 +104,8 @@ All of it reads one tileable 256 x 256 texture made once on the CPU (billows, ce
 channel spread evenly by rank, so a cover of 0.3 hides three tenths of the sky): 10 bilinear lookups a sky pixel
 against the 20 lattice hashes of the layer it replaces. The layers drift with the weather's wind (`OEWeather.S.wind`, [WEATHER.md](WEATHER.md)); under a thunderstorm the
 sheet darkens and lightning lights it from within. They change shape slowly; the cover and density are the weather's
-(`cloudCoverage`, `cloudDensity`, as before). After dark the fair-weather cumulus thins out and softens.
+(`cloudCoverage`, `cloudDensity`, as before). Where the layers start is a hash of the map's latitude and longitude and the day, so two maps
+at the same hour, or one map on two days, do not show the same sky. After dark the fair-weather cumulus thins out and softens.
 
 The clouds' colours are not worked out per pixel. For each hour `OEClouds.light` sets a lit colour, a shade
 colour and a rim colour from the sky's own zenith and horizon (worked out on the CPU, as the haze is), by a
@@ -132,6 +135,10 @@ for what is already drawn:
 | Light in the shade (`world.js` `shadeLight`) | the sky's colour, a little | the sky's colour, more; sunlit ground throws warm light back up onto walls (the hemisphere light's ground colour) |
 | The sun in the lens | flare 0.55, shafts 0.5 | flare 0.9, shafts 1.0 |
 
+A thunderstorm by day has its own key on top of the preset: the exposure down by three tenths and a harder
+curve (`OEWeather.S.storm`), since the weather lifts the exposure under cloud so that an overcast is never grey,
+which left a storm's sky pale. At night it changes nothing.
+
 The lens pass (`web/lens.js`) gained uniforms, not passes: `uShade` and `uHiTint` (the split tone, formerly two
 constants), `uShadeLift`, `uVibrance`, `uSunSeen` and `uShafts`. The flare, which the game never drove, now
 follows the sun; how much of the sun's disc the frame really shows is read at five points in the lens's *vertex*
@@ -145,6 +152,65 @@ bytes. What changed is the work inside two shaders that already ran: the sky's (
 hashes) and the lens's (the same by night and with the sun out of frame; six more lookups a pixel on the high
 tier while the sun is in it). A software renderer's frame times do not tell these apart; a real GPU was not
 available.
+
+#### Stills: before and after, every live map
+
+Each sheet is one map from where its game starts, on foot, at 1440 x 900 on the high tier: 13:00, 35 minutes before
+sunset, 18 minutes after it, 21:30, and 15:00 in rain. The upper row is main before this work (60ff3b75), the
+lower row the same views after it. The eight Japanese maps have the `shinkai` preset, Sydney and Queenstown
+`film`.
+
+**Shibuya**
+
+![Shibuya: main above, the look below; day, golden hour, blue hour, night, rain](images/look/shibuya.jpg)
+
+**Tokyo (Marunouchi and Ginza)**
+
+![Tokyo (Marunouchi and Ginza): main above, the look below; day, golden hour, blue hour, night, rain](images/look/tokyo.jpg)
+
+**Shinjuku**
+
+![Shinjuku: main above, the look below; day, golden hour, blue hour, night, rain](images/look/shinjuku.jpg)
+
+**Kyoto**
+
+![Kyoto: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kyoto.jpg)
+
+**Higashiyama**
+
+![Higashiyama: main above, the look below; day, golden hour, blue hour, night, rain](images/look/higashiyama.jpg)
+
+**Fushimi Inari**
+
+![Fushimi Inari: main above, the look below; day, golden hour, blue hour, night, rain](images/look/fushimi-inari.jpg)
+
+**Tetsugaku-no-michi**
+
+![Tetsugaku-no-michi: main above, the look below; day, golden hour, blue hour, night, rain](images/look/tetsugaku.jpg)
+
+**Kamakura**
+
+![Kamakura: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kamakura.jpg)
+
+**Sydney**
+
+![Sydney: main above, the look below; day, golden hour, blue hour, night, rain](images/look/sydney.jpg)
+
+**Queenstown**
+
+![Queenstown: main above, the look below; day, golden hour, blue hour, night, rain](images/look/queenstown.jpg)
+
+The same views at a phone's size (390 x 844, the look only; five hours across, a map to each block: Fushimi
+Inari, Higashiyama, Kamakura, Kyoto, Queenstown, Shibuya, Shinjuku, Sydney, Tetsugaku-no-michi, Tokyo). These were
+drawn on the high tier at a phone's frame, not on a phone: a phone picks its own tier, and on the low one the
+light shafts are compiled out.
+
+![Ten maps at a phone's size](images/look/phone.jpg)
+
+A day in 24 seconds, from before sunrise to night, over Shibuya and over Higashiyama (960 x 540, 12 frames a
+second, the clouds at twelve seconds a frame): [images/look/shibuya-day.mp4](images/look/shibuya-day.mp4) and
+[images/look/higashiyama-day.mp4](images/look/higashiyama-day.mp4), made with
+`xvfb-run -a node tools/day_film.js shibuya out.mp4 960x540 24 12` (see the tool's header for the view). (Made before the clouds were seeded by place and day, so both start from the same sky.)
 
 Not built here: glints on overhead wires and rails (the maps draw neither as their own material yet), and a
 bounce that knows which ground is near which wall (the hemisphere light's is the same everywhere).
@@ -207,20 +273,21 @@ lower roughness, the screens' area lights.
 ### Contact shadows (`web/game/ao.js`, issue 138)
 
 By day the facades and street corners read flat because nothing darkened where they meet. On
-the medium and high tiers one pass after the scene is drawn (before the bloom) adds ambient
-occlusion from the depth buffer alone, the city is not drawn a second time: at half the screen's
-size each pixel's position comes from depth and its normal from its neighbours, a spiral of 16
-samples (8 on the medium tier) in a disc of up to 1.8 m near the camera and a little more further
-off gathers the occlusion with SAO's falloff, two depth-aware blurs take the noise out, and a
-depth-aware upsample darkens the frame by it. It fades out between 160 and 420 m, so the far city
-keeps the photograph's light, and is a third weaker at night, when the light is the street's own.
-The low tier is untouched.
+the medium and high tiers ambient occlusion is gathered from the depth buffer alone (the city is
+not drawn a second time): at half the screen's size each pixel's position comes from depth and its
+normal from its neighbours, a spiral of 16 samples (8 on the medium tier) in a disc of up to 1.8 m
+near the camera and a little more further off gathers the occlusion with SAO's falloff, and two
+depth-aware blurs take the noise out. The frame's one full-resolution pass, the lens, darkens each
+pixel by it as it reads the scene, upsampled by depth (issue 352: before, a pass of its own drew
+the whole frame again for this). It fades out between 160 and 420 m, so the far city keeps the
+photograph's light, and is a third weaker at night, when the light is the street's own. The low
+tier is untouched.
 
-A frame-time budget (20 ms on the high tier, 25 ms on the medium) watches the frame: over it for
-three seconds, AO steps down to the lite level and then off; when stepping down did not make the
-frame faster, AO was not the cost and comes back. `?ao=0` turns it off, `?ao=1` keeps it whatever
-the budget, `?ao=show` shows the occlusion alone; stills take `"ao"` in their views
-(`tools/game_shot.js`) and `tools/ao_cost.js` measures what each level costs.
+The frame-time governor (`web/quality.js`, [PERFORMANCE.md](PERFORMANCE.md)) sets its ceiling on a
+device that cannot keep up: the lite level, then off, and back when the frame time allows. `?ao=0`
+turns it off, `?ao=1` keeps it whatever the governor says, `?ao=show` shows the occlusion alone;
+stills take `"ao"` in their views (`tools/game_shot.js`) and `tools/ao_cost.js` measures what each
+level costs.
 
 ### The crowd (`web/game/game.js`, `game.crowd`)
 

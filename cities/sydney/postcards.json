@@ -1,0 +1,11 @@
+{
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#1f8a8a"},
+  "spots": [
+    {"id": "chair", "name": "Mrs Macquarie's Chair", "at": [990, 300], "look": [320, 480], "lookUp": 10, "lines": {"any": ["Sat where Mrs Macquarie used to sit and watch for ships. From her bench the sails and the bridge line up as if somebody planned it."], "dusk": ["The sun goes down behind the bridge from here. Everyone on the point stopped talking for about a minute."], "night": ["The sails are lit and the bridge is a string of lamps. I stayed on the point longer than I meant to."]}},
+    {"id": "lookout", "name": "The Cahill Walk", "at": [-160, 92], "look": [-120, 1000], "z": 17.8, "lookUp": 14, "up": 2.4, "lines": {"any": ["Up on the Cahill Walk, over the station. The whole quay is below, ferries in and out, and the bridge is straight ahead."]}},
+    {"id": "steps", "name": "The Opera House forecourt", "at": [293.9, 391.3], "look": [330, 520], "lookUp": 22, "lines": {"any": ["The sails are bigger than the photographs say, and not quite white: close up, the tiles are cream and they shine."], "dusk": ["Last light on the shells. The steps were still warm when I sat down on them."]}},
+    {"id": "dawes", "name": "Dawes Point", "at": [-250, 915], "look": [-76, 1078], "lookUp": 45, "lines": {"any": ["Under the bridge at Dawes Point. You hear a train cross before you see it, and the whole deck hums."]}},
+    {"id": "quay", "name": "Circular Quay", "at": [-178, 232], "look": [300, 470], "lookUp": 20, "lines": {"any": ["Circular Quay from the west side. A ferry leaves every few minutes, and each one swings past the Opera House on its way out."]}},
+    {"id": "bar", "plush": {"mode": "held"}, "name": "The Opera Bar", "at": [239, 444], "look": [-76, 1078], "lookUp": 50, "lines": {"any": ["A table by the sea wall at the Opera Bar, the bridge across the water. The gulls here watch every chip."], "night": ["The bridge lit from end to end, and its lights broken up on the water. Nobody at the bar was in a hurry."]}}
+  ]
+}

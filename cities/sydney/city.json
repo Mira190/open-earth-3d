@@ -13,6 +13,7 @@
   "vertical_datum": "m AHD",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer/tile/{z}/{y}/{x}",
     "zoom": 17,
@@ -295,8 +296,78 @@
     "Circular Quay": [151.2112, -33.8613]
   },
   "radar_test_building": "Quay Quarter Tower",
+  "rail_osm": {
+    "bbox": [151.207, -33.8632, 151.2135, -33.8598],
+    "lines": ["City Inner", "City Outer"],
+    "note": "The City Circle's two tracks over Circular Quay and the station's platform edges (pipeline/rail_osm.py -> cities/sydney/rail_osm.json; cities/sydney/rail.py builds the station and the trains' courses from it)."
+  },
   "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
   "game": {
+    "weather": {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 7.9], "threshold_mm": 1.0, "drizzle": 0.3, "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm", "temp_max": [27.0, 26.8, 25.7, 23.6, 20.9, 18.3, 17.9, 19.3, 21.6, 23.2, 24.2, 25.7], "temp_min": [20.0, 19.9, 18.4, 15.3, 12.3, 10.0, 8.9, 9.7, 12.3, 14.6, 16.6, 18.4], "wind_ms": [3.7, 3.5, 3.2, 3.1, 3.2, 3.5, 3.9, 4.3, 4.3, 4.3, 4.2, 4.1], "wind_from_deg": 45, "thunder_days": [2.3, 2.1, 1.8, 1.7, 1.3, 0.9, 0.9, 1.3, 1.7, 2.3, 2.6, 3.1], "fog_days": [0.3, 0.6, 1.3, 1.9, 2.9, 2.2, 1.9, 1.6, 0.9, 0.6, 0.6, 0.3], "more": "Sydney: temperatures the Bureau's 1991-2020 statistics for Observatory Hill (066062); wind the mean of its 9 am and 3 pm speeds (1955-1992); thunder and fog days as pipeline/weather_climate.py says (annual totals from Wikipedia's Climate of Sydney, the split by month a secondary table's shape)."},
+    "fishing": {
+      "note": "Fishing from the shore (docs/FISHING.md, pipeline/fishing.py). Legal lengths, bag limits and the food advice are NSW DPI's; where each fish holds and when it bites is anglers' lore turned into weights chosen for the game, and the lengths are usual ranges, not a survey.",
+      "water": "Sydney Harbour",
+      "rules": {
+        "licence": "NSW asks anyone fishing for a Recreational Fishing Fee receipt, and for each fish to be measured against its legal length.",
+        "release": "Every fish here goes back: the game keeps a log, not a bag.",
+        "zones": [
+          {"id": "east", "name": "East of the Harbour Bridge", "advice": "East of the bridge the advice is to eat no more than 150 g of harbour fish a month."},
+          {"id": "west", "name": "West of the Harbour Bridge", "advice": "West of the bridge nothing caught should be eaten, and catches are to be released. Commercial fishing in the harbour has been closed since 2006."}
+        ]
+      },
+      "rigs": [
+        {"id": "float", "name": "Prawn under a float", "hint": "Close to the wall and the piles, for whatever is feeding there.", "cast": [0.0, 0.6]},
+        {"id": "plastic", "name": "Soft plastic on the bottom", "hint": "Hopped slowly over the sand for flathead and bream.", "cast": [0.2, 0.85], "unlock": {"species": 3}},
+        {"id": "metal", "name": "Metal lure, cast long", "hint": "Out into the current for tailor, trevally and kingfish.", "cast": [0.45, 1.0], "unlock": {"species": 5}}
+      ],
+      "species": [
+        {"id": "yellowtail-scad", "share": 1.0, "name": "Yellowtail scad", "sci": "Trachurus novaezelandiae", "cm": [10, 19, 33], "g_per_cm3": 0.011, "legal": {"bag": 50},
+          "fight": {"pull": 0.12, "stamina": 5, "runs": 0.6}, "bite": 1.5, "nibbles": 0.4, "depth": "edge", "rigs": {"float": 1.0, "metal": 0.15},
+          "when": {"months": [1, 1, 1, 1, 0.9, 0.8, 0.8, 0.8, 0.9, 1, 1, 1], "light": {"dawn": 1.0, "day": 1.0, "dusk": 1.0, "night": 0.9}},
+          "note": "Yakkas school round every wharf in the harbour. Most are caught to be bait for something bigger.", "look": {"back": "#5d7a4a", "flank": "#c9cfc0", "belly": "#eef0ea", "fin": "#d9c14a", "deep": 0.24}},
+        {"id": "fanbelly-leatherjacket", "share": 0.6, "name": "Fan-bellied leatherjacket", "sci": "Monacanthus chinensis", "cm": [8, 17, 38], "g_per_cm3": 0.025, "legal": {"bag": 20},
+          "fight": {"pull": 0.16, "stamina": 6, "runs": 0.4}, "bite": 1.1, "nibbles": 2.4, "depth": "edge", "rigs": {"float": 1.0, "plastic": 0.2},
+          "when": {"months": [1, 1, 1, 0.9, 0.8, 0.7, 0.7, 0.7, 0.8, 0.9, 1, 1], "light": {"dawn": 0.8, "day": 1.0, "dusk": 0.8, "night": 0.2}},
+          "note": "A small mouth and a beak of teeth: it picks a bait off the hook a nibble at a time before it takes it.", "look": {"back": "#7a6a44", "flank": "#a89668", "belly": "#d8cba0", "fin": "#8c7a4e", "deep": 0.5}},
+        {"id": "yellowfin-bream", "share": 0.8, "name": "Yellowfin bream", "sci": "Acanthopagrus australis", "cm": [14, 27, 45], "g_per_cm3": 0.018, "legal": {"min_cm": 25, "bag": 10},
+          "fight": {"pull": 0.34, "stamina": 11, "runs": 1.0}, "bite": 1.0, "nibbles": 1.2, "depth": "edge", "rigs": {"float": 1.0, "plastic": 0.8},
+          "when": {"months": [0.9, 0.9, 1, 1, 1, 1, 0.9, 0.8, 0.8, 0.8, 0.9, 0.9], "light": {"dawn": 1.0, "day": 0.5, "dusk": 1.0, "night": 0.9}, "rain": 1.3},
+          "note": "The harbour's everyday fish, hard against the piles and the oyster-covered rocks, and boldest in low light.", "look": {"back": "#7d8587", "flank": "#c7ccc8", "belly": "#f0eedc", "fin": "#e0c64a", "deep": 0.4}},
+        {"id": "luderick", "share": 0.5, "name": "Luderick", "sci": "Girella tricuspidata", "cm": [18, 30, 50], "g_per_cm3": 0.02, "legal": {"min_cm": 27, "bag": 10},
+          "fight": {"pull": 0.4, "stamina": 13, "runs": 0.8}, "bite": 1.3, "nibbles": 1.6, "depth": "edge", "rigs": {"float": 1.0},
+          "when": {"months": [0.3, 0.3, 0.4, 0.6, 0.9, 1, 1, 1, 0.9, 0.6, 0.4, 0.3], "light": {"dawn": 0.8, "day": 1.0, "dusk": 0.7, "night": 0.1}},
+          "note": "Blackfish graze the weed on the walls and take a float down slowly. Winter is their season.", "look": {"back": "#3c4a4c", "flank": "#7f8d8a", "belly": "#c9cfc6", "fin": "#2e3a3c", "deep": 0.36, "bars": 9}},
+        {"id": "silver-trevally", "share": 0.45, "name": "Silver trevally", "sci": "Pseudocaranx georgianus", "cm": [18, 32, 60], "g_per_cm3": 0.016, "legal": {"min_cm": 30, "bag": 10},
+          "fight": {"pull": 0.5, "stamina": 14, "runs": 1.4}, "bite": 0.95, "nibbles": 0.5, "depth": "any", "rigs": {"float": 0.6, "plastic": 0.5, "metal": 0.9},
+          "when": {"months": [0.5, 0.5, 0.6, 0.8, 1, 1, 1, 1, 1, 0.8, 0.6, 0.5], "light": {"dawn": 1.0, "day": 0.7, "dusk": 1.0, "night": 0.5}},
+          "note": "Pound for pound the hardest puller on the wharf: it turns side-on and circles all the way in.", "look": {"back": "#6f8c8a", "flank": "#d3dad6", "belly": "#f2f2ea", "fin": "#d8c658", "deep": 0.38}},
+        {"id": "tailor", "share": 0.4, "name": "Tailor", "sci": "Pomatomus saltatrix", "cm": [20, 36, 70], "g_per_cm3": 0.011, "legal": {"min_cm": 30, "bag": 10},
+          "fight": {"pull": 0.55, "stamina": 13, "runs": 1.8}, "bite": 0.8, "nibbles": 0.2, "depth": "deep", "rigs": {"metal": 1.0, "float": 0.25},
+          "when": {"months": [0.6, 0.7, 0.9, 1, 1, 0.9, 0.8, 0.7, 0.6, 0.6, 0.6, 0.6], "light": {"dawn": 1.0, "day": 0.3, "dusk": 1.0, "night": 0.8}},
+          "note": "Named for teeth that cut a bait as cleanly as scissors. Schools hunt the harbour at dusk.", "look": {"back": "#4d6b6a", "flank": "#b9c6c2", "belly": "#eef0ea", "fin": "#5a6e6c", "deep": 0.26}},
+        {"id": "dusky-flathead", "share": 0.35, "name": "Dusky flathead", "sci": "Platycephalus fuscus", "cm": [25, 44, 95], "g_per_cm3": 0.006, "legal": {"min_cm": 36, "max_cm": 70, "bag": 5},
+          "fight": {"pull": 0.5, "stamina": 16, "runs": 0.7}, "bite": 1.0, "nibbles": 0.3, "depth": "any", "bottom": true, "rigs": {"plastic": 1.0, "float": 0.1},
+          "when": {"months": [1, 1, 1, 0.8, 0.5, 0.3, 0.3, 0.3, 0.5, 0.8, 1, 1], "light": {"dawn": 0.9, "day": 1.0, "dusk": 0.9, "night": 0.4}},
+          "note": "It lies buried in the sand and waits. Over 70 cm it is a breeding female, and the law sends it back.", "look": {"back": "#6e5f45", "flank": "#9a8a68", "belly": "#e6dfc6", "fin": "#7c6c4e", "deep": 0.17, "flat": true}},
+        {"id": "yellowtail-kingfish", "share": 0.22, "name": "Yellowtail kingfish", "sci": "Seriola lalandi", "cm": [45, 68, 125], "g_per_cm3": 0.011, "legal": {"min_cm": 65, "bag": 5},
+          "fight": {"pull": 0.9, "stamina": 26, "runs": 2.2}, "bite": 0.75, "nibbles": 0.0, "depth": "deep", "rigs": {"metal": 1.0, "plastic": 0.3},
+          "when": {"months": [1, 1, 1, 0.8, 0.4, 0.2, 0.1, 0.1, 0.3, 0.6, 0.9, 1], "light": {"dawn": 1.0, "day": 0.45, "dusk": 0.9, "night": 0.1}},
+          "note": "The harbour's prize. A hooked king runs for the nearest pile or mooring chain to cut the line on it.", "look": {"back": "#2f5f6e", "flank": "#c5d0cc", "belly": "#f2f2ea", "fin": "#e2c53a", "deep": 0.25, "stripe": "#d9bf3c"}}
+      ],
+      "spots": [
+        {"id": "beulah-street-wharf", "name": "Beulah Street Wharf", "at": [290, 1310], "zone": "east", "schools": 3, "species": ["yellowtail-scad", "silver-trevally"],
+          "note": "A small public wharf in Kirribilli, straight across from the Opera House. The piles hold yellowtail and trevally, and kingfish come past in summer.",
+          "source": "Man of Many, Best fishing spots in Sydney (Beulah Street Wharf: squid, yellowtail, trevally)"},
+        {"id": "blues-point", "name": "Blues Point Reserve", "at": [-712, 1267], "zone": "west", "schools": 4, "species": ["silver-trevally", "yellowtail-kingfish", "tailor"],
+          "note": "The point at the foot of Blues Point Road, with the bridge to the east and deep water off the rocks. It is west of the bridge, so nothing caught here is for the table.",
+          "source": "Man of Many, Best fishing spots in Sydney (Blues Point Reserve: trevally, kingfish, jewfish)"}
+      ],
+      "sources": [
+        {"what": "Food advice east and west of the Harbour Bridge; commercial fishing closed since 2006; recreational fishing open", "name": "NSW Department of Primary Industries, Fishing in Sydney Harbour", "url": "https://www.dpi.nsw.gov.au/fishing/recreational/fishing-skills/fishing-in-sydney-harbour"},
+        {"what": "Legal lengths and daily bag limits", "name": "NSW Department of Primary Industries, Saltwater bag and size limits", "url": "https://www.dpi.nsw.gov.au/fishing/recreational/fishing-rules-and-regs/saltwater-bag-and-size-limits"},
+        {"what": "The two spots and what is caught from them", "name": "Man of Many, Best fishing spots in Sydney", "url": "https://manofmany.com/culture/travel/best-fishing-spots-sydney"}
+      ]
+    },
     "weather": {"rain_days": [8.2, 9.0, 10.1, 7.9, 7.9, 9.3, 7.2, 5.6, 5.8, 7.6, 8.7, 7.9], "threshold_mm": 1.0, "drizzle": 0.3, "source": "Bureau of Meteorology, Sydney (Observatory Hill), 1991-2020, days with at least 1 mm"},
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
@@ -447,7 +518,17 @@
         "at": [239, 444],
         "look": {"character": "R_Female_Adult_13", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#5f646b", "legs": "#2c2c30", "shirt": "#5f646b", "pants": "#2c2c30", "clip": "Drink", "acc": ["apron"], "apron": "#1f1f22"},
         "idle": ["Forty to forty-five centimetres of gull, and every one of them knows where the chips are.", "It's {time} here. {sun_line}"]
-      }
+      },
+      {"id": "jst-carmen", "name": "Carmen", "role": "Mezzo-soprano, on stage", "at": [366.77, 554.54, 15.8], "look": {"character": "R_Female_Party_02", "skin": "#c68a64", "hair": "#17100d", "top": "#8e1420", "legs": "#8e1420", "shirt": "#8e1420", "pants": "#8e1420"}, "idle": ["L'amour est un oiseau rebelle…"], "stand": {"face": [0.4149, 0.9099]}},
+      {"id": "jst-usher", "name": "Mei", "role": "Usher, Joan Sutherland Theatre", "at": [360.32, 537.49, 14.7], "look": {"character": "R_Business_Female_02", "skin": "#e3b48f", "hair": "#1a1412", "top": "#1b1b1f", "legs": "#1b1b1f", "shirt": "#1b1b1f", "pants": "#1b1b1f", "clip": "Present"}, "idle": ["Tonight it's Carmen. The stalls are round either side: follow the carpet north past the stage and the doors are on your right.", "The stage is at this end, so the house faces south. You walk the length of the theatre to find your seat, with the harbour waiting in the northern foyer.", "Fifteen hundred and three seats, red wool on white birch, and black walls so that only the stage shows. Take one of the free ones by the middle aisle."], "stand": {"face": [-0.4149, -0.9099]}},
+      {"id": "jst-bartender", "name": "Callum", "role": "Bar, the northern foyer", "at": [382.57, 583.88, 14.7], "look": {"character": "R_Business_Male_06", "skin": "#d9a27e", "hair": "#3a2a1c", "top": "#1f2328", "legs": "#1e1e22", "shirt": "#1f2328", "pants": "#1e1e22", "clip": "Drink", "acc": ["apron"], "apron": "#1f1f22"}, "idle": ["Interval drinks go on the bar ten minutes before the bell. Take a chair by the glass: the ferries come round the point right under you.", "The glass leans out over the water, so the foyer feels like the bow of a ship. It's {time}. {sun_line}", "Those ribs over your head fan out from one foot each side. Nothing holds the roof up but the roof."], "stand": {"face": [0.4149, 0.9099]}},
+      {"id": "ch-usher", "name": "Tavita", "role": "Usher, Concert Hall", "at": [321.09, 539.22, 14.7], "look": {"character": "R_Business_Male_03", "skin": "#8d5a3c", "hair": "#111111", "top": "#1b1b1f", "legs": "#1b1b1f", "shirt": "#1b1b1f", "pants": "#1b1b1f", "clip": "Present"}, "idle": ["The organ's behind the platform: ten thousand pipes and more, and the hundred or so you can see are burnished tin.", "The magenta petals over the stage went in with the 2022 renewal. They send the players' sound back down to them.", "White birch overhead, brush box underfoot and on the walls. The purple carpet is ours; the theatre next door has the red."], "stand": {"face": [-0.0364, -0.9993]}},
+      {"id": "ch-bartender", "name": "Sofia", "role": "Bar, the Concert Hall's northern foyer", "at": [324.2, 597.09, 14.7], "look": {"character": "R_Female_Adult_12", "skin": "#e8b896", "hair": "#5a3a22", "top": "#2b2f3a", "legs": "#26303a", "shirt": "#2b2f3a", "pants": "#26303a", "clip": "Drink", "acc": ["apron"], "apron": "#1f1f22"}, "idle": ["The lamps on poles are the foyer's own. Everyone here just calls them Hall's Balls, after the architect who finished the inside.", "Sit by the glass with the harbour in front of you. On a clear day you can follow a ferry all the way to the heads.", "It's {time}, and the light on the water changes by the minute. {sun_line}"], "stand": {"face": [0.0364, 0.9993]}},
+      {"id": "bennelong-maitre", "name": "Hélène", "role": "Maître d', Bennelong", "at": [300.11, 487.03, 10.35], "look": {"character": "R_Business_Female_03", "skin": "#f1c8a6", "hair": "#6b3a1f", "top": "#1f2328", "legs": "#1e1e22", "shirt": "#1f2328", "pants": "#1e1e22", "clip": "Present"}, "idle": ["Welcome to Bennelong. There's a table free by the glass, facing the quay; the bar is up the steps under the far shell.", "These are the smallest of the shells, and the only ones where you dine right under the ribs.", "The point is named for Woollarawarre Bennelong, a Wangal man of the Eora, who lived here in the 1790s."]},
+      {"id": "bennelong-bar", "name": "Jarrah", "role": "Bar, Bennelong", "at": [293.51, 503.75, 10.89], "look": {"character": "R_Male_Adult_13", "skin": "#a8714f", "hair": "#1b1311", "top": "#3a3f45", "legs": "#26262a", "shirt": "#3a3f45", "pants": "#26262a", "clip": "Drink", "acc": ["apron"], "apron": "#2a221c"}, "idle": ["Best seat in the house is wherever you can see the bridge and the ferries at once. Up here you nearly can.", "It's {time}. {sun_line}"], "stand": {"face": [0.9733, -0.2294]}},
+      {"id": "dee", "name": "Dee", "role": "Commuter", "at": [-128.0, 86.3, 12.1], "look": {"character": "R_Business_Female_04_f011", "skin": "#a8714f", "hair": "#1b1311", "top": "#2b2f3a", "legs": "#26303a", "shirt": "#2b2f3a", "pants": "#26303a", "clip": "Phone"}, "idle": ["Best platform in Sydney, this one. I've missed trains on purpose just to watch the ferries come in.", "Platform 2 goes round by St James and Museum, platform 1 by Wynyard and Town Hall. Either way you end up at Central."]},
+      {"id": "bill", "name": "Bill", "role": "Station staff", "at": [-40.0, 76.5, 12.1], "look": {"character": "R_Pilot_Male_01_m007", "skin": "#8d5a3c", "hair": "#111111", "top": "#1f2328", "legs": "#1f2a33", "shirt": "#1f2328", "pants": "#1f2a33", "clip": "LookAround"}, "idle": ["Opened in 1956, the last piece of the City Circle. They had the tunnels dug either side thirty years before the station was built.", "The road on our roof is the Cahill Expressway. People have wanted it gone since the day it opened, and it's still the best free lookout on the quay.", "Stand behind the yellow line, mate. The double-deckers come in quicker than you'd think."]},
+      {"id": "mia", "name": "Mia", "role": "Visitor", "at": [-96.0, 82.0, 12.1], "look": {"character": "R_Female_Adult_13", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#5f646b", "legs": "#2c2c30", "shirt": "#5f646b", "pants": "#2c2c30", "clip": "Photo", "acc": ["apron"], "apron": "#1f1f22"}, "idle": ["Bridge on the left, Opera House on the right, a ferry in the middle. I don't even need to leave the station.", "They say come at dusk, when the sky goes pink behind the bridge."]}
     ],
     "lines": [
       {"id": "start", "title": "Welcome"},

@@ -1,0 +1,11 @@
+{
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#c8323c"},
+  "spots": [
+    {"id": "station", "name": "Tokyo Station, the Marunouchi side", "native": "東京駅", "at": [512.6, 1214.5], "look": [660, 1205], "lookUp": 10, "lines": {"any": ["Tokyo Station from the Marunouchi side. Red brick from 1914, the domes it lost in the war put back in 2012, and glass towers all round it."]}},
+    {"id": "nijubashi", "name": "Nijubashi", "native": "二重橋", "at": [-326.9, 1054.9], "look": [-470, 1135], "lookUp": 6, "lines": {"any": ["Nijubashi, the stone bridge to the Palace. The moat is so still that the bridge is drawn twice."]}},
+    {"id": "nakadori", "name": "Marunouchi Naka-dori", "native": "丸の内仲通り", "at": [365.4, 1118.4], "look": [340, 1300], "lookUp": 12, "lines": {"any": ["Marunouchi Naka-dori, between the towers. A canyon of glass at street level, and behind every window somebody is working."]}},
+    {"id": "ginza", "name": "Ginza", "native": "銀座", "at": [506, 182], "look": [600, 120], "lookUp": 12, "lines": {"any": ["Ginza. Wide pavements, signs stacked up the sides of the buildings, and people who dress to walk here."], "night": ["Ginza after dark. The signs do the work of streetlamps, and nobody looks at them."]}},
+    {"id": "kabukiza", "name": "Kabuki-za", "native": "歌舞伎座", "at": [770, -110], "look": [790, -78], "lookUp": 12, "lines": {"any": ["Kabuki-za. White walls, red lanterns and a curved gable, with an office tower growing out of its back."]}},
+    {"id": "tower", "name": "Tokyo Tower from Shiba Park", "native": "東京タワー", "at": [-1138.2, -1162.4], "look": [-1228, -1267], "lookUp": 90, "fov": 62, "lines": {"any": ["Tokyo Tower from below: 333 metres of orange and white steel. It looks close from everywhere and is never as close as it looks."], "night": ["Tokyo Tower lit up. From its foot you have to lean right back to see the top."]}}
+  ]
+}

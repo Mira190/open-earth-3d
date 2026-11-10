@@ -58,6 +58,11 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
 | ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
 
+A game can also start from a postcard: the title screen's pile of them
+([POSTCARDS.md](POSTCARDS.md)) opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
+where the photograph was taken, with "As on the postcard" offered as the time to start at. A
+map's passport lists the postcards that have come from it.
+
 ## Playing
 
 | Keys | What they do |
@@ -71,7 +76,9 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
 | <kbd>T</kbd> | Switch which walk the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
+| <kbd>J</kbd> | Diary: today's date, weather and calendar, who is free, the work on offer, and pass the time (see [Daily life](#daily-life-the-day-the-diary-bonds-skills-and-jobs)) |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
+| <kbd>E</kbd> at a `≈` | Fish from the shore, at the spots Sydney and Queenstown have for now: <kbd>Space</kbd> casts, strikes and winds ([docs/FISHING.md](FISHING.md)) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
@@ -155,8 +162,8 @@ Every city's game has the same three ways to go by road:
   (<kbd>I</kbd>) holds the car in the lane of the road it is on, and lets go when you
   steer past half lock, change lanes or turn at a junction; **adaptive cruise**
   (<kbd>K</kbd>) holds the speed you were doing when you set it (30 km/h at least),
-  keeps a gap to the car ahead, slows for a bend and stops at a red light or a level
-  crossing; the accelerator adds to it and the brake ends it. On a phone the **Lens**
+  keeps a gap to the car ahead, slows for a bend and stops at a red light, a level
+  crossing or a wall across the lane (a street shut off at its end); the accelerator adds to it and the brake ends it. On a phone the **Lens**
   button at the wheel steps through them (lane keeping, both, none), and **Run** is
   the autopilot's **Auto**.
 
@@ -481,6 +488,7 @@ listed at the end.
 | **Arcade racers** (Need for Speed, Burnout, Forza Horizon) | Handling for fun rather than a tyre model: speed-sensitive steering, grip of about 1 g that bends the car's path round to where it points, a handbrake drift, a view that widens with speed, and an engine note that climbs through the gears. | They are set on closed roads. Here you drive the real streets, among traffic that keeps to its lane. |
 | **Ship Simulator Extremes** | Docking as the skill moment: the ferry runs on autopilot across open water, then you bring her alongside and are scored. | Reviewers found its long cruises boring. Here the open-water legs can be skipped, and docking is optional. |
 | **Assassin's Creed Discovery Tour** | Guided learning by place: each stop is a person who explains what is in front of you, with "behind the data" honesty. | Its narration was called dry. Here the lines are short and come from the model, such as the share of Martin Place in sun on 21 June at 12:30, computed while you stand there. |
+| **Mini Tokyo 3D** (MIT; three.js on a map) and **Densha de GO!** | From Mini Tokyo 3D: every train of a line drawn on its real track from a timetable, as a function of the clock. From Densha de GO!: the station as the place where the railway is felt, with its chime, its announcement and the melody before the doors close. Ideas only; no code or assets. | Mini Tokyo 3D draws trains as coloured boxes on a map seen from above. Here you stand on the platform: the cars have their doors and liveries, and you hear them pass. |
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
 | **Assassin's Creed viewpoints** | Climb to a high point, and the camera turns once round you while the names fill in. | Its viewpoints reveal what designers placed there. Here what is named is what is in sight from that spot: a line of sight through the model to each roof, with the source of each height. |
 | **GTA V character switch** | The fast-travel camera goes up, across the city and down onto the player, instead of cutting. | Its sky camera hides streaming. Here it keeps the city in one piece, and the cruise height clears the tallest roof on the route. |
@@ -492,13 +500,234 @@ listed at the end.
 | **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
 | **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
-| **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
+| **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. The day in parts, the ranks and the calendar came later, learned from its design ([Daily life](#daily-life-the-day-the-diary-bonds-skills-and-jobs)): here the calendar is the real one, the clock is the real sun, nothing has a deadline, and the people are our own. No combat. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 | **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
 | **Half-Life 2, The Last of Us, GTA V's enterable interiors** | Doors that open as you walk up to them, with no key to press, timed so they are open before you reach them; a room's name as you step in; seated people at their tables and in the pews. Ideas only: no code or assets taken. | Their rooms are designed. Here a room is the real one behind a real facade: St Peter's, Williams Cottage and the Skyline restaurant are drawn inside the shells measured from LiDAR, with their real doors and windows, and the restaurant's glass looks out over the lake as it is. |
 | **Tesla FSD** (AI Day 2021 and 2022: the planning talks) | The planner run for every car round it, not only for itself: each car's way ahead is known and read by the others, and where two ways meet one asserts and the other yields, by the same rule read from both sides, rather than both reacting to what is in front of them. A car that can no longer stop goes; one in the junction goes before one coming. Ideas only (its software is proprietary). | It learns from fleet video; here every car's intent is exact (its route, its movement through the junction), so nothing has to be guessed from a camera. |
 | **Baidu Apollo** (EM planner, Apache-2.0), **SUMO** (EPL-2.0), **A/B Street** (Apache-2.0), **Autonomous Intersection Management** (Dresner and Stone) | Apollo: another car's way projected onto your own as the stretch it blocks, and a go-first or yield decision on it. SUMO and A/B Street: keep the box clear (no car into a junction whose way across is blocked or whose exit has no room), and break a deadlock by someone backing off, never by driving through. AIM: a reservation for the way across, which `junctions.js` already makes. Re-written from the papers and documentation; no code taken. | They simulate traffic for planners to study. Here the same rules drive the taxi you are sitting in. |
 | **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
+
+## Daily life: the day, the diary, bonds, skills and jobs
+
+Issue #357. Until this, the game was a place without a loop: quests gave stamps, and there was
+no progression, no one to get to know, no calendar, no money and no reason to come back
+tomorrow. The loop below is learned from daily-life games, Persona 5 first among them, and from
+what works in a browser in a short session. Their designs were studied; nothing of their look,
+characters, music or assets is used.
+
+### What was studied, and what was adopted
+
+| Game | How its loop works | Adopted here | Left out, and why |
+|---|---|---|---|
+| **Persona 5 / Royal** (Atlus) | A calendar whose days have slots, and nearly every choice spends one. Confidants deepen over ten ranks; each rank is a scene and unlocks an ability. They keep weekdays and weather (one is out only when it rains, others stay in). Five social stats with named levels, raised by daily acts, gate some ranks. Part-time jobs pay and raise stats. Rain is a bonus (more from studying), not a lock. One theme re-arranged for rain and night. The interface is treated as entertainment in itself: one key colour, lines that lead the eye, everything in motion. | The day in four slots (morning, daytime, evening, night). Bonds with ranks, each rank a short scene, a true fact about the street you stand on, and at set ranks an ability. People free at their own hours, on their own days, some only in the rain. Five skills with named levels that gate some ranks and jobs. Jobs that pay. Rain and night as bonuses. A score that changes with the hour and the weather. A card for the new day and motion in every menu, in this project's own type and its one accent (the sun's amber). | The deadline. Critics call its calendar the most stressful thing in it, with content missed for good, and its own mobile spin-off dropped the calendar. Here spending a slot is the player's choice ("pass the time"), nobody can be missed for good, and no day is ever lost. Ten ranks become five: a browser session is ten minutes, not a hundred hours. No combat, no arcana, none of its art, type or music. |
+| **Yakuza / Like a Dragon** substories | Found by walking past them: a small zone, two people arguing. Tone is budgeted between comic and moving. Rewards are small and useful. | Requests and events start where you walk into them (a spot's prompt, a line in a bubble), not from a list. The diary lists them only after you have met them. Small, useful rewards: a discount, a key, a shortcut. | Their length and fights. |
+| **Shenmue** | People and shops keep hours on a running clock. The first game left players standing about until an appointment; the second added a wait that skips to the hour, and jobs to fill the time. | Shops and people keep hours; the diary says who is about and when. "Pass the time" from the first day, and jobs are there to fill it. | A mandatory job. |
+| **A Short Hike** | A tiny world where exploring pays with something unique each time, so the player is never "just travelling". | Each skill grows only the first time a thing is done in a place (a spot read, a line ridden, a dish tried), so going somewhere new always pays. | |
+| **Alba: A Wildlife Adventure** | Photograph the island's animals to fill a book; an hour or two long. | The photo job: a list of real subjects to photograph, with more for the hour that suits each. | |
+| **GeoGuessr** | A guess scored by distance from the truth. Players build real knowledge: the sun's side, the driving side, the street furniture. | The guide job: point the way to a landmark by its true bearing, scored by the angle you are off. The sun and the streets are the real ones, so the knowledge is real. (The height challenge already scored a guess against the data's own error.) | |
+| **Pokémon GO, Ingress** | Stops at real places of note; a streak that restarts rather than breaks; weather and the hour change what appears; events on real dates, announced ahead. | Events at real places on their real dates, listed ahead in the diary ("in 5 days"). Weather and the hour change who is free. A count of days in each city that never resets and never breaks. | Streak pressure, and anything that asks for a location. |
+| **Animal Crossing** | The real clock and calendar; shops with hours; events on real dates; people change the clock to escape waiting. | The game opens on the city's real date and hour, so its calendar is the real one. Changing the clock is in the menu and is no cheat: every event can be visited by setting its date. | Locking events to the device's clock. |
+| **Wordle** | One small thing a day, the same for everyone, done in three minutes. | Today's page in the diary is the same for everyone in that city on that date: the same weather, the same events, the same people free. | |
+
+Sources for the above are listed under [Sources](#sources) ("Daily life").
+
+### The design in one page
+
+- **Time gates what is on, never whether you may explore.** The streets, the ferries and the
+  helicopter are open at every hour. The hour changes who is free to talk, which shops are open,
+  which jobs are offered and what is on.
+- **The calendar is the real one.** The game opens on the city's own date and hour. Events are
+  at their real places on their real dates; the menu's date takes you to any of them.
+- **A slot is spent by choice.** Time passes on the running clock (a day in 48 minutes at 30×),
+  or at once with "pass the time" in the diary. Getting to know someone takes the rest of the
+  slot.
+- **Everything is a true thing about a real place.** A rank's scene carries a fact that can be
+  checked; a job is a real bearing, a real distance, a real hour of light.
+- **Short sessions.** Something finishes within ten minutes: a rank, a job, a dish, a page of
+  the diary.
+
+| The card for a new day | The diary's page for today |
+|---|---|
+| ![](images/life/day-card.jpg) | ![](images/life/diary-today.jpg) |
+| **A rank earned (Kyoto)** | **The passport's skills, under the stamps** |
+| ![](images/life/rank-up.jpg) | ![](images/life/passport.jpg) |
+| **A job in hand: which way is the Imperial Palace?** | |
+| ![](images/life/job.jpg) | |
+
+| On a phone: the day's card | The people you know | The work on offer | A job in hand | A rank | Messages |
+|---|---|---|---|---|---|
+| ![](images/life/day-card-phone.jpg) | ![](images/life/people-phone.jpg) | ![](images/life/work-phone.jpg) | ![](images/life/job-phone.jpg) | ![](images/life/rank-up-phone.jpg) | ![](images/life/messages-phone.jpg) |
+
+### The day and the diary
+
+A day has four parts, set by the sun of the city's own date (`web/game/day.js`): **morning**
+from half an hour before sunrise, **daytime** from 10:30, **evening** from golden hour and
+**night** from the end of dusk. A card comes up for each new day (the weekday, the date, the
+sun's arc from sunrise to sunset with the sun on it, the weather, what is on) and a smaller one
+for each new part of it. The card never takes the controls.
+
+The **diary** (<kbd>J</kbd>, or **Diary** beside Map and Passport) opens on today: the date,
+the hour and the weather, your wallet, the four parts of the day with their hours, what is on
+the calendar today and in the next three weeks, who is free to talk now, what work and which
+counters are open, and **pass the time**: on to the start of any other part of the day,
+tomorrow's if today's has gone. Its other pages are People, Work and Pages (what you did, day
+by day). Each city counts your days in it; the count never resets.
+
+### Bonds
+
+A map's cast are people to get to know (`web/game/bonds.js`). Each has **five ranks**. When
+someone is free (their own parts of the day, their weekdays, some only when it is dry or only
+when it rains) and has nothing waiting on you, talking to them offers the time: "Spend the
+evening with Aoi". The scene is two or three lines, a question, and one fact about the place
+that goes into the diary. A good answer to the question means the hour did not slip by;
+otherwise the clock moves on to the next part of the day. Between ranks they may ask something
+of you (see where the river comes back up, guess a tower's height, photograph 109, run a
+jacket across the scramble), and some ranks give an ability:
+
+| Ability | What it does |
+|---|---|
+| `fare` | A share off every taxi and ride on that map |
+| `tip` | A share more for every job |
+| `job` | A job of theirs, in the diary under Work |
+| `xp` | Points in a skill |
+| `filter` | Night film: photographs after sunset come out tungsten-balanced, and the caption says so |
+
+Quests always come first: a person who has a walk to give you gives it, whatever the hour.
+Nobody is ever missed for good, and there is no deadline.
+
+### The passport's skills
+
+Five skills grow by what you do, most of all the first time you do a thing in a place
+(`web/game/life.js`), and are drawn under the stamps in the passport:
+
+| Skill | Grows by | Levels |
+|---|---|---|
+| **Eye** | the height challenge, by how close the guess | Rough guess · To the storey · To the metre · Plumb line · Surveyor's eye |
+| **Bearings** | trig stations, spots read, stamps, pointing the way | Visitor · Finds the way · Knows the streets · Walking map · True north |
+| **Light** | sun studies, photographs at golden or blue hour | Daylight · Reads the shade · Golden hour · Blue hour · Master of light |
+| **Lines** | ferries, the funicular and the gondola, lifts, taxis and rides, each route the first time | Passenger · Commuter · Regular · Knows the timetable · Line captain |
+| **Taste** | dishes tried at the counters | Curious · A second helping · Regular · Knows the counter · Local palate |
+
+Skills and the wallet (one per currency) go with you from map to map; the people, the jobs and
+the diary belong to each map. A skill's level gates a few ranks and jobs.
+
+### Work, counters and the calendar
+
+Jobs are taken from the diary's Work page, one at a time and once in each part of the day
+(`web/game/jobs.js`). Each uses what the game already had:
+
+- **Delivery:** from one real door to another against a clock, by any means. A taxi is quicker
+  and costs its fare. On time pays in full, with time to spare a quarter more, late six tenths.
+- **Cab fare:** in your own car: stop at the pick-up, drive your passenger where they say.
+- **Show the way:** a visitor asks where a landmark is; turn to face its true bearing and
+  press <kbd>E</kbd>. Within 8° pays in full, and the answer says how far off you were and how
+  far away it is.
+- **Photographs:** a list of real subjects to take in photo mode, a quarter more for each taken
+  at golden or blue hour.
+
+Money is in the city's own (yen, dollars). Taxis and rides now charge a fare on arrival (flag
+fall and a rate a kilometre); short of it, the driver lets the rest go. **Counters** keep hours
+and sell a dish or a keepsake, each with a line about it. The **calendar** is events at their
+real places on their real dates, with the hours they run: walk up while one is on and
+<kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
+
+### The score
+
+`web/game/music.js` composes the music in code with Web Audio: no recordings and nothing taken
+from any game or artist. The owner's direction (9 November): soothing light music, close and
+quiet like ASMR, so that playing is restful. So every voice is soft (felt piano, soft electric
+keys, marimba and kalimba, a breathy flute, warm chorused pads, a sine bass), every attack is
+slow, nothing is plucked or struck hard, and almost no energy is left above 4 kHz
+(`tools/music_check.js` fails a case with more than 3%). A low room tone breathes under it, and
+rain adds sparse soft drops.
+
+| Part of the day | Tempo and mode (default palette) | By palette |
+|---|---|---|
+| Morning | 71 bpm, C lydian | Tokyo B flat major, Kyoto D yo, Sydney D lydian, Queenstown F lydian |
+| Daytime | 75 bpm, G major | Tokyo F, Kyoto D yo, Sydney A, Queenstown C |
+| Evening | 64 bpm, D dorian | Tokyo D minor, Kyoto D in, Sydney E mixolydian, Queenstown G dorian |
+| Night | 54 bpm, A minor | Tokyo G minor, Kyoto D in, Sydney B dorian, Queenstown D minor |
+
+Rain slows it by about 6%, closes the tone and drops the last of the percussion; a car adds a
+soft pulse; a talk ducks it 5 dB; a calendar event lifts it a little. A change is taken up on
+the next bar line and cross-fades over three or four bars. A new day, a rank, a job done and a
+message each have a soft sting of two or three notes in the key that is playing. The game
+tells it the state once a second (`life.js`); it starts with the game's sound, is silenced by
+the Sound switch, and has its own **Music** volume in the menu (kept in the browser).
+`OEMusic.bounce(seconds, states)` renders it offline for a film or a test.
+
+### Fireworks
+
+An event can put fireworks in the sky while it is on and the sun is down (`"fx": "fireworks"`,
+`web/game/fx.js`): Sydney's New Year's Eve over the Harbour Bridge, Jingu Gaien's August
+display on the Shinjuku map, Queenstown's New Year over the lake. One additive cloud of points,
+nothing allocated after the first shell, nothing running when no such event is on.
+
+### The walks of Tokyo and Kyoto, in lines
+
+The Tokyo and Kyoto maps had their walks in one chain, or hardly any. They now run in lines as
+Sydney's do (a welcome, lines side by side in any order, a report back):
+
+- **Tokyo (Marunouchi-Ginza):** welcome (Haruka) → Marunouchi and the Palace (Kenji, Daichi,
+  Sachiko) | Ginza and Yurakucho (Yui; a new walk under the arches with Ishikawa) | the water
+  and the air (Ishikawa, Captain Aoki, Ren) → report back.
+- **Kyoto:** welcome at the station (Haruka) → the temple and the low city (Sozen, Tanaka) |
+  the market (Mrs Nakamura, ending at Nishiki's painted shutters after dark) | the castle and
+  the winter sun (Ken, Yui) → report back.
+- **Higashiyama:** the pagoda → the lanes | the temple → below the pagoda after dark.
+- **Fushimi Inari:** the Romon → the gates | the mountain → the Romon after dark.
+- **The Philosopher's Path:** welcome (Haruka) → the water (Kenji, under the aqueduct) | the
+  incline (Sumire, under the Sanmon) → a last walk with Haruka.
+
+Shibuya and Shinjuku already had theirs. Every live map now has a `life.json` as well: four
+people to know (three on the two small Kyoto maps), four or five jobs, counters and a calendar.
+
+### What is left
+
+- Trains: a "catch the right train" job waits for trains that keep a timetable (the Enoden).
+- The autopilot (issue #355) could drive a fare or a delivery; the jobs only set the waypoint.
+- A forecast ability (tomorrow's weather in the diary) waits for the weather's forecast.
+- A room or an album for keepsakes: they are listed in the passport, not shown.
+- The people's models do not change place by the hour; their hours gate the talk, not where
+  they stand.
+- Not checked: a real GPU, Safari and iOS, and the music by ear on phone speakers.
+
+### The phone
+
+The phone (<kbd>N</kbd>) is the hub: beside the ride app it lists Messages, Diary, Work, Map
+and Camera (`web/game/phone.js`). Messages come as a part of the day begins: someone you know
+is free, something on the calendar has started, something is on tomorrow.
+
+### How it is built
+
+| File | What it holds |
+|---|---|
+| `web/game/life.js` | the save (`oe3d-life` in `localStorage`), the event bus (`life.emit`), the skills' rules, the wallet and fares |
+| `web/game/day.js` | the parts of the day, the calendar, the cards, the diary and its pages |
+| `web/game/bonds.js` | ranks, hours, requests, abilities, the People page |
+| `web/game/jobs.js` | the four kinds of job, counters, events, the Work page, the passport's skills |
+| `web/game/phone.js` | the phone's home rows and messages |
+| `web/game/music.js` | the score |
+| `web/game/fx.js` | fireworks for the calendar |
+| `web/game/style.js`, `web/game/life.css` | the banner for a rank, a level and a job done; every style of the above |
+| `cities/<id>/life.json` | a map's people, jobs, counters and calendar, written by hand |
+| `pipeline/life.py` | checks it and writes `web/data/<id>/life.json` |
+
+`game.js` only lends these the clock, the HUD and the player, tells them what happens
+(`life.emit('guess' | 'survey' | 'spot' | 'stamp' | 'sun' | 'photo' | 'ride' | ...)`) and asks
+what <kbd>E</kbd> does at a place of theirs. A map without a `life.json` still has the day, the
+diary, the skills and the wallet.
+
+**Writing a map's life.** Copy the shape of `cities/shibuya/life.json`. Places are never
+measured: `{"npc": id}`, `{"spot": id}`, `{"travel": id}`, `{"label": "QFRONT"}`,
+`{"wharf": id}`, `{"viewpoint": id}` or `{"lonlat": [lon, lat]}`, with `"d": [dx, dy]` to step aside; the game
+stands each on the nearest firm ground. `python pipeline/life.py --city <id>` fails on a person
+who is not one of the map's NPCs, fewer than five ranks, a rank without a fact, an event
+without a source, a place outside the map, and any line that talks about the data
+(`tools/voice_check.py`'s list). `tools/life_step.js` plays a day, a rank, a job, a dish, an
+event and the save in `tools/game_check.js`; `tools/life_shot.js <city> <out> [WxH]` takes
+stills of every screen.
 
 ## How it works
 
@@ -553,7 +782,17 @@ pipeline writes. The only city-specific code is landmark geometry in
     chained across the junctions where OpenStreetMap breaks them into through
     routes. A funicular's route runs from its lower end with its profile made
     monotonic (bridging the dips under its viaducts), and the piece left over
-    beside it is its passing loop.
+    beside it is its passing loop. A railway (`rail.train`, `pipeline/game_rail.py`)
+    is the longest through route with the distance `s` measured along it: its
+    passing loops (a second track whose two ends meet it), the stretches where the
+    rails lie in a street (within 2.5 m of a road's centre line and 20° of its
+    direction for 60 m), its stations (the config's, found by name among the mapped
+    stations, each with the side and the ends of its mapped platform), its platforms
+    (walkable strips in `surfaces`) and its level crossings: every point where a road
+    or a path of the game's network crosses the line on the level, as `gated` (a
+    road), `foot` (a path) or `street` (a side street meeting street-running rails).
+    The line's level is the ground's, smoothed, on 16 cm of ballast and held to the
+    road's level at each crossing.
   - **NPCs:** snapped to open ground.
   - **Boardwalks:** walkways at deck height over rocks, water or sand. They
     are mapped lines found by name, or lines given in the local frame, buffered
@@ -594,6 +833,93 @@ pipeline writes. The only city-specific code is landmark geometry in
   they pull away. A funicular's two cars hang on one cable: one climbs while the
   other comes down, and they pass at the loop. You ride it like a ferry, from
   station to station, and the HUD shows your height and the gradient.
+- **A railway** (`rail.train`, the first on a Japanese map: the Enoden at
+  [Kamakura](cities/kamakura.md)). One track, trains both ways, passing in the
+  loops.
+  - **The timetable is a function of the railway's clock.** A run of each
+    direction is integrated once from the speed limits (the line's 45 km/h, 15 km/h
+    in the street, 25 km/h through the points, and each curve's: 0.65 m/s² sideways,
+    which is 15 km/h on the Enoden's 28 m curves) and the stops; every train is
+    that run shifted by the headway, and the two directions' runs are set against
+    each other so that they are in each loop together, each waiting for the other
+    as on the real line. A crossing's alarm, the next arrival at a platform and the
+    trains themselves all follow from the clock. So the clock can be run eight
+    times as fast (waiting on a platform: E, "wait for it"; aboard: F), slowed to a
+    stand (someone or a car on the rails ahead of a train in the street: on a single
+    track, when one train is late they all are) or set (`rail.cue`, for a film or a
+    photo spot's arrival) and no two trains can meet outside a loop.
+    `tools/game_check.js` counts the meets of two headways and where they happen.
+  - **The trains** are two-car articulated sets coupled in twos (`sets`), of the
+    series the city names (`series`). Each body is placed from the set's shared
+    bogie to its own, so a set bends in the middle through a curve. The bodies are
+    `assets/vehicles/trains.glb` (`blender/build_trains.py`, below); until it has
+    loaded, and where it does not, a kit-built body stands in.
+  - **Riding**: on a platform the prompt gives the next train's time and offers to
+    wait for it; with a train in, E boards it. V goes from the chase view to the
+    window seat on the side the city names (`scenic_bearing_deg`: the sea) and to
+    the cab behind the driver; drag to look round. E gets you off at any station
+    onto its platform; at the last station on the map the train puts you off as its
+    doors close, because it runs on past the frame. A quest's `rail` step
+    (`{from, to}`, station ids) is a ride.
+  - **Level crossings.** A gated crossing has, on each approach, a post on the left
+    of the road (Japan keeps left) with the cross (two boards 1.2 × 0.18 m at 75°),
+    two red lamps flashing in turn 50 times a minute, the speaker, and a barrier arm
+    in yellow and black across the road, 0.8 m up when down; a path's crossing has
+    the post alone. The alarm starts 26 s before the train's nose is at the crossing,
+    the arms start down 7 s later and take 6 s (the ministry's standard is 15 s from
+    alarm to arm down and 20 s more to the train; these are the minimums, to keep a
+    game's wait short), and they rise 1.5 s after the tail is clear. The bell is the
+    electronic one: 700 and 750 Hz together, 130 strokes a minute
+    (`web/game/audio.js` `kan`), by the clock, so every crossing strikes together.
+  - **Who waits.** The crowd walks up to 0.7 m short of the gates and waits there
+    (`rail.gateAhead`, the crowd's `gate` hook in `web/game/actors.js`); someone
+    between the gates when the alarm starts walks on out. On foot an arm holds you
+    back, and a train pushes you off the rails as a car does. The traffic is given
+    each body of a train, and each closed crossing as a bar across the road once no
+    car is between its gates (`cars.extra`), so it queues at the gates and behind a
+    train in the street. What the driving code reads directly:
+    `rail.crossings` (`{id, x, y, z, h, half_m, width_m, kind, closed, arm, t}`:
+    `closed` from the first stroke of the bell until the arms are up again),
+    `rail.crossingClosed(x, y, r)` and `rail.trainBoxes()`.
+  - **The line** is drawn from the same data: rails, sleepers and ballast on open
+    track and rails alone in a street, the contact wire 4.9 m over the rails hung
+    from a pole every 36 m on the side away from the platform, and each platform
+    with its end ramps, yellow line and a shelter.
+- **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
+  `game.json` "trains" carries (Tokyo's through Yurakucho, `cities/tokyo/rail.py`; Sydney's City
+  Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
+  A station's `style` picks its announcements: JR East's in Japanese and English, or Sydney
+  Trains' in English.
+  - A service is a stock, a number of cars, a headway and an offset; a train's place is a
+    function of the time alone (cruise, brake at 0.9 m/s², stand, pull away), so there is no
+    state to keep and a harness can ask where any train is at any second.
+  - The cars ride on their two bogies along the course and are instanced, one draw call per
+    material of each kind of car. They are drawn only between the sheds' mouths at the ends
+    (`hide_m`).
+  - The commuter cars (E233 and E235) and Sydney's Waratah are modelled in Blender
+    (`blender/build_railstock.py` -> `web/assets/vehicles/railstock.glb`): a real cross-section
+    with widened sides, windows and doors set back in the skin, a cab face raked back with its
+    black glazed mask wrapped round the corners, headlamp clusters, a snowplough skirt and a
+    tight-lock coupler, bolsterless bogies with coil springs, air springs, motors and brake
+    units, underfloor equipment, the air conditioners and a single-arm pantograph on its
+    insulators. Occlusion is baked into the vertex colours; a decimated copy is drawn beyond
+    60 to 85 m (40 m on the low tier). One model serves every line: the surfaces that take a
+    line's colour (`Door`, `Band`, `Band2`, `Top`, `Face`) are painted from the stock in
+    `STOCK`. Until the file has come, or where it cannot, the cars are box models drawn in code.
+    The high-speed train is still drawn in code.
+  - The windows show the saloon by interior mapping: each pixel of the glass follows the ray
+    from the eye into a box the size of the car's inside and shades the floor, the ceiling
+    and its lamps, the bench seats and far windows, and the adverts over them; dim behind the
+    reflections by day, the carriage's own light after dark. A double-decker has two decks.
+  - Sound (`audio.js`): the three nearest trains have a voice each (rumble, rail joints,
+    motors, a Shinkansen's air), panned left or right of the camera. Within the station's
+    hearing the platform plays its chime, announcement, door chime and departure melody. The
+    words are spoken by `speechSynthesis` where the browser has a voice for the language, and
+    always captioned (`#g-announce`). Nothing sounds between trains.
+  - A strip the data knows nothing of (a platform, its stairs) is marked `"mapped": false`:
+    `decks.js` then leaves the mapped footways that pass under it on the ground.
+  - Check: `xvfb-run -a node tools/trains_check.js tokyo` (or `sydney`) (the step `tools/game_check.js`
+    runs, on its own).
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
@@ -1152,15 +1478,10 @@ yields. In this game every car's intent is exact, so:
   round over its wheelbase; where that would put its body into a post its lane's own pose keeps
   clear of, it keeps to the lane's pose. `tools/bus_turn.js` in Tokyo: the biggest jump in heading
   3 to 6 degrees a tenth of a second (10 to 25 before), the rear axle's sideways slip 0.06 to
-  0.5 m/s, turns taken at 2 to 4 m/s. The cars slow the same way (3.5 m/s², a
-  corner at about 19 km/h, as a ride's driver takes it; #317), read every fourth frame. Tried first
-  with the junctions as they were, the queues at the lights grew and a taxi in Shinjuku took 50 s to
-  come, not 10. With the junctions' rules since (one rule for two cars that wait on each other, the
-  single-track rule) and a scramble's turns given 12 s and 10 s instead of 10 s and 8 s, measured A/B
-  in Shinjuku: the cars stand 19% to 20% of the time (19% to 23% with the corners at full speed),
-  jammed 1.7% (2.7% to 3.1%), and a ride comes in a median 19 s (18 s), none over 30 s in 11
-  (`tools/ride_check.js`, `tools/traffic_check.js`; `CAR_BEND=0` runs them with the cars at full
-  speed round corners).
+  0.5 m/s, turns taken at 2 to 4 m/s. The cars were slowed the same way at first (3.5 m/s², a
+  corner at 19 km/h, as a ride's driver takes it), but the queues at the lights grew with it and a
+  taxi in Shinjuku took 50 s to come, not 10: the junctions' timings want tuning to it first, so the
+  cars keep their speed round a corner for now (a follow-up).
 - **A short piece out of a signal clears first.** Shinjuku's junction 1103, 27 m from the scramble
   1105, has no signals; between its line and 1105's there is room for one car. A car out of 1105's
   turn waited there to give way, and the queue behind it at 1105 stood through its greens, a minute
@@ -1989,6 +2310,7 @@ quality tier runs a third of the cars.
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+  - the score is its own module (`web/game/music.js`, see [The score](#the-score)).
 
 ### Doors and rooms
 
@@ -2023,6 +2345,45 @@ up. After dark its walls, floor and lamps glow warm (floodlit materials), and la
 day too (`glow_day`). The furnishings carry `far` (110 m; 60% of that on a small device, `web/world.js`), so
 a phone draws the room's shell and lit windows from across town and its pews and tables only nearby. An NPC
 with `sit` (`{face: [dx, dy]}`, at `[x, y, z]`) is placed exactly there, seated, facing that way.
+One with `stand` (`{face}`, at `[x, y, z]`) stands exactly there on their feet: behind a bar, on a stage.
+
+A hall on a podium that is itself a building (the Opera House's) gives its floor as a strip too, level with the
+roof it lies on: near a strip on a roof `web/game/nav.js` reads the landmark's walls, doors and furniture into
+its quarter-metre cells from the deck up, and not as 2 m cells from the ground under the building. A room may
+open off another (the stalls off the foyers): `tools/interior_step.js` asks only that you have left the room
+you walked out of.
+
+### Seats and shows
+
+A city can offer seats to take and a performance to watch from them (game.json `seats` and `shows`, from its
+landmark builder; `web/game/show.js`). Sydney's are in the Opera House (`cities/sydney/opera_inside.py`): the
+stalls of both halls, chairs along the northern foyers' glass, a table at Bennelong.
+
+- **A seat** (`{id, name, verb, at, face, eye, pitch, show}`): within a metre and a half, <kbd>E</kbd> offers
+  its `verb` ("Take your seat", "Sit at the table"). Seated you look out through your own eyes from `eye`
+  metres over the seat, the way it faces; drag to turn your head; <kbd>E</kbd> stands you up where you were.
+  Your own figure is not drawn from the seat (photo mode draws it again).
+- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, bars, lines}`)
+  begins when you take a seat that names it. The house lights (`dim`, mesh names) go down as the oboe gives
+  the A, the house claps the conductor in, and the scene is sung by the NPC `singer` on the stage, with its
+  lines as surtitles: the line as sung and, under it, in English. It ends in applause and plays again while
+  you keep your seat. The city's score rests while it plays (`web/game/life.js`).
+- **Nothing is recorded.** The voice is synthesised in the browser as a source and filter: a sawtooth
+  through five formant band-passes (the alto table in the Csound manual's appendix "Formant Values": numbers,
+  used as data), with vibrato that comes in a fifth of a second after a note's start, a glide between slurred
+  notes, a breath of noise and a lift near 3 kHz, the singer's formant. Under it the cellos' ostinato and
+  pizzicato strings are plucked triangle and sawtooth tones, the tambourine and the applause are filtered
+  noise, and the hall is a convolution with 1.5 s of decaying noise. Sydney's show is the Habanera from
+  *Carmen* (Bizet, 1875; libretto by Meilhac and Halévy; the tune after Iradier's *El arreglito*, 1863): music
+  and words are in the public domain. The notes (`cities/sydney/opera_score.json`) were transcribed from a lead
+  sheet and checked against the themes in Barlow and Morgenstern's dictionary; the syllables under them outside
+  the first phrase and the refrain were set by count, not from the vocal score, and the major-key repeat, the
+  chorus's in the opera, is given to the soloist. The English lines are this project's own. What was looked at
+  and not adopted: Pink Trombone (Neil Thapen, MIT), an articulatory model, heavier than a formant voice needs.
+- `tools/seat_step.js` (in `tools/game_check.js`; on its own, `tools/seat_probe.js`) takes one seat of each
+  kind: the action must offer it, you must be seated at it looking its way with your eyes 0.8 to 1.5 m over
+  it, and stand up on foot; at a show the clock must run, the lights go down, the singer sing and the first
+  line's surtitle read as written.
 
 ## Routes
 
@@ -2218,6 +2579,20 @@ astern, darker by night.
 cable, up on the right and down on the left, slowing through each station round its bullwheel. A
 cabin in a station can be boarded (E), and you ride standing in it to the other station. The line
 is the city's (`game_rail` in `city.py`), the cable's profile with its sag between the towers.
+
+**The trains** (`assets/vehicles/trains.glb`, 1.0 MB, `blender/build_trains.py`) are the Enoshima
+Electric Railway's stock, one body of each two-car articulated set, about 17,000 triangles each with
+a 2,200-triangle copy for distance (past 170 m): the 300 series' last set (305, 1960; 24.1 m, 2.4 m
+wide, pale green and cream, three windows in a flat face), the 1000 series (1979; 25.4 m, dark green
+and cream with a gold line) and the second 500 series (2006; 25.4 m, 2.5 m wide, one curved
+windscreen, a single-arm pantograph). Lengths, widths, roof heights, bogie centres (8.7 and 9.5 m),
+wheelbases, wheels (860 mm) and floor heights (1.07 to 1.1 m) are the published ones (the Japanese
+Wikipedia articles on each series quote the railway's tables); the faces, liveries and roofs follow
+photographs on Wikimedia Commons; window heights, post widths, the underfloor boxes and the seats
+are read off photographs and approximate. A body has its walls with real window openings, doors,
+the floor, long seats, stanchions, strap rails and the cab's glazed partition, so the views from the
+seat and from behind the driver look out through it. No lettering or logo of the railway is
+reproduced: a set carries its number only. Ambient occlusion is baked into the vertex colours.
 
 **The helicopter comes after the game opens (issue 148).** Its model is 3.7 MB, more than any city's
 buildings once packed, and most games start on foot. `OEVehicles.load(..., { heli: 'later' })` leaves
@@ -2809,6 +3184,13 @@ deadlock or a meeting at a shared berth takes to show.
   dropped unless they are flagged as bridges.
 - **Trams and the funicular:** the trams are ambient: you can't ride them.
   The Peak Tram skips its intermediate stops, and both of its cars face uphill.
+- **The railway:** trains appear and leave at the edges of the frame. The doors
+  do not open, the pantographs do not follow the wire's height, and there are no
+  signals. A train does not brake for a car or a person on a gated crossing (it
+  pushes a walker aside); in the street it waits. Your own car is not stopped by a
+  closed crossing. Platforms on a curve are drawn in straight pieces. A path's
+  crossing has a post and no arm, though the Enoden's official crossings all have
+  both: the data does not tell an official crossing from a garden gate's.
 - **One ferry for every city:** the ferry is a Sydney-style double-ended vessel
   in each city's livery. A city whose boats look different, such as river buses
   or catamarans, still gets this hull.
@@ -2825,6 +3207,21 @@ deadlock or a meeting at a shared berth takes to show.
 
 ## Sources
 
+- Trains: [Mini Tokyo 3D](https://github.com/nagix/mini-tokyo-3d) (Akihiko Kusanagi, MIT: trains on
+  their tracks from the timetable; ideas only), JR East's releases on platform doors
+  ([2021](https://www.jreast.co.jp/press/2021/20210406_ho01.pdf)) and
+  [鉄道コム on Yurakucho's](https://www.tetsudo.com/report/105/) (the Yamanote Line's in 2014),
+  [Wikipedia, E235 series](https://en.wikipedia.org/wiki/E235_series) (20 m cars, 2.95 m wide, 3.62 m
+  high), the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 16 cars); the high-speed
+  train drawn on it is this project's own design, not a model of an operator's stock.
+  The modelled cars (`blender/build_railstock.py`): the Japanese Wikipedia articles on the
+  [E233](https://ja.wikipedia.org/wiki/JR東日本E233系電車) and [E235](https://ja.wikipedia.org/wiki/JR東日本E235系電車)
+  series (body 19.5 m, 2.95 m over the widened sides, floor 1.13 m, doors 1.3 m by 1.85 m 4.82 m
+  apart, bogie centres 13.8 m, wheelbase 2.1 m, 860 mm wheels), Wikipedia's
+  [Sydney Trains A & B sets](https://en.wikipedia.org/wiki/Sydney_Trains_A_%26_B_sets) (20.4 m,
+  3.03 m, 4.41 m), and photographs on Wikimedia Commons for the faces, roofs, bogies and
+  underfloor equipment; no logo, lettering or number is reproduced. Interior mapping after
+  Joost van Dongen's "Interior Mapping" (2008), written here from the idea.
 - Scrambles: [LIVE JAPAN on Shibuya Crossing](https://livejapan.com/en/in-tokyo/in-pref-tokyo/in-shibuya/article-a0002128/)
   (the cycle and the walk), [Wikipedia, Shibuya Crossing](https://en.wikipedia.org/wiki/Shibuya_Crossing)
   (1,000 to 3,000 people a walk), [乗りものニュース on its single diagonal](https://trafficnews.jp/post/122022),
@@ -2922,3 +3319,14 @@ deadlock or a meeting at a shared berth takes to show.
   actuated control ([FHWA signal timing manual](https://ops.fhwa.dot.gov/publications/fhwahop08024/chapter5.htm));
   box junctions ([Highway Code rule 174](https://theorytest.org.uk/hwc/highway-code/rule-174.html)); dispatch
   ([Uber matching](https://www.uber.com/us/en/marketplace/matching/)).
+
+**Daily life** (issue #357; read for their design, nothing taken from their art, characters or music):
+
+- Persona 5 Royal's confidants, ranks and abilities: [GGRecon](https://ggrecon.com/guides/persona-5-royal-confidant-guide-igor-fool); who is free on which days and in which weather: [ClutchPoints](https://clutchpoints.com/gaming/sadayo-kawakami-confidant-guide); the five social stats and the ranks they gate: [Push Square](https://www.pushsquare.com/guides/persona-5-royal-confidants-guide-where-to-find-all-confidants-and-how-to-rank-up-fast); rain as a bonus: [RPG Site](https://www.rpgsite.net/feature/13328-persona-5-royal-stats-guide-increase-knowledge-guts-proficiency-kindness-and-charm-fast); part-time jobs: [RPG Site](https://www.rpgsite.net/feature/5481-persona-5-royal-jobs-guide-part-time-job-list-unlocks); the rain arrangement of its night theme: [Megami Tensei Wiki](https://megatenwiki.com/wiki/Persona_5_Original_Soundtrack).
+- Its interface as "graphical entertainment", one key colour and lines that lead the eye: Masayoshi Suto, via [Siliconera](https://www.siliconera.com/?p=668266); how hard its menus were to make readable: Katsura Hashino, via [PC Gamer](https://www.pcgamer.com/games/rpg/persona-series-director-says-atluss-flashy-menus-are-actually-really-annoying-to-design).
+- The calendar as pressure: [Vice](https://vice.com/en/article/persona-5-is-the-most-stressful-game-ive-played-in-years), [Gamers with Glasses](https://www.gamerswithglasses.com/features/take-your-time-scheduling-life-in-the-persona-series); the mobile game that dropped it: [PC Gamer](https://www.pcgamer.com/games/rpg/persona-5-the-phantom-x-had-a-hard-time-doing-away-with-the-series-iconic-calendar-system-it-was-very-difficult-to-convince-the-team).
+- Yakuza's substories, found by walking into them: [TheSixthAxis](https://www.thesixthaxis.com/2018/10/16/the-yakuza-series-greatest-strength-is-the-people-you-meet-on-the-street/); their tone budgeted: [Automaton](https://automaton-media.com/en/interviews/like-a-dragon-infinite-wealths-sicko-snap-was-created-to-solve-a-very-real-problem-during-development/).
+- Shenmue's schedules: [PC Gamer](https://pcgamer.com/the-secret-lives-of-shenmues-npcs); the wait it lacked: [Push Square](https://www.pushsquare.com/news/2018/04/shenmue_i_and_ii_will_not_add_time_skip_to_the_first_game); its jobs: [Kotaku](https://kotaku.com/shenmues-much-hated-forklifts-feel-revolutionary-today-1833817433).
+- A Short Hike: "Crafting a Tiny Open World", [GDC 2020](https://gdcvault.com/play/1026613/Independent-Games-Summit-Crafting-A); rewards that make exploring more than travelling: [GamesRadar](https://www.gamesradar.com/games/open-world/some-open-world-games-can-make-it-feel-like-youre-not-really-exploring-youre-just-traveling-a-short-hike-creator-says-finding-unique-ways-of-rewarding-players-is-key-which-dark-souls-and-breath-of-the-wild-nailed). Alba: [Game Informer](https://gameinformer.com/review/alba-a-wildlife-adventure/alba-a-wildlife-adventure-review-a-good-deed).
+- GeoGuessr's ladder of real knowledge: [GeoTips](https://geotips.net/). Pokémon GO's daily bonus and weather: [Niantic](https://niantic.helpshift.com/hc/en/6-pokemon-go/faq/105-daily-bonuses/), [Pokémon](https://www.pokemon.com/uk/strategy/work-with-weather-in-pokemon-go). Animal Crossing's hours and dated events: [Nookipedia](https://nookipedia.com/wiki/Event/New_Horizons). Wordle: [Pocket Gamer](https://www.pocketgamer.biz/news/78481/gdc-josh-wardle-shares-his-incorrect-tips-for-wordles-success/).
+- The calendars' dates: each event in `cities/<id>/life.json` carries its own `source`.

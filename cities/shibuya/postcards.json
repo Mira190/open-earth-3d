@@ -1,0 +1,11 @@
+{
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#e0a63a"},
+  "spots": [
+    {"id": "scramble", "name": "The scramble", "native": "スクランブル交差点", "at": [385, -1032], "look": [358, -994], "lookUp": 5, "lines": {"any": ["The scramble. When the lights change, up to three thousand people cross at once from every corner, and nobody touches anybody."]}},
+    {"id": "hachiko", "name": "Hachiko", "native": "忠犬ハチ公", "at": [381.8, -1042.4], "look": [374.79, -1046.45], "lookUp": 1.3, "lines": {"any": ["Hachiko. He met his master here every evening, and kept coming for almost ten years after his master died. Tokyo still says 'meet at Hachiko'."]}},
+    {"id": "centergai", "name": "Center Gai", "native": "センター街", "at": [350.2, -994.4], "look": [338, -978], "lookUp": 5, "lines": {"any": ["The mouth of Center Gai. Ramen, arcades, a screen on every wall, and a sign that calls it Basketball Street."]}},
+    {"id": "sky", "name": "SHIBUYA SKY", "at": [491.4, -1108.9], "look": [200, 1500], "z": 241.8, "lookUp": -120, "lines": {"any": ["SHIBUYA SKY, 229 metres up, behind a wall of glass. The city goes on until it turns into haze."], "night": ["From the roof after dark. Tokyo has no edge: the lights just get smaller until they stop."]}},
+    {"id": "sento", "name": "Chiyo-no-yu", "native": "千代の湯", "at": [-2459.8, -2864.4], "look": [-2450.61, -2866.41], "lookUp": 3, "lines": {"any": ["Chiyo-no-yu in Sangenjaya, a neighbourhood bathhouse. The curtain says ゆ, hot water, and two vending machines keep the door company."]}},
+    {"id": "omotesando", "name": "Omotesando", "native": "表参道", "at": [1439.4, -368], "look": [1330, -300], "lookUp": 6, "lines": {"any": ["Omotesando, the zelkova avenue. Straight as a ruler, and roofed with leaves."]}}
+  ]
+}

@@ -1,0 +1,6 @@
+[
+ {"name": "bobs-peak-snow", "cam": [-1080, 500, 520], "tgt": [700, -1500, 120], "date": [7, 12], "time": "11:30", "weather": {"snow": 0.55, "cloud": 0.9, "snowDepth": 0.75}},
+ {"name": "bay-snow", "cam": [-1500, -600, 150], "tgt": [600, -300, 60], "date": [7, 12], "time": "15:30", "weather": {"snow": 0.7, "cloud": 0.95, "snowDepth": 0.8}},
+ {"name": "steamer-wharf-snow", "cam": [-200, -420, 40], "tgt": [-340, -280, 8], "date": [7, 12], "time": "10:00", "weather": {"snow": 0.8, "cloud": 0.95, "snowDepth": 0.7}},
+ {"name": "bay-morning-after", "cam": [-1500, -600, 150], "tgt": [600, -300, 60], "date": [7, 13], "time": "sunrise+50", "weather": {"snow": 0, "cloud": 0.15, "snowDepth": 0.7, "temp": -3, "fog": 0.25}}
+]

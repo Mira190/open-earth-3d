@@ -58,7 +58,13 @@ window.OEHud = (function () {
   // ------------------------------------------------------------ minimap
   function minimap(canvas, base) {
     const g = canvas.getContext('2d'), S = canvas.width;
+    // Redrawn 30 times a second at most (issue 352): the whole map, its route and its icons were painted on every
+    // frame of the game, and at 60 a second or more nobody sees every second painting of a 2D map.
+    let drawnAt = -1e9;
     return function draw({ x, y, yaw, heading, radius, route, icons, ride }) {
+      const now = performance.now();
+      if (now - drawnAt < 30 && !navigator.webdriver) return;
+      drawnAt = now;
       const k = (S / 2) / radius * base.PX; // canvas px per base px
       g.save();
       g.clearRect(0, 0, S, S);
@@ -156,6 +162,12 @@ window.OEHud = (function () {
     } else if (ic.kind === 'trig') { // a trig station: hollow until surveyed
       g.fillStyle = ic.done ? css('--sun') : '#ffffff'; g.strokeStyle = ic.done ? '#ffffff' : '#8a6d1d'; g.lineWidth = 1.8;
       g.beginPath(); g.moveTo(0, -7.5); g.lineTo(7, 5); g.lineTo(-7, 5); g.closePath(); g.fill(); g.stroke();
+    } else if (ic.kind === 'fish') { // a fishing spot: a blue disc with a fish
+      g.fillStyle = '#1d6f8f'; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
+      g.beginPath(); g.arc(0, 0, 6.5, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillStyle = '#fff';
+      g.beginPath(); g.ellipse(-0.8, 0, 3.4, 2.1, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(2, 0); g.lineTo(4.2, -2); g.lineTo(4.2, 2); g.closePath(); g.fill();
     } else if (ic.kind === 'gull') { // a flock of gulls: a gull in flight on a pale disc
       g.fillStyle = '#ffffff'; g.strokeStyle = '#6d8796'; g.lineWidth = 1.5;
       g.beginPath(); g.arc(0, 0, 6.5, 0, Math.PI * 2); g.fill(); g.stroke();

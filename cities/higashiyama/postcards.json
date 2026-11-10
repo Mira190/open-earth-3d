@@ -1,0 +1,11 @@
+{
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#2e4a7a"},
+  "spots": [
+    {"id": "pagoda", "name": "Yasaka Pagoda from Yasaka-dori", "native": "八坂の塔", "at": [-314.3, 176.1], "look": [-251, 173], "lookUp": 22, "lines": {"any": ["Yasaka Pagoda at the top of the stone street: five storeys, 46 metres, rebuilt in 1440. Every photograph of Kyoto has it in somewhere, and now mine does."], "dusk": ["Dusk on Yasaka-dori. The pagoda goes dark against the sky and the street empties in ten minutes."]}},
+    {"id": "niomon", "name": "Kiyomizu-dera, the Nio Gate", "native": "仁王門", "at": [128.8, -198], "look": [165, -212], "lookUp": 10, "lines": {"any": ["The Nio Gate of Kiyomizu-dera, vermilion at the top of the hill. After the climb through the lanes, it is the first thing that lets you stop."]}},
+    {"id": "okunoin", "plush": {"mode": "scene"}, "name": "Kiyomizu-dera from the Okunoin", "native": "奥の院", "at": [316.4, -267.9], "look": [272, -248], "z": 115.25, "lookUp": 1.2, "lines": {"any": ["From the Okunoin: the whole Main Hall on its pillars, the stage hanging over the trees, the city behind. This is the photograph everyone takes. I took it too."]}},
+    {"id": "butai", "name": "The Stage of Kiyomizu", "native": "清水の舞台", "at": [283.7, -261.8], "look": [-600, -200], "z": 115.75, "lookUp": -45, "lines": {"any": ["On the stage of Kiyomizu. Hinoki boards, great pillars underneath and not a single nail, and about thirteen metres down to the treetops."]}},
+    {"id": "gion", "name": "Yasaka Shrine, the South Gate", "native": "八坂神社", "at": [-317, 632], "look": [-318, 676], "lookUp": 9, "lines": {"any": ["The South Gate of Yasaka Shrine in Gion. The proper way in, people here say, though most of us come by the gate on the main street."]}},
+    {"id": "honden", "name": "Yasaka Shrine, the main hall", "native": "本殿", "at": [-282, 702], "look": [-316, 734], "lookUp": 5, "lines": {"any": ["The main hall of Yasaka Shrine, vermilion and white. Somebody is always ringing the bell and clapping twice."]}}
+  ]
+}

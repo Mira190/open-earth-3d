@@ -1,0 +1,10 @@
+{
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#d0402a"},
+  "spots": [
+    {"id": "omotesando", "name": "The Omotesando", "native": "表参道", "at": [-530.9, 115.9], "look": [-430, 123], "lookUp": 10, "lines": {"any": ["The approach to Fushimi Inari from the station. You see the first great torii from the street, and everybody walks a little faster."]}},
+    {"id": "romon", "name": "The Romon", "native": "楼門", "at": [-444, 129], "look": [-410, 125], "lookUp": 8, "lines": {"any": ["The Romon, the shrine's tower gate. Hideyoshi gave it in 1589, they say in thanks for his mother getting well. Two stone foxes keep it."]}},
+    {"id": "senbon", "name": "Senbon Torii", "native": "千本鳥居", "at": [-180.45, 72.43], "look": [-173.52, 65.23], "lookUp": 2.2, "lines": {"any": ["Inside the Senbon Torii. Two tunnels side by side, and you keep to the right one going up. In here even the air looks orange."]}},
+    {"id": "kojin", "name": "The path up the mountain", "at": [407.45, 356.22], "look": [422.23, 384.59], "lookUp": 11, "lines": {"any": ["A side path up the mountain, away from the crowd. Each gate has a name on its back: the person or the company that gave it."]}},
+    {"id": "ridge", "name": "The torii along the ridge", "at": [551.38, 129.42], "look": [562.3, 122.4], "lookUp": 1.4, "lines": {"any": ["Higher up, the forest comes in close and the gates go on. Fewer people, more birds, and the steps do not stop."]}}
+  ]
+}

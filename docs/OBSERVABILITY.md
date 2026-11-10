@@ -117,8 +117,12 @@ A frame rate says that a device is slow, not why. From version 4 each `time` eve
 | `loaf`, `block_ms` | long frames, and the time they kept input waiting | Long Animation Frames (Chromium) |
 
 All of it is measured from outside: the script notes each WebGL 2 context as a view makes it, so the
-renderers carry no telemetry code. The reef and alpine sites draw with WebGPU and report the frame's
-tail and the main thread only. A view may add its own state with `OETelemetry.set({ ... })` (the
+renderers carry no telemetry code. The reef and alpine sites draw with WebGPU, which cannot be timed from outside:
+their page reports its own frame with `OETelemetry.gpu({ ms, draws, tris, px })` (`reef/main.js`: the GPU's time from
+three.js's timestamp queries summed over sixteen frames, where the adapter has `timestamp-query`, so Chromium on a
+desktop; a frame's draws and triangles from the renderer's `info`; the canvas's pixels), so `bound` there is `gpu` or
+`cpu` rather than `gpu?`. Their events also carry `site` (`marine` or `alpine`) and, as every page now loads
+`version.js`, the release in `app`. A view may add its own state with `OETelemetry.set({ ... })` (the
 resolution scale a governor settled on, what it shed): the fields ride on `time`, and each change is a
 `quality` event.
 
@@ -154,6 +158,17 @@ target, so it can run on a schedule.
 - `CONFIG` in `web/telemetry.js` sends the events to the project's PostHog EU Cloud project. The `phc_`
   key there is PostHog's public capture key: it can write events but cannot read them. To stop sending
   events, empty `CONFIG.endpoint`.
+
+### Other requests to third parties
+
+Besides the events above, the pages make one kind of request to another party's server, and only when
+the visitor asks for it: **live weather** (the game menu's Weather row, **Live**, or `?weather=now`;
+docs/WEATHER.md). The browser then asks `api.open-meteo.com` for the current conditions at the city's
+own coordinates, rounded to 0.01°, at most once every 15 minutes while Live stays picked. The request
+carries no cookie, no referrer and nothing about the visitor or where they are; as with any request,
+Open-Meteo's server sees the visitor's IP address (its terms say its logs may hold coordinates and are
+deleted after 90 days). Nothing from the answer is sent on in telemetry. Without the pick, no request
+is made.
 
 ## Where the events go
 

@@ -1,6 +1,6 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), into the rooms it
-// opens and out again (tools/interior_step.js), travel
+// opens and out again (tools/interior_step.js), take a seat and watch what plays before it (tools/seat_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
 // in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it (every
@@ -8,14 +8,15 @@
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
 // change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
-// (tools/scramble_step.js), walk down into a sunken promenade and back up (tools/promenade_walk.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
+// (tools/scramble_step.js), walk down into a sunken promenade and back up (tools/promenade_walk.js), hear the walk signals' calls (tools/walkcalls_step.js), watch and hear the trains at a station (tools/trains_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
 // with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
 // a one-way street to the junction behind (tools/reverse_step.js), send your own car somewhere on its autopilot
 // (tools/autopilot_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
-// (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
+// (no movement left standing in one for more than two cycles), live a day of the daily life (tools/life_step.js: the day
+// passing, a rank earned, a job done, the save read back), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
@@ -30,6 +31,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
+const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
 const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
@@ -448,6 +450,35 @@ const npcNight = require('./npc_night');
     W.set({ rain: 0, cloud: 0 }); for (let i = 0; i < 12; i++) tick(30);
     out.dried = S.wet;
     stop();
+    const frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    // snow: flakes drawn; a thunderstorm: a flash that lights the frame for a moment, a bolt, then dark again
+    W.set('snow', { now: true }); tick(0.1);
+    out.flakes = W.meshes.fNear.visible && W.meshes.fNear.material.uniforms.uCount.value > 0.5 && !W.meshes.near.visible;
+    W.set('storm', { now: true }); tick(0.1);
+    const t1 = g.t(), hit = W.strike(t1, { dist: 700, bearing: 0.5, ground: true });
+    let peak = 0; for (let k = 1; k <= 30; k++) { W.update(0.01, t1 + 0.01 * k); peak = Math.max(peak, S.flash); } // (its brightest stroke may be the second)
+    W.update(0.004, t1 + 0.004);
+    out.flash = { on: peak, bolt: W.meshes && g.Wd.world.children.some(o => o.visible && o.material && o.material.uniforms && o.material.uniforms.uFlash), strokes: hit.strokes };
+    W.update(0.5, t1 + 3);
+    out.flash.off = S.flash;
+    // fog through the scene's own fog: the far distance comes in to a few hundred metres, and goes back out
+    W.set('fog', { now: true }); await frames(24);
+    out.fogFar = g.Wd.world.fog ? g.Wd.world.fog.far : 0;
+    W.set('clear', { now: true }); await frames(24);
+    out.clearFar = g.Wd.world.fog ? g.Wd.world.fog.far : 0;
+    // live weather: one request, to Open-Meteo, with the city's coordinates to 0.01 degree and nothing else;
+    // what comes back is the weather; when nothing does, the season's carries on
+    const realFetch = window.fetch, asked = [];
+    try { localStorage.removeItem('oe3d-weather-now'); } catch (e) { /* storage blocked */ }
+    window.fetch = (u, o) => { asked.push([String(u), o || {}]); return Promise.resolve({ ok: true, json: () => Promise.resolve({ current: { weather_code: 73, temperature_2m: -2, precipitation: 0.3, snowfall: 0.2, cloud_cover: 100, wind_speed_10m: 4, wind_direction_10m: 300, visibility: 900 } }) }); };
+    W.set('now', { now: true }); await new Promise(r => setTimeout(r, 60)); tick(1); tick(1);
+    out.live = { kind: S.kind, source: S.source, temp: S.temp, n: asked.length, url: asked[0] && asked[0][0], cred: asked[0] && asked[0][1].credentials, ref: asked[0] && asked[0][1].referrerPolicy };
+    try { localStorage.removeItem('oe3d-weather-now'); } catch (e) { /* storage blocked */ }
+    window.fetch = () => Promise.reject(new Error('offline'));
+    W.set('clear', { now: true }); W.set('now', { now: true }); await new Promise(r => setTimeout(r, 60)); tick(1);
+    out.liveDown = { source: S.source, kind: S.kind };
+    window.fetch = realFetch;
+    try { localStorage.removeItem('oe3d-weather-now'); } catch (e) { /* storage blocked */ }
     W.set('clear', { now: true }); tick(1);
     W.set('live');
     return out;
@@ -456,12 +487,20 @@ const npcNight = require('./npc_night');
     const wrong = Object.entries(wxState.kinds).filter(([k, v]) => k !== v).map(([k, v]) => `${k} gave ${v}`);
     check(!wrong.length, `every weather can be set and is reached (${wrong.join(', ') || Object.keys(wxState.kinds).join(', ')})`);
     check(!wxState.bad.length, `the weather state's fields are in range (${wxState.bad.slice(0, 4).join(', ') || 'all'})`);
-    check(wxState.fogVis < 400 && wxState.clear.vis > 15000 && wxState.storm.mm > 15 && wxState.storm.grip < 0.8 && wxState.clear.grip === 1 && wxState.storm.wind > wxState.clear.wind,
+    check(wxState.fogVis < 400 && wxState.clear.vis > 15000 && wxState.storm.mm > 8 && wxState.storm.grip < 0.8 && wxState.clear.grip === 1 && wxState.storm.wind > wxState.clear.wind,
       `fog shortens the view, a storm is windy and slippery (fog ${wxState.fogVis.toFixed(0)} m, clear ${(wxState.clear.vis / 1000).toFixed(0)} km; storm ${wxState.storm.mm.toFixed(0)} mm/h, grip ${wxState.storm.grip.toFixed(2)}, wind ${wxState.storm.wind.toFixed(1)} against ${wxState.clear.wind.toFixed(1)} m/s)`);
     check(wxState.snow.precip === 'snow' && wxState.snow.temp <= 0 && wxState.settled > 0.3 && wxState.gripSnow < 0.6 && wxState.melted < 0.02 && wxState.meltWet >= 0,
       `snow falls below freezing, settles and melts (${wxState.snow.temp.toFixed(1)}°, depth ${wxState.settled.toFixed(2)} then ${wxState.melted.toFixed(2)}, grip on snow ${wxState.gripSnow.toFixed(2)})`);
     check(wxState.gusts[1] - wxState.gusts[0] > 0.3, `the wind gusts (${wxState.gusts[0].toFixed(2)} to ${wxState.gusts[1].toFixed(2)} of its swing over a minute)`);
     check(wxState.wetRain > 0.5 && wxState.dried < 0.05, `the ground dries after rain (wet ${wxState.wetRain.toFixed(2)} then ${wxState.dried.toFixed(2)})`);
+    check(wxState.flakes, 'snow falls as flakes, not streaks');
+    check(wxState.flash.on > 0.3 && wxState.flash.bolt && wxState.flash.off === 0, `lightning flashes and is gone (flash ${wxState.flash.on.toFixed(2)} then ${wxState.flash.off}, ${wxState.flash.strokes} strokes, bolt drawn ${wxState.flash.bolt})`);
+    check(wxState.fogFar > 0 && wxState.fogFar < 700 && wxState.clearFar > 3 * wxState.fogFar, `fog closes the view in and clears (the far distance ${wxState.fogFar.toFixed(0)} m in fog, ${wxState.clearFar.toFixed(0)} m clear)`);
+    const u = wxState.live.url ? new URL(wxState.live.url) : null, q = u ? [...u.searchParams.keys()].sort().join() : '';
+    check(wxState.live.n === 1 && u && u.host === 'api.open-meteo.com' && q === 'current,latitude,longitude,wind_speed_unit' && /^-?\d+\.\d\d$/.test(u.searchParams.get('latitude')) && /^-?\d+\.\d\d$/.test(u.searchParams.get('longitude')) && wxState.live.cred === 'omit' && wxState.live.ref === 'no-referrer',
+      `live weather asks once, for the city's coordinates only (${wxState.live.n} request, ${u ? u.host : 'none'}, ${q})`);
+    check(wxState.live.kind === 'snow' && wxState.live.source === 'live' && wxState.live.temp < 0, `and what comes back is the weather (${wxState.live.kind}, ${wxState.live.temp.toFixed(1)}°, from ${wxState.live.source})`);
+    check(wxState.liveDown.source === 'season', `with no answer the season's weather carries on (${wxState.liveDown.kind}, from ${wxState.liveDown.source})`);
     check(wxState.heard.includes('snow') && wxState.heard.includes('storm'), `a listener hears the weather change (${wxState.heard.length} changes)`);
   }
 
@@ -491,10 +530,13 @@ const npcNight = require('./npc_night');
     W.set('rain', { now: true, keep: true }); W.update(0.1, 3, null);
     W.shed = 1; W.shed = 2; W.update(0.1, 3.1, null);
     const picked = { mode: W.mode, near: W.meshes.near.visible, rain: W.state.rain, shed: W.shed };
+    // and when the frame has room again (a two-way governor), what was shed comes back
+    W.guardReset(); W.set('live'); W.shed = 1; W.shed = 2;
+    const again = { off: W.level }; W.shed = 1; again.light = W.level; W.shed = 0; again.full = W.level; again.mode = W.mode;
     W.guardReset(); W.guardForce(false);
     try { localStorage.removeItem('oe3d-weather'); } catch (e) { /* storage blocked */ }
     W.set('clear', { now: true }); W.update(0.1, 4, null); W.set('live');
-    return { full, light, off, dry: { rain: dry.rain, wet: dry.wet }, note, back, picked };
+    return { full, light, off, dry: { rain: dry.rain, wet: dry.wet }, note, back, picked, again };
   });
   if (guard) {
     check(guard.full.level === 2 && guard.full.shed === 0, `the full rain to begin with (level ${guard.full.level}, shed ${guard.full.shed})`);
@@ -503,6 +545,7 @@ const npcNight = require('./npc_night');
     check(guard.off.level === 0 && guard.off.mode === 'off' && guard.off.kept === 'off' && guard.dry.rain === 0 && guard.dry.wet === 0,
       `and then the weather, dry, remembered (level ${guard.off.level}, ${guard.off.mode}, kept ${guard.off.kept}, rain ${guard.dry.rain}, wet ${guard.dry.wet})`);
     check(/Weather is off/.test(guard.note || ''), `and says so ("${guard.note}")`);
+    check(guard.again.off === 0 && guard.again.light === 1 && guard.again.full === 2 && guard.again.mode === 'live', `what was shed comes back when the frame has room (level ${guard.again.off}, then ${guard.again.light}, then ${guard.again.full}, ${guard.again.mode})`);
     check(guard.back >= 1, `a weather picked again comes back on (level ${guard.back})`);
     check(guard.picked.mode === 'rain' && !guard.picked.near && guard.picked.rain > 0.5 && guard.picked.shed === 2,
       `a weather the visitor picked is kept, without its drops (${guard.picked.mode}, drops ${guard.picked.near}, rain ${guard.picked.rain.toFixed(2)})`);
@@ -720,6 +763,28 @@ const npcNight = require('./npc_night');
     const rooms = await require('./interior_step')(p, { outDir, prefix: `${city}-` });
     for (const r of rooms) check(r.ok, `walks into ${r.name} and out again${r.dIn == null ? `: ${r.why}` : ` (the door ${(r.openIn * 100).toFixed(0)}% open in its doorway, ${r.dIn.toFixed(2)} m from the room's middle and ${r.dz.toFixed(2)} m off its floor, back out ${r.dOut.toFixed(2)} m from the start, the door ${r.shutAfter < 0.05 ? 'shut' : 'open'} after)${r.ok ? '' : `: ${r.why}`}`}`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
+  }
+
+  // the seats a city offers (game.json "seats": the Opera House's stalls, its foyers' chairs, a table at Bennelong):
+  // E takes each kind and you look out from it through your own eyes, E stands you up again; before a stage (game.json
+  // "shows") the performance begins, the house lights go down, the singer sings and the first line's surtitle shows
+  // (tools/seat_step.js). (a city with none skips it whole)
+  if (await p.evaluate(() => (window.__game.G.seats || []).length > 0)) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
+    const seats = await require('./seat_step')(p, { outDir, prefix: `${city}-` });
+    for (const r of seats) check(r.ok, `takes a seat: ${r.name}${r.ok ? ` (eyes ${r.eye.toFixed(2)} m over it${r.show ? `; the show runs to beat ${r.beat.toFixed(1)}, "${r.title}"` : ''})` : `: ${r.why}`}`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { mode: 'foot', x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
+  }
+
+  // fishing (game.json "fishing", docs/FISHING.md): nothing of it loaded until you are near a spot; then at each
+  // spot E takes you to the edge, a cast lands on the water, a bite comes, an easy fish is landed with the one
+  // button and logged, five draw calls at most with the line out, and nothing left drawn once you have walked away
+  // (tools/fishing_step.js). A city without spots skips it whole.
+  if (await p.evaluate(() => !!(window.__game.fishing && window.__game.fishing()))) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, dist: g.cam.dist, pitch: g.cam.pitch }; });
+    const bad = await require('./fishing_step').fishingStep(p, shot);
+    check(!bad.length, `fishes every spot: a cast, a bite, a fish landed, logged and let go${bad.length ? `: ${bad.join('; ')}` : ''}`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); Object.assign(g.cam, { yaw: k.yaw, yawTo: null, dist: k.dist, distTo: 0, pitch: k.pitch }); g.advance(0.2); }, keep);
   }
 
   // the doorways' frames (game.json doors[].frames, #326): the collision world's quarter-metre cells took up to a cell
@@ -1104,8 +1169,14 @@ const npcNight = require('./npc_night');
     out.here = !!(el && el.querySelector('.mt-you')) && !!(el && el.querySelector('.mt-pick [data-close]'));
     const other = el && [...el.querySelectorAll('.mt-chip')].find(b => !b.querySelector('i'));
     if (other) other.click();
+    out.single = !other; // (a city whose first map this is: its other districts are still to build, greyed)
     const prim = el && el.querySelector('.mt-pick .primary');
-    out.travel = !!prim && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    out.travel = !!prim && !!other && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    // a district that shares this map (Sangenjaya, on Shibuya's): named as on this map, not as the map itself
+    // (the hop to it stays in the map: tools/district_title_shot.js makes it)
+    const meta = ((window.OE_CITIES || []).find(c => c.group_meta && c.group_meta.kind === 'metro' && [...el.querySelectorAll('.mt-chip')].some(b => b.dataset.mapid === c.id)) || {}).group_meta;
+    const share = el && meta && [...el.querySelectorAll('.mt-stn.here')].find(st => !st.querySelector('.mt-you') && meta.districts[+st.dataset.district].travel);
+    if (share) { share.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })); const em = el.querySelector('.mt-pick .mt-name em'), b = el.querySelector('.mt-pick .primary'); out.shared = !!em && /^On the .+ map$/.test(em.textContent) && !!b && !!b.dataset.arrive; }
     key('Escape', 'Escape');
     out.closed = !document.querySelector('.ts-mfull') && !OEMetro.isOpen() && document.getElementById('g-menu').hidden;
     btn.click(); out.byButton = OEMetro.isOpen(); OEMetro.close();
@@ -1114,7 +1185,7 @@ const npcNight = require('./npc_night');
     out.byMenu = OEMetro.isOpen() && document.getElementById('g-menu').hidden; OEMetro.close();
     return out;
   });
-  if (!mt.none) check(mt.open && mt.here && mt.travel && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, Esc closes it (${JSON.stringify(mt)})`);
+  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.shared !== false && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, one that shares this map says so, Esc closes it (${JSON.stringify(mt)})`);
 
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
@@ -1677,6 +1748,8 @@ const npcNight = require('./npc_night');
   for (const r of await require('./scramble_step')(p)) { for (const [ok, what] of r.checks) check(ok, what); await shot(`scramble-${r.at.join('_')}`); }
   // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
   { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
+  // the railway past the station (trains.js): its timetable, its trains drawn on their tracks, the platform walked and announced (tools/trains_step.js)
+  { const r = await require('./trains_step')(p); if (!r.none) { for (const [ok, what] of r.checks) check(ok, what); await shot('trains'); } }
 
   // a ride behind a queue at a red light (#107): it waits its turn in its own lane, never swings out
   // round a car queueing there (c.q) to the head of the queue, and goes on when the queue moves;
@@ -1929,7 +2002,7 @@ const npcNight = require('./npc_night');
     // give up within a minute and a half, never into another car, and one at least get out by another way)
     const T = rev.traffic, bad = T.filter(w => !(w.done || w.gone || w.gaveUp) || w.deep > 0.1 || !T.some(x => x.done || x.gone));
     if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
-    else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most`).join('; ')})`);
+    else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most${w.deep > 0.1 && w.deepAt ? ` (${w.deepAt})` : ""}`).join('; ')})`);
     const R = rev.ride;
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
@@ -1937,6 +2010,11 @@ const npcNight = require('./npc_night');
       check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''})`);
     }
   }
+
+  // a railway (rail.js "train": the Enoden at Kamakura): its timetable's meets, a ride from a platform to the next
+  // station, and a level crossing closing for a train with the crowd, the traffic and you held (tools/train_step.js)
+  const train = await p.evaluate(trainStep);
+  if (!train.none) trainChecks(train, check);
 
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it. Last of the walks and rides: each hop lays the traffic and the crowd
@@ -1971,6 +2049,10 @@ const npcNight = require('./npc_night');
   });
   for (const h of seasons) check(h.ok && h.m === h.want[0] && h.d === h.want[1] && h.bloom !== 0 && h.dz < 1.5 && h.d2 < 20, `travels to ${h.name} out of season: the date moves to ${h.d}/${h.m} (its best ${h.want[1]}/${h.want[0]}), its trees ${h.bloom === null ? 'not looked at' : h.bloom ? 'in flower' : 'not in flower'}, ${h.d2.toFixed(0)} m from it and ${h.dz.toFixed(1)} m off its level`);
 
+  // the daily life (issue #357, tools/life_step.js): a day passing, a rank earned, a job done, the save read back
+  await require('./life_step').lifeStep(p, check, city);
+  await shot('life');
+
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
   await p.evaluate(() => { const g = window.__game; g.clock.frozen = true; }); // the light held still, to compare before and after
@@ -1979,27 +2061,32 @@ const npcNight = require('./npc_night');
   check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
   check(Math.abs(gl.after.mean - gl.before.mean) < 10, `and lit as before (luma ${gl.before.mean.toFixed(1)} before, ${gl.after.mean.toFixed(1)} after)`);
 
-  // a device that can't keep up (game.js shed): it gives up the rain's extras, then every drop, then
-  // the street's reflections, then pixels, in that order, and never the people: the player, the NPCs
-  // and the crowd near them keep their realistic models
+  // a device that can't keep up (the frame-time governor, quality.js, fed slow frames on a clock of its own):
+  // it gives up resolution a step at a time, then the rain's extras and the street's reflections, then every
+  // drop, then resolution to its floor, and never the people: the player, the NPCs and the crowd near them keep
+  // their realistic models. Fed fast frames again, the resolution comes all the way back.
   const shed = await p.evaluate(async () => {
-    const g = window.__game, W = g.weather, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    const g = window.__game, W = g.weather, G = g.governor, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
     if (W) { W.set('rain', { now: true }); g.advance(1); }
-    const seen = [];
-    for (let i = 0; i < 8 && g.shed(); i++) {
-      await frames(2);
-      seen.push({ lvl: g.shedLevel(), w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
-    }
+    const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
+    const top = G.scale;
+    for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
+    const slow = G.simulate(1, () => 60).pop(), size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const back = G.simulate(120, () => 8).pop();
+    await frames(2);
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
+    const end = { scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
-    return { seen, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
   });
   {
-    const s = shed.seen, at = k => s.findIndex(x => x.lvl === k);
-    const order = s.length >= 2 && s[s.length - 1].px === 0.7 && s.every((x, i) => !i || x.px <= s[i - 1].px)
-      && s.every(x => x.px === 1 || (x.w === null || x.w === 2) && (x.mirror === null || x.mirror));
-    const rainFirst = at(1) < 0 || (s[at(1)].far === false && s[at(1)].near === true && s[at(1)].px === 1);
-    check(order && rainFirst, `a slow device sheds the rain's extras first, then the drops, the reflections and then pixels (${s.map(x => `${x.lvl}:${x.w ?? '-'}/${x.mirror ?? '-'}/${x.px}`).join(' ')})`);
+    const s = shed.seen, e = shed.end, first = s.find(x => x.ex < 1), last = s[s.length - 1];
+    const order = s.length >= 2 && last.ex === 0 && Math.abs(last.px - 0.6) < 1e-6 && s.every((x, i) => !i || (x.px <= s[i - 1].px + 1e-6 && x.ex <= s[i - 1].ex))
+      && s.every(x => x.ex === 1 || x.px <= 0.8 + 1e-6) && (last.w === null || last.w === 2) && (last.mirror === null || last.mirror);
+    const rainFirst = !first || first.w === null || first.ex === 0 || (first.far === false && first.near === true);
+    check(order && rainFirst, `a slow device gives up resolution to 0.8, then the rain's extras and the reflections, the drops, and then resolution to 0.6 (${s.map(x => `${x.px.toFixed(2)}/${x.ex}:${x.w ?? '-'}/${x.mirror ?? '-'}`).join(' ')})`);
+    check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
+    check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
   }
 

@@ -56,8 +56,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1863330,
-   "game": 2769362
+   "model": 1863357,
+   "game": 2769786
   }
  },
  {
@@ -116,8 +116,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1258282,
-   "game": 1692618
+   "model": 1393377,
+   "game": 1836032
   }
  },
  {
@@ -158,8 +158,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 5756703,
-   "game": 6140884
+   "model": 5756738,
+   "game": 6142048
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -620,8 +620,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1024749,
-   "game": 1143636
+   "model": 1024776,
+   "game": 1144391
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1076,8 +1076,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 630003,
-   "game": 725579
+   "model": 630027,
+   "game": 726270
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1532,8 +1532,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 697160,
-   "game": 836145
+   "model": 697192,
+   "game": 837429
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1965,7 +1965,7 @@
   "summary": "Kamakura's Shonan coast on PLATEAU's 2024 survey: ride the Enoden from Koshigoe's street-running rails to Inamuragasaki, wait at the Kamakurakokomae crossing as the train passes with Enoshima behind, and watch Mount Fuji across Sagami Bay.",
   "built": true,
   "game": true,
-  "buildings": 7380,
+  "buildings": 7366,
   "extent_km": [
    3.8,
    1.7
@@ -1985,11 +1985,12 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 813032,
-   "game": 941475
+   "model": 863360,
+   "game": 1004434
   },
   "group_meta": {
    "native": "\u938c\u5009",
+   "kind": "metro",
    "summary": "Kamakura along the Enoden, the single-track electric railway between Fujisawa and Kamakura: the Shonan coast at Shichirigahama first, with Enoshima, Hase and the Great Buddha, and Tsurugaoka Hachimangu to follow as maps of their own.",
    "note": "Districts are the Enoden's stations and the sights by them (OpenStreetMap positions inside the Shichirigahama map; the others are approximate until their maps are built). The line is the Enoshima Electric Railway's, with the JR Yokosuka Line at Kamakura and the Shonan Monorail at Enoshima.",
    "districts": [
@@ -2196,8 +2197,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1791177,
-   "game": 2268896
+   "model": 2038098,
+   "game": 2522047
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -2311,7 +2312,7 @@
      }
     },
     {
-     "name": "Sangen-jaya",
+     "name": "Sangenjaya",
      "native": "\u4e09\u8ed2\u8336\u5c4b",
      "lat": 35.6437,
      "lon": 139.6702,
@@ -2950,8 +2951,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 3966075,
-   "game": 4521118
+   "model": 3971629,
+   "game": 4527126
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3059,7 +3060,7 @@
      }
     },
     {
-     "name": "Sangen-jaya",
+     "name": "Sangenjaya",
      "native": "\u4e09\u8ed2\u8336\u5c4b",
      "lat": 35.6437,
      "lon": 139.6702,
@@ -3690,8 +3691,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 2326984,
-   "game": 2772232
+   "model": 2327011,
+   "game": 2772690
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3799,7 +3800,7 @@
      }
     },
     {
-     "name": "Sangen-jaya",
+     "name": "Sangenjaya",
      "native": "\u4e09\u8ed2\u8336\u5c4b",
      "lat": 35.6437,
      "lon": 139.6702,
@@ -4650,6 +4651,52 @@
     ]
    }
   }
+ },
+ {
+  "id": "milford-sound",
+  "name": "Milford Sound",
+  "native": "Piopiotahi",
+  "country": "New Zealand",
+  "lat": -44.635,
+  "lon": 167.9,
+  "status": "live",
+  "viewer": "reef/index.html",
+  "district": "Fiordland National Park, Southland",
+  "tagline": "Mitre Peak a mile out of the sea, and a ship under the falls",
+  "timezone": "Pacific/Auckland",
+  "summary": "Milford Sound / Piopiotahi, 20 by 20 km of Fiordland: the fiord from the Tasman Sea to the Cleddau on LINZ's open terrain and imagery, rainforest on walls a kilometre high, Stirling Falls with a rainbow in its spray, fair-weather cumulus, gulls, lupins on the river flats, and a 40 m ship that sails the day cruise's line. Ride her out under Mitre Peak.",
+  "guide": {
+   "hook": "A ship under mile-high walls, a waterfall straight into the sea",
+   "line": "The fiord Kipling called the eighth wonder: Mitre Peak rising 1,690 m straight from the water, rainforest clinging to the rock, and falls that never stop.",
+   "spots": [
+    [
+     "Mitre Peak",
+     "1,690 m straight out of the fiord"
+    ],
+    [
+     "Stirling Falls",
+     "151 m into the sea, a rainbow in its spray"
+    ],
+    [
+     "The Piopiotahi",
+     "Ride the ship out to the Tasman Sea"
+    ]
+   ],
+   "local": [
+    "Local",
+    "Rata in flower at Christmas, a rainbow in the spray of Stirling Falls, and gulls behind the boat."
+   ],
+   "best": [
+    "Morning",
+    "glassy water"
+   ]
+  },
+  "built": true,
+  "game": false,
+  "extent_km": [
+   20.5,
+   20.5
+  ]
  },
  {
   "id": "new-york",

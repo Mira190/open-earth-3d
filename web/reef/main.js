@@ -20,7 +20,7 @@ const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style
 const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
 // the load's stages for the telemetry (telemetry.js markOf): data fetched (world.js), decoded, built, the first frame
 const mark = s => { try { performance.mark(`oe:${s}`); } catch (e) { /* no User Timing */ } };
-const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
+const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', 'alpine/fiord': 'Letting the falls run and the gulls fly', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
@@ -42,9 +42,23 @@ async function main() {
   // reversed float buffer would be cheaper, but three.js r186 cannot resolve it from a multisampled pass on WebGL2
   // the picture tier (tier.js, from web/quality.js): MSAA, pixels, plants, the mirror and the bloom by what the device can draw
   const tier = reefTier(q);
-  const renderer = new THREE.WebGPURenderer({ antialias: tier.antialias, forceWebGL: q.get('gl') === '1', logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
-  renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight));
-  renderer.setSize(innerWidth, innerHeight);
+  // (trackTimestamp: the GPU's time for the telemetry, from timestamp queries where the adapter has them; below)
+  const renderer = new THREE.WebGPURenderer({ antialias: tier.antialias, forceWebGL: q.get('gl') === '1', trackTimestamp: q.get('gl') !== '1' && !!window.OETelemetry && window.OETelemetry.on, logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
+  // The frame-time governor (quality.js, the one the city game runs: issue 382): how much of the canvas's resolution
+  // the scene is drawn at (post.js brings it up, sharpened) and how much of what a frame can do without is drawn,
+  // both ways as the frame time allows, at an even rate under the frame-rate cap (the game's setting: 60 unless asked)
+  const Q = window.OEQuality;
+  // (?gov=0: none. Its floor is half the canvas's resolution here, as the alpine land's shader is the heaviest on the site;
+  // the extras go at 0.7)
+  const gov = Q && Q.governor && q.get('gov') !== '0' ? Q.governor({ min: 0.5, mid: 0.7, cap: (() => { try { const v = localStorage.getItem('oe3d-fps'); return v === null ? 60 : Math.max(0, +v || 0); } catch (e) { return 60; } })() }) : null;
+  let post = null;
+  const fit = () => {
+    const pr = tier.pixelRatio(innerWidth, innerHeight);
+    if (gov) { gov.max = Math.max(gov.min, tier.sceneScale(innerWidth * pr, innerHeight * pr)); if (gov.scale > gov.max) gov.set(gov.max); }
+    renderer.setPixelRatio(post || !gov ? pr : Math.max(0.5, pr * gov.scale));   // (without the post chain the canvas itself is scaled)
+    renderer.setSize(innerWidth, innerHeight);
+  };
+  fit();
   // an alpine site takes the title screen's curve family (Khronos PBR Neutral, web/lens.js): it keeps the sky's blue
   // and the lake's turquoise where ACES pushes both toward a grey teal
   renderer.toneMapping = ALP ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
@@ -80,9 +94,11 @@ async function main() {
       air: (col, C, P, u) => atm.aerial(col, C, P, u.sunDir, u.moonDir), wet };
   }
   const env = createEnv(scene, S.optics, waves, ripples, chop, envOpts);
+  // the telemetry's view is "reef" for every site of this page; which kind of site rides on its events
+  if (window.OETelemetry && window.OETelemetry.set) window.OETelemetry.set({ site: ALP ? 'alpine' : 'marine' });
   env.logDepth = !!renderer.logarithmicDepthBuffer;
   if (ALP) env.u.haze.value = 1.2e-5;      // the lake's reflection fades to the horizon sky like the air in front of it
-  env.u.wind.value = Number(q.get('wind') ?? 0.6);
+  env.u.wind.value = Number(q.get('wind') ?? S.wind ?? 0.6);      // (scene.json wind: a sheltered water's own, e.g. a fiord's light airs)
   // the clock: the model's own time (?time= or now), running on from the page load, or from a time chosen in the
   // game's time panel (setClock below)
   let when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now(), live = !q.get('time');
@@ -121,6 +137,7 @@ async function main() {
     scene.add(shore.mesh);
   }
   scene.add(terrain.group);
+  terrain.group.name = 'terrain'; if (shore.mesh) shore.mesh.name = 'shore'; if (lakes) lakes.group.name = 'lakes'; if (clouds) clouds.group.name = 'clouds';   // (names: tools/reef_frame.js lists the frame's cost by them)
   if (ALP && tier.mirror) {
     // the lake's mirror: the scene seen from below the water level, at part of the screen's resolution, without what is
     // on layer 1 (the turf, tussock and stones, too small to read in a wind-blurred reflection)
@@ -129,8 +146,20 @@ async function main() {
     env.mirror.reflector.getVirtualCamera(camera).layers.set(0);
     env.mirror.target.rotateX(-Math.PI / 2);
     scene.add(env.mirror.target);
+    // the mirror is a second render of the land, the heaviest shader on the site: while the eye is still it is drawn every
+    // third frame (what it shows then changes with the clouds and the sun, slowly; the ripples that bend it are the water's
+    // own and move every frame), and every frame as soon as the eye moves (issue 382, as the cities' sea does)
+    const R = env.mirror.reflector, upd = R.updateBefore.bind(R), lastM = new THREE.Matrix4();
+    let skipped = 0;
+    R.updateBefore = frame => {
+      const still = lastM.equals(camera.matrixWorld);
+      if (still && skipped < 2 && q.get('still') === null) { skipped++; return; }
+      skipped = 0; lastM.copy(camera.matrixWorld);
+      return upd(frame);
+    };
   }
   const ocean = createOcean(d, env, hTex);
+  ocean.mesh.name = 'water';
   scene.add(ocean.mesh);
   // the land past the survey: the mainland's ranges and the coast's lights (farland.js); fewer triangles on a small screen
   const far = await createFarLand(base, d, env, { small: tier.farSmall }).catch(e => { console.warn('far land: none drawn', e); return null; });
@@ -142,7 +171,7 @@ async function main() {
   skyMat.fog = false;
   skyMat.colorNode = Fn(() => env.sky(normalize(positionWorld.sub(cameraPosition))))();
   const dome = new THREE.Mesh(new THREE.SphereGeometry(ALP ? 150000 : 60000, 32, 16), skyMat);
-  dome.frustumCulled = false; dome.renderOrder = -1;
+  dome.frustumCulled = false; dome.renderOrder = -1; dome.name = 'sky';
   scene.add(dome);
   // an alpine site's stars: the Bright Star Catalogue on the turning sky (alpine/stars.js)
   let stars = null;
@@ -248,7 +277,6 @@ async function main() {
     const now = clockMs();
     if (Math.abs(now - eqT) > 20000) { eqT = now; equatorialMatrix(now, S.origin[1], S.origin[0], eqM); atm.u.eq.value.copy(eqM); }
   }
-  let post = null;
   const sun = setSun(env, when, S.origin[1], S.origin[0]);
   lights(sun);
   let sunT = 0;                                          // the sun and moon follow the model clock (every 2 s)
@@ -275,12 +303,40 @@ async function main() {
   const keys = new Set();
   addEventListener('keydown', e => keys.add(e.code)); addEventListener('keyup', e => keys.delete(e.code));
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
-  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight)); renderer.setSize(innerWidth, innerHeight); });
+  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); fit(); });
 
-  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom });
+  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom, grade: S.grade || null });
+  // What the governor moves. The scale: the scene's target and the lake's mirror with it. The extras (1, 0.5, 0): at
+  // 0.5 the mirror at half its size again and the two ripple tiles redrawn every second frame; at 0 every third.
+  // Each step goes to the telemetry, and the scale a device held here is kept for its next visit to this site, so it
+  // starts where it settled; a device new to the site starts within the tier's opening budget (tier.js) and is
+  // granted more. Under automation the governor stands still at its ceiling (?scale= sets another, for stills).
+  const SCALE_KEY = `oe3d-scale:${CITY}:${tier.name}`;
+  const mirror0 = env.mirror ? env.mirror.reflector.resolutionScale : 0;
+  let tileEvery = 1;
+  if (gov) {
+    gov.on((extras, scale) => {
+      fit();
+      if (post) post.setScale(scale);
+      if (env.mirror) env.mirror.reflector.resolutionScale = mirror0 * scale * (extras < 1 ? 0.5 : 1);
+      tileEvery = extras >= 1 ? 1 : extras > 0 ? 2 : 3;
+      if (window.OETelemetry && window.OETelemetry.set) window.OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras });
+      if (gov.auto) { try { localStorage.setItem(SCALE_KEY, scale.toFixed(2)); } catch (e) { /* storage blocked */ } }
+    });
+    const pr = renderer.getPixelRatio();
+    let start = gov.max;
+    if (gov.auto) {
+      let kept = NaN;
+      try { kept = parseFloat(localStorage.getItem(SCALE_KEY)); } catch (e) { /* storage blocked */ }
+      start = kept >= gov.min ? kept : tier.startScale(innerWidth * pr, innerHeight * pr);
+    }
+    if (q.get('scale')) { gov.auto = false; start = Number(q.get('scale')); }
+    gov.scale = -1;   // (so that the first set() tells the listeners, whatever the scale)
+    gov.set(start);
+  }
 
   // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
-  const ctx = { THREE, tier, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes,
+  const ctx = { THREE, tier, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes, governor: gov, post,
     height: ALP ? (x, north) => terrain.heightAt(x, north) : (x, north) => terrainHeight(d, x, north),   // sea-floor / ground elevation, m above datum
     habitat: ALP ? (x, north) => { const c = S.cover, i = Math.floor((x - S.terrain.x0) / c.px_m), j = Math.floor((S.terrain.y1 - north) / c.px_m);
       return i < 0 || j < 0 || i >= c.w || j >= c.h ? 7 : d.habitat[j * c.w + i]; } : (x, north) => habitatAt(d, x, north),   // class under a point (HABITAT; an alpine site's COVER)
@@ -290,7 +346,7 @@ async function main() {
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,alpine/traffic,alpine/parked,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
+  const mods = (q.get('mods') ?? (ALP ? `alpine/flora,alpine/landmarks,alpine/traffic,alpine/parked,boats${S.falls || S.birds ? ',alpine/fiord' : ''},player,game` : 'life,boats,player,game')).split(',').filter(Boolean);
   for (const [i, name] of mods.entries()) {
     stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
     await paint();
@@ -304,10 +360,12 @@ async function main() {
   await paint();
   if (renderer.compileAsync && !q.get('still')) { try { await renderer.compileAsync(scene, camera); } catch (e) { console.warn('shader precompile skipped:', e); } }
   stage('First frames', 0.98);
-  let last = performance.now(), frames = 0;
+  let last = performance.now(), frames = 0, gpuAt = 0, gpuWait = false;
   // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
-  window.__reef = { camera, env, renderer, d, ctx, tier, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
+  window.__reef = { camera, env, renderer, d, ctx, tier, governor: gov, gov, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
+    // (under the frame-rate cap a faster display draws every second or third of its frames, evenly)
+    if (gov) { gov.raf(now); if (!gov.due(now)) return; }
     const dt = Math.max(Math.min((now - last) / 1000, 0.1), 0); last = now;
     if (!ctx.controller) {
     const sp = (keys.has('ShiftLeft') ? 60 : 12) * (camera.position.y > 200 ? 8 : 1);
@@ -327,7 +385,7 @@ async function main() {
     env.u.torchOn.value = camera.position.y < env.u.tide.value - 0.05 ? env.u.night.value : 0;
     camera.getWorldDirection(env.u.torchFwd.value);
     env.u.tide.value = tideNow();
-    ripples.update(env.u.time.value); chop.update(env.u.time.value);
+    if (frames % tileEvery === 0) { ripples.update(env.u.time.value); chop.update(env.u.time.value); }
     terrain.update(camera.position);
     if (ALP) { dome.position.copy(camera.position); clouds.update(); if (stars) stars.update(env.u.time.value); }   // the sky is at infinity wherever the eye goes over 80 km
     if (light) light.update();
@@ -337,6 +395,19 @@ async function main() {
     lights(sun);
     if (post) post.render(); else renderer.render(scene, camera);
     if (++frames === 1) mark('frame');
+    // the frame's time, for the governor: once the page is ready and while it is on screen
+    if (gov) gov.tick(now, frames > 3 && !document.hidden);
+    // what the GPU was asked for, for the telemetry (telemetry.js gpu): the timestamp queries summed over a run of 16
+    // frames, then divided by them (three.js sums every pass's queries since the last read), and a frame's draws,
+    // triangles and canvas pixels. WebGPU's timestamps are the passes' own, so this is the GPU's time, not the frame's
+    if (window.OETelemetry && window.OETelemetry.gpu && frames > 3 && frames % 16 === 0 && !document.hidden) {
+      const info = renderer.info.render, el = renderer.domElement, run = frames - gpuAt; gpuAt = frames;
+      const o = { draws: info.drawCalls ?? info.calls, tris: info.triangles, px: el.width * el.height };
+      if (renderer.backend && renderer.backend.trackTimestamp && !gpuWait) {
+        gpuWait = true;
+        renderer.resolveTimestampsAsync('render').then(ms => { gpuWait = false; window.OETelemetry.gpu(Object.assign(o, { ms: ms > 0 && run > 0 ? ms / run : 0 })); }, () => { gpuWait = false; });
+      } else window.OETelemetry.gpu(o);
+    }
     if (frames === 3) { $('load').classList.add('done'); window.__ready = true; }
     const gx = terrainHeight(d, camera.position.x, -camera.position.z);
     const tz = env.u.tide.value;

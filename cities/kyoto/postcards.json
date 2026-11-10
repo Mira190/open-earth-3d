@@ -1,0 +1,10 @@
+{
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#6a3d8a"},
+  "spots": [
+    {"id": "tower", "name": "Kyoto Tower", "at": [-260.1, -1829.9], "look": [-277, -1739], "lookUp": 50, "fov": 62, "lines": {"any": ["Kyoto Tower, straight out of the station. 131 metres, and nothing else in the city comes close. People here say it is how they know they are home."]}},
+    {"id": "gate", "name": "Higashi Honganji, the Founder's Hall Gate", "native": "御影堂門", "at": [-222, -1331], "look": [-281, -1331], "lookUp": 10, "lines": {"any": ["The Founder's Hall Gate of Higashi Honganji, on Karasuma-dori. It is so large that the street in front of it feels like part of the temple."]}},
+    {"id": "hall", "name": "Higashi Honganji, the Founder's Hall", "native": "御影堂", "at": [-292, -1346], "look": [-345, -1331], "lookUp": 9, "fov": 62, "lines": {"any": ["Through the gate, the Founder's Hall. One of the largest wooden buildings there is, and people cross its forecourt quietly without being asked."]}},
+    {"id": "nishi", "name": "Nishi Hongwanji", "native": "西本願寺", "at": [-914.5, -1290.9], "look": [-960, -1287], "lookUp": 10, "lines": {"any": ["Nishi Hongwanji, a few streets west of its sister temple. A great tiled roof, a ginkgo by the hall, and hardly anyone here."]}},
+    {"id": "gosho", "name": "The Imperial Palace gardens", "native": "京都御苑", "at": [139.9, 2175.1], "look": [136, 2280], "lookUp": 6, "lines": {"any": ["The gravel avenues of the Imperial Palace gardens. They are wide enough for a procession, and mostly it is one person on a bicycle."]}}
+  ]
+}

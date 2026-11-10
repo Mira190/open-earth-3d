@@ -5,7 +5,7 @@
 //     tools/flyover.js records with, to see the world the viewer and the game share (world.js,
 //     water.js) whole, as tools/city_shot.js does for the viewer.
 // Each at the clock time given (HH:MM local, or relative to the day's sun: "sunset+20", "sunrise-15");
-// "date" [month, day] sets the day; "weather" the weather (clear unless given); "ao" the contact shadows
+// "date" [month, day] sets the day; "weather" the weather (clear unless given; "flash" and "rainbow" hold a lightning flash and a bow); "ao" the contact shadows
 // (game/ao.js: 0 off, 1 lite, 2 full, the default). The views from the air are taken first, while the title is up.
 // Prints the page's errors.
 //   cd web && python3 -m http.server 8800 &
@@ -18,8 +18,13 @@
 // nearest that level, as under a slab; "ferry": {to, at} aboard a vessel that far along its leg to that wharf;
 // "hide": [mesh names] leaves those landmark meshes out; "scramble": "walk" or "wait" runs on to that moment of the
 // nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera; [x, y] from
-// "eyeUp" metres, 1.6 by default, over the ground where you stand)
-// "js": a statement run in the page before a view from the air is taken (g: the game), e.g. a clear sky for the stars;
+// "eyeUp" metres, 1.6 by default, over the ground where you stand; "lookUp": the point looked at that far over it,
+// as up a tower's side)
+// "plush": {kind, scarf, side, ...} the plush traveller (tools/plush.js) sat in an "eye" view on one side third
+// (-1 left, 1 right), in focus (see below);
+// "clear": metres within which the stand moves to the clearest view of "look" (see below);
+// "js": a statement run in the page before a view is taken (g: the game), e.g. a clear sky for the stars, or the
+// railway at a second of its timetable ("g.trains.t = 131; g.trains.update(0, g.camera)");
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -36,6 +41,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
+  await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, 'plush.js'), 'utf8') }); // (the plush traveller, for "plush")
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type, opts) {
@@ -43,7 +49,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
     };
   });
   const logs = [];
-  p.on('console', m => { if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
+  p.on('console', m => { if (m.text().startsWith('[clear]')) console.log(m.text()); else if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ""}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -62,7 +68,13 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       if (rel && g.dayLimits) min = Math.round(g.dayLimits()[rel[1]] + (+rel[2] || 0));
       else if (v.time) { const [hh, mm] = v.time.split(':').map(Number); min = hh * 60 + mm; }
       g.setClock(c.y, m, d, min);
-      if (g.weather) g.weather.set(v.weather || 'clear', { now: true }); // "weather": clear, overcast, drizzle, rain (weather.js)
+      if (g.weather) {
+        g.weather.set(v.weather || 'clear', { now: true }); // "weather": clear, overcast, fog, drizzle, rain, storm, snow, or amounts (weather.js)
+        // "flash": {dist, bearing (degrees from north), ground, k} holds a lightning flash at strength k; "rainbow": 0..1 holds a bow
+        g.weather.flashPin = v.flash ? v.flash.k ?? 0.8 : null;
+        if (v.flash) g.weather.strike(g.t(), { dist: v.flash.dist ?? 900, bearing: (v.flash.bearing ?? 0) * Math.PI / 180, ground: v.flash.ground !== false });
+        g.weather.bowPin = v.rainbow ?? null;
+      }
       if (g.atmos && g.atmos.ao) g.atmos.ao.set(v.ao ?? 2); // "ao": 0 off, 1 lite, 2 full (game/ao.js), to compare
     };
   });
@@ -72,6 +84,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   // again a few frames later, up to 12 times, and a canvas whose WebGL context is lost says so
   const grab = async name => {
     let png = null, dark = 1, tries = 0;
+    // the sun's far shadow field for this view's hour, where the page makes one in a Worker (world.js farSun): wait for it
+    await p.waitForFunction(() => { const f = window.__game && window.__game.Wd && window.__game.Wd.farSun; return !f || (!f.pending && !f.want); }, null, { timeout: 60000 }).catch(() => {});
     for (; tries < 12; tries++) {
       ({ png, dark } = await p.evaluate(async n => {
         for (let i = 0; i < n; i++) await new Promise(r => requestAnimationFrame(r));
@@ -130,6 +144,46 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       for (let i = 0; i < 40 && g.arriving && g.arriving(); i++) { g.settleArrival(); g.advance(0.1); } // an arrival that began late
       if (g.cine.active) g.cine.skip();
       window.__shotClock(v);
+      // "clear": metres. The stand (and an "eye" over it) moves to the place within that far of "at" with the
+      // clearest view of "look": from each place someone can stand, the trees within 45 m in the frame's width count
+      // against it, the nearer and the nearer the middle the more, and so does a building met within 40 m by rays
+      // over the frame. The place taken is printed, to write back into the view.
+      if (v.clear) {
+        const rc = new THREE.Raycaster(), RAD = Math.PI / 180;
+        rc.far = 40;
+        const T = window.__trunks || (window.__trunks = g.Wd.trees && g.Wd.trees.trunks ? g.Wd.trees.trunks() : []);
+        const score = (x, y) => {
+          const p = g.nav.stand(x, y, v.z != null ? v.z + 0.5 : g.nav.terrain(x, y) + 0.5, { rMax: 0.5 });
+          if (!p || g.nav.isWater(p.x, p.y) || (v.z != null && Math.abs(p.z - v.z) > 2)) return null;
+          const ez = p.z + (v.eyeUp ?? 1.6), d = Math.hypot(v.look[0] - p.x, v.look[1] - p.y);
+          const yaw0 = Math.atan2(v.look[0] - p.x, v.look[1] - p.y), pit0 = Math.atan2((v.lookZ ?? p.z + (v.lookUp ?? 1.2)) - ez, d);
+          let n = 0;
+          for (let i = 0; i < T.length; i += 4) {
+            const dx = T[i] - p.x, dy = T[i + 1] - p.y, td = Math.hypot(dx, dy);
+            if (td > 45 || td > d) continue;
+            if (td < 5) { n += 6; continue; } // under its crown
+            const a = Math.abs(((Math.atan2(dx, dy) - yaw0) / RAD + 540) % 360 - 180);
+            if (a < 30) n += (1 - td / 45) * (1 + 2 * (1 - a / 30));
+          }
+          for (const yo of [-18, -9, 0, 9, 18]) for (const po of [0, 8]) {
+            const yaw = yaw0 + yo * RAD, pit = pit0 + po * RAD;
+            rc.set(new THREE.Vector3(p.x, ez, -p.y), new THREE.Vector3(Math.sin(yaw) * Math.cos(pit), Math.sin(pit), -Math.cos(yaw) * Math.cos(pit)));
+            const hit = g.Wd.buildings && rc.intersectObject(g.Wd.buildings)[0];
+            if (hit) n += 3 * (1 - hit.distance / 40) * (yo ? 1 : 2);
+          }
+          return { p, n: n + 0.02 * Math.hypot(p.x - v.at[0], p.y - v.at[1]) };
+        };
+        let best = null;
+        for (let r = 0; r <= v.clear; r += 3) for (let k = 0, m = r ? Math.round(r * 1.6) : 1; k < m; k++) {
+          const s = score(v.at[0] + r * Math.sin(2 * Math.PI * k / m), v.at[1] + r * Math.cos(2 * Math.PI * k / m));
+          if (s && (!best || s.n < best.n)) best = s;
+        }
+        if (best) {
+          console.log(`[clear] ${v.name} ${JSON.stringify([+best.p.x.toFixed(1), +best.p.y.toFixed(1)])} z ${best.p.z.toFixed(1)} score ${best.n.toFixed(2)}`);
+          if (v.eye && v.eye.length === 2) v.eye = [best.p.x, best.p.y];
+          v.at = [best.p.x, best.p.y];
+        } else console.log(`[clear] ${v.name}: nowhere to stand within ${v.clear} m`);
+      }
       const [x, y] = v.at, f = g.nav.floorAt(x, y, v.z != null ? v.z + 0.5 : v.street ? g.nav.terrain(x, y) + 0.5 : 200); // (the roof there, the street under a canopy, or the floor nearest z)
       const place = () => {
         g.player.x = x; g.player.y = y; g.player.z = f ? f.z : 0;
@@ -153,6 +207,20 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         const j = g.junctions.J.filter(q => q.scramble).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
         const ph = v.scramble === 'walk' ? 3 : 1, at = v.phaseT ?? (ph === 3 ? 9 : 8);
         for (let i = 0; j && i < 600 && !(j.ph === ph && j.st === 'g' && j.t >= at); i++) g.advance(0.25);
+      }
+      // "train": {at: [x, y], in: seconds, dir} sets the railway's clock so that the next train's nose (of that direction,
+      // +1 with the line's rising distance, or of either) is at the point of the line nearest `at` in that many seconds
+      // (negative: it passed that long ago); "ride": {from: a station's id, dir, run: seconds, view: "chase", "cabin" or
+      // "cab", look: radians to the right} boards the train standing there and rides on that long (rail.js)
+      if (v.train && g.rail && g.rail.cue) { g.rail.cue(g.rail.sNear(v.train.at[0], v.train.at[1]), v.train.in ?? 0, v.train.dir || 0); g.advance(0.05); }
+      if (v.ride && g.rail && g.rail.cueStation) {
+        const car = g.rail.cueStation(v.ride.from, v.ride.dir || 1, 2), st = g.rail.stations.find(o => o.id === v.ride.from);
+        if (car) {
+          g.boardRail(car, st);
+          for (let t = 0; t < (v.ride.run ?? 40); t += 0.5) g.advance(0.5);
+          Object.assign(g.cam, { mode: v.ride.view || 'chase', lookYaw: v.ride.look || 0, lookPitch: v.pitch ?? -0.04, yaw: car.h + (v.yaw ?? 0.9), pitch: v.pitch ?? 0.25, dist: v.dist ?? 30, distTo: 0, yawTo: null, lastInput: -10 });
+          g.advance(0.3);
+        }
       }
       // "ferry": {to: a wharf's id, at: 0..1} aboard the first vessel that calls there, that far along its leg to it
       // (Queenstown's Earnslaw on the lake past the frame); "yaw" turns the chase camera off her heading (radians)
@@ -187,21 +255,119 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       }
       // "hide": [mesh names] not drawn, to see what shows through (a gap in a landmark)
       for (const n of v.hide || []) { const o = g.Wd.world.getObjectByName(n); if (o) o.visible = false; }
+      // "js": run with g = window.__game before the frame (the railway at a second of its timetable:
+      // "g.trains.t = 131; g.trains.update(0, g.camera)")
+      if (v.js) new Function('g', v.js)(g);
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
+        // "apart": metres. The world runs on until nobody in the crowd is that near the eye
+        // (a face filling the frame), and no car within twice that (a bonnet across it)
+        if (v.apart) for (let i = 0; i < 80 && (g.crowd.P.some(o => o.line >= 0 && Math.hypot(o.x - v.eye[0], o.y - v.eye[1]) < v.apart)
+          || ((g.cars && g.cars.C) || []).some(c => Number.isFinite(c.x) && Math.hypot(c.x - v.eye[0], c.y - v.eye[1]) < 2 * v.apart)); i++) g.advance(0.5);
+        // with a plush, the town's characters near the lens step out of the picture too (they do not walk off
+        // on their own as the crowd does): a stranger at the frame's edge takes the picture from the toy
+        // and anyone in the crowd still there (stood chatting, or waiting) is sent off to walk in from further away
+        // and the cars within 30 m (stopped at a light they would stay, a bonnet facing the toy): off their lanes,
+        // which the traffic draws as nothing
+        if (v.plush && g.cars && g.cars.C) for (const c of g.cars.C) if (c.line >= 0 && Number.isFinite(c.x) && Math.hypot(c.x - v.eye[0], c.y - v.eye[1]) < (v.plush.clearCars ?? 30)) c.line = -1;
+        if (v.plush) { let k = 0; for (const o of g.crowd.P) if (o.line >= 0 && Math.hypot(o.x - v.eye[0], o.y - v.eye[1]) < v.apart) { o.line = -1; k++; } if (k) g.advance(0.2); }
+        if (v.plush) for (const n of g.npcs || []) if (n.rig && Math.hypot(n.x - v.eye[0], n.y - v.eye[1]) < (v.plush.clearNpc ?? 40)) { n.rig.root.visible = false; (window.__plushHid = window.__plushHid || []).push(n.rig.root); }
         g.photoMode(true);
         // (a 2-element eye, [x, y], stands it eyeUp metres, 1.6 by default, over where you stand)
         const ez = v.eye.length > 2 ? v.eye[2] : g.player.z + (v.eyeUp ?? 1.6);
-        const P = g.photo, lz = v.lookZ ?? (g.player.z + 1.2), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = ez - lz, d = Math.hypot(dx, dy);
+        const P = g.photo, lz = v.lookZ ?? (g.player.z + (v.lookUp ?? 1.2)), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = ez - lz, d = Math.hypot(dx, dy);
         P.focus.set(v.look[0], lz, -v.look[1]); P.anchor.copy(P.focus);
         Object.assign(P, { az: Math.atan2(dx, dy), pitch: Math.atan2(h, d), dist: Math.hypot(d, h) });
         if (v.fov) P.fov = v.fov;
         P.fstop = v.fstop ?? 16; // (photo mode's depth of field: sharp unless a still asks for it)
         g.player.rig.root.visible = false;
         g.advance(0.1);
+        // "plush": the traveller in the picture (tools/plush.js). As in Travel Frog's photographs it is in the
+        // place, not held up to the lens: sat on the surface drawn there a metre or two ahead, on one side third
+        // ("side": -1 left, 1 right), turned towards what the view looks at and a little round towards the lens
+        // ("turn", 0..1: 0 its back to us), casting its shadow, in focus. "mode": "held" holds it up an arm's
+        // length from the lens instead, its back to us, looking out at the view (from a deck, a lookout, under a
+        // tower). Placed once photo mode has the camera where the still is taken from (below, before the grab).
+        if (v.plush) {
+          const T = window.THREE, q = v.plush;
+          window.__plushes = window.__plushes || {};
+          const key = q.kind + (q.scarf || '');
+          window.__plushes[key] = window.__plushes[key] || window.OEPlush.build(q.kind, q.scarf ? { scarf: q.scarf } : {});
+          window.__plushPlace = () => placePlush(g, T, v, q, window.__plushes[key]);
+        }
+      }
+      function placePlush(g, T, v, q, toy) {
+        const c = g.camera, side = q.side ?? 1, held = q.mode === 'held', W = g.Wd.world, fov = c.fov;
+        const Wv = (x, y, z) => new T.Vector3(x, z, -y); // (the city's frame, x east, y north, z up, in three.js's)
+        let D;
+        toy.visible = false;
+        if (held) { // carried by the camera (put in the scene for it)
+          D = q.dist ?? 0.65;
+          if (!c.parent) W.add(c);
+          const half = D * Math.tan(fov * Math.PI / 360);
+          toy.position.set(side * half * c.aspect * (q.x ?? 0.42), half * (q.y ?? -0.42), -D);
+          toy.quaternion.setFromEuler(new T.Euler(-0.05, Math.PI + side * (q.turn ?? 0.55), side * (q.tilt ?? 0.1), 'YXZ')); // (its back to us, a cheek round)
+          if (toy.parent !== c) c.add(toy);
+        } else {
+          // the still's own camera, as photo mode holds it now (it can stand higher than asked, clear of a slope),
+          // at the still's 3:2
+          const cam = c.clone(); cam.aspect = 960 / 640; cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+          const dir = cam.getWorldDirection(new T.Vector3()), fl = Math.hypot(dir.x, dir.z), fx = dir.x / fl, fy = -dir.z / fl;
+          const camX = cam.position.x, camY = -cam.position.z, eyeGround = g.player.z, rc = new T.Raycaster(); rc.camera = c;
+          // a place d metres ahead on its side third, on the surface drawn there (a ray down from a metre over the
+          // photographer's feet: the paving, a step, a kerb; the walking floor can lie under what is drawn; a
+          // surface well off the walking floor is something passing, a car or a leaf: the floor then)
+          const seat = d => {
+            const lat = d * Math.tan(fov * Math.PI / 360) * (960 / 640) * (q.x ?? 0.36) * side;
+            const x = camX + fx * d + fy * lat, y = camY + fy * d - fx * lat; // (right of the view: (fy, -fx))
+            rc.set(Wv(x, y, eyeGround + 1.0), new T.Vector3(0, -1, 0)); rc.far = 4;
+            const hit = rc.intersectObjects(W.children, true).find(h => h.object.visible && h.object.isMesh && !h.object.isInstancedMesh && !(h.object.material && h.object.material.transparent));
+            const f = g.nav.floorAt(x, y, eyeGround + 0.6), fz = f ? f.z : g.nav.terrain(x, y), floor = hit && Math.abs(hit.point.y - fz) < 0.6 ? hit.point.y : fz;
+            return { x, y, z: floor + (q.lift ?? 0) + 1.75 * window.OEPlush.R }; // (its seat on the floor)
+          };
+          // as far ahead as puts its middle "y" (0.62) of the way from the frame's middle to its foot, whatever the
+          // camera's tilt and the ground's slope: tried every 10 cm from 0.8 m, no further than "far" (2 m: further
+          // off a toy is a speck) unless only further keeps it in the frame
+          let best = null;
+          if (q.dist) best = seat(q.dist);
+          else for (let d = 0.8; d <= 3.5 + 1e-6; d += 0.1) {
+            const p = seat(d), ndc = Wv(p.x, p.y, p.z).project(cam);
+            const e = Math.abs(ndc.y + (q.y ?? 0.62)) + (d > (q.far ?? 2) ? 0.5 + d : 0) + (ndc.y < -0.8 ? 10 : 0);
+            if (!best || e < best.e) best = Object.assign(p, { e });
+          }
+          // no place on the ground within reach keeps it in the frame (a view tilted up at signs or a tall
+          // front): held up to the view instead
+          if (!q.dist && best.e >= 0.5) return placePlush(g, T, v, Object.assign({}, q, { mode: 'held' }), toy);
+          const { x, y, z } = best;
+          toy.position.copy(Wv(x, y, z));
+          // turned towards the view's subject, and round towards the lens by "turn"
+          const toL = new T.Vector2(v.look[0] - x, v.look[1] - y).normalize(), toC = new T.Vector2(camX - x, camY - y).normalize();
+          const t = q.turn ?? 0.45, d = toL.multiplyScalar(1 - t).add(toC.multiplyScalar(t)).normalize();
+          toy.lookAt(Wv(x + d.x, y + d.y, z));
+          toy.rotateZ(-side * (q.tilt ?? 0.08));
+          if (toy.parent !== W) W.add(toy);
+          D = cam.position.distanceTo(toy.position);
+        }
+        // the light the place throws back on it: the frame's own mean colour (the street, the torii, the water),
+        // half of it, as a soft bounce over its albedo; and after dark a little light of its own, as from a lamp
+        // or a phone, so that it is not a silhouette
+        const k2 = document.createElement('canvas'); k2.width = 32; k2.height = 20;
+        const x2 = k2.getContext('2d'); x2.drawImage(document.getElementById('game-gl'), 0, 0, 32, 20);
+        const px = x2.getImageData(0, 0, 32, 20).data, lin = n => Math.pow(n / 255, 2.2), avg = [0, 0, 0];
+        for (let i = 0; i < px.length; i += 4) for (let j = 0; j < 3; j++) avg[j] += lin(px[i + j]) / (px.length / 4);
+        const lum = 0.2126 * avg[0] + 0.7152 * avg[1] + 0.0722 * avg[2];
+        const bounce = new T.Color(avg[0], avg[1], avg[2]).lerp(new T.Color(lum, lum, lum), 0.5).multiplyScalar(q.bounce ?? (held ? 0.45 : 0.25)).add(new T.Color(q.glow ?? 0, q.glow ?? 0, q.glow ?? 0));
+        toy.traverse(o => { if (o.isMesh && o.material.userData.plush) { o.material.emissive = o.material.color.clone().multiply(bounce); o.material.emissiveIntensity = 1; } });
+        toy.visible = true;
+        // the lens focused on it
+        if (!g.atmos.__plushFx) { const fx = g.atmos.camFx.bind(g.atmos); g.atmos.camFx = o => fx(window.__plushFx || o); g.atmos.__plushFx = true; }
+        const f = 0.012 / Math.tan(fov * Math.PI / 360), N = q.fstop ?? (held ? 5.6 : 4);
+        window.__plushFx = { focus: D, aperture: f * f / (N * Math.max(0.05, D - f)) / 0.024, fresh: true };
       }
     }, v);
-    await (v.closer ? grabPage : grab)(v.name);
+    // the plush traveller, once photo mode has the camera where the still is taken from (a few frames on)
+    await p.evaluate(async () => { if (!window.__plushPlace) return; for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(r)); window.__plushPlace(); window.__plushPlace = null; });
+    await (v.closer || v.page ? grabPage : grab)(v.name); // ("page": the page with its HUD, not the canvas alone)
     // "pick": [[u, v], ...] points on the frame (0..1 from its top left): what the camera sees there, printed
     // (the mesh's name, its material's, and where it is hit), to find which surface draws a fault in the still
     if (v.pick) console.log(JSON.stringify(await p.evaluate(pts => {
@@ -217,7 +383,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
     }, v.pick)));
     if (v.closer) await p.evaluate(() => window.__game.interact()); // (step back)
     if (v.lift) await p.evaluate(() => { const g = window.__game; g.hold(false); for (let i = 0; i < 400 && g.liftRide(); i++) g.advance(0.1); }); // (the ride run out)
-    if (v.eye) await p.evaluate(() => { window.__game.photoMode(false); window.__game.player.rig.root.visible = true; });
+    if (v.eye) await p.evaluate(() => { window.__game.photoMode(false); window.__game.player.rig.root.visible = true; window.__plushFx = null; for (const t of Object.values(window.__plushes || {})) t.visible = false; for (const r of window.__plushHid || []) r.visible = true; window.__plushHid = []; });
   }
   if (logs.length) console.log(logs.slice(0, 20).join('\n'));
   await b.close();

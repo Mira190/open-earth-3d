@@ -54,6 +54,13 @@
     "lake-tekapo": {
       "hook": "A little stone church on the turquoise shore, under the stars"
     },
+    "milford-sound": {
+      "hook": "A ship under mile-high walls, a waterfall straight into the sea",
+      "line": "The fiord Kipling called the eighth wonder: Mitre Peak rising 1,690 m straight from the water, rainforest clinging to the rock, and falls that never stop.",
+      "spots": [["Mitre Peak", "1,690 m straight out of the fiord"], ["Stirling Falls", "151 m into the sea, a rainbow in its spray"], ["The Piopiotahi", "Ride the ship out to the Tasman Sea"]],
+      "local": ["Local", "Rata in flower at Christmas, a rainbow in the spray of Stirling Falls, and gulls behind the boat."],
+      "best": ["Morning", "glassy water"]
+    },
     "new-york": {
       "line": "The city that never sleeps: Lower Manhattan's canyons, the Statue of Liberty across the harbour, and a slice at midnight."
     },
@@ -97,7 +104,7 @@
         "Harajuku": { "line": "Crepes and street fashion on Takeshita Street, and the hush of Meiji Jingu's forest next door.", "spots": ["Takeshita Street", "Meiji Jingu", "Yoyogi Park"] },
         "Shinjuku": { "line": "Neon Kabukicho, Golden Gai's six-seat bars, and the towers of Nishi-Shinjuku lit up at night.", "spots": ["Kabukicho", "Golden Gai", "Shinjuku Gyoen"] },
         "Yotsuya": { "line": "Quiet backstreets, a ginkgo avenue turning gold, and the Suga Shrine stairs from Your Name.", "spots": ["Suga Shrine stairs", "Ginkgo avenue", "Jingu Gaien"] },
-        "Sangen-jaya": { "line": "Old izakaya alleys in the Sankaku Chitai, a corner bathhouse, and the Tokyo the tour buses miss.", "spots": ["Sankaku Chitai", "Carrot Tower", "Setagaya Line"] },
+        "Sangenjaya": { "line": "Old izakaya alleys in the Sankaku Chitai, a corner bathhouse, and the Tokyo the tour buses miss.", "spots": ["Sankaku Chitai", "Carrot Tower", "Setagaya Line"] },
         "Akihabara": { "line": "Electric Town: arcades stacked six floors high, anime shops and maid cafés under the neon.", "spots": ["Arcades", "Chuo-dori", "Kanda Myojin"] },
         "Asakusa": { "line": "Old Edo: the Thunder Gate's great red lantern, incense smoke at Senso-ji, and rice crackers fresh off the grill.", "spots": ["Kaminarimon", "Senso-ji", "Nakamise"] },
         "Oshiage · Skytree": { "line": "Tokyo Skytree, 634 m, the tallest tower in the world, rising over the Sumida River.", "spots": ["Skytree", "Tembo Deck", "Sumida River"] },

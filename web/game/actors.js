@@ -1301,6 +1301,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         p.gw = held ? (p.gw || 0) + dt : 0;
         if (held) atKerb = true;
       }
+      // a level crossing's alarm sounding ahead (rail.js gateAhead, set as api.gate by the game): up to its line and
+      // wait there, as at a kerb; someone between the gates when it starts walks on out
+      if (api.gate) { const g = api.gate(p.x, p.y, hx, hy); if (g != null) { atKerb = true; cap = Math.min(cap, g * 1.5); } }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
       // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
       if (atKerb) p.kw = (p.kw || 0) + dt;
@@ -1470,8 +1473,6 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
                        // limits are the signs': 30 km/h on a side street reads as a crawl in play); a ride's route,
                        // its time and how it passes a queue stay on the limits (cars.js chauffeur)
   const BUS_A = 1.6, BEND_B = 2.2, BEND_W = 6; // the sideways pull a bus takes a bend with (m/s²), how hard it brakes for one ahead, and how far either side it reads a bend (m)
-  const CAR_A = 3.5, CAR_R = 25; // and a car's (#317: about 19 km/h round a junction's corner, as a ride's driver takes it), on a bend of radius under CAR_R (m) only
-  const CAR_BEND = typeof window === 'undefined' || window.__carBend !== false; // (window.__carBend = false: the cars keep their speed round bends, for an A/B)
   const STUCK = 20;    // seconds stopped behind a car that won't move (not queueing at a junction) before turning round
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
@@ -1530,10 +1531,15 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, ln: 0, lo: 0, half: 2.2, hw: 0.98, top: 1.5, stuck: 0, hex });
       }
     }
-    const at = new THREE.Vector3(), qSpring = new THREE.Quaternion(), eSpring = new THREE.Euler();
+    // (issue 352: a car out of the eye's sight by more than its shadow reaches back into it, 30 m, takes no slot,
+    // so it is not drawn into the view or the shadow map; and only the slots taken are sent to the GPU)
+    const at = new THREE.Vector3(), qSpring = new THREE.Quaternion(), eSpring = new THREE.Euler(), frustum = new THREE.Frustum(), fm = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), eyeAt = new THREE.Vector3(1e9, 0, 0);
+    let culling = false;
+    const sendRange = (a, n) => { if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, n * a.itemSize); } a.needsUpdate = true; };
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
       if (!fleet) { mesh.setMatrixAt(i, m4); return; }
       const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
+      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 3.6, 3.6)))) return; // (or behind the street wall: visibility.js; 3.6 m: a bus)
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);
@@ -2014,6 +2020,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     const live = [];
     const VIEW = ['line', 's', 'dir', 'x', 'y', 'z', 'h', 'v', 'half', 'hw', 'top', 'taxi', 'hex', 'why', 'youBy', 'heldBy', 'still', 'stuck', 'q', 'toLine', 'lineArm', 'lineEx', 'mv', 'front', 'rev'];
     const api = { mesh, fleet, C, live, VIEW, slots: C.length, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [], honks: [], stop: c => { c.v = 0; } };
+    const centreAt = [0, 0]; // (where the traffic was last centred: unjam's respawn)
     // who goes first where two cars' ways meet (car c's way comes into o's box d metres ahead of its
     // bumper, and o's into c's d2 ahead): read the same way by both, so that one goes and the other
     // waits and never both. A car that can no longer stop short of the place goes; then the one in
@@ -2045,6 +2052,15 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
     // in it, or still moving within r of its node, comes back elsewhere, out past r, rather than being
     // caught in the box by the crowd stepping off the kerbs
+    // a car that holds a driver up for good (game.js, the chauffeur at a jam that no light explains): it backs out to
+    // the junction behind if it can, as from a narrow street; one that cannot (in a junction's box, a car behind it)
+    // leaves the traffic and comes back elsewhere, as does one asked a second time
+    api.unjam = (c, hard) => { // (hard: asked before, and it stands there yet)
+      if (!c || c.line < 0 || c.park || !C.includes(c)) return '';
+      if (!hard && reverse(c)) return 'backs out';
+      respawn(c, centreAt[0], centreAt[1], radius * 0.6);
+      return 'gone';
+    };
     api.clearBox = (x, y, r) => {
       let k = 0;
       for (const c of C) {
@@ -2166,7 +2182,8 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
       // (clear behind, or backing away from the one it is up against: a car ahead within its margins, backing out too, held
       // the one behind it, which held it in turn, each "held by" the other, Sydney's piece 1192, #317)
-      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0;
+      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0
+        && !bk.rev; // (never one backing out too: at the end of its piece, turning out of it, the one in front of it read as ahead, and backed 0.65 m into it, Kyoto's piece 739)
       if ((bd === 0 || away) && peopleIn(c, tmp.x - hx0 * 0.3, tmp.y - hy0 * 0.3, hx0, hy0) === 0) {
         R.d += Math.abs(sb - c.s); R.v = v; R.wait = 0;
         c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp);
@@ -2234,10 +2251,14 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       return d < 12 || (d < 200 && (h < 0.3 ? d < 150 : (dx * look.x - dy * look.z) / (d * h) > 0.3)); // (sim y is -z)
     }
     function update(dt0, cx, cy, t, blockers) {
+      centreAt[0] = cx; centreAt[1] = cy;
       const dt = dt0;
       tick++;
       if (eye) eye.getWorldDirection(look);
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
+      // the eye's frustum as it was last drawn, to leave out the cars it cannot see; not across a cut
+      culling = !!(fleet && eye && eye.isCamera && eye.position.distanceToSquared(eyeAt) < 400);
+      if (fleet && eye && eye.isCamera) { eyeAt.copy(eye.position); frustum.setFromProjectionMatrix(fm.multiplyMatrices(eye.projectionMatrix, eye.matrixWorldInverse), eye.coordinateSystem, eye.reversedDepth); }
       head.fill(-1); bhead.fill(-1); nb = 0;
       for (const a of onLine.values()) a.length = 0;
       live.length = 0;
@@ -2400,32 +2421,27 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
             Q[2 * nq] = pt[b3 - 3] + (pt[b3] - pt[b3 - 3]) * tt; Q[2 * nq + 1] = pt[b3 - 2] + (pt[b3 + 1] - pt[b3 - 2]) * tt; pathZ[nq] = pt[b3 - 1] + (pt[b3 + 2] - pt[b3 - 1]) * tt; nq++;
             si += di * step;
           }
-          // the speed a bus or a car can take the bends of its way at (#283, #317), from its middle on (a bend between its
-          // middle and its bumper is one it is still going round): round each, no more than BUS_A (a bus) or CAR_A (a car)
-          // of sideways pull, braking for it in time at BEND_B, and out of one gathering speed gently. Both took a junction's
-          // corner at their full 50 km/h. (Slowed so at first, the queues at the lights grew and Shinjuku's taxi came in
-          // 50 s, not 10; with the junctions' rules since, measured A/B in Shinjuku (tools/traffic_check.js, two places of
-          // 150 s), the cars stood 21% and 20% of the time against 23% and 19%, jammed 2.6% against 3.1%, waited at a red
-          // 5.3 s against 5.7 s on average)
+          // the speed a bus can take the bends of its way at (#283), from its middle on (a bend between its middle and
+          // its bumper is one it is still going round): round each, no more than BUS_A of sideways pull, braking for it
+          // in time at BEND_B, and out of one gathering speed gently. It took a junction's corner at its full 50 km/h,
+          // its heading swinging 15 degrees in a tenth of a second (tools/bus_turn.js). (The cars keep their speed
+          // round a corner for now: slowed so, the queues at the lights grew and a taxi in Shinjuku came in 50 s,
+          // not 10; the junctions' timings want tuning to it first)
           {
             // (the turn read over BEND_W either side: the roads' lines meet at sharp corners, and read over a step or two a
             // corner of 30 degrees between two pieces was a tight bend, the traffic crawling through every junction)
-            const aLat = c.half > LONG_V ? BUS_A : CAR_A, kc = Math.round(Math.abs(c.s - sb) / step), w = Math.max(2, Math.round(BEND_W / step));
+            const aLat = BUS_A, kc = Math.round(Math.abs(c.s - sb) / step), w = Math.max(2, Math.round(BEND_W / step));
             let vb = Infinity;
-            const bendNow = c.half > LONG_V || (CAR_BEND && ((tick + i) & 3) === 0); // (a car's read every fourth frame, a bus's every frame: 1.2 ms a frame for 200 cars read every frame)
-            if (bendNow) for (let k = Math.max(w, kc); k + w < nq; k++) {
+            if (c.half > LONG_V) for (let k = Math.max(w, kc); k + w < nq; k++) {
               const h0 = Math.atan2(Q[2 * k] - Q[2 * (k - w)], Q[2 * k + 1] - Q[2 * (k - w) + 1]), h1 = Math.atan2(Q[2 * (k + w)] - Q[2 * k], Q[2 * (k + w) + 1] - Q[2 * k + 1]);
               let tk = h1 - h0;
               tk = Math.abs(tk > Math.PI ? tk - 2 * Math.PI : tk < -Math.PI ? tk + 2 * Math.PI : tk);
               if (tk < 0.08) continue;
-              // (a car slows only for a bend tighter than CAR_R, a junction's corner, a hairpin: slowed for every gentle
-              // curve as well, its junctions' throughput fell and queues that had cleared in a green spilled back, #334)
-              if (c.half <= LONG_V && w * step / tk >= CAR_R) continue;
               const vk = Math.max(2, Math.sqrt(aLat * w * step / tk)), dk = Math.max(0, (k - kc) * step - c.half);
               const vc = Math.sqrt(vk * vk + 2 * BEND_B * dk);
               if (vc < vb) vb = vc;
             }
-            if (bendNow) c.vBend = Math.min(vb, (c.vBend ?? Infinity) + 1.5 * dt * (c.half > LONG_V ? 1 : 4));
+            c.vBend = Math.min(vb, (c.vBend ?? Infinity) + 1.5 * dt);
           }
           // offset into the lane by the direction over two steps either side; the first point kept is the front bumper
           const k0 = Math.round((Math.abs(c.s - sb) + c.half) / step);
@@ -2973,6 +2989,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
           if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
+          // (over 90 m off, on its second try, it comes back elsewhere, as a car stuck on a one-way street does there: in sight
+          // that far off, it neither backed out nor, out of view, came back elsewhere, and stood 114 s nose to nose at the
+          // mouth of Higashiyama's piece 126)
+          if (away && (c.narrowTries || 0) >= 1) { c.narrowTries = 0; respawn(c, cx, cy, radius * 0.6); continue; }
           // (no junction near enough behind it to back out to: the one it faces backs out instead, if it can. Turned round
           // where it stood, nose to nose with it, it would only have swung into it, and was held so: a car in Higashiyama
           // stood 46 s at a narrow stretch for one queued behind it, #331)
@@ -3203,8 +3223,8 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       }
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {
-        M.instanceMatrix.needsUpdate = true;
-        M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = M.geometry.attributes.aC3.needsUpdate = true;
+        if (!M.count) continue;
+        sendRange(M.instanceMatrix, M.count); sendRange(M.geometry.attributes.aC0, M.count); sendRange(M.geometry.attributes.aC1, M.count); sendRange(M.geometry.attributes.aC3, M.count);
       }
     }
     // the near and mid models, come after the far ones (vehicles.js loadCars, issue 335): each model's stand-ins

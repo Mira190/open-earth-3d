@@ -26,6 +26,7 @@
   "vertical_datum": "m T.P. (Tokyo Peil)",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
@@ -369,7 +370,7 @@
     }
   ],
   "game": {
-    "weather": {"rain_days": [8.1, 8.9, 11.2, 10.6, 10.8, 13.2, 12.6, 9.3, 11.1, 9.4, 7.4, 8.2], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "weather": {"rain_days": [8.1, 8.9, 11.2, 10.6, 10.8, 13.2, 12.6, 9.3, 11.1, 9.4, 7.4, 8.2], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm", "temp_max": [9.1, 10.0, 14.1, 20.1, 25.1, 28.1, 32.0, 33.7, 29.2, 23.4, 17.3, 11.6], "temp_min": [1.5, 1.6, 4.3, 9.2, 14.5, 19.2, 23.6, 24.7, 20.7, 14.4, 8.4, 3.5], "wind_ms": [1.7, 1.8, 2.0, 2.1, 2.1, 2.0, 1.9, 2.1, 1.9, 1.7, 1.5, 1.6], "wind_from_deg": 10, "snow_days": [16.3, 14.2, 6.8, 0.4, 0, 0, 0, 0, 0, 0, 0, 6.9], "thunder_days": [0.1, 0.1, 0.4, 1.1, 1.6, 1.7, 4.9, 5.1, 2.6, 1.0, 0.4, 0.5], "fog_days": [0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1], "typhoon_days": [0, 0, 0, 0, 0.1, 0.2, 0.4, 0.9, 1.0, 0.6, 0.1, 0], "more": "Kyoto: temperatures, wind, and days with snow (any solid precipitation seen, sleet and flurries among them), thunder and fog: the same JMA 1991-2020 table (data.jma.go.jp/stats/etrn/view/nml_sfc_ym.php), read November 2026. Its thunder and fog counts carry JMA's mark for a normal from incomplete observations."},
     "title": "Central Kyoto on Foot",
     "travel": [
       {
@@ -583,27 +584,77 @@
         ]
       }
     ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "temple",
+        "title": "The temple and the low city",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "market",
+        "title": "The market",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "castle",
+        "title": "The castle and the winter sun",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "temple",
+          "market",
+          "castle"
+        ],
+        "on_open": "<b>Every walk done.</b> Report back to Haruka at Kyoto Station, under the tower."
+      }
+    ],
     "quests": [
       {
         "id": "station",
+        "line": "start",
         "giver": "haruka",
         "title": "Welcome to Kyoto Station",
         "stamp": "Kyoto Station",
         "talk": [
           "Konnichiwa, welcome to Kyoto. I'm Haruka; I grew up two streets from the station. That's Kyoto Tower behind me: 131 m, and nothing else in the city comes close.",
-          "Start with Higashi Honganji, a short walk north: Brother Sozen will show you the great wooden hall. The helicopter is on the station plaza and taxis wait right here: a hand up at the kerb (Y).",
-          "WASD or the arrow keys to walk, Shift to run, drag to look around, E to talk. いってらっしゃい."
+          "Three walks, in any order. The temple and the low city: Brother Sozen, at Higashi Honganji just north of here. The market: Mrs. Nakamura, in Nishiki. The castle: Ken, at Nijo, and then a schoolgirl with a question about the winter sun.",
+          "The helicopter is on the station plaza and taxis wait right here: a hand up at the kerb (Y). WASD or the arrow keys to walk, Shift to run, drag to look around, E to talk. Where will you start? いってらっしゃい."
         ],
-        "steps": [
+        "steps": [],
+        "choices": [
           {
-            "type": "talk",
-            "npc": "sozen",
-            "text": "Meet Brother Sozen at Higashi Honganji"
+            "text": "The temple and the low city: Brother Sozen, at Higashi Honganji",
+            "action": "track",
+            "line": "temple"
+          },
+          {
+            "text": "The market: Mrs. Nakamura, in Nishiki",
+            "action": "track",
+            "line": "market"
+          },
+          {
+            "text": "The castle: Ken, at Nijo Castle",
+            "action": "track",
+            "line": "castle"
           }
         ]
       },
       {
         "id": "hall",
+        "line": "temple",
         "giver": "sozen",
         "title": "The wooden hall",
         "stamp": "Higashi Honganji",
@@ -621,6 +672,7 @@
       },
       {
         "id": "low",
+        "line": "temple",
         "giver": "tanaka",
         "title": "A city that stays low",
         "stamp": "Karasuma-Shijo",
@@ -630,28 +682,40 @@
           "Go and eat something at Nishiki Market, a few blocks east. Mrs. Nakamura will feed you."
         ],
         "steps": [
-          {"type": "talk", "npc": "obaasan", "text": "Find Mrs. Nakamura in Nishiki Market"}
+          {
+            "type": "talk",
+            "npc": "obaasan",
+            "text": "Find Mrs. Nakamura in Nishiki Market"
+          }
         ]
       },
       {
         "id": "market",
+        "line": "market",
         "giver": "obaasan",
         "title": "Eel's beds",
         "stamp": "Nishiki Market",
         "talk": [
           "Ah, a hungry one! Try a pickle. Look how narrow the shops are: three or four metres wide, and very deep. That is how Kyoto was taxed, by the width of your front.",
-          "Ken at Nijo Castle knows even older things. Go west and north, past the Imperial Gardens' south side, and tell him I sent you."
+          "We shut at about six. Come back after dark, when the shutters are down: they have Jakuchu's paintings on them, cockerels and vegetables. He was a greengrocer's son from this very street."
         ],
         "steps": [
           {
-            "type": "talk",
-            "npc": "ken",
-            "text": "Walk to Ken at Nijo Castle"
+            "type": "visit",
+            "at": [
+              192.0,
+              248.0
+            ],
+            "radius": 70,
+            "after_dark": true,
+            "text": "Walk Nishiki Market after dark, when the shutters are down"
           }
-        ]
+        ],
+        "check": true
       },
       {
         "id": "castle",
+        "line": "castle",
         "giver": "ken",
         "title": "Nightingale floors",
         "stamp": "Nijo Castle",
@@ -669,6 +733,7 @@
       },
       {
         "id": "sun",
+        "line": "castle",
         "giver": "yui",
         "title": "A place in the sun",
         "stamp": "Kyoto Imperial Gardens",
@@ -709,12 +774,13 @@
       },
       {
         "id": "done",
-        "giver": "yui",
+        "line": "finale",
+        "giver": "haruka",
         "title": "From the station to the Palace",
         "stamp": "京都 Kyoto",
         "talk": [
-          "Arigato! That's Kyoto, from the station to the Palace.",
-          "Take the helicopter from Kyoto Gyoen if you want to see how flat it really is: the streets still keep the grid of 794.",
+          "おかえりやす, welcome back. A wooden hall, a pickle, a castle and a patch of winter sun on the Palace gravel: that's Kyoto, from the station to the Palace.",
+          "Take the helicopter from the station plaza if you want to see how flat it really is: the streets still keep the grid of 794.",
           "The city is yours. Change the time of day, or fly anywhere."
         ],
         "steps": []

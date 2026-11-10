@@ -31,7 +31,12 @@
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 18,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)",
+    "soften": {
+      "sigma_m": 6.0,
+      "keep": 0.15,
+      "note": "Draped on these hillsides the photograph's crowns, shadows and leaning roofs read as dirt from eye level. Off the buildings and roads the ground keeps its colour over 6 m and 15% of its detail (pipeline/aerial_clean.py soften)."
+    }
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -93,7 +98,736 @@
       "block_m": 1.2,
       "high_water_m": 0.8,
       "note": "Route 134's sea wall and Koshigoe harbour's quays: concrete."
-    }
+    },
+    "sand": [
+      {
+        "ring": [
+          [
+            139.490974,
+            35.307964
+          ],
+          [
+            139.490878,
+            35.308104
+          ],
+          [
+            139.490984,
+            35.308191
+          ],
+          [
+            139.49129,
+            35.308171
+          ],
+          [
+            139.491441,
+            35.308239
+          ],
+          [
+            139.491564,
+            35.308194
+          ],
+          [
+            139.491785,
+            35.308217
+          ],
+          [
+            139.492014,
+            35.308374
+          ],
+          [
+            139.49229,
+            35.308278
+          ],
+          [
+            139.492502,
+            35.308117
+          ],
+          [
+            139.492497,
+            35.308028
+          ],
+          [
+            139.492408,
+            35.307964
+          ],
+          [
+            139.490974,
+            35.307964
+          ]
+        ],
+        "area_m2": 4253
+      },
+      {
+        "ring": [
+          [
+            139.487318,
+            35.307964
+          ],
+          [
+            139.487222,
+            35.308081
+          ],
+          [
+            139.487317,
+            35.308163
+          ],
+          [
+            139.487469,
+            35.308171
+          ],
+          [
+            139.487593,
+            35.308239
+          ],
+          [
+            139.488404,
+            35.308216
+          ],
+          [
+            139.488696,
+            35.308261
+          ],
+          [
+            139.48909,
+            35.308215
+          ],
+          [
+            139.489214,
+            35.308118
+          ],
+          [
+            139.489365,
+            35.30817
+          ],
+          [
+            139.489478,
+            35.308068
+          ],
+          [
+            139.489379,
+            35.307964
+          ],
+          [
+            139.489214,
+            35.307994
+          ],
+          [
+            139.48916,
+            35.307964
+          ],
+          [
+            139.487318,
+            35.307964
+          ]
+        ],
+        "area_m2": 5384
+      },
+      {
+        "ring": [
+          [
+            139.486147,
+            35.307594
+          ],
+          [
+            139.486757,
+            35.30783
+          ],
+          [
+            139.486839,
+            35.307755
+          ],
+          [
+            139.486836,
+            35.307332
+          ],
+          [
+            139.486702,
+            35.307245
+          ],
+          [
+            139.486286,
+            35.307109
+          ],
+          [
+            139.486174,
+            35.30711
+          ],
+          [
+            139.486147,
+            35.307594
+          ]
+        ],
+        "area_m2": 3671
+      },
+      {
+        "ring": [
+          [
+            139.494729,
+            35.305978
+          ],
+          [
+            139.494624,
+            35.306288
+          ],
+          [
+            139.49492,
+            35.30648
+          ],
+          [
+            139.495167,
+            35.306482
+          ],
+          [
+            139.495258,
+            35.306527
+          ],
+          [
+            139.495799,
+            35.306527
+          ],
+          [
+            139.495858,
+            35.306571
+          ],
+          [
+            139.496129,
+            35.306572
+          ],
+          [
+            139.496298,
+            35.306639
+          ],
+          [
+            139.496981,
+            35.306685
+          ],
+          [
+            139.497072,
+            35.30673
+          ],
+          [
+            139.497493,
+            35.30673
+          ],
+          [
+            139.497805,
+            35.30664
+          ],
+          [
+            139.498318,
+            35.30664
+          ],
+          [
+            139.498739,
+            35.30655
+          ],
+          [
+            139.501369,
+            35.306505
+          ],
+          [
+            139.503,
+            35.306302
+          ],
+          [
+            139.504365,
+            35.306189
+          ],
+          [
+            139.505501,
+            35.306032
+          ],
+          [
+            139.505964,
+            35.306031
+          ],
+          [
+            139.506546,
+            35.305897
+          ],
+          [
+            139.506738,
+            35.305895
+          ],
+          [
+            139.506821,
+            35.305829
+          ],
+          [
+            139.506958,
+            35.305827
+          ],
+          [
+            139.507673,
+            35.305626
+          ],
+          [
+            139.507916,
+            35.305625
+          ],
+          [
+            139.50803,
+            35.305559
+          ],
+          [
+            139.508273,
+            35.305558
+          ],
+          [
+            139.5088,
+            35.305446
+          ],
+          [
+            139.509148,
+            35.305468
+          ],
+          [
+            139.509707,
+            35.305356
+          ],
+          [
+            139.510087,
+            35.305355
+          ],
+          [
+            139.510147,
+            35.305311
+          ],
+          [
+            139.510285,
+            35.305311
+          ],
+          [
+            139.510445,
+            35.3054
+          ],
+          [
+            139.510999,
+            35.304928
+          ],
+          [
+            139.511686,
+            35.304813
+          ],
+          [
+            139.512243,
+            35.304653
+          ],
+          [
+            139.512321,
+            35.30455
+          ],
+          [
+            139.51224,
+            35.304475
+          ],
+          [
+            139.512058,
+            35.304472
+          ],
+          [
+            139.510867,
+            35.304586
+          ],
+          [
+            139.510443,
+            35.304702
+          ],
+          [
+            139.510312,
+            35.304812
+          ],
+          [
+            139.510176,
+            35.304767
+          ],
+          [
+            139.509928,
+            35.304878
+          ],
+          [
+            139.509461,
+            35.304991
+          ],
+          [
+            139.507734,
+            35.305172
+          ],
+          [
+            139.507427,
+            35.305261
+          ],
+          [
+            139.506547,
+            35.305398
+          ],
+          [
+            139.505915,
+            35.305577
+          ],
+          [
+            139.50548,
+            35.305577
+          ],
+          [
+            139.50465,
+            35.305802
+          ],
+          [
+            139.503743,
+            35.305937
+          ],
+          [
+            139.502153,
+            35.30605
+          ],
+          [
+            139.501599,
+            35.306185
+          ],
+          [
+            139.499161,
+            35.306253
+          ],
+          [
+            139.497421,
+            35.306433
+          ],
+          [
+            139.496458,
+            35.306432
+          ],
+          [
+            139.495656,
+            35.306208
+          ],
+          [
+            139.495138,
+            35.306207
+          ],
+          [
+            139.494949,
+            35.306052
+          ],
+          [
+            139.494939,
+            35.305972
+          ],
+          [
+            139.494823,
+            35.305914
+          ],
+          [
+            139.494729,
+            35.305978
+          ]
+        ],
+        "area_m2": 63647
+      },
+      {
+        "ring": [
+          [
+            139.51482,
+            35.303753
+          ],
+          [
+            139.514792,
+            35.30382
+          ],
+          [
+            139.514876,
+            35.303889
+          ],
+          [
+            139.515013,
+            35.303868
+          ],
+          [
+            139.515471,
+            35.303936
+          ],
+          [
+            139.515754,
+            35.303823
+          ],
+          [
+            139.516304,
+            35.303731
+          ],
+          [
+            139.516661,
+            35.30362
+          ],
+          [
+            139.517564,
+            35.303529
+          ],
+          [
+            139.517651,
+            35.303485
+          ],
+          [
+            139.517949,
+            35.303484
+          ],
+          [
+            139.518833,
+            35.303305
+          ],
+          [
+            139.519768,
+            35.303237
+          ],
+          [
+            139.520318,
+            35.303282
+          ],
+          [
+            139.520371,
+            35.303325
+          ],
+          [
+            139.520262,
+            35.303459
+          ],
+          [
+            139.520458,
+            35.303894
+          ],
+          [
+            139.520588,
+            35.303957
+          ],
+          [
+            139.520678,
+            35.303877
+          ],
+          [
+            139.520568,
+            35.303393
+          ],
+          [
+            139.52062,
+            35.303327
+          ],
+          [
+            139.521353,
+            35.303372
+          ],
+          [
+            139.521555,
+            35.30328
+          ],
+          [
+            139.521717,
+            35.303369
+          ],
+          [
+            139.52182,
+            35.303372
+          ],
+          [
+            139.522049,
+            35.303304
+          ],
+          [
+            139.522429,
+            35.303304
+          ],
+          [
+            139.522489,
+            35.303259
+          ],
+          [
+            139.523285,
+            35.303145
+          ],
+          [
+            139.523918,
+            35.302966
+          ],
+          [
+            139.524137,
+            35.302964
+          ],
+          [
+            139.524273,
+            35.302857
+          ],
+          [
+            139.524251,
+            35.302715
+          ],
+          [
+            139.524383,
+            35.302609
+          ],
+          [
+            139.52447,
+            35.302405
+          ],
+          [
+            139.524313,
+            35.302308
+          ],
+          [
+            139.523939,
+            35.302448
+          ],
+          [
+            139.523813,
+            35.302527
+          ],
+          [
+            139.523815,
+            35.302615
+          ],
+          [
+            139.523727,
+            35.302691
+          ],
+          [
+            139.523397,
+            35.302871
+          ],
+          [
+            139.522984,
+            35.302984
+          ],
+          [
+            139.52205,
+            35.303097
+          ],
+          [
+            139.521619,
+            35.303075
+          ],
+          [
+            139.521527,
+            35.303121
+          ],
+          [
+            139.519475,
+            35.30303
+          ],
+          [
+            139.518866,
+            35.303098
+          ],
+          [
+            139.518586,
+            35.303188
+          ],
+          [
+            139.518261,
+            35.303188
+          ],
+          [
+            139.517899,
+            35.3033
+          ],
+          [
+            139.51664,
+            35.303369
+          ],
+          [
+            139.51559,
+            35.303593
+          ],
+          [
+            139.515426,
+            35.303595
+          ],
+          [
+            139.515178,
+            35.303684
+          ],
+          [
+            139.514959,
+            35.303685
+          ],
+          [
+            139.51482,
+            35.303753
+          ]
+        ],
+        "area_m2": 25808
+      },
+      {
+        "ring": [
+          [
+            139.48615,
+            35.29828
+          ],
+          [
+            139.486172,
+            35.299469
+          ],
+          [
+            139.486496,
+            35.29951
+          ],
+          [
+            139.486589,
+            35.299431
+          ],
+          [
+            139.486704,
+            35.299155
+          ],
+          [
+            139.486798,
+            35.299082
+          ],
+          [
+            139.487774,
+            35.299381
+          ],
+          [
+            139.487908,
+            35.299319
+          ],
+          [
+            139.487995,
+            35.299151
+          ],
+          [
+            139.487986,
+            35.299054
+          ],
+          [
+            139.487886,
+            35.298976
+          ],
+          [
+            139.487196,
+            35.298792
+          ],
+          [
+            139.487115,
+            35.298727
+          ],
+          [
+            139.487199,
+            35.298648
+          ],
+          [
+            139.487121,
+            35.298526
+          ],
+          [
+            139.486225,
+            35.298252
+          ],
+          [
+            139.48615,
+            35.29828
+          ]
+        ],
+        "area_m2": 12500
+      }
+    ],
+    "sand_note": "Shichirigahama's and Koshigoe's beaches are not in the map's land cover, so they are outlined here from the laser terrain: the land under 4.2 m within 110 m of the sea, less Koshigoe harbour's quays. Without them the shore is drawn as a quay wall."
   },
   "storey": {
     "res": [
@@ -143,6 +877,7 @@
     ]
   },
   "game": {
+    "weather": {"rain_days": [5.7, 6.3, 11.0, 10.7, 11.1, 13.5, 12.0, 8.8, 12.7, 12.1, 8.6, 6.2], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Yokohama, for Kamakura: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm", "temp_max": [10.2, 10.8, 14.0, 18.9, 23.1, 25.5, 29.4, 31.0, 27.3, 22.0, 17.1, 12.5], "temp_min": [2.7, 3.1, 6.0, 10.7, 15.5, 19.1, 22.9, 24.3, 21.0, 15.7, 10.1, 5.2], "wind_ms": [3.6, 3.7, 3.9, 3.9, 3.6, 3.2, 3.4, 3.4, 3.4, 3.4, 3.3, 3.4], "wind_from_deg": 0, "snow_days": [4.9, 7.0, 3.4, 0.1, 0, 0, 0, 0, 0, 0, 0, 2.3], "snow_share": 0.3, "thunder_days": [0.2, 0.3, 0.9, 1.1, 1.5, 0.8, 2.0, 2.8, 2.3, 0.8, 0.6, 0.5], "fog_days": [0.1, 0.4, 0.6, 0.6, 0.3, 0.3, 0.2, 0.2, 0.2, 0.3, 0.7, 0.1], "typhoon_days": [0, 0, 0, 0, 0.1, 0.2, 0.4, 0.9, 1.0, 0.6, 0.1, 0], "more": "Yokohama, for Kamakura: temperatures, wind, and days with snow (any solid precipitation seen, sleet and flurries among them), thunder and fog: the same JMA 1991-2020 table (data.jma.go.jp/stats/etrn/view/nml_sfc_ym.php), read November 2026. The wind's bearing is the commonest of the year (north; south-west from June to August). A smaller share of its snow days bring snow that falls as snow (snow_share): the coast is milder than the station."},
     "title": "Shichirigahama on Foot",
     "local_name": "Kamakura local",
     "water_name": "Sagami Bay",
@@ -189,11 +924,15 @@
     "travel": [
       {
         "id": "t-crossing",
-        "name": "The Kamakurakokomae crossing 鎌倉高校前1号踏切",
+        "name": "The Kamakurakokomae crossing, from up the hill 鎌倉高校前1号踏切",
         "at": [
-          -446,
-          150
-        ]
+          -447,
+          172
+        ],
+        "train": {
+          "in": 38
+        },
+        "check": true
       },
       {
         "id": "t-kokomae",
@@ -419,18 +1158,20 @@
         "title": "The crossing",
         "stamp": "The crossing",
         "talk": [
-          "This is it. The road falls to the sea, the gates, the train, Enoshima behind. Stand up the hill a little and look down.",
-          "When the bell starts, stay behind the line and watch the train pass. Then go and see Kai on the beach at Shichirigahama, the next station east."
+          "This is it. The road falls to the sea, the gates, the train, Enoshima off to the right. Go up the hill a little and look back down.",
+          "When the bell starts, stay behind the barrier and watch the train pass. Then take it: one stop east to Shichirigahama. Kai will be on the beach there."
         ],
         "steps": [
           {
-            "type": "visit",
-            "at": [
-              -446,
-              175
-            ],
-            "radius": 14,
-            "text": "Stand on the hill road above the crossing and look down to the sea"
+            "type": "spot",
+            "spot": "crossing",
+            "text": "Go up the hill road a little and look down to the crossing (E)"
+          },
+          {
+            "type": "rail",
+            "from": "kamakurakokomae",
+            "to": "shichirigahama",
+            "text": "Ride the Enoden one stop east, from Kamakurakokomae to Shichirigahama"
           },
           {
             "type": "talk",
@@ -505,11 +1246,111 @@
             ],
             "radius": 40,
             "text": "Walk the street with the rails in it up to Koshigoe Station"
+          },
+          {
+            "type": "rail",
+            "from": "koshigoe",
+            "to": "kamakurakokomae",
+            "text": "Take the Enoden from Koshigoe to Kamakurakokomae"
           }
         ]
       }
     ],
-    "start_note": "You start on the hill road (Nissaka) above the Kamakurakokomae crossing, looking down it to the sea. Your car is parked on the level street to the east: the hill is an 11% grade."
+    "rail": {
+      "train": {
+        "class": "light_rail",
+        "name": "Enoden",
+        "native": "江ノ電",
+        "operator": "Enoshima Electric Railway",
+        "gauge_m": 1.067,
+        "min_length_m": 40,
+        "stations": [
+          {
+            "id": "enoshima",
+            "name": "Enoshima",
+            "native": "江ノ島"
+          },
+          {
+            "id": "koshigoe",
+            "name": "Koshigoe",
+            "native": "腰越"
+          },
+          {
+            "id": "kamakurakokomae",
+            "name": "Kamakurakokomae",
+            "native": "鎌倉高校前"
+          },
+          {
+            "id": "shichirigahama",
+            "name": "Shichirigahama",
+            "native": "七里ヶ浜"
+          },
+          {
+            "id": "inamuragasaki",
+            "name": "Inamuragasaki",
+            "native": "稲村ヶ崎"
+          }
+        ],
+        "crossing_names": {
+          "Kamakurakokomae No. 1": [
+            -446,
+            122
+          ]
+        },
+        "towards": [
+          "Fujisawa",
+          "Kamakura"
+        ],
+        "scenic_bearing_deg": 190,
+        "headway_s": 720,
+        "speed_ms": 12.5,
+        "street_speed_ms": 4.2,
+        "sets": 2,
+        "series": [
+          "enoden_300",
+          "enoden_1000",
+          "enoden_500"
+        ],
+        "note": "The Enoshima Electric Railway: 1,067 mm gauge, 600 V DC overhead, a single track with passing loops at Enoshima, Minegahara and Inamuragasaki, 45 km/h at most and 15 km/h in the street at Koshigoe; a train each way every 12 minutes here (14 on the real timetable since 2023), two-car articulated sets coupled in twos."
+      }
+    },
+    "start_note": "You start on the hill road (Nissaka) above the Kamakurakokomae crossing, looking down it to the sea. Your car is parked on the level street to the east: the hill is an 11% grade.",
+    "flocks": [
+      {
+        "id": "kites",
+        "kind": "black_kite",
+        "name": "Black kites",
+        "at": [
+          -420,
+          60
+        ],
+        "count": 7,
+        "radius_m": 320,
+        "height_m": [
+          30,
+          95
+        ],
+        "note": "Black kites (tobi, Milvus migrans lineatus) wheel over this coast all day and are known for taking food from people's hands on the beaches of Kamakura and Enoshima; the city posts warnings about them. Wingspan about 1.5 m. How many and how high is a chosen value.",
+        "source": "Kamakura City's notice on kites (トビにご注意ください); Wild Bird Society of Japan field guide for the size"
+      }
+    ],
+    "spots": [
+      {
+        "id": "crossing",
+        "name": "The crossing 鎌倉高校前1号踏切",
+        "at": [
+          -447,
+          160
+        ],
+        "radius": 16,
+        "verb": "Look down the hill to the crossing",
+        "lines": [
+          "The road falls to the sea, the track crosses it at the foot, and Route 134 runs along the sea wall beyond.",
+          "People come from all over the world to stand here. The light is best late in the afternoon, when the sun is low over Enoshima to the right.",
+          "Wait for the bell: the green and cream train passes every few minutes."
+        ]
+      }
+    ]
   },
   "osm_detail": {
     "koshigoe": {
@@ -547,6 +1388,28 @@
         35.3132
       ],
       "note": "Inamuragasaki station and the cape, the Gokurakuji depot"
+    },
+    "enoshima": {
+      "bbox": [
+        139.4735,
+        35.296,
+        139.4861,
+        35.309
+      ],
+      "note": "Enoshima past the frame's south-west corner, for the far view: the island's bridges, the Sea Candle, the harbour's breakwaters"
     }
+  },
+  "far": {
+    "half_m": 80000,
+    "nh": 1024,
+    "nc": 2048,
+    "mesh": 640,
+    "clarity": 1.8,
+    "curvature": true,
+    "note": "Mount Fuji stands 70 km to the west-north-west (bearing 275 degrees from the Kamakurakokomae crossing), behind Hakone; with Enoshima it is this coast's backdrop. So the land past the frame reaches 80 km here (156 m cells, a 640-line grid) and is lowered by the Earth's curve (far.curvature), which puts Fuji's summit 2.8 degrees over the horizon as it is seen from the beach. Fuji shows on a clear day and not on a hazy one: the haze's distances are stretched (clarity 1.8), a chosen value for the clear air of late autumn and winter, when the mountain is most often seen."
+  },
+  "architecture_overrides": {
+    "signage": 0.12,
+    "note": "A residential coast: few shop signs away from Koshigoe's street."
   }
 }

@@ -2,14 +2,16 @@
 // march along each pixel's ray, and at every step ask the wave field how much sun gets through
 // the surface above that point (the same caustic focusing the sea floor shows), then scatter it
 // toward the eye through the water's own attenuation. A mask-edge vignette comes with it.
+// The scene is drawn at the frame-time governor's scale of the canvas (quality.js, main.js) and brought up to it here,
+// in the pass that writes the canvas, sharpened as the city game's lens does it (lens.js).
 import * as THREE from 'three/webgpu';
 import { pass, Fn, If, Loop, float, vec2, vec3, vec4, mix, max, min, exp, log, length, normalize, dot, pow, select, smoothstep,
-  clamp, screenUV, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, cameraPosition, interleavedGradientNoise } from 'three/tsl';
+  clamp, screenUV, uniform, textureSize, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, cameraPosition, interleavedGradientNoise } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 const BLOOM_CAP = 5;
 
-export function createPost(renderer, scene, camera, env, { bloom: withBloom = true } = {}) {
+export function createPost(renderer, scene, camera, env, { bloom: withBloom = true, grade = null } = {}) {
   const u = env.u;
   const post = new THREE.RenderPipeline(renderer);
   const scenePass = pass(scene, camera);
@@ -64,11 +66,40 @@ export function createPost(renderer, scene, camera, env, { bloom: withBloom = tr
     return float(1).sub(smoothstep(0.55, 0.95, r).mul(0.45).mul(under));
   });
 
+  // the scene below the canvas's size: the centre against its four neighbours in the scene's own texels, as AMD's
+  // FidelityFX RCAS does (MIT; the lobe is limited by the local minimum and maximum, so nothing rings), on colours
+  // brought into 0..1 first so that a glint against dark water does not ring either. Only while the scale is under 1.
+  const sharp = uniform(0);
+  const sceneCol = Fn(() => {
+    const c = color.rgb.toVar();
+    If(sharp.greaterThan(0), () => {
+      const px = vec2(1).div(vec2(textureSize(color)));
+      const squash = v => { const m = max(v, 0); return m.div(max(m.r, max(m.g, m.b)).add(1)); };
+      const Y = vec3(0.2126, 0.7152, 0.0722);
+      const tap = (x, y) => dot(squash(color.sample(screenUV.add(vec2(x, y).mul(px))).rgb), Y);
+      const le = dot(squash(c), Y), la = tap(0, -1), lb = tap(-1, 0), lc = tap(1, 0), ld = tap(0, 1);
+      const mn = min(le, min(min(la, lb), min(lc, ld))), mx = max(le, max(max(la, lb), max(lc, ld)));
+      const hitMin = mn.div(mx.mul(4).add(1e-5)), hitMax = float(1).sub(mx).div(mn.mul(4).sub(4).sub(1e-5));
+      const lobe = max(float(-0.1875), min(max(hitMin.negate(), hitMax), 0)).mul(sharp);
+      const l = lobe.mul(la.add(lb).add(lc).add(ld)).add(le).div(lobe.mul(4).add(1));
+      c.mulAssign(clamp(l.div(max(le, 1e-5)), 0.5, 2));
+    });
+    return c;
+  })();
+  // the scene's share of the canvas's resolution (1: all of it)
+  post.getScale = () => scenePass.getResolutionScale();
+  post.setScale = k => { scenePass.setResolutionScale(k); sharp.value = k < 0.999 ? Math.min(0.7, 0.3 + (1 - k)) : 0; };
+
   const q = new URLSearchParams(location.search);
-  let base = color.rgb;
+  let base = sceneCol;
   // bloom: off on the low tier (tier.js), as on the globe
   if (withBloom && q.get('bloom') !== '0') base = base.add(bloom(finite, 0.26, 0.5, 0.95).rgb);
   if (q.get('shafts') !== '0') base = base.add(shafts());
+  // a site's grade (scene.json grade: { contrast, sat }): a photographer's print of a hard-lit place, about mid-grey
+  if (grade && q.get('grade') !== '0') {
+    const l0 = dot(base, vec3(0.2126, 0.7152, 0.0722)).max(1e-5);
+    base = mix(vec3(l0), base, grade.sat ?? 1).max(0).mul(pow(l0.div(u.white.mul(0.18).max(1e-5)), (grade.contrast ?? 1) - 1));
+  }
   // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift);
   // what is bright enough for the cones (a torch beam, a lamp, the moon's path) keeps its colour
   const lum = dot(base, vec3(0.2126, 0.7152, 0.0722));

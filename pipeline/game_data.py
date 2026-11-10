@@ -648,6 +648,9 @@ def main():
     # they stand and look out
     flocks = []
     for fc in gcfg.get("flocks", []):
+        if fc.get("kind") == "black_kite":  # soaring over a place, not working the ground: as configured
+            flocks.append(dict(fc))
+            continue
         x, y, moved = snap(*fc["at"])
         r0, c0 = cell(x, y)
         reach, perches = fc.get("perch_m", 14.0), []
@@ -721,6 +724,8 @@ def main():
     import game_extras
     game_extras.drop_kept_off(out)
     import outposts
+    import fishing
+    fishing.apply(C.id, out)  # the fishing spots at the water's edge, and fishing.json (pipeline/fishing.py)
     outposts.apply(C, out)  # landings past the frame, their wharves and the ferry legs to them (pipeline/outposts.py)  # the crowd's footways over a landmark's water (game_extras "keep_off")
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))

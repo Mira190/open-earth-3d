@@ -32,8 +32,10 @@
     return { id: `group-${me.group}`, name: me.group, native: meta.native, country: me.country, lat, lon, meta, sites };
   }
   // the station a map is entered at: its own (not a travel point within it), else its first
-  function home(g, mapId) {
+  // (at: the station the player is at, if it is one of that map's: a district that shares the map)
+  function home(g, mapId, at) {
     const ds = g.meta.districts;
+    if (at != null && at >= 0 && ds[at] && ds[at].map === mapId) return at;
     const j = ds.findIndex(s => s.map === mapId && !s.travel);
     return j >= 0 ? j : ds.findIndex(s => s.map === mapId);
   }
@@ -60,7 +62,7 @@
       return `<${tag} class="mt-line" points="${ps}" pathLength="1" style="--c:${l.colour};--k:${li}"><title>${escH(l.name)} ${escH(l.native || '')}</title></${tag}>`;
     }).join('');
     g.mtXY = m.districts.map(s => P(s.lat, s.lon));
-    const hereAt = here ? home(g, here) : -1;
+    const hereAt = here ? home(g, here, o.hereAt) : -1;
     const stns = m.districts.map((s, i) => {
       // the label on the side the group's config says (l, r, t, b), clear of its neighbours
       const [x, y] = g.mtXY[i], at = s.label || (x < W * 0.62 ? 'r' : 'l');
@@ -117,14 +119,15 @@
     root.querySelectorAll('.mt-chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mapid === s.map)));
     const c = s.map && cities.find(x => x.id === s.map && x.built);
     const arrive = s.travel ? ` data-arrive="${escH(s.travel)}"` : '';
-    const stay = c && o.here === c.id && i === home(g, o.here); // (another station of your map: a travel point in it)
+    const stay = c && o.here === c.id && i === home(g, o.here, o.hereAt); // (another station of your map: a travel point in it)
     const travel = o.here && c && !stay;
     const label = o.here ? (o.play === false ? 'Explore in 3D' : 'Travel here') : 'Play';
     const acts = !c ? ''
       : stay ? `<div class="ts-actions"><button class="ts-btn primary" data-close>Stay here <kbd>Esc</kbd></button></div>`
       : o.play === false ? `<div class="ts-actions"><button class="ts-btn primary" data-map="${c.id}" data-go="model">${label} <kbd>↵</kbd></button>${c.game ? `<button class="ts-btn" data-map="${c.id}" data-go="play"${arrive}>Play <kbd>P</kbd></button>` : ''}</div>`
       : `<div class="ts-actions">${c.game ? `<button class="ts-btn primary" data-map="${c.id}" data-go="play"${arrive}>${o.here ? label : `<span class="ts-bl">${label}<small>at ${escH(s.name)}</small></span>`} <kbd>${travel ? '↵' : 'P'}</kbd></button>` : ''}<button class="ts-btn" data-map="${c.id}" data-go="model">Explore in 3D${travel ? '' : ' <kbd>↵</kbd>'}</button></div>`;
-    const tag = !c ? '<em class="next">Coming soon</em>' : stay ? '<em>You are here</em>' : `<em>${escH(c.name)} map</em>`;
+    // (a district that shares a bigger map says so: Sangenjaya is not in Shibuya, it is on the map named for it)
+    const tag = !c ? '<em class="next">Coming soon</em>' : stay ? '<em>You are here</em>' : `<em>${s.travel ? `On the ${escH(c.name)} map` : `${escH(c.name)} map`}</em>`;
     // as a travel guide reads (cities/guide.json): the district's hook and its sights, else the map's line
     const sg = s.guide || {};
     const note = sg.line || (c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || '');
@@ -141,6 +144,7 @@
   // can be done there. Esc or Back returns; the arrow keys walk the lit stations.
   //   o.host      where it goes (default: the page, fixed over everything)
   //   o.g, o.cities, o.here, o.sel   the group, the cities, the map the player is in, the station to show
+  //   o.hereAt    the station the player is at, when their map has several (default: the map's own)
   //   o.play      false: Enter and the primary button open the 3D model, not the game
   //   o.onGo(city, play, arrive)    a district chosen; default: go there by the address
   //   o.onPick(i, byUser)           a station picked (the title keeps its card in step); default: pick()
@@ -153,14 +157,14 @@
     el.className = `ts-mfull${solo ? ' solo' : ''}`;
     el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', `Districts of ${g.name}`);
     el.innerHTML = `<div class="mf-head"><div><span class="eb">${escH(g.country)} · ${fmtLL(g)}</span><h2>${escH(g.name)}${g.native ? `<small lang="ja">${escH(g.native)}</small>` : ''}</h2></div>
-      <button class="mf-x" data-close aria-label="${escH(o.backLabel || 'Back')}">${escH(innerWidth >= 860 && o.backWord || 'Back')} <kbd>Esc</kbd></button></div>${map(g, cities, { full: true, here: o.here })}`;
+      <button class="mf-x" data-close aria-label="${escH(o.backLabel || 'Back')}">${escH(innerWidth >= 860 && o.backWord || 'Back')} <kbd>Esc</kbd></button></div>${map(g, cities, { full: true, here: o.here, hereAt: o.hereAt })}`;
     (o.host || document.body).appendChild(el);
     const from = document.activeElement;
     let cur = -1;
     const doPick = (i, byUser) => {
       if (i < 0) return;
       cur = i;
-      if (o.onPick) o.onPick(i, byUser); else pick(el, g, i, cities, { byUser, here: o.here, play: o.play });
+      if (o.onPick) o.onPick(i, byUser); else pick(el, g, i, cities, { byUser, here: o.here, hereAt: o.hereAt, play: o.play });
     };
     const go = (city, play, arrive) => {
       if (o.onGo) { o.onGo(city, play, arrive); return; }
@@ -219,7 +223,7 @@
         if (o.onClose) o.onClose(quiet);
       },
     };
-    doPick(o.sel != null && o.sel >= 0 ? o.sel : o.here ? home(g, o.here) : g.meta.districts.findIndex(x => x.map), false);
+    doPick(o.sel != null && o.sel >= 0 ? o.sel : o.here ? home(g, o.here, o.hereAt) : g.meta.districts.findIndex(x => x.map), false);
     const st = el.querySelector('.mt-stn.sel') || el.querySelector('.mt-stn.on');
     if (st) st.focus({ preventScroll: true });
     return ctl;

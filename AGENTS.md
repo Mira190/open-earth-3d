@@ -161,7 +161,10 @@ The owner should not be the one who finds the bug.
   `landmarks.bin` and `game.bin`, decoded in a Worker. The JSON stays the pipeline's source; after
   any step that writes `buildings.json`, `landmarks.json` or `game.json`, run `python pipeline/pack.py`
   (it packs what is stale and updates `cities.json`). `tools/check.sh` fails on a stale pack. Never
-  hand-merge a `.bin`: repack it.
+  hand-merge a `.bin`: repack it. The same command makes each live city's `vis.bin` and `skyvis.webp`
+  again when its `buildings.json` changed (`pipeline/visibility.py`: the occluder raster the page's
+  visibility sweep reads, a minute or two for a large city; `pipeline/skyvis.py`: the sky its ground
+  sees; docs/PERFORMANCE.md).
 
 - Every city shares the helicopter, ferry, river shuttle and car models
   (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and the people
@@ -174,6 +177,8 @@ The owner should not be the one who finds the bug.
   script (`pipeline/meshopt.py`, needs Node); `tools/check.sh` fails on one that is not. A model
   written another way: `node pipeline/meshopt_glb.mjs <file.glb>`. Every `GLTFLoader` the pages make
   has three.js's `MeshoptDecoder` set (`web/index.html`, `web/reef/people.js`).
+- The trains (`web/assets/vehicles/trains.glb`, the Enoden's stock) are built by `python blender/build_trains.py`;
+  `web/game/rail.js` runs them on any map with `game.rail.train`.
 - To change a vehicle for every city, edit `blender/build_vehicles.py` and rebuild with
   `python blender/build_vehicles.py` (or `--only cars`, needs `pip install bpy==5.2.3`).
   For the trees, edit `blender/build_trees.py` and run `python blender/build_trees.py`.
@@ -187,5 +192,8 @@ The owner should not be the one who finds the bug.
   `cities/<id>/city.json`: `character` `R_<avatar>[_<head>][_<tag>...]` and `clip`. Build them
   with `python blender/build_people.py --npcs`, then `python pipeline/npc_looks.py` to copy the
   looks into `web/data/<id>/game.json`. A character several cities name is one shared file.
+- The reef and alpine sites' people and the visitor you play there are the same avatars: `web/reef/looks.js` `REAL`
+  names each role's, `web/reef/game/<site>.js` a site's own (`look: { character: 'R_...' }`), and
+  `build_people.py --npcs` builds what they name (docs/GAME_REEF.md, "The people").
 - `web/game/vehicles.js` and `web/game/cars.js` run on three.js r128 and r186. Keep them
   free of version-specific calls, so they stay shared whichever version a branch uses.
