@@ -2123,7 +2123,8 @@ def districts_meshes(lm):
     if "scramble" in lm:
         CROSSING.meshes(K, lm["scramble"]["node"])
         crossing_signs(K, lm)
-        toyoko_site(K, lm)
+        if TOYOKO_WORKS:
+            toyoko_site(K, lm)
         # (QFRONT itself, its glass and its signs: scramble.py)
         if "signs" in lm:
             crossing_wall_signs(K, lm)
@@ -2934,6 +2935,11 @@ def crossing_signs(K, lm):
 # what stands there now: a hoarding round it with the developer's notice, lit at night, the site's floodlights,
 # and a tower crane (its position and height illustrative).
 
+# The owner's choice (November 2026): the square is drawn as it stood before the works, with the Toyoko buildings
+# PLATEAU surveyed standing behind Hachiko and no hoarding, floodlights or crane. Set TOYOKO_WORKS to True for the
+# site as it is.
+TOYOKO_WORKS = False
+
 TOYOKO_SITE = [[354.0, -1056.0], [420.0, -1056.0], [434.0, -1080.0], [452.0, -1160.0], [405.0, -1168.0], [372.0, -1112.0], [354.0, -1075.0]]
 CRANE = {"at": [404.0, -1100.0], "mast_m": 62.0, "jib_m": 48.0, "counter_m": 14.0, "jib_deg": 205.0}
 
@@ -2952,7 +2958,7 @@ def demolished_solids():
 
 def landmark_demolished(scene):
     """The Toyoko buildings pulled down since PLATEAU's survey (web/world.js leaves them out)."""
-    return demolished_solids() if "scramble" in scene["landmarks"] else []
+    return demolished_solids() if TOYOKO_WORKS and "scramble" in scene["landmarks"] else []
 
 
 def toyoko_site(K, lm):
