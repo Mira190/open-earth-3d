@@ -77,6 +77,20 @@ export async function gametest(api, ctx) {
       for (const s of p.src || []) if (!G.srcOf(s)) lint.push(`${d.id}.${k}: unknown source ${s}`);
     }
     must(!lint.length, 'every line renders and every cited source resolves', lint.length ? lint.slice(0, 5).join(' | ') : `${nPages} pages`);
+    // the frame budget (issue 382): the page runs the governor the city game runs (quality.js). Frames of 40 ms take
+    // the scene's resolution down, then the extras, then the resolution to its floor; fast frames bring all of it
+    // back; and the scene's target follows the governor's scale each time
+    const gov = ctx.governor, post = ctx.post;
+    must(gov && typeof gov.simulate === 'function' && post && typeof post.getScale === 'function', 'frame budget: the page has the governor and a scene target to scale');
+    if (gov && gov.simulate && post && post.getScale) {
+      const s0 = gov.scale, e0 = gov.extras;
+      gov.set(gov.max, 1);
+      const down = gov.simulate(40, () => 40), low = gov.scale, lowE = gov.extras, lowT = post.getScale();
+      const up = gov.simulate(240, () => 4);
+      must(low < gov.max - 0.15 && lowE === 0 && Math.abs(lowT - low) < 1e-6, 'frame budget: slow frames take the resolution down and shed the extras', `${down[0]} .. ${down[down.length - 1]}, scene target ${lowT.toFixed(2)}`);
+      must(Math.abs(gov.scale - gov.max) < 1e-6 && gov.extras === 1 && Math.abs(post.getScale() - gov.max) < 1e-6, 'frame budget: fast frames bring it back', `${up[up.length - 1]} of ${gov.max.toFixed(2)}`);
+      gov.set(s0, e0);
+    }
 
     // 1b. solid things: the start is clear of every sign, the kit and the people; nobody stands inside anyone or anything;
     // a sign stops you; a landmark's walls stand on the ground with no gap under them

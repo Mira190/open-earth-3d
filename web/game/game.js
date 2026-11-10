@@ -3955,7 +3955,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // over Circular Quay in late spring): arriving out of it, the clock's date moves to that day, the time kept
   function inSeason(d) {
     const b = d.kind === 'place' && d.best;
-    if (!b || !b.date) return;
+    if (!b || !b.date || ![...b.from, ...b.to].every((v, i) => v >= 1 && v <= (i % 2 ? 31 : 12)) || b.date[0] > 12) return; // (a window that is not months and days is none)
     const md = (m, dd) => m * 100 + dd, now = md(clock.m, clock.d), f = md(...b.from), t = md(...b.to);
     if (f <= t ? now >= f && now <= t : now >= f || now <= t) return;
     setClock(clock.y, b.date[0], b.date[1], clock.min);
@@ -3972,6 +3972,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       ['Places', (G.travel || []).map(t => ({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best }))],
       ['Landmarks', landmarks],
       ['Trig stations', near(VP.map(v => ({ kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] })))],
+      ['Fishing spots', fish ? near(fish.spots.map(f => ({ kind: 'fish', id: `fish-${f.id}`, name: f.name, at: f.at }))) : []],
       ['Ferry wharves', near(G.wharves.map(w => ({ kind: 'wharf', id: w.id, name: w.name, at: w.landing })))],
       [region ? `Elsewhere in ${region.name}` : '', region ? near(region.stations.slice()) : []],
       ['Shortcuts', quick],
@@ -3993,7 +3994,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     picked = d;
     $('#g-mappop-name').textContent = d.kind === 'point' ? 'Your pin' : d.name;
     const deck = d.kind === 'landmark' && deckOf(d) && deckStand(deckOf(d)), up = deck ? ` · travel takes you up to its deck, ${Math.round(deck[2] - Math.max(0, nav.terrain(deck[0], deck[1])))} m up` : '';
-    $('#g-mappop-note').textContent = `${{ landmark: 'Landmark', place: 'Place', trig: 'Trig station', wharf: 'Ferry wharf', car: 'Your car', start: 'Where you started', point: 'Waypoint set' }[d.kind] || ''} · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away${up}`;
+    $('#g-mappop-note').textContent = `${{ landmark: 'Landmark', place: 'Place', trig: 'Trig station', fish: 'Fishing spot', wharf: 'Ferry wharf', car: 'Your car', start: 'Where you started', point: 'Waypoint set' }[d.kind] || ''} · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away${up}`;
     if (d.kind === 'district') $('#g-mappop-note').textContent = `${d.map.name} map · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away · its own map loads`;
     $('#g-mappop-line').textContent = d.kind === 'district' ? d.line : '';
     $('#g-mappop-line').hidden = d.kind !== 'district' || !d.line;
@@ -4084,6 +4085,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const w of G.wharves) icon({ kind: 'wharf' }, ...P2(...w.terminal), { kind: 'wharf', id: w.id, name: w.name, at: w.landing });
     for (const h of G.helipads) icon({ kind: 'pad' }, ...P2(h.at[0], h.at[1]));
     for (const v of VP) icon({ kind: 'trig', done: !!trigDone()[v.id] }, ...P2(v.x, v.y), { kind: 'trig', id: v.id, name: v.name, at: [v.x, v.y, v.z] });
+    if (fish) for (const f of fish.spots) icon({ kind: 'fish' }, ...P2(f.at[0], f.at[1]), { kind: 'fish', id: `fish-${f.id}`, name: f.name, at: f.at });
     for (const f of flocks) if (!f.soaring) icon({ kind: 'gull' }, ...P2(f.at[0], f.at[1]));
     for (const v of fer.vessels) icon({ kind: 'ferry' }, ...P2(v.x, v.y));
     if (player.mode !== 'heli') icon({ kind: 'heli' }, ...P2(heli.st.x, heli.st.y));
@@ -4140,7 +4142,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       g.font = '600 11px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'; g.textBaseline = 'middle';
     }
     for (const q of bigPins.slice().sort((a, b) => rank(b) - rank(a))) {
-      if ((q.d.kind !== 'landmark' && q.d.kind !== 'place' && q.d.kind !== 'district') || said.some(o => Math.hypot(o.x - q.x, o.y - q.y) < 16)) continue;
+      if ((q.d.kind !== 'landmark' && q.d.kind !== 'place' && q.d.kind !== 'district' && q.d.kind !== 'fish') || said.some(o => Math.hypot(o.x - q.x, o.y - q.y) < 16)) continue;
       const w = g.measureText(q.d.name).width;
       // right, left, above or below its pin: [text x, text y, align]
       for (const [tx, ty, al] of [[q.x + 10, q.y, 'left'], [q.x - 10, q.y, 'right'], [q.x, q.y - 15, 'center'], [q.x, q.y + 15, 'center']]) {
@@ -4149,7 +4151,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         taken.push(r); firstTaken.push(r); said.push(q);
         g.textAlign = al;
         g.strokeStyle = 'rgba(6, 10, 18, 0.82)'; g.lineWidth = 3.2; g.strokeText(q.d.name, tx, ty);
-        g.fillStyle = q.d.kind === 'district' ? '#ffb066' : q.d.kind === 'place' ? '#ffd9a8' : '#f4efe6'; g.fillText(q.d.name, tx, ty);
+        g.fillStyle = q.d.kind === 'district' ? '#ffb066' : q.d.kind === 'place' ? '#ffd9a8' : q.d.kind === 'fish' ? '#9fd8ee' : '#f4efe6'; g.fillText(q.d.name, tx, ty);
         break;
       }
     }
@@ -4752,6 +4754,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (const w of G.wharves) icons.push({ kind: 'wharf', x: w.terminal[0], y: w.terminal[1] });
       for (const h of G.helipads) icons.push({ kind: 'pad', x: h.at[0], y: h.at[1] });
       for (const v of VP) icons.push({ kind: 'trig', x: v.x, y: v.y, done: !!trigDone()[v.id] });
+      if (fish) for (const f of fish.spots) icons.push({ kind: 'fish', x: f.at[0], y: f.at[1] });
       for (const f of flocks) if (!f.soaring) icons.push({ kind: 'gull', x: f.at[0], y: f.at[1] });
       for (const v of fer.vessels) icons.push({ kind: 'ferry', x: v.x, y: v.y });
       if (player.mode !== 'heli') icons.push({ kind: 'heli', x: heli.st.x, y: heli.st.y });
