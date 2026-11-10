@@ -1,6 +1,10 @@
-// Who is on the reef, and what they wear. A look is plain data: which Quaternius character to start
-// from, the recolour of its palette classes (skin, hair, top, legs), how far a suit or sleeve
-// covers the skin, and the accessories to build. Clothing follows Queensland sun-smart habit:
+// Who is on the reef, and what they wear. A role's person is real: a Microsoft Rocketbox avatar (MIT; REAL below,
+// look.real), as the cities' people are, built by blender/build_people.py --npcs, which reads the names in this file
+// and in game/<site>.js. The visitor you play is a swimmer dressed at build time (the SUIT tags there): a stinger suit
+// in the season, a rash vest and boardshorts out of it; on an alpine site a walker in a jacket and boots. The rest of
+// a look is the older, low-polygon Quaternius character it falls back to when the avatar is not there (and the
+// demo crowd's tourists): which character to start from, the recolour of its palette classes (skin, hair, top,
+// legs), how far a suit or sleeve covers the skin, and the accessories to build. Clothing follows Queensland sun-smart habit:
 // long-sleeve rash vests and full-body stinger suits (marine stinger season is October to May),
 // wide-brim hats, caps and polarised sunnies, board shorts, thongs, and crew and ranger uniforms.
 // Skin tones span what a Queensland crowd really is: Aboriginal and Torres Strait Islander,
@@ -25,6 +29,17 @@ export const ROLES = {
   traditionalOwner: { desc: 'Ngaro / Gia / Juru Elder in everyday clothes' },
   diveInstructor: { desc: 'dive instructor in a wetsuit with kit' },
   tourist: { desc: 'visitor: stinger suit, rash vest or board shorts' }
+};
+
+// the real person of each role, [man, woman] (R_<avatar>[_<head>][_<tag>...]: blender/build_people.py). A site casts
+// its own with look: { character: 'R_...' } (game/<site>.js), so two guides are not one face.
+export const REAL = {
+  player: { stinger: ['R_Sports_Male_01_stinger', 'R_Sports_Female_01_stinger'], rash: ['R_Sports_Male_01_rash', 'R_Sports_Female_01_rash'],
+    hike: ['R_Male_Adult_05', 'R_Female_Adult_04'] },
+  skipper: ['R_Wood_Male_01', 'R_Sports_Female_02'],
+  guide: ['R_Male_Adult_01', 'R_Female_Adult_17'],
+  ranger: ['R_Male_Adult_14', 'R_Female_Adult_01_khaki'],
+  diveInstructor: ['R_Sports_Male_01_m022_wetsuit', 'R_Sports_Female_01_f013_wetsuit']
 };
 
 function rngFor(seed) { let s = (seed ?? Math.floor(Math.random() * 1e9)) >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -112,5 +127,8 @@ export function makeLook(role, opts = {}) {
       if (L.barefoot && r() < 0.5) A('thongs', { color: pick(r, bright) });
     }
   }
+  // the real person of the role (people.js draws it when people.json has it, and the character above when not)
+  const real = role === 'player' ? REAL.player[opts.outfit === 'hike' ? 'hike' : L.suit && L.suit.legN ? 'stinger' : 'rash'] : REAL[role];
+  if (real && !opts.character) L.real = real[w ? 1 : 0];
   return L;
 }

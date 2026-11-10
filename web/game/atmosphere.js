@@ -54,7 +54,8 @@ window.OEAtmos = (function () {
   }
   const eq = (ra, dec) => new THREE.Vector3(Math.cos(dec) * Math.cos(ra), Math.cos(dec) * Math.sin(ra), Math.sin(dec));
 
-  function stars() {
+  function stars(su) {
+    const cl = !!(su && su.uCloudTex && window.OEClouds); // the clouds hide the stars behind them (clouds.js oeCloudCover, at each star)
     const pos = [], col = [], size = [];
     const add = (ra, dec, mag) => {
       const v = eq(ra, dec).multiplyScalar(18000);
@@ -81,9 +82,12 @@ window.OEAtmos = (function () {
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
     const mat = new THREE.ShaderMaterial({
-      uniforms: { uOpacity: { value: 0 }, uTime: { value: 0 }, uScale: { value: 1 } },
+      uniforms: Object.assign({ uOpacity: { value: 0 }, uTime: { value: 0 }, uScale: { value: 1 } },
+        cl ? { uCloudTex: su.uCloudTex, cloudCoverage: su.cloudCoverage, uCloudK: su.uCloudK, uCloudDrift: su.uCloudDrift, uCloudFair: su.uCloudFair } : {}),
       vertexShader: `attribute float size; attribute vec3 color; varying vec3 vC; uniform float uTime; uniform float uScale;
+        ${cl ? 'uniform sampler2D uCloudTex; uniform float cloudCoverage, uCloudFair; uniform vec4 uCloudK, uCloudDrift;' + OEClouds.COVER : ''}
         void main() { vC = color * (0.85 + 0.15 * sin(uTime * 3.0 + position.x * 0.01 + position.y * 0.013));
+          ${cl ? 'vC *= 1.0 - oeCloudCover(normalize(mat3(modelMatrix) * position));' : ''}
           vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = size * uScale; }`,
       fragmentShader: `varying vec3 vC; uniform float uOpacity;
         void main() { vec2 p = gl_PointCoord - 0.5; float a = smoothstep(0.5, 0.0, length(p)); gl_FragColor = vec4(vC * a * uOpacity, 1.0); }`,
@@ -134,6 +138,31 @@ window.OEAtmos = (function () {
     golden: { ev: 1.08, tint: [1.05, 1.0, 0.93], sat: 1.1, contrast: 0.15 },
     day: { ev: 1.04, tint: [1.02, 1.0, 0.97], sat: 1.08, contrast: 0.14 },
   };
+  // A region's look (game.look.preset in cities/<id>/city.json; docs/LOOK.md): "film" everywhere, "shinkai" on the
+  // Japanese maps. Each is numbers for what is already drawn: the sky and its clouds (clouds.js), the hour's grade,
+  // the lens (lens.js) and the shade's colour (world.js). No preset adds a pass.
+  //   sky     saturation of the day's sky; clouds: the fair-weather cover; towers: cumulus standing on the horizon;
+  //           high: altocumulus and cirrus; edge: how drawn the clouds' edges are; glow: the sun through thin cloud;
+  //           milky: the Milky Way on a clear night; meteors: shooting stars an hour on a clear night
+  //   grade   the hour's grade on GRADE_DEF's (ev, tint, sat, contrast) and the lens's split tone: shade and hi (what the
+  //           shadows and the lit parts are multiplied by), lift (what the deepest shade is lifted towards), vib (vibrance)
+  //   light   shade: the colour of the light in the shade by day (the sky's, world.js's hemisphere light), bounce: how much
+  //           of the sun's light the ground throws back up onto walls; flare and shafts: the sun in the lens
+  const LOOKS = {
+    film: { palette: 'film', light: { shade: [0.74, 0.84, 0.95], bounce: 0.3, flare: 0.55, shafts: 0.5 },
+      grade: { night: { vib: 0.1 }, blue: { vib: 0.15, lift: [0.0, 0.004, 0.012] }, golden: { vib: 0.18, shade: [0.95, 0.98, 1.07], hi: [1.03, 1.0, 0.96] }, day: { vib: 0.18, shade: [0.95, 0.99, 1.06] } },
+      sky: { saturation: 1.7, clouds: 0.3, towers: 0.45, high: 0.4, edge: 0.3, glow: 0.5, milky: 0.35, meteors: 6 } },
+    shinkai: { palette: 'shinkai', light: { shade: [0.62, 0.76, 1.0], bounce: 0.5, flare: 0.9, shafts: 1.0 },
+      grade: {
+        night: { sat: 1.14, vib: 0.25, lift: [0.0, 0.003, 0.014] },
+        blue: { ev: 1.24, tint: [0.97, 0.98, 1.06], sat: 1.2, vib: 0.35, shade: [0.92, 0.94, 1.12], hi: [1.05, 0.99, 0.98], lift: [0.006, 0.006, 0.03] },
+        golden: { tint: [1.06, 1.0, 0.92], sat: 1.18, vib: 0.4, shade: [0.92, 0.9, 1.14], hi: [1.05, 1.0, 0.94], lift: [0.012, 0.006, 0.03] },
+        day: { ev: 1.06, tint: [1.02, 1.0, 0.98], sat: 1.14, vib: 0.42, contrast: 0.16, shade: [0.93, 0.98, 1.1], hi: [1.02, 1.0, 0.97], lift: [0.0, 0.005, 0.016] },
+      },
+      sky: { saturation: 1.95, clouds: 0.3, towers: 1.0, high: 0.5, edge: 0.45, glow: 0.8, milky: 1.0, meteors: 24 } },
+  };
+  // (each key may also carry the lens's split tone and vibrance: shade, hi, lift, vib; lens.js)
+  const GRADE_LENS = { shade: [0.97, 1.0, 1.04], hi: [1.015, 1.0, 0.985], lift: [0, 0, 0], vib: 0 };
   function gradeAt(keys, alt, out) {
     let i = 0;
     while (i < GRADE_KEYS.length - 1 && alt > GRADE_KEYS[i + 1][1]) i++;
@@ -141,6 +170,8 @@ window.OEAtmos = (function () {
     const t = b0 > a0 ? Math.max(0, Math.min(1, (alt - a0) / (b0 - a0))) : 0, k = t * t * (3 - 2 * t), A = keys[a], B = keys[b];
     out.ev = A.ev + (B.ev - A.ev) * k; out.sat = A.sat + (B.sat - A.sat) * k; out.contrast = A.contrast + (B.contrast - A.contrast) * k;
     for (let j = 0; j < 3; j++) out.tint[j] = A.tint[j] + (B.tint[j] - A.tint[j]) * k;
+    for (const n of ['shade', 'hi', 'lift']) { const a = A[n] || GRADE_LENS[n], b = B[n] || GRADE_LENS[n], o = out[n] || (out[n] = [0, 0, 0]); for (let j = 0; j < 3; j++) o[j] = a[j] + (b[j] - a[j]) * k; }
+    out.vib = (A.vib ?? 0) + ((B.vib ?? 0) - (A.vib ?? 0)) * k;
     return out;
   }
 
@@ -289,16 +320,44 @@ window.OEAtmos = (function () {
   // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density}); look: game.look ({grade})
   function create(Wd, renderer, camera, { city, sky = {}, look = {} } = {}) {
     const keys = {};
-    for (const [k] of GRADE_KEYS) keys[k] = Object.assign({}, GRADE_DEF[k], (look.grade || {})[k]);
-    const gr = { ev: 1, sat: 1, contrast: 0, tint: [1, 1, 1] };
+    
+    const gr = { ev: 1, sat: 1, contrast: 0, tint: [1, 1, 1], vib: 0 };
     const su = Wd.su, world = Wd.world, basis = new THREE.Matrix4();
-    const clouds = sky.clouds ?? 0.3;
+    const LK = LOOKS[look.preset] || (city && city.country_code === 'JP' ? LOOKS.shinkai : LOOKS.film), // (the Japanese maps: the animated film's look)
+       SK = Object.assign({}, LK.sky, sky);
+    const LT = Object.assign({}, LK.light, look.light);
+    for (const [k] of GRADE_KEYS) keys[k] = Object.assign({}, GRADE_DEF[k], (LK.grade || {})[k], (look.grade || {})[k]);
+    // the shade's colour and the ground's bounce (world.js setSun calls this once it has set the hour's light): by day the
+    // light in the shade is the sky's, bluer than the grey-blue it was, and sunlit ground throws warm light back onto the
+    // walls over it, through the hemisphere light's ground colour: no lights are added
+    const shadeC = new THREE.Color(), bounceC = new THREE.Color();
+    Wd.shadeLight = (hemi, sun, day) => {
+      const ov = window.OEWeather ? OEWeather.U.uOeOvercast.value : 0, k = day * (1 - 0.8 * ov);
+      hemi.color.lerp(shadeC.setRGB(LT.shade[0], LT.shade[1], LT.shade[2]), 0.6 * k);
+      const up = Math.max(0, Wd.sunDir ? Wd.sunDir.y : 0); // (the ground's share of the sun)
+      hemi.groundColor.setHex(0x4d463a).lerp(bounceC.copy(sun.color).multiply(shadeC.setRGB(1.0, 0.86, 0.7)), Math.min(1, LT.bounce * k * (0.35 + 0.65 * up) * 1.6));
+    };
+    const clouds = SK.clouds;
+    const painted = !!(su.uCloudTex && window.OEClouds); // the cloud layers of clouds.js; else the Sky's own layer
     if (su.cloudCoverage) {
       su.cloudCoverage.value = clouds; su.cloudDensity.value = sky.cloud_density ?? 0.45;
       su.cloudScale.value = 0.00022; su.cloudSpeed.value = 0.00003; su.cloudElevation.value = 0.55;
     }
-    const skySat = sky.saturation ?? 1.7; // a blue sky rather than a white one (world.js)
-    const S = stars(), M = moon();
+    if (painted) {
+      su.uCloudTex.value = OEClouds.texture();
+      su.uCloudK.value.set(SK.towers, SK.high, SK.edge, SK.glow);
+      // the clouds' colours for the hour, keyed to the sky (world.js setSun calls it before it takes the sky's light)
+      // (under a thunderstorm the sheet is darker still, and lightning lights it from within: weather.js S.storm, S.flash)
+      Wd.cloudLight = (alt, ref) => {
+        const WS = (window.OEWeather && OEWeather.S) || {}, WU = window.OEWeather ? OEWeather.U : null;
+        OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)) });
+        if (WS.flash > 0) { su.uCloudShade.value.multiplyScalar(1 + 5 * WS.flash); su.uCloudLit.value.multiplyScalar(1 + 3 * WS.flash); }
+      };
+    }
+    const skySat = SK.saturation; // a blue sky rather than a white one (world.js)
+    const wind = { x: 3.8, z: -1.4 }, drift = { x: 0, z: 0, e: 0, w: 0, t: null }; // (a light west-south-westerly, m/s, unless the weather has its own: weather.js S.wind)
+    const meteor = { next: -1, t0: 0, dur: 0 }, galPole = eq(192.86 * RAD, 27.13 * RAD), galCentre = eq(266.4 * RAD, -28.94 * RAD);
+    const S = stars(su), M = moon();
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
@@ -365,7 +424,8 @@ window.OEAtmos = (function () {
       // the title screen's lens (lens.js): its tone curve, grade, grain and vignette, so the city looks as the
       // Earth does on the title and as the city does in its film. lens.merged is the frame's one full-size pass
       // (it reads the scene, the occlusion and the bloom); lens.material the plain lens, after a camera effect.
-      lens = new THREE.ShaderPass(OELens.shader({ merge: true, shade: shade.upsample }));
+      const shafts = QC.name === 'high' ? 6 : QC.name === 'medium' ? 4 : 0; // (the sun's light shafts' taps: lens.js)
+      lens = new THREE.ShaderPass(OELens.shader({ merge: true, shade: shade.upsample, shafts }));
       Object.assign(lens.uniforms, { uGrain: { value: 0.03 }, uCA: { value: 0.15 }, uVignette: { value: 0.18 } });
       lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
       highlight = { uniforms: { uCap: lens.uniforms.uCap, uKnee: lens.uniforms.uKnee } };
@@ -373,7 +433,7 @@ window.OEAtmos = (function () {
       Object.assign(bloom.highPassUniforms, highlight.uniforms, ao ? { tAO: ao.uniforms.tAO, uAOStrength: ao.uniforms.uAOStrength, uFadeNear: ao.uniforms.uFadeNear, uFadeFar: ao.uniforms.uFadeFar } : {});
       lens.merged = lens.material;
       lens.merged.depthTest = lens.merged.depthWrite = false;
-      lens.material = mat(OELens.shader(), { uniforms: lens.uniforms });
+      { const plain = OELens.shader({ shafts }); lens.material = mat(plain, { uniforms: lens.uniforms, defines: plain.defines }); }
       const mergeSh = OELens.merge({ shade: shade.upsample });
       bloom.mergeMaterial = mat(mergeSh, { uniforms: Object.assign(mergeSh.uniforms, { uCap: lens.uniforms.uCap, uKnee: lens.uniforms.uKnee, uShadeShow: lens.uniforms.uShadeShow }, bloom.uniforms, ao ? ao.uniforms : {}) });
       if (ao && ao.show) lens.uniforms.uShadeShow.value = 1; // (?ao=show: the occlusion alone)
@@ -449,17 +509,49 @@ window.OEAtmos = (function () {
     }
     const q = new THREE.Quaternion();
     const api = {
-      composer, lens, ao, stars: S, moon: M, keys, // (keys: the grade by the hour, for a film's lens: tools/film/director.js)
+      composer, lens, ao, stars: S, moon: M, keys, sky: SK, meteor, // (meteor: set next to 0 to send one now, for a still)
+       // (keys: the grade by the hour, for a film's lens: tools/film/director.js)
       // per frame: the sky's turn for this moment, the moon's place and phase, the clouds' drift
       update(utcMs, tSec, U) {
         night = U.uNight.value;
         const ov = window.OEWeather ? OEWeather.U.uOeOvercast.value : 0; // cloud cover from the weather (weather.js)
         if (su.time) su.time.value = tSec;
+        if (painted) {
+          // the layers drift with the weather's wind (weather.js; in real seconds, a little quickened so that it shows),
+          // and change shape slowly; all of it wraps where the noise repeats
+          // (api.skyTime: seconds on a film's own clock, for a time-lapse: tools/day_film.js)
+          const ts = api.skyTime ?? tSec, WS = window.OEWeather && OEWeather.S, W = WS && WS.wind && Math.hypot(WS.wind.x, WS.wind.z) > 0.3 ? WS.wind : wind, dt = drift.t == null ? 0 : Math.max(0, Math.min(api.skyTime != null ? 600 : 0.25, ts - drift.t)), D = su.uCloudDrift.value;
+          drift.t = ts;
+          const k = dt * 3 / 9000, sp = Math.hypot(W.x, W.z); // (W: where the wind blows to, m/s)
+          drift.x = (drift.x - W.x * k + 100) % 100; drift.z = (drift.z - W.z * k + 100) % 100;
+          drift.e = (drift.e + dt * 0.0016) % 100; drift.w = (drift.w + dt * 0.00012 * sp / 4) % 100;
+          D.set(drift.x, drift.z, drift.e, drift.w);
+          su.uCloudK.value.z = SK.edge * (1 - 0.75 * night); // softer after dark
+          su.uCloudFair.value = 1 - 0.6 * night;            // and fewer: fair-weather cumulus thins out with the sun gone
+          if (Wd.skyRef && Wd.lastSun) Wd.cloudLight(Wd.lastSun.sp.altitude, Wd.skyRef); // (the weather's cover changes between two suns)
+        }
         if (su.uSkySat) su.uSkySat.value = (1 + (skySat - 1) * (1 - night)) * (1 - 0.55 * ov) * ((lens && lens.trim && lens.trim.skySat) || 1); // not the night sky's red; a pale sky under cloud
         skyBasis(utcMs, city.lat, city.lon, basis);
         S.matrix.copy(basis).setPosition(camera.position);
         S.matrixWorldNeedsUpdate = true;
-        S.material.uniforms.uOpacity.value = night * (1 - 0.6 * clouds) * (1 - ov);
+        S.material.uniforms.uOpacity.value = night * (painted ? 1 : 1 - 0.6 * clouds) * (1 - ov);
+        if (painted) {
+          // the Milky Way where it is tonight, and now and then a shooting star, on a clear night
+          const clear = night * (1 - ov) * (1 - ov);
+          su.uMilky.value = SK.milky * 0.09 * clear * ((lens && lens.trim && lens.trim.stars) || 1);
+          su.uGalPole.value.copy(galPole).applyMatrix4(basis).normalize(); su.uGalCentre.value.copy(galCentre).applyMatrix4(basis).normalize();
+          if (meteor.next < 0) meteor.next = tSec + 20 + 3600 / Math.max(1, SK.meteors) * Math.random();
+          if (tSec > meteor.next && clear > 0.6) {
+            // from a point well up the sky, falling a way across it, in under a second
+            const a = Math.random() * 6.2832, e = (25 + 50 * Math.random()) * RAD, b = a + (Math.random() - 0.5) * 1.2, len = 0.18 + 0.2 * Math.random();
+            su.uMeteorA.value.set(Math.cos(e) * Math.cos(a), Math.sin(e), Math.cos(e) * Math.sin(a));
+            su.uMeteorB.value.set(Math.cos(e - len) * Math.cos(b), Math.sin(e - len), Math.cos(e - len) * Math.sin(b)).sub(su.uMeteorA.value).normalize().multiplyScalar(len).add(su.uMeteorA.value);
+            meteor.t0 = tSec; meteor.dur = 0.5 + 0.5 * Math.random();
+            meteor.next = tSec + 3600 / Math.max(1, SK.meteors) * (0.3 + 1.4 * Math.random());
+          }
+          const mt = meteor.dur ? (tSec - meteor.t0) / meteor.dur : 2;
+          su.uMeteorT.value = mt > 0 && mt < 1 && clear > 0.3 ? mt : 0;
+        }
         S.material.uniforms.uTime.value = tSec;
         S.material.uniforms.uScale.value = renderer.getPixelRatio() * (composer ? composer.scale : 1) * ((lens && lens.trim && lens.trim.stars) || 1); // (a shot's starrier sky: overture.js)
         S.visible = night > 0.02;
@@ -486,6 +578,21 @@ window.OEAtmos = (function () {
           L.uContrast.value += 0.05 * ov;
           L.uTint.value.set(gr.tint[0] * (trim ? trim.tint[0] : 1), gr.tint[1] * (trim ? trim.tint[1] : 1), gr.tint[2] * (trim ? trim.tint[2] : 1));
           L.uTime.value = tSec;
+          L.uShade.value.fromArray(gr.shade); L.uHiTint.value.fromArray(gr.hi); L.uVibrance.value = gr.vib * (1 - 0.5 * ov);
+          L.uShadeLift.value.fromArray(gr.lift).multiplyScalar(1 - 0.6 * ov);
+          // the sun in the lens: the flare and the light shafts while it is in or near the frame, up and not behind cloud
+          // (an overture's shot sets its own: overture.js)
+          if (!trim && window.OELens) {
+            const sdir = Wd.sunDir, alt = Wd.lastSun ? Wd.lastSun.sp.altitude : 30, on = sdir ? OELens.sunOnScreen(camera, sdir) : null;
+            const m = on && on.front ? Math.max(0, 1 - Math.max(0, Math.max(Math.abs(on.u - 0.5), Math.abs(on.v - 0.5)) - 0.5) / 0.25) : 0; // (fading out a quarter of a frame off it)
+            const up = Math.max(0, Math.min(1, (alt + 1.5) / 3)) * (1 - ov);
+            L.uSunSeen.value = 1;
+            L.uSunVis.value = m * up;
+            if (on) L.uSunUv.value.set(on.u, on.v);
+            L.uFlare.value = LT.flare; L.uShafts.value = LT.shafts;
+            const low = 1 - Math.max(0, Math.min(1, (alt - 2) / 25));
+            L.uFlareTint.value.setRGB(1, 0.9 - 0.3 * low, 0.78 - 0.45 * low);
+          }
           // the ceiling for the highlights, in scene units, from the exposure; the bloom starts below it, so what is
           // rolled off still glows
           if (highlight) {
