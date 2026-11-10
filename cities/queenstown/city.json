@@ -279,6 +279,7 @@
     "clarity": 2.2
   },
   "game": {
+    "weather": {"rain_days": [7.6, 6.5, 7.3, 7.3, 9.7, 8.6, 7.8, 8.1, 8.3, 8.4, 7.7, 8.7], "threshold_mm": 1.0, "drizzle": 0.35, "source": "NIWA, Queenstown Airport (agents 5450 and 5451), 1991-2020 normals, days with at least 1 mm (via Wikipedia's climate table)", "temp_max": [22.0, 21.8, 19.1, 15.2, 11.9, 8.6, 8.2, 10.2, 13.0, 15.4, 17.5, 20.2], "temp_min": [9.9, 9.5, 7.3, 4.5, 2.3, -0.4, -1.4, 0.2, 2.4, 4.4, 6.2, 8.5], "wind_ms": [3.9, 3.7, 3.4, 3.1, 2.8, 2.8, 2.7, 2.8, 3.3, 3.7, 3.9, 3.8], "wind_from_deg": 250, "snow_days": [0, 0, 0.1, 0.6, 1.4, 2.2, 2.6, 2.3, 1.6, 1.0, 0.2, 0], "thunder_days": [0.7, 0.7, 0.5, 0.3, 0.2, 0.2, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5], "fog_days": [0, 0.2, 0.6, 1.5, 2.5, 2.5, 2.5, 1.2, 0.4, 0, 0, 0], "snow_share": 0.8, "more": "Queenstown: temperatures NIWA 1991-2020 (Queenstown Aero, max_ and min_air_temperature_1991-2020.xlsx); wind NIWA, The Climate and Weather of Otago (2015), table 1, km/h as m/s; snow, thunder and fog from its table 20 (12, 5 and 1 days a year), spread by month as pipeline/weather_climate.py says."},
     "fishing": {
       "note": "Fishing from the shore (docs/FISHING.md, pipeline/fishing.py). The species, their share of the catch, the usual weight, the seasons and the bag limit are Otago Fish & Game's; the weights by hour and the lengths are chosen for the game, not a survey.",
       "water": "Lake Wakatipu",

@@ -345,14 +345,14 @@ vec3 oeGlitter(vec3 spec, vec2 xz, float camD, float lostK, float t) {
       uClarity: { value: cfg.clarity_m ?? 4 }, uSlopes: { value: new THREE.Vector3(...['sand', 'rock', 'built'].map(k => (shore && shore.slopes || {})[k] ?? { sand: 0.04, rock: 0.25, built: 1 }[k])) },
       uFloor: { value: shore && shore.floor_m || 4 },
       uEdge: { value: opts.edge || 0 },
-      uRefl: { value: null }, uReflOn: { value: 0 }, uReflMat: { value: new THREE.Matrix4() }, uWind: { value: W.wind_ms ?? 5 },
+      uRefl: { value: null }, uReflOn: { value: 0 }, uReflMat: { value: new THREE.Matrix4() }, uWind: { value: W.wind_ms ?? 5 }, uSea: { value: 1 }, uMist: { value: 0 }, // (uSea: the waves' height against the ones the spectrum was made for, from the weather's wind)
       uWake: { value: null }, uWakeBox: { value: new THREE.Vector4(0, 0, 1, 0) },
       // where the bottom is not to show (setCover): under the decks the game draws over the water
       uCover: { value: null }, uCoverBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uCoverOn: { value: 0 }
     };
     const C = sizes.length;
     const COMMON = `
-uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uClarity, uFloor, uReflOn, uWind;
+uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uClarity, uFloor, uReflOn, uWind, uSea, uMist;
 uniform vec4 uShoreBox; uniform float uEdge; uniform vec3 uDeep, uShallow, uSlopes; uniform float uScatter; uniform sampler2D uRefl; uniform mat4 uReflMat;
 uniform sampler2D uWake; uniform vec4 uWakeBox; uniform sampler2D uCover; uniform vec4 uCoverBox; uniform float uCoverOn;
 // the wake field (x, z of its centre, its size, on): foam drawn by passing vessels
@@ -389,7 +389,7 @@ varying vec3 vWave; varying vec2 vXZ; varying float vSpacing;`)
   float calm = smoothstep(1.0, 14.0, shoreAt(xz).x);
   vec3 d = vec3(0.0);
 ${sizes.map((_, c) => `  d += textureLod(uDisp[${c}], xz / uSize[${c}], 0.0).xyz * cascadeWeight(${c}, vSpacing);`).join('\n')}
-  d *= calm;
+  d *= calm * uSea;
   transformed += d;
   vXZ = xz; vWave = d;`);
       sh.fragmentShader = sh.fragmentShader
@@ -409,6 +409,7 @@ float wAlpha; float wFoam; vec3 wN;`)
   vec4 sl = vec4(0.0); float foam = 0.0, lost = 0.0;
 ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uSize[${c}]); vec2 uv = vXZ / uSize[${c}];
     sl += texture(uDeriv[${c}], uv) * k; foam += texture(uDisp[${c}], uv).w * k; lost += 1.0 - k; }`).join('\n')}
+  sl *= uSea; foam *= mix(1.0, uSea * uSea, step(1.0, uSea)); // (a stronger wind: steeper waves and more of them breaking)
   float calm = smoothstep(1.0, 14.0, sh0.x);
   // near the shore the heights calm (so the sea never climbs the land) but the ripples stay
   vec2 slope = sl.xy / max(vec2(1.0 + sl.z, 1.0 + sl.w), vec2(0.2)) * mix(0.75, 1.0, calm);
@@ -491,7 +492,11 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
         .replace('vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;',
           `float wF = 0.02 + 0.98 * pow(1.0 - saturate(dot(normal, geometryViewDir)), 5.0);
   vec3 wSun = reflectedLight.directSpecular; // the sun's glints, as facets (oeGlitter)
-  vec3 outgoingLight = (totalDiffuse + totalEmissiveRadiance) * wAlpha * (1.0 - wF) + totalSpecular - wSun + oeGlitter(wSun, vXZ, camD, clamp(lost / float(${C}), 0.0, 1.0), uTime);`)
+  vec3 outgoingLight = (totalDiffuse + totalEmissiveRadiance) * wAlpha * (1.0 - wF) + totalSpecular - wSun + oeGlitter(wSun, vXZ, camD, clamp(lost / float(${C}), 0.0, 1.0), uTime);
+#ifdef USE_FOG
+  { float mp = camD * min(1.0, 22.0 / max(cameraPosition.y, 22.0)); // the path through a layer some 20 m deep: short when seen from above
+    outgoingLight = mix(outgoingLight, fogColor, uMist * (1.0 - exp(-mp / 420.0)) * 0.7); } // mist on the water
+#endif`)
         .replace('#include <opaque_fragment>', 'gl_FragColor = vec4(outgoingLight, 1.0 - (1.0 - wAlpha) * (1.0 - wF));')
         .replace('#include <premultiplied_alpha_fragment>', '');
     };
@@ -520,6 +525,15 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
     wakeCam.layers.set(WAKE_LAYER);
     u.uWake.value = wakeRT.texture;
     const clearC = new THREE.Color(), fwd = new THREE.Vector3();
+    // Only the wakes are drawn into it, so only they are handed to the renderer: a scene of its own whose children
+    // are the wake meshes where they stand in the world (they keep their parents; nothing is moved), with the
+    // world's fog so that they draw with the programs they have. Before, the whole world's graph was walked for
+    // the few objects on the wake layer, every frame (issue 352). With no wake in the window nothing is drawn,
+    // after one clear.
+    const wakeScene = new THREE.Scene(), wakeMeshes = [], wakeShown = [];
+    wakeScene.matrixWorldAutoUpdate = false;
+    let wakeDrawn = false;
+    const shown = o => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
     function drawWakes(camera, world) {
       // a window 1 m a texel at street level, wider from the air, reaching ahead of the camera
       const size = Math.min(3000, Math.max(WAKE_RES, camera.position.y * 6)), px = size / WAKE_RES;
@@ -532,31 +546,62 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
       wakeCam.position.set(cx, 200, cz);
       wakeCam.lookAt(cx, 0, cz);
       wakeCam.updateMatrixWorld();
+      u.uWakeBox.value.set(cx, cz, size, 1);
+      const listed = wakeMeshes.length > 0;
+      if (listed) {
+        wakeShown.length = 0;
+        for (const m of wakeMeshes) if (m.parent && shown(m)) { m.updateWorldMatrix(true, false); wakeShown.push(m); }
+        if (!wakeShown.length && !wakeDrawn) return; // (nothing to draw and nothing left over from the last frame)
+        wakeDrawn = wakeShown.length > 0;
+        wakeScene.children = wakeShown; wakeScene.fog = world.fog;
+      }
       const prev = renderer.getRenderTarget(), alpha = renderer.getClearAlpha(), shadows = renderer.shadowMap.autoUpdate;
       renderer.getClearColor(clearC);
       renderer.shadowMap.autoUpdate = false; // the shadows are the main view's; this pass has none
       renderer.setRenderTarget(wakeRT);
       renderer.setClearColor(0x000000, 1);
       renderer.clear(true, false, false);
-      renderer.render(world, wakeCam);
+      renderer.render(listed ? wakeScene : world, wakeCam);
       renderer.setRenderTarget(prev);
       renderer.setClearColor(clearC, alpha);
       renderer.shadowMap.autoUpdate = shadows;
-      u.uWakeBox.value.set(cx, cz, size, 1);
     }
 
     const inv = new THREE.Matrix4(), snap = 4;
-    let last = null;
-    function update(tMs, camera, world) {
-      const t = tMs / 1000, dt = last == null ? 0 : t - last;
+    let last = null, reflAt = 0, reflTick = 0, sea = 1;
+    const builtWind = W.wind_ms ?? 5;
+    const reflPos = new THREE.Vector3(1e9, 0, 0), reflQuat = new THREE.Quaternion();
+    // seen: whether any water can be in the picture (world.js seaInView). When none is, the frame does without
+    // the waves' transform (some 45 small passes), the wakes and the reflection's second draw of the city; the
+    // sheet stays where it is, with the waves it last had, for the frame that brings it back into view.
+    function update(tMs, camera, world, seen = true) {
+      const t = tMs / 1000, dt = last == null ? 0 : Math.min(0.25, t - last);
       last = t;
+      mesh.position.set(Math.round(camera.position.x / snap) * snap, 0, Math.round(camera.position.z / snap) * snap);
+      if (!seen) { reflAt = 0; return; }
+      // the weather's wind (game/weather.js OEWeather.S) raises and lowers the sea the spectrum was made for:
+      // height goes with the wind's speed (fetch-limited growth, Hs ~ U), eased over a minute as a sea builds
+      const wx = window.OEWeather && OEWeather.S;
+      if (wx && wx.windMean > 0) {
+        const want = Math.max(0.4, Math.min(2.4, wx.windMean / (builtWind * 0.7)));
+        sea = dt > 0 ? sea + (want - sea) * Math.min(1, dt / 40) : want;
+        u.uSea.value = sea; u.uHs.value = Hs * sea; u.uWind.value = builtWind * sea;
+      }
+      // mist lies on water before it lies on land: the weather's fog and dawn mist, doubled over the sea
+      u.uMist.value = wx ? Math.min(1, wx.fog * 1.8) : 0;
       fft.step(t, dt);
       for (let c = 0; c < C; c++) { u.uDisp.value[c] = fft.disp(c); u.uDeriv.value[c] = fft.deriv(c); }
       u.uTime.value = t;
-      mesh.position.set(Math.round(camera.position.x / snap) * snap, 0, Math.round(camera.position.z / snap) * snap);
       if (world && api.wakes) drawWakes(camera, world);
+      // The reflection: every frame while the camera moves (a picture from where the camera was would swim on
+      // the water), every third while it stands still, when the last one still lands where it should and only
+      // what moves in it (a ferry, the clouds) is a frame or two behind, under the waves' own blur.
+      const still = refl && reflAt && camera.position.distanceToSquared(reflPos) < 1e-4 && Math.abs(camera.quaternion.dot(reflQuat)) > 1 - 1e-8;
+      if (still && camera.position.y > 0.3 && (++reflTick % 3)) return;
       u.uReflOn.value = 0;
+      reflAt = 0;
       if (refl && camera.position.y > 0.3) {
+        reflAt = 1; reflPos.copy(camera.position); reflQuat.copy(camera.quaternion);
         const sz = new THREE.Vector2();
         renderer.getDrawingBufferSize(sz);
         const rt = refl.getRenderTarget();
@@ -602,7 +647,7 @@ vec4 shoreAt(vec2 xz) {
     function setCover(tex, x0, y1, w, h) {
       u.uCover.value = tex; u.uCoverBox.value.set(x0, y1, w, h); u.uCoverOn.value = tex ? 1 : 0;
     }
-    const api = { mesh, material: mat, update, patchGround, setCover, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER, wakes: false };
+    const api = { mesh, material: mat, update, patchGround, setCover, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER, wakes: false, wakeMeshes };
     return api;
   }
 

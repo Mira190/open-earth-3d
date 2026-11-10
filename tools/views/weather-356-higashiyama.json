@@ -1,0 +1,6 @@
+[
+ {"name": "kiyomizu-snow", "at": [316.4, -267.9], "look": [272.0, -248.0], "eye": [315.9, -268.5, 116.85], "date": [1, 25], "time": "11:00", "weather": {"snow": 0.8, "cloud": 0.95, "snowDepth": 0.8}},
+ {"name": "kiyomizu-snow-dusk", "at": [316.4, -267.9], "look": [272.0, -248.0], "eye": [315.9, -268.5, 116.85], "date": [1, 25], "time": "sunset+12", "weather": {"snow": 0.5, "cloud": 0.9, "snowDepth": 0.7}},
+ {"name": "yasaka-snow", "at": [-317.0, 650.0], "eye": [-317.0, 650.0, 1.65], "look": [-318.0, 676.0, 14.0], "fov": 66, "date": [1, 25], "time": "15:00", "weather": {"snow": 0.6, "cloud": 0.9, "snowDepth": 0.5}},
+ {"name": "kiyomizu-after-snow", "at": [316.4, -267.9], "look": [272.0, -248.0], "eye": [315.9, -268.5, 116.85], "date": [1, 26], "time": "09:30", "weather": {"snow": 0, "cloud": 0.1, "snowDepth": 0.6, "temp": -1}}
+]

@@ -445,6 +445,7 @@ listed at the end.
 | **Arcade racers** (Need for Speed, Burnout, Forza Horizon) | Handling for fun rather than a tyre model: speed-sensitive steering, grip of about 1 g that bends the car's path round to where it points, a handbrake drift, a view that widens with speed, and an engine note that climbs through the gears. | They are set on closed roads. Here you drive the real streets, among traffic that keeps to its lane. |
 | **Ship Simulator Extremes** | Docking as the skill moment: the ferry runs on autopilot across open water, then you bring her alongside and are scored. | Reviewers found its long cruises boring. Here the open-water legs can be skipped, and docking is optional. |
 | **Assassin's Creed Discovery Tour** | Guided learning by place: each stop is a person who explains what is in front of you, with "behind the data" honesty. | Its narration was called dry. Here the lines are short and come from the model, such as the share of Martin Place in sun on 21 June at 12:30, computed while you stand there. |
+| **Mini Tokyo 3D** (MIT; three.js on a map) and **Densha de GO!** | From Mini Tokyo 3D: every train of a line drawn on its real track from a timetable, as a function of the clock. From Densha de GO!: the station as the place where the railway is felt, with its chime, its announcement and the melody before the doors close. Ideas only; no code or assets. | Mini Tokyo 3D draws trains as coloured boxes on a map seen from above. Here you stand on the platform: the cars have their doors and liveries, and you hear them pass. |
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
 | **Assassin's Creed viewpoints** | Climb to a high point, and the camera turns once round you while the names fill in. | Its viewpoints reveal what designers placed there. Here what is named is what is in sight from that spot: a line of sight through the model to each roof, with the source of each height. |
 | **GTA V character switch** | The fast-travel camera goes up, across the city and down onto the player, instead of cutting. | Its sky camera hides streaming. Here it keeps the city in one piece, and the cruise height clears the tallest roof on the route. |
@@ -779,6 +780,26 @@ pipeline writes. The only city-specific code is landmark geometry in
   they pull away. A funicular's two cars hang on one cable: one climbs while the
   other comes down, and they pass at the loop. You ride it like a ferry, from
   station to station, and the HUD shows your height and the gradient.
+- **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
+  `game.json` "trains" carries (Tokyo's through Yurakucho, `cities/tokyo/rail.py`; Sydney's City
+  Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
+  A station's `style` picks its announcements: JR East's in Japanese and English, or Sydney
+  Trains' in English.
+  - A service is a stock, a number of cars, a headway and an offset; a train's place is a
+    function of the time alone (cruise, brake at 0.9 m/s², stand, pull away), so there is no
+    state to keep and a harness can ask where any train is at any second.
+  - The cars ride on their two bogies along the course and are instanced, one draw call per
+    material of each kind of car. They are drawn only between the sheds' mouths at the ends
+    (`hide_m`).
+  - Sound (`audio.js`): the three nearest trains have a voice each (rumble, rail joints,
+    motors, a Shinkansen's air), panned left or right of the camera. Within the station's
+    hearing the platform plays its chime, announcement, door chime and departure melody. The
+    words are spoken by `speechSynthesis` where the browser has a voice for the language, and
+    always captioned (`#g-announce`). Nothing sounds between trains.
+  - A strip the data knows nothing of (a platform, its stairs) is marked `"mapped": false`:
+    `decks.js` then leaves the mapped footways that pass under it on the ground.
+  - Check: `xvfb-run -a node tools/trains_check.js tokyo` (or `sydney`) (the step `tools/game_check.js`
+    runs, on its own).
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
@@ -2885,6 +2906,13 @@ deadlock or a meeting at a shared berth takes to show.
 
 ## Sources
 
+- Trains: [Mini Tokyo 3D](https://github.com/nagix/mini-tokyo-3d) (Akihiko Kusanagi, MIT: trains on
+  their tracks from the timetable; ideas only), JR East's releases on platform doors
+  ([2021](https://www.jreast.co.jp/press/2021/20210406_ho01.pdf)) and
+  [鉄道コム on Yurakucho's](https://www.tetsudo.com/report/105/) (the Yamanote Line's in 2014),
+  [Wikipedia, E235 series](https://en.wikipedia.org/wiki/E235_series) (20 m cars, 2.95 m wide, 3.62 m
+  high), the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 16 cars); the high-speed
+  train drawn on it is this project's own design, not a model of an operator's stock.
 - Scrambles: [LIVE JAPAN on Shibuya Crossing](https://livejapan.com/en/in-tokyo/in-pref-tokyo/in-shibuya/article-a0002128/)
   (the cycle and the walk), [Wikipedia, Shibuya Crossing](https://en.wikipedia.org/wiki/Shibuya_Crossing)
   (1,000 to 3,000 people a walk), [乗りものニュース on its single diagonal](https://trafficnews.jp/post/122022),

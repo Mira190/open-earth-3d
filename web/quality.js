@@ -128,9 +128,120 @@ window.OEQuality = (function () {
   // triangles (Queenstown, #227); low already keeps a third of the woods' trees and draws them nearer
   function city() {
     const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name, s = TIERS[name];
+    // The high tier's canvas keeps the display's own pixels up to 2x (the lens's one pass and the interface stay
+    // sharp) within CANVAS_PX, a 4K display's; the scene inside it is drawn within the tier's budget of pixels
+    // (sceneScale: the governor's ceiling, issue 352), which a 1440p display meets at full size. Before, a 4K
+    // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
+    const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
     return { name, small: name === 'low', shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
-      pixelRatio: (w, h) => (name === 'high' ? Math.min(c.dpr, 2) : pixelRatio(s, w, h)) };
+      pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
+      // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
+      sceneScale: (w, h) => Math.min(1, Math.sqrt(SCENE_PX / Math.max(1, w * h))) };
   }
-  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, TIERS, ORDER, NAMES };
+
+  // The frame-time governor (issue 352): one controller for what a frame may cost, in place of steps that only
+  // ever went down. The game ticks it once a drawn frame; it holds a smoothed frame time against a target (the
+  // display's own interval, or the frame-rate cap's: 60 a second unless the player asks otherwise) and moves
+  // two things the game reads back:
+  //   scale   the scene's resolution against the canvas's, from `max` (the tier's pixel budget) down to `min`,
+  //           in steps of a twentieth. The lens upscales and sharpens (lens.js), so a step is hard to see.
+  //   extras  1, 0.5 or 0: how much of what a frame can do without is drawn. 0.5: no far or secondary layers
+  //           (the far rain and its splashes, the wet street's mirror, the lighter contact shadows); 0: the
+  //           essentials only. Read it each frame, or take on(fn) for a call when it changes.
+  // Down, in the order of what is missed least: resolution to `mid`, the extras, then resolution to `min`.
+  // Up: vertical sync hides headroom (a frame that could take 9 ms still takes 16.7), so after a calm
+  // stretch it tries one step up; a try that puts the frame over the target is taken back and the next one
+  // waits twice as long (4 s, 8 s ... a minute), so a device at its limit is not nudged over it for ever.
+  // Extras come back only at full resolution, after a longer calm. A display that cannot be met even at the
+  // floor (a phone that draws the city at 40 a second) is given half its rate as the target instead, where
+  // the frames are even, rather than the floor for nothing.
+  // Under automation it stands still (a software renderer's frames say nothing about a device) unless driven
+  // through simulate().
+  function governor({ min = 0.6, mid = 0.8, max = 1, cap = 60, auto = !navigator.webdriver } = {}) {
+    const STEP = 0.05, subs = [];
+    const q = v => Math.round(v / STEP) * STEP;
+    let last = 0, ema = 0, refresh = 0, since = 0, calm = 0, wait = 4000, tried = 0, floorT = 0, halved = false;
+    const g = {
+      scale: Math.min(1, max), extras: 1, min, mid, max, cap, auto,
+      get frameMs() { return ema; },
+      get refreshMs() { return refresh; },
+      // the frame time aimed at: the cap's interval or the display's, whichever is longer; twice the display's where that cannot be met
+      get targetMs() { const t = Math.max(g.cap > 0 ? 1000 / g.cap : 0, refresh || 1000 / 60); return halved ? Math.max(t, 2 * (refresh || 1000 / 60)) : t; },
+      on(fn) { subs.push(fn); return g; },
+      // every animation frame, drawn or not: the display's interval, as the shortest gap seen lately
+      raf(now) {
+        const d = now - g._raf; g._raf = now;
+        if (d > 2 && d < 100) refresh = refresh ? Math.min(refresh * 1.002, d) : d;
+      },
+      // whether to draw this animation frame, under the cap on a faster display (120 Hz at 60: every second one)
+      due(now) {
+        const t = g.cap > 0 ? 1000 / g.cap : 0;
+        if (!t || !refresh || refresh > t * 0.9) return true;
+        if (now - g._drawn < t - refresh * 0.5) return false;
+        g._drawn = now - g._drawn > 2 * t ? now : g._drawn + t; // (even pacing: on the cap's grid, not the frame's own time)
+        return true;
+      },
+      // once a drawn frame; active: in play (not the title, a menu, a hidden tab), where a frame's time means something
+      tick(now, active = true) {
+        const ms = last ? now - last : 0;
+        last = now;
+        if (!active || !ms || ms > 250) return;
+        ema = ema ? ema + (ms - ema) * 0.08 : ms;
+        if (g.auto) decide(ms);
+      },
+      reset() { last = 0; ema = 0; since = calm = floorT = 0; },
+      set(scale, extras) { change(scale ?? g.scale, extras ?? g.extras); },
+      // for the checks: frames of frameOf(scale, extras) milliseconds on a clock of its own, as a GPU would show
+      // them; the state after each simulated second, as "scale/extras"
+      simulate(seconds, frameOf) {
+        const keep = g.auto, seen = [];
+        g.auto = true; g.reset();
+        let t = 1e6;
+        for (let s = 0; s < seconds; s++) {
+          for (const end = t + 1000; t < end;) { t += Math.max(frameOf(g.scale, g.extras), refresh || 0); g.tick(t); }
+          seen.push(`${g.scale.toFixed(2)}/${g.extras}`);
+        }
+        g.auto = keep; g.reset();
+        return seen;
+      },
+      _raf: 0, _drawn: 0,
+    };
+    function change(scale, extras) {
+      scale = Math.max(g.min, Math.min(g.max, q(scale)));
+      const moved = scale !== g.scale || extras !== g.extras, ex = extras !== g.extras;
+      g.scale = scale; g.extras = extras; since = 0;
+      if (moved) for (const fn of subs) fn(g.extras, g.scale, ex);
+    }
+    function decide(ms) {
+      since += ms;
+      const target = g.targetMs, load = ema / target;
+      if (since < 1000) return; // (a change settles into the average first)
+      if (load > 1.15) {
+        calm = 0;
+        if (tried && since < 4000) { wait = Math.min(64000, wait * 2); tried = 0; change(g.scale - STEP, g.extras); return; } // the try up did not fit
+        tried = 0;
+        const want = Math.max(0.85, Math.min(0.95, Math.sqrt(1 / load))); // (pixels go with the square of the scale)
+        const floor = g.extras > 0 ? Math.max(g.min, Math.min(g.mid, g.max)) : g.min;
+        if (g.scale > floor + 1e-6) { floorT = 0; change(Math.max(floor, Math.min(g.scale - STEP, g.scale * want)), g.extras); return; }
+        floorT += ms;
+        if (floorT < 3000) return;
+        floorT = 0;
+        if (!halved && g.scale <= g.min + 1e-6 && load < 1.9) { halved = true; wait = 4000; return; } // half the display's rate, evenly
+        if (g.extras > 0) change(g.scale, g.extras - 0.5);
+        return;
+      }
+      floorT = 0;
+      if (load > 1.04) { calm = 0; return; } // on the edge: hold
+      calm += ms;
+      if (tried && since >= 4000) tried = 0; // the try up held
+      if (calm < wait) return;
+      calm = 0;
+      if (g.scale < g.max - 1e-6) { tried = 1; change(g.scale + STEP, g.extras); }
+      else if (g.extras < 1 && since >= 20000) change(g.scale, g.extras + 0.5);
+      else if (halved && since >= 30000) { halved = false; }
+    }
+    return g;
+  }
+  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, governor, TIERS, ORDER, NAMES };
 })();

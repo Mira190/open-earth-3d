@@ -10,10 +10,11 @@ const wrap = a => { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Mat
 export const angDiff = (a, b) => wrap(a - b);
 const damp = (cur, tgt, dt, tau) => cur + (tgt - cur) * (1 - Math.exp(-dt / tau));
 
-const TAUS = { tinnie: 0.18, yacht: 0.35, cat: 0.5, daycat: 0.7, seaplane: 0.3, pontoon: 1.2, helipad: 1.0, mooring: 0.12, jetty: 1 };
+const TAUS = { ship: 1.8, tinnie: 0.18, yacht: 0.35, cat: 0.5, daycat: 0.7, seaplane: 0.3, pontoon: 1.2, helipad: 1.0, mooring: 0.12, jetty: 1 };
 const SPECS = {   // max speed (m/s), turn rate (rad/s), acceleration (m/s^2), trail life and width
   yacht: { vmax: 3.9, turn: 0.35, acc: 0.35, life: 14 }, cat: { vmax: 4.8, turn: 0.3, acc: 0.4, life: 14 },
-  daycat: { vmax: 15, turn: 0.22, acc: 0.9, life: 26 }, tinnie: { vmax: 16, turn: 0.9, acc: 3.2, life: 18 }, seaplane: { vmax: 28, turn: 0.35, acc: 1.5, life: 20 }
+  daycat: { vmax: 15, turn: 0.22, acc: 0.9, life: 26 },
+  ship: { vmax: 5.2, turn: 0.075, acc: 0.14, life: 38 }, tinnie: { vmax: 16, turn: 0.9, acc: 3.2, life: 18 }, seaplane: { vmax: 28, turn: 0.35, acc: 1.5, life: 20 }
 };
 
 export class Vessel {
@@ -34,8 +35,8 @@ export class Vessel {
     if (desc.trails) {
       const sp = this.spec;
       for (const [tx, tz, w] of desc.trails) { const tr = new Trail(api.surf, { life: sp.life, w0: w, spread: 0.3, max: 150 }); tr.origin = [tx, tz]; this.trails.push(tr); api.scene.add(tr.mesh); }
-      if (['tinnie', 'daycat', 'yacht', 'cat'].includes(this.kind)) {
-        const bow = new Trail(api.surf, { life: 3.2, w0: 0.25, spread: 0.7, max: 40, minSpeed: this.kind === 'tinnie' ? 3 : this.kind === 'daycat' ? 5 : 99, spd: 9 });
+      if (['tinnie', 'daycat', 'yacht', 'cat', 'ship'].includes(this.kind)) {
+        const bow = new Trail(api.surf, { life: 3.2, w0: 0.25, spread: 0.7, max: 40, minSpeed: this.kind === 'tinnie' ? 3 : this.kind === 'daycat' ? 5 : this.kind === 'ship' ? 2 : 99, spd: 9 });
         bow.origin = [desc.L * 0.42, 0]; bow.isBow = true; this.trails.push(bow); api.scene.add(bow.mesh);
       }
     }
@@ -186,11 +187,12 @@ export class Vessel {
     }
     if (near && this.speed > 0.8 && field) {
       const sp = Math.min(1, this.speed / 8), L = this.desc.L, B = Math.min(this.desc.B, 6);
+      const fk = this.kind === 'ship' ? 0.45 : 1;      // a displacement hull at 9 knots: a bow wave and a stern wash, no sheet of foam round her
       const hulls = this.desc.trails.length ? this.desc.trails.map(p => p[1]) : [0];
       for (const hz of hulls) {
-        this.toWorld(L * 0.42, hz, w); field.stamp(w[0], w[1], 1.6 + B * 0.2, 0.012 * sp * dt * 30 * (this.kind === 'daycat' ? 2 : 1), 0.2 * sp, t);
-        this.toWorld(0, hz, w); field.stamp(w[0], w[1], 1.2 + B * 0.18, -0.006 * sp * dt * 30, 0.12 * sp, t);
-        this.toWorld(-L * 0.45, hz, w); field.stamp(w[0], w[1], 1.4 + B * 0.2, 0.012 * sp * dt * 30, 0.5 * sp, t);
+        this.toWorld(L * 0.42, hz, w); field.stamp(w[0], w[1], 1.6 + B * 0.2, 0.012 * sp * dt * 30 * (this.kind === 'daycat' ? 2 : 1), 0.2 * sp * fk, t);
+        if (fk === 1) { this.toWorld(0, hz, w); field.stamp(w[0], w[1], 1.2 + B * 0.18, -0.006 * sp * dt * 30, 0.12 * sp, t); }
+        this.toWorld(-L * 0.45, hz, w); field.stamp(w[0], w[1], 1.4 + B * 0.2, 0.012 * sp * dt * 30, 0.5 * sp * fk, t);
       }
     }
   }
