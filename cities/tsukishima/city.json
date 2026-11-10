@@ -26,15 +26,12 @@
   "vertical_datum": "m T.P.",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)",
-    "soften": {
-      "sigma_m": 6.0,
-      "keep": 0.15
-    }
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -61,9 +58,7 @@
   "bridges": {
     "min_m2": 50,
     "deck_min_m": 2.0,
-    "widths": {
-      "佃小橋": 4.4
-    },
+    "widths": {"佃小橋": 4.4},
     "forms": {
       "佃小橋": {
         "form": "girder",
@@ -236,25 +231,7 @@
     "note": "Monja Street's signs are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
   },
   "game": {
-    "weather": {
-      "rain_days": [
-        5.3,
-        6.1,
-        10.3,
-        10.9,
-        11.1,
-        12.8,
-        12.0,
-        9.4,
-        12.3,
-        11.8,
-        8.2,
-        5.8
-      ],
-      "threshold_mm": 0.5,
-      "drizzle": 0.55,
-      "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
-    },
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Tsukishima on Foot",
     "local_name": "Tokyoite",
     "water_name": "the Sumida",

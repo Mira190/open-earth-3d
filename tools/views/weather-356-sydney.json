@@ -1,0 +1,7 @@
+[
+ {"name": "opera-house-dawn-fog", "cam": [135.4, 717.1, 70], "tgt": [335.4, 542.1, 24], "date": [5, 20], "time": "sunrise+12", "weather": {"fog": 0.6, "cloud": 0.3}},
+ {"name": "bridge-dawn-fog", "cam": [-616.3, 1017.9, 95], "tgt": [-76.3, 1077.9, 70], "date": [5, 20], "time": "sunrise+20", "weather": {"fog": 0.75, "cloud": 0.35}},
+ {"name": "harbour-dawn-mist", "cam": [1750, 2250, 1150], "tgt": [-180, -380, 30], "date": [5, 20], "time": "sunrise+15", "weather": {"fog": 0.3, "cloud": 0.2}},
+ {"name": "opera-house-after-rain", "cam": [135.4, 717.1, 70], "tgt": [335.4, 542.1, 24], "date": [2, 10], "time": "sunset-70", "weather": {"rain": 0.12, "cloud": 0.35, "wet": 0.9}, "rainbow": 1},
+ {"name": "harbour-southerly", "cam": [135.4, 717.1, 70], "tgt": [335.4, 542.1, 24], "date": [2, 10], "time": "15:00", "weather": {"rain": 0.9, "storm": 0.8, "cloud": 1, "wind": 16, "windFrom": 180}}
+]

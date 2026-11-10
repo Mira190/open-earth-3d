@@ -57,7 +57,7 @@
   ],
   "load_bytes": {
    "model": 1863357,
-   "game": 2769119
+   "game": 2769432
   }
  },
  {
@@ -116,8 +116,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1258312,
-   "game": 1690628
+   "model": 1294002,
+   "game": 1729032
   }
  },
  {
@@ -159,7 +159,7 @@
   ],
   "load_bytes": {
    "model": 5756738,
-   "game": 6139382
+   "game": 6140552
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -621,7 +621,7 @@
   ],
   "load_bytes": {
    "model": 1024776,
-   "game": 1143455
+   "game": 1144171
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1077,7 +1077,7 @@
   ],
   "load_bytes": {
    "model": 630027,
-   "game": 725556
+   "game": 726229
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1533,7 +1533,7 @@
   ],
   "load_bytes": {
    "model": 697192,
-   "game": 835936
+   "game": 837159
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1986,7 +1986,7 @@
   ],
   "load_bytes": {
    "model": 863360,
-   "game": 1003603
+   "game": 1004179
   },
   "group_meta": {
    "native": "\u938c\u5009",
@@ -2197,8 +2197,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1791199,
-   "game": 2267090
+   "model": 2038098,
+   "game": 2520025
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -2952,7 +2952,7 @@
   ],
   "load_bytes": {
    "model": 3966098,
-   "game": 4519473
+   "game": 4519894
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3692,7 +3692,7 @@
   ],
   "load_bytes": {
    "model": 2327011,
-   "game": 2770317
+   "game": 2770806
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -4651,6 +4651,52 @@
     ]
    }
   }
+ },
+ {
+  "id": "milford-sound",
+  "name": "Milford Sound",
+  "native": "Piopiotahi",
+  "country": "New Zealand",
+  "lat": -44.635,
+  "lon": 167.9,
+  "status": "live",
+  "viewer": "reef/index.html",
+  "district": "Fiordland National Park, Southland",
+  "tagline": "Mitre Peak a mile out of the sea, and a ship under the falls",
+  "timezone": "Pacific/Auckland",
+  "summary": "Milford Sound / Piopiotahi, 20 by 20 km of Fiordland: the fiord from the Tasman Sea to the Cleddau on LINZ's open terrain and imagery, rainforest on walls a kilometre high, Stirling Falls with a rainbow in its spray, fair-weather cumulus, gulls, lupins on the river flats, and a 40 m ship that sails the day cruise's line. Ride her out under Mitre Peak.",
+  "guide": {
+   "hook": "A ship under mile-high walls, a waterfall straight into the sea",
+   "line": "The fiord Kipling called the eighth wonder: Mitre Peak rising 1,690 m straight from the water, rainforest clinging to the rock, and falls that never stop.",
+   "spots": [
+    [
+     "Mitre Peak",
+     "1,690 m straight out of the fiord"
+    ],
+    [
+     "Stirling Falls",
+     "151 m into the sea, a rainbow in its spray"
+    ],
+    [
+     "The Piopiotahi",
+     "Ride the ship out to the Tasman Sea"
+    ]
+   ],
+   "local": [
+    "Local",
+    "Rata in flower at Christmas, a rainbow in the spray of Stirling Falls, and gulls behind the boat."
+   ],
+   "best": [
+    "Morning",
+    "glassy water"
+   ]
+  },
+  "built": true,
+  "game": false,
+  "extent_km": [
+   20.5,
+   20.5
+  ]
  },
  {
   "id": "new-york",

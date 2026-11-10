@@ -28,15 +28,12 @@
   "datum_note": "The scene's 0 m is the water level of Amsterdam's canals and the IJ, NAP -0.40 m, which Waternet keeps. AHN removes water from its terrain, so the level is the published one, not a measurement. The viewer's water plane is at 0, so every height in the scene is above the canals; add -0.40 for NAP.",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "Beeldmateriaal Nederland aerial photographs (Actueel ortho HR) via PDOK, CC BY 4.0",
-    "soften": {
-      "sigma_m": 6.0,
-      "keep": 0.15
-    }
+    "attribution": "Beeldmateriaal Nederland aerial photographs (Actueel ortho HR) via PDOK, CC BY 4.0"
   },
   "terrain": {
     "type": "wcs",
@@ -60,17 +57,12 @@
   "architecture": "amsterdam",
   "bridges": {
     "deck_min_m": 1.0,
-    "skip": [
-      "Haarlemmer Houttuinen"
-    ],
+    "skip": ["Haarlemmer Houttuinen"],
     "note": "The canal bridges the city's own builder leaves (those OpenStreetMap maps as lines): brick arches, as most of the city's are.",
     "form": "stone_arch",
     "stone": "#8a4f3c",
     "forms": {
-      "Oosterdoksspoorbrug": {
-        "form": "girder",
-        "colour": "#5b5f63"
-      },
+      "Oosterdoksspoorbrug": {"form": "girder", "colour": "#5b5f63"},
       "Blauwbrug": {
         "form": "stone_arch",
         "spans": 3,
@@ -147,15 +139,9 @@
     "Sint-Franciscus Xaveriuskerk": "De Krijtberg"
   },
   "arrivals": {
-    "Centraal Station": {
-      "front": 180
-    },
-    "Royal Palace": {
-      "front": 95
-    },
-    "Beurs van Berlage": {
-      "front": 270
-    }
+    "Centraal Station": {"front": 180},
+    "Royal Palace": {"front": 95},
+    "Beurs van Berlage": {"front": 270}
   },
   "minor_labels": [
     "Schreierstoren",
@@ -477,25 +463,7 @@
     "gables": "Gable dates: Grachtenmuseum, Architecture in the canal district (grachten.museum)"
   },
   "game": {
-    "weather": {
-      "rain_days": [
-        12.2,
-        10.8,
-        9.7,
-        8.6,
-        8.9,
-        9.7,
-        10.9,
-        11.6,
-        10.9,
-        12.4,
-        13.4,
-        14.1
-      ],
-      "threshold_mm": 1.0,
-      "drizzle": 0.55,
-      "source": "KNMI, Amsterdam Airport Schiphol, 1991-2020 normals, days with at least 1 mm"
-    },
+    "weather": {"rain_days": [12.2, 10.8, 9.7, 8.6, 8.9, 9.7, 10.9, 11.6, 10.9, 12.4, 13.4, 14.1], "threshold_mm": 1.0, "drizzle": 0.55, "source": "KNMI, Amsterdam Airport Schiphol, 1991-2020 normals, days with at least 1 mm"},
     "title": "Amsterdam on Foot",
     "local_name": "Amsterdammer",
     "water_name": "the canals",
@@ -581,16 +549,7 @@
       "note": "The shared ferry (web/assets/vehicles) in ferry_style's white and blue; no helicopter flies over the old city."
     },
     "helipads": [
-      {
-        "id": "dam-pad",
-        "name": "Dam pad (game)",
-        "at": [
-          12,
-          18,
-          2.8
-        ],
-        "heading": 90
-      }
+      {"id": "dam-pad", "name": "Dam pad (game)", "at": [12, 18, 2.8], "heading": 90}
     ],
     "helipads_from_data": false,
     "viewpoints": [
@@ -892,20 +851,8 @@
           "Aim at a house and press Q to look closely. Find me a step gable, a neck gable and a bell gable. Then go up to the Westertoren; Femke plays its bells."
         ],
         "steps": [
-          {
-            "type": "gable",
-            "kinds": [
-              "step",
-              "neck",
-              "bell"
-            ],
-            "text": "Look closely (Q): find a step gable, a neck gable and a bell gable"
-          },
-          {
-            "type": "talk",
-            "npc": "femke",
-            "text": "Find Femke at the foot of the Westertoren"
-          }
+          {"type": "gable", "kinds": ["step", "neck", "bell"], "text": "Look closely (Q): find a step gable, a neck gable and a bell gable"},
+          {"type": "talk", "npc": "femke", "text": "Find Femke at the foot of the Westertoren"}
         ]
       },
       {

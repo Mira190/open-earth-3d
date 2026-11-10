@@ -18,6 +18,7 @@ Run pipeline/pack.py after it (scene.json changes).
 import argparse
 import json
 import os
+import re
 
 import numpy as np
 from PIL import Image
@@ -115,9 +116,13 @@ def run(cid, measure=False, force=False):
             small.save(os.path.join(out, lo["avif"]), quality=45, speed=4)
     S["softened"] = {"sigma_m": SIGMA_M, "keep": KEEP}
     json.dump(S, open(sp, "w"), separators=(",", ":"), ensure_ascii=False)
-    if cfg and not cfg["imagery"].get("soften"):
-        cfg["imagery"]["soften"] = {"sigma_m": SIGMA_M, "keep": KEEP}
-        json.dump(cfg, open(cp, "w"), ensure_ascii=False, indent=2)
+    if cfg and not cfg["imagery"].get("soften"):  # (put in as text: the file keeps its layout)
+        t = open(cp, encoding="utf8").read()
+        m = re.search(r'"imagery"\s*:\s*\{', t)
+        add = '"soften": {"sigma_m": %s, "keep": %s},' % (SIGMA_M, KEEP)
+        t = t[:m.end()] + ("\n    " + add if t[m.end()] == "\n" else add + " ") + t[m.end():]
+        json.loads(t)
+        open(cp, "w", encoding="utf8").write(t)
     return rep
 
 

@@ -26,15 +26,12 @@
   "vertical_datum": "m T.P. (Tokyo Peil)",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 18,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)",
-    "soften": {
-      "sigma_m": 6.0,
-      "keep": 0.15
-    }
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -56,47 +53,13 @@
     "note": "No sea: Kyoto is 25-80 m above it. The ponds (Maruyama Park's, the temples') are drawn at their own level (inland, pipeline/inland_water.py); the hill streams are left to the photograph.",
     "inland": {
       "note": "Ponds at the 5 m laser survey's level.",
-      "classes": [
-        "pond",
-        "lake",
-        "water",
-        "river",
-        "canal",
-        "reservoir"
-      ],
-      "min_area_m2": 250,
-      "skip": [
-        "第１低区配水池",
-        "第２低区配水池",
-        "第１高区配水池",
-        "第２高区配水地"
-      ],
+      "classes": ["pond", "lake", "water", "river", "canal", "reservoir"], "min_area_m2": 250,
+      "skip": ["第１低区配水池", "第２低区配水池", "第１高区配水池", "第２高区配水地"],
       "skip_note": "The Keage purification plant's distribution reservoirs are covered tanks."
     }
   },
-  "roofs": {
-    "palette": {
-      "清水寺": "#c4482a"
-    },
-    "note": "pipeline/arcades.py: a precinct whose roofs on posts and gates take its own colour (Kiyomizu-dera's gates and pavilions are vermilion, though it is a temple)"
-  },
-  "trees": {
-    "susuki": {
-      "note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).",
-      "open": [
-        {
-          "land": [
-            "grassland",
-            "meadow"
-          ],
-          "land_use": [
-            "meadow"
-          ],
-          "per_ha": 5200,
-          "min_m2": 20
-        }
-      ]
-    },
+  "roofs": {"palette": {"清水寺": "#c4482a"}, "note": "pipeline/arcades.py: a precinct whose roofs on posts and gates take its own colour (Kiyomizu-dera's gates and pavilions are vermilion, though it is a temple)"},
+  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): on the open grassland and meadows OpenStreetMap maps (natural=grassland, landuse=meadow: the unmown grass of the parks and the hills, where susuki is the grass that stands) (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, 
     "mix": {
       "zelkova": 0.2,
       "ginkgo": 0.14,
@@ -137,10 +100,7 @@
       },
       {
         "name": "Gion weeping cherry",
-        "at": [
-          -100.8,
-          763.5
-        ],
+        "at": [-100.8, 763.5],
         "radius": 3,
         "mix": {
           "shidarezakura": 1
@@ -335,25 +295,7 @@
     }
   ],
   "game": {
-    "weather": {
-      "rain_days": [
-        8.1,
-        8.9,
-        11.2,
-        10.6,
-        10.8,
-        13.2,
-        12.6,
-        9.3,
-        11.1,
-        9.4,
-        7.4,
-        8.2
-      ],
-      "threshold_mm": 0.5,
-      "drizzle": 0.5,
-      "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
-    },
+    "weather": {"rain_days": [8.1, 8.9, 11.2, 10.6, 10.8, 13.2, 12.6, 9.3, 11.1, 9.4, 7.4, 8.2], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm", "temp_max": [9.1, 10.0, 14.1, 20.1, 25.1, 28.1, 32.0, 33.7, 29.2, 23.4, 17.3, 11.6], "temp_min": [1.5, 1.6, 4.3, 9.2, 14.5, 19.2, 23.6, 24.7, 20.7, 14.4, 8.4, 3.5], "wind_ms": [1.7, 1.8, 2.0, 2.1, 2.1, 2.0, 1.9, 2.1, 1.9, 1.7, 1.5, 1.6], "wind_from_deg": 10, "snow_days": [16.3, 14.2, 6.8, 0.4, 0, 0, 0, 0, 0, 0, 0, 6.9], "thunder_days": [0.1, 0.1, 0.4, 1.1, 1.6, 1.7, 4.9, 5.1, 2.6, 1.0, 0.4, 0.5], "fog_days": [0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1], "typhoon_days": [0, 0, 0, 0, 0.1, 0.2, 0.4, 0.9, 1.0, 0.6, 0.1, 0], "more": "Kyoto: temperatures, wind, and days with snow (any solid precipitation seen, sleet and flurries among them), thunder and fog: the same JMA 1991-2020 table (data.jma.go.jp/stats/etrn/view/nml_sfc_ym.php), read November 2026. Its thunder and fog counts carry JMA's mark for a normal from incomplete observations."},
     "title": "Higashiyama on Foot",
     "travel": [
       {

@@ -26,15 +26,12 @@
   "vertical_datum": "m T.P. (Tokyo Peil)",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
     "zoom": 17,
     "format": "jpg",
-    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)",
-    "soften": {
-      "sigma_m": 6.0,
-      "keep": 0.15
-    }
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
   },
   "terrain": {
     "type": "gsi_dem_png",
@@ -104,357 +101,32 @@
     "inland": {
       "note": "The Kamo River in its bed at the 5 m laser survey's level; the Takase River, Shirakawa and the Misosogi between stone walls (about 1-2 m down to a shallow flow, read from photographs); the Kamo Canal and the Biwako Canal at Okazaki between stone walls about 2.5 and 1.8 m down. The Horikawa from Oshikoji up to the map's edge is a sunken promenade (Kyoto City's water restoration, 1997-2008): a paved floor between its stone walls about 2.6 m under the street, the stream down its middle, and steps down from the crossings (where OpenStreetMap maps them); its features where Kyoto City's summary of the works places them in its zones A-E, lettered from the south (#322): seating steps between Nijo and Oshikoji (A); the stream along the west wall and stepped drops, the floor stepping down with them, between Marutamachi and Takeyamachi (B); a lawn and a slab over the stream between Shimochojamachi and Demizu (C); the stream winding under two slabs, and below Modoribashi the audience's steps on the west wall and the floor as a stage with the stream along the east wall (D); stepping stones by Horikawa Daiichi-bashi (Commons photographs). The depth, the widths, the tiers and the drops' spacing are read from photographs, not measured; 9.9 m between the walls from a maintenance tender's bed area (9.85 m on average).",
       "lines": [
-        {
-          "name": "高瀬川",
-          "width_m": 4.5,
-          "bank_to_water_m": 0.9,
-          "water_m": 0.15,
-          "walls": "stone"
-        },
-        {
-          "name": "白川",
-          "width_m": 5.0,
-          "bank_to_water_m": 1.3,
-          "water_m": 0.25,
-          "walls": "stone"
-        },
-        {
-          "name": "みそそぎ川",
-          "width_m": 4.0,
-          "bank_to_water_m": 2.0,
-          "water_m": 0.3,
-          "walls": "stone"
-        },
-        {
-          "name": "堀川",
-          "clip": [
-            -1100,
-            900,
-            -800,
-            2750
-          ],
-          "width_m": 9.9,
-          "bank_to_water_m": 2.95,
-          "water_m": 0.15,
-          "walls": "stone",
-          "terrace": {
-            "stream_m": 2.4,
-            "path_m": 0.35,
-            "steps_m": 1.4,
-            "lawn": {
-              "between": [
-                [
-                  -960,
-                  2172
-                ],
-                [
-                  -960,
-                  2023
-                ]
-              ],
-              "bank": 1,
-              "path_m": 0.5,
-              "wall_m": 0.3
-            },
-            "seats": [
-              {
-                "between": [
-                  [
-                    -960,
-                    1180
-                  ],
-                  [
-                    -960,
-                    1026
-                  ]
-                ],
-                "bank": 1,
-                "tiers": 4,
-                "rise_m": 0.4,
-                "tread_m": 0.7,
-                "clear_m": 17.0
-              },
-              {
-                "between": [
-                  [
-                    -960,
-                    2676
-                  ],
-                  [
-                    -960,
-                    2618
-                  ]
-                ],
-                "bank": -1,
-                "tiers": 4,
-                "rise_m": 0.4,
-                "tread_m": 0.7,
-                "clear_m": 4.0
-              }
-            ],
-            "weirs": {
-              "between": [
-                [
-                  -960,
-                  1593
-                ],
-                [
-                  -960,
-                  1460
-                ]
-              ],
-              "every_m": 14.0,
-              "floor": true
-            },
-            "course": [
-              {
-                "between": [
-                  [
-                    -960,
-                    2699
-                  ],
-                  [
-                    -960,
-                    2606
-                  ]
-                ],
-                "wall": 1,
-                "gap_m": 0.3
-              },
-              {
-                "between": [
-                  [
-                    -960,
-                    2572
-                  ],
-                  [
-                    -960,
-                    2474
-                  ]
-                ],
-                "meander_m": 2.0,
-                "wave_m": 44.0
-              },
-              {
-                "between": [
-                  [
-                    -960,
-                    1578
-                  ],
-                  [
-                    -960,
-                    1464
-                  ]
-                ],
-                "wall": -1,
-                "gap_m": 0.0
-              }
-            ],
-            "crossings": [
-              {
-                "at": [
-                  -960,
-                  2596
-                ],
-                "kind": "slab",
-                "width_m": 2.2
-              },
-              {
-                "at": [
-                  -960,
-                  2529
-                ],
-                "kind": "slab",
-                "width_m": 2.2
-              },
-              {
-                "at": [
-                  -960,
-                  2416
-                ],
-                "kind": "stones",
-                "stones": 3,
-                "width_m": 1.0
-              },
-              {
-                "at": [
-                  -960,
-                  2095
-                ],
-                "kind": "slab",
-                "width_m": 2.2
-              }
-            ]
-          }
-        }
+        {"name": "高瀬川", "width_m": 4.5, "bank_to_water_m": 0.9, "water_m": 0.15, "walls": "stone"},
+        {"name": "白川", "width_m": 5.0, "bank_to_water_m": 1.3, "water_m": 0.25, "walls": "stone"},
+        {"name": "みそそぎ川", "width_m": 4.0, "bank_to_water_m": 2.0, "water_m": 0.3, "walls": "stone"},
+        {"name": "堀川", "clip": [-1100, 900, -800, 2750], "width_m": 9.9, "bank_to_water_m": 2.95, "water_m": 0.15, "walls": "stone",
+         "terrace": {"stream_m": 2.4, "path_m": 0.35, "steps_m": 1.4,
+                     "lawn": {"between": [[-960, 2172], [-960, 2023]], "bank": 1, "path_m": 0.5, "wall_m": 0.3},
+                     "seats": [{"between": [[-960, 1180], [-960, 1026]], "bank": 1, "tiers": 4, "rise_m": 0.4, "tread_m": 0.7, "clear_m": 17.0},
+                               {"between": [[-960, 2676], [-960, 2618]], "bank": -1, "tiers": 4, "rise_m": 0.4, "tread_m": 0.7, "clear_m": 4.0}],
+                     "weirs": {"between": [[-960, 1593], [-960, 1460]], "every_m": 14.0, "floor": true},
+                     "course": [{"between": [[-960, 2699], [-960, 2606]], "wall": 1, "gap_m": 0.3},
+                                {"between": [[-960, 2572], [-960, 2474]], "meander_m": 2.0, "wave_m": 44.0},
+                                {"between": [[-960, 1578], [-960, 1464]], "wall": -1, "gap_m": 0.0}],
+                     "crossings": [{"at": [-960, 2596], "kind": "slab", "width_m": 2.2},
+                                   {"at": [-960, 2529], "kind": "slab", "width_m": 2.2},
+                                   {"at": [-960, 2416], "kind": "stones", "stones": 3, "width_m": 1.0},
+                                   {"at": [-960, 2095], "kind": "slab", "width_m": 2.2}]}}
       ],
-      "rules": {
-        "鴨川運河": {
-          "walls": "stone",
-          "bank_to_water_m": 2.5,
-          "water_m": 1.2
-        }
-      },
-      "class_rules": {
-        "canal": {
-          "walls": "stone",
-          "bank_to_water_m": 1.8,
-          "water_m": 1.5
-        }
-      },
-      "classes": [
-        "pond",
-        "lake",
-        "water",
-        "river",
-        "canal",
-        "reservoir"
-      ],
-      "min_area_m2": 250
+      "rules": {"鴨川運河": {"walls": "stone", "bank_to_water_m": 2.5, "water_m": 1.2}},
+      "class_rules": {"canal": {"walls": "stone", "bank_to_water_m": 1.8, "water_m": 1.5}},
+      "classes": ["pond", "lake", "water", "river", "canal", "reservoir"], "min_area_m2": 250
     }
   },
-  "trees": {
-    "susuki": {
-      "note": "Susuki (trees.json susuki, #326): the silver grass of the Kamo's banks and sandbars, over the rank vegetation OpenStreetMap maps along the river (natural=scrub and grassland within 12 m of its water: susuki, ogi and reeds, unmown between the paths and the water), and any mapped meadow (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).",
-      "open": [
-        {
-          "land": [
-            "scrub",
-            "grassland",
-            "meadow"
-          ],
-          "near_water_m": 12,
-          "per_ha": 5200,
-          "min_m2": 20
-        },
-        {
-          "land": [
-            "grassland",
-            "meadow"
-          ],
-          "land_use": [
-            "meadow"
-          ],
-          "per_ha": 5200,
-          "min_m2": 20
-        }
-      ]
-    },
-    "mix": {
-      "ginkgo": 0.24,
-      "zelkova": 0.24,
-      "plane": 0.14,
-      "camphor": 0.14,
-      "maple": 0.12,
-      "pine": 0.06,
-      "evergreen": 0.06,
-      "cherry": 0.08
-    },
-    "woods": {
-      "camphor": 0.22,
-      "zelkova": 0.2,
-      "evergreen": 0.2,
-      "maple": 0.14,
-      "pine": 0.12,
-      "sugi": 0.06,
-      "ginkgo": 0.06,
-      "cherry": 0.04
-    },
-    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.",
-    "areas": [
-      {
-        "name": "Takase River",
-        "osm": "R18827840",
-        "buffer": 8,
-        "mix": {
-          "cherry": 0.85,
-          "elm": 0.15
-        },
-        "note": "Kiyamachi-dori's cherries over the Takase canal (an elm stands in for the willows among them)."
-      },
-      {
-        "name": "Shirakawa",
-        "find": "白川",
-        "buffer": 8,
-        "mix": {
-          "cherry": 0.55,
-          "shidarezakura": 0.15,
-          "elm": 0.3
-        },
-        "note": "Gion Shirakawa: Somei-yoshino and weeping cherries and weeping willows (elms stand in) over the stream by Tatsumi Bridge."
-      },
-      {
-        "name": "Kyoto Gyoen",
-        "find": "京都御苑",
-        "floor": "gravel",
-        "mix": {
-          "pine": 0.34,
-          "zelkova": 0.18,
-          "evergreen": 0.16,
-          "camphor": 0.14,
-          "maple": 0.1,
-          "ginkgo": 0.08,
-          "cherry": 0.06,
-          "shidarezakura": 0.04,
-          "yaezakura": 0.02
-        },
-        "note": "The Gyoen's black pines stand on its lawns and along its gravel avenues; its groves are broadleaf (mukunoki, enoki, zelkova, camphor) and maples. Its cherries: the Konoe-tei's weeping cherries (itozakura), and double cherries in mid April."
-      },
-      {
-        "name": "Nijo Castle",
-        "find": "元離宮二条城",
-        "mix": {
-          "pine": 0.3,
-          "camphor": 0.2,
-          "evergreen": 0.2,
-          "zelkova": 0.15,
-          "maple": 0.15,
-          "cherry": 0.1,
-          "shidarezakura": 0.04,
-          "yaezakura": 0.04
-        },
-        "note": "Nijo Castle's cherry garden and Seiryu-en: some fifty varieties, from the weeping cherries to the late double ones."
-      },
-      {
-        "name": "Nishi Honganji",
-        "find": "西本願寺",
-        "mix": {
-          "ginkgo": 0.45,
-          "pine": 0.25,
-          "camphor": 0.3
-        },
-        "note": "The 'upside-down ginkgo' (sakasa-icho) and the precinct's ginkgos."
-      },
-      {
-        "name": "Higashi Honganji",
-        "find": "東本願寺",
-        "mix": {
-          "ginkgo": 0.4,
-          "pine": 0.3,
-          "camphor": 0.3
-        }
-      }
-    ],
-    "cherry_open": "03-26"
-  },
-  "walls": {
-    "height_m": 4.5,
-    "coping": "kawara",
-    "colour": "#d8c79f",
+  "trees": {"susuki": {"note": "Susuki (trees.json susuki, #326): the silver grass of the Kamo's banks and sandbars, over the rank vegetation OpenStreetMap maps along the river (natural=scrub and grassland within 12 m of its water: susuki, ogi and reeds, unmown between the paths and the water), and any mapped meadow (Overture base land, OpenStreetMap contributors, ODbL; pipeline/grasses.py). Its heads stand from mid August to spring (web/trees.js).", "open": [{"land": ["scrub", "grassland", "meadow"], "near_water_m": 12, "per_ha": 5200, "min_m2": 20}, {"land": ["grassland", "meadow"], "land_use": ["meadow"], "per_ha": 5200, "min_m2": 20}]}, "mix": {"ginkgo": 0.24, "zelkova": 0.24, "plane": 0.14, "camphor": 0.14, "maple": 0.12, "pine": 0.06, "evergreen": 0.06, "cherry": 0.08}, "woods": {"camphor": 0.22, "zelkova": 0.2, "evergreen": 0.2, "maple": 0.14, "pine": 0.12, "sugi": 0.06, "ginkgo": 0.06, "cherry": 0.04}, "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.", "areas": [{"name": "Takase River", "osm": "R18827840", "buffer": 8, "mix": {"cherry": 0.85, "elm": 0.15}, "note": "Kiyamachi-dori's cherries over the Takase canal (an elm stands in for the willows among them)."}, {"name": "Shirakawa", "find": "白川", "buffer": 8, "mix": {"cherry": 0.55, "shidarezakura": 0.15, "elm": 0.3}, "note": "Gion Shirakawa: Somei-yoshino and weeping cherries and weeping willows (elms stand in) over the stream by Tatsumi Bridge."}, {"name": "Kyoto Gyoen", "find": "京都御苑", "floor": "gravel", "mix": {"pine": 0.34, "zelkova": 0.18, "evergreen": 0.16, "camphor": 0.14, "maple": 0.1, "ginkgo": 0.08, "cherry": 0.06, "shidarezakura": 0.04, "yaezakura": 0.02}, "note": "The Gyoen's black pines stand on its lawns and along its gravel avenues; its groves are broadleaf (mukunoki, enoki, zelkova, camphor) and maples. Its cherries: the Konoe-tei's weeping cherries (itozakura), and double cherries in mid April."}, {"name": "Nijo Castle", "find": "元離宮二条城", "mix": {"pine": 0.3, "camphor": 0.2, "evergreen": 0.2, "zelkova": 0.15, "maple": 0.15, "cherry": 0.1, "shidarezakura": 0.04, "yaezakura": 0.04}, "note": "Nijo Castle's cherry garden and Seiryu-en: some fifty varieties, from the weeping cherries to the late double ones."}, {"name": "Nishi Honganji", "find": "西本願寺", "mix": {"ginkgo": 0.45, "pine": 0.25, "camphor": 0.3}, "note": "The 'upside-down ginkgo' (sakasa-icho) and the precinct's ginkgos."}, {"name": "Higashi Honganji", "find": "東本願寺", "mix": {"ginkgo": 0.4, "pine": 0.3, "camphor": 0.3}}], "cherry_open": "03-26"},
+  "walls": {"height_m": 4.5, "coping": "kawara", "colour": "#d8c79f",
     "note": "Earthen precinct walls (tsuiji-bei) on a stone plinth under a tiled coping, in yellow-ochre plaster (pipeline/walls.py). OpenStreetMap maps the walls of the Gosho and the Sento Gosho as buildings without a height; 4.5 m to the ridge is read from photographs against people at the gates, not measured. Sanjusangen-do's Taiko-bei keeps its PLATEAU height (5.0 m; 5.3 m published).",
-    "lines": [
-      {
-        "name": "Kyoto Gosho and Sento Gosho: suji-bei with five white lines, the highest rank",
-        "box": [
-          -350,
-          1500,
-          420,
-          3100
-        ],
-        "n": 5
-      }
-    ]
-  },
+    "lines": [{"name": "Kyoto Gosho and Sento Gosho: suji-bei with five white lines, the highest rank", "box": [-350, 1500, 420, 3100], "n": 5}]},
   "storey": {
     "res": [
       3.0,
@@ -474,18 +146,9 @@
     "京都経済センター": "Kyoto Economic Center"
   },
   "arrivals": {
-    "Higashi Honganji": {
-      "front": 90
-    },
-    "Nishi Hongwanji": {
-      "front": 90
-    },
-    "Nijo Castle": {
-      "at": [
-        -985,
-        1097
-      ]
-    }
+    "Higashi Honganji": {"front": 90},
+    "Nishi Hongwanji": {"front": 90},
+    "Nijo Castle": {"at": [-985, 1097]}
   },
   "minor_labels": [
     "南座",
@@ -707,25 +370,7 @@
     }
   ],
   "game": {
-    "weather": {
-      "rain_days": [
-        8.1,
-        8.9,
-        11.2,
-        10.6,
-        10.8,
-        13.2,
-        12.6,
-        9.3,
-        11.1,
-        9.4,
-        7.4,
-        8.2
-      ],
-      "threshold_mm": 0.5,
-      "drizzle": 0.5,
-      "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
-    },
+    "weather": {"rain_days": [8.1, 8.9, 11.2, 10.6, 10.8, 13.2, 12.6, 9.3, 11.1, 9.4, 7.4, 8.2], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm", "temp_max": [9.1, 10.0, 14.1, 20.1, 25.1, 28.1, 32.0, 33.7, 29.2, 23.4, 17.3, 11.6], "temp_min": [1.5, 1.6, 4.3, 9.2, 14.5, 19.2, 23.6, 24.7, 20.7, 14.4, 8.4, 3.5], "wind_ms": [1.7, 1.8, 2.0, 2.1, 2.1, 2.0, 1.9, 2.1, 1.9, 1.7, 1.5, 1.6], "wind_from_deg": 10, "snow_days": [16.3, 14.2, 6.8, 0.4, 0, 0, 0, 0, 0, 0, 0, 6.9], "thunder_days": [0.1, 0.1, 0.4, 1.1, 1.6, 1.7, 4.9, 5.1, 2.6, 1.0, 0.4, 0.5], "fog_days": [0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.1, 0.1], "typhoon_days": [0, 0, 0, 0, 0.1, 0.2, 0.4, 0.9, 1.0, 0.6, 0.1, 0], "more": "Kyoto: temperatures, wind, and days with snow (any solid precipitation seen, sleet and flurries among them), thunder and fog: the same JMA 1991-2020 table (data.jma.go.jp/stats/etrn/view/nml_sfc_ym.php), read November 2026. Its thunder and fog counts carry JMA's mark for a normal from incomplete observations."},
     "title": "Central Kyoto on Foot",
     "travel": [
       {
@@ -775,28 +420,13 @@
       }
     ],
     "start": {
-      "at": [
-        -262,
-        -1812
-      ],
-      "facing": [
-        -292,
-        -1720
-      ],
+      "at": [-262, -1812],
+      "facing": [-292, -1720],
       "time": "live"
     },
     "helipads_from_data": false,
     "helipads": [
-      {
-        "id": "ekimae-pad",
-        "name": "Kyoto Station plaza pad (game)",
-        "at": [
-          -230,
-          -1782,
-          28.2
-        ],
-        "heading": 300
-      },
+      {"id": "ekimae-pad", "name": "Kyoto Station plaza pad (game)", "at": [-230, -1782, 28.2], "heading": 300},
       {
         "id": "gyoen",
         "name": "Kyoto Gyoen helipad (game)",
@@ -817,10 +447,7 @@
         "id": "haruka",
         "name": "Haruka",
         "role": "Kyoto Station guide",
-        "at": [
-          -267,
-          -1802
-        ],
+        "at": [-267, -1802],
         "look": {
           "character": "R_Female_Adult_04_f003",
           "skin": "#f0cfb0",
@@ -1171,27 +798,6 @@
   },
   "night": {
     "note": "clear: no generated street lamp in the Imperial Palace's south court, the white gravel before the Shishinden, which has none",
-    "clear": [
-      [
-        -50.0,
-        2296.0,
-        18.0
-      ],
-      [
-        -17.0,
-        2296.0,
-        18.0
-      ],
-      [
-        -50.0,
-        2316.0,
-        16.0
-      ],
-      [
-        -17.0,
-        2316.0,
-        16.0
-      ]
-    ]
+    "clear": [[-50.0, 2296.0, 18.0], [-17.0, 2296.0, 18.0], [-50.0, 2316.0, 16.0], [-17.0, 2316.0, 16.0]]
   }
 }

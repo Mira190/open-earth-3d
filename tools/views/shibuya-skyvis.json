@@ -1,0 +1,5 @@
+[{"name": "scramble-day", "at": [376.9, -1013.1], "look": [358.8, -985.5], "time": "13:00", "dist": 7, "pitch": 0.18},
+ {"name": "center-gai-day", "at": [345.1, -979.0], "look": [318.0, -960.0], "time": "13:00", "dist": 6, "pitch": 0.15},
+ {"name": "center-gai-dusk", "at": [345.1, -979.0], "look": [318.0, -960.0], "time": "sunset-20", "dist": 6, "pitch": 0.15},
+ {"name": "center-gai-night", "at": [345.1, -979.0], "look": [318.0, -960.0], "time": "21:30", "dist": 6, "pitch": 0.15},
+ {"name": "air-day", "cam": [600, -1250, 220], "tgt": [330, -980, 20], "time": "13:00"}]

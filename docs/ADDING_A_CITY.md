@@ -312,7 +312,8 @@ A material's `pattern` is drawn by the browser from the mesh's UVs
   See [NIGHT.md](NIGHT.md#led-screens) and Shibuya's `CROSSING_SCREENS`.
 
 `street_lit: true` puts paving under the street lights and the screens' glow,
-as the ground is.
+as the ground is. `lamp_lit: true` does the same for what stands in that light without
+being ground (a platform's doors, the posts of its canopy): lit, but never wet.
 
 `decal: true` marks paving laid over a building's roof, such as a podium's
 deck: the browser draws it in front of the roof, and the game walks on the roof
