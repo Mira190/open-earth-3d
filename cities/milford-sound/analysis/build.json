@@ -1,0 +1,303 @@
+{
+ "datum_m": 0.0,
+ "lakes": [
+  {
+   "id": "piopiotahi",
+   "name": "Milford Sound / Piopiotahi",
+   "main": true,
+   "level_nzvd": 0.0,
+   "area_km2": 81.799,
+   "max_depth_m": 291.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -12160,
+    -8520,
+    4650,
+    9600
+   ],
+   "centre": [
+    0,
+    -222
+   ],
+   "level": 0.0
+  },
+  {
+   "id": "lake-ronald",
+   "name": "Lake Ronald",
+   "main": false,
+   "level_nzvd": 434.0,
+   "area_km2": 0.367,
+   "max_depth_m": 24.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -12160,
+    -3290,
+    -11690,
+    -1980
+   ],
+   "centre": [
+    -12333,
+    -2812
+   ],
+   "level": 434.0
+  },
+  {
+   "id": "lake-3",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1161.0,
+   "area_km2": 0.078,
+   "max_depth_m": 11.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -12160,
+    -10650,
+    -11790,
+    -10320
+   ],
+   "centre": [
+    -12095,
+    -10484
+   ],
+   "level": 1161.0
+  },
+  {
+   "id": "lake-moreton",
+   "name": "Lake Moreton",
+   "main": false,
+   "level_nzvd": 851.0,
+   "area_km2": 0.415,
+   "max_depth_m": 25.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -11200,
+    -9240,
+    -10460,
+    -8090
+   ],
+   "centre": [
+    -10757,
+    -8713
+   ],
+   "level": 851.0
+  },
+  {
+   "id": "lake-5",
+   "name": null,
+   "main": false,
+   "level_nzvd": 519.36,
+   "area_km2": 0.552,
+   "max_depth_m": 29.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -6780,
+    -10880,
+    -5980,
+    -9520
+   ],
+   "centre": [
+    -6197,
+    -10263
+   ],
+   "level": 519.36
+  },
+  {
+   "id": "lake-6",
+   "name": null,
+   "main": false,
+   "level_nzvd": 344.0,
+   "area_km2": 0.065,
+   "max_depth_m": 10.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4520,
+    -9780,
+    -4250,
+    -9380
+   ],
+   "centre": [
+    -4363,
+    -9613
+   ],
+   "level": 344.0
+  },
+  {
+   "id": "te-moana-o-nohorua-/-lake-ada",
+   "name": "Te Moana-o-Nohorua / Lake Ada",
+   "main": false,
+   "level_nzvd": 43.0,
+   "area_km2": 0.812,
+   "max_depth_m": 36.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -1160,
+    -10880,
+    880,
+    -9640
+   ],
+   "centre": [
+    -1356,
+    -11663
+   ],
+   "level": 43.0
+  },
+  {
+   "id": "lake-8",
+   "name": null,
+   "main": false,
+   "level_nzvd": 398.0,
+   "area_km2": 0.516,
+   "max_depth_m": 28.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    2670,
+    8430,
+    3720,
+    9230
+   ],
+   "centre": [
+    3315,
+    8847
+   ],
+   "level": 398.0
+  },
+  {
+   "id": "pukutahi-lake",
+   "name": "Pukutahi Lake",
+   "main": false,
+   "level_nzvd": 1090.0,
+   "area_km2": 0.127,
+   "max_depth_m": 14.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5240,
+    5920,
+    5780,
+    6470
+   ],
+   "centre": [
+    5448,
+    6192
+   ],
+   "level": 1090.0
+  },
+  {
+   "id": "lake-never-never",
+   "name": "Lake Never-never",
+   "main": false,
+   "level_nzvd": 770.0,
+   "area_km2": 0.25,
+   "max_depth_m": 20.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    6190,
+    5580,
+    7050,
+    6210
+   ],
+   "centre": [
+    6562,
+    5899
+   ],
+   "level": 770.0
+  },
+  {
+   "id": "lake-11",
+   "name": null,
+   "main": false,
+   "level_nzvd": 17.94,
+   "area_km2": 0.029,
+   "max_depth_m": 6.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1650,
+    -8930,
+    2080,
+    -8590
+   ],
+   "centre": [
+    1709,
+    -8762
+   ],
+   "level": 17.94
+  },
+  {
+   "id": "lake-12",
+   "name": null,
+   "main": false,
+   "level_nzvd": 18.59,
+   "area_km2": 0.035,
+   "max_depth_m": 7.5,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1610,
+    -9170,
+    2070,
+    -8890
+   ],
+   "centre": [
+    1751,
+    -9035
+   ],
+   "level": 18.59
+  },
+  {
+   "id": "lake-13",
+   "name": null,
+   "main": false,
+   "level_nzvd": 19.41,
+   "area_km2": 0.03,
+   "max_depth_m": 6.9,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1200,
+    -9270,
+    1660,
+    -9140
+   ],
+   "centre": [
+    1444,
+    -9202
+   ],
+   "level": 19.41
+  },
+  {
+   "id": "lake-14",
+   "name": null,
+   "main": false,
+   "level_nzvd": 21.61,
+   "area_km2": 0.067,
+   "max_depth_m": 10.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    540,
+    -9570,
+    1200,
+    -9110
+   ],
+   "centre": [
+    992,
+    -9345
+   ],
+   "level": 21.61
+  }
+ ],
+ "cover_pct": {
+  "lake": 20.3,
+  "river and stream": 0.21,
+  "snow and ice": 3.9,
+  "debris-covered ice": 0.14,
+  "rock and cliff": 12.15,
+  "scree and moraine": 0.16,
+  "riverbed gravel": 0.01,
+  "tussock grassland": 8.25,
+  "alpine herbfield": 0.52,
+  "shrub and scrub": 5.33,
+  "forest": 48.78,
+  "pasture": 0.0,
+  "wetland": 0.02,
+  "road": 0.02,
+  "built": 0.01,
+  "shore": 0.19
+ }
+}

@@ -1,0 +1,40 @@
+{
+ "half_m": 100000,
+ "cx": -1920.0,
+ "cy": -640.0,
+ "nh": 1024,
+ "nc": 2048,
+ "height": "(r * 256 + g) / 4 - 100 m, north up; under the sea at -6",
+ "lights": "b = sqrt(lights 0..1)",
+ "palette": {
+  "tree cover": "#22331d",
+  "shrubland": "#5c633f",
+  "grassland": "#83895e",
+  "cropland": "#888660",
+  "built-up": "#635f5a",
+  "bare or sparse": "#c5baa4",
+  "snow and ice": "#d8dbdc",
+  "water": "#223846",
+  "herbaceous wetland": "#515f45",
+  "mangroves": "#2c4030",
+  "moss and lichen": "#787860"
+ },
+ "palette_samples": 44100,
+ "land_share": 0.512,
+ "relief_m": [
+  -6.0,
+  2806.0
+ ],
+ "sources": {
+  "relief": "Copernicus DEM GLO-30 (ESA, Airbus; Copernicus DEM licence), AWS open data registry; surface model less trees and buildings",
+  "land_cover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)",
+  "lights": "Annual VNL V2 2024, VIIRS day/night band (Earth Observation Group, Payne Institute, Colorado School of Mines; COGs by T. Hengl, OpenGeoHub, Zenodo doi 10.5281/zenodo.7750174; CC BY 4.0), extracted 2026-11-07"
+ },
+ "night_lights": {
+  "vnl_px": [
+   619,
+   438
+  ],
+  "vnl_radiance_max": 3.8
+ }
+}

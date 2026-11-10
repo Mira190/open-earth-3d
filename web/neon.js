@@ -154,7 +154,9 @@ window.OENeon = (function () {
           const c = colourOf(s, t, hour, night);
           if (c) s.col.lerp(c, k); // the light eases between keyframes, as a wall's glow does
           L.color.copy(s.col);
-          L.intensity = u.w * gain * SPILL * (0.06 + 0.94 * night); // (in the sun a screen lights little round it)
+          // (in the sun a screen lights little round it, and in full daylight nothing: a light of no intensity is passed
+          // over in the shaders, lens.js loopAreaLights)
+          L.intensity = u.w * gain * SPILL * (0.06 * Math.min(1, night / 0.05) + 0.94 * night);
         }
       },
     };

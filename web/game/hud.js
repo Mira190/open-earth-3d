@@ -58,7 +58,13 @@ window.OEHud = (function () {
   // ------------------------------------------------------------ minimap
   function minimap(canvas, base) {
     const g = canvas.getContext('2d'), S = canvas.width;
+    // Redrawn 30 times a second at most (issue 352): the whole map, its route and its icons were painted on every
+    // frame of the game, and at 60 a second or more nobody sees every second painting of a 2D map.
+    let drawnAt = -1e9;
     return function draw({ x, y, yaw, heading, radius, route, icons, ride }) {
+      const now = performance.now();
+      if (now - drawnAt < 30 && !navigator.webdriver) return;
+      drawnAt = now;
       const k = (S / 2) / radius * base.PX; // canvas px per base px
       g.save();
       g.clearRect(0, 0, S, S);
