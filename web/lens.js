@@ -21,6 +21,16 @@
 // (photo mode, an opening shot), and bright() the bloom's first pass, which rolls the highlights off
 // for itself. main() below reads top to bottom as the frame is made: the taps, then the grade from
 // film() down, where a look is keyed at no pass of its own.
+//
+// A region's look (game/atmosphere.js LOOKS), all of it inside this one pass:
+//   uShade, uHiTint  the split tone: what the shadows and the lit parts are multiplied by (cool shade, warm light)
+//   uShadeLift       a colour the deepest shade is lifted towards, so shade is blue or violet and never grey or black
+//   uVibrance        saturation given where colour is weak and withheld where it is already strong
+//   uSunSeen         1: the flare and the shafts follow how much of the sun the frame really shows at uSunUv (a few
+//                    lookups in the vertex shader, none per pixel), so a building or a cloud in front of it puts them out
+//   uShafts          light shafts: a short march from each pixel towards the sun over the bright sky on the way (a
+//                    few taps, jittered per pixel so that they read as haze and not as steps), only while the sun is
+//                    in or near the frame; shader({ shafts: n }) sets the taps, 0 leaves the code out
 'use strict';
 window.OELens = (function () {
   // a NaN texel would show as a black dot and an infinite one turns the tone curve to NaN; the
@@ -107,21 +117,40 @@ window.OELens = (function () {
     };
   }
 
-  function shader({ merge = false, shade = NOSHADE } = {}) {
+  function shader({ merge = false, shade = NOSHADE, shafts = 0 } = {}) {
     return {
       uniforms: Object.assign(merge ? merged() : {}, {
         tDiffuse: { value: null }, uAspect: { value: 1 }, uTime: { value: 0 }, uExposure: { value: 1 }, uFade: { value: 1 }, uFlash: { value: 0 },
         uCA: { value: 0.2 }, uGrain: { value: 0.03 }, uVignette: { value: 0.16 }, uLift: { value: 1 },
         uSunUv: { value: new THREE.Vector2(-9, -9) }, uSunVis: { value: 0 }, uFlare: { value: 1 }, uFlareTint: { value: new THREE.Color(1, 0.8, 0.6) },
         uLetterbox: { value: 0 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uSat: { value: 1 }, uContrast: { value: 0.1 }, uNightTone: { value: 0 },
+        uShade: { value: new THREE.Vector3(0.97, 1.0, 1.04) }, uHiTint: { value: new THREE.Vector3(1.015, 1.0, 0.985) }, uShadeLift: { value: new THREE.Vector3(0, 0, 0) },
+        uVibrance: { value: 0 }, uSunSeen: { value: 0 }, uShafts: { value: 0 },
       }),
-      vertexShader: VERT,
+      defines: shafts > 0 ? { OE_SHAFTS: Math.round(shafts) } : {},
+      vertexShader: `varying vec2 vUv; varying float vSun; uniform sampler2D tDiffuse; uniform vec2 uSunUv; uniform float uSunVis, uSunSeen, uExposure, uAspect;
+        void main() {
+          vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          vSun = uSunVis;
+          if (uSunVis > 0.0 && uSunSeen > 0.0) {
+            // how much of the sun's disc shows: its own brightness at five points on it, against anything that could stand in front
+            float seen = 0.0;
+            for (int i = 0; i < 5; i++) {
+              vec2 o = i == 0 ? vec2(0.0) : vec2(i < 3 ? 0.0035 : 0.0, i < 3 ? 0.0 : 0.0035) * (i == 1 || i == 3 ? 1.0 : -1.0);
+              vec2 q = uSunUv + o * vec2(1.0 / uAspect, 1.0);
+              vec3 c = all(greaterThan(q, vec2(0.0))) && all(lessThan(q, vec2(1.0))) ? textureLod(tDiffuse, q, 0.0).rgb : vec3(1e3);
+              seen += smoothstep(0.6, 1.1, min(dot(c, vec3(0.2126, 0.7152, 0.0722)), 64.0) * uExposure);
+            }
+            vSun *= mix(1.0, seen * 0.2, uSunSeen);
+          }
+        }`,
       fragmentShader: `
         uniform sampler2D tDiffuse; uniform float uAspect; uniform float uTime; uniform float uExposure; uniform float uFade; uniform float uFlash;
         uniform float uCA; uniform float uGrain; uniform float uVignette; uniform float uLift;
         uniform vec2 uSunUv; uniform float uSunVis; uniform float uFlare; uniform vec3 uFlareTint; uniform float uLetterbox;
         uniform vec3 uTint; uniform float uSat; uniform float uContrast; uniform float uNightTone;
-        varying vec2 vUv;
+        uniform vec3 uShade, uHiTint, uShadeLift; uniform float uVibrance, uShafts;
+        varying vec2 vUv; varying float vSun;
         // grain and dither from an integer hash of the pixel and the frame (pcg3d, Jarzynski and Olano,
         // JCGT 2020): fract(sin(x) * 43758.5) loses its precision on many GPUs at the arguments a
         // full-frame grain gives it, and drew diagonal streaks that crawled across the sky
@@ -162,7 +191,7 @@ window.OELens = (function () {
           c += ghost(p, s + axis * 1.32, 0.06, vec3(0.5, 0.85, 1.0) * 0.008);
           c += ghost(p, s + axis * 1.6, 0.016, vec3(1.0, 0.6, 0.3) * 0.03);
           c += ghost(p, s + axis * 2.1, 0.1, vec3(0.6, 0.45, 1.0) * 0.006);
-          return c * uSunVis * uFlare;
+          return c * vSun * uFlare;
         }
         ${TAP}
         ${merge ? `uniform sampler2D tBloom; uniform float uBloom, uShadeShow, uSharp; uniform vec2 uSrcPx;
@@ -193,12 +222,31 @@ window.OELens = (function () {
           vec3 col = uShadeShow > 0.5 ? vec3(k) : vec3(rolloff(tap(uv - off) * k).r, rolloff(tap(uv) * k).g, rolloff(tap(uv + off) * k).b);
           if (uSharp > 0.0 && uShadeShow < 0.5) col *= sharpen(uv, tap(uv));
           if (uBloom > 0.0) col = min(col + texture2D(tBloom, uv).rgb, vec3(1024.0));` : 'vec3 col = vec3(tap(uv - off).r, tap(uv).g, tap(uv + off).b);'}
-          if (uSunVis > 0.0) col += flare(uv);
+          if (vSun > 0.0) {
+            col += flare(uv);
+            #ifdef OE_SHAFTS
+            if (uShafts > 0.0) {
+              // light shafts (after Mitchell, GPU Gems 3 ch. 13, without its occlusion pass: the bright sky is the light)
+              vec2 dl = uSunUv - uv;
+              float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))), acc = 0.0;
+              for (int i = 0; i < OE_SHAFTS; i++) {
+                vec3 t = texture2D(tDiffuse, uv + dl * ((float(i) + ign) / float(OE_SHAFTS))).rgb;
+                acc += smoothstep(0.75, 1.8, min(dot(t, vec3(0.2126, 0.7152, 0.0722)), 64.0) * uExposure);
+              }
+              float away = length(dl * vec2(uAspect, 1.0));
+              col += uFlareTint * (acc / float(OE_SHAFTS)) * exp(-away * 2.6) * uShafts * vSun * 0.55 / max(uExposure, 1e-3);
+            }
+            #endif
+          }
           col = film(col * uExposure * uTint);
-          col = max(mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, uSat), 0.0);
+          {
+            float l0 = dot(col, vec3(0.2126, 0.7152, 0.0722)), mx = max(col.r, max(col.g, col.b)), mn = min(col.r, min(col.g, col.b));
+            col = max(mix(vec3(l0), col, uSat * (1.0 + uVibrance * (1.0 - (mx > 0.0 ? (mx - mn) / mx : 0.0)))), 0.0);
+          }
           float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
           col = mix(col, col * col * (3.0 - 2.0 * col), uContrast);                            // a little contrast (more at night)
-          col *= mix(vec3(0.97, 1.0, 1.04), vec3(1.015, 1.0, 0.985), smoothstep(0.05, 0.7, l)); // cool shadows, warm light
+          col *= mix(uShade, uHiTint, smoothstep(0.05, 0.7, l));                                 // cool shadows, warm light
+          { float sh = 1.0 - smoothstep(0.0, 0.42, l); col += uShadeLift * sh * sh; }            // and the deepest shade towards a colour, never grey
           col *= mix(vec3(1.0), mix(vec3(0.84, 0.95, 1.2), vec3(1.05, 1.0, 0.92), smoothstep(0.03, 0.45, l)), uNightTone); // at night, more so
           col = pow(max(col, 0.0), vec3(1.0 / 2.2));
           col *= 1.0 - uVignette * smoothstep(0.15, 0.95, dot(dc * vec2(uAspect, 1.0), dc * vec2(uAspect, 1.0)) * 1.6 / max(uAspect, 1.0));
