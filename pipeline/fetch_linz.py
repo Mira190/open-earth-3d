@@ -69,7 +69,9 @@ def save(path, data, tf, crs, nodata):
     os.replace(path + ".part", path)
 
 
-def fetch(kind, url, sheets, read_m, out, bands=None):
+def fetch(kind, url, sheets, read_m, out, bands=None, optional=False):
+    """optional: a sheet the collection does not hold (404) is skipped (the LiDAR composite has no file for a
+    sheet no capture reaches; the fallback covers it)."""
     for s in sheets:
         path = os.path.join(out, f"{kind}_{s}.tif")
         if os.path.exists(path):
@@ -82,6 +84,9 @@ def fetch(kind, url, sheets, read_m, out, bands=None):
                 print(f"{kind} {s}: {data.shape[2]} x {data.shape[1]} at {tf.a:.1f} m in {time.time() - t:.0f} s", flush=True)
                 break
             except Exception as e:      # a dropped connection mid-read: try again
+                if optional and "404" in str(e):
+                    print(f"{kind} {s}: not in the collection, skipped", flush=True)
+                    break
                 print(f"{kind} {s}: {e}; retrying", flush=True)
                 time.sleep(4 * (k + 1))
         else:
@@ -96,7 +101,7 @@ def main():
     want = lambda k: not a.only or k in a.only
     T = cfg["terrain"]
     if want("terrain"):
-        fetch("dem", T["url"], T["sheets"], T.get("read_m", 16), out)
+        fetch("dem", T["url"], T["sheets"], T.get("read_m", 16), out, optional=bool(T.get("fallback")))
     if want("fallback") and T.get("fallback"):
         fetch("dem8", T["fallback"], T["sheets"], max(8, T.get("read_m", 16)), out)
     I = cfg["imagery"]

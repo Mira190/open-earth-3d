@@ -2,8 +2,9 @@
 // the helicopter rotor, the ferry engine and horn, a car's engine through its gears,
 // its tyres in a slide and its horn, dialogue voice beeps with a pitch per character,
 // little penguins braying in the dark and silver gulls; at a busy crossing the crowd's murmur, the
-// screens' music, the walk signal's bird calls and the station's announcements. Browsers allow
-// sound only after a click, so start() is called from the Play button.
+// screens' music, the walk signal's bird calls and the station's announcements; on a railway
+// (trains.js) the trains' rumble, rail joints and motors, the platform's chimes and its departure
+// melody. Browsers allow sound only after a click, so start() is called from the Play button.
 'use strict';
 window.OEAudio = (function () {
   let ctx = null, master = null, noise = null, muted = false;
@@ -42,7 +43,7 @@ window.OEAudio = (function () {
     const wn = noiseSource(), wl = ctx.createBiquadFilter(), wg = ctx.createGain();
     wl.type = 'bandpass'; wl.frequency.value = 900; wl.Q.value = 0.4; wg.gain.value = 0;
     wn.connect(wl); wl.connect(wg); wg.connect(master);
-    ch.wind = wg;
+    ch.wind = wg; ch.windF = wl;
     // a car's engine: two saws a fifth apart through a low-pass that opens with the throttle
     const co = ctx.createOscillator(), c2 = ctx.createOscillator(), cl = ctx.createBiquadFilter(), cv = ctx.createGain();
     co.type = c2.type = 'sawtooth'; co.frequency.value = 40; c2.frequency.value = 60; cl.type = 'lowpass'; cl.frequency.value = 300; cl.Q.value = 2; cv.gain.value = 0;
@@ -74,7 +75,8 @@ window.OEAudio = (function () {
     ramp(ch.rotor.chop.frequency, 4 + spin * 16, 0.4);
   }
   function engine(level) { if (ctx) { ramp(ch.engine.vol.gain, level * 0.09); ramp(ch.engine.osc.frequency, 42 + level * 18, 0.6); } }
-  function wind(level) { if (ctx) ramp(ch.wind.gain, Math.min(0.12, level * 0.12)); }
+  // level 0..1: the air's rush (a helicopter's speed, or the weather's wind and its gusts, whichever is louder)
+  function wind(level, gust = 0) { if (!ctx) return; ramp(ch.wind.gain, Math.min(0.14, level * 0.12), 0.4); if (ch.windF) ramp(ch.windF.frequency, 500 + 700 * level + 500 * gust, 0.5); }
   // rpm 0..1 (idle to the red line), throttle 0..1, level 0..1 (0 off; lower from the back seat)
   function car(rpm, throttle = 0, level = 1) {
     if (!ctx) return;
@@ -86,6 +88,34 @@ window.OEAudio = (function () {
   function skid(level) { if (ctx) ramp(ch.skid.gain, Math.min(0.06, level * 0.06), 0.06); }
   // level 0..1 (drizzle to a downpour); roof: under one, which drums; inside: a car or a cabin, muffled
   let dripAt = 0;
+  // thunder from dist metres: near, a crack and a long roll; far, only the low rumble, later and softer
+  function thunder(dist = 2000, inside = false) {
+    if (!ctx || muted) return;
+    const near = Math.max(0, 1 - dist / 2500), far = Math.max(0.12, 1 - dist / 16000), t = ctx.currentTime, len = 3.5 + 5 * (1 - near);
+    const src = noiseSource(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(inside ? 300 : 180 + 2600 * near * near, t); lp.frequency.exponentialRampToValueAtTime(70, t + len * 0.8);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime((0.22 + 0.5 * near) * far * (inside ? 0.6 : 1), t + 0.03 + 0.25 * (1 - near));
+    // the roll: the sound of the channel's far parts arriving later, in swells
+    for (let k = 1; k <= 4; k++) g.gain.exponentialRampToValueAtTime((0.05 + 0.18 * Math.random()) * far * (1 - k / 6), t + len * k / 5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    src.connect(lp); lp.connect(g); g.connect(master);
+    setTimeout(() => { try { src.stop(); src.disconnect(); g.disconnect(); } catch (e) { /* already gone */ } }, (len + 0.5) * 1000);
+  }
+  // summer's cicadas, level 0..1: a high, narrow band of noise rattling at a wing's rate, swelling and
+  // fading every few seconds; made the first time it is asked for, so a winter's game never builds it
+  function cicadas(level) {
+    if (!ctx) return;
+    if (!ch.cicada) {
+      if (!(level > 0.01)) return;
+      const n = noiseSource(), bp = ctx.createBiquadFilter(), am = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), sw = ctx.createOscillator(), sg = ctx.createGain(), out = ctx.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = 5400; bp.Q.value = 11; am.gain.value = 0.5; out.gain.value = 0;
+      lfo.type = 'sawtooth'; lfo.frequency.value = 58; lg.gain.value = 0.45; sw.type = 'sine'; sw.frequency.value = 0.19; sg.gain.value = 0.3;
+      n.connect(bp); bp.connect(am); am.connect(out); out.connect(master); lfo.connect(lg); lg.connect(am.gain); sw.connect(sg); sg.connect(am.gain); lfo.start(); sw.start();
+      ch.cicada = out;
+    }
+    ramp(ch.cicada.gain, Math.min(1, level) * 0.022, 2);
+  }
   function rain(level, roof = false, inside = false) {
     if (!ctx || !ch.rain) return;
     const k = inside ? 0.35 : 1;
@@ -263,7 +293,82 @@ window.OEAudio = (function () {
     g.gain.linearRampToValueAtTime(0.0001, a + dur);
     s.connect(f1); s.connect(f2); f1.connect(g); f2.connect(g); g.connect(master); s.start(a); s.stop(a + dur + 0.1);
   }
-  function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
+  // ---------------------------------------------------------------- the railway (trains.js)
+  // A train near the camera, one of three voices: the wheels' rumble on the rail (low noise, louder and
+  // brighter with speed), the air it pushes (a hiss that grows with the square of the speed, most of what
+  // a Shinkansen is), and its motors' whine while it pulls away or brakes. level 0 silences the voice;
+  // nothing plays between trains.
+  const trainCh = [];
+  function train(i, level, pan = 0, v = 0, a = 0, fast = false) {
+    if (!ctx) return;
+    let c = trainCh[i];
+    if (!c) {
+      if (level <= 0) return;
+      const mk = (type, f, q) => { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
+      const outG = ctx.createGain(), pn = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      outG.gain.value = 0;
+      if (pn) { outG.connect(pn); pn.connect(master); } else outG.connect(master);
+      const rum = mk('lowpass', 200, 0.7), rg = ctx.createGain(), air = mk('bandpass', 1800, 0.5), ag = ctx.createGain();
+      noiseSource().connect(rum); rum.connect(rg); rg.connect(outG);
+      noiseSource().connect(air); air.connect(ag); ag.connect(outG);
+      const mo = ctx.createOscillator(), m2 = ctx.createOscillator(), mf = mk('bandpass', 700, 3), mg = ctx.createGain();
+      mo.type = 'sawtooth'; m2.type = 'square'; mo.connect(mf); m2.connect(mf); mf.connect(mg); mg.connect(outG); mo.start(); m2.start();
+      rg.gain.value = ag.gain.value = mg.gain.value = 0;
+      c = trainCh[i] = { outG, pn, rum, rg, air, ag, mo, m2, mf, mg };
+    }
+    const on = muted ? 0 : Math.min(1.2, level), k = Math.min(1.4, v / 25);
+    ramp(c.outG.gain, on, 0.12);
+    if (c.pn) ramp(c.pn.pan, Math.max(-1, Math.min(1, pan)), 0.1);
+    ramp(c.rum.frequency, 110 + 260 * k, 0.2); ramp(c.rg.gain, (fast ? 0.34 : 0.5) * Math.min(1, 0.25 + k), 0.2);
+    ramp(c.air.frequency, fast ? 2300 : 1500, 0.3); ramp(c.ag.gain, (fast ? 0.42 : 0.16) * k * k, 0.2);
+    // the inverter's whine follows the speed while the motors work, and fades as the train coasts
+    const f = 180 + v * 46;
+    ramp(c.mo.frequency, f, 0.1); ramp(c.m2.frequency, f * 1.5, 0.1); ramp(c.mf.frequency, f * 1.6, 0.1);
+    ramp(c.mg.gain, a && !fast ? 0.035 + 0.02 * Math.min(1, v / 8) : fast ? 0.012 * k : 0.004, 0.35);
+  }
+  // a bogie over a rail joint: its two axles, the second a wheelbase (2.1 m) behind the first
+  function clack(level, pan = 0, v = 10) {
+    if (!ctx || muted || level <= 0.004) return;
+    const d = out(Math.min(1, level) * 0.5, pan), t = ctx.currentTime + 0.01, gap = Math.min(0.5, 2.1 / Math.max(2, v));
+    for (const [at, k] of [[t, 1], [t + gap, 0.8]]) {
+      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = noise; f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 1.2;
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.9 * k, at + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.085);
+      s.connect(f); f.connect(g); g.connect(d); s.start(at, Math.random()); s.stop(at + 0.1);
+      tone(d, at, 0.05, 'sine', 150, 70, 0.7 * k, 0.003);
+    }
+  }
+  // a struck bar: the note, its octave and a bright partial that dies first (the platform's chimes and melody)
+  function bar(dst, at, f, dur, vol) {
+    tone(dst, at, dur, 'sine', f, 0, vol, 0.004); tone(dst, at, dur * 0.6, 'sine', f * 2, 0, vol * 0.28, 0.004); tone(dst, at, dur * 0.25, 'triangle', f * 3.01, 0, vol * 0.12, 0.003);
+  }
+  // before an announcement: four notes rising
+  function platformChime(level = 1, pan = 0) {
+    if (!ctx || muted || level <= 0) return;
+    const d = out(0.11 * Math.min(1, level), pan), t = ctx.currentTime + 0.02;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => bar(d, t + i * 0.2, f, 0.9, 0.8));
+  }
+  // the doors: two notes falling, three times
+  function doorChime(level = 1, pan = 0) {
+    if (!ctx || muted || level <= 0) return;
+    const d = out(0.07 * Math.min(1, level), pan), t = ctx.currentTime + 0.02;
+    for (let k = 0; k < 3; k++) { bar(d, t + k * 0.62, 1318.5, 0.3, 0.8); bar(d, t + k * 0.62 + 0.24, 1046.5, 0.4, 0.8); }
+  }
+  // a departure melody of this game's own (seven seconds, two of them: one for each direction), on struck
+  // bars over a soft bass: none of the railway's own melodies, which are their composers'
+  const MELODY = [
+    [[0, 76], [0.3, 79], [0.6, 84], [0.9, 79], [1.2, 81], [1.5, 84], [1.8, 88], [2.25, 86], [2.7, 84], [3.0, 81], [3.3, 79], [3.6, 76], [3.9, 77], [4.2, 81], [4.5, 79], [4.95, 83], [5.4, 84]],
+    [[0, 79], [0.25, 83], [0.5, 86], [0.75, 91], [1.25, 88], [1.75, 86], [2.0, 84], [2.25, 81], [2.5, 84], [3.0, 86], [3.5, 83], [3.75, 79], [4.0, 81], [4.25, 83], [4.5, 86], [5.0, 84], [5.5, 79]],
+  ];
+  const BASS = [[[0, 48], [1.2, 53], [2.4, 55], [3.6, 53], [4.8, 48]], [[0, 43], [1.0, 48], [2.0, 50], [3.0, 55], [4.0, 50], [5.0, 48]]];
+  function melody(level = 1, pan = 0, which = 0) {
+    if (!ctx || muted || level <= 0) return;
+    const d = out(0.085 * Math.min(1, level), pan), t = ctx.currentTime + 0.03, hz = n => 440 * Math.pow(2, (n - 69) / 12), w = which ? 1 : 0;
+    for (const [at, n] of MELODY[w]) bar(d, t + at, hz(n), 1.1, 0.75);
+    for (const [at, n] of BASS[w]) tone(d, t + at, 1.3, 'triangle', hz(n), 0, 0.5, 0.02);
+    bar(d, t + 5.9, hz(MELODY[w][MELODY[w].length - 1][1] + (w ? 5 : 0)), 2.2, 0.7);
+  }
+  function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); if (m && window.speechSynthesis) window.speechSynthesis.cancel(); }
   function stop() { if (ctx) { ctx.close(); ctx = null; mbus = null; } }
   // for the score (game/music.js): the context it plays on, and a bus into the master, so that the
   // Sound switch mutes the music with everything else
@@ -273,5 +378,5 @@ window.OEAudio = (function () {
     if (!mbus || mbus.context !== ctx) { mbus = ctx.createGain(); mbus.connect(master); }
     return mbus;
   }
-  return { start, get ctx() { return ctx; }, musicBus, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, get ctx() { return ctx; }, musicBus, murmur, screens, piyo, kakko, walkCall, train, clack, platformChime, doorChime, melody, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, cicadas, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

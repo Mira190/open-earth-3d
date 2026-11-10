@@ -74,6 +74,18 @@ from shapely.geometry.polygon import orient
 
 from meshkit import Mesh
 
+
+def _load(name):
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location(f"sydney_{name}", os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+RAIL = _load("rail")   # Circular Quay Station and the City Circle's trains (cities/sydney/rail.py)
+
 OPERA = "Sydney Opera House"
 PYLONS = ("Sydney Harbour Bridge - South Pylons", "Sydney Harbour Bridge - North Pylons")
 BRIDGE_DECK_TOP = 52.0  # 49 m clearance plus the deck structure
@@ -543,7 +555,7 @@ def game_surfaces(scene):
                     "mesh": f"opera_steps_{hall}"})
     if o.get("halls"):
         out += opera_rooms(o)["surfaces"]
-    return out
+    return out + RAIL.surfaces()   # and Circular Quay's platforms and stairs (cities/sydney/rail.py)
 
 
 def game_ground(grid, gx, gy, water, scene):
@@ -674,18 +686,29 @@ def game_extras(scene):
             if face:
                 m, n, _ = face
                 close.append(close_to("Sydney Tower, Westfield's doors on Pitt Street Mall", m, T(*m), m + n * 5.0, 1.0, 0.1))
-    out = {"close": close}
+    tr = RAIL.trains()
+    out = {"close": close, **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
     if o:  # the rooms inside the Opera House, their doors, the seats you can take and the evening's performance
         r = opera_rooms(o)
         out.update(doors=r["doors"], interiors=r["rooms"], seats=r["seats"], shows=r["shows"])
     return out
 
 
+def landmark_demolished(scene):
+    """Circular Quay Station's box, which the station built in its place stands in for (cities/sydney/rail.py)."""
+    return RAIL.demolished()
+
+
+def landmark_assets(out_dir, scene):
+    """The station's signs (cities/sydney/rail.py)."""
+    return RAIL.assets(out_dir)
+
+
 def landmark_glows(scene):
     """The pools of light the Lower Concourse's downlights throw on its flags (web/night.js), from
     the downlights landmark_meshes laid."""
     R, hexc, k = DOWNLIGHT_POOL
-    return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS]
+    return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS] + RAIL.glows()
 
 
 def landmark_meshes(scene):
@@ -722,7 +745,9 @@ def landmark_meshes(scene):
         mats["garden_edge"] = dict(MATERIALS["garden_edge"])  # (bennelong_meshes gives it its ground tile)
     if "opera_house" in lm:  # the halls' seats and their audience, instanced
         extra = dict(extra, props=list(extra.get("props", [])) + opera_rooms(lm["opera_house"])["props"])
-    return mats, meshes, extra
+    rm, rmesh = RAIL.meshes(Mesh)   # Circular Quay Station on its viaduct (cities/sydney/rail.py)
+    mats.update({k: dict(v) for k, v in rm.items()})
+    return mats, meshes + rmesh, extra
 
 
 # ---------------------------------------------------------------- Opera House

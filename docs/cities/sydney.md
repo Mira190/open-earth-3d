@@ -354,6 +354,42 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
   and the Blender scene all read the same `web/data/sydney` files. What you see is
   what is analysed.
 
+### Circular Quay Station
+
+The station was one box 15.6 m high (OpenStreetMap way 51065527) with the Cahill Expressway's deck
+drawn over it. `cities/sydney/rail.py` builds what the box stood for, on OpenStreetMap's two tracks
+("City Inner", "City Outer") and the station's two platform edges (`pipeline/rail_osm.py`,
+`cities/sydney/rail_osm.json`):
+
+- **Three levels.** The quay's paving and a concourse where a shop block stood, open through from
+  Alfred Street to the wharves; the railway on its deck, the rail 6.8 m under the roof; and the roof
+  at the box's own height, the expressway's level, so the Cahill Walk's lookout stands as it did.
+- **The platforms**: 170 m, the mapped edges, 6.5 m wide, one either side of the two tracks. Both
+  are open along their backs behind a glass balustrade, between the columns that carry the roof:
+  from platform 1 you look across the tracks and platform 2 to Sydney Cove, the Harbour Bridge on
+  the left and the Opera House on the right. Benches with the station's name on their backs, the
+  name in white on a lit orange box hung by each platform's edge and facing across the tracks, the platforms' boards and
+  indicators (`rail_signs.webp`), tube lights under the roof; blue tactile tiles and a yellow line along each edge.
+- **Stairs** from the concourse up to each platform; a tunnel's mouth at each end of the viaduct,
+  where the City Circle goes underground.
+- **The trains** (`web/game/trains.js`): Waratah sets, eight double-deck cars modelled after photographs
+  of the A sets (steel shell, skirts that hide the bogies, a yellow line along the foot, yellow doors), one each way every
+  five minutes and never both at once, so the harbour is in view between them. Platform 1 goes to
+  Central by Wynyard and Town Hall, platform 2 by St James and Museum. The platform announces each
+  in English ("The next train to arrive on platform 2 goes to Central, via St James and Museum"),
+  and the train is heard as it comes in. There is no ambient bed.
+- From the map: "Circular Quay Station, platform 1". Three people stand on platform 2.
+
+![Circular Quay from platform 1 at dusk: platform 2's benches, the cove and the Harbour Bridge](../images/sydney/circular-quay-platform-dusk.jpg)
+
+![Platform 2: the Opera House across the cove](../images/sydney/circular-quay-platform-2.jpg)
+
+![A Waratah set at platform 2: skirts over the bogies, the two rows of windows, yellow doors](../images/sydney/circular-quay-waratah.jpg)
+
+Not modelled: lifts and escalators, the ticket gates, the shops' fronts under the viaduct one by
+one. The platforms have no doors, as the real ones have none; a clear wall at the edge keeps a
+walker off the track. You cannot board.
+
 ## 4. Replicating it in Blender
 
 `blender/build_scene.py` imports `bpy`, builds the scene from `web/data/sydney` and
