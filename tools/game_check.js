@@ -15,7 +15,8 @@
 // (tools/autopilot_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
-// (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
+// (no movement left standing in one for more than two cycles), live a day of the daily life (tools/life_step.js: the day
+// passing, a rank earned, a job done, the save read back), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
@@ -1929,7 +1930,7 @@ const npcNight = require('./npc_night');
     // give up within a minute and a half, never into another car, and one at least get out by another way)
     const T = rev.traffic, bad = T.filter(w => !(w.done || w.gone || w.gaveUp) || w.deep > 0.1 || !T.some(x => x.done || x.gone));
     if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
-    else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most`).join('; ')})`);
+    else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most${w.deep > 0.1 && w.deepAt ? ` (${w.deepAt})` : ""}`).join('; ')})`);
     const R = rev.ride;
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
@@ -1971,6 +1972,10 @@ const npcNight = require('./npc_night');
   });
   for (const h of seasons) check(h.ok && h.m === h.want[0] && h.d === h.want[1] && h.bloom !== 0 && h.dz < 1.5 && h.d2 < 20, `travels to ${h.name} out of season: the date moves to ${h.d}/${h.m} (its best ${h.want[1]}/${h.want[0]}), its trees ${h.bloom === null ? 'not looked at' : h.bloom ? 'in flower' : 'not in flower'}, ${h.d2.toFixed(0)} m from it and ${h.dz.toFixed(1)} m off its level`);
 
+  // the daily life (issue #357, tools/life_step.js): a day passing, a rank earned, a job done, the save read back
+  await require('./life_step').lifeStep(p, check, city);
+  await shot('life');
+
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
   await p.evaluate(() => { const g = window.__game; g.clock.frozen = true; }); // the light held still, to compare before and after
@@ -1979,27 +1984,32 @@ const npcNight = require('./npc_night');
   check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
   check(Math.abs(gl.after.mean - gl.before.mean) < 10, `and lit as before (luma ${gl.before.mean.toFixed(1)} before, ${gl.after.mean.toFixed(1)} after)`);
 
-  // a device that can't keep up (game.js shed): it gives up the rain's extras, then every drop, then
-  // the street's reflections, then pixels, in that order, and never the people: the player, the NPCs
-  // and the crowd near them keep their realistic models
+  // a device that can't keep up (the frame-time governor, quality.js, fed slow frames on a clock of its own):
+  // it gives up resolution a step at a time, then the rain's extras and the street's reflections, then every
+  // drop, then resolution to its floor, and never the people: the player, the NPCs and the crowd near them keep
+  // their realistic models. Fed fast frames again, the resolution comes all the way back.
   const shed = await p.evaluate(async () => {
-    const g = window.__game, W = g.weather, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    const g = window.__game, W = g.weather, G = g.governor, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
     if (W) { W.set('rain', { now: true }); g.advance(1); }
-    const seen = [];
-    for (let i = 0; i < 8 && g.shed(); i++) {
-      await frames(2);
-      seen.push({ lvl: g.shedLevel(), w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
-    }
+    const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
+    const top = G.scale;
+    for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
+    const slow = G.simulate(1, () => 60).pop(), size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const back = G.simulate(120, () => 8).pop();
+    await frames(2);
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
+    const end = { scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
-    return { seen, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
   });
   {
-    const s = shed.seen, at = k => s.findIndex(x => x.lvl === k);
-    const order = s.length >= 2 && s[s.length - 1].px === 0.7 && s.every((x, i) => !i || x.px <= s[i - 1].px)
-      && s.every(x => x.px === 1 || (x.w === null || x.w === 2) && (x.mirror === null || x.mirror));
-    const rainFirst = at(1) < 0 || (s[at(1)].far === false && s[at(1)].near === true && s[at(1)].px === 1);
-    check(order && rainFirst, `a slow device sheds the rain's extras first, then the drops, the reflections and then pixels (${s.map(x => `${x.lvl}:${x.w ?? '-'}/${x.mirror ?? '-'}/${x.px}`).join(' ')})`);
+    const s = shed.seen, e = shed.end, first = s.find(x => x.ex < 1), last = s[s.length - 1];
+    const order = s.length >= 2 && last.ex === 0 && Math.abs(last.px - 0.6) < 1e-6 && s.every((x, i) => !i || (x.px <= s[i - 1].px + 1e-6 && x.ex <= s[i - 1].ex))
+      && s.every(x => x.ex === 1 || x.px <= 0.8 + 1e-6) && (last.w === null || last.w === 2) && (last.mirror === null || last.mirror);
+    const rainFirst = !first || first.w === null || first.ex === 0 || (first.far === false && first.near === true);
+    check(order && rainFirst, `a slow device gives up resolution to 0.8, then the rain's extras and the reflections, the drops, and then resolution to 0.6 (${s.map(x => `${x.px.toFixed(2)}/${x.ex}:${x.w ?? '-'}/${x.mirror ?? '-'}`).join(' ')})`);
+    check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
+    check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
   }
 

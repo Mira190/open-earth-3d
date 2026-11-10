@@ -417,53 +417,76 @@
         ]
       }
     ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "gates",
+        "title": "The thousand gates",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "mountain",
+        "title": "The mountain",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "After dark",
+        "after": [
+          "gates",
+          "mountain"
+        ],
+        "on_open": "<b>Both walks done.</b> Go back down to Kenta, at the foot of the Omotesando."
+      }
+    ],
     "quests": [
       {
         "id": "romon",
+        "line": "start",
         "giver": "kenta",
         "title": "The gate of the foxes",
         "stamp": "Romon",
         "talk": [
           "ようお参り, welcome to Fushimi Inari. Straight up the Omotesando is the Romon, given by Toyotomi Hideyoshi in 1589.",
-          "The foxes either side of it are Inari's messengers: a jewel, and the key to the rice store. Go through the gate and past the halls to the Senbon Torii; Mrs. Ota's shop is at the entrance."
+          "The foxes either side of it are Inari's messengers: a jewel, and the key to the rice store. Go up and look.",
+          "After that the mountain is yours, two ways: Mrs. Ota keeps a shop at the entrance of the Senbon Torii, and a hiker called Daichi is usually resting at Yotsutsuji, halfway up."
         ],
         "steps": [
           {
             "type": "spot",
             "spot": "romon",
             "text": "Walk up the Omotesando to the Romon and its foxes"
-          },
-          {
-            "type": "talk",
-            "npc": "ota",
-            "text": "Find Mrs. Ota at the entrance of the Senbon Torii"
           }
         ]
       },
       {
         "id": "senbon",
+        "line": "gates",
         "giver": "ota",
         "title": "A thousand gates",
         "stamp": "Senbon Torii",
         "talk": [
           "The Senbon Torii: two tunnels, up on the right, down on the left. Someone counted 382 in one and 399 in the other.",
-          "Go on up past the Okusha. Daichi is resting at Yotsutsuji, halfway up; he'll show you the view."
+          "Walk it through to the Okusha at the far end, and read a name or two on the backs as you come down. And keep right, please."
         ],
         "steps": [
           {
             "type": "spot",
             "spot": "senbon",
             "text": "Walk through the Senbon Torii"
-          },
-          {
-            "type": "talk",
-            "npc": "daichi",
-            "text": "Climb the mountain path to Daichi at Yotsutsuji"
           }
         ]
       },
       {
         "id": "view",
+        "line": "mountain",
         "giver": "daichi",
         "title": "Kyoto from the mountain",
         "stamp": "Yotsutsuji",
@@ -478,6 +501,30 @@
             "text": "Look out over Kyoto from Yotsutsuji"
           }
         ]
+      },
+      {
+        "id": "night",
+        "line": "finale",
+        "giver": "kenta",
+        "title": "The shrine that never closes",
+        "stamp": "Inari by night",
+        "talk": [
+          "You've been up. Good. Did you read the backs of the gates on your way down? Every one a name and a date.",
+          "One more thing, and most visitors never do it. We don't close. Come back to the Romon after dark: the lanterns are lit, the gate is lit, and the foxes have the place to themselves."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -430.1,
+              123.1
+            ],
+            "radius": 30,
+            "after_dark": true,
+            "text": "Come back to the Romon after dark"
+          }
+        ],
+        "check": true
       }
     ]
   }

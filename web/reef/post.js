@@ -9,7 +9,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
 const BLOOM_CAP = 5;
 
-export function createPost(renderer, scene, camera, env, { bloom: withBloom = true } = {}) {
+export function createPost(renderer, scene, camera, env, { bloom: withBloom = true, grade = null } = {}) {
   const u = env.u;
   const post = new THREE.RenderPipeline(renderer);
   const scenePass = pass(scene, camera);
@@ -69,6 +69,11 @@ export function createPost(renderer, scene, camera, env, { bloom: withBloom = tr
   // bloom: off on the low tier (tier.js), as on the globe
   if (withBloom && q.get('bloom') !== '0') base = base.add(bloom(finite, 0.26, 0.5, 0.95).rgb);
   if (q.get('shafts') !== '0') base = base.add(shafts());
+  // a site's grade (scene.json grade: { contrast, sat }): a photographer's print of a hard-lit place, about mid-grey
+  if (grade && q.get('grade') !== '0') {
+    const l0 = dot(base, vec3(0.2126, 0.7152, 0.0722)).max(1e-5);
+    base = mix(vec3(l0), base, grade.sat ?? 1).max(0).mul(pow(l0.div(u.white.mul(0.18).max(1e-5)), (grade.contrast ?? 1) - 1));
+  }
   // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift);
   // what is bright enough for the cones (a torch beam, a lamp, the moon's path) keeps its colour
   const lum = dot(base, vec3(0.2126, 0.7152, 0.0722));

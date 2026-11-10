@@ -24,33 +24,41 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     const fx = Math.sin(c.h), fy = Math.cos(c.h), dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy; // (or coming up behind it from the piece before, 25 m)
     return a < 0 && a > -25 && Math.abs(-dx * fy + dy * fx) < 5 && Math.sin(o.h) * fx + Math.cos(o.h) * fy > 0.5;
   });
-  const cand = C.filter(c => c.line >= 0 && L[c.line].ow && !c.mv && A.canReverse(c) && clearBehind(c) && Math.hypot(c.x - px, c.y - py) < 300)
-    .sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py));
+  // (nor your own car or the ride the steps before left standing behind it: a car never backs into those and gives up at
+  // once, which says nothing of the traffic; what stood where by this step changes with every step added before it)
+  const mine = [g.myCar() && g.myCar().D.st, g.ride() && g.ride().drv.st].filter(Boolean);
+  const mineBehind = c => mine.some(o => { const fx = Math.sin(c.h), fy = Math.cos(c.h), dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy; return a < 2 && a > -90 && Math.abs(-dx * fy + dy * fx) < 6; });
+  // (up to three rounds of three: where every car of a round gives up for what stands behind it just then (your own
+  // ride, a car held at a light), the next nearest streets are tried; one that backs out and goes on is what is asked)
   const watch = [];
-  for (const c of cand) {
-    if (watch.length >= 3) break;
-    if (watch.some(w => w.line === c.line)) continue; // (one to a street: three of one queue each waited on the next)
-    const line = c.line;
-    if (A.reverse(c)) watch.push({ c, id: C.indexOf(c), line, deep: 0, t: 0, done: false, gone: false, went: 0, x: c.x, y: c.y });
-  }
-  // (90 s: it backs up to 80 m at a walking pace, and may wait up to 20 s at a time on the way for the junction behind)
-  // (and on to 150 s for one still backing out that has moved in the last 20 s: behind another backing out of the same street,
-  // waiting at the junction behind for room, it waits its turn)
-  for (let t = 0; (t < 90 || (t < 150 && watch.some(w => !w.done && !w.gone && !w.gaveUp && t - (w.moved || 0) < 20))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
-    g.advance(0.1);
-    for (const w of watch) {
-      if (w.done || w.gone || w.gaveUp) continue;
-      const c = w.c;
-      if (c.line < 0 || Math.hypot(c.x - w.x, c.y - w.y) > 30) { w.gone = true; continue; } // (out of the traffic, come back elsewhere)
-      const step = Math.hypot(c.x - w.x, c.y - w.y);
-      if (step > 0.01) w.moved = t;
-      w.went += step; w.x = c.x; w.y = c.y;
-      if (c.rev) w.deep = Math.max(w.deep, depth(c));
-      w.t = t;
-      if (!c.rev) { w.done = c.line !== w.line; w.gaveUp = !w.done; if (w.gaveUp) w.still = `gave up: ${c.revEnd || '?'}`; w.onto = c.line; w.why = c.why; }
+  for (let round = 0; round < 3 && !watch.some(w => w.done); round++) {
+    const cand = C.filter(c => c.line >= 0 && L[c.line].ow && !c.mv && !watch.some(w => w.line === c.line) && A.canReverse(c) && clearBehind(c) && !mineBehind(c) && Math.hypot(c.x - px, c.y - py) < 300)
+      .sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py));
+    for (const c of cand) {
+      if (watch.length >= 3 * (round + 1)) break;
+      if (watch.some(w => w.line === c.line)) continue; // (one to a street: three of one queue each waited on the next)
+      const line = c.line;
+      if (A.reverse(c)) watch.push({ c, id: C.indexOf(c), line, deep: 0, t: 0, done: false, gone: false, went: 0, x: c.x, y: c.y });
+    }
+    // (90 s: it backs up to 80 m at a walking pace, and may wait up to 20 s at a time on the way for the junction behind)
+    // (and on to 150 s for one still backing out that has moved in the last 20 s: behind another backing out of the same street,
+    // waiting at the junction behind for room, it waits its turn)
+    for (let t = 0; (t < 90 || (t < 150 && watch.some(w => !w.done && !w.gone && !w.gaveUp && t - (w.moved || 0) < 20))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
+      g.advance(0.1);
+      for (const w of watch) {
+        if (w.done || w.gone || w.gaveUp) continue;
+        const c = w.c;
+        if (c.line < 0 || Math.hypot(c.x - w.x, c.y - w.y) > 30) { w.gone = true; continue; } // (out of the traffic, come back elsewhere)
+        const step = Math.hypot(c.x - w.x, c.y - w.y);
+        if (step > 0.01) w.moved = t;
+        w.went += step; w.x = c.x; w.y = c.y;
+        if (c.rev) { const d = depth(c); if (d > w.deep) { w.deep = d; const b = A.footBy; w.deepAt = `${(c.rev.boxT || 0) > 0 ? `waited ${c.rev.boxT.toFixed(1)} s at the box behind, ` : ''}${c.rev.d.toFixed(1)} m back, ${b ? `car ${C.indexOf(b)} ${b.why} v ${(+b.v || 0).toFixed(1)}${b.mv ? ' in junction ' + b.mv.j.id : ''}${b.rev ? ` reversing (d ${b.rev.d.toFixed(1)} wait ${b.rev.wait.toFixed(1)})` : ''}; it on ${c.line}/${c.dir} s ${c.s.toFixed(1)}, that on ${b.line}/${b.dir} s ${b.s.toFixed(1)}` : ''}`; } }
+        w.t = t;
+        if (!c.rev) { w.done = c.line !== w.line; w.gaveUp = !w.done; if (w.gaveUp) w.still = `gave up: ${c.revEnd || '?'}`; w.onto = c.line; w.why = c.why; }
+      }
     }
   }
-  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back)` : '') }));
+  out.traffic = watch.map(w => ({ id: w.id, from: w.line, onto: w.onto ?? null, secs: +w.t.toFixed(1), deep: +w.deep.toFixed(2), deepAt: w.deepAt, done: w.done, gone: w.gone, gaveUp: !!w.gaveUp, went: +w.went.toFixed(1), still: w.still || (w.c.rev ? `still reversing (waited ${w.c.rev.wait.toFixed(1)} s, ${w.c.rev.d.toFixed(1)} m back)` : '') }));
   if (!tryRide) return out;
   // the ride, put on a one-way street near you and asked to turn round (one ordered and boarded first, as
   // game_check.js's turn step does, if none is under way)

@@ -80,7 +80,8 @@ sun's height: by day a little warmth and contrast; in the golden hour (sun at 3�
 blue hour (−4°) a lift and a cool balance, so the dusk sky and the first lights read together
 rather than the street going grey; at night (−12°) the deepest contrast, with `uNightTone`
 taking the shadows to blue and the lights to amber as before. Bloom keeps its high threshold
-(6 by day, 1.6 at night), so lit walls do not bloom; only lamps, signs and screens do. A city
+(6 by day, 1.6 at night), so lit walls do not bloom; only lamps, signs and screens do. All of
+it is uniforms of the one pass that ends the frame (`web/lens.js`): a look costs no pass. A city
 keys its own: `game.look.grade: {night, blue, golden, day}`, each `{ev, tint, sat, contrast}`.
 
 ### The sky and its clouds (`web/clouds.js`, issue 353)
@@ -146,6 +147,66 @@ hashes) and the lens's (the same by night and with the sun out of frame; six mor
 tier while the sun is in it). A software renderer's frame times do not tell these apart; a real GPU was not
 available.
 
+#### Stills: before and after, every live map
+
+Each sheet is one map from where its game starts, on foot, at 1440 x 900 on the high tier: 13:00, 35 minutes before
+sunset, 18 minutes after it, 21:30, and 15:00 in rain. The upper row is main before this work (60ff3b75), the
+lower row the same views after it. The eight Japanese maps have the `shinkai` preset, Sydney and Queenstown
+`film`.
+
+**Shibuya**
+
+![Shibuya: main above, the look below; day, golden hour, blue hour, night, rain](images/look/shibuya.jpg)
+
+**Tokyo (Marunouchi and Ginza)**
+
+![Tokyo (Marunouchi and Ginza): main above, the look below; day, golden hour, blue hour, night, rain](images/look/tokyo.jpg)
+
+**Shinjuku**
+
+![Shinjuku: main above, the look below; day, golden hour, blue hour, night, rain](images/look/shinjuku.jpg)
+
+**Kyoto**
+
+![Kyoto: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kyoto.jpg)
+
+**Higashiyama**
+
+![Higashiyama: main above, the look below; day, golden hour, blue hour, night, rain](images/look/higashiyama.jpg)
+
+**Fushimi Inari**
+
+![Fushimi Inari: main above, the look below; day, golden hour, blue hour, night, rain](images/look/fushimi-inari.jpg)
+
+**Tetsugaku-no-michi**
+
+![Tetsugaku-no-michi: main above, the look below; day, golden hour, blue hour, night, rain](images/look/tetsugaku.jpg)
+
+**Kamakura**
+
+![Kamakura: main above, the look below; day, golden hour, blue hour, night, rain](images/look/kamakura.jpg)
+
+**Sydney**
+
+![Sydney: main above, the look below; day, golden hour, blue hour, night, rain](images/look/sydney.jpg)
+
+**Queenstown**
+
+![Queenstown: main above, the look below; day, golden hour, blue hour, night, rain](images/look/queenstown.jpg)
+
+The same views at a phone's size (390 x 844, the look only; five hours across, a map to each block: Fushimi
+Inari, Higashiyama, Kamakura, Kyoto, Queenstown, Shibuya, Shinjuku, Sydney, Tetsugaku-no-michi, Tokyo). These were
+drawn on the high tier at a phone's frame, not on a phone: a phone picks its own tier, and on the low one the
+light shafts are compiled out.
+
+![Ten maps at a phone's size](images/look/phone.jpg)
+
+A day in 24 seconds, from before sunrise to night, over Shibuya and over Higashiyama (960 x 540, 12 frames a
+second, the clouds at twelve seconds a frame): [images/look/shibuya-day.mp4](images/look/shibuya-day.mp4) and
+[images/look/higashiyama-day.mp4](images/look/higashiyama-day.mp4), made with
+`xvfb-run -a node tools/day_film.js shibuya out.mp4 960x540 24 12` (see the tool's header for the view). Both
+start from the same sky: the clouds' drift begins at the same place on every map.
+
 Not built here: glints on overhead wires and rails (the maps draw neither as their own material yet), and a
 bounce that knows which ground is near which wall (the hemisphere light's is the same everywhere).
 
@@ -207,20 +268,21 @@ lower roughness, the screens' area lights.
 ### Contact shadows (`web/game/ao.js`, issue 138)
 
 By day the facades and street corners read flat because nothing darkened where they meet. On
-the medium and high tiers one pass after the scene is drawn (before the bloom) adds ambient
-occlusion from the depth buffer alone, the city is not drawn a second time: at half the screen's
-size each pixel's position comes from depth and its normal from its neighbours, a spiral of 16
-samples (8 on the medium tier) in a disc of up to 1.8 m near the camera and a little more further
-off gathers the occlusion with SAO's falloff, two depth-aware blurs take the noise out, and a
-depth-aware upsample darkens the frame by it. It fades out between 160 and 420 m, so the far city
-keeps the photograph's light, and is a third weaker at night, when the light is the street's own.
-The low tier is untouched.
+the medium and high tiers ambient occlusion is gathered from the depth buffer alone (the city is
+not drawn a second time): at half the screen's size each pixel's position comes from depth and its
+normal from its neighbours, a spiral of 16 samples (8 on the medium tier) in a disc of up to 1.8 m
+near the camera and a little more further off gathers the occlusion with SAO's falloff, and two
+depth-aware blurs take the noise out. The frame's one full-resolution pass, the lens, darkens each
+pixel by it as it reads the scene, upsampled by depth (issue 352: before, a pass of its own drew
+the whole frame again for this). It fades out between 160 and 420 m, so the far city keeps the
+photograph's light, and is a third weaker at night, when the light is the street's own. The low
+tier is untouched.
 
-A frame-time budget (20 ms on the high tier, 25 ms on the medium) watches the frame: over it for
-three seconds, AO steps down to the lite level and then off; when stepping down did not make the
-frame faster, AO was not the cost and comes back. `?ao=0` turns it off, `?ao=1` keeps it whatever
-the budget, `?ao=show` shows the occlusion alone; stills take `"ao"` in their views
-(`tools/game_shot.js`) and `tools/ao_cost.js` measures what each level costs.
+The frame-time governor (`web/quality.js`, [PERFORMANCE.md](PERFORMANCE.md)) sets its ceiling on a
+device that cannot keep up: the lite level, then off, and back when the frame time allows. `?ao=0`
+turns it off, `?ao=1` keeps it whatever the governor says, `?ao=show` shows the occlusion alone;
+stills take `"ao"` in their views (`tools/game_shot.js`) and `tools/ao_cost.js` measures what each
+level costs.
 
 ### The crowd (`web/game/game.js`, `game.crowd`)
 

@@ -180,7 +180,7 @@ export default function lakePukaki(G) {
       { t: 'The memorial looks over the lake of the Mueller Glacier.', src: ['wiki-hooker-track'] }] } } } : null;
 
   // ------------------------------------------------------------ quests
-  const facing = (G2, id, tol) => { const p = P(id); if (!p) return false; const want = G2.bearing(G2.here(), p), have = ((G2.player.S.camYaw * -180 / Math.PI) % 360 + 360) % 360; const d = Math.abs(((want - have) % 360 + 540) % 360 - 180); return d < tol; };
+  const facing = (G2, id, tol) => { const p = P(id); if (!p) return false; const want = G2.bearing(G2.here(), p), have = ((G2.player.S.camYaw * 180 / Math.PI) % 360 + 360) % 360; const d = Math.abs(((want - have) % 360 + 540) % 360 - 180); return d < tol; };
   const quests = [
     { id: 'view', title: 'The view up the lake', summary: 'Read the board at Peter\'s Lookout and lined Aoraki up over the lake.', hint: 'Ask Hana what to do at the lookout.',
       steps: [

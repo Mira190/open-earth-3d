@@ -1492,10 +1492,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, ln: 0, lo: 0, half: 2.2, hw: 0.98, top: 1.5, stuck: 0, hex });
       }
     }
-    const at = new THREE.Vector3();
+    // (issue 352: a car out of the eye's sight by more than its shadow reaches back into it, 30 m, takes no slot,
+    // so it is not drawn into the view or the shadow map; and only the slots taken are sent to the GPU)
+    const at = new THREE.Vector3(), frustum = new THREE.Frustum(), fm = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), eyeAt = new THREE.Vector3(1e9, 0, 0);
+    let culling = false;
+    const sendRange = (a, n) => { if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, n * a.itemSize); } a.needsUpdate = true; };
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
       if (!fleet) { mesh.setMatrixAt(i, m4); return; }
       const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
+      if (culling && !frustum.intersectsSphere(ball)) return;
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);
@@ -1999,7 +2004,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
       // (clear behind, or backing away from the one it is up against: a car ahead within its margins, backing out too, held
       // the one behind it, which held it in turn, each "held by" the other, Sydney's piece 1192, #317)
-      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0;
+      const away = bd > 0 && bd < overlaps(c, c.x - hx0 * 0.6, c.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) - 1e-4 && (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), mostCar === bk) && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 > 0
+        && !bk.rev; // (never one backing out too: at the end of its piece, turning out of it, the one in front of it read as ahead, and backed 0.65 m into it, Kyoto's piece 739)
       if ((bd === 0 || away) && peopleIn(c, tmp.x - hx0 * 0.3, tmp.y - hy0 * 0.3, hx0, hy0) === 0) {
         R.d += Math.abs(sb - c.s); R.v = v; R.wait = 0;
         c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp);
@@ -2069,6 +2075,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       tick++;
       if (eye) eye.getWorldDirection(look);
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
+      // the eye's frustum as it was last drawn, to leave out the cars it cannot see; not across a cut
+      culling = !!(fleet && eye && eye.isCamera && eye.position.distanceToSquared(eyeAt) < 400);
+      if (fleet && eye && eye.isCamera) { eyeAt.copy(eye.position); frustum.setFromProjectionMatrix(fm.multiplyMatrices(eye.projectionMatrix, eye.matrixWorldInverse), eye.coordinateSystem, eye.reversedDepth); }
       head.fill(-1); bhead.fill(-1); nb = 0;
       for (const a of onLine.values()) a.length = 0;
       live.length = 0;
@@ -2711,6 +2720,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
           if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
+          // (over 90 m off, on its second try, it comes back elsewhere, as a car stuck on a one-way street does there: in sight
+          // that far off, it neither backed out nor, out of view, came back elsewhere, and stood 114 s nose to nose at the
+          // mouth of Higashiyama's piece 126)
+          if (away && (c.narrowTries || 0) >= 1) { c.narrowTries = 0; respawn(c, cx, cy, radius * 0.6); continue; }
           // (no junction near enough behind it to back out to: the one it faces backs out instead, if it can. Turned round
           // where it stood, nose to nose with it, it would only have swung into it, and was held so: a car in Higashiyama
           // stood 46 s at a narrow stretch for one queued behind it, #331)
@@ -2923,8 +2936,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {
-        M.instanceMatrix.needsUpdate = true;
-        M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
+        if (!M.count) continue;
+        sendRange(M.instanceMatrix, M.count); sendRange(M.geometry.attributes.aC0, M.count); sendRange(M.geometry.attributes.aC1, M.count);
       }
     }
     // the near and mid models, come after the far ones (vehicles.js loadCars, issue 335): each model's stand-ins
