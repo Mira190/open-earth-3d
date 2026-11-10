@@ -754,6 +754,13 @@ vec3 steepRock(vec3 c, float k) {
     leanShadowMap(renderer, sunLight.shadow, SHADOW);
     const shadowStill = new URLSearchParams(location.search).get('shadowcache') === 'off' ? null : shadowCache(renderer, sunLight);
     const still = o => { if (shadowStill && o) shadowStill.mark(o); return o; };
+    // what the camera cannot see is hidden from the view (visibility.js), but the sun's shadow needs every
+    // caster: they are shown again round the shadow pass (outside the cache, which reads what is shown)
+    if (window.OEVis && !renderer.shadowMap.__vis) {
+      const SM = renderer.shadowMap, inner = SM.render;
+      SM.__vis = true;
+      SM.render = function (lights, sc, cam) { OEVis.shadow(true); try { return inner.call(this, lights, sc, cam); } finally { OEVis.shadow(false); } };
+    }
     world.add(sunLight, sunLight.target);
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
@@ -1003,9 +1010,113 @@ vec3 woodsFloor(vec3 c) {
       woodsFloor(sh); // after the photo, the game's drawn streets and grain: the floor has its own
       streetLit(sh);
     };
+    // How much of the sky the ground sees (issue 358, B2: data/<city>/skyvis.webp, pipeline/skyvis.py), on the
+    // ambient light of the ground and what stands on it: a street canyon's soft shade, which the page had only
+    // from screen-space AO, computed again every frame from a few metres round each pixel. One texture read in
+    // the materials that take the street lights (the same ground-level surfaces); it multiplies the indirect
+    // diffuse light alone, near the camera (far off the aerial photograph carries its own shade). uSkyVisK is
+    // its strength: 0 until the texture has come, and the look's to drive (issue 353). `?skyvis=on` for now.
+    const SKYVIS = new URLSearchParams(location.search).get('skyvis') === 'on' ? { uSkyVis: { value: null }, uSkyVisF: { value: new THREE.Vector4(0, 0, 1, 1) }, uSkyVisK: { value: 0 } } : null;
+    if (SKYVIS) {
+      const px = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); px.needsUpdate = true;
+      SKYVIS.uSkyVis.value = px;
+      fetch(`${D.DATA}skyvis.json`).then(r => (r.ok ? r.json() : null)).then(meta => {
+        if (!meta) return;
+        new THREE.TextureLoader().load(`${D.DATA}skyvis.webp`, tex => {
+          tex.colorSpace = THREE.NoColorSpace; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false; // (north up: flipY as loaded)
+          SKYVIS.uSkyVis.value = tex;
+          SKYVIS.uSkyVisF.value.set(meta.x[0], meta.y[0], 1 / (meta.x[1] - meta.x[0]), 1 / (meta.y[1] - meta.y[0]));
+          SKYVIS.uSkyVisK.value = 0.6;
+        });
+      }).catch(() => {});
+    }
+    // The sun's shadow past the shadow map's box (issue 358, B4, a prototype: `?farsun=on`). The shadow map covers
+    // a few hundred metres round the player; beyond it nothing was shaded by the sun at all, and a tower outside
+    // the box threw no shadow into it. The city is static and the sun's direction is one vector, so a Worker
+    // sweeps the game's 2 m surface model once along that vector (visibility-sweep.js sunShadow, 30 ms) into a
+    // height field: under this height the sun is hidden. One texture read then shades the whole map; it is done
+    // again when the sun has moved 0.4 degrees. uSunBox: the shadow map's box (centre x, z, half its width), inside
+    // which the map alone decides, and whether the field is there at all (0 at night and before the first one).
+    const FARSUN_Q = new URLSearchParams(location.search).get('farsun'); // on: past the shadow map's box; all: everywhere (to look at the field itself)
+    const FARSUN = (FARSUN_Q === 'on' || FARSUN_Q === 'all') && window.Worker ? { uSunH: { value: null }, uSunHF: { value: new THREE.Vector4(0, 0, 1, 1) }, uSunBox: { value: new THREE.Vector4(0, 0, 0, 0) } } : null;
+    const farSun = { worker: null, pending: 0, id: 0, last: null, ready: false, scale: small ? 4 : 2, ms: 0 };
+    if (FARSUN) {
+      const px = new THREE.DataTexture(new Uint16Array([0, 0]), 1, 1, THREE.RGFormat, THREE.HalfFloatType); px.needsUpdate = true;
+      FARSUN.uSunH.value = px;
+      // G: the game's surface model (sun.js buildDSM, with ids)
+      farSun.init = G => {
+        if (farSun.worker) return;
+        try { farSun.worker = new Worker(new URL('visibility-worker.js', document.baseURI)); } catch (e) { return; }
+        const built = new Uint8Array(G.nx * G.ny);
+        if (G.ids) for (let i = 0; i < built.length; i++) built[i] = G.ids[i] >= 0 ? 1 : 0;
+        const data = G.data.slice();
+        farSun.G = { nx: G.nx, ny: G.ny, cell: G.cell, x0: G.x0, y1: G.y1 };
+        farSun.worker.postMessage({ sunInit: { nx: G.nx, ny: G.ny, cell: G.cell, data, built } }, [data.buffer, built.buffer]);
+        farSun.worker.onmessage = e => {
+          const d = e.data;
+          if (!d.sun || d.sun !== farSun.pending) return;
+          farSun.pending = 0; farSun.ms = d.ms;
+          const old = FARSUN.uSunH.value, tex = new THREE.DataTexture(d.data, d.w, d.h, THREE.RGFormat, THREE.HalfFloatType);
+          tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false; tex.needsUpdate = true; // (row 0 at the north)
+          FARSUN.uSunH.value = tex;
+          const g = farSun.G;
+          FARSUN.uSunHF.value.set(g.x0, g.y1, 1 / (g.nx * g.cell), 1 / (g.ny * g.cell));
+          farSun.ready = true; FARSUN.uSunBox.value.w = farSun.up ? 1 : 0;
+          if (old) old.dispose();
+          if (farSun.want) { const w = farSun.want; farSun.want = null; farSun.update(w); }
+        };
+        if (api && api.sunDir) farSun.update(api.sunDir);
+      };
+      // the sun has moved (setSun): a new field when it has turned 0.4 degrees, none while it is under 2 degrees up
+      farSun.update = dir => {
+        farSun.up = dir.y > 0.035;
+        FARSUN.uSunBox.value.w = farSun.up && farSun.ready ? 1 : 0;
+        if (!farSun.worker || !farSun.up) return;
+        if (farSun.last && farSun.last.dot(dir) > 0.999976) return;
+        if (farSun.pending) { farSun.want = dir.clone(); return; }
+        farSun.last = dir.clone();
+        const hl = Math.hypot(dir.x, dir.z) || 1e-6;
+        farSun.pending = ++farSun.id;
+        farSun.worker.postMessage({ sun: { id: farSun.pending, ex: dir.x / hl, en: -dir.z / hl, tanEl: dir.y / hl, scale: farSun.scale } });
+      };
+      farSun.dispose = () => { if (farSun.worker) farSun.worker.terminate(); farSun.worker = null; };
+    }
+    const sunLit = sh => {
+      if (FARSUN && !sh.uniforms.uSunH && sh.fragmentShader.includes('#include <lights_fragment_begin>')) {
+        const chunk = THREE.ShaderChunk.lights_fragment_begin, mark = 'vDirectionalShadowCoord[ i ] ) : 1.0;\n\t\t#endif';
+        if (chunk.includes(mark)) {
+          Object.assign(sh.uniforms, FARSUN);
+          sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D uSunH; uniform vec4 uSunHF; uniform vec4 uSunBox;`)
+            .replace('#include <lights_fragment_begin>', `float oeFarSun = 1.0;
+if (uSunBox.w > 0.0) {
+  mat3 oeVI = transpose(mat3(viewMatrix));
+  vec3 oeFP = oeVI * (-vViewPosition - viewMatrix[3].xyz), oeFN = oeVI * normal;
+  vec2 oeFQ = oeFP.xz + oeFN.xz * 3.0; // a wall reads the ground in front of it
+  vec2 oeHS = texture2D(uSunH, vec2((oeFQ.x - uSunHF.x) * uSunHF.z, (uSunHF.y + oeFQ.y) * uSunHF.w)).rg;
+  float oeLit = smoothstep(-0.5, 2.5, oeFP.y - (oeFN.y > 0.7 && oeFP.y > oeHS.y + 3.0 ? oeHS.x : oeHS.y)); // a roof by its own field
+  float oeOut = uSunBox.z > 0.0 ? smoothstep(0.8, 0.97, length(oeFP.xz - uSunBox.xy) / uSunBox.z) : 1.0;
+  oeFarSun = mix(1.0, oeLit, oeOut);
+}
+` + chunk.replace(mark, mark + '\n\t\tdirectLight.color *= oeFarSun;'));
+        }
+      }
+    };
+    const skyLit = sh => {
+      sunLit(sh);
+      if (!SKYVIS || sh.uniforms.uSkyVis || !sh.fragmentShader.includes('#include <lights_fragment_end>')) return;
+      Object.assign(sh.uniforms, SKYVIS);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D uSkyVis; uniform vec4 uSkyVisF; uniform float uSkyVisK;`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+{ vec3 oeSP = transpose(mat3(viewMatrix)) * (-vViewPosition - viewMatrix[3].xyz);
+  float oeSV = texture2D(uSkyVis, vec2((oeSP.x - uSkyVisF.x) * uSkyVisF.z, (-oeSP.z - uSkyVisF.y) * uSkyVisF.w)).r;
+  reflectedLight.indirectDiffuse *= mix(1.0, oeSV, uSkyVisK * (1.0 - smoothstep(150.0, 500.0, length(vViewPosition)))); }`);
+    };
     // the street lights on a lit surface: its colour times their light where it is (the world
     // position from the view position, as the view matrix is rigid)
     const streetLit = sh => {
+      skyLit(sh);
       if (!NU) return;
       Object.assign(sh.uniforms, NU);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${NIGHT}`)
@@ -1442,6 +1553,12 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     }
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
+    if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
+    if (FARSUN && buildings.material && buildings.material.onBeforeCompile) { // the walls and roofs take the far sun's shadow too
+      const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
+      buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); sunLit(sh); };
+      buildings.material.customProgramCacheKey = function () { return `${key ? key.call(this) : ''}|farsun`; };
+    }
 
     // piers and wharves: 2.2 m concrete decks, or level with the quay they meet where that is up to
     // 4 m higher (a seawall promenade), so that stepping down onto a pier is never a step you can't
@@ -1975,7 +2092,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
       hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
@@ -1986,6 +2103,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
         api.sunDir = new THREE.Vector3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
         su.sunPosition.value.copy(api.sunDir);
+        if (FARSUN) farSun.update(api.sunDir);
         const day = smooth(-5, 8, sp.altitude);
         api.day = day;
         // below the horizon the sun is dark (its intensity is 0 from -0.5°) and its shadow map is not redrawn,
@@ -2083,6 +2201,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           const q = Math.pow(1.1, Math.ceil(Math.log(need) / Math.log(1.1) - 1e-9));
           shCam.left = -q; shCam.right = q; shCam.top = q; shCam.bottom = -q; shCam.updateProjectionMatrix();
         }
+        if (FARSUN) FARSUN.uSunBox.value.set(target.x, target.z, FARSUN_Q === 'all' ? 0 : shCam.right, FARSUN.uSunBox.value.w);
         const texel = 2 * shCam.right / sunLight.shadow.mapSize.x, z = api.sunDir;
         shX.set(z.z, 0, -z.x); // up × z, the shadow camera's x axis
         const l = shX.length();
@@ -2132,7 +2251,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (api.lastSun) api.setSun(api.lastSun.sp, api.lastSun.minutes);
         renderer.shadowMap.needsUpdate = true;
       },
-      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); if (far) far.dispose(); },
+      dispose() { if (farSun.dispose) farSun.dispose(); if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); if (far) far.dispose(); },
     };
     if (trees && trees.shadowSun) trees.shadowSun(() => api.sunDir);
     const farTrees = trees && trees.bakeFar && new URLSearchParams(location.search).get('impostors') !== 'off' ? trees.bakeFar(renderer) : null;

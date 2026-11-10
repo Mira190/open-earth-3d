@@ -72,6 +72,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   // again a few frames later, up to 12 times, and a canvas whose WebGL context is lost says so
   const grab = async name => {
     let png = null, dark = 1, tries = 0;
+    // the sun's far shadow field for this view's hour, where the page makes one in a Worker (world.js farSun): wait for it
+    await p.waitForFunction(() => { const f = window.__game && window.__game.Wd && window.__game.Wd.farSun; return !f || (!f.pending && !f.want); }, null, { timeout: 60000 }).catch(() => {});
     for (; tries < 12; tries++) {
       ({ png, dark } = await p.evaluate(async n => {
         for (let i = 0; i < n; i++) await new Promise(r => requestAnimationFrame(r));
