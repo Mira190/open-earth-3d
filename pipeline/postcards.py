@@ -13,6 +13,7 @@ of the day it is rendered: dawn, day, dusk and night. The page shows the one who
 over that city at the minute the postcard is dated.
 """
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -21,13 +22,21 @@ LIGHTS = {"dawn": "sunrise+25", "day": "11:00", "dusk": "sunset+8", "night": "su
 SIZE = (960, 640)
 
 
+GLOW = {"dawn": 0.0, "day": 0.0, "dusk": 0.008, "night": 0.012}  # the plush's own light, as from the street or a phone after dark
+
+
 def spots(city):
     return json.loads((ROOT / "cities" / city / "postcards.json").read_text())["spots"]
 
 
+def friend(city):
+    """The traveller in the map's stills (tools/plush.js, Mugi) and its colour there: {kind, name, what, scarf}."""
+    return json.loads((ROOT / "cities" / city / "postcards.json").read_text()).get("plush")
+
+
 def views(city, draft=False):
-    out = []
-    for s in spots(city):
+    out, toy = [], friend(city)
+    for i, s in enumerate(spots(city)):
         for light, time in LIGHTS.items():
             if draft and light != "day":
                 continue
@@ -35,6 +44,17 @@ def views(city, draft=False):
                  "eyeUp": s.get("up", 1.65), "lookUp": s.get("lookUp", 1.65), "time": s.get(light, time), "fov": s.get("fov", 46), "apart": 7}
             if draft and s.get("clear"):
                 v["clear"] = s["clear"]  # the stand moved to the clearest view within that far, and printed
+            if toy:  # a spot's "plush" moves it: {"side": -1 | 1, "x", "y", "tilt", "fstop"}; false leaves it out
+                if s.get("plush") is not False:
+                    v["plush"] = {"kind": toy["kind"], "scarf": toy.get("scarf"), "side": 1 if i % 2 == 0 else -1, "glow": GLOW[light], **(s.get("plush") or {})}
+                    # from a deck, a roof or a lookout (a railing between it and the view), or tilted up steeply at a
+                    # tower, it is held up to the view; elsewhere it sits in the scene
+                    up = math.degrees(math.atan2(s.get("lookUp", 1.65) - 0.38, math.hypot(s["look"][0] - s["at"][0], s["look"][1] - s["at"][1])))
+                    if "mode" not in v["plush"] and ("z" in s or up > 20):
+                        v["plush"]["mode"] = "held"
+                    if v["plush"].get("mode") != "held":  # the lens down at the traveller's eye, as a photograph of a toy is taken
+                        v["eyeUp"] = v["plush"].get("eyeUp", 0.38)
+                v["apart"] = 10  # (and nobody close to the lens: a stranger at the frame's edge took the picture from the toy)
             if "z" in s:
                 v["z"] = s["z"]
             else:
@@ -90,6 +110,8 @@ def index():
             ss.append(o)
         if ss:
             out["cities"][c["id"]] = ss
+            if friend(c["id"]):
+                out.setdefault("friends", {})[c["id"]] = {k: friend(c["id"])[k] for k in ("kind", "name", "what")}
     (ROOT / "web" / "data" / "postcards.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n")
     print("web/data/postcards.json:", ", ".join(f"{k} {len(v)}" for k, v in out["cities"].items()))
 

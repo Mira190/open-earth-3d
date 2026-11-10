@@ -1172,6 +1172,11 @@ const npcNight = require('./npc_night');
     out.single = !other; // (a city whose first map this is: its other districts are still to build, greyed)
     const prim = el && el.querySelector('.mt-pick .primary');
     out.travel = !!prim && !!other && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    // a district that shares this map (Sangenjaya, on Shibuya's): named as on this map, not as the map itself
+    // (the hop to it stays in the map: tools/district_title_shot.js makes it)
+    const meta = ((window.OE_CITIES || []).find(c => c.group_meta && c.group_meta.kind === 'metro' && [...el.querySelectorAll('.mt-chip')].some(b => b.dataset.mapid === c.id)) || {}).group_meta;
+    const share = el && meta && [...el.querySelectorAll('.mt-stn.here')].find(st => !st.querySelector('.mt-you') && meta.districts[+st.dataset.district].travel);
+    if (share) { share.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })); const em = el.querySelector('.mt-pick .mt-name em'), b = el.querySelector('.mt-pick .primary'); out.shared = !!em && /^On the .+ map$/.test(em.textContent) && !!b && !!b.dataset.arrive; }
     key('Escape', 'Escape');
     out.closed = !document.querySelector('.ts-mfull') && !OEMetro.isOpen() && document.getElementById('g-menu').hidden;
     btn.click(); out.byButton = OEMetro.isOpen(); OEMetro.close();
@@ -1180,7 +1185,7 @@ const npcNight = require('./npc_night');
     out.byMenu = OEMetro.isOpen() && document.getElementById('g-menu').hidden; OEMetro.close();
     return out;
   });
-  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, Esc closes it (${JSON.stringify(mt)})`);
+  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.shared !== false && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, one that shares this map says so, Esc closes it (${JSON.stringify(mt)})`);
 
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {

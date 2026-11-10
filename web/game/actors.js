@@ -1503,7 +1503,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
       if (!fleet) { mesh.setMatrixAt(i, m4); return; }
       const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
-      if (culling && !frustum.intersectsSphere(ball)) return;
+      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 3.6, 3.6)))) return; // (or behind the street wall: visibility.js; 3.6 m: a bus)
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);

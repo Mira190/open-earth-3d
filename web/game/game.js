@@ -76,7 +76,24 @@ window.OpenEarthGame = async function game(cityId) {
     $('#g-menu').hidden = true; $('#g-bigmap').hidden = true; $('#g-pass').hidden = true;
     if (!phone.el.hidden) phoneShow(false);
     keys.clear();
-    OEMetro.full({ g: metro, cities: window.OE_CITIES, here: cityId, backLabel: 'Back to the game', backWord: 'Back to the game' });
+    // which of this map's stations you are at (a map can hold several districts: Sangenjaya is on Shibuya's): the
+    // nearest one within a kilometre, else the map's own
+    const F = scene.frame, ds = metro.meta.districts;
+    let hereAt = -1, bd = 1000;
+    ds.forEach((s, i) => {
+      if (s.map !== cityId || !playing) return;
+      const e = Math.hypot((s.lon - F.lon0) * 111320 * Math.cos(F.lat0 * Math.PI / 180) - player.x, (s.lat - F.lat0) * 110950 - player.y);
+      if (e < bd) { bd = e; hereAt = i; }
+    });
+    OEMetro.full({ g: metro, cities: window.OE_CITIES, here: cityId, hereAt, backLabel: 'Back to the game', backWord: 'Back to the game',
+      // another district of the map you are on: a hop across it, not the whole map loaded again
+      onGo: (c, play, arrive) => {
+        OEMetro.close();
+        const t = c.id === cityId && play && playing && (arrive ? (G.travel || []).find(x => x.id === arrive) : { id: 'start', name: CITY.name, at: G.start.at, look: G.start.facing });
+        if (t && travelTo({ kind: 'place', id: t.id, name: t.name, at: t.at, look: t.look, pitch: t.pitch, best: t.best })) { history.replaceState(null, '', `#play-${cityId}${arrive ? `@${arrive}` : ''}`); return; }
+        if (t) return; // (not now: in the helicopter, on the ferry; the game has said so)
+        location.hash = play ? `play-${c.id}${arrive ? `@${arrive}` : ''}` : c.id;
+      } });
   }
   const stage = $('#game-stage'), canvas = $('#game-gl');
   // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries;
@@ -4767,9 +4784,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const nm = /^(.*?)\s+([\u3000-\u9fff\uff00-\uffef][^A-Za-z]*)$/.exec(DISTRICT.name) || [0, DISTRICT.name]; // (the name in its own script after it, if it ends the name)
     gtTitle.textContent = nm[1];
     if (nm[2]) { const sm = document.createElement('small'); sm.lang = 'ja'; sm.textContent = nm[2]; gtTitle.append(sm); }
-    $('#gt-city').textContent = `${G.title.replace(/\s+[\u3000-\u9fff].*$/, '')} · ${CITY.place || CITY.name}, ${CITY.country}`;
+    // under the game's name without its map's ("Tokyo Pilgrimage"), and where the district is, if not where the map is
+    // (game.travel "place": Sangenjaya is in Setagaya, on Shibuya's map)
+    const series = G.title.replace(/\s+[\u3000-\u9fff].*$/, '').replace(/:.*$/, '');
+    $('#gt-city').textContent = `${series} · ${DISTRICT.place || CITY.place || CITY.name}, ${CITY.country}`;
     if (DISTRICT.blurb) { $('#gt-blurb').textContent = DISTRICT.blurb; $('#g-title p').textContent = DISTRICT.blurb; }
-    document.title = `${nm[1]} · ${G.title} · Open Earth 3D`;
+    document.title = `${nm[1]} · ${series} · Open Earth 3D`;
   }
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
@@ -5099,6 +5119,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (atmos && atmos.camFx) atmos.camFx(overture && overture.active ? overture.fx : photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
       : arriving && cine.active ? { focus: camera.position.distanceTo(live.look), aperture: lensBlur(camera.fov, camera.position.distanceTo(live.look), 4), blur: 0.5 } : null);
     mirrorTick();
+    if (window.OEVis) { const sy = Wd.sunDir.y; OEVis.cot = sy > 0.03 ? Math.sqrt(1 - sy * sy) / sy : 0; } // (how far a shadow reaches, for the crowd's and the cars' culling)
     if (window.OEVis) OEVis.at(camera); // what cannot be seen from here is left out (visibility.js)
     if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
     care.drawn();
