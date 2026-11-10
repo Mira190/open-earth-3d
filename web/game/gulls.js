@@ -266,12 +266,14 @@ window.OEGulls = (function () {
     // the tail: long, a shallow fork, fanned a little
     const tail = new THREE.BufferGeometry();
     tail.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, -0.2, 0.13, 0, -0.56, 0, 0, -0.5, 0, 0, -0.2, 0, 0, -0.5, -0.13, 0, -0.56]), 3));
+    tail.computeVertexNormals(); // (as the spheres have them: the parts are merged)
     const body = parts([[b, (x, y) => (y < -0.02 ? MID : DARK)], [head, () => PALE], [bill, () => BILL], [tail, () => DARK]]);
     // a wing, from the shoulder out along +x: the arm, then the hand swept back with its fingers, a pale patch under them
     const w = new THREE.BufferGeometry(), P = [[0, 0, 0.12], [0.36, 0, 0.14], [0.36, 0, -0.14], [0, 0, -0.12], [0.75, 0, 0.04], [0.75, 0, -0.2], [0.62, 0, -0.17]];
     const idx = [0, 3, 2, 0, 2, 1, 1, 2, 6, 1, 6, 4, 4, 6, 5], pos = [];
     for (const i of idx) pos.push(...P[i]);
     w.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    w.computeVertexNormals();
     const wing = parts([[w, (x) => (x > 0.4 && x < 0.66 ? PALE : DARK)]]);
     return { body, wing };
   }
