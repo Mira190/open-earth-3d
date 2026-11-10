@@ -227,8 +227,8 @@ async function assistStep({ log = false, fresh = true } = {}) {
     // (stood 6 s with no red line ahead and no car ahead to wait for, or a wall across the way: where it should stop,
     // on a street that ends, or one that pinches narrower than the car. Lane keeping is judged on another stretch,
     // the autopilot taking the car there, three stretches at most)
-    stuck = st.speed < 0.3 && g.assist.line == null && (g.assist.wall != null || !g.assist.lead) ? stuck + 0.1 : 0;
-    if (stuck > 6 && out.stretches < 3) {
+    stuck = st.speed < 0.3 && g.assist.line == null && (g.assist.wall != null || !g.assist.lead || g.assist.lead.gap > 6) ? stuck + 0.1 : 0;
+    if (stuck > 5 && out.stretches < 3) {
       stuck = 0; out.stretches++;
       out.log.push(`${t.toFixed(1)}s stood at ${st.x.toFixed(0)},${st.y.toFixed(0)} (${g.assist.wall != null ? 'a wall' : 'nothing seen'}): on to another stretch`);
       if (g.assist.lane) g.assistToggle('lane');
@@ -236,7 +236,14 @@ async function assistStep({ log = false, fresh = true } = {}) {
       // (backed out first, a car's length, so the autopilot can join its lane)
       for (let i = 0; i < 12; i++) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's' })); g.advance(0.25); }
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', key: 's' }));
-      if (getGoing()) break;
+      // (and with no clear stretch to be had from where it stood: from the next landmark's kerb)
+      if (getGoing()) {
+        const lm = g.landmarks && g.landmarks[out.stretches % g.landmarks.length];
+        if (!lm || !g.travelTo(lm)) break;
+        for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+        g.advance(8);
+        if (g.player.mode !== 'car' || getGoing()) break;
+      }
       if (!g.assist.lane) g.assistToggle('lane');
       if (!g.assist.cruise) g.assistToggle('cruise');
       x0 = st.x; y0 = st.y; last = null; settle = 3; lineWas = null; offWas = null; offRoad = 0;
@@ -371,7 +378,7 @@ function railChecks(r) {
 async function kerbStep() {
   const g = window.__game, A = g.cars, L = g.roadNet.L;
   if (!A.kerbLo) return { none: 'no kerb in this build' };
-  const T = g.trips && g.trips(), out = { parkedMax: 0, held: 0, deep: 0, log: [] };
+  const T = g.trips && g.trips(), out = { parkedMax: 0, held: 0, deep: 0, log: [], share: A.parkStats ? A.parkStats.share : null };
   const in0 = A.C.reduce((s, c) => s + (c.parkedIn || 0), 0), out0 = A.C.reduce((s, c) => s + (c.left || 0), 0), b0 = A.busStopped, on0 = g.crowd.boarded, off0 = g.crowd.alighted, d0 = A.deliveries;
   const heldT = new Map();
   for (let t = 0; t < 120; t += 0.5) {
@@ -402,7 +409,8 @@ function kerbChecks(r) {
   if (r.none) return [[true, `the kerb: ${r.none}`]];
   return [
     [r.trips && r.places >= 2 && r.onTrip > r.cars * 0.3, `the traffic has somewhere to go: ${r.onTrip} of ${r.cars} cars on a trip to one of ${r.places} places`],
-    [(r.room < 300 || r.parkedMax > 0) && r.held < 15 && r.deep <= 0.15, `cars stand at the kerb (${r.parkedMax} at most, ${Math.round(r.room)} m of street with room within 500 m; ${r.pulledIn} pulled in and ${r.pulledOut} out in two minutes), out of the traffic's way (a car held ${r.held.toFixed(0)} s behind one at most${r.held >= 5 ? `: ${r.heldWhy}` : ''}; ${r.deep.toFixed(2)} m into one at most${r.deep > 0.15 ? `: ${r.deepWhy}` : ''})`],
+    // (where few park at the kerb, Japan's 5% of the cars, none within 500 m in two minutes can be so: half a kilometre a car)
+    [(r.room < 300 || r.parkedMax > 0 || (r.share != null && r.share < 0.1 && r.room < 2500)) && r.held < 15 && r.deep <= 0.15, `cars stand at the kerb (${r.parkedMax} at most, ${Math.round(r.room)} m of street with room within 500 m; ${r.pulledIn} pulled in and ${r.pulledOut} out in two minutes), out of the traffic's way (a car held ${r.held.toFixed(0)} s behind one at most${r.held >= 5 ? `: ${r.heldWhy}` : ''}; ${r.deep.toFixed(2)} m into one at most${r.deep > 0.15 ? `: ${r.deepWhy}` : ''})`],
     [true, `the buses' stops: ${r.stops} pieces of road with one, ${r.buses} buses, ${r.busStopped} stops made, ${r.on} people on and ${r.off} off; ${r.deliveries} van deliveries`],
   ];
 }

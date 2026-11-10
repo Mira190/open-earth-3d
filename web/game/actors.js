@@ -2236,7 +2236,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     JN.makeWay = makeWay;
     api.busStops = busStops; api.busStopped = 0; api.deliveries = 0; // (for the checks)
     api.kerbLo = kerbLo; // (for the checks: how far off the lane a line's kerb is, or 0)
-    api.parkStats = { looks: 0, noKerb: 0, notNow: 0, noRoom: 0, began: 0, gaveUp: 0, why: '', no: kerbNo }; // (the looks for room at the kerb, and what became of them)
+    api.parkStats = { share: PARKED, looks: 0, noKerb: 0, notNow: 0, noRoom: 0, began: 0, gaveUp: 0, why: '', no: kerbNo }; // (the looks for room at the kerb, and what became of them)
     JN.room = (c, e) => room(c, e); // (a ride's driver waits at the line for room beyond, as the traffic does: never stopped in the box)
     // blockers: the player on foot { x, y, z } and your car or a ride { x, y, half (half length),
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
