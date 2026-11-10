@@ -55,6 +55,12 @@ and marks each city built or not.
 `pack.py` packs each city's `buildings.json` into `buildings.bin`, which is what
 the browser downloads (see [Download size](#download-size) below).
 
+`pack.py` also keeps each live city's `vis.bin` in step with its buildings (`visibility.py`): how
+high the buildings stand, at 1 m, shrunk so that it claims no more than the walls drawn. The game
+reads it after play has begun and sweeps it from the camera in a Worker to leave out what the street
+wall hides (`web/visibility.js`; see [PERFORMANCE.md](PERFORMANCE.md), "What cannot be seen is not
+drawn").
+
 ### Ground
 
 The ground tiles are the aerial photo, resampled into the local frame at 1 m
