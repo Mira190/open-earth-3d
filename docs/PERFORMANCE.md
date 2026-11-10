@@ -185,6 +185,92 @@ from the air by day and at night) differ only in what moves between two runs: th
 wind, the waves and the traffic. Not measurable here: what the bandwidth saved is worth in milliseconds on a
 phone's GPU or an integrated one.
 
+### Resolution that goes both ways
+
+`shed()` stepped down every four seconds below 24 frames a second (the rain's extras, the weather, the wet
+street's mirror, then pixels to 85% and 70%) and never came back; the contact shadows had a budget of their
+own beside it. Both are replaced by one governor (`web/quality.js` `OEQuality.governor`, ticked by
+`game.js`):
+
+- It holds a smoothed frame time against a target: the display's own interval, or the frame-rate cap's (the
+  menu's Frame rate: 30, 60 or the display's; 60 by default, so a 120 or 144 Hz display draws every second
+  frame of the game, not twice the frames for the same picture).
+- `governor.scale` is the scene's resolution against the canvas's, in steps of a twentieth between the tier's
+  ceiling and 0.6. The post stack draws the scene, the occlusion and the bloom at that scale; the canvas and
+  the interface stay at the display's resolution, and the lens upscales with a contrast-adaptive sharpening
+  (the limiter of AMD's FidelityFX RCAS, MIT, written here: four more taps, only while the scale is under 1).
+- `governor.extras` (1, 0.5, 0) is how much of what a frame can do without is drawn: at 0.5 no far rain or
+  splashes, no wet-street mirror, the lighter contact shadows; at 0 no weather's drops and no contact shadows.
+- Down: resolution to 0.8, then the extras, then resolution to 0.6. Up: vertical sync hides headroom, so after
+  four calm seconds it tries a step up; a try that does not fit is taken back and the next waits twice as long
+  (to a minute). Extras return at full resolution after a longer calm (the weather keeps what it shed until
+  the next visit, as before). A display that cannot be met even at the floor is given half its rate as the
+  target, where frames are even, and resolution comes back against that.
+- The tier's pixels have a ceiling. The high tier was `min(dpr, 2)` of the display with 4x MSAA: 8.3 million
+  pixels on a 4K display, 14.7 million on a 5K one at 2x. The canvas is now held to a 4K display's pixels and
+  the scene inside it to 2560 x 1440's (the governor's ceiling), so a 4K display draws the scene at two
+  thirds of its size and the lens brings it up.
+
+`tools/governor_probe.js` feeds it frames on a clock of its own (fast: it stays; 40 ms: 1.00 to 0.80, extras
+to 0, 0.60, then half rate and back up; fast again: 1.00 with every extra) and takes stills at 1.0, 0.8 and
+0.6; `tools/game_check.js` checks the order and the way back in every city. Not checkable here: how it
+feels on a real display, where the frame time is a GPU's and not a simulation's.
+
+### Scene renders nobody sees
+
+- **The sea, inland.** The ocean's wave transform (45 passes into 128 px targets), its wake field and, on a
+  GPU that affords it, a second draw of the city for its reflection ran every frame in every city, Fushimi
+  Inari's hillside included. An occlusion query had been tried for this (below) and reported water where
+  there was none. The world now asks the terrain, with no GPU at all (`world.js` `seaInView`): the sea shows
+  where the ground is at its level, so a map with no such ground never draws or updates it, and elsewhere the
+  ground is sampled under a grid of rays through the frame and along the frame's sector out to 13 km.
+  Buildings in the way are not counted, so it errs towards drawing; with none in sight the waves, wakes and
+  reflection rest, and the sheet keeps the waves it had for the frame that brings it back.
+- **The wake field** was drawn by handing the whole world to the renderer with a camera that sees one layer:
+  every object of the scene graph visited for a handful of wake meshes. It is now drawn from the list of wake
+  meshes (`water.js` `wakeScene`), and not at all when none is shown.
+- **The reflection** is redrawn every frame only while the camera moves; while it stands still, every third.
+- **The wet street's mirror** already drew every other frame at a third of the size; it now rests when the
+  frame is all sky.
+
+### Instances that are not drawn
+
+The crowd's instanced meshes were never culled, a hidden walker was a model scaled to nothing (its vertices
+still run, in the view and in the shadow map), and every instance buffer was uploaded whole every frame. Now
+(`people.js` `crowdRenderer`) each character's drawn walkers are the first `mesh.count` slots: a walker out
+for the hour, near enough to be a skinned person, or out of the camera's sight by more than a shadow's
+length (30 m) changes places with the last one drawn, colours and all, and only the drawn range of the
+matrices and the gait is uploaded. The cars' models were already packed each frame; they take the same sight
+test and upload only the slots taken (`actors.js`).
+
+### The main thread
+
+- No vector is made per walker per frame (`people.js`), and the shadow cache compares the still casters'
+  state in two buffers it keeps instead of two arrays of some twenty numbers a caster made and dropped every
+  frame (`world.js`).
+- The frame's HUD nodes are looked up once and their text is written only when it changes (a text node
+  replaced with the same words is still a style and layout pass); the minimap repaints 30 times a second at
+  most (`game.js`, `hud.js`).
+
+### Before and after
+
+On foot at the start, 15:30, clock held, high tier, 1440 x 900 (`FOOT=1 FREEZE=1 tools/frame_cost.js`); main is
+0dd48803:
+
+| | Sydney, main | Sydney, after | Shibuya, main | Shibuya, after |
+|---|---|---|---|---|
+| full-screen passes | 69 | 66 | 71 | 18 |
+| full-size passes after the scene | 4 | 1 | 4 | 1 |
+| bytes the full-screen passes write a frame | 70 MB | 40 MB | 90 MB | 29 MB |
+| draws | 420 | 416 | 420 | 360 |
+| triangles | 3.33 M | 3.26 M | 7.61 M | 4.34 M |
+| pixels shaded | 31.3 M | 27.4 M | 33.7 M | 26.4 M |
+
+Sydney keeps its sea (the harbour is in the frame); Shibuya, with no ground at sea level, loses the ocean's 45
+passes and its sheet, and two fifths of its triangles were walkers and cars outside the frame. Stills of
+the scramble by day and in the rain at night, and of Sydney's quay and the city from the air, match main's:
+the same people in the same places.
+
 ## Next, by what it saves for what it risks
 
 Measured on Sydney's game, high tier, 1440 x 900, from the street, after the work above: 4.42 million triangles,
@@ -202,7 +288,8 @@ Measured on Sydney's game, high tier, 1440 x 900, from the street, after the wor
    can render to it, because seven butterfly stages in half float would put noise in the waves. At 128 x 128 the
    passes cost little, so this stays as it is.
 
-   *Tried, not adopted:* skipping the waves and the water's reflection while no water is on screen, found with an
+   *Tried, not adopted (and since done another way, from the terrain: "Scene renders nobody sees" above):*
+   skipping the waves and the water's reflection while no water is on screen, found with an
    occlusion query round the water's draw. In Shibuya's streets, with no water in the picture (checked by painting
    the water red), the query still reported samples drawn every frame, so it would rarely switch off. The one large
    saving would have been the reflection's second render, and only the high tier on a large screen has that: an old
