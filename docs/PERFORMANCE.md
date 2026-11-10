@@ -223,16 +223,34 @@ footprint (a footway mapped through a block: five of 195) got no answer and drew
 first run of the harness found exactly that case as missing towers in Sydney, which is why the camera is now
 tested against the solids themselves.
 
+**The crowd and the cars** (after issue 352 put the walkers drawn at the front of their meshes). They are chosen in
+the game's step, before the camera moves for the frame, so they ask `OEVis.seenNext(x, y, top, height)`: the
+answer counts only while the camera has a tenth of a second's travel of its margin left, and the thing's height
+gives how far its shadow reaches under the sun now (`OEVis.cot`, set by the game). The step also moves the crowd,
+so two frames of it cannot be compared to the pixel; `tools/vis_check.js` instead casts rays from the camera to
+the feet, waist, head and shoulders of every walker within 450 m that the question leaves out, against the walls
+and the ground as drawn, and each must be stopped. Stops among the crowd near each map's start, and the others:
+
+| Map | Walkers within 450 m | Left out as hidden | Of those, in plain sight |
+|---|---|---|---|
+| Shibuya | 4,001 | 2,639 | 0 |
+| Shinjuku | 3,705 | 2,652 | 0 |
+| Tokyo | 2,998 | 1,829 | 0 |
+| Kyoto | 1,269 | 997 | 0 |
+| Kamakura | 985 | 420 | 0 |
+| Sydney | 770 | 599 | 0 |
+
+(The static meshes again compared to the pixel at every stop: none differ, Kamakura included.)
+
 **What it does not do yet.** The trees are re-sorted every 12 m the camera moves, further than an answer holds,
 so they are not gated; the far ones are two triangles each already. The landmarks are one mesh a material
-across the map and cannot be hidden in parts. The crowd and the cars are the next and largest step (above).
-Not checked: a real GPU, Safari or iOS (the Worker needs `DecompressionStream`: Safari 16.4), a phone's memory
+across the map and cannot be hidden in parts. Not checked: a real GPU, Safari or iOS (the Worker needs `DecompressionStream`: Safari 16.4), a phone's memory
 with the 18 MB raster of the largest map and its shrunk copy (the low tier keeps one copy, the others two).
 
 ## The rest of issue 358's Layer B and C, as measured
 
-**B2, the sky the ground sees** (`pipeline/skyvis.py`, `web/data/<city>/skyvis.webp`; `?skyvis=on`, off by default
-until the look is agreed in issue 353). For each point of the ground, the horizon in 16 directions out to 300 m
+**B2, the sky the ground sees** (`pipeline/skyvis.py`, `web/data/<city>/skyvis.webp`; on by default since the look stream (issue 353)
+agreed to it at 0.6, a pure scalar; `?skyvis=off` leaves it out). For each point of the ground, the horizon in 16 directions out to 300 m
 over the 2 m surface model, and from it the share of a uniform sky's light on a level surface there (the mean of
 cos² of the horizon's elevation: horizon-based ambient occlusion, Bavoil, Sainz and Dimitrov 2008, on a height
 field as Timonen and Westerholm 2010; the method only). One channel, 4 m a pixel, lossy WebP at quality 80
