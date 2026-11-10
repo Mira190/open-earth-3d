@@ -1,0 +1,32 @@
+{
+ "note": "The main-line cars the cities share, built by blender/build_railstock.py: per type a driving car (its cab at +z; the game turns it about for the tail), a middle car and a motor car with its pantograph; web/game/trains.js paints the materials Door, Band, Band2, Top and Face in each stock's colours.",
+ "axes": "+z forward, +y up, +x left; origin on the rail head under the car's middle",
+ "file": "railstock.glb",
+ "lod1_m": 70,
+ "models": {
+  "Commuter_Head": {
+   "triangles": 25416,
+   "lod1_triangles": 3732
+  },
+  "Commuter_Mid": {
+   "triangles": 23772,
+   "lod1_triangles": 3459
+  },
+  "Commuter_Pan": {
+   "triangles": 25480,
+   "lod1_triangles": 3676
+  },
+  "Waratah_Head": {
+   "triangles": 19976,
+   "lod1_triangles": 2975
+  },
+  "Waratah_Mid": {
+   "triangles": 19408,
+   "lod1_triangles": 2885
+  },
+  "Waratah_Pan": {
+   "triangles": 20796,
+   "lod1_triangles": 3074
+  }
+ }
+}

@@ -521,6 +521,12 @@ window.OEAtmos = (function () {
           // and change shape slowly; all of it wraps where the noise repeats
           // (api.skyTime: seconds on a film's own clock, for a time-lapse: tools/day_film.js)
           const ts = api.skyTime ?? tSec, WS = window.OEWeather && OEWeather.S, W = WS && WS.wind && Math.hypot(WS.wind.x, WS.wind.z) > 0.3 ? WS.wind : wind, dt = drift.t == null ? 0 : Math.max(0, Math.min(api.skyTime != null ? 600 : 0.25, ts - drift.t)), D = su.uCloudDrift.value;
+          if (drift.t == null) {
+            // where the clouds start: from the place and the day, so two maps at the same hour, and the same map on two
+            // days, do not show the same sky (a day's sky still comes back as it was on that day's next visit)
+            const day = Math.floor(utcMs / 864e5), h = k => { let x = Math.imul((day + k * 7919) ^ Math.round((city.lat || 0) * 1e3), 0x9e3779b1) ^ Math.imul(Math.round((city.lon || 0) * 1e3) + k, 0x85ebca6b); x ^= x >>> 15; x = Math.imul(x, 0x2c1b3c6d); x ^= x >>> 12; return (x >>> 0) / 4294967296; };
+            drift.x = h(1) * 100; drift.z = h(2) * 100; drift.e = h(3) * 100; drift.w = h(4) * 100;
+          }
           drift.t = ts;
           const k = dt * 3 / 9000, sp = Math.hypot(W.x, W.z); // (W: where the wind blows to, m/s)
           drift.x = (drift.x - W.x * k + 100) % 100; drift.z = (drift.z - W.z * k + 100) % 100;
@@ -576,6 +582,10 @@ window.OEAtmos = (function () {
           L.uNightTone.value = night;                              // blue between the lights, amber in them
           L.uSat.value = (gr.sat - 0.1 * ov) * (trim ? trim.sat : 1);                        // under cloud a little cooler and softer, not grey
           L.uContrast.value += 0.05 * ov;
+          // a thunderstorm by day is dark: the weather lifts the exposure under cloud so that an overcast is never grey
+          // (weather.js light()), which left a storm's sky pale; its key is lower and harder (weather.js S.storm)
+          const storm = (window.OEWeather && OEWeather.S && OEWeather.S.storm) || 0;
+          if (storm > 0) { L.uExposure.value *= 1 - 0.3 * storm * (1 - night); L.uContrast.value += 0.07 * storm; }
           L.uTint.value.set(gr.tint[0] * (trim ? trim.tint[0] : 1), gr.tint[1] * (trim ? trim.tint[1] : 1), gr.tint[2] * (trim ? trim.tint[2] : 1));
           L.uTime.value = tSec;
           L.uShade.value.fromArray(gr.shade); L.uHiTint.value.fromArray(gr.hi); L.uVibrance.value = gr.vib * (1 - 0.5 * ov);
