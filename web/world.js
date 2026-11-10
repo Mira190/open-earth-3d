@@ -1749,7 +1749,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
       // a bridge's deck, or paving ("street_lit"), under the street lights and the screens' glow
-      if ((m.pattern === 'deck_zones' || m.street_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
+      // (and "lamp_lit": what stands in that light without being ground, a platform's doors and its canopy's posts)
+      if ((m.pattern === 'deck_zones' || m.street_lit || m.lamp_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
       if (m.pattern === 'deck_zones' || m.street_lit) lmMats[k].userData.paving = true; // ground you walk on: it gets wet in the rain (weather.js)
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes

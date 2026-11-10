@@ -19,7 +19,8 @@
 // "hide": [mesh names] leaves those landmark meshes out; "scramble": "walk" or "wait" runs on to that moment of the
 // nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera; [x, y] from
 // "eyeUp" metres, 1.6 by default, over the ground where you stand)
-// "js": a statement run in the page before a view from the air is taken (g: the game), e.g. a clear sky for the stars;
+// "js": a statement run in the page before a view is taken (g: the game), e.g. a clear sky for the stars, or the
+// railway at a second of its timetable ("g.trains.t = 131; g.trains.update(0, g.camera)");
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -195,6 +196,9 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       }
       // "hide": [mesh names] not drawn, to see what shows through (a gap in a landmark)
       for (const n of v.hide || []) { const o = g.Wd.world.getObjectByName(n); if (o) o.visible = false; }
+      // "js": run with g = window.__game before the frame (the railway at a second of its timetable:
+      // "g.trains.t = 131; g.trains.update(0, g.camera)")
+      if (v.js) new Function('g', v.js)(g);
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
         g.photoMode(true);
@@ -209,7 +213,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         g.advance(0.1);
       }
     }, v);
-    await (v.closer ? grabPage : grab)(v.name);
+    await (v.closer || v.page ? grabPage : grab)(v.name); // ("page": the page with its HUD, not the canvas alone)
     // "pick": [[u, v], ...] points on the frame (0..1 from its top left): what the camera sees there, printed
     // (the mesh's name, its material's, and where it is hit), to find which surface draws a fault in the still
     if (v.pick) console.log(JSON.stringify(await p.evaluate(pts => {
