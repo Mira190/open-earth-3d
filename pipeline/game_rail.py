@@ -30,7 +30,8 @@ from scipy import ndimage
 from shapely.geometry import LineString, Point
 
 STEP = 4.0
-RAIL_TOP = 0.32        # the rail head over the line's level (web/game/rail.js TRAIN.railTop)
+RAIL_TOP = 0.05        # the rail head over the line's level (web/game/rail.js TRAIN.railTop)
+BALLAST_M = 0.16       # the line's level over the ground on open track: sleepers on ballast; none in a street or at a crossing
 PLATFORM_M = 0.9       # a platform over the rail head (the Enoden's cars' floors are 1.07 to 1.1 m over it)
 PLATFORM_W, EDGE_M, RAMP_M = 2.6, 1.4, 6.0   # a side platform's width; its edge from the track's centre line; its end ramps
 STREET_M, STREET_DEG, STREET_MIN = 2.5, 20.0, 60.0
@@ -127,6 +128,8 @@ def train(rc, routes, roads, foot, stations_mapped, platforms, ground, gauge=1.0
 
     # ---- the profile: the ground, smoothed, held at the crossings
     zs = ndimage.gaussian_filter1d(ndimage.median_filter(z, size=5, mode="nearest"), sigma=5, mode="nearest")
+    lift = np.array([0.0 if on_street(s) else BALLAST_M for s in S])
+    zs = zs + ndimage.gaussian_filter1d(lift, sigma=2, mode="nearest")
     for c in out_x:
         w = np.exp(-((S - c["s"]) / 8.0) ** 2)
         zs = zs * (1 - w) + c["at"][2] * w

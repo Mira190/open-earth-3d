@@ -1,0 +1,204 @@
+{
+ "name": "Shichirigahama",
+ "date": [
+  11,
+  22
+ ],
+ "year": 2026,
+ "exposure": 1.05,
+ "poster": 300,
+ "score": {
+  "root": 50,
+  "scale": [
+   0,
+   2,
+   4,
+   7,
+   9
+  ],
+  "chords": [
+   [
+    0,
+    2,
+    4
+   ],
+   [
+    3,
+    5,
+    7
+   ],
+   [
+    1,
+    3,
+    5
+   ],
+   [
+    2,
+    4,
+    6
+   ]
+  ],
+  "motif": [
+   2,
+   4,
+   3,
+   1,
+   0
+  ],
+  "tempo": 66,
+  "voice": "koto",
+  "air": "harbour",
+  "title_shot": "coast",
+  "title_at": 0.5,
+  "finale_shot": "passing",
+  "finale_at": 3.0
+ },
+ "shots": [
+  {
+   "id": "coast",
+   "chapter": "The coast",
+   "dur": 5.5,
+   "type": "move",
+   "from": [
+    -250,
+    30,
+    38
+   ],
+   "to": [
+    -292,
+    34,
+    35
+   ],
+   "look": [
+    -2300,
+    -560,
+    60
+   ],
+   "fov": 30,
+   "time": [
+    "15:39",
+    "15:41"
+   ],
+   "fadeIn": 1.4,
+   "ease": "linear",
+   "title": {
+    "kind": "main",
+    "at": 0.5,
+    "until": 5.2,
+    "name": "Shichirigahama",
+    "native": "七里ヶ浜",
+    "sub": "Kamakura, Japan",
+    "figures": "7,366 buildings · 3.8 × 1.7 km · the Enoden's single track along Sagami Bay"
+   },
+   "tint": [
+    1.05,
+    1.0,
+    0.94
+   ]
+  },
+  {
+   "id": "crossing",
+   "chapter": "The crossing",
+   "dur": 16,
+   "type": "move",
+   "agl": true,
+   "from": [
+    -448.6,
+    197,
+    1.45
+   ],
+   "to": [
+    -448.2,
+    189,
+    1.45
+   ],
+   "look": [
+    -446,
+    118,
+    1.6
+   ],
+   "fov": 30,
+   "time": [
+    "15:47",
+    "15:50"
+   ],
+   "ease": "linear",
+   "train": {
+    "at": [
+     -446,
+     122
+    ],
+    "in": 10.5,
+    "dir": 1
+   },
+   "title": {
+    "kind": "lower",
+    "at": 0.8,
+    "until": 6.5,
+    "eyebrow": "Kamakurakokomae No. 1 crossing",
+    "head": "鎌倉高校前1号踏切",
+    "text": "The hill road falls 11% to the sea; the bell starts 26 seconds before the train."
+   },
+   "tint": [
+    1.05,
+    1.0,
+    0.94
+   ],
+   "sat": 1.06
+  },
+  {
+   "id": "passing",
+   "chapter": "The Enoden",
+   "dur": 8.5,
+   "type": "move",
+   "agl": true,
+   "from": [
+    -437.5,
+    130.5,
+    1.4
+   ],
+   "to": [
+    -436.6,
+    133,
+    1.5
+   ],
+   "look": [
+    -1400,
+    -225,
+    14
+   ],
+   "fov": 36,
+   "time": [
+    "15:55",
+    "15:57"
+   ],
+   "ease": "linear",
+   "fadeOut": 1.6,
+   "train": {
+    "at": [
+     -446,
+     122
+    ],
+    "in": 2.2,
+    "dir": -1
+   },
+   "title": {
+    "kind": "caption",
+    "at": 3.2,
+    "until": 8.0,
+    "lines": [
+     "35.31°N 139.50°E",
+     "The Enoden, a train each way every twelve minutes",
+     "Enoshima across Sagami Bay"
+    ]
+   },
+   "tint": [
+    1.06,
+    1.0,
+    0.92
+   ],
+   "sat": 1.06
+  }
+ ],
+ "note": "Thirty seconds at the Kamakurakokomae crossing in the golden hour of 22 November (sunset 16:31 JST): the coast and Enoshima, the train passing the crossing from up the hill road, and from beside the gate. Each crossing shot cues the railway's clock (train)."
+}

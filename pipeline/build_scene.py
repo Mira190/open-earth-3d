@@ -37,6 +37,7 @@ import typology
 import wet_buildings
 from measured import IGNHeights
 from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons, trees_cfg
+import aerial_clean
 from solid_rings import valid_rings
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, decks, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
@@ -204,7 +205,7 @@ def ground_tiles(C):
                 mosaic[(ty - ys[0]) * 256:(ty - ys[0] + 1) * 256, (tx - xs[0]) * 256:(tx - xs[0] + 1) * 256] = \
                     np.asarray(Image.open(p).convert("RGB"))
     n = 2 ** z * 256
-    tiles = []
+    tiles, cut = [], []
     ortho = np.zeros((int((C.y1 - C.y0) / IMG_M), int((C.x1 - C.x0) / IMG_M), 3), np.uint8)
     for j, ty0 in enumerate(np.arange(C.y1, C.y0, -TILE_H)):
         for i, tx0 in enumerate(np.arange(C.x0, C.x1, TILE_W)):
@@ -216,8 +217,42 @@ def ground_tiles(C):
             rgb = np.stack([map_coordinates(mosaic[:, :, k], [py, px], order=1).reshape(h, w) for k in range(3)], -1)
             hh, ww = min(h, ortho.shape[0] - j * h), min(w, ortho.shape[1] - i * w)
             ortho[j * h:j * h + hh, i * w:i * w + ww] = rgb[:hh, :ww]
-            tiles.append(save_tile(C, f"ground_{i}_{j}", rgb, 82) | {"x0": float(tx0), "x1": float(tx0 + TILE_W), "y0": float(ty0 - TILE_H), "y1": float(ty0)})
+            cut.append((i, j, tx0, ty0, w, h, rgb))
+    sf = C.cfg["imagery"].get("soften")
+    if sf:  # the open ground without the photograph's blotches (aerial_clean.soften), on the whole frame at once
+        ortho, share = aerial_clean.soften(ortho, C.x0, C.y1, IMG_M, *open_ground_masks(C), sf.get("sigma_m", 6.0), sf.get("keep", 0.15))
+        print(f"ground: softened over {share * 100:.0f}% of the frame (the open ground off the buildings and roads)")
+    for i, j, tx0, ty0, w, h, rgb in cut:
+        if sf:
+            hh, ww = min(h, ortho.shape[0] - j * h), min(w, ortho.shape[1] - i * w)
+            rgb = rgb.copy()
+            rgb[:hh, :ww] = ortho[j * h:j * h + hh, i * w:i * w + ww]
+        tiles.append(save_tile(C, f"ground_{i}_{j}", rgb, 82) | {"x0": float(tx0), "x1": float(tx0 + TILE_W), "y0": float(ty0 - TILE_H), "y1": float(ty0)})
     return tiles, ortho
+
+
+SOFT_ROAD_W = {"motorway": 16, "trunk": 12, "primary": 12, "secondary": 10, "tertiary": 8, "residential": 6, "unclassified": 6,
+               "living_street": 5, "service": 4.5, "pedestrian": 5, "footway": 2.5, "path": 2, "steps": 2.5, "cycleway": 3, "track": 3}
+
+
+def open_ground_masks(C):
+    """What imagery.soften leaves as photographed: the building footprints, and the roads, paths and rails as
+    (points, width in metres), in the local frame, from the raw Overture layers."""
+    from shapely import wkb as swkb
+    con = duckdb.connect()
+    con.execute("INSTALL spatial; LOAD spatial;")
+    raw = lambda n: os.path.join(C.raw, f"overture_{n}.parquet")
+    rings = []
+    for r in rows(con, raw("building"), "wkb"):
+        g = C.to_local(swkb.loads(bytes(r["wkb"])))
+        rings += [list(p.exterior.coords) for p in polygons(g)]
+    lines = []
+    for r in rows(con, raw("segment"), "class, subtype, wkb"):
+        w = SOFT_ROAD_W.get(r["class"]) if r["subtype"] == "road" else 4.0 if r["subtype"] == "rail" else None
+        if w:
+            g = C.to_local(swkb.loads(bytes(r["wkb"])))
+            lines += [(list(l.coords), w) for l in getattr(g, "geoms", [g]) if l.geom_type == "LineString"]
+    return rings, lines
 
 
 # The ground tiles as AVIF too (issue 335): at the JPEG's own error against the source imagery (34-36 dB PSNR
@@ -1367,7 +1402,8 @@ def build(C):
         # measured heights first, so a city's hooks see (and may hide) the measured solids
         geoms, s_floors = survey.apply(geoms, ctx.hidden, b["id"])
         if adjust:
-            geoms = adjust(b, cls, g, geoms, ctx)
+            changed = adjust(b, cls, g, geoms, ctx)
+            geoms = geoms if changed is None else changed  # (None: kept as it is, as docs/ADDING_A_CITY.md says)
         for q, h0, h1, src, pname, *_ in geoms:
             if pname in labels_cfg and labels_cfg[pname] not in ctx.labels:
                 c = q.centroid
@@ -1553,6 +1589,7 @@ def build(C):
                     "origin": "north-west, row-major, rows go south", "bare_earth": cfg["terrain"].get("bare_earth", False)},
         "ground": tiles,
         "ground_lo": ground_lo,
+        **({"softened": {"sigma_m": cfg["imagery"]["soften"].get("sigma_m", 6.0), "keep": cfg["imagery"]["soften"].get("keep", 0.15)}} if cfg["imagery"].get("soften") else {}),  # (pipeline/soften_ground.py leaves it alone)
         "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],

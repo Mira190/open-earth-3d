@@ -30,6 +30,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
+const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
 const npcNight = require('./npc_night');
 (async () => {
@@ -1166,8 +1167,9 @@ const npcNight = require('./npc_night');
     out.here = !!(el && el.querySelector('.mt-you')) && !!(el && el.querySelector('.mt-pick [data-close]'));
     const other = el && [...el.querySelectorAll('.mt-chip')].find(b => !b.querySelector('i'));
     if (other) other.click();
+    out.single = !other; // (a city whose first map this is: its other districts are still to build, greyed)
     const prim = el && el.querySelector('.mt-pick .primary');
-    out.travel = !!prim && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    out.travel = !!prim && !!other && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
     // a district that shares this map (Sangenjaya, on Shibuya's): named as on this map, not as the map itself
     // (the hop to it stays in the map: tools/district_title_shot.js makes it)
     const meta = ((window.OE_CITIES || []).find(c => c.group_meta && c.group_meta.kind === 'metro' && [...el.querySelectorAll('.mt-chip')].some(b => b.dataset.mapid === c.id)) || {}).group_meta;
@@ -1181,7 +1183,7 @@ const npcNight = require('./npc_night');
     out.byMenu = OEMetro.isOpen() && document.getElementById('g-menu').hidden; OEMetro.close();
     return out;
   });
-  if (!mt.none) check(mt.open && mt.here && mt.travel && mt.shared !== false && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, one that shares this map says so, Esc closes it (${JSON.stringify(mt)})`);
+  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.shared !== false && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, one that shares this map says so, Esc closes it (${JSON.stringify(mt)})`);
 
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
@@ -2006,6 +2008,11 @@ const npcNight = require('./npc_night');
       check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''})`);
     }
   }
+
+  // a railway (rail.js "train": the Enoden at Kamakura): its timetable's meets, a ride from a platform to the next
+  // station, and a level crossing closing for a train with the crowd, the traffic and you held (tools/train_step.js)
+  const train = await p.evaluate(trainStep);
+  if (!train.none) trainChecks(train, check);
 
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it. Last of the walks and rides: each hop lays the traffic and the crowd

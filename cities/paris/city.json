@@ -28,6 +28,7 @@
   "datum_note": "The scene's 0 m is the Seine's level on the LiDAR HD flight of 2 and 3 March 2023, 26.9 m in NGF-IGN69 (the hydro-flattened LiDAR terrain over the river: the median of its 985,000 one-metre cells, islands cut out). The viewer's water plane is at 0, so every height in the scene is above the river; add 26.9 m for an altitude.",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg",
     "zoom": 17,
