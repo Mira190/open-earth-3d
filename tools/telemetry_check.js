@@ -109,6 +109,8 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     if (fs.existsSync(path.join(__dirname, '..', 'web', 'data', reef, 'scene.json'))) {
       await p.goto(`http://localhost:${PORT}/reef/?city=${reef}&telemetry=${T}`, { waitUntil: 'load', timeout: 120000 });
       await p.waitForFunction(() => window.__ready === true, null, { timeout: 600000 }).catch(() => {});
+      // (frames enough for the page's own GPU report, every sixteenth frame from the tenth on: reef/main.js)
+      await p.waitForFunction(() => window.__reef && window.__reef.renderer.info.frame > 60, null, { timeout: 120000 }).catch(() => {});
       await sleep(1500);
       await p.goto('about:blank');
       await sleep(1500);
@@ -133,6 +135,12 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const stg = e => e && ['fetch_ms', 'decode_ms', 'build_ms', 'frame_ms', 'ms'].map(k => `${k.replace('_ms', '')} ${e.props[k]}`).join(', ');
     must(staged(lc[0], ['fetch_ms', 'decode_ms', 'build_ms', 'frame_ms']), 'model load: fetched, decoded, built, first frame, ready, in order', stg(lc[0]));
     must(staged(lg[0], ['fetch_ms', 'decode_ms', 'build_ms', 'frame_ms']), 'game load: fetched, decoded, built, first frame, ready, in order', stg(lg[0]));
+    if (fs.existsSync(path.join(__dirname, '..', 'web', 'data', process.env.REEF || 'hardy-reef', 'scene.json'))) {
+      // the WebGPU page reports its own frame (OETelemetry.gpu): draws, triangles and pixels, and the kind of site
+      const tr = of('time', x => x.view === 'reef' && x.frames >= 10);
+      must(tr.length && tr.every(e => e.props.site === 'marine') && tr.some(e => e.props.draws > 10 && e.props.tris_k > 1 && e.props.px_k > 0),
+        'a reef site reports its kind and its own frame: draws, triangles, pixels', tr.map(e => `${e.props.site} ${e.props.frames} frames, ${e.props.draws} draws, ${e.props.tris_k}k tris, ${e.props.px_k}k px, gpu ${e.props.gpu_ms}`).join('; ') || 'no reef time event');
+    }
     const lt = of('load', x => x.view === 'globe' && x.ok);
     must(lt.length === 1 && staged(lt[0], ['frame_ms']) && staged(lt[0], ['decode_ms']) && lt[0].props.ms > 0, 'title screen load: once, with its first frame and textures before ready', stg(lt[0]));
     const lr = of('load', x => x.view === 'reef' && x.ok);

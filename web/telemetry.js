@@ -59,7 +59,7 @@ window.OETelemetry = (function () {
   const asked = (arg && arg !== 'off') && (debug || endpoint !== CONFIG.endpoint);
   const optOut = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
   const on = arg !== 'off' && !optOut && (debug || (!!endpoint && (asked || !navigator.webdriver)));
-  const noop = { on: false, track() {}, flush() {}, view() {}, set() {}, here() { return null; } };
+  const noop = { on: false, track() {}, flush() {}, view() {}, set() {}, gpu() {}, here() { return null; } };
   if (!on) return noop;
 
   const now = () => performance.now();
@@ -391,7 +391,9 @@ window.OETelemetry = (function () {
   //   - the draw calls, triangles and full-screen passes (a three-vertex draw with no index is one) of one
   //     frame in a hundred and twenty, counted by wrapping the context's draw calls for that frame only;
   //   - the canvas's pixels.
-  // The reef and alpine sites draw with WebGPU and report none of these.
+  // The reef and alpine sites draw with WebGPU, which this script cannot time from outside: the page reports its own
+  // through OETelemetry.gpu({ ms, draws, tris, passes, px }) (reef/main.js: the GPU's time from timestamp queries
+  // over a run of frames where the adapter has them, and a frame's draws and triangles from the renderer's info).
   const CANVAS = { globe: 'globe-gl', city: 'gl', game: 'game-gl' };
   const ctxs = new WeakMap();
   try {
@@ -445,6 +447,14 @@ window.OETelemetry = (function () {
       gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
       tq = { gl, ext, q, run: true };
     }
+  }
+  // a view's own account of its GPU frame (the WebGPU pages): ms per frame, draws, triangles, passes, canvas pixels
+  function gpu(o) {
+    if (!o || !activeNow() || cur.frames.n < 10) return;
+    const f = cur.frames;
+    if (o.ms > 0 && o.ms < 1000) put(f.gpu, o.ms);
+    if (o.draws > 0) { put(f.draws, o.draws); put(f.tris, o.tris || 0); put(f.passes, o.passes || 0); }
+    if (o.px > 0) f.px = o.px;
   }
   // the frames the browser calls long (over 50 ms from its start to its paint; the Long Animation Frames API,
   // Chromium): how many, how long they blocked input, and the worst with the script that took most of it
@@ -629,5 +639,5 @@ window.OETelemetry = (function () {
   // the first view once the page's scripts are in (so its events carry the quality tier)
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', view, { once: true }); else view();
   alive();
-  return { on: true, track, flush, view, set, gpuName, frames: () => (cur ? cur.frames.n : 0), here: () => (cur ? cur.here : null), sample };   // frames, here, sample: for tools/telemetry_check.js
+  return { on: true, track, flush, view, set, gpu, gpuName, frames: () => (cur ? cur.frames.n : 0), here: () => (cur ? cur.here : null), sample };   // frames, here, sample: for tools/telemetry_check.js
 })();

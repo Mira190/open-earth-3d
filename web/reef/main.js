@@ -42,7 +42,8 @@ async function main() {
   // reversed float buffer would be cheaper, but three.js r186 cannot resolve it from a multisampled pass on WebGL2
   // the picture tier (tier.js, from web/quality.js): MSAA, pixels, plants, the mirror and the bloom by what the device can draw
   const tier = reefTier(q);
-  const renderer = new THREE.WebGPURenderer({ antialias: tier.antialias, forceWebGL: q.get('gl') === '1', logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
+  // (trackTimestamp: the GPU's time for the telemetry, from timestamp queries where the adapter has them; below)
+  const renderer = new THREE.WebGPURenderer({ antialias: tier.antialias, forceWebGL: q.get('gl') === '1', trackTimestamp: q.get('gl') !== '1' && !!window.OETelemetry && window.OETelemetry.on, logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
   // The frame-time governor (quality.js, the one the city game runs: issue 382): how much of the canvas's resolution
   // the scene is drawn at (post.js brings it up, sharpened) and how much of what a frame can do without is drawn,
   // both ways as the frame time allows, at an even rate under the frame-rate cap (the game's setting: 60 unless asked)
@@ -91,6 +92,8 @@ async function main() {
       air: (col, C, P, u) => atm.aerial(col, C, P, u.sunDir, u.moonDir), wet };
   }
   const env = createEnv(scene, S.optics, waves, ripples, chop, envOpts);
+  // the telemetry's view is "reef" for every site of this page; which kind of site rides on its events
+  if (window.OETelemetry && window.OETelemetry.set) window.OETelemetry.set({ site: ALP ? 'alpine' : 'marine' });
   env.logDepth = !!renderer.logarithmicDepthBuffer;
   if (ALP) env.u.haze.value = 1.2e-5;      // the lake's reflection fades to the horizon sky like the air in front of it
   env.u.wind.value = Number(q.get('wind') ?? S.wind ?? 0.6);      // (scene.json wind: a sheltered water's own, e.g. a fiord's light airs)
@@ -344,7 +347,7 @@ async function main() {
   await paint();
   if (renderer.compileAsync && !q.get('still')) { try { await renderer.compileAsync(scene, camera); } catch (e) { console.warn('shader precompile skipped:', e); } }
   stage('First frames', 0.98);
-  let last = performance.now(), frames = 0;
+  let last = performance.now(), frames = 0, gpuAt = 0, gpuWait = false;
   // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
   window.__reef = { camera, env, renderer, d, ctx, tier, governor: gov, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
@@ -381,6 +384,17 @@ async function main() {
     if (++frames === 1) mark('frame');
     // the frame's time, for the governor: once the page is ready and while it is on screen
     if (gov) gov.tick(now, frames > 3 && !document.hidden);
+    // what the GPU was asked for, for the telemetry (telemetry.js gpu): the timestamp queries summed over a run of 16
+    // frames, then divided by them (three.js sums every pass's queries since the last read), and a frame's draws,
+    // triangles and canvas pixels. WebGPU's timestamps are the passes' own, so this is the GPU's time, not the frame's
+    if (window.OETelemetry && window.OETelemetry.gpu && frames > 3 && frames % 16 === 0 && !document.hidden) {
+      const info = renderer.info.render, el = renderer.domElement, run = frames - gpuAt; gpuAt = frames;
+      const o = { draws: info.drawCalls ?? info.calls, tris: info.triangles, px: el.width * el.height };
+      if (renderer.backend && renderer.backend.trackTimestamp && !gpuWait) {
+        gpuWait = true;
+        renderer.resolveTimestampsAsync('render').then(ms => { gpuWait = false; window.OETelemetry.gpu(Object.assign(o, { ms: ms > 0 && run > 0 ? ms / run : 0 })); }, () => { gpuWait = false; });
+      } else window.OETelemetry.gpu(o);
+    }
     if (frames === 3) { $('load').classList.add('done'); window.__ready = true; }
     const gx = terrainHeight(d, camera.position.x, -camera.position.z);
     const tz = env.u.tide.value;
