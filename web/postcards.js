@@ -1,14 +1,14 @@
 // Postcards from the road (docs/POSTCARDS.md).
 //
-// While you are away, the other surveyor keeps travelling: one photograph every six hours of real
-// time, from a spot in one of the live cities, with a line of their diary. The title screen shows
-// what has come since the last visit (three at most) as a small pile of postcards; opening one shows
-// the picture, where and when it was taken and the sun there at that minute, and "Go there" starts
-// the city's game on that spot, in that light.
+// While you are away, your surveyor keeps travelling: one photograph a day, from a spot in one of the
+// live cities, with them standing in it and a line of their diary. The title screen shows what has
+// come since the last visit (three at most, however long it has been) as a small pile of postcards;
+// opening one shows the picture, where and when it was taken and the sun there at that minute, and
+// "Go there" starts the city's game on that spot, in that light.
 //
 // Nothing here needs a server. The journey is worked out when the page opens, from a seed kept in
 // localStorage and the time since the last visit. A postcard's picture is a still of the game's own
-// world (pipeline/postcards.py, four lights for each spot); the one shown is the light the real sun
+// world (pipeline/postcards.py: four lights for each spot, with each of the two surveyors you can play); the one shown is the light the real sun
 // gave that city at the minute the card is dated, by the same NOAA equations the cities use (sun.js).
 //
 // Works in the browser (window.OEPostcards) and in Node (require('./postcards.js')), where
@@ -19,9 +19,9 @@
 })(typeof self !== 'undefined' ? self : this, function (S) {
   'use strict';
   const KEY = 'oe3d-postcards';
-  const EVERY = 6 * 3600e3;   // one postcard every six hours away
+  const EVERY = 24 * 3600e3;  // one postcard a day
   const PER_VISIT = 3;        // and no more than three at a visit, however long it has been
-  const ALBUM = 48;           // the album keeps the newest
+  const ALBUM = 30;           // the album keeps the newest: a month of them
   const MIN = 60e3;
 
   // a small seeded generator (mulberry32), so a journey can be replayed in a check
@@ -40,6 +40,7 @@
     return S.position(t + 10 * MIN, city.lat, city.lon).altitude > a ? 'dawn' : 'dusk';
   }
 
+  const days = t => { const d = new Date(t); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / EVERY); }; // the local date, as a day number
   const fresh = now => ({ v: 1, seed: (now % 2147483647) | 0, at: 0, n: 0, where: null, was: null, left: 0, cards: [] });
 
   // The postcards that have come since state.at, added to state.cards (newest last). M: data/postcards.json;
@@ -48,16 +49,18 @@
     const maps = cities.filter(c => M.cities[c.id] && M.cities[c.id].length);
     if (!maps.length) return [];
     const first = !state.at;
-    const n = first ? 1 : Math.min(PER_VISIT, Math.floor((now - state.at) / EVERY));
+    // one for each day since the last visit, by the player's own calendar: somebody who looks in every morning
+    // finds one every morning, whether it is 23 hours since the last time or 25
+    const n = first ? 1 : Math.min(PER_VISIT, days(now) - days(state.at));
     if (n < 1) return [];
     const R = rng(state.seed + state.n * 7919);
-    // when each was taken: the newest within the last hour and a half, the others about six hours apart before
-    // it, none before the last visit
+    // when each was taken: the newest at some hour of the last sixteen (so that a player who always comes
+    // at the same hour still sees every light), the others about a day apart before it, none before the last visit
     const times = [];
-    let t = now - (20 + 70 * R()) * MIN;
+    let t = now - (0.3 + 15.7 * R()) * 3600e3;
     for (let i = 0; i < n; i++) {
       times.unshift(Math.max(t, state.at + (n - i) * MIN));
-      t -= EVERY * (0.75 + 0.5 * R());
+      t -= EVERY * (0.8 + 0.4 * R());
     }
     const out = [];
     for (let t of times) {
@@ -99,7 +102,8 @@
 
   // what a card says: the map and the spot, the local date and time, the sun, the line of the diary
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  function describe(card, M, cities) {
+  // who: the surveyor in the picture, 'w' or 'm' (the one the player plays)
+  function describe(card, M, cities, who = 'w') {
     const city = cities.find(c => c.id === card.c), spot = city && (M.cities[card.c] || []).find(s => s.id === card.s);
     if (!spot) return null;
     const loc = S.utcToLocal(card.t, city.timezone), alt = S.position(card.t, city.lat, city.lon).altitude;
@@ -113,7 +117,7 @@
       time: `${pad(hh)}:${pad(mm)}`, zone: loc.zone,
       sun: `Sun ${Math.abs(Math.round(alt))}° ${alt >= 0 ? 'up' : 'down'}`,
       line: lines.length ? lines[card.k % lines.length] : '',
-      src: `data/${card.c}/postcards/${card.s}-${card.l}.webp`,
+      src: `data/${card.c}/postcards/${card.s}-${card.l}-${who}.webp`,
       arrive: `pc-${card.s}.${card.l}`,
     };
   }
@@ -136,11 +140,13 @@
     try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); return s && s.v === 1 && Array.isArray(s.cards) ? s : null; } catch (e) { return null; }
   }
   function write(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* storage blocked */ } }
+  // the surveyor the player plays (the game's menu, "Play as"): the one who is in the pictures
+  function who() { try { return localStorage.getItem('oe3d-player') === 'M_Worker' ? 'm' : 'w'; } catch (e) { return 'w'; } }
   // the album's cards from one map, newest first, described (the game's passport)
   async function album(cityId, cities) {
     const M = await load(), s = read();
     if (!M || !s) return [];
-    return s.cards.filter(k => !cityId || k.c === cityId).map(k => Object.assign({ card: k }, describe(k, M, cities))).filter(k => k.spot).reverse();
+    return s.cards.filter(k => !cityId || k.c === cityId).map(k => Object.assign({ card: k }, describe(k, M, cities, who()))).filter(k => k.spot).reverse();
   }
 
   const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
@@ -153,7 +159,7 @@
     const state = read() || fresh(now);
     const came = plan(state, now, M, cities);
     write(state);
-    let cards = state.cards.map(k => Object.assign({ card: k }, describe(k, M, cities))).filter(k => k.spot).reverse(); // newest first
+    let cards = state.cards.map(k => Object.assign({ card: k }, describe(k, M, cities, who()))).filter(k => k.spot).reverse(); // newest first
     if (!cards.length) return null;
     const fresh0 = cards.filter(k => !k.card.seen).length;
     track('postcards_shown', { new: came.length, unseen: fresh0, album: cards.length });
@@ -171,7 +177,7 @@
         <h2></h2>
         <p class="pv-when ts-mono" aria-live="polite"></p>
         <p class="pv-line"></p>
-        <p class="pv-from ts-mono">From the road · your fellow surveyor</p>
+        <p class="pv-from ts-mono">From the road · your surveyor</p>
         <div class="pv-act"><button class="pv-go">Go there<kbd>↵</kbd></button><button class="pv-nav" data-d="1" aria-label="The one before">←</button><span class="pv-n ts-mono"></span><button class="pv-nav" data-d="-1" aria-label="The next one">→</button></div>
       </div>
       <ol class="pv-album" aria-label="The album"></ol>
@@ -262,5 +268,5 @@
     return { open, close, isOpen, el: pile, cards: () => cards, stop() { ac.abort(); pile.remove(); view.remove(); } };
   }
 
-  return { KEY, EVERY, PER_VISIT, ALBUM, light, lightTime, fresh, plan, describe, arrival, load, album, mount };
+  return { KEY, EVERY, PER_VISIT, ALBUM, days, who, light, lightTime, fresh, plan, describe, arrival, load, album, mount };
 });

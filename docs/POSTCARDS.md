@@ -1,7 +1,7 @@
 # Postcards from the road
 
-While you are away, the other surveyor keeps travelling. When you come back, the title screen has a
-small pile of postcards: a photograph from a real spot in one of the live cities, where and when it was
+While you are away, your surveyor keeps travelling, and sends one postcard a day. When you come back,
+the title screen has a small pile of them: a photograph of your surveyor at a real spot in one of the live cities, where and when it was
 taken, the sun there at that minute, and a line of their diary. **Go there** on a card dives to that
 city and starts the game on the photographer's spot, in the photograph's light.
 
@@ -26,8 +26,9 @@ side dilute each other, so only the absence is taken, and it is made to serve th
 
 | From Travel Frog | Here |
 |---|---|
-| The traveller leaves when it likes; you only find out | The other surveyor (the one you do not play) travels on real time; nothing to manage |
-| Photographs arrive while you are away | A postcard every six hours away, three at most at a visit |
+| The traveller leaves when it likes; you only find out | Your surveyor travels on real time while you are away; nothing to manage |
+| The frog is in its photographs: that is the proof it went | The surveyor you play stands in every picture, facing the camera |
+| Photographs arrive while you are away | One postcard for each day away, three at most at a visit |
 | An album | The album strip under the card, and a page in each map's passport |
 | Packing food and charms, clover as currency, a lottery | Left out: a second loop to tend would be a second game |
 | Rare photographs as a collection to complete | Left out: no rarity, no gacha; the next card is from wherever the journey is |
@@ -58,9 +59,11 @@ in the picture is the place you land in.
 `web/postcards.js`, with no server. The state is one entry in `localStorage` (`oe3d-postcards`): a
 seed, the time of the last visit, where the traveller is, and the album.
 
-- A visit brings `floor(hours away / 6)` cards, three at most. The first visit ever brings one, so a
-  new player meets the idea at once. A visit sooner than six hours after the last brings none.
-- The newest card is dated within the last hour and a half; the others about six hours apart before
+- A visit brings one card for each day since the last visit, by the player's own calendar (so somebody
+  who looks in every morning finds one every morning), three at most. The first visit ever brings one, so a
+  new player meets the idea at once. A second visit on the same day brings none.
+- The newest card is dated at some hour of the last sixteen, so that a player who always looks in at the
+  same hour still sees every light; the others about a day apart before
   it, none before the last visit. A card that would be dated in the small hours (00:30 to 05:00 local)
   is from the evening before instead.
 - The traveller stays two or three cards in one map and then moves to another: not either of the last
@@ -68,7 +71,7 @@ seed, the time of the last visit, where the traveller is, and the album.
   map, a spot the album does not have yet.
 - The light of a card is the sun's over that city at that minute: `day` above 8°, `night` below -5°,
   between them `dawn` while it is rising and `dusk` while it is setting.
-- The album keeps the newest 48.
+- The album keeps the newest 30: a month.
 
 Telemetry (through `web/telemetry.js`, which sends nothing from automated browsers or with Do Not
 Track): `postcards_shown` (how many new, unseen and in the album), `postcard_open` and `postcard_go`
@@ -97,9 +100,12 @@ python pipeline/postcards.py index     # the index alone, after a change to name
 `tools/postcards.sh` runs `tools/game_shot.js` on the views `pipeline/postcards.py views` writes: each
 spot at four lights (25 minutes after sunrise, 11:00, 8 minutes after sunset, 100 minutes after sunset) on the day it is
 run, through the game's own sky, haze and post stack at the desktop tier, in photo mode from the
-photographer's eye, once nobody in the crowd is within 7 m of the lens. `pipeline/postcards.py pack`
-crops each to 3:2 and writes `web/data/<id>/postcards/<spot>-<light>.webp` (960 × 640, about 50 kB), and
-`index` writes `web/data/postcards.json`, which the pages read. A spot without all four stills is left
+photographer's eye, once nobody in the crowd is within 7 m of the lens, with the surveyor standing a few
+metres in front, a little to one side, facing the camera (held low and close where it tilts up at something
+tall; `pose`: [ahead, side] metres, for a place that needs its own). Each view is taken twice, once with each
+of the two surveyors a player can be (`PLAYER=W_Worker`, `M_Worker`); the page shows the one the player plays. `pipeline/postcards.py pack`
+crops each to 3:2 and writes `web/data/<id>/postcards/<spot>-<light>-<w or m>.webp` (960 × 640, about 50 kB), and
+`index` writes `web/data/postcards.json`, which the pages read. A spot without all eight stills is left
 out of the index.
 
 While composing, `python pipeline/postcards.py views <city> --draft` gives the day view alone, and a
@@ -118,8 +124,8 @@ one command; choosing among several seasons by the card's date is not built.
 - the data: every live city with a game has at least five spots, every spot a line for every light and
   its four stills, no still is left from a spot that was taken out, and the index matches the cities'
   spot files;
-- the journey, in Node: a player who comes back at odd intervals for six weeks gets one card for six
-  hours away and never sooner, three at most, each dated inside the absence and not in the small hours,
+- the journey, in Node: a player who comes back at odd intervals for six weeks gets one card for each
+  day away by the calendar, three at most, each dated inside the absence and not in the small hours,
   in the sun's light, two or three to a map, from every map in the end;
 - the pages, on a desktop and a phone: the pile is on the menu over nothing else, the card opens with
   its picture loaded, the arrows and the album work while the title's own keys stand down, Esc closes,
@@ -130,9 +136,6 @@ one command; choosing among several seasons by the card's date is not built.
 
 ## Not built yet
 
-- The traveller in the frame. The photographs are the ones they took, so nobody is in them; a
-  self-timer shot with the surveyor you did not pick standing in the view would need the stills in
-  both characters.
 - Seasons: one set of stills, from the day they were rendered.
 - The reef sites, which have their own game and journal, and parked cities.
 - Sending a card: sharing a postcard as a link that opens on that spot for someone else. The link

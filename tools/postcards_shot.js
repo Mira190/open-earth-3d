@@ -1,12 +1,12 @@
 // Stills of the title screen's postcards (web/postcards.js): the pile on the menu, the viewer on its newest
 // card and on an older one, for a player who has been away long enough to have an album, on a desktop and a phone.
 //   cd web && python3 -m http.server 8800 &
-//   xvfb-run -a node tools/postcards_shot.js out_dir [WxH] [days away, 12 by default]
+//   xvfb-run -a node tools/postcards_shot.js out_dir [WxH] [days since the first visit, 24 by default]
 // Writes out_dir/<W>x<H>-pile.png, -card.png and -album.png.
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const [,, outDir = 'postcards-shot', size = '1440x900', days = '12'] = process.argv;
+const [,, outDir = 'postcards-shot', size = '1440x900', days = '24'] = process.argv;
 const [w, h] = size.split('x').map(Number);
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -28,7 +28,7 @@ const [w, h] = size.split('x').map(Number);
   await p.evaluate(async days => {
     const P = window.OEPostcards, M = await P.load(), cities = window.OE_CITIES.filter(c => c.built && c.game);
     const now = Date.now(), st = P.fresh(now - days * 86400e3);
-    for (let d = days; d >= 1; d--) P.plan(st, now - d * 86400e3 + (d % 3) * 5 * 3600e3, M, cities);
+    for (let d = days; d >= 4; d--) P.plan(st, now - d * 86400e3 + (d % 3) * 3600e3, M, cities); // (and three days away since)
     for (const k of st.cards) k.seen = 1;
     localStorage.setItem(P.KEY, JSON.stringify(st));
   }, +days);

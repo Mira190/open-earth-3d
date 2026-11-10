@@ -35,9 +35,9 @@ game take the same tier. [docs/TITLE.md](docs/TITLE.md) covers the sequence, the
 references it draws on (Flight Simulator, Death Stranding, Hitman), the
 rendering and the tiers.
 
-While you are away, the other surveyor keeps travelling and sends postcards: a
-photograph from a real spot in a live city, in the light the real sun gave it at
-the minute it is dated, with a line of their diary. They wait in a small pile on
+While you are away, your surveyor keeps travelling and sends a postcard a day: a
+photograph of them at a real spot in a live city, in the light the real sun gave
+it at the minute it is dated, with a line of their diary. They wait in a small pile on
 the menu, and **Go there** on one starts the game on that spot.
 [docs/POSTCARDS.md](docs/POSTCARDS.md) covers the idea, the journey and the stills.
 

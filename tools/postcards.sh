@@ -4,7 +4,7 @@
 # web/data/<id>/postcards/, and then the index the pages read (web/data/postcards.json).
 #   tools/postcards.sh              # every live city
 #   tools/postcards.sh kyoto tokyo  # these
-# About five minutes a city on a software renderer. Serves web/ on its own port.
+# About ten minutes a city on a software renderer. Serves web/ on its own port.
 set -u
 cd "$(dirname "$0")/.."
 PORT=${PORT:-8874}
@@ -19,11 +19,13 @@ cities=("$@")
 [ ${#cities[@]} -eq 0 ] && for c in $(tools/live_cities.sh); do [ -f "cities/$c/postcards.json" ] && cities+=("$c"); done
 rc=0
 for c in "${cities[@]}"; do
-  mkdir -p "$OUT/$c"
+  mkdir -p "$OUT/$c/w" "$OUT/$c/m"
   find "$OUT/$c" -name '*.png' -delete
   python3 pipeline/postcards.py views "$c" >"$OUT/$c.json" || { rc=1; continue; }
-  timeout 3000 $X node tools/game_shot.js "$c" "$OUT/$c.json" "$OUT/$c" 960x640 >"$OUT/$c.log" 2>&1
-  grep -E 'still black|pageerror|nowhere to stand' "$OUT/$c.log" && rc=1
+  # once with each surveyor a player can be: the one they play is the one in their postcards
+  PLAYER=W_Worker timeout 3000 $X node tools/game_shot.js "$c" "$OUT/$c.json" "$OUT/$c/w" 960x640 >"$OUT/$c-w.log" 2>&1
+  PLAYER=M_Worker timeout 3000 $X node tools/game_shot.js "$c" "$OUT/$c.json" "$OUT/$c/m" 960x640 >"$OUT/$c-m.log" 2>&1
+  grep -E 'still black|pageerror|nowhere' "$OUT/$c-w.log" "$OUT/$c-m.log" && rc=1
   python3 pipeline/postcards.py pack "$c" "$OUT/$c" || rc=1
 done
 python3 pipeline/postcards.py index || rc=1

@@ -36,6 +36,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: w, height: h } });
   // a software renderer picks the low tier for itself; stills are taken at the desktop one
+  // PLAYER=M_Worker or W_Worker: which surveyor is played (the menu's "Play as"), for the stills the player is in
+  if (process.env.PLAYER) await p.addInitScript(c => { try { localStorage.setItem('oe3d-player', c); } catch (e) { /* storage blocked */ } }, process.env.PLAYER);
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
@@ -46,7 +48,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
     };
   });
   const logs = [];
-  p.on('console', m => { if (m.text().startsWith('[clear]')) console.log(m.text()); else if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
+  p.on('console', m => { if (/^\[(clear|pose)\]/.test(m.text())) console.log(m.text()); else if (['error', 'warning'].includes(m.type())) logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ""}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -247,15 +249,35 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         // (a face filling the frame), and no car within twice that (a bonnet across it)
         if (v.apart) for (let i = 0; i < 80 && (g.crowd.P.some(o => o.line >= 0 && Math.hypot(o.x - v.eye[0], o.y - v.eye[1]) < v.apart)
           || ((g.cars && g.cars.C) || []).some(c => Number.isFinite(c.x) && Math.hypot(c.x - v.eye[0], c.y - v.eye[1]) < 2 * v.apart)); i++) g.advance(0.5);
+        const z0 = g.player.z; // (the floor the photographer stands on)
+        // "pose": [ahead, side] metres. The surveyor stands that far in front of the eye and to the side of its line
+        // to "look", facing the camera: the photograph somebody takes of you in front of a place
+        if (v.pose) {
+          const L = Math.hypot(v.look[0] - v.eye[0], v.look[1] - v.eye[1]) || 1, ux = (v.look[0] - v.eye[0]) / L, uy = (v.look[1] - v.eye[1]) / L;
+          // (on the photographer's own floor: not over a quay's edge, down a bank or off a deck. Nearer, then on the
+          // other side, where the place asked for is not)
+          let q = null;
+          for (const k of [1, 0.75, 0.55]) for (const sd of [1, -1, 0]) {
+            if (q) break;
+            const px = v.eye[0] + ux * v.pose[0] * k + uy * v.pose[1] * sd, py = v.eye[1] + uy * v.pose[0] * k - ux * v.pose[1] * sd;
+            const c = g.nav.stand(px, py, z0 + 0.5, { rMax: 0.4 });
+            if (c && Math.abs(c.z - z0) < 0.6 && !g.nav.isWater(c.x, c.y)) q = c;
+          }
+          if (!q) { console.log(`[pose] ${v.name}: nowhere on the photographer's floor in front of the eye`); q = { x: v.eye[0] + ux * 1.6, y: v.eye[1] + uy * 1.6, z: z0 }; }
+          Object.assign(g.player, { x: q.x, y: q.y, z: q.z, vz: 0, h: Math.atan2(v.eye[0] - q.x, v.eye[1] - q.y) });
+          g.advance(0.8);
+          g.player.h = Math.atan2(v.eye[0] - g.player.x, v.eye[1] - g.player.y);
+          g.advance(0.2);
+        }
         g.photoMode(true);
         // (a 2-element eye, [x, y], stands it eyeUp metres, 1.6 by default, over where you stand)
-        const ez = v.eye.length > 2 ? v.eye[2] : g.player.z + (v.eyeUp ?? 1.6);
-        const P = g.photo, lz = v.lookZ ?? (g.player.z + (v.lookUp ?? 1.2)), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = ez - lz, d = Math.hypot(dx, dy);
+        const ez = v.eye.length > 2 ? v.eye[2] : z0 + (v.eyeUp ?? 1.6);
+        const P = g.photo, lz = v.lookZ ?? (z0 + (v.lookUp ?? 1.2)), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = ez - lz, d = Math.hypot(dx, dy);
         P.focus.set(v.look[0], lz, -v.look[1]); P.anchor.copy(P.focus);
         Object.assign(P, { az: Math.atan2(dx, dy), pitch: Math.atan2(h, d), dist: Math.hypot(d, h) });
         if (v.fov) P.fov = v.fov;
         P.fstop = v.fstop ?? 16; // (photo mode's depth of field: sharp unless a still asks for it)
-        g.player.rig.root.visible = false;
+        g.player.rig.root.visible = !!v.pose;
         g.advance(0.1);
       }
     }, v);

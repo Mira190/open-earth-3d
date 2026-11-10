@@ -1,13 +1,13 @@
 // The postcards (web/postcards.js, docs/POSTCARDS.md), checked two ways.
 //
 // The journey, in Node, with no browser: a player who comes back at odd intervals for six weeks.
-//   - the first visit brings one postcard, a visit within six hours none, a long absence three at most;
+//   - the first visit brings one postcard, a second visit the same day none, a long absence three at most;
 //   - no card is dated before the visit before it or after the visit that found it, or in the small hours;
-//   - a card's light is the sun's over that city at that minute, and its still is on disk;
+//   - a card's light is the sun's over that city at that minute, and its still is on disk with each surveyor;
 //   - the journey stays two or three cards in a map, then moves on, and gets round every live map;
 //   - every live city with a game has spots, every spot a line of the diary, and the album stays in its bound.
 //
-// The pages, in a browser (skipped with --journey): on a desktop and a phone, for a player back after a day,
+// The pages, in a browser (skipped with --journey): on a desktop and a phone, for a player back after four days,
 //   - the pile comes up on the menu and says how many are new; opening it shows a picture that has loaded,
 //     with its place, its time and its line; the arrows and the album change the card; Esc closes it;
 //   - the title's keys are the viewer's while it is open (an arrow does not change the destination);
@@ -38,18 +38,18 @@ for (const [id, spots] of Object.entries(M.cities)) for (const s of spots) {
     const lines = [].concat(s.lines[l] || s.lines.any || []);
     if (!lines.length) noLine.push(`${id}/${s.id}/${l}`);
     for (const t of lines) if (t.length < 30 || t.length > 190) badLine.push(`${id}/${s.id}: ${t.length} characters`);
-    if (!fs.existsSync(path.join(ROOT, 'web/data', id, 'postcards', `${s.id}-${l}.webp`))) noStill.push(`${id}/${s.id}-${l}`);
+    for (const w of ['w', 'm']) if (!fs.existsSync(path.join(ROOT, 'web/data', id, 'postcards', `${s.id}-${l}-${w}.webp`))) noStill.push(`${id}/${s.id}-${l}-${w}`);
   }
 }
 check('data: every spot has a line of the diary for every light', !noLine.length, noLine.slice(0, 6));
 check('data: a line is a sentence or two (30 to 190 characters)', !badLine.length, badLine.slice(0, 6));
-check('data: every spot has its four stills', !noStill.length, noStill.slice(0, 6));
+check('data: every spot has its four stills with each surveyor', !noStill.length, noStill.slice(0, 6));
 // the stills on disk are the ones the index names: none left from a spot that was taken out
 const stray = [];
 for (const id of fs.readdirSync(path.join(ROOT, 'web/data'))) {
   const dir = path.join(ROOT, 'web/data', id, 'postcards');
   if (!fs.existsSync(dir)) continue;
-  for (const f of fs.readdirSync(dir)) { const m = /^(.+)-(dawn|day|dusk|night)\.webp$/.exec(f); if (!m || !(M.cities[id] || []).some(s => s.id === m[1])) stray.push(`${id}/${f}`); }
+  for (const f of fs.readdirSync(dir)) { const m = /^(.+)-(dawn|day|dusk|night)-[wm]\.webp$/.exec(f); if (!m || !(M.cities[id] || []).some(s => s.id === m[1])) stray.push(`${id}/${f}`); }
 }
 check('data: no still without a spot', !stray.length, stray.slice(0, 6));
 // the index is what pipeline/postcards.py writes from the cities' spot files now
@@ -61,7 +61,7 @@ check('data: the index is up to date with cities/<id>/postcards.json (python pip
 // ------------------------------------------------------------ the journey
 {
   const HOUR = 3600e3;
-  let now = Date.UTC(2026, 10, 9, 23, 30), seed = 12345;
+  let now = new Date(2026, 10, 9, 10, 0).getTime(), seed = 12345; // (ten in the morning, by the machine's calendar)
   const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
   const st = P.fresh(now);
   const first = P.plan(st, now, M, cities);
@@ -74,21 +74,21 @@ check('data: the index is up to date with cities/<id>/postcards.json (python pip
     now += gap;
     const before = st.at, got = P.plan(st, now, M, cities);
     most = Math.max(most, got.length);
-    if (now - before < P.EVERY && got.length) bad.push(`a card after ${((now - before) / HOUR).toFixed(1)} h`);
-    if (now - before >= P.EVERY && !got.length) bad.push(`none after ${((now - before) / HOUR).toFixed(1)} h`);
+    const dd = P.days(now) - P.days(before);
+    if (got.length !== Math.min(P.PER_VISIT, dd)) bad.push(`${got.length} cards for ${dd} days away`);
     for (const k of got) {
       const c = cities.find(x => x.id === k.c), d = P.describe(k, M, cities);
       if (!d || !d.line || !d.where) { bad.push(`no text for ${k.c}/${k.s}`); continue; }
       if (k.t > now || k.t <= before) bad.push(`${k.c}/${k.s} dated outside the absence`);
       if (k.l !== P.light(k.t, c)) bad.push(`${k.c}/${k.s}: light ${k.l} is not the sun's`);
       const loc = S.utcToLocal(k.t, c.timezone);
-      if (loc.minutes > 30 && loc.minutes < 300 && k.t - before > 6 * HOUR) bad.push(`${k.c}/${k.s} at ${d.time} in the small hours`);
+      if (loc.minutes > 30 && loc.minutes < 300 && k.t - before > 8 * HOUR) bad.push(`${k.c}/${k.s} at ${d.time} in the small hours`);
       if (k.c === last) run++; else { if (last) stays.push(run); run = 1; last = k.c; }
       seen.add(k.c);
     }
     prev = now;
   }
-  check('journey: cards come one for six hours away, never sooner, dated in the absence, in the sun\'s light', !bad.length, bad.slice(0, 6));
+  check('journey: cards come one for each day away by the calendar, dated in the absence, in the sun\'s light', !bad.length, bad.slice(0, 6));
   check('journey: three at most at a visit', most === P.PER_VISIT, most);
   check('journey: two or three cards in a map, then on', stays.length > 20 && stays.every(n => n >= 1 && n <= 3) && stays.filter(n => n >= 2).length > stays.length * 0.7, stays.slice(0, 30));
   check('journey: it gets round every map', seen.size === Object.keys(M.cities).length, [...seen]);
@@ -113,7 +113,8 @@ check('data: the index is up to date with cities/<id>/postcards.json (python pip
       try {
         localStorage.setItem('oe3d-quality', 'low');
         localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 }));
-        if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ v: 1, seed: 7, at: Date.now() - 26 * 3600e3, n: 1, where: card.c, was: null, left: 0, cards: [Object.assign(card, { t: Date.now() - 30 * 3600e3 })] }));
+        if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ v: 1, seed: 7, at: Date.now() - 100 * 3600e3, n: 1, where: card.c, was: null, left: 0, cards: [Object.assign(card, { t: Date.now() - 110 * 3600e3 })] }));
+        localStorage.setItem('oe3d-player', 'M_Worker'); // (the man is played: he is the one in the pictures)
       } catch (e) { /* storage blocked */ }
     }, [P.KEY, { c: 'sydney', s: M.cities.sydney[0].id, l: 'day', k: 0, seen: 1 }]);
     const p = await ctx.newPage();
@@ -164,7 +165,7 @@ check('data: the index is up to date with cities/<id>/postcards.json (python pip
     await p.waitForFunction(() => /^#play-/.test(location.hash), null, { timeout: 30000 }).catch(() => {});
     const hash = await p.evaluate(() => decodeURIComponent(location.hash));
     const m = /^#play-([a-z-]+)@pc-([a-z0-9-]+)\.(dawn|day|dusk|night)$/.exec(hash);
-    check(`${name}: Go there dives to the card's city, spot and light`, m && c4.src === `data/${m[1]}/postcards/${m[2]}-${m[3]}.webp`, { hash, src: c4.src });
+    check(`${name}: Go there dives to the card's city, spot and light`, m && c4.src === `data/${m[1]}/postcards/${m[2]}-${m[3]}-m.webp`, { hash, src: c4.src });
     if (m && !phone) {
       const spot = M.cities[m[1]].find(s => s.id === m[2]);
       await p.waitForFunction(() => window.__game && !document.getElementById('g-title').hidden, null, { timeout: 900000, polling: 500 }).catch(() => {});
