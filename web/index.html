@@ -632,7 +632,13 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-mappop-line { margin: 2px 0 4px; max-width: 300px; font-size: 12px; line-height: 1.45; color: var(--ink-2, var(--ink)); }
 #g-travel button small { display: block; margin-top: 2px; font: 400 9px/1.2 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
 .g-mapbody aside { display: grid; gap: 12px; align-content: start; overflow: auto; }
-.g-legend { display: grid; gap: 7px; font-size: 12px; color: var(--ink-2); }
+.g-legend { display: grid; margin-top: 10px; gap: 7px; font-size: 12px; color: var(--ink-2); }
+/* the legend is folded away over the list: where you can go comes first, and a pin says what it is when picked */
+.g-legendbox summary { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); cursor: pointer; list-style: none;
+  font: 400 8.5px/1.2 var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.2em; }
+.g-legendbox summary::-webkit-details-marker { display: none; }
+.g-legendbox summary::after { content: "+"; font-size: 12px; letter-spacing: 0; } .g-legendbox[open] summary::after { content: "−"; }
+.g-legendbox summary:hover, .g-legendbox summary:focus-visible { color: var(--ink); border-color: rgba(255, 176, 102, 0.6); outline: none; }
 .g-legend div { display: flex; gap: 9px; align-items: center; }
 .g-legend i { width: 14px; height: 14px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font: 700 8px/1 var(--f-body); font-style: normal; flex: none; }
 #g-travel, #g-travel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -667,6 +673,12 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-stamps .stamp { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 10px; border: 1px dashed var(--line-2);
   font: 300 10px/1.15 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
 .g-stamps li.got .stamp { border: 3px double var(--accent); color: var(--accent); transform: rotate(-8deg); background: var(--accent-wash); box-shadow: 0 0 24px rgba(255, 176, 102, 0.15); }
+.g-postcards { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.g-postcards h3 { margin: 0 0 6px; font: 400 10px/1 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-2); }
+.g-postcards ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.g-postcards li { display: grid; gap: 5px; font-size: 12px; color: var(--ink-2); }
+.g-postcards img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border: 3px solid #ece8e1; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); margin-bottom: 4px; }
+.g-postcards b { color: var(--ink); font-weight: 600; }
 .g-stamps li > span:last-child { display: grid; gap: 2px; font-size: 12px; color: var(--ink-2); }
 .g-settings { display: grid; gap: 16px; }
 .g-settings .field { display: grid; gap: 7px; }
@@ -745,7 +757,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-vhud .note { display: none; }
   .g-lens { left: 10px; right: 10px; width: auto; top: auto; bottom: 200px; }
   .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 1.3fr) minmax(0, 1fr); gap: 14px; }
-  .g-mapbody aside > h3:first-child, .g-legend { display: none; } /* on a phone the map and the travel list; the pins say what they are when picked */
+  .g-legendbox { display: none; } /* on a phone the map and the travel list; the pins say what they are when picked */
   .g-mappop-acts .btn { flex: 1; padding: 10px 8px; letter-spacing: 0.12em; }
   .g-panel { padding: 18px 16px 18px; }
   .g-reticle { display: none; }
@@ -1058,12 +1070,12 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
             <div class="g-mappop" id="g-mappop" hidden role="dialog" aria-label="Travel"><b id="g-mappop-name"></b><span class="note" id="g-mappop-note"></span><p class="g-mappop-line" id="g-mappop-line" hidden></p>
               <div class="g-mappop-acts"><button class="btn primary" id="g-mappop-go">Travel here</button><button class="btn" id="g-mappop-way">Set waypoint</button></div></div></div>
           <aside>
-            <h3>Legend</h3>
+            <details class="g-legendbox"><summary>Legend</summary>
             <div class="g-legend">
               <div><i class="g-lg-pin"></i>Landmark: pick it to travel there</div><div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
               <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
               <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#2f5d8c">C</i>Your car</div><div><i style="background:#d08a00">T</i>Your taxi or ride</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div id="g-lg-district" hidden><i class="g-lg-district"></i>Another district: a map of its own</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
-            </div>
+            </div></details>
             <h3>Travel</h3>
             <p class="note">Go any time, on foot or in your car. Or pick any spot on the map. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>
             <ul id="g-travel"></ul>
@@ -1074,7 +1086,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     <div class="g-overlay" id="g-pass" hidden>
       <div class="g-panel"><header><h2>Survey passport</h2><button class="x" id="g-pass-close" aria-label="Close the passport">×</button></header>
         <p class="note">One stamp for each part of the survey. Stamps are saved in this browser.</p>
-        <ol class="g-stamps" id="gp-stamps"></ol></div>
+        <ol class="g-stamps" id="gp-stamps"></ol>
+        <div class="g-postcards" id="gp-post" hidden><h3>Postcards from here</h3><p class="note">Sent by your fellow surveyor while you were away. They wait on the title screen, and each one can take you to where it was taken.</p><ol></ol></div></div>
     </div>
     <div class="g-overlay" id="g-menu" hidden>
       <div class="g-panel"><header><h2>Paused</h2><button class="x" id="g-menu-close" aria-label="Resume">×</button></header>
@@ -1082,7 +1095,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <div class="field"><span class="note">Time of day</span><div class="seg wrap" id="gm-time"><button data-t="live">Now</button></div></div>
           <div class="field"><label for="gm-clock"><span>Any time</span><output class="num" id="gm-clock-v"></output></label><input type="range" id="gm-clock" min="0" max="1439" step="1" aria-label="Time of day, local clock time"></div>
           <div class="field"><label for="gm-date"><span>Date</span></label><input type="date" id="gm-date" aria-label="Date"></div>
-          <div class="field"><span class="note">Weather</span><div class="seg wrap" id="gm-weather"><button data-w="live" aria-pressed="true">As the season brings it</button><button data-w="clear">Clear</button><button data-w="overcast">Overcast</button><button data-w="drizzle">Drizzle</button><button data-w="rain">Rain</button><button data-w="off" title="No weather at all: the lightest on a slow device">Off</button></div></div>
+          <div class="field"><span class="note">Weather</span><div class="seg wrap" id="gm-weather"><button data-w="live" aria-pressed="true">As the season brings it</button><button data-w="now" title="Asks Open-Meteo for this city's weather now. Only the city's coordinates are sent.">Live</button><button data-w="clear">Clear</button><button data-w="overcast">Overcast</button><button data-w="fog">Fog</button><button data-w="drizzle">Drizzle</button><button data-w="rain">Rain</button><button data-w="storm">Thunderstorm</button><button data-w="snow">Snow</button><button data-w="off" title="No weather at all: the lightest on a slow device">Off</button></div></div>
           <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
           <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
@@ -1187,6 +1200,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="earth.js"></script>
 <script src="score.js"></script>
 <script src="metro.js"></script>
+<script src="postcards.js"></script>
 <script src="title.js"></script>
 <script src="version.js"></script>
 <script src="film.js"></script>
@@ -1219,6 +1233,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/cars.js"></script>
 <script src="game/route.js"></script>
 <script src="game/rail.js"></script>
+<script src="game/trains.js"></script>
 <script src="game/ao.js"></script>
 <script src="game/atmosphere.js"></script>
 <script src="game/weather.js"></script>
@@ -1228,6 +1243,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/walkcalls.js"></script>
 <script src="game/places.js"></script>
 <script src="game/doors.js"></script>
+<script src="game/show.js"></script>
 <script src="game/overture.js"></script>
 <script src="game/hud.js"></script>
 <script src="game/music.js"></script>

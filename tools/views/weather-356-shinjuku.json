@@ -1,0 +1,136 @@
+[
+ {
+  "name": "skyline-storm-flash",
+  "cam": [
+   380,
+   2380,
+   150
+  ],
+  "tgt": [
+   430,
+   3000,
+   150
+  ],
+  "date": [
+   8,
+   20
+  ],
+  "time": "21:00",
+  "weather": "storm",
+  "flash": {
+   "dist": 2600,
+   "bearing": 5,
+   "k": 0.9
+  }
+ },
+ {
+  "name": "kabukicho-storm-flash",
+  "at": [
+   400.5,
+   2777.5
+  ],
+  "eye": [
+   400.5,
+   2777.5,
+   1.65
+  ],
+  "look": [
+   409.2,
+   2811.0,
+   5.6
+  ],
+  "fov": 55,
+  "date": [
+   8,
+   20
+  ],
+  "time": "21:00",
+  "weather": "storm",
+  "flash": {
+   "dist": 1400,
+   "bearing": 14,
+   "k": 0.85
+  }
+ },
+ {
+  "name": "kabukicho-storm",
+  "at": [
+   400.5,
+   2777.5
+  ],
+  "eye": [
+   400.5,
+   2777.5,
+   1.65
+  ],
+  "look": [
+   409.2,
+   2811.0,
+   5.6
+  ],
+  "fov": 55,
+  "date": [
+   8,
+   20
+  ],
+  "time": "21:00",
+  "weather": "storm"
+ },
+ {
+  "name": "kaiju-storm-flash",
+  "at": [
+   466.0,
+   2846.0
+  ],
+  "eye": [
+   466.0,
+   2846.0,
+   1.65
+  ],
+  "look": [
+   497.8,
+   2942.5,
+   44.0
+  ],
+  "fov": 50,
+  "date": [
+   8,
+   20
+  ],
+  "time": "21:00",
+  "weather": "storm",
+  "flash": {
+   "dist": 1100,
+   "bearing": 18,
+   "k": 0.9
+  }
+ },
+ {
+  "name": "ichibangai-after-rain",
+  "at": [
+   418.0,
+   2838.0
+  ],
+  "eye": [
+   418.0,
+   2838.0,
+   1.65
+  ],
+  "look": [
+   445.0,
+   2935.0,
+   9.0
+  ],
+  "fov": 60,
+  "date": [
+   8,
+   20
+  ],
+  "time": "sunset+25",
+  "weather": {
+   "rain": 0,
+   "cloud": 0.4,
+   "wet": 0.95
+  }
+ }
+]

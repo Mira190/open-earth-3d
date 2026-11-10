@@ -6,8 +6,8 @@
 // player and the people stand on.
 import * as THREE from 'three/webgpu';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { Fn, uniform, float, int, vec2, vec3, vec4, mix, max, min, abs, floor, fract, smoothstep, clamp, texture, select,
-  positionWorld, positionLocal, normalWorld, cameraPosition, length, normalize, dot, sin, varying, mx_noise_float, mx_noise_vec3, mx_worley_noise_float, exp, pow, fwidth } from 'three/tsl';
+import { Fn, If, uniform, float, int, vec2, vec3, vec4, mix, max, min, abs, floor, fract, smoothstep, clamp, texture, select,
+  positionWorld, positionLocal, normalWorld, cameraPosition, length, normalize, dot, sin, varying, mx_noise_float, mx_noise_vec3, exp, pow, fwidth } from 'three/tsl';
 import { CHUNK } from '../world.js';
 import { createRoadField, DASH_ON, DASH } from './roadfield.js';
 
@@ -37,6 +37,26 @@ const vnoiseT = (x, y) => {
   return a.add(b.sub(a).mul(sx)).add(c.sub(a).mul(sy)).add(a.sub(b).sub(c).add(e).mul(sx).mul(sy)).mul(2).sub(1);
 };
 const fbmT = (x, z) => vnoiseT(x.div(9), z.div(9)).mul(0.55).add(vnoiseT(x.div(3.7), z.div(3.7)).mul(0.3)).add(vnoiseT(x.div(1.6), z.div(1.6)).mul(0.15));
+// a cheap cellular noise for the bush's crowns: the nearest of the feature points in the 2 x 2 x 2 cells round p (one
+// point a cell, jittered within 0.7 of it), as Gustavson's cellular2x2x2. Returns vec4(F1, the unit direction from that
+// point to p): the direction is the crown's own slope, so its sunlit side needs no second evaluation. Eight cells where
+// MaterialX's worley searches 27, and one call where the crowns took four (a fortieth of the work)
+const hash3 = c => {
+  const m = mod289(c);
+  return fract(sin(vec3(dot(m, vec3(127.1, 311.7, 74.7)), dot(m, vec3(269.5, 183.3, 246.1)), dot(m, vec3(113.5, 271.9, 124.6)))).mul(43758.5453));
+};
+const cell2 = p => {
+  const b = floor(p.sub(0.5));
+  let best = null;
+  for (let k = 0; k < 8; k++) {
+    const c = b.add(vec3(k & 1, (k >> 1) & 1, k >> 2));
+    const d = p.sub(c.add(hash3(c).sub(0.5).mul(0.7)).add(0.5));
+    const dd = dot(d, d);
+    best = best ? { dd: min(best.dd, dd), d: select(dd.lessThan(best.dd), d, best.d) } : { dd, d };
+  }
+  const f1 = best.dd.max(1e-8).sqrt();
+  return vec4(f1, best.d.div(f1));
+};
 
 export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null, { range = 1 } = {}) {
   const t = d.scene.terrain, g = d.scene.ground, W = t.w, H = t.h;
@@ -64,6 +84,17 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     const fx = x.sub(t.x0).div(cv.px_m).sub(0.5), fz = z.add(t.y1).div(cv.px_m).sub(0.5);
     const ix = floor(fx), iz = floor(fz), ax = fx.sub(ix), az = fz.sub(iz);
     const at = (i, j) => ampOf(texture(coverTex, vec2(ix.add(i + 0.5).div(cv.w), iz.add(j + 0.5).div(cv.h))).level(0).r.mul(255).add(0.5).floor());
+    return mix(mix(at(0, 0), at(1, 0), ax), mix(at(0, 1), at(1, 1), ax), az);
+  };
+
+  // the share of snow and ice (class 2), blended over the four nearest cover pixels: a hard test on the nearest pixel drew
+  // the summits' snow, and the brightness kept for it, in 20 m squares
+  const snowClsTex = new THREE.DataTexture(new Uint8Array(16).map((_, k) => (k === 2 ? 255 : 0)), 16, 1, THREE.RedFormat, THREE.UnsignedByteType);
+  snowClsTex.magFilter = snowClsTex.minFilter = THREE.NearestFilter; snowClsTex.needsUpdate = true;
+  const snowShare = (x, z) => {
+    const fx = x.sub(t.x0).div(cv.px_m).sub(0.5), fz = z.add(t.y1).div(cv.px_m).sub(0.5);
+    const ix = floor(fx), iz = floor(fz), ax = fx.sub(ix), az = fz.sub(iz);
+    const at = (i, j) => texture(snowClsTex, vec2(texture(coverTex, vec2(ix.add(i + 0.5).div(cv.w), iz.add(j + 0.5).div(cv.h))).level(0).r.mul(255).add(0.5).floor().add(0.5).div(16), 0.5)).level(0).r;
     return mix(mix(at(0, 0), at(1, 0), ax), mix(at(0, 1), at(1, 1), ax), az);
   };
 
@@ -96,63 +127,95 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
   const rataSeason = uniform(0);                                  // southern rata in flower: December to February
   const RATA = [1, 0.8, 0.15, 0, 0, 0, 0, 0, 0, 0, 0.1, 0.7];
   // returns { alb, rockW }: the ground's colour with the bush canopy and the rock laid in
-  const fiordLook = (alb0, P, dist, isSnow) => {
+  const fiordLook = (alb0, P, dist, snowK) => {
     const x = P.x, y = P.y, z = P.z, Ng = normalize(normalWorld);
     const l2 = look2At(x, z);
-    const land = select(isSnow, float(0), float(1)).mul(smoothstep(0.2, 1.5, y));          // not the snow, not the bed under the water
+    const land = float(1).sub(snowK).mul(smoothstep(0.2, 1.5, y));          // not the snow, not the bed under the water
     const steep = smoothstep(0.68, 0.36, Ng.y);                    // 47 to 69 degrees: bush clings to anything less
-    const veg = l2.r.add(l2.g).min(1);
-    // bare faces break the bush where the wall is steepest (slips and slabs), in patches
-    const bare = smoothstep(0.5, 0.9, steep.mul(0.9).add(mx_noise_float(vec3(x, y.mul(0.6), z).div(160)).mul(0.5)));
+    // the land cover's "rock and cliff" on a fiord's walls is mostly bush in fact: silver beech, ferns and moss hold on to
+    // faces near the vertical, with bare rock in the strips tree avalanches leave and in the cracks between; the bare
+    // faces are wide only above the bushline. Below it the class is drawn as bush with those strips, long down the wall
+    // (drawn as rock in full, it covered whole walls in a pale grey, brighter than the bush beside it by several times)
+    const hi = smoothstep(750, 1250, y.add(mx_noise_float(P.div(300)).mul(150)));
+    const strip = smoothstep(0.22, 0.55, mx_noise_float(vec3(x.div(30), y.div(360), z.div(30)).add(11)));
+    const rockC = l2.b.mul(mix(strip.mul(0.9), float(1), hi));
+    const veg = l2.r.add(l2.g).add(l2.b.sub(rockC)).min(1);
+    // bare faces break the bush where the wall is steepest: slips and slabs, long down the wall and narrow across it (tree
+    // avalanches strip a fiord's walls in strips from the top; round patches 300 m across read as pale blotches)
+    // (steepness opens them but does not make them: at 0.9 of the test it alone stripped every face past 69 degrees)
+    const bare = smoothstep(0.55, 0.9, steep.mul(0.45).add(mx_noise_float(vec3(x.div(70), y.div(420), z.div(70))).mul(0.6)));
     // ---- rock: Fiordland's gneiss and granite, dark grey with a warm cast where it is dry; beds a few metres thick
     // dipping across the face, flutes worn down it by water, dark seeps, and bush on the ledges the beds make
-    const sAx = dot(P, vec3(0.24, 0.96, 0.14));
-    const bed = mx_noise_float(vec3(sAx.mul(0.045), x.mul(0.003), z.mul(0.003)));
     const ledge = smoothstep(0.32, 0.5, mx_noise_float(vec3(x, y.mul(1.6), z).div(210).add(9))).mul(float(1).sub(smoothstep(700, 1200, y)));
     const bushW = veg.mul(float(1).sub(bare.mul(0.9))).add(ledge.mul(0.75).mul(float(1).sub(veg.mul(float(1).sub(bare))))).min(1).mul(land);
-    const rockW = l2.b.add(veg.mul(bare).mul(0.9)).add(steep.mul(float(1).sub(veg)).mul(0.8)).min(1).mul(float(1).sub(ledge.mul(0.75))).mul(land);
-    const tone = mx_noise_float(P.div(120)).mul(0.5).add(0.5);
-    let rock = mix(vec3(0.15, 0.145, 0.14), vec3(0.24, 0.225, 0.205), tone).toVar();
-    rock.mulAssign(float(1).add(bed.mul(0.1)));
-    const flute = mx_noise_float(vec3(x.mul(0.09), y.mul(0.007), z.mul(0.09))).mul(0.6).add(mx_noise_float(vec3(x.mul(0.33), y.mul(0.02), z.mul(0.33))).mul(0.4));
-    rock.mulAssign(float(1).add(flute.mul(0.07).mul(steep.mul(0.7).add(0.3))));
-    const seep = smoothstep(0.2, 0.7, mx_noise_float(vec3(x.mul(0.05), y.mul(0.004), z.mul(0.05)).add(40))).mul(steep);
-    rock.mulAssign(float(1).sub(seep.mul(0.1)));
-    const fineK = float(1).sub(smoothstep(500, 2200, dist));
-    let alb = mix(alb0, mix(rock, alb0, 0.06), rockW).toVar();
+    const rockW = rockC.add(veg.mul(bare).mul(0.9)).add(steep.mul(float(1).sub(veg)).mul(0.8)).min(1).mul(float(1).sub(ledge.mul(0.75))).mul(land);
+    // (the rock's colour and relief only where there is rock, the bush's only where there is bush: branches on the two
+    // weights, so a fragment pays for what it shows; nearly all of a wall is one or the other)
+    const alb = alb0.toVar(), seep = float(0).toVar(), bend = vec3(0).toVar(), ao = float(1).toVar();
+    If(rockW.greaterThan(0.002), () => {
+      const sAx = dot(P, vec3(0.24, 0.96, 0.14));
+      const bed = mx_noise_float(vec3(sAx.mul(0.045), x.mul(0.003), z.mul(0.003)));
+      const tone = mx_noise_float(P.div(120)).mul(0.5).add(0.5);
+      // (wet most days of the year, streaked with water and moss: a darker grey than the dry rock of the lakes; at 0.15 to
+      // 0.24 the faces came out a pale lilac grey under the sky's light and the haze, brighter than the bush round them by four)
+      const rock = mix(vec3(0.06, 0.062, 0.057), vec3(0.115, 0.11, 0.1), tone).toVar();
+      rock.assign(mix(rock, rock.mul(vec3(0.86, 1.02, 0.78)), smoothstep(-0.2, 0.5, mx_noise_float(vec3(x.div(40), y.div(160), z.div(40)).add(5))).mul(0.6)));
+      rock.mulAssign(float(1).add(bed.mul(0.1)));
+      const flute = mx_noise_float(vec3(x.mul(0.09), y.mul(0.007), z.mul(0.09))).mul(0.6).add(mx_noise_float(vec3(x.mul(0.33), y.mul(0.02), z.mul(0.33))).mul(0.4));
+      rock.mulAssign(float(1).add(flute.mul(0.07).mul(steep.mul(0.7).add(0.3))));
+      seep.assign(smoothstep(0.2, 0.7, mx_noise_float(vec3(x.mul(0.05), y.mul(0.004), z.mul(0.05)).add(40))).mul(steep));
+      rock.mulAssign(float(1).sub(seep.mul(0.3)));
+      alb.assign(mix(alb0, mix(rock, alb0, 0.06), rockW));
+      // the rock's own relief, for the light: buttresses, slabs and cracks as a bent normal, the shade in the cracks
+      // (ribs: the wall's buttresses and chutes run down it, so the bend is sideways only and long in the vertical)
+      const rib = mx_noise_vec3(vec3(x, y.mul(0.12), z).div(130));
+      bend.assign(vec3(rib.x, 0, rib.z).mul(0.3));
+      // (clean rock: no fine mottling, which reads as dirt)
+      ao.assign(mix(float(1), mix(float(0.9), float(1.03), smoothstep(-0.4, 0.4, rib.y)), rockW));
+    });
     // ---- bush: silver beech and podocarp canopy as domed crowns about 9 m across (a cell pattern in the wall's own
     // space, so a crown is round on a cliff too), each lit on its sunward side and dark in the gaps between
-    const warp = mx_noise_vec3(P.div(6.5)).mul(0.3);
-    const pc = vec3(x, y.mul(0.8), z).div(8.5).add(warp);
-    const crownK = float(1).sub(smoothstep(0.25, 0.75, fwidth(pc.x).max(fwidth(pc.z)).max(fwidth(pc.y))));
-    // (two sizes of crown, the small ones breaking the big: a canopy of one size reads as a quilt of balls)
-    const w0 = mx_worley_noise_float(pc).mul(0.62).add(mx_worley_noise_float(pc.mul(2.3).add(17)).mul(0.38)), dome = float(1).sub(smoothstep(0.1, 0.8, w0));
-    const pc2 = pc.add(vec3(lightU.sunDir).mul(0.2));
-    const dome2 = float(1).sub(smoothstep(0.1, 0.8, mx_worley_noise_float(pc2).mul(0.62).add(mx_worley_noise_float(pc2.mul(2.3).add(17)).mul(0.38))));
-    const sunny = clamp(dome.sub(dome2).mul(1.7).add(0.55), 0, 1);
-    const kind = mx_noise_float(P.div(38)).mul(0.5).add(0.5), kind2 = mx_noise_float(P.div(13).add(31)).mul(0.5).add(0.5);
-    let bush = mix(vec3(0.036, 0.068, 0.026), vec3(0.085, 0.135, 0.04), kind.mul(0.7).add(kind2.mul(0.3))).toVar();
-    bush.assign(mix(bush, alb0.mul(1.15), 0.4));
-    // tree ferns and broadleaf at the water's edge and in the gullies: a fresher green low down
-    bush.assign(mix(bush, bush.mul(vec3(0.95, 1.22, 0.8)), float(1).sub(smoothstep(20, 260, y)).mul(kind2)));
-    // near the eye a crown breaks into boughs and sprays of leaf (two finer octaves), so it is not one smooth dome
-    const leafK = float(1).sub(smoothstep(250, 900, dist));
-    const bough = mx_noise_float(P.div(2.3)).mul(0.5).add(mx_noise_float(P.div(0.8).add(3)).mul(0.5).mul(float(1).sub(smoothstep(60, 300, dist))));
-    const crown = mix(float(0.42), float(1.12), dome).mul(mix(float(0.5), float(1.2), sunny)).mul(float(1).add(bough.mul(0.42).mul(leafK)));
-    // (beech and podocarp are a dark, olive green in full sun: the photograph's lawn-green is pulled down)
-    bush.assign(mix(vec3(dot(bush, vec3(0.2126, 0.7152, 0.0722))), bush, 0.82).mul(0.8));
-    bush.mulAssign(mix(float(1), crown, crownK));
-    const rata = smoothstep(0.6, 0.68, mx_noise_float(P.div(10).add(20))).mul(smoothstep(-0.1, 0.25, mx_noise_float(P.div(260).add(3)))).mul(float(1).sub(smoothstep(500, 800, y))).mul(rataSeason);
-    bush.assign(mix(bush, vec3(0.2, 0.018, 0.02).mul(mix(float(0.7), float(1.25), dome)), rata.mul(0.85).mul(mix(float(0.6), dome, crownK))));
-    alb.assign(mix(alb, bush, bushW));
-    // the rock's own relief, for the light: buttresses, slabs and cracks as a bent normal, the shade in the cracks, and
+    const pc0 = vec3(x, y.mul(0.8), z).div(8.5);
+    // (toVar: emitted here, in uniform control flow, not at its first use inside the branches below, where WGSL refuses a
+    // derivative)
+    const crownK = float(1).sub(smoothstep(0.25, 0.75, fwidth(pc0.x).max(fwidth(pc0.z)).max(fwidth(pc0.y)))).toVar();
+    If(bushW.greaterThan(0.002), () => {
+      // (the crowns, the warp under them and the boughs only where a crown is bigger than a pixel)
+      const dome = float(0.5).toVar(), sunny = float(0.55).toVar(), bough = float(0).toVar();
+      If(crownK.greaterThan(0.002), () => {
+        const pc = pc0.add(mx_noise_vec3(P.div(6.5)).mul(0.3));
+        // (two sizes of crown, the small ones breaking the big: a canopy of one size reads as a quilt of balls)
+        const c1 = cell2(pc), c2 = cell2(pc.mul(2.3).add(17));
+        const w0 = c1.x.mul(0.62).add(c2.x.mul(0.38));
+        dome.assign(float(1).sub(smoothstep(0.1, 0.8, w0)));
+        // the sunlit side: how much the dome falls toward the sun over a fifth of a crown (its slope from the two cells'
+        // directions and the smoothstep's own slope), as the difference of two domes a step apart gave it
+        const tS = clamp(w0.sub(0.1).div(0.7), 0, 1), dS = tS.mul(float(1).sub(tS)).mul(6 / 0.7);
+        const sd = vec3(lightU.sunDir);
+        const fall = dS.mul(0.2).mul(dot(c1.yzw, sd).mul(0.62).add(dot(c2.yzw, sd).mul(0.38 * 2.3)));
+        sunny.assign(clamp(fall.mul(1.7).add(0.55), 0, 1));
+        // near the eye a crown breaks into boughs and sprays of leaf (two finer octaves), so it is not one smooth dome
+        If(dist.lessThan(900), () => {
+          bough.assign(mx_noise_float(P.div(2.3)).mul(0.5).add(mx_noise_float(P.div(0.8).add(3)).mul(0.5).mul(float(1).sub(smoothstep(60, 300, dist)))).mul(float(1).sub(smoothstep(250, 900, dist))));
+        });
+      });
+      const kind = mx_noise_float(P.div(38)).mul(0.5).add(0.5), kind2 = mx_noise_float(P.div(13).add(31)).mul(0.5).add(0.5);
+      const bush = mix(vec3(0.036, 0.068, 0.026), vec3(0.085, 0.135, 0.04), kind.mul(0.7).add(kind2.mul(0.3))).toVar();
+      bush.assign(mix(bush, alb0.mul(1.15), 0.4));
+      // tree ferns and broadleaf at the water's edge and in the gullies: a fresher green low down
+      bush.assign(mix(bush, bush.mul(vec3(0.95, 1.22, 0.8)), float(1).sub(smoothstep(20, 260, y)).mul(kind2)));
+      const crown = mix(float(0.42), float(1.12), dome).mul(mix(float(0.5), float(1.2), sunny)).mul(float(1).add(bough.mul(0.42)));
+      // (beech and podocarp are a dark, olive green in full sun: the photograph's lawn-green is pulled down)
+      bush.assign(mix(vec3(dot(bush, vec3(0.2126, 0.7152, 0.0722))), bush, 0.82).mul(0.8));
+      bush.mulAssign(mix(float(1), crown, crownK));
+      // southern rata in flower, in its season, below 800 m
+      If(rataSeason.greaterThan(0).and(y.lessThan(800)), () => {
+        const rata = smoothstep(0.6, 0.68, mx_noise_float(P.div(10).add(20))).mul(smoothstep(-0.1, 0.25, mx_noise_float(P.div(260).add(3)))).mul(float(1).sub(smoothstep(500, 800, y))).mul(rataSeason);
+        bush.assign(mix(bush, vec3(0.2, 0.018, 0.02).mul(mix(float(0.7), float(1.25), dome)), rata.mul(0.85).mul(mix(float(0.6), dome, crownK))));
+      });
+      alb.assign(mix(alb, bush, bushW));
+    });
     // the wet shine of the faces water runs down
-    const fineR = float(1).sub(smoothstep(900, 3200, dist));
-    // (ribs: the wall's buttresses and chutes run down it, so the bend is sideways only and long in the vertical)
-    const rib = mx_noise_vec3(vec3(x, y.mul(0.12), z).div(130));
-    const bend = vec3(rib.x, 0, rib.z).mul(0.3);
-    // (clean rock: no fine mottling, which reads as dirt)
-    const ao = mix(float(1), mix(float(0.9), float(1.03), smoothstep(-0.4, 0.4, mx_noise_float(vec3(x, y.mul(0.12), z).div(130).add(3)))), rockW);
     const wet = rockW.mul(seep.mul(0.8).add(0.2));
     return { alb, rockW, bushW, bend, ao, wet };
   };
@@ -234,11 +297,11 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       const cls = coverAt(x, z);
       let alb = texture(strip.tex, gUV(x, z)).rgb.toVar();
       alb.assign(detailBlend(x, z, alb));
-      const isSnow = cls.equal(2).or(cls.equal(3).and(alb.g.greaterThan(0.45)));
+      const snowK = max(snowShare(x, z), select(cls.equal(3).and(alb.g.greaterThan(0.45)), float(1), float(0)));
       // the photographs are printed for a screen, their pale ground stretched toward white: dry tussock and gravel come
       // out near 0.45 where the ground reflects 0.25 to 0.3. Brightness is eased toward that (hue kept; snow is set below)
       const lum0 = dot(alb, vec3(0.2126, 0.7152, 0.0722));
-      alb.assign(select(isSnow, alb, alb.mul(float(1).div(lum0.mul(ALB_KNEE).add(1)))));
+      alb.assign(mix(alb.mul(float(1).div(lum0.mul(ALB_KNEE).add(1))), alb, snowK));
       // the sealed roads: chipseal, its painted lines and a gravel shoulder, within the road field's window (about 250 m)
       const rf = roads.sample(x, z);
       const ruv = vec2(x.sub(roads.origin.x), z.negate().sub(roads.origin.y)).div(roads.span);
@@ -247,10 +310,12 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       const rOn = select(rKind.greaterThan(0.5), float(1), float(0)).mul(inWin).mul(roads.valid(x, z, rf.r)).mul(float(1).sub(smoothstep(190, 240, length(P.xz.sub(cameraPosition.xz)))));
       const seal = float(1).sub(smoothstep(rHw.sub(raa), rHw.add(raa).add(0.12), rd)).mul(rOn).toVar();
       const shoulder = float(1).sub(smoothstep(rHw.add(0.3), rHw.add(1.1), rd)).mul(rOn).sub(seal).max(0);
-      {
+      // (a branch: only the fragments on or beside a road within the window pay for the chipseal and its lines; the fades
+      // by derivative are taken before it, since a derivative needs uniform control flow)
+      const fineK = float(1).sub(smoothstep(0.3, 0.9, fwidth(x.mul(30)).max(fwidth(z.mul(30))))).toVar();
+      If(rOn.greaterThan(0.001).and(rd.lessThan(rHw.add(1.2))), () => {
         // New Zealand's chipseal: dark grey stones in bitumen, a little darker and smoother in the wheel paths; the
         // grain fades as it shrinks under a pixel
-        const fineK = float(1).sub(smoothstep(0.3, 0.9, fwidth(x.mul(30)).max(fwidth(z.mul(30)))));
         const chip = mx_noise_float(vec3(x.mul(30), 0.7, z.mul(30))).mul(fineK).mul(0.22).add(mx_noise_float(vec3(x.mul(2.1), 0.2, z.mul(2.1))).mul(0.08));
         const wheel = float(1).sub(smoothstep(0.25, 0.45, abs(rd.sub(0.95)))).add(float(1).sub(smoothstep(0.25, 0.45, abs(rd.sub(2.45))))).min(1);
         // (the greywacke chips weather pale: a sunlit seal photographs a mid grey, near a tenth reflectance; a third of the
@@ -269,27 +334,34 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
         const centre = line(rf.r, float(0), 0.1).mul(dash).mul(select(rKind.lessThan(2.5), float(1), float(0)));
         const paint = edge.add(centre).min(1).mul(seal).mul(float(0.85).add(mx_noise_float(vec3(x.mul(6), 0.1, z.mul(6))).mul(0.15)));
         alb.assign(mix(alb, vec3(0.62, 0.62, 0.6), paint));
-      }
+      });
       const offRoad = float(1).sub(seal);
       const look0 = lookAt(x, z), look = look0.mul(offRoad), wTuss = look.r, wRock = look.g, wGrass = look.b;
       // the imagery's own colour noise at 10 m, broken up below the pixel, from a few km in to a few tens of metres;
       // closer than that a 3 m blotch reads as a stain on the ground, so it hands over to the fine grain below
-      const n1 = mx_noise_float(vec3(x.mul(0.31), 0, z.mul(0.31))), n2 = mx_noise_float(vec3(x.mul(1.9), 0.5, z.mul(1.9)));
+      const n1 = mx_noise_float(vec3(x.mul(0.31), 0, z.mul(0.31)));
       const mid = near.mul(smoothstep(12, 40, dist));
-      const grain = n2.mul(mix(float(0.06), float(0.2), max(wTuss, wRock))).add(n1.mul(mix(float(0.0), float(0.11), max(wTuss, wRock))));
-      alb.assign(alb.mul(float(1).add(grain.mul(mid))));
-      alb.assign(mix(alb, alb.mul(vec3(1.08, 1.0, 0.82)), smoothstep(0.1, 0.6, n1).mul(mid).mul(0.5).mul(wTuss)));
+      If(mid.greaterThan(0.001), () => {
+        const n2 = mx_noise_float(vec3(x.mul(1.9), 0.5, z.mul(1.9)));
+        const grain = n2.mul(mix(float(0.06), float(0.2), max(wTuss, wRock))).add(n1.mul(mix(float(0.0), float(0.11), max(wTuss, wRock))));
+        alb.assign(alb.mul(float(1).add(grain.mul(mid))));
+        alb.assign(mix(alb, alb.mul(vec3(1.08, 1.0, 0.82)), smoothstep(0.1, 0.6, n1).mul(mid).mul(0.5).mul(wTuss)));
+      });
       // close up: the ground's own fine texture, three octaves from 25 cm to 3 cm, each fading as it shrinks under a
       // pixel (no shimmer); mostly darker than the mean (blade shadows, gaps between stones), so the ground keeps its
       // colour and gains depth instead of a pale sheen
       const close = float(1).sub(smoothstep(10, 60, dist));
-      const oct = (f, k) => mx_noise_float(vec3(x.mul(f), P.y.mul(f * 0.5).add(k), z.mul(f))).mul(float(1).sub(smoothstep(0.35, 0.9, fwidth(x.mul(f)).max(fwidth(z.mul(f))))));
-      const fine = oct(4.0, 0.0).mul(0.5).add(oct(11.0, 3.1).mul(0.32)).add(oct(29.0, 7.7).mul(0.18));
-      // grass: thin blade streaks and their dark roots; stones: sharper light and dark
-      const blade = mx_noise_float(vec3(x.mul(26.0), 0.3, z.mul(7.0))).mul(0.5).add(mx_noise_float(vec3(x.mul(8.0), 1.7, z.mul(27.0))).mul(0.5))
-        .mul(float(1).sub(smoothstep(0.35, 0.9, fwidth(x.mul(27.0)).max(fwidth(z.mul(27.0))))));
-      const detail = fine.mul(mix(float(0.34), float(0.5), wRock)).add(blade.mul(0.3).mul(wGrass)).sub(mix(float(0.05), float(0.09), wGrass));
-      alb.assign(alb.mul(float(1).add(detail.mul(close))));
+      const fpx = fwidth(x).max(fwidth(z)).toVar();
+      const fade = f => float(1).sub(smoothstep(0.35, 0.9, fpx.mul(f))).toVar();
+      const k4 = fade(4.0), k11 = fade(11.0), k29 = fade(29.0), k27 = fade(27.0);
+      If(close.greaterThan(0.001), () => {
+        const oct = (f, k, kf) => mx_noise_float(vec3(x.mul(f), P.y.mul(f * 0.5).add(k), z.mul(f))).mul(kf);
+        const fine = oct(4.0, 0.0, k4).mul(0.5).add(oct(11.0, 3.1, k11).mul(0.32)).add(oct(29.0, 7.7, k29).mul(0.18));
+        // grass: thin blade streaks and their dark roots; stones: sharper light and dark
+        const blade = mx_noise_float(vec3(x.mul(26.0), 0.3, z.mul(7.0))).mul(0.5).add(mx_noise_float(vec3(x.mul(8.0), 1.7, z.mul(27.0))).mul(0.5)).mul(k27);
+        const detail = fine.mul(mix(float(0.34), float(0.5), wRock)).add(blade.mul(0.3).mul(wGrass)).sub(mix(float(0.05), float(0.09), wGrass));
+        alb.assign(alb.mul(float(1).add(detail.mul(close))));
+      });
       // seen low along the ground, grass hides the soil and shows its blades: richer and a little darker than the
       // straight-down photograph the colour comes from (most at eye level, none from above)
       const Vd = normalize(cameraPosition.sub(P));
@@ -301,13 +373,13 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       // living grass a summer green: where the ground is green already (green over red), its colour is deepened toward a
       // fresh green, as it is in photographs of the lakes in spring; the straw tussock, gravel and rock keep theirs
       const lumB = dot(alb, vec3(0.2126, 0.7152, 0.0722));
-      const greenness = smoothstep(0.02, 0.22, alb.g.sub(alb.r).div(alb.g.max(1e-3))).mul(float(1).sub(select(isSnow, float(1), float(0))));
+      const greenness = smoothstep(0.02, 0.22, alb.g.sub(alb.r).div(alb.g.max(1e-3))).mul(float(1).sub(snowK));
       // (a vibrance, not a saturation: grey-green ground gains most, a lawn already bright green little, or it glows)
       const satB = alb.g.sub(min(alb.r, alb.b)).div(alb.g.max(1e-3));
       const vib = mix(float(GREEN_VIBRANCE), float(1.05), smoothstep(0.35, 0.75, satB));
       alb.assign(mix(alb, mix(vec3(lumB), alb, vib).mul(mix(vec3(1), vec3(0.9, 1.06, 0.82), float(1).sub(smoothstep(0.35, 0.75, satB)))).max(0), greenness));
       // the imagery's snow is a little grey from the 10 m mix of snow and rock; fresh snow is near white
-      alb.assign(select(isSnow, mix(alb, vec3(0.86, 0.89, 0.93), 0.35), alb));
+      alb.assign(mix(alb, vec3(0.86, 0.89, 0.93), snowK.mul(0.35)));
       // the season's snow over the summer ground, thinning to tussock and rock showing through at its edge
       const ss = seasonSnow(x, z);
       const patchy = smoothstep(0.25, 0.75, ss.add(n1.mul(0.25)));
@@ -315,12 +387,14 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       let N = detailNormal ? detailNormal(cls, near) : normalize(normalWorld);
       let fAo = float(1), fWet = float(0);
       if (FIORD) {
-        const f = fiordLook(alb, P, dist, isSnow.or(patchy.greaterThan(0.5)));
+        const f = fiordLook(alb, P, dist, max(snowK, smoothstep(0.4, 0.6, patchy)));
         alb.assign(f.alb);
-        N = normalize(N.add(f.bend.mul(f.rockW)).add(mx_noise_vec3(P.div(26)).mul(f.bushW.mul(0.16))));
+        N = normalize(N.add(f.bend.mul(f.rockW))).toVar();
+        // (the canopy's own grain in the light, where a 26 m wobble is still more than a pixel or two)
+        If(f.bushW.greaterThan(0.002).and(dist.lessThan(4000)), () => { N.assign(normalize(N.add(mx_noise_vec3(P.div(26)).mul(f.bushW.mul(0.16).mul(float(1).sub(smoothstep(2500, 4000, dist))))))); });
         fAo = f.ao; fWet = f.wet;
       }
-      const sp = select(isSnow.or(patchy.greaterThan(0.5)), float(1), look.a.mul(0.35).add(fWet.mul(1.6)));
+      const sp = mix(look.a.mul(0.35).add(fWet.mul(1.6)), float(1), max(snowK, smoothstep(0.4, 0.6, patchy)));
       let c = light.shade(alb, N, P, { spec: sp, ao: fAo }).toVar();
       if (FIORD) {
         // wet rock in the sun: the cracks' shade on the sun's own light too, and points of glitter where a film of
@@ -331,21 +405,30 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
         c.addAssign(vec3(lightU.sunE).mul(light.sunVis(P)).mul(lobe.mul(spark).mul(fWet).mul(0.5 / Math.PI)));
       }
       // glints in the snow: facets catching the sun, a few per square metre, only close up
-      const glint = smoothstep(0.86, 0.98, mx_noise_float(vec3(x.mul(9), P.y.mul(9), z.mul(9)).add(cameraPosition.mul(0.35)))).mul(isSnow.select(1, 0)).mul(float(1).sub(smoothstep(8, 60, dist)));
-      c.addAssign(vec3(lightU.sunE).mul(glint.mul(0.6).mul(light.sunVis(P))));
+      If(dist.lessThan(60).and(snowK.greaterThan(0.01)), () => {
+        const glint = smoothstep(0.86, 0.98, mx_noise_float(vec3(x.mul(9), P.y.mul(9), z.mul(9)).add(cameraPosition.mul(0.35)))).mul(snowK).mul(float(1).sub(smoothstep(8, 60, dist)));
+        c.addAssign(vec3(lightU.sunE).mul(glint.mul(0.6).mul(light.sunVis(P))));
+      });
       return c;
     })();
     return mat;
   }
   // the detail normal: the grid's normal bent by the relief's gradient (the same fbm as the patch), near the camera
   const relief = (x, z) => fbmT(x, z).mul(reliefAmp(x, z));
+  // (beyond 900 m, where near is 0, a branch skips it; the cover's amplitude is read once, not at each of the four
+  // samples: it is blended over 20 m and barely changes across the 1.2 m the difference spans)
   const bumped = (cls, near) => {
     const P = positionWorld, e = 0.6;
-    const gx = relief(P.x.add(e), P.z).sub(relief(P.x.sub(e), P.z)).div(2 * e);
-    const gz = relief(P.x, P.z.add(e)).sub(relief(P.x, P.z.sub(e))).div(2 * e);
-    // fine grain on top, strongest in rock and scree
-    const fine = vec3(mx_noise_float(vec3(P.x.mul(2.2), P.y.mul(2.2), P.z.mul(2.2))), 0, mx_noise_float(vec3(P.z.mul(2.2), P.x.mul(2.2), P.y.mul(2.2) .add(7)))).mul(0.18);
-    return normalize(normalize(normalWorld).sub(vec3(gx, 0, gz).add(fine).mul(near)));
+    const N0 = normalize(normalWorld), N = N0.toVar();
+    If(near.greaterThan(0.001), () => {
+      const amp = reliefAmp(P.x, P.z);
+      const gx = fbmT(P.x.add(e), P.z).sub(fbmT(P.x.sub(e), P.z)).mul(amp).div(2 * e);
+      const gz = fbmT(P.x, P.z.add(e)).sub(fbmT(P.x, P.z.sub(e))).mul(amp).div(2 * e);
+      // fine grain on top, strongest in rock and scree
+      const fine = vec3(mx_noise_float(vec3(P.x.mul(2.2), P.y.mul(2.2), P.z.mul(2.2))), 0, mx_noise_float(vec3(P.z.mul(2.2), P.x.mul(2.2), P.y.mul(2.2).add(7)))).mul(0.18);
+      N.assign(normalize(N0.sub(vec3(gx, 0, gz).add(fine).mul(near))));
+    });
+    return N;
   };
   const mats = strips.map(s => makeMat(s, bumped));
 

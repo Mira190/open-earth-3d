@@ -118,6 +118,8 @@ window.OEDay = (function () {
       requestAnimationFrame(() => v.classList.add('on'));
       setTimeout(() => { fn(); v.classList.remove('on'); setTimeout(() => v.remove(), 450); }, 420);
     }
+    // the sun on its arc: --k along it (0 sunrise, 1 sunset), --y how far down from its top (the arc is the cap of an ellipse)
+    const arc = k => { const u = clamp(k, 0, 1); return `--k:${u.toFixed(3)};--y:${(1 - Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2))).toFixed(3)}${k < 0 || k > 1 ? ';--down:1' : ''}`; };
     function whatsOn(max = 3) {
       const out = D.today().map(e => ({ t: e.title, s: e.slots ? e.slots.map(s => SLOT_NAME[s]).join(' · ') : 'All day', on: D.onNow(e) }));
       for (const [n, e] of D.soon(7)) out.push({ t: e.title, s: n === 1 ? 'Tomorrow' : `In ${n} days` });
@@ -138,7 +140,7 @@ window.OEDay = (function () {
       el.innerHTML = day
         ? `<div class="lf-card-in"><span class="eyebrow">${esc(ctx.cityName)} · Day ${ci.days}</span>`
           + `<b class="lf-dow">${DOW[D.dow]}</b><b class="lf-date"><span class="num">${c.d}</span> ${MON[c.m - 1]}</b>`
-          + `<div class="lf-arc" style="--k:${k.toFixed(3)}"><i></i><span class="a">${hm(b.sunrise)}</span><span class="b">${hm(b.sunset)}</span></div>`
+          + `<div class="lf-arc" style="${arc(k)}"><i></i><span class="a">${hm(b.sunrise)}</span><span class="b">${hm(b.sunset)}</span></div>`
           + `<div class="lf-row"><span class="lf-slot">${SLOT_NAME[slot]}</span><span>${esc(wx.name)}</span><span class="num">${hm(c.min)}</span></div>`
           + (on.length ? `<ul class="lf-on">${on.map(o => `<li><b>${esc(o.t)}</b><span>${esc(o.s)}</span></li>`).join('')}</ul>` : '') + '</div>'
         : `<div class="lf-card-in"><span class="eyebrow">${DOW[D.dow]} ${c.d} ${MON[c.m - 1]} · ${esc(wx.name)}</span><b class="lf-dow">${SLOT_NAME[slot]}</b>`
@@ -206,7 +208,7 @@ window.OEDay = (function () {
       const passes = SLOTS.filter(s => s !== slot).sort((x, y) => ((b[x] - c.min + 1440) % 1440) - ((b[y] - c.min + 1440) % 1440));
       return `<section class="lf-head"><div><span class="eyebrow">${esc(ctx.cityName)} · Day ${ci.days}</span><b class="lf-dow">${DOW[D.dow]}</b><b class="lf-date"><span class="num">${c.d}</span> ${MON[c.m - 1]} <span class="yr num">${c.y}</span></b></div>`
         + `<div class="lf-now"><b class="num">${hm(c.min)}</b><span>${esc(wx.name)}</span><span class="lf-purse num" title="Your wallet">${L.fmt(L.money)}</span></div></section>`
-        + `<div class="lf-arc wide" style="--k:${k.toFixed(3)}"><i></i><span class="a">Sunrise ${hm(b.sunrise)}</span><span class="g">Golden hour ${hm(b.golden)}</span><span class="b">Sunset ${hm(b.sunset)}</span></div>`
+        + `<div class="lf-arc wide" style="${arc(k)}"><i></i><span class="a">Sunrise ${hm(b.sunrise)}</span><span class="g">Golden hour ${hm(b.golden)}</span><span class="b">Sunset ${hm(b.sunset)}</span></div>`
         + `<ol class="lf-ribbon">${ribbon}</ol>`
         + `<h3>On today</h3>${today.length ? `<ul class="lf-list">${today.map(e => `<li class="${D.onNow(e) ? 'on' : ''}"><b>${esc(e.title)}${e.native ? ` <span class="jp">${esc(e.native)}</span>` : ''}</b><span>${esc(e.where || '')}${e.slots ? ` · ${e.slots.map(s => SLOT_NAME[s]).join(', ')}` : ''}${ci.events[e.id] ? ' · been' : ''}</span><p>${esc(e.text || '')}</p></li>`).join('')}</ul>` : '<p class="note">Nothing on the calendar today. The city is its ordinary self, which is the point.</p>'}`
         + (around.length ? `<h3>Around ${SLOT_NAME[slot].toLowerCase() === 'night' ? 'tonight' : `this ${SLOT_NAME[slot].toLowerCase()}`}</h3><ul class="lf-list">${around.map(a => `<li class="${a.on ? 'on' : ''}"><b>${esc(a.title)}</b><span>${esc(a.note || '')}</span></li>`).join('')}</ul>` : '')

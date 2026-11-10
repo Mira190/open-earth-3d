@@ -12,6 +12,8 @@ built from scene.json alone, so a change to a builder lands in the game in secon
   doors   doors that open as someone comes up to them, and interiors, the rooms behind them (web/game/doors.js)
   keep_off  where walkers keep off without a word, rings [x, y, ...] in decimetres: a landmark's water
           that the city's water leaves out, such as a temple's moat (web/game/nav.js)
+  trains  a railway's tracks, its station and what runs on them (web/game/trains.js), and "travel", the
+          builders' places to travel to (a platform)
 
     python pipeline/game_extras.py --city shibuya     # after landmarks.py; game_data.py does the same
 """
@@ -21,7 +23,8 @@ import os
 import bridges
 from cityctx import city_args
 
-KEYS = ("spots", "chatter", "close", "keep_off", "lifts", "doors", "interiors")  # (city.json's own first, then the builders')
+KEYS = ("spots", "chatter", "close", "keep_off", "lifts", "doors", "interiors", "seats", "shows")  # (city.json's own first, then the builders')
+WHOLE = ("trains",)   # a builder's whole block (cities/tokyo/rail.py: the railway's tracks and services, web/game/trains.js)
 
 
 def apply(C, scene, out):
@@ -38,6 +41,11 @@ def apply(C, scene, out):
         for k, v in C.hook("game_extras")(scene).items():
             if k in KEYS:
                 out[k] = out.get(k, []) + v
+            elif k in WHOLE:
+                out[k] = v
+            elif k == "travel":   # a builder's places to travel to, after the city's own (game_data.py gives those their ground)
+                ids = {t["id"] for t in v}
+                out[k] = [t for t in out.get(k, []) if t["id"] not in ids] + v
     # the NPCs placed as given (at [x, y, z]: up on a deck, in a room, seated at a table) need no raw data, so they are
     # put in here too: replaced in place by id, the new ones after the rest
     given = [n for n in gcfg.get("npcs", []) if len(n.get("at", [])) > 2]
