@@ -119,6 +119,9 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         if (!rt || api.off || w < 0.003) { U.uMirrorOn.value = 0; return; } // (off: game.js sheds it on a device that can't keep up)
         const h = ground(camera.position.x, -camera.position.z);
         if (camera.position.y - h > 120 && !api.every) { U.uMirrorOn.value = 0; return; } // high over the city: the street's reflections are lost in the distance
+        // looking up past the horizon (the frame's lowest ray climbs): no street in the picture to reflect anything
+        look.set(0, -1, 0.5).unproject(camera).sub(camera.position);
+        if (look.y > 0.05 * Math.hypot(look.x, look.z) && !api.every) { U.uMirrorOn.value = 0; return; }
         // drawn every other frame: the last picture is kept with the mirrored camera it was drawn from
         // (uMirrorMat), so in between it still lands where it should, a frame behind what moves in it
         if ((tick++ & 1) && U.uMirrorOn.value === 1 && !api.every) return;
