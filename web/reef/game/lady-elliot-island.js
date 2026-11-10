@@ -31,7 +31,7 @@ export default function ladyElliot(G) {
   }
 
   // ------------------------------------------------------------ Tess, the island guide
-  const tess = ranger(G, { name: 'Tess', gender: 'W', role: 'guide', title: 'Island guide', nodes: {
+  const tess = ranger(G, { name: 'Tess', gender: 'W', role: 'guide', title: 'Island guide', look: { character: 'R_Sports_Female_02' }, nodes: {
     hello: { say: G2 => [{ t: `${G2.greet()}! I'm Tess, one of the island guides. Welcome to Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef.`, src: ['wiki-lei'] }, tidePage(G2)],
       choices: [
         { text: 'Tell me about the island.', go: 'island' },
