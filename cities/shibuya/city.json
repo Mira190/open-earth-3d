@@ -664,13 +664,14 @@
         "name": "Sangenjaya 三軒茶屋",
         "place": "Setagaya, Tokyo",
         "at": [
-          -2470.4,
-          -2864.7
+          -2471.9,
+          -2860.4
         ],
         "look": [
-          -2469.2,
-          -2858.0
+          -2461.7,
+          -2863.0
         ],
+        "pitch": 0.12,
         "blurb": "Sangenjaya's backstreets, the Yongen-Jaya of a famous game: the snack bar New Marina whose front became its café, Chiyo-no-yu and the coin laundry across the lane, Hanamasa's yellow sign, and Carrot Tower over the station."
       },
       {
