@@ -3913,7 +3913,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // over Circular Quay in late spring): arriving out of it, the clock's date moves to that day, the time kept
   function inSeason(d) {
     const b = d.kind === 'place' && d.best;
-    if (!b || !b.date) return;
+    if (!b || !b.date || ![...b.from, ...b.to].every((v, i) => v >= 1 && v <= (i % 2 ? 31 : 12)) || b.date[0] > 12) return; // (a window that is not months and days is none)
     const md = (m, dd) => m * 100 + dd, now = md(clock.m, clock.d), f = md(...b.from), t = md(...b.to);
     if (f <= t ? now >= f && now <= t : now >= f || now <= t) return;
     setClock(clock.y, b.date[0], b.date[1], clock.min);
