@@ -20,7 +20,7 @@
     "roof": "#8b908c"
    },
    "triangles": 17100,
-   "lod1_triangles": 2161
+   "lod1_triangles": 8352
   },
   "Enoden_1000": {
    "number": "1001",
@@ -41,7 +41,7 @@
     "line": "#c9a84a"
    },
    "triangles": 16768,
-   "lod1_triangles": 2308
+   "lod1_triangles": 6881
   },
   "Enoden_500": {
    "number": "501",
@@ -62,7 +62,7 @@
     "line": "#c9a84a"
    },
    "triangles": 16644,
-   "lod1_triangles": 2109
+   "lod1_triangles": 7041
   }
  }
 }

@@ -542,8 +542,10 @@ window.OERail = (function () {
     out.eye = (c, mode) => {
       const sd = sideOf(c), b = c.bodies[mode === 'cab' ? 0 : 1];
       if (mode === 'cab') { const q = inBody(b, 0.3, TRAIN.floor + 1.5, b.S.set_m / 4 - 1.3); return { x: q.x, y: q.y, z: q.z, h: b.h, pitch: b.pitch }; }
-      const q = inBody(b, sd * (b.S.width_m / 2 - 0.5), TRAIN.floor + 1.16, b.S.seat_m);
-      return { x: q.x, y: q.y, z: q.z, h: b.h - sd * 1.15, pitch: 0 };
+      // on the long seat across the aisle, looking over it out of the windows on the sea's side, as a passenger sits
+      // (the second body stands back to back with the first: its windows mirrored)
+      const q = inBody(b, -sd * (b.S.width_m / 2 - 0.55), TRAIN.floor + 1.12, b.S.seat_m * b.cab);
+      return { x: q.x, y: q.y, z: q.z, h: b.h - sd * 1.45, pitch: -0.06 };
     };
     // every body as a box (cars.js boxOf's shape), for what must keep clear of a train
     out.trainBoxes = () => {
