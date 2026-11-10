@@ -77,19 +77,77 @@ window.OENav = (function () {
       if (Math.abs(v) > s.half_width || u < s.us[0] || u > s.us[s.us.length - 1]) return null;
       return interp(s.us, s.zs, u);
     }
+    // the part of a mesh that lies outside the outlines of the strips that claim it (each strip's u range by its
+    // half width, in its own frame): a mesh of those triangles, or null when it has none of any size
+    function beyondStrips(m, claim) {
+      const p = m.position, idx = m.index, pos = [];
+      const cut = (P, ax, v, sign) => { // the part of polygon P (local [u, v, z]) where sign * (P[ax] - v) <= 0
+        const out = [];
+        for (let i = 0; i < P.length; i++) {
+          const a = P[i], b = P[(i + 1) % P.length], da = sign * (a[ax] - v), db = sign * (b[ax] - v);
+          if (da <= 0) out.push(a);
+          if ((da < 0 && db > 0) || (da > 0 && db < 0)) { const t = da / (da - db); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]); }
+        }
+        return out;
+      };
+      for (let t = 0; t < idx.length; t += 3) {
+        let parts = [[idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]])];
+        for (const s of claim) {
+          const [ox, oy] = s.origin, [ax, ay] = s.axis, u0 = s.us[0], u1 = s.us[s.us.length - 1], hw = s.half_width, next = [];
+          for (const W of parts) {
+            let rest = W.map(q => [...stripUV(s, q[0], q[1]), q[2]]);
+            const outs = [cut(rest, 0, u0, 1)]; rest = cut(rest, 0, u0, -1);
+            outs.push(cut(rest, 0, u1, -1)); rest = cut(rest, 0, u1, 1);
+            outs.push(cut(rest, 1, -hw, 1)); rest = cut(rest, 1, -hw, -1);
+            outs.push(cut(rest, 1, hw, -1));
+            for (const o of outs) if (o.length >= 3) next.push(o.map(([u, v, z]) => [ox + u * ax - v * ay, oy + u * ay + v * ax, z]));
+          }
+          parts = next;
+        }
+        for (const Q of parts) for (let i = 1; i < Q.length - 1; i++) {
+          const A = Q[0], B = Q[i], C = Q[i + 1];
+          const cx = (B[1] - A[1]) * (C[2] - A[2]) - (B[2] - A[2]) * (C[1] - A[1]), cy = (B[2] - A[2]) * (C[0] - A[0]) - (B[0] - A[0]) * (C[2] - A[2]), cz = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]);
+          if (Math.hypot(cx, cy, cz) > 0.02) pos.push(...A, ...B, ...C); // (not a sliver along the outline)
+        }
+      }
+      if (!pos.length) return null;
+      return Object.assign({}, m, { position: new Float32Array(pos), index: Uint32Array.from({ length: pos.length / 3 }, (_, i) => i), beyond: true });
+    }
     // ---------------------------------------------------------- landmark solids as height intervals per 2 m cell
     const solid0 = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
     const slabs = new Map();  // the same for the strips' slabs alone (the collision world's boxes for them)
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     const solidMeshes = [];  // the meshes that are solid, for the collision world's finer cells (below)
-    for (const m of D.LM.meshes || []) {
+    // the paving a city drapes over its ground (a decal material: the setts of Kyoto's lanes, laid on the survey's
+    // 1 m ground, which the game's 5 m ground runs under by up to a metre where a lane is cut into the slope): its
+    // highest point in each PAVE cell, which floorAt stands a walker on, not on the ground hidden under it
+    const PAVE = 0.5, paving = new Map(), paveKey = (x, y) => (Math.floor(x / PAVE) + 32768) * 65536 + Math.floor(y / PAVE) + 32768;
+    function pave(m) {
+      const p = m.position, idx = m.index;
+      for (let t = 0; t < idx.length; t += 3) {
+        const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
+        const e = Math.max(Math.hypot(p[b] - p[a], p[b + 1] - p[a + 1]), Math.hypot(p[c] - p[a], p[c + 1] - p[a + 1]), Math.hypot(p[c] - p[b], p[c + 1] - p[b + 1]));
+        const n = Math.max(1, Math.ceil(e / (PAVE * 0.7)));
+        for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
+          const u = i / n, v = j / n, w = 1 - u - v, k = paveKey(p[a] * w + p[b] * u + p[c] * v, p[a + 1] * w + p[b + 1] * u + p[c + 1] * v);
+          const z = p[a + 2] * w + p[b + 2] * u + p[c + 2] * v, q = paving.get(k);
+          if (q === undefined || z > q) paving.set(k, z);
+        }
+      }
+    }
+    for (let m of D.LM.meshes || []) {
       const mat = (D.LM.materials || {})[m.material] || {};
       // walked on as a strip surface; its slab is added below. What stands on the strip's edge as a wall stays one
       // (issue 265: a deck's glass balustrade, named for the deck, let walkers through it), though it carries the
       // strip's name: glass, a balustrade, a railing or a barrier
-      const barrier = mat.opacity < 1 || /glass|balustrade|railing|barrier/.test(m.name);
-      if (strips.some(st => st.mesh && m.name.startsWith(st.mesh) && (m.name === st.mesh || !barrier))) continue;
-      if (mat.decal) continue; // paving laid over a roof, which is the solid
+      const barrier = mat.opacity < 1 || /glass|balustrade|railing|barrier|_rail(_|$)/.test(m.name); // (and a flight's handrail: Suga Shrine's suga_otoko_rail_red)
+      // ... but only within the strip's own outline: what the mesh draws beyond it (Circular Quay Station's roof, drawn
+      // over the whole viaduct, its strip the station's rectangle) is stood on and walled as any landmark's, or a walker
+      // there fell through it to whatever lay under it (its soffit, a metre down) and sank to the waist in what is drawn
+      const claim = strips.filter(st => st.mesh && m.name.startsWith(st.mesh) && (m.name === st.mesh || !barrier));
+      if (claim.length && !(m = beyondStrips(m, claim))) continue;
+      if (mat.decal) { pave(m); continue; } // paving laid over a roof, which is the solid (or on the ground: floorAt)
+      if (mat.pave) pave(m); // (and what a city lays on the ground to be walked on as drawn, solid or not: Kamakura's revetment)
       if (mat.solid === false) continue; // walls a city's fine walking levels hold walkers back at instead (game.json "patches")
       solidMeshes.push(m);
       const p = m.position, idx = m.index, mine = new Map();
@@ -568,8 +626,17 @@ window.OENav = (function () {
           // (a counter, a beam, a ceiling) its edges stand for it, its sides being triangles of their own
           // (a material that says "floor": false is never stood on, however wide its top: an offering box)
           const fill = zhi <= Math.max(...rs) + STEP + 0.1 && !noFloor;
+          // ... but where such a top is lower than a walker's head over the floor under it (a hall's floor raised a metre
+          // over its stone podium, Yasaka's), with no room under it for one, it is solid through: by its edges alone a
+          // walker that came in under it (or was set down there) stood with the floor drawn through the waist (each
+          // point of it is asked, as tileBuild lays it, how high it stands over the floor there: tileBuild toUnder)
+          // (and a floor it is laid as, where it stands over ground more than a step down: Yasaka's Honden floor,
+          // level over ground that falls 3 m under it, a floor at its high end and no room under it at its low end)
+          const under = !fill, check = fill && zhi > rlo + STEP + 0.1;
           for (const T of below) { // into the tiles it touches
             if (!fill) T.edges = true;
+            if (under) T.under = true;
+            if (check) T.check = true;
             const AP = APRON * FINE; // (with the apron a tile reads round itself)
             const c0 = Math.max(0, Math.floor((Math.min(T[0][0], T[1][0], T[2][0]) - AP - x0) / TILE)), c1 = Math.min(TNX - 1, Math.floor((Math.max(T[0][0], T[1][0], T[2][0]) + AP - x0) / TILE));
             const r0 = Math.max(0, Math.floor((y1 - Math.max(T[0][1], T[1][1], T[2][1]) - AP) / TILE)), r1 = Math.min(TNY - 1, Math.floor((y1 - Math.min(T[0][1], T[1][1], T[2][1]) + AP) / TILE));
@@ -610,14 +677,32 @@ window.OENav = (function () {
         if (n < IV) { lo[b + n] = hi[b + n] = z; wall[b + n] = inside ? 0 : 1; ins[b + n] = inside ? 1 : 0; cnt[q] = n + 1; }
       }
       const toInside = (x, y, z) => toFine(x, y, z, true);
+      // the inside of a flat top too high to step onto: a wall where a walker on the floor under it (the ground, a
+      // strip, or a landmark's own top laid in this tile) has no room, once the tile's other triangles are in
+      const unders = [];
+      const toUnder = (x, y, z) => { unders.push(x, y, z, 0); };
+      const toCheck = (x, y, z) => { toInside(x, y, z); unders.push(x, y, z, 1); };
       let n = 0;
       for (const T of tris) {
         let Q = T; // the part of it over this tile
         if (Math.min(T[0][0], T[1][0], T[2][0]) < xa || Math.max(T[0][0], T[1][0], T[2][0]) > xb || Math.min(T[0][1], T[1][1], T[2][1]) < ya || Math.max(T[0][1], T[1][1], T[2][1]) > yb)
           Q = clip(clip(clip(clip(T, 0, xa - 0.01, -1), 0, xb + 0.01, 1), 1, ya - 0.01, -1), 1, yb + 0.01, 1);
-        for (const [A, B, C] of fan(Q)) sample(A, B, C, SAMPLE, toFine, !T.edges, toInside);
+        for (const [A, B, C] of fan(Q)) sample(A, B, C, SAMPLE, toFine, !T.edges || T.under, T.under ? toUnder : T.check ? toCheck : toInside);
         if (++n % 64 === 0) yield;
       }
+      // (a floor laid as one is a wall too only where it is more than a step over what is under it: one steps onto it)
+      for (let i = 0; i < unders.length; i += 4) {
+        const x = unders[i], y = unders[i + 1], z = unders[i + 2], over = unders[i + 3] ? STEP + 0.1 : 0, g = ref(x, y);
+        let low = z > g + over && z < g + HEAD + 0.1;
+        if (!low) {
+          const c = Math.floor((x - x0) / FINE) - cA, r = Math.floor((y1 - y) / FINE) - rA;
+          if (c < 0 || r < 0 || c >= W || r >= W) continue;
+          const q = r * W + c, b = q * IV;
+          for (let j = 0; j < cnt[q] && !low; j++) low = hi[b + j] < z - Math.max(GAP, over) && hi[b + j] > z - HEAD - 0.1;
+        }
+        if (low) toFine(x, y, z);
+      }
+      unders.length = 0;
       // each cell's intervals in order of height, any that came to touch joined
       for (let q = 0; q < W * W; q++) {
         const m = cnt[q], b = q * IV;
@@ -944,7 +1029,12 @@ window.OENav = (function () {
       // and not the street's ground, which the terrain carries over the channel (raised to its banks)
       const pr = inland && inland.promenade ? inland.promenade(x, y) : null;
       if (pr) take(pr.z, 'promenade');
-      else if (!offGround(x, y)) { take(terrain(x, y), 'ground'); const u = under(x, y); if (u !== null) take(u, 'ground'); }
+      else if (!offGround(x, y)) {
+        const t = terrain(x, y), pv = paving.size ? paving.get(paveKey(x, y)) : undefined;
+        take(t, 'ground');
+        if (pv !== undefined && pv > t && pv < t + 1.5) take(pv, 'ground'); // (paving on the ground, not on a roof)
+        const u = under(x, y); if (u !== null) take(u, 'ground');
+      }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
@@ -969,6 +1059,26 @@ window.OENav = (function () {
       if (f.kind === 'promenade' && f.z < z - STEP) return { ok: false, why: 'wall' }; // a promenade's railings: over its walls, beside its steps
       if (OP && f.kind === 'ground') { const o = OP.at(G, x, y); if (o && OP.blocked(o, x, y)) return { ok: false, why: 'wall' }; } // (a building there, or the far land's edge)
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind), f.kind === 'promenade'))) return { ok: false, why: 'wall' };
+      // into the body of a strip from beside it (off the strip): its slab, from its surface down its thickness, between
+      // knee and head (the 2 m cells' slabs top out at a steep strip's lowest point, so that one climbs it: SHIBUYA
+      // SKY's tiers, two metres up in two, were walked into from the deck at their side, the tiers to the shoulder)
+      // ... and so for a deck's (decks.js: a bridge's approach coming down to the ground, its underside a metre up
+      // where walkers went in under it to the chest)
+      // (a strip's walker passes under no strip but its own: a flight comes up through the deck it climbs to; a deck
+      // over a strip, Fushimi's footbridge under the railway's, walls it all the same)
+      const onStrip = !(!f.kind || f.kind === 'ground' || f.kind === 'roof' || f.kind === 'landmark' || f.kind === 'pier' || f.kind === 'deck' || f.kind === 'promenade');
+      if (!onStrip) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h > f.z + KNEE && h - (s.thickness || 3) < f.z + HEAD) return { ok: false, why: 'wall' }; }
+      let low = false, inside = f.kind !== 'deck', edge = false;
+      decksAt(x, y, (h, d) => {
+        if (h > f.z + KNEE && h - (d.th || 1) < f.z + HEAD) low = true;
+        // on a deck: not in its parapet (decks.js: a wall PARAPET_W wide inside each edge), unless another deck at that
+        // level carries on past it (a dual carriageway's two lines, whose parapets are not drawn where they meet)
+        if (f.kind === 'deck' && Math.abs(h - f.z) < 0.6) {
+          const ex = (d.bx - d.ax) / d.L, ey = (d.by - d.ay) / d.L, v = Math.abs(-(x - d.ax) * ey + (y - d.ay) * ex);
+          if (v <= d.hw - (d.par || 0) - 0.1) inside = true; else if (d.par) edge = true;
+        }
+      });
+      if (low || (edge && !inside)) return { ok: false, why: 'wall' };
       if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD) && triHit(x, y, R, f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cell, and then its triangles, withoutFine)
       return { ok: true, z: f.z, kind: f.kind };
     }

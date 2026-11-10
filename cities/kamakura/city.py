@@ -58,7 +58,8 @@ MATERIALS = {
     "km_paint": {"color": "#e9e6dc", "roughness": 0.8, "metalness": 0.0, "solid": False, "street_lit": True},
     "km_deck": {"color": "#8f8c84", "roughness": 0.85, "metalness": 0.0, "solid": False, "street_lit": True},
     "km_concrete": {"color": "#a8a59c", "roughness": 0.9, "metalness": 0.0},
-    "km_concrete_soft": {"color": "#a8a59c", "roughness": 0.9, "metalness": 0.0, "solid": False},
+    # (walked on as laid, the revetment's slope and the beach steps: nav.js paving, not the ground under them)
+    "km_concrete_soft": {"color": "#a8a59c", "roughness": 0.9, "metalness": 0.0, "solid": False, "pave": True},
     "km_rail": {"color": "#c9ccce", "roughness": 0.4, "metalness": 0.7, "solid": False},
     "km_orange": {"color": "#e8742a", "roughness": 0.6, "metalness": 0.1, "solid": False},
     "km_mirror": {"color": "#c8d4dc", "roughness": 0.08, "metalness": 1.0, "solid": False},
