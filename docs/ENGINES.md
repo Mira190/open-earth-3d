@@ -33,13 +33,15 @@ permissive licences can be used or ported with attribution:
 | Rapier | Apache-2.0 | Rigid bodies, a kinematic character controller |
 | Yuka | MIT | Steering, state machines and goal-driven agents for the web |
 
-**No build step.** The viewer is classic `<script>` tags with three.js r128 from a
-CDN. A library has to load from a CDN at a pinned version, either as a classic
-script or through `import()` of an ES module. WebAssembly physics costs megabytes:
-Rapier is about 4.3 MB with its WASM inlined, Jolt about 3 MB, and Recast about
-1 MB. They should load only when a feature needs them. three-mesh-bvh, the usual
-choice for capsule-vs-mesh collision in three.js, needs three r159 or later since
-0.8.1. The last release whose declared range includes r128 is 0.5.24.
+**No build step.** The pages are classic `<script>` tags; three.js r186 and its
+addons are vendored (`web/vendor/three/`) and load as ES modules through an import
+map in `web/index.html`, which sets `window.THREE` for the classic scripts (the
+`three-ready` event). A library has to load the same way, at a pinned version,
+either as a classic script or through `import()` of an ES module. WebAssembly
+physics costs megabytes: Rapier is about 4.3 MB with its WASM inlined, Jolt about
+3 MB, and Recast about 1 MB. They should load only when a feature needs them.
+three-mesh-bvh, the usual choice for capsule-vs-mesh collision in three.js, is
+vendored beside it (`web/vendor/three-mesh-bvh/`).
 
 **Everything stays testable.** The game runs headless at a fixed 30 Hz through
 `window.__game.advance(seconds, keys)`. Every system below has to work under that
@@ -216,8 +218,7 @@ target, which is a small IK.
 
 **Bring across, in this order:**
 1. **A real speed blend:** walk and run weighted together between 1.5 and 3 m/s,
-   instead of a switch at 2.1 m/s. `AnimationAction.setEffectiveWeight` does it in
-   r128.
+   instead of a switch at 2.1 m/s. `AnimationAction.setEffectiveWeight` does it.
 2. **Foot IK on steps.** The Opera House steps and the bridge approach are strips
    with a known height profile, so the height under each foot is one
    `stripHeight` call. Two-bone IK on the legs keeps feet on the risers.
@@ -468,14 +469,12 @@ now: cars are kinematic on lanes and people are capsules. If driving, ragdolls o
 loose props come later, load Jolt (MIT, `CharacterVirtual`, vehicles) lazily for
 that mode only.
 
-**Three.js** r128 is from 2021. Moving to a current release brings:
-- three-mesh-bvh;
-- cascaded shadow maps;
-- the WebGPU renderer.
-
-It also means importing the examples as ES modules through an import map. That
-needs no build step, but every `THREE.*` example global changes. This is worth
-doing as one dedicated change, not mixed with features.
+**Three.js** is r186, vendored, with its examples imported as ES modules through
+an import map (no build step). That move brought three-mesh-bvh, the reversed float
+depth buffer, `BatchedMesh` and the WebGPU renderer (which the reef and alpine sites
+draw with; the cities and their games draw with `WebGLRenderer` and a post stack of
+their own, `web/game/atmosphere.js`). Cascaded shadow maps are evaluated in
+[PERFORMANCE.md](PERFORMANCE.md).
 
 **Tests.** `GAME.md` describes Playwright scripts that play the whole survey, but
 they aren't in the repository. Commit them, with the collision checks from

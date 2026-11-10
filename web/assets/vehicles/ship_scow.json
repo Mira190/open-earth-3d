@@ -1,0 +1,301 @@
+{
+ "name": "PIOPIOTAHI",
+ "port": "INVERCARGILL",
+ "note": "A fictional 40 m steel motor vessel in the style of a New Zealand trading scow, true to the type of the overnight cruise vessels that work Milford Sound; built by blender/build_ship.py",
+ "frame": "glTF: +z forward (the bow), +y up, +x to port; metres; origin on the centreline at the waterline, amidships of the hull",
+ "length_overall_m": 40.59,
+ "length_on_deck_m": 37.95,
+ "length_waterline_m": 36.0,
+ "beam_m": 9.96,
+ "draft_m": 2.6,
+ "freeboard_m": 2.1,
+ "bulwark_m": 1.0,
+ "air_draft_m": 22.05,
+ "main_deck_m": 2.1,
+ "upper_deck_m": 4.71,
+ "wheelhouse_roof_m": 7.4,
+ "decks": [
+  {
+   "name": "main deck, port side",
+   "x0": 3.5999999999999996,
+   "x1": 4.7,
+   "z0": -13.5,
+   "z1": 6.2,
+   "y": 2.1
+  },
+  {
+   "name": "main deck, starboard side",
+   "x0": -4.7,
+   "x1": -3.5999999999999996,
+   "z0": -13.5,
+   "z1": 6.2,
+   "y": 2.1
+  },
+  {
+   "name": "after deck",
+   "x0": -3.3,
+   "x1": 3.3,
+   "z0": -17.6,
+   "z1": -13.9,
+   "y": 2.26
+  },
+  {
+   "name": "foredeck",
+   "x0": -1.3,
+   "x1": 1.3,
+   "z0": 6.6,
+   "z1": 8.3,
+   "y": 2.12,
+   "note": "the deck rises forward with the sheer: y = 2.1 + 1.25 * ((z - 6) / 12)^2 for z > 6; clear ground runs on the centreline from the saloon's front to the hatch (z 8.4), then round it to the windlass at z 13.9"
+  },
+  {
+   "name": "upper deck, aft (open, benches at z -14.6..-8.9)",
+   "x0": -4.45,
+   "x1": 4.45,
+   "z0": -15.2,
+   "z1": -8.1,
+   "y": 4.722
+  },
+  {
+   "name": "upper deck, port side",
+   "x0": 3.2,
+   "x1": 4.45,
+   "z0": -8.1,
+   "z1": 5.6,
+   "y": 4.722
+  },
+  {
+   "name": "upper deck, starboard side",
+   "x0": -4.45,
+   "x1": -3.2,
+   "z0": -8.1,
+   "z1": 5.6,
+   "y": 4.722
+  }
+ ],
+ "helm": [
+  0.0,
+  4.71,
+  4.3
+ ],
+ "eye_height_m": 1.65,
+ "passenger_spots": [
+  [
+   4.05,
+   4.722,
+   -9.4
+  ],
+  [
+   -4.05,
+   4.722,
+   -9.4
+  ],
+  [
+   4.2,
+   4.722,
+   4.4
+  ],
+  [
+   0.0,
+   2.117,
+   7.4
+  ],
+  [
+   -1.5,
+   2.333,
+   -16.9
+  ]
+ ],
+ "bow": [
+  0.0,
+  0.0,
+  18.0
+ ],
+ "stern": [
+  0.0,
+  0.0,
+  -18.0
+ ],
+ "waterline": [
+  [
+   18.0,
+   0.02
+  ],
+  [
+   16.5,
+   1.62
+  ],
+  [
+   15.0,
+   2.48
+  ],
+  [
+   13.5,
+   3.14
+  ],
+  [
+   12.0,
+   3.68
+  ],
+  [
+   10.5,
+   4.12
+  ],
+  [
+   9.0,
+   4.46
+  ],
+  [
+   7.5,
+   4.71
+  ],
+  [
+   6.0,
+   4.8
+  ],
+  [
+   4.5,
+   4.8
+  ],
+  [
+   3.0,
+   4.8
+  ],
+  [
+   1.5,
+   4.8
+  ],
+  [
+   0.0,
+   4.8
+  ],
+  [
+   -1.5,
+   4.8
+  ],
+  [
+   -3.0,
+   4.8
+  ],
+  [
+   -4.5,
+   4.8
+  ],
+  [
+   -6.0,
+   4.8
+  ],
+  [
+   -7.5,
+   4.8
+  ],
+  [
+   -9.0,
+   4.8
+  ],
+  [
+   -10.5,
+   4.8
+  ],
+  [
+   -12.0,
+   4.77
+  ],
+  [
+   -13.5,
+   4.64
+  ],
+  [
+   -15.0,
+   4.41
+  ],
+  [
+   -16.5,
+   4.08
+  ],
+  [
+   -18.0,
+   3.65
+  ]
+ ],
+ "waterline_note": "the port half of the waterline as [z (forward), x (half-breadth)] from the bow to the stern",
+ "masts": {
+  "fore": [
+   0.0,
+   19.6,
+   11.099
+  ],
+  "main": [
+   0.0,
+   22.0,
+   -0.756
+  ],
+  "mizzen": [
+   0.0,
+   17.6,
+   -11.876
+  ]
+ },
+ "exhausts": {
+  "Stack_Port": [
+   1.75,
+   9.06,
+   -6.8
+  ],
+  "Stack_Starboard": [
+   -1.75,
+   9.06,
+   -6.8
+  ]
+ },
+ "nodes": {
+  "radar": "the scanner; spins about its own +y",
+  "flag": "the ensign, 16 x 8 quads, origin at the hoist; the fly trails aft (-z)",
+  "light_port": "red",
+  "light_starboard": "green",
+  "light_mast": "white masthead light on the foremast",
+  "light_stern": "white",
+  "Body": "hull, decks, houses, spars (ambient occlusion baked)",
+  "Trim_Rig": "wires, rails, small fittings",
+  "Trim_Name": "lettering",
+  "Helm / Bow / Stern / Stack_Port / Stack_Starboard": "empties"
+ },
+ "materials": {
+  "glass": "Window",
+  "cabin_lights": "Light_Cabin (emissive ceiling strips: scale its emissive to light the windows at night)",
+  "lamps": [
+   "Light_Red",
+   "Light_Green",
+   "Light_White"
+  ],
+  "flag": "Flag (textured, double-sided)"
+ },
+ "lights": {
+  "light_port": [
+   4.69,
+   6.13,
+   5.2
+  ],
+  "light_starboard": [
+   -4.69,
+   6.13,
+   5.2
+  ],
+  "light_mast": [
+   0.0,
+   14.5,
+   11.607
+  ],
+  "light_stern": [
+   0.0,
+   3.57,
+   -18.809
+  ]
+ },
+ "triangles": 64838,
+ "far_triangles": 2362,
+ "far_file": "ship_scow_far.glb",
+ "file": "ship_scow.glb",
+ "bytes": 1556388,
+ "far_bytes": 46384
+}

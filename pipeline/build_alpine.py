@@ -57,6 +57,8 @@ def mosaic(paths, dst_tf, shape, crs, resampling, bands=1, dtype=np.float32):
     """Reproject each NZTM sheet into the local frame and keep the first valid value per cell."""
     out = np.full((bands, *shape), np.nan, np.float32)
     for p in paths:
+        if not os.path.exists(p):      # a sheet the LiDAR composite does not hold (fetch_linz.py skips it)
+            continue
         with rasterio.open(p) as s:
             for b in range(bands):
                 tmp = np.full(shape, np.nan, np.float32)
@@ -166,45 +168,74 @@ def main():
     named_water = [(n, g) for n, c, s, g in overture(city, "water", "name IS NOT NULL")
                    if g.geom_type in ("Polygon", "MultiPolygon")]
     wmask = burn(water_polys, tf, (H, W)).astype(bool)
-    hole = ~np.isfinite(z)
-    print(f"LiDAR gaps: {hole.mean() * 100:.1f}% of the frame")
+    main_cfg = next(l for l in cfg["lakes"] if l.get("main"))
+    SEA = bool(main_cfg.get("sea"))          # a fiord or a sound: the main water is the sea itself
+    # a lake is a gap in the LiDAR; the sea is where neither the LiDAR nor the contour DEM has a height (the LiDAR
+    # reaches only part of a fiord's frame, so its gaps alone say nothing there)
+    hole = ~np.isfinite(z) & ~np.isfinite(z8) if SEA else ~np.isfinite(z)
+    print(f"{'no height in either DEM (the sea)' if SEA else 'LiDAR gaps'}: {hole.mean() * 100:.1f}% of the frame")
 
     # ---- lakes: each OpenStreetMap lake outline, with the LiDAR gaps it holds. The LiDAR is flattened to the
     # water's surface near the shores and blank further out; the surface is the median of what it has inside.
     lab, n = ndimage.label(hole)
-    main_cfg = next(l for l in cfg["lakes"] if l.get("main"))
     seed = shapely.Point(*city.fwd.transform(*main_cfg["seed"]))
     cands = [(nm, g) for nm, c, s, g in overture(city, "water", "class IN ('lake','water','reservoir')")
              if g.geom_type in ("Polygon", "MultiPolygon") and g.area >= 20000]
-    if not any(g.contains(seed) for nm, g in cands):
+    sea_m = None
+    if SEA:
+        # the sea: the cells with no height, and the cells OpenStreetMap's sea holds that the DEMs put within a metre
+        # of sea level (the LiDAR's flattened water, a beach at low tide), joined to the seed. The coast is the DEMs',
+        # not the mapped outline's: a mapped coast a few cells out would cut the foot off a cliff
+        zc = np.where(np.isfinite(z), z, z8)
+        ocean = [g for nm, c, s, g in overture(city, "water", "class IN ('ocean','sea','bay','strait','fjord')")
+                 if g.geom_type in ("Polygon", "MultiPolygon")]
+        low = burn(ocean, tf, (H, W)).astype(bool) & (np.nan_to_num(zc, nan=0.0) < main_cfg.get("shore_m", 1.0))
+        slab, _ = ndimage.label(hole | low)
+        sj, si = int((city.y1 - seed.y) / cell), int((seed.x - city.x0) / cell)
+        if not slab[sj, si]:
+            raise SystemExit("the sea's seed is on land")
+        sea_m = slab == slab[sj, si]
+        cands.insert(0, (main_cfg.get("name"), None))
+    elif not any(g.contains(seed) for nm, g in cands):
         raise SystemExit("no OpenStreetMap lake holds the main lake's seed")
-    cands.sort(key=lambda t: (not t[1].contains(seed), -t[1].area))
+    else:
+        cands.sort(key=lambda t: (not t[1].contains(seed), -t[1].area))
     lakes, lakeid = [], np.zeros((H, W), np.uint8)
     bed = np.full((H, W), np.nan, np.float32)
     zf = z.copy()
     for li, (name, g) in enumerate(cands[:250]):
-        m = burn([g], tf, (H, W)).astype(bool) & (lakeid == 0)
-        if m.sum() < 8:
-            continue
-        # the LiDAR gaps that lie mostly inside the outline belong to the lake
-        touched = np.unique(lab[m & hole])
-        for k in touched[touched > 0]:
-            comp = lab == k
-            if (comp & m).sum() >= 0.3 * comp.sum():
-                m |= comp
-        inner = ndimage.binary_erosion(m, iterations=1) & np.isfinite(z)
-        vals = z[inner] if inner.sum() >= 20 else z[ndimage.binary_dilation(m, iterations=2) & ~m & np.isfinite(z)]
-        if vals.size == 0:
-            continue
-        level = float(np.median(vals))
         main = len(lakes) == 0
         conf = main_cfg if main else next((l for l in cfg["lakes"] if l.get("name") == name), {})
+        if g is None:                       # the sea
+            m, level = sea_m, float(main_cfg.get("level_nzvd", 0.0))
+        else:
+            m = burn([g], tf, (H, W)).astype(bool) & (lakeid == 0)
+            if m.sum() < 8:
+                continue
+            # the LiDAR gaps that lie mostly inside the outline belong to the lake
+            touched = np.unique(lab[m & hole]) if not SEA else []
+            for k in [k for k in touched if k > 0]:
+                comp = lab == k
+                if (comp & m).sum() >= 0.3 * comp.sum():
+                    m |= comp
+            zl = np.where(np.isfinite(z), z, z8) if SEA else z
+            inner = ndimage.binary_erosion(m, iterations=1) & np.isfinite(zl)
+            vals = zl[inner] if inner.sum() >= 20 else zl[ndimage.binary_dilation(m, iterations=2) & ~m & np.isfinite(zl)]
+            if vals.size == 0:
+                continue
+            level = float(np.median(vals))
         area = float(m.sum() * cell * cell)
         maxd = conf.get("max_depth_m") or max(3.0, min(60.0, 0.04 * math.sqrt(area)))
-        bed[m] = lake_bed(m, level, maxd, cell)[m]
+        if g is None:
+            # a fiord's bed: a glacial trough, deepening from the walls to the published depth over `trough_m`
+            # (about half the fiord's width), and held there out to sea
+            f = np.clip(ndimage.distance_transform_edt(m) * cell / conf.get("trough_m", 700.0), 0, 1)
+            bed[m] = (level - maxd * (1 - (1 - f) ** 2.2))[m]
+        else:
+            bed[m] = lake_bed(m, level, maxd, cell)[m]
         lakeid[m] = len(lakes) + 1
         js, is_ = np.nonzero(m)
-        c = g.representative_point()
+        c = g.representative_point() if g is not None else seed
         lakes.append({"id": conf.get("id") or (name or f"lake-{li}").lower().replace(" ", "-"), "name": name or conf.get("name"),
                       "main": main, "level_nzvd": round(level, 2), "area_km2": round(area / 1e6, 3), "max_depth_m": round(float(maxd), 1),
                       "depth_src": conf.get("depth_src", "synthesised from the lake's area (no open survey)"),
@@ -250,6 +281,34 @@ def main():
     hg = up(h, 1)
     sl = slope_deg(hg, px)
 
+    # ---- the mosaic's own shadows (imagery.deshadow): under a fiord's walls the photograph is in blue shade for good,
+    # and the viewer lights the land itself, so shade printed into the colour is a second shadow that never moves.
+    # A shaded pixel (blue over green, dark, not water) takes the sunlit colour of what stands there (bush below the
+    # bush line, scrub above it, rock where it is steep or high), with the photograph's own light and dark kept as texture
+    shade_g = None
+    if I.get("deshadow"):
+        D = I["deshadow"] if isinstance(I["deshadow"], dict) else {}
+        bush = D.get("bush_line_m", 950)
+        f = rgb.astype(np.float32) / 255.0
+        l0 = (f ** 2.2) @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+        elev0 = hg + datum
+        shade = (f[..., 2] > f[..., 1] * D.get("blue_over_green", 0.96)) & (l0 < D.get("max_lum", 0.30)) & ~lake_g
+        shade = ndimage.binary_opening(shade, iterations=1)
+        sunlit_bush = (f[..., 1] > f[..., 0] * 1.08) & (f[..., 1] > f[..., 2] * 1.15) & (elev0 < bush) & ~shade & ~lake_g & (l0 > 0.012) & (l0 < 0.12)
+        ref_bush = np.median(f[sunlit_bush], axis=0) if sunlit_bush.sum() > 500 else np.array([0.20, 0.30, 0.14], np.float32)
+        ref_scrub = ref_bush * np.array([1.35, 1.2, 1.0], np.float32)
+        ref_rock = np.array(D.get("rock_rgb", [0.47, 0.45, 0.42]), np.float32)
+        ref_snow = np.array([0.90, 0.92, 0.95], np.float32)
+        tex = np.clip(l0 / np.maximum(ndimage.gaussian_filter(l0, 8), 1e-4), 0.55, 1.6) ** 0.6
+        rocky = (sl > D.get("rock_slope_deg", 60)) | (elev0 > bush + 350)
+        kind = np.where(rocky, 4, np.where(elev0 < bush, 10, 9)).astype(np.uint8)
+        kind[shade & (elev0 > bush + 250) & (l0 > D.get("snow_lum", 0.13))] = 2      # snow in shade: bright for a shadow
+        new = np.where((kind == 4)[..., None], ref_rock, np.where((kind == 10)[..., None], ref_bush, np.where((kind == 2)[..., None], ref_snow, ref_scrub))) * tex[..., None]
+        k = ndimage.gaussian_filter(shade.astype(np.float32), 1.2)[..., None]
+        rgb = np.clip((f * (1 - k) + new * k) * 255, 0, 255).astype(np.uint8)
+        shade_g, shade_kind = shade, kind
+        print(f"deshadow: {shade.mean() * 100:.1f}% of the ground was in the mosaic's shade; sunlit bush {np.round(ref_bush * 255).astype(int).tolist()}")
+
     # ---- land cover
     lin = (rgb.astype(np.float32) / 255.0) ** 2.2
     lum = lin @ np.array([0.2126, 0.7152, 0.0722], np.float32)
@@ -294,6 +353,15 @@ def main():
     cover[burn(road_geoms, tfg, (GH, GW), all_touched=True).astype(bool)] = 13
     blds = [gm for n, c, s, gm in overture(city, "building")]
     cover[burn(blds, tfg, (GH, GW), all_touched=True).astype(bool)] = 14
+    if shade_g is not None:
+        # what was in shade is classed by where it stands (its colour said nothing), and green ground under the
+        # bush line is bush whether OpenStreetMap has drawn the wood or not
+        keep = np.isin(cover, (1, 13, 14))
+        bl = I["deshadow"].get("bush_line_m", 950) if isinstance(I["deshadow"], dict) else 950
+        # under the bush line a wall is bare only where it stands past 60 degrees: beech and rata hold on anything less
+        cover[(cover == 4) & (elev < bl) & (sl < 60) & ~shade_g] = 10
+        cover[shade_g & ~keep] = shade_kind[shade_g & ~keep]
+        cover[green & (elev < I["deshadow"].get("bush_line_m", 950) if isinstance(I["deshadow"], dict) else green & (elev < 950)) & ~keep & (sl < 50) & ~snow] = 10
     cover = mode_filter(cover, 3, keep=(1, 13, 14))
     cover[lake_g] = 0
     shore = ndimage.binary_dilation(lake_g, iterations=3) & ~lake_g & (cover != 13) & (cover != 14)
@@ -364,6 +432,7 @@ def main():
         "cover": {"file": "cover.png", "w": int(cov2.shape[1]), "h": int(cov2.shape[0]), "px_m": cpx, "classes": {str(k): v for k, v in COVER.items()}},
         "lakes": lakes, "lake_ids": "lakes.png", "optics": optics, "roads": "roads.json", "structures": "structures.json",
         "start": cfg.get("start", {}),
+        **({"biome": cfg["biome"]} if cfg.get("biome") else {}),
         "sources": [T["attribution"], I["attribution"], "OpenStreetMap contributors via Overture Maps (ODbL): glaciers, scree, scrub, woods, water, roads, buildings, places"]
                    + [l["depth_src"] for l in lakes if l["main"]],
     }
