@@ -59,11 +59,73 @@ Enoshima, Hase and the Great Buddha, and Tsurugaoka Hachimangu can follow as map
 - The hill road down to the crossing (日坂, Nissaka) falls 11% in the model, from 15.1 m to 10.2 m at
   Route 134 over 57 m.
 
+## The Enoden
+
+`game.rail.train` runs the Enoshima Electric Railway on Overture's line (`pipeline/game_rail.py`,
+`web/game/rail.js`; how it works is in [GAME.md](../GAME.md)): 4.4 km of single track in the frame with the
+passing loops at Enoshima Station, the Minegahara signal stop and Inamuragasaki Station, where the trains of
+the two directions meet as on the real line; five stations; 444 m in the street between Enoshima and
+Koshigoe; 12 gated crossings and 7 on paths. A train each way every 12 minutes (14 on the real timetable
+since March 2023), 45 km/h at most and 15 km/h in the street (the speed marker at Koshigoe). The trains are
+the 300 series' set 305, the 1000 series and the second 500 series, two-car articulated sets coupled in twos
+(`blender/build_trains.py`; sources there and in GAME.md).
+
+Sources: the Japanese Wikipedia articles 江ノ島電鉄線, 江ノ島電鉄300形電車, 1000形, 500形 (2代), 鎌倉高校前駅,
+鎌倉高校前1号踏切, 踏切警報機 and 遮断機 (CC BY-SA, facts only); the Enoden's published timetables; MLIT's
+interpretation standard for railway technical regulations, article 62 (the crossings' alarm and barrier
+times, lamp and arm requirements); JIS E 3701 and makers' catalogues for the cross's boards. Photographs on
+Wikimedia Commons were looked at for the faces, liveries and the crossing's furniture; none is reproduced.
+
+## The place round the crossing (`cities/kamakura/city.py`)
+
+- **The set.** Within 330 m of the crossing every road OpenStreetMap maps is laid as paving on its centre
+  line: Route 134 (two lanes of 3.5 m and their shoulders, 9.6 m), the hill road 日坂 (6.2 m), the lanes off
+  them, and the pavement between Route 134 and the track. The 10 m and 5 m terrain grids cannot hold a road
+  6 m wide on a hillside, so the ground under each road, and a cell either side, is set to the laser
+  terrain's height on its centre line, smoothed over 6 m (`adjust_terrain`, `set.json`), and the paving is
+  draped on it.
+- **At the crossing**: the deck between the rails, the stop lines 4.3 m either side, the zebra on the uphill
+  side, the convex mirror at the east kerb, a warning sign up the hill. The gates, lamps and bell are the
+  railway's (`rail.js`).
+- **The sea wall** along Route 134's sea side (0.9 m, with a rail) and the concrete revetment below it down
+  to the sand; the steps to the beach where OpenStreetMap maps them (way 390559761).
+- **The beaches** are not in the map's land cover. They are outlined from the laser terrain (the land under
+  4.2 m within 110 m of the sea, less Koshigoe harbour's quays; `water.sand`), so the shore is sand with
+  surf, not a quay wall.
+- **Sheds over the track** (14 footprints PLATEAU maps within 1.9 m of the line: platform shelters) are
+  left out; the platforms and their shelters are the railway's.
+- **Black kites** (tobi) wheel over the coast (`game.flocks`, `kind: "black_kite"`; Kamakura City warns
+  beachgoers about them).
+
+## The far view
+
+- **Enoshima** (700 m past the frame): its relief from GSI's laser terrain every 10 m
+  (`enoshima_dem.json`), the Sea Candle (59.8 m, its top 119.6 m above the sea: the operator's figures; on
+  OpenStreetMap's outline, way 1311985404), the road bridge and the footbridge from Katase and the
+  harbour's breakwater (OpenStreetMap, `enoshima_osm.json`).
+- **Mount Fuji**: the far land reaches 80 km here (`far.half_m`), on Copernicus GLO-30, and is lowered by
+  the Earth's curve less refraction (`far.curvature`). The summit stands at bearing 275.2° and 70.7 km from
+  the crossing, 2.73° over the horizon (3,776 m less 335 m of curve; the true figure is 2.8°: the 156 m
+  cells round the summit off). It shows in clear air (`far.clarity` 1.8, a chosen value).
+
+## The ground
+
+The aerial photograph is softened on open ground (`imagery.soften`): draped on these hillsides, its tree
+crowns, shadows and leaning roofs read as dirt. See [ADDING_A_CITY.md](../ADDING_A_CITY.md), `imagery`.
+
 ## Approximate
 
 - Roofs outside the LOD2 area are inferred, not measured.
 - The sea's waves and colours are chosen values (`water.waves`, `colour`): a south-south-westerly sea
   breeze and a southerly swell.
+- The set's widths (Route 134 9.6 m, the hill road 6.2 m) are a class's, not surveyed; Route 134's centre line
+  is drawn dashed white (the real one is solid). The mirror's and the sign's places are from photographs.
+- A path's crossing has a post and no arm; the Enoden's official crossings all have both, and the data does
+  not tell them from a garden gate's.
+- Enoshima's surface is three plain materials by slope and height (wood, rock, town); its buildings are not
+  modelled. The Sea Candle is a lathed shape of its outline, not its lattice.
+- Fuji has no snow: the land cover is a summer's. The seasons belong to the weather work (#356).
+- The cast: Rocketbox has no school uniform; Mio wears a white shirt and dark trousers.
 - Tree species are not mapped; the mix is a guess at the coast's planting (black pines on the capes and
   along Route 134, evergreen oaks behind).
 - The helicopter's pad on Kamakura High School's ground is the game's, not a real pad.

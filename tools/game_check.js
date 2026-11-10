@@ -1,6 +1,6 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), into the rooms it
-// opens and out again (tools/interior_step.js), travel
+// opens and out again (tools/interior_step.js), take a seat and watch what plays before it (tools/seat_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
 // in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it (every
@@ -30,6 +30,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
+const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
 const npcNight = require('./npc_night');
 (async () => {
@@ -762,6 +763,17 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
+  // the seats a city offers (game.json "seats": the Opera House's stalls, its foyers' chairs, a table at Bennelong):
+  // E takes each kind and you look out from it through your own eyes, E stands you up again; before a stage (game.json
+  // "shows") the performance begins, the house lights go down, the singer sings and the first line's surtitle shows
+  // (tools/seat_step.js). (a city with none skips it whole)
+  if (await p.evaluate(() => (window.__game.G.seats || []).length > 0)) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
+    const seats = await require('./seat_step')(p, { outDir, prefix: `${city}-` });
+    for (const r of seats) check(r.ok, `takes a seat: ${r.name}${r.ok ? ` (eyes ${r.eye.toFixed(2)} m over it${r.show ? `; the show runs to beat ${r.beat.toFixed(1)}, "${r.title}"` : ''})` : `: ${r.why}`}`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { mode: 'foot', x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
+  }
+
   // fishing (game.json "fishing", docs/FISHING.md): nothing of it loaded until you are near a spot; then at each
   // spot E takes you to the edge, a cast lands on the water, a bite comes, an easy fish is landed with the one
   // button and logged, five draw calls at most with the line out, and nothing left drawn once you have walked away
@@ -1155,8 +1167,9 @@ const npcNight = require('./npc_night');
     out.here = !!(el && el.querySelector('.mt-you')) && !!(el && el.querySelector('.mt-pick [data-close]'));
     const other = el && [...el.querySelectorAll('.mt-chip')].find(b => !b.querySelector('i'));
     if (other) other.click();
+    out.single = !other; // (a city whose first map this is: its other districts are still to build, greyed)
     const prim = el && el.querySelector('.mt-pick .primary');
-    out.travel = !!prim && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    out.travel = !!prim && !!other && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
     key('Escape', 'Escape');
     out.closed = !document.querySelector('.ts-mfull') && !OEMetro.isOpen() && document.getElementById('g-menu').hidden;
     btn.click(); out.byButton = OEMetro.isOpen(); OEMetro.close();
@@ -1165,7 +1178,7 @@ const npcNight = require('./npc_night');
     out.byMenu = OEMetro.isOpen() && document.getElementById('g-menu').hidden; OEMetro.close();
     return out;
   });
-  if (!mt.none) check(mt.open && mt.here && mt.travel && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, Esc closes it (${JSON.stringify(mt)})`);
+  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, Esc closes it (${JSON.stringify(mt)})`);
 
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
@@ -1990,6 +2003,11 @@ const npcNight = require('./npc_night');
       check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''})`);
     }
   }
+
+  // a railway (rail.js "train": the Enoden at Kamakura): its timetable's meets, a ride from a platform to the next
+  // station, and a level crossing closing for a train with the crowd, the traffic and you held (tools/train_step.js)
+  const train = await p.evaluate(trainStep);
+  if (!train.none) trainChecks(train, check);
 
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it. Last of the walks and rides: each hop lays the traffic and the crowd

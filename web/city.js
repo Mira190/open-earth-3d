@@ -95,6 +95,8 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ the shared world (world.js)
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
+  // (a far land past the default far plane, Kamakura's out to Mount Fuji: the camera takes it in)
+  if ((Wd.world.userData.farHalf || 0) * 1.45 > camera.far) { camera.far = Wd.world.userData.farHalf * 1.45; camera.updateProjectionMatrix(); }
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
   Wd.envEvery = 250; // the sky's light is rebuilt at most four times a second while the sun eases between tour stops
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one

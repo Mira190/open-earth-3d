@@ -110,6 +110,11 @@ window.OEDay = (function () {
     };
 
     // ---- the card: a new day (the date, the weather, what is on), or a new part of it
+    // What the player last saw a card for, kept for the tab: a hop to another map of the city reloads the page, and
+    // its first look must not announce the same day and hour again, only a day or an hour that is new.
+    const SEEN = 'oe3d-daycard';
+    let seen = null;
+    try { seen = JSON.parse(sessionStorage.getItem(SEEN)); } catch (e) { /* storage blocked */ }
     let last = { date: '', slot: '' }, shown = { n: 0, kind: '', date: '', slot: '' }, cardEl = null, cardT = 0, pending = false;
     function veil(fn) { // time passing: the picture dips to dark and comes back on the new hour
       if (ctx.reduced || (ctx.held && ctx.held())) { fn(); return; }
@@ -159,10 +164,11 @@ window.OEDay = (function () {
       pending = false;
       const ci = L.city(), newDay = date !== last.date;
       if (newDay && ci.last !== date) { ci.days++; ci.last = date; L.note(`Day ${ci.days} in ${ctx.cityName}`, 'day'); }
-      const was = last;
+      const was = last, first = !was.date, sameDay = first && seen && seen.date === date;
       last = { date, slot };
+      try { sessionStorage.setItem(SEEN, JSON.stringify(last)); } catch (e) { /* storage blocked */ }
       L.emit('slot', { slot, date, newDay, from: was.slot });
-      card(newDay);
+      if (!(sameDay && seen.slot === slot)) card(newDay && !sameDay); // (the same day, the same hour: nothing new to say)
       if (diary) renderDiary();
     }
 

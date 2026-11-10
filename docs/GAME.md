@@ -744,7 +744,17 @@ pipeline writes. The only city-specific code is landmark geometry in
     chained across the junctions where OpenStreetMap breaks them into through
     routes. A funicular's route runs from its lower end with its profile made
     monotonic (bridging the dips under its viaducts), and the piece left over
-    beside it is its passing loop.
+    beside it is its passing loop. A railway (`rail.train`, `pipeline/game_rail.py`)
+    is the longest through route with the distance `s` measured along it: its
+    passing loops (a second track whose two ends meet it), the stretches where the
+    rails lie in a street (within 2.5 m of a road's centre line and 20° of its
+    direction for 60 m), its stations (the config's, found by name among the mapped
+    stations, each with the side and the ends of its mapped platform), its platforms
+    (walkable strips in `surfaces`) and its level crossings: every point where a road
+    or a path of the game's network crosses the line on the level, as `gated` (a
+    road), `foot` (a path) or `street` (a side street meeting street-running rails).
+    The line's level is the ground's, smoothed, on 16 cm of ballast and held to the
+    road's level at each crossing.
   - **NPCs:** snapped to open ground.
   - **Boardwalks:** walkways at deck height over rocks, water or sand. They
     are mapped lines found by name, or lines given in the local frame, buffered
@@ -785,6 +795,58 @@ pipeline writes. The only city-specific code is landmark geometry in
   they pull away. A funicular's two cars hang on one cable: one climbs while the
   other comes down, and they pass at the loop. You ride it like a ferry, from
   station to station, and the HUD shows your height and the gradient.
+- **A railway** (`rail.train`, the first on a Japanese map: the Enoden at
+  [Kamakura](cities/kamakura.md)). One track, trains both ways, passing in the
+  loops.
+  - **The timetable is a function of the railway's clock.** A run of each
+    direction is integrated once from the speed limits (the line's 45 km/h, 15 km/h
+    in the street, 25 km/h through the points, and each curve's: 0.65 m/s² sideways,
+    which is 15 km/h on the Enoden's 28 m curves) and the stops; every train is
+    that run shifted by the headway, and the two directions' runs are set against
+    each other so that they are in each loop together, each waiting for the other
+    as on the real line. A crossing's alarm, the next arrival at a platform and the
+    trains themselves all follow from the clock. So the clock can be run eight
+    times as fast (waiting on a platform: E, "wait for it"; aboard: F), slowed to a
+    stand (someone or a car on the rails ahead of a train in the street: on a single
+    track, when one train is late they all are) or set (`rail.cue`, for a film or a
+    photo spot's arrival) and no two trains can meet outside a loop.
+    `tools/game_check.js` counts the meets of two headways and where they happen.
+  - **The trains** are two-car articulated sets coupled in twos (`sets`), of the
+    series the city names (`series`). Each body is placed from the set's shared
+    bogie to its own, so a set bends in the middle through a curve. The bodies are
+    `assets/vehicles/trains.glb` (`blender/build_trains.py`, below); until it has
+    loaded, and where it does not, a kit-built body stands in.
+  - **Riding**: on a platform the prompt gives the next train's time and offers to
+    wait for it; with a train in, E boards it. V goes from the chase view to the
+    window seat on the side the city names (`scenic_bearing_deg`: the sea) and to
+    the cab behind the driver; drag to look round. E gets you off at any station
+    onto its platform; at the last station on the map the train puts you off as its
+    doors close, because it runs on past the frame. A quest's `rail` step
+    (`{from, to}`, station ids) is a ride.
+  - **Level crossings.** A gated crossing has, on each approach, a post on the left
+    of the road (Japan keeps left) with the cross (two boards 1.2 × 0.18 m at 75°),
+    two red lamps flashing in turn 50 times a minute, the speaker, and a barrier arm
+    in yellow and black across the road, 0.8 m up when down; a path's crossing has
+    the post alone. The alarm starts 26 s before the train's nose is at the crossing,
+    the arms start down 7 s later and take 6 s (the ministry's standard is 15 s from
+    alarm to arm down and 20 s more to the train; these are the minimums, to keep a
+    game's wait short), and they rise 1.5 s after the tail is clear. The bell is the
+    electronic one: 700 and 750 Hz together, 130 strokes a minute
+    (`web/game/audio.js` `kan`), by the clock, so every crossing strikes together.
+  - **Who waits.** The crowd walks up to 0.7 m short of the gates and waits there
+    (`rail.gateAhead`, the crowd's `gate` hook in `web/game/actors.js`); someone
+    between the gates when the alarm starts walks on out. On foot an arm holds you
+    back, and a train pushes you off the rails as a car does. The traffic is given
+    each body of a train, and each closed crossing as a bar across the road once no
+    car is between its gates (`cars.extra`), so it queues at the gates and behind a
+    train in the street. What the driving code reads directly:
+    `rail.crossings` (`{id, x, y, z, h, half_m, width_m, kind, closed, arm, t}`:
+    `closed` from the first stroke of the bell until the arms are up again),
+    `rail.crossingClosed(x, y, r)` and `rail.trainBoxes()`.
+  - **The line** is drawn from the same data: rails, sleepers and ballast on open
+    track and rails alone in a street, the contact wire 4.9 m over the rails hung
+    from a pole every 36 m on the side away from the platform, and each platform
+    with its end ramps, yellow line and a shelter.
 - **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
   `game.json` "trains" carries (Tokyo's through Yurakucho, `cities/tokyo/rail.py`; Sydney's City
   Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
@@ -796,6 +858,21 @@ pipeline writes. The only city-specific code is landmark geometry in
   - The cars ride on their two bogies along the course and are instanced, one draw call per
     material of each kind of car. They are drawn only between the sheds' mouths at the ends
     (`hide_m`).
+  - The commuter cars (E233 and E235) and Sydney's Waratah are modelled in Blender
+    (`blender/build_railstock.py` -> `web/assets/vehicles/railstock.glb`): a real cross-section
+    with widened sides, windows and doors set back in the skin, a cab face raked back with its
+    black glazed mask wrapped round the corners, headlamp clusters, a snowplough skirt and a
+    tight-lock coupler, bolsterless bogies with coil springs, air springs, motors and brake
+    units, underfloor equipment, the air conditioners and a single-arm pantograph on its
+    insulators. Occlusion is baked into the vertex colours; a decimated copy is drawn beyond
+    60 to 85 m (40 m on the low tier). One model serves every line: the surfaces that take a
+    line's colour (`Door`, `Band`, `Band2`, `Top`, `Face`) are painted from the stock in
+    `STOCK`. Until the file has come, or where it cannot, the cars are box models drawn in code.
+    The high-speed train is still drawn in code.
+  - The windows show the saloon by interior mapping: each pixel of the glass follows the ray
+    from the eye into a box the size of the car's inside and shades the floor, the ceiling
+    and its lamps, the bench seats and far windows, and the adverts over them; dim behind the
+    reflections by day, the carriage's own light after dark. A double-decker has two decks.
   - Sound (`audio.js`): the three nearest trains have a voice each (rumble, rail joints,
     motors, a Shinkansen's air), panned left or right of the camera. Within the station's
     hearing the platform plays its chime, announcement, door chime and departure melody. The
@@ -2134,6 +2211,45 @@ up. After dark its walls, floor and lamps glow warm (floodlit materials), and la
 day too (`glow_day`). The furnishings carry `far` (110 m; 60% of that on a small device, `web/world.js`), so
 a phone draws the room's shell and lit windows from across town and its pews and tables only nearby. An NPC
 with `sit` (`{face: [dx, dy]}`, at `[x, y, z]`) is placed exactly there, seated, facing that way.
+One with `stand` (`{face}`, at `[x, y, z]`) stands exactly there on their feet: behind a bar, on a stage.
+
+A hall on a podium that is itself a building (the Opera House's) gives its floor as a strip too, level with the
+roof it lies on: near a strip on a roof `web/game/nav.js` reads the landmark's walls, doors and furniture into
+its quarter-metre cells from the deck up, and not as 2 m cells from the ground under the building. A room may
+open off another (the stalls off the foyers): `tools/interior_step.js` asks only that you have left the room
+you walked out of.
+
+### Seats and shows
+
+A city can offer seats to take and a performance to watch from them (game.json `seats` and `shows`, from its
+landmark builder; `web/game/show.js`). Sydney's are in the Opera House (`cities/sydney/opera_inside.py`): the
+stalls of both halls, chairs along the northern foyers' glass, a table at Bennelong.
+
+- **A seat** (`{id, name, verb, at, face, eye, pitch, show}`): within a metre and a half, <kbd>E</kbd> offers
+  its `verb` ("Take your seat", "Sit at the table"). Seated you look out through your own eyes from `eye`
+  metres over the seat, the way it faces; drag to turn your head; <kbd>E</kbd> stands you up where you were.
+  Your own figure is not drawn from the seat (photo mode draws it again).
+- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, bars, lines}`)
+  begins when you take a seat that names it. The house lights (`dim`, mesh names) go down as the oboe gives
+  the A, the house claps the conductor in, and the scene is sung by the NPC `singer` on the stage, with its
+  lines as surtitles: the line as sung and, under it, in English. It ends in applause and plays again while
+  you keep your seat. The city's score rests while it plays (`web/game/life.js`).
+- **Nothing is recorded.** The voice is synthesised in the browser as a source and filter: a sawtooth
+  through five formant band-passes (the alto table in the Csound manual's appendix "Formant Values": numbers,
+  used as data), with vibrato that comes in a fifth of a second after a note's start, a glide between slurred
+  notes, a breath of noise and a lift near 3 kHz, the singer's formant. Under it the cellos' ostinato and
+  pizzicato strings are plucked triangle and sawtooth tones, the tambourine and the applause are filtered
+  noise, and the hall is a convolution with 1.5 s of decaying noise. Sydney's show is the Habanera from
+  *Carmen* (Bizet, 1875; libretto by Meilhac and Halévy; the tune after Iradier's *El arreglito*, 1863): music
+  and words are in the public domain. The notes (`cities/sydney/opera_score.json`) were transcribed from a lead
+  sheet and checked against the themes in Barlow and Morgenstern's dictionary; the syllables under them outside
+  the first phrase and the refrain were set by count, not from the vocal score, and the major-key repeat, the
+  chorus's in the opera, is given to the soloist. The English lines are this project's own. What was looked at
+  and not adopted: Pink Trombone (Neil Thapen, MIT), an articulatory model, heavier than a formant voice needs.
+- `tools/seat_step.js` (in `tools/game_check.js`; on its own, `tools/seat_probe.js`) takes one seat of each
+  kind: the action must offer it, you must be seated at it looking its way with your eyes 0.8 to 1.5 m over
+  it, and stand up on foot; at a show the clock must run, the lights go down, the singer sing and the first
+  line's surtitle read as written.
 
 ## Routes
 
@@ -2329,6 +2445,20 @@ astern, darker by night.
 cable, up on the right and down on the left, slowing through each station round its bullwheel. A
 cabin in a station can be boarded (E), and you ride standing in it to the other station. The line
 is the city's (`game_rail` in `city.py`), the cable's profile with its sag between the towers.
+
+**The trains** (`assets/vehicles/trains.glb`, 1.0 MB, `blender/build_trains.py`) are the Enoshima
+Electric Railway's stock, one body of each two-car articulated set, about 17,000 triangles each with
+a 2,200-triangle copy for distance (past 170 m): the 300 series' last set (305, 1960; 24.1 m, 2.4 m
+wide, pale green and cream, three windows in a flat face), the 1000 series (1979; 25.4 m, dark green
+and cream with a gold line) and the second 500 series (2006; 25.4 m, 2.5 m wide, one curved
+windscreen, a single-arm pantograph). Lengths, widths, roof heights, bogie centres (8.7 and 9.5 m),
+wheelbases, wheels (860 mm) and floor heights (1.07 to 1.1 m) are the published ones (the Japanese
+Wikipedia articles on each series quote the railway's tables); the faces, liveries and roofs follow
+photographs on Wikimedia Commons; window heights, post widths, the underfloor boxes and the seats
+are read off photographs and approximate. A body has its walls with real window openings, doors,
+the floor, long seats, stanchions, strap rails and the cab's glazed partition, so the views from the
+seat and from behind the driver look out through it. No lettering or logo of the railway is
+reproduced: a set carries its number only. Ambient occlusion is baked into the vertex colours.
 
 **The helicopter comes after the game opens (issue 148).** Its model is 3.7 MB, more than any city's
 buildings once packed, and most games start on foot. `OEVehicles.load(..., { heli: 'later' })` leaves
@@ -2895,6 +3025,13 @@ deadlock or a meeting at a shared berth takes to show.
   dropped unless they are flagged as bridges.
 - **Trams and the funicular:** the trams are ambient: you can't ride them.
   The Peak Tram skips its intermediate stops, and both of its cars face uphill.
+- **The railway:** trains appear and leave at the edges of the frame. The doors
+  do not open, the pantographs do not follow the wire's height, and there are no
+  signals. A train does not brake for a car or a person on a gated crossing (it
+  pushes a walker aside); in the street it waits. Your own car is not stopped by a
+  closed crossing. Platforms on a curve are drawn in straight pieces. A path's
+  crossing has a post and no arm, though the Enoden's official crossings all have
+  both: the data does not tell an official crossing from a garden gate's.
 - **One ferry for every city:** the ferry is a Sydney-style double-ended vessel
   in each city's livery. A city whose boats look different, such as river buses
   or catamarans, still gets this hull.
@@ -2918,6 +3055,14 @@ deadlock or a meeting at a shared berth takes to show.
   [Wikipedia, E235 series](https://en.wikipedia.org/wiki/E235_series) (20 m cars, 2.95 m wide, 3.62 m
   high), the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 16 cars); the high-speed
   train drawn on it is this project's own design, not a model of an operator's stock.
+  The modelled cars (`blender/build_railstock.py`): the Japanese Wikipedia articles on the
+  [E233](https://ja.wikipedia.org/wiki/JR東日本E233系電車) and [E235](https://ja.wikipedia.org/wiki/JR東日本E235系電車)
+  series (body 19.5 m, 2.95 m over the widened sides, floor 1.13 m, doors 1.3 m by 1.85 m 4.82 m
+  apart, bogie centres 13.8 m, wheelbase 2.1 m, 860 mm wheels), Wikipedia's
+  [Sydney Trains A & B sets](https://en.wikipedia.org/wiki/Sydney_Trains_A_%26_B_sets) (20.4 m,
+  3.03 m, 4.41 m), and photographs on Wikimedia Commons for the faces, roofs, bogies and
+  underfloor equipment; no logo, lettering or number is reproduced. Interior mapping after
+  Joost van Dongen's "Interior Mapping" (2008), written here from the idea.
 - Scrambles: [LIVE JAPAN on Shibuya Crossing](https://livejapan.com/en/in-tokyo/in-pref-tokyo/in-shibuya/article-a0002128/)
   (the cycle and the walk), [Wikipedia, Shibuya Crossing](https://en.wikipedia.org/wiki/Shibuya_Crossing)
   (1,000 to 3,000 people a walk), [乗りものニュース on its single diagonal](https://trafficnews.jp/post/122022),

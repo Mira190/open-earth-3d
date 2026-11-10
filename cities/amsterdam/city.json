@@ -28,6 +28,7 @@
   "datum_note": "The scene's 0 m is the water level of Amsterdam's canals and the IJ, NAP -0.40 m, which Waternet keeps. AHN removes water from its terrain, so the level is the published one, not a measurement. The viewer's water plane is at 0, so every height in the scene is above the canals; add -0.40 for NAP.",
   "year": 2026,
   "imagery": {
+    "soften": {"sigma_m": 6.0, "keep": 0.15},
     "type": "xyz",
     "url": "https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg",
     "zoom": 17,

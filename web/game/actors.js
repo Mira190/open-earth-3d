@@ -1288,6 +1288,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         p.gw = held ? (p.gw || 0) + dt : 0;
         if (held) atKerb = true;
       }
+      // a level crossing's alarm sounding ahead (rail.js gateAhead, set as api.gate by the game): up to its line and
+      // wait there, as at a kerb; someone between the gates when it starts walks on out
+      if (api.gate) { const g = api.gate(p.x, p.y, hx, hy); if (g != null) { atKerb = true; cap = Math.min(cap, g * 1.5); } }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
       // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
       if (atKerb) p.kw = (p.kw || 0) + dt;
