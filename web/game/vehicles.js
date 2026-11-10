@@ -1209,7 +1209,12 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   // where the water draws its own foam field (water.js on r186: opts.water), the wakes, hull
   // foam and downwash rings are drawn into it from above and leave the main view, so the foam
   // rides the waves; otherwise they lie on the water as meshes
-  function onWake(mesh, opts) { if (opts.water && opts.water.wakeLayer != null) { mesh.layers.set(opts.water.wakeLayer); opts.water.wakes = true; } }
+  // (wakeMeshes: the list the water draws its wake field from, in place of walking the world for the layer: water.js)
+  function onWake(mesh, opts) {
+    if (!opts.water || opts.water.wakeLayer == null) return;
+    mesh.layers.set(opts.water.wakeLayer); opts.water.wakes = true;
+    if (opts.water.wakeMeshes && opts.water.wakeMeshes.indexOf(mesh) < 0) opts.water.wakeMeshes.push(mesh);
+  }
   // the wake: a ribbon of foam behind the trailing end that spreads at the Kelvin angle
   // (tan 19.47 deg = 0.354) and fades; the bow wave and propeller wash ride a skirt of foam
   // round the waterline
