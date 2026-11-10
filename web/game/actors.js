@@ -2288,6 +2288,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         if (c.park) {
           // (and its way out past the car parked ahead of it clear: boxed in for two minutes, and out of your sight, it leaves the traffic)
           if (c.park.t < -120 && !inView(c)) { respawn(c, cx, cy, radius * 0.6); continue; }
+          // (one that holds the traffic up, a car stood 8 s behind it in its lane, as one at a bend whose body stands out into
+          // the lane: it pulls out and drives on as soon as its way out is clear, or out of your sight leaves the traffic.
+          // Shibuya's car 120 stood 21 s behind one)
+          if (c.park.blockT > 8) { c.park.blockT = 0; if (!inView(c)) { respawn(c, cx, cy, radius * 0.6); continue; } c.park.t = Math.min(c.park.t, 0); c.park.look = 0; }
           if ((c.park.t -= dt0) > 0 || (c.park.look = (c.park.look || 0) - dt0) > 0 || !(c.park.look = 0.5, laneClear(c) && wayIn(c, c.line, c.s, c.dir, 1))) {
             q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue;
           }
@@ -3169,6 +3173,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         c.stuck = c.v < 0.1 && (byCar || held || (why === 'person' && walker < 0)) && !c.q ? c.stuck + dt : 0; // (and held by you, or someone not of the crowd, who won't step aside: as from a jam, in the end it turns round)
         c.zebraT = why === 'zebra' && c.v < 0.3 ? (c.zebraT || 0) + dt : 0;
         if (c.zebraT > 15) { c.zebraT = 0; c.zebraOff = 6; }
+        { const f = held ? holder : front; if (f && f.park && c.v < 0.3 && !c.park) f.park.blockT = (f.park.blockT || 0) + dt; } // (a parked car that holds it up: above)
         c.why = held ? 'held' : why; c.youBy = why === 'you' ? youBy : null; c.front = held ? holder : front; c.who = walker; c.heldBy = held ? (holder ? 'car' : c.backoff > 0 ? 'backing off' : behind ? 'caught up' : 'person') : '';
         c.pw = walker >= 0 && c.v < 0.6 ? (c.pw || 0) + dt : walker >= 0 ? c.pw : 0;
         if (c.pw > 3 && c.pw - dt <= 3 && crowd) crowd.P[walker].give = true;
