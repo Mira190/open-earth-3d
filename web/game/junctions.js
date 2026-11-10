@@ -432,6 +432,13 @@ window.OEJunctions = (function () {
       J.push(j); on.push(j); on.sort((a, b) => a.mid - b.mid); mids.set(q.line, on); rails.push(j);
       return j;
     }
+    // a crossing taken off again (the check's own, tools/autopilot_step.js railStep): out of the junctions, its
+    // street's crossings (the entry gone with the last of them) and the railways'
+    function dropRail(j) {
+      for (const list of [J, rails]) { const i = list.indexOf(j); if (i >= 0) list.splice(i, 1); }
+      const on = mids.get(j.line);
+      if (on) { const i = on.indexOf(j); if (i >= 0) on.splice(i, 1); if (!on.length) mids.delete(j.line); }
+    }
     // ------------------------------------------------ where a car can go from an arm
     // every exit from arm a: { m (the arm it leaves by), steps: [[line, end entered], ...] } by the
     // pieces inside, as the traffic's next() gives them; a turn back the way it came only if nothing else
@@ -832,7 +839,7 @@ window.OEJunctions = (function () {
     // how far along exit e's piece a car can wait: up to the stop line of the junction at its far end
     function reach(e) {
       const m = e.m, a2 = armOf.get(m.line * 2 + 1 - m.end), M = mids.get(m.line);
-      if (M) { // (or up to the line of a crossing between junctions on it)
+      if (M && M.length) { // (none left on it once one is taken off: tools/autopilot_step.js railStep) // (or up to the line of a crossing between junctions on it)
         const X = m.end === 0 ? M[0] : M[M.length - 1], a = X.arms.find(b => b.end === 1 - m.end);
         if (a) return (m.end === 0 ? X.mid : L[m.line].len - X.mid) - a.back - m.back;
       }
@@ -1067,7 +1074,7 @@ window.OEJunctions = (function () {
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
     net.midsOn = midsOn; // (the rides' router notes the crossings along a route: cars.js)
-    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, setTrips: t => { trips = t; }, trips: () => trips, addRail, rails, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, centred: line => centred(L[line]), mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, setTrips: t => { trips = t; }, trips: () => trips, addRail, dropRail, rails, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, centred: line => centred(L[line]), mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads

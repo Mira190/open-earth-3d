@@ -319,8 +319,8 @@ async function railStep() {
   out.queue = A.C.filter(c => c.line === X.line && !c.park && c.v < 0.3 && (c.s - X.mid) * c.dir < 0 && (c.s - X.mid) * c.dir > -60).length;
   state = 'open'; step(30, 'after');
   // (the check's crossing is left open and out of the way: taken off its street)
-  const on = J.midsOn(X.line); if (on) { const i = on.indexOf(X); if (i >= 0) on.splice(i, 1); }
-  { const i = J.rails.indexOf(X); if (i >= 0) J.rails.splice(i, 1); }
+  J.dropRail ? J.dropRail(X) : (() => { const on = J.midsOn(X.line); if (on) { const i = on.indexOf(X); if (i >= 0) on.splice(i, 1); } })();
+  if (!J.dropRail) { const i = J.rails.indexOf(X); if (i >= 0) J.rails.splice(i, 1); }
   X.rail.state = () => 'open';
   return out;
 }
