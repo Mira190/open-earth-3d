@@ -198,7 +198,7 @@ Coordinates are the Geospatial Information Authority's for the lot's address, or
 | 2 | The shop beside it, "Good-Bye Good-Bye" | Good-day Good-day SINCE 1986, the same house's left bay: a pale dome awning in a dark frame, green lettering | Shutter down in every photograph | **Yes** |
 | 2 | Where the café itself stands | The lot to the right: a walled garden until 2019; since 2024 the takoyaki stand Takoharu たこはる, a dark plank fence chalked NANIWANO AJI, a round sign, a red lantern | Evenings | **Yes** |
 | 2 | (not in the game) | RAIN ON THE ROOF, the café upstairs next door, 2-14-22: where pilgrims go for coffee and curry | Open | Its sign |
-| 3 | The bathhouse and the laundromat | Chiyo-no-yu 千代の湯, 2-12-7 (35.64274, 139.66954), across the lane: a hand-painted board over a slot in a corrugated fence, a passage to the door, the coin laundry on its right, the chimney behind | Closed to bathers since 2021; the passage boarded up by 2024, the board and chimney still there | The front, as open (to be redrawn as it stands) |
+| 3 | The bathhouse and the laundromat | Chiyo-no-yu 千代の湯, 2-12-7 (35.64274, 139.66954), across the lane: a hand-painted board over a slot in a corrugated fence, a passage to the door, the coin laundry on its right, the chimney behind | Closed to bathers since 2021; the passage boarded up by 2024, the board and chimney still there | **Yes**, as it stands: the fence, the boarded alley, the board, the chimney (its height an estimate) |
 | 4 | The corner where the old couple talk | A pale blue-grey house with an outside stair at the bend of the lane | There | Not yet |
 | 5 | The fork with the bar signs, the short cut to the station | The fork past it; a covered, tiled passage under a building to the shopping street | There | Not yet |
 | 6 | The supermarket | Niku no Hanamasa 肉のハナマサ, 2-14-6 (35.64291, 139.66899): a yellow sign wall two storeys high, navy brush lettering | Trading, 24 hours | Its sign |
@@ -212,7 +212,12 @@ the cages. It is best after dark, when the signs are lit; by day the shutters ar
 
 What the game adds to the real front is light and framing, and that is what is taken from it: the lane
 seen from the Good-day corner with both awnings receding, the same lane from the stand looking back,
-and a warm lamp over the door after dark (`sancha.glows`).
+and a warm lamp over the door after dark (`sancha.glows`). The district's link (`#play-shibuya@t-sancha`)
+arrives at that corner, looking down the lane.
+
+What the game says changes with the places: Chiyo-no-yu's spot, its chatter and Mr Tanaka's quest say the
+bath has closed and point to its board; its vending machines, which stood in the boarded alley, are no
+longer a spot.
 
 Two things are left out on purpose: the Godzilla head on the Toho building and
 Okamoto Taro's mural *Myth of Tomorrow* in the station passage are artworks the
