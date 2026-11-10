@@ -230,7 +230,9 @@ are within the run's noise of a clear sky.
 What sheds (`weather.shed`, driven by `shed()` in `web/game/game.js` until the frame-budget stream's
 governor replaces it): light drops the far flakes with the far streaks and splashes and slows the cover
 map; off drops everything, the bolt and the bow included, and for a season's weather the material terms too
-(a clear sky, dry and bare). The low tier still starts with the season's weather off.
+(a clear sky, dry and bare). The low tier still starts with the season's weather off. Setting `weather.shed` lower again
+brings back what this session's shedding took (light, then full), so a governor that recovers can give
+the weather back; a device that started with it off keeps it off.
 
 ## What was surveyed, and what was adopted
 

@@ -526,10 +526,13 @@ const npcNight = require('./npc_night');
     W.set('rain', { now: true, keep: true }); W.update(0.1, 3, null);
     W.shed = 1; W.shed = 2; W.update(0.1, 3.1, null);
     const picked = { mode: W.mode, near: W.meshes.near.visible, rain: W.state.rain, shed: W.shed };
+    // and when the frame has room again (a two-way governor), what was shed comes back
+    W.guardReset(); W.set('live'); W.shed = 1; W.shed = 2;
+    const again = { off: W.level }; W.shed = 1; again.light = W.level; W.shed = 0; again.full = W.level; again.mode = W.mode;
     W.guardReset(); W.guardForce(false);
     try { localStorage.removeItem('oe3d-weather'); } catch (e) { /* storage blocked */ }
     W.set('clear', { now: true }); W.update(0.1, 4, null); W.set('live');
-    return { full, light, off, dry: { rain: dry.rain, wet: dry.wet }, note, back, picked };
+    return { full, light, off, dry: { rain: dry.rain, wet: dry.wet }, note, back, picked, again };
   });
   if (guard) {
     check(guard.full.level === 2 && guard.full.shed === 0, `the full rain to begin with (level ${guard.full.level}, shed ${guard.full.shed})`);
@@ -538,6 +541,7 @@ const npcNight = require('./npc_night');
     check(guard.off.level === 0 && guard.off.mode === 'off' && guard.off.kept === 'off' && guard.dry.rain === 0 && guard.dry.wet === 0,
       `and then the weather, dry, remembered (level ${guard.off.level}, ${guard.off.mode}, kept ${guard.off.kept}, rain ${guard.dry.rain}, wet ${guard.dry.wet})`);
     check(/Weather is off/.test(guard.note || ''), `and says so ("${guard.note}")`);
+    check(guard.again.off === 0 && guard.again.light === 1 && guard.again.full === 2 && guard.again.mode === 'live', `what was shed comes back when the frame has room (level ${guard.again.off}, then ${guard.again.light}, then ${guard.again.full}, ${guard.again.mode})`);
     check(guard.back >= 1, `a weather picked again comes back on (level ${guard.back})`);
     check(guard.picked.mode === 'rain' && !guard.picked.near && guard.picked.rain > 0.5 && guard.picked.shed === 2,
       `a weather the visitor picked is kept, without its drops (${guard.picked.mode}, drops ${guard.picked.near}, rain ${guard.picked.rain.toFixed(2)})`);

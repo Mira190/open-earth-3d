@@ -642,6 +642,7 @@ void main() {
     let guardOn = !navigator.webdriver || params.has('weatherguard');
     let level = tier === 'low' ? 1 : 2; // 2 the full weather, 1 light, 0 off
     let dropless = false; // a chosen weather shed to its wet streets and sky
+    let shedOff = false; // the season's weather turned off by shedding in this session (it may come back: shed's setter)
     let guardNote = null;
     if (guardOn && !chosen && mode === 'live') {
       let kept = null;
@@ -828,8 +829,17 @@ void main() {
       set shed(v) {
         if (v >= 2 && this.shed < 2) {
           if (chosen) { dropless = true; setLevel(1); }
-          else setLevel(0, 'Weather is off: this device is busy enough without it. Turn it on in the menu (Esc).');
+          else { shedOff = true; setLevel(0, 'Weather is off: this device is busy enough without it. Turn it on in the menu (Esc).'); }
         } else if (v === 1 && level === 2) setLevel(1);
+        else if (v < this.shed) {
+          // the frame has room again (a two-way governor, issue 352): back up to what was asked, light (1) or
+          // full (0). Only what this session's shedding took comes back; a device that starts with the
+          // weather off (its tier, or what was remembered from another visit) keeps it off.
+          if (level === 0 && !shedOff) return;
+          if (level === 0) { mode = 'live'; shedOff = false; arm(); }
+          dropless = dropless && v >= 2;
+          setLevel(v <= 0 ? 2 : 1);
+        }
       },
       // the level (2 full, 1 light, 0 off), whether the wet look is compiled in, and a callback for
       // whatever else needs recompiling once it is (the ground: game.js)
@@ -846,7 +856,7 @@ void main() {
       guardState: () => ({ level, mode, chosen, dropless, tier }),
       // for the checks: the device rules on or off, and forget what was remembered and shed
       guardForce(v) { guardOn = !!v; },
-      guardReset() { remember(null); level = 2; dropless = false; chosen = false; if (mode === 'off') mode = 'live'; arm(); },
+      guardReset() { remember(null); level = 2; dropless = false; shedOff = false; chosen = false; if (mode === 'off') mode = 'live'; arm(); },
       S,
       get state() { return { mode, level, kind: kindOf(cur), rain: cur.rain, snow: cur.snow, fog: cur.fog, storm: cur.storm, cloud: cur.cloud, wet: U.uOeWet.value, snowDepth: S.snowDepth, temp: S.temp, wind: S.windSpeed, covered: cover.roof, coverH: cover.h }; },
       // pin a weather ('clear', 'overcast', 'fog', 'drizzle', 'rain', 'storm', 'snow'), or exact amounts
