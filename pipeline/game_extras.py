@@ -21,7 +21,7 @@ import os
 import bridges
 from cityctx import city_args
 
-KEYS = ("spots", "chatter", "close", "keep_off", "lifts", "doors", "interiors")  # (city.json's own first, then the builders')
+KEYS = ("spots", "chatter", "close", "keep_off", "lifts", "doors", "interiors", "seats", "shows")  # (city.json's own first, then the builders')
 
 
 def apply(C, scene, out):

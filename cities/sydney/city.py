@@ -78,12 +78,16 @@ R_SHELL = 75.2
 DECK_ZONES = [(0.5, "parapet"), (3.5, "cycleway"), (0.4, "barrier"), (10.0, "rail"), (0.6, "barrier"), (20.4, "lanes6"),
               (0.6, "barrier"), (6.8, "lanes2"), (0.6, "barrier"), (4.9, "footway"), (0.5, "parapet")]
 MATERIALS = {
-    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.6, "chevron_m": 1.8, "emissive": "#fff4e6", "glow": 1.0},
+    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.3, "chevron_m": 1.8, "emissive": "#fff4e6", "glow": 1.0},
     "tile_edge": {"color": "#d6ccb8", "roughness": 0.7, "metalness": 0.0},
     # topaz glass on bronze mullions, lit warm from the foyers after dark
-    "glass": {"color": "#22170f", "roughness": 0.05, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.5,
+    "glass": {"color": "#3a2616", "roughness": 0.05, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.16, "opacity": 0.5,
               "pattern": "topaz_glass", "frame": "#4a3a2a", "transom_m": 2.7},
     "mullion": {"color": "#4d3c2b", "roughness": 0.5, "metalness": 0.7},
+    # under the tiles: the precast ribs, off-form concrete, lit warm from the foyers after dark
+    "rib": {"color": "#cfc5b3", "roughness": 0.9, "metalness": 0.0, "emissive": "#ffc98a", "glow": 0.42},
+    # the bronze louvre walls round the nested shells: blades every 0.3 m
+    "louvre": {"color": "#4a3a2b", "roughness": 0.5, "metalness": 0.6, "pattern": "granite", "joints_m": [0.0, 0.3]},
     # reconstituted granite (u, v metres): the podium's panels; treads with a pale nosing; risers
     # darker, with the shadow under the nosing (v from the riser's foot to its top, 0 to 1)
     "podium": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6]},
@@ -533,6 +537,8 @@ def game_surfaces(scene):
         out.append({"name": f"Opera House steps, {HALL_NAMES[hall]}", "type": "strip", "origin": st["origin"], "axis": st["axis"],
                     "half_width": st["half_width"], "profile": st["profile"], "thickness": round(st["z_top"] - st["base_m"], 1),
                     "mesh": f"opera_steps_{hall}"})
+    if o.get("halls"):
+        out += opera_rooms(o)["surfaces"]
     return out
 
 
@@ -664,7 +670,11 @@ def game_extras(scene):
             if face:
                 m, n, _ = face
                 close.append(close_to("Sydney Tower, Westfield's doors on Pitt Street Mall", m, T(*m), m + n * 5.0, 1.0, 0.1))
-    return {"close": close}
+    out = {"close": close}
+    if o:  # the rooms inside the Opera House, their doors, the seats you can take and the evening's performance
+        r = opera_rooms(o)
+        out.update(doors=r["doors"], interiors=r["rooms"], seats=r["seats"], shows=r["shows"])
+    return out
 
 
 def landmark_glows(scene):
@@ -681,13 +691,15 @@ def landmark_meshes(scene):
     meshes = []
     if "opera_house" in lm:
         o = lm["opera_house"]
-        meshes += opera_house(o)
+        inside = opera_rooms(o)
+        meshes += opera_house(o, inside["gaps"]) + inside["meshes"]
         meshes += steps_mesh(o["steps"], "opera_steps")
         for hall, st in o["upper_steps"].items():
             meshes += steps_mesh(st, f"opera_steps_{hall}")
         meshes += podium_mesh(o)
     mats = {k: dict(v) for k, v in MATERIALS.items()}
     if "opera_house" in lm:
+        mats.update({k: dict(v) for k, v in _inside().MATERIALS.items()})
         # the sails are lit from floodlights on the podium (web/world.js "flood"): full at their
         # feet, falling off up the shells to half at the crowns, the tiles facing up
         # at a graze catching most of it, as the photographs of the sails at night show
@@ -704,10 +716,34 @@ def landmark_meshes(scene):
         m, extra = bennelong_meshes(lm["bennelong"], lm.get("opera_house"), scene.get("ground", []))
         meshes += m
         mats["garden_edge"] = dict(MATERIALS["garden_edge"])  # (bennelong_meshes gives it its ground tile)
+    if "opera_house" in lm:  # the halls' seats and their audience, instanced
+        extra = dict(extra, props=list(extra.get("props", [])) + opera_rooms(lm["opera_house"])["props"])
     return mats, meshes, extra
 
 
 # ---------------------------------------------------------------- Opera House
+
+_ROOMS = {}
+
+
+def _inside():
+    import importlib.util
+    import os
+    import sys
+    if "sydney_opera_inside" not in sys.modules:
+        spec = importlib.util.spec_from_file_location("sydney_opera_inside", os.path.join(os.path.dirname(os.path.abspath(__file__)), "opera_inside.py"))
+        sys.modules["sydney_opera_inside"] = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sys.modules["sydney_opera_inside"])
+    return sys.modules["sydney_opera_inside"]
+
+
+def opera_rooms(o):
+    """The rooms inside the Opera House (opera_inside.py), fitted under the shells as they are built here: made once a run."""
+    if "all" not in _ROOMS:
+        ext = [m for m in opera_house(o) if m.name in ("opera_shells", "opera_shell_ribs", "opera_louvres")]
+        _ROOMS["all"] = _inside().build(o, hall_shells, ext)
+    return _ROOMS["all"]
+
 
 def sphere_centre(a, b, c, r, inward):
     """Centre of the radius-r sphere through a, b, c on the side of `inward`."""
@@ -799,49 +835,113 @@ def hall_shells(hall, ridges, z0):
     return out
 
 
-def opera_house(o):
+def shell_point(P, T, J, c, across, a, b):
+    """A point of a shell's half (shell_half): a of the way up the rib from the pedestal P to the point b of the
+    way along the ridge from the tip T to its back end J."""
+    cr = c - across * np.dot(c - T, across)
+    return c + slerp(P - c, cr + slerp(T - cr, J - cr, b) - c, a)
+
+
+RIB_M = (0.28, 0.7, 1.5)  # the ribs under the tiles: the groove between two, and a rib's depth at the pedestal and at the ridge
+
+
+def shell_ribs(m, P, T, J, c, across, bays, rows=12):
+    """The underside of one half of a shell: its precast ribs fanning out from the pedestal, side by side, each a
+    rounded trough deepening towards the ridge with a narrow groove between it and the next (The Arup Journal,
+    1973: the ribs' centre lines 3.65 degrees apart, their section from a solid T at the pedestal to an open Y,
+    deeper towards the ridge). u counts the ribs, v is metres up the rib."""
+    g, d0, d1 = RIB_M
+    sec = [(0.0, 0.0), (0.16, 1.0), (0.84, 1.0), (1.0, 0.0)]  # across a rib: (share of its width, share of its depth)
+    for k in range(bays):
+        cols = []
+        for s, dk in sec:
+            col, v = [], 0.0
+            for i in range(rows + 1):
+                a = 0.04 + 0.96 * i / rows  # (the ribs run into the pedestal's fan)
+                q = shell_point(P, T, J, c, across, a, (k + s) / bays)
+                q = q + (c - q) / R_SHELL * (g + dk * (d0 + (d1 - d0) * a - g) * min(1.0, a * 6))
+                if col:
+                    v += float(np.linalg.norm(q - col[-1][0]))
+                col.append((q, [k + s, v]))
+            cols.append(col)
+        m.grid([[q for q, _ in col] for col in cols], [[t for _, t in col] for col in cols])
+        for i in (0, rows):  # each rib's ends closed, up to the tiles: at the ridge beam, and where it runs into the pedestal
+            top = [shell_point(P, T, J, c, across, 0.04 + 0.96 * i / rows, (k + s_) / bays) for s_, _ in sec]
+            for a_, b_ in zip(range(3), range(1, 4)):
+                m.quad(cols[a_][i][0], cols[b_][i][0], top[b_], top[a_], [cols[a_][i][1], cols[b_][i][1], cols[b_][i][1], cols[a_][i][1]])
+
+
+def louvre_wall(m, leg, back, n=10):
+    """The bronze louvre wall that closes a shell's mouth round the shell nested in it (shells A2, A3, B2 and B3
+    have louvre walls where the others have glass: The Arup Journal, 1973): from the leg of the shell's arch
+    (pedestal to tip) across to the back edge of the nested shell (its pedestal up to the back end of its ridge)."""
+    at = lambda e, t: e[min(int(t * (len(e) - 1)), len(e) - 2)] + (e[min(int(t * (len(e) - 1)), len(e) - 2) + 1] - e[min(int(t * (len(e) - 1)), len(e) - 2)]) * (t * (len(e) - 1) - min(int(t * (len(e) - 1)), len(e) - 2))
+    for k in range(n):
+        a0, a1, b0, b1 = at(leg, k / n), at(leg, (k + 1) / n), at(back, k / n), at(back, (k + 1) / n)
+        m.quad(b0, a0, a1, b1, [[0.0, b0[2]], [float(np.linalg.norm(a0 - b0)), a0[2]], [float(np.linalg.norm(a1 - b1)), a1[2]], [0.0, b1[2]]])
+
+
+def opera_house(o, gaps=()):
     """The three groups of shells on the ridges OSM maps, each shell two halves on the one sphere
     radius, and side shells on the flanks between the shells that stand back to back: tiled,
-    with the precast edge of each shell along the legs of its arch and a cap along its ridge, and
-    the glass walls that close their mouths, topaz glass on bronze mullions fanning out from the
-    foot of each mouth (and closing a nested shell's back, inside the mouth of the one behind)."""
+    with the precast edge of each shell along the legs of its arch and a cap along its ridge; under the tiles
+    the ribs, fanning from the pedestals; and what closes their mouths: glass walls, topaz glass on bronze mullions
+    fanning out from the foot of each mouth, in the first and the last shell of a hall, and bronze louvre walls
+    round the shells nested in the others."""
     shells = Mesh("opera_shells", "tile", True, floodlit=True, uv=True)
     rims, caps = Mesh("opera_shell_rims", "tile_edge", False), Mesh("opera_shell_ridges", "tile_edge", True)
     glass = Mesh("opera_glass", "glass", False, floodlit=True, uv=True)
+    ribs = Mesh("opera_shell_ribs", "rib", True, floodlit=True, uv=True)
+    ribs.sky, ribs.bounce = 0.5, MATERIALS["granite"]["color"]
+    louvres = Mesh("opera_louvres", "louvre", False, uv=True)
+    deep = RIB_M[2] + 0.1
     for hall, ridges in o["halls"].items():
         z0 = o["podium"]["low_m" if hall == "restaurant" else "top_m"]  # the restaurant stands on the lower landing
         backs = []  # each shell's back edges, west and east: from J down to the pedestal
-        for k, (J, T, peds) in enumerate(hall_shells(hall, ridges, z0)):
+        all_legs = []
+        built = hall_shells(hall, ridges, z0)
+        for k, (J, T, peds) in enumerate(built):
             f = (T[:2] - J[:2]) / np.linalg.norm(T[:2] - J[:2])
             across = np.array([f[1], -f[0], 0.0])
             below = np.array([*((J[:2] + T[:2]) / 2), z0 - 30.0])
-            legs, edges = [], []
+            legs, edges, outer = [], [], []
             for P in peds:
                 c = sphere_centre(P, T, J, R_SHELL, below - (P + T + J) / 3)
                 pts = shell_half(P, T, J, c, across)
-                shells.grid(pts, shell_uv(pts))
+                uv = shell_uv(pts)
+                shells.grid(pts, uv)
+                shell_ribs(ribs, P, T, J, c, across, round(uv[0][-1][0]))
                 leg = [r[0] for r in pts]  # the free edge, from the pedestal up to the tip
-                inner = [q - (q - c) / R_SHELL * 1.1 for q in leg]  # the shell's thickness: the precast ribs under the tiles
+                depth = [RIB_M[0] + (RIB_M[1] + (RIB_M[2] - RIB_M[1]) * i / (len(leg) - 1) - RIB_M[0]) * min(1.0, i / (len(leg) - 1) * 6) + 0.1 for i in range(len(leg))]
+                inner = [q - (q - c) / R_SHELL * d for q, d in zip(leg, depth)]  # the shell's thickness: the precast ribs under the tiles
                 for i in range(len(leg) - 1):
                     rims.quad(leg[i], leg[i + 1], inner[i + 1], inner[i])
+                back = [r[-1] for r in pts]
+                binner = [q - (q - c) / R_SHELL * d for q, d in zip(back, depth)]
+                for i in range(len(back) - 1):  # and along its back edge
+                    rims.quad(back[i + 1], back[i], binner[i], binner[i + 1])
                 legs.append([q - (q - c) / R_SHELL * 0.7 for q in leg])  # the glass stands a little inside the edge
-                edges.append([r[-1] for r in pts][::-1])
+                outer.append(leg)
+                edges.append(back[::-1])
             caps.sweep(pts[-1], [(-0.65, -0.25), (0.65, -0.25), (0.65, 0.12), (0.3, 0.3), (-0.3, 0.3), (-0.65, 0.12)])
-            mouth(glass, np.array([T[0], T[1], z0]), legs[0] + legs[1][::-1][1:])
-            if k > 1:  # a nested shell's back, in the mouth of the one behind: glazed down to the podium
-                for e in edges:
-                    mouth(glass, np.array([J[0], J[1], z0]), e)
+            if k == 0 or k == len(built) - 1:  # the first and the last shell's mouths: glass
+                mouth(glass, np.array([T[0], T[1], z0]), legs[0] + legs[1][::-1][1:],
+                      z0 + NORTH_TIERS["roof_up"] if hall != "restaurant" and k else None, gaps)
             backs.append(edges)
+            all_legs.append(legs)
+        for k in range(1, len(built) - 1):  # round a nested shell, in the mouth of the one behind: louvres
+            for side in (0, 1):
+                louvre_wall(louvres, all_legs[k][side], backs[k + 1][side][::-1])
         for side in (0, 1):  # side shells between the back-to-back pair
             faces, foot, outline = side_shell(backs[0][side][0], backs[0][side], backs[1][side], z0, SIDE_GLASS_M[hall])
             for pts in faces:
                 shells.grid(pts, shell_uv(pts))
                 caps.sweep([r[-1] for r in pts], [(-0.35, -0.2), (0.35, -0.2), (0.35, 0.08), (-0.35, 0.08)])
             mouth(glass, foot, outline)
-    return [shells, rims, caps, glass]
+    return [shells, rims, caps, glass, ribs, louvres]
 
 
-def mouth(glass, foot, arch):
+def mouth(glass, foot, arch, stop=None, gaps=()):
     """A glass wall hung from a shell's arch (points from one foot over to the other): a curtain of
     panes down to a line on the podium from one end of the arch through `foot`, under the tip, to
     the other. The bronze mullions that close in towards the foot, one at every second point of the
@@ -849,13 +949,26 @@ def mouth(glass, foot, arch):
     v is metres above the datum)."""
     z0 = foot[2]
     ground = lambda q: np.array([q[0], q[1], z0])
+    if stop is not None:  # down to `stop`, where the foyer's own glass takes over (north_tiers), and no lower than the arch
+        ground = lambda q: np.array([q[0], q[1], min(stop, q[2])])
+        foot = np.array([foot[0], foot[1], stop])
     run = lambda pts: np.concatenate([[0.0], np.cumsum([np.linalg.norm(q - p) for p, q in zip(pts, pts[1:])])])
     sa, line = run(arch), [ground(arch[0]), foot, ground(arch[-1])]
     sl = run(line)
     t = sa / sa[-1] * sl[-1]
     seg = np.minimum(np.searchsorted(sl, t, side="right") - 1, len(line) - 2)
     bottom = [line[k] + (line[k + 1] - line[k]) * ((tt - sl[k]) / max(sl[k + 1] - sl[k], 1e-9)) for k, tt in zip(seg, t)]
+    foot_of = list(bottom)
+    for (gx, gy), r, h in gaps:  # a doorway through the glass (opera_inside.py): the glass stops at its portal's head
+        bottom = [np.array([b[0], b[1], max(b[2], z0 + h)]) if math.hypot(b[0] - gx, b[1] - gy) < r else b for b in bottom]
+    lift = [b[2] > f[2] + 0.01 for b, f in zip(bottom, foot_of)]
     for k in range(len(arch) - 1):
+        if lift[k] != lift[k + 1]:  # beside the opening the glass comes down to the podium again, square (no slope over the doorway)
+            b0, b1 = (np.array([b[0], b[1], max(bottom[k][2], bottom[k + 1][2])]) for b in (bottom[k], bottom[k + 1]))
+            glass.quad(b0, b1, foot_of[k + 1], foot_of[k], [[k / 2, b0[2]], [(k + 1) / 2, b1[2]], [(k + 1) / 2, foot_of[k + 1][2]], [k / 2, foot_of[k][2]]])
+            bottom[k], bottom[k + 1] = (b0, bottom[k + 1]) if lift[k + 1] else (bottom[k], b1)
+            glass.quad(arch[k], arch[k + 1], b1, b0, [[k / 2, arch[k][2]], [(k + 1) / 2, arch[k + 1][2]], [(k + 1) / 2, b1[2]], [k / 2, b0[2]]])
+            continue
         glass.quad(arch[k], arch[k + 1], bottom[k + 1], bottom[k],
                    [[k / 2, arch[k][2]], [(k + 1) / 2, arch[k + 1][2]], [(k + 1) / 2, bottom[k + 1][2]], [k / 2, bottom[k][2]]])
 
