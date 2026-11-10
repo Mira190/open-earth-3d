@@ -1081,7 +1081,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let pilotScenic = false, scenicW = null;
   const scenicWeights = () => scenicW || (scenicW = OEAutopilot.scenic(roadNet, { water: (x, y) => nav.isWater(x, y),
     marks: Object.values(scene.labels || {}).concat((G.travel || []).map(t => t.at), G.wharves.map(w => w.terminal)).filter(Boolean) }));
-  const pilotOpts = () => Object.assign(rideGuard(myCar.C), { keep: keepSign, lights: junctions, now: rideClock, strict: true, id: 'pilot', wedge: 45 });
+  const pilotOpts = () => Object.assign(rideGuard(myCar.C), { keep: keepSign, lights: junctions, now: rideClock, strict: true, id: 'pilot', wedge: Infinity }); // (never on through a car, as a ride out of your sight may go: wedged half a minute, it hands the car back)
   function pilotTo(dest, { scenic = pilotScenic, quiet = false } = {}) {
     if (!myCar || player.mode !== 'car') return false;
     if (pilot) pilotOff();
@@ -1116,9 +1116,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!quiet) H.toast(`<b>Autopilot</b> to ${dest.name}: ${(rt.len / 1000).toFixed(1)} km${scenic ? (rt.len > 0 && share > 0.15 ? ', the scenic way' : ', no scenic way from here') : ''}. <kbd>J</kbd>, the wheel or the brake takes it back.`);
     return true;
   }
-  function pilotOff(say = null) {
+  let pilotEnd = ''; // (how the last drive ended: 'arrived', 'blocked', or '' for the wheel taken or switched off)
+  function pilotOff(say = null, why = '') {
     const o = pilot;
     if (!o) return;
+    pilotEnd = why;
     o.drv.leave(); pilot = null;
     if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
     if (say) H.toast(say);
@@ -1245,7 +1247,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const c = driverStep(o, dt);
     // (a turn in the road, or backing out of a one-way street, held half a minute by what stands in its way: the car
     // is handed back where it is, rather than taken on from another place as a ride out of your sight is)
-    if (o.turn && o.turn.held > 30) { pilotOff('The autopilot can\'t get round here. You have the wheel.'); return null; }
+    if (o.turn && o.turn.held > 30) { pilotOff('The autopilot can\'t get round here. You have the wheel.', 'blocked'); return null; }
+    // (stood 75 s with no red light to wait for, the cars that hold it asked out of the way and still there (110 s behind
+    // anything else): a road
+    // that will not clear. It says so and hands the car back, as a driver's assist does, rather than sit there)
+    { const q = o.drv.st, a = q.lineAt, red = a && junctions.light(a, q.lineEx) === 'r';
+      o.stoodT = !o.join && q.v < 0.3 && !red && !q.done ? (o.stoodT || 0) + dt : q.v > 1 || red ? 0 : o.stoodT || 0;
+      if (o.stoodT > (o.jamT > 0 ? 75 : 110) || q.wedged > 30) { pilotOff('<b>Autopilot:</b> the road ahead is blocked. You have the wheel.', 'blocked'); return null; } }
     if (o.drv !== o.turnsOf) { // (another way round a jam, or after turning round in the road)
       // (the new way may start a little off where the car is: eased onto it from there, never put there)
       o.off = { x: st.x - c.x, y: st.y - c.y, h: angDiff(st.h, c.h) };
@@ -1263,6 +1271,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       Object.assign(st, { vx: 0, vy: 0, v: 0, speed: 0, r: 0 });
       if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
       A.chime();
+      pilotEnd = 'arrived';
       H.toast(`<b>Autopilot:</b> you have arrived: ${o.dest.name}, ${(o.meter / 1000).toFixed(1)} km.`);
       save();
     }
@@ -2104,7 +2113,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       let q = st.block && st.block.of ? st.block.of : st.block, head = null;
       if (st.v < 0.3 && q && cars.C.includes(q)) { const seen = new Set(); head = q; while (head.front && cars.C.includes(head.front) && !seen.has(head.front) && seen.size < 8) { seen.add(head); head = head.front; } }
       const lit = c => c.lineArm && !c.mv && /^[ra]$/.test(junctions.light(c.lineArm, c.lineEx) || '');
-      o.jamT = head && head.v < 0.1 && !head.park && !lit(head) && !lit(q) && !(st.lineAt && junctions.light(st.lineAt, st.lineEx) === 'r') ? (o.jamT || 0) + dt : 0;
+      o.jamT = head && head.v < 0.1 && !head.park && !lit(head) && !lit(q) && !(st.lineAt && junctions.light(st.lineAt, st.lineEx) === 'r') ? (o.jamT || 0) + dt : st.v > 1 ? 0 : Math.max(0, (o.jamT || 0) - dt); // (eased down, not reset: what holds it flickers between the car and the junction)
       if (o.jamT > 40) { o.jamT = 20; o.unjam = cars.unjam(head, o.unjamWas === head); o.unjamWas = head; o.unjammed = `${(o.unjammed || '')} ${o.unjam || 'not'}`; }
     }
     if (!o.turn && !o.hold && (o.phase === 'coming' || o.phase === 'driving')) { turnRound(o, dt); st = o.drv.st; }
@@ -5749,7 +5758,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { pilot: () => pilot, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
+  window.__game = { pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, shed, shedLevel: () => shedLevel, pxScale: () => pxScale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
