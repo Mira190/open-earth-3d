@@ -20,7 +20,7 @@ const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style
 const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
 // the load's stages for the telemetry (telemetry.js markOf): data fetched (world.js), decoded, built, the first frame
 const mark = s => { try { performance.mark(`oe:${s}`); } catch (e) { /* no User Timing */ } };
-const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
+const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', 'alpine/fiord': 'Letting the falls run and the gulls fly', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
@@ -82,7 +82,7 @@ async function main() {
   const env = createEnv(scene, S.optics, waves, ripples, chop, envOpts);
   env.logDepth = !!renderer.logarithmicDepthBuffer;
   if (ALP) env.u.haze.value = 1.2e-5;      // the lake's reflection fades to the horizon sky like the air in front of it
-  env.u.wind.value = Number(q.get('wind') ?? 0.6);
+  env.u.wind.value = Number(q.get('wind') ?? S.wind ?? 0.6);      // (scene.json wind: a sheltered water's own, e.g. a fiord's light airs)
   // the clock: the model's own time (?time= or now), running on from the page load, or from a time chosen in the
   // game's time panel (setClock below)
   let when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now(), live = !q.get('time');
@@ -277,7 +277,7 @@ async function main() {
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight)); renderer.setSize(innerWidth, innerHeight); });
 
-  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom });
+  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom, grade: S.grade || null });
 
   // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
   const ctx = { THREE, tier, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null, light, atm, lakes,
@@ -290,7 +290,7 @@ async function main() {
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,alpine/traffic,alpine/parked,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
+  const mods = (q.get('mods') ?? (ALP ? `alpine/flora,alpine/landmarks,alpine/traffic,alpine/parked,boats${S.falls || S.birds ? ',alpine/fiord' : ''},player,game` : 'life,boats,player,game')).split(',').filter(Boolean);
   for (const [i, name] of mods.entries()) {
     stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
     await paint();

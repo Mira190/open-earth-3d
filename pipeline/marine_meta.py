@@ -64,6 +64,9 @@ def meta(city):
     out = {"pois": pois, "spawn": spawn or None, "harbour": harbour, "start": cfg.get("start")}
     if cfg.get("region"):
         out["region"] = cfg["region"]
+    for k in ("biome", "wind", "falls", "birds", "mist", "grade"):   # (and a fiord's waterfalls and gulls: alpine/fiord.js)          # an alpine site's look (alpine/terrain.js) and its usual wind, 0..1 (main.js)
+        if cfg.get(k) is not None:
+            out[k] = cfg[k]
     if cfg.get("life"):
         out["life"] = life(city, cfg["life"])
     # an alpine site's landmark models (web/reef/alpine/landmarks.js): placed at their point, orientation baked in
