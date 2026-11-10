@@ -1110,6 +1110,45 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
           { small, software: OEWater.software(renderer), quality, edge: edgeFade });
       } catch (e) { console.warn('water: falling back to the flat sheet', e); sea = null; }
     }
+    // Whether any of the sea can be in the picture (issue 352), from the terrain alone: the sea shows where the
+    // ground is at its level (0; the terrain's edge stands for what lies past it). A map with no such ground (most of
+    // Kyoto's and Tokyo's) never draws or updates it. Elsewhere the ground is sampled under a grid of rays through the
+    // frame and along the directions the camera looks in, out to 13 km; buildings in the way are not counted, so it
+    // errs towards drawing. An occlusion query was tried for this and reported water where there was none
+    // (docs/PERFORMANCE.md); this needs no GPU at all. Held for half a second after the last sighting.
+    const seaT = D.Tfine || D.T, SEA_Z = 0.3, seaRay = new THREE.Vector3(), seaFwd = new THREE.Vector3();
+    let seaEver = true, seaSeenAt = -1e9;
+    if (sea && seaT && seaT.data && seaT.nx) {
+      seaEver = false;
+      for (let i = 0; i < seaT.data.length && !seaEver; i++) if (seaT.data[i] <= SEA_Z) seaEver = true;
+      if (!seaEver) sea.mesh.visible = false;
+    }
+    const seaAt = (x, z) => !seaT || !seaT.data || S.terrainAt(seaT, x, -z) <= SEA_Z;
+    function seaInView(camera, t) {
+      if (!seaEver) return false;
+      if (!seaT || !seaT.data || new URLSearchParams(location.search).get('sea') === 'always') return true;
+      const P = camera.position;
+      let seen = P.y <= SEA_Z + 0.5;
+      for (let j = 0; j < 5 && !seen; j++) for (let i = 0; i < 7 && !seen; i++) {
+        seaRay.set(i / 3 - 1, j / 2 - 1, 0.5).unproject(camera).sub(P);
+        if (seaRay.y > -1e-6) continue; // (at or over the horizon)
+        const k = Math.min(-P.y / seaRay.y, 13000 / Math.max(1e-6, Math.hypot(seaRay.x, seaRay.z)));
+        seen = seaAt(P.x + seaRay.x * k, P.z + seaRay.z * k);
+      }
+      if (!seen) {
+        // the ground out to the horizon in the frame's sector, unless the frame is all sky (its lowest ray climbs)
+        seaRay.set(0, -1, 0.5).unproject(camera).sub(P);
+        camera.getWorldDirection(seaFwd);
+        const up = seaRay.y > 0.05 * Math.hypot(seaRay.x, seaRay.z), yaw = Math.atan2(seaFwd.x, seaFwd.z);
+        const half = Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) + 0.12;
+        for (let a = -4; a <= 4 && !seen && !up; a++) {
+          const sx = Math.sin(yaw + a * half / 4), sz = Math.cos(yaw + a * half / 4);
+          for (let d = 20; d <= 13000 && !seen; d *= 1.6) seen = seaAt(P.x + sx * d, P.z + sz * d);
+        }
+      }
+      if (seen) seaSeenAt = t;
+      return t - seaSeenAt < 500;
+    }
     function rippleTexture() {
       const n = 128, c = document.createElement('canvas');
       c.width = c.height = n;
@@ -2081,7 +2120,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (envWait && performance.now() - envAt >= (api.envEvery || 0)) api.setSun(envWait.sp, envWait.minutes);
         SPARKLE.t.value = SCREEN.t.value = t * 0.001;
         if (camera) for (const o of farObjs) o.visible = camera.position.distanceToSquared(o.userData.far.c) < o.userData.far.r2;
-        if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
+        if (sea && camera) sea.update(t, camera, world, seaInView(camera, t)); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
         if (night && camera) night.update(camera, t / 1000);
         if (glints || (IN && inland && trees)) try { updateGlints(); } catch (e) { glints = null; }
@@ -2559,22 +2598,36 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       walk(scene, false, (o, st) => { if (st && drawable(o) && o.castShadow) out.push(o); });
       if (out.length !== casters.length || out.some((o, i) => o !== casters[i])) { casters = out; built = false; }
     }
+    // The light's pose and what each still caster looks like to the shadow pass (where it is, whether it is shown,
+    // its instances), written each frame into a buffer kept for it and compared with the last frame's in place:
+    // true when nothing changed. (Before, two arrays of some twenty numbers a caster were made and dropped every
+    // frame: issue 352.)
+    let poseA = new Float64Array(14), poseB = new Float64Array(14), sigA = new Float64Array(1024), sigB = new Float64Array(1024), sigN = -1;
     function poseOf() {
-      const a = light.matrixWorld.elements, b = light.target.matrixWorld.elements, c = shadow.camera;
-      return [a[12], a[13], a[14], b[12], b[13], b[14], c.left, c.right, c.top, c.bottom, c.near, c.far, shadow.mapSize.x, shadow.mapSize.y];
+      const a = light.matrixWorld.elements, b = light.target.matrixWorld.elements, c = shadow.camera, P = poseA, Q = poseB;
+      P[0] = a[12]; P[1] = a[13]; P[2] = a[14]; P[3] = b[12]; P[4] = b[13]; P[5] = b[14]; P[6] = c.left; P[7] = c.right; P[8] = c.top; P[9] = c.bottom;
+      P[10] = c.near; P[11] = c.far; P[12] = shadow.mapSize.x; P[13] = shadow.mapSize.y;
+      let same = true;
+      for (let i = 0; i < 14; i++) if (P[i] !== Q[i]) { same = false; break; }
+      poseA = Q; poseB = P;
+      return same;
     }
-    // what each still caster looks like to the shadow pass: where it is, whether it is shown, its instances
     function sigOf() {
-      const out = [];
+      const need = casters.length * 19;
+      if (sigA.length < need) { sigA = new Float64Array(need * 2); const k = new Float64Array(need * 2); k.set(sigB.subarray(0, Math.max(0, sigN))); sigB = k; }
+      const S = sigA;
+      let n = 0;
       for (const o of casters) {
         let v = 1;
         for (let p = o; p; p = p.parent) if (!p.visible) { v = 0; break; }
-        out.push(v, o.castShadow ? 1 : 0, o.isInstancedMesh ? o.count + 1e6 * o.instanceMatrix.version : 0);
-        if (v) for (const e of o.matrixWorld.elements) out.push(e);
+        S[n++] = v; S[n++] = o.castShadow ? 1 : 0; S[n++] = o.isInstancedMesh ? o.count + 1e6 * o.instanceMatrix.version : 0;
+        if (v) { const e = o.matrixWorld.elements; for (let i = 0; i < 16; i++) S[n++] = e[i]; }
       }
-      return out;
+      let same = n === sigN;
+      if (same) { const K = sigB; for (let i = 0; i < n; i++) if (S[i] !== K[i]) { same = false; break; } }
+      sigA = sigB; sigB = S; sigN = n;
+      return same;
     }
-    const same = (a, b) => { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
     function blit() {
       const w = shadow.map.width, h = shadow.map.height, dst = props.get(shadow.map).__webglFramebuffer;
       state.bindFramebuffer(gl.READ_FRAMEBUFFER, props.get(still).__webglFramebuffer);
@@ -2591,9 +2644,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       try {
         if (frame++ % 30 === 0) collect(scene);
         light.updateMatrixWorld(); light.target.updateMatrixWorld();
-        const p = poseOf(), s = sigOf();
+        const moved = !poseOf() | !sigOf(); // (both: each keeps what it saw for the next frame's comparison)
         api.frames++;
-        if (!built || asked || !same(p, pose) || !same(s, sig)) {
+        if (!built || asked || moved) {
           // the still casters alone, into their own map
           const moving = [];
           walk(scene, false, (o, st) => { if (!st && o.castShadow && drawable(o)) { o.castShadow = false; moving.push(o); } });
@@ -2601,7 +2654,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           shadow.map = still;
           try { orig.call(this, lights, scene, camera); } finally { shadow.map = real; for (const o of moving) o.castShadow = true; }
           this.needsUpdate = need; shadow.needsUpdate = need || shadow.needsUpdate;
-          pose = p; sig = s; built = true; api.refreshes++;
+          built = true; api.refreshes++;
         }
         // every frame: the still casters' depth, and the moving ones drawn over it
         for (const o of casters) o.castShadow = false;
