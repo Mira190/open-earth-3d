@@ -1,4 +1,5 @@
 {
+  "plush": {"kind": "mugi", "name": "Mugi", "what": "the travelling cat", "scarf": "#3d7a4a"},
   "spots": [
     {"id": "bobs", "name": "Bob's Peak", "at": [-1044.1, 466.5], "look": [150, -600], "lookUp": -150, "lines": {"any": ["Bob's Peak, by the top of the gondola. Lake Wakatipu bends away below like a river that forgot to stop."]}},
     {"id": "skyline", "name": "The Skyline terrace", "at": [-975.9, 475.8], "look": [150, -600], "z": 474.6, "lookUp": -120, "lines": {"any": ["From the Skyline terrace: the town, the bay, the Gardens on their point, and the Remarkables across the lake."], "dusk": ["The Remarkables hold the last light for a few minutes after the town has lost it. The whole terrace went quiet to watch."]}},
