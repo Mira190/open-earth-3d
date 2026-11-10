@@ -1266,9 +1266,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     o.drv = OECars.chauffeur(C, plan.rt, opts);
     o.drv.opts = opts; // (for a new route round a jam)
     o.T0 = plan.T; o.sig = plan.sig; o.scr = plan.scr || []; o.scrJ = plan.scrJ || []; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
-    const look = driverLook();
+    let look = driverLook();
     o.driver = makeRig(look, {});
     C.sit(o.driver, 'driver');
+    // (a tall character, or one in a hat, can stand out through the roof even shrunk as far as a seat shrinks
+    // anyone: another of the crowd's characters at the wheel then, a few tries at most)
+    for (let k = 0; k < 4 && look.character && C.clearance && C.clearance(o.driver, 'driver') < 0; k++) {
+      if (o.driver.root.parent) o.driver.root.parent.remove(o.driver.root);
+      look = driverLook();
+      o.driver = makeRig(look, {});
+      C.sit(o.driver, 'driver');
+    }
     // none of the crowd's characters loaded yet (a ride in the first seconds of a game): a simple
     // figure at the wheel for now, and one of them as soon as it has loaded
     if (!look.character && lib) {
