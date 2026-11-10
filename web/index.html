@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="title.css">
 <link rel="stylesheet" href="film.css">
+<link rel="stylesheet" href="game/life.css">
 <style>
 /* City: full-bleed 3D stage, a working panel on the right, a sun dial dock along the bottom.
    Game: the stage full-bleed under its HUD. Both carry on from the title screen (title.css): off-white
@@ -1085,6 +1086,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
           <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
+          <div class="field"><span class="note">Frame rate</span><div class="seg" id="gm-fps"><button data-f="30">30</button><button data-f="60" aria-pressed="true">60</button><button data-f="0">Display</button></div></div>
           <div class="field"><span class="note">Route line</span><div class="seg wrap" id="gm-route"><button data-r="on" aria-pressed="true">On</button><button data-r="ask">Only when I ask</button><button data-r="off">Off</button></div></div>
           <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gm-sound" checked> Sound</label>
         </div>
@@ -1227,6 +1229,14 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/doors.js"></script>
 <script src="game/overture.js"></script>
 <script src="game/hud.js"></script>
+<script src="game/music.js"></script>
+<script src="game/life.js"></script>
+<script src="game/day.js"></script>
+<script src="game/style.js"></script>
+<script src="game/bonds.js"></script>
+<script src="game/jobs.js"></script>
+<script src="game/phone.js"></script>
+<script src="game/fx.js"></script>
 <script src="game/game.js"></script>
 <script>
 // Router: "#<city id>" opens that city's 3D model, "#play-<city id>" its game ("@<travel id>" to start there),

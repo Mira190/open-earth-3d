@@ -929,28 +929,117 @@
         ]
       }
     ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "water",
+        "title": "The water",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "incline",
+        "title": "The incline",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "water",
+          "incline"
+        ],
+        "on_open": "<b>Both walks done.</b> Walk back up the path to Haruka, at the bridge below Ginkaku-ji."
+      }
+    ],
     "quests": [
       {
         "id": "canal",
+        "line": "start",
         "giver": "haruka",
         "title": "Down the canal",
         "stamp": "Philosopher's Path",
         "talk": [
           "おこしやす. This is the start of the Philosopher's Path. The canal runs south along the hills for about two kilometres.",
-          "Walk it down to Nyakuoji: there's an old canal keeper there who knows where the water goes. WASD to walk, Shift to run, E to talk."
+          "Two people to find along it, in either order. Mr. Kenji kept this canal all his working life: he's near Nyakuoji, where the path ends. And Sumire photographs the old boat railway at Keage, beyond Nanzen-ji. WASD to walk, Shift to run, E to talk. Who first?"
+        ],
+        "steps": [],
+        "choices": [
+          {
+            "text": "The water: Mr. Kenji, near Nyakuoji",
+            "action": "track",
+            "line": "water"
+          },
+          {
+            "text": "The incline: Sumire, at Keage",
+            "action": "track",
+            "line": "incline"
+          }
+        ]
+      },
+      {
+        "id": "water",
+        "line": "water",
+        "giver": "kenji",
+        "title": "Where the water goes",
+        "stamp": "Suirokaku",
+        "talk": [
+          "Walked down from Ginkaku-ji, have you? Then you've followed my water the wrong way: it runs north. It comes from Lake Biwa, through the hills by tunnel, and it has one more trick before it gets here.",
+          "Follow the canal on south into Nanzen-ji. Behind the great gate it crosses the temple grounds on a bridge of brick arches, the Suirokaku. Go and stand under it."
         ],
         "steps": [
           {
-            "type": "talk",
-            "npc": "kenji",
-            "text": "Walk the path south to the canal keeper near Nyakuoji"
-          },
-          {
-            "type": "talk",
-            "npc": "sumire",
-            "text": "Find the photographer at the Keage Incline"
+            "type": "visit",
+            "at": [
+              219.1,
+              -821.0
+            ],
+            "radius": 40,
+            "text": "Stand under the brick aqueduct in Nanzen-ji"
           }
-        ]
+        ],
+        "check": true
+      },
+      {
+        "id": "incline",
+        "line": "incline",
+        "giver": "sumire",
+        "title": "The great gate",
+        "stamp": "Sanmon",
+        "talk": [
+          "You walked the whole canal to get here? Then you've earned the short version. These rails carried boats, not trains: up from the canal on cradles, 582 metres of slope.",
+          "Now go back as far as Nanzen-ji and stand under the Sanmon, the great gate. Twenty-two metres of timber, built in 1628. I want to know whether you look up or look through."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              93.0,
+              -761.3
+            ],
+            "radius": 25,
+            "text": "Stand under Nanzen-ji's Sanmon"
+          }
+        ],
+        "check": true
+      },
+      {
+        "id": "poem",
+        "line": "finale",
+        "giver": "haruka",
+        "title": "The poem on the stone",
+        "stamp": "哲学の道",
+        "talk": [
+          "おかえりやす. So: a canal that runs the wrong way, a brick bridge in a Zen temple, and a railway for boats. Not what you expected from a path about thinking, is it?",
+          "Nishida left a poem on a stone partway down. 'Others are others, I am myself; come what may, I go the way I go.' You've just walked it. That's the whole course."
+        ],
+        "steps": []
       }
     ]
   }

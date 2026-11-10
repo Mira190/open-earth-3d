@@ -293,6 +293,14 @@ window.OEAudio = (function () {
     s.connect(f1); s.connect(f2); f1.connect(g); f2.connect(g); g.connect(master); s.start(a); s.stop(a + dur + 0.1);
   }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
-  function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, cicadas, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  function stop() { if (ctx) { ctx.close(); ctx = null; mbus = null; } }
+  // for the score (game/music.js): the context it plays on, and a bus into the master, so that the
+  // Sound switch mutes the music with everything else
+  let mbus = null;
+  function musicBus() {
+    if (!ctx) return null;
+    if (!mbus || mbus.context !== ctx) { mbus = ctx.createGain(); mbus.connect(master); }
+    return mbus;
+  }
+  return { start, get ctx() { return ctx; }, musicBus, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, thunder, cicadas, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

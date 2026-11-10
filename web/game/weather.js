@@ -736,7 +736,7 @@ void main() {
       const x = camera.position.x + Math.sin(bearing) * dist, z = camera.position.z - Math.cos(bearing) * dist;
       Object.assign(bolt, { strokes, t0: tSec, dist, ground, count: bolt.count + 1, last: { dist, bearing, ground, strokes: n, at: tSec }, cam: camera.position.clone() });
       boltMesh.visible = ground && level > 0 && !dropless;
-      if (boltMesh.visible) forge(x, z, (Wd.groundY ?? 0) + 1400 + 500 * brnd(), (Wd.groundY ?? 0), brnd);
+      if (boltMesh.visible) forge(x, z, (api.groundY ?? 0) + 1400 + 500 * brnd(), (api.groundY ?? 0), brnd);
       if (dist < 16000 && api.flashPin == null) bolt.thunder.push({ at: performance.now() + dist / 343 * 1000, dist });
       return bolt.last;
     }
@@ -849,6 +849,7 @@ void main() {
       // what was shed, to say once the game can show it
       onGuard: null,
       // lightning: strike(t, {dist, bearing, ground}) makes one now; onThunder(dist m) is called as its thunder arrives
+      groundY: 0, // the ground's height where the player is (the game sets it each frame)
       strike, onThunder: null, bolt, bowPin: null, flashPin: null, // (bowPin, flashPin: a rainbow or a flash held at that strength, for a still)
       // live weather: called with what came back (null: nothing did, the season carries on)
       onNow: null, get now() { return nowWx; },
@@ -927,7 +928,7 @@ void main() {
           const mist = fog.color.clone().lerp(pale, 0.6);
           if (heat > 0) mist.lerp(new THREE.Color(0.86, 0.84, 0.78), 0.3 * heat);
           fog.color.lerp(mist, Math.min(1, thick * 1.2));
-          const above = 1 + Math.max(0, camera.position.y - (Wd.groundY ?? 0) - 40) / 90 * Math.max(f, sn * 0.5);
+          const above = 1 + Math.max(0, camera.position.y - (api.groundY ?? 0) - 40) / 90 * Math.max(f, sn * 0.5);
           const vis = S.visibility * above * (1 - 0.45 * heat);
           fog.far = Math.min(fog.far, vis * 1.7);
           fog.near = Math.min(fog.near, fog.far * 0.02 + fog.near * Math.max(0, 1 - 1.6 * thick));

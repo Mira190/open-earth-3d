@@ -148,7 +148,7 @@ export function ranger(G, o = {}) {
   const st = siteStats(G);
   const hasLife = G2 => G2.species().length > 0;
   return {
-    id: 'ranger', role: o.role || 'ranger', name: o.name || 'Alex', title: o.title || 'Marine park ranger', gender: o.gender || 'W',
+    id: 'ranger', role: o.role || 'ranger', name: o.name || 'Alex', title: o.title || 'Marine park ranger', gender: o.gender || 'W', look: o.look,
     at: o.at || (G2 => {
       const s = G2.spawn(), h = s.heading * Math.PI / 180, fx = Math.sin(h), fn = Math.cos(h), rx = Math.cos(h), rn = -Math.sin(h);
       const want = { x: s.x + fx * 6 + rx * 3, north: s.north + fn * 6 + rn * 3 };
