@@ -477,6 +477,16 @@ def surfaces():
                     "axis": [round(float(-st["t"][0]), 5), round(float(-st["t"][1]), 5)], "half_width": st["w"] / 2,
                     "profile": [[-0.5, zp], [0.0, zp], [round(half, 2), round(zl, 2)], [round(half + 1.6, 2), round(zl, 2)], [round(run, 2), round(st["z0"], 2)], [round(run + 0.6, 2), round(st["z0"], 2)]],
                     "thickness": 1.0, "mesh": f"rail_stair_{st['key']}", "mapped": False, "check": True, "label": "the stairs to the platforms"})
+    # the roof, where the lookout over the quay stands: the box's own rectangle, a step in from its edge
+    r = np.array(L["box"].minimum_rotated_rectangle.exterior.coords[:4])
+    e0, e1 = r[1] - r[0], r[2] - r[1]
+    if np.linalg.norm(e0) < np.linalg.norm(e1):
+        r, e0, e1 = np.roll(r, -1, axis=0), e1, -e0
+    ln, wd, c = float(np.linalg.norm(e0)), float(np.linalg.norm(e1)), r.mean(axis=0)
+    out.append({"name": "Circular Quay Station, the roof", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
+                "axis": [round(float(e0[0] / ln), 5), round(float(e0[1] / ln), 5)], "half_width": round(wd / 2 - 0.4, 2),
+                "profile": [[round(-ln / 2 + 0.4, 2), L["roof_z"]], [round(ln / 2 - 0.4, 2), L["roof_z"]]], "thickness": 1.2,
+                "mesh": "rail_roof_deck", "mapped": False, "label": "Circular Quay"})
     return out
 
 

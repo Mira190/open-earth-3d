@@ -117,7 +117,7 @@
   ],
   "load_bytes": {
    "model": 1293972,
-   "game": 1728626
+   "game": 1728654
   }
  },
  {
@@ -2197,7 +2197,7 @@
   ],
   "load_bytes": {
    "model": 2038076,
-   "game": 2518816
+   "game": 2518825
   },
   "flyover": {
    "video": "flyover.mp4",
