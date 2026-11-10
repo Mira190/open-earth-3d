@@ -502,6 +502,18 @@ Sources for the above are listed under [Sources](#sources) ("Daily life").
 - **Short sessions.** Something finishes within ten minutes: a rank, a job, a dish, a page of
   the diary.
 
+| The card for a new day | The diary's page for today |
+|---|---|
+| ![](images/life/day-card.jpg) | ![](images/life/diary-today.jpg) |
+| **A rank earned (Kyoto)** | **The passport's skills, under the stamps** |
+| ![](images/life/rank-up.jpg) | ![](images/life/passport.jpg) |
+| **A job in hand: which way is the Imperial Palace?** | |
+| ![](images/life/job.jpg) | |
+
+| On a phone: the day's card | The people you know | The work on offer | A job in hand | A rank | Messages |
+|---|---|---|---|---|---|
+| ![](images/life/day-card-phone.jpg) | ![](images/life/people-phone.jpg) | ![](images/life/work-phone.jpg) | ![](images/life/job-phone.jpg) | ![](images/life/rank-up-phone.jpg) | ![](images/life/messages-phone.jpg) |
+
 ### The day and the diary
 
 A day has four parts, set by the sun of the city's own date (`web/game/day.js`): **morning**
