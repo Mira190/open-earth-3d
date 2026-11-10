@@ -43,7 +43,13 @@ async function main() {
   // the picture tier (tier.js, from web/quality.js): MSAA, pixels, plants, the mirror and the bloom by what the device can draw
   const tier = reefTier(q);
   const renderer = new THREE.WebGPURenderer({ antialias: tier.antialias, forceWebGL: q.get('gl') === '1', logarithmicDepthBuffer: ALP && q.get('logdepth') !== '0' });
-  renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight));
+  // the frame-time governor (web/quality.js, as the cities' game takes it): the scene's resolution follows what the device
+  // draws in a frame, down to half the tier's pixel ratio and back up when there is room. Stills, films and the checks
+  // (automation) keep the tier's pixels. (mid = min: this viewer has no extras for it to drop, so it goes straight down)
+  const gov = window.OEQuality && !q.get('still') && q.get('gov') !== '0' ? window.OEQuality.governor({ min: 0.5, mid: 0.5 }) : null;
+  const applyPixels = () => renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight) * (gov ? gov.scale : 1));
+  if (gov) gov.on(applyPixels);
+  applyPixels();
   renderer.setSize(innerWidth, innerHeight);
   // an alpine site takes the title screen's curve family (Khronos PBR Neutral, web/lens.js): it keeps the sky's blue
   // and the lake's turquoise where ACES pushes both toward a grey teal
@@ -275,7 +281,7 @@ async function main() {
   const keys = new Set();
   addEventListener('keydown', e => keys.add(e.code)); addEventListener('keyup', e => keys.delete(e.code));
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
-  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(tier.pixelRatio(innerWidth, innerHeight)); renderer.setSize(innerWidth, innerHeight); });
+  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); applyPixels(); renderer.setSize(innerWidth, innerHeight); });
 
   post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env, { bloom: tier.bloom, grade: S.grade || null });
 
@@ -306,8 +312,9 @@ async function main() {
   stage('First frames', 0.98);
   let last = performance.now(), frames = 0;
   // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
-  window.__reef = { camera, env, renderer, d, ctx, tier, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
+  window.__reef = { camera, env, renderer, d, ctx, tier, gov, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
+    if (gov) { gov.raf(now); gov.tick(now, !document.hidden); }
     const dt = Math.max(Math.min((now - last) / 1000, 0.1), 0); last = now;
     if (!ctx.controller) {
     const sp = (keys.has('ShiftLeft') ? 60 : 12) * (camera.position.y > 200 ? 8 : 1);
