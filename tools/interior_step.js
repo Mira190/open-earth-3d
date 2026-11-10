@@ -51,10 +51,10 @@ module.exports = async function walkInteriors(p, { outDir = null, prefix = '' } 
       const dOut = Math.hypot(pl.x - sx, pl.y - sy);
       const o = { id, name: room.name, shut0, openIn: opened.min, openOut: outOpened.min, shutAfter: door ? door.k : 0, room: inside.room, dIn, dz: inside.z - room.floor,
         dOut, outRoom: g.room() ? g.room().id : null, stuck: stuckIn + stuckOut, mode: pl.mode };
-      o.ok = o.shut0 < 0.05 && o.openIn > 0.8 && o.openOut > 0.8 && o.room === id && o.dIn < 0.8 && Math.abs(o.dz) < 0.25 && o.dOut < 0.8 && !o.outRoom && o.shutAfter < 0.05 && o.mode === 'foot';
+      o.ok = o.shut0 < 0.05 && o.openIn > 0.8 && o.openOut > 0.8 && o.room === id && o.dIn < 0.8 && Math.abs(o.dz) < 0.25 && o.dOut < 0.8 && o.outRoom !== id && o.shutAfter < 0.05 && o.mode === 'foot';
       o.why = o.ok ? '' : [o.shut0 >= 0.05 && 'the door stood open before', o.openIn <= 0.8 && `the door only ${(o.openIn * 100).toFixed(0)}% open in the doorway`,
         o.room !== id && `not in the room (${o.room})`, o.dIn >= 0.8 && `stopped ${o.dIn.toFixed(1)} m short inside`, Math.abs(o.dz) >= 0.25 && `${o.dz.toFixed(2)} m off its floor`,
-        o.openOut <= 0.8 && 'the door not open on the way out', o.dOut >= 0.8 && `stopped ${o.dOut.toFixed(1)} m short outside`, o.outRoom && 'still in the room',
+        o.openOut <= 0.8 && 'the door not open on the way out', o.dOut >= 0.8 && `stopped ${o.dOut.toFixed(1)} m short outside`, o.outRoom === id && 'still in the room',
         o.shutAfter >= 0.05 && 'the door left open'].filter(Boolean).join('; ');
       return o;
     }, id);

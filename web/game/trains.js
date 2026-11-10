@@ -50,31 +50,107 @@ window.OETrains = (function () {
   // floor 1.13 m over the rail, four pairs of doors a side 1.3 m wide); the high-speed train is a design of
   // this project's own, to the Tokaido Shinkansen's loading gauge (25 m cars, 3.36 m wide, 3.6 m high).
   const STOCK = {
-    e235: { len: 20, band: null, door: '#8fc31f', face: '#8fc31f', pan: [1, 4, 7, 9] },            // Yamanote: yellow-green doors and face
-    e233k: { len: 20, band: ['#00a7e3'], door: null, face: '#00a7e3', pan: [1, 4, 7] },            // Keihin-Tohoku: a sky blue band
-    e233t: { len: 20, band: ['#f68b1e', '#0d6b38'], door: null, face: '#f68b1e', pan: [2, 5, 8, 11, 13] }, // Tokaido: orange over green
+    // model: the Blender car railstock.glb draws it with (blender/build_railstock.py), its line's colours painted on
+    // the materials Door, Band, Band2, Top and Face (null leaves the steel bare); lamp: the head and tail lamps'
+    // place (ahead of the car's middle, out to each side, up from the rail)
+    e235: { len: 20, band: null, door: '#8fc31f', face: '#8fc31f', top: '#8fc31f', pan: [1, 4, 7, 9], model: 'Commuter' },            // Yamanote: yellow-green doors and face
+    e233k: { len: 20, band: ['#00a7e3'], door: null, face: '#00a7e3', top: '#00a7e3', pan: [1, 4, 7], model: 'Commuter' },            // Keihin-Tohoku: a sky blue band
+    e233t: { len: 20, band: ['#f68b1e', '#0d6b38'], door: null, face: '#f68b1e', top: '#f68b1e', pan: [2, 5, 8, 11, 13], model: 'Commuter' }, // Tokaido: orange over green
     hayate: { len: 25, shinkansen: true, pan: [4, 11] }, // this project's own high-speed train (see shinkansen())
     // Sydney Trains' Waratah (A and B sets): eight double-deck cars of 20.4 m, 3.03 m wide and 4.41 m high, steel
     // with yellow doors and a yellow front
-    waratah: { len: 20.4, deck2: true, door: '#f5a800', face: '#f5a800', pan: [2, 5] },
+    waratah: { len: 20.4, deck2: true, door: '#f5a800', face: '#f5a800', pan: [2, 5], model: 'Waratah', lamp: [9.9, 0.95, 1.0] },
   };
   let MATS = null;
-  function saloon(yb, yt) {
-    const m = new THREE.MeshStandardMaterial({ color: lin('#10171d'), roughness: 0.06, metalness: 0.4, emissive: lin('#fff0d6'), emissiveIntensity: 0.03 });
+  // A saloon seen through its windows, by interior mapping: each pixel of the glass follows the ray from the eye
+  // on into a box the size of the car's inside (in the car's own frame, so it holds for every instance) and
+  // shades what it meets there: the floor, the ceiling and its two rows of lamps, the bench seats under the far
+  // windows, the far windows themselves (the day outside, or the night), the panels and adverts over them, the
+  // grab poles by the doors. By day it is dim behind the reflections, as a carriage is; after dark it is the
+  // carriage's own light. The decks: [floor, ceiling, window bottom, window top] for each (a double-decker has
+  // two, chosen by the height on the glass). No figures are drawn: shapes painted in it read as cut-outs.
+  function saloon(decks, o = {}) {
+    const iw = o.iw || 1.36, seat = o.seat || '#2f5d7c', key = decks.map(d => d.join(',')).join('|');
+    const m = new THREE.MeshStandardMaterial({ color: lin('#0b1115'), roughness: 0.04, metalness: 0.25, emissive: lin('#ffffff'), emissiveIntensity: 0.42 });
+    const glsl = v => v.toFixed(3);
     m.onBeforeCompile = sh => {
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLit; varying float vCar;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLit = position;\n#ifdef USE_INSTANCING\n  vCar = float( gl_InstanceID );\n#else\n  vCar = 0.0;\n#endif');
-      // The saloon behind the glass is only its light: brighter towards the lamps along the ceiling, a little
-      // uneven from pane to pane. No figures are drawn in it: shapes painted on the glass read as cut-outs.
+      sh.uniforms.uNight = OEKit.shared.night;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLit; varying vec3 vEyeL; varying float vCar;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+  vLit = position;
+#ifdef USE_INSTANCING
+  vCar = float( gl_InstanceID );
+  vEyeL = ( inverse( modelMatrix * instanceMatrix ) * vec4( cameraPosition, 1.0 ) ).xyz;
+#else
+  vCar = 0.0;
+  vEyeL = ( inverse( modelMatrix ) * vec4( cameraPosition, 1.0 ) ).xyz;
+#endif`);
+      const deck = decks.length > 1 ? `vLit.y > ${glsl((decks[0][3] + decks[1][2]) / 2)}` : 'false';
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying vec3 vLit; varying float vCar;
-float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
+uniform float uNight;
+varying vec3 vLit; varying vec3 vEyeL; varying float vCar;
+float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }
+vec3 saloonAt( vec3 ro, vec3 rd, vec4 D ) {
+  // D: floor, ceiling, window bottom, window top
+  float sx = ro.x > 0.0 ? 1.0 : -1.0;
+  float tx = rd.x * sx < -1e-4 ? ( -sx * ${glsl(iw)} - ro.x ) / rd.x : 1e4;
+  float ty = rd.y < 0.0 ? ( D.x - ro.y ) / rd.y : ( D.y - ro.y ) / max( rd.y, 1e-4 );
+  float t = min( tx, ty );
+  vec3 h = ro + rd * t;
+  float lamp = 1.0 - smoothstep( 0.0, 0.07, abs( abs( h.x ) - 0.52 ) );
+  vec3 c;
+  if ( t == tx ) { // the far side: seats, windows, panels
+    float u = ( h.y - D.x ) / ( D.y - D.x );
+    float bench = step( h.y, D.x + 0.46 ) * step( D.x + 0.36, h.y );
+    float back = step( h.y, D.z - 0.05 ) * step( D.x + 0.46, h.y );
+    float win = step( D.z, h.y ) * step( h.y, D.w );
+    float pane = step( 0.06, fract( h.z / 1.45 ) );
+    vec3 outside = mix( vec3( 0.75, 0.82, 0.88 ), vec3( 0.05, 0.06, 0.08 ), uNight );
+    vec3 wall = vec3( 0.82, 0.83, 0.8 );
+    float ad = step( D.w + 0.06, h.y ) * step( h.y, D.y - 0.08 ) * step( 0.08, fract( h.z / 1.2 ) );
+    vec3 adc = mix( vec3( 0.9, 0.86, 0.75 ), vec3( 0.55 + 0.4 * litHash( floor( h.z / 1.2 ) ), 0.5, 0.4 + 0.5 * litHash( floor( h.z / 1.2 ) + 7.0 ) ), 0.6 );
+    c = mix( wall, vec3( ${lin(seat).toArray().map(glsl).join(', ')} ), max( bench, back * 0.9 ) );
+    c = mix( c, outside * pane + wall * 0.4 * ( 1.0 - pane ), win );
+    c = mix( c, adc, ad );
+    c *= 0.85 + 0.15 * u;
+  } else if ( rd.y < 0.0 ) { // the floor, a paler aisle down the middle
+    c = mix( vec3( 0.38, 0.36, 0.33 ), vec3( 0.55, 0.53, 0.48 ), 1.0 - smoothstep( 0.4, 0.6, abs( h.x ) ) );
+  } else { // the ceiling and its lamps
+    c = vec3( 0.86, 0.87, 0.86 ) + lamp * vec3( 2.2 );
+  }
+  // the light falling off with depth
+  return c * exp( -t * 0.06 );
+}`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  { float up = clamp( ( vLit.y - ${yb.toFixed(3)} ) / ${(yt - yb).toFixed(3)}, 0.0, 1.0 );
+  { vec4 D = ${deck} ? vec4( ${decks[decks.length - 1].map(glsl).join(', ')} ) : vec4( ${decks[0].map(glsl).join(', ')} );
+    vec3 rd = normalize( vLit - vEyeL );
     float pane = 0.9 + 0.2 * litHash( floor( vLit.z / 1.6 ) + vCar * 3.7 );
-    totalEmissiveRadiance *= ( 0.55 + 0.3 * up + 0.4 * smoothstep( 0.84, 1.0, up ) ) * pane; }`);
+    totalEmissiveRadiance *= saloonAt( vLit, rd, D ) * pane; }`);
     };
-    m.customProgramCacheKey = () => `train-saloon4|${yb}`;
+    m.customProgramCacheKey = () => `train-saloon6|${key}|${iw}|${seat}`;
+    return m;
+  }
+  // Stainless steel as it is on a carriage's side: a fine grain along the car that breaks the reflections up,
+  // the gloss varying a little from sheet to sheet, and the grime of the line gathering towards the sill and the
+  // underframe, streaked down from the doors and windows. All in the car's own frame, so every instance has it.
+  function stainless(m) {
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSteel;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vSteel = position;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vSteel;
+float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+  { float low = 1.0 - smoothstep( 0.95, 1.9, vSteel.y );
+    float streak = steelHash( vec2( floor( vSteel.z * 9.0 ), 3.0 ) ) * ( 1.0 - smoothstep( 1.2, 2.9, vSteel.y ) );
+    float sheet = steelHash( vec2( floor( vSteel.z / 2.4 ), floor( vSteel.y / 1.1 ) ) );
+    diffuseColor.rgb *= ( 1.0 - 0.32 * low - 0.1 * streak ) * ( 0.96 + 0.06 * sheet ); }`)
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+  { float grain = steelHash( vec2( floor( vSteel.y * 260.0 ), floor( vSteel.z * 3.0 ) ) );
+    float low = 1.0 - smoothstep( 0.95, 1.9, vSteel.y );
+    roughnessFactor = clamp( roughnessFactor + 0.12 * ( grain - 0.5 ) + 0.25 * low + 0.06 * steelHash( vec2( floor( vSteel.z / 2.4 ), 1.0 ) ), 0.08, 1.0 ); }`);
+    };
+    m.customProgramCacheKey = () => 'train-stainless1';
     return m;
   }
   function mats() {
@@ -82,18 +158,34 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
     const std = o => new THREE.MeshStandardMaterial(o);
     const glass = OEKit.materials().glass; // dark by day, lit from inside after dark (OEKit.setNight)
     MATS = {
-      steel: std({ color: lin('#c3c8cb'), roughness: 0.36, metalness: 0.72 }),
+      steel: stainless(std({ color: lin('#b4b9bc'), roughness: 0.3, metalness: 0.88, envMapIntensity: 1.25 })),
       roof: std({ color: lin('#8d9194'), roughness: 0.7, metalness: 0.2 }),
       under: std({ color: lin('#26292c'), roughness: 0.8, metalness: 0.2 }),
       black: std({ color: lin('#101214'), roughness: 0.35, metalness: 0.3 }),
       screen: std({ color: lin('#06090c'), roughness: 0.92, metalness: 0.0, envMapIntensity: 0.04, side: THREE.DoubleSide }), // a windscreen flush in a nose
       white: std({ color: lin('#f3f5f4'), roughness: 0.3, metalness: 0.15 }),
       blue: std({ color: lin('#123f8c'), roughness: 0.35, metalness: 0.1 }),
-      // a saloon seen through its windows: dark glass by day; as the light goes its lamps show
-      // (a commuter car's windows from 1.93 m over the rail, a Shinkansen's from 1.99 m)
-      lit: saloon(1.93, 2.85), litS: saloon(1.99, 2.51), litLo: saloon(1.2, 2.04), litUp: saloon(2.66, 3.46),
+      // (a commuter car's windows from 1.93 m over the rail, a Shinkansen's from 1.99 m, a double-decker's two rows)
+      lit: saloon([[1.13, 3.2, 1.93, 2.85]], { seat: '#3c6a58' }), litS: saloon([[1.3, 3.1, 1.99, 2.51]], { iw: 1.5, seat: '#2d4f86' }),
+      litLo: saloon([[0.75, 2.3, 1.2, 2.04]], { iw: 1.4, seat: '#25466e' }), litUp: saloon([[2.45, 3.95, 2.66, 3.46]], { iw: 1.4, seat: '#25466e' }),
+      litDeck: saloon([[0.75, 2.3, 1.2, 2.04], [2.45, 3.95, 2.66, 3.46]], { iw: 1.4, seat: '#25466e' }),
       glass,
       paint: {},
+      // the Blender cars' own surfaces (railstock.glb), by their material's name
+      extra: {
+        RoofKit: std({ color: lin('#b4b8ba'), roughness: 0.5, metalness: 0.45 }),
+        Bogie: std({ color: lin('#2e3134'), roughness: 0.72, metalness: 0.3 }),
+        Wheel: std({ color: lin('#6b6660'), roughness: 0.4, metalness: 0.85 }),
+        Rubber: std({ color: lin('#121314'), roughness: 0.92, metalness: 0.0 }),
+        Mask: std({ color: lin('#050608'), roughness: 0.1, metalness: 0.2, envMapIntensity: 1.4 }),
+        Screen: std({ color: lin('#0a1216'), roughness: 0.04, metalness: 0.6, envMapIntensity: 1.6 }),
+        Display: std({ color: lin('#1a1006'), roughness: 0.5, metalness: 0.0, emissive: lin('#ffa040'), emissiveIntensity: 0.8 }),
+        Lamp: std({ color: lin('#f4f1ea'), roughness: 0.15, metalness: 0.2, emissive: lin('#fff2d8'), emissiveIntensity: 0.6 }),
+        LampTail: std({ color: lin('#5a0a06'), roughness: 0.2, metalness: 0.1, emissive: lin('#ff2a1c'), emissiveIntensity: 0.5 }),
+        Insulator: std({ color: lin('#d6d1c4'), roughness: 0.25, metalness: 0.0 }),
+        Panto: std({ color: lin('#8a8f93'), roughness: 0.4, metalness: 0.7 }),
+        FaceLow: std({ color: lin('#d4d8da'), roughness: 0.32, metalness: 0.35 }),
+      },
     };
     return MATS;
   }
@@ -307,6 +399,73 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
     return out;
   }
 
+  // ------------------------------------------------------------ the Blender cars (assets/vehicles/railstock.glb)
+  // One geometry per body and material, with the occlusion baked into its vertex colours. Until the file has come
+  // (or where it cannot), the cars are the box models above.
+  let LIB = null, libP = null;
+  function flat(g0, M) { // a geometry with float position, normal and colour (the occlusion), indexed, in the node's frame
+    const n = g0.attributes.position.count, g = new THREE.BufferGeometry();
+    for (const [a, k] of [['position', 3], ['normal', 3], ['color', 3]]) {
+      const A = g0.attributes[a], arr = new Float32Array(n * k);
+      if (!A) arr.fill(1);
+      else for (let i = 0; i < n; i++) { arr[i * k] = A.getX(i); arr[i * k + 1] = A.getY(i); arr[i * k + 2] = A.getZ(i); }
+      g.setAttribute(a, new THREE.BufferAttribute(arr, k));
+    }
+    const idx = new Uint32Array(g0.index ? g0.index.count : n);
+    if (g0.index) for (let i = 0; i < idx.length; i++) idx[i] = g0.index.getX(i); else for (let i = 0; i < n; i++) idx[i] = i;
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    return g.applyMatrix4(M);
+  }
+  function loadLib(base = 'assets/vehicles/') {
+    if (libP) return libP;
+    if (!THREE.GLTFLoader || !THREE.BufferGeometryUtils) return (libP = Promise.resolve(null));
+    const info = fetch(base + 'railstock.json').then(r => r.json());
+    const glb = new Promise((res, rej) => new THREE.GLTFLoader().load(base + 'railstock.glb', res, null, rej));
+    libP = Promise.all([info, glb]).then(([info, gltf]) => {
+      gltf.scene.updateMatrixWorld(true);
+      const nodes = {};
+      for (const node of gltf.scene.children) {
+        const by = new Map();
+        node.traverse(o => {
+          if (!o.isMesh) return;
+          const name = o.material.name.replace(/\.\d+$/, '');
+          if (!by.has(name)) by.set(name, []);
+          by.get(name).push(flat(o.geometry, o.matrixWorld));
+        });
+        nodes[node.name] = by;
+      }
+      return (LIB = { info, nodes });
+    }).catch(e => { console.warn('Train models unavailable:', e); return null; });
+    return libP;
+  }
+  // a material with the baked occlusion (vertex colours), kept beside the one it copies
+  const AO = new Map();
+  function ao(m) {
+    if (AO.has(m)) return AO.get(m);
+    const c = m.clone();
+    c.vertexColors = true;
+    if (m.onBeforeCompile && m.customProgramCacheKey) { c.onBeforeCompile = m.onBeforeCompile; const key = m.customProgramCacheKey(); c.customProgramCacheKey = () => key + '|ao'; }
+    AO.set(m, c);
+    return c;
+  }
+  // which of the game's materials a Blender material takes, for this stock (its line's colours)
+  function glbMat(name, S) {
+    const M = mats(), P = hex => (hex ? paint(hex) : M.steel), band = S.band || [];
+    switch (name) {
+      case 'Steel': return M.steel;
+      case 'Roof': return M.roof;
+      case 'Under': return M.under;
+      case 'Black': case 'Grille': return M.black;
+      case 'Window': return S.deck2 ? M.litDeck : M.lit;
+      case 'Door': return P(S.door);
+      case 'Band': return P(band[0]);
+      case 'Band2': return P(band[1] || band[0]);
+      case 'Top': return P(S.top);
+      case 'Face': return P(S.face);
+      default: return M.extra[name] || M.steel;
+    }
+  }
+
   // ------------------------------------------------------------ the caption and the voice
   let capEl = null, capT = 0;
   function caption(ja, en) {
@@ -377,12 +536,36 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
 
     // the cars, instanced: per stock and role, one mesh per material
     const kinds = {}, dummy = new THREE.Object3D();
+    const capOf = stockId => 2 * Math.max(...services.filter(s => s.stock === stockId).map(s => s.cars)) * services.filter(s => s.stock === stockId).length;
+    const tier = window.OEQuality ? window.OEQuality.tier().name : 'high';
+    const LOD_M = tier === 'low' || tier === 'still' ? 40 : tier === 'medium' ? 60 : 85; // the Blender cars' far copy beyond this
+    // a Blender car: per level of detail, one instanced mesh per material; a tail car is the driving car turned about
+    function glbKind(stockId, role) {
+      const S = STOCK[stockId], body = role === 'head' || role === 'tail' ? 'Head' : role === 'pan' ? 'Pan' : 'Mid', key = `${stockId}|${body}`;
+      if (kinds[key]) return kinds[key];
+      const cap = capOf(stockId), lods = [];
+      for (const [k, node] of [LIB.nodes[`${S.model}_${body}`], LIB.nodes[`${S.model}_${body}_LOD1`]].entries()) {
+        if (!node) continue;
+        const by = new Map();
+        for (const [name, list] of node) { const m = ao(glbMat(name, S)); if (!by.has(m)) by.set(m, []); by.get(m).push(...list); }
+        const meshes = [];
+        for (const [m, list] of by) {
+          const geo = list.length === 1 ? list[0] : THREE.BufferGeometryUtils.mergeGeometries(list, false);
+          const im = new THREE.InstancedMesh(geo, m, cap);
+          im.castShadow = true; im.receiveShadow = k === 0; im.frustumCulled = false; im.count = 0; im.visible = false; im.name = `train-${key}-${k}`;
+          world.add(im); meshes.push(im);
+        }
+        lods.push({ meshes, n: 0 });
+      }
+      return (kinds[key] = { lods, cap, glb: true });
+    }
     function kind(stockId, role) {
+      if (LIB && STOCK[stockId].model && LIB.nodes[`${STOCK[stockId].model}_Mid`]) return glbKind(stockId, role);
       const key = `${stockId}|${role}`;
       if (kinds[key]) return kinds[key];
       const S = STOCK[stockId], parts = (S.shinkansen ? shinkansen : S.deck2 ? doubledeck : commuter)(S, role), by = new Map();
       for (const [m, g] of parts) { const q = g.index ? g.toNonIndexed() : g; for (const a of Object.keys(q.attributes)) if (a !== 'position' && a !== 'normal') q.deleteAttribute(a); if (!by.has(m)) by.set(m, []); by.get(m).push(q); }
-      const cap = 2 * Math.max(...services.filter(s => s.stock === stockId).map(s => s.cars)) * services.filter(s => s.stock === stockId).length;
+      const cap = capOf(stockId);
       const meshes = [];
       for (const [m, list] of by) {
         const geo = list.length === 1 ? list[0] : THREE.BufferGeometryUtils.mergeGeometries(list, false);
@@ -390,10 +573,21 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
         im.castShadow = im.receiveShadow = true; im.frustumCulled = false; im.count = 0; im.name = `train-${key}`;
         world.add(im); meshes.push(im);
       }
-      return (kinds[key] = { meshes, n: 0, cap });
+      return (kinds[key] = { lods: [{ meshes, n: 0 }], cap });
     }
     const roleOf = (s, k) => (k === 0 ? 'head' : k === s.cars - 1 ? 'tail' : s.S.pan.includes(k) ? 'pan' : 'mid');
     for (const s of services) for (let k = 0; k < s.cars; k++) kind(s.stock, roleOf(s, k));
+    // when the Blender cars have come, they take the box models' place
+    if (services.some(s => s.S.model)) loadLib(o.base).then(lib => {
+      if (!lib) return;
+      for (const [key, K] of Object.entries(kinds)) {
+        const S = STOCK[key.split('|')[0]];
+        if (K.glb || !S.model || !lib.nodes[`${S.model}_Mid`]) continue;
+        for (const L of K.lods) for (const m of L.meshes) { world.remove(m); m.geometry.dispose(); m.dispose && m.dispose(); }
+        delete kinds[key];
+      }
+      api.models = true;
+    });
     // head and tail lamps, a pair of sprites per end of each train drawn
     let gt = null;
     const glowTex = () => {
@@ -411,7 +605,7 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
       L.visible = true; L.material.color.set(colour); L.material.opacity = 0.55 + 0.45 * OEKit.shared.night.value; L.position.set(x, z, -y); L.scale.set(size * 1.6, size * 1.6, 1);
     }
 
-    const api = { tracks, services, kinds, live: [], t: o.t0 || 0, station: R.station, said: [], voices: [0, 0, 0], run, stopsNow };
+    const api = { tracks, services, kinds, models: false, live: [], t: o.t0 || 0, station: R.station, said: [], voices: [0, 0, 0], run, stopsNow };
     const st = R.station || null, st3 = { x: 0, y: 0, z: 0 };
     const state = { t: 0, x: 0, v: 0, a: 0, ph: '', T: 0, t1: 0, t2: 0, t3: 0 };
     const fwd = { x: 0, y: 0, z: 0 }, aft = { x: 0, y: 0, z: 0 };
@@ -433,8 +627,11 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
     api.at = at;
 
     function place(live) {
-      { const n = OEKit.shared.night.value, M = mats(); M.lit.emissiveIntensity = M.litS.emissiveIntensity = M.litLo.emissiveIntensity = M.litUp.emissiveIntensity = 0.03 + 1.35 * n * Math.sqrt(n); } // the saloons' light shows as the day goes
-      for (const k of Object.values(kinds)) k.n = 0;
+      { const n = OEKit.shared.night.value, M = mats(), E = M.extra; M.lit.emissiveIntensity = M.litS.emissiveIntensity = M.litLo.emissiveIntensity = M.litUp.emissiveIntensity = M.litDeck.emissiveIntensity = 0.42 + 0.75 * n * Math.sqrt(n); // the saloons' light shows through the reflections as the day goes
+        E.Display.emissiveIntensity = 0.7 + 1.3 * n; E.Lamp.emissiveIntensity = 0.5 + 2.5 * n; E.LampTail.emissiveIntensity = 0.4 + 2.0 * n;
+        for (const [src, c] of AO) if (src.emissive) c.emissiveIntensity = src.emissiveIntensity; }
+      for (const k of Object.values(kinds)) for (const L of k.lods) L.n = 0;
+      const eye = o.listener ? o.listener() : null;
       let lamps = 0;
       for (const tr of live) {
         const s = tr.s, c = s.tr.c, [h0, h1] = s.tr.hide_m || [0, c.L];
@@ -445,22 +642,24 @@ float litHash( float n ) { return fract( sin( n * 127.1 ) * 43758.5453 ); }`)
           // a car rides on its two bogies: its place is the middle of the chord between them
           const half = s.S.len * 0.345;
           c.at(d + half, fwd); c.at(d - half, aft);
-          const K = kind(s.stock, roleOf(s, i));
-          if (K.n >= K.cap) continue;
-          dummy.position.set((fwd.x + aft.x) / 2, (fwd.z + aft.z) / 2, -(fwd.y + aft.y) / 2);
-          dummy.rotation.set(0, Math.PI - Math.atan2(fwd.x - aft.x, fwd.y - aft.y), 0);
+          const role = roleOf(s, i), K = kind(s.stock, role), cx = (fwd.x + aft.x) / 2, cy = (fwd.y + aft.y) / 2;
+          const L = K.lods.length > 1 && eye && Math.hypot(cx - eye.x, cy - eye.y, fwd.z - eye.z) > LOD_M ? K.lods[1] : K.lods[0];
+          if (L.n >= K.cap) continue;
+          dummy.position.set(cx, (fwd.z + aft.z) / 2, -cy);
+          dummy.rotation.set(0, Math.PI - Math.atan2(fwd.x - aft.x, fwd.y - aft.y) + (K.glb && role === 'tail' ? Math.PI : 0), 0);
           dummy.updateMatrix();
-          for (const m of K.meshes) m.setMatrixAt(K.n, dummy.matrix);
-          K.n++;
+          for (const m of L.meshes) m.setMatrixAt(L.n, dummy.matrix);
+          L.n++;
           if (o.listener) { const l = o.listener(), dd = Math.hypot((fwd.x + aft.x) / 2 - l.x, (fwd.y + aft.y) / 2 - l.y, fwd.z + 1.5 - l.z); if (dd < tr.near) { tr.near = dd; tr.nx = (fwd.x + aft.x) / 2; tr.ny = (fwd.y + aft.y) / 2; } }
           if (i === 0 || i === s.cars - 1) { // white at the head, red at the tail
-            const e = i === 0 ? 1 : -1, hx = (fwd.x - aft.x) / (2 * half), hy = (fwd.y - aft.y) / (2 * half), ex = (fwd.x + aft.x) / 2 + hx * e * (s.S.shinkansen ? 10.2 : 9.85), ey = (fwd.y + aft.y) / 2 + hy * e * (s.S.shinkansen ? 10.2 : 9.85);
-            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * (s.S.shinkansen ? 0.5 : 0.95), ey + hx * sd * (s.S.shinkansen ? 0.5 : 0.95), fwd.z + (s.S.shinkansen ? 1.0 : s.S.deck2 ? 1.5 : 1.25), i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
+            const [ahead, side, up] = s.S.lamp || (s.S.shinkansen ? [10.2, 0.5, 1.0] : s.S.deck2 ? [9.85, 0.95, 1.5] : [9.85, 0.95, 1.25]);
+            const e = i === 0 ? 1 : -1, hx = (fwd.x - aft.x) / (2 * half), hy = (fwd.y - aft.y) / (2 * half), ex = cx + hx * e * ahead, ey = cy + hy * e * ahead;
+            for (const sd of [-1, 1]) lampAt(lamps++, ex - hy * sd * side, ey + hx * sd * side, fwd.z + up, i === 0 ? '#fff6dc' : '#ff2a1c', i === 0 ? 0.9 : 0.55);
           }
         }
       }
       for (let i = lamps; i < lampPool.length; i++) lampPool[i].visible = false;
-      for (const k of Object.values(kinds)) for (const m of k.meshes) { m.count = k.n; m.instanceMatrix.needsUpdate = true; }
+      for (const k of Object.values(kinds)) for (const L of k.lods) for (const m of L.meshes) { m.count = L.n; m.visible = L.n > 0; if (L.n) m.instanceMatrix.needsUpdate = true; }
     }
 
     // ---------------------------------------------------------- the platform's announcements
