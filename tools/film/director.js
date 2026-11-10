@@ -187,6 +187,8 @@ window.OEFilmDirector = (function () {
     const s = shotAt(t);
     if (s !== cur) { cur = s; enter(s); }
     const k = clamp((t - s.t0) / s.dur);
+    // "clear_cars": [x, y, r]: no traffic within r of there (a camera standing at the kerb, which a car would drive through)
+    if (s.clear_cars && G.cars && G.cars.clearBox) G.cars.clearBox(...s.clear_cars);
     const tm = s.time || ['12:00'], m0 = minutes(tm[0]), m1 = minutes(tm[1] || tm[0]);
     const date = s.date || spec.date || [3, 21];
     const min = lerp(m0, m1, EASE[s.timeEase || 'linear'](k));

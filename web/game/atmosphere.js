@@ -512,6 +512,9 @@ window.OEAtmos = (function () {
           renderer.autoClear = autoClear;
         },
         setScale(v) { sceneScale = Math.max(0.25, Math.min(1, v)); },
+        // the scene's MSAA samples (the governor's: four, two or none); its buffers are made again at the next draw
+        setSamples(n) { n = Math.max(0, n | 0); if (rt.samples === n) return; rt.samples = n; rt.dispose(); },
+        get samples() { return rt.samples; },
         get scale() { return sceneScale; },
         dispose() { rt.dispose(); if (pingA) { pingA.dispose(); pingB.dispose(); } bloom.dispose(); bloom.materialHighPassFilter.dispose(); bloom.mergeMaterial.dispose(); lens.merged.dispose(); tri.dispose(); },
       };
@@ -631,6 +634,7 @@ window.OEAtmos = (function () {
       setSize(w, h) { if (composer) { const z = renderer.getDrawingBufferSize(new THREE.Vector2()); composer.setSize(z.x, z.y); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
       // the scene's share of the canvas's resolution (0.25..1): takes effect at the next setSize
       setScale(v) { if (composer) composer.setScale(v); },
+      setSamples(n) { if (composer) composer.setSamples(n); },
       // draw the frame: through the post stack, or plainly
       // photo mode and the opening shot: {focus: m, aperture: 0..1, blur: 0..1}, or null (off, as in play)
       camFx(o) { if (o && !fx) o.fresh = true; fx = o && camFx ? o : null; },

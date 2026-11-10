@@ -238,8 +238,16 @@ def the_set(C, meshes):
         i = int(np.clip(k0 + d * (1 if hp[min(k0 + 3, len(hp) - 1), 1] > hp[k0, 1] else -1), 0, len(hp) - 1))
         return float(hp[i, 2])
 
+    up = 1 if hp[min(k0 + 3, len(hp) - 1), 1] > hp[k0, 1] else -1   # the profile's direction up the hill
+
     def at(d, o, h=0.0):
-        q = X[:2] + f * d + l * o
+        """d metres up the hill road from the crossing, along its own centre line (it bends), o to the left of it."""
+        i = float(np.clip(k0 + up * d, 0, len(hp) - 1))
+        i0 = int(min(np.floor(i), len(hp) - 2))
+        c = hp[i0, :2] + (hp[i0 + 1, :2] - hp[i0, :2]) * (i - i0)
+        t = hp[min(i0 + 3, len(hp) - 1), :2] - hp[max(i0 - 2, 0), :2]
+        t = up * t / (np.linalg.norm(t) or 1)
+        q = c + np.array([-t[1], t[0]]) * o
         return [*q, T(*q) + h]
 
     def flat(mesh, d0, d1, o0, o1, h):

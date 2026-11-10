@@ -663,14 +663,16 @@
       {
         "id": "t-sancha",
         "name": "Sangenjaya 三軒茶屋",
+        "place": "Setagaya, Tokyo",
         "at": [
-          -2470.4,
-          -2864.7
+          -2471.9,
+          -2860.4
         ],
         "look": [
-          -2469.2,
-          -2858.0
+          -2461.7,
+          -2863.0
         ],
+        "pitch": 0.12,
         "blurb": "Sangenjaya's backstreets, the Yongen-Jaya of a famous game: the snack bar New Marina whose front became its café, Chiyo-no-yu and the coin laundry across the lane, Hanamasa's yellow sign, and Carrot Tower over the station."
       },
       {
@@ -962,7 +964,7 @@
         "stamp": "Sangenjaya",
         "talk": [
           "Sangenjaya, three tea houses. In a game it's Yongen-Jaya, four: the same backstreets with one more tea house.",
-          "The game's café has the front of a snack bar here, New Marina. The bathhouse is Chiyo-no-yu, across the lane.",
+          "The game's café has the front of a snack bar here, New Marina. The bathhouse was Chiyo-no-yu, across the lane: closed now, its board still up.",
           "Take it slow. These are people's homes and small shops."
         ],
         "steps": [
@@ -985,9 +987,9 @@
         "title": "Chiyo-no-yu",
         "stamp": "Sentō",
         "talk": [
-          "Forty years a regular. The curtain says ゆ: hot water. Men on one side, women on the other.",
-          "Coin laundry beside it, vending machines out front. Everything a backstreet needs.",
-          "Come back after dark. The signs light up the triangle between Setagaya-dori and Route 246."
+          "Forty years a regular, until it closed in 2021. The board's still up. 千代の湯 入口, Chiyo-no-yu, this way.",
+          "The coin laundry was down the alley, vending machines by the door. They boarded it up in the end.",
+          "Come back after dark anyway. The signs light up the triangle between Setagaya-dori and Route 246."
         ],
         "steps": [
           {

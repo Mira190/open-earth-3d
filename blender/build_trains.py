@@ -351,6 +351,30 @@ def build_trains():
     return objs, info
 
 
+def planar_lod(ob, name, angle_deg=4.0):
+    """A copy for distance, its flat faces merged (planar decimation, kept apart by material) rather than collapsed:
+    a body of boxes and panels keeps every edge and window, where collapsing them shredded it."""
+    me = ob.data.copy()
+    lo = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(lo)
+    lo.location = ob.location
+    # (the inside is not seen from a distance: the seats, rails, lining, floor and lights go)
+    inside = {i for i, m in enumerate(me.materials) if m and m.name in ("Seat", "Rail", "Lining", "Floor", "Light_Cabin")}
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index in inside], context="FACES")
+    bm.to_mesh(me)
+    bm.free()
+    mod = lo.modifiers.new("Decimate", "DECIMATE")
+    mod.decimate_type = "DISSOLVE"
+    mod.angle_limit = math.radians(angle_deg)
+    mod.delimit = {"MATERIAL"}
+    V.select([lo])
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    lo.data.validate()
+    return lo
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--preview", help="render quick previews into this folder instead of exporting")
@@ -372,7 +396,7 @@ def main():
         return
     V.bake_vertex_ao(list(objs.values()), 0.8, a.bake_samples)
     for name in list(objs):
-        lo = V.lod_copy(objs[name], f"{name}_LOD1", 0.14)
+        lo = planar_lod(objs[name], f"{name}_LOD1")
         info["models"][name].update({"triangles": V.triangles([objs[name]]), "lod1_triangles": V.triangles([lo])})
         objs[lo.name] = lo
     for ob in objs.values():

@@ -169,10 +169,12 @@ window.OEQuality = (function () {
       // the frame time aimed at: the cap's interval or the display's, whichever is longer; twice the display's where that cannot be met
       get targetMs() { const t = Math.max(g.cap > 0 ? 1000 / g.cap : 0, refresh || 1000 / 60); return halved ? Math.max(t, 2 * (refresh || 1000 / 60)) : t; },
       on(fn) { subs.push(fn); return g; },
-      // every animation frame, drawn or not: the display's interval, as the shortest gap seen lately
+      // every animation frame, drawn or not: the display's interval, as the shortest gap seen lately. Only a gap under
+      // a 60 Hz display's counts (a 90, 120 or 144 Hz display): on a device that cannot keep up, the gap between
+      // frames is the frame's own time, and taking it for the display's would aim at the slowness itself
       raf(now) {
         const d = now - g._raf; g._raf = now;
-        if (d > 2 && d < 100) refresh = refresh ? Math.min(refresh * 1.002, d) : d;
+        if (d > 2 && d < 16.9) refresh = refresh ? Math.min(refresh * 1.002, d, 1000 / 60) : d;
       },
       // whether to draw this animation frame, under the cap on a faster display (120 Hz at 60: every second one)
       due(now) {

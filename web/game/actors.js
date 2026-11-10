@@ -1503,7 +1503,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
       if (!fleet) { mesh.setMatrixAt(i, m4); return; }
       const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
-      if (culling && !frustum.intersectsSphere(ball)) return;
+      if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 3.6, 3.6)))) return; // (or behind the street wall: visibility.js; 3.6 m: a bus)
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);
@@ -1845,6 +1845,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const live = [];
     const VIEW = ['line', 's', 'dir', 'x', 'y', 'z', 'h', 'v', 'half', 'hw', 'top', 'taxi', 'hex', 'why', 'youBy', 'heldBy', 'still', 'stuck', 'q', 'toLine', 'lineArm', 'lineEx', 'mv', 'front', 'rev'];
     const api = { mesh, fleet, C, live, VIEW, slots: C.length, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [], honks: [], stop: c => { c.v = 0; } };
+    const centreAt = [0, 0]; // (where the traffic was last centred: unjam's respawn)
     // who goes first where two cars' ways meet (car c's way comes into o's box d metres ahead of its
     // bumper, and o's into c's d2 ahead): read the same way by both, so that one goes and the other
     // waits and never both. A car that can no longer stop short of the place goes; then the one in
@@ -1876,6 +1877,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
     // in it, or still moving within r of its node, comes back elsewhere, out past r, rather than being
     // caught in the box by the crowd stepping off the kerbs
+    // a car that holds a driver up for good (game.js, the chauffeur at a jam that no light explains): it backs out to
+    // the junction behind if it can, as from a narrow street; one that cannot (in a junction's box, a car behind it)
+    // leaves the traffic and comes back elsewhere, as does one asked a second time
+    api.unjam = (c, hard) => { // (hard: asked before, and it stands there yet)
+      if (!c || c.line < 0 || c.park || !C.includes(c)) return '';
+      if (!hard && reverse(c)) return 'backs out';
+      respawn(c, centreAt[0], centreAt[1], radius * 0.6);
+      return 'gone';
+    };
     api.clearBox = (x, y, r) => {
       let k = 0;
       for (const c of C) {
@@ -2063,6 +2073,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return d < 12 || (d < 200 && (h < 0.3 ? d < 150 : (dx * look.x - dy * look.z) / (d * h) > 0.3)); // (sim y is -z)
     }
     function update(dt0, cx, cy, t, blockers) {
+      centreAt[0] = cx; centreAt[1] = cy;
       const dt = dt0;
       tick++;
       if (eye) eye.getWorldDirection(look);
@@ -2661,6 +2672,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             if (far) { respawn(c, cx, cy, radius * 0.6); continue; }
             c.stuck = STUCK + 1; // (turned round below, as from a jam; on a one-way street it waits to be out of sight)
           }
+          // (stood at a wall inside a junction, where it can neither turn round nor wait without holding every movement
+          // across it: after 20 s it leaves the traffic, in your sight or not. Fushimi Inari's junction 37 stood shut
+          // six minutes behind one, #355)
+          c.wallHold = why === 'wall' && c.v < 0.1 && c.mv ? (c.wallHold || 0) + dt : 0;
+          if (c.wallHold > 20) { c.wallHold = 0; respawn(c, cx, cy, radius * 0.6); continue; }
         }
         c.q = atLine || (why === 'person' && walker >= 0 && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q && !(front.line === c.line && front.dir !== c.dir) : why === 'you' && youQ)); // (not behind one coming the other way, queued at its own line: a wait on that is a narrow street's, turned round in the end, #283) // queueing at a junction (behind a car, or a ride, queueing there; or held by the crowd crossing at its line, not by you, who may stand there for good)
         // counted at its arm for the signals' max-pressure (junctions.js): queued, and whether the head of the queue waits for room beyond

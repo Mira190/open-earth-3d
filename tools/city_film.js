@@ -137,6 +137,7 @@ async function stills() {
         const t0 = Date.now();
         save(path.join(dir, `${s.id}-${Math.round(k * 100)}.jpg`), await frame(p, s.t0 + k * s.dur, k === ks[0] ? 3 : 1));
         console.log(`${s.id} @${k}: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+        if (process.env.FILM_DEBUG) console.log(await p.evaluate(e => { try { return JSON.stringify(eval(e)); } catch (x) { return String(x); } }, process.env.FILM_DEBUG)); // (FILM_DEBUG: an expression to print at each still)
       }
     }
     console.log(errs.slice(0, 8).join('\n'));

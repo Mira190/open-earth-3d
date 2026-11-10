@@ -11,7 +11,8 @@
 // (tools/scramble_step.js), walk down into a sunken promenade and back up (tools/promenade_walk.js), hear the walk signals' calls (tools/walkcalls_step.js), watch and hear the trains at a station (tools/trains_step.js), ride a taxi up
 // behind a queue at a red light (it waits in its lane and goes when the queue moves), turn a ride
 // with you in it round in the road (a three-point turn, never into the traffic), back a ride and the traffic out of
-// a one-way street to the junction behind (tools/reverse_step.js), swing the
+// a one-way street to the junction behind (tools/reverse_step.js), send your own car somewhere on its autopilot
+// (tools/autopilot_step.js), swing the
 // chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
 // (no movement left standing in one for more than two cycles), live a day of the daily life (tools/life_step.js: the day
@@ -32,6 +33,7 @@ const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1170,6 +1172,11 @@ const npcNight = require('./npc_night');
     out.single = !other; // (a city whose first map this is: its other districts are still to build, greyed)
     const prim = el && el.querySelector('.mt-pick .primary');
     out.travel = !!prim && !!other && /Travel here/.test(prim.textContent) && prim.dataset.map === other.dataset.mapid;
+    // a district that shares this map (Sangenjaya, on Shibuya's): named as on this map, not as the map itself
+    // (the hop to it stays in the map: tools/district_title_shot.js makes it)
+    const meta = ((window.OE_CITIES || []).find(c => c.group_meta && c.group_meta.kind === 'metro' && [...el.querySelectorAll('.mt-chip')].some(b => b.dataset.mapid === c.id)) || {}).group_meta;
+    const share = el && meta && [...el.querySelectorAll('.mt-stn.here')].find(st => !st.querySelector('.mt-you') && meta.districts[+st.dataset.district].travel);
+    if (share) { share.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })); const em = el.querySelector('.mt-pick .mt-name em'), b = el.querySelector('.mt-pick .primary'); out.shared = !!em && /^On the .+ map$/.test(em.textContent) && !!b && !!b.dataset.arrive; }
     key('Escape', 'Escape');
     out.closed = !document.querySelector('.ts-mfull') && !OEMetro.isOpen() && document.getElementById('g-menu').hidden;
     btn.click(); out.byButton = OEMetro.isOpen(); OEMetro.close();
@@ -1178,7 +1185,7 @@ const npcNight = require('./npc_night');
     out.byMenu = OEMetro.isOpen() && document.getElementById('g-menu').hidden; OEMetro.close();
     return out;
   });
-  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, Esc closes it (${JSON.stringify(mt)})`);
+  if (!mt.none) check(mt.open && mt.here && (mt.travel || mt.single) && mt.shared !== false && mt.closed && mt.byButton && mt.byMenu, `the subway map from the game: B, the Districts button and the menu open it, you are marked, another district offers to travel, one that shares this map says so, Esc closes it (${JSON.stringify(mt)})`);
 
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
@@ -2064,11 +2071,11 @@ const npcNight = require('./npc_night');
     const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
     const top = G.scale;
     for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
-    const slow = G.simulate(1, () => 60).pop(), size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const slow = G.simulate(1, () => 60).pop(), slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
     const back = G.simulate(120, () => 8).pop();
     await frames(2);
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
-    const end = { scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
+    const end = { slowMsaa, msaa: g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
     return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
   });
@@ -2079,6 +2086,7 @@ const npcNight = require('./npc_night');
     const rainFirst = !first || first.w === null || first.ex === 0 || (first.far === false && first.near === true);
     check(order && rainFirst, `a slow device gives up resolution to 0.8, then the rain's extras and the reflections, the drops, and then resolution to 0.6 (${s.map(x => `${x.px.toFixed(2)}/${x.ex}:${x.w ?? '-'}/${x.mirror ?? '-'}`).join(' ')})`);
     check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
+    check(!e.slowMsaa, `and without multisampling at the floor (${e.slowMsaa ?? '-'} samples there, ${e.msaa ?? '-'} again after)`);
     check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
   }
@@ -2110,6 +2118,20 @@ const npcNight = require('./npc_night');
     check(!!rg.card && /^Go to /.test(rg.card), `a district's pin offers to go to its map (${rg.card || 'no card'})`);
     check(rg.listed === rg.stations, `the travel list has the other districts (${rg.listed})`);
     check(rg.back === 1, '"This district" shows this map again');
+  }
+
+  // the autopilot of your own car (#355, tools/autopilot_step.js): sent to a place a few hundred metres off by
+  // road, it sets off, shows its screen, hands the car back at a touch of the wheel, drives clear of the traffic
+  // and the red lights, and pulls in there
+  {
+    const ap = await p.evaluate(autopilotStep, { log: true }), apc = autopilotChecks(ap);
+    if (process.env.CHAIN || apc.some(([ok]) => !ok)) for (const l of ap.log || []) console.log(`  autopilot: ${l}`); // (its log, when a check of it fails)
+    for (const [ok, what] of apc) check(ok, what);
+    await shot('autopilot');
+    // and the driver assists when you drive yourself: lane keeping and adaptive cruise, hands off for 40 s
+    const as = await p.evaluate(assistStep, { log: !!process.env.CHAIN });
+    for (const l of as.log || []) console.log(`  assist: ${l}`);
+    for (const [ok, what] of assistChecks(as)) check(ok, what);
   }
 
   // the traffic dodges your car (issue 335): your car put in a moving car's lane 26 m ahead, coming at it at

@@ -18,6 +18,7 @@
 //   OEVis.seen(x, y, top, reach)            may anything at (x east, y north) that reaches up to `top`
 //                                           (m above datum) be seen? reach: also within this many metres
 //                                           (a caster whose shadow may be seen while it is not)
+//   OEVis.seenNext(x, y, top, height)       the same during the game's step, for the frame about to be drawn
 //   OEVis.gate(object)                      a static mesh or instanced mesh: hidden while unseen
 //   OEVis.shadow(on)                        world.js, round the shadow pass: the static casters back
 //   OEVis.epoch                             changes when the answer does (re-test then, not every frame)
@@ -28,7 +29,7 @@
 window.OEVis = (() => {
   const CELL = 16, TIERS = [1, 2, 4, 8];
   const q = new URLSearchParams(location.search).get('vis');
-  const api = { CELL, epoch: 0, live: false, off: q === 'off', stats: { sweeps: 0, ms: 0, hidden: 0, gated: 0, null: 0 } };
+  const api = { CELL, epoch: 0, live: false, cot: 0, off: q === 'off', stats: { sweeps: 0, ms: 0, hidden: 0, gated: 0, null: 0 } };
   let worker = null, ready = false, pending = 0, sent = 0, beams = 720;
   let S = null, nx = 0, ny = 0, gx0 = 0, gy0 = 0;       // the answer and its grid
   let ax = 0, ay = 0, az = -Infinity, aeps = 0;        // where it holds: within aeps of (ax, ay), eye no higher than az
@@ -151,6 +152,18 @@ window.OEVis = (() => {
     return i < 0 || j < 0 || i >= nx || j >= ny || S[j * nx + i] <= top;
   }
 
+  // The same question, asked during the game's step for the frame about to be drawn (the crowd, the cars):
+  // the camera moves after the step, so the answer must still hold a frame on. It is used only while the
+  // camera has that much of its margin left (a tenth of a second at its speed, 0.3 m at least), else everything
+  // is seen. height: the thing's height (m), for how far its shadow reaches under the sun now (api.cot, set
+  // by the game: the cotangent of the sun's elevation, 0 with no sun).
+  function seenNext(x, y, top, height) {
+    if (!api.live) return true;
+    const room = aeps - Math.max(0.3, speed * 0.1), dx = px - ax, dy = py - ay;
+    if (room <= 0 || dx * dx + dy * dy > room * room || pz + Math.max(0.2, vz * 0.1) > az) return true;
+    return seen(x, y, top, Math.min(40, (height || 0) * api.cot));
+  }
+
   // ---- static things: each gets the cells it stands in and how high it reaches in each, once
   function gate(obj) {
     if (!obj || obj.userData.oeVis || api.off) return obj;
@@ -245,5 +258,5 @@ window.OEVis = (() => {
     check();
   }
 
-  return Object.assign(api, { create, at, seen, gate, gateAll, shadow, hold, forget, dispose, where: () => ({ x: ax, y: ay, z: az, eps: aeps, speed, pending: !!pending, ready }) });
+  return Object.assign(api, { create, at, seen, seenNext, gate, gateAll, shadow, hold, forget, dispose, where: () => ({ x: ax, y: ay, z: az, eps: aeps, speed, pending: !!pending, ready }) });
 })();

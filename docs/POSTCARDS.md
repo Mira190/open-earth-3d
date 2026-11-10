@@ -1,8 +1,9 @@
 # Postcards from the road
 
-While you are away, the other surveyor keeps travelling. When you come back, the title screen has a
-small pile of postcards: a photograph from a real spot in one of the live cities, where and when it was
-taken, the sun there at that minute, and a line of their diary. **Go there** on a card dives to that
+While you are away, Mugi keeps travelling: a small plush cat with a spotted bundle on its back. When you
+come back, the title screen has a small pile of postcards: a photograph from a real spot in one of the
+live cities with Mugi sat in it, looking at the place, where and when it was taken, the sun there at that
+minute, and a line of its diary. **Go there** on a card dives to that
 city and starts the game on the photographer's spot, in the photograph's light.
 
 ![A postcard from the Senbon Torii](images/title/postcard.jpg)
@@ -26,7 +27,8 @@ side dilute each other, so only the absence is taken, and it is made to serve th
 
 | From Travel Frog | Here |
 |---|---|
-| The traveller leaves when it likes; you only find out | The other surveyor (the one you do not play) travels on real time; nothing to manage |
+| The traveller leaves when it likes; you only find out | Mugi travels on real time; nothing to manage |
+| The frog is in its photographs, in the place, seldom posing | Mugi sits in each one on the real ground, mostly from behind, looking at what the photograph looks at |
 | Photographs arrive while you are away | A postcard every six hours away, three at most at a visit |
 | An album | The album strip under the card, and a page in each map's passport |
 | Packing food and charms, clover as currency, a lottery | Left out: a second loop to tend would be a second game |
@@ -42,13 +44,69 @@ What only this project can do: the postcard is true. A card dated 17:42 in Kyoto
 light the real sun gave it at 17:42 that day, by the same NOAA equations the cities use, and the place
 in the picture is the place you land in.
 
+## Who is in the picture
+
+![Mugi from the front, the side and behind](images/title/mugi.jpg)
+
+Three rounds of reasoning got here, each from what the owner saw:
+
+1. **Somebody, not nobody.** Travel Frog works because someone you care about went, and the photograph
+   is their proof (players share the frog's snapshots, not the views: Culture Trip, The Next Web, below).
+   A bare view is a stock photograph, or a screenshot of the game. A passer-by near the lens read as a
+   stranger in the picture, which is worse than nobody.
+2. **One character, made to be cute.** A first pass gave each map its own toy held up in the corner; it
+   looked eerie, not sweet. Ten toys are ten strangers (Travel Frog has one frog), and they broke the baby
+   schema (Lorenz's *Kindchenschema*: a big round head on a small body, big eyes set below the head's
+   middle, a small nose and mouth close under them, plump cheeks, short limbs). Printed eyes look dead in
+   3D: good plush (Jellycat, San-X) uses glossy beads, which catch the real light. So there is one
+   traveller, Mugi, a ginger-and-white cat built to those proportions: bead eyes with a glint, a white
+   blaze and muzzle, tabby stripes, warm colours that stay warm in a blue sky's light.
+3. **In the scene, not held up to the lens.** A toy floating in front of the lens and staring into it was
+   the last of the eeriness. The frog's photographs are candid: it is *in* the place, on the ground,
+   often from behind or the side, busy looking. So is Mugi: sat on the surface drawn there, with its
+   shadow, about one to two metres off, on one side third of the frame, turned towards what the
+   photograph looks at (a *Rückenfigur*, the figure seen from behind that painting uses to make the
+   viewer look with it) and a little round towards the lens, so a cheek and an eye show. The camera is
+   down at the toy's eye, 38 cm up, which makes every landmark tall; the lens focuses on Mugi at f/4,
+   which leaves the place recognisable. What a player remembers is the silhouette from behind: the ears,
+   the curled tail, and the furoshiki bundle on its back, spotted in the map's colour (the neckerchief
+   takes it too).
+
+   Where the photograph is taken from a deck, a roof or a lookout (a railing between the ground and the
+   view), or tilts up steeply at a tower, a toy on the floor could only hide the view or fall out of the
+   frame; there it is the doll photograph instead (*nuidori*, ぬい撮り): Mugi held up an arm's length from
+   the lens in the lower corner, its back to us and a cheek round, looking out at the same view. The two
+   kinds of shot make the album vary the way a traveller's own photographs do.
+
+How large: as far ahead as puts its head halfway between the frame's middle and its foot, at most 2.2 m
+off, so a quarter of the frame's height at its nearest and a small traveller in a big place at its
+furthest; plush photography guides agree on the rest: the rule of thirds, the toy's eye level, soft light
+(Otakumode, Super Cute Kawaii, Canon Snapshot, below).
+
+What makes it read as plush rather than plastic is its pile: an outline broken by fibres, light caught
+along them at a grazing angle, roots in their own shade, and the colour of what is around it thrown back
+on it. So every fleece part has 18 fur shells (Lengyel, Praun, Finkelstein and Hoppe, *Real-time fur over
+arbitrary surfaces*, 2001, the way games draw short fur): copies pushed out along the normal, 3 mm of pile,
+tapered strands about a millimetre apart, darker at the roots. In a still it takes a soft bounce of the
+frame's own mean colour over its albedo, and after dark a little light of its own.
+
+`tools/plush.js` builds it (in three.js, in the game's own page and light); each map's `postcards.json`
+names it and its colour in `plush`; `node tools/plush_shot.js out.png mugi@0,mugi@3.14` shows it in a
+studio light, turned as given.
+
+Sources: [Culture Trip on Travel Frog](https://theculturetrip.com/asia/china/articles/china-obsessed-game-traveling-frog/),
+[The Next Web](https://thenextweb.com/news/this-tiny-buddhist-frog-is-haunting-me),
+[Otakumode, plushie photos](https://otakumode.com/news/6992b8d70acfe9001efcfdee/Level-Up-Your-Plushie-Photos-PART-ONE),
+[Super Cute Kawaii, tiny plush photography](https://www.supercutekawaii.com/2021/08/tiny-plush-photography-tips),
+[Canon Snapshot, nuidori](https://snapshot.asia.canon/en/article/tell-a-tale-with-your-beloved-soft-toy-a-basic-guide-to-getting-cute-nuidori-photos).
+
 ## What the player sees
 
 - **The pile** on the title's menu: up to three cards fanned, "From the road", how many are new and
   where the newest is from. Bottom left on a desktop, under the logo on a phone.
 - **The card**: the photograph on a paper edge with a postmark (the map, the date, the minute), the
   map and the spot's name (in its own script too), the local date and time with the sun's height, one
-  line of the diary, and **Go there**. Arrows, the album strip, or ← → change the card; Esc closes.
+  line of the diary, who sent it, and **Go there**. Arrows, the album strip, or ← → change the card; Esc closes.
 - **Go there**: the title's dive to that city, then the game's own title card over that spot, with
   "As on the postcard" chosen as the time to start at. Play starts you where the photographer stood.
 - **The passport** of each map lists the postcards that came from it.
@@ -97,7 +155,10 @@ python pipeline/postcards.py index     # the index alone, after a change to name
 `tools/postcards.sh` runs `tools/game_shot.js` on the views `pipeline/postcards.py views` writes: each
 spot at four lights (25 minutes after sunrise, 11:00, 8 minutes after sunset, 100 minutes after sunset) on the day it is
 run, through the game's own sky, haze and post stack at the desktop tier, in photo mode from the
-photographer's eye, once nobody in the crowd is within 7 m of the lens. `pipeline/postcards.py pack`
+photographer's eye, once nobody in the crowd is within 10 m of the lens and none of the town's characters within 40 m, with Mugi sat in
+it and the lens down at its eye (a spot's `"plush": {"side": -1, "dist", "far", "y", "x", "turn", "tilt",
+"fstop", "eyeUp"}` moves it, `"mode": "held"` holds it up to the lens instead, `false` leaves it out; by
+default it alternates sides from spot to spot). `pipeline/postcards.py pack`
 crops each to 3:2 and writes `web/data/<id>/postcards/<spot>-<light>.webp` (960 × 640, about 50 kB), and
 `index` writes `web/data/postcards.json`, which the pages read. A spot without all four stills is left
 out of the index.
@@ -130,9 +191,8 @@ one command; choosing among several seasons by the card's date is not built.
 
 ## Not built yet
 
-- The traveller in the frame. The photographs are the ones they took, so nobody is in them; a
-  self-timer shot with the surveyor you did not pick standing in the view would need the stills in
-  both characters.
+- More than one pose (walking, lying on a bench, eating something local), and Mugi on a railing or a step
+  rather than the ground.
 - Seasons: one set of stills, from the day they were rendered.
 - The reef sites, which have their own game and journal, and parked cities.
 - Sending a card: sharing a postcard as a link that opens on that spot for someone else. The link

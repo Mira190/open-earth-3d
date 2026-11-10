@@ -181,6 +181,44 @@ characters, logos, invented shops or interface. What is built:
 
 - **The crossing after dark** is section 6.
 
+### 5b. Sangenjaya, planned as a pilgrimage
+
+People come to Sangenjaya's triangle for one thing: to stand where *Persona 5* (Atlus, 2016) set
+Yongen-Jaya. So the district is planned from the pilgrim's walk, not from the map: each stop is a real
+place as it stands, offered from the angle the game framed it, with what has changed since said plainly.
+The game is the reason and the framing; none of its art, names, logos or characters is drawn.
+
+Surveyed from pilgrims' photographs of 2016 to 2025 and the owner's own of the front (sources below).
+Coordinates are the Geospatial Information Authority's for the lot's address, or OpenStreetMap's.
+
+| Stop | In the game | The real place | As it stands | Built |
+|---|---|---|---|---|
+| 1 | The street the hero arrives on, the yakisoba shop | Pukuichi ぷくいち, Hiroshima Fuchu-yaki, 2-11-14 (35.64233, 139.66934) | Trading, 17:00 to 24:00, closed Mondays; an ochre awning over two bays | **Yes**: the shutters, the awning and its name, the corner sign, the stair; a spot and a label. Placed on the model's three-storey building facing the lane, 15 m from the address point (no map service gave the shop itself) |
+| 2 | The café's lane and its front | The snack bar New Marina スナック ニューマリーナ, 2-14-21 (35.64279, 139.66936, OSM): a red dome awning with a scalloped edge and the name in white, over a steel shutter; brick tile, the door in white-painted brick; red clay pavers | Trading in the evening | **Yes** (`cities/shibuya/sancha.py`) |
+| 2 | The shop beside it, "Good-Bye Good-Bye" | Good-day Good-day SINCE 1986, the same house's left bay: a pale dome awning in a dark frame, green lettering | Shutter down in every photograph | **Yes** |
+| 2 | Where the café itself stands | The lot to the right: a walled garden until 2019; since 2024 the takoyaki stand Takoharu たこはる, a dark plank fence chalked NANIWANO AJI, a round sign, a red lantern | Evenings | **Yes** |
+| 2 | (not in the game) | RAIN ON THE ROOF, the café upstairs next door, 2-14-22: where pilgrims go for coffee and curry | Open | Its sign |
+| 3 | The bathhouse and the laundromat | Chiyo-no-yu 千代の湯, 2-12-7 (35.64274, 139.66954), across the lane: a hand-painted board over a slot in a corrugated fence, a passage to the door, the coin laundry on its right, the chimney behind | Closed to bathers since 2021; the passage boarded up by 2024, the board and chimney still there | **Yes**, as it stands: the fence, the boarded alley, the board, the chimney (its height an estimate) |
+| 4 | The corner where the old couple talk | A pale blue-grey house with an outside stair at the bend of the lane | There | Not yet |
+| 5 | The fork with the bar signs, the short cut to the station | The fork past it; a covered, tiled passage under a building to the shopping street | There | Not yet |
+| 6 | The supermarket | Niku no Hanamasa 肉のハナマサ, 2-14-6 (35.64291, 139.66899): a yellow sign wall two storeys high, navy brush lettering | Trading, 24 hours | Its sign |
+| 6 | The batting cages | Sangenjaya Batting Center, on Hanamasa's roof, by a steel stair in the slot to its left (the game puts it on the right) | Closed; the stair shuttered, the net frame still on the roof | Not yet |
+| 6 | The cinema | Sangenjaya Cinema's sign beside Hanamasa | Closed in 2014; the sign still hangs | Not yet |
+| - | The clinic, the hero's guardian's house, the second-hand shop | No real place is known for any of them | - | Left out |
+
+The usual walk is about an hour, all within five minutes of the station: Pukuichi, the café's lane,
+the bathhouse's board opposite, the stair corner, the fork and the passage, Hanamasa and the stair to
+the cages. It is best after dark, when the signs are lit; by day the shutters are down.
+
+What the game adds to the real front is light and framing, and that is what is taken from it: the lane
+seen from the Good-day corner with both awnings receding, the same lane from the stand looking back,
+and a warm lamp over the door after dark (`sancha.glows`). The district's link (`#play-shibuya@t-sancha`)
+arrives at that corner, looking down the lane.
+
+What the game says changes with the places: Chiyo-no-yu's spot, its chatter and Mr Tanaka's quest say the
+bath has closed and point to its board; its vending machines, which stood in the boarded alley, are no
+longer a spot.
+
 Two things are left out on purpose: the Godzilla head on the Toho building and
 Okamoto Taro's mural *Myth of Tomorrow* in the station passage are artworks the
 model does not reproduce. The green Aoi-gaeru train car that stood by Hachiko until
@@ -509,4 +547,10 @@ python blender/build_scene.py --city shibuya
 - *Persona 5*'s Tokyo and the real places: [Kotaku](https://kotaku.com/persona-5s-in-game-locations-compared-to-the-real-world-1787125885),
   [TheGamer](https://www.thegamer.com/persona-5-locations-visit-real-world-counterparts/),
   [Megami Tensei Wiki: Yongen-Jaya](https://megatenwiki.com/wiki/Yongen-Jaya),
-  [rinblog: Sangenjaya](https://rinblog.org/en/p5r-seichi-sangenjaya-en/).
+  [rinblog: Sangenjaya](https://rinblog.org/en/p5r-seichi-sangenjaya-en/) (photographs of June 2025).
+- Sangenjaya's stops, photographed beside the game's: [maruko30, part 1](https://maruko30.com/entry/persona5-jyunrei-01) and
+  [part 2](https://maruko30.com/entry/persona5-jyunrei-02) (2024), [animecosplayjapan](https://animecosplayjapan.com/?p=3049) (addresses, 2024),
+  [zukkazu](https://zukkazu.com/persona-5-holy-land-pilgrimage/) (2019), [Source Gaming](https://sourcegaming.info/2017/04/09/persona-5-yongenjaya-in-real-life) (2017),
+  [linkle24](https://linkle24.hatenablog.com/entry/2016/11/06/223804) (2016), [tsunagu Japan](https://www.tsunagujapan.com/wow_02105-3b6a9908-9ab9-46d8-a44b-5b675883ccc7/).
+  Chiyo-no-yu: [Tokyo Sento Association](https://www.1010.or.jp/map/item/item-cnt-487), [komuken](https://komuken.com/sentou-tiyonoyu/).
+  The photographs were read for facts (what stands where, colours, lettering); none is reproduced.
