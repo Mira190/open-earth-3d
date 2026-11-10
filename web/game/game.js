@@ -1181,7 +1181,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (of the roads within 6 m and 2.5 m of height, the one the car runs along: a ramp beside a road, or a road
   // crossing it, is nearer at times than the one it is on. Scored by the distance to its lane's middle and the
   // angle to it, and the road it was on last kept while it still fits)
-  let laneWas = -1;
+  let laneWas = -1, laneNarrow = { line: -1, until: 0 };
   function laneHere(st) {
     const hx0 = Math.sin(st.h), hy0 = Math.cos(st.h), seen = new Set();
     let q = null, best = Infinity;
@@ -1198,8 +1198,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     laneWas = q.line;
     roadNet.at(q.line, q.s, rq);
     const l = roadNet.L[q.line], dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1, hx = rq.hx * dir, hy = rq.hy * dir;
-    const off = (junctions.centred && junctions.centred(q.line) ? 0 : OECars.LANE) * keepSign, lx = rq.x - hy * off, ly = rq.y + hx * off, h0 = Math.atan2(hx, hy);
-    const out = { line: q.line, s: q.s, dir, len: l.len, v: l.v || 11, d: (st.x - lx) * hy - (st.y - ly) * hx, dh: angDiff(st.h, h0), curv: 0 };
+    let off = (junctions.centred && junctions.centred(q.line) ? 0 : OECars.LANE) * keepSign;
+    // (a street that a facade narrows, with no room for the car at its lane's middle 4 m on but room at the road's:
+    // nearer the middle, as the traffic keeps there)
+    // (held 3 s on that road once found, so that the line it keeps does not flick between the two by each doorway)
+    if (off) {
+      const ax = rq.x + hx * 4, ay = rq.y + hy * 4, w = myCar.C.hw * 0.8;
+      if (!nav.room(ax - hy * off, ay + hx * off, st.z, w, 1.4, false) && nav.room(ax - hy * off * 0.3, ay + hx * off * 0.3, st.z, w, 1.4, false)) laneNarrow = { line: q.line, until: clockT + 3 };
+      if (laneNarrow.line === q.line && clockT < laneNarrow.until) off *= 0.3;
+    }
+    const lx = rq.x - hy * off, ly = rq.y + hx * off, h0 = Math.atan2(hx, hy);
+    const out = { line: q.line, s: q.s, dir, len: l.len, v: l.v || 11, off, d: (st.x - lx) * hy - (st.y - ly) * hx, dh: angDiff(st.h, h0), curv: 0 };
     const s2 = Math.max(0, Math.min(l.len, q.s + 8 * dir));
     if (Math.abs(s2 - q.s) > 2) { roadNet.at(q.line, s2, rq); out.curv = angDiff(Math.atan2(rq.hx * dir, rq.hy * dir), h0) / Math.abs(s2 - q.s); }
     return out;
@@ -1219,6 +1228,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const X of junctions.midsOn(L.line) || []) { const xa = X.sig && X.arms.find(b => b.end === (L.dir > 0 ? 1 : 0)); if (xa) see(xa, (X.mid - L.s) * L.dir - xa.back); }
     return line;
   }
+  // a wall across the way ahead (a street shut off at its end, a gate): the gap to it along the heading, up to
+  // reach, read every 0.2 s (three points across the car's width), or null
+  let wallSeen = { t: -1, gap: null };
+  function wallAhead(st, reach = 40) {
+    if (clockT - wallSeen.t < 0.2) return wallSeen.gap;
+    wallSeen.t = clockT; wallSeen.gap = null;
+    const fx = Math.sin(st.h), fy = Math.cos(st.h), half = myCar.C.half, hw = myCar.C.hw * 0.8;
+    for (let a = half + 1; a <= half + reach; a += 1.5) {
+      let hit = 0;
+      for (const w of [-hw, 0, hw]) { const x = st.x + fx * a - fy * w, y = st.y + fy * a + fx * w, q = nav.push(x, y, st.z, 0.3, 1.6); if (Math.hypot(q.x - x, q.y - y) > 0.01) hit++; }
+      if (hit >= 2) { wallSeen.gap = a - half - 0.3; break; }
+    }
+    return wallSeen.gap;
+  }
   function assistStep(fwd, side) {
     const st = myCar.D.st, L = assist.here = laneHere(st);
     assist.on.lane = assist.on.cruise = false;
@@ -1227,7 +1250,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (assist.cruise) {
       if (fwd < -0.1 || k('Space')) { assist.cruise = false; H.toast('Cruise off.'); }
       else {
-        const lead = assist.lead = leadOf(st, 70, 0.1), line = assist.line = L ? redLineAhead(st, L) : null;
+        let lead = assist.lead = leadOf(st, 70, 0.1);
+        const line = assist.line = L ? redLineAhead(st, L) : null;
+        // (and a wall across the lane, as a car standing there: it stops short of a street shut off)
+        const wall = assist.wall = st.v > 0.5 ? wallAhead(st, Math.min(40, 4 + st.v * st.v / 4)) : null;
+        if (wall != null && (!lead || wall < lead.gap)) lead = { gap: wall, v: 0 };
         const bend = L && Math.abs(L.curv) > 0.004 ? Math.sqrt(2.2 / Math.abs(L.curv)) : Infinity; // (2.2 m/s² across a bend)
         const pedal = OEAutopilot.cruise(st, Math.min(assist.set, bend), lead, line, { headway: 1.4 });
         fwd = fwd > 0.1 ? Math.max(fwd, pedal) : pedal;
