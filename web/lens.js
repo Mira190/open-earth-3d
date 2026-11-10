@@ -306,9 +306,16 @@ window.OELens = (function () {
   // them, tools/shader_bench.js). Kept a loop, the shader compiles in 21 ms and draws the same: the
   // lights are a uniform array of plain structs (no samplers), which GLSL ES 3.00 indexes at run time.
   const unrolled = /#pragma unroll_loop_start(\s*for \( int i = 0; i < NUM_RECT_AREA_LIGHTS; i \+\+ \) \{[\s\S]*?\})\s*#pragma unroll_loop_end/;
+  // And a light that is dark is passed over where it stands in the loop (issue 352): a screen's light by day, a
+  // slot no screen is using. Its evaluation was more than a tenth of a frame of Shibuya's scramble at noon on the
+  // software renderer, for light of no intensity; a test of a uniform costs a fragment nothing to speak of and
+  // needs no second set of programs for the day.
   function loopAreaLights() {
-    const C = THREE.ShaderChunk;
-    if (typeof C.lights_fragment_begin === 'string') C.lights_fragment_begin = C.lights_fragment_begin.replace(unrolled, '$1');
+    const C = THREE.ShaderChunk, pick = 'rectAreaLight = rectAreaLights[ i ];';
+    if (typeof C.lights_fragment_begin !== 'string') return;
+    C.lights_fragment_begin = C.lights_fragment_begin.replace(unrolled, '$1');
+    if (!C.lights_fragment_begin.includes('oeDarkArea')) C.lights_fragment_begin = C.lights_fragment_begin.replace(pick,
+      `${pick}\n\t\tbool oeDarkArea = max( rectAreaLight.color.r, max( rectAreaLight.color.g, rectAreaLight.color.b ) ) <= 0.0;\n\t\tif ( oeDarkArea ) continue;`);
   }
   function patchChunks() { guardShaders(); loopAreaLights(); }
   if (window.THREE) patchChunks(); else addEventListener('three-ready', patchChunks, { once: true });
