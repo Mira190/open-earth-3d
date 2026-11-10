@@ -61,6 +61,7 @@ import walls
 import woods
 import bridges
 import kerbside
+import game_rail
 import plateau_veg
 import night_lights
 import road_rules
@@ -583,6 +584,12 @@ def main():
         merged = shapely.line_merge(shapely.union_all(segs)) if segs else None
         pieces = [ln for ln in getattr(merged, "geoms", [merged]) if ln is not None and ln.length > 1]
         routes = chain(pieces)
+        if kind == "train" and routes:  # a railway: one track with passing loops, stations and level crossings
+            mapped = [(r["name"], r["class"], C.to_local(swkb.loads(bytes(r["wkb"])))) for r in infra if r["class"] in ("railway_station", "platform")]
+            rail[kind] = game_rail.train(rc, routes, roads, foot, [(nm, g.centroid) for nm, c, g in mapped if c == "railway_station"],
+                                         [g for nm, c, g in mapped if c == "platform"], ground, rc.get("gauge_m", 1.067))
+            surfaces += rail[kind].pop("surfaces")  # the platforms, walked on
+            continue
         if rc.get("climb") and routes:  # one route, from the bottom up, and its passing loop
             routes.sort(key=lambda l: -l.length)
             main = routes[0]

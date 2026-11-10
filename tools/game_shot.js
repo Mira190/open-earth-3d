@@ -19,6 +19,7 @@
 // "hide": [mesh names] leaves those landmark meshes out; "scramble": "walk" or "wait" runs on to that moment of the
 // nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera; [x, y] from
 // "eyeUp" metres, 1.6 by default, over the ground where you stand)
+// "js": a statement run in the page before a view from the air is taken (g: the game), e.g. a clear sky for the stars;
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -97,6 +98,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       const tgt = v.tgt || [v.cam[0], v.cam[1] + 100, v.cam[2] - 30]; // (no target: ahead to the north, looking down)
       const d = Math.hypot(v.cam[0] - tgt[0], v.cam[1] - tgt[1], v.cam[2] - tgt[2]);
       window.__game.flyover.camera({ cam: v.cam, look: tgt, shadow: Math.min(3000, Math.max(600, 0.7 * d)) });
+      if (v.js) new Function('g', v.js)(window.__game); // "js": a statement run in the page before the still (g: the game), to pin what a view needs
       for (let i = 0; i < 6; i++) await new Promise(r => requestAnimationFrame(r)); // the waves and the shadow map settle
     }, v);
     await grab(v.name);

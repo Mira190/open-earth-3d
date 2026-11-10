@@ -159,7 +159,7 @@
   ],
   "load_bytes": {
    "model": 5756703,
-   "game": 6139347
+   "game": 6140169
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -621,7 +621,7 @@
   ],
   "load_bytes": {
    "model": 1024749,
-   "game": 1143428
+   "game": 1143744
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1077,7 +1077,7 @@
   ],
   "load_bytes": {
    "model": 630003,
-   "game": 725532
+   "game": 725854
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1533,7 +1533,7 @@
   ],
   "load_bytes": {
    "model": 697160,
-   "game": 835904
+   "game": 836826
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1951,6 +1951,217 @@
   }
  },
  {
+  "id": "kamakura",
+  "name": "Shichirigahama",
+  "native": "\u4e03\u91cc\u30f6\u6d5c",
+  "country": "Japan",
+  "lat": 35.3055,
+  "lon": 139.507,
+  "status": "live",
+  "timezone": "Asia/Tokyo",
+  "group": "Kamakura",
+  "district": "Shichirigahama",
+  "tagline": "The Enoden from Koshigoe to Inamuragasaki, and the crossing at Kamakurakokomae",
+  "summary": "Kamakura's Shonan coast on PLATEAU's 2024 survey: ride the Enoden from Koshigoe's street-running rails to Inamuragasaki, wait at the Kamakurakokomae crossing as the train passes with Enoshima behind, and watch Mount Fuji across Sagami Bay.",
+  "built": true,
+  "game": true,
+  "buildings": 7380,
+  "extent_km": [
+   3.8,
+   1.7
+  ],
+  "frame_m": [
+   -1900,
+   1900,
+   -850,
+   850
+  ],
+  "packed": [
+   "buildings",
+   "landmarks",
+   "game",
+   "terrain",
+   "places",
+   "scene"
+  ],
+  "load_bytes": {
+   "model": 813032,
+   "game": 941149
+  },
+  "group_meta": {
+   "native": "\u938c\u5009",
+   "summary": "Kamakura along the Enoden, the single-track electric railway between Fujisawa and Kamakura: the Shonan coast at Shichirigahama first, with Enoshima, Hase and the Great Buddha, and Tsurugaoka Hachimangu to follow as maps of their own.",
+   "note": "Districts are the Enoden's stations and the sights by them (OpenStreetMap positions inside the Shichirigahama map; the others are approximate until their maps are built). The line is the Enoshima Electric Railway's, with the JR Yokosuka Line at Kamakura and the Shonan Monorail at Enoshima.",
+   "districts": [
+    {
+     "name": "Enoshima",
+     "native": "\u6c5f\u306e\u5cf6",
+     "lat": 35.2997,
+     "lon": 139.4803,
+     "label": "l"
+    },
+    {
+     "name": "Enoshima Station",
+     "native": "\u6c5f\u30ce\u5cf6\u99c5",
+     "lat": 35.311,
+     "lon": 139.4875,
+     "map": "kamakura",
+     "travel": "t-enoshima",
+     "label": "t"
+    },
+    {
+     "name": "Koshigoe",
+     "native": "\u8170\u8d8a",
+     "lat": 35.3084,
+     "lon": 139.4932,
+     "map": "kamakura",
+     "travel": "t-koshigoe",
+     "label": "b"
+    },
+    {
+     "name": "Kamakurakokomae",
+     "native": "\u938c\u5009\u9ad8\u6821\u524d",
+     "lat": 35.3067,
+     "lon": 139.5007,
+     "map": "kamakura",
+     "travel": "t-crossing",
+     "label": "t"
+    },
+    {
+     "name": "Shichirigahama",
+     "native": "\u4e03\u91cc\u30f6\u6d5c",
+     "lat": 35.3063,
+     "lon": 139.5101,
+     "map": "kamakura",
+     "travel": "t-shichirigahama",
+     "label": "b"
+    },
+    {
+     "name": "Inamuragasaki",
+     "native": "\u7a32\u6751\u30f6\u5d0e",
+     "lat": 35.3044,
+     "lon": 139.5219,
+     "map": "kamakura",
+     "travel": "t-inamuragasaki",
+     "label": "t"
+    },
+    {
+     "name": "Hase \u00b7 The Great Buddha",
+     "native": "\u9577\u8c37\u30fb\u938c\u5009\u5927\u4ecf",
+     "lat": 35.3113,
+     "lon": 139.536,
+     "label": "b"
+    },
+    {
+     "name": "Kamakura \u00b7 Tsurugaoka Hachimangu",
+     "native": "\u938c\u5009\u30fb\u9db4\u5ca1\u516b\u5e61\u5bae",
+     "lat": 35.319,
+     "lon": 139.5505,
+     "label": "r"
+    }
+   ],
+   "lines": [
+    {
+     "name": "Enoden",
+     "native": "\u6c5f\u30ce\u5cf6\u96fb\u9244\u7dda",
+     "colour": "#2e7d4f",
+     "stops": [
+      [
+       35.3385,
+       139.4875
+      ],
+      [
+       35.316,
+       139.4838
+      ],
+      [
+       35.311,
+       139.4875
+      ],
+      [
+       35.3084,
+       139.4932
+      ],
+      [
+       35.3067,
+       139.5007
+      ],
+      [
+       35.3063,
+       139.5101
+      ],
+      [
+       35.3044,
+       139.5219
+      ],
+      [
+       35.3098,
+       139.5289
+      ],
+      [
+       35.3113,
+       139.536
+      ],
+      [
+       35.3122,
+       139.5415
+      ],
+      [
+       35.3142,
+       139.5466
+      ],
+      [
+       35.319,
+       139.5505
+      ]
+     ]
+    },
+    {
+     "name": "Shonan Monorail",
+     "native": "\u6e58\u5357\u30e2\u30ce\u30ec\u30fc\u30eb",
+     "colour": "#c0392b",
+     "stops": [
+      [
+       35.3117,
+       139.4876
+      ],
+      [
+       35.3225,
+       139.501
+      ],
+      [
+       35.35,
+       139.531
+      ]
+     ]
+    },
+    {
+     "name": "JR Yokosuka Line",
+     "native": "JR\u6a2a\u9808\u8cc0\u7dda",
+     "colour": "#1f4e9c",
+     "stops": [
+      [
+       35.35,
+       139.531
+      ],
+      [
+       35.337,
+       139.547
+      ],
+      [
+       35.319,
+       139.5505
+      ],
+      [
+       35.296,
+       139.58
+      ]
+     ]
+    }
+   ]
+  }
+ },
+ {
   "id": "tokyo",
   "name": "Marunouchi & Ginza",
   "native": "\u4e38\u306e\u5185\u30fb\u9280\u5ea7",
@@ -1986,7 +2197,7 @@
   ],
   "load_bytes": {
    "model": 1791177,
-   "game": 2267068
+   "game": 2267730
   },
   "flyover": {
    "video": "flyover.mp4",

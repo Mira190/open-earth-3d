@@ -8,7 +8,7 @@ computed from the model while you play, or carries a source you can open from th
 | Kim, the ranger, on Whitehaven Beach | Mia at Hill Inlet Lookout: the inlet at this tide |
 |---|---|
 | ![](images/reef/game-dialogue.jpg) | ![](images/reef/game-lookout.jpg) |
-| **8 m down with Raf: the slate works out where the red went** | **The map: the site at this tide, people, objective, reef sites** |
+| **8 m down with Raf: the slate works out where the red went** | **The map: the site at this tide, its travel points, and every other site one tab away** |
 | ![](images/reef/game-dive.jpg) | ![](images/reef/game-map.jpg) |
 
 The reef pages wear the title screen's look, as the cities do: the loader in its dark and its type,
@@ -25,7 +25,7 @@ as the one accent. The map is drawn at night like a chart table, you a white arr
 | <kbd>E</kbd> | Talk, read a sign, board a boat, fly the helicopter or the amphibian, log an animal for the survey; on a line, go on |
 | <kbd>1</kbd>–<kbd>4</kbd> · <kbd>Enter</kbd> · <kbd>Esc</kbd> | Answer · go on · close |
 | <kbd>J</kbd> | Journal: quests, the survey log, field notes with their sources |
-| <kbd>T</kbd> | Map: the site drawn from the model at the current tide, the reef sites, the named places nearest you with a Go button each (dry ground nearest the place, or the water over a reef or dive site deep enough to swim in), and the way back to the globe |
+| <kbd>T</kbd> | Map, at two scales: **this site** drawn from the model at the current tide, every named place on it a travel point, and **All sites**, a chart of every site by region. Pick a pin or a row of the list, then **Travel** on its card (<kbd>Enter</kbd>, or a double-click, goes at once); the wheel or a pinch zooms, a drag pans. The way back to the globe is here too |
 | <kbd>K</kbd> | Time of day: sunrise, morning, noon, golden hour, sunset, blue hour, night or now, and a slider over the whole day |
 | <kbd>F</kbd> | Step off a boat or out of a landed aircraft (the boats' own key) |
 
@@ -49,6 +49,36 @@ tracked step move down, clear of the compass. Progress is saved in the browser p
 
 
 Arriving, the camera comes down in one calm move from high behind the player to their own view (3.2 s; a key or a tap settles it, and with reduced motion there is none). The first time a browser plays any map or reef site, a short tour of the HUD follows: moving and swimming, the objective, using things, the journal, the map and travel, and the time and tide (`web/onboard.js`, shared with the cities). "Show the intro again" is at the foot of the journal.
+
+
+## The map
+
+One map at two scales, working the way an open-world game's map does and the way the cities' big map
+does (`web/reef/game/map.js`):
+
+- **This site.** The model's own terrain at the current tide (sea shaded by depth, the reef flat, the
+  waterline, sand, hill-shaded land): no tiles, the same grid the 3D view stands on. Every named place
+  is a travel point on it, with the people, the signs, the aircraft, the tracked objective and you. It
+  opens on what matters now (you, the people, the objective) and zooms out to the whole survey.
+- **All sites.** Every site on a chart of the coast (Natural Earth, public domain, the globe's
+  `web/data/world.json`), listed by region, this one marked. Sites too close to tell apart at the zoom
+  are one counted pin that opens the region; each site's footprint is outlined once it is large enough
+  to see.
+- **One way to travel.** A pin or a row of the list picks a place; a card on the map names it, says how
+  far and which way, and offers one action: Travel. The list and the map are the same set, so a place
+  is found either by where it is or by its name, and picking it in one marks it in the other. A
+  double-click or Enter goes at once.
+
+| What the reference maps do | Here |
+|---|---|
+| **Breath of the Wild, Genshin Impact:** travel points are icons on the map itself; picking one opens a card with a single confirm | Named places and sites are pins; the card has one button |
+| **The Witcher 3, Horizon:** the world is regions, and the map moves between a region and the world | Two tabs, "this site" and "All sites", the regions as headings |
+| **Genshin Impact, Google Maps:** markers that would overlap fold into one counted marker | The two Mackenzie lakes are one pin from Queensland, and open on a pick |
+| **GTA V, Elden Ring:** a list beside the map is an index of it, not a second menu | The list selects on the map; nothing travels from the list alone |
+
+What was wrong before: the map was a still picture that could not be picked, zoomed or panned; the
+travel points of the site were a text list under the list of other sites; and every other site had its
+own equally loud Travel button in one flat list, the New Zealand lakes under a Queensland heading.
 
 ## The Whitsundays
 
@@ -148,8 +178,7 @@ land, they stand on the pontoon deck.
 
 ## Lake Pukaki (an alpine site)
 
-`game/lake-pukaki.js`. The people are real: a site casts a Microsoft Rocketbox avatar with `look: { character: 'R_…', clip }`
-(people.json `npcs`), which `people.js` builds with its sex's clips in place of the role's Quaternius character.
+`game/lake-pukaki.js`. The people are real, as at every site (see [The people](#the-people)).
 There is no reef here, so the site has no fish survey, dive slate or yachts; the gametest skips
 those on an alpine site and checks the glacial flour's light instead. People stand on dry land at any height (`G.landSpot`
 on an alpine site).
@@ -164,6 +193,32 @@ on an alpine site).
 
 The sources and what each line says are in `game/lake-pukaki.js` `SOURCES` and in
 [docs/cities/lake-pukaki.md](cities/lake-pukaki.md).
+
+## The people
+
+![The visitor you play (man and woman, in stinger suits), a skipper, two guides, two rangers and two dive instructors](images/reef/people.jpg)
+
+Everyone at a reef or alpine site is a Microsoft Rocketbox avatar (MIT, `web/assets/people/LICENSE-Rocketbox.txt`), as
+the cities' people are: the visitor you play, and each skipper, guide, ranger and dive instructor.
+`web/reef/looks.js` `REAL` names the avatar of each role, and a site gives its own people a face of their own with
+`look: { character: 'R_…', clip }` in `game/<site>.js`. `blender/build_people.py --npcs` reads both and builds them
+(`python pipeline/fetch_rocketbox.py` first); `people.json` `npcs` lists them.
+
+- **The visitor** is Rocketbox's swimmer, dressed at build time by a `SUIT` tag that paints cloth over the body's
+  texture from the collar to the wrists and ankles: `stinger` (full-body lycra, in the marine stinger season), `rash`
+  (a rash vest and boardshorts, out of it), and on an alpine site a walker in a jacket and boots. The dive
+  instructors wear `wetsuit`. `TOP` tags recolour a shirt (a ranger's `khaki`).
+- **Clips.** Each sex's motion-captured clips drive every avatar of that sex (`R_clips_f.glb`, `R_clips_m.glb`). The
+  visitor also runs, from a second small file (`R_clips_field_*.glb`, `people.json` `npcs.field`).
+- **Kit.** The hat, sunglasses, mask, snorkel, fins and scuba set are built in `gear.js` from measurements
+  `people.js` takes of each avatar's rest pose. A hat is made to the head it is on: the skull's width where the band
+  sits, its crown and its brow give an oval band, a rounded crown just clear of the scalp and a drooping brim.
+- **Swimming** has no clip: the kick, the arms, the pointed toes and the lifted head are posed on the bones over the
+  walk clip (`people.js` `swim`), for both kinds of rig.
+- The older low-polygon Quaternius characters (CC0) remain as the fallback when an avatar's file is missing, and as
+  the demo crowd.
+- Not changed by a look on a real avatar: skin and hair colours (`?skin=`, `?hair=`), and the suit's colour when
+  the scuba set goes on.
 
 ## Where every fact comes from
 

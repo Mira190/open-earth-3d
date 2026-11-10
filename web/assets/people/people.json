@@ -704,7 +704,7 @@
   }
  },
  "npcs": {
-  "note": "The NPCs: Microsoft Rocketbox avatars built by blender/build_people.py --npcs for the characters the cities' game.npcs name (R_<avatar>[_<head>][_<tag>...]). Each sex's clips are in one file that drives them all.",
+  "note": "The NPCs: Microsoft Rocketbox avatars built by blender/build_people.py --npcs for the characters the cities' game.npcs name, and the reef and alpine sites' people (web/reef) (R_<avatar>[_<head>][_<tag>...]). Each sex's clips are in one file that drives them all; \"field\" is the run of the visitor you play at a reef or alpine site.",
   "source": "Microsoft Rocketbox (MIT, (c) 2020 Microsoft): avatars and animations; see LICENSE-Rocketbox.txt",
   "bones": {
    "Head": "Bip01_Head",
@@ -773,6 +773,26 @@
     ],
     "ground_speed": {
      "Walk": 1.012
+    }
+   }
+  },
+  "field": {
+   "f": {
+    "file": "R_clips_field_f.glb",
+    "clips": [
+     "Run"
+    ],
+    "ground_speed": {
+     "Run": 5.379
+    }
+   },
+   "m": {
+    "file": "R_clips_field_m.glb",
+    "clips": [
+     "Run"
+    ],
+    "ground_speed": {
+     "Run": 5.839
     }
    }
   },
@@ -939,6 +959,20 @@
      "amsterdam"
     ]
    },
+   "R_Female_Adult_01_khaki": {
+    "file": "R_Female_Adult_01_khaki.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_01",
+    "head": null,
+    "tags": [
+     "khaki"
+    ],
+    "height_m": 1.739,
+    "triangles": 8732,
+    "cities": [
+     "reef"
+    ]
+   },
    "R_Female_Adult_02": {
     "file": "R_Female_Adult_02.glb",
     "sex": "f",
@@ -951,6 +985,18 @@
      "melbourne-bayside"
     ]
    },
+   "R_Female_Adult_03": {
+    "file": "R_Female_Adult_03.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_03",
+    "head": null,
+    "tags": [],
+    "height_m": 1.739,
+    "triangles": 9208,
+    "cities": [
+     "reef"
+    ]
+   },
    "R_Female_Adult_04": {
     "file": "R_Female_Adult_04.glb",
     "sex": "f",
@@ -960,7 +1006,10 @@
     "height_m": 1.762,
     "triangles": 9284,
     "cities": [
-     "paris"
+     "paris",
+     "queenstown",
+     "reef",
+     "shinagawa"
     ]
    },
    "R_Female_Adult_04_f003": {
@@ -1180,7 +1229,10 @@
     "height_m": 1.751,
     "triangles": 8516,
     "cities": [
-     "melbourne-bayside"
+     "melbourne-bayside",
+     "odaiba",
+     "queenstown",
+     "reef"
     ]
    },
    "R_Female_Adult_17_f011": {
@@ -1219,6 +1271,18 @@
      "paris"
     ]
    },
+   "R_Male_Adult_01": {
+    "file": "R_Male_Adult_01.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_01",
+    "head": null,
+    "tags": [],
+    "height_m": 1.823,
+    "triangles": 7440,
+    "cities": [
+     "reef"
+    ]
+   },
    "R_Male_Adult_03": {
     "file": "R_Male_Adult_03.glb",
     "sex": "m",
@@ -1255,6 +1319,8 @@
     "triangles": 7836,
     "cities": [
      "paris",
+     "queenstown",
+     "reef",
      "sydney"
     ]
    },
@@ -1369,6 +1435,18 @@
     "triangles": 7328,
     "cities": [
      "hong-kong"
+    ]
+   },
+   "R_Male_Adult_14": {
+    "file": "R_Male_Adult_14.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_14",
+    "head": null,
+    "tags": [],
+    "height_m": 1.795,
+    "triangles": 6842,
+    "cities": [
+     "reef"
     ]
    },
    "R_Male_Adult_14_m017_grey": {
@@ -1543,6 +1621,102 @@
      "tokyo"
     ]
    },
+   "R_Sports_Female_01_f013_wetsuit": {
+    "file": "R_Sports_Female_01_f013_wetsuit.glb",
+    "sex": "f",
+    "avatar": "Professions/Sports_Female_01",
+    "head": "Professions/Sports_Female_02",
+    "tags": [
+     "wetsuit"
+    ],
+    "height_m": 1.733,
+    "triangles": 8958,
+    "cities": [
+     "reef"
+    ]
+   },
+   "R_Sports_Female_01_rash": {
+    "file": "R_Sports_Female_01_rash.glb",
+    "sex": "f",
+    "avatar": "Professions/Sports_Female_01",
+    "head": null,
+    "tags": [
+     "rash"
+    ],
+    "height_m": 1.731,
+    "triangles": 8480,
+    "cities": [
+     "reef"
+    ]
+   },
+   "R_Sports_Female_01_stinger": {
+    "file": "R_Sports_Female_01_stinger.glb",
+    "sex": "f",
+    "avatar": "Professions/Sports_Female_01",
+    "head": null,
+    "tags": [
+     "stinger"
+    ],
+    "height_m": 1.731,
+    "triangles": 8480,
+    "cities": [
+     "reef"
+    ]
+   },
+   "R_Sports_Female_02": {
+    "file": "R_Sports_Female_02.glb",
+    "sex": "f",
+    "avatar": "Professions/Sports_Female_02",
+    "head": null,
+    "tags": [],
+    "height_m": 1.733,
+    "triangles": 8580,
+    "cities": [
+     "reef"
+    ]
+   },
+   "R_Sports_Male_01_m022_wetsuit": {
+    "file": "R_Sports_Male_01_m022_wetsuit.glb",
+    "sex": "m",
+    "avatar": "Professions/Sports_Male_01",
+    "head": "Adults/Male_Adult_17",
+    "tags": [
+     "wetsuit"
+    ],
+    "height_m": 1.812,
+    "triangles": 7352,
+    "cities": [
+     "reef"
+    ]
+   },
+   "R_Sports_Male_01_rash": {
+    "file": "R_Sports_Male_01_rash.glb",
+    "sex": "m",
+    "avatar": "Professions/Sports_Male_01",
+    "head": null,
+    "tags": [
+     "rash"
+    ],
+    "height_m": 1.804,
+    "triangles": 7358,
+    "cities": [
+     "reef"
+    ]
+   },
+   "R_Sports_Male_01_stinger": {
+    "file": "R_Sports_Male_01_stinger.glb",
+    "sex": "m",
+    "avatar": "Professions/Sports_Male_01",
+    "head": null,
+    "tags": [
+     "stinger"
+    ],
+    "height_m": 1.804,
+    "triangles": 7358,
+    "cities": [
+     "reef"
+    ]
+   },
    "R_Sports_Male_02_m008": {
     "file": "R_Sports_Male_02_m008.glb",
     "sex": "m",
@@ -1564,7 +1738,21 @@
     "height_m": 1.829,
     "triangles": 7684,
     "cities": [
-     "tokyo"
+     "reef",
+     "tokyo",
+     "tsukishima"
+    ]
+   },
+   "R_Wood_Male_01": {
+    "file": "R_Wood_Male_01.glb",
+    "sex": "m",
+    "avatar": "Professions/Wood_Male_01",
+    "head": null,
+    "tags": [],
+    "height_m": 1.813,
+    "triangles": 7108,
+    "cities": [
+     "reef"
     ]
    }
   }

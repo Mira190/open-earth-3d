@@ -23,7 +23,26 @@ const mesh = (g, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, m); o.
 const tube = (pts, r, m, seg = 24) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V(...p))), seg, r, 6, false), m);
 
 // ---- headwear
+// a sun hat made to a real head (T.head.fit, people.js: the skull's half-width a and half-depth b where the band sits,
+// its middle and its crown): an oval band that touches the head all round, a soft rounded crown just clear of the
+// scalp, and a brim that droops a little; worn as hats are, low on the forehead and lower still at the nape
+function fittedHat(T, o) {
+  const F = T.head.fit, g = new THREE.Group(), c = o.color || '#d9c9a0';
+  const ease = 0.007, a = F.a + ease, b = F.b + ease, h = F.top - F.y + 0.022;
+  const bw = Math.max(0.06, Math.min((o.brim ?? 0.27) - 0.185, 0.085)), R = 1 + bw / a;   // (the old hats give a radius from the middle)
+  const prof = [[0, h], [0.3, h * 0.985], [0.58, h * 0.93], [0.8, h * 0.8], [0.93, h * 0.6], [0.99, h * 0.35], [1, 0.03], [1.005, 0],
+    [1 + (R - 1) * 0.5, -0.006], [R, -0.022], [R + 0.03, -0.026], [R, -0.016], [1 + (R - 1) * 0.5, 0.001], [1.0, -0.003]];
+  const m = mat(c, { rough: 0.92, double: true });
+  const shell = new THREE.Mesh(new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 36), m);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(1.004, 1.012, 0.026, 36, 1, true), mat(o.band || '#2b2f36', { rough: 0.8, double: true }));
+  band.position.y = 0.016;
+  for (const p of [shell, band]) { p.scale.set(a, 1, b); g.add(p); }
+  g.position.set(F.cx, F.y, F.cz);
+  g.rotation.x = -0.09;
+  return { obj: g, bone: 'Head' };
+}
 function hat(T, o) {
+  if (T.head.fit) return fittedHat(T, o);
   const g = new THREE.Group(), c = o.color || '#d9c9a0';
   const R = o.brim ?? 0.27;
   // crown and brim as one lathe: a slightly drooping brim
@@ -54,8 +73,10 @@ function cap(T, o) {
 function sunnies(T, o) {
   const g = new THREE.Group(), lens = mat(o.color || '#14171c', { rough: 0.08, metal: 0.7 }), fr = mat('#0b0c0e', { rough: 0.4 });
   const y = T.head.eye, z = T.head.front + 0.004;
+  // (T.head.ipd: a real avatar's eyes, half their distance apart; its lenses are a pair of glasses', not goggles')
+  const ex = T.head.ipd || 0.045, lr = T.head.ipd ? 0.026 : 0.036;
   for (const s of [-1, 1]) {
-    const l = mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.008, 18), lens, s * 0.045, y, z); l.rotation.x = Math.PI / 2; l.scale.set(1, 1, 0.8); g.add(l);
+    const l = mesh(new THREE.CylinderGeometry(lr, lr, 0.008, 18), lens, s * ex, y - (T.head.ipd ? 0.004 : 0), z); l.rotation.x = Math.PI / 2; l.scale.set(T.head.ipd ? 1.15 : 1, 1, 0.8); g.add(l);
     const arm = mesh(new THREE.BoxGeometry(0.006, 0.006, T.head.front - T.head.cz + 0.04), fr, s * (T.head.halfW + 0.002), y + 0.008, (z + T.head.cz) / 2 - 0.02); g.add(arm);
   }
   g.add(mesh(new THREE.BoxGeometry(0.03, 0.006, 0.006), fr, 0, y + 0.012, z));
@@ -115,8 +136,11 @@ function fins(T, o) {
 // ---- scuba kit
 function bcd(T, o) {
   const g = new THREE.Group(), body = new THREE.Group(), c = mat(o.color || '#e8b90f', { rough: 0.7, double: true }), trim = mat(o.trim || '#14395c', { rough: 0.7 });
-  const h = 0.4, y0 = T.torso.chestY - 0.17;
-  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, h, 28, 1, true), c);
+  // (a real avatar's: a jacket from the waist to the collarbone, narrower at the shoulders, not a barrel to the chin)
+  const real = !!T.head.ipd, h = real ? 0.36 : 0.4, y0 = T.torso.chestY - (real ? 0.2 : 0.17);
+  // open down the front, as a jacket is: the suit shows between its two panels, a cummerbund across the waist
+  const gap = real ? 0.85 : 0;
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(real ? 0.9 : 1, 1, h, 28, 1, true, gap / 2, Math.PI * 2 - gap), c);
   cyl.scale.set(T.torso.halfW + 0.035, 1, (T.torso.front - T.torso.back) / 2 + 0.035);
   cyl.position.set(0, y0 + h / 2, (T.torso.front + T.torso.back) / 2);
   body.add(cyl);
@@ -124,6 +148,11 @@ function bcd(T, o) {
   for (const s of [1, -1]) {
     const p = mesh(new THREE.BoxGeometry(0.11, 0.1, 0.045), trim, s * 0.1, y0 + 0.12, T.torso.front + 0.04); body.add(p);
     const strap = mesh(new THREE.BoxGeometry(0.07, 0.14, 0.2), c, s * (T.torso.halfW - 0.04), y0 + h - 0.1, (T.torso.front + T.torso.back) / 2); strap.rotation.z = -s * 0.12; body.add(strap);
+  }
+  if (real) {
+    body.add(mesh(new THREE.BoxGeometry(0.2, 0.07, 0.02), mat('#17181b', { rough: 0.7 }), 0, y0 + 0.07, T.torso.front + 0.03));
+    body.add(mesh(new THREE.BoxGeometry(0.2, 0.03, 0.016), mat('#17181b', { rough: 0.7 }), 0, y0 + h - 0.1, T.torso.front + 0.02));   // the chest strap
+    body.add(mesh(new THREE.BoxGeometry(0.045, 0.04, 0.022), mat('#2c3036', { rough: 0.4, metal: 0.4 }), 0, y0 + h - 0.1, T.torso.front + 0.022));
   }
   const hose = tube([[0.14, y0 + h - 0.03, T.torso.front + 0.03], [0.17, y0 + h + 0.12, T.torso.front + 0.02], [0.1, y0 + h + 0.2, T.torso.front - 0.02]], 0.011, mat('#17181b', { rough: 0.6 }), 12);
   body.add(hose);
@@ -153,7 +182,8 @@ function regulator(T, o) {
   const mp = mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.035, 12), mat('#202327', { rough: 0.5 }), 0, T.head.mouth, T.head.front + 0.02); mp.rotation.x = Math.PI / 2; g.add(mp);
   g.add(tube([[-0.02, vy, vz], [-0.15, vy - 0.1, vz + 0.02], [-0.19, T.torso.chestY + 0.1, T.torso.front - 0.03], [-0.08, T.torso.chestY - 0.08, T.torso.front + 0.06]], 0.011, yel, 30));
   g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.03, 10), yel, -0.08, T.torso.chestY - 0.08, T.torso.front + 0.07));
-  g.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.016, 16), mat('#e8e8e4', { rough: 0.3 }), -0.1, T.torso.chestY - 0.2, T.torso.front + 0.07)); // pressure gauge
+  const gauge = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.016, 16), mat('#e8e8e4', { rough: 0.3 }), -0.1, T.torso.chestY - 0.2, T.torso.front + 0.07); // pressure gauge, its face out
+  gauge.rotation.x = Math.PI / 2; g.add(gauge);
   g.userData.mouth = mouth;
   return { obj: g, bone: 'Chest' };
 }

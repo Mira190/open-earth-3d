@@ -148,7 +148,7 @@ export function ranger(G, o = {}) {
   const st = siteStats(G);
   const hasLife = G2 => G2.species().length > 0;
   return {
-    id: 'ranger', role: o.role || 'ranger', name: o.name || 'Alex', title: o.title || 'Marine park ranger', gender: o.gender || 'W',
+    id: 'ranger', role: o.role || 'ranger', name: o.name || 'Alex', title: o.title || 'Marine park ranger', gender: o.gender || 'W', look: o.look,
     at: o.at || (G2 => {
       const s = G2.spawn(), h = s.heading * Math.PI / 180, fx = Math.sin(h), fn = Math.cos(h), rx = Math.cos(h), rn = -Math.sin(h);
       const want = { x: s.x + fx * 6 + rx * 3, north: s.north + fn * 6 + rn * 3 };
@@ -169,7 +169,7 @@ export function ranger(G, o = {}) {
       survey: { say: G2 => [{ t: `Yes please. Put a mask on, snorkel over the reef and log ${surveySize(G2)} species you can get within a few metres of. E when you're close.`, src: ['model-life'] }],
         do: G2 => G2.start('survey'), next: 'end' },
       surveyDone: surveyDoneNode(),
-      travel: { say: 'The other Queensland reef sites are on the map: T, or the Map button.', do: null, choices: [{ text: 'Open the map', do: G2 => G2.openPanel('map'), go: 'end' }, { text: 'Thanks', go: 'end' }] }
+      travel: { say: 'Every other site is on the map: T, or the Map button, then All sites.', do: null, choices: [{ text: 'Open the map', do: G2 => G2.openPanel('map'), go: 'end' }, { text: 'Thanks', go: 'end' }] }
     }, o.nodes || {})
   };
 }
