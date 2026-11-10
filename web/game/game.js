@@ -4620,7 +4620,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let fpsWarned = false;
   gov.on((extras, scale, extrasChanged) => {
     resize();
-    if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras, msaa: QC.samples || 0, cap: gov.cap }); // (each step is a "quality" event: telemetry.js)
+    if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras, msaa: atmos && atmos.composer ? atmos.composer.samples : QC.samples || 0, cap: gov.cap }); // (each step is a "quality" event: telemetry.js)
     // what this device held on this map, for the next visit to start from (it climbs again from there if it can)
     if (gov.auto) try { localStorage.setItem(GOV_KEY, String(+scale.toFixed(2))); } catch (e) { /* storage blocked */ }
     if (!extrasChanged) return;
@@ -4628,6 +4628,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (weather) weather.shed = extras >= 1 ? 0 : extras > 0 ? 1 : 2; // (two-way: weather.js gives back what this session's shedding took, and keeps off what started off)
     if (mirror && mirror.on) mirror.off = extras < 1;
     if (atmos && atmos.ao && atmos.ao.limit) atmos.ao.limit(extras >= 1 ? 2 : extras > 0 ? 1 : 0);
+    // the scene's multisampling with them: the tier's (four on high) with every extra, two at half, none at the floor,
+    // where the sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
+    if (atmos && atmos.setSamples && QC.samples) atmos.setSamples(extras >= 1 ? QC.samples : extras > 0 ? Math.min(2, QC.samples) : 0);
     if (extras === 0 && !fpsWarned && !navigator.webdriver) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
   });
   // The frame's own writes to the page (issue 352): each of the HUD's nodes is looked up once, and its text is
