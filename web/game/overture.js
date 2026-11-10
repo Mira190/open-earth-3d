@@ -163,12 +163,12 @@ window.OEOverture = (function () {
           if (uComet > 0.0 && cd > 0.3) {
             vec3 v = d - uCometDir * cd, t2 = normalize(cross(uCometDir, uCometTail));
             float a = dot(v, uCometTail), b = dot(v, t2), r = length(v), L = uCometLen;
-            float head = exp(-r * r / 0.000010) * 3.0 + exp(-r * r / 0.00012) * 0.8 + exp(-r / 0.018) * 0.14;
+            float head = exp(-r * r / 0.0000035) * 2.2 + exp(-r * r / 0.00004) * 0.45 + exp(-r / 0.012) * 0.08;   // (a star-like point in a small coma: not a disc)
             float along = max(a, 0.0), tail = smoothstep(-0.002, 0.004, a);
-            float w1 = 0.0035 + along * 0.035, ion = tail * exp(-b * b / (w1 * w1)) * exp(-along / (L * 0.42));
+            float w1 = 0.0025 + along * 0.03, ion = tail * exp(-b * b / (w1 * w1)) * exp(-along / (L * 0.55));
             ion *= 0.72 + 0.28 * vn(vec3(b / w1 * 2.5, along * 60.0, 3.0));       // (streamers along it)
             float bc = b - 0.6 * along * along / L - along * 0.2, w2 = 0.006 + along * 0.1;
-            float dust = tail * exp(-bc * bc / (w2 * w2)) * exp(-along / (L * 0.3));
+            float dust = tail * exp(-bc * bc / (w2 * w2)) * exp(-along / (L * 0.4));
             col += (vec3(0.4, 0.72, 1.0) * ion * 0.95 + vec3(1.0, 0.88, 0.78) * dust * 0.5 + vec3(0.86, 0.95, 1.0) * head) * uComet * smoothstep(0.0, 0.1, h);
           }
           // thin clouds low in the sky, lit from below by the city: dark blue bodies with warm undersides
@@ -590,7 +590,7 @@ window.OEOverture = (function () {
           const a0 = s.gFrom ?? 0, a1 = s.gTo ?? 1, u = clamp((k - a0) / Math.max(1e-3, a1 - a0)), life = Math.sin(Math.PI * u);
           const px = d => d * Math.tan(fov * RAD / 2) * 2 / 900; // (metres a pixel at d, on 900 lines)
           glow.material.opacity = 0.95 * Math.pow(life, 0.6);
-          glow.scale.setScalar(px(camD) * 26 * K.size / 2.2);
+          glow.scale.setScalar(px(camD) * 15 * K.size / 2.2); // (a small head: a large one reads as a moon)
           const n = tail.length, len = (s.tailLen ?? 0.32) * (a1 - a0);
           glow.material.opacity *= 0.85 + 0.15 * Math.sin(t * 47.0) * Math.sin(t * 31.0); // (its head flickers as it burns)
           tail.forEach((sp, i) => {
@@ -599,8 +599,8 @@ window.OEOverture = (function () {
             if (!sp.visible) return;
             sp.position.copy(q);
             const f = 1 - (i + 1) / n, d = pose.pos.distanceTo(q);
-            sp.material.opacity = 0.8 * Math.pow(f, 1.6) * Math.pow(life, 0.6);
-            sp.scale.setScalar(px(d) * (2.5 + 9 * f * f));
+            sp.material.opacity = 0.5 * Math.pow(f, 1.6) * Math.pow(life, 0.6);
+            sp.scale.setScalar(Math.max(px(d) * (2.5 + 9 * f * f), 2.2 * q.distanceTo(i ? tail[i - 1].position : gp))); // (never smaller than the gap to the one before it: a line, not a row of dots)
           });
         }
         if (g) gprev.copy(g);
@@ -697,7 +697,7 @@ window.OEOverture = (function () {
           m.parts.forEach((sp, j) => {
             sp.visible = on;
             if (!on) return;
-            sp.position.copy(m.a).addScaledVector(m.v, (t - m.t0) - j * 0.022);
+            sp.position.copy(m.a).addScaledVector(m.v, (t - m.t0) - j * 0.008);
             const dd = cam.position.distanceTo(sp.position), px = dd * Math.tan(fov * RAD / 2) * 2 / 900, f = 1 - j / 12;
             sp.scale.setScalar(px * (j ? 3 + 7 * f : 12)); sp.material.opacity = (j ? 0.55 * f * f : 0.9) * life;
           });
