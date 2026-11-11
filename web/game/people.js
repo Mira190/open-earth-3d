@@ -604,6 +604,13 @@ ${PAT_GLSL}`)
     // The mixer only writes a bone whose value has changed, so under a still clip a foot moved
     // here stays moved: put it back where the clip had it before measuring again (or standing up).
     const feetBack = () => { for (const l of legs) if (l.moved) { if (l.ft.position.equals(l.set)) l.ft.position.copy(l.home); l.moved = false; } };
+    // ... and so for the legs bent and the arms put on the wheel: back to the clip's pose before the mixer runs, else
+    // under a still clip a frame began with the thighs already forward, the feet were measured from there, the body
+    // went down 0.38 m less and the head rose that much through a car's roof, on the frames where the clip held still
+    // (which ones depends on the frame times: Tokyo's taxi driver under load, #392)
+    const bent = [];
+    const bendBack = () => { for (const [b, q] of bent) b.quaternion.copy(q); bent.length = 0; };
+    const bend = b => { const q = (b.userData.clipQ = b.userData.clipQ || new THREE.Quaternion()).copy(b.quaternion); bent.push([b, q]); };
     function seat() {
       if (!seated) return;
       model.position.y = 0;
@@ -614,6 +621,7 @@ ${PAT_GLSL}`)
       for (const l of legs) { l.y0 = l.ft.getWorldPosition(sa).y; l.shin = sa.distanceTo(l.ll.getWorldPosition(sb)); }
       let drop = 0;
       for (const l of legs) {
+        bend(l.ul); bend(l.ll);
         aim(l.ul, l.ll, sd2.copy(fw));
         const down = sd2.set(0, -1, 0).addScaledVector(fw, rig.legRake ?? 0.12).normalize();
         aim(l.ll, l.hangs ? l.ft : null, down); // (towards the foot where it hangs from the shin: those bones' axes differ)
@@ -635,6 +643,7 @@ ${PAT_GLSL}`)
         const hand = r2.copy(rig.reach).addScaledVector(side, 0.16 * a.s), sh = a.ua.getWorldPosition(r3);
         const elbow = r4.copy(sh).lerp(hand, 0.5).addScaledVector(side, 0.09 * a.s);
         elbow.y -= 0.1;
+        bend(a.ua); bend(a.la);
         aim(a.ua, a.la, elbow.sub(sh).normalize());
         aim(a.la, a.wr, hand.sub(a.la.getWorldPosition(r3)).normalize());
       }
@@ -668,6 +677,7 @@ ${PAT_GLSL}`)
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 8.5 m/s sprint (game.js GAIT)
       if (mode !== 'sit') feetBack();
       armBack();
+      bendBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
       else if (rig.hold && reaches) holdUmbrella(rig.hold);
