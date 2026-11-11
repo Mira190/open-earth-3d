@@ -124,7 +124,7 @@ async function main() {
     const [{ createLight }, { createAlpineTerrain }, { createLakes }] = await Promise.all([import('./alpine/light.js'), import('./alpine/terrain.js'), import('./alpine/lakes.js')]);
     light = createLight(renderer, d, env, atm, groundTex);
     sunL.userData.terrainShadow = true;
-    terrain = createAlpineTerrain(d, env, renderer, light, groundTex, () => clockMs(), { range: tier.terrain });
+    terrain = createAlpineTerrain(d, env, renderer, light, groundTex, () => clockMs(), { range: tier.terrain, detailMax: tier.detailMax });
     lakes = createLakes(d, env, atm, light, groundTex);
     if (q.get('lakes') !== '0') scene.add(lakes.group);
     const { createClouds } = await import('./alpine/clouds.js');
@@ -300,6 +300,7 @@ async function main() {
   const st = S.start || {};
   const cx = Number(q.get('x') ?? st.x ?? 0), cy = Number(q.get('y') ?? st.y ?? 0), cz = Number(q.get('z') ?? st.z ?? 60);
   camera.position.set(cx, cz, -cy);
+  if (terrain.prefetch) terrain.prefetch(camera.position);   // (the aerial patch under the eye, from now: alpine/terrain.js)
   let yaw = THREE.MathUtils.degToRad(Number(q.get('yaw') ?? st.yaw ?? 0)), pitch = THREE.MathUtils.degToRad(Number(q.get('pitch') ?? st.pitch ?? -15));
   const keys = new Set();
   addEventListener('keydown', e => keys.add(e.code)); addEventListener('keyup', e => keys.delete(e.code));
@@ -415,7 +416,14 @@ async function main() {
     const tz = env.u.tide.value;
     $('hud').textContent = `${renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · alt ${camera.position.y.toFixed(1)} m · floor ${gx.toFixed(1)} m · sun ${(sun.alt * 57.3).toFixed(0)}° · ${ALP ? 'lake' : 'tide'} ${tz >= 0 ? '+' : ''}${tz.toFixed(2)} m${tide && tideFixed === null ? (tide.rising(clockMs()) ? ' rising' : ' falling') : ''}`;
   };
-  if (terrain.prepare) { stage('Unrolling the aerial photographs', 0.97); await terrain.prepare(camera.position); }
+  // the aerial patch under the eye: a visitor's first frames draw the land from the mosaic and the patch fades in when it
+  // comes (issue 343: up to 19 s of Tekapo's loader); a still, a film or a tool under automation waits for it, as before
+  // (?detail=later: as a visitor, for tools/reef_load.js)
+  if (terrain.prepare) {
+    const wait = !!q.get('still') || (navigator.webdriver && q.get('detail') !== 'later');
+    if (wait) stage('Unrolling the aerial photographs', 0.97);
+    await terrain.prepare(camera.position, { wait });
+  }
   if (q.get('still')) { frame(1000); frame(1016); $('load').classList.add('done'); window.__ready = true; }  // for tests: one settled frame
   else renderer.setAnimationLoop(frame);
 }
