@@ -11,7 +11,7 @@ turns every place it names into the map's own metres, so the writer never measur
     "at": {"label": "QFRONT"}          a landmark's label (scene.json "labels"; the start of the name will do)
     "at": {"wharf": "circular-quay"}   a wharf
     "at": {"viewpoint": "observatory-hill"}   a trig station
-    "at": {"station": "koshigoe"}      a railway station (game.json rail.train)
+    "at": {"station": "koshigoe"}      a railway station (game.json rail.train, or trains for a main line)
     "at": {"lonlat": [139.7005, 35.6590]}   anywhere real, by its longitude and latitude
 
 A person may keep other places at other hours: bonds[].places, each {"slots"/"weekdays"/"hours"/"weather",
@@ -63,6 +63,9 @@ def build(city):
     errs = []
     proj = None
 
+    def stations():  # a railway's stations: rail.js's line (game.json rail.train) or trains.js's main line (game.json trains)
+        return ((game.get('rail') or {}).get('train') or {}).get('stations', []) + (game.get('trains') or {}).get('stations', [])
+
     def place(v, where):
         nonlocal proj
         if isinstance(v, list):
@@ -97,7 +100,7 @@ def build(city):
                 raise Bad(f'{where}: no trig station "{v["viewpoint"]}"')
             p = [s[0]['x'], s[0]['y']] if 'x' in s[0] else list(s[0]['at'])[:2]
         elif 'station' in v:
-            s = [w for w in ((game.get('rail') or {}).get('train') or {}).get('stations', []) if w['id'] == v['station']]
+            s = [w for w in stations() if w['id'] == v['station']]
             if not s:
                 raise Bad(f'{where}: no railway station "{v["station"]}"')
             p = list(s[0]['at'])[:2]
@@ -207,7 +210,7 @@ def build(city):
             if not j.get('time_s') or not j.get('to_name'):
                 errs.append(f'{w}: needs time_s and to_name')
         if j.get('type') == 'train':  # from a station to another by rail: "from" and "to_station" are their ids
-            sts = {x['id'] for x in ((game.get('rail') or {}).get('train') or {}).get('stations', [])}
+            sts = {x['id'] for x in stations()}
             if j.get('from') not in sts or j.get('to_station') not in sts:
                 errs.append(f'{w}: a train job needs "from" and "to_station", two of the railway\'s stations ({sorted(sts) or "none on this map"})')
         for i, t in enumerate(j.get('targets', [])):
