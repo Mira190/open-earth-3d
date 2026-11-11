@@ -4,7 +4,7 @@
 // (web/game/autopilot.js film). Films force the desktop tier.
 //   cd web && python3 -m http.server 8800 &
 //   GAME_TIME=16:40 xvfb-run -a node tools/autopilot_film.js sydney out_dir
-//   DEST=opera SCENIC=1 SECONDS=70 FPS=24 W=1280 H=720 ...   (DEST: part of a destination's name; the farthest offered if none)
+//   DEST=opera SCENIC=1 WEATHER=rain SECONDS=70 FPS=24 W=1280 H=720 ...   (DEST: part of a destination's name; the farthest offered if none)
 //   STILLS=1: a still every five seconds of the drive instead (<out>/<city>-autopilot-NN.jpg), to look before filming
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -24,7 +24,7 @@ const FPS = +(process.env.FPS || 24), SECONDS = +(process.env.SECONDS || 60), W 
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
-  const set = await p.evaluate(({ want, scenic }) => {
+  const set = await p.evaluate(({ want, scenic, weather }) => {
     const g = window.__game, c = g.myCar && g.myCar();
     for (let t = 0; g.arriving() && t < 10; t += 0.25) g.advance(0.25);
     g.advance(2);
@@ -37,9 +37,10 @@ const FPS = +(process.env.FPS || 24), SECONDS = +(process.env.SECONDS || 60), W 
     let dest = want ? list.find(d => d.name.toLowerCase().includes(want)) : null, best = 0;
     if (!dest) for (const d of list) { if (g.pilotTo(d, { quiet: true, scenic }) && g.pilot().len > best) { best = g.pilot().len; dest = d; } g.pilotOff(); }
     if (!dest || !g.pilotTo(dest, { scenic })) return { none: 'nowhere to drive to', offered: list.map(d => d.name) };
+    if (weather && g.weather) g.weather.set(weather, { now: true }); // (WEATHER=rain: the drive in the rain)
     g.hold(false);
     return { dest: dest.name, len: g.pilot().len, share: g.pilot().share, offered: list.map(d => d.name) };
-  }, { want: (process.env.DEST || '').toLowerCase(), scenic: !!process.env.SCENIC });
+  }, { want: (process.env.DEST || '').toLowerCase(), scenic: !!process.env.SCENIC, weather: process.env.WEATHER || '' });
   console.log(JSON.stringify(set));
   if (set.none) { await b.close(); process.exit(1); }
   // take over the frame loop: the game asks for its next frame, and the film calls it at a fixed step

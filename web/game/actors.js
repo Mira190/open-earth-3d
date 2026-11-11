@@ -113,13 +113,13 @@ window.OEActors = (function () {
     // it reads as the shadowed inside of a car, not as a hole through it
     if (cars) { mat.defines = Object.assign({}, mat.defines, { TONE_CARS: '' }); mat.side = THREE.DoubleSide; }
     mat.onBeforeCompile = sh => {
-      sh.uniforms.uTime = U.uTime; sh.uniforms.uNight = U.uNight;
+      sh.uniforms.uTime = U.uTime; sh.uniforms.uNight = U.uNight; sh.uniforms.uLamps = U.uLamps || (U.uLamps = { value: 0 }); // (uLamps: headlamps on by day, in rain, snow or fog)
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
 attribute float tone; attribute float part; attribute vec3 aC0; attribute vec3 aC1; attribute vec3 aC2; attribute vec3 aC3; attribute vec3 aAnim;
 uniform float uTime; varying vec3 vCol; varying float vEmit;
 #ifdef TONE_CARS
-attribute float ao; varying float vAO; varying float vTone;
+attribute float ao; varying float vAO; varying float vTone; varying float vLamp;
 #endif
 mat3 rx(float a) { float c = cos(a), s = sin(a); return mat3(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c); }`)
         .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
@@ -134,12 +134,16 @@ vCol = tone < 0.5 ? aC0 : tone < 1.5 ? aC1 : tone < 2.5 ? aC2 : tone < 3.5 ? aC3
 vEmit = tone > 5.5 && tone < 7.5 ? (tone < 6.5 ? 1.0 : 0.7) : tone > 11.5 && tone < 12.5 ? 0.3 : 0.0; // (a taxi's roof sign: a lit panel, not a lamp, that blooms across the car behind it)
 #ifdef TONE_CARS
 vAO = ao; vTone = tone;
+// a car's brake lights and indicators (#355), per car in aC3 (a tone no car has): x how hard it brakes, y its
+// indicators (1 left, -1 right, 2 both: hazards), flashing 85 times a minute; the left lamps are on the model's +x
+float sgn = aC3.y, flash = step(0.5, fract(uTime * 1.42));
+vLamp = tone > 6.5 && tone < 7.5 ? aC3.x * 3.0 : tone > 12.5 ? flash * (sgn > 1.5 ? 1.0 : sgn * position.x > 0.05 ? 1.0 : 0.0) * 2.6 : 0.0;
 #endif`);
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
-uniform float uNight; varying vec3 vCol; varying float vEmit;
+uniform float uNight; uniform float uLamps; varying vec3 vCol; varying float vEmit;
 #ifdef TONE_CARS
-varying float vAO; varying float vTone;
+varying float vAO; varying float vTone; varying float vLamp;
 #endif`)
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `vec4 diffuseColor = vec4( vCol, opacity );
 #ifdef TONE_CARS
@@ -159,7 +163,10 @@ metalnessFactor = vTone > 8.5 && vTone < 10.5 ? 0.9 : 0.0;
 reflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;
 #endif`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
+totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * max(uNight, 0.45 * uLamps));
+#ifdef TONE_CARS
+totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by day as by night)
+#endif`);
     };
     return mat;
   }
@@ -1111,7 +1118,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           p.v = p.vx = p.vy = 0;
           if ((p.t -= dt) <= 0) { release(p); backTo(p); p.state = 'leave'; }
         } else { // to a seat or back to the footway, in a straight line
-          const g = p.state === 'approach' ? p.seat : p.back, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy);
+          const g = p.state === 'approach' || p.state === 'board' ? p.seat : p.back, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy);
           gather(p.x, p.y, p, (frame + i) % 6 < 2 || !p.cars, p.z);
           // (not into a car pulled up by the bench: wait for it)
           let st = d > 1e-3 && blocked(p.x + dx / d * 0.05, p.y + dy / d * 0.05, false) > blocked(p.x, p.y, false) + 1e-4 ? 0 : Math.min(d, p.speed * 0.8 * dt);
@@ -1120,7 +1127,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           else if (st > 0) p.yield = 0;
           if (d > 1e-3) { p.x += dx / d * st; p.y += dy / d * st; p.z += (g.z - p.z) * st / d; p.h = Math.atan2(dx, dy); }
           p.v = dt > 0 ? st / dt : 0; p.vx = d > 1e-3 ? dx / d * p.v : 0; p.vy = d > 1e-3 ? dy / d * p.v : 0;
-          if (d - st < 0.02) {
+          // (to a bus's door, api.board: aboard once there, or as it leaves, and back to the footway if it left without them)
+          if (p.state === 'board' && (d - st < 0.35 || !(g.open && g.open()) || (p.bt = (p.bt || 0) + dt) > 14)) {
+            const on = d - st < 1.2;
+            p.seat = null; p.bt = 0;
+            if (on) { api.boarded++; respawn(p, cx, cy, radius * 0.6); continue; } // (gone aboard: someone else comes into the crowd elsewhere)
+            backTo(p); p.state = 'leave';
+          } else if (d - st < 0.02) {
             if (p.state === 'approach') { p.state = 'sit'; p.x = g.x; p.y = g.y; p.z = g.z; p.h = g.h; p.t = 25 + rnd() * 50; }
             else { p.state = 'walk'; p.lat = null; p.dodge = 0; p.rest = 40 + rnd() * 60; } // walk() picks up the new direction
           }
@@ -1402,6 +1415,28 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) { const d = Math.hypot(P[i].x - x, P[i].y - y); if (P[i].line >= 0 && d < bd) { bd = d; best = i; } }
       return best;
     }
+    // a bus at its stop (the traffic, below): up to n of those walking within 16 m of its door walk to it and get on
+    // while it stands (open() says so), and up to m get off there and walk away along the footway (people taken
+    // from the far side of the crowd, out of your sight, as the bus would have brought them)
+    api.boarded = 0; api.alighted = 0;
+    api.board = (door, n, m, open, cx, cy) => {
+      let k = 0;
+      for (let i = 0; i < api.active && k < n; i++) {
+        const p = P[i];
+        if (p.line < 0 || p.state !== 'walk' || p.pz || p.kerbNext || p.kerbBack || Math.abs(p.z - door.z) > 1.5 || Math.hypot(p.x - door.x, p.y - door.y) > 16) continue;
+        if (wall && wall(door.x, door.y, p.z)) break; // (a door no walker can reach: in a wall)
+        p.state = 'board'; p.seat = { x: door.x, y: door.y, z: door.z, h: 0, by: i, open }; p.bt = 0; k++;
+      }
+      const q = m > 0 && net.nearest ? net.nearest(door.x, door.y, 14, door.z) : null; // (the footway by the door)
+      for (let i = api.active - 1, j = 0; q && i >= 0 && j < m; i--) {
+        const p = P[i];
+        if (p.line < 0 || p.state !== 'walk' || p.pz || Math.hypot(p.x - cx, p.y - cy) < radius * 0.55) continue;
+        release(p);
+        p.line = q.line; p.s = q.s; p.x = door.x + (rnd() - 0.5) * 0.8; p.y = door.y + (rnd() - 0.5) * 0.8; p.z = door.z; p.lat = null; p.v = 0; p.kerbNext = null; p.kerbBack = false; p.pause = j * 1.1;
+        backTo(p); p.state = 'leave'; j++; api.alighted++;
+      }
+      return k;
+    };
     return Object.assign(api, { update, nearest, respawn });
   }
 
@@ -1428,6 +1463,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // elsewhere). The crowd keeps out of the cars' footprints (cars.near), and opts.nav stops the
   // player walking into one (nav.movers).
   const LANE = 1.7;    // a lane's centre, on the keep side of the road's line (m)
+  const DRY = { grip: 1, pace: 1, corner: 1, headway: 1 }; // (a dry day, where cars.js is not loaded)
   // your car on a course into one (issue 335): a driver notices it up to DODGE_T s before it would hit,
   // swings up to DODGE_OUT m out of its way (to the kerb, or out over the centre line with nothing coming
   // when you pass on the kerb side), brakes hard unless you come up from behind, and keeps that up for
@@ -1452,7 +1488,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     return false;
   }
-  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null, posts = null, junctions = null } = {}) {
+  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null, posts = null, junctions = null, stops = null } = {}) {
     const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const JN = junctions || OEJunctions.create(net, { keep, lane: LANE, signals: [] });
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
@@ -1477,7 +1513,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         for (const name of names) { if ((r -= share(name)) < 0) { k = name; break; } }
         const M = I.models[k], box = boxes[k], hex = M.taxi ? pick(taxi.colours) : M.bus ? bus.colour : pick(colours);
         C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, ln: 0, lo: 0, model: k, half: (box.max.z - box.min.z) / 2, hw: (box.max.x - box.min.x) / 2, top: box.max.y,
-          stuck: 0, taxi: !!M.taxi, hex, c0: lin(hex), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
+          stuck: 0, taxi: !!M.taxi, bus: !!M.bus, van: /van/i.test(k), hex, c0: lin(hex), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
       }
       mat = toneMaterial(U, { cars: true });
       fleet = {};
@@ -1497,7 +1533,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     // (issue 352: a car out of the eye's sight by more than its shadow reaches back into it, 30 m, takes no slot,
     // so it is not drawn into the view or the shadow map; and only the slots taken are sent to the GPU)
-    const at = new THREE.Vector3(), frustum = new THREE.Frustum(), fm = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), eyeAt = new THREE.Vector3(1e9, 0, 0);
+    const at = new THREE.Vector3(), qSpring = new THREE.Quaternion(), eSpring = new THREE.Euler(), frustum = new THREE.Frustum(), fm = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), eyeAt = new THREE.Vector3(1e9, 0, 0);
     let culling = false;
     const sendRange = (a, n) => { if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, n * a.itemSize); } a.needsUpdate = true; };
     function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
@@ -1507,6 +1543,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);
+      A.aC3.setXY(j, c.brk > 0 ? 1 : 0, c.park ? (c.park.hazard ? 2 : 0) : c.sg || 0); // (its brake lights and indicators: toneMaterial)
     }
     // where a car on line `line` at s, driving dir, sits: its lane, on the keep side of the line,
     // and off metres farther left (a swing out round a car at the kerb)
@@ -1670,12 +1707,150 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return false;
     }
     if (crowd) JN.onStripes = onStripes; // (a ride's driver gives way at a zebra too: cars.js chauffeur)
+    // ---- the buses' stops (#355): opts.stops, the mapped stops' poles (game.json props bus_stop, pipeline/kerb_stops.py),
+    // each on the piece of road within 14 m of it, serving the traffic that keeps to its side. A bus coming up to one on
+    // its way slows, indicates, stops with its front door at the pole and stands 8 to 18 s while people get on and off
+    // (the crowd's board, above), then goes on. Not one within 30 m of the junction ahead (its queue would stand in it),
+    // nor on a junction's own piece, nor one its lane is not next to (a second lane)
+    const busStops = new Map();
+    if (stops && stops.length) for (let i = 0; i + 2 < stops.length; i += 3) {
+      const x = stops[i] / 10, y = stops[i + 1] / 10, z = stops[i + 2] / 10, q0 = net.nearest(x, y, 14, z, 3.5);
+      if (!q0 || JN.inner(q0.line) || (net.avoid && net.avoid[q0.line])) continue;
+      const l = net.L[q0.line];
+      net.at(q0.line, q0.s, tmp);
+      const left = (x - tmp.x) * -tmp.hy + (y - tmp.y) * tmp.hx, dir = l.ow || (left * side >= 0 ? 1 : -1); // (the way whose kerb the pole stands at)
+      const ahead = dir > 0 ? l.len - q0.s : q0.s, ar = JN.armAt(q0.line, dir > 0 ? 1 : 0);
+      if (ahead < (ar ? ar.back : 0) + 30 || l.len - ahead < 14) continue;
+      if (JN.midsOn && (JN.midsOn(q0.line) || []).some(X => Math.abs(X.mid - q0.s) < 14)) continue;
+      const on = busStops.get(q0.line) || [];
+      if (on.some(o => o.dir === dir && Math.abs(o.s - q0.s) < 40)) continue;
+      on.push({ line: q0.line, s: q0.s, dir, x, y, z }); busStops.set(q0.line, on);
+    }
+    // ---- the kerb (#355): cars parked along the streets with room for them, where trips into town end and trips
+    // out of it begin. A parked car stands at the kerb (cars.js kerbOf, where a taxi pulls in), clear of the lane,
+    // and takes no step: it is drawn, and the traffic, the crowd and you keep out of its footprint. A car at the end
+    // of a trip into town looks for room at the kerb ahead, slows, pulls in and stands for a while (longer in the
+    // morning, shorter in the evening, when the cars at the kerb leave for the map's edges); then, with the lane
+    // clear behind it, it signals nothing but pulls out as a lane change and drives off on a new trip.
+    // PARKED: the share of the cars parked when they come into the traffic; no more than PARK_MAX of them at once
+    // (cfg.parked: a city's own share, game.json vehicles.cars.parked; Japan's streets have next to none: its cars are in car parks)
+    const PARKED = cfg.parked ?? 0.16, PARK_MAX = Math.max(0.08, PARKED * 1.9), PARK_CLEAR = 2.3; // (PARK_CLEAR: from the lane's middle to a parked car's, m: two half-widths and room to pass)
+    const hourNow = () => { const T = JN.trips && JN.trips(); return T && T.hour ? T.hour() : 12; };
+    // how far off its lane's place a car stands at the kerb of a line (c.lo's units), or 0 where the street has no
+    // room: a motorway or a trunk road, a living street, two lanes each way, a street narrowed, a junction's own piece, a road to
+    // keep off, or the kerb too near the lane (a two-way back street)
+    const kerbMemo = new Map();
+    function kerbLo(line) {
+      let k = kerbMemo.get(line);
+      if (k !== undefined) return k;
+      const l = net.L[line];
+      k = 0;
+      if (window.OECars && l.len >= 45 && !(l.cw > 0) && !/^(motorway|trunk|living_street|service)/.test(l.c) && JN.lanesOf(l) === 1 && !JN.inner(line) && !(net.avoid && net.avoid[line]) && !(net.fit && net.fit[line] < 1.2)) {
+        const kerb = OECars.kerbOf(l.c, l.cw), lane = LANE + JN.shiftOf(l, 0); // (shiftOf: 0, or -LANE on a one-way street of one lane, driven down its middle)
+        if (kerb - lane >= PARK_CLEAR) k = kerb - LANE;
+      }
+      kerbMemo.set(line, k);
+      return k;
+    }
+    // can car c stand at the kerb of line at s, facing dir? (clear of the junctions and crossings, of the other cars
+    // by a bumper's room, of people, posts and walls): its pose in tmp if so
+    const kerbNo = {}; // (why a place at the kerb was not free, counted: for the checks)
+    let youX = 1e9, youY = 1e9; // (where you are: update)
+    function kerbFree(c, line, s, dir) {
+      const k = kerbLo(line), l = net.L[line];
+      if (!k) return false;
+      const ahead = dir > 0 ? l.len - s : s, ar = JN.armAt(line, dir > 0 ? 1 : 0), br = JN.armAt(line, dir > 0 ? 0 : 1);
+      const no = why => { kerbNo[why] = (kerbNo[why] || 0) + 1; return false; };
+      if (ahead < (ar ? ar.back : 0) + 26 || l.len - ahead < (br ? br.back : 0) + 20) return no('junction'); // (clear of the cars that swing in from the junction behind, and of the queue for the one ahead)
+      if (JN.midsOn && (JN.midsOn(line) || []).some(X => Math.abs(X.mid - s) < 16)) return no('crossing');
+      if (JN.shutNow && JN.shutNow(line, dir)) return no('shut');
+      lanePos(line, s, dir, tmp, side * k);
+      if (JN.inScramble && JN.inScramble(tmp.x, tmp.y)) return no('scramble');
+      if (Math.hypot(tmp.x - youX, tmp.y - youY) < 25) return no('you'); // (not at the kerb where you stand: a taxi you hail pulls in there)
+      const z0 = c.z;
+      c.z = tmp.z;
+      const why = overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 1.1, 0.25) > 0 ? 'car' : peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0 ? (inPosts > 0 ? 'post' : 'person')
+        : nav && nav.room && ![-1, 0, 1].every(f => nav.room(tmp.x + tmp.hx * f * (c.half - 0.5), tmp.y + tmp.hy * f * (c.half - 0.5), tmp.z, c.hw - 0.1, 1.4, true)) ? 'wall'
+        : api.extra.some(o => Math.hypot(o.x - tmp.x, o.y - tmp.y) < c.half + (o.half || 2.4) + 2) ? 'yours' : ''; // (not on your car or a ride)
+      c.z = z0;
+      return why ? no(why) : true;
+    }
+    // and the way in to it from the lane: the car's places 9, 6 and 3 m short of it, a third, half and most of the way
+    // across, clear of the cars standing at the kerb (a place between two parked cars takes room behind it to drive
+    // into forwards)
+    // (and the way out again, ahead of it: the same three places on the other side. sgn -1 the way in, +1 the way out)
+    function wayIn(c, line, s, dir, sgn = -1) {
+      const k = side * kerbLo(line), base = side * JN.shiftOf(net.L[line], 0), len = net.L[line].len;
+      for (const [d, f] of [[3, 0.8], [6, 0.55], [9, 0.3]]) {
+        const s1 = s + sgn * dir * d;
+        if (s1 < 0 || s1 > len) return false;
+        lanePos(line, s1, dir, tmp, base + (k - base) * f);
+        ownOnly = true; const dp = overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 0.3, 0.12); ownOnly = false;
+        if (dp > 0 && mostCar && (mostCar.park || mostCar.v < 0.5)) return false;
+      }
+      return true;
+    }
+    // how long a car stands at the kerb (s): parked for the day in the morning, on its way out in the evening
+    const dwell = () => { const h = hourNow(); return h >= 16 && h < 19.5 ? 15 + rnd() * 150 : h >= 6.5 && h < 9.5 ? 240 + rnd() * 900 : 60 + rnd() * 500; };
+    // car c stands at the kerb of line at s from now (kerbFree said so: its pose is in tmp)
+    function parkNow(c, line, s, dir, t) {
+      JN.forget(c);
+      c.line = line; c.s = s; c.dir = dir; c.ln = 0; c.lo = side * kerbLo(line); c.off = 0; c.v = 0;
+      c.nx = undefined; c.plan = c.ex = c.ex2 = c.exA = c.pv = null; c.rev = null; c.halt = false; c.q = false; c.mv = null;
+      c.dodgeT = 0; c.dodgeBrake = false; c.vBend = Infinity; c.lcT = 0; c.lnWait = 0; // (as a car come fresh into the traffic: respawn)
+      c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity;
+      c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = Math.atan2(tmp.hx, tmp.hy);
+      c.park = { t }; c.parking = null; c.wantPark = 0; c.trip = -1; c.why = 'parked'; c.youBy = null; c.front = null; c.heldBy = '';
+      c.still = c.stuck = 60; // (stopped for good, to a ride's driver and to whoever reads how long it has stood)
+    }
+    // is the lane beside a parked car clear for it to pull out into? (nothing coming up behind within 28 m or 3 s,
+    // nothing alongside)
+    function laneClear(c) {
+      const fx = Math.sin(c.h), fy = Math.cos(c.h);
+      for (let j = 0; j < api.active; j++) {
+        const o = C[j];
+        if (o === c || o.line < 0 || o.park || Math.abs(o.z - c.z) >= LEVEL) continue;
+        const dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy, w = Math.abs(-dx * fy + dy * fx);
+        if (w > 5.5 || a > c.half + o.half + 3 || a < -Math.max(28, o.v * 3)) continue;
+        if (Math.sin(o.h) * fx + Math.cos(o.h) * fy < 0.3 && a < -o.half - c.half) continue; // (one going the other way, behind it)
+        return false;
+      }
+      for (const o of api.extra) { const dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy; if (Math.abs(-dx * fy + dy * fx) < 5.5 && a < c.half + (o.half || 2.4) + 3 && a > -Math.max(28, (o.v || 0) * 3)) return false; }
+      return true;
+    }
+    // where a car is bound (trips.js: a place's index, or -1 for none), a new place taken once it is within 60 m
+    // by road of the one it had: looked at only as it picks an exit
+    const tripOf = c => {
+      const T = JN.trips && JN.trips();
+      if (!T) return -1;
+      // (a trip out to an edge: over within 60 m of it by road. One into town ends on its street, where it looks for the kerb: update)
+      if (c.trip >= 0 && (T.places[c.trip].kind !== 'centre' || c.bus) && T.cost(c.trip, c.line, c.dir) < 60) { c.trip = T.pick(c.x, c.y); c.trips = (c.trips || 0) + 1; }
+      return c.trip ?? -1;
+    };
+    const parkedN = () => { let k = 0; for (let j = 0; j < api.active; j++) if (C[j].park && C[j].line >= 0) k++; return k; };
     function respawn(c, cx, cy, rMin) {
-      const cand = net.near(cx, cy, rMin, radius);
+      const cand = net.near(cx, cy, rMin, radius), T = JN.trips && JN.trips();
       JN.forget(c);
       c.line = -1;
+      c.trip = T ? T.pick(cx + (rnd() - 0.5) * radius, cy + (rnd() - 0.5) * radius) : -1; // (bound for a place, or for none)
+      c.park = c.parking = null; c.wantPark = 0;
+      // at the kerb already, as some of the cars of any street are (not the buses; the taxis' ranks are theirs, below)
+      // (fewer in the morning, when the kerbs fill with the cars that come in; more in the evening, when they empty)
+      if (T && !c.bus && !c.taxi && cand.length && rnd() < PARKED * (T.inbound(hourNow()) > 0.7 ? 0.6 : T.inbound(hourNow()) < 0.3 ? 1.5 : 1) && parkedN() < PARK_MAX * api.active) {
+        for (let k = 0; k < 5; k++) {
+          const line = cand[Math.floor(rnd() * cand.length)], L1 = net.L[line];
+          if (!kerbLo(line)) continue;
+          const s = L1.len * (0.1 + 0.8 * rnd()), dir = L1.ow || (rnd() < 0.5 ? 1 : -1);
+          if (kerbFree(c, line, s, dir) && clear(tmp.x, tmp.y, 5.2, c, tmp.z)) { parkNow(c, line, s, dir, dwell() * rnd()); return; }
+        }
+      }
       for (let k = 0; k < 4 && cand.length; k++) { // somewhere no other car is, the way the street goes, not inside a junction
-        const line = cand[Math.floor(rnd() * cand.length)], L1 = net.L[line], s = L1.len * (0.1 + 0.8 * rnd()), dir = L1.ow || (rnd() < 0.5 ? 1 : -1);
+        // (on a two-way street it sets out the way its place lies, four times in five: trips.js facing)
+        // (and it comes in along a main road more often than a back street, as the cars that come into a part of town do:
+        // of two streets drawn, the bigger one four times in five)
+        let line = cand[Math.floor(rnd() * cand.length)];
+        if (c.trip >= 0) { const l2 = cand[Math.floor(rnd() * cand.length)], RK = OEJunctions.RANK, r1 = RK[net.L[line].c] || 2, r2 = RK[net.L[l2].c] || 2; if ((r2 > r1) === (rnd() < 0.8) && r1 !== r2) line = l2; }
+        const L1 = net.L[line], s = L1.len * (0.1 + 0.8 * rnd()), dir = L1.ow || (c.trip >= 0 && T.facing(c.trip, line)) || (rnd() < 0.5 ? 1 : -1);
         if (JN.inner(line) || L1.len < 15 || (net.fit && net.fit[line] < c.hw)) continue; // (nor on a street too narrow for it)
         if (L1.ow && !net.next(line, dir > 0 ? 1 : 0, true)) continue; // (not on a one-way street that leads nowhere: stuck at its end)
         const ahead = dir > 0 ? L1.len - s : s, ar = JN.armAt(line, dir > 0 ? 1 : 0);
@@ -2059,6 +2234,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return k > 0;
     }
     JN.makeWay = makeWay;
+    api.busStops = busStops; api.busStopped = 0; api.deliveries = 0; // (for the checks)
+    api.kerbLo = kerbLo; // (for the checks: how far off the lane a line's kerb is, or 0)
+    api.parkStats = { share: PARKED, looks: 0, noKerb: 0, notNow: 0, noRoom: 0, began: 0, gaveUp: 0, why: '', no: kerbNo }; // (the looks for room at the kerb, and what became of them)
     JN.room = (c, e) => room(c, e); // (a ride's driver waits at the line for room beyond, as the traffic does: never stopped in the box)
     // blockers: the player on foot { x, y, z } and your car or a ride { x, y, half (half length),
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
@@ -2094,6 +2272,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         onLine.get(c.line).push(i);
       }
       JN.update(dt, t);
+      const TR = JN.trips && JN.trips(); // (where the traffic is going, trips.js)
+      youX = cx; youY = cy;
+      const WXT = (window.OECars && OECars.weather) || DRY; // (the weather as drivers meet it)
       const you = api.extra.find(o => o.id === 'car' && !o.ahead && o.v > 3); // your car on the move (dodged, below)
       for (const b of blockers) if (!b.half) addBlocker(b.x, b.y, b.z, 0.4); // the player on foot and the NPCs (your car and a ride: below)
       if (crowd) for (let i = 0; i < crowd.active; i++) { const p = crowd.P[i]; if (p.line >= 0) addBlocker(p.x, p.y, p.z, 0.3, i); }
@@ -2102,10 +2283,32 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (i >= api.active) { if (c.line >= 0) JN.forget(c); c.line = -1; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         if (c.line < 0 || Math.hypot(c.x - cx, c.y - cy) > radius * 1.15) respawn(c, cx, cy, c.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (c.line < 0) { if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
+        // at the kerb (parkNow): no step. Its time up and the lane beside it clear, it pulls out, as a lane change from
+        // where it stands, on a trip out of town or to another part of it
+        if (c.park) {
+          // (and its way out past the car parked ahead of it clear: boxed in for two minutes, and out of your sight, it leaves the traffic)
+          if (c.park.t < -120 && !inView(c)) { respawn(c, cx, cy, radius * 0.6); continue; }
+          // (one that holds the traffic up, a car stood 8 s behind it in its lane, as one at a bend whose body stands out into
+          // the lane: it pulls out and drives on as soon as its way out is clear, or out of your sight leaves the traffic.
+          // Shibuya's car 120 stood 21 s behind one)
+          if (c.park.blockT > 8) { c.park.blockT = 0; if (!inView(c)) { respawn(c, cx, cy, radius * 0.6); continue; } c.park.t = Math.min(c.park.t, 0); c.park.look = 0; }
+          if ((c.park.t -= dt0) > 0 || (c.park.look = (c.park.look || 0) - dt0) > 0 || !(c.park.look = 0.5, laneClear(c) && wayIn(c, c.line, c.s, c.dir, 1))) {
+            q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue;
+          }
+          const T = JN.trips && JN.trips();
+          c.park = null; c.pullOut = 6; c.still = c.stuck = 0; c.why = ''; c.trip = T ? T.pick(c.x, c.y) : -1; c.left = (c.left || 0) + 1;
+        }
+        if (c.pullOut > 0) c.pullOut -= dt0;
         // far off, a step of two frames every second frame (the same traffic at half the work)
-        const half = eye && Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) > FAR;
-        if (half && (tick + i) & 1) { q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue; }
-        const dt = half ? 2 * dt0 : dt0;
+        // (and out of the camera's view, 70 m or more from it and 60 m from you: unseen, it keeps the same ways at half the
+        // work, which pays for the trips' denser traffic in town, #355)
+        const fd = eye ? Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) : 0;
+        // (unseen past 300 m: every fourth frame. Every fourth frame from 120 m unseen jammed the junctions three times as
+        // often: their turns and reservations want the finer steps)
+        const unseen = eye && fd > 70 && Math.abs(c.x - cx) + Math.abs(c.y - cy) > 60 && !inView(c);
+        const every = !eye ? 1 : unseen && fd > 300 ? 4 : fd > FAR || unseen ? 2 : 1;
+        if (every > 1 && (tick + i) % every) { q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue; }
+        const half = every > 1, dt = every * dt0;
         if (c.revBan > 0) c.revBan -= dt; // (having given up backing out, it doesn't try again for a minute: tried every 20 s, one stood backing in a junction's mouth, the junction's movements held a minute, Sydney's 461)
         if (c.rev && (c.mv || c.line < 0)) c.rev = null;
         if (c.rev && reverseStep(c, i, dt, cx, cy)) continue;
@@ -2118,7 +2321,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const end = c.dir > 0 ? 1 : 0, arm = JN.armAt(c.line, end);
         if (c.nx === undefined) {
           // (the way across chosen before it got here: coming up to it, or crossing the junction before with it)
-          c.ex = arm ? (c.exA && c.exA.a === arm ? c.exA.e : c.ex2 && c.ex2.a === arm ? c.ex2.e : JN.choose(arm, c.hw, c.half)) : null;
+          c.ex = arm ? (c.exA && c.exA.a === arm ? c.exA.e : c.ex2 && c.ex2.a === arm ? c.ex2.e : JN.choose(arm, c.hw, c.half, tripOf(c))) : null;
           if (c.exA && c.exA.a === arm) c.exA = null;
           if (c.ex2 && c.ex2.a === arm) c.ex2 = null;
           c.plan = c.ex ? c.ex.steps.slice(1) : null;
@@ -2129,6 +2332,73 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         let gap = 40, byCar = false, swerve = 0, front = null, why = '', walker = -1;
         // the road ends ahead in nothing (a stub at the map's edge, a dead end): it slows to turn round there
         if (!c.nx && !arm && left + 4 < gap) { gap = left + 4; why = 'end'; }
+        // at the end of a trip into town: room at the kerb 12 m and two seconds ahead on this street, looked for
+        // twice a second; found, it slows to stop there and pulls in (c.parking: where, and how far off the lane)
+        // a bus and its stops (busStops): the next one ahead on this piece, slowed for and stopped at; then its dwell
+        if (c.bus && (c.dwell > 0 || busStops.size)) {
+          if (c.dwell > 0) {
+            c.dwell -= dt;
+            if (gap > 2.6) { gap = 2.6; why = 'stop'; byCar = false; front = null; }
+          } else if (!c.mv && !c.rev) {
+            const S = busStops.get(c.line);
+            if (S) for (const st of S) {
+              if (st.dir !== c.dir || st === c.lastStop) continue;
+              const d = (st.s - c.s) * c.dir - c.half + 1.2; // (its front door, 1.2 m back from its nose, to the pole)
+              if (d < -3 || d > 70) continue;
+              if (d + 2.6 < gap) { gap = Math.max(2.6, d + 2.6); why = 'stop'; byCar = false; front = null; }
+              c.stopAhead = d < 30;
+              if (d < 1.5 && c.v < 0.3) {
+                c.dwell = 8 + rnd() * 10; c.lastStop = st; c.stopped = (c.stopped || 0) + 1; api.busStopped++;
+                // (people on and off at its front door, on the kerb's side: where you could see them)
+                if (crowd && crowd.board && Math.hypot(c.x - cx, c.y - cy) < 150) {
+                  const fx0 = Math.sin(c.h), fy0 = Math.cos(c.h), k = side * (c.hw + 0.7), dx = c.x + fx0 * (c.half - 1.6) - fy0 * k, dy = c.y + fy0 * (c.half - 1.6) + fx0 * k;
+                  c.boarding = crowd.board({ x: dx, y: dy, z: c.z }, 1 + Math.floor(rnd() * 3), Math.floor(rnd() * 3), () => c.dwell > 1 && c.line >= 0, cx, cy);
+                  if (c.boarding > 1) c.dwell += 3 * (c.boarding - 1); // (a longer stop for more people)
+                }
+              }
+              break;
+            }
+          }
+        }
+        // (on the street its trip ends in: the trip is over, and it looks for the kerb)
+        // (and from 300 m short of it by road, a car bound into town takes any room at the kerb it passes, as a driver
+        // near where they are going does: looked up once a second)
+        if (TR && c.trip >= 0 && !c.parking) {
+          const P = TR.places[c.trip];
+          if (P.line === c.line && !c.wantPark) { if (P.kind === 'centre' && !c.bus) c.wantPark = 30; c.trip = TR.pick(c.x, c.y); c.trips = (c.trips || 0) + 1; }
+          else if (P.kind === 'centre' && !c.bus && !c.wantPark && (c.nearT = (c.nearT || 0) - dt) <= 0) { c.nearT = 1; if (TR.cost(c.trip, c.line, c.dir) < 300 + l.len) c.wantPark = 2; }
+        }
+        // a van on its round: every minute or two it stops at the kerb for a delivery, hazards on, and goes again
+        if (c.van && !c.parking && !c.wantPark && (c.dropT = (c.dropT ?? 20 + rnd() * 80) - dt) <= 0) { c.dropT = 50 + rnd() * 90; c.wantPark = 14; c.deliver = true; }
+        if (c.wantPark > 0) {
+          c.wantPark -= dt;
+          if (!c.parking && !c.mv && !c.rev && !c.ln && (c.parkLook = (c.parkLook || 0) - dt) <= 0) {
+            c.parkLook = 0.5;
+            const s1 = c.s + c.dir * (12 + 2 * c.v + c.half), PS = api.parkStats;
+            PS.looks++;
+            if (!kerbLo(c.line)) PS.noKerb++;
+            else if (Math.abs(c.lo - side * JN.shiftOf(l, 0)) >= 0.2 || parkedN() >= PARK_MAX * api.active) PS.notNow++;
+            else if (!(s1 > 0 && s1 < l.len && kerbFree(c, c.line, s1, c.dir) && wayIn(c, c.line, s1, c.dir))) PS.noRoom++;
+            else { c.parking = { line: c.line, s: s1, lo: side * kerbLo(c.line), t: 0 }; PS.began++; }
+          }
+          if (c.wantPark <= 0 && !c.parking) { c.wantPark = 0; c.deliver = false; }
+        }
+        if (c.parking) {
+          const P = c.parking, d = (P.s - c.s) * c.dir;
+          P.t += dt;
+          // (given up: 25 s on, the place overshot, or taken meanwhile by another)
+          // (or stopped short of the kerb with something in its way across: it drives on rather than stand in the lane)
+          if (P.line !== c.line || P.t > 25 || d < -3 || c.mv || (c.v < 0.3 && d > 4 && P.t > 12) || (c.v < 0.2 && d < 3 && Math.abs(c.lo - P.lo) > 0.5 && (P.stood = (P.stood || 0) + dt) > 2.5)) { api.parkStats.gaveUp++; api.parkStats.why = `t ${P.t.toFixed(0)} d ${d.toFixed(1)} v ${c.v.toFixed(1)} lo ${(c.lo - P.lo).toFixed(1)} ${c.mv ? 'in a junction' : ''} ${why}`; c.parking = null; c.wantPark = 0; }
+          else if (c.v < 0.25 && d < 2.2 && Math.abs(c.lo - P.lo) < 0.2) { // (in: it stands)
+            const s0 = c.s;
+            lanePos(c.line, s0, c.dir, tmp, c.lo);
+            // (a van's delivery: 12 to 40 s, its hazards on; a taxi waits a minute or so for a fare; the rest park)
+            const drop = c.deliver;
+            parkNow(c, c.line, s0, c.dir, drop ? 12 + rnd() * 28 : c.taxi ? 25 + rnd() * 70 : dwell()); c.parkedIn = (c.parkedIn || 0) + 1;
+            if (drop) { c.park.hazard = true; c.deliver = false; api.deliveries++; }
+            q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue;
+          } else if (d + 2.6 < gap) { gap = d + 2.6; why = 'parking'; }
+        }
         // its way ahead: points every STEP metres from its front bumper along its lane, on to the
         // next piece and its way across a junction (as lanePos smooths it round corners)
         const P = c.ps || (c.ps = new Float32Array(2 * NPATH)), PZ = c.pz || (c.pz = new Float32Array(NPATH)), Q = pathQ;
@@ -2439,7 +2709,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             li = n2[0]; ld = n2[1] === 0 ? 1 : -1;
           }
           if (a2 && d2 < c.half + 6 + c.v * c.v / 6) {
-            if (!c.exA || c.exA.a !== a2) c.exA = { a: a2, e: JN.choose(a2, c.hw, c.half) };
+            if (!c.exA || c.exA.a !== a2) c.exA = { a: a2, e: JN.choose(a2, c.hw, c.half, tripOf(c)) };
             if (c.exA.e) { jArm = a2; jEx = c.exA.e; toLine = d2; }
           }
         }
@@ -2494,7 +2764,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               const a2 = go ? JN.after(jEx, 2 * c.half + 3) : null;
               let light2 = false; // (held by that one's light: waiting for it, as at a red here, not for room)
               if (a2) {
-                if (!c.ex2 || c.ex2.a !== a2) c.ex2 = { a: a2, e: JN.choose(a2, c.hw, c.half) };
+                if (!c.ex2 || c.ex2.a !== a2) c.ex2 = { a: a2, e: JN.choose(a2, c.hw, c.half, tripOf(c)) };
                 const lt2 = JN.light(a2, c.ex2.e);
                 if (!c.ex2.e || !(lt2 == null || lt2 === 'g') || a2.sign === 'stop') go = false;
                 else if (!room(c, c.ex2.e)) { go = false; noRoom = true; } // (no room beyond the second: another way out after 5 s, as for the first's, below; Shinjuku's 1103 arm 0 stood 198 s for room past 1105, #331)
@@ -2570,9 +2840,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               hold = lt === 'r' || (lt === 'y' && can);
               if (lt === 'r' && X.ph === 1 && toStop > 0 && toStop - c.v * dt <= 0 && !pass) { redRuns++; if (redLog.length < 20) redLog.push(`crossing ${X.id}: v ${c.v.toFixed(1)} to its line ${toStop.toFixed(2)} ${why} gap ${gap.toFixed(1)} t ${X.t.toFixed(1)}`); }
             } else if (crowd && !(c.zebraOff > 0) && c.v * c.v / 8 < toStop + 0.5) hold = onStripes(X);
+            // a level crossing (junctions.js addRail), open: the rails kept clear. With whatever is ahead (a queue, a
+            // red light beyond) leaving no room for the whole car past the far rail, it waits at the line, never on them
+            // (the room the car ahead will make in a second or so counts, not its going on: one that stopped in a queue
+            // just past left the car behind it on the rails, Queenstown); none from one in a queue, or coming up to a light that
+            // is not green within 60 m: it is about to stop (Shinjuku's car 101 stood on the rails behind one)
+            // (nor from one slowing to pull in at the kerb, at a bus stop or for a delivery: Shinjuku's car 190)
+            if (!hold && X.rail && toStop > -0.3 && gap < 39.5 && gap + (front && !front.q && front.v > 3 && !front.wantPark && !front.parking && !(front.dwell > 0) && !front.deliver && !(front.lineArm && front.toLine < 60 && JN.light(front.lineArm, front.lineEx) !== 'g') ? Math.min(front.v, 8) * 1.2 : 0) < toStop + a.back + X.rail.w / 2 + 2 * c.half + 1.5) { hold = true; c.clearRails = (c.clearRails || 0) + dt; } // (gap under its 40 m: something is there)
             if (hold) {
               const g = toStop + 2.4;
-              if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.sig ? 'light' : 'zebra'; }
+              if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.rail ? 'rails' : X.sig ? 'light' : 'zebra'; }
             }
             break; // (the nearest one ahead rules)
           }
@@ -2694,7 +2971,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.tangleT > 4 && Math.hypot(c.x - cx, c.y - cy) > 140) { JN.forget(c); c.line = -1; c.tangleT = 0; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         const free = c.tangleT > 4, behind = tangled > 0 && ahead && !free;
         // up to the limit, and braking in time for what is ahead (gently from far off, at most 3.5 m/s²)
-        const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v * PACE, c.vBend, (gap - 2.6) * 0.9, Math.sqrt(7 * (gap - 2.6)) + 0.5);
+        // (in the weather, cars.js setWeather: slower on a wet or snowy road and in fog, slower still through a bend, and braking for a gap from farther back)
+        const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v * PACE * WXT.pace, c.vBend * WXT.corner, (gap - 2.6) * 0.9 / WXT.headway, Math.sqrt(7 * WXT.grip * (gap - 2.6)) + 0.5);
         // and what it closes on, by the Intelligent Driver Model's interaction term (Treiber, Hennecke and
         // Helbing 2000): the gap it wants grows with its speed and with how fast it closes, so it starts to
         // brake early and gently for a queue or a red line seen from 40 m, rather than at the last moment at
@@ -2702,9 +2980,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         let dv = Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
         if (gap < 40 && !(tangled > 0 && !behind)) {
           const ld = front || leadX, vl = ld ? (ld.v || 0) * (Math.sin(ld.h) * fx + Math.cos(ld.h) * fy) : 0;
-          dv = Math.min(dv, idm(c.v, gap, vl, 2.6, 0.8, 2.5, 3) * dt);
+          dv = Math.min(dv, idm(c.v, gap, vl, 2.6, 0.8 * WXT.headway, 2.5, 3) * dt); // (a longer time gap in the wet)
         }
         if (c.dodgeBrake) dv = Math.min(dv, -6.5 * dt); // (an emergency stop for your car)
+        // (its brake lights: braking at 1.2 m/s² or more, or held at a stand; kept on a third of a second, not flickering)
+        c.brk = dv < -1.2 * dt || (c.v < 0.15 && want < 0.1) ? 0.35 : Math.max(0, (c.brk || 0) - dt);
         c.v = Math.max(0, c.v + Math.max(-8 * dt, dv)); // (never below a stop: braking for what is close ahead took a stopped car's speed below 0, and it ran away backwards, at up to 17 m/s into the walls, #202)
         let s = c.s + c.dir * c.v * dt, line = c.line, dir = c.dir;
         const away = !eye || Math.hypot(eye.position.x - c.x, -eye.position.z - c.y) > 90;
@@ -2758,12 +3038,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const onto = line !== c.line, nx2 = c.plan && c.plan.length ? [c.plan[0][0], c.plan[0][1] === 0 ? 1 : -1] : null;
         // (across to its lane a little at a time, slowly while it is barely moving, nosing that way)
         // (in a junction it keeps the lane it went in by: its way across is that lane's)
-        const back = line === c.line && dir !== c.dir, keepIt = c.mv && !back, lnNow = keepIt ? c.ln : !back && JN.lanesOf(net.L[line]) > 1 ? c.ln : 0, loT = side * JN.shiftOf(net.L[line], lnNow);
+        const back = line === c.line && dir !== c.dir, keepIt = c.mv && !back, lnNow = keepIt ? c.ln : !back && JN.lanesOf(net.L[line]) > 1 ? c.ln : 0,
+          loT = c.parking && line === c.line && !back && (c.parking.s - s) * dir < 13 ? c.parking.lo : side * JN.shiftOf(net.L[line], lnNow); // (pulling in: across to the kerb over its last 13 m)
         // (but not over the middle of a two-way road: out of a one-way street's lane nearest the middle,
         // the lane kept across the junction is the oncoming one there, so it moves across at once, and
         // can do so standing, where a car waiting at that road's line would otherwise hold it until it squeezed through)
         const across = !back && !net.L[line].ow && LANE + side * (c.off + c.lo) < c.hw + 0.2;
-        const rate = Math.min(1.3, 0.4 + 0.15 * c.v) * dt, lo1 = back ? 0 : keepIt && !across ? c.lo : c.lo + Math.max(-rate, Math.min(rate, loT - c.lo));
+        // (in to the kerb and out from it, only as far across as it goes forward: a third of its way, never sideways on the spot)
+        const rate = (c.parking || c.pullOut > 0 ? Math.min(1.3, 0.34 * c.v + 0.02) : Math.min(1.3, 0.4 + 0.15 * c.v)) * dt, lo1 = back ? 0 : keepIt && !across ? c.lo : c.lo + Math.max(-rate, Math.min(rate, loT - c.lo));
         const pvA = onto ? [c.line, c.dir] : dir === c.dir ? c.pv : null, nxA = onto ? nx2 : dir === c.dir && c.nx ? [nl, nd] : null;
         const sw = c.half > LONG_V && !back ? swingAt(line, s, dir, pvA, nxA) : 0; // (a bus at a tight corner: wide)
         lanePos(line, s, dir, tmp, c.off + lo1 + sw, pvA, nxA);
@@ -2899,13 +3181,30 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.stuck = c.v < 0.1 && (byCar || held || (why === 'person' && walker < 0)) && !c.q ? c.stuck + dt : 0; // (and held by you, or someone not of the crowd, who won't step aside: as from a jam, in the end it turns round)
         c.zebraT = why === 'zebra' && c.v < 0.3 ? (c.zebraT || 0) + dt : 0;
         if (c.zebraT > 15) { c.zebraT = 0; c.zebraOff = 6; }
+        { const f = held ? holder : front; if (f && f.park && c.v < 0.3 && !c.park) f.park.blockT = (f.park.blockT || 0) + dt; } // (a parked car that holds it up: above)
         c.why = held ? 'held' : why; c.youBy = why === 'you' ? youBy : null; c.front = held ? holder : front; c.who = walker; c.heldBy = held ? (holder ? 'car' : c.backoff > 0 ? 'backing off' : behind ? 'caught up' : 'person') : '';
         c.pw = walker >= 0 && c.v < 0.6 ? (c.pw || 0) + dt : walker >= 0 ? c.pw : 0;
         if (c.pw > 3 && c.pw - dt <= 3 && crowd) crowd.P[walker].give = true;
         if (c.pw > 12) c.pw = 0;
+        // its indicators: into the kerb and out from it, across to another lane, and from 35 m before a turn at a
+        // junction until it is through (junctions.js exits: turn > 0 is to the right); 1 left, -1 right
+        { const dl = loT - c.lo, tn = c.ex && (left < 35 || c.mv) && Math.abs(c.ex.turn) > 0.45 ? (c.ex.turn > 0 ? -1 : 1) : 0;
+          c.sg = c.parking || c.pullOut > 0 || Math.abs(dl) > 0.3 ? (dl > 0 ? 1 : -1) : tn || (c.mv ? c.sg || 0 : 0);
+          if (c.bus && (c.dwell > 0 || c.stopAhead)) { c.sg = c.dwell > 0 && c.dwell < 2.5 ? -side : side; c.stopAhead = false; } } // (a bus: into its stop, and out of it as it goes)
         q.setFromAxisAngle(up, Math.PI - c.h);
+        // near you, the body on its springs: the nose down under braking and up pulling away, a lean out of a turn
+        if (!half) {
+          const ax = dt > 0 ? (c.v - (c.vWas ?? c.v)) / dt : 0, yr = dt > 0 ? Math.atan2(Math.sin(c.h - (c.hWas ?? c.h)), Math.cos(c.h - (c.hWas ?? c.h))) / dt : 0, e = Math.min(1, dt * 5);
+          c.pit = (c.pit || 0) + (Math.max(-0.035, Math.min(0.05, -ax * 0.011)) - (c.pit || 0)) * e;
+          c.rol = (c.rol || 0) + (Math.max(-0.055, Math.min(0.055, -yr * c.v * 0.011)) - (c.rol || 0)) * e;
+          if (Math.abs(c.pit) > 0.002 || Math.abs(c.rol) > 0.002) q.multiply(qSpring.setFromEuler(eSpring.set(c.pit, 0, c.rol)));
+        }
+        c.vWas = c.v; c.hWas = c.h;
         m4.compose(W(c.x, c.y, c.z), q, one);
         place(i, c);
+        // a horn with cause: your car stopped in its lane ahead of it for five seconds and more (once, then every 12 s)
+        c.youT = c.youBy === 'car ahead' && c.v < 0.3 ? (c.youT || 0) + dt : 0;
+        if (c.youT > 5 && t - (c.honkAt ?? -12) >= 12) { const d = Math.hypot(c.x - cx, c.y - cy); if (d < 45) { c.honkAt = t; api.honks.push({ x: c.x, y: c.y, z: c.z, d, bus: c.half > 4 }); } }
       }
       // and a walker it has come up against (a corner taken, edging up to one who stands in the road),
       // or who has stepped up against it where it stands: a step out of its way, along the footway and across it, if that is not into a wall
@@ -2940,7 +3239,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {
         if (!M.count) continue;
-        sendRange(M.instanceMatrix, M.count); sendRange(M.geometry.attributes.aC0, M.count); sendRange(M.geometry.attributes.aC1, M.count);
+        sendRange(M.instanceMatrix, M.count); sendRange(M.geometry.attributes.aC0, M.count); sendRange(M.geometry.attributes.aC1, M.count); sendRange(M.geometry.attributes.aC3, M.count);
       }
     }
     // the near and mid models, come after the far ones (vehicles.js loadCars, issue 335): each model's stand-ins

@@ -33,7 +33,7 @@ const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
 const { trainStep, trainChecks } = require('./train_step');
 const { reverseStep } = require('./reverse_step');
-const { autopilotStep, autopilotChecks, assistStep, assistChecks } = require('./autopilot_step');
+const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1626,7 +1626,7 @@ const npcNight = require('./npc_night');
   // a crossing with signals between junctions: a walker's call brings the walk, the traffic held at red, and the traffic's green back
   const mid = await p.evaluate(() => {
     const g = window.__game, A = g.cars, JN = A.junctions;
-    const M = JN ? JN.J.filter(j => j.mid != null && j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y)) : [];
+    const M = JN ? JN.J.filter(j => j.mid != null && j.sig && !j.rail).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y)) : [];
     if (!M.length) return { none: true, zebras: JN ? JN.stats().zebras : 0 };
     const j = M[0], a = j.arms[0], s0 = A.stats(), seen = [];
     for (let t = 0; t < 60; t++) { JN.call(a); g.advance(1); const w = JN.walk(a), lt = JN.light(a); if (!seen.length || seen[seen.length - 1] !== lt + (w ? 'W' : '')) seen.push(lt + (w ? 'W' : '')); }
@@ -1647,7 +1647,7 @@ const npcNight = require('./npc_night');
     if (!JN) return out;
     const near = j => Math.hypot(j.x - g.player.x, j.y - g.player.y);
     for (const sig of [true, false]) {
-      const j = JN.J.filter(x => x.mid != null && !!x.sig === sig).sort((p, q) => near(p) - near(q))[0];
+      const j = JN.J.filter(x => x.mid != null && !x.rail && !!x.sig === sig).sort((p, q) => near(p) - near(q))[0];
       if (!j) continue;
       const a = j.arms[0], dir = a.end ? 1 : -1, l = L[j.line];
       const s0 = Math.max(0.5, Math.min(l.len - 0.5, j.mid - dir * 40)), s1 = dir > 0 ? l.len - 0.5 : 0.5;
@@ -2132,6 +2132,12 @@ const npcNight = require('./npc_night');
     const as = await p.evaluate(assistStep, { log: !!process.env.CHAIN });
     for (const l of as.log || []) console.log(`  assist: ${l}`);
     for (const [ok, what] of assistChecks(as)) check(ok, what);
+    // and the weather on the road: the same traffic dry and in the rain (slower, longer gaps, lamps on, spray)
+    for (const [ok, what] of wetChecks(await p.evaluate(wetStep))) check(ok, what);
+    // the kerb and the trips: cars parked where the streets have room and out of the traffic's way, the buses' stops
+    for (const [ok, what] of kerbChecks(await p.evaluate(kerbStep))) check(ok, what);
+    // and a level crossing on a busy street: stopped at while it is shut, its rails never queued across
+    for (const [ok, what] of railChecks(await p.evaluate(railStep))) check(ok, what);
   }
 
   // the traffic dodges your car (issue 335): your car put in a moving car's lane 26 m ahead, coming at it at

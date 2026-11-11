@@ -406,6 +406,39 @@ window.OEJunctions = (function () {
     });
     const innerLine = line => J.some(j => j.inner.has(line));
     if (midCrossings) { midAt(midCrossings.signals, true); midAt(midCrossings.zebra, false); }
+    // A level crossing (#355; the railway is rail.js's): where a track crosses a road at (x, y), w metres of rail
+    // corridor along the road. To the traffic it is a crossing between junctions with lights of its own: an arm for
+    // the traffic heading for each end of the piece, its stop line 2.5 m short of the corridor, red while the
+    // crossing is shut (state(): 'open', 'warning' for the first seconds of its alarm, when a car that can stop
+    // does and one on the rails drives on, or 'closed'). The traffic and the rides stop at it as at any crossing's
+    // red, and keep the rails clear: none goes onto them without room beyond for the whole car (actors.js, cars.js
+    // chauffeur, by j.rail). No walk is signalled over it and no lantern is built for it: its gates are the railway's.
+    // Returns the crossing, or null where no road passes there.
+    const rails = [];
+    function addRail({ x, y, z = null, w = 6, state = () => 'open', t = null }) {
+      const q = z != null ? net.nearest(x, y, 12, z, 3.5) || net.nearest(x, y, 12) : net.nearest(x, y, 12);
+      if (!q) return null;
+      const l = L[q.line], half = w / 2;
+      if (q.s < half + 4 || q.s > l.len - half - 4) return null; // (at the very end of a piece: no room for its lines)
+      net.at(q.line, q.s, tmp);
+      const j = { id: J.length, mid: q.s, line: q.line, nodes: [], arms: [], inner: new Set(), x: tmp.x, y: tmp.y, z: tmp.z, hx: tmp.hx, hy: tmp.hy, sig: true, half: (ROADW[l.c] || 7) / 2,
+        green: [1e9, 1e9, 0], amber: AMBER, allred: 0, ph: 0, st: 'g', t: 0, nxt: 0, active: [], pend: [], near: [], demand: [0, 0, 0], seen: -1, rail: { w, state, t } };
+      for (const end of [1, 0]) {
+        net.at(q.line, Math.max(0, Math.min(l.len, q.s + (end ? -6 : 6))), tmp);
+        j.arms.push({ j, i: j.arms.length, line: q.line, end, mid: q.s, node: null, x: j.x, y: j.y, z: j.z, out: Math.atan2(tmp.x - j.x, tmp.y - j.y), c: l.c, rank: RANK[l.c] || 2,
+          in: true, exit: true, back: half + 2.5, phase: 0, sign: null, exits: [] });
+      }
+      const on = mids.get(q.line) || [];
+      J.push(j); on.push(j); on.sort((a, b) => a.mid - b.mid); mids.set(q.line, on); rails.push(j);
+      return j;
+    }
+    // a crossing taken off again (the check's own, tools/autopilot_step.js railStep): out of the junctions, its
+    // street's crossings (the entry gone with the last of them) and the railways'
+    function dropRail(j) {
+      for (const list of [J, rails]) { const i = list.indexOf(j); if (i >= 0) list.splice(i, 1); }
+      const on = mids.get(j.line);
+      if (on) { const i = on.indexOf(j); if (i >= 0) on.splice(i, 1); if (!on.length) mids.delete(j.line); }
+    }
     // ------------------------------------------------ where a car can go from an arm
     // every exit from arm a: { m (the arm it leaves by), steps: [[line, end entered], ...] } by the
     // pieces inside, as the traffic's next() gives them; a turn back the way it came only if nothing else
@@ -474,7 +507,9 @@ window.OEJunctions = (function () {
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
-    function choose(a, hw = 0, half = 0) {
+    let trips = null; // (where the traffic is going, trips.js: set by the game once the roads to keep off are known)
+    // (trip: the place the car is bound for, trips.js, or -1: its exits are weighed by how near each brings it)
+    function choose(a, hw = 0, half = 0, trip = -1) {
       let ex = exits(a);
       if (!ex.length) return null;
       if (hw && net.fit && ex.length > 1) { const w = ex.filter(e => net.fit[e.m.line] >= hw); if (w.length) ex = w; } // (not into a street too narrow for it, if there is another way: #202)
@@ -491,7 +526,11 @@ window.OEJunctions = (function () {
         if (on.length) ex = on;
       }
       let sum = 0;
-      const w = ex.map(e => { const v = (1 + 1.6 * Math.cos(e.turn)) * (0.6 + 0.2 * e.m.rank); sum += Math.max(0.15, v); return Math.max(0.15, v); });
+      // (bound for a place: each exit's cost of the way there against the best of them, 70 m dearer a third as likely;
+      // an exit with no way there next to never)
+      let near = null, best = Infinity;
+      if (trip >= 0 && trips && ex.length > 1) { near = ex.map(e => trips.cost(trip, e.m.line, e.m.end === 0 ? 1 : -1)); best = Math.min(...near); if (!(best < Infinity)) near = null; }
+      const w = ex.map((e, i) => { const v = Math.max(0.15, (1 + 1.6 * Math.cos(e.turn)) * (0.6 + 0.2 * e.m.rank)) * (near ? (near[i] < Infinity ? Math.exp(-(near[i] - best) / 64) : 1e-3) : 1); sum += v; return v; });
       let r = rnd() * sum;
       for (let i = 0; i < ex.length; i++) if ((r -= w[i]) < 0) return ex[i];
       return ex[ex.length - 1];
@@ -625,6 +664,7 @@ window.OEJunctions = (function () {
     // green for the others (not the arrow's), and not in the last seconds before it may end
     function walk(a) {
       const j = a.j;
+      if (j.rail) return false; // (a level crossing: no walk across the road is signalled there)
       if (!j.sig) return true;
       if (j.scramble) return j.ph === 3 && j.st === 'g' && j.t < j.green[3] - 6;
       return j.ph !== a.phase && j.ph !== 2 && j.st === 'g' && !(j.call && j.t > (j.gEnd != null ? j.gEnd : j.green[j.ph]) - FLASH);
@@ -694,6 +734,7 @@ window.OEJunctions = (function () {
     function toGreen(a) {
       const j = a.j;
       if (!j.sig || light(a) === 'g') return 0;
+      if (j.rail) return j.rail.t ? Math.max(0, +j.rail.t() || 0) : 25; // (a level crossing: until its train has passed, as the railway says, or about a train's time)
       const amber = j.amber || AMBER, allred = j.allred || ALLRED, change = amber + allred;
       if (j.ph === 3 && j.st === 'g') return Math.max(0, j.green[3] - j.t) + change; // (the scramble's walk runs its course; a call makes its phase next)
       if (j.st === 'g') return Math.max(0, MIN_G - j.t) + change; // the other road's green
@@ -798,7 +839,7 @@ window.OEJunctions = (function () {
     // how far along exit e's piece a car can wait: up to the stop line of the junction at its far end
     function reach(e) {
       const m = e.m, a2 = armOf.get(m.line * 2 + 1 - m.end), M = mids.get(m.line);
-      if (M) { // (or up to the line of a crossing between junctions on it)
+      if (M && M.length) { // (none left on it once one is taken off: tools/autopilot_step.js railStep) // (or up to the line of a crossing between junctions on it)
         const X = m.end === 0 ? M[0] : M[M.length - 1], a = X.arms.find(b => b.end === 1 - m.end);
         if (a) return (m.end === 0 ? X.mid : L[m.line].len - X.mid) - a.back - m.back;
       }
@@ -859,6 +900,8 @@ window.OEJunctions = (function () {
           if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(pair)) { seenPairs.add(pair); if (p.forced || q.forced) crossedOver++; else crossed++; if (crossLog.length < 20) { crossLog.push(`${p.forced || q.forced ? 'over the line: ' : ''}junction ${j.id}${j.sig ? ` phase ${j.ph} ${j.st} at ${j.t.toFixed(1)} s` : ''}: arm ${p.k} to ${p.m} in at ${p.t} and arm ${q.k} to ${q.m} in at ${q.t}${p.c === q.c ? ', the same car' : ''}, now ${t.toFixed(1)}${p.forced ? ` (the first over the line: ${p.c.overWhy})` : q.forced ? ` (the second over the line: ${q.c.overWhy})` : ''}`); } }
         }
         if (!j.sig) continue;
+        // (a level crossing: its lights are the railway's state, not a cycle: amber for its alarm's first seconds, red while it is shut)
+        if (j.rail) { const s = j.rail.state(), ph = s === 'closed' ? 1 : 0, st = s === 'warning' ? 'y' : 'g'; if (ph !== j.ph || st !== j.st) { j.ph = ph; j.st = st; j.t = 0; } else j.t += dt; continue; }
         j.t += dt;
         // the phase after this one: the main road's (0), its arrow (2) when someone waits to turn
         // across, the cross road's (1); a call from another phase ends this one's green
@@ -1031,7 +1074,7 @@ window.OEJunctions = (function () {
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
     net.midsOn = midsOn; // (the rides' router notes the crossings along a route: cars.js)
-    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, centred: line => centred(L[line]), mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, setTrips: t => { trips = t; }, trips: () => trips, addRail, dropRail, rails, laneRun, setClock, shutNow, closedNow, light, arrow, walk, walkLeft, call, want, urgeWalk, armBy: (line, end) => armOf.get(line * 2 + end) || null, walkIn, RED, crossings, lanesOf, shiftOf, centred: line => centred(L[line]), mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads

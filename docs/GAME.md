@@ -158,6 +158,27 @@ Every city's game has the same three ways to go by road:
   view gives the camera back to you for eight seconds, and <kbd>V</kbd> sits you in
   the seat. Set a new waypoint while it drives to the old one and it goes on to the
   new.
+- **Driver assists** when you drive yourself, each a toggle: **lane keeping**
+  (<kbd>I</kbd>) holds the car in the lane of the road it is on, and lets go when you
+  steer past half lock, change lanes or turn at a junction; **adaptive cruise**
+  (<kbd>K</kbd>) holds the speed you were doing when you set it (30 km/h at least),
+  keeps a gap to the car ahead, slows for a bend and stops at a red light, a level
+  crossing or a wall across the lane (a street shut off at its end); the accelerator adds to it and the brake ends it. On a phone the **Lens**
+  button at the wheel steps through them (lane keeping, both, none), and **Run** is
+  the autopilot's **Auto**.
+
+The streets round you have somewhere to go. Most cars are on a trip, into town in
+the morning and out to the map's edges in the evening, so the main roads carry more
+than the back streets; cars stand parked along the kerbs that have room, pull in at
+the end of a trip and pull out again with their indicators on; buses stop at their
+stops while people get on and off, taxis wait at the kerb by the places people go,
+and vans stop for a delivery with their hazards on; brake lights come on
+as a car slows, indicators before a turn or a lane change, and the bodies dip and
+lean on their springs. In rain, snow or fog everybody drives slower with longer gaps
+and headlamps on, the wet road throws spray up behind the wheels, and your own car
+takes longer to stop and runs wider through a bend. At a level crossing the traffic
+stops for the alarm and never queues across the rails. A driver held up behind your
+car stopped in the lane sounds the horn after five seconds, not before.
 - **A taxi:** stand at the kerb and press <kbd>Y</kbd>. You raise your hand, and
   the quickest free taxi coming your way, by road, pulls in on your side of the
   street with its hazard lights on. If none is close, one comes round the corner.
@@ -1470,6 +1491,88 @@ yields. In this game every car's intent is exact, so:
   24 s at most in a run where it had stood 56 s. A scramble walker stood still in the gutter a pace
   from its spot counts as at the kerb, not out crossing: it held the all-red after the walk 10 to
   15 s at a time.
+
+#### Where the traffic is going, the kerb, the weather and level crossings
+
+- **Trips** (`trips.js`, #355). The cars used to pick an exit at random at every
+  junction. Now seven in ten are bound for a place: one of up to eight ends of the
+  main roads at the map's edge, or one of up to sixteen streets with kerb room near
+  the places the map names (the start, the landmarks, the wharves). Three quarters of
+  the trips go into town from 06:30 to 09:30, a quarter from 16:00 to 19:30, half at
+  other hours, six in ten late at night; a trip into town ends, more often than not,
+  in the part of town the car is in. No route is kept and nothing is searched while
+  the game runs: for each place a field is worked out once, the first time a car is
+  sent there (a search back from it over the street network, the one-way streets and
+  the roads to keep off respected, a back street dearer than its length), and at a
+  junction a car looks each exit up in it and takes the one that brings it nearest,
+  an exit 64 m dearer a third as likely (`junctions.js choose`). A car comes into the
+  traffic on a main road more often than a back street, facing the way its place
+  lies. The cost each frame is unchanged: a look-up per exit, where a car picked one
+  anyway.
+- **The kerb** (`actors.js kerbLo`, `parkNow`). A street has room for parked cars
+  where a taxi's place at the kerb (`cars.js kerbOf`) is 2.3 m or more from the middle
+  of the lane: not a motorway or a trunk road, not two lanes each way, not a narrowed
+  lane, not a two-way back street (the one-way ones have room). About one car in six
+  is parked there when it comes into the traffic (fewer in the morning, more in the
+  evening), three in ten at most, clear of junctions by 22 m, of crossings, of other
+  cars by a bumper's room, of posts, walls and people. A parked car takes no step: it
+  is drawn, and the traffic, the crowd, the rides and you keep out of its footprint.
+  A car within 300 m by road of the end of a trip into town takes the first room at
+  the kerb it passes: it indicates, slows, moves across over its last 13 m (no faster
+  sideways than a third of its speed) and stands; one that finds a parked car in its
+  way across drives on. Its time up (minutes in the morning, under three in the
+  evening) and the lane clear behind for 28 m or 3 s, it indicates, pulls out and
+  drives off on a new trip. So the kerbs fill in the morning and empty in the
+  evening, and the cars that leave them are the evening's flow out of town. A city
+  sets its own share (`game.json` `vehicles.cars.parked`); Japan's maps keep one car
+  in twenty at the kerb, as its streets do, the others one in six. A way into a place
+  and out of it is swept first (the car's places 3, 6 and 9 m off, part way across),
+  so that none drives through the car parked next to it; a car boxed in for two
+  minutes, out of your sight, leaves the traffic.
+- **Buses, taxis and vans.** The mapped bus stops (`props.bus_stop`,
+  `pipeline/kerb_stops.py`, from OpenStreetMap by way of Overture Maps) are each put
+  on the piece of road within 14 m, for the traffic on the pole's side; not one
+  within 30 m of the junction ahead. A bus coming up to one indicates, stops with
+  its front door at the pole and stands 8 to 18 s, longer the more get on: up to
+  three of the people walking within 16 m of the door walk to it and board, and up
+  to two get off and walk away along the footway (`actors.js` crowd `board`; only
+  within 150 m of you). A taxi at the end of a trip waits at the kerb a minute or so,
+  as at a rank, before it goes on. A van stops at the kerb every minute or two for a
+  delivery of 12 to 40 s with its hazards on.
+- **The weather** (`cars.js setWeather`). The weather's one state (`weather.js`) is
+  read four times a second into the drivers' own numbers: grip (the state's, where it
+  has one: 0.7 wet, 0.4 on snow), pace (0.6 + 0.4 of the grip, less in fog under
+  180 m), the speed through a bend (the square root of the grip), the gap (0.9 longer
+  for each unit of grip lost), headlamps on by day in rain, snow or fog. The traffic,
+  the rides, the autopilot and the cruise read them; your own car feels a little over
+  half of the grip lost (0.87 wet, 0.73 on snow) in its tyres and its brakes. Spray:
+  one set of 192 points, drawn once for all the cars within 70 m of you on a wet road,
+  a puff behind a rear wheel that rises, drifts back and fades in 0.8 s; none is made
+  until it first rains.
+- **Level crossings** (`junctions.js addRail`). The railway is `rail.js`'s; to the
+  traffic one of its crossings is a crossing between junctions whose lights are the
+  railway's state: amber for the first three seconds of its alarm (a car that can
+  stop does; one on the rails drives on), red while it is shut. The stop line is
+  2.5 m short of the rail corridor. Open, the keep-clear rule holds: no car, ride or
+  autopilot goes onto the rails unless there is room for the whole of it beyond them.
+- **Feel** (`actors.js toneMaterial`, `place`). Each car's brake lights and
+  indicators are two numbers in an instanced attribute no car's paint used: the tail
+  lamps light when it brakes at 1.2 m/s² or more or stands held, the amber lamps of
+  one side flash 85 times a minute into the kerb, out of it, across to another lane
+  and from 35 m before a turn until it is through. Within 160 m of you a car's body
+  pitches with its acceleration and rolls out of its turns. A driver sounds the horn
+  for cause only: to get out of your car's way (as before), and once after five
+  seconds stopped behind your car in its lane.
+- **What it costs a frame.** Trips put more of the traffic in town, round you, where each
+  car has more to look at: about 0.65 ms a frame more in Shinjuku in the morning
+  (`NOTRIPS=1 tools/traffic_profile.js`; the parked cars cost nothing measurable). It is paid
+  back where nobody sees it: a car out of the camera's view, 70 m or more from it and 60 m
+  from you, takes a step every second frame, and past 300 m every fourth (every fourth from
+  120 m jammed the junctions three times as often: their turns and reservations want the
+  finer steps). Measured at 08:00 over a minute of play, the traffic update a frame:
+  Shinjuku 4.55 ms against main's 5.74, Sydney 3.05 against 3.81; and over ten minutes of
+  Shinjuku's morning (`tools/traffic_check.js`, the clock held) 4.9% of the car-time
+  jammed for half a minute or more against main's 4.8%, the longest stand 99 s against 114 s.
 
 #### Junctions and traffic lights
 
@@ -2813,6 +2916,31 @@ The camera shots were checked the same way:
 - a survey at the bridge and at Observatory Hill: the right buildings are named, and
   the field notes are written;
 - the height challenge: the guess is scored against the band of the height's source.
+
+Driving is checked in every live city by `tools/game_check.js` through
+`tools/autopilot_step.js` (alone: `tools/autopilot_probe.js <city>`):
+- **the autopilot:** from the driver's seat it takes a place 250 m or more off by
+  road and sets off within 20 s; its screen has the time left, the distance and the
+  next turn, and the film cuts between shots; a touch of the wheel hands the car back
+  at the speed it had with no jump in its place, and it takes the car again; it never
+  drives more than 0.15 m into a car, crosses no red line, never stands more than
+  100 s, and within 420 s has pulled in within 40 m of the end of its way;
+- **the assists:** with both on and no key held for 40 s, lane keeping is at work for
+  5 s or more and keeps the car within 1.2 m of the lane's middle once settled; the
+  cruise keeps to its speed, clear of the traffic and behind every red line; a touch
+  of the brake ends it;
+- **the weather:** the same traffic for 25 s dry and 25 s in the rain must be slower
+  in the rain, with the drivers' pace under 1, the gap's factor over 1 and the lamps
+  on, and the cars near you must throw up spray;
+- **a level crossing** put on the busiest long street near you, open for 30 s, shut
+  for 30 s and open again: no car on the rails while it is shut, none standing on
+  them at any time, and the traffic across again within 20 s of its opening.
+
+`tools/trips_probe.js <city>` reports where the traffic went at an hour (the share
+of car time on the main roads, the cars across a cordon round you, the cars that
+pulled in to the kerb and out of it), with `TRIPS=0` the same with random turns;
+`tools/kerb_shot.js` takes stills of the parked cars; `tools/autopilot_film.js`
+films a drive with the HUD (`WEATHER=rain` in the rain).
 
 A Hong Kong script plays its six stamps the same way: both Star Ferry routes,
 the landing in Tamar Park, the sun step in Statue Square on 21 December, the

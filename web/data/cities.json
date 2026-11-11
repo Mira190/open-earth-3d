@@ -57,7 +57,7 @@
   ],
   "load_bytes": {
    "model": 1863357,
-   "game": 2775978
+   "game": 2769786
   }
  },
  {
@@ -117,7 +117,7 @@
   ],
   "load_bytes": {
    "model": 1393377,
-   "game": 1833891
+   "game": 1836032
   }
  },
  {
@@ -159,7 +159,7 @@
   ],
   "load_bytes": {
    "model": 5756738,
-   "game": 6140552
+   "game": 6142048
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -621,7 +621,7 @@
   ],
   "load_bytes": {
    "model": 1024776,
-   "game": 1144171
+   "game": 1144391
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1077,7 +1077,7 @@
   ],
   "load_bytes": {
    "model": 630027,
-   "game": 726229
+   "game": 726270
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1533,7 +1533,7 @@
   ],
   "load_bytes": {
    "model": 697192,
-   "game": 837159
+   "game": 837429
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1986,7 +1986,7 @@
   ],
   "load_bytes": {
    "model": 863346,
-   "game": 1004165
+   "game": 1004420
   },
   "group_meta": {
    "native": "\u938c\u5009",
@@ -2198,7 +2198,7 @@
   ],
   "load_bytes": {
    "model": 2038098,
-   "game": 2520025
+   "game": 2522047
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -2952,7 +2952,7 @@
   ],
   "load_bytes": {
    "model": 3999688,
-   "game": 4553973
+   "game": 4555648
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3692,7 +3692,7 @@
   ],
   "load_bytes": {
    "model": 2327011,
-   "game": 2770806
+   "game": 2772690
   },
   "group_meta": {
    "native": "\u6771\u4eac",

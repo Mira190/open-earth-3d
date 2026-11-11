@@ -11,6 +11,7 @@
 // (WAITS_JSON=file appends a line of the figures for each city, WAITS_LABEL=before names them).
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/traffic_check.js sydney [seconds per place] [places]
+//   GAME_TIME=08:00 CLOCK_HOLD=1 ... sydney 1800 1    (a soak: half an hour at that hour, the clock held there; tools/traffic_soak.sh)
 const { chromium } = require('playwright');
 const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
 // the mean and the 95th percentile of a list of waits (s), and how many
@@ -29,7 +30,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
     const play = await p.$('#gt-play');
     if (play) await play.click().catch(() => {});
-    const r = await p.evaluate(([T, site]) => {
+    const r = await p.evaluate(([T, site, hold]) => {
       window.requestAnimationFrame = () => 0; // the game's frame loop stops: the run steps only here
       const g = window.__game, A = g.cars, C = A.C, L = A.netL;
       if (site > 0) { // a place on the roads, the same each time: the middle of a road piece some way from the start
@@ -41,6 +42,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
           for (const o of [6, -6, 9, -9, 12, -12, 16, -16]) if (!g.roadNet.nearest(l.pts[k] - ey / el * o, l.pts[k + 1] + ex / el * o, 5)) { off = o; break; }
           g.player.x = l.pts[k] - ey / el * off; g.player.y = l.pts[k + 1] + ex / el * off; g.player.z = l.pts[k + 2]; }
       }
+      if (hold) g.clock.scale = 1; // (CLOCK_HOLD=1: the hour held for a long run, a soak at 08:00 stays at 08:00; the game's day runs 30 times faster)
       g.advance(1);
       // the traffic update's cost: the time in A.update per call (a frame's), timed from here
       const upd = A.update; let ut = 0, un = 0;
@@ -56,6 +58,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
       const prev = C.map(c => ({ line: c.line, dir: c.dir, x: c.x, y: c.y }));
       const still = C.map(() => 0);
       const walls = new Map();
+      let parkedSecs = 0;
       let samples = 0, stopped = 0, dist = 0, carSecs = 0, turns = 0, worstJam = 0, jammed = 0, jammedNow = 0, overlaps = 0, overlapMax = 0, inWall = 0, onFlagged = 0, onMotorway = 0, onDeck = 0;
       const nav = g.nav, avoid = () => g.roadNet.avoid;
       const warm = Math.min(60, T / 4);
@@ -87,8 +90,10 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
           const ra = c.v < 0.3 ? redArm(c) : null;
           if (ra) { red[i]++; if (ra.j && ra.j.scramble) redScr[i] = true; if (ra.j) redAt[i] = ra; }
           else if (red[i]) put(i);
-          carSecs++;
-          if (c.v < 0.3) stopped++;
+          // (a car parked at the kerb, actors.js parkNow, stands by design: not one of the traffic's standing or jammed cars)
+          const parked = !!c.park;
+          if (parked) parkedSecs++; else carSecs++;
+          if (c.v < 0.3 && !parked) stopped++;
           // in a building or a landmark (its middle, most of its width, knee to roof height), or on a road a car doesn't fit along
           if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) {
             inWall++;
@@ -103,7 +108,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
           if (avoid() && avoid()[c.line]) onFlagged++;
           if (L[c.line].c === 'motorway') onMotorway++; // (the expressways, and the cars on a deck: issue 119)
           if (L[c.line].deck && L[c.line].deck.some(v => v)) onDeck++;
-          still[i] = c.v < 0.3 ? still[i] + 1 : 0;
+          still[i] = c.v < 0.3 && !parked ? still[i] + 1 : 0;
           if (still[i] >= 30) jammedNow++;
           worstJam = Math.max(worstJam, still[i]);
           const d = q.line >= 0 ? Math.hypot(c.x - q.x, c.y - q.y) : 0;
@@ -116,6 +121,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
         overlaps += ov; overlapMax = Math.max(overlapMax, ov);
       }
       const out = { at: [Math.round(g.player.x), Math.round(g.player.y)], cars: A.active, seconds: samples, stoppedShare: stopped / Math.max(1, carSecs), meanSpeed: dist / Math.max(1, carSecs),
+        parked: parkedSecs / Math.max(1, samples), pulledIn: C.reduce((s, c) => s + (c.parkedIn || 0), 0), pulledOut: C.reduce((s, c) => s + (c.left || 0), 0), busStops: A.busStopped || 0, boarded: g.crowd ? g.crowd.boarded || 0 : 0,
         jammedShare: jammed / Math.max(1, carSecs), jammedAtEnd: jammedNow, longestStill: worstJam, turnsPerCarMin: turns / Math.max(1, carSecs / 60), overlapsPerSample: overlaps / Math.max(1, samples), overlapMax,
         inWallShare: inWall / Math.max(1, carSecs), onFlaggedShare: onFlagged / Math.max(1, carSecs),
         onRoads: carSecs / Math.max(1, samples), onMotorway: onMotorway / Math.max(1, samples), onDeck: onDeck / Math.max(1, samples) };
@@ -127,13 +133,14 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
       A.update = upd;
       if (A.stats) Object.assign(out, A.stats());
       return out;
-    }, [Number(secs), site]);
+    }, [Number(secs), site, !!process.env.CLOCK_HOLD]);
     await p.close();
     runs.push(r);
     const f = (v, n = 2) => v.toFixed(n);
     console.log(`${city} at ${r.at}: ${r.cars} cars over ${r.seconds} s`);
     console.log(`  standing still ${(r.stoppedShare * 100).toFixed(0)}% of the time, mean speed ${f(r.meanSpeed, 1)} m/s (${f(r.meanSpeed * 3.6, 0)} km/h)`);
     console.log(`  jammed (still 30 s or more): ${(r.jammedShare * 100).toFixed(1)}% of the time, ${r.jammedAtEnd} at the end; longest still: ${r.longestStill} s`);
+    console.log(`  at the kerb: ${r.parked.toFixed(0)} cars parked on average (left out of the standing and the jammed), ${r.pulledIn} pulled in, ${r.pulledOut} pulled out; ${r.busStops} bus stops made, ${r.boarded} people aboard`);
     console.log(`  turned back in the road: ${f(r.turnsPerCarMin, 3)} per car-minute; caught up in another car: ${f(r.overlapsPerSample)} pairs a second, ${r.overlapMax} at worst`);
     console.log(`  in a wall: ${(r.inWallShare * 100).toFixed(2)}% of the time; on a road a car doesn't fit along: ${(r.onFlaggedShare * 100).toFixed(2)}%`);
     for (const w of r.walls) console.log(`    in a wall at ${w.x}, ${w.y} z ${w.z}: ${w.n} car-seconds, ${w.cars} car(s), line ${w.line}${w.ow ? ' one-way' : ''} lane ${w.ln} lo ${w.lo} off ${w.off} from the centre ${w.dc} (room there ${w.roomC}, hw ${w.hw}, w ${w.w}), ${w.mv ? 'in a junction, ' : ''}held by ${w.why}; ${w.what}`);
