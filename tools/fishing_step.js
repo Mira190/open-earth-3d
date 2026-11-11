@@ -70,6 +70,18 @@ async function fishingStep(p, shot) {
     if (b.err || b.st !== 'aim') { fails.push(`fishing ${id}: ${b.err || `after E the state is ${b.st}, not aim`}`); await p.evaluate(() => window.__game.fishing().api.stop(true)); continue; }
     // the easiest fish of the water, so that the step tests the plumbing and not the player
     await p.evaluate(() => { const a = window.__game.fishing().api; a.force(a.easiest()); });
+    // the fish are drawn (fishart.js): every kind has a portrait for the log, and a body for the line
+    if (first) {
+      const art = await p.evaluate(() => {
+        const g = window.__game, AR = window.OEFishArt, out = { ids: [], bad: [] };
+        if (!AR) return { missing: true };
+        const THREE = window.THREE;
+        for (const sp of g.fishing().api.species) { out.ids.push(sp.id); const svg = AR.portrait(sp), sil = AR.portrait(sp, { silhouette: true }); if (!/<svg/.test(svg) || !/<svg/.test(sil)) out.bad.push(`${sp.id}: no portrait`); const geo = AR.geometry(THREE, sp, false), tris = geo.index.count / 3; if (!(tris > 300 && tris < 3000)) out.bad.push(`${sp.id}: ${tris} triangles`); geo.dispose(); }
+        return out;
+      });
+      if (art.missing) fails.push('fishing: fishart.js did not load with fishing.js');
+      else { if (!art.ids.length) fails.push('fishing: no species to draw'); for (const b of art.bad) fails.push(`fishing fish: ${b}`); }
+    }
     const c = await cast(p);
     if (c.st !== 'wait') { fails.push(`fishing ${id}: the cast ended in ${c.st}, not on the water`); await p.evaluate(() => window.__game.fishing().api.stop(true)); continue; }
     if (shot) await shot(`fishing-${id}-wait`);
