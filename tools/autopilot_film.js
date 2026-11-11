@@ -43,6 +43,8 @@ const FPS = +(process.env.FPS || 24), SECONDS = +(process.env.SECONDS || 60), W 
     if (lm && g.travelTo(lm)) { for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25); g.advance(4); }
     const list = g.destinations(st.x, st.y).filter(d => d.id !== 'car');
     let dest = want ? list.find(d => d.name.toLowerCase().includes(want)) : null, best = 0;
+    // (or a landmark of that name, not among the places offered from here: the kerb by it)
+    if (want && !dest) { const l2 = g.landmarks.find(l => l.name.toLowerCase().includes(want)); if (l2) dest = { id: `film-${l2.name}`, name: l2.name, at: l2.at }; }
     if (!dest) for (const d of list) { if (g.pilotTo(d, { quiet: true, scenic }) && g.pilot().len > best) { best = g.pilot().len; dest = d; } g.pilotOff(); }
     if (!dest || !g.pilotTo(dest, { scenic })) return { none: 'nowhere to drive to', offered: list.map(d => d.name) };
     if (weather && g.weather) g.weather.set(weather, { now: true }); // (WEATHER=rain: the drive in the rain)
