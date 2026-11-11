@@ -2300,9 +2300,15 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         }
         if (c.pullOut > 0) c.pullOut -= dt0;
         // far off, a step of two frames every second frame (the same traffic at half the work)
-        const half = eye && Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) > FAR;
-        if (half && (tick + i) & 1) { q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue; }
-        const dt = half ? 2 * dt0 : dt0;
+        // (and out of the camera's view, 70 m or more from it and 60 m from you: unseen, it keeps the same ways at half the
+        // work, which pays for the trips' denser traffic in town, #355)
+        const fd = eye ? Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) : 0;
+        // (unseen past 300 m: every fourth frame. Every fourth frame from 120 m unseen jammed the junctions three times as
+        // often: their turns and reservations want the finer steps)
+        const unseen = eye && fd > 70 && Math.abs(c.x - cx) + Math.abs(c.y - cy) > 60 && !inView(c);
+        const every = !eye ? 1 : unseen && fd > 300 ? 4 : fd > FAR || unseen ? 2 : 1;
+        if (every > 1 && (tick + i) % every) { q.setFromAxisAngle(up, Math.PI - c.h); m4.compose(W(c.x, c.y, c.z), q, one); place(i, c); continue; }
+        const half = every > 1, dt = every * dt0;
         if (c.revBan > 0) c.revBan -= dt; // (having given up backing out, it doesn't try again for a minute: tried every 20 s, one stood backing in a junction's mouth, the junction's movements held a minute, Sydney's 461)
         if (c.rev && (c.mv || c.line < 0)) c.rev = null;
         if (c.rev && reverseStep(c, i, dt, cx, cy)) continue;

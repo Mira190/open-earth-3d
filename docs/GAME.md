@@ -1563,6 +1563,16 @@ yields. In this game every car's intent is exact, so:
   pitches with its acceleration and rolls out of its turns. A driver sounds the horn
   for cause only: to get out of your car's way (as before), and once after five
   seconds stopped behind your car in its lane.
+- **What it costs a frame.** Trips put more of the traffic in town, round you, where each
+  car has more to look at: about 0.65 ms a frame more in Shinjuku in the morning
+  (`NOTRIPS=1 tools/traffic_profile.js`; the parked cars cost nothing measurable). It is paid
+  back where nobody sees it: a car out of the camera's view, 70 m or more from it and 60 m
+  from you, takes a step every second frame, and past 300 m every fourth (every fourth from
+  120 m jammed the junctions three times as often: their turns and reservations want the
+  finer steps). Measured at 08:00 over a minute of play, the traffic update a frame:
+  Shinjuku 4.55 ms against main's 5.74, Sydney 3.05 against 3.81; and over ten minutes of
+  Shinjuku's morning (`tools/traffic_check.js`, the clock held) 4.9% of the car-time
+  jammed for half a minute or more against main's 4.8%, the longest stand 99 s against 114 s.
 
 #### Junctions and traffic lights
 

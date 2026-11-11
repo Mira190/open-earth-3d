@@ -3,6 +3,7 @@
 // junctions.js by their own time, with the update's mean cost a frame.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/traffic_profile.js sydney [seconds]
+//   FROM=2000 BLOCK=10 TOP=30 ...: the traffic's own update() alone, its lines in blocks of ten
 const { chromium } = require('playwright');
 const [,, city = 'sydney', secs = '40'] = process.argv;
 (async () => {
@@ -14,7 +15,7 @@ const [,, city = 'sydney', secs = '40'] = process.argv;
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
-  await p.evaluate(() => { window.requestAnimationFrame = () => 0; window.__game.advance(20); }); // warm up: the junctions' ways worked out, the code compiled
+  await p.evaluate(off => { window.requestAnimationFrame = () => 0; const g = window.__game; if (off && g.junctions.setTrips) g.junctions.setTrips(null); g.advance(20); }, !!process.env.NOTRIPS); // (NOTRIPS=1: the traffic with no trips, to weigh what they cost) // warm up: the junctions' ways worked out, the code compiled
   const cdp = await p.context().newCDPSession(p);
   await cdp.send('Profiler.enable');
   await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
@@ -44,10 +45,12 @@ const [,, city = 'sydney', secs = '40'] = process.argv;
   for (const n of profile.nodes) {
     const f = n.callFrame;
     if (!/actors\.js$/.test(f.url || '') || f.functionName !== 'update' || !n.positionTicks) continue;
-    for (const t of n.positionTicks) lines.set(t.line, (lines.get(t.line) || 0) + t.ticks);
+    if (process.env.FROM && f.lineNumber + 1 < +process.env.FROM) continue; // (FROM=line: only the update that starts there or after, the traffic's, not the crowd's)
+    const blk = +(process.env.BLOCK || 1); // (BLOCK=10: the lines in blocks of ten)
+    for (const t of n.positionTicks) { const l = Math.floor(t.line / blk) * blk; lines.set(l, (lines.get(l) || 0) + t.ticks); }
   }
   const tl = [...lines.values()].reduce((a, v) => a + v, 0);
   if (tl) console.log('busiest lines of the update functions in actors.js (share of their samples):');
-  for (const [l, t] of [...lines].sort((a, b) => b[1] - a[1]).slice(0, 15)) console.log(`  ${(100 * t / tl).toFixed(1).padStart(5)}%  actors.js:${l}`);
+  for (const [l, t] of [...lines].sort((a, b) => b[1] - a[1]).slice(0, +(process.env.TOP || 15))) console.log(`  ${(100 * t / tl).toFixed(1).padStart(5)}%  actors.js:${l}`);
   await b.close();
 })().catch(e => { console.error(e); process.exit(1); });
