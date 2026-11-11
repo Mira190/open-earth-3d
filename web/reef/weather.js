@@ -84,6 +84,8 @@ export async function init(ctx) {
   const asked = q.get('weather');
   let mode = asked && (W.KINDS[asked] || asked === 'live' || asked === 'off') ? asked : navigator.webdriver ? 'clear' : 'live';
   let custom = null, snap = true;
+  // (automation that asked for nothing keeps the site's own sea as well as a clear sky, so stills and checks stay comparable)
+  let quiet = !!navigator.webdriver && !asked;
   // the station the normals are from stands at elev_m: the air cools 6.5 degrees a kilometre above it
   const stationM = climate && Number.isFinite(climate.elev_m) ? climate.elev_m : 0;
   const datum = site.terrain && Number.isFinite(site.terrain.datum_m) ? site.terrain.datum_m : 0;   // (scene y 0 is this many metres above the sea)
@@ -182,14 +184,15 @@ export async function init(ctx) {
   deckMat.fog = false;
   deckMat.colorNode = Fn(() => {
     const dir = normalize(positionWorld.sub(cameraPosition));
-    const p = vec3(dir.x.div(dir.y.max(0.04)), 0, dir.z.div(dir.y.max(0.04))).mul(1.4).add(vec3(u.cloudRun.x, 0, u.cloudRun.y));
-    const n = mx_noise_float(p).mul(0.6).add(mx_noise_float(p.mul(2.7)).mul(0.3));
+    const p = vec3(dir.x.div(dir.y.max(0.12)), 0, dir.z.div(dir.y.max(0.12))).mul(1.4).add(vec3(u.cloudRun.x, 0, u.cloudRun.y));
+    // (toward the horizon the deck's texture is foreshortened to streaks: it fades to its mean there)
+    const n = mx_noise_float(p).mul(0.6).add(mx_noise_float(p.mul(2.7)).mul(0.3)).mul(smoothstep(0.03, 0.25, dir.y));
     return u.cloudCol.mul(float(0.88).add(n.mul(0.22)));
   })();
   deckMat.opacityNode = Fn(() => {
     const dir = normalize(positionWorld.sub(cameraPosition));
-    const p = vec3(dir.x.div(dir.y.max(0.04)), 0, dir.z.div(dir.y.max(0.04))).mul(1.4).add(vec3(u.cloudRun.x, 0, u.cloudRun.y));
-    const n = mx_noise_float(p).mul(0.5).add(0.5);
+    const p = vec3(dir.x.div(dir.y.max(0.12)), 0, dir.z.div(dir.y.max(0.12))).mul(1.4).add(vec3(u.cloudRun.x, 0, u.cloudRun.y));
+    const n = mx_noise_float(p).mul(smoothstep(0.03, 0.25, dir.y)).mul(0.5).add(0.5);
     // thin cloud is broken (blue between), full cloud a solid deck
     const cover = clamp(u.cloud.mul(1.6).sub(0.3).add(n.sub(0.5).mul(float(1).sub(u.cloud).mul(1.6))), 0, 1);
     return cover.mul(mix(float(0.97), float(0.8), smoothstep(0.0, 0.25, dir.y)));
@@ -291,7 +294,7 @@ export async function init(ctx) {
 
     // ---- what is drawn
     // the sea and the lake: the waves follow the wind against the season's mean
-    if (!windPinned) env.u.wind.value = wind0 * Math.min(2.4, Math.max(0.35, wSpeed / Math.max(1.5, windBase())));
+    if (!windPinned && !quiet) env.u.wind.value = wind0 * Math.min(2.4, Math.max(0.35, wSpeed / Math.max(1.5, windBase())));
     const gov = ctx.governor, extras = gov ? gov.extras : 1, share = extras >= 1 ? 1 : extras > 0 ? 0.5 : 0.25;
     const under = camera.position.y < env.u.tide.value - 0.05, off = mode === 'off';
     const raining = !under && !off && cur.rain > 0.01, snowing = !under && !off && cur.snow > 0.01;
@@ -340,6 +343,7 @@ export async function init(ctx) {
       } else if (W.KINDS[m] || m === 'live' || m === 'off') { mode = m; wetPin = depthPin = null; custom = null; }
       else return;
       if (now) snap = true;
+      quiet = false;
     },
     // the season's weather at the clock now (for a line in the journal)
     season: () => W.season(climate, ...clock()),
