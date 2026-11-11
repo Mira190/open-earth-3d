@@ -246,7 +246,7 @@ window.OEDay = (function () {
       const night = m => { const b = bounds(), t = ((m % 1440) + 1440) % 1440; return t < b.sunrise || t > b.sunset; };
       const said = f.now ? (f.to != null ? `Wet until ${hm(f.to)}, then drying.` : 'Wet all day and night.') : f.from != null ? `Dry until ${hm(f.from)}${f.to != null ? `, wet to ${hm(f.to)}` : ', wet after'}.` : 'Dry for the next day and night.';
       const pinned = !!(window.OEWeather && OEWeather.S && OEWeather.S.source === 'pinned');
-      return `<h3>Forecast <span class="from">${esc(a.name)} · ${esc(a.from)}</span></h3><ol class="lf-fc">${f.cells.map(x => `<li class="${x.wet ? 'wet' : ''}${night(x.min) ? ' night' : ''}"><span class="num">${hm(x.min)}</span><i aria-hidden="true">${night(x.min) && x.sky === 'Clear' ? '\u263e' : ICON[x.sky]}</i><b>${x.sky}</b>${x.temp != null ? `<span class="num">${Math.round(x.temp)}°</span>` : ''}</li>`).join('')}</ol>`
+      return `<h3>Forecast <span class="from">${esc(a.name)} · ${esc(a.from)}</span></h3><ol class="lf-fc">${f.cells.map(x => `<li class="${x.wet ? 'wet' : ''}${night(x.min) ? ' night' : x.sky === 'Clear' ? ' sun' : ''}"><span class="num">${hm(x.min)}</span><i aria-hidden="true">${night(x.min) && x.sky === 'Clear' ? '\u263e' : ICON[x.sky]}</i><b>${x.sky}</b>${x.temp != null ? `<span class="num">${Math.round(x.temp)}°</span>` : ''}</li>`).join('')}</ol>`
         + `<p class="lf-tomorrow">${esc(said)}${pinned ? ' (Your sky is set by hand in the menu; this is the season\'s.)' : ''}</p>`;
     }
     function renderLog() {

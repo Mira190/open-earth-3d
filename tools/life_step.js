@@ -163,7 +163,7 @@ async function lifeStep(p, check, city) {
         const a = L.action();
         if (a && a.act) { a.act(); talkOut(); g.dlg.choose(k); talkOut(); }
         out.kept = L.jobs.album().some(x => x.id === ks.menu[k].id && x.city === L.ctx.cityId);
-        D.show('album'); out.albumCards = document.querySelectorAll('.lf-album li:not(.empty)').length; D.close();
+        D.show('album'); out.albumCards = document.querySelectorAll('.lf-keeps li:not(.empty)').length; D.close();
       }
       const e = L.data.events.find(x => x.at);
       if (e) {

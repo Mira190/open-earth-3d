@@ -166,7 +166,7 @@ window.OEJobs = (function () {
       const cards = got.map(a => `<li><span class="glyph" aria-hidden="true">${esc(a.glyph || '\u25c7')}</span><b>${esc(a.name)}</b><span>${esc(a.shop)}, ${esc(a.place)}${when(a.d)}</span><p>${esc(a.text || '')}</p></li>`)
         .concat(left.map(({ s, m }) => `<li class="empty"><span class="glyph" aria-hidden="true">?</span><b>Not yet</b><span>${esc(s.name)} · ${L.day.onNow(s) ? 'open now' : `open ${esc(L.day.whenOn(s))}`}</span></li>`));
       return `<section class="lf-head"><div><span class="eyebrow">Keepsakes</span><b class="lf-dow num">${got.length}</b></div></section>`
-        + (cards.length ? `<ul class="lf-album">${cards.join('')}</ul>` : '<p class="note">Nothing kept yet. The counters sell small things to take home.</p>')
+        + (cards.length ? `<ul class="lf-keeps">${cards.join('')}</ul>` : '<p class="note">Nothing kept yet. The counters sell small things to take home.</p>')
         + '<p class="note">One album for every city: what you keep in one is here in the next.</p>';
     }
     L.day.addTab({ id: 'album', title: 'Keepsakes', render: albumPage });

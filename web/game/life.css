@@ -184,18 +184,19 @@
 .lf-fc li { border-top: 2px solid var(--line-2); padding: 6px 2px 0; display: grid; gap: 1px; justify-items: start; color: var(--ink-2); }
 .lf-fc li.night { color: var(--muted); }
 .lf-fc li.wet { border-top-color: #7fb0e0; }
-.lf-fc i { font-style: normal; font-size: 18px; line-height: 1.2; color: var(--accent); }
+.lf-fc i { font-style: normal; font-size: 18px; line-height: 1.2; color: var(--ink-2); }
+.lf-fc li.sun i { color: var(--accent); }
 .lf-fc li.wet i { color: #9cc4ea; }
 .lf-fc li.night i { color: var(--ink-2); }
 .lf-fc b { font: 400 9px/1.2 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 400; }
 .lf-fc .num { font-size: 11px; }
 /* the album: keepsakes from every map, each on its own card with where and when it was bought */
-.lf-album { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.lf-album li { position: relative; border: 1px solid var(--line-2); background: linear-gradient(160deg, rgba(255, 176, 102, 0.08), rgba(255, 255, 255, 0.02) 55%); padding: 12px 12px 10px; display: grid; gap: 4px; align-content: start; min-height: 128px; }
-.lf-album li.empty { border-style: dashed; background: none; color: var(--faint); }
-.lf-album .glyph { font: 200 34px/1 var(--f-display); color: var(--accent); }
-.lf-album li.empty .glyph { color: var(--faint); }
-.lf-album b { font-weight: 500; color: #fff; font-size: 13.5px; }
-.lf-album li.empty b { color: var(--muted); font-weight: 400; }
-.lf-album span { font: 400 9.5px/1.35 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-.lf-album p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+.lf-keeps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.lf-keeps li { position: relative; border: 1px solid var(--line-2); background: linear-gradient(160deg, rgba(255, 176, 102, 0.08), rgba(255, 255, 255, 0.02) 55%); padding: 12px 12px 10px; display: grid; gap: 4px; align-content: start; min-height: 128px; }
+.lf-keeps li.empty { border-style: dashed; background: none; color: var(--faint); }
+.lf-keeps .glyph { font: 200 34px/1 var(--f-display); color: var(--accent); }
+.lf-keeps li.empty .glyph { color: var(--faint); }
+.lf-keeps b { font-weight: 500; color: #fff; font-size: 13.5px; }
+.lf-keeps li.empty b { color: var(--muted); font-weight: 400; }
+.lf-keeps span { font: 400 9.5px/1.35 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.lf-keeps p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
