@@ -5753,6 +5753,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the chase camera's bearing, distance and height from the player's head
   const head = () => W(player.x, player.y, player.z + 1.55);
   const chasePolar = () => ({ az: cam.yaw + Math.PI, dist: Math.cos(cam.pitch) * cam.dist, h: Math.sin(cam.pitch) * cam.dist });
+  // where the chase camera will really be, lifted over a wall behind or pulled in (rig): a move lands on that, not on
+  // the pose cam asks for, or the hand-over has to tilt the difference in its last half second (#340: the stairs)
+  const livePolar = () => { cam.snap = true; rig(0); cam.snap = true; return OECine.polar(head(), live.pos); };
   const handOver = (k, from = 0.8) => OECine.ease.smooth(OECine.span(k, from, 1)); // weight of the live rig at the end of a shot
   // Start (#89): one eased move from the title shot down to over the player's shoulder, calm enough not to
   // make anyone dizzy. The camera dollies in along the bearing it is already on, turning about the player by
@@ -5800,7 +5803,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (let i = 1; i <= N; i++) el[i] = Math.max(el[i], el[i - 1] - step);
     for (let i = N - 1; i >= 0; i--) el[i] = Math.max(el[i], el[i + 1] - step);
     const early = e0 != null ? el[0] - e0 : 0; // how far above the first frame the roofs want it straight away
-    if (early > 0) { const M = N / 3; for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
+    // (eased in over a third of the move, or longer if that would tilt faster than rate: the smootherstep peaks at 1.875)
+    if (early > 0) { const M = Math.min(N, Math.max(N / 3, Math.ceil(1.875 * early / step))); for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
     const fn = k => { const f = Math.max(0, Math.min(N, k * N)), i = Math.floor(f), j = Math.min(N, i + 1); return el[i] + (el[j] - el[i]) * (f - i); };
     fn.late = el[N] - e(1); // how far above its own last elevation the roofs held it: more time is needed to come down calmly
     fn.max = Math.max(...el); // the steepest it gets
@@ -5815,7 +5819,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.h = best - Math.PI;
     cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.36; cam.dist = 7.5; cam.tilt = 0;
     camSmooth.set(0, 0, 0);
-    const p1 = chasePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
+    const p1 = livePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
     const r0 = Math.max(10, Math.hypot(p0.dist, p0.h)), r1 = Math.hypot(p1.dist, p1.h), e0 = Math.atan2(p0.h, p0.dist), e1 = Math.atan2(p1.h, p1.dist);
     const S = OECine.ease.smooth, pos = new THREE.Vector3(), lk = new THREE.Vector3();
     const rAt = k => r0 * Math.pow(r1 / r0, S(k)), azAt = k => p0.az + (az1 - p0.az) * S(k);
@@ -5962,6 +5966,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // at the top of the climb, out of sight.
   // (opts.cue, if given, moves whatever is travelling at the top of the climb instead of you; quiet: no arrival toast)
   const HOP_TURN_RATE = 45 * Math.PI / 180, HOP_PITCH_RATE = 30 * Math.PI / 180; // rad/s
+  // (coming down into a street between towers it may tilt back a little faster, so it has tilted back before the hand-over
+  // to the chase camera rather than during it, which added the two: #340, the hop to the scramble from Sangenjaya)
+  const HOP_FALL_RATE = 40 * Math.PI / 180;
   function hopTo(x, y, z, name, opts = {}) {
     const span = Math.hypot(x - player.x, y - player.y), bearing = Math.atan2(x - player.x, y - player.y);
     const roofs = roofAlong(player.x, player.y, x, y) - player.z; // cruise well clear of the tallest roof on the way
@@ -5979,22 +5986,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // up and down on a log scale of the range; the elevation one gentle rise to eT by 45% of the way and one fall to
     // the chase camera's, raised over the roofs on the way down (calmElevation): no plunge at the end
     const pos = new THREE.Vector3(), lk = new THREE.Vector3(), E = OECine.ease, L = OECine.lerp;
-    const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist), r1 = 7.5;
+    const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist);
+    let r1 = 7.5; // (the chase camera's range on landing: set again at the top of the climb from where it really is)
     const a = 0.26, b = 0.6, km = 0.45;
     // (out of the street it cranes up over the player's head before it pulls back: the range grows late in the rise)
-    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
-    let eTop = eT; const peL = pe; // the elevation at the top, and the chase camera's pitch on landing
+    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1 - 0.2 * (1 - b))))); // (in to the chase camera's range by 92%: the rest is for tilting back level)
+    let eTop = eT, peL = pe; // the elevation at the top, and the chase camera's pitch on landing (likewise)
     const eBase = k => (k < km ? L(e0, eTop, E.smooth(k / km)) : L(eTop, peL, E.smooth(OECine.span(k, km, 1))));
     // Over tall roofs the way down has to be steeper. The top then already holds the steepest it will need, so the
     // camera only ever tilts one way on the way down; the hop takes the time it needs to tilt back calmly (to 6.5 s),
     // and the hand-over to the chase camera (the last 22%) takes what is left
-    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_PITCH_RATE, rMin: 14, upto: 0.7 });
+    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_FALL_RATE, rMin: 30, upto: 0.7 }); // (within 30 m the chase camera keeps itself clear of the walls)
     const riseOf = d => calmElevation({ c: A, az: k => azAt(L(0, a, k)), r: k => rAt(L(0, a, k)), e: k => eBase(L(0, a, k)), dur: d * a, rate: HOP_PITCH_RATE, rMin: 14, upto: 1, e0 });
     let fallEl = fallOf(dur), riseEl = riseOf(dur);
     for (let n = 0; n < 4; n++) {
       eTop = Math.min(1.2, Math.max(eT, fallEl.max, riseEl(1)));
       const short = Math.max(fallEl.late, riseEl.early); // the roofs want more tilt than the time allows
-      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * short / HOP_PITCH_RATE);
+      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * (fallEl.late > riseEl.early ? short / HOP_FALL_RATE : short / HOP_PITCH_RATE));
       fallEl = fallOf(dur); riseEl = riseOf(dur);
     }
     const path = k => {
@@ -6010,6 +6018,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         player.h = yawEnd; player.speed = 0; player.vz = 0; player.ground = true;
         cam.mode = 'chase'; cam.yaw = yawEnd; cam.pitch = peL; cam.dist = 7.5;
         groundLod(x, y);
+        const pl = livePolar(); // (lifted over a wall behind, or pulled in: the way down lands where it will be)
+        r1 = Math.max(2, Math.hypot(pl.dist, pl.h)); peL = Math.atan2(pl.h, pl.dist);
         save();
       }]],
       onEnd: () => { if (!opts.quiet) H.toast(`You're at ${name}.`); } });
