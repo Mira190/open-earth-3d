@@ -122,6 +122,38 @@ window.OEDecks = (function () {
     return out;
   }
 
+  // the stretches of a line's deck pieces (points k to k + 1 with either on a deck) over a built surface with less than
+  // head room and the slab under them: each brought down onto that surface (points put in at its ends, every metre
+  // sampled). Returns the line's points, classes and heights, new where anything changed (o.p too)
+  const KNEE = 0.4, HEAD = 1.8; // (nav.js: a walker's body, from the feet)
+  function onSurfaces(o, p, cls, zs, nav) {
+    const n = p.length / 3, X = k => p[3 * k] / 10, Y = k => p[3 * k + 1] / 10;
+    const low = (x, y, z) => { const s = nav.surfaceAt(x, y); return s > -Infinity && z > s + KNEE && z - THICK < s + HEAD ? s : null; };
+    let changed = false;
+    const P = [], C = [], Z = [];
+    const put = (x, y, z, c) => { P.push(x * 10, y * 10, Math.round(z * 10)); C.push(c); Z.push(z); };
+    for (let k = 0; k < n; k++) {
+      const lowK = cls[k] === 2 ? low(X(k), Y(k), zs[k]) : null;
+      if (lowK != null) { put(X(k), Y(k), lowK, 1); changed = true; } else { P.push(p[3 * k], p[3 * k + 1], p[3 * k + 2]); C.push(cls[k]); Z.push(zs[k]); }
+      if (k === n - 1 || (cls[k] !== 2 && cls[k + 1] !== 2)) continue;
+      const L = Math.hypot(X(k + 1) - X(k), Y(k + 1) - Y(k)), m = Math.floor(L);
+      let a = -1, b = -1;
+      for (let i = 1; i < m; i++) {
+        const t = i / L, x = X(k) + (X(k + 1) - X(k)) * t, y = Y(k) + (Y(k + 1) - Y(k)) * t;
+        if (low(x, y, zs[k] + (zs[k + 1] - zs[k]) * t) != null) { if (a < 0) a = i; b = i; }
+      }
+      if (a < 0) continue;
+      changed = true;
+      for (const i of a === b ? [a] : [a, b]) {
+        const t = i / L, x = X(k) + (X(k + 1) - X(k)) * t, y = Y(k) + (Y(k + 1) - Y(k)) * t;
+        put(x, y, nav.surfaceAt(x, y), 1);
+      }
+    }
+    if (!changed) return { p, cls, zs, n };
+    o.p = Array.isArray(o.p) ? P.map(Math.round) : Int32Array.from(P, Math.round);
+    return { p: o.p, cls: Uint8Array.from(C), zs: Float32Array.from(Z), n: C.length };
+  }
+
   // paths: game.json "paths" ({foot, road}: lines of [x, y, z] in decimetres, rewritten in place);
   // frame: the model's extent; boats: the ferries' courses ([[x, y], ...]) and clear: how high they
   // stand out of the water, so that a bridge they pass under clears them.
@@ -207,10 +239,13 @@ window.OEDecks = (function () {
       // a line along a bridge's strip that the data puts a few metres past its edge, and so far below it (the
       // Harbour Bridge cycleway, mapped a metre outside the deck and given the ground's height plus a level):
       // on the deck's level beside it, as long as the line is on the strip somewhere else
-      if (cls.some(c => c === 1)) for (let k = 0; k < n; k++) {
+      // (and one the data lifts a level, onto a deck in the air a metre or two outside a bridge's strip: a sidewalk
+      // mapped beside the bridge, Okazaki-michi's over the Shirakawa, which stood 4.5 m over the road beside it, #399)
+      const along = cls.some(c => c === 1);
+      for (let k = 0; k < n; k++) {
         if (cls[k] === 1) continue;
         const h = nav.stripBeside(X(k), Y(k), EDGE);
-        if (h != null && h - zs[k] > 2 * RISE) { cls[k] = 2; zs[k] = h; }
+        if (h != null && ((along && h - zs[k] > 2 * RISE) || (cls[k] === 2 && zs[k] - h > RISE && zs[k] - h < 2 * RISE))) { cls[k] = 2; zs[k] = h; }
       }
       // a road over a dip in the ground drawn under it (a rail cutting under the street, the survey's
       // grid catching the bottom of a hollow): carried level over it on a deck, as a road is, from the
@@ -247,6 +282,10 @@ window.OEDecks = (function () {
             zs[k] = Math.max(nav.terrain(X(k), Y(k)) + THICK + 0.6, (z1[k - 1] + 2 * z1[k] + z1[k + 1]) / 4);
         }
       }
+      // A deck never stands in the body of someone on a surface it crosses (a bridge's strip, a pier): where a piece
+      // of deck passes over one with less than head room and its slab under it, that stretch of the line comes down
+      // onto the surface, from where it first is that low to where it last is (points put in there, #399)
+      ({ p, cls, zs, n } = onSurfaces(o, p, cls, zs, nav));
       // a loose end on a deck (no other line meets it): cut back what is over the water, and
       // bring the first point on land down to the ground
       const loose = (i, step, stop) => {
