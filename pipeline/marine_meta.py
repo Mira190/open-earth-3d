@@ -64,7 +64,7 @@ def meta(city):
     out = {"pois": pois, "spawn": spawn or None, "harbour": harbour, "start": cfg.get("start")}
     if cfg.get("region"):
         out["region"] = cfg["region"]
-    for k in ("biome", "wind", "falls", "birds", "mist", "grade"):   # (and a fiord's waterfalls and gulls: alpine/fiord.js)          # an alpine site's look (alpine/terrain.js) and its usual wind, 0..1 (main.js)
+    for k in ("biome", "wind", "falls", "birds", "mist", "grade", "weather"):   # (and a fiord's waterfalls and gulls: alpine/fiord.js)          # an alpine site's look (alpine/terrain.js) and its usual wind, 0..1 (main.js)
         if cfg.get(k) is not None:
             out[k] = cfg[k]
     if cfg.get("life"):
