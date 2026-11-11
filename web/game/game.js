@@ -5640,7 +5640,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const ex = tx - cx, ey = ty - cy, L2 = ex * ex + ey * ey || 1, u = Math.max(0, Math.min(1, ((q.x - cx) * ex + (q.y - cy) * ey) / L2));
         return Math.hypot(cx + ex * u - q.x, cy + ey * u - q.y) < 4.5 && u < 0.85; // (along the way from the camera to the car, not over the car itself)
       })();
-      if (postsNear((cx + tx) / 2, (cy + ty) / 2, hd / 2 + 5).some(leafy) && (pilot.filmSkips = (pilot.filmSkips || 0) + 1) < 6) { pilot.film.skip(); shot = pilot.film.step(0); pilot.filmLook = 0; }
+      // (and a wall across the view: the camera pressed to a facade with the car behind it. Five points along the way
+      // to the car, at the camera's height falling to the car's)
+      const walled = () => { for (let k = 1; k <= 5; k++) { const u = k / 6, x = cx + (tx - cx) * u, y = cy + (ty - cy) * u, z = cz + (tz - cz) * u - 1; const w = nav.push(x, y, z, 0.4, 1.2); if (Math.hypot(w.x - x, w.y - y) > 0.05) return true; } return false; };
+      if ((postsNear((cx + tx) / 2, (cy + ty) / 2, hd / 2 + 5).some(leafy) || walled()) && (pilot.filmSkips = (pilot.filmSkips || 0) + 1) < 6) { pilot.film.skip(); shot = pilot.film.step(0); pilot.filmLook = 0; }
       else pilot.filmSkips = 0;
     }
     if (shot) {
