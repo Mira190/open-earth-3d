@@ -5630,7 +5630,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else { tx = player.x; ty = player.y; tz = player.z + 1.55; follow = player.h; }
     // the autopilot's film (autopilot.js film): shots round the car on this same rig, a cut between them; a drag
     // of the view gives it back to you for eight seconds
-    const shot = pilot && veh === myCar && !pilot.join && clockT - cam.lastInput > 8 ? pilot.film.step(dt) : null;
+    let shot = pilot && veh === myCar && !pilot.join && clockT - cam.lastInput > 8 ? pilot.film.step(dt) : null;
+    // (a shot whose camera, or its view of the car, is in a tree's crown is cut short for the next: the crane in
+    // Sydney's street trees filled the frame with leaves. Read at the cut and every half second through the shot)
+    if (shot && (shot.cut || (pilot.filmLook = (pilot.filmLook || 0) - dt) <= 0)) {
+      pilot.filmLook = 0.5;
+      const yw = vs.h + shot.yaw, hd = shot.dist * Math.cos(shot.pitch), cx = tx - Math.sin(yw) * hd, cy = ty - Math.cos(yw) * hd, cz = tz + shot.dist * Math.sin(shot.pitch);
+      const leafy = q => q.kind === 'tree' && cz > q.z + 1.5 && (() => { // (in the crown, 4.5 m round the trunk, from 1.5 m up)
+        const ex = tx - cx, ey = ty - cy, L2 = ex * ex + ey * ey || 1, u = Math.max(0, Math.min(1, ((q.x - cx) * ex + (q.y - cy) * ey) / L2));
+        return Math.hypot(cx + ex * u - q.x, cy + ey * u - q.y) < 4.5 && u < 0.85; // (along the way from the camera to the car, not over the car itself)
+      })();
+      if (postsNear((cx + tx) / 2, (cy + ty) / 2, hd / 2 + 5).some(leafy) && (pilot.filmSkips = (pilot.filmSkips || 0) + 1) < 6) { pilot.film.skip(); shot = pilot.film.step(0); pilot.filmLook = 0; }
+      else pilot.filmSkips = 0;
+    }
     if (shot) {
       follow = vs.h + shot.yaw;
       if (shot.cut) { cam.yaw = follow; cam.dist = shot.dist; cam.pitch = shot.pitch; cam.snap = true; cam.distTo = 0; }
