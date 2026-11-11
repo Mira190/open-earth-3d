@@ -564,6 +564,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const glowMat = new THREE.PointsMaterial({ size: 9, map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, sizeAttenuation: true });
   const glows = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(glowPos, 3)), glowMat);
   for (const m of [benchMesh, poleMesh, headMesh]) { OEBuildings.cellInstances(m); if (Wd.still) Wd.still(m); }
+  for (const m of [benchMesh, poleMesh, headMesh]) m.userData.noRefl = true; // (out of the sea's reflection: water.js)
   world.add(benchMesh, poleMesh, headMesh);
   if (!Wd.night) world.add(glows); // night.js lights these lamps with the rest of the street lights
 

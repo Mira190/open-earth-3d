@@ -820,6 +820,7 @@ transformed = crowdPose(transformed, false);`);
         geo.attributes.iPat.setX(k, PAT[p.look.pattern] || 0);
         for (const [a, key] of [['iSkin', 'skin'], ['iHair', 'hair'], ['iTop', 'top'], ['iLegs', 'legs']]) { const c = lin(p.look[key]); geo.attributes[a].setXYZ(k, c.r, c.g, c.b); }
       });
+      mesh.userData.noRefl = true; // (out of the sea's reflection: water.js)
       world.add(mesh);
       meshes.push(mesh);
     }
@@ -843,7 +844,7 @@ transformed = crowdPose(transformed, false);`);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero);
       if (!clear) for (let i = 0; i < P.length; i++) m.setColorAt(i, lin(P[i].look.umbrella === 'clear' ? '#1d1f26' : P[i].look.umbrella));
-      m.castShadow = clear !== true; m.frustumCulled = false; m.visible = false;
+      m.castShadow = clear !== true; m.frustumCulled = false; m.visible = false; m.userData.noRefl = true;
       world.add(m);
       return m;
     })());

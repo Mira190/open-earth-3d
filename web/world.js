@@ -1855,6 +1855,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         im.name = `${pr.name}_${part.name}`;
         farAt(im, c, r + 10, pr.far || 600);
         OEBuildings.cellInstances(im);
+        im.userData.noRefl = true; // (street furniture: out of the sea's reflection, water.js)
         world.add(still(im));
       }
     }

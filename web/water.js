@@ -570,7 +570,7 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
     const inv = new THREE.Matrix4(), snap = 4;
     let last = null, reflAt = 0, reflTick = 0, sea = 1;
     const builtWind = W.wind_ms ?? 5;
-    const reflPos = new THREE.Vector3(1e9, 0, 0), reflQuat = new THREE.Quaternion();
+    const reflPos = new THREE.Vector3(1e9, 0, 0), reflQuat = new THREE.Quaternion(), hidden = [];
     // seen: whether any water can be in the picture (world.js seaInView). When none is, the frame does without
     // the waves' transform (some 45 small passes), the wakes and the reflection's second draw of the city; the
     // sheet stays where it is, with the waves it last had, for the frame that brings it back into view.
@@ -606,8 +606,14 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
         renderer.getDrawingBufferSize(sz);
         const rt = refl.getRenderTarget();
         if (rt.width !== Math.round(sz.x / 2) || rt.height !== Math.round(sz.y / 2)) rt.setSize(Math.round(sz.x / 2), Math.round(sz.y / 2));
+        // (what is small, many and near the ground stays out of the reflection's second draw of the city: the walkers,
+        // the traffic and the street furniture, each flagged userData.noRefl where it is added to the world. Under the
+        // waves' blur the water shows the skyline, the landmarks and the vessels, not a bench on the quay; issue 375)
         mesh.visible = false;
+        for (const o of world.children) if (o.visible && o.userData.noRefl) { o.visible = false; hidden.push(o); }
         refl.onBeforeRender(renderer, world, camera);
+        for (const o of hidden) o.visible = true;
+        hidden.length = 0;
         mesh.visible = true;
         u.uReflMat.value.copy(refl.material.uniforms.textureMatrix.value).multiply(inv.copy(refl.matrixWorld).invert());
         u.uReflOn.value = 1;
