@@ -12,10 +12,32 @@ module.exports = async function takeSeats(p, { outDir = null, prefix = '' } = {}
   const ids = await p.evaluate(() => { const seen = new Set(); return (window.__game.G.seats || []).filter(s => !seen.has(s.name) && seen.add(s.name)).map(s => s.id); });
   const still = async name => { if (!outDir) return; const png = await p.evaluate(async () => { for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(r)); return document.getElementById('game-gl').toDataURL('image/png'); }); fs.writeFileSync(path.join(outDir, `${prefix}seat-${name}.png`), Buffer.from(png.split(',')[1], 'base64')); };
   await p.evaluate(() => window.__game.npcsReady && window.__game.npcsReady()); // (the singer in her place, for the still)
+  // settle whatever an earlier step left up (#388): under load the HUD tour or the arrival can still be showing,
+  // and while one is, no action is offered. Skip the tour and any coach, finish the arrival and a camera shot,
+  // run a conversation to its end and close the panels, so that a seat is judged on its own.
+  const settled = await p.evaluate(async () => {
+    const g = window.__game, O = window.OEOnboard, left = [];
+    for (let i = 0; i < 40; i++) {
+      const busy = [];
+      if (O && O.active()) { busy.push('tour'); const t = O.current(); if (t) t.skip(); }
+      if (O && O.coaching && O.coaching()) { busy.push('coach'); try { O.coaching().skip(); } catch (e) { /* gone */ } }
+      if (g.arriving && g.arriving()) { busy.push('arrival'); g.settleArrival(); }
+      if (g.overture && g.overture() && g.overture().active) { busy.push('overture'); g.overture().skip(); }
+      if (g.cine && g.cine.active) { busy.push('shot'); g.cine.skip(); }
+      if (g.dlg && g.dlg.open) { busy.push('talk'); if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(); }
+      for (const sel of ['#g-menu', '#g-bigmap', '#g-pass']) { const el = document.querySelector(sel); if (el && !el.hidden) { busy.push(sel); el.hidden = true; } }
+      if (!busy.length) break;
+      left.splice(0, left.length, ...busy);
+      g.advance(0.1); await new Promise(r => requestAnimationFrame(r));
+    }
+    return left;
+  });
+  if (settled.length && process.env.DEBUG_SEATS) console.log(`seat step: settled ${settled.join(', ')}`);
   const res = [];
   for (const id of ids) {
     const r = await p.evaluate(id => {
       const g = window.__game, pl = g.player, S = g.shows, st = S.seats.find(q => q.id === id);
+      S.gameClock = true; // (with sound running, the show would keep the audio's clock, which runs on while a slow frame is drawn)
       const from = g.nav.stand(st.at[0] - st.face[0] * 0.7, st.at[1] - st.face[1] * 0.7, st.at[2] + 0.5, { rMax: 3 }) || { x: st.at[0], y: st.at[1], z: st.at[2] };
       Object.assign(pl, { mode: 'foot', vehicle: null, x: from.x, y: from.y, z: from.z, ground: true, vz: 0, speed: 0 });
       g.advance(0.3);

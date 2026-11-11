@@ -2373,27 +2373,41 @@ stalls of both halls, chairs along the northern foyers' glass, a table at Bennel
   its `verb` ("Take your seat", "Sit at the table"). Seated you look out through your own eyes from `eye`
   metres over the seat, the way it faces; drag to turn your head; <kbd>E</kbd> stands you up where you were.
   Your own figure is not drawn from the seat (photo mode draws it again).
-- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, bars, lines}`)
+- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, chorus, bars, lines}`)
   begins when you take a seat that names it. The house lights (`dim`, mesh names) go down as the oboe gives
   the A, the house claps the conductor in, and the scene is sung by the NPC `singer` on the stage, with its
-  lines as surtitles: the line as sung and, under it, in English. It ends in applause and plays again while
-  you keep your seat. The city's score rests while it plays (`web/game/life.js`).
+  lines as surtitles: the line as sung and, under it, in English. Where the score has a `chorus` (a line of
+  `[midi, beat, beats, syllable]` like `melody`), it is sung by three sopranos and three tenors an octave under
+  them, each a few cents and a fraction of a hertz of vibrato off the others. It ends in applause and plays
+  again while you keep your seat. The city's score rests while it plays (`web/game/life.js`).
 - **Nothing is recorded.** The voice is synthesised in the browser as a source and filter: a sawtooth
   through five formant band-passes (the alto table in the Csound manual's appendix "Formant Values": numbers,
-  used as data), with vibrato that comes in a fifth of a second after a note's start, a glide between slurred
-  notes, a breath of noise and a lift near 3 kHz, the singer's formant. Under it the cellos' ostinato and
-  pizzicato strings are plucked triangle and sawtooth tones, the tambourine and the applause are filtered
-  noise, and the hall is a convolution with 1.5 s of decaying noise. Sydney's show is the Habanera from
-  *Carmen* (Bizet, 1875; libretto by Meilhac and Halévy; the tune after Iradier's *El arreglito*, 1863): music
-  and words are in the public domain. The notes (`cities/sydney/opera_score.json`) were transcribed from a lead
-  sheet and checked against the themes in Barlow and Morgenstern's dictionary; the syllables under them outside
-  the first phrase and the refrain were set by count, not from the vocal score, and the major-key repeat, the
-  chorus's in the opera, is given to the soloist. The English lines are this project's own. What was looked at
-  and not adopted: Pink Trombone (Neil Thapen, MIT), an articulatory model, heavier than a formant voice needs.
+  used as data), with vibrato that comes in a sixth of a second after a note's start (about ±60 cents at
+  5.5 Hz on a held note, drifting a little in rate), a slow wander of a few cents, a glide between slurred
+  notes, a breath of noise and a lift near 3 kHz, the singer's formant. High in her range the first formant
+  follows the note up instead of sitting under it, as a soprano opens her jaw (Sundberg, *The Science of the
+  Singing Voice*, 1987). Under it the cellos' ostinato and pizzicato strings are plucked triangle and
+  sawtooth tones, the tambourine and the applause are filtered noise, and the hall is a convolution with 1.5 s
+  of decaying noise. Sydney's show is the Habanera from *Carmen* (Bizet, 1875; libretto by Meilhac and
+  Halévy; the tune after Iradier's *El arreglito*, 1863): music and words are in the public domain. The notes
+  and their syllables (`cities/sydney/opera_score.json`) are checked bar by bar against Choudens's vocal
+  score (Paris, plate A.C. 3082; the 1883 reprint of the 1875 edition, No. 5, pp. 49-51, Internet Archive
+  `carmenopracomi00bize`): the verse's triplets fall on the second to fourth quavers of their bars, and in the
+  major-key refrain the chorus of cigarières and young men sings the tune while Carmen answers it with "L'amour!"
+  before her couplet, "L'amour est enfant de Bohême", and the chorus's "Prends garde à toi!". The English lines
+  are this project's own. What was looked at and not adopted: Pink Trombone (Neil Thapen, MIT), an
+  articulatory model, heavier than a formant voice needs.
+- **Listening to it.** No harness has sound, so `node tools/show_bounce.js [dir]` renders the show offline
+  (`OEShow.bounce`, as `OEMusic.bounce` renders the score) to WAV files: the mix, and her voice, the chorus,
+  the orchestra and the house alone. `python tools/show_listen.py [dir]` measures them as an ear would judge:
+  each note's pitch against the score (YIN), the vibrato's rate and extent on the held notes, each vowel's
+  first two formants (LPC), her level over the pit (+8 dB) and the chorus's (+3.5 dB, under her), the mix's
+  peak (-5 dBFS) and brightness. Each is checked against its range.
 - `tools/seat_step.js` (in `tools/game_check.js`; on its own, `tools/seat_probe.js`) takes one seat of each
   kind: the action must offer it, you must be seated at it looking its way with your eyes 0.8 to 1.5 m over
   it, and stand up on foot; at a show the clock must run, the lights go down, the singer sing and the first
-  line's surtitle read as written.
+  line's surtitle read as written. It first settles whatever an earlier step left showing (the HUD tour, a
+  coach, the arrival, a camera shot, a conversation, a panel), which under load could leave no action offered.
 
 ## Routes
 
