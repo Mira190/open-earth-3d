@@ -835,6 +835,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (rail && rail.crossings) for (const c of rail.crossings) if (c.kind !== 'street') junctions.addRail({ x: c.x, y: c.y, z: c.z, w: 2 * (c.half_m || 3),
     state: () => (!c.closed ? 'open' : c.on >= 0 && c.on < 3 ? 'warning' : 'closed') });
   if (rail && rail.gateAhead) crowd.gate = rail.gateAhead; // (the crowd waits at a closed level crossing)
+  // what a walker meets of a railway rail.js draws (issue 399): its platforms' furniture, and its bed where it stands more
+  // than a step over the ground (an embankment), but not where a road or a path crosses it
+  if (rail && (rail.solids || rail.bed)) {
+    const boxRing = b => { const fx = Math.sin(b.h), fy = Math.cos(b.h), lx = -fy, ly = fx, r = [];
+      for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) r.push(b.x + fx * b.hl * u + lx * b.hw * v, b.y + fy * b.hl * u + ly * b.hw * v);
+      return [r]; };
+    for (const b of rail.solids || []) nav.col.add(boxRing(b), b.zlo, b.zhi, nav.LFINE, -1);
+    const xs = rail.crossings || [];
+    for (const b of rail.bed || []) {
+      let g = Infinity; // (the lowest ground across it: a bed across a slope stands over its downhill side)
+      for (const v of [-1.6, 0, 1.6]) { const x = b.x - Math.cos(b.h) * v, y = b.y + Math.sin(b.h) * v, f = nav.floorAt(x, y, b.top + 0.3); g = Math.min(g, nav.terrain(x, y), f ? f.z : Infinity); }
+      if (b.top - g < 0.2 || xs.some(c => Math.hypot(c.x - b.x, c.y - b.y) < (c.width_m || 6) / 2 + 3)) continue;
+      nav.col.add(boxRing(b), g - 1, b.top + 0.6, nav.LFINE, -1); // (to over a walker's knee beside it: a low bed is no step to take onto the line)
+    }
+  }
   // a railway's trains: the modelled stock in place of the stand-ins, when it has loaded
   if (rail && rail.useModels) new THREE.GLTFLoader().load('assets/vehicles/trains.glb', g => { try { rail.useModels(g.scene); } catch (e) { console.warn('Train models unavailable, using simple ones:', e); } }, undefined, e => console.warn('Train models unavailable, using simple ones:', e));
   // a main line's trains past its station, where the city has them (trains.js): heard from the camera

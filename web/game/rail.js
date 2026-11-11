@@ -351,6 +351,11 @@ window.OERail = (function () {
     {
       // (the rails a little towards the eye in depth: in a street and over a crossing they lie in the road's surface)
       const rails = new THREE.MeshStandardMaterial({ color: lin('#6f6258'), roughness: 0.5, metalness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -60 });
+      rails.name = 'rail_steel'; // (the landmarks' rails' name: the look finds them by it)
+      // what a walker meets of the railway (game.js lays them into the collision world): the bed every 2 m of open track,
+      // its top over the rail's foot, and the platforms' furniture, each a box { x, y, h, hl, hw, zlo, zhi } (h: radians
+      // from north; half-lengths along and across it)
+      out.bed = []; out.solids = [];
       const bedMat = new THREE.MeshStandardMaterial({ color: lin('#7d776c'), roughness: 0.95 }), tie = new THREE.MeshStandardMaterial({ color: lin('#4a4038'), roughness: 0.9 });
       const wireMat = new THREE.MeshStandardMaterial({ color: lin('#3a3a38'), roughness: 0.6, metalness: 0.5 }), poleMat = new THREE.MeshStandardMaterial({ color: lin('#8b8d88'), roughness: 0.7, metalness: 0.3 });
       const gauge = T.gauge_m || 1.067;
@@ -374,6 +379,7 @@ window.OERail = (function () {
         for (const [u, v] of open) {
           ribbon(ln, u, v, 2.5, TRAIN.railTop - 0.13, 0.5);
           for (let s = u; s <= v; s += 0.66) { const p = ln.at(s); ties.push(p); }
+          for (let s = u + 1; s < v; s += 2) { const p = ln.at(s); out.bed.push({ x: p.x, y: p.y, h: p.h, top: p.z + TRAIN.railTop - 0.13, hl: 1.05, hw: 1.95 }); } // (the bed to the game's walkers, game.js)
         }
         const rm = trackMesh(ln, gauge, TRAIN.railTop, rails); rm.renderOrder = 1; world.add(rm);
       }
@@ -407,13 +413,18 @@ window.OERail = (function () {
         const at = (u, v, z) => new THREE.Matrix4().makeTranslation(sp.origin[0] + ax * u - ay * v, z, -(sp.origin[1] + ay * u + ax * v)).multiply(rot);
         kit.add(plat, K.box(wdt, sp.height_m + 0.5, len), at(len / 2, 0, sp.z - sp.height_m / 2 - 0.25));
         for (const u of [-sp.ramp_m / 2, len + sp.ramp_m / 2]) if (!sp.ramps || sp.ramps[u < 0 ? 0 : 1]) kit.add(plat, K.box(wdt, 0.12, Math.hypot(sp.ramp_m, sp.height_m)).rotateX((u < 0 ? -1 : 1) * Math.atan2(sp.height_m, sp.ramp_m)), at(u, 0, sp.z - sp.height_m / 2 - 0.06));
-        for (const ts of sp.track_side ? [sp.track_side] : [1, -1]) kit.add(edge, K.box(0.3, 0.012, len), at(len / 2, ts * (sp.half_width - 0.75), sp.z + 0.008));
+        for (const ts of sp.track_side ? [sp.track_side] : [1, -1]) {
+          kit.add(edge, K.box(0.3, 0.012, len), at(len / 2, ts * (sp.half_width - 0.75), sp.z + 0.008));
+          // (its edge over the track holds a walker on the platform, and one on the track off it)
+          out.solids.push({ x: sp.origin[0] + ax * len / 2 - ay * ts * (sp.half_width + 0.05), y: sp.origin[1] + ay * len / 2 + ax * ts * (sp.half_width + 0.05), h: Math.atan2(ax, ay), hl: len / 2, hw: 0.05, zlo: sp.z - sp.height_m - 0.3, zhi: sp.z + 1.0 });
+        }
         if (sp.shelter !== false && len > 12) { // posts, a pent roof falling away from the track, a bench and a back rail
           const sl = Math.min(len - 6, 22), tsd = sp.track_side || 1, back = sp.track_side ? -tsd * (sp.half_width - 0.25) : 0;
-          for (let u = -sl / 2; u <= sl / 2 + 0.01; u += sl / 4) { kit.add(timber, K.box(0.14, 2.7, 0.14), at(len / 2 + u, back, sp.z + 1.35)); }
+          const solid = (u, v, hl, hw, z0, z1) => out.solids.push({ x: sp.origin[0] + ax * u - ay * v, y: sp.origin[1] + ay * u + ax * v, h, hl, hw, zlo: z0, zhi: z1 });
+          for (let u = -sl / 2; u <= sl / 2 + 0.01; u += sl / 4) { kit.add(timber, K.box(0.14, 2.7, 0.14), at(len / 2 + u, back, sp.z + 1.35)); solid(len / 2 + u, back, 0.1, 0.1, sp.z, sp.z + 2.7); }
           kit.add(tin, K.box(wdt + 0.5, 0.08, sl + 1).rotateZ(sp.track_side * 0.08), at(len / 2, 0, sp.z + 2.78));
-          kit.add(timber, K.box(0.45, 0.06, sl * 0.5), at(len / 2, back + tsd * 0.3, sp.z + 0.45));
-          kit.add(timber, K.box(0.06, 1.0, sl), at(len / 2, back, sp.z + 0.6));
+          kit.add(timber, K.box(0.45, 0.06, sl * 0.5), at(len / 2, back + tsd * 0.3, sp.z + 0.45)); solid(len / 2, back + tsd * 0.3, sl * 0.25, 0.25, sp.z, sp.z + 0.5);
+          kit.add(timber, K.box(0.06, 1.0, sl), at(len / 2, back, sp.z + 0.6)); solid(len / 2, back, sl / 2, 0.06, sp.z, sp.z + 1.1);
         }
       }
       kit.build(world);

@@ -505,12 +505,14 @@ window.OENav = (function () {
     let roofBoxes = null; // (the strips on a roof, each box EDGE + 2 m wider: none in most cities, two in Shibuya)
     const roofy = (x, y) => (roofBoxes || (roofBoxes = strips.filter(onRoof).map(s => [s.box[0] - EDGE - 2, s.box[1] - EDGE - 2, s.box[2] + EDGE + 2, s.box[3] + EDGE + 2])))
       .some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]);
-    const ref = (x, y) => {
+    // (the floor under what is read, up to zc: a bench on Circular Quay's platform stands under the roof walked on
+    // from the lookout, and read against the roof over it, it was paving under the floor and no one's wall, issue 399)
+    const ref = (x, y, zc = Infinity) => {
       let h = terrain(x, y);
-      if (roofy(x, y)) h = Math.max(h, roofAt(x, y));
-      for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
+      if (roofy(x, y)) { const q = roofAt(x, y); if (q <= zc) h = Math.max(h, q); }
+      for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h && q <= zc) h = q; }
       const k = cellOf(x, y);
-      if (k >= 0 && pier.data[k] > h) h = pier.data[k];
+      if (k >= 0 && pier.data[k] > h && pier.data[k] <= zc) h = pier.data[k];
       return h;
     };
     // the floor a walker beside a point may stand on: the floor under it, or a strip's within a 2 m cell of it, up
@@ -617,7 +619,7 @@ window.OENav = (function () {
         for (let t = 0; t < idx.length; t += 3) for (const P of nearStrip([idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]))) {
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
           const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
-          const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
+          const zf = zlo + 0.3, rs = [ref(cx, cy, zf), ref(P[0][0], P[0][1], zf), ref(P[1][0], P[1][1], zf), ref(P[2][0], P[2][1], zf)];
           const rlo = Math.min(...rs);
           // (a flat top of a strip's mesh, drawn on past its outline at its level, is a floor as the strip is: the roof
           // over Circular Quay's viaduct beyond the station's rectangle, walked on from the lookout)
@@ -674,7 +676,7 @@ window.OENav = (function () {
       function toFine(x, y, z, inside = false) {
         const c = Math.floor((x - x0) / FINE) - cA, r = Math.floor((y1 - y) / FINE) - rA;
         if (c < 0 || r < 0 || c >= W || r >= W || c + cA < 0 || r + rA < 0 || c + cA >= FNX) return;
-        if (tStrips.length) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && z <= h + 0.15) return; }
+        if (tStrips.length) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && z <= h + 0.15 && z >= h - (s.thickness || 3) - 0.15) return; } // (not what stands on a floor further down, under a roof walked on)
         if (doorways.length && doorZone(x, y, z)) return; // (a doorway's own boxes stand there)
         const q = r * W + c, n = cnt[q], b = q * IV;
         if (inside) anyInside = true;
@@ -701,7 +703,7 @@ window.OENav = (function () {
       // it: Circular Quay's roof drawn on past the end of the strip walked on it, which was laid by its edges alone)
       for (let i = 0; i < unders.length; i += 4) {
         if (unders[i + 3] !== 0) continue;
-        const x = unders[i], y = unders[i + 1], z = unders[i + 2], g = ref(x, y), gb = refBeside(x, y, g, z);
+        const x = unders[i], y = unders[i + 1], z = unders[i + 2], g = ref(x, y, z + 0.3), gb = refBeside(x, y, g, z);
         if (gb > g + 0.01 && z <= gb + STEP + 0.1) { toInside(x, y, z); unders[i + 3] = 2; }
       }
       // (a floor is a wall too only where it is more than a step over the ground under it: one steps onto it; and
@@ -709,7 +711,7 @@ window.OENav = (function () {
       // roof, a podium under a hall's floor: no one stands there, and the floor over it is walked. A top that is no
       // floor is a wall where a walker on the ground or a top under it has no room)
       for (let i = 0; i < unders.length; i += 4) {
-        const x = unders[i], y = unders[i + 1], z = unders[i + 2], kind = unders[i + 3], floor = kind === 1 || kind === 2, g = ref(x, y);
+        const x = unders[i], y = unders[i + 1], z = unders[i + 2], kind = unders[i + 3], floor = kind === 1 || kind === 2, g = ref(x, y, z + 0.3);
         if (floor ? kind === 1 && z > g + STEP + 0.1 && z < g + HEAD + 0.1 : z < g + HEAD + 0.1) { toFine(x, y, z); continue; }
         const c = Math.floor((x - x0) / FINE) - cA, r = Math.floor((y1 - y) / FINE) - rA;
         if (c < 0 || r < 0 || c >= W || r >= W) continue;
