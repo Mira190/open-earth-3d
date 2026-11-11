@@ -2952,6 +2952,16 @@ the times given, or with `VIEW=kerb` a walker's view of a crossing.
 `tools/clip_check.js <city>` counts what passes through what (furniture in the
 road, cars in posts, walls and each other, walkers in walls, ferries in each
 other, heads through roofs); `tools/check.sh` runs it with the game check.
+`tools/stand_clip.js <city> [radius]` walks out from each travel place, the
+start and every landmark's deck (in steps of a quarter metre, as a walker goes,
+60 m round) and at every spot reached looks down from head height through what
+the page draws: a surface over the walker's feet is a body sunk into it (the
+roof a step west of Circular Quay's jacaranda lookout, a hall's floor over its
+podium, setts over a lane the 5 m ground runs under). What it found and nav.js
+now holds: a strip's mesh is walked only within the strip's outline (the rest
+is a landmark's solid); a flat top with no headroom under it is solid through;
+paving (a `decal` material, or `pave`) is stood on; walkers keep out of a
+strip's or a deck's body, a deck's parapets and a flight's handrail.
 `tools/ride_probe.js <city> [seconds] [DEST]` rides one taxi frame by frame
 (hailed at the start, to the first destination whose name holds DEST) and fails
 if it or any car of the traffic goes into a column, a signal pole, a walk-signal

@@ -78,7 +78,8 @@ window.OENav = (function () {
       return interp(s.us, s.zs, u);
     }
     // the part of a mesh that lies outside the outlines of the strips that claim it (each strip's u range by its
-    // half width, in its own frame): a mesh of those triangles, or null when it has none of any size
+    // half width, in its own frame, and M more: a flight's stones a hand past its strip's side are the strip's still,
+    // a lip stepped over, not a wall across a path that crosses the flight's corner): a mesh of those triangles, or null
     function beyondStrips(m, claim) {
       const p = m.position, idx = m.index, pos = [];
       const cut = (P, ax, v, sign) => { // the part of polygon P (local [u, v, z]) where sign * (P[ax] - v) <= 0
@@ -93,7 +94,7 @@ window.OENav = (function () {
       for (let t = 0; t < idx.length; t += 3) {
         let parts = [[idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]])];
         for (const s of claim) {
-          const [ox, oy] = s.origin, [ax, ay] = s.axis, u0 = s.us[0], u1 = s.us[s.us.length - 1], hw = s.half_width, next = [];
+          const [ox, oy] = s.origin, [ax, ay] = s.axis, M = 0.6, u0 = s.us[0] - M, u1 = s.us[s.us.length - 1] + M, hw = s.half_width + M, next = [];
           for (const W of parts) {
             let rest = W.map(q => [...stripUV(s, q[0], q[1]), q[2]]);
             const outs = [cut(rest, 0, u0, 1)]; rest = cut(rest, 0, u0, -1);
@@ -111,7 +112,7 @@ window.OENav = (function () {
         }
       }
       if (!pos.length) return null;
-      return Object.assign({}, m, { position: new Float32Array(pos), index: Uint32Array.from({ length: pos.length / 3 }, (_, i) => i), beyond: true });
+      return Object.assign({}, m, { position: new Float32Array(pos), index: Uint32Array.from({ length: pos.length / 3 }, (_, i) => i), claim });
     }
     // ---------------------------------------------------------- landmark solids as height intervals per 2 m cell
     const solid0 = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
@@ -617,7 +618,11 @@ window.OENav = (function () {
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
           const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
           const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
-          const rlo = Math.min(...rs), zc = refBeside(cx, cy, Math.max(...rs), zlo) + BAND;
+          const rlo = Math.min(...rs);
+          // (a flat top of a strip's mesh, drawn on past its outline at its level, is a floor as the strip is: the roof
+          // over Circular Quay's viaduct beyond the station's rectangle, walked on from the lookout)
+          const cont = m.claim && zhi - zlo < 0.05 && !noFloor && m.claim.some(s => zlo > Math.min(...s.zs) - 0.25 && zlo < Math.max(...s.zs) + 0.25);
+          const zc = cont ? Infinity : refBeside(cx, cy, Math.max(...rs), zlo) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor
           let below = [P];
@@ -625,7 +630,7 @@ window.OENav = (function () {
           // a flat top is laid in whole only within a step of the floor, where a walker may stand on it; higher
           // (a counter, a beam, a ceiling) its edges stand for it, its sides being triangles of their own
           // (a material that says "floor": false is never stood on, however wide its top: an offering box)
-          const fill = zhi <= Math.max(...rs) + STEP + 0.1 && !noFloor;
+          const fill = cont || (zhi <= Math.max(...rs) + STEP + 0.1 && !noFloor);
           // ... but where such a top is lower than a walker's head over the floor under it (a hall's floor raised a metre
           // over its stone podium, Yasaka's), with no room under it for one, it is solid through: by its edges alone a
           // walker that came in under it (or was set down there) stood with the floor drawn through the waist (each
@@ -635,7 +640,7 @@ window.OENav = (function () {
           const under = !fill, check = fill && zhi > rlo + STEP + 0.1;
           for (const T of below) { // into the tiles it touches
             if (!fill) T.edges = true;
-            if (under) T.under = true;
+            if (under) T.under = noFloor ? 3 : 1;
             if (check) T.check = true;
             const AP = APRON * FINE; // (with the apron a tile reads round itself)
             const c0 = Math.max(0, Math.floor((Math.min(T[0][0], T[1][0], T[2][0]) - AP - x0) / TILE)), c1 = Math.min(TNX - 1, Math.floor((Math.max(T[0][0], T[1][0], T[2][0]) + AP - x0) / TILE));
@@ -680,27 +685,39 @@ window.OENav = (function () {
       // the inside of a flat top too high to step onto: a wall where a walker on the floor under it (the ground, a
       // strip, or a landmark's own top laid in this tile) has no room, once the tile's other triangles are in
       const unders = [];
-      const toUnder = (x, y, z) => { unders.push(x, y, z, 0); };
+      let underKind = 1;
+      const toUnder = (x, y, z) => { unders.push(x, y, z, underKind === 3 ? 3 : 0); };
       const toCheck = (x, y, z) => { toInside(x, y, z); unders.push(x, y, z, 1); };
       let n = 0;
       for (const T of tris) {
         let Q = T; // the part of it over this tile
         if (Math.min(T[0][0], T[1][0], T[2][0]) < xa || Math.max(T[0][0], T[1][0], T[2][0]) > xb || Math.min(T[0][1], T[1][1], T[2][1]) < ya || Math.max(T[0][1], T[1][1], T[2][1]) > yb)
           Q = clip(clip(clip(clip(T, 0, xa - 0.01, -1), 0, xb + 0.01, 1), 1, ya - 0.01, -1), 1, yb + 0.01, 1);
-        for (const [A, B, C] of fan(Q)) sample(A, B, C, SAMPLE, toFine, !T.edges || T.under, T.under ? toUnder : T.check ? toCheck : toInside);
+        underKind = T.under || 0;
+        for (const [A, B, C] of fan(Q)) sample(A, B, C, SAMPLE, toFine, !T.edges || !!T.under, T.under ? toUnder : T.check ? toCheck : toInside);
         if (++n % 64 === 0) yield;
       }
-      // (a floor laid as one is a wall too only where it is more than a step over what is under it: one steps onto it)
+      // (a top too high to step onto from the ground under it is a floor all the same within a step of a strip beside
+      // it: Circular Quay's roof drawn on past the end of the strip walked on it, which was laid by its edges alone)
       for (let i = 0; i < unders.length; i += 4) {
-        const x = unders[i], y = unders[i + 1], z = unders[i + 2], over = unders[i + 3] ? STEP + 0.1 : 0, g = ref(x, y);
-        let low = z > g + over && z < g + HEAD + 0.1;
-        if (!low) {
-          const c = Math.floor((x - x0) / FINE) - cA, r = Math.floor((y1 - y) / FINE) - rA;
-          if (c < 0 || r < 0 || c >= W || r >= W) continue;
-          const q = r * W + c, b = q * IV;
-          for (let j = 0; j < cnt[q] && !low; j++) low = hi[b + j] < z - Math.max(GAP, over) && hi[b + j] > z - HEAD - 0.1;
+        if (unders[i + 3] !== 0) continue;
+        const x = unders[i], y = unders[i + 1], z = unders[i + 2], g = ref(x, y), gb = refBeside(x, y, g, z);
+        if (gb > g + 0.01 && z <= gb + STEP + 0.1) { toInside(x, y, z); unders[i + 3] = 2; }
+      }
+      // (a floor is a wall too only where it is more than a step over the ground under it: one steps onto it; and
+      // over a lower top with no room between them, it is the lower that is walled, the soffit under Circular Quay's
+      // roof, a podium under a hall's floor: no one stands there, and the floor over it is walked. A top that is no
+      // floor is a wall where a walker on the ground or a top under it has no room)
+      for (let i = 0; i < unders.length; i += 4) {
+        const x = unders[i], y = unders[i + 1], z = unders[i + 2], kind = unders[i + 3], floor = kind === 1 || kind === 2, g = ref(x, y);
+        if (floor ? kind === 1 && z > g + STEP + 0.1 && z < g + HEAD + 0.1 : z < g + HEAD + 0.1) { toFine(x, y, z); continue; }
+        const c = Math.floor((x - x0) / FINE) - cA, r = Math.floor((y1 - y) / FINE) - rA;
+        if (c < 0 || r < 0 || c >= W || r >= W) continue;
+        const q = r * W + c, b = q * IV;
+        for (let j = 0; j < cnt[q]; j++) {
+          if (!(hi[b + j] < z - (floor ? STEP + 0.1 : GAP) && hi[b + j] > z - HEAD - 0.1)) continue;
+          if (floor) wall[b + j] = 1; else { toFine(x, y, z); break; }
         }
-        if (low) toFine(x, y, z);
       }
       unders.length = 0;
       // each cell's intervals in order of height, any that came to touch joined
@@ -1032,7 +1049,7 @@ window.OENav = (function () {
       else if (!offGround(x, y)) {
         const t = terrain(x, y), pv = paving.size ? paving.get(paveKey(x, y)) : undefined;
         take(t, 'ground');
-        if (pv !== undefined && pv > t && pv < t + 1.5) take(pv, 'ground'); // (paving on the ground, not on a roof)
+        if (pv !== undefined && pv > t && pv < t + 1.5 && !cars) take(pv, 'ground'); // (paving on the ground, not on a roof; a walker's)
         const u = under(x, y); if (u !== null) take(u, 'ground');
       }
       const k = cellOf(x, y);
@@ -1064,13 +1081,13 @@ window.OENav = (function () {
       // SKY's tiers, two metres up in two, were walked into from the deck at their side, the tiers to the shoulder)
       // ... and so for a deck's (decks.js: a bridge's approach coming down to the ground, its underside a metre up
       // where walkers went in under it to the chest)
-      // (a strip's walker passes under no strip but its own: a flight comes up through the deck it climbs to; a deck
-      // over a strip, Fushimi's footbridge under the railway's, walls it all the same)
+      // (not on a strip: a flight comes up through the deck it climbs to, and where the data lays a deck down across a
+      // bridge's strip with no room under it, Okazaki-michi's ramp over the Shirakawa, the bridge stays walked)
       const onStrip = !(!f.kind || f.kind === 'ground' || f.kind === 'roof' || f.kind === 'landmark' || f.kind === 'pier' || f.kind === 'deck' || f.kind === 'promenade');
       if (!onStrip) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h > f.z + KNEE && h - (s.thickness || 3) < f.z + HEAD) return { ok: false, why: 'wall' }; }
       let low = false, inside = f.kind !== 'deck', edge = false;
       decksAt(x, y, (h, d) => {
-        if (h > f.z + KNEE && h - (d.th || 1) < f.z + HEAD) low = true;
+        if (!onStrip && h > f.z + KNEE && h - (d.th || 1) < f.z + HEAD) low = true;
         // on a deck: not in its parapet (decks.js: a wall PARAPET_W wide inside each edge), unless another deck at that
         // level carries on past it (a dual carriageway's two lines, whose parapets are not drawn where they meet)
         if (f.kind === 'deck' && Math.abs(h - f.z) < 0.6) {
