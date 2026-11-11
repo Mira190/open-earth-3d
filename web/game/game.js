@@ -738,21 +738,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const npcs = [];
   // the old characters run large; the Rocketbox ones (R_) are life size
   const npcLook = n => Object.assign({ scale: /^W_/.test(n.look.character) ? 0.91 : /^M_/.test(n.look.character) ? 0.96 : 1 }, n.look);
+  // where someone stands at (at): on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or
+  // at the height given; off a bank sloping into the water, out of the road (and the room a car pulls in to at the
+  // kerb), clear of the lamp posts, trunks and benches, and not on someone else's toes (self: the one moving)
+  function npcSpot(n, at, self = null) {
+    const others = q => q !== self && Math.hypot(q.x - at[0], q.y - at[1]) < 40;
+    const near = npcs.filter(others);
+    let f = nav.floorAt(at[0], at[1], at[2] != null ? at[2] + 1 : Math.max(200, nav.terrain(at[0], at[1]) + 1));
+    if (f && f.kind === 'deck' && at[2] == null) f = nav.floorAt(at[0], at[1], nav.terrain(at[0], at[1]) + 1);
+    const z0 = f ? f.z : Math.max(0, nav.terrain(at[0], at[1]));
+    const clear = (x, y) => !near.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) && !inRoad(x, y, z0, 0.3) && !posts.pushOut(x, y, 0.45, z0).hit
+      && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
+    return nav.stand(at[0], at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(at[0], at[1], z0 + (f ? 0.5 : 1),
+      { rMax: 15, ok: (x, y) => !near.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: at[0], y: at[1], z: f ? f.z : 0 };
+  }
+  // someone who keeps another place at this hour (life.json bonds[].places, bonds.js): stood there, facing face
+  // (a bearing in radians) or as they were. Not one seated or stood at an exact place by the data
+  function npcMove(n, at, face = null) {
+    if (n.sit || n.stand || n.talking) return false;
+    if (n.post) posts.move(n.post, 1e7, 1e7, 0); // (out of their own way)
+    const p = npcSpot(n, at, n);
+    n.x = p.x; n.y = p.y; n.z = p.z;
+    if (face != null) n.h = face;
+    n.rig.root.position.copy(W(n.x, n.y, n.z));
+    n.rig.root.rotation.y = Math.PI - n.h;
+    if (n.post) posts.move(n.post, n.x, n.y, n.z);
+    return true;
+  }
   for (const n of G.npcs) {
     const rig = awaited(n.look) ? pendingRig() : makeRig(npcLook(n));
     world.add(rig.root);
     // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or at the height given;
     // off a bank sloping into the water, out of the road (and the room a car pulls in to at the kerb), clear
     // of the lamp posts, trunks and benches, and not on someone else's toes
-    let f = nav.floorAt(n.at[0], n.at[1], n.at[2] != null ? n.at[2] + 1 : Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1));
-    if (f && f.kind === 'deck' && n.at[2] == null) f = nav.floorAt(n.at[0], n.at[1], nav.terrain(n.at[0], n.at[1]) + 1);
-    const z0 = f ? f.z : Math.max(0, nav.terrain(n.at[0], n.at[1]));
-    const clear = (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) && !inRoad(x, y, z0, 0.3) && !posts.pushOut(x, y, 0.45, z0).hit
-      && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
     // seated (game.json npcs[].sit, at a restaurant's table or in a pew: at its place exactly, the chair's seat over
     // the root, facing sit.face), else stood where there is room
-    const p = (n.sit || n.stand) && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } /* ("stand": on their feet at that place exactly, facing stand.face: behind a bar, on a stage) */ : nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
-      { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
+    const p = (n.sit || n.stand) && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } /* ("stand": on their feet at that place exactly, facing stand.face: behind a bar, on a stage) */ : npcSpot(n, n.at);
     const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: (n.sit || n.stand || {}).face ? Math.atan2((n.sit || n.stand).face[0], (n.sit || n.stand).face[1]) : hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
@@ -761,7 +782,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     rig.root.position.copy(W(o.x, o.y, o.z));
     rig.root.rotation.y = Math.PI - o.h;
     npcs.push(o);
-    posts.add(o.x, o.y, o.z, 0.22, 'npc'); // (where they stand: the crowd walks round them, not through them)
+    o.post = posts.add(o.x, o.y, o.z, 0.22, 'npc'); // (where they stand: the crowd walks round them, not through them)
   }
   const npcById = id => npcs.find(n => n.id === id);
   // an NPC's character, loaded and put in their place (or another realistic one if it can't be loaded)
@@ -2865,7 +2886,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // and its diary, bonds, jobs, the phone). The game lends them the clock, the HUD and the player, tells them what
   // happens (life.emit) and asks them what E does at a place of theirs; none of them draws the world.
   const life = window.OELife ? OELife.create({ quiet: () => !!(window.__game && window.__game.shows && window.__game.shows.playing), cityId, cityName: CITY.place || CITY.name, country: CITY.country, G, S, H, A, dlg, $, on, stage, touch, reduced, signal: ac.signal,
-    clock, setClock: (...a) => setClock(...a), player, npcs, npcById: id => npcById(id), fmtMin, said: t => said(t), fill: t => fill(t), get weather() { return weather; },
+    clock, setClock: (...a) => setClock(...a), player, npcs, npcById: id => npcById(id), npcMove: (...a) => npcMove(...a), pilot: () => pilot, fmtMin, said: t => said(t), fill: t => fill(t), get weather() { return weather; },
     get sun() { return sun; }, now: () => clockT, labels: () => scene.labels || {}, travel: () => G.travel || [],
     waypoint: w => { waypoint = w; }, held: () => simHold, place: (x, y, z) => placeNear(x, y, z, null, 30), ground: (x, y) => nav.terrain(x, y), get cam() { return cam; }, world, map: () => toggleMap(), photo: () => photoMode(true), camera, W: (...a) => W(...a), car: () => myCar, ride: () => ride,
     busy: kind => (kind === 'pass' ? player.mode !== 'foot' && !(player.mode === 'car' && myCar.D.st.speed < 1) : cine.active || (overture && overture.active) || OEOnboard.active() || dlg.open || uiOpen() || photo.on || !!closeup || !!arriving) }) : null;

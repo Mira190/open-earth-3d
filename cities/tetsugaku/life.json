@@ -4,6 +4,7 @@
     {
       "npc": "haruka", "title": "The philosophy student", "where": "The bridge below Ginkaku-ji",
       "hours": { "slots": ["daytime", "evening"] },
+      "places": [{"slots": ["evening"], "at": {"travel": "t-path", "d": [4, 0]}, "where": "Halfway down the path, walking it as the light goes"}],
       "busy": "Seminar. Well, lunch, then seminar. I'm at the bridge in the daytime and the early evening.",
       "ranks": [
         { "title": "The path's name",
@@ -40,6 +41,7 @@
     {
       "npc": "kenji", "title": "The canal keeper", "where": "Near Nyakuoji, by the canal",
       "hours": { "slots": ["morning"] },
+      "places": [{"slots": ["daytime"], "at": {"travel": "t-nanzenji", "d": [6, 4]}, "where": "Nanzen-ji, on his way to the aqueduct"}],
       "busy": "I walk the water first thing. Find me here in the mornings; after that I'm asleep or at the bathhouse.",
       "ranks": [
         { "title": "Water that runs north",
@@ -58,6 +60,7 @@
         { "title": "Lake water, running downhill",
           "talk": ["They got the book? Good. Years I carried that myself.", "Halfway through the digging, Tanabe went to America, saw a power station driven by water in Colorado, and came home and changed the plan. Keage got its own in 1891, the first in Japan to sell power to a city.", "Four years on, Kyoto ran Japan's first electric tram on it. All from lake water running downhill."],
           "fact": "Keage Power Station, fed by the Lake Biwa Canal, began in 1891 as Japan's first hydroelectric station for public supply, and in 1895 powered the country's first electric tram, in Kyoto.",
+          "gives": {"id": "forecast", "name": "The canal's weather", "text": "The diary shows the next day hour by hour, and Kenji writes when rain is coming", "rain": "Rain coming over the hills", "tip": "The canal runs fuller after. Worth a look from the bridges."},
           "ask": { "q": "What do you reckon it does today?", "options": [
             { "text": "Still power, and drinking water", "good": true, "reply": "Both. The station still turns, and nearly all of Kyoto's tap water comes down that tunnel. People think it's a museum piece." },
             { "text": "It's kept for the scenery", "reply": "The cherries get the credit. But that's Kyoto's tap water, nearly all of it, and the station still turns." } ] },
@@ -76,6 +79,7 @@
     {
       "npc": "sumire", "title": "The photographer on the incline", "where": "The Keage Incline",
       "hours": { "slots": ["morning", "evening"], "weather": "dry" },
+      "places": [{"slots": ["daytime"], "at": {"travel": "t-eikando", "d": [5, 5]}, "where": "By Eikan-do's gate"}],
       "busy": "Shh, I'm waiting for a cloud to move. I'm on the rails early and late, in dry weather. The middle of the day is no use to me.",
       "ranks": [
         { "title": "Rails with no trains",
@@ -139,7 +143,7 @@
     { "id": "sando", "name": "Shops on the lane 銀閣寺参道", "where": "The lane up to Ginkaku-ji", "at": { "npc": "haruka", "d": [6, 4] }, "hours": ["09:30", "17:30"],
       "hello": "Hai, welcome! Have a taste before you go up.",
       "menu": [ { "id": "yatsuhashi", "name": "Nama yatsuhashi", "price": 350, "text": "A soft triangle of rice dough scented with cinnamon, folded over red bean. Every school trip to Kyoto takes a box home." },
-                { "id": "tenugui", "name": "A cherry-print tenugui", "price": 900, "keep": true, "text": "A cotton hand towel printed with petals on water. It will outlast the blossom by about twenty years." } ] }
+                { "id": "tenugui", "name": "A cherry-print tenugui", "price": 900, "keep": true, "glyph": "桜", "text": "A cotton hand towel printed with petals on water. It will outlast the blossom by about twenty years." } ] }
   ],
   "events": [
     { "id": "cherries", "title": "The path's cherries", "native": "哲学の道の桜", "stamp": "Petals on the water", "where": "The Philosopher's Path", "dates": [[3, 26], [4, 8]],
@@ -156,16 +160,16 @@
       "at": { "travel": "t-path", "d": [-2, 3] }, "radius": 60, "verb": "Wait by the water for the fireflies",
       "text": "From late May to mid-June, Genji fireflies rise over the canal after dark. They are a registered natural monument of Kyoto City.",
       "lines": ["About eight o'clock the first green light lifts off the bank, slow, and then others answer it, all blinking in time.", "The path has no lamps, which is why they are still here. Nobody uses a flash, and people say sorry to each other in whispers."],
-      "skill": "light", "xp": 5, "source": "https://www.city.kyoto.lg.jp/bunshi/cmsfiles/contents/0000338/338778/14_tennenkinenbutsu070401.pdf" },
+      "skill": "light", "xp": 5, "source": "https://www2.city.kyoto.lg.jp/bunshi/bunkazai/siteisyasinn/tennnennsetumei.html" },
     { "id": "okuribi", "title": "Gozan no Okuribi", "native": "五山送り火", "stamp": "The send-off fires", "where": "Below Daimonji, at the bridge to Ginkaku-ji", "dates": [[8, 16], [8, 16]], "slots": ["evening", "night"],
       "at": { "npc": "haruka", "d": [-3, -3] }, "radius": 40, "verb": "Watch the mountain take fire",
       "text": "On 16 August at 20:00 five bonfires are lit on the hills round Kyoto to see the ancestors' spirits off. The first, the great 大 of Daimonji, burns on the mountain above this end of the path.",
       "lines": ["Eight o'clock. On the slope straight above Ginkaku-ji, seventy-five fires of red pine catch one after another and spell 大, great, eighty metres across its first stroke.", "You are almost under it here, too close to read it well. The city reads it from the bridges on the Kamo river. Here you get the firelight on the smoke, and the smell of pine."],
       "skill": "bearings", "xp": 6, "source": "https://ja.kyoto.travel/event/major/okuribi/" },
-    { "id": "eikando", "title": "Eikan-do's maples by night", "native": "永観堂 秋の夜間特別拝観", "stamp": "Maple Eikan-do", "where": "Eikan-do", "dates": [[11, 11], [12, 7]], "slots": ["evening", "night"],
+    { "id": "eikando", "title": "Eikan-do's maples by night", "native": "永観堂 秋の夜間特別拝観", "stamp": "Maple Eikan-do", "where": "Eikan-do", "dates": [[11, 20], [12, 6]], "slots": ["evening", "night"],
       "at": { "travel": "t-eikando" }, "radius": 50, "verb": "Join the queue at Eikan-do's gate",
-      "text": "From early November to early December in most years, Eikan-do opens again after dark, from 17:30, with its maples lit round the pond.",
+      "text": "From late November to early December in most years, Eikan-do opens again after dark, from 17:30, with its maples lit round the pond.",
       "lines": ["Kyoto has said 'Eikan-do for maples' for a thousand years. About three thousand of them, lit from below, double themselves in the pond.", "Inside is an Amida who looks back over his left shoulder, as if to say: Eikan, you're slow. The queue at the gate is long and nobody minds."],
-      "skill": "light", "xp": 5, "source": "https://www.eikando.or.jp/" }
+      "skill": "light", "xp": 5, "source": "https://www.eikando.or.jp/haikan.html" }
   ]
 }

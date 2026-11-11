@@ -592,6 +592,17 @@ jacket across the scramble), and some ranks give an ability:
 | `job` | A job of theirs, in the diary under Work |
 | `xp` | Points in a skill |
 | `filter` | Night film: photographs after sunset come out tungsten-balanced, and the caption says so |
+| `forecast` | The diary's Today page shows the next day in three-hour steps (sky, temperature, when the rain starts and stops), and they write when rain is due within six hours. One person on every map reads the weather: a fisherman, a hiker, a skipper, a canal keeper |
+
+**Where they are, by the hour.** A person may keep other places at other hours (life.json
+`bonds[].places`, each with its slots, weekdays, hours or weather, a place and the words the
+diary uses for it): the station attendant covers Koshigoe's platform at midday, the student is
+on the beach after school, the monk goes down to the waterfall. The first place that is on is
+where they stand; with none on, they are at their own. They move only while you are not there
+to see it (more than 60 m from both places), or at once as time passes under the diary's veil,
+and quests, the map and the waypoint follow them where they are (`bonds.js` rounds, `game.js`
+npcMove). `pipeline/life.py` checks each place, and `tools/life_step.js` stands every one of
+them up and checks it is on firm ground near where it is written, not on a roof.
 
 Quests always come first: a person who has a walk to give you gives it, whatever the hour.
 Nobody is ever missed for good, and there is no deadline.
@@ -625,10 +636,18 @@ Jobs are taken from the diary's Work page, one at a time and once in each part o
   far away it is.
 - **Photographs:** a list of real subjects to take in photo mode, a quarter more for each taken
   at golden or blue hour.
+- **By train:** catch the right train on a map with a railway (Kamakura's Enoden): from its
+  station to another against the clock, done as you step off at the right one; the wrong stop
+  says which way it is. A place in life.json can name a station (`{"station": "koshigoe"}`).
+
+At the wheel with a delivery or a fare, <kbd>J</kbd> hands the drive to the autopilot (issue
+#355): the job's waypoint is its destination. A passenger driven by the autopilot tips less.
 
 Money is in the city's own (yen, dollars). Taxis and rides now charge a fare on arrival (flag
 fall and a rate a kilometre); short of it, the driver lets the rest go. **Counters** keep hours
-and sell a dish or a keepsake, each with a line about it. The **calendar** is events at their
+and sell a dish or a keepsake, each with a line about it. Keepsakes go into one **album** for
+every city (the diary's Keepsakes page): a card for each, with its counter, its city and the day
+it was bought, and an empty card for each still to find on this map. The **calendar** is events at their
 real places on their real dates, with the hours they run: walk up while one is on and
 <kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
 
@@ -685,13 +704,17 @@ people to know (three on the two small Kyoto maps), four or five jobs, counters 
 
 ### What is left
 
-- Trains: a "catch the right train" job waits for trains that keep a timetable (the Enoden).
-- The autopilot (issue #355) could drive a fare or a delivery; the jobs only set the waypoint.
-- A forecast ability (tomorrow's weather in the diary) waits for the weather's forecast.
-- A room or an album for keepsakes: they are listed in the passport, not shown.
-- The people's models do not change place by the hour; their hours gate the talk, not where
-  they stand.
+- A room for keepsakes in 3D: they are an album of cards in the diary.
+- Tokyo's train job waits for its railway in the game (Tokyo's game.json has no `rail` yet).
 - Not checked: a real GPU, Safari and iOS, and the music by ear on phone speakers.
+
+Banners (a rank, a level, a job) wait while a station's arrival sign or the day's card is up,
+so that two captions never sit over each other (`style.js`).
+
+The facts first written from memory were checked against sources in November 2026 (issue
+#357): Kiyomizu's jumps are 235 by 234 people, senmaizuke's maker was Daikokuya Tozaburo,
+Sydney Tower's 56 cables steady the shaft, Eikan-do's 2026 night openings run 20 November to
+6 December, and the event sources that did not hold their dates now point to pages that do.
 
 ### The phone
 

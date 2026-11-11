@@ -40,6 +40,7 @@
     {
       "npc": "sozen", "title": "The monk at the gate", "where": "Higashi Honganji",
       "hours": { "slots": ["morning"] },
+      "places": [{"slots": ["daytime"], "at": {"travel": "k-nishiki", "d": [-8, -6]}, "where": "Nishiki Market, buying the temple's pickles"}],
       "busy": "Forgive me, I have duties in the hall. I am at the gate in the mornings, before the tour buses.",
       "ranks": [
         { "title": "Before the buses",
@@ -93,7 +94,8 @@
           "request": { "type": "job", "id": "pickles", "text": "Take Mr. Tanaka his pickles", "ask": "The box is tied and waiting. It's in your diary, under Work." } },
         { "title": "A thousand slices",
           "talk": ["He rang to say thank you. He never rings.", "Now, senmaizuke. Shogoin turnip, big as your head, sliced so thin you could read through it, laid down with kombu. A cook from the Palace kitchens came up with it in 1865.", "We only make it in the cold months. If someone sells it to you in August, smile and keep walking."],
-          "fact": "Senmaizuke, thin-sliced Shogoin turnip pickled with kombu, was devised in 1865 by Daito Tozaburo, a former cook at the Imperial Palace, and is made from late autumn to early spring.",
+          "fact": "Senmaizuke, thin-sliced Shogoin turnip pickled with kombu, was devised in 1865 by Daikokuya Tozaburo, a former cook at the Imperial Palace, and is made from late autumn to early spring.",
+          "gives": {"id": "forecast", "name": "The market's weather", "text": "The diary shows the next day hour by hour, and Mrs. Nakamura writes when rain is coming", "rain": "Rain on its way", "tip": "Nishiki has a roof, dear. Come and eat."},
           "ask": { "q": "So when would you come back for it?", "options": [
             { "text": "In the cold, around December", "good": true, "reply": "You were listening. Come in December; I'll keep you the middle of the barrel." },
             { "text": "Any time, surely", "reply": "I just told you, dear. Cold months. Turnips don't care what visitors want." } ] },
@@ -178,7 +180,7 @@
     { "id": "kiosk", "name": "Station kiosk 京みやげ", "where": "Kyoto Station, the Karasuma side", "at": { "travel": "k-station", "d": [7, 5] }, "hours": ["08:00", "21:00"],
       "hello": "Welcome. Something for the train, or something to take home?",
       "menu": [ { "id": "yatsuhashi", "name": "Nama yatsuhashi", "price": 540, "text": "Soft triangles of rice dough scented with cinnamon, folded over red bean. The baked kind came first: a hard biscuit curved like a koto." },
-                { "id": "sensu", "name": "A folding fan 京扇子", "price": 1100, "keep": true, "text": "Bamboo ribs and paper, made in Kyoto in more than eighty steps, passed from one craftsman to the next. It opens with one hand, once you know how." } ] }
+                { "id": "sensu", "name": "A folding fan 京扇子", "price": 1100, "keep": true, "glyph": "扇", "text": "Bamboo ribs and paper, made in Kyoto in more than eighty steps, passed from one craftsman to the next. It opens with one hand, once you know how." } ] }
   ],
   "events": [
     { "id": "gion-yoiyama", "title": "Gion Matsuri: the eve", "native": "祇園祭 宵山", "stamp": "Yoiyama", "where": "Shijo-Karasuma", "dates": [[7, 14], [7, 16]], "slots": ["evening", "night"],
@@ -205,6 +207,6 @@
       "at": { "travel": "k-nijo" }, "radius": 60, "verb": "Join the queue for the lit cherries",
       "text": "From mid-March to mid-April in most years the castle opens again after dark, from 18:00 to 22:00, with its cherries lit.",
       "lines": ["The queue runs along the moat. Inside, about three hundred cherries of fifty kinds are lit from below, so that something is in flower all month.", "The east gate's ironwork throws long shadows on the gravel, and nobody speaks above a murmur. In 2026 the evenings ran from 19 March to 19 April."],
-      "skill": "light", "xp": 4, "source": "https://ja.kyoto.travel/event/single.php?event_id=4676" }
+      "skill": "light", "xp": 4, "source": "https://www.city.kyoto.lg.jp/bunshi/cmsfiles/contents/0000350/350439/houdou.pdf" }
   ]
 }

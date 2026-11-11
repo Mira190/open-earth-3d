@@ -4,6 +4,7 @@
     {
       "npc": "kenta", "title": "The shrine attendant", "where": "The foot of the Omotesando",
       "hours": { "slots": ["morning", "daytime"] },
+      "places": [{"slots": ["daytime"], "at": {"spot": "romon", "d": [6, 4]}, "where": "The Romon gate, seeing the groups through"}],
       "busy": "ようお参り. I'm on duty at the hall just now. I'm at the foot of the approach in the mornings and through the day.",
       "ranks": [
         { "title": "Rice",
@@ -76,6 +77,7 @@
     {
       "npc": "daichi", "title": "The hiker at Yotsutsuji", "where": "Yotsutsuji, halfway up",
       "hours": { "slots": ["morning", "daytime"], "weather": "dry" },
+      "places": [{"slots": ["morning"], "at": {"spot": "senbon", "d": [-5, 4]}, "where": "The Senbon Torii, setting off up the mountain"}],
       "busy": "Can't stop, I'll seize up. I'm on the bench at Yotsutsuji in the mornings and through the day, when it's dry.",
       "ranks": [
         { "title": "Halfway",
@@ -94,6 +96,7 @@
         { "title": "Ten thousand altars",
           "talk": ["Good frames. He'll use them.", "Look at the little stone altars beside the path on the way round. Otsuka. Families and guilds set them up, each carved with its own name for the kami. Something like ten thousand on this mountain.", "Each has small torii stacked against it like firewood. That's where the little gates from the office end up."],
           "fact": "Inari-yama is covered with otsuka, stone altars set up by worshippers and each carved with their own name for the kami: about 10,000 stand along its paths.",
+          "gives": {"id": "forecast", "name": "A hiker's sky", "text": "The diary shows the next day hour by hour, and Daichi writes when rain is coming", "rain": "Rain on the mountain", "tip": "The steps get slippery: the lower shrines, then."},
           "ask": { "q": "Why would each family want its own?", "options": [
             { "text": "A kami with their own name on it", "good": true, "reply": "That's it. Not the shrine's Inari: theirs. It's the most personal mountain I know." },
             { "text": "To show off", "reply": "A bit, maybe. Mostly it's wanting an Inari of your own, with your own name for it." } ] },
@@ -134,8 +137,8 @@
                 { "id": "kitsune", "name": "Kitsune udon", "price": 750, "text": "Thick wheat noodles in a pale Kansai broth, with a square of sweet fried tofu laid on top. Fox noodles: named for who is said to love the tofu." } ] },
     { "id": "office", "name": "Shrine office 授与所", "where": "Beside the Romon", "at": { "spot": "romon", "d": [10, -8] }, "hours": ["08:30", "16:30"],
       "hello": "ようお参り. Take your time.",
-      "menu": [ { "id": "torii", "name": "A small torii", "price": 1000, "keep": true, "text": "A vermilion gate the height of your hand. You write a wish and your name on it; one stays on the mountain, and this one goes home with you." },
-                { "id": "ema", "name": "A fox ema", "price": 800, "keep": true, "text": "A white wooden fox's face with no features. You draw them on yourself: no two on the racks look alike, and some are frankly alarming." } ] },
+      "menu": [ { "id": "torii", "name": "A small torii", "price": 1000, "keep": true, "glyph": "⛩", "text": "A vermilion gate the height of your hand. You write a wish and your name on it; one stays on the mountain, and this one goes home with you." },
+                { "id": "ema", "name": "A fox ema", "price": 800, "keep": true, "glyph": "狐", "text": "A white wooden fox's face with no features. You draw them on yourself: no two on the racks look alike, and some are frankly alarming." } ] },
     { "id": "teahouse", "name": "Tea house at Yotsutsuji 茶屋", "where": "Yotsutsuji, halfway up", "at": { "spot": "yotsutsuji", "d": [-6, 4] }, "hours": ["09:30", "17:00"],
       "hello": "You made it. Sit on the bench, the view is free.",
       "menu": [ { "id": "hiyashiame", "name": "Hiyashi ame", "price": 400, "text": "Malt syrup and ginger in cold water: Kansai's summer drink, hardly known in Tokyo. In winter the same thing comes hot and is called ame-yu." },
@@ -151,26 +154,26 @@
       "at": { "spot": "romon", "d": [-6, 0] }, "radius": 40, "verb": "Receive a sprig of cedar",
       "text": "The first day of the horse in February, the day the kami is said to have come down on the mountain in 711. It fell on 1 February in 2026.",
       "lines": ["The first horse day of February: by tradition the day Inari came down on the three peaks, in 711. The shrine counts this as its birthday.", "People take home a sprig of cedar from the mountain with a paper streamer tied to it, the shirushi no sugi, for the household shelf."],
-      "skill": "bearings", "xp": 4, "source": "https://inari.jp/rite/" },
+      "skill": "bearings", "xp": 4, "source": "https://inari.jp/rite/?month=2%E6%9C%88" },
     { "id": "kanko", "title": "Inari-sai: the mikoshi come home", "native": "稲荷祭 還幸祭", "stamp": "Inari-sai", "where": "The Romon", "dates": [[5, 3], [5, 3]], "slots": ["daytime"],
       "at": { "spot": "romon", "d": [-6, 0] }, "radius": 40, "verb": "Watch the mikoshi come back",
       "text": "On 3 May the shrine's five mikoshi return from their resting place in the town, ending the Inari festival, the shrine's greatest.",
       "lines": ["Five mikoshi come back up the approach on 3 May, after about two weeks at their resting place near Kyoto Station.", "The parish is not here on the mountain but in the streets round and south of Kyoto Station. Once a year the kami go to their people, and today they come home."],
-      "skill": "bearings", "xp": 4, "source": "https://inari.jp/rite/" },
+      "skill": "bearings", "xp": 4, "source": "https://inari.jp/rite/?month=5%E6%9C%88" },
     { "id": "taue", "title": "Taue-sai: the rice planting", "native": "田植祭", "stamp": "Rice planting", "where": "The main shrine", "dates": [[6, 10], [6, 10]], "slots": ["daytime"],
       "at": { "spot": "romon", "d": [-6, 0] }, "radius": 40, "verb": "Follow the planters to the sacred paddy",
       "text": "On 10 June, seedlings for the rice offered to the kami are planted in the shrine's own paddy, to a dance performed beside it.",
       "lines": ["Women in sedge hats step into the shrine's small paddy and plant the seedlings in rows, while shrine maidens dance the rice-planting dance, the Ota-mai, on the bank.", "The rice is cut again in October and offered here in November. It is the reason for everything else on this mountain."],
-      "skill": "taste", "xp": 4, "source": "https://inari.jp/rite/" },
+      "skill": "taste", "xp": 4, "source": "https://inari.jp/rite/?month=6%E6%9C%88" },
     { "id": "motomiya", "title": "Motomiya-sai: the lantern eve", "native": "本宮祭 宵宮祭", "stamp": "Ten thousand lanterns", "where": "The Senbon Torii", "dates": [[7, 19], [7, 20]], "slots": ["evening", "night"],
       "at": { "travel": "f-senbon" }, "radius": 50, "verb": "Walk under the lit lanterns",
       "text": "In late July, worshippers from Inari shrines all over Japan come back to the head shrine. On the eve, every stone lantern and thousands of red paper ones are lit from 18:00.",
       "lines": ["Every stone lantern on the mountain is lit by hand, and red paper lanterns hang in rows along the approach and the torii. The shrine calls it the rite of ten thousand lamps.", "It falls on the Sunday or holiday after the midsummer dog days begin: in 2026, the eve on 19 July and the festival on the 20th."],
-      "skill": "light", "xp": 5, "source": "https://inari.jp/rite/" },
+      "skill": "light", "xp": 5, "source": "https://inari.jp/rite/?month=7%E6%9C%88" },
     { "id": "hitaki", "title": "Hitaki-sai: the fire festival", "native": "火焚祭", "stamp": "The fire festival", "where": "The main shrine", "dates": [[11, 8], [11, 8]], "slots": ["daytime"],
       "at": { "spot": "romon", "d": [-6, 0] }, "radius": 40, "verb": "Watch the prayer sticks burn",
       "text": "On 8 November, after the harvest, prayer sticks sent from all over Japan are burned in three great fires in thanks to the kami of rice.",
-      "lines": ["Three fire beds, lit with rice straw. Priests feed them with wooden prayer sticks by the armful, hundreds of thousands in an afternoon.", "Each stick carries a name and a wish. The smoke goes up past the torii, and the year's rice has been thanked for."],
-      "skill": "bearings", "xp": 4, "source": "https://inari.jp/rite/" }
+      "lines": ["Three fire beds, lit with rice straw. Priests feed them with wooden prayer sticks by the armful, more than a hundred thousand in an afternoon.", "Each stick carries a name and a wish. The smoke goes up past the torii, and the year's rice has been thanked for."],
+      "skill": "bearings", "xp": 4, "source": "https://inari.jp/rite/?month=11%E6%9C%88" }
   ]
 }
