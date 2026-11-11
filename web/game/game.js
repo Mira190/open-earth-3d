@@ -1044,11 +1044,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return Math.hypot(Math.max(0, Math.abs(dx * fx + dy * fy) - o.C.half), Math.max(0, Math.abs(-dx * fy + dy * fx) - o.C.hw));
   }
   // the cars near (x, y) as boxes (cars.js), less one (the one you are in)
+  // the cars of the traffic your car was handed back overlapping (the autopilot's car is carried along its driver's line,
+  // and on a tight corner beside one it can be a little into it): left out of your car's collisions until the two are
+  // apart, 3 s at most, rather than shoved out of each other at once, a jump of 2 m mid-corner (#399)
+  let handGhost = null, handGhostT = 0;
+  function boxesMeet(b, o) {
+    const st = o.D.st, fx = Math.sin(st.h), fy = Math.cos(st.h), bx = Math.sin(b.h), by = Math.cos(b.h), dx = b.x - st.x, dy = b.y - st.y;
+    for (const [px, py] of [[fx, fy], [-fy, fx], [bx, by], [-by, bx]]) {
+      const ra = o.C.half * Math.abs(fx * px + fy * py) + o.C.hw * Math.abs(-fy * px + fx * py), rb = b.hl * Math.abs(bx * px + by * py) + b.hw * Math.abs(-by * px + bx * py);
+      if (Math.abs(dx * px + dy * py) >= ra + rb) return false;
+    }
+    return true;
+  }
   function carBoxes(x, y, r, but = null) {
     const out = [];
     for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - x) < r + c.half && Math.abs(c.y - y) < r + c.half) {
       const b = OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5);
       b.onHit = () => cars.stop(c);
+      b.car = c;
+      if (handGhost && clockT - handGhostT > 3) handGhost = null;
+      if (but === myCar && handGhost && handGhost.has(c)) { if (boxesMeet(b, myCar)) continue; handGhost.delete(c); } // (handed back into it: passed through until apart)
       out.push(b);
     }
     for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
@@ -1201,6 +1216,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const o = pilot;
     if (!o) return;
     pilotEnd = why;
+    // (the traffic it is a little into as it is handed back: passed through until apart, carBoxes)
+    handGhost = new Set(cars.live.filter(c => c.line >= 0 && Math.hypot(c.x - myCar.D.st.x, c.y - myCar.D.st.y) < c.half + myCar.C.half + 1 && boxesMeet(OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5), myCar)));
+    handGhostT = clockT;
+    if (!handGhost.size) handGhost = null;
     o.drv.leave(); pilot = null;
     if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
     if (say) H.toast(say);
@@ -1485,8 +1504,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     ['beige', '#d8d3c8'], ['green', '#2f3b33'], ['gold', '#c9a227'], ['yellow', '#f2c21a']].map(([n, h]) => [n, new THREE.Color(h)]);
   const colourName = hex => { const c = new THREE.Color(hex); let best = '', bd = Infinity; for (const [n, q] of COLOUR_NAME) { const d = (c.r - q.r) ** 2 + (c.g - q.g) ** 2 + (c.b - q.b) ** 2; if (d < bd) { bd = d; best = n; } } return best; };
   const rideCar = o => `${colourName(o.hex)} ${MODEL_NAME[o.model] || 'car'}`;
+  // (the characters found too tall for a car's driving seat, even shrunk as far as a seat shrinks anyone: never cast
+  // at the wheel again. Four tries at random still sat one 0.27 m through a taxi's roof, #399)
+  const noFit = new Set();
   function driverLook() { // one of the crowd's characters (a main character has its own look, and isn't for hire)
-    const names = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n] && lib.info.characters[n]) : [];
+    const all = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n] && lib.info.characters[n]) : [], fit = all.filter(n => !noFit.has(n)), names = fit.length ? fit : all;
     return names.length ? OEPeople.randomLook(lib, names[Math.floor(Math.random() * names.length)], CR.style) : {};
   }
   // a ride coming for you drives at up to half as fast again while it is well out of sight of the
@@ -1599,7 +1621,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     C.sit(o.driver, 'driver');
     // (a tall character, or one in a hat, can stand out through the roof even shrunk as far as a seat shrinks
     // anyone: another of the crowd's characters at the wheel then, a few tries at most)
-    for (let k = 0; k < 4 && look.character && C.clearance && C.clearance(o.driver, 'driver') < 0; k++) {
+    for (let k = 0; k < 10 && look.character && C.clearance && C.clearance(o.driver, 'driver') < 0; k++) {
+      noFit.add(look.character);
       if (o.driver.root.parent) o.driver.root.parent.remove(o.driver.root);
       look = driverLook();
       o.driver = makeRig(look, {});
@@ -1618,6 +1641,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
           const was = o.driver;
           if (was.root.parent) was.root.parent.remove(was.root);
           C.sit(rig, 'driver');
+          if (C.clearance && C.clearance(rig, 'driver') < 0) noFit.add(name);
           if (C.clearance && C.clearance(rig, 'driver') < 0 && tries > 0) { if (rig.root.parent) rig.root.parent.remove(rig.root); C.sit(was, 'driver'); next(tries - 1); return; }
           o.driver = rig;
         }).catch(() => {});
