@@ -1504,11 +1504,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     ['beige', '#d8d3c8'], ['green', '#2f3b33'], ['gold', '#c9a227'], ['yellow', '#f2c21a']].map(([n, h]) => [n, new THREE.Color(h)]);
   const colourName = hex => { const c = new THREE.Color(hex); let best = '', bd = Infinity; for (const [n, q] of COLOUR_NAME) { const d = (c.r - q.r) ** 2 + (c.g - q.g) ** 2 + (c.b - q.b) ** 2; if (d < bd) { bd = d; best = n; } } return best; };
   const rideCar = o => `${colourName(o.hex)} ${MODEL_NAME[o.model] || 'car'}`;
-  // (the characters found too tall for a car's driving seat, even shrunk as far as a seat shrinks anyone: never cast
-  // at the wheel again. Four tries at random still sat one 0.27 m through a taxi's roof, #399)
-  const noFit = new Set();
   function driverLook() { // one of the crowd's characters (a main character has its own look, and isn't for hire)
-    const all = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n] && lib.info.characters[n]) : [], fit = all.filter(n => !noFit.has(n)), names = fit.length ? fit : all;
+    const names = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n] && lib.info.characters[n]) : [];
     return names.length ? OEPeople.randomLook(lib, names[Math.floor(Math.random() * names.length)], CR.style) : {};
   }
   // a ride coming for you drives at up to half as fast again while it is well out of sight of the
@@ -1621,8 +1618,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     C.sit(o.driver, 'driver');
     // (a tall character, or one in a hat, can stand out through the roof even shrunk as far as a seat shrinks
     // anyone: another of the crowd's characters at the wheel then, a few tries at most)
-    for (let k = 0; k < 10 && look.character && C.clearance && C.clearance(o.driver, 'driver') < 0; k++) {
-      noFit.add(look.character);
+    for (let k = 0; k < 4 && look.character && C.clearance && C.clearance(o.driver, 'driver') < 0; k++) {
       if (o.driver.root.parent) o.driver.root.parent.remove(o.driver.root);
       look = driverLook();
       o.driver = makeRig(look, {});
@@ -1641,7 +1637,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
           const was = o.driver;
           if (was.root.parent) was.root.parent.remove(was.root);
           C.sit(rig, 'driver');
-          if (C.clearance && C.clearance(rig, 'driver') < 0) noFit.add(name);
           if (C.clearance && C.clearance(rig, 'driver') < 0 && tries > 0) { if (rig.root.parent) rig.root.parent.remove(rig.root); C.sit(was, 'driver'); next(tries - 1); return; }
           o.driver = rig;
         }).catch(() => {});
