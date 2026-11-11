@@ -1066,7 +1066,9 @@ window.OENav = (function () {
     }
     const isDeck = kind => kind !== 'ground' && kind !== 'pier' && kind !== 'roof' && kind !== 'landmark' && kind !== 'promenade';
     // can a walker whose feet are at z stand at (x, y)? Returns the new floor or a reason.
-    function walk(x, y, z) {
+    // (you: the player, `me`, is kept out of the bodies of strips and decks too, below; the crowd and the cars' walkers
+    // are not, whose lanes the data lays under a deck's low end where a crossing meets it, and who would stand there)
+    function walk(x, y, z, me = false) {
       const f = floorAt(x, y, z);
       if (!f) return { ok: false, why: offGround(x, y) || 'wall' };
       if (f.z < z - DROP) return { ok: false, why: 'drop' };
@@ -1084,10 +1086,10 @@ window.OENav = (function () {
       // (not on a strip: a flight comes up through the deck it climbs to, and where the data lays a deck down across a
       // bridge's strip with no room under it, Okazaki-michi's ramp over the Shirakawa, the bridge stays walked)
       const onStrip = !(!f.kind || f.kind === 'ground' || f.kind === 'roof' || f.kind === 'landmark' || f.kind === 'pier' || f.kind === 'deck' || f.kind === 'promenade');
-      if (!onStrip) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h > f.z + KNEE && h - (s.thickness || 3) < f.z + HEAD) return { ok: false, why: 'wall' }; }
+      if (me && !onStrip) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h > f.z + KNEE && h - (s.thickness || 3) < f.z + HEAD) return { ok: false, why: 'wall' }; }
       let low = false, inside = f.kind !== 'deck', edge = false;
       decksAt(x, y, (h, d) => {
-        if (!onStrip && h > f.z + KNEE && h - (d.th || 1) < f.z + HEAD) low = true;
+        if (me && !onStrip && h > f.z + KNEE && h - (d.th || 1) < f.z + HEAD) low = true;
         // on a deck: not in its parapet (decks.js: a wall PARAPET_W wide inside each edge), unless another deck at that
         // level carries on past it (a dual carriageway's two lines, whose parapets are not drawn where they meet)
         if (f.kind === 'deck' && Math.abs(h - f.z) < 0.6) {

@@ -3408,7 +3408,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function placeNear(x, y, z0, avoid = null, maxR = 45) {
     if (z0 == null) z0 = Math.max(0, nav.terrain(x, y));
     for (let r = 0; r < maxR; r += r < 45 ? 1.5 : 5) for (let a = 0; a < 6.28; a += r ? Math.max(0.5 / Math.max(1, r / 3), 3 / r) : 7) {
-      const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.floorAt(px, py, z0 + 3), w = f && nav.walk(px, py, f.z);
+      const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.floorAt(px, py, z0 + 3), w = f && nav.walk(px, py, f.z, true);
       if (w && w.ok && !(avoid && OECars.pushOut(px, py, w.z, 0.4, avoid).hit)) return [px, py, w.z];
     }
     return null;
@@ -4777,7 +4777,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const ahead = (x, y) => {
       const h = Math.atan2(fa[0] - x, fa[1] - y), f = nav.floorAt(x, y, Math.max(zRef ?? z0 + 1, nav.terrain(x, y) + 1));
       let z = f ? f.z : 0;
-      for (let d = 0.5; d <= 4 && f; d += 0.5) { const w = nav.walk(x + Math.sin(h) * d, y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
+      for (let d = 0.5; d <= 4 && f; d += 0.5) { const w = nav.walk(x + Math.sin(h) * d, y + Math.cos(h) * d, z, true); if (!w.ok) return false; z = w.z; }
       return !!f;
     };
     const ok = (x, y) => !npcs.some(n => Math.hypot(n.x - x, n.y - y) < 1.4), okStart = (x, y) => ok(x, y) && (pos || G.start.z != null || ahead(x, y)); // (a deck's start faces out over its balustrade)
@@ -5355,7 +5355,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (d < 0.7 || a.t > 5) { player.auto = null; a.then(); return; }
       fwd = 1; side = 0;
       player.h += angDiff(Math.atan2(dx, dy), player.h) * Math.min(1, dt * 8);
-      const sp = 2.2, nx = player.x + Math.sin(player.h) * sp * dt, ny = player.y + Math.cos(player.h) * sp * dt, w = nav.walk(nx, ny, player.z);
+      const sp = 2.2, nx = player.x + Math.sin(player.h) * sp * dt, ny = player.y + Math.cos(player.h) * sp * dt, w = nav.walk(nx, ny, player.z, true);
       if (w.ok) { const c = OECars.pushOut(nx, ny, w.z, 0.35, carBoxes(nx, ny, 6)), o = posts.pushOut(c.x, c.y, 0.35, w.z); player.x = o.x; player.y = o.y; player.z = w.z; } else a.t = 9;
       player.rig.animate(dt, sp, 'ground', clockT);
       return;
@@ -5376,7 +5376,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let moved = 0;
     for (const [mx, my] of [[sx, sy], [sx, 0], [0, sy]]) {
       if (!mx && !my) continue;
-      const m = nav.slide(player.x, player.y, player.z, mx, my), w = nav.walk(m.x, m.y, player.z);
+      const m = nav.slide(player.x, player.y, player.z, mx, my), w = nav.walk(m.x, m.y, player.z, true);
       if (w.ok) {
         moved = Math.hypot(m.x - player.x, m.y - player.y);
         player.x = m.x; player.y = m.y;
@@ -5393,7 +5393,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       let o = OECars.pushOut(player.x, player.y, player.z, 0.35, boxes);
       if (o.hit) {
         o = posts.pushOut(o.x, o.y, 0.35, player.z);
-        if (nav.walk(o.x, o.y, player.z).ok) { player.x = o.x; player.y = o.y; } else { player.x = x0; player.y = y0; }
+        if (nav.walk(o.x, o.y, player.z, true).ok) { player.x = o.x; player.y = o.y; } else { player.x = x0; player.y = y0; }
         moved = Math.hypot(player.x - x0, player.y - y0);
       }
     }
@@ -5413,7 +5413,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (u >= mu[0] && u < end) {
         const nx = player.x + esc.axis[0] * esc.moving_ms * dt, ny = player.y + esc.axis[1] * esc.moving_ms * dt;
         if (nav.stripHeight(esc, nx, ny) != null) { player.x = nx; player.y = ny; } else if (u > mu[1]) {
-          const w = nav.walk(nx, ny, player.z);
+          const w = nav.walk(nx, ny, player.z, true);
           if (w.ok && Math.abs(w.z - player.z) < 0.15) { player.x = nx; player.y = ny; } else player.escOff = null;
         }
       }
@@ -5730,7 +5730,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let arriving = null;
   const clearAhead = h => { // a few steps' walk in front of the player along bearing h
     let z = player.z;
-    for (let d = 0.5; d <= 3; d += 0.5) { const w = nav.walk(player.x + Math.sin(h) * d, player.y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
+    for (let d = 0.5; d <= 3; d += 0.5) { const w = nav.walk(player.x + Math.sin(h) * d, player.y + Math.cos(h) * d, z, true); if (!w.ok) return false; z = w.z; }
     return true;
   };
   // the chase bearing (behind the player) within ARRIVE.turn of az0 that is nearest to want, with room to walk on

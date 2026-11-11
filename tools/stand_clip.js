@@ -80,7 +80,7 @@ const [,, city = 'sydney', radius = '60'] = process.argv;
           // (walked there in steps of 0.25 m, as a walker goes, not jumped: a bench's outline is a wall a step thick)
           let zz = z, ok = true;
           for (let t = 1; t <= 6 && ok; t++) {
-            const w = nav.walk(x + di * S * t / 6, y + dj * S * t / 6, zz);
+            const w = nav.walk(x + di * S * t / 6, y + dj * S * t / 6, zz, true);
             ok = !!(w && w.ok && Math.abs(w.z - zz) < 0.8);
             if (ok) zz = w.z;
           }
