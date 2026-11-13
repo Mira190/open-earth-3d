@@ -205,6 +205,9 @@ trains.
   Line's platform has no platform doors; the others have them. The city model's shed over the
   platforms and the low blocks on the tracks come down; the viaduct and the station stand in their
   place, with an entrance each side of the concourse under the tracks.
+- **Escalators.** Beside each flight of stairs an up escalator (a 1,000 mm step at 30 degrees, 0.5 m/s)
+  climbs from the concourse to the platform, between glass balustrades with black handrails; it is a
+  moving strip (`moving_ms`), so standing on it carries you up.
 - **The overhead line**: portal gantries every 48 m, and a contact wire under its messenger over each
   track, 5.0 m over the rail.
 - **Each end** is a train shed's mouth, a roof over the tracks with a dark wall behind it, where the

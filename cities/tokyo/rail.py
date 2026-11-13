@@ -285,8 +285,24 @@ def stairs(L):
 
 
 def stair_slot(st, grow=0.0):
+    """The flight's well, and the escalator's beside it on its +n side."""
     a, b, n, w = st["a"], st["b"], st["n"], st["w"] / 2 + grow
-    return Polygon([a - n * w, b - n * w, b + n * w, a + n * w])
+    return Polygon([a - n * w, b - n * w, b + n * (w + ESC_W + 0.15), a + n * (w + ESC_W + 0.15)])
+
+
+ESC_W = 1.45     # an escalator's width over its balustrades (a 1,000 mm step); its middle ESC_V off the flight's
+ESC_V = 1.5 + 0.15 + ESC_W / 2
+ESC_MS = 0.5     # its speed (m/s), JR East's standard
+
+
+def escalator(st):
+    """The up escalator beside a flight: its foot (the flight's foot), how far along its 30-degree incline starts and
+    ends, its axis, and the levels."""
+    a, t, n = st["a"], st["t"], st["n"]
+    rise = st["z1"] - st["z0"]
+    inc = rise / math.tan(math.radians(30))
+    flat = max(0.9, (st["run"] - inc) / 2)
+    return {"a": a + n * ESC_V, "t": t, "n": n, "u0": flat, "u1": flat + inc, "L": 2 * flat + inc, "z0": st["z0"], "z1": st["z1"]}
 
 
 # ---------------------------------------------------------------- the signs' sheet
@@ -704,6 +720,35 @@ def station(L, K, Mesh):
                     c0 = m + n * sgn * 0.02
                     K["rail_shutter"].box([*(c0 - t * 0.55 + n * sgn * 0.36), zp + 0.92], [*(c0 + t * 0.55 + n * sgn * 0.36), zp + 0.92], 0.7, 1.84)
                     sign(K, c0, n * sgn, 1.04, zp + 0.06, 1.74, kk, 0.72)
+        # ---- the escalators: up from the concourse beside each flight, glass balustrades and black handrails
+        for st in st_here:
+            E = escalator(st)
+            a, t, n = E["a"], E["t"], E["n"]
+            em = Mesh(f"rail_esc_{st['key']}", "rail_stairs", False)
+            zu = lambda u: E["z0"] + (E["z1"] - E["z0"]) * min(1.0, max(0.0, (u - E["u0"]) / (E["u1"] - E["u0"])))
+            us = [0.0, E["u0"]] + [E["u0"] + (E["u1"] - E["u0"]) * k / 24 for k in range(1, 24)] + [E["u1"], E["L"]]
+            hw = 0.5
+            em.grid([[[*(a + t * u - n * hw), zu(u)], [*(a + t * u + n * hw), zu(u)]] for u in us])
+            own.append(em)
+            for k in range(1, 24):   # the steps' risers, seen as ridges up the incline
+                u = E["u0"] + (E["u1"] - E["u0"]) * k / 24
+                K["rail_dark"].box([*(a + t * u - n * hw), zu(u) + 0.01], [*(a + t * u + n * hw), zu(u) + 0.01], 0.03, 0.02)
+            for sgn in (-1, 1):
+                e = n * sgn * (hw + 0.12)
+                pts = [[*(a + t * u + e), zu(u)] for u in us]
+                K["rail_frame"].sweep(pts, [(-0.06, -0.35), (0.06, -0.35), (0.06, 0.12), (-0.06, 0.12)])            # the skirt and deck
+                K["rail_psd_glass"].sweep([[*q[:2], q[2] + 0.12] for q in pts], [(-0.012, 0.0), (0.012, 0.0), (0.012, 0.8), (-0.012, 0.8)])   # the glass
+                K["rail_dark"].sweep([[*q[:2], q[2] + 0.95] for q in pts], [(-0.05, -0.03), (0.05, -0.03), (0.05, 0.03), (-0.05, 0.03)])  # the handrail
+            for sgn in (-1, 1):   # the well's outer wall, up to a balustrade over the platform
+                e0, e1 = a + n * sgn * (hw + 0.3), a + t * E["L"] + n * sgn * (hw + 0.3)
+                if sgn < 0:
+                    continue   # (the flight's own wall stands between them)
+                K["rail_stone"].quad([*e0, st["z0"] - 0.3], [*e1, st["z0"] - 0.3], [*e1, zp + 1.1], [*e0, zp + 1.1], [[0, 0], [E["L"], 0], [E["L"], 9], [0, 9]])
+                K["rail_psd"].box([*e0, zp + 0.5], [*e1, zp + 0.5], 0.1, 1.0)
+                K["rail_psd_line"].box([*e0, zp + 1.0], [*e1, zp + 1.0], 0.11, 0.04)
+            e0, e1 = a - n * (hw + 0.3), a + n * (hw + 0.3)   # over the way in at its foot, the lintel and the balustrade
+            K["rail_concrete"].quad([*e0, st["z0"] + 2.7], [*e1, st["z0"] + 2.7], [*e1, zp], [*e0, zp])
+            K["rail_psd"].box([*e0, zp + 0.5], [*e1, zp + 0.5], 0.1, 1.0)
         # ---- the stairs: treads between two walls, a balustrade round the well on the platform
         for st in st_here:
             a, t, n, hw, run = st["a"], st["t"], st["n"], st["w"] / 2, st["run"]
@@ -802,6 +847,12 @@ def surfaces():
                     "origin": [round(float(c[0]), 2), round(float(c[1]), 2)], "axis": [round(float(-st["t"][0]), 5), round(float(-st["t"][1]), 5)], "half_width": st["w"] / 2,
                     "profile": [[-0.5, zp], [0.0, zp], [round(half, 2), round(zl, 2)], [round(half + 1.6, 2), round(zl, 2)], [round(run, 2), round(st["z0"], 2)], [round(run + 0.6, 2), round(st["z0"], 2)]],
                     "thickness": 1.0, "mesh": f"rail_stair_{st['key']}", "mapped": False, "check": True, "label": "the stairs to the platforms"})
+        E = escalator(st)   # and the escalator up beside it, from its foot (its axis up the incline: it carries you up)
+        out.append({"name": f"{name[p['station']]['name']} Station, the {'north' if st['key'][1] == 'n' else 'south'} escalator to platforms {pn(p)}", "type": "strip",
+                    "origin": [round(float(E["a"][0]), 2), round(float(E["a"][1]), 2)], "axis": [round(float(E["t"][0]), 5), round(float(E["t"][1]), 5)], "half_width": 0.45,
+                    "profile": [[-0.6, round(E["z0"], 2)], [round(E["u0"], 2), round(E["z0"], 2)], [round(E["u1"], 2), round(E["z1"], 2)], [round(E["L"] + 0.5, 2), round(E["z1"], 2)]],
+                    "thickness": 1.0, "mesh": f"rail_esc_{st['key']}", "mapped": False, "moving_ms": ESC_MS, "moving_u": [0.4, round(E["L"] - 0.4, 2)],
+                    "label": "the escalator to the platforms"})
     return out
 
 
