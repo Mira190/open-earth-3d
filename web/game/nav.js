@@ -1018,6 +1018,14 @@ window.OENav = (function () {
       if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD) && triHit(x, y, R, f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cell, and then its triangles, withoutFine)
       return { ok: true, z: f.z, kind: f.kind };
     }
+    // is a strip's or a deck's slab in the body of someone whose feet are at z at (x, y), between knee and head? (as
+    // walk keeps you out of: for a line the crowd walks at its own height, game.js crowdNet, #399)
+    function bodyIn(x, y, z) {
+      for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h > z + KNEE && h - (s.thickness || 3) < z + HEAD) return true; }
+      let low = false;
+      decksAt(x, y, (h, d) => { if (h > z + KNEE && h - (d.th || 1) < z + HEAD) low = true; });
+      return low;
+    }
     // move a walker whose feet are at z by (dx, dy), sliding along walls and round the cars
     // in `movers` (the traffic, which sets it) and the lamp posts and trunks in `posts`
     // (streets.js, which game.js sets): {x, y, hit}
@@ -1163,7 +1171,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, passageFloor, inland, passages: (D.LM && D.LM.passages) || [], tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, layAll, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
+    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, bodyIn, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, passageFloor, inland, passages: (D.LM && D.LM.passages) || [], tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, layAll, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
     return api;
   }
   return { create };

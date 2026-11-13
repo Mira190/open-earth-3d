@@ -1974,6 +1974,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         im.name = `${pr.name}_${part.name}`;
         farAt(im, c, r + 10, pr.far || 600);
         OEBuildings.cellInstances(im);
+        im.userData.noRefl = true; // (street furniture: out of the sea's reflection, water.js)
         world.add(still(im));
       }
     }
@@ -2324,6 +2325,20 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // shadow edge in the city crawl, so its size moves in steps of a tenth (and holds while the
       // view is within about three steps of it) and its centre moves in whole texels along the
       // light's axes.
+      // The sun's shadow map's size, for the frame-time governor's ladder (quality.js, game.js; issue 375): no larger
+      // than the tier's (SHADOW), no smaller than 1024. The map and the still casters' cache keep their objects and
+      // are made again at the new size at the next shadow pass; the box's texel snapping follows mapSize.
+      get shadowSize() { return sunLight.shadow.mapSize.x; },
+      setShadowSize(n) {
+        n = Math.max(1024, Math.min(SHADOW, n | 0));
+        if (n === sunLight.shadow.mapSize.x) return n;
+        sunLight.shadow.mapSize.set(n, n);
+        if (sunLight.shadow.map) sunLight.shadow.map.setSize(n, n);
+        if (shadowStill && shadowStill.resize) shadowStill.resize(n);
+        shR = -1; // (the box is placed again on its new texel grid)
+        renderer.shadowMap.needsUpdate = true;
+        return n;
+      },
       fitShadow(target, half) {
         // with the cache (shadowCache) the box keeps 5% more room than asked, and holds still while the view
         // moves within that room and the sun has not stepped: a box that slides a texel follows a walker
@@ -2916,34 +2931,11 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         return orig.call(this, lights, scene, camera);
       }
     };
+    api.resize = n => { still.setSize(n, n); built = false; };
     api.dispose = () => { SM.render = orig; SM.__cached = false; still.dispose(); };
     return api;
   }
 
-  // An EffectComposer clones its target for the second of the pair it ping-pongs between, so with a
-  // multisampled target every full-screen pass after the scene (the AO's mix, the highlights, the bloom's
-  // composite, the lens, the output) writes four samples a pixel and resolves them: a triangle that covers
-  // the whole frame gives all four the same value, so that is four times the bytes for the same picture,
-  // and a second multisampled buffer held for it. Here the scene alone draws into the multisampled target
-  // (renderTarget1, which the composer always gives it first and which the shader warm-ups compile against),
-  // and the passes after it take turns between two single-sampled targets with no depth: the same frame,
-  // to the bit, with one multisampled buffer instead of two.
-  function leanComposer(composer) {
-    const ms = composer.renderTarget1;
-    if (!ms || !ms.samples || composer.__lean) return composer;
-    const single = () => { const t = ms.clone(); t.samples = 0; if (t.depthTexture) t.depthTexture.dispose(); t.depthTexture = null; t.depthBuffer = false; t.resolveDepthBuffer = false; return t; };
-    const a = single(), b = single();
-    composer.renderTarget2.dispose();
-    composer.renderTarget2 = a;
-    const render = composer.render.bind(composer), setSize = composer.setSize.bind(composer);
-    composer.render = function (dt) { this.readBuffer = ms; this.writeBuffer = a; return render(dt); };
-    composer.swapBuffers = function () { const r = this.readBuffer; this.readBuffer = this.writeBuffer; this.writeBuffer = r === ms ? b : r; };
-    composer.setSize = function (w, h) { setSize(w, h); b.setSize(a.width, a.height); };
-    const dispose = composer.dispose && composer.dispose.bind(composer);
-    composer.dispose = function () { b.dispose(); if (dispose) dispose(); };
-    composer.__lean = true;
-    return composer;
-  }
 
   // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
   function warm(renderer, obj, camera, opts) {
@@ -2990,5 +2982,53 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return n;
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, leanComposer, readAsync, warmPasses, settleUnderFloors };
+  // A landmark's water (a pond, a moat: a mesh whose name or material says water or pond) is a level sheet laid over
+  // the ground, and the ground under it comes from a survey that never saw the water: Shinjuku Gyoen's pond had the
+  // 5 m ground stand up to 4 m through it as grey pyramids (#399). Each grid (Tf the 5 m one, Tc the 10 m one) is
+  // lowered under every water face: a point under the water to half a metre below its surface, and a point of a
+  // cell the water's edge crosses (within a cell's diagonal of it) to just under the surface, so no triangle the
+  // ground tiles draw rises through it; a bank that would drop more than 3 m that way (a moat's wall, which the
+  // landmark draws itself) is left. Returns the points lowered.
+  const WATER = /water|pond/i;
+  function carveUnderWater(grids, LM) {
+    if (!LM || !LM.meshes) return 0;
+    let n = 0;
+    for (const T of grids) {
+      if (!T) continue;
+      const want = new Float32Array(T.nx * T.ny).fill(Infinity), R = T.cell * 1.415;
+      for (const m of LM.meshes) {
+        const p = m.position, ix = m.index, mat = LM.materials[m.material];
+        if (!p || !ix || !WATER.test(`${m.name} ${m.material}`) || (mat && mat.opacity === 0)) continue;
+        for (let i = 0; i + 2 < ix.length; i += 3) {
+          const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
+          const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+          const nz = ux * vy - uy * vx, nl = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, nz);
+          if (!(nl > 1e-6) || Math.abs(nz) < 0.9 * nl) continue; // (the sheet, not a wall)
+          const zw = Math.min(p[a + 2], p[b + 2], p[c + 2]), P = [[p[a], p[a + 1]], [p[b], p[b + 1]], [p[c], p[c + 1]]];
+          const x0 = Math.min(p[a], p[b], p[c]) - R, x1 = Math.max(p[a], p[b], p[c]) + R, y0 = Math.min(p[a + 1], p[b + 1], p[c + 1]) - R, y1 = Math.max(p[a + 1], p[b + 1], p[c + 1]) + R;
+          const k0 = Math.max(0, Math.floor((x0 - T.x0) / T.cell)), k1 = Math.min(T.nx - 1, Math.ceil((x1 - T.x0) / T.cell));
+          const r0 = Math.max(0, Math.floor((T.y1 - y1) / T.cell)), r1 = Math.min(T.ny - 1, Math.ceil((T.y1 - y0) / T.cell));
+          for (let r = r0; r <= r1; r++) for (let k = k0; k <= k1; k++) {
+            const d = triDist(T.x0 + k * T.cell, T.y1 - r * T.cell, P);
+            if (d >= R) continue;
+            const q = r * T.nx + k, to = d === 0 ? zw - 0.5 : zw - 0.05;
+            if (d > 0 && T.data[q] - to > 3) continue; // (a steep bank: the landmark's own wall stands there)
+            if (to < want[q]) want[q] = to;
+          }
+        }
+      }
+      for (let q = 0; q < want.length; q++) if (T.data[q] > want[q]) { T.data[q] = want[q]; n++; }
+    }
+    return n;
+  }
+  // how far (x, y) is from a triangle P = [[x, y] x3] on the map (0 inside it)
+  function triDist(x, y, P) {
+    const [[ax, ay], [bx, by], [cx, cy]] = P;
+    const d1 = (x - bx) * (ay - by) - (ax - bx) * (y - by), d2 = (x - cx) * (by - cy) - (bx - cx) * (y - cy), d3 = (x - ax) * (cy - ay) - (cx - ax) * (y - ay);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return 0;
+    const seg = (x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / l)) : 0; return Math.hypot(x - x1 - t * dx, y - y1 - t * dy); };
+    return Math.min(seg(ax, ay, bx, by), seg(bx, by, cx, cy), seg(cx, cy, ax, ay));
+  }
+
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater };
 })();

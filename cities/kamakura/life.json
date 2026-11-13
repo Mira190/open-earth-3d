@@ -2,7 +2,8 @@
  "note": "Shichirigahama's daily life (issue #357): the people to know, their hours, the jobs, the counters and the calendar. Built into web/data/kamakura/life.json by pipeline/life.py. Facts in 'fact' are checked against the sources in docs/cities/kamakura.md (the Enoden's history and stock from its Japanese Wikipedia articles and the railway's own pages); each event carries its own source.",
  "bonds": [
   {"npc": "sato", "title": "The station attendant", "where": "Kamakurakokomae's platform", "hours": {"slots": ["morning", "daytime"]},
-   "busy": "I'm on the trains in the afternoon. Mornings and the middle of the day, I'm on this platform.",
+  "places": [{"slots": ["daytime"], "at": {"station": "koshigoe", "d": [4, -6]}, "where": "Koshigoe's platform, covering the midday"}],
+   "busy": "I'm on the trains in the afternoon. Mornings I'm on this platform, and at Koshigoe's in the middle of the day.",
    "ranks": [
     {"title": "One track", "invite": "You keep looking up the line. Waiting for the train, or for the view? Got a moment of the {slot}?",
      "talk": ["The Enoden is one track, both ways. The trains pass each other at a few places only: Enoshima, the signal stop at Minegahara just east of here, Inamuragasaki.", "So every train waits for the one coming the other way. If one is late, they all are. Nobody here minds very much."],
@@ -24,6 +25,7 @@
      "gives": {"id": "xp", "skill": "bearings", "value": 8, "name": "Sato's coast", "text": "Bearings, from someone who has watched it every day"}}
    ]},
   {"npc": "mio", "title": "The high school student", "where": "The crossing at the foot of the hill", "hours": {"slots": ["morning", "evening"], "weekdays": [1, 2, 3, 4, 5]},
+  "places": [{"slots": ["evening"], "at": {"travel": "t-beach", "d": [-6, 6]}, "where": "The beach at Shichirigahama, after school"}],
    "busy": "Class. I'm at the crossing before school and on my way home, weekdays.",
    "ranks": [
     {"title": "The crossing", "invite": "You're not taking a picture? That's new. Got a minute of the {slot}?",
@@ -45,6 +47,7 @@
      "gives": {"id": "xp", "skill": "light", "value": 8, "name": "The morning walk", "text": "Light: the coast at every hour"}}
    ]},
   {"npc": "genzo", "title": "The fisherman", "where": "Koshigoe's fishing harbour", "hours": {"slots": ["morning", "daytime"], "weather": "dry"},
+  "places": [{"slots": ["daytime"], "at": {"travel": "t-koshigoe", "d": [-4, 9]}, "where": "The shirasu counter in Koshigoe, his catch on the menu"}],
    "busy": "When the sea's up I don't go out, and nor should you. Find me at the harbour on a dry morning.",
    "ranks": [
     {"title": "Shirasu", "invite": "You're up early. The boats are in. Want to see what came up this {slot}?",
@@ -57,6 +60,7 @@
      "gives": {"id": "xp", "skill": "taste", "value": 5, "name": "In season", "text": "Taste: you know when the fish is good"}},
     {"title": "The train in the street", "talk": ["Between here and Enoshima the train runs down the middle of the street. Shops on both sides, cars in front of it.", "You learn to step aside without looking. The bell's enough."],
      "fact": "Between Koshigoe and Enoshima stations the Enoden runs down the middle of the street, sharing it with cars.",
+     "gives": {"id": "forecast", "name": "A fisherman's eye", "text": "The diary shows the next day hour by hour, and Genzo writes when rain is coming", "rain": "Weather off the sea", "tip": "The boats stay in. So should you, or take the train."},
      "request": {"type": "visit", "at": {"travel": "t-koshigoe"}, "radius": 40, "text": "Walk the street with the rails in it to Koshigoe Station", "ask": "Walk the street once. Up the middle, with the rails. Mind the train."}},
     {"title": "Manpuku-ji", "talk": ["Up behind the harbour there's an old temple, Manpuku-ji.", "In 1185 Yoshitsune was stopped there by his own brother, and wrote him a letter begging to be let into Kamakura. He wasn't. Every school child knows the letter."],
      "fact": "At Manpuku-ji in Koshigoe, Minamoto no Yoshitsune wrote the Koshigoe Letter in 1185 to his brother Yoritomo, who had barred him from Kamakura.",
@@ -69,6 +73,7 @@
  "jobs": [
   {"id": "crossing-point", "type": "point", "title": "Which way from the crossing?", "blurb": "A tour group at the foot of the hill wants its bearings. Face each place's true bearing; the nearer, the better the pay.", "at": {"spot": "crossing"}, "at_name": "the crossing", "who": "A tour group with matching hats", "pay": 900, "skill": "bearings", "xp": 5, "when": {"slots": ["morning", "daytime", "evening"]},
    "targets": [{"name": "Enoshima Station", "at": {"travel": "t-enoshima"}}, {"name": "Inamuragasaki", "at": {"travel": "t-cape"}}, {"name": "Kamakura High School", "at": {"label": "Kamakura High School"}}], "done": "Twenty hats turn at once."},
+  {"id": "lost-pass", "type": "train", "title": "A lost pass to Enoshima", "blurb": "A commuter pass left on the bench at Kamakurakokomae. Sato wants it at the office in Enoshima on the next train towards Fujisawa.", "at": {"station": "kamakurakokomae"}, "at_name": "Kamakurakokomae's platform", "from": "kamakurakokomae", "to": {"station": "enoshima"}, "to_station": "enoshima", "to_name": "Enoshima", "towards": "Fujisawa", "time_s": 900, "pay": 1000, "skill": "lines", "xp": 5, "when": {"slots": ["morning", "daytime"]}, "text": "An envelope with the pass inside and the station's stamp on the flap. \"Towards Fujisawa, not Kamakura. Two stops.\"", "done": "The clerk at Enoshima checks the name and files it. \"Every week someone. Thank you.\""},
   {"id": "coast-photo", "type": "photo", "title": "The crossing, the island and the cape", "blurb": "A travel magazine wants the crossing, Enoshima across the bay and the cape at Inamuragasaki. Photo mode (O); golden or blue hour pays a quarter more.", "at": {"npc": "kai", "d": [1.5, 1.5]}, "at_name": "Kai, on the beach", "pay": 1800, "skill": "light", "xp": 6,
    "subjects": [{"name": "the Kamakurakokomae crossing", "at": {"label": "Kamakurakokomae crossing"}, "within": 200, "up": 2}, {"name": "Enoshima Station", "at": {"travel": "t-enoshima"}, "within": 300}, {"name": "the cape at Inamuragasaki", "at": {"travel": "t-cape"}, "within": 300, "up": 6}], "done": "Kai flicks through them. \"That one. With the train.\""},
   {"id": "whitebait", "type": "deliver", "title": "A cool box of shirasu", "blurb": "This morning's catch from Koshigoe harbour, along the coast to a kitchen by Shichirigahama's beach before it turns.", "at": {"npc": "genzo", "d": [1.5, -1.5]}, "at_name": "Genzo, at the harbour", "to": {"travel": "t-beach", "d": [6, 6]}, "to_name": "the kitchen by the beach", "time_s": 900, "pay": 1400, "skill": "bearings", "xp": 5, "when": {"slots": ["morning", "daytime"]},
@@ -80,7 +85,7 @@
   {"id": "shirasu", "name": "Shirasu counter, Koshigoe しらす丼", "where": "On the street with the rails in it", "at": {"travel": "t-koshigoe", "d": [-8, 4]}, "hours": ["11:00", "15:00"], "hello": "いらっしゃい! Raw or boiled? Raw's only till it runs out.",
    "menu": [{"id": "nama", "name": "Nama-shirasu don", "price": 1300, "text": "This morning's whitebait, raw and glassy, on rice with ginger and a little soy. Only on days the boats went out."}, {"id": "kama", "name": "Kamaage shirasu don", "price": 1100, "text": "Whitebait boiled in salted water as it comes off the boat: soft, white and mild, a mound of it on hot rice."}]},
   {"id": "kitchen", "name": "Kitchen by the beach 浜の食堂", "where": "By Shichirigahama's car park", "at": {"travel": "t-beach", "d": [8, 8]}, "hours": ["10:00", "19:00"], "hello": "Hi! Sit by the window, you can watch the surf.",
-   "menu": [{"id": "shrimp", "name": "Garlic shrimp plate", "price": 1500, "text": "Shrimp fried hard in garlic butter, with rice and a lemon. Eaten facing the sea, indoors, out of the kites' reach."}, {"id": "soda", "name": "Melon soda", "price": 500, "text": "Bright green, with a scoop of vanilla on top. The colour of the Enoden, people say."}]},
+   "menu": [{"id": "shrimp", "name": "Garlic shrimp plate", "price": 1500, "text": "Shrimp fried hard in garlic butter, with rice and a lemon. Eaten facing the sea, indoors, out of the kites' reach."}, {"id": "soda", "name": "Melon soda", "price": 500, "text": "Bright green, with a scoop of vanilla on top. The colour of the Enoden, people say."}, {"id": "seaglass", "name": "A piece of sea glass", "price": 300, "keep": true, "glyph": "波", "text": "From the jar by the till: glass the waves have rounded, picked off the beach out front. Green mostly, now and then a blue."}]},
   {"id": "konbini", "name": "Convenience store コンビニ", "where": "By Shichirigahama Station", "at": {"travel": "t-shichirigahama", "d": [10, -6]}, "hours": ["00:00", "24:00"], "hello": "いらっしゃいませ.",
    "menu": [{"id": "onigiri", "name": "Onigiri", "price": 160, "text": "A triangle of rice round salmon, wrapped in seaweed you unpeel in three pulls. Eat it inside: the kites are watching."}, {"id": "tea", "name": "Bottled green tea", "price": 150, "text": "Cold from the fridge, or hot from the warmer by the counter in winter."}]}
  ],

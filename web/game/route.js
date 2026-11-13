@@ -64,8 +64,12 @@ window.OERoute = (function () {
 
   // The footways as people can walk them, for the crowd: each line (game.json paths, in
   // decimetres) cut where a walker can't stand on it every 1.5 m (through a wall, off a drop, in
-  // the water), at its points, keeping the pieces 4 m and longer, each with its deck flags
-  function walkable(nav, lines) {
+  // the water), at its points, keeping the pieces 4 m and longer, each with its deck flags.
+  // A walker's body is kept out of the decks and strips over it too (nav.walk's `me`), as yours is: the data lays
+  // crossings under a deck's low end (#399). inRoad(x, y, z): is that in a carriageway? A piece cut so that its cut
+  // end is out in the road (a crossing's half, which a walker would turn back on in the traffic's way) is trimmed
+  // back to its kerb within 25 m, and left out if it is all road and shorter than that
+  function walkable(nav, lines, inRoad = null) {
     const out = [];
     for (const o of lines) {
       const p = o.p, n = p.length / 3;
@@ -76,8 +80,11 @@ window.OERoute = (function () {
         const m = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 1.5));
         let ok = 1;
         for (let j = 0; j <= m && ok; j++) {
-          const t = j / m, z = az + (bz - az) * t, w = nav.walk(ax + (bx - ax) * t, ay + (by - ay) * t, z + 0.6);
+          const t = j / m, z = az + (bz - az) * t, x = ax + (bx - ax) * t, y = ay + (by - ay) * t, w = nav.walk(x, y, z + 0.6, true);
           if (!w.ok || Math.abs(w.z - z) > LEVEL) ok = 0;
+          // (and at the line's own height, where the crowd walks it: not under a deck's or a strip's slab, unless on a
+          // strip, as a flight climbs up through the deck it comes to)
+          else if (nav.bodyIn && !(Math.abs(nav.surfaceAt(x, y, z) - z) < 0.3) && nav.bodyIn(x, y, z)) ok = 0;
         }
         okSeg[k] = ok;
       }
@@ -88,11 +95,40 @@ window.OERoute = (function () {
         if (k === 0 && e === n - 2) { out.push(o); break; }
         let len = 0;
         for (let j = k; j <= e; j++) len += Math.hypot(p[3 * j + 3] - p[3 * j], p[3 * j + 4] - p[3 * j + 1]) / 10;
-        if (len >= 4) out.push(Object.assign({}, o, { p: p.slice(3 * k, 3 * e + 6), d: o.d ? o.d.slice(k, e + 1) : o.d }));
+        let q = Array.from(p.slice(3 * k, 3 * e + 6)), d = o.d ? Array.from(o.d.slice(k, e + 1)) : null;
+        if (inRoad) {
+          if (k > 0) ({ q, d } = offRoad(q, d, inRoad));
+          if (q && e < n - 2) { const r = offRoad(rev(q), d && d.slice().reverse(), inRoad); q = r.q && rev(r.q); d = r.d && r.d.reverse(); }
+          if (!q) { k = e; continue; }
+          len = 0;
+          for (let j = 3; j < q.length; j += 3) len += Math.hypot(q[j] - q[j - 3], q[j + 1] - q[j - 2]) / 10;
+        }
+        if (len >= 4) out.push(Object.assign({}, o, { p: Array.isArray(o.p) ? q : p.constructor.from(q), d: d ? Uint8Array.from(d) : o.d }));
         k = e;
       }
     }
     return out;
+  }
+
+  // a piece's points (flat x, y, z in decimetres) from its first one that is off the road, at a step of half a metre
+  // (and its deck flags, one a stretch): null when it is in the road all along
+  const rev = q => { const r = []; for (let j = q.length - 3; j >= 0; j -= 3) r.push(q[j], q[j + 1], q[j + 2]); return r; };
+  // (no more than a crossing's length, 25 m: a footway mapped along a street inside its carriageway's width is
+  // kept as it is, as before the cut, rather than lost whole: Shinjuku's south deck, whose crowd held the traffic)
+  function offRoad(q, d, inRoad) {
+    if (!inRoad(q[0] / 10, q[1] / 10, q[2] / 10)) return { q, d };
+    let run = 0;
+    for (let j = 0; j + 3 < q.length && run < 250; j += 3) {
+      run += Math.hypot(q[j + 3] - q[j], q[j + 4] - q[j + 1]);
+      const L = Math.hypot(q[j + 3] - q[j], q[j + 4] - q[j + 1]) / 10, m = Math.max(1, Math.ceil(L / 0.5));
+      for (let i = 1; i <= m; i++) {
+        const t = i / m, x = q[j] + (q[j + 3] - q[j]) * t, y = q[j + 1] + (q[j + 4] - q[j + 1]) * t, z = q[j + 2] + (q[j + 5] - q[j + 2]) * t;
+        if (inRoad(x / 10, y / 10, z / 10)) continue;
+        const keep = i === m ? q.slice(j + 3) : [Math.round(x), Math.round(y), Math.round(z), ...q.slice(j + 3)];
+        return keep.length >= 6 ? { q: keep, d: d ? d.slice(j / 3 + (i === m ? 1 : 0)) : null } : { q: null, d: null };
+      }
+    }
+    return run < 250 ? { q: null, d: null } : { q, d };
   }
 
   function create({ nav, footNet, roadNet, DSM, helipads = [], lifts = [], ground = null }) {

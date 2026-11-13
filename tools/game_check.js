@@ -1441,6 +1441,7 @@ const npcNight = require('./npc_night');
     for (let i = 0; i < 80 && g.dlg.open && !g.dlg.hasChoices; i++) g.dlg.tick(0.1);
     r.choices = document.querySelectorAll('#gd-choices button').length;
     r.you = o.C.clearance(g.player.rig, g.KEEP === 'left' ? 'rear_left' : 'rear_right'); r.driver = o.C.clearance(o.driver, 'driver');
+    { const d = o.driver; r.driverWhy = `${d.character || 'the stand-in figure'}, scale ${d.root.scale.x.toFixed(2)}, ${d.root.parent === o.C.body ? 'in the seat' : d.root.parent ? 'elsewhere' : 'in no scene'}`; }
     g.dlg.choose(0);
     g.advance(1);
     r.dest = o.dest && o.dest.name;
@@ -1535,7 +1536,7 @@ const npcNight = require('./npc_night');
     check(taxi.hailed && taxi.hailT - (taxi.scrWait || 0) <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s${taxi.scrWait ? `, ${taxi.scrWait.toFixed(1)} s of it at a scramble's red` : ''}`})`);
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
-    check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
+    check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`}${taxi.driver > 0 ? '' : `: ${taxi.driverWhy}`})`);
     if (!(taxi.drove > 20) && taxi.offLog && taxi.offLog.length) console.log('  ' + taxi.offLog.join('\n  '));
     check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(+taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}${taxi.drove > 20 || !taxi.scrSeq ? '' : `; at ${taxi.scrAt}, its phases as it waited: ${taxi.scrSeq}`}`);
     check(!taxi.cutOff || !taxi.cutOff.length, `every place the taxi driver offers has a kerb a road from the taxi reaches${taxi.cutOff && taxi.cutOff.length ? ` (not ${taxi.cutOff.join(', ')})` : ''}`);
@@ -2126,15 +2127,16 @@ const npcNight = require('./npc_night');
     const g = window.__game, W = g.weather, G = g.governor, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
     if (W) { W.set('rain', { now: true }); g.advance(1); }
     const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
-    const top = G.scale;
+    const top = G.scale, ladderTop = G.ladder;
     for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
-    const slow = G.simulate(1, () => 60).pop(), slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const slow = G.simulate(1, () => 60).pop(), slowLadder = G.ladder, slowShadow = g.Wd.shadowSize, slowCrowd = g.crowd.active, slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
     const back = G.simulate(120, () => 8).pop();
     await frames(2);
+    const ladder = { top: ladderTop, slow: slowLadder, back: G.ladder, shadow: [slowShadow, g.Wd.shadowSize], crowd: [slowCrowd, g.crowd.active] };
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
     const end = { slowMsaa, msaa: g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
-    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0, ladder };
   });
   {
     const s = shed.seen, e = shed.end, first = s.find(x => x.ex < 1), last = s[s.length - 1];
@@ -2145,6 +2147,10 @@ const npcNight = require('./npc_night');
     check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
     check(!e.slowMsaa, `and without multisampling at the floor (${e.slowMsaa ?? '-'} samples there, ${e.msaa ?? '-'} again after)`);
     check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
+    // the one ladder (issue 375): the sun's shadow map, the sea's reflection and the crowd are on it too, and come back
+    const L = shed.ladder, same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    check(same(L.top, L.back) && (L.slow.shadow === undefined || (L.slow.shadow < L.top.shadow && L.shadow[0] === L.slow.shadow && L.shadow[1] === L.top.shadow)) && L.slow.crowd < 1 && L.crowd[0] <= L.crowd[1] && (L.slow.reflection === undefined || L.slow.reflection === 0),
+      `the shadow map, the sea's reflection and the crowd are on the same ladder, and come back (${Object.keys(L.top).map(k => `${k} ${L.top[k]}→${L.slow[k]}→${L.back[k]}`).join(', ')}; crowd ${L.crowd.join('→')})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
   }
 

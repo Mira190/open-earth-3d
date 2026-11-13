@@ -604,6 +604,13 @@ ${PAT_GLSL}`)
     // The mixer only writes a bone whose value has changed, so under a still clip a foot moved
     // here stays moved: put it back where the clip had it before measuring again (or standing up).
     const feetBack = () => { for (const l of legs) if (l.moved) { if (l.ft.position.equals(l.set)) l.ft.position.copy(l.home); l.moved = false; } };
+    // ... and so for the legs bent and the arms put on the wheel: back to the clip's pose before the mixer runs, else
+    // under a still clip a frame began with the thighs already forward, the feet were measured from there, the body
+    // went down 0.38 m less and the head rose that much through a car's roof, on the frames where the clip held still
+    // (which ones depends on the frame times: Tokyo's taxi driver under load, #392)
+    const bent = [];
+    const bendBack = () => { for (const [b, q] of bent) b.quaternion.copy(q); bent.length = 0; };
+    const bend = b => { const q = (b.userData.clipQ = b.userData.clipQ || new THREE.Quaternion()).copy(b.quaternion); bent.push([b, q]); };
     function seat() {
       if (!seated) return;
       model.position.y = 0;
@@ -614,6 +621,7 @@ ${PAT_GLSL}`)
       for (const l of legs) { l.y0 = l.ft.getWorldPosition(sa).y; l.shin = sa.distanceTo(l.ll.getWorldPosition(sb)); }
       let drop = 0;
       for (const l of legs) {
+        bend(l.ul); bend(l.ll);
         aim(l.ul, l.ll, sd2.copy(fw));
         const down = sd2.set(0, -1, 0).addScaledVector(fw, rig.legRake ?? 0.12).normalize();
         aim(l.ll, l.hangs ? l.ft : null, down); // (towards the foot where it hangs from the shin: those bones' axes differ)
@@ -635,6 +643,7 @@ ${PAT_GLSL}`)
         const hand = r2.copy(rig.reach).addScaledVector(side, 0.16 * a.s), sh = a.ua.getWorldPosition(r3);
         const elbow = r4.copy(sh).lerp(hand, 0.5).addScaledVector(side, 0.09 * a.s);
         elbow.y -= 0.1;
+        bend(a.ua); bend(a.la);
         aim(a.ua, a.la, elbow.sub(sh).normalize());
         aim(a.la, a.wr, hand.sub(a.la.getWorldPosition(r3)).normalize());
       }
@@ -668,6 +677,7 @@ ${PAT_GLSL}`)
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 8.5 m/s sprint (game.js GAIT)
       if (mode !== 'sit') feetBack();
       armBack();
+      bendBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
       else if (rig.hold && reaches) holdUmbrella(rig.hold);
@@ -797,7 +807,7 @@ transformed = crowdPose(transformed, false);`);
         return list[h % list.length];
       };
     })();
-    const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
     const UP = new THREE.Vector3(0, 1, 0), at = new THREE.Vector3(), frustum = new THREE.Frustum(), vp = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), camAt = new THREE.Vector3(1e9, 0, 0);
     let culling = false;
     const SWAP = ['iSkin', 'iHair', 'iTop', 'iLegs', 'iPat', 'aAnim', 'iUmb'];
@@ -844,6 +854,7 @@ transformed = crowdPose(transformed, false);`);
         geo.attributes.iPat.setX(k, PAT[p.look.pattern] || 0);
         for (const [a, key] of [['iSkin', 'skin'], ['iHair', 'hair'], ['iTop', 'top'], ['iLegs', 'legs']]) { const c = lin(p.look[key]); geo.attributes[a].setXYZ(k, c.r, c.g, c.b); }
       });
+      mesh.userData.noRefl = true; // (out of the sea's reflection: water.js)
       world.add(mesh);
       meshes.push(mesh);
     }
@@ -860,14 +871,17 @@ transformed = crowdPose(transformed, false);`);
     const hold = umbrellaHold(V3(0, shoulder[0] + 0.16, shoulder[1]));
     const umbGeo = canopyGeo().applyQuaternion(hold.q).translate(hold.top.x, hold.top.y, hold.top.z);
     const shaftGeo = new THREE.CylinderGeometry(0.01, 0.01, UMB_LEN, 5).translate(0, -UMB_LEN / 2, 0).applyQuaternion(hold.q).translate(hold.top.x, hold.top.y, hold.top.z);
-    const umbMeshes = {};
+    const umbMeshes = {}, umbN = { true: 0, false: 0, shaft: 0 };
+    const umbCol = P.map(p => lin(p.look.umbrella === 'clear' ? '#1d1f26' : p.look.umbrella));
     const umbMesh = clear => umbMeshes[clear] || (umbMeshes[clear] = (() => {
       const shaft = clear === 'shaft';
       const m = new THREE.InstancedMesh(shaft ? shaftGeo : umbGeo, shaft ? stdMat('#2a2a2e') : clear ? stdMat('clear') : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0, side: THREE.DoubleSide }), P.length);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero);
-      if (!clear) for (let i = 0; i < P.length; i++) m.setColorAt(i, lin(P[i].look.umbrella === 'clear' ? '#1d1f26' : P[i].look.umbrella));
-      m.castShadow = clear !== true; m.frustumCulled = false; m.visible = false;
+      // (packed, as the crowd is: the umbrellas held this frame are the first `count` slots, each with its holder's
+      // colour; nothing is drawn for those not held, and only the slots taken go to the GPU: issue 375)
+      if (!clear) { m.setColorAt(0, umbCol[0]); m.instanceColor.setUsage(THREE.DynamicDrawUsage); }
+      m.count = 0;
+      m.castShadow = clear !== true; m.frustumCulled = false; m.visible = false; m.userData.noRefl = true;
       world.add(m);
       return m;
     })());
@@ -878,6 +892,7 @@ transformed = crowdPose(transformed, false);`);
     let dtNow = 0, tNow = 0;
     function begin(dt, cx, cy, t, nActive) {
       dtNow = dt; tNow = t;
+      umbN.true = umbN.false = umbN.shaft = 0;
       // the camera's frustum as it was last drawn, for this frame's culling; not across a cut (the camera somewhere else)
       culling = false;
       if (camera) {
@@ -908,7 +923,6 @@ transformed = crowdPose(transformed, false);`);
     }
     function place(i, p, moving) {
       const r = active.get(i);
-      if (umbOn) for (const c of UMB_KEYS) umbMeshes[c] && umbMeshes[c].setMatrixAt(i, zero);
       if (r) {
         const u = wantUmb(p);
         if (u !== !!r.umbOn) { r.umbOn = u; r.setLook({ acc: u ? [...(p.look.acc || []), 'umbrella_open'] : p.look.acc || null }); }
@@ -930,7 +944,12 @@ transformed = crowdPose(transformed, false);`);
       m4.compose(at, q, sc);
       p.mesh.setMatrixAt(p.slot, m4);
       const held = umbOn && wantUmb(p);
-      if (held) { umbMesh(p.look.umbrella === 'clear').setMatrixAt(i, m4); umbMesh('shaft').setMatrixAt(i, m4); }
+      if (held) {
+        const clear = p.look.umbrella === 'clear', c = umbMesh(clear), k = umbN[clear]++;
+        c.setMatrixAt(k, m4);
+        if (!clear) c.setColorAt(k, umbCol[i]);
+        umbMesh('shaft').setMatrixAt(umbN.shaft++, m4);
+      }
       const ua = p.mesh.geometry.attributes.iUmb;
       if (ua.getX(p.slot) !== (held ? 1 : 0)) { ua.setX(p.slot, held ? 1 : 0); ua.needsUpdate = true; }
       // the cadence follows the speed; when it changes, shift the phase so the stride doesn't jump
@@ -942,7 +961,6 @@ transformed = crowdPose(transformed, false);`);
     function hide(i) {
       const p = P[i];
       unshow(p);
-      if (umbOn) for (const c of UMB_KEYS) umbMeshes[c] && umbMeshes[c].setMatrixAt(i, zero);
       const r = active.get(i);
       if (r) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }
     }
@@ -956,7 +974,12 @@ transformed = crowdPose(transformed, false);`);
         if (!m.count) continue;
         range(m.instanceMatrix, m.count); range(A.aAnim, m.count);
       }
-      for (const m of Object.values(umbMeshes)) if (m.visible) m.instanceMatrix.needsUpdate = true;
+      for (const c of UMB_KEYS) {
+        const m = umbMeshes[c];
+        if (!m || !m.visible) continue;
+        m.count = umbN[c];
+        if (m.count) { range(m.instanceMatrix, m.count); if (m.instanceColor) range(m.instanceColor, m.count); }
+      }
     }
     // the rain, 0..1 (weather.js): umbrellas go up as it comes on
     function setRain(r) {
@@ -964,7 +987,7 @@ transformed = crowdPose(transformed, false);`);
       const on = UMBRELLAS && r > 0.06;
       if (on === umbOn) return;
       umbOn = on;
-      for (const c of UMB_KEYS) { const m = umbMesh(c); m.visible = on; if (!on) { for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero); m.instanceMatrix.needsUpdate = true; } }
+      for (const c of UMB_KEYS) { const m = umbMesh(c); m.visible = on; if (!on) m.count = 0; }
     }
     return { begin, place, hide, end, setRain, meshes, active, umbrellas: umbMeshes };
   }
