@@ -231,3 +231,58 @@ QUERY=water=high xvfb-run -a node tools/city_shot.js tokyo views.json out 1440 9
 Mesa's llvmpipe under `xvfb-run`; `QUERY=water=high` adds the water's reflection, which a
 software renderer leaves out. The stills here were taken that way. Not checked: a real
 GPU, Safari and iOS.
+
+# Night in the wild: the reef and alpine sites
+
+Out of town there are no street lights. At 01:22 at Peter's Lookout with no moon, the frame was almost pure black.
+Only the HUD and the stars showed: not the lake, not the hills, not Hana or the player (#401).
+
+![Lake Pukaki at 01:22, no moon: before, the land near black; after, the terrain, lupins, the player and Hana read under the Milky Way](images/night/wild-pukaki-before-after.jpg)
+
+The light model was right but the night was a light meter's night, not a game's. The eye's adaptation (`web/reef/main.js` `seen`,
+`adapt`) was capped at 3e5. Starlight alone needs about 1.7e6 to reach even that curve's floor, so a moonless night
+was shown at a sixth of what the curve meant, and the curve's floor was itself 1% of daylight.
+
+## How games and the research handle night
+
+| Source | What it does | Taken here |
+|---|---|---|
+| Ghost of Tsushima (Jasmin Patry, [*Real-Time Samurai Cinema*](https://advances.realtimerendering.com/s2021/jpatry_advances2021.pdf), SIGGRAPH 2021) | Two stated aims: "make night feel like night, and not just darker day" and "increase visibility in dark areas". It uses a Purkinje-shift tonemap (LMS cones plus rods, after Cao et al. 2008) tuned at an average of about 0.05 lux. Exposure is driven by illuminance, not luminance. The moon is a real light that feeds the bounce probes. | A floor on the eye's adaptation keyed to the light falling on a white surface (illuminance). The Purkinje shift was already in `post.js`. The moon is the key light. |
+| Minecraft ([wiki](https://minecraft.wiki/w/Light)) | An explicit ambient floor: the night is drawn at about 17% brightness, shaded blue. | The floor: a moonless night shows a white surface at 0.055 against about 1.1 by day. That is about 4.3 stops down, the same order as Minecraft's floor. |
+| Breath of the Wild ([Aonuma](https://zeldauniverse.net/2016/08/15/aonuma-remarks-on-the-challenge-of-striking-a-balance-with-breath-of-the-wilds-daynight-cycle/)) | A mountain night is "completely dark, but the starlight made it brighter". Glowing things in the land guide the player. | Stars and the Milky Way are the highlight of the dark-sky sites. The airglow band lets the ranges stand out against the sky. |
+| Red Dead Redemption 2, Valheim, Sea of Thieves, Horizon, Death Stranding | No talk on their night lighting was found. Commonly observed: a moon that casts light, a lantern on the player, and modded "gamma" floors for Valheim's too-dark nights ([GammaOfNightLights](https://thunderstore.io/c/valheim/p/shudnal/GammaOfNightLights)). | A fill light behind the eye (below). It is not a lantern; the surveyors carry none. |
+| Jensen et al., [*Night Rendering*](https://users.cs.utah.edu/docs/techreports/2000/pdf/UUCS-00-016.pdf) (2000) and [*A Physically-Based Night Sky Model*](https://graphics.ucsd.edu/~henrik/papers/nightsky/) (SIGGRAPH 2001) | The night sky's sources: moon, stars, zodiacal light and airglow (airglow is the largest on a moonless night). Below the cones' range the image shifts toward (x, y) = (0.25, 0.25). Moonlight is redder than sunlight; the eye sees it blue. | Airglow brightened toward the horizon by the van Rhijn factor (`alpine/atmos.js` `starfield`). The blue shift stays in the grade (`post.js`), not in the moon's colour. |
+| Thompson, Shirley and Ferwerda, *A Spatial Post-Processing Algorithm for Images of Night Scenes* (J. Graphics Tools 2002) | Film's "day for night": darker, less contrast, desaturated, blue. | Already in `post.js`: past a few hundred times of adaptation the dark parts go toward a blue grey; what is bright enough for the cones keeps its colour. |
+| Larson, Rushmeier and Piatko 1997 ([TVCG](https://graphics.cs.yale.edu/sites/default/files/1997tvcg_hdr_tonemapping.pdf)), Kirk and O'Brien 2011 | Scotopic luminance and a perceptual low-light tonemap. | Reference only. The existing shift in `post.js` was kept. |
+| Unreal auto exposure ([docs](https://dev.epicgames.com/documentation/unreal-engine/auto-exposure-in-unreal-engine)); Frostbite, *Moving Frostbite to PBR* (2014) | Adaptation between a minimum and a maximum EV. A grey surface under a full moon is about EV100 −3.4. Under starlight alone it is about EV100 −10, far below where a game exposes. | The `seen` curve is exactly such a clamp: the eye adapts freely down to dusk, then holds a floor. |
+
+The numbers used are from the same sources:
+
+| Light | Value |
+|---|---|
+| Sun | about 100 000 lux |
+| Full moon | about 0.2 lux, 2.3e-6 of the sun |
+| Clear moonless night (mostly airglow) | about 0.002 lux |
+
+No code was taken from any of these. The three.js `SkyMesh` (MIT) has no stars or moon. `@takram/three-atmosphere`
+(MIT) draws the Bright Star Catalogue as we already do (`alpine/stars.js`). Neither was used.
+
+## What the sites do at night
+
+The changes are in `web/reef/main.js` unless another file is named.
+
+| Piece | Where | What |
+|---|---|---|
+| The eye's floor | `seen`, `adapt` (cap now 3e6) | A white horizontal surface is shown at 0.055 under starlight alone and at 0.135 under a full moon (about 3 stops under a sunlit one). Dusk to night never turns back up. The scotopic blue shift in `post.js` takes the colour out of everything darker than a lamp. |
+| The moon as key light | `setSun` (env.js), `moonL`, `light.u.moonE` | The moon's place and phase come from the clock and the site, as before. A full moon outweighs the starlit sky about 30 times, so it casts the shadows' direction and lights the snow. Its sky fill was raised from the physical 0.34 to 0.6 of its light, so the side of a person away from the moon still reads. |
+| The fill on the people | `fillL` | A soft point light 5 m behind the eye and 2.5 m up, falling off as 1/d. It lights a white surface 10 m away to 0.6 of the night's white and fades in from 9° below the horizon. Only lit materials take it: people, cars, boats, landmarks and some plants. The land and the water do their own shading, so no pool of light lies on the ground. It runs on every tier as one light. |
+| Stars and the Milky Way | `alpine/stars.js`, `alpine/atmos.js` | Unchanged in brightness: `atm.u.stars` is held at the old cap's adaptation, so a dark-sky site's sky is as it was while the land comes up. |
+| Airglow | `alpine/atmos.js` `starfield` | A faint glow that brightens toward the horizon (van Rhijn: up to 5.6 times), so the Ben Ohau Range and Aoraki stand dark against a pale band of sky. |
+| Water | `alpine/atmos.js` `skyRefl` | The lakes now mirror the Milky Way and the night's glow; on the sea the moon's glitter path is unchanged (`ocean.js`). |
+
+## Checking it
+
+`tools/reef_night.sh <out> [site ...]` takes stills beside each site's first person (`?gameshot=npc`). It covers a
+desktop and a phone at day, dusk, a full moon high and a moonless night. `tools/contact_sheet.py` lays them side by
+side. The city games were checked at night (Sydney, `tools/game_shot.js`): their streets have their own lights and
+floor and read already, so they are unchanged.

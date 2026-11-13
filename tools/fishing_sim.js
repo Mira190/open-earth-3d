@@ -3,7 +3,7 @@
 // city's water a few thousand times each; the table says how often each lands it, how long the
 // fight lasts and how much of it the button is held. Then a year at each spot: what a player
 // who casts all day with each rig would log, month by month.
-//   node tools/fishing_sim.js                # sydney and queenstown
+//   node tools/fishing_sim.js                # every water with a fishing.json
 //   node tools/fishing_sim.js sydney 4000    # a city, and how many fights per cell
 // Exits 1 when a target is missed: the easiest fish must be all but sure for a beginner, the
 // hardest must stay a fight for an expert and possible for a beginner, and no fight may run past
@@ -15,7 +15,7 @@ require('../web/game/fishing.js');
 const core = window.OEFishing.core;
 const args = process.argv.slice(2), N = +(args.find(a => /^\d+$/.test(a)) || 2000);
 const cities = args.filter(a => !/^\d+$/.test(a));
-if (!cities.length) cities.push('sydney', 'queenstown');
+if (!cities.length) cities.push(...fs.readdirSync(path.join(__dirname, '../web/data')).filter(d => fs.existsSync(path.join(__dirname, '../web/data', d, 'fishing.json'))).sort());   // (every water with fishing: the cities' and the reef sites')
 
 // a player: the median time after a run starts before they let go, and after it ends before they
 // wind again (s), log-normal with this spread, as reaction times are; reads: whether the warning
