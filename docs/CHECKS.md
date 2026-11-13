@@ -89,7 +89,13 @@ of every target, 13 November 2026:
 | `loader`, `telemetry`, `title` | 4 to 7.5 min |
 | `game` of a small map (Tetsugaku, Kamakura) | 5 to 6.5 min |
 | `game` of a large one (Kyoto, Shibuya, Queenstown) | 13 to 15 min |
-| `game` that failed once and ran again | 11 to 30 min |
+| `game` that failed once and ran again | 11 to 34 min |
+| The whole run, every target | 29 and 34 min |
+
+In those two runs the game check failed its first pass in five and six of the ten cities, on steps
+of the traffic, and passed or failed on another step the second time in all but two; the code was
+main's. One step failed twice in a row in Sydney (cars backing out of a one-way street to the
+junction behind), and one in Fushimi Inari (a ride that had not arrived).
 
 On a session's machine, the game check alone: Tetsugaku 7 minutes with another city beside it,
 Sydney 9 alone and 15 with one beside it.

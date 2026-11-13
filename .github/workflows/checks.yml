@@ -10,7 +10,7 @@ name: Checks
 
 on:
   push:
-    branches: [main, claude/loving-hawking-8vnew9]   # (the second while this is tried out)
+    branches: [main]
   workflow_dispatch:
     inputs:
       targets:
@@ -110,7 +110,7 @@ jobs:
 
   report:
     needs: [plan, shard]
-    if: always() && needs.shard.result != 'cancelled'
+    if: always() && github.ref == 'refs/heads/main' && needs.shard.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
