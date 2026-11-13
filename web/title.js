@@ -18,7 +18,9 @@
 // and if it is still black, or the device has no WebGL 2, or the GPU drops the context twice,
 // the menu runs over a still picture of the Earth instead of a black screen.
 //
-// The menu lists the live destinations in the order the sun reaches them. Choosing one
+// The menu lists Japan first (Tokyo, then Kyoto, then the rest of Japan), and the other live
+// destinations after it in the order the sun reaches them; it opens framed on Japan, with one
+// button that goes straight into the Shibuya game (docs/HOMEPAGE.md). Choosing one
 // turns the globe to it; a card gives its figures, local time and sun, and the camera dives
 // to it as the model loads. Later visits in the same session get a short version; coming
 // back from a city pulls out from it.
@@ -88,14 +90,21 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const meta = cs[0].group_meta || null;
     dests.push({ id: `group-${name}`, name, native: meta && meta.native, country: cs[0].country, lat, lon, tz: cs[0].timezone, c: cs[0], sites: cs, meta });
   }
-  // in the order the sun reaches them: east to west
-  dests.sort((a, b) => Math.round(b.lon) - Math.round(a.lon) || live.indexOf(a.c) - live.indexOf(b.c));
+  // Japan first, the places most worked on: Tokyo, Kyoto, then the rest of Japan; the others after
+  // it in the order the sun reaches them, east to west
+  const LEAD = ['Tokyo', 'Kyoto'];
+  const rank = d => { const k = LEAD.indexOf(d.name); return k >= 0 ? k : d.country === 'Japan' ? LEAD.length : LEAD.length + 1; };
+  dests.sort((a, b) => rank(a) - rank(b) || Math.round(b.lon) - Math.round(a.lon) || live.indexOf(a.c) - live.indexOf(b.c));
+  // the point the menu opens on: between Tokyo and Kyoto, over Honshu
+  const jp = dests.filter(d => LEAD.includes(d.name));
+  const JAPAN = jp.length ? { lat: jp.reduce((a, d) => a + d.lat, 0) / jp.length, lon: jp.reduce((a, d) => a + d.lon, 0) / jp.length } : null;
   const totalBuildings = live.reduce((a, c) => a + (c.buildings || 0), 0);
   for (const d of dests) {
     d.beacon = earth.addCity(d.lat, d.lon);
     d.dir = E.ll(d.lat, d.lon);
   }
   const lang = d => (d.id === 'hong-kong' ? 'zh-Hant' : 'ja');
+  const escH = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
   const nativeName = d => (d.native ? `<small lang="${lang(d)}">${d.native}</small>` : '');
 
   // what this browser has done there: the model opened, stamps in the game
@@ -132,6 +141,25 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     });
     if (sel >= 0) fillStats(dests[sel]);
   }
+  // the one action the page asks for: straight into the best Japanese level, then the other Tokyo
+  // areas and Kyoto, each a single tap from landing (no card, no subway map in between)
+  const HERO = ['shibuya', 'shinjuku', 'tokyo', 'higashiyama'];
+  const heroes = HERO.map(id => cities.find(c => c.id === id && c.built && c.game)).filter(Boolean);
+  const heroEl = $('ts-hero');
+  if (heroEl && heroes.length) {
+    const [h0, ...rest] = heroes;
+    const nm = c => escH(c.district || c.name), sub = c => escH((c.guide && c.guide.hook) || c.tagline || '');
+    heroEl.innerHTML = `<p class="ts-eyebrow">Japan · start here</p>
+      <button class="ts-btn primary ts-go" data-hero="${h0.id}" aria-label="Play ${nm(h0)}, ${escH(h0.group || h0.country)}"><span class="ts-bl"><b>Play ${nm(h0)}${h0.native ? ` <small lang="ja">${escH(h0.native)}</small>` : ''}</b><small>${sub(h0)}</small></span><kbd>P</kbd></button>
+      <div class="ts-also">${rest.map(c => `<button class="ts-chip" data-hero="${c.id}" aria-label="Play ${nm(c)}">${nm(c)}<small>${escH(c.group || c.country)}</small></button>`).join('')}</div>`;
+    heroEl.hidden = false;
+    on(heroEl, 'click', e => {
+      const b = e.target.closest('[data-hero]'); if (!b) return;
+      const c = cities.find(x => x.id === b.dataset.hero), d = dests.find(x => x.c === c || (x.sites && x.sites.includes(c)));
+      lastInput = performance.now();
+      if (d) dive(d, true, c);
+    });
+  }
   $('ts-next').innerHTML = `Next in line <b>${planned.map(c => c.name).join(' · ')}</b>`;
   $('ts-tally').textContent = `${dests.length} destinations · ${fmtN(totalBuildings)} buildings measured · one real sun`;
   $('ts-planned').innerHTML = planned.map(c => `<li><b>${c.name}</b><span>${c.country}. ${c.data || ''}</span></li>`).join('');
@@ -160,13 +188,26 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   }
   // the menu's orbit: the camera on a sphere round the earth, looking at its centre
   const orb = { lat: 10, lon: 135, dist: 4.6, fov: 28, tlat: 10, tlon: 135, tdist: 4.6, vlat: 0, vlon: 0 };
-  // the menu opens on the Asia-Pacific, where most destinations are, turned a little towards
-  // the sun so some of the globe is always lit
+  // The menu opens on Japan: Honshu in the middle of the globe's side of the frame, Tokyo and Kyoto
+  // far enough apart to read as two places, and the camera dropped south over the Pacific so the
+  // globe is seen at a tilt, with the curve of the Earth and its air above Japan. Whatever the
+  // hour it is Japan's real sky: noon, a dusk with the terminator across it, or the lights at night.
+  // Without Japan on the list it falls back to the Asia-Pacific, turned a little towards the sun.
+  let home = true; // still on the opening view: the idle drift sways round it instead of carrying it off
+  const HOME_TILT = 9;
   function homeView() {
+    home = true;
+    setShift();
+    if (JAPAN) {
+      orb.tlat = JAPAN.lat - (narrow() ? HOME_TILT : HOME_TILT - 2); orb.tlon = JAPAN.lon; orb.tdist = homeDist();
+      return;
+    }
     const c = dests.reduce((a, d) => a.add(d.dir), new V3()).normalize();
     const m = c.addScaledVector(earth.sun, 0.55).normalize(), g = E.latlon(m);
     orb.tlat = clamp(g.lat, -30, 30); orb.tlon = g.lon; orb.tdist = fitDist();
   }
+  // close enough that Japan fills the middle of the frame and the globe's limb still shows
+  function homeDist() { return JAPAN ? fitDist() * (narrow() ? 0.68 : 0.9) : fitDist(); }
   function fitDist(scale = 1) {
     const v = orb.fov * RAD, h = 2 * Math.atan(Math.tan(v / 2) * cam.aspect);
     const half = Math.min(v, narrow() ? h : v) / 2;
@@ -179,10 +220,15 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     out.fov = o.fov;
     return out;
   }
-  function layout() {
-    shift.tx = narrow() ? 0 : 0.13;
+  // the globe sits off-centre, clear of the list: right of it on a wide screen, above it on a phone
+  // (the opening view on Japan a little further right, as its globe is drawn larger)
+  function setShift() {
+    shift.tx = narrow() ? 0 : home && JAPAN && sel < 0 ? 0.17 : 0.13;
     shift.ty = narrow() ? 0.13 : 0;
-    if (state === 'menu') orb.tdist = fitDist(sel >= 0 ? 0.92 : 1);
+  }
+  function layout() {
+    setShift();
+    if (state === 'menu') orb.tdist = sel >= 0 ? fitDist(0.92) : home ? homeDist() : fitDist();
   }
 
   // ------------------------------------------------------------ the cold open, planned on the real sky
@@ -312,15 +358,15 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   }
   // frame a destination up and to the left of the globe's centre, clear of its card
   function frameOn(d) {
+    home = false;
+    setShift();
     orb.tlat = clamp(d.lat - (narrow() ? 12 : 10), -55, 55);
     orb.tlon = d.lon + (narrow() ? 0 : 16);
     orb.tdist = fitDist(0.92);
   }
-  // where the menu's orbit starts: on a wide screen framed on the first destination, the one a
-  // visitor reads first, with its card closed until it is clicked
+  // where the menu's orbit starts: framed on Japan, with no card open until one is asked for
   function menuStart() {
     homeView();
-    if (!narrow() && dests.length) frameOn(dests[0]);
     orb.lat = orb.tlat; orb.lon = orb.tlon; orb.dist = orb.tdist;
   }
 
@@ -607,7 +653,6 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   // (the map itself, its picking and its full-screen view are metro.js, shared with the game and the
   // 3D model; the title keeps the card's copy in step and dims the globe behind the full-screen one)
   const metroSel = {};
-  const escH = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
   const metroHTML = d => OEMetro.map(d, cities);
   const metroNearest = (d, svg, x, y) => OEMetro.nearest(d, svg, x, y);
   function metroPick(d, i, byUser = false) {
@@ -693,6 +738,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const k = 0.16 * orb.dist / 4.6, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     const dt = Math.max(1, performance.now() - drag.t);
     orb.tlon -= dx * k; orb.tlat = clamp(orb.tlat + dy * k, -65, 65);
+    if (home && Math.abs(dx) + Math.abs(dy) > 2) { home = false; setShift(); }
     orb.vlon = -dx * k / dt * 1000; orb.vlat = dy * k / dt * 1000;
     drag.x = e.clientX; drag.y = e.clientY; drag.t = performance.now();
     lastInput = performance.now();
@@ -705,6 +751,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (state === 'open') { skip(); return; }
     if (state !== 'menu') return;
     orb.tdist = clamp(orb.tdist * Math.exp(e.deltaY * 0.0012), 1.6, 9);
+    home = false; setShift();
     e.preventDefault();
   }, { passive: false });
   on(window, 'keydown', e => {
@@ -720,8 +767,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     else if (k === 'p' && sel >= 0 && dests[sel].sites && card.querySelector('[data-map][data-go="play"]')) card.querySelector('[data-map][data-go="play"]').click();
     else if (k === 'p' && sel >= 0 && dests[sel].sites && card.querySelector('.ts-dplay')) card.querySelector('.ts-dplay').focus();
     else if (k === 'p' && sel >= 0 && dests[sel].c.game && !dests[sel].sites) dive(dests[sel], true);
+    else if (k === 'p' && sel < 0 && $('ts-hero') && !$('ts-hero').hidden) $('ts-hero').querySelector('.ts-go').click();
     else if (k === 'f' && sel >= 0 && window.OEFilm && OEFilm.hasReel()) OEFilm.openReel();
-    else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); orb.tdist = fitDist(); for (const d of dests) d.mark.classList.remove('hot'); }
+    else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); homeView(); for (const d of dests) d.mark.classList.remove('hot'); }
   });
   on($('ts-skip'), 'click', e => { e.stopPropagation(); skip(); });
   // sound during the opening: the score joins the shot where it has got to
@@ -797,6 +845,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       el.classList.toggle('flip', flip);
       el.dataset.cramped = right || left ? '' : '1';
       el.style.transform = `translate(${(flip ? x - lw - back : x).toFixed(1)}px, ${y.toFixed(1)}px)`;
+      el.dataset.x = x.toFixed(1); el.dataset.y = y.toFixed(1);
       el.style.opacity = String(Math.min(always ? 1 : 0.9, (facing - 0.12) / 0.25));
     });
     // a label that would overlap one already placed loses its text (its tick stays): the chosen
@@ -804,9 +853,19 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const order = [...dests.map((d, i) => ({ el: d.mark, pri: i === sel ? 0 : i === hot ? 1 : 2 })), ...plannedMarks.map(m => ({ el: m.el, pri: 3 }))]
       .filter(o => !o.el.hidden).sort((x, y) => x.pri - y.pri);
     const placed = [];
+    const hits = r => placed.some(q => r.left < q.right + 6 && r.right + 6 > q.left && r.top < q.bottom + 2 && r.bottom + 2 > q.top);
     for (const o of order) {
-      const r = o.el.getBoundingClientRect();
-      const clash = !!o.el.dataset.cramped || placed.some(q => r.left < q.right + 6 && r.right + 6 > q.left && r.top < q.bottom + 2 && r.bottom + 2 > q.top);
+      let r = o.el.getBoundingClientRect();
+      let clash = !!o.el.dataset.cramped || hits(r);
+      // two places close together (Tokyo and Kyoto from orbit): try the label on the other side first
+      if (clash && !o.el.dataset.cramped && o.el.dataset.x) {
+        const x = +o.el.dataset.x, y = +o.el.dataset.y, lw = r.width, back = o.el.classList.contains('plan') ? -6 : 20, flip = !o.el.classList.contains('flip');
+        const nx = flip ? x - lw - back : x;
+        if (nx >= 12 && nx + lw <= stage.clientWidth - 12) {
+          const moved = new DOMRect(r.left + (nx - (flip ? x : x - lw - back)), r.top, r.width, r.height);
+          if (!hits(moved)) { o.el.classList.toggle('flip', flip); o.el.style.transform = `translate(${nx.toFixed(1)}px, ${y.toFixed(1)}px)`; r = moved; clash = false; }
+        }
+      }
       o.el.classList.toggle('mute', clash);
       if (!clash) placed.push(r);
     }
@@ -868,7 +927,11 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       if (!drag) {
         orb.tlon += orb.vlon * dt; orb.tlat = clamp(orb.tlat + orb.vlat * dt, -65, 65);
         orb.vlon *= Math.exp(-dt * 3); orb.vlat *= Math.exp(-dt * 3);
-        if (!reduced && performance.now() - lastInput > 9000) orb.tlon -= dt * 1.4;
+        // idle: on the opening view the globe sways a few degrees either side of Japan; elsewhere it drifts
+        if (!reduced && performance.now() - lastInput > 9000) {
+          if (home && JAPAN && sel < 0) orb.tlon = JAPAN.lon + 4 * Math.sin((performance.now() - lastInput - 9000) / 1000 * 0.07);
+          else orb.tlon -= dt * 1.4;
+        }
       }
       const kk = 1 - Math.exp(-dt * (trans ? 6 : 3.2));
       let dl = orb.tlon - orb.lon; dl = ((dl + 540) % 360) - 180;

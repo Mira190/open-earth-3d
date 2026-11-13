@@ -629,17 +629,43 @@ How it is drawn from that:
   it: the exterior's own meshes are sampled on a half-metre grid
   (`Envelope`), and a wall is as high as that leaves room for. The theatre's
   house is 22.8 m wide and 27.5 m long, the Concert Hall's 29.2 m by 36 m.
-- **One level.** The floors are the podium's deck at 14.7 m, the level the
-  Monumental Steps reach here. The real foyers climb two storeys from the
-  southern foyer (12.80 m) to the northern one (18.59 m), and the real
-  auditoria have a circle and boxes over the stalls: here each hall has its
-  stalls on one rake (693 seats in the theatre, 1,320 in the Concert Hall,
-  nearly two thirds of them taken), and the pit is at the stalls' level
-  behind its rail, not sunk.
+- **The levels.** The doors open onto the southern foyer at the podium's
+  deck, 14.70 m, the level the Monumental Steps reach here (the real
+  southern foyer is lower, under the steps). Past the stalls' doors each
+  side foyer climbs a straight flight of 26 risers along the carcass to a
+  gallery 1.6 m wide at the "granite" level, 18.59 m; the galleries meet on
+  a landing behind the auditorium, where the bar is, with Olsen's or
+  Jagamara's mural over it; from the landing the broad stair comes down to
+  the lower level along the glass (at the deck's level here, where the real
+  mural level is 15.54 m). The shells as built here come lower over the
+  north than the real ones, so the gallery keeps to the carcass and the
+  broad stair stops where they come down to it. `tools/foyer_walk.js` (in
+  the game check) walks each hall's foyers end to end, up and down.
+- **The circle and the boxes.** Over the back of the stalls a circle climbs
+  to the rear wall behind a birch parapet, and boxes stand along the side
+  walls in tiers (two in the theatre, one in the Concert Hall), six or seven
+  seats each on two steps, turned to the stage. Fitted under the shells the
+  theatre seats 693 in the stalls, 260 in the circle and 112 in the boxes
+  (865, 466 and 158 in the real one), the Concert Hall 1,320, 423 and 112.
+  No stair reaches them here: they are drawn but not solid, as their parts,
+  more than 3.5 m over the floor under them, would stand in the collision
+  world's 2 m cells at a walker's head on the galleries; for the same reason
+  the auditorium's walls are solid to 3.4 m and drawn above, and an unseen
+  wall stops a walker along the gallery and the landing.
+- **The seats** are a moulded white birch shell with wool on the seat and
+  the back, rounded at the edges, and a birch standard and armrest shared
+  with the next seat (about 150 triangles, instanced); an unseen block over
+  each row's seats either side of the middle aisle stops a walker, so the
+  aisles are the way in. Round the seats kept for you the audience are
+  seated Rocketbox people (`web/game/show.js` audience: 28 on a desktop, 18
+  on the medium tier, 10 on a phone), dressed for an evening out; the boxes
+  beyond them are the low figures they replace. The pit is at the stalls'
+  level behind its rail, not sunk.
 - **The route** is the real one: up the steps, through the glass doors of
   the southern foyer under the first shell, north along a side foyer past
-  the carcass and the pedestals' fans, and into the northern foyer with its
-  bar against the auditorium's rear wall and chairs along the glass. The
+  the carcass and the pedestals' fans and up its flight, and into the
+  northern foyer with its bar on the landing against the auditorium's rear
+  wall and, down the broad stair, chairs along the glass. The
   stalls' doors open off the side foyers onto the cross aisle before the
   first row; the stage is at the south end.
 - **The stage** of the theatre carries a set for *Carmen*'s first act drawn
@@ -707,9 +733,10 @@ numbers stay valid because the geometry they depend on is unchanged.
 
 ## 8. Limitations
 
-- **Inside the Opera House.** One level where the building has four, no
-  circle or boxes, and rooms sized to the shells as modelled here, not to
-  the building's own drawings (see "Inside the Opera House").
+- **Inside the Opera House.** Three levels where the building has more (no
+  southern foyer under the steps, no separate mural and bar levels), no stair
+  to the circle or the boxes, and rooms sized to the shells as modelled here,
+  not to the building's own drawings (see "Inside the Opera House").
 - **Opera House shell layout.** The sphere radius and the Concert Hall's 67 m
   are published, and the Joan Sutherland Theatre's 61 m was measured with
   LiDAR by others. The ridges are OSM traces of an aerial photo that is not a

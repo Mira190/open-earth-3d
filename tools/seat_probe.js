@@ -1,6 +1,7 @@
 // Take a city's seats (tools/seat_step.js) on their own, with a still from each:
 //   cd web && python3 -m http.server 8800 &
 //   GAME_TIME=20:30 xvfb-run -a node tools/seat_probe.js sydney out_dir [WxH]   # (GAME_TIME: tools/pin_clock.js)
+//   TOUCH=1 ... sydney out_dir 390x844                                            # on a phone: tapped, a finger to look round
 const { chromium } = require('playwright');
 const fs = require('fs');
 const { pinClock } = require('./pin_clock');
@@ -11,7 +12,8 @@ const time = (process.env.GAME_TIME || '').replace(/.*T/, '');
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  const p = await b.newPage({ viewport: { width: w, height: h } });
+  const touch = !!process.env.TOUCH; // a phone: touch, the touch controls, the action button tapped (seat_step)
+  const p = await b.newPage({ viewport: { width: w, height: h }, ...(touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 1 } : {}) });
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* blocked */ } }, process.env.TIER || 'high');
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
@@ -34,7 +36,7 @@ const time = (process.env.GAME_TIME || '').replace(/.*T/, '');
     if (!up) break;
   }
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 80; i++) g.advance(0.25); }); // (the arrival's shot over: actions are offered)
-  const res = await require('./seat_step')(p, { outDir, prefix: `${city}-${time.replace(':', '')}-` });
+  const res = await require('./seat_step')(p, { outDir, prefix: `${city}-${time.replace(':', '')}-${touch ? 'phone-' : ''}`, touch });
   for (const r of res) console.log(r.ok ? 'ok  ' : 'FAIL', JSON.stringify(r));
   console.log(errs.length ? errs.join('\n') : 'no page errors');
   await b.close();
