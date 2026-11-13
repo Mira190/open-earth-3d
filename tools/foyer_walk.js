@@ -23,7 +23,7 @@ async function walkRoutes(p) {
         pl.auto = { x, y, t: 0, label: 'walk', then: () => { done = true; }, cancel: () => {} };
         while (!done && t < 40) { g.advance(0.1); t += 0.1; if (!pl.auto && !done) break; }
         const d = Math.hypot(pl.x - x, pl.y - y);
-        legs.push({ to: [x, y], reached: d < 1.2, d: +d.toFixed(2), z: +pl.z.toFixed(2), want: z, secs: +t.toFixed(1) });
+        legs.push({ at: [+pl.x.toFixed(2), +pl.y.toFixed(2)], to: [x, y], reached: d < 1.2, d: +d.toFixed(2), z: +pl.z.toFixed(2), want: z, secs: +t.toFixed(1) });
         if (d > 1.2) { pl.auto = null; break; }
       }
       const bad = legs.filter(l => !l.reached || (l.want != null && Math.abs(l.z - l.want) > 0.45));
@@ -44,7 +44,7 @@ if (require.main === module) {
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
     await p.evaluate(() => { const g = window.__game; g.hold(true, true); for (let i = 0; i < 80; i++) g.advance(0.25); });
-    for (const r of await walkRoutes(p)) console.log(r.ok ? 'ok  ' : 'FAIL', r.id, r.ok ? r.legs.filter(l => l.want != null).map(l => `${l.z}`).join(' → ') : r.why);
+    for (const r of await walkRoutes(p)) console.log(r.ok ? 'ok  ' : 'FAIL', r.id, process.env.DEBUG ? JSON.stringify(r.legs) : '', r.ok ? r.legs.filter(l => l.want != null).map(l => `${l.z}`).join(' → ') : r.why);
     console.log(errs.length ? errs.join('\n') : 'no page errors');
     await b.close();
   })();

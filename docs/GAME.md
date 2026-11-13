@@ -2412,6 +2412,13 @@ stalls of both halls, chairs along the northern foyers' glass, a table at Bennel
   before her couplet, "L'amour est enfant de Bohême", and the chorus's "Prends garde à toi!". The English lines
   are this project's own. What was looked at and not adopted: Pink Trombone (Neil Thapen, MIT), an
   articulatory model, heavier than a formant voice needs.
+- **The audience** round the seats kept for you (a show's `audience`: the patrons' instanced prop and index, nearest
+  first, and its `cast` of Rocketbox characters) are seated people, taken in when you first come within 45 m of the
+  stage and drawn and posed only while you are that near; the low figures they stand for are hidden. 28 on the high
+  tier, 18 on the medium, 10 on the low.
+- **On a phone** the action button takes the seat and stands you up, a finger drawn across the screen turns your
+  head, and the joystick, Jump, Run and Guess are put away while you sit. `TOUCH=1 node tools/seat_probe.js sydney
+  out 390x844` takes the seats that way.
 - **Listening to it.** No harness has sound, so `node tools/show_bounce.js [dir]` renders the show offline
   (`OEShow.bounce`, as `OEMusic.bounce` renders the score) to WAV files: the mix, and her voice, the chorus,
   the orchestra and the house alone. `python tools/show_listen.py [dir]` measures them as an ear would judge:

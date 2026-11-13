@@ -57,7 +57,7 @@ module.exports = async function takeSeats(p, { outDir = null, prefix = '', touch
     }, id);
     // take it: E, or on a phone a tap on the action button
     if (touch) { await p.tap('#gt-act').catch(() => {}); } else await p.evaluate(() => window.__game.interact());
-    Object.assign(r, await p.evaluate(id => {
+    Object.assign(r, await p.evaluate(([id, touch]) => {
       const g = window.__game, pl = g.player, S = g.shows, st = S.seats.find(q => q.id === id), o = {};
       g.advance(0.4);
       o.mode = pl.mode; o.atSeat = !!S.seat && S.seat.name === st.name && Math.hypot(pl.x - S.seat.at[0], pl.y - S.seat.at[1]) < 0.05; // (that seat, or the one beside it)
@@ -67,7 +67,7 @@ module.exports = async function takeSeats(p, { outDir = null, prefix = '', touch
       if (st.show) { o.playing0 = S.playing; o.beat0 = S.beat; }
       o.touchUi = touch ? ['#gt-joy', '#gt-jump', '#gt-run'].filter(q => { const e = document.querySelector(q); return e && !e.hidden && e.offsetParent; }) : [];
       return o;
-    }, id));
+    }, [id, touch]));
     if (touch && r.mode === 'seat') { // a finger drawn across the screen turns your head
       const y0 = await p.evaluate(() => window.__game.cam.lookYaw);
       const cdp = await p.context().newCDPSession(p), touchAt = (type, x) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y: 420 }] });

@@ -22,9 +22,17 @@ What is published, and what is drawn from it (docs/cities/sydney.md, "Inside the
 
 No measured survey of the inside is published in a form that can be redrawn, and the shells here stand on the
 ridges OpenStreetMap maps at sizes taken from photographs, so the rooms are fitted to the shells as built here: every
-wall and ceiling stops short of the ribs and louvres over it (Envelope). The floors are the podium's deck, at the
-level the Monumental Steps reach; the real foyers climb two storeys from the southern foyer to the northern one,
-and the real auditoria have a circle and boxes over the stalls. Here each hall has its stalls on one rake.
+wall and ceiling stops short of the ribs and louvres over it (Envelope).
+  The levels   the southern foyer at the doors' level, the podium's deck (RL 14.70 m; the real one is lower, RL 12.80 m,
+                under the Monumental Steps); a straight flight up each side foyer to a gallery at the northern foyer's
+                level, RL 18.59 m (CMP table 5.1), a landing behind the auditorium with the bar, and the broad stair
+                down to the lower level by the glass. Walked end to end by tools/foyer_walk.js.
+  The house    stalls on a rake, a circle over their back and boxes in tiers along the side walls (the theatre has 865,
+                466 and 158: technical specification, 2024). Fitted under the shells as built here, the theatre seats
+                693, 260 and 112, the Concert Hall 1,320, 423 and 112. The seats are a moulded birch shell with wool on
+                the seat and the back and a shared armrest (seat_model); the rows stop a walker (oh_seat_hit); round
+                the seats kept for you the audience are seated Rocketbox people (web/game/show.js audience), the
+                boxes beyond them. No stair reaches the circle or the boxes.
 """
 import math
 import os
@@ -90,6 +98,11 @@ MATERIALS = {
     "oh_skin": {"color": "#b58a6c", "roughness": 0.8, "metalness": 0.0},
     "oh_hair": {"color": "#2a211c", "roughness": 0.9, "metalness": 0.0},
 }
+# the circle and the boxes, which no one walks up to (no stair reaches them here): drawn, not solid. Up there, over
+# the floor beneath, they would stand in the collision world's 2 m cells (web/game/nav.js BAND), which reach out
+# through the auditorium's wall into the side foyers' galleries at a walker's head
+for _k in ("oh_brushbox", "oh_birch", "oh_black", "oh_wool_red", "oh_wool_magenta"):
+    MATERIALS[_k + "_hung"] = {**MATERIALS[_k], "solid": False}
 FLOODLIT = {k for k, v in MATERIALS.items() if "emissive" in v}
 # who sits round you at the opera (web/game/show.js audience): Rocketbox avatars the NPCs already use, dressed for an evening out
 AUDIENCE_CAST = ["R_Business_Female_02", "R_Business_Male_03", "R_Female_Adult_08", "R_Male_Adult_13", "R_Business_Female_03",
@@ -217,6 +230,18 @@ def env_wall(m, P, E, a, b, h, z0=0.0, step=1.5, t=0.0):
     return min(tops)
 
 
+def hung_wall(m, P, E, a, b, h, z0=0.0, Z=3.4):
+    """env_wall, solid up to Z over the floor and drawn but not solid above it (the material's "_hung" twin). The
+    auditorium's walls stand beside the side foyers' flights, and their tops, more than web/game/nav.js's BAND over
+    the floor under them, would stand in the collision world's 2 m cells, which reach through the wall to the flight
+    at a walker's head where it has climbed (a gallery's own wall stops a walker there: hit, below)"""
+    hm = m.twin if hasattr(m, "twin") else None
+    if z0 < Z:
+        env_wall(m, P, E, a, b, min(h, Z), z0)
+    if hm is not None:
+        env_wall(hm, P, E, a, b, h, max(z0, Z))
+
+
 def box(m, P, u0, u1, v0, v1, z0, z1):
     ak.block(m, P, min(u0, u1), max(u0, u1), min(v0, v1), max(v0, v1), z0, z1)
 
@@ -240,10 +265,15 @@ def flat(m, P, ring, h, uv_scale=1.0):
             m.tri(*pts, [[c[0] * uv_scale, c[1] * uv_scale] for c in cs])
 
 
-def sphere_lamp(R, P, u, v, h=2.3, r=0.2):
-    """One of the foyers' lights: a polycarbonate sphere on a slim pole (Peter Hall's, "Hall's Balls")."""
+def sphere_lamp(R, P, u, v, h=2.3, r=0.2, z0=0.0):
+    """One of the foyers' lights: a polycarbonate sphere on a slim pole (Peter Hall's, "Hall's Balls") standing on
+    the floor at z0; with z0 None, on a bronze bracket from the wall behind it (on a gallery, out of the way)."""
     x, y, g = P(u, v, 0)
-    R.f("oh_bronze").tube([(x, y, g), (x, y, g + h - r)], 0.022, sides=5)
+    if z0 is None:
+        wx, wy, _ = P(u, v - math.copysign(0.15, v), 0)
+        R.f("oh_bronze").tube([(wx, wy, g + h - r - 0.25), (x, y, g + h - r - 0.25), (x, y, g + h - r)], 0.022, sides=5)
+    else:
+        R.f("oh_bronze").tube([(x, y, g + z0), (x, y, g + h - r)], 0.022, sides=5)
     R.f("oh_sphere").lathe([(g + h + r * math.sin(a), r * math.cos(a)) for a in np.linspace(-math.pi / 2, math.pi / 2, 7)], (x, y), segs=10)
 
 
@@ -449,6 +479,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     # ---- the stage house and the auditorium: one carcass, clad in brush box towards the foyers
     car = R.m("oh_brushbox", "carcass")
     lin = A.m(C["lining"], "lining")
+    car.twin, lin.twin = R.m("oh_brushbox_hung", "carcass"), A.m(C["lining"] + "_hung", "lining")
     T = 0.35
     for sgn in (-1, 1):
         env_wall(car, P, E, (us0, sgn * (hs + T)), (up, sgn * (hs + T)), 14.0)
@@ -461,10 +492,10 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     for sgn, side in ((-1, "west"), (1, "east")):
         v = sgn * ha
         for (a, b) in (((up, v), (du - dw / 2, v)), ((du + dw / 2, v), (ur, v))):
-            env_wall(car, P, E, (a[0], a[1] + sgn * T), (b[0], b[1] + sgn * T), 12.0)
-            env_wall(lin, P, E, a, b, 12.0)
+            hung_wall(car, P, E, (a[0], a[1] + sgn * T), (b[0], b[1] + sgn * T), 12.0)
+            hung_wall(lin, P, E, a, b, 12.0)
         for m_, vv in ((car, v + sgn * T), (lin, v)):
-            env_wall(m_, P, E, (du - dw / 2, vv), (du + dw / 2, vv), 12.0, z0=dh)
+            hung_wall(m_, P, E, (du - dw / 2, vv), (du + dw / 2, vv), 12.0, z0=dh)
         box(R.m("oh_bronze", "carcass"), P, du - dw / 2 - 0.06, du - dw / 2, v, v + sgn * T, 0, dh)
         box(R.m("oh_bronze", "carcass"), P, du + dw / 2, du + dw / 2 + 0.06, v, v + sgn * T, 0, dh)
         d = swing_doors(R, P, (du, v + sgn * T / 2), (1.0, 0.0), dw, dh, f"a{side[0]}",
@@ -477,11 +508,11 @@ def hall_inside(key, shells, exterior, z0, deck=None):
                                     "floor": round(z0, 2), "height": 12, "door": d["id"],
                                     "ring": [q for p in ((up, -ha), (ur, -ha), (ur, ha), (up, ha)) for q in xy(P, *p)],
                                     "way": [xy(P, du, v + sgn * 4.2 if abs(v) + 4.4 < min(peds[1], peds[2]) else v + sgn * 2.4), xy(P, du, v + sgn * 1.4), xy(P, du, v - sgn * 1.2), xy(P, du, v - sgn * 4.5)]})
-    env_wall(car, P, E, (ur + T, -ha - T), (ur + T, ha + T), 12.0)
-    env_wall(lin, P, E, (ur, -ha), (ur, ha), 12.0)
+    hung_wall(car, P, E, (ur + T, -ha - T), (ur + T, ha + T), 12.0)
+    hung_wall(lin, P, E, (ur, -ha), (ur, ha), 12.0)
     # the ceiling: as high as the shells leave room for, higher along the middle
     c0, c1 = C["ceiling"]
-    cm = A.m("oh_birch" if C["kind"] == "concert" else "oh_black", "ceiling")
+    cm = A.m("oh_birch_hung" if C["kind"] == "concert" else "oh_black_hung", "ceiling")
     nu_, nv_ = int((ur - up) / 2) + 1, 8
     grid = []
     for i in range(nu_ + 1):
@@ -565,7 +596,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         nc, cp, crise = C["circle"], 0.95, 0.3
         uc0 = ur - nc * cp - 0.6
         zc = stall_z(uc0) + 3.0                  # its front stands 3 m over the stalls' floor under it
-        cf, cs_, cpar = A.m("oh_brushbox", "circle"), A.m(C["lining"], "circle"), A.m("oh_birch", "circle")
+        cf, cs_, cpar = A.m("oh_brushbox_hung", "circle"), A.m(C["lining"] + "_hung", "circle"), A.m("oh_birch_hung", "circle")
         hc = ha - 0.05
         for k in range(nc + 1):                  # the steps (the front one a landing behind the parapet)
             ua, ub = uc0 + k * cp, min(ur, uc0 + (k + 1) * cp)
@@ -573,7 +604,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
             box(cf, P, ua, ub if k < nc else ur, -hc, hc, zk - 0.3, zk)
             cs_.quad(P(ua, -hc, zk - 0.3), P(ua, hc, zk - 0.3), P(ub, hc, zk - 0.3 + crise), P(ub, -hc, zk - 0.3 + crise))   # the soffit, stepping up
         box(cpar, P, uc0 - 0.12, uc0, -hc, hc, zc - 0.55, zc + 0.8)                 # the parapet
-        box(A.m(C["wool"], "circle"), P, uc0 - 0.16, uc0 + 0.04, -hc, hc, zc + 0.8, zc + 0.86)
+        box(A.m(C["wool"] + "_hung", "circle"), P, uc0 - 0.16, uc0 + 0.04, -hc, hc, zc + 0.8, zc + 0.86)
         for k in range(nc):
             u, z = uc0 + 0.75 + k * cp, zc + (k + 1) * crise
             for v in np.arange(-ha + 1.1, ha - 1.09, 0.56):
@@ -588,7 +619,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         ub0, ub1 = du + dw / 2 + 0.6, uc0 - 0.4
         nb = int((ub1 - ub0) / bw)
         aim = np.array([up, 0.0])
-        bf, bpar, bwall = A.m("oh_brushbox", "boxes"), A.m("oh_birch", "boxes"), A.m(C["lining"], "boxes")
+        bf, bpar, bwall = A.m("oh_brushbox_hung", "boxes"), A.m("oh_birch_hung", "boxes"), A.m(C["lining"] + "_hung", "boxes")
         for side in (-1, 1):
             for tier in range(C["boxes"]):
                 for j in range(nb):
@@ -600,7 +631,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
                     box(bf, P, ua, ub, vw, vf, zb - 0.28, zb)                              # its floor
                     box(bf, P, ua, ub, vw, vw - side * 0.85, zb, zb + 0.22)                # the back step
                     box(bpar, P, ua, ub, vf, vf - side * 0.1, zb - 0.45, zb + 0.82)        # the parapet
-                    box(A.m(C["wool"], "boxes"), P, ua, ub, vf + side * 0.03, vf - side * 0.13, zb + 0.82, zb + 0.88)
+                    box(A.m(C["wool"] + "_hung", "boxes"), P, ua, ub, vf + side * 0.03, vf - side * 0.13, zb + 0.82, zb + 0.88)
                     box(bwall, P, ua, ua + 0.08, vw, vf, zb, zb + 2.0)                     # the partition
                     for row, (dv, dz, n) in enumerate(((bd - 0.55, 0.0, 3), (0.42, 0.22, 4))):
                         v = side * (ha - dv)
@@ -751,7 +782,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     us1 = du + dw / 2 + 2.0                 # the side flights' foot, past the stalls' doors
     us2 = us1 + RUN
     ur_ = ur + T                            # the auditorium's rear wall, outside
-    un1 = ur_ + 4.5                         # the landing's edge, the broad stair's head
+    un1 = ur_ + 5.5                         # the landing's edge, the broad stair's head
     un2 = un1 + RUN
     W = max(peds) + 1.0
     gin = ha + T                            # the galleries: from the carcass out to gin + G
@@ -785,6 +816,10 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         for u, h in top[::4] + [top[-1]]:
             rail.tube([P(u, rv, h - 0.95), P(u, rv, h)], 0.018, sides=4)
         out["surfaces"].append(strip(f"oh_{hid}_gallery_{sd}", P, us1 - 0.05, ur_ + 0.05, va, vb, [(us1 - 0.05, 0.0), (us2, LV), (ur_ + 0.05, LV)], f"{lab}, the side foyer's stair"))
+        # the auditorium's wall beside the gallery, solid at a walker's height there (the wall itself is solid only
+        # to Z, hung_wall)
+        box(hit, P, us2 - 1.0, ur_, sgn * (gin - 0.05), sgn * gin, LV, LV + 2.4)
+    box(hit, P, ur_ - 0.05, ur_, -gin, gin, LV, LV + 2.4)   # and behind the landing
     # the landing and the broad stair down, each step as wide as the carpet and the shells over it let it be
     land = band(ur_, un1, -W, W).intersection(carpet)
     for g_ in getattr(land, "geoms", [land]):
@@ -808,8 +843,9 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     out["surfaces"].append(strip(f"oh_{hid}_north", P, ur_ - 0.05, un2 + 0.05, -W, W, [(ur_ - 0.05, LV), (un1, LV), (un2, 0.0), (un2 + 0.05, 0.0)], f"{lab}, the northern foyer"))
     # the way up and down the levels, for tools/foyer_walk.js: in at the southern doors, along the east side foyer, up
     # its flight, along the gallery to the landing, down the broad stair to the glass
-    gv = gin + 1.0
-    route = [(us0 - 3.0, 4.0, 0.0), (us0 - 3.0, gv, 0.0), (us1 - 1.5, gv, 0.0), (us2 + 0.5, gv, LV), (ur_ - 0.5, gv, LV), (ur_ + 2.5, 0.0, LV), (un2 + 1.5, 0.0, 0.0)]
+    bar_half = min(ha - 1.5, 7.0 if C["kind"] == "concert" else 5.0)
+    gv = gin + 0.75   # (the gallery's middle: clear of the lamps' poles by the carcass and the rail)
+    route = [(us0 - 3.0, 4.0, 0.0), (us0 - 3.0, gv, 0.0), (us1 - 1.5, gv, 0.0), (us2 + 0.5, gv, LV), (ur_ - 0.5, gv, LV), (ur_ + 1.2, gv, LV), (ur_ + 1.2, bar_half + 1.4, LV), (ur_ + 4.7, bar_half + 1.4, LV), (ur_ + 4.7, 0.0, LV), (un2 + 0.6, 0.0, 0.0)]
     for r_ in out["rooms"]:
         if r_["id"] == f"{hid}-foyers":
             r_["route"] = [[round(c, 2) for c in P(u, v, h)] for u, v, h in route]
@@ -828,8 +864,8 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         for u in np.arange(us0 + 2, ur, 6.0):
             w = ha + T if u > up else hs + T
             lv = side_h(u) if u > up else 0.0   # (on the gallery, once the flight has climbed)
-            if E(u, sgn * (w + 0.4)) > lv + 3.2:
-                sphere_lamp(R, P, u, sgn * (w + 0.3), lv + 2.4, 0.18)
+            if E(u, sgn * (w + 0.3)) > lv + 3.2:
+                sphere_lamp(R, P, u, sgn * (w + 0.15), lv + 2.4, 0.18, None if lv > 0 else 0.0)
         for k in range(1, len(shells)):   # the pedestals: concrete fans where a shell's ribs come down
             x, y, g = P(pu[k], sgn * (peds[k] - 0.4), 0)
             R.m("oh_concrete", "pedestals").lathe([(g, 0.9), (g + 1.6, 0.75), (g + 2.6, 1.1)], (x, y), segs=10)
@@ -837,12 +873,12 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     # ---- the northern foyer: on the landing, the bar against the auditorium's rear wall; down the broad stair,
     # lounge chairs along the glass
     nb = ur + T + 0.5
-    half = min(ha - 1.5, 7.0)
+    half = bar_half   # (the shells come down low over the landing's ends: the bar keeps to its middle)
     # (the bar runs across the hall: along v)
     Pb = lambda u, v, h: P(nb + 1.8 - v, u, h + LV)   # a frame turned a quarter: its u is the hall's v
     bar(R, Pb, -half, half, 0.0, -1)
-    for v in (-half - 0.8, 0.0, half + 0.8):
-        sphere_lamp(R, P, nb + 2.3, v, LV + 2.5, 0.2)
+    for v in (-half - 0.5, 0.0, half + 0.5):
+        sphere_lamp(R, P, nb + 2.3, v, LV + 2.9, 0.2, LV)
     out["people"][f"{hid}-bartender"] = [round(q, 2) for q in P(nb + 1.0, 1.0, LV)]
     # the mural on the auditorium's rear wall, over the back bar: a long panel in the work's ground colour
     mw, mh = (10.0, 1.8) if C["kind"] == "theatre" else (min(21.0, 2 * ha - 2), 3.0)
