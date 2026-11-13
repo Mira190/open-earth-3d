@@ -4,6 +4,7 @@
     {
       "npc": "aroha", "title": "The guide on Bob's Peak", "where": "Bob's Peak, by the Skyline",
       "hours": { "slots": ["daytime", "evening"] },
+      "places": [{"slots": ["morning"], "at": {"npc": "mei", "d": [4, 4]}, "where": "The gondola's bottom station, before the first cabins up"}],
       "busy": "Not my hour, e hoa. I'm up here through the day and into the evening, while there's a view to show.",
       "ranks": [
         { "title": "The giant's heart",
@@ -55,6 +56,7 @@
         { "title": "1912",
           "talk": ["Lucy rang. She's put the launch picture in the window.", "That was 24 February 1912, down at Kingston. Same year as the Titanic, and I know which one I'd rather crew.", "Her first trip with passengers was the eighteenth of October. That's her birthday, as far as the crew's concerned."],
           "fact": "The Earnslaw was launched at Kingston on 24 February 1912 and made her first passenger voyage on 18 October that year.",
+          "gives": {"id": "forecast", "name": "The skipper's forecast", "text": "The diary shows the next day hour by hour, and Callum writes when rain is coming", "rain": "Weather coming down the lake", "tip": "The Earnslaw sails in it. The view from the top won't be much."},
           "request": { "type": "photo", "near": { "label": "Steamer Wharf" }, "radius": 250, "text": "Photograph Steamer Wharf from the lakefront (photo mode, O)", "ask": "Take a picture of the wharf for me, from along the beach. Photo mode. Mum wants one for the fridge." } },
         { "title": "In the pictures",
           "talk": ["Mum says it's on the fridge. High praise.", "She had the Queen aboard in 1990. And she's been in the pictures: they dressed her up as an Amazon riverboat for an Indiana Jones film. She never even left the lake."],
@@ -162,7 +164,7 @@
       "hello": "Kia ora. Cones or fish, what'll it be?",
       "menu": [ { "id": "hokey-pokey", "name": "Hokey pokey ice cream", "price": 7, "text": "Vanilla ice cream with crunchy lumps of honeycomb toffee through it. It has been sold here since the 1950s, and nowhere else took to it the same way." },
                 { "id": "blue-cod", "name": "Blue cod and chips", "price": 19, "text": "Blue cod is the fish of the south, caught off Southland and Stewart Island: white, sweet and firm in a thin batter, with a wedge of lemon." },
-                { "id": "steamer-pin", "name": "An Earnslaw pin", "price": 12, "keep": true, "text": "An enamel pin of the steamer, red funnel and all, with 1912 under the waterline." } ] },
+                { "id": "steamer-pin", "name": "An Earnslaw pin", "price": 12, "keep": true, "glyph": "⚓", "text": "An enamel pin of the steamer, red funnel and all, with 1912 under the waterline." } ] },
     { "id": "pie-warmer", "name": "Pie warmer", "where": "Brecon Street, below the gondola", "at": { "npc": "mei", "d": [7, -7] }, "hours": ["07:00", "22:00"],
       "hello": "Morning! Pies are hot, cheese rolls just out.",
       "menu": [ { "id": "cheese-roll", "name": "Cheese roll", "price": 5, "text": "A slice of white bread rolled round a cheese and onion filling, toasted and buttered. People down here call it southern sushi; it belongs to Southland and Otago and hardly travels north." },

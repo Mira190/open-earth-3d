@@ -468,8 +468,8 @@
         "name": "Brother Sozen",
         "role": "Monk, Higashi Honganji",
         "at": [
-          -365,
-          -1360
+          -357.5,
+          -1372.5
         ],
         "look": {
           "character": "R_Male_Adult_15_m024_dark",
@@ -514,8 +514,8 @@
         "name": "Mrs. Nakamura",
         "role": "Pickle seller, Nishiki Market",
         "at": [
-          192,
-          232
+          197.5,
+          252.5
         ],
         "look": {
           "character": "R_Female_Adult_09_f011_grey",

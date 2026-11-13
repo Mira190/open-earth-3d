@@ -4,6 +4,7 @@
     {
       "npc": "haruka", "title": "The attendant at the gates", "where": "Tokyo Station, the Marunouchi plaza",
       "hours": { "slots": ["morning", "daytime"] },
+      "places": [{"slots": ["daytime"], "at": {"travel": "t-yurakucho", "d": [6, -4]}, "where": "Yurakucho's gates, covering the lunch hour"}],
       "busy": "I'm on the gates for the evening rush now. Find me out here on the plaza in the morning or the daytime.",
       "ranks": [
         { "title": "335 metres of brick",
@@ -93,6 +94,7 @@
         { "title": "The pine",
           "talk": ["By the main gate there's a black pine the sixth shogun, Ienobu, had planted in 1709, when he remade the garden. Three hundred years old, and wider than my boat is long.", "They prop its branches on posts now. A garden is a slow boat: somebody has to keep it trim for a captain he'll never meet."],
           "fact": "The 300-year pine by Hamarikyu's main gate was planted in 1709, when the sixth shogun, Tokugawa Ienobu, remodelled the garden.",
+          "gives": {"id": "forecast", "name": "The river's weather", "text": "The diary shows the next day hour by hour, and Captain Aoki writes when rain is coming", "rain": "Rain on the bay", "tip": "The water-buses run in the rain. The windows are big."},
           "request": { "type": "photo", "golden": true, "text": "Take one photograph at golden or blue hour (photo mode, O)", "ask": "The bay's at its best when the sun is low. Take one picture in that light, anywhere, and show me." } },
         { "title": "The bridge that opened",
           "talk": ["Good light. And you held it level: most people tilt the bay.", "Upstream from here is Kachidoki Bridge, 1940. The middle used to lift for ships, both leaves, five times a day.", "It last opened in 1970. The machinery is still in the piers. Every captain on this water would give a month's pay to see it go up once."],
@@ -141,6 +143,7 @@
     }
   ],
   "jobs": [
+    {"id": "tare-shimbashi", "type": "train", "title": "A pot of tare to Shimbashi", "blurb": "Ishikawa's sauce pot, lent to a friend's stall under the arches at Shimbashi. One stop south on the Yamanote line.", "at": {"station": "yurakucho"}, "at_name": "Yurakucho Station", "from": "yurakucho", "to": {"station": "shimbashi"}, "to_station": "shimbashi", "to_name": "Shimbashi", "towards": "Shinagawa", "time_s": 600, "pay": 900, "skill": "lines", "xp": 4, "when": {"slots": ["evening", "night"]}, "text": "A lidded clay pot, heavy, wrapped in a furoshiki. \"Southbound, towards Shinagawa. Don't tip it.\"", "done": "Under the Shimbashi arches a man in a headband lifts the lid and breathes in. \"Thirty years of it. Tell him thanks.\""},
     { "id": "point-palace", "type": "point", "title": "Which way from the Palace plaza?", "blurb": "Visitors on the gravel ask the way. Face each place's true bearing; the nearer, the better the pay.",
       "at": { "npc": "daichi", "d": [4, -4] }, "at_name": "the Palace plaza", "who": "A visitor with a folded map", "pay": 900, "skill": "bearings", "xp": 5,
       "when": { "slots": ["morning", "daytime", "evening"] },
@@ -169,7 +172,7 @@
     { "id": "ekiben", "name": "Ekiben stand 駅弁", "where": "Tokyo Station, by the Marunouchi gates", "at": { "npc": "haruka", "d": [6, -8] }, "hours": ["05:30", "22:00"],
       "hello": "Good day. Which train are you taking?",
       "menu": [ { "id": "makunouchi", "name": "Makunouchi ekiben", "price": 1200, "text": "Rice in neat barrels, grilled salmon, a rolled omelette, fish cake, simmered vegetables. The station lunch box is as old as the long-distance train: the first are said to have been sold at Utsunomiya in 1885." },
-                { "id": "stampbook", "name": "A station stamp book", "price": 600, "keep": true, "text": "A pocket notebook for the ink stamps stations keep by their gates. The custom began at Fukui Station in 1931, and collectors still queue for a clean impression." } ] },
+                { "id": "stampbook", "name": "A station stamp book", "price": 600, "keep": true, "glyph": "印", "text": "A pocket notebook for the ink stamps stations keep by their gates. The custom began at Fukui Station in 1931, and collectors still queue for a clean impression." } ] },
     { "id": "kissaten", "name": "Kissaten 喫茶店", "where": "Ginza, a side street off 4-chome", "at": { "npc": "yui", "d": [13, -11] }, "hours": ["07:30", "19:00"],
       "hello": "Good morning. The set, or just coffee?",
       "menu": [ { "id": "morning", "name": "Morning set", "price": 700, "text": "Thick toast, a boiled egg and coffee dripped through flannel, served until eleven. The morning set is the old coffee shops' bargain: the food comes for the price of the coffee, or little more." },
@@ -184,7 +187,7 @@
       "at": { "npc": "daichi", "d": [-30, 0] }, "radius": 60, "verb": "Join the queue for the main gate",
       "text": "On 2 January the Palace's inner grounds open, and the Emperor and the Imperial family greet the crowd from a balcony, five times in most years.",
       "lines": ["The gravel plaza is roped into lanes. Bags are checked, paper flags are handed out, and the queue moves toward the main gate and over the stone bridge.", "Inside, the Emperor and the family come out on the glazed balcony of the Chowaden hall: five times in most years, from about ten past ten until twenty past two.", "It is one of two days in the year when anyone may walk in through the main gate. The other is the Emperor's birthday, 23 February."],
-      "skill": "bearings", "xp": 5, "source": "https://www.kunaicho.go.jp/event/sanga/sanga01.html" },
+      "skill": "bearings", "xp": 5, "source": "https://www.kunaicho.go.jp/visit/sanga/sanga01.html" },
     { "id": "chidorigafuchi", "title": "Night cherries at Chidorigafuchi", "native": "千鳥ヶ淵の夜桜", "stamp": "Night cherries", "where": "Chidorigafuchi, the Palace's north-west moat", "dates": [[3, 26], [4, 6]], "slots": ["evening", "night"],
       "at": { "lonlat": [139.7458, 35.6895] }, "radius": 90, "verb": "Walk under the lit cherries",
       "text": "About 260 cherry trees along 700 metres of the moat, lit from sunset while they flower: late March to early April in most years.",
