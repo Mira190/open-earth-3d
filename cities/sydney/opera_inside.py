@@ -81,6 +81,8 @@ MATERIALS = {
     "oh_set_sky": {"color": "#3a5fae", "roughness": 1.0, "metalness": 0.0, "emissive": "#6f9cff", "glow": 1.1, "glow_day": 1.1},
     "oh_set_dark": {"color": "#3a2418", "roughness": 0.9, "metalness": 0.0, "emissive": "#ff9a50", "glow": 0.3, "glow_day": 0.3},
     "oh_set_tile": {"color": "#8a3a22", "roughness": 0.8, "metalness": 0.0, "emissive": "#ff9a60", "glow": 0.7, "glow_day": 0.7},
+    # what stops a walker at the rows of seats, drawn by nothing (the seats are instanced, web/game/nav.js reads this)
+    "oh_seat_hit": {"color": "#000000", "roughness": 1.0, "metalness": 0.0, "opacity": 0.0},
     # the audience, seen from behind in the dark
     "oh_patron_dark": {"color": "#1d1e24", "roughness": 0.9, "metalness": 0.0},
     "oh_patron_warm": {"color": "#5a2f2a", "roughness": 0.9, "metalness": 0.0},
@@ -89,6 +91,10 @@ MATERIALS = {
     "oh_hair": {"color": "#2a211c", "roughness": 0.9, "metalness": 0.0},
 }
 FLOODLIT = {k for k, v in MATERIALS.items() if "emissive" in v}
+# who sits round you at the opera (web/game/show.js audience): Rocketbox avatars the NPCs already use, dressed for an evening out
+AUDIENCE_CAST = ["R_Business_Female_02", "R_Business_Male_03", "R_Female_Adult_08", "R_Male_Adult_13", "R_Business_Female_03",
+                 "R_Business_Male_06", "R_Female_Party_02", "R_Male_Adult_05", "R_Business_Female_04_f011", "R_Female_Adult_12",
+                 "R_Male_Adult_11", "R_Female_Adult_13"]
 UV = {k for k, v in MATERIALS.items() if "pattern" in v}
 
 # Each hall in its own frame: u along its ridges from the first shell's tip (south), v to the east. `stage`: where
@@ -97,10 +103,12 @@ UV = {k for k, v in MATERIALS.items() if "pattern" in v}
 HALLS = {
     "joan_sutherland": {"name": "Joan Sutherland Theatre", "id": "jst", "carpet": "oh_carpet_red", "wool": "oh_wool_red", "lining": "oh_black",
                         "stage": (29.5, 46.0, 8.6), "house": (73.5, 11.4), "rake": 2.5, "opening": (11.35, 7.1), "stage_m": 1.1,
-                        "ceiling": (6.6, 10.4), "bounce": "#7a5a48", "kind": "theatre"},
+                        "ceiling": (8.2, 10.6), "bounce": "#7a5a48", "kind": "theatre",
+                        "circle": 8, "boxes": 2},
     "concert": {"name": "Concert Hall", "id": "ch", "carpet": "oh_carpet_purple", "wool": "oh_wool_magenta", "lining": "oh_brushbox",
                 "stage": (40.5, 55.0, 9.6), "house": (91.0, 14.6), "rake": 3.2, "opening": None, "stage_m": 0.9,
-                "ceiling": (9.0, 15.0), "bounce": "#6a4a30", "kind": "concert"},
+                "ceiling": (9.0, 15.0), "bounce": "#6a4a30", "kind": "concert",
+                "circle": 9, "boxes": 1},
 }
 
 
@@ -337,17 +345,36 @@ def swing_doors(R, P, c, t, w, h, name, D, mat="oh_door_leaf", swing=1):
 
 # ---------------------------------------------------------------- the seats and the audience (instanced)
 
+def _swept(m, ys, shape, bend=lambda y: 0.0, tilt=None):
+    """A section [(x, z)] swept across the seat from y = ys[0] to ys[-1] (its back curving forward at the ends by
+    bend(y)), with both ends closed. tilt(x, z) -> (x, z) leans it."""
+    tilt = tilt or (lambda x, z: (x, z))
+    rings = [[(*(lambda q: (q[0] + bend(y), y, q[1]))(tilt(x, z)),) for x, z in shape + [shape[0]]] for y in ys]
+    m.grid([[list(p) for p in r] for r in rings])
+    for r in (rings[0], rings[-1]):
+        y0 = r[0][1]
+        ak.cap(m, lambda a, b, _z, y0=y0: (a, y0, b), [(p[0], p[2]) for p in r[:-1]], 0.0)
+
+
 def seat_model(wool):
-    """A theatre seat facing +x: a white birch shell, wool on its seat and back."""
-    shell, pad = Mesh("seat_shell", "oh_birch_seat", False), Mesh("seat_pad", wool, False, floodlit=True)
-    I = ak.WORLD
-    ak.block(shell, I, -0.3, 0.2, -0.26, 0.26, 0.12, 0.4)
-    ak.block(shell, I, -0.34, -0.27, -0.26, 0.26, 0.2, 0.9)
-    ak.block(pad, I, -0.26, 0.24, -0.23, 0.23, 0.4, 0.47)
-    ak.block(pad, I, -0.275, -0.2, -0.23, 0.23, 0.47, 0.88)
-    for m in (shell, pad):
+    """A theatre seat facing +x, as the Joan Sutherland Theatre's and the Concert Hall's are: a moulded white birch
+    shell and a back that curves round you, its seat and back upholstered in wool and rounded at the edges, on a
+    birch standard with an armrest that it shares with the seat beside it (the hall's own photographs; the Utzon
+    room's and the halls' renewal, 2022). About 120 triangles: drawn for every seat of a hall, instanced."""
+    shell, pad, arm = Mesh("seat_shell", "oh_birch_seat", False), Mesh("seat_pad", wool, False, floodlit=True), Mesh("seat_arm", "oh_birch_seat", False)
+    ys = list(np.linspace(-0.235, 0.235, 4))
+    bend = lambda y: 0.035 * (y / 0.235) ** 2          # the back curves round
+    lean = lambda x, z: (x - max(0.0, z - 0.46) * 0.24, z)   # and leans back 13 degrees above the seat
+    # the back: wool in front (rounded at its top), the birch shell behind it, and the seat: a cushion over a birch pan
+    _swept(pad, ys, [(-0.27, 0.47), (-0.228, 0.52), (-0.228, 0.8), (-0.25, 0.91), (-0.29, 0.93), (-0.3, 0.48)], bend, lean)
+    _swept(shell, ys, [(-0.3, 0.42), (-0.3, 0.93), (-0.33, 0.965), (-0.355, 0.8), (-0.33, 0.4)], bend, lean)
+    _swept(pad, ys, [(-0.25, 0.4), (0.19, 0.38), (0.225, 0.44), (0.19, 0.485), (-0.22, 0.48), (-0.26, 0.45)])
+    # the standard on its +y side: a birch panel from the floor, the armrest on it, rounded at the front
+    ak.block(arm, ak.WORLD, -0.36, 0.08, 0.255, 0.29, 0.0, 0.6)
+    _swept(arm, [0.245, 0.3], [(-0.38, 0.6), (0.12, 0.6), (0.155, 0.615), (0.15, 0.64), (0.11, 0.65), (-0.38, 0.65)])
+    for m in (shell, pad, arm):
         m.sky, m.bounce = 0.12, "#3a2a22"
-    return [shell, pad]
+    return [shell, pad, arm]
 
 
 def patron_model(cloth, hair):
@@ -386,6 +413,11 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     ur, ha = C["house"]
     sm = C["stage_m"]
     out = {"doors": [], "rooms": [], "surfaces": [], "props": [], "seats": [], "gaps": [], "people": {}, "glows": []}
+    if os.environ.get('OH_PROBE'):
+        print(hid, 'z0', z0, 'up', up, 'ur', ur, 'ha', ha)
+        print('  Ltot', Ltot, 'peds', [round(x, 1) for x in peds], 'pu', [round(x, 1) for x in pu], 'us0', us0)
+        for u in np.arange(us0 - 6, Ltot + 4, 3.0):
+            print(f'  u {u:5.1f}: ' + ' '.join(f'{E(u, v):5.1f}' for v in (-ha - 4, -ha - 2.5, -ha - 1, 0, ha + 1, ha + 2.5, ha + 4)))
 
     # ---- the floors: the signature carpet through the foyers
     outline = [(1.2, 0.0)] + [(pu[k], peds[k] - 0.5) for k in range(len(shells))] + [(Ltot - 0.8, 0.0)] + [(pu[k], -peds[k] + 0.5) for k in range(len(shells) - 1, -1, -1)]
@@ -395,10 +427,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         edge = Polygon([loc(np.array(q, float)) for q in deck]).buffer(-0.45)
         carpet = shapely.unary_union([carpet, north.intersection(edge)]).buffer(0.01)
         carpet = max(getattr(carpet, "geoms", [carpet]), key=lambda g: g.area)
-    flat(R.m(C["carpet"], "floor"), P, list(carpet.exterior.coords)[:-1], 0.05)
-    # (the game walks the hall's floor as a strip on the podium's roof: near one, web/game/nav.js reads the walls, the
-    # doors and the furniture finely, from the deck up, and not as 2 m cells from the ground under the podium)
-    out["surfaces"].append(strip(f"oh_{hid}_floor_{C['carpet']}", P, -5.0, Ltot + 2.5, -max(peds) - 1.0, max(peds) + 1.0, [(-5.0, 0.0), (Ltot + 2.5, 0.0)], C["name"]))
+    # (the carpet is laid, and the floors walked, by level once the carcass is placed: see "the levels" below)
 
     # ---- the entrances: sliding glass doors in bronze portals, one in each arm of the southern glass wall
     arm = np.array([pu[0], peds[0]])
@@ -495,23 +524,97 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     seats, patrons = [], [[], [], []]
     heading = math.atan2(-ax[1], -ax[0])   # the seats face the stage: south along the hall
     rng = np.random.default_rng(7 if hid == "jst" else 11)
+    hit = A.m("oh_seat_hit", "hit")   # what stops a walker: a block over each row's seats, either side of the middle aisle
+    kfree = nrows // 3
+    near_you = []   # the patrons round the seats kept for you: drawn as people, not as boxes (show "audience")
+    count = {"stalls": 0, "circle": 0, "boxes": 0}
+
+    def seat_at(u, v, z, h, where, full=0.62, kept=False):
+        x, y, _ = P(u, v, 0)
+        seats.append([round(x, 2), round(y, 2), round(z0 + z, 2), round(h, 3)])
+        count[where] += 1
+        if kept or rng.random() >= full:
+            return None
+        k = int(rng.integers(0, 3))
+        patrons[k].append([round(x, 2), round(y, 2), round(z0 + z, 2), round(h, 3), round(float(0.92 + 0.14 * rng.random()), 2)])
+        return (k, len(patrons[k]) - 1)
+
     for k in range(nrows):
         u = row0 + k * pitch
-        z = z0 + (k + 1) * rise
+        z = (k + 1) * rise
         vs = [v for v in np.arange(-ha + 1.5, ha - 1.49, 0.56) if abs(v) > 0.85]
         for v in vs:
-            x, y, _ = P(u, v, 0)
-            seats.append([round(x, 2), round(y, 2), round(z, 2), round(heading, 3)])
-            keep_free = abs(v) < 1.6 and nrows // 3 <= k <= nrows // 3 + 1   # the places kept for you, by the middle aisle
-            if not keep_free and rng.random() < 0.62:
-                patrons[int(rng.integers(0, 3))].append([round(x, 2), round(y, 2), round(z, 2), round(heading, 3), round(float(0.92 + 0.14 * rng.random()), 2)])
+            keep_free = abs(v) < 1.6 and kfree <= k <= kfree + 1   # the places kept for you, by the middle aisle
+            got = seat_at(u, v, z, heading, "stalls", kept=keep_free)
+            if got and abs(v) < 4.6 and kfree - 4 <= k <= kfree + 2:
+                near_you.append((abs(k - kfree - 0.5) + abs(v) / 0.56 * 0.6, got, round(float(z0 + z), 2)))
             if keep_free:
+                x, y, _ = P(u, v, 0)
                 out["seats"].append({"id": f"{hid}-stalls-{len(out['seats']) + 1}", "name": f"{C['name']}, the stalls", "verb": "Take your seat",
-                                     "at": [round(x, 2), round(y, 2), round(z, 2)], "face": [round(float(-ax[0]), 4), round(float(-ax[1]), 4)],
+                                     "at": [round(x, 2), round(y, 2), round(z0 + z, 2)], "face": [round(float(-ax[0]), 4), round(float(-ax[1]), 4)],
                                      "eye": 1.14, "pitch": -0.02, **({"show": f"{hid}-show"} if C["kind"] == "theatre" else {})})
+        for side in (-1, 1):   # the row's block of seats on this side: from the row in front's backs to this row's
+            vi = [v for v in vs if v * side > 0]
+            a0 = u - (0.25 if k == 0 else pitch - 0.42)
+            box(hit, P, a0, u + 0.42, min(vi) - 0.28, max(vi) + 0.28, z, z + 0.85)
+
+    # ---- the circle: over the back of the stalls, its rows climbing to the rear wall, a birch parapet along its front
+    stall_z = lambda u: min(C["rake"], max(0.0, (u - rake_u0) / (rake_u1 - rake_u0) * C["rake"]))   # the stalls' floor under u
+    uc0 = ur
+    if C.get("circle"):
+        nc, cp, crise = C["circle"], 0.95, 0.3
+        uc0 = ur - nc * cp - 0.6
+        zc = stall_z(uc0) + 3.0                  # its front stands 3 m over the stalls' floor under it
+        cf, cs_, cpar = A.m("oh_brushbox", "circle"), A.m(C["lining"], "circle"), A.m("oh_birch", "circle")
+        hc = ha - 0.05
+        for k in range(nc + 1):                  # the steps (the front one a landing behind the parapet)
+            ua, ub = uc0 + k * cp, min(ur, uc0 + (k + 1) * cp)
+            zk = zc + k * crise
+            box(cf, P, ua, ub if k < nc else ur, -hc, hc, zk - 0.3, zk)
+            cs_.quad(P(ua, -hc, zk - 0.3), P(ua, hc, zk - 0.3), P(ub, hc, zk - 0.3 + crise), P(ub, -hc, zk - 0.3 + crise))   # the soffit, stepping up
+        box(cpar, P, uc0 - 0.12, uc0, -hc, hc, zc - 0.55, zc + 0.8)                 # the parapet
+        box(A.m(C["wool"], "circle"), P, uc0 - 0.16, uc0 + 0.04, -hc, hc, zc + 0.8, zc + 0.86)
+        for k in range(nc):
+            u, z = uc0 + 0.75 + k * cp, zc + (k + 1) * crise
+            for v in np.arange(-ha + 1.1, ha - 1.09, 0.56):
+                if abs(v) < 0.6 or min(ceil_at(u, v), E(u, v) - 0.9) < z + 1.6:   # an aisle down the middle; and room over the heads
+                    continue
+                seat_at(u, v, z, heading, "circle", full=0.7)
+
+    # ---- the boxes: along each side wall between the stalls' doors and the circle, in tiers, six or seven seats in
+    # each on two steps behind a parapet, turned to the stage
+    if C.get("boxes"):
+        bw, bd = 2.5, 1.75
+        ub0, ub1 = du + dw / 2 + 0.6, uc0 - 0.4
+        nb = int((ub1 - ub0) / bw)
+        aim = np.array([up, 0.0])
+        bf, bpar, bwall = A.m("oh_brushbox", "boxes"), A.m("oh_birch", "boxes"), A.m(C["lining"], "boxes")
+        for side in (-1, 1):
+            for tier in range(C["boxes"]):
+                for j in range(nb):
+                    ua, ub = ub0 + j * bw, ub0 + (j + 1) * bw
+                    zb = max(stall_z(ua), stall_z(ub)) + 2.9 + tier * 2.35   # 2.9 m over the side aisle under it
+                    vw, vf = side * ha, side * (ha - bd)
+                    if min(ceil_at(ua + bw / 2, vw - side * 0.8), E(ua + bw / 2, vw - side * 0.8) - 0.9) < zb + 2.1:
+                        continue
+                    box(bf, P, ua, ub, vw, vf, zb - 0.28, zb)                              # its floor
+                    box(bf, P, ua, ub, vw, vw - side * 0.85, zb, zb + 0.22)                # the back step
+                    box(bpar, P, ua, ub, vf, vf - side * 0.1, zb - 0.45, zb + 0.82)        # the parapet
+                    box(A.m(C["wool"], "boxes"), P, ua, ub, vf + side * 0.03, vf - side * 0.13, zb + 0.82, zb + 0.88)
+                    box(bwall, P, ua, ua + 0.08, vw, vf, zb, zb + 2.0)                     # the partition
+                    for row, (dv, dz, n) in enumerate(((bd - 0.55, 0.0, 3), (0.42, 0.22, 4))):
+                        v = side * (ha - dv)
+                        for i in range(n):
+                            u = ua + 0.42 + (bw - 0.6) * (i + 0.5) / n
+                            f = np.array(P(*aim, 0)[:2]) - np.array(P(u, v, 0)[:2])
+                            h = math.atan2(f[1], f[0])
+                            seat_at(u, v, zb + dz, h, "boxes", full=0.75)
+    print(f"  {C['name']}: {count['stalls']} seats in the stalls, {count['circle']} in the circle, {count['boxes']} in the boxes ({sum(count.values())})")
     out["props"].append(dict(name=f"oh_{hid}_seat", at=seats, parts=[m.dump() for m in seat_model(C["wool"])], far=110))
     for k, (cloth, hair) in enumerate((("oh_patron_dark", "oh_hair"), ("oh_patron_warm", "oh_hair"), ("oh_patron_pale", "oh_patron_pale"))):
         out["props"].append(dict(name=f"oh_{hid}_patron{k}", at=patrons[k], parts=[m.dump() for m in patron_model(cloth, hair)], far=90))
+    # the nearest round your seat, as people (web/game/show.js audience): the patron's prop and its place in it
+    out["audience"] = [{"prop": f"oh_{hid}_patron{k}", "i": i} for _, (k, i), _z in sorted(near_you)[:28]]
 
     # ---- the stage
     st = A.m("oh_stage", "stage")
@@ -587,7 +690,8 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         import json
         score = json.load(open(os.path.join(HERE, "opera_score.json"), encoding="utf8"))
         out["show"] = {"id": f"{hid}-show", "venue": C["name"], "stage": [round(sc[0], 2), round(sc[1], 2), round(sc[2], 2)],
-                       "curtain": f"{hid}-curtain", "singer": f"{hid}-carmen", "dim": [f"oh_{hid}_aud_fit_oh_lamp"], **score}
+                       "curtain": f"{hid}-curtain", "singer": f"{hid}-carmen", "dim": [f"oh_{hid}_aud_fit_oh_lamp"], **score,
+                       "audience": out.pop("audience", []), "cast": AUDIENCE_CAST}
     else:
         # the platform, the choir stalls rising behind it, and the Grand Organ on the south wall
         box(st, P, us0, us0 + 3.4, -hs, hs, sm, sm + 1.6)
@@ -632,6 +736,84 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     for sgn in (-1, 1):
         box(A.f("oh_lamp"), P, du - 0.25, du + 0.25, sgn * (ha - 0.04), sgn * (ha - 0.02), dh + 0.12, dh + 0.26)
 
+    # ---- the levels. The southern foyer is at the doors' level, the podium's deck. Past the stalls' doors each side
+    # foyer climbs a straight flight along the carcass (26 risers of 15 cm) to a gallery at the northern foyer's
+    # level, 3.89 m up (RL 18.59 m against the deck's 14.70: CMP table 5.1), and the galleries meet on a landing
+    # behind the auditorium, where the bar is; from the landing the broad stair comes down to the lower level by the
+    # glass. The shells as built here stand lower over the north than the real ones, so the gallery keeps to 1.6 m
+    # from the carcass and the broad stair stops where they come down to it (E). (The real southern foyer is lower
+    # than the deck, at RL 12.80 m, under the Monumental Steps; here the doors open onto it at the deck's level.)
+    # The game walks each level as a strip (game.json surfaces) on the podium's roof: near one, web/game/nav.js reads
+    # the walls, the doors and the furniture finely, from the deck up, not as 2 m cells from the ground under it.
+    LV, RISE, TREAD, G = 3.89, 0.15, 0.3, 1.6
+    NR = int(round(LV / RISE))
+    RUN = NR * TREAD
+    us1 = du + dw / 2 + 2.0                 # the side flights' foot, past the stalls' doors
+    us2 = us1 + RUN
+    ur_ = ur + T                            # the auditorium's rear wall, outside
+    un1 = ur_ + 4.5                         # the landing's edge, the broad stair's head
+    un2 = un1 + RUN
+    W = max(peds) + 1.0
+    gin = ha + T                            # the galleries: from the carcass out to gin + G
+    side_h = lambda u: 0.0 if u <= us1 else LV if u >= us2 else RISE * (int((u - us1) / TREAD) + 1)
+    north_h = lambda u: LV if u <= un1 else 0.0 if u >= un2 else LV - RISE * (int((u - un1) / TREAD) + 1)
+    band = lambda u0, u1, v0, v1: shapely.box(u0, v0, u1, v1)
+    for part, rect in (("floor", band(-10, us1, -W, W)), ("outer_w", band(us1, ur_, -W, -gin - G)), ("outer_e", band(us1, ur_, gin + G, W)), ("lower", band(un2, Ltot + 30, -W, W))):
+        lower = rect.intersection(carpet)   # (each level's carpet named for the strip it is walked as)
+        for g_ in getattr(lower, "geoms", [lower]):
+            if g_.area > 0.5:
+                flat(R.m(C["carpet"], part), P, list(g_.exterior.coords)[:-1], 0.05)
+    lab = C["name"]
+    out["surfaces"].append(strip(f"oh_{hid}_floor_{C['carpet']}", P, -5.0, us1 + 0.05, -W, W, [(-5.0, 0.0), (us1 + 0.05, 0.0)], lab))
+    out["surfaces"].append(strip(f"oh_{hid}_lower_{C['carpet']}", P, un2 - 0.05, Ltot + 2.5, -W, W, [(un2 - 0.05, 0.0), (Ltot + 2.5, 0.0)], lab))
+    for sgn, sd in ((-1, "w"), (1, "e")):
+        out["surfaces"].append(strip(f"oh_{hid}_outer_{sd}", P, us1 - 0.05, ur_ + 0.05, sgn * (gin + G), sgn * W, [(us1 - 0.05, 0.0), (ur_ + 0.05, 0.0)], lab))
+        # the flight and the gallery: carpeted treads on a brush box stair, the gallery's edge a bronze rail over a
+        # brush box face to the lower foyer
+        gs = R.m(C["carpet"], f"gallery_{sd}")
+        gf = R.m("oh_brushbox", f"galface_{sd}")
+        va, vb = sorted((sgn * gin, sgn * (gin + G)))
+        for i in range(NR):
+            ua, ub = us1 + i * TREAD, us1 + (i + 1) * TREAD
+            box(gs, P, ua, ub, va, vb, 0.0, (i + 1) * RISE)
+        box(gs, P, us2, ur_, va, vb, LV - 0.3, LV)
+        box(gf, P, us2, ur_, sgn * (gin + G) - sgn * 0.06, sgn * (gin + G), 0.0, LV - 0.3)
+        rail = R.m("oh_bronze", f"gallery_{sd}_rail")
+        rv = sgn * (gin + G - 0.08)
+        top = [(us1, 0.95)] + [(us1 + (i + 0.5) * TREAD, (i + 1) * RISE + 0.95) for i in range(NR)] + [(us2, LV + 0.95), (ur_ - 0.1, LV + 0.95)]
+        rail.tube([P(u, rv, h) for u, h in top], 0.03, sides=6)
+        for u, h in top[::4] + [top[-1]]:
+            rail.tube([P(u, rv, h - 0.95), P(u, rv, h)], 0.018, sides=4)
+        out["surfaces"].append(strip(f"oh_{hid}_gallery_{sd}", P, us1 - 0.05, ur_ + 0.05, va, vb, [(us1 - 0.05, 0.0), (us2, LV), (ur_ + 0.05, LV)], f"{lab}, the side foyer's stair"))
+    # the landing and the broad stair down, each step as wide as the carpet and the shells over it let it be
+    land = band(ur_, un1, -W, W).intersection(carpet)
+    for g_ in getattr(land, "geoms", [land]):
+        if g_.area > 0.5:
+            ring = list(g_.exterior.coords)[:-1]
+            flat(R.m(C["carpet"], "north_landing"), P, ring, LV + 0.01)
+            ak.prism(R.m("oh_brushbox", "north_landing"), P, ring, LV - 0.3, LV, top=False)
+    for i in range(NR):
+        ua, ub = un1 + i * TREAD, un1 + (i + 1) * TREAD
+        h = LV - (i + 1) * RISE
+        um = (ua + ub) / 2
+        vs_ok = [v for v in np.arange(-W, W + 0.01, 0.5) if E(um, v) > h + 0.6]
+        if not vs_ok:
+            continue
+        st_ = band(ua, ub, min(vs_ok), max(vs_ok)).intersection(carpet)
+        for g_ in getattr(st_, "geoms", [st_]):
+            if g_.area > 0.05:
+                ring = list(g_.exterior.coords)[:-1]
+                flat(R.m(C["carpet"], "north_stair"), P, ring, h + 0.01)
+                ak.prism(R.m("oh_brushbox", "north_stair"), P, ring, 0.0, h, top=False)
+    out["surfaces"].append(strip(f"oh_{hid}_north", P, ur_ - 0.05, un2 + 0.05, -W, W, [(ur_ - 0.05, LV), (un1, LV), (un2, 0.0), (un2 + 0.05, 0.0)], f"{lab}, the northern foyer"))
+    # the way up and down the levels, for tools/foyer_walk.js: in at the southern doors, along the east side foyer, up
+    # its flight, along the gallery to the landing, down the broad stair to the glass
+    gv = gin + 1.0
+    route = [(us0 - 3.0, 4.0, 0.0), (us0 - 3.0, gv, 0.0), (us1 - 1.5, gv, 0.0), (us2 + 0.5, gv, LV), (ur_ - 0.5, gv, LV), (ur_ + 2.5, 0.0, LV), (un2 + 1.5, 0.0, 0.0)]
+    for r_ in out["rooms"]:
+        if r_["id"] == f"{hid}-foyers":
+            r_["route"] = [[round(c, 2) for c in P(u, v, h)] for u, v, h in route]
+
     # ---- the southern foyer: an information desk, benches under the glass
     box(R.f("oh_brushbox"), P, us0 - 4.6, us0 - 4.0, -2.2, 2.2, 0.0, 1.05)
     box(R.f("oh_stone"), P, us0 - 4.7, us0 - 3.9, -2.3, 2.3, 1.05, 1.1)
@@ -645,29 +827,31 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     for sgn in (-1, 1):
         for u in np.arange(us0 + 2, ur, 6.0):
             w = ha + T if u > up else hs + T
-            if E(u, sgn * (w + 0.5)) > 3.2:
-                sphere_lamp(R, P, u, sgn * (w + 0.45), 2.4, 0.18)
+            lv = side_h(u) if u > up else 0.0   # (on the gallery, once the flight has climbed)
+            if E(u, sgn * (w + 0.4)) > lv + 3.2:
+                sphere_lamp(R, P, u, sgn * (w + 0.3), lv + 2.4, 0.18)
         for k in range(1, len(shells)):   # the pedestals: concrete fans where a shell's ribs come down
             x, y, g = P(pu[k], sgn * (peds[k] - 0.4), 0)
             R.m("oh_concrete", "pedestals").lathe([(g, 0.9), (g + 1.6, 0.75), (g + 2.6, 1.1)], (x, y), segs=10)
 
-    # ---- the northern foyer: the bar against the auditorium's rear wall, lounge chairs along the glass
+    # ---- the northern foyer: on the landing, the bar against the auditorium's rear wall; down the broad stair,
+    # lounge chairs along the glass
     nb = ur + T + 0.5
     half = min(ha - 1.5, 7.0)
     # (the bar runs across the hall: along v)
-    Pb = lambda u, v, h: P(nb + 1.8 - v, u, h)   # a frame turned a quarter: its u is the hall's v
+    Pb = lambda u, v, h: P(nb + 1.8 - v, u, h + LV)   # a frame turned a quarter: its u is the hall's v
     bar(R, Pb, -half, half, 0.0, -1)
     for v in (-half - 0.8, 0.0, half + 0.8):
-        sphere_lamp(R, P, nb + 2.3, v, 2.5, 0.2)
-    out["people"][f"{hid}-bartender"] = [round(q, 2) for q in P(nb + 1.0, 1.0, 0)]
+        sphere_lamp(R, P, nb + 2.3, v, LV + 2.5, 0.2)
+    out["people"][f"{hid}-bartender"] = [round(q, 2) for q in P(nb + 1.0, 1.0, LV)]
     # the mural on the auditorium's rear wall, over the back bar: a long panel in the work's ground colour
     mw, mh = (10.0, 1.8) if C["kind"] == "theatre" else (min(21.0, 2 * ha - 2), 3.0)
-    box(R.m("oh_mural_ochre" if C["kind"] == "theatre" else "oh_mural_blue", "mural"), P, ur + T, ur + T + 0.06, -mw / 2, mw / 2, 2.7, 2.7 + mh)
-    box(R.m("oh_bronze", "mural"), P, ur + T, ur + T + 0.04, -mw / 2 - 0.06, mw / 2 + 0.06, 2.64, 2.7)
+    box(R.m("oh_mural_ochre" if C["kind"] == "theatre" else "oh_mural_blue", "mural"), P, ur + T, ur + T + 0.06, -mw / 2, mw / 2, LV + 2.7, LV + 2.7 + mh)
+    box(R.m("oh_bronze", "mural"), P, ur + T, ur + T + 0.04, -mw / 2 - 0.06, mw / 2 + 0.06, LV + 2.64, LV + 2.7)
     # lounge chairs in pairs, turned to the glass and the harbour; a place for you in each group
     north_end = Ltot - 2.0
     k = 0
-    for u in np.arange(nb + 5.0, north_end - 1.5, 3.2):
+    for u in np.arange(un2 + 1.2, north_end - 1.5, 3.2):
         wmax = (peds[-1] - 1.2) * (Ltot - u) / (Ltot - pu[-1]) if u > pu[-1] else peds[-1] - 1.2
         for v in np.arange(-wmax + 1.0, wmax - 0.9, 3.6):
             if E(u, v) < 3.0:

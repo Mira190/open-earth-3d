@@ -129,9 +129,52 @@ window.OEShow = (function () {
     return { el, set(line) { if (line === cur) return; cur = line; if (!line) { el.style.opacity = 0; return; } el.hidden = false; el.style.opacity = 1; el.children[0].textContent = line[0]; el.children[1].textContent = line[1]; }, remove() { el.remove(); } };
   }
 
-  function create({ G, A, world, host, toast, npcs }) {
+  // The audience round the seats kept for you (show.audience: [{prop, i}], a patron's instanced prop and its index in it,
+  // nearest first), drawn as seated people (Rocketbox, show.cast) in place of the boxes, which stay beyond them.
+  // people: { make(look) -> rig, need(character) -> Promise, max }. Realised the first time you come within 45 m of
+  // the stage, drawn and animated only while you are that near.
+  function audience(world, show, people) {
+    const want = (show.audience || []).slice(0, people.max || 28), cast = show.cast || [], rigs = [];
+    if (!want.length || !cast.length) return null;
+    const THREE = window.THREE, m4 = new THREE.Matrix4(), pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), fw = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    let state = 'idle', shown = false;
+    const realise = () => {
+      state = 'loading';
+      Promise.all([...new Set(want.map((_, k) => cast[k % cast.length]))].map(c => people.need(c).catch(() => null))).then(() => {
+        want.forEach((a, k) => {
+          const parts = [];
+          world.traverse(o => { if (o.isInstancedMesh && o.name.startsWith(a.prop + '_')) parts.push(o); });
+          if (!parts.length || a.i >= parts[0].count) return;
+          parts[0].getMatrixAt(a.i, m4); m4.decompose(pos, q, sc);
+          const rig = people.make({ character: cast[k % cast.length], scale: 0.97 + ((k * 37) % 7) * 0.01 });
+          if (!rig || !rig.root) return;
+          for (const p of parts) { p.setMatrixAt(a.i, zero); p.instanceMatrix.needsUpdate = true; }
+          fw.set(1, 0, 0).applyQuaternion(q); // (the seat's forward, as the prop faces +x)
+          rig.root.position.copy(pos); rig.root.rotation.y = Math.atan2(fw.x, fw.z);
+          rig.phase = k * 1.7;
+          world.add(rig.root); rigs.push(rig);
+        });
+        state = 'ready';
+      });
+    };
+    const stage = show.stage;
+    return {
+      rigs,
+      // you: {x, y, z} in the map's frame; dt the frame's; t the game clock
+      update(you, dt, t) {
+        const near = you && Math.hypot(you.x - stage[0], you.y - stage[1]) < 45 && Math.abs(you.z - stage[2]) < 12;
+        if (near && state === 'idle') realise();
+        if (near !== shown) { shown = near; for (const r of rigs) r.root.visible = near; }
+        if (near) for (const r of rigs) r.animate(dt, 0, 'sit', t + r.phase);
+      },
+      dispose() { for (const r of rigs) r.root.removeFromParent(); },
+    };
+  }
+
+  function create({ G, A, world, host, toast, npcs, people }) {
     const seats = (G.seats || []).map(s => Object.assign({}, s, { h: Math.atan2(s.face[0], s.face[1]) }));
     const shows = G.shows || [];
+    const crowds = people ? shows.map(sh => audience(world, sh, people)).filter(Boolean) : [];
     let seat = null, run = null; // run: { show, t0 (ctx time of beat 0), audio, T (the surtitles), dim: [[mesh, was visible]], clock }
     const near = (x, y, z, r = 1.5) => { let best = null, bd = r; for (const s of seats) { if (Math.abs(s.at[2] - z) > 1.3) continue; const d = Math.hypot(s.at[0] - x, s.at[1] - y); if (d < bd) { bd = d; best = s; } } return best; };
     function begin(show) {
@@ -158,7 +201,9 @@ window.OEShow = (function () {
       sit(s) { seat = s; const show = s.show && shows.find(q => q.id === s.show); if (show) begin(show); },
       stand() { seat = null; finish(); },
       // dt: the frame's; returns nothing. The clock is the audio's where there is sound, the game's otherwise
-      update(dt) {
+      // you: where you are ({x, y, z}), for the audience round the seats; t: the game clock
+      update(dt, you, t = 0) {
+        for (const c of crowds) c.update(you, dt, t);
         if (!run) return;
         run.clock = run.audio && run.ctx.state === 'running' && !api.gameClock ? run.ctx.currentTime - run.t0 : run.clock + dt;
         const show = run.show, beat = run.clock * (show.bpm || 72) / 60, end = (show.end_beat || 71) * 60 / (show.bpm || 72);
@@ -175,7 +220,8 @@ window.OEShow = (function () {
         if (!run.said.bravo && run.clock > end + 1.2) { run.said.bravo = true; if (toast) toast('<b>Brava!</b><span>The house is on its feet. E to stand up; stay, and it plays again.</span>'); }
         if (run.clock > end + 14) { const sh = run.show; finish(); if (seat) begin(sh); } // an encore, while you keep your seat
       },
-      dispose() { finish(); },
+      crowds,
+      dispose() { finish(); for (const c of crowds) c.dispose(); },
     };
     return api;
   }
