@@ -178,7 +178,8 @@ window.OpenEarthGame = async function game(cityId) {
     if (renderer.capabilities.reversedDepthBuffer) U.uNudge.value = 1.5e-5; // a float depth buffer needs less to order coplanar roofs (buildings.js)
   }
   // a lost WebGL context pauses the game under a note and comes back redrawn (glcare.js)
-  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { Wd.restoreGPU(); resize(); } });
+  // (on a phone the walls' shading lives on the GPU alone, world.js gpuOnly: there a lost context reloads the view)
+  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { if (Wd.gpuOnly) throw new Error('held on the GPU only'); Wd.restoreGPU(); resize(); } });
   U.uTime = { value: 0 };
   // Close up, 1 m aerial imagery is a blur, lit twice (the photo's own sun and shadows, then the
   // scene's) and far too pale for paving: a sunlit forecourt read as a white sheet with grey
@@ -309,7 +310,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const FOOTW = OEActors.FOOTW;
   function streetTexture(i) {
-    const t = scene.ground[i], PX = 0.5, w = Math.round((t.x1 - t.x0) / PX), h = Math.round((t.y1 - t.y0) / PX);
+    const t = scene.ground[i], PX = QC.lean ? 0.75 : 0.5, w = Math.round((t.x1 - t.x0) / PX), h = Math.round((t.y1 - t.y0) / PX);
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     const g = cv.getContext('2d');
@@ -336,6 +337,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    if (QC.lean) tex.onUpdate = () => { cv.width = cv.height = 1; }; // (a phone: the canvas let go once it is on the GPU)
     return tex;
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
@@ -346,6 +348,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return m;
   }
   function groundLod(x, y) {
+    if (Wd.groundKeep) Wd.groundKeep(x, y); // (a phone: the aerial pictures on the GPU are the tiles nearest here, world.js)
     scene.ground.forEach((t, i) => {
       const d = Math.hypot(Math.max(t.x0 - x, 0, x - t.x1), Math.max(t.y0 - y, 0, y - t.y1));
       const near = d < 260;
@@ -353,6 +356,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (fineTiles[i]) fineTiles[i].visible = near;
       const ud = Wd.groundMeshes[i].material.userData;
       if (near && ud.street && !ud.street.value) ud.street.value = streetTexture(i);
+      else if (d > 700 && ud.street && ud.street.value) { ud.street.value.dispose(); ud.street.value = null; } // (drawn again if you come back: 24 MB a tile)
       if (ud.streetOn) ud.streetOn.value = near && player.mode !== 'heli' ? 1 : 0;
       Wd.groundMeshes[i].visible = !near;
     });
@@ -372,6 +376,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const m of Wd.groundMeshes) mirror.patch(m.material);
     for (const [k, m] of Object.entries((D.LM && D.LM.materials) || {})) if (m.street_lit || m.decal || m.pattern === 'deck_zones') { mirror.patch(Wd.lmMats[k]); mirror.patch(Wd.floodMats[k]); }
   }
+  // a hero level: a street modelled finely, loaded when the player comes near it and let go when they leave (hero.js)
+  const hero = window.OEHero && G.hero ? OEHero.create(Wd, renderer, { hero: G.hero, base: D.DATA, tier: QC.name, mirror, warm: obj => warmFor(obj) }) : null;
   // the city's shaders compiled from here, behind the rest of the set-up (the surface model, the footways, the
   // people and the traffic: seconds of the CPU's time, issue 327) rather than all after it: where the GPU compiles
   // in parallel (KHR_parallel_shader_compile, or a GPU process of its own) the two overlap. Every light is in place
@@ -862,16 +868,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const doors = window.OEDoors ? OEDoors.create({ G, world }) : null;
   let room = null; // the room you are in, for its name as you step in
   // seats you can take (a table by the glass, a chair in a foyer, the stalls), and what plays before one (show.js)
-  const shows = window.OEShow && ((G.seats || []).length || (G.shows || []).length) ? OEShow.create({ G, A, world, host: $('#g-toasts').parentNode, toast: (...a) => H.toast(...a), npcs: () => npcs }) : null;
+  const shows = window.OEShow && ((G.seats || []).length || (G.shows || []).length) ? OEShow.create({ G, A, world, host: $('#g-toasts').parentNode, toast: (...a) => H.toast(...a), npcs: () => npcs,
+    people: lib ? { make: look => makeRig(look), need: c => lib.require(c), max: { high: 28, medium: 18, low: 10 }[QC.name] || 12 } : null }) : null;
   function sitDown(st) {
     player.seatFrom = { x: player.x, y: player.y, z: player.z, h: player.h };
     Object.assign(player, { mode: 'seat', x: st.at[0], y: st.at[1], z: st.at[2], h: st.h, speed: 0, ground: true, vz: 0 });
     cam.lookYaw = 0; cam.lookPitch = st.pitch || 0; cam.lastInput = -10;
     shows.sit(st);
+    seatTouch(true);
   }
+  // in a seat there is nowhere to walk: on a phone the joystick, Jump, Run and Guess are put away; a finger looks
+  // round and the action button stands you up
+  function seatTouch(on) { if (touch) for (const id of ['#gt-joy', '#gt-jump', '#gt-run', '#gt-down']) $(id).hidden = on; }
   function standUp() {
     const st = shows.seat, f = player.seatFrom;
     shows.stand();
+    seatTouch(false);
     const p = (f && nav.stand(f.x, f.y, f.z + 0.5, { rMax: 3 })) || nav.stand(player.x, player.y, player.z + 0.5, { rMax: 4 }) || f || player;
     Object.assign(player, { mode: 'foot', x: p.x, y: p.y, z: p.z, h: st ? st.h : player.h, speed: 0, ground: true, vz: 0 });
     cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.3; cam.dist = 5.5;
@@ -5156,6 +5168,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     Wd.tick(now, camera);
     if (overture) overture.update(dt);
     if (neon) neon.update(camera, dt);
+    if (hero) hero.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
     weatherTick(dt, titleOn, titleOn || paused || photo.on);
@@ -5418,7 +5431,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // a driver getting out of your car's way sounds its horn, fainter the farther off (actors.js DODGE_T)
     for (const h of cars.honks.splice(0)) A.honk(Math.max(0.15, 1 - h.d / 40) * 0.8, h.bus ? 0.72 : 0.9 + Math.random() * 0.2);
-    if (shows) shows.update(dt);
+    if (shows) shows.update(dt, player, clockT);
     if (places) {
       // the area caption waits for a quiet screen: no conversation, menu, map, phone, photo mode or
       // onboarding (anything marked data-hush that is showing holds it too)
@@ -6114,7 +6127,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function vehicleHud() {
     const el = $('#g-vhud');
     if (touch) {
-      $('#gt-down').hidden = player.mode === 'ferry' || player.mode === 'ride';
+      $('#gt-down').hidden = player.mode === 'seat' || player.mode === 'ferry' || player.mode === 'ride';
       $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : player.mode === 'car' ? 'Horn' : 'Guess';
       $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : (fish && fish.api && fish.api.button()) || 'Jump'; // (Cast and Reel with a line out: fishing.js)
       // (at the wheel there is nothing to run: the button is the autopilot's)
@@ -6212,7 +6225,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
+  window.__game = { hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
   return {

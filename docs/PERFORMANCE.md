@@ -843,3 +843,70 @@ phone (390 x 844), match main's to the pixel (at most 0.01% of pixels differ by 
 governor stands still at its ceiling under automation, so these are the full-resolution picture. Not checked here: a
 real GPU, Safari, iOS. The owner's own play, read back from PostHog (`fps`, `gpu_ms`, `bound`, `scale` by `site`), is
 the real check.
+
+## On a phone: the memory budget (the iPhone "A problem repeatedly occurred")
+
+Shibuya's game, opened on an iPhone in Safari, ended in the full-page "A problem repeatedly occurred": iOS had
+killed the tab's WebContent process more than once. iOS kills a tab that grows past about 1-1.5 GB (less on an older
+phone), and a WebGL page's textures and buffers count against it as much as its script heap does. Measured on the
+phone tier (an iPhone emulated, `tools/mem_check.js`, the low tier `quality.js` gives a phone), Shibuya's game held
+**865 MB** of WebGL memory and over **800 MB** of script, most of it never seen on a 390 × 844 screen.
+
+The rule is the same one the rest of this file keeps: a phone is given a lighter set, never a broken one. A phone's
+low tier is marked `lean` in `quality.js` (`city().lean`: a touch screen under 600 px, or a device that reports 4 GB
+or less), and the loader (`world.js`) reads its `budget` and does less there, the picture unchanged where it can be and
+gently lighter where it cannot:
+
+- **The walls' shading lives on the GPU alone.** The buildings are one geometry of a few million vertices with eight
+  attributes (position, normal, colour, the facade's two, the window pack's two, the height source). Once uploaded,
+  the six the shader reads back from the GPU are let go on the main thread (`BufferAttribute.onUpload`), and so are the
+  drawn cells' indices; the picking mesh keeps only what a pick reads (position, index, the building id). In Shibuya
+  this is **201 → 64 MB** of script memory. A geometry held only on the GPU cannot be rebuilt after a lost context, so
+  there the game reloads the view (the note in `glcare.js`) instead of restoring it in place — `Wd.gpuOnly`.
+- **The ground aerial is streamed.** A city's twenty-odd 1 km aerial tiles are 6 MB each on the GPU (122 MB in
+  Shibuya, 170 in Queenstown). On a phone only the `budget.groundTiles` nearest the camera keep their own picture; the
+  rest show the frame's low overview, one image for them all, and swap in and out as the camera moves
+  (`world.js` `groundKeep`, called from the game's `groundLod`). The street-marking overlay a tile draws when you
+  stand on it (`game.js` `streetTexture`) is drawn at a coarser 0.75 m a pixel on a phone and let go when you walk away.
+- **Textures are capped by the tier, decorations more.** The low tier's largest texture is 2048 on a side
+  (`renderer.capabilities.maxTextureSize`), so three.js scales a larger picture down as it uploads it; the ground
+  aerial and the data masks (`shore`, `woods`, read by the pixel) keep clear of it. A landmark's decorative images —
+  the big LED screens, signage atlases, plaques — are drawn at most 1024 on a phone (Shibuya's `screens.webp` is 2048,
+  21 MB; there 1024, 5), the picture drawn once at its own size and let go. A text sign stays legible: these are seen
+  across a street, not read.
+
+Measured on the phone tier, the game on foot with the NPCs, the helicopter and the near car and tree models all
+loaded (`tools/mem_check.js <city>`; the peak GPU memory it was asked for, summed per texture, buffer and renderbuffer
+as each is uploaded and freed, and the JS heap of the page and its Workers once it has settled, a collection after the
+run):
+
+| Map (phone tier) | Peak GPU, MB | Settled JS heap, MB | Peak JS heap, MB |
+|---|---|---|---|
+| Shibuya (before) | 865 | — | 814 |
+| Shibuya | 575 | 542 | 818 |
+| Tokyo (Marunouchi-Ginza) | 586 | 807 | 1192 |
+| Kyoto | 618 | 668 | 981 |
+| Queenstown | 606 | 499 | 600 |
+| Sydney | 531 | 462 | 604 |
+| Shinjuku | 498 | 430 | 574 |
+| Kamakura | 366 | 208 | 274 |
+| Tetsugaku | 297 | 223 | 311 |
+| Higashiyama | 294 | 208 | 350 |
+| Fushimi Inari | 260 | 156 | 221 |
+
+The budget (`quality.js` `budget`, `tools/mem_check.js` defaults) is **700 MB of peak GPU memory and 880 MB of
+settled heap**, just above the heaviest maps (Kyoto's GPU, Tokyo's heap). What is left on the large maps is their
+own: the buildings' few million vertices on the GPU (about 175 MB in Shibuya, all eight attributes read by the
+facade shader), and in the script heap the walking model's solids (`collision.js` prisms, `nav.js` fine cells and
+tiles, `navcells.js` maps: about 150 MB in Tokyo) and the landmarks' meshes, which the walking model reads. Those
+are the next cuts (a per-distance building LOD; a packed collision store), not done here.
+
+`tools/check.sh` runs `tools/mem_check.js` for each live city it checks (a step in `run_city`) and fails a city whose
+peak GPU memory or settled heap goes over the budget (`MEM_GPU`, `MEM_HEAP`), so a change that re-inflates a phone's
+memory cannot land silently. The budget is a regression ceiling set above the heaviest live city, not a hard iOS
+number — that cannot be read from Chromium. The largest maps (Kyoto, Tokyo, Shinjuku, Shibuya) sit nearest it; their
+few-million-vertex building geometry is the floor, and a per-distance building LOD would be the next cut.
+
+**Not checked here: a real iPhone or Safari.** These are emulated under Chromium with Mesa's llvmpipe; the numbers are
+what WebGL was asked for and what V8's heap holds, not what iOS accounts. The owner's own play on a phone is the real
+check.
