@@ -1746,6 +1746,23 @@ const npcNight = require('./npc_night');
 
   // the scrambles: every way at once in a walk phase of their own, the diagonals too (tools/scramble_step.js)
   for (const r of await require('./scramble_step')(p)) { for (const [ok, what] of r.checks) check(ok, what); await shot(`scramble-${r.at.join('_')}`); }
+
+  // the street's scanned surfaces (surface.js) and the near crowd drawn as real people (people.js), both tier-gated:
+  // on the low tier (the software renderer here, unless TIER forces otherwise) neither loads, so a phone is unchanged
+  {
+    const r = await p.evaluate(() => {
+      const g = window.__game, S = window.OESurface, low = !window.OEQuality || window.OEQuality.city().name === 'low';
+      const npcLike = c => /^R_|^H_/.test(c || '');
+      let realNear = 0, nearTotal = 0;
+      const draw = g.crowdDraw && g.crowdDraw();
+      if (draw && draw.active) { for (const r of draw.active.values()) { nearTotal++; if (npcLike(r.character)) realNear++; } }
+      const realFrom = !!((g.G.crowd || {}).real_from || []).length;
+      return { low, sfOn: !!(S && S.active), sfTex: !!(S && S.U && S.U.uSfOn && S.U.uSfOn.value), realCast: realFrom, realNear, nearTotal };
+    });
+    check(r.sfOn === !r.low, `street surfaces ${r.sfOn ? 'on' : 'off'} on the ${r.low ? 'low' : 'high'} tier (surface.js)`);
+    if (r.sfOn) check(r.sfTex, 'the scanned surface textures loaded');
+    if (!r.low && r.realCast && r.nearTotal > 0) check(r.realNear > 0, `the nearest walkers are real people (${r.realNear}/${r.nearTotal} near are NPC rigs)`);
+  }
   // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
   { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
   // the railway past the station (trains.js): its timetable, its trains drawn on their tracks, the platform walked and announced (tools/trains_step.js)

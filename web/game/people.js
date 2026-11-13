@@ -782,9 +782,13 @@ transformed = crowdPose(transformed, false);`);
       const w = lib.npcs[rn].sex === 'f', mean = realHeight ? realHeight[w ? 0 : 1] : w ? 1.58 : 1.71;
       return mean / (lib.npcs[rn].height_m || 1.75) * look.scale / (w ? 0.915 : 0.97);
     };
+    const cast = (real || []).filter(n => lib.npcs && lib.npcs[n]);
+    const bySex = { f: cast.filter(n => lib.npcs[n].sex === 'f'), m: cast.filter(n => lib.npcs[n].sex === 'm') };
+    // a loaded cast member of rn's sex, to stand in until rn itself comes (begin, above)
+    const realStandIn = rn => { const l = bySex[lib.npcs[rn].sex]; for (const n of l) if (lib.tpl[n]) return n; return null; };
+    // load a few of the cast up front so the first near people are real, nearest the camera first as they stream
+    if (cast.length) { bySex.f.slice(0, 2).concat(bySex.m.slice(0, 2)).forEach(n => lib.require(n)); }
     const realOf = (() => {
-      const cast = (real || []).filter(n => lib.npcs && lib.npcs[n]);
-      const bySex = { f: cast.filter(n => lib.npcs[n].sex === 'f'), m: cast.filter(n => lib.npcs[n].sex === 'm') };
       if (!cast.length) return () => null;
       return (i, look) => {
         const w = lib.info.characters[look.character] && lib.info.characters[look.character].pack === 'W';
@@ -888,7 +892,12 @@ transformed = crowdPose(transformed, false);`);
       for (const [i, r] of active) if (!keep.has(i)) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }
       for (const i of keep) {
         if (active.has(i)) continue;
-        const p = P[i], rn = realOf(i, p.look), look = rn ? Object.assign({}, p.look, { character: rn, pattern: null, scale: realScale(rn, p.look) }) : p.look, name = look.character;
+        const p = P[i], rn = realOf(i, p.look);
+        let look = rn ? Object.assign({}, p.look, { character: rn, pattern: null, scale: realScale(rn, p.look) }) : p.look, name = look.character;
+        // a real near person whose character is still streaming stands in as a loaded cast member of the same sex,
+        // not the far crowd's doll: at the hero spawn a dense crowd reads as real at once, and swaps to its own
+        // character when it comes (begin() runs again as the player moves)
+        if (rn && !lib.tpl[name]) { lib.require(name); const si = realStandIn(rn); if (si) { look = Object.assign({}, p.look, { character: si, pattern: null, scale: realScale(si, p.look) }); name = si; } }
         if (!lib.tpl[name]) { lib.require(name); continue; }
         const r = (free[name] && free[name].pop()) || person(lib, Object.assign({}, look));
         r.setLook(Object.assign({ pattern: null, pattern2: null, acc: null }, look));

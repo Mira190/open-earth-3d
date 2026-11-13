@@ -311,7 +311,9 @@ as the textured Rocketbox NPCs cast for the city (`game.npcs`) and the casts `re
 are left out. Each near walker keeps its far figure's sex and takes a scanned face, hair and
 clothed body; its height is set to the Japanese adult mean (MHLW National Health and Nutrition
 Survey 2019: women 1.58 m, men 1.71 m, or `game.crowd.height`) with the figure's own spread. A
-city turns it off with `game.crowd.real: false` or the URL `?realcrowd=off`.
+city turns it off with `game.crowd.real: false` or the URL `?realcrowd=off`. A near walker whose
+cast member is still streaming stands in as a loaded cast member of the same sex rather than the far
+crowd's doll, so a dense crossing reads as real at once and swaps to its own character when it comes.
 
 ### The crossing's sound (`web/game/audio.js`, `game.look.sound`)
 
