@@ -3,6 +3,8 @@
 # and, for what the branch changed against origin/main (or for the targets named):
 #   - plays each city's game headless (tools/game_check.js: walk, talk, helicopter, ferries,
 #     your car, a taxi and a ride),
+#   - plays each city's game on a phone's low tier (an iPhone emulated) and fails it over a memory budget
+#     (tools/mem_check.js: the peak GPU memory and the settled JS heap, so an iPhone's tab is not killed),
 #     three cities at a time, under xvfb-run (llvmpipe) when it is installed; and then measures
 #     what passes through what there (tools/clip_check.js: street furniture in the roads, cars
 #     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
@@ -151,10 +153,20 @@ clip_step() {
   elif [ "$pass" = load ]; then cp "$OUT/$c-clip.log" "$OUT/$c-clip-load.log"; echo "clip $c" >>"$RETRY"
   else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
 }
+# the game on a phone's low tier (an iPhone emulated, quality.js lean) must stay inside the memory budget, so an
+# iPhone's tab is not killed (issue: Shibuya's "A problem repeatedly occurred", docs/PERFORMANCE.md "On a phone").
+# tools/mem_check.js opens #play-<city> as an iPhone, plays, and reads the peak GPU memory and the settled JS heap
+mem_step() {
+  local c=$1
+  if timeout 1800 $X node tools/mem_check.js "$c" >"$OUT/$c-mem.log" 2>&1; then
+    echo "ok   mem    $c   ($(grep -o 'GPU peak [0-9]* MB' "$OUT/$c-mem.log" | head -1), $(grep -o '[0-9]* at the end after a collection' "$OUT/$c-mem.log" | head -1) heap)"
+  else echo "FAIL mem    $c   ($(grep -o 'over [0-9]*' "$OUT/$c-mem.log" | paste -sd ';' - | head -c120); see $OUT/$c-mem.log)"; fi
+}
 run_city() {
   local c=$1
   game_step "$c" load
   clip_step "$c" load
+  mem_step "$c" 
   # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
   timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
   if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"

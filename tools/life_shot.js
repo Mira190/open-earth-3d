@@ -37,10 +37,18 @@ const [,, city = 'shibuya', outDir = 'life-shots', size = '1440x900', time = '17
   await p.evaluate(() => { const g = window.__game; if (g.overture() && g.overture().active) g.overture().skip(); g.settleArrival(); if (g.cine.active) g.cine.skip(); });
   await p.evaluate(() => window.__setClock());
   await p.waitForTimeout(2500);
+  // (the pages as a player well in sees them: the forecast a friend gave, and the keepsakes bought on this map in the album)
+  await p.evaluate(() => {
+    const L = window.__game.life, fb = L.data.bonds.find(x => x.ranks.some(r => r.gives && r.gives.id === 'forecast'));
+    if (fb) L.bonds.st(fb.npc).rank = Math.max(L.bonds.st(fb.npc).rank, fb.ranks.findIndex(r => r.gives && r.gives.id === 'forecast') + 1);
+    const al = L.jobs.album();
+    for (const s of L.data.shops) for (const m of s.menu) if (m.keep && !al.some(a => a.id === m.id)) { L.city().shelf.push(m.id); al.push({ city: L.ctx.cityId, place: L.ctx.cityName, id: m.id, name: m.name, text: m.text, glyph: m.glyph || '', shop: s.name, d: L.day.date }); }
+  });
   await p.evaluate(() => window.__game.life.day.card());
   await shot('day-card');
   await p.evaluate(() => { document.querySelectorAll('.lf-card').forEach(e => e.remove()); const d = window.__game.life.day; d.close(); d.show(); });
   await shot('diary-today');
+  if (await p.evaluate(() => { const f = document.querySelector('.lf-diary .lf-fc'); if (f) f.previousElementSibling.scrollIntoView({ block: 'start' }); return !!f; })) await shot('diary-forecast');
   const tabs = await p.evaluate(() => [...document.querySelectorAll('.lf-tabs button')].map(b => b.dataset.tab));
   for (const t of tabs.slice(1)) { await p.evaluate(t => document.querySelector(`.lf-tabs button[data-tab="${t}"]`).click(), t); await shot(`diary-${t}`); }
   await p.evaluate(() => window.__game.life.day.close());

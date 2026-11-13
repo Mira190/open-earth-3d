@@ -271,10 +271,15 @@ the shadow height one step towards the sun, less the sun's climb over the step. 
 machine under a software renderer's load, off the main thread, again when the sun has turned 0.4 degrees; the
 result is an RG16F texture at 4 m (4.4 MB), the height under which the sun is hidden, as a roof sees it and as
 the ground and walls do. The lit materials of the ground and the buildings multiply the sun's light by it
-outside the shadow map's box. At 13:00 on 10 November it shades 54% of Shibuya's open ground. **Not judged yet:**
-the stills taken so far (from over the roofs, and in two alleys inside the box) show no artefact and little
-of the far ground; it needs views down long streets and a film at walking, driving and flying speed before it
-is on by default, and the shadow box could then shrink (issue 352, item 5).
+outside the shadow map's box. At 13:00 on 10 November it shades 54% of Shibuya's open ground. **Judged, and left
+off (issue 375):** a film driving down Shibuya's streets at 16:00, and stills down Dogenzaka and from 260 m over the
+roofs at 12:30 and 15:30 (`tools/views/shibuya-farsun-375.json`), with it on and off: no artefact, and almost no
+difference either. The mean of each frame moved by under 0.1 of 255 and no pixel by more than 15; even
+`?farsun=all` (the field everywhere, the shadow map's own box included) darkened the view from the air by 0.8 of
+255. Past the box the haze and the aerial photographs' own shade carry the far city, so the Worker's sweep (a second
+or more of a core each time the sun turns 0.4 degrees) and the 4.4 MB field buy nothing a player sees. It stays a
+flag; it earns its place only if the shadow box shrinks (issue 375, item 2), when the ground between the smaller
+box and the haze would need it.
 
 **B3, a far shell of the buildings: measured, not built.** The buildings' cells are 0.89 of Shibuya's 7.7 million
 triangles from the street and 0.5 once B1 hides what the street wall covers; Sydney's are 0.13 of 2.7. A shell
@@ -487,6 +492,62 @@ profiler on a real device is where to measure it.
 Stills of the same views before and after differ only in what moves between two runs: Sydney's quay at day,
 dusk and night on each tier and on a phone, the city from the air, Shibuya's scramble by day, at dusk, at
 night and in the rain (the same people in the same places).
+
+## The frame budget, second round (issue 375)
+
+**The contact shadows reuse the frames before** (`web/game/ao.js`). The occlusion is still taken at half size from
+the scene's depth, but with 6 samples on high and 4 on medium (16 and 8 before), its spiral and radii turned on each
+frame (interleaved gradient noise moved by the frame, Jimenez 2014); a resolve pass then reprojects the last frame's
+result with the last frame's view and projection (`uReproj`: this frame's view space to the last frame's clip space,
+composed on the CPU so the shader never handles kilometre coordinates), keeps it where the distance it stored is the
+distance this point had then, clamps it to this frame's 3 x 3 neighbours' mean plus or minus their spread (variance
+clipping, Salvi 2016) and blends it in at 0.8 (0.48 within 6 m of the camera, rising to 0.8 by 25 m, where the
+player and the walkers beside them move and a lagging contact shadow shows most). One depth-aware blur follows, not
+two. A cut (a jump of 30 m or a turn of more than 45 degrees in a frame, a resize, a frame without it) starts the
+history again. Per half-size pixel: 6 occlusion taps and 11 in the resolve in place of 16 occlusion taps; four
+half-size passes in place of five (Shibuya on foot: 17 full-screen passes writing 26.4 MB a frame, 18 and 28.8 MB
+before). `?aotaa=off` draws each frame from scratch as before.
+
+Judged in motion with `tools/ao_film.js` (on foot with the camera swinging round, and driving your car, 30 frames a
+second of game time, each saved): side by side with `?aotaa=off` and with `?ao=show` (the occlusion alone). The mean
+change between consecutive frames of the occlusion alone was 2.64 of 255 with the history and 2.68 without, its 99th
+percentile 12.7 and 13.7: no more shimmer, and none on the railings and kerbs. The first version (range clamp, 0.9)
+left the player's own contact shadow faint and a short trail behind it; the variance clip and the lower weight near
+the camera took both out. No ghost behind the car. Not judged on a real GPU's frame rate, where the history's
+weight would be tuned again.
+
+**The sea's reflection leaves out the walkers, the traffic and the street furniture** (`water.js`: objects flagged
+`userData.noRefl` where they are added: the crowd and its umbrellas, the cars, benches and lamp posts, the landmarks'
+street furniture). On Sydney's quay it took the reflection's second draw from 127 draws to 119; its 1.24 million
+triangles are the buildings and the trees, which the water should show.
+
+**The crowd's umbrellas are packed** (`people.js`) as the crowd is: those held this frame are the first `count`
+slots, with their holder's colour, and only those slots are uploaded. Before, every walker had a slot, scaled to
+nothing when not held, and the whole buffer went to the GPU every frame of rain.
+
+**The model viewer and the title have one full-size pass after the scene** (`lens.js` `stack`, used by `city.js`
+and `earth.js`): the scene into its target, the bloom's chain at half size with `bright()` as its first pass, and the
+lens, which adds the bloom's sum as it reads the scene. The bloom's full-size blend and the second full-size target
+are gone; `world.js` `leanComposer` and `lens.js` `tameBloom` with them. Sydney's viewer by day, at dusk and at night
+and the title's Earth match main's within 1.4 and 2.4 of 255 on average (the clouds and the title's text fading in).
+
+**One ladder, started low** (`quality.js` `rung`, `startLow`; `game.js`). Every system that sheds registers a rung:
+its value with every extra, at half of them and with none. The weather (light, then off), the wet street's mirror,
+the contact shadows (full, lite, off) and MSAA (the tier's, two, none) as before; now also the sun's shadow map (the
+tier's, half, 1024 on a side: `world.js` `setShadowSize`, the map and the still casters' cache made again at the next
+shadow pass), the sea's reflection (every frame while the camera moves, every second, none: `water.js` `reflEvery`)
+and the crowd (whole, whole, three in four). A device with no record of its own starts at 0.8 of the scene's
+resolution with half the extras, and tries a step up every second and a half until one does not fit; a fast device
+is at its ceiling in about thirteen seconds (`governor.simulate`). The record kept per map is now the scale and the
+extras (`oe3d-gov-<city>`: `0.85/0.5`), and a device that has one starts there. Under automation the governor stands
+still, as before, so checks and stills start at the ceiling. `tools/game_check.js` sees the shadow map, the
+reflection and the crowd move with the extras and come back.
+
+**Not done** (left in issue 375): shadow cascades (item 2: with the far sun's field showing so little past the box,
+the case for a far cascade is weaker than it looked; the 4096 map's cached depth blitted every frame is still not
+measured, and the ladder now halves the map on a device that is short), and `BatchedMesh` with per-instance culling of
+the props in the shadow box (item 3). Temporal anti-aliasing from the same history in place of MSAA on medium and low
+(the second half of item 1) waits for jittered projection, which the history above does not yet need.
 
 ## Next, by what it saves for what it risks
 
@@ -782,3 +843,70 @@ phone (390 x 844), match main's to the pixel (at most 0.01% of pixels differ by 
 governor stands still at its ceiling under automation, so these are the full-resolution picture. Not checked here: a
 real GPU, Safari, iOS. The owner's own play, read back from PostHog (`fps`, `gpu_ms`, `bound`, `scale` by `site`), is
 the real check.
+
+## On a phone: the memory budget (the iPhone "A problem repeatedly occurred")
+
+Shibuya's game, opened on an iPhone in Safari, ended in the full-page "A problem repeatedly occurred": iOS had
+killed the tab's WebContent process more than once. iOS kills a tab that grows past about 1-1.5 GB (less on an older
+phone), and a WebGL page's textures and buffers count against it as much as its script heap does. Measured on the
+phone tier (an iPhone emulated, `tools/mem_check.js`, the low tier `quality.js` gives a phone), Shibuya's game held
+**865 MB** of WebGL memory and over **800 MB** of script, most of it never seen on a 390 × 844 screen.
+
+The rule is the same one the rest of this file keeps: a phone is given a lighter set, never a broken one. A phone's
+low tier is marked `lean` in `quality.js` (`city().lean`: a touch screen under 600 px, or a device that reports 4 GB
+or less), and the loader (`world.js`) reads its `budget` and does less there, the picture unchanged where it can be and
+gently lighter where it cannot:
+
+- **The walls' shading lives on the GPU alone.** The buildings are one geometry of a few million vertices with eight
+  attributes (position, normal, colour, the facade's two, the window pack's two, the height source). Once uploaded,
+  the six the shader reads back from the GPU are let go on the main thread (`BufferAttribute.onUpload`), and so are the
+  drawn cells' indices; the picking mesh keeps only what a pick reads (position, index, the building id). In Shibuya
+  this is **201 → 64 MB** of script memory. A geometry held only on the GPU cannot be rebuilt after a lost context, so
+  there the game reloads the view (the note in `glcare.js`) instead of restoring it in place — `Wd.gpuOnly`.
+- **The ground aerial is streamed.** A city's twenty-odd 1 km aerial tiles are 6 MB each on the GPU (122 MB in
+  Shibuya, 170 in Queenstown). On a phone only the `budget.groundTiles` nearest the camera keep their own picture; the
+  rest show the frame's low overview, one image for them all, and swap in and out as the camera moves
+  (`world.js` `groundKeep`, called from the game's `groundLod`). The street-marking overlay a tile draws when you
+  stand on it (`game.js` `streetTexture`) is drawn at a coarser 0.75 m a pixel on a phone and let go when you walk away.
+- **Textures are capped by the tier, decorations more.** The low tier's largest texture is 2048 on a side
+  (`renderer.capabilities.maxTextureSize`), so three.js scales a larger picture down as it uploads it; the ground
+  aerial and the data masks (`shore`, `woods`, read by the pixel) keep clear of it. A landmark's decorative images —
+  the big LED screens, signage atlases, plaques — are drawn at most 1024 on a phone (Shibuya's `screens.webp` is 2048,
+  21 MB; there 1024, 5), the picture drawn once at its own size and let go. A text sign stays legible: these are seen
+  across a street, not read.
+
+Measured on the phone tier, the game on foot with the NPCs, the helicopter and the near car and tree models all
+loaded (`tools/mem_check.js <city>`; the peak GPU memory it was asked for, summed per texture, buffer and renderbuffer
+as each is uploaded and freed, and the JS heap of the page and its Workers once it has settled, a collection after the
+run):
+
+| Map (phone tier) | Peak GPU, MB | Settled JS heap, MB | Peak JS heap, MB |
+|---|---|---|---|
+| Shibuya (before) | 865 | — | 814 |
+| Shibuya | 575 | 542 | 818 |
+| Tokyo (Marunouchi-Ginza) | 586 | 807 | 1192 |
+| Kyoto | 618 | 668 | 981 |
+| Queenstown | 606 | 499 | 600 |
+| Sydney | 531 | 462 | 604 |
+| Shinjuku | 498 | 430 | 574 |
+| Kamakura | 366 | 208 | 274 |
+| Tetsugaku | 297 | 223 | 311 |
+| Higashiyama | 294 | 208 | 350 |
+| Fushimi Inari | 260 | 156 | 221 |
+
+The budget (`quality.js` `budget`, `tools/mem_check.js` defaults) is **700 MB of peak GPU memory and 880 MB of
+settled heap**, just above the heaviest maps (Kyoto's GPU, Tokyo's heap). What is left on the large maps is their
+own: the buildings' few million vertices on the GPU (about 175 MB in Shibuya, all eight attributes read by the
+facade shader), and in the script heap the walking model's solids (`collision.js` prisms, `nav.js` fine cells and
+tiles, `navcells.js` maps: about 150 MB in Tokyo) and the landmarks' meshes, which the walking model reads. Those
+are the next cuts (a per-distance building LOD; a packed collision store), not done here.
+
+`tools/check.sh` runs `tools/mem_check.js` for each live city it checks (a step in `run_city`) and fails a city whose
+peak GPU memory or settled heap goes over the budget (`MEM_GPU`, `MEM_HEAP`), so a change that re-inflates a phone's
+memory cannot land silently. The budget is a regression ceiling set above the heaviest live city, not a hard iOS
+number — that cannot be read from Chromium. The largest maps (Kyoto, Tokyo, Shinjuku, Shibuya) sit nearest it; their
+few-million-vertex building geometry is the floor, and a per-distance building LOD would be the next cut.
+
+**Not checked here: a real iPhone or Safari.** These are emulated under Chromium with Mesa's llvmpipe; the numbers are
+what WebGL was asked for and what V8's heap holds, not what iOS accounts. The owner's own play on a phone is the real
+check.
