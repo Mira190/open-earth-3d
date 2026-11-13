@@ -2380,6 +2380,14 @@ quality tier runs a third of the cars.
   - **Spots:** <kbd>E</kbd> within a few metres opens a few lines. A spot with
     `"pick": 1` shows one of its lines at random. A quest step
     `{"type": "spot", "spot": id}` waits for one.
+  - **Stamps and frames** (#359): a spot with `"stamp": "<name>"` stamps the passport
+    the first time you look at it, listed after the quests' stamps and counted with
+    them: a pilgrimage's stops, each its own. A spot with `"frame": {"eye", "look",
+    "fov"?, "note"?}` (absolute metres) opens the photo camera on that view once its
+    lines are read, the angle the place is known by, ready for <kbd>Enter</kbd>.
+  - **Arriving at a district** (`#play-<city>@<travel id>`) tracks the open line whose
+    next quest is given by someone within 250 m of the arrival, so the guide points
+    there and not across the map (`trackNear`).
   - **Look closer:** a spot with a `look` is a photo spot. <kbd>E</kbd> brings the eye
     to about a metre off the thing, the walker out of the way, and you look along it:
     <kbd>A</kbd>/<kbd>D</kbd> (or the stick, or the panel's arrows) along,

@@ -1,0 +1,4 @@
+[{"name": "sydney-fog-heli-dawn", "cam": [900, 1600, 380], "tgt": [0, -200, 20], "time": "sunrise+40", "weather": {"fog": 0.9, "cloud": 0.2, "wind": 2}},
+ {"name": "sydney-fog-heli-noon", "cam": [900, 1600, 380], "tgt": [0, -200, 20], "time": "11:00", "weather": {"fog": 0.9, "cloud": 0.2, "wind": 2}},
+ {"name": "sydney-fog-heli-dusk", "cam": [900, 1600, 380], "tgt": [0, -200, 20], "time": "sunset-10", "weather": {"fog": 0.9, "cloud": 0.2, "wind": 2}},
+ {"name": "sydney-fog-heli-night", "cam": [900, 1600, 380], "tgt": [0, -200, 20], "time": "21:30", "weather": {"fog": 0.9, "cloud": 0.2, "wind": 2}}]

@@ -28,6 +28,8 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
+// whether the city's game has a pilgrimage's stamped spots (the step for them, below), read before anything runs
+const STAMPED = (() => { try { return (JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'web', 'data', city, 'game.json'), 'utf8')).spots || []).some(sp => sp.stamp); } catch (e) { return false; } })();
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
@@ -2247,6 +2249,47 @@ const npcNight = require('./npc_night');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
+  // a pilgrimage's stops (#359: Sangenjaya), last of all: it moves you across the map and runs the world on, which the
+  // traffic's checks above would otherwise meet
+  // a pilgrimage's stops: each spot with a stamp stamps the passport the first time you look at it,
+  // and one with a frame opens the photo camera on its view once its lines are read, the eye where the frame puts it;
+  // then a district link's arrival tracks the line whose giver stands there (trackNear). (a city with none skips it whole)
+  // (decided from the built data before the browser opens, STAMPED: a city without stamps spends no time here at all, and its
+  // run is the same as before; any real time spent between two steps moves where the held world meets the route network,
+  // still building as it runs, and that alone can change how the traffic goes)
+  if (STAMPED) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, track: g.qs().track }; });
+    const stops = await p.evaluate(() => {
+      const g = window.__game, out = [];
+      if (g.player.mode === 'car') { g.exitCar(); g.advance(0.5); } // (on foot, wherever the steps above left you)
+      if (g.photo.on) g.photoMode(false);
+      for (const sp of g.G.spots.filter(q => q.stamp)) {
+        Object.assign(g.player, { x: sp.at[0], y: sp.at[1], speed: 0 }); g.advance(0.1);
+        const had = g.qs().stamps.filter(s => s.id === `spot:${sp.id}`).length;
+        g.lookAt(sp);
+        for (let i = 0; i < 40 && g.dlg.open; i++) { g.dlg.next(); g.dlg.next(); g.advance(0.05); }
+        const got = g.qs().stamps.filter(s => s.id === `spot:${sp.id}`).length;
+        const r = { id: sp.id, stamp: sp.stamp, stamped: got === 1 && had <= 1, frame: !!sp.frame, photo: g.photo.on, eye: null };
+        // (where the photo camera stands, from its own state: advance() steps the world, not the photo camera, which the page's frames move)
+        if (sp.frame) { const ph = g.photo, c = OECine.around(ph.focus, ph.az, ph.dist * Math.cos(ph.pitch), ph.dist * Math.sin(ph.pitch), new THREE.Vector3()), e = sp.frame.eye; r.eye = Math.hypot(c.x - e[0], -c.z - e[1], c.y - e[2]); }
+        if (g.photo.on) { g.photoMode(false); for (let i = 0; i < 12 && g.cine.active; i++) g.advance(0.1); }
+        out.push(r);
+      }
+      return out;
+    });
+    for (const r of stops) check(r.stamped && (!r.frame || (r.photo && r.eye < 0.6)), `looks at the stop ${r.id}: stamped "${r.stamp}"${r.stamped ? '' : ' NOT'}${r.frame ? `, the photo camera ${r.photo ? `on its frame, ${r.eye.toFixed(2)} m from the frame's eye` : 'NOT opened'}` : ''}`);
+    const near = await p.evaluate(() => {
+      const g = window.__game, open = g.openLines(), now = g.tracked(), l = open.find(x => { const q = x.quests[g.ls(x).qi]; return x !== now && q && !g.ls(x).started; }) || open.find(x => { const q = x.quests[g.ls(x).qi]; return q && !g.ls(x).started; });
+      if (!l) return null;
+      const q = l.quests[g.ls(l).qi], n = g.npcs.find(o => o.id === q.giver);
+      if (!n) return null;
+      g.trackNear([n.x + 5, n.y + 5]);
+      return { line: l.id, tracked: g.tracked() && g.tracked().id, giver: n.id };
+    });
+    if (near) check(near.tracked === near.line, `arriving beside ${near.giver} tracks the line ${near.line} (tracked: ${near.tracked})`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.qs().track = k.track; g.advance(0.2); }, keep);
+  }
+
   await b.close();
   process.exit(fails.length ? 1 : 0);
 })();

@@ -108,7 +108,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   const UMB_LEN = 0.66, UMB_D = [0.05, 1, -0.06];
   // umbrellas are off for now: the hand on the handle doesn't read right yet, so nobody carries one,
   // closed or open, and the rain falls on bare heads. Set true to bring them back.
-  const UMBRELLAS = false;
+  const UMBRELLAS = true;
   const noUmb = ids => (UMBRELLAS || !ids ? ids : ids.filter(id => id !== 'umbrella' && id !== 'umbrella_open'));
   const umbrellaHold = hd => {
     const dir = V3(...UMB_D).normalize(), grip = hd.clone().add(V3(-0.1, -0.32, 0.17));
