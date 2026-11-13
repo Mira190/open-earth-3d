@@ -1,0 +1,130 @@
+# The full tier of tools/check.sh, on main after work lands (docs/CHECKS.md). A branch lands on the fast
+# tier (the static checks, its own cities and the smoke cities); this plays every live city the landed
+# commits can have changed, one city and kind a runner, so that nobody waits for it. What it checks is
+# what changed since the last run of it that passed, so a run that was skipped while another was going,
+# or that failed, is made up by the next. A failure opens an issue labelled main-red (or adds to the open
+# one) with the shards that failed and the commits they cover; the next pass closes it.
+name: Checks
+
+on:
+  push:
+    branches: [main, claude/loving-hawking-8vnew9]   # (the second while this is tried out)
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: 'Targets for tools/check.sh ("all", "sydney:game shibuya"); empty: what changed since the last pass'
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+# one run at a time on a branch; while it goes, only the newest of the pushes behind it waits
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PLAYWRIGHT: 1.63.0
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+      base: ${{ steps.plan.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGETS: ${{ inputs.targets }}
+        run: |
+          base=
+          if [ -n "$TARGETS" ]; then plan=$(tools/check.sh --plan $TARGETS)
+          else
+            # the commit of this workflow's last pass on this branch
+            base=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow checks.yml --branch "$GITHUB_REF_NAME" \
+              --status success --limit 1 --json headSha --jq '.[0].headSha // empty' || true)
+            if [ -n "$base" ] && git merge-base --is-ancestor "$base" HEAD 2>/dev/null; then
+              plan=$(CHECK_TIER=full CHECK_BASE=$base tools/check.sh --plan)
+            else base=; plan=$(tools/check.sh --plan all); fi
+          fi
+          echo "$plan"
+          echo "base=$base" >>"$GITHUB_OUTPUT"
+          echo "shards=$(echo "$plan" | grep -E '^[a-z0-9:,-]+$' | jq -R . | jq -sc .)" >>"$GITHUB_OUTPUT"
+
+  shard:
+    needs: plan
+    if: needs.plan.outputs.shards != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.shards) }}
+    name: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Chromium, Xvfb and Mesa's software renderer
+        if: matrix.target != 'static'
+        run: |
+          npm install -g "playwright@$PLAYWRIGHT"
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri
+      - name: What the static checks import
+        if: matrix.target == 'static'
+        run: pip install numpy shapely pillow
+      - name: Check
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          [ "$TARGET" = static ] || export CHECK_STATIC=0
+          CHECK_JOBS=1 CHECK_OUT="$RUNNER_TEMP/check" tools/check.sh "$TARGET"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: check-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/check
+          retention-days: 7
+
+  report:
+    needs: [plan, shard]
+    if: always() && github.ref == 'refs/heads/main' && needs.shard.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.shard.result }}
+          PLAN: ${{ needs.plan.result }}
+          BASE: ${{ needs.plan.outputs.base }}
+        run: |
+          run="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label main-red --state open --json number --jq '.[0].number // empty' || true)
+          if [ "$RESULT" = failure ] || [ "$PLAN" = failure ]; then
+            failed=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+              --jq '.jobs[] | select(.conclusion == "failure") | "- [\(.name)](\(.html_url))"')
+            range="${BASE:+${BASE:0:8}...}${GITHUB_SHA:0:8}"
+            {
+              echo "The full checks failed on main at ${GITHUB_SHA:0:8} ([run]($run))."
+              echo
+              echo "$failed"
+              echo
+              if [ -n "$BASE" ]; then echo "Commits since the last pass: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$range"
+              else echo "No earlier pass to compare with: every target was run."; fi
+              echo
+              echo "Each failed shard's logs and stills are in the run's artifacts. Run one here with \`tools/check.sh <shard's name>\`."
+            } >body.md
+            gh label create main-red --repo "$GITHUB_REPOSITORY" --color B60205 --description "The full checks fail on main" 2>/dev/null || true
+            if [ -n "$open" ]; then gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body-file body.md
+            else gh issue create --repo "$GITHUB_REPOSITORY" --label main-red --title "Main is red: the full checks fail" --body-file body.md; fi
+          elif [ "$RESULT" = success ] || [ "$RESULT" = skipped ]; then
+            [ -z "$open" ] || gh issue close "$open" --repo "$GITHUB_REPOSITORY" --comment "The full checks pass on main at ${GITHUB_SHA:0:8} ([run]($run))."
+          fi

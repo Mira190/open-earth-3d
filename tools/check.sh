@@ -41,6 +41,17 @@
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh telemetry            # the visitor and SLO events, and the game's save, only
 #   tools/check.sh all                  # every city, every reef site and the title
+#   tools/check.sh static               # the checks that open no browser only (packs, voice, life, rings...)
+#   tools/check.sh sydney:game          # one kind of a city's checks (game, clip, mem, tour; sydney:clip,mem)
+#   tools/check.sh --plan               # print the targets a run would check, one a line, and stop
+# Two tiers (docs/CHECKS.md). Before landing, the fast tier: a change to the shared code (the game, the
+# renderer, the shared assets) plays the smoke cities ($CHECK_SMOKE) instead of every live city, and a
+# change to a city's own files still checks that city in full. After landing, the full tier
+# (CHECK_TIER=full) runs on main in GitHub Actions (.github/workflows/checks.yml), one city and kind
+# a runner, and opens an issue labelled main-red when one fails:
+#   CHECK_TIER=full tools/check.sh      # every live city for a change to the shared code, as before
+#   CHECK_BASE=<commit> tools/check.sh  # what changed since that commit, not since origin/main
+#   CHECK_STATIC=0 tools/check.sh ...   # without the checks that open no browser (a runner's shard)
 # Parked cities (cities/index.json "parked", tools/live_cities.sh) are left out of every run, even
 # when they changed or the shared code did; name one to check it anyway: tools/check.sh amsterdam
 set -u
@@ -48,18 +59,37 @@ cd "$(dirname "$0")/.."
 PORT=${PORT:-8870}
 OUT=${CHECK_OUT:-/tmp/oe-check}
 JOBS=${CHECK_JOBS:-3}
+TIER=${CHECK_TIER:-fast}
+KINDS="game clip mem tour"              # a city's checks, in the order they run
+# the fast tier's cities for a change to the shared code, and what is played in each: a small map with a railway,
+# stamped spots and the daily life (the game, and its tour in the viewer), and the heaviest one on a phone (its memory)
+SMOKE=${CHECK_SMOKE:-tetsugaku:game,tour shibuya:mem}
+plan=0; [ "${1:-}" = --plan ] && { plan=1; shift; }
 mkdir -p "$OUT"
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
 
-STAMP="$(git rev-parse --git-dir)/oe-check-pass"   # the commit of the last full pass, in this clone only
-stamp() { [ $# -eq 0 ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
+STAMP="$(git rev-parse --git-dir)/oe-check-pass$([ "$TIER" = full ] && echo -full)"   # the commit of this tier's last pass, in this clone only
+stamp() { [ $# -eq 0 ] && [ -z "${CHECK_BASE:-}" ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
 CITIES=$(tools/live_cities.sh)
 PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0
-add_city() { is_in "$1" "${cities[*]:-}" || cities+=("$1"); }
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 shared=0 fish=0
+declare -A want=()   # the kinds to run for each city
+add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
+  local c=$1 k
+  is_in "$c" "${cities[*]:-}" || cities+=("$c")
+  for k in ${2:-$KINDS}; do is_in "$k" "${want[$c]:-}" || want[$c]="${want[$c]:-} $k"; done
+}
+add_kinds() {   # city:kind,kind
+  local c=${1%%:*} k
+  for k in $(echo "${1#*:}" | tr ',' ' '); do is_in "$k" "$KINDS" || { echo "unknown kind: $k (kinds: $KINDS)"; exit 2; }; done
+  is_in "$c" "$CITIES" || is_in "$c" "$PARKED" || { echo "unknown city: $c"; exit 2; }
+  add_city "$c" "$(echo "${1#*:}" | tr ',' ' ')"
+}
+# a change to the shared code: every live city in the full tier, the smoke cities in the fast one (added after the loop)
+shared_change() { if [ "$TIER" = full ]; then all_cities; else shared=1; fi; }
 add_reef() { is_in "$1" "${reefs[*]:-}" || reefs+=("$1"); }
 all_cities() { for c in $CITIES; do add_city "$c"; done; }
 all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
@@ -68,7 +98,8 @@ if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
       all) all_cities; all_reefs; title=1; loader=1; telemetry=1 ;;
-      voice) voice=1 ;;
+      voice|static) voice=1 ;;
+      *:*) add_kinds "$t" ;;
       title) title=1 ;;
       loader) loader=1 ;;
       telemetry) telemetry=1 ;;
@@ -78,14 +109,15 @@ if [ $# -gt 0 ]; then
     esac
   done
 else
-  base=$(git merge-base origin/main HEAD 2>/dev/null) || { echo "no origin/main to compare with: git fetch origin main"; exit 2; }
+  if [ -n "${CHECK_BASE:-}" ]; then base=$(git rev-parse --verify -q "$CHECK_BASE^{commit}") || { echo "CHECK_BASE=$CHECK_BASE is not a commit here"; exit 2; }
+  else base=$(git merge-base origin/main HEAD 2>/dev/null) || { echo "no origin/main to compare with: git fetch origin main"; exit 2; }; fi
   # After a pass, only what changed since then. A run with no targets that passes on a clean tree
   # stamps HEAD in $STAMP. When main moves on and is merged in again, the commit checked last is
   # still an ancestor of HEAD, and everything not yet checked (main's new commits, conflict fixes,
   # later work of the branch) is in the diff from it: a merge of main that only brought other
   # cities checks those cities, not all twenty. CHECK_FULL=1 compares with main as before.
   last=$(cat "$STAMP" 2>/dev/null)
-  if [ -z "${CHECK_FULL:-}" ] && [ -n "$last" ] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null \
+  if [ -z "${CHECK_FULL:-}" ] && [ -z "${CHECK_BASE:-}" ] && [ -n "$last" ] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null \
      && ! git merge-base --is-ancestor "$last" "$base"; then
     echo "checking what changed since the last pass, $(git log -1 --format='%h %s' "$last" | cut -c1-70) (CHECK_FULL=1 for the whole branch)"
     base=$last
@@ -102,14 +134,34 @@ else
       web/title.js|web/earth.js) title=1; telemetry=1 ;;   # (the title screen's load stages: tools/telemetry_check.js)
       web/title.*|tools/title_*|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/telemetry.js|tools/telemetry_*|tools/slo_*) title=1; telemetry=1 ;;   # watches every page, sends nothing
-      web/index.html|web/quality.js) all_cities; title=1; loader=1; telemetry=1 ;;
-      web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1; telemetry=1 ;;
+      web/index.html|web/quality.js) shared_change; title=1; loader=1; telemetry=1 ;;
+      web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
-        for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
+        if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
+      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) shared_change ;;
+      tools/check.sh|tools/live_cities.sh|.github/workflows/checks.yml) voice=1 ;;   # the checks' own plumbing: the static ones, and the run itself
       tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
     esac
   done
+  if [ $shared -eq 1 ]; then
+    for t in $SMOKE; do add_kinds "$t"; done
+    echo "fast tier: the shared code changed, so the smoke cities play ($SMOKE); every live city plays on main after landing (CHECK_TIER=full for all of them here)"
+  fi
+  if [ $fish -eq 1 ]; then   # the fast tier fishes one water
+    for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && { add_city "$id" game; break; }; done
+  fi
+fi
+
+if [ $plan -eq 1 ]; then   # the targets of this run, each one an argument to this script: a runner's shard
+  [ "${CHECK_STATIC:-1}" != 0 ] && echo static
+  for c in "${cities[@]}"; do
+    rest=$(for k in $KINDS; do [ "$k" != game ] && is_in "$k" "${want[$c]}" && echo "$k"; done | paste -sd, -)
+    is_in game "${want[$c]}" && echo "$c:game"
+    [ -n "$rest" ] && echo "$c:$rest"
+  done
+  for r in "${reefs[@]}"; do echo "$r"; done
+  [ $title -eq 1 ] && echo title; [ $loader -eq 1 ] && echo loader; [ $telemetry -eq 1 ] && echo telemetry
+  exit 0
 fi
 
 if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ] && [ $telemetry -eq 0 ]; then
@@ -162,16 +214,20 @@ mem_step() {
     echo "ok   mem    $c   ($(grep -o 'GPU peak [0-9]* MB' "$OUT/$c-mem.log" | head -1), $(grep -o '[0-9]* at the end after a collection' "$OUT/$c-mem.log" | head -1) heap)"
   else echo "FAIL mem    $c   ($(grep -o 'over [0-9]*' "$OUT/$c-mem.log" | paste -sd ';' - | head -c120); see $OUT/$c-mem.log)"; fi
 }
-run_city() {
-  local c=$1
-  game_step "$c" load
-  clip_step "$c" load
-  mem_step "$c" 
+tour_step() {
+  local c=$1 rc
   # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
   timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
   if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
   elif [ $rc -eq 124 ]; then echo "FAIL tour   $c   (timed out after 1800 s; see $OUT/tour-$c.log)"
   else echo "FAIL tour   $c   ($(grep -m1 '^FAIL' "$OUT/tour-$c.log" || tail -1 "$OUT/tour-$c.log"); see $OUT/tour-$c.log)"; fi
+}
+run_city() {   # the kinds wanted of this city's checks, one after the other
+  local c=$1 k
+  for k in $KINDS; do
+    is_in "$k" "${want[$c]}" || continue
+    case $k in game) game_step "$c" load ;; clip) clip_step "$c" load ;; mem) mem_step "$c" ;; tour) tour_step "$c" ;; esac
+  done
 }
 run_reef() {
   local r=$1 res
@@ -223,6 +279,7 @@ EOF
 }
 
 {
+  if [ "${CHECK_STATIC:-1}" != 0 ]; then
   # what the characters say, everywhere (tools/voice_check.py): locals, not the map's credits. A second or so.
   if python3 tools/voice_check.py >"$OUT/voice.log" 2>&1; then tail -1 "$OUT/voice.log"
   else echo "FAIL voice  $(grep '^FAIL' "$OUT/voice.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/voice.log)"; fi
@@ -259,10 +316,11 @@ EOF
     && for p in "$OUT"/parts/*.glb; do cmp -s "$p" "web/assets/$(case $(basename "$p") in cars*) echo vehicles;; *) echo trees;; esac)/$(basename "$p")" || { echo "FAIL $(basename "$p") is not its model's part: python3 pipeline/meshopt.py split web/assets/*/<model>.glb" >>"$OUT/parts.log"; false; }; done; then
     echo "ok   parts  $(ls "$OUT"/parts/*.glb | wc -l) parts of the shared models up to date"
   else echo "FAIL parts  $(grep '^FAIL' "$OUT/parts.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/parts.log)"; fi
-  # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
-  if [ ${#cities[@]} -gt 0 ]; then
-    if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"
-    else echo "FAIL signs  $(grep -v '^ok' "$OUT/signs.log" | head -2 | paste -sd ';' -)   (see $OUT/signs.log)"; fi
+  # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py): every live city's
+  # when no city is named (the static checks alone)
+  signs=("${cities[@]}"); [ ${#signs[@]} -eq 0 ] && signs=($CITIES)
+  if python3 tools/sign_check.py "${signs[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#signs[@]} cities, every sign reads the right way round"
+  else echo "FAIL signs  $(grep -v '^ok' "$OUT/signs.log" | head -2 | paste -sd ';' -)   (see $OUT/signs.log)"; fi
   fi
   for c in "${cities[@]}"; do
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done
