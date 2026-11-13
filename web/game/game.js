@@ -5320,6 +5320,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function mirrorTick() {
     if (mirror) mirror.update(world, clockT);
   }
+  // who leaves tracks in lying snow this frame (weather.js tread): you first (on foot or in your car), then the
+  // walkers and the cars within 30 m of you
+  const treadList = [], treadPool = [];
+  function treaders(fx, fy) {
+    let k = 0;
+    const put = (id, x, y, h, car) => { const o = treadPool[k] || (treadPool[k] = {}); k++; o.id = id; o.x = x; o.y = y; o.h = h; o.car = car; treadList.push(o); };
+    treadList.length = 0;
+    if (player.mode === 'car' && myCar) put('me', myCar.D.st.x, myCar.D.st.y, myCar.D.st.h, true);
+    else if (player.mode === 'foot') put('me', player.x, player.y, player.h, false);
+    else put('me', fx, fy, 0, false); // (in the air or aboard: only the trail's frame follows you)
+    const R2 = 30 * 30;
+    if (crowd && crowd.P) for (let i = 0, n = Math.min(crowd.active, crowd.P.length); i < n && k < 60; i++) { const p = crowd.P[i]; if (p.line >= 0 && p.mode !== 'sit' && (p.x - fx) ** 2 + (p.y - fy) ** 2 < R2) put(i, p.x, p.y, p.h, false); }
+    if (cars && cars.C) for (let i = 0; i < cars.C.length && k < 80; i++) { const c = cars.C[i]; if (c.x != null && (c.x - fx) ** 2 + (c.y - fy) ** 2 < R2) put('c' + i, c.x, c.y, c.h, true); }
+    return treadList;
+  }
   // the weather's frame (weather.js): the rain round the camera, the umbrellas, the sound of it
   function weatherTick(dt, titleOn, idle = titleOn) {
     if (!weather) return;
@@ -5329,6 +5344,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const fz = player.mode === 'heli' ? heli.st.z + 1 : player.mode === 'ferry' ? 3 : player.z + 1.7;
     weather.groundY = W(fx, fy, Math.max(0, nav.terrain(fx, fy))).y; // (the ground where you are: fog thins above it, lightning strikes down to it)
     weather.update(dt, clockT, W(fx, fy, fz));
+    if (weather.tread && OEWeather.S.snowDepth > 0.02) weather.tread(treaders(fx, fy), dt); // tracks in the snow (weather.js)
     const wS = OEWeather.S, inside = player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli';
     if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(Math.max(wS.rain, wS.snow * 0.7)); // (umbrellas go up in the snow too)
     if (A.rain) A.rain(titleOn ? 0 : wS.rain, weather.covered() && player.mode === 'foot', inside);

@@ -2,7 +2,8 @@
 // weather in turn, measure the median frame time and count the draw calls and triangles of a frame (the
 // counts transfer to a real GPU; the times from a software renderer only compare one state with another).
 // A weather adds no full-screen pass and no render of the scene: the passes are counted to show it (draws
-// of 3 or 6 vertices), and "occ" is the occlusion map from above, redrawn only as the camera moves or
+// of 3 or 6 vertices with the depth test off: a quad in the world, a sign or a lamp's glow that walks into
+// view as the city moves, has it on, and had been counted as a pass, issue 381 item 6), and "occ" is the occlusion map from above, redrawn only as the camera moves or
 // every half second while something falls (it was there for the rain before #356).
 //   python3 -m http.server 8800 --directory web &
 //   TIER=high xvfb-run -a node tools/weather_cost.js kyoto [frames]     # TIER=high|medium|low
@@ -29,7 +30,7 @@ const STATES = [
   await p.addInitScript(() => {
     const C = window.__draws = { draws: 0, tris: 0, full: 0 };
     const P = WebGL2RenderingContext.prototype;
-    const wrap = (name, count, inst) => { const f = P[name]; P[name] = function (...a) { const n = a[count] * (inst == null ? 1 : a[inst]); C.draws++; C.tris += n / 3; if (a[count] <= 6 && inst == null) C.full++; return f.apply(this, a); }; };
+    const wrap = (name, count, inst) => { const f = P[name]; P[name] = function (...a) { const n = a[count] * (inst == null ? 1 : a[inst]); C.draws++; C.tris += n / 3; if (a[count] <= 6 && inst == null && !this.isEnabled(this.DEPTH_TEST)) C.full++; return f.apply(this, a); }; };
     wrap('drawElements', 1); wrap('drawArrays', 2); wrap('drawElementsInstanced', 1, 4); wrap('drawArraysInstanced', 2, 3);
   });
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
