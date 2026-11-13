@@ -128,15 +128,17 @@ def draw_interior(rng, kind):
             for j in range(5):
                 yy = y + h * (0.2 + j * 0.15)
                 d.rectangle([x, yy, x + w, yy + 4], fill=(240, 240, 240))
+                pal = [(220, 220, 215), (200, 70, 60), (70, 110, 180), (90, 160, 90), (230, 200, 90), (180, 180, 185)]
                 for i in range(int(w / 9)):
-                    c = tuple(int(v) for v in rng.integers(40, 255, 3))
+                    c = pal[int(rng.integers(len(pal)))]
                     d.rectangle([x + i * 9 + 1, yy - 16 - rng.integers(0, 6), x + i * 9 + 7, yy], fill=c)
             d.rectangle([x, y + h * 0.9, x + w, y + h], fill=(200, 200, 205))
         elif kind % 4 == 2:    # a bar: a dark room, bottles lit from behind
             d.rectangle([x, y, x + w, y + h], fill=(40, 22, 30))
             d.rectangle([x, y + h * 0.25, x + w, y + h * 0.55], fill=(150, 80, 40))
+            bp = [(180, 140, 60), (90, 50, 30), (40, 120, 90), (160, 180, 190), (120, 70, 50), (200, 180, 120)]
             for i in range(int(w / 7)):
-                c = tuple(int(v) for v in rng.integers(60, 255, 3))
+                c = bp[int(rng.integers(len(bp)))]
                 d.rectangle([x + i * 7 + 1, y + h * 0.3, x + i * 7 + 5, y + h * 0.5], fill=c)
             d.rectangle([x, y + h * 0.66, x + w, y + h], fill=(25, 12, 10))
         else:                  # a lobby: a counter, posters, a bright floor
@@ -205,13 +207,15 @@ def draw_vending(rng, kind):
         body = [(240, 240, 240), (200, 20, 30), (20, 70, 160), (30, 120, 60)][kind % 4]
         d.rectangle([x, y, x + w, y + h], fill=body)
         d.rectangle([x + 6, y + 8, x + w - 6, y + h * 0.58], fill=(196, 206, 218))
+        drinks = [(200, 30, 30), (40, 90, 180), (30, 140, 70), (230, 230, 230), (40, 40, 40), (210, 170, 40), (180, 60, 140), (90, 60, 40), (60, 170, 200)]
         for j in range(3):
             yy = y + 14 + j * (h * 0.56 - 14) / 3
             for i in range(8):
                 cx = x + 12 + i * (w - 24) / 7.5
-                c = tuple(int(v) for v in rng.integers(30, 255, 3))
+                c = drinks[int(rng.integers(len(drinks)))]
                 d.rounded_rectangle([cx - 6, yy + 8, cx + 6, yy + 38], 4, fill=c)
-                d.rectangle([cx - 5, yy + 42, cx + 5, yy + 46], fill=(220, 30, 30) if rng.random() < 0.3 else (40, 200, 60))
+                d.rectangle([cx - 6, yy + 18, cx + 6, yy + 24], fill=(245, 245, 245))   # the label band
+                d.rectangle([cx - 5, yy + 42, cx + 5, yy + 46], fill=(220, 30, 30) if rng.random() < 0.35 else (40, 200, 60))
         d.rectangle([x + 6, y + h * 0.62, x + w - 6, y + h * 0.7], fill=(30, 30, 30))
         ad.text(img, (x + w / 2, y + h * 0.66), ["つめた～い", "あったか～い", "COLD DRINK", "おいしい水"][kind % 4], "zen", h * 0.045, fill="#ffffff", max_w=w - 20)
         d.rectangle([x + w * 0.62, y + h * 0.72, x + w * 0.9, y + h * 0.84], fill=(60, 60, 64))
