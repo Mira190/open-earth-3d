@@ -1768,6 +1768,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // an image the city's landmark_assets hook draws (signs, plaques, votive tablets), on texture coordinates 0..1
     const imageTex = f => lmTex[f] || (lmTex[f] = Object.assign(texLoader.load(D.DATA + f),
       { colorSpace: THREE.SRGBColorSpace, anisotropy: renderer.capabilities.getMaxAnisotropy() }));
+    // the tiled PBR surfaces a landmark material names (web/pbr.js): their sets' means, before the materials
+    if (window.OEPbr && Object.values(LM.materials || {}).some(m => m.pbr)) await OEPbr.load();
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
@@ -1781,6 +1783,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // three.js caches a program by the text of onBeforeCompile, and wrappers (streetLit) read alike
       // across patterns: each patterned material keys its own
       if (lmMats[k].onBeforeCompile) lmMats[k].customProgramCacheKey = () => `lm|${k}`;
+      if (m.pbr && window.OEPbr) OEPbr.apply(lmMats[k], m.pbr, { small, aniso: Math.min(8, renderer.capabilities.getMaxAnisotropy()) });
     }
     // meshes marked floodlit glow after dark; with emissive_map an image glows in its own colours (a screen, a lit sign)
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
@@ -1838,6 +1841,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const screenMeshes = []; // the big LED screens' faces, for the light they throw (neon.js)
     const farObjs = [], farAt = (o, c, r, far) => { o.userData.far = { c, r2: (far + r) * (far + r) }; farObjs.push(o); };
     for (const m of LM.meshes || []) {
+      if (m.detail && small) continue; // (a hero level's finest parts, landmarks.json "detail": the high and medium tiers only)
       const g = lmGeometry(m);
       const mesh = new THREE.Mesh(g, lmMaterial(m));
       if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far * (small ? 0.6 : 1)); } // (a room's furnishings: nearer on a small device)

@@ -1,0 +1,8 @@
+Poly Haven textures (https://polyhaven.com), CC0 1.0 Universal (public domain):
+https://polyhaven.com/license . Converted to WebP at 1024 and 512 px by pipeline/fetch_pbr.py.
+
+brick: red_brick  https://polyhaven.com/a/red_brick  (pressed red brick in a fine joint (Tokyo Station's 1914 walls))
+granite_paving: granite_tile  https://polyhaven.com/a/granite_tile  (sawn granite slabs (a plaza's paving))
+slate: roof_slates_03  https://polyhaven.com/a/roof_slates_03  (natural slate roofing (the station's domes and roofs))
+stucco: plastered_wall_04  https://polyhaven.com/a/plastered_wall_04  (smooth render and dressed artificial stone (trim, bands, cornices))
+concrete_pavers: concrete_pavers_02  https://polyhaven.com/a/concrete_pavers_02  (square concrete pavers (footways))
