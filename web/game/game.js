@@ -354,8 +354,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     });
   }
   const FRAME = { cell: 2, x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] };
-  const DSM = S.buildDSM(T, B.s, Object.assign({ ids: true }, FRAME));
+  // (made in the worker that built the walls, from the same ground and solids, where there is one: buildings.js start)
+  const DSM = D.dsm && D.dsm.nx === Math.round((FRAME.x1 - FRAME.x0) / FRAME.cell) ? D.dsm : S.buildDSM(T, B.s, Object.assign({ ids: true }, FRAME));
+  D.dsm = null;
   if (Wd.farSun) Wd.farSun.init(DSM); // the sun's shadow past the shadow map, from this surface model (world.js, issue 358)
+  if (D.navJob) { D.navCells = await D.navJob; D.navJob = null; } // (the landmarks on its grid, from the worker: world.js)
   const nav = OENav.create(D, DSM);
   // the big screens light the street, the crowd and the buildings across from them (neon.js)
   const neon = window.OENeon ? await OENeon.create(Wd, renderer, { tier: QC.name, gain: (G.look || {}).neon ?? 1, fill: (G.look || {}).fill || [], ground: (x, y) => Math.max(0, nav.terrain(x, y)) }) : null;

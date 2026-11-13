@@ -169,24 +169,45 @@
   const isNode = typeof module === 'object' && !!module.exports && typeof require === 'function' && typeof __dirname === 'string';
   const base = here || (typeof self !== 'undefined' && self.location ? self.location.href : null); // web/ (pack.js or pack-worker.js)
   let worker = null, seq = 0;
-  const waiting = new Map();
-  function decodeIn(buf) {
+  const waiting = new Map(), keptThere = new Set();
+  function post(msg, transfer, retry) {
     if (!worker && here && typeof Worker === 'function') {
       try {
         worker = new Worker(new URL('pack-worker.js', here));
         worker.onmessage = e => { const w = waiting.get(e.data.id); if (!w) return; waiting.delete(e.data.id); if (e.data.error) w.fail(new Error(e.data.error)); else w.ok(e.data.obj); };
-        worker.onerror = e => { e.preventDefault(); worker = false; for (const w of waiting.values()) w.retry(); waiting.clear(); };
+        worker.onerror = e => { e.preventDefault(); worker = false; keptThere.clear(); for (const w of waiting.values()) w.retry(); waiting.clear(); };
       } catch (e) { worker = false; }
     }
-    if (!worker) return decode(buf);
-    const copy = buf.slice(0); // (kept, to decode here if the worker fails)
+    if (!worker) return null;
     return new Promise((ok, fail) => {
       const id = ++seq;
-      waiting.set(id, { ok, fail, retry: () => decode(copy).then(ok, fail) });
-      worker.postMessage({ id, buf }, [buf]);
+      waiting.set(id, { ok, fail, retry: () => retry().then(ok, fail) });
+      worker.postMessage(Object.assign({ id }, msg), transfer);
     });
   }
-  const api = { decode, decodeIn, supported };
+  // keep: a name under which the worker keeps the pack for buildIn() (it then copies it back rather than handing
+  // its arrays over)
+  function decodeIn(buf, keep = null) {
+    const copy = here && typeof Worker === 'function' && worker !== false ? buf.slice(0) : null; // (kept, to decode here if the worker fails)
+    const p = post({ buf, keep }, [buf], () => decode(copy));
+    if (!p) return decode(copy || buf);
+    if (keep) keptThere.add(keep);
+    return p;
+  }
+  // the buildings' vertex arrays from the pack kept as key (pack-worker.js, buildings-geo.js); rejects where
+  // the worker has no such pack (decoded here, or the worker failed), and the page then builds them itself
+  function buildIn(key, opt) {
+    if (!worker || !keptThere.has(key)) return Promise.reject(new Error(`no ${key} in a worker`));
+    keptThere.delete(key);
+    return post({ build: key, opt }, [], () => Promise.reject(new Error('the worker failed')));
+  }
+  // the landmarks laid on the walking model's grid from the pack kept as key (game/navcells.js), in the same way
+  function rasterIn(key, opt) {
+    if (!worker || !keptThere.has(key)) return Promise.reject(new Error(`no ${key} in a worker`));
+    keptThere.delete(key);
+    return post({ raster: key, opt }, [], () => Promise.reject(new Error('the worker failed')));
+  }
+  const api = { decode, decodeIn, buildIn, rasterIn, supported };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.OEPack = api;
 })(typeof window !== 'undefined' ? window : globalThis);
