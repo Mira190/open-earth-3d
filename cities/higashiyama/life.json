@@ -74,6 +74,7 @@
     {
       "npc": "ryosen", "title": "The monk at the red gate", "where": "Kiyomizu-dera, the Deva Gate",
       "hours": { "slots": ["morning"] },
+      "places": [{"slots": ["daytime", "evening"], "at": {"spot": "otowa", "d": [5, 4]}, "where": "The Otowa waterfall, below the stage"}],
       "busy": "I must see to the hall. I am at the gate in the mornings: the temple opens at six, every day of the year.",
       "ranks": [
         { "title": "Six o'clock",
@@ -90,8 +91,9 @@
           "gives": { "id": "xp", "skill": "bearings", "value": 5, "name": "An early start", "text": "Bearings: you know the hill before it fills" },
           "request": { "type": "spot", "id": "butai", "text": "Stand on the Stage of Kiyomizu", "ask": "Go out on the stage and look down. Then come and tell me whether you would jump." } },
         { "title": "To jump from the stage",
-          "talk": ["You looked down. Thirteen metres.", "People did jump. The temple's own diaries count 234 between 1694 and 1864, in the belief that Kannon grants the wish of one who survives.", "Most lived: about eighty-five in a hundred. The trees were thicker then. It was forbidden in 1872, and I am glad not to keep that diary."],
-          "fact": "Temple records count 234 jumps from the stage of Kiyomizu-dera between 1694 and 1864; about 85% survived, and the practice was banned in 1872.",
+          "talk": ["You looked down. Thirteen metres.", "People did jump. The temple's own diaries count 235 jumps between 1694 and 1864, in the belief that Kannon grants the wish of one who survives.", "Most lived: about eighty-five in a hundred. The trees were thicker then. It was forbidden in 1872, and I am glad not to keep that diary."],
+          "fact": "Temple records count 235 jumps, by 234 people, from the stage of Kiyomizu-dera between 1694 and 1864; about 85% survived, and the practice was banned in 1872.",
+          "gives": {"id": "forecast", "name": "The temple's weather", "text": "The diary shows the next day hour by hour, and Ryosen writes when rain is coming", "rain": "Rain over the hills", "tip": "The slopes are quiet in the rain. The shops on Sannenzaka have roofs."},
           "ask": { "q": "So. Would you?", "options": [
             { "text": "No. I'd take the stairs", "good": true, "reply": "Then you understand the saying better than those who use it. 'To jump from the stage of Kiyomizu' means to decide, not to fall." },
             { "text": "For the right wish", "reply": "The saying means to make up one's mind, you know. The stairs also lead down." } ] },
@@ -109,6 +111,7 @@
     {
       "npc": "mika", "title": "The pilgrim with the camera", "where": "Kiyomizu-dera, by the water basin",
       "hours": { "slots": ["daytime", "evening"] },
+      "places": [{"slots": ["evening"], "at": {"spot": "butai", "d": [3, -3]}, "where": "The stage of Kiyomizu, for the sunset"}],
       "busy": "Can't talk, the light's going and I haven't got my shot! Find me in the daytime or towards evening.",
       "ranks": [
         { "title": "The same angle",
@@ -167,8 +170,8 @@
                 { "id": "warabi", "name": "Warabi mochi", "price": 500, "text": "Cold, trembling squares rolled in roasted soybean flour. They should give up without a fight, and be gone in a minute." } ] },
     { "id": "pottery", "name": "Mr. Fujii's shelf 清水焼", "where": "Sannenzaka", "at": { "npc": "fujii", "d": [-1.5, 1.5] }, "hours": ["10:00", "18:00"],
       "hello": "Pick them up. They're for hands, not eyes.",
-      "menu": [ { "id": "cup", "name": "A Kiyomizu-yaki cup", "price": 1200, "keep": true, "text": "Thin, pale blue, with one brushed line that doesn't quite meet itself. It warms in the hand before the tea does." },
-                { "id": "hashioki", "name": "A chopstick rest", "price": 400, "keep": true, "text": "A small glazed aubergine to rest your chopsticks on. The potter's apprentices make these first, by the hundred, until the hands know." } ] },
+      "menu": [ { "id": "cup", "name": "A Kiyomizu-yaki cup", "price": 1200, "keep": true, "glyph": "器", "text": "Thin, pale blue, with one brushed line that doesn't quite meet itself. It warms in the hand before the tea does." },
+                { "id": "hashioki", "name": "A chopstick rest", "price": 400, "keep": true, "glyph": "箸", "text": "A small glazed aubergine to rest your chopsticks on. The potter's apprentices make these first, by the hundred, until the hands know." } ] },
     { "id": "falls", "name": "Tea house by the falls 茶屋", "where": "Kiyomizu-dera, beside the Otowa Falls", "at": { "spot": "otowa", "d": [-7, 5] }, "hours": ["09:30", "17:00"],
       "hello": "Sit, sit. You've climbed far enough.",
       "menu": [ { "id": "amazake", "name": "Amazake", "price": 400, "text": "Sweet, cloudy and warm, made from rice and koji, with a pinch of ginger on top. Pilgrims' fuel since long before vending machines." },
@@ -179,17 +182,17 @@
       "at": { "npc": "ryosen", "d": [2, 2] }, "radius": 40, "verb": "Go in through the lit gate",
       "text": "In most years the temple stays open until 21:30 for about ten days from late March, with its cherries lit and a blue beam over the city.",
       "lines": ["The red gate is lit from below, and the cherries beside the three-storey pagoda are white against the dark. The temple is open until half past nine.", "From behind the main hall a single blue beam goes up over the city: Kannon's compassion, the temple says. In 2026 the spring evenings ran from 27 March to 5 April."],
-      "skill": "light", "xp": 5, "source": "https://www.kiyomizudera.or.jp/" },
+      "skill": "light", "xp": 5, "source": "https://www.kiyomizudera.or.jp/event/" },
     { "id": "sennichi", "title": "Sennichi-mairi: a thousand days in one", "native": "千日詣り", "stamp": "A thousand days", "where": "Kiyomizu-dera, the Deva Gate", "dates": [[8, 14], [8, 16]], "slots": ["evening", "night"],
       "at": { "npc": "ryosen", "d": [2, 2] }, "radius": 40, "verb": "Climb to the hall by lantern light",
       "text": "A visit to Kannon on these days of August is said to earn the merit of a thousand. On 14 to 16 August the temple opens at night for it.",
       "lines": ["One visit on these days counts as a thousand, they say: three years of mornings saved in an evening. The hall is open until half past nine, and its inner sanctuary too.", "On the 16th the bonfires burn on the mountains round the city to see the ancestors off. Then the lanterns here feel like part of the same thing."],
-      "skill": "bearings", "xp": 5, "source": "https://www.kiyomizudera.or.jp/" },
+      "skill": "bearings", "xp": 5, "source": "https://www.kiyomizudera.or.jp/event/" },
     { "id": "kiyomizu-autumn", "title": "Kiyomizu-dera by night: autumn", "native": "清水寺 秋の夜間特別拝観", "stamp": "Night maples", "where": "Kiyomizu-dera, the Deva Gate", "dates": [[11, 21], [11, 30]], "slots": ["evening", "night"],
       "at": { "npc": "ryosen", "d": [2, 2] }, "radius": 40, "verb": "Go in to see the lit maples",
       "text": "From the second half of November in most years the temple opens until 21:30, with the maples under the stage lit from below.",
       "lines": ["The queue runs back down Kiyomizu-zaka. Inside, about a thousand maples in the gully under the stage are lit from below, red on black.", "The stage seems to float on them. In 2026 the autumn evenings run from 21 to 30 November."],
-      "skill": "light", "xp": 5, "source": "https://www.kiyomizudera.or.jp/" },
+      "skill": "light", "xp": 5, "source": "https://www.kiyomizudera.or.jp/event/" },
     { "id": "setsubun", "title": "Setsubun at Yasaka Shrine", "native": "節分祭", "stamp": "Beans and maiko", "where": "Yasaka Shrine", "dates": [[2, 2], [2, 3]], "slots": ["daytime"],
       "at": { "travel": "h-yasaka" }, "radius": 80, "verb": "Join the crowd at the dance stage",
       "text": "On 2 and 3 February, maiko and geiko of Kyoto's entertainment districts dance on the shrine's stage and then throw lucky beans to the crowd.",
@@ -204,6 +207,6 @@
       "at": { "travel": "h-yasaka" }, "radius": 80, "verb": "Light a rope at the okera fire",
       "text": "On New Year's Eve, people light a bamboo rope at the shrine's okera fire and carry it home, swinging it to keep it alight.",
       "lines": ["Iron lanterns burn with okera root, a bitter medicinal herb, and everyone holds out a length of rope to catch the fire.", "Then you walk home swinging the rope in small circles so that it stays alight, and cook the year's first meal on it. All down Shijo, little red circles in the dark."],
-      "skill": "bearings", "xp": 5, "source": "https://ja.kyoto.travel/event/single.php?event_id=5148" }
+      "skill": "bearings", "xp": 5, "source": "https://www.yasaka-jinja.or.jp/event/" }
   ]
 }

@@ -592,6 +592,19 @@ jacket across the scramble), and some ranks give an ability:
 | `job` | A job of theirs, in the diary under Work |
 | `xp` | Points in a skill |
 | `filter` | Night film: photographs after sunset come out tungsten-balanced, and the caption says so |
+| `forecast` | The diary's Today page shows the next day in three-hour steps (sky, temperature, when the rain starts and stops), and they write when rain is due within six hours. One person on every map reads the weather: a fisherman, a hiker, a skipper, a canal keeper |
+
+**Where they are, by the hour.** A person may keep other places at other hours (life.json
+`bonds[].places`, each with its slots, weekdays, hours or weather, a place and the words the
+diary uses for it): the station attendant covers Koshigoe's platform at midday, the student is
+on the beach after school, the monk goes down to the waterfall. The first place that is on is
+where they stand; with none on, they are at their own. Someone you have not met yet keeps the
+place the map gives them at every hour, so the first quest's giver waits by the start; you learn
+their rounds once you know them. They move only while you are not there
+to see it (more than 60 m from both places), or at once as time passes under the diary's veil,
+and quests, the map and the waypoint follow them where they are (`bonds.js` rounds, `game.js`
+npcMove). `pipeline/life.py` checks each place, and `tools/life_step.js` stands every one of
+them up and checks it is on firm ground near where it is written, not on a roof.
 
 Quests always come first: a person who has a walk to give you gives it, whatever the hour.
 Nobody is ever missed for good, and there is no deadline.
@@ -625,10 +638,18 @@ Jobs are taken from the diary's Work page, one at a time and once in each part o
   far away it is.
 - **Photographs:** a list of real subjects to take in photo mode, a quarter more for each taken
   at golden or blue hour.
+- **By train:** catch the right train on a map with a railway (Kamakura's Enoden): from its
+  station to another against the clock, done as you step off at the right one; the wrong stop
+  says which way it is. Tokyo has one on the Yamanote between Yurakucho and Shimbashi (trains.js). A place in life.json can name a station (`{"station": "koshigoe"}`).
+
+At the wheel with a delivery or a fare, <kbd>J</kbd> hands the drive to the autopilot (issue
+#355): the job's waypoint is its destination. A passenger driven by the autopilot tips less.
 
 Money is in the city's own (yen, dollars). Taxis and rides now charge a fare on arrival (flag
 fall and a rate a kilometre); short of it, the driver lets the rest go. **Counters** keep hours
-and sell a dish or a keepsake, each with a line about it. The **calendar** is events at their
+and sell a dish or a keepsake, each with a line about it. Keepsakes go into one **album** for
+every city (the diary's Keepsakes page): a card for each, with its counter, its city and the day
+it was bought, and an empty card for each still to find on this map. The **calendar** is events at their
 real places on their real dates, with the hours they run: walk up while one is on and
 <kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
 
@@ -685,13 +706,16 @@ people to know (three on the two small Kyoto maps), four or five jobs, counters 
 
 ### What is left
 
-- Trains: a "catch the right train" job waits for trains that keep a timetable (the Enoden).
-- The autopilot (issue #355) could drive a fare or a delivery; the jobs only set the waypoint.
-- A forecast ability (tomorrow's weather in the diary) waits for the weather's forecast.
-- A room or an album for keepsakes: they are listed in the passport, not shown.
-- The people's models do not change place by the hour; their hours gate the talk, not where
-  they stand.
+- A room for keepsakes in 3D: they are an album of cards in the diary.
 - Not checked: a real GPU, Safari and iOS, and the music by ear on phone speakers.
+
+Banners (a rank, a level, a job) wait while a station's arrival sign or the day's card is up,
+so that two captions never sit over each other (`style.js`).
+
+The facts first written from memory were checked against sources in November 2026 (issue
+#357): Kiyomizu's jumps are 235 by 234 people, senmaizuke's maker was Daikokuya Tozaburo,
+Sydney Tower's 56 cables steady the shaft, Eikan-do's 2026 night openings run 20 November to
+6 December, and the event sources that did not hold their dates now point to pages that do.
 
 ### The phone
 
@@ -2455,27 +2479,48 @@ stalls of both halls, chairs along the northern foyers' glass, a table at Bennel
   its `verb` ("Take your seat", "Sit at the table"). Seated you look out through your own eyes from `eye`
   metres over the seat, the way it faces; drag to turn your head; <kbd>E</kbd> stands you up where you were.
   Your own figure is not drawn from the seat (photo mode draws it again).
-- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, bars, lines}`)
+- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, chorus, bars, lines}`)
   begins when you take a seat that names it. The house lights (`dim`, mesh names) go down as the oboe gives
   the A, the house claps the conductor in, and the scene is sung by the NPC `singer` on the stage, with its
-  lines as surtitles: the line as sung and, under it, in English. It ends in applause and plays again while
-  you keep your seat. The city's score rests while it plays (`web/game/life.js`).
+  lines as surtitles: the line as sung and, under it, in English. Where the score has a `chorus` (a line of
+  `[midi, beat, beats, syllable]` like `melody`), it is sung by three sopranos and three tenors an octave under
+  them, each a few cents and a fraction of a hertz of vibrato off the others. It ends in applause and plays
+  again while you keep your seat. The city's score rests while it plays (`web/game/life.js`).
 - **Nothing is recorded.** The voice is synthesised in the browser as a source and filter: a sawtooth
   through five formant band-passes (the alto table in the Csound manual's appendix "Formant Values": numbers,
-  used as data), with vibrato that comes in a fifth of a second after a note's start, a glide between slurred
-  notes, a breath of noise and a lift near 3 kHz, the singer's formant. Under it the cellos' ostinato and
-  pizzicato strings are plucked triangle and sawtooth tones, the tambourine and the applause are filtered
-  noise, and the hall is a convolution with 1.5 s of decaying noise. Sydney's show is the Habanera from
-  *Carmen* (Bizet, 1875; libretto by Meilhac and Halévy; the tune after Iradier's *El arreglito*, 1863): music
-  and words are in the public domain. The notes (`cities/sydney/opera_score.json`) were transcribed from a lead
-  sheet and checked against the themes in Barlow and Morgenstern's dictionary; the syllables under them outside
-  the first phrase and the refrain were set by count, not from the vocal score, and the major-key repeat, the
-  chorus's in the opera, is given to the soloist. The English lines are this project's own. What was looked at
-  and not adopted: Pink Trombone (Neil Thapen, MIT), an articulatory model, heavier than a formant voice needs.
+  used as data), with vibrato that comes in a sixth of a second after a note's start (about ±60 cents at
+  5.5 Hz on a held note, drifting a little in rate), a slow wander of a few cents, a glide between slurred
+  notes, a breath of noise and a lift near 3 kHz, the singer's formant. High in her range the first formant
+  follows the note up instead of sitting under it, as a soprano opens her jaw (Sundberg, *The Science of the
+  Singing Voice*, 1987). Under it the cellos' ostinato and pizzicato strings are plucked triangle and
+  sawtooth tones, the tambourine and the applause are filtered noise, and the hall is a convolution with 1.5 s
+  of decaying noise. Sydney's show is the Habanera from *Carmen* (Bizet, 1875; libretto by Meilhac and
+  Halévy; the tune after Iradier's *El arreglito*, 1863): music and words are in the public domain. The notes
+  and their syllables (`cities/sydney/opera_score.json`) are checked bar by bar against Choudens's vocal
+  score (Paris, plate A.C. 3082; the 1883 reprint of the 1875 edition, No. 5, pp. 49-51, Internet Archive
+  `carmenopracomi00bize`): the verse's triplets fall on the second to fourth quavers of their bars, and in the
+  major-key refrain the chorus of cigarières and young men sings the tune while Carmen answers it with "L'amour!"
+  before her couplet, "L'amour est enfant de Bohême", and the chorus's "Prends garde à toi!". The English lines
+  are this project's own. What was looked at and not adopted: Pink Trombone (Neil Thapen, MIT), an
+  articulatory model, heavier than a formant voice needs.
+- **The audience** round the seats kept for you (a show's `audience`: the patrons' instanced prop and index, nearest
+  first, and its `cast` of Rocketbox characters) are seated people, taken in when you first come within 45 m of the
+  stage and drawn and posed only while you are that near; the low figures they stand for are hidden. 28 on the high
+  tier, 18 on the medium, 10 on the low.
+- **On a phone** the action button takes the seat and stands you up, a finger drawn across the screen turns your
+  head, and the joystick, Jump, Run and Guess are put away while you sit. `TOUCH=1 node tools/seat_probe.js sydney
+  out 390x844` takes the seats that way.
+- **Listening to it.** No harness has sound, so `node tools/show_bounce.js [dir]` renders the show offline
+  (`OEShow.bounce`, as `OEMusic.bounce` renders the score) to WAV files: the mix, and her voice, the chorus,
+  the orchestra and the house alone. `python tools/show_listen.py [dir]` measures them as an ear would judge:
+  each note's pitch against the score (YIN), the vibrato's rate and extent on the held notes, each vowel's
+  first two formants (LPC), her level over the pit (+8 dB) and the chorus's (+3.5 dB, under her), the mix's
+  peak (-5 dBFS) and brightness. Each is checked against its range.
 - `tools/seat_step.js` (in `tools/game_check.js`; on its own, `tools/seat_probe.js`) takes one seat of each
   kind: the action must offer it, you must be seated at it looking its way with your eyes 0.8 to 1.5 m over
   it, and stand up on foot; at a show the clock must run, the lights go down, the singer sing and the first
-  line's surtitle read as written.
+  line's surtitle read as written. It first settles whatever an earlier step left showing (the HUD tour, a
+  coach, the arrival, a camera shot, a conversation, a panel), which under load could leave no action offered.
 
 ## Routes
 

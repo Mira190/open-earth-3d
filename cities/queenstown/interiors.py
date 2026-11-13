@@ -17,7 +17,11 @@ street's, and on a room's floor they read as orange floodlight.
               of St Peter). The plan, the windows and the levels are the shell's (LiDAR and the Heritage NZ
               listing); the fittings are as a parish church of its date has them and as visitors' photographs show
               the arrangement (the pews either side of a middle aisle, the timber roof, the altar under the east
-              window): no measured survey of the inside is published, so the fittings' sizes are typical ones.
+              window): no measured survey of the inside is published, so the fittings' sizes are typical ones. The
+              pews (seven rows at 0.9 m) seat about 75 of the 130 the parish gives (whakatipuanglican.nz, 2026).
+              Heritage NZ's full registration report is held only at its Southern office, and the Otago Daily Times's
+              account of the opening (19 May 1932, Papers Past) was not reachable from here: both are where a
+              measured nave, its bays and its pews would come from.
   Williams Cottage  (1864) the front room under the high gable, a shop now, and the lean-to behind: boarded
               floor, a painted board dado with paper above, a matchlined ceiling, the schist fireplace in the
               chimney between them, shelves and display tables, the counter at the lean-to's door.
@@ -27,6 +31,10 @@ street's, and on a room's floor they read as orange floodlight.
               pendants, tables for four along the glass and round tables behind, the buffet and the bar at the
               back against a schist wall. Its size is the deck's span and the LiDAR's terrace behind it (massing.json
               tier 14, its roof at 478.5 m); the layout is a typical one, as no plan of the room is published.
+              Skyline's extension building (opened March 2026: Naylor Love; the ODT) takes Stratosfare from 330 to
+              650 seats and the viewing deck from 68 to about 430 m^2. The LiDAR (2021) and the massing here are the
+              complex before it; its rebuild runs to 2029 (Destination Queenstown, May 2026), and its consent
+              (QLDC RM240658) is where the new building's heights would come from.
 """
 import math
 import os
@@ -300,8 +308,10 @@ def st_peters(heritage, ground):
             rimu.tube(arc, 0.08 if big else 0.06, sides=6)
         rimu.box(P(u, -vc, zc), P(u, vc, zc), w, 0.2)                                                       # the collar
     # the pews: two blocks either side of the aisle, facing east; rimu ends, a seat, a sloped back with its
-    # book ledge, a kneeler
-    rows = np.arange(-6.9, -1.9, 0.95)
+    # book ledge, a kneeler. Seven rows at 0.9 m from the pulpit's steps back to the porch's cross aisle: with five or
+    # six to a pew about 75 sit in them, and the parish gives the church about 130 seats (whakatipuanglican.nz),
+    # the rest in the choir stalls and on chairs brought in for a full service (not drawn)
+    rows = [-1.45 - 0.9 * k for k in range(7)]
     for u in rows:
         for sgn in (-1, 1):
             v0, v1 = sgn * 0.78, sgn * (inv - 0.28)

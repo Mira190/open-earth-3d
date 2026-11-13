@@ -1077,8 +1077,8 @@
         "name": "Genzo 源三",
         "role": "Koshigoe fisherman",
         "at": [
-          -1490,
-          70
+          -1477.5,
+          22.5
         ],
         "look": {
           "character": "R_Gardener_Male_01",

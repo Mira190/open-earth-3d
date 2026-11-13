@@ -353,6 +353,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
   function boxRenderer(world, U, P) {
     const n = P.length, mesh = instanced(PERSON(), toneMaterial(U), n), A = mesh.geometry.attributes;
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    mesh.userData.noRefl = true; // (out of the sea's reflection: water.js)
     world.add(mesh);
     for (let i = 0; i < n; i++) { setC(A.aC0, i, pick(SHIRTS)); setC(A.aC1, i, pick(PANTS)); setC(A.aC2, i, pick(SKIN)); setC(A.aC3, i, pick(HAIR)); }
     return {
@@ -1520,10 +1521,11 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       for (const k of names) {
         const cap = C.filter(c => c.model === k).length;
         if (!cap) continue;
-        fleet[k] = geos[k].map(g => { const m = instanced(g, mat, cap); m.count = 0; world.add(m); return m; });
+        fleet[k] = geos[k].map(g => { const m = instanced(g, mat, cap); m.count = 0; m.userData.noRefl = true; world.add(m); return m; });
       }
     } else {
       mesh = instanced(CAR(), toneMaterial(U), n);
+      mesh.userData.noRefl = true;
       world.add(mesh);
       for (let i = 0; i < n; i++) {
         const hex = pick(CARS);
@@ -3265,7 +3267,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         m.count = old.count;
         m.instanceMatrix.array.set(old.instanceMatrix.array); m.instanceMatrix.needsUpdate = true;
         for (const a of ['aC0', 'aC1', 'aC2', 'aC3', 'aAnim']) { m.geometry.attributes[a].array.set(old.geometry.attributes[a].array); m.geometry.attributes[a].needsUpdate = true; }
-        world.add(m); world.remove(old); old.geometry.dispose();
+        m.userData.noRefl = true; world.add(m); world.remove(old); old.geometry.dispose();
         fleet[k][l] = m; added.push(m);
       }
       return added;
