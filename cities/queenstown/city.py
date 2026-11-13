@@ -55,8 +55,11 @@ MATERIALS = {
                       "spandrel": "#3e4347", "spandrel_frac": 0.1, "mullion_m": 0.1, "frame": "#2a2e31", "lit_share": 0.85, "lit_k": 0.5,
                       "warm_share": 1.0},
     "skyline_roof": {"color": "#55595c", "roughness": 0.8},
-    # the boards take the night's light (web/night.js): the warm pools landmark_glows puts along the balustrade
-    "deck_timber": {"color": "#8d6c4c", "roughness": 0.85, "pattern": "granite", "joints_m": [0.14, 2.4], "street_lit": True},
+    # the boards after dark (#326): under the street lights' raster (street_lit, web/night.js) the whole deck read a flat
+    # orange, as bright at its middle as by the rail. Taken off it, as the restaurant's floor was; the boards glow a
+    # little of their own, a warm white, the light the handrail's LED strip and the step lights put down on them
+    # (landmark_glows: the pools along the balustrade), and their colour is weathered hardwood's, browner and greyer
+    "deck_timber": {"color": "#857261", "roughness": 0.85, "pattern": "granite", "joints_m": [0.14, 2.4], "emissive": "#ffeedd", "glow": 0.012, "glow_day": 0.0},
     "deck_steel": {"color": "#3b4045", "roughness": 0.5, "metalness": 0.6},
     "deck_glass": {"color": "#3d5158", "roughness": 0.04, "metalness": 0.0, "opacity": 0.12},
     "deck_led": {"color": "#d8cbb4", "roughness": 0.5, "emissive": "#ffc98a", "glow": 2.2, "solid": False},
@@ -298,7 +301,7 @@ def deck_frame(ground):
 def deck_meshes(ground):
     c, ax, out, z = deck_frame(ground)
     L, D = DECK["length"], DECK["depth"]
-    timber = Mesh("skyline_deck", "deck_timber", False, uv=True)
+    timber = Mesh("skyline_deck", "deck_timber", False, floodlit=True, uv=True)
     steel = Mesh("skyline_deck_frame", "deck_steel", False)
     glass = Mesh("skyline_deck_glass", "deck_glass", False)
     led = Mesh("skyline_deck_led", "deck_led", False, floodlit=True)
@@ -570,7 +573,7 @@ def landmark_glows(scene):
     pts = []
     for u in np.arange(-L / 2 + 1.5, L / 2 - 1.0, 2.6):
         q = c + ax * u + out * (D / 2 - 1.1)
-        pts.append([round(float(q[0]), 1), round(float(q[1]), 1), 2.6, "#ffe0bc", 0.022])
+        pts.append([round(float(q[0]), 1), round(float(q[1]), 1), 2.6, "#ffeedd", 0.022])
     return pts + interiors(T)[4]
 
 

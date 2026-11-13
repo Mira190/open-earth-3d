@@ -212,8 +212,31 @@ second, the clouds at twelve seconds a frame): [images/look/shibuya-day.mp4](ima
 [images/look/higashiyama-day.mp4](images/look/higashiyama-day.mp4), made with
 `xvfb-run -a node tools/day_film.js shibuya out.mp4 960x540 24 12` (see the tool's header for the view). (Made before the clouds were seeded by place and day, so both start from the same sky.)
 
-Not built here: glints on overhead wires and rails (the maps draw neither as their own material yet), and a
-bounce that knows which ground is near which wall (the hemisphere light's is the same everywhere).
+### Follow-ups (issue 372)
+
+- **Glints on the rails.** The rails are their own material (`web/game/rail.js` `trackMesh`, `glint`): each
+  vertex carries its rail's direction (`aRail`), and the rail's head takes the hair highlight of Kajiya and Kay
+  (1989), sin(T, H) to the 90th, on the sun's light as its diffuse term has it (shadow, colour, angle). A track
+  that runs towards a low sun shows a bright thread where the sun's reflection meets it, which moves with the eye.
+  The rails had been wound face down and culled from above (only the sleepers showed, on every map with a railway,
+  tram or funicular); they now have a head and two sides 0.14 m deep. The contact wire stays without a glint: at
+  1.2 cm it is under a pixel from the street, and its rods are merged with the poles'.
+- **A bounce that knows its ground.** A wall reads the sky visibility (`skyvis.webp`) of the ground 4 m in front
+  of it, takes from it the height of the horizon there (the texture holds its mean cos^2), and asks whether the sun
+  clears it; the ground term of the hemisphere light on that wall is scaled from 0.3 (a canyon's foot in shade) to
+  1.25 (an open square in sun) (`web/world.js` `groundBounce`, on the city's walls and every material that takes
+  the sky visibility). One texture read; nothing at night; `?bounce=off` leaves it out. It is directionless: a
+  street that runs along the sun's bearing counts as shaded when it is deep, which the far sun's height field
+  (`?farsun=on`) would settle where it is on.
+- **Golden-hour violet.** The `shinkai` preset's golden key took shaded paving far towards violet. Its shade went
+  from 0.92 / 0.90 / 1.14 to 0.95 / 0.94 / 1.06 and its lift from 0.012 / 0.006 / 0.030 to 0.008 / 0.006 / 0.016:
+  still a cool shade, no longer a purple one. The owner's to judge (before/after stills of Kyoto, Shibuya and
+  Kamakura were put in front of them); the old numbers are one line back.
+- **Shafts at half size.** The light shafts read the bloom's bright pass, which is drawn at half size anyway: its
+  alpha, which the bloom's blur never read, now holds each half-size pixel's brightness before the threshold
+  (`web/lens.js` `bright`, `tBright`). Six taps of a half-size target in place of six of the full-size scene; the
+  plain lens after a camera effect still reads the scene.
+- **Cirrus and a sky per place and day** were done in #390.
 
 ### The screens light the street (`web/neon.js`)
 

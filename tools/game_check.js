@@ -808,6 +808,13 @@ const npcNight = require('./npc_night');
     for (const r of seats) check(r.ok, `takes a seat: ${r.name}${r.ok ? ` (eyes ${r.eye.toFixed(2)} m over it${r.show ? `; the show runs to beat ${r.beat.toFixed(1)}, "${r.title}"` : ''})` : `: ${r.why}`}`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { mode: 'foot', x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
+  // a room's levels walked end to end (game.json interiors' "route": the Opera House's foyers, up a side flight to
+  // the gallery, along it to the landing and down the broad stair; tools/foyer_walk.js)
+  if (await p.evaluate(() => (window.__game.G.interiors || []).some(r => r.route))) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
+    for (const r of await require('./foyer_walk')(p)) check(r.ok, `walks the levels of ${r.id}${r.ok ? ` (${r.legs.filter(l => l.want != null).map(l => l.z.toFixed(1)).join(' → ')} m)` : `: ${r.why}`}`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { mode: 'foot', auto: null, x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
+  }
 
   // fishing (game.json "fishing", docs/FISHING.md): nothing of it loaded until you are near a spot; then at each
   // spot E takes you to the edge, a cast lands on the water, a bite comes, an easy fish is landed with the one
