@@ -19,12 +19,21 @@ street's, and on a room's floor they read as orange floodlight.
               the arrangement (the pews either side of a middle aisle, the timber roof, the altar under the east
               window): no measured survey of the inside is published, so the fittings' sizes are typical ones. The
               pews (seven rows at 0.9 m) seat about 75 of the 130 the parish gives (whakatipuanglican.nz, 2026).
-              Heritage NZ's full registration report is held only at its Southern office, and the Otago Daily Times's
-              account of the opening (19 May 1932, Papers Past) was not reachable from here: both are where a
-              measured nave, its bays and its pews would come from.
-  Williams Cottage  (1864) the front room under the high gable, a shop now, and the lean-to behind: boarded
-              floor, a painted board dado with paper above, a matchlined ceiling, the schist fireplace in the
-              chimney between them, shelves and display tables, the counter at the lean-to's door.
+              Heritage NZ's List entry (No. 2341, Category 2, entered 24 November 1983) publishes only its extent
+              (Lot 1 DP 365052, 2-6 Church Street): no description, plan or dimensions (read November 2026). Its
+              registration report is held at the Southern office, and the Otago Daily Times's account of the
+              opening (19 May 1932) is on Papers Past, whose pages refuse automated readers; DigitalNZ's index of
+              them found no 1931-32 article on the church. Those are where a measured nave would come from.
+  Williams Cottage  (1864) the front room under the high gable, a shop now, and the lean-to behind, finished as
+              Heritage NZ's List entry (No. 2336, Category 1; its text quotes Jackie Gillies' 1996 Conservation
+              Plan) describes them: the papers hung on scrim over the timber sarking, with friezes, here a frieze
+              over a picture rail; the parlour's ceiling paper laid on cotton stretched between the joists, each bay
+              sagging a little; the fireplace surround hand-made in timber, in the "substantial stone chimney"
+              between the main roof and the lean-to; boarded floor. Shelves, display tables and the counter at
+              the lean-to's door are a shop's (a boutique design shop, the List says). The List gives the cottage
+              five rooms (a long parlour, a kitchen, three bedrooms) and a wash house behind, but no plan or room
+              sizes: the inside here stays the one front room and the lean-to until a plan is found (the
+              Conservation Plan, at the Queenstown Heritage Trust).
   Skyline restaurant  the dining room behind the deck, at the deck's level (474.6 m): floor-to-ceiling glass to
               the deck and the lake (Skyline's own description: floor-to-ceiling windows over Queenstown, the lake
               and the Remarkables), automatic sliding doors onto the deck, oak floor, a slatted timber ceiling with
@@ -78,7 +87,6 @@ MATERIALS = {
     # the cottage
     "will_paper": {"color": "#cdd2b6", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.53, 0],
                    "emissive": "#ffd6a0", "glow": 0.14},
-    "will_dado": {"color": "#6b4330", "roughness": 0.6, "metalness": 0.0, "pattern": "granite", "joints_m": [0.11, 0]},
     "will_ceiling": {"color": "#efe6d2", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0.1],
                      "emissive": "#ffd6a0", "glow": 0.12},
     "will_shelf": {"color": "#8e6a48", "roughness": 0.65, "metalness": 0.0},
@@ -105,7 +113,7 @@ MATERIALS = {
 
 FLOODLIT = {"int_boards", "int_tiles", "int_runner", "sky_oak", "int_stone", "int_rimu", "int_plaster", "int_rimu_board", "int_lamp", "stp_glass_in", "stp_glass_blue", "int_ember", "will_paper", "will_ceiling",
             "sky_slats", "sky_schist", "sky_lining", "sky_food", "sky_bottles"}
-UV = {"int_rimu_board", "int_boards", "int_tiles", "stp_door", "will_paper", "will_dado", "will_ceiling", "sky_oak", "sky_slats", "sky_schist"}
+UV = {"int_rimu_board", "int_boards", "int_tiles", "stp_door", "will_paper", "will_ceiling", "sky_oak", "sky_slats", "sky_schist"}
 BOUNCE = {"stp": "#b48a5e", "will": "#a0754c", "sky": "#9a7553"}   # the floors' colours, that light the rooms from below
 
 
@@ -446,10 +454,11 @@ def williams(heritage, ground):
     U0, U1, V0, V1, LU1, F, T = D["U0"], D["U1"], D["V0"], D["V1"], D["LU1"], D["F"], D["T"]
     R = Room("will_int", 0.5)
     iu0, iu1, iv0, iv1, ilu1 = U0 + T, U1 - T / 2, V0 + T, V1 - T, LU1 - T
-    paper, dado, ceil = R.m("will_paper"), R.m("will_dado"), R.m("will_ceiling")
+    paper, frieze, ceil = R.m("will_paper"), R.m("will_frieze"), R.m("will_ceiling")
     R.m("int_boards", "floor").quad(P(iu0, iv0, F), P(ilu1, iv0, F), P(ilu1, iv1, F), P(iu0, iv1, F), [[iu0, iv0], [ilu1, iv0], [ilu1, iv1], [iu0, iv1]])
     door = D["door"]
     CW, LW0, LW1 = 2.45, 2.8, 2.05   # the front room's ceiling, the lean-to's at its front and its back (over the floor)
+    FRIEZE = CW - 0.38   # (the picture rail, under a frieze about 0.38 m deep)
     # the front room's walls and the lean-to's, anticlockwise, each with its windows and doors: the dado to 0.95 m,
     # the paper over it to the ceiling
     win = lambda c, w, z0, h: (c, w, z0, z0 + h, False)
@@ -472,18 +481,24 @@ def williams(heritage, ground):
         za, zb = F + za, F + zb
         hz = [(c, w, zb_, zt, p) for c, w, zb_, zt, p in holes]
         outl = ak.holed_wall(_Null(), P, a, b, F, za, hz, z1b=zb)
-        ak.holed_wall(dado, P, a, b, F, F + 0.95, [(c, w, b0, min(t, F + 0.95), p) for c, w, b0, t, p in hz if b0 < F + 0.95])
-        ak.holed_wall(paper, P, a, b, F + 0.95, za, [(c, w, max(b0, F + 0.95), t, p) for c, w, b0, t, p in hz if t > F + 0.95], z1b=zb)
+        # (HNZ List 2336: the papers are hung on scrim over the timber sarking, floor to ceiling, with friezes: the
+        # paper up to the picture rail and a frieze over it, where the room is tall enough for one; the lean-to, low
+        # under its skillion, papered to the top)
+        zf = F + FRIEZE if abs(za - (F + CW)) < 1e-6 and abs(zb - za) < 1e-6 else max(za, zb)   # (the front room's walls)
+        ak.holed_wall(paper, P, a, b, F, min(zf, za), [(c, w, b0, min(t, zf), p) for c, w, b0, t, p in hz if b0 < zf], z1b=min(zf, zb))
+        if zf < min(za, zb):
+            ak.holed_wall(frieze, P, a, b, zf, za, [(c, w, max(b0, zf), t, p) for c, w, b0, t, p in hz if t > zf], z1b=zb)
         A, B = np.asarray(a, float), np.asarray(b, float)
         tt = (B - A) / np.linalg.norm(B - A)
         Q = lambda s, z, d=0.0: P(*(A + tt * s + np.array([tt[1], -tt[0]]) * d), z)
         L = float(np.linalg.norm(B - A))
-        gaps = sorted((c - w / 2, c + w / 2) for c, w, b0, t, p in hz if b0 < F + 0.95)       # (windows and doors the dado rail stops at)
-        s = 0.0
-        for g0, g1 in gaps + [(L, L)]:
-            if g0 - s > 0.02:
-                R.m("will_shelf").box(Q(s, F + 0.95, -0.02), Q(g0, F + 0.95, -0.02), 0.04, 0.05)      # the dado rail
-            s = max(s, g1)
+        if zf < min(za, zb):
+            gaps = sorted((c - w / 2, c + w / 2) for c, w, b0, t, p in hz if b0 < zf < t)       # (windows the picture rail stops at)
+            s = 0.0
+            for g0, g1 in gaps + [(L, L)]:
+                if g0 - s > 0.02:
+                    R.m("will_shelf").box(Q(s, zf, -0.015), Q(g0, zf, -0.015), 0.03, 0.04)      # the picture rail under the frieze
+                s = max(s, g1)
         s = 0.0
         for g0, g1 in sorted((c - w / 2, c + w / 2) for c, w, b0, t, p in hz if b0 <= F + 0.01) + [(L, L)]:
             if g0 - s > 0.02:
@@ -494,7 +509,16 @@ def williams(heritage, ground):
             if zb_ > F + 0.01:   # (a window: its glass, the sash bars, lit from outside by day; the front door has none)
                 ak.pane(R.m("will_glass"), P, a, b, o, T - 0.04)
     # the ceilings: matchlining, flat in the front room, the lean-to's following its skillion
-    ceil.quad(P(iu0, iv0, F + CW), P(iu0, iv1, F + CW), P(iu1, iv1, F + CW), P(iu1, iv0, F + CW), [[iu0, iv0], [iu0, iv1], [iu1, iv1], [iu1, iv0]])
+    # the front room's ceiling: paper laid on cotton stretched between the joists (HNZ List 2336), each bay sagging a
+    # little between them, the joists' undersides showing as the paper's lines; the lean-to's matchlined
+    cloth = R.m("will_cloth")
+    J = np.arange(iv0, iv1 + 1e-6, 0.45)
+    for v0_, v1_ in zip(J[:-1], J[1:]):
+        vm = (v0_ + v1_) / 2
+        cloth.quad(P(iu0, v0_, F + CW), P(iu0, vm, F + CW - 0.018), P(iu1, vm, F + CW - 0.018), P(iu1, v0_, F + CW), [[iu0, v0_], [iu0, vm], [iu1, vm], [iu1, v0_]])
+        cloth.quad(P(iu0, vm, F + CW - 0.018), P(iu0, v1_, F + CW), P(iu1, v1_, F + CW), P(iu1, vm, F + CW - 0.018), [[iu0, vm], [iu0, v1_], [iu1, v1_], [iu1, vm]])
+    for v_ in J[1:-1]:
+        cuboid(R.m("will_batten"), P, iu0, iu1, v_ - 0.016, v_ + 0.016, F + CW - 0.006, F + CW, top=False, bottom=True)   # (the paper tacked over each joist)
     ceil.quad(P(U1 + T / 2, iv0, F + LW0), P(U1 + T / 2, iv1, F + LW0), P(ilu1, iv1, F + LW1), P(ilu1, iv0, F + LW1), [[0, iv0], [0, iv1], [5, iv1], [5, iv0]])
     # the wall between them above the doorway and its jambs' thickness
     iw, iv = D["inner_w"] / 2, D["inner_v"]
@@ -506,7 +530,17 @@ def williams(heritage, ground):
     cuboid(st, P, iu1 - 0.6, iu1, -3.55, -2.45, F, F + CW, top=False)
     cuboid(R.m("int_soot"), P, iu1 - 0.62, iu1 - 0.2, -3.3, -2.7, F, F + 0.85)
     cuboid(R.m("int_ember"), P, iu1 - 0.64, iu1 - 0.35, -3.15, -2.85, F, F + 0.12)
-    cuboid(R.m("will_shelf"), P, iu1 - 0.78, iu1 - 0.58, -3.7, -2.3, F + 1.25, F + 1.32)
+    # the fireplace's surround, hand-made in timber (HNZ List 2336: "much of the internal joinery is hand made, such as
+    # the internal doors, fireplace surrounds"): two plain pilasters, a frieze board and the mantel shelf, painted, round
+    # the firebox in the stone breast; a stone hearth before it
+    sur = R.m("will_surround")
+    for v_ in (-3.42, -2.58):
+        cuboid(sur, P, iu1 - 0.66, iu1 - 0.6, v_ - 0.08, v_ + 0.08, F, F + 1.12)
+        cuboid(sur, P, iu1 - 0.68, iu1 - 0.6, v_ - 0.1, v_ + 0.1, F, F + 0.1)                 # the plinth blocks
+    cuboid(sur, P, iu1 - 0.65, iu1 - 0.6, -3.5, -2.5, F + 0.85, F + 1.12)                       # the frieze board
+    cuboid(sur, P, iu1 - 0.8, iu1 - 0.6, -3.62, -2.38, F + 1.12, F + 1.16)                      # the mantel shelf
+    cuboid(sur, P, iu1 - 0.7, iu1 - 0.6, -3.56, -2.44, F + 1.09, F + 1.12)                      # its bed mould
+    cuboid(st, P, iu1 - 1.05, iu1 - 0.6, -3.55, -2.45, F, F + 0.03)                              # the hearth
     # the shop: shelves along the walls with goods on them, two display tables, the counter and its till by the
     # lean-to's doorway
     for (a0, a1, v, side) in ((-6.3, -5.6, iv1 - 0.32, 1), (-4.4, -1.8, iv1 - 0.32, 1), (-6.4, -5.5, iv0 + 0.32, -1), (-4.2, -3.1, iv0 + 0.32, -1)):
@@ -601,6 +635,13 @@ def will_dims():
             "door": {"v": 2.4 - 3.6, "w": 0.95, "h": 2.1}, "inner_v": 0.9, "inner_w": 1.0}
 
 
+MATERIALS["will_frieze"] = {"color": "#a99a74", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.18, 0],
+                            "emissive": "#ffd6a0", "glow": 0.12}
+MATERIALS["will_cloth"] = {"color": "#ece3cc", "roughness": 0.92, "metalness": 0.0, "emissive": "#ffd6a0", "glow": 0.12}
+MATERIALS["will_batten"] = {"color": "#d6c9ab", "roughness": 0.9, "metalness": 0.0, "emissive": "#ffd6a0", "glow": 0.1}
+MATERIALS["will_surround"] = {"color": "#5d4a3a", "roughness": 0.5, "metalness": 0.0}
+FLOODLIT.update({"will_frieze", "will_cloth", "will_batten"})
+UV.add("will_frieze")
 MATERIALS["will_glass"] = {"color": "#d8e2e4", "roughness": 0.1, "metalness": 0.0, "emissive": "#fff4e2", "glow": 0.2, "glow_day": 0.9}
 FLOODLIT.add("will_glass")
 MATERIALS["will_stone"] = {"color": "#b4a37f", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.22, "block_m": 0.38}
