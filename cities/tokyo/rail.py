@@ -87,6 +87,11 @@ MATERIALS = {
     "rail_sign": {"color": "#ffffff", "roughness": 0.5, "metalness": 0.0, "map": "rail_signs.png", "emissive_map": True, "glow": 1.25, "glow_day": 0.35},
     "rail_bench": {"lamp_lit": True, "color": "#3d6f9a", "roughness": 0.6, "metalness": 0.1},
     "rail_dark": {"color": "#16181a", "roughness": 0.9, "metalness": 0.0},
+    # an escalator's skirts, glass and handrails: not solid to a walker (the well's walls hold one in; 1.1 m apart, the
+    # balustrades in the collision world's quarter-metre cells left no room between them for a walker's 0.7 m)
+    "rail_esc_frame": {"lamp_lit": True, "color": "#a9b7b8", "roughness": 0.55, "metalness": 0.4, "solid": False},
+    "rail_esc_glass": {"color": "#bcd3d6", "roughness": 0.08, "metalness": 0.3, "opacity": 0.32, "solid": False},
+    "rail_esc_dark": {"color": "#16181a", "roughness": 0.9, "metalness": 0.0, "solid": False},
 }
 
 _S = {}
@@ -470,7 +475,7 @@ def meshes(Mesh):
     if not L:
         return {}, []
     T, frame, sv, deck, openings = L["T"], L["frame"], L["sv"], L["deck"], L["openings"]
-    K = Kit(Mesh, "rail", MATERIALS, flood=("rail_shop", "rail_lamp", "rail_sign"), sky={"rail_soffit": 0.3, "rail_ceiling": 0.45, "rail_frame": 0.6})
+    K = Kit(Mesh, "rail", MATERIALS, flood=("rail_shop", "rail_lamp", "rail_sign"), sky={"rail_soffit": 0.3, "rail_ceiling": 0.45, "rail_frame": 0.6, "rail_esc_frame": 0.6})
     zt, zs = RAIL_Z - 0.2, RAIL_Z - SLAB        # the ballast's top, the deck's soffit
     slots = shapely.union_all([stair_slot(st, 0.25) for st in L["stairs"]])
     plat_all = shapely.union_all([p["poly"] for p in L["plats"]])
@@ -739,13 +744,13 @@ def station(L, K, Mesh):
             own.append(em)
             for k in range(1, 24):   # the steps' risers, seen as ridges up the incline
                 u = E["u0"] + (E["u1"] - E["u0"]) * k / 24
-                K["rail_dark"].box([*(a + t * u - n * hw), zu(u) + 0.01], [*(a + t * u + n * hw), zu(u) + 0.01], 0.03, 0.02)
+                K["rail_esc_dark"].box([*(a + t * u - n * hw), zu(u) + 0.01], [*(a + t * u + n * hw), zu(u) + 0.01], 0.03, 0.02)
             for sgn in (-1, 1):
                 e = n * sgn * (hw + 0.12)
                 pts = [[*(a + t * u + e), zu(u)] for u in us]
-                K["rail_frame"].sweep(pts, [(-0.06, -0.35), (0.06, -0.35), (0.06, 0.12), (-0.06, 0.12)])            # the skirt and deck
-                K["rail_psd_glass"].sweep([[*q[:2], q[2] + 0.12] for q in pts], [(-0.012, 0.0), (0.012, 0.0), (0.012, 0.8), (-0.012, 0.8)])   # the glass
-                K["rail_dark"].sweep([[*q[:2], q[2] + 0.95] for q in pts], [(-0.05, -0.03), (0.05, -0.03), (0.05, 0.03), (-0.05, 0.03)])  # the handrail
+                K["rail_esc_frame"].sweep(pts, [(-0.06, -0.35), (0.06, -0.35), (0.06, 0.12), (-0.06, 0.12)])            # the skirt and deck
+                K["rail_esc_glass"].sweep([[*q[:2], q[2] + 0.12] for q in pts], [(-0.012, 0.0), (0.012, 0.0), (0.012, 0.8), (-0.012, 0.8)])   # the glass
+                K["rail_esc_dark"].sweep([[*q[:2], q[2] + 0.95] for q in pts], [(-0.05, -0.03), (0.05, -0.03), (0.05, 0.03), (-0.05, 0.03)])  # the handrail
             for sgn in (-1, 1):   # the well's outer wall, up to a balustrade over the platform
                 e0, e1 = a + n * sgn * (hw + 0.3), a + t * E["L"] + n * sgn * (hw + 0.3)
                 if sgn < 0:
@@ -840,10 +845,35 @@ def surfaces():
             ln = float(np.linalg.norm(d))
             ax, c = d / ln, (a[1] + b[1]) / 2
             hw = min(f[4] for f in fr[k:k + step + 1]) / 2 - 0.05
-            out.append({"name": f"{S['name']} Station, platforms {pn(p)}", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
-                        "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)], "half_width": round(hw, 2),
-                        "profile": [[round(-ln / 2 - (1.0 if k == 0 else 0.5), 2), zp], [round(ln / 2 + (1.0 if k + step >= len(fr) - 1 else 0.5), 2), zp]],
-                        "thickness": PLAT + SLAB, "mesh": f"rail_platform_{p['key']}", "mapped": False, "label": f"{S['name']} Station {S['native']}駅"})
+            U0, U1 = -ln / 2 - (1.0 if k == 0 else 0.5), ln / 2 + (1.0 if k + step >= len(fr) - 1 else 0.5)
+            # (not over the stair and escalator wells: there the platform is two strips, one each side of the well, or a
+            # walker carried up the escalator stepped onto the platform's level a step below it, and the steps no longer
+            # carried them)
+            nn = np.array([-ax[1], ax[0]])
+            wells = []
+            for st in L["stairs"]:
+                if st["plat"] != p["key"]:
+                    continue
+                q = np.array(stair_slot(st).exterior.coords) - c
+                u, v = q @ ax, q @ nn
+                if u.max() > U0 and u.min() < U1:
+                    wells.append((max(U0, float(u.min())), min(U1, float(u.max())), float(v.min()), float(v.max())))
+            pieces, at = [], U0
+            for w0, w1, v0, v1 in sorted(wells):
+                if w0 - at > 0.3:
+                    pieces.append((at, w0, -hw, hw))
+                for a0, a1 in ((-hw, v0), (v1, hw)):
+                    if a1 - a0 > 0.6:
+                        pieces.append((w0, w1, a0, a1))
+                at = max(at, w1)
+            if U1 - at > 0.3:
+                pieces.append((at, U1, -hw, hw))
+            for u0, u1, v0, v1 in pieces:
+                o = c + ax * (u0 + u1) / 2 + nn * (v0 + v1) / 2
+                out.append({"name": f"{S['name']} Station, platforms {pn(p)}", "type": "strip", "origin": [round(float(o[0]), 2), round(float(o[1]), 2)],
+                            "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)], "half_width": round((v1 - v0) / 2, 2),
+                            "profile": [[round(-(u1 - u0) / 2, 2), zp], [round((u1 - u0) / 2, 2), zp]],
+                            "thickness": PLAT + SLAB, "mesh": f"rail_platform_{p['key']}", "mapped": False, "label": f"{S['name']} Station {S['native']}駅"})
     plat_of = {p["key"]: p for p in L["plats"]}
     for st in L["stairs"]:   # from the head down to the foot (tools/game_check.js climbs each: "check")
         p = plat_of[st["plat"]]

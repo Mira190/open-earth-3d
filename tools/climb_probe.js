@@ -10,7 +10,7 @@ const [,, city = 'tokyo', match = ''] = process.argv;
   await p.waitForFunction('window.__game && window.__game.nav', null, { timeout: 600000 });
   const r = await p.evaluate((match) => {
     const g = window.__game, pl = g.player, n = g.nav, out = [];
-    const all = (g.G.surfaces || []).filter(s => s.check && s.type === 'strip' && s.name.includes(match));
+    const all = (g.G.surfaces || []).filter(s => (s.check || (match && s.moving_ms)) && s.type === 'strip' && s.name.includes(match));
     if (!all.length) return ['no such flight'];
     for (const s of all) {
     const [ox, oy] = s.origin, [ax, ay] = s.axis, P = s.profile, uf = P[P.length - 1][0], ut = P[0][0], zf = P[P.length - 1][1];
