@@ -353,16 +353,30 @@ def building(K):
         facade(K, rr, g, EAVES + 3.0, lambda a, b: False)
         ak.outline_roof(K["tks_slate"], rr, g + EAVES + 3.0, 1.6, over=0.6, rise_max=CENTRE_TOP - EAVES - 3.0, cell=1.0)
         dormers(K, rr, g + EAVES + 3.0, 1.6, lambda a, b: False)
-        # the porch: stone piers and a flat roof with its parapet, before the doors
-        pr = ccw(list(porch[0]["ring"]))
+        # the porch: an arch in each face, brick over stone imposts, a stone entablature and parapet
+        pr = ccw(ak.simplify(list(porch[0]["ring"]), 0.3))
         pz = porch[0]["top"] - porch[0]["ground"]
-        for p in pr:
-            q = np.asarray(p)
-            dd = q - np.asarray(ak.ring_centroid(pr))
-            q = q - dd / np.linalg.norm(dd) * 0.6
-            K["tks_stone"].box((q[0], q[1], g), (q[0], q[1], g + pz - 1.2), 1.1, 1.1)
-        ak.prism(K["tks_stone"], ak.WORLD, pr, g + pz - 1.2, g + pz)
-        sweep(K["tks_stone"], pr, g + pz - 0.4, ((0.0, 0.0), (0.3, 0.2), (0.3, 0.4), (0.0, 0.4)))
+        zt = g + pz - 1.4
+        for i in range(len(pr)):
+            a, b = np.asarray(pr[i], float), np.asarray(pr[(i + 1) % len(pr)], float)
+            L = float(np.linalg.norm(b - a))
+            t = (b - a) / L
+            nrm = np.array([t[1], -t[0]])
+            w = L - 2.4
+            o = ak.holed_wall(K["tks_brick"], ak.WORLD, a, b, g, zt, [(L / 2, w, g, zt - 1.25, False)])
+            ak.reveal(K["tks_stone"], ak.WORLD, a, b, o[0], 0.0, -0.9)
+            for sx in (0.6, L - 0.6):   # stone piers' faces and imposts
+                box(K["tks_stone"], a + t * sx, t, nrm, g, g + 0.9, 1.3, 0.08)
+                box(K["tks_stone"], a + t * sx, t, nrm, zt - 1.6, zt - 1.25, 1.4, 0.12)
+                z = g + 0.9
+                while z + 0.45 < zt - 1.6:
+                    box(K["tks_stone"], a + t * sx, t, nrm, z, z + 0.4, 1.25, 0.05)
+                    z += 0.9
+            box(K["tks_stone"], a + t * L / 2, t, nrm, zt - 1.25, zt - 0.5, 0.6, 0.12)   # the keystone
+        ak.prism(K["tks_stone"], ak.WORLD, pr, zt, g + pz - 0.5)
+        ak.cap(K["tks_stone"], ak.WORLD, pr, zt, down=True)
+        sweep(K["tks_stone"], pr, zt, ((0.0, 0.0), (0.12, 0.1), (0.3, 0.35), (0.42, 0.55), (0.42, 0.7), (0.0, 0.7)))
+        sweep(K["tks_stone"], pr, g + pz - 0.5, ((0.0, 0.0), (0.0, 0.0), (-0.02, 0.0), (-0.02, 0.8), (-0.32, 0.8), (-0.32, 0.0)))
     return g, hidden, octs, axis
 
 

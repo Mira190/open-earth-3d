@@ -226,5 +226,119 @@
   "dist": 6,
   "pitch": 0.12,
   "street": true
+ },
+ {
+  "name": "start-day",
+  "at": [
+   576,
+   1269
+  ],
+  "look": [
+   640,
+   1267
+  ],
+  "time": "10:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "southdome-day",
+  "at": [
+   560,
+   1150
+  ],
+  "look": [
+   610,
+   1168
+  ],
+  "time": "10:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 5,
+  "pitch": -0.08,
+  "street": true
+ },
+ {
+  "name": "start-dusk",
+  "at": [
+   576,
+   1269
+  ],
+  "look": [
+   640,
+   1267
+  ],
+  "time": "sunset+10",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "southdome-dusk",
+  "at": [
+   560,
+   1150
+  ],
+  "look": [
+   610,
+   1168
+  ],
+  "time": "sunset+10",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 5,
+  "pitch": -0.08,
+  "street": true
+ },
+ {
+  "name": "start-night",
+  "at": [
+   576,
+   1269
+  ],
+  "look": [
+   640,
+   1267
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "southdome-night",
+  "at": [
+   560,
+   1150
+  ],
+  "look": [
+   610,
+   1168
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 5,
+  "pitch": -0.08,
+  "street": true
  }
 ]
