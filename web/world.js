@@ -66,11 +66,13 @@ window.OEWorld = (function () {
     // the buildings, landmarks, game, terrain, places and scene as packed by pipeline/pack.py (a quarter to a
     // third of the JSON's download, issues 148, 201 and 259) and decoded in a Worker (pack-worker.js), so that the loader's bar
     // keeps moving; as JSON where a city has no pack yet or the browser cannot inflate one
-    const getPacked = async name => {
+    // (the worker keeps its copy of the buildings, to build their walls from later: buildings.js start; and in the
+    // game its copy of the landmarks, to lay them on the walking model's grid: game/navcells.js)
+    const getPacked = async (name, keep = name === 'buildings') => {
       if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
           const buf = await (await fetchFile(name + '.bin')).arrayBuffer();
-          return await (OEPack.decodeIn || OEPack.decode)(buf);
+          return await (OEPack.decodeIn ? OEPack.decodeIn(buf, keep ? name : null) : OEPack.decode(buf));
         } catch (e) { console.warn(`${name}.bin:`, e); }
       }
       return getJSON(name + '.json');
@@ -80,7 +82,7 @@ window.OEWorld = (function () {
     const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
       return u.byteOffset % 2 ? u.slice().buffer : u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength); };
     const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getPacked('scene'), getPacked('buildings'), getPacked('places'),
-      getPacked('landmarks'), getPacked('terrain').then(grid),
+      getPacked('landmarks', game), getPacked('terrain').then(grid),
       getJSON('uncertainty.json').catch(() => null), game ? getPacked('game') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     mark('decoded');
@@ -671,6 +673,8 @@ vec3 steepRock(vec3 c, float k) {
   // game: the game's world, whose own cars take over from the night's traffic within nearCars metres of the camera
   // groundAt: where the visit starts ([x, y]): the ground tiles within groundNear metres of it load first, the
   // others when the caller calls api.groundPictures.release() (the game, once it opens); without it, all at once
+  // the height sources, as the buildings' shader codes them: 0 measured, 1 from floors, 2 estimated, 3 parametric
+  const BUILDING_SRC = { mapped: 0, survey: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, lidar: 0, bdtopo: 0, '3dbag': 0, floors: 1, ml: 2, estimate: 2, typical: 2, parametric: 3 };
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0, game = false, nearCars = 0, groundAt = null, groundNear = 1000 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     // the mapped lamps, benches and trees out of the carriageways, before any of them is drawn (streets.js)
@@ -858,6 +862,18 @@ vec3 steepRock(vec3 c, float k) {
       if (IN) for (const g of new Set([D.T0, D.T, D.Tfine].filter(Boolean))) IN.raise(g);
     } catch (e) { console.warn('inland water: none drawn', e); IN = null; }
     D.inland = IN;
+    // the ground is final from here: the walls, roofs and decks start building in the worker that decoded them
+    // (buildings.js start, issue 344), while the aerial imagery is draped and the landmarks are made here
+    const bldJob = window.OEBuildings && OEBuildings.start ? OEBuildings.start(D, { lin, SRC: BUILDING_SRC, small,
+      dsm: game ? { T: D.Tfine || D.T, frame: { cell: 2, x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] } } : null }) : null;
+    // and, in the game, the landmarks laid on the walking model's grid there next (game/navcells.js; nav.js takes them)
+    if (game && window.OENavCells && window.OEPack && OEPack.rasterIn && D.G) {
+      const grid = OENavCells.grid(scene.frame), t0 = performance.now();
+      D.navJob = OEPack.rasterIn('landmarks', { strips: OENavCells.strips(D.G), grid }).then(r => {
+        console.info(`nav cells: ${Math.round(r.ms)} ms in a worker, back after ${Math.round(performance.now() - t0)} ms`);
+        return Object.assign(r, { grid: `${grid.nx}x${grid.ny}` });
+      }, e => { console.warn('nav cells: laid on the page,', e.message || e); return null; });
+    }
     let shoreTex = null, Q = null;
     if (scene.shore) {
       shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
@@ -1123,6 +1139,37 @@ uniform sampler2D uSkyVis; uniform vec4 uSkyVisF; uniform float uSkyVisK;`)
 { vec3 oeSP = transpose(mat3(viewMatrix)) * (-vViewPosition - viewMatrix[3].xyz);
   float oeSV = texture2D(uSkyVis, vec2((oeSP.x - uSkyVisF.x) * uSkyVisF.z, (-oeSP.z - uSkyVisF.y) * uSkyVisF.w)).r;
   reflectedLight.indirectDiffuse *= mix(1.0, oeSV, uSkyVisK * (1.0 - smoothstep(150.0, 500.0, length(vViewPosition)))); }`);
+      groundBounce(sh); // (the walls among them: the landmarks' and the quays')
+    };
+    // A bounce that knows its ground (issue 372, item 2). Sunlit ground throws warm light back onto the walls over
+    // it, through the hemisphere light's ground colour (game/atmosphere.js shadeLight); alone, that lit a wall in a
+    // dark alley as warmly as one on a sunlit square. The wall reads the sky visibility (skyvis.webp, above) of the
+    // ground 4 m in front of it: from it the height of the horizon there (its mean cos^2 is the texture's value), and
+    // whether the sun clears it. The ground term of the hemisphere light is scaled by that: a canyon's foot keeps
+    // a third of its bounce, an open square a quarter more than it had. One texture read in the walls' shader, no pass.
+    // uBounceSun: the sun's elevation (rad), uBounceK: how much of the day it is (0 at night: the bounce as it was).
+    // `?bounce=off` leaves it out.
+    const BOUNCE = SKYVIS && new URLSearchParams(location.search).get('bounce') !== 'off' ? Object.assign({ uBounceSun: { value: 0 }, uBounceK: { value: 0 } }, SKYVIS) : null;
+    const groundBounce = sh => {
+      if (!BOUNCE || sh.uniforms.uBounceSun || !sh.fragmentShader.includes('#include <lights_fragment_end>')) return;
+      const had = !!sh.uniforms.uSkyVis;
+      Object.assign(sh.uniforms, BOUNCE);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+${had ? '' : 'uniform sampler2D uSkyVis; uniform vec4 uSkyVisF; uniform float uSkyVisK;'} uniform float uBounceSun, uBounceK;`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+#if NUM_HEMI_LIGHTS > 0
+if (uBounceK > 0.0 && uSkyVisK > 0.0 && 0.5 - 0.5 * dot(normal, hemisphereLights[0].direction) > 0.02) { // (not the ground: it faces away)
+  mat3 oeBI = transpose(mat3(viewMatrix));
+  vec3 oeBP = oeBI * (-vViewPosition - viewMatrix[3].xyz), oeBN = oeBI * normal;
+  vec2 oeBQ = oeBP.xz + normalize(oeBN.xz + 1e-4) * 4.0;
+  float oeBV = texture2D(uSkyVis, vec2((oeBQ.x - uSkyVisF.x) * uSkyVisF.z, (-oeBQ.y - uSkyVisF.y) * uSkyVisF.w)).r;
+  float oeHz = acos(sqrt(clamp(oeBV, 0.0, 1.0))); // the horizon's height over that ground, rad
+  float oeLitG = smoothstep(oeHz - 0.14, oeHz + 0.14, uBounceSun);
+  float oeGw = 0.5 - 0.5 * dot(normal, hemisphereLights[0].direction); // the ground's share of the hemisphere light here
+  float oeF = mix(1.0, mix(0.3, 1.25, oeLitG), uBounceK * (1.0 - smoothstep(150.0, 500.0, length(vViewPosition))));
+  reflectedLight.indirectDiffuse += hemisphereLights[0].groundColor * oeGw * (oeF - 1.0) * material.diffuseColor * RECIPROCAL_PI;
+}
+#endif`);
     };
     // the street lights on a lit surface: its colour times their light where it is (the world
     // position from the view position, as the view matrix is rigid)
@@ -1446,7 +1493,7 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
     await idle();
-    const SRC = { mapped: 0, survey: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, lidar: 0, bdtopo: 0, '3dbag': 0, floors: 1, ml: 2, estimate: 2, typical: 2, parametric: 3 };
+    const SRC = BUILDING_SRC;
     // flat roofs sit this far below the wall tops, behind a parapet, so the outline keeps
     // the building's stated height
     const PARAPET = 0.5;
@@ -1542,10 +1589,9 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // walls, LOD2 roofs, facades and rooftop plant (buildings.js); parts a parametric landmark
     // draws instead (scene.json hidden_solids) stay in B.s and the surface model, not on screen
     // the walls reach the ground drawn round them: the tiles (and in the game the finer ones near the player)
-    const foot = (x, y) => Math.min(S.terrainTri(T, x, y), D.Tfine ? S.terrainTri(D.Tfine, x, y) : Infinity);
     U.uPhotoGrade = PG;
     if (NU) Object.assign(U, NU);
-    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, foot, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
+    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, job: bldJob, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
       progress: f => loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5 + 0.14 * f) });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
@@ -1565,6 +1611,11 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
     if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
+    if (BOUNCE && buildings.material && buildings.material.onBeforeCompile) { // the walls' bounce from the ground in front of them
+      const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
+      buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); groundBounce(sh); };
+      buildings.material.customProgramCacheKey = function () { return `${key ? key.call(this) : ''}|bounce`; };
+    }
     if (FARSUN && buildings.material && buildings.material.onBeforeCompile) { // the walls and roofs take the far sun's shadow too
       const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
       buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); sunLit(sh); };
@@ -2137,6 +2188,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         hemi.groundColor.setHex(0x4d463a);
+        if (BOUNCE) { BOUNCE.uBounceSun.value = sp.altitude * Math.PI / 180; BOUNCE.uBounceK.value = smooth(-1, 6, sp.altitude); }
         if (api.shadeLight) api.shadeLight(hemi, sunLight, day); // a region's look: the shade's colour, the ground's bounce (game/atmosphere.js)
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         if (far) far.setNight(U.uNight.value);

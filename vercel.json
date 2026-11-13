@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "true",
+  "buildCommand": "rm -rf web/films && find web/data \\( -name '*.mp4' -o -name '*.webm' \\) -delete && printf '{\"version\":\"%s.vercel\",\"commit\":\"%s\",\"built\":\"%s\"}' \"$(tr -d '[:space:]' < VERSION)\" \"$VERCEL_GIT_COMMIT_SHA\" \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > web/version.json",
+  "outputDirectory": "web",
+  "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]",
+  "headers": [
+    { "source": "/(data|assets|vendor)/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }] }
+  ]
+}

@@ -2955,6 +2955,12 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           c.wallHold = why === 'wall' && c.v < 0.1 && c.mv ? (c.wallHold || 0) + dt : 0;
           if (c.wallHold > 20) { c.wallHold = 0; respawn(c, cx, cy, radius * 0.6); continue; }
         }
+        // (and stood 90 s anywhere in a junction's box, for whatever it waits on: a knot across two junctions a few metres
+        // apart, each holding the other, which nothing else undoes. Kamakura's junctions 90 and 91 stood nine minutes so,
+        // a car in 90's box waiting to cross into 91 behind one held at 90's light, #355. It backs out if it can, else it
+        // leaves the traffic, in sight or not)
+        c.boxHold = c.mv && c.v < 0.1 ? (c.boxHold || 0) + dt : 0;
+        if (c.boxHold > 90) { c.boxHold = 0; if (!reverse(c)) { respawn(c, cx, cy, radius * 0.6); continue; } }
         c.q = atLine || (why === 'person' && walker >= 0 && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q && !(front.line === c.line && front.dir !== c.dir) : why === 'you' && youQ)); // (not behind one coming the other way, queued at its own line: a wait on that is a narrow street's, turned round in the end, #283) // queueing at a junction (behind a car, or a ride, queueing there; or held by the crowd crossing at its line, not by you, who may stand there for good)
         // counted at its arm for the signals' max-pressure (junctions.js): queued, and whether the head of the queue waits for room beyond
         if (c.q && c.lineArm && c.lineArm.j.sig && c.toLine < 80) { const a = c.lineArm; a.qn1 = (a.qn1 || 0) + 1; if (why === 'room' && c.toLine - c.half < 3) a.full1 = true; if (why === 'cross' && c.toLine - c.half < 3) a.lost1 = true; }

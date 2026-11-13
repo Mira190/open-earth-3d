@@ -39,6 +39,41 @@ the log teaches as it fills. Every fish goes back. You keep a log, not a bag.
    whether it would be legal to keep, your best, and one thing worth knowing about it.
    <kbd>E</kbd> lets it go.
 
+## The fish itself
+
+`web/game/fishart.js` draws the fish. One description of a kind, a `spec` (the outline of its back and belly,
+its fins as rays, the eye, the gill, the palette; all in units of its length), makes both pictures of it, so the
+fish in the log is the fish you landed:
+
+- **The portrait** in the log: side-on SVG with no texture, crisp at any size. A kind not yet caught is a pale
+  silhouette with a hint of where it lives.
+- **The body on the line**: a lofted mesh with an eye, a gill cover, rayed fins and scale rows in its vertex colours
+  (about 1,200 triangles, one draw call, a vertex-shader tail for the swimming). It is built the first time that
+  kind is hooked and freed when you walk away.
+
+The **yellowfin bream** is drawn in full, from a field guide: steep forehead, small low mouth, an eye high and
+forward, eleven dorsal spines, silver flanks with a gold sheen, and the yellow pelvic and anal fins it is
+named for. Every other kind gets a plain spindle from its `look` colours until it has a spec of its own:
+to draw another, add its spec to `SPECS` in `fishart.js`; nothing else changes (its `guide` line, the field note
+in the log, comes with it).
+
+What you see of a fish in a cast:
+
+1. **The take.** The float goes under; a ring and a beep.
+2. **The strike.** The float is gone (it is dragged under), the fish breaks the surface at once with a splash, and the
+   rod bends to it.
+3. **The fight.** The fish is on the end of the line with its head toward you, because the hook is in its lip: it pulls
+   across the line and never turns away along it, the tail working. Now and then it shakes its head at the surface;
+   when it runs it leaps. A beaten fish rolls on its side and shows its flank. The line goes to its mouth.
+4. **The catch.** Lifted out, it hangs by the lip from the line, nose up and tail down, swinging a little and still
+   kicking, as a hooked fish does. The angler swings the rod round toward the camera and the camera comes in, so the
+   fish hangs large in the frame (to the left of the angler, beside its card; above the card on a phone).
+   `tools/game_check.js` fails if a hooked fish faces away from the angler, or the caught one is off the screen or
+   not hanging nose up.
+
+The log is under **Menu → Fish log** (and **J** or the Log button with a line out). It shows each kind's portrait, your
+best against the largest it grows, how to tell it, and (after a second catch) the months and light it bites in.
+
 ## What we took from other games, and where this is different
 
 A survey of fishing in games came first. Ideas only: no code or assets were taken from any of
