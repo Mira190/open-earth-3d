@@ -5,7 +5,9 @@
 //   fare     drive your own car as a cab: stop for the passenger, take them where they say;
 //   point    someone asks the way: turn to face the landmark's true bearing and say "that way",
 //            scored by the angle you are off;
-//   photo    a list of real subjects to photograph (photo mode), more for the hour that suits them.
+//   photo    a list of real subjects to photograph (photo mode), more for the hour that suits them;
+//   train    catch the right train: from a station (at, "from") to another ("to") by rail against the clock,
+//            where the map has a railway (game.json rail.train, rail.js), done as you step off at "to".
 // And counters (life.json "shops"): open at their hours, a dish or a keepsake each with a line
 // about it. A map's jobs and shops are in its life.json; what you have done is in the save.
 // The passport's page of skills is drawn here too (the game's Passport panel calls life.passport).
@@ -13,7 +15,7 @@
 window.OEJobs = (function () {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmtS = s => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.floor(Math.max(0, s) % 60)).padStart(2, '0')}`;
-  const TYPE = { deliver: 'Delivery', fare: 'Cab fare', point: 'Show the way', photo: 'Photographs' };
+  const TYPE = { deliver: 'Delivery', fare: 'Cab fare', point: 'Show the way', photo: 'Photographs', train: 'By train' };
   function create(L) {
     const ctx = L.ctx, P = ctx.player;
     const all = () => L.data.jobs || [], shops = () => L.data.shops || [];
@@ -82,6 +84,15 @@ window.OEJobs = (function () {
       else render();
     }
     L.on('photo', snapped);
+    // a train job: done as you step off at its station, having boarded at its own (life.emit 'ride', kind 'rail')
+    L.on('ride', o => {
+      if (!cur || cur.j.type !== 'train' || o.kind !== 'rail') return;
+      const j = cur.j;
+      if (o.to !== j.to_station) { if (cur.phase === 'run') say('Wrong stop', `This is ${o.name || o.to}. ${j.to_name} is ${j.towards ? `towards ${j.towards}` : 'further on'}.`); return; }
+      if (j.from && o.from !== j.from) return;
+      const left = j.time_s - (ctx.now() - (cur.t0 || ctx.now()));
+      finish(left > j.time_s / 2 ? 1.25 : left > 0 ? 1 : 0.6, left > j.time_s / 2 ? 'With time to spare: a quarter more.' : left > 0 ? 'On time.' : 'Late, and still glad of it.');
+    });
 
     let acc = 0;
     function tick(dt, paused, titled) {
@@ -89,17 +100,22 @@ window.OEJobs = (function () {
       if ((acc += dt) < 0.2) return;
       const j = cur.j, now = ctx.now(), inCar = P.mode === 'car', stopped = !inCar || ctx.car().D.st.speed < 1.5;
       acc = 0;
+      if (cur.mode !== P.mode) { cur.mode = P.mode; render(); } // (into the car or out: the chip says what J does)
       if (cur.phase === 'go') {
-        const ok = j.type === 'fare' ? inCar && stopped && dist(j.at) < 18 : P.mode === 'foot' && dist(j.at) < (j.radius || 10);
+        const ok = j.type === 'fare' ? inCar && stopped && dist(j.at) < 18 : (P.mode === 'foot' || (j.type === 'train' && P.mode === 'rail')) && dist(j.at) < (j.radius || (j.type === 'train' ? 40 : 10));
         if (!ok) return;
         cur.phase = 'run'; cur.t0 = now;
-        if (j.type === 'deliver' || j.type === 'fare') ctx.waypoint(j.to.slice(0, 2)); else ctx.waypoint(null);
+        if (j.type === 'deliver' || j.type === 'fare' || j.type === 'train') ctx.waypoint(j.to.slice(0, 2)); else ctx.waypoint(null);
         say(j.type === 'fare' ? `${j.who || 'Your passenger'} gets in` : j.type === 'point' ? (j.who || 'A visitor') : j.title, j.type === 'point' ? `"Which way is ${j.targets[0].name}?" Turn to face it and press E.` : j.text || '');
         render();
+      } else if (j.type === 'train') {
+        const left = j.time_s - (now - cur.t0);
+        if (chip) { const b = chip.querySelector('.t'); if (b) { b.textContent = left > 0 ? fmtS(left) : 'Late'; chip.style.setProperty('--k', Math.max(0, left / j.time_s).toFixed(3)); } }
       } else if (j.type === 'deliver' || j.type === 'fare') {
         const left = j.time_s - (now - cur.t0);
         const ok = j.type === 'fare' ? inCar && stopped && dist(j.to) < 18 : (P.mode === 'foot' || stopped) && dist(j.to) < (j.radius || 10);
-        if (ok) finish(left > j.time_s / 2 ? 1.25 : left > 0 ? 1 : 0.6, left > j.time_s / 2 ? 'With time to spare: a quarter more.' : left > 0 ? 'On time.' : 'Late, and still glad of it.');
+        if (inCar && ctx.pilot && ctx.pilot()) cur.piloted = true; // (the autopilot at the wheel, issue #355: J with the job's waypoint set)
+        if (ok) { const k = left > j.time_s / 2 ? 1.25 : left > 0 ? 1 : 0.6, auto = j.type === 'fare' && cur.piloted; finish(auto ? k * 0.8 : k, (left > j.time_s / 2 ? 'With time to spare: a quarter more.' : left > 0 ? 'On time.' : 'Late, and still glad of it.') + (auto ? ' The car drove itself: the tip is smaller.' : '')); }
         else if (chip) { const b = chip.querySelector('.t'); if (b) { b.textContent = left > 0 ? fmtS(left) : 'Late'; chip.style.setProperty('--k', Math.max(0, left / j.time_s).toFixed(3)); } }
       }
     }
@@ -109,9 +125,10 @@ window.OEJobs = (function () {
       if (!chip) { chip = document.createElement('div'); chip.className = 'g-hud lf-job brackets'; chip.setAttribute('aria-live', 'polite'); ctx.stage.appendChild(chip); chip.addEventListener('click', e => { if (e.target.closest('button')) drop('You can take it again later.'); }); }
       const j = cur.j;
       const what = cur.phase === 'go' ? (j.type === 'fare' ? `Bring your car to ${j.at_name || 'the pick-up'}` : `Go to ${j.at_name || 'the start'}`)
-        : j.type === 'deliver' ? `To ${j.to_name}` : j.type === 'fare' ? `Drive to ${j.to_name}` : j.type === 'point' ? `Face ${j.targets[cur.i].name}, then E (${cur.i + 1}/${j.targets.length})`
+        : j.type === 'deliver' ? `To ${j.to_name}` : j.type === 'train' ? `${P.mode === 'rail' ? 'Off' : 'Board, and off'} at ${j.to_name}${j.towards ? ` (towards ${j.towards})` : ''}` : j.type === 'fare' ? `Drive to ${j.to_name}` : j.type === 'point' ? `Face ${j.targets[cur.i].name}, then E (${cur.i + 1}/${j.targets.length})`
           : `Photograph: ${j.subjects.filter((_, i) => !cur.got.includes(i)).map(s => s.name).join(', ')}`;
       chip.innerHTML = `<span class="eyebrow">${TYPE[j.type]} · ${L.fmt(j.pay)}</span><b>${esc(j.title)}</b><span>${esc(what)}</span>`
+        + (P.mode === 'car' && (j.type === 'deliver' || j.type === 'fare') && !ctx.touch ? '<span class="eyebrow">J: the autopilot drives to it</span>' : '')
         + (cur.phase === 'run' && j.time_s ? '<span class="bar"><i></i></span><span class="t num"></span>' : '') + '<button aria-label="Drop the job">×</button>';
     }
 
@@ -125,13 +142,34 @@ window.OEJobs = (function () {
         if (L.money < m.price) { ctx.dlg.show(who, [`That's ${L.fmt(m.price)}, and you have ${L.fmt(L.money)}. There is work about: look in your diary.`]); return; }
         L.pay(m.price);
         ctx.dlg.show(who, [ctx.said(m.text)], null, () => {
-          if (m.keep) { const sh = L.city().shelf; if (!sh.includes(m.id)) { sh.push(m.id); say(m.name, 'Kept: it is in your passport.'); } }
+          if (m.keep) { const sh = L.city().shelf; if (!sh.includes(m.id)) { sh.push(m.id); file(s, m); say(m.name, 'Kept: it is in your album (the diary\'s Keepsakes).'); } }
           else L.emit('dish', { id: `${s.id}:${m.id}`, name: m.name });
           L.note(`${m.name} at ${s.name}, ${L.fmt(m.price)}`, m.keep ? 'keep' : 'dish');
           L.emit('shop', { id: s.id, item: m.id });
         });
       });
     }
+    // ---- the album: every keepsake bought on any map, kept in the save with what it is and where it came from
+    const album = () => L.store.album || (L.store.album = []);
+    function file(s, m, date) {
+      if (album().some(a => a.city === ctx.cityId && a.id === m.id)) return;
+      album().push({ city: ctx.cityId, place: ctx.cityName, id: m.id, name: m.name, text: m.about || m.text, glyph: m.glyph || '', shop: s.name, d: date || L.day.date });
+      L.emit('keep', { id: m.id });
+    }
+    function albumPage() {
+      // (a keepsake bought before the album: filed now, from this map's counters)
+      for (const s of shops()) for (const m of s.menu) if (m.keep && L.city().shelf.includes(m.id)) file(s, m, '');
+      const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const when = d => { if (!d) return ''; const [, mo, dd] = d.split('-').map(Number); return ` · ${dd} ${MON[mo - 1]}`; };
+      const got = album().slice().sort((a, b) => (a.city === ctx.cityId ? 0 : 1) - (b.city === ctx.cityId ? 0 : 1));
+      const left = shops().flatMap(s => s.menu.filter(m => m.keep && !L.city().shelf.includes(m.id)).map(m => ({ s, m })));
+      const cards = got.map(a => `<li><span class="glyph" aria-hidden="true">${esc(a.glyph || '\u25c7')}</span><b>${esc(a.name)}</b><span>${esc(a.shop)}, ${esc(a.place)}${when(a.d)}</span><p>${esc(a.text || '')}</p></li>`)
+        .concat(left.map(({ s, m }) => `<li class="empty"><span class="glyph" aria-hidden="true">?</span><b>Not yet</b><span>${esc(s.name)} · ${L.day.onNow(s) ? 'open now' : `open ${esc(L.day.whenOn(s))}`}</span></li>`));
+      return `<section class="lf-head"><div><span class="eyebrow">Keepsakes</span><b class="lf-dow num">${got.length}</b></div></section>`
+        + (cards.length ? `<ul class="lf-keeps">${cards.join('')}</ul>` : '<p class="note">Nothing kept yet. The counters sell small things to take home.</p>')
+        + '<p class="note">One album for every city: what you keep in one is here in the next.</p>';
+    }
+    L.day.addTab({ id: 'album', title: 'Keepsakes', render: albumPage });
     // ---- what is on the calendar here and now: an event at its place
     function attend(e) {
       const who = { name: e.title, role: e.where || '', color: '#b8743a', pitch: 300 };
@@ -172,7 +210,7 @@ window.OEJobs = (function () {
     }
     L.day.addTab({ id: 'work', title: 'Work', render: page, badge: () => (cur ? '•' : '') });
     L.day.act('job', b => { L.day.close(); start(b.dataset.id); });
-    L.day.act('job-drop', () => { drop(); L.day.show(); });
+    L.day.act('job-drop', () => { drop(); L.day.show('work'); });
     (L.partsToday || (L.partsToday = [])).push(() => offered().filter(j => open(j) && st(j.id).slot !== slotKey()).slice(0, 3).map(j => ({ title: j.title, note: `${TYPE[j.type]} · ${L.fmt(j.pay)}`, on: true }))
       .concat(shops().filter(s => L.day.onNow(s)).slice(0, 3).map(s => ({ title: s.name, note: `${s.where || 'Counter'} · open`, on: true }))));
     L.passport = panel => {
@@ -186,7 +224,7 @@ window.OEJobs = (function () {
       }).join('') + '</ul>'
         + `<p class="note">${dishes} dish${dishes === 1 ? '' : 'es'} tried here${Object.keys(ci.events).length ? ` · ${Object.keys(ci.events).length} day${Object.keys(ci.events).length === 1 ? '' : 's'} of the calendar kept` : ''}${keeps.length ? ` · kept: ${keeps.map(m => esc(m.name)).join(', ')}` : ''}</p>`;
     };
-    const J = { all, start, drop, open, st, get active() { return cur; }, finish, pointAt, facing, bearing, order, attend, shops };
+    const J = { all, start, drop, open, st, get active() { return cur; }, finish, pointAt, facing, bearing, order, attend, shops, album, albumPage };
     L.use({ tick, action, reset() { drop(); } });
     L.jobs = J;
     return J;

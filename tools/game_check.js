@@ -132,6 +132,39 @@ const npcNight = require('./npc_night');
   if (process.env.DIGEST) console.log(`digest lazy: ${await digest()}`);
   await lightsKept('once the helicopter has come');
 
+  // a hero level (game/hero.js, docs/HERO.md), on a map that has one: walked up to, it loads and shows in place of
+  // the landmark meshes it draws instead, with its lit signs; walked away from, it is let go and they come back
+  const heroes = await p.evaluate(async () => {
+    const g = window.__game, H = g.hero && g.hero();
+    if (!H || !H.levels.length) return null;
+    const pl = g.player, at = { x: pl.x, y: pl.y, z: pl.z }, was = g.held ? g.held() : false, out = [];
+    const frames = async n => { for (let i = 0; i < n; i++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); } };
+    g.hold(true);
+    try {
+      for (const L of H.levels) {
+        pl.x = L.h.at[0]; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        let t = 0;
+        for (; t < 900 && !(H.state().find(s => s.id === L.h.id) || {}).shown; t++) await frames(1);
+        const st = H.state().find(s => s.id === L.h.id), hidden = (L.h.hide || []).map(n => g.Wd.world.getObjectByName(n)).filter(Boolean);
+        let glow = 0, tris = 0;
+        if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube)/.test(o.material.name)) glow++; } });
+        const r = { id: L.h.id, state: st.state, shown: st.shown, materials: st.materials, tris, glow, frames: t, hid: hidden.length, hiddenOff: hidden.every(o => !o.visible), want: (L.h.hide || []).length };
+        pl.x = L.h.at[0] + 2000; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        await frames(4);
+        r.away = H.state().find(s => s.id === L.h.id).state;
+        r.back = hidden.every(o => o.visible);
+        out.push(r);
+      }
+    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); g.hold(was); }
+    return out;
+  });
+  for (const r of heroes || []) {
+    check(r.state === 'ready' && r.shown && r.tris > 1000 && r.glow > 0, `the hero level ${r.id} loads when you come near and is shown (${r.materials} materials, ${Math.round(r.tris)} triangles, ${r.glow} lit, after ${r.frames} frames)`);
+    check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
+    check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
+  }
+  if (heroes) await lightsKept('with the hero level loaded and let go');
+
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
   // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
   // must ease: no frame may turn the view's pitch or move the camera about the player by a jump (#97)
@@ -2076,15 +2109,16 @@ const npcNight = require('./npc_night');
     const g = window.__game, W = g.weather, G = g.governor, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
     if (W) { W.set('rain', { now: true }); g.advance(1); }
     const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
-    const top = G.scale;
+    const top = G.scale, ladderTop = G.ladder;
     for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
-    const slow = G.simulate(1, () => 60).pop(), slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const slow = G.simulate(1, () => 60).pop(), slowLadder = G.ladder, slowShadow = g.Wd.shadowSize, slowCrowd = g.crowd.active, slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
     const back = G.simulate(120, () => 8).pop();
     await frames(2);
+    const ladder = { top: ladderTop, slow: slowLadder, back: G.ladder, shadow: [slowShadow, g.Wd.shadowSize], crowd: [slowCrowd, g.crowd.active] };
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
     const end = { slowMsaa, msaa: g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
-    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0, ladder };
   });
   {
     const s = shed.seen, e = shed.end, first = s.find(x => x.ex < 1), last = s[s.length - 1];
@@ -2095,6 +2129,10 @@ const npcNight = require('./npc_night');
     check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
     check(!e.slowMsaa, `and without multisampling at the floor (${e.slowMsaa ?? '-'} samples there, ${e.msaa ?? '-'} again after)`);
     check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
+    // the one ladder (issue 375): the sun's shadow map, the sea's reflection and the crowd are on it too, and come back
+    const L = shed.ladder, same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    check(same(L.top, L.back) && (L.slow.shadow === undefined || (L.slow.shadow < L.top.shadow && L.shadow[0] === L.slow.shadow && L.shadow[1] === L.top.shadow)) && L.slow.crowd < 1 && L.crowd[0] <= L.crowd[1] && (L.slow.reflection === undefined || L.slow.reflection === 0),
+      `the shadow map, the sea's reflection and the crowd are on the same ladder, and come back (${Object.keys(L.top).map(k => `${k} ${L.top[k]}→${L.slow[k]}→${L.back[k]}`).join(', ')}; crowd ${L.crowd.join('→')})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
   }
 

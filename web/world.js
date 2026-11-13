@@ -688,6 +688,10 @@ vec3 steepRock(vec3 c, float k) {
     renderer.toneMappingExposure = 0.6;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
+    // the tier's largest texture (quality.js tex: 2048 on the low tier): three.js scales a picture over it down as it
+    // uploads it, and what is drawn here for the GPU (the roofs' photo, the water's cover) is drawn no larger
+    const QW = window.OEQuality ? OEQuality.city() : null, LEAN = !!(QW && QW.lean);
+    if (QW && QW.tex < renderer.capabilities.maxTextureSize) renderer.capabilities.maxTextureSize = QW.tex;
     const SHADOW = Math.min(renderer.capabilities.maxTextureSize, shadow || (renderer.capabilities.maxTextureSize >= 8192 && !small ? 4096 : 2048));
 
     const world = new THREE.Scene();
@@ -1239,18 +1243,27 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const lo = scene.ground_lo, loTex = pics.overview && photoTex(null);
     if (loTex) pics.overview.then(img => { if (img) { loTex.image = img; loTex.needsUpdate = true; } });
     const shown = []; // (every tile's own picture on screen: pics.shown, which the film and still tools wait for)
+    // the overview's part under a tile (one image on the GPU for them all)
+    const loPart = t => {
+      const tex = loTex.clone();
+      tex.repeat.set((t.x1 - t.x0) / (lo.x1 - lo.x0), (t.y1 - t.y0) / (lo.y1 - lo.y0));
+      tex.offset.set((t.x0 - lo.x0) / (lo.x1 - lo.x0), (t.y0 - lo.y0) / (lo.y1 - lo.y0));
+      return tex;
+    };
+    // On a phone (quality.js lean) only the tiles nearest the camera keep their own picture on the GPU (budget.groundTiles,
+    // 6 MB each), the others the overview's part; groundKeep(x, y) moves them as the camera goes (the game, every second).
+    // Shibuya's twenty tiles were 122 MB of textures, Queenstown's twenty-eight 170
+    const KEEP = LEAN && loTex && QW.budget ? QW.budget.groundTiles : 0, stream = KEEP ? { img: [], own: [], lo: [], at: null } : null;
     scene.ground.forEach((t, i) => {
       const g = tileGeometry(t, T);
       let tex;
-      if (loTex && !pics.first[i]) { // the overview's part under this tile, until its picture comes (one image on the GPU for them all)
-        tex = loTex.clone();
-        tex.repeat.set((t.x1 - t.x0) / (lo.x1 - lo.x0), (t.y1 - t.y0) / (lo.y1 - lo.y0));
-        tex.offset.set((t.x0 - lo.x0) / (lo.x1 - lo.x0), (t.y0 - lo.y0) / (lo.y1 - lo.y0));
-      } else tex = photoTex(null);
+      if (loTex && (!pics.first[i] || stream)) tex = loPart(t); // (until its picture comes)
+      else tex = photoTex(null);
       const m = groundMesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
       shown.push(pics.tiles[i].then(async img => {
         if (!pics.overview) tileLoaded(img);
         if (!img) return;
+        if (stream) { stream.img[i] = img; stream.lo[i] = tex; if (stream.at) groundKeep(...stream.at, true); return; }
         if (pics.first[i]) { tex.image = img; tex.needsUpdate = true; return; }
         // a far tile, after the game opened: sent to the GPU between frames, then swapped in
         const own = photoTex(img);
@@ -1264,6 +1277,32 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       groundMeshes.push(m);
     });
     pics.shown = () => Promise.all(shown);
+    // which tiles show their own picture on a phone: the KEEP nearest (x, y), each sent to the GPU between frames as it
+    // comes in and given back when it drops out; at first those round the start
+    function groundKeep(x, y, now = false) {
+      if (!stream) return;
+      const was = stream.at;
+      stream.at = [x, y];
+      if (!now && was && Math.hypot(x - was[0], y - was[1]) < 150) return;
+      const d = scene.ground.map((t, i) => [Math.hypot(Math.max(t.x0 - x, 0, x - t.x1), Math.max(t.y0 - y, 0, y - t.y1)), i]).sort((a, b) => a[0] - b[0]);
+      const want = new Set(d.slice(0, KEEP).map(e => e[1]));
+      scene.ground.forEach((t, i) => {
+        const m = groundMeshes[i], own = stream.own[i];
+        if (want.has(i) && !own && stream.img[i]) {
+          const tex = stream.own[i] = photoTex(stream.img[i]);
+          idle().then(() => {
+            if (stream.own[i] !== tex) return;
+            try { renderer.initTexture(tex); } catch (e) { /* sent on its first draw */ }
+            m.material.map = tex;
+          });
+        } else if (!want.has(i) && own) {
+          stream.own[i] = null;
+          m.material.map = stream.lo[i];
+          own.dispose();
+        }
+      });
+    }
+    if (stream) groundKeep(...(groundAt || [0, 0]), true);
 
     // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
     // the old see-through sheet with ripples. On land the terrain covers it either way.
@@ -1608,6 +1647,16 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
         .catch(e => { console.warn('bounds-tree worker', e); here(); });
       else here();
     }
+    // a phone (quality.js lean): once uploaded, the walls' shading attributes and the cells' indices are the GPU's
+    // alone (a hundred MB of script memory in Shibuya); the picking mesh keeps what a pick reads (position, index,
+    // bid). A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
+    let gpuOnly = false; // (set here, before the api is made)
+    if (LEAN && bCells) {
+      const letGo = function () { this.array = null; };
+      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode']) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
+      for (const c of bCells.children) if (c.geometry.index) c.geometry.index.onUpload(letGo);
+      gpuOnly = true;
+    }
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
     if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
@@ -1801,8 +1850,24 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     loadMsg('Building the landmarks', 0.65);
     await idle();
     const lmMats = {}, floodMats = {}, lmTex = {};
+    // On a phone (quality.js lean) a landmark's decorative images — the big LED screens, signage atlases, plaques —
+    // are drawn at most LEAN_CAP on a side (Shibuya's screens.webp is 2048, 21 MB; here 1024, 5), which the ground
+    // aerial and the mask textures (shore, woods) keep clear of, since they are data read by the pixel. The picture
+    // is drawn once at its own size then let go. A text sign stays legible: these are seen across a street, not read.
+    const LEAN_CAP = 1024;
+    const leanDown = tex => {
+      if (!LEAN || !tex || !tex.image) return tex;
+      const im = tex.image, side = Math.max(im.width || 0, im.height || 0);
+      if (side <= LEAN_CAP) return tex;
+      const k = LEAN_CAP / side, cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(im.width * k)); cv.height = Math.max(1, Math.round(im.height * k));
+      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      tex.image = cv; tex.needsUpdate = true;
+      tex.onUpdate = () => { cv.width = cv.height = 1; };
+      return tex;
+    };
     // an image the city's landmark_assets hook draws (signs, plaques, votive tablets), on texture coordinates 0..1
-    const imageTex = f => lmTex[f] || (lmTex[f] = Object.assign(texLoader.load(D.DATA + f),
+    const imageTex = f => lmTex[f] || (lmTex[f] = Object.assign(texLoader.load(D.DATA + f, leanDown),
       { colorSpace: THREE.SRGBColorSpace, anisotropy: renderer.capabilities.getMaxAnisotropy() }));
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
@@ -1907,6 +1972,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         im.name = `${pr.name}_${part.name}`;
         farAt(im, c, r + 10, pr.far || 600);
         OEBuildings.cellInstances(im);
+        im.userData.noRefl = true; // (street furniture: out of the sea's reflection, water.js)
         world.add(still(im));
       }
     }
@@ -2103,7 +2169,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     function waterCover(runs = []) {
       if (!sea || !sea.setCover) return;
       const fr = scene.frame, x0 = fr.x[0], x1 = fr.x[1], y0 = fr.y[0], y1 = fr.y[1];
-      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / 4096), W = Math.ceil((x1 - x0) / res), H = Math.ceil((y1 - y0) / res);
+      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / Math.min(4096, renderer.capabilities.maxTextureSize)), W = Math.ceil((x1 - x0) / res), H = Math.ceil((y1 - y0) / res);
       const cv = document.createElement('canvas');
       cv.width = W; cv.height = H;
       const g = cv.getContext('2d');
@@ -2148,7 +2214,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
       const tex = new THREE.CanvasTexture(cv);
       tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096)
+      tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096; at most 2048 a side on the low tier)
       if (sea.uniforms && sea.uniforms.uCover.value) sea.uniforms.uCover.value.dispose();
       sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
     }
@@ -2156,7 +2222,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, gpuOnly, groundKeep, U, SRC, extrude, bColour, floodMats, lmMats, night,
       skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
       hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
@@ -2257,6 +2323,20 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // shadow edge in the city crawl, so its size moves in steps of a tenth (and holds while the
       // view is within about three steps of it) and its centre moves in whole texels along the
       // light's axes.
+      // The sun's shadow map's size, for the frame-time governor's ladder (quality.js, game.js; issue 375): no larger
+      // than the tier's (SHADOW), no smaller than 1024. The map and the still casters' cache keep their objects and
+      // are made again at the new size at the next shadow pass; the box's texel snapping follows mapSize.
+      get shadowSize() { return sunLight.shadow.mapSize.x; },
+      setShadowSize(n) {
+        n = Math.max(1024, Math.min(SHADOW, n | 0));
+        if (n === sunLight.shadow.mapSize.x) return n;
+        sunLight.shadow.mapSize.set(n, n);
+        if (sunLight.shadow.map) sunLight.shadow.map.setSize(n, n);
+        if (shadowStill && shadowStill.resize) shadowStill.resize(n);
+        shR = -1; // (the box is placed again on its new texel grid)
+        renderer.shadowMap.needsUpdate = true;
+        return n;
+      },
       fitShadow(target, half) {
         // with the cache (shadowCache) the box keeps 5% more room than asked, and holds still while the view
         // moves within that room and the sun has not stepped: a box that slides a texel follows a walker
@@ -2849,34 +2929,11 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         return orig.call(this, lights, scene, camera);
       }
     };
+    api.resize = n => { still.setSize(n, n); built = false; };
     api.dispose = () => { SM.render = orig; SM.__cached = false; still.dispose(); };
     return api;
   }
 
-  // An EffectComposer clones its target for the second of the pair it ping-pongs between, so with a
-  // multisampled target every full-screen pass after the scene (the AO's mix, the highlights, the bloom's
-  // composite, the lens, the output) writes four samples a pixel and resolves them: a triangle that covers
-  // the whole frame gives all four the same value, so that is four times the bytes for the same picture,
-  // and a second multisampled buffer held for it. Here the scene alone draws into the multisampled target
-  // (renderTarget1, which the composer always gives it first and which the shader warm-ups compile against),
-  // and the passes after it take turns between two single-sampled targets with no depth: the same frame,
-  // to the bit, with one multisampled buffer instead of two.
-  function leanComposer(composer) {
-    const ms = composer.renderTarget1;
-    if (!ms || !ms.samples || composer.__lean) return composer;
-    const single = () => { const t = ms.clone(); t.samples = 0; if (t.depthTexture) t.depthTexture.dispose(); t.depthTexture = null; t.depthBuffer = false; t.resolveDepthBuffer = false; return t; };
-    const a = single(), b = single();
-    composer.renderTarget2.dispose();
-    composer.renderTarget2 = a;
-    const render = composer.render.bind(composer), setSize = composer.setSize.bind(composer);
-    composer.render = function (dt) { this.readBuffer = ms; this.writeBuffer = a; return render(dt); };
-    composer.swapBuffers = function () { const r = this.readBuffer; this.readBuffer = this.writeBuffer; this.writeBuffer = r === ms ? b : r; };
-    composer.setSize = function (w, h) { setSize(w, h); b.setSize(a.width, a.height); };
-    const dispose = composer.dispose && composer.dispose.bind(composer);
-    composer.dispose = function () { b.dispose(); if (dispose) dispose(); };
-    composer.__lean = true;
-    return composer;
-  }
 
   // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
   function warm(renderer, obj, camera, opts) {
@@ -2923,5 +2980,5 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return n;
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, leanComposer, readAsync, warmPasses, settleUnderFloors };
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors };
 })();

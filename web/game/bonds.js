@@ -107,11 +107,38 @@ window.OEBonds = (function () {
       else if (ctx.held && ctx.held()) L.day.passTo(L.day.nextSlot()); // (a harness holds the world: no timers)
       else setTimeout(() => L.day.passTo(L.day.nextSlot()), 2600);
     }
+    // ---- where they are at this hour: life.json bonds[].places, each { slots, weekdays, hours, weather, at, where, face },
+    // the first that is on now; none on, they keep their own place (game.json). They move while you are not there to
+    // see it (out of sight past 60 m of both places), or at once when the hour turns under the veil of passing time.
+    // Someone you have not met keeps the place the map gives them (the first quest's giver waits by the start), and
+    // you learn their rounds once you know them (everyone: all of them at their hour, as tools/npc_night.js measures)
+    const home = new Map();
+    const placeOf = (b, everyone) => (everyone || st(b.npc).met) && (b.places || []).find(p => L.day.onNow(p)) || null;
+    const whereOf = b => { const p = placeOf(b); return (p && p.where) || b.where || ''; };
+    const SEEN_M = 60;
+    function rounds(now, everyone = false) {
+      for (const b of all()) {
+        if (!b.places) continue;
+        const n = npcOf(b);
+        if (!n || !ctx.npcMove) continue;
+        if (!home.has(b.npc)) home.set(b.npc, { at: [n.x, n.y, n.z], h: n.h, p: null });
+        const hm = home.get(b.npc), p = placeOf(b, everyone), want = p ? p.at : hm.at;
+        if (hm.p === p || n.talking) continue;
+        const P = ctx.player, far = q => Math.hypot(P.x - q[0], P.y - q[1]) > SEEN_M;
+        if (!now && !(far([n.x, n.y]) && far(want))) continue;
+        if (ctx.npcMove(n, p ? p.at : hm.at, p ? (p.face != null ? p.face * Math.PI / 180 : null) : hm.h)) {
+          hm.p = p;
+          L.emit('moved', { id: b.npc, where: whereOf(b), at: [n.x, n.y] });
+        }
+      }
+    }
+    L.on('pass', () => rounds(true)); // (under the veil)
     // requests that are a place to be at (a "visit"): looked at twice a second
-    let acc = 0;
+    let acc = 0, first = true;
     function tick(dt, paused, titled) {
       if (titled || paused || (acc += dt) < 0.5) return;
       acc = 0;
+      rounds(first); first = false;
       for (const b of all()) {
         const r = pending(b);
         if (r && r.type === 'visit' && L.day.onNow(r.when) && Math.hypot(ctx.player.x - r.at[0], ctx.player.y - r.at[1]) < (r.radius || 30)) done(b, r);
@@ -127,16 +154,16 @@ window.OEBonds = (function () {
         const next = s.rank >= MAX ? 'You know each other well.' : r ? `Asked of you: ${r.text}` : !s.met ? 'Not met yet.' : free(b) ? (s.slot === slotKey() ? 'You have talked this part of the day.' : 'Free to talk now.') : `Free ${L.day.whenOn(b.hours) || 'another time'}.`;
         return `<li class="${free(b) && s.rank < MAX && !r ? 'on' : ''}" style="--npc:${(n && n.color) || 'var(--accent)'}"><div class="who"><b>${esc(n ? n.name : b.npc)}</b><span>${esc(b.title || (n && n.role) || '')}</span></div>`
           + `<div class="pips" aria-label="Rank ${s.rank} of ${MAX}">${pips}<span class="num">${s.rank}/${MAX}</span></div>`
-          + `<p>${esc(b.where ? `${b.where}. ` : '')}${esc(next)}</p>`
+          + `<p>${esc(whereOf(b) ? `${whereOf(b)}. ` : '')}${esc(next)}</p>`
           + (got.length ? `<p class="got">${got.map(g => `<span>${esc(g.name)}</span>`).join('')}</p>` : '') + '</li>';
       }).join('')}</ul>`;
     }
     L.day.addTab({ id: 'people', title: 'People', render: page, badge: () => all().filter(b => free(b) && st(b.npc).rank < MAX && st(b.npc).met && !pending(b) && st(b.npc).slot !== slotKey()).length || '' });
-    (L.partsToday || (L.partsToday = [])).push(() => all().filter(b => st(b.npc).rank < MAX).map(b => { const n = npcOf(b), s = st(b.npc); return { title: n ? n.name : b.npc, note: `${b.where || (n && n.role) || ''}${free(b) ? '' : ` · ${L.day.whenOn(b.hours)}`}${s.rank ? ` · rank ${s.rank}` : ''}`, on: free(b) }; }));
-    const B = { MAX, all, st, free, pending, ability, abilities, talk, meets,
+    (L.partsToday || (L.partsToday = [])).push(() => all().filter(b => st(b.npc).rank < MAX).map(b => { const n = npcOf(b), s = st(b.npc); return { title: n ? n.name : b.npc, note: `${whereOf(b) || (n && n.role) || ''}${free(b) ? '' : ` · ${L.day.whenOn(b.hours)}`}${s.rank ? ` · rank ${s.rank}` : ''}`, on: free(b) }; }));
+    const B = { MAX, all, st, free, pending, ability, abilities, talk, meets, placeOf, whereOf, rounds,
       // who would talk now: for the map's marks and the phone
       ready: () => all().filter(b => st(b.npc).rank < MAX && free(b) && !pending(b) && st(b.npc).slot !== slotKey()) };
-    L.use({ talk, tick });
+    L.use({ talk, tick, load() { first = true; } });
     L.bonds = B;
     return B;
   }

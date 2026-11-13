@@ -126,14 +126,26 @@ window.OEQuality = (function () {
   // the water's reflection and half its wave detail. woods: the share of the woods' far crowns drawn
   // (web/trees.js farKeep): half on medium, where a wooded hillside's far ring was most of a frame's
   // triangles (Queenstown, #227); low already keeps a third of the woods' trees and draws them nearer
+  // tex: the largest texture side the view uploads (three.js scales a larger picture down to it, world.js fit): the
+  // low tier's 2048, the device's own above it. lean: a phone's memory (Shibuya's game killed an iPhone's
+  // tab, which iOS does at about 1-1.5 GB, at 865 MB of WebGL and 800 MB of script). There the view also lets go of
+  // what it holds only for the GPU once it is uploaded (the walls' shading attributes: a lost context then reloads
+  // the page instead of being restored in place), keeps the full aerial picture on the ground tiles nearest the
+  // camera only (budget.groundTiles, the rest on the overview) and the shared models' far parts. budget: the memory
+  // the view aims to stay under, MB, which tools/mem_check.js checks every live city's game against on a phone
+  function lean(c = probe()) {
+    return (c.touch && Math.min(innerWidth, innerHeight) < 600) || (!!c.memory && c.memory <= 4);
+  }
   function city() {
     const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name, s = TIERS[name];
+    const thin = name === 'low' && lean(c);
     // The high tier's canvas keeps the display's own pixels up to 2x (the lens's one pass and the interface stay
     // sharp) within CANVAS_PX, a 4K display's; the scene inside it is drawn within the tier's budget of pixels
     // (sceneScale: the governor's ceiling, issue 352), which a 1440p display meets at full size. Before, a 4K
     // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
     const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
-    return { name, small: name === 'low', shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+    return { name, small: name === 'low', lean: thin, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
+      budget: thin ? { gpuMB: 700, heapMB: 880, groundTiles: 6 } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
@@ -158,10 +170,20 @@ window.OEQuality = (function () {
   // the frames are even, rather than the floor for nothing.
   // Under automation it stands still (a software renderer's frames say nothing about a device) unless driven
   // through simulate().
+  // One ladder (issue 375; issue 358's Layer A): whatever a frame can do without registers its rungs with rung(name,
+  // [with every extra, at half, at none], fn), and fn is called with the value for the governor's extras whenever
+  // that value changes (and at once). The contact shadows, the MSAA samples, the weather, the wet street's mirror,
+  // the sun's shadow map, the sea's reflection and the crowd are all on it (game.js), none sheds on its own.
+  // startLow() starts a device with no record of its own at 0.8 of the scene's resolution and half the extras, and
+  // climbs from there a try every second and a half until a try does not fit (a fast device is at its ceiling in some
+  // ten seconds); a device that has a record (what it held on this map before) starts from it.
   function governor({ min = 0.6, mid = 0.8, max = 1, cap = 60, auto = !navigator.webdriver } = {}) {
     const STEP = 0.05, subs = [];
     const q = v => Math.round(v / STEP) * STEP;
-    let last = 0, ema = 0, refresh = 0, since = 0, calm = 0, wait = 4000, tried = 0, floorT = 0, halved = false;
+    let last = 0, ema = 0, refresh = 0, since = 0, calm = 0, wait = 4000, tried = 0, floorT = 0, halved = false, climbing = false;
+    const rungs = [];
+    const valueOf = r => r.values[g.extras >= 1 ? 0 : g.extras > 0 ? 1 : 2];
+    const apply = r => { const v = valueOf(r); if (v !== r.v) { r.v = v; try { r.fn(v); } catch (e) { console.warn(`governor: ${r.name}`, e); } } };
     const g = {
       scale: Math.min(1, max), extras: 1, min, mid, max, cap, auto,
       get frameMs() { return ema; },
@@ -169,6 +191,13 @@ window.OEQuality = (function () {
       // the frame time aimed at: the cap's interval or the display's, whichever is longer; twice the display's where that cannot be met
       get targetMs() { const t = Math.max(g.cap > 0 ? 1000 / g.cap : 0, refresh || 1000 / 60); return halved ? Math.max(t, 2 * (refresh || 1000 / 60)) : t; },
       on(fn) { subs.push(fn); return g; },
+      // a system's rung on the ladder: its value with every extra, at half of them and with none (see above)
+      rung(name, values, fn) { const r = { name, values, fn, v: undefined }; rungs.push(r); apply(r); return g; },
+      // what each rung holds now, for the telemetry and the checks: { name: value }
+      get ladder() { const o = {}; for (const r of rungs) o[r.name] = r.v; return o; },
+      // a device with no record of its own: low first, then up as fast as the frames allow (see above)
+      startLow() { change(Math.max(g.min, Math.min(g.mid, g.max)), 0.5); climbing = true; wait = 1500; },
+      get climbing() { return climbing; },
       // every animation frame, drawn or not: the display's interval, as the shortest gap seen lately. Only a gap under
       // a 60 Hz display's counts (a 90, 120 or 144 Hz display): on a device that cannot keep up, the gap between
       // frames is the frame's own time, and taking it for the display's would aim at the slowness itself
@@ -213,6 +242,7 @@ window.OEQuality = (function () {
       scale = Math.max(g.min, Math.min(g.max, q(scale)));
       const moved = scale !== g.scale || extras !== g.extras, ex = extras !== g.extras;
       g.scale = scale; g.extras = extras; since = 0;
+      if (ex) for (const r of rungs) apply(r);
       if (moved) for (const fn of subs) fn(g.extras, g.scale, ex);
     }
     function decide(ms) {
@@ -221,7 +251,7 @@ window.OEQuality = (function () {
       if (since < 1000) return; // (a change settles into the average first)
       if (load > 1.15) {
         calm = 0;
-        if (tried && since < 4000) { wait = Math.min(64000, wait * 2); tried = 0; change(g.scale - STEP, g.extras); return; } // the try up did not fit
+        if (tried && since < 4000) { if (climbing) { climbing = false; wait = 4000; } wait = Math.min(64000, wait * 2); const ex = tried === 2; tried = 0; change(ex ? g.scale : g.scale - STEP, ex ? g.extras - 0.5 : g.extras); return; } // the try up did not fit (2: it was the extras')
         tried = 0;
         const want = Math.max(0.85, Math.min(0.95, Math.sqrt(1 / load))); // (pixels go with the square of the scale)
         const floor = g.extras > 0 ? Math.max(g.min, Math.min(g.mid, g.max)) : g.min;
@@ -240,10 +270,11 @@ window.OEQuality = (function () {
       if (calm < wait) return;
       calm = 0;
       if (g.scale < g.max - 1e-6) { tried = 1; change(g.scale + STEP, g.extras); }
-      else if (g.extras < 1 && since >= 20000) change(g.scale, g.extras + 0.5);
+      else if (g.extras < 1 && since >= (climbing ? 3000 : 20000)) { tried = climbing ? 2 : 0; change(g.scale, g.extras + 0.5); }
+      else if (climbing && g.extras >= 1) { climbing = false; wait = 4000; }
       else if (halved && since >= 30000) { halved = false; }
     }
     return g;
   }
-  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, governor, TIERS, ORDER, NAMES };
+  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, governor, TIERS, ORDER, NAMES };
 })();
