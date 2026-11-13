@@ -570,7 +570,7 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
     const inv = new THREE.Matrix4(), snap = 4;
     let last = null, reflAt = 0, reflTick = 0, sea = 1;
     const builtWind = W.wind_ms ?? 5;
-    const reflPos = new THREE.Vector3(1e9, 0, 0), reflQuat = new THREE.Quaternion();
+    const reflPos = new THREE.Vector3(1e9, 0, 0), reflQuat = new THREE.Quaternion(), hidden = [];
     // seen: whether any water can be in the picture (world.js seaInView). When none is, the frame does without
     // the waves' transform (some 45 small passes), the wakes and the reflection's second draw of the city; the
     // sheet stays where it is, with the waves it last had, for the frame that brings it back into view.
@@ -596,18 +596,27 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
       // The reflection: every frame while the camera moves (a picture from where the camera was would swim on
       // the water), every third while it stands still, when the last one still lands where it should and only
       // what moves in it (a ferry, the clouds) is a frame or two behind, under the waves' own blur.
+      // api.reflEvery (the frame-time governor's ladder, game.js; issue 375): 1 as above; 2 every second frame while
+      // the camera moves and every sixth while it stands; 0 none (the water reflects the sky's light alone).
       const still = refl && reflAt && camera.position.distanceToSquared(reflPos) < 1e-4 && Math.abs(camera.quaternion.dot(reflQuat)) > 1 - 1e-8;
-      if (still && camera.position.y > 0.3 && (++reflTick % 3)) return;
+      const every = api.reflEvery;
+      if (refl && every > 0 && camera.position.y > 0.3 && reflAt && (++reflTick % (still ? 3 * every : every))) return;
       u.uReflOn.value = 0;
       reflAt = 0;
-      if (refl && camera.position.y > 0.3) {
+      if (refl && every > 0 && camera.position.y > 0.3) {
         reflAt = 1; reflPos.copy(camera.position); reflQuat.copy(camera.quaternion);
         const sz = new THREE.Vector2();
         renderer.getDrawingBufferSize(sz);
         const rt = refl.getRenderTarget();
         if (rt.width !== Math.round(sz.x / 2) || rt.height !== Math.round(sz.y / 2)) rt.setSize(Math.round(sz.x / 2), Math.round(sz.y / 2));
+        // (what is small, many and near the ground stays out of the reflection's second draw of the city: the walkers,
+        // the traffic and the street furniture, each flagged userData.noRefl where it is added to the world. Under the
+        // waves' blur the water shows the skyline, the landmarks and the vessels, not a bench on the quay; issue 375)
         mesh.visible = false;
+        for (const o of world.children) if (o.visible && o.userData.noRefl) { o.visible = false; hidden.push(o); }
         refl.onBeforeRender(renderer, world, camera);
+        for (const o of hidden) o.visible = true;
+        hidden.length = 0;
         mesh.visible = true;
         u.uReflMat.value.copy(refl.material.uniforms.textureMatrix.value).multiply(inv.copy(refl.matrixWorld).invert());
         u.uReflOn.value = 1;
@@ -647,7 +656,7 @@ vec4 shoreAt(vec2 xz) {
     function setCover(tex, x0, y1, w, h) {
       u.uCover.value = tex; u.uCoverBox.value.set(x0, y1, w, h); u.uCoverOn.value = tex ? 1 : 0;
     }
-    const api = { mesh, material: mat, update, patchGround, setCover, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER, wakes: false, wakeMeshes };
+    const api = { mesh, material: mat, update, patchGround, setCover, dispose, Hs, fft, uniforms: u, reflections: !!refl, reflEvery: 1, N, wakeLayer: WAKE_LAYER, wakes: false, wakeMeshes };
     return api;
   }
 
