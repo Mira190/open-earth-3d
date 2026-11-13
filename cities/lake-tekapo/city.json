@@ -9,6 +9,7 @@
   "locale": "en-NZ",
   "description": "Lake Tekapo / Takapō and its township in the Mackenzie Basin, rebuilt 1:1 from LINZ's 1 m LiDAR and aerial imagery: the Church of the Good Shepherd, Mt John and its observatory, Lakes Alexandrina and McGregor, the Godley delta at the lake's head and the Two Thumb Range, under the Aoraki Mackenzie International Dark Sky Reserve.",
   "region": "Te Manahuna · Mackenzie Basin · Aotearoa New Zealand",
+  "weather": {"rain_days": [4.9, 4.4, 4.8, 5.9, 7.8, 7.2, 6.8, 7.2, 6.4, 7.3, 5.9, 6.2], "threshold_mm": 1.0, "drizzle": 0.3, "temp_max": [22.2, 22.2, 19.5, 15.3, 11.5, 7.4, 6.6, 8.8, 12.4, 15.2, 17.3, 20.1], "temp_min": [8.5, 8.2, 6.0, 3.5, 1.4, -1.9, -2.8, -1.2, 1.0, 2.8, 4.5, 6.8], "wind_ms": [4.4, 3.6, 3.6, 3.2, 3.1, 3.0, 3.1, 3.2, 4.3, 4.4, 4.5, 4.1], "wind_from_deg": 315, "elev_m": 762, "snow_days": [0.0, 0.0, 0.1, 0.6, 1.4, 2.2, 2.6, 2.3, 1.6, 1.0, 0.2, 0.0], "thunder_days": [0.45, 0.45, 0.23, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.14, 0.27, 0.45], "fog_days": [0.0, 0.0, 0.0, 0.07, 0.07, 0.07, 0.07, 0.0, 0.0, 0.0, 0.0, 0.0], "source": "NIWA, Lake Tekapo, 762 m (agents 4616, 4970, 24945), 1991-2020, days with at least 1 mm (via Wikipedia's climate box)", "more": "Wind: NIWA, The Climate and Weather of Canterbury (2016), table 1; its bearing the nor'wester's, as at Aoraki (no rose for Tekapo: a judgement). Days a year with snow 12, thunder 2, fog 0.3 (table 20), spread over the months by a chosen shape. November 2026."},
   "bbox": [
     170.3491,
     -44.1033,

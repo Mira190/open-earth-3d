@@ -286,5 +286,69 @@
   "spawning": {
    "lag": 1
   }
+ },
+ "weather": {
+  "rain_days": [
+   9.3,
+   12.9,
+   10.3,
+   8.4,
+   9.7,
+   7.2,
+   7.2,
+   4.5,
+   3.1,
+   4.7,
+   5.5,
+   7.6
+  ],
+  "threshold_mm": 1.0,
+  "drizzle": 0.25,
+  "temp_max": [
+   29.3,
+   29.2,
+   28.4,
+   26.6,
+   24.1,
+   22.0,
+   21.3,
+   22.1,
+   23.9,
+   25.7,
+   27.3,
+   28.7
+  ],
+  "temp_min": [
+   24.0,
+   24.1,
+   23.5,
+   21.9,
+   19.6,
+   17.6,
+   16.7,
+   17.3,
+   18.8,
+   20.5,
+   22.0,
+   23.3
+  ],
+  "wind_ms": [
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9,
+   5.9
+  ],
+  "wind_from_deg": 135,
+  "elev_m": 3,
+  "source": "Bureau of Meteorology, Lady Elliot Island (039059), temperatures and rain 1939-2026; rain days derived from its rain at Heron Island's ratio",
+  "more": "Wind: Heron Island's annual mean (21.5 and 20.7 km/h at 9 am and 3 pm, 1962-2010), 80 km away. Read from the Bureau's pages as search engines index them, November 2026."
  }
 }
