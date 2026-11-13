@@ -49,6 +49,7 @@ window.OpenEarthGame = async function game(cityId) {
     D.T = { data: c, nx, ny, cell: t.cell * 2, x0: Tfine.x0, y1: Tfine.y1 };
     D.Tfine = Tfine; // the walls of the buildings reach down to whichever ground is drawn
     if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.settleUnderFloors(D.T, Tfine, D.LM); // (the far ground under the landmarks' floors at every distance, #286; ?settle=off: without, to compare)
+    if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.carveUnderWater([Tfine, D.T], D.LM); // (and under the landmarks' ponds and moats, #399)
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
@@ -554,7 +555,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
 
   loadMsg('Footways people can walk', 0.84);
   await idle();
-  const crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot))));
+  const crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot, (x, y, z) => roadsNow.depth(x, y, z, 0.3) > 0))));
   // benches face their footway, or the water behind it; each has two seats the crowd can use
   const benches = nav.withoutFine(() => OEActors.benches(G.props.bench || [], crowdNet, nav)), lamps = G.props.street_lamp || [];
   const benchMesh = new THREE.InstancedMesh(OEActors.boxes([ // seat, backrest and two ends; faces +z

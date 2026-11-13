@@ -1443,6 +1443,7 @@ const npcNight = require('./npc_night');
     for (let i = 0; i < 80 && g.dlg.open && !g.dlg.hasChoices; i++) g.dlg.tick(0.1);
     r.choices = document.querySelectorAll('#gd-choices button').length;
     r.you = o.C.clearance(g.player.rig, g.KEEP === 'left' ? 'rear_left' : 'rear_right'); r.driver = o.C.clearance(o.driver, 'driver');
+    { const d = o.driver; r.driverWhy = `${d.character || 'the stand-in figure'}, scale ${d.root.scale.x.toFixed(2)}, ${d.root.parent === o.C.body ? 'in the seat' : d.root.parent ? 'elsewhere' : 'in no scene'}`; }
     g.dlg.choose(0);
     g.advance(1);
     r.dest = o.dest && o.dest.name;
@@ -1537,7 +1538,7 @@ const npcNight = require('./npc_night');
     check(taxi.hailed && taxi.hailT - (taxi.scrWait || 0) <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s${taxi.scrWait ? `, ${taxi.scrWait.toFixed(1)} s of it at a scramble's red` : ''}`})`);
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
-    check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
+    check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`}${taxi.driver > 0 ? '' : `: ${taxi.driverWhy}`})`);
     if (!(taxi.drove > 20) && taxi.offLog && taxi.offLog.length) console.log('  ' + taxi.offLog.join('\n  '));
     check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(+taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}${taxi.drove > 20 || !taxi.scrSeq ? '' : `; at ${taxi.scrAt}, its phases as it waited: ${taxi.scrSeq}`}`);
     check(!taxi.cutOff || !taxi.cutOff.length, `every place the taxi driver offers has a kerb a road from the taxi reaches${taxi.cutOff && taxi.cutOff.length ? ` (not ${taxi.cutOff.join(', ')})` : ''}`);

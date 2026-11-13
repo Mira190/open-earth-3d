@@ -2980,5 +2980,53 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return n;
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors };
+  // A landmark's water (a pond, a moat: a mesh whose name or material says water or pond) is a level sheet laid over
+  // the ground, and the ground under it comes from a survey that never saw the water: Shinjuku Gyoen's pond had the
+  // 5 m ground stand up to 4 m through it as grey pyramids (#399). Each grid (Tf the 5 m one, Tc the 10 m one) is
+  // lowered under every water face: a point under the water to half a metre below its surface, and a point of a
+  // cell the water's edge crosses (within a cell's diagonal of it) to just under the surface, so no triangle the
+  // ground tiles draw rises through it; a bank that would drop more than 3 m that way (a moat's wall, which the
+  // landmark draws itself) is left. Returns the points lowered.
+  const WATER = /water|pond/i;
+  function carveUnderWater(grids, LM) {
+    if (!LM || !LM.meshes) return 0;
+    let n = 0;
+    for (const T of grids) {
+      if (!T) continue;
+      const want = new Float32Array(T.nx * T.ny).fill(Infinity), R = T.cell * 1.415;
+      for (const m of LM.meshes) {
+        const p = m.position, ix = m.index, mat = LM.materials[m.material];
+        if (!p || !ix || !WATER.test(`${m.name} ${m.material}`) || (mat && mat.opacity === 0)) continue;
+        for (let i = 0; i + 2 < ix.length; i += 3) {
+          const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
+          const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+          const nz = ux * vy - uy * vx, nl = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, nz);
+          if (!(nl > 1e-6) || Math.abs(nz) < 0.9 * nl) continue; // (the sheet, not a wall)
+          const zw = Math.min(p[a + 2], p[b + 2], p[c + 2]), P = [[p[a], p[a + 1]], [p[b], p[b + 1]], [p[c], p[c + 1]]];
+          const x0 = Math.min(p[a], p[b], p[c]) - R, x1 = Math.max(p[a], p[b], p[c]) + R, y0 = Math.min(p[a + 1], p[b + 1], p[c + 1]) - R, y1 = Math.max(p[a + 1], p[b + 1], p[c + 1]) + R;
+          const k0 = Math.max(0, Math.floor((x0 - T.x0) / T.cell)), k1 = Math.min(T.nx - 1, Math.ceil((x1 - T.x0) / T.cell));
+          const r0 = Math.max(0, Math.floor((T.y1 - y1) / T.cell)), r1 = Math.min(T.ny - 1, Math.ceil((T.y1 - y0) / T.cell));
+          for (let r = r0; r <= r1; r++) for (let k = k0; k <= k1; k++) {
+            const d = triDist(T.x0 + k * T.cell, T.y1 - r * T.cell, P);
+            if (d >= R) continue;
+            const q = r * T.nx + k, to = d === 0 ? zw - 0.5 : zw - 0.05;
+            if (d > 0 && T.data[q] - to > 3) continue; // (a steep bank: the landmark's own wall stands there)
+            if (to < want[q]) want[q] = to;
+          }
+        }
+      }
+      for (let q = 0; q < want.length; q++) if (T.data[q] > want[q]) { T.data[q] = want[q]; n++; }
+    }
+    return n;
+  }
+  // how far (x, y) is from a triangle P = [[x, y] x3] on the map (0 inside it)
+  function triDist(x, y, P) {
+    const [[ax, ay], [bx, by], [cx, cy]] = P;
+    const d1 = (x - bx) * (ay - by) - (ax - bx) * (y - by), d2 = (x - cx) * (by - cy) - (bx - cx) * (y - cy), d3 = (x - ax) * (cy - ay) - (cx - ax) * (y - ay);
+    if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return 0;
+    const seg = (x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / l)) : 0; return Math.hypot(x - x1 - t * dx, y - y1 - t * dy); };
+    return Math.min(seg(ax, ay, bx, by), seg(bx, by, cx, cy), seg(cx, cy, ax, ay));
+  }
+
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater };
 })();
