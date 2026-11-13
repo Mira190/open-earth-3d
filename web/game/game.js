@@ -410,7 +410,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw })));
   // (a landmark's 2 m cells stand in for its fine ones here: laying the fine cells of the whole city
   // would cost seconds at the start, nav.js; paving, padded 0.3 m in those cells, stays under 0.45)
-  const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
+  const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, i => nav.col.tagOf(i) === 1 && nav.col.zhiOf(i) <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
   deckPlan.columns = OEDecks.clearColumns(deckPlan.runs, (x, y, z, r) => roadsNow.depth(x, y, z, r), inWall);
   // a deck over a railway (the expressway on Circular Quay Station's roof): the station carries it on its own
   // columns, and none of the deck's stands within a train's width of a track
