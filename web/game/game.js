@@ -3713,8 +3713,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     camera.updateMatrixWorld();
     ray.setFromCamera({ x: 0, y: 0.08 }, camera);
     ray.far = 600;
-    const hit = ray.intersectObject(Wd.buildings)[0];
-    return hit ? { bi: Wd.bGeo.attributes.bid.getX(hit.face.a), distance: hit.distance } : null;
+    // (the collision world's solids, the buildings as published, which the walls are drawn from: the drawn mesh
+    // keeps no copy for picking here, world.js; local x, y, z are the scene's x, -z, y)
+    const o = ray.ray.origin, d = ray.ray.direction, F = ray.far;
+    const h = nav.col.pick(o.x, -o.z, o.y, o.x + d.x * F, -(o.z + d.z * F), o.y + d.y * F, nav.BUILDING);
+    return h ? { bi: nav.col.idOf(h.pi), distance: h.t * F } : null;
   }
   // Amsterdam: the gables a house's fronts carry (rooftop kind 5 in buildings.json), by building, and
   // when each type was built (Grachtenmuseum); a 'gable' step asks the lens to find the kinds it lists

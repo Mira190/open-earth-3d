@@ -1647,7 +1647,8 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
     const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
-    if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
+    // (the game picks a building from its collision world, nav.js col.pick: the bounds-tree is the viewer's, issue 406)
+    if (THREE.MeshBVH && !game) { // a bounding-volume hierarchy makes picking a building ~300x faster
       // built in a Worker where the walls are drawn as cells (a city's worth: a second on the main thread, issue 299),
       // and put on the picking mesh when it comes (it reorders that mesh's index, which the cells have copied
       // already); a pick before then takes the plain, slower way. A small town's, or without a Worker, here
@@ -1657,12 +1658,14 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
       else here();
     }
     // a phone (quality.js lean): once uploaded, the walls' shading attributes and the cells' indices are the GPU's
-    // alone (a hundred MB of script memory in Shibuya); the picking mesh keeps what a pick reads (position, index,
-    // bid). A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
+    // alone (a hundred MB of script memory in Shibuya); the viewer's picking mesh keeps what a pick reads (position,
+    // index, bid), and in the game, which picks from its collision world, those go too (Kyoto's 120 MB, issue 406).
+    // A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
     let gpuOnly = false; // (set here, before the api is made)
+    if (game && bCells) bGeo.setIndex(null); // (the cells have their own: the picking mesh's is the viewer's alone)
     if (LEAN && bCells) {
       const letGo = function () { this.array = null; };
-      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode']) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
+      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode'].concat(game ? ['position', 'bid'] : [])) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
       for (const c of bCells.children) if (c.geometry.index) c.geometry.index.onUpload(letGo);
       gpuOnly = true;
     }

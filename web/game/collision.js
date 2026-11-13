@@ -370,7 +370,44 @@ window.OECollision = (function () {
       return best;
     }
 
-    const api = { add, addBox, build, sweep, slide, depenetrate, overlap, topAt, prismAt, sweepSphere, inside, prism, outer, SKIN,
+    // the first solid a ray from a to b (local x, y, z) enters, through a wall or its roof or soffit, tag 0 for any:
+    // {t (0..1 along it), pi} or null. Read in steps of STEP metres, nearest first, so that a long ray visits only
+    // the cells up to its hit (the game's survey lens: the building under the reticle, issue 406)
+    function pick(ax, ay, az, bx, by, bz, tag = 0) {
+      const dx = bx - ax, dy = by - ay, dz = bz - az, L = Math.hypot(dx, dy), STEP = 24, n = Math.max(1, Math.ceil(L / STEP));
+      let best = Infinity, bp = -1;
+      // (not one it starts in: its walls face away from the ray, as a drawn wall's back face does to a raycast)
+      const within = pi => az >= PZ[2 * pi] && az <= PZ[2 * pi + 1] && inside(pi, ax, ay);
+      const ok = pi => (!tag || PT[pi] === tag) && !within(pi);
+      for (let k = 0; k < n && bp < 0; k++) {
+        const t0 = k / n, t1 = (k + 1) / n;
+        const x0 = Math.min(ax + dx * t0, ax + dx * t1), x1 = Math.max(ax + dx * t0, ax + dx * t1), y0 = Math.min(ay + dy * t0, ay + dy * t1), y1 = Math.max(ay + dy * t0, ay + dy * t1);
+        walls(x0, y0, x1, y1, (pi, wax, way, wbx, wby) => {
+          if (!ok(pi)) return false;
+          const ex = wbx - wax, ey = wby - way, den = dx * ey - dy * ex;
+          if (Math.abs(den) < 1e-12) return false;
+          const t = ((wax - ax) * ey - (way - ay) * ex) / den, u = ((wax - ax) * dy - (way - ay) * dx) / den;
+          if (t < 0 || t > 1 || u < 0 || u > 1 || t >= best) return false;
+          const z = az + dz * t;
+          if (z >= PZ[2 * pi] && z <= PZ[2 * pi + 1]) { best = t; bp = pi; }
+          return false;
+        });
+        visit(prCell, x0, y0, x1, y1, pi => {
+          if (!ok(pi)) return false;
+          for (let e = 0; e < 2; e++) { // its roof from above, its soffit from below
+            const zc = e ? PZ[2 * pi] : PZ[2 * pi + 1];
+            if ((az - zc) * (bz - zc) >= 0) continue;
+            const t = (az - zc) / (az - bz);
+            if (t < best && inside(pi, ax + dx * t, ay + dy * t)) { best = t; bp = pi; }
+          }
+          return false;
+        });
+        if (bp >= 0 && best > t1) bp = -1, best = Infinity; // (a hit past this step: found again, nearer ones first, in its own)
+      }
+      return bp < 0 ? null : { t: best, pi: bp };
+    }
+
+    const api = { add, addBox, build, sweep, slide, depenetrate, overlap, topAt, prismAt, sweepSphere, inside, prism, outer, pick, SKIN,
       get count() { return np; }, tagOf: pi => PT[pi], idOf: pi => PI[pi], zloOf: pi => PZ[2 * pi], zhiOf: pi => PZ[2 * pi + 1],
       boxOf: (pi, b = [0, 0, 0, 0]) => { b[0] = PB[4 * pi]; b[1] = PB[4 * pi + 1]; b[2] = PB[4 * pi + 2]; b[3] = PB[4 * pi + 3]; return b; },
       get prisms() { return Array.from({ length: np }, (_, i) => prism(i)); }, // (every solid as an object: for a tool, never the game)
