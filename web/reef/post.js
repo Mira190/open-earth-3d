@@ -87,6 +87,7 @@ export function createPost(renderer, scene, camera, env, { bloom: withBloom = tr
     return c;
   })();
   // the scene's share of the canvas's resolution (1: all of it)
+  post.scenePass = scenePass;   // (main.js precompiles the scene into its target)
   post.getScale = () => scenePass.getResolutionScale();
   post.setScale = k => { scenePass.setResolutionScale(k); sharp.value = k < 0.999 ? Math.min(0.7, 0.3 + (1 - k)) : 0; };
 

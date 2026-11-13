@@ -67,6 +67,12 @@ async function main() {
   renderer.toneMappingExposure = Number(q.get('exp') || (ALP ? 1.7 : 1.0));
   document.body.prepend(renderer.domElement);
   await renderer.init();
+  // One program for every instanced mesh of a material, not one each (issue 343): three.js puts an InstancedMesh's matrices
+  // (and a skeleton's bones) in a uniform array when they fit a uniform block, and the array's name and length are written
+  // into the shader, so each of the site's instanced meshes (the plants' patches, the cars, the boats) linked a program of
+  // its own: 118 of Tekapo's first frames' programs. With no room for such arrays they come as instanced attributes (and
+  // the bones as a texture), the same code for every mesh. ?ubo=1: as before, to compare
+  if (q.get('ubo') !== '1' && renderer.backend && renderer.backend.capabilities && renderer.backend.capabilities.getUniformBufferLimit) renderer.backend.capabilities.getUniformBufferLimit = () => 0;
   // a lost device or context cannot be restored in place: reload with a note, not a black page (glcare.js)
   if (window.OEGLCare) window.OEGLCare.reloadOnLoss(renderer, document.body);
 
@@ -356,11 +362,53 @@ async function main() {
     catch (e) { if (!/Failed to fetch|Cannot find|404|Unexpected token '<'/.test(String(e))) fail(e); else console.warn('module', name, 'not available'); }
   }
 
+  // The programs the first frames draw with, compiled together behind the loader (issue 343): the scene as the post
+  // chain's scene pass draws it, into its own target (a program is made for the target and outputs it draws to, so one
+  // compiled for the canvas was compiled again in the first frame), or to the canvas without the chain; and the lake's
+  // mirror as its reflector draws it (a half-float target, no extra outputs, layer 0 from below the water, the water
+  // itself hidden), which the first frame otherwise compiled on the spot: 117 of Tekapo's 247 programs. Each call
+  // takes the renderer's target when it is made, so they are all asked for at once and compile side by side where the
+  // driver can (KHR_parallel_shader_compile)
+  async function precompile() {
+    // a frame's work bar the drawing, first: the eye placed (the player's view), the land's chunks and the plants' patches
+    // round it made, the water's tiles drawn (their own small passes), so that what is compiled is what the first frame draws
+    const t0 = performance.now() / 1000;
+    if (ctx.controller) ctx.controller.update(0, t0);
+    for (const u of ctx.updaters) u(0, t0);
+    env.u.tide.value = tideNow();
+    ripples.update(env.u.time.value); chop.update(env.u.time.value);
+    terrain.update(camera.position);
+    if (light) light.update();
+    ocean.update(camera.position);
+    shore.update(camera.position);
+    camera.updateMatrixWorld();
+    const rt0 = renderer.getRenderTarget(), mrt0 = renderer.getMRT(), jobs = [];
+    const sp = post && post.scenePass;
+    // (the land's detail patches are hidden until the eye is over one: alpine/terrain.js. Shown for the compile)
+    const hidden = (terrain.patches || []).filter(m => !m.visible);
+    for (const m of hidden) m.visible = true;
+    try {
+      if (sp && sp.renderTarget) { renderer.setRenderTarget(sp.renderTarget); renderer.setMRT(sp.getMRT ? sp.getMRT() : null); }
+      jobs.push(renderer.compileAsync(scene, camera));
+      if (env.mirror) {
+        const R = env.mirror.reflector, vc = R.getVirtualCamera(camera);
+        vc.position.set(camera.position.x, 2 * env.u.tide.value - camera.position.y, camera.position.z);
+        vc.rotation.set(-pitch, yaw, 0, 'YXZ');
+        vc.updateMatrixWorld();
+        const hide = ocean.mesh.material, was = hide.visible;
+        hide.visible = false;
+        renderer.setMRT(null); renderer.setRenderTarget(R.getRenderTarget(vc));
+        jobs.push(renderer.compileAsync(scene, vc));
+        hide.visible = was;
+      }
+    } finally { renderer.setRenderTarget(rt0); renderer.setMRT(mrt0); for (const m of hidden) m.visible = false; }
+    await Promise.all(jobs);
+  }
   // compiling the shaders can take a while on a first visit; done here it shows on the loader, not as a frozen first frame
   mark('built');
   stage('Compiling the shaders (the first visit takes longest)', 0.9);
   await paint();
-  if (renderer.compileAsync && !q.get('still')) { try { await renderer.compileAsync(scene, camera); } catch (e) { console.warn('shader precompile skipped:', e); } }
+  if (renderer.compileAsync && !q.get('still')) { try { await precompile(); } catch (e) { console.warn('shader precompile skipped:', e); } }
   stage('First frames', 0.98);
   let last = performance.now(), frames = 0, gpuAt = 0, gpuWait = false;
   // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
