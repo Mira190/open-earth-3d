@@ -3,12 +3,14 @@
 Asked for in November 2026 for Tokyo's live maps: one small level per map, a street or a crossing some
 200-300 m across, that reads at eye level as a photograph or a current game does, while the rest of
 the map stays as it is around it. Shinjuku's is Kabukicho Ichibangai (`cities/shinjuku/hero.py`);
-Shibuya's scramble and Marunouchi-Ginza's are built by their own sessions on the same kit.
+Shibuya's scramble and Marunouchi-Ginza's are built by their own sessions on the same kit. Kamakura's is
+the hill road above the Kamakurakokomae crossing (`cities/kamakura/hero.py`), the first by a map's spawn.
 
 | What | Where |
 |---|---|
 | The loader, in every map's game | `web/game/hero.js` (`OEHero`), started by `web/game/game.js` from `game.hero` |
 | The kit: geometry by material, the atlas, the bake, Blender and the export | `blender/hero_kit.py` |
+| Parts for a level in the open: ground draped on the terrain, retaining walls, hedges and shrubs, utility poles and wires, signs | `blender/hero_parts.py` |
 | The build | `python blender/build_hero.py --city <id>` (needs `pip install bpy==5.2.3` and Node) |
 | A map's level | `cities/<id>/hero.py` (`build(kit)` returns geometry, atlas, materials and its centre) |
 | Its place in the game | `cities/<id>/city.json` `game.hero` (copied into `game.json` by `pipeline/game_text.py`) |
@@ -85,6 +87,71 @@ two-lantern post of `kabukicho.py`), the paving's colour and pattern (the textur
 block), which fronts have shutters, vending machines and air conditioners where (placed by a seeded
 draw, not from photographs), and the buildings' heights: about 20 of the 28 fronts stand at heights
 estimated from their neighbours, not surveyed by PLATEAU.
+
+## Only what the first frame sees (issue 358)
+
+The levels by a map's spawn (Kamakura's first) apply issue 358's rule to detail: memory and shading go to
+what the player can see, and the rest of the map pays nothing.
+
+- **The level is the spawn's view, not a radius.** It is drawn from where the game opens: the road ahead, the
+  walls and banks that face it, what stands in front of the horizon. Nothing behind the camera, behind a
+  wall's face or past the first bend is modelled. Nissaka is 34,000 triangles and a 3.9 MB file.
+- **Fine textures only there.** Seven 1K PBR sets and one 1K atlas exist only while the level is loaded
+  (about 120 MB of GPU memory on a desktop with their mipmaps); on the low tier their normal and roughness
+  maps are dropped and the colour halved (about 11 MB), and all of it is freed 520 m away (`hero.js`).
+- **Light is distilled offline.** The street lights' pools on the road are in the vertices (`hero_kit.bake`):
+  no light is added to the frame for them.
+- **One surface, not layers.** The asphalt of the hill road and the lanes that meet it is one mesh on a 1 m
+  grid cut to the roads' outline (`hero_parts.Parts.cover`), so the terrain cannot show through it and no
+  pixel of road is shaded twice; markings and patches are the only overdraw.
+- **Measured.** `tools/mem_check.js kamakura` (an iPhone emulated, low tier) peaks at 379 MB of GPU memory
+  with the level loaded, under the 700 MB budget.
+
+## Nissaka and the Kamakurakokomae crossing (Kamakura)
+
+The game opens on the hill road 日坂 above the Enoden's crossing 鎌倉高校前1号踏切, looking down it to
+Route 134 and the bay: the coast's most photographed 60 m, and all of it in the first frame. The spawn was
+moved 15 m down the hill, to (-446.2, 153), below the fork of the upper lane, so that the first frame is
+the view the photographs take. The level (`cities/kamakura/hero.py`) runs from Route 134 over the crossing
+to 66 m up the hill, with 30 m of each lane that meets it and 100 m of Route 134.
+
+Built from the set's measured profiles (`cities/kamakura/set.json`: each road's centre line every metre
+on GSI's 5 m laser terrain; the buildings' outlines; the railway's line) and placed from photographs:
+
+- the road as one asphalt surface with trench patches, sealed cracks, the white edge lines, the zebra and
+  stop lines, manholes, gullies and the long grate across the east lane's mouth; the crossing's yellow
+  non-slip deck with a green strip on the west for people on foot, and the rails' flangeways;
+- east: the dark rubble retaining wall under the house at the corner (battered, to the platform at 13.35 m:
+  the building's base in the data is 13.0 m), a band of blocks and a glass balustrade with planting on it,
+  the tan stone garage at its upper end with its shutter to the lane; a low wall and a green bank above;
+- west: a raised pavement on a kerb, a split-face block wall with a clipped hedge and a timber rail, two
+  notice boards (a map and a manners board, both drawn here with our own wording), the convex mirror on its
+  orange post, bollards;
+- overhead: six concrete utility poles with crossarms, insulators, two transformers and three LED street
+  lights (baked), their wires, and the thick bundle that sags across the road above the crossing;
+- signs: the pedestrian crossing's blue pentagon, no parking, the track's "keep out" boards and pipe fences;
+- Route 134 with a solid centre line (the city's own was dashed) and the promenade's paving and bollards.
+
+The gates, lamps, bell, track bed, catenary and trains stay the railway's (`web/game/rail.js`); the level
+hides the set's own deck, paint, mirror and warning sign while it is shown.
+
+Photographs looked at (Wikimedia Commons; none is reproduced, and no texture is taken from one):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| 鎌倉高校前1号踏切20190626-P1030450.jpg | くろふね | CC BY 4.0 | the classic view: both sides' walls, the mirror, the boards, the deck's colours, the wires |
+| 鎌倉高校前1号踏切.jpg | サイエンス | CC BY-SA 4.0 | the deck, the fences and boards by the track, the grate, the rubble wall's batter |
+| Kamakura koukou mae Fumikiri - 02.jpg | Quercus acuta | CC0 | from further up: the bank, the lane's mouth, the poles' places |
+| Kamakura High School Front Level Crossing (53150242045).jpg | Dick Thomas Johnson | CC BY 2.0 | the pavement, the kerb, the block wall, the mirror's post, the glass balustrade |
+
+Textures: ambientCG (CC0 1.0) `Bricks089` (rubble), `Bricks066` (blocks), `Tiles143` (the garage's stone),
+`Grass004` (its roughness raised: scanned at 0.26, it shone like plastic), `Asphalt031`, `Concrete034`; and a
+leaf texture drawn in `hero_parts.leaf_texture` for the hedges and shrubs (no CC0 hedge was found there).
+
+Not as it is, or not checked: the heights of the walls come from the terrain behind them, not a survey; the
+garage's size, the boards' wording and the poles' exact places are read off photographs; the house behind
+the wall is the city's plain solid; the hedges are clipped volumes, not leaves; the notice boards are our
+own drawing, not the real ones; the terrain's fold where the upper lane forks is the 5 m grid's.
 
 ## Research: how the games build a street like this, and what runs in a browser
 

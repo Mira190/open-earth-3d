@@ -891,8 +891,8 @@
     "blurb": "Walk Kamakura's Shonan coast under the real sun: down the hill to the Kamakurakokomae crossing as the Enoden passes, along Shichirigahama's surf, with Enoshima and Mount Fuji across the bay.",
     "start": {
       "at": [
-        -446,
-        168
+        -446.2,
+        153
       ],
       "facing": [
         -446,
@@ -1314,6 +1314,31 @@
         "note": "The Enoshima Electric Railway: 1,067 mm gauge, 600 V DC overhead, a single track with passing loops at Enoshima, Minegahara and Inamuragasaki, 45 km/h at most and 15 km/h in the street at Koshigoe; a train each way every 12 minutes here (14 on the real timetable since 2023), two-car articulated sets coupled in twos."
       }
     },
+    "hero": [
+      {
+        "id": "nissaka",
+        "glb": "hero/nissaka.glb",
+        "at": [
+          -446.0,
+          138.0
+        ],
+        "r": 60.0,
+        "bake": 1.0,
+        "street": 1.0,
+        "glow": [
+          0.0,
+          1.6
+        ],
+        "hide": [
+          "kamakura_xing_deck",
+          "kamakura_xing_paint",
+          "kamakura_mirror_post",
+          "kamakura_mirror",
+          "kamakura_warning"
+        ],
+        "note": "Nissaka from Route 134 over the Kamakurakokomae crossing to above the spawn, modelled finely (cities/kamakura/hero.py, blender/build_hero.py, docs/HERO.md)"
+      }
+    ],
     "start_note": "You start on the hill road (Nissaka) above the Kamakurakokomae crossing, looking down it to the sea. Your car is parked on the level street to the east: the hill is an 11% grade.",
     "flocks": [
       {
