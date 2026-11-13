@@ -56,9 +56,9 @@ CELLS = [("brick", 2.0, 3.0), ("white", 1.6, 3.0), ("shutter", 1.6, 2.3), ("door
          ("puku_awn", 7.8, 0.72), ("puku_v", 0.75, 3.1), ("noren", 1.0, 0.9),
          ("siding", 2.0, 2.0), ("sash", 1.2, 1.0), ("door_al", 0.8, 2.0), ("tile_wall", 1.0, 1.0), ("tile_floor", 1.0, 1.0),
          ("bar0", 0.4, 0.95), ("bar1", 0.4, 0.95), ("bar2", 0.4, 0.95), ("bar3", 0.4, 0.95), ("arrow", 0.9, 0.3),
-         ("hm_wall", 12.0, 3.2), ("hm_v", 0.7, 3.6), ("cinema_v", 0.7, 3.6), ("batting", 2.6, 0.7), ("shopfront", 3.2, 2.6)]
+         ("siam", 2.4, 0.5), ("hm_wall", 12.0, 3.2), ("hm_v", 0.7, 3.6), ("cinema_v", 0.7, 3.6), ("batting", 2.6, 0.7), ("shopfront", 3.2, 2.6)]
 FINE = {"tako": 2, "name": 3, "lantern": 4, "round": 4, "goodday": 3, "chiyo_board": 3, "puku_v": 2, "noren": 2,
-        "bar0": 3, "bar1": 3, "bar2": 3, "bar3": 3, "arrow": 2, "hm_v": 2, "cinema_v": 2, "batting": 3}   # the lettered cells, drawn that many times finer
+        "bar0": 3, "bar1": 3, "bar2": 3, "bar3": 3, "siam": 3, "arrow": 2, "hm_v": 2, "cinema_v": 2, "batting": 3}   # the lettered cells, drawn that many times finer
 SHEET, SHEET_H = 2048, 4096
 
 
@@ -333,6 +333,12 @@ def draw_more(d, R, rng, font):
     d.text((x + int(w * 0.33), y + h // 2), "この先 呑み処", font=fit("klee", 40, "この先 呑み処", int(w * 0.58)), fill=(40, 36, 32), anchor="mm")
     d.polygon([(x + w - 60, y + 18), (x + w - 14, y + h // 2), (x + w - 60, y + h - 18)], fill=(190, 40, 36))
     d.rectangle([x + w - 78, y + h // 2 - 7, x + w - 58, y + h // 2 + 7], fill=(190, 40, 36))
+    # the Thai restaurant's board over its door (its name; the colours indicative)
+    x, y, w, h = R["siam"]
+    d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(246, 242, 230))
+    d.rectangle([x + 6, y + 6, x + w - 6, y + h - 6], outline=(150, 110, 40), width=6)
+    d.text((x + int(w * 0.3), y + h // 2), "タイ料理", font=fit("mincho", int(h * 0.55), "タイ料理", int(w * 0.36)), fill=(120, 30, 40), anchor="mm")
+    d.text((x + int(w * 0.72), y + h // 2), "Siam Talart", font=fit("rocknroll", int(h * 0.5), "Siam Talart", int(w * 0.4)), fill=(40, 80, 50), anchor="mm")
     # Hanamasa's sign wall: navy brush letters on yellow, two storeys high, a navy rule under them
     x, y, w, h = R["hm_wall"]
     d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=(242, 194, 0))
@@ -657,6 +663,8 @@ def glows(m):
 # at the corner in front of it (2897), from its outline in the building data
 STAIR_CORNER = {"wall": [[-2435.6, -2828.7], [-2439.6, -2837.4]], "z": 33.04, "top_m": 6.3,
                 "block": [[-2438.0, -2839.9], [-2441.0, -2838.6], [-2441.8, -2840.3], [-2439.0, -2841.7]], "block_top": 6.4}
+# the Thai restaurant Siam Talart (2-14-19, Overture): the lane face of the model's 2898, just before the bend
+SIAM = {"wall": [[-2449.7, -2848.6], [-2447.9, -2842.2]], "z": 33.3}
 # the fork: the mouth of the bars' lane, between the corner block and the low house to the south (2896)
 FORK = {"at": [-2443.2, -2841.9], "z": 33.3, "into": [0.97, -0.25]}
 # the covered passage: the lane between two houses (2891 west, 2884 east) from its south end to its north
@@ -956,3 +964,19 @@ def frames(lm):
         hl = h["len"] / 2
         out["hanamasa"] = {"eye": P(hl - 3.0, 7.0, 1.6), "look": P(-hl - 1.0, 0.0, 5.0), "note": "The yellow wall, the two blades and the batting centre's stair."}
     return {k: {kk: ([round(float(c), 2) for c in vv] if kk != "note" else vv) for kk, vv in v.items()} for k, v in out.items()}
+
+
+def siam(K, w=SIAM):
+    """The Thai restaurant on the lane before the bend: its lit board over the door, a dark awning, a menu stand."""
+    p, q = (np.asarray(v, float) for v in w["wall"])
+    n = _outward(p, q, [p, q, np.array([-2456.3, -2846.8])])
+    L = float(np.hypot(*(q - p)))
+    P, box = _frame((p + q) / 2, n, w["z"])
+    Yl = K("yongen", "lit")
+    a0, a1 = -1.2, 1.2
+    Yl.quad(P(a0, 0.12, 2.55), P(a1, 0.12, 2.55), P(a1, 0.12, 3.05), P(a0, 0.12, 3.05), uv("siam"))
+    box(K("steel_dark"), a0 - 0.05, a1 + 0.05, 0.0, 0.11, 2.5, 3.1)
+    box(K("wood_dark"), -L / 2 + 0.3, L / 2 - 0.3, 0.0, 0.7, 2.38, 2.45)                     # a plain canopy over the door
+    Pm, boxm = _frame(P(1.9, 0.9, 0)[:2], n, w["z"])                                          # the menu stand by the door
+    boxm(K("stair_steel"), -0.25, 0.25, -0.03, 0.03, 0.0, 1.1)
+    return {"door": [float(v) for v in P(0, 1.0, 0)[:2]]}

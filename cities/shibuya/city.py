@@ -2029,6 +2029,7 @@ def yongen(K, y):
     sign; the cafe's sign upstairs."""
     if CITY == "shibuya":
         sancha.pukuichi(K)   # Pukuichi's front, where the walk starts (sancha.py)
+        sancha.siam(K)   # the Thai restaurant on the way (sancha.py)
         sancha.stair_corner(K)   # the stair corner, the fork with the bars' signs and the covered passage past it (sancha.py)
         sancha.fork(K)
         sancha.passage(K)
@@ -2148,7 +2149,7 @@ def districts_meshes(lm):
         if CITY == "shibuya":   # and Pukuichi's, the stair corner's, the fork's, the passage's and Hanamasa's
             avoid = avoid + [np.asarray(sancha.PUKUICHI["at"], float) + t_ for t_ in (np.zeros(2), np.array([-1.4, -4.4]), np.array([1.4, 4.4]))]
             avoid = avoid + [np.asarray(v, float) for v in sancha.STAIR_CORNER["wall"] + sancha.STAIR_CORNER["block"][:1]]
-            avoid = avoid + [np.asarray(sancha.FORK["at"], float), *sancha.passage_points()]
+            avoid = avoid + [np.asarray(sancha.FORK["at"], float), *sancha.passage_points(), np.mean(np.asarray(sancha.SIAM["wall"], float), axis=0)]
             if "hanamasa" in lm.get("yongen", {}):
                 hm = lm["yongen"]["hanamasa"]
                 avoid = avoid + [np.asarray(hm["at"], float) + np.asarray([-hm["normal"][1], hm["normal"][0]]) * a for a in (-9.0, -4.0, 0.0, 4.0)]
