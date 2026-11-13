@@ -266,4 +266,8 @@ is drawn on them.
 - Starting the game on the plaza turned up a traffic bug, which is now fixed: a car parked at the kerb
   could be asked to back out of a one-way street, and then stood there for good
   (`web/game/actors.js` `canReverse`).
+- The game still starts south of the plaza, by the south dome, where it did. Started on the plaza
+  itself, the game check's traffic steps watch the junctions round it, and one of them
+  (junction 1465) holds two cars in its box each waiting on the other for over a minute: a knot in the
+  shared traffic, not in the level. The plaza start comes back once that is undone (issue 412).
 - Not checked: a real GPU, WebGPU, Safari and iOS.
