@@ -199,11 +199,12 @@ Coordinates are the Geospatial Information Authority's for the lot's address, or
 | 2 | Where the café itself stands | The lot to the right: a walled garden until 2019; since 2024 the takoyaki stand Takoharu たこはる, a dark plank fence chalked NANIWANO AJI, a round sign, a red lantern | Evenings | **Yes** |
 | 2 | (not in the game) | RAIN ON THE ROOF, the café upstairs next door, 2-14-22: where pilgrims go for coffee and curry | Open | Its sign |
 | 3 | The bathhouse and the laundromat | Chiyo-no-yu 千代の湯, 2-12-7 (35.64274, 139.66954), across the lane: a hand-painted board over a slot in a corrugated fence, a passage to the door, the coin laundry on its right, the chimney behind | Closed to bathers since 2021; the passage boarded up by 2024, the board and chimney still there | **Yes**, as it stands: the fence, the boarded alley, the board, the chimney (its height an estimate) |
-| 4 | The corner where the old couple talk | A pale blue-grey house with an outside stair at the bend of the lane | There | Not yet |
-| 5 | The fork with the bar signs, the short cut to the station | The fork past it; a covered, tiled passage under a building to the shopping street | There | Not yet |
-| 6 | The supermarket | Niku no Hanamasa 肉のハナマサ, 2-14-6 (35.64291, 139.66899): a yellow sign wall two storeys high, navy brush lettering | Trading, 24 hours | Its sign |
-| 6 | The batting cages | Sangenjaya Batting Center, on Hanamasa's roof, by a steel stair in the slot to its left (the game puts it on the right) | Closed; the stair shuttered, the net frame still on the roof | Not yet |
-| 6 | The cinema | Sangenjaya Cinema's sign beside Hanamasa | Closed in 2014; the sign still hangs | Not yet |
+| - | (on the way; pilgrims of 2016 lunched there) | The Thai restaurant Siam Talart, 2-14-19 (Overture), on the lane north of the bathhouse | Trading | **Yes**: its lit board with its name and タイ料理, a canopy, a menu stand (colours indicative: no photograph of the front was found) |
+| 4 | The corner where the old couple talk | A pale blue-grey house with an outside stair at the bend of the lane north of Chiyo-no-yu, past the Thai restaurant Siam Talart (2-14-19, Overture) | There | **Yes**: the lap siding on the model's two-storey house at the bend (2889) and the small block at its corner (2897), barred sashes, a steel stair of fourteen risers with a white rail to a door on the first floor, pots under it; a spot, a framed photo and a label. Placed from the building data and Overture's places; the house itself is in no map service |
+| 5 | The fork with the bar signs, the short cut to the station | The fork past it, where a narrower lane goes off east to the bars (もつ焼き 勝利, 鶏籠, Jackie, Bar Had A Good Day: Overture, 2026-10); further on, a covered stretch under a house, towards Setagaya-dori and the station | There | **Yes**: four lit stand signs with the bars' names at the lane's mouth (their colours indicative) and an arrow board; the covered stretch on the model's lane between two houses (2891, 2884), 8 m long and 1.5 to 2.3 m wide, cream tile walls, quarry tile floor, two tubes. Which stretch is covered is read from pilgrims' accounts of a tunnel-like passage about one *ken* wide; no source names its building |
+| 6 | The supermarket | Niku no Hanamasa 肉のハナマサ, 2-14-6 (35.64291, 139.66899): a yellow sign wall two storeys high, navy brush lettering, over a glass front | Trading, 24 hours | **Yes**: the wall at its size across the whole front, the lettering, the lit glass, its blade |
+| 6 | The batting cages | Sangenjaya Batting Center 三軒茶屋バッティングセンター (2-14-6, Overture), on Hanamasa's roof, by a steel stair in the slot to its left (the game puts it on the right) | Shut by 2024; the stair shuttered, the net frame still on the roof | **Yes**: the lowered shutter, the yellow board, scissor flights up the slot, posts, rails and netting over the roof (7 m, an estimate) |
+| 6 | The cinema | Sangenjaya Cinema 三軒茶屋シネマ, a second-run house from 1955 in Hanamasa's building; its blade at the corner beside the supermarket's | Closed in July 2014; the blade still hangs, faded (2024) | **Yes**: the blade, faded and unlit |
 | - | The clinic, the hero's guardian's house, the second-hand shop | No real place is known for any of them | - | Left out |
 
 The usual walk is about an hour, all within five minutes of the station: Pukuichi, the café's lane,
@@ -214,6 +215,16 @@ What the game adds to the real front is light and framing, and that is what is t
 seen from the Good-day corner with both awnings receding, the same lane from the stand looking back,
 and a warm lamp over the door after dark (`sancha.glows`). The district's link (`#play-shibuya@t-sancha`)
 arrives at that corner, looking down the lane.
+
+**The game layer.** Each stop is a spot with its own passport stamp (`spots[].stamp`, given the first time you
+look at it) and a frame (`spots[].frame`): after its lines the camera opens on the angle the place is known by, from
+where a pilgrim stands to take it, ready to save the photograph. Arriving by the district link tracks the walk's own
+line and points at Haru, who stands at the arrival, rather than at the map's first quest at Hachiko 3.4 km away
+(`trackNear` in `web/game/game.js`; the line no longer waits for the welcome at Hachiko).
+
+**After dark** New Marina's name on the awning is lit from within and a strip lamp under the rim washes the shutter;
+the door lamp's pool is brighter and wider, as in evening photographs. The bars' stand signs light from five, the
+passage's tubes all night, and Hanamasa's glass front all night.
 
 What the game says changes with the places: Chiyo-no-yu's spot, its chatter and Mr Tanaka's quest say the
 bath has closed and point to its board; its vending machines, which stood in the boarded alley, are no
@@ -552,5 +563,8 @@ python blender/build_scene.py --city shibuya
   [part 2](https://maruko30.com/entry/persona5-jyunrei-02) (2024), [animecosplayjapan](https://animecosplayjapan.com/?p=3049) (addresses, 2024),
   [zukkazu](https://zukkazu.com/persona-5-holy-land-pilgrimage/) (2019), [Source Gaming](https://sourcegaming.info/2017/04/09/persona-5-yongenjaya-in-real-life) (2017),
   [linkle24](https://linkle24.hatenablog.com/entry/2016/11/06/223804) (2016), [tsunagu Japan](https://www.tsunagujapan.com/wow_02105-3b6a9908-9ab9-46d8-a44b-5b675883ccc7/).
+  The places' positions and names: Overture Maps places, release 2026-10-21 (CDLA Permissive 2.0 and ODbL, as their sources).
+  Sangenjaya Cinema and its blade: [pias-202](https://ameblo.jp/pias-202/entry-12849924892.html) (2024), [TV Tokyo, 2013](https://www.tv-tokyo.co.jp/adomachi/backnumber/20130511/89894.html);
+  the triangle's tunnel-like passages: [kobaden-shoutengai](https://ameblo.jp/kobaden-shoutengai/entry-12851335584.html) (2024).
   Chiyo-no-yu: [Tokyo Sento Association](https://www.1010.or.jp/map/item/item-cnt-487), [komuken](https://komuken.com/sentou-tiyonoyu/).
   The photographs were read for facts (what stands where, colours, lettering); none is reproduced.
