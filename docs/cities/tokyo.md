@@ -174,11 +174,12 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 
 ![Kabuki-za's roof garden](../images/tokyo/kabukiza-roof-garden.jpg)
 
-### The JR viaduct and Yurakucho Station
+### The JR viaduct, Yurakucho Station and Shimbashi Station
 
 The railway from Tokyo Station to Shimbashi was a strip of track in the aerial photograph, flat on
 the ground, with the old station's rooms standing on it as grey boxes. `cities/tokyo/rail.py` builds
-it: 1.6 km of viaduct for eight tracks, Yurakucho Station on it, and the courses of the trains.
+it: 1.9 km of viaduct for eight tracks, Yurakucho and Shimbashi stations on it, and the courses of the
+trains.
 
 - **Laid out on the map's own tracks.** `pipeline/rail_osm.py` reads OpenStreetMap's running lines
   above ground (the Yamanote, Keihin-Tohoku, Tokaido Main and Tokaido Shinkansen lines), the platform
@@ -198,12 +199,18 @@ it: 1.6 km of viaduct for eight tracks, Yurakucho Station on it, and the courses
   (`rail_signs.webp`, lettered in IPA Gothic); benches and drinks machines. The concourse runs
   straight across under the tracks at the platforms' middle, with an entrance on each side and two
   flights of stairs up to each platform.
+- **Shimbashi Station** is built the same way from its own three outlines: 5 and 6 (Yamanote and
+  Keihin-Tohoku towards Tokyo), 3 and 4 (towards Shinagawa) and 1 and 2 (the Tokaido Line), each
+  platform's numbers read from the stopping points OpenStreetMap maps on its tracks. The Tokaido
+  Line's platform has no platform doors; the others have them. The city model's shed over the
+  platforms and the low blocks on the tracks come down; the viaduct and the station stand in their
+  place, with an entrance each side of the concourse under the tracks.
 - **The overhead line**: portal gantries every 48 m, and a contact wire under its messenger over each
   track, 5.0 m over the rail.
 - **Each end** is a train shed's mouth, a roof over the tracks with a dark wall behind it, where the
-  trains come from and go to: Tokyo Station's and Shimbashi's own platforms are solids of the city
-  model, not modelled inside.
-- Ten low solids under the platforms come down (`landmarks.json` "demolished").
+  trains come from and go to: north, short of Tokyo Station, whose platforms are solids of the city
+  model; south, past Shimbashi's platforms.
+- The low solids under the platforms and Shimbashi's shed come down (`landmarks.json` "demolished").
 
 ![Yurakucho's platforms by day: the stairs down to the concourse, a Yamanote train at track 2 and a Shinkansen passing](../images/tokyo/yurakucho-platform-day.jpg)
 
@@ -285,8 +292,13 @@ Chidorigafuchi and along its moat walk, in Kitanomaru, Hibiya and Shiba parks an
 streets. The pads on the Marunouchi plaza (where the game now starts, in front of the station) and in Hibiya Park are game devices; no real
 heliport is in the area.
 
-**The railway at Yurakucho** (`web/game/trains.js`, `game.json` "trains"). From the map, travel to
-"Yurakucho Station, platform 4", or walk in under the tracks and up the stairs. Four kinds of train
+**The railway at Yurakucho and Shimbashi** (`web/game/trains.js`, `game.json` "trains"). From the map,
+travel to "Yurakucho Station, platform 4" or Shimbashi's platforms 3 and 4, or walk in under the
+tracks and up the stairs. On a platform, E waits for the next train that stops at the other station
+(the clock runs fast while you wait) and boards it as its doors open: the car's doors and the
+platform doors in front of them slide open a second after it stops and close before it pulls away.
+You ride in its third car by the doors to the next station and get off there with E; a train
+leaving the map at the station you reach puts you off onto its platform. Four kinds of train
 run on the eight tracks, each to its real length. The three commuter kinds wear their lines' colours; the
 high-speed train is not a copy of the real one:
 
@@ -294,7 +306,7 @@ high-speed train is not a copy of the real one:
 |---|---|---|---|
 | Yamanote (tracks 2, 3) | E235: steel with yellow-green doors | 11 | stops |
 | Keihin-Tohoku (1, 4) | E233-1000: a sky blue band | 10 | stops; its rapid trains run through from 10:30 to 15:30 |
-| Tokaido Main | E233-3000: orange over green | 15 | runs past |
+| Tokaido Main | E233-3000: orange over green | 15 | runs past; stops at Shimbashi (tracks 1, 2) |
 | Tokaido Shinkansen | a high-speed train of this project's own design: pearl white, an 11 m nose in one curve to a low, wide lip, its cross-section growing evenly from the tip, the windscreen flush in it, an indigo line over a fine vermilion one | 16 (400 m) | runs past |
 
 ![The high-speed train passing platform 4: a nose in one curve, the windscreen flush in it](../images/tokyo/yurakucho-high-speed-train.jpg)
@@ -326,8 +338,9 @@ quiet. Three people stand on the platform: an attendant, a commuter and a train 
   for about twenty landmarks.
 - The viaduct is one level and one height for its whole length. The real one steps between the brick
   arches and the Shinkansen's deck, and carries shops whose fronts are not modelled one by one.
-- Yurakucho's platform doors do not open, and you cannot board: the trains are to watch and to hear.
-- Tokyo Station's and Shimbashi's platforms are not modelled; the trains run into a shed's mouth
-  short of each.
+- Tokyo Station's platforms are not modelled; the trains run into a shed's mouth short of it, so a
+  northbound train from Yurakucho is not one to board.
+- Riding, you see the train from outside (the chase view): the saloons are seen through the windows
+  by interior mapping, not modelled to stand in.
 - The announcements' voices are the browser's. A device without a Japanese voice shows the caption
   and plays the chimes only.

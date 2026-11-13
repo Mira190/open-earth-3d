@@ -521,6 +521,33 @@ export async function gametest(api, ctx) {
         'the HUD tour opens from the journal, steps through and back, and Esc skips it', `${seen.join(',')}${bad.length ? ' · ' + bad.join('; ') : ''}`);
       try { if (keep == null) localStorage.removeItem('oe3d-onboard'); else localStorage.setItem('oe3d-onboard', keep); } catch (_) {}
     }
+    // 14. the weather (weather.js, issue 381): the season's climate is the site's own; rain comes in under its cloud and
+    // OEWeather.S follows it with the streaks drawn above the water and none below; an alpine site's snow falls,
+    // settles and moves the snow line down; the wind moves the sea; and the season's weather is back afterwards
+    if (ctx.weather) {
+      const Wx = ctx.weather, WS = window.OEWeather && window.OEWeather.S, M = Wx.meshes, wind0 = ctx.env.u.wind.value;
+      must(!!WS && !!ctx.S.weather && Array.isArray(ctx.S.weather.rain_days) && ctx.S.weather.rain_days.length === 12 && Array.isArray(ctx.S.weather.temp_max),
+        'the site has its own climate for the weather', ctx.S.weather && ctx.S.weather.source);
+      const sp = G.spawn(); player.teleport(sp.x, sp.north, undefined, sp.heading); run(0.3);
+      Wx.set({ rain: 0.85, cloud: 1, wind: 14 }); run(12);
+      must(WS.kind === 'rain' && WS.rain > 0.5 && WS.cover > 0.8 && WS.wet > 0.05 && M.rain.visible && M.deck.visible && WS.visibility < 10000,
+        'rain comes in under its cloud, the ground wets and the streaks fall', `${WS.kind} rain ${WS.rain.toFixed(2)} cover ${WS.cover.toFixed(2)} wet ${WS.wet.toFixed(2)} vis ${Math.round(WS.visibility)} m`);
+      must(ctx.env.u.wind.value > wind0 * 1.3, 'a gale raises the sea', `wind ${wind0.toFixed(2)} -> ${ctx.env.u.wind.value.toFixed(2)}`);
+      const top = ctx.camera.position.y; ctx.camera.position.y = ctx.env.u.tide.value - 3; Wx.set({ rain: 0.85, cloud: 1 }); for (const u of ctx.updaters) u(0.05, 999);
+      must(!M.rain.visible && !M.rings.visible, 'no rain drawn under water');
+      ctx.camera.position.y = top;
+      if (ctx.S.kind === 'alpine') {
+        Wx.set('snow'); run(20);
+        const line = ctx.terrain.weather ? ctx.terrain.weather.line.value : NaN;
+        must(WS.kind === 'snow' && WS.snow > 0.3 && WS.snowDepth > 0.05 && M.snow.visible && WS.temp < 1 && Number.isFinite(line),
+          'snow falls on the alpine site and settles, the snow line set', `${WS.kind} snow ${WS.snow.toFixed(2)} depth ${WS.snowDepth.toFixed(2)} ${WS.temp.toFixed(1)}° line ${Math.round(line)} m`);
+      }
+      Wx.set('clear', { now: true }); run(0.2);
+      must(WS.kind === 'clear' && !M.rain.visible && !M.snow.visible, 'clear again: nothing falls');
+      Wx.set('live'); run(0.2);
+      const se = Wx.season();
+      must(Number.isFinite(se.rain) && Number.isFinite(se.temp) && WS.source === 'season', 'the season decides again', `${Wx.describe()}`);
+    }
   } catch (e) { out(false, 'exception', String(e && e.stack || e)); }
   // leave things as a player would find them
   try { if (ctx.controller !== playerCtl && ctx.boats) ctx.boats.leave(); G.closeDialogue(); G.closePanel(); player.equip('none'); const s = G.spawn(); player.teleport(s.x, s.north, undefined, s.heading); S.virt = null; } catch (_) {}

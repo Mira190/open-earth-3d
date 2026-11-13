@@ -637,5 +637,55 @@
     "dir": -1
    }
   ]
+ },
+ "weather": {
+  "rain_days": [
+   13.0,
+   13.8,
+   14.3,
+   12.2,
+   10.8,
+   7.4,
+   6.0,
+   3.3,
+   2.7,
+   3.6,
+   5.4,
+   7.6
+  ],
+  "threshold_mm": 1.0,
+  "drizzle": 0.25,
+  "temp_max": [
+   29.9,
+   29.7,
+   28.9,
+   27.0,
+   24.4,
+   22.3,
+   21.5,
+   22.9,
+   25.3,
+   27.4,
+   28.7,
+   29.9
+  ],
+  "temp_min": [
+   24.9,
+   24.9,
+   24.5,
+   22.9,
+   20.6,
+   18.9,
+   18.0,
+   18.5,
+   20.2,
+   22.1,
+   23.4,
+   24.6
+  ],
+  "wind_from_deg": 135,
+  "elev_m": 4,
+  "source": "Bureau of Meteorology, Hamilton Island Airport (033106), 2002-2024, days with at least 1 mm (via Wikipedia's climate box)",
+  "more": "No wind row could be read: the weather's default mean wind. November 2026."
  }
 }

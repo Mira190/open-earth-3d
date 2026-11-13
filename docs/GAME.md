@@ -909,13 +909,28 @@ pipeline writes. The only city-specific code is landmark geometry in
     from a pole every 36 m on the side away from the platform, and each platform
     with its end ramps, yellow line and a shelter.
 - **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
-  `game.json` "trains" carries (Tokyo's through Yurakucho, `cities/tokyo/rail.py`; Sydney's City
+  `game.json` "trains" carries (Tokyo's through Yurakucho and Shimbashi, `cities/tokyo/rail.py`; Sydney's City
   Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
   A station's `style` picks its announcements: JR East's in Japanese and English, or Sydney
   Trains' in English.
   - A service is a stock, a number of cars, a headway and an offset; a train's place is a
-    function of the time alone (cruise, brake at 0.9 m/s², stand, pull away), so there is no
-    state to keep and a harness can ask where any train is at any second.
+    function of the time alone (cruise, brake at 0.9 m/s², stand, pull away at each of its halts),
+    so there is no state to keep and a harness can ask where any train is at any second.
+  - A track's halts are its `stops` (`{station, m, platform, side, psd}`: the station's id, where a
+    train's middle rests, the platform's number, +1 when the platform is on the train's left, and the
+    platform doors' leaves, `{off, u}`: the doors' line off the track and each door's middle along
+    it); `stations` lists the stations (`{id, name, native, at, hear_m, r}`). The first pass's one
+    `station` and a track's `stop_m` and `platform` still read as one halt. A service's `stop_at`
+    names the stations it stops at, where not all of its track's.
+  - **Doors.** A standing train's doors on the platform's side open a second after it stops and
+    close before it pulls away (the lit doorway drawn over the closed door, instanced); the platform
+    doors' two leaves slide apart behind the cabinets with them.
+  - **Riding** (`api.ride`): where the city has no `rail.js` line, the game boards and rides these
+    trains through rail.js's interface (`cars`, `stations`, `stationOf`, `towards`, `nextStop`,
+    `eta`, `departsIn`, `riderPos`, `alightAt`, `events`): a car is a whole train standing at a
+    station with another station ahead of it on the map; you stand in its third car by the doors.
+    A station on a viaduct (`deck`) is only its platforms' level, not the street under it.
+    `tools/trains_step.js` rides one stop and checks the doors open.
   - The cars ride on their two bogies along the course and are instanced, one draw call per
     material of each kind of car. They are drawn only between the sheds' mouths at the ends
     (`hide_m`).
