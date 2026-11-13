@@ -20,7 +20,7 @@ const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style
 const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
 // the load's stages for the telemetry (telemetry.js markOf): data fetched (world.js), decoded, built, the first frame
 const mark = s => { try { performance.mark(`oe:${s}`); } catch (e) { /* no User Timing */ } };
-const STEPS = { 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', 'alpine/fiord': 'Letting the falls run and the gulls fly', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
+const STEPS = { weather: 'Reading the sky', 'alpine/traffic': 'Putting the traffic on the highway', 'alpine/parked': 'Parking the cars', 'alpine/fiord': 'Letting the falls run and the gulls fly', life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
@@ -288,6 +288,7 @@ async function main() {
     when = live ? Date.now() : ms; perf0 = performance.now();
     Object.assign(sun, setSun(env, clockMs(), S.origin[1], S.origin[0])); sunT = performance.now();
     lights(sun);
+    if (ctx && ctx.weather) ctx.weather.light();
     try {
       const p = new URLSearchParams(location.search);
       if (live) p.delete('time'); else p.set('time', new Date(when).toISOString());
@@ -346,7 +347,7 @@ async function main() {
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  const mods = (q.get('mods') ?? (ALP ? `alpine/flora,alpine/landmarks,alpine/traffic,alpine/parked,boats${S.falls || S.birds ? ',alpine/fiord' : ''},player,game` : 'life,boats,player,game')).split(',').filter(Boolean);
+  const mods = (q.get('mods') ?? (ALP ? `weather,alpine/flora,alpine/landmarks,alpine/traffic,alpine/parked,boats${S.falls || S.birds ? ',alpine/fiord' : ''},player,game` : 'weather,life,boats,player,game')).split(',').filter(Boolean);
   for (const [i, name] of mods.entries()) {
     stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
     await paint();
@@ -393,6 +394,7 @@ async function main() {
     shore.update(camera.position);
     if (now - sunT > 2000) { sunT = now; Object.assign(sun, setSun(env, clockMs(), S.origin[1], S.origin[0])); }
     lights(sun);
+    if (ctx.weather) ctx.weather.light();   // the weather's share of the light (weather.js), after the hour's
     if (post) post.render(); else renderer.render(scene, camera);
     if (++frames === 1) mark('frame');
     // the frame's time, for the governor: once the page is ready and while it is on screen

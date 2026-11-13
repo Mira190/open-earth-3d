@@ -276,6 +276,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     snowTex.magFilter = snowTex.minFilter = THREE.LinearFilter; snowTex.generateMipmaps = false; snowTex.needsUpdate = true;
   }
   const snowSeason = uniform(0);
+  const wx = { fresh: uniform(0), line: uniform(1e5), wet: uniform(0) };    // the weather's snow and wet (../weather.js sets them)
   const SEASON = [0, 0, 0, 0.3, 0.7, 1, 1, 1, 1, 1, 1, 0.5];      // Jan..Dec: the spring snow holds from June to November
   const seasonSnow = (x, z) => {
     if (!snowTex) return float(0);
@@ -382,7 +383,15 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       alb.assign(mix(alb, vec3(0.86, 0.89, 0.93), snowK.mul(0.35)));
       // the season's snow over the summer ground, thinning to tussock and rock showing through at its edge
       const ss = seasonSnow(x, z);
-      const patchy = smoothstep(0.25, 0.75, ss.add(n1.mul(0.25)));
+      const patchy = smoothstep(0.25, 0.75, ss.add(n1.mul(0.25))).toVar();
+      // the weather's snow (../weather.js): fresh snow lying down to the snow line, thin at its edge and on the steep
+      // faces it slides off; and the ground darker and glossier while it is wet
+      If(wx.fresh.greaterThan(0.004).or(wx.wet.greaterThan(0.004)), () => {
+        const flat = smoothstep(0.55, 0.85, normalize(normalWorld).y);
+        const lie = smoothstep(wx.line.sub(90), wx.line.add(90), P.y.add(n1.mul(60))).mul(smoothstep(0.0, 0.35, wx.fresh)).mul(flat.mul(0.75).add(0.25));
+        alb.assign(alb.mul(float(1).sub(wx.wet.mul(0.28).mul(float(1).sub(snowK)))));
+        patchy.assign(max(patchy, lie));
+      });
       alb.assign(mix(alb, vec3(0.84, 0.87, 0.92), patchy));
       let N = detailNormal ? detailNormal(cls, near) : normalize(normalWorld);
       let fAo = float(1), fWet = float(0);
@@ -394,7 +403,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
         If(f.bushW.greaterThan(0.002).and(dist.lessThan(4000)), () => { N.assign(normalize(N.add(mx_noise_vec3(P.div(26)).mul(f.bushW.mul(0.16).mul(float(1).sub(smoothstep(2500, 4000, dist))))))); });
         fAo = f.ao; fWet = f.wet;
       }
-      const sp = mix(look.a.mul(0.35).add(fWet.mul(1.6)), float(1), max(snowK, smoothstep(0.4, 0.6, patchy)));
+      const sp = mix(look.a.mul(0.35).add(fWet.mul(1.6)).add(wx.wet.mul(0.6)), float(1), max(snowK, smoothstep(0.4, 0.6, patchy)));
       let c = light.shade(alb, N, P, { spec: sp, ao: fAo }).toVar();
       if (FIORD) {
         // wet rock in the sun: the cracks' shade on the sun's own light too, and points of glitter where a film of
@@ -597,5 +606,5 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       }
     }
   }
-  return { group, update, prepare, material: mats[0], materials: mats, heightAt, coverAt, coverTex, roads };
+  return { group, update, prepare, material: mats[0], materials: mats, heightAt, coverAt, coverTex, roads, weather: wx };
 }
