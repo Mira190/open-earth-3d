@@ -143,6 +143,7 @@
     }
   ],
   "jobs": [
+    {"id": "tare-shimbashi", "type": "train", "title": "A pot of tare to Shimbashi", "blurb": "Ishikawa's sauce pot, lent to a friend's stall under the arches at Shimbashi. One stop south on the Yamanote line.", "at": {"station": "yurakucho"}, "at_name": "Yurakucho Station", "from": "yurakucho", "to": {"station": "shimbashi"}, "to_station": "shimbashi", "to_name": "Shimbashi", "towards": "Shinagawa", "time_s": 600, "pay": 900, "skill": "lines", "xp": 4, "when": {"slots": ["evening", "night"]}, "text": "A lidded clay pot, heavy, wrapped in a furoshiki. \"Southbound, towards Shinagawa. Don't tip it.\"", "done": "Under the Shimbashi arches a man in a headband lifts the lid and breathes in. \"Thirty years of it. Tell him thanks.\""},
     { "id": "point-palace", "type": "point", "title": "Which way from the Palace plaza?", "blurb": "Visitors on the gravel ask the way. Face each place's true bearing; the nearer, the better the pay.",
       "at": { "npc": "daichi", "d": [4, -4] }, "at_name": "the Palace plaza", "who": "A visitor with a folded map", "pay": 900, "skill": "bearings", "xp": 5,
       "when": { "slots": ["morning", "daytime", "evening"] },

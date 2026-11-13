@@ -638,7 +638,7 @@ Jobs are taken from the diary's Work page, one at a time and once in each part o
   at golden or blue hour.
 - **By train:** catch the right train on a map with a railway (Kamakura's Enoden): from its
   station to another against the clock, done as you step off at the right one; the wrong stop
-  says which way it is. A place in life.json can name a station (`{"station": "koshigoe"}`).
+  says which way it is. Tokyo has one on the Yamanote between Yurakucho and Shimbashi (trains.js). A place in life.json can name a station (`{"station": "koshigoe"}`).
 
 At the wheel with a delivery or a fare, <kbd>J</kbd> hands the drive to the autopilot (issue
 #355): the job's waypoint is its destination. A passenger driven by the autopilot tips less.
@@ -705,7 +705,6 @@ people to know (three on the two small Kyoto maps), four or five jobs, counters 
 ### What is left
 
 - A room for keepsakes in 3D: they are an album of cards in the diary.
-- Tokyo's train job waits for its railway in the game (Tokyo's game.json has no `rail` yet).
 - Not checked: a real GPU, Safari and iOS, and the music by ear on phone speakers.
 
 Banners (a rank, a level, a job) wait while a station's arrival sign or the day's card is up,
