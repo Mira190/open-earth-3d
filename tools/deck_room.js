@@ -7,6 +7,7 @@
 //   python3 -m http.server 8800 --directory web &
 // The crowd's lanes (game.js crowdNet) are measured the same way: no lane may take a walker under a deck or a strip
 // with less than that room (#399: they crossed under decks' low ends where the data lays a crossing there).
+// It also prints what decks.js's grading of overlapping decks did (#401: the rounds, what it left, how far points moved).
 //   xvfb-run -a node tools/deck_room.js tetsugaku
 const { chromium } = require('playwright');
 const [,, city = 'tetsugaku'] = process.argv;
