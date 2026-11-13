@@ -108,7 +108,11 @@ window.OpenEarthGame = async function game(cityId) {
   // tier's budget of scene pixels on this canvas. The frame-rate cap is the player's (the menu: 60 unless asked).
   const gov = OEQuality.governor({ cap: (() => { try { const v = localStorage.getItem('oe3d-fps'); return v === null ? 60 : Math.max(0, +v || 0); } catch (e) { return 60; } })() });
   const GOV_KEY = `oe3d-gov-${cityId}`;
-  if (gov.auto) try { const v = +localStorage.getItem(GOV_KEY); if (v >= gov.min && v < 1) gov.scale = Math.round(v * 20) / 20; } catch (e) { /* storage blocked */ }
+  // What this device held on this map before ("scale/extras"; a bare scale from before issue 375 kept its extras): it
+  // starts there. A device with no record starts low and climbs (quality.js startLow, issue 375), not at its ceiling.
+  let govRecord = null;
+  if (gov.auto) try { const v = localStorage.getItem(GOV_KEY); if (v) { const [sc, ex] = v.split('/').map(Number); if (sc >= gov.min && sc <= 1) govRecord = { scale: Math.round(sc * 20) / 20, extras: [0, 0.5, 1].includes(ex) ? ex : 1 }; } } catch (e) { /* storage blocked */ }
+  if (govRecord) { gov.scale = govRecord.scale; gov.extras = govRecord.extras; } else if (gov.auto) gov.startLow();
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight, pr = QC.pixelRatio(w, h);
@@ -3093,8 +3097,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (ds < 260) A.announce(Math.min(1, (260 - ds) / 160));
     }
   }
-  let crowdAuto = true;
-  function applyDensity() { if (crowdAuto) crowd.active = Math.round(crowd.P.length * density[settings.density] * busy()); }
+  let crowdAuto = true, govCrowd = 1; // (govCrowd: the frame-time governor's share of the crowd, its ladder below)
+  function applyDensity() { if (crowdAuto) crowd.active = Math.round(crowd.P.length * density[settings.density] * busy() * govCrowd); }
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };
@@ -5026,19 +5030,28 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // crowd of boxes is not a city. Resolution, the reflections and the contact shadows come back as the frame
   // time allows, and so does the weather this session's shedding took (weather.js shed: a device that began with it off keeps it off).
   let fpsWarned = false;
+  // The ladder's rungs (quality.js rung: the value with every extra, at half, with none), in the order of what is
+  // missed least; resolution moves on its own between them (above). Two-way: each comes back as the frames allow.
+  // (weather.js gives back what this session's shedding took, and keeps off what started off)
+  if (weather) gov.rung('weather', [0, 1, 2], v => { weather.shed = v; });
+  gov.rung('mirror', [false, true, true], v => { if (mirror && mirror.on) mirror.off = v; });
+  // the sea's reflection: every frame while the camera moves, every second, none (water.js reflEvery)
+  if (Wd.sea && Wd.sea.reflections) gov.rung('reflection', [1, 2, 0], v => { Wd.sea.reflEvery = v; });
+  if (atmos && atmos.ao && atmos.ao.limit) gov.rung('ao', [2, 1, 0], v => atmos.ao.limit(v));
+  // the scene's multisampling: the tier's (four on high) with every extra, two at half, none at the floor, where the
+  // sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
+  if (atmos && atmos.setSamples && QC.samples) gov.rung('msaa', [QC.samples, Math.min(2, QC.samples), 0], v => atmos.setSamples(v));
+  // the sun's shadow map: the tier's, then half the texels on a side (the box keeps its size: softer edges), then 1024
+  if (Wd.setShadowSize) { const S = Wd.shadowSize; gov.rung('shadow', [S, Math.max(1024, S / 2), 1024], v => Wd.setShadowSize(v)); }
+  // the crowd: whole, whole, and three in four with none (crowd.active, as the menu's density sets it)
+  gov.rung('crowd', [1, 1, 0.75], v => { govCrowd = v; applyDensity(); });
   gov.on((extras, scale, extrasChanged) => {
     resize();
     if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras, msaa: atmos && atmos.composer ? atmos.composer.samples : QC.samples || 0, cap: gov.cap }); // (each step is a "quality" event: telemetry.js)
     // what this device held on this map, for the next visit to start from (it climbs again from there if it can)
-    if (gov.auto) try { localStorage.setItem(GOV_KEY, String(+scale.toFixed(2))); } catch (e) { /* storage blocked */ }
+    if (gov.auto) try { localStorage.setItem(GOV_KEY, `${+scale.toFixed(2)}/${extras}`); } catch (e) { /* storage blocked */ }
     if (!extrasChanged) return;
-    console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`);
-    if (weather) weather.shed = extras >= 1 ? 0 : extras > 0 ? 1 : 2; // (two-way: weather.js gives back what this session's shedding took, and keeps off what started off)
-    if (mirror && mirror.on) mirror.off = extras < 1;
-    if (atmos && atmos.ao && atmos.ao.limit) atmos.ao.limit(extras >= 1 ? 2 : extras > 0 ? 1 : 0);
-    // the scene's multisampling with them: the tier's (four on high) with every extra, two at half, none at the floor,
-    // where the sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
-    if (atmos && atmos.setSamples && QC.samples) atmos.setSamples(extras >= 1 ? QC.samples : extras > 0 ? Math.min(2, QC.samples) : 0);
+    console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`, gov.ladder);
     if (extras === 0 && !fpsWarned && !navigator.webdriver) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
   });
   // The frame's own writes to the page (issue 352): each of the HUD's nodes is looked up once, and its text is

@@ -2071,13 +2071,15 @@ const npcNight = require('./npc_night');
     const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
     const top = G.scale;
     for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
-    const slow = G.simulate(1, () => 60).pop(), slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
+    const ladderTop = G.ladder;
+    const slow = G.simulate(1, () => 60).pop(), slowLadder = G.ladder, slowShadow = g.Wd.shadowSize, slowCrowd = g.crowd.active, slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
     const back = G.simulate(120, () => 8).pop();
     await frames(2);
+    const ladder = { top: ladderTop, slow: slowLadder, back: G.ladder, shadow: [slowShadow, g.Wd.shadowSize], crowd: [slowCrowd, g.crowd.active] };
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
     const end = { slowMsaa, msaa: g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, scale: G.scale, top, size, slow, back, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, ao: g.atmos && g.atmos.ao ? g.atmos.ao.level : null };
     if (W) W.set('live');
-    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+    return { seen, end, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0, ladder };
   });
   {
     const s = shed.seen, e = shed.end, first = s.find(x => x.ex < 1), last = s[s.length - 1];
@@ -2088,6 +2090,10 @@ const npcNight = require('./npc_night');
     check(e.size === null || Math.abs(e.size - 0.6) < 0.01, `with the scene drawn at that share of the canvas (${e.size === null ? 'no post stack' : e.size.toFixed(2)})`);
     check(!e.slowMsaa, `and without multisampling at the floor (${e.slowMsaa ?? '-'} samples there, ${e.msaa ?? '-'} again after)`);
     check(Math.abs(e.scale - e.top) < 1e-6 && e.mirror !== true && (e.ao === null || e.ao > 0), `and gets its resolution, reflections and contact shadows back when the frames are fast again (${e.slow} then ${e.back}, AO ${e.ao ?? '-'})`);
+    // the one ladder (issue 375): the sun's shadow map, the sea's reflection and the crowd are on it too, and come back
+    const L = shed.ladder, same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    check(same(L.top, L.back) && (L.slow.shadow === undefined || (L.slow.shadow < L.top.shadow && L.shadow[0] === L.slow.shadow && L.shadow[1] === L.top.shadow)) && L.slow.crowd < 1 && L.crowd[0] <= L.crowd[1] && (L.slow.reflection === undefined || L.slow.reflection === 0),
+      `the shadow map, the sea's reflection and the crowd are on the same ladder, and come back (${Object.keys(L.top).map(k => `${k} ${L.top[k]}→${L.slow[k]}→${L.back[k]}`).join(', ')}; crowd ${L.crowd.join('→')})`);
     check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
   }
 

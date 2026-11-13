@@ -596,11 +596,14 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
       // The reflection: every frame while the camera moves (a picture from where the camera was would swim on
       // the water), every third while it stands still, when the last one still lands where it should and only
       // what moves in it (a ferry, the clouds) is a frame or two behind, under the waves' own blur.
+      // api.reflEvery (the frame-time governor's ladder, game.js; issue 375): 1 as above; 2 every second frame while
+      // the camera moves and every sixth while it stands; 0 none (the water reflects the sky's light alone).
       const still = refl && reflAt && camera.position.distanceToSquared(reflPos) < 1e-4 && Math.abs(camera.quaternion.dot(reflQuat)) > 1 - 1e-8;
-      if (still && camera.position.y > 0.3 && (++reflTick % 3)) return;
+      const every = api.reflEvery;
+      if (refl && every > 0 && camera.position.y > 0.3 && reflAt && (++reflTick % (still ? 3 * every : every))) return;
       u.uReflOn.value = 0;
       reflAt = 0;
-      if (refl && camera.position.y > 0.3) {
+      if (refl && every > 0 && camera.position.y > 0.3) {
         reflAt = 1; reflPos.copy(camera.position); reflQuat.copy(camera.quaternion);
         const sz = new THREE.Vector2();
         renderer.getDrawingBufferSize(sz);
@@ -653,7 +656,7 @@ vec4 shoreAt(vec2 xz) {
     function setCover(tex, x0, y1, w, h) {
       u.uCover.value = tex; u.uCoverBox.value.set(x0, y1, w, h); u.uCoverOn.value = tex ? 1 : 0;
     }
-    const api = { mesh, material: mat, update, patchGround, setCover, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER, wakes: false, wakeMeshes };
+    const api = { mesh, material: mat, update, patchGround, setCover, dispose, Hs, fft, uniforms: u, reflections: !!refl, reflEvery: 1, N, wakeLayer: WAKE_LAYER, wakes: false, wakeMeshes };
     return api;
   }
 

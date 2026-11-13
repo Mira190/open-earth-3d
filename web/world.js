@@ -2205,6 +2205,20 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // shadow edge in the city crawl, so its size moves in steps of a tenth (and holds while the
       // view is within about three steps of it) and its centre moves in whole texels along the
       // light's axes.
+      // The sun's shadow map's size, for the frame-time governor's ladder (quality.js, game.js; issue 375): no larger
+      // than the tier's (SHADOW), no smaller than 1024. The map and the still casters' cache keep their objects and
+      // are made again at the new size at the next shadow pass; the box's texel snapping follows mapSize.
+      get shadowSize() { return sunLight.shadow.mapSize.x; },
+      setShadowSize(n) {
+        n = Math.max(1024, Math.min(SHADOW, n | 0));
+        if (n === sunLight.shadow.mapSize.x) return n;
+        sunLight.shadow.mapSize.set(n, n);
+        if (sunLight.shadow.map) sunLight.shadow.map.setSize(n, n);
+        if (shadowStill && shadowStill.resize) shadowStill.resize(n);
+        shR = -1; // (the box is placed again on its new texel grid)
+        renderer.shadowMap.needsUpdate = true;
+        return n;
+      },
       fitShadow(target, half) {
         // with the cache (shadowCache) the box keeps 5% more room than asked, and holds still while the view
         // moves within that room and the sun has not stepped: a box that slides a texel follows a walker
@@ -2797,34 +2811,11 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         return orig.call(this, lights, scene, camera);
       }
     };
+    api.resize = n => { still.setSize(n, n); built = false; };
     api.dispose = () => { SM.render = orig; SM.__cached = false; still.dispose(); };
     return api;
   }
 
-  // An EffectComposer clones its target for the second of the pair it ping-pongs between, so with a
-  // multisampled target every full-screen pass after the scene (the AO's mix, the highlights, the bloom's
-  // composite, the lens, the output) writes four samples a pixel and resolves them: a triangle that covers
-  // the whole frame gives all four the same value, so that is four times the bytes for the same picture,
-  // and a second multisampled buffer held for it. Here the scene alone draws into the multisampled target
-  // (renderTarget1, which the composer always gives it first and which the shader warm-ups compile against),
-  // and the passes after it take turns between two single-sampled targets with no depth: the same frame,
-  // to the bit, with one multisampled buffer instead of two.
-  function leanComposer(composer) {
-    const ms = composer.renderTarget1;
-    if (!ms || !ms.samples || composer.__lean) return composer;
-    const single = () => { const t = ms.clone(); t.samples = 0; if (t.depthTexture) t.depthTexture.dispose(); t.depthTexture = null; t.depthBuffer = false; t.resolveDepthBuffer = false; return t; };
-    const a = single(), b = single();
-    composer.renderTarget2.dispose();
-    composer.renderTarget2 = a;
-    const render = composer.render.bind(composer), setSize = composer.setSize.bind(composer);
-    composer.render = function (dt) { this.readBuffer = ms; this.writeBuffer = a; return render(dt); };
-    composer.swapBuffers = function () { const r = this.readBuffer; this.readBuffer = this.writeBuffer; this.writeBuffer = r === ms ? b : r; };
-    composer.setSize = function (w, h) { setSize(w, h); b.setSize(a.width, a.height); };
-    const dispose = composer.dispose && composer.dispose.bind(composer);
-    composer.dispose = function () { b.dispose(); if (dispose) dispose(); };
-    composer.__lean = true;
-    return composer;
-  }
 
   // both, for a model that comes once the game is open: its textures sent, then its shaders compiled
   function warm(renderer, obj, camera, opts) {
@@ -2871,5 +2862,5 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return n;
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, leanComposer, readAsync, warmPasses, settleUnderFloors };
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors };
 })();
