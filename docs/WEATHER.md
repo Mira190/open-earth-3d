@@ -291,5 +291,9 @@ Nothing was copied here either. Licences are given so that no one takes code wit
 - Footprints and tyre tracks in the snow; snow on the people (their normals are skinned) and on the far trees' impostors.
 - A fog layer seen from above as a layer: the scene's fog has no height term (see the survey).
 - Heat shimmer: it would need a pass.
-- Reef sites (`web/reef`) and the model viewer (`web/city.js`) have no weather.
+- The model viewer (`web/city.js`) has no weather. The reef and alpine sites (`web/reef`) have their own driver,
+  `web/reef/weather.js` (issue 381): the same `OEWeather.S` from each site's climate (`scene.json` `weather`, written by
+  `pipeline/weather_climate.py`), drawn with node materials: streaks, rings on the water, flakes, a cloud deck, the light
+  and the air, the sea's wind, and fresh snow on the alpine land down to a lapse-rate snow line. No lightning, rainbow,
+  splashes on decks or rain occlusion there yet.
 - Not checked on a real GPU, WebGPU, Safari or iOS.

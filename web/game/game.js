@@ -70,6 +70,7 @@ window.OpenEarthGame = async function game(cityId) {
     + [...(G.links || []), ...kin.filter(k => !(G.links || []).some(l => l.id === k.id))]
       .map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
   $('#g-metro-btn').hidden = !metro;
+  $('#gm-links').insertAdjacentHTML('afterbegin', G.fishing && G.fishing.spots && G.fishing.spots.length ? '<button class="btn" id="gm-fishlog">Fish log</button><span class="note">What you have caught, and what each fish is</span>' : '');
   if (metro) { $('#g-metro-btn').innerHTML = `${metro.name} <kbd>B</kbd>`; document.querySelectorAll('.g-metro-key').forEach(r => { r.hidden = false; }); }
   function openMetro() {
     if (!metro || OEMetro.isOpen()) return;
@@ -353,8 +354,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     });
   }
   const FRAME = { cell: 2, x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] };
-  const DSM = S.buildDSM(T, B.s, Object.assign({ ids: true }, FRAME));
+  // (made in the worker that built the walls, from the same ground and solids, where there is one: buildings.js start)
+  const DSM = D.dsm && D.dsm.nx === Math.round((FRAME.x1 - FRAME.x0) / FRAME.cell) ? D.dsm : S.buildDSM(T, B.s, Object.assign({ ids: true }, FRAME));
+  D.dsm = null;
   if (Wd.farSun) Wd.farSun.init(DSM); // the sun's shadow past the shadow map, from this surface model (world.js, issue 358)
+  if (D.navJob) { D.navCells = await D.navJob; D.navJob = null; } // (the landmarks on its grid, from the worker: world.js)
   const nav = OENav.create(D, DSM);
   // the big screens light the street, the crowd and the buildings across from them (neon.js)
   const neon = window.OENeon ? await OENeon.create(Wd, renderer, { tier: QC.name, gain: (G.look || {}).neon ?? 1, fill: (G.look || {}).fill || [], ground: (x, y) => Math.max(0, nav.terrain(x, y)) }) : null;
@@ -2439,7 +2443,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const fishSpot = r => (player.mode === 'foot' ? fish.spots.find(sp => Math.hypot(sp.at[0] - player.x, sp.at[1] - player.y) < r) : null);
   function fishLoad() {
     if (fish.loading) return fish.loading;
-    const code = window.OEFishing ? Promise.resolve() : new Promise((ok, no) => { const el = document.createElement('script'); el.src = 'game/fishing.js'; el.onload = ok; el.onerror = () => no(new Error('game/fishing.js did not load')); document.head.appendChild(el); });
+    const script = (src, have) => (have ? Promise.resolve() : new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error(`${src} did not load`)); document.head.appendChild(el); }));
+    const code = Promise.all([script('game/fishing.js', window.OEFishing), script('game/fishart.js', window.OEFishArt)]);
     fish.loading = Promise.all([code, fetch(D.DATA + G.fishing.file).then(r => { if (!r.ok) throw new Error(`${G.fishing.file}: ${r.status}`); return r.json(); })]).then(([, data]) => {
       if (!running) return null;
       fish.api = OEFishing.create({ THREE, world, nav, player, cam, camera, H, A, data, cityId, clock, sun: () => sun, rain: () => (weather ? weather.state.rain : 0), tier: QC.name, reduced, touch, stage,
@@ -3103,7 +3108,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let overture = null; // the map's opening film (overture.js), made once the player is placed
-  let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => (window.OEMetro && OEMetro.isOpen()) || !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden || !!(life && life.open);
+  let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => (window.OEMetro && OEMetro.isOpen()) || !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden || !!(life && life.open) || !!(fish && fish.api && fish.api.logOpen());
   const k = c => keys.has(c);
   on(window, 'keydown', e => {
     if (e.target.closest && e.target.closest('input, select, textarea')) return;
@@ -3126,6 +3131,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (arriving) settleArrival(); // a key settles the arrival (and still walks, looks or opens what it opens)
     else if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
     if (c === 'Escape' && life && life.open) { life.close(); return; }
+    if (c === 'Escape' && fish && fish.api && fish.api.logOpen()) { fish.api.showLog(false); return; }
     if (life && life.open) { life.key(c); return; } // (the diary and its pages have the keys while they are up)
     if (c === 'Escape') { if (!phone.el.hidden) phoneShow(false); else if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
     if (uiOpen()) {
@@ -4691,7 +4697,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#g-pass-btn'), 'click', togglePass);
   on($('#g-menu-btn'), 'click', toggleMenu);
   on($('#g-metro-btn'), 'click', openMetro);
-  on($('#gm-links'), 'click', e => { if (e.target.closest('#gm-metro')) openMetro(); });
+  on($('#gm-links'), 'click', e => {
+    if (e.target.closest('#gm-metro')) openMetro();
+    if (e.target.closest('#gm-fishlog')) { $('#g-menu').hidden = true; fishLoad().then(api => (api ? api.showLog(true) : H.toast('The log did not arrive. Try again in a moment.'))); }
+  });
   for (const id of ['#g-bigmap-close', '#g-pass-close', '#g-menu-close']) on($(id), 'click', () => { $(id).closest('.g-overlay').hidden = true; });
   on($('#gm-time'), 'click', e => { const b = e.target.closest('button'); if (b) { presetTime(b.dataset.t); menuSync(); H.toast(`Time: ${b.dataset.label || b.textContent}, ${fmtMin(clock.min)}`); } });
   on($('#gm-clock'), 'input', e => { setClock(clock.y, clock.m, clock.d, +e.target.value); menuSync(); });
