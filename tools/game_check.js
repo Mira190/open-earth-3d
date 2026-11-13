@@ -2069,9 +2069,8 @@ const npcNight = require('./npc_night');
     const g = window.__game, W = g.weather, G = g.governor, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
     if (W) { W.set('rain', { now: true }); g.advance(1); }
     const seen = [], note = () => seen.push({ ex: G.extras, w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
-    const top = G.scale;
+    const top = G.scale, ladderTop = G.ladder;
     for (let i = 0; i < 16 && (G.extras > 0 || G.scale > G.min + 1e-6); i++) { G.simulate(5, () => 60); await frames(2); note(); }
-    const ladderTop = G.ladder;
     const slow = G.simulate(1, () => 60).pop(), slowLadder = G.ladder, slowShadow = g.Wd.shadowSize, slowCrowd = g.crowd.active, slowMsaa = g.atmos && g.atmos.composer ? g.atmos.composer.samples : null, size = g.atmos && g.atmos.composer ? g.atmos.composer.renderTarget1.width / g.atmos.composer.renderer.domElement.width : null;
     const back = G.simulate(120, () => 8).pop();
     await frames(2);
