@@ -27,7 +27,8 @@ shown (`game.hero[].hide`).
 
 **Streamed.** It is fetched when the camera comes within 260 m of its edge, shown within 420 m, and let go
 (geometry and textures freed) past 520 m. On the low tier (phones) every texture is halved before it is
-sent to the GPU, a quarter of the memory. Its shaders are compiled and its textures sent in idle time
+sent to the GPU, a quarter of the memory, and on a phone's lean sub-tier no side is over 1024; it is resized by
+`createImageBitmap`, not through a full-size canvas. Its shaders are compiled and its textures sent in idle time
 before it is first shown (`world.js` `upload`, `compile`), so it does not stall a frame.
 
 **Light baked into the vertices.** After dark a street like Ichibangai is lit by its signs and shop

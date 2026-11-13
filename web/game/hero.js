@@ -24,7 +24,7 @@
 //
 // It is loaded when the camera comes within r + LOAD_M of its centre and let go (its GPU memory freed) past
 // r + DROP_M. On the low tier (phones) it goes without its normal and roughness maps, and its other textures
-// are halved before they are sent to the GPU, a quarter of their memory (docs/HERO.md).
+// are halved (on a phone's lean sub-tier, no side over 1024) before they are sent to the GPU (docs/HERO.md).
 'use strict';
 window.OEHero = (function () {
   const LOAD_M = 260, DROP_M = 520, SHOW_M = 420;
@@ -71,15 +71,33 @@ window.OEHero = (function () {
       m.needsUpdate = true;
     }
 
-    // a texture halved on the low tier before it reaches the GPU (a canvas the size of half the image)
-    function halve(tex) {
+    // a texture made smaller on the low tier before it reaches the GPU: halved, or on a phone's lean sub-tier no
+    // side over 1024. Resized by createImageBitmap where it can (no full-size canvas copy, which is tens of MB of
+    // passing CPU memory on a phone), else through a canvas that is shrunk to nothing once it is uploaded.
+    const lean = () => { try { const q = window.OEQuality && OEQuality.city && OEQuality.city(); return !!(q && q.lean); } catch (e) { return false; } };
+    async function shrink(tex, done) {
       const img = tex && tex.image;
       if (!img || !img.width || img.width <= 256 || tex.userData.heroHalved) return;
-      const cv = document.createElement('canvas');
-      cv.width = img.width >> 1; cv.height = img.height >> 1;
-      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      if (done.has(img)) { const o = await done.get(img); if (o) { tex.image = o; tex.userData.heroHalved = true; tex.needsUpdate = true; } return; }
+      let fin; done.set(img, new Promise(r => { fin = r; }));
+      const k = lean() ? Math.min(0.5, 1024 / Math.max(img.width, img.height)) : 0.5;
+      const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+      let out = null;
+      if (window.createImageBitmap) {
+        try { out = await createImageBitmap(img, { resizeWidth: w, resizeHeight: h, resizeQuality: 'medium', imageOrientation: tex.flipY ? 'flipY' : 'from-image' }); } catch (e) { out = null; }
+        if (out && tex.flipY) tex.flipY = false; // (flipped as it was made: an ImageBitmap ignores UNPACK_FLIP_Y)
+      }
+      if (!out) try {
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        tex.onUpdate = () => { cv.width = cv.height = 1; tex.onUpdate = null; };
+        out = cv;
+      } catch (e) { console.warn('hero texture:', e); }
+      fin(out);
+      if (!out) return;
       if (img.close) img.close();
-      tex.image = cv; tex.userData.heroHalved = true; tex.needsUpdate = true;
+      tex.image = out; tex.userData.heroHalved = true; tex.needsUpdate = true;
     }
 
     function load(L) {
@@ -87,7 +105,7 @@ window.OEHero = (function () {
       const t0 = performance.now();
       new THREE.GLTFLoader().load(base + L.h.glb, g => {
         if (L.state !== 'loading') { dispose(g.scene); return; } // (let go while it came)
-        const root = g.scene, seen = new Set();
+        const root = g.scene, seen = new Set(), shrunk = [];
         root.name = `hero-${L.h.id}`;
         root.traverse(o => {
           if (!o.isMesh) return;
@@ -99,7 +117,7 @@ window.OEHero = (function () {
             // on the low tier (phones): no normal or roughness maps (the surface's own roughness instead), the rest halved
             if (tier === 'low') {
               for (const k of ['normalMap', 'roughnessMap', 'metalnessMap']) if (m[k]) { m[k].dispose(); m[k] = null; }
-              for (const k of ['map', 'emissiveMap', 'aoMap']) halve(m[k]);
+              for (const k of ['map', 'emissiveMap', 'aoMap']) if (m[k] && !shrunk.includes(m[k])) shrunk.push(m[k]);
             }
             patch(m, L.h);
             const n = (m.name || '').toLowerCase();
@@ -113,7 +131,7 @@ window.OEHero = (function () {
         root.visible = false;
         group.add(root);
         L.root = root;
-        const ready = opts.warm ? opts.warm(root) : Promise.resolve();
+        const ready = Promise.all(shrunk.map((t, i, a) => shrink(t, a.done || (a.done = new Map())))).then(() => L.root === root && opts.warm ? opts.warm(root) : null);
         Promise.resolve(ready).catch(e => console.warn('hero warm-up:', e)).then(() => {
           if (L.root !== root) return;
           L.state = 'ready';
