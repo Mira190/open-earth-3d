@@ -49,6 +49,7 @@ window.OpenEarthGame = async function game(cityId) {
     D.T = { data: c, nx, ny, cell: t.cell * 2, x0: Tfine.x0, y1: Tfine.y1 };
     D.Tfine = Tfine; // the walls of the buildings reach down to whichever ground is drawn
     if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.settleUnderFloors(D.T, Tfine, D.LM); // (the far ground under the landmarks' floors at every distance, #286; ?settle=off: without, to compare)
+    if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.carveUnderWater([Tfine, D.T], D.LM); // (and under the landmarks' ponds and moats, #399)
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
@@ -109,7 +110,11 @@ window.OpenEarthGame = async function game(cityId) {
   // tier's budget of scene pixels on this canvas. The frame-rate cap is the player's (the menu: 60 unless asked).
   const gov = OEQuality.governor({ cap: (() => { try { const v = localStorage.getItem('oe3d-fps'); return v === null ? 60 : Math.max(0, +v || 0); } catch (e) { return 60; } })() });
   const GOV_KEY = `oe3d-gov-${cityId}`;
-  if (gov.auto) try { const v = +localStorage.getItem(GOV_KEY); if (v >= gov.min && v < 1) gov.scale = Math.round(v * 20) / 20; } catch (e) { /* storage blocked */ }
+  // What this device held on this map before ("scale/extras"; a bare scale from before issue 375 kept its extras): it
+  // starts there. A device with no record starts low and climbs (quality.js startLow, issue 375), not at its ceiling.
+  let govRecord = null;
+  if (gov.auto) try { const v = localStorage.getItem(GOV_KEY); if (v) { const [sc, ex] = v.split('/').map(Number); if (sc >= gov.min && sc <= 1) govRecord = { scale: Math.round(sc * 20) / 20, extras: [0, 0.5, 1].includes(ex) ? ex : 1 }; } } catch (e) { /* storage blocked */ }
+  if (govRecord) { gov.scale = govRecord.scale; gov.extras = govRecord.extras; } else if (gov.auto) gov.startLow();
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight, pr = QC.pixelRatio(w, h);
@@ -550,7 +555,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
 
   loadMsg('Footways people can walk', 0.84);
   await idle();
-  const crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot))));
+  const crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot, (x, y, z) => roadsNow.depth(x, y, z, 0.3) > 0))));
   // benches face their footway, or the water behind it; each has two seats the crowd can use
   const benches = nav.withoutFine(() => OEActors.benches(G.props.bench || [], crowdNet, nav)), lamps = G.props.street_lamp || [];
   const benchMesh = new THREE.InstancedMesh(OEActors.boxes([ // seat, backrest and two ends; faces +z
@@ -574,6 +579,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const glowMat = new THREE.PointsMaterial({ size: 9, map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, sizeAttenuation: true });
   const glows = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(glowPos, 3)), glowMat);
   for (const m of [benchMesh, poleMesh, headMesh]) { OEBuildings.cellInstances(m); if (Wd.still) Wd.still(m); }
+  for (const m of [benchMesh, poleMesh, headMesh]) m.userData.noRefl = true; // (out of the sea's reflection: water.js)
   world.add(benchMesh, poleMesh, headMesh);
   if (!Wd.night) world.add(glows); // night.js lights these lamps with the rest of the street lights
 
@@ -748,21 +754,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const npcs = [];
   // the old characters run large; the Rocketbox ones (R_) are life size
   const npcLook = n => Object.assign({ scale: /^W_/.test(n.look.character) ? 0.91 : /^M_/.test(n.look.character) ? 0.96 : 1 }, n.look);
+  // where someone stands at (at): on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or
+  // at the height given; off a bank sloping into the water, out of the road (and the room a car pulls in to at the
+  // kerb), clear of the lamp posts, trunks and benches, and not on someone else's toes (self: the one moving)
+  function npcSpot(n, at, self = null) {
+    const others = q => q !== self && Math.hypot(q.x - at[0], q.y - at[1]) < 40;
+    const near = npcs.filter(others);
+    let f = nav.floorAt(at[0], at[1], at[2] != null ? at[2] + 1 : Math.max(200, nav.terrain(at[0], at[1]) + 1));
+    if (f && f.kind === 'deck' && at[2] == null) f = nav.floorAt(at[0], at[1], nav.terrain(at[0], at[1]) + 1);
+    const z0 = f ? f.z : Math.max(0, nav.terrain(at[0], at[1]));
+    const clear = (x, y) => !near.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) && !inRoad(x, y, z0, 0.3) && !posts.pushOut(x, y, 0.45, z0).hit
+      && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
+    return nav.stand(at[0], at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(at[0], at[1], z0 + (f ? 0.5 : 1),
+      { rMax: 15, ok: (x, y) => !near.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: at[0], y: at[1], z: f ? f.z : 0 };
+  }
+  // someone who keeps another place at this hour (life.json bonds[].places, bonds.js): stood there, facing face
+  // (a bearing in radians) or as they were. Not one seated or stood at an exact place by the data
+  function npcMove(n, at, face = null) {
+    if (n.sit || n.stand || n.talking) return false;
+    if (n.post) posts.move(n.post, 1e7, 1e7, 0); // (out of their own way)
+    const p = npcSpot(n, at, n);
+    n.x = p.x; n.y = p.y; n.z = p.z;
+    if (face != null) n.h = face;
+    n.rig.root.position.copy(W(n.x, n.y, n.z));
+    n.rig.root.rotation.y = Math.PI - n.h;
+    if (n.post) posts.move(n.post, n.x, n.y, n.z);
+    return true;
+  }
   for (const n of G.npcs) {
     const rig = awaited(n.look) ? pendingRig() : makeRig(npcLook(n));
     world.add(rig.root);
     // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or at the height given;
     // off a bank sloping into the water, out of the road (and the room a car pulls in to at the kerb), clear
     // of the lamp posts, trunks and benches, and not on someone else's toes
-    let f = nav.floorAt(n.at[0], n.at[1], n.at[2] != null ? n.at[2] + 1 : Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1));
-    if (f && f.kind === 'deck' && n.at[2] == null) f = nav.floorAt(n.at[0], n.at[1], nav.terrain(n.at[0], n.at[1]) + 1);
-    const z0 = f ? f.z : Math.max(0, nav.terrain(n.at[0], n.at[1]));
-    const clear = (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) && !inRoad(x, y, z0, 0.3) && !posts.pushOut(x, y, 0.45, z0).hit
-      && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
     // seated (game.json npcs[].sit, at a restaurant's table or in a pew: at its place exactly, the chair's seat over
     // the root, facing sit.face), else stood where there is room
-    const p = (n.sit || n.stand) && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } /* ("stand": on their feet at that place exactly, facing stand.face: behind a bar, on a stage) */ : nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
-      { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
+    const p = (n.sit || n.stand) && n.at[2] != null ? { x: n.at[0], y: n.at[1], z: n.at[2] } /* ("stand": on their feet at that place exactly, facing stand.face: behind a bar, on a stage) */ : npcSpot(n, n.at);
     const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: (n.sit || n.stand || {}).face ? Math.atan2((n.sit || n.stand).face[0], (n.sit || n.stand).face[1]) : hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
@@ -771,7 +798,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     rig.root.position.copy(W(o.x, o.y, o.z));
     rig.root.rotation.y = Math.PI - o.h;
     npcs.push(o);
-    posts.add(o.x, o.y, o.z, 0.22, 'npc'); // (where they stand: the crowd walks round them, not through them)
+    o.post = posts.add(o.x, o.y, o.z, 0.22, 'npc'); // (where they stand: the crowd walks round them, not through them)
   }
   const npcById = id => npcs.find(n => n.id === id);
   // an NPC's character, loaded and put in their place (or another realistic one if it can't be loaded)
@@ -1260,18 +1287,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function leadOf(st, reach, wide = 0.25) {
     const fx = Math.sin(st.h), fy = Math.cos(st.h), half = myCar.C.half, hw = myCar.C.hw;
     let best = null;
-    const see = (x, y, z, h2, w2, v, h) => {
+    const see = (x, y, z, h2, w2, v, h, what = '') => {
       if (Math.abs(z - st.z) > 2.5) return;
       const dx = x - st.x, dy = y - st.y, a = dx * fx + dy * fy, w = Math.abs(-dx * fy + dy * fx);
       // (a car across the way is as long across as it is: its half length counts sideways by how far it is turned)
       const turned = h == null ? 0 : Math.abs(Math.sin(h - st.h)), across = w2 + (h2 - w2) * turned, along = h2 + (w2 - h2) * turned;
       const gap = a - along - half;
-      if (a > 0 && gap < reach && w < hw + across + wide && (!best || gap < best.gap)) best = { gap: Math.max(0, gap), v: h == null ? 0 : Math.max(0, v * Math.cos(h - st.h)) };
+      if (a > 0 && gap < reach && w < hw + across + wide && (!best || gap < best.gap)) best = { gap: Math.max(0, gap), v: h == null ? 0 : Math.max(0, v * Math.cos(h - st.h)), what };
     };
-    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < reach + 12 && Math.abs(c.y - st.y) < reach + 12) see(c.x, c.y, c.z, c.half, c.hw || 0.9, c.v, c.h);
+    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < reach + 12 && Math.abs(c.y - st.y) < reach + 12) see(c.x, c.y, c.z, c.half, c.hw || 0.9, c.v, c.h, c.park ? 'a parked car' : 'a car');
     if (ride) { const r = ride.drv.st; see(r.x, r.y, r.z, ride.C.half, ride.C.hw, r.v, r.h); }
-    for (let i = 0; i < crowd.active; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - st.x) < reach + 4 && Math.abs(q.y - st.y) < reach + 4) see(q.x, q.y, q.z, 0.3, 0.3, 0, null); }
-    for (const n of npcs) if (Math.abs(n.x - st.x) < reach + 4 && Math.abs(n.y - st.y) < reach + 4) see(n.x, n.y, n.z, 0.3, 0.3, 0, null);
+    for (let i = 0; i < crowd.active; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - st.x) < reach + 4 && Math.abs(q.y - st.y) < reach + 4) see(q.x, q.y, q.z, 0.3, 0.3, 0, null, 'a walker'); }
+    for (const n of npcs) if (Math.abs(n.x - st.x) < reach + 4 && Math.abs(n.y - st.y) < reach + 4) see(n.x, n.y, n.z, 0.3, 0.3, 0, null, 'a person standing');
     return best;
   }
   // ------------------------------------------------------------ the driver assists (I, K)
@@ -1396,6 +1423,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const c = o.drv.st, nt = o.join ? null : OEAutopilot.nextTurn(o.turns, c.s);
     return (o.hud = { nt, turn: nt ? OEAutopilot.turnText(nt) : '', left: o.join ? o.drv.path.len : o.drv.remaining(), eta: o.join ? o.drv.total() : eta(o), intent: c.intent || '' });
   }
+  // the pedals onto the lane (autopilot.js join), stopping for what stands in the way it steers: looked for along the
+  // line to the point it aims at, not straight ahead, so that a person standing by the kerb in front of a car that
+  // turns out from it does not hold it there until the join gives up (Higashiyama by its first landmark). What
+  // held it, for the checks: o.joinWhy
+  function joinPedals(o, st, len, at) {
+    const q = {};
+    o.drv.poseAt(Math.min(len, at.s + 5 + Math.abs(st.v)), q);
+    const aim = { x: st.x, y: st.y, z: st.z, h: Math.hypot(q.x - st.x, q.y - st.y) > 0.5 ? Math.atan2(q.x - st.x, q.y - st.y) : st.h };
+    const lead = leadOf(aim, 5, 0.1), blocked = !!lead && lead.gap < 3.5;
+    o.joinWhy = blocked ? `${lead.what} ${lead.gap.toFixed(1)} m ahead` : `${at.dist.toFixed(1)} m off the lane, turned ${at.dh.toFixed(2)}`;
+    return OEAutopilot.join(st, o.drv.poseAt, len, at, blocked);
+  }
   // a step of the autopilot. Returns true (it has driven the car this step), the pedals for the car's own
   // step (onto the lane), or null (it is off again)
   function pilotStep(dt, fwd, side) {
@@ -1411,7 +1450,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         o.drv.jump(at.s); o.drv.st.v = Math.max(0, st.v);
         o.off = { x: st.x - o.drv.st.x, y: st.y - o.drv.st.y, h: angDiff(st.h, o.drv.st.h) }; o.join = false;
       } else if (o.joinT > 16) { pilotOff(o.rejoin ? '<b>Autopilot:</b> the road ahead is blocked. You have the wheel.' : 'The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.', o.rejoin ? 'blocked' : undefined); return null; }
-      else { const lead = leadOf(st, 5); return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5); }
+      else return joinPedals(o, st, len, at);
     }
     driverStep(o, dt);
     const c = o.drv.st; // (the driver's state now: a turn in the road that has just ended has a new driver)
@@ -1446,8 +1485,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // its body swept sideways through whatever stood beside it, a car stopped for it at Fushimi Inari)
       if (Math.hypot(o.off.x, o.off.y) > 1.2 || Math.abs(o.off.h) > 0.45) {
         c.v = 0; o.join = true; o.rejoin = true; o.joinT = 0; o.joinS = 0; o.off = { x: 0, y: 0, h: 0 };
-        const len = o.drv.path.len, at = OEAutopilot.onLane(o.drv.poseAt, len, st.x, st.y, st.h, 0, 40), lead = leadOf(st, 5);
-        return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5);
+        const len = o.drv.path.len, at = OEAutopilot.onLane(o.drv.poseAt, len, st.x, st.y, st.h, 0, 40);
+        return joinPedals(o, st, len, at);
       }
     }
     // (eased onto the driver's line from where it took the car over)
@@ -2814,6 +2853,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (c && c.action === 'track' && lineById(c.line)) { qs.track = c.line; save(); } // the prologue lets you pick where to start
     });
   }
+  // arriving at a district: track the open line whose next quest is given by someone standing there (#359: Haru at
+  // Sangenjaya), not the map's first line, whose giver may be across the map
+  function trackNear(at, within = 250) {
+    let best = null, bd = within;
+    for (const l of openLines()) {
+      const q = questOf(l), n = q && !ls(l).started ? npcById(q.giver) : null;
+      const d = n ? Math.hypot(n.x - at[0], n.y - at[1]) : Infinity;
+      if (d < bd) { bd = d; best = l; }
+    }
+    if (best) { qs.track = best.id; guide.key = ''; }
+  }
   // track the next open line (T, or a tap on its name in the quest card)
   function cycleTrack(id) {
     const open = openLines();
@@ -2912,7 +2962,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // and its diary, bonds, jobs, the phone). The game lends them the clock, the HUD and the player, tells them what
   // happens (life.emit) and asks them what E does at a place of theirs; none of them draws the world.
   const life = window.OELife ? OELife.create({ quiet: () => !!(window.__game && window.__game.shows && window.__game.shows.playing), cityId, cityName: CITY.place || CITY.name, country: CITY.country, G, S, H, A, dlg, $, on, stage, touch, reduced, signal: ac.signal,
-    clock, setClock: (...a) => setClock(...a), player, npcs, npcById: id => npcById(id), fmtMin, said: t => said(t), fill: t => fill(t), get weather() { return weather; },
+    clock, setClock: (...a) => setClock(...a), player, npcs, npcById: id => npcById(id), npcMove: (...a) => npcMove(...a), pilot: () => pilot, fmtMin, said: t => said(t), fill: t => fill(t), get weather() { return weather; },
     get sun() { return sun; }, now: () => clockT, labels: () => scene.labels || {}, travel: () => G.travel || [],
     waypoint: w => { waypoint = w; }, held: () => simHold, place: (x, y, z) => placeNear(x, y, z, null, 30), ground: (x, y) => nav.terrain(x, y), get cam() { return cam; }, world, map: () => toggleMap(), photo: () => photoMode(true), camera, W: (...a) => W(...a), car: () => myCar, ride: () => ride,
     busy: kind => (kind === 'pass' ? player.mode !== 'foot' && !(player.mode === 'car' && myCar.D.st.speed < 1) : cine.active || (overture && overture.active) || OEOnboard.active() || dlg.open || uiOpen() || photo.on || !!closeup || !!arriving) }) : null;
@@ -2925,10 +2975,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {
       const got = qs.stamps.find(s => s.id === q.id);
       return `<li class="${got ? 'got' : ''}"><span class="stamp">${got ? q.stamp : '?'}</span><span><b>${got ? q.title : 'Not yet'}</b><span class="note">${got ? got.at : ''}</span></span></li>`;
+    }).join('') + spotStamps().map(sp => {
+      const got = qs.stamps.find(s => s.id === `spot:${sp.id}`);
+      return `<li class="${got ? 'got' : ''}"><span class="stamp">${got ? sp.stamp : '?'}</span><span><b>${got ? sp.name : 'A stop not yet seen'}</b><span class="note">${got ? got.at : ''}</span></span></li>`;
     }).join('') + (qs.stamps.some(s => s.id === 'ferry-master') ? '<li class="got"><span class="stamp">Ferry master</span><span><b>Docked by hand</b></span></li>' : '')
       + (VP.length ? (() => { const n = VP.filter(v => trigDone()[v.id]).length; return `<li class="${n === VP.length ? 'got' : ''}"><span class="stamp">${n === VP.length ? 'Trig master' : `△ ${n}/${VP.length}`}</span>`
         + `<span><b>Trig stations</b><span class="note">${n ? VP.filter(v => trigDone()[v.id]).map(v => v.name).join(', ') : 'Survey the view from each one'}</span></span></li>`; })() : '');
-    $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id)).length}/${Q.length}`;
+    $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id) || spotStamps().some(sp => s.id === `spot:${sp.id}`)).length}/${Q.length + spotStamps().length}`;
     if (life && life.passport) life.passport($('#g-pass .g-panel')); // the skills, under the stamps (jobs.js)
     // the postcards that have come from this map (the title screen's pile, postcards.js), newest first
     if (window.OEPostcards) OEPostcards.album(CITY.id, window.OE_CITIES || []).then(cards => {
@@ -3139,8 +3192,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (ds < 260) A.announce(Math.min(1, (260 - ds) / 160));
     }
   }
-  let crowdAuto = true;
-  function applyDensity() { if (crowdAuto) crowd.active = Math.round(crowd.P.length * density[settings.density] * busy()); }
+  let crowdAuto = true, govCrowd = 1; // (govCrowd: the frame-time governor's share of the crowd, its ladder below)
+  function applyDensity() { if (crowdAuto) crowd.active = Math.round(crowd.P.length * density[settings.density] * busy() * govCrowd); }
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };
@@ -3407,10 +3460,38 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // a spot (places.js): its lines, and a step waiting for it ("spot": its id) moves on
   function lookAt(sp) {
     if (sp.look && places) { closeupStart(sp); return; }
-    dlg.show({ name: sp.name, role: sp.role || '', color: sp.color || '#6d5a3a', pitch: sp.pitch || 260 }, places.lines(sp).map(fill));
+    // a spot with a frame (game.json spots[].frame {eye, look, fov}) opens the camera on it once you have read it:
+    // the angle a film or a game made the place known by, from where it was taken (#359)
+    dlg.show({ name: sp.name, role: sp.role || '', color: sp.color || '#6d5a3a', pitch: sp.pitch || 260 }, places.lines(sp).map(fill), null,
+      sp.frame ? () => framePhoto(sp) : undefined);
     spotDone(sp);
   }
-  function spotDone(sp) { if (life) life.emit('spot', { id: sp.id, name: sp.name }); for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); } }
+  function framePhoto(sp) {
+    const fr = sp.frame;
+    if (!fr || photo.on) return;
+    photoMode(true);
+    if (!photo.on) return;
+    const look = W(...fr.look), eye = W(...fr.eye), p = OECine.polar(look, eye);
+    photo.focus.copy(look); photo.anchor.copy(look);
+    Object.assign(photo, { az: p.az, pitch: Math.atan2(p.h, Math.max(0.1, p.dist)), dist: Math.max(1, eye.distanceTo(look)), fov: fr.fov || photo.fov });
+    photoSync();
+    H.toast(`<b>${sp.name}</b><span>${fr.note || 'The angle it is known by.'} <kbd>Enter</kbd> to save the photo, <kbd>Esc</kbd> to step back.</span>`);
+  }
+  // a spot with a stamp (game.json spots[].stamp) stamps the passport the first time you look at it: a pilgrimage's
+  // stops, each its own stamp beside the quests'
+  const spotStamps = () => (G.spots || []).filter(sp => sp.stamp);
+  function spotDone(sp) {
+    if (life) life.emit('spot', { id: sp.id, name: sp.name });
+    for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); }
+    if (sp.stamp && !qs.stamps.some(s => s.id === `spot:${sp.id}`)) {
+      qs.stamps.push({ id: `spot:${sp.id}`, stamp: sp.stamp, title: sp.name, at: `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}` });
+      A.chime();
+      H.stamp(sp.stamp, sp.name);
+      if (life) life.note(`Stamp: ${sp.stamp}`, 'stamp');
+      renderPassport();
+      save();
+    }
+  }
   // a photo spot's look closer (places.js closer): the eye a metre off the thing, the walker out of the
   // way, and you look along it with A/D (or the stick) and W/S, drag to turn your head, read what is in
   // the middle of the view, save a photo with Enter, and step back with E or Esc
@@ -4932,7 +5013,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
     const arrive = !cont && DISTRICT;
-    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
+    if (arrive) { spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive)); trackNear(arrive.at); }
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;
@@ -5077,19 +5158,28 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // crowd of boxes is not a city. Resolution, the reflections and the contact shadows come back as the frame
   // time allows, and so does the weather this session's shedding took (weather.js shed: a device that began with it off keeps it off).
   let fpsWarned = false;
+  // The ladder's rungs (quality.js rung: the value with every extra, at half, with none), in the order of what is
+  // missed least; resolution moves on its own between them (above). Two-way: each comes back as the frames allow.
+  // (weather.js gives back what this session's shedding took, and keeps off what started off)
+  if (weather) gov.rung('weather', [0, 1, 2], v => { weather.shed = v; });
+  gov.rung('mirror', [false, true, true], v => { if (mirror && mirror.on) mirror.off = v; });
+  // the sea's reflection: every frame while the camera moves, every second, none (water.js reflEvery)
+  if (Wd.sea && Wd.sea.reflections) gov.rung('reflection', [1, 2, 0], v => { Wd.sea.reflEvery = v; });
+  if (atmos && atmos.ao && atmos.ao.limit) gov.rung('ao', [2, 1, 0], v => atmos.ao.limit(v));
+  // the scene's multisampling: the tier's (four on high) with every extra, two at half, none at the floor, where the
+  // sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
+  if (atmos && atmos.setSamples && QC.samples) gov.rung('msaa', [QC.samples, Math.min(2, QC.samples), 0], v => atmos.setSamples(v));
+  // the sun's shadow map: the tier's, then half the texels on a side (the box keeps its size: softer edges), then 1024
+  if (Wd.setShadowSize) { const S = Wd.shadowSize; gov.rung('shadow', [S, Math.max(1024, S / 2), 1024], v => Wd.setShadowSize(v)); }
+  // the crowd: whole, whole, and three in four with none (crowd.active, as the menu's density sets it)
+  gov.rung('crowd', [1, 1, 0.75], v => { govCrowd = v; applyDensity(); });
   gov.on((extras, scale, extrasChanged) => {
     resize();
     if (window.OETelemetry && OETelemetry.set) OETelemetry.set({ scale: +scale.toFixed(2), shed: 2 - 2 * extras, msaa: atmos && atmos.composer ? atmos.composer.samples : QC.samples || 0, cap: gov.cap }); // (each step is a "quality" event: telemetry.js)
     // what this device held on this map, for the next visit to start from (it climbs again from there if it can)
-    if (gov.auto) try { localStorage.setItem(GOV_KEY, String(+scale.toFixed(2))); } catch (e) { /* storage blocked */ }
+    if (gov.auto) try { localStorage.setItem(GOV_KEY, `${+scale.toFixed(2)}/${extras}`); } catch (e) { /* storage blocked */ }
     if (!extrasChanged) return;
-    console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`);
-    if (weather) weather.shed = extras >= 1 ? 0 : extras > 0 ? 1 : 2; // (two-way: weather.js gives back what this session's shedding took, and keeps off what started off)
-    if (mirror && mirror.on) mirror.off = extras < 1;
-    if (atmos && atmos.ao && atmos.ao.limit) atmos.ao.limit(extras >= 1 ? 2 : extras > 0 ? 1 : 0);
-    // the scene's multisampling with them: the tier's (four on high) with every extra, two at half, none at the floor,
-    // where the sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
-    if (atmos && atmos.setSamples && QC.samples) atmos.setSamples(extras >= 1 ? QC.samples : extras > 0 ? Math.min(2, QC.samples) : 0);
+    console.info(`Frame budget: extras ${extras}, scene scale ${scale.toFixed(2)}`, gov.ladder);
     if (extras === 0 && !fpsWarned && !navigator.webdriver) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); }
   });
   // The frame's own writes to the page (issue 352): each of the HUD's nodes is looked up once, and its text is
@@ -5242,6 +5332,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function mirrorTick() {
     if (mirror) mirror.update(world, clockT);
   }
+  // who leaves tracks in lying snow this frame (weather.js tread): you first (on foot or in your car), then the
+  // walkers and the cars within 30 m of you
+  const treadList = [], treadPool = [];
+  function treaders(fx, fy) {
+    let k = 0;
+    const put = (id, x, y, h, car) => { const o = treadPool[k] || (treadPool[k] = {}); k++; o.id = id; o.x = x; o.y = y; o.h = h; o.car = car; treadList.push(o); };
+    treadList.length = 0;
+    if (player.mode === 'car' && myCar) put('me', myCar.D.st.x, myCar.D.st.y, myCar.D.st.h, true);
+    else if (player.mode === 'foot') put('me', player.x, player.y, player.h, false);
+    else put('me', fx, fy, 0, false); // (in the air or aboard: only the trail's frame follows you)
+    const R2 = 30 * 30;
+    if (crowd && crowd.P) for (let i = 0, n = Math.min(crowd.active, crowd.P.length); i < n && k < 60; i++) { const p = crowd.P[i]; if (p.line >= 0 && p.mode !== 'sit' && (p.x - fx) ** 2 + (p.y - fy) ** 2 < R2) put(i, p.x, p.y, p.h, false); }
+    if (cars && cars.C) for (let i = 0; i < cars.C.length && k < 80; i++) { const c = cars.C[i]; if (c.x != null && (c.x - fx) ** 2 + (c.y - fy) ** 2 < R2) put('c' + i, c.x, c.y, c.h, true); }
+    return treadList;
+  }
   // the weather's frame (weather.js): the rain round the camera, the umbrellas, the sound of it
   function weatherTick(dt, titleOn, idle = titleOn) {
     if (!weather) return;
@@ -5251,6 +5356,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const fz = player.mode === 'heli' ? heli.st.z + 1 : player.mode === 'ferry' ? 3 : player.z + 1.7;
     weather.groundY = W(fx, fy, Math.max(0, nav.terrain(fx, fy))).y; // (the ground where you are: fog thins above it, lightning strikes down to it)
     weather.update(dt, clockT, W(fx, fy, fz));
+    if (weather.tread && OEWeather.S.snowDepth > 0.02) weather.tread(treaders(fx, fy), dt); // tracks in the snow (weather.js)
     const wS = OEWeather.S, inside = player.mode === 'car' || player.mode === 'ride' || player.mode === 'heli';
     if (crowdDraw && crowdDraw.setRain) crowdDraw.setRain(Math.max(wS.rain, wS.snow * 0.7)); // (umbrellas go up in the snow too)
     if (A.rain) A.rain(titleOn ? 0 : wS.rain, weather.covered() && player.mode === 'foot', inside);
@@ -6213,7 +6319,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

@@ -4,6 +4,7 @@
     {
       "npc": "aoi", "title": "The guide", "where": "By QFRONT, across the scramble",
       "hours": { "slots": ["daytime", "evening"] },
+      "places": [{"slots": ["evening"], "at": {"spot": "hachiko", "d": [4, 4]}, "where": "By Hachiko, where everyone meets"}],
       "busy": "I've a group in ten minutes. Catch me in the daytime or early evening, when the light's on the crossing.",
       "ranks": [
         { "title": "The valley",
@@ -72,6 +73,7 @@
     {
       "npc": "taro", "title": "The photographer on the roof", "where": "SHIBUYA SKY, the roof",
       "hours": { "slots": ["evening"], "weather": "dry" },
+      "places": [{"slots": ["night"], "at": {"spot": "hachiko", "d": [-8, 10]}, "where": "Down by Hachiko, shooting the crossing at night"}],
       "busy": "Not now: the light's wrong. I'm up here at golden hour, when it's dry. The roof shuts in the rain.",
       "ranks": [
         { "title": "229 metres",
@@ -89,6 +91,7 @@
         { "title": "The gymnasium",
           "talk": ["Look north-west. The roof like two commas: Yoyogi National Gymnasium, Tange Kenzo, for the 1964 Olympics.", "The roof hangs from cables, like a suspension bridge. No columns inside. He drew it and then they had to work out whether it would stand."],
           "fact": "Yoyogi National Gymnasium, by Tange Kenzo for the 1964 Olympics, hangs its roof from steel cables like a suspension bridge.",
+          "gives": {"id": "forecast", "name": "A photographer's sky", "text": "The diary shows the next day hour by hour, and Taro writes when rain is coming", "rain": "Rain coming", "tip": "Wet streets at night are the best pictures in Shibuya. Bring a towel for the lens."},
           "needs": { "skill": "light", "level": 2, "text": "Shoot more first. Come back when you can tell me where the shadow of this building falls at four." },
           "request": { "type": "job", "id": "four-faces", "text": "Photograph the four faces of the crossing", "ask": "There's a little commission in your diary: four subjects round the crossing. Do it properly." } },
         { "title": "The mural",
@@ -103,6 +106,10 @@
     },
     {
       "npc": "haru", "title": "The Sangenjaya local", "where": "Sangenjaya, by New Marina",
+      "places": [
+        { "hours": ["13:00", "17:00"], "at": { "spot": "stair_corner", "d": [2, 2] }, "where": "Sangenjaya, at the foot of the stair at the bend" },
+        { "hours": ["17:00", "19:00"], "at": { "spot": "fork", "d": [4, -1] }, "where": "Sangenjaya, at the fork as the bars' signs light" }
+      ],
       "hours": { "slots": ["evening", "night"] },
       "busy": "I'm at work till the evening. Find me here after, any night.",
       "ranks": [
@@ -165,7 +172,7 @@
     { "id": "crepe", "name": "Crêpe stand クレープ", "where": "Harajuku, the Takeshita end", "at": { "travel": "t-harajuku", "d": [6, -5] }, "hours": ["10:30", "20:30"],
       "hello": "Hai! Sweet or savoury?",
       "menu": [ { "id": "ichigo", "name": "Strawberry and cream crêpe", "price": 620, "text": "Rolled into a cone so you can walk with it. Harajuku's crêpe stands opened on Takeshita-dori in 1977 and never left." },
-                { "id": "charm", "name": "A Hachiko charm", "price": 500, "keep": true, "text": "A small brass Akita on a red cord. For waiting well." } ] }
+                { "id": "charm", "name": "A Hachiko charm", "price": 500, "keep": true, "glyph": "犬", "text": "A small brass Akita on a red cord. For waiting well." } ] }
   ],
   "events": [
     { "id": "hatsumode", "title": "Hatsumode at Meiji Jingu", "native": "初詣", "stamp": "First visit", "where": "The south gate of Meiji Jingu, Harajuku", "dates": [[1, 1], [1, 3]],

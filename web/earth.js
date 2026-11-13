@@ -301,13 +301,17 @@ window.OEEarth = (function () {
       tDiffuse: { value: null }, uAspect: { value: 1 }, uTime: { value: 0 }, uExposure: { value: 1 }, uFade: { value: 1 }, uFlash: { value: 0 },
       uCA: { value: 0.25 }, uGrain: { value: 0.028 }, uVignette: { value: 0.14 }, uZoom: { value: 0 },
       uSunUv: { value: new THREE.Vector2(-9, -9) }, uSunVis: { value: 0 }, uFlare: { value: 1 }, uFlareTint: { value: new THREE.Color(1, 0.8, 0.6) },
+      tBloom: { value: null }, uBloom: { value: 0 },
     },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
       uniform sampler2D tDiffuse; uniform float uAspect; uniform float uTime; uniform float uExposure; uniform float uFade; uniform float uFlash;
       uniform float uCA; uniform float uGrain; uniform float uVignette; uniform float uZoom;
       uniform vec2 uSunUv; uniform float uSunVis; uniform float uFlare; uniform vec3 uFlareTint;
+      uniform sampler2D tBloom; uniform float uBloom;
       varying vec2 vUv;
+      // the scene with the bloom's half-size sum on it (lens.js stack: the bloom's blend is no pass of its own, issue 375)
+      vec3 src(vec2 uv) { vec3 c = texture2D(tDiffuse, uv).rgb; return uBloom > 0.0 ? c + texture2D(tBloom, uv).rgb : c; }
       // grain and dither from an integer hash of the pixel and the frame (pcg3d, Jarzynski and Olano,
       // JCGT 2020): fract(sin(x) * 43758.5) loses its precision on many GPUs at the arguments a
       // full-frame grain gives it, and drew diagonal streaks that crawled across the sky
@@ -362,11 +366,11 @@ window.OEEarth = (function () {
           for (int i = 0; i < 12; i++) {
             float k = 1.0 - uZoom * 0.22 * float(i) / 11.0;
             vec2 q = 0.5 + dc * k;
-            col += vec3(texture2D(tDiffuse, q - off).r, texture2D(tDiffuse, q).g, texture2D(tDiffuse, q + off).b);
+            col += vec3(src(q - off).r, src(q).g, src(q + off).b);
           }
           col /= 12.0;
         } else {
-          col = vec3(texture2D(tDiffuse, uv - off).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv + off).b);
+          col = vec3(src(uv - off).r, src(uv).g, src(uv + off).b);
         }
         if (uSunVis > 0.0) col += flare(uv);
         col = film(col * uExposure);
@@ -565,15 +569,12 @@ window.OEEarth = (function () {
     // concentric bands, each edged red and green by the chromatic fringes.
     const ldr = () => ({ type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace });
     const rt = new THREE.WebGLRenderTarget(2, 2, Object.assign(q.hdr ? { type: THREE.HalfFloatType } : ldr(), { samples: q.samples }));
-    const composer = new THREE.EffectComposer(renderer, rt);
-    if (window.OEWorld && OEWorld.leanComposer) OEWorld.leanComposer(composer); // the scene alone multisampled (world.js)
-    composer.addPass(new THREE.RenderPass(scene, camera));
     // without the pass, a stand-in keeps the director's strength settings harmless
     const bloom = q.bloom ? new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.88, 1.5) : { strength: 0, enabled: false, dispose() {} };
-    if (q.bloom && window.OELens) OELens.tameBloom(bloom); // no black frame from an overflowing highlight (lens.js)
-    if (q.bloom) composer.addPass(bloom);
     const lens = new THREE.ShaderPass(LENS());
-    composer.addPass(lens);
+    // the scene, the bloom's chain at half size and the lens, the one full-size pass, which adds the bloom as it reads
+    // (lens.js stack, issue 375: the bloom's blend was a full-size pass of its own)
+    const composer = OELens.stack(renderer, scene, camera, { target: rt, bloom: q.bloom ? bloom : null, lens });
     const LU = lens.uniforms;
 
     let w = 1, h = 1;

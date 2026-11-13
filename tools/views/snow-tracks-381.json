@@ -1,0 +1,43 @@
+[
+ {
+  "name": "kyoto-tracks",
+  "at": [
+   -262,
+   -1812
+  ],
+  "look": [
+   -292,
+   -1720
+  ],
+  "time": "10:30",
+  "dist": 7,
+  "pitch": 0.32,
+  "weather": {
+   "snow": 0,
+   "cloud": 0.5,
+   "snowDepth": 0.75,
+   "temp": -3
+  },
+  "js": "const P = g.player; for (let i = 0; i <= 300; i++) { const t = i / 300; P.x = -262 + 7 * (1 - t) + 1.5 * Math.sin(t * 9); P.y = -1812 + 40 * (1 - t); P.z = g.nav.terrain(P.x, P.y); P.h = Math.atan2(-7, -40); g.advance(0.1); } P.h = Math.atan2(-30, 92); g.advance(0.1);"
+ },
+ {
+  "name": "kyoto-tracks-none",
+  "at": [
+   -262,
+   -1812
+  ],
+  "look": [
+   -292,
+   -1720
+  ],
+  "time": "10:30",
+  "dist": 7,
+  "pitch": 0.32,
+  "weather": {
+   "snow": 0,
+   "cloud": 0.5,
+   "snowDepth": 0.75,
+   "temp": -3
+  }
+ }
+]

@@ -540,8 +540,8 @@
       "tower_"
     ],
     "start": {
-      "at": [576, 1269],
-      "facing": [640, 1267],
+      "at": [553, 1195],
+      "facing": [660, 1212],
       "time": "live"
     },
     "wharves": [
@@ -761,8 +761,8 @@
         "name": "Captain Aoki 青木船長",
         "role": "Water-bus captain 船長",
         "at": [
-          745,
-          -1080
+          732.5,
+          -1082.5
         ],
         "look": {
           "character": "R_Police_Male_05",

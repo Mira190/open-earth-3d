@@ -51,7 +51,7 @@ async function lifeStep(p, check, city) {
         if (g.dlg.hasChoices) { const k = b.ranks[0].ask.options.findIndex(o => !o.good); g.dlg.choose(k < 0 ? 0 : k); talkOut(); }
         g.advance(1);
         out.rank = L.bonds.st(b.npc).rank; out.spent = D.slot !== before; out.npcFree = !n.talking;
-        out.banner = L.ui.shown().some(o => o.kind === 'rank');
+        out.banner = L.ui.shown().concat(L.ui.queued()).some(o => o.kind === 'rank'); // (it may wait for the day's card)
         out.again = L.bonds.talk(n) && !g.dlg.hasChoices; talkOut(); // a request to do first, or their everyday line: not another rank in the same hour
         if (g.dlg.open) { g.dlg.choose(1); talkOut(); }
         out.rankSame = L.bonds.st(b.npc).rank === out.rank;
@@ -72,6 +72,85 @@ async function lifeStep(p, check, city) {
         out.twice = L.jobs.start(j.id); // not again in the same part of the day
         j.locked = lock;
       }
+      // ---- a train job (a map with a railway): taken at its station, done as you step off at the right one
+      const tj = L.data.jobs.find(x => x.type === 'train');
+      if (tj) {
+        const lock = tj.locked; tj.locked = false;
+        const slot = tj.when && tj.when.slots ? tj.when.slots[0] : D.slot;
+        if (D.slot !== slot) { D.passTo(slot); g.advance(1); }
+        const m0 = L.money, P = g.player;
+        out.trainTook = L.jobs.start(tj.id);
+        P.x = tj.at[0]; P.y = tj.at[1]; P.z = g.nav.terrain(tj.at[0], tj.at[1]); g.advance(1);
+        out.trainRun = !!(L.jobs.active && L.jobs.active.phase === 'run');
+        L.emit('ride', { kind: 'rail', from: tj.from, to: '__wrong', name: 'Elsewhere' });
+        out.trainWrong = !!L.jobs.active; // (off at the wrong stop: still on)
+        L.emit('ride', { kind: 'rail', from: tj.from, to: tj.to_station, name: tj.to_name });
+        out.trainPaid = L.money - m0; out.trainDone = !L.jobs.active && L.jobs.st(tj.id).n === 1;
+        tj.locked = lock;
+      }
+      // ---- people keep other places at other hours (bonds[].places): every place stands them on firm ground near it,
+      // not on a roof; they move at the turn of the hour under its veil, and never while you stand watching them
+      const P = g.player, mv = L.ctx.npcMove;
+      out.places = 0; out.placeBad = [];
+      for (const bd of L.data.bonds) for (const pl of bd.places || []) {
+        const n = g.npcs.find(x => x.id === bd.npc), x0 = n.x, y0 = n.y, z0 = n.z;
+        mv(n, pl.at);
+        const off = Math.hypot(n.x - pl.at[0], n.y - pl.at[1]), up = n.z - g.nav.terrain(n.x, n.y);
+        out.places++;
+        if (off > 16 || up > 4 || up < -2) out.placeBad.push(`${bd.npc} at ${pl.where}: ${off.toFixed(1)} m off, ${up.toFixed(1)} m up`);
+        mv(n, [x0, y0, z0]);
+      }
+      const pb = L.data.bonds.find(x => x.places && x.places.some(p => p.slots && !p.weather));
+      if (pb) {
+        const pl = pb.places.find(p => p.slots && !p.weather), n = g.npcs.find(x => x.id === pb.npc);
+        const other = D.SLOTS.find(sl => !pb.places.some(p => p.slots && p.slots.includes(sl)) && sl !== pl.slots[0]);
+        if (D.slot !== other) { D.passTo(other); g.advance(1); }
+        const home = [n.x, n.y], sb = L.bonds.st(pb.npc), met0 = sb.met;
+        // someone you have not met keeps the map's place at every hour (the first quest's giver waits by the start)
+        sb.met = 0;
+        P.x = n.x + 400; P.y = n.y + 400;
+        g.setClock(c.y, c.m, c.d, D.bounds()[pl.slots[0]] + 5); g.advance(1); L.bonds.rounds(true);
+        out.strangerStays = Math.hypot(n.x - home[0], n.y - home[1]) < 2;
+        if (D.slot !== other) { D.passTo(other); g.advance(1); }
+        sb.met = 1;
+        // you stand beside them as the hour turns on the clock (no veil): they stay
+        P.x = n.x + 2; P.y = n.y; P.z = n.z;
+        g.setClock(c.y, c.m, c.d, D.bounds()[pl.slots[0]] + 5); g.advance(1);
+        out.stayWatched = Math.hypot(n.x - home[0], n.y - home[1]) < 2;
+        // you walk away: they go
+        P.x = n.x + 400; P.y = n.y + 400; g.advance(1);
+        out.movedAway = Math.hypot(n.x - pl.at[0], n.y - pl.at[1]) < 16;
+        out.whereSaid = L.bonds.whereOf(pb) === pl.where;
+        // and back, at once, when time passes under the veil
+        D.passTo(other); g.advance(1);
+        out.movedBack = Math.hypot(n.x - home[0], n.y - home[1]) < 2;
+        sb.met = met0;
+        out.placeWho = pb.npc;
+      }
+      // ---- a friend's forecast (gives "forecast"): the next day hour by hour on today's page
+      const fb = L.data.bonds.find(x => x.ranks.some(r => r.gives && r.gives.id === 'forecast'));
+      if (fb) {
+        const st = L.bonds.st(fb.npc), r0 = st.rank;
+        out.fcBefore = !!L.ability('forecast');
+        st.rank = fb.ranks.findIndex(r => r.gives && r.gives.id === 'forecast') + 1;
+        const f = D.forecast();
+        out.fcCells = f ? f.cells.length : 0;
+        D.show('today'); out.fcDrawn = document.querySelectorAll('.lf-diary .lf-fc li').length; D.close();
+        out.fcFrom = (L.ability('forecast') || {}).from;
+        st.rank = r0;
+      }
+      // ---- a banner waits while a station's arrival sign is up (places.js), then has its turn
+      {
+        document.querySelectorAll('.lf-card').forEach(el => el.remove());
+        L.ui.clear();
+        const sign = document.createElement('div'); sign.className = 'g-ekimei'; L.ctx.stage.appendChild(sign);
+        L.ui.banner({ kind: 'test', title: 'Waits' });
+        out.bannerWaited = !L.ui.shown().some(o => o.kind === 'test') && !document.querySelector('.lf-banner');
+        sign.remove();
+        await new Promise(r => setTimeout(r, 800));
+        out.bannerAfter = L.ui.shown().some(o => o.kind === 'test');
+        L.ui.clear();
+      }
       // ---- a counter and the calendar
       const s = L.data.shops[0];
       if (s) {
@@ -81,6 +160,18 @@ async function lifeStep(p, check, city) {
         const a = L.action(); out.counter = !!(a && a.act);
         if (a && a.act) { a.act(); talkOut(); g.dlg.choose(s.menu.findIndex(m => !m.keep)); talkOut(); }
         out.dish = m0 - L.money; out.taste = L.xp('taste') - t0;
+      }
+      // ---- a keepsake: bought at its counter, it is in the album (the diary's Keepsakes), across maps
+      const ks = L.data.shops.find(x => x.menu.some(m => m.keep));
+      if (ks) {
+        const k = ks.menu.findIndex(m => m.keep);
+        g.setClock(c.y, c.m, c.d, ks.hours ? +ks.hours[0].slice(0, 2) * 60 + 90 : c.min); g.advance(1);
+        g.player.x = ks.at[0]; g.player.y = ks.at[1]; if (ks.at[2] != null) g.player.z = ks.at[2];
+        L.store.wallets[L.code] += 100000;
+        const a = L.action();
+        if (a && a.act) { a.act(); talkOut(); g.dlg.choose(k); talkOut(); }
+        out.kept = L.jobs.album().some(x => x.id === ks.menu[k].id && x.city === L.ctx.cityId);
+        D.show('album'); out.albumCards = document.querySelectorAll('.lf-keeps li:not(.empty)').length; D.close();
       }
       const e = L.data.events.find(x => x.at);
       if (e) {
@@ -92,7 +183,7 @@ async function lifeStep(p, check, city) {
         g.player.x = e.at[0]; g.player.y = e.at[1]; if (e.at[2] != null) g.player.z = e.at[2];
         const a = L.action(); out.eventAct = !!(a && a.act);
         if (a && a.act) { a.act(); talkOut(); }
-        out.kept = !!L.city().events[e.id];
+        out.eventKept = !!L.city().events[e.id];
       }
       // ---- fireworks, where the calendar has them
       const fw = L.data.events.find(x => x.fx === 'fireworks' && x.at);
@@ -140,7 +231,7 @@ async function lifeStep(p, check, city) {
   check(r.slot1 !== r.slot0 && r.cards1 > r.cards0, `the day: passing the time moves on to the next part of it (${r.slot0} to ${r.slot1}), with its card`);
   check(r.newDay && r.days1 > r.days0 && r.days1 <= r.days0 + 2 && r.slot2 === 'morning' && r.cardKind === 'day', `the day: on to tomorrow morning, day ${r.days1}`);
   // (from the night, the next part of the day is already tomorrow's morning: two days on)
-  check(r.diary && r.tabs.includes('today') && r.tabs.includes('people') && r.tabs.includes('work') && r.tabs.includes('log'), `the diary opens on today, with its pages (${(r.tabs || []).join(', ')})`);
+  check(r.diary && ['today', 'people', 'work', 'album', 'log'].every(t => r.tabs.includes(t)), `the diary opens on today, with its pages (${(r.tabs || []).join(', ')})`);
   check(r.eye > 0 && r.passport === 5, `the passport: a good guess grows the eye (+${r.eye}), and its five skills are drawn`);
   if (r.bonds) {
     check(r.free && r.talked && r.offer, `bonds: ${city}'s first is free at their hour and offers the time`);
@@ -154,7 +245,13 @@ async function lifeStep(p, check, city) {
     check(!r.twice, 'jobs: not offered again in the same part of the day');
   }
   if (r.shops) check(r.counter && r.dish > 0 && r.taste > 0, `a counter: a dish bought (${r.dish}) grows the taste`);
-  if (r.events) check(r.listed && r.eventAct && r.kept, 'the calendar: an event is listed on its date, joined at its place and kept');
+  if (r.events) check(r.listed && r.eventAct && r.eventKept, 'the calendar: an event is listed on its date, joined at its place and kept');
+  if (r.kept != null) check(r.kept && r.albumCards >= 1, `keepsakes: one bought is in the album (${r.albumCards} card${r.albumCards === 1 ? '' : 's'})`);
+  if (r.trainTook != null) check(r.trainTook && r.trainRun && r.trainWrong && r.trainDone && r.trainPaid > 0, `jobs: a train job taken at its station, not done at the wrong stop, paid at the right one (+${r.trainPaid})`);
+  if (r.places) check(!r.placeBad.length, `people's places by the hour: all ${r.places} on firm ground by where they are written${r.placeBad.length ? ` (${r.placeBad.join('; ')})` : ''}`);
+  if (r.placeWho) check(r.strangerStays && r.stayWatched && r.movedAway && r.whereSaid && r.movedBack, `people move by the hour: ${r.placeWho} keeps the map's place until you have met (${r.strangerStays}), stays while watched, goes when you leave, the diary says where, and is back as time passes`);
+  if (r.fcCells != null) check(!r.fcBefore && r.fcCells >= 7 && r.fcDrawn >= 7, `the forecast: given by ${r.fcFrom}, the next day in ${r.fcCells} steps on today's page`);
+  check(r.bannerWaited && r.bannerAfter, 'a banner waits for a station\'s arrival sign, then shows');
   if (r.music != null) check(r.music && r.want && r.want.slot === 'night' && r.want.rain > 0.2 && !!r.want.palette === /Japan|Australia|New Zealand/.test(r.country || 'Japan') && r.vol, `the score plays with the sound and follows the hour and the weather ("${r.score0}" to "${r.score1}"), with its own volume`);
   if (r.fireworks != null) check(r.fwOn && r.fireworks > 50 && r.fwOff === 0, `the calendar's fireworks go up while their event is on (${r.fireworks} sparks) and stop after`);
   check(r.reloaded && r.restored, 'the save: skills, wallet, ranks, jobs and days read back as they were');

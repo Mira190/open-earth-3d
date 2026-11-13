@@ -6,7 +6,7 @@
 // place, the spots reached and the buried ones (how deep, which mesh), and exits 1 when any place has one.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/stand_clip.js sydney [radius m]        # llvmpipe; without xvfb-run, SwiftShader
-// env: PLACES="jacaranda-lookout,..." (only these travel ids), DEEP=0.3 (m), JSON=out.json (every buried spot)
+// env: PLACES="jacaranda-lookout,..." (only these travel ids; PLACES=none WATER=1: only the water), DEEP=0.3 (m), JSON=out.json (every buried spot)
 const { chromium } = require('playwright');
 const fs = require('fs');
 const [,, city = 'sydney', radius = '60'] = process.argv;
@@ -89,6 +89,55 @@ const [,, city = 'sydney', radius = '60'] = process.argv;
       }
       return { id: t.id, name: t.name, at: [x0, y0, z0], n, buried };
     }, [t, +radius, +(process.env.DEEP || 0.3)]));
+  }
+  // the landmarks' water (a pond, a moat): the ground the page draws must stay under it (#399: Shinjuku Gyoen's pond
+  // had the 5 m ground stand through it as grey pyramids). Near each sheet of water (so its 5 m ground is drawn), look
+  // down onto the ground at points of the sheet more than half a 5 m cell from its edge (where a landmark's own bank or
+  // wall stands): ground over the water there is a poke
+  const waters = only.length && !process.env.WATER ? [] : await p.evaluate(() => {
+    const out = [];
+    window.__game.Wd.world.traverse(o => { if (o.isMesh && /water|pond/i.test(`${o.name} ${(o.material && o.material.name) || ''}`) && /^[a-z0-9]+_[a-z0-9_]+$/.test(o.name) && !/^inland_/.test(o.name)) { // (a landmark's: not a channel's, inland.js, whose ground is cut away round it)
+      const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
+      if (b.max.x - b.min.x < 1e4) out.push({ name: o.name, at: [c.x, -c.z] });
+    } });
+    return out;
+  });
+  for (const w of waters) {
+    res.push(await p.evaluate(w => {
+      const g = window.__game, W = g.Wd.world;
+      g.travelTo({ kind: 'point', id: 'waypoint', name: w.name, at: w.at });
+      for (let k = 0; k < 40 && g.cine.active; k++) g.advance(0.25);
+      g.advance(0.5);
+      W.updateMatrixWorld(true);
+      let sheet = null;
+      W.traverse(o => { if (!sheet && o.isMesh && o.name === w.name) sheet = o; });
+      const ground = [];
+      W.traverseVisible(o => { if (o.isMesh && (g.Wd.groundMeshes.includes(o) || g.Wd.groundMeshes.some(m => m.material === o.material))) ground.push(o); });
+      const pos = sheet.geometry.attributes.position, ix = sheet.geometry.index, n = ix ? ix.count : pos.count, at = k => (ix ? ix.getX(k) : k);
+      const V = k => new THREE.Vector3().fromBufferAttribute(pos, at(k)).applyMatrix4(sheet.matrixWorld);
+      // the sheet's level faces, and its outline (the edges of one face only)
+      const faces = [], edges = new Map(), key = (a, b) => { const p = V(a), q = V(b); const s = v => `${v.x.toFixed(2)},${v.z.toFixed(2)}`; return [s(p), s(q)].sort().join('|'); };
+      for (let k = 0; k + 2 < n; k += 3) {
+        const a = V(k), b = V(k + 1), c = V(k + 2), nrm = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
+        if (Math.abs(nrm.y) < 0.9 * nrm.length() || nrm.length() < 1e-6) continue;
+        faces.push([a, b, c]);
+        for (const [u, v] of [[k, k + 1], [k + 1, k + 2], [k + 2, k]]) { const e = key(u, v); edges.set(e, edges.has(e) ? null : [V(u), V(v)]); }
+      }
+      const rim = [...edges.values()].filter(Boolean);
+      const toRim = p => { let d = Infinity; for (const [a, b] of rim) { const dx = b.x - a.x, dz = b.z - a.z, l = dx * dx + dz * dz, t = l ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l)) : 0; d = Math.min(d, Math.hypot(p.x - a.x - t * dx, p.z - a.z - t * dz)); } return d; };
+      const rc = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0), buried = [];
+      let m = 0;
+      for (const [a, b, c] of faces) for (let i = 0; i < 12; i++) {
+        let u = Math.random(), v = Math.random(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
+        const p = a.clone().addScaledVector(new THREE.Vector3().subVectors(b, a), u).addScaledVector(new THREE.Vector3().subVectors(c, a), v);
+        if (toRim(p) < 2.5) continue;
+        m++;
+        rc.set(new THREE.Vector3(p.x, p.y + 60, p.z), down);
+        const h = rc.intersectObjects(ground, false)[0];
+        if (h && h.point.y > p.y + 0.05) buried.push({ x: +p.x.toFixed(1), y: +(-p.z).toFixed(1), z: +p.y.toFixed(2), deep: +(h.point.y - p.y).toFixed(2), mesh: 'the ground' });
+      }
+      return { id: `water:${w.name}`, name: `${w.name} (the ground under the water)`, at: [w.at[0], w.at[1], 0], n: m, buried };
+    }, w));
   }
   let bad = 0;
   for (const r of res) {

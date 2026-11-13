@@ -839,9 +839,7 @@
       {
         "id": "yongen",
         "title": "Sangenjaya",
-        "after": [
-          "start"
-        ]
+        "after": []
       },
       {
         "id": "finale",
@@ -965,6 +963,7 @@
         "talk": [
           "Sangenjaya, three tea houses. In a game it's Yongen-Jaya, four: the same backstreets with one more tea house.",
           "The game's café has the front of a snack bar here, New Marina. The bathhouse was Chiyo-no-yu, across the lane: closed now, its board still up.",
+          "The pilgrims' walk: up from Route 246 past Pukuichi, the café's lane and the bath's board, the stair corner past the Thai place, the fork where the bars' signs stand and the covered passage, then round to Hanamasa and the batting centre's stair. Each stop stamps your passport.",
           "Take it slow. These are people's homes and small shops."
         ],
         "steps": [
