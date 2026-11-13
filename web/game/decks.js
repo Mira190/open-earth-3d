@@ -123,12 +123,13 @@ window.OEDecks = (function () {
   }
 
   // the stretches of a line's deck pieces (points k to k + 1 with either on a deck) over a built surface with less than
-  // head room and the slab under them: each brought down onto that surface (points put in at its ends, every metre
+  // head room and the slab under them, or lying on it (a deck there at the surface's own level would stand its
+  // parapets across it: Okazaki-michi's footway across the bridge's end): each brought down onto that surface (points put in at its ends, every metre
   // sampled). Returns the line's points, classes and heights, new where anything changed (o.p too)
   const KNEE = 0.4, HEAD = 1.8; // (nav.js: a walker's body, from the feet)
   function onSurfaces(o, p, cls, zs, nav) {
     const n = p.length / 3, X = k => p[3 * k] / 10, Y = k => p[3 * k + 1] / 10;
-    const low = (x, y, z) => { const s = nav.surfaceAt(x, y); return s > -Infinity && z > s + KNEE && z - THICK < s + HEAD ? s : null; };
+    const low = (x, y, z) => { const s = nav.surfaceAt(x, y); return s > -Infinity && z > s - KNEE && z - THICK < s + HEAD ? s : null; };
     let changed = false;
     const P = [], C = [], Z = [];
     const put = (x, y, z, c) => { P.push(x * 10, y * 10, Math.round(z * 10)); C.push(c); Z.push(z); };
@@ -239,13 +240,14 @@ window.OEDecks = (function () {
       // a line along a bridge's strip that the data puts a few metres past its edge, and so far below it (the
       // Harbour Bridge cycleway, mapped a metre outside the deck and given the ground's height plus a level):
       // on the deck's level beside it, as long as the line is on the strip somewhere else
-      // (and one the data lifts a level, onto a deck in the air a metre or two outside a bridge's strip: a sidewalk
-      // mapped beside the bridge, Okazaki-michi's over the Shirakawa, which stood 4.5 m over the road beside it, #399)
+      // (and a footway the data lifts a level, onto a deck in the air a metre or two outside a bridge's strip: a sidewalk
+      // mapped beside the bridge, Okazaki-michi's over the Shirakawa, which stood 4.5 m over the road beside it, #399;
+      // not a road, which may be a viaduct crossing over the bridge, the Western Distributor over Pyrmont Bridge)
       const along = cls.some(c => c === 1);
       for (let k = 0; k < n; k++) {
         if (cls[k] === 1) continue;
         const h = nav.stripBeside(X(k), Y(k), EDGE);
-        if (h != null && ((along && h - zs[k] > 2 * RISE) || (cls[k] === 2 && zs[k] - h > RISE && zs[k] - h < 2 * RISE))) { cls[k] = 2; zs[k] = h; }
+        if (h != null && ((along && h - zs[k] > 2 * RISE) || (kind === 'foot' && cls[k] === 2 && zs[k] - h > RISE && zs[k] - h < 2 * RISE))) { cls[k] = 2; zs[k] = h; }
       }
       // a road over a dip in the ground drawn under it (a rail cutting under the street, the survey's
       // grid catching the bottom of a hollow): carried level over it on a deck, as a road is, from the
@@ -282,10 +284,12 @@ window.OEDecks = (function () {
             zs[k] = Math.max(nav.terrain(X(k), Y(k)) + THICK + 0.6, (z1[k - 1] + 2 * z1[k] + z1[k + 1]) / 4);
         }
       }
-      // A deck never stands in the body of someone on a surface it crosses (a bridge's strip, a pier): where a piece
-      // of deck passes over one with less than head room and its slab under it, that stretch of the line comes down
+      // A deck never stands in the body of someone on a surface it crosses (a bridge's strip, a pier), nor lies on it:
+      // where a piece of deck passes over one with less than head room and its slab under it, that stretch of the line comes down
       // onto the surface, from where it first is that low to where it last is (points put in there, #399)
-      ({ p, cls, zs, n } = onSurfaces(o, p, cls, zs, nav));
+      // (a footway's: a road's deck that low over a strip is a ramp climbing over a footbridge, the Western Distributor's
+      // over Pyrmont Bridge, which brought down onto it would put the traffic on the footbridge)
+      if (kind === 'foot') ({ p, cls, zs, n } = onSurfaces(o, p, cls, zs, nav));
       // a loose end on a deck (no other line meets it): cut back what is over the water, and
       // bring the first point on land down to the ground
       const loose = (i, step, stop) => {
