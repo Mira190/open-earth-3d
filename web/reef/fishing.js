@@ -17,15 +17,16 @@
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
 
-function loadScript(src) {
-  if (window.OEFishing) return Promise.resolve();
+function loadScript(src, have = window.OEFishing) {
+  if (have) return Promise.resolve();
   return new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error(`${src} did not load`)); document.head.appendChild(el); });
 }
 
 export async function init(ctx, game) {
   const { THREE, scene, camera, env, q } = ctx, player = ctx.player, PS = player.S, ui = game.ui;
-  const [, data, { mergeGeometries }] = await Promise.all([
+  const [, , data, { mergeGeometries }] = await Promise.all([
     loadScript(new URL('../game/fishing.js', import.meta.url).href),
+    loadScript(new URL('../game/fishart.js', import.meta.url).href, window.OEFishArt),   // (the fish's pictures: the log's portraits and the body on the line)
     fetch(`../data/${ctx.site}/fishing.json`).then(r => { if (!r.ok) throw new Error(`fishing.json: ${r.status}`); return r.json(); }),
     import('three/addons/utils/BufferGeometryUtils.js')]);
   const T3 = Object.assign({}, THREE, { BufferGeometryUtils: { mergeGeometries } });
