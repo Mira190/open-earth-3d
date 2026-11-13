@@ -89,9 +89,22 @@ async function fishingStep(p, shot) {
     if (w.st !== 'bite') { fails.push(`fishing ${id}: no bite in 40 s (${w.st})`); await p.evaluate(() => window.__game.fishing().api.stop(true)); continue; }
     const s = await strike(p);
     if (s.st !== 'fight') { fails.push(`fishing ${id}: the strike did not hook it (${s.st})`); continue; }
+    // hooked: the fish is on the line with its head toward the angler (the hook is in its lip), not turned away along the line
+    const hk = await p.evaluate(() => { const g = window.__game, a = g.fishing().api; g.advance(0.6); const m = a.fishMesh(); if (!m || !m.visible) return { err: 'no fish drawn on the line' };
+      const T = window.THREE, nose = new T.Vector3(0, 1, 0).applyQuaternion(m.quaternion), to = new T.Vector3(g.player.x - m.position.x, 0, -g.player.y - m.position.z).normalize();
+      return { dot: nose.x * to.x + nose.z * to.z }; });
+    if (hk.err) fails.push(`fishing ${id}: ${hk.err}`); else if (hk.dot < 0.3) fails.push(`fishing ${id}: the hooked fish faces away from the angler (${hk.dot.toFixed(2)})`);
     const e = await play(p);
     if (e.st !== 'card') fails.push(`fishing ${id}: the ${e.fish} was not landed (${e.st}, tension up to ${e.top.toFixed(2)})`);
     else if (!e.log[e.fish] || e.log[e.fish].n < 1) fails.push(`fishing ${id}: the catch is not in the log`);
+    // the catch hangs by the lip from the line (nose up, tail down) and is in the frame, not behind the card's edge or off the screen
+    await p.evaluate(() => window.__game.advance(3));
+    const ff = e.st === 'card' ? await fishInFrame(p) : null;
+    if (e.st === 'card') {
+      if (!ff) fails.push(`fishing ${id}: no fish held up after the catch`);
+      else if (Math.abs(ff.x) > 0.95 || Math.abs(ff.y) > 0.95 || Math.abs(ff.nose[0]) > 0.95 || Math.abs(ff.nose[1]) > 0.95) fails.push(`fishing ${id}: the caught fish is off the screen (${ff.x}, ${ff.y})`);
+      else if (!(ff.nose[1] > ff.y)) fails.push(`fishing ${id}: the caught fish does not hang nose up`);
+    }
     if (shot) await shot(`fishing-${id}-catch`);
     say(`${id}: ${b.text}; cast ${c.line.toFixed(0)} m; a ${e.cm} cm ${e.fish} ${e.st === 'card' ? 'landed' : e.st}; ${e.drawn} things drawn`);
     if (e.drawn > 5) fails.push(`fishing ${id}: ${e.drawn} draw calls with a line out (5 at most)`);
@@ -112,4 +125,6 @@ async function fishingStep(p, shot) {
   }
   return fails;
 }
-module.exports = { fishingStep, goTo, loaded, state, begin, cast, bite, strike, play };
+// where the held-up fish is on the screen, in -1..1 (the card's catch must be in the frame), and how far from the camera
+const fishInFrame = p => p.evaluate(() => { const g = window.__game, a = g.fishing().api, m = a.fishMesh(); if (!m || !m.visible) return null; const v = m.position.clone().project(g.camera), up = m.position.clone(); up.y += m.scale.y * 0.5; const n = up.project(g.camera); return { x: +v.x.toFixed(2), y: +v.y.toFixed(2), nose: [+n.x.toFixed(2), +n.y.toFixed(2)], d: +m.position.distanceTo(g.camera.position).toFixed(2), pl: [+g.player.x.toFixed(1), +g.player.y.toFixed(1), +g.player.z.toFixed(1)], cam: g.camera.position.toArray().map(x => +x.toFixed(1)), at: m.position.toArray().map(x => +x.toFixed(1)) }; });
+module.exports = { fishInFrame, fishingStep, goTo, loaded, state, begin, cast, bite, strike, play };

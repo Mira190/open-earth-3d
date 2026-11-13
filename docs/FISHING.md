@@ -62,11 +62,14 @@ What you see of a fish in a cast:
 1. **The take.** The float goes under; a ring and a beep.
 2. **The strike.** The float is gone (it is dragged under), the fish breaks the surface at once with a splash, and the
    rod bends to it.
-3. **The fight.** The fish is on the end of the line, its head across the line when it pulls and along it when it
-   runs, the tail working. Now and then it shakes its head at the surface; when it runs it leaps. A beaten fish rolls
-   on its side and shows its flank. The line goes to its mouth.
-4. **The catch.** The fish is held up in front of the camera, flank to it, large, with its card beside it (above the
-   card on a phone), swaying a little and still kicking.
+3. **The fight.** The fish is on the end of the line with its head toward you, because the hook is in its lip: it pulls
+   across the line and never turns away along it, the tail working. Now and then it shakes its head at the surface;
+   when it runs it leaps. A beaten fish rolls on its side and shows its flank. The line goes to its mouth.
+4. **The catch.** Lifted out, it hangs by the lip from the line, nose up and tail down, swinging a little and still
+   kicking, as a hooked fish does. The angler swings the rod round toward the camera and the camera comes in, so the
+   fish hangs large in the frame (to the left of the angler, beside its card; above the card on a phone).
+   `tools/game_check.js` fails if a hooked fish faces away from the angler, or the caught one is off the screen or
+   not hanging nose up.
 
 The log is under **Menu → Fish log** (and **J** or the Log button with a line out). It shows each kind's portrait, your
 best against the largest it grows, how to tell it, and (after a second catch) the months and light it bites in.

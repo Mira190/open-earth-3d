@@ -413,7 +413,7 @@ window.OEFishing = (function () {
       S.st = 'fight'; S.t = 0; S.acc = 0; S.warned = 0;
       fight(P.s, P.cm, S.line, save.assist, F);
       band(SWEET[0], SWEET[1]); hud.btns.hidden = true;
-      gear.float.visible = false; gear.fish.dress(P.s, P.cm); gear.fish.mesh.visible = true; S.leap = 0.5; S.thrash = 1.2; S.roll = 0; S.nx = Math.sin(heading()); S.ny = Math.cos(heading());   // the strike: it breaks the surface at once
+      gear.float.visible = false; gear.fish.dress(P.s, P.cm); gear.fish.mesh.visible = true; S.leap = 0.5; S.thrash = 1.2; S.roll = 0; S.nx = -Math.sin(heading()); S.ny = -Math.cos(heading());   // the strike: it breaks the surface at once
       ring(S.x, S.y, 1.5); A.beep(1240);
       if (navigator.vibrate) try { navigator.vibrate(60); } catch (e) { /* not allowed */ }
     }
@@ -432,7 +432,7 @@ window.OEFishing = (function () {
       keep();
       S.st = 'card'; S.t = 0; gear.float.visible = false; band(0, 0); setFar(-1); setMeter(0, '');
       const tall = S.tall = ctx.stage.clientHeight > ctx.stage.clientWidth; // (a phone held upright sees 25° across: from further round the fish would be out of the picture)
-      cam.yawTo = heading() + (tall ? 0.55 : SHOW); cam.distTo = tall ? 4.2 : 2.9; cam.pitch = 0.1; cam.lastInput = -10; ctx.stage.classList.add('fish-show');
+      cam.yawTo = heading() + (tall ? 0.55 : SHOW); cam.distTo = (tall ? 2.2 : 1.9) + P.cm / 100 * 3; cam.pitch = 0.1; cam.lastInput = -10; ctx.stage.classList.add('fish-show');
       gear.fish.dress(s, P.cm); gear.fish.mesh.visible = true; S.roll = 0;
       const why = legal(s, P.cm), z = zoneOf(S.spot), clean = F.t > 3 && F.sweet / F.t > 0.45;
       hud.card.innerHTML = `<span class="tag">${first ? 'New in the log' : P.cm > wasBest ? `Your best · was ${wasBest} cm` : `${e.n + 1} caught`}</span><h3>${s.name}</h3><em>${s.sci}</em>`
@@ -478,8 +478,9 @@ window.OEFishing = (function () {
       const f = gear.fish, m = f.mesh, len = P.cm / 100, run = F.phase === 'run', beaten = F.E <= 0;
       S.leap = Math.max(0, S.leap - dt);
       if ((S.thrash -= dt) < 0) { S.thrash = 1.3 + rnd() * 1.5; if (!run && !beaten) { S.leap = 0.3; S.small = 1; ring(S.x, S.y, 0.5 + len); } }   // it breaks the surface now and then, shaking its head
-      const turn = (run ? 0.35 : 1.0) * Math.sin(F.t * 1.3) + (beaten ? 1.2 : 0);          // across the line when it pulls, along it when it runs
-      const tx = hx * Math.cos(turn) - hy * Math.sin(turn), ty = hy * Math.cos(turn) + hx * Math.sin(turn);
+      // the hook is in its lip, so its head is toward the line and you: it pulls across the line, never turned away along it
+      const turn = (run ? 0.3 : beaten ? 0.12 : 0.75) * Math.sin(F.t * (run ? 2.6 : 1.3));
+      const tx = -hx * Math.cos(turn) + hy * Math.sin(turn), ty = -hy * Math.cos(turn) - hx * Math.sin(turn);
       const k = Math.min(1, dt * 6); S.nx += (tx - S.nx) * k; S.ny += (ty - S.ny) * k;
       const nl = Math.hypot(S.nx, S.ny) || 1; S.nx /= nl; S.ny /= nl;
       const hop = S.leap > 0 ? Math.sin(Math.PI * (1 - S.leap / (S.small ? 0.3 : 0.55))) * (0.18 + 0.5 * Math.sqrt(len)) * (S.small ? 0.35 : 1) : 0;
@@ -565,7 +566,7 @@ window.OEFishing = (function () {
         if (F.event === 'run') S.leap = 0.55;
         if (end === 'landed') { landed(); } else if (end) { lost(end); return; }
       } else if (S.st === 'card') {
-        pitch = 1.55; bendTo = 0.08;   // the rod stood up beside the fish, out of its way
+        pitch = S.tall ? 0.95 : 0.65; bendTo = 0.1 + 0.25 * Math.min(1, P.g / 3000);
       } else if (S.st === 'lost') {
         pitch = 0.95; if (S.t > 1.6) { S.st = 'aim'; S.t = 0; S.power = 0; }
       }
@@ -575,9 +576,15 @@ window.OEFishing = (function () {
       const h = heading(), sx = Math.sin(h), sy = Math.cos(h);
       toW(hold, player.x + sx * 0.3 + sy * 0.17, player.y + sy * 0.3 - sx * 0.17, player.z + 1.02);
       if (player.rig) { player.rig.hold = hold; if (player.rig.fist && player.rig.fist(base)) { /* the wrist as posed */ } else base.copy(hold); } else base.copy(hold);
+      let rx = sx, ry = sy;
+      if (S.st === 'card') {                              // swung round to show the catch: toward the camera, a little to the left of it (straight on, and high, on a phone)
+        let dx = ctx.camera.position.x - player.x, dy = -ctx.camera.position.z - player.y; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;   // (world z is south: the game's y is north)
+        const a = S.tall ? 0.0 : 0.2, ca = Math.cos(a), sa = Math.sin(a);   // (the camera looks a little off the angler: the fish is brought into the middle of the frame)
+        rx = dx * ca + dy * sa; ry = dy * ca - dx * sa;
+      }
       const cp = Math.cos(S.rodPitch), sp = Math.sin(S.rodPitch);
-      v1.set(sx * cp, sp, -sy * cp);                    // along the rod (world: x east, y up, z south)
-      v2.set(sx * sp, -cp, -sy * sp);                   // square to it, the way the line pulls it: forward and down
+      v1.set(rx * cp, sp, -ry * cp);                    // along the rod (world: x east, y up, z south)
+      v2.set(rx * sp, -cp, -ry * sp);                   // square to it, the way the line pulls it: forward and down
       v3.crossVectors(v1, v2).normalize();
       m4.makeBasis(v3, v1, v2); gear.rod.quaternion.setFromRotationMatrix(m4); gear.rod.position.copy(base).addScaledVector(v1, -0.12);
       gear.bend.value = S.bend * 0.8; gear.rod.visible = gear.line.visible = true;
@@ -585,23 +592,18 @@ window.OEFishing = (function () {
       const lp = gear.line.geometry.attributes.position;
       if (S.st === 'aim' || S.st === 'charge' || S.st === 'lost') { toW(v4, player.x + sx * 0.9, player.y + sy * 0.9, player.z + 1.2 + 0.25 * Math.sin(S.t * 2.1)); slack = 0.4; }
       else if (S.st === 'cast') { const k = clamp(S.t / 0.75, 0, 1); toW(v4, player.x + (S.x - player.x) * k, player.y + (S.y - player.y) * k, (player.z + 3.2) * (1 - k) * (1 - k) + 0.05 + 4 * k * (1 - k) * 2.2); }
-      else if (S.st === 'card') { v4.copy(tip); v4.y -= S.tall ? 0.4 : 1.05; }   // (held high on a tall screen, over the card)
+      else if (S.st === 'card') { v4.copy(tip); v4.y -= 0.45 + 0.2 * P.cm / 100; }   // a short line to its mouth
       else if (S.st === 'fight') v4.copy(mouth);
       else toW(v4, S.x, S.y, 0.05 + floatY + (S.st === 'wait' ? 0.012 * Math.sin(ctx.time() * 2.3) : 0));
       const sag = slack * 0.14 * tip.distanceTo(v4);
       for (let i = 0; i < LINE_N; i++) { const k = i / (LINE_N - 1); lp.setXYZ(i, tip.x + (v4.x - tip.x) * k, tip.y + (v4.y - tip.y) * k - sag * 4 * k * (1 - k), tip.z + (v4.z - tip.z) * k); }
       lp.needsUpdate = true;
       if (gear.float.visible) gear.float.position.copy(v4);
-      if (S.st === 'card') { // held up in front of the camera, flank to it, nose to the card, swaying a little and still kicking at first
-        const f = gear.fish.mesh, cm = ctx.camera, len = P.cm / 100;
-        cm.getWorldDirection(cd); cu.set(0, 1, 0).applyQuaternion(cm.quaternion); cr.crossVectors(cd, cu).normalize();
-        const D = clamp(len * (S.tall ? 4.4 : 2.7), 0.8, 4.2), vh = 2 * D * Math.tan(cm.fov * Math.PI / 360), vw = vh * cm.aspect, t = S.t;
-        f.position.copy(cm.position).addScaledVector(cd, D).addScaledVector(cr, S.tall ? 0 : -vw * 0.2).addScaledVector(cu, (S.tall ? vh * 0.17 : vh * 0.02) + 0.012 * len * Math.sin(t * 1.7));
-        v1.copy(cd).negate(); m4.makeBasis(v1, cr, cu); f.quaternion.setFromRotationMatrix(m4);
-        f.quaternion.premultiply(q2.setFromAxisAngle(cu, 0.35 * Math.sin(t * 0.9))).premultiply(q2.setFromAxisAngle(cr, 0.1 * Math.sin(t * 0.7)));
-        const pop = clamp(t / 0.35, 0, 1); f.scale.setScalar(len * (1 + 0.12 * Math.sin(pop * Math.PI)) * (0.55 + 0.45 * pop));
+      if (S.st === 'card') { // hanging by the lip from the line: nose up, tail down, its flank to the camera, swinging a little and kicking at first
+        const f = gear.fish.mesh, c = ctx.camera.position, t = S.t;
+        f.position.copy(v4); f.position.y -= f.scale.y * 0.5;
+        f.rotation.set(0, Math.atan2(-(c.z - v4.z), c.x - v4.x) + 0.25 * Math.sin(t * 1.1), 0.07 * Math.sin(t * 1.4) + 0.1 * Math.sin(t * 9) * Math.max(0, 1 - t / 3));
         gear.fish.wag.value = 0.16 * Math.max(0, 1 - t / 3.5); gear.fish.ph.value = t * 16;
-        gear.line.visible = false; if (S.tall) gear.rod.visible = false;   // (upright on a phone the fish is over the angler's head, and the rod would cross it)
       }
       const night = ctx.sun() && ctx.sun().altitude < -2;
       gear.floatMat.emissiveIntensity = night ? 0.3 : 0;
@@ -614,7 +616,7 @@ window.OEFishing = (function () {
     return { action, key, step, start, stop, dispose, button, on: () => S.st !== 'off' && S.st !== 'walk', busy: () => S.st !== 'off',
       // for the checks (tools/game_check.js, tools/fishing_shot.js)
       state: () => ({ st: S.st, spot: S.spot && S.spot.id, power: S.power, line: S.line, wait: S.wait, t: S.t, fish: P.s && P.s.id, cm: P.cm, T: F.T, d: F.d, phase: F.phase, assist: save.assist, log: log(), rig: rigNow().id, drawn: gear ? 4 + (rings ? 1 : 0) : 0 }),
-      seed: n => { rnd = rng(n); }, force: id => { S.forced = id; }, easiest: () => data.species.reduce((a, q) => (q.fight.pull < a.fight.pull ? q : a)).id, forget: () => { save = { v: 1, assist: 0, lost: 0, won: 0, casts: 0, rig: {}, log: {} }; keep(); }, spots: data.spots, species: data.species, showLog, logOpen: () => !!hud && !hud.book.hidden };
+      seed: n => { rnd = rng(n); }, force: id => { S.forced = id; }, easiest: () => data.species.reduce((a, q) => (q.fight.pull < a.fight.pull ? q : a)).id, forget: () => { save = { v: 1, assist: 0, lost: 0, won: 0, casts: 0, rig: {}, log: {} }; keep(); }, spots: data.spots, species: data.species, fishMesh: () => (gear ? gear.fish.mesh : null), showLog, logOpen: () => !!hud && !hud.book.hidden };
   }
   return { VERSION, core, create };
 })();
