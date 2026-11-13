@@ -2956,7 +2956,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     busy: kind => (kind === 'pass' ? player.mode !== 'foot' && !(player.mode === 'car' && myCar.D.st.speed < 1) : cine.active || (overture && overture.active) || OEOnboard.active() || dlg.open || uiOpen() || photo.on || !!closeup || !!arriving) }) : null;
   if (life) {
     if (window.OEDay) OEDay.create(life);
-    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEPhone', 'OEFx']) if (window[k]) window[k].create(life);
+    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEKeeps', 'OEPhone', 'OEFx']) if (window[k]) window[k].create(life);
     fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
   function renderPassport() {

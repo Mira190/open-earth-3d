@@ -649,7 +649,22 @@ Money is in the city's own (yen, dollars). Taxis and rides now charge a fare on 
 fall and a rate a kilometre); short of it, the driver lets the rest go. **Counters** keep hours
 and sell a dish or a keepsake, each with a line about it. Keepsakes go into one **album** for
 every city (the diary's Keepsakes page): a card for each, with its counter, its city and the day
-it was bought, and an empty card for each still to find on this map. The **calendar** is events at their
+it was bought, and an empty card for each still to find on this map. The album also stands in a
+room (issue #419, `web/game/keepsakes.js`): **the traveller's shelf** in Williams Cottage,
+Queenstown, the long shelf on the back wall whose two middle boards keep sixteen things. Each
+keepsake is set out on a walnut plinth with a folded card (what it is, its counter, its city), as a
+model of its own made at its real size in three.js: a hand-high torii with its wish on the post, a
+fox ema with its painted features, a Kiyomizu-yaki cup with its one brushed line, a glazed aubergine
+chopstick rest with its chopsticks, a piece of sea glass, an open Kyoto fan of maple leaves on a
+stream, the Earnslaw's enamel pin on its card, a brass Akita charm on a red cord, a kumade with its
+koban and rice bale, a green and cream tin ferry, a folded cherry-print tenugui and a station stamp
+book open at its stamp (a keepsake without a model is a paulownia box with its glyph). A room offers
+a shelf in game.json `interiors[].keepsakes` (`cities/queenstown/interiors.py keepsake_shelf`), and
+a spot looks along it closer, its texts the album's. They are made when you are within 45 m, lit as
+the room is (the sky's share inside, warm after dark). Williams Cottage is a shop now, which is why
+the shelf is there: the only other live city with rooms is Sydney, and the Opera House's foyers
+are not a place to keep things. A city gets a shelf with its first room of the right kind.
+The **calendar** is events at their
 real places on their real dates, with the hours they run: walk up while one is on and
 <kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
 
@@ -706,7 +721,8 @@ people to know (three on the two small Kyoto maps), four or five jobs, counters 
 
 ### What is left
 
-- A room for keepsakes in 3D: they are an album of cards in the diary.
+- A keepsake room in every city: today only Queenstown has one (Williams Cottage); other cities
+  need a room of the right kind first.
 - Not checked: a real GPU, Safari and iOS, and the music by ear on phone speakers.
 
 Banners (a rank, a level, a job) wait while a station's arrival sign or the day's card is up,
