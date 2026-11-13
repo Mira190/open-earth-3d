@@ -514,29 +514,66 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
     const R = G.trains, tracks = {}, tmp = { x: 0, y: 0, z: 0 }, tmp2 = { x: 0, y: 0, z: 0 };
     for (const t of R.tracks) tracks[t.id] = Object.assign({}, t, { c: course(t.p) });
     const hour = o.hour || (() => 12);
+    // the stations: "stations" (each with an id), or the first pass's one "station"
+    const stations = (R.stations || (R.station ? [Object.assign({ id: 'station' }, R.station)] : [])).map(st => Object.assign({}, st, { x: st.at[0], y: st.at[1], z: st.at[2] }));
+    const stationById = id => stations.find(q => q.id === id) || null;
+    // each track's halts, in the order its trains reach them: "stops", or the first pass's one stop_m at the station;
+    // a halt's side (+1: the platform on the left of the way the train runs) from the station's place if not given
+    for (const tr of Object.values(tracks)) {
+      tr.halts = (tr.stops || (tr.stop_m != null ? [{ station: stations[0] ? stations[0].id : null, m: tr.stop_m, platform: tr.platform }] : [])).map(h => Object.assign({}, h));
+      for (const h of tr.halts) {
+        h.st = stationById(h.station);
+        if (h.side == null && h.st) { const a = tr.c.at(h.m - 1, {}), b = tr.c.at(h.m + 1, {}); h.side = ((h.st.x - a.x) * -(b.y - a.y) + (h.st.y - a.y) * (b.x - a.x)) > 0 ? 1 : -1; }
+      }
+      tr.halts.sort((a, b) => a.m - b.m);
+    }
     // each service's run: how long a train takes from its head at the course's start until its tail has left
     const services = R.services.filter(s => tracks[s.track]).map((s, i) => {
       const tr = tracks[s.track], S = STOCK[s.stock] || STOCK.e233k, len = s.cars * S.len;
-      return Object.assign({ i, tr, S, len, x0: -len / 2 - 4, x1: tr.c.L + len / 2 + 4 }, s);
+      const halts = tr.halts.filter(h => !s.stop_at || s.stop_at.includes(h.station));
+      return Object.assign({ i, tr, S, len, halts, x0: -len / 2 - 4, x1: tr.c.L + len / 2 + 4, plans: {} }, s);
     });
-    // where a train's middle is `tau` seconds after it sets out, its speed, and what it is doing
+    // a run as phases (cruise, brake, stand, pull away) from setting out to having left: with its halts or through
+    function plan(s, stops) {
+      const key = stops ? 1 : 0;
+      if (s.plans[key]) return s.plans[key];
+      const v = s.v_ms, db = v * v / (2 * ACC), tb = v / ACC, ph = [], legs = [], hs = stops ? s.halts : [];
+      let t = 0, x = Math.min(s.x0, hs.length ? hs[0].m - db - 1 : s.x0);
+      const x0 = x;
+      hs.forEach((h, j) => {
+        const tc = Math.max(0, (h.m - db - x) / v);
+        ph.push({ k: j ? 'run' : 'in', t0: t, x0: x, v0: v, a: 0 }); t += tc;
+        const t1 = t; ph.push({ k: 'brake', t0: t, x0: h.m - db, v0: v, a: -ACC }); t += tb;
+        const t2 = t; ph.push({ k: 'stand', t0: t, x0: h.m, v0: 0, a: 0, leg: j }); t += DWELL;
+        const t3 = t; ph.push({ k: 'pull', t0: t, x0: h.m, v0: 0, a: ACC }); t += tb;
+        legs.push({ h, t1, t2, t3, t4: t });
+        x = h.m + db;
+      });
+      ph.push({ k: hs.length ? 'out' : 'run', t0: t, x0: x, v0: v, a: 0 });
+      const T = t + Math.max(0, (s.x1 - x) / v);
+      return (s.plans[key] = { ph, legs, T, x0, v });
+    }
+    // where a train's middle is `tau` seconds after it sets out, its speed, and what it is doing; t1, t2, t3 (when it
+    // brakes, stands and pulls away) are those of its halt at the first station, or its first halt
     function run(s, tau, stops, out) {
-      const v = s.v_ms;
-      if (!stops || s.tr.stop_m == null) { out.x = s.x0 + v * tau; out.v = v; out.a = 0; out.ph = 'run'; out.T = (s.x1 - s.x0) / v; return out; }
-      const db = v * v / (2 * ACC), tb = v / ACC, t1 = (s.tr.stop_m - db - s.x0) / v, t2 = t1 + tb, t3 = t2 + DWELL, t4 = t3 + tb;
-      out.t1 = t1; out.t2 = t2; out.t3 = t3; out.T = t4 + (s.x1 - s.tr.stop_m - db) / v;
-      if (tau < t1) { out.x = s.x0 + v * tau; out.v = v; out.a = 0; out.ph = 'in'; }
-      else if (tau < t2) { const u = tau - t1; out.x = s.tr.stop_m - db + v * u - ACC * u * u / 2; out.v = v - ACC * u; out.a = -1; out.ph = 'brake'; }
-      else if (tau < t3) { out.x = s.tr.stop_m; out.v = 0; out.a = 0; out.ph = 'stand'; }
-      else if (tau < t4) { const u = tau - t3; out.x = s.tr.stop_m + ACC * u * u / 2; out.v = ACC * u; out.a = 1; out.ph = 'pull'; }
-      else { out.x = s.tr.stop_m + db + v * (tau - t4); out.v = v; out.a = 0; out.ph = 'out'; }
+      const P = plan(s, stops), ph = P.ph;
+      let k = ph.length - 1;
+      while (k > 0 && tau < ph[k].t0) k--;
+      const q = ph[k], u = Math.max(0, tau - q.t0);
+      out.x = q.x0 + q.v0 * u + q.a * u * u / 2; out.v = q.v0 + q.a * u; out.a = Math.sign(q.a); out.ph = q.k; out.T = P.T;
+      if (k === 0 && tau < 0) { out.x = q.x0 + P.v * tau; out.v = P.v; }
+      const L0 = P.legs.find(l => l.h.st === stations[0]) || P.legs[0];
+      if (L0) { out.t1 = L0.t1; out.t2 = L0.t2; out.t3 = L0.t3; }
+      out.leg = q.leg != null ? q.leg : -1; out.legs = P.legs;
       return out;
     }
-    const stopsNow = s => !!s.stops && !(s.rapid_h && hour() >= s.rapid_h[0] && hour() < s.rapid_h[1]);
+    const stopsNow = s => !!s.stops && s.halts.length > 0 && !(s.rapid_h && hour() >= s.rapid_h[0] && hour() < s.rapid_h[1]);
+    // when a train running through reaches m along its course (its middle), from setting out
+    const passAt = (s, m) => (m - plan(s, false).x0) / s.v_ms;
 
     // the cars, instanced: per stock and role, one mesh per material
     const kinds = {}, dummy = new THREE.Object3D();
-    const capOf = stockId => 2 * Math.max(...services.filter(s => s.stock === stockId).map(s => s.cars)) * services.filter(s => s.stock === stockId).length;
+    const capOf = stockId => services.filter(s => s.stock === stockId).reduce((n, s) => n + s.cars * (Math.ceil(Math.max(plan(s, true).T, plan(s, false).T) / s.every_s) + 1), 0);
     const tier = window.OEQuality ? window.OEQuality.tier().name : 'high';
     const LOD_M = tier === 'low' || tier === 'still' ? 40 : tier === 'medium' ? 60 : 85; // the Blender cars' far copy beyond this
     // a Blender car: per level of detail, one instanced mesh per material; a tail car is the driving car turned about
@@ -605,8 +642,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
       L.visible = true; L.material.color.set(colour); L.material.opacity = 0.55 + 0.45 * OEKit.shared.night.value; L.position.set(x, z, -y); L.scale.set(size * 1.6, size * 1.6, 1);
     }
 
-    const api = { tracks, services, kinds, models: false, live: [], t: o.t0 || 0, station: R.station, said: [], voices: [0, 0, 0], run, stopsNow };
-    const st = R.station || null, st3 = { x: 0, y: 0, z: 0 };
+    const api = { tracks, services, kinds, models: false, live: [], t: o.t0 || 0, station: stations[0] || null, stations, said: [], voices: [0, 0, 0], run, plan, stopsNow, passAt };
     const state = { t: 0, x: 0, v: 0, a: 0, ph: '', T: 0, t1: 0, t2: 0, t3: 0 };
     const fwd = { x: 0, y: 0, z: 0 }, aft = { x: 0, y: 0, z: 0 };
     let clackAt = [0, 0, 0];
@@ -619,7 +655,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
         const k1 = Math.floor((t - s.offset_s) / s.every_s), k0 = Math.ceil((t - s.offset_s - T) / s.every_s);
         for (let k = k0; k <= k1; k++) {
           const tau = t - s.offset_s - k * s.every_s, r = run(s, tau, stops, state);
-          out.push({ s, k, tau, x: r.x, v: r.v, a: r.a, ph: r.ph, t1: r.t1, t2: r.t2, t3: r.t3, stops });
+          out.push({ s, k, tau, x: r.x, v: r.v, a: r.a, ph: r.ph, t1: r.t1, t2: r.t2, t3: r.t3, leg: r.leg, legs: r.legs, stops });
         }
       }
       return out;
@@ -662,10 +698,150 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
       for (const k of Object.values(kinds)) for (const L of k.lods) for (const m of L.meshes) { m.count = L.n; m.visible = L.n > 0; if (L.n) m.instanceMatrix.needsUpdate = true; }
     }
 
+    // ---------------------------------------------------------- the doors
+    // A standing train's doors on the platform's side open a second after it stops and close before it pulls away;
+    // the platform doors in front of them (game.json "psd": each door's middle along the course and the doors' line
+    // off the track) slide open with them. A car's open doorway is the lit inside of the car, drawn over its closed
+    // door; the platform doors' two leaves slide apart behind the cabinets.
+    const DOOR = { // each kind's doors from its middle, their width and height, the floor over the rail and the side's half-width
+      commuter: { z: [-7.23, -2.41, 2.41, 7.23], w: 1.3, h: 1.85, sill: 1.13, hw: 1.46 },
+      deck2: { z: [-7.15, 7.15], w: 1.3, h: 1.95, sill: 1.12, hw: 1.5 },
+      shinkansen: { z: [-10.9, 10.9], w: 1.0, h: 1.85, sill: 1.3, hw: 1.67 },
+    };
+    const doorOf = S => (S.shinkansen ? DOOR.shinkansen : S.deck2 ? DOOR.deck2 : DOOR.commuter);
+    const openAt = (tau, L) => Math.max(0, Math.min(1, (tau - L.t2 - 1.2) / 1.6, (L.t3 - 2.6 - tau) / 1.6));
+    let doorway = null, leafW = null, leafG = null, nLeaf = 0;
+    const psdStops = [];
+    for (const tr of Object.values(tracks)) for (const h of tr.halts) if (h.psd && h.psd.u && h.psd.u.length) psdStops.push({ tr, h, f: -1 });
+    for (const P of psdStops) nLeaf += P.h.psd.u.length * 2;
+    function doorMeshes() {
+      if (doorway) return;
+      const lit = new THREE.MeshStandardMaterial({ color: lin('#3b3631'), roughness: 0.8, emissive: lin('#fff1d8'), emissiveIntensity: 0.3 });
+      const cap = services.reduce((n, s) => n + s.cars * doorOf(s.S).z.length * (Math.ceil(plan(s, true).T / s.every_s) + 1), 0);
+      doorway = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), lit, Math.max(1, cap));
+      doorway.count = 0; doorway.frustumCulled = false; doorway.receiveShadow = true; doorway.name = 'train-doorways'; world.add(doorway);
+      doorway.userData.lit = lit;
+      if (nLeaf) { // a leaf: a white panel to 0.72 m with a rail at 1.25 m and a stile, glass between
+        const parts = [new THREE.BoxGeometry(0.98, 0.72, 0.05).translate(0, 0.36, 0), new THREE.BoxGeometry(0.98, 0.05, 0.06).translate(0, 1.255, 0), new THREE.BoxGeometry(0.06, 0.55, 0.05).translate(0.46, 0.99, 0)];
+        leafW = new THREE.InstancedMesh(THREE.BufferGeometryUtils.mergeGeometries(parts, false), new THREE.MeshStandardMaterial({ color: lin('#eceeed'), roughness: 0.45, metalness: 0.2 }), nLeaf);
+        leafG = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 0.52, 0.03).translate(-0.03, 0.98, 0), new THREE.MeshStandardMaterial({ color: lin('#bcd3d6'), roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.32, depthWrite: false }), nLeaf);
+        for (const m of [leafW, leafG]) { m.frustumCulled = false; m.castShadow = m === leafW; m.receiveShadow = true; world.add(m); }
+        leafW.name = 'psd-leaves'; leafG.name = 'psd-glass';
+      }
+    }
+    api.doorsOpen = []; // [{ track, station, f }] for a harness: the open share of each halt's doors that is open now
+    function doors(live) {
+      doorMeshes();
+      doorway.userData.lit.emissiveIntensity = 0.3 + 0.9 * OEKit.shared.night.value;
+      let n = 0;
+      const want = new Map();
+      for (const tr of live) {
+        if (!tr.stops || tr.leg < 0) continue;
+        const L = tr.legs[tr.leg], f = openAt(tr.tau, L), s = tr.s, D = doorOf(s.S), c = s.tr.c, side = L.h.side || 1;
+        want.set(L.h, Math.max(want.get(L.h) || 0, f));
+        if (f <= 0.001) continue;
+        for (let i = 0; i < s.cars; i++) {
+          const d = tr.x + (s.len / 2 - (i + 0.5) * s.S.len);
+          c.at(d + 1, fwd); c.at(d - 1, aft);
+          const hx = (fwd.x - aft.x) / 2, hy = (fwd.y - aft.y) / 2, lx = -hy * side, ly = hx * side, rot = Math.PI - Math.atan2(hx, hy);
+          for (const z of D.z) {
+            const x = (fwd.x + aft.x) / 2 + hx * z + lx * D.hw, y = (fwd.y + aft.y) / 2 + hy * z + ly * D.hw;
+            dummy.position.set(x, (fwd.z + aft.z) / 2 + D.sill, -y);
+            dummy.rotation.set(0, rot, 0);
+            dummy.scale.set(0.06, D.h, D.w * f);
+            dummy.updateMatrix();
+            if (n < doorway.instanceMatrix.count) doorway.setMatrixAt(n++, dummy.matrix);
+          }
+        }
+      }
+      dummy.scale.set(1, 1, 1);
+      doorway.count = api.doorways = n; doorway.visible = n > 0; if (n) doorway.instanceMatrix.needsUpdate = true;
+      // the platform doors
+      api.doorsOpen.length = 0;
+      let k = 0, moved = false;
+      for (const P of psdStops) {
+        const f = want.get(P.h) || 0;
+        api.doorsOpen.push({ track: P.tr.id, station: P.h.station, f });
+        if (f === P.f) { k += P.h.psd.u.length * 2; continue; }
+        P.f = f; moved = true;
+        const c = P.tr.c, off = P.h.psd.off, slide = 0.5 + 0.95 * f;
+        for (const u of P.h.psd.u) {
+          c.at(u + 0.5, fwd); c.at(u - 0.5, aft);
+          const hx = fwd.x - aft.x, hy = fwd.y - aft.y, rot = Math.atan2(hy, hx), nx = -hy * off, ny = hx * off;
+          for (const e of [-1, 1]) {
+            const x = (fwd.x + aft.x) / 2 + hx * e * slide + nx, y = (fwd.y + aft.y) / 2 + hy * e * slide + ny;
+            dummy.position.set(x, (fwd.z + aft.z) / 2 + (P.tr.platform_m || 1.1), -y);
+            dummy.rotation.set(0, rot + (e > 0 ? Math.PI : 0), 0);
+            dummy.updateMatrix();
+            leafW.setMatrixAt(k, dummy.matrix); leafG.setMatrixAt(k, dummy.matrix); k++;
+          }
+        }
+      }
+      if (moved && leafW) { leafW.instanceMatrix.needsUpdate = leafG.instanceMatrix.needsUpdate = true; }
+    }
+
+    // ---------------------------------------------------------- riding
+    // The game's railway interface (rail.js's, which game.js boards and rides by): the trains standing at a station
+    // with a halt still ahead of them on this map are cars you can board; a car is a whole train, placed by the
+    // timetable; you stand in its third car by the doors, and get off at the next station onto its platform.
+    const ride = api.ride = { cars: [], stations: [], events: [], mainline: true };
+    for (const st of stations) ride.stations.push(Object.assign(st, { train: true, deck: true, r: st.r || 120 }));
+    const byKey = new Map(), where = { x: 0, y: 0, z: 0 };
+    ride.sync = function (live) {
+      const seen = new Set();
+      ride.cars.length = 0;
+      for (const tr of live) {
+        if (!tr.stops || !tr.legs.length) continue;
+        const s = tr.s, key = `${s.i}:${tr.k}`;
+        let car = byKey.get(key);
+        if (!car && !tr.legs.some(L => L.t2 > tr.tau + 0.1)) continue; // (boardable while a station is still ahead of it on this map)
+        if (!car) { car = { id: key, train: true, mainline: true, s, k: tr.k, name: `${s.cars} cars`, line: s.line.en, rider: false, x: 0, y: 0, z: 0, h: 0, pitch: 0, speed: 0, leg: -1 }; byKey.set(key, car); }
+        seen.add(key);
+        const c = s.tr.c, was = car.leg;
+        c.at(tr.x + 1, fwd); c.at(tr.x - 1, aft);
+        car.x = (fwd.x + aft.x) / 2; car.y = (fwd.y + aft.y) / 2; car.z = (fwd.z + aft.z) / 2; car.h = Math.atan2(fwd.x - aft.x, fwd.y - aft.y);
+        car.speed = tr.v; car.tau = tr.tau; car.legs = tr.legs; car.leg = tr.leg; car.ph = tr.ph; car.tr = tr;
+        if (car.rider && was !== car.leg) {
+          if (was >= 0 && car.leg < 0) ride.events.push({ type: 'depart', car });
+          if (was < 0 && car.leg >= 0) ride.events.push({ type: 'arrive', car });
+        }
+        ride.cars.push(car);
+      }
+      for (const [key, car] of byKey) if (!seen.has(key)) byKey.delete(key);
+    };
+    ride.update = (dt, clk, people, skip) => { if (skip) api.t += dt * 7; }; // (the timetable run fast while you wait or skip ahead)
+    const legAt = car => (car.leg >= 0 ? car.legs[car.leg] : null);
+    ride.stationOf = id => { const car = byKey.get(id); const L = car && legAt(car); return L ? L.h.st : null; };
+    ride.towards = car => (car.s.for ? car.s.for.en : car.s.line.en);
+    ride.nextStop = car => { const L = car.legs.find(q => q.t2 > car.tau + 0.1); return L ? L.h.st : null; };
+    ride.departsIn = car => { const L = legAt(car); return L ? Math.max(0, L.t3 - car.tau) : 0; };
+    ride.eta = st => {
+      let best = Infinity;
+      for (const s of services) {
+        const legs = stopsNow(s) ? plan(s, true).legs : [], j = legs.findIndex(q => q.h.st === st), L = legs[j];
+        if (!L || j === legs.length - 1) continue; // (a train that ends its run on this map here is not one to wait for)
+        const k = Math.ceil((api.t - s.offset_s - L.t2) / s.every_s);
+        best = Math.min(best, s.offset_s + k * s.every_s + L.t2 - api.t);
+      }
+      return best;
+    };
+    // a point in the train: m metres behind its middle, `across` to the platform's side, `up` over the rail
+    function inTrain(car, m, across, up) {
+      const s = car.s, c = s.tr.c, d = car.tr ? car.tr.x : 0, L = legAt(car) || car.legs.find(q => q.t2 > car.tau) || car.legs[car.legs.length - 1], side = L ? L.h.side || 1 : 1;
+      c.at(d - m + 1, fwd); c.at(d - m - 1, aft);
+      const hx = (fwd.x - aft.x) / 2, hy = (fwd.y - aft.y) / 2;
+      where.x = (fwd.x + aft.x) / 2 - hy * side * across; where.y = (fwd.y + aft.y) / 2 + hx * side * across; where.z = (fwd.z + aft.z) / 2 + up;
+      return { x: where.x, y: where.y, z: where.z, h: Math.atan2(hx, hy), side };
+    }
+    const riderM = car => car.s.len / 2 - 2.5 * car.s.S.len + doorOf(car.s.S).z[0]; // the third car, by its rear door
+    ride.riderPos = car => { const q = inTrain(car, riderM(car), 0.55, doorOf(car.s.S).sill + 0.02); return { x: q.x, y: q.y, z: q.z, h: q.h - q.side * Math.PI / 2 - Math.PI }; };
+    ride.alightAt = car => { const L = legAt(car); if (!L) return null; const q = inTrain(car, riderM(car), doorOf(car.s.S).hw + 1.4, (L.h.st ? L.h.st.z - car.z : 1.1)); return [q.x, q.y, q.z]; };
+    ride.boardAt = car => { const q = inTrain(car, riderM(car), doorOf(car.s.S).hw + 1.4, 1.1); return [q.x, q.y, q.z]; };
+
     // ---------------------------------------------------------- the platform's announcements
     const num = n => ['', '1', '2', '3', '4', '5', '6'][n] || String(n);
-    function announce(tr, what, level, pan) {
-      const s = tr.s, n = s.tr.platform, A = window.OEAudio, deep = n % 2 === 1;
+    function announce(tr, what, level, pan, st, h) {
+      const s = tr.s, n = h.platform, A = window.OEAudio, deep = n % 2 === 1;
       let ja = '', en = '';
       if (st.style === 'sydney') { // Sydney Trains' platforms: English, a chime, no melody
         if (what === 'approach') {
@@ -683,7 +859,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
         }
         caption('', en);
         const spoken = say('', en, level, deep);
-        api.said.push({ t: api.t, track: s.track, what, ja, en, spoken });
+        api.said.push({ t: api.t, track: s.track, station: st.id, platform: n, what, ja, en, spoken });
         if (api.said.length > 40) api.said.shift();
         return;
       }
@@ -709,7 +885,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
       }
       caption(`${what === 'arrive' ? '' : '♪ '}${ja}`, en);
       const spoken = say(ja, en, level, deep);
-      api.said.push({ t: api.t, track: s.track, what, ja, en, spoken });
+      api.said.push({ t: api.t, track: s.track, station: st.id, platform: n, what, ja, en, spoken });
       if (api.said.length > 40) api.said.shift();
     }
 
@@ -737,33 +913,39 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
           if (clackAt[i] <= 0) { A.clack(level, pan, tr.v); clackAt[i] = tr.s.S.len / tr.v; }
         }
       }
-      // the announcements, while you are in hearing of the station
-      if (st) {
+      // the announcements, while you are in hearing of a station
+      for (const st of stations) {
         const ds = Math.hypot(st.at[0] - l.x, st.at[1] - l.y, (st.at[2] - l.z) * 2), hear = st.hear_m || 150;
-        if (ds < hear) for (const tr of live) {
-          const s = tr.s;
-          if (s.tr.platform == null) continue;
+        if (ds >= hear) continue;
+        for (const tr of live) {
+          const s = tr.s, h = s.tr.halts.find(q => q.st === st);
+          if (!h || h.platform == null) continue;
           const tau1 = tr.tau, tau0 = tau1 - (t1 - t0), cross = at => tau0 < at && tau1 >= at;
           const level = Math.pow(1 - ds / hear, 0.8), pan = panOf(st.at[0], st.at[1]) * 0.4;
-          if (tr.stops) {
-            if (cross(tr.t1 - 7)) announce(tr, 'approach', level, pan);
-            if (cross(tr.t2 + 0.6)) announce(tr, 'arrive', level, pan);
-            if (cross(tr.t3 - 13)) announce(tr, 'melody', level, pan);
-            if (cross(tr.t3 - 5.5)) announce(tr, 'close', level, pan);
-          } else if (s.tr.stop_m != null) {
-            const tp = (s.tr.stop_m - s.len / 2 - s.x0) / s.v_ms; // its head at the platform's middle
-            if (cross(tp - 16)) announce(tr, 'pass', level, pan);
+          const L = tr.stops && tr.legs.find(q => q.h === h);
+          if (L) {
+            if (cross(L.t1 - 7)) announce(tr, 'approach', level, pan, st, h);
+            if (cross(L.t2 + 0.6)) announce(tr, 'arrive', level, pan, st, h);
+            if (cross(L.t3 - 13)) announce(tr, 'melody', level, pan, st, h);
+            if (cross(L.t3 - 5.5)) announce(tr, 'close', level, pan, st, h);
+          } else if (!tr.stops) {
+            const tp = passAt(s, h.m - s.len / 2); // its head at the platform's middle
+            if (cross(tp - 16)) announce(tr, 'pass', level, pan, st, h);
           }
         }
       }
+      doors(live);
+      ride.sync(live);
     };
     api.hush = () => { const A = window.OEAudio; if (A && A.train) for (let i = 0; i < 3; i++) A.train(i, 0); if (window.speechSynthesis) window.speechSynthesis.cancel(); if (capEl) capEl.style.opacity = 0; };
     // the next train to call or pass at a platform: { s, in_s, stops }, for a sign or a harness
-    api.next = platform => {
+    api.next = (platform, stationId) => {
       let best = null;
+      const st = stationId ? stationById(stationId) : stations[0];
       for (const s of services) {
-        if (s.tr.platform !== platform) continue;
-        const stops = stopsNow(s), r = run(s, 0, stops, state), tArr = stops ? r.t2 : (s.tr.stop_m - s.x0) / s.v_ms;
+        const h = s.tr.halts.find(q => q.st === st && q.platform === platform);
+        if (!h) continue;
+        const stops = stopsNow(s), P = plan(s, stops), L = P.legs.find(q => q.h === h), tArr = L ? L.t2 : passAt(s, h.m);
         const k = Math.ceil((api.t - s.offset_s - tArr) / s.every_s), due = s.offset_s + k * s.every_s + tArr - api.t;
         if (!best || due < best.in_s) best = { s, in_s: due, stops };
       }

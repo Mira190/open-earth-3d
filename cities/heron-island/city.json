@@ -1,6 +1,7 @@
 {
   "id": "heron-island",
   "name": "Heron Island",
+  "weather": {"rain_days": [7.9, 12.1, 9.6, 10.1, 9.1, 6.8, 6.7, 4.3, 3.5, 4.4, 5.1, 6.5], "threshold_mm": 1.0, "drizzle": 0.25, "temp_max": [29.7, 29.6, 28.8, 27.0, 24.5, 22.4, 21.7, 22.5, 24.3, 26.1, 27.7, 29.1], "temp_min": [24.1, 24.2, 23.6, 22.0, 19.7, 17.7, 16.8, 17.4, 18.9, 20.6, 22.1, 23.4], "wind_ms": [5.9, 5.9, 5.9, 5.9, 5.9, 5.9, 5.9, 5.9, 5.9, 5.9, 5.9, 5.9], "wind_from_deg": 135, "elev_m": 3, "source": "Bureau of Meteorology, Heron Island Research Station (039122): 84.7 days a year with at least 1 mm (1956-2007), mean maxima 29.8 (January) and 21.5 (July)", "more": "The months not readable follow Lady Elliot Island's (039059) shape, shifted to Heron's January and July temperatures. November 2026."},
   "country": "Australia",
   "country_code": "AU",
   "kind": "marine",

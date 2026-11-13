@@ -829,7 +829,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the terminal is mapped out on the water
   for (const w of G.wharves) { const p = nav.stand(w.terminal[0], w.terminal[1], 2, { rMax: 90, room: 100 }); w.landing = p ? [p.x, p.y] : w.terminal.slice(); }
   // street trams and a funicular, where the city has them (rail.js)
-  const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
+  let rail = G.rail && window.OERail ? OERail.create(world, G) : null;
   // a railway's level crossings, to the traffic (junctions.js addRail): shut while the alarm is on, its first three
   // seconds a warning (rail.js crossings: closed, on; a track along a street, kind 'street', is no crossing)
   if (rail && rail.crossings) for (const c of rail.crossings) if (c.kind !== 'street') junctions.addRail({ x: c.x, y: c.y, z: c.z, w: 2 * (c.half_m || 3),
@@ -839,8 +839,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (rail && rail.useModels) new THREE.GLTFLoader().load('assets/vehicles/trains.glb', g => { try { rail.useModels(g.scene); } catch (e) { console.warn('Train models unavailable, using simple ones:', e); } }, undefined, e => console.warn('Train models unavailable, using simple ones:', e));
   // a main line's trains past its station, where the city has them (trains.js): heard from the camera
   const trains = G.trains && window.OETrains ? OETrains.create(world, G, { hour: () => clock.min / 60, listener: () => ({ x: camera.position.x, y: -camera.position.z, z: camera.position.y }) }) : null;
+  // ridden the way rail.js's trains are, where the city has no rail.js line (trains.js ride: its stations, the trains
+  // standing at them, boarding, the next stop and getting off)
+  if (!rail && trains && trains.ride) rail = trains.ride;
   const railRide = () => (G.rail && (G.rail.funicular || G.rail.gondola || G.rail.train)) || {}; // the line a rider takes: a funicular or a gondola
-  const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < (st.r || r)) : null);
+  // (a main line's station is on its viaduct: only its platforms' level is the station, not the street under it)
+  const railStation = (x, y, r = 25, z = null) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < (st.r || r) && (!st.deck || z == null || Math.abs(z - st.z) < 3)) : null);
   // neighbourhood signs, things to look at and conversations to overhear (places.js), and lifts between a
   // street door and a floor high up (game.json "lifts", from the city's landmarks)
   const places = window.OEPlaces ? OEPlaces.create({ G, W, camera, stage }) : null;
@@ -3266,7 +3270,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const VIEWS = { chase: ['Chase view', 'chase view'], cockpit: ['Cockpit view: drag to look round', 'cockpit'], bird: ["Bird's-eye view: scroll to change height", "bird's-eye"],
     cabin: ['From the window seat: drag to look round', 'window seat'], cab: ['Behind the driver: drag to look round', 'cab'] };
   const onTrain = () => player.mode === 'rail' && player.vehicle && player.vehicle.train;
-  const viewOrder = () => (player.mode === 'heli' ? ['chase', 'cockpit', 'bird'] : onTrain() ? (rail.train.modelled ? ['chase', 'cabin', 'cab'] : ['chase']) : ['chase', 'bird']);
+  const viewOrder = () => (player.mode === 'heli' ? ['chase', 'cockpit', 'bird'] : onTrain() ? (rail.train && rail.train.modelled ? ['chase', 'cabin', 'cab'] : ['chase']) : ['chase', 'bird']);
   const nextViewOf = m => { const o = viewOrder(); return o[(o.indexOf(m) + 1) % o.length]; };
   function nextView() {
     cam.mode = nextViewOf(cam.mode);
@@ -3338,11 +3342,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (myCar && offCar(myCar, player.x, player.y) < 2.5 && Math.abs(myCar.D.st.z - player.z) < 2) return { key: 'E', text: 'Drive your car', act: enterCar };
     if (Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 10 && Math.abs(heli.st.z - player.z) < 3) return { key: 'E', text: 'Board the helicopter', act: enterHeli };
-    const st = railStation(player.x, player.y);
-    if (st && rail.cars.length) {
+    const st = railStation(player.x, player.y, 25, player.z);
+    if (st && (rail.cars.length || st.deck)) {
       // (a railway's station: the train standing nearest you, of the two directions' at a loop)
       const car = rail.cars.filter(c => rail.stationOf(c.id) === st).sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y))[0], other = rail.stations.find(o => o !== st);
-      if (car) return { key: 'E', text: car.train ? `Board the ${railRide().name || 'train'} for ${rail.towards(car)}` : `Board the ${railRide().name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
+      if (car) return { key: 'E', text: car.train ? `Board the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}` : `Board the ${railRide().name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
       if (st.train) return { key: 'E', text: `${st.name}: the next train in ${fmtSec(rail.eta(st))} · ${waitRail === st ? 'stop waiting' : 'wait for it'}`, act: () => { waitRail = waitRail === st ? null : st; } };
       return { key: '', text: `${st.name}: the next car is due in ${fmtSec(rail.eta())}` };
     }
@@ -3435,7 +3439,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function boardRail(car, st) {
     player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id; waitRail = null;
     cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
-    if (car.train) { const nx = rail.nextStop(car); H.toast(`Aboard the ${railRide().name || 'train'} for ${rail.towards(car)}${nx ? `. Next stop: ${nx.name}` : ''}. <kbd>V</kbd> for the window seat and the cab, <kbd>F</kbd> to skip ahead.`); return; }
+    if (car.mainline) player.rig.root.visible = false; // (in the car, seen only through its windows)
+    if (car.train) { const nx = rail.nextStop(car); H.toast(`Aboard the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}${nx ? `. Next stop: ${nx.name}` : ''}.${rail.train && rail.train.modelled ? ' <kbd>V</kbd> for the window seat and the cab,' : ''} <kbd>F</kbd> to skip ahead.`); return; }
     H.toast(`Aboard the ${railRide().name || 'funicular'}. ${railRide().note || ''} <kbd>F</kbd> to skip ahead.`);
   }
   function alightRail() {
@@ -5271,7 +5276,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     fer.update(dt, skip && player.mode === 'ferry' ? FERRY_SKIP : 1, clockT, waitFerry ? FERRY_WAIT : 1);
     if (trains) trains.update(dt, camera);
     if (rail) {
-      if (waitRail && (player.mode !== 'foot' || railStation(player.x, player.y) !== waitRail || rail.cars.some(c => rail.stationOf(c.id) === waitRail))) { if (player.mode === 'foot' && railStation(player.x, player.y) === waitRail) H.toast(`The train is in. <kbd>E</kbd> to board.`); waitRail = null; }
+      if (waitRail && (player.mode !== 'foot' || railStation(player.x, player.y, 25, player.z) !== waitRail || rail.cars.some(c => rail.stationOf(c.id) === waitRail))) { if (player.mode === 'foot' && railStation(player.x, player.y, 25, player.z) === waitRail) H.toast(`The train is in. <kbd>E</kbd> to board.`); waitRail = null; }
       rail.ear = { x: camera.position.x, y: -camera.position.z }; // (the trains' detail is by the camera: in a film it is not where you stand)
       if (rail.crossingClosed) { // (a crossing's alarm starting beside you: said once)
         const xc = player.mode === 'foot' ? rail.crossingClosed(player.x, player.y, 12) : null;
@@ -6123,7 +6128,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       el.hidden = false;
       if (c.train) {
         const nx = rail.nextStop(c);
-        el.innerHTML = `<div><b>${railRide().name || 'Train'}</b><span>${c.name} · for ${rail.towards(c)}</span></div><div><b class="num">${(c.speed * 3.6).toFixed(0)}</b><span>km/h</span></div>
+        el.innerHTML = `<div><b>${c.line || railRide().name || 'Train'}</b><span>${c.name} · for ${rail.towards(c)}</span></div><div><b class="num">${(c.speed * 3.6).toFixed(0)}</b><span>km/h</span></div>
         <div><b>${here ? here.name : nx ? nx.name : rail.towards(c)}</b><span>${here ? 'standing at' : 'next stop'}</span></div>
         <p class="note">${here ? `${c.moved ? 'E get off · ' : ''}departs in ${fmtSec(rail.departsIn(c))} · ` : ''}V ${VIEWS[nextViewOf(cam.mode)][1]} · F ${skip ? 'normal speed' : 'skip ahead'}${cam.mode === 'chase' ? '' : ' · drag to look round'}</p>`;
       } else el.innerHTML = `<div><b>${railRide().name || 'Funicular'}</b><span>${c.name}</span></div><div><b class="num">${Math.round(c.z)} m</b><span>above the datum</span></div>
