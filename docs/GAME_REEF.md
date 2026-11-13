@@ -339,7 +339,7 @@ Queensland Parks and Wildlife Service pages on the Ngaro Sea Trail could not be 
   the Whitsundays, 39 at Hardy Reef, 35 at Green Island, 35 at Heron Island, 30 at Lady Elliot Island and 34 with
   `gamesite=generic`; on the Whitsundays it makes 61 with `life=0` and 64 with `life=0&lifestub=1`. Every site's test
   includes a lint: every line of every person and sign renders, and every source it cites resolves.
-- `?gameshot=dialogue|journal|map|lookout|red|board` sets up the screenshots (`dialogue` takes `shotnpc`,
+- `?gameshot=dialogue|npc|journal|map|lookout|red|board` sets up the screenshots (`npc`: beside a person, no dialogue; `dialogue` and `npc` take `shotnpc`,
   `shotnode`, `shotpage`, `shotyaw`, `shotpitch`, `shotcam`).
 - `?lifestub=1` installs `game/life_stub.js`; `?gamereset=1` forgets progress.
 - The frame budget (docs/PERFORMANCE.md, issue 382): the page runs `OEQuality.governor` (`window.__reef.governor`,

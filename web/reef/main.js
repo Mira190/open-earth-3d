@@ -118,7 +118,13 @@ async function main() {
   const sunL = new THREE.DirectionalLight(0xfff2dd, 2.8);
   const moonL = new THREE.DirectionalLight(0xc9d6ff, 0);
   const hemi = new THREE.HemisphereLight(0x9cc4ff, 0xd9c9a0, 0.9);
-  scene.add(sunL, sunL.target, moonL, moonL.target, hemi);
+  // the night's fill on the people (docs/NIGHT.md): a soft light well above and behind the eye, as a film's eye light or a
+  // game's character light, so the player and whoever they talk to read by night with their faces away from the moon. The
+  // land and the water are drawn by their own shading (alpine/light.js, ocean.js) and take none of it: no pool of light
+  // on the ground. Off by day; one light on every tier (a few instructions on the lit materials)
+  // (5 m behind the eye and 2.5 m up, falling off as 1/d: the plants at the eye's feet take little more than the player does)
+  const fillL = new THREE.PointLight(0xc4d4ff, 0, 45, 1);
+  scene.add(sunL, sunL.target, moonL, moonL.target, hemi, fillL);
   scene.fogNode = (({ Fn, vec4, output, positionWorld }) => Fn(() => vec4(env.medium(output.rgb, positionWorld), output.a))())(await import('three/tsl'));
 
   stage('Shaping the sea floor, the water and the shore', 0.45);
@@ -201,12 +207,16 @@ async function main() {
   // the full moon at the zenith gives about 2.3e-6 of the sun's illuminance; away from full it fades faster than its
   // lit fraction (Allen: m = -12.73 + 0.026 |phase| + 4e-9 phase^4)
   const moonRel = age => { const ph = Math.abs(180 - age * 360); return 2.3e-6 * Math.pow(10, -0.4 * (0.026 * ph + 4e-9 * ph ** 4)); };
-  // how bright a white horizontal surface is shown, by log10 of its true radiance (a clear day is about 1.1)
-  const SEEN = [[-7.5, 0.012], [-6.2, 0.07], [-4, 0.09], [-1, 0.1]];
+  // how bright a white horizontal surface is shown, by log10 of its true radiance (a clear day is about 1.1). A game's
+  // night, not a light meter's (docs/NIGHT.md): the eye's adaptation, with a floor the way Ghost of Tsushima, Minecraft
+  // and the rest keep one, so the land, the water and the people read. Under the full moon a white surface is shown
+  // about 3 stops under a sunlit one, under starlight alone about 4.3: dark and blue (post.js), never black. Night stays
+  // darker than dusk, and the curve never turns back up as the light goes.
+  const SEEN = [[-7.5, 0.055], [-6.6, 0.08], [-5.6, 0.135], [-4, 0.14], [-0.854, 0.14]];
   const seen = x => {
-    if (x >= -1) return Math.pow(10, x); if (x <= SEEN[0][0]) return SEEN[0][1];
+    if (x >= SEEN[SEEN.length - 1][0]) return Math.pow(10, x); if (x <= SEEN[0][0]) return SEEN[0][1];
     for (let i = 1; i < SEEN.length; i++) if (x <= SEEN[i][0]) { const [a, la] = SEEN[i - 1], [b, lb] = SEEN[i]; return la * Math.pow(lb / la, (x - a) / (b - a)); }
-    return 0.1;
+    return 0.14;
   };
   const baseExp = Number(q.get('exp') || (ALP ? 1.7 : 1.0));
   let adapt = 1;
@@ -215,22 +225,28 @@ async function main() {
     const sa = Math.sin(sun.alt), sm = Math.max(Math.sin(sun.moonAlt), 0), deg = sun.alt * 180 / Math.PI;
     const sunI = 2.8 * Math.max(Math.min(1, sa * 3), 0);
     const moonI = 2.8 * moonRel(sun.moonAge) * smoothUp(sun.moonAlt);
-    const hemiI = 0.9 * skyLight(deg) + 0.34 * moonI * sm;
+    const hemiI = 0.9 * skyLight(deg) + 0.6 * moonI * sm;   // (the moonlit sky's fill, raised from the physical 0.34 so the side away from the moon reads)
     const white = (sunI * Math.max(sa, 0) + moonI * sm + hemiI) / Math.PI;
     // adaptation: none down to sunset light; through dusk the eye holds a white surface near a tenth of its daylight
     // brightness, under the moon a little less, under starlight less again (night stays darker than day, as it looks)
-    adapt = Math.min(Math.max(seen(Math.log10(Math.max(white, 1e-10))) / white, 1), 3e5);
+    // (up to 3e6: starlight alone needs about 1.7e6 to reach the curve's floor; the cap at 3e5 held a moonless night at a
+    // sixth of it, the near-black frame of #401)
+    adapt = Math.min(Math.max(seen(Math.log10(Math.max(white, 1e-10))) / white, 1), 3e6);
     sunL.intensity = sunI * adapt; moonL.intensity = moonI * adapt; hemi.intensity = hemiI * adapt;
     env.u.sunI.value = sunI * adapt; env.u.moonI.value = moonI * adapt;
     env.u.white.value = white * adapt;
     env.u.skyScale.value = skyLight(deg) * adapt;
     env.u.adapt.value = adapt;
     if (ALP) alpineLights(sun, sunI, moonI, hemiI);
+    // the fill: a white surface 10 m from it (the player, seen from behind) lit to about 0.6 of what the night shows it
+    // at, fading in through dusk
+    fillL.intensity = 0.6 * seen(Math.log10(Math.max(white, 1e-10))) * Math.PI * 10 * (1 - THREE.MathUtils.smoothstep(sa, -0.16, -0.02));
     sunL.position.copy(camera.position).addScaledVector(sun.dir, 800);
     sunL.target.position.copy(camera.position);
     moonL.position.copy(camera.position).addScaledVector(env.u.moonDir.value, 800);
     moonL.target.position.copy(camera.position);
   }
+  const fillOff = new THREE.Vector3();
   const smoothUp = a => THREE.MathUtils.smoothstep(Math.sin(a), -0.02, 0.05);
   // an alpine site's lights from its air (atmos.js): the sun reddened by the air it crosses to reach the eye's
   // height, the sky's light blue and as bright as the model gives, the land's bounce golden from the tussock
@@ -277,7 +293,9 @@ async function main() {
     // stop and a third; the eye's own adaptation (adapt) takes over from dusk
     const autoExp = THREE.MathUtils.clamp(Math.pow(0.6 / Math.max(env.u.white.value / adapt, 1e-4), 0.6), 1, 2.6);
     renderer.toneMappingExposure = baseExp * THREE.MathUtils.lerp(autoExp, 1.4, THREE.MathUtils.smoothstep(adapt, 1, 40));
-    atm.u.stars.value = THREE.MathUtils.smoothstep(-Math.sin(sun.alt), 0.05, 0.25) * adapt * 2.4e-6 * 0.9;
+    // (the stars and the Milky Way keep the brightness they were drawn at under the old cap: the land's floor is a game's,
+    // the sky's stars are as a dark site shows them)
+    atm.u.stars.value = THREE.MathUtils.smoothstep(-Math.sin(sun.alt), 0.05, 0.25) * Math.min(adapt, 3e5) * 2.4e-6 * 0.9;
     // the twilight sky (atmos.js twilight): the measured skylight curve, adapted, fading out as the sun climbs past 6 degrees
     atm.u.twi.value = skyLight(deg) * adapt * 0.42 * (1 - THREE.MathUtils.smoothstep(deg, -1, 6));
     const now = clockMs();
@@ -437,6 +455,7 @@ async function main() {
     env.u.tide.value = tideNow();
     if (frames % tileEvery === 0) { ripples.update(env.u.time.value); chop.update(env.u.time.value); }
     terrain.update(camera.position);
+    camera.getWorldDirection(fillOff); fillL.position.copy(camera.position).addScaledVector(fillOff.setY(0).normalize(), -5).add(fillOff.set(0, 2.5, 0));
     if (ALP) { dome.position.copy(camera.position); clouds.update(); if (stars) stars.update(env.u.time.value); }   // the sky is at infinity wherever the eye goes over 80 km
     if (light) light.update();
     ocean.update(camera.position);
