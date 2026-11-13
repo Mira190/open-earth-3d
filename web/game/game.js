@@ -2382,7 +2382,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (player.mode === 'ride' && player.vehicle === o) {
       Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.v });
-      if (o.phase === 'driving' && clockT > o.talkT) { o.talkT = clockT + 24 + Math.random() * 18; H.toast(`<b>${o.name}:</b> ${smalltalk(st.x, st.y)}`); }
+      if (o.phase === 'driving' && clockT > o.talkT) { o.talkT = clockT + 24 + srnd() * 18; H.toast(`<b>${o.name}:</b> ${smalltalk(st.x, st.y)}`); }
       if (o.phase === 'driving' && st.done) {
         o.phase = 'arrived';
         const fare = life ? life.fare(o.meter, o.kind) : '';
@@ -2638,7 +2638,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const w = G.wharves.reduce((a, q) => (Math.hypot(q.terminal[0] - x, q.terminal[1] - y) < (a ? Math.hypot(a.terminal[0] - x, a.terminal[1] - y) : 400) ? q : a), null);
     if (w) { const e = nextFerry(w.id); if (e) opts.push(`The next ferry from ${w.name} is ${e.v.name}, ${e.t < 5 ? 'boarding now' : `in ${fmtSec(e.t)}`}.`); }
     opts.push(...(G.smalltalk || [G.greeting || 'G\'day.', 'Lovely spot, isn\'t it?']));
-    return opts[Math.floor(Math.random() * opts.length)];
+    return opts[Math.floor(srnd() * opts.length)];
   }
 
   // ------------------------------------------------------------ clock: 30 times real time by default, as in GTA
@@ -2824,7 +2824,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const ready = openLines().find(l => questOf(l).giver === n.id && !ls(l).started);
     if (ready) return giveQuest(n, ready, questOf(ready));
     if (life && life.talk(n)) return; // someone you are getting to know, when they are free (bonds.js)
-    dlg.show(n, [said(n.idle[Math.floor(Math.random() * n.idle.length)]) || smalltalk(n.x, n.y)], null, finish);
+    dlg.show(n, [said(n.idle[Math.floor(srnd() * n.idle.length)]) || smalltalk(n.x, n.y)], null, finish);
   }
   function giveQuest(n, l, q) {
     const talk = q.talk.map(said).filter(Boolean);

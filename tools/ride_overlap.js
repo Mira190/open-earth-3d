@@ -7,6 +7,7 @@
 //   GAME_TIME=10:00 xvfb-run -a node tools/ride_overlap.js shibuya [trips=6] [max events=8]
 // Exits 1 if the ride is ever more than 0.15 m inside a car of the traffic.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shibuya', trips = '6', maxEv = '8'] = process.argv;
 const LONG = +(process.env.LONG || 300); // (s: a trip given up after this long)
@@ -22,8 +23,7 @@ const LONG = +(process.env.LONG || 300); // (s: a trip given up after this long)
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });
   const r = await p.evaluate(([trips, maxEv, LONG]) => {
     const g = window.__game, C = g.cars.C, keep = g.KEEP === 'left' ? 1 : -1, out = { trips: [], events: [] };

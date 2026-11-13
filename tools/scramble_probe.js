@@ -2,6 +2,7 @@
 // the walkers near the player and on the crossings, and the footway lines that cross its roads.
 //   xvfb-run -a node tools/scramble_probe.js [city] [seconds]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'shibuya', secs = '3'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -9,8 +10,7 @@ const [,, city = 'shibuya', secs = '3'] = process.argv;
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const out = await p.evaluate(async secs => {
     const g = window.__game, S = (g.scene.landmarks || {}).scramble, res = [];
     const snap = t => {

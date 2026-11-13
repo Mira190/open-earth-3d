@@ -126,7 +126,9 @@ if ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
 fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
 export PORT
-export GAME_TIME=${GAME_TIME:-10:00}
+# the game's clock pinned to a date and an hour, not only an hour: the weather (weather.js, a hash of the date), the
+# day's life and the traffic's trips all follow the date, so a pinned hour alone played another game each day (#420)
+export GAME_TIME=${GAME_TIME:-2026-11-02T10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
 # The game's and the clip check's timing and traffic steps can miss under three cities' load at once

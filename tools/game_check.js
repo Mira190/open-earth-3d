@@ -25,6 +25,7 @@
 // time zone, so a game that starts at the live hour plays the same traffic and light on every run;
 // tools/check.sh pins it (GAME_TIME=live leaves the real clock).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
@@ -60,7 +61,7 @@ const npcNight = require('./npc_night');
   // prints), to find the step at which two runs of the same tree part
   const digest = () => p.evaluate(() => {
     const g = window.__game, h = a => { let x = 2166136261; for (const v of a) { x ^= Math.round(v * 100) | 0; x = Math.imul(x, 16777619) >>> 0; } return x.toString(16); };
-    return `t ${g.t().toFixed(2)} clock ${g.clock.min.toFixed(2)} crowd ${h(g.crowd.P.slice(0, g.crowd.active).flatMap(q => [q.x, q.y]))} traffic ${h(g.cars.C.flatMap(c => [c.x, c.y, c.v]))} lights ${h(g.junctions.J.filter(j => j.sig).flatMap(j => [j.ph, j.t]))} you ${h([g.player.x, g.player.y, g.player.z])} tiles ${g.nav.tiles.join('/')} heli ${h([g.heli.st.x, g.heli.st.y, g.heli.st.z, g.heli.st.h || 0])} npcs ${h(g.npcs.flatMap(n => [n.x, n.y]))} ferries ${h(g.fer.vessels.flatMap(v => [v.x, v.y]))} cam ${h([g.camera.position.x, g.camera.position.y, g.camera.position.z])} carsActive ${g.cars.active} extra ${g.cars.extra.length}`;
+    return `t ${g.t().toFixed(2)} clock ${g.clock.min.toFixed(2)} crowd ${h(g.crowd.P.slice(0, g.crowd.active).flatMap(q => [q.x, q.y]))} traffic ${h(g.cars.C.flatMap(c => [c.x, c.y, c.v]))} lights ${h(g.junctions.J.filter(j => j.sig).flatMap(j => [j.ph, j.t]))} you ${h([g.player.x, g.player.y, g.player.z])} tiles ${g.nav.tiles.join('/')} heli ${h([g.heli.st.x, g.heli.st.y, g.heli.st.z, g.heli.st.h || 0])} npcs ${h(g.npcs.flatMap(n => [n.x, n.y]))} ferries ${h(g.fer.vessels.flatMap(v => [v.x, v.y]))} cam ${h([g.camera.position.x, g.camera.position.y, g.camera.position.z])} carsActive ${g.cars.active} extra ${g.cars.extra.length} ride ${g.ride() ? h([g.ride().drv.st.x, g.ride().drv.st.y, g.ride().drv.st.v]) + g.ride().phase : '-'} wx ${g.weather ? h([g.weather.state.rain || 0, g.weather.state.fog || 0, g.weather.state.snow || 0]) : '-'}`;
   });
   const shot = async name => {
     if (process.env.DIGEST) console.log(`digest ${name}: ${await digest()}`);
@@ -97,8 +98,7 @@ const npcNight = require('./npc_night');
   });
   const lights0 = await lightCensus();
   const lightsKept = async when => { const l = await lightCensus(); check(l === lights0, `the scene's lights are the title's ${when} (${l}${l === lights0 ? '' : `; on the title ${lights0}`})`); };
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   // (the game reads its clock at Play, from a Date that runs on at the real rate from GAME_TIME: a load
   // that took longer starts it a little later, with a crowd of another size; in lockstep it starts on the minute)
   if (lockstep && pinned) await p.evaluate(spec => {

@@ -7,6 +7,7 @@
 //   GAME_TIME=10:00 xvfb-run -a node tools/cluster_probe.js shinjuku [T=400] [jids=1103,1105,1106,1108,1120] [R=250] [every=20] [x,y]
 // Exits 1 when a car stood 90 s or more (STAND_MAX) in the place.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shinjuku', secs = '400', jids = '1103,1105,1106,1108,1120', rad = '250', every = '20', at = ''] = process.argv;
 const MAXS = Number(process.env.STAND_MAX || 90);
@@ -20,8 +21,7 @@ const MAXS = Number(process.env.STAND_MAX || 90);
   p.on('console', m => { if (m.type() === 'error') console.log('console', m.text().slice(0, 200)); });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const r = await p.evaluate(([T, jids, R, every, at]) => {
     window.requestAnimationFrame = () => 0;
     const g = window.__game, A = g.cars, C = A.C, JN = g.junctions, L = A.netL;

@@ -7,6 +7,7 @@
 //   xvfb-run -a node tools/ride_shot.js shibuya out_dir [WxH] [times]
 // times: comma-separated, HH:MM local or relative to the sun ("sunset+15"); default 10:00,sunset+15,21:30
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const { findQueue } = require('./ride_queue');
@@ -30,8 +31,7 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900', timesArg = '10:00,s
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(src => { window.__findQueue = eval(`(${src})`); }, findQueue.toString());
   const grab = async name => {
     const png = await p.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => res(document.getElementById('game-gl').toDataURL('image/png'))))));

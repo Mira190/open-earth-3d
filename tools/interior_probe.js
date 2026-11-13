@@ -2,6 +2,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/interior_probe.js queenstown out_dir [HH:MM]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const [,, city = 'queenstown', outDir = '.', time = ''] = process.argv;
 (async () => {
@@ -21,7 +22,7 @@ const [,, city = 'queenstown', outDir = '.', time = ''] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); });
-  const play = await p.$('#gt-play'); if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   if (time) await p.evaluate(t => { const g = window.__game, [h, m] = t.split(':').map(Number); g.setClock(g.clock.y, g.clock.m, g.clock.d, h * 60 + m); }, time);
   await p.evaluate(() => window.__game.advance(1));
   const res = await require('./interior_step')(p, { outDir, prefix: `${city}-${time.replace(':', '')}-` });
