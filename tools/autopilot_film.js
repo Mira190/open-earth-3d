@@ -5,6 +5,8 @@
 //   cd web && python3 -m http.server 8800 &
 //   GAME_TIME=16:40 xvfb-run -a node tools/autopilot_film.js sydney out_dir
 //   DEST=opera SCENIC=1 WEATHER=rain SECONDS=70 FPS=24 W=1280 H=720 ...   (DEST: part of a destination's name; the farthest offered if none)
+//   FROM=barangaroo: start from the kerb by that landmark (part of its name)
+//   FULLHUD=1: the whole HUD (by default the quest, prompts, labels, toasts and menu row are off)
 //   STILLS=1: a still every five seconds of the drive instead (<out>/<city>-autopilot-NN.jpg), to look before filming
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -24,7 +26,10 @@ const FPS = +(process.env.FPS || 24), SECONDS = +(process.env.SECONDS || 60), W 
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
-  const set = await p.evaluate(({ want, scenic, weather }) => {
+  // (a film of the drive: the game's own clutter off, as photo mode has it, the toasts and the menu row with it; the
+  // clock, the minimap and the autopilot's panel stay. FULLHUD=1 keeps it all)
+  if (!process.env.FULLHUD) await p.addStyleTag({ content: '.g-quest, .g-prompt, .g-labels, .g-reticle, .g-btns, #g-toasts, .g-dialog, .g-chatter { display: none !important; }' });
+  const set = await p.evaluate(({ want, scenic, weather, from }) => {
     const g = window.__game, c = g.myCar && g.myCar();
     for (let t = 0; g.arriving() && t < 10; t += 0.25) g.advance(0.25);
     g.advance(2);
@@ -33,14 +38,19 @@ const FPS = +(process.env.FPS || 24), SECONDS = +(process.env.SECONDS || 60), W 
     g.player.x = st.x + Math.cos(st.h) * 2.6 * s; g.player.y = st.y - Math.sin(st.h) * 2.6 * s; g.player.z = st.z;
     g.advance(0.3); g.enterCar();
     for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
+    // (FROM: part of a landmark's name, the map's travel in your car to the kerb by it, where the drive starts)
+    const lm = from && g.landmarks.find(l => l.name.toLowerCase().includes(from));
+    if (lm && g.travelTo(lm)) { for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25); g.advance(4); }
     const list = g.destinations(st.x, st.y).filter(d => d.id !== 'car');
     let dest = want ? list.find(d => d.name.toLowerCase().includes(want)) : null, best = 0;
+    // (or a landmark of that name, not among the places offered from here: the kerb by it)
+    if (want && !dest) { const l2 = g.landmarks.find(l => l.name.toLowerCase().includes(want)); if (l2) dest = { id: `film-${l2.name}`, name: l2.name, at: l2.at }; }
     if (!dest) for (const d of list) { if (g.pilotTo(d, { quiet: true, scenic }) && g.pilot().len > best) { best = g.pilot().len; dest = d; } g.pilotOff(); }
     if (!dest || !g.pilotTo(dest, { scenic })) return { none: 'nowhere to drive to', offered: list.map(d => d.name) };
     if (weather && g.weather) g.weather.set(weather, { now: true }); // (WEATHER=rain: the drive in the rain)
     g.hold(false);
-    return { dest: dest.name, len: g.pilot().len, share: g.pilot().share, offered: list.map(d => d.name) };
-  }, { want: (process.env.DEST || '').toLowerCase(), scenic: !!process.env.SCENIC, weather: process.env.WEATHER || '' });
+    return { from: lm ? lm.name : null, landmarks: g.landmarks.map(l => l.name), dest: dest.name, len: g.pilot().len, share: g.pilot().share, offered: list.map(d => d.name) };
+  }, { want: (process.env.DEST || '').toLowerCase(), scenic: !!process.env.SCENIC, weather: process.env.WEATHER || '', from: (process.env.FROM || '').toLowerCase() });
   console.log(JSON.stringify(set));
   if (set.none) { await b.close(); process.exit(1); }
   // take over the frame loop: the game asks for its next frame, and the film calls it at a fixed step

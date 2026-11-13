@@ -30,7 +30,8 @@
 //                    lookups in the vertex shader, none per pixel), so a building or a cloud in front of it puts them out
 //   uShafts          light shafts: a short march from each pixel towards the sun over the bright sky on the way (a
 //                    few taps, jittered per pixel so that they read as haze and not as steps), only while the sun is
-//                    in or near the frame; shader({ shafts: n }) sets the taps, 0 leaves the code out
+//                    in or near the frame; shader({ shafts: n }) sets the taps, 0 leaves the code out. Merged with the
+//                    bloom, the taps read the bloom's half-size bright pass (its alpha: tBright), not the full-size scene
 'use strict';
 window.OELens = (function () {
   // a NaN texel would show as a black dot and an infinite one turns the tone curve to NaN; the
@@ -58,7 +59,7 @@ window.OELens = (function () {
         }`;
   const NOSHADE = 'float oeShade(vec2 uv) { return 1.0; }';
   const VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
-  const merged = () => ({ tBloom: { value: null }, uBloom: { value: 0 }, uCap: { value: 8 }, uKnee: { value: 0.55 }, uShadeShow: { value: 0 },
+  const merged = () => ({ tBloom: { value: null }, tBright: { value: null }, uBloom: { value: 0 }, uCap: { value: 8 }, uKnee: { value: 0.55 }, uShadeShow: { value: 0 },
     uSharp: { value: 0 }, uSrcPx: { value: new THREE.Vector2() } });
 
   // the scene with its contact shadows, rolled-off highlights and bloom, in linear HDR, for a pass that is not the lens
@@ -110,9 +111,12 @@ window.OELens = (function () {
           vec3 c = (rolloff(tap(vUv + vec2(-o.x, -o.y)) * k) + rolloff(tap(vUv + vec2(o.x, -o.y)) * k)
             + rolloff(tap(vUv + vec2(-o.x, o.y)) * k) + rolloff(tap(vUv + o) * k)) * 0.25;
           float a = smoothstep(luminosityThreshold, luminosityThreshold + smoothWidth, dot(c, vec3(0.2126, 0.7152, 0.0722)));
+          // (the alpha: this half-size pixel's brightness before the threshold, which the bloom's blur does not
+          // read: the light shafts' source, read at half size instead of the scene's full-size colour, issue 372)
+          float l = min(dot(c, vec3(0.2126, 0.7152, 0.0722)), ${BLOOM_CEIL.toFixed(1)});
           c *= a;
           c *= ${BLOOM_CEIL.toFixed(1)} / max(max(max(c.r, c.g), c.b), ${BLOOM_CEIL.toFixed(1)});
-          gl_FragColor = vec4(c, a);
+          gl_FragColor = vec4(c, l);
         }`,
     };
   }
@@ -194,7 +198,7 @@ window.OELens = (function () {
           return c * vSun * uFlare;
         }
         ${TAP}
-        ${merge ? `uniform sampler2D tBloom; uniform float uBloom, uShadeShow, uSharp; uniform vec2 uSrcPx;
+        ${merge ? `uniform sampler2D tBloom, tBright; uniform float uBloom, uShadeShow, uSharp; uniform vec2 uSrcPx;
         ${ROLLOFF}
         ${shade}
         // A scene drawn below the canvas's size (the frame-time governor, quality.js) is brought up here, and
@@ -230,8 +234,10 @@ window.OELens = (function () {
               vec2 dl = uSunUv - uv;
               float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))), acc = 0.0;
               for (int i = 0; i < OE_SHAFTS; i++) {
-                vec3 t = texture2D(tDiffuse, uv + dl * ((float(i) + ign) / float(OE_SHAFTS))).rgb;
-                acc += smoothstep(0.75, 1.8, min(dot(t, vec3(0.2126, 0.7152, 0.0722)), 64.0) * uExposure);
+                vec2 q = uv + dl * ((float(i) + ign) / float(OE_SHAFTS));
+                ${merge ? `float lt = uBloom > 0.0 ? texture2D(tBright, q).a : dot(texture2D(tDiffuse, q).rgb, vec3(0.2126, 0.7152, 0.0722));`
+                  : 'float lt = dot(texture2D(tDiffuse, q).rgb, vec3(0.2126, 0.7152, 0.0722));'}
+                acc += smoothstep(0.75, 1.8, min(lt, 64.0) * uExposure);
               }
               float away = length(dl * vec2(uAspect, 1.0));
               col += uFlareTint * (acc / float(OE_SHAFTS)) * exp(-away * 2.6) * uShafts * vSun * 0.55 / max(uExposure, 1e-3);

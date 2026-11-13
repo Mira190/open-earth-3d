@@ -1143,6 +1143,37 @@ uniform sampler2D uSkyVis; uniform vec4 uSkyVisF; uniform float uSkyVisK;`)
 { vec3 oeSP = transpose(mat3(viewMatrix)) * (-vViewPosition - viewMatrix[3].xyz);
   float oeSV = texture2D(uSkyVis, vec2((oeSP.x - uSkyVisF.x) * uSkyVisF.z, (-oeSP.z - uSkyVisF.y) * uSkyVisF.w)).r;
   reflectedLight.indirectDiffuse *= mix(1.0, oeSV, uSkyVisK * (1.0 - smoothstep(150.0, 500.0, length(vViewPosition)))); }`);
+      groundBounce(sh); // (the walls among them: the landmarks' and the quays')
+    };
+    // A bounce that knows its ground (issue 372, item 2). Sunlit ground throws warm light back onto the walls over
+    // it, through the hemisphere light's ground colour (game/atmosphere.js shadeLight); alone, that lit a wall in a
+    // dark alley as warmly as one on a sunlit square. The wall reads the sky visibility (skyvis.webp, above) of the
+    // ground 4 m in front of it: from it the height of the horizon there (its mean cos^2 is the texture's value), and
+    // whether the sun clears it. The ground term of the hemisphere light is scaled by that: a canyon's foot keeps
+    // a third of its bounce, an open square a quarter more than it had. One texture read in the walls' shader, no pass.
+    // uBounceSun: the sun's elevation (rad), uBounceK: how much of the day it is (0 at night: the bounce as it was).
+    // `?bounce=off` leaves it out.
+    const BOUNCE = SKYVIS && new URLSearchParams(location.search).get('bounce') !== 'off' ? Object.assign({ uBounceSun: { value: 0 }, uBounceK: { value: 0 } }, SKYVIS) : null;
+    const groundBounce = sh => {
+      if (!BOUNCE || sh.uniforms.uBounceSun || !sh.fragmentShader.includes('#include <lights_fragment_end>')) return;
+      const had = !!sh.uniforms.uSkyVis;
+      Object.assign(sh.uniforms, BOUNCE);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+${had ? '' : 'uniform sampler2D uSkyVis; uniform vec4 uSkyVisF; uniform float uSkyVisK;'} uniform float uBounceSun, uBounceK;`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+#if NUM_HEMI_LIGHTS > 0
+if (uBounceK > 0.0 && uSkyVisK > 0.0 && 0.5 - 0.5 * dot(normal, hemisphereLights[0].direction) > 0.02) { // (not the ground: it faces away)
+  mat3 oeBI = transpose(mat3(viewMatrix));
+  vec3 oeBP = oeBI * (-vViewPosition - viewMatrix[3].xyz), oeBN = oeBI * normal;
+  vec2 oeBQ = oeBP.xz + normalize(oeBN.xz + 1e-4) * 4.0;
+  float oeBV = texture2D(uSkyVis, vec2((oeBQ.x - uSkyVisF.x) * uSkyVisF.z, (-oeBQ.y - uSkyVisF.y) * uSkyVisF.w)).r;
+  float oeHz = acos(sqrt(clamp(oeBV, 0.0, 1.0))); // the horizon's height over that ground, rad
+  float oeLitG = smoothstep(oeHz - 0.14, oeHz + 0.14, uBounceSun);
+  float oeGw = 0.5 - 0.5 * dot(normal, hemisphereLights[0].direction); // the ground's share of the hemisphere light here
+  float oeF = mix(1.0, mix(0.3, 1.25, oeLitG), uBounceK * (1.0 - smoothstep(150.0, 500.0, length(vViewPosition))));
+  reflectedLight.indirectDiffuse += hemisphereLights[0].groundColor * oeGw * (oeF - 1.0) * material.diffuseColor * RECIPROCAL_PI;
+}
+#endif`);
     };
     // the street lights on a lit surface: its colour times their light where it is (the world
     // position from the view position, as the view matrix is rigid)
@@ -1629,6 +1660,11 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
     if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
+    if (BOUNCE && buildings.material && buildings.material.onBeforeCompile) { // the walls' bounce from the ground in front of them
+      const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
+      buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); groundBounce(sh); };
+      buildings.material.customProgramCacheKey = function () { return `${key ? key.call(this) : ''}|bounce`; };
+    }
     if (FARSUN && buildings.material && buildings.material.onBeforeCompile) { // the walls and roofs take the far sun's shadow too
       const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
       buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); sunLit(sh); };
@@ -2217,6 +2253,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         hemi.groundColor.setHex(0x4d463a);
+        if (BOUNCE) { BOUNCE.uBounceSun.value = sp.altitude * Math.PI / 180; BOUNCE.uBounceK.value = smooth(-1, 6, sp.altitude); }
         if (api.shadeLight) api.shadeLight(hemi, sunLight, day); // a region's look: the shade's colour, the ground's bounce (game/atmosphere.js)
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         if (far) far.setNight(U.uNight.value);

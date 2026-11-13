@@ -156,7 +156,7 @@ window.OEAtmos = (function () {
       grade: {
         night: { sat: 1.14, vib: 0.25, lift: [0.0, 0.003, 0.014] },
         blue: { ev: 1.24, tint: [0.97, 0.98, 1.06], sat: 1.2, vib: 0.35, shade: [0.92, 0.94, 1.12], hi: [1.05, 0.99, 0.98], lift: [0.006, 0.006, 0.03] },
-        golden: { tint: [1.06, 1.0, 0.92], sat: 1.18, vib: 0.4, shade: [0.92, 0.9, 1.14], hi: [1.05, 1.0, 0.94], lift: [0.012, 0.006, 0.03] },
+        golden: { tint: [1.06, 1.0, 0.92], sat: 1.18, vib: 0.4, shade: [0.95, 0.94, 1.06], hi: [1.05, 1.0, 0.94], lift: [0.008, 0.006, 0.016] },
         day: { ev: 1.06, tint: [1.02, 1.0, 0.98], sat: 1.14, vib: 0.42, contrast: 0.16, shade: [0.93, 0.98, 1.1], hi: [1.02, 1.0, 0.97], lift: [0.0, 0.005, 0.016] },
       },
       sky: { saturation: 1.95, clouds: 0.3, towers: 1.0, high: 0.5, edge: 0.45, glow: 0.8, milky: 1.0, meteors: 24 } },
@@ -413,7 +413,7 @@ window.OEAtmos = (function () {
       bloom.highPassUniforms = brightSh.uniforms;
       bloom.materialHighPassFilter = mat(brightSh);
       bloom.blendMaterial = bloom._basic = { dispose() {} }; // (never drawn: nothing to compile)
-      bloom.uniforms = { tBloom: { value: bloom.renderTargetsHorizontal[0].texture }, uBloom: { value: 0 } };
+      bloom.uniforms = { tBloom: { value: bloom.renderTargetsHorizontal[0].texture }, tBright: { value: bloom.renderTargetBright.texture }, uBloom: { value: 0 } }; // (tBright: the light shafts' half-size source, lens.js)
       const drawBloom = () => {
         const H = bloom.highPassUniforms;
         H.tDiffuse.value = rt.texture; H.uSrcPx.value.set(1 / rt.width, 1 / rt.height); H.uSpread.value = lowBloom ? 1 : 0.5;
@@ -483,6 +483,7 @@ window.OEAtmos = (function () {
           for (const p of passes) if (p !== bloom && p.setSize) p.setSize(w, h);
           bloom.setSize(lowBloom ? Math.round(w / 2) : w, lowBloom ? Math.round(h / 2) : h);
           bloom.uniforms.tBloom.value = bloom.renderTargetsHorizontal[0].texture;
+          bloom.uniforms.tBright.value = bloom.renderTargetBright.texture;
         },
         render() {
           const autoClear = renderer.autoClear;

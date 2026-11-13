@@ -1056,11 +1056,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return Math.hypot(Math.max(0, Math.abs(dx * fx + dy * fy) - o.C.half), Math.max(0, Math.abs(-dx * fy + dy * fx) - o.C.hw));
   }
   // the cars near (x, y) as boxes (cars.js), less one (the one you are in)
+  // the cars of the traffic your car was handed back overlapping (the autopilot's car is carried along its driver's line,
+  // and on a tight corner beside one it can be a little into it): left out of your car's collisions until the two are
+  // apart, 3 s at most, rather than shoved out of each other at once, a jump of 2 m mid-corner (#399)
+  let handGhost = null, handGhostT = 0;
+  function boxesMeet(b, o) {
+    const st = o.D.st, fx = Math.sin(st.h), fy = Math.cos(st.h), bx = Math.sin(b.h), by = Math.cos(b.h), dx = b.x - st.x, dy = b.y - st.y;
+    for (const [px, py] of [[fx, fy], [-fy, fx], [bx, by], [-by, bx]]) {
+      const ra = o.C.half * Math.abs(fx * px + fy * py) + o.C.hw * Math.abs(-fy * px + fx * py), rb = b.hl * Math.abs(bx * px + by * py) + b.hw * Math.abs(-by * px + bx * py);
+      if (Math.abs(dx * px + dy * py) >= ra + rb) return false;
+    }
+    return true;
+  }
   function carBoxes(x, y, r, but = null) {
     const out = [];
     for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - x) < r + c.half && Math.abs(c.y - y) < r + c.half) {
       const b = OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5);
       b.onHit = () => cars.stop(c);
+      b.car = c;
+      if (handGhost && clockT - handGhostT > 3) handGhost = null;
+      if (but === myCar && handGhost && handGhost.has(c)) { if (boxesMeet(b, myCar)) continue; handGhost.delete(c); } // (handed back into it: passed through until apart)
       out.push(b);
     }
     for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
@@ -1213,6 +1228,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const o = pilot;
     if (!o) return;
     pilotEnd = why;
+    // (the traffic it is a little into as it is handed back: passed through until apart, carBoxes)
+    handGhost = new Set(cars.live.filter(c => c.line >= 0 && Math.hypot(c.x - myCar.D.st.x, c.y - myCar.D.st.y) < c.half + myCar.C.half + 1 && boxesMeet(OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5), myCar)));
+    handGhostT = clockT;
+    if (!handGhost.size) handGhost = null;
     o.drv.leave(); pilot = null;
     if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
     if (say) H.toast(say);
@@ -1383,7 +1402,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if ((at.dist < 1.2 && Math.abs(at.dh) < 0.45) || (o.joinT > 9 && at.dist < 4 && st.speed < 1.5)) {
         o.drv.jump(at.s); o.drv.st.v = Math.max(0, st.v);
         o.off = { x: st.x - o.drv.st.x, y: st.y - o.drv.st.y, h: angDiff(st.h, o.drv.st.h) }; o.join = false;
-      } else if (o.joinT > 16) { pilotOff('The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.'); return null; }
+      } else if (o.joinT > 16) { pilotOff(o.rejoin ? '<b>Autopilot:</b> the road ahead is blocked. You have the wheel.' : 'The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.', o.rejoin ? 'blocked' : undefined); return null; }
       else { const lead = leadOf(st, 5); return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5); }
     }
     driverStep(o, dt);
@@ -1415,6 +1434,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       o.off = { x: st.x - c.x, y: st.y - c.y, h: angDiff(st.h, c.h) };
       o.turns = OEAutopilot.turns(c.route, o.drv.path); o.turnsOf = o.drv; o.len = o.meter + c.end;
       if ((o.rerouted || 0) > (o.told || 0)) { o.told = o.rerouted; H.toast('<b>Autopilot:</b> traffic ahead, taking another way.'); }
+      // (further off than a lane's slack, it drives itself onto the new way first, as at the start: carried there,
+      // its body swept sideways through whatever stood beside it, a car stopped for it at Fushimi Inari)
+      if (Math.hypot(o.off.x, o.off.y) > 1.2 || Math.abs(o.off.h) > 0.45) {
+        c.v = 0; o.join = true; o.rejoin = true; o.joinT = 0; o.joinS = 0; o.off = { x: 0, y: 0, h: 0 };
+        const len = o.drv.path.len, at = OEAutopilot.onLane(o.drv.poseAt, len, st.x, st.y, st.h, 0, 40), lead = leadOf(st, 5);
+        return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5);
+      }
     }
     // (eased onto the driver's line from where it took the car over)
     const e = Math.exp(-dt * 2.4);
@@ -5648,7 +5674,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else { tx = player.x; ty = player.y; tz = player.z + 1.55; follow = player.h; }
     // the autopilot's film (autopilot.js film): shots round the car on this same rig, a cut between them; a drag
     // of the view gives it back to you for eight seconds
-    const shot = pilot && veh === myCar && !pilot.join && clockT - cam.lastInput > 8 ? pilot.film.step(dt) : null;
+    let shot = pilot && veh === myCar && !pilot.join && clockT - cam.lastInput > 8 ? pilot.film.step(dt) : null;
+    // (a shot whose camera, or its view of the car, is in a tree's crown is cut short for the next: the crane in
+    // Sydney's street trees filled the frame with leaves. Read at the cut and every half second through the shot)
+    if (shot && (shot.cut || (pilot.filmLook = (pilot.filmLook || 0) - dt) <= 0)) {
+      pilot.filmLook = 0.5;
+      const yw = vs.h + shot.yaw, hd = shot.dist * Math.cos(shot.pitch), cx = tx - Math.sin(yw) * hd, cy = ty - Math.cos(yw) * hd, cz = tz + shot.dist * Math.sin(shot.pitch);
+      const leafy = q => q.kind === 'tree' && cz > q.z + 1.5 && (() => { // (in the crown, 4.5 m round the trunk, from 1.5 m up)
+        const ex = tx - cx, ey = ty - cy, L2 = ex * ex + ey * ey || 1, u = Math.max(0, Math.min(1, ((q.x - cx) * ex + (q.y - cy) * ey) / L2));
+        return Math.hypot(cx + ex * u - q.x, cy + ey * u - q.y) < 4.5 && u < 0.85; // (along the way from the camera to the car, not over the car itself)
+      })();
+      // (and a wall across the view: the camera pressed to a facade with the car behind it. Five points along the way
+      // to the car, at the camera's height falling to the car's)
+      const walled = () => { for (let k = 1; k <= 5; k++) { const u = k / 6, x = cx + (tx - cx) * u, y = cy + (ty - cy) * u, z = cz + (tz - cz) * u - 1; const w = nav.push(x, y, z, 0.4, 1.2); if (Math.hypot(w.x - x, w.y - y) > 0.05) return true; } return false; };
+      if ((postsNear((cx + tx) / 2, (cy + ty) / 2, hd / 2 + 5).some(leafy) || walled()) && (pilot.filmSkips = (pilot.filmSkips || 0) + 1) < 6) { pilot.film.skip(); shot = pilot.film.step(0); pilot.filmLook = 0; }
+      else pilot.filmSkips = 0;
+    }
     if (shot) {
       follow = vs.h + shot.yaw;
       if (shot.cut) { cam.yaw = follow; cam.dist = shot.dist; cam.pitch = shot.pitch; cam.snap = true; cam.distTo = 0; }
@@ -5771,6 +5812,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the chase camera's bearing, distance and height from the player's head
   const head = () => W(player.x, player.y, player.z + 1.55);
   const chasePolar = () => ({ az: cam.yaw + Math.PI, dist: Math.cos(cam.pitch) * cam.dist, h: Math.sin(cam.pitch) * cam.dist });
+  // where the chase camera will really be, lifted over a wall behind or pulled in (rig): a move lands on that, not on
+  // the pose cam asks for, or the hand-over has to tilt the difference in its last half second (#340: the stairs)
+  const livePolar = () => { cam.snap = true; rig(0); cam.snap = true; return OECine.polar(head(), live.pos); };
   const handOver = (k, from = 0.8) => OECine.ease.smooth(OECine.span(k, from, 1)); // weight of the live rig at the end of a shot
   // Start (#89): one eased move from the title shot down to over the player's shoulder, calm enough not to
   // make anyone dizzy. The camera dollies in along the bearing it is already on, turning about the player by
@@ -5818,7 +5862,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (let i = 1; i <= N; i++) el[i] = Math.max(el[i], el[i - 1] - step);
     for (let i = N - 1; i >= 0; i--) el[i] = Math.max(el[i], el[i + 1] - step);
     const early = e0 != null ? el[0] - e0 : 0; // how far above the first frame the roofs want it straight away
-    if (early > 0) { const M = N / 3; for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
+    // (eased in over a third of the move, or longer if that would tilt faster than rate: the smootherstep peaks at 1.875)
+    if (early > 0) { const M = Math.min(N, Math.max(N / 3, Math.ceil(1.875 * early / step))); for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
     const fn = k => { const f = Math.max(0, Math.min(N, k * N)), i = Math.floor(f), j = Math.min(N, i + 1); return el[i] + (el[j] - el[i]) * (f - i); };
     fn.late = el[N] - e(1); // how far above its own last elevation the roofs held it: more time is needed to come down calmly
     fn.max = Math.max(...el); // the steepest it gets
@@ -5833,7 +5878,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.h = best - Math.PI;
     cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.36; cam.dist = 7.5; cam.tilt = 0;
     camSmooth.set(0, 0, 0);
-    const p1 = chasePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
+    const p1 = livePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
     const r0 = Math.max(10, Math.hypot(p0.dist, p0.h)), r1 = Math.hypot(p1.dist, p1.h), e0 = Math.atan2(p0.h, p0.dist), e1 = Math.atan2(p1.h, p1.dist);
     const S = OECine.ease.smooth, pos = new THREE.Vector3(), lk = new THREE.Vector3();
     const rAt = k => r0 * Math.pow(r1 / r0, S(k)), azAt = k => p0.az + (az1 - p0.az) * S(k);
@@ -5980,6 +6025,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // at the top of the climb, out of sight.
   // (opts.cue, if given, moves whatever is travelling at the top of the climb instead of you; quiet: no arrival toast)
   const HOP_TURN_RATE = 45 * Math.PI / 180, HOP_PITCH_RATE = 30 * Math.PI / 180; // rad/s
+  // (coming down into a street between towers it may tilt back a little faster, so it has tilted back before the hand-over
+  // to the chase camera rather than during it, which added the two: #340, the hop to the scramble from Sangenjaya)
+  const HOP_FALL_RATE = 40 * Math.PI / 180;
   function hopTo(x, y, z, name, opts = {}) {
     const span = Math.hypot(x - player.x, y - player.y), bearing = Math.atan2(x - player.x, y - player.y);
     const roofs = roofAlong(player.x, player.y, x, y) - player.z; // cruise well clear of the tallest roof on the way
@@ -5997,22 +6045,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // up and down on a log scale of the range; the elevation one gentle rise to eT by 45% of the way and one fall to
     // the chase camera's, raised over the roofs on the way down (calmElevation): no plunge at the end
     const pos = new THREE.Vector3(), lk = new THREE.Vector3(), E = OECine.ease, L = OECine.lerp;
-    const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist), r1 = 7.5;
+    const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist);
+    let r1 = 7.5; // (the chase camera's range on landing: set again at the top of the climb from where it really is)
     const a = 0.26, b = 0.6, km = 0.45;
     // (out of the street it cranes up over the player's head before it pulls back: the range grows late in the rise)
-    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
-    let eTop = eT; const peL = pe; // the elevation at the top, and the chase camera's pitch on landing
+    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1 - 0.2 * (1 - b))))); // (in to the chase camera's range by 92%: the rest is for tilting back level)
+    let eTop = eT, peL = pe; // the elevation at the top, and the chase camera's pitch on landing (likewise)
     const eBase = k => (k < km ? L(e0, eTop, E.smooth(k / km)) : L(eTop, peL, E.smooth(OECine.span(k, km, 1))));
     // Over tall roofs the way down has to be steeper. The top then already holds the steepest it will need, so the
     // camera only ever tilts one way on the way down; the hop takes the time it needs to tilt back calmly (to 6.5 s),
     // and the hand-over to the chase camera (the last 22%) takes what is left
-    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_PITCH_RATE, rMin: 14, upto: 0.7 });
+    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_FALL_RATE, rMin: 30, upto: 0.7 }); // (within 30 m the chase camera keeps itself clear of the walls)
     const riseOf = d => calmElevation({ c: A, az: k => azAt(L(0, a, k)), r: k => rAt(L(0, a, k)), e: k => eBase(L(0, a, k)), dur: d * a, rate: HOP_PITCH_RATE, rMin: 14, upto: 1, e0 });
     let fallEl = fallOf(dur), riseEl = riseOf(dur);
     for (let n = 0; n < 4; n++) {
       eTop = Math.min(1.2, Math.max(eT, fallEl.max, riseEl(1)));
       const short = Math.max(fallEl.late, riseEl.early); // the roofs want more tilt than the time allows
-      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * short / HOP_PITCH_RATE);
+      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * (fallEl.late > riseEl.early ? short / HOP_FALL_RATE : short / HOP_PITCH_RATE));
       fallEl = fallOf(dur); riseEl = riseOf(dur);
     }
     const path = k => {
@@ -6028,6 +6077,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         player.h = yawEnd; player.speed = 0; player.vz = 0; player.ground = true;
         cam.mode = 'chase'; cam.yaw = yawEnd; cam.pitch = peL; cam.dist = 7.5;
         groundLod(x, y);
+        const pl = livePolar(); // (lifted over a wall behind, or pulled in: the way down lands where it will be)
+        r1 = Math.max(2, Math.hypot(pl.dist, pl.h)); peL = Math.atan2(pl.h, pl.dist);
         save();
       }]],
       onEnd: () => { if (!opts.quiet) H.toast(`You're at ${name}.`); } });
