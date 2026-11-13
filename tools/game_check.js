@@ -754,6 +754,39 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
+  // a pilgrimage's stops (#359: Sangenjaya): each spot with a stamp stamps the passport the first time you look at it,
+  // and one with a frame opens the photo camera on its view once its lines are read, the eye where the frame puts it;
+  // then a district link's arrival tracks the line whose giver stands there (trackNear). (a city with none skips it whole)
+  if (await p.evaluate(() => (window.__game.G.spots || []).some(sp => sp.stamp))) {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, track: g.qs().track }; });
+    const stops = await p.evaluate(() => {
+      const g = window.__game, out = [];
+      for (const sp of g.G.spots.filter(q => q.stamp)) {
+        Object.assign(g.player, { x: sp.at[0], y: sp.at[1], speed: 0 }); g.advance(0.1);
+        const had = g.qs().stamps.filter(s => s.id === `spot:${sp.id}`).length;
+        g.lookAt(sp);
+        for (let i = 0; i < 40 && g.dlg.open; i++) { g.dlg.next(); g.dlg.next(); g.advance(0.05); }
+        const got = g.qs().stamps.filter(s => s.id === `spot:${sp.id}`).length;
+        const r = { id: sp.id, stamp: sp.stamp, stamped: got === 1 && had <= 1, frame: !!sp.frame, photo: g.photo.on, eye: null };
+        if (sp.frame) { g.advance(0.1); const c = g.camera.position, e = sp.frame.eye; r.eye = Math.hypot(c.x - e[0], -c.z - e[1], c.y - e[2]); }
+        if (g.photo.on) { g.photoMode(false); for (let i = 0; i < 12 && g.cine.active; i++) g.advance(0.1); }
+        out.push(r);
+      }
+      return out;
+    });
+    for (const r of stops) check(r.stamped && (!r.frame || (r.photo && r.eye < 0.6)), `looks at the stop ${r.id}: stamped "${r.stamp}"${r.stamped ? '' : ' NOT'}${r.frame ? `, the photo camera ${r.photo ? `on its frame, ${r.eye.toFixed(2)} m from the frame's eye` : 'NOT opened'}` : ''}`);
+    const near = await p.evaluate(() => {
+      const g = window.__game, open = g.openLines(), l = open.find(x => { const q = x.quests[g.ls(x).qi]; return q && !g.ls(x).started; });
+      if (!l) return null;
+      const q = l.quests[g.ls(l).qi], n = g.npcs.find(o => o.id === q.giver);
+      if (!n) return null;
+      g.trackNear([n.x + 5, n.y + 5]);
+      return { line: l.id, tracked: g.tracked() && g.tracked().id, giver: n.id };
+    });
+    if (near) check(near.tracked === near.line, `arriving beside ${near.giver} tracks the line ${near.line} (tracked: ${near.tracked})`);
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.qs().track = k.track; g.advance(0.2); }, keep);
+  }
+
   // the rooms a city opens (game.json "interiors": the Skyline restaurant, St Peter's, Williams Cottage): from in
   // front of each door, walk in through it (it must be open by the time you are in the doorway), stand in the room
   // on its floor with its name shown, and walk back out, the door shutting behind you (tools/interior_step.js)

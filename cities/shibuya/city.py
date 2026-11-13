@@ -1858,6 +1858,10 @@ def districts_finalize(ctx):
         ctx.labels["Yongen-Jaya: Sangenjaya 三軒茶屋"] = [round(mx, 1), round(my, 1), round(gz(mx, my) + 40, 1)]
         pk = sancha.pukuichi_spot()   # Pukuichi, where the pilgrims' walk starts (sancha.py)
         ctx.labels["Pukuichi ぷくいち: where the walk starts"] = [pk[0], pk[1], round(pk[2] + 0.5, 1)]
+        sc = sancha.stair_corner_spot()   # the stops past the café (sancha.py)
+        ctx.labels["The stair corner"] = [sc[0], sc[1], round(sc[2] - 1.0, 1)]
+        ctx.labels["The fork and the covered passage"] = [*sancha.FORK["at"], round(sancha.FORK["z"] - 2.0, 1)]
+        ctx.labels["Sangenjaya Batting Center (closed)"] = [-2492.5, -2830.0, 33.7 + 1.0]
         # the snack bar itself, named at its door: the front a game gave its café is what visitors come to find
         if "marina" in shops:
             sm = shops["marina"]
@@ -2025,12 +2029,15 @@ def yongen(K, y):
     sign; the cafe's sign upstairs."""
     if CITY == "shibuya":
         sancha.pukuichi(K)   # Pukuichi's front, where the walk starts (sancha.py)
+        sancha.stair_corner(K)   # the stair corner, the fork with the bars' signs and the covered passage past it (sancha.py)
+        sancha.fork(K)
+        sancha.passage(K)
     c = y.get("chiyo")
     if c:
         sancha.chiyo(K, c)   # its fence and boarded alley as they stand, under the board that still names it (sancha.py)
     h = y.get("hanamasa")
     if h:
-        facade_panel(K("atlas", "lit"), h["at"], h["normal"], min(6.5, h["len"] * 0.8), h["z"] + 3.4, h["z"] + 4.8, "hanamasa", off=0.25)
+        sancha.hanamasa(K, h)   # its sign wall, the cinema's blade, the batting centre's stair and the nets on the roof (sancha.py)
     m = y.get("marina")
     if m:
         mid, n, z = np.asarray(m["at"]), np.asarray(m["normal"]), m["z"]
@@ -2138,8 +2145,13 @@ def districts_meshes(lm):
         for k in ("marina", "chiyo"):   # New Marina's front and Chiyo-no-yu's fence are drawn as they stand (sancha.py)
             if k in lm.get("yongen", {}):
                 avoid = avoid + [np.asarray(lm["yongen"][k]["at"], float) + np.asarray(lm["yongen"][k]["normal"], float) * 0.5]
-        if CITY == "shibuya":   # and Pukuichi's
+        if CITY == "shibuya":   # and Pukuichi's, the stair corner's, the fork's, the passage's and Hanamasa's
             avoid = avoid + [np.asarray(sancha.PUKUICHI["at"], float) + t_ for t_ in (np.zeros(2), np.array([-1.4, -4.4]), np.array([1.4, 4.4]))]
+            avoid = avoid + [np.asarray(v, float) for v in sancha.STAIR_CORNER["wall"] + sancha.STAIR_CORNER["block"][:1]]
+            avoid = avoid + [np.asarray(sancha.FORK["at"], float), *sancha.passage_points()]
+            if "hanamasa" in lm.get("yongen", {}):
+                hm = lm["yongen"]["hanamasa"]
+                avoid = avoid + [np.asarray(hm["at"], float) + np.asarray([-hm["normal"][1], hm["normal"][0]]) * a for a in (-9.0, -4.0, 0.0, 4.0)]
         shop_signs(K, open_fronts(lm["signs"]["sites"]), avoid)
     poles_and_wires(K, lm.get("poles", []))
     return K.meshes()
@@ -3993,6 +4005,7 @@ def landmark_glows(scene):
         out += EAST.glows(EAST_EXIT)
     if "marina" in lm.get("yongen", {}):
         out += sancha.glows(lm["yongen"]["marina"])
+        out += sancha.glows_more(lm["yongen"].get("hanamasa"))
     return out
 
 
@@ -4144,30 +4157,56 @@ def districts_extras(lm, spots, chatter, close):
         close.append(close_to("Center Gai arch, its post", G(0, cg["span_m"] / 2, 0), cg["z"], G(-4.0, cg["span_m"] / 2 - 1.5, 0), 1.2, 0.2))
         chatter.append(talk(at + f * 12, cg["z"], [["Friend", "Ramen or monja?"], ["Friend", "Ramen. Then the arcade."], ["Friend", "You always say that."]]))
     y = lm.get("yongen", {})
+    fr = sancha.frames(lm) if CITY == "shibuya" else {}
+    walk = []   # the pilgrims' walk, in their order: each stop a spot with its stamp and the frame it is known by
+
+    def stop(sp, stamp):
+        sp["stamp"] = stamp
+        if sp["id"] in fr:
+            sp["frame"] = fr[sp["id"]]
+        walk.append(sp)
+    if CITY == "shibuya":
+        pk = sancha.pukuichi_spot()
+        stop(spot("pukuichi", "Pukuichi ぷくいち", pk[:2], pk[2], "Look at the shop", [
+            "鉄板・広島府中焼き: Fuchu-yaki, the okonomiyaki of Fuchu in Hiroshima, made with minced pork for crunch instead of sliced belly. Open from five in the evening till midnight, closed Mondays; by day the shutters are down.",
+            "A game's hero walks up this street on his first day in town, past a yakisoba shop on the left. This is the shop it was drawn from; the café's lane is round the corner to the north."], 3.0), "Pukuichi")
+    if "marina" in y:
+        m = y["marina"]
+        stop(spot("marina", "New Marina ニューマリーナ", np.asarray(m["at"]) + np.asarray(m["normal"]) * 1.5, m["z"], "Look at the snack bar", [
+            "A snack bar: a counter, a few stools, karaoke, a mama-san. A game borrowed this front for its café; the café isn't here, this is somebody's bar.",
+            "The game drew its café's front from here: the red awning, the brick, the door in white. Its inside was invented; nobody knows a real one. Rain on the Roof, the café upstairs next door, is the nearest in feel.",
+            "Upstairs next door, a café in an old house. Keep your voice down: people live in these lanes."], 2.8), "The café's front")
+        chatter.append(talk(np.asarray(m["at"]) + np.asarray(m["normal"]) * 4.0, m["z"], [["Regular", "Same as always?"], ["Mama-san", "Same as always."]], 10, False))
     if "chiyo" in y:
         c = y["chiyo"]
         mid, n = np.asarray(c["at"]), np.asarray(c["normal"])
         t_ = np.array([-n[1], n[0]])
-        spots.append(spot("chiyo", "Chiyo-no-yu 千代の湯", mid + n * 1.95 - t_ * 1.15, c["z"], "Look at the bathhouse's board", [
+        stop(spot("chiyo", "Chiyo-no-yu 千代の湯", mid + n * 1.95 - t_ * 1.15, c["z"], "Look at the bathhouse's board", [
             "千代の湯 入口: Chiyo-no-yu, this way. The board is still up, but the alley under it is boarded shut and the bath has been closed since 2021.",
-            "A game put its bathhouse here, across from the café, with the coin laundry in the passage. Pilgrims still come to stand where it was. The chimney behind the trees is the bath's."], 3.0))
+            "A game put its bathhouse here, across from the café, with the coin laundry in the passage. Pilgrims still come to stand where it was. The chimney behind the trees is the bath's."], 3.0), "Chiyo-no-yu")
         # (its vending machines stood inside the alley, boarded up since 2024: no longer a spot)
-    if CITY == "shibuya":
-        pk = sancha.pukuichi_spot()
-        spots.append(spot("pukuichi", "Pukuichi ぷくいち", pk[:2], pk[2], "Look at the shop", [
-            "鉄板・広島府中焼き: Fuchu-yaki, the okonomiyaki of Fuchu in Hiroshima, made with minced pork for crunch instead of sliced belly. Open from five in the evening till midnight, closed Mondays; by day the shutters are down.",
-            "A game's hero walks up this street on his first day in town, past a yakisoba shop on the left. This is the shop it was drawn from; the café's lane is round the corner to the north."], 3.0))
         chatter.append(talk(mid + n * 3.0, c["z"], [["Pilgrim", "Is this it? The bathhouse?"], ["Local", "Was. Closed a few years now. The sign's all that's left out here."]], 9, False))
-    if "marina" in y:
-        m = y["marina"]
-        spots.append(spot("marina", "New Marina ニューマリーナ", np.asarray(m["at"]) + np.asarray(m["normal"]) * 1.5, m["z"], "Look at the snack bar", [
-            "A snack bar: a counter, a few stools, karaoke, a mama-san. A game borrowed this front for its café; the café isn't here, this is somebody's bar.",
-            "Upstairs next door, a café in an old house. Keep your voice down: people live in these lanes."], 2.8))
-        chatter.append(talk(np.asarray(m["at"]) + np.asarray(m["normal"]) * 4.0, m["z"], [["Regular", "Same as always?"], ["Mama-san", "Same as always."]], 10, False))
+    if CITY == "shibuya":
+        sc = sancha.stair_corner_spot()
+        stop(spot("stair_corner", "The stair corner", sc[:2], sc[2], "Look at the corner", [
+            "A house at the bend of the lane, past the Thai restaurant: pale blue-grey siding, and a steel stair up its side to a door on the first floor.",
+            "In a game an old couple stand here and talk about the neighbours. Nobody here is in a game: if someone comes down the stair, let them by."], 3.0), "The stair corner")
+        chatter.append(talk(sc[:2], sc[2], [["Old man", "They've put a new mirror on the corner."], ["Old woman", "Bicycles come round so fast now."], ["Old man", "We came round fast once."]], 8, False))
+        fk = sancha.FORK
+        stop(spot("fork", "The fork 呑み処への路地", np.asarray(fk["at"]) - np.asarray(fk["into"]) * 1.5, fk["z"], "Look down the bars' lane", [
+            "Here a narrower lane forks off to the right, and the bars put their signs out at its mouth: もつ焼き 勝利, 鶏籠, Jackie, Had A Good Day. They light up at five.",
+            "It runs on past them and under a house towards Setagaya-dori and the station: a game's short cut, and the locals' too."], 2.6), "The fork")
+        s0, n0 = sancha.passage_points()
+        stop(spot("passage", "The covered passage", s0 - (n0 - s0) / np.hypot(*(n0 - s0)) * 1.4, sancha.PASSAGE["z"], "Look through the passage", [
+            "Eight metres under the first floor that joins two houses, between walls of cream tile; less than two metres wide. Walk through: the lane comes out by the station.",
+            "Bicycles too, so keep to one side."], 2.6), "The passage")
     if "hanamasa" in y:
         hm = y["hanamasa"]
-        spots.append(spot("hanamasa", "Niku no Hanamasa 肉のハナマサ", np.asarray(hm["at"]) + np.asarray(hm["normal"]) * 1.6, hm["z"], "Look at the supermarket", [
-            "肉のハナマサ: a meat-first supermarket, open 24 hours. The game's supermarket sits where this one does, with another name."], 3.0))
+        stop(spot("hanamasa", "Niku no Hanamasa 肉のハナマサ", np.asarray(hm["at"]) + np.asarray(hm["normal"]) * 1.6, hm["z"], "Look at the block", [
+            "肉のハナマサ: a meat-first supermarket, open 24 hours, under a yellow sign two storeys high. The game's supermarket sits where this one does, with another name.",
+            "The building was Sangenjaya Cinema, a second-run picture house from 1955 until it closed in 2014. Its sign still hangs at the corner, faded, beside the supermarket's.",
+            "Left of the shop, a steel stair climbs the slot to the batting cages on the roof; the nets still stand up there. The game moved them to the right. The batting centre was shut by 2024."], 3.0), "Hanamasa")
+    spots.extend(walk)
     k = lm.get("kabukicho_gate")
     if k:
         at, f = np.asarray(k["at"]), np.asarray(k["axis"])

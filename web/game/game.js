@@ -2771,6 +2771,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (c && c.action === 'track' && lineById(c.line)) { qs.track = c.line; save(); } // the prologue lets you pick where to start
     });
   }
+  // arriving at a district: track the open line whose next quest is given by someone standing there (#359: Haru at
+  // Sangenjaya), not the map's first line, whose giver may be across the map
+  function trackNear(at, within = 250) {
+    let best = null, bd = within;
+    for (const l of openLines()) {
+      const q = questOf(l), n = q && !ls(l).started ? npcById(q.giver) : null;
+      const d = n ? Math.hypot(n.x - at[0], n.y - at[1]) : Infinity;
+      if (d < bd) { bd = d; best = l; }
+    }
+    if (best) { qs.track = best.id; guide.key = ''; }
+  }
   // track the next open line (T, or a tap on its name in the quest card)
   function cycleTrack(id) {
     const open = openLines();
@@ -2882,10 +2893,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {
       const got = qs.stamps.find(s => s.id === q.id);
       return `<li class="${got ? 'got' : ''}"><span class="stamp">${got ? q.stamp : '?'}</span><span><b>${got ? q.title : 'Not yet'}</b><span class="note">${got ? got.at : ''}</span></span></li>`;
+    }).join('') + spotStamps().map(sp => {
+      const got = qs.stamps.find(s => s.id === `spot:${sp.id}`);
+      return `<li class="${got ? 'got' : ''}"><span class="stamp">${got ? sp.stamp : '?'}</span><span><b>${got ? sp.name : 'A stop not yet seen'}</b><span class="note">${got ? got.at : ''}</span></span></li>`;
     }).join('') + (qs.stamps.some(s => s.id === 'ferry-master') ? '<li class="got"><span class="stamp">Ferry master</span><span><b>Docked by hand</b></span></li>' : '')
       + (VP.length ? (() => { const n = VP.filter(v => trigDone()[v.id]).length; return `<li class="${n === VP.length ? 'got' : ''}"><span class="stamp">${n === VP.length ? 'Trig master' : `△ ${n}/${VP.length}`}</span>`
         + `<span><b>Trig stations</b><span class="note">${n ? VP.filter(v => trigDone()[v.id]).map(v => v.name).join(', ') : 'Survey the view from each one'}</span></span></li>`; })() : '');
-    $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id)).length}/${Q.length}`;
+    $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id) || spotStamps().some(sp => s.id === `spot:${sp.id}`)).length}/${Q.length + spotStamps().length}`;
     if (life && life.passport) life.passport($('#g-pass .g-panel')); // the skills, under the stamps (jobs.js)
     // the postcards that have come from this map (the title screen's pile, postcards.js), newest first
     if (window.OEPostcards) OEPostcards.album(CITY.id, window.OE_CITIES || []).then(cards => {
@@ -3363,10 +3377,38 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // a spot (places.js): its lines, and a step waiting for it ("spot": its id) moves on
   function lookAt(sp) {
     if (sp.look && places) { closeupStart(sp); return; }
-    dlg.show({ name: sp.name, role: sp.role || '', color: sp.color || '#6d5a3a', pitch: sp.pitch || 260 }, places.lines(sp).map(fill));
+    // a spot with a frame (game.json spots[].frame {eye, look, fov}) opens the camera on it once you have read it:
+    // the angle a film or a game made the place known by, from where it was taken (#359)
+    dlg.show({ name: sp.name, role: sp.role || '', color: sp.color || '#6d5a3a', pitch: sp.pitch || 260 }, places.lines(sp).map(fill), null,
+      sp.frame ? () => framePhoto(sp) : undefined);
     spotDone(sp);
   }
-  function spotDone(sp) { if (life) life.emit('spot', { id: sp.id, name: sp.name }); for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); } }
+  function framePhoto(sp) {
+    const fr = sp.frame;
+    if (!fr || photo.on) return;
+    photoMode(true);
+    if (!photo.on) return;
+    const look = W(...fr.look), eye = W(...fr.eye), p = OECine.polar(look, eye);
+    photo.focus.copy(look); photo.anchor.copy(look);
+    Object.assign(photo, { az: p.az, pitch: Math.atan2(p.h, Math.max(0.1, p.dist)), dist: Math.max(1, eye.distanceTo(look)), fov: fr.fov || photo.fov });
+    photoSync();
+    H.toast(`<b>${sp.name}</b><span>${fr.note || 'The angle it is known by.'} <kbd>Enter</kbd> to save the photo, <kbd>Esc</kbd> to step back.</span>`);
+  }
+  // a spot with a stamp (game.json spots[].stamp) stamps the passport the first time you look at it: a pilgrimage's
+  // stops, each its own stamp beside the quests'
+  const spotStamps = () => (G.spots || []).filter(sp => sp.stamp);
+  function spotDone(sp) {
+    if (life) life.emit('spot', { id: sp.id, name: sp.name });
+    for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); }
+    if (sp.stamp && !qs.stamps.some(s => s.id === `spot:${sp.id}`)) {
+      qs.stamps.push({ id: `spot:${sp.id}`, stamp: sp.stamp, title: sp.name, at: `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}` });
+      A.chime();
+      H.stamp(sp.stamp, sp.name);
+      if (life) life.note(`Stamp: ${sp.stamp}`, 'stamp');
+      renderPassport();
+      save();
+    }
+  }
   // a photo spot's look closer (places.js closer): the eye a metre off the thing, the walker out of the
   // way, and you look along it with A/D (or the stick) and W/S, drag to turn your head, read what is in
   // the middle of the view, save a photo with Enter, and step back with E or Esc
@@ -4885,7 +4927,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
     const arrive = !cont && DISTRICT;
-    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive));
+    if (arrive) { spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined, lookOf(arrive)); trackNear(arrive.at); }
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;
@@ -6150,7 +6192,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
   window.__game = { trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
-     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
+     held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
   return {
     stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
