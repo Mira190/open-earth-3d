@@ -68,7 +68,7 @@ window.OERoute = (function () {
   // A walker's body is kept out of the decks and strips over it too (nav.walk's `me`), as yours is: the data lays
   // crossings under a deck's low end (#399). inRoad(x, y, z): is that in a carriageway? A piece cut so that its cut
   // end is out in the road (a crossing's half, which a walker would turn back on in the traffic's way) is trimmed
-  // back to its kerb, and left out if nothing of it is off the road
+  // back to its kerb within 25 m, and left out if it is all road and shorter than that
   function walkable(nav, lines, inRoad = null) {
     const out = [];
     for (const o of lines) {
@@ -113,9 +113,13 @@ window.OERoute = (function () {
   // a piece's points (flat x, y, z in decimetres) from its first one that is off the road, at a step of half a metre
   // (and its deck flags, one a stretch): null when it is in the road all along
   const rev = q => { const r = []; for (let j = q.length - 3; j >= 0; j -= 3) r.push(q[j], q[j + 1], q[j + 2]); return r; };
+  // (no more than a crossing's length, 25 m: a footway mapped along a street inside its carriageway's width is
+  // kept as it is, as before the cut, rather than lost whole: Shinjuku's south deck, whose crowd held the traffic)
   function offRoad(q, d, inRoad) {
     if (!inRoad(q[0] / 10, q[1] / 10, q[2] / 10)) return { q, d };
-    for (let j = 0; j + 3 < q.length; j += 3) {
+    let run = 0;
+    for (let j = 0; j + 3 < q.length && run < 250; j += 3) {
+      run += Math.hypot(q[j + 3] - q[j], q[j + 4] - q[j + 1]);
       const L = Math.hypot(q[j + 3] - q[j], q[j + 4] - q[j + 1]) / 10, m = Math.max(1, Math.ceil(L / 0.5));
       for (let i = 1; i <= m; i++) {
         const t = i / m, x = q[j] + (q[j + 3] - q[j]) * t, y = q[j + 1] + (q[j + 4] - q[j + 1]) * t, z = q[j + 2] + (q[j + 5] - q[j + 2]) * t;
@@ -124,7 +128,7 @@ window.OERoute = (function () {
         return keep.length >= 6 ? { q: keep, d: d ? d.slice(j / 3 + (i === m ? 1 : 0)) : null } : { q: null, d: null };
       }
     }
-    return { q: null, d: null };
+    return run < 250 ? { q: null, d: null } : { q, d };
   }
 
   function create({ nav, footNet, roadNet, DSM, helipads = [], lifts = [], ground = null }) {
