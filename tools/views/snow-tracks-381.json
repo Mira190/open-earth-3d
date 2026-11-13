@@ -1,0 +1,5 @@
+[{"name": "kyoto-tracks", "at": [-262, -1812], "look": [-292, -1720], "time": "10:30", "dist": 7, "pitch": 0.32,
+  "weather": {"snow": 0, "cloud": 0.5, "snowDepth": 0.75, "temp": -3},
+  "js": "for (let i = 0; i < 260; i++) { g.advance(0.1); const t = i / 260; g.weather.tread([{ id: 'walk', x: -258 - 22 * t + Math.sin(t * 9) * 1.5, y: -1806 + 70 * t, h: Math.atan2(-22, 70), car: false }], 0.0); }"},
+ {"name": "kyoto-tracks-none", "at": [-262, -1812], "look": [-292, -1720], "time": "10:30", "dist": 7, "pitch": 0.32,
+  "weather": {"snow": 0, "cloud": 0.5, "snowDepth": 0.75, "temp": -3}}]

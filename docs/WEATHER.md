@@ -223,9 +223,11 @@ and not at all while the camera stands on lying snow), so on a GPU the steady co
 draws and the shader term. The milliseconds on the high and medium tiers are that map plus the shader
 term over every pixel on a software renderer, 7 to 15% of the frame; rain cost as much before. On the low
 tier (no post stack, a smaller map) nothing measurable. The pass count was 80, 78 and 74 a frame on the
-three tiers with a clear sky and one more from the second state on, on the high and medium tiers only; the
-weather's code makes no full-screen draw, and where that one comes from was not traced. Fog and overcast
-are within the run's noise of a clear sky.
+three tiers with a clear sky and one more from the second state on, on the high and medium tiers only. That
+one was not the weather's (issue 381, item 6): the tool counted every draw of six vertices or fewer as a pass,
+and a small quad in the world (a basic-material plane: a sign or a lamp's glow) walked into view as the city
+ran on. It now counts only such draws with the depth test off, which is what a full-screen pass is. Fog and
+overcast are within the run's noise of a clear sky.
 
 What sheds (`weather.shed`, driven by `shed()` in `web/game/game.js` until the frame-budget stream's
 governor replaces it): light drops the far flakes with the far streaks and splashes and slows the cover
@@ -283,13 +285,35 @@ Nothing was copied here either. Licences are given so that no one takes code wit
 | MET Norway Locationforecast; wttr.in; NWS api.weather.gov; Bright Sky; 7Timer | other free services | CC BY 4.0; Apache-2.0; public domain; DWD terms; unstated | Not adopted: MET Norway asks sites not to call it from browsers; wttr.in has no stated data source; NWS and Bright Sky cover one country; 7Timer sends no CORS header |
 | Climate normals: JMA (Tokyo 47662, Kyoto 47759), the Bureau of Meteorology (066062), NIWA (Queenstown, and "The Climate and Weather of Otago", 2015) | temperatures, wind, days of snow, thunder and fog | as published | **Adopted**; `pipeline/weather_climate.py` says which figures are a table's and which a chosen shape (Queenstown's and Sydney's splits by month, the typhoon days) |
 
+## Follow-ups (issue 381)
+
+- **Tracks in the snow.** A 256-texel texture over 96 m round the player (`weather.js` `tread`, 0.375 m a texel)
+  holds how trodden the lying snow is. Each frame the game passes who moves within 40 m (`game.js` `treaders`:
+  you, on foot or in your car, the walkers, the cars); a walker leaves a print every 0.7 m, left and right, a car
+  two ruts 1.5 m apart, written on the CPU between where each was and where it is. Falling snow fills them back in
+  (about a minute in heavy snow). The ground and the paving (the patch's `tread` materials) read it and pack the
+  snow there to a greyer, glossier crust. The texture moves with the player in whole texels, so a track stays put.
+  One upload of 64 KB a few times a second while snow lies; nothing otherwise. No render, no pass.
+- **The fog's top.** A radiation fog lies in a layer; seen from a helicopter it now has a top: three translucent
+  sheets 10 m apart (one mesh, one draw) at 25 to 110 m over the ground by the fog's thickness, its billows noise
+  in the world's frame drifting with the wind, lit white by the sun and in the fog's colour in its shade, depth-
+  tested so towers and hills stand out of it. Shown only while there is fog and the camera is above it (faded in
+  over the first 30 m); inside it the scene's own fog is the fog. This is the survey's "cheap layer" option
+  (a sheet over the fog), not a height term in every material's fog.
+- **Snow on the people.** The near people's skinned position and normal are already skinned when the patch reads
+  them (three.js skins `objectNormal` and `transformed` before `project_vertex`), so they now take it as the far
+  crowd's copies did: a dusting on the shoulders and the hair, 0.7 of what settles on a roof.
+- **Umbrellas** are back on (`people.js` `UMBRELLAS`) in the rain and in the snow, and take the snow too.
+- **A darker storm by day** (the key: #387) is in the re-recorded film.
+- **`game_shot.js` with `TIER=low`** drew lit frames at every hour on Sydney and Shibuya on main at `03002c46`:
+  the feedback loop of `e521f29d` had gone with the frame's restructuring (#352).
+
 ## Not yet
 
 - Drips off a particular eave, and streams off a roof's edge: under a roof you hear drips, but they
   are not drawn.
 - The quest NPCs keep their own looks (no umbrellas); the crowd carries them.
-- Footprints and tyre tracks in the snow; snow on the people (their normals are skinned) and on the far trees' impostors.
-- A fog layer seen from above as a layer: the scene's fog has no height term (see the survey).
+- Snow with thickness on eaves and kerbs: settled snow is still a colour term.
 - Heat shimmer: it would need a pass.
 - Reef sites (`web/reef`) and the model viewer (`web/city.js`) have no weather.
 - Not checked on a real GPU, WebGPU, Safari or iOS.
