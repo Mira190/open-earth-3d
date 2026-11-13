@@ -727,12 +727,27 @@ export async function init(ctx) {
         try { if (sd.tick) sd.tick(G, step, s.d); if (sd.check && sd.check(G, s.d)) advance_(id); } catch (e) { console.warn('game: step', id, e); }
       }
       if (content.tick) content.tick(G, step);
+      fishScan();
       // flying off the edge of the model: offer the nearest other reef site
       slow += step;
       if (slow > 0.6) { slow = 0; edgeCheck(); }
       // walk (or swim) away from a talk
       if (D && D.who.rec && P && !D.who.rec.swim) { const g = D.who.rec.npc.group.position; if (Math.hypot(g.x - P.x, g.z - P.z) > (D.who.rec.vessel ? 16 : 9)) closeDialogue(); }
     }
+  }
+  // fishing (web/reef/fishing.js, docs/FISHING.md): only where the spots are comes with the site (scene.json fishing); the
+  // module, the city game's fishing.js and the site's fishing.json are fetched the first time you come within sight of a
+  // shore spot or board the ship a spot is on
+  let fishing = null, fishLoading = null;
+  function fishScan() {
+    if (fishing || fishLoading || !S.fishing || !P) return;
+    const near = S.fishing.spots.some(sp => (sp.vessel ? aboard && aboard.name === sp.vessel : sp.at && Math.hypot(sp.at[0] - P.x, sp.at[1] + P.z) < 200));
+    if (near) loadFishing();
+  }
+  function loadFishing() {
+    if (fishing) return Promise.resolve(fishing);
+    return fishLoading || (fishLoading = import('./fishing.js').then(m => m.init(ctx, { ui, G, hud, playerCtl, get aboard() { return aboard; } }))
+      .then(f => { fishing = f; return f; }, e => { console.warn('fishing:', e); fishLoading = null; return null; }));
   }
   function edgeCheck() {
     if (!aboard || !(aboard.kind === 'seaplane' || aboard.kind === 'helicopter') || !S.extent_m) return;
@@ -847,7 +862,7 @@ export async function init(ctx) {
     const v = boats.byName(S.spawn.aboard);
     if (v) { if (arrival.on) { arrival.on = false; ctx.controller = playerCtl; removeEventListener('keydown', settleArrival, true); removeEventListener('pointerdown', settleArrival, true); if (!q.get('still')) setTimeout(onboard, 900); } boardVessel(v); }
   }
-  api0.arrival = arrival; api0.startTour = startTour; api0.settleArrival = settleArrival;
+  api0.arrival = arrival; api0.startTour = startTour; api0.settleArrival = settleArrival; api0.fishing = loadFishing;
 
   // first objective, the site list in the background
   refreshObjective(true);

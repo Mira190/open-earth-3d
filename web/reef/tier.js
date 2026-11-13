@@ -7,11 +7,13 @@
 //   low     phones and software renderers: 40% of the plants within 63% of the radii and simpler forms (lupins with
 //           fewer florets and leaves, tussock of 40 blades), no turf, no mirror, no bloom, a coarser far land, the
 //           terrain's finer levels nearer the eye
+// detailMax: the aerial patch's longest side in pixels (alpine/terrain.js): Tekapo's township, 8000 x 6000, at half
+// that below the high tier (190 MB with its mipmaps at full size, 48 at half)
 // ?quality=high|medium|low overrides it for one visit; ?flora=0, ?mirror=0|1 and ?bloom=0 still switch those parts.
 const TIERS = {
-  high: { flora: 1, simple: false, turf: 1, mirror: 0.5, mirrorFlora: true, bloom: true, antialias: true, terrain: 1, farSmall: false },
-  medium: { flora: 0.7, simple: false, turf: 0.6, mirror: 0.34, mirrorFlora: false, bloom: true, antialias: false, terrain: 0.8, farSmall: false },
-  low: { flora: 0.4, simple: true, turf: 0, mirror: 0, mirrorFlora: false, bloom: false, antialias: false, terrain: 0.6, farSmall: true },
+  high: { flora: 1, simple: false, turf: 1, mirror: 0.5, mirrorFlora: true, bloom: true, antialias: true, terrain: 1, farSmall: false, detailMax: 8192 },
+  medium: { flora: 0.7, simple: false, turf: 0.6, mirror: 0.34, mirrorFlora: false, bloom: true, antialias: false, terrain: 0.8, farSmall: false, detailMax: 4096 },
+  low: { flora: 0.4, simple: true, turf: 0, mirror: 0, mirrorFlora: false, bloom: false, antialias: false, terrain: 0.6, farSmall: true, detailMax: 4096 },
 };
 const CANVAS_PX = 3840 * 2160, SCENE_PX = 2560 * 1440, START_PX = { high: 1920 * 1080, medium: 1600 * 900, low: 1e6 };
 export function reefTier(q) {

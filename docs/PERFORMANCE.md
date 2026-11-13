@@ -587,10 +587,93 @@ Every live city, llvmpipe, 960×600, high tier, the median of two runs (`tools/s
 | tetsugaku | 10.8 → 9.4 | 5.0 → 3.3 |
 | tokyo | 20.3 → 20.0 | 12.3 → 8.9 |
 
-The reef and alpine sites build in 1.7 to 4.3 s; their wait is after "built", in three.js's WebGL backend
+The reef and alpine sites build in 1.7 to 4.3 s; their wait was after "built", in three.js's WebGL backend
 compiling (`_completeCompile`, 11.6 s of Lake Tekapo's load), much of it in the first frame after
 `compileAsync`, and in Tekapo's detail photograph (`terrain.prepare`). On a device with WebGPU, as the
 telemetry's desktop has, the backend is another one; a follow-up issue holds it.
+
+## The build in a Worker (issue 344)
+
+After issue 327 the build's main-thread time in a large city was mostly the buildings' geometry (4 to 7 s on
+llvmpipe), the walking model's 2 m surface model and the landmarks laid on its grid (1 to 1.5 s in Kyoto and Sydney:
+twenty million points sampled on their triangles), and the footways. The worker that decodes the packs
+(`pack-worker.js`) now keeps its copy of `buildings.bin` and, in the game, of `landmarks.bin`, and builds from them
+once the ground is final (after the inland water levels it, before the aerial imagery is draped), so the work
+overlaps the page's own:
+
+- **The walls, roofs, decks, posts and awnings** (`buildings-geo.js`, split from `buildings.js` with no three.js in
+  it; the triangulation is three.js's own Earcut, imported into the worker), sent back as packed vertex arrays
+  handed over. The page only makes the BufferGeometry, the facade material and the rooftop plant.
+- **The game's 2 m surface model** with the building on top of each cell (`Sun.buildDSM`), on the walking ground.
+- **The landmarks on the walking grid** (`game/navcells.js`, split from `nav.js`): their height intervals, tops
+  and paving, as typed arrays the page turns back into `nav.js`'s Maps.
+
+Without a Worker, or if it fails, the page builds each itself as before. `tools/build_hash.js` fingerprints the
+built walls: byte-identical to main in the viewer and the game, and with `Worker` taken away; the surface model and
+the landmark cells were compared cell by cell (Kyoto, Sydney, Queenstown, Fushimi Inari).
+
+Every live city, llvmpipe, 960x600, high tier, one run each (`tools/stage_sweep.sh`; on this machine the time to
+playable swings by several seconds between runs, mostly one texture upload after the build), main -> after:
+
+| city | build, decoded -> built (s) | playable (s) |
+|---|---|---|
+| fushimi-inari | 3.9 -> 3.6 | 11.6 -> 13.3 (12.2, 12.7 again; main 11.6, 12.4) |
+| higashiyama | 4.7 -> 4.6 | 13.4 -> 15.8 |
+| kamakura | 4.4 -> 3.9 | 11.7 -> 13.2 |
+| kyoto | 14.8 -> 13.0 | 35.4 -> 46.0 |
+| queenstown | 8.5 -> 7.3 | 50.8 -> 22.5 |
+| shibuya | 14.6 -> 12.4 | 28.7 -> 28.9 |
+| shinjuku | 10.2 -> 9.9 | 49.3 -> 58.1 |
+| sydney | 13.0 -> 11.3 | 38.8 -> 39.1 |
+| tetsugaku | 5.2 -> 4.6 | 13.1 -> 14.3 (12.7, 13.2 again; main 13.2, 37.1) |
+| tokyo | 15.7 -> 13.3 | 34.5 -> 36.4 |
+
+The build stage is shorter everywhere, by 1.5 to 2.4 s in the large cities; the time to playable here is
+dominated by the GPU's share after it, which a software renderer makes noisy. Still on the main thread: the footways
+(`OERoute.walkable` and `cutAtWalls`, 2 s in Kyoto) and the collision world (1.2 s), both built from the live walking
+model's queries; a follow-up issue holds them.
+
+## The reef and alpine sites' compile (issue 343)
+
+After issue 327 a reef or alpine site built in 2 to 4 s and then spent most of its load compiling: Lake Tekapo linked 247
+WebGL programs, 117 of them in the first frames (one frame of 32 s on llvmpipe, the lake's mirror compiling on the spot),
+and waited up to 19 s more for the aerial detail photograph. `tools/reef_load.js` now counts the programs linked in each
+loader step. What was done, for every site:
+
+- **The detail photograph does not hold the loader.** It is asked for as soon as the camera is placed, decoded off the
+  page's thread (an ImageBitmap), at most 4096 px a side below the high tier, and fades in when it comes; stills, films
+  and tools under automation still wait for it (`?detail=later` loads as a visitor). Its placeholder is in the
+  photograph's colour space, so the land's programs are not made again when it comes.
+- **The precompile compiles what the frames draw.** A frame's work bar the drawing runs first (the player's view, the
+  land's chunks, the plants' patches, the water's tiles); then, at once and side by side, the scene into the post
+  chain's own target (a program is made for its target: the canvas's was compiled again by the first frame), the lake's
+  mirror as its reflector draws it (half-float, layer 0, from below the water), and the land's hidden detail patches.
+- **One program where there was one per mesh.** three.js r186 puts an InstancedMesh's matrices (and a skeleton's
+  bones) in a uniform array when they fit a uniform block, with the array's name and length written into the shader:
+  every instanced mesh linked its own program. The reef page sets the backend's uniform-block limit to 0 for these
+  (`?ubo=1`: as before), so they come as instanced attributes and a bone texture, the same code for every mesh.
+- **Uniforms, not constants:** each lake's id and level (22 programs at Tekapo), and the land strips' offsets.
+
+Stills from the same views (desktop and phone; day, dusk and night; Tekapo, Pukaki, Milford, Whitsundays) are identical
+to main's pixel for pixel. Every site, llvmpipe, 1440x900, high tier, `tools/reef_load.js`, the second of two runs
+(the first of each pair warms the cache), main -> after:
+
+| site | programs (in the first frames) | ready (s) |
+|---|---|---|
+| whitsundays | 68 (32) -> 57 (14) | 12.7 -> 12.2 |
+| hardy-reef | 59 (46) -> 56 (15) | 8.5 -> 9.6 |
+| green-island | 64 (29) -> 55 (13) | 12.9 -> 11.2 |
+| heron-island | 48 (35) -> 46 (13) | 7.1 -> 7.6 |
+| lady-elliot-island | 45 (27) -> 42 (11) | 7.3 -> 7.4 |
+| lake-pukaki | 85 (48) -> 50 (16) | 24.4 -> 15.7 |
+| lake-tekapo | 247 (117) -> 49 (10) | 28.3 -> 15.8 |
+| milford-sound | 67 (36) -> 53 (17) | 13.9 -> 10.7 |
+
+On the reefs the total is within the runs' noise, but the programs the first frames compile on the spot (a frozen
+frame) are a third of what they were; on the alpine sites the load is shorter by 3 to 12 s. What the first frames still
+compile: the bloom chain's small passes, and what is hidden at the precompile (a character shown on the first frame).
+On WebGPU (the telemetry's desktops) pipelines compile asynchronously and the per-mesh variants cost the same way; not
+measurable here (#320).
 
 ## The alpine sites' frame (Milford Sound)
 

@@ -18,7 +18,8 @@ export function createLakes(d, env, atm, light, heightTex) {
     const w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad;
     const geo = new THREE.PlaneGeometry(w, h, 1, 1).rotateX(-Math.PI / 2);
     const mat = new THREE.MeshBasicNodeMaterial({ transparent: false });
-    const level = float(l.level);
+    // (the lake's id and level as uniforms, not constants: one program for every lake, not one each, issue 343: 22 at Tekapo)
+    const level = uniform(l.level), lakeId = uniform(l.idx);
     // the lake's own colour: what the satellite saw, a milky grey-green; deeper water a touch more saturated
     const tint = vec3(0.10, 0.17, 0.17);
     mat.colorNode = Fn(() => {
@@ -45,7 +46,7 @@ export function createLakes(d, env, atm, light, heightTex) {
       let inLake = float(0);
       for (const [ox, oz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const id = texture(idTex, uv.add(vec2(ox / W, oz / H))).level(0).r.mul(255).add(0.5).floor();
-        inLake = max(inLake, select(id.equal(l.idx), float(1), float(0)));
+        inLake = max(inLake, select(id.equal(lakeId), float(1), float(0)));
       }
       return inLake.mul(select(ground.lessThan(level.add(0.05)), float(1), float(0)));
     })();
