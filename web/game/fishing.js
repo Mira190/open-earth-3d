@@ -29,6 +29,7 @@ window.OEFishing = (function () {
     let sum = 0;
     for (let i = 0; i < data.species.length; i++) {
       const s = data.species[i], w = s.when, share = s.share || 1;
+      if (spot.only && spot.only.indexOf(s.id) < 0) { out[i] = 0; continue; }   // (fish that never come to this spot: the fiord's cod at the river's mouth)
       let v = share * w.months[env.month - 1] * (w.light[env.light] == null ? 1 : w.light[env.light]);
       if (env.rain > 0.1 && w.rain) v *= w.rain;
       v *= s.rigs[env.rig] == null ? 0.03 : s.rigs[env.rig];
@@ -109,6 +110,7 @@ window.OEFishing = (function () {
   // is this fish one the law lets you keep? '' when it is, or why not
   function legal(s, cm) {
     const L = s.legal || {};
+    if (L.closed) return L.closed;     // (a species closed to taking in this water, at any size: Milford Sound's blue cod)
     if (L.min_cm && cm < L.min_cm) return `Under the ${L.min_cm} cm legal length`;
     if (L.max_cm && cm > L.max_cm) return `Over the ${L.max_cm} cm limit`;
     return '';
@@ -203,6 +205,10 @@ window.OEFishing = (function () {
     const cd = new THREE.Vector3(), cu = new THREE.Vector3(), cr = new THREE.Vector3(), mouth = new THREE.Vector3(), hold = new THREE.Vector3(), tip = new THREE.Vector3(), base = new THREE.Vector3(), col = new THREE.Color();
     const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
     const toW = (out, x, y, z) => out.set(x, z, -y);
+    // optional hooks (the reef viewer's): the water's height (a tide, a lake's level; 0 in the cities), and where fishing
+    // is closed (a marine reserve: '' where it is open, else why not)
+    const water = () => (ctx.water ? ctx.water() : 0);
+    const closed = (x, y) => (ctx.closed ? ctx.closed(x, y) : '');
     const ROD = 2.6, LINE_N = 12, RINGS = low ? 5 : 8;
     const VIEW = -0.5, SHOW = 1.35;   // the chase camera's turn off the cast's heading: over the right shoulder with a line out, side-on for the catch
 
@@ -228,7 +234,7 @@ window.OEFishing = (function () {
         if (T[i] > 2.4) continue;
         T[i] += dt; live = true;
         const k = T[i] / 2.4, r = at[i * 3 + 2] * (0.15 + 0.85 * Math.sqrt(k)), a = T[i] > 2.4 ? 0 : 0.34 * (1 - k) * (1 - k) * night;
-        m4.makeScale(r, 1, r).setPosition(at[i * 3], 0.06, -at[i * 3 + 1]);
+        m4.makeScale(r, 1, r).setPosition(at[i * 3], water() + 0.06, -at[i * 3 + 1]);
         rings.setMatrixAt(i, m4); rings.setColorAt(i, col.setRGB(a, a, a));
       }
       rings.visible = live;
@@ -366,6 +372,8 @@ window.OEFishing = (function () {
     function start(sp) {
       sp = sp || spotNear();
       if (!sp || S.st !== 'off') return false;
+      const no = closed(player.x, player.y);
+      if (no) { H.toast(`<b>No fishing here</b><span>${no}</span>`); return false; }
       const e = edge(sp);
       if (!e) { H.toast('Walk down to the water\'s edge first.'); return false; }
       S.spot = sp; S.st = 'walk';
@@ -455,7 +463,10 @@ window.OEFishing = (function () {
 
     // what E does now (game.js currentAction)
     function action() {
-      if (S.st === 'off') { const sp = spotNear(); return sp ? { key: 'E', text: `Fish at ${sp.name}`, act: () => start(sp) } : null; }
+      if (S.st === 'off') {
+        const sp = spotNear(), no = sp && closed(player.x, player.y);
+        return !sp ? null : no ? { key: 'E', text: 'No fishing here', act: () => H.toast(`<b>No fishing here</b><span>${no}</span>`) } : { key: 'E', text: `Fish at ${sp.name}`, act: () => start(sp) };
+      }
       if (S.st === 'walk') return { key: '', text: 'Down to the edge…' };
       if (S.st === 'card') return { key: 'E', text: 'Let it go', act: release };
       if (S.st === 'wait' || S.st === 'cast') return { key: 'E', text: 'Wind in', act: () => { S.st = 'aim'; S.t = 0; S.power = 0; gear.float.visible = false; S.hintKey = ''; } };
@@ -486,7 +497,7 @@ window.OEFishing = (function () {
       const hop = S.leap > 0 ? Math.sin(Math.PI * (1 - S.leap / (S.small ? 0.3 : 0.55))) * (0.18 + 0.5 * Math.sqrt(len)) * (S.small ? 0.35 : 1) : 0;
       if (S.leap <= 0) S.small = 0;
       S.roll += ((beaten ? 1.45 : S.leap > 0 ? 0.6 * Math.sin(F.t * 9) : 0.25 * Math.sin(F.t * 2.1)) - S.roll) * Math.min(1, dt * 5);
-      toW(v4, S.x, S.y, 0.02 * len + hop);
+      toW(v4, S.x, S.y, water() + 0.02 * len + hop);
       v1.set(S.nx, 0, -S.ny); v2.set(0, 1, 0); v3.crossVectors(v1, v2).normalize();
       m4.makeBasis(v3, v1, v2); q1.setFromRotationMatrix(m4);
       m.quaternion.copy(q1).multiply(q2.setFromAxisAngle(v2.set(0, 1, 0), S.roll));   // (a roll about its own length)
@@ -515,6 +526,7 @@ window.OEFishing = (function () {
       if (S.st === 'off') { if ((gear || rings) && !data.spots.some(sp => Math.hypot(sp.at[0] - player.x, sp.at[1] - player.y) < 220)) freeGear(); return; }
       if (S.st === 'walk') return;
       if (player.mode !== 'foot' || Math.hypot(player.x - S.fx, player.y - S.fy) > 2.5) { stop(true); return; }   // carried off (the map, a ride): the line comes in
+      { const no = closed(player.x, player.y); if (no) { stop(true); H.toast(`<b>Lines in</b><span>${no}</span>`); return; } }   // (a deck carried into a reserve)
       S.t += dt;
       const down = !!ctx.key('Space'), press = down && !S.was, lift = !down && S.was;
       S.was = down;
@@ -594,7 +606,7 @@ window.OEFishing = (function () {
       else if (S.st === 'cast') { const k = clamp(S.t / 0.75, 0, 1); toW(v4, player.x + (S.x - player.x) * k, player.y + (S.y - player.y) * k, (player.z + 3.2) * (1 - k) * (1 - k) + 0.05 + 4 * k * (1 - k) * 2.2); }
       else if (S.st === 'card') { v4.copy(tip); v4.y -= 0.45 + 0.2 * P.cm / 100; }   // a short line to its mouth
       else if (S.st === 'fight') v4.copy(mouth);
-      else toW(v4, S.x, S.y, 0.05 + floatY + (S.st === 'wait' ? 0.012 * Math.sin(ctx.time() * 2.3) : 0));
+      else toW(v4, S.x, S.y, water() + 0.05 + floatY + (S.st === 'wait' ? 0.012 * Math.sin(ctx.time() * 2.3) : 0));
       const sag = slack * 0.14 * tip.distanceTo(v4);
       for (let i = 0; i < LINE_N; i++) { const k = i / (LINE_N - 1); lp.setXYZ(i, tip.x + (v4.x - tip.x) * k, tip.y + (v4.y - tip.y) * k - sag * 4 * k * (1 - k), tip.z + (v4.z - tip.z) * k); }
       lp.needsUpdate = true;
@@ -610,10 +622,12 @@ window.OEFishing = (function () {
       gear.line.material.opacity = night ? 0.3 : 0.8;   // (unlit: a white line would glow after dark)
     }
 
+    // what you stand on moved you dx, dy metres (a ship's deck under way): the line and the float go with you, trolled
+    function carry(dx, dy) { S.fx += dx; S.fy += dy; S.x += dx; S.y += dy; }
     function dispose() { stop(true); freeGear(); if (hud) { hud.el.remove(); hud.card.remove(); hud.book.remove(); hud = null; } }
     // what the phone's Jump button does with a line out ('' when it is a jump again)
     const button = () => (S.st === 'off' || S.st === 'walk' || S.st === 'card' ? '' : S.st === 'fight' ? 'Reel' : S.st === 'bite' ? 'Strike' : 'Cast');
-    return { action, key, step, start, stop, dispose, button, on: () => S.st !== 'off' && S.st !== 'walk', busy: () => S.st !== 'off',
+    return { action, key, step, start, stop, dispose, button, carry, on: () => S.st !== 'off' && S.st !== 'walk', busy: () => S.st !== 'off',
       // for the checks (tools/game_check.js, tools/fishing_shot.js)
       state: () => ({ st: S.st, spot: S.spot && S.spot.id, power: S.power, line: S.line, wait: S.wait, t: S.t, fish: P.s && P.s.id, cm: P.cm, T: F.T, d: F.d, phase: F.phase, assist: save.assist, log: log(), rig: rigNow().id, drawn: gear ? 4 + (rings ? 1 : 0) : 0 }),
       seed: n => { rnd = rng(n); }, force: id => { S.forced = id; }, easiest: () => data.species.reduce((a, q) => (q.fight.pull < a.fight.pull ? q : a)).id, forget: () => { save = { v: 1, assist: 0, lost: 0, won: 0, casts: 0, rig: {}, log: {} }; keep(); }, spots: data.spots, species: data.species, fishMesh: () => (gear ? gear.fish.mesh : null), showLog, logOpen: () => !!hud && !hud.book.hidden };

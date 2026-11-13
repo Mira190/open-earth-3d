@@ -41,6 +41,7 @@ export async function gametest(api, ctx) {
   if (!ctx.player) { out(false, 'needs the player module'); window.__gametest = R; return; }
   const T = rig(api, ctx), { G, player, S, playerCtl, V, run, key, near, beside, pagesToChoices, around } = T;
   const dom = s => api.ui.el.querySelector(s);
+  const fishFirst = !window.OEFishing && !ctx.fishing;   // (before the run walks anyone near a spot: step 15)
   try {
     // 1. people at their places
     const ids = G.content.npcs.map(n => n.id);
@@ -520,6 +521,91 @@ export async function gametest(api, ctx) {
       must(!!again && !api.ui.panelKind && seen.length >= 5 && !bad.length && back === seen.length - 2 && !window.OEOnboard.active() && window.OEOnboard.done(),
         'the HUD tour opens from the journal, steps through and back, and Esc skips it', `${seen.join(',')}${bad.length ? ' · ' + bad.join('; ') : ''}`);
       try { if (keep == null) localStorage.removeItem('oe3d-onboard'); else localStorage.setItem('oe3d-onboard', keep); } catch (_) {}
+    }
+    // 14. the weather (weather.js, issue 381): the season's climate is the site's own; rain comes in under its cloud and
+    // OEWeather.S follows it with the streaks drawn above the water and none below; an alpine site's snow falls,
+    // settles and moves the snow line down; the wind moves the sea; and the season's weather is back afterwards
+    if (ctx.weather) {
+      const Wx = ctx.weather, WS = window.OEWeather && window.OEWeather.S, M = Wx.meshes, wind0 = ctx.env.u.wind.value;
+      must(!!WS && !!ctx.S.weather && Array.isArray(ctx.S.weather.rain_days) && ctx.S.weather.rain_days.length === 12 && Array.isArray(ctx.S.weather.temp_max),
+        'the site has its own climate for the weather', ctx.S.weather && ctx.S.weather.source);
+      const sp = G.spawn(); player.teleport(sp.x, sp.north, undefined, sp.heading); run(0.3);
+      Wx.set({ rain: 0.85, cloud: 1, wind: 14 }); run(12);
+      must(WS.kind === 'rain' && WS.rain > 0.5 && WS.cover > 0.8 && WS.wet > 0.05 && M.rain.visible && M.deck.visible && WS.visibility < 10000,
+        'rain comes in under its cloud, the ground wets and the streaks fall', `${WS.kind} rain ${WS.rain.toFixed(2)} cover ${WS.cover.toFixed(2)} wet ${WS.wet.toFixed(2)} vis ${Math.round(WS.visibility)} m`);
+      must(ctx.env.u.wind.value > wind0 * 1.3, 'a gale raises the sea', `wind ${wind0.toFixed(2)} -> ${ctx.env.u.wind.value.toFixed(2)}`);
+      const top = ctx.camera.position.y; ctx.camera.position.y = ctx.env.u.tide.value - 3; Wx.set({ rain: 0.85, cloud: 1 }); for (const u of ctx.updaters) u(0.05, 999);
+      must(!M.rain.visible && !M.rings.visible, 'no rain drawn under water');
+      ctx.camera.position.y = top;
+      if (ctx.S.kind === 'alpine') {
+        Wx.set('snow'); run(20);
+        const line = ctx.terrain.weather ? ctx.terrain.weather.line.value : NaN;
+        must(WS.kind === 'snow' && WS.snow > 0.3 && WS.snowDepth > 0.05 && M.snow.visible && WS.temp < 1 && Number.isFinite(line),
+          'snow falls on the alpine site and settles, the snow line set', `${WS.kind} snow ${WS.snow.toFixed(2)} depth ${WS.snowDepth.toFixed(2)} ${WS.temp.toFixed(1)}° line ${Math.round(line)} m`);
+      }
+      Wx.set('clear', { now: true }); run(0.2);
+      must(WS.kind === 'clear' && !M.rain.visible && !M.snow.visible, 'clear again: nothing falls');
+      Wx.set('live'); run(0.2);
+      const se = Wx.season();
+      must(Number.isFinite(se.rain) && Number.isFinite(se.temp) && WS.source === 'season', 'the season decides again', `${Wx.describe()}`);
+    }
+    // 15. fishing (fishing.js, issue 364), where a site has it: the module is not loaded with the site; at the shore spot E
+    // fishes, a cast lands in the water, a fish takes, is fought, landed, measured against the rules and let go; a closed
+    // species is said to be; no line in a marine reserve, from the deck either; and the deck's line comes in when she
+    // sails into one
+    if (ctx.S.fishing) {
+      must(fishFirst, 'fishing is not loaded with the site');
+      const f = await api.fishing(), A = f && f.api;
+      must(!!A && !!window.OEFishing, 'fishing loads on demand', f && `${f.spots.length} spots`);
+      if (A) {
+        const shore = f.spots.find(sp => !sp.vessel), core = window.OEFishing.core;
+        player.teleport(shore.at[0], shore.at[1], undefined, shore.h * 180 / Math.PI); run(0.3);
+        const a = A.action();
+        must(a && /^Fish at/.test(a.text), 'E at the foreshore offers fishing', a && a.text);
+        A.seed(7); A.force(A.easiest()); a.act(); run(0.2);
+        must(A.state().st === 'aim' && player.S.hold, 'the angler is at the edge, still, with a line ready', A.state().st);
+        const K = f.keys, press = (c, s) => { K.add(c); run(s); K.delete(c); };
+        press('Space', 0.6); run(1.2);
+        const cast = A.state();
+        must(cast.st === 'wait' && cast.line > 3 && f.data && ctx.depth(...(() => { const h = shore.h; return [shore.at[0] + Math.sin(h) * cast.line * 0.9, shore.at[1] + Math.cos(h) * cast.line * 0.9]; })()) > 0, 'the cast lands in the water', `${cast.st} ${cast.line && cast.line.toFixed(1)} m`);
+        let tries = 0;
+        for (let i = 0; i < 1200 && A.state().st !== 'card' && tries < 3; i++) {
+          const s = A.state();
+          if (s.st === 'bite') press('Space', 0.05);
+          else if (s.st === 'fight') { if (s.phase !== 'run' && s.T < 0.8) K.add('Space'); else K.delete('Space'); run(0.05); }
+          else if (s.st === 'aim') { tries++; press('Space', 0.6); run(1.2); }
+          else run(0.1);
+        }
+        K.delete('Space');
+        const card = A.state(), cardEl = document.getElementById('g-fishcard');
+        must(card.st === 'card' && cardEl && !cardEl.hidden && card.log[card.fish] && card.log[card.fish].n >= 1, 'a fish is hooked, fought, landed and logged', `${card.fish} ${card.cm} cm`);
+        const bc = f.data.species.find(s => s.id === 'blue-cod');
+        if (bc) must(/Milford Sound/.test(core.legal(bc, 40)), 'blue cod: closed in Milford Sound at any size', core.legal(bc, 40));
+        A.action().act(); run(0.2);
+        must(A.state().st === 'aim', 'let go: back to the cast');
+        A.stop(true); run(0.1);
+        must(!player.S.hold && A.state().st === 'off', 'packed up: the angler walks again');
+        // the reserve: under the north wall it is closed, off Mitre Peak and at the head it is open
+        const pt = id => { const p = ctx.poi(id); return p ? [p.x, p.y] : null; };
+        const inR = ['wp-elephant', 'wp-stirling'].map(pt).filter(Boolean), outR = ['wp-mitre', 'foreshore', 'wp-berth'].map(pt).filter(Boolean);
+        must(inR.length && inR.every(p => f.reserveAt(...p)) && outR.every(p => !f.reserveAt(...p)), 'the Piopiotahi Marine Reserve lies along the north wall, not the south or the head');
+        // the deck
+        const ship = ctx.boats && ctx.boats.byName(f.spots.find(sp => sp.vessel).vessel);
+        if (ship) {
+          const put = p => { ship.x = p[0]; ship.z = -p[1]; };
+          put(inR[0]); ctx.boats.board(ship, api.rider); run(0.3);
+          must(f.riding(), 'aboard the Piopiotahi as a passenger');
+          put(inR[0]); run(0.1); f.deckStart(); run(0.1);
+          must(!A.busy(), 'no line from the deck inside the reserve', A.state().st);
+          put(outR[0]); run(0.4); f.deckStart(); run(0.3);
+          must(A.busy() && f.onDeck && player.rig.group.visible, 'off Mitre Peak: a line from the after deck', A.state().st);
+          press('Space', 0.6); run(1.2);
+          const before = A.state().line;
+          put(inR[0]); run(0.4);
+          must(!A.busy(), 'sailing into the reserve: lines in', `${A.state().st} (line was ${before && before.toFixed(1)} m)`);
+          ctx.boats.leave(); run(0.3);
+        }
+      }
     }
   } catch (e) { out(false, 'exception', String(e && e.stack || e)); }
   // leave things as a player would find them

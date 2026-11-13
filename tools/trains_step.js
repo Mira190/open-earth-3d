@@ -118,6 +118,56 @@ module.exports = async function trainsStep(p) {
     g.advance(2.5); // (the chase camera, which hears, snaps back with you)
     const nearest = Math.min(Infinity, ...T.live.filter(o => o.v > 0.05).map(o => o.near));
     checks.push([nearest < 240 || Math.max(...T.voices) === 0, `away from the line no train is heard (the nearest moving train ${nearest.toFixed(0)} m off, its voice ${Math.max(...T.voices).toFixed(2)})`]);
+    // ---- a ride, where the line has a second station: from a platform, wait for a train that stops at the next
+    // station, see its doors and the platform doors open, board it, ride, and get off onto the next station's platform
+    const Rd = T.ride;
+    if (Rd && g.rail === Rd && T.stations.length > 1) {
+      g.setClock(g.clock.y, g.clock.m, g.clock.d, 18 * 60);
+      const from = T.stations[0], sv2 = T.services.find(s => T.stopsNow(s) && s.halts.findIndex(h => h.st === from) >= 0 && s.halts.findIndex(h => h.st === from) < s.halts.length - 1);
+      const h0 = sv2.halts.find(h => h.st === from), to = sv2.halts[sv2.halts.indexOf(h0) + 1].st;
+      const q0 = {}; sv2.tr.c.at(h0.m, q0);
+      const side = h0.side || 1, a = {}, b = {}; sv2.tr.c.at(h0.m - 1, a); sv2.tr.c.at(h0.m + 1, b);
+      const hx = (b.x - a.x) / 2, hy = (b.y - a.y) / 2, px = q0.x - hy * side * 3.2, py = q0.y + hx * side * 3.2, f0 = g.nav.floorAt(px, py, from.z + 0.5);
+      Object.assign(pl, { x: px, y: py, z: f0 ? f0.z : from.z, ground: true, vz: 0, speed: 0, mode: 'foot', vehicle: null });
+      g.advance(0.3);
+      let act = g.currentAction(); const waitText = act ? act.text : '';
+      // the clock to a few seconds before this service's train stands here
+      const L = T.plan(sv2, true).legs.find(l => l.h === h0), k = Math.ceil((T.t - sv2.offset_s - L.t2) / sv2.every_s) + 1;
+      T.t = sv2.offset_s + k * sv2.every_s + L.t2 - 6;
+      let car = null, doorsCar = 0, psdOpen = 0;
+      for (let t = 0; t < 20 && !car; t += 0.25) {
+        g.advance(0.25);
+        car = Rd.cars.find(c => c.s === sv2 && Rd.stationOf(c.id) === from);
+      }
+      for (let t = 0; t < 4; t += 0.25) { g.advance(0.25); }
+      doorsCar = T.doorways || 0;
+      psdOpen = Math.max(0, ...T.doorsOpen.filter(d => d.track === sv2.track && d.station === from.id).map(d => d.f));
+      act = g.currentAction();
+      const boardText = act ? act.text : '';
+      if (car) g.boardRail(car, from);
+      g.advance(0.3);
+      const aboard = pl.mode === 'rail' && pl.vehicle === car;
+      let left = false, top = 0, arrived = false, inside = true;
+      for (let t = 0; t < 400 && car && !arrived; t += 0.5) {
+        g.advance(0.5);
+        if (car.moved) left = true;
+        top = Math.max(top, car.speed);
+        if (pl.mode === 'rail') { const d = Math.hypot(pl.x - car.x, pl.y - car.y); if (d > sv2.len / 2 + 1) inside = false; }
+        arrived = left && (Rd.stationOf(car.id) === to || pl.mode === 'foot');
+      }
+      for (let t = 0; t < 6 && pl.mode === 'rail'; t += 0.5) { act = g.currentAction(); if (act && /^Get off/.test(act.text)) { act.act(); break; } g.advance(0.5); }
+      if (pl.mode === 'rail') { act = g.currentAction(); if (act && act.act) act.act(); }
+      g.advance(0.6);
+      const offF = g.nav.floorAt(pl.x, pl.y, pl.z + 0.3), offZ = pl.z - to.z, offD = Math.hypot(pl.x - to.x, pl.y - to.y);
+      checks.push([/next train|Board/.test(waitText), `on ${from.name}'s platform ${h0.platform} the game offers the train ("${waitText}")`]);
+      checks.push([!!car && /^Board/.test(boardText) && doorsCar > 0 && psdOpen > 0.9, `the ${sv2.line.en} train for ${sv2.for ? sv2.for.en : '?'} stands with its doors open (${doorsCar} doorways drawn, the platform doors ${(psdOpen * 100).toFixed(0)}% open${T.doorsOpen.some(d => d.track === sv2.track && d.station === from.id) ? '' : ': none here'}): "${boardText}"`]);
+      checks.push([aboard && left && inside, `boards it and rides in it (${aboard ? 'aboard' : 'not aboard'}, ${left ? 'left' : 'did not leave'}${inside ? '' : ', the rider off the train'})`]);
+      checks.push([arrived && top * 3.6 > 40 && top * 3.6 < 100, `rides to ${to.name} (${(top * 3.6).toFixed(0)} km/h at most)`]);
+      checks.push([pl.mode === 'foot' && Math.abs(offZ) < 0.5 && offD < (to.r || 150) && !!offF, `gets off onto ${to.name}'s platform (${offZ.toFixed(2)} m off its level, ${offD.toFixed(0)} m from its middle)`]);
+      Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h, mode: 'foot', vehicle: null }); pl.rig.root.visible = true; g.cam.yaw = keep.yaw;
+      T.t = keep.t; g.setClock(g.clock.y, g.clock.m, g.clock.d, keep.min);
+      g.advance(0.3);
+    }
     return { checks };
   });
 };

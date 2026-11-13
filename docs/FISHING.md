@@ -198,9 +198,39 @@ The button is held 65% to 84% of a fight.
 3. `node tools/fishing_sim.js <id>` for the balance, `tools/check.sh <id>` to fish each spot, and
    `tools/fishing_shot.js <id> out` for stills.
 
+## At a reef or alpine site
+
+Milford Sound / Piopiotahi has fishing (issue 364), from the same `web/game/fishing.js`: `web/reef/fishing.js` is
+the reef viewer's side of its contract, and `web/reef/game.js` imports it the first time you come within 200 m of a
+shore spot or board the ship a spot is on.
+
+- **The site's block** is at the top of `cities/<id>/city.json` (a reef site has no `game` block). A spot names a
+  POI (`"poi": "foreshore"`), and the edge with open water in front is found at run time from the reef's own ground
+  and depth. Or a spot names a ship and a deck (`"vessel": "Piopiotahi"`): you stand at her stern rail while she
+  sails on. The line is trolled astern (`carry()`), and the eye stands outboard of her quarter.
+- **`only`** lists the fish that come to a spot: the fiord's cod and tarakihi are not at the river's mouth. A
+  species may be **`closed`** at any size: blue cod may not be taken from Milford Sound's internal waters.
+- **`rules.reserves`** are no-take areas. Each has a `lonlat` boundary from DOC, closed over land by `land_xy`. The
+  game refuses a line inside one, and winds in a deck's line as she sails into one. The Piopiotahi Marine
+  Reserve runs along the north wall from the village to Dale Point, and the cruise's return leg passes through it.
+- **Build:** `python pipeline/fishing.py milford-sound` writes `web/data/milford-sound/fishing.json` and the pointer
+  in `scene.json`. The gametest (`web/reef/game/test.js`, step 15) catches a fish at the foreshore and checks the
+  reserve from the deck.
+- **The rules** were read on 11 November 2026:
+  - Fisheries New Zealand's [Fiordland Marine Area rules](https://www.mpi.govt.nz/fishing-aquaculture/recreational-fishing/fishing-rules/fiordland-marine-area-fishing-rules) (last reviewed 15 July 2026);
+  - DOC's [Piopiotahi Marine Reserve](https://doc.govt.nz/piopiotahi-marine-reserve) page and its [boundary map](https://doc.govt.nz/globalassets/documents/conservation/marine-and-coastal/marine-protected-areas/marine-reserve-maps/piopiotahi-milford-sound-marine-reserve.pdf);
+  - Fish & Game's [2026/27 South Island regulations](https://www.fishandgame.org.nz/assets/Fishing/Fishing-Licences-Regulations/Fishing-Regulations/2026/2027/Fish-and-Game-Sportsfishing-Regs-Brochure-2026-27-SI.pdf) for sea-run trout at the Cleddau's mouth.
+- **The other sites** were looked at, and none has fishing yet:
+  - Green Island, Lady Elliot Island and Hardy Reef lie in no-take (green) or research (orange) zones of the Marine Park.
+  - Heron Reef is part yellow (limited line fishing) and part green or pink, with the boundaries not yet read from GBRMPA's own map.
+  - The Whitsundays' Whitehaven zone was not settled.
+  - Lake Tekapo and Lake Pūkaki allow shore fishing all year on a Fish & Game licence (Tekapo six sports fish with at most four trout, Pūkaki four). They are the next waters to add.
+
 ## Limitations
 
-- A pilot: four spots in two waters. Kyoto's Kamo River, Tokyo Bay and the reef sites have none.
+- Six spots in three waters. Kyoto's Kamo River, Tokyo Bay and the other reef sites have none.
+- At a reef site the angler on a ship's deck holds one pose (the ship's ride runs no walk cycle), and the rod has no
+  bend there (the bend is a WebGL shader patch; the reef draws with node materials).
 - The player's left hand is not on the rod, and the reel's handle does not turn.
 - The float sits on a flat water level with a bob of its own; it does not ride the drawn waves.
 - A fish is one lofted shape recoloured per species: a flathead is the same shape made wide and

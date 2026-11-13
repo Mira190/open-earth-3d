@@ -155,7 +155,9 @@ export async function init(ctx) {
     padState.up = b(0) ? 1 : 0; padState.down = (b(1) || b(7)) ? 1 : 0; padState.run = b(10) ? 1 : 0; padState.inflate = b(5) ? 1 : 0; padState.deflate = b(4) ? 1 : 0;
     [[2, 'KeyE'], [3, 'KeyV'], [6, 'KeyQ']].forEach(([i, k]) => { if (b(i) && !padState.prev[i]) pressed.add(k); padState.prev[i] = b(i); });
   }
+  const STILL = { f: 0, r: 0, up: 0, down: 0, run: 0, inflate: 0, deflate: 0 };
   function input() {
+    if (S.hold) return STILL;   // (a line out: fishing.js has the keys, the body stands)
     if (S.virt) return S.virt;
     const k = c => keys.has(c) || touch.btn.has(c);
     const f = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) - touch.y + padState.f;
