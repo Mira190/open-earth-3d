@@ -39,8 +39,11 @@ MATERIALS = {
                   "emissive": "#ffd9b0", "glow": 0.05},
     "tks_copper": {"color": "#55625a", "roughness": 0.5, "metalness": 0.45, "emissive": FLOOD, "glow": 0.14},
     "tks_sash": {"color": "#ece7dc", "roughness": 0.55, "metalness": 0.0},
-    "tks_glass": {"color": "#1f262c", "roughness": 0.08, "metalness": 0.6, "emissive": "#ffd29a", "glow": 0.62},
-    "tks_glass_dark": {"color": "#1c2228", "roughness": 0.08, "metalness": 0.6, "emissive": "#ffe6c4", "glow": 0.07},
+    "tks_glass": {"color": "#1f262c", "roughness": 0.08, "metalness": 0.6, "emissive": "#ffd29a", "glow": 0.62,
+                  "interior": {"room_m": [3.6, 4.6, 5.0], "win_m": [1.55, 3.2]}},
+    "tks_glass_small": {"color": "#1f262c", "roughness": 0.08, "metalness": 0.6, "emissive": "#ffd29a", "glow": 0.45},
+    "tks_glass_dark": {"color": "#1c2228", "roughness": 0.08, "metalness": 0.6, "emissive": "#ffe6c4", "glow": 0.07,
+                       "interior": {"room_m": [3.6, 4.6, 5.0], "win_m": [1.55, 3.2]}},
     "tks_reveal": {"color": "#6f3426", "roughness": 0.9, "metalness": 0.0, "pbr": {"set": "brick", "tile_m": [1.4, 1.4], "vary": 0.05}},
     "tks_paving": {"color": "#9d988e", "roughness": 0.55, "metalness": 0.0, "pbr": {"set": "granite_paving", "tile_m": [2.4, 2.4], "vary": 0.06},
                    "decal": True, "street_lit": True},
@@ -138,7 +141,9 @@ def facade(K, ring, g, top, skip, centre_band=None):
             ak.reveal(rev, ak.WORLD, a, b, o, 0.0, -0.45)
             # after dark the hotel's and the offices' rooms are lit, not all of them
             lit = (math.sin(c * 12.9898 + zb * 78.233 + s0 * 3.1) * 43758.5453) % 1.0 < 0.62
-            ak.pane(glass if lit else K["tks_glass_dark"], ak.WORLD, a, b, o, -0.38)
+            g_ = glass if lit else K["tks_glass_dark"]
+            q = [a + t * (c - w / 2) - nrm * 0.38, a + t * (c + w / 2) - nrm * 0.38]
+            g_.quad((*q[0], zb), (*q[1], zb), (*q[1], zt), (*q[0], zt), [[0, 0], [w, 0], [w, zt - zb], [0, zt - zb]])
             p = a + t * c
             # the sash: a frame round the glass, a mullion and a transom
             for (dz0, dz1, ww) in ((zb, zb + 0.08, w), (zt - 0.08, zt, w)):
@@ -186,7 +191,7 @@ def facade(K, ring, g, top, skip, centre_band=None):
 
 def dormers(K, ring, z_eave, pitch, skip):
     """Dormers on the roof's slopes every other bay: a gabled box standing out of the slate, its window lit."""
-    slate, stone, glass, cop = K["tks_slate"], K["tks_stone"], K["tks_glass"], K["tks_copper"]
+    slate, stone, glass, cop = K["tks_slate"], K["tks_stone"], K["tks_glass_small"], K["tks_copper"]
     n = len(ring)
     for i in range(n):
         a, b = np.asarray(ring[i], float), np.asarray(ring[(i + 1) % n], float)
@@ -224,7 +229,7 @@ def octagon(c, R, phase):
 
 def dome_pavilion(K, c, R, phase, g):
     """An octagonal pavilion to 25 m, then the dome to DOME_TOP, its lantern and finial."""
-    brick, stone, slate, cop, glass = K["tks_brick"], K["tks_stone"], K["tks_slate"], K["tks_copper"], K["tks_glass"]
+    brick, stone, slate, cop, glass = K["tks_brick"], K["tks_stone"], K["tks_slate"], K["tks_copper"], K["tks_glass_small"]
     ring = octagon(c, R, phase)
     zp = EAVES + 6.2
     facade(K, ring, g, EAVES, lambda a, b: False)
@@ -481,8 +486,8 @@ def _dump(m):
 
 def meshes():
     """(materials, meshes, hidden solids, trees, props)"""
-    K = ak.Kit("tks", floodlit=("tks_brick", "tks_stone", "tks_stone_fine", "tks_slate", "tks_copper", "tks_glass", "tks_glass_dark"),
-               uv=("tks_brick", "tks_stone", "tks_stone_fine", "tks_slate", "tks_reveal", "tks_paving", "tks_kerb", "tks_lawn"))
+    K = ak.Kit("tks", floodlit=("tks_brick", "tks_stone", "tks_stone_fine", "tks_slate", "tks_copper", "tks_glass", "tks_glass_dark", "tks_glass_small"),
+               uv=("tks_glass", "tks_glass_dark", "tks_brick", "tks_stone", "tks_stone_fine", "tks_slate", "tks_reveal", "tks_paving", "tks_kerb", "tks_lawn"))
     g, hidden, octs, axis = building(K)
     trees, props = plaza(K, g, octs, axis)
     mats = _mats()

@@ -1784,6 +1784,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // across patterns: each patterned material keys its own
       if (lmMats[k].onBeforeCompile) lmMats[k].customProgramCacheKey = () => `lm|${k}`;
       if (m.pbr && window.OEPbr) OEPbr.apply(lmMats[k], m.pbr, { small, aniso: Math.min(8, renderer.capabilities.getMaxAnisotropy()) });
+      if (m.interior && window.OEInterior) OEInterior.apply(lmMats[k], m.interior, { night: LM_NIGHT }); // rooms behind the glass (web/interior.js)
     }
     // meshes marked floodlit glow after dark; with emissive_map an image glows in its own colours (a screen, a lit sign)
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
