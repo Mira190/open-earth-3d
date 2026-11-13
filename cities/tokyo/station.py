@@ -32,9 +32,9 @@ BAY = 3.6
 FLOOD = "#ffcf9e"   # warm, about 3000 K
 MATERIALS = {
     "tks_brick": {"color": "#7e3828", "roughness": 0.86, "metalness": 0.0, "pbr": {"set": "brick", "tile_m": [1.4, 1.4], "grime_m": 1.6, "vary": 0.2},
-                  "emissive": "#c4573a", "glow": 0.3},
+                  "emissive": "#c4573a", "glow": 0.85},
     "tks_stone": {"color": "#c2b7a3", "roughness": 0.78, "metalness": 0.0, "pbr": {"set": "stucco", "tile_m": [2.0, 2.0], "vary": 0.08, "grime_m": 1.2},
-                  "emissive": FLOOD, "glow": 0.3},
+                  "emissive": FLOOD, "glow": 0.7},
     "tks_slate": {"color": "#3b4045", "roughness": 0.62, "metalness": 0.0, "pbr": {"set": "slate", "tile_m": [2.6, 2.6], "normal": 1.2},
                   "emissive": "#ffd9b0", "glow": 0.05},
     "tks_copper": {"color": "#55625a", "roughness": 0.5, "metalness": 0.45, "emissive": FLOOD, "glow": 0.14},
@@ -492,7 +492,7 @@ def meshes():
     trees, props = plaza(K, g, octs, axis)
     mats = _mats()
     for k in ("tks_brick", "tks_stone", "tks_copper"):
-        mats[k]["flood"] = [round(g, 1), round(g + DOME_TOP, 1), 0.5, 0.55]
+        mats[k]["flood"] = [round(g, 1), round(g + 24.0, 1), 0.5, 0.45, BAY]  # (a fitting at the foot of every bay)
     for k in mats:
         if mats[k].get("pbr", {}).get("grime_m"):
             mats[k]["pbr"]["grime_z"] = round(g, 1)
