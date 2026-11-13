@@ -100,6 +100,73 @@ CLIMATE = {
 MELBOURNE = {"rain_days": [8.3, 7.5, 8.4, 9.9, 12.0, 13.0, 14.0, 14.8, 13.9, 12.5, 10.8, 9.9], "threshold_mm": 0.2,
              "drizzle": 0.6, "source": "Bureau of Meteorology, Melbourne, 1991-2020, days with at least 0.2 mm"}
 CLIMATE["melbourne"] = CLIMATE["melbourne-bayside"] = MELBOURNE
+
+# ---- the reef and alpine sites (web/reef/weather.js): written as "weather" at the top of cities/<id>/city.json and
+# copied into web/data/<id>/scene.json (pipeline/marine_meta.py passes it through on a rebuild). Read November 2026.
+# bom.gov.au refuses automated reads, so the Australian numbers are the Bureau's as Wikipedia's climate boxes cite
+# them, or as its station pages are indexed by search engines; where a row could not be read it is left out (the
+# weather then has no fog or thunder from the season there, and the wind its default), or derived as noted.
+# elev_m: the station's height, so the air cools 6.5 degrees a kilometre above it (weather.js's snow line).
+NZ_SNOW_SHAPE = [0, 0, 0.1, 0.6, 1.4, 2.2, 2.6, 2.3, 1.6, 1.0, 0.2, 0]   # Queenstown's frost-day shape (above), for an annual count
+def spread(total, shape):
+    k = total / sum(shape)
+    return [round(v * k, 2) for v in shape]
+SE_TRADES = 135   # the south-east trades, the Reef's usual wind most of the year: a judgement, no rose was read
+GREEN_ISLAND = {"rain_days": [16.0, 15.7, 15.1, 14.4, 10.1, 7.2, 5.7, 4.5, 4.2, 6.2, 8.3, 10.9], "threshold_mm": 1.0, "drizzle": 0.25,
+                "temp_max": [31.1, 30.4, 29.2, 27.9, 25.8, 24.0, 23.5, 24.6, 27.3, 29.7, 31.2, 31.7],
+                "temp_min": [25.3, 25.4, 24.8, 24.0, 22.6, 21.4, 20.2, 20.4, 21.6, 23.1, 24.2, 25.1],
+                "wind_ms": [6.4, 6.8, 8.8, 9.4, 9.6, 10.4, 9.5, 8.9, 7.3, 6.8, 6.3, 5.9], "wind_from_deg": SE_TRADES, "elev_m": 3,
+                "source": "Bureau of Meteorology: Green Island (031192), temperatures and the mean of the 9 am and 3 pm winds, 1993-2010; days with at least 1 mm from Cairns Aero (031011), 1991-2020 (the island has no rain-day row; it is a little drier)",
+                "more": "Read from the Bureau's station page as search engines index it (bom.gov.au refuses automated reads) and Wikipedia's Cairns climate box, November 2026."}
+HAMILTON = {"rain_days": [13.0, 13.8, 14.3, 12.2, 10.8, 7.4, 6.0, 3.3, 2.7, 3.6, 5.4, 7.6], "threshold_mm": 1.0, "drizzle": 0.25,
+            "temp_max": [29.9, 29.7, 28.9, 27.0, 24.4, 22.3, 21.5, 22.9, 25.3, 27.4, 28.7, 29.9],
+            "temp_min": [24.9, 24.9, 24.5, 22.9, 20.6, 18.9, 18.0, 18.5, 20.2, 22.1, 23.4, 24.6],
+            "wind_from_deg": SE_TRADES, "elev_m": 4,
+            "source": "Bureau of Meteorology, Hamilton Island Airport (033106), 2002-2024, days with at least 1 mm (via Wikipedia's climate box)",
+            "more": "No wind row could be read: the weather's default mean wind. November 2026."}
+# Lady Elliot Island's temperatures are the Bureau's (039059, 1939-2026); its rain days were not readable, so they are its
+# monthly rain (mm, the same table) at Heron Island's ratio of rain days to rain (84.7 days to 1034 mm a year)
+LE_MM = [113.5, 157.2, 125.6, 102.5, 118.8, 88.3, 87.4, 55.5, 38.1, 57.4, 66.6, 93.2]
+LADY_ELLIOT = {"rain_days": [round(v * 84.7 / 1034.3, 1) for v in LE_MM], "threshold_mm": 1.0, "drizzle": 0.25,
+               "temp_max": [29.3, 29.2, 28.4, 26.6, 24.1, 22.0, 21.3, 22.1, 23.9, 25.7, 27.3, 28.7],
+               "temp_min": [24.0, 24.1, 23.5, 21.9, 19.6, 17.6, 16.7, 17.3, 18.8, 20.5, 22.0, 23.3],
+               "wind_ms": [5.9] * 12, "wind_from_deg": SE_TRADES, "elev_m": 3,
+               "source": "Bureau of Meteorology, Lady Elliot Island (039059), temperatures and rain 1939-2026; rain days derived from its rain at Heron Island's ratio",
+               "more": "Wind: Heron Island's annual mean (21.5 and 20.7 km/h at 9 am and 3 pm, 1962-2010), 80 km away. Read from the Bureau's pages as search engines index them, November 2026."}
+# Heron Island (039122): only the annual rows and a few months could be read; the rest is Lady Elliot's shape,
+# 80 km away, the four known months of rain days kept (January 7.9, April 10.1, September 3.5, December 6.5)
+HERON_DAYS = [round(v * 84.7 / sum(LE_MM), 1) for v in LE_MM]
+for i, v in ((0, 7.9), (3, 10.1), (8, 3.5), (11, 6.5)):
+    HERON_DAYS[i] = v
+HERON = {"rain_days": HERON_DAYS, "threshold_mm": 1.0, "drizzle": 0.25,
+         "temp_max": [round(v + 0.4, 1) for v in LADY_ELLIOT["temp_max"]], "temp_min": [round(v + 0.1, 1) for v in LADY_ELLIOT["temp_min"]],
+         "wind_ms": [5.9] * 12, "wind_from_deg": SE_TRADES, "elev_m": 3,
+         "source": "Bureau of Meteorology, Heron Island Research Station (039122): 84.7 days a year with at least 1 mm (1956-2007), mean maxima 29.8 (January) and 21.5 (July)",
+         "more": "The months not readable follow Lady Elliot Island's (039059) shape, shifted to Heron's January and July temperatures. November 2026."}
+MILFORD = {"rain_days": [16.3, 12.8, 14.4, 13.3, 15.6, 14.6, 14.4, 16.0, 17.6, 17.6, 15.3, 16.9], "threshold_mm": 1.0, "drizzle": 0.3,
+           "temp_max": [19.5, 20.0, 18.5, 15.9, 12.5, 9.3, 9.2, 11.2, 13.2, 15.0, 16.4, 18.5],
+           "temp_min": [10.7, 10.7, 9.2, 7.0, 4.9, 2.3, 1.6, 2.7, 4.1, 5.8, 7.6, 9.7],
+           "wind_ms": [2.4, 2.3, 2.1, 2.1, 2.2, 2.3, 2.4, 2.3, 2.3, 2.5, 2.5, 2.5], "wind_from_deg": 320, "elev_m": 3,
+           "snow_days": spread(4, NZ_SNOW_SHAPE), "thunder_days": [round(22 / 12, 2)] * 12, "fog_days": spread(2, [0.5, 0.5, 1, 1.5, 2, 2, 2, 1.5, 1, 0.5, 0.5, 0.5]),
+           "source": "NIWA, Milford Sound Airport (agents 4107, 18309, 40987), 1991-2020, days with at least 1 mm (via Wikipedia's climate box)",
+           "more": "Wind: the automatic station's mean of hourly winds; north-westerly, along the fiord (NIWA, The Climate and Weather of Southland, figure 8). Days a year with snow 4, thunder 22, fog 2 (its table 19), spread over the months: snow by Queenstown's frost-day shape, thunder evenly (the fronts off the Tasman), fog toward winter, a judgement. November 2026."}
+TEKAPO = {"rain_days": [4.9, 4.4, 4.8, 5.9, 7.8, 7.2, 6.8, 7.2, 6.4, 7.3, 5.9, 6.2], "threshold_mm": 1.0, "drizzle": 0.3,
+          "temp_max": [22.2, 22.2, 19.5, 15.3, 11.5, 7.4, 6.6, 8.8, 12.4, 15.2, 17.3, 20.1],
+          "temp_min": [8.5, 8.2, 6.0, 3.5, 1.4, -1.9, -2.8, -1.2, 1.0, 2.8, 4.5, 6.8],
+          "wind_ms": [4.4, 3.6, 3.6, 3.2, 3.1, 3.0, 3.1, 3.2, 4.3, 4.4, 4.5, 4.1], "wind_from_deg": 315, "elev_m": 762,
+          "snow_days": spread(12, NZ_SNOW_SHAPE), "thunder_days": spread(2, [1, 1, 0.5, 0, 0, 0, 0, 0, 0, 0.3, 0.6, 1]), "fog_days": spread(0.3, [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0]),
+          "source": "NIWA, Lake Tekapo, 762 m (agents 4616, 4970, 24945), 1991-2020, days with at least 1 mm (via Wikipedia's climate box)",
+          "more": "Wind: NIWA, The Climate and Weather of Canterbury (2016), table 1; its bearing the nor'wester's, as at Aoraki (no rose for Tekapo: a judgement). Days a year with snow 12, thunder 2, fog 0.3 (table 20), spread over the months by a chosen shape. November 2026."}
+PUKAKI = {"rain_days": [11.3, 9.0, 10.0, 11.5, 15.2, 14.2, 13.2, 13.6, 15.0, 15.8, 13.5, 13.8], "threshold_mm": 1.0, "drizzle": 0.3,
+          "temp_max": [20.4, 20.8, 18.4, 14.9, 11.0, 7.9, 7.2, 9.1, 11.8, 14.0, 16.3, 18.5],
+          "temp_min": [8.7, 8.5, 6.5, 4.0, 1.3, -1.4, -2.2, -0.8, 1.5, 3.1, 5.0, 7.0],
+          "wind_ms": [3.4, 2.9, 2.8, 2.3, 2.3, 2.0, 1.9, 2.0, 3.0, 3.2, 3.3, 3.1], "wind_from_deg": 305, "elev_m": 765,
+          "snow_days": spread(24, NZ_SNOW_SHAPE), "thunder_days": spread(9, [1.5, 1.5, 1, 0.5, 0.3, 0.2, 0.2, 0.3, 0.5, 1, 1.2, 1.5]), "fog_days": spread(2, [0.5, 0.5, 1, 1.5, 2, 2, 2, 1.5, 1, 0.5, 0.5, 0.5]),
+          "source": "NIWA, Mount Cook Village, 765 m, 1991-2020, days with at least 1 mm (via Wikipedia's climate box; the head of the lake, wetter than its south end)",
+          "more": "Wind and its bearing: NIWA, The Climate and Weather of Canterbury (2016), table 1 and figure 5. Days a year with snow 24, thunder 9, fog 2 (table 20), spread over the months by a chosen shape. November 2026."}
+REEFS = {"green-island": GREEN_ISLAND, "whitsundays": HAMILTON, "hardy-reef": HAMILTON, "heron-island": HERON,
+         "lady-elliot-island": LADY_ELLIOT, "milford-sound": MILFORD, "lake-tekapo": TEKAPO, "lake-pukaki": PUKAKI}
+
 PARKED = set(json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8")).get("parked", []))
 
 
@@ -156,7 +223,35 @@ def sync_game(city):
     return changed
 
 
+def write_reef(city, w):
+    """A reef or alpine site: "weather" at the top of cities/<id>/city.json, and in web/data/<id>/scene.json."""
+    path = os.path.join(ROOT, "cities", city, "city.json")
+    text = open(path, encoding="utf8").read()
+    line = f'"weather": {one_line(w)}'
+    m = re.search(r'^(\s*)"weather": \{.*\},?$', text, re.M)
+    if m:
+        text = text[:m.start()] + m.group(1) + line + ("," if m.group(0).rstrip().endswith(",") else "") + text[m.end():]
+    else:
+        g = re.search(r'^(\s*)"region": .*,$', text, re.M) or re.search(r'^(\s*)"name": .*,$', text, re.M)
+        text = text[:g.end()] + f'\n{g.group(1)}{line},' + text[g.end():]
+    json.loads(text)
+    open(path, "w", encoding="utf8").write(text)
+    out = os.path.join(ROOT, "web", "data", city, "scene.json")
+    scene = json.load(open(out, encoding="utf8"))
+    if scene.get("weather") == w:
+        return 0
+    raw = open(out, encoding="utf8").read()
+    scene["weather"] = w
+    json.dump(scene, open(out, "w", encoding="utf8"), **({"separators": (",", ":")} if "\n" not in raw.strip() else {"indent": 1}))
+    return 1
+
+
 def main(cities):
+    for city in [c for c in cities if c in REEFS] or ([] if cities else sorted(REEFS)):
+        print(f"{city}: {write_reef(city, REEFS[city])} changes in scene.json")
+    cities = [c for c in cities if c not in REEFS]
+    if not cities and any(c in REEFS for c in sys.argv[1:]):
+        return
     for city in cities or sorted(c for c in CLIMATE if c not in PARKED):  # (parked cities wait: AGENTS.md)
         w = CLIMATE.get(city)
         if w and not write_city(city, w):
