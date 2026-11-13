@@ -128,7 +128,7 @@ What is measured, and from where:
 | The front's composition and heights: three bays to a pavilion and four to a wing, paired windows, a 4.3 m storey, pavilions 23 m, wings 26 m, the tower 35 m (the same as the map's own figure), the glass floor on the roof | photographs on Wikimedia Commons: "Museum of Contemporary Art Australia, Sydney, 2023" (CC BY-SA 4.0), "The Museum of Contemporary Art, Sydney (former MSB Building)" (CC BY-SA 4.0), "(1)Museum of Contemporary Art-3" (CC BY-SA 3.0); looked at, not copied into the model |
 
 The city's model has the museum as four plain blocks without its end pavilions or the Mordant Wing; the
-level builds both as its own shells (they have no collision: issue filed), and skins the rest 0.45 m in
+level builds both as its own shells (they have no collision: issue 426), and skins the rest 0.45 m in
 front of the city's walls. The entrance hall behind the Mordant Wing's glass is a room in geometry (floor,
 back wall hung with canvases, a ceiling of light), so that it shifts as you walk past, which a picture of a
 room does not. The two rows of palms along the lawn's wall are the map's own trees (an area in `city.json`
