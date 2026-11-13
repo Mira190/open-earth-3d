@@ -109,18 +109,20 @@ window.OEBonds = (function () {
     }
     // ---- where they are at this hour: life.json bonds[].places, each { slots, weekdays, hours, weather, at, where, face },
     // the first that is on now; none on, they keep their own place (game.json). They move while you are not there to
-    // see it (out of sight past 60 m of both places), or at once when the hour turns under the veil of passing time
+    // see it (out of sight past 60 m of both places), or at once when the hour turns under the veil of passing time.
+    // Someone you have not met keeps the place the map gives them (the first quest's giver waits by the start), and
+    // you learn their rounds once you know them (everyone: all of them at their hour, as tools/npc_night.js measures)
     const home = new Map();
-    const placeOf = b => (b.places || []).find(p => L.day.onNow(p)) || null;
+    const placeOf = (b, everyone) => (everyone || st(b.npc).met) && (b.places || []).find(p => L.day.onNow(p)) || null;
     const whereOf = b => { const p = placeOf(b); return (p && p.where) || b.where || ''; };
     const SEEN_M = 60;
-    function rounds(now) {
+    function rounds(now, everyone = false) {
       for (const b of all()) {
         if (!b.places) continue;
         const n = npcOf(b);
         if (!n || !ctx.npcMove) continue;
         if (!home.has(b.npc)) home.set(b.npc, { at: [n.x, n.y, n.z], h: n.h, p: null });
-        const hm = home.get(b.npc), p = placeOf(b), want = p ? p.at : hm.at;
+        const hm = home.get(b.npc), p = placeOf(b, everyone), want = p ? p.at : hm.at;
         if (hm.p === p || n.talking) continue;
         const P = ctx.player, far = q => Math.hypot(P.x - q[0], P.y - q[1]) > SEEN_M;
         if (!now && !(far([n.x, n.y]) && far(want))) continue;

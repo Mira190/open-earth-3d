@@ -598,7 +598,9 @@ jacket across the scramble), and some ranks give an ability:
 `bonds[].places`, each with its slots, weekdays, hours or weather, a place and the words the
 diary uses for it): the station attendant covers Koshigoe's platform at midday, the student is
 on the beach after school, the monk goes down to the waterfall. The first place that is on is
-where they stand; with none on, they are at their own. They move only while you are not there
+where they stand; with none on, they are at their own. Someone you have not met yet keeps the
+place the map gives them at every hour, so the first quest's giver waits by the start; you learn
+their rounds once you know them. They move only while you are not there
 to see it (more than 60 m from both places), or at once as time passes under the diary's veil,
 and quests, the map and the waypoint follow them where they are (`bonds.js` rounds, `game.js`
 npcMove). `pipeline/life.py` checks each place, and `tools/life_step.js` stands every one of

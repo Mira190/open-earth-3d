@@ -26,7 +26,7 @@ function survey() {
   };
   // (people who keep other places by the hour, life.json bonds[].places: measured where they stand at night, 21:30)
   const B = g.life && g.life.bonds, c = g.clock, was = { min: c.min, frozen: c.frozen };
-  if (B && B.rounds) { g.setClock(c.y, c.m, c.d, 21 * 60 + 30); B.rounds(true); }
+  if (B && B.rounds) { g.setClock(c.y, c.m, c.d, 21 * 60 + 30); B.rounds(true, true); }
   for (const n of g.npcs) {
     const light = N && N.lightAt ? N.lightAt(n.x, n.y, 21) : null;
     const hz = n.z + 1.6;

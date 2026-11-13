@@ -105,7 +105,14 @@ async function lifeStep(p, check, city) {
         const pl = pb.places.find(p => p.slots && !p.weather), n = g.npcs.find(x => x.id === pb.npc);
         const other = D.SLOTS.find(sl => !pb.places.some(p => p.slots && p.slots.includes(sl)) && sl !== pl.slots[0]);
         if (D.slot !== other) { D.passTo(other); g.advance(1); }
-        const home = [n.x, n.y];
+        const home = [n.x, n.y], sb = L.bonds.st(pb.npc), met0 = sb.met;
+        // someone you have not met keeps the map's place at every hour (the first quest's giver waits by the start)
+        sb.met = 0;
+        P.x = n.x + 400; P.y = n.y + 400;
+        g.setClock(c.y, c.m, c.d, D.bounds()[pl.slots[0]] + 5); g.advance(1); L.bonds.rounds(true);
+        out.strangerStays = Math.hypot(n.x - home[0], n.y - home[1]) < 2;
+        if (D.slot !== other) { D.passTo(other); g.advance(1); }
+        sb.met = 1;
         // you stand beside them as the hour turns on the clock (no veil): they stay
         P.x = n.x + 2; P.y = n.y; P.z = n.z;
         g.setClock(c.y, c.m, c.d, D.bounds()[pl.slots[0]] + 5); g.advance(1);
@@ -117,6 +124,7 @@ async function lifeStep(p, check, city) {
         // and back, at once, when time passes under the veil
         D.passTo(other); g.advance(1);
         out.movedBack = Math.hypot(n.x - home[0], n.y - home[1]) < 2;
+        sb.met = met0;
         out.placeWho = pb.npc;
       }
       // ---- a friend's forecast (gives "forecast"): the next day hour by hour on today's page
@@ -241,7 +249,7 @@ async function lifeStep(p, check, city) {
   if (r.kept != null) check(r.kept && r.albumCards >= 1, `keepsakes: one bought is in the album (${r.albumCards} card${r.albumCards === 1 ? '' : 's'})`);
   if (r.trainTook != null) check(r.trainTook && r.trainRun && r.trainWrong && r.trainDone && r.trainPaid > 0, `jobs: a train job taken at its station, not done at the wrong stop, paid at the right one (+${r.trainPaid})`);
   if (r.places) check(!r.placeBad.length, `people's places by the hour: all ${r.places} on firm ground by where they are written${r.placeBad.length ? ` (${r.placeBad.join('; ')})` : ''}`);
-  if (r.placeWho) check(r.stayWatched && r.movedAway && r.whereSaid && r.movedBack, `people move by the hour: ${r.placeWho} stays while watched, goes when you leave, the diary says where, and is back as time passes`);
+  if (r.placeWho) check(r.strangerStays && r.stayWatched && r.movedAway && r.whereSaid && r.movedBack, `people move by the hour: ${r.placeWho} keeps the map's place until you have met (${r.strangerStays}), stays while watched, goes when you leave, the diary says where, and is back as time passes`);
   if (r.fcCells != null) check(!r.fcBefore && r.fcCells >= 7 && r.fcDrawn >= 7, `the forecast: given by ${r.fcFrom}, the next day in ${r.fcCells} steps on today's page`);
   check(r.bannerWaited && r.bannerAfter, 'a banner waits for a station\'s arrival sign, then shows');
   if (r.music != null) check(r.music && r.want && r.want.slot === 'night' && r.want.rain > 0.2 && !!r.want.palette === /Japan|Australia|New Zealand/.test(r.country || 'Japan') && r.vol, `the score plays with the sound and follows the hour and the weather ("${r.score0}" to "${r.score1}"), with its own volume`);
