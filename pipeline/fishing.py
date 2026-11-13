@@ -19,6 +19,12 @@ points in it within a cast where fish hold, placed by a fixed seed so every buil
     python pipeline/fishing.py                 # every city with a fishing block
     python pipeline/fishing.py sydney          # these cities
     python pipeline/fishing.py --check         # exit 1 if a city's files are not what this would write
+
+A reef or alpine site (web/reef/, no game.json) has its "fishing" block at the top of its city.json. Its spots
+are a POI (where people stand; web/reef/fishing.js finds the water's edge from the model's ground at run time)
+or a ship's deck ("vessel", "deck": carried with her), and its rules may name marine reserves, where the game
+refuses a line: a reserve's "lonlat" boundary is projected into the site's frame and closed over land by
+"land_xy". It writes web/data/<id>/fishing.json and a pointer in scene.json "fishing".
 """
 import base64
 import json
@@ -208,11 +214,77 @@ def apply(city, game=None, check=False):
     return True
 
 
+def build_reef(site):
+    """(scene.json's fishing pointer, fishing.json) for a reef or alpine site, or None without a fishing block."""
+    path = os.path.join(ROOT, "cities", site, "city.json")
+    out = os.path.join(ROOT, "web", "data", site)
+    if not os.path.exists(path) or not os.path.exists(os.path.join(out, "scene.json")) or os.path.exists(os.path.join(out, "game.json")):
+        return None
+    cfg = json.load(open(path, encoding="utf8"))
+    F = cfg.get("fishing")
+    if not F:
+        return None
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from cityctx import City
+    city = City(site)
+    scene = json.load(open(os.path.join(out, "scene.json"), encoding="utf8"))
+    pois = {p["id"]: p for p in scene.get("pois", [])}
+    species, rigs = {s["id"] for s in F["species"]}, {r["id"] for r in F["rigs"]}
+    for s in F["species"]:
+        for r in s["rigs"]:
+            if r not in rigs:
+                raise SystemExit(f"{site}: species {s['id']} names a rig that is not listed: {r}")
+    spots, pointers = [], []
+    for sp in F["spots"]:
+        for k in sp.get("species", []) + sp.get("only", []):
+            if k not in species:
+                raise SystemExit(f"{site}: spot {sp['id']} names a species that is not listed: {k}")
+        spot = {k: v for k, v in sp.items() if k != "poi"}
+        if "poi" in sp:
+            p = pois.get(sp["poi"])
+            if not p:
+                raise SystemExit(f"{site}: spot {sp['id']} names an unknown POI: {sp['poi']}")
+            spot["at"] = [p["x"], p["y"]]
+        elif "vessel" not in sp:
+            raise SystemExit(f"{site}: spot {sp['id']} has neither a POI nor a vessel")
+        spot.setdefault("schools", [])
+        spots.append(spot)
+        pointers.append({k: spot[k] for k in ("id", "name", "at", "vessel") if k in spot})
+    rules = json.loads(json.dumps(F["rules"]))
+    for r in rules.get("reserves", []):
+        xy = [[round(v, 1) for v in city.fwd.transform(lon, lat)] for lon, lat in r.pop("lonlat")]
+        r["xy"] = xy + r.pop("land_xy", [])
+    data = {"v": VERSION, "water": F["water"], "rules": rules, "rigs": F["rigs"],
+            "species": [{k: s[k] for k in SPECIES_KEYS if k in s} for s in F["species"]], "spots": spots, "sources": F.get("sources", [])}
+    return {"v": VERSION, "file": "fishing.json", "spots": pointers}, data
+
+
+def apply_reef(site, check=False):
+    built = build_reef(site)
+    if built is None:
+        return None
+    pointer, data = built
+    out = os.path.join(ROOT, "web", "data", site)
+    path, sp = os.path.join(out, "fishing.json"), os.path.join(out, "scene.json")
+    scene = json.load(open(sp, encoding="utf8"))
+    if check:
+        ok = scene.get("fishing") == pointer and os.path.exists(path) and open(path, encoding="utf8").read() == dump(data)
+        if not ok:
+            print(f"{site}: fishing data is stale; run python pipeline/fishing.py {site}")
+        return ok
+    open(path, "w", encoding="utf8").write(dump(data))
+    if scene.get("fishing") != pointer:
+        scene["fishing"] = pointer
+        json.dump(scene, open(sp, "w", encoding="utf8"), indent=1)   # (as marine_meta.py writes it)
+    print(f"{site}: {len(data['spots'])} spots, {len(data['species'])} species, {len(data['rules'].get('reserves', []))} reserves")
+    return True
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     check = "--check" in sys.argv
     cities = args or sorted(d for d in os.listdir(os.path.join(ROOT, "cities")) if os.path.exists(os.path.join(ROOT, "cities", d, "city.json")))
-    bad = [c for c in cities if apply(c, check=check) is False]
+    bad = [c for c in cities if apply(c, check=check) is False or apply_reef(c, check=check) is False]
     if check and bad:
         sys.exit(1)
 

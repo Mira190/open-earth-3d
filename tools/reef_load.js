@@ -13,6 +13,12 @@ const [,, site = 'whitsundays', size = '1440x900'] = process.argv;
   await p.addInitScript(t => {
     try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ }
     window.__steps = [];
+    // each program's link, with the name of the scene being drawn (three.js names a mirror's render "... [ Reflector ]")
+    window.__links = [];
+    if (window.WebGL2RenderingContext) {
+      const P = WebGL2RenderingContext.prototype, link = P.linkProgram;
+      P.linkProgram = function (pr) { window.__links.push(performance.now()); return link.call(this, pr); };
+    }
     addEventListener('DOMContentLoaded', () => {
       const m = document.getElementById('load-msg');
       if (m) new MutationObserver(() => { const l = window.__steps[window.__steps.length - 1], t = m.textContent.replace(/: [\d.]+( of [\d.]+)? MB$/, ''); if (!l || l[1] !== t) window.__steps.push([performance.now(), t]); }).observe(m, { childList: true, characterData: true, subtree: true });
@@ -23,13 +29,13 @@ const [,, site = 'whitsundays', size = '1440x900'] = process.argv;
   const cdp = await p.context().newCDPSession(p);
   await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 1000 });
   const t0 = Date.now();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/reef/index.html?city=${site}`, { waitUntil: 'commit' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/reef/index.html?city=${site}${process.env.DETAIL === "wait" ? "" : "&detail=later"}`, { waitUntil: 'commit' });
   await cdp.send('Profiler.start');
   const sync = await p.evaluate(() => performance.now()).catch(() => 0);
   await p.waitForFunction('window.__ready || document.getElementById("err").textContent', null, { timeout: 900000, polling: 250 });
   const ready = (Date.now() - t0) / 1000;
   const { profile } = await cdp.send('Profiler.stop');
-  const st = await p.evaluate(() => ({ marks: performance.getEntriesByType('mark').filter(m => /^oe:/.test(m.name)).map(m => [m.name.slice(3), m.startTime]), steps: window.__steps.slice(), now: performance.now(), err: document.getElementById('err').textContent }));
+  const st = await p.evaluate(() => ({ marks: performance.getEntriesByType('mark').filter(m => /^oe:/.test(m.name)).map(m => [m.name.slice(3), m.startTime]), steps: window.__steps.slice(), links: window.__links.slice(), now: performance.now(), err: document.getElementById('err').textContent }));
   await b.close();
   const mk = Object.fromEntries(st.marks);
   console.log(`${site} ${size}: ready after ${ready.toFixed(1)} s; stages (s): ${st.marks.map(([k, v]) => `${k} ${(v / 1000).toFixed(1)}`).join(', ')}`);
@@ -61,6 +67,11 @@ const [,, site = 'whitsundays', size = '1440x900'] = process.argv;
   console.log('  self (ms):\n' + best(self, N));
   console.log('  inclusive, the app\'s (ms):\n' + best(incl, N));
   };
+  // the programs linked in each loader step from "built" on (WebGL2: how many the precompile left to the first frames)
+  if (st.links.length) {
+    const parts = st.steps.map(([t, msg], i) => [msg, t, (st.steps[i + 1] || [st.now])[0]]).filter(([, t, e]) => e > mk.built);
+    console.log(`programs linked: ${st.links.length} in all; ` + parts.map(([msg, t, e]) => `${st.links.filter(l => l >= Math.max(t, mk.built) && l < e).length} in "${msg.slice(0, 40)}"`).join(', '));
+  }
   windowOf('build (decoded to built)', mk.decoded, mk.built);
   windowOf('after it (built to the first frame)', mk.built, end);
   if (errors.length || st.err) console.log('page errors:', errors, st.err);

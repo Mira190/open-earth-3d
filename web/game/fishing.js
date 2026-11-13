@@ -29,6 +29,7 @@ window.OEFishing = (function () {
     let sum = 0;
     for (let i = 0; i < data.species.length; i++) {
       const s = data.species[i], w = s.when, share = s.share || 1;
+      if (spot.only && spot.only.indexOf(s.id) < 0) { out[i] = 0; continue; }   // (fish that never come to this spot: the fiord's cod at the river's mouth)
       let v = share * w.months[env.month - 1] * (w.light[env.light] == null ? 1 : w.light[env.light]);
       if (env.rain > 0.1 && w.rain) v *= w.rain;
       v *= s.rigs[env.rig] == null ? 0.03 : s.rigs[env.rig];
@@ -109,6 +110,7 @@ window.OEFishing = (function () {
   // is this fish one the law lets you keep? '' when it is, or why not
   function legal(s, cm) {
     const L = s.legal || {};
+    if (L.closed) return L.closed;     // (a species closed to taking in this water, at any size: Milford Sound's blue cod)
     if (L.min_cm && cm < L.min_cm) return `Under the ${L.min_cm} cm legal length`;
     if (L.max_cm && cm > L.max_cm) return `Over the ${L.max_cm} cm limit`;
     return '';
@@ -155,9 +157,15 @@ window.OEFishing = (function () {
 .g-fishcard .size { font: 400 20px/1.2 var(--f-mono); color: #fff; } .g-fishcard .size small { font-size: 11px; color: var(--muted); margin-left: 8px; }
 .g-fishcard .tag { justify-self: start; padding: 2px 7px; border-radius: 4px; font: 500 10px/1.5 var(--f-mono); letter-spacing: 0.04em; background: var(--accent-wash); color: var(--accent-2); }
 .g-fishcard .rule { color: var(--ink); } .g-fishcard p { margin: 0; }
-.g-fishlog .g-panel { width: min(620px, 100%); max-height: 100%; overflow: auto; }
-.gfl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin: 12px 0; align-items: start; }
-.gfl-item { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 3px; font: 400 12px/1.4 var(--f-body); color: var(--ink-2); }
+.g-fishlog .g-panel { width: min(700px, 100%); max-height: 100%; overflow: auto; }
+.gfl-bar { height: 4px; border-radius: 2px; background: rgba(236, 232, 225, 0.1); overflow: hidden; } .gfl-bar i { display: block; height: 100%; background: var(--accent); }
+.gfl-art { height: 104px; margin: -2px -4px 4px; display: flex; align-items: center; justify-content: center; } .gfl-art svg { display: block; max-width: 100%; max-height: 100%; width: auto; height: 100%; }
+.gfl-size { height: 3px; border-radius: 2px; background: rgba(236, 232, 225, 0.1); overflow: hidden; } .gfl-size i { display: block; height: 100%; background: var(--accent-2); }
+.gfl-guide, .gfl-when { display: grid; gap: 2px; padding-top: 4px; } .gfl-guide b, .gfl-when b { font: 500 9px/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.gfl-months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; height: 14px; align-items: end; } .gfl-months i { display: block; height: calc(3px + 11px * var(--w)); border-radius: 1px; background: var(--accent-2); opacity: calc(0.25 + 0.75 * var(--w)); }
+.gfl-mlabels { display: flex; justify-content: space-between; } .gfl-mlabels b { font-size: 8px; color: var(--muted); }
+.gfl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; margin: 12px 0; align-items: stretch; }
+.gfl-item { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; display: grid; align-content: start; gap: 3px; font: 400 12px/1.4 var(--f-body); color: var(--ink-2); }
 .gfl-item b { color: #fff; font-weight: 600; } .gfl-item em { color: var(--muted); font-size: 11px; } .gfl-item.no { opacity: 0.55; }
 .gfl-item .n { font: 400 11px/1.3 var(--f-mono); color: var(--accent-2); }
 .gfl-rules { font: 400 11px/1.5 var(--f-body); color: var(--muted); display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); }
@@ -193,10 +201,14 @@ window.OEFishing = (function () {
 
     // ---------------------------------------------------------- the things drawn: made on the first cast, freed when you leave
     let gear = null, rings = null, hud = null, ringAt = 0, riseT = 2;
-    const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), v4 = new THREE.Vector3(), m4 = new THREE.Matrix4(), q1 = new THREE.Quaternion();
-    const hold = new THREE.Vector3(), tip = new THREE.Vector3(), base = new THREE.Vector3(), col = new THREE.Color();
+    const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), v4 = new THREE.Vector3(), m4 = new THREE.Matrix4(), q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion();
+    const cd = new THREE.Vector3(), cu = new THREE.Vector3(), cr = new THREE.Vector3(), mouth = new THREE.Vector3(), hold = new THREE.Vector3(), tip = new THREE.Vector3(), base = new THREE.Vector3(), col = new THREE.Color();
     const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
     const toW = (out, x, y, z) => out.set(x, z, -y);
+    // optional hooks (the reef viewer's): the water's height (a tide, a lake's level; 0 in the cities), and where fishing
+    // is closed (a marine reserve: '' where it is open, else why not)
+    const water = () => (ctx.water ? ctx.water() : 0);
+    const closed = (x, y) => (ctx.closed ? ctx.closed(x, y) : '');
     const ROD = 2.6, LINE_N = 12, RINGS = low ? 5 : 8;
     const VIEW = -0.5, SHOW = 1.35;   // the chase camera's turn off the cast's heading: over the right shoulder with a line out, side-on for the catch
 
@@ -222,7 +234,7 @@ window.OEFishing = (function () {
         if (T[i] > 2.4) continue;
         T[i] += dt; live = true;
         const k = T[i] / 2.4, r = at[i * 3 + 2] * (0.15 + 0.85 * Math.sqrt(k)), a = T[i] > 2.4 ? 0 : 0.34 * (1 - k) * (1 - k) * night;
-        m4.makeScale(r, 1, r).setPosition(at[i * 3], 0.06, -at[i * 3 + 1]);
+        m4.makeScale(r, 1, r).setPosition(at[i * 3], water() + 0.06, -at[i * 3 + 1]);
         rings.setMatrixAt(i, m4); rings.setColorAt(i, col.setRGB(a, a, a));
       }
       rings.visible = live;
@@ -254,47 +266,19 @@ window.OEFishing = (function () {
       world.add(rod, line, float, fish.mesh);
       return { rod, bend, line, float, fish, rodMat, floatMat };
     }
-    // one fish, hanging head up: +y nose, +z back, x across. Recoloured and rescaled for each catch, never rebuilt
+    // one fish, nose +y, back +z, across x, a length of 1: its body is the kind's own (fishart.js), made the first time that
+    // kind is caught or hooked and kept until you walk away; the mesh is scaled to the fish's length
     function makeFish() {
-      const NT = 14, NA = 8, pos = [], tt = [], ca = [];
-      const prof = t => Math.pow(Math.sin(Math.PI * Math.pow(clamp(1.02 - t, 0, 1), 0.72)), 0.85) * (t < 0.12 ? 0.35 + 5.4 * t : 1); // t: 0 at the tail's wrist, 1 at the nose
-      const vert = (t, a) => { const r = prof(t) * 0.5; pos.push(Math.sin(a) * r, t - 0.5, Math.cos(a) * r); tt.push(t); ca.push(Math.cos(a)); };
-      for (let i = 0; i < NT; i++) for (let k = 0; k < NA; k++) {
-        const t0 = 0.08 + 0.92 * i / NT, t1 = 0.08 + 0.92 * (i + 1) / NT, a0 = k / NA * Math.PI * 2, a1 = (k + 1) / NA * Math.PI * 2;
-        vert(t0, a0); vert(t1, a0); vert(t1, a1); vert(t0, a0); vert(t1, a1); vert(t0, a1);
-      }
-      const fin = (pts, t) => { for (const p of pts) { pos.push(...p); tt.push(t); ca.push(9); } for (const p of pts.slice().reverse()) { pos.push(...p); tt.push(t); ca.push(9); } };
-      fin([[0, -0.42, 0], [0, -0.56, 0.3], [0, -0.47, 0.02]], 0); fin([[0, -0.42, 0], [0, -0.47, -0.02], [0, -0.56, -0.3]], 0);   // the tail's two lobes
-      fin([[0, 0.12, 0.42], [0, -0.14, 0.44], [0, -0.1, 0.72]], 0.5);                                                         // the dorsal fin
-      fin([[0, 0.14, -0.4], [0, 0.0, -0.4], [0, 0.02, -0.62]], 0.5);                                                          // a pelvic fin
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
-      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(pos.length), 3));
-      g.computeVertexNormals();
-      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide }));
+      const AR = window.OEFishArt, M = AR.material(THREE), geos = {};
+      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), M.material);
       mesh.visible = false; mesh.castShadow = !low; mesh.frustumCulled = false;
-      const cs = [new THREE.Color(), new THREE.Color(), new THREE.Color(), new THREE.Color(), new THREE.Color(), new THREE.Color()];
-      function dress(s, cm) {
-        const L = s.look || {}, c = g.attributes.color, [back, flank, belly, finC, stripe, spots] = cs;
-        back.set(L.back || '#56666a').convertSRGBToLinear(); flank.set(L.flank || '#b9c2c0').convertSRGBToLinear(); belly.set(L.belly || '#eeeeea').convertSRGBToLinear();
-        finC.set(L.fin || L.back || '#56666a').convertSRGBToLinear(); if (L.stripe) stripe.set(L.stripe).convertSRGBToLinear(); if (L.spots) spots.set(L.spots).convertSRGBToLinear();
-        for (let i = 0; i < c.count; i++) {
-          const a = ca[i], t = tt[i];
-          if (a > 1) { c.setXYZ(i, finC.r, finC.g, finC.b); continue; }
-          if (a > 0.3) col.copy(flank).lerp(back, clamp((a - 0.3) / 0.4, 0, 1)); else col.copy(belly).lerp(flank, clamp((a + 0.75) / 0.6, 0, 1));
-          if (L.stripe && Math.abs(a - 0.05) < 0.3 && t > 0.15 && t < 0.9) col.lerp(stripe, 0.75);
-          if (L.bars && a > -0.4 && Math.sin(t * L.bars * Math.PI) > 0.35) col.multiplyScalar(0.62);
-          if (L.spots && a > -0.2 && ((i * 2654435761) >>> 0) % 7 === 0) col.lerp(spots, 0.7);   // a scatter of spots, the same on every fish of the kind
-          c.setXYZ(i, col.r, col.g, col.b);
-        }
-        c.needsUpdate = true;
-        const len = cm / 100, deep = (L.deep || 0.27) * len;
-        mesh.scale.set(L.flat ? deep * 1.7 : deep * 0.5, len, L.flat ? deep * 0.55 : deep);
-      }
-      return { mesh, dress };
+      function dress(s, cm) { mesh.geometry = geos[s.id] || (geos[s.id] = AR.geometry(THREE, s, low)); mesh.scale.setScalar(cm / 100); }
+      function free() { for (const g of Object.values(geos)) g.dispose(); M.material.dispose(); }
+      return { mesh, dress, free, wag: M.wag, ph: M.ph };
     }
     function freeGear() {
-      for (const o of gear ? [gear.rod, gear.line, gear.float, gear.fish.mesh] : []) { world.remove(o); o.geometry.dispose(); o.material.dispose(); }
+      for (const o of gear ? [gear.rod, gear.line, gear.float, gear.fish.mesh] : []) { world.remove(o); if (o !== gear.fish.mesh) { o.geometry.dispose(); o.material.dispose(); } }
+      if (gear) gear.fish.free();
       if (rings) { world.remove(rings); rings.geometry.dispose(); rings.material.dispose(); if (rings.dispose) rings.dispose(); }
       gear = rings = null;
       if (player.rig) player.rig.hold = null;
@@ -352,15 +336,21 @@ window.OEFishing = (function () {
       if (!hud) hud = makeHud();
       hud.book.hidden = !on;
       if (!on) return;
-      const L = log(), items = data.species.map(s => {
-        const e = L[s.id];
-        if (!e) return `<div class="gfl-item no"><b>Not yet caught</b><em>${s.depth === 'deep' ? 'Further out' : s.depth === 'edge' ? 'Close in' : 'Anywhere in a cast'}</em></div>`;
+      const AR = window.OEFishArt, L = log(), got = caught(), n = data.species.length;
+      const months = s => `<span class="gfl-months" role="img" aria-label="Months it bites: ${season(s)}">${s.when.months.map((w, i) => `<i style="--w:${clamp(w, 0, 1).toFixed(2)}" title="${MONTHS[i]}"></i>`).join('')}</span><span class="gfl-mlabels"><b>${MONTHS[0]}</b><b>${MONTHS[5]}</b><b>${MONTHS[11]}</b></span>`;
+      const items = data.species.map(s => {
+        const e = L[s.id], max = s.cm[2], where = s.depth === 'deep' ? 'Further out, past the first ten metres' : s.depth === 'edge' ? 'Close in, along the wall and the piles' : 'Anywhere in a cast';
+        if (!e) return `<div class="gfl-item no"><div class="gfl-art">${AR.portrait(s, { silhouette: true })}</div><b>Not yet caught</b><em>${where}</em></div>`;
         const lg = s.legal || {}, law = [lg.min_cm ? `legal at ${lg.min_cm} cm` : '', lg.max_cm ? `back over ${lg.max_cm} cm` : '', lg.bag_note || (lg.bag ? `${lg.bag} a day` : '')].filter(Boolean).join(' · ');
-        return `<div class="gfl-item"><b>${s.name}</b><em>${s.sci}</em><span class="n">${e.n} caught · best ${e.best} cm</span><span>${s.note}</span>`
-          + (e.n >= 2 ? `<span>Best ${season(s)}, at ${bestLight(s)}.</span>` : '<span>Catch another to learn when it bites best.</span>') + (law ? `<em>${law}</em>` : '') + '</div>';
+        const spec = AR.specOf(s), learned = e.n >= 2;
+        return `<div class="gfl-item"><div class="gfl-art">${AR.portrait(s, { label: s.name })}</div><b>${s.name}</b><em>${s.sci}</em>`
+          + `<span class="n">${e.n} caught · best ${e.best} cm</span><span class="gfl-size" role="img" aria-label="Best ${e.best} cm of up to ${max} cm"><i style="width:${clamp(e.best / max * 100, 4, 100).toFixed(0)}%"></i></span>`
+          + `<span>${s.note}</span>` + (spec.guide ? `<span class="gfl-guide"><b>How to tell it</b>${spec.guide}</span>` : '')
+          + (learned ? `<span class="gfl-when"><b>When it bites</b>${months(s)}<span>Best ${season(s)}, at ${bestLight(s)}. ${where}.</span></span>` : '<span class="gfl-when"><b>When it bites</b><span>Catch another to learn.</span></span>')
+          + (law ? `<em>${law}</em>` : '') + '</div>';
       }).join('');
       hud.book.innerHTML = `<div class="g-panel"><header><h2>${data.water}: the log</h2><button class="x" data-close aria-label="Close the log">×</button></header>`
-        + `<p class="note">${caught()} of ${data.species.length} kinds caught. ${data.rules.release}</p><div class="gfl-grid">${items}</div><div class="gfl-rules"><span>${data.rules.licence}</span>`
+        + `<p class="note">${got} of ${n} kinds caught. ${data.rules.release}</p><div class="gfl-bar" role="img" aria-label="${got} of ${n} caught"><i style="width:${(got / n * 100).toFixed(0)}%"></i></div><div class="gfl-grid">${items}</div><div class="gfl-rules"><span>${data.rules.licence}</span>`
         + data.rules.zones.map(z => `<span>${z.advice}</span>`).join('') + '</div></div>';
     }
 
@@ -382,6 +372,8 @@ window.OEFishing = (function () {
     function start(sp) {
       sp = sp || spotNear();
       if (!sp || S.st !== 'off') return false;
+      const no = closed(player.x, player.y);
+      if (no) { H.toast(`<b>No fishing here</b><span>${no}</span>`); return false; }
       const e = edge(sp);
       if (!e) { H.toast('Walk down to the water\'s edge first.'); return false; }
       S.spot = sp; S.st = 'walk';
@@ -429,11 +421,14 @@ window.OEFishing = (function () {
       S.st = 'fight'; S.t = 0; S.acc = 0; S.warned = 0;
       fight(P.s, P.cm, S.line, save.assist, F);
       band(SWEET[0], SWEET[1]); hud.btns.hidden = true;
+      gear.float.visible = false; gear.fish.dress(P.s, P.cm); gear.fish.mesh.visible = true; S.leap = 0.5; S.thrash = 1.2; S.roll = 0; S.nx = -Math.sin(heading()); S.ny = -Math.cos(heading());   // the strike: it breaks the surface at once
+      ring(S.x, S.y, 1.5); A.beep(1240);
       if (navigator.vibrate) try { navigator.vibrate(60); } catch (e) { /* not allowed */ }
     }
     function lost(why) {
       learn(save, false); keep();
-      S.st = 'lost'; S.t = 0; gear.float.visible = false; hud.btns.hidden = false;
+      S.st = 'lost'; S.t = 0; gear.float.visible = false; gear.fish.mesh.visible = false; hud.btns.hidden = false;
+      if (why === 'snap' || why === 'spooled') ring(S.x, S.y, 1.6);
       setMeter(0, ''); band(0, 0); setFar(-1);
       setHint('lost' + why, why === 'snap' ? '<b>The line parted.</b> Ease off when it runs.' : why === 'spooled' ? '<b>It took all the line.</b> Wind whenever it rests.' : why === 'early' ? '<b>Too soon.</b> Wait until it goes right under.' : '<b>Missed it.</b> Strike as it goes under.');
       A.beep(why === 'snap' ? 140 : 220);
@@ -445,8 +440,8 @@ window.OEFishing = (function () {
       keep();
       S.st = 'card'; S.t = 0; gear.float.visible = false; band(0, 0); setFar(-1); setMeter(0, '');
       const tall = S.tall = ctx.stage.clientHeight > ctx.stage.clientWidth; // (a phone held upright sees 25° across: from further round the fish would be out of the picture)
-      cam.yawTo = heading() + (tall ? 0.55 : SHOW); cam.distTo = tall ? 4.2 : 2.9; cam.pitch = 0.1; cam.lastInput = -10; ctx.stage.classList.add('fish-show');
-      gear.fish.dress(s, P.cm); gear.fish.mesh.visible = true;
+      cam.yawTo = heading() + (tall ? 0.55 : SHOW); cam.distTo = (tall ? 2.2 : 1.9) + P.cm / 100 * 3; cam.pitch = 0.1; cam.lastInput = -10; ctx.stage.classList.add('fish-show');
+      gear.fish.dress(s, P.cm); gear.fish.mesh.visible = true; S.roll = 0;
       const why = legal(s, P.cm), z = zoneOf(S.spot), clean = F.t > 3 && F.sweet / F.t > 0.45;
       hud.card.innerHTML = `<span class="tag">${first ? 'New in the log' : P.cm > wasBest ? `Your best · was ${wasBest} cm` : `${e.n + 1} caught`}</span><h3>${s.name}</h3><em>${s.sci}</em>`
         + `<div class="size">${P.cm.toFixed(1)} cm<small>${P.g >= 1000 ? (P.g / 1000).toFixed(2) + ' kg' : P.g + ' g'}${clean ? ' · a clean fight' : ''}</small></div>`
@@ -468,7 +463,10 @@ window.OEFishing = (function () {
 
     // what E does now (game.js currentAction)
     function action() {
-      if (S.st === 'off') { const sp = spotNear(); return sp ? { key: 'E', text: `Fish at ${sp.name}`, act: () => start(sp) } : null; }
+      if (S.st === 'off') {
+        const sp = spotNear(), no = sp && closed(player.x, player.y);
+        return !sp ? null : no ? { key: 'E', text: 'No fishing here', act: () => H.toast(`<b>No fishing here</b><span>${no}</span>`) } : { key: 'E', text: `Fish at ${sp.name}`, act: () => start(sp) };
+      }
       if (S.st === 'walk') return { key: '', text: 'Down to the edge…' };
       if (S.st === 'card') return { key: 'E', text: 'Let it go', act: release };
       if (S.st === 'wait' || S.st === 'cast') return { key: 'E', text: 'Wind in', act: () => { S.st = 'aim'; S.t = 0; S.power = 0; gear.float.visible = false; S.hintKey = ''; } };
@@ -483,6 +481,30 @@ window.OEFishing = (function () {
       if (/^Digit[1-9]$/.test(code)) { nextRig(+code.slice(5) - 1); return true; }
       if (code === 'Escape' && S.st !== 'fight') { stop(); return true; }
       return code === 'Space' || code === 'KeyQ' || code === 'KeyG' || code === 'KeyR' || code === 'KeyX' || code === 'KeyT' || code === 'KeyO' || code === 'KeyY';
+    }
+
+    // the hooked fish at the end of the line: its head turned across the line, the tail working, a leap when it runs,
+    // and on its side, silver, when it is beaten. (nx, ny: the way its nose points on the water)
+    function fishAt(dt, hx, hy) {
+      const f = gear.fish, m = f.mesh, len = P.cm / 100, run = F.phase === 'run', beaten = F.E <= 0;
+      S.leap = Math.max(0, S.leap - dt);
+      if ((S.thrash -= dt) < 0) { S.thrash = 1.3 + rnd() * 1.5; if (!run && !beaten) { S.leap = 0.3; S.small = 1; ring(S.x, S.y, 0.5 + len); } }   // it breaks the surface now and then, shaking its head
+      // the hook is in its lip, so its head is toward the line and you: it pulls across the line, never turned away along it
+      const turn = (run ? 0.3 : beaten ? 0.12 : 0.75) * Math.sin(F.t * (run ? 2.6 : 1.3));
+      const tx = -hx * Math.cos(turn) + hy * Math.sin(turn), ty = -hy * Math.cos(turn) - hx * Math.sin(turn);
+      const k = Math.min(1, dt * 6); S.nx += (tx - S.nx) * k; S.ny += (ty - S.ny) * k;
+      const nl = Math.hypot(S.nx, S.ny) || 1; S.nx /= nl; S.ny /= nl;
+      const hop = S.leap > 0 ? Math.sin(Math.PI * (1 - S.leap / (S.small ? 0.3 : 0.55))) * (0.18 + 0.5 * Math.sqrt(len)) * (S.small ? 0.35 : 1) : 0;
+      if (S.leap <= 0) S.small = 0;
+      S.roll += ((beaten ? 1.45 : S.leap > 0 ? 0.6 * Math.sin(F.t * 9) : 0.25 * Math.sin(F.t * 2.1)) - S.roll) * Math.min(1, dt * 5);
+      toW(v4, S.x, S.y, water() + 0.02 * len + hop);
+      v1.set(S.nx, 0, -S.ny); v2.set(0, 1, 0); v3.crossVectors(v1, v2).normalize();
+      m4.makeBasis(v3, v1, v2); q1.setFromRotationMatrix(m4);
+      m.quaternion.copy(q1).multiply(q2.setFromAxisAngle(v2.set(0, 1, 0), S.roll));   // (a roll about its own length)
+      m.position.copy(v4);
+      f.wag.value = beaten ? 0.05 + 0.03 * Math.sin(F.t * 7) : run ? 0.2 : 0.11; f.ph.value = ctx.time() * (run ? 24 : 13);
+      mouth.set(v4.x + S.nx * len * 0.5, v4.y + 0.02, v4.z - S.ny * len * 0.5);
+      if (S.leap > 0 && S.leap < 0.08) ring(S.x, S.y, 0.9 + len);   // it comes down
     }
 
     // ---------------------------------------------------------- each step of the game's clock (game.js simulate): dt s; turn -1..1
@@ -504,6 +526,7 @@ window.OEFishing = (function () {
       if (S.st === 'off') { if ((gear || rings) && !data.spots.some(sp => Math.hypot(sp.at[0] - player.x, sp.at[1] - player.y) < 220)) freeGear(); return; }
       if (S.st === 'walk') return;
       if (player.mode !== 'foot' || Math.hypot(player.x - S.fx, player.y - S.fy) > 2.5) { stop(true); return; }   // carried off (the map, a ride): the line comes in
+      { const no = closed(player.x, player.y); if (no) { stop(true); H.toast(`<b>Lines in</b><span>${no}</span>`); return; } }   // (a deck carried into a reserve)
       S.t += dt;
       const down = !!ctx.key('Space'), press = down && !S.was, lift = !down && S.was;
       S.was = down;
@@ -546,14 +569,16 @@ window.OEFishing = (function () {
         const k = F.d / Math.max(1, S.line), sw = Math.sin(F.t * 0.9) * Math.min(4, F.d * 0.25), hx = Math.sin(heading()), hy = Math.cos(heading());
         S.x = player.x + hx * F.d + hy * sw; S.y = player.y + hy * F.d - hx * sw;
         pitch = 1.05 + 0.25 * F.T; bendTo = 0.25 + 0.75 * clamp(F.T, 0, 1.15); slack = 0.03; floatY = -0.3;
+        fishAt(dt, hx, hy);
         if (down && (S.reelTick -= dt) < 0) { S.reelTick = F.phase === 'run' ? 0.2 : 0.085; A.beep(F.T > 0.92 ? 1500 : 1150); }
         const hot = F.T > 0.92, good = F.T >= SWEET[0] && F.T <= SWEET[1];
         setMeter(F.T, hot ? 'hot' : good ? 'good' : ''); setFar(F.d);
         setHint(F.phase + (hot ? 'h' : ''), hot ? '<b>Ease off!</b> The line is about to go.' : F.phase === 'run' ? `<b>It's running.</b> Let go of ${kbd('Space', 'Reel')}` : F.phase === 'warn' ? '<b>It\'s turning…</b>' : F.E <= 0 ? `It's beaten. Hold ${kbd('Space', 'Reel')} and bring it in.` : `Hold ${kbd('Space', 'Reel')} to wind. Keep the bar in the green.`);
         if (F.phase === 'run' && k > 0 && (S.warned -= dt) < 0) { S.warned = 0.5; ring(S.x, S.y, 0.7); }
+        if (F.event === 'run') S.leap = 0.55;
         if (end === 'landed') { landed(); } else if (end) { lost(end); return; }
       } else if (S.st === 'card') {
-        pitch = S.tall ? 1.25 : 1.0; bendTo = 0.1 + 0.25 * Math.min(1, P.g / 3000);
+        pitch = S.tall ? 0.95 : 0.65; bendTo = 0.1 + 0.25 * Math.min(1, P.g / 3000);
       } else if (S.st === 'lost') {
         pitch = 0.95; if (S.t > 1.6) { S.st = 'aim'; S.t = 0; S.power = 0; }
       }
@@ -563,9 +588,15 @@ window.OEFishing = (function () {
       const h = heading(), sx = Math.sin(h), sy = Math.cos(h);
       toW(hold, player.x + sx * 0.3 + sy * 0.17, player.y + sy * 0.3 - sx * 0.17, player.z + 1.02);
       if (player.rig) { player.rig.hold = hold; if (player.rig.fist && player.rig.fist(base)) { /* the wrist as posed */ } else base.copy(hold); } else base.copy(hold);
+      let rx = sx, ry = sy;
+      if (S.st === 'card') {                              // swung round to show the catch: toward the camera, a little to the left of it (straight on, and high, on a phone)
+        let dx = ctx.camera.position.x - player.x, dy = -ctx.camera.position.z - player.y; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;   // (world z is south: the game's y is north)
+        const a = S.tall ? 0.0 : 0.2, ca = Math.cos(a), sa = Math.sin(a);   // (the camera looks a little off the angler: the fish is brought into the middle of the frame)
+        rx = dx * ca + dy * sa; ry = dy * ca - dx * sa;
+      }
       const cp = Math.cos(S.rodPitch), sp = Math.sin(S.rodPitch);
-      v1.set(sx * cp, sp, -sy * cp);                    // along the rod (world: x east, y up, z south)
-      v2.set(sx * sp, -cp, -sy * sp);                   // square to it, the way the line pulls it: forward and down
+      v1.set(rx * cp, sp, -ry * cp);                    // along the rod (world: x east, y up, z south)
+      v2.set(rx * sp, -cp, -ry * sp);                   // square to it, the way the line pulls it: forward and down
       v3.crossVectors(v1, v2).normalize();
       m4.makeBasis(v3, v1, v2); gear.rod.quaternion.setFromRotationMatrix(m4); gear.rod.position.copy(base).addScaledVector(v1, -0.12);
       gear.bend.value = S.bend * 0.8; gear.rod.visible = gear.line.visible = true;
@@ -573,28 +604,33 @@ window.OEFishing = (function () {
       const lp = gear.line.geometry.attributes.position;
       if (S.st === 'aim' || S.st === 'charge' || S.st === 'lost') { toW(v4, player.x + sx * 0.9, player.y + sy * 0.9, player.z + 1.2 + 0.25 * Math.sin(S.t * 2.1)); slack = 0.4; }
       else if (S.st === 'cast') { const k = clamp(S.t / 0.75, 0, 1); toW(v4, player.x + (S.x - player.x) * k, player.y + (S.y - player.y) * k, (player.z + 3.2) * (1 - k) * (1 - k) + 0.05 + 4 * k * (1 - k) * 2.2); }
-      else if (S.st === 'card') { v4.copy(tip); v4.y -= S.tall ? 0.4 : 1.05; }   // (held high on a tall screen, over the card)
-      else toW(v4, S.x, S.y, 0.05 + floatY + (S.st === 'wait' ? 0.012 * Math.sin(ctx.time() * 2.3) : 0));
+      else if (S.st === 'card') { v4.copy(tip); v4.y -= 0.45 + 0.2 * P.cm / 100; }   // a short line to its mouth
+      else if (S.st === 'fight') v4.copy(mouth);
+      else toW(v4, S.x, S.y, water() + 0.05 + floatY + (S.st === 'wait' ? 0.012 * Math.sin(ctx.time() * 2.3) : 0));
       const sag = slack * 0.14 * tip.distanceTo(v4);
       for (let i = 0; i < LINE_N; i++) { const k = i / (LINE_N - 1); lp.setXYZ(i, tip.x + (v4.x - tip.x) * k, tip.y + (v4.y - tip.y) * k - sag * 4 * k * (1 - k), tip.z + (v4.z - tip.z) * k); }
       lp.needsUpdate = true;
       if (gear.float.visible) gear.float.position.copy(v4);
-      if (S.st === 'card') { // hanging from the line, its side to the camera, turning a little and still kicking at first
-        const f = gear.fish.mesh, c = ctx.camera.position; f.position.copy(v4); f.position.y -= f.scale.y * 0.5;
-        f.rotation.set(0, Math.atan2(-(c.z - v4.z), c.x - v4.x) + 0.35 * Math.sin(S.t * 1.1), 0.09 * Math.sin(S.t * 9) * Math.max(0, 1 - S.t / 3));
+      if (S.st === 'card') { // hanging by the lip from the line: nose up, tail down, its flank to the camera, swinging a little and kicking at first
+        const f = gear.fish.mesh, c = ctx.camera.position, t = S.t;
+        f.position.copy(v4); f.position.y -= f.scale.y * 0.5;
+        f.rotation.set(0, Math.atan2(-(c.z - v4.z), c.x - v4.x) + 0.25 * Math.sin(t * 1.1), 0.07 * Math.sin(t * 1.4) + 0.1 * Math.sin(t * 9) * Math.max(0, 1 - t / 3));
+        gear.fish.wag.value = 0.16 * Math.max(0, 1 - t / 3.5); gear.fish.ph.value = t * 16;
       }
       const night = ctx.sun() && ctx.sun().altitude < -2;
       gear.floatMat.emissiveIntensity = night ? 0.3 : 0;
       gear.line.material.opacity = night ? 0.3 : 0.8;   // (unlit: a white line would glow after dark)
     }
 
+    // what you stand on moved you dx, dy metres (a ship's deck under way): the line and the float go with you, trolled
+    function carry(dx, dy) { S.fx += dx; S.fy += dy; S.x += dx; S.y += dy; }
     function dispose() { stop(true); freeGear(); if (hud) { hud.el.remove(); hud.card.remove(); hud.book.remove(); hud = null; } }
     // what the phone's Jump button does with a line out ('' when it is a jump again)
     const button = () => (S.st === 'off' || S.st === 'walk' || S.st === 'card' ? '' : S.st === 'fight' ? 'Reel' : S.st === 'bite' ? 'Strike' : 'Cast');
-    return { action, key, step, start, stop, dispose, button, on: () => S.st !== 'off' && S.st !== 'walk', busy: () => S.st !== 'off',
+    return { action, key, step, start, stop, dispose, button, carry, on: () => S.st !== 'off' && S.st !== 'walk', busy: () => S.st !== 'off',
       // for the checks (tools/game_check.js, tools/fishing_shot.js)
       state: () => ({ st: S.st, spot: S.spot && S.spot.id, power: S.power, line: S.line, wait: S.wait, t: S.t, fish: P.s && P.s.id, cm: P.cm, T: F.T, d: F.d, phase: F.phase, assist: save.assist, log: log(), rig: rigNow().id, drawn: gear ? 4 + (rings ? 1 : 0) : 0 }),
-      seed: n => { rnd = rng(n); }, force: id => { S.forced = id; }, easiest: () => data.species.reduce((a, q) => (q.fight.pull < a.fight.pull ? q : a)).id, forget: () => { save = { v: 1, assist: 0, lost: 0, won: 0, casts: 0, rig: {}, log: {} }; keep(); }, spots: data.spots, showLog };
+      seed: n => { rnd = rng(n); }, force: id => { S.forced = id; }, easiest: () => data.species.reduce((a, q) => (q.fight.pull < a.fight.pull ? q : a)).id, forget: () => { save = { v: 1, assist: 0, lost: 0, won: 0, casts: 0, rig: {}, log: {} }; keep(); }, spots: data.spots, species: data.species, fishMesh: () => (gear ? gear.fish.mesh : null), showLog, logOpen: () => !!hud && !hud.book.hidden };
   }
   return { VERSION, core, create };
 })();

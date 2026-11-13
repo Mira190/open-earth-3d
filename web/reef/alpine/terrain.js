@@ -58,7 +58,7 @@ const cell2 = p => {
   return vec4(f1, best.d.div(f1));
 };
 
-export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null, { range = 1 } = {}) {
+export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_clock = null, { range = 1, detailMax = 8192 } = {}) {
   const t = d.scene.terrain, g = d.scene.ground, W = t.w, H = t.h;
   const lightU = light.u;
   // the sealed roads round the eye (roadfield.js): painted into the ground, with the relief laid flat under them
@@ -221,7 +221,9 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
   };
 
   // ---- the aerial patches (alpine_detail.py): one at a time, the one nearest the camera, loaded when it comes near
-  const blank = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1); blank.needsUpdate = true;
+  // (in the photograph's colour space: a texture's colour space is part of its program, and the land's two programs, the
+  // heaviest on the site, were compiled again when the photograph came, issue 343)
+  const blank = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1); blank.colorSpace = THREE.SRGBColorSpace; blank.needsUpdate = true;
   const detailNode = texture(blank);
   const dU = { x0: uniform(0), y1: uniform(0), w: uniform(1), h: uniform(1), on: uniform(0) };
   const areas = (d.scene.detail || []).map(a => ({ ...a, tex: null, loading: false }));
@@ -236,14 +238,20 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     const want = best && bd < 1500 && cam.y < 2500 ? best : null;
     if (want && !want.tex && !want.loading) {
       want.loading = true;
-      const im = new Image();
-      im.onload = () => {
+      const done = im => {
         const tex = new THREE.Texture(im); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false;
         tex.anisotropy = 8; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.needsUpdate = true;
         want.tex = tex;
       };
-      im.onerror = () => { want.loading = false; };
-      im.src = base + want.file;
+      // decoded off the page's thread (an ImageBitmap), and no larger than the tier's detailMax a side (Tekapo's
+      // township is 8000 x 6000: 190 MB with its mipmaps), where the browser can; else as an image
+      const k = Math.min(1, detailMax / Math.max(want.w, want.h));
+      const asImage = () => { const im = new Image(); im.onload = () => done(im); im.onerror = () => { want.loading = false; }; im.src = base + want.file; };
+      if (typeof createImageBitmap === 'function') {
+        fetch(base + want.file).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.blob(); })
+          .then(b => createImageBitmap(b, k < 1 ? { resizeWidth: Math.round(want.w * k), resizeHeight: Math.round(want.h * k), resizeQuality: 'high' } : {}))
+          .then(done, asImage);
+      } else asImage();
     }
     if (want && want.tex) {
       detailNode.value = want.tex;
@@ -251,12 +259,14 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       dU.on.value = Math.min(1, dU.on.value + 0.05);
     } else dU.on.value = 0;
   }
-  // the patch under a camera position, loaded before the first frame (a still, or the arrival)
-  async function prepare(cam) {
+  // the patch under a camera position, asked for as soon as the camera is placed (main.js), and waited for before
+  // the first frame where wait is set (a still, a film); otherwise the land is drawn from the satellite mosaic and
+  // the patch fades in when it comes (detailUpdate), so the loader does not stand for it (issue 343)
+  async function prepare(cam, { wait = true } = {}) {
     detailUpdate(cam);
     await roads.ready; roads.update(cam);
     const a = areas.find(a => a.loading && !a.tex);
-    if (!a) return;
+    if (!a || !wait) return;
     return new Promise(res => { const t0 = performance.now(); const tick = () => (a.tex || performance.now() - t0 > 20000) ? res() : setTimeout(tick, 50); tick(); })
       .then(() => { dU.on.value = 0.95; detailUpdate(cam); });
   }
@@ -289,7 +299,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
   const time = env.u.time;
   function makeMat(strip, detailNormal) {
     const mat = new THREE.MeshBasicNodeMaterial();
-    const v0 = strip.row0 / g.h, vs = strip.rows / g.h;
+    const v0 = uniform(strip.row0 / g.h), vs = uniform(strip.rows / g.h);   // (uniforms: the strips share their programs, issue 343)
     const gUV = (x, z) => vec2(x.sub(t.x0).div(g.w * g.px_m), z.add(t.y1).div(g.h * g.px_m).sub(v0).div(vs));
     mat.colorNode = Fn(() => {
       const P = positionWorld, x = P.x, z = P.z;
@@ -606,5 +616,6 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       }
     }
   }
-  return { group, update, prepare, material: mats[0], materials: mats, heightAt, coverAt, coverTex, roads, weather: wx };
+  const prefetch = cam => detailUpdate(cam);
+  return { group, update, prepare, prefetch, patches, material: mats[0], materials: mats, heightAt, coverAt, coverTex, roads, weather: wx };
 }

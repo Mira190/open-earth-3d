@@ -39,6 +39,41 @@ the log teaches as it fills. Every fish goes back. You keep a log, not a bag.
    whether it would be legal to keep, your best, and one thing worth knowing about it.
    <kbd>E</kbd> lets it go.
 
+## The fish itself
+
+`web/game/fishart.js` draws the fish. One description of a kind, a `spec` (the outline of its back and belly,
+its fins as rays, the eye, the gill, the palette; all in units of its length), makes both pictures of it, so the
+fish in the log is the fish you landed:
+
+- **The portrait** in the log: side-on SVG with no texture, crisp at any size. A kind not yet caught is a pale
+  silhouette with a hint of where it lives.
+- **The body on the line**: a lofted mesh with an eye, a gill cover, rayed fins and scale rows in its vertex colours
+  (about 1,200 triangles, one draw call, a vertex-shader tail for the swimming). It is built the first time that
+  kind is hooked and freed when you walk away.
+
+The **yellowfin bream** is drawn in full, from a field guide: steep forehead, small low mouth, an eye high and
+forward, eleven dorsal spines, silver flanks with a gold sheen, and the yellow pelvic and anal fins it is
+named for. Every other kind gets a plain spindle from its `look` colours until it has a spec of its own:
+to draw another, add its spec to `SPECS` in `fishart.js`; nothing else changes (its `guide` line, the field note
+in the log, comes with it).
+
+What you see of a fish in a cast:
+
+1. **The take.** The float goes under; a ring and a beep.
+2. **The strike.** The float is gone (it is dragged under), the fish breaks the surface at once with a splash, and the
+   rod bends to it.
+3. **The fight.** The fish is on the end of the line with its head toward you, because the hook is in its lip: it pulls
+   across the line and never turns away along it, the tail working. Now and then it shakes its head at the surface;
+   when it runs it leaps. A beaten fish rolls on its side and shows its flank. The line goes to its mouth.
+4. **The catch.** Lifted out, it hangs by the lip from the line, nose up and tail down, swinging a little and still
+   kicking, as a hooked fish does. The angler swings the rod round toward the camera and the camera comes in, so the
+   fish hangs large in the frame (to the left of the angler, beside its card; above the card on a phone).
+   `tools/game_check.js` fails if a hooked fish faces away from the angler, or the caught one is off the screen or
+   not hanging nose up.
+
+The log is under **Menu → Fish log** (and **J** or the Log button with a line out). It shows each kind's portrait, your
+best against the largest it grows, how to tell it, and (after a second catch) the months and light it bites in.
+
 ## What we took from other games, and where this is different
 
 A survey of fishing in games came first. Ideas only: no code or assets were taken from any of
@@ -163,9 +198,39 @@ The button is held 65% to 84% of a fight.
 3. `node tools/fishing_sim.js <id>` for the balance, `tools/check.sh <id>` to fish each spot, and
    `tools/fishing_shot.js <id> out` for stills.
 
+## At a reef or alpine site
+
+Milford Sound / Piopiotahi has fishing (issue 364), from the same `web/game/fishing.js`: `web/reef/fishing.js` is
+the reef viewer's side of its contract, and `web/reef/game.js` imports it the first time you come within 200 m of a
+shore spot or board the ship a spot is on.
+
+- **The site's block** is at the top of `cities/<id>/city.json` (a reef site has no `game` block). A spot names a
+  POI (`"poi": "foreshore"`), and the edge with open water in front is found at run time from the reef's own ground
+  and depth. Or a spot names a ship and a deck (`"vessel": "Piopiotahi"`): you stand at her stern rail while she
+  sails on. The line is trolled astern (`carry()`), and the eye stands outboard of her quarter.
+- **`only`** lists the fish that come to a spot: the fiord's cod and tarakihi are not at the river's mouth. A
+  species may be **`closed`** at any size: blue cod may not be taken from Milford Sound's internal waters.
+- **`rules.reserves`** are no-take areas. Each has a `lonlat` boundary from DOC, closed over land by `land_xy`. The
+  game refuses a line inside one, and winds in a deck's line as she sails into one. The Piopiotahi Marine
+  Reserve runs along the north wall from the village to Dale Point, and the cruise's return leg passes through it.
+- **Build:** `python pipeline/fishing.py milford-sound` writes `web/data/milford-sound/fishing.json` and the pointer
+  in `scene.json`. The gametest (`web/reef/game/test.js`, step 15) catches a fish at the foreshore and checks the
+  reserve from the deck.
+- **The rules** were read on 11 November 2026:
+  - Fisheries New Zealand's [Fiordland Marine Area rules](https://www.mpi.govt.nz/fishing-aquaculture/recreational-fishing/fishing-rules/fiordland-marine-area-fishing-rules) (last reviewed 15 July 2026);
+  - DOC's [Piopiotahi Marine Reserve](https://doc.govt.nz/piopiotahi-marine-reserve) page and its [boundary map](https://doc.govt.nz/globalassets/documents/conservation/marine-and-coastal/marine-protected-areas/marine-reserve-maps/piopiotahi-milford-sound-marine-reserve.pdf);
+  - Fish & Game's [2026/27 South Island regulations](https://www.fishandgame.org.nz/assets/Fishing/Fishing-Licences-Regulations/Fishing-Regulations/2026/2027/Fish-and-Game-Sportsfishing-Regs-Brochure-2026-27-SI.pdf) for sea-run trout at the Cleddau's mouth.
+- **The other sites** were looked at, and none has fishing yet:
+  - Green Island, Lady Elliot Island and Hardy Reef lie in no-take (green) or research (orange) zones of the Marine Park.
+  - Heron Reef is part yellow (limited line fishing) and part green or pink, with the boundaries not yet read from GBRMPA's own map.
+  - The Whitsundays' Whitehaven zone was not settled.
+  - Lake Tekapo and Lake Pūkaki allow shore fishing all year on a Fish & Game licence (Tekapo six sports fish with at most four trout, Pūkaki four). They are the next waters to add.
+
 ## Limitations
 
-- A pilot: four spots in two waters. Kyoto's Kamo River, Tokyo Bay and the reef sites have none.
+- Six spots in three waters. Kyoto's Kamo River, Tokyo Bay and the other reef sites have none.
+- At a reef site the angler on a ship's deck holds one pose (the ship's ride runs no walk cycle), and the rod has no
+  bend there (the bend is a WebGL shader patch; the reef draws with node materials).
 - The player's left hand is not on the rod, and the reel's handle does not turn.
 - The float sits on a flat water level with a bob of its own; it does not ride the drawn waves.
 - A fish is one lofted shape recoloured per species: a flathead is the same shape made wide and
