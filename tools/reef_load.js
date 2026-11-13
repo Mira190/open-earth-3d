@@ -23,7 +23,7 @@ const [,, site = 'whitsundays', size = '1440x900'] = process.argv;
   const cdp = await p.context().newCDPSession(p);
   await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 1000 });
   const t0 = Date.now();
-  await p.goto(`http://localhost:${process.env.PORT || 8800}/reef/index.html?city=${site}`, { waitUntil: 'commit' });
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/reef/index.html?city=${site}${process.env.DETAIL === "wait" ? "" : "&detail=later"}`, { waitUntil: 'commit' });
   await cdp.send('Profiler.start');
   const sync = await p.evaluate(() => performance.now()).catch(() => 0);
   await p.waitForFunction('window.__ready || document.getElementById("err").textContent', null, { timeout: 900000, polling: 250 });
