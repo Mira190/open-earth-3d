@@ -24,7 +24,7 @@ from cityctx import City  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOVED_M = 20.0   # an NPC moved further than this in city.json stands where city.json puts it
 TOP = ("title", "local_name", "water_name", "greeting", "blurb", "under_bridge_note", "smalltalk", "lines", "areas", "regulars",
-       "crowd", "look", "overture")  # (and two settings tuned by eye: how many people are out when, the grade by the hour)
+       "crowd", "look", "overture", "hero")  # (and two settings tuned by eye: how many people are out when, the grade by the hour)
 
 
 def update(city):
