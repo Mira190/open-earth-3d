@@ -111,18 +111,18 @@ if (sfK > 0.002) {
   sfRoad = clamp(${masks.road}, 0.0, 1.0) * sfK; sfPave = clamp(${masks.paved}, 0.0, 1.0) * (1.0 - clamp(${masks.road}, 0.0, 1.0)) * sfK;
   if (sfRoad > 0.002) sfA = sfSample(0, vSfWP);
   if (sfPave > 0.002) sfC = sfSample(1, vSfWP);
-  // the aggregate's tone (its ratio about the material's own), and a slower tone across the street: patches
-  // laid at different times, the darker band of the wheel tracks' oil, the paler dust at the kerb
-  float sfMac = 0.88 + 0.24 * (sfN(vSfWP.xz * 0.11) * 0.65 + sfN(vSfWP.xz * 0.37 + 9.1) * 0.35);
-  diffuseColor.rgb *= mix(1.0, clamp(sfA.r * 2.0, 0.35, 1.8) * sfMac, sfRoad);
-  diffuseColor.rgb *= mix(1.0, clamp(sfC.r * 2.0, 0.55, 1.5), sfPave * 0.8);
-  roughnessFactor = mix(roughnessFactor, mix(0.62, 1.0, sfA.g), sfRoad);
-  roughnessFactor = mix(roughnessFactor, mix(0.7, 1.0, sfC.g), sfPave * 0.7);
+  // the aggregate's tone, kept gentle so the road reads as an even surface, not a speckle; a slow, soft
+  // patch tone across it (wheel tracks, dust at the kerb), its contrast held low to stay easy on the eye
+  float sfMac = 0.95 + 0.07 * (sfN(vSfWP.xz * 0.09) * 0.65 + sfN(vSfWP.xz * 0.31 + 9.1) * 0.35);
+  diffuseColor.rgb *= mix(1.0, clamp(sfA.r * 2.0, 0.78, 1.22) * sfMac, sfRoad * 0.7);
+  diffuseColor.rgb *= mix(1.0, clamp(sfC.r * 2.0, 0.82, 1.18), sfPave * 0.6);
+  roughnessFactor = mix(roughnessFactor, mix(0.72, 0.98, sfA.g), sfRoad * 0.8);
+  roughnessFactor = mix(roughnessFactor, mix(0.78, 0.98, sfC.g), sfPave * 0.6);
 }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 if (sfRoad + sfPave > 0.004) {
   vec3 sfNW = inverseTransformDirection(normal, viewMatrix);
-  vec3 sfA3 = sfNormalW(sfA, sfNW, 1.0), sfC3 = sfNormalW(sfC, sfNW, 0.8);
+  vec3 sfA3 = sfNormalW(sfA, sfNW, 0.5), sfC3 = sfNormalW(sfC, sfNW, 0.4);
   vec3 sfP = normalize(sfNW + (sfA3 - sfNW) * sfRoad + (sfC3 - sfNW) * sfPave);
   normal = normalize((viewMatrix * vec4(sfP, 0.0)).xyz);
 }`);
@@ -158,24 +158,23 @@ float sfK = sfNear(vSfWP) * smoothstep(0.6, 0.85, abs(normalize(cross(dFdx(vSfWP
 vec4 sfS = vec4(0.5, 0.8, 0.5, 0.5);
 if (sfK > 0.002) {
   sfS = sfSample(${idx}, vSfWP);
-  float sfMac = 0.9 + 0.2 * (sfN(vSfWP.xz * 0.11) * 0.65 + sfN(vSfWP.xz * 0.37 + 9.1) * 0.35);
-${isPaint ? `  // the paint: worn through to the asphalt where feet and tyres have taken it, along the stones' tops first,
-  // and greyed with grime where it holds
-  float sfDen = sfN(vSfWP.xz * 0.45) * 0.6 + sfN(vSfWP.xz * 1.6 + 2.0) * 0.4;              // where it wears most
-  float sfFine = (1.0 - sfS.r) * 0.6 + sfN(vSfWP.xz * 23.0) * 0.4;                        // the stones' tops first
-  float sfWear = smoothstep(0.08, 0.02, sfFine - smoothstep(0.45, 0.85, sfDen) * 0.55 + 0.02) * sfK;
-  vec3 sfAsph = vec3(0.066, 0.072, 0.08) * clamp(sfS.r * 2.0, 0.35, 1.8) * sfMac;
-  diffuseColor.rgb *= mix(1.0, mix(0.84, 1.02, sfS.r) * (0.9 + 0.1 * sfN(vSfWP.xz * 0.7)), sfK);
-  diffuseColor.rgb = mix(diffuseColor.rgb, sfAsph, sfWear);
-  roughnessFactor = mix(roughnessFactor, mix(roughnessFactor, mix(0.62, 1.0, sfS.g), sfWear), sfK);
-  sfK *= mix(0.35, 1.0, sfWear); // (the paint smooths the stones it covers)`
-    : `  diffuseColor.rgb *= mix(1.0, clamp(sfS.r * 2.0, ${idx ? '0.55, 1.5' : '0.35, 1.8'}) * sfMac, sfK);
-  roughnessFactor = mix(roughnessFactor, ${idx ? 'mix(0.7, 1.0, sfS.g)' : 'mix(0.62, 1.0, sfS.g)'}, sfK);`}
+  float sfMac = 0.96 + 0.06 * (sfN(vSfWP.xz * 0.09) * 0.65 + sfN(vSfWP.xz * 0.31 + 9.1) * 0.35);
+${isPaint ? `  // the paint: a little grime so it is not a flat white, and worn only softly along a few broad lanes where
+  // feet cross most, to a muted grey (never a black speckle), so a crossing reads as painted, not dirty
+  float sfLane = sfN(vSfWP.xz * 0.14) * 0.6 + sfN(vSfWP.xz * 0.5 + 2.0) * 0.4;             // broad, slow: where it wears
+  float sfWear = smoothstep(0.62, 0.86, sfLane) * 0.5 * sfK;                                // soft, sparse, shallow
+  vec3 sfGrey = vec3(0.34, 0.35, 0.36) * clamp(sfS.r * 2.0, 0.85, 1.12);
+  diffuseColor.rgb *= mix(1.0, (0.95 + 0.05 * sfS.r) * (0.97 + 0.03 * sfN(vSfWP.xz * 0.4)), sfK); // faint grime, low contrast
+  diffuseColor.rgb = mix(diffuseColor.rgb, sfGrey, sfWear);
+  roughnessFactor = mix(roughnessFactor, mix(0.5, 0.85, sfS.g), sfWear);
+  sfK *= 0.5;                                                                               // the paint takes little of the stones' relief`
+    : `  diffuseColor.rgb *= mix(1.0, clamp(sfS.r * 2.0, ${idx ? '0.82, 1.18' : '0.78, 1.22'}) * sfMac, sfK * ${idx ? '0.6' : '0.7'});
+  roughnessFactor = mix(roughnessFactor, ${idx ? 'mix(0.78, 0.98, sfS.g)' : 'mix(0.72, 0.98, sfS.g)'}, sfK * 0.8);`}
 }`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 if (sfK > 0.002) {
   vec3 sfNW = inverseTransformDirection(normal, viewMatrix);
-  vec3 sfP = normalize(mix(sfNW, sfNormalW(sfS, sfNW, ${idx ? '0.8' : '1.0'}), sfK));
+  vec3 sfP = normalize(mix(sfNW, sfNormalW(sfS, sfNW, ${idx ? '0.4' : '0.5'}), sfK));
   normal = normalize((viewMatrix * vec4(sfP, 0.0)).xyz);
 }`);
     };
