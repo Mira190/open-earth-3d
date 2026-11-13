@@ -541,7 +541,9 @@ window.OENav = (function () {
           // (a flat top of a strip's mesh, drawn on past its outline at its level, is a floor as the strip is: the roof
           // over Circular Quay's viaduct beyond the station's rectangle, walked on from the lookout)
           const cont = m.claim && zhi - zlo < 0.05 && !noFloor && m.claim.some(s => zlo > Math.min(...s.zs) - 0.25 && zlo < Math.max(...s.zs) + 0.25);
-          const zc = cont ? Infinity : refBeside(cx, cy, Math.max(...rs), zlo) + BAND;
+          // (read beside its corners too: a soffit's wide flat triangle whose middle is metres from a flight of steps
+          // rising past its edge was a 2 m cell over the landing, at the head of someone climbing, Shimbashi's)
+          const zc = cont ? Infinity : Math.max(refBeside(cx, cy, Math.max(...rs), zlo), ...P.map((q, i) => refBeside(q[0], q[1], rs[i + 1], zlo))) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor
           let below = [P];

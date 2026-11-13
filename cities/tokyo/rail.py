@@ -279,7 +279,9 @@ def stairs(L):
             f1 = fr[min(ss, key=lambda s: abs(s - (s0 + d * run)))]
             c1 = f1[1] + f1[2] * (s0 + d * run - f1[0])
             t = (c1 - c0) / np.linalg.norm(c1 - c0)
-            out.append({"key": f"{p['key']}{tag}", "plat": p["key"], "a": c0, "b": c0 + t * run, "t": t, "n": np.array([-t[1], t[0]]), "w": 3.0,
+            n = np.array([-t[1], t[0]])
+            c0 = c0 - n * (ESC_W + 0.15) / 2   # (the flight and the escalator beside it, together on the platform's middle)
+            out.append({"key": f"{p['key']}{tag}", "plat": p["key"], "a": c0, "b": c0 + t * run, "t": t, "n": n, "w": 3.0,
                         "z0": z0, "z1": z1, "run": run})
     return out
 
@@ -514,7 +516,9 @@ def meshes(Mesh):
                 else:
                     u = wall(K["rail_stone"], a, b, ga - 0.4, gb - 0.4, zs, u)
     # ---- over the streets: the soffit, and plate girders on the deck's edges
-    span = deck.intersection(openings.union(slots.buffer(0.1))).buffer(0)
+    # (not over the stair wells: the flights rise through the deck there, and a soffit across them is a ceiling at
+    # the landing's head height)
+    span = deck.intersection(openings.buffer(0.1)).difference(slots).buffer(0)
     tri_poly(K["rail_soffit"], span, zs)
     tri_poly(K["rail_soffit"], under, zs - 0.02)   # (seen only through a shop's glass; closes the deck from below)
     for ring in [deck.exterior, *deck.interiors]:
@@ -645,7 +649,10 @@ def station(L, K, Mesh):
             m, n = f[1], f[3]
             if holes.buffer(0.5).contains(Point(*m)):   # over a stair well its walls carry the roof: a post on each
                 for sgn in (-1, 1):
-                    K["rail_frame"].box([*(m + n * sgn * 1.75), zp + 1.2], [*(m + n * sgn * 1.75), zp + hc + 0.2], 0.16, 0.16)
+                    d = 0.0
+                    while d < 4.0 and holes.contains(Point(*(m + n * sgn * d))):
+                        d += 0.05
+                    K["rail_frame"].box([*(m + n * sgn * (d + 0.1)), zp + 1.2], [*(m + n * sgn * (d + 0.1)), zp + hc + 0.2], 0.16, 0.16)
             else:
                 K["rail_frame"].box([*m, zp], [*m, zp + hc], 0.2, 0.2)
             for sgn in (-1, 1):
