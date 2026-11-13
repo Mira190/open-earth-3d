@@ -365,13 +365,25 @@ def canyon_fronts(D):
     return out
 
 
-def canyon(K, A, D, avoid, real=None):
+# the hero level's stretch of Ichibangai (cities/shinjuku/hero.py, web/game/hero.js): its fronts' signs are drawn
+# into meshes of their own (kbhero_*), which the game hides while the hero level, which draws them finely, is shown
+HERO_STREET, HERO_Y = "歌舞伎町一番街通り", (2802.0, 2940.0)
+
+
+def in_hero(street, xy):
+    return street == HERO_STREET and HERO_Y[0] < xy[1] < HERO_Y[1]
+
+
+def canyon(K, A, D, avoid, real=None, KH=None):
     """Tenant stacks standing out from the fronts, a lit box over each shop front, and the lamps; the
-    fronts in `real` carry their own tenants' names (tenants_by_front)."""
+    fronts in `real` carry their own tenants' names (tenants_by_front). A front in the hero level's stretch
+    goes into KH when given."""
     rng = np.random.default_rng(1969)
     placed, sites = [], []
     real = real or {}
+    K0 = K
     for fi, (mid, n, L, g, top, street) in enumerate(canyon_fronts(D)):
+        K = KH if (KH is not None and in_hero(street, mid)) else K0
         t = np.array([-n[1], n[0]])
         sites.append([round(float(mid[0]), 1), round(float(mid[1]), 1)])
         # the shop front's lit box, the width of the front less its edges
@@ -843,12 +855,14 @@ class Build:
         gone, lot = alta(K, self.A, self.D)
         self.info["alta"] = lot
         unica(K, self.A, self.D)
-        self.info["canyon"] = canyon(K, self.A, self.D, avoid, self.real)
-        lamp_at = lamps(self.D, avoid)
+        KH = ak.Kit("kbhero", floodlit=LIT, uv={k for k, m in MATERIALS.items() if "map" in m or "pattern" in m})
+        self.info["canyon"] = canyon(K, self.A, self.D, avoid, self.real, KH)
+        # (the hero level stands its own lamps on its stretch)
+        lamp_at = [a for a in lamps(self.D, avoid) if not (HERO_Y[0] < a[1] < HERO_Y[1] and self.D.street(HERO_STREET).buffer(6.0).contains(Point(a[0], a[1])))]
         props = [{"name": "kabukicho_lamp", "far": 260, "at": lamp_at,
                   "parts": [m.dump() for m in lamp_model()]}] if lamp_at else []
         self.gone = gone
-        return K.out(), hidden, [], props
+        return K.out() + KH.out(), hidden, [], props
 
     def draw(self, out_dir):
         from PIL import Image

@@ -70,6 +70,7 @@ window.OpenEarthGame = async function game(cityId) {
     + [...(G.links || []), ...kin.filter(k => !(G.links || []).some(l => l.id === k.id))]
       .map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
   $('#g-metro-btn').hidden = !metro;
+  $('#gm-links').insertAdjacentHTML('afterbegin', G.fishing && G.fishing.spots && G.fishing.spots.length ? '<button class="btn" id="gm-fishlog">Fish log</button><span class="note">What you have caught, and what each fish is</span>' : '');
   if (metro) { $('#g-metro-btn').innerHTML = `${metro.name} <kbd>B</kbd>`; document.querySelectorAll('.g-metro-key').forEach(r => { r.hidden = false; }); }
   function openMetro() {
     if (!metro || OEMetro.isOpen()) return;
@@ -173,7 +174,8 @@ window.OpenEarthGame = async function game(cityId) {
     if (renderer.capabilities.reversedDepthBuffer) U.uNudge.value = 1.5e-5; // a float depth buffer needs less to order coplanar roofs (buildings.js)
   }
   // a lost WebGL context pauses the game under a note and comes back redrawn (glcare.js)
-  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { Wd.restoreGPU(); resize(); } });
+  // (on a phone the walls' shading lives on the GPU alone, world.js gpuOnly: there a lost context reloads the view)
+  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { if (Wd.gpuOnly) throw new Error('held on the GPU only'); Wd.restoreGPU(); resize(); } });
   U.uTime = { value: 0 };
   // Close up, 1 m aerial imagery is a blur, lit twice (the photo's own sun and shadows, then the
   // scene's) and far too pale for paving: a sunlit forecourt read as a white sheet with grey
@@ -306,7 +308,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const FOOTW = OEActors.FOOTW;
   function streetTexture(i) {
-    const t = scene.ground[i], PX = 0.5, w = Math.round((t.x1 - t.x0) / PX), h = Math.round((t.y1 - t.y0) / PX);
+    const t = scene.ground[i], PX = QC.lean ? 0.75 : 0.5, w = Math.round((t.x1 - t.x0) / PX), h = Math.round((t.y1 - t.y0) / PX);
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     const g = cv.getContext('2d');
@@ -333,6 +335,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    if (QC.lean) tex.onUpdate = () => { cv.width = cv.height = 1; }; // (a phone: the canvas let go once it is on the GPU)
     return tex;
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
@@ -343,6 +346,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return m;
   }
   function groundLod(x, y) {
+    if (Wd.groundKeep) Wd.groundKeep(x, y); // (a phone: the aerial pictures on the GPU are the tiles nearest here, world.js)
     scene.ground.forEach((t, i) => {
       const d = Math.hypot(Math.max(t.x0 - x, 0, x - t.x1), Math.max(t.y0 - y, 0, y - t.y1));
       const near = d < 260;
@@ -350,6 +354,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (fineTiles[i]) fineTiles[i].visible = near;
       const ud = Wd.groundMeshes[i].material.userData;
       if (near && ud.street && !ud.street.value) ud.street.value = streetTexture(i);
+      else if (d > 700 && ud.street && ud.street.value) { ud.street.value.dispose(); ud.street.value = null; } // (drawn again if you come back: 24 MB a tile)
       if (ud.streetOn) ud.streetOn.value = near && player.mode !== 'heli' ? 1 : 0;
       Wd.groundMeshes[i].visible = !near;
     });
@@ -370,6 +375,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const m of Wd.groundMeshes) mirror.patch(m.material);
     for (const [k, m] of Object.entries((D.LM && D.LM.materials) || {})) if (m.street_lit || m.decal || m.pattern === 'deck_zones') { mirror.patch(Wd.lmMats[k]); mirror.patch(Wd.floodMats[k]); }
   }
+  // a hero level: a street modelled finely, loaded when the player comes near it and let go when they leave (hero.js)
+  const hero = window.OEHero && G.hero ? OEHero.create(Wd, renderer, { hero: G.hero, base: D.DATA, tier: QC.name, mirror, warm: obj => warmFor(obj) }) : null;
   // the city's shaders compiled from here, behind the rest of the set-up (the surface model, the footways, the
   // people and the traffic: seconds of the CPU's time, issue 327) rather than all after it: where the GPU compiles
   // in parallel (KHR_parallel_shader_compile, or a GPU process of its own) the two overlap. Every light is in place
@@ -867,16 +874,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const doors = window.OEDoors ? OEDoors.create({ G, world }) : null;
   let room = null; // the room you are in, for its name as you step in
   // seats you can take (a table by the glass, a chair in a foyer, the stalls), and what plays before one (show.js)
-  const shows = window.OEShow && ((G.seats || []).length || (G.shows || []).length) ? OEShow.create({ G, A, world, host: $('#g-toasts').parentNode, toast: (...a) => H.toast(...a), npcs: () => npcs }) : null;
+  const shows = window.OEShow && ((G.seats || []).length || (G.shows || []).length) ? OEShow.create({ G, A, world, host: $('#g-toasts').parentNode, toast: (...a) => H.toast(...a), npcs: () => npcs,
+    people: lib ? { make: look => makeRig(look), need: c => lib.require(c), max: { high: 28, medium: 18, low: 10 }[QC.name] || 12 } : null }) : null;
   function sitDown(st) {
     player.seatFrom = { x: player.x, y: player.y, z: player.z, h: player.h };
     Object.assign(player, { mode: 'seat', x: st.at[0], y: st.at[1], z: st.at[2], h: st.h, speed: 0, ground: true, vz: 0 });
     cam.lookYaw = 0; cam.lookPitch = st.pitch || 0; cam.lastInput = -10;
     shows.sit(st);
+    seatTouch(true);
   }
+  // in a seat there is nowhere to walk: on a phone the joystick, Jump, Run and Guess are put away; a finger looks
+  // round and the action button stands you up
+  function seatTouch(on) { if (touch) for (const id of ['#gt-joy', '#gt-jump', '#gt-run', '#gt-down']) $(id).hidden = on; }
   function standUp() {
     const st = shows.seat, f = player.seatFrom;
     shows.stand();
+    seatTouch(false);
     const p = (f && nav.stand(f.x, f.y, f.z + 0.5, { rMax: 3 })) || nav.stand(player.x, player.y, player.z + 0.5, { rMax: 4 }) || f || player;
     Object.assign(player, { mode: 'foot', x: p.x, y: p.y, z: p.z, h: st ? st.h : player.h, speed: 0, ground: true, vz: 0 });
     cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.3; cam.dist = 5.5;
@@ -1062,11 +1075,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return Math.hypot(Math.max(0, Math.abs(dx * fx + dy * fy) - o.C.half), Math.max(0, Math.abs(-dx * fy + dy * fx) - o.C.hw));
   }
   // the cars near (x, y) as boxes (cars.js), less one (the one you are in)
+  // the cars of the traffic your car was handed back overlapping (the autopilot's car is carried along its driver's line,
+  // and on a tight corner beside one it can be a little into it): left out of your car's collisions until the two are
+  // apart, 3 s at most, rather than shoved out of each other at once, a jump of 2 m mid-corner (#399)
+  let handGhost = null, handGhostT = 0;
+  function boxesMeet(b, o) {
+    const st = o.D.st, fx = Math.sin(st.h), fy = Math.cos(st.h), bx = Math.sin(b.h), by = Math.cos(b.h), dx = b.x - st.x, dy = b.y - st.y;
+    for (const [px, py] of [[fx, fy], [-fy, fx], [bx, by], [-by, bx]]) {
+      const ra = o.C.half * Math.abs(fx * px + fy * py) + o.C.hw * Math.abs(-fy * px + fx * py), rb = b.hl * Math.abs(bx * px + by * py) + b.hw * Math.abs(-by * px + bx * py);
+      if (Math.abs(dx * px + dy * py) >= ra + rb) return false;
+    }
+    return true;
+  }
   function carBoxes(x, y, r, but = null) {
     const out = [];
     for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - x) < r + c.half && Math.abs(c.y - y) < r + c.half) {
       const b = OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5);
       b.onHit = () => cars.stop(c);
+      b.car = c;
+      if (handGhost && clockT - handGhostT > 3) handGhost = null;
+      if (but === myCar && handGhost && handGhost.has(c)) { if (boxesMeet(b, myCar)) continue; handGhost.delete(c); } // (handed back into it: passed through until apart)
       out.push(b);
     }
     for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
@@ -1219,6 +1247,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const o = pilot;
     if (!o) return;
     pilotEnd = why;
+    // (the traffic it is a little into as it is handed back: passed through until apart, carBoxes)
+    handGhost = new Set(cars.live.filter(c => c.line >= 0 && Math.hypot(c.x - myCar.D.st.x, c.y - myCar.D.st.y) < c.half + myCar.C.half + 1 && boxesMeet(OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5), myCar)));
+    handGhostT = clockT;
+    if (!handGhost.size) handGhost = null;
     o.drv.leave(); pilot = null;
     if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
     if (say) H.toast(say);
@@ -1389,7 +1421,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if ((at.dist < 1.2 && Math.abs(at.dh) < 0.45) || (o.joinT > 9 && at.dist < 4 && st.speed < 1.5)) {
         o.drv.jump(at.s); o.drv.st.v = Math.max(0, st.v);
         o.off = { x: st.x - o.drv.st.x, y: st.y - o.drv.st.y, h: angDiff(st.h, o.drv.st.h) }; o.join = false;
-      } else if (o.joinT > 16) { pilotOff('The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.'); return null; }
+      } else if (o.joinT > 16) { pilotOff(o.rejoin ? '<b>Autopilot:</b> the road ahead is blocked. You have the wheel.' : 'The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.', o.rejoin ? 'blocked' : undefined); return null; }
       else { const lead = leadOf(st, 5); return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5); }
     }
     driverStep(o, dt);
@@ -1421,6 +1453,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       o.off = { x: st.x - c.x, y: st.y - c.y, h: angDiff(st.h, c.h) };
       o.turns = OEAutopilot.turns(c.route, o.drv.path); o.turnsOf = o.drv; o.len = o.meter + c.end;
       if ((o.rerouted || 0) > (o.told || 0)) { o.told = o.rerouted; H.toast('<b>Autopilot:</b> traffic ahead, taking another way.'); }
+      // (further off than a lane's slack, it drives itself onto the new way first, as at the start: carried there,
+      // its body swept sideways through whatever stood beside it, a car stopped for it at Fushimi Inari)
+      if (Math.hypot(o.off.x, o.off.y) > 1.2 || Math.abs(o.off.h) > 0.45) {
+        c.v = 0; o.join = true; o.rejoin = true; o.joinT = 0; o.joinS = 0; o.off = { x: 0, y: 0, h: 0 };
+        const len = o.drv.path.len, at = OEAutopilot.onLane(o.drv.poseAt, len, st.x, st.y, st.h, 0, 40), lead = leadOf(st, 5);
+        return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5);
+      }
     }
     // (eased onto the driver's line from where it took the car over)
     const e = Math.exp(-dt * 2.4);
@@ -2453,7 +2492,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const fishSpot = r => (player.mode === 'foot' ? fish.spots.find(sp => Math.hypot(sp.at[0] - player.x, sp.at[1] - player.y) < r) : null);
   function fishLoad() {
     if (fish.loading) return fish.loading;
-    const code = window.OEFishing ? Promise.resolve() : new Promise((ok, no) => { const el = document.createElement('script'); el.src = 'game/fishing.js'; el.onload = ok; el.onerror = () => no(new Error('game/fishing.js did not load')); document.head.appendChild(el); });
+    const script = (src, have) => (have ? Promise.resolve() : new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error(`${src} did not load`)); document.head.appendChild(el); }));
+    const code = Promise.all([script('game/fishing.js', window.OEFishing), script('game/fishart.js', window.OEFishArt)]);
     fish.loading = Promise.all([code, fetch(D.DATA + G.fishing.file).then(r => { if (!r.ok) throw new Error(`${G.fishing.file}: ${r.status}`); return r.json(); })]).then(([, data]) => {
       if (!running) return null;
       fish.api = OEFishing.create({ THREE, world, nav, player, cam, camera, H, A, data, cityId, clock, sun: () => sun, rain: () => (weather ? weather.state.rain : 0), tier: QC.name, reduced, touch, stage,
@@ -3117,7 +3157,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let overture = null; // the map's opening film (overture.js), made once the player is placed
-  let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => (window.OEMetro && OEMetro.isOpen()) || !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden || !!(life && life.open);
+  let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => (window.OEMetro && OEMetro.isOpen()) || !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden || !!(life && life.open) || !!(fish && fish.api && fish.api.logOpen());
   const k = c => keys.has(c);
   on(window, 'keydown', e => {
     if (e.target.closest && e.target.closest('input, select, textarea')) return;
@@ -3140,6 +3180,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (arriving) settleArrival(); // a key settles the arrival (and still walks, looks or opens what it opens)
     else if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
     if (c === 'Escape' && life && life.open) { life.close(); return; }
+    if (c === 'Escape' && fish && fish.api && fish.api.logOpen()) { fish.api.showLog(false); return; }
     if (life && life.open) { life.key(c); return; } // (the diary and its pages have the keys while they are up)
     if (c === 'Escape') { if (!phone.el.hidden) phoneShow(false); else if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
     if (uiOpen()) {
@@ -4705,7 +4746,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#g-pass-btn'), 'click', togglePass);
   on($('#g-menu-btn'), 'click', toggleMenu);
   on($('#g-metro-btn'), 'click', openMetro);
-  on($('#gm-links'), 'click', e => { if (e.target.closest('#gm-metro')) openMetro(); });
+  on($('#gm-links'), 'click', e => {
+    if (e.target.closest('#gm-metro')) openMetro();
+    if (e.target.closest('#gm-fishlog')) { $('#g-menu').hidden = true; fishLoad().then(api => (api ? api.showLog(true) : H.toast('The log did not arrive. Try again in a moment.'))); }
+  });
   for (const id of ['#g-bigmap-close', '#g-pass-close', '#g-menu-close']) on($(id), 'click', () => { $(id).closest('.g-overlay').hidden = true; });
   on($('#gm-time'), 'click', e => { const b = e.target.closest('button'); if (b) { presetTime(b.dataset.t); menuSync(); H.toast(`Time: ${b.dataset.label || b.textContent}, ${fmtMin(clock.min)}`); } });
   on($('#gm-clock'), 'input', e => { setClock(clock.y, clock.m, clock.d, +e.target.value); menuSync(); });
@@ -5121,6 +5165,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     Wd.tick(now, camera);
     if (overture) overture.update(dt);
     if (neon) neon.update(camera, dt);
+    if (hero) hero.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
     weatherTick(dt, titleOn, titleOn || paused || photo.on);
@@ -5383,7 +5428,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // a driver getting out of your car's way sounds its horn, fainter the farther off (actors.js DODGE_T)
     for (const h of cars.honks.splice(0)) A.honk(Math.max(0.15, 1 - h.d / 40) * 0.8, h.bus ? 0.72 : 0.9 + Math.random() * 0.2);
-    if (shows) shows.update(dt);
+    if (shows) shows.update(dt, player, clockT);
     if (places) {
       // the area caption waits for a quiet screen: no conversation, menu, map, phone, photo mode or
       // onboarding (anything marked data-hush that is showing holds it too)
@@ -5649,7 +5694,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else { tx = player.x; ty = player.y; tz = player.z + 1.55; follow = player.h; }
     // the autopilot's film (autopilot.js film): shots round the car on this same rig, a cut between them; a drag
     // of the view gives it back to you for eight seconds
-    const shot = pilot && veh === myCar && !pilot.join && clockT - cam.lastInput > 8 ? pilot.film.step(dt) : null;
+    let shot = pilot && veh === myCar && !pilot.join && clockT - cam.lastInput > 8 ? pilot.film.step(dt) : null;
+    // (a shot whose camera, or its view of the car, is in a tree's crown is cut short for the next: the crane in
+    // Sydney's street trees filled the frame with leaves. Read at the cut and every half second through the shot)
+    if (shot && (shot.cut || (pilot.filmLook = (pilot.filmLook || 0) - dt) <= 0)) {
+      pilot.filmLook = 0.5;
+      const yw = vs.h + shot.yaw, hd = shot.dist * Math.cos(shot.pitch), cx = tx - Math.sin(yw) * hd, cy = ty - Math.cos(yw) * hd, cz = tz + shot.dist * Math.sin(shot.pitch);
+      const leafy = q => q.kind === 'tree' && cz > q.z + 1.5 && (() => { // (in the crown, 4.5 m round the trunk, from 1.5 m up)
+        const ex = tx - cx, ey = ty - cy, L2 = ex * ex + ey * ey || 1, u = Math.max(0, Math.min(1, ((q.x - cx) * ex + (q.y - cy) * ey) / L2));
+        return Math.hypot(cx + ex * u - q.x, cy + ey * u - q.y) < 4.5 && u < 0.85; // (along the way from the camera to the car, not over the car itself)
+      })();
+      // (and a wall across the view: the camera pressed to a facade with the car behind it. Five points along the way
+      // to the car, at the camera's height falling to the car's)
+      const walled = () => { for (let k = 1; k <= 5; k++) { const u = k / 6, x = cx + (tx - cx) * u, y = cy + (ty - cy) * u, z = cz + (tz - cz) * u - 1; const w = nav.push(x, y, z, 0.4, 1.2); if (Math.hypot(w.x - x, w.y - y) > 0.05) return true; } return false; };
+      if ((postsNear((cx + tx) / 2, (cy + ty) / 2, hd / 2 + 5).some(leafy) || walled()) && (pilot.filmSkips = (pilot.filmSkips || 0) + 1) < 6) { pilot.film.skip(); shot = pilot.film.step(0); pilot.filmLook = 0; }
+      else pilot.filmSkips = 0;
+    }
     if (shot) {
       follow = vs.h + shot.yaw;
       if (shot.cut) { cam.yaw = follow; cam.dist = shot.dist; cam.pitch = shot.pitch; cam.snap = true; cam.distTo = 0; }
@@ -5772,6 +5832,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the chase camera's bearing, distance and height from the player's head
   const head = () => W(player.x, player.y, player.z + 1.55);
   const chasePolar = () => ({ az: cam.yaw + Math.PI, dist: Math.cos(cam.pitch) * cam.dist, h: Math.sin(cam.pitch) * cam.dist });
+  // where the chase camera will really be, lifted over a wall behind or pulled in (rig): a move lands on that, not on
+  // the pose cam asks for, or the hand-over has to tilt the difference in its last half second (#340: the stairs)
+  const livePolar = () => { cam.snap = true; rig(0); cam.snap = true; return OECine.polar(head(), live.pos); };
   const handOver = (k, from = 0.8) => OECine.ease.smooth(OECine.span(k, from, 1)); // weight of the live rig at the end of a shot
   // Start (#89): one eased move from the title shot down to over the player's shoulder, calm enough not to
   // make anyone dizzy. The camera dollies in along the bearing it is already on, turning about the player by
@@ -5819,7 +5882,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (let i = 1; i <= N; i++) el[i] = Math.max(el[i], el[i - 1] - step);
     for (let i = N - 1; i >= 0; i--) el[i] = Math.max(el[i], el[i + 1] - step);
     const early = e0 != null ? el[0] - e0 : 0; // how far above the first frame the roofs want it straight away
-    if (early > 0) { const M = N / 3; for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
+    // (eased in over a third of the move, or longer if that would tilt faster than rate: the smootherstep peaks at 1.875)
+    if (early > 0) { const M = Math.min(N, Math.max(N / 3, Math.ceil(1.875 * early / step))); for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
     const fn = k => { const f = Math.max(0, Math.min(N, k * N)), i = Math.floor(f), j = Math.min(N, i + 1); return el[i] + (el[j] - el[i]) * (f - i); };
     fn.late = el[N] - e(1); // how far above its own last elevation the roofs held it: more time is needed to come down calmly
     fn.max = Math.max(...el); // the steepest it gets
@@ -5834,7 +5898,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.h = best - Math.PI;
     cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.36; cam.dist = 7.5; cam.tilt = 0;
     camSmooth.set(0, 0, 0);
-    const p1 = chasePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
+    const p1 = livePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
     const r0 = Math.max(10, Math.hypot(p0.dist, p0.h)), r1 = Math.hypot(p1.dist, p1.h), e0 = Math.atan2(p0.h, p0.dist), e1 = Math.atan2(p1.h, p1.dist);
     const S = OECine.ease.smooth, pos = new THREE.Vector3(), lk = new THREE.Vector3();
     const rAt = k => r0 * Math.pow(r1 / r0, S(k)), azAt = k => p0.az + (az1 - p0.az) * S(k);
@@ -5981,6 +6045,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // at the top of the climb, out of sight.
   // (opts.cue, if given, moves whatever is travelling at the top of the climb instead of you; quiet: no arrival toast)
   const HOP_TURN_RATE = 45 * Math.PI / 180, HOP_PITCH_RATE = 30 * Math.PI / 180; // rad/s
+  // (coming down into a street between towers it may tilt back a little faster, so it has tilted back before the hand-over
+  // to the chase camera rather than during it, which added the two: #340, the hop to the scramble from Sangenjaya)
+  const HOP_FALL_RATE = 40 * Math.PI / 180;
   function hopTo(x, y, z, name, opts = {}) {
     const span = Math.hypot(x - player.x, y - player.y), bearing = Math.atan2(x - player.x, y - player.y);
     const roofs = roofAlong(player.x, player.y, x, y) - player.z; // cruise well clear of the tallest roof on the way
@@ -5998,22 +6065,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // up and down on a log scale of the range; the elevation one gentle rise to eT by 45% of the way and one fall to
     // the chase camera's, raised over the roofs on the way down (calmElevation): no plunge at the end
     const pos = new THREE.Vector3(), lk = new THREE.Vector3(), E = OECine.ease, L = OECine.lerp;
-    const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist), r1 = 7.5;
+    const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist);
+    let r1 = 7.5; // (the chase camera's range on landing: set again at the top of the climb from where it really is)
     const a = 0.26, b = 0.6, km = 0.45;
     // (out of the street it cranes up over the player's head before it pulls back: the range grows late in the rise)
-    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
-    let eTop = eT; const peL = pe; // the elevation at the top, and the chase camera's pitch on landing
+    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1 - 0.2 * (1 - b))))); // (in to the chase camera's range by 92%: the rest is for tilting back level)
+    let eTop = eT, peL = pe; // the elevation at the top, and the chase camera's pitch on landing (likewise)
     const eBase = k => (k < km ? L(e0, eTop, E.smooth(k / km)) : L(eTop, peL, E.smooth(OECine.span(k, km, 1))));
     // Over tall roofs the way down has to be steeper. The top then already holds the steepest it will need, so the
     // camera only ever tilts one way on the way down; the hop takes the time it needs to tilt back calmly (to 6.5 s),
     // and the hand-over to the chase camera (the last 22%) takes what is left
-    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_PITCH_RATE, rMin: 14, upto: 0.7 });
+    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_FALL_RATE, rMin: 30, upto: 0.7 }); // (within 30 m the chase camera keeps itself clear of the walls)
     const riseOf = d => calmElevation({ c: A, az: k => azAt(L(0, a, k)), r: k => rAt(L(0, a, k)), e: k => eBase(L(0, a, k)), dur: d * a, rate: HOP_PITCH_RATE, rMin: 14, upto: 1, e0 });
     let fallEl = fallOf(dur), riseEl = riseOf(dur);
     for (let n = 0; n < 4; n++) {
       eTop = Math.min(1.2, Math.max(eT, fallEl.max, riseEl(1)));
       const short = Math.max(fallEl.late, riseEl.early); // the roofs want more tilt than the time allows
-      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * short / HOP_PITCH_RATE);
+      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * (fallEl.late > riseEl.early ? short / HOP_FALL_RATE : short / HOP_PITCH_RATE));
       fallEl = fallOf(dur); riseEl = riseOf(dur);
     }
     const path = k => {
@@ -6029,6 +6097,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         player.h = yawEnd; player.speed = 0; player.vz = 0; player.ground = true;
         cam.mode = 'chase'; cam.yaw = yawEnd; cam.pitch = peL; cam.dist = 7.5;
         groundLod(x, y);
+        const pl = livePolar(); // (lifted over a wall behind, or pulled in: the way down lands where it will be)
+        r1 = Math.max(2, Math.hypot(pl.dist, pl.h)); peL = Math.atan2(pl.h, pl.dist);
         save();
       }]],
       onEnd: () => { if (!opts.quiet) H.toast(`You're at ${name}.`); } });
@@ -6054,7 +6124,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function vehicleHud() {
     const el = $('#g-vhud');
     if (touch) {
-      $('#gt-down').hidden = player.mode === 'ferry' || player.mode === 'ride';
+      $('#gt-down').hidden = player.mode === 'seat' || player.mode === 'ferry' || player.mode === 'ride';
       $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : player.mode === 'car' ? 'Horn' : 'Guess';
       $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : (fish && fish.api && fish.api.button()) || 'Jump'; // (Cast and Reel with a line out: fishing.js)
       // (at the wheel there is nothing to run: the button is the autopilot's)
@@ -6152,7 +6222,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
+  window.__game = { hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw, life };
   return {
