@@ -103,6 +103,9 @@ export function createAtmos(opts) {
       const rm = sqrt(max(float(1).sub(cm.mul(cm)), 0)).div(0.0045);
       c.addAssign(T.mul(vec3(0.95, 0.93, 0.88)).mul(smoothstep(1.05, 0.95, rm)).mul(u.Emoon.mul(9000)).mul(smoothstep(-0.02, 0.0, dir.y)).mul(select(cm.greaterThan(0), float(1), float(0))));
       c.addAssign(T.mul(starfield(dir)).mul(u.stars).mul(smoothstep(-0.01, 0.05, dir.y)));
+    } else {
+      // on the water: the Milky Way and the night's glow mirrored (the catalogue's stars are sprites, stars.js, and are not)
+      c.addAssign(T.mul(starfield(dir)).mul(u.stars).mul(smoothstep(-0.01, 0.05, dir.y)));
     }
     return c;
   });
@@ -159,7 +162,11 @@ export function createAtmos(opts) {
     // band (a fine grain brighter along the plane) and the natural glow of a dark sky (airglow and starlight, about
     // 21.6 mag per square arcsecond here)
     const faint = smoothstep(0.2, 0.9, mx_noise_float(e.mul(260)).mul(0.5).add(0.5)).mul(band.mul(0.6).add(0.05)).mul(0.06);
-    return col.add(vec3(0.85, 0.88, 1.0).mul(faint)).add(vec3(0.010, 0.012, 0.020));
+    // airglow: the high air's own faint light, the most of a moonless night's. It is a shell 100 km up, so a line of sight
+    // low in the sky crosses more of it (van Rhijn: up to about 5.6 times at the horizon): a pale band low round the sky,
+    // against which the ranges stand out by night (docs/NIGHT.md); greenish in a photograph (the 557.7 nm oxygen line)
+    const vr = float(1).div(sqrt(max(float(1).sub(float(0.968).mul(float(1).sub(dir.y.mul(dir.y)))), 0.03)));
+    return col.add(vec3(0.85, 0.88, 1.0).mul(faint)).add(vec3(0.010, 0.012, 0.020)).add(vec3(0.0055, 0.0075, 0.0058).mul(vr));
   }
 
   // ---- the air between the eye C and a surface point P: returns col dimmed and veiled
