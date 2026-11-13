@@ -106,6 +106,10 @@
     },
     {
       "npc": "haru", "title": "The Sangenjaya local", "where": "Sangenjaya, by New Marina",
+      "places": [
+        { "hours": ["13:00", "17:00"], "at": { "spot": "stair_corner", "d": [2, 2] }, "where": "Sangenjaya, at the foot of the stair at the bend" },
+        { "hours": ["17:00", "19:00"], "at": { "spot": "fork", "d": [4, -1] }, "where": "Sangenjaya, at the fork as the bars' signs light" }
+      ],
       "hours": { "slots": ["evening", "night"] },
       "busy": "I'm at work till the evening. Find me here after, any night.",
       "ranks": [
