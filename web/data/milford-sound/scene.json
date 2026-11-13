@@ -1061,5 +1061,24 @@
   ],
   "source": "NIWA, Milford Sound Airport (agents 4107, 18309, 40987), 1991-2020, days with at least 1 mm (via Wikipedia's climate box)",
   "more": "Wind: the automatic station's mean of hourly winds; north-westerly, along the fiord (NIWA, The Climate and Weather of Southland, figure 8). Days a year with snow 4, thunder 22, fog 2 (its table 19), spread over the months: snow by Queenstown's frost-day shape, thunder evenly (the fronts off the Tasman), fog toward winter, a judgement. November 2026."
+ },
+ "fishing": {
+  "v": 1,
+  "file": "fishing.json",
+  "spots": [
+   {
+    "id": "foreshore",
+    "name": "The foreshore at the head",
+    "at": [
+     4261,
+     -6832
+    ]
+   },
+   {
+    "id": "after-deck",
+    "name": "The Piopiotahi's after deck",
+    "vessel": "Piopiotahi"
+   }
+  ]
  }
 }
