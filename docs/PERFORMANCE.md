@@ -587,7 +587,7 @@ Every live city, llvmpipe, 960×600, high tier, the median of two runs (`tools/s
 | tetsugaku | 10.8 → 9.4 | 5.0 → 3.3 |
 | tokyo | 20.3 → 20.0 | 12.3 → 8.9 |
 
-The reef and alpine sites build in 1.7 to 4.3 s; their wait is after "built", in three.js's WebGL backend
+The reef and alpine sites build in 1.7 to 4.3 s; their wait was after "built", in three.js's WebGL backend
 compiling (`_completeCompile`, 11.6 s of Lake Tekapo's load), much of it in the first frame after
 `compileAsync`, and in Tekapo's detail photograph (`terrain.prepare`). On a device with WebGPU, as the
 telemetry's desktop has, the backend is another one; a follow-up issue holds it.
@@ -632,6 +632,48 @@ The build stage is shorter everywhere, by 1.5 to 2.4 s in the large cities; the 
 dominated by the GPU's share after it, which a software renderer makes noisy. Still on the main thread: the footways
 (`OERoute.walkable` and `cutAtWalls`, 2 s in Kyoto) and the collision world (1.2 s), both built from the live walking
 model's queries; a follow-up issue holds them.
+
+## The reef and alpine sites' compile (issue 343)
+
+After issue 327 a reef or alpine site built in 2 to 4 s and then spent most of its load compiling: Lake Tekapo linked 247
+WebGL programs, 117 of them in the first frames (one frame of 32 s on llvmpipe, the lake's mirror compiling on the spot),
+and waited up to 19 s more for the aerial detail photograph. `tools/reef_load.js` now counts the programs linked in each
+loader step. What was done, for every site:
+
+- **The detail photograph does not hold the loader.** It is asked for as soon as the camera is placed, decoded off the
+  page's thread (an ImageBitmap), at most 4096 px a side below the high tier, and fades in when it comes; stills, films
+  and tools under automation still wait for it (`?detail=later` loads as a visitor). Its placeholder is in the
+  photograph's colour space, so the land's programs are not made again when it comes.
+- **The precompile compiles what the frames draw.** A frame's work bar the drawing runs first (the player's view, the
+  land's chunks, the plants' patches, the water's tiles); then, at once and side by side, the scene into the post
+  chain's own target (a program is made for its target: the canvas's was compiled again by the first frame), the lake's
+  mirror as its reflector draws it (half-float, layer 0, from below the water), and the land's hidden detail patches.
+- **One program where there was one per mesh.** three.js r186 puts an InstancedMesh's matrices (and a skeleton's
+  bones) in a uniform array when they fit a uniform block, with the array's name and length written into the shader:
+  every instanced mesh linked its own program. The reef page sets the backend's uniform-block limit to 0 for these
+  (`?ubo=1`: as before), so they come as instanced attributes and a bone texture, the same code for every mesh.
+- **Uniforms, not constants:** each lake's id and level (22 programs at Tekapo), and the land strips' offsets.
+
+Stills from the same views (desktop and phone; day, dusk and night; Tekapo, Pukaki, Milford, Whitsundays) are identical
+to main's pixel for pixel. Every site, llvmpipe, 1440x900, high tier, `tools/reef_load.js`, the second of two runs
+(the first of each pair warms the cache), main -> after:
+
+| site | programs (in the first frames) | ready (s) |
+|---|---|---|
+| whitsundays | 68 (32) -> 57 (14) | 12.7 -> 12.2 |
+| hardy-reef | 59 (46) -> 56 (15) | 8.5 -> 9.6 |
+| green-island | 64 (29) -> 55 (13) | 12.9 -> 11.2 |
+| heron-island | 48 (35) -> 46 (13) | 7.1 -> 7.6 |
+| lady-elliot-island | 45 (27) -> 42 (11) | 7.3 -> 7.4 |
+| lake-pukaki | 85 (48) -> 50 (16) | 24.4 -> 15.7 |
+| lake-tekapo | 247 (117) -> 49 (10) | 28.3 -> 15.8 |
+| milford-sound | 67 (36) -> 53 (17) | 13.9 -> 10.7 |
+
+On the reefs the total is within the runs' noise, but the programs the first frames compile on the spot (a frozen
+frame) are a third of what they were; on the alpine sites the load is shorter by 3 to 12 s. What the first frames still
+compile: the bloom chain's small passes, and what is hidden at the precompile (a character shown on the first frame).
+On WebGPU (the telemetry's desktops) pipelines compile asynchronously and the per-mesh variants cost the same way; not
+measurable here (#320).
 
 ## The alpine sites' frame (Milford Sound)
 

@@ -221,7 +221,9 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
   };
 
   // ---- the aerial patches (alpine_detail.py): one at a time, the one nearest the camera, loaded when it comes near
-  const blank = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1); blank.needsUpdate = true;
+  // (in the photograph's colour space: a texture's colour space is part of its program, and the land's two programs, the
+  // heaviest on the site, were compiled again when the photograph came, issue 343)
+  const blank = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1); blank.colorSpace = THREE.SRGBColorSpace; blank.needsUpdate = true;
   const detailNode = texture(blank);
   const dU = { x0: uniform(0), y1: uniform(0), w: uniform(1), h: uniform(1), on: uniform(0) };
   const areas = (d.scene.detail || []).map(a => ({ ...a, tex: null, loading: false }));
@@ -297,7 +299,7 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
   const time = env.u.time;
   function makeMat(strip, detailNormal) {
     const mat = new THREE.MeshBasicNodeMaterial();
-    const v0 = strip.row0 / g.h, vs = strip.rows / g.h;
+    const v0 = uniform(strip.row0 / g.h), vs = uniform(strip.rows / g.h);   // (uniforms: the strips share their programs, issue 343)
     const gUV = (x, z) => vec2(x.sub(t.x0).div(g.w * g.px_m), z.add(t.y1).div(g.h * g.px_m).sub(v0).div(vs));
     mat.colorNode = Fn(() => {
       const P = positionWorld, x = P.x, z = P.z;
@@ -615,5 +617,5 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
     }
   }
   const prefetch = cam => detailUpdate(cam);
-  return { group, update, prepare, prefetch, material: mats[0], materials: mats, heightAt, coverAt, coverTex, roads, weather: wx };
+  return { group, update, prepare, prefetch, patches, material: mats[0], materials: mats, heightAt, coverAt, coverTex, roads, weather: wx };
 }
