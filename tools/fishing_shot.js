@@ -75,6 +75,8 @@ const [,, city = 'sydney', outDir = '.', size = '1440x900', times = '10:00', onl
     const e = await F.play(p);
     await p.evaluate(() => { for (let i = 0; i < 60; i++) window.__game.advance(0.05); });   // the camera comes round to the fish's side (it eases a step for each advance)
     console.log(`  ended ${e.st}, tension up to ${e.top.toFixed(2)}, ${e.drawn} drawn`);
+    await p.evaluate(() => window.__game.advance(2.5));   // (the camera has come round, the rod has swung to show the fish)
+    console.log('  fish on screen', JSON.stringify(await F.fishInFrame(p)));
     await shot(`${tag}-5-catch`);
     await p.evaluate(() => { const g = window.__game, a = g.fishing().api; a.showLog(true); });
     await shot(`${tag}-6-log`);
