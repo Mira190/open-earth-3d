@@ -1781,7 +1781,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     // (and the way out again, ahead of it: the same three places on the other side. sgn -1 the way in, +1 the way out)
     function wayIn(c, line, s, dir, sgn = -1) {
       const k = side * kerbLo(line), base = side * JN.shiftOf(net.L[line], 0), len = net.L[line].len;
-      for (const [d, f] of [[3, 0.8], [6, 0.55], [9, 0.3]]) {
+      for (const [d, f] of [[3, 0.95], [6, 0.63], [9, 0.32]]) { // (the way pulling in goes: update's loT)
         const s1 = s + sgn * dir * d;
         if (s1 < 0 || s1 > len) return false;
         lanePos(line, s1, dir, tmp, base + (k - base) * f);
@@ -3045,7 +3045,11 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         // (across to its lane a little at a time, slowly while it is barely moving, nosing that way)
         // (in a junction it keeps the lane it went in by: its way across is that lane's)
         const back = line === c.line && dir !== c.dir, keepIt = c.mv && !back, lnNow = keepIt ? c.ln : !back && JN.lanesOf(net.L[line]) > 1 ? c.ln : 0,
-          loT = c.parking && line === c.line && !back && (c.parking.s - s) * dir < 13 ? c.parking.lo : side * JN.shiftOf(net.L[line], lnNow); // (pulling in: across to the kerb over its last 13 m)
+          laneLo = side * JN.shiftOf(net.L[line], lnNow), toPark = c.parking && line === c.line && !back ? (c.parking.s - s) * dir : Infinity,
+          // (pulling in: across to the kerb over its last 12 m, as far across as its distance from the place says, the
+          // way wayIn found clear. Let across at the rate its speed allows, it was at the kerb 9 m short and swept into
+          // the car parked there, Queenstown)
+          loT = toPark < 12 ? laneLo + (c.parking.lo - laneLo) * Math.min(1, (12 - toPark) / 9.5) : laneLo;
         // (but not over the middle of a two-way road: out of a one-way street's lane nearest the middle,
         // the lane kept across the junction is the oncoming one there, so it moves across at once, and
         // can do so standing, where a car waiting at that road's line would otherwise hold it until it squeezed through)
