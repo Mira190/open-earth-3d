@@ -18,7 +18,7 @@ const [,, city = 'tetsugaku'] = process.argv;
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await p.waitForFunction('window.__game', null, { timeout: 600000 });
+  await p.waitForFunction('window.__game || window.__gameError', null, { timeout: 600000 });
   const res = await p.evaluate(() => {
     const g = window.__game, nav = g.nav, KNEE = 0.4, HEAD = 1.8, out = [];
     for (const d of g.deckPlan.segs) {
@@ -53,6 +53,8 @@ const [,, city = 'tetsugaku'] = process.argv;
     const lo = q.reduce((m, r) => Math.min(m, r.room), Infinity);
     console.log(q[0].lane ? `LANE [${q[0].x}, ${q[0].y}] ${q[0].deck} at ${q[0].h} m under ${q[0].what}, ${lo.toFixed(2)} m of room under it (${q.length} samples)` : `LOW  [${q[0].x}, ${q[0].y}] the deck ${q[0].deck} at ${q[0].h} m over ${q[0].what}, ${lo.toFixed(2)} m of room under its slab (${q.length} samples)`);
   }
+  const cr = await p.evaluate(() => window.__game.deckPlan.crossing);
+  if (cr) console.log(`(decks graded together in ${cr.rounds} rounds, ${cr.ms} ms, ${cr.left} samples left)`);
   if (!groups.length) console.log(`ok   ${city}: no deck stands in the body of someone on a surface under it, nor over a crowd's lane`);
   if (logs.length) console.log(logs.slice(0, 10).join('\n'));
   await b.close();
