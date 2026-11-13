@@ -1,6 +1,6 @@
 // ?gametest=1: a scripted run through the game, stepping the player and the game without rendering (like
 // player.js's autotest). Logs "[gametest] PASS|FAIL name detail" and sets window.__gametest = { pass, fail, log }.
-// ?gameshot=dialogue|journal|map|lookout|red|board: set a scene up before the first frame, for screenshots.
+// ?gameshot=dialogue|npc|journal|map|lookout|red|board: set a scene up before the first frame, for screenshots.
 // Both use their own save key (oe3d-reef-game-<site>-test), so they never touch real progress.
 const HALF = { tinnie: 1.3, yacht: 1.9, cat: 3.45, daycat: 4.2, seaplane: 1.7, helicopter: 1.4 };
 
@@ -629,6 +629,11 @@ export async function gameshot(api, ctx, which) {
     if (n('shotpage') !== null) for (let i = 0; i < +n('shotpage'); i++) key('Enter'); else pagesToChoices();
     run(0.3);
     cam(toward(id) + +(n('shotyaw') || -32), +(n('shotpitch') || -10), +(n('shotcam') || 4.4));
+  } else if (which === 'npc') {
+    // beside the site's first person (or &shotnpc=<id>), no dialogue open: the scene as the player sees it (the night look)
+    const n = k => ctx.q.get(k), id = n('shotnpc') || G.content.npcs[0].id;
+    near(id, +(n('shotdist') || 2.2)); run(0.4);
+    cam(toward(id) + +(n('shotyaw') || -32), +(n('shotpitch') || -10), +(n('shotcam') || 4.4)); run(0.3);
   } else if (which === 'journal') {
     for (const id of ['sand', 'inlet', 'survey', 'flight']) G.start(id);
     G.data('sand').walked = 212; G.advance('sand'); near('ranger', 1.8); run(0.4); player.interact(); drain(); run(0.4);
