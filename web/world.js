@@ -1888,7 +1888,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
-      userData: { glow: LM.materials[k].glow || 0.32, day: LM.materials[k].glow_day || 0 }, // (glow_day: lit by day too, as stained glass seen from inside is) onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
+      // (glow_day: lit by day too, as stained glass seen from inside is)
+      userData: { glow: LM.materials[k].glow || 0.32, day: LM.materials[k].glow_day || 0 }, onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
       defines: Object.assign({}, lmMats[k].defines),
       // its own program: a floodlit copy of a patterned material, or one lit from below (which wraps
       // the pattern, so the wrapper's text alone would not tell two programs apart)
