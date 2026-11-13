@@ -315,5 +315,9 @@ Nothing was copied here either. Licences are given so that no one takes code wit
 - The quest NPCs keep their own looks (no umbrellas); the crowd carries them.
 - Snow with thickness on eaves and kerbs: settled snow is still a colour term.
 - Heat shimmer: it would need a pass.
-- Reef sites (`web/reef`) and the model viewer (`web/city.js`) have no weather.
+- The model viewer (`web/city.js`) has no weather. The reef and alpine sites (`web/reef`) have their own driver,
+  `web/reef/weather.js` (issue 381): the same `OEWeather.S` from each site's climate (`scene.json` `weather`, written by
+  `pipeline/weather_climate.py`), drawn with node materials: streaks, rings on the water, flakes, a cloud deck, the light
+  and the air, the sea's wind, and fresh snow on the alpine land down to a lapse-rate snow line. No lightning, rainbow,
+  splashes on decks or rain occlusion there yet.
 - Not checked on a real GPU, WebGPU, Safari or iOS.

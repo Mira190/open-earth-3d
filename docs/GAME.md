@@ -886,13 +886,28 @@ pipeline writes. The only city-specific code is landmark geometry in
     from a pole every 36 m on the side away from the platform, and each platform
     with its end ramps, yellow line and a shelter.
 - **Trains** (`web/game/trains.js`): a main line's trains past its station, on the tracks
-  `game.json` "trains" carries (Tokyo's through Yurakucho, `cities/tokyo/rail.py`; Sydney's City
+  `game.json` "trains" carries (Tokyo's through Yurakucho and Shimbashi, `cities/tokyo/rail.py`; Sydney's City
   Circle through Circular Quay, `cities/sydney/rail.py`; both built with `pipeline/railkit.py`).
   A station's `style` picks its announcements: JR East's in Japanese and English, or Sydney
   Trains' in English.
   - A service is a stock, a number of cars, a headway and an offset; a train's place is a
-    function of the time alone (cruise, brake at 0.9 m/s², stand, pull away), so there is no
-    state to keep and a harness can ask where any train is at any second.
+    function of the time alone (cruise, brake at 0.9 m/s², stand, pull away at each of its halts),
+    so there is no state to keep and a harness can ask where any train is at any second.
+  - A track's halts are its `stops` (`{station, m, platform, side, psd}`: the station's id, where a
+    train's middle rests, the platform's number, +1 when the platform is on the train's left, and the
+    platform doors' leaves, `{off, u}`: the doors' line off the track and each door's middle along
+    it); `stations` lists the stations (`{id, name, native, at, hear_m, r}`). The first pass's one
+    `station` and a track's `stop_m` and `platform` still read as one halt. A service's `stop_at`
+    names the stations it stops at, where not all of its track's.
+  - **Doors.** A standing train's doors on the platform's side open a second after it stops and
+    close before it pulls away (the lit doorway drawn over the closed door, instanced); the platform
+    doors' two leaves slide apart behind the cabinets with them.
+  - **Riding** (`api.ride`): where the city has no `rail.js` line, the game boards and rides these
+    trains through rail.js's interface (`cars`, `stations`, `stationOf`, `towards`, `nextStop`,
+    `eta`, `departsIn`, `riderPos`, `alightAt`, `events`): a car is a whole train standing at a
+    station with another station ahead of it on the map; you stand in its third car by the doors.
+    A station on a viaduct (`deck`) is only its platforms' level, not the street under it.
+    `tools/trains_step.js` rides one stop and checks the doors open.
   - The cars ride on their two bogies along the course and are instanced, one draw call per
     material of each kind of car. They are drawn only between the sheds' mouths at the ends
     (`hide_m`).
@@ -1573,6 +1588,73 @@ yields. In this game every car's intent is exact, so:
   Shinjuku 4.55 ms against main's 5.74, Sydney 3.05 against 3.81; and over ten minutes of
   Shinjuku's morning (`tools/traffic_check.js`, the clock held) 4.9% of the car-time
   jammed for half a minute or more against main's 4.8%, the longest stand 99 s against 114 s.
+
+**The soak (#355).** Every live map's traffic run for half an hour of the game's clock at 08:00, 10:00, 18:00 and
+23:00, the hour held (`tools/traffic_soak.sh`, `tools/traffic_check.js` with `CLOCK_HOLD`), on the trips, the kerb
+and the weather as they first landed (main at 80afa1a2). *Standing*: the share of the cars' time stood still;
+*jammed*: still 30 s or more; *at the kerb*: parked cars on average, left out of the two.
+
+| city | hour | standing | jammed | jammed at the end | longest still | km/h | at the kerb | update |
+|---|---|---|---|---|---|---|---|---|
+| fushimi-inari | 08:00 | 26% | 6.8% | 13 | 191 s | 23 | 1 | 1.42 ms |
+| fushimi-inari | 10:00 | 26% | 7.0% | 12 | 436 s | 23 | 1 | 1.41 ms |
+| fushimi-inari | 18:00 | 27% | 6.2% | 14 | 135 s | 23 | 4 | 1.37 ms |
+| fushimi-inari | 23:00 | 30% | 16.9% | 15 | 1382 s | 23 | 3 | 1.48 ms |
+| higashiyama | 08:00 | 34% | 3.4% | 0 | 100 s | 21 | 2 | 1.42 ms |
+| higashiyama | 10:00 | 35% | 2.5% | 0 | 89 s | 21 | 2 | 1.69 ms |
+| higashiyama | 18:00 | 27% | 0.6% | 0 | 51 s | 22 | 7 | 1.47 ms |
+| higashiyama | 23:00 | 26% | 0.1% | 0 | 52 s | 22 | 7 | 1.62 ms |
+| kamakura | 08:00 | 38% | 15.9% | 24 | 1011 s | 18 | 0 | 2.06 ms |
+| kamakura | 10:00 | 30% | 1.3% | 0 | 421 s | 20 | 7 | 2.08 ms |
+| kamakura | 18:00 | 37% | 14.8% | 22 | 874 s | 19 | 8 | 2.13 ms |
+| kamakura | 23:00 | 42% | 23.7% | 26 | 1478 s | 18 | 8 | 2.07 ms |
+| kyoto | 08:00 | 18% | 0.3% | 0 | 86 s | 28 | 2 | 2.75 ms |
+| kyoto | 10:00 | 18% | 0.6% | 0 | 89 s | 28 | 6 | 4.31 ms |
+| kyoto | 18:00 | 17% | 0.9% | 2 | 90 s | 29 | 5 | 2.64 ms |
+| kyoto | 23:00 | 24% | 6.4% | 4 | 371 s | 27 | 6 | 3.12 ms |
+| queenstown | 08:00 | 25% | 1.3% | 10 | 84 s | 12 | 0 | 1.60 ms |
+| queenstown | 10:00 | 24% | 1.0% | 0 | 72 s | 13 | 1 | 1.47 ms |
+| queenstown | 18:00 | 23% | 0.8% | 0 | 66 s | 13 | 0 | 1.48 ms |
+| queenstown | 23:00 | 24% | 1.3% | 0 | 80 s | 12 | 0 | 1.49 ms |
+| shibuya | 08:00 | 28% | 9.6% | 28 | 222 s | 25 | 4 | 5.23 ms |
+| shibuya | 10:00 | 31% | 11.3% | 53 | 338 s | 24 | 16 | 5.13 ms |
+| shibuya | 18:00 | 28% | 8.9% | 38 | 224 s | 25 | 16 | 5.14 ms |
+| shibuya | 23:00 | 32% | 11.8% | 26 | 217 s | 24 | 16 | 5.39 ms |
+| shinjuku | 08:00 | 28% | 5.1% | 12 | 120 s | 26 | 10 | 5.32 ms |
+| shinjuku | 10:00 | 29% | 5.8% | 17 | 119 s | 25 | 11 | 4.83 ms |
+| shinjuku | 18:00 | 29% | 5.2% | 15 | 127 s | 25 | 11 | 4.84 ms |
+| shinjuku | 23:00 | 28% | 5.1% | 4 | 107 s | 26 | 12 | 5.42 ms |
+| sydney | 08:00 | 17% | 0.1% | 0 | 66 s | 29 | 8 | 3.11 ms |
+| sydney | 10:00 | 17% | 0.1% | 0 | 63 s | 29 | 12 | 2.64 ms |
+| sydney | 18:00 | 18% | 0.4% | 0 | 89 s | 29 | 18 | 2.99 ms |
+| sydney | 23:00 | 15% | 0.2% | 0 | 66 s | 31 | 30 | 2.52 ms |
+| tetsugaku | 08:00 | 14% | 0.4% | 0 | 66 s | 29 | 0 | 1.20 ms |
+| tetsugaku | 10:00 | 13% | 0.2% | 0 | 65 s | 30 | 4 | 1.16 ms |
+| tetsugaku | 18:00 | 16% | 0.3% | 0 | 47 s | 29 | 4 | 1.17 ms |
+| tetsugaku | 23:00 | 18% | 1.2% | 0 | 137 s | 28 | 4 | 1.35 ms |
+| tokyo | 08:00 | 19% | 0.5% | 3 | 71 s | 31 | 20 | 4.28 ms |
+| tokyo | 10:00 | 21% | 1.4% | 13 | 1578 s | 30 | 20 | 4.10 ms |
+| tokyo | 18:00 | 22% | 1.2% | 1 | 57 s | 30 | 19 | 4.04 ms |
+| tokyo | 23:00 | 22% | 0.9% | 0 | 65 s | 30 | 19 | 3.96 ms |
+
+Most maps run free: Sydney, Tetsugaku, Higashiyama, Queenstown and Kyoto by day stay under 1-3% jammed and no car
+stands more than a minute and a half. Where they did not, the same runs on main from before the trips (84829ade)
+tell what is the trips' and what is not:
+
+| map, hour | jammed, the soak | main before the trips | after the fix below |
+|---|---|---|---|
+| Kamakura 08:00 | 15.9%, longest 1011 s | 1.5%, 421 s | 1.8% |
+| Kamakura 23:00 | 23.7%, longest 1478 s | 1.1%, 120 s | 11.4%, and 4.7% in a second run |
+| Fushimi Inari 23:00 | 16.9%, longest 1382 s | 8.1%, 235 s | 5.6% |
+| Shibuya 10:00 | 11.3%, longest 338 s | 9.2%, 236 s | |
+| Tokyo 10:00 | 1.4%, one car 1578 s | 0.7%, 76 s | |
+
+Kamakura's gridlock was a knot across two junctions about 20 m apart on road 191 (junctions 90 and 91): a car in 90's
+box waiting to cross into 91, behind one stood in 91 behind a car held at 90's light, a light that cannot change while
+90's box is taken. Main crosses two junctions that close as one, and seldom met it; the trips send cars through the
+pair in ways main seldom did. Nothing undid it, so now a car stood 90 s anywhere in a junction's box backs out, or
+leaves the traffic (as one stood 20 s at a wall in a junction already did). Shibuya's share is main's own (#348).
+Kamakura at night is still above main's, and varies from run to run: left open in #355.
 
 #### Junctions and traffic lights
 
