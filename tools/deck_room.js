@@ -54,7 +54,7 @@ const [,, city = 'tetsugaku'] = process.argv;
     console.log(q[0].lane ? `LANE [${q[0].x}, ${q[0].y}] ${q[0].deck} at ${q[0].h} m under ${q[0].what}, ${lo.toFixed(2)} m of room under it (${q.length} samples)` : `LOW  [${q[0].x}, ${q[0].y}] the deck ${q[0].deck} at ${q[0].h} m over ${q[0].what}, ${lo.toFixed(2)} m of room under its slab (${q.length} samples)`);
   }
   const cr = await p.evaluate(() => window.__game.deckPlan.crossing);
-  if (cr) console.log(`(decks graded together in ${cr.rounds} rounds, ${cr.ms} ms, ${cr.left} samples left)`);
+  if (cr) console.log(`(decks graded together in ${cr.rounds} rounds, ${cr.ms} ms, ${cr.left} samples left; points moved: ${cr.over2} over 2 m, at most ${cr.maxMove} m)`);
   if (!groups.length) console.log(`ok   ${city}: no deck stands in the body of someone on a surface under it, nor over a crowd's lane`);
   if (logs.length) console.log(logs.slice(0, 10).join('\n'));
   await b.close();

@@ -289,8 +289,12 @@ window.OEDecks = (function () {
       }
     });
     let left = 0, it = 0, calm = 0;
-    const worst = [];
-    for (const r of recs) { r.sum = new Float64Array(r.zs.length); r.cnt = new Uint16Array(r.zs.length); }
+    const MOVE = c => (c === 'motorway' ? 3 : 8); // (an expressway's viaduct is measured: it moves least)
+    for (const r of recs) {
+      r.sum = new Float64Array(r.zs.length); r.cnt = new Uint16Array(r.zs.length); r.floor = new Float32Array(r.zs.length);
+      const p = r.o.p;
+      for (let k = 0; k < r.zs.length; k++) { const x = p[3 * k] / 10, y = p[3 * k + 1] / 10; r.floor[k] = Math.min(r.zs[k], nav.isWater(x, y) ? 1.6 : nav.terrain(x, y) + 0.1); }
+    }
     const touched = [], A = [[null, 0, 0], [null, 0, 0], [null, 0, 0], [null, 0, 0]]; // (the points a sample moves: line, point, share)
     const ask = (r, k, dz) => { if (!r.cnt[k]) touched.push(r, k); r.sum[k] += dz; r.cnt[k]++; };
     for (; it < 200; it++) {
@@ -313,7 +317,6 @@ window.OEDecks = (function () {
         if (o) { const ro = recs[o.li]; put(ro, o.k, -(1 - t)); put(ro, o.k + 1, -t); }
         if (a2 < 1e-6) continue;
         for (let i = 0; i < m; i++) ask(A[i][0], A[i][1], c * A[i][2] / a2);
-        if (it === 199 && worst.length < 40 && gap > KNEE) worst.push([+(d.ax + (d.bx - d.ax) * s).toFixed(0), +(d.ay + (d.by - d.ay) * s).toFixed(0), rd.o.c, o ? recs[o.li].o.c : 'strip', +gap.toFixed(2), pair.mode]);
       }
       left = bad;
       calm = bad ? 0 : calm + 1;
@@ -323,13 +326,23 @@ window.OEDecks = (function () {
         const r = touched[i], k = touched[i + 1];
         let dz = Math.max(-1, Math.min(1, r.sum[k] / r.cnt[k]));
         if (r.cls[k] !== 2) dz = Math.max(-SOFT, Math.min(SOFT, r.moved[k] + dz)) - r.moved[k];
+        // (a deck no lower than the ground under it, nor the water's slab clearance, and no more than MOVE from where
+        // plan() laid it: past that the data asks for two things at once, and the line keeps its own level)
+        else dz = Math.max(Math.max(r.floor[k], r.zs[k] - r.moved[k] - MOVE(r.o.c)), Math.min(r.zs[k] - r.moved[k] + MOVE(r.o.c), r.zs[k] + dz)) - r.zs[k];
         r.zs[k] += dz;
         r.moved[k] += dz;
         r.sum[k] = 0; r.cnt[k] = 0;
       }
       touched.length = 0;
     }
-    for (const r of recs) { delete r.sum; delete r.cnt; }
+    let maxMove = 0, over2 = 0;
+    const movers = [];
+    for (const r of recs) for (let k = 0; k < r.zs.length; k++) {
+      const m = Math.abs(r.moved[k]);
+      if (m > maxMove) maxMove = m;
+      if (m > 2) { over2++; movers.push([+(r.o.p[3 * k] / 10).toFixed(0), +(r.o.p[3 * k + 1] / 10).toFixed(0), r.o.c, +r.moved[k].toFixed(1)]); }
+    }
+    for (const r of recs) { delete r.sum; delete r.cnt; delete r.floor; }
     // write the levels back: the lines, the runs' points and columns, the pieces
     for (const r of recs) { const p = r.o.p; for (let k = 0; k < r.zs.length; k++) p[3 * k + 2] = Math.round(r.zs[k] * 10); }
     for (const run of runs) {
@@ -345,7 +358,7 @@ window.OEDecks = (function () {
     }
     for (const d of segs) { const r = recs[d.li]; d.az = r.zs[d.k]; d.bz = r.zs[d.k + 1]; delete d.li; delete d.k; }
     for (const r of recs) delete r.moved;
-    return { left, rounds: it, ms: Date.now() - t0, worst };
+    return { left, rounds: it, ms: Date.now() - t0, maxMove: +maxMove.toFixed(1), over2, movers };
   }
 
   // paths: game.json "paths" ({foot, road}: lines of [x, y, z] in decimetres, rewritten in place);
@@ -411,7 +424,9 @@ window.OEDecks = (function () {
             seen.add(s);
             if ([[s[0], s[1]], [s[2], s[3]]].some(([px, py]) => Math.min(Math.hypot(px - ax, py - ay), Math.hypot(px - bx, py - by)) < 3)) continue;
             if (Math.hypot(s[0] - ax, s[1] - ay) + Math.hypot(s[2] - s[0], s[3] - s[1]) < 1e-6) continue;
-            if (cross(ax, ay, bx, by, s[0], s[1], s[2], s[3])) return true;
+            // (a proper crossing: not a line running on in the same straight line, which cross() takes for touching)
+            const o = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+            if (o(ax, ay, bx, by, s[0], s[1]) * o(ax, ay, bx, by, s[2], s[3]) < 0 && o(s[0], s[1], s[2], s[3], ax, ay) * o(s[0], s[1], s[2], s[3], bx, by) < 0) return true;
           }
       return false;
     };
