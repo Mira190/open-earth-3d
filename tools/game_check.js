@@ -768,7 +768,8 @@ const npcNight = require('./npc_night');
         for (let i = 0; i < 40 && g.dlg.open; i++) { g.dlg.next(); g.dlg.next(); g.advance(0.05); }
         const got = g.qs().stamps.filter(s => s.id === `spot:${sp.id}`).length;
         const r = { id: sp.id, stamp: sp.stamp, stamped: got === 1 && had <= 1, frame: !!sp.frame, photo: g.photo.on, eye: null };
-        if (sp.frame) { g.advance(0.1); const c = g.camera.position, e = sp.frame.eye; r.eye = Math.hypot(c.x - e[0], -c.z - e[1], c.y - e[2]); }
+        // (where the photo camera stands, from its own state: advance() steps the world, not the photo camera, which the page's frames move)
+        if (sp.frame) { const ph = g.photo, c = OECine.around(ph.focus, ph.az, ph.dist * Math.cos(ph.pitch), ph.dist * Math.sin(ph.pitch), new THREE.Vector3()), e = sp.frame.eye; r.eye = Math.hypot(c.x - e[0], -c.z - e[1], c.y - e[2]); }
         if (g.photo.on) { g.photoMode(false); for (let i = 0; i < 12 && g.cine.active; i++) g.advance(0.1); }
         out.push(r);
       }
@@ -776,7 +777,7 @@ const npcNight = require('./npc_night');
     });
     for (const r of stops) check(r.stamped && (!r.frame || (r.photo && r.eye < 0.6)), `looks at the stop ${r.id}: stamped "${r.stamp}"${r.stamped ? '' : ' NOT'}${r.frame ? `, the photo camera ${r.photo ? `on its frame, ${r.eye.toFixed(2)} m from the frame's eye` : 'NOT opened'}` : ''}`);
     const near = await p.evaluate(() => {
-      const g = window.__game, open = g.openLines(), l = open.find(x => { const q = x.quests[g.ls(x).qi]; return q && !g.ls(x).started; });
+      const g = window.__game, open = g.openLines(), now = g.tracked(), l = open.find(x => { const q = x.quests[g.ls(x).qi]; return x !== now && q && !g.ls(x).started; }) || open.find(x => { const q = x.quests[g.ls(x).qi]; return q && !g.ls(x).started; });
       if (!l) return null;
       const q = l.quests[g.ls(l).qi], n = g.npcs.find(o => o.id === q.giver);
       if (!n) return null;
