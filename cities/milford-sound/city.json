@@ -9,6 +9,7 @@
  "locale": "en-NZ",
  "description": "Milford Sound / Piopiotahi in Fiordland: the fiord from the Tasman Sea to the Cleddau, Mitre Peak a mile straight out of the water, Stirling and Lady Bowen Falls, the rainforest on the walls and a cruise vessel under them, rebuilt from LINZ's open terrain and imagery.",
  "region": "Piopiotahi · Fiordland · Aotearoa New Zealand",
+ "weather": {"rain_days": [16.3, 12.8, 14.4, 13.3, 15.6, 14.6, 14.4, 16.0, 17.6, 17.6, 15.3, 16.9], "threshold_mm": 1.0, "drizzle": 0.3, "temp_max": [19.5, 20.0, 18.5, 15.9, 12.5, 9.3, 9.2, 11.2, 13.2, 15.0, 16.4, 18.5], "temp_min": [10.7, 10.7, 9.2, 7.0, 4.9, 2.3, 1.6, 2.7, 4.1, 5.8, 7.6, 9.7], "wind_ms": [2.4, 2.3, 2.1, 2.1, 2.2, 2.3, 2.4, 2.3, 2.3, 2.5, 2.5, 2.5], "wind_from_deg": 320, "elev_m": 3, "snow_days": [0.0, 0.0, 0.03, 0.2, 0.47, 0.73, 0.87, 0.77, 0.53, 0.33, 0.07, 0.0], "thunder_days": [1.83, 1.83, 1.83, 1.83, 1.83, 1.83, 1.83, 1.83, 1.83, 1.83, 1.83, 1.83], "fog_days": [0.07, 0.07, 0.15, 0.22, 0.3, 0.3, 0.3, 0.22, 0.15, 0.07, 0.07, 0.07], "source": "NIWA, Milford Sound Airport (agents 4107, 18309, 40987), 1991-2020, days with at least 1 mm (via Wikipedia's climate box)", "more": "Wind: the automatic station's mean of hourly winds; north-westerly, along the fiord (NIWA, The Climate and Weather of Southland, figure 8). Days a year with snow 4, thunder 22, fog 2 (its table 19), spread over the months: snow by Queenstown's frost-day shape, thunder evenly (the fronts off the Tasman), fog toward winter, a judgement. November 2026."},
  "bbox": [
   167.7146,
   -44.7099,
