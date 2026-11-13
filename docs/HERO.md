@@ -4,7 +4,8 @@ Asked for in November 2026 for Tokyo's live maps: one small level per map, a str
 200-300 m across, that reads at eye level as a photograph or a current game does, while the rest of
 the map stays as it is around it. Shinjuku's is Kabukicho Ichibangai (`cities/shinjuku/hero.py`);
 Shibuya's scramble and Marunouchi-Ginza's are built by their own sessions on the same kit. Kamakura's is
-the hill road above the Kamakurakokomae crossing (`cities/kamakura/hero.py`), the first by a map's spawn.
+the hill road above the Kamakurakokomae crossing (`cities/kamakura/hero.py`), the first by a map's spawn;
+Tetsugaku's is the head of the Philosopher's Path (`cities/tetsugaku/hero.py`).
 
 | What | Where |
 |---|---|
@@ -152,6 +153,49 @@ Not as it is, or not checked: the heights of the walls come from the terrain beh
 garage's size, the boards' wording and the poles' exact places are read off photographs; the house behind
 the wall is the city's plain solid; the hedges are clipped volumes, not leaves; the notice boards are our
 own drawing, not the real ones; the terrain's fold where the upper lane forks is the 5 m grid's.
+
+## The head of the Philosopher's Path (Tetsugaku)
+
+哲学の道 begins at Ginkakuji-bashi, where the Lake Biwa Canal's branch (疏水分線) turns south along the foot
+of the hills. The view from the bridge down its first hundred metres is the photograph everyone takes of
+the path. The game opened 75 m to the west, on the road, with its back to the canal; it now opens on the
+path's first slabs at (282.3, 1015.3), looking down it, and Haruka, who greets you, stands there too. The
+level (`cities/tetsugaku/hero.py`) is the 115 m from the bridge past the second bridge to the third.
+
+Built on the canal's own banks (`scene.json` `inland`: the channel's outline with each bank's and the
+water's height, from OpenStreetMap's line and GSI's laser terrain) and placed from photographs:
+
+- the canal's walls: random rubble, battered, dark and wet at the waterline and green above, under a granite
+  edging (drawn in front of the plain walls `web/inland.js` gives every channel);
+- the path on the west bank: moss at the wall's top, compacted earth, the two rows of granite slabs (458
+  stones, each of its own length, the rows out of step), a verge of moss and litter, azaleas, timber posts
+  with a rope, three granite benches, the black litter bins, a walkers' board, four vending machines (lit
+  after dark, baked), and at the bridge the boulder and the timber post with the path's name;
+- the east bank: a mossy verge with shrubs, the lane's asphalt, three utility poles with street lights;
+- a granite balustrade on each bridge's edges over the water.
+
+**No railing.** Every walled channel was given a steel railing along its walls. The path has none
+(OpenStreetMap maps ropes and hedges there, `barrier=rope`, and no photograph shows one), so a channel can
+now go without: `water.inland.lines[].rail: false` in `city.json`, carried by `pipeline/inland_water.py`
+into `scene.json` and read by `web/inland.js`, which also leaves the generic railing off a bridge over
+such a channel. It is off for the whole 疏水分線, not only inside the level.
+
+Photographs looked at (Wikimedia Commons; none is reproduced):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| Philosopher’s Walk and Biwako Canal from Ginkakujibashi Bridge.JPG | そらみみ | CC BY-SA 3.0 | the view itself: walls, the hedge at the wall's top, slabs, the boulder and post, posts and rope |
+| Ginkakujibashi Bridge from Philosopher’s Walk.JPG | そらみみ | CC BY-SA 3.0 | the bridge's balustrade and its wing wall |
+| Tetsugaku-no-michi - Philosopher's Walk - Kyoto.jpg | Gzzz | CC BY 4.0 | the slabs' sizes and two rows, the earth, the moss on the edging, posts and rope |
+
+Textures (ambientCG, CC0 1.0): `Bricks089` (the walls, tinted green), `Granite001A` (slabs, edging,
+balustrades, benches), `Ground069` (the earth), `Moss001` and `Ground068` (their gloss taken off), `Asphalt031`.
+
+Not as it is, or not checked: the houses and shops along the path are the city's plain solids (the timber
+shop fronts of the photographs are not modelled); the cherries are the city's trees, in the season's
+colours; the canal's width and the banks' heights are the map's (3.5 m; 1.0 m down to the water); the slabs'
+sizes are drawn from a range, not surveyed; the bridges' balustrades are one design for all three, taken
+from Ginkakuji-bashi's; the vending machines' and benches' places are OpenStreetMap's to within a few metres.
 
 ## Research: how the games build a street like this, and what runs in a browser
 

@@ -157,13 +157,19 @@ const npcNight = require('./npc_night');
         r.back = hidden.every(o => o.visible);
         out.push(r);
       }
-    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); g.hold(was); }
+    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); }
+    // back where you stood: a level by the start (Kamakura's) comes again before the checks that follow compare frames
+    const near = L => Math.hypot(pl.x - L.h.at[0], pl.y - L.h.at[1]) - (L.h.r || 150) < 200;
+    for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) await frames(1);
+    out.forEach(r => { const L = H.levels.find(l => l.h.id === r.id); r.again = !near(L) || !!(L.root && L.root.visible); });
+    g.hold(was);
     return out;
   });
   for (const r of heroes || []) {
     check(r.state === 'ready' && r.shown && r.tris > 1000 && r.glow > 0, `the hero level ${r.id} loads when you come near and is shown (${r.materials} materials, ${Math.round(r.tris)} triangles, ${r.glow} lit, after ${r.frames} frames)`);
     check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
     check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
+    check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
   }
   if (heroes) await lightsKept('with the hero level loaded and let go');
 
