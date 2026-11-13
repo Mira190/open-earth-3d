@@ -118,7 +118,8 @@ window.OpenEarthCity = async function main(cityId) {
     resize();
   }
   // a lost WebGL context pauses the loop under a note and comes back redrawn (glcare.js)
-  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { Wd.restoreGPU(); resize(); } });
+  // (on a phone the walls' shading lives on the GPU alone, world.js gpuOnly: there a lost context reloads the view)
+  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { if (Wd.gpuOnly) throw new Error('held on the GPU only'); Wd.restoreGPU(); resize(); } });
 
   // ------------------------------------------------------------ places
   const placeInfo = P.places.map(pl => {

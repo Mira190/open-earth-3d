@@ -114,14 +114,51 @@ window.OERail = (function () {
   }
 
   // the track: two rails on sleepers along a line, merged into one mesh per material
+  // The sun's glint along a rail (issue 372, item 1): the polished head of a rail is a long thin mirror, so it
+  // shines where the sun's reflection meets the line of the rail, a bright thread running towards the sun, the
+  // way a track looks into a low sun. The hair model of Kajiya and Kay (1989): with T the rail's direction and H
+  // the half vector, the highlight is sin(T, H) to a high power; it goes on the direct specular light, so the
+  // shadows and the sun's colour are the light's own. aRail: each vertex's rail direction, from trackMesh.
+  function glint(mat) {
+    if (mat.userData.glint) return mat;
+    mat.userData.glint = true;
+    mat.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aRail; varying vec3 vRailT;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvRailT = normalize((viewMatrix * modelMatrix * vec4(aRail, 0.0)).xyz);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRailT;')
+        .replace('#include <aomap_fragment>', `#include <aomap_fragment>
+#if NUM_DIR_LIGHTS > 0
+{ vec3 oeT = normalize(vRailT), oeV = normalize(vViewPosition), oeL = directionalLights[0].direction;
+  float oeTH = dot(oeT, normalize(oeL + oeV)), oeKK = pow(max(0.0, 1.0 - oeTH * oeTH), 90.0);
+  // the sun's light on the rail's head, as its diffuse term has it (its shadow, its colour, the angle)
+  vec3 oeE = reflectedLight.directDiffuse / max(material.diffuseColor * RECIPROCAL_PI, vec3(1e-3));
+  reflectedLight.directSpecular += oeE * oeKK * 1.4 * smoothstep(0.0, 0.08, dot(oeL, normal)); }
+#endif`);
+    };
+    mat.customProgramCacheKey = () => 'oe-rail-glint';
+    return mat;
+  }
+
   function trackMesh(ln, gauge, lift, mat, every = 1) {
-    const pos = [], idx = [];
+    const pos = [], idx = [], tan = [];
+    glint(mat);
+    // a rail: its head, w wide at h, and its two sides 0.14 m down (each face its own vertices, so that the
+    // normals stay square), wound to face out: the head had been wound face down, so that from above the
+    // rails were culled and only the sleepers showed
     const add = (a, b, w, h) => {
-      const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l * w / 2, ny = dx / l * w / 2, n = pos.length / 3;
-      for (const [p, z] of [[a, a[2]], [b, b[2]]]) {
-        pos.push(p[0] + nx, p[1] + ny, z + h, p[0] - nx, p[1] - ny, z + h);
-      }
-      idx.push(n, n + 2, n + 1, n + 1, n + 2, n + 3);
+      const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l * w / 2, ny = dx / l * w / 2;
+      const dz = b[2] - a[2], tl = Math.hypot(l, dz) || 1;
+      const quad = (o0, z0, o1, z1) => { // from offset o0 (in half widths, + on the left) at z0 to o1 at z1, a to b
+        const n = pos.length / 3;
+        for (const p of [a, b]) {
+          pos.push(p[0] + nx * o0, p[1] + ny * o0, p[2] + h + z0, p[0] + nx * o1, p[1] + ny * o1, p[2] + h + z1);
+          for (let k = 0; k < 2; k++) tan.push(dx / tl, dz / tl, -dy / tl);
+        }
+        idx.push(n, n + 1, n + 2, n + 1, n + 3, n + 2);
+      };
+      quad(1, 0, -1, 0); // the head, facing up
+      quad(-1, 0, -1, -0.14); // the right side, facing right
+      quad(1, -0.14, 1, 0); // the left side, facing left
     };
     const P = ln.pts;
     for (let i = 0; i + every < P.length; i += every) {
@@ -135,6 +172,7 @@ window.OERail = (function () {
     const v = new Float32Array(pos.length);
     for (let i = 0; i < pos.length; i += 3) { v[i] = pos[i]; v[i + 1] = pos[i + 2]; v[i + 2] = -pos[i + 1]; }
     g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.setAttribute('aRail', new THREE.BufferAttribute(new Float32Array(tan), 3));
     g.setIndex(idx);
     g.computeVertexNormals();
     const m = new THREE.Mesh(g, mat);

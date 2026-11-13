@@ -1589,6 +1589,73 @@ yields. In this game every car's intent is exact, so:
   Shinjuku's morning (`tools/traffic_check.js`, the clock held) 4.9% of the car-time
   jammed for half a minute or more against main's 4.8%, the longest stand 99 s against 114 s.
 
+**The soak (#355).** Every live map's traffic run for half an hour of the game's clock at 08:00, 10:00, 18:00 and
+23:00, the hour held (`tools/traffic_soak.sh`, `tools/traffic_check.js` with `CLOCK_HOLD`), on the trips, the kerb
+and the weather as they first landed (main at 80afa1a2). *Standing*: the share of the cars' time stood still;
+*jammed*: still 30 s or more; *at the kerb*: parked cars on average, left out of the two.
+
+| city | hour | standing | jammed | jammed at the end | longest still | km/h | at the kerb | update |
+|---|---|---|---|---|---|---|---|---|
+| fushimi-inari | 08:00 | 26% | 6.8% | 13 | 191 s | 23 | 1 | 1.42 ms |
+| fushimi-inari | 10:00 | 26% | 7.0% | 12 | 436 s | 23 | 1 | 1.41 ms |
+| fushimi-inari | 18:00 | 27% | 6.2% | 14 | 135 s | 23 | 4 | 1.37 ms |
+| fushimi-inari | 23:00 | 30% | 16.9% | 15 | 1382 s | 23 | 3 | 1.48 ms |
+| higashiyama | 08:00 | 34% | 3.4% | 0 | 100 s | 21 | 2 | 1.42 ms |
+| higashiyama | 10:00 | 35% | 2.5% | 0 | 89 s | 21 | 2 | 1.69 ms |
+| higashiyama | 18:00 | 27% | 0.6% | 0 | 51 s | 22 | 7 | 1.47 ms |
+| higashiyama | 23:00 | 26% | 0.1% | 0 | 52 s | 22 | 7 | 1.62 ms |
+| kamakura | 08:00 | 38% | 15.9% | 24 | 1011 s | 18 | 0 | 2.06 ms |
+| kamakura | 10:00 | 30% | 1.3% | 0 | 421 s | 20 | 7 | 2.08 ms |
+| kamakura | 18:00 | 37% | 14.8% | 22 | 874 s | 19 | 8 | 2.13 ms |
+| kamakura | 23:00 | 42% | 23.7% | 26 | 1478 s | 18 | 8 | 2.07 ms |
+| kyoto | 08:00 | 18% | 0.3% | 0 | 86 s | 28 | 2 | 2.75 ms |
+| kyoto | 10:00 | 18% | 0.6% | 0 | 89 s | 28 | 6 | 4.31 ms |
+| kyoto | 18:00 | 17% | 0.9% | 2 | 90 s | 29 | 5 | 2.64 ms |
+| kyoto | 23:00 | 24% | 6.4% | 4 | 371 s | 27 | 6 | 3.12 ms |
+| queenstown | 08:00 | 25% | 1.3% | 10 | 84 s | 12 | 0 | 1.60 ms |
+| queenstown | 10:00 | 24% | 1.0% | 0 | 72 s | 13 | 1 | 1.47 ms |
+| queenstown | 18:00 | 23% | 0.8% | 0 | 66 s | 13 | 0 | 1.48 ms |
+| queenstown | 23:00 | 24% | 1.3% | 0 | 80 s | 12 | 0 | 1.49 ms |
+| shibuya | 08:00 | 28% | 9.6% | 28 | 222 s | 25 | 4 | 5.23 ms |
+| shibuya | 10:00 | 31% | 11.3% | 53 | 338 s | 24 | 16 | 5.13 ms |
+| shibuya | 18:00 | 28% | 8.9% | 38 | 224 s | 25 | 16 | 5.14 ms |
+| shibuya | 23:00 | 32% | 11.8% | 26 | 217 s | 24 | 16 | 5.39 ms |
+| shinjuku | 08:00 | 28% | 5.1% | 12 | 120 s | 26 | 10 | 5.32 ms |
+| shinjuku | 10:00 | 29% | 5.8% | 17 | 119 s | 25 | 11 | 4.83 ms |
+| shinjuku | 18:00 | 29% | 5.2% | 15 | 127 s | 25 | 11 | 4.84 ms |
+| shinjuku | 23:00 | 28% | 5.1% | 4 | 107 s | 26 | 12 | 5.42 ms |
+| sydney | 08:00 | 17% | 0.1% | 0 | 66 s | 29 | 8 | 3.11 ms |
+| sydney | 10:00 | 17% | 0.1% | 0 | 63 s | 29 | 12 | 2.64 ms |
+| sydney | 18:00 | 18% | 0.4% | 0 | 89 s | 29 | 18 | 2.99 ms |
+| sydney | 23:00 | 15% | 0.2% | 0 | 66 s | 31 | 30 | 2.52 ms |
+| tetsugaku | 08:00 | 14% | 0.4% | 0 | 66 s | 29 | 0 | 1.20 ms |
+| tetsugaku | 10:00 | 13% | 0.2% | 0 | 65 s | 30 | 4 | 1.16 ms |
+| tetsugaku | 18:00 | 16% | 0.3% | 0 | 47 s | 29 | 4 | 1.17 ms |
+| tetsugaku | 23:00 | 18% | 1.2% | 0 | 137 s | 28 | 4 | 1.35 ms |
+| tokyo | 08:00 | 19% | 0.5% | 3 | 71 s | 31 | 20 | 4.28 ms |
+| tokyo | 10:00 | 21% | 1.4% | 13 | 1578 s | 30 | 20 | 4.10 ms |
+| tokyo | 18:00 | 22% | 1.2% | 1 | 57 s | 30 | 19 | 4.04 ms |
+| tokyo | 23:00 | 22% | 0.9% | 0 | 65 s | 30 | 19 | 3.96 ms |
+
+Most maps run free: Sydney, Tetsugaku, Higashiyama, Queenstown and Kyoto by day stay under 1-3% jammed and no car
+stands more than a minute and a half. Where they did not, the same runs on main from before the trips (84829ade)
+tell what is the trips' and what is not:
+
+| map, hour | jammed, the soak | main before the trips | after the fix below |
+|---|---|---|---|
+| Kamakura 08:00 | 15.9%, longest 1011 s | 1.5%, 421 s | 1.8% |
+| Kamakura 23:00 | 23.7%, longest 1478 s | 1.1%, 120 s | 11.4%, and 4.7% in a second run |
+| Fushimi Inari 23:00 | 16.9%, longest 1382 s | 8.1%, 235 s | 5.6% |
+| Shibuya 10:00 | 11.3%, longest 338 s | 9.2%, 236 s | |
+| Tokyo 10:00 | 1.4%, one car 1578 s | 0.7%, 76 s | |
+
+Kamakura's gridlock was a knot across two junctions about 20 m apart on road 191 (junctions 90 and 91): a car in 90's
+box waiting to cross into 91, behind one stood in 91 behind a car held at 90's light, a light that cannot change while
+90's box is taken. Main crosses two junctions that close as one, and seldom met it; the trips send cars through the
+pair in ways main seldom did. Nothing undid it, so now a car stood 90 s anywhere in a junction's box backs out, or
+leaves the traffic (as one stood 20 s at a wall in a junction already did). Shibuya's share is main's own (#348).
+Kamakura at night is still above main's, and varies from run to run: left open in #355.
+
 #### Junctions and traffic lights
 
 Before, a junction was a lock: one car at a time held the node it came up to,
@@ -2396,27 +2463,48 @@ stalls of both halls, chairs along the northern foyers' glass, a table at Bennel
   its `verb` ("Take your seat", "Sit at the table"). Seated you look out through your own eyes from `eye`
   metres over the seat, the way it faces; drag to turn your head; <kbd>E</kbd> stands you up where you were.
   Your own figure is not drawn from the seat (photo mode draws it again).
-- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, bars, lines}`)
+- **A show** (`{id, venue, title, act, by, sung, stage, singer, dim, bpm, a_hz, end_beat, melody, chorus, bars, lines}`)
   begins when you take a seat that names it. The house lights (`dim`, mesh names) go down as the oboe gives
   the A, the house claps the conductor in, and the scene is sung by the NPC `singer` on the stage, with its
-  lines as surtitles: the line as sung and, under it, in English. It ends in applause and plays again while
-  you keep your seat. The city's score rests while it plays (`web/game/life.js`).
+  lines as surtitles: the line as sung and, under it, in English. Where the score has a `chorus` (a line of
+  `[midi, beat, beats, syllable]` like `melody`), it is sung by three sopranos and three tenors an octave under
+  them, each a few cents and a fraction of a hertz of vibrato off the others. It ends in applause and plays
+  again while you keep your seat. The city's score rests while it plays (`web/game/life.js`).
 - **Nothing is recorded.** The voice is synthesised in the browser as a source and filter: a sawtooth
   through five formant band-passes (the alto table in the Csound manual's appendix "Formant Values": numbers,
-  used as data), with vibrato that comes in a fifth of a second after a note's start, a glide between slurred
-  notes, a breath of noise and a lift near 3 kHz, the singer's formant. Under it the cellos' ostinato and
-  pizzicato strings are plucked triangle and sawtooth tones, the tambourine and the applause are filtered
-  noise, and the hall is a convolution with 1.5 s of decaying noise. Sydney's show is the Habanera from
-  *Carmen* (Bizet, 1875; libretto by Meilhac and Halévy; the tune after Iradier's *El arreglito*, 1863): music
-  and words are in the public domain. The notes (`cities/sydney/opera_score.json`) were transcribed from a lead
-  sheet and checked against the themes in Barlow and Morgenstern's dictionary; the syllables under them outside
-  the first phrase and the refrain were set by count, not from the vocal score, and the major-key repeat, the
-  chorus's in the opera, is given to the soloist. The English lines are this project's own. What was looked at
-  and not adopted: Pink Trombone (Neil Thapen, MIT), an articulatory model, heavier than a formant voice needs.
+  used as data), with vibrato that comes in a sixth of a second after a note's start (about ±60 cents at
+  5.5 Hz on a held note, drifting a little in rate), a slow wander of a few cents, a glide between slurred
+  notes, a breath of noise and a lift near 3 kHz, the singer's formant. High in her range the first formant
+  follows the note up instead of sitting under it, as a soprano opens her jaw (Sundberg, *The Science of the
+  Singing Voice*, 1987). Under it the cellos' ostinato and pizzicato strings are plucked triangle and
+  sawtooth tones, the tambourine and the applause are filtered noise, and the hall is a convolution with 1.5 s
+  of decaying noise. Sydney's show is the Habanera from *Carmen* (Bizet, 1875; libretto by Meilhac and
+  Halévy; the tune after Iradier's *El arreglito*, 1863): music and words are in the public domain. The notes
+  and their syllables (`cities/sydney/opera_score.json`) are checked bar by bar against Choudens's vocal
+  score (Paris, plate A.C. 3082; the 1883 reprint of the 1875 edition, No. 5, pp. 49-51, Internet Archive
+  `carmenopracomi00bize`): the verse's triplets fall on the second to fourth quavers of their bars, and in the
+  major-key refrain the chorus of cigarières and young men sings the tune while Carmen answers it with "L'amour!"
+  before her couplet, "L'amour est enfant de Bohême", and the chorus's "Prends garde à toi!". The English lines
+  are this project's own. What was looked at and not adopted: Pink Trombone (Neil Thapen, MIT), an
+  articulatory model, heavier than a formant voice needs.
+- **The audience** round the seats kept for you (a show's `audience`: the patrons' instanced prop and index, nearest
+  first, and its `cast` of Rocketbox characters) are seated people, taken in when you first come within 45 m of the
+  stage and drawn and posed only while you are that near; the low figures they stand for are hidden. 28 on the high
+  tier, 18 on the medium, 10 on the low.
+- **On a phone** the action button takes the seat and stands you up, a finger drawn across the screen turns your
+  head, and the joystick, Jump, Run and Guess are put away while you sit. `TOUCH=1 node tools/seat_probe.js sydney
+  out 390x844` takes the seats that way.
+- **Listening to it.** No harness has sound, so `node tools/show_bounce.js [dir]` renders the show offline
+  (`OEShow.bounce`, as `OEMusic.bounce` renders the score) to WAV files: the mix, and her voice, the chorus,
+  the orchestra and the house alone. `python tools/show_listen.py [dir]` measures them as an ear would judge:
+  each note's pitch against the score (YIN), the vibrato's rate and extent on the held notes, each vowel's
+  first two formants (LPC), her level over the pit (+8 dB) and the chorus's (+3.5 dB, under her), the mix's
+  peak (-5 dBFS) and brightness. Each is checked against its range.
 - `tools/seat_step.js` (in `tools/game_check.js`; on its own, `tools/seat_probe.js`) takes one seat of each
   kind: the action must offer it, you must be seated at it looking its way with your eyes 0.8 to 1.5 m over
   it, and stand up on foot; at a show the clock must run, the lights go down, the singer sing and the first
-  line's surtitle read as written.
+  line's surtitle read as written. It first settles whatever an earlier step left showing (the HUD tour, a
+  coach, the arrival, a camera shot, a conversation, a panel), which under load could leave no action offered.
 
 ## Routes
 

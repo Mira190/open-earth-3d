@@ -36,9 +36,14 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  const p = await b.newPage({ viewport: { width: w, height: h } });
+  // LEAN=1: an iPhone, so quality.js's phone-memory path is taken (the ground aerial streamed, the decorative
+  // textures downsized): to see the look a phone gets. It forces the low tier.
+  const lean = !!process.env.LEAN;
+  const ctx = lean ? await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1' }) : b;
+  const p = lean ? await ctx.newPage() : await b.newPage({ viewport: { width: w, height: h } });
   // a software renderer picks the low tier for itself; stills are taken at the desktop one
-  await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
+  await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || (lean ? 'low' : 'high'));
   // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
   await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, 'plush.js'), 'utf8') }); // (the plush traveller, for "plush")

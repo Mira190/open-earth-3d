@@ -134,6 +134,7 @@ window.OEAutopilot = (function () {
       const k = reduced ? 0.5 : F.t / sh.t, e = k * k * (3 - 2 * k);
       return { yaw: sh.yaw[0] + (sh.yaw[1] - sh.yaw[0]) * (sh.orbit ? k : e), dist: sh.dist, pitch: sh.pitch, cut: F.cut, name: sh.name };
     };
+    F.skip = () => { F.t = Infinity; }; // (on to the next shot at the next step: this one's view is blocked)
     return F;
   }
 

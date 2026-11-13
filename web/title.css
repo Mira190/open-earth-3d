@@ -152,6 +152,21 @@
 .ts-item.hot .n { color: var(--amber); }
 .ts-item.hot .nm { transform: translateX(10px); color: #fff; }
 .ts-item.hot::before { width: 70%; }
+/* the one action: straight into the best Japanese level, the other Tokyo areas and Kyoto beside it */
+.ts-hero { margin: 0 0 34px; display: grid; gap: 10px; }
+.ts-hero[hidden] { display: none; }
+.ts-hero .ts-eyebrow { margin: 0 0 4px; color: var(--amber); }
+.ts-hero .ts-go { width: 100%; flex: none; padding: 15px 18px; font: 400 13px/1 var(--t-display); letter-spacing: 0.16em; text-transform: uppercase; }
+.ts-hero .ts-go b { font-weight: 500; }
+.ts-hero .ts-go b small { font: 600 0.92em/1 var(--t-jp); letter-spacing: 0.12em; margin-left: 0.5em; opacity: 0.8; }
+.ts-also { display: flex; gap: 6px; flex-wrap: wrap; }
+.ts-chip { border: 1px solid var(--line); background: rgba(236, 232, 225, 0.03); color: var(--tx); cursor: pointer; padding: 9px 12px; display: grid; gap: 5px; text-align: left;
+  font: 400 11px/1 var(--t-display); letter-spacing: 0.12em; text-transform: uppercase; transition: border-color 0.3s, background 0.3s; }
+.ts-chip small { font: 400 8.5px/1 var(--t-mono); letter-spacing: 0.14em; color: var(--tx3); }
+.ts-chip:hover, .ts-chip:focus-visible { border-color: rgba(236, 232, 225, 0.45); background: rgba(236, 232, 225, 0.07); }
+.ts-menu .ts-hero { opacity: 0; transform: translateX(-16px); }
+.title-app.menu .ts-menu .ts-hero { opacity: 1; transform: none; transition: opacity 0.9s ease, transform 1.1s var(--ease); transition-delay: 100ms; }
+@media (min-width: 861px) and (max-height: 960px) { .ts-hero { margin-bottom: 26px; } .ts-item { padding: 7px 0; } }
 .ts-menu .ts-hint { margin: 22px 0 0; font: 400 9px/1.7 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx3); }
 .ts-hint kbd { font: inherit; color: var(--tx2); border: 1px solid var(--line); padding: 1px 5px; border-radius: 2px; margin: 0 2px; }
 
@@ -424,6 +439,13 @@
   .ts-item[aria-current="true"] .nm { transform: none; }
   .ts-list:has(.ts-item[aria-current="true"]) .ts-item:not([aria-current="true"]) { opacity: 0.6; }
   .ts-menu .ts-hint, .ts-foot { display: none; }
+  /* on a phone the action sits over the strip of places, a thumb's reach from the bottom */
+  .ts-hero { margin: 0 20px 18px; gap: 8px; }
+  .ts-hero .ts-eyebrow { display: none; }
+  .ts-hero .ts-go { padding: 14px 16px; }
+  .ts-also { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px; }
+  .ts-chip { flex: none; padding: 8px 11px; }
+  .ts-stage:has(.ts-card.on) .ts-hero, .title-app.metro-full .ts-hero { display: none; }
   .ts-card { left: 16px; right: 16px; width: auto; bottom: calc(124px + env(safe-area-inset-bottom, 0px)); padding: 16px 18px; gap: 12px; }
   .ts-card .sum { -webkit-line-clamp: 3; font-size: 12.5px; line-height: 1.5; padding-left: 10px; }
   .ts-card.metro .sum, .ts-local, .ts-spots .ts-k { display: none; }
