@@ -701,6 +701,10 @@ vec3 steepRock(vec3 c, float k) {
     renderer.toneMappingExposure = 0.6;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
+    // the tier's largest texture (quality.js tex: 2048 on the low tier): three.js scales a picture over it down as it
+    // uploads it, and what is drawn here for the GPU (the roofs' photo, the water's cover) is drawn no larger
+    const QW = window.OEQuality ? OEQuality.city() : null, LEAN = !!(QW && QW.lean);
+    if (QW && QW.tex < renderer.capabilities.maxTextureSize) renderer.capabilities.maxTextureSize = QW.tex;
     const SHADOW = Math.min(renderer.capabilities.maxTextureSize, shadow || (renderer.capabilities.maxTextureSize >= 8192 && !small ? 4096 : 2048));
 
     const world = new THREE.Scene();
@@ -1152,6 +1156,37 @@ uniform sampler2D uSkyVis; uniform vec4 uSkyVisF; uniform float uSkyVisK;`)
 { vec3 oeSP = transpose(mat3(viewMatrix)) * (-vViewPosition - viewMatrix[3].xyz);
   float oeSV = texture2D(uSkyVis, vec2((oeSP.x - uSkyVisF.x) * uSkyVisF.z, (-oeSP.z - uSkyVisF.y) * uSkyVisF.w)).r;
   reflectedLight.indirectDiffuse *= mix(1.0, oeSV, uSkyVisK * (1.0 - smoothstep(150.0, 500.0, length(vViewPosition)))); }`);
+      groundBounce(sh); // (the walls among them: the landmarks' and the quays')
+    };
+    // A bounce that knows its ground (issue 372, item 2). Sunlit ground throws warm light back onto the walls over
+    // it, through the hemisphere light's ground colour (game/atmosphere.js shadeLight); alone, that lit a wall in a
+    // dark alley as warmly as one on a sunlit square. The wall reads the sky visibility (skyvis.webp, above) of the
+    // ground 4 m in front of it: from it the height of the horizon there (its mean cos^2 is the texture's value), and
+    // whether the sun clears it. The ground term of the hemisphere light is scaled by that: a canyon's foot keeps
+    // a third of its bounce, an open square a quarter more than it had. One texture read in the walls' shader, no pass.
+    // uBounceSun: the sun's elevation (rad), uBounceK: how much of the day it is (0 at night: the bounce as it was).
+    // `?bounce=off` leaves it out.
+    const BOUNCE = SKYVIS && new URLSearchParams(location.search).get('bounce') !== 'off' ? Object.assign({ uBounceSun: { value: 0 }, uBounceK: { value: 0 } }, SKYVIS) : null;
+    const groundBounce = sh => {
+      if (!BOUNCE || sh.uniforms.uBounceSun || !sh.fragmentShader.includes('#include <lights_fragment_end>')) return;
+      const had = !!sh.uniforms.uSkyVis;
+      Object.assign(sh.uniforms, BOUNCE);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+${had ? '' : 'uniform sampler2D uSkyVis; uniform vec4 uSkyVisF; uniform float uSkyVisK;'} uniform float uBounceSun, uBounceK;`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+#if NUM_HEMI_LIGHTS > 0
+if (uBounceK > 0.0 && uSkyVisK > 0.0 && 0.5 - 0.5 * dot(normal, hemisphereLights[0].direction) > 0.02) { // (not the ground: it faces away)
+  mat3 oeBI = transpose(mat3(viewMatrix));
+  vec3 oeBP = oeBI * (-vViewPosition - viewMatrix[3].xyz), oeBN = oeBI * normal;
+  vec2 oeBQ = oeBP.xz + normalize(oeBN.xz + 1e-4) * 4.0;
+  float oeBV = texture2D(uSkyVis, vec2((oeBQ.x - uSkyVisF.x) * uSkyVisF.z, (-oeBQ.y - uSkyVisF.y) * uSkyVisF.w)).r;
+  float oeHz = acos(sqrt(clamp(oeBV, 0.0, 1.0))); // the horizon's height over that ground, rad
+  float oeLitG = smoothstep(oeHz - 0.14, oeHz + 0.14, uBounceSun);
+  float oeGw = 0.5 - 0.5 * dot(normal, hemisphereLights[0].direction); // the ground's share of the hemisphere light here
+  float oeF = mix(1.0, mix(0.3, 1.25, oeLitG), uBounceK * (1.0 - smoothstep(150.0, 500.0, length(vViewPosition))));
+  reflectedLight.indirectDiffuse += hemisphereLights[0].groundColor * oeGw * (oeF - 1.0) * material.diffuseColor * RECIPROCAL_PI;
+}
+#endif`);
     };
     // the street lights on a lit surface: its colour times their light where it is (the world
     // position from the view position, as the view matrix is rigid)
@@ -1221,18 +1256,27 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const lo = scene.ground_lo, loTex = pics.overview && photoTex(null);
     if (loTex) pics.overview.then(img => { if (img) { loTex.image = img; loTex.needsUpdate = true; } });
     const shown = []; // (every tile's own picture on screen: pics.shown, which the film and still tools wait for)
+    // the overview's part under a tile (one image on the GPU for them all)
+    const loPart = t => {
+      const tex = loTex.clone();
+      tex.repeat.set((t.x1 - t.x0) / (lo.x1 - lo.x0), (t.y1 - t.y0) / (lo.y1 - lo.y0));
+      tex.offset.set((t.x0 - lo.x0) / (lo.x1 - lo.x0), (t.y0 - lo.y0) / (lo.y1 - lo.y0));
+      return tex;
+    };
+    // On a phone (quality.js lean) only the tiles nearest the camera keep their own picture on the GPU (budget.groundTiles,
+    // 6 MB each), the others the overview's part; groundKeep(x, y) moves them as the camera goes (the game, every second).
+    // Shibuya's twenty tiles were 122 MB of textures, Queenstown's twenty-eight 170
+    const KEEP = LEAN && loTex && QW.budget ? QW.budget.groundTiles : 0, stream = KEEP ? { img: [], own: [], lo: [], at: null } : null;
     scene.ground.forEach((t, i) => {
       const g = tileGeometry(t, T);
       let tex;
-      if (loTex && !pics.first[i]) { // the overview's part under this tile, until its picture comes (one image on the GPU for them all)
-        tex = loTex.clone();
-        tex.repeat.set((t.x1 - t.x0) / (lo.x1 - lo.x0), (t.y1 - t.y0) / (lo.y1 - lo.y0));
-        tex.offset.set((t.x0 - lo.x0) / (lo.x1 - lo.x0), (t.y0 - lo.y0) / (lo.y1 - lo.y0));
-      } else tex = photoTex(null);
+      if (loTex && (!pics.first[i] || stream)) tex = loPart(t); // (until its picture comes)
+      else tex = photoTex(null);
       const m = groundMesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
       shown.push(pics.tiles[i].then(async img => {
         if (!pics.overview) tileLoaded(img);
         if (!img) return;
+        if (stream) { stream.img[i] = img; stream.lo[i] = tex; if (stream.at) groundKeep(...stream.at, true); return; }
         if (pics.first[i]) { tex.image = img; tex.needsUpdate = true; return; }
         // a far tile, after the game opened: sent to the GPU between frames, then swapped in
         const own = photoTex(img);
@@ -1246,6 +1290,32 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       groundMeshes.push(m);
     });
     pics.shown = () => Promise.all(shown);
+    // which tiles show their own picture on a phone: the KEEP nearest (x, y), each sent to the GPU between frames as it
+    // comes in and given back when it drops out; at first those round the start
+    function groundKeep(x, y, now = false) {
+      if (!stream) return;
+      const was = stream.at;
+      stream.at = [x, y];
+      if (!now && was && Math.hypot(x - was[0], y - was[1]) < 150) return;
+      const d = scene.ground.map((t, i) => [Math.hypot(Math.max(t.x0 - x, 0, x - t.x1), Math.max(t.y0 - y, 0, y - t.y1)), i]).sort((a, b) => a[0] - b[0]);
+      const want = new Set(d.slice(0, KEEP).map(e => e[1]));
+      scene.ground.forEach((t, i) => {
+        const m = groundMeshes[i], own = stream.own[i];
+        if (want.has(i) && !own && stream.img[i]) {
+          const tex = stream.own[i] = photoTex(stream.img[i]);
+          idle().then(() => {
+            if (stream.own[i] !== tex) return;
+            try { renderer.initTexture(tex); } catch (e) { /* sent on its first draw */ }
+            m.material.map = tex;
+          });
+        } else if (!want.has(i) && own) {
+          stream.own[i] = null;
+          m.material.map = stream.lo[i];
+          own.dispose();
+        }
+      });
+    }
+    if (stream) groundKeep(...(groundAt || [0, 0]), true);
 
     // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
     // the old see-through sheet with ripples. On land the terrain covers it either way.
@@ -1590,9 +1660,24 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
         .catch(e => { console.warn('bounds-tree worker', e); here(); });
       else here();
     }
+    // a phone (quality.js lean): once uploaded, the walls' shading attributes and the cells' indices are the GPU's
+    // alone (a hundred MB of script memory in Shibuya); the picking mesh keeps what a pick reads (position, index,
+    // bid). A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
+    let gpuOnly = false; // (set here, before the api is made)
+    if (LEAN && bCells) {
+      const letGo = function () { this.array = null; };
+      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode']) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
+      for (const c of bCells.children) if (c.geometry.index) c.geometry.index.onUpload(letGo);
+      gpuOnly = true;
+    }
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
     if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
+    if (BOUNCE && buildings.material && buildings.material.onBeforeCompile) { // the walls' bounce from the ground in front of them
+      const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
+      buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); groundBounce(sh); };
+      buildings.material.customProgramCacheKey = function () { return `${key ? key.call(this) : ''}|bounce`; };
+    }
     if (FARSUN && buildings.material && buildings.material.onBeforeCompile) { // the walls and roofs take the far sun's shadow too
       const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
       buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); sunLit(sh); };
@@ -1778,8 +1863,24 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     loadMsg('Building the landmarks', 0.65);
     await idle();
     const lmMats = {}, floodMats = {}, lmTex = {};
+    // On a phone (quality.js lean) a landmark's decorative images — the big LED screens, signage atlases, plaques —
+    // are drawn at most LEAN_CAP on a side (Shibuya's screens.webp is 2048, 21 MB; here 1024, 5), which the ground
+    // aerial and the mask textures (shore, woods) keep clear of, since they are data read by the pixel. The picture
+    // is drawn once at its own size then let go. A text sign stays legible: these are seen across a street, not read.
+    const LEAN_CAP = 1024;
+    const leanDown = tex => {
+      if (!LEAN || !tex || !tex.image) return tex;
+      const im = tex.image, side = Math.max(im.width || 0, im.height || 0);
+      if (side <= LEAN_CAP) return tex;
+      const k = LEAN_CAP / side, cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(im.width * k)); cv.height = Math.max(1, Math.round(im.height * k));
+      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      tex.image = cv; tex.needsUpdate = true;
+      tex.onUpdate = () => { cv.width = cv.height = 1; };
+      return tex;
+    };
     // an image the city's landmark_assets hook draws (signs, plaques, votive tablets), on texture coordinates 0..1
-    const imageTex = f => lmTex[f] || (lmTex[f] = Object.assign(texLoader.load(D.DATA + f),
+    const imageTex = f => lmTex[f] || (lmTex[f] = Object.assign(texLoader.load(D.DATA + f, leanDown),
       { colorSpace: THREE.SRGBColorSpace, anisotropy: renderer.capabilities.getMaxAnisotropy() }));
     // the tiled PBR surfaces a landmark material names (web/pbr.js): their sets' means, before the materials
     if (window.OEPbr && Object.values(LM.materials || {}).some(m => m.pbr)) await OEPbr.load();
@@ -2085,7 +2186,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     function waterCover(runs = []) {
       if (!sea || !sea.setCover) return;
       const fr = scene.frame, x0 = fr.x[0], x1 = fr.x[1], y0 = fr.y[0], y1 = fr.y[1];
-      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / 4096), W = Math.ceil((x1 - x0) / res), H = Math.ceil((y1 - y0) / res);
+      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / Math.min(4096, renderer.capabilities.maxTextureSize)), W = Math.ceil((x1 - x0) / res), H = Math.ceil((y1 - y0) / res);
       const cv = document.createElement('canvas');
       cv.width = W; cv.height = H;
       const g = cv.getContext('2d');
@@ -2130,7 +2231,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
       const tex = new THREE.CanvasTexture(cv);
       tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096)
+      tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096; at most 2048 a side on the low tier)
       if (sea.uniforms && sea.uniforms.uCover.value) sea.uniforms.uCover.value.dispose();
       sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
     }
@@ -2138,7 +2239,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, gpuOnly, groundKeep, U, SRC, extrude, bColour, floodMats, lmMats, night,
       skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
       hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
@@ -2171,6 +2272,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         hemi.groundColor.setHex(0x4d463a);
+        if (BOUNCE) { BOUNCE.uBounceSun.value = sp.altitude * Math.PI / 180; BOUNCE.uBounceK.value = smooth(-1, 6, sp.altitude); }
         if (api.shadeLight) api.shadeLight(hemi, sunLight, day); // a region's look: the shade's colour, the ground's bounce (game/atmosphere.js)
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         if (far) far.setNight(U.uNight.value);

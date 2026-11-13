@@ -101,6 +101,8 @@ const only = process.env.ONLY ? process.env.ONLY.split(',') : null, onlyT = proc
           }
         }
         g.advance(settle);
+        // a hero level near the camera (game/hero.js) loaded and shown before the still: frames until none is loading
+        if (g.hero && g.hero()) for (let i = 0; i < 1200; i++) { await new Promise(r => requestAnimationFrame(r)); if (i > 3 && !g.hero().state().some(h => h.state === 'loading')) break; }
         g.Wd.fitShadow(S.pose.look, 300);
         // the frame time on this renderer: the median of nf real frames
         const ts = [];
