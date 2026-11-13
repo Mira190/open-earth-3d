@@ -1,5 +1,5 @@
 // A read-only file system for a build of web/ hosted where the number of files is capped (tools/artifact_bundle.py).
-// The data and shared assets are packed into a few chunk files (vfs/NN.bin) with an index (vfs/index.json) of
+// The data and shared assets are packed into a few chunk files (vfs/NNN.wasm) with an index (vfs/index.json) of
 // path -> [chunk, offset, length]. This script, loaded before anything else on a page and by the workers that
 // fetch data, answers fetch() and <img src> for an indexed path from its chunk, fetched once and kept, and
 // passes every other request through unchanged. Runs in a window and in a worker.

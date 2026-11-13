@@ -10,6 +10,7 @@ that have an AVIF twin).
     python tools/artifact_bundle.py OUT_DIR
 """
 import json
+import re
 import os
 import shutil
 import sys
@@ -71,6 +72,14 @@ def main(out):
         i = html.index('<meta charset')
         html = html[:i] + tag + html[i:]
         open(f, 'w').write(html)
+    # no analytics key in this build: the host's content policy blocks the collector anyway, and with no
+    # endpoint telemetry.js sends nothing (it says so in its header)
+    f = os.path.join(out, 'telemetry.js')
+    js = open(f).read()
+    js2 = re.sub(r"endpoint: '[^']*'", "endpoint: ''", js, count=1)
+    js2 = re.sub(r"key: 'phc_[A-Za-z0-9]+'", "key: ''", js2, count=1)
+    assert js2 != js and 'phc_' not in js2, 'telemetry.js CONFIG not found'
+    open(f, 'w').write(js2)
     for w in WORKERS:
         f = os.path.join(out, w)
         code = open(f).read()
