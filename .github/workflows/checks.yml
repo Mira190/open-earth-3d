@@ -3,7 +3,9 @@
 # commits can have changed, one city and kind a runner, so that nobody waits for it. What it checks is
 # what changed since the last run of it that passed, so a run that was skipped while another was going,
 # or that failed, is made up by the next. A failure opens an issue labelled main-red (or adds to the open
-# one) with the shards that failed and the commits they cover; the next pass closes it.
+# one) with the shards that failed and the commits they cover; the next pass closes it. A check that failed on
+# one step and then on another when run again passes as FLAKY (tools/check.sh); those are added to the issue
+# labelled check-flaky, so that an unsteady step shows by how often it is named.
 name: Checks
 
 on:
@@ -81,7 +83,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri
       - name: What the static checks import
         if: matrix.target == 'static'
-        run: pip install numpy shapely pillow
+        run: pip install numpy shapely pyproj pillow
       - name: Check
         env:
           TARGET: ${{ matrix.target }}
@@ -94,12 +96,27 @@ jobs:
           name: check-${{ strategy.job-index }}
           path: ${{ runner.temp }}/check
           retention-days: 7
+      - id: flaky
+        if: always()
+        run: '[ ! -s "$RUNNER_TEMP/check/flaky.txt" ] || echo found=1 >>"$GITHUB_OUTPUT"'
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.flaky.outputs.found
+        with:
+          name: flaky-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/check/flaky.txt
+            ${{ runner.temp }}/check/*.log
+          retention-days: 7
 
   report:
     needs: [plan, shard]
-    if: always() && github.ref == 'refs/heads/main' && needs.shard.result != 'cancelled'
+    if: always() && needs.shard.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: flaky-*
+          path: flaky
       - env:
           GH_TOKEN: ${{ github.token }}
           RESULT: ${{ needs.shard.result }}
@@ -125,6 +142,16 @@ jobs:
             gh label create main-red --repo "$GITHUB_REPOSITORY" --color B60205 --description "The full checks fail on main" 2>/dev/null || true
             if [ -n "$open" ]; then gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body-file body.md
             else gh issue create --repo "$GITHUB_REPOSITORY" --label main-red --title "Main is red: the full checks fail" --body-file body.md; fi
+          fi
+          # the unsteady steps of this run, on the one issue that collects them
+          if cat flaky/*/flaky.txt >flaky.txt 2>/dev/null && [ -s flaky.txt ]; then
+            { echo "At ${GITHUB_SHA:0:8} ([run]($run), logs in its flaky artifacts):"; echo; sed 's/^FLAKY */- /' flaky.txt; } >flaky.md
+            gh label create check-flaky --repo "$GITHUB_REPOSITORY" --color FBCA04 --description "Steps of the checks that fail one run and pass the next" 2>/dev/null || true
+            n=$(gh issue list --repo "$GITHUB_REPOSITORY" --label check-flaky --state open --json number --jq '.[0].number // empty' || true)
+            if [ -n "$n" ]; then gh issue comment "$n" --repo "$GITHUB_REPOSITORY" --body-file flaky.md
+            else gh issue create --repo "$GITHUB_REPOSITORY" --label check-flaky --title "Checks: steps that fail one run and pass the next" --body-file flaky.md; fi
+          fi
+          if [ "$RESULT" = failure ] || [ "$PLAN" = failure ]; then :
           elif [ "$RESULT" = success ] || [ "$RESULT" = skipped ]; then
             [ -z "$open" ] || gh issue close "$open" --repo "$GITHUB_REPOSITORY" --comment "The full checks pass on main at ${GITHUB_SHA:0:8} ([run]($run))."
           fi

@@ -75,7 +75,7 @@ PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 shared=0 fish=0
+cities=() reefs=() title=0 loader=0 voice=0 telemetry=0 shared= fish=0
 declare -A want=()   # the kinds to run for each city
 add_city() {   # a city, and the kinds of its checks to run (all of them when none is named)
   local c=$1 k
@@ -88,8 +88,13 @@ add_kinds() {   # city:kind,kind
   is_in "$c" "$CITIES" || is_in "$c" "$PARKED" || { echo "unknown city: $c"; exit 2; }
   add_city "$c" "$(echo "${1#*:}" | tr ',' ' ')"
 }
-# a change to the shared code: every live city in the full tier, the smoke cities in the fast one (added after the loop)
-shared_change() { if [ "$TIER" = full ]; then all_cities; else shared=1; fi; }
+# a change to the shared code, and the kinds of checks it can break (all of them when none is named): every live
+# city's in the full tier, the smoke cities' in the fast one (added after the loop)
+shared_change() {
+  local c k
+  if [ "$TIER" = full ]; then for c in $CITIES; do add_city "$c" "${1:-}"; done
+  else for k in ${1:-$KINDS}; do is_in "$k" "$shared" || shared="$shared $k"; done; fi
+}
 add_reef() { is_in "$1" "${reefs[*]:-}" || reefs+=("$1"); }
 all_cities() { for c in $CITIES; do add_city "$c"; done; }
 all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
@@ -138,14 +143,24 @@ else
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) shared_change; loader=1; telemetry=1 ;;
       web/game/fishing.js|tools/fishing_*|pipeline/fishing.py)   # the cities with fishing spots only (docs/FISHING.md)
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) shared_change ;;
+      tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
+      tools/clip_check.js) shared_change clip ;;
+      tools/mem_check.js) shared_change mem ;;
+      tools/tour_check.js) shared_change tour ;;
+      tools/pin_clock.js) shared_change "game clip" ;;
+      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) shared_change ;;
       tools/check.sh|tools/live_cities.sh|.github/workflows/checks.yml) voice=1 ;;   # the checks' own plumbing: the static ones, and the run itself
       tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
     esac
   done
-  if [ $shared -eq 1 ]; then
-    for t in $SMOKE; do add_kinds "$t"; done
-    echo "fast tier: the shared code changed, so the smoke cities play ($SMOKE); every live city plays on main after landing (CHECK_TIER=full for all of them here)"
+  if [ -n "$shared" ]; then   # of the smoke cities' kinds, those the change can break
+    for t in $SMOKE; do
+      k=$(for k in $(echo "${t#*:}" | tr ',' ' '); do is_in "$k" "$shared" && echo "$k"; done | paste -sd, -)
+      [ -n "$k" ] && { add_kinds "${t%%:*}:$k"; smoked=1; }
+    done
+    # (when the smoke cities play none of the kinds changed, the first of them plays those)
+    [ -n "${smoked:-}" ] || add_city "${SMOKE%%:*}" "$shared"
+    echo "fast tier: the shared code changed, so the smoke cities play ($SMOKE); every live city plays on main after landing (CHECK_TIER=full for all of them here)" >&2
   fi
   if [ $fish -eq 1 ]; then   # the fast tier fishes one water
     for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && { add_city "$id" game; break; }; done
@@ -186,8 +201,22 @@ X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 # into a post), and pass when run alone (issue 84). Run in parallel (pass=load), a failure is put off
 # to a rerun alone after the others (pass=alone), and only a failure alone fails; the run under load
 # keeps its log as <city>-load.log
+# A step that fails in one run and another step in the next is the check's own unsteadiness, not the change's: a
+# change that breaks something breaks the same step both times. So a run fails on a step that failed twice (or on a
+# run that ended without naming one: a crash, a timeout), and two runs with no failed step in common print FLAKY,
+# pass, and are listed in $OUT/flaky.txt (on main, .github/workflows/checks.yml adds them to the issue labelled check-flaky)
 RETRY="$OUT/retry.txt"
 : >"$RETRY"
+: >"$OUT/flaky.txt"
+fails_of() { grep '^FAIL' "$1" 2>/dev/null | cut -c6- | sed 's/ *[(:].*//' | sort -u; }   # the failed steps' names, without their numbers
+twice() {   # <kind> <city> <log under load> <log alone>: the verdict of the second run
+  local same one two
+  one=$(fails_of "$3"); two=$(fails_of "$4")
+  same=$(comm -12 <(echo "$one") <(echo "$two") | grep . | head -3 | cut -c1-110 | paste -sd ';' -)
+  if [ -n "$one" ] && [ -n "$two" ] && [ -z "$same" ]; then
+    echo "FLAKY $1   $2   (no step failed twice; first: $(echo "$one" | head -2 | cut -c1-90 | paste -sd ';' -); then: $(echo "$two" | head -2 | cut -c1-90 | paste -sd ';' -))" | tee -a "$OUT/flaky.txt"
+  else echo "FAIL $1   $2   (${same:-$(echo "$two" | head -2 | cut -c1-110 | paste -sd ';' -)}; see $4; the first run $3)"; fi
+}
 game_step() {
   local c=$1 pass=$2 rc
   # (a big city's game, every step, takes up to about 35 minutes alone on a software renderer: Shibuya)
@@ -196,14 +225,14 @@ game_step() {
     echo "ok   game   $c$([ "$pass" = alone ] && echo "   (alone, after failing under load: see $OUT/$c-load.log)")"
   elif [ "$pass" = load ]; then cp "$OUT/$c.log" "$OUT/$c-load.log"; echo "game $c" >>"$RETRY"
   elif [ $rc -eq 124 ]; then echo "FAIL game   $c   (timed out after 2700 s alone; see $OUT/$c.log)"
-  else echo "FAIL game   $c   (see $OUT/$c.log; under load $OUT/$c-load.log)"; fi
+  else twice game "$c" "$OUT/$c-load.log" "$OUT/$c.log"; fi
 }
 clip_step() {
   local c=$1 pass=$2
   if timeout 1800 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
     echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance$([ "$pass" = alone ] && echo "; alone, after failing under load: see $OUT/$c-clip-load.log"))"
   elif [ "$pass" = load ]; then cp "$OUT/$c-clip.log" "$OUT/$c-clip-load.log"; echo "clip $c" >>"$RETRY"
-  else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
+  else twice clip "$c" "$OUT/$c-clip-load.log" "$OUT/$c-clip.log"; fi
 }
 # the game on a phone's low tier (an iPhone emulated, quality.js lean) must stay inside the memory budget, so an
 # iPhone's tab is not killed (issue: Shibuya's "A problem repeatedly occurred", docs/PERFORMANCE.md "On a phone").
