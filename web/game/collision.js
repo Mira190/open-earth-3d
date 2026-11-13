@@ -22,10 +22,11 @@ window.OECollision = (function () {
     // a solid (which held 150 MB of a large map's heap). Each solid i keeps its height range PZ[2i..2i+1], its box
     // PB[4i..4i+3] (x0, y0, x1, y1), its tag PT[i] and id PI[i], and its walls, a run of segments from PS[i] to PS[i + 1]
     // in segs ([ax, ay, bx, by] each), the first PO[i] - PS[i] of them its outer ring. The walls are written as the solid
-    // is added, so build() only buckets them.
+    // is added, so build() only buckets them. An upright box (addBox: a landmark's 2 m and fine cells, a canopy's post,
+    // nine in ten of a city's solids) keeps no walls: PO[i] is -1 and its four walls are read from its box (BOX_WALLS).
     let np = 0, PZ = new Float64Array(64), PB = new Float64Array(128), PT = new Int32Array(32), PI = new Int32Array(32), PS = new Int32Array(33), PO = new Int32Array(32);
     let segs = new Float64Array(256), segP = new Int32Array(64), segCell = null, prCell = null, segMark = new Uint32Array(0), prMark = new Uint32Array(0), mark = 0;
-    let gx0 = 0, gy0 = 0, gnx = 1, gny = 1, nseg = 0, built = false;
+    let gx0 = 0, gy0 = 0, gnx = 1, gny = 1, nseg = 0, nbox = 0, built = false;
     // solids added after build() (nav.js lays a landmark's fine cells in tile by tile, as the walker
     // nears them) go into per-cell lists beside the packed grid; need(x0, y0, x1, y1), when set, is
     // asked to add what lies in a box before a query visits it
@@ -69,12 +70,18 @@ window.OECollision = (function () {
       if (rings.length <= from) PO[i] = nseg;
       return end(i);
     }
-    // an upright box, from x0, y0 to x1, y1 (the ring [x0, y0, x1, y0, x1, y1, x0, y1])
+    // an upright box from (x0, y0) to (x1, y1), x0 < x1 and y0 < y1: the solid of the ring [x0, y0, x1, y0, x1, y1, x0, y1]
     function addBox(x0, y0, x1, y1, zlo, zhi, tag = 1, id = -1) {
       const i = begin(zlo, zhi, tag, id);
-      wall(i, x0, y0, x1, y0); wall(i, x1, y0, x1, y1); wall(i, x1, y1, x0, y1); wall(i, x0, y1, x0, y0);
-      PO[i] = nseg;
+      PB[4 * i] = x0; PB[4 * i + 1] = y0; PB[4 * i + 2] = x1; PB[4 * i + 3] = y1; PO[i] = -1; nbox++;
       return end(i);
+    }
+    // a box's walls, in its ring's order: fn(pi, ax, ay, bx, by) for each until it answers true
+    const BOX_WALLS = [0, 1, 2, 1, 2, 1, 2, 3, 2, 3, 0, 3, 0, 3, 0, 1]; // (places in PB of ax, ay, bx, by, wall by wall)
+    function boxWalls(pi, fn) {
+      const b = 4 * pi;
+      for (let w = 0; w < 16; w += 4) if (fn(pi, PB[b + BOX_WALLS[w]], PB[b + BOX_WALLS[w + 1]], PB[b + BOX_WALLS[w + 2]], PB[b + BOX_WALLS[w + 3]])) return true;
+      return false;
     }
     function cellsOf(x0, y0, x1, y1, fn) {
       const c0 = Math.max(0, Math.floor((x0 - gx0) / cellSize)), r0 = Math.max(0, Math.floor((y0 - gy0) / cellSize));
@@ -116,15 +123,14 @@ window.OECollision = (function () {
       const trim = (a, n) => (a.length > n ? a.slice(0, n) : a);
       segs = trim(segs, 4 * nseg); segP = trim(segP, nseg);
       PZ = trim(PZ, 2 * np); PB = trim(PB, 4 * np); PT = trim(PT, np); PI = trim(PI, np); PO = trim(PO, np); PS = trim(PS, np + 1);
-      const n = nseg;
       gx0 = isFinite(X0) ? X0 : 0; gy0 = isFinite(Y0) ? Y0 : 0;
       gnx = Math.max(1, Math.ceil((X1 - gx0) / cellSize) + 1); gny = Math.max(1, Math.ceil((Y1 - gy0) / cellSize) + 1);
-      segCell = bucket(n, (i, b) => {
+      segCell = bucket(nseg, (i, b) => {
         b[0] = Math.min(segs[4 * i], segs[4 * i + 2]); b[1] = Math.min(segs[4 * i + 1], segs[4 * i + 3]);
         b[2] = Math.max(segs[4 * i], segs[4 * i + 2]); b[3] = Math.max(segs[4 * i + 1], segs[4 * i + 3]);
       });
       prCell = bucket(np, (i, b) => { b[0] = PB[4 * i]; b[1] = PB[4 * i + 1]; b[2] = PB[4 * i + 2]; b[3] = PB[4 * i + 3]; });
-      segMark = new Uint32Array(n); prMark = new Uint32Array(np);
+      segMark = new Uint32Array(nseg); prMark = new Uint32Array(np);
       segCell.late = late.seg; prCell.late = late.pr; built = true;
       return api;
     }
@@ -133,9 +139,9 @@ window.OECollision = (function () {
     // need() answers true for a box it lays nothing for (one wider than a walker's, a flight's): such a query
     // passes over the solids added late with the tag fineTag, so that what it sees never depends on which of
     // them the frames have laid so far (#264 item 4)
-    function visit(grid, marks, x0, y0, x1, y1, fn) {
+    function visit(grid, x0, y0, x1, y1, fn) {
       const coarse = need ? need(x0, y0, x1, y1) === true : false;
-      marks = grid === segCell ? segMark : prMark; // (need() may have grown them)
+      const marks = grid === segCell ? segMark : prMark; // (need() may have grown them)
       const c0 = Math.max(0, Math.floor((x0 - gx0) / cellSize)), c1 = Math.min(gnx - 1, Math.floor((x1 - gx0) / cellSize));
       const r0 = Math.max(0, Math.floor((y0 - gy0) / cellSize)), r1 = Math.min(gny - 1, Math.floor((y1 - gy0) / cellSize));
       if (++mark === 0xffffffff) { segMark.fill(0); prMark.fill(0); mark = 1; }
@@ -157,6 +163,11 @@ window.OECollision = (function () {
       }
       return false;
     }
+    // each wall with a cell in the box once, fn(pi, ax, ay, bx, by): the walls kept, then the boxes'; stop when fn returns true
+    function walls(x0, y0, x1, y1, fn) {
+      if (visit(segCell, x0, y0, x1, y1, i => fn(segP[i], segs[4 * i], segs[4 * i + 1], segs[4 * i + 2], segs[4 * i + 3]))) return true;
+      return nbox > 0 && visit(prCell, x0, y0, x1, y1, pi => PO[pi] < 0 && boxWalls(pi, fn));
+    }
     const band = (pi, zlo, zhi) => PZ[2 * pi + 1] > zlo && PZ[2 * pi] < zhi;
     // what a skip(pi, p) is handed as p: one view, pointed at each solid in turn, whose tag, id, zlo, zhi and box read
     // the store (a caller that keeps one past its call keeps pi, or a prism(pi) of its own)
@@ -166,8 +177,15 @@ window.OECollision = (function () {
       get rings() { return ringsOf(this.i); },
     };
     const skipped = (skip, pi) => { V.i = pi; return skip(pi, V); };
+    // each solid's walls along its outer ring, fn(ax, ay, bx, by) for each until it answers true
+    function outer(pi, fn) {
+      if (PO[pi] < 0) return boxWalls(pi, (_, ax, ay, bx, by) => fn(ax, ay, bx, by));
+      for (let k = PS[pi]; k < PO[pi]; k++) if (fn(segs[4 * k], segs[4 * k + 1], segs[4 * k + 2], segs[4 * k + 3])) return true;
+      return false;
+    }
     // a solid's rings as flat arrays, made on asking (for the tools that print one)
     function ringsOf(pi) {
+      if (PO[pi] < 0) { const b = 4 * pi; return [[PB[b], PB[b + 1], PB[b + 2], PB[b + 1], PB[b + 2], PB[b + 3], PB[b], PB[b + 3]]]; }
       const out = [];
       let r = null;
       for (let k = PS[pi]; k < PS[pi + 1]; k++) {
@@ -181,10 +199,10 @@ window.OECollision = (function () {
     const prism = pi => ({ i: pi, tag: PT[pi], id: PI[pi], zlo: PZ[2 * pi], zhi: PZ[2 * pi + 1], x0: PB[4 * pi], y0: PB[4 * pi + 1], x1: PB[4 * pi + 2], y1: PB[4 * pi + 3], rings: ringsOf(pi) });
 
     // time of first contact (0..1) of a circle at (x, y), radius r, moving by (dx, dy), with
-    // wall i; 2 for none. Sets N to the contact normal and the depth when it starts inside.
+    // the wall from (ax, ay) to (bx, by); 2 for none. Sets N to the contact normal and the depth when it starts inside.
     const N = [0, 0, 0];
-    function toi(i, x, y, dx, dy, r) {
-      const ax = segs[4 * i], ay = segs[4 * i + 1], ex = segs[4 * i + 2] - ax, ey = segs[4 * i + 3] - ay, L2 = ex * ex + ey * ey;
+    function toi(ax, ay, bx, by, x, y, dx, dy, r) {
+      const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
       const s = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
       let cx = x - (ax + ex * s), cy = y - (ay + ey * s);
       const d2 = cx * cx + cy * cy;
@@ -227,10 +245,9 @@ window.OECollision = (function () {
     // skip(prism) leaves a prism out. {t, nx, ny, depth, prism} or null
     function sweep(x, y, dx, dy, r, zlo, zhi, skip) {
       let hit = null;
-      visit(segCell, segMark, Math.min(x, x + dx) - r, Math.min(y, y + dy) - r, Math.max(x, x + dx) + r, Math.max(y, y + dy) + r, i => {
-        const pi = segP[i];
+      walls(Math.min(x, x + dx) - r, Math.min(y, y + dy) - r, Math.max(x, x + dx) + r, Math.max(y, y + dy) + r, (pi, ax, ay, bx, by) => {
         if (!band(pi, zlo, zhi) || (skip && skipped(skip, pi))) return false;
-        const t = toi(i, x, y, dx, dy, r);
+        const t = toi(ax, ay, bx, by, x, y, dx, dy, r);
         if (t <= 1 && (!hit || t < hit.t || (t === hit.t && N[2] > hit.depth))) hit = { t, nx: N[0], ny: N[1], depth: N[2], prism: pi };
         return false;
       });
@@ -241,10 +258,9 @@ window.OECollision = (function () {
     function depenetrate(x, y, r, zlo, zhi, skip) {
       for (let it = 0; it < 4; it++) {
         let px = 0, py = 0;
-        visit(segCell, segMark, x - r, y - r, x + r, y + r, i => {
-          const pi = segP[i];
+        walls(x - r, y - r, x + r, y + r, (pi, ax, ay, bx, by) => {
           if (!band(pi, zlo, zhi) || (skip && skipped(skip, pi))) return false;
-          const ax = segs[4 * i], ay = segs[4 * i + 1], ex = segs[4 * i + 2] - ax, ey = segs[4 * i + 3] - ay, L2 = ex * ex + ey * ey;
+          const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
           const s = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
           let cx = x - (ax + ex * s), cy = y - (ay + ey * s);
           const d = Math.hypot(cx, cy);
@@ -280,10 +296,13 @@ window.OECollision = (function () {
       return { x, y, hit: last };
     }
 
-    // point in solid pi's footprint (even-odd over its walls; pi may also be a prism(pi) or the view)
+    // point in solid pi's footprint (even-odd over its walls; pi may also be a prism(pi) or the view). A box's even-odd
+    // over its ring is x0 <= x < x1 and y0 <= y < y1
     function inside(pi, x, y) {
       if (typeof pi === 'object') pi = pi.i;
-      if (x < PB[4 * pi] || x > PB[4 * pi + 2] || y < PB[4 * pi + 1] || y > PB[4 * pi + 3]) return false;
+      const b = 4 * pi;
+      if (PO[pi] < 0) return x >= PB[b] && x < PB[b + 2] && y >= PB[b + 1] && y < PB[b + 3];
+      if (x < PB[b] || x > PB[b + 2] || y < PB[b + 1] || y > PB[b + 3]) return false;
       let c = false;
       for (let k = PS[pi], e = PS[pi + 1]; k < e; k++) { // (each wall as the ring's edge from its end b back to its start a)
         const xa = segs[4 * k + 2], ya = segs[4 * k + 3], xb = segs[4 * k], yb = segs[4 * k + 1];
@@ -294,20 +313,19 @@ window.OECollision = (function () {
 
     // does a circle between heights zlo and zhi touch any solid?
     function overlap(x, y, r, zlo, zhi, skip) {
-      if (visit(segCell, segMark, x - r, y - r, x + r, y + r, i => {
-        const pi = segP[i];
+      if (walls(x - r, y - r, x + r, y + r, (pi, ax, ay, bx, by) => {
         if (!band(pi, zlo, zhi) || (skip && skipped(skip, pi))) return false;
-        const ax = segs[4 * i], ay = segs[4 * i + 1], ex = segs[4 * i + 2] - ax, ey = segs[4 * i + 3] - ay, L2 = ex * ex + ey * ey;
+        const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey;
         const s = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
         return Math.hypot(x - ax - ex * s, y - ay - ey * s) < r - TOUCH;
       })) return true;
-      return visit(prCell, prMark, x, y, x, y, pi => band(pi, zlo, zhi) && !(skip && skipped(skip, pi)) && inside(pi, x, y));
+      return visit(prCell, x, y, x, y, pi => band(pi, zlo, zhi) && !(skip && skipped(skip, pi)) && inside(pi, x, y));
     }
 
     // the highest solid top at (x, y) no higher than zmax, or -Infinity; tag 0 means any
     function topAt(x, y, zmax = Infinity, tag = 0) {
       let best = -Infinity;
-      visit(prCell, prMark, x, y, x, y, pi => {
+      visit(prCell, x, y, x, y, pi => {
         const zhi = PZ[2 * pi + 1];
         if ((!tag || PT[pi] === tag) && zhi <= zmax && zhi > best && inside(pi, x, y)) best = zhi;
         return false;
@@ -318,7 +336,7 @@ window.OECollision = (function () {
     // the solid under (x, y) whose top is highest (a prism(pi)), or null
     function prismAt(x, y, tag = 0) {
       let best = -1;
-      visit(prCell, prMark, x, y, x, y, pi => {
+      visit(prCell, x, y, x, y, pi => {
         if ((!tag || PT[pi] === tag) && (best < 0 || PZ[2 * pi + 1] > PZ[2 * best + 1]) && inside(pi, x, y)) best = pi;
         return false;
       });
@@ -331,16 +349,15 @@ window.OECollision = (function () {
       const dx = bx - ax, dy = by - ay, dz = bz - az;
       let best = 1;
       const x0 = Math.min(ax, bx) - r, y0 = Math.min(ay, by) - r, x1 = Math.max(ax, bx) + r, y1 = Math.max(ay, by) + r;
-      visit(segCell, segMark, x0, y0, x1, y1, i => {
-        const pi = segP[i];
+      walls(x0, y0, x1, y1, (pi, wax, way, wbx, wby) => {
         if (skip && skipped(skip, pi)) return false;
-        const t = toi(i, ax, ay, dx, dy, r);
+        const t = toi(wax, way, wbx, wby, ax, ay, dx, dy, r);
         if (t >= best || N[2] > 0) return false; // already overlapping at the start: moving out of it
         const z = az + dz * t;
         if (z > PZ[2 * pi] - r && z < PZ[2 * pi + 1] + r) best = t;
         return false;
       });
-      visit(prCell, prMark, x0, y0, x1, y1, pi => {
+      visit(prCell, x0, y0, x1, y1, pi => {
         if (skip && skipped(skip, pi)) return false;
         for (let e = 0; e < 2; e++) { // roof from above, soffit from below
           const zc = e ? PZ[2 * pi] - r : PZ[2 * pi + 1] + r;
@@ -353,13 +370,11 @@ window.OECollision = (function () {
       return best;
     }
 
-    // each solid's walls along its outer ring, fn(ax, ay, bx, by) for each until it answers true
-    function outer(pi, fn) { for (let k = PS[pi]; k < PO[pi]; k++) if (fn(segs[4 * k], segs[4 * k + 1], segs[4 * k + 2], segs[4 * k + 3])) return true; return false; }
     const api = { add, addBox, build, sweep, slide, depenetrate, overlap, topAt, prismAt, sweepSphere, inside, prism, outer, SKIN,
       get count() { return np; }, tagOf: pi => PT[pi], idOf: pi => PI[pi], zloOf: pi => PZ[2 * pi], zhiOf: pi => PZ[2 * pi + 1],
       boxOf: (pi, b = [0, 0, 0, 0]) => { b[0] = PB[4 * pi]; b[1] = PB[4 * pi + 1]; b[2] = PB[4 * pi + 2]; b[3] = PB[4 * pi + 3]; return b; },
       get prisms() { return Array.from({ length: np }, (_, i) => prism(i)); }, // (every solid as an object: for a tool, never the game)
-      get walls() { return nseg; }, set need(f) { need = f; }, get need() { return need; }, set fineTag(t) { fineTag = t; } };
+      get walls() { return nseg + 4 * nbox; }, set need(f) { need = f; }, get need() { return need; }, set fineTag(t) { fineTag = t; } };
     return api;
   }
   return { create, SKIN };

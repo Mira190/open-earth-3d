@@ -838,15 +838,24 @@ vec3 steepRock(vec3 c, float k) {
         for (const r of [c.ring].concat(c.holes || [])) r.forEach(([x, y], k) => g[k ? 'lineTo' : 'moveTo']((x - x0) / res + 1, (y1 - y) / res + 1));
         g.fill('evenodd');
       }
-      const tex = new THREE.CanvasTexture(cv);
-      tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      const px = g.getImageData(0, 0, w, h).data;
+      // (kept as one channel, a byte a texel, rows bottom up as the canvas texture's were, and as a bit a texel for near():
+      // the canvas's four bytes a texel, on the page and on the GPU, were 45 MB each in Tokyo, issue 406)
+      const rgba = g.getImageData(0, 0, w, h).data, one = new Uint8Array(w * h), bits = new Uint8Array((w * h + 7) >> 3);
+      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+        const v = rgba[4 * (r * w + c)];
+        one[(h - 1 - r) * w + c] = v;
+        if (v > 127) bits[(r * w + c) >> 3] |= 1 << ((r * w + c) & 7);
+      }
+      cv.width = cv.height = 1;
+      const tex = new THREE.DataTexture(one, w, h, THREE.RedFormat, THREE.UnsignedByteType);
+      tex.unpackAlignment = 1; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      tex.needsUpdate = true;
       // within a clip region, or a metre and a half from one (a landmark's own seawall runs along its edge)
       const near = (x, y) => {
         const c = Math.round((x - x0) / res + 1), r = Math.round((y1 - y) / res + 1);
         for (let dr = -3; dr <= 3; dr += 3) for (let dc = -3; dc <= 3; dc += 3) {
           const rr = r + dr, cc = c + dc;
-          if (rr >= 0 && cc >= 0 && rr < h && cc < w && px[4 * (rr * w + cc)] > 127) return true;
+          if (rr >= 0 && cc >= 0 && rr < h && cc < w && (bits[(rr * w + cc) >> 3] >> ((rr * w + cc) & 7)) & 1) return true;
         }
         return false;
       };

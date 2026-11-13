@@ -13,7 +13,7 @@
 // textures and buffers; exits 1 when a city goes over its budget:
 //   MEM_GPU   peak GPU memory, MB (default 700: quality.js budget, above the heaviest live map)
 //   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 880)
-// TIER=low|medium|high (default low). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
+// TIER=low|medium|high (default low). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
@@ -207,6 +207,16 @@ async function measure(b, city) {
   const r = await p.evaluate(top => window.__memReport(top), TOP).catch(() => null);
   try { await cdp.send('HeapProfiler.collectGarbage'); } catch (e) { /* */ }
   const heapEnd = await heaps();
+  // SNAP=file: a heap snapshot of the page after the collection, for tools/heap_owners.js (who keeps the array buffers)
+  if (process.env.SNAP) {
+    const out = fs.createWriteStream(process.env.SNAP.replace('%c', city));
+    const chunk = e => out.write(e.chunk);
+    cdp.on('HeapProfiler.addHeapSnapshotChunk', chunk);
+    await cdp.send('HeapProfiler.enable').catch(() => {});
+    await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false }).catch(e => errors.push(String(e).slice(0, 200)));
+    cdp.off('HeapProfiler.addHeapSnapshotChunk', chunk);
+    await new Promise(r => out.end(r));
+  }
   const split = await cdp.send('Runtime.getHeapUsage').catch(() => ({}));
   const tracked = process.env.TRACK ? await p.evaluate(() => window.__bufReport()).catch(e => [String(e)]) : null;
   let sampled = null;

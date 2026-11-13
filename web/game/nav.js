@@ -39,9 +39,27 @@ window.OENav = (function () {
       return !!isWaterCell(r, c);
     }
     // ---------------------------------------------------------- piers (2 m grid, deck height)
-    const pier = { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny).fill(-99) };
-    (D.P.piers || []).forEach((r, i) => S.fillMax(pier, [r.map(v => v / 10)], D.pierZ ? D.pierZ[i] : G.pier_deck_m || 2.2)); // as drawn (world.js)
-    for (const r of G.boardwalks || []) S.fillMax(pier, [r.map(v => v / 10)], G.pier_deck_m || 2.2); // walkways over rocks and water
+    // (on a grid over the piers' bounds alone, not the whole map's: the 2 m cells' rows and columns pc0, pr0 on; pierAt(k)
+    // reads the deck at a 2 m cell index k, -99 for none)
+    const pierRings = [...(D.P.piers || []).map((r, i) => [r.map(v => v / 10), D.pierZ ? D.pierZ[i] : G.pier_deck_m || 2.2]), // as drawn (world.js)
+      ...(G.boardwalks || []).map(r => [r.map(v => v / 10), G.pier_deck_m || 2.2])]; // walkways over rocks and water
+    let pc0 = 0, pr0 = 0, pier = null;
+    if (pierRings.length) {
+      let px0 = Infinity, px1 = -Infinity, py0 = Infinity, py1 = -Infinity;
+      for (const [r] of pierRings) for (let k = 0; k < r.length; k += 2) { px0 = Math.min(px0, r[k]); px1 = Math.max(px1, r[k]); py0 = Math.min(py0, r[k + 1]); py1 = Math.max(py1, r[k + 1]); }
+      pc0 = Math.max(0, Math.floor((px0 - x0) / DSM.cell) - 1); pr0 = Math.max(0, Math.floor((y1 - py1) / DSM.cell) - 1);
+      const pc1 = Math.min(DSM.nx - 1, Math.floor((px1 - x0) / DSM.cell) + 1), pr1 = Math.min(DSM.ny - 1, Math.floor((y1 - py0) / DSM.cell) + 1);
+      if (pc1 >= pc0 && pr1 >= pr0) {
+        pier = { nx: pc1 - pc0 + 1, ny: pr1 - pr0 + 1, cell: DSM.cell, x0: x0 + pc0 * DSM.cell, y1: y1 - pr0 * DSM.cell };
+        pier.data = new Float32Array(pier.nx * pier.ny).fill(-99);
+        for (const [r, z] of pierRings) S.fillMax(pier, [r], z);
+      }
+    }
+    const pierAt = k => {
+      if (!pier) return -99;
+      const c = k % DSM.nx - pc0, r = Math.floor(k / DSM.nx) - pr0;
+      return c < 0 || r < 0 || c >= pier.nx || r >= pier.ny ? -99 : pier.data[r * pier.nx + c];
+    };
     // places walkers keep out of (a colony's rocks): a 2 m mask
     const nogo = (G.nogo || []).length ? { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny) } : null;
     for (const r of G.nogo || []) S.fillMax(nogo, [r.map(v => v / 10)], 1);
@@ -429,7 +447,7 @@ window.OENav = (function () {
       if (roofy(x, y)) h = Math.max(h, roofAt(x, y));
       for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
       const k = cellOf(x, y);
-      if (k >= 0 && pier.data[k] > h) h = pier.data[k];
+      if (k >= 0 && pierAt(k) > h) h = pierAt(k);
       return h;
     };
     // the floor a walker beside a point may stand on: the floor under it, or a strip's within a 2 m cell of it, up
@@ -927,7 +945,7 @@ window.OENav = (function () {
     // stairs, "mapped": false, built over the footways that pass under them)
     function surfaceAt(x, y, near, lines) {
       const k = cellOf(x, y);
-      let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
+      let h = k >= 0 && pierAt(k) > -50 ? pierAt(k) : -Infinity;
       for (const s of stripsAt(x, y)) {
         if (lines && s.mapped === false) continue;
         const z = stripHeight(s, x, y);
@@ -972,7 +990,7 @@ window.OENav = (function () {
         const u = under(x, y); if (u !== null) take(u, 'ground');
       }
       const k = cellOf(x, y);
-      if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
+      if (k >= 0 && pierAt(k) > -50) take(pierAt(k), 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
       decksAt(x, y, (h, d) => { if ((d.walk || cars) && !(pr && pr.flight)) take(h, 'deck'); }); // (a flight of steps down, not a bridge's approach laid wider over its top)
       const bt = col.topAt(x, y, z + STEP, BUILDING);
@@ -1074,7 +1092,7 @@ window.OENav = (function () {
       const bt = col.topAt(x, y, Infinity, BUILDING);
       if (bt > g) g = bt;
       const k = cellOf(x, y);
-      if (k >= 0 && pier.data[k] > g) g = pier.data[k];
+      if (k >= 0 && pierAt(k) > g) g = pierAt(k);
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h <= z + 0.5 && h > g) g = h; }
       decksAt(x, y, h => { if (h <= z + 0.5 && h > g) g = h; });
       const l = solid0.get(k);
