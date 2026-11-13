@@ -40,6 +40,15 @@ TEXTURES = {
     "dark": ("Tiles138", 1.6),            # dark granite-like tiles, a shop front's base and pilasters
     "plaster": ("Plaster001", 2.5),       # rendered wall
     "paver": ("PavingStones136", 2.0),    # interlocking blocks: Ichibangai is paved, not asphalted (OSM surface=paving_stones)
+    # a Kyoto lane and a shrine's approach (blender/hero_wa.py)
+    "sett": ("PavingStones128", 2.4),     # dressed granite setts in running bond
+    "flag": ("PavingStones077", 3.0),     # large grey flagstones of mixed sizes
+    "gravel": ("Gravel023", 2.0),         # pale crushed stone, a shrine's ground
+    "stone": ("Concrete036", 2.5),        # weathered grey stone: lanterns, fences, footings
+    "kawara": ("RoofingTiles013A", 2.4),  # dark grey fired roof tiles
+    "wood": ("Planks023A", 2.2),          # weathered boards, tinted dark for a town house's timber
+    "shu": ("PaintedWood009C", 2.0),      # pale painted timber, tinted vermilion
+    "bamboo": ("Bamboo001C", 1.2),        # weathered split bamboo
 }
 
 

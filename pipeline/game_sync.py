@@ -1,5 +1,5 @@
 """Copy the parts of cities/<id>/city.json's game that need no raw data into web/data/<id>/game.json:
-its title and its travel points (each set on the built terrain, as pipeline/game_data.py sets them).
+its title, where it starts and its travel points (each set on the built terrain, as pipeline/game_data.py sets them).
 A renamed map or a new district on its city's map (cities/index.json groups) then shows without
 rebuilding the game data, which game_data.py writes from the raw downloads. Everything else stays.
 
@@ -50,6 +50,11 @@ def main(cities):
         if gcfg.get("title") and game.get("title") != gcfg["title"]:
             game["title"] = gcfg["title"]
             changed.append("title")
+        # where the game starts (moved a little to frame a hero level, docs/HERO.md): as city.json has it, a point
+        # on open ground chosen by hand (game_data.py snaps a start to the paths; this one is not snapped)
+        if gcfg.get("start") and game.get("start") != gcfg["start"]:
+            game["start"] = gcfg["start"]
+            changed.append("start")
         if "travel" in gcfg:
             ground = ground_fn(data)
             # (a point with its own level, [x, y, z], stands on a roof or a deck there: kept)

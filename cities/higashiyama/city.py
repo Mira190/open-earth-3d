@@ -870,22 +870,27 @@ def lanes_paths():
     return out
 
 
-def lanes(K):
+HERO_LANE = "八坂通"   # the lane the hero level draws finely (cities/higashiyama/hero.py): its setts and fronts
+HERO_REACH = 17.0      # go into meshes of their own (yhero_*), which the game hides while the level is shown
+
+
+def lanes(K0, KH=None):
     """Stone setts along the lanes and their flights of steps, and the shop fronts facing them: a noren in
     the doorway, a lattice (格子) over the ground floor, a paper lantern at the door."""
     C, T, S = ctx()
     paths = lanes_paths()
     from shapely.geometry import LineString, Polygon
     from shapely.ops import unary_union
+    hero = [LineString([q for q in p if q[1] > 165.0]) for nm, hw, p, _ in paths if nm == HERO_LANE and hw != "steps" and len([q for q in p if q[1] > 165.0]) > 1]
+    hero = unary_union(hero) if hero and KH is not None else None
     for name, hw, pts, wd in paths:
         if hw == "steps":
-            kk.stairs(K["step_stone"], pts, wd, T(*pts[0]), T(*pts[-1]))
+            kk.stairs(K0["step_stone"], pts, wd, T(*pts[0]), T(*pts[-1]))
         else:
+            K = KH if (hero is not None and name == HERO_LANE) else K0
             kk.paving(K["setts"], pts, wd, T, lift=0.05, step=1.5, kerb=K["kerb"])
     line = unary_union([LineString(p) for _, _, p, _ in paths])
     rng = np.random.default_rng(7)
-    m = K["lanes"]
-    lamps_p, lamps_c = K["lamp_paper"], K["lamp_cap"]
     n = 0
     for sd in S:
         if sd["top"] > 14 or sd["base"] > 0:
@@ -894,6 +899,9 @@ def lanes(K):
         g = Polygon(ring)
         if not g.is_valid or g.area > 900 or g.distance(line) > 6.0:
             continue
+        K = KH if (hero is not None and g.distance(hero) < HERO_REACH) else K0
+        m = K["lanes"]
+        lamps_p, lamps_c = K["lamp_paper"], K["lamp_cap"]
         for a, b in zip(ring, ring[1:] + ring[:1]):
             a, b = np.asarray(a), np.asarray(b)
             L = float(np.linalg.norm(b - a))
@@ -948,7 +956,8 @@ def landmark_meshes(scene):
     yasaka_jinja(K, hidden)
     koshindo(K)
     L = ak.Kit("lanes", floodlit={"lanes", "lamp_paper"}, uv={"setts", "step_stone", "lanes"})
-    lanes(L)
+    LH = ak.Kit("yhero", floodlit={"lanes", "lamp_paper"}, uv={"setts", "step_stone", "lanes"})
+    lanes(L, LH)
     H = hondo_layout()
     if H:
         z = H["zf"]
@@ -961,7 +970,7 @@ def landmark_meshes(scene):
         extra["clip"] = [{"ring": [[round(float(c), 2) for c in P(u, v, 0)[:2]] for u, v in
                                    ((gs["u0"] - 0.1, -w), (gs["u1"] + 0.1, -w), (gs["u1"] + 0.1, w), (gs["u0"] - 0.1, w))], "holes": []}]
     extra["trees"] = gion_cherry()
-    return mats, K.out() + L.out(), extra
+    return mats, K.out() + L.out() + LH.out(), extra
 
 
 # Maruyama Park's Gion weeping cherry (the second tree, grown in 1949 from the first's seed, about 12 m tall),

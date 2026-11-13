@@ -20,6 +20,9 @@
 //   tube*            neon tubes: as glow, and a tube in a few hundred hums and stutters now and then
 //   chase*           the bulbs of an arch or a marquee: as glow, running in a chase along the u of its texture
 //   win*             windows: dark glass by day, lit after dark where its emissive map says a room is lit
+//   paper*, lamp*    paper with a lamp behind it (a shoji, a lantern): its own colour by day, lit as dusk falls
+//   *_fine           the finest geometry (a lattice's bars, the eaves' round tiles, rafters): not kept on the low
+//                    tier, where a phone's screen cannot show it and its memory should not hold it
 //   ground*          what you walk or drive on: wet in the rain, and a mirror then on the high tier
 //
 // It is loaded when the camera comes within r + LOAD_M of its centre and let go (its GPU memory freed) past
@@ -58,7 +61,7 @@ window.OEHero = (function () {
           // the signs' and shop fronts' light on it after dark, in its own colour (an irradiance, baked)
           .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += diffuseColor.rgb * vHeroBake.rgb * uHeroBake * uHeroNight;');
         // the city's street lights, at the share the level asks (h.street): its own lamps and signs are baked in
-        if (Wd.streetLit && !/^(glow|tube|chase)/.test(name)) {
+        if (Wd.streetLit && !/^(glow|tube|chase|paper|lamp)/.test(name)) {
           Wd.streetLit(sh);
           sh.uniforms.uHeroStreet = uStreet;
           sh.fragmentShader = sh.fragmentShader.replace('uniform float uHeroBake, uHeroNight;', 'uniform float uHeroBake, uHeroNight, uHeroStreet;')
@@ -68,6 +71,7 @@ window.OEHero = (function () {
       m.customProgramCacheKey = () => `hero|${h.id}|${name}|${own ? 'o' : ''}`;
       if (/^ground/.test(name)) m.userData.paving = true;
       if (/^(glow|tube|chase)/.test(name)) { m.userData.oeDry = true; m.userData.heroGlow = m.emissiveIntensity || 1; }
+      if (/^(paper|lamp)/.test(name)) { m.userData.oeDry = true; m.userData.heroDusk = m.emissiveIntensity || 1; m.emissiveIntensity = 0; }
       m.needsUpdate = true;
     }
 
@@ -107,6 +111,12 @@ window.OEHero = (function () {
         if (L.state !== 'loading') { dispose(g.scene); return; } // (let go while it came)
         const root = g.scene, seen = new Set(), shrunk = [];
         root.name = `hero-${L.h.id}`;
+        // the finest parts are let go on the low tier before anything of theirs reaches the GPU
+        if (tier === 'low') {
+          const fine = [];
+          root.traverse(o => { if (o.isMesh && /_fine$/.test((o.material && o.material.name) || '')) fine.push(o); });
+          for (const o of fine) { o.geometry.dispose(); o.material.dispose(); o.parent.remove(o); }
+        }
         root.traverse(o => {
           if (!o.isMesh) return;
           o.castShadow = !/nocast/i.test(o.name); o.receiveShadow = true;
@@ -179,7 +189,11 @@ window.OEHero = (function () {
         uBake.value = L.h.bake == null ? 1 : L.h.bake;
         uStreet.value = L.h.street == null ? 1 : L.h.street;
         const [gd, gn] = L.h.glow || [0.35, 1.6], k = gd + (gn - gd) * night;
-        for (const m of L.mats) if (m.userData.heroGlow != null) m.emissiveIntensity = m.userData.heroGlow * k;
+        const dusk = Math.min(1, night * 1.6);
+        for (const m of L.mats) {
+          if (m.userData.heroGlow != null) m.emissiveIntensity = m.userData.heroGlow * k;
+          else if (m.userData.heroDusk != null) m.emissiveIntensity = m.userData.heroDusk * dusk;
+        }
         // a tube or two stutters: off for a few frames, now and then
         for (const tb of L.tubes) {
           const s = Math.sin(t * 0.37 + tb.seed) * Math.sin(t * 1.13 + tb.seed * 0.7);
