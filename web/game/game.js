@@ -173,7 +173,8 @@ window.OpenEarthGame = async function game(cityId) {
     if (renderer.capabilities.reversedDepthBuffer) U.uNudge.value = 1.5e-5; // a float depth buffer needs less to order coplanar roofs (buildings.js)
   }
   // a lost WebGL context pauses the game under a note and comes back redrawn (glcare.js)
-  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { Wd.restoreGPU(); resize(); } });
+  // (on a phone the walls' shading lives on the GPU alone, world.js gpuOnly: there a lost context reloads the view)
+  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { if (Wd.gpuOnly) throw new Error('held on the GPU only'); Wd.restoreGPU(); resize(); } });
   U.uTime = { value: 0 };
   // Close up, 1 m aerial imagery is a blur, lit twice (the photo's own sun and shadows, then the
   // scene's) and far too pale for paving: a sunlit forecourt read as a white sheet with grey
@@ -304,7 +305,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const FOOTW = OEActors.FOOTW;
   function streetTexture(i) {
-    const t = scene.ground[i], PX = 0.5, w = Math.round((t.x1 - t.x0) / PX), h = Math.round((t.y1 - t.y0) / PX);
+    const t = scene.ground[i], PX = QC.lean ? 0.75 : 0.5, w = Math.round((t.x1 - t.x0) / PX), h = Math.round((t.y1 - t.y0) / PX);
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     const g = cv.getContext('2d');
@@ -331,6 +332,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    if (QC.lean) tex.onUpdate = () => { cv.width = cv.height = 1; }; // (a phone: the canvas let go once it is on the GPU)
     return tex;
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
@@ -341,6 +343,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return m;
   }
   function groundLod(x, y) {
+    if (Wd.groundKeep) Wd.groundKeep(x, y); // (a phone: the aerial pictures on the GPU are the tiles nearest here, world.js)
     scene.ground.forEach((t, i) => {
       const d = Math.hypot(Math.max(t.x0 - x, 0, x - t.x1), Math.max(t.y0 - y, 0, y - t.y1));
       const near = d < 260;
@@ -348,6 +351,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (fineTiles[i]) fineTiles[i].visible = near;
       const ud = Wd.groundMeshes[i].material.userData;
       if (near && ud.street && !ud.street.value) ud.street.value = streetTexture(i);
+      else if (d > 700 && ud.street && ud.street.value) { ud.street.value.dispose(); ud.street.value = null; } // (drawn again if you come back: 24 MB a tile)
       if (ud.streetOn) ud.streetOn.value = near && player.mode !== 'heli' ? 1 : 0;
       Wd.groundMeshes[i].visible = !near;
     });

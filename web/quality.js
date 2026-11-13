@@ -126,14 +126,26 @@ window.OEQuality = (function () {
   // the water's reflection and half its wave detail. woods: the share of the woods' far crowns drawn
   // (web/trees.js farKeep): half on medium, where a wooded hillside's far ring was most of a frame's
   // triangles (Queenstown, #227); low already keeps a third of the woods' trees and draws them nearer
+  // tex: the largest texture side the view uploads (three.js scales a larger picture down to it, world.js fit): the
+  // low tier's 2048, the device's own above it. lean: a phone's memory (Shibuya's game killed an iPhone's
+  // tab, which iOS does at about 1-1.5 GB, at 865 MB of WebGL and 800 MB of script). There the view also lets go of
+  // what it holds only for the GPU once it is uploaded (the walls' shading attributes: a lost context then reloads
+  // the page instead of being restored in place), keeps the full aerial picture on the ground tiles nearest the
+  // camera only (budget.groundTiles, the rest on the overview) and the shared models' far parts. budget: the memory
+  // the view aims to stay under, MB, which tools/mem_check.js checks every live city's game against on a phone
+  function lean(c = probe()) {
+    return (c.touch && Math.min(innerWidth, innerHeight) < 600) || (!!c.memory && c.memory <= 4);
+  }
   function city() {
     const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name, s = TIERS[name];
+    const thin = name === 'low' && lean(c);
     // The high tier's canvas keeps the display's own pixels up to 2x (the lens's one pass and the interface stay
     // sharp) within CANVAS_PX, a 4K display's; the scene inside it is drawn within the tier's budget of pixels
     // (sceneScale: the governor's ceiling, issue 352), which a 1440p display meets at full size. Before, a 4K
     // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
     const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
-    return { name, small: name === 'low', shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+    return { name, small: name === 'low', lean: thin, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
+      budget: thin ? { gpuMB: 400, heapMB: 300, groundTiles: 6 } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
@@ -245,5 +257,5 @@ window.OEQuality = (function () {
     }
     return g;
   }
-  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, governor, TIERS, ORDER, NAMES };
+  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, governor, TIERS, ORDER, NAMES };
 })();
