@@ -7,7 +7,9 @@
 //     card's small map on a phone;
 //   - until a station has been picked once, the map says it can be chosen from (the cue);
 //   - the district buttons under the map are a thumb's size, and a touch beside a station lands on it;
-//   - Esc or Back closes the full-screen map onto the globe, and a district's Explore goes in.
+//   - Esc or Back closes the full-screen map onto the globe, and a district's Explore goes in;
+//   - the menu leads with Japan, opens framed on it (Tokyo and Kyoto both named on the globe), and
+//     its one primary button goes straight into the Shibuya game (docs/HOMEPAGE.md).
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/title_pick_check.js
 const { chromium } = require('playwright');
@@ -19,7 +21,7 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/#globe`;
   for (const [name, w, h, phone] of [['desktop', 1440, 900, false], ['phone', 390, 844, true]]) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: phone, isMobile: phone });
     await ctx.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); } catch (e) { /* storage blocked */ } });
-    const p = await ctx.newPage();
+    let p = await ctx.newPage();
     p.on('pageerror', e => { fail++; console.log(`${name}: pageerror ${e}`); });
     const press = async loc => (phone ? loc.tap() : loc.click());
     const state = () => p.evaluate(() => ({
@@ -121,7 +123,30 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/#globe`;
       const h2 = await p.evaluate(() => location.hash);
       check(name, 'Sydney: card on the first click, in on the second', !c1.diving && c1.play && h2 === '#sydney', { c1, h2 });
     }
+    // the landing: Japan first, framed on Japan, one press into Shibuya's game (a fresh visit: a page
+    // that comes back from a city opens turned to that city instead)
     await ctx.close();
+    const ctx2 = await b.newContext({ viewport: { width: w, height: h }, hasTouch: phone, isMobile: phone });
+    await ctx2.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); } catch (e) { /* storage blocked */ } });
+    p = await ctx2.newPage();
+    p.on('pageerror', e => { fail++; console.log(`${name}: pageerror ${e}`); });
+    await p.goto(BASE);
+    await p.waitForSelector('.ts-item', { timeout: 120000 });
+    await p.waitForFunction(() => { const a = document.querySelector('.title-app'); return a && a.classList.contains('menu') && !a.classList.contains('opening'); }, null, { timeout: 60000 });
+    await p.waitForTimeout(3500);
+    const land = await p.evaluate(([W, H]) => {
+      const mark = n => { const m = [...document.querySelectorAll('.ts-mark.live')].find(e => e.textContent.startsWith(n)); if (!m || m.hidden || m.classList.contains('mute')) return false;
+        const r = m.getBoundingClientRect(); return r.left >= 0 && r.right <= W && r.top >= 0 && r.bottom <= H; };
+      return { first: [...document.querySelectorAll('.ts-item .nm')].slice(0, 2).map(e => e.firstChild.textContent.trim()), tokyo: mark('Tokyo'), kyoto: mark('Kyoto') };
+    }, [w, h]);
+    check(name, 'the menu leads with Tokyo and Kyoto, both named on the globe', land.first.join() === 'Tokyo,Kyoto' && land.tokyo && land.kyoto, land);
+    const go = p.locator('.ts-hero .ts-go');
+    const gb = await go.boundingBox();
+    await press(go);
+    await p.waitForFunction(() => location.hash.startsWith('#play-'), null, { timeout: 15000 }).catch(() => {});
+    s = await state();
+    check(name, `the primary button (${gb ? Math.round(gb.height) : 0} px, in view) goes straight to #play-shibuya`, s.hash === '#play-shibuya' && gb && gb.y + gb.height <= h && gb.height >= 44, { hash: s.hash, gb });
+    await ctx2.close();
   }
   await b.close();
   console.log(fail ? `title_pick_check: ${fail} failure(s)` : 'title_pick_check: ok');
