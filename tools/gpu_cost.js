@@ -106,6 +106,7 @@ const [w, h] = size.split('x').map(Number);
   });
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log('page error', String(e).slice(0, 200)));
+  p.on('console', m => { if (m.type() === 'error') console.log('console error', m.text().slice(0, 400)); });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const time = process.env.NIGHT ? '21:30' : process.env.TIME || '15:30';
