@@ -690,6 +690,15 @@ vec3 steepRock(vec3 c, float k) {
   const BUILDING_SRC = { mapped: 0, survey: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, lidar: 0, bdtopo: 0, '3dbag': 0, floors: 1, ml: 2, estimate: 2, typical: 2, parametric: 3 };
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0, game = false, nearCars = 0, groundAt = null, groundNear = 1000 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
+    // a hero level's finest parts (landmarks.json "detail": sashes, reveals, kerbs) are not drawn on the low tier
+    // (below), so their vertex lists are let go here, before anything keeps them: on a phone the heap is the
+    // tightest budget (Tokyo Station's are about 104k of its 133k triangles, tools/mem_check.js). The entries stay
+    // where they are in LM.meshes, since the walking model finds its meshes by their places there (navcells.js);
+    // what a walker stands on was laid on the walking grid from the whole pack in the worker, the same on every tier.
+    if (small && LM) for (const m of LM.meshes || []) if (m.detail) {
+      for (const k of ['position', 'normal', 'uv', 'color']) if (m[k]) m[k] = new Float32Array(0);
+      m.index = new Uint32Array(0);
+    }
     // the mapped lamps, benches and trees out of the carriageways, before any of them is drawn (streets.js)
     if (window.OEStreets) OEStreets.tidy(D);
     // the street lights' light (night.js), which the ground, the piers and the walls add to what they reflect
