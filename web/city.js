@@ -104,17 +104,13 @@ window.OpenEarthCity = async function main(cityId) {
   // as the Earth on the title, the game and the city's film; plain tone mapping where the device's
   // tier (quality.js) has no post stack
   let bloom = null;
-  if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2 && QC.post) {
-    post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }));
-    OEWorld.leanComposer(post); // the scene alone multisampled (world.js)
-    post.addPass(new THREE.RenderPass(world, camera));
+  // (one full-size pass after the scene, the lens, which adds the bloom's half-size sum as it reads: lens.js stack, issue 375)
+  if (window.OELens && OELens.stack && THREE.UnrealBloomPass && renderer.capabilities.isWebGL2 && QC.post) {
     bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0);
-    OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
-    post.addPass(bloom);
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
-    lens = new THREE.ShaderPass(OELens.shader());
+    lens = new THREE.ShaderPass(OELens.shader({ merge: true }));
     Object.assign(lens.uniforms, { uGrain: { value: 0.025 }, uCA: { value: 0.12 }, uVignette: { value: 0.16 } });
-    post.addPass(lens);
+    post = OELens.stack(renderer, world, camera, { target: new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }), bloom, lens });
     resize();
   }
   // a lost WebGL context pauses the loop under a note and comes back redrawn (glcare.js)
@@ -1072,6 +1068,6 @@ window.OpenEarthCity = async function main(cityId) {
     cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour, renderer, world, care };
   // the router calls stop() before it shows another view
   return {
-    stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); controls.dispose(); if (post) { post.renderTarget1.dispose(); post.renderTarget2.dispose(); } renderer.dispose(); Wd.dispose(); window.__city = null; },
+    stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); controls.dispose(); if (post) post.dispose(); renderer.dispose(); Wd.dispose(); window.__city = null; },
   };
 };

@@ -271,16 +271,80 @@ window.OELens = (function () {
     return { u: tmp.x * 0.5 + 0.5, v: tmp.y * 0.5 + 0.5, front: tmp.z < 1 && sunDir.dot(camera.getWorldDirection(new THREE.Vector3())) > 0 };
   }
 
-  // the same guard for three.js's own bright pass (the viewer's and the title's bloom): see bright() above
-  function tameBloom(bloom) {
-    const m = bloom && bloom.materialHighPassFilter, end = 'gl_FragColor = mix( outputColor, texel, alpha );';
-    if (!m || !m.fragmentShader.includes(end)) return;
-    m.fragmentShader = m.fragmentShader.replace(end, `${end}
-			if ( any( greaterThan( floatBitsToUint( gl_FragColor ) & 0x7fffffffu, uvec4( 0x7f800000u ) ) ) ) gl_FragColor = vec4( 0.0 );
-			gl_FragColor.rgb = min( gl_FragColor.rgb, vec3( 65504.0 ) );
-			float oePeak = max( max( gl_FragColor.r, gl_FragColor.g ), gl_FragColor.b );
-			gl_FragColor.rgb *= ${BLOOM_CEIL.toFixed(1)} / max( oePeak, ${BLOOM_CEIL.toFixed(1)} );`);
-    m.needsUpdate = true;
+  // The model viewer's and the title's post stack (issue 375), as the game's (atmosphere.js): the scene into its own
+  // target (multisampled where the tier has it), the bloom's chain at half size from it (bright() above for its first
+  // pass, three.js's blurs and sum; its blend onto the frame is never drawn), and the lens, the one pass at the frame's
+  // full size, reading the scene and the bloom's sum together (tBloom, uBloom: shader({ merge: true }), or a lens of
+  // the page's own that reads them). Before, the bloom's blend and the lens were each a full-size pass of their own
+  // through a second full-size target. In an EffectComposer's shape for what reads one (passes, renderTarget1,
+  // render, setSize, setPixelRatio, removePass, reset, dispose). The roll-off is held off (uCap far up) unless the
+  // page sets it: the viewer and the title keep their look.
+  function stack(renderer, scene, camera, { target, bloom = null, lens }) {
+    const tri = new THREE.BufferGeometry();
+    tri.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+    tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
+    const quad = new THREE.Mesh(tri), quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    quad.frustumCulled = false;
+    const draw = (mat, rt) => { quad.material = mat; renderer.setRenderTarget(rt); if (rt) renderer.clear(); renderer.render(quad, quadCam); };
+    const mat = sh => new THREE.ShaderMaterial({ uniforms: sh.uniforms, vertexShader: sh.vertexShader, fragmentShader: sh.fragmentShader, depthTest: false, depthWrite: false });
+    const LU = lens.uniforms;
+    if (!LU.tBloom) Object.assign(LU, { tBloom: { value: null }, uBloom: { value: 0 } });
+    if (LU.uCap) LU.uCap.value = 65504;
+    lens.material.depthTest = lens.material.depthWrite = false;
+    let rt = target, pr = 1, W = 2, H = 2, bright = null;
+    if (bloom) {
+      bloom.materialHighPassFilter.dispose(); bloom.blendMaterial.dispose(); if (bloom._basic) bloom._basic.dispose();
+      const sh = OELens.bright();
+      sh.uniforms.uCap.value = 65504;
+      bright = sh.uniforms;
+      bloom.materialHighPassFilter = mat(sh);
+      bloom.blendMaterial = bloom._basic = { dispose() {} }; // (never drawn)
+    }
+    const passes = [{ scene }, ...(bloom ? [bloom] : []), lens];
+    function drawBloom() {
+      bright.tDiffuse.value = rt.texture; bright.uSrcPx.value.set(1 / rt.width, 1 / rt.height); bright.uSpread.value = 0.5;
+      bright.luminosityThreshold.value = bloom.threshold;
+      draw(bloom.materialHighPassFilter, bloom.renderTargetBright);
+      let input = bloom.renderTargetBright;
+      for (let i = 0; i < bloom.nMips; i++) {
+        const m = bloom.separableBlurMaterials[i];
+        m.uniforms.colorTexture.value = input.texture; m.uniforms.direction.value = THREE.UnrealBloomPass.BlurDirectionX;
+        draw(m, bloom.renderTargetsHorizontal[i]);
+        m.uniforms.colorTexture.value = bloom.renderTargetsHorizontal[i].texture; m.uniforms.direction.value = THREE.UnrealBloomPass.BlurDirectionY;
+        draw(m, bloom.renderTargetsVertical[i]);
+        input = bloom.renderTargetsVertical[i];
+      }
+      const C = bloom.compositeMaterial.uniforms;
+      C.bloomStrength.value = bloom.strength; C.bloomRadius.value = bloom.radius;
+      draw(bloom.compositeMaterial, bloom.renderTargetsHorizontal[0]);
+    }
+    const api = {
+      renderer, passes,
+      get renderTarget1() { return rt; }, get renderTarget2() { return rt; },
+      render() {
+        const autoClear = renderer.autoClear;
+        renderer.setRenderTarget(rt); renderer.clear(); renderer.render(scene, camera);
+        renderer.autoClear = false;
+        const glow = !!bloom && passes.includes(bloom) && bloom.enabled !== false && bloom.strength > 0;
+        LU.uBloom.value = glow ? 1 : 0;
+        if (glow) { drawBloom(); LU.tBloom.value = bloom.renderTargetsHorizontal[0].texture; }
+        LU.tDiffuse.value = rt.texture;
+        if (LU.uSrcPx) LU.uSrcPx.value.set(1 / rt.width, 1 / rt.height);
+        draw(lens.material, null);
+        renderer.autoClear = autoClear;
+      },
+      setPixelRatio(v) { pr = v; api.setSize(W, H); },
+      setSize(w, h) {
+        W = w; H = h;
+        const x = Math.max(2, Math.round(w * pr)), y = Math.max(2, Math.round(h * pr));
+        rt.setSize(x, y);
+        if (bloom) bloom.setSize(x, y);
+      },
+      removePass(p) { const i = passes.indexOf(p); if (i >= 0) passes.splice(i, 1); },
+      reset(t) { if (t) { rt.dispose(); rt = t; api.setSize(W, H); } },
+      dispose() { rt.dispose(); tri.dispose(); if (bloom) bloom.materialHighPassFilter.dispose(); },
+    };
+    return api;
   }
 
   // Every built-in three.js material (the buildings, ground, water, trees, landmarks, vehicles and
@@ -320,5 +384,5 @@ window.OELens = (function () {
   function patchChunks() { guardShaders(); loopAreaLights(); }
   if (window.THREE) patchChunks(); else addEventListener('three-ready', patchChunks, { once: true });
 
-  return { shader, merge, bright, sunOnScreen, tameBloom, guardShaders };
+  return { shader, merge, bright, stack, sunOnScreen, guardShaders };
 })();
