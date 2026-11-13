@@ -32,7 +32,10 @@ window.OEWeather = (function () {
     // gust 0..1 and the distance the air has travelled (metres, for whatever sways or drifts with it)
     uOeGlint: { value: 0 }, uOeSnow: { value: 0 }, uOeSnowfall: { value: 0 }, uOeFog: { value: 0 }, uOeFlash: { value: 0 }, uOeWind: { value: null },
     // the rain occlusion map (heights of the tops of things round the camera, from above) and its frame
-    uOeOcc: { value: null }, uOeOccBox: { value: null }, uOeOccOn: { value: 0 }, uOeOccBase: { value: 0 } };
+    uOeOcc: { value: null }, uOeOccBox: { value: null }, uOeOccOn: { value: 0 }, uOeOccBase: { value: 0 },
+    // the tracks in lying snow round the player (trail(), below): how trodden each texel is, its frame (x0, y0 in the
+    // map's metres, east and north; 1 / its width), and whether it is kept
+    uOeTrail: { value: null }, uOeTrailBox: { value: null }, uOeTrailOn: { value: 0 } }; // (uOeTrailBox: a Vector4 from create(): three.js is not loaded yet here)
   // what each weather asks for: rain, snow, fog and storm 0..1, cloud cover 0..1, the wind as a
   // multiple of the season's mean, and (snow) a temperature it may not rise above
   const KINDS = {
@@ -129,6 +132,14 @@ window.OEWeather = (function () {
   const GLSL = `
 uniform float uOeWet; uniform float uOeRain; uniform float uOeT; uniform float uOeSnow; uniform float uOeSnowfall; uniform vec4 uOeWind; uniform float uOeGlint;
 uniform sampler2D uOeOcc; uniform vec4 uOeOccBox; uniform float uOeOccOn; uniform float uOeOccBase;
+uniform sampler2D uOeTrail; uniform vec4 uOeTrailBox; uniform float uOeTrailOn;
+// how trodden the snow is at p (three.js world), 0..1, from the trail round the player; 0 beyond it
+float oeTrail(vec3 p) {
+  if (uOeTrailOn < 0.5) return 0.0;
+  vec2 uv = (vec2(p.x, -p.z) - uOeTrailBox.xy) * uOeTrailBox.z;
+  if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 0.0;
+  return textureLod(uOeTrail, uv, 0.0).r * smoothstep(0.0, 0.08, min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y)));
+}
 // 1 where something stands over p (a roof, a deck, a tree) by more than lift metres, from the
 // occlusion map round the camera; 0 in the open or beyond the map
 float oeCover(vec3 p, float lift) {
@@ -231,9 +242,17 @@ ${pools ? `  if (uOeWet > 0.001) { // (dry: no noise to work out)
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
     roughnessFactor = mix(roughnessFactor, 0.06, oePd);
   }` : ''}
-  oeSn = oeSnowOn(vOeW, oeNw, oeOpen, clamp(${tread}, 0.0, 1.0))${o.card ? ' * 0.62' : ''}; // (a far tree's card: frosted, not buried)
-  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.76, 0.83) * (0.86 + 0.2 * oeN(vOeW.xz * 0.9 + 5.0)) * (0.93 + 0.1 * oeN(vOeW.xz * 0.07 + 2.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
-  roughnessFactor = mix(roughnessFactor, 0.82, oeSn);
+  oeSn = oeSnowOn(vOeW, oeNw, oeOpen, clamp(${tread}, 0.0, 1.0))${o.card ? ' * 0.62' : o.person ? ' * 0.7' : ''}; // (a far tree's card: frosted, not buried; a person: a dusting on the shoulders and the hair, which they shake off)
+${o.tread ? `  float oeTrk = 0.0;
+  if (oeSn > 0.0 && uOeTrailOn > 0.5) { // trodden: packed down to a greyer, glossier crust, the ground showing through in the ruts
+    oeTrk = oeTrail(vOeW) * oeFlat;
+    oeSn *= 1.0 - 0.5 * oeTrk * (1.0 - 0.4 * smoothstep(0.5, 1.0, uOeSnow));
+    roughnessFactor = mix(roughnessFactor, 0.4, oeTrk * 0.6);
+  }
+` : ''}  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.76, 0.83) * (0.86 + 0.2 * oeN(vOeW.xz * 0.9 + 5.0)) * (0.93 + 0.1 * oeN(vOeW.xz * 0.07 + 2.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
+  roughnessFactor = mix(roughnessFactor, 0.82, oeSn);${o.tread ? `
+  diffuseColor.rgb *= 1.0 - 0.38 * oeTrk * oeSn; // (the packed snow's shade: the print's walls hold the light off its floor)
+  roughnessFactor = mix(roughnessFactor, 0.5, oeTrk * oeSn);` : ''}
 }`)
         .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= 1.0 - oeSn;')
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -527,19 +546,23 @@ void main() {
     // what faces the sky and walls darken in the rain. Called again as the world fills (dress(obj) for
     // something just loaded, before it is first compiled; a walk of the world every few seconds for the rest).
     // Left out: what the weather does not touch or what has its own (glass and anything see-through,
-    // lit screens, the sea, the people, whose normals are skinned).
+    // lit screens, the sea). The near people are skinned: their position and normal are the skinned ones by the
+    // time the patch reads them (three.js skins objectNormal and transformed before project_vertex), so they take
+    // it too, as the far crowd's instanced copies did (issue 381, item 7), and so do the umbrellas over them.
     let dressAt = -9;
     function dress(root = world) {
       if (!armed) return 0;
       let n = 0;
       if (Wd.groundMeshes) for (const g of Wd.groundMeshes) g.material.userData.oeWeather = true; // (the ground's own patch has it: game.js)
       root.traverse(o => {
-        if (!o.isMesh || o.isSkinnedMesh || o.userData.oeNoOcc || o === Wd.sky || (Wd.sea && o === Wd.sea.mesh)) return;
+        if (!o.isMesh || o.userData.oeNoOcc || o === Wd.sky || (Wd.sea && o === Wd.sea.mesh)) return;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
           if (!m || !m.isMeshStandardMaterial || m.userData.oeWeather || m.userData.oeDry) continue;
           if (m.transparent || m.depthWrite === false || m.side === THREE.BackSide || m.emissiveIntensity > 1.2 || m.transmission > 0) { m.userData.oeDry = true; continue; }
           const card = /-far$/.test(o.name || '') && o.isInstancedMesh && m.alphaTest > 0; // (a far tree's card)
-          wrap(m, { porous: 0.26, gloss: '0.4', card }, card ? 'card' : 'dress'); n++;
+          if (o.isSkinnedMesh) wrap(m, { porous: 0.12, gloss: '0.15', person: true }, 'person');
+          else wrap(m, { porous: 0.26, gloss: '0.4', card }, card ? 'card' : 'dress');
+          n++;
         }
       });
       return n;
@@ -779,6 +802,61 @@ void main() {
       const now = performance.now();
       for (let i = bolt.thunder.length - 1; i >= 0; i--) if (now >= bolt.thunder[i].at) { const th = bolt.thunder.splice(i, 1)[0]; if (api.onThunder) api.onThunder(th.dist); }
     }
+    // ---- the fog's top, seen from above (issue 381, item 3). The scene's fog has no height (three.js's fog chunk
+    // takes no uniform of ours without recompiling every program), so from a helicopter a fog only thinned. A
+    // radiation fog lies in a layer with a flat, soft top some tens of metres up, which towers and hills stand out
+    // of. That top is drawn as three stacked translucent sheets, 10 m apart, round the camera (one mesh, one draw;
+    // depth-tested, so what rises through it hides it and the sheets below soften where it does), only while there
+    // is fog and the camera is above it; inside it the scene's own fog is the fog. Its billows are noise in the
+    // world's frame, drifting with the wind; lit by the sun from above, pale and blue in the shade of the hour.
+    const DECK_R = 16000, deckGeo = new THREE.BufferGeometry();
+    { const v = [], ix = [], ring = 48, rings = 14;
+      for (let L = 0; L < 3; L++) {
+        const base = v.length / 3;
+        v.push(0, -L * 10, 0);
+        for (let r = 1; r <= rings; r++) for (let i = 0; i < ring; i++) { const a = i / ring * Math.PI * 2, rr = DECK_R * Math.pow(r / rings, 2); v.push(Math.cos(a) * rr, -L * 10, Math.sin(a) * rr); }
+        for (let i = 0; i < ring; i++) ix.push(base, base + 1 + (i + 1) % ring, base + 1 + i);
+        for (let r = 1; r < rings; r++) for (let i = 0; i < ring; i++) { const a = base + 1 + (r - 1) * ring, b = base + 1 + r * ring, j = (i + 1) % ring; ix.push(a + i, a + j, b + i, a + j, b + j, b + i); }
+      }
+      deckGeo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); deckGeo.setIndex(ix); }
+    const deckMat = new THREE.ShaderMaterial({
+      uniforms: { uK: { value: 0 }, uCol: { value: new THREE.Color() }, uLit: { value: new THREE.Color() }, uGlow: { value: new THREE.Color() }, uRun: { value: new THREE.Vector2() } },
+      vertexShader: `varying vec3 vW; varying float vL;
+        void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vL = -position.y / 10.0; gl_Position = projectionMatrix * viewMatrix * w; }`,
+      fragmentShader: `uniform float uK; uniform vec3 uCol, uLit, uGlow; uniform vec2 uRun; varying vec3 vW; varying float vL;
+        float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float n(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
+        void main() {
+          vec2 p = (vW.xz - uRun) / 260.0 + vL * 3.7;
+          float b = n(p) * 0.5 + n(p * 2.3 + 1.7) * 0.3 + n(p * 5.1 - 2.9) * 0.2; // the billows
+          float d = distance(vW.xz, cameraPosition.xz);
+          float a = uK * mix(0.74, 0.5, vL) * (0.6 + 0.6 * b) * (1.0 - smoothstep(${(DECK_R * 0.8).toFixed(1)}, ${(DECK_R * 0.99).toFixed(1)}, d));
+          a = mix(a, uK, smoothstep(1500.0, 6000.0, d)); // (far off it is a closed sheet to the horizon: nothing under it shows, as in the haze)
+          vec3 c = mix(uCol, uLit, (1.0 - vL * 0.45) * (0.45 + 0.55 * b)) + uGlow * (0.6 + 0.4 * b);
+          gl_FragColor = vec4(c, clamp(a, 0.0, 1.0));
+        }`,
+      transparent: true, depthWrite: false, fog: false });
+    const deck = new THREE.Mesh(deckGeo, deckMat);
+    deck.frustumCulled = false; deck.visible = false; deck.renderOrder = 2; deck.userData.oeNoOcc = true;
+    world.add(deck);
+    const deckTop = () => (api.groundY ?? 0) + 25 + 85 * smooth(0.15, 1, cur.fog);
+    const deckOn = () => (level > 0 ? smooth(0.12, 0.6, cur.fog) * smooth(2, 30, camera.position.y - deckTop()) : 0);
+    function fogDeck() {
+      const top = deckTop(), k = deckOn();
+      deck.visible = k > 0.01;
+      if (!deck.visible) return;
+      deck.position.set(camera.position.x, top, camera.position.z);
+      deckMat.uniforms.uK.value = k;
+      const day = Wd.day ?? 1, fc = world.fog ? world.fog.color : deckMat.uniforms.uCol.value;
+      deckMat.uniforms.uCol.value.copy(fc).multiplyScalar(0.92);
+      // the top in the sun: white with the sun's colour by day, the fog's own colour by night
+      const sun = Wd.sunLight ? Wd.sunLight.color : fc, sy = Wd.sunDir ? Math.max(0, Wd.sunDir.y) : 0;
+      deckMat.uniforms.uLit.value.copy(fc).lerp(sun, 0.5 * day).multiplyScalar(1 + 0.35 * day * smooth(0, 0.3, sy));
+      // after dark the top holds the city's light from under it, as a night fog over a city glows sodium-orange
+      deckMat.uniforms.uGlow.value.setRGB(0.09, 0.055, 0.025).multiplyScalar(1 - smooth(0.05, 0.4, day));
+      deckMat.uniforms.uRun.value.set(runX * 0.4, runZ * 0.4);
+    }
+
     // ---- the rainbow: when the sun comes out low (under 42 degrees) with rain still falling or just gone,
     // a bow 42 degrees round the point opposite the sun, red outside, with the fainter second bow at 51 and
     // Alexander's darker band between them. One thin ring of quads far out, added to the frame; nothing
@@ -819,8 +897,77 @@ void main() {
       bowMat.uniforms.uK.value = bowK * 0.22 * (0.4 + 0.6 * (Wd.day ?? 1));
       shared.uCam.value.copy(camera.position);
     }
+    // ------------------------------------------------------------ tracks in the snow (issue 381, item 2)
+    // A small texture round the player, 512 texels over 64 m (12.5 cm each), of how trodden the lying snow is:
+    // every walker near the player leaves a stippled path, every car two ruts, written on the CPU from where they
+    // were and where they are (game.js passes them to tread()), and new snow fills them back in. The ground and
+    // the paving read it (patch: o.tread) and pack the snow down to a greyer crust there. No render: one small
+    // upload a few times a second while snow lies; nothing at all otherwise. Recentred in whole texels as the
+    // player moves, so a track stays where it was made. (Surveyed alternatives, docs/WEATHER.md: a depth capture
+    // of the walkers from below each frame, or displaced snow geometry, each a render or a mesh of its own.)
+    const TR = { n: 512, size: 64, x0: 0, y0: 0, on: false, dirty: false, upT: 0, last: new Map() };
+    TR.data = new Uint8Array(TR.n * TR.n);
+    TR.tex = new THREE.DataTexture(TR.data, TR.n, TR.n, THREE.RedFormat, THREE.UnsignedByteType);
+    TR.tex.minFilter = TR.tex.magFilter = THREE.LinearFilter; TR.tex.generateMipmaps = false; TR.tex.needsUpdate = true;
+    U.uOeTrail.value = TR.tex;
+    if (!U.uOeTrailBox.value) U.uOeTrailBox.value = new THREE.Vector4(0, 0, 1, 0);
+    const trStamp = (x, y, r, k) => { // a soft disc of radius r metres at (x, y), k: how hard it presses (0..255)
+      const px = TR.size / TR.n, cx = (x - TR.x0) / px, cy = (y - TR.y0) / px, rr = Math.max(0.5, r / px);
+      const i0 = Math.max(0, Math.floor(cx - rr)), i1 = Math.min(TR.n - 1, Math.ceil(cx + rr)), j0 = Math.max(0, Math.floor(cy - rr)), j1 = Math.min(TR.n - 1, Math.ceil(cy + rr));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const d = Math.hypot(i + 0.5 - cx, j + 0.5 - cy) / rr;
+        if (d >= 1) continue;
+        const o = j * TR.n + i, v = TR.data[o] + k * (1 - d * d);
+        TR.data[o] = v > 255 ? 255 : v;
+      }
+      TR.dirty = true;
+    };
+    const trRecentre = (x, y) => { // keep the player in the middle half, the texels shifted whole
+      const px = TR.size / TR.n, half = TR.size / 2;
+      if (TR.on && Math.abs(x - (TR.x0 + half)) < TR.size / 4 && Math.abs(y - (TR.y0 + half)) < TR.size / 4) return;
+      const nx0 = Math.round((x - half) / px) * px, ny0 = Math.round((y - half) / px) * px;
+      const di = Math.round((nx0 - TR.x0) / px), dj = Math.round((ny0 - TR.y0) / px), n = TR.n, old = TR.data.slice();
+      TR.data.fill(0);
+      if (TR.on && Math.abs(di) < n && Math.abs(dj) < n) for (let j = Math.max(0, -dj); j < Math.min(n, n - dj); j++) TR.data.set(old.subarray((j + dj) * n + Math.max(0, di), (j + dj) * n + Math.min(n, n + di)), j * n + Math.max(0, -di));
+      TR.x0 = nx0; TR.y0 = ny0; TR.dirty = true;
+    };
+    // movers: [{id, x, y, h, car}] in the map's metres (x east, y north; h the heading, 0 north): who walks or drives
+    // near the player this frame, the player first. Called by the game every frame; costs nothing without snow lying.
+    function tread(movers, dt) {
+      if (!(S.snowDepth > 0.02) || level === 0) { if (TR.on) { TR.on = false; U.uOeTrailOn.value = 0; TR.data.fill(0); TR.last.clear(); TR.dirty = true; } return; }
+      const me = movers[0];
+      if (!me) return;
+      trRecentre(me.x, me.y);
+      TR.on = true; U.uOeTrailOn.value = 1;
+      U.uOeTrailBox.value.set(TR.x0, TR.y0, 1 / TR.size, 0);
+      const seen = new Set();
+      for (const m of movers) {
+        seen.add(m.id);
+        const was = TR.last.get(m.id);
+        TR.last.set(m.id, { x: m.x, y: m.y, s: was ? was.s : 0, f: was ? was.f : 0 });
+        if (!was) continue;
+        const dx = m.x - was.x, dy = m.y - was.y, d = Math.hypot(dx, dy);
+        if (d < 0.05 || d > 6) continue; // (standing, or a jump: a teleport, a respawn)
+        const sx = dx / d, sy = dy / d, nx = sy, ny = -sx; // (the way it went, and to its right)
+        if (m.car) { // two ruts 1.5 m apart, 0.3 m wide, along the way it came
+          for (let t = 0; t < d; t += 0.15) for (const side of [-0.75, 0.75]) trStamp(was.x + dx * t / d + nx * side, was.y + dy * t / d + ny * side, 0.2, 90);
+        } else { // footprints, left and right, every 0.7 m of the way
+          const L = TR.last.get(m.id);
+          let s = L.s + d;
+          while (s >= 0.7) { s -= 0.7; L.f ^= 1; const f = (d - s) / d, foot = L.f ? 0.13 : -0.13; const px = was.x + dx * f + nx * foot, py = was.y + dy * f + ny * foot; trStamp(px + sx * 0.1, py + sy * 0.1, 0.13, 255); trStamp(px - sx * 0.08, py - sy * 0.08, 0.12, 255); }
+          L.s = s;
+        }
+      }
+      for (const k of TR.last.keys()) if (!seen.has(k)) TR.last.delete(k);
+      // new snow fills the tracks back in: in about a minute of heavy snow, five of light
+      const fill = cur.snow * dt * 255 / 60 + (S.snowDepth < 0.1 ? dt * 8 : 0);
+      if (fill > 0) { TR.fillAcc = (TR.fillAcc || 0) + fill; if (TR.fillAcc >= 1) { const f = Math.floor(TR.fillAcc); TR.fillAcc -= f; for (let i = 0; i < TR.data.length; i++) if (TR.data[i]) TR.data[i] = TR.data[i] > f ? TR.data[i] - f : 0; TR.dirty = true; } }
+      TR.upT += dt;
+      if (TR.dirty && TR.upT > 0.12) { TR.upT = 0; TR.dirty = false; TR.tex.needsUpdate = true; }
+    }
+
     const api = {
-      U, kinds: Object.keys(KINDS), names: NAMES, meshes: { near, far, splash, fNear, fFar }, occ: occRT, dress,
+      U, kinds: Object.keys(KINDS), tread, names: NAMES, meshes: { near, far, splash, fNear, fFar, deck }, occ: occRT, dress,
       get mode() { return mode; },
       get kind() { return kindOf(cur); },
       // how much a slow device has shed (0 nothing, 1 light, 2 off or, for a chosen weather, no drops):
@@ -918,7 +1065,8 @@ void main() {
       // into it from the horizon up. From above the layer (a helicopter, a tower) one sees further.
       // Called after light() and on its own when only the air has changed.
       air() {
-        const f = cur.fog, sn = cur.snow, day = Wd.day ?? 1, fog = world.fog;
+        // (above the fog's top the air between the eye and it is clear: the top, drawn, hides what is under it, fogDeck)
+        const f = cur.fog * (1 - deckOn()), sn = cur.snow, day = Wd.day ?? 1, fog = world.fog;
         const heat = smooth(27, 34, cur.temp) * day * (1 - cur.cloud);
         const thick = Math.max(f, sn * 0.6, heat * 0.3);
         if (fog && thick > 0.002) {
@@ -1013,6 +1161,7 @@ void main() {
         if (dt > 0) { runX += wx * Math.min(dt, 0.1); runZ += wz * Math.min(dt, 0.1); }
         storms(dt, tSec);
         rainbow(dt);
+        fogDeck();
         if (su && su.cloudCoverage && baseClouds) {
           const ct = su.cloudTrim || 0; // (more cloud for a shot: the overture's sunset sky, overture.js)
           su.cloudCoverage.value = Math.min(0.97, baseClouds[0] + ct + (0.97 - baseClouds[0] - ct) * smooth(0, 1, cur.cloud));
@@ -1063,7 +1212,7 @@ void main() {
       // compiled again for the screen, a variant nothing drew with, in one task (issue 259)
       warm(compile) {
         if (api.shed >= 2) return;
-        const all = [near, far, splash, fNear, fFar, boltMesh, bow], was = all.map(m => m.visible);
+        const all = [near, far, splash, fNear, fFar, boltMesh, bow, deck], was = all.map(m => m.visible);
         all.forEach(m => { m.visible = true; });
         try {
           if (compile) for (const m of all) compile(m);
@@ -1080,7 +1229,7 @@ void main() {
       },
       // is a point under cover (a roof within a few metres overhead)? from the last occlusion map
       covered: () => cover.roof,
-      dispose() { if (occRT) occRT.dispose(); for (const m of [near, far, splash, fNear, fFar, boltMesh, bow]) { world.remove(m); if (m !== fNear && m !== fFar) m.geometry.dispose(); m.material.dispose(); } },
+      dispose() { TR.tex.dispose(); if (occRT) occRT.dispose(); for (const m of [near, far, splash, fNear, fFar, boltMesh, bow, deck]) { world.remove(m); if (m !== fNear && m !== fFar) m.geometry.dispose(); m.material.dispose(); } },
     };
     // what the camera should not see from above: the sky, the stars and the moon, sprites and
     // labels, the rain itself, and whatever draws its own pass (a mirror)
