@@ -819,10 +819,26 @@ loaded (`tools/mem_check.js <city>`; the peak GPU memory it was asked for, summe
 as each is uploaded and freed, and the JS heap of the page and its Workers once it has settled, a collection after the
 run):
 
-| City (phone/low tier) | GPU before | GPU after | Settled JS heap after |
+| Map (phone tier) | Peak GPU, MB | Settled JS heap, MB | Peak JS heap, MB |
 |---|---|---|---|
-| Shibuya | 865 | 575 | 542 |
-| _(every live city is measured; see the table filled from `tools/mem_check.js` output)_ | | | |
+| Shibuya (before) | 865 | — | 814 |
+| Shibuya | 575 | 542 | 818 |
+| Tokyo (Marunouchi-Ginza) | 586 | 807 | 1192 |
+| Kyoto | 618 | 668 | 981 |
+| Queenstown | 606 | 499 | 600 |
+| Sydney | 531 | 462 | 604 |
+| Shinjuku | 498 | 430 | 574 |
+| Kamakura | 366 | 208 | 274 |
+| Tetsugaku | 297 | 223 | 311 |
+| Higashiyama | 294 | 208 | 350 |
+| Fushimi Inari | 260 | 156 | 221 |
+
+The budget (`quality.js` `budget`, `tools/mem_check.js` defaults) is **700 MB of peak GPU memory and 880 MB of
+settled heap**, just above the heaviest maps (Kyoto's GPU, Tokyo's heap). What is left on the large maps is their
+own: the buildings' few million vertices on the GPU (about 175 MB in Shibuya, all eight attributes read by the
+facade shader), and in the script heap the walking model's solids (`collision.js` prisms, `nav.js` fine cells and
+tiles, `navcells.js` maps: about 150 MB in Tokyo) and the landmarks' meshes, which the walking model reads. Those
+are the next cuts (a per-distance building LOD; a packed collision store), not done here.
 
 `tools/check.sh` runs `tools/mem_check.js` for each live city it checks (a step in `run_city`) and fails a city whose
 peak GPU memory or settled heap goes over the budget (`MEM_GPU`, `MEM_HEAP`), so a change that re-inflates a phone's

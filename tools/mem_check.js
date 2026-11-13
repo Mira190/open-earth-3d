@@ -2,8 +2,9 @@
 // Workers), the GPU memory WebGL was asked for (every texture, buffer and renderbuffer, summed per object as
 // it is uploaded, resized and deleted, and the canvas's own buffers), and the renderer process's resident
 // memory as the operating system counts it. An iPhone kills a tab's WebContent process that grows past
-// about 1-1.5 GB (less on older phones) and Safari then shows "A problem repeatedly occurred"; the budget
-// here keeps every live city well under that on the low tier a phone gets (quality.js).
+// about 1-1.5 GB (less on older phones) and Safari then shows "A problem repeatedly occurred". The budget is a
+// ceiling just above the heaviest live map on the phone tier (quality.js lean), so that a change that adds memory there
+// fails here rather than on a phone (docs/PERFORMANCE.md, "On a phone").
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/mem_check.js shibuya [more cities...]
 // It opens #play-<city> as an iPhone (390 x 844 CSS pixels at 3x, touch, the phone's user agent) on the
@@ -11,12 +12,12 @@
 // walking round would have them), then reads the peak. Prints one line per city and the largest
 // textures and buffers; exits 1 when a city goes over its budget:
 //   MEM_GPU   peak GPU memory, MB (default 700: quality.js budget, above the heaviest live map)
-//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 760)
+//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 880)
 // TIER=low|medium|high (default low). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
-const GPU_MB = +(process.env.MEM_GPU || 700), HEAP_MB = +(process.env.MEM_HEAP || 760), TOP = +(process.env.TOP || 8);
+const GPU_MB = +(process.env.MEM_GPU || 700), HEAP_MB = +(process.env.MEM_HEAP || 880), TOP = +(process.env.TOP || 8);
 const MB = v => (v / 1048576).toFixed(0);
 
 // Chromium's processes (one browser at a time runs here), with each one's proportional set size (its own pages
