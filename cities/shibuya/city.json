@@ -561,7 +561,7 @@
       "note": "hours: the share of the peak crowd out, by the hour: the morning commute, lunch, and the evening, busiest from 18:00 to 21:00 and busier still on Friday and Saturday nights and at the weekend (Shibuya Redevelopment Association, 2014: 260,000 people a day on weekdays, 390,000 on holidays); few after the last trains (about 00:30)",
       "cars": 200,
       "radius_m": 450,
-      "style": "tokyo"
+      "style": "tokyo", "real_from": ["tokyo"]
     },
     "look": {
       "neon": 1,

@@ -1,0 +1,12 @@
+{
+ "asphalt": {
+  "source": "https://polyhaven.com/a/asphalt_02",
+  "licence": "CC0",
+  "metres": 3.0
+ },
+ "concrete": {
+  "source": "https://polyhaven.com/a/concrete_floor_worn_001",
+  "licence": "CC0",
+  "metres": 2.0
+ }
+}

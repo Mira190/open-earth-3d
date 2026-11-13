@@ -284,9 +284,11 @@ vec2 pv = pavers(vWP.xz);
 float pnear = 1.0 - smoothstep(8.0, 32.0, camD);
 diffuseColor.rgb *= mix(1.0, (0.9 + 0.14 * pv.y) * mix(0.7, 1.0, pv.x), paved * (1.0 - roadway) * pnear * 0.85);
 float agg = vn(vWP.xz * 31.0) * 0.6 + vn(vWP.xz * 7.0) * 0.4;
-diffuseColor.rgb *= mix(1.0, 0.86 + 0.26 * agg, roadway * near);
+diffuseColor.rgb *= mix(1.0, 0.86 + 0.26 * agg, roadway * near${window.OESurface && OESurface.active ? ' * 0.3' : ''}); // (the scanned asphalt carries it near: surface.js)
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
 diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * pnear));`);
+    // photographed asphalt and paving at eye level (surface.js; not on the low tier)
+    if (window.OESurface) OESurface.ground(sh, { road: 'roadway', paved: 'paved' });
     // in the rain: darker, glossier ground, and puddles on the roads and the paving (weather.js)
     if (window.OEWeather && (!weather || weather.armed)) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', tread: '1.0 - green', porous: 0.42 });
     Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
@@ -359,6 +361,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (Wd.farSun) Wd.farSun.init(DSM); // the sun's shadow past the shadow map, from this surface model (world.js, issue 358)
   if (D.navJob) { D.navCells = await D.navJob; D.navJob = null; } // (the landmarks on its grid, from the worker: world.js)
   const nav = OENav.create(D, DSM);
+  if (window.OESurface) OESurface.load(renderer); // the street's scanned surfaces, which the shaders take when they come (surface.js)
   // the big screens light the street, the crowd and the buildings across from them (neon.js)
   const neon = window.OENeon ? await OENeon.create(Wd, renderer, { tier: QC.name, gain: (G.look || {}).neon ?? 1, fill: (G.look || {}).fill || [], ground: (x, y) => Math.max(0, nav.terrain(x, y)) }) : null;
   // a wet street mirrors the city (mirror.js, high tier): the ground, the paving and the road markings take it
@@ -614,12 +617,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const awaited = look => lib && look.character && !lib.tpl[look.character] && (lib.npcs[look.character] || lib.heroes[look.character] || lib.info.characters[look.character]);
   const pendingRig = () => ({ root: new THREE.Group(), pending: true, animate() {} });
   const CR = G.crowd || {};
+  // the nearest walkers drawn as real people (people.js crowdRenderer "real"): the city's own NPC cast, and the casts
+  // game.crowd.real_from names (Shibuya's takes Tokyo's too), in their everyday clothes (no uniforms); not on the
+  // low tier, where a phone keeps the far crowd's own figures close up and loads no more characters
+  const realCast = () => {
+    if (!lib || !lib.npcs || QC.name === 'low' || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
+    const from = new Set([cityId, ...(CR.real_from || [])]);
+    return Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
+  };
   let crowdDraw = null; // the crowd's renderer (people.js), for umbrellas in the rain
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   // the walkers there are room for: on the medium and high tiers a city's peak (game.crowd.pedestrians_peak),
   // on the low tier its usual number, so a phone draws no more people than it did
   const crowdPool = QC.name === 'low' ? CR.pedestrians || 300 : CR.pedestrians_peak || CR.pedestrians || 300;
-  const crowd = OEActors.crowd(world, crowdNet, U, crowdPool, CR.radius_m || 450, lib && (P => (crowdDraw = OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style, camera }))),
+  const crowd = OEActors.crowd(world, crowdNet, U, crowdPool, CR.radius_m || 450, lib && (P => (crowdDraw = OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style, camera, real: realCast(), realHeight: CR.height }))),
     { benches: lib ? benches : null, ground: lineGround, wall: (x, y, z) => nav.solid(x, y, z, 0.2), posts, clear: (x, y, z) => nav.room(x, y, z, 0.3) });
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)

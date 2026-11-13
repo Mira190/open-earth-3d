@@ -24,6 +24,8 @@ Before building, we looked at what renders in a browser on ordinary hardware in 
 | three.js `Reflector` (planar reflection with an oblique clip plane, Lengyel) | a mirror drawn from a mirrored camera | MIT | **Adopted** in its mechanism (`web/mirror.js`): the mirrored camera and its texture matrix, sampled by the ground's own materials in the puddles, with a clipping plane in place of the oblique near plane. |
 | Screen-space planar reflections (Far Cry 5's, Unity URP SSPR) | a planar reflection by scattering the frame along the mirror | various | Not adopted: it needs compute or atomics that WebGL 2 lacks. |
 | Light probes (three.js `LightProbe`, irradiance volumes) | baked indirect light | MIT | Not needed yet: the scramble's indirect light at night is mostly the screens' and the shopfronts', which the area lights and the light card carry directly. |
+| [Poly Haven](https://polyhaven.com) scanned PBR textures (asphalt, worn concrete) | photographed surfaces: colour, normal and roughness of real asphalt and paving | CC0 1.0 | **Adopted** (`pipeline/surfaces.py`, `web/surface.js`): packed into one image each (luminance over the mean, roughness, normal) and sampled in metres on the ground at eye level, so a street up close has real aggregate, tar cracks and wheel polish instead of a procedural grain. |
+| Texture bombing / anti-tiling (Inigo Quilez, [*texture repetition*](https://iquilezles.org/articles/texturerepetition/), technique 3) | two offset lookups of a tile blended by a noise, so a repeated texture shows no grid | MIT (the article's shader code) | **Adopted** (`web/surface.js`): the scanned surface is sampled twice at offsets a noise picks across the street and blended, so the 3 m tile does not read as a repeating blotch; value noise stands in for its noise texture. |
 
 ### The sky, the grade and an animated film's look: the second survey (issue 353)
 
@@ -300,6 +302,16 @@ Friday and Saturday nights (`weekend_night`) and the weekend (`weekend`; the Shi
 Redevelopment Association counted 260,000 people a day on weekdays and 390,000 on holidays in
 2014). The crowd's looks are the `tokyo` style of `web/game/people.js`; the NPCs are cast
 Rocketbox avatars.
+
+**Real people up close (`web/game/people.js` `crowdRenderer`, `game.crowd.real_from`).** At eye
+level the far crowd's own low-detail character read as a doll. The nearest walkers (14 on the
+high and medium tiers, none on the low tier, where a phone keeps its memory budget) are now drawn
+as the textured Rocketbox NPCs cast for the city (`game.npcs`) and the casts `real_from` names
+(Shibuya takes Tokyo's too), in their everyday clothes — the uniforms (police, delivery, pilot)
+are left out. Each near walker keeps its far figure's sex and takes a scanned face, hair and
+clothed body; its height is set to the Japanese adult mean (MHLW National Health and Nutrition
+Survey 2019: women 1.58 m, men 1.71 m, or `game.crowd.height`) with the figure's own spread. A
+city turns it off with `game.crowd.real: false` or the URL `?realcrowd=off`.
 
 ### The crossing's sound (`web/game/audio.js`, `game.look.sound`)
 

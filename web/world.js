@@ -1781,6 +1781,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // three.js caches a program by the text of onBeforeCompile, and wrappers (streetLit) read alike
       // across patterns: each patterned material keys its own
       if (lmMats[k].onBeforeCompile) lmMats[k].customProgramCacheKey = () => `lm|${k}`;
+      // photographed asphalt, paving and worn road paint at eye level, in the game (surface.js)
+      if (game && window.OESurface) OESurface.material(lmMats[k], OESurface.kindOf(m));
     }
     // meshes marked floodlit glow after dark; with emissive_map an image glows in its own colours (a screen, a lit sign)
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)

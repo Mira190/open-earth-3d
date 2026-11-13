@@ -772,7 +772,27 @@ transformed = crowdPose(transformed, false);`);
   // before, every slot was drawn every frame, the hidden ones as a model scaled to nothing, in the view and
   // again in the sun's shadow map, and every buffer was sent whole. camera: the view to cull against (none:
   // no culling).
-  function crowdRenderer(world, lib, U, P, { near = 14, nearR = 32, style = null, camera = null } = {}) {
+  // real: the textured Rocketbox characters (the NPCs' cast, build_people.py --npcs) the nearest walkers are drawn
+  // as, each the sex of their far figure, instead of the far crowd's own character close up: at eye level a
+  // passer-by is a person, with the scanned face, hair and clothes the NPCs have (none: the far crowd's own)
+  function crowdRenderer(world, lib, U, P, { near = 14, nearR = 32, style = null, camera = null, real = null, realHeight = null } = {}) {
+    // a real person's height: the Japanese adult's mean (MHLW National Health and Nutrition Survey 2019: women
+    // 1.58 m, men 1.71 m; a city may say otherwise in game.crowd.height) with the far figure's own spread
+    const realScale = (rn, look) => {
+      const w = lib.npcs[rn].sex === 'f', mean = realHeight ? realHeight[w ? 0 : 1] : w ? 1.58 : 1.71;
+      return mean / (lib.npcs[rn].height_m || 1.75) * look.scale / (w ? 0.915 : 0.97);
+    };
+    const realOf = (() => {
+      const cast = (real || []).filter(n => lib.npcs && lib.npcs[n]);
+      const bySex = { f: cast.filter(n => lib.npcs[n].sex === 'f'), m: cast.filter(n => lib.npcs[n].sex === 'm') };
+      if (!cast.length) return () => null;
+      return (i, look) => {
+        const w = lib.info.characters[look.character] && lib.info.characters[look.character].pack === 'W';
+        const list = bySex[w ? 'f' : 'm'].length ? bySex[w ? 'f' : 'm'] : cast;
+        const h = Math.imul(i + 1, 2654435761) >>> 0;
+        return list[h % list.length];
+      };
+    })();
     const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
     const UP = new THREE.Vector3(0, 1, 0), at = new THREE.Vector3(), frustum = new THREE.Frustum(), vp = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), camAt = new THREE.Vector3(1e9, 0, 0);
     let culling = false;
@@ -868,10 +888,10 @@ transformed = crowdPose(transformed, false);`);
       for (const [i, r] of active) if (!keep.has(i)) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }
       for (const i of keep) {
         if (active.has(i)) continue;
-        const p = P[i], name = p.look.character;
+        const p = P[i], rn = realOf(i, p.look), look = rn ? Object.assign({}, p.look, { character: rn, pattern: null, scale: realScale(rn, p.look) }) : p.look, name = look.character;
         if (!lib.tpl[name]) { lib.require(name); continue; }
-        const r = (free[name] && free[name].pop()) || person(lib, Object.assign({}, p.look));
-        r.setLook(Object.assign({ pattern: null, pattern2: null, acc: null }, p.look));
+        const r = (free[name] && free[name].pop()) || person(lib, Object.assign({}, look));
+        r.setLook(Object.assign({ pattern: null, pattern2: null, acc: null }, look));
         r.umbOn = false;
         world.add(r.root);
         active.set(i, r);
