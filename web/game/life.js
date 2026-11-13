@@ -54,7 +54,7 @@ window.OELife = (function () {
       // the save read again from the browser, as the next visit will read it
       reload() { const o = read(); if (o) { store = o; if (store.wallets[code] == null) store.wallets[code] = cur.start; } return !!o; },
       // this map's diary, people and jobs start again (the menu's "New game"); the passport's skills and the wallet stay
-      reset() { store.cities[ctx.cityId] = freshCity(); L.save(); for (const p of parts) if (p.reset) p.reset(); },
+      reset() { store.cities[ctx.cityId] = freshCity(); if (store.album) store.album = store.album.filter(a => a.city !== ctx.cityId); L.save(); for (const p of parts) if (p.reset) p.reset(); },
       wipe() { store = fresh(); store.wallets[code] = cur.start; L.save(); for (const p of parts) if (p.reset) p.reset(); },
       // ---- skills
       xp: id => (store.skills[id] || 0),
