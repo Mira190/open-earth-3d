@@ -361,7 +361,7 @@ window.OEAtmos = (function () {
       // (under a thunderstorm the sheet is darker still, and lightning lights it from within: weather.js S.storm, S.flash)
       Wd.cloudLight = (alt, ref) => {
         const WS = (window.OEWeather && OEWeather.S) || {}, WU = window.OEWeather ? OEWeather.U : null;
-        OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)) });
+        OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)), storm: WS.storm || 0 });
         if (WS.flash > 0) { su.uCloudShade.value.multiplyScalar(1 + 5 * WS.flash); su.uCloudLit.value.multiplyScalar(1 + 3 * WS.flash); }
       };
     }
@@ -600,8 +600,10 @@ window.OEAtmos = (function () {
           // a thunderstorm by day is dark: the weather lifts the exposure under cloud so that an overcast is never grey
           // (weather.js light()), which left a storm's sky pale; its key is lower and harder (weather.js S.storm)
           const storm = (window.OEWeather && OEWeather.S && OEWeather.S.storm) || 0;
-          if (storm > 0) { L.uExposure.value *= 1 - 0.3 * storm * (1 - night); L.uContrast.value += 0.07 * storm; }
-          L.uTint.value.set(gr.tint[0] * (trim ? trim.tint[0] : 1), gr.tint[1] * (trim ? trim.tint[1] : 1), gr.tint[2] * (trim ? trim.tint[2] : 1));
+          // (about a stop down at full strength, harder, and a cold slate cast: a storm's light is the cloud's, blue-grey)
+          const sk = storm * (1 - night);
+          if (storm > 0) { L.uExposure.value *= 1 - 0.48 * sk; L.uContrast.value += 0.12 * storm; }
+          L.uTint.value.set(gr.tint[0] * (trim ? trim.tint[0] : 1) * (1 - 0.06 * sk), gr.tint[1] * (trim ? trim.tint[1] : 1) * (1 - 0.02 * sk), gr.tint[2] * (trim ? trim.tint[2] : 1) * (1 + 0.04 * sk));
           L.uTime.value = tSec;
           L.uShade.value.fromArray(gr.shade); L.uHiTint.value.fromArray(gr.hi); L.uVibrance.value = gr.vib * (1 - 0.5 * ov);
           L.uShadeLift.value.fromArray(gr.lift).multiplyScalar(1 - 0.6 * ov);
