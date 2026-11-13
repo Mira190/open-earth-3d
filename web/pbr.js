@@ -6,7 +6,7 @@
 // The material's own colour and roughness stay what it averages to: the textures are divided by their
 // set's mean (assets/pbr/sets.json), so a mesh reads the same whether its maps have loaded or not, and
 // a city tunes a surface by its colour as before. The low tier takes the 512 px maps and no roughness
-// map; the others the 1024 px ones. Two things break the repeat that a tiled photograph shows over a
+// map; the others the 1024 px ones; a phone (the lean part of the low tier) none. Two things break the repeat that a tiled photograph shows over a
 // wall of a hundred metres: a slow variation of tone across the surface (a few metres across, from the
 // world position, so two walls never repeat alike), and weathering at the foot of a wall (darker,
 // rougher, splashed by the rain) up "grime_m" metres over the ground ("grime_z": the ground's height).
@@ -29,9 +29,11 @@ window.OEPbr = (function () {
     return (cache[file] = t);
   }
   // mat: a MeshStandardMaterial with its colour and roughness set; spec: landmarks.json's "pbr"
+  // (off on a phone: OEQuality.city().lean, where every megabyte of the GPU counts; the material keeps its colour)
+  const lean = (() => { try { return !!(window.OEQuality && OEQuality.city().lean); } catch (e) { return false; } })();
   function apply(mat, spec, { small = false, aniso = 4 } = {}) {
     const s = sets && sets[spec.set];
-    if (!s) return;
+    if (!s || lean) return;
     const size = small ? '512' : '1k', [tw, th] = spec.tile_m || [2, 2];
     const set = (t) => { const c = t.clone(); c.repeat.set(1 / tw, 1 / th); c.needsUpdate = true; return c; };
     mat.map = set(tex(`${spec.set}_col_${size}.webp`, true, aniso));

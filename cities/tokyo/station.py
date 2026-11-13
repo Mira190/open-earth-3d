@@ -109,6 +109,7 @@ def facade(K, ring, g, top, skip, centre_band=None):
     """Walls round a CCW ring (world) from the ground g up to g + top: three storeys of openings, the stone
     courses, quoins and the cornice. skip(a, b): an edge to leave out (inside a taller pavilion)."""
     brick, stone, sash, glass, rev = K["tks_brick"], K["tks_stone"], K["tks_sash"], K["tks_glass"], K["tks_reveal"]
+    fine = K["tks_stone_fine"]   # the stone round each window and the quoins: not on the low tier
     H = top
     # storeys scaled to the wall: the ground floor tallest, the cornice at the top
     k = H / EAVES
@@ -147,9 +148,9 @@ def facade(K, ring, g, top, skip, centre_band=None):
             zm = zb + (zt - zb) * 0.68
             box(sash, p - nrm * 0.42, t, nrm, zm, zm + 0.07, w, 0.06)
             # stone: a sill under it, a lintel over it with its keystone
-            box(stone, p, t, nrm, zb - 0.16, zb, w + 0.3, 0.12)
-            box(stone, p, t, nrm, zt, zt + 0.38, w + 0.36, 0.06)
-            box(stone, p, t, nrm, zt - 0.1, zt + 0.5, 0.34, 0.11)
+            box(fine, p, t, nrm, zb - 0.16, zb, w + 0.3, 0.12)
+            box(fine, p, t, nrm, zt, zt + 0.38, w + 0.36, 0.06)
+            box(fine, p, t, nrm, zt - 0.1, zt + 0.5, 0.34, 0.11)
         edges.append((a, b))
         s0 += L
     # courses round the whole ring (the plinth, the sill lines, the imposts), and the cornice
@@ -178,7 +179,7 @@ def facade(K, ring, g, top, skip, centre_band=None):
                 j = 0
                 while z + 0.55 < g + H - 1.5:
                     w = 1.1 if j % 2 == 0 else 0.7
-                    box(stone, p - sgn * tt * w / 2, tt, nn, z, z + 0.5, w, 0.04)
+                    box(fine, p - sgn * tt * w / 2, tt, nn, z, z + 0.5, w, 0.04)
                     z += 0.62
                     j += 1
 
@@ -480,8 +481,8 @@ def _dump(m):
 
 def meshes():
     """(materials, meshes, hidden solids, trees, props)"""
-    K = ak.Kit("tks", floodlit=("tks_brick", "tks_stone", "tks_slate", "tks_copper", "tks_glass", "tks_glass_dark"),
-               uv=("tks_brick", "tks_stone", "tks_slate", "tks_reveal", "tks_paving", "tks_kerb", "tks_lawn"))
+    K = ak.Kit("tks", floodlit=("tks_brick", "tks_stone", "tks_stone_fine", "tks_slate", "tks_copper", "tks_glass", "tks_glass_dark"),
+               uv=("tks_brick", "tks_stone", "tks_stone_fine", "tks_slate", "tks_reveal", "tks_paving", "tks_kerb", "tks_lawn"))
     g, hidden, octs, axis = building(K)
     trees, props = plaza(K, g, octs, axis)
     mats = _mats()
@@ -490,8 +491,11 @@ def meshes():
     for k in mats:
         if mats[k].get("pbr", {}).get("grime_m"):
             mats[k]["pbr"]["grime_z"] = round(g, 1)
+    mats["tks_stone_fine"] = dict(mats["tks_stone"], pbr=dict(mats["tks_stone"]["pbr"]))
+    for k in ("tks_paving", "tks_kerb", "tks_lawn"):
+        mats[k]["surface"] = None   # its own PBR set (web/pbr.js), not the shared ground surfaces (web/surface.js)
     out = K.out()
     for m in out:
-        if m.mat in ("tks_sash", "tks_reveal", "tks_kerb"):
+        if m.mat in ("tks_sash", "tks_reveal", "tks_kerb", "tks_stone_fine"):
             m.detail = True
     return mats, out, hidden, trees, props
