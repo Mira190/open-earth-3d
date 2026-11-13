@@ -860,10 +860,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     Object.assign(player, { mode: 'seat', x: st.at[0], y: st.at[1], z: st.at[2], h: st.h, speed: 0, ground: true, vz: 0 });
     cam.lookYaw = 0; cam.lookPitch = st.pitch || 0; cam.lastInput = -10;
     shows.sit(st);
+    seatTouch(true);
   }
+  // in a seat there is nowhere to walk: on a phone the joystick, Jump, Run and Guess are put away; a finger looks
+  // round and the action button stands you up
+  function seatTouch(on) { if (touch) for (const id of ['#gt-joy', '#gt-jump', '#gt-run', '#gt-down']) $(id).hidden = on; }
   function standUp() {
     const st = shows.seat, f = player.seatFrom;
     shows.stand();
+    seatTouch(false);
     const p = (f && nav.stand(f.x, f.y, f.z + 0.5, { rMax: 3 })) || nav.stand(player.x, player.y, player.z + 0.5, { rMax: 4 }) || f || player;
     Object.assign(player, { mode: 'foot', x: p.x, y: p.y, z: p.z, h: st ? st.h : player.h, speed: 0, ground: true, vz: 0 });
     cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.3; cam.dist = 5.5;
@@ -6041,10 +6046,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function vehicleHud() {
     const el = $('#g-vhud');
     if (touch) {
-      // in a seat there is nowhere to walk: the joystick, Jump, Run and Guess are put away; a finger looks round, the action button stands you up
-      const seated = player.mode === 'seat';
-      for (const id of ['#gt-joy', '#gt-jump', '#gt-run']) if ($(id).hidden !== seated) $(id).hidden = seated;
-      $('#gt-down').hidden = seated || player.mode === 'ferry' || player.mode === 'ride';
+      $('#gt-down').hidden = player.mode === 'seat' || player.mode === 'ferry' || player.mode === 'ride';
       $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : player.mode === 'car' ? 'Horn' : 'Guess';
       $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : (fish && fish.api && fish.api.button()) || 'Jump'; // (Cast and Reel with a line out: fishing.js)
       // (at the wheel there is nothing to run: the button is the autopilot's)
