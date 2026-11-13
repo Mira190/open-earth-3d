@@ -8,7 +8,7 @@
 //   xvfb-run -a node tools/frame_cost.js sydney [WxH] [frames]
 // TIER=low|medium|high (default high). TIME=HH:MM sets the clock (default 15:30); NIGHT=1 is 21:30.
 // FOOT=1 measures on foot, after the title (the arrival settled); else the title screen's orbit.
-// QUERY=?a=b adds a query to the page's address; FREEZE=1 stops the game's clock (a steady sun, as between its steps).
+// QUERY=?a=b adds a query to the page's address; EVAL=js runs in the page before measuring (a view); FREEZE=1 stops the game's clock (a steady sun, as between its steps).
 // The totals: passes, draws, triangles, the pixels shaded (each full-screen pass's viewport, and once the area of
 // every target the scene's geometry is drawn into, times its MSAA samples: overdraw is not counted) and the
 // main thread's time inside the frame's requestAnimationFrame callbacks (the game's step and three.js's submission;
@@ -96,8 +96,10 @@ const [w, h] = size.split('x').map(Number);
     });
   }
   if (process.env.FREEZE) await p.evaluate(() => { window.__game.clock.frozen = true; });
+  // EVAL='...' runs in the page before measuring (a view: __game.cam.yaw = Math.PI turns the camera round)
+  if (process.env.EVAL) await p.evaluate(process.env.EVAL);
   await p.waitForTimeout(6000);
-  const out = await p.evaluate(async n => {
+  const out = await p.evaluate(async ([n, MOST]) => {
     const g = window.__game, res = [], js = [], main = [];
     for (let i = 0; i < n; i++) {
       await new Promise(r => requestAnimationFrame(r));
@@ -109,8 +111,11 @@ const [w, h] = size.split('x').map(Number);
       main.push(window.__rafMs());
       res.push(window.__frameCost.stop());
     }
-    return { passes: res[res.length - 1], frameMs: js, mainMs: main, px: [innerWidth, innerHeight, devicePixelRatio], pxScale: g.pxScale && g.pxScale() };
-  }, +frames);
+    // (MOST=1: the frame with the most draws of those measured, for work done every few frames: the sea's reflection)
+    const sum = r => (Array.isArray(r) ? r : []).reduce((a, x) => a + (x.draws || 0), 0);
+    const pick = MOST ? res.reduce((a, r) => (sum(r) > sum(a) ? r : a), res[0]) : res[res.length - 1];
+    return { passes: pick, frameMs: js, mainMs: main, px: [innerWidth, innerHeight, devicePixelRatio], pxScale: g.pxScale && g.pxScale() };
+  }, [+frames, !!process.env.MOST]);
   const fmt = c => c ? `${c.w}x${c.h} ${({ 0x881A: 'RGBA16F', 0x8058: 'RGBA8', 0x8C43: 'SRGB8_A8', 0x8229: 'R8', 0x822B: 'RG8', 0x8814: 'RGBA32F', 0x822F: 'RG16F', 0x81A6: 'D24', 0x8CAC: 'D32F', 0x88F0: 'D24S8' })[c.fmt] || '0x' + c.fmt.toString(16)}${c.samples ? ' x' + c.samples + 'MSAA' : ''}` : '?';
   const M = x => (x / 1e6).toFixed(2);
   let full = 0, bytes = 0, tris = 0, draws = 0, shaded = 0;

@@ -353,6 +353,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
   function boxRenderer(world, U, P) {
     const n = P.length, mesh = instanced(PERSON(), toneMaterial(U), n), A = mesh.geometry.attributes;
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    mesh.userData.noRefl = true; // (out of the sea's reflection: water.js)
     world.add(mesh);
     for (let i = 0; i < n; i++) { setC(A.aC0, i, pick(SHIRTS)); setC(A.aC1, i, pick(PANTS)); setC(A.aC2, i, pick(SKIN)); setC(A.aC3, i, pick(HAIR)); }
     return {
@@ -1520,10 +1521,11 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       for (const k of names) {
         const cap = C.filter(c => c.model === k).length;
         if (!cap) continue;
-        fleet[k] = geos[k].map(g => { const m = instanced(g, mat, cap); m.count = 0; world.add(m); return m; });
+        fleet[k] = geos[k].map(g => { const m = instanced(g, mat, cap); m.count = 0; m.userData.noRefl = true; world.add(m); return m; });
       }
     } else {
       mesh = instanced(CAR(), toneMaterial(U), n);
+      mesh.userData.noRefl = true;
       world.add(mesh);
       for (let i = 0; i < n; i++) {
         const hex = pick(CARS);
@@ -1781,7 +1783,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     // (and the way out again, ahead of it: the same three places on the other side. sgn -1 the way in, +1 the way out)
     function wayIn(c, line, s, dir, sgn = -1) {
       const k = side * kerbLo(line), base = side * JN.shiftOf(net.L[line], 0), len = net.L[line].len;
-      for (const [d, f] of [[3, 0.8], [6, 0.55], [9, 0.3]]) {
+      for (const [d, f] of [[3, 0.95], [6, 0.63], [9, 0.32]]) { // (the way pulling in goes: update's loT)
         const s1 = s + sgn * dir * d;
         if (s1 < 0 || s1 > len) return false;
         lanePos(line, s1, dir, tmp, base + (k - base) * f);
@@ -3045,7 +3047,11 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         // (across to its lane a little at a time, slowly while it is barely moving, nosing that way)
         // (in a junction it keeps the lane it went in by: its way across is that lane's)
         const back = line === c.line && dir !== c.dir, keepIt = c.mv && !back, lnNow = keepIt ? c.ln : !back && JN.lanesOf(net.L[line]) > 1 ? c.ln : 0,
-          loT = c.parking && line === c.line && !back && (c.parking.s - s) * dir < 13 ? c.parking.lo : side * JN.shiftOf(net.L[line], lnNow); // (pulling in: across to the kerb over its last 13 m)
+          laneLo = side * JN.shiftOf(net.L[line], lnNow), toPark = c.parking && line === c.line && !back ? (c.parking.s - s) * dir : Infinity,
+          // (pulling in: across to the kerb over its last 12 m, as far across as its distance from the place says, the
+          // way wayIn found clear. Let across at the rate its speed allows, it was at the kerb 9 m short and swept into
+          // the car parked there, Queenstown)
+          loT = toPark < 12 ? laneLo + (c.parking.lo - laneLo) * Math.min(1, (12 - toPark) / 9.5) : laneLo;
         // (but not over the middle of a two-way road: out of a one-way street's lane nearest the middle,
         // the lane kept across the junction is the oncoming one there, so it moves across at once, and
         // can do so standing, where a car waiting at that road's line would otherwise hold it until it squeezed through)
@@ -3261,7 +3267,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         m.count = old.count;
         m.instanceMatrix.array.set(old.instanceMatrix.array); m.instanceMatrix.needsUpdate = true;
         for (const a of ['aC0', 'aC1', 'aC2', 'aC3', 'aAnim']) { m.geometry.attributes[a].array.set(old.geometry.attributes[a].array); m.geometry.attributes[a].needsUpdate = true; }
-        world.add(m); world.remove(old); old.geometry.dispose();
+        m.userData.noRefl = true; world.add(m); world.remove(old); old.geometry.dispose();
         fleet[k][l] = m; added.push(m);
       }
       return added;

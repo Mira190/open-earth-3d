@@ -38,9 +38,12 @@ window.OEPhone = (function () {
       for (const b of (L.bonds ? L.bonds.ready() : [])) {
         const s = L.bonds.st(b.npc), n = ctx.npcs.find(x => x.id === b.npc);
         if (!s.rank || !n) continue;
-        post(n.name, b.ranks[s.rank].message || `I'm ${(b.where || 'about').replace(/^[A-Z]/, m => m.toLowerCase())} this ${day.SLOT_NAME[o.slot].toLowerCase()}, if you're passing.`, `${key}|${b.npc}`);
+        post(n.name, b.ranks[s.rank].message || `I'm ${(L.bonds.whereOf(b) || 'about').replace(/^[A-Z]/, m => m.toLowerCase())} this ${day.SLOT_NAME[o.slot].toLowerCase()}, if you're passing.`, `${key}|${b.npc}`);
         break; // one invitation at a time
       }
+      // a friend who reads the weather: rain on its way within six hours, once a day
+      const fa = L.ability('forecast'), f = fa && !day.weather().wet && day.forecast(6, 1);
+      if (f && f.from != null) post(fa.from, `${fa.rain || 'Rain on the way'}: from about ${day.hm(f.from)}${f.to != null ? ` to ${day.hm(f.to)}` : ''}. ${fa.tip || 'Somewhere with a roof, then.'}`, `${o.date}|rain`);
       for (const e of day.today()) if (day.onNow(e)) post('Calendar', `${e.title}${e.where ? `, ${e.where}` : ''}: on now.`, `${o.date}|${e.id}`);
       if (o.newDay) for (const [n, e] of day.soon(1)) post('Calendar', `Tomorrow: ${e.title}${e.where ? `, ${e.where}` : ''}.`, `${o.date}|soon|${e.id}`);
     });

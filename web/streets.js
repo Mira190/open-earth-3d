@@ -163,6 +163,15 @@ window.OEStreets = (function () {
         if (r > big) big = r;
         return p;
       },
+      // a post moved to (x, y, z) (someone who stands elsewhere at another hour)
+      move(p, x, y, z) {
+        const g = grid.get(key(Math.floor(p.x / GC), Math.floor(p.y / GC))), i = g ? g.indexOf(p) : -1;
+        if (i >= 0) g.splice(i, 1);
+        p.x = x; p.y = y; p.z = z;
+        const k = key(Math.floor(x / GC), Math.floor(y / GC)), h = grid.get(k);
+        if (h) h.push(p); else grid.set(k, [p]);
+        return p;
+      },
       near(x, y, r, fn, z = null) {
         const R = r + big;
         for (let cx = Math.floor((x - R) / GC); cx <= Math.floor((x + R) / GC); cx++) for (let cy = Math.floor((y - R) / GC); cy <= Math.floor((y + R) / GC); cy++) {

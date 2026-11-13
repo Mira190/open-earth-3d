@@ -31,6 +31,10 @@ window.OEDay = (function () {
     return Math.min(...starts.map(s => (s - t + 365) % 365));
   }
 
+  // a sky in words from the season's samples (weather.js season(): rain, snow, fog, storm, cloud 0..1): the worst of them
+  const skyOf = f => { const mx = k => Math.max(...f.map(o => o[k] || 0)); return mx('storm') > 0.3 ? 'Thunderstorms' : mx('snow') > 0.2 ? 'Snow' : mx('rain') > 0.5 ? 'Rain' : mx('rain') > 0.15 ? 'Showers' : mx('fog') > 0.4 ? 'Fog' : mx('cloud') > 0.6 ? 'Overcast' : 'Clear'; };
+  const wetOf = f => (f.rain || 0) > 0.15 || (f.snow || 0) > 0.2 || (f.storm || 0) > 0.3;
+  const ICON = { Thunderstorms: '\u26c8', Snow: '\u2744', Rain: '\u2614', Showers: '\u2602', Fog: '\u2601', Overcast: '\u2601', Clear: '\u2600' };
   function create(L) {
     const ctx = L.ctx, S = ctx.S, c = ctx.clock, $ = ctx.$, stage = ctx.stage;
     // ---- the slots of a date, from its sun
@@ -64,9 +68,20 @@ window.OEDay = (function () {
         if (!w || !w.season) return '';
         const t = new Date(Date.UTC(c.y, c.m - 1, c.d + 1)), f = [540, 900, 1260].map(m => w.season(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), m)).filter(Boolean);
         if (!f.length) return '';
-        const mx = k => Math.max(...f.map(o => o[k] || 0)), temp = f.map(o => o.temp).filter(v => v != null);
-        const sky = mx('storm') > 0.3 ? 'Thunderstorms' : mx('snow') > 0.2 ? 'Snow' : mx('rain') > 0.5 ? 'Rain' : mx('rain') > 0.15 ? 'Showers' : mx('fog') > 0.4 ? 'Fog' : mx('cloud') > 0.6 ? 'Overcast' : 'Clear';
-        return `${sky}${temp.length ? `, ${Math.round(Math.min(...temp))}° to ${Math.round(Math.max(...temp))}°` : ''}`;
+        const temp = f.map(o => o.temp).filter(v => v != null);
+        return `${skyOf(f)}${temp.length ? `, ${Math.round(Math.min(...temp))}° to ${Math.round(Math.max(...temp))}°` : ''}`;
+      },
+      // the forecast (a friend's ability, life.json gives "forecast"): the season's weather hour by hour from now, in steps
+      // of `step` hours: [{ min (minutes from today's midnight), sky, temp, wet }], and when rain (or snow) next starts and stops
+      forecast(hours = 24, step = 3) {
+        const w = ctx.weather;
+        if (!w || !w.season) return null;
+        const at = k => { const m = c.min + k * 60, t = new Date(Date.UTC(c.y, c.m - 1, c.d, 0, m)); return w.season(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCHours() * 60 + t.getUTCMinutes()); };
+        const cells = [];
+        for (let k = step - (Math.floor(c.min / 60) % step); k <= hours; k += step) { const f = at(k); if (f) cells.push({ min: (Math.floor(c.min / 60) + k) * 60, sky: skyOf([f]), temp: f.temp, wet: wetOf(f) }); }
+        let from = null, to = null;
+        for (let k = 0; k <= hours; k++) { const f = at(k), wet = f && wetOf(f); if (wet && from == null) from = k; else if (!wet && from != null && to == null) { to = k; break; } }
+        return { cells, from: from == null ? null : (Math.floor(c.min / 60) + from) * 60, to: to == null ? null : (Math.floor(c.min / 60) + to) * 60, now: from === 0 };
       },
       // is something that keeps hours on now? { slots, days (0 = Monday), hours: ["11:00", "22:00"], weather: "rain"|"dry", dates/days as an event }
       onNow(o, at = c.min) {
@@ -104,7 +119,7 @@ window.OEDay = (function () {
         return true;
       },
       nextSlot: () => SLOTS[(SLOTS.indexOf(D.slot) + 1) % 4],
-      show: () => openDiary('today'), close: closeDiary, get open() { return !!diary; },
+      show: (t = 'today') => openDiary(t), close: closeDiary, get open() { return !!diary; },
       tabs: [], card: () => card(true), cardShown: () => shown,
       addTab(t) { D.tabs.push(t); },
     };
@@ -219,9 +234,20 @@ window.OEDay = (function () {
         + `<h3>On today</h3>${today.length ? `<ul class="lf-list">${today.map(e => `<li class="${D.onNow(e) ? 'on' : ''}"><b>${esc(e.title)}${e.native ? ` <span class="jp">${esc(e.native)}</span>` : ''}</b><span>${esc(e.where || '')}${e.slots ? ` · ${e.slots.map(s => SLOT_NAME[s]).join(', ')}` : ''}${ci.events[e.id] ? ' · been' : ''}</span><p>${esc(e.text || '')}</p></li>`).join('')}</ul>` : '<p class="note">Nothing on the calendar today. The city is its ordinary self, which is the point.</p>'}`
         + (around.length ? `<h3>Around ${SLOT_NAME[slot].toLowerCase() === 'night' ? 'tonight' : `this ${SLOT_NAME[slot].toLowerCase()}`}</h3><ul class="lf-list">${around.map(a => `<li class="${a.on ? 'on' : ''}"><b>${esc(a.title)}</b><span>${esc(a.note || '')}</span></li>`).join('')}</ul>` : '')
         + (soon.length ? `<h3>Coming up</h3><ul class="lf-list soon">${soon.slice(0, 4).map(([n, e]) => `<li><b>${esc(e.title)}</b><span>${n === 1 ? 'Tomorrow' : `In ${n} days`} · ${e.dates ? `${e.dates[0][1]} ${MON[e.dates[0][0] - 1]}` : ''}${e.where ? ` · ${esc(e.where)}` : ''}</span></li>`).join('')}</ul>` : '')
+        + forecastHtml()
         + (D.tomorrow() ? `<h3>Tomorrow</h3><p class="lf-tomorrow">${esc(D.tomorrow())}</p>` : '')
         + `<h3>Pass the time</h3><div class="lf-pass-row">${passes.map(s => `<button class="btn" data-pass="${s}">Until ${SLOT_NAME[s].toLowerCase()}<span class="num">${hm(b[s])}${b[s] <= c.min ? ' +1' : ''}</span></button>`).join('')}</div>`
         + '<p class="note">The clock is the city\'s own. Nothing closes the streets: the hour only changes who is about and what is on.</p>';
+    }
+    // the next day hour by hour, once a friend has taught you to read it (gives "forecast")
+    function forecastHtml() {
+      const a = L.ability('forecast'), f = a && D.forecast();
+      if (!f || !f.cells.length) return '';
+      const night = m => { const b = bounds(), t = ((m % 1440) + 1440) % 1440; return t < b.sunrise || t > b.sunset; };
+      const said = f.now ? (f.to != null ? `Wet until ${hm(f.to)}, then drying.` : 'Wet all day and night.') : f.from != null ? `Dry until ${hm(f.from)}${f.to != null ? `, wet to ${hm(f.to)}` : ', wet after'}.` : 'Dry for the next day and night.';
+      const pinned = !!(window.OEWeather && OEWeather.S && OEWeather.S.source === 'pinned');
+      return `<h3>Forecast <span class="from">${esc(a.name)} · ${esc(a.from)}</span></h3><ol class="lf-fc">${f.cells.map(x => `<li class="${x.wet ? 'wet' : ''}${night(x.min) ? ' night' : x.sky === 'Clear' ? ' sun' : ''}"><span class="num">${hm(x.min)}</span><i aria-hidden="true">${night(x.min) && x.sky === 'Clear' ? '\u263e' : ICON[x.sky]}</i><b>${x.sky}</b>${x.temp != null ? `<span class="num">${Math.round(x.temp)}°</span>` : ''}</li>`).join('')}</ol>`
+        + `<p class="lf-tomorrow">${esc(said)}${pinned ? ' (Your sky is set by hand in the menu; this is the season\'s.)' : ''}</p>`;
     }
     function renderLog() {
       const log = L.city().log.slice().reverse();
