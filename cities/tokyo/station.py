@@ -42,10 +42,10 @@ MATERIALS = {
     "tks_glass": {"color": "#1f262c", "roughness": 0.08, "metalness": 0.6, "emissive": "#ffd29a", "glow": 0.62},
     "tks_glass_dark": {"color": "#1c2228", "roughness": 0.08, "metalness": 0.6, "emissive": "#ffe6c4", "glow": 0.07},
     "tks_reveal": {"color": "#6f3426", "roughness": 0.9, "metalness": 0.0, "pbr": {"set": "brick", "tile_m": [1.4, 1.4], "vary": 0.05}},
-    "tks_paving": {"color": "#aaa59b", "roughness": 0.55, "metalness": 0.0, "pbr": {"set": "granite_paving", "tile_m": [2.4, 2.4], "vary": 0.06},
+    "tks_paving": {"color": "#9d988e", "roughness": 0.55, "metalness": 0.0, "pbr": {"set": "granite_paving", "tile_m": [2.4, 2.4], "vary": 0.06},
                    "decal": True, "street_lit": True},
     "tks_kerb": {"color": "#a9a59c", "roughness": 0.7, "metalness": 0.0, "pbr": {"set": "granite_paving", "tile_m": [1.2, 1.2]}, "street_lit": True},
-    "tks_lawn": {"color": "#5d7a3a", "roughness": 0.95, "metalness": 0.0, "decal": True, "street_lit": True},
+    "tks_lawn": {"color": "#6c7442", "roughness": 0.95, "metalness": 0.0, "pbr": {"set": "lawn", "tile_m": [2.0, 2.0], "vary": 0.25}, "decal": True, "street_lit": True},
     "tks_iron": {"color": "#23272a", "roughness": 0.45, "metalness": 0.6},
     "tks_lamp": {"color": "#f3ead8", "roughness": 0.3, "metalness": 0.0, "emissive": "#ffe2b4", "glow": 1.0},
 }
@@ -225,7 +225,7 @@ def dome_pavilion(K, c, R, phase, g):
     """An octagonal pavilion to 25 m, then the dome to DOME_TOP, its lantern and finial."""
     brick, stone, slate, cop, glass = K["tks_brick"], K["tks_stone"], K["tks_slate"], K["tks_copper"], K["tks_glass"]
     ring = octagon(c, R, phase)
-    zp = 24.6
+    zp = EAVES + 6.2
     facade(K, ring, g, EAVES, lambda a, b: False)
     # the attic over the cornice: brick, round windows, a second cornice
     for i in range(8):
@@ -305,27 +305,31 @@ def building(K):
     octs = []
     for d in domes:
         c = ak.ring_centroid(d["ring"])
-        near = [p for p in pav if Polygon(p["ring"]).distance(Polygon(d["ring"])) < 1.0 or Polygon(p["ring"]).contains(Polygon(d["ring"]).centroid)]
-        area = max([abs(ak.ring_area(p["ring"])) for p in near] or [abs(ak.ring_area(d["ring"])) * 1.6])
-        R = math.sqrt(area / (2 * math.sqrt(2)))
+        R = math.sqrt(abs(ak.ring_area(d["ring"])) / (2 * math.sqrt(2)))   # the mapped octagon's circumradius
         v = np.asarray(d["ring"][0]) - np.asarray(c)
-        phase = math.atan2(v[1], v[0])
-        octs.append((c, R, phase))
+        octs.append((c, R, math.atan2(v[1], v[0])))
     oct_polys = [Polygon(octagon(c, R, ph)) for c, R, ph in octs]
-    body = shapely.union_all([Polygon(s["ring"]).buffer(0) for s in wings + pav]).buffer(0.05).buffer(-0.05)
-    for op in oct_polys:
-        body = body.difference(op.buffer(-0.3))
-    parts = list(getattr(body, "geoms", [body]))
+    union = lambda ss: shapely.union_all([Polygon(s["ring"]).buffer(0) for s in ss]).buffer(0.05).buffer(-0.05)
     inside = lambda a, b: any(op.buffer(0.4).contains(shapely.geometry.Point((a + b) / 2)) for op in oct_polys)
+    # the wings, and the corner blocks round each dome a storey higher (PLATEAU: 28 m against the wings' 22)
+    tall = union(pav)
+    for op in oct_polys:
+        tall = tall.difference(op.buffer(-0.3))
+    low = union(wings).difference(tall.buffer(-0.3))
+    for op in oct_polys:
+        low = low.difference(op.buffer(-0.3))
+    in_tall = lambda a, b: inside(a, b) or tall.buffer(0.4).contains(shapely.geometry.Point((a + b) / 2))
     rings = []
-    for p in parts:
-        if p.area < 30:
-            continue
-        r = ccw(ak.simplify(list(p.exterior.coords), 0.6))
-        rings.append(r)
-        facade(K, r, g, EAVES, inside)
-        ak.outline_roof(K["tks_slate"], r, g + EAVES, 1.25, over=0.55, rise_max=5.2, cell=1.5)
-        dormers(K, r, g + EAVES, 1.25, inside)
+    for body, top, skip, rise in ((low, EAVES, in_tall, 5.2), (tall, EAVES + 3.4, inside, 28.0 - 3.3 - EAVES - 3.4)):
+        for p in list(getattr(body, "geoms", [body])):
+            if p.area < 30:
+                continue
+            r = ccw(ak.simplify(list(p.exterior.coords), 0.6))
+            rings.append(r)
+            facade(K, r, g, top, skip)
+            ak.outline_roof(K["tks_slate"], r, g + top, 1.25, over=0.55, rise_max=rise, cell=1.5)
+            dormers(K, r, g + top, 1.25, skip)
+    body = union(wings + pav)
     for c, R, ph in octs:
         dome_pavilion(K, c, R, ph, g)
     # the central pavilion: the imperial entrance's front, raised to CENTRE_TOP under its own steep roof
@@ -463,7 +467,7 @@ def _dump(m):
 def meshes():
     """(materials, meshes, hidden solids, trees, props)"""
     K = ak.Kit("tks", floodlit=("tks_brick", "tks_stone", "tks_slate", "tks_copper", "tks_glass", "tks_glass_dark"),
-               uv=("tks_brick", "tks_stone", "tks_slate", "tks_reveal", "tks_paving", "tks_kerb"))
+               uv=("tks_brick", "tks_stone", "tks_slate", "tks_reveal", "tks_paving", "tks_kerb", "tks_lawn"))
     g, hidden, octs, axis = building(K)
     trees, props = plaza(K, g, octs, axis)
     mats = _mats()

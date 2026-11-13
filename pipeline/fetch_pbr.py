@@ -26,6 +26,7 @@ SETS = {
     "slate": ("roof_slates_03", "natural slate roofing (the station's domes and roofs)"),
     "stucco": ("plastered_wall_04", "smooth render and dressed artificial stone (trim, bands, cornices)"),
     "concrete_pavers": ("concrete_pavers_02", "square concrete pavers (footways)"),
+    "lawn": ("leafy_grass", "a mown lawn (a plaza's lawns)"),
 }
 MAPS = {"col": "Diffuse", "nrm": "nor_gl", "rgh": "Rough"}
 SIZES = {"1k": 1024, "512": 512}
