@@ -382,6 +382,12 @@ drawn over it. `cities/sydney/rail.py` builds what the box stood for, on OpenStr
 
 ![Circular Quay from platform 1 at dusk: platform 2's benches, the cove and the Harbour Bridge](../images/sydney/circular-quay-platform-dusk.jpg)
 
+The North Shore Line's trains cross the Harbour Bridge on the deck's two western tracks (`city.py`
+`bridge_trains`): Waratahs every four minutes each way, keeping left, northbound on the western track,
+running through from one end of the deck to the other.
+
+![A Waratah crossing the Harbour Bridge](../images/sydney/bridge-train.jpg)
+
 ![Platform 2: the Opera House across the cove](../images/sydney/circular-quay-platform-2.jpg)
 
 ![A Waratah set at platform 2: skirts over the bogies, the two rows of windows, yellow doors](../images/sydney/circular-quay-waratah.jpg)

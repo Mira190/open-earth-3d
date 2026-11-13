@@ -1078,6 +1078,14 @@ window.OENav = (function () {
       if (keepOff && f.kind === 'ground' && keepOff(x, y)) return { ok: false, why: 'keep_off' };
       if (inland && f.kind === 'ground' && inland.water(x, y)) return { ok: false, why: 'keep_off' }; // a channel's edge, a pond's (inland.js)
       if (f.kind === 'promenade' && f.z < z - STEP) return { ok: false, why: 'wall' }; // a promenade's railings: over its walls, beside its steps
+      // off the side of a strip that holds its walkers (a platform with no doors along it: Kyoto's, game.json "hold"), down
+      // onto the track beside it: no
+      if (f.z < z - 0.4) for (const s of stripsAt(x, y)) {
+        if (!s.hold) continue;
+        const [u, v] = stripUV(s, x, y);
+        if (Math.abs(v) <= s.half_width || Math.abs(v) > s.half_width + 1.2 || u < s.us[0] || u > s.us[s.us.length - 1]) continue;
+        if (Math.abs(interp(s.us, s.zs, u) - z) < 0.4) return { ok: false, why: 'wall' };
+      }
       if (OP && f.kind === 'ground') { const o = OP.at(G, x, y); if (o && OP.blocked(o, x, y)) return { ok: false, why: 'wall' }; } // (a building there, or the far land's edge)
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind), f.kind === 'promenade'))) return { ok: false, why: 'wall' };
       // into the body of a strip from beside it (off the strip): its slab, from its surface down its thickness, between

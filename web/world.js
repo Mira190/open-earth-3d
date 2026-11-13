@@ -1623,6 +1623,17 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // (trees.js) in the city's mix, else low-poly crowns on short trunks; the mapped trees'
     // heights are not mapped (7-14 m spread)
     let TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nMapped = (P.trees || []).length / 4, nFixed = ((P.trees || []).length + (P.woods || []).length) / 4;
+    if (LM && LM.treeless && LM.treeless.length) { // nor under a landmark that says so (landmarks.json "treeless": a viaduct's deck)
+      const rings = LM.treeless.map(r => r.map(v => v / 10)), keep = [], f0 = nFixed, m0 = nMapped;
+      const xs = rings.map(r => { let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity; for (let k = 0; k < r.length; k += 2) { a = Math.min(a, r[k]); c = Math.max(c, r[k]); b = Math.min(b, r[k + 1]); d = Math.max(d, r[k + 1]); } return [a, b, c, d]; });
+      const inR = (r, x, y) => { let o = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if ((r[i + 1] > y) !== (r[j + 1] > y) && x < (r[j] - r[i]) * (y - r[i + 1]) / (r[j + 1] - r[i + 1]) + r[i]) o = !o; return o; };
+      for (let i = 0; i < TR.length; i += 4) {
+        const x = TR[i] / 10, y = TR[i + 1] / 10;
+        if (i < 4 * f0 && rings.some((r, k) => x >= xs[k][0] && x <= xs[k][2] && y >= xs[k][1] && y <= xs[k][3] && inR(r, x, y))) { if (i < 4 * m0) nMapped--; nFixed--; continue; }
+        keep.push(TR[i], TR[i + 1], TR[i + 2], TR[i + 3]);
+      }
+      TR = keep;
+    }
     if (IN) { // none stands in a channel or a pond (inland.js): a cherry planted from the canopy over the Meguro River stands on its bank
       const keep = [], m0 = nMapped, f0 = nFixed;
       for (let i = 0; i < TR.length; i += 4) {

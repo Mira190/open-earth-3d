@@ -213,6 +213,30 @@ due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 
 This is the Central Kyoto 洛中 map, one of four districts of Kyoto ([Kyoto as maps](kyoto-maps.md)). The others: [Higashiyama](higashiyama.md) (Yasaka Shrine, Kiyomizu-dera, Sannenzaka, Ninenzaka),
 [Fushimi Inari](fushimi-inari.md) and the Philosopher's Path.
 
+### The railway through Kyoto Station
+
+`cities/kyoto/rail.py` builds the station's railway on OpenStreetMap's tracks, platform outlines and
+stopping points (`pipeline/rail_osm.py` -> `cities/kyoto/rail_osm.json`), and `web/game/trains.js` runs it.
+
+- **The Tokaido Shinkansen** on its viaduct, the rail 8.6 m over the ground at the station and level along
+  its platforms: islands 11/12 (for Tokyo) and 13/14 (for Shin-Osaka and Hakata), 1.25 m over the rail, with
+  platform gates that open at a standing train's doors. The PLATEAU solids that stood over its platforms come
+  down; under the deck the Hachijo side's concourse is a lit wall between the piers. No tree mapped on the
+  ground under the deck stands up through it (`landmarks.json` "treeless").
+- **The Tokaido Main Line** at grade: islands 2/3 (the Biwako Line, for Kusatsu and Maibara) and 4/5 (the JR
+  Kyoto Line, for Osaka and Kobe), 0.92 m over the rail, no platform doors; a walker does not step off their
+  sides onto the track (a strip's `hold`).
+- A platform's own track (3, 5, 11, 14) runs on the through track of its direction, set across to the mapped
+  stopping point along the platform and easing back over 180 m beyond each end.
+- Every Shinkansen stops (drawn as the project's own high-speed train); the JR lines run a 12-car Special
+  Rapid and an 8-car local each way, in JR West's blue and brown. JR West's and JR Central's announcements
+  say のりば, "platform".
+- Kyoto has only this station on the map, so its trains are to watch and hear, not to ride.
+
+![Shinkansen platforms 13 and 14: a train for Shin-Osaka standing at 13, its doors and the gates open](../images/kyoto/shinkansen-platform-day.jpg)
+
+![The same after dark](../images/kyoto/shinkansen-platform-night.jpg)
+
 ## 4. Sun on public places
 
 Kyoto has no statutory sun window for public places. The places listed (Kyoto Gyoen, Kamo

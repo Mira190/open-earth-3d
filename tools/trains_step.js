@@ -67,6 +67,19 @@ module.exports = async function trainsStep(p) {
     for (let i = 0; i < 120; i++) { pl.h = g.cam.yaw = Math.atan2(c.x - pl.x, c.y - pl.y); g.advance(0.05, ['KeyW']); low = Math.min(low, pl.z); }
     const off = Math.hypot(c.x - pl.x, c.y - pl.y);
     checks.push([low > st.at[2] - 0.2 && off > 1.6 && off < 4 && pl.mode === 'foot', `the platform doors keep a walker off the track (stopped ${off.toFixed(2)} m from its middle, at ${low.toFixed(2)} m)`]);
+    // a platform with no doors along it holds a walker on it all the same (a strip's "hold": Kyoto's JR platforms)
+    const hold = (g.G.surfaces || []).find(q => q.hold && q.type === 'strip' && !/^rail_platform_1[13]/.test(q.mesh || '') && q.profile[0][1] < st.at[2] - 3) || (g.G.surfaces || []).find(q => q.hold && q.type === 'strip');
+    if (hold) {
+      const back = { x: pl.x, y: pl.y, z: pl.z, h: pl.h };
+      const u = (hold.profile[0][0] + hold.profile[hold.profile.length - 1][0]) / 2, z0 = (hold.profile[0][1] + hold.profile[hold.profile.length - 1][1]) / 2;
+      Object.assign(pl, { x: hold.origin[0] + hold.axis[0] * u, y: hold.origin[1] + hold.axis[1] * u, z: z0, ground: true, vz: 0, speed: 0, mode: 'foot' });
+      g.advance(0.3);
+      const z1 = pl.z; let lowH = pl.z;
+      for (let i = 0; i < 100; i++) { pl.h = g.cam.yaw = Math.atan2(-hold.axis[1], hold.axis[0]); g.advance(0.05, ['KeyW']); lowH = Math.min(lowH, pl.z); }
+      const v = -(pl.x - hold.origin[0]) * hold.axis[1] + (pl.y - hold.origin[1]) * hold.axis[0];
+      checks.push([lowH > z1 - 0.2 && Math.abs(v) <= hold.half_width + 0.6, `a platform without doors holds a walker at its edge (${hold.name}: ${Math.abs(v).toFixed(2)} m out of a half width of ${hold.half_width}, the lowest ${(lowH - z1).toFixed(2)} m)`]);
+      Object.assign(pl, back); g.advance(0.3);
+    }
     // ---- an arrival, heard and seen from there
     A.setMuted(false);
     const spoken = [];
@@ -98,7 +111,7 @@ module.exports = async function trainsStep(p) {
       const glb = Object.values(T.kinds).filter(K => K.glb), drawnGlb = glb.reduce((a, K) => a + K.lods.reduce((b, L) => b + L.n, 0), 0);
       checks.push([T.models && glb.length > 0 && drawnGlb > 0, `the trains are the modelled cars (${glb.length} kinds, ${drawnGlb} cars drawn${T.models ? '' : '; railstock.glb not loaded'})`]);
     }
-    checks.push([['approach', 'arrive', 'close'].every(w => said.includes(w)) && !!first && (!first.ja || first.ja.includes(`${n}番線`)) && new RegExp(`(track|platform) ${n}\\b`).test(first.en) && !!cap && cap.textContent.length > 10,
+    checks.push([['approach', 'arrive', 'close'].every(w => said.includes(w)) && !!first && (!first.ja || new RegExp(`${n}番(線|のりば)`).test(first.ja)) && new RegExp(`(track|platform) ${n}\\b`).test(first.en) && !!cap && cap.textContent.length > 10,
       `the platform announces the train on track ${n}, the station and the doors (${said.join(', ') || 'nothing'}; "${first ? first.en : ''}")`]);
     checks.push([voice > 0.2, `the train is heard from the platform (its voice up to ${voice.toFixed(2)})`]);
     if (ss && window.SpeechSynthesisUtterance && ss.getVoices().length) checks.push([spoken.length > 0, `and spoken by the browser's voices (${spoken.length} utterances: ${[...new Set(spoken)].join(', ')})`]);

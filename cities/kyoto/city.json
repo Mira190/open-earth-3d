@@ -50,6 +50,7 @@
     "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
     "roofs": true
   },
+  "rail_osm": {"bbox": [135.745, 34.981, 135.775, 34.9895], "lines": ["東海道新幹線", "東海道本線"], "note": "The Tokaido Shinkansen and the Tokaido Main Line (the JR Kyoto and Biwako lines) through Kyoto Station: their tracks, platform outlines and stopping points (pipeline/rail_osm.py -> cities/kyoto/rail_osm.json; cities/kyoto/rail.py builds the platforms and the trains' courses from it)."},
   "bridges": {
     "note": "The Kamo River's bridges, over the riverbed the aerial photograph shows; forms from Kyoto City (京の橋しるべ) and each bridge's record.",
     "colour": "#8b9296",

@@ -55,6 +55,7 @@ window.OETrains = (function () {
     // place (ahead of the car's middle, out to each side, up from the rail)
     e235: { len: 20, band: null, door: '#8fc31f', face: '#8fc31f', top: '#8fc31f', pan: [1, 4, 7, 9], model: 'Commuter' },            // Yamanote: yellow-green doors and face
     e233k: { len: 20, band: ['#00a7e3'], door: null, face: '#00a7e3', top: '#00a7e3', pan: [1, 4, 7], model: 'Commuter' },            // Keihin-Tohoku: a sky blue band
+    jrw225: { len: 20, band: ['#1b4f9c', '#7b4a2a'], door: null, face: '#1b4f9c', top: '#1b4f9c', pan: [1, 4, 7, 10], model: 'Commuter' }, // JR West's Kyoto Line: a blue band over brown on the steel
     e233t: { len: 20, band: ['#f68b1e', '#0d6b38'], door: null, face: '#f68b1e', top: '#f68b1e', pan: [2, 5, 8, 11, 13], model: 'Commuter' }, // Tokaido: orange over green
     hayate: { len: 25, shinkansen: true, pan: [4, 11] }, // this project's own high-speed train (see shinkansen())
     // Sydney Trains' Waratah (A and B sets): eight double-deck cars of 20.4 m, 3.03 m wide and 4.41 m high, steel
@@ -764,7 +765,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
         api.doorsOpen.push({ track: P.tr.id, station: P.h.station, f });
         if (f === P.f) { k += P.h.psd.u.length * 2; continue; }
         P.f = f; moved = true;
-        const c = P.tr.c, off = P.h.psd.off, slide = 0.5 + 0.95 * f;
+        const c = P.tr.c, off = P.h.psd.off, q = (P.h.psd.w || 2) / 2, slide = q * (0.5 + 0.95 * f); // (each leaf half the opening wide)
         for (const u of P.h.psd.u) {
           c.at(u + 0.5, fwd); c.at(u - 0.5, aft);
           const hx = fwd.x - aft.x, hy = fwd.y - aft.y, rot = Math.atan2(hy, hx), nx = -hy * off, ny = hx * off;
@@ -772,11 +773,13 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
             const x = (fwd.x + aft.x) / 2 + hx * e * slide + nx, y = (fwd.y + aft.y) / 2 + hy * e * slide + ny;
             dummy.position.set(x, (fwd.z + aft.z) / 2 + (P.tr.platform_m || 1.1), -y);
             dummy.rotation.set(0, rot + (e > 0 ? Math.PI : 0), 0);
+            dummy.scale.set(q, 1, 1);
             dummy.updateMatrix();
             leafW.setMatrixAt(k, dummy.matrix); leafG.setMatrixAt(k, dummy.matrix); k++;
           }
         }
       }
+      dummy.scale.set(1, 1, 1);
       if (moved && leafW) { leafW.instanceMatrix.needsUpdate = leafG.instanceMatrix.needsUpdate = true; }
     }
 
@@ -863,13 +866,16 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
         if (api.said.length > 40) api.said.shift();
         return;
       }
+      // (JR West's and JR Central's platforms are のりば, "platform"; a Shinkansen 到着します, "arrives")
+      const jrw = st.style === 'jrw', ban = jrw ? '番のりば' : '番線', where = jrw ? 'platform' : 'track', shk = s.kind === 'shinkansen';
       if (what === 'approach') {
-        ja = `まもなく、${num(n)}番線に、${s.line.ja}、${s.for.ja}行きが、まいります。危ないですから、黄色い点字ブロックまで、お下がりください。`;
-        en = `The ${s.line.en} train for ${s.for.en} is arriving on track ${n}. Please stand behind the yellow blocks.`;
+        ja = shk ? `まもなく、${num(n)}${ban}に、${s.line.ja}号、${s.for.ja}行きが、到着します。黄色い線の内側まで、お下がりください。`
+          : `まもなく、${num(n)}${ban}に、${s.line.ja}、${s.for.ja}行きが、まいります。危ないですから、黄色い点字ブロックまで、お下がりください。`;
+        en = shk ? `The ${s.line.en} for ${s.for.en} is arriving at ${where} ${n}.` : `The ${s.line.en} train for ${s.for.en} is arriving on ${where} ${n}. Please stand behind the yellow blocks.`;
         if (A && A.on) A.platformChime(level, pan);
       } else if (what === 'pass') {
-        ja = `まもなく、${num(n)}番線を、電車が通過します。危ないですから、黄色い点字ブロックまで、お下がりください。`;
-        en = `A train will pass on track ${n}. Please stand behind the yellow blocks.`;
+        ja = `まもなく、${num(n)}${ban}を、電車が通過します。危ないですから、黄色い点字ブロックまで、お下がりください。`;
+        en = `A train will pass on ${where} ${n}. Please stand behind the yellow blocks.`;
         if (A && A.on) A.platformChime(level, pan);
       } else if (what === 'arrive') {
         ja = `${st.native}、${st.native}。ご乗車、ありがとうございます。`;
@@ -879,8 +885,8 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
         if (A && A.on) A.melody(level, pan, n % 2);
         return;
       } else if (what === 'close') {
-        ja = `${num(n)}番線、ドアが閉まります。ご注意ください。`;
-        en = `Track ${n}: the doors are closing.`;
+        ja = `${num(n)}${ban}、ドアが閉まります。ご注意ください。`;
+        en = `${jrw ? 'Platform' : 'Track'} ${n}: the doors are closing.`;
         if (A && A.on) setTimeout(() => A.doorChime(level, pan), 2600);
       }
       caption(`${what === 'arrive' ? '' : '♪ '}${ja}`, en);

@@ -40,6 +40,18 @@ import numpy as np
 import archkit as ak
 from meshkit import Mesh
 
+
+def _load(name):
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location(f"kyoto_{name}", os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+RAIL = _load("rail")   # Kyoto Station's Shinkansen and JR platforms and their trains (cities/kyoto/rail.py)
+
 TOWER_LL = (135.75946, 34.98748)   # lon, lat of the tower
 BASE_M = 31.0                      # roof of the building under the tower
 # after dark the tower is floodlit white from the roof of the building under it, and the deck's
@@ -186,7 +198,9 @@ def landmark_meshes(scene):
     more, hidden = temples_and_palaces()
     st, st_hidden = kyoto_station()
     nb, nb_hidden = granvia_neighbour()
-    return mats, [shaft, deck, cone, mast] + more + st + nb, {"hidden": sorted(set(hidden + st_hidden + nb_hidden + in_horikawa())),
+    rm, rmesh = RAIL.meshes(Mesh)   # the Shinkansen's viaduct, the JR tracks and the platforms (cities/kyoto/rail.py)
+    mats.update({k: dict(v) for k, v in rm.items()})
+    return mats, [shaft, deck, cone, mast] + more + st + nb + rmesh, {"hidden": sorted(set(hidden + st_hidden + nb_hidden + in_horikawa())),
                                                               "clip": moat_meshes()[1]}
 
 
@@ -1025,7 +1039,23 @@ def gosho_court_strays():
 
 
 def landmark_demolished(scene):
-    return gosho_court_strays()
+    """And the PLATEAU solids over the Shinkansen's platforms (cities/kyoto/rail.py)."""
+    return gosho_court_strays() + RAIL.demolished()
+
+
+def landmark_treeless(scene):
+    """The Shinkansen's viaduct (cities/kyoto/rail.py)."""
+    return RAIL.treeless()
+
+
+def landmark_glows(scene):
+    """Kyoto Station's platforms' light (cities/kyoto/rail.py)."""
+    return RAIL.glows()
+
+
+def landmark_assets(out_dir, scene):
+    """The station's signs (cities/kyoto/rail.py)."""
+    return RAIL.assets(out_dir)
 
 
 
@@ -1135,7 +1165,7 @@ def game_surfaces(scene):
     """The front steps of the gate and the founders' halls (approaches), walked as strips."""
     return [{"name": a["name"] + ", the steps", "type": "strip", "origin": [round(v, 2) for v in a["origin"]], "axis": [round(v, 5) for v in a["axis"]],
              "half_width": a["half_width"], "profile": a["profile"], "thickness": 1.2, "mesh": "kyoto_steps", "label": a["name"]}
-            for a in approaches(ak.load_solids("kyoto"))]
+            for a in approaches(ak.load_solids("kyoto"))] + RAIL.surfaces()
 
 
 def xy(p):
@@ -1168,4 +1198,5 @@ def game_extras(scene):
             close.append(close_to(a["name"] + ", through it", o + d * a["depth"] / 2, a["z0"] + a["base_h"], start, 1.0))
         else:                      # up the steps to the doors
             close.append(close_to(a["name"] + ", up to its doors", o + d * 1.2, a["z0"] + a["base_h"], start, 1.0))
-    return {"close": close, "keep_off": keep_off()}
+    tr = RAIL.trains()   # the Shinkansen and the JR lines through Kyoto Station (cities/kyoto/rail.py)
+    return {"close": close, "keep_off": keep_off(), **({"trains": tr, "travel": RAIL.travel()} if tr else {})}

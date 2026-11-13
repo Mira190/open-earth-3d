@@ -687,11 +687,51 @@ def game_extras(scene):
                 m, n, _ = face
                 close.append(close_to("Sydney Tower, Westfield's doors on Pitt Street Mall", m, T(*m), m + n * 5.0, 1.0, 0.1))
     tr = RAIL.trains()
+    if tr and "harbour_bridge" in lm:
+        bridge_trains(lm["harbour_bridge"], tr)
     out = {"close": close, **({"trains": tr, "travel": RAIL.travel()} if tr else {})}
     if o:  # the rooms inside the Opera House, their doors, the seats you can take and the evening's performance
         r = opera_rooms(o)
         out.update(doors=r["doors"], interiors=r["rooms"], seats=r["seats"], shows=r["shows"])
     return out
+
+
+def bridge_trains(h, tr):
+    """The North Shore Line's trains over the Harbour Bridge, on the two tracks of the deck's rail zone (DECK_ZONES:
+    the western ten metres, deck_furniture draws the rails): add their courses, at the top of the rail along the deck's
+    profile, and their services to Circular Quay's "trains" (web/game/trains.js). Sydney keeps left: northbound on the
+    western track. They run through, drawn over the deck from end to end of its profile (the approaches come down to
+    where the line goes on, into the cutting to Wynyard and to Milsons Point)."""
+    prof = h.get("deck_profile")
+    if not prof:
+        return
+    s, n = np.array(h["south_pylons"], float), np.array(h["north_pylons"], float)
+    m = (s + n) / 2
+    ax = (n - s) / np.linalg.norm(n - s)
+    lat = np.array([ax[1], -ax[0]])
+    w, v = h["deck_width_m"] / 2, 0.0
+    for width, kind in DECK_ZONES:
+        if kind == "rail":
+            v0, v1 = v - w, v + width - w
+            break
+        v += width
+    else:
+        return
+    us = np.arange(prof[0][0], prof[-1][0] + 0.1, 5.0)
+    zs = np.interp(us, [q[0] for q in prof], [q[1] for q in prof]) + 0.16
+    for tid, tc, north in (("bridge-n", v0 + (v1 - v0) * 0.25, True), ("bridge-s", v0 + (v1 - v0) * 0.75, False)):
+        pts = [(m + ax * u + lat * tc, z) for u, z in zip(us, zs)]
+        if not north:
+            pts = pts[::-1]
+        L = float(us[-1] - us[0])
+        tr["tracks"].append({"id": tid, "line": "north-shore", "gauge": 1.435, "p": [round(float(c)) for (xy, z) in pts for c in (xy[0] * 10, xy[1] * 10, z * 10)],
+                             "hide_m": [6.0, round(L - 6.0, 1)]})
+    tr["services"] += [
+        {"track": "bridge-n", "stock": "waratah", "cars": 8, "every_s": 240, "offset_s": 40, "stops": False, "v_ms": 15,
+         "for": {"en": "Hornsby, via Chatswood"}, "line": {"en": "North Shore Line"}},
+        {"track": "bridge-s", "stock": "waratah", "cars": 8, "every_s": 240, "offset_s": 150, "stops": False, "v_ms": 15,
+         "for": {"en": "Central, via Wynyard"}, "line": {"en": "North Shore Line"}},
+    ]
 
 
 def landmark_demolished(scene):

@@ -7,7 +7,8 @@ landmark_glows(scene) -> [[x, y, radius m, colour, strength(, on hour, off hour)
 a landmark's screens and signs throw on the street after dark (web/night.js), while they are on. landmark_demolished(scene) ->
 [solid index, ...] names solids of the built city that have been pulled down since its survey:
 the viewer and the game neither draw them nor let them stand in the surface model (web/world.js),
-until the city's next build leaves them out itself.
+until the city's next build leaves them out itself. landmark_treeless(scene) -> [[x, y, ...] in decimetres, ...]: rings where
+no mapped or wood tree stands (a viaduct and its platforms over trees mapped on the ground, web/world.js).
 landmark_meshes may return a third item, more keys for landmarks.json: "hidden", solids of the built city that a
 landmark mesh draws instead (not drawn, but kept in the surface model, as scene.json's hidden_solids); "props", street furniture
 drawn once per kind and instanced at every [x, y, z, heading(, scale across)] in "at", within
@@ -58,6 +59,8 @@ def main():
         out["glows"] = out.get("glows", []) + bridges.glows(scene)
     if city.hook("landmark_demolished"):
         out["demolished"] = city.hook("landmark_demolished")(scene)
+    if city.hook("landmark_treeless"):
+        out["treeless"] = city.hook("landmark_treeless")(scene)
     path = os.path.join(city.out, "landmarks.json")
     # the passages through the landmarks (pipeline/landmark_passages.py): kept until that script measures them
     # again on the new meshes, which it does here when the segments it reads are cached (data/raw/<id>)

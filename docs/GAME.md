@@ -908,6 +908,10 @@ pipeline writes. The only city-specific code is landmark geometry in
     station with another station ahead of it on the map; you stand in its third car by the doors.
     A station on a viaduct (`deck`) is only its platforms' level, not the street under it.
     `tools/trains_step.js` rides one stop and checks the doors open.
+  - A platform strip with no doors along it carries `hold`: nav.js keeps a walker from stepping off its sides
+    (Kyoto's JR platforms). A halt's `psd` may carry `w`, the opening's width (Kyoto's Shinkansen gates, 1.8 m).
+  - Kyoto (`cities/kyoto/rail.py`): the Shinkansen and the JR lines through Kyoto Station; Sydney's
+    North Shore Line over the Harbour Bridge (`cities/sydney/city.py` `bridge_trains`).
   - The cars ride on their two bogies along the course and are instanced, one draw call per
     material of each kind of car. They are drawn only between the sheds' mouths at the ends
     (`hide_m`).
