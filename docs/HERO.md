@@ -3,7 +3,8 @@
 Asked for in November 2026 for Tokyo's live maps: one small level per map, a street or a crossing some
 200-300 m across, that reads at eye level as a photograph or a current game does, while the rest of
 the map stays as it is around it. Shinjuku's is Kabukicho Ichibangai (`cities/shinjuku/hero.py`);
-Shibuya's scramble and Marunouchi-Ginza's are built by their own sessions on the same kit.
+Shibuya's scramble and Marunouchi-Ginza's are built by their own sessions on the same kit; Kyoto's two (Yasaka-dori, the
+Omotesando of Fushimi Inari) are below.
 
 | What | Where |
 |---|---|
@@ -85,6 +86,109 @@ two-lantern post of `kabukicho.py`), the paving's colour and pattern (the textur
 block), which fronts have shutters, vending machines and air conditioners where (placed by a seeded
 draw, not from photographs), and the buildings' heights: about 20 of the 28 fronts stand at heights
 estimated from their neighbours, not surveyed by PLATEAU.
+
+## Kyoto: Yasaka-dori (Higashiyama) and the Omotesando (Fushimi Inari)
+
+Two levels where their maps' games start, on a kit of Japanese traditional pieces over the same loader:
+`blender/hero_wa.py` (town-house fronts, tiled roofs and eaves, lattices, noren, paper lanterns, torii, stone
+lanterns, stone fences, banners), `cities/higashiyama/hero.py` and `cities/fushimi-inari/hero.py`. Their stills:
+`tools/views/higashiyama-hero.json`, `tools/views/fushimi-inari-hero.json`.
+
+### Only what a walker can see (issue 358, from first principles)
+
+A level is looked at from its street, so the street decides what exists. `hero_wa.Site.seen` answers, offline,
+whether a point can be seen from any eye point along the level's line (1.7 m over the ground, every 4 to 5 m):
+a sight line is blocked by a building's solid when it passes under its top. The build asks it for every wall,
+gable and roof triangle near the street:
+
+- a wall facing the lane within 7.5 m is a full front; another wall is dressed (boards, plaster, a timber frame:
+  a few quads) only if it can be seen, and not built at all otherwise. On Yasaka-dori that is 47 fronts and
+  about 200 side walls of the 70 buildings' 300-odd; the backs and the walls between neighbours cost nothing;
+- a roof triangle is tiled only if it can be seen, and only the eaves of those get round tiles and a gutter;
+- the paving is not laid under the buildings.
+
+Memory follows the same rule at run time. The level is fetched within 260 m and freed past 520 m (`hero.js`).
+Its finest geometry (lattice bars, the eaves' round tiles, rafters: materials named `*_fine`, a third of
+Yasaka-dori's triangles) is never sent to the GPU on the low tier: at a phone's resolution a 3 cm bar at 10 m is
+under a pixel, and the drawn paper behind it carries the pattern. On the low tier the normal and roughness maps
+are dropped and the colour maps halved (no side over 1024 on the lean sub-tier). Light after dark is in the
+vertices, so a phone computes none of it.
+
+Materials added to the loader's names: `paper*` and `lamp*` (a shoji, a lantern) show their own colour by day
+and are lit as dusk falls; `*_fine` as above.
+
+### Yasaka-dori
+
+The lane from Higashioji-dori up to the Yasaka Pagoda (Hokan-ji), 170 m, 4.5 to 6.5 m between its fronts,
+rising 9 m: the game starts at its foot, and the pagoda at the end of the stone lane is Kyoto's most
+photographed street view. Sannenzaka and Ninenzaka were the other candidates: they begin 250 m from the start,
+out of its sight, and their flights of steps need the surface model changed.
+
+On each front the city's solids give: a stone footing, posts and beams a bay (about 1.9 m) apart, and bay by bay
+a lattice over lit paper, a sliding lattice door under a noren, a shop's window onto its shelves, or plaster
+over a boarded foot, some behind the curved bamboo guard (inuyarai); the tiled pent roof with its rafters and
+round eave tiles; on two-storey houses plaster above with a slit window (mushiko-mado) or a lattice window,
+some with a bamboo blind; a carved name board, an andon or a round paper lantern at the door, a copper rain
+pipe. The side walls a walker sees are charred boards under plaster in a timber frame; the roofs are the
+buildings' own roof meshes again in tile. The lane is granite setts wall to wall with manholes; at the doors,
+tea-house benches under red parasols and red fire buckets. The city's older dressing of the lane (its setts,
+flat lattices, noren and lanterns) is in meshes of its own (`yhero_*`) and hidden while the level is shown.
+The lane's line is OpenStreetMap's, moved to the middle of the gap between the mapped fronts (it hugs the
+south row); no generated street lamp stands on it (`night.clear`).
+
+Facts used: the lane east of Higashioji-dori is narrow, one-way and stone-paved, climbing gently east
+([Wikipedia](https://ja.wikipedia.org/wiki/八坂通)); its wires run under the eaves, with no poles on the lane
+(Kyoto City's pole-removal plan shows Yasaka-dori as the example of eaves wiring,
+[plan](https://www.city.kyoto.lg.jp/kensetu/cmsfiles/contents/0000250/250605/keikaku.pdf)), so none is built;
+the district is the Sanneizaka preservation district, whose plan asks for gabled roofs in Japanese tile, tiled
+pent roofs, lime plaster or Kyoto earthen walls, cedar boards at the ground floor, projecting or flat lattices,
+sliding lattice doors, and timber in bengara or bare
+([Kyoto City](https://www.city.kyoto.lg.jp/tokei/page/0000281761.html)); the pagoda is five storeys of three
+bays, 6.4 m square at its foot, rebuilt in 1440, its height published as anything from 36.4 m to 46 m
+([National Diet Library](https://crd.ndl.go.jp/reference/entry/index.php?page=ref_view&id=1000061716)).
+
+Not checked, and invented: which house has which bays, the shops' names and noren (Kyoto's trades, not the real
+tenants), the benches and buckets (placed by a seeded draw), the stone's colour and bond, the houses' heights
+(PLATEAU's and estimates, some taller than the two storeys that stand there), and the pagoda itself, which
+stays the city's landmark model.
+
+### The Omotesando of Fushimi Inari Taisha
+
+From the first great torii by JR Inari station to the Romon gate's steps, 140 m rising 7 m, with the second
+torii and the gate on one straight line behind the first. The Senbon Torii are the shrine's most photographed
+place, but they stand 350 m further in, behind the halls, out of sight of the start; the game now starts under
+the first torii, which frames the whole approach.
+
+Built: the two torii on OpenStreetMap's gate lines (vermilion posts with black feet and ring caps, tie beam
+and wedges, the lintels curving up to their ends under a black top, a plaque; floodlights at their feet, baked);
+stone flags 9 m wide between kerb stones, gravel either side; stone lanterns in pairs every 12 m, lit after
+dark; stone fences on the lines OpenStreetMap maps as fences and walls, with donors' names on their pillars;
+the shrine's name pillar by the first torii; offering banners. The city's own torii and the approach's paving
+are hidden while the level is shown (`inari_otorii_*`, `shero_*`).
+
+Facts used: first torii, second torii, Romon and the halls stand on one line
+([Wikipedia](https://ja.wikipedia.org/wiki/伏見稲荷大社)); the torii are reinforced concrete, dedicated in 1972
+(the first) and 1960 (the second), of the Inari kind (ring caps under the lintel, black feet, a black top), on
+no base stones; the Romon is of 1589, its steps of 1694; the buildings that stood either side of the approach
+were taken down in 2020 and 2024, which is why its sides are open
+([the shrine](https://inari.jp/trip/map01/), Wikipedia).
+
+Not found, and estimated: the torii's heights and spans (from OpenStreetMap's widths, 11.5 m and 11 m, and one
+guide's 9 m), the plaque's wording, the lanterns' number and spacing, the banners, the name pillar's size, the
+paving's stone and pattern.
+
+### Research for these two
+
+| Work | What it published | Taken |
+|---|---|---|
+| *Ghost of Tsushima* (Sucker Punch; J. Patry, SIGGRAPH 2021, [slides](https://advances.realtimerendering.com/s2021/jpatry_advances2021/index.html)) | Stylised realism carried by light and atmosphere; indirect light from probes for a changing hour | Light first: paper and lanterns that come on at dusk, their light baked into the lane |
+| *Assassin's Creed Shadows* (Ubisoft, [Inside Anvil](https://news.ubisoft.com/en-us/article/6u0kflsdY20YlnZks7rUeG/inside-anvil-the-technology-powering-assassins-creed-shadows)) | Kyoto at micropolygon detail with ray-traced light, on hardware a browser does not have | The opposite budget: real geometry only where the eye resolves it (bars, eave tiles near the walker), drawn surfaces elsewhere, nothing for what is hidden |
+| *Sekiro* (FromSoftware, [CEDEC+KYUSHU 2021](https://www.siliconera.com/sekiro-environments-were-designed-to-reflect-culture/)) | Places dressed so they read as lived in; landmarks framed from where the player stands | The start moved so the first frame is the level's landmark down its axis; doors dressed with what people use |
+
+Textures added, all CC0 1.0 from ambientCG at 1K: `PavingStones128` (setts), `PavingStones077` (flags),
+`Gravel023`, `Concrete036` (weathered stone), `RoofingTiles013A` (the nearest to fired grey tile: ambientCG has
+no true kawara), `Planks023A` (boards, tinted dark), `PaintedWood009C` (tinted vermilion), `Bamboo001C`. The
+shop names, noren, lantern papers and boards are drawn in Python with Shippori Mincho (SIL OFL, `pipeline/adkit.py`).
 
 ## Research: how the games build a street like this, and what runs in a browser
 

@@ -149,7 +149,7 @@ const npcNight = require('./npc_night');
         for (; t < 900 && !(H.state().find(s => s.id === L.h.id) || {}).shown; t++) await frames(1);
         const st = H.state().find(s => s.id === L.h.id), hidden = (L.h.hide || []).map(n => g.Wd.world.getObjectByName(n)).filter(Boolean);
         let glow = 0, tris = 0;
-        if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube)/.test(o.material.name)) glow++; } });
+        if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube|paper|lamp)/.test(o.material.name)) glow++; } });
         const r = { id: L.h.id, state: st.state, shown: st.shown, materials: st.materials, tris, glow, frames: t, hid: hidden.length, hiddenOff: hidden.every(o => !o.visible), want: (L.h.hide || []).length };
         pl.x = L.h.at[0] + 2000; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
         await frames(4);

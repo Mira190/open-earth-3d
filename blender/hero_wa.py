@@ -42,6 +42,7 @@ def materials():
         "ground_flag": {"tex": "flag", "tint": (0.66, 0.65, 0.62), "rough": 0.8},
         "ground_gravel": {"tex": "gravel", "tint": (0.50, 0.49, 0.46), "rough": 0.95},
         "ground_lid": {"map": "atlas", "rough": 0.85},
+        "ground_asphalt": {"tex": "asphalt", "tint": (0.42, 0.42, 0.43), "rough": 0.9},
         "stone": {"tex": "stone", "tint": (0.60, 0.59, 0.56), "rough": 0.85},
         "stone_moss": {"tex": "stone", "tint": (0.44, 0.47, 0.40), "rough": 0.9},
         "roof_kawara": {"tex": "kawara", "tint": (0.50, 0.51, 0.53), "rough": 0.5},
@@ -328,9 +329,7 @@ def eave_tiles(G, a, b, out, pitch=0.27, r=0.07):
     for i in range(n):
         p = a + (b - a) * ((i + 0.5) / n) + [0, 0, 0.035]
         rod(G, "tile_edge_fine", p - o * 0.16 + [0, 0, 0.05], p + o * 0.03, r, 6)
-    t = (b - a) / L
     G.quad("tile_edge_fine", a + o * 0.02 - [0, 0, 0.05], b + o * 0.02 - [0, 0, 0.05], b + o * 0.02 + [0, 0, 0.02], a + o * 0.02 + [0, 0, 0.02], n=o)
-    _ = t
 
 
 def roof_skin(G, M, site, sd, lift=0.07, tiles=True, mat="roof_kawara"):
@@ -432,7 +431,6 @@ def draw_shoji(lit=True, cols=4, rows=6):
     """Paper behind a lattice: warm where a room is lit, with the frame's shadow lines."""
     def draw(img, r):
         d, x, y, w, h = _d(img, r)
-        ad.gradient(img.crop((x, y, x + w, y + h)), "#f4d9a4", "#c98f4a") if False else None
         for j in range(h):
             k = j / h
             c = (int(236 - 40 * k), int(206 - 58 * k), int(150 - 62 * k)) if lit else (int(150 - 20 * k), int(142 - 22 * k), int(124 - 22 * k))
@@ -802,10 +800,9 @@ def beam(G, M, mat, c, t, n, length, w, h, rise=0.0, segs=1, splay=0.0, faces=No
     sec = []
     for u in us:
         dz = rise * (abs(u) / (length / 2)) ** 2.2
-        uu = u
-        sec.append([c + t * uu - n * w / 2 + UP * dz, c + t * uu + n * w / 2 + UP * dz,
-                    c + t * (uu + np.sign(u) * splay * (abs(u) >= length / 2 - 1e-6)) + n * w / 2 + UP * (dz + h),
-                    c + t * (uu + np.sign(u) * splay * (abs(u) >= length / 2 - 1e-6)) - n * w / 2 + UP * (dz + h)])
+        ut = u + np.sign(u) * splay * (abs(u) >= length / 2 - 1e-6)   # (the top's end, cut slanting)
+        sec.append([c + t * u - n * w / 2 + UP * dz, c + t * u + n * w / 2 + UP * dz,
+                    c + t * ut + n * w / 2 + UP * (dz + h), c + t * ut - n * w / 2 + UP * (dz + h)])
     for a, b in zip(sec, sec[1:]):
         for i, j, nn in ((1, 2, n), (3, 0, -n), (2, 3, UP), (0, 1, -UP)):
             if i == 1:
@@ -815,7 +812,7 @@ def beam(G, M, mat, c, t, n, length, w, h, rise=0.0, segs=1, splay=0.0, faces=No
             elif i == 2:
                 q = (a[2], b[2], b[3], a[3])
             else:
-                q = (a[0], a[1], b[1], b[0]) if False else (b[0], b[1], a[1], a[0])
+                q = (b[0], b[1], a[1], a[0])
             tq(G, M, mat, *q) if mat in M and M[mat].get("tex") else G.quad(mat, *q)
     for s_, e in ((sec[0], -t), (sec[-1], t)):
         q = (s_[0], s_[1], s_[2], s_[3]) if e @ t > 0 else (s_[1], s_[0], s_[3], s_[2])
@@ -836,9 +833,7 @@ def torii(G, M, A, c, t, zg, width, height, post_r=0.45, plaque=None, lit=True, 
         if drum:
             lathe(G, "stone", p, [(post_r * 1.75, -0.4), (post_r * 1.75, 0.16), (post_r * 1.45, 0.34), (post_r * 1.12, 0.36)], 20)
         lathe(G, "black_lacquer", p, [(post_r * 1.1, -0.3 if not drum else 0.34), (post_r * 1.08, 1.15), (post_r * 1.0, 1.16)], 20)
-        g0 = len(G.part("wood_shu")["p"])
         lathe(G, "wood_shu", p, [(post_r * (1 - 0.07 * k / 8), 1.15 + (z_shim - 1.41) * k / 8) for k in range(9)], 20)
-        _ = g0
         lathe(G, "black_lacquer", p, [(post_r * 0.95, z_shim - 0.27), (post_r * 1.28, z_shim - 0.24), (post_r * 1.28, z_shim - 0.02), (post_r * 0.9, z_shim)], 20)
         for sn in (-1, 1):   # the wedges where the tie beam passes through
             tbox(G, M, "wood_shu", p + t * sn * (post_r + 0.12) + UP * (z_nuki + H * 0.062), (t, n), (0.3, post_r * 0.5, 0.09))
@@ -846,8 +841,8 @@ def torii(G, M, A, c, t, zg, width, height, post_r=0.45, plaque=None, lit=True, 
             for sn in (-1, 1):
                 q = p + n * sn * 2.2 - t * s * 0.5
                 G.box("iron", q, (t, n), (0.3, 0.22, 0.2))
-                d = K.unit(p + UP * H * 0.6 - q)
                 for k in range(5):
+                    d = K.unit(p + UP * H * (0.45 + 0.12 * k) - t * s * width * 0.1 * k - q)
                     G.emitters.append((q + UP * 0.25, d, 0.5, np.array([1.0, 0.8, 0.58]) * (90.0 * (0.4 + 0.15 * k))))
     beam(G, M, "wood_shu", c + UP * z_nuki, t, n, width * 1.2, post_r * 0.62, H * 0.062)
     beam(G, M, "wood_shu", c + UP * z_shim, t, n, width * 1.3, post_r * 1.0, H * 0.055, rise=H * 0.035, segs=6)
@@ -864,7 +859,7 @@ def torii(G, M, A, c, t, zg, width, height, post_r=0.45, plaque=None, lit=True, 
             G.quad("sign", o - e * pw / 2, o + e * pw / 2, o + e * pw / 2 + UP * ph, o - e * pw / 2 + UP * ph, uv=A.uv(plaque), n=n * sn)
 
 
-def stone_lantern(G, M, c, zg, h=2.3, mat="stone", k=3.0, heading=0.0):
+def stone_lantern(G, M, c, zg, h=2.3, mat="stone", k=3.0, heading=0.0, pool=14.0):
     """A stone lantern (kasuga-doro): a hexagonal base and platform, a round shaft with its ring, the fire
     box with lit paper windows, the roof with its upturned corners and the jewel."""
     c = np.array([c[0], c[1], zg])
@@ -888,6 +883,7 @@ def stone_lantern(G, M, c, zg, h=2.3, mat="stone", k=3.0, heading=0.0):
             tq(G, M, mat, p0 + UP * z0, p1 + UP * z0, p1 + UP * z1, p0 + UP * z1)
     lathe(G, mat, c, [(0.2 * s, 1.8 * s), (0.5 * s, 1.84 * s), (0.52 * s, 1.9 * s), (0.3 * s, 2.0 * s), (0.12 * s, 2.1 * s), (0.07 * s, 2.12 * s)], 6, phase=ph)
     lathe(G, mat, c, [(0.07 * s, 2.12 * s), (0.11 * s, 2.18 * s), (0.08 * s, 2.25 * s), (0.0, 2.3 * s)], 8)
+    light(G, c + UP * 1.62 * s, WARM, pool, area=0.08)   # the pool of light it throws round its foot
 
 
 def tamagaki(G, M, a, b, zf, h=1.25, pitch=0.42, names=None, A=None, face=None):

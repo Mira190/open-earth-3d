@@ -48,7 +48,7 @@ def cells(A):
 
 
 def build(K):
-    from shapely.geometry import LineString, Point
+    from shapely.geometry import LineString, Point, Polygon
     from shapely.ops import unary_union
     site = W.Site("fushimi-inari", "inari_osm.json")
     way = max((p for t, p in site.ways(name="表参道")), key=len)
@@ -63,6 +63,11 @@ def build(K):
     area = ln.buffer(11.0, cap_style=2).difference(built)
     W.ribbon(G, M, "ground_gravel", line, 11.0, z, lift=0.07, cell=1.5, clip=area.difference(ln.buffer(4.4, cap_style=2)))
     W.ribbon(G, M, "ground_flag", line, 4.5, z, lift=0.1, cell=0.9)
+    # the car parks either side (OpenStreetMap amenity=parking), where halls stood until 2020 and 2024: asphalt
+    lots = [Polygon(p) for t, p in site.ways(amenity="parking") if len(p) > 3]
+    lots = unary_union([g.buffer(0) for g in lots if g.distance(ln) < 30]) if lots else None
+    if lots is not None and not lots.is_empty:
+        W.ribbon(G, M, "ground_asphalt", line, 70.0, z, lift=0.06, cell=3.0, clip=lots.difference(built).difference(ln.buffer(11.0, cap_style=2)))
     for sg in (1, -1):   # the kerb stones along the flags
         k = ln.parallel_offset(4.55, "left" if sg > 0 else "right")
         pts = [k.interpolate(s) for s in np.arange(0, k.length, 1.5)]
@@ -100,7 +105,7 @@ def build(K):
             if not built.contains(Point(*q)) and s + 6.0 < ln.length - 4 and int(s / 12) % 2 == (sg > 0):
                 W.nobori(G, A, q, z(*q), tng * sg, f"nobori{int(s / 24) % 2}", mat="wood_shu")
     # the stone fences on the mapped fences and walls beside the approach
-    for t, p in site.osm_barriers() if hasattr(site, "osm_barriers") else [(w["tags"], [site.local(q) for q in w["ll"]]) for w in site.osm["ways"] if w["tags"].get("barrier") in ("fence", "wall")]:
+    for t, p in site.ways(barrier="fence") + site.ways(barrier="wall"):
         g = LineString(p)
         if g.distance(ln) > 14 or g.length < 3:
             continue
