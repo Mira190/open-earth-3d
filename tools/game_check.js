@@ -132,6 +132,39 @@ const npcNight = require('./npc_night');
   if (process.env.DIGEST) console.log(`digest lazy: ${await digest()}`);
   await lightsKept('once the helicopter has come');
 
+  // a hero level (game/hero.js, docs/HERO.md), on a map that has one: walked up to, it loads and shows in place of
+  // the landmark meshes it draws instead, with its lit signs; walked away from, it is let go and they come back
+  const heroes = await p.evaluate(async () => {
+    const g = window.__game, H = g.hero && g.hero();
+    if (!H || !H.levels.length) return null;
+    const pl = g.player, at = { x: pl.x, y: pl.y, z: pl.z }, was = g.held ? g.held() : false, out = [];
+    const frames = async n => { for (let i = 0; i < n; i++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); } };
+    g.hold(true);
+    try {
+      for (const L of H.levels) {
+        pl.x = L.h.at[0]; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        let t = 0;
+        for (; t < 900 && !(H.state().find(s => s.id === L.h.id) || {}).shown; t++) await frames(1);
+        const st = H.state().find(s => s.id === L.h.id), hidden = (L.h.hide || []).map(n => g.Wd.world.getObjectByName(n)).filter(Boolean);
+        let glow = 0, tris = 0;
+        if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube)/.test(o.material.name)) glow++; } });
+        const r = { id: L.h.id, state: st.state, shown: st.shown, materials: st.materials, tris, glow, frames: t, hid: hidden.length, hiddenOff: hidden.every(o => !o.visible), want: (L.h.hide || []).length };
+        pl.x = L.h.at[0] + 2000; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        await frames(4);
+        r.away = H.state().find(s => s.id === L.h.id).state;
+        r.back = hidden.every(o => o.visible);
+        out.push(r);
+      }
+    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); g.hold(was); }
+    return out;
+  });
+  for (const r of heroes || []) {
+    check(r.state === 'ready' && r.shown && r.tris > 1000 && r.glow > 0, `the hero level ${r.id} loads when you come near and is shown (${r.materials} materials, ${Math.round(r.tris)} triangles, ${r.glow} lit, after ${r.frames} frames)`);
+    check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
+    check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
+  }
+  if (heroes) await lightsKept('with the hero level loaded and let go');
+
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
   // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
   // must ease: no frame may turn the view's pitch or move the camera about the player by a jump (#97)
