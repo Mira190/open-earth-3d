@@ -12,7 +12,7 @@
 //   2. the frames before carry most of it (issue 375): the last frame's result is reprojected with the last frame's
 //      view and projection and blended in at nine parts to one where its distance agrees with this pixel's (a
 //      walker that has moved, a wall behind a corner just turned, or a frame after a cut takes this frame's
-//      own), clamped to the range of this frame's neighbours (no trail behind what moves), so the spiral turns
+//      own), clamped to the spread of this frame's neighbours (no trail behind what moves), so the spiral turns
 //      a little every frame and a few samples a frame add up to some fifty;
 //   3. one depth-aware blur at half size takes the rest of the noise out without bleeding across an edge;
 //   4. the frame's one full-resolution pass, the lens (lens.js, atmosphere.js), darkens each pixel by
@@ -94,19 +94,22 @@ void main() {
   // The history (issue 375): this frame's occlusion (tAO, half size, r the occlusion, g the distance) with the last
   // frame's result (tHist) where it lands: uReproj takes this frame's view space to the last frame's clip space.
   // The last frame's value is taken only where the distance it stored is the distance this point had then, and
-  // only within the range this frame's 3 x 3 neighbours span (a trail behind a walker falls outside it).
+  // only within the spread of this frame's 3 x 3 neighbours (a trail behind a walker falls outside it).
   const RESOLVE = `
 ${DEPTH}
 uniform sampler2D tAO, tHist; uniform mat4 uReproj; uniform vec2 uTexel, uHalf; uniform float uHistOn, uKeep;
 varying vec2 vUv;
 void main() {
   vec2 c = texture2D(tAO, vUv).rg;
-  float lo = c.r, hi = c.r;
+  // the neighbours' mean and spread (variance clipping, Salvi 2016): tighter than their range, which this frame's
+  // few samples make wide, so a contact shadow that has moved on is not kept where it was
+  float m1 = 0.0, m2 = 0.0;
   for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-    if (i == 0 && j == 0) continue;
     float a = texture2D(tAO, vUv + vec2(float(i), float(j)) * uHalf).r;
-    lo = min(lo, a); hi = max(hi, a);
+    m1 += a; m2 += a * a;
   }
+  m1 /= 9.0;
+  float sd = sqrt(max(m2 / 9.0 - m1 * m1, 0.0)), lo = m1 - sd - 0.01, hi = m1 + sd + 0.01;
   float ao = c.r;
   if (uHistOn > 0.5 && c.g < 1e4) {
     vec2 uv = (floor(vUv / uTexel) + 0.5) * uTexel; // (the depth texel the occlusion was taken at)
@@ -115,9 +118,9 @@ void main() {
     if (q.w > 0.0 && all(greaterThan(pv, vec2(0.0))) && all(lessThan(pv, vec2(1.0)))) {
       vec2 h = texture2D(tHist, pv).rg;
       float ok = 1.0 - smoothstep(0.5, 1.0, abs(h.g - q.w) / (0.03 * q.w + 0.06));
-      // (a little room past the neighbours' range: the clamp should catch a trail, not flatten the noise's average)
-      float pad = 0.15 * (hi - lo) + 0.02;
-      ao = mix(c.r, clamp(h.r, lo - pad, hi + pad), uKeep * ok);
+      // (less of the history within a few metres of the camera, where the occluders that move are, the player and the
+      // walkers beside them, and a contact shadow that lags shows most)
+      ao = mix(c.r, clamp(h.r, lo, hi), uKeep * ok * mix(0.6, 1.0, smoothstep(6.0, 25.0, c.g)));
     }
   }
   gl_FragColor = vec4(ao, c.g, 0.0, 1.0);
@@ -187,7 +190,7 @@ float oeShade(vec2 uv) {
         uRadius: { value: 1.8 }, uGrow: { value: 0.016 }, uMaxR: { value: 0.12 }, uIntensity: { value: 3.0 }, uFadeFar: { value: 420 }, uFrame: { value: 0 } }) });
     const mats = { 1: aoMat(LEVELS[1].samples), 2: aoMat(LEVELS[2].samples) };
     const resolveMat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: RESOLVE, depthTest: false, depthWrite: false,
-      uniforms: Object.assign(common(), { tAO: { value: null }, tHist: { value: null }, uReproj: { value: new THREE.Matrix4() }, uTexel: { value: new THREE.Vector2() }, uHalf: { value: new THREE.Vector2() }, uHistOn: { value: 0 }, uKeep: { value: 0.9 } }) });
+      uniforms: Object.assign(common(), { tAO: { value: null }, tHist: { value: null }, uReproj: { value: new THREE.Matrix4() }, uTexel: { value: new THREE.Vector2() }, uHalf: { value: new THREE.Vector2() }, uHistOn: { value: 0 }, uKeep: { value: 0.8 } }) });
     const blurMat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: BLUR, depthTest: false, depthWrite: false, uniforms: { tAO: { value: null }, uStep: { value: new THREE.Vector2() } } });
     // what the pass that reads the scene takes (UPSAMPLE): shared objects, so one write here reaches every material
     const uniforms = Object.assign(common(), { tAO: { value: null }, uHalfPx: { value: new THREE.Vector2() }, uAOStrength: { value: 0 }, uFadeNear: { value: 160 }, uFadeFar: { value: 420 } });

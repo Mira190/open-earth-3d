@@ -34,9 +34,20 @@ const tag = query ? '-' + query.replace(/[^a-z0-9=]+/gi, '').replace(/=/g, '-') 
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/${query}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
-  await p.evaluate(() => { const g = window.__game; if (g.cine && g.cine.active) g.cine.skip(); g.advance(3); });
+  // past the title and the arrival, as tools/frame_cost.js does, so every film starts from the same view
+  await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
+  for (let i = 0; i < 60 && !(await p.evaluate(() => { const t = document.getElementById('g-title'); return !t || t.hidden; })); i++) {
+    await p.evaluate(() => { const x = document.getElementById('gt-play'); if (x) x.click(); });
+    await p.waitForTimeout(1000);
+  }
+  await p.evaluate(async () => {
+    const g = window.__game;
+    for (let t = 0; t < 10 && (!g.arriving || !g.arriving()); t += 0.25) await new Promise(r => setTimeout(r, 250));
+    for (let t = 0; t < 10 && g.arriving && g.arriving(); t += 0.25) { g.settleArrival(); g.advance(0.25); await new Promise(r => requestAnimationFrame(r)); }
+    if (g.cine && g.cine.active) g.cine.skip();
+    const O = window.OEOnboard, tour = O && O.current && O.current(); if (tour) tour.skip();
+    g.advance(1);
+  });
   await p.evaluate(() => {
     window.__frames = { cbs: [], t: performance.now() };
     window.requestAnimationFrame = cb => { window.__frames.cbs.push(cb); return window.__frames.cbs.length; };
