@@ -42,7 +42,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RAIL_Z = 9.2            # top of rail, m T.P.
 PLAT = 1.1              # a platform over the rail
 SLAB = 0.9              # the deck under the rail (ballast and slab)
-N_GATE, S_GATE = 965.0, 2535.0   # the stretch, in metres along the reference track from where the data starts
+N_GATE, S_GATE = 965.0, 2895.0   # the stretch, in metres along the reference track from where the data starts
+# the stations on it, each by the stretch of the reference its platforms lie in: OpenStreetMap's platform outlines there,
+# numbered by its stopping points (railway=stop, local_ref) on each track
+STATIONS = [
+    {"key": "yurakucho", "name": "Yurakucho", "native": "有楽町", "kana": "ゆうらくちょう", "romaji": "Yūrakuchō", "s": (1400.0, 1760.0),
+     "codes": {"yamanote": "JY 30", "keihin": "JK 25"}, "prev": ("新橋", "Shimbashi"), "next": ("東京", "Tōkyō")},
+    {"key": "shimbashi", "name": "Shimbashi", "native": "新橋", "kana": "しんばし", "romaji": "Shimbashi", "s": (2480.0, 2840.0),
+     "codes": {"yamanote": "JY 29", "keihin": "JK 24", "tokaido": "JT 02"}, "prev": ("浜松町", "Hamamatsuchō"), "next": ("有楽町", "Yūrakuchō"),
+     "prev_line": {"tokaido": ("品川", "Shinagawa")}, "next_line": {"tokaido": ("東京", "Tōkyō")}},
+]
+PSD_LINES = ("yamanote", "keihin")   # the lines whose platforms have platform doors (the Tokaido Line's at Shimbashi have none)
 SHED = 46.0             # a train shed's mouth at each end, inside the gates
 LINES = {"京浜東北線": "keihin", "山手線": "yamanote", "東海道本線": "tokaido", "東海道新幹線": "shinkansen"}
 ROADW = {"motorway": 14, "trunk": 13, "primary": 13, "secondary": 11, "tertiary": 9, "residential": 7, "unclassified": 6, "living_street": 5}
@@ -149,11 +159,15 @@ def layout():
         t["south"] = bool(seen.get(t["line"]))
         seen[t["line"]] = 1
         t["gauge"] = 1.435 if t["line"] == "shinkansen" else 1.067
-    # the platforms at Yurakucho, each as frames along the reference: (s, centre, across, width)
+    # the platforms of each station, each as frames along the reference: (s, centre, across, width)
     plats = []
     for p in D["platforms"]:
         P = Polygon(loc(p["ll"]))
-        if not (300 < P.centroid.y < 800 and P.area > 800):
+        if P.area < 800:
+            continue
+        sc, vc = sv(P.centroid.x, P.centroid.y)
+        st = next((S for S in STATIONS if S["s"][0] < sc < S["s"][1]), None)
+        if not st or abs(vc) > 40 or not any(t["geom"].distance(P) < 3.5 for t in tracks):
             continue
         ss = [sv(*c)[0] for c in P.exterior.coords]
         fr = []
@@ -165,10 +179,31 @@ def layout():
             (x0, y0), (x1, y1) = q.coords[0], q.coords[-1]
             _, t, n = frame(s)
             fr.append((float(s), np.array([(x0 + x1) / 2, (y0 + y1) / 2]), t, n, float(q.length)))
-        plats.append({"ref": p.get("ref", ""), "poly": P, "frames": fr, "side": sv(P.centroid.x, P.centroid.y)[1]})
-    plats.sort(key=lambda p: p["side"])
-    for p, k in zip(plats, "ab"):
+        plats.append({"ref": p.get("ref", ""), "poly": P, "frames": fr, "side": vc, "station": st["key"]})
+    plats.sort(key=lambda p: ([S["key"] for S in STATIONS].index(p["station"]), p["side"]))
+    for p, k in zip(plats, "abcdefgh"):
         p["key"] = k
+    # each platform's two faces: the track beside each (sgn -1 the west face, +1 the east) and its number, from the
+    # stopping point mapped on that track at that station
+    for p in plats:
+        S = next(S for S in STATIONS if S["key"] == p["station"])
+        f = p["frames"][len(p["frames"]) // 2]
+        p["edges"] = {}
+        for sgn in (-1, 1):
+            e = f[1] + f[3] * sgn * (f[4] / 2 + 1.6)
+            t = min(tracks, key=lambda t: t["geom"].distance(Point(*e)))
+            if t["geom"].distance(Point(*e)) > 1.6:
+                continue
+            no = None
+            for q in D["stops"]:
+                if q["name"] != S["native"]:
+                    continue
+                x, y = C.fwd.transform(*q["ll"])
+                if t["geom"].distance(Point(x, y)) < 2.0 and S["s"][0] < sv(x, y)[0] < S["s"][1]:
+                    no = int(q["platform"])
+            if no is not None:
+                p["edges"][sgn] = (t, no)
+        p["nums"] = tuple(p["edges"][g][1] if g in p["edges"] else None for g in (-1, 1))
     # the deck: the tracks' and the platforms' ground, closed up between neighbouring tracks
     deck = shapely.union_all([t["geom"].buffer(2.55, cap_style="flat") for t in tracks] + [p["poly"].buffer(0.3) for p in plats])
     deck = deck.buffer(2.0, join_style="mitre").buffer(-2.0, join_style="mitre").intersection(band).simplify(0.25)
@@ -185,16 +220,24 @@ def layout():
             continue
         if q["top"] < RAIL_Z - 1 and P.intersection(deck).area > 0.6 * P.area:
             gone.append(q["si"])
+        elif q["top"] < 25 and (P.intersection(deck).area > 0.4 * P.area or (P.area > 2000 and P.intersection(deck).area > 0.25 * P.area)):
+            gone.append(q["si"])   # a station's shed over its platforms (Shimbashi's), or a low block on the tracks: the viaduct is built in its place
         else:
             deck = deck.difference(P.buffer(0.6))
             deck = max(getattr(deck, "geoms", [deck]), key=lambda g: g.area)
     # the station's concourse, straight across under the tracks at the middle of the platforms, and the streets
     # and footways that pass under the viaduct
-    mid = float(np.mean([f[0] for p in plats for f in p["frames"]]))
-    conc = Polygon([*gate(mid - 9).coords, *gate(mid + 9).coords[::-1]])
+    sta = []
+    for S in STATIONS:
+        mine = [p for p in plats if p["station"] == S["key"]]
+        if not mine:
+            continue
+        mid = float(np.mean([f[0] for p in mine for f in p["frames"]]))
+        sta.append(dict(S, plats=mine, mid=mid, conc=Polygon([*gate(mid - 9).coords, *gate(mid + 9).coords[::-1]])))
+    mid, conc = sta[0]["mid"], sta[0]["conc"]
     G = json.load(open(os.path.join(C.out, "game.json")))
     near = deck.buffer(7.0)
-    cuts = [conc]
+    cuts = [S["conc"] for S in sta]
     for kind, arr in G["paths"].items():
         for o in arr:
             p = np.asarray(o["p"], float).reshape(-1, 3) / 10
@@ -211,7 +254,7 @@ def layout():
                     cuts.append(q.buffer(w, cap_style="flat"))
     openings = shapely.union_all(cuts).buffer(1.5).buffer(-1.5)
     L = {"C": C, "T": T, "ref": ref, "frame": frame, "sv": sv, "gate": gate, "band": band, "tracks": tracks, "plats": plats, "deck": deck,
-         "openings": openings, "mid": mid, "conc": conc, "stops": D["stops"], "gone": gone}
+         "openings": openings, "mid": mid, "conc": conc, "stops": D["stops"], "gone": gone, "stations": sta}
     L["stairs"] = stairs(L)
     _S["L"] = L
     return L
@@ -221,8 +264,10 @@ def stairs(L):
     """Two flights up to each platform from the concourse, one to the north and one to the south: each
     {key, plat, a (foot), b (head), t (along, uphill), n, w, z0, z1, run}."""
     out = []
-    T, mid = L["T"], L["mid"]
+    T = L["T"]
+    mids = {S["key"]: S["mid"] for S in L["stations"]}
     for p in L["plats"]:
+        mid = mids[p["station"]]
         fr = {round(f[0]): f for f in p["frames"]}
         ss = sorted(fr)
         for d, tag in ((-1, "n"), (1, "s")):   # uphill towards the north, or the south
@@ -247,26 +292,47 @@ def stair_slot(st, grow=0.0):
 # ---------------------------------------------------------------- the signs' sheet
 
 # each sign: (key, pixel box x, y, w, h) on a 2048 x 1024 sheet; faces take their UVs from here
-SHEET = (2048, 1024)
+SHEET = (2048, 2048)
 SIGNS = {}
+# each platform board's number, line and where its trains go, by station and number
+ROWS = {
+    "yurakucho": {1: ("keihin", "京浜東北線", "東京・上野・大宮 方面", "Keihin-Tōhoku Line  for Tōkyō, Ueno, Ōmiya"),
+                  2: ("yamanote", "山手線", "東京・上野 方面", "Yamanote Line  for Tōkyō, Ueno"),
+                  3: ("yamanote", "山手線", "品川・渋谷 方面", "Yamanote Line  for Shinagawa, Shibuya"),
+                  4: ("keihin", "京浜東北線", "品川・横浜 方面", "Keihin-Tōhoku Line  for Shinagawa, Yokohama")},
+    "shimbashi": {1: ("tokaido", "東海道線", "品川・横浜・小田原 方面", "Tōkaidō Line  for Shinagawa, Yokohama, Odawara"),
+                  2: ("tokaido", "東海道線", "東京・上野 方面", "Tōkaidō Line  for Tōkyō, Ueno"),
+                  3: ("keihin", "京浜東北線", "品川・横浜 方面", "Keihin-Tōhoku Line  for Shinagawa, Yokohama"),
+                  4: ("yamanote", "山手線", "品川・渋谷 方面", "Yamanote Line  for Shinagawa, Shibuya"),
+                  5: ("yamanote", "山手線", "東京・上野 方面", "Yamanote Line  for Tōkyō, Ueno"),
+                  6: ("keihin", "京浜東北線", "東京・上野・大宮 方面", "Keihin-Tōhoku Line  for Tōkyō, Ueno, Ōmiya")},
+}
 
 
 def _layout_signs():
     if SIGNS:
         return
     y = 0
-    for k in ("name_a", "name_b"):                # the station's name boards, 3.2 x 1.0 m
-        SIGNS[k] = (0, y, 1024, 320)
-        y += 320
-    for i in range(4):                            # platform and direction boards, 4.2 x 0.6 m
-        SIGNS[f"dir{i + 1}"] = (1024, i * 148, 1024, 146)
-    for i in range(4):                            # departure boards, 2.4 x 0.6 m
-        SIGNS[f"led{i + 1}"] = (1024 + (i % 2) * 512, 600 + (i // 2) * 130, 510, 128)
-    SIGNS["entrance"] = (0, 640, 1024, 160)       # the entrance's fascia, 9 x 1.4 m
-    SIGNS["gates"] = (0, 810, 640, 100)           # over the ticket gates
-    SIGNS["vending"] = (660, 810, 180, 210)       # a drinks machine's front
-    SIGNS["vending2"] = (850, 810, 170, 210)
-    SIGNS["blank"] = (4, 930, 60, 60)             # a lit white panel
+    for S in STATIONS:                            # the stations' name boards, one per line, 3.2 x 1.0 m
+        for line in S["codes"]:
+            SIGNS[f"name_{S['key']}_{line}"] = (0, y, 1024, 320)
+            y += 320
+    for S in STATIONS:                            # each entrance's fascia, 9 x 1.4 m
+        SIGNS[f"entrance_{S['key']}"] = (0, y, 1024, 160)
+        y += 166
+    y = 0
+    for S in STATIONS:                            # platform and direction boards, 4.2 x 0.6 m
+        for i in ROWS[S["key"]]:
+            SIGNS[f"dir_{S['key']}_{i}"] = (1024, y, 1024, 146)
+            y += 148
+    for i, k in enumerate(("keihin-n", "yamanote-n", "yamanote-s", "keihin-s")):   # departure boards, 2.4 x 0.6 m
+        SIGNS[f"led_{k}"] = (1024 + (i % 2) * 512, y + (i // 2) * 130, 510, 128)
+    y += 262
+    for k, S in enumerate(STATIONS):              # over the ticket gates
+        SIGNS[f"gates_{S['key']}"] = (1024, y + k * 104, 640, 100)
+    SIGNS["vending"] = (1670, y, 180, 210)        # a drinks machine's front
+    SIGNS["vending2"] = (1856, y, 170, 210)
+    SIGNS["blank"] = (1980, 1980, 60, 60)         # a lit white panel
 
 
 def sign_uv(key):
@@ -303,32 +369,31 @@ def assets(out_dir):
     def text(xy, s, size, fill, anchor="mm", stroke=0):
         d.text(xy, s, font=font(size), fill=fill, anchor=anchor, stroke_width=stroke, stroke_fill=fill)
 
-    GREEN, YAM, KEI = (0, 138, 62), (128, 194, 65), (0, 178, 229)
+    GREEN, YAM, KEI, TOK = (0, 138, 62), (128, 194, 65), (0, 178, 229), (246, 139, 31)
+    COL = {"yamanote": YAM, "keihin": KEI, "tokaido": TOK}
     # the name boards: white, the line's band along the foot with this station's square, the neighbours either side
-    for k, (code, col, prev, nxt) in {"name_a": ("JY 30", YAM, ("新橋", "Shimbashi"), ("東京", "Tōkyō")),
-                                      "name_b": ("JK 25", KEI, ("新橋", "Shimbashi"), ("東京", "Tōkyō"))}.items():
-        x, y, w, h = SIGNS[k]
-        d.rectangle([x, y, x + w - 1, y + h - 1], fill=(248, 248, 244))
-        text((x + w / 2, y + 86), "有楽町", 118, (20, 20, 20), stroke=2)
-        text((x + w / 2, y + 168), "ゆうらくちょう", 38, (40, 40, 40))
-        text((x + w / 2, y + 214), "Yūrakuchō", 40, (20, 20, 20), stroke=1)
-        d.rectangle([x, y + 246, x + w - 1, y + 276], fill=GREEN)
-        d.rectangle([x + w / 2 - 34, y + 240, x + w / 2 + 34, y + 282], fill=col)
-        d.polygon([(x + 26, y + 261), (x + 60, y + 243), (x + 60, y + 279)], fill=(248, 248, 244))
-        d.polygon([(x + w - 26, y + 261), (x + w - 60, y + 243), (x + w - 60, y + 279)], fill=(248, 248, 244))
-        text((x + 150, y + 296), prev[0], 30, (20, 20, 20))
-        text((x + 290, y + 298), prev[1], 24, (60, 60, 60))
-        text((x + w - 290, y + 296), nxt[0], 30, (20, 20, 20))
-        text((x + w - 150, y + 298), nxt[1], 24, (60, 60, 60))
-        d.rounded_rectangle([x + 60, y + 30, x + 180, y + 120], 12, outline=col, width=9)
-        text((x + 120, y + 75), code, 36, (20, 20, 20), stroke=1)
+    for S in STATIONS:
+        for line, code in S["codes"].items():
+            col, prev, nxt = COL[line], S.get("prev_line", {}).get(line, S["prev"]), S.get("next_line", {}).get(line, S["next"])
+            x, y, w, h = SIGNS[f"name_{S['key']}_{line}"]
+            d.rectangle([x, y, x + w - 1, y + h - 1], fill=(248, 248, 244))
+            text((x + w / 2, y + 86), S["native"], 118, (20, 20, 20), stroke=2)
+            text((x + w / 2, y + 168), S["kana"], 38, (40, 40, 40))
+            text((x + w / 2, y + 214), S["romaji"], 40, (20, 20, 20), stroke=1)
+            d.rectangle([x, y + 246, x + w - 1, y + 276], fill=GREEN)
+            d.rectangle([x + w / 2 - 34, y + 240, x + w / 2 + 34, y + 282], fill=col)
+            d.polygon([(x + 26, y + 261), (x + 60, y + 243), (x + 60, y + 279)], fill=(248, 248, 244))
+            d.polygon([(x + w - 26, y + 261), (x + w - 60, y + 243), (x + w - 60, y + 279)], fill=(248, 248, 244))
+            text((x + 150, y + 296), prev[0], 30, (20, 20, 20))
+            text((x + 290, y + 298), prev[1], 24, (60, 60, 60))
+            text((x + w - 290, y + 296), nxt[0], 30, (20, 20, 20))
+            text((x + w - 150, y + 298), nxt[1], 24, (60, 60, 60))
+            d.rounded_rectangle([x + 60, y + 30, x + 180, y + 120], 12, outline=col, width=9)
+            text((x + 120, y + 75), code, 36, (20, 20, 20), stroke=1)
     # the platform boards: the number in a white square, the line's colour, where the trains go
-    rows = {1: (KEI, "京浜東北線", "東京・上野・大宮 方面", "Keihin-Tōhoku Line  for Tōkyō, Ueno, Ōmiya"),
-            2: (YAM, "山手線", "東京・上野 方面", "Yamanote Line  for Tōkyō, Ueno"),
-            3: (YAM, "山手線", "品川・渋谷 方面", "Yamanote Line  for Shinagawa, Shibuya"),
-            4: (KEI, "京浜東北線", "品川・横浜 方面", "Keihin-Tōhoku Line  for Shinagawa, Yokohama")}
-    for i, (col, line, to, en) in rows.items():
-        x, y, w, h = SIGNS[f"dir{i}"]
+    for sk, i, (ln, line, to, en) in [(sk, i, r) for sk, rows in ROWS.items() for i, r in rows.items()]:
+        col = COL[ln]
+        x, y, w, h = SIGNS[f"dir_{sk}_{i}"]
         d.rectangle([x, y, x + w - 1, y + h - 1], fill=(34, 36, 40))
         d.rectangle([x, y, x + 12, y + h - 1], fill=col)
         d.rounded_rectangle([x + 30, y + 22, x + 132, y + h - 22], 8, fill=(246, 246, 240))
@@ -338,10 +403,10 @@ def assets(out_dir):
         text((x + 470, y + 52), to, 54, (246, 246, 240), anchor="lm", stroke=1)
         text((x + 160, y + 112), en, 30, (214, 214, 208), anchor="lm")
     # the departure boards: three rows of LED lettering
-    led = {1: [("快速", "大宮", "Ōmiya"), ("各駅停車", "南浦和", "Minami-Urawa")], 2: [("山手線", "東京・上野方面", "for Tōkyō, Ueno"), ("山手線", "池袋方面", "for Ikebukuro")],
-           3: [("山手線", "品川・渋谷方面", "for Shinagawa"), ("山手線", "新宿方面", "for Shinjuku")], 4: [("快速", "大船", "Ōfuna"), ("各駅停車", "磯子", "Isogo")]}
+    led = {"keihin-n": [("快速", "大宮", "Ōmiya"), ("各駅停車", "南浦和", "Minami-Urawa")], "yamanote-n": [("山手線", "東京・上野方面", "for Tōkyō, Ueno"), ("山手線", "池袋方面", "for Ikebukuro")],
+           "yamanote-s": [("山手線", "品川・渋谷方面", "for Shinagawa"), ("山手線", "新宿方面", "for Shinjuku")], "keihin-s": [("快速", "大船", "Ōfuna"), ("各駅停車", "磯子", "Isogo")]}
     for i, lines in led.items():
-        x, y, w, h = SIGNS[f"led{i}"]
+        x, y, w, h = SIGNS[f"led_{i}"]
         d.rectangle([x, y, x + w - 1, y + h - 1], fill=(8, 8, 9))
         d.rectangle([x + 4, y + 4, x + w - 5, y + h - 5], outline=(44, 46, 48), width=3)
         for r, (kind, to, en) in enumerate(lines):
@@ -350,18 +415,19 @@ def assets(out_dir):
             text((x + 170, yy), to, 30, (255, 170, 40), anchor="lm")
             text((x + w - 16, yy), en, 22, (255, 170, 40), anchor="rm")
         text((x + w / 2, y + h - 16), "まもなく電車がまいります", 20, (240, 60, 40))
-    x, y, w, h = SIGNS["entrance"]
-    d.rectangle([x, y, x + w - 1, y + h - 1], fill=(246, 246, 240))
-    d.rectangle([x, y, x + w - 1, y + 22], fill=GREEN)
-    d.rounded_rectangle([x + 34, y + 44, x + 150, y + 138], 10, fill=GREEN)
-    text((x + 92, y + 91), "JR", 70, (246, 246, 240), stroke=2)
-    text((x + 190, y + 80), "有楽町駅", 84, (20, 20, 20), anchor="lm", stroke=2)
-    text((x + 560, y + 70), "Yūrakuchō Station", 42, (20, 20, 20), anchor="lm", stroke=1)
-    text((x + 560, y + 122), "山手線 ・ 京浜東北線", 34, (60, 60, 60), anchor="lm")
-    x, y, w, h = SIGNS["gates"]
-    d.rectangle([x, y, x + w - 1, y + h - 1], fill=(34, 36, 40))
-    text((x + 24, y + 34), "のりば  Tracks  1・2・3・4", 40, (246, 246, 240), anchor="lm", stroke=1)
-    text((x + 24, y + 78), "山手線  京浜東北線", 30, YAM, anchor="lm")
+    for S in STATIONS:
+        x, y, w, h = SIGNS[f"entrance_{S['key']}"]
+        d.rectangle([x, y, x + w - 1, y + h - 1], fill=(246, 246, 240))
+        d.rectangle([x, y, x + w - 1, y + 22], fill=GREEN)
+        d.rounded_rectangle([x + 34, y + 44, x + 150, y + 138], 10, fill=GREEN)
+        text((x + 92, y + 91), "JR", 70, (246, 246, 240), stroke=2)
+        text((x + 190, y + 80), S["native"] + "駅", 84, (20, 20, 20), anchor="lm", stroke=2)
+        text((x + 560, y + 70), S["romaji"] + " Station", 42, (20, 20, 20), anchor="lm", stroke=1)
+        text((x + 560, y + 122), " ・ ".join(ROWS[S["key"]][i][1] for i in sorted(ROWS[S["key"]]) if ROWS[S["key"]][i][1] not in [ROWS[S["key"]][j][1] for j in sorted(ROWS[S["key"]]) if j < i]), 34, (60, 60, 60), anchor="lm")
+        x, y, w, h = SIGNS[f"gates_{S['key']}"]
+        d.rectangle([x, y, x + w - 1, y + h - 1], fill=(34, 36, 40))
+        text((x + 24, y + 34), "のりば  Tracks  " + "・".join(str(i) for i in sorted(ROWS[S["key"]])), 40, (246, 246, 240), anchor="lm", stroke=1)
+        text((x + 24, y + 78), "  ".join(dict.fromkeys(r[1] for r in ROWS[S["key"]].values())), 30, YAM, anchor="lm")
     for k, body, cans in (("vending", (228, 232, 236), [(210, 40, 40), (30, 90, 180), (240, 240, 240), (30, 140, 70), (250, 190, 30)]),
                           ("vending2", (190, 40, 44), [(240, 240, 240), (20, 20, 20), (250, 200, 40), (30, 120, 200), (230, 120, 30)])):
         x, y, w, h = SIGNS[k]
@@ -507,12 +573,22 @@ def meshes(Mesh):
     return MATERIALS, out
 
 
+def psd_line(p, sgn):
+    """A platform's face with platform doors: the line of the doors (0.42 m in from the edge) and where along it each
+    door's middle is, for the longest train that stops there."""
+    fr, tr = p["frames"], p["edges"][sgn][0]
+    edge = LineString([f[1] + f[3] * sgn * (f[4] / 2 - 0.42) for f in fr])
+    cars = max(q["cars"] for q in SERVICES if q["track"] == f"{tr['line']}-{'s' if tr['south'] else 'n'}")
+    door_u = sorted(edge.length / 2 + (k - (cars - 1) / 2) * CAR + dd for k in range(cars) for dd in DOORS)
+    return edge, [u for u in door_u if 2.5 < u < edge.length - 2.5]
+
+
 def station(L, K, Mesh):
-    """Yurakucho's two island platforms."""
+    """The island platforms of Yurakucho and Shimbashi."""
     T, frame, sv = L["T"], L["frame"], L["sv"]
     zt, zp = RAIL_Z - 0.2, RAIL_Z + PLAT
     own = L["own"] = []
-    track_at = lambda line, south: next(t for t in L["tracks"] if t["line"] == line and t["south"] == south)
+    _layout_signs()
     for pi, p in enumerate(L["plats"]):
         st_here = [st for st in L["stairs"] if st["plat"] == p["key"]]
         holes = shapely.union_all([stair_slot(st) for st in st_here])
@@ -560,13 +636,12 @@ def station(L, K, Mesh):
                 e = m + n * sgn * (f[4] / 2 + 0.2)
                 K["rail_frame"].box([*m, zp + hc - 0.2], [*e, zp + he - 0.1], 0.09, 0.14)
                 K["rail_frame"].box([*(m + n * sgn * 0.08), zp + hc - 1.0], [*(m + n * sgn * 1.25), zp + hc - 0.05], 0.07, 0.07)
-        # ---- platform doors along both edges: cabinets between the doors, glazed leaves at each door
+        # ---- platform doors along the faces of the Yamanote and Keihin-Tohoku lines: cabinets between the doors (here),
+        # and each door's two glazed leaves, which slide open with a train standing (web/game/trains.js)
         for sgn in (-1, 1):
-            tr = track_at("keihin" if (sgn < 0) == (pi == 0) else "yamanote", (sgn > 0) if pi == 0 else (sgn > 0))
-            edge = LineString([f[1] + f[3] * sgn * (f[4] / 2 - 0.42) for f in fr])
-            cars = 10 if tr["line"] == "keihin" else 11
-            door_u = sorted(edge.length / 2 + (k - (cars - 1) / 2) * CAR + dd for k in range(cars) for dd in DOORS)
-            door_u = [u for u in door_u if 2.5 < u < edge.length - 2.5]
+            if sgn not in p["edges"] or p["edges"][sgn][0]["line"] not in PSD_LINES:
+                continue
+            edge, door_u = psd_line(p, sgn)
             at = lambda u, z: [*edge.interpolate(u).coords[0], z]
             prev = 0.6
             for u in door_u + [edge.length - 0.6 + 1.0]:
@@ -578,22 +653,25 @@ def station(L, K, Mesh):
                         K["rail_psd"].box(at(q0, zp + 0.6), at(q1, zp + 0.6), 0.22, 1.2)
                         K["rail_psd_glass"].box(at(q0 + 0.08, zp + 1.27), at(q1 - 0.08, zp + 1.27), 0.03, 0.14)
                         K["rail_psd_line"].box(at(q0, zp + 1.215), at(q1, zp + 1.215), 0.24, 0.03)
-                if u < edge.length - 0.6:   # the door: two leaves, glass over a white panel
-                    K["rail_psd"].box(at(u - 1.0, zp + 0.36), at(u + 1.0, zp + 0.36), 0.06, 0.72)
-                    K["rail_psd_glass"].box(at(u - 1.0, zp + 0.98), at(u + 1.0, zp + 0.98), 0.04, 0.52)
-                    K["rail_psd"].box(at(u - 1.0, zp + 1.26), at(u + 1.0, zp + 1.26), 0.06, 0.05)
-                    K["rail_psd"].box(at(u, zp + 0.02), at(u, zp + 1.28), 0.07, 0.07)
+                if u < edge.length - 0.6:   # the door's lintel over the opening
+                    K["rail_psd"].box(at(u - 1.0, zp + 1.33), at(u + 1.0, zp + 1.33), 0.2, 0.06)
                 prev = u + 1.0
         # ---- signs hung from the roof: the platform boards and the departure boards, back to back over the middle
-        nums = (1, 2) if pi == 0 else (3, 4)
+        nums = p["nums"]
         for f in cov[8::18]:
             m, t, n = f[1], f[2], f[3]
             if holes.buffer(1.0).contains(Point(*m)):
                 continue
             for sgn, num in ((-1, nums[0]), (1, nums[1])):
+                if num is None:
+                    continue
                 c0 = m + n * sgn * (f[4] / 4 + 0.2)
                 za = zp + 2.42
-                for kk, (key, w, h, dz) in enumerate(((f"dir{num}", 3.6, 0.52, 0.0), (f"led{num}", 2.2, 0.55, 0.0))):
+                tr = p["edges"][sgn][0]
+                led = f"led_{tr['line']}-{'s' if tr['south'] else 'n'}"
+                for kk, (key, w, h, dz) in enumerate(((f"dir_{p['station']}_{num}", 3.6, 0.52, 0.0), (led, 2.2, 0.55, 0.0))):
+                    if key not in SIGNS:
+                        continue
                     cc = c0 + t * (kk * 9.0)
                     a, b = cc - n * w / 2, cc + n * w / 2
                     K["rail_dark"].box([*a, za + h / 2 + dz], [*b, za + h / 2 + dz], 0.1, h + 0.06)
@@ -606,7 +684,7 @@ def station(L, K, Mesh):
             m, t, n = f[1], f[2], f[3]
             if holes.buffer(2.5).contains(Point(*m)):
                 continue
-            key = ("name_b", "name_a") if pi == 0 else ("name_a", "name_b")
+            key = tuple(f"name_{p['station']}_{p['edges'][g][0]['line']}" if g in p["edges"] else f"name_{p['station']}_yamanote" for g in (-1, 1))
             if k % 3 == 0:
                 a, b = m - t * 1.45, m + t * 1.45
                 for e in (a, b):
@@ -666,24 +744,28 @@ def station(L, K, Mesh):
                 for sgn in (-1, 1):
                     q = a + t * u + n * sgn * (hw + 0.02)
                     K["rail_lamp"].box([*(q - t * 0.5), zat(u) + 2.2], [*(q + t * 0.5), zat(u) + 2.2], 0.04, 0.1)
-    # ---- the concourse under the tracks: lights on its soffit, the ticket gates' sign, the entrances' fascias
-    conc = L["conc"].intersection(L["deck"])
-    conc = max(getattr(conc, "geoms", [conc]), key=lambda g: g.area)
+    # ---- each concourse under the tracks: lights on its soffit, the entrances' fascias
     zs = RAIL_Z - SLAB
-    p, t, n = frame(L["mid"])
-    s0, s1 = [sv(*c)[1] for c in (conc.exterior.interpolate(conc.exterior.project(Point(*(p - n * 80)))).coords[0], conc.exterior.interpolate(conc.exterior.project(Point(*(p + n * 80)))).coords[0])]
-    for v in np.arange(s0 + 2.5, s1 - 2.0, 4.2):
-        for du in (-5.0, 0.0, 5.0):
-            c0 = p + n * v + t * du
-            K["rail_lamp"].box([*(c0 - n * 0.9), zs - 0.06], [*(c0 + n * 0.9), zs - 0.06], 0.22, 0.05)
-    for v, face in ((s0 - 0.25, -1), (s1 + 0.25, 1)):   # an entrance on the west (the International Forum's side) and the east (Ginza's)
-        c0 = p + n * v
-        g = T(*c0)
-        a, b = c0 - t * 8.4, c0 + t * 8.4
-        K["rail_dark"].box([*a, g + 4.25], [*b, g + 4.25], 0.3, 1.5)
-        sign(K, c0, n * face, 16.8, g + 3.6, 1.3, "entrance", 0.16)
+    for S in L["stations"]:
+        conc = S["conc"].intersection(L["deck"])
+        conc = max(getattr(conc, "geoms", [conc]), key=lambda g: g.area)
+        p, t, n = frame(S["mid"])
+        s0, s1 = [sv(*c)[1] for c in (conc.exterior.interpolate(conc.exterior.project(Point(*(p - n * 80)))).coords[0], conc.exterior.interpolate(conc.exterior.project(Point(*(p + n * 80)))).coords[0])]
+        for v in np.arange(s0 + 2.5, s1 - 2.0, 4.2):
+            for du in (-5.0, 0.0, 5.0):
+                c0 = p + n * v + t * du
+                K["rail_lamp"].box([*(c0 - n * 0.9), zs - 0.06], [*(c0 + n * 0.9), zs - 0.06], 0.22, 0.05)
+        for v, face in ((s0 - 0.25, -1), (s1 + 0.25, 1)):   # an entrance on the west and the east (Yurakucho: the International Forum's side and Ginza's)
+            c0 = p + n * v
+            g = T(*c0)
+            a, b = c0 - t * 8.4, c0 + t * 8.4
+            K["rail_dark"].box([*a, g + 4.25], [*b, g + 4.25], 0.3, 1.5)
+            sign(K, c0, n * face, 16.8, g + 3.6, 1.3, f"entrance_{S['key']}", 0.16)
+    plat_of = {p["key"]: p for p in L["plats"]}
     for st in L["stairs"]:   # over the foot of each flight: which tracks it climbs to
-        sign(K, st["a"] - st["t"] * 0.2, -st["t"], 3.0, st["z0"] + 2.75, 0.47, "dir" + {"a": "12", "b": "34"}[st["plat"]][0 if st["key"][1] == "n" else 1], 0.02)
+        p = plat_of[st["plat"]]
+        num = p["nums"][0 if st["key"][1] == "n" else 1] or p["nums"][1 if st["key"][1] == "n" else 0]
+        sign(K, st["a"] - st["t"] * 0.2, -st["t"], 3.0, st["z0"] + 2.75, 0.47, f"dir_{p['station']}_{num}", 0.02)
 
 
 # ---------------------------------------------------------------- the game's strips and its trains
@@ -694,7 +776,10 @@ def surfaces():
     if not L:
         return []
     out, zp = [], RAIL_Z + PLAT
+    name = {S["key"]: S for S in STATIONS}
+    pn = lambda p: " and ".join(str(n) for n in sorted(n for n in p["nums"] if n is not None))
     for p in L["plats"]:
+        S = name[p["station"]]
         fr = p["frames"]
         step = 8
         for k in range(0, len(fr) - 1, step):
@@ -703,15 +788,17 @@ def surfaces():
             ln = float(np.linalg.norm(d))
             ax, c = d / ln, (a[1] + b[1]) / 2
             hw = min(f[4] for f in fr[k:k + step + 1]) / 2 - 0.05
-            out.append({"name": f"Yurakucho Station, platforms {'1 and 2' if p['key'] == 'a' else '3 and 4'}", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
+            out.append({"name": f"{S['name']} Station, platforms {pn(p)}", "type": "strip", "origin": [round(float(c[0]), 2), round(float(c[1]), 2)],
                         "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)], "half_width": round(hw, 2),
                         "profile": [[round(-ln / 2 - (1.0 if k == 0 else 0.5), 2), zp], [round(ln / 2 + (1.0 if k + step >= len(fr) - 1 else 0.5), 2), zp]],
-                        "thickness": PLAT + SLAB, "mesh": f"rail_platform_{p['key']}", "mapped": False, "label": "Yurakucho Station 有楽町駅"})
+                        "thickness": PLAT + SLAB, "mesh": f"rail_platform_{p['key']}", "mapped": False, "label": f"{S['name']} Station {S['native']}駅"})
+    plat_of = {p["key"]: p for p in L["plats"]}
     for st in L["stairs"]:   # from the head down to the foot (tools/game_check.js climbs each: "check")
+        p = plat_of[st["plat"]]
         half = (st["run"] - 1.6) / 2
         zl = (st["z0"] + st["z1"]) / 2
         c, run = st["b"], st["run"]
-        out.append({"name": f"Yurakucho Station, the {'north' if st['key'][1] == 'n' else 'south'} stairs to platforms {'1 and 2' if st['plat'] == 'a' else '3 and 4'}", "type": "strip",
+        out.append({"name": f"{name[p['station']]['name']} Station, the {'north' if st['key'][1] == 'n' else 'south'} stairs to platforms {pn(p)}", "type": "strip",
                     "origin": [round(float(c[0]), 2), round(float(c[1]), 2)], "axis": [round(float(-st["t"][0]), 5), round(float(-st["t"][1]), 5)], "half_width": st["w"] / 2,
                     "profile": [[-0.5, zp], [0.0, zp], [round(half, 2), round(zl, 2)], [round(half + 1.6, 2), round(zl, 2)], [round(run, 2), round(st["z0"], 2)], [round(run + 0.6, 2), round(st["z0"], 2)]],
                     "thickness": 1.0, "mesh": f"rail_stair_{st['key']}", "mapped": False, "check": True, "label": "the stairs to the platforms"})
@@ -719,40 +806,61 @@ def surfaces():
 
 
 def trains():
-    """game.json "trains" (web/game/trains.js): each track's course at rail level, where its trains stop at
-    Yurakucho if they do, which platform that is, and the services that run on it."""
+    """game.json "trains" (web/game/trains.js): each track's course at rail level, where its trains stop (each station's
+    platform on it: where a stopping train's middle rests, the platform's number and side, and its platform doors'
+    leaves), and the services that run on it; the stations, each with where it is heard from."""
     L = layout()
     if not L:
         return None
     sv = L["sv"]
-    plat_no = {("keihin", False): 1, ("yamanote", False): 2, ("yamanote", True): 3, ("keihin", True): 4}
-    tracks = []
+    tracks, stations = [], []
+    for S in L["stations"]:
+        fs = [p["frames"][len(p["frames"]) // 2][1] for p in S["plats"]]
+        c = np.mean(fs, axis=0)
+        stations.append({"id": S["key"], "name": S["name"], "native": S["native"], "kana": S["kana"], "at": [round(float(c[0]), 1), round(float(c[1]), 1), RAIL_Z + PLAT],
+                         "hear_m": 150, "r": round(max(p["frames"][-1][0] - p["frames"][0][0] for p in S["plats"]) / 2 + 8, 1)})
     for t in L["tracks"]:
         pts = t["pts"] if t["south"] else t["pts"][::-1]    # in the direction of travel
         g = LineString(pts)
-        o = {"id": f"{t['line']}-{'s' if t['south'] else 'n'}", "line": t["line"], "south": t["south"], "gauge": t["gauge"],
+        tid = f"{t['line']}-{'s' if t['south'] else 'n'}"
+        o = {"id": tid, "line": t["line"], "south": t["south"], "gauge": t["gauge"],
              "p": [v for q in pts for v in (round(q[0] * 10), round(q[1] * 10), round(RAIL_Z * 10))]}
-        no = plat_no.get((t["line"], t["south"]))
-        if no:
-            p = L["plats"][0 if no < 3 else 1]
-            fr = p["frames"]
-            mid = fr[len(fr) // 2]
-            o["stop_m"] = round(g.project(Point(*mid[1])), 1)     # where a stopping train's middle comes to rest
-            o["platform"] = no
+        stops = []
+        for p in L["plats"]:
+            for sgn, (tr, no) in p["edges"].items():
+                if tr is not t:
+                    continue
+                mid = p["frames"][len(p["frames"]) // 2]
+                m = g.project(Point(*mid[1]))
+                a, b = g.interpolate(max(0, m - 1)), g.interpolate(min(g.length, m + 1))
+                hx, hy = b.x - a.x, b.y - a.y
+                left = 1 if (mid[1][0] - a.x) * -hy + (mid[1][1] - a.y) * hx > 0 else -1   # the platform on the left of the way the train runs
+                q = {"station": p["station"], "m": round(m, 1), "platform": no, "side": left}
+                if t["line"] in PSD_LINES:   # its platform doors' leaves, which the game draws and opens
+                    edge, us = psd_line(p, sgn)
+                    pts = [edge.interpolate(u) for u in us]
+                    q["psd"] = {"off": round(g.distance(pts[len(pts) // 2]) * left, 2), "u": [round(g.project(e), 2) for e in pts]}
+                stops.append(q)
+        stops.sort(key=lambda q: q["m"])
+        if stops:
+            o["stops"] = stops
+        y = next((q for q in stops if q["station"] == "yurakucho"), None)
+        if y:   # (Yurakucho's, as the first pass gave it: a harness reads them)
+            o["stop_m"], o["platform"] = y["m"], y["platform"]
         o["hide_m"] = [round(SHED - 6.0, 1), round(g.length - SHED + 6.0, 1)]   # its cars are drawn between these: the sheds' mouths
         tracks.append(o)
-    c = (L["plats"][0]["frames"][len(L["plats"][0]["frames"]) // 2][1] + L["plats"][1]["frames"][len(L["plats"][1]["frames"]) // 2][1]) / 2
     return {
-        "note": "The JR lines past Yurakucho (cities/tokyo/rail.py): courses in decimetres at rail level, in the direction of travel.",
-        "station": {"name": "Yurakucho", "native": "有楽町", "kana": "ゆうらくちょう", "at": [round(float(c[0]), 1), round(float(c[1]), 1), RAIL_Z + PLAT], "hear_m": 150},
+        "note": "The JR lines past Yurakucho and Shimbashi (cities/tokyo/rail.py): courses in decimetres at rail level, in the direction of travel.",
+        "station": dict(stations[0], at=stations[0]["at"]),
+        "stations": stations,
         "tracks": tracks,
         "services": SERVICES,
     }
 
 
 # What runs. Headways are a few times shorter than the timetable's, so that there is always a train to watch;
-# the order and the kinds are the real ones. The Keihin-Tohoku Line's rapid trains (10:30 to 15:30) do not
-# stop at Yurakucho; the Tokaido Line's and the Shinkansen's trains never do.
+# the order and the kinds are the real ones. The Keihin-Tohoku Line's rapid trains (10:30 to 15:30) stop at neither
+# Yurakucho nor Shimbashi; the Tokaido Line's stop at Shimbashi only ("stop_at"), and the Shinkansen's at neither.
 SERVICES = [
     {"track": "yamanote-n", "stock": "e235", "cars": 11, "every_s": 96, "offset_s": 10, "stops": True, "v_ms": 19,
      "for": {"ja": "東京・上野方面", "en": "Tokyo and Ueno"}, "line": {"ja": "山手線", "en": "Yamanote Line"}},
@@ -762,10 +870,10 @@ SERVICES = [
      "for": {"ja": "東京・上野・大宮方面", "en": "Tokyo, Ueno and Omiya"}, "line": {"ja": "京浜東北線", "en": "Keihin-Tohoku Line"}},
     {"track": "keihin-s", "stock": "e233k", "cars": 10, "every_s": 132, "offset_s": 100, "stops": True, "rapid_h": [10.5, 15.5], "v_ms": 21,
      "for": {"ja": "品川・横浜方面", "en": "Shinagawa and Yokohama"}, "line": {"ja": "京浜東北線", "en": "Keihin-Tohoku Line"}},
-    {"track": "tokaido-n", "stock": "e233t", "cars": 15, "every_s": 150, "offset_s": 76, "stops": False, "v_ms": 24,
-     "line": {"ja": "東海道線", "en": "Tokaido Line"}},
-    {"track": "tokaido-s", "stock": "e233t", "cars": 15, "every_s": 150, "offset_s": 4, "stops": False, "v_ms": 24,
-     "line": {"ja": "東海道線", "en": "Tokaido Line"}},
+    {"track": "tokaido-n", "stock": "e233t", "cars": 15, "every_s": 150, "offset_s": 76, "stops": True, "stop_at": ["shimbashi"], "v_ms": 24,
+     "for": {"ja": "東京・上野方面", "en": "Tokyo and Ueno"}, "line": {"ja": "東海道線", "en": "Tokaido Line"}},
+    {"track": "tokaido-s", "stock": "e233t", "cars": 15, "every_s": 150, "offset_s": 4, "stops": True, "stop_at": ["shimbashi"], "v_ms": 24,
+     "for": {"ja": "品川・横浜方面", "en": "Shinagawa and Yokohama"}, "line": {"ja": "東海道線", "en": "Tokaido Line"}},
     {"track": "shinkansen-n", "stock": "hayate", "cars": 16, "every_s": 118, "offset_s": 88, "stops": False, "v_ms": 29,
      "line": {"ja": "東海道新幹線", "en": "Tokaido Shinkansen"}},
     {"track": "shinkansen-s", "stock": "hayate", "cars": 16, "every_s": 118, "offset_s": 24, "stops": False, "v_ms": 29,
@@ -777,13 +885,17 @@ def travel():
     L = layout()
     if not L:
         return []
-    f = L["plats"][1]["frames"]
+    f = next(p for p in L["plats"] if p["station"] == "yurakucho" and 4 in p["nums"])["frames"]
     m = f[len(f) // 2 + 12]
     at = m[1] + m[3] * 1.0
     look = at + m[3] * 30 - m[2] * 60
     return [{"id": "t-yurakucho", "name": "Yurakucho Station, platform 4 有楽町駅", "at": [round(float(at[0]), 1), round(float(at[1]), 1), RAIL_Z + PLAT],
              "look": [round(float(look[0]), 1), round(float(look[1]), 1)],
-             "blurb": "The island platforms on the 1910 brick viaduct: the Yamanote and Keihin-Tohoku lines stop, and the Tokaido Line and the Shinkansen run past a few metres away, with Ginza behind them."}]
+             "blurb": "The island platforms on the 1910 brick viaduct: the Yamanote and Keihin-Tohoku lines stop, and the Tokaido Line and the Shinkansen run past a few metres away, with Ginza behind them."}] + [
+        {"id": "t-shimbashi", "name": f"Shimbashi Station, platforms {' and '.join(str(n) for n in sorted(n for n in p['nums'] if n))} 新橋駅", "at": [round(float(m[1][0]), 1), round(float(m[1][1]), 1), RAIL_Z + PLAT],
+         "look": [round(float(m[1][0] + m[3][0] * 30 + m[2][0] * 60), 1), round(float(m[1][1] + m[3][1] * 30 + m[2][1] * 60), 1)],
+         "blurb": "The first railway station in Japan was here, in 1872. Its platforms now: the Yamanote, Keihin-Tohoku and Tokaido lines, the Shinkansen passing on its own viaduct to the east."}
+        for p in L["plats"] if p["station"] == "shimbashi" and 4 in p["nums"] for m in [p["frames"][len(p["frames"]) // 2 + 8]]]
 
 
 def demolished():
@@ -803,8 +915,9 @@ def glows():
         fr = p["frames"]
         for f in [f for f in fr if fr[0][0] + 24 < f[0] < fr[-1][0] - 24][2::5]:
             out.append([round(float(f[1][0]), 1), round(float(f[1][1]), 1), 9.0, "#f1f6e8", 0.36])
-    p0, t, n = L["frame"](L["mid"])
-    for v in (-12, 0, 12, 24):
-        c = p0 + n * v
-        out.append([round(float(c[0]), 1), round(float(c[1]), 1), 11.0, "#f1f6e8", 0.34])
+    for S in L["stations"]:
+        p0, t, n = L["frame"](S["mid"])
+        for v in (-12, 0, 12, 24):
+            c = p0 + n * v
+            out.append([round(float(c[0]), 1), round(float(c[1]), 1), 11.0, "#f1f6e8", 0.34])
     return out
