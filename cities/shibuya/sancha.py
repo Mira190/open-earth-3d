@@ -956,14 +956,14 @@ def frames(lm):
     out["fork"] = {"eye": [float(e0[0]), float(e0[1]), FORK["z"] + 1.6], "look": [float(l0[0]), float(l0[1]), FORK["z"] + 1.1], "note": "The signs at the mouth of the bars' lane."}
     S0, N0 = passage_points()
     g = (N0 - S0) / np.hypot(*(N0 - S0))
-    e1 = S0 - g * 4.2 + np.array([g[1], -g[0]]) * 0.5
+    e1 = S0 - g * 1.6 + np.array([g[1], -g[0]]) * 0.1
     out["passage"] = {"eye": [float(e1[0]), float(e1[1]), PASSAGE["z"] + 1.6], "look": [float(N0[0]), float(N0[1]), PASSAGE["z"] + 1.3], "note": "Into the covered stretch, the short cut to the station."}
     if "hanamasa" in y:
         h = y["hanamasa"]
         P, _ = _frame(h["at"], h["normal"], h["z"])
         hl = h["len"] / 2
-        out["hanamasa"] = {"eye": P(hl - 3.0, 7.0, 1.6), "look": P(-hl - 1.0, 0.0, 5.0), "note": "The yellow wall, the two blades and the batting centre's stair."}
-    return {k: {kk: ([round(float(c), 2) for c in vv] if kk != "note" else vv) for kk, vv in v.items()} for k, v in out.items()}
+        out["hanamasa"] = {"eye": P(-0.5, 4.3, 1.5), "look": P(-hl - 1.2, 0.5, 6.0), "fov": 66, "note": "The yellow wall, the two blades and the batting centre's stair."}
+    return {k: {kk: ([round(float(c), 2) for c in vv] if kk in ("eye", "look") else vv) for kk, vv in v.items()} for k, v in out.items()}
 
 
 def siam(K, w=SIAM):
