@@ -15,6 +15,7 @@ window.OEDecks = (function () {
   const RISE = 2.5;     // a line this far above the ground drawn under it is on a deck (m)
   const THICK = 0.9;    // the slab under a deck's surface
   const PARAPET = 0.9;  // the walls along its edges, above the surface
+  const PARAPET_W = 0.25; // and their width, inside the deck's edge (nav.walk keeps walkers out of them)
   const SPAN = 30;      // columns under a deck about this far apart
   const STUB = 20;      // how far back from a loose end a stub is cut (m)
   const SLOPE = 0.3;   // a deck climbing steeper than this (rise over run, outside steps) is regraded
@@ -313,7 +314,7 @@ window.OEDecks = (function () {
         if (kind === 'road' && pts.every(q => !nav.isWater(q[0], q[1]) && q[2] - nav.terrain(q[0], q[1]) < RISE)) run.parapet = false;
         run.cols = columns(run, nav, near);
         runs.push(run);
-        for (let i = from; i < to; i++) segs.push({ ax: X(i), ay: Y(i), az: zs[i], bx: X(i + 1), by: Y(i + 1), bz: zs[i + 1], hw: w / 2, th: THICK, walk: o.c !== 'motorway' });
+        for (let i = from; i < to; i++) segs.push({ ax: X(i), ay: Y(i), az: zs[i], bx: X(i + 1), by: Y(i + 1), bz: zs[i + 1], hw: w / 2, th: THICK, walk: o.c !== 'motorway', par: run.parapet !== false ? PARAPET_W : 0 });
         k = e;
       }
       // the line follows the ground drawn under it, the built surfaces and the decks; flag what is off the ground
@@ -376,7 +377,7 @@ window.OEDecks = (function () {
         quad(at(i, -hw, -THICK), at(j, -hw, -THICK), at(j, -hw, 0), at(i, -hw, 0), C.side);
         quad(at(i, hw, -THICK), at(j, hw, -THICK), at(j, -hw, -THICK), at(i, -hw, -THICK), C.under);             // the soffit
         if (r.parapet !== false) for (const s of [1, -1]) { // parapets: outer face, top, inner face
-          const o = s * hw, w = s * (hw - 0.25);
+          const o = s * hw, w = s * (hw - PARAPET_W);
           const mx = (r.pts[i][0] + r.pts[j][0]) / 2 + (L[i][0] + L[j][0]) / 2 * o, my = (r.pts[i][1] + r.pts[j][1]) / 2 + (L[i][1] + L[j][1]) / 2 * o;
           if (onOther(ri, mx, my, (r.pts[i][2] + r.pts[j][2]) / 2)) continue;
           quad(at(i, o, 0), at(j, o, 0), at(j, o, PARAPET), at(i, o, PARAPET), C.side);

@@ -1044,11 +1044,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return Math.hypot(Math.max(0, Math.abs(dx * fx + dy * fy) - o.C.half), Math.max(0, Math.abs(-dx * fy + dy * fx) - o.C.hw));
   }
   // the cars near (x, y) as boxes (cars.js), less one (the one you are in)
+  // the cars of the traffic your car was handed back overlapping (the autopilot's car is carried along its driver's line,
+  // and on a tight corner beside one it can be a little into it): left out of your car's collisions until the two are
+  // apart, 3 s at most, rather than shoved out of each other at once, a jump of 2 m mid-corner (#399)
+  let handGhost = null, handGhostT = 0;
+  function boxesMeet(b, o) {
+    const st = o.D.st, fx = Math.sin(st.h), fy = Math.cos(st.h), bx = Math.sin(b.h), by = Math.cos(b.h), dx = b.x - st.x, dy = b.y - st.y;
+    for (const [px, py] of [[fx, fy], [-fy, fx], [bx, by], [-by, bx]]) {
+      const ra = o.C.half * Math.abs(fx * px + fy * py) + o.C.hw * Math.abs(-fy * px + fx * py), rb = b.hl * Math.abs(bx * px + by * py) + b.hw * Math.abs(-by * px + bx * py);
+      if (Math.abs(dx * px + dy * py) >= ra + rb) return false;
+    }
+    return true;
+  }
   function carBoxes(x, y, r, but = null) {
     const out = [];
     for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - x) < r + c.half && Math.abs(c.y - y) < r + c.half) {
       const b = OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5);
       b.onHit = () => cars.stop(c);
+      b.car = c;
+      if (handGhost && clockT - handGhostT > 3) handGhost = null;
+      if (but === myCar && handGhost && handGhost.has(c)) { if (boxesMeet(b, myCar)) continue; handGhost.delete(c); } // (handed back into it: passed through until apart)
       out.push(b);
     }
     for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
@@ -1201,6 +1216,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const o = pilot;
     if (!o) return;
     pilotEnd = why;
+    // (the traffic it is a little into as it is handed back: passed through until apart, carBoxes)
+    handGhost = new Set(cars.live.filter(c => c.line >= 0 && Math.hypot(c.x - myCar.D.st.x, c.y - myCar.D.st.y) < c.half + myCar.C.half + 1 && boxesMeet(OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5), myCar)));
+    handGhostT = clockT;
+    if (!handGhost.size) handGhost = null;
     o.drv.leave(); pilot = null;
     if (cam.mode === 'chase') { cam.distTo = 7.5; cam.filmOut = true; }
     if (say) H.toast(say);
@@ -3441,7 +3460,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function placeNear(x, y, z0, avoid = null, maxR = 45) {
     if (z0 == null) z0 = Math.max(0, nav.terrain(x, y));
     for (let r = 0; r < maxR; r += r < 45 ? 1.5 : 5) for (let a = 0; a < 6.28; a += r ? Math.max(0.5 / Math.max(1, r / 3), 3 / r) : 7) {
-      const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.floorAt(px, py, z0 + 3), w = f && nav.walk(px, py, f.z);
+      const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.floorAt(px, py, z0 + 3), w = f && nav.walk(px, py, f.z, true);
       if (w && w.ok && !(avoid && OECars.pushOut(px, py, w.z, 0.4, avoid).hit)) return [px, py, w.z];
     }
     return null;
@@ -4810,7 +4829,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const ahead = (x, y) => {
       const h = Math.atan2(fa[0] - x, fa[1] - y), f = nav.floorAt(x, y, Math.max(zRef ?? z0 + 1, nav.terrain(x, y) + 1));
       let z = f ? f.z : 0;
-      for (let d = 0.5; d <= 4 && f; d += 0.5) { const w = nav.walk(x + Math.sin(h) * d, y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
+      for (let d = 0.5; d <= 4 && f; d += 0.5) { const w = nav.walk(x + Math.sin(h) * d, y + Math.cos(h) * d, z, true); if (!w.ok) return false; z = w.z; }
       return !!f;
     };
     const ok = (x, y) => !npcs.some(n => Math.hypot(n.x - x, n.y - y) < 1.4), okStart = (x, y) => ok(x, y) && (pos || G.start.z != null || ahead(x, y)); // (a deck's start faces out over its balustrade)
@@ -5392,7 +5411,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (d < 0.7 || a.t > 5) { player.auto = null; a.then(); return; }
       fwd = 1; side = 0;
       player.h += angDiff(Math.atan2(dx, dy), player.h) * Math.min(1, dt * 8);
-      const sp = 2.2, nx = player.x + Math.sin(player.h) * sp * dt, ny = player.y + Math.cos(player.h) * sp * dt, w = nav.walk(nx, ny, player.z);
+      const sp = 2.2, nx = player.x + Math.sin(player.h) * sp * dt, ny = player.y + Math.cos(player.h) * sp * dt, w = nav.walk(nx, ny, player.z, true);
       if (w.ok) { const c = OECars.pushOut(nx, ny, w.z, 0.35, carBoxes(nx, ny, 6)), o = posts.pushOut(c.x, c.y, 0.35, w.z); player.x = o.x; player.y = o.y; player.z = w.z; } else a.t = 9;
       player.rig.animate(dt, sp, 'ground', clockT);
       return;
@@ -5413,7 +5432,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let moved = 0;
     for (const [mx, my] of [[sx, sy], [sx, 0], [0, sy]]) {
       if (!mx && !my) continue;
-      const m = nav.slide(player.x, player.y, player.z, mx, my), w = nav.walk(m.x, m.y, player.z);
+      const m = nav.slide(player.x, player.y, player.z, mx, my), w = nav.walk(m.x, m.y, player.z, true);
       if (w.ok) {
         moved = Math.hypot(m.x - player.x, m.y - player.y);
         player.x = m.x; player.y = m.y;
@@ -5430,7 +5449,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       let o = OECars.pushOut(player.x, player.y, player.z, 0.35, boxes);
       if (o.hit) {
         o = posts.pushOut(o.x, o.y, 0.35, player.z);
-        if (nav.walk(o.x, o.y, player.z).ok) { player.x = o.x; player.y = o.y; } else { player.x = x0; player.y = y0; }
+        if (nav.walk(o.x, o.y, player.z, true).ok) { player.x = o.x; player.y = o.y; } else { player.x = x0; player.y = y0; }
         moved = Math.hypot(player.x - x0, player.y - y0);
       }
     }
@@ -5450,7 +5469,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (u >= mu[0] && u < end) {
         const nx = player.x + esc.axis[0] * esc.moving_ms * dt, ny = player.y + esc.axis[1] * esc.moving_ms * dt;
         if (nav.stripHeight(esc, nx, ny) != null) { player.x = nx; player.y = ny; } else if (u > mu[1]) {
-          const w = nav.walk(nx, ny, player.z);
+          const w = nav.walk(nx, ny, player.z, true);
           if (w.ok && Math.abs(w.z - player.z) < 0.15) { player.x = nx; player.y = ny; } else player.escOff = null;
         }
       }
@@ -5782,7 +5801,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let arriving = null;
   const clearAhead = h => { // a few steps' walk in front of the player along bearing h
     let z = player.z;
-    for (let d = 0.5; d <= 3; d += 0.5) { const w = nav.walk(player.x + Math.sin(h) * d, player.y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
+    for (let d = 0.5; d <= 3; d += 0.5) { const w = nav.walk(player.x + Math.sin(h) * d, player.y + Math.cos(h) * d, z, true); if (!w.ok) return false; z = w.z; }
     return true;
   };
   // the chase bearing (behind the player) within ARRIVE.turn of az0 that is nearest to want, with room to walk on
