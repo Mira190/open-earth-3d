@@ -5230,7 +5230,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (mirror) mirror.update(world, clockT);
   }
   // who leaves tracks in lying snow this frame (weather.js tread): you first (on foot or in your car), then the
-  // walkers and the cars within 40 m of you
+  // walkers and the cars within 30 m of you
   const treadList = [], treadPool = [];
   function treaders(fx, fy) {
     let k = 0;
@@ -5239,7 +5239,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (player.mode === 'car' && myCar) put('me', myCar.D.st.x, myCar.D.st.y, myCar.D.st.h, true);
     else if (player.mode === 'foot') put('me', player.x, player.y, player.h, false);
     else put('me', fx, fy, 0, false); // (in the air or aboard: only the trail's frame follows you)
-    const R2 = 40 * 40;
+    const R2 = 30 * 30;
     if (crowd && crowd.P) for (let i = 0, n = Math.min(crowd.active, crowd.P.length); i < n && k < 60; i++) { const p = crowd.P[i]; if (p.line >= 0 && p.mode !== 'sit' && (p.x - fx) ** 2 + (p.y - fy) ** 2 < R2) put(i, p.x, p.y, p.h, false); }
     if (cars && cars.C) for (let i = 0; i < cars.C.length && k < 80; i++) { const c = cars.C[i]; if (c.x != null && (c.x - fx) ** 2 + (c.y - fy) ** 2 < R2) put('c' + i, c.x, c.y, c.h, true); }
     return treadList;

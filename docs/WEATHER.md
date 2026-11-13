@@ -226,8 +226,9 @@ tier (no post stack, a smaller map) nothing measurable. The pass count was 80, 7
 three tiers with a clear sky and one more from the second state on, on the high and medium tiers only. That
 one was not the weather's (issue 381, item 6): the tool counted every draw of six vertices or fewer as a pass,
 and a small quad in the world (a basic-material plane: a sign or a lamp's glow) walked into view as the city
-ran on. It now counts only such draws with the depth test off, which is what a full-screen pass is. Fog and
-overcast are within the run's noise of a clear sky.
+ran on. It now counts only such draws with the depth test off, which is what a full-screen pass is: on Kyoto's high
+tier 7 a frame with a clear sky, overcast, fog or snow, and 8 with a wet street, the one more being the wet
+street's reflection (`mirror.js`), as before. Fog and overcast are within the run's noise of a clear sky.
 
 What sheds (`weather.shed`, driven by `shed()` in `web/game/game.js` until the frame-budget stream's
 governor replaces it): light drops the far flakes with the far streaks and splashes and slows the cover
@@ -287,13 +288,13 @@ Nothing was copied here either. Licences are given so that no one takes code wit
 
 ## Follow-ups (issue 381)
 
-- **Tracks in the snow.** A 256-texel texture over 96 m round the player (`weather.js` `tread`, 0.375 m a texel)
-  holds how trodden the lying snow is. Each frame the game passes who moves within 40 m (`game.js` `treaders`:
+- **Tracks in the snow.** A 512-texel texture over 64 m round the player (`weather.js` `tread`, 12.5 cm a texel)
+  holds how trodden the lying snow is. Each frame the game passes who moves within 30 m (`game.js` `treaders`:
   you, on foot or in your car, the walkers, the cars); a walker leaves a print every 0.7 m, left and right, a car
   two ruts 1.5 m apart, written on the CPU between where each was and where it is. Falling snow fills them back in
   (about a minute in heavy snow). The ground and the paving (the patch's `tread` materials) read it and pack the
   snow there to a greyer, glossier crust. The texture moves with the player in whole texels, so a track stays put.
-  One upload of 64 KB a few times a second while snow lies; nothing otherwise. No render, no pass.
+  One upload of 256 KB a few times a second while snow lies; nothing otherwise. No render, no pass.
 - **The fog's top.** A radiation fog lies in a layer; seen from a helicopter it now has a top: three translucent
   sheets 10 m apart (one mesh, one draw) at 25 to 110 m over the ground by the fog's thickness, its billows noise
   in the world's frame drifting with the wind, lit white by the sun and in the fog's colour in its shade, depth-

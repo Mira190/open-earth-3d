@@ -243,14 +243,16 @@ ${pools ? `  if (uOeWet > 0.001) { // (dry: no noise to work out)
     roughnessFactor = mix(roughnessFactor, 0.06, oePd);
   }` : ''}
   oeSn = oeSnowOn(vOeW, oeNw, oeOpen, clamp(${tread}, 0.0, 1.0))${o.card ? ' * 0.62' : o.person ? ' * 0.7' : ''}; // (a far tree's card: frosted, not buried; a person: a dusting on the shoulders and the hair, which they shake off)
-${o.tread ? `  if (oeSn > 0.0 && uOeTrailOn > 0.5) { // trodden: packed down to a greyer, glossier crust, the ground showing through in the ruts
-    float oeTr = oeTrail(vOeW) * oeFlat;
-    diffuseColor.rgb *= 1.0 - 0.18 * oeTr * oeSn;
-    oeSn *= 1.0 - 0.55 * oeTr * (1.0 - 0.4 * smoothstep(0.5, 1.0, uOeSnow));
-    roughnessFactor = mix(roughnessFactor, 0.45, oeTr * 0.5);
+${o.tread ? `  float oeTrk = 0.0;
+  if (oeSn > 0.0 && uOeTrailOn > 0.5) { // trodden: packed down to a greyer, glossier crust, the ground showing through in the ruts
+    oeTrk = oeTrail(vOeW) * oeFlat;
+    oeSn *= 1.0 - 0.5 * oeTrk * (1.0 - 0.4 * smoothstep(0.5, 1.0, uOeSnow));
+    roughnessFactor = mix(roughnessFactor, 0.4, oeTrk * 0.6);
   }
 ` : ''}  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.76, 0.83) * (0.86 + 0.2 * oeN(vOeW.xz * 0.9 + 5.0)) * (0.93 + 0.1 * oeN(vOeW.xz * 0.07 + 2.0)) * (1.0 - 0.3 * clamp(${tread}, 0.0, 1.0) * (1.0 - uOeSnow)), oeSn);
-  roughnessFactor = mix(roughnessFactor, 0.82, oeSn);
+  roughnessFactor = mix(roughnessFactor, 0.82, oeSn);${o.tread ? `
+  diffuseColor.rgb *= 1.0 - 0.38 * oeTrk * oeSn; // (the packed snow's shade: the print's walls hold the light off its floor)
+  roughnessFactor = mix(roughnessFactor, 0.5, oeTrk * oeSn);` : ''}
 }`)
         .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= 1.0 - oeSn;')
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -807,8 +809,8 @@ void main() {
     // depth-tested, so what rises through it hides it and the sheets below soften where it does), only while there
     // is fog and the camera is above it; inside it the scene's own fog is the fog. Its billows are noise in the
     // world's frame, drifting with the wind; lit by the sun from above, pale and blue in the shade of the hour.
-    const DECK_R = 4500, deckGeo = new THREE.BufferGeometry();
-    { const v = [], ix = [], ring = 48, rings = 10;
+    const DECK_R = 16000, deckGeo = new THREE.BufferGeometry();
+    { const v = [], ix = [], ring = 48, rings = 14;
       for (let L = 0; L < 3; L++) {
         const base = v.length / 3;
         v.push(0, -L * 10, 0);
@@ -818,28 +820,30 @@ void main() {
       }
       deckGeo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); deckGeo.setIndex(ix); }
     const deckMat = new THREE.ShaderMaterial({
-      uniforms: { uK: { value: 0 }, uCol: { value: new THREE.Color() }, uLit: { value: new THREE.Color() }, uRun: { value: new THREE.Vector2() } },
+      uniforms: { uK: { value: 0 }, uCol: { value: new THREE.Color() }, uLit: { value: new THREE.Color() }, uGlow: { value: new THREE.Color() }, uRun: { value: new THREE.Vector2() } },
       vertexShader: `varying vec3 vW; varying float vL;
         void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vL = -position.y / 10.0; gl_Position = projectionMatrix * viewMatrix * w; }`,
-      fragmentShader: `uniform float uK; uniform vec3 uCol, uLit; uniform vec2 uRun; varying vec3 vW; varying float vL;
+      fragmentShader: `uniform float uK; uniform vec3 uCol, uLit, uGlow; uniform vec2 uRun; varying vec3 vW; varying float vL;
         float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float n(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
         void main() {
           vec2 p = (vW.xz - uRun) / 260.0 + vL * 3.7;
           float b = n(p) * 0.5 + n(p * 2.3 + 1.7) * 0.3 + n(p * 5.1 - 2.9) * 0.2; // the billows
           float d = distance(vW.xz, cameraPosition.xz);
-          float a = uK * mix(0.62, 0.42, vL) * (0.7 + 0.5 * b) * (1.0 - smoothstep(${(DECK_R * 0.55).toFixed(1)}, ${(DECK_R * 0.98).toFixed(1)}, d));
-          vec3 c = mix(uCol, uLit, (1.0 - vL * 0.45) * (0.55 + 0.45 * b));
+          float a = uK * mix(0.74, 0.5, vL) * (0.6 + 0.6 * b) * (1.0 - smoothstep(${(DECK_R * 0.8).toFixed(1)}, ${(DECK_R * 0.99).toFixed(1)}, d));
+          a = mix(a, uK, smoothstep(1500.0, 6000.0, d)); // (far off it is a closed sheet to the horizon: nothing under it shows, as in the haze)
+          vec3 c = mix(uCol, uLit, (1.0 - vL * 0.45) * (0.45 + 0.55 * b)) + uGlow * (0.6 + 0.4 * b);
           gl_FragColor = vec4(c, clamp(a, 0.0, 1.0));
         }`,
       transparent: true, depthWrite: false, fog: false });
     const deck = new THREE.Mesh(deckGeo, deckMat);
     deck.frustumCulled = false; deck.visible = false; deck.renderOrder = 2; deck.userData.oeNoOcc = true;
     world.add(deck);
+    const deckTop = () => (api.groundY ?? 0) + 25 + 85 * smooth(0.15, 1, cur.fog);
+    const deckOn = () => (level > 0 ? smooth(0.12, 0.6, cur.fog) * smooth(2, 30, camera.position.y - deckTop()) : 0);
     function fogDeck() {
-      const f = cur.fog, g = api.groundY ?? 0, top = g + 25 + 85 * smooth(0.15, 1, f), up = camera.position.y - top;
-      const k = smooth(0.12, 0.6, f) * smooth(2, 30, up);
-      deck.visible = k > 0.01 && level > 0;
+      const top = deckTop(), k = deckOn();
+      deck.visible = k > 0.01;
       if (!deck.visible) return;
       deck.position.set(camera.position.x, top, camera.position.z);
       deckMat.uniforms.uK.value = k;
@@ -848,7 +852,9 @@ void main() {
       // the top in the sun: white with the sun's colour by day, the fog's own colour by night
       const sun = Wd.sunLight ? Wd.sunLight.color : fc, sy = Wd.sunDir ? Math.max(0, Wd.sunDir.y) : 0;
       deckMat.uniforms.uLit.value.copy(fc).lerp(sun, 0.5 * day).multiplyScalar(1 + 0.35 * day * smooth(0, 0.3, sy));
-      const w = U.uOeWind.value; if (w) deckMat.uniforms.uRun.value.set(runX * 0.4, runZ * 0.4);
+      // after dark the top holds the city's light from under it, as a night fog over a city glows sodium-orange
+      deckMat.uniforms.uGlow.value.setRGB(0.09, 0.055, 0.025).multiplyScalar(1 - smooth(0.05, 0.4, day));
+      deckMat.uniforms.uRun.value.set(runX * 0.4, runZ * 0.4);
     }
 
     // ---- the rainbow: when the sun comes out low (under 42 degrees) with rain still falling or just gone,
@@ -892,14 +898,14 @@ void main() {
       shared.uCam.value.copy(camera.position);
     }
     // ------------------------------------------------------------ tracks in the snow (issue 381, item 2)
-    // A small texture round the player, 256 texels over 96 m (0.375 m each), of how trodden the lying snow is:
+    // A small texture round the player, 512 texels over 64 m (12.5 cm each), of how trodden the lying snow is:
     // every walker near the player leaves a stippled path, every car two ruts, written on the CPU from where they
     // were and where they are (game.js passes them to tread()), and new snow fills them back in. The ground and
     // the paving read it (patch: o.tread) and pack the snow down to a greyer crust there. No render: one small
     // upload a few times a second while snow lies; nothing at all otherwise. Recentred in whole texels as the
     // player moves, so a track stays where it was made. (Surveyed alternatives, docs/WEATHER.md: a depth capture
     // of the walkers from below each frame, or displaced snow geometry, each a render or a mesh of its own.)
-    const TR = { n: 256, size: 96, x0: 0, y0: 0, on: false, dirty: false, upT: 0, last: new Map() };
+    const TR = { n: 512, size: 64, x0: 0, y0: 0, on: false, dirty: false, upT: 0, last: new Map() };
     TR.data = new Uint8Array(TR.n * TR.n);
     TR.tex = new THREE.DataTexture(TR.data, TR.n, TR.n, THREE.RedFormat, THREE.UnsignedByteType);
     TR.tex.minFilter = TR.tex.magFilter = THREE.LinearFilter; TR.tex.generateMipmaps = false; TR.tex.needsUpdate = true;
@@ -942,13 +948,13 @@ void main() {
         if (!was) continue;
         const dx = m.x - was.x, dy = m.y - was.y, d = Math.hypot(dx, dy);
         if (d < 0.05 || d > 6) continue; // (standing, or a jump: a teleport, a respawn)
-        const sx = Math.sin(m.h), sy = Math.cos(m.h), nx = sy, ny = -sx; // (forward and to the right)
+        const sx = dx / d, sy = dy / d, nx = sy, ny = -sx; // (the way it went, and to its right)
         if (m.car) { // two ruts 1.5 m apart, 0.3 m wide, along the way it came
-          for (let t = 0; t < d; t += 0.3) for (const side of [-0.75, 0.75]) trStamp(was.x + dx * t / d + nx * side, was.y + dy * t / d + ny * side, 0.22, 70);
+          for (let t = 0; t < d; t += 0.15) for (const side of [-0.75, 0.75]) trStamp(was.x + dx * t / d + nx * side, was.y + dy * t / d + ny * side, 0.2, 90);
         } else { // footprints, left and right, every 0.7 m of the way
           const L = TR.last.get(m.id);
           let s = L.s + d;
-          while (s >= 0.7) { s -= 0.7; L.f ^= 1; const f = (d - s) / d, foot = L.f ? 0.13 : -0.13; trStamp(was.x + dx * f + nx * foot, was.y + dy * f + ny * foot, 0.2, 150); }
+          while (s >= 0.7) { s -= 0.7; L.f ^= 1; const f = (d - s) / d, foot = L.f ? 0.13 : -0.13; const px = was.x + dx * f + nx * foot, py = was.y + dy * f + ny * foot; trStamp(px + sx * 0.1, py + sy * 0.1, 0.13, 255); trStamp(px - sx * 0.08, py - sy * 0.08, 0.12, 255); }
           L.s = s;
         }
       }
@@ -1059,7 +1065,8 @@ void main() {
       // into it from the horizon up. From above the layer (a helicopter, a tower) one sees further.
       // Called after light() and on its own when only the air has changed.
       air() {
-        const f = cur.fog, sn = cur.snow, day = Wd.day ?? 1, fog = world.fog;
+        // (above the fog's top the air between the eye and it is clear: the top, drawn, hides what is under it, fogDeck)
+        const f = cur.fog * (1 - deckOn()), sn = cur.snow, day = Wd.day ?? 1, fog = world.fog;
         const heat = smooth(27, 34, cur.temp) * day * (1 - cur.cloud);
         const thick = Math.max(f, sn * 0.6, heat * 0.3);
         if (fog && thick > 0.002) {
