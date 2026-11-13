@@ -195,6 +195,9 @@ const npcNight = require('./npc_night');
     let t = 1;
     while (g.arriving() && t < 8) { g.advance(0.25); t += 0.25; await new Promise(r => requestAnimationFrame(r)); }
     const head = g.player.z + 1.55, cam = g.camera.position, near = Math.hypot(cam.x - g.player.x, cam.z + g.player.y, cam.y - head);
+    // (and the tour, which opens once the arrival has handed over: on a fast machine the arrival is over before this
+    // looks, and the tour a few frames later, which left it open over the rest of the check, the lifts not offered)
+    for (let k = 0; k < 120 && !O.current() && !O.done(); k++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); }
     const tour = O.current(), steps = [], missing = [];
     if (tour) {
       for (let i = 0; i < tour.count; i++) {
