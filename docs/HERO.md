@@ -35,7 +35,8 @@ they build a city, not how their cities look.
   - Taken: the facade as a kit. One bay, opening and storey grammar is applied to the measured
     outline, so the station follows OpenStreetMap/PLATEAU's footprint instead of a hand layout.
   - Interior mapping is already in `web/buildings.js` for the generic buildings. The station's
-    windows are real openings: a 0.45 m deep reveal, a sash and glass, with a share lit after dark.
+    windows are real openings: a 0.45 m deep reveal, a sash and glass, with a share lit after dark,
+    and behind the glass a room drawn by interior mapping (`web/interior.js`, below).
 - **UE5 City Sample (The Matrix Awakens).** Rule-built buildings from kits, with detail by LOD.
   Taken: detail by tier. The finest meshes (sashes, reveals, kerbs) carry `detail` and are not
   drawn on the low tier.
@@ -89,6 +90,27 @@ mesh's texture coordinates:
   512 px colour and normal maps only. Meshes marked `detail` (`meshkit.Mesh.detail`) are not drawn
   on the low tier.
 
+## Rooms behind the glass (`web/interior.js`)
+
+A landmark material with `"interior": {"room_m": [w, h, d], "win_m": [w, h]}` draws a box room behind
+its glass: a ray from the eye through the pane meets the back wall, the floor, the ceiling or a side
+wall. The glass's texture coordinates are metres from the opening's left jamb and sill. By day the room
+is dim; after dark it takes the material's floodlit glow as its lamps, brightest under the ceiling's
+light. Each room's walls are a shade of their own, some with a cabinet or a picture. Where a window
+is a pixel or two the room fades to its mean colour.
+
+## Floodlighting from below (`web/world.js` `floodFrom`)
+
+`"flood": [from_m, to_m, roof, top, cone_m]` lights a material from the foot of its walls. The fifth
+value, `cone_m`, stands a fitting every `cone_m` metres along the wall's foot, and each throws a cone
+of light up the wall: bright over the fitting, widening and evening out as it rises. This is the
+scalloped light a floodlit facade shows in night photographs. The station's brick and stone take one
+at every 3.6 m bay.
+
+While this was built, the floodlit copy of every landmark material was found to have lost its
+shader: its `onBeforeCompile` had ended up inside a comment. So since 8 November, every city's
+floodlit landmarks had lost their pattern and their fall-off after dark. It is code again.
+
 ## Tokyo Station (`cities/tokyo/station.py`)
 
 The station's solids from its OpenStreetMap/PLATEAU outline (r4856156) are hidden, and the station
@@ -128,4 +150,7 @@ is drawn on them.
 - Stills at day, dusk and night, on a desktop and a phone, before and after:
   `tools/game_shot.js tokyo tools/views/tokyo-hero.json`.
 - `tools/game_check.js` checks that the PBR surfaces load and repeat in metres.
+- Starting the game on the plaza turned up a traffic bug, which is now fixed: a car parked at the kerb
+  could be asked to back out of a one-way street, and then stood there for good
+  (`web/game/actors.js` `canReverse`).
 - Not checked: a real GPU, WebGPU, Safari and iOS.
