@@ -331,7 +331,7 @@ window.OENav = (function () {
           for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
           if (climbedThrough(s, x, y, z)) continue;
           const k = r * DSM.nx + c;
-          for (const M of [solid0, slabs]) { const l = M.get(k); if (l) l.push(z - th, z - 0.05); else M.set(k, [z - th, z - 0.05]); }
+          for (const M of [solid0, slabs]) { if (M.addPair) { M.addPair(k, z - th, z - 0.05); continue; } const l = M.get(k); if (l) l.push(z - th, z - 0.05); else M.set(k, [z - th, z - 0.05]); } // (solid0 may be packed: navcells.js flatMap)
         }
       }
     }
