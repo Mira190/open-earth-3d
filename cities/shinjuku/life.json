@@ -75,6 +75,7 @@
     {
       "npc": "kaede", "title": "The volunteer in the rain", "where": "Shinjuku Gyoen, the shelter by the pond",
       "hours": { "slots": ["morning", "daytime"], "weekdays": [1, 2, 3, 4, 5, 6], "weather": "rain" },
+      "places": [{"weather": "dry", "slots": ["morning", "daytime"], "at": {"travel": "t-gyoen", "d": [30, -14]}, "where": "By the Taiwan Pavilion, when it's dry"}],
       "busy": "Not today, dear. I sit in the shelter when it rains, mornings and middays. Never a Monday: the garden's shut.",
       "ranks": [
         { "title": "Rain on the pond",
@@ -93,6 +94,7 @@
         { "title": "No sake under the blossom",
           "talk": ["Early, isn't it? Crows, the Chuo Line, and nothing else.", "In spring there are about a thousand cherry trees here, of some sixty-five kinds, so something is in flower from February to late April.", "And no drink. They look in your bag at the gate. It's the one quiet hanami in Tokyo."],
           "fact": "Shinjuku Gyoen has about 1,000 cherry trees of some 65 varieties, flowering in turn from February to late April, and alcohol may not be brought in.",
+          "gives": {"id": "forecast", "name": "The garden's weather", "text": "The diary shows the next day hour by hour, and Kaede writes when rain is coming", "rain": "Rain on the way", "tip": "Come to the shelter by the pond. It's the best seat in the garden when it rains."},
           "ask": { "q": "Which would you come for?", "options": [
             { "text": "The late double ones, when the crowds have gone", "good": true, "reply": "A person after my own heart. The Ichiyo and the Kanzan open in mid April, when everyone has folded their blue sheets away." },
             { "text": "The first week, with everyone else", "reply": "Then be at the gate at nine sharp. Or wait for the double ones in mid April: Ichiyo, Kanzan, and room to sit." } ] },
@@ -183,7 +185,7 @@
     { "id": "hanazono", "name": "The shrine's counter 授与所", "where": "Hanazono Shrine, behind Golden Gai", "at": { "lonlat": [139.7052, 35.6935] }, "hours": ["09:00", "20:00"],
       "hello": "Welcome. Please take your time.",
       "menu": [ { "id": "amazake", "name": "Amazake", "price": 300, "text": "A paper cup of sweet, thick rice drink, served hot. Shrines ladle it out at New Year and at winter festivals, and there is next to no alcohol in it." },
-                { "id": "kumade", "name": "A small kumade", "price": 1000, "keep": true, "text": "A bamboo rake the size of your hand, hung with a gold coin and a rice bale, for raking in luck. At November's rooster fair people buy a bigger one each year." } ] }
+                { "id": "kumade", "name": "A small kumade", "price": 1000, "keep": true, "glyph": "熊", "text": "A bamboo rake the size of your hand, hung with a gold coin and a rice bale, for raking in luck. At November's rooster fair people buy a bigger one each year." } ] }
   ],
   "events": [
     { "id": "torinoichi", "title": "Tori-no-ichi at Hanazono Shrine", "native": "酉の市", "stamp": "The rooster fair", "where": "Hanazono Shrine, behind Golden Gai", "days": [[11, 6], [11, 7], [11, 18], [11, 19]], "slots": ["evening", "night"],

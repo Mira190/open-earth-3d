@@ -170,10 +170,20 @@ window.OEQuality = (function () {
   // the frames are even, rather than the floor for nothing.
   // Under automation it stands still (a software renderer's frames say nothing about a device) unless driven
   // through simulate().
+  // One ladder (issue 375; issue 358's Layer A): whatever a frame can do without registers its rungs with rung(name,
+  // [with every extra, at half, at none], fn), and fn is called with the value for the governor's extras whenever
+  // that value changes (and at once). The contact shadows, the MSAA samples, the weather, the wet street's mirror,
+  // the sun's shadow map, the sea's reflection and the crowd are all on it (game.js), none sheds on its own.
+  // startLow() starts a device with no record of its own at 0.8 of the scene's resolution and half the extras, and
+  // climbs from there a try every second and a half until a try does not fit (a fast device is at its ceiling in some
+  // ten seconds); a device that has a record (what it held on this map before) starts from it.
   function governor({ min = 0.6, mid = 0.8, max = 1, cap = 60, auto = !navigator.webdriver } = {}) {
     const STEP = 0.05, subs = [];
     const q = v => Math.round(v / STEP) * STEP;
-    let last = 0, ema = 0, refresh = 0, since = 0, calm = 0, wait = 4000, tried = 0, floorT = 0, halved = false;
+    let last = 0, ema = 0, refresh = 0, since = 0, calm = 0, wait = 4000, tried = 0, floorT = 0, halved = false, climbing = false;
+    const rungs = [];
+    const valueOf = r => r.values[g.extras >= 1 ? 0 : g.extras > 0 ? 1 : 2];
+    const apply = r => { const v = valueOf(r); if (v !== r.v) { r.v = v; try { r.fn(v); } catch (e) { console.warn(`governor: ${r.name}`, e); } } };
     const g = {
       scale: Math.min(1, max), extras: 1, min, mid, max, cap, auto,
       get frameMs() { return ema; },
@@ -181,6 +191,13 @@ window.OEQuality = (function () {
       // the frame time aimed at: the cap's interval or the display's, whichever is longer; twice the display's where that cannot be met
       get targetMs() { const t = Math.max(g.cap > 0 ? 1000 / g.cap : 0, refresh || 1000 / 60); return halved ? Math.max(t, 2 * (refresh || 1000 / 60)) : t; },
       on(fn) { subs.push(fn); return g; },
+      // a system's rung on the ladder: its value with every extra, at half of them and with none (see above)
+      rung(name, values, fn) { const r = { name, values, fn, v: undefined }; rungs.push(r); apply(r); return g; },
+      // what each rung holds now, for the telemetry and the checks: { name: value }
+      get ladder() { const o = {}; for (const r of rungs) o[r.name] = r.v; return o; },
+      // a device with no record of its own: low first, then up as fast as the frames allow (see above)
+      startLow() { change(Math.max(g.min, Math.min(g.mid, g.max)), 0.5); climbing = true; wait = 1500; },
+      get climbing() { return climbing; },
       // every animation frame, drawn or not: the display's interval, as the shortest gap seen lately. Only a gap under
       // a 60 Hz display's counts (a 90, 120 or 144 Hz display): on a device that cannot keep up, the gap between
       // frames is the frame's own time, and taking it for the display's would aim at the slowness itself
@@ -225,6 +242,7 @@ window.OEQuality = (function () {
       scale = Math.max(g.min, Math.min(g.max, q(scale)));
       const moved = scale !== g.scale || extras !== g.extras, ex = extras !== g.extras;
       g.scale = scale; g.extras = extras; since = 0;
+      if (ex) for (const r of rungs) apply(r);
       if (moved) for (const fn of subs) fn(g.extras, g.scale, ex);
     }
     function decide(ms) {
@@ -233,7 +251,7 @@ window.OEQuality = (function () {
       if (since < 1000) return; // (a change settles into the average first)
       if (load > 1.15) {
         calm = 0;
-        if (tried && since < 4000) { wait = Math.min(64000, wait * 2); tried = 0; change(g.scale - STEP, g.extras); return; } // the try up did not fit
+        if (tried && since < 4000) { if (climbing) { climbing = false; wait = 4000; } wait = Math.min(64000, wait * 2); const ex = tried === 2; tried = 0; change(ex ? g.scale : g.scale - STEP, ex ? g.extras - 0.5 : g.extras); return; } // the try up did not fit (2: it was the extras')
         tried = 0;
         const want = Math.max(0.85, Math.min(0.95, Math.sqrt(1 / load))); // (pixels go with the square of the scale)
         const floor = g.extras > 0 ? Math.max(g.min, Math.min(g.mid, g.max)) : g.min;
@@ -252,7 +270,8 @@ window.OEQuality = (function () {
       if (calm < wait) return;
       calm = 0;
       if (g.scale < g.max - 1e-6) { tried = 1; change(g.scale + STEP, g.extras); }
-      else if (g.extras < 1 && since >= 20000) change(g.scale, g.extras + 0.5);
+      else if (g.extras < 1 && since >= (climbing ? 3000 : 20000)) { tried = climbing ? 2 : 0; change(g.scale, g.extras + 0.5); }
+      else if (climbing && g.extras >= 1) { climbing = false; wait = 4000; }
       else if (halved && since >= 30000) { halved = false; }
     }
     return g;

@@ -11,7 +11,11 @@ turns every place it names into the map's own metres, so the writer never measur
     "at": {"label": "QFRONT"}          a landmark's label (scene.json "labels"; the start of the name will do)
     "at": {"wharf": "circular-quay"}   a wharf
     "at": {"viewpoint": "observatory-hill"}   a trig station
+    "at": {"station": "koshigoe"}      a railway station (game.json rail.train, or trains for a main line)
     "at": {"lonlat": [139.7005, 35.6590]}   anywhere real, by its longitude and latitude
+
+A person may keep other places at other hours: bonds[].places, each {"slots"/"weekdays"/"hours"/"weather",
+"at", "where", "face"}; the first that is on is where they stand (web/game/bonds.js), else their own place.
 
 The game then stands each on the nearest firm ground. What is checked: every person named is one
 of the map's NPCs and has five ranks; skills, job types, slots and dates are real ones; every place
@@ -34,7 +38,7 @@ from voice_check import RX_CITY  # noqa: E402
 
 SKILLS = {'eye', 'bearings', 'light', 'lines', 'taste'}
 SLOTS = {'morning', 'daytime', 'evening', 'night'}
-JOBS = {'deliver', 'fare', 'point', 'photo'}
+JOBS = {'deliver', 'fare', 'point', 'photo', 'train'}
 REQUESTS = {'visit', 'spot', 'guess', 'survey', 'photo', 'ride', 'dish', 'job', 'event', 'skill', 'stamp', 'shop'}
 GIVES = {'fare', 'tip', 'travel', 'job', 'xp', 'forecast', 'filter', 'helm', 'key'}
 RANKS = 5
@@ -58,6 +62,9 @@ def build(city):
     npcs = {n['id']: n for n in game.get('npcs', [])}
     errs = []
     proj = None
+
+    def stations():  # a railway's stations: rail.js's line (game.json rail.train) or trains.js's main line (game.json trains)
+        return ((game.get('rail') or {}).get('train') or {}).get('stations', []) + (game.get('trains') or {}).get('stations', [])
 
     def place(v, where):
         nonlocal proj
@@ -92,13 +99,18 @@ def build(city):
             if not s:
                 raise Bad(f'{where}: no trig station "{v["viewpoint"]}"')
             p = [s[0]['x'], s[0]['y']] if 'x' in s[0] else list(s[0]['at'])[:2]
+        elif 'station' in v:
+            s = [w for w in stations() if w['id'] == v['station']]
+            if not s:
+                raise Bad(f'{where}: no railway station "{v["station"]}"')
+            p = list(s[0]['at'])[:2]
         elif 'lonlat' in v:
             if proj is None:
                 from pyproj import Transformer
                 proj = Transformer.from_crs('EPSG:4326', fr['proj'], always_xy=True)
             p = list(proj.transform(*v['lonlat']))
         else:
-            raise Bad(f'{where}: a place is [x, y] or one of npc, spot, travel, label, wharf, viewpoint, lonlat')
+            raise Bad(f'{where}: a place is [x, y] or one of npc, spot, travel, label, wharf, viewpoint, station, lonlat')
         if isinstance(v, dict) and 'd' in v:
             p[0] += v['d'][0]
             p[1] += v['d'][1]
@@ -141,6 +153,13 @@ def build(city):
         if b.get('npc') not in npcs:
             errs.append(f'{w}: not one of the map\'s NPCs')
         when(b.get('hours'), w)
+        for i, p in enumerate(b.get('places', [])):  # where they are at other hours (bonds.js): the first on now
+            at(p, 'at', f'{w} place {i}')
+            when(p, f'{w} place {i}')
+            if not p.get('where'):
+                errs.append(f'{w} place {i}: needs a "where" (the diary says it)')
+            if not any(k in p for k in ('slots', 'weekdays', 'hours', 'weather', 'dates', 'days')):
+                errs.append(f'{w} place {i}: needs its hours (slots, weekdays, hours or weather)')
         said.append((w, b.get('busy', '')))
         if len(b.get('ranks', [])) != RANKS:
             errs.append(f'{w}: needs {RANKS} ranks, has {len(b.get("ranks", []))}')
@@ -186,10 +205,14 @@ def build(city):
             errs.append(f'{w}: needs a title and a pay')
         at(j, 'at', w)
         when(j.get('when'), w)
-        if j.get('type') in ('deliver', 'fare'):
+        if j.get('type') in ('deliver', 'fare', 'train'):
             at(j, 'to', w)
             if not j.get('time_s') or not j.get('to_name'):
                 errs.append(f'{w}: needs time_s and to_name')
+        if j.get('type') == 'train':  # from a station to another by rail: "from" and "to_station" are their ids
+            sts = {x['id'] for x in stations()}
+            if j.get('from') not in sts or j.get('to_station') not in sts:
+                errs.append(f'{w}: a train job needs "from" and "to_station", two of the railway\'s stations ({sorted(sts) or "none on this map"})')
         for i, t in enumerate(j.get('targets', [])):
             at(t, 'at', f'{w} target {i}')
         for i, t in enumerate(j.get('subjects', [])):

@@ -4,6 +4,7 @@
     {
       "npc": "marco", "title": "The Opera House guide", "where": "The Opera House forecourt",
       "hours": { "slots": ["evening", "night"] },
+      "places": [{"slots": ["daytime"], "at": {"npc": "ava", "d": [6, -4]}, "where": "Circular Quay, meeting the day's tour groups"}],
       "busy": "I've tours back to back till the light goes. Find me in the evening or after dark, when the houses are in and the forecourt's quiet.",
       "ranks": [
         { "title": "Before the sails",
@@ -38,6 +39,7 @@
     {
       "npc": "lena", "title": "The bridge climber", "where": "Milsons Point, under the bridge",
       "hours": { "slots": ["morning", "daytime"] },
+      "places": [{"slots": ["evening"], "at": {"npc": "jess", "d": [-5, 5]}, "where": "The Opera Bar, after the last climb"}],
       "busy": "Done for the day, and my legs know it. I'm here mornings and through the day, between climbs.",
       "ranks": [
         { "title": "The pylons",
@@ -61,6 +63,7 @@
         { "title": "The ribbon",
           "talk": ["Kev says ta. He also says the bream were off, so don't expect a fish.", "Opening day, 19 March 1932. The Premier's standing there with his scissors, and a bloke called de Groot rides up on a horse and cuts the ribbon with a sword.", "They arrested him, tied the ribbon back together and did it again properly."],
           "fact": "On opening day, 19 March 1932, Francis de Groot rode up on horseback and slashed the ribbon with his sword before the Premier, Jack Lang, could cut it.",
+          "gives": {"id": "forecast", "name": "The climbers' forecast", "text": "The diary shows the next day hour by hour, and Lena writes when rain is coming", "rain": "Storm cell on the radar", "tip": "We bring the climbs down for lightning. The ferries keep going."},
           "request": { "type": "guess", "score": 60, "text": "Guess a building's height to within a quarter (G)", "ask": "Fancy your eye? Pick a tower over the water, press G, and tell me how close you got." } },
         { "title": "First light",
           "talk": ["That's a good eye for a height. You'd be right at home up there.", "The public's only been allowed over the arch since 1998. Before that it belonged to the riggers and the painters. Paul Hogan was one of them, before the telly found him.", "First light from the top, with the ferries just starting. If you ever want it, ask for me."],
@@ -125,7 +128,7 @@
           "request": { "type": "dish", "text": "Eat something in the city", "ask": "Have you had a pie yet? The cart's just along the path. Sauce on top, no arguments." } },
         { "title": "The big one",
           "needs": { "skill": "eye", "level": 2, "text": "Keep guessing heights a while. When your eye's in, I've a big one for you." },
-          "talk": ["Sauce on top? You'll do.", "Now the big one. Sydney Tower, there over the trees: three hundred and nine metres to the tip. It opened in 1981 and nothing in this city has gone higher since.", "The turret hangs in a net of fifty-six cables. I watched them string it from this bench."],
+          "talk": ["Sauce on top? You'll do.", "Now the big one. Sydney Tower, there over the trees: three hundred and nine metres to the tip. It opened in 1981 and nothing in this city has gone higher since.", "Fifty-six cables run down round the shaft and hold it steady. I watched them string them from this bench."],
           "fact": "Sydney Tower, 309 m to the tip of its spire, opened to the public in 1981 and remains the tallest structure in Sydney.",
           "request": { "type": "photo", "near": { "label": "Sydney Tower" }, "radius": 500, "text": "Photograph Sydney Tower from the park (photo mode, O)", "ask": "Take us a picture of the tower from the park, would you? Photo mode. I'll tell you if it's straight." } },
         { "title": "The oldest park",
@@ -159,7 +162,7 @@
     { "id": "quay-kiosk", "name": "Quay kiosk", "where": "Circular Quay, by the ferry wharves", "at": { "npc": "ava", "d": [-8, -10] }, "hours": ["07:00", "22:00"],
       "hello": "G'day. Drinks are cold, ferries are that way.",
       "menu": [ { "id": "llb", "name": "Lemon, lime and bitters", "price": 6, "text": "Lemonade, lime cordial and a few dashes of bitters over ice, pink at the top. Every pub and kiosk in Australia will make you one." },
-                { "id": "tin-ferry", "name": "A tin ferry", "price": 14, "keep": true, "text": "A small tin harbour ferry in green and cream, with a bow at both ends so it never has to turn round." } ] },
+                { "id": "tin-ferry", "name": "A tin ferry", "price": 14, "keep": true, "glyph": "⛴", "text": "A small tin harbour ferry in green and cream, with a bow at both ends so it never has to turn round." } ] },
     { "id": "noor-cart", "name": "Noor's coffee cart", "where": "Barangaroo Reserve", "at": { "npc": "noor", "d": [3, 2] }, "radius": 2.5, "hours": ["06:30", "15:00"],
       "hello": "Morning. What can I get you?",
       "menu": [ { "id": "flat-white", "name": "Flat white", "price": 5, "text": "A double shot under a thin layer of steamed milk, no froth to speak of. Sydney cafes were pouring them by the mid-1980s; Wellington claims it too." },
