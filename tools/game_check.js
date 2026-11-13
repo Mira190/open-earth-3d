@@ -28,6 +28,8 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
+// whether the city's game has a pilgrimage's stamped spots (the step for them, below), read before anything runs
+const STAMPED = (() => { try { return (JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'web', 'data', city, 'game.json'), 'utf8')).spots || []).some(sp => sp.stamp); } catch (e) { return false; } })();
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
 const { heldStep } = require('./junction_held_step');
@@ -790,9 +792,10 @@ const npcNight = require('./npc_night');
   // a pilgrimage's stops (#359: Sangenjaya): each spot with a stamp stamps the passport the first time you look at it,
   // and one with a frame opens the photo camera on its view once its lines are read, the eye where the frame puts it;
   // then a district link's arrival tracks the line whose giver stands there (trackNear). (a city with none skips it whole)
-  // (decided from the built data, not by asking the page: a city without stamps makes no call at all, and its run is the
-  // same as before; a call's real time moves where the held world meets the route network, still building as it runs)
-  if ((() => { try { return (JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'web', 'data', city, 'game.json'), 'utf8')).spots || []).some(sp => sp.stamp); } catch (e) { return false; } })()) {
+  // (decided from the built data before the browser opens, STAMPED: a city without stamps spends no time here at all, and its
+  // run is the same as before; any real time spent between two steps moves where the held world meets the route network,
+  // still building as it runs, and that alone can change how the traffic goes)
+  if (STAMPED) {
     const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, track: g.qs().track }; });
     const stops = await p.evaluate(() => {
       const g = window.__game, out = [];
