@@ -1,5 +1,25 @@
 {
   "note": "Daily life on the Marunouchi-Ginza map (issue #357): the people to know, their hours, the jobs, the counters and the calendar. Built into web/data/tokyo/life.json by pipeline/life.py, which resolves every place. Facts in 'fact' are checked against published sources; each event names its own in 'source'.",
+  "fares": {
+    "note": "What a ride costs (web/game/fares.js). JR East's adult IC fare for 1 to 3 km after its revision of 14 March 2026 (155 yen by IC card, 160 by ticket; before it 146 and 150), from Traffic News and Impress Watch: JR East's own pages refused the request, so check it there when they answer. The water buses have no fare here: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between these piers today (Hamarikyu is a landing from Asakusa only, and the Mizube Line's reduced network of 17 October 2026 does not call at them).",
+    "operator": "JR East",
+    "as_of": "from 14 March 2026",
+    "source": "https://trafficnews.jp/post/136618",
+    "card": {
+      "name": "Suica",
+      "text": "Touch in at the gate and out at the other end. An IC card pays to the yen; a paper ticket is rounded up to ten."
+    },
+    "unit": 1,
+    "rides": {
+      "rail": {
+        "name": "JR",
+        "pairs": {
+          "yurakucho>shimbashi": 155
+        },
+        "text": "1 to 3 km by IC card"
+      }
+    }
+  },
   "bonds": [
     {
       "npc": "haruka", "title": "The attendant at the gates", "where": "Tokyo Station, the Marunouchi plaza",

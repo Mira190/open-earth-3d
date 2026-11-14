@@ -20,6 +20,7 @@
 #     (pipeline/fishing.py --check, tools/fishing_sim.js; the game check fishes each spot);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - checks each map's daily life (pipeline/life.py --check: people, ranks, places, sourced events, built);
+#   - prices rides by each map's fares (tools/fares_check.js: the rules, and every live table stop to stop);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
 #     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
@@ -318,6 +319,10 @@ EOF
   # fact, its places inside the map, its events sourced, and web/data/<id>/life.json built from it as it is now
   if python3 pipeline/life.py --check >"$OUT/life.log" 2>&1; then echo "ok   life   $(ls cities/*/life.json | wc -l) maps' daily life checked and built"
   else echo "FAIL life   $(grep -v '^FAIL' "$OUT/life.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/life.log)"; fi
+  # what a ride costs (web/game/fares.js): the rules on trips with known answers, and each live map's table priced
+  # between every pair of its stops. A second.
+  if node tools/fares_check.js >"$OUT/fares.log" 2>&1; then tail -1 "$OUT/fares.log"
+  else echo "FAIL fares  $(grep '^FAIL' "$OUT/fares.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/fares.log)"; fi
   # each city's packed buildings (buildings.bin, pipeline/pack.py) against its buildings.json: up to date,
   # and decoded by the browser's decoder (web/pack.js) to the same values. Ten seconds or so.
   if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then

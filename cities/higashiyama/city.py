@@ -53,6 +53,11 @@ MATERIALS = {
     # bare cypress and keyaki, weathered silver-brown, as the Main Hall and the Yasaka Pagoda are
     "timber": {"color": "#6b5442", "roughness": 0.82, "metalness": 0.0, "emissive": "#ffc890", "glow": 0.18},
     "timber_dark": {"color": "#4a3a2e", "roughness": 0.85, "metalness": 0.0},
+    # the Yasaka Pagoda's own timber and plaster: lit from its foot after dark, as it is every night, over its
+    # own height (the Kiyomizu halls' floodlight is set to theirs)
+    "pagoda_timber": {"color": "#6b5442", "roughness": 0.82, "metalness": 0.0, "emissive": "#ffc890", "glow": 0.3},
+    "pagoda_white": {"color": "#efe9dc", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffe2bc", "glow": 0.4},
+    "pagoda_soffit": {"color": "#5d4a3c", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffc890", "glow": 0.22},
     "keyaki": {"color": "#5c4a3b", "roughness": 0.86, "metalness": 0.0, "emissive": "#ffb878", "glow": 0.22},
     "nuki": {"color": "#54443a", "roughness": 0.86, "metalness": 0.0},
     "hinoki_floor": {"color": "#a58e72", "roughness": 0.72, "metalness": 0.0},
@@ -553,7 +558,9 @@ def yasaka(K, hidden):
     C, T, S = ctx()
     o, f, hu, hv = kk.site(sd["ring"], (-440.0, 189.0))   # facing down Yasaka-dori (west)
     z0 = T(*o)
-    kk.pagoda(K, BARE_TILE, kk.frame(o, f), z0, 5, YASAKA[1], 9.6, min(3.25, min(hu, hv) - 2.0), podium=1.2, deep=0.95, ground=T)
+    look = dict(BARE_TILE, post="pagoda_timber", wall="pagoda_white", soffit="pagoda_soffit")
+    _cache["pagoda_z"] = z0
+    kk.pagoda(K, look, kk.frame(o, f), z0, 5, YASAKA[1], 9.6, min(3.25, min(hu, hv) - 2.0), podium=1.2, deep=0.95, ground=T)
     hidden.append(sd["si"])
 
 
@@ -870,22 +877,27 @@ def lanes_paths():
     return out
 
 
-def lanes(K):
+HERO_LANE = "八坂通"   # the lane the hero level draws finely (cities/higashiyama/hero.py): its setts and fronts
+HERO_REACH = 17.0      # go into meshes of their own (yhero_*), which the game hides while the level is shown
+
+
+def lanes(K0, KH=None):
     """Stone setts along the lanes and their flights of steps, and the shop fronts facing them: a noren in
     the doorway, a lattice (格子) over the ground floor, a paper lantern at the door."""
     C, T, S = ctx()
     paths = lanes_paths()
     from shapely.geometry import LineString, Polygon
     from shapely.ops import unary_union
+    hero = [LineString([q for q in p if q[1] > 165.0]) for nm, hw, p, _ in paths if nm == HERO_LANE and hw != "steps" and len([q for q in p if q[1] > 165.0]) > 1]
+    hero = unary_union(hero) if hero and KH is not None else None
     for name, hw, pts, wd in paths:
         if hw == "steps":
-            kk.stairs(K["step_stone"], pts, wd, T(*pts[0]), T(*pts[-1]))
+            kk.stairs(K0["step_stone"], pts, wd, T(*pts[0]), T(*pts[-1]))
         else:
+            K = KH if (hero is not None and name == HERO_LANE) else K0
             kk.paving(K["setts"], pts, wd, T, lift=0.05, step=1.5, kerb=K["kerb"])
     line = unary_union([LineString(p) for _, _, p, _ in paths])
     rng = np.random.default_rng(7)
-    m = K["lanes"]
-    lamps_p, lamps_c = K["lamp_paper"], K["lamp_cap"]
     n = 0
     for sd in S:
         if sd["top"] > 14 or sd["base"] > 0:
@@ -894,6 +906,9 @@ def lanes(K):
         g = Polygon(ring)
         if not g.is_valid or g.area > 900 or g.distance(line) > 6.0:
             continue
+        K = KH if (hero is not None and g.distance(hero) < HERO_REACH) else K0
+        m = K["lanes"]
+        lamps_p, lamps_c = K["lamp_paper"], K["lamp_cap"]
         for a, b in zip(ring, ring[1:] + ring[:1]):
             a, b = np.asarray(a), np.asarray(b)
             L = float(np.linalg.norm(b - a))
@@ -940,7 +955,7 @@ def lanes(K):
 
 def landmark_meshes(scene):
     mats = {k: dict(v) for k, v in MATERIALS.items()}
-    K = ak.Kit("kiyomizu", floodlit={"shu", "kiyo_white", "timber", "keyaki", "gold", "water", "lanes", "lamp_paper"},
+    K = ak.Kit("kiyomizu", floodlit={"shu", "kiyo_white", "timber", "keyaki", "gold", "water", "lanes", "lamp_paper", "pagoda_timber", "pagoda_white", "pagoda_soffit"},
                uv={"hiwada", "hondo_hiwada", "gate_step", "court_flags", "kawara", "stone", "setts", "step_stone", "lanes", "hisashi"})
     hidden = []
     kiyomizu(K, hidden)
@@ -948,12 +963,16 @@ def landmark_meshes(scene):
     yasaka_jinja(K, hidden)
     koshindo(K)
     L = ak.Kit("lanes", floodlit={"lanes", "lamp_paper"}, uv={"setts", "step_stone", "lanes"})
-    lanes(L)
+    LH = ak.Kit("yhero", floodlit={"lanes", "lamp_paper"}, uv={"setts", "step_stone", "lanes"})
+    lanes(L, LH)
     H = hondo_layout()
     if H:
         z = H["zf"]
         for k in ("shu", "keyaki", "timber", "kiyo_white"):
             mats[k]["flood"] = [round(z - 16.0, 1), round(z + 20.0, 1), 0.5, 0.6]
+    if "pagoda_z" in _cache:
+        for k in ("pagoda_timber", "pagoda_white", "pagoda_soffit"):
+            mats[k]["flood"] = [round(_cache["pagoda_z"], 1), round(_cache["pagoda_z"] + 40.0, 1), 0.5, 0.7]
     extra = {"hidden": sorted(set(hidden))}
     gs = _cache.get("saimon_steps")
     if gs:   # the ground isn't drawn over the West Gate's steps, which the laser terrain's slope would bury
@@ -961,7 +980,7 @@ def landmark_meshes(scene):
         extra["clip"] = [{"ring": [[round(float(c), 2) for c in P(u, v, 0)[:2]] for u, v in
                                    ((gs["u0"] - 0.1, -w), (gs["u1"] + 0.1, -w), (gs["u1"] + 0.1, w), (gs["u0"] - 0.1, w))], "holes": []}]
     extra["trees"] = gion_cherry()
-    return mats, K.out() + L.out(), extra
+    return mats, K.out() + L.out() + LH.out(), extra
 
 
 # Maruyama Park's Gion weeping cherry (the second tree, grown in 1949 from the first's seed, about 12 m tall),

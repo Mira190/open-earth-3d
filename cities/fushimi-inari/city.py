@@ -637,12 +637,14 @@ def lamp_props():
     return [{"name": "toro", "at": at, "parts": [stone.dump(), light.dump()], "far": 900}]
 
 
-def paths(K):
-    """Stone paving on the Omotesando and the shrine's approaches."""
+def paths(K0, KH=None):
+    """Stone paving on the Omotesando and the shrine's approaches. The Omotesando's goes into meshes of its
+    own (shero_*), which the game hides while the hero level, which paves it finely, is shown (hero.py)."""
     C, T, S, osm = ctx()
     for w in osm["ways"]:
         t = w["tags"]
         if t.get("name") in ("表参道", "神幸道") and len(w["ll"]) > 1:
+            K = KH if (KH is not None and t.get("name") == "表参道") else K0
             kk.paving(K["setts"], [local(q) for q in w["ll"]], float(t.get("width", 0) or 8.0), T, lift=0.05, step=2.0, kerb=K["kerb"])
 
 
@@ -651,11 +653,12 @@ def landmark_meshes(scene):
     K = ak.Kit("inari", floodlit={"inari_shu", "inari_white", "gold", "lamp_glass"}, uv={"hiwada", "stone", "setts"})
     hidden = []
     more = shrine(K, hidden)
-    paths(K)
+    KH = ak.Kit("shero", uv={"setts"})
+    paths(K, KH)
     R = romon_layout()
     if R:
         mats["inari_shu"]["flood"] = [round(R["z0"], 1), round(R["z0"] + 16.0, 1), 0.5, 0.6]
-    return mats, K.out() + more + torii_hits(), {"ceilings": torii_ceilings(), "hidden": sorted(set(hidden)), "props": torii_props() + lamp_props()}
+    return mats, K.out() + KH.out() + more + torii_hits(), {"ceilings": torii_ceilings(), "hidden": sorted(set(hidden)), "props": torii_props() + lamp_props()}
 
 
 def landmark_assets(out_dir, scene):

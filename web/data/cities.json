@@ -57,7 +57,7 @@
   ],
   "load_bytes": {
    "model": 1863299,
-   "game": 2770054
+   "game": 2770177
   }
  },
  {
@@ -116,8 +116,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1417423,
-   "game": 1861051
+   "model": 1419523,
+   "game": 1863678
   }
  },
  {
@@ -620,8 +620,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1024776,
-   "game": 1144391
+   "model": 1025977,
+   "game": 1145777
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -1076,8 +1076,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 630027,
-   "game": 726270
+   "model": 630061,
+   "game": 726470
   },
   "group_meta": {
    "native": "\u4eac\u90fd",
@@ -2051,7 +2051,7 @@
      "native": "\u9577\u8c37\u30fb\u938c\u5009\u5927\u4ecf",
      "lat": 35.3113,
      "lon": 139.536,
-     "label": "b"
+     "label": "t"
     },
     {
      "name": "Kamakura \u00b7 Tsurugaoka Hachimangu",

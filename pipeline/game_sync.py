@@ -1,5 +1,5 @@
 """Copy the parts of cities/<id>/city.json's game that need no raw data into web/data/<id>/game.json:
-its title, its travel points and the crowd's cast (each set on the built terrain, as pipeline/game_data.py sets them).
+its title, where it starts, its travel points and the crowd's cast (each set on the built terrain, as pipeline/game_data.py sets them).
 A renamed map or a new district on its city's map (cities/index.json groups) then shows without
 rebuilding the game data, which game_data.py writes from the raw downloads. Everything else stays.
 
@@ -15,6 +15,7 @@ import sys
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+START_MOVED_M = 6.0   # a start further than this from the built one was moved in city.json
 
 
 def ground_fn(data):
@@ -50,6 +51,15 @@ def main(cities):
         if gcfg.get("title") and game.get("title") != gcfg["title"]:
             game["title"] = gcfg["title"]
             changed.append("title")
+        # where the game starts, when city.json moved it (to frame a hero level, docs/HERO.md): as city.json has it,
+        # a point on open ground chosen by hand. A start game_data.py only snapped to the paths stays as snapped
+        if gcfg.get("start") and game.get("start") != gcfg["start"]:
+            (ax, ay), (bx, by) = gcfg["start"].get("at", [0, 0])[:2], (game.get("start") or {}).get("at", [1e9, 1e9])[:2]
+            moved = ((ax - bx) ** 2 + (ay - by) ** 2) ** 0.5 > START_MOVED_M
+            start = dict(gcfg["start"], at=gcfg["start"]["at"] if moved else game["start"]["at"])
+            if start != game.get("start"):
+                game["start"] = start
+                changed.append("start")
         if "travel" in gcfg:
             ground = ground_fn(data)
             # (a point with its own level, [x, y, z], stands on a roof or a deck there: kept)
