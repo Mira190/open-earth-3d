@@ -159,10 +159,16 @@ module.exports = async function trainsStep(p, part = 'all') {
     const Rd = T.ride;
     if (part !== 'watch' && Rd && g.rail === Rd && T.stations.length > 1) {
       // (on foot, wherever the steps before left you: out of your car, out of a taxi or a ride and done with it)
-      if (pl.mode === 'car') { g.exitCar(); g.advance(0.5); }
+      pl.auto = null; // (no walk up to a car's door left over from the steps before: it would get back in)
+      for (let i = 0; i < 40 && pl.mode === 'board'; i++) g.advance(0.25); // (getting in or out of something: let it finish)
+      if (pl.mode === 'car') { const c = g.myCar(); if (c && c.D && c.D.st) c.D.st.speed = 0; g.exitCar(); g.advance(0.5); }
+      if (pl.mode === 'heli') { g.exitHeli(); g.advance(0.5); }
+      for (let i = 0; i < 40 && pl.mode === 'board'; i++) g.advance(0.25);
       if (pl.mode === 'ride') { g.leaveRide(); g.advance(1); }
       if (g.ride && g.ride() && g.cancelRide) { g.cancelRide(); g.advance(0.5); }
       if (pl.mode !== 'foot') { Object.assign(pl, { mode: 'foot', vehicle: null }); pl.rig.root.visible = true; }
+      pl.auto = null;
+      const modeAt = pl.mode;
       g.setClock(g.clock.y, g.clock.m, g.clock.d, 18 * 60);
       const from = T.stations.find(s => !s.under) || T.stations[0], sv2 = T.services.find(s => T.stopsNow(s) && s.halts.findIndex(h => h.st === from) >= 0 && s.halts.findIndex(h => h.st === from) < s.halts.length - 1);
       const h0 = sv2.halts.find(h => h.st === from), to = sv2.halts[sv2.halts.indexOf(h0) + 1].st;
@@ -204,7 +210,7 @@ module.exports = async function trainsStep(p, part = 'all') {
       if (pl.mode === 'rail') { act = g.currentAction(); if (act && act.act) act.act(); }
       g.advance(0.6);
       const offF = g.nav.floorAt(pl.x, pl.y, pl.z + 0.3), offZ = pl.z - to.z, offD = Math.hypot(pl.x - to.x, pl.y - to.y);
-      checks.push([/next train|Board/.test(waitText), `on ${from.name}'s platform ${h0.platform} the game offers the train ("${waitText}")`]);
+      checks.push([/next train|Board/.test(waitText), `on ${from.name}'s platform ${h0.platform} the game offers the train ("${waitText}"${/next train|Board/.test(waitText) ? '' : `; on ${modeAt} before, ${pl.mode} now`})`]);
       checks.push([!!car && /^Board/.test(boardText) && (from.under || doorsCar > 0) && (!h0.psd || psdOpen > 0.9), `the ${sv2.line.en} train for ${sv2.for ? sv2.for.en : '?'} stands with its doors open (${doorsCar} doorways drawn, the platform doors ${(psdOpen * 100).toFixed(0)}% open${T.doorsOpen.some(d => d.track === sv2.track && d.station === from.id) ? '' : ': none here'}): "${boardText}"`]);
       checks.push([aboard && left && inside, `boards it and rides in it (${aboard ? 'aboard' : 'not aboard'}, ${left ? 'left' : 'did not leave'}${inside ? '' : ', the rider off the train'})`]);
       checks.push([arrived && top * 3.6 > 40 && top * 3.6 < 100, `rides to ${to.name} (${(top * 3.6).toFixed(0)} km/h at most)`]);
