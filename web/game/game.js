@@ -6060,7 +6060,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // A lift: the camera climbs the tower's face (or comes down it) while the player rides, at the lift's own
   // speed with the time shortened, and hands back to the chase camera at the far stop, facing on.
   function rideLift(l, from, to) {
-    if (life) life.emit('ride', { kind: 'lift', from: l.stops[from].name, to: l.stops[to].name });
+    if (life) life.emit('ride', { kind: 'lift', route: l.id, from: l.stops[from].name, to: l.stops[to].name, name: l.name, toName: l.stops[to].name });
     if (liftCar(l)) { rideLiftCar(l, from, to); return; }
     const a = l.stops[from], b = l.stops[to], dz = b.at[2] - a.at[2];
     const realS = Math.abs(dz) / ((l.m_per_min || 240) / 60), dur = Math.min(9, Math.max(4.5, realS / 6));

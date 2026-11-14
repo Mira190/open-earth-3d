@@ -254,7 +254,8 @@ def build(city):
                 errs.append(f'{w}: needs "{k}" (whose fares, from what day, and where they are published)')
         if not (fares.get('card') or {}).get('name'):
             errs.append(f'{w}: needs a card with a name (what you tap or show)')
-        stops = {'ferry': {x['id'] for x in game.get('wharves', [])}, 'rail': {x['id'] for x in stations()} | {x['id'] for v in (game.get('rail') or {}).values() if isinstance(v, dict) for x in v.get('stations', []) if 'id' in x}}
+        lifts = {x['id']: x for x in game.get('lifts', [])}
+        stops = {'lift': {st['name'] for x in lifts.values() for st in x['stops']}, 'ferry': {x['id'] for x in game.get('wharves', [])}, 'rail': {x['id'] for x in stations()} | {x['id'] for v in (game.get('rail') or {}).values() if isinstance(v, dict) for x in v.get('stations', []) if 'id' in x}}
         routes = {f['route'] for f in game.get('ferries', [])}
         if not fares.get('rides'):
             errs.append(f'{w}: needs rides')
@@ -266,8 +267,13 @@ def build(city):
                 wr = f'{w} {kind}{f" {name}" if name else ""}'
                 if name and kind == 'ferry' and name not in routes:
                     errs.append(f'{wr}: no ferry route of that name ({sorted(routes)})')
-                if not any(k in r for k in ('pairs', 'bands', 'flat')):
-                    errs.append(f'{wr}: needs pairs, bands or a flat fare')
+                if kind == 'lift' and (name not in lifts or r.get('from') not in {st['name'] for st in lifts.get(name, {}).get('stops', [])}):
+                    errs.append(f'{wr}: a ticket is by the id of one of game.json lifts ({sorted(lifts)}), with the stop it is bought at ("from")')
+                if not any(k in r for k in ('pairs', 'bands', 'flat', 'times')):
+                    errs.append(f'{wr}: needs pairs, bands, times or a flat fare')
+                for t0, v in r.get('times') or []:
+                    if not (isinstance(t0, str) and len(t0) == 5 and t0[2] == ':' and isinstance(v, (int, float)) and v > 0):
+                        errs.append(f'{wr}: times are ["HH:MM", fare] in order of the hour')
                 for pair, v in (r.get('pairs') or {}).items():
                     ends = pair.split('>')
                     if len(ends) != 2 or any(e not in stops[kind] for e in ends):
@@ -280,8 +286,11 @@ def build(city):
         if 'day_low' in cp and not (cp.get('low_weekdays') and cp['day_low'] <= cp.get('day', 0)):
             errs.append(f'{w}: a lower cap needs its weekdays (0 is Monday) and a daily cap above it')
         for h in fares.get('holidays', []):
-            if not (1 <= h[0] <= 12 and 1 <= h[1] <= 31):
-                errs.append(f'{w}: holidays are [month, day]')
+            ok = (h[0] == 'easter' and len(h) == 2 and isinstance(h[1], int)) \
+                or (h[0] == 'nth' and len(h) == 4 and 1 <= h[1] <= 12 and 0 <= h[2] <= 6 and 1 <= h[3] <= 5) \
+                or (isinstance(h[0], int) and 1 <= h[0] <= 12 and 1 <= h[1] <= 31 and (len(h) == 2 or h[2:] == ['weekday']))
+            if not ok:
+                errs.append(f'{w}: a holiday is [month, day], [month, day, "weekday"], ["easter", days] or ["nth", month, weekday, n]: {h}')
     for b in life.get('bonds', []):
         for r in b.get('ranks', []):
             g, q = r.get('gives') or {}, r.get('request') or {}

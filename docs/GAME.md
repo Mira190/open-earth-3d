@@ -686,12 +686,18 @@ shows today's rides, the day's and the week's caps and the rules in a line each.
 
 | Map | Card | What is charged | Source |
 |---|---|---|---|
-| Sydney | Opal | Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes and 30% off trains off-peak are in the table for the day a second station is on the map. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: the fixed-date ones only. |
-| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch: JR East's own pages refused the request. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
+| Sydney | Opal | Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes and 30% off trains off-peak are in the table for the day a second station is on the map. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: NSW's, Easter, the King's Birthday and Labour Day included, and the weekday given when New Year's Day, Australia Day, Christmas or Boxing Day falls at a weekend. |
+| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch, confirmed by Yahoo! Transit's fare search on 14 November 2026: JR East's own pages refuse automated requests. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
+| Shibuya | Suica | SHIBUYA SKY: ¥3,000 before 15:00 and ¥3,700 from 15:00, the adult price at the counter; the way down is on the ticket. The survey's first visit is on its pass, so the main line never takes a new visitor's whole wallet (¥3,000). | SHIBUYA SKY's ticket page, as read on 14 November 2026 (issue 441). |
 | Shichirigahama | PASMO | The Enoden: ¥200 to the nearer stations, ¥220 beyond, each pair as the railway's table has it. | Enoshima Electric Railway's fare page, read 14 November 2026 (the amounts of 1 October 2019). |
 
-Not charged yet: tickets rather than taps (Queenstown's gondola and steamer, SHIBUYA SKY), whose
-real prices are above the wallet a visitor starts with. Taxis and rides are charged as before.
+A ticket at a gate is a ride of kind `lift` by the lift's id (`routes`), bought at its paying stop
+(`from`) and good for the way down (`return`), priced by the hour where the operator does (`times`:
+`[["HH:MM", fare], ...]`); `first_free` puts a first visit on the survey's pass. Holidays are fixed
+dates, `[m, d, "weekday"]` for one that gives the next free weekday when it falls at a weekend,
+`["easter", days]` and `["nth", month, weekday, n]`. Not charged, by decision: Tokyo's water buses
+(no operator sells a ticket between the map's piers); Queenstown's gondola and steamer wait with
+the parked map. Taxis and rides are charged as before.
 `tools/fares_check.js` prices trips with known answers under Node and every live map's table
 stop to stop; `tools/game_check.js` taps on through the game's own boarding and rides to the cap;
 `tools/fare_shot.js` takes the stills.
