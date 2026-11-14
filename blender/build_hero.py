@@ -1,6 +1,7 @@
 """Build a map's hero level (docs/HERO.md): cities/<id>/hero.py's build(kit) -> geometry, atlas and
 materials; the light after dark and the corners' occlusion baked into its vertices (hero_kit.bake);
-exported as one glTF binary with WebP textures into web/data/<id>/hero/<level>.glb, meshopt-compressed.
+exported as one glTF binary with WebP textures into web/data/<id>/hero/<level>.glb, meshopt-compressed; its
+finest parts (geo.fine), when it has any, as <level>_fine.glb beside it.
 
     pip install bpy==5.2.3
     python blender/build_hero.py --city shinjuku
@@ -41,12 +42,25 @@ def main():
     os.makedirs(tmp, exist_ok=True)
     atlas_path = os.path.join(tmp, f"{meta['id']}_atlas.png")
     atlas.img.save(atlas_path)
-    K.build_blender(geo, bakes, materials, atlas_path, name=meta["id"], origin=(meta["at"][0], meta["at"][1], meta.get("z", 30.0)))
-    glb = os.path.join(out_dir, f"{meta['id']}.glb")
-    K.export(glb)
-    if not a.no_meshopt:
-        subprocess.run(["node", os.path.join(ROOT, "pipeline", "meshopt_glb.mjs"), glb], check=True)
-    print(f"-> {glb} ({os.path.getsize(glb) / 1e6:.2f} MB) in {time.time() - t0:.0f} s")
+    origin = (meta["at"][0], meta["at"][1], meta.get("z", 30.0))
+    # the level, and its finest parts as a model of their own (geo.fine: fetched and drawn only near the camera,
+    # never on a phone; plain materials only, so that no texture is carried twice)
+    models = [(geo, bakes, f"{meta['id']}.glb", meta.get("cell"))]
+    fine = geo._fine
+    if fine is not None and fine.parts:
+        bad = [k for k in fine.parts if materials[k].get("tex") or materials[k].get("map")]
+        if bad:
+            raise SystemExit(f"fine parts must be in plain materials (no texture): {bad}")
+        ft, fv = fine.count()
+        print(f"{meta['id']} fine: {ft} triangles, {fv} vertices, {len(fine.parts)} materials")
+        models.append((fine, K.bake(fine, gain=meta.get("bake_gain", 0.6)), f"{meta['id']}_fine.glb", meta.get("fine_cell", 24.0)))
+    for g, bk, fname, cell in models:
+        K.build_blender(g, bk, materials, atlas_path, name=meta["id"], origin=origin, cell=cell)
+        glb = os.path.join(out_dir, fname)
+        K.export(glb)
+        if not a.no_meshopt:
+            subprocess.run(["node", os.path.join(ROOT, "pipeline", "meshopt_glb.mjs"), glb], check=True)
+        print(f"-> {glb} ({os.path.getsize(glb) / 1e6:.2f} MB) in {time.time() - t0:.0f} s")
     json.dump(meta, open(os.path.join(tmp, f"{meta['id']}.json"), "w"), indent=1)
 
 

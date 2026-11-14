@@ -27,7 +27,8 @@ window.OEWorld = (function () {
   }
 
   // the city's data files; game.json too when asked for
-  async function load(cityId, { game = false, onMsg = () => {} } = {}) {
+  // (small: the low tier's set, quality.js, whose landmark meshes flagged "detail" are never unpacked onto the page)
+  async function load(cityId, { game = false, onMsg = () => {}, small = !!(window.OEQuality && OEQuality.city().small) } = {}) {
     const DATA = `data/${cityId}/`;
     // the download is most of the wait for a big city, so it is counted as it streams in, against
     // the size cities.json gives for the model or the game (raw bytes, as the streams deliver them)
@@ -72,7 +73,10 @@ window.OEWorld = (function () {
       if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
           const buf = await (await fetchFile(name + '.bin')).arrayBuffer();
-          return await (OEPack.decodeIn ? OEPack.decodeIn(buf, keep ? name : null) : OEPack.decode(buf));
+          const lean = small && name === 'landmarks';
+          if (OEPack.decodeIn) return await OEPack.decodeIn(buf, keep ? name : null, lean);
+          const o = await OEPack.decode(buf);
+          return lean && OEPack.dropDetail ? OEPack.dropDetail(o) : o;
         } catch (e) { console.warn(`${name}.bin:`, e); }
       }
       return getJSON(name + '.json');
