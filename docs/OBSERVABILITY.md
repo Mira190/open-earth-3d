@@ -19,10 +19,14 @@ already exposes (`window.__city`, `window.__game`, `window.__reef`).
 | `mode` | the game leaves its title screen (`start: true`), or the player changes how they move (on foot, car, ride, heli, ferry, rail, photo; at a reef: walk, swim, snorkel, scuba, boat) | `from`, `to` |
 | `quest` | the game's tracked quest moves a step, or a quest is done | `action` (`step` / `done`), `from`, `stamps` |
 | `exit` | the page closes (`pagehide`) | `page_s`, `view_s`, `views`, `idle_s` (since the last input), `ready`, `tour_max`, `hidden` |
-| `crash` | a page load finds that an earlier one of this browser died while on screen | `prev_view`, `prev_city`, `prev_spot`, `prev_mode`, `prev_ready`, `prev_stage` (the last step of the load the page named; `held` once a phone had played a minute at its level), `prev_lv` (the level of a phone's set the dead page ran at, `quality.js` `level`), `prev_up_s`, `ago_s` |
+| `crash` | a page load finds that an earlier one of this browser died while on screen | `prev_view`, `prev_city`, `prev_spot`, `prev_mode`, `prev_ready`, `prev_stage` (the last step of the load the page named; `held` once a phone had played a minute at its level), `prev_lv` (the level of a phone's set the dead page ran at, `quality.js` `level`), `prev_mb` (what the view had downloaded, decoded, in MB: the memory signal on Safari and iOS, which give no heap; version 5), `prev_up_s`, `ago_s` |
 | `page` | once per page load | `ttfb`, `fcp`, `dom` (ms) |
-| `error` | a script error, an unhandled rejection or a resource that failed (5 per page at most) | `kind`, `msg`, `src` |
-| `gl_lost` | a WebGL context is lost, except in the seconds after a view stops and gives its context up | |
+| `error` | a script error, an unhandled rejection or a resource that failed (5 per page at most); a shader that failed to compile or link (three.js says so only on the console: `kind: "shader"`, the first line, the material's type and name; version 5); a WebGL error the game's own check found after a frame (`kind: "gl"`, `web/game/game.js` `glCheck`) | `kind`, `msg`, `src` |
+| `gl_lost` | a WebGL context is lost, except in the seconds after a view stops and gives its context up | `ready`, `stage` (the last step of the load), `up_s`, `mb` (as `crash`): lost while loading is a GPU out of memory mid-build, lost in play a driver's reset (version 5) |
+
+A checkout served on this machine (`localhost`) sends nothing unless asked (`?telemetry=debug` or `?telemetry=<url>`):
+the checks' software renderer, driven without the automation flag, once put its slow loads and "crashes" on the
+real devices' dashboard (version 5).
 
 Every event carries a random visitor id (`oe3d-vid` in localStorage), a page-load id (`sid`), the device
 class (phone / tablet / desktop from the pointer and screen size), the quality tier (`web/quality.js`),
@@ -223,7 +227,9 @@ dashboard write access; `--check` runs each query and changes nothing. The dashb
     GPU ms by city and main-thread ms by city.
 
 - **Release comparison** (issue 298): every event carries the deployed version (`app`, `web/version.json`),
-  so a regression points to the release that brought it:
+  so a regression points to the release that brought it. GitHub Pages names a release `0.1.<run>` (its
+  workflow's run number); Vercel has no run number, so its builds show `v0.1 · <commit>` and report `0.1+<commit>`
+  (`release` in `version.json`, `vercel.json`; issue 458). Builds before 14 November 2026 all reported `0.1.vercel`:
   - *Release comparison, last 30 days*: a table by version, newest first: page loads, load p75 on desktop
     and on phones and tablets, p75 of each load stage, pages that died, page loads with a script error or a
     lost WebGL context (%), median fps and slow frames (%);
