@@ -128,6 +128,9 @@ def leg_x(z, base, top_half=4.0, top_z=250.0):
     return top_half + (base / 2 - top_half) * (1 - s) ** 1.7
 
 
+FOOT_HALF = 7.1   # half the side of the concrete foot under each leg (the leg's own truss is 11 m across there)
+
+
 def tower(t):
     """The lattice as it is built: below the main deck four legs, each a truss of four chords laced on its four
     faces, tied leg to leg by a girder a panel and crossed bracing, with the great arch between each pair of feet;
@@ -206,7 +209,7 @@ def tower(t):
     foot = Mesh("tower_foot", "foot", False)
     for c in corners:
         ctr = P(c[0] * H(0), c[1] * H(0), 0)
-        foot.box((ctr[0], ctr[1], ctr[2] - 1.5), (ctr[0], ctr[1], ctr[2] + 1.2), 2 * q(0) + 3.2, 2 * q(0) + 3.2)
+        foot.box((ctr[0], ctr[1], ctr[2] - 1.5), (ctr[0], ctr[1], ctr[2] + 1.2), 2 * FOOT_HALF, 2 * FOOT_HALF, up=(R[0, 0], R[1, 0], 0.0))
     # above the main deck: one shaft, four chords, crossed on each face
     zs2 = [150, 163, 177, 192, 208, 224, 239, 250]
     for lo, hi in zip(zs2[:-1], zs2[1:]):
@@ -459,23 +462,21 @@ def game_extras(scene):
         blocks = [Polygon(q["ring"]).buffer(0.6) for q in solids if q["base"] == 0 and q["top"] > 0.5 and len(q["ring"]) > 2
                   and Point(cx, cy).distance(Polygon(q["ring"])) < 90]
         for k, (sx, sy) in enumerate(((1, 1), (-1, 1), (-1, -1), (1, -1))):
-            # the leg's foot (tower(): a box 4.3 m square across its corner), its face 2.2 m out from its middle: from out
-            # along the diagonal, or the nearest way round to it that no building stands in. The tower stands on
-            # Shiba's slope: the floor there is the ground's, up to 4 m above the tower's datum on the north side
+            # the leg's concrete foot (tower(): FOOT_HALF, square to the tower's axes): up to its face from out along
+            # the diagonal, or the nearest way round to it that no building stands in. The tower stands on Shiba's
+            # slope: the floor there is the ground's, up to 4 m above the tower's datum on the north side
             c = R(sx * h0, sy * h0)
+            ex, ey = R(1, 0) - R(0, 0), R(0, 1) - R(0, 0)
             for turn in (0, 1, -1, 2, -2):
                 b = math.atan2(*((R(sx, sy) - R(0, 0))[::-1])) + turn * math.pi / 8
                 d = np.array([math.cos(b), math.sin(b)])
-                path = LineString([c + d * 2.2, c + d * 7.0])
+                face = FOOT_HALF / max(abs(float(np.dot(d, ex))), abs(float(np.dot(d, ey))))   # the foot's face along d
+                path = LineString([c + d * (face + 0.2), c + d * (face + 5.0)])
                 if not any(path.intersects(g) for g in blocks):
                     break
-            # the leg leans in as it rises (leg_x): its outer face at a walker's knees, over the floor there
-            zf = T(*(c + d * 2.2))
-            for _ in range(2):
-                lean = h0 - leg_x(max(zf + 0.4 - t["ground_m"], 0.0), t["base"])
-                at = c + d * 2.2 - (R(sx, sy) - R(0, 0)) / math.sqrt(2) * lean * math.sqrt(2)
-                zf = T(*at)
-            close.append(close_to(f"Tokyo Tower, the foot of leg {k + 1}", at, zf, c + d * 7.0, 1.2))
+            at = c + d * face
+            zf = T(*(c + d * (face + 0.3)))
+            close.append(close_to(f"Tokyo Tower, the foot of leg {k + 1}", at, zf, c + d * (face + 5.0), 1.2))
         foot = [q for q in solids if q["name"] == FOOT_TOWN and q["base"] == 0]
         if foot:
             from shapely.geometry import Point, Polygon
