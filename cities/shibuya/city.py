@@ -67,6 +67,7 @@ sancha = _sibling("sancha")       # Sangenjaya: New Marina's front and the takoy
 scramble = _sibling("scramble")   # the scramble at street level: its street, entrances, buildings and signs (#111)
 hachiko_kit = _sibling("hachiko")  # Hachiko, sculpted: the bronze Akita and his pedestal
 garden = _sibling("hachiko_garden")  # the lilyturf in the bed behind Hachiko, and its atlas
+yamanote = _sibling("rail")       # the Yamanote Line through Harajuku, Shibuya and Ebisu, and its trains (#361)
 
 # the map being built: "shibuya", or "shinjuku" when cities/shinjuku/city.py loads this file
 CITY = globals().get("CITY", "shibuya")
@@ -3851,6 +3852,10 @@ def landmark_meshes(scene):
         extra["clip"] = sc
         extra["props"] = props
         mats.update(scramble.MATERIALS)
+    if CITY == "shibuya":   # the Yamanote Line's bed between the stations (cities/shibuya/rail.py)
+        ym, ymesh = yamanote.meshes(Mesh)
+        mats.update({k: dict(v) for k, v in ym.items()})
+        meshes += ymesh
     return mats, meshes + more, extra
 
 
@@ -4257,6 +4262,9 @@ def game_extras(scene):
         suga_extras(lm["suga"], spots, chatter, close)
     districts_extras(lm, spots, chatter, close)
     out = {"spots": spots, "chatter": chatter, "close": close}
+    tr = yamanote.trains() if CITY == "shibuya" else None   # the Yamanote Line's trains (cities/shibuya/rail.py)
+    if tr:
+        out["trains"] = tr
     s = lm.get("shibuya_sky")
     if not s:
         return out

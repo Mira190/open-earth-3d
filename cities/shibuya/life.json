@@ -141,13 +141,14 @@
     }
   ],
   "fares": {
-    "note": "What a ride and a ticket cost (web/game/fares.js, docs/GAME.md 'Fares'). SHIBUYA SKY's adult admission at the counter on the day: 3,000 yen before 15:00 and 3,700 yen from 15:00 (booked ahead on the web it is 2,700 and 3,400; a visitor walking up pays the counter's), as SHIBUYA SKY's ticket page gave it on 14 November 2026 (issue #441). The way down is on the ticket. The survey's first visit is on its pass, so the main line never costs a new visitor the wallet they start with (3,000 yen); every visit after it is paid.",
-    "operator": "Shibuya Scramble Square",
+    "note": "What a ride and a ticket cost (web/game/fares.js, docs/GAME.md 'Fares'). SHIBUYA SKY's adult admission at the counter on the day: 3,000 yen before 15:00 and 3,700 yen from 15:00 (booked ahead on the web it is 2,700 and 3,400; a visitor walking up pays the counter's), as SHIBUYA SKY's ticket page gave it on 14 November 2026 (issue #441). The way down is on the ticket. The survey's first visit is on its pass, so the main line never costs a new visitor the wallet they start with (3,000 yen); every visit after it is paid. The Yamanote Line: JR East's adult IC fare for 1 to 3 km after its revision of 14 March 2026, 155 yen between any two of Harajuku, Shibuya and Ebisu (Shibuya to Harajuku 1.2 km, Shibuya to Ebisu 1.6 km, Harajuku to Ebisu 2.8 km), from Traffic News and confirmed on 14 November 2026 by Yahoo! Transit's fare search; JR East's own pages refuse automated requests.",
+    "operator": "JR East and Shibuya Scramble Square",
     "as_of": "as published on 14 November 2026",
     "source": "https://www.shibuya-scramble-square.com/sky/ticket/",
     "card": { "name": "Suica", "text": "Touch in at the gate and out at the other end; a ticket desk takes it too." },
     "unit": 1,
     "rides": {
+      "rail": { "name": "JR", "pairs": { "shibuya>harajuku": 155, "shibuya>ebisu": 155, "harajuku>ebisu": 155 }, "text": "1 to 3 km by IC card" },
       "lift": { "name": "SHIBUYA SKY", "routes": {
         "sky-gate": { "name": "SHIBUYA SKY", "from": "Shibuya Scramble Square, street level", "times": [["00:00", 3000], ["15:00", 3700]], "return": true,
           "text": "adult, at the counter; the way down is on the ticket",
