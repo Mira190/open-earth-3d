@@ -393,6 +393,7 @@
 .ts-mark.mute .co { display: none; }
 .ts-mark .co { color: var(--amber); margin-left: 4px; display: none; }
 .ts-mark.hot .co { display: inline; }
+.ts-mark.hot.noco .co { display: none; }
 .ts-mark.plan { color: rgba(138, 147, 163, 0.75); font-size: 8.5px; margin-left: 0; }
 .ts-mark.plan::before { width: 5px; height: 5px; border: 1px solid currentColor; border-radius: 50%; background: none; opacity: 0.9; margin-left: -3px; }
 .ts-mark.plan.flip::before { margin-left: 0; margin-right: -3px; }
@@ -476,3 +477,13 @@
   .ts-card, .ts-menu li { transition: none !important; }
   .ts-card.on .ts-spots li { animation: none; }
 }
+
+/* a touch screen has no keys: its hints say tap, and the buttons lose their key caps */
+.ts-tp { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .ts-kb, .ts-btn kbd { display: none; }
+  .ts-tp { display: inline; }
+}
+
+.oe-nojs { position: fixed; inset: auto 16px 24px; z-index: 50; margin: 0 auto; max-width: 560px; padding: 14px 18px; border: 1px solid var(--line);
+  background: rgba(4, 6, 11, 0.86); color: var(--tx); font: 400 13px/1.5 var(--t-ui); text-align: center; }
