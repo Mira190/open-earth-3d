@@ -13,6 +13,7 @@
 //   xvfb-run -a node tools/traffic_check.js sydney [seconds per place] [places]
 //   GAME_TIME=08:00 CLOCK_HOLD=1 ... sydney 1800 1    (a soak: half an hour at that hour, the clock held there; tools/traffic_soak.sh)
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
 // the mean and the 95th percentile of a list of waits (s), and how many
 const pct = (v, q) => { const a = [...v].sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(q * a.length))] : 0; };
@@ -28,8 +29,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
     p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     const r = await p.evaluate(([T, site, hold]) => {
       window.requestAnimationFrame = () => 0; // the game's frame loop stops: the run steps only here
       const g = window.__game, A = g.cars, C = A.C, L = A.netL;

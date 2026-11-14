@@ -4,6 +4,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/rain_perf.js shibuya [frames]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'shibuya', framesArg = '60'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -15,8 +16,7 @@ const [,, city = 'shibuya', framesArg = '60'] = process.argv;
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.waitForTimeout(3000);
   const out = await p.evaluate(async n => {
     const g = window.__game, W = g.weather;

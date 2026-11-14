@@ -400,7 +400,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // bridge over a ferry's course clears the boats with someone standing on the upper deck
   const FI = vlib && vlib.ferryInfo, fstyle = G.ferry_style || {};
   const boatTop = (FI ? FI.upper_deck_m * (fstyle.length_m ? fstyle.length_m / FI.length_m : 1) : 4.2) + 2.2;
-  const deckPlan = OEDecks.plan(G.paths, nav, FRAME, { boats: (G.ferries || []).flatMap(f => (f.legs || []).map(l => l.path)), clear: boatTop });
+  const deckPlan = OEDecks.plan(G.paths, nav, FRAME, { boats: (G.ferries || []).flatMap(f => (f.legs || []).map(l => l.path)), clear: boatTop, tracks: ((G.trains && G.trains.tracks) || []).map(t => t.p) });
   nav.addDecks(deckPlan.segs);
   for (const d of deckPlan.segs) {
     const L = Math.hypot(d.bx - d.ax, d.by - d.ay) || 1, nx = -(d.by - d.ay) / L * d.hw, ny = (d.bx - d.ax) / L * d.hw;
@@ -2397,7 +2397,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (player.mode === 'ride' && player.vehicle === o) {
       Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.v });
-      if (o.phase === 'driving' && clockT > o.talkT) { o.talkT = clockT + 24 + Math.random() * 18; H.toast(`<b>${o.name}:</b> ${smalltalk(st.x, st.y)}`); }
+      if (o.phase === 'driving' && clockT > o.talkT) { o.talkT = clockT + 24 + srnd() * 18; H.toast(`<b>${o.name}:</b> ${smalltalk(st.x, st.y)}`); }
       if (o.phase === 'driving' && st.done) {
         o.phase = 'arrived';
         const fare = life ? life.fare(o.meter, o.kind) : '';
@@ -2653,7 +2653,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const w = G.wharves.reduce((a, q) => (Math.hypot(q.terminal[0] - x, q.terminal[1] - y) < (a ? Math.hypot(a.terminal[0] - x, a.terminal[1] - y) : 400) ? q : a), null);
     if (w) { const e = nextFerry(w.id); if (e) opts.push(`The next ferry from ${w.name} is ${e.v.name}, ${e.t < 5 ? 'boarding now' : `in ${fmtSec(e.t)}`}.`); }
     opts.push(...(G.smalltalk || [G.greeting || 'G\'day.', 'Lovely spot, isn\'t it?']));
-    return opts[Math.floor(Math.random() * opts.length)];
+    return opts[Math.floor(srnd() * opts.length)];
   }
 
   // ------------------------------------------------------------ clock: 30 times real time by default, as in GTA
@@ -2839,7 +2839,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const ready = openLines().find(l => questOf(l).giver === n.id && !ls(l).started);
     if (ready) return giveQuest(n, ready, questOf(ready));
     if (life && life.talk(n)) return; // someone you are getting to know, when they are free (bonds.js)
-    dlg.show(n, [said(n.idle[Math.floor(Math.random() * n.idle.length)]) || smalltalk(n.x, n.y)], null, finish);
+    dlg.show(n, [said(n.idle[Math.floor(srnd() * n.idle.length)]) || smalltalk(n.x, n.y)], null, finish);
   }
   function giveQuest(n, l, q) {
     const talk = q.talk.map(said).filter(Boolean);
@@ -2986,7 +2986,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         + `<span><b>Trig stations</b><span class="note">${n ? VP.filter(v => trigDone()[v.id]).map(v => v.name).join(', ') : 'Survey the view from each one'}</span></span></li>`; })() : '');
     $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id) || spotStamps().some(sp => s.id === `spot:${sp.id}`)).length}/${Q.length + spotStamps().length}`;
     if (life && life.passport) life.passport($('#g-pass .g-panel')); // the skills, under the stamps (jobs.js)
-    // the postcards that have come from this map (the title screen's pile, postcards.js), newest first
+    // the postcards that have come from this map (postcards.js), newest first
     if (window.OEPostcards) OEPostcards.album(CITY.id, window.OE_CITIES || []).then(cards => {
       const box = $('#gp-post');
       if (!box) return;
@@ -4963,7 +4963,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   spawn();
   // a link to a district of the map ("#play-shibuya@t-sancha", from the subway map or shared): the title
   // screen is set there, over that place and under its name, and the game starts there, not at the map's start
-  // or where a postcard was taken ("#play-kyoto@pc-gate.dusk", from the title screen's postcards: postcards.js):
+  // or where a postcard was taken ("#play-kyoto@pc-gate.dusk": postcards.js):
   // the game starts on the photographer's spot, looking the way the photograph does, in its light
   const DISTRICT = window.OE_ARRIVE && ((G.travel || []).find(t => t.id === window.OE_ARRIVE)
     || (/^pc-/.test(window.OE_ARRIVE) && window.OEPostcards ? OEPostcards.arrival(await OEPostcards.load(), CITY.id, window.OE_ARRIVE) : null));
@@ -5253,7 +5253,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (hero) hero.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
-    weatherTick(dt, titleOn, titleOn || paused || photo.on);
+    weatherTick(simHold ? 0 : dt, titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
     if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));

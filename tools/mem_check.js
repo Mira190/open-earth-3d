@@ -15,6 +15,7 @@
 //   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 620)
 // TIER=low|medium|high (default low). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
 const GPU_MB = +(process.env.MEM_GPU || 620), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
@@ -179,8 +180,7 @@ async function measure(b, city) {
   try {
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 400000 });
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     // what a player walking round meets: every NPC's character, the helicopter, the cars' and trees' near models
     await p.evaluate(async () => {
       const g = window.__game;

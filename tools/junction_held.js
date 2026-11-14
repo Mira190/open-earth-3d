@@ -12,6 +12,7 @@
 // places: the start and then traffic_check.js's places on the roads; jid: junctions to stand by
 // instead (their ids in junctions.J).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const { heldStep } = require('./junction_held_step');
 const [,, city = 'shibuya', secs = '240', places = '2', jids = ''] = process.argv;
@@ -28,8 +29,7 @@ const MAX = Number(process.env.MAX_GREENS || 2);
     p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     await p.evaluate(st => {
       window.requestAnimationFrame = () => 0;
       const g = window.__game, L = g.cars.netL;

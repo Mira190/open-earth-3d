@@ -9,6 +9,7 @@
 //   FULLHUD=1: the whole HUD (by default the quest, prompts, labels, toasts and menu row are off)
 //   STILLS=1: a still every five seconds of the drive instead (<out>/<city>-autopilot-NN.jpg), to look before filming
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -24,8 +25,7 @@ const FPS = +(process.env.FPS || 24), SECONDS = +(process.env.SECONDS || 60), W 
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   // (a film of the drive: the game's own clutter off, as photo mode has it, the toasts and the menu row with it; the
   // clock, the minimap and the autopilot's panel stay. FULLHUD=1 keeps it all)
   if (!process.env.FULLHUD) await p.addStyleTag({ content: '.g-quest, .g-prompt, .g-labels, .g-reticle, .g-btns, #g-toasts, .g-dialog, .g-chatter { display: none !important; }' });

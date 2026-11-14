@@ -60,6 +60,15 @@ that ended without naming a step (a crash, a timeout). Two runs with no failed s
 that is named there often is the one to make steady (the lockstep work, issue 243, is the cure;
 this is the bookkeeping).
 
+Since #420 the game check plays the same game in every run (docs/GAME.md, "the test"): the traffic's trips,
+the dispatch's tie-breaks and the talk draw from seeded runs, the date is pinned (the weather is a hash of it),
+Play is pressed once the title card is up whatever the load took (#423), and nothing a held frame does steps the
+world. A failed step therefore fails the second run too, and the second run is there for what the simulation
+doesn't decide: a renderer that crashed, a timeout. A `FLAKY` line now means something still lets the machine
+into the run: `DIGEST=2` writes a digest after every step of the world, and the first one two runs disagree on
+names the step. `tools/game_soak.sh` runs every live city's check a few times, three at a time, and says per
+city whether every run played the same game.
+
 ## The command
 
 ```
@@ -110,7 +119,6 @@ Two things were measured and found not to be the cost, so nothing was built for 
 
 ## What is next
 
-- The traffic steps made deterministic, so that `FLAKY` goes away rather than being counted.
 - The logic the game check asserts through a browser (junction cycles, queues, routes, the daily
   life's ranks) run without one: `web/game/junctions.js`, `cars.js`, `nav.js` and `route.js` touch
   `window` and `document` in a handful of places each, and the world already steps a thirtieth of a
