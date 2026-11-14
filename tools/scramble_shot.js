@@ -7,6 +7,7 @@
 //              "views": [{"name": "hachiko", "eye": [x, y, dz], "look": [x, y, dz], "fov": 50}, ...]}
 // dz is metres over the ground there; "people": [x, y] (with crowd_r, crowd_n) stages the crowd round a point, as a film shot does. "date": [month, day]; TIER=high|medium|low (default high);
 // ONLY=name,name and TIMES=day,night pick some; SETTLE=seconds the world runs before each still (6).
+// PROBE=fx,fy;fx,fy lists what a ray through those points of the frame meets (a still that looks wrong: what is it?).
 // Prints the frame time the page measured for each still (ms, median of FRAMES (9) frames on this renderer).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
@@ -112,6 +113,28 @@ const only = process.env.ONLY ? process.env.ONLY.split(',') : null, onlyT = proc
         return dts[Math.floor(nf / 2)];
       }, { v, tv, date: spec.date, settle, nf: +(process.env.FRAMES || 9) });
       const png = await p.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => res(document.getElementById('game-gl').toDataURL('image/png'))))));
+      // PROBE=0.5,0.6;0.7,0.5: what stands along the ray through those points of the frame (fractions from the top
+      // left), nearest first: each mesh's name, its material, colour, opacity, glow and share of the sky mirrored
+      if (process.env.PROBE) {
+        const hits = await p.evaluate(pts => {
+          const g = window.__game, rc = new THREE.Raycaster(), out = [];
+          for (const [fx, fy] of pts) {
+            rc.setFromCamera(new THREE.Vector2(fx * 2 - 1, 1 - fy * 2), g.camera);
+            const seen = [];
+            for (const h of rc.intersectObject(g.Wd.world, true)) {
+              if (!h.object.visible || seen.length >= 6) continue;
+              const m = Array.isArray(h.object.material) ? h.object.material[(h.face && h.face.materialIndex) || 0] : h.object.material;
+              let vis = true; for (let o = h.object; o; o = o.parent) vis = vis && o.visible;
+              if (!vis) continue;
+              seen.push(`${h.distance.toFixed(1)} m  ${h.object.name || h.object.type} / ${m && m.name || '?'}  #${m && m.color ? m.color.getHexString() : ''} op ${m && m.transparent ? m.opacity : 1}`
+                + ` glow ${m && m.emissiveIntensity != null ? (+m.emissiveIntensity).toFixed(2) : '-'} sky ${m && m.envMapIntensity != null ? m.envMapIntensity : '-'} rough ${m && m.roughness} metal ${m && m.metalness}`);
+            }
+            out.push(`  at ${fx},${fy}:\n    ` + seen.join('\n    '));
+          }
+          return out.join('\n');
+        }, process.env.PROBE.split(';').map(q => q.split(',').map(Number)));
+        console.log(`${v.name}-${tname} probe\n${hits}`);
+      }
       const name = `${v.name}-${tname}`;
       fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
       console.log(`${name}\t${ms.toFixed(1)} ms`);

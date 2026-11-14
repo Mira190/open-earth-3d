@@ -56,6 +56,10 @@ window.OEHero = (function () {
       const name = (m.name || '').toLowerCase(), own = m.onBeforeCompile;
       m.vertexColors = false; // (its _BAKE is read here, not as a vertex colour)
       if (m.userData.tint) m.color.setRGB(...m.userData.tint); // (a texture's tint, the building's colour: Blender's extras)
+      // glass at street level mirrors the street across the way, not the sky: the environment is the sky alone, so a
+      // pane low on a wall showed a bright sky where a photograph shows the shaded fronts opposite, and read as milk.
+      // A material's "sky" (hero_kit) is the share of the environment it mirrors
+      if (m.userData.sky != null) m.envMapIntensity = m.userData.sky;
       m.onBeforeCompile = (sh, r) => {
         if (own) own.call(m, sh, r);
         sh.uniforms.uHeroBake = uBake; sh.uniforms.uHeroNight = uNight;

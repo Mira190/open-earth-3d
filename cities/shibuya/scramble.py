@@ -48,7 +48,7 @@ MATERIALS = {
     # the entrances: aluminium panels, the steel frame, the glass, the stairs' granite and the well's tiles
     "x_panel": {"color": "#c4c7ca", "roughness": 0.42, "metalness": 0.55},
     "x_frame": {"color": "#55595e", "roughness": 0.45, "metalness": 0.6},
-    "x_glass": {"color": "#a9c3cc", "roughness": 0.04, "metalness": 0.2, "opacity": 0.3},
+    "x_glass": {"color": "#1c2529", "roughness": 0.04, "metalness": 0.2, "opacity": 0.16},
     "x_tread": {"color": "#8e8a84", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.0], "stair": "tread"},
     "x_riser": {"color": "#7d7a75", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.0], "stair": "riser"},
     "x_tile": {"color": "#d9d6cf", "roughness": 0.5, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.15]},
@@ -69,7 +69,7 @@ MATERIALS = {
     "x_wire": {"color": "#26292c", "roughness": 0.6, "metalness": 0.4},
     # QFRONT: its silver fins and panels, the shopfronts lit from inside, the crown's roof
     "x_fin": {"color": "#a9afb5", "roughness": 0.35, "metalness": 0.7},
-    "x_qf_glass": {"color": "#40505b", "roughness": 0.05, "metalness": 0.3, "opacity": 0.22},
+    "x_qf_glass": {"color": "#4a565e", "roughness": 0.04, "metalness": 0.85, "opacity": 0.5},
     "x_qf_panel": {"color": "#cfd2d5", "roughness": 0.45, "metalness": 0.5},
     "x_qf_roof": {"color": "#6d7176", "roughness": 0.8, "metalness": 0.2},
     "x_shop": {"color": "#59616a", "roughness": 0.12, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.8, "spandrel": 0.04,
@@ -916,7 +916,8 @@ def qfront(K, A, D, openings=None):
             if np.linalg.norm(q - p) > 2.0 or any(a_ < z < b_ for a_, b_ in clear((p + q) / 2)):
                 continue
             o, o2 = p + n * 0.42, q + n2 * 0.42
-            fin.quad(np.array([*o, z - 0.08]), np.array([*o2, z - 0.08]), np.array([*o2, z + 0.08]), np.array([*o, z + 0.08]))
+            # (a floor's edge behind the glass shows as a silver band 0.8 m deep, the slab and its louvres: photographs)
+            fin.quad(np.array([*o, z - 0.55]), np.array([*o2, z - 0.55]), np.array([*o2, z + 0.25]), np.array([*o, z + 0.25]))
     if mid_edge is not None:
         A.quad(K["x_atlas"], np.array([*(c - t * w / 2), zc + 1.0]), np.array([*(c + t * w / 2), zc + 1.0]),
                np.array([*(c + t * w / 2), zt - 1.2]), np.array([*(c - t * w / 2), zt - 1.2]), "qf_crown")

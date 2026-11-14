@@ -453,7 +453,7 @@ def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0
     """Blender meshes from geo (one object per material, or with `cell` one per material and per square of
     that many metres, so that the page draws only the squares in view and, of the fine model, only those near
     the camera), with their materials from `materials`
-    ({name: spec}: color, rough, metal, tex (a TEXTURES key), maps, tint, emissive, map ('atlas'), emissive_only, alpha)."""
+    ({name: spec}: color, rough, metal, tex (a TEXTURES key), maps, tint, emissive, map ('atlas'), emissive_only, alpha, sky)."""
     import bpy
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
@@ -477,6 +477,8 @@ def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0
         bs.inputs["Metallic"].default_value = spec.get("metal", 0.0)
         if spec.get("tint"):       # (the colour factor the texture or the atlas is multiplied by: hero.js sets it from the extras)
             m["tint"] = list(spec["tint"])
+        if spec.get("sky") is not None:   # (how much of the sky's picture the surface mirrors: see hero.js)
+            m["sky"] = float(spec["sky"])
         if spec.get("tex"):
             T = fetch_texture(spec["tex"])
             tc = nt.nodes.new("ShaderNodeTexImage"); tc.image = image(T["Color"])
