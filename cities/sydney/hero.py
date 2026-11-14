@@ -68,12 +68,9 @@ def materials(K):
         "ground_header": {"tex": "syd_header", "rough": 0.72, "maps": "cn"},
         "ground_kerb": {"tex": "syd_concrete", "tint": (0.27, 0.25, 0.22), "rough": 0.85, "maps": "c"},
         "ground_iron": {"map": "atlas", "rough": 0.5, "metal": 0.7},
-        "ground_stain": {"color": (0.05, 0.05, 0.05), "rough": 0.6, "alpha": 0.22},
-        "ground_petal": {"color": (0.34, 0.24, 0.6), "rough": 0.8, "alpha": 0.5},
         "lawn_grass": {"tex": "grass", "tint": T("grass", (62, 92, 40)), "rough": 0.95, "maps": "cn"},
         "stone_sand": {"tex": "syd_sandstone", "rough": 0.88, "bump": 0.8},
         "stone_sand_d": {"tex": "syd_sandstone", "tint": (0.92, 0.915, 0.9), "rough": 0.88, "bump": 0.8},
-        "stone_parapet": {"tex": "syd_parapet", "rough": 0.9, "maps": "c"},
         "stone_plinth": {"tex": "granite", "tint": T("granite", (104, 72, 62)), "rough": 0.3, "maps": "c"},
         "conc_seat": {"tex": "syd_concrete", "tint": (0.4, 0.38, 0.34), "rough": 0.7, "maps": "c"},
         "conc_wall": {"tex": "syd_seawall", "rough": 0.8, "maps": "cr"},
@@ -627,7 +624,7 @@ class Level:
             x, y = n["xy"]
             hp.disc(geo, "atlas_bronze", (x, y), 0.36, G.z(x, y) + 0.066, uv=A.uv(f"plaque{i}"))
             hp.disc(geo.fine, "metal_bronze", (x, y), 0.385, G.z(x, y) + 0.058)
-        # a slot drain along the foot of the slope, covers where OpenStreetMap maps them, stains
+        # a slot drain along the foot of the slope, covers where OpenStreetMap maps them
         wd = hp.unit(np.subtract(WALL[1], WALL[0]))
         for y in np.arange(WALL[0][1] + 0.5, WALL[1][1] - 1.0, 1.0):
             x = self.wall_x(y) + 0.95
@@ -638,35 +635,20 @@ class Level:
         for y in (181.0, 226.5, 268.0):
             x = self.edge(y) - 6.0
             hp.decal(geo, "ground_iron", G, (x, y), (1, 0), 0.6, 0.6, uv=A.uv("cover"), dz=0.062)
-        from shapely.geometry import Point
-        for _ in range(34):
-            y = Y0 + 4 + rng.random() * (Y1 - Y0 - 8)
-            x = self.wall_x(y) + 1.5 + rng.random() * (self.edge(y) - self.wall_x(y) - 4)
-            if prom.contains(Point(x, y).buffer(1.0)):
-                hp.blob(geo, "ground_stain", G, (x, y), 0.1 + rng.random() * 0.3, rng)
 
     # -- the museum's sandstone front
     def band(self, F, u0, u1, out, z0, z1, faces=("front",), o0=None):
-        """The stone under a coping, with the rain's runs down it: the parapet texture laid once up the band."""
-        L = self.rep["syd_parapet"]
-        P = F.P
-        n = max(1, int(math.ceil((u1 - u0) / 3.0)))
+        """The plain stone of an attic under its coping (clean: nothing here is aged, AGENTS.md "The bar")."""
+        rep = self.rep["syd_sandstone"]
         if "front" in faces:
-            for i in range(n):
-                ua, ub = u0 + (u1 - u0) * i / n, u0 + (u1 - u0) * (i + 1) / n
-                self.geo.quad("stone_parapet", P(ua, out, z0), P(ub, out, z0), P(ub, out, z1), P(ua, out, z1),
-                              uv=[(ua / L, 0), (ub / L, 0), (ub / L, 1), (ua / L, 1)], n=F.N)
+            hp.wall(self.geo, "stone_sand", F, u0, u1, z0, z1, out, rep)
         if o0 is not None:
-            d = out - o0
-            if "left" in faces:
-                self.geo.quad("stone_parapet", P(u0, o0, z0), P(u0, out, z0), P(u0, out, z1), P(u0, o0, z1), uv=[(0.3, 0), (0.3 + d / L, 0), (0.3 + d / L, 1), (0.3, 1)])
-            if "right" in faces:
-                self.geo.quad("stone_parapet", P(u1, out, z0), P(u1, o0, z0), P(u1, o0, z1), P(u1, out, z1), uv=[(0.6, 0), (0.6 + d / L, 0), (0.6 + d / L, 1), (0.6, 1)])
+            hp.fbox(self.geo, "stone_sand", F, u0, u1, o0, out, z0, z1, rep, faces=tuple(f for f in faces if f in ("left", "right")))
 
     def bays(self, F, u0, u1, out, n, floors, top, small_top=False, lit=0.22, end=1.5, attic=2.4, ground=True):
         """A front of n bays as the building has them: each a recess running up through the storeys between flat
         piers, a pair of steel windows to a storey in it with a stone spandrel under each; a row of small windows
-        over the recesses where small_top; a granite base, a string course and the stained attic under the coping."""
+        over the recesses where small_top; a granite base, a string course and the plain attic under the coping."""
         geo, A, rng, rep = self.geo, self.A, self.rng, self.rep["syd_sandstone"]
         mat, dk = "stone_sand", "stone_sand_d"
         RD = 0.32                                    # the recess
@@ -708,7 +690,7 @@ class Level:
             on = rng.random() < lit
             key = f"room_l{int(rng.integers(4))}" if on else f"room_d{int(rng.integers(6))}"
             hp.window(geo, F, w0, w1, z0, z1, out, 0.22, mat, rep, uv=A.uv(key), bars=(1, 1), frame="metal_dark", emit=(A.mean[key], 0.5) if on else None)
-        # the base in polished granite, the string course, the attic with the rain's runs, the coping
+        # the base in polished granite, the string course, the attic, the coping
         hp.fbox(geo, "stone_plinth", F, u0 - 0.02, u1 + 0.02, out, out + 0.1, ZB, ZF + 0.84, self.rep["granite"], faces=("front", "left", "right", "top"))
         hp.fbox(geo, dk, F, u0 - 0.06, u1 + 0.06, out, out + 0.16, z_att - 0.26, z_att, rep)
         self.band(F, u0, u1, out + 0.02, z_att, top)
@@ -1139,18 +1121,6 @@ class Level:
                         fine.box("metal_dark", q + d * 0.19 + [0, 0, 0.46], (sd, d), (0.4, 0.025, 0.36))
                         for sa, sb in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
                             fine.box("metal_dark", q + sd * 0.18 * sa + d * 0.18 * sb, (sd, d), (0.025, 0.025, 0.43))
-        # jacaranda petals, fallen in drifts under the jacarandas at the lawn's north end and on the forecourt (the
-        # still's date is in their bloom: the map's trees are in flower)
-        prng2 = np.random.default_rng(9)
-        for nd in self.nodes(natural="tree"):
-            x, y = nd["xy"]
-            if not (Y0 + 2 < y < Y1 - 2) or Polygon(PALM_RING).contains(Point(x, y)) or not inner.contains(Point(x, y)):
-                continue
-            for _ in range(24):          # (specks and small drifts, thicker near the trunk)
-                r, th = 0.4 + 4.0 * prng2.random() ** 1.5, prng2.random() * 6.28
-                q = (x + r * math.cos(th), y + r * math.sin(th))
-                if inner.contains(Point(q).buffer(0.3)):
-                    hp.blob(geo, "ground_petal", G, q, 0.04 + 0.12 * prng2.random() ** 2, prng2, dz=0.075, stretch=1.0 + prng2.random())
         # wayfinding pylons
         for (x, y, hd) in ((self.wall_x(170.0) + 2.6, 170.0, 0.2), (-178.5, 270.0, -0.3)):
             c = np.array([x, y, G.z(x, y) + 0.03])
