@@ -549,6 +549,47 @@ measured, and the ladder now halves the map on a device that is short), and `Bat
 the props in the shadow box (item 3). Temporal anti-aliasing from the same history in place of MSAA on medium and low
 (the second half of item 1) waits for jittered projection, which the history above does not yet need.
 
+## The frame budget, third round: where the GPU's time goes
+
+The tables above count work (passes, draws, triangles, pixels); they do not say which of it is slow.
+`tools/gpu_cost.js` times it: every draw call, clear and blit of one frame is fenced (one pixel of the target drawn
+into is blitted to a 1 x 1 target of its kind and read back, since `gl.finish()` returns at once in Chromium) and
+the times are summed by target and by what drew (the object's name, else its material's, its instance count, and
+whether it is a tree). Software-renderer times, so shares, not milliseconds; `EVAL` takes a part out to see what it
+costs, `DUMP` writes a draw's compiled shaders.
+
+The one telemetry device with GPU timers (an Apple M3, high tier, Sydney and Shibuya) is GPU-bound at 30 frames a
+second, 37 to 70 ms of GPU a frame at 0.8 of its 3.6 million canvas pixels: the frame's cost is in its pixels.
+
+Shibuya on foot, high tier, 1440 x 900, 15:30 (fenced total 1.75 s):
+
+| part | share |
+|---|---|
+| the scene's target (4x MSAA): the ground's tiles | 28% |
+| the scene's target: the buildings' cells | 22% |
+| the scene's target: everything else (props, people, sky, far land) | 38% |
+| the sun's shadow map (moving casters over the cached still ones, and the blit) | 8% |
+| contact shadows, bloom, lens | 4% |
+
+Drawn with an unlit material, the ground and the buildings took a fifth of the time: their cost is their
+shaders, not their triangles. Taken out one at a time (the scene pass's time against the same frame's):
+
+| taken out | scene pass |
+|---|---|
+| the two spot lights (dark by day) | -8% |
+| the environment's light (`envMap`): its diffuse lookup alone | -15%; -10% |
+| the shadow map's five taps | under the run-to-run spread |
+| the area lights (already passed over when dark) | none |
+
+**Dark spot lights are passed over** (`lens.js` `skipDarkSpots`). The car's headlamp and the helicopter's
+searchlight stay in every lit shader so that switching them on compiles nothing, and each was a full light
+and BRDF evaluation per fragment at zero intensity. Their unrolled blocks now test the light's colour first, as
+the area lights' loop does. A lit beam draws exactly as before (night stills with the beam on match).
+
+In Sydney the shadow pass is 14% of the frame, and most of what it draws every frame is trees (their crowns sway in
+the depth pass too, so they are not among the cached still casters). The sea's planar reflection, where it is drawn
+(high tier on a hardware GPU), is about 5% at the quay.
+
 ## Next, by what it saves for what it risks
 
 Measured on Sydney's game, high tier, 1440 x 900, from the street, after the work above: 4.42 million triangles,

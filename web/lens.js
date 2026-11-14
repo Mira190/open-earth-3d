@@ -387,7 +387,24 @@ window.OELens = (function () {
     if (!C.lights_fragment_begin.includes('oeDarkArea')) C.lights_fragment_begin = C.lights_fragment_begin.replace(pick,
       `${pick}\n\t\tbool oeDarkArea = max( rectAreaLight.color.r, max( rectAreaLight.color.g, rectAreaLight.color.b ) ) <= 0.0;\n\t\tif ( oeDarkArea ) continue;`);
   }
-  function patchChunks() { guardShaders(); loopAreaLights(); }
+  // The spot lights (the car's headlamp, the helicopter's searchlight) are unrolled, not a loop (their shadow
+  // samplers are indexed by the unrolled index), and each is a full evaluation of the light and its BRDF in every
+  // lit fragment, though both are dark but for the one in use at night. A dark one is now passed over in the same
+  // way (a test of a uniform, the same for every fragment): about a twelfth of Shibuya's scene pass at 15:30 on the
+  // software renderer (tools/gpu_cost.js), with no light of any intensity lost.
+  function skipDarkSpots() {
+    const C = THREE.ShaderChunk, src = C.lights_fragment_begin;
+    if (typeof src !== 'string' || src.includes('oeLitSpot')) return;
+    const a = src.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )'), b = a < 0 ? -1 : src.indexOf('#pragma unroll_loop_end', a);
+    const info = 'getSpotLightInfo( spotLight, geometryPosition, directLight );', last = /(RE_Direct\( directLight,[^\n]*\);)(\s*\}\s*)$/;
+    if (b < 0) return;
+    let blk = src.slice(a, b);
+    if (!blk.includes(info) || !last.test(blk)) return;
+    blk = blk.replace(info, `if ( max( spotLight.color.r, max( spotLight.color.g, spotLight.color.b ) ) > 0.0 ) { // oeLitSpot\n\t\t${info}`)
+      .replace(last, '$1\n\t\t}$2');
+    C.lights_fragment_begin = src.slice(0, a) + blk + src.slice(b);
+  }
+  function patchChunks() { guardShaders(); loopAreaLights(); skipDarkSpots(); }
   if (window.THREE) patchChunks(); else addEventListener('three-ready', patchChunks, { once: true });
 
   return { shader, merge, bright, stack, sunOnScreen, guardShaders };
