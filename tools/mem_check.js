@@ -13,7 +13,7 @@
 // textures and buffers; exits 1 when a city goes over its budget:
 //   MEM_GPU   peak GPU memory, MB (default 300: quality.js budget, a tenth above the heaviest live map at the level a phone starts at, issues 406 and 443)
 //   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 620)
-// TIER=low|medium|high (default low). LV=n: the phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
+// TIER=low|medium|high (default low). QUERY=?a=b adds a query to the page's address. LV=n: the phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
@@ -180,7 +180,7 @@ async function measure(b, city) {
   const t0 = Date.now();
   let ok = true, map = null;
   try {
-    await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 400000 });
     await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     // what a player walking round meets: every NPC's character, the helicopter, the cars' and trees' near models

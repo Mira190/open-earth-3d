@@ -1756,5 +1756,111 @@
     ]
    }
   }
+ },
+ "crowd_cast": {
+  "note": "The far crowd: a simplified copy of each NPC the live cities' crowds cast, stood in Idle_Neutral, with one 128x192 picture a character (pipeline/crowd_cast.py; people.js crowdRenderer). Pivots: [height, forward], m.",
+  "file": "crowd_cast.glb",
+  "cell": [
+   128,
+   192
+  ],
+  "characters": {
+   "R_Business_Female_03": {
+    "triangles": 1298,
+    "height_m": 1.737
+   },
+   "R_Business_Female_04_f003": {
+    "triangles": 1620,
+    "height_m": 1.724
+   },
+   "R_Business_Female_04_f011": {
+    "triangles": 1202,
+    "height_m": 1.735
+   },
+   "R_Business_Male_02": {
+    "triangles": 1170,
+    "height_m": 1.818
+   },
+   "R_Business_Male_03": {
+    "triangles": 1194,
+    "height_m": 1.817
+   },
+   "R_Business_Male_06_m017": {
+    "triangles": 1070,
+    "height_m": 1.814
+   },
+   "R_Female_Adult_08": {
+    "triangles": 1406,
+    "height_m": 1.734
+   },
+   "R_Female_Adult_09_f011_grey": {
+    "triangles": 1210,
+    "height_m": 1.735
+   },
+   "R_Female_Adult_13": {
+    "triangles": 1480,
+    "height_m": 1.741
+   },
+   "R_Female_Adult_13_f003_brown": {
+    "triangles": 1626,
+    "height_m": 1.724
+   },
+   "R_Female_Adult_14_f016": {
+    "triangles": 1296,
+    "height_m": 1.737
+   },
+   "R_Female_Adult_15_f013": {
+    "triangles": 1358,
+    "height_m": 1.732
+   },
+   "R_Female_Adult_17_f011": {
+    "triangles": 1212,
+    "height_m": 1.735
+   },
+   "R_Female_Party_02": {
+    "triangles": 1842,
+    "height_m": 1.787
+   },
+   "R_Male_Adult_03_m008_grey": {
+    "triangles": 1168,
+    "height_m": 1.818
+   },
+   "R_Male_Adult_05": {
+    "triangles": 1266,
+    "height_m": 1.809
+   },
+   "R_Male_Adult_05_m024": {
+    "triangles": 1072,
+    "height_m": 1.82
+   },
+   "R_Male_Adult_06_m024_brown": {
+    "triangles": 1072,
+    "height_m": 1.82
+   },
+   "R_Male_Adult_09": {
+    "triangles": 1072,
+    "height_m": 1.814
+   },
+   "R_Male_Adult_11": {
+    "triangles": 1000,
+    "height_m": 1.801
+   },
+   "R_Male_Adult_14_m017_grey": {
+    "triangles": 1070,
+    "height_m": 1.814
+   },
+   "R_Male_Adult_20_m008": {
+    "triangles": 1168,
+    "height_m": 1.811
+   },
+   "R_Medical_Female_03_plain": {
+    "triangles": 1522,
+    "height_m": 1.734
+   },
+   "R_Sports_Male_04_m024": {
+    "triangles": 1074,
+    "height_m": 1.82
+   }
+  }
  }
 }
