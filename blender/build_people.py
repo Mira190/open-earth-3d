@@ -33,6 +33,7 @@ import math
 import os
 import re
 import struct
+import subprocess
 import sys
 
 import bpy
@@ -974,6 +975,8 @@ def build_npcs(only=None, clips=True):
     }
     json.dump(info, open(path, "w"), indent=1)
     print("updated", path)
+    # the far crowd's copies of the cast, from the files just written (pipeline/crowd_cast.py)
+    subprocess.run([sys.executable, os.path.join(ROOT, "pipeline", "crowd_cast.py")], check=True)
 
 
 # ------------------------------------------------------------------ preview

@@ -14,7 +14,7 @@
 //   MEM_GPU   peak GPU memory, MB (default 270: quality.js budget, a tenth above the heaviest live map at the level a phone starts at, issues 406 and 443)
 //   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 400: a tenth above the heaviest live map's district)
 // QUERY='?district=off' measures the whole map on the phone tier, to compare with its district (pipeline/district.py).
-// TIER=low|medium|high (default low). LV=n: the phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
+// TIER=low|medium|high (default low). QUERY=?a=b adds a query to the page's address. LV=n: the phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');

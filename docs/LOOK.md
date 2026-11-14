@@ -341,6 +341,23 @@ city turns it off with `game.crowd.real: false` or the URL `?realcrowd=off`. A n
 cast member is still streaming stands in as a loaded cast member of the same sex rather than the far
 crowd's doll, so a dense crossing reads as real at once and swaps to its own character when it comes.
 
+**The far crowd is the same cast (`pipeline/crowd_cast.py`, `web/assets/people/crowd_cast.glb`, issue 475).**
+Past the nearest walkers the crowd was still the instanced dolls recoloured from a palette, and across a street
+they read as another kind of person from the scanned ones beside them. Each walker is now drawn far off as the
+very cast member it becomes up close (the same hash picks both), at the same height: a copy of the Rocketbox
+avatar stood in the first frame of its sex's Idle_Neutral, simplified to about 1,000 to 1,800 triangles with its
+texture seams and swung parts kept (meshoptimizer's simplifier, MIT, `pipeline/vendor/meshoptimizer/`), and
+its own colour maps in one 128 x 192 picture (the body at 128, the head and the hair cards at 64; the cards cut
+out, lit as one head of hair and toned to the hair under them as `people.js` `matchHair` does). It walks on the
+far crowd's shader swing as the dolls did, one instanced draw a cast member, so the cast is held to twelve on
+the desktop tiers (six women, six men; Shibuya's sixteen came to more draws than the dolls' thirteen) and to
+eight on a phone, where the copies' pictures go up at half size. The step from far to near changes
+the detail and the gait (the swing to the clip), not the clothes, the face or the height. The dolls stay for a
+walker whose cast member has no copy, and for a city with no cast; `?farcast=off` brings them back to compare.
+Considered and not taken: octahedral impostors (a picture per view angle: 8 to 16 MB a cast at a readable size,
+and a flat card where the crowd's shadows and night lights need a body), and the near walkers' skinned clips on
+every walker (a skeleton a person: the cost the instancing exists to avoid).
+
 ### The crossing's sound (`web/game/audio.js`, `game.look.sound`)
 
 The constant beds are off in play: the crowd's murmur and the screens' music were too loud and
