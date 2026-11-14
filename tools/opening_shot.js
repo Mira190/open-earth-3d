@@ -6,6 +6,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/opening_shot.js shibuya out_dir [1440x900] [11:00,sunset+20,night]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'shibuya', outDir = '.', size = '1440x900', times = '11:00'] = process.argv;
@@ -36,8 +37,7 @@ const [W, H] = size.split('x').map(Number);
       fs.writeFileSync(path.join(outDir, `${city}-open-${n}-${name}-${tag}.png`), Buffer.from(png.split(',')[1], 'base64'));
     };
     for (let k = 0; k < 10; k++) { // (Play again until the crane has begun: a click before the title is ready is lost)
-      const play = await p.$('#gt-play');
-      if (play) await play.click().catch(() => {});
+      await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
       if (await p.waitForFunction(() => window.__game.arriving(), null, { timeout: 15000 }).then(() => true, () => false)) break;
     }
     await p.evaluate(t => { // the light of the hour asked, set after Play (which sets the title's choice)

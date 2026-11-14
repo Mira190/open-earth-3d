@@ -3,6 +3,7 @@
 //   GAME_TIME=20:30 xvfb-run -a node tools/seat_probe.js sydney out_dir [WxH]   # (GAME_TIME: tools/pin_clock.js)
 //   TOUCH=1 ... sydney out_dir 390x844                                            # on a phone: tapped, a finger to look round
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'sydney', outDir = '.', size = '1440x900'] = process.argv;
@@ -30,7 +31,7 @@ const time = (process.env.GAME_TIME || '').replace(/.*T/, '');
   // past the title: one click on Play once it is there (a click that lands before the button is ready leaves the
   // title up, and no action is offered under it: then one more)
   for (let k = 0; k < 2; k++) {
-    const play = await p.$('#gt-play'); if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     let up = true;
     for (let i = 0; i < 24 && up; i++) { up = await p.evaluate(() => { const t = document.getElementById('g-title'); window.__game.advance(0.25); return !!t && !t.hidden; }); if (up) await p.waitForTimeout(250); }
     if (!up) break;

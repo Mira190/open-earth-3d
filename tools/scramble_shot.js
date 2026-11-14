@@ -9,6 +9,7 @@
 // ONLY=name,name and TIMES=day,night pick some; SETTLE=seconds the world runs before each still (6).
 // Prints the frame time the page measured for each still (ms, median of FRAMES (9) frames on this renderer).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const { pinClock } = require('./pin_clock.js');
@@ -36,8 +37,7 @@ const only = process.env.ONLY ? process.env.ONLY.split(',') : null, onlyT = proc
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.waitForTimeout(1500);
   await p.evaluate(() => {
     const g = window.__game;

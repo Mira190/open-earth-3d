@@ -3,6 +3,7 @@
 // by car, place, road class and what it was doing.
 //   xvfb-run -a node tools/car_walls.js fushimi-inari [seconds]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'fushimi-inari', secs = '20'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -10,8 +11,7 @@ const [,, city = 'fushimi-inari', secs = '20'] = process.argv;
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); } catch (e) { /* storage blocked */ } });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => window.__game.advance(1));
   const r = await p.evaluate(secs => {
     const g = window.__game, nav = g.nav, C = g.cars.C, RL = g.roadNet.L, by = new Map();

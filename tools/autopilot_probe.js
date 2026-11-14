@@ -1,6 +1,7 @@
 // The autopilot of your own car (#355), alone: tools/autopilot_step.js's checks in a city, with its log.
 //   GAME_TIME=10:00 xvfb-run -a node tools/autopilot_probe.js sydney     (OUT=dir: a still at the end)
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const { autopilotStep, autopilotChecks, assistStep, assistChecks, wetStep, wetChecks, railStep, railChecks, kerbStep, kerbChecks } = require('./autopilot_step');
 const [,, city = 'sydney'] = process.argv;
@@ -13,8 +14,7 @@ const [,, city = 'sydney'] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { const g = window.__game; for (let t = 0; g.arriving() && t < 10; t += 0.25) g.advance(0.25); g.advance(2); });
   const r = process.env.ONLY ? { none: 'no car' } : await p.evaluate(autopilotStep, { log: true, limit: +(process.env.LIMIT || 420) });
   for (const l of r.log || []) console.log(l);
