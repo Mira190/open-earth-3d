@@ -646,8 +646,12 @@ Where it still falls short of the bar, as the stills show: the facade's ornament
 photographs, not the Shinkenchiku 2012/11 drawings; the dome interiors are not built; the
 ventilation towers in the transport plazas are still the city's plain solids; bus and taxi
 stands have no signs, rails or road paint; the towers round the plaza are the city's generic
-glass; from the air the streets outside the forecourt show the aerial photograph; trees are the
-shared models, not zelkova.
+glass; trees are the shared models, not zelkova.
+
+- **The streets round it** (`station.streets`): the forecourt's first version stopped at the plaza's
+  edge, and from the air the streets beyond showed the aerial photograph (cars, shadows, a green
+  cast). Within 60 m of the forecourt the mapped carriageways are one asphalt surface (a lane
+  3.2 m), with lane dashes and the mapped zebras, and pavers to the buildings' feet.
 
 #### Checked
 
@@ -656,3 +660,33 @@ shared models, not zelkova.
 - The game still starts south of the plaza at (553, 1195), now facing the south dome. The plaza
   start waits on the traffic knot at junction 1465 (issue 412).
 - Not checked: a real GPU, WebGPU, Safari and iOS.
+
+### Tokyo Tower's foot (`cities/tokyo/city.py` `tower`, `cities/tokyo/tower_foot.py`)
+
+The tower was 2,400 triangles: four legs each one beam four metres thick, an X a face. At its foot
+that is all a player sees. It is now the lattice as built, 17,000 triangles:
+
+- **Below the main deck**: four legs, each a truss of four chords laced on its four faces, tied leg
+  to leg by a girder a panel with crossed bracing, and the great arch between each pair of feet
+  with its spandrel posts; concrete feet; the lift shaft up the middle.
+- **Above it**: one tapering shaft; seven bands of international orange and white over the 333 m.
+- **By distance**: chords, rings, girders and arches are always drawn, because they make the
+  silhouette from across the map; the lacing and second diagonals (`tower_fine_*`, 9,000
+  triangles, under a pixel from 1.2 km) are drawn within 1.2 km and never unpacked on the low tier.
+- **Foot Town** on its mapped outline (the city's solid there had no height): dark panels over a
+  glazed, lit street floor, a line at the fourth floor, a rail round the roof terrace at 19 m, and
+  TOKYO TOWER in white letters on each long face (Bebas Neue, SIL OFL).
+- **The ground within 150 m**, on OpenStreetMap's outlines (`tower_osm.json`, ODbL), with the
+  station's street painter: asphalt carriageways with dashes and zebras, the rest paved, Shiba
+  Park's wooded slopes plain green under the map's trees. No aerial photograph shows there.
+
+Dimensions: 333 m, decks at 150 m and 250 m, 80 m between the feet (Tokyo Tower's published
+figures, as before). Read off photographs, not drawings: the panel heights, the legs' own width
+(11 m at the foot), the arch's crown at 22.5 m, Foot Town's height and cladding.
+
+Photograph looked at (Wikimedia Commons; not reproduced): BaseofTokyoTower.JPG, WhisperToMe, public
+domain (the legs' trusses, the arch, Foot Town's panels and lettering).
+
+Short of the bar: members are square beams without gusset plates or rivets; the main deck is
+still a plain box; Foot Town has no entrance canopy, shop fronts or signs; the hill's lots are
+plain paving, with no car park lines, walls or railings; stills: `tools/views/tokyo-tower.json`.

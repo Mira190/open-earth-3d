@@ -49,6 +49,7 @@ PALACE = _load("palace")
 SHUTO = _load("shuto")
 RAIL = _load("rail")
 STATION_HERO = _load("station")
+TOWER_FOOT = _load("tower_foot")
 
 TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
@@ -66,6 +67,8 @@ MATERIALS = {
               "emissive_dates": [[*SUMMER, "#f3f1ff"]]},
     "deck": {"color": "#c9c6bd", "roughness": 0.6, "metalness": 0.2, "emissive": "#ffd29a", "glow": 0.6},
     "glass": {"color": "#2a3138", "roughness": 0.1, "metalness": 0.6, "emissive": "#ffe2b4", "glow": 0.45},
+    "foot": {"color": "#a8a59e", "roughness": 0.9, "metalness": 0.0},
+    "shaft": {"color": "#8f959b", "roughness": 0.5, "metalness": 0.3},
     # Kabuki-za
     "kz_plaster": {"color": "#efebe2", "roughness": 0.8, "metalness": 0.0, "emissive": "#fff0dc", "glow": 0.55},
     "kz_tile": {"color": "#4f5458", "roughness": 0.55, "metalness": 0.15, "pattern": "roof_tiles", "bay_m": 0.28, "course_m": 0.28},
@@ -126,28 +129,99 @@ def leg_x(z, base, top_half=4.0, top_z=250.0):
 
 
 def tower(t):
+    """The lattice as it is built: below the main deck four legs, each a truss of four chords laced on its four
+    faces, tied leg to leg by a girder a panel and crossed bracing, with the great arch between each pair of feet;
+    above it one tapering shaft. The chords, rings, girders and arches are always drawn; the lacing and the second
+    diagonals (`tower_fine_*`, under a pixel from across the map) only within 1.2 km and not on the low tier."""
     gz = t["ground_m"]
     cx, cy = t["centre"]
     a = math.radians(t["axis_deg"])
     R = np.array([[math.cos(a), -math.sin(a)], [math.sin(a), math.cos(a)]])
     P = lambda x, y, z: (float(cx + R[0, 0] * x + R[0, 1] * y), float(cy + R[1, 0] * x + R[1, 1] * y), float(gz + z))
-    # horizontal levels of the lattice, each a bay; bands of orange and white every few bays
-    zs = [0, 12, 26, 42, 60, 80, 102, 126, 150, 176, 202, 226, 250]
     meshes = {"orange": Mesh("tower_orange", "orange", False, floodlit=True), "white": Mesh("tower_white", "white", False, floodlit=True)}
-    band = lambda z: "white" if int(z // 37.5) % 2 else "orange"
+    fine = {"orange": Mesh("tower_fine_orange", "orange", False, floodlit=True), "white": Mesh("tower_fine_white", "white", False, floodlit=True)}
+    for m in fine.values():
+        m.far, m.detail = 1200, True
+    band = lambda z: "white" if int(z // 47.6) % 2 else "orange"   # seven bands of the 333 m
     corners = [(-1, -1), (1, -1), (1, 1), (-1, 1)]
-    for lo, hi in zip(zs[:-1], zs[1:]):
-        m = meshes[band((lo + hi) / 2)]
-        h0, h1 = leg_x(lo, t["base"]), leg_x(hi, t["base"])
-        w = max(0.9, 3.4 * (1 - lo / 250.0) + 0.9)
+    H = lambda z: leg_x(z, t["base"])
+    DECK = 140.0
+    q = lambda z: 0.9 + 4.6 * max(0.0, 1 - z / DECK) ** 1.25      # half the side of a leg's own truss
+    node = lambda c, dx, dy, z: P(c[0] * H(z) + dx * q(z), c[1] * H(z) + dy * q(z), z)
+    zs = [0, 8, 16, 24, 33, 43, 54, 66, 79, 93, 108, 124, 140]
+    for i, (lo, hi) in enumerate(zip(zs[:-1], zs[1:])):
+        m, f = meshes[band((lo + hi) / 2)], fine[band((lo + hi) / 2)]
+        w = 0.95 - 0.45 * lo / DECK
+        for c in corners:
+            sq = [(-1, -1), (1, -1), (1, 1), (-1, 1)]
+            for j, (dx, dy) in enumerate(sq):
+                ex, ey = sq[(j + 1) % 4]
+                m.box(node(c, dx, dy, lo), node(c, dx, dy, hi), w, w)                       # a chord
+                m.box(node(c, dx, dy, hi), node(c, ex, ey, hi), w * 0.55, w * 0.55)          # the ring at the panel's top
+                A, B = ((dx, dy), (ex, ey)) if (i + j) % 2 else ((ex, ey), (dx, dy))
+                f.box(node(c, *A, lo), node(c, *B, hi), w * 0.4, w * 0.4)                    # the lacing: one diagonal a face,
+                f.box(node(c, *B, lo), node(c, *A, hi), w * 0.4, w * 0.4)                    # and its cross
+            f.box(node(c, -1, -1, hi), node(c, 1, 1, hi), w * 0.35, w * 0.35)
+        # leg to leg on each face: a girder at the panel's top in the outer and the inner plane, crossed bracing below it
+        for k in range(4):
+            cA, cB = corners[k], corners[(k + 1) % 4]
+            d = ((cB[0] - cA[0]) // 2, (cB[1] - cA[1]) // 2)
+            o = ((cA[0] + cB[0]) // 2, (cA[1] + cB[1]) // 2)
+            for pl in (1, -1):
+                nA = lambda z: node(cA, d[0] + o[0] * pl, d[1] + o[1] * pl, z)
+                nB = lambda z: node(cB, -d[0] + o[0] * pl, -d[1] + o[1] * pl, z)
+                if hi >= 24:
+                    (m if pl > 0 else f).box(nA(hi), nB(hi), w * 0.7, w * 0.9)
+                if lo >= 24:
+                    mid = tuple((np.asarray(nA((lo + hi) / 2)) + np.asarray(nB((lo + hi) / 2))) / 2)
+                    for p0, p1 in ((nA(lo), nB(hi)), (nB(lo), nA(hi))):
+                        (m if pl > 0 else f).box(p0, p1, w * 0.45, w * 0.45)
+                    if pl > 0:   # the girder's own web: posts down to the crossing, a panel in three
+                        top_a, top_b = np.asarray(nA(hi)), np.asarray(nB(hi))
+                        for s in (0.25, 0.5, 0.75):
+                            tp = top_a + (top_b - top_a) * s
+                            f.box(tuple(tp), (tp[0], tp[1], tp[2] - (hi - lo) * (0.5 - abs(s - 0.5)) * 1.0 - 0.01), w * 0.3, w * 0.3)
+                # the arch between the feet: from each leg at 8 m up to its crown under the first girder
+                if lo == 8:
+                    pa, pb = np.asarray(nA(8.0)), np.asarray(nB(8.0))
+                    crown = 22.5
+                    pts = []
+                    for j in range(15):
+                        s = j / 14
+                        # the springing follows the leg inward as it rises, so the arch is laid out between the girder's ends
+                        ga, gb = np.asarray(nA(24.0)), np.asarray(nB(24.0))
+                        base = pa + (pb - pa) * s
+                        topl = ga + (gb - ga) * s
+                        k2 = 1 - (2 * s - 1) ** 2
+                        pt = base + (topl - base) * k2 * ((crown - 8.0) / 16.0)
+                        pts.append(tuple(pt))
+                    for p0, p1 in zip(pts, pts[1:]):
+                        (m if pl > 0 else f).box(p0, p1, 0.75, 0.9)
+                    if pl > 0:
+                        for j in range(2, 13, 2):   # spandrel posts up to the girder
+                            s = j / 14
+                            ga, gb = np.asarray(nA(24.0)), np.asarray(nB(24.0))
+                            f.box(pts[j], tuple(ga + (gb - ga) * s), 0.35, 0.35)
+    # concrete feet under each chord
+    foot = Mesh("tower_foot", "foot", False)
+    for c in corners:
+        ctr = P(c[0] * H(0), c[1] * H(0), 0)
+        foot.box((ctr[0], ctr[1], ctr[2] - 1.5), (ctr[0], ctr[1], ctr[2] + 1.2), 2 * q(0) + 3.2, 2 * q(0) + 3.2)
+    # above the main deck: one shaft, four chords, crossed on each face
+    zs2 = [150, 163, 177, 192, 208, 224, 239, 250]
+    for lo, hi in zip(zs2[:-1], zs2[1:]):
+        m, f = meshes[band((lo + hi) / 2)], fine[band((lo + hi) / 2)]
+        h0, h1 = H(lo), H(hi)
+        w = 0.55
         for k in range(4):
             (sx, sy), (tx, ty) = corners[k], corners[(k + 1) % 4]
-            # corner legs
             m.box(P(sx * h0, sy * h0, lo), P(sx * h1, sy * h1, hi), w, w)
-            # cross-bracing on the face between corner k and k+1: an X in each bay, and a ring beam at the top
-            m.box(P(sx * h0, sy * h0, lo), P(tx * h1, ty * h1, hi), w * 0.45, w * 0.45)
-            m.box(P(tx * h0, ty * h0, lo), P(sx * h1, sy * h1, hi), w * 0.45, w * 0.45)
-            m.box(P(sx * h1, sy * h1, hi), P(tx * h1, ty * h1, hi), w * 0.6, w * 0.6)
+            m.box(P(sx * h1, sy * h1, hi), P(tx * h1, ty * h1, hi), w * 0.7, w * 0.7)
+            m.box(P(sx * h0, sy * h0, lo), P(tx * h1, ty * h1, hi), w * 0.5, w * 0.5)
+            f.box(P(tx * h0, ty * h0, lo), P(sx * h1, sy * h1, hi), w * 0.5, w * 0.5)
+    # the lift shaft up the middle, from Foot Town's roof to the main deck
+    shaft = Mesh("tower_shaft", "shaft", False)
+    shaft.box(P(0, 0, 18.0), P(0, 0, DECK), 9.0, 9.0)
     deck = Mesh("tower_decks", "deck", False, floodlit=True)
     glass = Mesh("tower_glass", "glass", False, floodlit=True)
     for z0, z1, hw in ((140.0, 150.0, 13.0), (239.0, 250.0, 7.0)):
@@ -158,7 +232,7 @@ def tower(t):
     # antenna mast: a tapering mast above the top deck, banded to the tip
     for lo, hi, w in ((250, 270, 5.0), (270, 290, 3.8), (290, 310, 2.8), (310, 333, 1.6)):
         (meshes["white"] if int(lo // 20) % 2 else ant).box(P(0, 0, lo), P(0, 0, hi), w, w)
-    return [*meshes.values(), deck, glass]
+    return [*meshes.values(), *fine.values(), foot, shaft, deck, glass]
 
 
 def landmark_meshes(scene):
@@ -181,6 +255,9 @@ def landmark_meshes(scene):
     rm, rmesh = RAIL.meshes(Mesh)  # the JR viaduct, Yurakucho Station and the track (cities/tokyo/rail.py)
     mats.update({k: dict(v) for k, v in rm.items()})
     hm, hmesh, hh, htrees, hprops = STATION_HERO.meshes()  # Tokyo Station's Marunouchi building and its plaza (cities/tokyo/station.py)
+    if t:   # Foot Town and the ground at the tower's foot (cities/tokyo/tower_foot.py), on the station's surfaces
+        fm, fmesh, fh = TOWER_FOOT.meshes(t, STATION_HERO)
+        hm, hmesh, hh = {**hm, **fm}, hmesh + fmesh, hh + fh
     mats.update(hm)
     return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh + rmesh + hmesh, {"hidden": hidden + dh + ph + hh, "clip": MOATS.clip(), "water_cover": SHUTO.cover(),
                                                                                              "trees": htrees, "props": hprops}

@@ -55,6 +55,7 @@ MATERIALS = {
     "tks_pavers": {"color": "#8b857c", "roughness": 0.7, "metalness": 0.0, "pbr": {"set": "concrete_pavers", "tile_m": [1.8, 1.8], "vary": 0.03},
                    "decal": True, "street_lit": True},
     "tks_asphalt": {"color": "#3b3c3e", "roughness": 0.9, "metalness": 0.0, "decal": True, "street_lit": True},
+    "tks_paint": {"color": "#d9d9d4", "roughness": 0.7, "metalness": 0.0, "decal": True, "street_lit": True},
     "tks_kerb": {"color": "#8f8c85", "roughness": 0.7, "metalness": 0.0, "pbr": {"set": "granite_paving", "tile_m": [1.2, 1.2]}, "street_lit": True},
     "tks_lawn": {"color": "#6c7442", "roughness": 0.95, "metalness": 0.0, "pbr": {"set": "lawn", "tile_m": [2.0, 2.0], "vary": 0.08}, "decal": True, "street_lit": True},
     "tks_hedge": {"color": "#3f5a2c", "roughness": 0.95, "metalness": 0.0, "pbr": {"set": "lawn", "tile_m": [0.9, 0.9], "vary": 0.08, "normal": 1.4}, "street_lit": True},
@@ -675,11 +676,11 @@ def _under(t):
         return False
 
 
-def _osm():
-    """OpenStreetMap's map of the forecourt (pipeline/hero_osm.py), by kind, as shapely shapes in local metres."""
+def _osm(path=OSM):
+    """OpenStreetMap's map of a level's box (pipeline/hero_osm.py), by kind, as shapely shapes in local metres."""
     from shapely.geometry import LineString, Point, Polygon
-    d = json.load(open(OSM))
-    out = {"common": [], "ped": [], "grass": [], "garden": [], "roof": [], "service": [], "tree": []}
+    d = json.load(open(path))
+    out = {"common": [], "ped": [], "grass": [], "garden": [], "roof": [], "service": [], "tree": [], "road": [], "zebra": [], "wood": [], "parking": []}
     for w in d["ways"]:
         t = w["tags"]
         if _under(t) or len(w["xy"]) < 2:
@@ -687,13 +688,19 @@ def _osm():
         if w.get("closed") and len(w["xy"]) > 3:
             kind = ("common" if t.get("leisure") == "common" else "ped" if t.get("highway") == "pedestrian" else
                     "grass" if t.get("landuse") == "grass" or t.get("natural") == "grassland" else "garden" if t.get("leisure") == "garden" else
-                    "roof" if t.get("building") == "roof" else None)
+                    "roof" if t.get("building") == "roof" else "wood" if t.get("landuse") == "forest" or t.get("natural") == "wood" or t.get("leisure") == "park" else
+                    "parking" if t.get("amenity") == "parking" else None)
             if kind:
                 p = Polygon(w["xy"]).buffer(0)
                 out[kind].append((p, int(float(t.get("layer", "1") or 1))) if kind == "roof" else p)
                 continue
         if t.get("highway") == "service":
             out["service"].append(LineString(w["xy"]))
+        elif t.get("highway") in ("trunk", "primary", "secondary", "tertiary", "unclassified", "residential"):
+            lanes = int(float(t.get("lanes") or (2 if t.get("oneway") == "yes" else 4 if t["highway"] in ("primary", "secondary") else 2)))
+            out["road"].append((LineString(w["xy"]), lanes))
+        elif t.get("footway") == "crossing":
+            out["zebra"].append(LineString(w["xy"]))
     out["tree"] = [Point(n["xy"]) for n in d["nodes"] if n["tags"].get("natural") == "tree"]
     return out
 
@@ -819,6 +826,8 @@ def plaza(K, g, octs, axis):
                         _lay(m, q, Z, 0.05, uv)
             u += ln
         v += row
+    zone = shapely.union_all([quad(-112, 150, 2, 300), quad(-190, -112, -45, 300)]).intersection(area.buffer(60)).difference(area).difference(station)
+    streets(K, O, T, Z, uv, zone, solids)
     # planted islands: a clipped hedge mass within a granite edging; and a kerb round the roadway and the lawns
     hedge, kerb = K["tks_hedge"], K["tks_kerb"]
     for q in getattr(garden, "geoms", [garden]):
@@ -896,6 +905,77 @@ def plaza(K, g, octs, axis):
     props = [{"name": "tks_lamp3", "far": 260, "parts": lamp3_parts(), "at": lamps},
              {"name": "tks_bollard", "far": 140, "parts": bollard_parts(), "at": bollards}]
     return trees, props, hidden
+
+
+LANE_W = 3.2
+
+
+def streets(K, O, T, Z, uv, zone, solids, walk_in=None, hard=None):
+    """The streets round a level (zone), as far as the first frame and a low flight see them: one asphalt surface on
+    the mapped carriageways (a lane 3.2 m), pavers to the buildings' feet, lane dashes and the mapped zebras. They
+    lie over the city's ground, whose aerial photograph (cars, shadows, a colour cast) showed there from the air."""
+    import shapely
+    from shapely.geometry import LineString, Point, Polygon
+    blds = shapely.union_all([Polygon(b["ring"]).buffer(0.2) for b in solids
+                              if b["top"] - b["ground"] > 2.5 and Polygon(b["ring"]).intersects(zone)])
+    half = lambda n: n * LANE_W / 2 + 0.35
+    road = shapely.union_all([l.buffer(half(n), cap_style="flat") for l, n in O["road"]] + [l.buffer(3.3) for l in O["service"]])
+    if hard is not None:   # (a car park, a forecourt: asphalt too)
+        road = shapely.union_all([road, hard])
+    road = road.buffer(1.2).buffer(-1.2).intersection(zone).difference(blds)
+    walk = (zone if walk_in is None else zone.intersection(walk_in)).difference(road).difference(blds).buffer(-0.05)
+    for mesh, poly, lift in ((K["tks_asphalt"], road, 0.03), (K["tks_pavers"], walk, 0.04)):
+        for q in T.facets(poly):
+            _lay(mesh, q, Z, lift, uv)
+    paint = K["tks_paint"]
+    rp = shapely.prepared.prep(road.buffer(-0.3))
+
+    def mark(a, b, w):
+        """A painted strip from a to b, w wide, on the road."""
+        a, b = np.asarray(a, float), np.asarray(b, float)
+        L = float(np.linalg.norm(b - a))
+        if L < 0.2:
+            return
+        n = np.array([-(b - a)[1], (b - a)[0]]) / L * w / 2
+        pts = [a - n, b - n, b + n, a + n]
+        if all(rp.contains(Point(*q)) for q in pts):
+            zz = max(Z(*q) for q in pts) + 0.045
+            paint.quad(*[(float(q[0]), float(q[1]), zz) for q in pts], [list(uv(*q)) for q in pts])
+
+    def heading(l, s):
+        p0, p1 = l.interpolate(max(0.0, s - 1.0)), l.interpolate(min(l.length, s + 1.0))
+        v = np.array([p1.x - p0.x, p1.y - p0.y])
+        return v / (np.linalg.norm(v) or 1)
+
+    # lane dashes: 5 m of paint, 5 m of road, between the lanes of each carriageway, but not across a junction
+    for l, n in O["road"]:
+        if n < 2 or not l.intersects(zone):
+            continue
+        s = 2.5
+        while s + 5.0 < l.length:
+            pm = l.interpolate(s + 2.5)
+            h = heading(l, s + 2.5)
+            crossing = any(o is not l and o.distance(pm) < half(m) + half(n) and abs(float(np.dot(heading(o, o.project(pm)), h))) < 0.8
+                           for o, m in O["road"])
+            if not crossing:
+                nrm = np.array([-h[1], h[0]])
+                p0, p1 = l.interpolate(s), l.interpolate(s + 5.0)
+                for i in range(1, n):
+                    off = (i - n / 2) * LANE_W
+                    mark(np.array([p0.x, p0.y]) + nrm * off, np.array([p1.x, p1.y]) + nrm * off, 0.15)
+            s += 10.0
+    # zebras on the mapped crossings: bars 0.45 m wide, 0.9 m apart, 4 m long, along the traffic
+    for l in O["zebra"]:
+        if not l.intersects(zone):
+            continue
+        s = 0.3
+        while s < l.length - 0.3:
+            pm = l.interpolate(s)
+            h = heading(l, s)
+            nrm = np.array([-h[1], h[0]])
+            c = np.array([pm.x, pm.y])
+            mark(c - nrm * 2.0, c + nrm * 2.0, 0.45)
+            s += 0.9
 
 
 def canopy(K, poly, Z, h):
