@@ -974,6 +974,7 @@
         "steps": []
       }
     ],
+    "hero": [{"id": "skyline-deck", "glb": "hero/skyline-deck.glb", "fine": "hero/skyline-deck_fine.glb", "fine_m": 40, "at": [-975.0, 478.1], "r": 16.0, "bake": 0.7, "street": 0.25, "glow": [0.1, 1.5], "note": "The Skyline deck on Bob's Peak, where the game starts: its boards, balustrade fixings, schist planter, coin viewers, panorama panel, benches and heaters, modelled finely (cities/queenstown/hero.py, blender/build_hero.py, docs/HERO.md)"}],
     "start_note": "On the Skyline deck on Bob's Peak, along the restaurant's south-east face, where Queenstown's best-known photograph is taken: the town, Queenstown Bay, the Gardens peninsula, the Kelvin Peninsula and the Remarkables over the lake. The glass lift at the deck's south-west end goes down to the luge track, where Aroha waits.",
     "look": {
       "grade": {
