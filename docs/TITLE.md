@@ -29,7 +29,7 @@ cities use, so the sun in the title is where it is in the sky now.
 | 4.0 s | The sun clears the dense air at the limb, red, then white. The eye has been stopping down as the glow grew, so the sun arrives as a soft bead of light rather than a blow-out, with a fine anamorphic streak across the frame. **OPEN EARTH**: the letters come out of a blur one by one while the tracking closes from 0.9 to 0.34 em. The third caption gives the point on the terminator: it is sunrise (or sunset) there now. | The hit: a sub dropping from 92 to 30 Hz, a crack of noise, an A major chord with an added ninth left ringing in a long reverb |
 | 6.5–10.9 s | The camera pulls back from the limb to the whole planet and swings round to Japan, the front of the project, seen at a slight tilt from over the Pacific ([HOMEPAGE.md](HOMEPAGE.md)). The letterbox opens, the menu comes in a line at a time, and the cities' beacons come up one by one. | A slow pad, the chord's filter breathing |
 | Menu | Japan first: an amber **Play Shibuya** goes straight into the game, with Shinjuku, Marunouchi & Ginza and Higashiyama beside it, then the places, Tokyo and Kyoto leading ([HOMEPAGE.md](HOMEPAGE.md)). The globe turns to each destination as it is chosen, with a survey reticle (rings at 100, 250 and 500 km). A card gives its figures, its local time and its sun. | A tick on each choice |
-| Postcards | A small pile of postcards on the menu: what Mugi, the plush cat, photographed while you were away, sat in each view, one for every six hours, three at most. Opening one shows the picture, the place, the minute and the sun there; **Go there** dives to that city and starts the game on that spot in that light ([POSTCARDS.md](POSTCARDS.md)). | A tick on each card |
+| Postcards | None on the title: it adds what Mugi, the plush cat, sent while you were away to the album as it opens (one for every six hours, three at most), and each map's passport shows its own ([POSTCARDS.md](POSTCARDS.md)). | None |
 | Dive | Down onto the city: the camera swings over it and falls, faster and faster, with a zoom blur and the colour fringes opening, into black, where the city's loader takes over in the same dark and the same type. | A whoosh and a sub swell |
 
 Any key, click or scroll during the opening skips to the menu. Later visits in the
@@ -78,7 +78,9 @@ scheduled to end there.
 
 We avoided neon, glitch, and RGB-split as a style (Cyberpunk 2077's register):
 they fight a scene lit by the real sun. Chromatic fringes are kept to the frame's
-edges and the dive. The palette is space (#04060b, never pure black), off-white
+edges and the dive, and at rest to under a pixel each way: wider, the crescent Moon
+coming round the limb at the frame's edge was drawn as a red, a green and a blue
+sliver side by side, a rose line on a phone. The palette is space (#04060b, never pure black), off-white
 type and one accent, the sun's amber.
 
 ## The picture
@@ -122,7 +124,7 @@ type and one accent, the sun's amber.
   sized by magnitude and coloured by spectral class, and 16,000 fainter ones
   seeded towards the galactic plane. The Moon is in its place and its phase.
 - **Lens**: HDR with 4× MSAA, a wide and gentle bloom, then one pass. It adds a
-  zoom blur for the dive, chromatic fringes that grow towards the edges, and the
+  zoom blur for the dive, chromatic fringes that grow towards the edges (under a pixel but in the dive), and the
   flare: a fine anamorphic streak, a soft veil and four faint ghosts on the line
   through the centre, all warming as the sun sinks into the air (and turned down
   under the menu). Then exposure and the tone curve. The curve keeps hue, after

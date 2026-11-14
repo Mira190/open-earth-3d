@@ -486,18 +486,14 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     menuShownAt = clock();
     postcards();
   }
-  // postcards from the road (postcards.js): what Mugi has sent since the last visit, as a pile
-  // on the menu; "Go there" on one dives to its city and starts the game on that spot, in that light
-  let post = null, postAsked = false;
-  const postOpen = () => !!(post && post.isOpen());
+  // postcards from the road (postcards.js): what Mugi has sent since the last visit joins the album here, and
+  // the menu shows none of it; each map's passport lists its own
+  let postAsked = false;
   function postcards() {
     if (postAsked || !window.OEPostcards || manual) return;
     postAsked = true;
     const T = window.OETelemetry;
-    OEPostcards.mount({
-      host: stage, cities: cities.filter(c => c.built && c.game), tick: () => A.tick(2600, 0.03), track: (e, p) => { if (T && T.track) T.track(e, p); },
-      onGo: (c, arrive) => { const d = dests.find(x => x.c === c || (x.sites && x.sites.includes(c))); if (d) dive(d, true, c, arrive); },
-    }).then(p => { if (!running) { if (p) p.stop(); return; } post = p; }).catch(e => console.warn('Postcards unavailable:', e));
+    OEPostcards.collect(cities.filter(c => c.built && c.game)).then(came => { if (came.length && T && T.track) T.track('postcards_came', { new: came.length }); }).catch(e => console.warn('Postcards unavailable:', e));
   }
   let menuShownAt = 0;
 
@@ -759,7 +755,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     lastInput = performance.now();
     if (!$('ts-about').hidden) { if (e.key === 'Escape') toggleAbout(false); return; }
     if (state === 'open') { if (e.target.closest && e.target.closest('button')) return; e.preventDefault(); skip(); return; } // a key on Sound or Skip is that button's
-    if (state !== 'menu' || fullOpen() || postOpen()) return; // (the full-screen map has the keys: metro.js; the postcards theirs)
+    if (state !== 'menu' || fullOpen()) return; // (the full-screen map has the keys: metro.js)
     const k = e.key.toLowerCase();
     if (k === 'arrowdown' || k === 's' || k === 'arrowright') { e.preventDefault(); select((sel + 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
@@ -1069,7 +1065,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
 
   // a hook for the headless checks: hold the sequence at a time after Enter
   window.__title = {
-    get state() { return state; }, begin, skip, select: i => select(i, true), dests, get postcards() { return post; },
+    get state() { return state; }, begin, skip, select: i => select(i, true), dests,
     hold(t) { if (state === 'gate') begin(false); frozen = { now: tBegin + t, t }; for (const c of cues) if (!c.done && c.t <= t && !c.sound) { c.done = true; c.fn(); } },
     release() { frozen = null; },
     dive(i, play) { dive(dests[i], play); },
@@ -1092,7 +1088,6 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
         ro.disconnect();
         A.stop(0.5);
         earth.dispose();
-        if (post) post.stop();
         if (window.__title) delete window.__title;
       },
     };

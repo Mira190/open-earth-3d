@@ -25,8 +25,8 @@
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
 #     (tools/title_check.js), and fails a frame that ends black or a page that throws;
-#   - checks the title's postcards (tools/postcards_check.js): the journey, every still and line, the pile, the
-#     viewer and Go there into the game;
+#   - checks the title's postcards (tools/postcards_check.js): the journey, every still and line, a menu
+#     without them, and a postcard's link into the game;
 #   - opens Sydney's game and model and checks the hand-over from the loading screen
 #     (tools/load_check.js): the 3D view must be drawn, not black, when the loader starts to fade.
 # Prints one line per check and exits 1 if any failed. Logs and screenshots go to $CHECK_OUT.
@@ -301,9 +301,9 @@ EOF
   if timeout 900 $X node tools/title_pick_check.js >"$OUT/title-pick.log" 2>&1; then
     echo "ok   title picks  $(grep -c ': ' "$OUT/title-pick.log") steps: card first, in on the second click, districts from the map"
   else echo "FAIL title picks  $(grep -E 'FAIL|Error' "$OUT/title-pick.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/title-pick.log)"; fi
-  # the postcards: the journey over six weeks, the stills and the index, then the pile, the viewer and Go there
+  # the postcards: the journey over six weeks, the stills and the index, then a menu without them and a card's link
   if timeout 1500 $X node tools/postcards_check.js >"$OUT/postcards.log" 2>&1; then
-    echo "ok   postcards  $(grep -c ': ok' "$OUT/postcards.log") steps: the journey, the stills, the pile and the card, Go there into the game"
+    echo "ok   postcards  $(grep -c ': ok' "$OUT/postcards.log") steps: the journey, the stills, none on the menu, a card's link into the game"
   else echo "FAIL postcards  $(grep -E 'FAIL|Error' "$OUT/postcards.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/postcards.log)"; fi
 }
 
