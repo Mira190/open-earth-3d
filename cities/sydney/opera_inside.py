@@ -93,7 +93,7 @@ MATERIALS = {
     "oh_set_dark": {"color": "#3a2418", "roughness": 0.9, "metalness": 0.0, "emissive": "#ff9a50", "glow": 0.3, "glow_day": 0.3},
     "oh_set_tile": {"color": "#8a3a22", "roughness": 0.8, "metalness": 0.0, "emissive": "#ff9a60", "glow": 0.7, "glow_day": 0.7},
     # what stops a walker at the rows of seats, drawn by nothing (the seats are instanced, web/game/nav.js reads this)
-    "oh_seat_hit": {"color": "#000000", "roughness": 1.0, "metalness": 0.0, "opacity": 0.0},
+    "oh_seat_hit": {"color": "#000000", "roughness": 1.0, "metalness": 0.0, "opacity": 0.0, "floor": False},   # (a wall, never a floor: no one stands on the rows)
     # the audience, seen from behind in the dark
     "oh_patron_dark": {"color": "#1d1e24", "roughness": 0.9, "metalness": 0.0},
     "oh_patron_warm": {"color": "#5a2f2a", "roughness": 0.9, "metalness": 0.0},
