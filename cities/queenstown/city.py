@@ -597,10 +597,21 @@ def game_extras(scene):
            "doors": [{"stop": 1, "landing": ["skyline_lift_door_top", "skyline_lift_door_top_frame"], "car": ["skyline_lift_car_door_ne", "skyline_lift_car_door_ne_frame"]},
                      {"stop": 0, "landing": ["skyline_lift_door_foot", "skyline_lift_door_foot_frame"], "car": ["skyline_lift_car_door_sw", "skyline_lift_car_door_sw_frame"]}]}
     _, doors, rooms, _, _, _ = interiors(Terrain("queenstown"))
-    return {"doors": doors, "interiors": rooms, "lifts": [{"id": "skyline-lift", "name": "Skyline glass lift", "line": "SKYLINE GLASS LIFT · LUGE TRACK → DECK", "m_per_min": LIFT["m_per_min"],
+    spots = [keepsake_spot(r["keepsakes"]) for r in rooms if r.get("keepsakes")]
+    return {"doors": doors, "interiors": rooms, "spots": spots, "lifts": [{"id": "skyline-lift", "name": "Skyline glass lift", "line": "SKYLINE GLASS LIFT · LUGE TRACK → DECK", "m_per_min": LIFT["m_per_min"],
                        "car": car,
                        "stops": [{"name": "The luge track", "at": foot, "face": face_sw, "floor": round(float(g), 2)},
                                  {"name": "The Skyline deck", "at": top, "face": face_out, "floor": round(float(z), 2)}]}]}
+
+
+def keepsake_spot(K):
+    """The look closer along the traveller's shelf (interiors.py keepsake_shelf; web/game/places.js closer): its tablets
+    and texts are the album's, filled in as the game starts and whenever you keep something (web/game/keepsakes.js)."""
+    return {"id": "keepsakes", "name": K["name"], "role": "Williams Cottage", "at": K["stand"], "radius": 1.6,
+            "verb": "Look along your keepsakes", "keepsakes": True,
+            "lines": ["What you have kept, from every city: each where you set it down."],
+            "look": {"at": [K["mid"][0], K["mid"][1], K["rails"][0]], "along": K["along"], "half_m": K["half_m"], "dist_m": 0.62,
+                     "faces": 0.04, "rails": K["rails"], "tablets": [], "texts": []}}
 
 
 def game_surfaces(scene):

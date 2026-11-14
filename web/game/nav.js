@@ -39,9 +39,27 @@ window.OENav = (function () {
       return !!isWaterCell(r, c);
     }
     // ---------------------------------------------------------- piers (2 m grid, deck height)
-    const pier = { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny).fill(-99) };
-    (D.P.piers || []).forEach((r, i) => S.fillMax(pier, [r.map(v => v / 10)], D.pierZ ? D.pierZ[i] : G.pier_deck_m || 2.2)); // as drawn (world.js)
-    for (const r of G.boardwalks || []) S.fillMax(pier, [r.map(v => v / 10)], G.pier_deck_m || 2.2); // walkways over rocks and water
+    // (on a grid over the piers' bounds alone, not the whole map's: the 2 m cells' rows and columns pc0, pr0 on; pierAt(k)
+    // reads the deck at a 2 m cell index k, -99 for none)
+    const pierRings = [...(D.P.piers || []).map((r, i) => [r.map(v => v / 10), D.pierZ ? D.pierZ[i] : G.pier_deck_m || 2.2]), // as drawn (world.js)
+      ...(G.boardwalks || []).map(r => [r.map(v => v / 10), G.pier_deck_m || 2.2])]; // walkways over rocks and water
+    let pc0 = 0, pr0 = 0, pier = null;
+    if (pierRings.length) {
+      let px0 = Infinity, px1 = -Infinity, py0 = Infinity, py1 = -Infinity;
+      for (const [r] of pierRings) for (let k = 0; k < r.length; k += 2) { px0 = Math.min(px0, r[k]); px1 = Math.max(px1, r[k]); py0 = Math.min(py0, r[k + 1]); py1 = Math.max(py1, r[k + 1]); }
+      pc0 = Math.max(0, Math.floor((px0 - x0) / DSM.cell) - 1); pr0 = Math.max(0, Math.floor((y1 - py1) / DSM.cell) - 1);
+      const pc1 = Math.min(DSM.nx - 1, Math.floor((px1 - x0) / DSM.cell) + 1), pr1 = Math.min(DSM.ny - 1, Math.floor((y1 - py0) / DSM.cell) + 1);
+      if (pc1 >= pc0 && pr1 >= pr0) {
+        pier = { nx: pc1 - pc0 + 1, ny: pr1 - pr0 + 1, cell: DSM.cell, x0: x0 + pc0 * DSM.cell, y1: y1 - pr0 * DSM.cell };
+        pier.data = new Float32Array(pier.nx * pier.ny).fill(-99);
+        for (const [r, z] of pierRings) S.fillMax(pier, [r], z);
+      }
+    }
+    const pierAt = k => {
+      if (!pier) return -99;
+      const c = k % DSM.nx - pc0, r = Math.floor(k / DSM.nx) - pr0;
+      return c < 0 || r < 0 || c >= pier.nx || r >= pier.ny ? -99 : pier.data[r * pier.nx + c];
+    };
     // places walkers keep out of (a colony's rocks): a 2 m mask
     const nogo = (G.nogo || []).length ? { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny) } : null;
     for (const r of G.nogo || []) S.fillMax(nogo, [r.map(v => v / 10)], 1);
@@ -313,7 +331,7 @@ window.OENav = (function () {
           for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
           if (climbedThrough(s, x, y, z)) continue;
           const k = r * DSM.nx + c;
-          for (const M of [solid0, slabs]) { const l = M.get(k); if (l) l.push(z - th, z - 0.05); else M.set(k, [z - th, z - 0.05]); }
+          for (const M of [solid0, slabs]) { if (M.addPair) { M.addPair(k, z - th, z - 0.05); continue; } const l = M.get(k); if (l) l.push(z - th, z - 0.05); else M.set(k, [z - th, z - 0.05]); } // (solid0 may be packed: navcells.js flatMap)
         }
       }
     }
@@ -383,9 +401,11 @@ window.OENav = (function () {
     let roofCells = null;
     const roofCellsOf = () => {
       roofCells = new Map();
-      for (const p of col.prisms) {
-        if (p.tag !== BUILDING) continue;
-        for (let cx = Math.floor(p.x0 / SC); cx <= Math.floor(p.x1 / SC); cx++) for (let cy = Math.floor(p.y0 / SC); cy <= Math.floor(p.y1 / SC); cy++) {
+      const b = [0, 0, 0, 0];
+      for (let p = 0, n = col.count; p < n; p++) {
+        if (col.tagOf(p) !== BUILDING) continue;
+        col.boxOf(p, b);
+        for (let cx = Math.floor(b[0] / SC); cx <= Math.floor(b[2] / SC); cx++) for (let cy = Math.floor(b[1] / SC); cy <= Math.floor(b[3] / SC); cy++) {
           const k = skey(cx, cy);
           if (!stripGrid.has(k)) continue;
           const l = roofCells.get(k); if (l) l.push(p); else roofCells.set(k, [p]);
@@ -396,11 +416,11 @@ window.OENav = (function () {
     const roofUnder = (x, y, g) => {
       roofs.length = 0;
       const l = (roofCells || roofCellsOf()).get(skey(Math.floor(x / SC), Math.floor(y / SC)));
-      if (l) for (const p of l) if (x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1 && col.inside(p, x, y)) roofs.push(p);
+      if (l) for (const p of l) if (col.inside(p, x, y)) roofs.push(p);
       if (!roofs.length) return g;
-      roofs.sort((a, b) => a.zlo - b.zlo);
+      roofs.sort((a, b) => col.zloOf(a) - col.zloOf(b));
       let h = g;
-      for (const p of roofs) if (p.zlo <= h + 1.0 && p.zhi > h) h = p.zhi;
+      for (const p of roofs) if (col.zloOf(p) <= h + 1.0 && col.zhiOf(p) > h) h = col.zhiOf(p);
       return h;
     };
     // the roof over the ground at a point, read on a 0.25 m grid and kept (the pieces by a strip and the points a
@@ -429,7 +449,7 @@ window.OENav = (function () {
       if (roofy(x, y)) { const q = roofAt(x, y); if (q <= zc) h = Math.max(h, q); }
       for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h && q <= zc) h = q; }
       const k = cellOf(x, y);
-      if (k >= 0 && pier.data[k] > h && pier.data[k] <= zc) h = pier.data[k];
+      if (k >= 0) { const q = pierAt(k); if (q > h && q <= zc) h = q; }
       return h;
     };
     // the floor a walker beside a point may stand on: the floor under it, or a strip's within a 2 m cell of it, up
@@ -731,7 +751,7 @@ window.OENav = (function () {
       let open = new Map();
       const emit = q => {
         const ea = x0 + (cA + q.c0) * FINE, eb = x0 + (cA + q.c1 + 1) * FINE, fb = y1 - (rA + q.r0) * FINE, fa = y1 - (rA + q.r1 + 1) * FINE;
-        for (let i = 0; i < q.iv.length; i += 2) { col.add([[ea, fa, eb, fa, eb, fb, ea, fb]], q.iv[i] - MZ, q.iv[i + 1] + MZ, LFINE, -1); fineBoxes++; }
+        for (let i = 0; i < q.iv.length; i += 2) { col.addBox(ea, fa, eb, fb, q.iv[i] - MZ, q.iv[i + 1] + MZ, LFINE, -1); fineBoxes++; }
       };
       for (let r = APRON; r < APRON + TPC; r++) {
         const runs = [];
@@ -852,11 +872,11 @@ window.OENav = (function () {
     // tower round it would stand as an invisible wall in front of it (issue #91)
     const hidden = new Set((D.scene && D.scene.hidden_solids) || []);
     const shown = D.B.s.filter((s, i) => !hidden.has(i));
-    for (const s of shown) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);
+    for (const s of shown) col.add(s, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0], 10, 4); // (its rings in decimetres, s[4...])
     // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
     const PH = OEBuildings.POST / 2;
     const passages = new Set((D.B.passages || []).map(i => D.B.s[i])); // (a building over a road through it stands on no posts: pipeline/road_passages.py)
-    for (const s of shown) if (!passages.has(s)) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]], D.B.no_posts && D.B.no_posts[s[0]], D.B.inner_posts && D.B.inner_posts[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
+    for (const s of shown) if (!passages.has(s)) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]], D.B.no_posts && D.B.no_posts[s[0]], D.B.inner_posts && D.B.inner_posts[s[0]])) col.addBox(x - PH, y - PH, x + PH, y + PH, s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
     // a sunken promenade's flights of steps (inland.js): the wall beside each, from its foot to a railing's height over
     // its top, so that a walker on the upper treads does not step sideways off them onto the street; but for its first
     // FLIGHT_GATE m, where it opens to the pavement through the railing
@@ -883,29 +903,29 @@ window.OENav = (function () {
     startMs = performance.now() - tFine;
     for (const [k, l] of coarse) {
       const r = Math.floor(k / DSM.nx), c = k % DSM.nx, xa = x0 + c * DSM.cell, xb = xa + DSM.cell, yb = y1 - r * DSM.cell, ya = yb - DSM.cell;
-      for (let i = 0; i < l.length; i += 2) col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], l[i], l[i + 1], LANDMARK, k);
+      for (let i = 0; i < l.length; i += 2) col.addBox(xa, ya, xb, yb, l[i], l[i + 1], LANDMARK, k);
     }
     col.build();
     col.need = need; col.fineTag = LFINE;
     // buildings under a deck (or poking through it in the data) don't block a walker on the deck
-    const underDeck = new Uint8Array(col.prisms.length);
-    col.prisms.forEach((p, i) => {
-      if (p.tag !== BUILDING) return;
-      const r = p.rings[0], n = r.length / 2;
-      for (let a = 0; a < n && !underDeck[i]; a++) { // along the edges every metre: a footprint can cross a deck with no corner on it
-        const b = (a + 1) % n, ax = r[2 * a], ay = r[2 * a + 1], m = Math.max(1, Math.ceil(Math.hypot(r[2 * b] - ax, r[2 * b + 1] - ay)));
-        for (let j = 0; j < m && !underDeck[i]; j++) {
-          const x = ax + (r[2 * b] - ax) * j / m, y = ay + (r[2 * b + 1] - ay) * j / m;
-          if (stripsAt(x, y).some(s => stripHeight(s, x, y) != null)) underDeck[i] = 1;
+    const underDeck = new Uint8Array(col.count);
+    if (strips.length) for (let i = 0, n = col.count; i < n; i++) {
+      if (col.tagOf(i) !== BUILDING) continue;
+      col.outer(i, (ax, ay, bx, by) => { // along the edges every metre: a footprint can cross a deck with no corner on it
+        const m = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay)));
+        for (let j = 0; j < m; j++) {
+          const x = ax + (bx - ax) * j / m, y = ay + (by - ay) * j / m;
+          if (stripsAt(x, y).some(s => stripHeight(s, x, y) != null)) return (underDeck[i] = 1);
         }
-      }
-    });
+        return false;
+      });
+    }
     // what a walker with feet at z passes: buildings no taller than a step, and on a deck the buildings
     // under it (landmark lips below the knee are already outside the capsule's height range; on a landmark's
     // floor, raised, so is the rest of what it stands on)
     // (on a sunken promenade's floor, all of them: its walls hold the walker in, and a shed mapped across the wall's
     // line, Kyoto's w229155098 at a flight's foot, stands on the street above)
-    const passes = (z, onDeck, sunk = false) => (i, p) => p.tag === BUILDING && (sunk || p.zhi <= z + STEP || (onDeck && underDeck[i] === 1));
+    const passes = (z, onDeck, sunk = false) => i => col.tagOf(i) === BUILDING && (sunk || col.zhiOf(i) <= z + STEP || (onDeck && underDeck[i] === 1));
     // building top at (x, y), or -Infinity where there is no building
     function buildingTop(x, y) {
       const k = cellOf(x, y);
@@ -918,7 +938,7 @@ window.OENav = (function () {
       if (!l) return false;
       for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) {
         if (!coarseOnly) return true;
-        return triHit(x, y, 0.1, za, zb) || col.overlap(x, y, 0.1, za, zb, (j, p) => p.tag !== LANDMARK && p.tag !== LFINE); // (its triangles, and the 2 m cells high up)
+        return triHit(x, y, 0.1, za, zb) || col.overlap(x, y, 0.1, za, zb, j => col.tagOf(j) !== LANDMARK && col.tagOf(j) !== LFINE); // (its triangles, and the 2 m cells high up)
       }
       return false;
     }
@@ -929,7 +949,7 @@ window.OENav = (function () {
     // stairs, "mapped": false, built over the footways that pass under them)
     function surfaceAt(x, y, near, lines) {
       const k = cellOf(x, y);
-      let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
+      let h = k >= 0 && pierAt(k) > -50 ? pierAt(k) : -Infinity;
       for (const s of stripsAt(x, y)) {
         if (lines && s.mapped === false) continue;
         const z = stripHeight(s, x, y);
@@ -974,7 +994,7 @@ window.OENav = (function () {
         const u = under(x, y); if (u !== null) take(u, 'ground');
       }
       const k = cellOf(x, y);
-      if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
+      if (k >= 0 && pierAt(k) > -50) take(pierAt(k), 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
       decksAt(x, y, (h, d) => { if ((d.walk || cars) && !(pr && pr.flight)) take(h, 'deck'); }); // (a flight of steps down, not a bridge's approach laid wider over its top)
       const bt = col.topAt(x, y, z + STEP, BUILDING);
@@ -1084,7 +1104,7 @@ window.OENav = (function () {
       const bt = col.topAt(x, y, Infinity, BUILDING);
       if (bt > g) g = bt;
       const k = cellOf(x, y);
-      if (k >= 0 && pier.data[k] > g) g = pier.data[k];
+      if (k >= 0 && pierAt(k) > g) g = pierAt(k);
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h <= z + 0.5 && h > g) g = h; }
       decksAt(x, y, h => { if (h <= z + 0.5 && h > g) g = h; });
       const l = solid0.get(k);

@@ -80,7 +80,13 @@ We avoided neon, glitch, and RGB-split as a style (Cyberpunk 2077's register):
 they fight a scene lit by the real sun. Chromatic fringes are kept to the frame's
 edges and the dive, and at rest to under a pixel each way: wider, the crescent Moon
 coming round the limb at the frame's edge was drawn as a red, a green and a blue
-sliver side by side, a rose line on a phone. The palette is space (#04060b, never pure black), off-white
+sliver side by side.
+
+The wordmark's letters come in and go out of a blur that is a text shadow under
+transparent letters, not a CSS `filter`. A filter gave each letter a layer of its
+own, re-made every frame, and Safari on an iPhone drew those layers' edges: a
+magenta line down the screen beside the last letters and the outline of their
+boxes (the owner's screenshot of 14 November 2026). The palette is space (#04060b, never pure black), off-white
 type and one accent, the sun's amber.
 
 ## The picture

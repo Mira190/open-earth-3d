@@ -407,12 +407,17 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const expoOut = t => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * clamp(t)));
   // the title card and the letterbox, on the sequence clock (so a held frame is exact):
   // the letters come out of a blur one by one while the tracking closes up
+  const INK = '#f4f1ea', GLOW = '0 0 40px rgba(255, 190, 120, 0.18)'; // the wordmark's colour and glow (title.css .ts-title .w)
   function titleFx(t) {
     const a = T_RISE + 0.1, narrowW = narrow();
     const out = smooth(span(t, PULL_A + 0.7, PULL_A + 1.7));
     titleEl.style.opacity = String(1 - out);
     titleEl.style.transform = `translateY(-50%) scale(${(1 - 0.04 * out).toFixed(4)})`;
-    titleEl.style.filter = out > 0.001 ? `blur(${(out * 6).toFixed(2)}px)` : '';
+    // The blurs here are text shadows under transparent letters, not CSS filters. A filter gives each letter a
+    // layer of its own, re-made every frame as its radius changes, and Safari on an iPhone drew those layers'
+    // edges for a frame or two: a magenta line down the screen beside the last letters, and the outline of their boxes.
+    wordEl.style.color = out > 0.001 ? 'transparent' : '';
+    wordEl.style.textShadow = out > 0.001 ? `0 0 ${(out * 6).toFixed(2)}px ${INK}` : '';
     titleEl.style.setProperty('--scrim', smooth(span(t, a, a + 1.6)).toFixed(3));
     const track = lerp(narrowW ? 0.5 : 0.9, narrowW ? 0.22 : 0.34, expoOut(span(t, a, a + 3.8)));
     wordEl.style.letterSpacing = `${track.toFixed(4)}em`;
@@ -420,7 +425,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     letters.forEach((el, i) => {
       const k = span(t, a + i * 0.045, a + i * 0.045 + 1.3), e = easeOut(k);
       el.style.opacity = smooth(k).toFixed(3);
-      el.style.filter = e < 0.999 ? `blur(${(14 * (1 - e)).toFixed(2)}px)` : '';
+      el.style.color = e < 0.999 ? 'transparent' : '';
+      el.style.textShadow = e < 0.999 ? `0 0 ${(14 * (1 - e)).toFixed(2)}px ${INK}, ${GLOW}` : '';
       el.style.transform = e < 0.999 ? `translateY(${(0.18 * (1 - e)).toFixed(3)}em)` : '';
     });
     subEl.style.opacity = smooth(span(t, a + 0.7, a + 2.1)).toFixed(3);

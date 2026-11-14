@@ -977,3 +977,62 @@ player can see from where they stand. The next cut is a phone's map built round 
 **Not checked here: a real iPhone or Safari.** These are emulated under Chromium with Mesa's llvmpipe; the numbers are
 what WebGL was asked for and what V8's heap holds, not what iOS accounts. The owner's own play on a phone is the real
 check.
+
+### Round 2 (issue 406): what the player cannot see takes no memory
+
+Round 1 left the large maps just under the budget, and hero levels are being added at every spawn. This round
+asked where the bytes are from first principles: a heap snapshot of Tokyo on the phone tier, summed by the path
+that holds each array buffer (`tools/heap_owners.js`, from `SNAP=file tools/mem_check.js`), and the sampling
+profile of the page's live objects (`SAMPLE=1`). What it found and what was done:
+
+| What | Where it was | Cut |
+|---|---|---|
+| The collision world's solids | an object and nested ring arrays per solid (`collision.js` prisms), about 100 MB of Tokyo's objects | a struct of typed arrays (heights, box, tag, id, a run of walls), the walls written as a solid is added |
+| The collision world's walls | 72 MB in Tokyo: nine in ten solids are upright boxes (a landmark's 2 m and fine cells, a canopy's posts), four walls each with their buckets and marks | `addBox()` keeps the box alone; the queries read its four walls from it |
+| The ground clip mask (`world.js` CLIP) | an RGBA canvas at half a metre kept as image data: 45 MB on the page and again on the GPU in Tokyo | one byte a texel on the GPU (R8), a bit a texel for `near()` |
+| The piers' deck heights | a Float32 over the whole 2 m model (15 MB, also where a map has none) | a grid over the piers' bounds alone |
+| The landmarks' nav cells (`navcells.js`) | unpacked from the worker's packed arrays into Maps of arrays, 30 MB in Tokyo | read in place: sorted keys, a binary search |
+| The walls' picking copy and bounds-tree | position, index and building id kept on the page for the survey lens, and a bounds-tree built for it (3-4 s in a Worker) | the game picks from its collision world (`collision.js` `pick`, `tools/pick_check.js`: 94% of 720 rays name the same building); the picking index goes, and on a phone the positions and ids once uploaded |
+| The NPCs' pictures on a phone | 1024 a side, 5.3 MB each with mipmaps, twenty-odd characters: 127 MB of Tokyo's GPU | 512 a side on the phone tier (stills at two metres show no difference); the characters you play keep theirs |
+
+The collision world answers as it did: `tools/build_hash.js` now fingerprints it (Kyoto's identical before and
+after), and a randomised comparison of every query against the old store differs only where a circle starts inside
+a cluster of fine boxes and two pushes out tie (27 of 300,000), where either answer is as good. Building it is
+quicker too: Kyoto's walking model (`nav:` in the console) 1257 -> 844 ms.
+
+Every live map on the phone tier, before (main at the start of the round) and after (`tools/mem_check.js`):
+
+| Map (phone tier) | Peak GPU, MB | Settled JS heap, MB | Peak JS heap, MB |
+|---|---|---|---|
+| Tokyo (Marunouchi-Ginza) | 577 -> 493 | 793 -> 569 | 1261 -> ~900 (noisy: 827-1067) |
+| Kyoto | 620 -> 570 | 669 -> 437 | 960 -> 808 |
+| Shibuya | 576 -> 529 | 544 -> 384 | 767 -> 695 |
+| Queenstown | 607 -> 513 | 500 -> 454 | 575 -> 578 |
+| Sydney | 531 -> 418 | 465 -> 374 | 641 -> 538 |
+| Shinjuku | 507 -> 433 | 438 -> 319 | 554 -> 542 |
+| Kamakura | 367 -> 327 | 210 -> 181 | 297 -> 289 |
+| Tetsugaku | 297 -> 273 | 225 -> 190 | 349 -> 284 |
+| Higashiyama | 293 -> 261 | 208 -> 165 | 340 -> 317 |
+| Fushimi Inari | 263 -> 239 | 156 -> 137 | 208 -> 192 |
+
+(Tokyo's after includes main's new Marunouchi hero level, merged during the round.) The budget is lowered to
+**620 MB peak GPU and 620 MB settled heap** (`quality.js` `budget`, `tools/mem_check.js` defaults), a tenth above
+the heaviest map, so the room made here is for the hero levels and cannot creep back unnoticed.
+
+What is left, by size: the buildings' vertex buffers on the GPU (Kyoto 325 MB: 5.3 million vertices, 45 bytes
+each; Kyoto has 65,738 buildings, so the building id does not fit 16 bits there; a coarser set for the far cells on
+the phone tier is the cut), the ground aerial and sea textures, the surface model (`DSM` data and ids, 29 MB in
+Tokyo, needed), the quays' distance fields (25 MB in Tokyo), the landmarks' fine-cell triangles kept per tile
+(`nav.js` `tileTris`, 14 MB of small arrays) and the streets' carriageways (15 MB). And the load's peak heap, still
+300-400 MB above the settled one on the large maps while the worker's arrays and the page's copies overlap.
+
+### The last CPU of the city build (issue 404), measured
+
+With the console's new `nav:` and `footways:` lines (desktop tier, llvmpipe): Kyoto's walking model 844 ms, of which
+the landmarks' coarse cells and tile sort (`nav.js` `landmarkCells`) 451 ms; the footways people can walk 490 ms and
+the roads cut at the walls 231 ms. Tokyo: 1756 ms, `landmarkCells` 1327 ms, footways 796 ms, roads 239 ms. The
+collision world's own build is now the small part. What remains reads the whole walking model (the ground, strips,
+roofs, piers, decks, landmark cells): moving it to a Worker means a second walking model there (a hundred MB more at
+the load's peak, against this round's aim), so the better cut is to bake its result offline into `game.bin` with the
+inputs' fingerprint and fall back to the live build when they differ. Not done in this round.
+
