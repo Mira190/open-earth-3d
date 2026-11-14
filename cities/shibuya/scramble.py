@@ -1166,20 +1166,49 @@ def lit_box(K, A, P, w, h, d, z0, key, frame_mat="x_jr_steel"):
     A.quad(K["x_atlas"], P(0.02, -w / 2, z0), P(0.02, w / 2, z0), P(0.02, w / 2, z0 + h), P(0.02, -w / 2, z0 + h), key)
 
 
+def seat(D, b, reach=9.0):
+    """Where a billboard's tower stands: (at, the roof's height) on the roof the city has there. Its place and
+    roof height are read off photographs, and the city's solids do not always agree: a roof lower than the
+    photograph's, or a penthouse narrower than the sign, leaves the tower's legs in the air. So the tower is
+    moved, by as little as will do (up to `reach` m), until its whole footprint is over one solid's roof, and
+    it stands at that roof's own height; of the roofs that take it, the nearest in height to the one given."""
+    at, face = np.asarray(b["at"], float), np.asarray(b["face"], float)
+    w = max(w for _, w, _ in b["boxes"])
+    f = unit(face - at)
+    l = np.array([-f[1], f[0]])
+    foot = lambda c: Polygon([c + f * u + l * v for u, v in ((-1.9, -w / 2), (0.7, -w / 2), (0.7, w / 2), (-1.9, w / 2))])
+    near = [(Polygon(s["ring"], s.get("holes") or None).buffer(0), s) for s in D.solids
+            if len(s["ring"]) >= 3 and abs(s["ring"][0][0] - at[0]) < 60 and abs(s["ring"][0][1] - at[1]) < 60 and s["top"] - s["base"] > 8]
+    steps = sorted(((du, dv) for du in np.arange(-reach, reach + 0.1, 0.5) for dv in np.arange(-reach, reach + 0.1, 0.5) if math.hypot(du, dv) <= reach),
+                   key=lambda q: math.hypot(*q))
+    best = None
+    for poly, s in near:
+        for du, dv in steps:
+            c = at + f * du + l * dv
+            if poly.contains(foot(c)):
+                cost = math.hypot(du, dv) + 0.25 * abs(s["top"] - b["roof_m"])
+                if best is None or cost < best[0]:
+                    best = (cost, c, s["ground"] + s["top"])
+                break
+    if best is None:
+        raise ValueError(f"billboard {b['boxes'][0][0]} at {b['at']}: no roof within {reach} m takes its tower")
+    return best[1], best[2]
+
+
 def billboards(K, A, D):
     steel = K["x_jr_steel"]
     for b in BILLBOARDS:
-        at, face = np.asarray(b["at"]), np.asarray(b["face"])
+        at, roof = seat(D, b)
+        face = np.asarray(b["face"])
         P = frame(at, face - at)
-        g = D.ground(*at)
-        z = g + b["roof_m"] + b.get("lift", 0.0)
+        z = roof + b.get("lift", 0.0)
         hs = sum(h for _, _, h in b["boxes"]) + b.get("gap", 0.0) * (len(b["boxes"]) - 1)
         w = max(w for _, w, _ in b["boxes"])
         # the tower: legs, cross-bracing, a catwalk under the lowest box
         for v in (-w * 0.35, w * 0.35):
             for u in (-1.6, -0.5):
-                steel.tube([P(u, v, g + b["roof_m"]), P(u, v, z + hs)], 0.09, 6)
-            steel.tube([P(-1.6, v, g + b["roof_m"]), P(-0.5, v, z + hs * 0.5)], 0.05, 4)
+                steel.tube([P(u, v, roof), P(u, v, z + hs)], 0.09, 6)
+            steel.tube([P(-1.6, v, roof), P(-0.5, v, z + hs * 0.5)], 0.05, 4)
         box(steel, P, -1.8, 0.6, -w / 2, w / 2, z - 0.15, z - 0.05)
         K["x_wire"].tube([P(0.6, -w / 2, z + 1.0), P(0.6, w / 2, z + 1.0)], 0.02, 4)   # the catwalk's rail
         zz = z + hs
@@ -1474,6 +1503,8 @@ def station(K, A, D, koban_box):
     for k in range(6):      # its lamps, on arms over the top
         p = a + f * L * (k + 0.5) / 6 + n * (lift + 1.4)
         box(K["x_light"], frame(p, n), -0.25, 0.25, -0.3, 0.3, z1 + 0.4, z1 + 0.7)
+        q = a + f * L * (k + 0.5) / 6                      # its arm, from the frame's top rail out over the face
+        steel.tube([np.array([*(q + n * 0.3), z1 + 0.6]), np.array([*(q + n * (lift + 0.6)), z1 + 0.95]), np.array([*(p - n * 0.2), z1 + 0.72])], 0.035, 4)
     return [q["si"] for q in sol]
 
 

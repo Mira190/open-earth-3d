@@ -1016,6 +1016,19 @@
         "steps": []
       }
     ],
+    "hero": [
+      {
+        "id": "scramble",
+        "glb": "hero/scramble.glb",
+        "at": [368.0, -1002.0],
+        "r": 100.0,
+        "bake": 0.7,
+        "street": 0.45,
+        "glow": [0.12, 1.5],
+        "hide": ["p5_plaza", "scramble_x_paint", "scramble_x_asphalt", "scramble_x_tactile", "scramble_x_tactile_dot", "scramble_x_guard"],
+        "note": "The Scramble and Hachiko Square within 100 m of the junction: carriageway, paint, kerbs, pavements and street furniture modelled finely (cities/shibuya/hero.py, blender/build_hero.py, docs/HERO.md)"
+      }
+    ],
     "overture": {
       "note": "The overture (docs/OVERTURE.md, web/game/overture.js): Crossing. A petal (a ginkgo leaf in autumn, a snowflake in winter, a mote of light in summer) leaves the edge of SHIBUYA SKY, falls 229 m to the scramble, passes Hachiko, and the screens, and ends on the scramble from across it, into the sun, before the game begins at the kerb (game.start). Crowds are kept at a distance: no shot comes close to them. Points name the landmarks in scene.json, so a rebuilt map moves them.",
       "title": {"name": "渋谷", "reading": "Shibuya", "line": "交差  ·  Crossing"},

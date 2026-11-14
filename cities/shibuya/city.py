@@ -3288,6 +3288,20 @@ def qfront_glass(K):
     K("qfront_glass").panel(path, z1 - z0 - 6.5)
 
 
+def wall_top(mid, n, top):
+    """How high the wall behind a street front stands (m over its ground): the roof of the solid just inside
+    the front at `mid` (outward normal n); `top` where no solid is found there."""
+    if "wall_solids" not in _DATA:
+        from shapely import STRtree
+        from shapely.geometry import Polygon
+        S = [s for s in ak.load_solids(CITY) if len(s["ring"]) >= 3]
+        _DATA["wall_solids"] = (S, STRtree([Polygon(s["ring"]) for s in S]))
+    S, tree = _DATA["wall_solids"]
+    from shapely.geometry import Point
+    hit = [S[k] for d in (0.8, 2.0) for k in tree.query(Point(*(np.asarray(mid) - np.asarray(n) * d)), predicate="intersects")]
+    return max((s["base"] + s["top"] for s in hit), default=top)
+
+
 def crossing_wall_signs(K, lm):
     """Round the crossing, the buildings' street fronts carry their tenants' stacked signs at a corner and,
     on upper floors, lit wall prints: from the sign sites within 230 m of the scramble."""
@@ -3301,6 +3315,9 @@ def crossing_wall_signs(K, lm):
         n, mid = np.array([nx, ny]), np.array([x, y])
         t = np.array([-n[1], n[0]])
         r = rng.random()
+        # (a site's height is its building's highest roof; the wall here may belong to a lower part of it, and a
+        # sign hung by the building's height would stand in the air over that part's roof: tools/float_check.py)
+        top = min(top, wall_top(mid, n, top))
         if r < 0.55:                              # a tenant stack at one end of the front, both faces
             h = min(top - 4.0, 22.0)
             z0 = g + 3.4

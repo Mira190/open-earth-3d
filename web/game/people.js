@@ -584,8 +584,9 @@ ${PAT_GLSL}`)
       aim(a.la, a.wr, fist.sub(elbow).normalize());
     }
     function play(name, fade = 0.25, once = false) {
-      const a = act[name];
-      if (cur === a) return a;
+      // (a rig may lack a clip its mode asks for, as a crowd's cast member with only its walk and idle: the nearest it has)
+      const a = act[name] || (/Idle|Talk/.test(name) ? act.Idle || act.Idle_Neutral : act.Walk || act.Run) || cur || Object.values(act)[0];
+      if (!a || cur === a) return a || { setEffectiveTimeScale() { return this; } };
       a.reset();
       a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
       a.clampWhenFinished = once;

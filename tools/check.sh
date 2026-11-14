@@ -343,6 +343,11 @@ EOF
   if python3 pipeline/solid_rings.py --check $(bash tools/live_cities.sh) >"$OUT/rings.log" 2>&1; then
     echo "ok   rings  $(grep -c '^ok' "$OUT/rings.log") live cities' solids valid on their grid"
   else echo "FAIL rings  $(grep '^FAIL' "$OUT/rings.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/rings.log)"; fi
+  # no landmark hangs in the air in a live city (tools/float_check.py: a sign tower whose legs miss the roof, a
+  # screen stood at a penthouse's height over a lower roof)
+  if for c in $(tools/live_cities.sh); do python3 tools/float_check.py "$c" || exit 1; done >"$OUT/float.log" 2>&1; then
+    echo "ok   landmarks stand on something ($(grep -c 'floating$' "$OUT/float.log") cities)"
+  else echo "FAIL floating landmarks: $(grep '^FLOATS' "$OUT/float.log" | head -2 | cut -c8-120 | paste -sd ';' -)   (see $OUT/float.log)"; fi
   # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
   if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
   else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi

@@ -238,6 +238,45 @@ Textures added, all CC0 1.0 from ambientCG at 1K: `PavingStones128` (setts), `Pa
 `Gravel023`, `Concrete036` (weathered stone), `RoofingTiles013A` (the nearest to fired grey tile: ambientCG has
 no true kawara), `Planks023A` (boards, tinted dark), `PaintedWood009C` (tinted vermilion), `Bamboo001C`. The
 shop names, noren, lantern papers and boards are drawn in Python with Shippori Mincho (SIL OFL, `pipeline/adkit.py`).
+## The Scramble (Shibuya)
+
+The Shibuya map's game opens on Hachiko Square at the junction's south-east corner, looking across the
+diagonal to QFRONT. The level (`cities/shibuya/hero.py`, `hero/scramble.glb`) is the hundred metres round the
+junction, and its first part is what fills most of the frame from eye level: the ground.
+
+- **The carriageways**: one asphalt surface on the game's own road bands, a 50 cm concrete gutter along every
+  kerb, flush granite kerbs, the wheel paths' polish, trench patches, manholes, gully grates and the oil where
+  traffic waits. The asphalt is ambientCG's `Asphalt031` with its aggregate's contrast raised and a slow tone
+  drawn over its repeat (`asphalt_texture`).
+- **The paint**: the five crosswalks at the places measured off GSI's aerial photograph
+  (`scramble.CROSSWALKS`), stop lines, the diamonds before them and centre lines, in a thermoplastic drawn here
+  that is worn through in patches and cracked (`paint_texture`).
+- **The pavements**: grey blocks (`PavingStones136`), Hachiko Square in small granite setts (`PavingStones131`,
+  its moss taken out), and the yellow tactile blocks on OpenStreetMap's lines with their bars and domes in
+  relief (JIS T 9251's pattern, `tactile_texture`); a cast-iron grate round each mapped tree.
+- **On the kerbs**: white guard pipes between the crosswalks, and steel lamp posts whose light is baked.
+
+It hides the landmark meshes it draws again (`p5_plaza`, the junction's flat asphalt, paint, tactile strips and
+guard pipes); the fronts, the entrances, the tracks, Hachiko and his bed of setts stay the landmarks'.
+45,700 triangles, 4.1 MB; nothing is built under a building, in a stair well or past 100 m.
+
+Photographs looked at (Wikimedia Commons; none is reproduced, no texture is taken from one): the empty
+junction, 2025-01 (ウィ貴公子, CC BY-SA 4.0), QFRONT from the crosswalk, 2025-02 (GoToVan, CC BY 2.0), Hachiko
+Square, 2020-04 (Asanagi, CC0); links in docs/cities/shibuya.md.
+
+Where it still falls short of the bar: the fronts round the junction are the landmarks' flat colours and
+window grids (the shop fronts, tile and sign stacks of QFRONT's base, the bookshop block and Center Gai's
+mouth are the level's next part, issue 461); the kerbs are flush, since the game's ground is one surface; the
+square's setts are a straight bond, not the fans the photographs show; the lamp posts' design and places are
+from photographs, not a survey; and it has been seen on a software renderer only.
+
+**Signs that stood in the air.** A sign tower placed from a photograph by a roof height the city's solids do
+not have (a penthouse narrower than the sign, a roof 6 m lower) stood with its legs in the air. The towers now
+seat themselves on a roof that takes their whole footprint (`scramble.seat`); a bent roof screen stands on the
+roof under its own foot line, not the building's highest (`pipeline/screens.py`); a wall print hangs by the
+height of the wall behind it (`city.wall_top`). `tools/float_check.py <city>` lists landmark pieces that touch
+neither the ground, a solid nor a held piece, and `tools/check.sh` runs it for the live cities.
+
 ## Circular Quay West (Sydney)
 
 From First Fleet Park's edge to the taxi rank under the Overseas Passenger Terminal: 135 m of the quay in
