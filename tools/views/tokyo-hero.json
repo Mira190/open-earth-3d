@@ -6,8 +6,46 @@
    1195
   ],
   "look": [
-   612,
-   1168
+   606,
+   1172
+  ],
+  "time": "10:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "dome-day",
+  "at": [
+   582,
+   1180
+  ],
+  "look": [
+   606,
+   1172
+  ],
+  "time": "10:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 5,
+  "pitch": 0.02,
+  "street": true
+ },
+ {
+  "name": "start-day",
+  "at": [
+   576,
+   1269
+  ],
+  "look": [
+   640,
+   1267
   ],
   "time": "10:30",
   "date": [
@@ -38,25 +76,6 @@
   "street": true
  },
  {
-  "name": "dome-day",
-  "at": [
-   578,
-   1186
-  ],
-  "look": [
-   610,
-   1168
-  ],
-  "time": "10:30",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
   "name": "gyoko-day",
   "at": [
    470,
@@ -65,177 +84,6 @@
   "look": [
    624,
    1266
-  ],
-  "time": "10:30",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "spawn-dusk",
-  "at": [
-   553,
-   1195
-  ],
-  "look": [
-   612,
-   1168
-  ],
-  "time": "sunset+10",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "plaza-dusk",
-  "at": [
-   545,
-   1300
-  ],
-  "look": [
-   624,
-   1266
-  ],
-  "time": "sunset+10",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "dome-dusk",
-  "at": [
-   578,
-   1186
-  ],
-  "look": [
-   610,
-   1168
-  ],
-  "time": "sunset+10",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "gyoko-dusk",
-  "at": [
-   470,
-   1312
-  ],
-  "look": [
-   624,
-   1266
-  ],
-  "time": "sunset+10",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "spawn-night",
-  "at": [
-   553,
-   1195
-  ],
-  "look": [
-   612,
-   1168
-  ],
-  "time": "20:30",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "plaza-night",
-  "at": [
-   545,
-   1300
-  ],
-  "look": [
-   624,
-   1266
-  ],
-  "time": "20:30",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "dome-night",
-  "at": [
-   578,
-   1186
-  ],
-  "look": [
-   610,
-   1168
-  ],
-  "time": "20:30",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "gyoko-night",
-  "at": [
-   470,
-   1312
-  ],
-  "look": [
-   624,
-   1266
-  ],
-  "time": "20:30",
-  "date": [
-   11,
-   13
-  ],
-  "dist": 6,
-  "pitch": 0.12,
-  "street": true
- },
- {
-  "name": "start-day",
-  "at": [
-   576,
-   1269
-  ],
-  "look": [
-   640,
-   1267
   ],
   "time": "10:30",
   "date": [
@@ -266,6 +114,44 @@
   "street": true
  },
  {
+  "name": "spawn-dusk",
+  "at": [
+   553,
+   1195
+  ],
+  "look": [
+   606,
+   1172
+  ],
+  "time": "sunset+10",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "dome-dusk",
+  "at": [
+   582,
+   1180
+  ],
+  "look": [
+   606,
+   1172
+  ],
+  "time": "sunset+10",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 5,
+  "pitch": 0.02,
+  "street": true
+ },
+ {
   "name": "start-dusk",
   "at": [
    576,
@@ -274,6 +160,44 @@
   "look": [
    640,
    1267
+  ],
+  "time": "sunset+10",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "plaza-dusk",
+  "at": [
+   545,
+   1300
+  ],
+  "look": [
+   624,
+   1266
+  ],
+  "time": "sunset+10",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "gyoko-dusk",
+  "at": [
+   470,
+   1312
+  ],
+  "look": [
+   624,
+   1266
   ],
   "time": "sunset+10",
   "date": [
@@ -304,6 +228,44 @@
   "street": true
  },
  {
+  "name": "spawn-night",
+  "at": [
+   553,
+   1195
+  ],
+  "look": [
+   606,
+   1172
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "dome-night",
+  "at": [
+   582,
+   1180
+  ],
+  "look": [
+   606,
+   1172
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 5,
+  "pitch": 0.02,
+  "street": true
+ },
+ {
   "name": "start-night",
   "at": [
    576,
@@ -312,6 +274,44 @@
   "look": [
    640,
    1267
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "plaza-night",
+  "at": [
+   545,
+   1300
+  ],
+  "look": [
+   624,
+   1266
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   13
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "gyoko-night",
+  "at": [
+   470,
+   1312
+  ],
+  "look": [
+   624,
+   1266
   ],
   "time": "20:30",
   "date": [
@@ -340,5 +340,41 @@
   "dist": 5,
   "pitch": -0.08,
   "street": true
+ },
+ {
+  "name": "air-day",
+  "cam": [
+   500,
+   1150,
+   90
+  ],
+  "tgt": [
+   600,
+   1200,
+   5
+  ],
+  "time": "10:30",
+  "date": [
+   11,
+   13
+  ]
+ },
+ {
+  "name": "air-night",
+  "cam": [
+   500,
+   1150,
+   90
+  ],
+  "tgt": [
+   600,
+   1200,
+   5
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   13
+  ]
  }
 ]

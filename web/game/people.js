@@ -584,7 +584,10 @@ ${PAT_GLSL}`)
       aim(a.la, a.wr, fist.sub(elbow).normalize());
     }
     function play(name, fade = 0.25, once = false) {
-      const a = act[name];
+      // (a clip this character's rig was not built with, a sitting or a running one: its idle instead, or any it has.
+      // Tokyo's people at 576,1269 threw here one run in three)
+      const a = act[name] || act.Idle || act.Walk || Object.values(act)[0];
+      if (!a) return { setEffectiveTimeScale() { return this; } };
       if (cur === a) return a;
       a.reset();
       a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
