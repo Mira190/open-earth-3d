@@ -3471,7 +3471,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const st = railStation(player.x, player.y, 25, player.z);
     if (st && (rail.cars.length || st.deck)) {
       // (a railway's station: the train standing nearest you, of the two directions' at a loop)
-      const car = rail.cars.filter(c => rail.stationOf(c.id) === st).sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y))[0], other = rail.stations.find(o => o !== st);
+      const car = rail.cars.filter(c => rail.stationOf(c.id) === st && (!c.train || rail.nextStop(c))).sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y))[0], other = rail.stations.find(o => o !== st);
       if (car) return { key: 'E', text: car.train ? `Board the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}` : `Board the ${railRide().name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
       if (st.train) return { key: 'E', text: `${st.name}: the next train in ${fmtSec(rail.eta(st))} · ${waitRail === st ? 'stop waiting' : 'wait for it'}`, act: () => { waitRail = waitRail === st ? null : st; } };
       return { key: '', text: `${st.name}: the next car is due in ${fmtSec(rail.eta())}` };
@@ -3595,7 +3595,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id; car.fromAt = [st.x, st.y]; waitRail = null;
     if (life) life.emit('board', { kind: 'rail', from: st.id, name: st.name, route: car.line || railRide().name || '' });
     cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
-    if (car.mainline) player.rig.root.visible = false; // (in the car, seen only through its windows)
+    if (car.mainline) { player.rig.root.visible = false; cam.dist = 11; cam.pitch = 0.16; } // (in the car, seen only through its windows; the camera close beside it, under a station's roof)
     if (car.train) { const nx = rail.nextStop(car); H.toast(`Aboard the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}${nx ? `. Next stop: ${nx.name}` : ''}.${rail.train && rail.train.modelled ? ' <kbd>V</kbd> for the window seat and the cab,' : ''} <kbd>F</kbd> to skip ahead.`); return; }
     H.toast(`Aboard the ${railRide().name || 'funicular'}. ${railRide().note || ''} <kbd>F</kbd> to skip ahead.`);
   }
@@ -5507,7 +5507,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const car = player.vehicle;
         if (ev.car && ev.car !== car) continue;
         if (ev.type === 'depart') car.moved = true;
-        if (ev.type === 'arrive' && car.moved) { skip = false; H.toast(`${rail.stationOf(car.id).name}. <kbd>E</kbd> to get off.`); }
+        if (ev.type === 'arrive' && car.moved) {
+          const st = rail.stationOf(car.id);
+          skip = false;
+          if (st && st.under) { alightRail(); cam.mode = 'chase'; cam.dist = 6.5; cam.pitch = 0.3; cam.yaw = player.h; H.toast(`${st.name}. ${st.under.text || 'Up the stairs to the street.'}`); } // (out of sight under the ground: up to its street at once)
+          else H.toast(`${st.name}. <kbd>E</kbd> to get off.`);
+        }
+      }
+      // in the tunnel (a ride to or from a station under the ground): the view veiled, the clock run on to the next station
+      if (trains && trains.veil) {
+        const c = player.mode === 'rail' ? player.vehicle : null, dark = !!(c && c.train && rail.hidden && rail.hidden(c));
+        if (dark) { const nx = rail.nextStop(c); skip = true; trains.veil(true, `<div><div style="opacity:.7;font-size:12px;text-transform:uppercase;letter-spacing:.16em">${c.line || 'The train'} · in the tunnel</div><div style="font-size:20px;margin-top:6px">${nx ? `Next: ${nx.name}` : rail.towards(c)}</div></div>`); }
+        else if (trains.veiled) trains.veil(false);
       }
       if (player.mode === 'rail') { // standing in the car, by the downhill window
         const c = player.vehicle;
@@ -6109,7 +6120,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // A lift: the camera climbs the tower's face (or comes down it) while the player rides, at the lift's own
   // speed with the time shortened, and hands back to the chase camera at the far stop, facing on.
   function rideLift(l, from, to) {
-    if (life) life.emit('ride', { kind: 'lift', from: l.stops[from].name, to: l.stops[to].name });
+    if (life) life.emit('ride', { kind: 'lift', route: l.id, from: l.stops[from].name, to: l.stops[to].name, name: l.name, toName: l.stops[to].name });
     if (liftCar(l)) { rideLiftCar(l, from, to); return; }
     const a = l.stops[from], b = l.stops[to], dz = b.at[2] - a.at[2];
     const realS = Math.abs(dz) / ((l.m_per_min || 240) / 60), dur = Math.min(9, Math.max(4.5, realS / 6));

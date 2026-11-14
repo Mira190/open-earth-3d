@@ -41,6 +41,8 @@ MATERIALS = {
     "deck_grey": {"color": "#9a968e", "roughness": 0.95, "metalness": 0.0, "solid": False},
     "tube_lamp": {"color": "#f4f8ff", "roughness": 0.4, "metalness": 0.0, "emissive": "#e8f2ff", "glow": 1.8, "solid": False},
     "yongen_lane": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "yongen.jpg", "emissive_map": True, "glow": 1.1, "solid": False},
+    # the bars' stand signs at the fork: the lane's sheet, but solid, so a walker goes round them, not through (#399)
+    "yongen_stand": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "yongen.jpg", "emissive_map": True, "glow": 1.1},
     "net_frame": {"color": "#3d4640", "roughness": 0.7, "metalness": 0.4},
     "cage_net": {"color": "#22302a", "roughness": 0.95, "metalness": 0.0, "opacity": 0.38, "solid": False},
     "hm_yellow": {"color": "#f2c200", "roughness": 0.6, "metalness": 0.0, "emissive": "#f2c200", "glow": 0.55},   # (floodlit from its cornice after dark)
@@ -793,7 +795,7 @@ def fork(K, w=FORK):
         Pf, boxf = _frame(c, fa, z)
         boxf(K("stair_steel"), -0.22, 0.22, -0.17, 0.17, 0.0, 0.06)                          # the weighted foot
         boxf(K("stair_steel"), -0.21, 0.21, -0.16, 0.16, 0.06, 0.08)
-        boxf(K("yongen_lane"), -0.2, 0.2, -0.15, 0.15, 0.08, 1.03)
+        boxf(K("yongen_stand"), -0.2, 0.2, -0.15, 0.15, 0.08, 1.03)
         Yl.quad(Pf(-0.2, 0.152, 0.08), Pf(0.2, 0.152, 0.08), Pf(0.2, 0.152, 1.03), Pf(-0.2, 0.152, 1.03), uv(f"bar{i}"))
         Yl.quad(Pf(0.2, -0.152, 0.08), Pf(-0.2, -0.152, 0.08), Pf(-0.2, -0.152, 1.03), Pf(0.2, -0.152, 1.03), uv(f"bar{i}"))
     return {"fork": [float(v) for v in at[:2]]}

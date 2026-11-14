@@ -160,9 +160,11 @@ module.exports = async function trainsStep(p) {
       if (car) g.boardRail(car, from);
       g.advance(0.3);
       const aboard = pl.mode === 'rail' && pl.vehicle === car;
-      let left = false, top = 0, arrived = false, inside = true;
+      let left = false, top = 0, arrived = false, inside = true, veiled = false;
+      const money0 = g.life ? g.life.money : 0;
       for (let t = 0; t < 400 && car && !arrived; t += 0.5) {
         g.advance(0.5);
+        if (T.veiled) veiled = true;
         if (car.moved) left = true;
         top = Math.max(top, car.speed);
         if (pl.mode === 'rail') { const d = Math.hypot(pl.x - car.x, pl.y - car.y); if (d > sv2.len / 2 + 1) inside = false; }
@@ -173,10 +175,15 @@ module.exports = async function trainsStep(p) {
       g.advance(0.6);
       const offF = g.nav.floorAt(pl.x, pl.y, pl.z + 0.3), offZ = pl.z - to.z, offD = Math.hypot(pl.x - to.x, pl.y - to.y);
       checks.push([/next train|Board/.test(waitText), `on ${from.name}'s platform ${h0.platform} the game offers the train ("${waitText}")`]);
-      checks.push([!!car && /^Board/.test(boardText) && doorsCar > 0 && psdOpen > 0.9, `the ${sv2.line.en} train for ${sv2.for ? sv2.for.en : '?'} stands with its doors open (${doorsCar} doorways drawn, the platform doors ${(psdOpen * 100).toFixed(0)}% open${T.doorsOpen.some(d => d.track === sv2.track && d.station === from.id) ? '' : ': none here'}): "${boardText}"`]);
+      checks.push([!!car && /^Board/.test(boardText) && doorsCar > 0 && (!h0.psd || psdOpen > 0.9), `the ${sv2.line.en} train for ${sv2.for ? sv2.for.en : '?'} stands with its doors open (${doorsCar} doorways drawn, the platform doors ${(psdOpen * 100).toFixed(0)}% open${T.doorsOpen.some(d => d.track === sv2.track && d.station === from.id) ? '' : ': none here'}): "${boardText}"`]);
       checks.push([aboard && left && inside, `boards it and rides in it (${aboard ? 'aboard' : 'not aboard'}, ${left ? 'left' : 'did not leave'}${inside ? '' : ', the rider off the train'})`]);
       checks.push([arrived && top * 3.6 > 40 && top * 3.6 < 100, `rides to ${to.name} (${(top * 3.6).toFixed(0)} km/h at most)`]);
-      checks.push([pl.mode === 'foot' && Math.abs(offZ) < 0.5 && offD < (to.r || 150) && !!offF, `gets off onto ${to.name}'s platform (${offZ.toFixed(2)} m off its level, ${offD.toFixed(0)} m from its middle)`]);
+      if (to.under) { // a station under the ground: the tunnel veiled, and up at its street entrance, the veil lifted
+        checks.push([veiled && !T.veiled && pl.mode === 'foot' && Math.abs(offZ) < 1.5 && offD < 15 && !!offF, `rides through the tunnel (veiled: ${veiled}) and comes up at ${to.name}'s entrance (${offD.toFixed(1)} m from it, ${offZ.toFixed(2)} m off its level; the veil ${T.veiled ? 'still up' : 'lifted'})`]);
+        const f = g.life && g.life.data.fares;
+        if (f && f.rides.rail) checks.push([money0 - g.life.money > 0, `the ride is charged by ${f.card.name} (${g.life.fmt(money0 - g.life.money)})`]);
+      } else checks.push([pl.mode === 'foot' && Math.abs(offZ) < 0.5 && offD < (to.r || 150) && !!offF, `gets off onto ${to.name}'s platform (${offZ.toFixed(2)} m off its level, ${offD.toFixed(0)} m from its middle)`]);
+      if (g.life) g.life.store.wallets[g.life.code] = money0;
       Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h, mode: 'foot', vehicle: null }); pl.rig.root.visible = true; g.cam.yaw = keep.yaw;
       T.t = keep.t; g.setClock(g.clock.y, g.clock.m, g.clock.d, keep.min);
       g.advance(0.3);

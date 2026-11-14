@@ -1298,7 +1298,7 @@ const npcNight = require('./npc_night');
   // travel the rides past the cap are free. The wallet and the card are put back as they were afterwards
   const fare = await p.evaluate(() => {
     const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
-    if (!F || !f) return { none: true };
+    if (!F || !f || !(f.rides.ferry || f.rides.rail)) return { none: true };
     const keep = JSON.stringify(L.city().fares || null), money = L.money, logN = L.city().log.length, r = { card: f.card.name };
     L.city().fares = F.fresh();
     L.store.wallets[L.code] = 1e5;
@@ -1341,6 +1341,27 @@ const npcNight = require('./npc_night');
     check(fare.phone && fare.diary, 'the phone lists the ride and the city\'s fares, and the diary keeps it');
     if (fare.cap) check(fare.free && Math.abs(fare.spent - fare.cap) < 0.005, `the day's cap of ${fare.cap}: ${fare.rides} rides spend ${fare.spent}, and the next is free`);
     await shot('fare');
+  }
+  // a ticket at a gate (a ride of kind "lift": SHIBUYA SKY): the survey's first visit is on its pass, the next is the
+  // counter's price for the hour, taken from the wallet and shown on the card, and the way down is on the ticket
+  const ticket = await p.evaluate(() => {
+    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares, T = f && f.rides.lift;
+    if (!F || !T) return { none: true };
+    const [id, r0] = Object.entries(T.routes)[0], l = g.lifts.find(q => q.id === id), r = Object.assign({}, T, r0);
+    const keep = JSON.stringify(L.city().fares || null), money = L.money, seen = Object.assign({}, L.city().seen), logN = L.city().log.length;
+    L.city().fares = F.fresh(); L.store.wallets[L.code] = 1e5; delete L.city().seen[`ticket:lift:${id}`];
+    const top = l.stops[l.stops.length - 1].name, up = () => F.admit({ kind: 'lift', route: id, from: r.from, to: top, name: l.name, toName: top });
+    const a = up(), m1 = L.money, b = up(), m2 = L.money;
+    const want = r.times ? r.times.filter(([t0]) => g.clock.min >= +t0.slice(0, 2) * 60 + +t0.slice(3)).pop()[1] : r.flat;
+    const text = F.shown ? F.shown.textContent : '';
+    const down = F.admit({ kind: 'lift', route: id, from: top, to: r.from, name: l.name, toName: r.from });
+    const out = { name: r.name, free: !!(a && a.free) && m1 === 1e5, due: b && b.due, want, paid: m1 - m2, shows: text.includes(L.fmt(want)), down: down === null, fmt: L.fmt(want) };
+    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().seen = seen; L.city().log.length = logN;
+    return out;
+  });
+  if (!ticket.none) {
+    check(ticket.free, `${ticket.name}: the survey's first visit is on its pass`);
+    check(ticket.due === ticket.want && ticket.paid === ticket.want && ticket.shows && ticket.down, `${ticket.name}: the next visit is the counter's ${ticket.fmt} for the hour, taken and shown, and the way down is on it (due ${ticket.due}, paid ${ticket.paid})`);
   }
 
   // a crossing to a landing past the frame (pipeline/outposts.py: Queenstown's Earnslaw to Walter Peak, 12.5 km
@@ -2401,6 +2422,24 @@ const npcNight = require('./npc_night');
     if (near) check(near.tracked === near.line, `arriving beside ${near.giver} tracks the line ${near.line} (tracked: ${near.tracked})`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.qs().track = k.track; g.advance(0.2); }, keep);
   }
+
+  // the tap itself (last of all: the time it takes moves nothing the steps above see): on foot, a tap on raises the right hand with the phone in it to the reader and lowers it again
+  const tapPose = await p.evaluate(() => {
+    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
+    if (!F || !f || g.player.mode !== 'foot' || !g.player.rig || !g.player.rig.fist) return { none: true };
+    const keep = JSON.stringify(L.city().fares || null), seen = Object.assign({}, L.city().seen), money = L.money, logN = L.city().log.length;
+    const kind = f.rides.rail ? 'rail' : f.rides.ferry ? 'ferry' : null;
+    if (kind) F.on({ kind, from: 'x', name: 'x', route: '' });
+    else { const [id, r] = Object.entries(f.rides.lift.routes)[0]; F.admit({ kind: 'lift', route: id, from: r.from, to: 'top', name: r.name }); }
+    const z0 = g.player.z, fist = new THREE.Vector3();
+    g.advance(0.45);
+    const ph = g.world.getObjectByName('tap_phone'), held = !!g.player.rig.hold, up = g.player.rig.fist(fist) ? fist.y - z0 : 0, shown = !!ph && ph.visible;
+    g.advance(1.5);
+    const after = !g.player.rig.hold && !(ph && ph.visible);
+    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().seen = seen; L.city().log.length = logN;
+    return { held, up, shown, after };
+  });
+  if (!tapPose.none) check(tapPose.held && tapPose.shown && tapPose.up > 0.85 && tapPose.after, `a tap holds the phone out to the reader (the hand ${tapPose.up.toFixed(2)} m up, the phone ${tapPose.shown ? 'in it' : 'not shown'}) and puts it away (${tapPose.after})`);
 
   await advances();
   await b.close();

@@ -56,7 +56,7 @@
   ],
   "load_bytes": {
    "model": 1419706,
-   "game": 1864143
+   "game": 1864407
   }
  },
  {
@@ -844,8 +844,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 4003410,
-   "game": 4560681
+   "model": 4003430,
+   "game": 4560701
   },
   "group_meta": {
    "native": "\u6771\u4eac",
