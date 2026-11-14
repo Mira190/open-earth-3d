@@ -45,8 +45,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   const p = lean ? await ctx.newPage() : await b.newPage({ viewport: { width: w, height: h } });
   // a software renderer picks the low tier for itself; stills are taken at the desktop one
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || (lean ? 'low' : 'high'));
-  // DIED=n: as after this map's page died n times on the device (quality.js died): the lighter sets, with LEAN=1
-  if (process.env.DIED) await p.addInitScript(([c, n]) => { try { localStorage.setItem(`oe3d-died-${c}`, JSON.stringify({ n, t: Date.now() })); } catch (e) { /* storage blocked */ } }, [city, +process.env.DIED]);
+  // LV=n: a phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest), with LEAN=1
+  if (process.env.LV) await p.addInitScript(n => { try { localStorage.setItem('oe3d-lv', n); } catch (e) { /* storage blocked */ } }, process.env.LV);
   // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
   await p.addInitScript({ content: fs.readFileSync(path.join(__dirname, 'plush.js'), 'utf8') }); // (the plush traveller, for "plush")
