@@ -318,8 +318,25 @@ After dark: the ball lights, the cafe canopies' and the portal's downlights, the
 museum's foot, the hall's ceiling and the steel ovoid's holes are the bake's lights; a fifth of the windows
 are lit.
 
-Level: 71,000 triangles and 4.5 MB; fine model (the rail's crosses and rings, glazing bars, ladders, joints)
-18,000 triangles and 0.5 MB, drawn within 75 m and never on the low tier.
+Level: 82,000 triangles and 4.7 MB; fine model (the rail's crosses and rings, glazing bars, the cafe's tables
+and chairs, ladders, joints) 24,000 triangles and 0.7 MB, drawn within 75 m and never on the low tier.
+
+**Where a game's finish comes from, looked at again** (the owner's question after the second pass: is this
+at the bar, and how do the big games get there). It is not at the bar yet. What the studios publish says the
+finish is mostly light and wear, decided offline, and little of it is triangle count:
+
+| Work | What it says | Taken here |
+|---|---|---|
+| *The Last of Us* (Naughty Dog; M. Iwanicki, "Lighting Technology of The Last of Us", SIGGRAPH 2013, [archive](https://history.siggraph.org/learning/lighting-technology-of-the-last-of-us-by-iwanicki)) and *Part II* (H. Doghramachi, SIGGRAPH 2020, [archive](https://history.siggraph.org/?p=76961)) | The ambient light is precomputed, and it is "a crucial component": most of what reads as quality is the soft dark where things meet, baked, at a fixed frame cost | The sky's light is occluded by rays at build time and kept in the vertices (`hero_kit.sky_occlusion`, the `_BAKE`'s alpha): under benches, canopies, reveals, at every foot. No lightmap, no second UV set, nothing per frame, so a phone gets the same grounding as a desktop |
+| *Forza Horizon 3* (Playground Games; J. Wood, "Shoot for the Sky", GDC 2017, [vault](https://gdcvault.com/play/1024091/), [write-up](https://gamedeveloper.com/business/importing-real-australian-skies-into-i-forza-horizon-3-i-)) | Australia's light, captured: a hard clear sun, and surfaces exposed so that pale stone keeps its colour | Sydney's own grade by day (`city.json` `game.look.grade`): exposure down, contrast up, more warm bounce from the sunlit paving. The film preset left the quay near white |
+| *The Last of Us Part I*'s trim sheets ([80.lv](https://80.lv/articles/the-last-of-us-remake-s-trim-pipeline-in-substance-3d-explained)) | Edges, joints and wear authored once and laid along every run | The parapet and seawall textures are laid once across a band, so stains hang from the coping and the tide band sits at high water, in place of a tile that repeats |
+
+**By the device** (issue 358's rule, applied to finish): what is baked costs the frame nothing and every tier
+has it (the occlusion, the night's light). What is sampled is scaled (anisotropy 8x, 4x, 2x; normal and
+roughness maps on the medium and high tiers only; colour maps halved on the low tier). What is small is
+fetched only near and never on the low tier (the fine model: the balustrade's crosses and rings, glazing bars,
+the cafe's tables and chairs, ladders, joints). The ground is laid on a half-metre grid only where things
+stand on it, so that the occlusion has vertices there, and a metre elsewhere.
 
 **Its own palms.** The lawn's cabbage-tree palms were the map's shared palm, a date palm scaled to each tree's
 surveyed height: a trunk a metre thick at 14 m. The level stands its own where OpenStreetMap maps each tree
@@ -328,7 +345,8 @@ triangles a palm, plain materials, no texture), and the map plants none there (`
 They do not move in the wind as the map's trees do.
 
 Where it still falls short of the bar, as the stills show: the glazed entrance does not mirror the quay as
-the photograph shows; the cafe under the canopies has no tables; the palms stand still in the wind; the
+the photograph shows; the paving answers the sun only through its normal map (no wet sheen, no reflection but in
+the rain); the palms stand still in the wind; nobody sits at the cafe's tables; the
 balustrade, the benches and the lamp posts do not stop a walker (the map's own quay edge does, a hand's
 breadth from the rail); the trees beyond the lawn, the water and the far shore are the map's, at the map's
 detail; and none of it has been seen on a real GPU or a real phone, only on a software renderer.

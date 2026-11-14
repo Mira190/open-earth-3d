@@ -66,9 +66,10 @@ def materials(K):
     return {
         "ground_herring": {"tex": "syd_herring", "rough": 0.78},
         "ground_header": {"tex": "syd_header", "rough": 0.72, "maps": "cn"},
-        "ground_kerb": {"tex": "syd_concrete", "tint": (0.24, 0.235, 0.225), "rough": 0.7, "maps": "c"},
+        "ground_kerb": {"tex": "syd_concrete", "tint": (0.27, 0.25, 0.22), "rough": 0.85, "maps": "c"},
         "ground_iron": {"map": "atlas", "rough": 0.5, "metal": 0.7},
         "ground_stain": {"color": (0.05, 0.05, 0.05), "rough": 0.6, "alpha": 0.22},
+        "ground_petal": {"color": (0.34, 0.24, 0.6), "rough": 0.8, "alpha": 0.5},
         "lawn_grass": {"tex": "grass", "tint": T("grass", (62, 92, 40)), "rough": 0.95, "maps": "cn"},
         "stone_sand": {"tex": "syd_sandstone", "rough": 0.88, "bump": 0.8},
         "stone_sand_d": {"tex": "syd_sandstone", "tint": (0.92, 0.915, 0.9), "rough": 0.88, "bump": 0.8},
@@ -95,7 +96,7 @@ def materials(K):
         "rubber": {"color": (0.02, 0.02, 0.02), "rough": 0.9},
         "glass_green": {"color": (0.03, 0.07, 0.065), "rough": 0.05, "metal": 0.6},
         "glass_dark": {"color": (0.02, 0.03, 0.04), "rough": 0.04, "metal": 0.5},
-        "glass_hall": {"color": (0.03, 0.04, 0.045), "rough": 0.03, "metal": 0.2, "alpha": 0.3},
+        "glass_hall": {"color": (0.03, 0.04, 0.045), "rough": 0.02, "metal": 0.7, "alpha": 0.42},
         "atlas_flat": {"map": "atlas", "rough": 0.8},
         "atlas_cloth": {"map": "atlas", "rough": 0.9},
         "atlas_bronze": {"map": "atlas", "rough": 0.38, "metal": 0.85},
@@ -606,8 +607,14 @@ class Level:
         edge_course = LineString([(x - KERB - 0.3, y) for x, y in shore]).buffer(0.3, cap_style=2)
         lawn_course = lawn_k.buffer(0.4, join_style=2).difference(lawn_k)
         band = unary_union(bands + [edge_course, lawn_course]).intersection(prom)
-        hp.pave(geo, "ground_herring", G, prom.difference(band), rep["syd_herring"], rot=along + math.pi / 4)
-        hp.pave(geo, "ground_header", G, band, rep["syd_header"], rot=along)
+        # laid on a half-metre grid where things stand on it (the quay's edge, the seat wall's foot, under the cafe's
+        # canopies), so that the baked occlusion has vertices to darken under a bench and at a wall's foot; a metre elsewhere
+        F = self.F
+        close = unary_union([LineString(shore).buffer(4.4, cap_style=2), LineString([WALL[0], WALL[1]]).buffer(1.8, cap_style=2)]
+                            + [Polygon([F.P(ua, 0.4, 0)[:2], F.P(ub, 0.4, 0)[:2], F.P(ub, 7.0, 0)[:2], F.P(ua, 7.0, 0)[:2]]) for ua, ub in ((16.0, 32.0), (45.0, 61.5))])
+        for mat, area, key, rot in (("ground_herring", prom.difference(band), "syd_herring", along + math.pi / 4), ("ground_header", band, "syd_header", along)):
+            hp.pave(geo, mat, G, area.difference(close), rep[key], rot=rot)
+            hp.pave(geo, mat, G, area.intersection(close), rep[key], rot=rot, cell=0.5)
         for mat in ("ground_herring", "ground_header"):       # (the rise to the kerb, over the map's own coping)
             for q in geo.parts[mat]["p"]:
                 q[2] += self.lift(q[0], q[1])
@@ -1106,12 +1113,44 @@ class Level:
         for y in (190.5, 192.9, 241.0, 243.4, 263.5):       # more of them, facing the water (not mapped: placed)
             x = self.edge(y) - 2.5
             hp.bench(geo, (x, y), hd0(y), self.gz(x, y) + 0.04, metal="metal_rail")
-        from shapely.geometry import Point
+        from shapely.geometry import Point, Polygon
         inner = self.site.buffer(-0.3)
         for nd in self.nodes(barrier="bollard"):
             x, y = nd["xy"]
             if Y0 < y < Y1 - 0.5 and inner.contains(Point(x, y)):
                 hp.bollard(geo, (x, y), G.z(x, y) + 0.03, band="paint_white")
+        # the cafe under the wings' canopies: round tables with three chairs each (seen from the lawn as a row of legs
+        # and backs, so in the fine model)
+        F, fine = self.F, geo.fine
+        crng = np.random.default_rng(5)
+        for (ua, ub) in ((17.2, 31.2), (46.0, 60.4)):
+            for u in np.arange(ua + 1.6, ub - 1.0, 2.6):
+                for o in (2.0, 3.9):
+                    c = F.P(u + crng.normal(0, 0.15), o + crng.normal(0, 0.1), 0)
+                    z = G.z(c[0], c[1]) + 0.04
+                    c = np.array([c[0], c[1], z])
+                    fine.lathe("metal_steel", c, [(0.22, 0.0), (0.22, 0.02), (0.03, 0.04), (0.03, 0.7), (0.36, 0.7), (0.36, 0.73), (0.0, 0.73)], segs=10)
+                    a0 = crng.random() * 6.28
+                    for k in range(3):
+                        th = a0 + k * 2.09 + crng.normal(0, 0.15)
+                        d = np.array([math.cos(th), math.sin(th), 0.0]); sd = np.array([-d[1], d[0], 0.0])
+                        q = c + d * (0.62 + 0.1 * crng.random())
+                        fine.box("metal_dark", q + [0, 0, 0.43], (sd, d), (0.4, 0.4, 0.03))
+                        fine.box("metal_dark", q + d * 0.19 + [0, 0, 0.46], (sd, d), (0.4, 0.025, 0.36))
+                        for sa, sb in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                            fine.box("metal_dark", q + sd * 0.18 * sa + d * 0.18 * sb, (sd, d), (0.025, 0.025, 0.43))
+        # jacaranda petals, fallen in drifts under the jacarandas at the lawn's north end and on the forecourt (the
+        # still's date is in their bloom: the map's trees are in flower)
+        prng2 = np.random.default_rng(9)
+        for nd in self.nodes(natural="tree"):
+            x, y = nd["xy"]
+            if not (Y0 + 2 < y < Y1 - 2) or Polygon(PALM_RING).contains(Point(x, y)) or not inner.contains(Point(x, y)):
+                continue
+            for _ in range(24):          # (specks and small drifts, thicker near the trunk)
+                r, th = 0.4 + 4.0 * prng2.random() ** 1.5, prng2.random() * 6.28
+                q = (x + r * math.cos(th), y + r * math.sin(th))
+                if inner.contains(Point(q).buffer(0.3)):
+                    hp.blob(geo, "ground_petal", G, q, 0.04 + 0.12 * prng2.random() ** 2, prng2, dz=0.075, stretch=1.0 + prng2.random())
         # wayfinding pylons
         for (x, y, hd) in ((self.wall_x(170.0) + 2.6, 170.0, 0.2), (-178.5, 270.0, -0.3)):
             c = np.array([x, y, G.z(x, y) + 0.03])
@@ -1177,5 +1216,5 @@ def build(K):
     L = Level(K)
     geo, atlas = L.build()
     meta = {"id": ID, "at": [-195.0, 230.0], "r": 85.0, "z": 4.0, "glb": f"hero/{ID}.glb", "fine": f"hero/{ID}_fine.glb",
-            "cell": 44.0, "fine_cell": 22.0, "bake_gain": 0.6}
+            "cell": 44.0, "fine_cell": 22.0, "bake_gain": 0.6, "sky_rays": 24, "sky_reach": 5.0, "sky_strength": 1.0}
     return geo, atlas, mats, meta
