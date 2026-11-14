@@ -6,7 +6,9 @@
 //   "hero": [{"id": "kabukicho", "glb": "hero/kabukicho.glb", "at": [x, y], "r": 140,
 //             "hide": ["kbhero_kb_atlas", ...],       // landmark meshes it draws instead, hidden while it is shown
 //             "bake": 1.0, "glow": [0.35, 1.6],       // its baked night light's gain; its signs' glow by day and by night
-//             "street": 0.4}]                         // the share of the city's street lights it takes (its own are baked)
+//             "street": 0.4,                          // the share of the city's street lights it takes (its own are baked)
+//             "fine": "hero/kabukicho_fine.glb",      // its finest parts (blender/hero_kit.py Geo.fine): see below
+//             "fine_m": 70}]                          // how near the camera a square of them is drawn (m)
 // The model is built in the city's local frame (blender/build_hero.py: x east, y north, z up, which glTF
 // carries as three.js's x, z, -y, as the game draws every local point) and meshopt-compressed.
 //
@@ -22,12 +24,17 @@
 //   win*             windows: dark glass by day, lit after dark where its emissive map says a room is lit
 //   ground*          what you walk or drive on: wet in the rain, and a mirror then on the high tier
 //
+// What cannot be seen costs nothing (issue 358): the level is cut into squares (one mesh per material and
+// square), so that the squares behind the camera are not drawn; and its finest geometry (a railing's rails, a
+// window's glazing bars, a bench's slats) is a second model, `fine`, that is fetched only when the camera is
+// inside the level, drawn square by square within fine_m of the camera, and never fetched on the low tier (phones).
+//
 // It is loaded when the camera comes within r + LOAD_M of its centre and let go (its GPU memory freed) past
 // r + DROP_M. On the low tier (phones) it goes without its normal and roughness maps, and its other textures
 // are halved (on a phone's lean sub-tier, no side over 1024) before they are sent to the GPU (docs/HERO.md).
 'use strict';
 window.OEHero = (function () {
-  const LOAD_M = 260, DROP_M = 520, SHOW_M = 420;
+  const LOAD_M = 260, DROP_M = 520, SHOW_M = 420, FINE_LOAD_M = 30, FINE_M = 70;
 
   // the baked light (_BAKE) and the glow's hum, in every material of a hero model
   const BAKE_V = `attribute vec4 _bake;\nvarying vec4 vHeroBake;\n`;
@@ -39,7 +46,7 @@ window.OEHero = (function () {
     const group = new THREE.Group();
     group.name = 'hero';
     Wd.world.add(group);
-    const levels = list.map(h => ({ h, state: 'idle', root: null, mats: [], tubes: [], chases: [], hidden: [] }));
+    const levels = list.map(h => ({ h, state: 'idle', root: null, mats: [], tubes: [], chases: [], wins: [], hidden: [], fine: 'idle', fineRoot: null, fineMeshes: [] }));
     const uBake = { value: 1 }, uStreet = { value: 1 }, uNight = U && U.uNight ? U.uNight : { value: 0 };
 
     // a hero material, patched once: its baked light and occlusion, then the city's street lights
@@ -122,6 +129,7 @@ window.OEHero = (function () {
             patch(m, L.h);
             const n = (m.name || '').toLowerCase();
             if (/^tube/.test(n)) L.tubes.push({ m, seed: Math.random() * 1000, off: 0 });
+            if (/^win/.test(n)) { m.userData.heroWin = m.emissiveIntensity || 1; L.wins.push(m); }
             if (/^chase/.test(n) && m.emissiveMap) { m.emissiveMap = m.emissiveMap.clone(); m.emissiveMap.wrapS = THREE.RepeatWrapping; m.emissiveMap.needsUpdate = true; L.chases.push(m); }
             if (opts.mirror && /^ground/.test(n)) opts.mirror.patch(m);
           }
@@ -140,6 +148,29 @@ window.OEHero = (function () {
       }, undefined, e => { console.warn(`hero ${L.h.id} unavailable:`, e); L.state = 'failed'; });
     }
 
+    // the level's finest parts: a model of plain geometry, fetched once the camera is inside the level (never on
+    // the low tier), each of its squares drawn only near the camera
+    function loadFine(L) {
+      L.fine = 'loading';
+      new THREE.GLTFLoader().load(base + L.h.fine, g => {
+        if (L.fine !== 'loading' || L.state !== 'ready') { dispose(g.scene); if (L.fine === 'loading') L.fine = 'idle'; return; }
+        const root = g.scene, seen = new Set();
+        root.name = `hero-${L.h.id}-fine`;
+        root.traverse(o => {
+          if (!o.isMesh) return;
+          o.castShadow = false; o.receiveShadow = true; // (too fine to throw a shadow a shadow map resolves)
+          o.matrixAutoUpdate = false; o.updateMatrix();
+          o.geometry.computeBoundingSphere();
+          o.visible = false;
+          L.fineMeshes.push(o);
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m && !seen.has(m)) { seen.add(m); L.mats.push(m); patch(m, L.h); }
+        });
+        root.updateMatrixWorld(true);
+        group.add(root);
+        L.fineRoot = root; L.fine = 'ready';
+      }, undefined, e => { console.warn(`hero ${L.h.id} fine parts unavailable:`, e); L.fine = 'failed'; });
+    }
+
     function dispose(root) {
       root.traverse(o => {
         if (!o.isMesh) return;
@@ -153,8 +184,9 @@ window.OEHero = (function () {
 
     function drop(L) {
       if (L.root) { group.remove(L.root); dispose(L.root); }
+      if (L.fineRoot) { group.remove(L.fineRoot); dispose(L.fineRoot); }
       showHidden(L, true);
-      Object.assign(L, { state: 'idle', root: null, mats: [], tubes: [], chases: [] });
+      Object.assign(L, { state: 'idle', root: null, mats: [], tubes: [], chases: [], wins: [], fine: 'idle', fineRoot: null, fineMeshes: [] });
     }
 
     // the city's own landmark meshes the hero level draws instead, hidden while it is shown
@@ -164,6 +196,7 @@ window.OEHero = (function () {
     }
 
     let t = 0;
+    const eye = new THREE.Vector3(), ctr = new THREE.Vector3();
     function update(camera, dt) {
       t += dt || 0;
       const cx = camera.position.x, cy = -camera.position.z, night = uNight.value;
@@ -175,7 +208,20 @@ window.OEHero = (function () {
         if (L.state !== 'ready') continue;
         const show = d < SHOW_M;
         if (L.root.visible !== show) { L.root.visible = show; showHidden(L, !show); }
+        if (L.fineRoot) L.fineRoot.visible = show;
         if (!show) continue;
+        // its finest parts: fetched once the camera is in or by the level, each square drawn within fine_m of the camera
+        if (L.h.fine && tier !== 'low' && L.fine === 'idle' && d < FINE_LOAD_M) loadFine(L);
+        if (L.fine === 'ready') {
+          const fm = L.h.fine_m || FINE_M;
+          camera.getWorldPosition(eye);
+          for (const o of L.fineMeshes) {
+            const bs = o.geometry.boundingSphere;
+            o.visible = ctr.copy(bs.center).applyMatrix4(o.matrixWorld).distanceTo(eye) - bs.radius < fm;
+          }
+        }
+        // the rooms behind its windows: dark glass by day, lit after dark
+        for (const m of L.wins) m.emissiveIntensity = m.userData.heroWin * (0.05 + 0.95 * night);
         uBake.value = L.h.bake == null ? 1 : L.h.bake;
         uStreet.value = L.h.street == null ? 1 : L.h.street;
         const [gd, gn] = L.h.glow || [0.35, 1.6], k = gd + (gn - gd) * night;
@@ -190,9 +236,10 @@ window.OEHero = (function () {
     }
 
     return {
-      group, levels, update,
+      group, levels, update, tier,
       // (for the harnesses: whether each is loaded and shown, tools/game_check.js)
-      state: () => levels.map(L => ({ id: L.h.id, state: L.state, shown: !!(L.root && L.root.visible), materials: L.mats.length })),
+      state: () => levels.map(L => ({ id: L.h.id, state: L.state, shown: !!(L.root && L.root.visible), materials: L.mats.length,
+        fine: L.fine, fineShown: L.fineMeshes.filter(o => o.visible).length, fineMeshes: L.fineMeshes.length })),
     };
   }
 
