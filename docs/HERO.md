@@ -241,38 +241,122 @@ shop names, noren, lantern papers and boards are drawn in Python with Shippori M
 ## Circular Quay West (Sydney)
 
 From First Fleet Park's edge to the taxi rank under the Overseas Passenger Terminal: 135 m of the quay in
-front of the Museum of Contemporary Art, where the Sydney map's game starts (the start was moved 15 m, from
-the lawn's path down onto the promenade, so that the first frame looks along it to the harbour). Chosen over
-George Street in The Rocks, 100 m west: the quay is what the start already faces, it holds the map's two
-most photographed things in one view (the museum's sandstone front and the Opera House across the cove), and
-its ground, edge and furniture are all in the open, where a level's detail shows.
+front of the Museum of Contemporary Art, where the Sydney map's game starts, looking along the promenade to
+the harbour with the Opera House across the cove on the right. Chosen over George Street in The Rocks, 100 m
+west: the quay is what the start already faces, it holds the map's two most photographed things in one view
+(the museum's sandstone front and the Opera House), and its ground, edge and furniture are all in the open,
+where a level's detail shows.
+
+The first pass (pull request 444) was built without a photograph of the promenade itself, and guessed: sawn
+granite planks, tall twin-arm lamp posts, a sandstone coping and no rail. The second pass looked at the
+place first (the photographs are listed below) and rebuilt what the guesses had wrong:
+
+| What a walker sees | As built now | From |
+|---|---|---|
+| The paving | unit pavers 200 x 100 mm in a herringbone at 45 degrees to the quay, buff-grey in close tones of one family, darker soldier courses across it every 7.4 m and along the kerb and the lawn | photographs 1, 7; the bond's size is a standard paver's, not measured |
+| The water's edge | a broad kerb, the quay's dark green cast-iron balustrade on it (posts 2 m apart with ball heads, a round top rail, a cross and ring in each panel), orange lifebuoys on the rail; under it the concrete face with its pour lines, wet below high water, white fender piles with ladders | photographs 1, 7 |
+| The lights | the quay's ball lights: white globes on slender dark posts along the rail and the lawn's wall, lit at dusk | photographs 2, 7 |
+| The banners | white flagpoles 10 m tall between the lights, each flying a tall banner across the promenade | photographs 1, 7; the banners' art is this project's |
+| The museum's front | each bay a recess running up through the storeys between flat piers, paired steel windows and a stone spandrel to a storey; pavilions of five storeys and 21.4 m, wings of six and 27.4 m with a row of small windows under a deep plain attic; the tower's stepped great piers; the entrance a portal of polished brown granite with bronze doors; the cafe's flat white canopies along the wings' feet | photographs 2, 3, 8, 9 |
+| The Mordant Wing | on OpenStreetMap's outline: a frameless glazed entrance two storeys high under stacked white boxes with a ribbon of glass between, the dark box with the museum's name over the way through to George Street, the black box with its glazed corner on top; the white precast wall north of it with the name at eye level and Brook Andrew's arrow on its concrete foot | photographs 4, 5 |
+| The lawn | a pale concrete seat wall along the promenade, and the cabbage-tree palms along it, slender, where OpenStreetMap maps each | photographs 2, 6, 9 |
 
 What is measured, and from where:
 
 | Thing | Source |
 |---|---|
-| The museum's outline, its end pavilions (9.3 m forward, 14 m wide), the tower's face (13.2 m, 1.6 m proud), the lawn, the retaining wall's line, every tree, bench, bollard, cover and artwork, the eight Writers Walk plaques here by name | OpenStreetMap (`cities/sydney/hero_osm.json`, ODbL) |
+| The museum's outline, its end pavilions (9.3 m forward, 14 m wide), the tower's face (13.2 m, 1.6 m proud), the Mordant Wing's plan, the lawn, the seat wall's line, every bench, bollard, cover and artwork, the eight Writers Walk plaques here by name | OpenStreetMap (`cities/sydney/hero_osm.json`, ODbL) |
 | The ground: the lawn at 3.9-4.0 m, the promenade at 2.5 m, the slope between | the game's own surface (`hero_ground.json`: NSW Spatial Services' 5 m elevation, softened, the quay raised to its wall) |
-| The quay's edge | the game's shore raster (`shore.png`), smoothed to the wall's line |
-| The front's composition and heights: three bays to a pavilion and four to a wing, paired windows, a 4.3 m storey, pavilions 23 m, wings 26 m, the tower 35 m (the same as the map's own figure), the glass floor on the roof | photographs on Wikimedia Commons: "Museum of Contemporary Art Australia, Sydney, 2023" (CC BY-SA 4.0), "The Museum of Contemporary Art, Sydney (former MSB Building)" (CC BY-SA 4.0), "(1)Museum of Contemporary Art-3" (CC BY-SA 3.0); looked at, not copied into the model |
+| The quay's face | the game's shore raster (`shore.png`), read as a few straight runs with eased corners |
+| The front's heights | the tower's 35 m is the map's own figure; the wings and pavilions are in the proportion photograph 2 shows against it |
 
-The city's model has the museum as four plain blocks without its end pavilions or the Mordant Wing; the
-level builds both as its own shells (they have no collision: issue 426), and skins the rest 0.45 m in
-front of the city's walls. The entrance hall behind the Mordant Wing's glass is a room in geometry (floor,
-back wall hung with canvases, a ceiling of light), so that it shifts as you walk past, which a picture of a
-room does not. The two rows of palms along the lawn's wall are the map's own trees (an area in `city.json`
-`trees.areas` makes them palms where they were jacarandas), so that they move in the wind and are not drawn twice.
+Photographs looked at (Wikimedia Commons; none is reproduced, and no texture is taken from one):
 
-After dark: the lamp posts' luminaires, the up-lights along the museum's foot, the hall's ceiling and the
-steel ovoid's holes are the bake's lights; a fifth of the windows are lit.
+| | File | Licence | Used for |
+|---|---|---|---|
+| 1 | AUS Sydney, Central Business District, Circular Quay 012.jpg | see its page | the promenade from above: the herringbone, the bands, the rail, the banners' poles, benches at the rail |
+| 2 | Museum of Contemporary Art Australia, Sydney, 2023.jpg | CC BY-SA 4.0 | the front's composition, heights, stains, canopies, the ball lights, the palms on the lawn |
+| 3 | The Museum of Contemporary Art, Sydney (former MSB Building).jpg | CC BY-SA 4.0 | the front again, the tower's piers |
+| 4 | (1)Museum of Contemporary Art-3.jpg | CC BY-SA 3.0 | the Mordant Wing's entrance: boxes, glass, lettering, the arrow |
+| 5 | MCA 2014.10.26.JPG | see its page | the wing's dark box and the way under it |
+| 6 | The Rocks NSW 2000, Australia - panoramio (47).jpg | see its page | the lawn's seat wall |
+| 7 | Museum of Contemporary Art, Sydney, NSW (7834205430).jpg | see its page | the quay from the water: the concrete face, the fender piles, the rail, globes and banners in a row |
+| 8 | Sydney Museum of Contemporary Art Australia Southern entrance.jpg | see its page | the stone's coursing and joints, the polished granite of a door's surround |
+| 9 | SydneyMuseumContemporaryArt gobeirne.jpg | see its page | the whole front over the lawn |
 
-What could not be checked: the lamp posts' and benches' design (Sydney's quay posts are drawn as a tapered
-dark post with two outreach luminaires and a banner pair; the banners' and pylons' graphics are this
-project's), the paving's bond and colour (a grey sawn granite with darker bands), the height of the lawn's
-wall (the game's softened ground makes the 1.5 m drop a 7% ramp, so the wall is drawn as a 0.45 m seat wall),
-the Mordant Wing's exact massing (boxes after photographs), the ovoid's dimensions, whether the quay's edge
-here has a rail (OpenStreetMap maps fences only at the wharves: none is drawn), and the palms' species (the
-shared palm is a date palm; the real ones are slender fan palms).
+**Surfaces drawn, not scanned** (`cities/sydney/hero_tex.py`, registered with the kit by `hero_kit.register`).
+No CC0 scan had the quay's herringbone or a sawn sandstone without a brick's joints (the first pass tinted
+`Bricks066`, and the museum read as yellow brick), so the level draws its own, seamless, from shaped noise:
+the pavers (1.6 m to a repeat at 1K: a texel is 1.6 mm, a pixel's width on the ground two metres from the eye
+at 1440 px), their soldier course (512), the sandstone ashlar in 380 mm courses, the quay's concrete face (laid once from kerb to water, so the wet
+band sits at high water) and precast concrete (512). Every change of tone in them has a cause in how the
+thing is made (a paver, a course, a joint, a pour, the tide). The first drafts also had rain runs under the
+copings, stains and fallen petals on the paving, weed on the seawall and pavers in three tones; all of that
+went when the owner's rule arrived that nothing is aged and the ground is clean, in one family of tones
+(AGENTS.md, "The bar"). Only what shows carries a normal or a roughness map. The only scanned sets left are `Grass004` and
+`Granite005A`.
+
+**Texels where the eye is.** A paving seen from 1.65 m is seen at a grazing angle, and without anisotropic
+filtering its joints smear to a blur four metres ahead however fine the texture: `hero.js` now sets 8x
+anisotropy on a level's texture maps on the high tier, 4x on the medium one and 2x on the low one (a sampler
+setting: no memory).
+
+**The city under the level** (issue 426, `cities/sydney/museum.py`). The city's model had the museum as its
+four mapped parts only; the pavilions and the Mordant Wing were the level's shells over nothing. They are in
+the city's data now (the outline's remainder, cut as the level stacks it, each face 0.3 to 0.6 m behind the
+level's), so they stop a walker, throw the city's shadow and stand in the visibility raster whether the level
+is loaded or not. The entrance hall is left open under them, since the level draws it as a room behind glass;
+what stops a walker at the glass is a wall that is not drawn, among the city's landmark meshes (`city.py`
+`museum_hall`: a material of no opacity that is never a floor, as the Opera House's seat rows have; a solid
+in `hidden_solids` would not do, the walking model leaves those out). `game.hero[].solid` and `.open` name
+points that must be solid and must stay walkable; `tools/game_check.js` checks both, and found the first
+attempt at the hall wanting.
+
+The map's own quay wall has a sandstone-coloured coping 0.1 m over the ground along the shore raster's
+stepped line; the level's pavers rise to the kerb over it in their last metre (`Level.lift`), so it does not
+show.
+
+After dark: the ball lights, the cafe canopies' and the portal's downlights, the up-lights along the
+museum's foot, the hall's ceiling and the steel ovoid's holes are the bake's lights; a fifth of the windows
+are lit.
+
+Level: 79,000 triangles and 4.5 MB; fine model (the rail's crosses and rings, glazing bars, the cafe's tables
+and chairs, ladders, joints) 24,000 triangles and 0.7 MB, drawn within 75 m and never on the low tier.
+
+**Where a game's finish comes from, looked at again** (the owner's question after the second pass: is this
+at the bar, and how do the big games get there). It is not at the bar yet. What the studios publish says the
+finish is mostly light, decided offline, and little of it is triangle count:
+
+| Work | What it says | Taken here |
+|---|---|---|
+| *The Last of Us* (Naughty Dog; M. Iwanicki, "Lighting Technology of The Last of Us", SIGGRAPH 2013, [archive](https://history.siggraph.org/learning/lighting-technology-of-the-last-of-us-by-iwanicki)) and *Part II* (H. Doghramachi, SIGGRAPH 2020, [archive](https://history.siggraph.org/?p=76961)) | The ambient light is precomputed, and it is "a crucial component": most of what reads as quality is the soft dark where things meet, baked, at a fixed frame cost | The sky's light is occluded by rays at build time and kept in the vertices (`hero_kit.sky_occlusion`, the `_BAKE`'s alpha): under benches, canopies, reveals, at every foot. No lightmap, no second UV set, nothing per frame, so a phone gets the same grounding as a desktop |
+| *Forza Horizon 3* (Playground Games; J. Wood, "Shoot for the Sky", GDC 2017, [vault](https://gdcvault.com/play/1024091/), [write-up](https://gamedeveloper.com/business/importing-real-australian-skies-into-i-forza-horizon-3-i-)) | Australia's light, captured: a hard clear sun, and surfaces exposed so that pale stone keeps its colour | Sydney's own grade by day (`city.json` `game.look.grade`): exposure down, contrast up, more warm bounce from the sunlit paving. The film preset left the quay near white |
+| *The Last of Us Part I*'s trim sheets ([80.lv](https://80.lv/articles/the-last-of-us-remake-s-trim-pipeline-in-substance-3d-explained)) | Edges, joints and wear authored once and laid along every run | The seawall's texture is laid once from kerb to water, so the wet band sits at high water, in place of a tile that repeats. Wear itself is not taken: nothing here is aged |
+
+**By the device** (issue 358's rule, applied to finish): what is baked costs the frame nothing and every tier
+has it (the occlusion, the night's light). What is sampled is scaled (anisotropy 8x, 4x, 2x; normal and
+roughness maps on the medium and high tiers only; colour maps halved on the low tier). What is small is
+fetched only near and never on the low tier (the fine model: the balustrade's crosses and rings, glazing bars,
+the cafe's tables and chairs, ladders, joints). The ground is laid on a half-metre grid only where things
+stand on it, so that the occlusion has vertices there, and a metre elsewhere.
+
+**Its own palms.** The lawn's cabbage-tree palms were the map's shared palm, a date palm scaled to each tree's
+surveyed height: a trunk a metre thick at 14 m. The level stands its own where OpenStreetMap maps each tree
+(`Level.palm`: a slender ringed trunk, thirty fan leaves from upright to hanging, the oldest brown; about 600
+triangles a palm, plain materials, no texture), and the map plants none there (`city.py` `landmark_treeless`).
+They do not move in the wind as the map's trees do.
+
+Where it still falls short of the bar, as the stills show: the glazed entrance does not mirror the quay as
+the photograph shows; the paving answers the sun only through its normal map (no wet sheen, no reflection but in
+the rain); the palms stand still in the wind; nobody sits at the cafe's tables; the
+balustrade, the benches and the lamp posts do not stop a walker (the map's own quay edge does, a hand's
+breadth from the rail); the trees beyond the lawn, the water and the far shore are the map's, at the map's
+detail; and none of it has been seen on a real GPU or a real phone, only on a software renderer.
+
+What could not be checked: the paver's exact size and colours, the kerb's width, the balustrade's exact
+casting (read from two distant photographs), the lamp posts' height, the Mordant Wing's storey heights and
+setbacks (stacked after photographs 4 and 5 on the measured plan), the ovoid's dimensions, and the palms'
+heights (11 to 15.5 m by a seeded draw).
 ## Only what the first frame sees (issue 358)
 
 The levels by a map's spawn (Kamakura's first) apply issue 358's rule to detail: memory and shading go to
@@ -646,8 +730,12 @@ Where it still falls short of the bar, as the stills show: the facade's ornament
 photographs, not the Shinkenchiku 2012/11 drawings; the dome interiors are not built; the
 ventilation towers in the transport plazas are still the city's plain solids; bus and taxi
 stands have no signs, rails or road paint; the towers round the plaza are the city's generic
-glass; from the air the streets outside the forecourt show the aerial photograph; trees are the
-shared models, not zelkova.
+glass; trees are the shared models, not zelkova.
+
+- **The streets round it** (`station.streets`): the forecourt's first version stopped at the plaza's
+  edge, and from the air the streets beyond showed the aerial photograph (cars, shadows, a green
+  cast). Within 60 m of the forecourt the mapped carriageways are one asphalt surface (a lane
+  3.2 m), with lane dashes and the mapped zebras, and pavers to the buildings' feet.
 
 #### Checked
 
@@ -656,3 +744,85 @@ shared models, not zelkova.
 - The game still starts south of the plaza at (553, 1195), now facing the south dome. The plaza
   start waits on the traffic knot at junction 1465 (issue 412).
 - Not checked: a real GPU, WebGPU, Safari and iOS.
+
+### Tokyo Tower's foot (`cities/tokyo/city.py` `tower`, `cities/tokyo/tower_foot.py`)
+
+The tower was 2,400 triangles: four legs each one beam four metres thick, an X a face. At its foot
+that is all a player sees. It is now the lattice as built, 17,000 triangles:
+
+- **Below the main deck**: four legs, each a truss of four chords laced on its four faces, tied leg
+  to leg by a girder a panel with crossed bracing, and the great arch between each pair of feet
+  with its spandrel posts; concrete feet; the lift shaft up the middle.
+- **Above it**: one tapering shaft; seven bands of international orange and white over the 333 m.
+- **By distance**: chords, rings, girders and arches are always drawn, because they make the
+  silhouette from across the map; the lacing and second diagonals (`tower_fine_*`, 9,000
+  triangles, under a pixel from 1.2 km) are drawn within 1.2 km and never unpacked on the low tier.
+- **Foot Town** on its mapped outline (the city's solid there had no height): dark panels over a
+  glazed, lit street floor, a line at the fourth floor, a rail round the roof terrace at 19 m, and
+  TOKYO TOWER in white letters on each long face (Bebas Neue, SIL OFL).
+- **The ground within 150 m**, on OpenStreetMap's outlines (`tower_osm.json`, ODbL), with the
+  station's street painter: asphalt carriageways with dashes and zebras, the rest paved, Shiba
+  Park's wooded slopes plain green under the map's trees. No aerial photograph shows there.
+
+Dimensions: 333 m, decks at 150 m and 250 m, 80 m between the feet (Tokyo Tower's published
+figures, as before). Read off photographs, not drawings: the panel heights, the legs' own width
+(11 m at the foot), the arch's crown at 22.5 m, Foot Town's height and cladding.
+
+Photograph looked at (Wikimedia Commons; not reproduced): BaseofTokyoTower.JPG, WhisperToMe, public
+domain (the legs' trusses, the arch, Foot Town's panels and lettering).
+
+Short of the bar: members are square beams without gusset plates or rivets; the main deck is
+still a plain box; Foot Town has no entrance canopy, shop fronts or signs; the hill's lots are
+plain paving, with no car park lines, walls or railings; stills: `tools/views/tokyo-tower.json`.
+
+## Why the Tokyo level is not at the bar yet, and what closes the gap
+
+The owner asked, after the second pass: is this the photoreal tiny level that was asked for? It is
+not. The stills read as a clean, correct model, not as a photograph. What makes a current game's
+street read as real, from the sources below, and where this level stands on each:
+
+| What carries the look | In a current game | Here now |
+|---|---|---|
+| Indirect light and occlusion | baked or traced: every recess, eave and foot of a wall is darker, light bounces warm off brick | none on the station: it is landmark meshes, which carry no baked light; one flat ambient |
+| Edges | no razor edge: a bevel or a chamfer in the normal catches a highlight along every arris | every block is a box with hard 90 degree edges |
+| Texel density | about 1024 px a metre near a third-person camera, 512 further off | the brick is 1024 px over 1.4 m; stone, slate edges and paving are flat colour |
+| Material response | roughness and normal vary with the material, so light moves across it as the camera does | one roughness a material, no micro-relief on stone, copper or slate |
+| Tone and exposure | scene-referred light, a filmic curve, bloom before it | the shared grade; pale surfaces took a green cast until tinted warm |
+| Scale and life | props at real sizes, signs, rails, wear where hands and feet go | bare: no stands' signs, rails, bins, bicycles |
+
+Order of work that follows from it (first what changes most pixels in the first frame):
+
+1. Move the spawn's hundred metres onto the hero kit (`hero.js`), which already bakes occlusion and
+   night light into the vertices, takes 1K PBR sets and a fine model, and is freed past 520 m: the
+   south pavilion's front, its doors and canopies, the ground in front of it.
+2. Bevel what the eye rests on: window frames, cornices, pilasters, turret rings, kerbs.
+3. Give stone, slate and copper their own PBR sets at the kit's density; brick with real joints.
+4. Dress the transport plaza at real sizes: stand signs, rails, bollards, a taxi rank's paint.
+
+Sources: bevels and why a hard edge reads as cheap ([Radiator](https://www.blog.radiator.debacle.us/2017/07/bevels-in-video-games.html));
+texel density per camera ([Frozenbyte's asset workflow](https://wiki.frozenbyte.com/index.php/3D_Asset_Workflow:_General_Tips));
+trim sheets and their limits ([Chris Radsby](https://chrisradsby.notion.site/Let-s-talk-about-Trim-Sheets-Techniques-16ea5b47012c802eba09d28ec5ce9189));
+baked indirect light as the highest quality for a static scene in a browser, and the post order AO, bloom, tone curve
+([three.js forum](https://discourse.threejs.org/t/achieving-realistic-ambience-in-architectural-three-js-scenes/89753),
+[lighting and PBR on the web](https://slicker.me/three_js/lighting_pbr.htm)); Ghostwire: Tokyo built by hand from
+photographs of walked streets, not from city data ([Automaton](https://automaton-media.com/en/news/20230823-20986/),
+[Unreal Engine](https://www.unrealengine.com/en-US/developer-interviews/ghostwire-taps-into-the-charm-of-tokyo-to-deliver-a-compelling-experience)).
+
+### The Marunouchi level on the kit (`cities/tokyo/hero.py`)
+
+Items 1 to 4 of the order above, November 2026. The station is generated once, by `station.py`, at two
+levels: `far`, the landmark model the map and the viewer hold (now without sashes, frames and
+balusters), and `hero`, the streamed level `web/game/hero.js` draws within 420 m and frees past 520 m
+(`game.hero`, which hides the building's 18 landmark meshes while it is shown).
+
+| | In the level |
+|---|---|
+| Baked light | occlusion in the vertices where the generator knows it (reveals dark at the glass, soffits and undersides, the brick under each cornice and course, the wall's foot), and after dark 123 floodlights at the bays' feet baked as light on the wall; lit rooms, doors, the clock and soffits come on at dusk (`lamp*`) |
+| Edges | `station.slab` chamfers a block's front towards each side that is built (22 mm): frames, sills, pediments, pilasters, balusters |
+| Surfaces | ambientCG CC0 at 1K: `Bricks059` (even facing brick, 0.85 m a repeat) and `RoofingTiles014A` with its fired red taken out for slate; cast stone is its colour alone (a scanned concrete's mottling read as blotches) |
+| Props | a pole with its sign and timetable at each mapped bus and taxi stand, granite benches under the shelters |
+| By device | high and medium tiers: all of it, the fine model (52,000 triangles: frames, sashes, balusters, props) within 110 m; low tier: the 29,000-triangle model with halved colour maps and no normal maps, never the fine model; a phone's lean tier no side over 1024 |
+
+The level is 1.6 MB and its fine model 1.8 MB. Stills: `tools/scramble_shot.js tokyo tools/views/tokyo-marunouchi.json`.
+Still short: the occlusion is where the generator marks it, not traced; ornament is chamfered blocks, not carved;
+the forecourt's ground is still the landmark model's (no baked contact with the walls).

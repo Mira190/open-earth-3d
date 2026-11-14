@@ -22,6 +22,8 @@ window.OpenEarthGame = async function game(cityId) {
 
   // ------------------------------------------------------------ load
   const loadMsg = OEWorld.loadLine('g-'); // (index.html #g-load-msg, #g-load-bar and #g-load-stage)
+  // a step of the load, by name, for the telemetry's note of where a page that died was (telemetry.js prev_stage)
+  const loadStep = name => { try { performance.mark('oe:step', { detail: { view: 'game', city: cityId, step: name } }); } catch (e) { /* no User Timing */ } };
   let D;
   try {
     D = await OEWorld.load(cityId, { game: true, onMsg: loadMsg });
@@ -357,6 +359,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const near = d < 260;
       if (near && !fineTiles[i]) fineTiles[i] = fineTile(i);
       if (fineTiles[i]) fineTiles[i].visible = near;
+      // (a phone: a fine tile left 700 m behind goes, its geometry with it, and is built again on the way back)
+      if (QC.lean && fineTiles[i] && d > 700) { const f = fineTiles[i]; fineTiles[i] = null; world.remove(f); f.traverse(c => { if (c.geometry) c.geometry.dispose(); }); }
       const ud = Wd.groundMeshes[i].material.userData;
       if (near && ud.street && !ud.street.value) ud.street.value = streetTexture(i);
       else if (d > 700 && ud.street && ud.street.value) { ud.street.value.dispose(); ud.street.value = null; } // (drawn again if you come back: 24 MB a tile)
@@ -634,24 +638,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const pendingRig = () => ({ root: new THREE.Group(), pending: true, animate() {} });
   const CR = G.crowd || {};
   // the nearest walkers drawn as real people (people.js crowdRenderer "real"): the city's own NPC cast, and the casts
-  // game.crowd.real_from names (Shibuya's takes Tokyo's too), in their everyday clothes (no uniforms); on the
-  // low tier a few of them (below), since the map built round the player left a phone the room (issue 443)
+  // game.crowd.real_from names (Shibuya's takes Tokyo's too), in their everyday clothes (no uniforms). On the low
+  // tier too: the far crowd's own figures are dolls, with a doll's painted face, and close up on a phone they were
+  // what the owner saw first at the Scramble. A phone has a cast of LOW_CAST, half of them women (each is two or
+  // three pictures at 512 px, 256 on the lighter sets: about 4 MB of the GPU a character, quality.js budget)
+  const LOW_CAST = 8;
   const realCast = () => {
     if (!lib || !lib.npcs || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
     const from = new Set([cityId, ...(CR.real_from || [])]);
-    const cast = Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
-    // (the low tier: four women and four men of the cast, the same ones each visit, so that a phone's nearest
-    // walkers are real people too and it loads eight characters for them, not the cast's fifty)
-    if (QC.name !== 'low') return cast;
-    const few = sex => cast.filter(n => lib.npcs[n].sex === sex).slice(0, QC.lighter ? 2 : 4);
-    return few('f').concat(few('m'));
+    const all = Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
+    if (QC.name !== 'low') return all;
+    const f = all.filter(n => lib.npcs[n].sex === 'f'), m = all.filter(n => lib.npcs[n].sex !== 'f');
+    const cast = QC.budget && QC.budget.cast ? Math.min(LOW_CAST, QC.budget.cast) : LOW_CAST; // (fewer on a phone's lighter sets: quality.js level)
+    return f.slice(0, cast / 2).concat(m.slice(0, cast - Math.min(f.length, cast / 2)));
   };
   let crowdDraw = null; // the crowd's renderer (people.js), for umbrellas in the rain
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   // the walkers there are room for: on the medium and high tiers a city's peak (game.crowd.pedestrians_peak),
   // on the low tier its usual number, so a phone draws no more people than it did
   const crowdPool = QC.name === 'low' ? CR.pedestrians || 300 : CR.pedestrians_peak || CR.pedestrians || 300;
-  const crowd = OEActors.crowd(world, crowdNet, U, crowdPool, CR.radius_m || 450, lib && (P => (crowdDraw = OEPeople.crowdRenderer(world, lib, U, P, { near: touch || QC.name === 'low' ? 6 : 14, style: CR.style, camera, real: realCast(), realHeight: CR.height }))),
+  const crowd = OEActors.crowd(world, crowdNet, U, crowdPool, CR.radius_m || 450, lib && (P => (crowdDraw = OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 10 : 14, style: CR.style, camera, real: realCast(), realHeight: CR.height }))),
     { benches: lib ? benches : null, ground: lineGround, wall: (x, y, z) => nav.solid(x, y, z, 0.2), posts, clear: (x, y, z) => nav.room(x, y, z, 0.3) });
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
@@ -833,8 +839,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function npcStream(dt, cx, cy) { // twice a second: those within NPC_LOAD_M of you
     if ((npcBudget -= dt) > 0) return;
     npcBudget = 0.5;
+    if (QC.lean) { // a phone: one at a time, the nearest first (each is pictures decoded, resized and sent: see afterPlayable)
+      if (npcBusy) return;
+      let best = null, bd = NPC_LOAD_M;
+      for (const n of npcs) if (n.rig.pending && !n.loading) { const d = Math.hypot(n.x - cx, n.y - cy); if (d < bd) { bd = d; best = n; } }
+      if (best) { npcBusy = true; npcLoad(best).then(() => { npcBusy = false; }); }
+      return;
+    }
     for (const n of npcs) if (n.rig.pending && !n.loading && Math.hypot(n.x - cx, n.y - cy) < NPC_LOAD_M) npcLoad(n);
   }
+  let npcBusy = false;
   const npcsReady = () => Promise.all(npcs.map(npcLoad)); // every NPC in place (for the tools that look at them)
 
   // ------------------------------------------------------------ vehicles
@@ -864,7 +878,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if ((padCheck -= 1) > 0) return;
     padCheck = 30; // every half second or so
     const st = heli.st;
-    if (!heli.loaded() && Math.hypot(st.x - player.x, st.y - player.y) < 800) heli.want(); // its model, once you are near it
+    if (!heli.loaded() && Math.hypot(st.x - player.x, st.y - player.y) < (QC.budget && QC.budget.extras === false ? 150 : 800)) heli.want(); // its model, once you are near it
     if (!st.landed || st.on || st.rotor > 0.02 || st.door > 0 || Math.hypot(st.x - player.x, st.y - player.y) < 700) return;
     for (const p of G.helipads) {
       if (Math.hypot(p.at[0] - player.x, p.at[1] - player.y) > 300 || Math.hypot(p.at[0] - st.x, p.at[1] - st.y) < 20) continue;
@@ -3457,7 +3471,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const st = railStation(player.x, player.y, 25, player.z);
     if (st && (rail.cars.length || st.deck)) {
       // (a railway's station: the train standing nearest you, of the two directions' at a loop)
-      const car = rail.cars.filter(c => rail.stationOf(c.id) === st).sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y))[0], other = rail.stations.find(o => o !== st);
+      const car = rail.cars.filter(c => rail.stationOf(c.id) === st && (!c.train || rail.nextStop(c))).sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y))[0], other = rail.stations.find(o => o !== st);
       if (car) return { key: 'E', text: car.train ? `Board the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}` : `Board the ${railRide().name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
       if (st.train) return { key: 'E', text: `${st.name}: the next train in ${fmtSec(rail.eta(st))} · ${waitRail === st ? 'stop waiting' : 'wait for it'}`, act: () => { waitRail = waitRail === st ? null : st; } };
       return { key: '', text: `${st.name}: the next car is due in ${fmtSec(rail.eta())}` };
@@ -3581,7 +3595,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id; car.fromAt = [st.x, st.y]; waitRail = null;
     if (life) life.emit('board', { kind: 'rail', from: st.id, name: st.name, route: car.line || railRide().name || '' });
     cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
-    if (car.mainline) player.rig.root.visible = false; // (in the car, seen only through its windows)
+    if (car.mainline) { player.rig.root.visible = false; cam.dist = 11; cam.pitch = 0.16; } // (in the car, seen only through its windows; the camera close beside it, under a station's roof)
     if (car.train) { const nx = rail.nextStop(car); H.toast(`Aboard the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}${nx ? `. Next stop: ${nx.name}` : ''}.${rail.train && rail.train.modelled ? ' <kbd>V</kbd> for the window seat and the cab,' : ''} <kbd>F</kbd> to skip ahead.`); return; }
     H.toast(`Aboard the ${railRide().name || 'funicular'}. ${railRide().note || ''} <kbd>F</kbd> to skip ahead.`);
   }
@@ -5162,21 +5176,51 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // the helicopter's model while the title is up, if it waits within reach of the start (it is left out of the
     // loader's wait, issue 148): fetched, built, its shaders compiled and its textures sent now, not during the
     // opening shot; it lands on its pad once the game opens (heliToPad), not in the title's shot
-    setTimeout(() => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) heli.prefetch(); }, reduced ? 0 : 900);
+    // (on a phone, after what afterPlayable fetches: one thing at a time)
+    const heliIn = () => { if (running && !(QC.budget && QC.budget.extras === false) && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) { loadStep('late helicopter'); heli.prefetch(); } };
+    setTimeout(() => { if (QC.lean) afterPlayable().then(heliIn); else heliIn(); }, reduced ? 0 : 900);
   });
   // What the first frame doesn't need, fetched once the game can be played, as the helicopter's model is (issue 335):
   // the aerial tiles beyond a kilometre of the start; the NPCs' characters, nearest the start first; the traffic's near and mid cars (their far models stand in until
   // then: actors.js upgrade) and the car you drive; the near trees (trees.js loadNear: the mid ones stand in)
+  // On a phone (quality.js lean) they come one after another, with a breath between: all at once, each picture is
+  // decoded, resized and sent to the GPU beside the others, and the phone's tab died in the seconds after its first
+  // frame (issue 443: the telemetry's load reported the frame, then nothing). In turn, the most held at once is one
+  // step's; the far models stand in a few seconds longer.
   let lateOn = null;
   function afterPlayable() {
     if (lateOn) return lateOn;
-    if (Wd.groundPictures) Wd.groundPictures.release(); // the aerial tiles further out (world.js groundPictures)
-    const near = lib ? npcs.filter(n => n.rig.pending && Math.hypot(n.x - player.x, n.y - player.y) < NPC_LOAD_M)
-      .sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)).map(npcLoad) : [];
-    carsHeld = false;
-    const carsIn = vlib && vlib.loadCars && !vlib.carsFull ? Promise.all([vlib.loadCars().then(g => { if (g && vlib.carsFull && cars.upgrade) cars.upgrade(g); }), parkWait ? parkLater() : null]) : null;
-    const treesIn = Wd.trees && Wd.trees.loadNear ? Wd.trees.loadNear() : null;
-    return (lateOn = Promise.all([...near, carsIn, treesIn]));
+    const near = () => (lib ? npcs.filter(n => n.rig.pending && Math.hypot(n.x - player.x, n.y - player.y) < NPC_LOAD_M)
+      .sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)) : []);
+    const carsIn = () => (vlib && vlib.loadCars && !vlib.carsFull ? Promise.all([vlib.loadCars().then(g => { if (g && vlib.carsFull && cars.upgrade) cars.upgrade(g); }), parkWait ? parkLater() : null]) : null);
+    const treesIn = () => (Wd.trees && Wd.trees.loadNear && !(QC.budget && QC.budget.extras === false) ? Wd.trees.loadNear() : null); // (the lightest set keeps the mid trees: quality.js level)
+    const pictures = () => { if (Wd.groundPictures) Wd.groundPictures.release(); }; // the aerial tiles further out (world.js groundPictures)
+    if (!QC.lean) {
+      pictures();
+      const people = near().map(npcLoad);
+      carsHeld = false;
+      lateOn = Promise.all([...people, carsIn(), treesIn()]);
+    } else {
+      const breath = () => new Promise(r => setTimeout(r, 250));
+      lateOn = (async () => {
+        loadStep('late people');
+        for (const n of near()) { await npcLoad(n); await breath(); }
+        loadStep('late cars');
+        carsHeld = false;
+        await carsIn(); await breath();
+        loadStep('late trees');
+        await treesIn(); await breath();
+        loadStep('late pictures');
+        pictures();
+        if (Wd.groundPictures && Wd.groundPictures.all) await Wd.groundPictures.all();
+        loadStep('late in');
+        // a minute of play with everything in: this level fits this phone, and the next visit may try the one above
+        // (quality.js held). Counted in seconds on screen, so a tab put away does not earn it.
+        let on = 0;
+        const iv = setInterval(() => { if (!running) { clearInterval(iv); return; } if (document.hidden) return; if (++on >= 60) { clearInterval(iv); loadStep('held'); if (window.OEQuality && OEQuality.held) OEQuality.held(cityId); } }, 1000);
+      })();
+    }
+    return lateOn;
   }
   // (for the tools: what afterPlayable fetches, come and in place: the world then as it was at the start before, issue 335)
   const lateReady = () => afterPlayable().then(() => new Promise(r => setTimeout(r, 0)));
@@ -5463,7 +5507,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const car = player.vehicle;
         if (ev.car && ev.car !== car) continue;
         if (ev.type === 'depart') car.moved = true;
-        if (ev.type === 'arrive' && car.moved) { skip = false; H.toast(`${rail.stationOf(car.id).name}. <kbd>E</kbd> to get off.`); }
+        if (ev.type === 'arrive' && car.moved) {
+          const st = rail.stationOf(car.id);
+          skip = false;
+          if (st && st.under) { alightRail(); cam.mode = 'chase'; cam.dist = 6.5; cam.pitch = 0.3; cam.yaw = player.h; H.toast(`${st.name}. ${st.under.text || 'Up the stairs to the street.'}`); } // (out of sight under the ground: up to its street at once)
+          else H.toast(`${st.name}. <kbd>E</kbd> to get off.`);
+        }
+      }
+      // in the tunnel (a ride to or from a station under the ground): the view veiled, the clock run on to the next station
+      if (trains && trains.veil) {
+        const c = player.mode === 'rail' ? player.vehicle : null, dark = !!(c && c.train && rail.hidden && rail.hidden(c));
+        if (dark) { const nx = rail.nextStop(c); skip = true; trains.veil(true, `<div><div style="opacity:.7;font-size:12px;text-transform:uppercase;letter-spacing:.16em">${c.line || 'The train'} · in the tunnel</div><div style="font-size:20px;margin-top:6px">${nx ? `Next: ${nx.name}` : rail.towards(c)}</div></div>`); }
+        else if (trains.veiled) trains.veil(false);
       }
       if (player.mode === 'rail') { // standing in the car, by the downhill window
         const c = player.vehicle;
@@ -6065,7 +6120,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // A lift: the camera climbs the tower's face (or comes down it) while the player rides, at the lift's own
   // speed with the time shortened, and hands back to the chase camera at the far stop, facing on.
   function rideLift(l, from, to) {
-    if (life) life.emit('ride', { kind: 'lift', from: l.stops[from].name, to: l.stops[to].name });
+    if (life) life.emit('ride', { kind: 'lift', route: l.id, from: l.stops[from].name, to: l.stops[to].name, name: l.name, toName: l.stops[to].name });
     if (liftCar(l)) { rideLiftCar(l, from, to); return; }
     const a = l.stops[from], b = l.stops[to], dz = b.at[2] - a.at[2];
     const realS = Math.abs(dz) / ((l.m_per_min || 240) / 60), dur = Math.min(9, Math.max(4.5, realS / 6));

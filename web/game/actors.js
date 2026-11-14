@@ -3025,10 +3025,17 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         c.narrowT = why === 'narrow' && c.v < 0.3 ? (c.narrowT || 0) + dt : 0;
         if (c.narrowT > 25 && !inView(c)) { c.narrowT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
         c.narrowCarT = why === 'narrow' && byCar && c.v < 0.3 ? (c.narrowCarT || 0) + dt : 0;
-        if (why !== 'narrow') c.narrowTries = 0; // (nose to nose in the stretch with one to go first: it backs out)
-        if (c.narrowCarT > 10 && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
+        if (why !== 'narrow') { c.narrowTries = 0; c.narrowRevS = null; } // (nose to nose in the stretch with one to go first: it backs out)
+        // (sooner where the car it waits on waits on it in turn: nose to nose, each the other's car in front, which no waiting
+        // undoes; three tries, ten seconds apart, made Shibuya's car 136 stand 31 s at the mouth of piece 1988, #454)
+        if (c.narrowCarT > (front && front.front === c ? 6 : 10) && !l.ow) { // (out of view it turns round where it stands, as one stuck does below; in view it backs out if it can)
           c.narrowCarT = 0;
-          if (!away && reverse(c)) { reverseStep(c, i, dt, cx, cy); continue; }
+          // (not again where backing out gains nothing: at the end of its piece already, under 2 m from the junction behind,
+          // or less than a metre back since the last time it backed out for this. Each such try "backed out" a few centimetres
+          // and cost ten seconds more nose to nose: Shibuya's car 136 stood 31 s at the mouth of piece 1988 for car 182, which
+          // waited on it in turn, #454)
+          const room = c.dir > 0 ? c.s : l.len - c.s, gained = c.narrowRevS == null || Math.abs(c.s - c.narrowRevS) >= 1;
+          if (!away && room > 2 && gained && reverse(c)) { c.narrowRevS = c.s; reverseStep(c, i, dt, cx, cy); continue; }
           // (over 90 m off, on its second try, it comes back elsewhere, as a car stuck on a one-way street does there: in sight
           // that far off, it neither backed out nor, out of view, came back elsewhere, and stood 114 s nose to nose at the
           // mouth of Higashiyama's piece 126)
@@ -3038,7 +3045,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           // stood 46 s at a narrow stretch for one queued behind it, #331)
           // (after a first try at turning round has come to nothing: the second time it asks)
           c.narrowTries = (c.narrowTries || 0) + 1;
-          const o = c.narrowTries > 1 && front && front.line === c.line && front.dir !== c.dir && !front.rev && front.v < 0.3 ? front : null;
+          // (at once where it has no room behind: turned round at the very end of its piece, it met that end, stood again and
+          // counted from nothing, round and round; Shibuya's car 101 stood 73 s at the start of piece 1709 so, while car 84,
+          // facing it, could have backed out all along, #454)
+          const o = (c.narrowTries > 1 || room <= 2) && front && front.line === c.line && front.dir !== c.dir && !front.rev && front.v < 0.3 ? front : null;
           if (o && reverse(o)) { c.narrowTries = 0; /* it backs out of the way */ }
           else { dir = -dir; c.stuck = 0; } // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
         }
@@ -3148,7 +3158,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.2 * dt));
           lanePos(c.line, sb, c.dir, tmp, c.off + c.lo, c.pv, c.nx ? [nl, nd] : null);
           const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
-          if (bd === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; }
+          // (and its whole body where it will stand: the test above, shifted back, leaves its front 0.3 m out, and the lane's
+          // bend into a junction's mouth moves the car sideways as it backs; so it went 0.18 m into a car backing out beside
+          // its nose, Shibuya's car 94, #348)
+          if (bd === 0 && overlaps(c, tmp.x, tmp.y, hx0, hy0, 0.1, 0.1) === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; }
           else if (bk && bk.v < 0.5 && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 < 0 && Math.sin(bk.h) * hx0 + Math.cos(bk.h) * hy0 > 0.5 && backOff(bk, c.backoff)) c.backoff -= dt * 0.25; // (the car behind it, stopped and going its way, backs off first)
           else c.backoff -= dt;
           held = true;

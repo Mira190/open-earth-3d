@@ -94,6 +94,9 @@ R_SHELL = 75.2
 DECK_ZONES = [(0.5, "parapet"), (3.5, "cycleway"), (0.4, "barrier"), (10.0, "rail"), (0.6, "barrier"), (20.4, "lanes6"),
               (0.6, "barrier"), (6.8, "lanes2"), (0.6, "barrier"), (4.9, "footway"), (0.5, "parapet")]
 MATERIALS = {
+    # a wall that stops a walker and is not drawn (the glazed entrance of the Museum of Contemporary Art, which the
+    # hero level draws: cities/sydney/museum.py hall_walls); never a floor
+    "unseen_wall": {"color": "#000000", "roughness": 1.0, "metalness": 0.0, "opacity": 0.0, "floor": False},
     "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.3, "chevron_m": 1.8, "emissive": "#fff4e6", "glow": 1.0},
     "tile_edge": {"color": "#d6ccb8", "roughness": 0.7, "metalness": 0.0},
     # topaz glass on bronze mullions, lit warm from the foyers after dark
@@ -291,6 +294,7 @@ STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "b
 # ---------------------------------------------------------------- build_scene hooks
 
 BRIDGEPORT = "w387782067"  # 38-42 Bridge Street
+MUSEUM = "w16599528"  # the Museum of Contemporary Art
 
 
 def adjust_building(b, cls, g, geoms, ctx):
@@ -300,6 +304,16 @@ def adjust_building(b, cls, g, geoms, ctx):
         # with Loftus Street (converted to flats in 1998, three storeys added)
         for q in geoms:
             q[1] = 0.0
+    if (b.get("record_id") or "").split("@")[0] == MUSEUM:
+        # OpenStreetMap's parts cover the old building's main block only: its end pavilions, the Mordant Wing and
+        # the George Street range are the outline's remainder (cities/sydney/museum.py, issue 426)
+        museum = _load("museum")
+        for p, h0, h1, src, _, drawn in museum.museum_parts(ctx.ground):
+            q = [p, h0, h1, src, None]
+            geoms.append(q)
+            if not drawn:
+                ctx.hide(q)
+        return geoms
     if b["name"] == OPERA:
         return opera_podium(g, geoms, ctx)
     if cls in PRECINCT_FURNITURE and Polygon(PRECINCT).contains(g.centroid):
@@ -751,6 +765,26 @@ def landmark_glows(scene):
     return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS] + RAIL.glows()
 
 
+def museum_hall():
+    """What stops a walker at the Museum of Contemporary Art's glazed entrance hall (issue 426): the hero level
+    draws the hall as a room behind glass, so the city leaves it open and stands these walls, not drawn, on the
+    glass's line and the hall's south side."""
+    museum = _load("museum")
+    m = Mesh("mca_hall_walls", "unseen_wall", False)
+    for a, b, t, h in museum.hall_walls():
+        m.box((a[0], a[1], museum.FLOOR - 1.0 + h / 2), (b[0], b[1], museum.FLOOR - 1.0 + h / 2), t, h)
+    return [m]
+
+
+# where the hero level stands its own palms (cities/sydney/hero.py PALMS: the cabbage-tree palms along the lawn's
+# seat wall), the map plants none: the shared palm, scaled to a surveyed height, has a trunk a metre thick there
+PALM_RING = [[-192.2, 172.0], [-181.2, 172.0], [-174.6, 248.0], [-185.6, 248.0]]
+
+
+def landmark_treeless(scene):
+    return [[round(v * 10) for xy in PALM_RING for v in xy]]
+
+
 def landmark_meshes(scene):
     """(materials, meshes) for pipeline/landmarks.py."""
     DOWNLIGHTS.clear()
@@ -785,6 +819,7 @@ def landmark_meshes(scene):
         mats["garden_edge"] = dict(MATERIALS["garden_edge"])  # (bennelong_meshes gives it its ground tile)
     if "opera_house" in lm:  # the halls' seats and their audience, instanced
         extra = dict(extra, props=list(extra.get("props", [])) + opera_rooms(lm["opera_house"])["props"])
+    meshes += museum_hall()
     rm, rmesh = RAIL.meshes(Mesh)   # Circular Quay Station on its viaduct (cities/sydney/rail.py)
     mats.update({k: dict(v) for k, v in rm.items()})
     return mats, meshes + rmesh, extra

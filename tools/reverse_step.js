@@ -44,6 +44,7 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     // (and on to 150 s for one still backing out that has moved in the last 20 s: behind another backing out of the same street,
     // waiting at the junction behind for room, it waits its turn)
     for (let t = 0; (t < 90 || (t < 150 && watch.some(w => !w.done && !w.gone && !w.gaveUp && t - (w.moved || 0) < 20))) && watch.some(w => !w.done && !w.gone && !w.gaveUp); t += 0.1) {
+      const was = new Map(C.map(o => [o, [o.x, o.y, o.why, o.v]])); // (where each stood before the step: which of two moved into the other)
       g.advance(0.1);
       for (const w of watch) {
         if (w.done || w.gone || w.gaveUp) continue;
@@ -52,7 +53,7 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
         const step = Math.hypot(c.x - w.x, c.y - w.y);
         if (step > 0.01) w.moved = t;
         w.went += step; w.x = c.x; w.y = c.y;
-        if (c.rev) { const d = depth(c); if (d > w.deep) { w.deep = d; const b = A.footBy; w.deepAt = `${(c.rev.boxT || 0) > 0 ? `waited ${c.rev.boxT.toFixed(1)} s at the box behind, ` : ''}${c.rev.d.toFixed(1)} m back, ${b ? `car ${C.indexOf(b)} ${b.why} v ${(+b.v || 0).toFixed(1)}${b.mv ? ' in junction ' + b.mv.j.id : ''}${b.rev ? ` reversing (d ${b.rev.d.toFixed(1)} wait ${b.rev.wait.toFixed(1)})` : ''}; it on ${c.line}/${c.dir} s ${c.s.toFixed(1)}, that on ${b.line}/${b.dir} s ${b.s.toFixed(1)}` : ''}`; } }
+        if (c.rev) { const d = depth(c); if (d > w.deep) { w.deep = d; const b = A.footBy; w.deepAt = `${(c.rev.boxT || 0) > 0 ? `waited ${c.rev.boxT.toFixed(1)} s at the box behind, ` : ''}${c.rev.d.toFixed(1)} m back, ${b ? `car ${C.indexOf(b)} ${b.why} v ${(+b.v || 0).toFixed(1)}${b.mv ? ' in junction ' + b.mv.j.id : ''}${b.rev ? ` reversing (d ${b.rev.d.toFixed(1)} wait ${b.rev.wait.toFixed(1)})` : ''}; it on ${c.line}/${c.dir} s ${c.s.toFixed(1)}, that on ${b.line}/${b.dir} s ${b.s.toFixed(1)}` : ''}${b && was.get(b) ? `; in that step it moved ${Math.hypot(c.x - was.get(c)[0], c.y - was.get(c)[1]).toFixed(2)} m, that ${Math.hypot(b.x - was.get(b)[0], b.y - was.get(b)[1]).toFixed(2)} m (was ${was.get(b)[2]} v ${(+was.get(b)[3] || 0).toFixed(1)}) [backing off ${(+b.backoff || 0).toFixed(2)} s more]` : ''}`; } }
         w.t = t;
         if (!c.rev) { w.done = c.line !== w.line; w.gaveUp = !w.done; if (w.gaveUp) w.still = `gave up: ${c.revEnd || '?'}`; w.onto = c.line; w.why = c.why; }
       }
@@ -121,7 +122,7 @@ async function reverseStep({ ride: tryRide = false, stills = false } = {}) {
     // (a minute at most: a scramble's walk and the queue at its line on the new way may hold it a while)
     for (let k = 0; k < 60 && went <= 10; k++) { g.advance(1); const q = o.drv.st; went += Math.hypot(q.x - qx, q.y - qy); qx = q.x; qy = q.y; }
     r.queued = went <= 10 && !!o.drv.st.block && (C.includes(o.drv.st.block) || C.includes(o.drv.st.block.of)) && o.drv.st.v < 0.5; // (on its new way, but in a queue behind a car of the traffic, or its stand-in as one stopped for good: the junction ahead's doing, not its backing out)
-    r.drove = +went.toFixed(1); if (went <= 10) r.driveWhy = `${o.drv.st.why || ''} v ${o.drv.st.v.toFixed(1)}${o.drv.st.block ? (b => `, behind ${C.indexOf(b) >= 0 ? `car ${C.indexOf(b)} (${b.why})` : b.of && C.indexOf(b.of) >= 0 ? `car ${C.indexOf(b.of)} (${b.of.why}, as stopped for good)` : `${b.id || b.model || 'something'}${b.stay ? ' parked' : ''}${b.of ? ` of ${b.of.model || b.of.id || '?'}` : ''} v ${(+b.v || 0).toFixed(1)}`}`)(o.drv.st.block) : ''}`; r.secs = +r.secs.toFixed(1); r.back = +r.back.toFixed(1); r.deep = +r.deep.toFixed(2);
+    r.drove = went; /* (unrounded: the loop stops just past 10 m, and 10.03 m rounded to 10.0 failed the check) */ if (went <= 10) r.driveWhy = `${o.drv.st.why || ''} v ${o.drv.st.v.toFixed(1)}${o.drv.st.block ? (b => `, behind ${C.indexOf(b) >= 0 ? `car ${C.indexOf(b)} (${b.why})` : b.of && C.indexOf(b.of) >= 0 ? `car ${C.indexOf(b.of)} (${b.of.why}, as stopped for good)` : `${b.id || b.model || 'something'}${b.stay ? ' parked' : ''}${b.of ? ` of ${b.of.model || b.of.id || '?'}` : ''} v ${(+b.v || 0).toFixed(1)}`}`)(o.drv.st.block) : ''}`; r.secs = +r.secs.toFixed(1); r.back = +r.back.toFixed(1); r.deep = +r.deep.toFixed(2);
     out.ride = r;
     g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
     return out;

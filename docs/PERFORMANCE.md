@@ -1116,15 +1116,29 @@ Layer A applied to memory: measure, then grant.
 | after one death | 350 m / 1 km / 30 m | 4 | 512 / 256 | 436,013 | 312 MB |
 | after two or more | 250 m / 750 m / 40 m | 2 | 512 / 256 | 273,096 | 289 MB |
 
-(`DIED=1 tools/mem_check.js shibuya`, `DIED=2 LEAN=1 tools/game_shot.js ...`: at the spawn and from 110 m up the
+(then `DIED=1 tools/mem_check.js shibuya`; now `LV=n`, below: at the spawn and from 110 m up the
 lightest set is the same picture but for softer signs.) A device on the low tier that is not a phone gets the
 phone's set after its first death. `tools/telemetry_check.js` checks that a dead page is counted against its map.
 
-**Real people near the player on a phone too.** With that room, the low tier's nearest walkers are drawn as the
-cast's real people, as the other tiers' are (docs/LOOK.md, "Real people up close"): four women and four men of the
-cast, the same each visit (two and two after the map's page died there), 27 MB more of the GPU in Shibuya
-(366 -> 393 MB; Tokyo and Sydney load those characters as NPCs already and do not move). The crowd across the
-street is still the far figures, on every tier.
+**The reload Safari makes itself.** Safari loads a tab again the moment its page is killed, so the dead page's
+note is a few seconds old when the next load reads it, and a note under half a minute old was taken for another
+tab's that is still open: the death went uncounted, the second load was as heavy as the first, and the visitor was
+left on "A problem repeatedly occurred" before any lighter set was tried. The tab's own last page is now known by
+the tab's session storage, which outlives a killed page, and its note is a dead page's at any age
+(`telemetry.js` `before`).
+
+**What follows the first frame comes in turn.** With the map round the player on the site, the owner's iPhone drew
+Shibuya's first frame (the telemetry's `load`: `frame_ms` 10,986) and its tab died within seconds of it. 700 ms
+after the loader fades, `game.js` `afterPlayable` fetched the NPCs within 300 m, the near cars, the near trees and
+the far aerial tiles all at once, with the helicopter beside them: every picture decoded, resized and sent to the
+GPU next to the others. On a phone they now come one after another with a quarter of a second between (the people
+nearest first, then the cars, the trees, the pictures, the helicopter last), and `npcStream` brings one character
+at a time. The far models stand in a few seconds longer; nothing is left out.
+
+**Where a page died.** The note that a page is alive carries the last step of the load the page named
+(`fetched`, `decoded`, `built`, `frame`, then on a phone `late people`, `late cars`, `late trees`,
+`late pictures`, `late in`, `late helicopter`), written at each step and not only every five seconds, and the next
+load's `crash` event reports it as `prev_stage`. The next death names its step.
 
 **Left, in order of what they hold**: the textures (223 to 339 MB of the peak: the landmarks' pictures, the ground,
 the NPCs', loaded for the whole map at the start), the walking model and the landmarks built for the whole map
@@ -1137,6 +1151,103 @@ landmarks' geometry kept on the page after the GPU has it 66, the surface model 
 **Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe, an iPhone's screen and user agent.
 The numbers are what WebGL was asked for and what Chromium holds; what iOS counts, and where it kills, only the
 owner's phone can say. The telemetry's `crash` events will show whether a second load now gets through.
+
+### Measure, then grant: a phone starts light (issue 443, round 4)
+
+With the rounds above on the site, the owner's iPhone drew Shibuya's first frame at 10 s and its tab died at 20 s,
+after the last of the late steps (`crash`: `prev_stage` `late helicopter`); the load Safari started again, on the
+set one step lighter, died before its first frame, and Safari showed "A problem repeatedly occurred".
+
+**What the limit is** (WebKit's own engineers and kernel logs; no figure is published):
+
+- An iPhone's tab has a soft limit of about 1.5 GB, lower on phones with less memory, enforced as the system
+  comes under pressure, and a hard one of 2,048 MB seen in kernel logs on iOS 26
+  ([WebKit bug 277848](https://bugs.webkit.org/show_bug.cgi?id=277848), 2024;
+  [Apple developer forums 823061](https://developer.apple.com/forums/thread/823061), 2026).
+- **The GPU's memory is charged to the tab**: "WebKit assigns the cost GPU process memory for a tab to the tab
+  itself" ([WebKit bug 256703](https://bugs.webkit.org/show_bug.cgi?id=256703)). So what counts is the sum of the
+  two columns this file had kept apart. Shibuya on the phone's set held 392 MB of WebGL memory beside a renderer
+  process of 1.1 to 1.3 GB at the load's peak (Chromium's; `tools/mem_check.js`): at the limit, not under it.
+- Nothing warns the page: no memory reading exists in Safari (`performance.memory`, `navigator.deviceMemory`
+  and `measureUserAgentSpecificMemory` are all absent) and no event comes before the kill
+  ([WebKit bug 300782](https://bugs.webkit.org/show_bug.cgi?id=300782), open).
+- What others keep to on an iPhone: 100 to 150 MB of video memory (PlayCanvas's forum, 2023), a fixed texture
+  pool by device profile (Unreal's `r.Streaming.PoolSize`: 70 to 180 MB in Epic's mobile profiles).
+
+**Why the lighter set did not save the second load.** The ladder ran the wrong way. The fullest set came first
+and each death took a fifth off (peak GPU 366, 312, 289 MB); Safari allows two deaths. And the second load started
+the instant the first page died, while its memory, the GPU's with it, was still being taken back.
+
+**The loop now** (`quality.js` `level`, `held`; `telemetry.js`). A phone's set is a level, 0 the fullest to 3 the
+lightest, granted the way a congestion window is:
+
+- a phone with no record starts at level 2, a set that is meant to fit, not the one that looks best;
+- a minute of play at a level (`held`, counted on screen, after the late steps) lets the next visit try the level
+  above it;
+- a page that dies has written its level in the note it left (`lv`), and that level and the heavier ones are
+  ruled out on that map for fourteen days (a death from before levels were written counts as level 1);
+- a load within twenty seconds of a death waits three and a half first ("Making room").
+
+A phone with the room climbs to the full set in two visits; one without stays where it lives. The `crash` event
+carries `prev_lv`, and the load's last step is `held` once a level has been held, so the owner's phone says which
+level it lives at.
+
+| Level | Buildings whole / simplified / skyline from | Largest picture | Sun's shadow map | Signs / NPC pictures | Aerial tiles of their own | Scanned walkers | Fetched ahead |
+|---|---|---|---|---|---|---|---|
+| 0 | 500 m / 1.5 km / 25 m | 2048 | 2048 | 1024 / 512 | 6 | 8 | all |
+| 1 | 350 m / 1 km / 30 m | 2048 | 2048 | 1024 / 256 | 4 | 8 | all |
+| **2, a phone's first** | 250 m / 1.1 km / 30 m | 1024 | 1024 | 1024 / 256 | 2 | 4 | all |
+| 3 | 200 m / 700 m / 40 m | 1024 | 1024 | 512 / 256 | 1 | 2 | not the helicopter (until 150 m from it) or the near trees |
+
+The canvas a phone draws is 487 x 1055 pixels: a 2048 picture on it is sampled at a quarter of its texels at best.
+Also on every level of a phone's game: the ground tiles' vertex arrays go once the GPU has them (30 MB of
+Shibuya's page; only the model viewer casts a ray at the ground), and a fine ground tile left 700 m behind is
+disposed and built again on the way back.
+
+| Phone's first load (`tools/mem_check.js`) | Peak GPU, MB, before -> now | of which textures |
+|---|---|---|
+| Shibuya | 392 -> 224 | 305 -> 152 |
+| Tokyo (Marunouchi) | 445 -> 273 | 339 -> 171 |
+| Sydney | 392 -> 221 | |
+
+The budget for peak GPU memory goes from 490 to **300 MB**. Stills at 390 x 844 at the spawn by day and night and
+from 150 m up at dusk, in all three maps: level 2 against level 0 differs at the spawn in nothing a player reads
+(at 512 the shop names across the Scramble blurred, so level 2 keeps the signs at 1024); from the air with the
+middle distance cut at 600 m the aerial photograph showed as a blue band under the horizon, so level 2 keeps it
+to 1.1 km.
+
+**Would a smaller play area or fewer people do it?** Measured, by who holds the page's memory in Shibuya
+(`OWNERS=1 tools/mem_check.js`, `tools/heap_owners.js`): the people are the small part (the avatars' library
+8.5 MB of arrays, about 4 MB of pictures a character: the cast of four is now 16 MB; the far crowd is instanced and
+costs frames, not memory). What scales with the *map* and not with the player is the large part, and it is still
+built whole: the 2 m surface model (34 MB), the inland water's rasters over the channels' box (29 MB, and an 11 MB
+mask on the GPU), the collision world and walking model (45 MB), the roads' and footways' nets, the landmarks, the
+decoded packs (40 MB), and 143 MB of objects, most of them parsed arrays of the whole map's data. So limiting
+where a phone's player can go pays only if the map itself is cut to that district before the page builds
+anything, which is the next step below; limiting the walkers to one street would save a few MB.
+
+**The same thinking as an efficient model** (the owner's analogy; DeepSeek-V2 and V3,
+[arXiv 2405.04434](https://arxiv.org/abs/2405.04434), [2412.19437](https://arxiv.org/abs/2412.19437)):
+
+| There | Here | State |
+|---|---|---|
+| Mixture of experts: 37 of 671 billion parameters run for a token | build, unpack and upload only what the player can see from where they stand | the buildings (cells); not yet the walking model, the rasters, the landmarks |
+| Low precision where it holds (FP8 with fine-grained scaling) | sixteen-bit heights and ids in the surface model, quantised vertices, block-compressed pictures (ASTC 4x4 is a quarter of RGBA8; every iPhone has it) | not done: the largest cut left on the GPU |
+| A compressed latent in place of the full keys and values (MLA) | the middle and far distance as a distilled stand-in (issue 358's static world) | simplified cells; no baked far world |
+| Distillation offline, cheap inference | cut and simplify the phone's district in the pipeline, not on the phone | not done |
+| Load balancing by feedback, no auxiliary loss | the level, from deaths and minutes held | this round |
+
+No code was taken; these are methods.
+
+**Next, in order of what they hold** (issue 443): the phone's district as a pack of its own, cut offline to a
+kilometre round the spawn with the play area bounded to it (every map-wide grid above shrinks with the frame, and
+the load's peak with the data decoded); pictures block-compressed for phones; the surface model in sixteen bits;
+the inland rasters by tile.
+
+**Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe. The page's own heap is unchanged by
+this round (about 380 MB settled in Shibuya, 580 in Tokyo) and the renderer process still peaks over a gigabyte
+there; whether 170 MB less on the GPU and a load that waits is enough, the owner's phone says, through `crash`
+(`prev_lv`, `prev_stage`) and `held`.
 
 ### The last CPU of the city build (issue 404), measured
 

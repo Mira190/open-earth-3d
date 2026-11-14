@@ -57,6 +57,7 @@ SLAB = 0.35                    # m, the concrete slab under the road
 GIRDER = 2.2                   # m, the box girders' depth under the slab
 PARAPET = 1.0                  # m, over the road
 SPAN = 34.0                    # m between the piers
+LEVEL_GAP = 8.5                # m over a bridge's deck: a road line this near it is on it (the data's level is 6 to 7.3 m over it here); motorways are the Shuto's
 STEP = 12.0                    # m between the profile's points (and the game's strips)
 LAMP_EVERY = 34.0
 MATERIALS = {
@@ -91,6 +92,19 @@ def girder(x, y, z):
 
 
 _LIDAR = {}
+# on the ground (or in a cutting), not on a viaduct: under GROUND_LINE_M on Tokyo's low ground; use() sets another city's
+_LOW = {"f": lambda x, y, z: z < GROUND_LINE_M}
+
+
+def use(city, ground, elevated=4.0):
+    """on_lidar for another city's expressway in the same survey (#432: Shibuya's Route 3 and the Ohashi JCT):
+    its samples (cities/<city>/shuto_lidar.json, shuto_lidar.py --city), no first survey, and a point on the ground
+    where it is within `elevated` m of ground(x, y)."""
+    global LIDAR, FIRST
+    LIDAR = os.path.join(HERE, "..", city, "shuto_lidar.json")
+    FIRST = (float("inf"), float("inf"))
+    _LIDAR.clear()
+    _LOW["f"] = lambda x, y, z: z < ground(x, y) + elevated
 
 
 def lidar():
@@ -253,6 +267,37 @@ def on_strips(game):
     return n
 
 
+def on_bridge(game, name="日本橋"):
+    """Put the roads that cross Nihonbashi (Chuo-dori, paths.road of any class but motorway) on the bridge's deck, its strip in
+    game.json's surfaces: the data lays them a level (6 m) over it, at 9.9 m where the deck is at 4 m, and the game laid them
+    on the nearer strip by height, the Shuto's at 14 m over the bridge, so that the traffic drove through the expressway's
+    girders and stood at them (#472). A point stays where it is when it is nearer the Shuto's deck than the bridge's less
+    LEVEL_GAP, or under the bridge. Returns the points moved."""
+    S = [s for s in game.get("surfaces", []) if s.get("name") == name and s.get("type") == "strip"]
+    n = 0
+    for s in S:
+        (ox, oy), (ax, ay), hw, prof = s["origin"], s["axis"], s["half_width"], s["profile"]
+        us = [q[0] for q in prof]
+        for o in game["paths"]["road"]:
+            if o["c"] == "motorway":
+                continue
+            p = o["p"]
+            for i in range(0, len(p), 3):
+                x, y, z = p[i] / 10, p[i + 1] / 10, p[i + 2] / 10
+                u, v = (x - ox) * ax + (y - oy) * ay, -(x - ox) * ay + (y - oy) * ax
+                if abs(v) > hw or not us[0] <= u <= us[-1]:
+                    continue
+                zz = float(np.interp(u, us, [q[1] for q in prof]))
+                if zz - 0.5 <= z <= zz + LEVEL_GAP:
+                    q = int(round(zz * 10))
+                    if q != p[i + 2]:
+                        p[i + 2] = q
+                        n += 1
+    # (the line's points just off the bridge, eased from the deck's ends to the ground the line already meets there:
+    # the data's own points either side are on the ground, so the moved points meet them)
+    return n
+
+
 # ---------------------------------------------------------------- shuto.json
 
 def build():
@@ -389,7 +434,7 @@ def on_lidar(game):
     off = [np.full(len(p), np.nan) for p in P]
     for p, f in zip(P, off):
         for i, (x, y, z) in enumerate(p):
-            if z < GROUND_LINE_M:  # on the ground (or in a cutting): not on a viaduct
+            if _LOW["f"](x, y, z):  # on the ground (or in a cutting): not on a viaduct
                 continue
             if x > FIRST[0] and y > FIRST[1]:   # the first survey's lines already stand on its samples (#290)
                 f[i] = 0.0
@@ -406,7 +451,7 @@ def on_lidar(game):
         s = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(p[:, :2], axis=0).T))])
         for a, ends in ((ok[0], range(ok[0] - 1, -1, -1)), (ok[-1], range(ok[-1] + 1, len(p)))):
             ends = list(ends)
-            low = [i for i in ends if p[i, 2] < GROUND_LINE_M]
+            low = [i for i in ends if _LOW["f"](*p[i])]
             if not low:
                 continue
             b = low[0]
@@ -424,7 +469,7 @@ def on_lidar(game):
             continue
         s = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(p[:, :2], axis=0).T))])
         for i in range(len(p)):
-            if np.isfinite(f[i]) or p[i, 2] < GROUND_LINE_M or not T.query_ball_point(p[i, :2], SURVEY_M):
+            if np.isfinite(f[i]) or _LOW["f"](*p[i]) or not T.query_ball_point(p[i, :2], SURVEY_M):
                 continue
             j = ok[np.argmin(np.abs(s[ok] - s[i]))]
             f[i] = p[j, 2] + f[j] - p[i, 2]
@@ -449,7 +494,7 @@ def on_lidar(game):
             if not src:
                 continue
             for i in range(len(p)):
-                if np.isfinite(f[i]) or p[i, 2] < GROUND_LINE_M:
+                if np.isfinite(f[i]) or _LOW["f"](*p[i]):
                     continue
                 d, o = min(((abs(s[i] - si), oi) for si, oi in src), key=lambda t: t[0])
                 if d < TAPER_M:
@@ -490,8 +535,9 @@ def game():
     G = json.load(open(path, encoding="utf8"))
     m = on_lidar(G)
     n = on_strips(G)
+    b = on_bridge(G)
     json.dump(G, open(path, "w"), separators=(",", ":"))   # as game_extras.py writes it
-    print(f"{m} expressway points put on the LiDAR's heights, {n} on the decks -> {path}")
+    print(f"{m} expressway points put on the LiDAR's heights, {n} on the decks, {b} of the roads over Nihonbashi on its deck -> {path}")
 
 
 if __name__ == "__main__":

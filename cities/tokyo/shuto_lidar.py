@@ -12,6 +12,7 @@ its download URL).
     python cities/tokyo/shuto_lidar.py            fetch the sheets (data/raw/tokyo/lidar), keep the points within
                                                   14 m of the expressway, measure, write shuto_lidar.json
     python cities/tokyo/shuto_lidar.py --measure  measure again from the kept points
+    ... --city shibuya                            Shibuya's expressway instead (cities/shibuya/shuto_lidar.json, #432)
 
 FIRST's samples are kept as they were measured: game.json's lines there already stand on them (shuto.py --game),
 so its heights there are no longer the data's, which the measure needs; the lines outside it are measured from
@@ -44,10 +45,14 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-RAW = os.path.join(ROOT, "data", "raw", "tokyo", "lidar")
-OUT = os.path.join(HERE, "shuto_lidar.json")
+# The city whose expressway is measured (--city, default tokyo): Shibuya's Route 3 and the Ohashi JCT are in the
+# same survey (#432). Each city keeps its points and its samples apart; only Tokyo has a first survey (FIRST).
+CITY = sys.argv[sys.argv.index("--city") + 1] if "--city" in sys.argv else "tokyo"
+RAW = os.path.join(ROOT, "data", "raw", CITY, "lidar")
+OUT = os.path.join(ROOT, "cities", CITY, "shuto_lidar.json")
 INDEX = "https://gic-tokyo.s3.ap-northeast-1.amazonaws.com/2024/dig/Vectortile/23ku/lp/14/{x}/{y}.pbf"
-FIRST = (150.0, 1500.0)        # the first survey (#272): the elevated lines east of x and north of y (local m)
+FIRST = (150.0, 1500.0) if CITY == "tokyo" else (math.inf, math.inf)   # the first survey (#272): the elevated lines east of x and north of y (local m)
+ELEVATED = 4.0                 # m over the ground: a motorway point this high is on a viaduct (not Tokyo's, above)
 KEEP_M = 14.0                  # points kept within this of a line, in plan
 STEP = 6.0                     # m between samples
 R_ALONG = 3.0
@@ -68,13 +73,16 @@ MIN_AREA = 0.003               # a sheet must hold this share of the lines' buff
 
 def lines():
     """The elevated motorway lines of game.json in the region: [(N, 3) array] in the local frame."""
-    g = json.load(open(os.path.join(ROOT, "web", "data", "tokyo", "game.json"), encoding="utf8"))
-    out = []
+    g = json.load(open(os.path.join(ROOT, "web", "data", CITY, "game.json"), encoding="utf8"))
+    out, ground = [], terrain()
     for o in g["paths"]["road"]:
         if o["c"] != "motorway":
             continue
         p = np.asarray(o["p"], float).reshape(-1, 3) / 10
-        m = (p[:, 2] > 8) & ~((p[:, 0] > FIRST[0]) & (p[:, 1] > FIRST[1]))
+        # (elevated: over 8 m T.P. on Tokyo's low ground; elsewhere ELEVATED over the ground under it: Shibuya's
+        # ground is 15-40 m, #432)
+        up = p[:, 2] > 8 if CITY == "tokyo" else p[:, 2] > np.array([ground(x, y) for x, y in p[:, :2]]) + ELEVATED
+        m = up & ~((p[:, 0] > FIRST[0]) & (p[:, 1] > FIRST[1]))
         # each run of points outside FIRST on its own (a line may leave it and come back)
         idx = np.nonzero(m)[0]
         for run in np.split(idx, np.nonzero(np.diff(idx) > 1)[0] + 1):
@@ -95,7 +103,7 @@ def first():
 def city():
     sys.path.insert(0, os.path.join(ROOT, "pipeline"))
     import cityctx
-    return cityctx.City("tokyo")
+    return cityctx.City(CITY)
 
 
 def sheets(C, L):
@@ -168,10 +176,10 @@ def fetch(C, L):
 def terrain():
     """game.json's terrain grid as a function (x, y) -> z."""
     import base64
-    g = json.load(open(os.path.join(ROOT, "web", "data", "tokyo", "game.json"), encoding="utf8"))
+    g = json.load(open(os.path.join(ROOT, "web", "data", CITY, "game.json"), encoding="utf8"))
     t = g["terrain"]
     T = np.frombuffer(base64.b64decode(t["data"]), "<i2").reshape(t["ny"], t["nx"]) * t["scale"]
-    C = json.load(open(os.path.join(HERE, "city.json"), encoding="utf8"))
+    C = json.load(open(os.path.join(ROOT, "cities", CITY, "city.json"), encoding="utf8"))
     x0, _, _, y1 = C["extent_m"]
     cell = t["cell"]
     return lambda x, y: float(T[int(np.clip(round((y1 - y) / cell), 0, t["ny"] - 1)), int(np.clip(round((x - x0) / cell), 0, t["nx"] - 1))])

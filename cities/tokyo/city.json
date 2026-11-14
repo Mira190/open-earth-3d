@@ -539,6 +539,7 @@
     "shade_landmarks": [
       "tower_"
     ],
+    "hero": [{"id": "marunouchi", "glb": "hero/marunouchi.glb", "fine": "hero/marunouchi_fine.glb", "fine_m": 110, "at": [602.3, 1244.0], "r": 175.0, "bake": 1.0, "street": 0.6, "glow": [0.0, 1.0], "hide": ["tks_dome_slate", "tks_round_copper", "tks_round_stone", "tks_tks_brick", "tks_tks_canopy", "tks_tks_clock", "tks_tks_copper", "tks_tks_door", "tks_tks_glass", "tks_tks_glass_dark", "tks_tks_glass_small", "tks_tks_iron", "tks_tks_pent", "tks_tks_reveal", "tks_tks_sign", "tks_tks_slate", "tks_tks_soffit", "tks_tks_stone"], "note": "Tokyo Station's Marunouchi building, where the game starts: every frame, sash and baluster, chamfered edges, baked occlusion and floodlight, scanned brick, stone and slate (cities/tokyo/hero.py on cities/tokyo/station.py, blender/build_hero.py, docs/HERO.md)"}],
     "start": {
       "at": [553, 1195],
       "facing": [606, 1172],

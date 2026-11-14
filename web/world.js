@@ -36,7 +36,7 @@ window.OEWorld = (function () {
     const want = (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
     // a district that shares a bigger map (index.html route: Sangenjaya, on Shibuya's): the loader says both
     // (after this map's page died on this device, quality.js died: a lighter set, and the loader says so)
-    const lighter = window.OEQuality && OEQuality.city().lighter ? ' (a lighter set: the last visit ran out of memory here)' : '';
+    const QL = window.OEQuality ? OEQuality.city() : null, lighter = QL && QL.lean && QL.deaths ? ' (a lighter set: the last visit ran out of memory here)' : '';
     const D = game && window.OE_DISTRICT, what = (D ? `${D.name}, on the ${entry.name} map` : entry.name || 'the city') + lighter;
     let got = 0, shown = 0;
     const report = () => {
@@ -83,6 +83,13 @@ window.OEWorld = (function () {
       }
       return getJSON(name + '.json');
     };
+    // Straight after this map's page was killed here (Safari loads the tab again at once), the dead page's memory
+    // is still being taken back, the GPU's with it: a load that starts at once competes with it, and the second
+    // death is the one that ends in "A problem repeatedly occurred". A few seconds' wait, said on the loader.
+    if (QL && QL.lean && window.OEQuality.sinceDeath && OEQuality.sinceDeath(cityId) < 20000) {
+      onMsg(`Making room: ${what}`, 0.01, 'Making room');
+      await new Promise(r => setTimeout(r, 3500));
+    }
     onMsg(want ? `Downloading ${what}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
     // the terrain grid: int16 heights, as bytes from its pack or as base64 text from its JSON
     const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
@@ -1264,9 +1271,20 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     }
     // a ground tile's mesh, with the bottom under its quays (tileGeometry)
     const quayBed = new THREE.MeshStandardMaterial({ color: lin(((scene.water || {}).seawall || {}).bed || '#3a3b33'), roughness: 1, metalness: 0 });
+    // On a phone's game (quality.js lean) a geometry's arrays go once the GPU has them, its bounds taken first: the
+    // ground's tiles held 30 MB of the page for nothing in Shibuya (the game reads heights from the terrain grid, and
+    // only the model viewer casts a ray at the ground). A lost context there reloads the page (see lean).
+    const shed = g => {
+      if (!(LEAN && game) || !g || !g.attributes.position || !g.attributes.position.count) return g;
+      g.computeBoundingSphere(); g.computeBoundingBox();
+      const go = function () { this.array = null; };
+      for (const a of Object.values(g.attributes)) a.onUpload(go);
+      if (g.index) g.index.onUpload(go);
+      return g;
+    };
     function groundMesh(g, material) {
-      const m = new THREE.Mesh(g, material);
-      if (g.userData.underlay) m.add(new THREE.Mesh(g.userData.underlay, quayBed));
+      const m = new THREE.Mesh(shed(g), material);
+      if (g.userData.underlay) m.add(new THREE.Mesh(shed(g.userData.underlay), quayBed));
       return m;
     }
     const photoTex = img => {
@@ -1946,7 +1964,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // are drawn at most LEAN_CAP on a side (Shibuya's screens.webp is 2048, 21 MB; here 1024, 5), which the ground
     // aerial and the mask textures (shore, woods) keep clear of, since they are data read by the pixel. The picture
     // is drawn once at its own size then let go. A text sign stays legible: these are seen across a street, not read.
-    const LEAN_CAP = 1024 >> (QW && QW.lighter ? 1 : 0); // (half after the map's page died here, quality.js died; at a quarter the signs across a street no longer read)
+    const LEAN_CAP = 1024 >> (QW && QW.lighter >= 3 ? 1 : 0); // (half on the lightest set, quality.js level: at 512 a shop's name across the Scramble no longer reads, so a phone's first set keeps 1024; at a quarter no sign does)
     const leanDown = tex => {
       if (!LEAN || !tex || !tex.image) return tex;
       const im = tex.image, side = Math.max(im.width || 0, im.height || 0);

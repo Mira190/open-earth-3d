@@ -41,6 +41,19 @@ st = F.fresh(); dues = [];
 for (let i = 0; i < 3; i++) { p = F.price(C, { kind: 'ferry', from: 'a', to: 'b', m: 2000, on: on(13, 600 + i * 90), off_min: 620 + i * 90 }, st); st = p.st; dues.push(p.due); }
 check(near(dues[0], 7) && near(dues[1], 2.5) && near(dues[2], 0) && p.capName !== 'Daily cap', `a Friday caps at 9.5: ${dues.join(', ')}`);
 check(F.capOf(Object.assign({}, C), { y: 2026, m: 1, d: 26 }).low, 'a holiday has the lower cap');
+// NSW's public holidays: Easter moves, the King's Birthday and Labour Day are Mondays, and a weekend's
+// Christmas, Boxing Day, New Year's Day or Australia Day gives the next free weekday
+{
+  const H = { holidays: [[1, 1, 'weekday'], [1, 26, 'weekday'], ['easter', -2], ['easter', 1], [4, 25], ['nth', 6, 0, 2], ['nth', 10, 0, 1], [12, 25, 'weekday'], [12, 26, 'weekday']] };
+  const has = (y, m, d) => F.holidaysOf(H, y).has(`${m}-${d}`);
+  check(String(F.easter(2026)) === '4,5' && String(F.easter(2027)) === '3,28' && String(F.easter(2019)) === '4,21', 'Easter Sunday by the computus');
+  check(has(2026, 4, 3) && has(2026, 4, 6) && !has(2026, 4, 7), 'Good Friday and Easter Monday 2026');
+  check(has(2026, 6, 8) && !has(2026, 6, 1) && has(2026, 10, 5) && !has(2026, 10, 12), "the King's Birthday on 8 June and Labour Day on 5 October 2026");
+  check(has(2027, 12, 27) && has(2027, 12, 28) && !has(2027, 12, 29), 'Christmas 2027 on a Saturday and Boxing Day on a Sunday: Monday and Tuesday');
+  check(has(2022, 12, 27) && !has(2022, 12, 28), 'Christmas 2022 on a Sunday: Boxing Day Monday, Tuesday the 27th');
+  check(has(2025, 1, 27) && has(2028, 1, 3) && !has(2026, 4, 27), "Australia Day 2025 and New Year 2028 move to the Monday; Anzac Day does not");
+  check(F.capOf(Object.assign({}, C, { holidays: H.holidays }), { y: 2026, m: 4, d: 6 }).low, 'Easter Monday has the lower cap');
+}
 // the week's cap: 45 spent by Thursday, so Thursday's second ferry is 5 and its third free
 st = Object.assign(F.fresh(), { week: '2026-11-09', wspent: 45, day: '2026-11-11', spent: 19 });
 p = F.price(C, { kind: 'ferry', from: 'a', to: 'b', m: 2000, on: on(12, 600), off_min: 620 }, st);
@@ -55,6 +68,13 @@ q = F.price(T, { kind: 'cable', from: 'top', to: 'low', on: on(9, 700) }, p.st);
 const r = F.price(T, { kind: 'cable', from: 'low', to: 'top', on: on(9, 800) }, q.st);
 check(near(p.due, 30) && q.ret && near(q.due, 0) && near(r.due, 30) && !r.ret, 'a return ticket pays the way up and not the way down');
 check(near(F.price(T, { kind: 'cable', from: 'top', to: 'low', on: on(10, 600) }, p.st).due, 30), 'a return is good on its day only');
+// a ticket by the hour (SHIBUYA SKY's): the morning's price before three, the afternoon's from it, the way down on it
+{
+  const S = { unit: 1, rides: { lift: { routes: { sky: { from: 'street', times: [['00:00', 3000], ['15:00', 3700]], return: true } } } } };
+  const up = (min, st) => F.price(S, { kind: 'lift', route: 'sky', from: 'street', to: 'roof', on: on(9, min) }, st || F.fresh());
+  const a = up(14 * 60 + 59), b = up(15 * 60), dn = F.price(S, { kind: 'lift', route: 'sky', from: 'roof', to: 'street', on: on(9, 16 * 60) }, b.st);
+  check(a.due === 3000 && b.due === 3700 && dn.due === 0 && dn.ret, `SHIBUYA SKY: 3,000 before 15:00, 3,700 from it, the way down free (${a.due}, ${b.due}, ${dn.due})`);
+}
 // amounts stay exact to the cent over a long day
 st = F.fresh();
 for (let i = 0; i < 40; i++) st = F.price(Object.assign({}, C, { caps: null }), { kind: 'rail', from: 'a', to: 'b', m: 2000, on: on(9, 660) }, st).st;
@@ -76,10 +96,13 @@ for (const c of live) {
   for (const line of [((G.rail || {}).train || {}).stations, ((G.rail || {}).gondola || {}).stations, ((G.rail || {}).funicular || {}).stations, (G.trains || {}).stations]) {
     for (const a of line || []) for (const b of line || []) if (a !== b && a.id && b.id) trips.push({ kind: 'rail', from: a.id, to: b.id, m: 1000 });
   }
+  for (const l of G.lifts || []) for (const a of l.stops) for (const b of l.stops) if (a !== b) trips.push({ kind: 'lift', route: l.id, from: a.name, to: b.name, m: 0 });
   let priced = 0;
   for (const t of trips) {
     const pr = F.price(fares, Object.assign({ on: on(9, 480) }, t), F.fresh());
     if (!fares.rides[t.kind]) continue;
+    const r = fares.rides[t.kind].routes ? fares.rides[t.kind].routes[t.route] : fares.rides[t.kind];
+    if (r && r.from && r.from !== t.from) continue; // (a ticket is bought at its gate; the way down is on it)
     check(pr && pr.due > 0 && (pr.cap == null || pr.due <= pr.cap), `${c}: ${t.kind} ${t.route || ''} ${t.from} to ${t.to} has a fare (${pr ? pr.due : 'none'})`);
     priced++;
   }

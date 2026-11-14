@@ -36,6 +36,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "blender"))
+sys.path.insert(0, HERE)
 
 import adkit as ad  # noqa: E402
 import hero_parts as hp  # noqa: E402
@@ -44,45 +45,55 @@ ID = "quay-west"
 Y0, Y1 = 164.0, 299.0             # the level along the quay
 ZB = 3.0                          # the fronts' foot, under the paving
 ZF = 4.0                          # the museum's ground floor
-STOREY = 4.3                      # its storey (six in the wings' 25.7 m, from photographs)
+STOREY = 4.3                      # its storey (six in the wings, five in the pavilions: photographs)
+WING_TOP, PAV_TOP = ZF + 27.4, ZF + 21.4      # over the floor, as the photographs' proportions give them against the tower's 35 m
 A0, B0 = (-225.79, 173.13), (-219.54, 248.95)   # the wings' harbour face, south to north (OSM's building parts)
 WALL = ((-185.16, 172.86), (-178.71, 246.85))   # the lawn's retaining wall (OSM barrier=retaining_wall)
-SAND = (216, 176, 118)            # Maroubra sandstone (sRGB): the grey ashlar texture is tinted to it
-SAND_D = (202, 160, 102)
+PALM_RING = [(-192.2, 172.0), (-181.2, 172.0), (-174.6, 248.0), (-185.6, 248.0)]     # where the lawn's palms stand (city.py PALM_RING: the map plants none there)
+RAIL_IN = 0.3                     # the balustrade's line, in from the quay's face
+KERB, KUP = 1.0, 0.16            # the quay's kerb stone, which the balustrade stands on: its width and upstand
+# the Mordant Wing in the front's frame (u along from the old building's south corner, out towards the water), from
+# OpenStreetMap's outline: the entrance block's two ends and its face; the north block's end and face; and, by
+# design after photographs, the glazed entrance's head and the hall's back wall (museum.py gives the same to the city)
+MORDANT = {"entrance": (81.6, 95.0, 20.8), "north": (112.7, 14.9), "glass_top": ZF + 7.2, "hall_back": 9.5}
 
 
 def materials(K):
+    import hero_tex
+    for key, (make, rep) in hero_tex.SETS.items():
+        K.register(key, rep, make)
     T = K.tint_to
     return {
-        "ground_granite": {"tex": "granite_pave", "tint": T("granite_pave", (122, 120, 117)), "rough": 0.6},
-        "ground_granite_dark": {"tex": "granite_pave", "tint": T("granite_pave", (66, 66, 70)), "rough": 0.5},
-        "ground_fore": {"tex": "granite_pave", "tint": T("granite_pave", (138, 129, 114)), "rough": 0.7},
-        "ground_kerb": {"tex": "stone", "tint": T("stone", (150, 132, 102)), "rough": 0.75, "maps": "cn"},
+        "ground_herring": {"tex": "syd_herring", "rough": 0.78},
+        "ground_header": {"tex": "syd_header", "rough": 0.72, "maps": "cn"},
+        "ground_kerb": {"tex": "syd_concrete", "tint": (0.27, 0.25, 0.22), "rough": 0.85, "maps": "c"},
         "ground_iron": {"map": "atlas", "rough": 0.5, "metal": 0.7},
-        "ground_stain": {"color": (0.05, 0.05, 0.05), "rough": 0.6, "alpha": 0.28},
-        "lawn_grass": {"tex": "grass", "tint": T("grass", (66, 96, 42)), "rough": 0.95, "maps": "cn"},
-        "stone_ashlar": {"tex": "ashlar", "tint": T("ashlar", SAND), "rough": 0.85, "bump": 0.7},
-        "stone_ashlar_d": {"tex": "ashlar", "tint": T("ashlar", SAND_D), "rough": 0.85, "bump": 0.7},
-        "stone_rubble": {"tex": "rubble", "tint": T("rubble", (204, 172, 124)), "rough": 0.9, "maps": "cn"},
-        "stone_coping": {"tex": "stone", "tint": T("stone", (156, 134, 100)), "rough": 0.8, "maps": "cn"},
-        "stone_plinth": {"tex": "granite", "tint": T("granite", (122, 88, 80)), "rough": 0.35, "maps": "c"},
-        "grc_white": {"tex": "conc", "tint": T("conc", (236, 236, 232)), "rough": 0.6, "maps": "c"},
-        "grc_grey": {"tex": "conc", "tint": T("conc", (92, 94, 98)), "rough": 0.6, "maps": "c"},
-        "grc_black": {"color": (0.03, 0.03, 0.035), "rough": 0.45},
+        "lawn_grass": {"tex": "grass", "tint": T("grass", (62, 92, 40)), "rough": 0.95, "maps": "cn"},
+        "stone_sand": {"tex": "syd_sandstone", "rough": 0.88, "bump": 0.8},
+        "stone_sand_d": {"tex": "syd_sandstone", "tint": (0.92, 0.915, 0.9), "rough": 0.88, "bump": 0.8},
+        "stone_plinth": {"tex": "granite", "tint": T("granite", (104, 72, 62)), "rough": 0.3, "maps": "c"},
+        "conc_seat": {"tex": "syd_concrete", "tint": (0.4, 0.38, 0.34), "rough": 0.7, "maps": "c"},
+        "conc_wall": {"tex": "syd_seawall", "rough": 0.8, "maps": "cr"},
+        "grc_white": {"tex": "syd_concrete", "tint": (0.86, 0.855, 0.84), "rough": 0.55, "maps": "c"},
+        "grc_grey": {"tex": "syd_concrete", "tint": (0.062, 0.068, 0.082), "rough": 0.6, "maps": "c"},
+        "grc_raw": {"tex": "syd_concrete", "tint": (0.6, 0.6, 0.58), "rough": 0.7, "maps": "c"},
+        "grc_black": {"color": (0.022, 0.022, 0.026), "rough": 0.5},
         "paint_white": {"color": (0.9, 0.9, 0.88), "rough": 0.5},
-        "floor_hall": {"color": (0.42, 0.41, 0.4), "rough": 0.22},
-        "wood_bench": {"color": (0.36, 0.2, 0.1), "rough": 0.65},
-        "wood_wharf": {"tex": "deck", "tint": T("deck", (112, 96, 84)), "rough": 0.9, "maps": "c"},
-        "metal_pole": {"color": (0.1, 0.105, 0.11), "rough": 0.45, "metal": 0.8},
+        "paint_pile": {"color": (0.82, 0.83, 0.82), "rough": 0.6},
+        "paint_orange": {"color": (0.9, 0.24, 0.03), "rough": 0.55},
+        "floor_hall": {"color": (0.36, 0.355, 0.35), "rough": 0.18},
+        "wood_bench": {"color": (0.3, 0.17, 0.09), "rough": 0.65},
+        "metal_rail": {"color": (0.03, 0.055, 0.045), "rough": 0.45, "metal": 0.6},
+        "metal_pole": {"color": (0.03, 0.055, 0.045), "rough": 0.45, "metal": 0.6},
         "metal_steel": {"color": (0.62, 0.63, 0.64), "rough": 0.3, "metal": 1.0},
         "metal_dark": {"color": (0.035, 0.037, 0.04), "rough": 0.45, "metal": 0.7},
         "metal_bronze": {"color": (0.13, 0.09, 0.05), "rough": 0.4, "metal": 0.9},
         "iron_black": {"color": (0.02, 0.02, 0.022), "rough": 0.55, "metal": 0.6},
-        "rubber": {"color": (0.02, 0.02, 0.02), "rough": 0.9},
         "paint_yellow": {"color": (0.85, 0.6, 0.02), "rough": 0.5},
+        "rubber": {"color": (0.02, 0.02, 0.02), "rough": 0.9},
         "glass_green": {"color": (0.03, 0.07, 0.065), "rough": 0.05, "metal": 0.6},
         "glass_dark": {"color": (0.02, 0.03, 0.04), "rough": 0.04, "metal": 0.5},
-        "glass_hall": {"color": (0.03, 0.04, 0.045), "rough": 0.03, "metal": 0.2, "alpha": 0.32},
+        "glass_hall": {"color": (0.03, 0.04, 0.045), "rough": 0.02, "metal": 0.7, "alpha": 0.42},
         "atlas_flat": {"map": "atlas", "rough": 0.8},
         "atlas_cloth": {"map": "atlas", "rough": 0.9},
         "atlas_bronze": {"map": "atlas", "rough": 0.38, "metal": 0.85},
@@ -90,6 +101,10 @@ def materials(K):
         "glow_ember": {"map": "atlas", "rough": 0.1, "metal": 1.0, "emissive": True, "glow": 0.55},
         "glow_lamp": {"color": (1.0, 0.95, 0.85), "emissive": (1.0, 0.86, 0.66), "glow": 6.0},
         "glow_up": {"color": (1.0, 0.9, 0.7), "emissive": (1.0, 0.8, 0.55), "glow": 4.0},
+        "bark_palm": {"color": (0.13, 0.115, 0.095), "rough": 0.9},
+        "leaf_palm": {"color": (0.05, 0.105, 0.03), "rough": 0.55},
+        "leaf_palm_dry": {"color": (0.2, 0.17, 0.07), "rough": 0.7},
+        "lamp_globe": {"color": (0.8, 0.8, 0.78), "rough": 0.35, "emissive": (1.0, 0.9, 0.74), "glow": 5.0},
     }
 
 
@@ -248,18 +263,33 @@ def draw_plaque(name):
 
 
 def draw_banner(i):
-    from PIL import ImageDraw
+    """A tall banner for the quay's flagpoles: this project's own designs (the harbour's arcs, a sun over water,
+    a field of sails), not an exhibition's poster."""
+    from PIL import Image, ImageDraw, ImageFilter
 
     def draw(img, r):
         x, y, w, h = r
-        d = ImageDraw.Draw(img)
-        bg, fg, ac = [((14, 60, 92), (240, 236, 224), (240, 150, 40)), ((196, 62, 38), (250, 240, 226), (20, 40, 60))][i]
-        d.rectangle(_box(r), fill=bg)
-        for k in range(5):       # the harbour's arcs: sails and a bridge's arch, abstracted
-            rr = w * (0.5 + 0.28 * k)
-            d.arc([x + w * 0.5 - rr, y + h * 0.78 - rr * 0.5, x + w * 0.5 + rr, y + h * 0.78 + rr * 0.9], 200, 340, fill=ac if k % 2 else fg, width=3)
-        ad.vtext(img, (x + w / 2, y + h * 0.3), "SYDNEY" if i == 0 else "HARBOUR", "bebas", w * 0.42, fill=fg, gap=0.95)
-        ad.text(img, (x + w / 2, y + h * 0.94), "CIRCULAR QUAY" if i == 0 else "THE ROCKS", "bebas", w * 0.13, fill=fg, max_w=w * 0.9)
+        pal = [((238, 232, 220), (196, 62, 38), (22, 46, 70)), ((20, 58, 88), (240, 170, 60), (238, 232, 220)), ((204, 84, 52), (246, 236, 214), (36, 40, 52))][i]
+        bg, ac, ink = pal
+        im = Image.new("RGB", (w, h), bg)
+        d = ImageDraw.Draw(im)
+        if i == 0:
+            for k in range(7):
+                rr = w * (0.45 + 0.3 * k)
+                d.arc([w * 0.5 - rr, h * 0.62 - rr * 0.6, w * 0.5 + rr, h * 0.62 + rr], 205, 335, fill=ac if k % 2 else ink, width=7)
+        elif i == 1:
+            d.ellipse([w * 0.2, h * 0.2, w * 0.8, h * 0.2 + w * 0.6], fill=ac)
+            for k in range(9):
+                yy = h * (0.5 + 0.045 * k)
+                d.line([(xx, yy + 7 * math.sin(xx / w * 9 + k)) for xx in range(0, w + 1, 8)], fill=bg if k % 2 else (58, 110, 140), width=9)
+        else:
+            for k in range(5):
+                x0, y0 = w * (0.12 + 0.17 * k), h * (0.62 - 0.06 * k)
+                d.polygon([(x0, y0), (x0 + w * 0.3, y0), (x0 + w * 0.02, y0 - h * (0.2 + 0.03 * k))], fill=ac if k % 2 else ink)
+        im = im.filter(ImageFilter.GaussianBlur(0.6))
+        img.paste(im, (x, y))
+        ad.text(img, (x + w / 2, y + h * 0.9), ("CIRCULAR QUAY", "SYDNEY HARBOUR", "THE ROCKS")[i], "bebas", w * 0.15, fill=ink if i != 1 else bg, max_w=w * 0.86)
+        ad.text(img, (x + w / 2, y + h * 0.1), ("WARRANE", "TALLAWOLADAH", "GADIGAL COUNTRY")[i], "bebas", w * 0.1, fill=ink if i != 1 else bg, max_w=w * 0.86)
     return draw
 
 
@@ -371,19 +401,23 @@ def draw_doors(img, r):
 
 
 def draw_arrow(img, r):
-    """Brook Andrew's Warrang on the wing's wall: a great arrow pointing down, banded."""
-    from PIL import ImageDraw
+    """Brook Andrew's Warrang on the wing's wall: a great arrow pointing down, a dark timber frame round gold and
+    black bands, on the concrete."""
+    from PIL import Image, ImageDraw
     x, y, w, h = r
-    d = ImageDraw.Draw(img)
-    d.rectangle(_box(r), fill=(150, 150, 146))
-    pts = [(0.28, 0.06), (0.72, 0.06), (0.72, 0.5), (0.95, 0.5), (0.5, 0.95), (0.05, 0.5), (0.28, 0.5)]
-    d.polygon([(x + w * a, y + h * b) for a, b in pts], fill=(52, 50, 50))
-    inner = [(0.36, 0.14), (0.64, 0.14), (0.64, 0.56), (0.78, 0.56), (0.5, 0.84), (0.22, 0.56), (0.36, 0.56)]
-    d.polygon([(x + w * a, y + h * b) for a, b in inner], fill=(26, 26, 26))
-    for k in range(-6, 10):
-        y0 = y + h * (0.14 + 0.07 * k)
-        d.polygon([(x + w * 0.37, y0), (x + w * 0.63, y0 - h * 0.06), (x + w * 0.63, y0 - h * 0.03), (x + w * 0.37, y0 + h * 0.03)], fill=(214, 186, 60))
-    d.rectangle([x + int(w * 0.36), y, x + int(w * 0.64), y + int(h * 0.13)], fill=(150, 150, 146))
+    draw_stone((150, 150, 144))(img, r)
+    im = Image.new("RGB", (w, h), (0, 0, 0))
+    mask = Image.new("L", (w, h), 0)
+    d, dm = ImageDraw.Draw(im), ImageDraw.Draw(mask)
+    outer = [(0.3, 0.03), (0.7, 0.03), (0.7, 0.47), (0.97, 0.47), (0.5, 0.97), (0.03, 0.47), (0.3, 0.47)]
+    inner = [(0.37, 0.09), (0.63, 0.09), (0.63, 0.53), (0.82, 0.53), (0.5, 0.87), (0.18, 0.53), (0.37, 0.53)]
+    dm.polygon([(w * a, h * b) for a, b in inner], fill=255)
+    d.rectangle([0, 0, w, h], fill=(18, 16, 14))
+    for k in range(-8, 14):
+        y0 = h * 0.1 * k
+        d.polygon([(0, y0 + h * 0.2), (w, y0 - h * 0.18), (w, y0 - h * 0.13), (0, y0 + h * 0.25)], fill=(206, 170, 62))
+    ImageDraw.Draw(img).polygon([(x + w * a, y + h * b) for a, b in outer], fill=(44, 38, 34))
+    img.paste(im, (x, y), mask)
 
 
 def draw_cover(img, r):
@@ -435,9 +469,11 @@ class Level:
         self.F = hp.Frame(A0, B0)
         self._shore()
 
-    # the quay's edge: the shoreline of the game's own shore raster (the wall quays.js draws stands on it)
+    # the quay's face: the game's shore raster (the wall quays.js draws stands on it), which steps every 2.5 m, read
+    # as what a quay is, a few straight runs, and stood just outside the raster's line so that it covers that wall
     def _shore(self):
         from PIL import Image
+        from shapely.geometry import LineString
         sc = json.load(open(os.path.join(ROOT, "web", "data", "sydney", "scene.json")))["shore"]
         px = np.asarray(Image.open(os.path.join(ROOT, "web", "data", "sydney", sc["file"])))[:, :, 0].astype(float)
         D = (px - 128) / 2
@@ -448,20 +484,49 @@ class Level:
             c0, r0 = int(c), int(r)
             fc, fr = c - c0, r - r0
             return (D[r0, c0] * (1 - fc) + D[r0, c0 + 1] * fc) * (1 - fr) + (D[r0 + 1, c0] * (1 - fc) + D[r0 + 1, c0 + 1] * fc) * fr
-        ys = np.arange(Y0 - 4, Y1 + 4.01, 0.5)
+        ys = np.arange(Y0 - 6, Y1 + 6.01, 0.5)
         xs = []
         for y in ys:
             x = -200.0
-            while x < -140 and dist(x, y) < 0:
+            while x < -130 and dist(x, y) < 0:
                 x += 0.1
             xs.append(x)
         xs = np.array(xs)
-        k = np.ones(9) / 9       # (the raster's 2.5 m steps, smoothed to the wall's line)
-        xs = np.convolve(np.pad(xs, 4, mode="edge"), k, mode="valid")
-        self._ey, self._ex = ys, xs
+        runs = np.array(LineString(np.c_[xs, ys]).simplify(0.6).coords)        # the straight runs
+        line = np.interp(ys, runs[:, 1], runs[:, 0])
+        k = np.hanning(13); k /= k.sum()                                        # the corners between them, eased over 3 m
+        line = np.convolve(np.pad(line, 6, mode="edge"), k, mode="valid")
+        self._ey, self._ex = ys, line + max(0.0, float(np.percentile(xs - line, 96))) + 0.12
+        self.YN = Y1 - 6.0        # where the level's edge ends (the landing beyond is the map's)
 
     def edge(self, y):
         return float(np.interp(y, self._ey, self._ex))
+
+    def lift(self, x, y):
+        """How far the paving rises to the kerb: the map's own quay has a coping over the ground, 0.1 to 0.3 m here
+        (hero_coping.json: read from the running game), on the shore raster's stepped line; the pavers climb over
+        it in their last metre and a half, flush with the kerb's top."""
+        d = self.edge(y) - x
+        t = min(1.0, max(0.0, (d - 2.0) / 1.4))
+        return (self.kerb_up(y) - 0.04) * (1 - t * t * (3 - 2 * t)) if y < self.YN + 2 else 0.0
+
+    def kerb_up(self, y):
+        """The kerb's top over the ground at y: over the map's coping wherever that is higher than the kerb's own upstand."""
+        if not hasattr(self, "_cop"):
+            pts = np.array(json.load(open(os.path.join(HERE, "hero_coping.json")))["points"])
+            ys = np.arange(Y0 - 6, Y1 + 6.01, 0.5)
+            raw = np.array([max([KUP] + [h + 0.035 for _, py, h in pts if abs(py - yy) < 4.0]) for yy in ys])
+            k = np.hanning(17); k /= k.sum()
+            self._cop = ys, np.maximum(raw, np.convolve(np.pad(raw, 8, mode="edge"), k, mode="valid"))
+        return float(np.interp(y, *self._cop))
+
+    def gz(self, x, y):
+        return self.G.z(x, y) + self.lift(x, y)
+
+    def edge_frame(self, y):
+        """(point on the quay's face, tangent, outward normal) at y."""
+        t = hp.unit([self.edge(y + 0.5) - self.edge(y - 0.5), 1.0])
+        return np.array([self.edge(y), y]), t, np.array([t[1], -t[0]])
 
     def wall_x(self, y):
         (xa, ya), (xb, yb) = WALL
@@ -490,17 +555,17 @@ class Level:
         self.plaques = [n for n in self.nodes(historic="memorial") if n["tags"].get("memorial") == "plaque" and n["tags"].get("name")
                         and Y0 < n["xy"][1] < Y1 and n["xy"][0] > self.wall_x(n["xy"][1]) - 2]
         # (tallest first: the atlas is packed in shelves)
+        for i in range(3):
+            A.cell(f"banner{i}", 224, 720, draw_banner(i))
         A.cell("pylon", 192, 640, draw_pylon)
         A.cell("ember", 384, 384, draw_ember)
-        for i in range(2):
-            A.cell(f"banner{i}", 128, 368, draw_banner(i))
         A.cell("doors", 512, 384, draw_doors)
+        A.cell("arrow", 320, 384, draw_arrow)
         for i in range(4):
             A.cell(f"art{i}", 224, 288, draw_art(i))
         A.cell("clock", 320, 320, draw_clock)
-        A.cell("arrow", 256, 256, draw_arrow)
-        A.cell("letters_grey", 640, 256, draw_words(["Museum of", "Contemporary", "Art"], (58, 60, 64), (244, 244, 240), face="anton", align="l"))
-        A.cell("letters_white", 512, 256, draw_words(["Museum of", "Contemporary", "Art Australia"], (240, 240, 236), (16, 16, 16), face="anton", align="l"))
+        A.cell("letters_grey", 640, 256, draw_words(["Museum of", "Contemporary", "Art"], (70, 74, 82), (244, 244, 240), face="anton", align="l"))
+        A.cell("letters_white", 512, 256, draw_words(["Museum of", "Contemporary", "Art Australia"], (246, 246, 243), (16, 16, 16), face="anton", align="l"))
         for i in range(6):
             A.cell(f"room_d{i}", 96, 192, draw_room(rng, False))
         for i in range(4):
@@ -509,35 +574,48 @@ class Level:
             A.cell(f"plaque{i}", 192, 192, draw_plaque(n["tags"]["name"]))
         for i in range(3):
             A.cell(f"relief{i}", 160, 160, draw_relief(i))
-        A.cell("buoy", 128, 160, draw_buoy)
         A.cell("cover", 128, 128, draw_cover)
         A.cell("flag_au", 192, 96, draw_flag("au"))
         A.cell("flag_ab", 192, 96, draw_flag("aboriginal"))
-        A.cell("letters", 1280, 136, draw_words(["MUSEUM OF CONTEMPORARY ART"], (206, 164, 106), (48, 32, 18), stone=True, pad=0.12))
+        A.cell("letters", 1280, 136, draw_words(["MUSEUM OF CONTEMPORARY ART"], (58, 42, 34), (196, 160, 104), pad=0.2))
         A.cell("drain", 256, 32, draw_drain)
 
     # -- what you walk on
     def ground(self):
-        from shapely.geometry import Polygon, box
+        from shapely.geometry import LineString, Polygon, box
+        from shapely.ops import unary_union
         G, geo, rep = self.G, self.geo, self.rep
         ys = np.arange(Y0, Y1 + 0.01, 1.0)
-        land = Polygon([(-236, Y0)] + [(self.edge(y) - 0.72, y) for y in ys] + [(-236, Y1)])
+        shore = [(self.edge(y), y) for y in ys]
+        land = Polygon([(-236, Y0)] + [(x - KERB, y) for x, y in shore] + [(-236, Y1)])
+        full = Polygon([(-236, Y0)] + shore + [(-236, Y1)])
         mca = Polygon(next(w for w in self.ways(name="Museum of Contemporary Art"))["xy"]).buffer(0.25, join_style=2)
         site = land.difference(mca).buffer(0)
         site = max(getattr(site, "geoms", [site]), key=lambda p: p.area)
         lawn = Polygon(next(w for w in self.ways(name="Tallawoladah Lawn"))["xy"]).intersection(site)
-        kerb = lawn.buffer(0.32, join_style=2).difference(lawn).intersection(site)
-        east = Polygon([(self.wall_x(Y0 - 5) + 0.3, Y0 - 5), (0, Y0 - 5), (0, Y1 + 5), (self.wall_x(Y1 + 5) + 0.3, Y1 + 5)])
-        north = box(-300, 252.0, 0, Y1 + 5)       # the wing's forecourt is the promenade's granite too
-        prom = site.intersection(east.union(north)).difference(lawn.buffer(0.32, join_style=2))
-        fore = site.difference(prom).difference(lawn.buffer(0.32, join_style=2))
-        bands = [box(-300, y, 0, y + 0.62) for y in np.arange(Y0 + 3.0, Y1, 7.4)]
-        from shapely.ops import unary_union
-        band = unary_union(bands).intersection(prom)
-        hp.pave(geo, "ground_granite", G, prom.difference(band), rep["granite_pave"], rot=True)
-        hp.pave(geo, "ground_granite_dark", G, band, rep["granite_pave"], rot=True)
-        hp.pave(geo, "ground_fore", G, fore, rep["granite_pave"])
-        hp.pave(geo, "ground_kerb", G, kerb, rep["stone"] * 0.5, dz=0.07)
+        lawn_k = lawn.buffer(0.3, join_style=2)
+        kerb = lawn_k.difference(lawn).intersection(site)
+        prom = site.difference(lawn_k)
+        # the pavers: a herringbone at 45 degrees to the quay, darker soldier courses across it every 7.4 m, one
+        # along the kerb and one round the lawn
+        qd = hp.unit([self.edge(Y1 - 40) - self.edge(Y0 + 30), Y1 - Y0 - 70])
+        along = math.atan2(qd[1], qd[0])
+        bands = [LineString([(-260, y - 26), (-120, y + 9)]).buffer(0.2, cap_style=2) for y in np.arange(Y0 - 20, Y1 + 30, 7.4)]
+        edge_course = LineString([(x - KERB - 0.3, y) for x, y in shore]).buffer(0.3, cap_style=2)
+        lawn_course = lawn_k.buffer(0.4, join_style=2).difference(lawn_k)
+        band = unary_union(bands + [edge_course, lawn_course]).intersection(prom)
+        # laid on a half-metre grid where things stand on it (the quay's edge, the seat wall's foot, under the cafe's
+        # canopies), so that the baked occlusion has vertices to darken under a bench and at a wall's foot; a metre elsewhere
+        F = self.F
+        close = unary_union([LineString(shore).buffer(4.4, cap_style=2), LineString([WALL[0], WALL[1]]).buffer(1.8, cap_style=2)]
+                            + [Polygon([F.P(ua, 0.4, 0)[:2], F.P(ub, 0.4, 0)[:2], F.P(ub, 7.0, 0)[:2], F.P(ua, 7.0, 0)[:2]]) for ua, ub in ((16.0, 32.0), (45.0, 61.5))])
+        for mat, area, key, rot in (("ground_herring", prom.difference(band), "syd_herring", along + math.pi / 4), ("ground_header", band, "syd_header", along)):
+            hp.pave(geo, mat, G, area.difference(close), rep[key], rot=rot)
+            hp.pave(geo, mat, G, area.intersection(close), rep[key], rot=rot, cell=0.5)
+        for mat in ("ground_herring", "ground_header"):       # (the rise to the kerb, over the map's own coping)
+            for q in geo.parts[mat]["p"]:
+                q[2] += self.lift(q[0], q[1])
+        hp.pave(geo, "ground_kerb", G, kerb, rep["syd_concrete"], dz=0.07)
         hp.pave(geo, "lawn_grass", G, lawn, rep["grass"], dz=0.05)
         self.prom, self.lawn, self.site = prom, lawn, site
         A, rng = self.A, self.rng
@@ -546,10 +624,10 @@ class Level:
             x, y = n["xy"]
             hp.disc(geo, "atlas_bronze", (x, y), 0.36, G.z(x, y) + 0.066, uv=A.uv(f"plaque{i}"))
             hp.disc(geo.fine, "metal_bronze", (x, y), 0.385, G.z(x, y) + 0.058)
-        # a slot drain along the foot of the slope, covers where OpenStreetMap maps them, stains, shallow puddles
+        # a slot drain along the foot of the slope, covers where OpenStreetMap maps them
         wd = hp.unit(np.subtract(WALL[1], WALL[0]))
         for y in np.arange(WALL[0][1] + 0.5, WALL[1][1] - 1.0, 1.0):
-            x = self.wall_x(y) + 0.75
+            x = self.wall_x(y) + 0.95
             hp.decal(geo, "ground_iron", G, (x + wd[0] * 0.5, y + 0.5), wd, 1.0 / wd[1], 0.13, uv=A.uv("drain"), dz=0.062)
         for n in self.nodes(man_made="manhole"):
             if site.contains(box(n["xy"][0] - 0.4, n["xy"][1] - 0.4, n["xy"][0] + 0.4, n["xy"][1] + 0.4)):
@@ -557,138 +635,160 @@ class Level:
         for y in (181.0, 226.5, 268.0):
             x = self.edge(y) - 6.0
             hp.decal(geo, "ground_iron", G, (x, y), (1, 0), 0.6, 0.6, uv=A.uv("cover"), dz=0.062)
-        from shapely.geometry import Point
-        for _ in range(26):
-            y = Y0 + 4 + rng.random() * (Y1 - Y0 - 8)
-            x = self.wall_x(y) + 1.5 + rng.random() * (self.edge(y) - self.wall_x(y) - 4)
-            if prom.contains(Point(x, y).buffer(1.0)):
-                hp.blob(geo, "ground_stain", G, (x, y), 0.08 + rng.random() * 0.22, rng)
 
     # -- the museum's sandstone front
-    def bays(self, F, u0, u1, out, n, floors, top, small_top=False, lit=0.22, end=1.25, pier=0.95, name="ashlar"):
-        """A front of n bays between piers: a granite base, paired windows at each storey, a parapet. The wall
-        at `out`, the piers 0.3 m proud of it."""
-        geo, A, rng, rep = self.geo, self.A, self.rng, self.rep["ashlar"]
-        mat = "stone_ashlar"
-        zf = lambda u: min(self.G.z(*F.P(u, out, 0)[:2]), ZF) - 0.4
-        bw = (u1 - u0 - 2 * end + pier) / n
-        holes = []
+    def band(self, F, u0, u1, out, z0, z1, faces=("front",), o0=None):
+        """The plain stone of an attic under its coping (clean: nothing here is aged, AGENTS.md "The bar")."""
+        rep = self.rep["syd_sandstone"]
+        if "front" in faces:
+            hp.wall(self.geo, "stone_sand", F, u0, u1, z0, z1, out, rep)
+        if o0 is not None:
+            hp.fbox(self.geo, "stone_sand", F, u0, u1, o0, out, z0, z1, rep, faces=tuple(f for f in faces if f in ("left", "right")))
+
+    def bays(self, F, u0, u1, out, n, floors, top, small_top=False, lit=0.22, end=1.5, attic=2.4, ground=True):
+        """A front of n bays as the building has them: each a recess running up through the storeys between flat
+        piers, a pair of steel windows to a storey in it with a stone spandrel under each; a row of small windows
+        over the recesses where small_top; a granite base, a string course and the plain attic under the coping."""
+        geo, A, rng, rep = self.geo, self.A, self.rng, self.rep["syd_sandstone"]
+        mat, dk = "stone_sand", "stone_sand_d"
+        RD = 0.32                                    # the recess
+        f0 = 0 if ground else 1
+        nf = floors - (1 if small_top else 0)
+        bw = (u1 - u0 - 2 * end) / n
+        sw = min(3.05, bw - 1.05)                    # a recess's width
+        za = ZF + 1.0 + STOREY * f0
+        zb = ZF + 1.0 + STOREY * (nf - 1) + 2.85
+        strips, small = [], []
         for b in range(n):
-            uc = u0 + end - pier / 2 + bw * (b + 0.5)
-            for f in range(floors):
-                z0 = ZF + 1.3 + STOREY * f
-                hgt = 1.55 if (small_top and f == floors - 1) else 2.55
+            uc = u0 + end + bw * (b + 0.5)
+            strips.append((uc - sw / 2, uc + sw / 2, za, zb))
+            if small_top:
+                z0 = ZF + 1.25 + STOREY * nf
                 for s in (-1, 1):
-                    w0 = uc + s * 0.19 if s > 0 else uc - 0.19 - 1.14
-                    holes.append((w0, w0 + 1.14, z0, z0 + hgt))
-        hp.wall(geo, mat, F, u0, u1, ZB, top, out, rep, holes=holes, zf=None)
-        for (w0, w1, z0, z1) in holes:
+                    w0 = uc + s * 0.16 if s > 0 else uc - 0.16 - 1.1
+                    small.append((w0, w0 + 1.1, z0, z0 + 1.45))
+        z_att = top - attic
+        hp.wall(geo, mat, F, u0, u1, ZB, z_att, out, rep, holes=strips + small)
+        for (s0, s1, _, _) in strips:
+            wins = []
+            for f in range(f0, nf):
+                z0 = ZF + 1.0 + STOREY * f
+                for s in (-1, 1):
+                    w0 = (s0 + s1) / 2 + 0.14 if s > 0 else (s0 + s1) / 2 - 0.14 - (sw / 2 - 0.32)
+                    wins.append((w0, w0 + sw / 2 - 0.32, z0, z0 + 2.85))
+            hp.wall(geo, dk, F, s0, s1, za, zb, out - RD, rep, holes=wins, ao=0.82)
+            hp.fbox(geo, mat, F, s0 - 0.01, s0, out - RD, out, za, zb, rep, faces=("right",), ao=0.8)
+            hp.fbox(geo, mat, F, s1, s1 + 0.01, out - RD, out, za, zb, rep, faces=("left",), ao=0.8)
+            hp.fbox(geo, mat, F, s0, s1, out - RD, out, zb, zb + 0.01, rep, faces=("bottom",), ao=0.6)
+            hp.fbox(geo, dk, F, s0, s1, out - RD, out + 0.05, za - 0.16, za, rep, faces=("front", "top", "left", "right"))
+            for (w0, w1, z0, z1) in wins:
+                on = rng.random() < lit
+                key = f"room_l{int(rng.integers(4))}" if on else f"room_d{int(rng.integers(6))}"
+                hp.window(geo, F, w0, w1, z0, z1, out - RD, 0.1, dk, rep, uv=A.uv(key), bars=(1, 3), sill=False, frame="metal_dark",
+                          emit=(A.mean[key], 0.5) if on else None)
+        for (w0, w1, z0, z1) in small:
             on = rng.random() < lit
             key = f"room_l{int(rng.integers(4))}" if on else f"room_d{int(rng.integers(6))}"
-            hp.window(geo, F, w0, w1, z0, z1, out, 0.3, mat, rep, uv=A.uv(key), bars=(1, 3 if z1 - z0 > 2 else 1),
-                      emit=(A.mean[key], 0.5) if on else None)
-        # the piers, the end ones broader; their heads stop a course under the parapet
-        us = [u0 + end / 2] + [u0 + end - pier / 2 + bw * b for b in range(1, n)] + [u1 - end / 2]
-        for i, uc in enumerate(us):
-            w = end if i in (0, len(us) - 1) else pier
-            hp.fbox(geo, "stone_ashlar_d" if i % 2 else mat, F, uc - w / 2, uc + w / 2, out, out + 0.3, ZB, top - 1.5, rep, faces=("front", "left", "right", "top"))
-        # the base in polished granite, the string course over the ground floor's heads, the parapet and its coping
-        hp.fbox(geo, "stone_plinth", F, u0 - 0.02, u1 + 0.02, out, out + 0.38, ZB, ZF + 0.95, self.rep["granite"], faces=("front", "left", "right", "top"))
-        hp.fbox(geo, mat, F, u0 - 0.05, u1 + 0.05, out, out + 0.4, top - 1.5, top - 1.28, rep)
-        hp.fbox(geo, mat, F, u0 - 0.05, u1 + 0.05, out, out + 0.34, top - 1.28, top - 0.1, rep, faces=("front", "left", "right"))
-        hp.fbox(geo, "stone_ashlar_d", F, u0 - 0.12, u1 + 0.12, out - 0.5, out + 0.46, top - 0.1, top + 0.12, rep)
+            hp.window(geo, F, w0, w1, z0, z1, out, 0.22, mat, rep, uv=A.uv(key), bars=(1, 1), frame="metal_dark", emit=(A.mean[key], 0.5) if on else None)
+        # the base in polished granite, the string course, the attic, the coping
+        hp.fbox(geo, "stone_plinth", F, u0 - 0.02, u1 + 0.02, out, out + 0.1, ZB, ZF + 0.84, self.rep["granite"], faces=("front", "left", "right", "top"))
+        hp.fbox(geo, dk, F, u0 - 0.06, u1 + 0.06, out, out + 0.16, z_att - 0.26, z_att, rep)
+        self.band(F, u0, u1, out + 0.02, z_att, top)
+        hp.fbox(geo, dk, F, u0 - 0.14, u1 + 0.14, out - 0.5, out + 0.2, top, top + 0.16, rep)
         self.geo.walls.append((F.P(u0, out, 0)[:2], F.P(u1, out, 0)[:2], ZF, top))
 
     def museum(self):
-        geo, F, A, rep = self.geo, self.F, self.A, self.rep["ashlar"]
-        SK = 0.45                          # the skin, in front of the city's wall
-        wing_top, pav_top = ZF + 25.7, ZF + 23.2
-        # the wings between the pavilions and the tower
-        self.bays(F, 15.6, 32.0, SK, 4, 6, wing_top, small_top=True)
-        self.bays(F, 45.2, 62.0, SK, 4, 6, wing_top, small_top=True)
-        # the end pavilions, 9.3 m forward: front and both returns, and a roof
+        geo, F, A, rep = self.geo, self.F, self.A, self.rep["syd_sandstone"]
+        SK = 0.55                          # the skin, in front of the city's wall
+        # the wings between the pavilions and the tower: six storeys, the top one's windows small
+        self.bays(F, 15.6, 32.0, SK, 4, 6, WING_TOP, small_top=True, attic=3.0, end=1.3)
+        self.bays(F, 45.2, 62.0, SK, 4, 6, WING_TOP, small_top=True, attic=3.0, end=1.3)
+        # the end pavilions, 9.3 m forward and a storey lower: front and both returns, and a roof
         for (ua, ub) in ((1.5, 15.6), (62.0, 76.0)):
             PO = 9.3
-            self.bays(F, ua, ub, PO, 3, 5, pav_top)
+            self.bays(F, ua, ub, PO, 3, 5, PAV_TOP)
             south = hp.Frame(F.P(ua, 0, 0), F.P(ua, PO, 0))            # faces south
             north = hp.Frame(F.P(ub, PO, 0), F.P(ub, 0, 0))            # faces north
-            self.bays(south, 0.0, PO, 0.0, 2, 5, pav_top, end=1.1)
-            self.bays(north, 0.0, PO, 0.0, 2, 5, pav_top, end=1.1)
-            geo.quad("stone_ashlar_d", F.P(ua, 0, pav_top - 0.2), F.P(ub, 0, pav_top - 0.2), F.P(ub, PO, pav_top - 0.2), F.P(ua, PO, pav_top - 0.2),
+            self.bays(south, 0.0, PO, 0.0, 2, 5, PAV_TOP, end=1.0)
+            self.bays(north, 0.0, PO, 0.0, 2, 5, PAV_TOP, end=1.0)
+            geo.quad("stone_sand_d", F.P(ua, 0, PAV_TOP - 0.2), F.P(ub, 0, PAV_TOP - 0.2), F.P(ub, PO, PAV_TOP - 0.2), F.P(ua, PO, PAV_TOP - 0.2),
                      n=(0, 0, 1.0), uv=[(0, 0), (4, 0), (4, 3), (0, 3)])
         # the south end of the main block, seen from First Fleet Park
         se = hp.Frame((-240.52, 174.36), (-225.79, 173.13))
-        self.bays(se, 0.0, se.len - 0.3, 0.45, 3, 6, wing_top, small_top=True)
+        self.bays(se, 0.0, se.len - 0.3, 0.55, 3, 6, WING_TOP, small_top=True, attic=3.0, end=1.2)
         self.tower()
+        # the cafe's flat white canopies along the wings' feet, either side of the tower
+        for (ua, ub) in ((17.2, 31.2), (46.0, 60.4)):
+            hp.fbox(geo, "paint_white", F, ua, ub, SK, SK + 4.6, ZF + 3.35, ZF + 3.55)
+            for u in np.linspace(ua + 0.4, ub - 0.4, 5):
+                geo.cylinder("metal_steel", F.P(u, SK + 4.3, ZB), 0.05, ZF + 3.35 - ZB, segs=6, cap=False)
+            for u in np.linspace(ua + 1.6, ub - 1.6, 4):      # its downlights
+                hp.disc(geo, "glow_lamp", F.P(u, SK + 2.4, 0)[:2], 0.08, ZF + 3.345, n=(0, 0, -1.0), segs=8)
+                geo.emitters.append((F.P(u, SK + 2.4, ZF + 3.3), np.array([0, 0, -1.0]), 1.0, np.array([1.0, 0.85, 0.62]) * 16))
         # the floor of glass on the roof (2012), set back, under a white slab
         for (ua, ub) in ((2.0, 31.0), (46.2, 75.0)):
-            hp.fbox(geo, "glass_green", F, ua, ub, -14.0, -2.2, wing_top, wing_top + 4.3, faces=("front", "left", "right"))
+            hp.fbox(geo, "glass_green", F, ua, ub, -14.0, -2.2, WING_TOP, WING_TOP + 4.0, faces=("front", "left", "right"))
             for u in np.arange(ua, ub + 0.01, (ub - ua) / round((ub - ua) / 2.4)):
-                hp.fbox(geo.fine, "metal_dark", F, u - 0.035, u + 0.035, -2.2, -2.12, wing_top, wing_top + 4.3, faces=("front", "left", "right"))
-            hp.fbox(geo, "paint_white", F, ua - 1.4, ub + 1.4, -15.0, -0.6, wing_top + 4.3, wing_top + 4.75)
+                hp.fbox(geo.fine, "metal_dark", F, u - 0.035, u + 0.035, -2.2, -2.12, WING_TOP, WING_TOP + 4.0, faces=("front", "left", "right"))
+            hp.fbox(geo, "paint_white", F, ua - 1.4, ub + 1.4, -15.0, -0.4, WING_TOP + 4.0, WING_TOP + 4.4)
 
     def tower(self):
-        geo, F, A, rep = self.geo, self.F, self.A, self.rep["ashlar"]
-        mat, u0, u1, out = "stone_ashlar", 32.0, 45.2, 2.6
+        geo, F, A, rep = self.geo, self.F, self.A, self.rep["syd_sandstone"]
+        mat, dk, u0, u1, out = "stone_sand", "stone_sand_d", 32.0, 45.2, 2.6
         uc = (u0 + u1) / 2
         top = ZF + 33.3
-        sh_top = ZF + 27.6                 # the shoulders either side of the great piers
         # the face: three strips of windows between slim piers, storey by storey, over the entrance
-        strips = [uc - 2.05, uc, uc + 2.05]
+        strips = [uc - 1.75, uc, uc + 1.75]
         holes = []
         for f in range(1, 6):
             z0 = ZF + 1.6 + STOREY * f
             for us in strips:
-                holes.append((us - 0.62, us + 0.62, z0, z0 + 2.75))
-        door = (uc - 3.1, uc + 3.1, ZB, ZF + 5.0)
-        hp.wall(geo, mat, F, u0, u1, ZB, top, out, rep, holes=holes + [door])
+                holes.append((us - 0.55, us + 0.55, z0, z0 + 2.75))
+        door = (uc - 2.6, uc + 2.6, ZB, ZF + 6.2)
+        hp.wall(geo, mat, F, u0, u1, ZB, top - 2.6, out, rep, holes=holes + [door])
+        self.band(F, u0, u1, out + 0.01, top - 2.6, top, faces=("front", "left", "right"), o0=out - 4.0)
+        hp.fbox(geo, mat, F, u0, u1, out - 4.0, out, ZB, top - 2.6, rep, faces=("left", "right"))      # its flanks, down to the wings and over their roofs
         for (w0, w1, z0, z1) in holes:
             on = self.rng.random() < 0.3
             key = f"room_l{int(self.rng.integers(4))}" if on else f"room_d{int(self.rng.integers(6))}"
-            hp.window(geo, F, w0, w1, z0, z1, out, 0.35, mat, rep, uv=A.uv(key), bars=(1, 3), sill=False, emit=(A.mean[key], 0.5) if on else None)
-            hp.fbox(geo, "metal_bronze", F, w0, w1, out - 0.3, out - 0.22, z1, z1 + STOREY - 2.75, faces=("front",))   # a bronze spandrel
-        for us in (uc - 1.025, uc + 1.025):       # the slim piers between the strips
-            hp.fbox(geo, "stone_ashlar_d", F, us - 0.3, us + 0.3, out, out + 0.32, ZF + 5.2, ZF + 26.8, rep, faces=("front", "left", "right", "top"))
-        for s in (-1, 1):                         # the great piers and the shoulders
-            a = uc + s * 3.3
-            b = uc + s * 5.3
-            hp.fbox(geo, mat, F, min(a, b), max(a, b), out, out + 0.7, ZB, ZF + 30.6, rep, faces=("front", "left", "right", "top"))
-            hp.fbox(geo, "stone_ashlar_d", F, min(a, b) - 0.1, max(a, b) + 0.1, out, out + 0.8, ZF + 30.6, ZF + 30.95, rep)
-            c, d = uc + s * 5.3, uc + s * 6.6
-            hp.fbox(geo, "stone_ashlar_d", F, min(c, d), max(c, d), out, out + 0.25, sh_top, sh_top + 0.3, rep)
-        hp.fbox(geo, "stone_plinth", F, u0, uc - 3.1, out, out + 0.82, ZB, ZF + 0.95, self.rep["granite"], faces=("front", "left", "right", "top"))
-        hp.fbox(geo, "stone_plinth", F, uc + 3.1, u1, out, out + 0.82, ZB, ZF + 0.95, self.rep["granite"], faces=("front", "left", "right", "top"))
+            hp.window(geo, F, w0, w1, z0, z1, out, 0.4, mat, rep, uv=A.uv(key), bars=(1, 3), sill=False, frame="metal_dark", emit=(A.mean[key], 0.5) if on else None)
+            hp.fbox(geo, "metal_bronze", F, w0, w1, out - 0.34, out - 0.26, z1, z1 + STOREY - 2.75, faces=("front",))   # a bronze spandrel
+        for us in (uc - 0.875, uc + 0.875):       # the slim piers between the strips
+            hp.fbox(geo, dk, F, us - 0.3, us + 0.3, out, out + 0.3, ZF + 6.4, ZF + 26.6, rep, faces=("front", "left", "right", "top"))
+        for s in (-1, 1):                         # the great piers, stepped back twice as they rise (fluted in plan), and the shoulders
+            for (a_, b_, o_, zt) in ((2.75, 4.9, 0.95, ZF + 30.4), (3.0, 4.65, 1.25, ZF + 29.2), (3.3, 4.35, 1.5, ZF + 27.6)):
+                a, b = uc + s * a_, uc + s * b_
+                hp.fbox(geo, mat, F, min(a, b), max(a, b), out, out + o_, ZB, zt, rep, faces=("front", "left", "right", "top"))
+            c, d = uc + s * 4.9, uc + s * 6.6
+            hp.fbox(geo, dk, F, min(c, d), max(c, d), out, out + 0.3, ZF + 26.8, ZF + 27.1, rep)
+        for s, (a, b) in ((-1, (u0, uc - 4.9)), (1, (uc + 4.9, u1))):
+            hp.fbox(geo, "stone_plinth", F, a, b, out, out + 0.1, ZB, ZF + 0.84, self.rep["granite"], faces=("front", "left", "right", "top"))
         # the carved panels, the clock, the stepped top, the stub and its pole
         for i, us in enumerate(strips):
-            geo.quad("atlas_flat", F.P(us - 0.72, out + 0.02, ZF + 27.0), F.P(us + 0.72, out + 0.02, ZF + 27.0), F.P(us + 0.72, out + 0.02, ZF + 28.44), F.P(us - 0.72, out + 0.02, ZF + 28.44), uv=A.uv(f"relief{i}"))
-        hp.disc(geo, "atlas_flat", F.P(uc, out + 0.03, 0)[:2], 1.42, ZF + 30.45, uv=A.uv("clock"), n=F.N, segs=32)
+            geo.quad("atlas_flat", F.P(us - 0.62, out + 0.02, ZF + 26.9), F.P(us + 0.62, out + 0.02, ZF + 26.9), F.P(us + 0.62, out + 0.02, ZF + 28.14), F.P(us - 0.62, out + 0.02, ZF + 28.14), uv=A.uv(f"relief{i}"))
+        hp.disc(geo, "atlas_flat", F.P(uc, out + 0.04, 0)[:2], 1.3, ZF + 31.2, uv=A.uv("clock"), n=F.N, segs=32)
         for k, (ins, z0, z1) in enumerate(((3.1, top, top + 0.9), (3.6, top + 0.9, top + 1.8))):
-            hp.fbox(geo, mat if k else "stone_ashlar_d", F, uc - 6.6 + ins, uc + 6.6 - ins, out - 4.0, out + 0.1 - 0.25 * k, z0, z1, rep)
-        hp.fbox(geo, "stone_ashlar_d", F, u0 - 0.1, u1 + 0.1, out - 0.4, out + 0.12, top - 0.25, top, rep)
+            hp.fbox(geo, mat if k else dk, F, uc - 6.6 + ins, uc + 6.6 - ins, out - 4.0, out + 0.1 - 0.25 * k, z0, z1, rep)
+        hp.fbox(geo, dk, F, u0 - 0.12, u1 + 0.12, out - 4.1, out + 0.16, top, top + 0.14, rep)
         hp.fbox(geo, mat, F, uc - 1.1, uc + 1.1, out - 3.2, out - 1.0, top + 1.8, top + 4.6, rep)
-        hp.fbox(geo, "stone_ashlar_d", F, uc - 1.25, uc + 1.25, out - 3.35, out - 0.85, top + 4.6, top + 4.85, rep)
+        hp.fbox(geo, dk, F, uc - 1.25, uc + 1.25, out - 3.35, out - 0.85, top + 4.6, top + 4.85, rep)
         pole = F.P(uc, out - 2.1, top + 4.85)
         geo.tube("paint_white", [pole, pole + [0, 0, 7.5]], 0.06, segs=6)
         self.flag(pole + [0, 0, 5.3], "flag_au", 3.2)
         for s, key in ((-1, "flag_au"), (1, "flag_ab")):      # the wings' roofs carry one each
-            p = F.P(uc + s * 9.5, -3.0, ZF + 30.4)
+            p = F.P(uc + s * 9.5, -3.0, WING_TOP + 4.4)
             geo.tube("paint_white", [p, p + [0, 0, 6.0]], 0.045, segs=6)
             self.flag(p + [0, 0, 4.2], key, 2.4)
-        # the entrance: bronze doors glazed onto the hall, the name over them, a canopy
-        geo.quad("atlas_bronze", F.P(door[0], out - 0.85, ZB), F.P(door[1], out - 0.85, ZB), F.P(door[1], out - 0.85, ZF + 5.0), F.P(door[0], out - 0.85, ZF + 5.0), uv=A.uv("doors"))
-        for us in np.linspace(door[0], door[1], 4):
-            hp.fbox(geo, "metal_bronze", F, us - 0.09, us + 0.09, out - 0.85, out - 0.7, ZB, ZF + 5.0, faces=("front", "left", "right"))
-        hp.fbox(geo, mat, F, door[0] - 0.01, door[0], out - 0.9, out, ZB, ZF + 5.0, rep, faces=("right",), ao=0.7)
-        hp.fbox(geo, mat, F, door[1], door[1] + 0.01, out - 0.9, out, ZB, ZF + 5.0, rep, faces=("left",), ao=0.7)
-        hp.fbox(geo, mat, F, door[0], door[1], out - 0.9, out, ZF + 5.0, ZF + 5.01, rep, faces=("bottom",), ao=0.6)
-        geo.quad("atlas_flat", F.P(uc - 5.2, out + 0.72, ZF + 5.3), F.P(uc + 5.2, out + 0.72, ZF + 5.3), F.P(uc + 5.2, out + 0.72, ZF + 6.4), F.P(uc - 5.2, out + 0.72, ZF + 6.4), uv=A.uv("letters"))
-        hp.fbox(geo, mat, F, uc - 5.3, uc + 5.3, out, out + 0.7, ZF + 5.0, ZF + 6.7, rep, faces=("front", "left", "right", "top", "bottom"))
-        hp.fbox(geo, "paint_white", F, uc - 4.4, uc + 4.4, out, out + 3.4, ZF + 4.45, ZF + 4.62)
-        for us in (uc - 4.1, uc + 4.1):
-            geo.cylinder("metal_steel", F.P(us, out + 3.1, ZB), 0.06, ZF + 4.45 - ZB, segs=8, cap=False)
-        for us in np.linspace(uc - 3.2, uc + 3.2, 4):   # the canopy's downlights
-            hp.disc(geo, "glow_lamp", F.P(us, out + 1.8, 0)[:2], 0.09, ZF + 4.445, n=(0, 0, -1.0), segs=10)
-            geo.emitters.append((F.P(us, out + 1.8, ZF + 4.4), np.array([0, 0, -1.0]), 1.0, np.array([1.0, 0.85, 0.62]) * 28))
+        # the entrance: a portal of polished brown granite two storeys high, bronze doors under a bronze grille, the
+        # name in bronze letters over them
+        for s in (-1, 1):
+            a, b = uc + s * 2.6, uc + s * 1.75
+            hp.fbox(geo, "stone_plinth", F, min(a, b), max(a, b), out - 0.9, out + 0.06, ZB, ZF + 6.2, self.rep["granite"], faces=("front", "left", "right"))
+        hp.fbox(geo, "stone_plinth", F, uc - 1.75, uc + 1.75, out - 0.9, out + 0.06, ZF + 4.7, ZF + 6.2, self.rep["granite"], faces=("front", "bottom"))
+        geo.quad("atlas_flat", F.P(uc - 1.7, out + 0.07, ZF + 5.2), F.P(uc + 1.7, out + 0.07, ZF + 5.2), F.P(uc + 1.7, out + 0.07, ZF + 5.56), F.P(uc - 1.7, out + 0.07, ZF + 5.56), uv=A.uv("letters"))
+        geo.quad("atlas_bronze", F.P(uc - 1.75, out - 0.85, ZB), F.P(uc + 1.75, out - 0.85, ZB), F.P(uc + 1.75, out - 0.85, ZF + 4.7), F.P(uc - 1.75, out - 0.85, ZF + 4.7), uv=A.uv("doors"))
+        for us in np.linspace(uc - 0.8, uc + 0.8, 2):   # the portal's downlights
+            geo.emitters.append((F.P(us, out - 0.4, ZF + 4.6), np.array([0, 0, -1.0]), 1.0, np.array([1.0, 0.85, 0.62]) * 20))
         self.geo.walls.append((F.P(u0, out, 0)[:2], F.P(u1, out, 0)[:2], ZF, top))
 
     def flag(self, p, key, w):
@@ -707,33 +807,47 @@ class Level:
             geo.quad("atlas_cloth", a, b, b + [0, 0, h], a + [0, 0, h],
                      uv=[(ua + (ub - ua) * t0, va), (ua + (ub - ua) * t1, va), (ua + (ub - ua) * t1, vb), (ua + (ub - ua) * t0, vb)])
 
-    # -- the Mordant Wing, in outline
+    # -- the Mordant Wing (Sam Marshall, 2012): on OpenStreetMap's outline, stacked as the photographs show it
     def mordant(self):
         geo, F, A = self.geo, self.F, self.A
-        c = self.rep["conc"]
-        z = ZB
-        # the grey box by the old building, with the name on it, over a dark soffit
-        hp.fbox(geo, "grc_grey", F, 76.4, 84.0, 0.0, 17.2, ZF + 5.2, ZF + 13.4, c, faces=("front", "left", "right", "bottom", "top"))
-        geo.quad("atlas_flat", F.P(77.0, 17.23, ZF + 8.0), F.P(83.4, 17.23, ZF + 8.0), F.P(83.4, 17.23, ZF + 10.6), F.P(77.0, 17.23, ZF + 10.6), uv=A.uv("letters_grey"))
-        # the glazed entrance, set back under the white box
-        self.hall(F, 76.4, 93.6, 15.6, 8.4, ZF + 5.2)
-        hp.fbox(geo, "grc_white", F, 84.0, 93.6, 4.0, 20.9, ZF + 5.2, ZF + 10.8, c, faces=("front", "left", "right", "bottom", "top"))
-        geo.quad("glass_dark", F.P(84.4, 19.4, ZF + 10.8), F.P(93.2, 19.4, ZF + 10.8), F.P(93.2, 19.4, ZF + 14.0), F.P(84.4, 19.4, ZF + 14.0))
-        geo.quad("glass_dark", F.P(93.2, 19.4, ZF + 10.8), F.P(93.2, 6.0, ZF + 10.8), F.P(93.2, 6.0, ZF + 14.0), F.P(93.2, 19.4, ZF + 14.0))
-        hp.fbox(geo, "grc_white", F, 84.0, 93.6, 4.0, 20.9, ZF + 14.0, ZF + 19.6, c, faces=("front", "left", "right", "bottom", "top"))
-        hp.fbox(geo, "grc_black", F, 77.5, 92.0, 2.0, 18.6, ZF + 13.4, ZF + 23.6, faces=("front", "left", "right", "top"))
-        geo.quad("glass_dark", F.P(79.0, 18.63, ZF + 19.9), F.P(91.0, 18.63, ZF + 19.9), F.P(91.0, 18.63, ZF + 23.0), F.P(79.0, 18.63, ZF + 23.0))
-        # north of the entrance: the white wall with the name at eye level, the concrete wall with the arrow
-        hp.fbox(geo, "grc_white", F, 93.6, 111.4, 0.0, 15.0, z, ZF + 16.2, c, faces=("front", "left", "right", "top"))
-        geo.quad("atlas_flat", F.P(94.3, 15.03, ZF + 1.0), F.P(98.3, 15.03, ZF + 1.0), F.P(98.3, 15.03, ZF + 3.0), F.P(94.3, 15.03, ZF + 3.0), uv=A.uv("letters_white"))
-        geo.quad("atlas_flat", F.P(101.0, 15.04, ZF + 0.4), F.P(105.6, 15.04, ZF + 0.4), F.P(105.6, 15.04, ZF + 5.0), F.P(101.0, 15.04, ZF + 5.0), uv=A.uv("arrow"))
-        hp.fbox(geo, "grc_black", F, 95.0, 111.4, 0.0, 13.0, ZF + 16.2, ZF + 22.0, faces=("front", "left", "right", "top"))
-        for u in np.arange(93.6 + 3.56, 111.3, 3.56):      # the panels' joints
-            hp.fbox(geo.fine, "metal_dark", F, u - 0.012, u + 0.012, 15.0, 15.006, z, ZF + 16.2, faces=("front",))
-        for zz in (ZF + 5.4, ZF + 10.8):
-            hp.fbox(geo.fine, "metal_dark", F, 93.6, 111.4, 15.0, 15.006, zz - 0.012, zz + 0.012, faces=("front",))
-        self.geo.walls.append((F.P(93.6, 15.0, 0)[:2], F.P(111.4, 15.0, 0)[:2], ZF, ZF + 16))
-        self.geo.walls.append((F.P(76.4, 15.6, 0)[:2], F.P(93.6, 15.6, 0)[:2], ZF, ZF + 5))
+        c = self.rep["syd_concrete"]
+        M = MORDANT
+        e0, e1, eo = M["entrance"]            # the entrance block along the front, and its face
+        n1, no = M["north"]                   # the north block's end and face
+        gz, bz = M["glass_top"], M["hall_back"]
+        full = ("front", "left", "right", "bottom", "top")
+        # the dark box by the old building, over the way through to George Street, with the name on it
+        hp.fbox(geo, "grc_grey", F, 76.4, e0 + 3.4, 2.0, eo - 1.6, gz - 0.6, ZF + 14.2, c, faces=full)
+        geo.quad("atlas_flat", F.P(76.9, eo - 1.57, ZF + 8.6), F.P(e0 + 3.0, eo - 1.57, ZF + 8.6), F.P(e0 + 3.0, eo - 1.57, ZF + 11.9), F.P(76.9, eo - 1.57, ZF + 11.9), uv=A.uv("letters_grey"))
+        hp.fbox(geo, "grc_raw", F, 76.3, e0, 6.2, 6.45, ZB, gz - 0.6, c, faces=("front",))       # the way's back wall
+        hp.fbox(geo, "grc_raw", F, e0 - 0.25, e0, 6.45, eo - 3.4, ZB, gz - 0.6, c, faces=("left", "front"))
+        # the glazed entrance, two storeys high, set back under the white box
+        self.hall(F, e0, e1, eo - 3.4, bz, gz)
+        # the white boxes, a ribbon of glass between them, and the black one on top with its glazed corner
+        hp.fbox(geo, "grc_white", F, e0 + 2.9, e1, 6.0, eo, gz, ZF + 12.4, c, faces=full)
+        for z0, z1, o in ((ZF + 12.4, ZF + 14.6, eo - 1.0),):
+            geo.quad("glass_dark", F.P(e0 + 3.4, o, z0), F.P(e1 - 0.4, o, z0), F.P(e1 - 0.4, o, z1), F.P(e0 + 3.4, o, z1))
+            geo.quad("glass_dark", F.P(e0 + 3.4, 8.0, z0), F.P(e0 + 3.4, o, z0), F.P(e0 + 3.4, o, z1), F.P(e0 + 3.4, 8.0, z1))
+        hp.fbox(geo, "grc_white", F, e0 + 1.9, e1, 6.0, eo - 0.6, ZF + 14.6, ZF + 19.8, c, faces=full)
+        hp.fbox(geo, "grc_black", F, e0 - 2.6, e1, 3.0, eo - 1.8, ZF + 14.2, ZF + 25.4, faces=("front", "left", "right", "top"))
+        geo.quad("glass_dark", F.P(e0 + 2.4, eo - 1.77, ZF + 20.6), F.P(e1 - 2.0, eo - 1.77, ZF + 20.6), F.P(e1 - 2.0, eo - 1.77, ZF + 24.8), F.P(e0 + 2.4, eo - 1.77, ZF + 24.8))
+        for u in np.arange(e0 + 2.4, e1 - 1.9, 2.75):
+            hp.fbox(geo.fine, "metal_dark", F, u - 0.03, u + 0.03, eo - 1.77, eo - 1.72, ZF + 20.6, ZF + 24.8, faces=("front", "left", "right"))
+        # north of the entrance: the white wall of precast panels with the name at eye level, and the arrow on its
+        # concrete foot; the dark storeys set back above
+        wt = ZF + 17.0
+        hp.fbox(geo, "grc_white", F, e1, n1, 0.0, no, ZB, wt, c, faces=("front", "left", "right", "top"))
+        hp.fbox(geo, "grc_white", F, e1 - 0.02, e1, no, eo - 3.4, ZB, gz, c, faces=("left",))
+        geo.quad("atlas_flat", F.P(e1 + 0.6, no + 0.03, ZF + 0.9), F.P(e1 + 4.4, no + 0.03, ZF + 0.9), F.P(e1 + 4.4, no + 0.03, ZF + 2.8), F.P(e1 + 0.6, no + 0.03, ZF + 2.8), uv=A.uv("letters_white"))
+        hp.fbox(geo, "grc_raw", F, e1 + 5.2, e1 + 10.4, no, no + 0.05, ZB, ZF + 5.3, c, faces=("front", "left", "right", "top"))
+        geo.quad("atlas_flat", F.P(e1 + 5.9, no + 0.08, ZF + 0.5), F.P(e1 + 9.7, no + 0.08, ZF + 0.5), F.P(e1 + 9.7, no + 0.08, ZF + 5.06), F.P(e1 + 5.9, no + 0.08, ZF + 5.06), uv=A.uv("arrow"))
+        hp.fbox(geo, "grc_black", F, e1 + 1.5, n1, 0.0, no - 2.0, wt, ZF + 22.6, faces=("front", "left", "right", "top"))
+        for u in np.arange(e1 + 3.54, n1 - 0.5, 3.54):      # the panels' joints
+            hp.fbox(geo.fine, "metal_dark", F, u - 0.012, u + 0.012, no, no + 0.006, ZB, wt, faces=("front",))
+        for zz in (ZF + 5.3, ZF + 11.2):
+            hp.fbox(geo.fine, "metal_dark", F, e1, n1, no, no + 0.006, zz - 0.012, zz + 0.012, faces=("front",))
+        self.geo.walls.append((F.P(e1, no, 0)[:2], F.P(n1, no, 0)[:2], ZF, wt))
+        self.geo.walls.append((F.P(e0, eo - 3.4, 0)[:2], F.P(e1, eo - 3.4, 0)[:2], ZF, gz))
 
     def hall(self, F, u0, u1, out, back, top):
         """A glazed ground floor with its room behind the glass, as geometry (so that it moves as you pass):
@@ -748,94 +862,267 @@ class Level:
         n = 4
         for i in range(n):       # the canvases, and a strip of light over each
             uc = u0 + (u1 - u0) * (i + 0.5) / n
-            geo.quad("atlas_flat", F.P(uc - 1.2, back + 0.04, zf + 1.1), F.P(uc + 1.2, back + 0.04, zf + 1.1), F.P(uc + 1.2, back + 0.04, zf + 4.1), F.P(uc - 1.2, back + 0.04, zf + 4.1), uv=A.uv(f"art{i % 4}"))
-            q = [F.P(uc - 1.4, back + 1.6, top - 0.255), F.P(uc - 1.4, back + 1.9, top - 0.255), F.P(uc + 1.4, back + 1.9, top - 0.255), F.P(uc + 1.4, back + 1.6, top - 0.255)]
+            geo.quad("atlas_flat", F.P(uc - 1.15, back + 0.04, zf + 1.2), F.P(uc + 1.15, back + 0.04, zf + 1.2), F.P(uc + 1.15, back + 0.04, zf + 4.2), F.P(uc - 1.15, back + 0.04, zf + 4.2), uv=A.uv(f"art{i % 4}"))
+            q = [F.P(uc - 1.3, back + 1.6, top - 0.255), F.P(uc - 1.3, back + 1.9, top - 0.255), F.P(uc + 1.3, back + 1.9, top - 0.255), F.P(uc + 1.3, back + 1.6, top - 0.255)]
             geo.quad("glow_lamp", *q, n=(0, 0, -1.0))
-            geo.emitters.append((F.P(uc, back + 1.75, top - 0.4), np.array([0, 0, -1.0]), 1.0, np.array([1.0, 0.9, 0.74]) * 26))
-            geo.emitters.append((F.P(uc, out + 0.3, top - 1.0), hp.unit(np.r_[F.n, -0.7]), 1.0, np.array([1.0, 0.9, 0.74]) * 22))   # (what spills out through the glass)
-        hp.fbox(geo, "metal_bronze", F, u1 - 6.0, u1 - 2.4, back + 2.6, back + 3.5, zf, zf + 1.05, faces=("front", "left", "right", "top"))    # the desk
-        # the glass, in a dark frame; its mullions in the fine model
+            geo.emitters.append((F.P(uc, back + 1.75, top - 0.4), np.array([0, 0, -1.0]), 1.0, np.array([1.0, 0.9, 0.74]) * 30))
+            geo.emitters.append((F.P(uc, out + 0.3, top - 1.0), hp.unit(np.r_[F.n, -0.7]), 1.0, np.array([1.0, 0.9, 0.74]) * 24))   # (what spills out through the glass)
+        hp.fbox(geo, "metal_bronze", F, u1 - 5.4, u1 - 2.2, back + 2.6, back + 3.5, zf, zf + 1.05, faces=("front", "left", "right", "top"))    # the desk
+        # the glass, frameless but for its head and fins; the door's portal in the fine model
         geo.quad("glass_hall", F.P(u0, out, ZB), F.P(u1, out, ZB), F.P(u1, out, top), F.P(u0, out, top), n=F.N)
-        hp.fbox(geo, "metal_dark", F, u0, u1, out - 0.06, out + 0.06, top - 0.22, top, faces=("front", "bottom"))
-        for u in np.arange(u0, u1 + 0.01, (u1 - u0) / 6):
-            hp.fbox(geo, "metal_dark", F, u - 0.04, u + 0.04, out - 0.07, out + 0.07, ZB, top, faces=("front", "left", "right"))
-        hp.fbox(geo.fine, "metal_dark", F, u0, u1, out - 0.04, out + 0.04, zf + 2.6, zf + 2.66, faces=("front", "top", "bottom"))
+        hp.fbox(geo, "metal_dark", F, u0, u1, out - 0.06, out + 0.06, top - 0.16, top, faces=("front", "bottom"))
+        for u in np.arange(u0, u1 + 0.01, (u1 - u0) / 5):
+            hp.fbox(geo, "metal_steel", F, u - 0.012, u + 0.012, out - 0.3, out, ZB, top, faces=("left", "right"))
+        um = (u0 + u1) / 2
+        hp.fbox(geo.fine, "metal_dark", F, um - 1.6, um + 1.6, out, out + 0.08, zf + 2.5, zf + 2.72)
+        for u in (um - 1.6, um, um + 1.6):
+            hp.fbox(geo.fine, "metal_dark", F, u - 0.03, u + 0.03, out, out + 0.06, ZB, zf + 2.5, faces=("front", "left", "right"))
 
-    # -- the water's edge
+    # -- the water's edge: the kerb, the concrete face down to the water, the fender piles, the balustrade
     def quay_edge(self):
         geo, G = self.geo, self.G
-        rs = self.rep["stone"]
-        L = 1.3
-        ys = np.arange(Y0, Y1 - 6, L)
-        for i, y in enumerate(ys):
-            x = self.edge(y + L / 2)
-            t = hp.unit([self.edge(y + L) - self.edge(y), L])
-            nrm = np.array([t[1], -t[0]])
-            c = np.array([x, y + L / 2]) - nrm * 0.36 + nrm * 0.3 * 0
-            zq = G.z(x - 1.6, y + L / 2)
-            geo.box("stone_coping", (c[0] + nrm[0] * 0.02, c[1] + nrm[1] * 0.02, zq - 0.3), (np.r_[t, 0], np.r_[nrm, 0]), (L - 0.025, 1.0, 0.47), uvm=1 / rs,
-                    faces=("+u", "-u", "+v", "-v", "top"))
-            if i % 11 == 5:
-                hp.mooring_bollard(geo, c - nrm * 0.05, zq + 0.17)
-            if i % 31 == 12:      # a ladder's hoops over the coping, and a lifebuoy on its post behind
-                for s in (-0.25, 0.25):
-                    b = np.r_[c + t * s + nrm * 0.42, zq + 0.17]
-                    geo.fine.tube("paint_yellow", [b + np.r_[nrm, 0] * 0.1 - [0, 0, 1.2], b + np.r_[nrm, 0] * 0.1 + [0, 0, 0.7], b + np.r_[nrm, 0] * -0.1 + [0, 0, 0.95], b - np.r_[nrm, 0] * 0.55 + [0, 0, 0.9], b - np.r_[nrm, 0] * 0.6], 0.022, segs=5)
-                p = np.r_[c - nrm * 1.3 + t * 1.2, G.z(*(c - nrm * 1.3 + t * 1.2))]
-                geo.cylinder("paint_yellow", p, 0.035, 1.25, segs=8, cap=False)
-                e, s2 = np.r_[nrm, 0], np.r_[t, 0]
-                geo.box("paint_yellow", p + [0, 0, 1.2], (s2, e), (0.6, 0.16, 0.75))
-                q0 = p + e * 0.085 - s2 * 0.3 + [0, 0, 1.2]
-                geo.quad("atlas_flat", q0 + s2 * 0.6, q0, q0 + [0, 0, 0.75], q0 + s2 * 0.6 + [0, 0, 0.75], uv=self.A.uv("buoy"))
-        # the hardwood fender along the wall's face under the coping
-        pts = [np.array([self.edge(y) + 0.32, y, G.z(self.edge(y) - 1.6, y) - 0.22]) for y in np.arange(Y0, Y1 - 5.9, 2.6)]
-        for a, b in zip(pts[:-1], pts[1:]):
-            t = hp.unit((b - a)[:2])
-            geo.box("wood_wharf", (a + b) / 2 - [0, 0, 0.36], (np.r_[t, 0], np.r_[t[1], -t[0], 0]), (np.linalg.norm(b - a) - 0.03, 0.3, 0.3), uvm=1 / self.rep["deck"],
-                    faces=("+v", "top", "bot", "+u", "-u"))
+        L = 2.0
+        ys = np.arange(Y0, self.YN + 0.01, L)
+        tl = self.rep["syd_seawall"]
+        P3 = lambda y, off, z: np.r_[self.edge_frame(y)[0] + self.edge_frame(y)[2] * off, z]
+        zq = lambda y: max(G.z(self.edge(y) - 1.6, y), G.z(self.edge(y) - KERB - 0.05, y)) + 0.025     # (a finger over the pavers that meet it)
+        s = 0.0
+        for i, (ya, yb) in enumerate(zip(ys[:-1], ys[1:])):
+            a, b = P3(ya, 0, 0), P3(yb, 0, 0)
+            ln = np.linalg.norm(b - a)
+            za, zb_ = zq(ya) + 0.1, zq(yb) + 0.1
+            # the face, from under the kerb to a metre under the water; the kerb's own face over it
+            geo.quad("conc_wall", a + [0, 0, -1.4], b + [0, 0, -1.4], b + [0, 0, zb_ - 0.3], a + [0, 0, za - 0.3],
+                     uv=[(s / tl, 1 - (za + 1.2) / 4.0), ((s + ln) / tl, 1 - (zb_ + 1.2) / 4.0), ((s + ln) / tl, 1.0), (s / tl, 1.0)])
+            oa, ob = P3(ya, 0.06, 0), P3(yb, 0.06, 0)
+            ia, ib = P3(ya, -KERB, 0), P3(yb, -KERB, 0)
+            za, zb_ = za + self.kerb_up(ya) - 0.1, zb_ + self.kerb_up(yb) - 0.1          # the kerb's top: an upstand, over the map's own coping
+            geo.quad("ground_kerb", oa + [0, 0, za - 0.7], ob + [0, 0, zb_ - 0.7], ob + [0, 0, zb_], oa + [0, 0, za], uv=[(s, 0), (s + ln, 0), (s + ln, 0.7), (s, 0.7)])
+            geo.quad("ground_kerb", P3(ya, 0, za - 0.7), P3(yb, 0, zb_ - 0.7), ob + [0, 0, zb_ - 0.7], oa + [0, 0, za - 0.7], n=(0, 0, -1.0))
+            geo.quad("ground_kerb", ia + [0, 0, za], ib + [0, 0, zb_], ob + [0, 0, zb_], oa + [0, 0, za], n=(0, 0, 1.0), uv=[(s, 0), (s + ln, 0), (s + ln, KERB), (s, KERB)])
+            geo.quad("ground_kerb", ib + [0, 0, zb_ - 0.4], ia + [0, 0, za - 0.4], ia + [0, 0, za], ib + [0, 0, zb_], uv=[(s, 0), (s + ln, 0), (s + ln, 0.4), (s, 0.4)], ao=0.75)
+            s += ln
+        # fender piles, white, standing off the face, a ladder at every third
+        for k, y in enumerate(np.arange(Y0 + 7.0, self.YN - 3, 13.5)):
+            p = P3(y, 0.32, -1.5)
+            geo.cylinder("paint_pile", p, 0.17, zq(y) + 2.2, segs=10)
+            geo.cylinder("iron_black", p + [0, 0, zq(y) + 2.2], 0.19, 0.12, segs=10)
+            for zz in (0.9, zq(y) - 0.3):       # its brackets to the wall
+                geo.box("iron_black", P3(y, 0.16, zz), (np.r_[self.edge_frame(y)[2], 0], np.r_[self.edge_frame(y)[1], 0]), (0.34, 0.1, 0.1))
+            if k % 3 == 1:
+                t = np.r_[self.edge_frame(y)[1], 0]
+                for sgn in (-0.22, 0.22):
+                    b0 = P3(y + 1.2, 0.12, 0) + t * sgn
+                    geo.fine.tube("metal_steel", [b0 + [0, 0, -1.2], b0 + [0, 0, zq(y) + 0.1]], 0.02, segs=5)
+                for zz in np.arange(-1.0, zq(y), 0.3):
+                    b0 = P3(y + 1.2, 0.12, zz)
+                    geo.fine.tube("metal_steel", [b0 - t * 0.22, b0 + t * 0.22], 0.014, segs=4)
+        self.rail()
 
-    # -- the lawn's wall and the palms
+    def rail(self):
+        """The quay's cast-iron balustrade (photographs: dark posts two metres apart with ball heads, a round top
+        rail, a flat rail under it and one at the foot, a diagonal cross with a ring in each panel), on the kerb."""
+        geo, G = self.geo, self.G
+        mat = "metal_rail"
+        ys = list(np.arange(Y0 + 0.4, self.YN - 0.2, 2.0))
+        pts = []
+        for y in ys:
+            c, t, n = self.edge_frame(y)
+            p = c - n * RAIL_IN
+            pts.append(np.r_[p, G.z(self.edge(y) - 1.6, y) + self.kerb_up(y)])
+        for i, p in enumerate(pts):
+            geo.lathe(mat, p, [(0.075, 0.0), (0.075, 0.06), (0.05, 0.1), (0.042, 0.98), (0.06, 1.0), (0.06, 1.04), (0.03, 1.07)], segs=6)
+            geo.lathe(mat, p + [0, 0, 1.07], [(0.0, 0.0), (0.05, 0.03), (0.062, 0.075), (0.05, 0.12), (0.0, 0.145)], segs=6)
+        for a, b in zip(pts[:-1], pts[1:]):
+            geo.tube(mat, [a + [0, 0, 0.99], b + [0, 0, 0.99]], 0.027, segs=5)
+            for zz in (0.14, 0.78):
+                geo.tube(mat, [a + [0, 0, zz], b + [0, 0, zz]], 0.016, segs=4)
+            # the panel's cross and ring: seen as lines from more than a few metres, so in the fine model
+            m = (a + b) / 2 + [0, 0, 0.46]
+            d = hp.unit(b - a)
+            fine = geo.fine
+            for sg in (1, -1):
+                fine.tube(mat, [a + [0, 0, 0.46 - sg * 0.3], m - d * 0.12 * 1 + [0, 0, -sg * 0.036]], 0.011, segs=4)
+                fine.tube(mat, [m + d * 0.12 + [0, 0, sg * 0.036], b + [0, 0, 0.46 + sg * 0.3]], 0.011, segs=4)
+            ring = [m + d * 0.125 * math.cos(th) + np.array([0, 0, 0.125 * math.sin(th)]) for th in np.linspace(0, 2 * math.pi, 13)]
+            fine.tube(mat, ring, 0.011, segs=4)
+        # lifebuoys on the rail, orange, every 40 m
+        for y in np.arange(Y0 + 18, self.YN - 5, 41.0):
+            c, t, n = self.edge_frame(y + 1.0)
+            m = np.r_[c - n * (RAIL_IN + 0.07), G.z(self.edge(y) - 1.6, y) + self.kerb_up(y) + 0.46]
+            T3 = np.r_[t, 0]
+            ring = [m + T3 * 0.3 * math.cos(th) + np.array([0, 0, 0.3 * math.sin(th)]) for th in np.linspace(0, 2 * math.pi, 15)]
+            geo.tube("paint_orange", ring, 0.055, segs=6)
+            for th in (0.8, 2.4, 3.9, 5.5):
+                q = m + T3 * 0.3 * math.cos(th) + np.array([0, 0, 0.3 * math.sin(th)])
+                d = T3 * -math.sin(th) + np.array([0, 0, math.cos(th)])
+                geo.fine.tube("paint_white", [q - d * 0.05, q + d * 0.05], 0.058, segs=6)
+
+    def palm(self, x, y, z, h, rng):
+        """A cabbage-tree palm (Livistona australis), as the lawn's are: a slender grey trunk, ringed, a round head
+        of fan leaves, the oldest hanging brown against the trunk. Built here because the map's shared palm is a
+        date palm scaled to the tree's height, a metre thick at 14 m (city.py clears the map's from this ground)."""
+        geo = self.geo
+        lean = np.array([rng.normal(0, 0.012), rng.normal(0, 0.012), 0.0])
+        n = 9
+        pts = [np.array([x, y, z]) + lean * (h * t) ** 1.5 + [0, 0, h * t] for t in np.linspace(0, 1, n)]
+        r0 = 0.15 + 0.02 * rng.random()
+        g = geo.part("bark_palm")
+        base, segs = len(g["p"]), 7
+        for i, p in enumerate(pts):
+            t = i / (n - 1)
+            r = r0 * (1.5 - 0.5 * min(1.0, t * 6)) * (1 - 0.22 * t) * (1.0 + 0.05 * (i % 2))       # flared at the foot, ringed
+            for k in range(segs + 1):
+                th = 2 * math.pi * k / segs
+                d = np.array([math.cos(th), math.sin(th), 0.0])
+                g["p"].append(p + d * r); g["n"].append(d); g["uv"].append((k / segs, h * t)); g["ao"].append(0.75 + 0.25 * min(1.0, t * 5))
+        for i in range(n - 1):
+            for k in range(segs):
+                a0, a1, b0, b1 = base + i * (segs + 1) + k, base + i * (segs + 1) + k + 1, base + (i + 1) * (segs + 1) + k, base + (i + 1) * (segs + 1) + k + 1
+                g["tri"] += [(a0, a1, b1), (a0, b1, b0)]
+        top = pts[-1]
+        up = np.array([0, 0, 1.0])
+        nf = 30
+        for f in range(nf):
+            az = f * 2.39996 + rng.random() * 0.4
+            el = math.radians(78 - 128 * (f / (nf - 1)) ** 0.85)          # the young leaves upright, the old ones hanging
+            d = np.array([math.cos(az) * math.cos(el), math.sin(az) * math.cos(el), math.sin(el)])
+            sd = hp.unit(np.cross(d, up))
+            nn = np.cross(sd, d)
+            mat = "leaf_palm_dry" if f >= nf - 5 else "leaf_palm"
+            Lp, R = 1.45 + 0.35 * rng.random(), 1.3 + 0.3 * rng.random()
+            E = top + d * Lp - up * 0.12 * Lp * math.cos(el)
+            geo.quad("leaf_palm_dry" if f >= nf - 5 else "bark_palm", top - sd * 0.025, top + sd * 0.025, E + sd * 0.02, E - sd * 0.02, n=nn)
+            nb, spread = 9, math.radians(78)
+            edges = []
+            for j in range(nb + 1):
+                ph = -spread + 2 * spread * j / nb
+                b = d * math.cos(ph) + sd * math.sin(ph)
+                edges.append(E + b * R * 0.62 + nn * (0.05 if j % 2 else -0.05))
+            for j in range(nb):
+                ph = -spread + 2 * spread * (j + 0.5) / nb
+                b = d * math.cos(ph) + sd * math.sin(ph)
+                T = E + b * R * (1.0 - 0.18 * abs(ph) / spread) - up * R * 0.42        # the segments' tips droop
+                P = [E, edges[j], edges[j + 1], T]
+                N = [hp.unit(nn + b * 0.3)] * 3 + [hp.unit(nn * 0.5 + b)]
+                geo.mesh(mat, P, [(0, 1, 2), (1, 3, 2)], n=N, uv=[(0, 0), (0, 1), (1, 1), (1, 0)], ao=[0.6, 0.9, 0.9, 1.0])
+
+    # -- the lawn's seat wall, and the palms along it
     def planting(self):
         geo, G, rng = self.geo, self.G, self.rng
-        rr = self.rep["rubble"]
+        rc = self.rep["syd_concrete"]
         (xa, ya), (xb, yb) = WALL
         W = hp.Frame((xb, yb), (xa, ya))          # facing east (the quay)
-        n = int(W.len / 2.0)
+        n = int(W.len / 3.0)
         for i in range(n):
             u0, u1 = W.len * i / n, W.len * (i + 1) / n
             za = min(G.z(*W.P(u, o, 0)[:2]) for u in (u0, u1) for o in (-0.3, 0.3)) - 0.15
-            zt = max(G.z(*W.P(u, -0.3, 0)[:2]) for u in (u0, u1)) + 0.46
-            hp.fbox(geo, "stone_rubble", W, u0, u1, -0.26, 0.26, za, zt, rr, faces=("front", "back", "left", "right"))
-            hp.fbox(geo, "stone_coping", W, u0 + 0.008, u1 - 0.008, -0.33, 0.33, zt, zt + 0.09, self.rep["stone"], faces=("front", "back", "left", "right", "top"))
+            zt = max(G.z(*W.P(u, -0.3, 0)[:2]) for u in (u0, u1)) + 0.45
+            hp.fbox(geo, "conc_seat", W, u0 + 0.006, u1 - 0.006, -0.3, 0.3, za, zt, rc, faces=("front", "back", "left", "right", "top"))
         self.geo.walls.append(((xa, ya), (xb, yb), G.z(xa, ya), G.z(xa, ya) + 0.5))
+        from shapely.geometry import Point, Polygon
+        ring = Polygon(PALM_RING)
+        prng = np.random.default_rng(77)
+        for nd in sorted(self.nodes(natural="tree"), key=lambda q: q["xy"][1]):
+            x, y = nd["xy"]
+            if ring.contains(Point(x, y)):
+                self.palm(x, y, G.z(x, y) - 0.05, 11.0 + 4.5 * prng.random(), prng)
 
     # -- what stands on the promenade
+    def globe(self, x, y, z):
+        """One of the quay's ball lights: a white globe on a slender dark post."""
+        geo = self.geo
+        c = np.array([x, y, z])
+        geo.lathe("metal_pole", c, [(0.1, 0.0), (0.1, 0.08), (0.06, 0.14), (0.045, 3.3), (0.07, 3.34), (0.11, 3.4), (0.11, 3.44)], segs=8)
+        H, R = 3.44 + 0.22, 0.25
+        prof = [(R * math.sin(a), H - R * math.cos(a)) for a in np.linspace(0.25, math.pi, 8)]
+        geo.lathe("lamp_globe", c, prof, segs=12)
+        k = np.array([1.0, 0.88, 0.7]) * 52
+        geo.emitters.append((c + [0, 0, H - 0.3], np.array([0, 0, -1.0]), 1.0, k))
+        for th in np.linspace(0, 2 * math.pi, 5)[:-1]:
+            d = np.array([math.cos(th), math.sin(th), -0.25])
+            geo.emitters.append((c + [0, 0, H] + d * 0.3, hp.unit(d), 1.0, k * 0.55))
+
+    def banner_pole(self, x, y, z, hd, i):
+        """A white flagpole with a tall banner flown from a top arm and held at its foot (the quay's are 10 m)."""
+        geo, A = self.geo, self.A
+        c = np.array([x, y, z])
+        geo.lathe("paint_white", c, [(0.11, 0.0), (0.11, 0.3), (0.085, 0.36), (0.05, 10.2), (0.0, 10.3)], segs=8)
+        s = np.array([math.cos(hd), math.sin(hd), 0.0])
+        bw, bh, bz = 1.25, 4.4, 5.3
+        for zz in (bz - 0.03, bz + bh + 0.03):
+            geo.tube("paint_white", [c + [0, 0, zz], c + s * (bw + 0.16) + [0, 0, zz]], 0.02, segs=5)
+        n = 5
+        (ua, va), (ub, _), (_, vb), _ = A.uv(f"banner{i % 3}")
+        nrm = np.array([-s[1], s[0], 0.0])
+        for k in range(n):        # hung with a belly in it
+            t0, t1 = k / n, (k + 1) / n
+            w0, w1 = 0.07 * math.sin(t0 * math.pi), 0.07 * math.sin(t1 * math.pi)
+            a0, b0 = c + s * 0.12 + nrm * w0 + [0, 0, bz + bh * t0], c + s * (0.12 + bw) + nrm * w0 * 1.6 + [0, 0, bz + bh * t0]
+            a1, b1 = c + s * 0.12 + nrm * w1 + [0, 0, bz + bh * t1], c + s * (0.12 + bw) + nrm * w1 * 1.6 + [0, 0, bz + bh * t1]
+            v0, v1 = va + (vb - va) * t0, va + (vb - va) * t1
+            o = nrm * 0.006        # (printed on both sides: two faces a hair apart, each read from its own side)
+            geo.quad("atlas_cloth", a0 - o, b0 - o, b1 - o, a1 - o, uv=[(ua, v0), (ub, v0), (ub, v1), (ua, v1)])
+            geo.quad("atlas_cloth", b0 + o, a0 + o, a1 + o, b1 + o, uv=[(ua, v0), (ub, v0), (ub, v1), (ua, v1)])
+
     def furniture(self):
         geo, G, A, rng = self.geo, self.G, self.A, self.rng
         self.lamps = []
-        for i, y in enumerate(np.arange(Y0 + 8.0, Y1 - 12, 21.0)):
-            x = self.edge(y) - 3.3
-            hd = math.atan2(1.0, self.edge(y + 1) - self.edge(y)) - math.pi / 2     # towards the water
-            hp.lamp_post(geo, (x, y), hd, G.z(x, y) + 0.03, low=(-1.0, 4.7), banner=(A.uv("banner0"), A.uv("banner1"), 0.8, 2.3, 5.2))
-            self.lamps.append((x, y))
-            if i in (1, 4):
-                hp.bin_(geo, (x - 0.2, y + 1.6), G.z(x - 0.2, y + 1.6) + 0.03)
+        # the ball lights along the balustrade, a banner pole between each pair
+        for i, y in enumerate(np.arange(Y0 + 5.0, self.YN - 2, 16.5)):
+            c, t, n = self.edge_frame(y)
+            p = c - n * 1.75
+            self.globe(p[0], p[1], self.gz(*p))
+            self.lamps.append(tuple(p))
+            y2 = y + 8.25
+            if y2 < self.YN - 2:
+                c2, t2, n2 = self.edge_frame(y2)
+                q = c2 - n2 * 1.8
+                self.banner_pole(q[0], q[1], self.gz(*q), math.atan2(-n2[1], -n2[0]), i)
+            if i in (1, 4, 6):
+                b = c - n * 2.0 + t * 3.0
+                hp.bin_(geo, (b[0], b[1]), self.gz(*b))
+        # the lawn side: globes along the seat wall's foot, facing the others
+        for y in np.arange(WALL[0][1] + 9.0, WALL[1][1] - 4, 22.0):
+            x = self.wall_x(y) + 1.6
+            self.globe(x, y, G.z(x, y) + 0.03)
+        hd0 = lambda y: math.atan2(self.edge_frame(y)[2][1], self.edge_frame(y)[2][0])
         for nd in self.nodes(amenity="bench"):
             x, y = nd["xy"]
-            if Y0 < y < Y1 - 4:
-                x = min(x, self.edge(y) - 1.75)
-                hp.bench(geo, (x, y), 0.0, G.z(x, y) + 0.04)
-        for y in (190.5, 192.6, 241.0, 243.1, 263.5):       # more of them, facing the water (not mapped: placed)
-            x = self.edge(y) - 1.75
-            hp.bench(geo, (x, y), 0.0, G.z(x, y) + 0.04)
-        from shapely.geometry import Point
+            if Y0 < y < self.YN - 4:
+                x = min(x, self.edge(y) - 2.5)
+                hp.bench(geo, (x, y), hd0(y), self.gz(x, y) + 0.04, metal="metal_rail")
+        for y in (190.5, 192.9, 241.0, 243.4, 263.5):       # more of them, facing the water (not mapped: placed)
+            x = self.edge(y) - 2.5
+            hp.bench(geo, (x, y), hd0(y), self.gz(x, y) + 0.04, metal="metal_rail")
+        from shapely.geometry import Point, Polygon
         inner = self.site.buffer(-0.3)
         for nd in self.nodes(barrier="bollard"):
             x, y = nd["xy"]
             if Y0 < y < Y1 - 0.5 and inner.contains(Point(x, y)):
                 hp.bollard(geo, (x, y), G.z(x, y) + 0.03, band="paint_white")
+        # the cafe under the wings' canopies: round tables with three chairs each (seen from the lawn as a row of legs
+        # and backs, so in the fine model)
+        F, fine = self.F, geo.fine
+        crng = np.random.default_rng(5)
+        for (ua, ub) in ((17.2, 31.2), (46.0, 60.4)):
+            for u in np.arange(ua + 1.6, ub - 1.0, 2.6):
+                for o in (2.0, 3.9):
+                    c = F.P(u + crng.normal(0, 0.15), o + crng.normal(0, 0.1), 0)
+                    z = G.z(c[0], c[1]) + 0.04
+                    c = np.array([c[0], c[1], z])
+                    fine.lathe("metal_steel", c, [(0.22, 0.0), (0.22, 0.02), (0.03, 0.04), (0.03, 0.7), (0.36, 0.7), (0.36, 0.73), (0.0, 0.73)], segs=10)
+                    a0 = crng.random() * 6.28
+                    for k in range(3):
+                        th = a0 + k * 2.09 + crng.normal(0, 0.15)
+                        d = np.array([math.cos(th), math.sin(th), 0.0]); sd = np.array([-d[1], d[0], 0.0])
+                        q = c + d * (0.62 + 0.1 * crng.random())
+                        fine.box("metal_dark", q + [0, 0, 0.43], (sd, d), (0.4, 0.4, 0.03))
+                        fine.box("metal_dark", q + d * 0.19 + [0, 0, 0.46], (sd, d), (0.4, 0.025, 0.36))
+                        for sa, sb in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                            fine.box("metal_dark", q + sd * 0.18 * sa + d * 0.18 * sb, (sd, d), (0.025, 0.025, 0.43))
         # wayfinding pylons
-        for (x, y, hd) in ((self.wall_x(170.0) + 2.2, 170.0, 0.2), (-178.5, 266.0, -0.3)):
+        for (x, y, hd) in ((self.wall_x(170.0) + 2.6, 170.0, 0.2), (-178.5, 270.0, -0.3)):
             c = np.array([x, y, G.z(x, y) + 0.03])
             f = np.array([math.cos(hd), math.sin(hd), 0.0]); s = np.array([-f[1], f[0], 0.0])
             geo.box("metal_dark", c, (s, f), (0.62, 0.14, 2.3))
@@ -868,7 +1155,7 @@ class Level:
             n = np.array([math.cos(th), math.sin(th), 0.0])
             geo.emitters.append((c + n * [rx, ry, 0] * 1.05 - [0, 0, 0.6], hp.unit(n - [0, 0, 0.5]), 1.0, np.array([1.0, 0.8, 0.5]) * 9))
 
-    # -- the light after dark that is not a lamp post's
+    # -- the light after dark that is not a lamp's
     def night(self):
         geo, G, F = self.geo, self.G, self.F
         # the museum's front is washed from the ground: up-lights in the forecourt's paving
@@ -880,23 +1167,24 @@ class Level:
             for dz, kk in ((0.4, 70.0), (3.0, 150.0)):       # (a narrow beam up the wall: a near and a far lobe)
                 geo.emitters.append((np.array([p[0], p[1], z + dz]) + F_.N * (1.0 + dz), hp.unit(-F_.N * 0.5 + [0, 0, 0.87]), 1.0, np.array([1.0, 0.78, 0.5]) * kk * k))
         for u in np.arange(17.6, 31.0, 4.1):
-            up(F, u, 0.45 + 2.6)
+            up(F, u, 0.45 + 5.4)
         for u in np.arange(47.3, 61.0, 4.2):
-            up(F, u, 0.45 + 2.6)
+            up(F, u, 0.45 + 5.4)
         for (ua, ub) in ((1.5, 15.6), (62.0, 76.0)):
             for u in np.arange(ua + 2.4, ub, 4.6):
                 up(F, u, 9.3 + 2.6)
         for u in (34.0, 43.2):
             up(F, u, 2.6 + 3.4, 1.8)
         # the wing's white wall
-        for u in np.arange(96.0, 111.0, 5.0):
-            up(F, u, 15.0 + 2.4, 0.5)
+        for u in np.arange(MORDANT["entrance"][1] + 2.5, MORDANT["north"][0] - 1, 5.0):
+            up(F, u, MORDANT["north"][1] + 2.4, 0.5)
 
 
 def build(K):
     """(geo, atlas, materials, meta) for blender/build_hero.py."""
+    mats = materials(K)          # (first: it registers the level's own drawn surfaces with the kit)
     L = Level(K)
     geo, atlas = L.build()
     meta = {"id": ID, "at": [-195.0, 230.0], "r": 85.0, "z": 4.0, "glb": f"hero/{ID}.glb", "fine": f"hero/{ID}_fine.glb",
-            "cell": 44.0, "fine_cell": 22.0, "bake_gain": 0.6}
-    return geo, atlas, materials(K), meta
+            "cell": 44.0, "fine_cell": 22.0, "bake_gain": 0.6, "sky_rays": 24, "sky_reach": 5.0, "sky_strength": 1.0}
+    return geo, atlas, mats, meta

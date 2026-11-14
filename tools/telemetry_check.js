@@ -53,6 +53,10 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
         if (!sessionStorage.getItem('seeded')) {
           sessionStorage.setItem('seeded', '1');
           localStorage.setItem('oe3d-alive-0123456789abcdef01234567', JSON.stringify({ t: Date.now() - 60000, up: 300, ready: true, view: 'game', city: 'testville', spot: 'Test Wharf', mode: 'foot' }));
+          // and this tab's own last page, dead three seconds ago in the middle of a load (Safari loads a killed tab again
+          // at once): the tab's session storage names it, so it is counted though it is younger than another tab's would be
+          sessionStorage.setItem('oe3d-sid', 'aaaaaaaaaaaaaaaaaaaaaaaa');
+          localStorage.setItem('oe3d-alive-aaaaaaaaaaaaaaaaaaaaaaaa', JSON.stringify({ t: Date.now() - 3000, up: 14, ready: false, stage: 'late people', view: 'game', city: 'sametab' }));
         }
       } catch (e) { /* storage blocked */ }
     });
@@ -100,7 +104,20 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await p.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     const save = await p.evaluate(c => { try { return JSON.parse(localStorage.getItem(`oe3d-game-${c}`)); } catch (e) { return null; } }, city);
+    const sameTab = await p.evaluate(() => window.OEQuality.died('sametab'));
     const died = await p.evaluate(() => { try { return { n: JSON.parse(localStorage.getItem('oe3d-died-testville')).n, died: window.OEQuality.died('testville'), other: window.OEQuality.died('nowhere') }; } catch (e) { return null; } });
+    // the memory loop's levels (quality.js level): light at first, up a level once one is held, never back to one a page died at
+    const lv = await p.evaluate(() => {
+      const Q = window.OEQuality, set = (k, v) => localStorage.setItem(k, JSON.stringify(Object.assign({ t: Date.now() }, v))), out = {};
+      out.fresh = Q.level('lv-a');
+      set('oe3d-held-lv-b', { lv: 2 }); out.held = Q.level('lv-b');
+      set('oe3d-held-lv-c', { lv: 2 }); set('oe3d-died-lv-c', { n: 1, lv: 1 }); out.heldDied = Q.level('lv-c');
+      set('oe3d-died-lv-d', { n: 2 }); out.old = Q.level('lv-d');
+      set('oe3d-died-lv-e', { n: 1, lv: 3 }); out.floor = Q.level('lv-e');
+      for (const k of ['held-lv-b', 'held-lv-c', 'died-lv-c', 'died-lv-d', 'died-lv-e']) localStorage.removeItem(`oe3d-${k}`);
+      return out;
+    });
+    must(lv.fresh === 2 && lv.held === 1 && lv.heldDied === 2 && lv.old === 2 && lv.floor === 3, 'a phone starts light, tries a level up once one is held, and keeps clear of a level its page died at', JSON.stringify(lv));
     must(started && save && Array.isArray(save.pos), 'the game saves where the player stands on leaving', save && save.pos && save.pos.map(v => Math.round(v)).join(','));
     await sleep(1500);
     await p.goto('about:blank');
@@ -184,7 +201,10 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const ex = of('exit', x => x.view === 'game');
     must(ex.length === 1 && ex[0].props.view === 'game' && ex[0].props.page_s > 0, 'the page says how it ended', ex[0] && `page ${ex[0].props.page_s} s, idle ${ex[0].props.idle_s} s`);
     const cr = of('crash');
-    must(cr.length === 1 && cr[0].props.prev_city === 'testville' && cr[0].props.prev_spot === 'Test Wharf', 'a page that died on screen is reported once by the next', cr.length);
+    const crT = cr.filter(e => e.props.prev_city === 'testville'), crS = cr.filter(e => e.props.prev_city === 'sametab');
+    must(cr.length === 2 && crT.length === 1 && crT[0].props.prev_spot === 'Test Wharf', 'a page that died on screen is reported once by the next', cr.length);
+    must(crS.length === 1 && crS[0].props.prev_stage === 'late people' && crS[0].props.prev_ready === false, 'this tab\'s own page, dead seconds ago mid-load, is reported with the step it died at', crS[0] && crS[0].props.prev_stage);
+    must(sameTab === 1, 'and counted against its map at once, so the load Safari starts again is lighter', sameTab);
     must(died && died.n === 1 && died.died === 1 && died.other === 0, 'and counted against its map, for a lighter load there next (quality.js died)', JSON.stringify(died));
     must(of('view', x => x.view === 'game').every(e => e.props.from === `city:${city}`), 'a view says which view it came from');
     let rep = null;
