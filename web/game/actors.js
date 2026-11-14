@@ -2126,9 +2126,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       return net.L[li].ow === -d ? null : [li, d];
     }
     function canReverse(c) {
-      // (nor one parked at the kerb: a parked car takes no step (update: c.park), so it stood "reversing" where it was, and
-      // backed off down the street when its time at the kerb ran out; asked by a ride behind it or the game check, #420)
-      if (c.line < 0 || c.rev || c.park || c.stuck === undefined || c.revBan > 0 || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
+      if (c.line < 0 || c.rev || c.park || c.parking || c.stuck === undefined || c.revBan > 0 || JN.inner(c.line) || (c.mv && c.mv.e && c.mv.e.m.line !== c.line)) return false; // (not one still in a junction's box, but one on its way out of it onto this piece)
+      // (nor one parked at the kerb, or pulling in to it: a parked car takes no step, and one asked to back out stood
+      // there for good, reversing 0 m, Tokyo's piece 208 by the station plaza)
       // (nor one with a ride or your car close behind it: they don't back off for the traffic, and a ride coming for you
       // stood behind three cars backing out towards it, one after another, in Fushimi Inari)
       { const hx = Math.sin(c.h), hy = Math.cos(c.h); for (const o of api.extra) { const a = (o.x - c.x) * hx + (o.y - c.y) * hy; if (a < 0 && a > -(c.half + (o.half || 2.3) + 12) && Math.abs((o.x - c.x) * hy - (o.y - c.y) * hx) < 3.5) return false; } }

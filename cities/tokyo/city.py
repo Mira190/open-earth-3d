@@ -48,6 +48,7 @@ MOATS = _load("moats")
 PALACE = _load("palace")
 SHUTO = _load("shuto")
 RAIL = _load("rail")
+STATION_HERO = _load("station")
 
 TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
@@ -89,6 +90,7 @@ def adjust_building(b, cls, g, geoms, ctx):
         return []  # the observatories and the lattice: the parametric mesh stands for them
     if b["name"] == STATION:
         b["facade_color"] = "#9c4f3c"  # red brick; the roofs are slate and the colour here is read as walls
+        # (the landmark mesh draws the building itself: cities/tokyo/station.py)
     if b["name"] == FOOT_TOWN:
         # the OSM polygon is the tower's Foot Town podium; keep it, and build the lattice above it
         e = g.minimum_rotated_rectangle.exterior.coords
@@ -178,7 +180,10 @@ def landmark_meshes(scene):
     mats.update({k: dict(v) for k, v in sm.items()})
     rm, rmesh = RAIL.meshes(Mesh)  # the JR viaduct, Yurakucho Station and the track (cities/tokyo/rail.py)
     mats.update({k: dict(v) for k, v in rm.items()})
-    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh + rmesh, {"hidden": hidden + dh + ph, "clip": MOATS.clip(), "water_cover": SHUTO.cover()}
+    hm, hmesh, hh, htrees, hprops = STATION_HERO.meshes()  # Tokyo Station's Marunouchi building and its plaza (cities/tokyo/station.py)
+    mats.update(hm)
+    return mats, (tower(t) if t else []) + meshes + dm + wm + pmesh + smesh + rmesh + hmesh, {"hidden": hidden + dh + ph + hh, "clip": MOATS.clip(), "water_cover": SHUTO.cover(),
+                                                                                             "trees": htrees, "props": hprops}
 
 
 def landmark_glows(scene):

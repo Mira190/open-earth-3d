@@ -146,6 +146,18 @@ const npcNight = require('./npc_night');
   check(late.after.carsFull && late.after.fleetNear && late.after.myCar && late.after.treesNear,
     `the cars' and trees' near models come after the game opens and take the stand-ins' places, your car parked (${late.s.toFixed(1)} s; ${JSON.stringify(late.after)}; at Play ${JSON.stringify(late.before)})`);
   if (process.env.DIGEST) console.log(`digest lazy: ${await digest()}`);
+  // a hero level's tiled PBR surfaces (web/pbr.js, docs/HERO.md): every landmark material that names a set has its colour and
+  // normal maps loaded and repeating, and on the low tier its finest parts ("detail") are left out
+  const pbr = await p.evaluate(async () => {
+    const g = window.__game, seen = new Set();
+    g.world.traverse(o => { const m = o.material; if (m && m.map && m.normalMap && /assets\/pbr\//.test((m.map.image && m.map.image.src) || '')) seen.add(m); });
+    const t = performance.now();
+    while ([...seen].some(m => !(m.map.image && m.map.image.width && m.normalMap.image && m.normalMap.image.width)) && performance.now() - t < 20000) await new Promise(r => setTimeout(r, 250));
+    const mats = [...seen];
+    return { n: mats.length, loaded: mats.filter(m => m.map.image && m.map.image.width && m.normalMap.image && m.normalMap.image.width).length,
+      repeat: mats.every(m => m.map.wrapS === 1000 && m.map.repeat.x > 0 && m.map.repeat.x < 5) };
+  });
+  if (city === 'tokyo' || pbr.n) check(pbr.n > 0 && pbr.loaded === pbr.n && pbr.repeat, `the landmarks' tiled PBR surfaces load and repeat in metres (${pbr.loaded} of ${pbr.n} materials)`);
   await lightsKept('once the helicopter has come');
 
   // a hero level (game/hero.js, docs/HERO.md), on a map that has one: walked up to, it loads and shows in place of
