@@ -134,7 +134,9 @@ buildings' own roof meshes again in tile. The lane is granite setts wall to wall
 tea-house benches under red parasols and red fire buckets. The city's older dressing of the lane (its setts,
 flat lattices, noren and lanterns) is in meshes of its own (`yhero_*`) and hidden while the level is shown.
 The lane's line is OpenStreetMap's, moved to the middle of the gap between the mapped fronts (it hugs the
-south row); no generated street lamp stands on it (`night.clear`).
+south row); no generated street lamp stands on it (`night.clear`). The game's start stays on Higashioji-dori's
+pavement at the lane's mouth, which already frames the pagoda down the lane: started inside the lane, the
+player's car has no room to turn and the lane's own traffic is counted against the walls its mapped line hugs.
 
 Facts used: the lane east of Higashioji-dori is narrow, one-way and stone-paved, climbing gently east
 ([Wikipedia](https://ja.wikipedia.org/wiki/八坂通)); its wires run under the eaves, with no poles on the lane
