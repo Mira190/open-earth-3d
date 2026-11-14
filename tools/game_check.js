@@ -806,7 +806,7 @@ const npcNight = require('./npc_night');
   }
   // a room's levels walked end to end (game.json interiors' "route": the Opera House's foyers, up a side flight to
   // the gallery, along it to the landing and down the broad stair; tools/foyer_walk.js)
-  if (await p.evaluate(() => (window.__game.G.interiors || []).some(r => r.route))) {
+  if (await p.evaluate(() => (window.__game.G.interiors || []).some(r => r.route || r.routes))) {
     const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
     for (const r of await require('./foyer_walk')(p)) check(r.ok, `walks the levels of ${r.id}${r.ok ? ` (${r.legs.filter(l => l.want != null).map(l => l.z.toFixed(1)).join(' → ')} m)` : `: ${r.why}`}`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { mode: 'foot', auto: null, x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
@@ -1292,6 +1292,56 @@ const npcNight = require('./npc_night');
   });
   check(ferry.none || ferry.moved > 20, ferry.none ? 'no ferries' : `${ferry.n} ferries run (the farthest moved ${ferry.moved.toFixed(0)} m in ${ferry.t} s)`);
   await shot('ferry');
+
+  // fares (web/game/fares.js, a map's life.json "fares"): boarding taps on, stepping off takes the operator's fare from
+  // the wallet to the cent and shows the reader's card, the phone lists the ride, and where the city caps a day's
+  // travel the rides past the cap are free. The wallet and the card are put back as they were afterwards
+  const fare = await p.evaluate(() => {
+    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
+    if (!F || !f) return { none: true };
+    const keep = JSON.stringify(L.city().fares || null), money = L.money, logN = L.city().log.length, r = { card: f.card.name };
+    L.city().fares = F.fresh();
+    L.store.wallets[L.code] = 1e5;
+    let trip;
+    const V = (g.fer && g.fer.vessels) || [];
+    if (f.rides.ferry && V.length) {
+      // a ferry at a wharf: aboard through the game's own boarding, which is the tap on
+      const v = V[0], W = id => g.G.wharves.find(w => w.id === id);
+      let t = 0;
+      while (v.phase !== 'dwell' && t < 3000) { g.advance(5); t += 5; }
+      const from = W(g.fer.stopOf(v)), to = W(v.stops.find(id => id !== from.id));
+      g.board(v, from);
+      r.tapped = !!F.open && F.open.from === from.id && !!F.shown && /tap on/i.test(F.shown.textContent);
+      g.alight(); g.advance(0.2);
+      trip = { kind: 'ferry', to: to.id, name: to.name, route: v.route, m: Math.hypot(from.berth[0] - to.berth[0], from.berth[1] - to.berth[1]) };
+    } else {
+      const [a, b] = Object.keys(f.rides.rail.pairs || { 'a>b': 0 })[0].split('>');
+      F.on({ kind: 'rail', from: a, name: a, route: '' });
+      r.tapped = !!F.open && !!F.shown;
+      trip = { kind: 'rail', to: b, name: b, m: 1000 };
+    }
+    const before = L.money, p1 = F.off(trip);
+    r.due = p1 && p1.due; r.paid = Math.round((before - L.money) * 100) / 100; r.text = F.shown ? F.shown.textContent : '';
+    r.shows = !!F.shown && r.text.includes(L.fmt(r.due)); r.fmt = L.fmt(r.due);
+    r.phone = L.phone.view('fares') && L.phone.render('fares').includes(trip.name) && /Back/.test(L.phone.render('fares'));
+    r.diary = (L.city().log.slice(-1)[0] || {}).k === 'fare';
+    // on to the cap, where there is one: the same ride again and again
+    r.cap = (F.capOf(f, g.clock) || {}).cap || null;
+    if (r.cap) {
+      let last = p1, n = 1;
+      while (last && !(last.capped && last.due === 0) && n < 12) { F.on({ kind: trip.kind, from: 'x', name: 'x', route: trip.route }); last = F.off(trip); n++; }
+      r.rides = n; r.spent = L.city().fares.spent; r.free = !!last && last.due === 0 && F.shown.dataset.state === 'capped' && /free/i.test(F.shown.textContent);
+    }
+    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().log.length = logN;
+    if (V.length && f.rides.ferry) { g.spawn(); g.advance(0.5); }
+    return r;
+  });
+  if (!fare.none) {
+    check(fare.tapped && fare.due > 0 && Math.abs(fare.paid - fare.due) < 0.005 && fare.shows, `boarding taps on with ${fare.card} and stepping off takes the fare, ${fare.fmt}, from the wallet (paid ${fare.paid}; the card: ${fare.text.replace(/\s+/g, ' ').slice(0, 90)})`);
+    check(fare.phone && fare.diary, 'the phone lists the ride and the city\'s fares, and the diary keeps it');
+    if (fare.cap) check(fare.free && Math.abs(fare.spent - fare.cap) < 0.005, `the day's cap of ${fare.cap}: ${fare.rides} rides spend ${fare.spent}, and the next is free`);
+    await shot('fare');
+  }
 
   // a crossing to a landing past the frame (pipeline/outposts.py: Queenstown's Earnslaw to Walter Peak, 12.5 km
   // over Lake Wakatipu): aboard at the wharf in the frame, skipped (F) once she is under way, alongside the far
@@ -2093,6 +2143,13 @@ const npcNight = require('./npc_night');
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
   await p.evaluate(() => { const g = window.__game; g.clock.frozen = true; }); // the light held still, to compare before and after
+  // (a hero level by where you stand, let go while the checks above travelled away, is back before the frames are compared)
+  await p.evaluate(async () => {
+    const g = window.__game, H = g.hero && g.hero(), pl = g.player;
+    if (!H) return;
+    const near = L => Math.hypot(pl.x - L.h.at[0], pl.y - L.h.at[1]) - (L.h.r || 150) < 200;
+    for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); }
+  });
   const gl = await require('./glcare_step')(p, { canvas: 'game-gl', api: '__game', outDir, prefix: `${city}-` });
   check(gl.paused && gl.note, `a lost context holds the game under a note (paused ${gl.paused}, note ${gl.note})`);
   check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
@@ -2262,13 +2319,19 @@ const npcNight = require('./npc_night');
         r.back = hidden.every(o => o.visible);
         out.push(r);
       }
-    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); g.hold(was); }
+    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); }
+    // back where you stood: a level by the start (Kamakura's) comes again before the checks that follow compare frames
+    const near = L => Math.hypot(pl.x - L.h.at[0], pl.y - L.h.at[1]) - (L.h.r || 150) < 200;
+    for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) await frames(1);
+    out.forEach(r => { const L = H.levels.find(l => l.h.id === r.id); r.again = !near(L) || !!(L.root && L.root.visible); });
+    g.hold(was);
     return out;
   });
   for (const r of heroes || []) {
     check(r.state === 'ready' && r.shown && r.tris > 1000 && r.glow > 0, `the hero level ${r.id} loads when you come near and is shown (${r.materials} materials, ${Math.round(r.tris)} triangles, ${r.glow} lit, after ${r.frames} frames)`);
     check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
     check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
+    check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
     if (r.fine) check(r.fine.tier === 'low' ? r.fine.state === 'idle' && !r.fine.meshes : r.fine.state === 'ready' && r.fine.shown > 0 && r.fine.shown <= r.fine.meshes,
       `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);
   }

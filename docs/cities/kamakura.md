@@ -97,6 +97,10 @@ Wikimedia Commons were looked at for the faces, liveries and the crossing's furn
 - **Black kites** (tobi) wheel over the coast (`game.flocks`, `kind: "black_kite"`; Kamakura City warns
   beachgoers about them).
 
+- **The hero level** (`cities/kamakura/hero.py`, [HERO.md](../HERO.md)): the hill road from Route 134 over
+  the crossing to above the spawn, modelled finely and drawn over the set while you are near. The game
+  starts at (-446.2, 153), 32 m above the crossing, where the photographs are taken from.
+
 ## The far view
 
 - **Enoshima** (700 m past the frame): its relief from GSI's laser terrain every 10 m
