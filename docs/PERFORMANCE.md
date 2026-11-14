@@ -1026,6 +1026,71 @@ Tokyo, needed), the quays' distance fields (25 MB in Tokyo), the landmarks' fine
 (`nav.js` `tileTris`, 14 MB of small arrays) and the streets' carriageways (15 MB). And the load's peak heap, still
 300-400 MB above the settled one on the large maps while the worker's arrays and the page's copies overlap.
 
+### A map built round the player (issue 443)
+
+The rule, in the owner's words: **what is not seen costs nothing**. It is the first row of issue 358's table, the
+analogy the owner drew with efficient language models (a mixture of experts runs only the experts a token needs;
+here, build, unpack and upload only what the player can see from where they stand), applied to memory and to
+the load, where rounds 1 and 2 had applied it to what a frame draws. Until now a map was one thing: Shibuya's
+48,000 buildings were 4.9 million vertices in one geometry, built, sent to the page and uploaded before the first
+frame, whatever the player could see of them from the Scramble. On an iPhone the tab died while that happened.
+
+**Where the load's memory is.** `tools/mem_timeline.js` prints the renderer's resident memory as the load goes, and
+the page's heap is a small part of it. `tools/mem_infra.js <city> 3,5,8` asks Chromium for its own account by
+allocator at those seconds of the load (memory-infra), and `tools/heap_at.js <city> 3.2 file` takes a heap
+snapshot mid-load for `tools/heap_owners.js`. Shibuya on the phone tier, five seconds in, before this round:
+array buffers 643 MB (of which the page's own live ones were under 70: the rest were the Worker's vertex arrays,
+their copies on the way to the page and what a collection had not yet taken), the two heaps 365 MB (most of it
+garbage from decoding the packs: a snapshot of the page, which collects first, finds 55 MB of live objects), 300 MB
+of the allocator's (decoded pictures, the message with the decoded data), 136 MB of 2D canvases and 130 MB of
+decoded images.
+
+**The buildings by cells, at the detail their distance needs** (`buildings-geo.js` `cells`, `buildings.js`
+`stream`, `world.js` `mapAt`). On a phone's game (`quality.js` `lean`, `budget.map`) the Worker sorts the solids
+into a grid of 250 m cells and builds each on its own:
+
+| A cell's nearest point to the player | What is built |
+|---|---|
+| within 500 m | everything, as before |
+| within 1.5 km | the walls in one lift from base to eave (no rows of vertices at 8, 24 and 48 m for the sky's openness: it is taken at the foot and the eave), a pitched roof as a flat one at its ridge, no plinth, canopy posts or passage ceilings |
+| past 1.5 km | the same, and only the solids 25 m or taller: the skyline, which is what shows over the street wall and through the haze |
+
+Each cell is a mesh of its own with its own buffers (most have a 16-bit index), a still shadow caster, gated by
+the visibility sweep like any static mesh (`OEVis.gate(mesh, true)`, `ungate`), its arrays let go once the GPU has
+them. The game calls `Wd.mapAt(x, y)` every second and wherever it moves the player; once that is 100 m from where
+the cells were last built round, the cells whose level changes are built again on the page, in slices of 6 ms
+(the Worker has let its copy of the data go: keeping it would hold a hundred MB to save a few milliseconds a
+second), from the same options and the same surface model the first build used, and swapped in. Walking changes
+a few cells every hundred metres; a train or the helicopter to the far corner of Shibuya changes 188, about
+0.7 s of building spread over the frames of 1.3 to 3 s.
+
+| Phone tier (`tools/mem_check.js`) | Buildings' vertices | Peak GPU, MB | of which buffers | Array buffers 5 s into the load |
+|---|---|---|---|---|
+| Shibuya | 4,910,630 -> 753,581 | 529 -> 363 | 251 -> 68 | 643 -> about 300 MB |
+| Tokyo (Marunouchi) | 1,839,376 -> 569,037 | 494 -> 445 | 150 -> 91 | |
+| Sydney | 1,102,604 -> 192,587 | 433 -> 392 | 107 -> 66 | |
+
+`tools/mem_check.js` now takes the player to the map's far corner and back before it reads the peak, so the peak
+counts both places' cells while they change over, and fails a map whose cell under the player does not come back
+whole or whose buildings are not the same on return. The budget for peak GPU memory goes from 620 to **490 MB**, a
+tenth above the heaviest (Tokyo).
+
+**Stills**, 390 x 844 on the phone tier, the map whole (`?map=whole`) beside the map round the player: at the
+spawn and from 110 m over it the two are the same picture; from 260 m up looking across the far zone, the low
+houses past 1.5 km are the aerial photograph instead of boxes, a thin band under the horizon by day and fewer
+lit windows there by night. On the ground it cannot be seen. The medium and high tiers and the model viewer
+build the map whole as before (the viewer picks a building from the one geometry).
+
+No code was taken for this. The method is what open worlds do (Unreal's World Partition and its HLODs, GTA V's
+LOD chain: "Far geometry" above); the levels are this project's own.
+
+**Left, in order of what they hold** (the next pieces of this issue): the textures (274 to 339 MB of the peak:
+the landmarks' pictures, the ground, the NPCs', loaded for the whole map at the start), the walking model and
+the landmarks built for the whole map, the Worker's and the page's garbage while the packs decode, and the 2D
+canvases kept after their upload.
+
+**Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe, an iPhone's screen and user agent.
+
 ### The last CPU of the city build (issue 404), measured
 
 With the console's new `nav:` and `footways:` lines (desktop tier, llvmpipe): Kyoto's walking model 844 ms, of which

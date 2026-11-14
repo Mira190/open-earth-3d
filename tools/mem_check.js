@@ -11,14 +11,14 @@
 // low tier, plays (the NPCs, the helicopter, the cars' and trees' near models all loaded, as a player
 // walking round would have them), then reads the peak. Prints one line per city and the largest
 // textures and buffers; exits 1 when a city goes over its budget:
-//   MEM_GPU   peak GPU memory, MB (default 620: quality.js budget, a tenth above the heaviest live map, issue 406)
+//   MEM_GPU   peak GPU memory, MB (default 490: quality.js budget, a tenth above the heaviest live map, issues 406 and 443)
 //   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 620)
 // TIER=low|medium|high (default low). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
-const GPU_MB = +(process.env.MEM_GPU || 620), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
+const GPU_MB = +(process.env.MEM_GPU || 490), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
 const MB = v => (v / 1048576).toFixed(0);
 
 // Chromium's processes (one browser at a time runs here), with each one's proportional set size (its own pages
@@ -176,7 +176,7 @@ async function measure(b, city) {
     }
   })();
   const t0 = Date.now();
-  let ok = true;
+  let ok = true, map = null;
   try {
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 400000 });
@@ -188,6 +188,26 @@ async function measure(b, city) {
       if (g.heli && g.heli.want) await g.heli.want();
       if (g.lateReady) await g.lateReady();
     });
+    // the map built round the player (world.js mapAt, issue 443): the player taken to the map's far corner and back, as a
+    // helicopter or a train would take them, so the peak counts the cells of both places while they change over; the
+    // cell under the player must come back whole each time
+    map = await p.evaluate(async () => {
+      const W = window.__game.Wd, st = W && W.mapStream;
+      if (!st) return null;
+      const G = st.grid, at0 = st.at.slice(), v0 = st.vertices, out = { cells: st.cells.size, vertices: v0, moves: [] };
+      const lodAt = (x, y) => st.lods[Math.floor((y - G.y0) / G.size) * G.nx + Math.floor((x - G.x0) / G.size)];
+      const far = [at0[0] < G.x0 + G.nx * G.size / 2 ? G.x0 + G.nx * G.size - 300 : G.x0 + 300, at0[1] < G.y0 + G.ny * G.size / 2 ? G.y0 + G.ny * G.size - 300 : G.y0 + 300];
+      for (const [x, y] of [far, at0]) {
+        const n = await W.mapAt(x, y, true);
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        out.moves.push({ changed: n, ms: Math.round(st.ms), vertices: st.vertices, here: lodAt(x, y) });
+      }
+      out.back = st.vertices === v0;
+      return out;
+    });
+    if (map) {
+      if (map.moves.some(m => m.here !== undefined && m.here !== 0) || !map.moves[0].changed || !map.back) { ok = false; errors.push(`the map round the player: ${JSON.stringify(map)}`); }
+    }
     await p.waitForTimeout(+(process.env.SETTLE || 8) * 1000);
   } catch (e) { ok = false; errors.push(String(e).slice(0, 200)); }
   stop = true;
@@ -256,7 +276,7 @@ async function measure(b, city) {
   }).catch(e => [String(e)]);
   const pr = await p.evaluate(() => { const c = document.getElementById('game-gl'); return c ? { w: c.width, h: c.height } : null; }).catch(() => null);
   await ctx.close();
-  return { city, ok, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
+  return { city, ok, map, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
 }
 
 (async () => {
@@ -276,6 +296,8 @@ async function measure(b, city) {
     if (over.length) fail = true;
     if (process.env.JSON) continue;
     console.log(`${over.length ? 'FAIL' : 'ok  '} ${city}: GPU peak ${MB(gpu)} MB (textures ${m.gl ? MB(m.gl.tex) : '?'}, buffers ${m.gl ? MB(m.gl.buf) : '?'}, renderbuffers ${m.gl ? MB(m.gl.rb) : '?'} at the end; canvas ${m.canvas ? `${m.canvas.w}x${m.canvas.h}` : '?'}), JS heap peak ${MB(m.heap)} MB (${MB(m.heapEnd)} at the end after a collection: page objects ${MB(m.split.usedSize || 0)}, its array buffers ${MB(m.split.backingStorageSize || 0)}), renderer process ${MB(m.rss.renderer)} MB, GPU process ${MB(m.rss.gpu)} MB, ${m.s.toFixed(0)} s${over.length ? ` - ${over.join('; ')}` : ''}`);
+    if (m.map) console.log(`     the map round the player: ${m.map.cells} cells, ${m.map.vertices.toLocaleString()} vertices of buildings; to the far corner ${m.map.moves[0].changed} cells built again in ${m.map.moves[0].ms} ms (${m.map.moves[0].vertices.toLocaleString()} vertices there), back ${m.map.moves[1].changed} in ${m.map.moves[1].ms} ms`);
+    for (const e of m.errors || []) if (/the map round/.test(e)) console.log(`     ${e}`);
     if (m.gl) {
       console.log(`     textures (${m.gl.nTex}): ${m.gl.topTex.join(', ')}`);
       console.log(`     buffers (${m.gl.nBuf}): ${m.gl.topBuf.join(', ')}`);

@@ -133,6 +133,9 @@ window.OEQuality = (function () {
   // the page instead of being restored in place), keeps the full aerial picture on the ground tiles nearest the
   // camera only (budget.groundTiles, the rest on the overview) and the shared models' far parts. budget: the memory
   // the view aims to stay under, MB, which tools/mem_check.js checks every live city's game against on a phone
+  // budget.map: the game's map is built round the player there (world.js mapAt, buildings-geo.js cells): cells of `size`
+  // metres, whole within `near` of the player, simplified to `mid`, past it only what stands `tall` metres or more,
+  // built again once the player has gone `step` metres (docs/PERFORMANCE.md, "A map built round the player")
   function lean(c = probe()) {
     return (c.touch && Math.min(innerWidth, innerHeight) < 600) || (!!c.memory && c.memory <= 4);
   }
@@ -145,7 +148,7 @@ window.OEQuality = (function () {
     // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
     const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
     return { name, small: name === 'low', lean: thin, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
-      budget: thin ? { gpuMB: 620, heapMB: 620, groundTiles: 6 } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+      budget: thin ? { gpuMB: 490, heapMB: 620, groundTiles: 6, map: { size: 250, near: 500, mid: 1500, tall: 25, step: 100 } } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels

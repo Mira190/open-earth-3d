@@ -894,7 +894,12 @@ vec3 steepRock(vec3 c, float k) {
     D.inland = IN;
     // the ground is final from here: the walls, roofs and decks start building in the worker that decoded them
     // (buildings.js start, issue 344), while the aerial imagery is draped and the landmarks are made here
-    const bldJob = window.OEBuildings && OEBuildings.start ? OEBuildings.start(D, { lin, SRC: BUILDING_SRC, small,
+    // On a phone's game (quality.js lean, budget.map) the map is built round the player: the buildings by cells of a
+    // grid, whole near the start, in one lift further off and the skyline alone past that, and again as the player
+    // moves (api.mapAt; buildings-geo.js cells; issue 443)
+    const MAP = game && LEAN && small && QW.budget && QW.budget.map && new URLSearchParams(location.search).get('map') !== 'whole'
+      ? Object.assign({ at: (groundAt || [(scene.frame.x[0] + scene.frame.x[1]) / 2, (scene.frame.y[0] + scene.frame.y[1]) / 2]).slice(0, 2) }, QW.budget.map) : null;
+    const bldJob = window.OEBuildings && OEBuildings.start ? OEBuildings.start(D, { lin, SRC: BUILDING_SRC, small, cells: MAP,
       dsm: game ? { T: D.Tfine || D.T, frame: { cell: 2, x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] } } : null }) : null;
     // and, in the game, the landmarks laid on the walking model's grid there next (game/navcells.js; nav.js takes them)
     if (game && window.OENavCells && window.OEPack && OEPack.rasterIn && D.G) {
@@ -1656,14 +1661,24 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // the walls reach the ground drawn round them: the tiles (and in the game the finer ones near the player)
     U.uPhotoGrade = PG;
     if (NU) Object.assign(U, NU);
-    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, job: bldJob, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
+    // (a cell of the map built round the player, as it comes and goes: a still caster, hidden while the street wall
+    // hides it, its arrays the GPU's alone once sent)
+    const letGo = function () { this.array = null; };
+    const onCell = (m, added) => {
+      if (!added) { if (window.OEVis) OEVis.ungate(m); return; }
+      still(m);
+      if (window.OEVis) OEVis.gate(m, true);
+      for (const a of Object.values(m.geometry.attributes)) a.onUpload(letGo);
+      m.geometry.index.onUpload(letGo);
+    };
+    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, job: bldJob, cells: MAP, onCell, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
       progress: f => loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5 + 0.14 * f) });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
     U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
-    const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
+    const bCells = BLD.stream ? buildings : OEBuildings.cells ? OEBuildings.cells(buildings) : null;
     // (the game picks a building from its collision world, nav.js col.pick: the bounds-tree is the viewer's, issue 406)
     if (THREE.MeshBVH && !game) { // a bounding-volume hierarchy makes picking a building ~300x faster
       // built in a Worker where the walls are drawn as cells (a city's worth: a second on the main thread, issue 299),
@@ -1679,16 +1694,16 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // index, bid), and in the game, which picks from its collision world, those go too (Kyoto's 120 MB, issue 406).
     // A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
     let gpuOnly = false; // (set here, before the api is made)
-    if (game && bCells) bGeo.setIndex(null); // (the cells have their own: the picking mesh's is the viewer's alone)
-    if (LEAN && bCells) {
-      const letGo = function () { this.array = null; };
+    if (BLD.stream) gpuOnly = true;
+    else if (game && bCells) bGeo.setIndex(null); // (the cells have their own: the picking mesh's is the viewer's alone)
+    if (LEAN && bCells && !BLD.stream) {
       for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode'].concat(game ? ['position', 'bid'] : [])) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
       for (const c of bCells.children) if (c.geometry.index) c.geometry.index.onUpload(letGo);
       gpuOnly = true;
     }
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
-    if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
+    if (game && window.OEVis) { if (!BLD.stream) OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
     if (BOUNCE && buildings.material && buildings.material.onBeforeCompile) { // the walls' bounce from the ground in front of them
       const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
       buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); groundBounce(sh); };
@@ -2267,10 +2282,14 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
     }
     if (!game) try { waterCover(); } catch (e) { console.warn('water cover:', e); }
+    // The map round the player (issue 443; docs/PERFORMANCE.md, "A map built round the player"): what is built,
+    // unpacked and uploaded follows x, y. The game calls it every second and when it moves the player. Resolves when
+    // what it changed is in (null: nothing to change)
+    const mapAt = (x, y, now = false) => { groundKeep(x, y, now); return BLD.stream ? BLD.stream.near(x, y, now ? 1 : undefined) : null; };
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, gpuOnly, groundKeep, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, gpuOnly, groundKeep, mapAt, mapStream: BLD.stream, U, SRC, extrude, bColour, floodMats, lmMats, night,
       skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
       hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)

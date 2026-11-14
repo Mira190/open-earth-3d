@@ -351,7 +351,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return m;
   }
   function groundLod(x, y) {
-    if (Wd.groundKeep) Wd.groundKeep(x, y); // (a phone: the aerial pictures on the GPU are the tiles nearest here, world.js)
+    if (Wd.mapAt) Wd.mapAt(x, y); // (a phone: the map is built round the player, world.js: the buildings' cells and the aerial pictures nearest here)
     scene.ground.forEach((t, i) => {
       const d = Math.hypot(Math.max(t.x0 - x, 0, x - t.x1), Math.max(t.y0 - y, 0, y - t.y1));
       const near = d < 260;
