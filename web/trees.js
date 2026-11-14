@@ -332,6 +332,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         // the far crown hulls stand 200-900 m off, mostly past the sun's shadow map: they would only be drawn into it
         // for nothing (on Hong Kong's wooded hill they are half the trees' triangles), so they cast none
         im.castShadow = lod < 2; im.receiveShadow = true;
+        im.userData.shadowSlow = true; // (its shadow drawn every third frame over the still casters': world.js shadowCache)
         im.frustumCulled = false;
         im.count = 0;
         world.add(im);

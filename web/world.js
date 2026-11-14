@@ -2851,14 +2851,31 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
     const sd = still.depthTexture = new THREE.DepthTexture(shadow.map.width, shadow.map.height, D.type);
     sd.format = D.format; sd.compareFunction = D.compareFunction; sd.minFilter = sd.magFilter = THREE.LinearFilter;
-    let on = true, casters = [], pose = [], sig = [], frame = 0, built = false;
-    const api = { refreshes: 0, frames: 0, mark(o) { if (o) o.userData.shadowStatic = true; return o; }, off() { on = false; } };
+    // The slow casters (userData.shadowSlow: the trees, whose crowns sway in the depth pass too) are drawn over the
+    // still ones into a second map every SLOW frames, and each frame starts from that map rather than the still one:
+    // the moving casters (people, cars) alone are drawn every frame. The trees were most of what the shadow pass drew
+    // each frame in a leafy city (Sydney's quay: 130 of its 240 ms, tools/gpu_cost.js); a crown's sway in its shadow
+    // now steps at a third of the frame rate, a few centimetres at a time. Made when a slow caster first is.
+    const SLOW = 3;
+    let slowRT = null, slowN = 0, slowAt = 0;
+    const slowMap = () => {
+      if (slowRT) return slowRT;
+      slowRT = new THREE.WebGLRenderTarget(still.width, still.height, { format: THREE.RedFormat, type: THREE.UnsignedByteType,
+        minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
+      const t = slowRT.depthTexture = new THREE.DepthTexture(still.width, still.height, D.type);
+      t.format = D.format; t.compareFunction = D.compareFunction; t.minFilter = t.magFilter = THREE.LinearFilter;
+      return slowRT;
+    };
+    let on = true, casters = [], slow = [], pose = [], sig = [], frame = 0, built = false;
+    const api = { refreshes: 0, frames: 0, slowDraws: 0, mark(o) { if (o) o.userData.shadowStatic = true; return o; }, off() { on = false; } };
     const walk = (o, st, fn) => { st = st || !!o.userData.shadowStatic; fn(o, st); for (const c of o.children) walk(c, st, fn); };
     const drawable = o => o.isMesh || o.isLine || o.isPoints;
     function collect(scene) {
       const out = [];
-      walk(scene, false, (o, st) => { if (st && drawable(o) && o.castShadow) out.push(o); });
+      slow = [];
+      walk(scene, false, (o, st) => { if (drawable(o) && o.castShadow) { if (st) out.push(o); else if (o.userData.shadowSlow && /[?&]shadowslow=off/.test(location.search) === false) slow.push(o); } });
       if (out.length !== casters.length || out.some((o, i) => o !== casters[i])) { casters = out; built = false; }
+      if (slow.length !== slowN) { slowN = slow.length; slowAt = 0; }
     }
     // The light's pose and what each still caster looks like to the shadow pass (where it is, whether it is shown,
     // its instances), written each frame into a buffer kept for it and compared with the last frame's in place:
@@ -2890,9 +2907,10 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       sigA = sigB; sigB = S; sigN = n;
       return same;
     }
+    let blitFrom = still;
     function blit() {
       const w = shadow.map.width, h = shadow.map.height, dst = props.get(shadow.map).__webglFramebuffer;
-      state.bindFramebuffer(gl.READ_FRAMEBUFFER, props.get(still).__webglFramebuffer);
+      state.bindFramebuffer(gl.READ_FRAMEBUFFER, props.get(blitFrom).__webglFramebuffer);
       state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst);
       state.buffers.depth.setMask(true);
       gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.DEPTH_BUFFER_BIT, gl.NEAREST);
@@ -2918,19 +2936,32 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           this.needsUpdate = need; shadow.needsUpdate = need || shadow.needsUpdate;
           built = true; api.refreshes++;
         }
-        // every frame: the still casters' depth, and the moving ones drawn over it
-        for (const o of casters) o.castShadow = false;
         const clear = renderer.clear;
+        // every SLOW frames (and whenever the still map is made again): the slow casters over the still ones
+        const rebuilt = api.refreshes !== api.lastRef;
+        api.lastRef = api.refreshes;
+        if (slow.length && (rebuilt || !slowAt || frame - slowAt >= SLOW)) {
+          const real = shadow.map, need = this.needsUpdate, mv = [];
+          walk(scene, false, (o, st) => { if (o.castShadow && drawable(o) && (st || !o.userData.shadowSlow)) { o.castShadow = false; mv.push(o); } });
+          shadow.map = slowMap(); blitFrom = still; renderer.clear = blit;
+          try { orig.call(this, lights, scene, camera); } finally { shadow.map = real; renderer.clear = clear; for (const o of mv) o.castShadow = true; }
+          this.needsUpdate = need; shadow.needsUpdate = need || shadow.needsUpdate;
+          slowAt = frame; api.slowDraws++;
+        }
+        // every frame: the still (and slow) casters' depth, and the moving ones drawn over it
+        for (const o of casters) o.castShadow = false;
+        if (slow.length) for (const o of slow) o.castShadow = false;
+        blitFrom = slow.length ? slowRT : still;
         renderer.clear = blit;
-        try { orig.call(this, lights, scene, camera); } finally { renderer.clear = clear; for (const o of casters) o.castShadow = true; }
+        try { orig.call(this, lights, scene, camera); } finally { renderer.clear = clear; for (const o of casters) o.castShadow = true; if (slow.length) for (const o of slow) o.castShadow = true; }
       } catch (e) {
         console.warn('shadow cache: off', e);
         on = false;
         return orig.call(this, lights, scene, camera);
       }
     };
-    api.resize = n => { still.setSize(n, n); built = false; };
-    api.dispose = () => { SM.render = orig; SM.__cached = false; still.dispose(); };
+    api.resize = n => { still.setSize(n, n); if (slowRT) slowRT.setSize(n, n); built = false; slowAt = 0; };
+    api.dispose = () => { SM.render = orig; SM.__cached = false; still.dispose(); if (slowRT) slowRT.dispose(); };
     return api;
   }
 

@@ -404,7 +404,47 @@ window.OELens = (function () {
       .replace(last, '$1\n\t\t}$2');
     C.lights_fragment_begin = src.slice(0, a) + blk + src.slice(b);
   }
-  function patchChunks() { guardShaders(); loopAreaLights(); skipDarkSpots(); }
+  // The environment's diffuse light (the sky's prefiltered map read at full roughness along the normal: three.js's
+  // getIBLIrradiance) depends on the normal alone and changes slowly with it, yet it was looked up for every fragment of
+  // every lit surface: a face selection, a mip's addressing and a bilinear read, a tenth of Shibuya's scene pass on the
+  // software renderer. It is now read once per vertex and interpolated (issue 375): the same value on a flat face (a
+  // wall, a roof, a road), and on a curved one the light of the normals at its corners blended, which at full roughness
+  // is the same to the eye. Left per fragment where the normal is made in the fragment shader (a normal or bump map,
+  // flat shading) or turned there (double sided). The reflection of the sky (getIBLRadiance) stays per fragment.
+  // ?vibl=off reads it per fragment again, to compare.
+  const VIBL_IF = '#if defined( STANDARD ) && defined( USE_ENVMAP ) && !defined( DOUBLE_SIDED ) && !defined( FLAT_SHADED ) && !defined( USE_NORMALMAP ) && !defined( USE_BUMPMAP )';
+  function vertexIrradiance() {
+    const L = THREE.ShaderLib, C = THREE.ShaderChunk;
+    if (/[?&]vibl=off/.test(location.search) || !L || !L.standard || typeof L.standard.vertexShader !== 'string' || typeof C.envmap_physical_pars_fragment !== 'string') return;
+    const pars = '#include <clipping_planes_pars_vertex>', at = '#include <fog_vertex>', irr = 'vec3 getIBLIrradiance( const in vec3 normal ) {';
+    if (!L.standard.vertexShader.includes(pars) || !L.standard.vertexShader.includes(at) || !C.envmap_physical_pars_fragment.includes(irr)) return;
+    // (the vertex shader is not told the prefiltered map's layout, as the fragment shader is: it is read off the map)
+    const vPars = `${pars}
+${VIBL_IF}
+	#define OE_VIBL
+	uniform sampler2D envMap; uniform float envMapIntensity; uniform mat3 envMapRotation;
+	varying vec3 vOeIbl;
+	#define ENVMAP_TYPE_CUBE_UV
+	#define CUBEUV_TEXEL_WIDTH ( 1.0 / float( textureSize( envMap, 0 ).x ) )
+	#define CUBEUV_TEXEL_HEIGHT ( 1.0 / float( textureSize( envMap, 0 ).y ) )
+	#define CUBEUV_MAX_MIP ( log2( float( textureSize( envMap, 0 ).y ) ) - 2.0 )
+	#include <cube_uv_reflection_fragment>
+#endif`;
+    const vMain = `#ifdef OE_VIBL
+	vOeIbl = PI * textureCubeUV( envMap, envMapRotation * normalize( ( vec4( transformedNormal, 0.0 ) * viewMatrix ).xyz ), 1.0 ).rgb * envMapIntensity;
+#endif
+	${at}`;
+    for (const k of ['standard', 'physical']) if (L[k] && !L[k].vertexShader.includes('OE_VIBL')) L[k].vertexShader = L[k].vertexShader.replace(pars, vPars).replace(at, vMain);
+    if (!C.envmap_physical_pars_fragment.includes('OE_VIBL')) C.envmap_physical_pars_fragment = `${VIBL_IF}
+	#define OE_VIBL
+	varying vec3 vOeIbl;
+#endif
+` + C.envmap_physical_pars_fragment.replace(irr, `${irr}
+		#if defined( OE_VIBL ) && defined( ENVMAP_TYPE_CUBE_UV )
+			return vOeIbl;
+		#endif`);
+  }
+  function patchChunks() { guardShaders(); loopAreaLights(); skipDarkSpots(); vertexIrradiance(); }
   if (window.THREE) patchChunks(); else addEventListener('three-ready', patchChunks, { once: true });
 
   return { shader, merge, bright, stack, sunOnScreen, guardShaders };
