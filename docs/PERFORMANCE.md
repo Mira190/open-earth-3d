@@ -931,7 +931,7 @@ engine has no `transfer`), and the corners are a typed list from the start.
 
 That is a quarter of a gigabyte off the peak, not yet a load known to fit an iPhone. What is left is the map
 itself: 48,000 buildings as one geometry, the walking model of all of it, and every landmark, whatever the
-player can see from where they stand. The next cut is a phone's map built round the player (issue 440).
+player can see from where they stand. The next cut is a phone's map built round the player (issue 443).
 
 **Not checked here: a real iPhone or Safari.** These are emulated under Chromium with Mesa's llvmpipe; the numbers are
 what WebGL was asked for and what V8's heap holds, not what iOS accounts. The owner's own play on a phone is the real
