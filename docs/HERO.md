@@ -331,8 +331,16 @@ pull handles are in the fine model.
 aerial photograph inside the level: carriageway, paint, kerbs and paving are the level's own to its rim. The
 dashes along the kerbs from that height are the white guard pipes and their shadows.
 
-Checked on a phone (`tools/mem_check.js shibuya`, an iPhone emulated on the low tier): the figures are in the pull
-request; the atlas and the texture count are unchanged in size, so the level costs a phone what it did.
+Day, dusk and night on the high tier at 1440 x 900 (the spawn, the square, a front close up, the helicopter),
+and on the low tier at 390 x 844:
+
+![The Scramble](images/hero/scramble-desktop.jpg)
+![The Scramble on a phone](images/hero/scramble-phone.jpg)
+
+Checked on a phone (`tools/mem_check.js shibuya`, an iPhone emulated on the low tier, two runs each on the same
+machine): the GPU peak was 242 and 241 MB before and is 241 and 242 MB after, of the 300 MB budget. The atlas is
+the size it was, the drawn paving replaces a scanned set of the same size, and the fine model is never fetched
+there.
 
 Where it still falls short of the bar, as the stills show: a front's grammar is still one (piers, ribbons or
 punched windows, a parapet), varied by material, not each building's own face modelled from its photograph; the
