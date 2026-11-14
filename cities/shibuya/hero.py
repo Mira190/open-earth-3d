@@ -51,7 +51,10 @@ PLAZA = (369.0, -1080.0, 416.0, -1009.5)   # Hachiko Square: west, south, east, 
 TEX = {
     "road": ("OEAsphalt031d", 3.2),     # Asphalt031 with its stones' contrast raised (drawn here: a worn carriageway shows its aggregate)
     "paver": ("PavingStones136", 2.0),  # grey interlocking blocks: the pavements
-    "sett": ("OESett131n", 1.6),        # PavingStones131's small granite setts with the moss taken out of their joints (drawn here)
+    "sett": ("PavingStones128", 2.4),   # rectangular pavers in running bond: Hachiko Square's red-brown blocks (photographs, 2024)
+    "tile": ("Tiles036", 0.9),          # small square facing tiles, the skin of Japan's mixed-use buildings
+    "panel": ("Concrete034", 3.0),      # smooth precast and render
+    "dark": ("Tiles138", 1.6),          # dark stone at a shop front's foot
     "conc": ("Concrete034", 3.0),       # gutters
     "granite": ("Granite005A", 1.5),    # kerbs
     "paint": ("OEPaint002", 2.4),       # thermoplastic road paint (drawn here)
@@ -74,7 +77,17 @@ def materials():
         "metal_guard": {"color": (0.78, 0.78, 0.76), "rough": 0.42, "metal": 0.3},
         "metal_pole": {"color": (0.5, 0.51, 0.52), "rough": 0.38, "metal": 0.85},
         "metal_dark": {"color": (0.03, 0.032, 0.035), "rough": 0.5, "metal": 0.7},
-        "glow_lamp": {"color": (0.95, 0.97, 1.0), "emissive": (1.0, 0.93, 0.82), "glow": 2.4},
+        "lamp_head": {"color": (0.95, 0.97, 1.0), "emissive": (1.0, 0.93, 0.82), "glow": 2.4},
+        # the fronts: facing in three close tones, dark stone at the foot, aluminium frames
+        "wall_white": {"tex": "tile", "maps": "cn", "rough": 0.42},
+        "wall_cream": {"tex": "tile", "maps": "cn", "rough": 0.45},
+        "wall_grey": {"tex": "panel", "maps": "cn", "rough": 0.6},
+        "wall_foot": {"tex": "dark", "tint": (0.5, 0.5, 0.52), "maps": "cn", "rough": 0.3},
+        "metal_alu": {"color": (0.56, 0.57, 0.58), "rough": 0.36, "metal": 0.9},
+        # glass: dark and mirror-smooth, so that by day it shows the sky (the game's environment) and after dark
+        # the rooms drawn behind it, which are its light alone
+        "win_glass": {"map": "atlas", "color": (0.035, 0.045, 0.055), "rough": 0.05, "metal": 0.65, "emissive": True, "emissive_only": True, "glow": 0.9},
+        "glow_shop": {"map": "atlas", "color": (0.03, 0.035, 0.04), "rough": 0.05, "metal": 0.35, "emissive": True, "emissive_only": True, "glow": 1.0},
     }
 
 
@@ -124,29 +137,6 @@ def asphalt_texture(K, tid="OEAsphalt031d", base="Asphalt031", seed=3):
     r = np.asarray(Image.open(T["Roughness"]).convert("L"), float) / 255.0
     r = np.clip(0.86 - 0.3 * np.clip((c - m) / 60.0, -0.3, 1), 0.35, 1)
     Image.fromarray((r * 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Roughness.jpg"), quality=92)
-    return tid
-
-
-def sett_texture(K, tid="OESett131n", base="PavingStones131"):
-    """ambientCG's PavingStones131 for a square a million feet a week keep bare: its green (moss in the joints)
-    taken to the stone's own grey, the joints left dark."""
-    if os.path.exists(os.path.join(K.TEX_DIR, tid, f"{tid}_1K-JPG_Color.jpg")):
-        return tid
-    from PIL import Image
-    K.TEXTURES["_base"] = (base, 1.0)
-    T = K.fetch_texture("_base")
-    del K.TEXTURES["_base"]
-    c = np.asarray(Image.open(T["Color"]).convert("RGB"), float)
-    lum = c @ np.array([0.3, 0.59, 0.11])
-    green = np.clip((c[..., 1] - (c[..., 0] + c[..., 2]) / 2) / 14.0, 0, 1)          # how mossy a texel is
-    grey = np.dstack([lum * 1.01, lum * 0.995, lum * 0.97]) * (1 - 0.3 * green)[..., None]
-    out = grey
-    out = out * (1 - green[..., None]) + grey * green[..., None]
-    d = os.path.join(K.TEX_DIR, tid)
-    os.makedirs(d, exist_ok=True)
-    Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Color.jpg"), quality=92)
-    Image.open(T["NormalGL"]).convert("RGB").save(os.path.join(d, f"{tid}_1K-JPG_NormalGL.jpg"), quality=92)
-    Image.open(T["Roughness"]).convert("L").save(os.path.join(d, f"{tid}_1K-JPG_Roughness.jpg"), quality=92)
     return tid
 
 
@@ -236,6 +226,80 @@ def draw_tree_grate(img, r):
     d.rectangle([x, y, x + w - 1, y + h - 1], outline=(80, 76, 70), width=3)
 
 
+def draw_room(seed, lit):
+    """A room behind an upstairs window, as its light after dark: a ceiling's lamps over a wall and the things
+    against it, behind a blind part drawn; or dark."""
+    def draw(img, r):
+        from PIL import ImageDraw
+        x, y, w, h = r
+        rng = np.random.default_rng(seed)
+        d = ImageDraw.Draw(img)
+        if not lit:
+            d.rectangle([x, y, x + w, y + h], fill=(5, 6, 8))
+            return
+        warm = rng.random() < 0.45
+        c = np.array((255, 222, 176) if warm else (226, 236, 250)) * (0.55 + 0.4 * rng.random())
+        for j in range(h):                                   # brightest under the ceiling, falling to the floor
+            k = 1.0 - 0.45 * j / h
+            d.line([(x, y + j), (x + w, y + j)], fill=tuple(int(v * k) for v in c))
+        for i in range(3):
+            cx = x + (i + 0.5) * w / 3
+            d.rectangle([cx - w * 0.1, y + 3, cx + w * 0.1, y + 7], fill=(255, 252, 240))
+        for i in range(int(rng.integers(1, 4))):             # a cabinet, a desk, a plant: dark shapes against the wall
+            x0 = x + rng.random() * w * 0.8
+            d.rectangle([x0, y + h * rng.uniform(0.5, 0.75), x0 + w * rng.uniform(0.1, 0.3), y + h], fill=tuple(int(v * 0.35) for v in c))
+        b = int(h * rng.choice([0.0, 0.2, 0.45, 0.7]))       # a blind drawn part of the way
+        for j in range(0, b, 5):
+            d.rectangle([x, y + j, x + w, y + j + 3], fill=tuple(int(v * 0.82) for v in c))
+    return draw
+
+
+def draw_shop(kind):
+    """A shop through its glass, as its light: a bright ceiling, a back wall, and its trade against it (shelves of
+    goods, a cafe's counter and pendant lamps, a clothes rail)."""
+    def draw(img, r):
+        from PIL import ImageDraw, ImageFilter
+        x, y, w, h = r
+        rng = np.random.default_rng(40 + kind)
+        d = ImageDraw.Draw(img)
+        wall = [(236, 214, 178), (240, 242, 246), (226, 206, 170), (232, 232, 228)][kind % 4]
+        d.rectangle([x, y, x + w, y + h], fill=wall)
+        d.rectangle([x, y, x + w, y + h * 0.1], fill=(255, 252, 240))
+        d.rectangle([x, y + h * 0.86, x + w, y + h], fill=tuple(int(v * 0.6) for v in wall))
+        if kind % 4 in (0, 1):                               # shelves
+            pal = [(210, 60, 50), (60, 110, 190), (240, 200, 70), (90, 170, 100), (245, 245, 240), (40, 40, 46), (230, 130, 160)]
+            for j in range(4):
+                yy = y + h * (0.3 + j * 0.15)
+                d.rectangle([x, yy, x + w, yy + 3], fill=(200, 196, 188))
+                for i in range(int(w / 8)):
+                    c = pal[int(rng.integers(len(pal)))]
+                    d.rectangle([x + i * 8 + 1, yy - 12 - int(rng.integers(0, 6)), x + i * 8 + 6, yy], fill=c)
+        elif kind % 4 == 2:                                  # a cafe: a timber counter, pendant lamps, a menu board
+            d.rectangle([x, y + h * 0.6, x + w, y + h * 0.86], fill=(104, 70, 44))
+            d.rectangle([x + w * 0.1, y + h * 0.2, x + w * 0.9, y + h * 0.36], fill=(38, 34, 30))
+            for i in range(6):
+                cx = x + (i + 0.5) * w / 6
+                d.line([(cx, y + h * 0.1), (cx, y + h * 0.42)], fill=(40, 36, 32), width=1)
+                d.ellipse([cx - 7, y + h * 0.4, cx + 7, y + h * 0.5], fill=(255, 226, 150))
+        else:                                                # clothes on a rail
+            d.line([(x, y + h * 0.32), (x + w, y + h * 0.32)], fill=(120, 120, 124), width=2)
+            for i in range(int(w / 12)):
+                c = tuple(int(v) for v in rng.integers(40, 230, 3))
+                d.rectangle([x + i * 12 + 2, y + h * 0.33, x + i * 12 + 10, y + h * rng.uniform(0.55, 0.72)], fill=c)
+        for i in range(int(rng.integers(1, 4))):             # people inside
+            cx = x + rng.random() * w
+            d.ellipse([cx - 6, y + h * 0.5, cx + 6, y + h * 0.58], fill=(60, 44, 38))
+            d.rectangle([cx - 9, y + h * 0.58, cx + 9, y + h * 0.9], fill=tuple(int(v) for v in rng.integers(30, 110, 3)))
+        sub = img.crop((x, y, x + w, y + h)).filter(ImageFilter.GaussianBlur(0.8))
+        img.paste(sub, (x, y))
+    return draw
+
+
+ROOMS, SHOPS = 16, 8
+OUT = 0.1           # the fronts' face in front of the city's wall (m): behind the landmarks' signs, which stand 0.16 m off and more
+STOREY = 3.5
+
+
 # ---------------------------------------------------------------- the level
 
 class Level:
@@ -245,12 +309,11 @@ class Level:
         self.K = K
         K.TEXTURES.update(TEX)
         asphalt_texture(K)
-        sett_texture(K)
         paint_texture(K)
         tactile_texture(K, "OETactileBar", False)
         tactile_texture(K, "OETactileDot", True)
         self.geo = K.Geo()
-        self.A = K.Atlas(512, 512)
+        self.A = K.Atlas(2048, 1024)
         self.T = HP.Ground("shibuya")
         self.X = HP.Parts(K, self.geo, self.T, self.A)
         self.rng = np.random.default_rng(1973)
@@ -282,12 +345,17 @@ class Level:
             A.cell(f"manhole{k}", 124, 124, draw_manhole(k))
         A.cell("grate", 124, 100, draw_grate)
         A.cell("tree_grate", 248, 248, draw_tree_grate)
+        for k in range(ROOMS):
+            A.cell(f"room{k}", 124, 150, draw_room(700 + k, k % 5 != 0 and k % 3 != 0))
+        for k in range(SHOPS):
+            A.cell(f"shop{k}", 400, 220, draw_shop(k))
         self.carriageway()
         self.markings()
         self.pavements()
         self.tactile()
         self.guards()
         self.lamps()
+        self.fronts()
         return self.geo, self.A
 
     # -- helpers
@@ -493,11 +561,181 @@ class Level:
                         and all(np.linalg.norm(q - p) > 20 for p in placed)):
                     placed.append(q)
                     PT.lamp_post(self.geo, q, math.atan2(to_road[1], to_road[0]), self.T(*q) + LIFT + 0.01, h=9.0, arms=((1.9, 8.6),),
-                                 low=(-0.9, 4.6), mat="metal_pole", light="glow_lamp", rgb=(1.0, 0.9, 0.76), power=230.0)
+                                 low=(-0.9, 4.6), mat="metal_pole", light="lamp_head", rgb=(1.0, 0.9, 0.76), power=230.0)
                     d += 26.0
                 else:
                     d += 3.0
         self.lamp_at = placed
+
+    # -- the fronts round the junction
+    def seen(self, mid, n):
+        """Whether a wall's middle can be seen from somewhere a player stands (the junction's roads and pavements
+        within 70 m): from in front of it, with no building between."""
+        from shapely.geometry import LineString
+        p = np.asarray(mid) + np.asarray(n) * 0.4
+        for e in self.eyes:
+            if (e - mid) @ n > 1.5 and np.linalg.norm(e - mid) < 130 and not self.block.intersects(LineString([e, p])):
+                return True
+        return False
+
+    def fronts(self):
+        """Each wall a player can see, of the buildings round the junction that the landmarks do not draw whole: a
+        skin OUT in front of the city's plain wall. A glazed street floor between piers on a dark stone foot, onto
+        a lit shop; above it, storey by storey, facing tile or panel with windows set back in their reveals, frames,
+        sills, and a coping on the parapet. The landmarks' signs and screens hang in front of it as before."""
+        from shapely.geometry import Point, Polygon
+        from shapely.ops import unary_union
+        from shapely.prepared import prep
+        G, D = self.geo, self.D
+        c = np.asarray(CENTRE)
+        # whole buildings scramble.py draws (QFRONT, 109, MAGNET, Seibu, the station) keep their own fronts
+        whole = {"w136691386", "w55895868", "w55896465", "w136692137", "w136692134", "w904652357", "w116710254"}
+        L = json.load(open(os.path.join(ROOT, "web", "data", "shibuya", "landmarks.json")))
+        gone = set(L.get("hidden", [])) | set(L.get("demolished", []))
+        near = [(Polygon(s["ring"]).buffer(0), s) for s in D.solids if len(s["ring"]) >= 3 and np.linalg.norm(np.mean(s["ring"], axis=0) - c) < 160
+                and s.get("base", 0) < 2.5 and s["si"] not in gone]
+        self.block = prep(unary_union([p.buffer(-0.25) for p, _ in near if p.area > 4]))
+        walk = self.roads.union(self.pave).intersection(Point(*c).buffer(70))
+        x0, y0, x1, y1 = walk.bounds
+        self.eyes = [np.array([x, y]) for x in np.arange(x0, x1, 7.0) for y in np.arange(y0, y1, 7.0) if walk.contains(Point(x, y))]
+        allp = unary_union([p for p, _ in near]).buffer(0.3)
+        # what the landmarks hang on these walls (signs, prints, screens, their boxes and frames): the skin leaves the
+        # wall behind each alone, so that nothing of it stands in front of a picture (tools/sign_clear.py's rule)
+        M = L["materials"]
+        self.hung = []
+        for m in L["meshes"]:
+            mt = M.get(m["material"], {})
+            if not (mt.get("map") or "screen" in m["material"] or "print" in m["material"] or "atlas" in m["material"]):
+                continue
+            P = np.asarray(m["position"], float).reshape(-1, 3)
+            I = np.asarray(m.get("index") or np.arange(len(P)), np.int64).reshape(-1, 3)
+            T = P[I]
+            keep = np.linalg.norm(T.mean(1)[:, :2] - c, axis=1) < 150
+            self.hung += [t for t in T[keep] if t[:, 2].max() - t[:, 2].min() > 0.4]
+        n_faces = 0
+        for poly, s in near:
+            h = s["top"] - s.get("base", 0)
+            if s["osm"] in whole or h < 7 or h > 62 or poly.area < 25 or np.linalg.norm(np.asarray(poly.centroid.coords[0]) - c) > 115:
+                continue
+            rng = np.random.default_rng(sum(ord(ch) for ch in (s["osm"] or str(s["si"]))) * 7919 % (2 ** 31))
+            wall = ("wall_white", "wall_cream", "wall_grey")[int(rng.integers(3))]
+            rep = TEX["panel"][1] if wall == "wall_grey" else TEX["tile"][1]
+            ribbon = rng.random() < 0.4                    # an office floor's ribbon windows, or punched ones
+            co = np.asarray(poly.exterior.coords)[:-1]
+            if poly.exterior.is_ccw:
+                co = co[::-1]                              # clockwise: the outside is on the left of the way round
+            top = s["ground"] + s["top"]
+            for i in range(len(co)):
+                a, b = co[i], co[(i + 1) % len(co)]
+                Ln = float(np.linalg.norm(b - a))
+                if Ln < 3.2:
+                    continue
+                u = (b - a) / Ln
+                n = np.array([-u[1], u[0]])
+                mid = (a + b) / 2
+                # (a wall against a neighbour is no front; nor one no player sees)
+                if allp.contains(Point(*(mid + n * 1.2))) or not self.seen(mid, n):
+                    continue
+                F = PT.Frame(b, a)
+                self.front(F, Ln, self.T(*(mid + n * 0.8)) + LIFT, top, wall, rep, ribbon, rng, self.behind(F, Ln))
+                G.walls.append((a + n * OUT, b + n * OUT, self.T(*mid), top))
+                n_faces += 1
+        print(f"fronts: {n_faces} walls dressed, seen from {len(self.eyes)} places")
+
+    def behind(self, F, Ln):
+        """The parts of a wall that a landmark's picture hangs on: [(u0, u1, z0, z1)] in the wall's frame, for each
+        upright picture face that lies along the wall within 1.6 m in front of it (or 0.6 m inside it: a wall the
+        city draws a little off its sign's)."""
+        out = []
+        for t in self.hung:
+            d = (t[:, :2] - F.a) @ F.n
+            u = (t[:, :2] - F.a) @ F.t
+            if d.min() < -0.6 or d.max() > 1.6 or u.max() < 0.2 or u.min() > Ln - 0.2 or d.max() - d.min() > 0.5 * (u.max() - u.min()) + 0.3:
+                continue
+            out.append((max(0.0, u.min() - 0.12), min(Ln, u.max() + 0.12), t[:, 2].min() - 0.12, t[:, 2].max() + 0.12))
+        # (two triangles to a face, and faces side by side: joined where they overlap, so that the wall is cut once)
+        out.sort()
+        merged = []
+        for r in out:
+            for k, q in enumerate(merged):
+                if r[0] <= q[1] + 0.3 and r[1] >= q[0] - 0.3 and r[2] <= q[3] + 0.3 and r[3] >= q[2] - 0.3:
+                    merged[k] = (min(q[0], r[0]), max(q[1], r[1]), min(q[2], r[2]), max(q[3], r[3]))
+                    break
+            else:
+                merged.append(r)
+        return merged
+
+    def front(self, F, Ln, g, top, wall, rep, ribbon, rng, hung=()):
+        G, A = self.geo, self.A
+        free = lambda u0, u1, z0, z1: not any(u0 < h[1] and u1 > h[0] and z0 < h[3] and z1 > h[2] for h in hung)
+        H = top - g
+        gf = 4.3 if H > 11 else 3.3
+        floors = max(1, int(round((H - gf - 0.6) / STOREY)))
+        st = (H - gf - 0.6) / floors
+        nb = max(1, int(round(Ln / (4.2 if ribbon else 3.3))))
+        bw = Ln / nb
+        pier = 0.32 if ribbon else 0.75                    # the wall left either side of a bay's window
+        holes = []
+        # the street floor: glass onto the shop between piers, over a stone foot
+        k0 = int(rng.integers(SHOPS))
+        for j in range(nb):
+            u0, u1 = j * bw + 0.3, (j + 1) * bw - 0.3
+            z0, z1 = g + 0.38, g + gf - 0.85
+            if u1 - u0 < 1.2 or not free(u0 - 0.1, u1 + 0.1, g, z1 + 0.1):
+                continue
+            holes.append((u0, u1, g, z1))
+            key = f"shop{(k0 + j // 2) % SHOPS}"
+            (ua, va), (ub, _), (_, vb), _ = A.uv(key)
+            half = j % 2                                    # a shop's picture runs across two bays
+            uv = [(ua + (ub - ua) * (half + s_) / 2, v_) for s_, v_ in ((0, va), (1, va), (1, vb), (0, vb))]
+            G.quad("glow_shop", F.P(u0, 0.03, z0), F.P(u1, 0.03, z0), F.P(u1, 0.03, z1), F.P(u0, 0.03, z1), uv=uv, n=F.N,
+                   emit=(A.mean[key], 1.3))
+            PT.fbox(G, "wall_foot", F, u0, u1, 0.0, OUT + 0.03, g, z0, TEX["dark"][1], faces=("front", "top"))
+            for (m0, m1, y0, y1) in ((u0, u1, z1 - 0.07, z1), (u0, u1, z0, z0 + 0.06), (u0, u0 + 0.06, z0, z1), (u1 - 0.06, u1, z0, z1)):
+                PT.fbox(G, "metal_alu", F, m0, m1, 0.02, 0.09, y0, y1, faces=("front", "left", "right", "top", "bottom"))
+            for t in ((0.5,) if u1 - u0 < 2.6 else (0.34, 0.67)):
+                um = u0 + (u1 - u0) * t
+                PT.fbox(G, "metal_alu", F, um - 0.03, um + 0.03, 0.02, 0.08, z0, z1, faces=("front", "left", "right"))
+            PT.fbox(G, "metal_alu", F, u0, u1, 0.02, 0.07, g + 2.25, g + 2.31, faces=("front", "top", "bottom"))     # the transom over the doors
+            # the reveal's soffit and jambs
+            G.quad(wall, F.P(u1, 0.03, z1), F.P(u0, 0.03, z1), F.P(u0, OUT, z1), F.P(u1, OUT, z1), ao=0.7)
+            G.quad(wall, F.P(u0, 0.03, z0), F.P(u0, OUT, z0), F.P(u0, OUT, z1), F.P(u0, 0.03, z1), ao=0.7)
+            G.quad(wall, F.P(u1, OUT, z0), F.P(u1, 0.03, z0), F.P(u1, 0.03, z1), F.P(u1, OUT, z1), ao=0.7)
+        # the floors above: windows in their reveals
+        k1 = int(rng.integers(ROOMS))
+        wins = []
+        for f in range(floors):
+            zf = g + gf + f * st
+            sill, head = zf + (0.85 if ribbon else 0.95), zf + st - 0.4
+            for j in range(nb):
+                u0, u1 = j * bw + pier, (j + 1) * bw - pier
+                if u1 - u0 < 0.8 or head - sill < 1.0 or not free(u0 - 0.2, u1 + 0.2, sill - 0.25, head + 0.2):
+                    continue
+                holes.append((u0, u1, sill, head))
+                wins.append((u0, u1, sill, head, (k1 + f * 5 + j * 3) % ROOMS))
+        holes += [(max(0.0, h[0]), min(Ln, h[1]), max(g, h[2]), min(top + 0.5, h[3])) for h in hung]
+        PT.wall(G, wall, F, 0.0, Ln, g, top + 0.5, OUT, rep, holes=holes, sub=3.5)
+        d = OUT
+        for (u0, u1, z0, z1, k) in wins:
+            cols = max(1, int(round((u1 - u0) / 1.5)))
+            for ci in range(cols):                          # a room to each 1.5 m of glass
+                a0, a1 = u0 + (u1 - u0) * ci / cols, u0 + (u1 - u0) * (ci + 1) / cols
+                G.quad("win_glass", F.P(a0, 0.02, z0), F.P(a1, 0.02, z0), F.P(a1, 0.02, z1), F.P(a0, 0.02, z1), uv=A.uv(f"room{(k + ci) % ROOMS}"), n=F.N)
+                if ci:
+                    PT.fbox(G, "metal_alu", F, a0 - 0.025, a0 + 0.025, 0.02, 0.07, z0, z1, faces=("front", "left", "right"))
+            # the reveal: sill, jambs, head
+            G.quad(wall, F.P(u0, 0.02, z0), F.P(u1, 0.02, z0), F.P(u1, d, z0), F.P(u0, d, z0), ao=0.75)
+            G.quad(wall, F.P(u1, 0.02, z1), F.P(u0, 0.02, z1), F.P(u0, d, z1), F.P(u1, d, z1), ao=0.65)
+            G.quad(wall, F.P(u0, 0.02, z0), F.P(u0, d, z0), F.P(u0, d, z1), F.P(u0, 0.02, z1), ao=0.72)
+            G.quad(wall, F.P(u1, d, z0), F.P(u1, 0.02, z0), F.P(u1, 0.02, z1), F.P(u1, d, z1), ao=0.72)
+            t = 0.045
+            for (m0, m1, y0, y1) in ((u0, u1, z0, z0 + t), (u0, u1, z1 - t, z1), (u0, u0 + t, z0, z1), (u1 - t, u1, z0, z1)):
+                PT.fbox(G, "metal_alu", F, m0, m1, 0.02, 0.065, y0, y1, faces=("front", "left", "right", "top", "bottom"))
+            PT.fbox(G, wall, F, u0 - 0.06, u1 + 0.06, OUT, OUT + 0.04, z0 - 0.1, z0, rep)                            # the sill
+        # a band over the shops, and the parapet's coping
+        if free(0.0, Ln, g + gf - 0.2, g + gf + 0.1):
+            PT.fbox(G, wall, F, 0.0, Ln, OUT, OUT + 0.04, g + gf - 0.12, g + gf, rep, faces=("front", "top", "bottom"))
+        PT.fbox(G, "metal_alu", F, -0.05, Ln + 0.05, -0.3, OUT + 0.1, top + 0.5, top + 0.62, faces=("front", "left", "right", "top", "bottom"))
 
 
 def build(K):
@@ -507,8 +745,9 @@ def build(K):
     M = materials()
     # the pavements, the square, kerbs and gutters in close tones of one grey family (AGENTS.md, "The bar"): each
     # texture brought to its tone by its own mean, so that a yellowish block and a brown sett end as greys
-    for mat, key, srgb in (("ground_paver", "paver", (150, 150, 148)), ("ground_sett", "sett", (138, 138, 137)),
-                           ("ground_kerb", "granite", (160, 160, 158)), ("ground_gutter", "conc", (152, 152, 150))):
+    for mat, key, srgb in (("ground_paver", "paver", (150, 150, 148)), ("ground_sett", "sett", (152, 118, 110)),
+                           ("ground_kerb", "granite", (160, 160, 158)), ("ground_gutter", "conc", (152, 152, 150)),
+                           ("wall_white", "tile", (214, 214, 210)), ("wall_cream", "tile", (204, 196, 182)), ("wall_grey", "panel", (168, 170, 172))):
         M[mat]["tint"] = K.tint_to(key, srgb)
     meta = {"id": ID, "at": list(CENTRE), "r": R, "z": 15.0, "glb": f"hero/{ID}.glb", "bake_gain": 1.0, "cell": 28.0}
     return geo, atlas, M, meta
