@@ -1144,7 +1144,9 @@ load's `crash` event reports it as `prev_stage`. The next death names its step.
 the NPCs', loaded for the whole map at the start), the walking model and the landmarks built for the whole map
 (Tokyo's page holds 383 MB of array buffers at rest), the Worker's and the page's garbage while the packs decode
 (a collection finds 210 MB of live array buffers where Chromium counts 490), the shared models' decoded pictures
-kept beside the GPU's, and the minimap's base.
+kept beside the GPU's, and the minimap's base. Tokyo's array buffers at rest by who holds them
+(`tools/heap_owners.js`): the walking model 128 MB (the collision world 56, the rest of `nav.js` 72), the
+landmarks' geometry kept on the page after the GPU has it 66, the surface model 29, the quays' distance fields 26.
 
 **Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe, an iPhone's screen and user agent.
 The numbers are what WebGL was asked for and what Chromium holds; what iOS counts, and where it kills, only the
