@@ -1359,23 +1359,6 @@ const npcNight = require('./npc_night');
     L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().seen = seen; L.city().log.length = logN;
     return out;
   });
-  // the tap itself: on foot, a tap on raises the right hand with the phone in it to the reader and lowers it again
-  const tapPose = await p.evaluate(() => {
-    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
-    if (!F || !f || g.player.mode !== 'foot' || !g.player.rig || !g.player.rig.fist) return { none: true };
-    const keep = JSON.stringify(L.city().fares || null), seen = Object.assign({}, L.city().seen), money = L.money, logN = L.city().log.length;
-    const kind = f.rides.rail ? 'rail' : f.rides.ferry ? 'ferry' : null;
-    if (kind) F.on({ kind, from: 'x', name: 'x', route: '' });
-    else { const [id, r] = Object.entries(f.rides.lift.routes)[0]; F.admit({ kind: 'lift', route: id, from: r.from, to: 'top', name: r.name }); }
-    const z0 = g.player.z, fist = new THREE.Vector3();
-    g.advance(0.45);
-    const ph = g.world.getObjectByName('tap_phone'), held = !!g.player.rig.hold, up = g.player.rig.fist(fist) ? fist.y - z0 : 0, shown = !!ph && ph.visible;
-    g.advance(1.5);
-    const after = !g.player.rig.hold && !(ph && ph.visible);
-    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().seen = seen; L.city().log.length = logN;
-    return { held, up, shown, after };
-  });
-  if (!tapPose.none) check(tapPose.held && tapPose.shown && tapPose.up > 0.85 && tapPose.after, `a tap holds the phone out to the reader (the hand ${tapPose.up.toFixed(2)} m up, the phone ${tapPose.shown ? 'in it' : 'not shown'}) and puts it away (${tapPose.after})`);
   if (!ticket.none) {
     check(ticket.free, `${ticket.name}: the survey's first visit is on its pass`);
     check(ticket.due === ticket.want && ticket.paid === ticket.want && ticket.shows && ticket.down, `${ticket.name}: the next visit is the counter's ${ticket.fmt} for the hour, taken and shown, and the way down is on it (due ${ticket.due}, paid ${ticket.paid})`);
@@ -2434,6 +2417,24 @@ const npcNight = require('./npc_night');
     if (near) check(near.tracked === near.line, `arriving beside ${near.giver} tracks the line ${near.line} (tracked: ${near.tracked})`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.qs().track = k.track; g.advance(0.2); }, keep);
   }
+
+  // the tap itself (last of all: the time it takes moves nothing the steps above see): on foot, a tap on raises the right hand with the phone in it to the reader and lowers it again
+  const tapPose = await p.evaluate(() => {
+    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
+    if (!F || !f || g.player.mode !== 'foot' || !g.player.rig || !g.player.rig.fist) return { none: true };
+    const keep = JSON.stringify(L.city().fares || null), seen = Object.assign({}, L.city().seen), money = L.money, logN = L.city().log.length;
+    const kind = f.rides.rail ? 'rail' : f.rides.ferry ? 'ferry' : null;
+    if (kind) F.on({ kind, from: 'x', name: 'x', route: '' });
+    else { const [id, r] = Object.entries(f.rides.lift.routes)[0]; F.admit({ kind: 'lift', route: id, from: r.from, to: 'top', name: r.name }); }
+    const z0 = g.player.z, fist = new THREE.Vector3();
+    g.advance(0.45);
+    const ph = g.world.getObjectByName('tap_phone'), held = !!g.player.rig.hold, up = g.player.rig.fist(fist) ? fist.y - z0 : 0, shown = !!ph && ph.visible;
+    g.advance(1.5);
+    const after = !g.player.rig.hold && !(ph && ph.visible);
+    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().seen = seen; L.city().log.length = logN;
+    return { held, up, shown, after };
+  });
+  if (!tapPose.none) check(tapPose.held && tapPose.shown && tapPose.up > 0.85 && tapPose.after, `a tap holds the phone out to the reader (the hand ${tapPose.up.toFixed(2)} m up, the phone ${tapPose.shown ? 'in it' : 'not shown'}) and puts it away (${tapPose.after})`);
 
   await advances();
   await b.close();
