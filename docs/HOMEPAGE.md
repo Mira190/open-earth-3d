@@ -53,19 +53,27 @@ skips it.
    either side of Japan instead of drifting off it; a drag or a zoom frees it. The time of day is
    the real one, so a visitor sees Japan at noon, at dusk with the terminator across Honshu, or
    lit at night.
-3. **One primary action.** "Japan · start here": an amber **Play Shibuya** button
-   (`#play-shibuya`), and Shinjuku (`#play-shinjuku`), Marunouchi & Ginza (`#play-tokyo`) and
-   Higashiyama (`#play-higashiyama`) as chips beside it. **P** with nothing chosen presses it. On a
-   phone it sits above the strip of places, in the thumb's reach, and steps aside while a card is
-   open. The Tokyo hero-level sessions were told these hashes; a level that wants another start
-   gives an `@<travel id>`.
+3. **One list, one start.** The menu is a single hierarchy, city then district. A city of several
+   playable maps (Tokyo) names them on a line under its row: Shibuya (`#play-shibuya`) and
+   Marunouchi & Ginza (`#play-tokyo`), each one press into its game. The line shows under the
+   leading city until another place is chosen, and under a chosen city. Shibuya carries a small
+   outlined **Play** mark, the page's only amber accent, and **P** with nothing chosen presses it.
+   On a phone, where the list is a strip of names, the same start sits on a slim line over the
+   strip and steps aside while a card is open. (The first version was a filled amber banner with
+   the other districts as boxes beside it, above the list: three sets of navigation for one
+   question, Tokyo named four times, and a block heavier than the Earth. Review, November 2026.)
+   A level that wants another start gives an `@<travel id>`.
 4. **Labels that both read.** Tokyo and Kyoto are 370 km apart, close on a globe; a label that
    would overlap one already placed now tries the other side of its point before it loses its
    text, so both names show.
 
-`tools/title_pick_check.js` checks the landing on a desktop and a phone: the first two places are
-Tokyo and Kyoto, both are named on the globe, and the primary button is in view, a thumb's size,
-and goes to `#play-shibuya`.
+5. **The list is read against the dark, not the globe.** The menu column is narrower, the shade
+   behind it deeper, and a label on the globe that would lie on the list or on the foot's lines
+   loses its text (a planned place's is not drawn at all).
+
+`tools/title_pick_check.js` checks the landing on a desktop and a phone: the list leads with
+Tokyo, named on the globe, and the start is in view (a thumb's size on a phone), goes to
+`#play-shibuya`, and no filled amber block is in the menu.
 
 ## What we looked at
 
@@ -73,7 +81,7 @@ Ideas only; nothing taken from their look, code or assets.
 
 - **Game title screens** (Ghost of Tsushima, Death Stranding, most console games): the first item
   is the one that plays, *Continue* or *Start*, set apart from the rest. The landing here had a
-  list of equal names and no such item. Adopted: one amber primary, the rest as secondary chips.
+  list of equal names and no such item. Adopted: one item that plays, marked in amber, inside the list rather than over it.
 - **Microsoft Flight Simulator's world map**: the globe is the menu, but it opens on featured
   places, not on wherever the last session was. Adopted: the globe's home is the featured
   country.
