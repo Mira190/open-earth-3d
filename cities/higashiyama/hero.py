@@ -96,5 +96,5 @@ def build(K):
             q = c + t * 0.95 - n * 0.22
             W.bucket(G, q, site.z(*q[:2]) + 0.1)
     c = ln.interpolate(ln.length / 2)
-    meta = {"id": ID, "at": [round(c.x, 1), round(c.y, 1)], "r": round(ln.length / 2 + 10, 1), "z": round(site.z(c.x, c.y), 1), "glb": f"hero/{ID}.glb", "bake_gain": 0.6}
+    meta = {"id": ID, "at": [round(c.x, 1), round(c.y, 1)], "r": round(ln.length / 2 + 10, 1), "z": round(site.z(c.x, c.y), 1), "glb": f"hero/{ID}.glb", "bake_gain": 0.6, "cell": 24.0}
     return G, A, M, meta

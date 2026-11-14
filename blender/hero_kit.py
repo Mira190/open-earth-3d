@@ -41,14 +41,25 @@ TEXTURES = {
     "plaster": ("Plaster001", 2.5),       # rendered wall
     "paver": ("PavingStones136", 2.0),    # interlocking blocks: Ichibangai is paved, not asphalted (OSM surface=paving_stones)
     # a Kyoto lane and a shrine's approach (blender/hero_wa.py)
-    "sett": ("PavingStones128", 2.4),     # dressed granite setts in running bond
+    "kyo_sett": ("PavingStones128", 2.4), # dressed granite setts in running bond
     "flag": ("PavingStones077", 3.0),     # large grey flagstones of mixed sizes
     "gravel": ("Gravel023", 2.0),         # pale crushed stone, a shrine's ground
-    "stone": ("Concrete036", 2.5),        # weathered grey stone: lanterns, fences, footings
+    "kyo_stone": ("Concrete036", 2.5),    # weathered grey stone: lanterns, fences, footings
     "kawara": ("RoofingTiles013A", 2.4),  # dark grey fired roof tiles
     "wood": ("Planks023A", 2.2),          # weathered boards, tinted dark for a town house's timber
     "shu": ("PaintedWood009C", 2.0),      # pale painted timber, tinted vermilion
     "bamboo": ("Bamboo001C", 1.2),        # weathered split bamboo
+    # stone, timber and the water's edge (Sydney's quay, Queenstown's deck and wharf)
+    "ashlar": ("Bricks066", 3.2),         # smooth dressed blocks in even courses: tinted, a sandstone or a bluestone front
+    "rubble": ("Bricks083", 2.2),         # squared rubble in lime mortar: a seat wall, a colonial cottage, a schist wall when tinted grey
+    "granite_pave": ("PavingStones125A", 2.4), # sawn granite planks in a bond: a modern quay's paving
+    "sett": ("PavingStones131", 1.6),     # granite setts
+    "grass": ("Grass004", 2.6),           # mown lawn
+    "deck": ("Planks040", 1.8),           # grooved hardwood deck boards
+    "granite": ("Granite005A", 1.5),      # polished granite: a plinth, a kerb
+    "stone": ("Travertine009", 2.2),      # sawn bedded stone: copings, steps, pavers
+    "schist": ("Rock051", 2.4),           # foliated grey-green schist: Otago's stone
+    "bark": ("Bark014", 1.2),             # a trunk
 }
 
 
@@ -87,6 +98,15 @@ def fetch_texture(key, size="1K"):
     return out
 
 
+def tint_to(key, srgb):
+    """The tint that brings a TEXTURES entry's mean colour to an sRGB colour (0-255): a grey ashlar made a
+    sandstone, a paving made lighter. It may pass 1: hero.js sets it as the material's colour factor."""
+    from PIL import Image
+    a = np.asarray(Image.open(fetch_texture(key)["Color"]).convert("RGB").resize((64, 64)), float) / 255.0
+    lin = lambda c: np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    return tuple(float(v) for v in np.round(lin(np.asarray(srgb, float) / 255.0) / lin(a).reshape(-1, 3).mean(0), 3))
+
+
 def unit(v):
     v = np.asarray(v, float)
     n = np.linalg.norm(v)
@@ -103,6 +123,17 @@ class Geo:
         self.emitters = []   # (centre, normal, area, linear rgb radiance)
         self.walls = []      # (a, b, z0, z1): the fronts the occlusion reads
         self.ground_z = None
+        self._fine = None
+
+    @property
+    def fine(self):
+        """The level's finest parts (a railing's rails, a window's glazing bars, a bench's slats, a plaque's
+        rim): geometry in plain materials only, exported as a second model that is fetched and drawn only near
+        the camera and never on a phone (hero.js "fine"). Lit by the same lights (the bake reads the level's)."""
+        if self._fine is None:
+            self._fine = Geo()
+            self._fine.emitters, self._fine.walls = self.emitters, self.walls
+        return self._fine
 
     def part(self, mat):
         if mat not in self.parts:
@@ -206,6 +237,38 @@ class Geo:
             for k in range(segs):
                 g["tri"].append((base, base + 1 + k, base + 1 + (k + 1) % segs))
 
+    def lathe(self, mat, c, profile, segs=12, ao=None):
+        """A turned shape about the vertical through c: profile [(r, z), ...] from the bottom up (a bollard, a
+        lamp's base, an urn). Smooth round, creased where the profile turns."""
+        c = np.asarray(c, float)
+        g = self.part(mat)
+        prof = [np.asarray(q, float) for q in profile]
+        for (r0, z0), (r1, z1) in zip(prof[:-1], prof[1:]):
+            dr, dz = r1 - r0, z1 - z0
+            ln = math.hypot(dr, dz) or 1.0
+            base = len(g["p"])
+            for (r, z) in ((r0, z0), (r1, z1)):
+                for k in range(segs + 1):
+                    th = 2 * math.pi * k / segs
+                    cs, sn = math.cos(th), math.sin(th)
+                    g["p"].append(c + [r * cs, r * sn, z]); g["n"].append(np.array([cs * dz / ln, sn * dz / ln, -dr / ln]))
+                    g["uv"].append((k / segs, z)); g["ao"].append(1.0 if ao is None else ao)
+            for k in range(segs):
+                a0, a1, b0, b1 = base + k, base + k + 1, base + segs + 1 + k, base + segs + 2 + k
+                g["tri"] += [(a0, a1, b1), (a0, b1, b0)]
+
+    def mesh(self, mat, P, tri, n=None, uv=None, ao=None):
+        """Triangles as given: points P, index triples tri, a normal (one for all, or per point; up by default)
+        and uvs (metres from x, y by default): a ground laid on a surface, a leaf."""
+        g = self.part(mat)
+        base = len(g["p"])
+        P = np.asarray(P, float)
+        N = np.tile(np.asarray([0, 0, 1.0] if n is None else n, float), (len(P), 1)) if n is None or np.ndim(n) == 1 else np.asarray(n, float)
+        U = P[:, :2] if uv is None else np.asarray(uv, float)
+        for i in range(len(P)):
+            g["p"].append(P[i]); g["n"].append(N[i]); g["uv"].append(U[i]); g["ao"].append(1.0 if ao is None else (ao[i] if np.ndim(ao) else ao))
+        g["tri"] += [(base + a, base + b, base + c) for a, b, c in tri]
+
     def count(self):
         return sum(len(g["tri"]) for g in self.parts.values()), sum(len(g["p"]) for g in self.parts.values())
 
@@ -308,9 +371,11 @@ def bake(geo, gain=1.0, near=0.35, walls_ao=True):
 
 # ---------------------------------------------------------------- Blender
 
-def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0.0, 0.0, 0.0)):
-    """Blender meshes from geo (one object per material), with their materials from `materials`
-    ({name: spec}: color, rough, metal, tex (a TEXTURES key), tint, emissive, map ('atlas'), alpha)."""
+def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0.0, 0.0, 0.0), cell=None):
+    """Blender meshes from geo (one object per material, or with `cell` one per material and per square of
+    that many metres, so that the page draws only the squares in view and, of the fine model, only those near
+    the camera), with their materials from `materials`
+    ({name: spec}: color, rough, metal, tex (a TEXTURES key), maps, tint, emissive, map ('atlas'), alpha)."""
     import bpy
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
@@ -332,19 +397,22 @@ def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0
         bs.inputs["Base Color"].default_value = (*col, 1)
         bs.inputs["Roughness"].default_value = spec.get("rough", 0.6)
         bs.inputs["Metallic"].default_value = spec.get("metal", 0.0)
+        if spec.get("tint"):       # (the colour factor the texture or the atlas is multiplied by: hero.js sets it from the extras)
+            m["tint"] = list(spec["tint"])
         if spec.get("tex"):
             T = fetch_texture(spec["tex"])
             tc = nt.nodes.new("ShaderNodeTexImage"); tc.image = image(T["Color"])
             nt.links.new(tc.outputs["Color"], bs.inputs["Base Color"])
-            if spec.get("tint"):   # (the colour factor glTF multiplies the texture by: hero.js sets it from the extras)
-                m["tint"] = list(spec["tint"])
-            tr = nt.nodes.new("ShaderNodeTexImage"); tr.image = image(T["ORM"], False)
-            sp = nt.nodes.new("ShaderNodeSeparateColor")
-            nt.links.new(tr.outputs["Color"], sp.inputs["Color"])
-            nt.links.new(sp.outputs["Green"], bs.inputs["Roughness"]); nt.links.new(sp.outputs["Blue"], bs.inputs["Metallic"])
-            tn = nt.nodes.new("ShaderNodeTexImage"); tn.image = image(T["NormalGL"], False)
-            nm = nt.nodes.new("ShaderNodeNormalMap"); nm.inputs["Strength"].default_value = spec.get("bump", 1.0)
-            nt.links.new(tn.outputs["Color"], nm.inputs["Color"]); nt.links.new(nm.outputs["Normal"], bs.inputs["Normal"])
+            maps = spec.get("maps", "cnr")   # colour always; "n" its normal map, "r" its roughness (leave out what cannot be seen: memory)
+            if "r" in maps:
+                tr = nt.nodes.new("ShaderNodeTexImage"); tr.image = image(T["ORM"], False)
+                sp = nt.nodes.new("ShaderNodeSeparateColor")
+                nt.links.new(tr.outputs["Color"], sp.inputs["Color"])
+                nt.links.new(sp.outputs["Green"], bs.inputs["Roughness"]); nt.links.new(sp.outputs["Blue"], bs.inputs["Metallic"])
+            if "n" in maps:
+                tn = nt.nodes.new("ShaderNodeTexImage"); tn.image = image(T["NormalGL"], False)
+                nm = nt.nodes.new("ShaderNodeNormalMap"); nm.inputs["Strength"].default_value = spec.get("bump", 1.0)
+                nt.links.new(tn.outputs["Color"], nm.inputs["Color"]); nt.links.new(nm.outputs["Normal"], bs.inputs["Normal"])
         if spec.get("map") == "atlas" and atlas_path:
             ta = nt.nodes.new("ShaderNodeTexImage"); ta.image = image(atlas_path)
             nt.links.new(ta.outputs["Color"], bs.inputs["Base Color"])
@@ -360,29 +428,40 @@ def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0
         return m
 
     mats = {k: make_mat(k, materials[k]) for k in geo.parts}
+    def pieces(key, g):
+        """A material's triangles whole, or by the square their centre lies in (each with its own points)."""
+        P = (np.asarray(g["p"], float) - np.asarray(origin, float)).astype(np.float32)
+        tri = np.asarray(g["tri"], np.int32)
+        if not cell:
+            yield key, P, tri, np.asarray(g["uv"], np.float32), np.asarray(g["n"], np.float32), bakes[key]
+            return
+        c = np.floor(P[tri].mean(1)[:, :2] / cell).astype(int)
+        for cx, cy in sorted(set(map(tuple, c))):
+            t = tri[(c[:, 0] == cx) & (c[:, 1] == cy)]
+            used, inv = np.unique(t.ravel(), return_inverse=True)
+            yield (f"{key}_c{cx}_{cy}", P[used], inv.reshape(-1, 3).astype(np.int32), np.asarray(g["uv"], np.float32)[used],
+                   np.asarray(g["n"], np.float32)[used], bakes[key][used])
+
     for key, g in geo.parts.items():
         if not g["tri"]:
             continue
-        me = bpy.data.meshes.new(f"{name}_{key}")
-        # (relative to the level's origin, carried by the node: the meshopt filter keeps 16 bits of a
-        # coordinate's range, which over a map's kilometres would be centimetres)
-        P = (np.asarray(g["p"], float) - np.asarray(origin, float)).astype(np.float32)
-        tri = np.asarray(g["tri"], np.int32)
-        me.vertices.add(len(P)); me.vertices.foreach_set("co", P.ravel())
-        me.loops.add(len(tri) * 3); me.loops.foreach_set("vertex_index", tri.ravel())
-        me.polygons.add(len(tri)); me.polygons.foreach_set("loop_start", np.arange(0, len(tri) * 3, 3, dtype=np.int32))
-        me.update(calc_edges=True)
-        uv = me.uv_layers.new(name="UVMap")
-        UVs = np.asarray(g["uv"], np.float32)
-        uv.data.foreach_set("uv", UVs[tri.ravel()].ravel())
-        Nn = np.asarray(g["n"], np.float32)
-        me.normals_split_custom_set_from_vertices(Nn)
-        b = me.attributes.new("_BAKE", "FLOAT_COLOR", "POINT")
-        b.data.foreach_set("color", bakes[key].ravel())
-        me.materials.append(mats[key])
-        ob = bpy.data.objects.new(f"{name}_{key}", me)
-        ob.location = origin
-        sc.collection.objects.link(ob)
+        for pname, P, tri, UVs, Nn, bk in pieces(key, g):
+            me = bpy.data.meshes.new(f"{name}_{pname}")
+            # (relative to the level's origin, carried by the node: the meshopt filter keeps 16 bits of a
+            # coordinate's range, which over a map's kilometres would be centimetres)
+            me.vertices.add(len(P)); me.vertices.foreach_set("co", P.ravel())
+            me.loops.add(len(tri) * 3); me.loops.foreach_set("vertex_index", tri.ravel())
+            me.polygons.add(len(tri)); me.polygons.foreach_set("loop_start", np.arange(0, len(tri) * 3, 3, dtype=np.int32))
+            me.update(calc_edges=True)
+            uv = me.uv_layers.new(name="UVMap")
+            uv.data.foreach_set("uv", UVs[tri.ravel()].ravel())
+            me.normals_split_custom_set_from_vertices(Nn)
+            b = me.attributes.new("_BAKE", "FLOAT_COLOR", "POINT")
+            b.data.foreach_set("color", np.ascontiguousarray(bk).ravel())
+            me.materials.append(mats[key])
+            ob = bpy.data.objects.new(f"{name}_{pname}", me)
+            ob.location = origin
+            sc.collection.objects.link(ob)
     return sc
 
 

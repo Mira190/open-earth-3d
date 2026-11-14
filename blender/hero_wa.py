@@ -13,8 +13,9 @@ Kyoto lane or a shrine's approach is made of, each as plain geometry by material
   torii, stone_lantern, tamagaki, nobori, andon, chochin, bench   what stands on a street or an approach
 
 Materials follow web/game/hero.js's names: glow* lit by day and night, paper* and lamp* lit after
-dark only, ground* what is walked on; a material ending _fine is the finest geometry (lattice bars,
-eave tiles, rafters), which a phone does not load.
+dark only, ground* what is walked on. The finest geometry (lattice bars, the eaves' round tiles, rafters) goes
+into the level's fine model (hero_kit Geo.fine, in the plain materials tile_edge and wood_fine), which is fetched
+only near the level, drawn only near the camera and never on a phone.
 """
 import base64
 import json
@@ -38,17 +39,17 @@ WARM = (1.0, 0.72, 0.42)   # a paper lantern's light, linear
 def materials():
     """The materials these pieces use (a level adds its own)."""
     return {
-        "ground_sett": {"tex": "sett", "tint": (0.62, 0.60, 0.57), "rough": 0.8},
+        "ground_sett": {"tex": "kyo_sett", "tint": (0.62, 0.60, 0.57), "rough": 0.8},
         "ground_flag": {"tex": "flag", "tint": (0.66, 0.65, 0.62), "rough": 0.8},
         "ground_gravel": {"tex": "gravel", "tint": (0.50, 0.49, 0.46), "rough": 0.95},
         "ground_lid": {"map": "atlas", "rough": 0.85},
         "ground_asphalt": {"tex": "asphalt", "tint": (0.42, 0.42, 0.43), "rough": 0.9},
-        "stone": {"tex": "stone", "tint": (0.60, 0.59, 0.56), "rough": 0.85},
-        "stone_moss": {"tex": "stone", "tint": (0.44, 0.47, 0.40), "rough": 0.9},
+        "stone": {"tex": "kyo_stone", "tint": (0.60, 0.59, 0.56), "rough": 0.85},
+        "stone_moss": {"tex": "kyo_stone", "tint": (0.44, 0.47, 0.40), "rough": 0.9},
         "roof_kawara": {"tex": "kawara", "tint": (0.50, 0.51, 0.53), "rough": 0.5},
-        "tile_edge_fine": {"color": (0.085, 0.088, 0.095), "rough": 0.45},
+        "tile_edge": {"color": (0.085, 0.088, 0.095), "rough": 0.45},
         "wood_dark": {"tex": "wood", "tint": (0.20, 0.155, 0.125), "rough": 0.75},
-        "wood_dark_fine": {"tex": "wood", "tint": (0.17, 0.13, 0.105), "rough": 0.75},
+        "wood_fine": {"color": (0.045, 0.034, 0.027), "rough": 0.75},
         "wood_board": {"tex": "wood", "tint": (0.115, 0.10, 0.095), "rough": 0.8},
         "wood_bare": {"tex": "wood", "tint": (0.52, 0.40, 0.28), "rough": 0.7},
         "wood_shu": {"tex": "shu", "tint": (0.80, 0.215, 0.085), "rough": 0.5},
@@ -328,8 +329,8 @@ def eave_tiles(G, a, b, out, pitch=0.27, r=0.07):
     o = np.r_[K.unit(np.asarray(out, float)[:2]), 0.0]
     for i in range(n):
         p = a + (b - a) * ((i + 0.5) / n) + [0, 0, 0.035]
-        rod(G, "tile_edge_fine", p - o * 0.16 + [0, 0, 0.05], p + o * 0.03, r, 6)
-    G.quad("tile_edge_fine", a + o * 0.02 - [0, 0, 0.05], b + o * 0.02 - [0, 0, 0.05], b + o * 0.02 + [0, 0, 0.02], a + o * 0.02 + [0, 0, 0.02], n=o)
+        rod(G.fine, "tile_edge", p - o * 0.16 + [0, 0, 0.05], p + o * 0.03, r, 6)
+    G.fine.quad("tile_edge", a + o * 0.02 - [0, 0, 0.05], b + o * 0.02 - [0, 0, 0.05], b + o * 0.02 + [0, 0, 0.02], a + o * 0.02 + [0, 0, 0.02], n=o)
 
 
 def roof_skin(G, M, site, sd, lift=0.07, tiles=True, mat="roof_kawara"):
@@ -652,7 +653,7 @@ def hisashi(G, M, fr, u0, u1, z, depth=0.85, drop=0.3, v0=0.1, rafters=True):
         n = max(2, int(L / 0.36))
         for i in range(n + 1):
             u = u0 + 0.04 + (L - 0.08) * i / n
-            G.box("wood_dark_fine", fr(u, v0 + depth / 2, z - drop / 2 - 0.16), (fr.t3, K.unit(fr.n3 * depth - UP * drop)), (0.045, sl, 0.07), faces=("+u", "-u", "bot"))
+            G.fine.box("wood_fine", fr(u, v0 + depth / 2, z - drop / 2 - 0.16), (fr.t3, K.unit(fr.n3 * depth - UP * drop)), (0.045, sl, 0.07), faces=("+u", "-u", "bot"))
 
 
 def koshi(G, M, fr, u0, u1, z0, z1, v=0.1, pitch=0.085, bar=0.03):
@@ -660,7 +661,7 @@ def koshi(G, M, fr, u0, u1, z0, z1, v=0.1, pitch=0.085, bar=0.03):
     n = max(2, int((u1 - u0) / pitch))
     for i in range(n):
         u = u0 + (u1 - u0) * (i + 0.5) / n
-        tbox(G, M, "wood_dark_fine", fr(u, v, z0), (fr.t3, fr.n3), (bar, 0.035, z1 - z0), faces=("+v", "+u", "-u"))
+        tbox(G.fine, M, "wood_fine", fr(u, v, z0), (fr.t3, fr.n3), (bar, 0.035, z1 - z0), faces=("+v", "+u", "-u"))
     for k in (0.04, 0.5, 0.96):
         tbox(G, M, "wood_dark", fr((u0 + u1) / 2, v - 0.03, z0 + (z1 - z0) * k - 0.02), (fr.t3, fr.n3), (u1 - u0, 0.03, 0.04), faces=("+v", "top", "bot"))
 
@@ -739,7 +740,7 @@ def machiya(G, M, A, fr, zlow, zf, ze, rng, plaster="plaster_white", shop=0.6, n
             ik = f"int{int(rng.integers(6))}"
             G.quad("glow_shop", fr(u0, 0.05, zs), fr(u1, 0.05, zs), fr(u1, 0.05, zt), fr(u0, 0.05, zt), uv=A.uv(ik), emit=(A.mean[ik], 2.2))
             tbox(G, M, "wood_dark", fr((u0 + u1) / 2, S, zs - 0.04), (t, n), (u1 - u0, 0.1, 0.06), faces=("+v", "top"))
-            tbox(G, M, "wood_dark_fine", fr((u0 + u1) / 2, S, zs), (t, n), (0.04, 0.05, zt - zs), faces=("+v", "+u", "-u"))
+            tbox(G.fine, M, "wood_fine", fr((u0 + u1) / 2, S, zs), (t, n), (0.04, 0.05, zt - zs), faces=("+v", "+u", "-u"))
         elif kd == "koshi":
             G.quad("paper_shoji", fr(u0, 0.04, zf + 0.09), fr(u1, 0.04, zf + 0.09), fr(u1, 0.04, zt), fr(u0, 0.04, zt), uv=A.uv("shoji" if lit else "shoji_dark"),
                    emit=((WARM[0], WARM[1], WARM[2]), 0.8) if lit else None)

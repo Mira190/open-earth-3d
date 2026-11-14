@@ -3,13 +3,19 @@
 Asked for in November 2026 for Tokyo's live maps: one small level per map, a street or a crossing some
 200-300 m across, that reads at eye level as a photograph or a current game does, while the rest of
 the map stays as it is around it. Shinjuku's is Kabukicho Ichibangai (`cities/shinjuku/hero.py`);
-Shibuya's scramble is built by its own session on the same kit; Marunouchi-Ginza's (Tokyo Station) is drawn as landmark meshes, below;
-Kyoto's two (Yasaka-dori, the Omotesando of Fushimi Inari) are on the kit, below.
+Shibuya's scramble is built by its own session on the same kit; Marunouchi-Ginza's (Tokyo Station) is drawn as
+landmark meshes, below. Sydney's is Circular Quay West, where its game starts (`cities/sydney/hero.py`), and
+Queenstown's the Skyline deck on Bob's Peak (`cities/queenstown/hero.py`): stone, timber and a water's edge
+rather than a street of signs. Kyoto's two (Yasaka-dori, the Omotesando of Fushimi Inari) are on the kit with
+Japanese traditional pieces, below.
 
 | What | Where |
 |---|---|
 | The loader, in every map's game | `web/game/hero.js` (`OEHero`), started by `web/game/game.js` from `game.hero` |
 | The kit: geometry by material, the atlas, the bake, Blender and the export | `blender/hero_kit.py` |
+| Parts: paving laid on the game's ground, a wall's frame with openings, windows, lamp posts, benches, bollards | `blender/hero_parts.py` |
+| The measured things under a level: OpenStreetMap's map of its rectangle, in local metres | `python pipeline/hero_osm.py --city <id> --box x0 y0 x1 y1` -> `cities/<id>/hero_osm.json` |
+| The ground a level is laid on: the game's own walking surface, sampled | `node tools/ground_probe.js <id> x0 y0 x1 y1 > cities/<id>/hero_ground.json` |
 | The build | `python blender/build_hero.py --city <id>` (needs `pip install bpy==5.2.3` and Node) |
 | A map's level | `cities/<id>/hero.py` (`build(kit)` returns geometry, atlas, materials and its centre) |
 | Its place in the game | `cities/<id>/city.json` `game.hero` (copied into `game.json` by `pipeline/game_text.py`) |
@@ -32,6 +38,19 @@ sent to the GPU, a quarter of the memory, and on a phone's lean sub-tier no side
 `createImageBitmap`, not through a full-size canvas. Its shaders are compiled and its textures sent in idle time
 before it is first shown (`world.js` `upload`, `compile`), so it does not stall a frame.
 
+**What cannot be seen costs nothing** (issue 358, from first principles). A level is paid for in four
+currencies: bytes fetched, memory held, triangles drawn and pixels shaded. Each is spent only where the eye is:
+
+| Cost | What decides it | How the level spends it |
+|---|---|---|
+| Fetched and held at all | how far the level is | nothing within 260 m: nothing fetched; past 520 m: everything freed |
+| The finest geometry (glazing bars, a railing's rails, bench arms, joints) | whether it covers a pixel | a second model, `<id>_fine.glb` (`Geo.fine`, plain materials only, so no texture is held twice): fetched only when the camera is inside the level, each 22 m square of it drawn only within `fine_m` (70 m) of the camera, and never fetched on the low tier |
+| Triangles and draws behind you | the view | the level is cut into squares (`meta["cell"]`, one mesh per material and square), so three.js's frustum test leaves out what is off screen; at Sydney's start about half the level |
+| Texture memory | the screen's pixels, not the texture's | a material carries only the maps that show (`maps`: `"c"`, `"cn"`, `"cnr"`): bark, grass and distant render have no roughness map; on the low tier no normal or roughness maps at all and every colour map halved, on a phone's lean sub-tier no side over 1024 |
+| Light after dark | nothing per frame | baked into the vertices, below: no light is evaluated at run time |
+
+Measured on Sydney's level (`tools/mem_check.js`, the phone tier): see the numbers in its section below.
+
 **Light baked into the vertices.** After dark a street like Ichibangai is lit by its signs and shop
 fronts, not by its lamps. Each lit face (a sign's panel, a fascia, a shop's glass, a vending machine,
 a lantern) is a set of small area lights a metre apart, in the mean colour of what is drawn on it; every
@@ -42,7 +61,8 @@ occlusion take the sky's light by day. The city's street lights (`world.js` `str
 at the share `game.hero[].street` gives (Kabukicho 0.35), since its own lamps are baked. No lightmap
 texture, no second UV set, and nothing for a phone to compute.
 
-**Materials by name** (Blender's, kept in the glTF): `glow*` lit signs (their emissive at
+**Materials by name** (Blender's, kept in the glTF): `win*` windows (the rooms' light is turned up with the
+night; a `tint` darkens the glass by day), `glow*` lit signs (their emissive at
 `game.hero[].glow`: by day and by night), `tube*` neon tubes (which stutter now and then), `win*`
 windows (dark glass by day, rooms lit after dark), `ground*` what you walk on (wet in the rain; on the high
 tier it takes the wet street's reflection, `mirror.js`). A material's tint (the building's colour over a
@@ -51,7 +71,11 @@ shared texture) travels in its glTF extras.
 **Textures.** CC0 PBR sets from ambientCG at 1K (colour, normal, and roughness packed into glTF's
 metallic-roughness image), as WebP inside the model: `PavingStones136` (Ichibangai is paved: OpenStreetMap
 `surface=paving_stones`, and the ward's plans keep both streets paved), `Tiles036` (the small square
-facing tiles of Japan's mixed-use buildings), `Plaster001`, `Concrete034`, `Tiles138`. Everything
+facing tiles of Japan's mixed-use buildings), `Plaster001`, `Concrete034`, `Tiles138`; and for stone, timber and a water's edge `Bricks066` (smooth coursed ashlar),
+`Bricks083` (squared rubble), `PavingStones125A` (sawn granite planks), `PavingStones131` (setts), `Grass004`,
+`Planks040` (grooved deck boards), `Granite005A`, `Travertine009` (sawn bedded stone), `Rock051` (schist) and
+`Bark014`. A grey texture is brought to a stone's colour by a tint computed from its mean
+(`hero_kit.tint_to(key, sRGB)`), so one ashlar serves Sydney's sandstone and a bluestone alike. Everything
 drawn (sign panels with the tenants' names, shop interiors, rooms behind the windows, vending machine
 fronts, menu boards, air conditioners, manhole covers, grates) is one atlas, drawn in Python with the
 project's open fonts (`pipeline/adkit.py`).
@@ -121,14 +145,16 @@ gable and roof triangle near the street:
 - the paving is not laid under the buildings.
 
 Memory follows the same rule at run time. The level is fetched within 260 m and freed past 520 m (`hero.js`).
-Its finest geometry (lattice bars, the eaves' round tiles, rafters: materials named `*_fine`, a third of
-Yasaka-dori's triangles) is never sent to the GPU on the low tier: at a phone's resolution a 3 cm bar at 10 m is
-under a pixel, and the drawn paper behind it carries the pattern. On the low tier the normal and roughness maps
+Its finest geometry (lattice bars, the eaves' round tiles, rafters: 84,000 of Yasaka-dori's 116,000 triangles) is the
+level's fine model (`Geo.fine`, `yasaka_fine.glb`): fetched only once the camera is by the level, drawn square by
+square within 45 m of it, and never fetched on the low tier: at a phone's resolution a 3 cm bar at 10 m is under a
+pixel, and the drawn paper behind it carries the pattern. Both levels are cut into 24 m squares, so the squares
+behind the camera are not drawn. On the low tier the normal and roughness maps
 are dropped and the colour maps halved (no side over 1024 on the lean sub-tier). Light after dark is in the
 vertices, so a phone computes none of it.
 
 Materials added to the loader's names: `paper*` and `lamp*` (a shoji, a lantern) show their own colour by day
-and are lit as dusk falls; `*_fine` as above.
+and are lit as dusk falls.
 
 ### Yasaka-dori
 
@@ -204,6 +230,41 @@ Textures added, all CC0 1.0 from ambientCG at 1K: `PavingStones128` (setts), `Pa
 `Gravel023`, `Concrete036` (weathered stone), `RoofingTiles013A` (the nearest to fired grey tile: ambientCG has
 no true kawara), `Planks023A` (boards, tinted dark), `PaintedWood009C` (tinted vermilion), `Bamboo001C`. The
 shop names, noren, lantern papers and boards are drawn in Python with Shippori Mincho (SIL OFL, `pipeline/adkit.py`).
+## Circular Quay West (Sydney)
+
+From First Fleet Park's edge to the taxi rank under the Overseas Passenger Terminal: 135 m of the quay in
+front of the Museum of Contemporary Art, where the Sydney map's game starts (the start was moved 15 m, from
+the lawn's path down onto the promenade, so that the first frame looks along it to the harbour). Chosen over
+George Street in The Rocks, 100 m west: the quay is what the start already faces, it holds the map's two
+most photographed things in one view (the museum's sandstone front and the Opera House across the cove), and
+its ground, edge and furniture are all in the open, where a level's detail shows.
+
+What is measured, and from where:
+
+| Thing | Source |
+|---|---|
+| The museum's outline, its end pavilions (9.3 m forward, 14 m wide), the tower's face (13.2 m, 1.6 m proud), the lawn, the retaining wall's line, every tree, bench, bollard, cover and artwork, the eight Writers Walk plaques here by name | OpenStreetMap (`cities/sydney/hero_osm.json`, ODbL) |
+| The ground: the lawn at 3.9-4.0 m, the promenade at 2.5 m, the slope between | the game's own surface (`hero_ground.json`: NSW Spatial Services' 5 m elevation, softened, the quay raised to its wall) |
+| The quay's edge | the game's shore raster (`shore.png`), smoothed to the wall's line |
+| The front's composition and heights: three bays to a pavilion and four to a wing, paired windows, a 4.3 m storey, pavilions 23 m, wings 26 m, the tower 35 m (the same as the map's own figure), the glass floor on the roof | photographs on Wikimedia Commons: "Museum of Contemporary Art Australia, Sydney, 2023" (CC BY-SA 4.0), "The Museum of Contemporary Art, Sydney (former MSB Building)" (CC BY-SA 4.0), "(1)Museum of Contemporary Art-3" (CC BY-SA 3.0); looked at, not copied into the model |
+
+The city's model has the museum as four plain blocks without its end pavilions or the Mordant Wing; the
+level builds both as its own shells (they have no collision: issue 426), and skins the rest 0.45 m in
+front of the city's walls. The entrance hall behind the Mordant Wing's glass is a room in geometry (floor,
+back wall hung with canvases, a ceiling of light), so that it shifts as you walk past, which a picture of a
+room does not. The two rows of palms along the lawn's wall are the map's own trees (an area in `city.json`
+`trees.areas` makes them palms where they were jacarandas), so that they move in the wind and are not drawn twice.
+
+After dark: the lamp posts' luminaires, the up-lights along the museum's foot, the hall's ceiling and the
+steel ovoid's holes are the bake's lights; a fifth of the windows are lit.
+
+What could not be checked: the lamp posts' and benches' design (Sydney's quay posts are drawn as a tapered
+dark post with two outreach luminaires and a banner pair; the banners' and pylons' graphics are this
+project's), the paving's bond and colour (a grey sawn granite with darker bands), the height of the lawn's
+wall (the game's softened ground makes the 1.5 m drop a 7% ramp, so the wall is drawn as a 0.45 m seat wall),
+the Mordant Wing's exact massing (boxes after photographs), the ovoid's dimensions, whether the quay's edge
+here has a rail (OpenStreetMap maps fences only at the wharves: none is drawn), and the palms' species (the
+shared palm is a date palm; the real ones are slender fan palms).
 
 ## Research: how the games build a street like this, and what runs in a browser
 

@@ -152,10 +152,20 @@
     let cap = 1 << 16, n = 0;
     let P = new Float32Array(cap * 3), N = new Int8Array(cap * 3), C = new Uint8Array(cap * 3), F = new Float32Array(cap * 2),
       I = new Uint16Array(cap * 4), E = new Uint16Array(cap * 3), B = new Float32Array(cap), S = new Uint8Array(cap);
-    const idx = [];
+    // An array made longer or cut to len elements. Where the engine can resize a buffer (ArrayBuffer.transfer) the
+    // old one is given up as the new one is made; a copy holds both at once, and at a city's four million
+    // vertices that is a few hundred megabytes a phone does not have while it loads (docs/PERFORMANCE.md, "On a phone")
+    const fit = (a, len) => {
+      if (a.buffer.transfer) return new a.constructor(a.buffer.transfer(len * a.BYTES_PER_ELEMENT));
+      if (len <= a.length) return a.slice(0, len);
+      const b = new a.constructor(len); b.set(a); return b;
+    };
+    // the triangles' corners: a typed list that grows, not an array of numbers (eight bytes a corner and a copy at the end)
+    let X = new Uint32Array(1 << 17), ni = 0;
+    const idx = { push() { const k = arguments.length; if (ni + k > X.length) X = fit(X, X.length * 2); for (let i = 0; i < k; i++) X[ni++] = arguments[i]; } };
     const grow = () => {
       cap *= 2;
-      const g = (a, k) => { const b = new a.constructor(cap * k); b.set(a); return b; };
+      const g = (a, k) => fit(a, cap * k);
       P = g(P, 3); N = g(N, 3); C = g(C, 3); F = g(F, 2); I = g(I, 4); E = g(E, 3); B = g(B, 1); S = g(S, 1);
     };
     const u8 = v => Math.max(0, Math.min(255, Math.round(v * 255))), i8 = v => Math.max(-127, Math.min(127, Math.round(v * 127)));
@@ -176,9 +186,11 @@
       },
       // the arrays cut to the vertices made, and the index (16-bit where it fits)
       arrays() {
-        const sl = (a, k) => a.slice(0, n * k);
-        return { n, position: sl(P, 3), normal: sl(N, 3), color: sl(C, 3), fac: sl(F, 2), inf: sl(I, 4), ext: sl(E, 3), bid: sl(B, 1), srcCode: sl(S, 1),
-          index: n > 65535 ? Uint32Array.from(idx) : Uint16Array.from(idx) };
+        const sl = (a, k) => fit(a, n * k);
+        const index = n > 65535 ? fit(X, ni) : Uint16Array.from(X.subarray(0, ni));
+        const out = { n, position: sl(P, 3), normal: sl(N, 3), color: sl(C, 3), fac: sl(F, 2), inf: sl(I, 4), ext: sl(E, 3), bid: sl(B, 1), srcCode: sl(S, 1), index };
+        P = N = C = F = I = E = B = S = X = null; // (handed over: this set is spent)
+        return out;
       },
     };
   }

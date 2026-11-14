@@ -115,5 +115,5 @@ def build(K):
                 near = ln.interpolate(ln.project(Point(*mid)))
                 W.tamagaki(G, M, a, b, z, names=[f"donor{i}" for i in range(len(DONORS))], A=A, face=np.array([near.x, near.y]) - mid)
     c = ln.interpolate(ln.length / 2)
-    meta = {"id": ID, "at": [round(c.x, 1), round(c.y, 1)], "r": round(ln.length / 2 + 12, 1), "z": round(z(c.x, c.y), 1), "glb": f"hero/{ID}.glb", "bake_gain": 0.6}
+    meta = {"id": ID, "at": [round(c.x, 1), round(c.y, 1)], "r": round(ln.length / 2 + 12, 1), "z": round(z(c.x, c.y), 1), "glb": f"hero/{ID}.glb", "bake_gain": 0.6, "cell": 24.0}
     return G, A, M, meta
