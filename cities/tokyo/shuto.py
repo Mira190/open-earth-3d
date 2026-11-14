@@ -91,6 +91,19 @@ def girder(x, y, z):
 
 
 _LIDAR = {}
+# on the ground (or in a cutting), not on a viaduct: under GROUND_LINE_M on Tokyo's low ground; use() sets another city's
+_LOW = {"f": lambda x, y, z: z < GROUND_LINE_M}
+
+
+def use(city, ground, elevated=4.0):
+    """on_lidar for another city's expressway in the same survey (#432: Shibuya's Route 3 and the Ohashi JCT):
+    its samples (cities/<city>/shuto_lidar.json, shuto_lidar.py --city), no first survey, and a point on the ground
+    where it is within `elevated` m of ground(x, y)."""
+    global LIDAR, FIRST
+    LIDAR = os.path.join(HERE, "..", city, "shuto_lidar.json")
+    FIRST = (float("inf"), float("inf"))
+    _LIDAR.clear()
+    _LOW["f"] = lambda x, y, z: z < ground(x, y) + elevated
 
 
 def lidar():
@@ -389,7 +402,7 @@ def on_lidar(game):
     off = [np.full(len(p), np.nan) for p in P]
     for p, f in zip(P, off):
         for i, (x, y, z) in enumerate(p):
-            if z < GROUND_LINE_M:  # on the ground (or in a cutting): not on a viaduct
+            if _LOW["f"](x, y, z):  # on the ground (or in a cutting): not on a viaduct
                 continue
             if x > FIRST[0] and y > FIRST[1]:   # the first survey's lines already stand on its samples (#290)
                 f[i] = 0.0
@@ -406,7 +419,7 @@ def on_lidar(game):
         s = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(p[:, :2], axis=0).T))])
         for a, ends in ((ok[0], range(ok[0] - 1, -1, -1)), (ok[-1], range(ok[-1] + 1, len(p)))):
             ends = list(ends)
-            low = [i for i in ends if p[i, 2] < GROUND_LINE_M]
+            low = [i for i in ends if _LOW["f"](*p[i])]
             if not low:
                 continue
             b = low[0]
@@ -424,7 +437,7 @@ def on_lidar(game):
             continue
         s = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(p[:, :2], axis=0).T))])
         for i in range(len(p)):
-            if np.isfinite(f[i]) or p[i, 2] < GROUND_LINE_M or not T.query_ball_point(p[i, :2], SURVEY_M):
+            if np.isfinite(f[i]) or _LOW["f"](*p[i]) or not T.query_ball_point(p[i, :2], SURVEY_M):
                 continue
             j = ok[np.argmin(np.abs(s[ok] - s[i]))]
             f[i] = p[j, 2] + f[j] - p[i, 2]
@@ -449,7 +462,7 @@ def on_lidar(game):
             if not src:
                 continue
             for i in range(len(p)):
-                if np.isfinite(f[i]) or p[i, 2] < GROUND_LINE_M:
+                if np.isfinite(f[i]) or _LOW["f"](*p[i]):
                     continue
                 d, o = min(((abs(s[i] - si), oi) for si, oi in src), key=lambda t: t[0])
                 if d < TAPER_M:

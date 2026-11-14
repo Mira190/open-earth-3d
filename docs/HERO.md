@@ -807,3 +807,22 @@ baked indirect light as the highest quality for a static scene in a browser, and
 [lighting and PBR on the web](https://slicker.me/three_js/lighting_pbr.htm)); Ghostwire: Tokyo built by hand from
 photographs of walked streets, not from city data ([Automaton](https://automaton-media.com/en/news/20230823-20986/),
 [Unreal Engine](https://www.unrealengine.com/en-US/developer-interviews/ghostwire-taps-into-the-charm-of-tokyo-to-deliver-a-compelling-experience)).
+
+### The Marunouchi level on the kit (`cities/tokyo/hero.py`)
+
+Items 1 to 4 of the order above, November 2026. The station is generated once, by `station.py`, at two
+levels: `far`, the landmark model the map and the viewer hold (now without sashes, frames and
+balusters), and `hero`, the streamed level `web/game/hero.js` draws within 420 m and frees past 520 m
+(`game.hero`, which hides the building's 18 landmark meshes while it is shown).
+
+| | In the level |
+|---|---|
+| Baked light | occlusion in the vertices where the generator knows it (reveals dark at the glass, soffits and undersides, the brick under each cornice and course, the wall's foot), and after dark 123 floodlights at the bays' feet baked as light on the wall; lit rooms, doors, the clock and soffits come on at dusk (`lamp*`) |
+| Edges | `station.slab` chamfers a block's front towards each side that is built (22 mm): frames, sills, pediments, pilasters, balusters |
+| Surfaces | ambientCG CC0 at 1K: `Bricks059` (even facing brick, 0.85 m a repeat) and `RoofingTiles014A` with its fired red taken out for slate; cast stone is its colour alone (a scanned concrete's mottling read as blotches) |
+| Props | a pole with its sign and timetable at each mapped bus and taxi stand, granite benches under the shelters |
+| By device | high and medium tiers: all of it, the fine model (52,000 triangles: frames, sashes, balusters, props) within 110 m; low tier: the 29,000-triangle model with halved colour maps and no normal maps, never the fine model; a phone's lean tier no side over 1024 |
+
+The level is 1.6 MB and its fine model 1.8 MB. Stills: `tools/scramble_shot.js tokyo tools/views/tokyo-marunouchi.json`.
+Still short: the occlusion is where the generator marks it, not traced; ornament is chamfered blocks, not carved;
+the forecourt's ground is still the landmark model's (no baked contact with the walls).
