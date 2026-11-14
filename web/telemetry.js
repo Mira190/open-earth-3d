@@ -595,7 +595,9 @@ window.OETelemetry = (function () {
   // tab of the site keeps its own fresh), means the page ended without closing: the browser or the GPU
   // process crashed, or the system killed it for memory. The next page load reports it.
   const ALIVE = 'oe3d-alive-', crashes = [];   // the reports wait for the first view, so they carry its tier
-  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready), stage }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
+  // (lv: the level of a phone's set the page runs at, quality.js level: a death is counted against that level)
+  const lvNow = () => { try { const Q = window.OEQuality; return Q && Q.lean() ? Q.city().lighter : undefined; } catch (e) { return undefined; } };
+  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready), stage, lv: lvNow() }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
   const gone = () => { try { localStorage.removeItem(ALIVE + sid); } catch (e) { /* storage blocked */ } };
   // This tab's last page load, by the tab's own session storage, which outlives a page that was killed: Safari
   // loads a tab again the moment its page dies, so the note it left is seconds old, and taken for another tab's it
@@ -615,9 +617,12 @@ window.OETelemetry = (function () {
       // time, one step for each death, so that a phone it killed once is not killed the same way again
       if (o && o.city && (o.view === 'game' || o.view === 'city') && age < 14 * 864e5) try {
         let d = null; try { d = JSON.parse(localStorage.getItem(`oe3d-died-${o.city}`)); } catch (e) { d = null; }
-        localStorage.setItem(`oe3d-died-${o.city}`, JSON.stringify({ n: Math.min(9, ((d && d.n) || 0) + 1), t: Date.now(), ready: !!o.ready }));
+        // (lv: the lightest level a page of this map has died at, for quality.js level; a page from before levels
+        // were written died at 0 or 1, the sets of that time)
+        const was = d && d.n > 0 ? (d.lv != null ? d.lv : 1) : -1, lv = Math.max(was, o.lv != null ? o.lv : 1);
+        localStorage.setItem(`oe3d-died-${o.city}`, JSON.stringify({ n: Math.min(9, ((d && d.n) || 0) + 1), t: Date.now(), ready: !!o.ready, lv }));
       } catch (e) { /* storage blocked */ }
-      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_stage: o.stage || undefined, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
+      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_stage: o.stage || undefined, prev_lv: o.lv, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
     }
   } catch (e) { /* storage blocked */ }
   setInterval(() => { if (!document.hidden && !going) alive(); }, 5000);

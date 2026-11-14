@@ -11,14 +11,14 @@
 // low tier, plays (the NPCs, the helicopter, the cars' and trees' near models all loaded, as a player
 // walking round would have them), then reads the peak. Prints one line per city and the largest
 // textures and buffers; exits 1 when a city goes over its budget:
-//   MEM_GPU   peak GPU memory, MB (default 490: quality.js budget, a tenth above the heaviest live map, issues 406 and 443)
+//   MEM_GPU   peak GPU memory, MB (default 300: quality.js budget, a tenth above the heaviest live map at the level a phone starts at, issues 406 and 443)
 //   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 620)
-// TIER=low|medium|high (default low). DIED=n: the lighter set a map gets after its page died n times on the device (quality.js died). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
+// TIER=low|medium|high (default low). LV=n: the phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
-const GPU_MB = +(process.env.MEM_GPU || 490), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
+const GPU_MB = +(process.env.MEM_GPU || 300), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
 const MB = v => (v / 1048576).toFixed(0);
 
 // Chromium's processes (one browser at a time runs here), with each one's proportional set size (its own pages
@@ -44,8 +44,8 @@ async function measure(b, city) {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1',
   });
   await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'low');
-  // DIED=n: as after this map's page died n times on the device (quality.js died): the lighter sets
-  if (process.env.DIED) await ctx.addInitScript(([c, n]) => { try { localStorage.setItem(`oe3d-died-${c}`, JSON.stringify({ n, t: Date.now() })); } catch (e) { /* storage blocked */ } }, [city, +process.env.DIED]);
+  // LV=n: a phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest)
+  if (process.env.LV) await ctx.addInitScript(n => { try { localStorage.setItem('oe3d-lv', n); } catch (e) { /* storage blocked */ } }, process.env.LV);
   await ctx.addInitScript(() => {
     // bytes per texel of the uncompressed internal formats (as tools/tex_mem.js); a buffer's own bytes; a renderbuffer's samples
     const BPP = { 0x8058: 4, 0x8C43: 4, 0x1908: 4, 0x8051: 3, 0x8C41: 3, 0x1907: 3, 0x8229: 1, 0x1909: 1, 0x1903: 1, 0x822B: 2,
@@ -264,7 +264,7 @@ async function measure(b, city) {
     const g = window.__game;
     g.Wd.world.traverse(o => {
       if (!o.geometry) return;
-      const geo = o.geometry, k = `mesh ${o.name || o.type}${o.parent && o.parent.name ? ` < ${o.parent.name}` : ''}`;
+      const geo = o.geometry, mat = Array.isArray(o.material) ? o.material[0] : o.material, k = `mesh ${o.name || `${o.type}:${(mat && (mat.name || (mat.map && mat.map.name) || mat.type)) || ''}:${o.renderOrder}`}${o.parent && o.parent.name ? ` < ${o.parent.name}` : ''}`; // (a mesh without a name: by its material)
       for (const n in geo.attributes) if (geo.attributes[n].array) add(k, geo.attributes[n].array);
       if (geo.index && geo.index.array) add(k, geo.index.array);
       if (o.instanceMatrix && o.instanceMatrix.array) add(k, o.instanceMatrix.array);
