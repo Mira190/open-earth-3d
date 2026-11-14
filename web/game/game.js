@@ -636,19 +636,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const pendingRig = () => ({ root: new THREE.Group(), pending: true, animate() {} });
   const CR = G.crowd || {};
   // the nearest walkers drawn as real people (people.js crowdRenderer "real"): the city's own NPC cast, and the casts
-  // game.crowd.real_from names (Shibuya's takes Tokyo's too), in their everyday clothes (no uniforms); not on the
-  // low tier, where a phone keeps the far crowd's own figures close up and loads no more characters
+  // game.crowd.real_from names (Shibuya's takes Tokyo's too), in their everyday clothes (no uniforms). On the low
+  // tier too: the far crowd's own figures are dolls, with a doll's painted face, and close up on a phone they were
+  // what the owner saw first at the Scramble. A phone has a cast of LOW_CAST, half of them women (each is two or
+  // three pictures at 512 px, 256 on the lighter sets: about 4 MB of the GPU a character, quality.js budget)
+  const LOW_CAST = 8;
   const realCast = () => {
-    if (!lib || !lib.npcs || QC.name === 'low' || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
+    if (!lib || !lib.npcs || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
     const from = new Set([cityId, ...(CR.real_from || [])]);
-    return Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
+    const all = Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
+    if (QC.name !== 'low') return all;
+    const f = all.filter(n => lib.npcs[n].sex === 'f'), m = all.filter(n => lib.npcs[n].sex !== 'f');
+    return f.slice(0, LOW_CAST / 2).concat(m.slice(0, LOW_CAST - Math.min(f.length, LOW_CAST / 2)));
   };
   let crowdDraw = null; // the crowd's renderer (people.js), for umbrellas in the rain
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   // the walkers there are room for: on the medium and high tiers a city's peak (game.crowd.pedestrians_peak),
   // on the low tier its usual number, so a phone draws no more people than it did
   const crowdPool = QC.name === 'low' ? CR.pedestrians || 300 : CR.pedestrians_peak || CR.pedestrians || 300;
-  const crowd = OEActors.crowd(world, crowdNet, U, crowdPool, CR.radius_m || 450, lib && (P => (crowdDraw = OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style, camera, real: realCast(), realHeight: CR.height }))),
+  const crowd = OEActors.crowd(world, crowdNet, U, crowdPool, CR.radius_m || 450, lib && (P => (crowdDraw = OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 10 : 14, style: CR.style, camera, real: realCast(), realHeight: CR.height }))),
     { benches: lib ? benches : null, ground: lineGround, wall: (x, y, z) => nav.solid(x, y, z, 0.2), posts, clear: (x, y, z) => nav.room(x, y, z, 0.3) });
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
