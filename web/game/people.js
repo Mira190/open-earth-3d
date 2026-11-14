@@ -583,8 +583,12 @@ ${PAT_GLSL}`)
       aim(a.ua, a.la, elbow.clone().sub(sh).normalize());
       aim(a.la, a.wr, fist.sub(elbow).normalize());
     }
+    const STILL = { reset() { return this; }, setLoop() { return this; }, setEffectiveTimeScale() { return this; }, setEffectiveWeight() { return this; },
+      play() { return this; }, crossFadeTo() { return this; }, clampWhenFinished: false }; // (no clip at all yet: nothing to play)
     function play(name, fade = 0.25, once = false) {
-      const a = act[name];
+      // (a rig built before its pack's clips arrived, or a character without this clip, keeps what it plays or
+      // stands idle: an undefined action here threw every frame and stopped the game's loop)
+      const a = act[name] || cur || act.Idle || Object.values(act)[0] || STILL;
       if (cur === a) return a;
       a.reset();
       a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
