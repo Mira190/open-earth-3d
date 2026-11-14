@@ -5,6 +5,7 @@
 //   GAME_TIME=08:00 xvfb-run -a node tools/trips_probe.js sydney [seconds]
 //   TRIPS=0 GAME_TIME=08:00 xvfb-run -a node tools/trips_probe.js sydney
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'sydney', secs = '300'] = process.argv;
 (async () => {
@@ -15,8 +16,7 @@ const [,, city = 'sydney', secs = '300'] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const hm = /(\d\d?):(\d\d)$/.exec(process.env.GAME_TIME || '');
   const r = await p.evaluate(({ secs, off, min }) => {
     const g = window.__game, A = g.cars, L = g.roadNet.L, MAIN = { motorway: 1, trunk: 1, primary: 1, secondary: 1, tertiary: 1 };

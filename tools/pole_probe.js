@@ -6,6 +6,7 @@
 //   xvfb-run -a node tools/pole_probe.js tokyo [poles=24]
 // Exits 1 if the car goes 5 cm into any pole.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'tokyo', nPoles = '24'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -14,8 +15,7 @@ const [,, city = 'tokyo', nPoles = '24'] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });
   const r = await p.evaluate(n => {
     const g = window.__game, H = g.junctions.heads, out = { tried: 0, worst: [] };

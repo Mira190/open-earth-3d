@@ -4,6 +4,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/escalator_walk.js shibuya
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'shibuya'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -16,8 +17,7 @@ const [,, city = 'shibuya'] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { const g = window.__game; g.advance(1); if (g.cine && g.cine.active && g.cine.skip) g.cine.skip(); g.advance(3); });
   const out = await p.evaluate(async () => {
     const g = window.__game, pl = g.player, nav = g.nav, res = [];

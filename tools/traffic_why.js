@@ -6,6 +6,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/traffic_why.js sydney [place: 0 the start, 1, 2...] [seconds] [still: s]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -15,8 +16,7 @@ const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const out = await p.evaluate(([T, site, minStill]) => {
     window.requestAnimationFrame = () => 0;
     const g = window.__game, A = g.cars, C = A.C, L = A.netL, JN = A.junctions;

@@ -3,6 +3,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/page_probe.js sydney script.js     # the script's last expression is printed as JSON
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const [,, city = 'sydney', file] = process.argv;
 (async () => {
@@ -13,8 +14,7 @@ const [,, city = 'sydney', file] = process.argv;
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; window.__game.advance(1); });
   const out = await p.evaluate(src => (0, eval)(src), fs.readFileSync(file, 'utf8'));
   console.log(JSON.stringify(out, null, 1));

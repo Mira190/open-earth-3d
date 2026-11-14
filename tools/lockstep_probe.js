@@ -4,6 +4,7 @@
 // the two runs first part.
 //   GAME_TIME=10:00 xvfb-run -a node tools/lockstep_probe.js shinjuku [steps=6]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shinjuku', steps = '6'] = process.argv;
 async function run(b) {
@@ -15,8 +16,7 @@ async function run(b) {
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); });
   if (process.env.NOPREFETCH) await p.evaluate(() => { window.__game.nav.prefetch = () => true; });
   if (process.env.FIRST) await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // (a first-time player, as tools/game_check.js plays)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   if (pinned) await p.evaluate(spec => { const g = window.__game, m = /(\d\d?):(\d\d)$/.exec(spec), min = +m[1] * 60 + +m[2]; if (Math.abs(g.clock.min - min) < 30) { g.setClock(g.clock.y, g.clock.m, g.clock.d, min); g.crowdAuto(true); } }, pinned.spec);
   const out = [];
   const dig = () => p.evaluate(() => {

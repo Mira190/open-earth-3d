@@ -13,6 +13,8 @@ window.OEPlaces = (function () {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   function create({ G, W, camera, stage }) {
+    let seed = 4099; // (a seeded run for the line picked: the same caption on every run of a held clock, #420)
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
     const areas = G.areas || [], spots = G.spots || [], chatter = (G.chatter || []).map(c => Object.assign({ i: -1, t: 0, heard: -1e9 }, c));
     // the station sign: a brief arrival caption in the upper third (the name, its reading, the line's colour
     // and the areas either side you can walk to), up for about 2.8 s. It waits while anything else has the
@@ -83,7 +85,7 @@ window.OEPlaces = (function () {
         return best;
       },
       // a spot's lines: all of them, or one picked at random ("pick": 1)
-      lines(s) { return s.pick ? [s.lines[Math.floor(Math.random() * s.lines.length)]] : s.lines; },
+      lines(s) { return s.pick ? [s.lines[Math.floor(rnd() * s.lines.length)]] : s.lines; },
       // active: on foot and no camera move; calm: active, and nothing else on screen wants the player
       update(dt, px, py, pz, active, calm = active) {
         now += dt;
@@ -106,11 +108,11 @@ window.OEPlaces = (function () {
         // conversations: start when you come within earshot, a line every few seconds, then quiet for a while
         for (const c of chatter) {
           const near = active && Math.hypot(c.at[0] - px, c.at[1] - py) < (c.radius || 14) && Math.abs((c.at[2] ?? pz) - pz) < 8;
-          if (c.i < 0 && near && performance.now() - c.heard > 90000) { c.i = 0; c.t = 0; }
+          if (c.i < 0 && near && now - c.heard > 90) { c.i = 0; c.t = 0; }
           if (c.i < 0) { if (c.el) { c.el.remove(); c.el = null; } continue; }
           c.t += dt;
           if (c.t > (c.every || 3.4)) { c.i++; c.t = 0; }
-          if (c.i >= c.lines.length || !near) { c.i = -1; c.heard = performance.now(); continue; }
+          if (c.i >= c.lines.length || !near) { c.i = -1; c.heard = now; continue; } // (then quiet for 90 s of the game's time: a held clock or a pause runs none of it, #420)
           const [who, text] = c.lines[c.i];
           if (!c.el) { c.el = document.createElement('div'); c.el.className = 'g-bubble'; layer.appendChild(c.el); }
           const html = `${who ? `<b>${esc(who)}</b>` : ''}${esc(text)}`;

@@ -2,6 +2,7 @@
 // while, and you are stood on the footway beside the nearest few parked cars, looking along the street at each.
 //   GAME_TIME=10:00 xvfb-run -a node tools/kerb_shot.js sydney out_dir [n] [WxH]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'sydney', outDir = '.', n = '3', size = '1440x900'] = process.argv;
@@ -15,8 +16,7 @@ const [,, city = 'sydney', outDir = '.', n = '3', size = '1440x900'] = process.a
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.cars', null, { timeout: 400000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); if (g.lateReady) await g.lateReady(); });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   fs.mkdirSync(outDir, { recursive: true });
   const spots = await p.evaluate(n => {
     const g = window.__game;
