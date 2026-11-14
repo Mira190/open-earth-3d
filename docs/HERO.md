@@ -7,6 +7,9 @@ Shibuya's scramble is built by its own session on the same kit; Marunouchi-Ginza
 landmark meshes, below. Sydney's is Circular Quay West, where its game starts (`cities/sydney/hero.py`), and
 Queenstown's the Skyline deck on Bob's Peak (`cities/queenstown/hero.py`): stone, timber and a water's edge
 rather than a street of signs.
+Three more stand by a map's spawn: Kamakura's is the hill road above the Kamakurakokomae crossing
+(`cities/kamakura/hero.py`), Tetsugaku's the head of the Philosopher's Path (`cities/tetsugaku/hero.py`),
+and Kyoto's the station's north forecourt under Kyoto Tower (`cities/kyoto/hero.py`).
 
 | What | Where |
 |---|---|
@@ -15,6 +18,7 @@ rather than a street of signs.
 | Parts: paving laid on the game's ground, a wall's frame with openings, windows, lamp posts, benches, bollards | `blender/hero_parts.py` |
 | The measured things under a level: OpenStreetMap's map of its rectangle, in local metres | `python pipeline/hero_osm.py --city <id> --box x0 y0 x1 y1` -> `cities/<id>/hero_osm.json` |
 | The ground a level is laid on: the game's own walking surface, sampled | `node tools/ground_probe.js <id> x0 y0 x1 y1 > cities/<id>/hero_ground.json` |
+| Parts for a level in the open: ground draped on the terrain, retaining walls, hedges and shrubs, utility poles and wires, signs | `blender/hero_open.py` |
 | The build | `python blender/build_hero.py --city <id>` (needs `pip install bpy==5.2.3` and Node) |
 | A map's level | `cities/<id>/hero.py` (`build(kit)` returns geometry, atlas, materials and its centre) |
 | Its place in the game | `cities/<id>/city.json` `game.hero` (copied into `game.json` by `pipeline/game_text.py`) |
@@ -147,6 +151,151 @@ wall (the game's softened ground makes the 1.5 m drop a 7% ramp, so the wall is 
 the Mordant Wing's exact massing (boxes after photographs), the ovoid's dimensions, whether the quay's edge
 here has a rail (OpenStreetMap maps fences only at the wharves: none is drawn), and the palms' species (the
 shared palm is a date palm; the real ones are slender fan palms).
+## Only what the first frame sees (issue 358)
+
+The levels by a map's spawn (Kamakura's first) apply issue 358's rule to detail: memory and shading go to
+what the player can see, and the rest of the map pays nothing.
+
+- **The level is the spawn's view, not a radius.** It is drawn from where the game opens: the road ahead, the
+  walls and banks that face it, what stands in front of the horizon. Nothing behind the camera, behind a
+  wall's face or past the first bend is modelled. Nissaka is 34,000 triangles and a 3.9 MB file.
+- **Fine textures only there.** Seven 1K PBR sets and one 1K atlas exist only while the level is loaded
+  (about 120 MB of GPU memory on a desktop with their mipmaps); on the low tier their normal and roughness
+  maps are dropped and the colour halved (about 11 MB), and all of it is freed 520 m away (`hero.js`).
+- **Light is distilled offline.** The street lights' pools on the road are in the vertices (`hero_kit.bake`):
+  no light is added to the frame for them.
+- **One surface, not layers.** The asphalt of the hill road and the lanes that meet it is one mesh on a 1 m
+  grid cut to the roads' outline (`hero_open.Parts.cover`), so the terrain cannot show through it and no
+  pixel of road is shaded twice; markings and patches are the only overdraw.
+- **Measured.** `tools/mem_check.js kamakura` (an iPhone emulated, low tier) peaks at 379 MB of GPU memory
+  with the level loaded, under the 700 MB budget.
+
+## Nissaka and the Kamakurakokomae crossing (Kamakura)
+
+The game opens on the hill road 日坂 above the Enoden's crossing 鎌倉高校前1号踏切, looking down it to
+Route 134 and the bay: the coast's most photographed 60 m, and all of it in the first frame. The spawn was
+moved 15 m down the hill, to (-446.2, 153), below the fork of the upper lane, so that the first frame is
+the view the photographs take. The level (`cities/kamakura/hero.py`) runs from Route 134 over the crossing
+to 66 m up the hill, with 30 m of each lane that meets it and 100 m of Route 134.
+
+Built from the set's measured profiles (`cities/kamakura/set.json`: each road's centre line every metre
+on GSI's 5 m laser terrain; the buildings' outlines; the railway's line) and placed from photographs:
+
+- the road as one asphalt surface with trench patches, sealed cracks, the white edge lines, the zebra and
+  stop lines, manholes, gullies and the long grate across the east lane's mouth; the crossing's yellow
+  non-slip deck with a green strip on the west for people on foot, and the rails' flangeways;
+- east: the dark rubble retaining wall under the house at the corner (battered, to the platform at 13.35 m:
+  the building's base in the data is 13.0 m), a band of blocks and a glass balustrade with planting on it,
+  the tan stone garage at its upper end with its shutter to the lane; a low wall and a green bank above;
+- west: a raised pavement on a kerb, a split-face block wall with a clipped hedge and a timber rail, two
+  notice boards (a map and a manners board, both drawn here with our own wording), the convex mirror on its
+  orange post, bollards;
+- overhead: six concrete utility poles with crossarms, insulators, two transformers and three LED street
+  lights (baked), their wires, and the thick bundle that sags across the road above the crossing;
+- signs: the pedestrian crossing's blue pentagon, no parking, the track's "keep out" boards and pipe fences;
+- Route 134 with a solid centre line (the city's own was dashed) and the promenade's paving and bollards.
+
+The gates, lamps, bell, track bed, catenary and trains stay the railway's (`web/game/rail.js`); the level
+hides the set's own deck, paint, mirror and warning sign while it is shown.
+
+Photographs looked at (Wikimedia Commons; none is reproduced, and no texture is taken from one):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| 鎌倉高校前1号踏切20190626-P1030450.jpg | くろふね | CC BY 4.0 | the classic view: both sides' walls, the mirror, the boards, the deck's colours, the wires |
+| 鎌倉高校前1号踏切.jpg | サイエンス | CC BY-SA 4.0 | the deck, the fences and boards by the track, the grate, the rubble wall's batter |
+| Kamakura koukou mae Fumikiri - 02.jpg | Quercus acuta | CC0 | from further up: the bank, the lane's mouth, the poles' places |
+| Kamakura High School Front Level Crossing (53150242045).jpg | Dick Thomas Johnson | CC BY 2.0 | the pavement, the kerb, the block wall, the mirror's post, the glass balustrade |
+
+Textures: ambientCG (CC0 1.0) `Bricks089` (rubble), `Bricks066` (blocks), `Tiles143` (the garage's stone),
+`Grass004` (its roughness raised: scanned at 0.26, it shone like plastic), `Asphalt031`, `Concrete034`; and a
+leaf texture drawn in `hero_open.leaf_texture` for the hedges and shrubs (no CC0 hedge was found there).
+
+Not as it is, or not checked: the heights of the walls come from the terrain behind them, not a survey; the
+garage's size, the boards' wording and the poles' exact places are read off photographs; the house behind
+the wall is the city's plain solid; the hedges are clipped volumes, not leaves; the notice boards are our
+own drawing, not the real ones; the terrain's fold where the upper lane forks is the 5 m grid's.
+
+## The head of the Philosopher's Path (Tetsugaku)
+
+哲学の道 begins at Ginkakuji-bashi, where the Lake Biwa Canal's branch (疏水分線) turns south along the foot
+of the hills. The view from the bridge down its first hundred metres is the photograph everyone takes of
+the path. The game opened 75 m to the west, on the road, with its back to the canal; it now opens on the
+path's first slabs at (282.3, 1015.3), looking down it, and Haruka, who greets you, stands there too. The
+level (`cities/tetsugaku/hero.py`) is the 115 m from the bridge past the second bridge to the third.
+
+Built on the canal's own banks (`scene.json` `inland`: the channel's outline with each bank's and the
+water's height, from OpenStreetMap's line and GSI's laser terrain) and placed from photographs:
+
+- the canal's walls: random rubble, battered, dark and wet at the waterline and green above, under a granite
+  edging (drawn in front of the plain walls `web/inland.js` gives every channel);
+- the path on the west bank: moss at the wall's top, compacted earth, the two rows of granite slabs (458
+  stones, each of its own length, the rows out of step), a verge of moss and litter, azaleas, timber posts
+  with a rope, three granite benches, the black litter bins, a walkers' board, four vending machines (lit
+  after dark, baked), and at the bridge the boulder and the timber post with the path's name;
+- the east bank: a mossy verge with shrubs, the lane's asphalt, three utility poles with street lights;
+- a granite balustrade on each bridge's edges over the water.
+
+**No railing.** Every walled channel was given a steel railing along its walls. The path has none
+(OpenStreetMap maps ropes and hedges there, `barrier=rope`, and no photograph shows one), so a channel can
+now go without: `water.inland.lines[].rail: false` in `city.json`, carried by `pipeline/inland_water.py`
+into `scene.json` and read by `web/inland.js`, which also leaves the generic railing off a bridge over
+such a channel. It is off for the whole 疏水分線, not only inside the level.
+
+Photographs looked at (Wikimedia Commons; none is reproduced):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| Philosopher’s Walk and Biwako Canal from Ginkakujibashi Bridge.JPG | そらみみ | CC BY-SA 3.0 | the view itself: walls, the hedge at the wall's top, slabs, the boulder and post, posts and rope |
+| Ginkakujibashi Bridge from Philosopher’s Walk.JPG | そらみみ | CC BY-SA 3.0 | the bridge's balustrade and its wing wall |
+| Tetsugaku-no-michi - Philosopher's Walk - Kyoto.jpg | Gzzz | CC BY 4.0 | the slabs' sizes and two rows, the earth, the moss on the edging, posts and rope |
+
+Textures (ambientCG, CC0 1.0): `Bricks089` (the walls, tinted green), `Granite001A` (slabs, edging,
+balustrades, benches), `Ground069` (the earth), `Moss001` and `Ground068` (their gloss taken off), `Asphalt031`.
+
+Not as it is, or not checked: the houses and shops along the path are the city's plain solids (the timber
+shop fronts of the photographs are not modelled); the cherries are the city's trees, in the season's
+colours; the canal's width and the banks' heights are the map's (3.5 m; 1.0 m down to the water); the slabs'
+sizes are drawn from a range, not surveyed; the bridges' balustrades are one design for all three, taken
+from Ginkakuji-bashi's; the vending machines' and benches' places are OpenStreetMap's to within a few metres.
+
+## Kyoto Station's north forecourt and Kyoto Tower's foot (Kyoto)
+
+The game opens outside the station's Karasuma gate, and what is photographed from there is Kyoto Tower over
+Shiokoji-dori. The level (`cities/kyoto/hero.py`) is that view, 110 m deep: the forecourt, the road and its
+junction with Karasuma-dori, and the faces of Kyoto Tower Building (1964, nine storeys; the tower stands on
+its roof and is the city's own landmark mesh).
+
+- **The forecourt**: dark granite paving on the plaza's outline, tactile strips to the two zebras, steel
+  bollards along the kerb, lamp posts (baked), three granite planters with clipped hedges, the two map
+  boards with their direction headers and the three flagpoles in front of them.
+- **Shiokoji-dori and Karasuma-dori's foot**: one asphalt surface, a solid centre line, lane dashes, edge
+  and stop lines, the junction's four zebras, flush granite kerbs, the north pavement's blocks, and Kyoto's
+  brown pavement fences.
+- **Kyoto Tower Building**: on every edge of its outline that looks south or east, in front of the city's
+  plain solid: a glazed street floor lit from inside between dark piers under a lit fascia ("Kyoto Tower
+  Sando", the arcade's name); eight storeys, each a balcony band of dark bronze with its rail over a ribbon
+  of windows (rooms drawn, lit after dark); the hotel's name in lit letters on the sixth storey; a rail round
+  the roof.
+
+Measured: the building's outline and height (31 m over 28 m) are the map's (PLATEAU on Overture); the road's
+two carriageways and the crossings' places are OpenStreetMap's (`game.json` `paths`, `props`).
+Photographs looked at (Wikimedia Commons; none is reproduced):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| Kyoto Tower in front of Karasuma Entrance of Kyoto Station.jpg | そらみみ | CC BY-SA 4.0 | the forecourt's dark paving, the two map boards and their headers, the flagpoles, the building's bronze bands and lettering |
+| Nidec Kyoto Tower 2024-08.jpg | Mr.ちゅらさん | CC0 | the building and the bus terminal's canopies at dusk, what is lit |
+| Kyoto Tower seen from Kyoto Station, 20240821 1036 5227.jpg | Jakub Hałun | CC BY 4.0 | the building's storeys and balcony rails |
+
+Textures (ambientCG, CC0 1.0): `Tiles138` (the forecourt), `PavingStones136`, `Granite001A`, `Asphalt031`,
+`Concrete034`.
+
+Not as it is, or not checked: the building's upper storeys step back in terraces and its corners are
+rounded; here every storey stands on the outline. The storey height is the building's height over nine,
+not a drawing's. The bus terminal's long white canopies, which fill the foreground of the photographs, are
+still the city's plain "roof" solids: they want landmark meshes of their own (issue filed). The map boards'
+faces are our own drawing. Horikawa (#322) is 3.5 km north of here and is not part of this level.
 
 ## The Skyline deck (Queenstown)
 
