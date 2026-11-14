@@ -7,14 +7,22 @@
 // card itself (as long as the load takes), the press is the button's own click (what a tap does), and a
 // game that did not start throws.
 //   const { startPlay } = require('./start_play'); await startPlay(page);
-async function startPlay(p, { timeout = 600000, button = '#gt-play' } = {}) {
+// A player starts at the place's own time, in real time (game.js clock). The harnesses were written for a day
+// that runs: unless `asIs`, the game's day runs 30 times faster here, and after dark the morning is picked on
+// the card, so a run does not depend on the hour it is started at.
+async function startPlay(p, { timeout = 600000, button = '#gt-play', asIs = false } = {}) {
   await p.waitForFunction(() => { const t = document.getElementById('g-title'); return t && !t.hidden; }, null, { timeout, polling: 250 });
-  const started = await p.evaluate(sel => {
-    const b = document.querySelector(sel);
+  const started = await p.evaluate(([sel, asIs]) => {
+    const b = document.querySelector(sel), g = window.__game;
     if (!b) return 'no button';
+    if (!asIs && g && g.clock && g.dayLimits) {
+      const d = g.dayLimits(), morning = document.querySelector('#gt-timechoice [data-t="morning"]');
+      if (morning && (g.clock.min < d.sunrise + 10 || g.clock.min > d.sunset - 10)) morning.click();
+    }
     b.click();
+    if (!asIs && g && g.clock) g.clock.scale = 30;
     return document.getElementById('g-title').hidden ? 'ok' : 'the title card is still up';
-  }, button);
+  }, [button, asIs]);
   if (started !== 'ok') throw new Error(`Play: ${started}`);
 }
 module.exports = { startPlay };

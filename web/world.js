@@ -800,6 +800,16 @@ vec3 steepRock(vec3 c, float k) {
     leanShadowMap(renderer, sunLight.shadow, SHADOW);
     const shadowStill = new URLSearchParams(location.search).get('shadowcache') === 'off' ? null : shadowCache(renderer, sunLight);
     const still = o => { if (shadowStill && o) shadowStill.mark(o); return o; };
+    // The shadow map is sampled by every lit material whether or not the sun is up, through a sampler2DShadow. The
+    // map made here ahead of three.js (leanShadowMap) has no texture on the GPU until the shadow pass has drawn into
+    // it once, and after dark that pass is left out (setSun): a page opened at night bound an ordinary empty texture
+    // to that sampler, WebGL refused every such draw ("Mismatch between texture format and sampler type"), and the
+    // ground and the walls were not drawn at all, the sky showing where they stand. So while the map has no texture
+    // of its own, one pass is asked for, whatever the hour.
+    const shadowDrawnOnce = () => {
+      const m = sunLight.shadow.map, d = m && m.depthTexture;
+      if (d && !renderer.properties.get(d).__webglTexture) sunLight.shadow.needsUpdate = true;
+    };
     // what the camera cannot see is hidden from the view (visibility.js), but the sun's shadow needs every
     // caster: they are shown again round the shadow pass (outside the cache, which reads what is shown)
     if (window.OEVis && !renderer.shadowMap.__vis) {
@@ -2364,6 +2374,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         // but it stays a light: hiding it took a light out of every lit material's shader, so sunset, sunrise
         // and a jump in the clock across either recompiled the whole city
         sunLight.shadow.autoUpdate = sp.altitude > -0.5;
+        shadowDrawnOnce();
         sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 7, sp.altitude); // full a little sooner: a low sun still rakes the city with gold
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
         // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
@@ -2459,6 +2470,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (shadowStill && shadowStill.resize) shadowStill.resize(n);
         shR = -1; // (the box is placed again on its new texel grid)
         renderer.shadowMap.needsUpdate = true;
+        sunLight.shadow.needsUpdate = true; // (after dark too, when the pass is otherwise left out: setSun)
         return n;
       },
       fitShadow(target, half) {
@@ -3026,7 +3038,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     SM.render = function (lights, scene, camera) {
       if (!on || lights.length !== 1 || lights[0] !== light || this.type !== THREE.PCFShadowMap ||
           !(this.autoUpdate || this.needsUpdate) || !(shadow.autoUpdate || shadow.needsUpdate)) return orig.call(this, lights, scene, camera);
-      const asked = this.needsUpdate || shadow.needsUpdate;
+      const asked = this.needsUpdate || shadow.needsUpdate, askedOfLight = shadow.needsUpdate;
       try {
         if (frame++ % 30 === 0) collect(scene);
         light.updateMatrixWorld(); light.target.updateMatrixWorld();
@@ -3039,7 +3051,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           const real = shadow.map, need = this.needsUpdate;
           shadow.map = still;
           try { orig.call(this, lights, scene, camera); } finally { shadow.map = real; for (const o of moving) o.castShadow = true; }
-          this.needsUpdate = need; shadow.needsUpdate = need || shadow.needsUpdate;
+          // (three.js clears the light's own request after a pass: it is put back for the pass into the map itself,
+          // or a map asked for after dark, when nothing else draws it, held only the cache's half)
+          this.needsUpdate = need; shadow.needsUpdate = need || askedOfLight || shadow.needsUpdate;
           built = true; api.refreshes++;
         }
         // every frame: the still casters' depth, and the moving ones drawn over it

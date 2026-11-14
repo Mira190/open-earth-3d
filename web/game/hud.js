@@ -316,7 +316,8 @@ window.OEHud = (function () {
     el.setAttribute('role', 'status');
     el.innerHTML = `<span class="stamp">${text}</span><span class="sub">${sub}</span>`;
     $('#game-stage').appendChild(el);
-    const to = $('#g-pass-btn').getBoundingClientRect(), me = el.querySelector('.stamp').getBoundingClientRect();
+    const pb = $('#g-pass-btn').getBoundingClientRect(), to = pb.width ? pb : $('#g-more-btn').getBoundingClientRect(), me = // (to "more" while the passport is folded behind it)
+       el.querySelector('.stamp').getBoundingClientRect();
     el.style.setProperty('--fx', `${to.left + to.width / 2 - (me.left + me.width / 2)}px`);
     el.style.setProperty('--fy', `${to.top + to.height / 2 - (me.top + me.height / 2)}px`);
     setTimeout(() => el.classList.add('fly'), 2300);

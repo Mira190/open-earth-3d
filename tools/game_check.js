@@ -69,6 +69,10 @@ const npcNight = require('./npc_night');
   if (process.env.CHAIN) await p.addInitScript(() => { window.__chain = true; }); // (CHAIN=1: the traffic steps log more of what held them)
   const logs = [], fails = [];
   p.on('console', m => { if (m.type() === 'error') logs.push(`error: ${m.text().slice(0, 300)}`); });
+  // a draw WebGL refuses is not drawn: with the sun's shadow map never drawn into (a page opened after dark), that was
+  // every lit surface, the ground and the walls (tools/gl_mismatch_probe.js names the sampler)
+  let refused = 0;
+  p.on('console', m => { if (m.type() === 'warning' && /Mismatch between texture format and sampler type/.test(m.text())) refused++; });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
   // DIGEST=1: at each screenshot, a digest of the traffic, the crowd, the lights and you (as tools/lockstep_probe.js
@@ -258,6 +262,16 @@ const npcNight = require('./npc_night');
   if (opening) check((opening.kerb < 3 || opening.on < 2) && opening.ph === '3g' && opening.walkers >= 6,
     `the game opens at the scramble's kerb (${opening.kerb.toFixed(1)} m from a crosswalk's end, ${opening.on.toFixed(1)} m from its stripes), in its walk (phase ${opening.ph}), ${opening.walkers} walkers within 10 m`);
   check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
+  // the HUD's buttons: the map and the menu stay, the rest fold behind "more" once the tour is over (index.html .g-btns)
+  const tray = await p.evaluate(() => {
+    const shown = () => [...document.querySelectorAll('#g-btns > button')].filter(b => !b.hidden && b.offsetParent).map(b => b.id.replace(/^g-|-btn$/g, ''));
+    const more = document.getElementById('g-more-btn'), folded = shown();
+    more.click(); const open = shown(), said = more.getAttribute('aria-expanded');
+    more.click();
+    return { folded, open, said, again: shown().length };
+  });
+  check(tray.folded.join() === 'map,menu,more' && tray.open.length >= 5 && tray.said === 'true' && tray.again === 3,
+    `the HUD keeps the map, the menu and "more" (${tray.folded.join(', ')}); "more" unfolds ${tray.open.length} buttons and folds them again`);
   check(onboard.steps.length >= 8 && !onboard.missing.length && onboard.back === onboard.steps.length - 2 && onboard.skipped && onboard.flag && onboard.noTalk,
     `the HUD tour opens the first time, steps through ${onboard.steps.join(', ')}, steps back and skips, and remembers it${onboard.missing.length ? ` (${onboard.missing.join('; ')})` : ''}`);
   // a second map with the flag set: the arrival again, with no tour and the guide's short welcome instead
@@ -2383,6 +2397,7 @@ const npcNight = require('./npc_night');
   if (heroes) await lightsKept('with the hero level loaded and let go');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
+  check(!refused, `WebGL refused no draw for a sampler on the wrong kind of texture${refused ? ` (${refused} warnings; tools/gl_mismatch_probe.js)` : ''}`);
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
   // a pilgrimage's stops (#359: Sangenjaya), last of all: it moves you across the map and runs the world on, which the
   // traffic's checks above would otherwise meet

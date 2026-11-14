@@ -2701,13 +2701,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return opts[Math.floor(srnd() * opts.length)];
   }
 
-  // ------------------------------------------------------------ clock: 30 times real time by default, as in GTA
-  const clock = { y: CITY.year || new Date().getFullYear(), m: 3, d: 21, min: 600, scale: 30, frozen: false };
+  // ------------------------------------------------------------ clock: the place's own time, now, running in real time
+  // unless the player picks another hour or speed (the menu: 30 times real time as in GTA, 120, or paused)
+  const clock = { y: CITY.year || new Date().getFullYear(), m: 3, d: 21, min: 600, scale: 1, frozen: false, own: false };
   let sun = null, clockUtc = Date.now();
   // the traffic's rules by the hour (junctions.js: turns banned and streets shut at some hours) go by this clock
   let dowKey = '', dow = 0;
   junctions.setClock(() => { const k = `${clock.y}-${clock.m}-${clock.d}`; if (k !== dowKey) { dowKey = k; dow = (new Date(Date.UTC(clock.y, clock.m - 1, clock.d)).getUTCDay() + 6) % 7; } return { dow, min: clock.min }; });
-  function setClock(y, m, d, min) {
+  // (live: the place's own time, which the clock then follows; any other hour set is kept as set)
+  function setClock(y, m, d, min, live = false) {
+    clock.own = !live;
     const t = new Date(Date.UTC(y, m - 1, d) + Math.floor(min / 1440) * 864e5);
     Object.assign(clock, { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), min: ((min % 1440) + 1440) % 1440 });
     applySun();
@@ -2773,8 +2776,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the time of day: now, or one of sun.js's presets (sunrise, morning, noon, golden hour, sunset, blue hour,
   // night), worked out from the sun on the clock's date, so a quest's date stays when you change the hour
   function presetTime(kind) {
-    clock.scale = clock.scale === 1 ? 1 : 30;
-    if (kind === 'live') { const now = S.utcToLocal(Date.now()); return setClock(now.y, now.m, now.d, now.minutes); }
+    if (kind === 'live') { const now = S.utcToLocal(Date.now()); return setClock(now.y, now.m, now.d, now.minutes, true); } // ("Now" follows the place's clock from here on)
     if (kind === 'postcard') return setClock(clock.y, clock.m, clock.d, OEPostcards.lightTime(DISTRICT.light, clock.y, clock.m, clock.d)); // (the light of the postcard you came by)
     setClock(clock.y, clock.m, clock.d, S.presetTime(kind, clock.y, clock.m, clock.d) ?? 600);
   }
@@ -2924,7 +2926,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     save();
   }
   // the gait on foot, shown beside the sun chip with its keys (hidden off foot)
-  let gaitShown = '';
+  let gaitShown = '', gaitRest = 0;
   function gaitChip(g) {
     const el = $('#g-gait');
     if (!el) return;
@@ -2934,6 +2936,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     el.hidden = !want;
     if (!want) return;
     el.dataset.g = want;
+    // said when it changes, then out of the way: a HUD holds what is read at a glance, not its key list
+    el.classList.remove('rest'); clearTimeout(gaitRest); gaitRest = setTimeout(() => el.classList.add('rest'), 4000);
     el.innerHTML = touch ? `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b>`
       : `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b><span><kbd>X</kbd> ${want === 'walk' ? 'run' : 'walk'} · <kbd>Shift</kbd> sprint</span>`;
   }
@@ -2988,7 +2992,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const KEY = `oe3d-game-${cityId}`;
   function save() {
     const car = myCar && [myCar.D.st.x, myCar.D.st.y, myCar.D.st.z, myCar.D.st.h].map(v => Math.round(v * 100) / 100);
-    try { localStorage.setItem(KEY, JSON.stringify({ qs, pos: [player.x, player.y, player.z], car, clock: { y: clock.y, m: clock.m, d: clock.d, min: clock.min, scale: clock.scale } })); } catch (e) { /* storage blocked */ }
+    try { localStorage.setItem(KEY, JSON.stringify({ qs, pos: [player.x, player.y, player.z], car, clock: { y: clock.y, m: clock.m, d: clock.d, min: clock.min, scale: clock.scale, own: clock.own } })); } catch (e) { /* storage blocked */ }
   }
   function loadSave() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
   // where you stand is kept too, not only at a quest's steps: every half minute of play, and when the tab
@@ -4865,6 +4869,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#g-travel'), 'click', e => { const b = e.target.closest('button[data-k]'); if (b && travelList[+b.dataset.k]) travelTo(travelList[+b.dataset.k]); });
   $('#g-bigmap header .note').textContent = touch ? 'Tap a place to travel there · pinch to zoom' : 'Pick a place to travel there · double-click to go at once · scroll to zoom, drag to pan';
   on($('#g-map-btn'), 'click', toggleMap);
+  // the HUD's other buttons, folded behind "more" (index.html .g-btns): open while the tour points at them, and as
+  // the player left them
+  const moreTray = (open, keep = true) => {
+    $('#g-btns').classList.toggle('open', open); $('#g-more-btn').setAttribute('aria-expanded', String(open));
+    if (keep) { try { localStorage.setItem('oe3d-hud-more', open ? '1' : '0'); } catch (e) { /* storage blocked */ } }
+  };
+  on($('#g-more-btn'), 'click', () => moreTray(!$('#g-btns').classList.contains('open')));
+  try { if (localStorage.getItem('oe3d-hud-more') === '1') moreTray(true, false); } catch (e) { /* storage blocked */ }
   on($('#gq-lines'), 'click', e => { const b = e.target.closest('button'); if (b) cycleTrack(b.dataset.line); });
   on($('#g-pass-btn'), 'click', togglePass);
   on($('#g-menu-btn'), 'click', toggleMenu);
@@ -4881,6 +4893,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const b = e.target.closest('button');
     if (!b) return;
     clock.frozen = b.dataset.s === '0'; if (!clock.frozen) clock.scale = +b.dataset.s;
+    if (clock.frozen || clock.scale !== 1) clock.own = true; // (a clock at another speed is the player's own from then on)
     $$('#gm-speed button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     applySun();
   });
@@ -5029,15 +5042,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   presetTime('live');
   // the map's overture (overture.js, game.json "overture"): its score is rendered while the title card is up
   overture = window.OEOverture && G.overture ? OEOverture.create({ G, scene, CITY, W, world, camera, stage, cine, get live() { return live; }, handOver: (k, f) => handOver(k, f),
-    junctions, crowd, footNet, crowdNet, nav, clock, setClock, player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, weather, show, get atmos() { return atmos; },
+    junctions, crowd, footNet, crowdNet, nav, clock, setClock: (y, m, d, min) => setClock(y, m, d, min, !clock.own), player, spawn, tier: QC.name, reduced, sun: () => sun, U, DSM, Wd, weather, show, get atmos() { return atmos; },
     walkIn: (j, inS) => { junctions.walkIn(j, inS); if (inS > 0) { cars.clearBox(j.x, j.y, 45); musterScramble(); } } }) : null;
   if (overture && OEOverture.due(CITY.id)) overture.prepareScore();
   if (overture) $('#gm-overture').hidden = false;
   fillTimes($('#gt-timechoice'));
-  if (sun.altitude < -2) { // arriving at night shows little; offer the morning first
-    presetTime('morning');
-    $$('#gt-timechoice button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === 'morning')));
-  }
   if (DISTRICT && DISTRICT.postcard) { // a postcard's light, offered first: the place as the photograph has it
     presetTime('postcard');
     $$('#gt-timechoice button').forEach(b => b.setAttribute('aria-pressed', 'false'));
@@ -5062,7 +5071,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (inMap(saved.pos)) spawn(saved.pos, saved.pos[2] != null ? saved.pos[2] + 0.5 : undefined);
       else spawn();
       if (saved.car && myCar && nav.floorAt(saved.car[0], saved.car[1], saved.car[2] + 1)) parkMyCar({ x: saved.car[0], y: saved.car[1], z: saved.car[2], h: saved.car[3] });
-      if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
+      // the hour too, if the player had picked one; otherwise the place's time now, as at a new start
+      if (saved.clock && saved.clock.own) {
+        clock.scale = saved.clock.scale || 1; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min);
+        $$('#gm-speed button').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.s === clock.scale)));
+      }
     }
     // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
     const arrive = !cont && DISTRICT;
@@ -5119,6 +5132,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     { id: 'photo', title: 'Photo mode', target: '#g-photo-btn',
       text: '<kbd>O</kbd> holds the world still: set the sun, the lens and the angle, and save a picture.',
       touch: '<b>Photo</b> holds the world still: set the sun, the lens and the angle, and save a picture.' },
+    { id: 'more', title: 'The rest, folded away', target: '#g-more-btn',
+      text: 'The passport, diary, photo mode and phone fold away behind this button once the tour is over, so the street stays clear. Their keys work either way.',
+      touch: 'The passport, diary, photo mode and phone fold away behind this button once the tour is over, so the street stays clear.' },
     { id: 'menu', title: 'The menu', target: '#g-menu-btn',
       text: '<kbd>Esc</kbd> pauses: the time of day and the date, the clock\'s speed, who you play, sound, every key, and <b>Show the intro again</b>.',
       touch: '<b>Menu</b> pauses: the time of day and the date, the clock\'s speed, who you play, sound, and <b>Show the intro again</b>.' },
@@ -5131,7 +5147,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         touch: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the <b>Menu</b> (<b>Show the route to the objective</b>).' },
   ];
   function startTour(then = null) {
-    return OEOnboard.tour(tourSteps(), { root: document.body, onEnd: () => { OEOnboard.markDone(CITY.id); if (then) then(); } });
+    const was = $('#g-btns').classList.contains('open');
+    moreTray(true, false); // (the tour points at the buttons behind "more")
+    return OEOnboard.tour(tourSteps(), { root: document.body, onEnd: () => { moreTray(was, false); OEOnboard.markDone(CITY.id); if (then) then(); } });
   }
   on($('#gt-play'), 'click', () => startGame(false));
   on($('#gt-continue'), 'click', () => startGame(true));
@@ -5297,10 +5315,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const titleOn = preTitle || !hud('#g-title').hidden, paused = titleOn || !hud('#g-menu').hidden || (window.OEMetro && OEMetro.isOpen()) || photo.on || simHold;
     stage.classList.toggle('titled', titleOn);
     // time of day
-    if (!clock.frozen && !paused) { clock.min += dt * clock.scale / 60; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min); }
+    if (!clock.frozen && !paused) { clock.min += dt * clock.scale / 60; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min, !clock.own); }
     sunTimer -= dt;
     if (sunTimer <= 0) {
       sunTimer = 0.25;
+      // the place's own time: read from the wall clock, not counted, so a pause, a menu or a tab left in the
+      // background never leaves it behind
+      if (!clock.own && !clock.frozen && clock.scale === 1 && !simHold) { const now = S.utcToLocal(Date.now()); Object.assign(clock, { y: now.y, m: now.m, d: now.d, min: now.minutes }); }
       applySun();
       const px = player.mode === 'heli' ? heli.st.x : player.mode === 'ferry' ? player.vehicle.x : player.x, py = player.mode === 'heli' ? heli.st.y : player.mode === 'ferry' ? player.vehicle.y : player.y;
       const pz = player.mode === 'heli' ? heli.st.z + 1 : player.mode === 'ferry' ? 3 : player.z + 1.6;
@@ -6382,7 +6403,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const n = Math.round(seconds * 30);
     for (let i = 0; i < n; i++) {
       clockT += 1 / 30; U.uTime.value = clockT;
-      if (!clock.frozen) { clock.min += clock.scale / 60 / 30; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min); }
+      if (!clock.frozen) { clock.min += clock.scale / 60 / 30; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min, !clock.own); }
       simulate(1 / 30);
       if (cine.active) cine.step(clockT);
       if (closeup) closeupCamera(1 / 30); // (looking closer reads the held keys as it goes)
