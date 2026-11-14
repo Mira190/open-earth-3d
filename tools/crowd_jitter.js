@@ -7,6 +7,7 @@
 //   GAME_TIME=17:30 xvfb-run -a node tools/crowd_jitter.js shibuya [seconds, 40] [radius m, 30]
 // FAIL=1 exits 1 when the rates go over the limits below (tools/game_check.js can run it so).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shibuya', secs = '40', rad = '30'] = process.argv;
 (async () => {
@@ -18,8 +19,7 @@ const [,, city = 'shibuya', secs = '40', rad = '30'] = process.argv;
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; const g = window.__game; if (g.cine && g.cine.active) g.cine.skip(); g.advance(1); });
   const out = await p.evaluate(([secs, rad]) => {
     const g = window.__game, P = g.crowd.P, me = g.player, dt = 1 / 60;

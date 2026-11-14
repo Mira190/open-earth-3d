@@ -1959,6 +1959,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     for (const m of LM.meshes || []) {
       if (m.detail && small) continue; // (a hero level's finest parts, landmarks.json "detail": the high and medium tiers only)
       const g = lmGeometry(m);
+      if (m.material === 'rail_steel' && lmMats.rail_steel) { railDirections(g); railGlint(lmMats.rail_steel); } // (the sun's glint along the rail)
       const mesh = new THREE.Mesh(g, lmMaterial(m));
       if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far * (small ? 0.6 : 1)); } // (a room's furnishings: nearer on a small device)
       mesh.castShadow = mesh.receiveShadow = true;
@@ -3046,5 +3047,53 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return Math.min(seg(ax, ay, bx, by), seg(bx, by, cx, cy), seg(cx, cy, ax, ay));
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater };
+  // The sun's glint along a rail (issue 372, item 1): the polished head of a rail is a long thin mirror, so it
+  // shines where the sun's reflection meets the line of the rail, a bright thread running towards the sun, the
+  // way a track looks into a low sun. The hair model of Kajiya and Kay (1989): with T the rail's direction and H
+  // the half vector, the highlight is sin(T, H) to a high power; it goes on the direct specular light, so the
+  // shadows and the sun's colour are the light's own. aRail: each vertex's rail direction, from trackMesh.
+  function railGlint(mat) {
+    if (mat.userData.glint) return mat;
+    mat.userData.glint = true;
+    const own = mat.onBeforeCompile, ownKey = mat.customProgramCacheKey, plain = ownKey === THREE.Material.prototype.customProgramCacheKey;
+    mat.onBeforeCompile = function (sh, r) {
+      if (own) own.call(this, sh, r);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aRail; varying vec3 vRailT;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvRailT = (viewMatrix * modelMatrix * vec4(aRail, 0.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRailT;')
+        .replace('#include <aomap_fragment>', `#include <aomap_fragment>
+#if NUM_DIR_LIGHTS > 0
+if (dot(vRailT, vRailT) > 0.25) { vec3 oeT = normalize(vRailT), oeV = normalize(vViewPosition), oeL = directionalLights[0].direction; // (a vertex with no direction: none)
+  float oeTH = dot(oeT, normalize(oeL + oeV)), oeKK = pow(max(0.0, 1.0 - oeTH * oeTH), 90.0);
+  // the sun's light on the rail's head, as its diffuse term has it (its shadow, its colour, the angle)
+  vec3 oeE = reflectedLight.directDiffuse / max(material.diffuseColor * RECIPROCAL_PI, vec3(1e-3));
+  reflectedLight.directSpecular += oeE * oeKK * 1.4 * smoothstep(0.0, 0.08, dot(oeL, normal)); }
+#endif`);
+    };
+    mat.customProgramCacheKey = function () { return `${plain ? (own ? own.toString() : '') : ownKey.call(this)}|oe-rail-glint`; };
+    return mat;
+  }
+
+
+  // aRail for a swept rail (a landmark's rail_steel, cities/<id>/rail.py): every triangle of the sweep is long and thin
+  // along the rail, so each vertex takes the direction of the longest edge of a triangle it is in, on the ground plane
+  function railDirections(g) {
+    const P = g.attributes.position.array, I = g.index ? g.index.array : null, n = P.length / 3, T = new Float32Array(n * 3);
+    const count = I ? I.length : n, at = k => (I ? I[k] : k);
+    for (let t = 0; t + 2 < count; t += 3) {
+      const v = [at(t), at(t + 1), at(t + 2)];
+      let best = 0, bx = 0, bz = 0;
+      for (let e = 0; e < 3; e++) {
+        const a = v[e] * 3, b = v[(e + 1) % 3] * 3, dx = P[b] - P[a], dz = P[b + 2] - P[a + 2], l = dx * dx + dz * dz;
+        if (l > best) { best = l; bx = dx; bz = dz; }
+      }
+      if (best <= 0) continue;
+      const l = Math.sqrt(best);
+      for (const i of v) { if (T[i * 3] * bx + T[i * 3 + 2] * bz < 0) { bx = -bx; bz = -bz; } T[i * 3] = bx / l; T[i * 3 + 2] = bz / l; }
+    }
+    g.setAttribute('aRail', new THREE.BufferAttribute(T, 3));
+    return g;
+  }
+
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater, railGlint };
 })();

@@ -13,7 +13,8 @@ is. A smaller group comes back on a desktop to play a map they already know.
 down and stand in a Japanese street. The Earth already says the first; nothing said the second.
 
 **The one action** is to play: drop into the best Japanese level. Everything else (the other
-places, the 3D model viewer, the films, the postcards) is for the second visit.
+places, the 3D model viewer, the films) is for the second visit. The postcards are not on the home page
+at all: they are in each map's passport ([POSTCARDS.md](POSTCARDS.md)).
 
 ## What the page made them do (before)
 

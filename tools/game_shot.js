@@ -27,6 +27,7 @@
 // railway at a second of its timetable ("g.trains.t = 131; g.trains.update(0, g.camera)");
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', viewsFile, outDir = '.', size = '1440x900'] = process.argv;
@@ -127,8 +128,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   if (foot.length) {
     // (the title comes up once the loader has drawn the scene twice; a click before it does nothing)
     await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     // until the title has gone (a click while the city is still loading can be lost): click again
     for (let i = 0; i < 60 && !(await p.evaluate(() => { const t = document.getElementById('g-title'); return !t || t.hidden; })); i++) {
       await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });

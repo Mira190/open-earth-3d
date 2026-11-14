@@ -4,6 +4,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/start_shot.js sydney out_dir [1440x900] [11:00,sunset+20,night]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.', size = '1440x900', times = '11:00'] = process.argv;
@@ -24,8 +25,7 @@ const [W, H] = size.split('x').map(Number);
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   fs.mkdirSync(outDir, { recursive: true });
   const tag = W < 600 ? 'phone' : 'desk';
   const shot = async name => {

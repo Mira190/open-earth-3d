@@ -58,8 +58,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
 | ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
 
-A game can also start from a postcard: the title screen's pile of them
-([POSTCARDS.md](POSTCARDS.md)) opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
+A game can also start from a postcard ([POSTCARDS.md](POSTCARDS.md)): a link opens a city at `#play-<city>@pc-<spot>.<light>`, on the spot
 where the photograph was taken, with "As on the postcard" offered as the time to start at. A
 map's passport lists the postcards that have come from it.
 
@@ -3212,10 +3211,11 @@ moving; the crowd's footways must cross at the signals, with walk signals, and
 the nearest junction's walk must turn on and off within 75 s; a junction with a
 turn arrow must have its arrow lanterns. Seated at the wheel and in the back, each head must be under the roof.
 There is a screenshot after each step, and it fails on any page error.
-`tools/check.sh` runs it for every city whenever the game changes, at 10:00 in
-each city's time zone: `GAME_TIME=22:40` (or `YYYY-MM-DDTHH:MM`) pins the page's
-clock to another local hour (`tools/pin_clock.js`), and `GAME_TIME=live` leaves the
-real one, which a city starting at `"time": "live"` would otherwise play at.
+`tools/check.sh` runs it for every city whenever the game changes, at 10:00 on 2 November 2026 in
+each city's time zone (`GAME_TIME=2026-11-02T10:00`: the date too, since the weather is a hash of the date
+and the day's life follows it, so a pinned hour alone played another game each day): `GAME_TIME=22:40` (or
+`YYYY-MM-DDTHH:MM`) pins the page's clock to another local hour (`tools/pin_clock.js`), and `GAME_TIME=live`
+leaves the real one, which a city starting at `"time": "live"` would otherwise play at.
 
 The check plays in lockstep (#243): the world is held for the whole run (`__game.hold`), so only the
 check's own `advance()` calls move it, a thirtieth of a second at a time, and a run on a loaded
@@ -3228,7 +3228,25 @@ had got). Before the first step the world's clock and the title's orbit go back 
 (`__game.hold(true, true)`: the arrival sets out from the orbit's pose), the route network is built (it
 fills in the roads a car can't get along as it goes), the helicopter is on its pad, and the game's clock
 is set to `GAME_TIME`'s minute at Play (it is read from a `Date` that runs on at the real rate during the
-load). Dispatch's tie-breaks draw from a seeded run. `GAME_LOCKSTEP=0`
+load). Nothing the world does draws from `Math.random` or reads the machine's clock: the actors, the
+trips (where each car is bound, `trips.js`), dispatch's tie-breaks, an NPC's idle line, a driver's smalltalk and a
+spot's line each draw from a seeded run, and an overheard conversation's quiet spell runs on the game's time
+(#420: the trips drew from `Math.random`, and the traffic steps failed on a different city each run). What
+still draws from it only looks or sounds different (a spray of drops, a plate, a horn's pitch, a driver's face).
+Nor does anything a frame does while held step the world: the weather eases on only with `advance()` (the
+frames stepped it too, by however many the machine drew), and a step that waits for something to load (the hero
+level as you come near it) steps the world only until the load starts, then waits on the frames with the world
+standing (it stepped the world 0.05 s a frame all the while, so a slower fetch moved Shinjuku's whole run on,
+#420). `DIGEST=2` is how that was found: a digest after every `advance()` too, with the step checked last before
+it, in `<out>/advances.txt`; the first line two runs disagree on names the step that let the machine in.
+The check presses Play with `tools/start_play.js`, which waits for the title card however long the load takes,
+presses the button and throws if the game did not start (#423: a Playwright click timed out while the card
+slid in on a loaded machine, the error was swallowed and the game never started; every tool presses Play this
+way). So two runs of the same tree play the same game step for step, on an idle machine or a loaded one: a
+failure is the same in every run, a real one. `tools/game_soak.sh [cities]` proves it: each city's check
+`ROUNDS` times (3), `JOBS` at a time (3, as `tools/check.sh` runs them), with `DIGEST=1`, and for each city
+its pass rate, the steps that failed and whether every run's digests agree (or the first screenshot where they
+part, where to look for what still reads the clock or an unseeded random). `GAME_LOCKSTEP=0`
 leaves the frames running the world, as a player's do. `tools/lockstep_probe.js <city> [steps]` loads
 a city twice, steps both the same way with real time between the steps, and compares a digest of the
 crowd, the traffic and the lights after each step.

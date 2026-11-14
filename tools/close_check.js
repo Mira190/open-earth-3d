@@ -5,6 +5,7 @@
 // CLOSE='[{"name":"…","at":[x,y,z]}]' adds targets of your own (local metres), to probe a place
 // before its builder names it. Exits 1 if any target is not reached.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shibuya', outDir = '.'] = process.argv;
@@ -30,8 +31,7 @@ const [,, city = 'shibuya', outDir = '.'] = process.argv;
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s; landmark tiles sorted in ${nv[0]} ms, ${nv[1]} fine boxes laid so far in ${nv[2]} ms`);
   // (the title comes up once the loader has drawn the scene twice; a click before it does nothing)
   await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   // the arrival's camera move and the first-time HUD tour after it (web/onboard.js) hold every action
   // back: settle the one and skip the other
   await p.evaluate(async () => {

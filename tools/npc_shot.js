@@ -4,6 +4,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/npc_shot.js tokyo out_dir [ids,...|all] [HH:MM] [WxH]   # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'tokyo', outDir = '.', idsArg = 'all', hhmm = '10:30', size = '1440x900'] = process.argv;
@@ -26,8 +27,7 @@ const [,, city = 'tokyo', outDir = '.', idsArg = 'all', hhmm = '10:30', size = '
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.npcsReady && window.__game.npcsReady()); // (the NPCs' characters load after the game opens)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const [hh, mm] = hhmm.split(':').map(Number);
   const npcs = await p.evaluate(min => {
     const g = window.__game, c = g.clock;
