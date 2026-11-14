@@ -5247,7 +5247,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (hero) hero.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
-    weatherTick(dt, titleOn, titleOn || paused || photo.on);
+    weatherTick(simHold ? 0 : dt, titleOn, titleOn || paused || photo.on); // (held by a harness: the weather eases on only with advance(), which ticks it; stepped by the frames too, it eased by however many the machine drew, #420)
     if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));

@@ -1756,6 +1756,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
     }
     // can car c stand at the kerb of line at s, facing dir? (clear of the junctions and crossings, of the other cars
     // by a bumper's room, of people, posts and walls): its pose in tmp if so
+    const kerbA = {}, kerbB = {}; // (the lane's way either end of a place at the kerb: kerbFree)
     const kerbNo = {}; // (why a place at the kerb was not free, counted: for the checks)
     let youX = 1e9, youY = 1e9; // (where you are: update)
     function kerbFree(c, line, s, dir) {
@@ -1766,6 +1767,15 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
       if (ahead < (ar ? ar.back : 0) + 26 || l.len - ahead < (br ? br.back : 0) + 20) return no('junction'); // (clear of the cars that swing in from the junction behind, and of the queue for the one ahead)
       if (JN.midsOn && (JN.midsOn(line) || []).some(X => Math.abs(X.mid - s) < 16)) return no('crossing');
       if (JN.shutNow && JN.shutNow(line, dir)) return no('shut');
+      // (nor where the street bends there: the car stands straight while the kerb and the lane curve, and a car passing
+      // it drove into it, its body swung by the bend while its way ahead, the lane's middle, kept clear. Sydney's piece 1621
+      // bends 22 degrees under a parked car, which stood out into the lane; on Queenstown's 302, a gentle 5 degrees, a bus
+      // swung its corner 0.3 to 0.6 m into two: parked 2.7 m off the lane, a car leaves a bus 0.4 m on the straight, and a
+      // bus's 6 m from its middle to its corner swings 0.4 m at 4 degrees, #420. The lane's way 8 m behind and ahead of it,
+      // a bus's length, within 4 degrees)
+      { const sa = Math.max(0, Math.min(l.len, s - dir * 8)), sb = Math.max(0, Math.min(l.len, s + dir * 8));
+        lanePos(line, sa, dir, kerbA); lanePos(line, sb, dir, kerbB);
+        if (kerbA.hx * kerbB.hx + kerbA.hy * kerbB.hy < 0.9976) return no('bend'); }
       lanePos(line, s, dir, tmp, side * k);
       if (JN.inScramble && JN.inScramble(tmp.x, tmp.y)) return no('scramble');
       if (Math.hypot(tmp.x - youX, tmp.y - youY) < 25) return no('you'); // (not at the kerb where you stand: a taxi you hail pulls in there)

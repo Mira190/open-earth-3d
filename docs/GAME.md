@@ -3195,6 +3195,12 @@ trips (where each car is bound, `trips.js`), dispatch's tie-breaks, an NPC's idl
 spot's line each draw from a seeded run, and an overheard conversation's quiet spell runs on the game's time
 (#420: the trips drew from `Math.random`, and the traffic steps failed on a different city each run). What
 still draws from it only looks or sounds different (a spray of drops, a plate, a horn's pitch, a driver's face).
+Nor does anything a frame does while held step the world: the weather eases on only with `advance()` (the
+frames stepped it too, by however many the machine drew), and a step that waits for something to load (the hero
+level as you come near it) steps the world only until the load starts, then waits on the frames with the world
+standing (it stepped the world 0.05 s a frame all the while, so a slower fetch moved Shinjuku's whole run on,
+#420). `DIGEST=2` is how that was found: a digest after every `advance()` too, with the step checked last before
+it, in `<out>/advances.txt`; the first line two runs disagree on names the step that let the machine in.
 The check presses Play with `tools/start_play.js`, which waits for the title card however long the load takes,
 presses the button and throws if the game did not start (#423: a Playwright click timed out while the card
 slid in on a loaded machine, the error was swallowed and the game never started; every tool presses Play this

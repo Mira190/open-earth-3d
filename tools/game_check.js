@@ -52,6 +52,20 @@ const npcNight = require('./npc_night');
       return get.call(this, type, /webgl/.test(type) ? Object.assign({}, opts, { preserveDrawingBuffer: true }) : opts);
     };
   });
+  // DIGEST=2: a digest after every advance() as well, with the last step checked before it, written to <out>/advances.txt:
+  // the first line two runs disagree on names the step that let the machine in (a wait that stepped the world, #420)
+  if (process.env.DIGEST === '2') await p.addInitScript(() => {
+    let G; window.__dg = [];
+    Object.defineProperty(window, '__game', { configurable: true, get() { return G; }, set(v) {
+      G = v; const adv = v.advance;
+      v.advance = function (dt) {
+        const r = adv.apply(this, arguments), h = a => { let x = 2166136261; for (const q of a) { x ^= Math.round(q * 100) | 0; x = Math.imul(x, 16777619) >>> 0; } return x.toString(16); };
+        window.__dg.push(`${window.__lastCheck || 'start'} | dt ${dt} t ${v.t().toFixed(2)} crowd ${h(v.crowd.P.slice(0, v.crowd.active).flatMap(q => [q.x, q.y]))} traffic ${h(v.cars.C.flatMap(c => [c.x, c.y, c.v]))}`);
+        return r;
+      };
+    } });
+  });
+  const advances = async () => { if (process.env.DIGEST === '2') fs.writeFileSync(path.join(outDir, 'advances.txt'), (await p.evaluate(() => window.__dg || [])).join('\n') + '\n'); };
   if (process.env.CHAIN) await p.addInitScript(() => { window.__chain = true; }); // (CHAIN=1: the traffic steps log more of what held them)
   const logs = [], fails = [];
   p.on('console', m => { if (m.type() === 'error') logs.push(`error: ${m.text().slice(0, 300)}`); });
@@ -68,7 +82,7 @@ const npcNight = require('./npc_night');
     const png = await p.evaluate(() => document.getElementById('game-gl').toDataURL('image/png'));
     fs.writeFileSync(path.join(outDir, `${city}-${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
   };
-  const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) fails.push(what); };
+  const check = (ok, what) => { if (process.env.DIGEST === '2') p.evaluate(w => { window.__lastCheck = w; }, what.slice(0, 80)).catch(() => {}); console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) fails.push(what); };
   const t0 = Date.now();
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
@@ -145,8 +159,12 @@ const npcNight = require('./npc_night');
     try {
       for (const L of H.levels) {
         pl.x = L.h.at[0]; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        // (the world steps only while the level waits for the camera to come near, which the simulation alone decides;
+        // once it is loading, the frames go on (hero.update loads and shows it) but the world stands: stepped all the
+        // while, it moved on by however long the machine took to fetch the level, and the rest of the run with it, #420)
         let t = 0;
-        for (; t < 900 && !(H.state().find(s => s.id === L.h.id) || {}).shown; t++) await frames(1);
+        const stateOf = () => H.state().find(s => s.id === L.h.id) || {};
+        for (; t < 900 && !stateOf().shown; t++) { if (stateOf().state === 'idle') await frames(1); else await new Promise(r => requestAnimationFrame(r)); }
         const st = H.state().find(s => s.id === L.h.id), hidden = (L.h.hide || []).map(n => g.Wd.world.getObjectByName(n)).filter(Boolean);
         let glow = 0, tris = 0;
         if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube)/.test(o.material.name)) glow++; } });
@@ -1551,7 +1569,7 @@ const npcNight = require('./npc_night');
     check(rideOk, `the ride is there within half a minute, when the app said (${taxi.rideT == null ? '–' : `${taxi.rideT.toFixed(1)} s, said ${taxi.eta0.toFixed(0)} s`})`);
     if (!rideOk && taxi.rideLog) console.log(taxi.rideLog.join('\n'));
   }
-  if (process.env.UNTIL === 'taxi') { await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=taxi: the steps up to the taxi and the ride only, to iterate on them)
+  if (process.env.UNTIL === 'taxi') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=taxi: the steps up to the taxi and the ride only, to iterate on them)
   await shot('taxi');
   await lightsKept('after the car and the taxi');
   // and by night and by day (the sun below the horizon stays a light, dark)
@@ -2050,7 +2068,7 @@ const npcNight = require('./npc_night');
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
       check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto}${R.heldBy ? `; held ${R.heldBy}` : ''})`);
-      check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''})`);
+      check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''}${R.deep > 0 && R.heldLate ? `; held half a minute at ${R.heldLate}` : ''})`);
     }
   }
 
@@ -2273,6 +2291,7 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.qs().track = k.track; g.advance(0.2); }, keep);
   }
 
+  await advances();
   await b.close();
   process.exit(fails.length ? 1 : 0);
 })();
