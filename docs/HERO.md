@@ -245,20 +245,20 @@ diagonal to QFRONT. The level (`cities/shibuya/hero.py`, `hero/scramble.glb`) is
 junction, and its first part is what fills most of the frame from eye level: the ground.
 
 - **The carriageways**: one asphalt surface on the game's own road bands, a 50 cm concrete gutter along every
-  kerb, flush granite kerbs, the wheel paths' polish, trench patches, manholes, gully grates and the oil where
-  traffic waits. The asphalt is ambientCG's `Asphalt031` with its aggregate's contrast raised and a slow tone
-  drawn over its repeat (`asphalt_texture`).
+  kerb, flush granite kerbs, manholes and gully grates. The asphalt is ambientCG's `Asphalt031` with its
+  aggregate a little clearer (`asphalt_texture`). Clean and of one tone: no patches, stains or wear ("The bar"
+  in AGENTS.md: the ground is never aged).
 - **The paint**: the five crosswalks at the places measured off GSI's aerial photograph
-  (`scramble.CROSSWALKS`), stop lines, the diamonds before them and centre lines, in a thermoplastic drawn here
-  that is worn through in patches and cracked (`paint_texture`).
+  (`scramble.CROSSWALKS`), stop lines, the diamonds before them and centre lines, in an even off-white
+  thermoplastic with the grain of its glass beads (`paint_texture`).
 - **The pavements**: grey blocks (`PavingStones136`), Hachiko Square in small granite setts (`PavingStones131`,
-  its moss taken out), and the yellow tactile blocks on OpenStreetMap's lines with their bars and domes in
+  its moss and colour taken out), each brought to a grey of one family by its own mean (`hero_kit.tint_to`), and the yellow tactile blocks on OpenStreetMap's lines with their bars and domes in
   relief (JIS T 9251's pattern, `tactile_texture`); a cast-iron grate round each mapped tree.
 - **On the kerbs**: white guard pipes between the crosswalks, and steel lamp posts whose light is baked.
 
 It hides the landmark meshes it draws again (`p5_plaza`, the junction's flat asphalt, paint, tactile strips and
 guard pipes); the fronts, the entrances, the tracks, Hachiko and his bed of setts stay the landmarks'.
-45,700 triangles, 4.1 MB; nothing is built under a building, in a stair well or past 100 m.
+43,700 triangles, 3.8 MB; nothing is built under a building, in a stair well or past 100 m.
 
 Photographs looked at (Wikimedia Commons; none is reproduced, no texture is taken from one): the empty
 junction, 2025-01 (ウィ貴公子, CC BY-SA 4.0), QFRONT from the crosswalk, 2025-02 (GoToVan, CC BY 2.0), Hachiko
@@ -633,47 +633,65 @@ floodlit landmarks had lost their pattern and their fall-off after dark. It is c
 ### Tokyo Station (`cities/tokyo/station.py`)
 
 The station's solids from its OpenStreetMap/PLATEAU outline (r4856156) are hidden, and the station
-is drawn on them.
+is drawn on them. Second pass, November 2026, against photographs (below): the first pass had the
+right outline and the wrong building (a pyramid roof with a small dome on it, no gable, plain bays).
 
-- **Wings.**
-  - Three storeys of openings about every 3.6 m: real holes 0.45 m deep, each with a sash,
-    transom and glass.
-  - Stone work round each opening: sills, lintels and keystones.
-  - Stone courses at the plinth, at each storey's sills and at the first floor's imposts.
-  - Quoins at the corners and a moulded cornice at 16.7 m. JR East gives about 16.7 m for the
-    eaves; this figure is unverified.
-  - Slate roofs with dormers.
-- **Dome pavilions.**
-  - Regular octagons fitted to the mapped octagons, about 22 m across.
-  - An attic of round windows up to 24.6 m.
-  - Slate domes with copper hips and dormers, up to 34.8 m. JR East gives about 34.8 m to the top
-    of the dome without the finial. Above that, a lantern and the finial.
+- **The front, in Tatsuno's manner.** Red brick striped with thin white stone. A bay every 3.6 m:
+  a real opening 0.4 m deep with glass, sash and a stone frame (a keystone on the ground floor, a
+  pediment on the first, a cornice on the second); the stripes run between one frame and the next;
+  pilasters through the upper two storeys; a cornice at 16.7 m (JR East's figure for the eaves,
+  unverified) and a balustrade before the slate.
+- **Only the side the street sees.** A wall that faces the tracks has no cut openings, sashes,
+  frames or balustrade: brick, flat glass and the main courses. The building went from 132,000
+  triangles to about 80,000 while gaining everything on this list.
+- **Roofs.** Straight slate slopes triangulated between the outline and its inset
+  (`roof_bands`), so a 200 m eave is one plane; the first pass's gridded roof was pleated.
+- **Dome pavilions.** On each mapped block: the front's middle has three arched openings a storey
+  (doorways onto the lit concourse at the ground, with the exit's name board over them) between
+  two round stone turrets under an arched brick gable with the clock and a copper barrel roof; a
+  slate skirt; an octagonal brick drum with three windows a face; a low slate dome to 34.8 m
+  (JR East) with copper ribs and eight round windows, a lantern and a spire. A copper pent roof on
+  iron posts runs round the foot.
 - **Central pavilion.** About 28 m, under its own steep roof, with the porch's stone piers.
-- **After dark.** The scheme is LPA's, from 2012. Brick and stone are floodlit warm, falling off
-  up the building, and about 62% of the windows are lit. No colour temperature is published;
-  about 3000 K is assumed.
-- **Plaza.** The plaza opened on 7 December 2017. Sources: Tokyo Metropolitan Government, JSCE
-  award, trafficnews.
-  - White granite paving from the facade to the street.
-  - Two lawns with granite kerbs.
-  - The zelkova rows on the axis to the Palace.
-  - Three-lamp posts along the rows, and bollards at the street.
-- **Not yet built.**
-  - The dome interiors: the eagles and zodiac reliefs.
-  - The station's signage.
-  - The north and south transport plazas' bus and taxi pools.
-  - The exact bay rhythm. The Shinkenchiku 2012/11 drawings would give it.
+- **The forecourt, on OpenStreetMap's outlines** (`cities/tokyo/hero_osm.json`, ODbL; fetched by
+  `pipeline/hero_osm.py`): the plaza's boundary, its two lawns, the planted islands, the
+  pedestrian areas, the lanes of the two transport plazas, the stands' canopies and every tree.
+  - The pedestrian plaza (opened 7 December 2017) is white granite laid slab by slab: rows 0.75 m
+    deep along the front, slabs 1.2 to 3 m long, three tones a step apart in one family.
+  - The transport plazas: asphalt lanes 6.6 m wide on the mapped lines, pavers between them,
+    clipped hedges round the planted islands.
+  - Each surface is one layer (no overdraw), cut on the triangles of the game's own terrain
+    (`Ground.facets`), so the ground cannot come through it.
+  - Canopies: a thin white roof on slender steel on each mapped `building=roof`; the city's 7 m
+    boxes that stood for them are hidden.
+  - Granite bollards at the street, three-lamp posts along the tree rows.
+- **After dark.** Brick and stone are floodlit warm from the foot of each bay (LPA's 2012 scheme; no
+  colour temperature is published, about 3000 K assumed), the slate stays dark, about 62% of the
+  windows are lit, the doors and the canopies' soffits glow.
+- **Clean.** No grime band and almost no tone noise on any surface (AGENTS.md, "The bar").
+
+Photographs looked at (Wikimedia Commons; none is reproduced, no texture is taken from one):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| Tokyo Station Marunouchi Building, south side dome, 21 July 2013.jpg | 掬茶 | CC BY-SA 3.0 | the south pavilion's gable, clock, turrets, drum and dome; the wings' stripes and pilasters |
+| Tokyo Station Marunouchi Building P5228775.jpg | Kestrel | CC BY-SA 4.0 | the pent roof, the canopies, the oculi, the forecourt's pavers, what is lit at dusk |
+| Tokyo-Station-Marunouchi-Square---2024-03-27 01.jpg | RuinDig/Yuki Uchida | CC BY 4.0 | the plaza's granite: rows, slab sizes and tones; the granite bollards |
+| Tokyo Station Marunouchi exit seen from the JP Tower 20191130.jpg | 掬茶 | CC BY-SA 4.0 | the plaza's layout from above, the dome's profile |
+| Tokyo Station Marunouchi Building at night 201912.jpg | Wpcpey | CC BY 4.0 | the floodlighting; dark roofs |
+
+Where it still falls short of the bar, as the stills show: the facade's ornament is flat blocks
+(no carved capitals, no balusters' profile); the pilasters' and bays' exact rhythm is read off
+photographs, not the Shinkenchiku 2012/11 drawings; the dome interiors are not built; the
+ventilation towers in the transport plazas are still the city's plain solids; bus and taxi
+stands have no signs, rails or road paint; the towers round the plaza are the city's generic
+glass; from the air the streets outside the forecourt show the aerial photograph; trees are the
+shared models, not zelkova.
 
 #### Checked
 
-- Stills at day, dusk and night, on a desktop and a phone, before and after:
+- Stills at day, dusk and night, on a desktop (1440x900) and a phone (390x844, the lean tier):
   `tools/game_shot.js tokyo tools/views/tokyo-hero.json`.
-- `tools/game_check.js` checks that the PBR surfaces load and repeat in metres.
-- Starting the game on the plaza turned up a traffic bug, which is now fixed: a car parked at the kerb
-  could be asked to back out of a one-way street, and then stood there for good
-  (`web/game/actors.js` `canReverse`).
-- The game still starts south of the plaza, by the south dome, where it did. Started on the plaza
-  itself, the game check's traffic steps watch the junctions round it, and one of them
-  (junction 1465) holds two cars in its box each waiting on the other for over a minute: a knot in the
-  shared traffic, not in the level. The plaza start comes back once that is undone (issue 412).
+- The game still starts south of the plaza at (553, 1195), now facing the south dome. The plaza
+  start waits on the traffic knot at junction 1465 (issue 412).
 - Not checked: a real GPU, WebGPU, Safari and iOS.

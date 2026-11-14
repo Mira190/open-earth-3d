@@ -9,9 +9,9 @@ What is built, over the city's own ground and landmarks (cities/shibuya/scramble
 the entrances, the tracks and Hachiko himself):
 
   * the carriageways as one asphalt surface on the game's road bands, with the concrete gutter Japanese
-    streets have along each kerb, flush granite kerbs, trench patches, the wheel paths' polish, manholes
-    and gully grates;
-  * the paint, in a worn thermoplastic of its own: the five crosswalks at their measured places
+    streets have along each kerb, flush granite kerbs, manholes and gully grates; clean and of one tone
+    (AGENTS.md, "The bar": the ground is never aged);
+  * the paint, in a thermoplastic of its own: the five crosswalks at their measured places
     (scramble.CROSSWALKS, off GSI's aerial photo), stop lines, the diamonds before them, centre lines;
   * the pavements in grey blocks and Hachiko Square in small granite setts, the yellow tactile blocks along
     the lines OpenStreetMap maps, with their bars and domes in relief;
@@ -49,12 +49,12 @@ KERB_M = 0.18
 PLAZA = (369.0, -1080.0, 416.0, -1009.5)   # Hachiko Square: west, south, east, north (setts; the rest is blocks)
 
 TEX = {
-    "road": ("OEAsphalt031c", 3.2),     # Asphalt031 with its stones' contrast raised (drawn here: a worn carriageway shows its aggregate)
+    "road": ("OEAsphalt031d", 3.2),     # Asphalt031 with its stones' contrast raised (drawn here: a worn carriageway shows its aggregate)
     "paver": ("PavingStones136", 2.0),  # grey interlocking blocks: the pavements
-    "sett": ("OESett131g", 1.6),        # PavingStones131's small granite setts with the moss taken out of their joints (drawn here)
+    "sett": ("OESett131n", 1.6),        # PavingStones131's small granite setts with the moss taken out of their joints (drawn here)
     "conc": ("Concrete034", 3.0),       # gutters
     "granite": ("Granite005A", 1.5),    # kerbs
-    "paint": ("OEPaint001", 2.4),       # worn thermoplastic road paint (drawn here)
+    "paint": ("OEPaint002", 2.4),       # thermoplastic road paint (drawn here)
     "tact_bar": ("OETactileBar", 0.3),  # a 30 cm guide block: four bars (drawn here, JIS T 9251's pattern)
     "tact_dot": ("OETactileDot", 0.3),  # a 30 cm warning block: five by five domes
 }
@@ -62,14 +62,11 @@ TEX = {
 
 def materials():
     return {
-        "ground_asphalt": {"tex": "road", "tint": (0.5, 0.5, 0.5), "bump": 2.2},
-        "ground_patch": {"tex": "road", "tint": (0.33, 0.33, 0.335), "bump": 2.4},
-        "ground_wear": {"color": (0.012, 0.012, 0.013), "rough": 0.5, "alpha": 0.3},
-        "ground_stain": {"color": (0.01, 0.009, 0.008), "rough": 0.35, "alpha": 0.42},
+        "ground_asphalt": {"tex": "road", "tint": (0.5, 0.5, 0.5), "bump": 1.8},
         "ground_gutter": {"tex": "conc", "tint": (0.62, 0.61, 0.59), "maps": "cn"},
         "ground_kerb": {"tex": "granite", "tint": (0.7, 0.69, 0.68), "maps": "cn"},
-        "ground_paint": {"tex": "paint", "tint": (0.92, 0.92, 0.89), "bump": 1.5},
-        "ground_paver": {"tex": "paver", "tint": (0.6, 0.59, 0.58)},
+        "ground_paint": {"tex": "paint", "tint": (0.92, 0.92, 0.9)},
+        "ground_paver": {"tex": "paver", "tint": (0.7, 0.7, 0.7)},
         "ground_sett": {"tex": "sett", "tint": (0.74, 0.72, 0.71)},
         "ground_tact_bar": {"tex": "tact_bar", "maps": "cn", "rough": 0.7},
         "ground_tact_dot": {"tex": "tact_dot", "maps": "cn", "rough": 0.7},
@@ -90,38 +87,24 @@ def _noise(n, cells, rng):
     return np.clip(ndimage.zoom(g, n / cells, order=3, mode="grid-wrap"), 0, 1)
 
 
-def paint_texture(K, tid="OEPaint001", n=512, seed=7):
-    """Thermoplastic road paint as it is on a crossing a million people a week walk over: off-white, its
-    glass beads a fine grain, worn thin in patches where the asphalt's stones show through grey, with hair
-    cracks. Colour, a normal from its relief, and a roughness that is lower where it is worn smooth."""
+def paint_texture(K, tid="OEPaint002", n=512, seed=7):
+    """Thermoplastic road paint: off-white, the fine grain of its glass beads in colour and relief, matt. Clean
+    and even (AGENTS.md, "The bar": the ground is never aged)."""
     if os.path.exists(os.path.join(K.TEX_DIR, tid, f"{tid}_1K-JPG_Color.jpg")):
         return tid
     from PIL import Image
     rng = np.random.default_rng(seed)
-    big = 0.55 * _noise(n, 5, rng) + 0.3 * _noise(n, 11, rng) + 0.15 * _noise(n, 37, rng)
     grain = rng.random((n, n))
-    wear = np.clip((big - 0.47) / 0.22, 0, 1) ** 1.3              # 0 sound paint .. 1 worn through
-    speck = (grain > 0.8) * wear                                 # the stones that show in the worn patches
-    lum = 236 - 78 * wear - 90 * speck - 12 * (grain - 0.5)
-    cracks = np.zeros((n, n))
-    for _ in range(9):                                           # hair cracks: random walks
-        x, y, a = rng.integers(n), rng.integers(n), rng.random() * 6.28
-        for _ in range(int(n * 0.7)):
-            cracks[int(y) % n, int(x) % n] = 1
-            a += rng.normal(0, 0.25)
-            x += math.cos(a); y += math.sin(a)
-    lum -= 60 * cracks
-    col = np.dstack([lum, lum * 0.995, lum * 0.965])
-    hgt = 0.6 - 0.35 * wear - 0.25 * cracks + 0.08 * grain
-    rough = Image.fromarray(np.clip(255 * (0.74 - 0.16 * wear + 0.1 * speck), 0, 255).astype(np.uint8))
-    HP._save_set(K, tid, Image.fromarray(np.clip(col, 0, 255).astype(np.uint8)), hgt, rough=rough, normal_k=3.0)
+    lum = 234 - 9 * (grain - 0.5)
+    col = np.dstack([lum, lum * 0.995, lum * 0.97])
+    HP._save_set(K, tid, Image.fromarray(np.clip(col, 0, 255).astype(np.uint8)), 0.5 + 0.1 * grain, rough=0.7, normal_k=2.0)
     return tid
 
 
-def asphalt_texture(K, tid="OEAsphalt031c", base="Asphalt031", seed=3):
-    """ambientCG's Asphalt031 as a city carriageway wears: the aggregate's contrast doubled (the binder has
-    worn off the stones' tops, so they show pale), broad slow tone from patching and tyres so that the 3 m
-    repeat does not read, and a roughness that is lower on the polished stones."""
+def asphalt_texture(K, tid="OEAsphalt031d", base="Asphalt031", seed=3):
+    """ambientCG's Asphalt031 with its aggregate a little clearer (the stones' tops show pale in a laid
+    carriageway) and a roughness that is lower on them. Nothing else: the ground is clean and of one tone
+    (AGENTS.md, "The bar": no variation the material does not explain)."""
     if os.path.exists(os.path.join(K.TEX_DIR, tid, f"{tid}_1K-JPG_Color.jpg")):
         return tid
     from PIL import Image
@@ -132,20 +115,19 @@ def asphalt_texture(K, tid="OEAsphalt031c", base="Asphalt031", seed=3):
     c = np.asarray(Image.open(T["Color"]).convert("L"), float)
     n = c.shape[0]
     m = c.mean()
-    slow = 0.6 * _noise(n, 3, rng) + 0.4 * _noise(n, 7, rng) - 0.5
-    lum = m + (c - m) * 2.1 + slow * 26
+    lum = m + (c - m) * 1.5
     col = np.dstack([lum * 1.0, lum * 0.992, lum * 0.975])           # a touch warm: stone, not blue
     d = os.path.join(K.TEX_DIR, tid)
     os.makedirs(d, exist_ok=True)
     Image.fromarray(np.clip(col, 0, 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Color.jpg"), quality=92)
     Image.open(T["NormalGL"]).convert("RGB").save(os.path.join(d, f"{tid}_1K-JPG_NormalGL.jpg"), quality=92)
     r = np.asarray(Image.open(T["Roughness"]).convert("L"), float) / 255.0
-    r = np.clip(0.86 - 0.3 * np.clip((c - m) / 60.0, -0.3, 1) + slow * 0.12, 0.35, 1)
+    r = np.clip(0.86 - 0.3 * np.clip((c - m) / 60.0, -0.3, 1), 0.35, 1)
     Image.fromarray((r * 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Roughness.jpg"), quality=92)
     return tid
 
 
-def sett_texture(K, tid="OESett131g", base="PavingStones131"):
+def sett_texture(K, tid="OESett131n", base="PavingStones131"):
     """ambientCG's PavingStones131 for a square a million feet a week keep bare: its green (moss in the joints)
     taken to the stone's own grey, the joints left dark."""
     if os.path.exists(os.path.join(K.TEX_DIR, tid, f"{tid}_1K-JPG_Color.jpg")):
@@ -158,7 +140,7 @@ def sett_texture(K, tid="OESett131g", base="PavingStones131"):
     lum = c @ np.array([0.3, 0.59, 0.11])
     green = np.clip((c[..., 1] - (c[..., 0] + c[..., 2]) / 2) / 14.0, 0, 1)          # how mossy a texel is
     grey = np.dstack([lum * 1.01, lum * 0.995, lum * 0.97]) * (1 - 0.3 * green)[..., None]
-    out = c * 0.25 + grey * 0.75
+    out = grey
     out = out * (1 - green[..., None]) + grey * green[..., None]
     d = os.path.join(K.TEX_DIR, tid)
     os.makedirs(d, exist_ok=True)
@@ -340,7 +322,7 @@ class Level:
         kerb = self.roads.buffer(KERB_M).difference(self.roads).intersection(self.pave.buffer(KERB_M + 0.05)).intersection(self.disc).difference(self.wells).buffer(0)
         X.cover("ground_kerb", kerb, LIFT + 0.016, cell=2.0, uvk=1.0 / TEX["granite"][1])
         self.kerb_line = kerb
-        # along each road: trench patches, the wheel paths' polish, manholes down its lanes
+        # manholes down each road's lanes
         inner = self.roads.buffer(-1.6)
         for cls, pts in self.D.roads:
             ln = LineString([p[:2] for p in pts]).intersection(self.disc)
@@ -349,15 +331,6 @@ class Level:
                 if P.L < 12:
                     continue
                 half = self.S.ROADW.get(cls, 7) / 2
-                fn = lambda d, o, h, P=P: self.Gp(*P.xy(d, o), h)
-                for o in ([-half + 2.0, half - 2.0] if half >= 4.5 else [0.0]):      # a lane's two wheel paths
-                    for w in (-0.85, 0.85):
-                        d = 2.0
-                        while d < P.L - 6:
-                            d1 = min(P.L - 2, d + rng.uniform(9, 26))
-                            if all(inner.contains(Point(*P.xy(dd, o + w))) for dd in (d, (d + d1) / 2, d1)):
-                                X.strip("ground_wear", fn, d, d1, [o + w - 0.34, o + w + 0.34], LIFT + 0.004, step=3.0)
-                            d = d1 + rng.uniform(1, 5)
                 d = rng.uniform(4, 14)
                 while d < P.L - 5:
                     o = rng.uniform(-half + 1.2, half - 1.2)
@@ -367,13 +340,6 @@ class Level:
                         s = (0.66, 0.6, 0.5)[kind]
                         X.decal("ground_iron", self.Gp(*q), P.at(d)[1], s, s, uv=A.uv(f"manhole{kind}"), h=LIFT + 0.008)
                     d += rng.uniform(11, 24)
-                d = rng.uniform(0, 20)
-                while d < P.L - 14:                                               # a utility's trench, relaid darker
-                    ln_, w_ = rng.uniform(6, 13), rng.uniform(0.9, 1.5)
-                    o = rng.uniform(-half + 1.3, half - 1.3)
-                    if all(inner.contains(Point(*P.xy(dd, o))) and not self.walks.buffer(0.4).contains(Point(*P.xy(dd, o))) for dd in (d, d + ln_ / 2, d + ln_)):
-                        X.strip("ground_patch", fn, d, d + ln_, [o - w_ / 2, o + w_ / 2], LIFT + 0.006, step=2.0, uvk=k)
-                    d += ln_ + rng.uniform(18, 40)
         # gully grates in the gutter, every 14 m or so along each kerb
         for co in self.lines(self.roads.buffer(-GUTTER_M / 2).boundary.intersection(self.pave.buffer(1.2))):
             P = HP.Path(np.c_[co, np.zeros(len(co))])
@@ -383,16 +349,6 @@ class Level:
                 if not self.walks.buffer(0.3).contains(Point(*q[:2])):
                     X.decal("ground_iron", self.Gp(*q[:2]), t, 0.4, 0.5, uv=A.uv("grate"), h=LIFT + 0.01)
                 d += 14.0
-        # oil where the traffic waits: dark drips before each stop line
-        for cw in self.S.CROSSWALKS:
-            a, b = np.asarray(cw["a"]), np.asarray(cw["b"])
-            f = unit(b - a)
-            o = np.array([-f[1], f[0]])
-            for sgn in (-1, 1):
-                for _ in range(7):
-                    q = (a + b) / 2 + f * rng.uniform(-0.42, 0.42) * np.linalg.norm(b - a) + o * sgn * (cw["width"] / 2 + rng.uniform(3.0, 9.0))
-                    if inner.contains(Point(*q)) and not self.walks.contains(Point(*q)):
-                        PT.blob(self.geo, "ground_stain", _Z(self.T), q, rng.uniform(0.12, 0.38), rng, dz=LIFT + 0.007, stretch=rng.uniform(1, 2.2))
 
     # -- the paint
     def markings(self):
@@ -544,18 +500,15 @@ class Level:
         self.lamp_at = placed
 
 
-class _Z:
-    """hero_parts wants a ground with .z(x, y)."""
-    def __init__(self, T):
-        self.T = T
-
-    def z(self, x, y):
-        return self.T(x, y)
-
-
 def build(K):
     """(geo, atlas, materials, meta) for blender/build_hero.py."""
     L = Level(K)
     geo, atlas = L.build()
+    M = materials()
+    # the pavements, the square, kerbs and gutters in close tones of one grey family (AGENTS.md, "The bar"): each
+    # texture brought to its tone by its own mean, so that a yellowish block and a brown sett end as greys
+    for mat, key, srgb in (("ground_paver", "paver", (150, 150, 148)), ("ground_sett", "sett", (138, 138, 137)),
+                           ("ground_kerb", "granite", (160, 160, 158)), ("ground_gutter", "conc", (152, 152, 150))):
+        M[mat]["tint"] = K.tint_to(key, srgb)
     meta = {"id": ID, "at": list(CENTRE), "r": R, "z": 15.0, "glb": f"hero/{ID}.glb", "bake_gain": 1.0, "cell": 28.0}
-    return geo, atlas, materials(), meta
+    return geo, atlas, M, meta
