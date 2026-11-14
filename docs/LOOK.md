@@ -364,6 +364,12 @@ Considered and not taken: octahedral impostors (a picture per view angle: 8 to 1
 and a flat card where the crowd's shadows and night lights need a body), and the near walkers' skinned clips on
 every walker (a skeleton a person: the cost the instancing exists to avoid).
 
+**The same person in other clothes** (`web/game/people.js` `DRESS`). A cast of a dozen fills a crossing, so two of
+one character meet, and side by side in the one red shirt they read as a copy. Each walker wears one of eight
+turns of the clothes' colours (and a lighter or darker tone for a dark suit), the same far and near; the skin is
+left as scanned, found by its colour, and the head has its own material. No new pictures and no new programs
+beyond one.
+
 ### The crossing's sound (`web/game/audio.js`, `game.look.sound`)
 
 The constant beds are off in play: the crowd's murmur and the screens' music were too loud and

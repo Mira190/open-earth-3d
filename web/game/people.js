@@ -706,6 +706,24 @@ ${PAT_GLSL}`)
       model.scale.setScalar(look.scale || 1);
       setAccessories();
     };
+    // the clothes of DRESS[k] on a scanned person (the crowd's): the body's materials become this person's own
+    // copies the first time, sharing their pictures and their program
+    let dressMats = null;
+    rig.dress = k => {
+      if (!T.textured || (!dressMats && !k)) return;
+      if (!dressMats) {
+        dressMats = [];
+        model.traverse(o => {
+          if (!o.isSkinnedMesh || Array.isArray(o.material) || !o.material.map || /_opacity$|_head$/.test(o.material.name || '')) return;
+          const m = o.material.clone();
+          m.userData = { dress: { value: new THREE.Vector3(1, 0, 1) } };
+          dressMaterial(m); litMaterial(m);
+          o.material = m;
+          dressMats.push(m);
+        });
+      }
+      for (const m of dressMats) dressVec(k, m.userData.dress.value);
+    };
     rig.setLook({});
     // sitting has no clip: bend the legs over the idle pose, thighs forward and shins down (an aim
     // per bone in world space, so it doesn't depend on how the bones' axes are set up). The feet
@@ -895,6 +913,38 @@ transformed = crowdPose(transformed, false);`);
     return { mat, depth };
   }
 
+  // The same scanned person in other clothes. A cast of a dozen fills a crossing, so two of one character meet, and
+  // side by side in the one red shirt they read as a copy (the owner's review). Each walker wears one of DRESS: the
+  // colours of the clothes turned round the wheel (a red shirt is green, blue or plum on the next) and the dark
+  // neutrals, a suit or a skirt, a shade lighter or darker. The skin is left as it is, found by its colour (red
+  // over green over blue in a skin's ratios; a tan coat is taken for skin and keeps its colour too), and the head
+  // has its own material. [turn in radians, tone of dark neutrals]; the first is the character as scanned.
+  const DRESS = [[0, 1], [2.3, 0.72], [-1.7, 1.45], [1.0, 0.85], [3.1, 1.3], [-0.75, 1.15], [1.7, 0.65], [-2.5, 1.0]];
+  const dressOf = i => (Math.imul(i + 7, 2246822519) >>> 16) % DRESS.length;
+  const dressVec = (k, out) => out.set(Math.cos(DRESS[k][0]), Math.sin(DRESS[k][0]), DRESS[k][1]);
+  // (dress: vec3 cos, sin of the turn and the tone; after the picture is read into diffuseColor)
+  const DRESS_GLSL = `{
+    vec3 c = diffuseColor.rgb; float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+    float gr = c.g / max(c.r, 1e-4), bg = c.b / max(c.g, 1e-4), sat = (mx - mn) / max(mx, 1e-4);
+    float skin = step(c.g, c.r) * step(c.b, c.g) * smoothstep(0.3, 0.38, gr) * (1.0 - smoothstep(0.78, 0.86, gr)) * smoothstep(0.3, 0.4, bg) * step(0.05, mx);
+    float Y = dot(c, vec3(0.299, 0.587, 0.114)), I = dot(c, vec3(0.596, -0.274, -0.322)), Q = dot(c, vec3(0.211, -0.523, 0.312));
+    vec2 iq = vec2(I * dress.x - Q * dress.y, I * dress.y + Q * dress.x);
+    Y *= mix(dress.z, 1.0, max(smoothstep(0.15, 0.45, sat), smoothstep(0.16, 0.34, Y)));
+    vec3 d = max(vec3(0.0), vec3(Y + 0.956 * iq.x + 0.621 * iq.y, Y - 0.272 * iq.x - 0.647 * iq.y, Y - 1.106 * iq.x + 1.703 * iq.y));
+    diffuseColor.rgb = mix(d, c, skin);
+  }`;
+  // a near person's clothes (their body's material, a copy of its own): rig.dress, below
+  function dressMaterial(m) {
+    const own = m.onBeforeCompile, key = m.customProgramCacheKey;
+    m.onBeforeCompile = (sh, r) => {
+      if (own) own.call(m, sh, r);
+      sh.uniforms.uDress = m.userData.dress;
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uDress;')
+        .replace('#include <map_fragment>', `#include <map_fragment>\n{ vec3 dress = uDress;\n${DRESS_GLSL} }`);
+    };
+    m.customProgramCacheKey = () => `dress|${key ? key.call(m) : ''}`;
+  }
+
   // A scanned cast member's far copy (lib.far, pipeline/crowd_cast.py): its own picture, swung as the dolls are. Lit as
   // the near walker is (litMaterial), with its roughness; the hair cards cut out of the picture, in the shadow too.
   function castMaterial(L, U) {
@@ -909,9 +959,13 @@ ${CROWD_POSE}`)
         .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
 objectNormal = crowdPose(objectNormal, true);`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
-transformed = crowdPose(transformed, false);`);
+transformed = crowdPose(transformed, false);
+vDress = iDress;`)
+        .replace('#include <common>', '#include <common>\nattribute vec3 iDress;\nvarying vec3 vDress;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vDress;')
+        .replace('#include <map_fragment>', `#include <map_fragment>\n{ vec3 dress = vDress;\n${DRESS_GLSL} }`); // (the clothes this walker wears: DRESS)
     };
-    mat.customProgramCacheKey = () => 'crowd-cast';
+    mat.customProgramCacheKey = () => 'crowd-cast-dress';
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: L.map, alphaTest: 0.4 });
     depth.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, uni, { uTime: U.uTime });
@@ -966,7 +1020,7 @@ transformed = crowdPose(transformed, false);`);
     const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
     const UP = new THREE.Vector3(0, 1, 0), at = new THREE.Vector3(), frustum = new THREE.Frustum(), vp = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), camAt = new THREE.Vector3(1e9, 0, 0);
     let culling = false;
-    const SWAP = ['iSkin', 'iHair', 'iTop', 'iLegs', 'iPat', 'aAnim', 'iUmb'];
+    const SWAP = ['iSkin', 'iHair', 'iTop', 'iLegs', 'iPat', 'aAnim', 'iUmb', 'iDress'], tmpDress = new THREE.Vector3();
     function swap(mesh, a, b) {
       const who = mesh.userData.who, pa = who[a], pb = who[b];
       who[a] = pb; who[b] = pa; pa.slot = b; pb.slot = a;
@@ -987,6 +1041,7 @@ transformed = crowdPose(transformed, false);`);
       p.look = randomLook(lib, pickCharacter(lib, style), style);
       const gs = lib.info.ground_speed[lib.info.characters[p.look.character].pack].Walk;
       p.speed = gs * p.look.scale * (0.95 + rnd() * 0.25);
+      p.dress = dressOf(i); // (the clothes they wear, far and near: DRESS)
       p.far = farOf(i, p.look);
       p.fscale = p.far ? realScale(p.far, p.look) : p.look.scale; // (the near walker's own height)
       const ex = p.far ? lib.far[p.far].extras : lib.lod[p.look.character].extras, key = p.far ? '@' + p.far : p.look.character;
@@ -998,6 +1053,7 @@ transformed = crowdPose(transformed, false);`);
       const cast = name[0] === '@', L = cast ? lib.far[name.slice(1)] : lib.lod[name], geo = L.geometry.clone(), n = ps.length;
       for (const a of cast ? ['aAnim'] : ['iSkin', 'iHair', 'iTop', 'iLegs', 'aAnim']) geo.setAttribute(a, new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
       if (!cast) geo.setAttribute('iPat', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+      if (cast) geo.setAttribute('iDress', new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
       geo.setAttribute('iUmb', new THREE.InstancedBufferAttribute(new Float32Array(n), 1).setUsage(THREE.DynamicDrawUsage));
       const { mat, depth } = cast ? castMaterial(L, U) : crowdMaterial(L.extras, U);
       litMaterial(mat);
@@ -1012,7 +1068,7 @@ transformed = crowdPose(transformed, false);`);
       mesh.count = 0;                 // (none drawn until placed)
       ps.forEach((p, k) => {
         p.mesh = mesh; p.slot = k;
-        if (cast) return;
+        if (cast) { dressVec(p.dress, tmpDress); geo.attributes.iDress.setXYZ(k, tmpDress.x, tmpDress.y, tmpDress.z); return; }
         geo.attributes.iPat.setX(k, PAT[p.look.pattern] || 0);
         for (const [a, key] of [['iSkin', 'skin'], ['iHair', 'hair'], ['iTop', 'top'], ['iLegs', 'legs']]) { const c = lin(p.look[key]); geo.attributes[a].setXYZ(k, c.r, c.g, c.b); }
       });
@@ -1090,6 +1146,7 @@ transformed = crowdPose(transformed, false);`);
         if (!lib.tpl[name]) { lib.require(name); continue; }
         const r = (free[name] && free[name].pop()) || person(lib, Object.assign({}, look));
         r.setLook(Object.assign({ pattern: null, pattern2: null, acc: null }, look));
+        if (rn) r.dress(p.dress);
         r.umbOn = false;
         world.add(r.root);
         active.set(i, r);
