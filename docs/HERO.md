@@ -892,3 +892,9 @@ balusters), and `hero`, the streamed level `web/game/hero.js` draws within 420 m
 The level is 1.6 MB and its fine model 1.8 MB. Stills: `tools/scramble_shot.js tokyo tools/views/tokyo-marunouchi.json`.
 Still short: the occlusion is where the generator marks it, not traced; ornament is chamfered blocks, not carved;
 the forecourt's ground is still the landmark model's (no baked contact with the walls).
+
+**Tokyo's own daylight** (`cities/tokyo/city.json` `game.look`). The cool cast on pale surfaces was not the
+materials: the map took the default look preset, whose blue shade turned cream stone, white granite and
+paving blue-green. Tokyo now names the `film` preset with a near-neutral shade, as Shibuya's level does
+(found by the Shibuya hero session). The stone had been tinted warm to counter the cast; it reads as
+cream under the neutral light.
