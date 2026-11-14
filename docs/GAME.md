@@ -686,12 +686,18 @@ shows today's rides, the day's and the week's caps and the rules in a line each.
 
 | Map | Card | What is charged | Source |
 |---|---|---|---|
-| Sydney | Opal | Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes and 30% off trains off-peak are in the table for the day a second station is on the map. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: the fixed-date ones only. |
-| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch: JR East's own pages refused the request. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
+| Sydney | Opal | Trains A$4.33 to 10 km (Circular Quay to Wynyard or St James), 30% off outside the peaks and all of Friday to Sunday. Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: NSW's, Easter, the King's Birthday and Labour Day included, and the weekday given when New Year's Day, Australia Day, Christmas or Boxing Day falls at a weekend. |
+| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch, confirmed by Yahoo! Transit's fare search on 14 November 2026: JR East's own pages refuse automated requests. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
+| Shibuya | Suica | SHIBUYA SKY: ¥3,000 before 15:00 and ¥3,700 from 15:00, the adult price at the counter; the way down is on the ticket. The survey's first visit is on its pass, so the main line never takes a new visitor's whole wallet (¥3,000). | SHIBUYA SKY's ticket page, as read on 14 November 2026 (issue 441). |
 | Shichirigahama | PASMO | The Enoden: ¥200 to the nearer stations, ¥220 beyond, each pair as the railway's table has it. | Enoshima Electric Railway's fare page, read 14 November 2026 (the amounts of 1 October 2019). |
 
-Not charged yet: tickets rather than taps (Queenstown's gondola and steamer, SHIBUYA SKY), whose
-real prices are above the wallet a visitor starts with. Taxis and rides are charged as before.
+A ticket at a gate is a ride of kind `lift` by the lift's id (`routes`), bought at its paying stop
+(`from`) and good for the way down (`return`), priced by the hour where the operator does (`times`:
+`[["HH:MM", fare], ...]`); `first_free` puts a first visit on the survey's pass. Holidays are fixed
+dates, `[m, d, "weekday"]` for one that gives the next free weekday when it falls at a weekend,
+`["easter", days]` and `["nth", month, weekday, n]`. Not charged, by decision: Tokyo's water buses
+(no operator sells a ticket between the map's piers); Queenstown's gondola and steamer wait with
+the parked map. Taxis and rides are charged as before.
 `tools/fares_check.js` prices trips with known answers under Node and every live map's table
 stop to stop; `tools/game_check.js` taps on through the game's own boarding and rides to the cap;
 `tools/fare_shot.js` takes the stills.
@@ -977,6 +983,15 @@ pipeline writes. The only city-specific code is landmark geometry in
     station with another station ahead of it on the map; you stand in its third car by the doors.
     A station on a viaduct (`deck`) is only its platforms' level, not the street under it.
     `tools/trains_step.js` rides one stop and checks the doors open.
+  - **Stations under the ground** (a station's `under`: `{text}`): a station off the drawn line, its
+    `at` the street entrance, where it is boarded and left (`r`, a few metres). A ride to or from one
+    runs in tunnel past the course's `hide_m`, where the cars are not drawn: the game veils the view
+    (`api.veil`, the line's name and the next stop), runs the clock on, and on arrival stands you at
+    the entrance with its line (`under.text`); boarding there veils the view until the car comes out
+    of the tunnel's mouth. Sydney's City Circle: Wynyard (George Street) and St James (Hyde Park, by
+    Elizabeth Street) each side of Circular Quay, their entrances OpenStreetMap's, the tunnel 1.2
+    times the straight line from its mouth to the platforms. A train that ends its run on the map at
+    a station is not offered there. `tools/tunnel_shot.js` takes the ride's stills.
   - A platform strip with no doors along it carries `hold`: nav.js keeps a walker from stepping off its sides
     (Kyoto's JR platforms). A halt's `psd` may carry `w`, the opening's width (Kyoto's Shinkansen gates, 1.8 m).
   - Kyoto (`cities/kyoto/rail.py`): the Shinkansen and the JR lines through Kyoto Station; Sydney's
