@@ -79,6 +79,8 @@ def materials():
         "metal_alu": {"color": (0.6, 0.61, 0.62), "rough": 0.4, "metal": 0.9},
         "metal_galv": {"color": (0.42, 0.44, 0.45), "rough": 0.6, "metal": 0.6},
         "metal_white": {"color": (0.74, 0.74, 0.72), "rough": 0.45, "metal": 0.2},
+        "paint_red": {"color": (0.3, 0.03, 0.035), "rough": 0.4, "metal": 0.2},
+        "paint_blue": {"color": (0.03, 0.07, 0.24), "rough": 0.4, "metal": 0.2},
         "porcelain": {"color": (0.8, 0.79, 0.75), "rough": 0.3},
         "cable": {"color": (0.012, 0.012, 0.013), "rough": 0.6},
         "plastic_black": {"color": (0.02, 0.02, 0.022), "rough": 0.45},
@@ -156,7 +158,7 @@ class Level:
         self.geo = K.Geo()
         self.A = K.Atlas(1024, 512)
         import archkit as ak
-        self.T = ak.Terrain("tetsugaku")
+        self.T = HP.Ground("tetsugaku")
         self.X = HP.Parts(K, self.geo, self.T, self.A)
         self.rng = np.random.default_rng(1922)
         S = json.load(open(os.path.join(ROOT, "web", "data", "tetsugaku", "scene.json")))
@@ -280,8 +282,8 @@ class Level:
             G.box("timber", b + np.r_[t, 0] * s, (np.r_[t, 0], np.r_[r, 0]), (0.1, 0.1, 1.9))
         G.box("timber", b + UP * 1.86, (np.r_[t, 0], np.r_[r, 0]), (1.4, 0.3, 0.06))
         X.panel("board", b + UP * 1.2 - np.r_[r, 0] * 0.06, -r, (1.0, 1.25), "map", back="timber")
-        # vending machines against the houses (OpenStreetMap maps five along this stretch)
-        for k, (d, o) in enumerate(((38.0, 4.9), (62.0, 5.0), (66.5, 5.0), (104.0, 4.9))):
+        # vending machines against the houses (OpenStreetMap maps five along this stretch; three stand here)
+        for k, (d, o) in enumerate(((62.0, 5.0), (66.5, 5.0), (104.0, 4.9)), 1):
             self.vending(X.G(W.xy(d, o), EARTH - 0.02), np.r_[W.at(d)[1], 0], -np.r_[W.at(d)[2], 0], k % 3)
         # the head of the path: a boulder and the timber post that names it
         c = X.G(W.xy(D0 + 1.5, 3.6), EARTH - 0.1)
@@ -312,12 +314,12 @@ class Level:
     def vending(self, c, t, n, kind):
         G, A = self.geo, self.A
         w, d, h = 1.0, 0.72, 1.83
-        G.box("metal_white", c, (t, n), (w, d, h), faces=("+u", "-u", "top", "-v"))
+        G.box(("metal_galv", "paint_red", "paint_blue")[kind % 3], c, (t, n), (w, d, h), faces=("+u", "-u", "top", "-v"))
         f = c + n * (d / 2 + 0.005)
         q = (f - t * (w / 2), f + t * (w / 2), f + t * (w / 2) + UP * h, f - t * (w / 2) + UP * h)
         if np.dot(np.cross(q[1] - q[0], q[3] - q[0]), n) < 0:
             q = (q[1], q[0], q[3], q[2])
-        G.quad("glow_vend", *q, uv=A.uv(f"vend{kind}"), emit=(A.mean[f"vend{kind}"], 0.9), n=n)
+        G.quad("glow_vend", *q, uv=A.uv(f"vend{kind}"), emit=(A.mean[f"vend{kind}"], 0.45), n=n)
 
     def east(self):
         """The east bank: a verge of moss and shrubs along the wall, and the lane."""

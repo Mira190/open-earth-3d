@@ -161,8 +161,35 @@ class Path:
 
 # ---------------------------------------------------------------- the parts
 
+class Ground:
+    """The ground the game draws and walks on: game.json's 5 m terrain, read on each cell's two triangles as
+    web/game/nav.js reads it (pipeline/archkit.Terrain is the viewer's 10 m grid, bilinear: up to 0.3 m off it
+    on a slope, which is enough for the hill to come through a street laid on it)."""
+
+    def __init__(self, city):
+        import base64
+        import json
+        import os
+        root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "data", city)
+        S = json.load(open(os.path.join(root, "scene.json")))
+        t = json.load(open(os.path.join(root, "game.json")))["terrain"]
+        self.nx, self.ny, self.cell = t["nx"], t["ny"], t["cell"]
+        self.x0, self.y1 = S["frame"]["x"][0], S["frame"]["y"][1]
+        self.d = (np.frombuffer(base64.b64decode(t["data"]), dtype="<i2").astype(float) * t["scale"]).reshape(self.ny, self.nx)
+
+    def __call__(self, x, y):
+        c = max(0.0, min(self.nx - 1.001, (x - self.x0) / self.cell))
+        r = max(0.0, min(self.ny - 1.001, (self.y1 - y) / self.cell))
+        c0, r0 = int(c), int(r)
+        fc, fr = c - c0, r - r0
+        a, b, d, e = self.d[r0, c0], self.d[r0, c0 + 1], self.d[r0 + 1, c0], self.d[r0 + 1, c0 + 1]
+        if fc + fr <= 1:
+            return float(a + fc * (b - a) + fr * (d - a))
+        return float(e + (1 - fc) * (d - e) + (1 - fr) * (b - e))
+
+
 class Parts:
-    """Built on a hero_kit.Geo (`geo`), over a terrain T(x, y) -> z (pipeline/archkit.Terrain)."""
+    """Built on a hero_kit.Geo (`geo`), over a ground T(x, y) -> z (Ground)."""
 
     def __init__(self, K, geo, T, atlas=None):
         self.K, self.geo, self.T, self.A = K, geo, T, atlas

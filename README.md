@@ -466,9 +466,11 @@ workflow writes it with the commit and the build time to `web/version.json`, tag
 has no `version.json` and says "Local build". Raise `VERSION` for a new major or minor release.
 
 The same `web/` can also go to Vercel by importing the GitHub repository there: `vercel.json` sets
-everything (no framework, `web` as the output, a build that drops the films and writes
-`version.json` as `0.1.vercel`), and only pushes to main deploy, not the working branches. The
-Hobby plan's 100 MB limit on CLI uploads is why it is a GitHub import and not `vercel deploy`. For a
+everything: no framework, `web` as the output, and a build that writes `version.json` as `0.1.vercel`
+and drops the recorded flyovers under `web/data`, which no page plays since `web/plate.js` replaced
+them. The city films in `web/films` stay; each is `+faststart`, so it streams from its first bytes.
+Only pushes to main deploy, not the working branches. The Hobby plan's 100 MB limit on CLI uploads is
+why it is a GitHub import and not `vercel deploy`. For a
 Claude artifact, `python tools/artifact_bundle.py <dir>` stages a copy that fits its cap on files.
 
 ## Visitors and service levels

@@ -289,6 +289,10 @@ what the player can see, and the rest of the map pays nothing.
 - **One surface, not layers.** The asphalt of the hill road and the lanes that meet it is one mesh on a 1 m
   grid cut to the roads' outline (`hero_open.Parts.cover`), so the terrain cannot show through it and no
   pixel of road is shaded twice; markings and patches are the only overdraw.
+  It is draped on the ground the game draws (`hero_open.Ground`: game.json's 5 m terrain on each cell's two
+  triangles, as `web/game/nav.js` reads it), not on the viewer's 10 m grid, which lies up to 0.3 m off it on
+  this slope: enough for the hill to come through the road at the start. `tools/top_probe.js <city>
+  "x,y;x,y"` names what lies on top at a point of the running game.
 - **Measured.** `tools/mem_check.js kamakura` (an iPhone emulated, low tier) peaks at 379 MB of GPU memory
   with the level loaded, under the 700 MB budget.
 
