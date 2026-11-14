@@ -892,7 +892,7 @@ class Level:
         ys = np.arange(Y0, self.YN + 0.01, L)
         tl = self.rep["syd_seawall"]
         P3 = lambda y, off, z: np.r_[self.edge_frame(y)[0] + self.edge_frame(y)[2] * off, z]
-        zq = lambda y: G.z(self.edge(y) - 1.6, y)
+        zq = lambda y: max(G.z(self.edge(y) - 1.6, y), G.z(self.edge(y) - KERB - 0.05, y)) + 0.025     # (a finger over the pavers that meet it)
         s = 0.0
         for i, (ya, yb) in enumerate(zip(ys[:-1], ys[1:])):
             a, b = P3(ya, 0, 0), P3(yb, 0, 0)

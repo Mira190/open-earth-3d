@@ -296,8 +296,8 @@ quay's concrete face (laid once from kerb to water, so the tide band sits at hig
 
 **Texels where the eye is.** A paving seen from 1.65 m is seen at a grazing angle, and without anisotropic
 filtering its joints smear to a blur four metres ahead however fine the texture: `hero.js` now sets 8x
-anisotropy on a level's texture maps on the high tier and 4x on the medium one (a sampler setting: no
-memory), none on the low tier.
+anisotropy on a level's texture maps on the high tier, 4x on the medium one and 2x on the low one (a sampler
+setting: no memory).
 
 **The city under the level** (issue 426, `cities/sydney/museum.py`). The city's model had the museum as its
 four mapped parts only; the pavilions and the Mordant Wing were the level's shells over nothing. They are in
@@ -321,7 +321,6 @@ Level: 61,000 triangles and 4.2 MB; fine model (the rail's crosses and rings, gl
 Where it still falls short of the bar, as the stills show: the palms are the map's shared palm scaled to the
 surveyed heights, so their trunks are a metre thick where the lawn's cabbage-tree palms are slender (the
 shared tree model's to fix, or a way for a level to stand its own trees in place of the map's: issue filed);
-nothing but the up-lights and the globes lights the museum at night, where the real front is floodlit evenly;
 the glazed entrance does not mirror the quay as the photograph shows; the cafe under the canopies has no
 tables; the balustrade, the benches and the lamp posts do not stop a walker; and none of it has been seen on
 a real GPU or a real phone, only on a software renderer.
