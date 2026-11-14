@@ -137,8 +137,8 @@ for what is already drawn:
 | Light in the shade (`world.js` `shadeLight`) | the sky's colour, a little | the sky's colour, more; sunlit ground throws warm light back up onto walls (the hemisphere light's ground colour) |
 | The sun in the lens | flare 0.55, shafts 0.5 | flare 0.9, shafts 1.0 |
 
-A thunderstorm by day has its own key on top of the preset: the exposure down by three tenths and a harder
-curve (`OEWeather.S.storm`), since the weather lifts the exposure under cloud so that an overcast is never grey,
+A thunderstorm by day has its own key on top of the preset: the exposure down by nearly half (about a stop), a
+harder curve and a cold slate cast (`OEWeather.S.storm`), and the cloud deck's underside darker (`clouds.js` `light`, `look.storm`; issue 381), since the weather lifts the exposure under cloud so that an overcast is never grey,
 which left a storm's sky pale. At night it changes nothing.
 
 The lens pass (`web/lens.js`) gained uniforms, not passes: `uShade` and `uHiTint` (the split tone, formerly two

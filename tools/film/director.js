@@ -221,6 +221,7 @@ window.OEFilmDirector = (function () {
     L.uLift.value = 1 - 0.7 * night;
     L.uContrast.value = gg ? gg.contrast : 0.1 + 0.18 * night;
     if (gg) L.uNightTone.value = G.Wd.U.uNight.value; // blue between the lights, amber in them, as in play
+    if (window.OEAtmos && OEAtmos.stormKey) OEAtmos.stormKey(L, night); // a thunderstorm by day: darker, harder, colder, as in play
     L.uAspect.value = innerWidth / innerHeight;
     L.uTime.value = t;
     // fades: in from space black at the head of the film and of a shot that asks, out at the tail
