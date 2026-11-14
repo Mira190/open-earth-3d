@@ -121,7 +121,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   function sunAt(d, t) {
     const loc = S.utcToLocal(t, d.tz), alt = S.position(t, d.lat, d.lon).altitude;
     return { clock: `${pad(Math.floor(loc.minutes / 60))}:${pad(Math.floor(loc.minutes % 60))}`, zone: loc.zone, alt,
-      state: alt > 0 ? 'up' : alt > -6 ? 'tw' : 'night', word: alt > 0 ? `sun ${alt.toFixed(0)}° up` : alt > -6 ? 'twilight' : 'night' };
+      state: alt > 0 ? 'up' : alt > -6 ? 'tw' : 'night', word: alt > 0 ? 'sun up' : alt > -6 ? 'twilight' : 'night' };
   }
 
   const list = $('ts-list');
@@ -841,14 +841,28 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       const y = (-_v.y * 0.5 + 0.5) * h;
       return { facing, x: (_v.x * 0.5 + 0.5) * w, y, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && y > roof && y < floor };
     });
-    const widths = all.map(([el], i) => (at[i].vis ? el.offsetWidth : 0));
+    // widths that do not depend on how the label was drawn last frame: the name alone, and the name with
+    // the chosen place's coordinates (measured once while they show). Read as drawn, a label that lost its
+    // coordinates for being too wide measured narrow, got them back, measured wide again: on a phone it
+    // flickered every frame with half of it off the screen
+    const widths = all.map(([el], i) => {
+      if (!at[i].vis) return [0, 0];
+      const co = el.querySelector('.co'), cw = co ? co.offsetWidth : 0, ww = el.offsetWidth;
+      if (cw) el._cow = cw + 4;
+      const name = ww - (cw ? el._cow : 0);
+      return [name, name + (el.classList.contains('hot') ? el._cow || 0 : 0)];
+    });
     all.forEach(([el, , always], i) => {
       const { facing, x, y, vis } = at[i];
       if (!vis) { if (!el.hidden) el.hidden = true; return; }
       el.hidden = false;
-      // a label that would run off the right edge goes on the other side of its point; one that
-      // fits on neither side (a long name on a phone) keeps its tick and loses its text
-      const lw = widths[i], back = el.classList.contains('plan') ? -6 : 20;
+      // a label that would run off the right edge goes on the other side of its point; the chosen place's
+      // coordinates go first when they make it too wide; one that fits on neither side (a long name on a
+      // phone) keeps its tick and loses its text
+      const back = el.classList.contains('plan') ? -6 : 20, fits = v => x + v + 10 <= w - 12 || x - v - back >= 12;
+      const noco = widths[i][1] > widths[i][0] && !fits(widths[i][1]);
+      el.classList.toggle('noco', noco);
+      const lw = widths[i][noco ? 0 : 1];
       const right = x + lw + 10 <= w - 12, left = x - lw - back >= 12, flip = !right && (left || x > w / 2);
       el.classList.toggle('flip', flip);
       el.dataset.cramped = right || left ? '' : '1';

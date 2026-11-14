@@ -645,13 +645,24 @@ How it is drawn from that:
   to the rear wall behind a birch parapet, and boxes stand along the side
   walls in tiers (two in the theatre, one in the Concert Hall), six or seven
   seats each on two steps, turned to the stage. Fitted under the shells the
-  theatre seats 693 in the stalls, 260 in the circle and 112 in the boxes
-  (865, 466 and 158 in the real one), the Concert Hall 1,320, 423 and 112.
-  No stair reaches them here: they are drawn but not solid, as their parts,
-  more than 3.5 m over the floor under them, would stand in the collision
-  world's 2 m cells at a walker's head on the galleries; for the same reason
-  the auditorium's walls are solid to 3.4 m and drawn above, and an unseen
-  wall stops a walker along the gallery and the landing.
+  theatre seats 693 in the stalls, 240 in the circle and 98 in the boxes
+  (865, 466 and 158 in the real one), the Concert Hall 1,320, 387 and 84.
+- **The way up to the circle.** From each side foyer's gallery a doorway, 2 m
+  wide in bronze reveals, opens through the auditorium's side wall onto a
+  carpeted landing, and a flight along the wall climbs to the circle's front
+  (six risers in the theatre, ten in the Concert Hall), on a brush box base
+  where the last box would hang, with a bronze rail over the stalls. The
+  circle's risers are 28 cm and it keeps a 1.8 m aisle up each side; one pair
+  of seats in its middle row by the east aisle is kept for you
+  (`{hall}-circle-1`), the show seen from above. The circle is solid and
+  walked as a strip, so the collision world reads it in fine cells; the boxes
+  are still drawn but not solid, as their parts, more than 3.5 m over the
+  floor under them, would stand in its 2 m cells at a walker's head on the
+  galleries. For the same reason the auditorium's walls are solid to 3.4 m
+  and drawn above, and an unseen wall stops a walker along the gallery, the
+  landing, the stairs' open side and the circle's walls. `tools/foyer_walk.js`
+  walks each hall's second route: along the east gallery, through the
+  doorway, up the flight and the circle's east aisle.
 - **The seats** are a moulded white birch shell with wool on the seat and
   the back, rounded at the edges, and a birch standard and armrest shared
   with the next seat (about 150 triangles, instanced); an unseen block over
@@ -735,7 +746,7 @@ numbers stay valid because the geometry they depend on is unchanged.
 
 - **Inside the Opera House.** Three levels where the building has more (no
   southern foyer under the steps, no separate mural and bar levels), no stair
-  to the circle or the boxes, and rooms sized to the shells as modelled here,
+  to the boxes, fewer seats than the real halls, and rooms sized to the shells as modelled here,
   not to the building's own drawings (see "Inside the Opera House").
 - **Opera House shell layout.** The sphere radius and the Concert Hall's 67 m
   are published, and the Joan Sutherland Theatre's 61 m was measured with

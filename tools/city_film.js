@@ -202,6 +202,8 @@ async function encode() {
     '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'slow', '-crf', String(spec.crf || 27), '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-x264-params', 'aq-mode=3',
     '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', mp4]);
   // the poster: the frame the film is remembered by
+  // (in seconds: a frame number past the end clamped to the last frame, which is black after the fade out)
+  if (spec.poster != null && !(spec.poster >= 0 && spec.poster < DURATION)) throw new Error(`film.json poster is ${spec.poster} s: it must be a time inside the film's ${DURATION} s`);
   const pf = Math.min(NF - 1, Math.round((spec.poster != null ? spec.poster : DURATION * 0.3) * FPS));
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', frameOf(pf), '-vf', 'scale=1280:-2', '-q:v', '4', path.join(OUT, `${FILM}.jpg`)]);
   // the cue sheet: shots, titles and chapters on the film's clock

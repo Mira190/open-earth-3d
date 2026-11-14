@@ -245,6 +245,43 @@ def build(city):
         if e.get('skill') and e['skill'] not in SKILLS:
             errs.append(f'{w}: unknown skill')
         said += [(w, t) for t in e.get('lines', [])] + [(w, e.get('text', ''))]
+    # what a ride costs (web/game/fares.js): the operator's own table, with the day it took effect and where it is published
+    fares = life.get('fares')
+    if fares:
+        w = 'fares'
+        for k in ('operator', 'as_of', 'source'):
+            if not fares.get(k):
+                errs.append(f'{w}: needs "{k}" (whose fares, from what day, and where they are published)')
+        if not (fares.get('card') or {}).get('name'):
+            errs.append(f'{w}: needs a card with a name (what you tap or show)')
+        stops = {'ferry': {x['id'] for x in game.get('wharves', [])}, 'rail': {x['id'] for x in stations()} | {x['id'] for v in (game.get('rail') or {}).values() if isinstance(v, dict) for x in v.get('stations', []) if 'id' in x}}
+        routes = {f['route'] for f in game.get('ferries', [])}
+        if not fares.get('rides'):
+            errs.append(f'{w}: needs rides')
+        for kind, r0 in (fares.get('rides') or {}).items():
+            if kind not in stops:
+                errs.append(f'{w}: a ride is one of {sorted(stops)}, not "{kind}"')
+                continue
+            for name, r in ([(None, r0)] if 'routes' not in r0 else list(r0['routes'].items())):
+                wr = f'{w} {kind}{f" {name}" if name else ""}'
+                if name and kind == 'ferry' and name not in routes:
+                    errs.append(f'{wr}: no ferry route of that name ({sorted(routes)})')
+                if not any(k in r for k in ('pairs', 'bands', 'flat')):
+                    errs.append(f'{wr}: needs pairs, bands or a flat fare')
+                for pair, v in (r.get('pairs') or {}).items():
+                    ends = pair.split('>')
+                    if len(ends) != 2 or any(e not in stops[kind] for e in ends):
+                        errs.append(f'{wr}: "{pair}" is not two of the map\'s stops ({sorted(stops[kind])})')
+                    if not (isinstance(v, (int, float)) and v > 0):
+                        errs.append(f'{wr}: "{pair}" needs a fare')
+                if 'bands' in r and r['bands'][-1][0] is not None:
+                    errs.append(f'{wr}: the last band has no upper distance (null)')
+        cp = fares.get('caps') or {}
+        if 'day_low' in cp and not (cp.get('low_weekdays') and cp['day_low'] <= cp.get('day', 0)):
+            errs.append(f'{w}: a lower cap needs its weekdays (0 is Monday) and a daily cap above it')
+        for h in fares.get('holidays', []):
+            if not (1 <= h[0] <= 12 and 1 <= h[1] <= 31):
+                errs.append(f'{w}: holidays are [month, day]')
     for b in life.get('bonds', []):
         for r in b.get('ranks', []):
             g, q = r.get('gives') or {}, r.get('request') or {}
@@ -258,6 +295,8 @@ def build(city):
     if errs:
         raise Bad('\n'.join(f'  {city}: {e}' for e in errs))
     life.pop('note', None)
+    if fares:
+        fares.pop('note', None)
     return json.dumps(life, ensure_ascii=False, separators=(',', ':'))
 
 

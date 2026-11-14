@@ -667,6 +667,35 @@ The **calendar** is events at their
 real places on their real dates, with the hours they run: walk up while one is on and
 <kbd>E</kbd> joins it, and it is kept in the diary. Each event carries the source of its dates.
 
+### Fares
+
+Boarding a ferry or a train taps on with your phone and stepping off taps off (`web/game/fares.js`);
+the fare is the operator's own adult fare, taken from the wallet to the cent or the yen, and the
+reader's card on the HUD says what was paid and why. The reason for charging at all: money had
+too few places to go, and a city's fare rules are facts about it, as its building heights are.
+The reason it does not punish exploring: Sydney caps a day's travel, lower from Friday to
+Sunday, and past the cap every ride that day is free. A wallet short of a fare pays what it has
+and you are let through.
+
+A map's table is `fares` in `cities/<id>/life.json` (checked and built by `pipeline/life.py`):
+`rides` by kind (`ferry`, `rail`; `routes` for two operators on one map), each with `pairs` of
+stops, `bands` by distance or a `flat` fare (`return`: the way back that day is on the ticket);
+`offpeak`, `transfer`, `caps` and `holidays` where the city has them; and the `operator`, the
+day the table is `as_of` and its `source`. The phone's page (the card's name on its home screen)
+shows today's rides, the day's and the week's caps and the rules in a line each.
+
+| Map | Card | What is charged | Source |
+|---|---|---|---|
+| Sydney | Opal | Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes and 30% off trains off-peak are in the table for the day a second station is on the map. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: the fixed-date ones only. |
+| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch: JR East's own pages refused the request. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
+| Shichirigahama | PASMO | The Enoden: ¥200 to the nearer stations, ¥220 beyond, each pair as the railway's table has it. | Enoshima Electric Railway's fare page, read 14 November 2026 (the amounts of 1 October 2019). |
+
+Not charged yet: tickets rather than taps (Queenstown's gondola and steamer, SHIBUYA SKY), whose
+real prices are above the wallet a visitor starts with. Taxis and rides are charged as before.
+`tools/fares_check.js` prices trips with known answers under Node and every live map's table
+stop to stop; `tools/game_check.js` taps on through the game's own boarding and rides to the cap;
+`tools/fare_shot.js` takes the stills.
+
 ### The score
 
 `web/game/music.js` composes the music in code with Web Audio: no recordings and nothing taken
@@ -743,6 +772,7 @@ is free, something on the calendar has started, something is on tomorrow.
 | File | What it holds |
 |---|---|
 | `web/game/life.js` | the save (`oe3d-life` in `localStorage`), the event bus (`life.emit`), the skills' rules, the wallet and fares |
+| `web/game/fares.js` | what a ride costs: the rules (`price`), the tap's card, the phone's page |
 | `web/game/day.js` | the parts of the day, the calendar, the cards, the diary and its pages |
 | `web/game/bonds.js` | ranks, hours, requests, abilities, the People page |
 | `web/game/jobs.js` | the four kinds of job, counters, events, the Work page, the passport's skills |
