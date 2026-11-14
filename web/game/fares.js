@@ -166,7 +166,7 @@
       render() {
         const f = cfg(), s = asOf(f, card(), now()), cap = capOf(f, now()), wk = f.caps && f.caps.week;
         const meter = (label, v, of) => `<div class="lf-fare-meter"><span class="eyebrow">${label}</span><b class="num">${L.fmt(v)}<span> / ${L.fmt(of)}</span></b><div class="lf-tap-bar" style="--k:${Math.min(1, v / of).toFixed(3)}"><i></i></div></div>`;
-        return `<div class="lf-fare-card"><span class="eyebrow">${esc((f.card && f.card.name) || 'Fares')}</span><b class="num">${L.fmt(L.money)}</b><span class="note">${esc((f.card && f.card.text) || '')}</span></div>`
+        return `<div class="lf-fare-card"><span class="eyebrow">Balance</span><b class="num">${L.fmt(L.money)}</b><span class="note">${esc((f.card && f.card.text) || '')}</span></div>`
           + (cap ? meter(cap.name, s.spent, cap.cap) : '') + (wk != null ? meter('This week', s.wspent, wk) : '')
           + (s.trips.length ? `<ul class="lf-fare-trips">${s.trips.slice().reverse().map(t => `<li><span class="num">${hmm(t.t)}</span><span>${esc(t.from)} to ${esc(t.to)}</span><b class="num">${t.due ? L.fmt(t.due) : 'Free'}</b></li>`).join('')}</ul>` : '<p class="note">No rides yet today. Tap on as you board; the fare is taken as you step off.</p>')
           + `<dl class="lf-fare-rules">${F.rules().map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`
