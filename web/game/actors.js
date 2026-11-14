@@ -3148,7 +3148,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.2 * dt));
           lanePos(c.line, sb, c.dir, tmp, c.off + c.lo, c.pv, c.nx ? [nl, nd] : null);
           const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
-          if (bd === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; c.dbgBo = (c.dbgBo || 0) + 1; c.dbgBoAt = `${c.line}/${c.s.toFixed(2)}`; }
+          // (and its whole body where it will stand: the test above, shifted back, leaves its front 0.3 m out, and the lane's
+          // bend into a junction's mouth moves the car sideways as it backs; so it went 0.18 m into a car backing out beside
+          // its nose, Shibuya's car 94, #348)
+          if (bd === 0 && overlaps(c, tmp.x, tmp.y, hx0, hy0, 0.1, 0.1) === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; c.dbgBo = (c.dbgBo || 0) + 1; c.dbgBoAt = `${c.line}/${c.s.toFixed(2)}`; }
           else if (bk && bk.v < 0.5 && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 < 0 && Math.sin(bk.h) * hx0 + Math.cos(bk.h) * hy0 > 0.5 && backOff(bk, c.backoff)) c.backoff -= dt * 0.25; // (the car behind it, stopped and going its way, backs off first)
           else c.backoff -= dt;
           held = true;
