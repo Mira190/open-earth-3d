@@ -240,8 +240,10 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     const L = new THREE.GLTFLoader();
     const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
     const info = await fetchJSON(base + 'people.json');
-    const [aM, aW, cr] = await Promise.all([get(info.anims.M), get(info.anims.W), get(info.crowd)]);
-    const lib = { info, clips: { M: aM.animations, W: aW.animations }, lod: {}, tpl: {}, loading: {} };
+    // the far crowd's copies of the scanned cast (pipeline/crowd_cast.py, issue 475): none, and the far crowd is the dolls
+    const CC = info.crowd_cast, castFile = CC && !/[?&]farcast=off/.test(location.search) ? get(CC.file).catch(e => { console.warn('crowd_cast', e); return null; }) : null;
+    const [aM, aW, cr, fc] = await Promise.all([get(info.anims.M), get(info.anims.W), get(info.crowd), castFile]);
+    const lib = { info, clips: { M: aM.animations, W: aW.animations }, lod: {}, far: {}, tpl: {}, loading: {} };
     cr.scene.traverse(o => {
       if (!o.isMesh) return;
       const g = o.geometry;
@@ -249,6 +251,23 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       g.setAttribute('part', g.getAttribute('_part'));
       lib.lod[o.name] = { geometry: g, extras: o.userData };
     });
+    if (fc) fc.scene.traverse(o => {
+      if (!o.isMesh || !o.material.map) return;
+      const g = o.geometry;
+      g.setAttribute('part', g.getAttribute('_part'));
+      g.deleteAttribute('_part');
+      lib.far[o.name] = { geometry: g, map: o.material.map, extras: o.userData };
+    });
+    // on a phone (quality.js lean) a far copy's picture goes up at half its size: past the nearest walkers a figure
+    // is under 50 px tall on a phone's canvas, and the cast's pictures then hold no more of its memory than the dolls'
+    // palettes did (a quarter of a megabyte for a cast of eight)
+    const QF = window.OEQuality ? OEQuality.city() : null;
+    if (fc && QF && QF.lean && typeof createImageBitmap === 'function') await Promise.all(Object.values(lib.far).map(L => {
+      const t = L.map, im = t.image;
+      if (!im || !im.width) return null;
+      return createImageBitmap(im, { resizeWidth: im.width >> 1, resizeHeight: im.height >> 1, resizeQuality: 'high' })
+        .then(bm => { t.image = bm; t.needsUpdate = true; if (im.close) im.close(); }).catch(() => {});
+    }));
     lib.require = name => lib.loading[name] || (lib.loading[name] = get(`${name}.glb`).then(g => {
       let mesh = null;
       g.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
@@ -808,13 +827,9 @@ ${PAT_GLSL}`)
   }
 
   // ------------------------------------------------------------ the crowd: instanced far, skinned near
-  function crowdMaterial(ex, U) {
-    const pal = colours(ex, {}), cls = new Float32Array(N);
-    ex.classes.forEach((c, i) => { cls[i] = CLS[c] || 0; });
-    const skinRef = (ex.palette[ex.classes.indexOf('skin')] || [0.617])[0];
-    const uni = { uPal: { value: pal }, uCls: { value: cls }, uSkinRef: { value: skinRef },
-      uHip: { value: new THREE.Vector2(...ex.hip) }, uKnee: { value: new THREE.Vector2(...ex.knee) }, uShoulder: { value: new THREE.Vector2(...ex.shoulder) } };
-    const pose = `
+  // the far crowd's walk: the legs and arms swung about the hips, knees and shoulders by the parts each vertex
+  // belongs to (pipeline/fetch_people.py part_of), for the dolls and the scanned cast's far copies alike
+  const CROWD_POSE = `
 attribute float mat; attribute float part; attribute vec3 aAnim; attribute float iUmb;
 uniform float uTime; uniform vec2 uHip; uniform vec2 uKnee; uniform vec2 uShoulder;
 mat3 rx(float a) { float c = cos(a), s = sin(a); return mat3(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c); }
@@ -839,12 +854,19 @@ vec3 crowdPose(vec3 p, bool isNormal) {
   if (!isNormal) p.y += abs(cos(ph)) * 0.035 * amp;
   return p;
 }`;
+
+  function crowdMaterial(ex, U) {
+    const pal = colours(ex, {}), cls = new Float32Array(N);
+    ex.classes.forEach((c, i) => { cls[i] = CLS[c] || 0; });
+    const skinRef = (ex.palette[ex.classes.indexOf('skin')] || [0.617])[0];
+    const uni = { uPal: { value: pal }, uCls: { value: cls }, uSkinRef: { value: skinRef },
+      uHip: { value: new THREE.Vector2(...ex.hip) }, uKnee: { value: new THREE.Vector2(...ex.knee) }, uShoulder: { value: new THREE.Vector2(...ex.shoulder) } };
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.82, metalness: 0 });
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, uni, { uTime: U.uTime });
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
-${pose}
+${CROWD_POSE}
 attribute vec3 iSkin; attribute vec3 iHair; attribute vec3 iTop; attribute vec3 iLegs; attribute float iPat;
 uniform vec3 uPal[${N}]; uniform float uCls[${N}]; uniform float uSkinRef; varying vec3 vPal; varying float vCls; varying float vPatId; varying vec3 vObj;`)
         .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
@@ -866,10 +888,40 @@ ${PAT_GLSL}`)
       Object.assign(sh.uniforms, uni, { uTime: U.uTime });
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
-${pose}`)
+${CROWD_POSE}`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
 transformed = crowdPose(transformed, false);`);
     };
+    return { mat, depth };
+  }
+
+  // A scanned cast member's far copy (lib.far, pipeline/crowd_cast.py): its own picture, swung as the dolls are. Lit as
+  // the near walker is (litMaterial), with its roughness; the hair cards cut out of the picture, in the shadow too.
+  function castMaterial(L, U) {
+    const ex = L.extras;
+    const uni = { uHip: { value: new THREE.Vector2(...ex.hip) }, uKnee: { value: new THREE.Vector2(...ex.knee) }, uShoulder: { value: new THREE.Vector2(...ex.shoulder) } };
+    const mat = new THREE.MeshStandardMaterial({ map: L.map, roughness: 0.7, metalness: 0, alphaTest: 0.4 });
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, uni, { uTime: U.uTime });
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', `#include <common>
+${CROWD_POSE}`)
+        .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+objectNormal = crowdPose(objectNormal, true);`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+transformed = crowdPose(transformed, false);`);
+    };
+    mat.customProgramCacheKey = () => 'crowd-cast';
+    const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: L.map, alphaTest: 0.4 });
+    depth.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, uni, { uTime: U.uTime });
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', `#include <common>
+${CROWD_POSE}`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+transformed = crowdPose(transformed, false);`);
+    };
+    depth.customProgramCacheKey = () => 'crowd-cast-depth';
     return { mat, depth };
   }
 
@@ -886,6 +938,7 @@ transformed = crowdPose(transformed, false);`);
   // as, each the sex of their far figure, instead of the far crowd's own character close up: at eye level a
   // passer-by is a person, with the scanned face, hair and clothes the NPCs have (none: the far crowd's own)
   function crowdRenderer(world, lib, U, P, { near = 14, nearR = 32, style = null, camera = null, real = null, realHeight = null } = {}) {
+    { const m = /[?&]crowdnear=(\d+)/.exec(location.search); if (m) near = +m[1]; } // (to look at the far copies close up: tools/game_shot.js QUERY=?crowdnear=0)
     // a real person's height: the Japanese adult's mean (MHLW National Health and Nutrition Survey 2019: women
     // 1.58 m, men 1.71 m; a city may say otherwise in game.crowd.height) with the far figure's own spread
     const realScale = (rn, look) => {
@@ -907,6 +960,9 @@ transformed = crowdPose(transformed, false);`);
         return list[h % list.length];
       };
     })();
+    // the far copy a walker is drawn as (lib.far): the same cast member it becomes when near, so the step from one to
+    // the other changes the detail, not the person (issue 475); none (no cast, or no copy built): the far crowd's doll
+    const farOf = (i, look) => { const rn = realOf(i, look); return rn && lib.far && lib.far[rn] ? rn : null; };
     const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
     const UP = new THREE.Vector3(0, 1, 0), at = new THREE.Vector3(), frustum = new THREE.Frustum(), vp = new THREE.Matrix4(), ball = new THREE.Sphere(at, 30), camAt = new THREE.Vector3(1e9, 0, 0);
     let culling = false;
@@ -917,7 +973,9 @@ transformed = crowdPose(transformed, false);`);
       const M = mesh.instanceMatrix.array;
       for (let k = 0; k < 16; k++) { const t = M[a * 16 + k]; M[a * 16 + k] = M[b * 16 + k]; M[b * 16 + k] = t; }
       for (const name of SWAP) {
-        const A = mesh.geometry.attributes[name], n = A.itemSize, D = A.array;
+        const A = mesh.geometry.attributes[name];
+        if (!A) continue; // (a cast member's copy has its own picture, not the dolls' colours)
+        const n = A.itemSize, D = A.array;
         for (let k = 0; k < n; k++) { const t = D[a * n + k]; D[a * n + k] = D[b * n + k]; D[b * n + k] = t; }
       }
       mesh.userData.swapped = true;
@@ -925,20 +983,23 @@ transformed = crowdPose(transformed, false);`);
     // into the drawn range, or out of it
     function show(p) { const m = p.mesh; if (p.slot >= m.count) { if (p.slot !== m.count) swap(m, p.slot, m.count); m.count++; } }
     function unshow(p) { const m = p.mesh; if (p.slot < m.count) { if (p.slot !== m.count - 1) swap(m, p.slot, m.count - 1); m.count--; } }
-    for (const p of P) {
+    P.forEach((p, i) => {
       p.look = randomLook(lib, pickCharacter(lib, style), style);
-      const gs = lib.info.ground_speed[lib.info.characters[p.look.character].pack].Walk, ex = lib.lod[p.look.character].extras;
+      const gs = lib.info.ground_speed[lib.info.characters[p.look.character].pack].Walk;
       p.speed = gs * p.look.scale * (0.95 + rnd() * 0.25);
-      p.thigh = (ex.hip[0] - ex.knee[0]) * p.look.scale; // how far the body drops when sitting
-      (groups[p.look.character] = groups[p.look.character] || []).push(p);
-    }
+      p.far = farOf(i, p.look);
+      p.fscale = p.far ? realScale(p.far, p.look) : p.look.scale; // (the near walker's own height)
+      const ex = p.far ? lib.far[p.far].extras : lib.lod[p.look.character].extras, key = p.far ? '@' + p.far : p.look.character;
+      p.thigh = (ex.hip[0] - ex.knee[0]) * p.fscale; // how far the body drops when sitting
+      (groups[key] = groups[key] || []).push(p);
+    });
     const meshes = [];
     for (const [name, ps] of Object.entries(groups)) {
-      const L = lib.lod[name], geo = L.geometry.clone(), n = ps.length;
-      for (const a of ['iSkin', 'iHair', 'iTop', 'iLegs', 'aAnim']) geo.setAttribute(a, new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
-      geo.setAttribute('iPat', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+      const cast = name[0] === '@', L = cast ? lib.far[name.slice(1)] : lib.lod[name], geo = L.geometry.clone(), n = ps.length;
+      for (const a of cast ? ['aAnim'] : ['iSkin', 'iHair', 'iTop', 'iLegs', 'aAnim']) geo.setAttribute(a, new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
+      if (!cast) geo.setAttribute('iPat', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       geo.setAttribute('iUmb', new THREE.InstancedBufferAttribute(new Float32Array(n), 1).setUsage(THREE.DynamicDrawUsage));
-      const { mat, depth } = crowdMaterial(L.extras, U);
+      const { mat, depth } = cast ? castMaterial(L, U) : crowdMaterial(L.extras, U);
       litMaterial(mat);
       const mesh = new THREE.InstancedMesh(geo, mat, n);
       mesh.customDepthMaterial = depth;
@@ -951,10 +1012,12 @@ transformed = crowdPose(transformed, false);`);
       mesh.count = 0;                 // (none drawn until placed)
       ps.forEach((p, k) => {
         p.mesh = mesh; p.slot = k;
+        if (cast) return;
         geo.attributes.iPat.setX(k, PAT[p.look.pattern] || 0);
         for (const [a, key] of [['iSkin', 'skin'], ['iHair', 'hair'], ['iTop', 'top'], ['iLegs', 'legs']]) { const c = lin(p.look[key]); geo.attributes[a].setXYZ(k, c.r, c.g, c.b); }
       });
       mesh.userData.noRefl = true; // (out of the sea's reflection: water.js)
+      mesh.onAfterRender = () => { mesh.userData.drawn = true; };
       world.add(mesh);
       meshes.push(mesh);
     }
@@ -1051,7 +1114,7 @@ transformed = crowdPose(transformed, false);`);
       if (culling && (!frustum.intersectsSphere(ball) || (window.OEVis && !OEVis.seenNext(at.x, -at.z, at.y + 2.3, 2.3)))) { unshow(p); return; } // (or behind the street wall: visibility.js)
       show(p);
       q.setFromAxisAngle(UP, Math.PI - p.h);
-      sc.setScalar(p.look.scale);
+      sc.setScalar(p.fscale);
       m4.compose(at, q, sc);
       p.mesh.setMatrixAt(p.slot, m4);
       const held = umbOn && wantUmb(p);
@@ -1079,9 +1142,11 @@ transformed = crowdPose(transformed, false);`);
     const range = (a, n) => { if (a.clearUpdateRanges) { a.clearUpdateRanges(); a.addUpdateRange(0, n * a.itemSize); } a.needsUpdate = true; };
     function end() {
       for (const m of meshes) {
+        // (a character with nobody drawn this frame costs no draw at all, once its program has been made)
+        m.visible = m.count > 0 || !m.userData.drawn;
         const A = m.geometry.attributes, moved = m.userData.swapped;
         m.userData.swapped = false;
-        if (moved) { for (const name of SWAP) { if (A[name].clearUpdateRanges) A[name].clearUpdateRanges(); A[name].needsUpdate = true; } m.instanceMatrix.clearUpdateRanges && m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.needsUpdate = true; continue; }
+        if (moved) { for (const name of SWAP) { if (!A[name]) continue; if (A[name].clearUpdateRanges) A[name].clearUpdateRanges(); A[name].needsUpdate = true; } m.instanceMatrix.clearUpdateRanges && m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.needsUpdate = true; continue; }
         if (!m.count) continue;
         range(m.instanceMatrix, m.count); range(A.aAnim, m.count);
       }

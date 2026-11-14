@@ -46,7 +46,9 @@ window.OETelemetry = (function () {
     format: 'posthog',     // 'posthog' or 'jsonl'
     key: 'phc_v8YPULU9RMwSuJD4K3WYDM8KaGck9Z2XeAFdKeVRD95B',   // the project's public capture key (it only writes events)
   };
-  const VERSION = 4;   // 4: the device (gpu, cores, mem, os, browser), the frame's tail and cost (f95, f99, cpu_ms, gpu_ms,
+  const VERSION = 5;   // 5: shader errors ("error" kind "shader"), "gl_lost" says how far the load had come, a dead page's
+                       //    "crash" says how much it had downloaded (prev_mb), and no events from a local checkout unless asked
+                       // 4: the device (gpu, cores, mem, os, browser), the frame's tail and cost (f95, f99, cpu_ms, gpu_ms,
                        //    draws, tris_k, passes, px_k, bound), "jank" and "quality" events, the load's weight (kb, req),
                        //    frame rate by spot on "dwell", and a first "time" half a minute into a view
                        // 3: load stages (fetch_ms, decode_ms, build_ms, frame_ms) and the title screen's load
@@ -58,7 +60,9 @@ window.OETelemetry = (function () {
   if (arg && /^https?:\/\//.test(arg) && local) { endpoint = arg; format = 'jsonl'; }
   const asked = (arg && arg !== 'off') && (debug || endpoint !== CONFIG.endpoint);
   const optOut = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
-  const on = arg !== 'off' && !optOut && (debug || (!!endpoint && (asked || !navigator.webdriver)));
+  // (a checkout served on this machine sends nothing unless asked: the checks' software renderer once reported its
+  // slow loads and its "crashes" as a visitor's, on the real devices' dashboard)
+  const on = arg !== 'off' && !optOut && (debug || (!!endpoint && (asked || (!navigator.webdriver && !local))));
   const noop = { on: false, track() {}, flush() {}, view() {}, set() {}, gpu() {}, here() { return null; } };
   if (!on) return noop;
 
@@ -121,7 +125,7 @@ window.OETelemetry = (function () {
   const browser = bm ? { Edg: 'edge', OPR: 'opera', Firefox: 'firefox', Chrome: 'chrome', Version: /Safari\//.test(ua) ? 'safari' : 'other' }[bm[1]] : 'other';
   const conn = navigator.connection || {};
   const base = () => Object.assign({ v: VERSION, sid, device, webgpu: !!navigator.gpu, lang: navigator.language || '', ref,
-    app: (window.OE_VERSION && window.OE_VERSION.version) || '', w: innerWidth, h: innerHeight, dpr: Math.round(devicePixelRatio * 100) / 100,
+    app: (window.OE_VERSION && (window.OE_VERSION.release || window.OE_VERSION.version)) || '', w: innerWidth, h: innerHeight, dpr: Math.round(devicePixelRatio * 100) / 100,
     os, browser, browser_v: bm ? Number(bm[2]) : undefined, net: conn.effectiveType || undefined, save_data: conn.saveData || undefined }, tierOf());
 
   // PostHog's own session for its Web Analytics: a UUIDv7 kept in sessionStorage for the tab, renewed after
@@ -597,7 +601,10 @@ window.OETelemetry = (function () {
   const ALIVE = 'oe3d-alive-', crashes = [];   // the reports wait for the first view, so they carry its tier
   // (lv: the level of a phone's set the page runs at, quality.js level: a death is counted against that level)
   const lvNow = () => { try { const Q = window.OEQuality; return Q && Q.lean() ? Q.city().lighter : undefined; } catch (e) { return undefined; } };
-  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready), stage, lv: lvNow() }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
+  // (mb: what the view has downloaded, decoded, in MB: the browsers that give no heap (Safari, iOS) still say how much a
+  // page held when it died, the memory signal for a phone killed mid-load)
+  const held = () => { let b = 0; try { const t0 = cur ? cur.t0 : 0; for (const r of performance.getEntriesByType('resource')) if (r.startTime >= t0) b += r.decodedBodySize || 0; } catch (e) { /* no Resource Timing */ } return Math.round(b / 1048576); };
+  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready), stage, lv: lvNow(), mb: held() }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
   const gone = () => { try { localStorage.removeItem(ALIVE + sid); } catch (e) { /* storage blocked */ } };
   // This tab's last page load, by the tab's own session storage, which outlives a page that was killed: Safari
   // loads a tab again the moment its page dies, so the note it left is seconds old, and taken for another tab's it
@@ -622,7 +629,7 @@ window.OETelemetry = (function () {
         const was = d && d.n > 0 ? (d.lv != null ? d.lv : 1) : -1, lv = Math.max(was, o.lv != null ? o.lv : 1);
         localStorage.setItem(`oe3d-died-${o.city}`, JSON.stringify({ n: Math.min(9, ((d && d.n) || 0) + 1), t: Date.now(), ready: !!o.ready, lv }));
       } catch (e) { /* storage blocked */ }
-      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_stage: o.stage || undefined, prev_lv: o.lv, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
+      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_stage: o.stage || undefined, prev_lv: o.lv, prev_mb: o.mb, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
     }
   } catch (e) { /* storage blocked */ }
   setInterval(() => { if (!document.hidden && !going) alive(); }, 5000);
@@ -638,7 +645,22 @@ window.OETelemetry = (function () {
   // a view that stops gives its context up on purpose (renderer.dispose), so a loss within a few seconds of
   // a change of view, or once the page is going, is not counted
   let going = false, changed = 0;
-  addEventListener('webglcontextlost', () => { if (going || now() - changed < 4000) return; track('gl_lost', {}); flush(); }, true);
+  // (how far the view had come: a context lost while loading is a GPU out of memory mid-build, one in play a driver's reset)
+  addEventListener('webglcontextlost', () => { if (going || now() - changed < 4000) return; track('gl_lost', { ready: !!(cur && cur.ready), stage: stage || undefined, up_s: Math.round(now() / 1000), mb: held() }); flush(); }, true);
+  // a shader that fails to compile or link: three.js says so on the console and draws the material black or not at
+  // all, with no exception for "error" to catch; the first line and the material's name are kept
+  try {
+    const ce = console.error;
+    console.error = function (m) {
+      try {
+        if (typeof m === 'string' && /^THREE\.WebGL(Program|Shader|Renderer)/.test(m)) {
+          const name = /Material Name: *([^\n]*)/.exec(m), type = /Material Type: *([^\n]*)/.exec(m);
+          err('shader', m.split('\n')[0] + (type ? ` | ${type[1]}` : '') + (name && name[1] ? ` "${name[1]}"` : ''), 'console');
+        }
+      } catch (e) { /* never in the page's way */ }
+      return ce.apply(this, arguments);
+    };
+  } catch (e) { /* a console that cannot be patched */ }
 
   // ---------------------------------------------------------------- the page's life
   addEventListener('hashchange', () => { changed = now(); view(); });

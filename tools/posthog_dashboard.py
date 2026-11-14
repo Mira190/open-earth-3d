@@ -191,6 +191,20 @@ def weight(days):
             f"FROM events WHERE event = 'load' AND toString(properties.ok) = 'true' AND {D3} AND properties.kb IS NOT NULL AND timestamp > now() - INTERVAL {days} DAY GROUP BY ALL ORDER BY loads DESC LIMIT 40")
 
 
+def deaths(days):
+    """Where real devices fail: pages that died on screen, lost WebGL contexts and shader or GL errors, by map, device, GPU and
+    the step of the load they reached (issues 311, 443). Software renderers (the checks') are left out."""
+    return (f"SELECT event, if(event = 'crash', properties.prev_city, properties.city) AS city, properties.device AS device, properties.os AS os, "
+            f"properties.gpu AS gpu, coalesce(toString(if(event = 'crash', properties.prev_stage, properties.stage)), if(event = 'error', toString(properties.kind), '?')) AS step, "
+            f"if(event = 'crash', toString(properties.prev_ready), toString(properties.ready)) AS ready, count() AS n, "
+            f"round(quantile(0.5)(toFloat(if(event = 'crash', properties.prev_up_s, properties.up_s)))) AS up_s_median, "
+            f"round(quantile(0.5)(toFloat(if(event = 'crash', properties.prev_mb, properties.mb)))) AS mb_median, "
+            f"any(left(toString(properties.msg), 120)) AS example "
+            f"FROM events WHERE (event IN ('crash', 'gl_lost') OR (event = 'error' AND properties.kind IN ('shader', 'gl'))) "
+            f"AND coalesce(toString(properties.gpu_class), '') != 'software' AND timestamp > now() - INTERVAL {days} DAY "
+            f"GROUP BY event, city, device, os, gpu, step, ready ORDER BY n DESC LIMIT 60")
+
+
 def trends(series, display='ActionsLineGraph', breakdown=None, date_from='-30d', interval='day', formula=None, props=None):
     src = {'kind': 'TrendsQuery', 'series': series, 'interval': interval, 'dateRange': {'date_from': date_from},
            'properties': props if props is not None else NOT_TEST, 'filterTestAccounts': False,
@@ -247,6 +261,8 @@ INSIGHTS = [
     ('Errors by message (7 days)', 'Script errors, unhandled rejections and failed resources.',
      trends([ev('error', name='Errors')], 'ActionsTable', 'msg', date_from='-7d')),
     ('Lost WebGL contexts per day', 'Contexts lost while a view was showing.', trends([ev('gl_lost', name='Lost')])),
+    ('Where devices fail, last 30 days', 'Pages that died on screen, lost WebGL contexts, shader and GL errors by map, device, GPU and the step of the load reached; '
+     'median seconds up and MB downloaded at the time (prev_mb, telemetry version 5). Software renderers left out.', sql(deaths(30))),
     ('Pages that died on screen per day', 'Reported by the next page load: a tab crash or an out-of-memory kill while the page was visible, by the view it died in.',
      trends([ev('crash', name='Died')], breakdown='prev_view')),
     ('Returning visitors per day', 'Visitors whose browser had opened the site before (visit_n > 1).',

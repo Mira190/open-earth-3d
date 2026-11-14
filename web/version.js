@@ -1,5 +1,7 @@
 // The deployed build's version, written to version.json by the Pages workflow
 // (.github/workflows/pages.yml): the base in VERSION plus the deploy's run number, and its commit.
+// Vercel's build (vercel.json) has no run number: it writes the base alone, so the footer reads v0.1 · <commit>, and
+// a "release" of base+commit for the telemetry's release comparison (telemetry.js app).
 // A local checkout has no version.json, so the footer stays empty and About says "Local build";
 // served from this machine it is not asked for, as the 404 would fail every page check.
 (function () {
