@@ -139,69 +139,31 @@ window.OEQuality = (function () {
   function lean(c = probe()) {
     return (c.touch && Math.min(innerWidth, innerHeight) < 600) || (!!c.memory && c.memory <= 4);
   }
-  // A phone that could not hold the game is given less the next time, instead of dying the same way (issue 443):
-  // iOS ends a tab that grows too large, Safari reloads it, it dies again, and the visitor is left on "A problem
-  // repeatedly occurred". The game says when a load begins (loadBegan: a note in localStorage) and when it has held
-  // (loadHeld: the note goes, as it does when the page is put away or closed). A note still there at the next load
-  // means the page ended without closing, and the phone's level goes up one, for good on this device (?lean=0, 1 or 2
-  // sets it by hand; a level that holds is kept, never raised again):
-  //   0  the phone tier as measured (docs/PERFORMANCE.md, "On a phone")
-  //   1  a nearer map (whole within 350 m, simplified to 1 km), four aerial tiles, a 1024 px shadow map, decorative
-  //      pictures at 512 and the people's at 256, a million pixels
-  //   2  nearer still (250 m and 600 m), two aerial tiles, 0.8 million pixels
-  // The game is the same game at each: nothing is taken out of play.
-  const LOADING = 'oe3d-loading', LEVEL = 'oe3d-lean';
-  const LEVELS = [
-    { groundTiles: 6, near: 500, mid: 1500, shadow: 2048, deco: 1024, npcPx: 512, px: 1.25e6 },
-    { groundTiles: 4, near: 350, mid: 1000, shadow: 1024, deco: 512, npcPx: 256, px: 1.0e6 },
-    { groundTiles: 2, near: 250, mid: 600, shadow: 1024, deco: 512, npcPx: 256, px: 0.8e6 },
-  ];
-  let level = null;
-  function leanLevel() {
-    if (level != null) return level;
-    let v = 0;
-    try { v = +(localStorage.getItem(LEVEL) || 0); } catch (e) { /* storage blocked */ }
-    const q = new URLSearchParams(location.search).get('lean');
-    if (q != null && q !== '') v = +q;
-    return (level = Math.max(0, Math.min(LEVELS.length - 1, Math.round(v) || 0)));
+  // The memory loop (issue 443; docs/PERFORMANCE.md, "A second chance instead of a crash loop"). A phone gives no
+  // reading of the memory it has left; the one signal is that the system killed the tab, which the next page load
+  // finds as a note left behind (telemetry.js) and counts by map. died(map): how many times this map's page died
+  // on this device in the last fourteen days (the map in the address by default). On the low tier each death
+  // makes the next load of that map lighter (city().lighter: 1, 2): a device that is not a phone gets the phone's
+  // set, a phone a smaller map round the player, fewer aerial tiles of its own and smaller decorative pictures; the loader says so.
+  function died(id = (/^#(?:play-)?([a-z0-9-]+)/.exec(location.hash) || [])[1]) {
+    if (!id) return 0;
+    try {
+      const d = JSON.parse(localStorage.getItem(`oe3d-died-${id}`));
+      return d && d.n > 0 && Date.now() - d.t < 14 * 864e5 ? d.n : 0;
+    } catch (e) { return 0; }
   }
-  let note = null;
-  const noteOn = () => { try { if (note) localStorage.setItem(LOADING, JSON.stringify(Object.assign(note, { t: Date.now() }))); } catch (e) { /* storage blocked */ } };
-  const noteOff = () => { try { localStorage.removeItem(LOADING); } catch (e) { /* storage blocked */ } };
-  // the game, as its load begins: returns { level, raised } (raised: the last load died, so this one is lighter)
-  function loadBegan(cityId) {
-    let raised = false;
-    if (lean()) {
-      let o = null;
-      try { o = JSON.parse(localStorage.getItem(LOADING) || 'null'); } catch (e) { o = null; }
-      // (a note of the last day: an older one is another visit's, a newer build's or a phone restarted)
-      if (o && Date.now() - o.t < 864e5 && new URLSearchParams(location.search).get('lean') == null) {
-        const next = Math.min(LEVELS.length - 1, (o.level || 0) + 1);
-        raised = next > leanLevel();
-        if (raised) { level = next; try { localStorage.setItem(LEVEL, String(next)); } catch (e) { /* storage blocked */ } }
-      }
-      note = { city: cityId, level: leanLevel() };
-      if (!document.hidden) noteOn();
-    }
-    return { level: leanLevel(), raised };
-  }
-  function loadHeld() { note = null; noteOff(); }
-  // (a page put away or closed did not die: a tab iOS ends in the background is no fault of the load)
-  document.addEventListener('visibilitychange', () => { if (document.hidden) noteOff(); else noteOn(); });
-  addEventListener('pagehide', noteOff);
-
+  const MAP = [{ size: 250, near: 500, mid: 1500, tall: 25, step: 100 }, { size: 250, near: 350, mid: 1000, tall: 30, step: 100 }, { size: 250, near: 250, mid: 750, tall: 40, step: 100 }];
   function city() {
-    const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name;
-    const thin = name === 'low' && lean(c), lv = thin ? leanLevel() : 0, LV = LEVELS[lv];
-    const s = lv ? Object.assign({}, TIERS[name], { budget: LV.px }) : TIERS[name];
+    const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name, s = TIERS[name];
+    const deaths = name === 'low' ? died() : 0, thin = name === 'low' && (lean(c) || deaths > 0);
+    const lighter = Math.min(2, thin ? deaths - (lean(c) ? 0 : 1) : 0); // (0: the phone's set; 1, 2: lighter still)
     // The high tier's canvas keeps the display's own pixels up to 2x (the lens's one pass and the interface stay
     // sharp) within CANVAS_PX, a 4K display's; the scene inside it is drawn within the tier's budget of pixels
     // (sceneScale: the governor's ceiling, issue 352), which a 1440p display meets at full size. Before, a 4K
     // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
     const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
-    return { name, small: name === 'low', lean: thin, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
-      level: lv,
-      budget: thin ? { gpuMB: 490, heapMB: 620, groundTiles: LV.groundTiles, deco: LV.deco, npcPx: LV.npcPx, map: { size: 250, near: LV.near, mid: LV.mid, tall: 25, step: 100 } } : null, shadow: name === 'high' ? 4096 : thin ? LV.shadow : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+    return { name, small: name === 'low', lean: thin, lighter, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
+      budget: thin ? { gpuMB: 490, heapMB: 620, groundTiles: [6, 4, 2][lighter], map: MAP[lighter] } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
@@ -332,5 +294,5 @@ window.OEQuality = (function () {
     }
     return g;
   }
-  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, leanLevel, loadBegan, loadHeld, governor, TIERS, ORDER, NAMES };
+  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, died, governor, TIERS, ORDER, NAMES };
 })();

@@ -275,7 +275,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     // on a phone (quality.js lean) an NPC's pictures go up at LEAN_PX a side: a 1024 one is 5.3 MB of the GPU with its
     // mipmaps, two or three a character and twenty-odd characters a map (130 MB in Tokyo, issue 406), for someone who
     // stands a few hundred pixels tall at most on a phone's canvas. The characters you play keep theirs
-    const QP = window.OEQuality ? OEQuality.city() : null, lean = !!(QP && QP.lean), LEAN_PX = (lean && QP.budget && QP.budget.npcPx) || 512;
+    const QC = window.OEQuality ? OEQuality.city() : null, LEAN_PX = 512 >> ((QC && QC.lighter) ? 1 : 0), lean = !!(QC && QC.lean); // (256 after the map's page died here: quality.js died)
     const smaller = tpl => {
       const jobs = [];
       tpl.scene.traverse(o => {
@@ -584,7 +584,10 @@ ${PAT_GLSL}`)
       aim(a.la, a.wr, fist.sub(elbow).normalize());
     }
     function play(name, fade = 0.25, once = false) {
-      const a = act[name];
+      // (a clip this character's rig was not built with, a sitting or a running one: its idle instead, or any it has.
+      // Tokyo's people at 576,1269 threw here one run in three)
+      const a = act[name] || act.Idle || act.Walk || Object.values(act)[0];
+      if (!a) return { setEffectiveTimeScale() { return this; } };
       if (cur === a) return a;
       a.reset();
       a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);

@@ -147,7 +147,7 @@ else
         if [ "$TIER" = full ]; then for id in $CITIES; do [ -f "web/data/$id/fishing.json" ] && add_city "$id"; done; else fish=1; fi ;;
       tools/game_check.js|tools/*_step.js|tools/*_walk.js|tools/npc_night.js|tools/ride_queue.js) shared_change game ;;   # a check's own script: that kind of check
       tools/clip_check.js) shared_change clip ;;
-      tools/mem_check.js|tools/lean_check.js) shared_change mem ;;
+      tools/mem_check.js) shared_change mem ;;
       tools/tour_check.js) shared_change tour ;;
       tools/pin_clock.js) shared_change "game clip" ;;
       web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) shared_change ;;
@@ -246,10 +246,6 @@ mem_step() {
   if timeout 1800 $X node tools/mem_check.js "$c" >"$OUT/$c-mem.log" 2>&1; then
     echo "ok   mem    $c   ($(grep -o 'GPU peak [0-9]* MB' "$OUT/$c-mem.log" | head -1), $(grep -o '[0-9]* at the end after a collection' "$OUT/$c-mem.log" | head -1) heap)"
   else echo "FAIL mem    $c   ($(grep -o 'over [0-9]*' "$OUT/$c-mem.log" | paste -sd ';' - | head -c120); see $OUT/$c-mem.log)"; fi
-  # and a phone whose load died comes back one level lighter, to its first frame (tools/lean_check.js, issue 443)
-  if timeout 1200 $X node tools/lean_check.js "$c" >"$OUT/$c-lean.log" 2>&1; then
-    echo "ok   lean   $c   (a load after a death is one level lighter, twice, and reaches its first frame)"
-  else echo "FAIL lean   $c   ($(grep -m1 '^FAIL' "$OUT/$c-lean.log" | cut -c1-140); see $OUT/$c-lean.log)"; fi
 }
 tour_step() {
   local c=$1 rc

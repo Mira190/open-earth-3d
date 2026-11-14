@@ -84,11 +84,8 @@ window.OETelemetry = (function () {
   const ref = (() => { try { const r = document.referrer && new URL(document.referrer); return r && r.host !== location.host ? r.host : ''; } catch (e) { return ''; } })();
   // the quality tier and WebGL 2, asked once (the probe makes a context) when quality.js has loaded
   let gpu = null;
-  // (lean: the lighter level a phone that could not hold the game was given, quality.js leanLevel; it can rise as a
-  // game's load begins, so it is read each time)
-  const leanOf = () => { try { const Q = window.OEQuality; if (gpu && Q && Q.leanLevel && Q.lean()) gpu.lean = Q.leanLevel(); } catch (e) { /* no tier */ } return gpu; };
   const tierOf = () => {
-    if (gpu) return leanOf();
+    if (gpu) return gpu;
     const Q = window.OEQuality;
     if (!Q) return {};
     try {
@@ -96,7 +93,7 @@ window.OETelemetry = (function () {
       gpu = { tier: t.name, tier_chosen: t.chosen, gl2: !!c.gl2, software: !!c.software, gpu: gpuName(c.renderer) || undefined, gpu_class: gpuClass(c.renderer),
         cores: c.cores || undefined, mem: c.memory || undefined, max_tex: c.maxTex || undefined };
     } catch (e) { gpu = {}; }
-    return leanOf();
+    return gpu;
   };
   // the GPU as the browser names it, cut down to its family and model: "ANGLE (Intel, Intel(R) Iris(R) Xe
   // Graphics (0x000046A6) Direct3D11 vs_5_0 ps_5_0, D3D11)" becomes "intel iris xe graphics". No driver
@@ -600,14 +597,26 @@ window.OETelemetry = (function () {
   const ALIVE = 'oe3d-alive-', crashes = [];   // the reports wait for the first view, so they carry its tier
   const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready), stage }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
   const gone = () => { try { localStorage.removeItem(ALIVE + sid); } catch (e) { /* storage blocked */ } };
+  // This tab's last page load, by the tab's own session storage, which outlives a page that was killed: Safari
+  // loads a tab again the moment its page dies, so the note it left is seconds old, and taken for another tab's it
+  // went uncounted; the second load was then as heavy as the first, died the same way, and left the visitor on
+  // "A problem repeatedly occurred" (issue 443). A note of this tab's own is a dead page's at any age.
+  let before = null;
+  try { before = sessionStorage.getItem('oe3d-sid'); sessionStorage.setItem('oe3d-sid', sid); } catch (e) { /* storage blocked */ }
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
       if (!k || k.indexOf(ALIVE) || k === ALIVE + sid) continue;
       let o = null; try { o = JSON.parse(localStorage.getItem(k)); } catch (e) { o = null; }
       const age = o ? Date.now() - o.t : 1e12;
-      if (age < 30000) continue;
+      if (age < 30000 && k !== ALIVE + before) continue; // (another tab's, still alive; this tab's own last page is dead whatever its age)
       localStorage.removeItem(k);
+      // the memory loop (quality.js died; issue 443): a map whose page died on this device loads lighter the next
+      // time, one step for each death, so that a phone it killed once is not killed the same way again
+      if (o && o.city && (o.view === 'game' || o.view === 'city') && age < 14 * 864e5) try {
+        let d = null; try { d = JSON.parse(localStorage.getItem(`oe3d-died-${o.city}`)); } catch (e) { d = null; }
+        localStorage.setItem(`oe3d-died-${o.city}`, JSON.stringify({ n: Math.min(9, ((d && d.n) || 0) + 1), t: Date.now(), ready: !!o.ready }));
+      } catch (e) { /* storage blocked */ }
       if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_stage: o.stage || undefined, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
     }
   } catch (e) { /* storage blocked */ }

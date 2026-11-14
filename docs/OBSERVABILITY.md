@@ -19,7 +19,7 @@ already exposes (`window.__city`, `window.__game`, `window.__reef`).
 | `mode` | the game leaves its title screen (`start: true`), or the player changes how they move (on foot, car, ride, heli, ferry, rail, photo; at a reef: walk, swim, snorkel, scuba, boat) | `from`, `to` |
 | `quest` | the game's tracked quest moves a step, or a quest is done | `action` (`step` / `done`), `from`, `stamps` |
 | `exit` | the page closes (`pagehide`) | `page_s`, `view_s`, `views`, `idle_s` (since the last input), `ready`, `tour_max`, `hidden` |
-| `crash` | a page load finds that an earlier one of this browser died while on screen | `prev_view`, `prev_city`, `prev_spot`, `prev_mode`, `prev_ready`, `prev_stage` (the last step of the load the page named), `prev_up_s`, `ago_s`; a phone's events also carry `lean`, its lighter level (quality.js `leanLevel`) |
+| `crash` | a page load finds that an earlier one of this browser died while on screen | `prev_view`, `prev_city`, `prev_spot`, `prev_mode`, `prev_ready`, `prev_stage` (the last step of the load the page named), `prev_up_s`, `ago_s` |
 | `page` | once per page load | `ttfb`, `fcp`, `dom` (ms) |
 | `error` | a script error, an unhandled rejection or a resource that failed (5 per page at most) | `kind`, `msg`, `src` |
 | `gl_lost` | a WebGL context is lost, except in the seconds after a view stops and gives its context up | |
