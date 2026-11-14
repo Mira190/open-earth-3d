@@ -52,6 +52,8 @@ window.OpenEarthGame = async function game(cityId) {
     D.Tfine = Tfine; // the walls of the buildings reach down to whichever ground is drawn
     if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.settleUnderFloors(D.T, Tfine, D.LM); // (the far ground under the landmarks' floors at every distance, #286; ?settle=off: without, to compare)
     if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.carveUnderWater([Tfine, D.T], D.LM); // (and under the landmarks' ponds and moats, #399)
+    // (and the ground drawn, not walked, deeper under the moats' narrow water: copies for the tiles, #399)
+    if (new URLSearchParams(location.search).get('settle') !== 'off' && OEWorld.deepenUnderWater) { const dr = OEWorld.deepenUnderWater([Tfine, D.T], D.LM); if (dr) { D.drawTfine = dr[0]; D.drawT = dr[1]; } }
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
@@ -346,7 +348,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return tex;
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
-    const g = Wd.tileGeometry(scene.ground[i], T), coarse = Wd.groundMeshes[i];
+    const g = Wd.tileGeometry(scene.ground[i], D.drawTfine || T), coarse = Wd.groundMeshes[i];
     const m = Wd.groundMesh(g, coarse.material);
     m.receiveShadow = true;
     world.add(m);
@@ -5424,6 +5426,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (window.OEVis) { const sy = Wd.sunDir.y; OEVis.cot = sy > 0.03 ? Math.sqrt(1 - sy * sy) / sy : 0; } // (how far a shadow reaches, for the crowd's and the cars' culling)
     if (window.OEVis) OEVis.at(camera); // what cannot be seen from here is left out (visibility.js)
     if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
+    glCheck(now);
     care.drawn();
     if (framesDrawn < 2 && ++framesDrawn === 2) firstDrawn();
     else if (framesDrawn === 1) try { performance.mark('oe:frame', { detail: { view: 'game', city: cityId } }); } catch (e) { /* no User Timing */ } // the load's first frame (telemetry.js)
@@ -6397,6 +6400,24 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } else el.hidden = true;
   }
 
+  // A draw WebGL refuses is not drawn, and nothing else says so: the ground and the walls were missing on a page
+  // opened after dark (world.js shadowDrawnOnce) while every check passed. Every three seconds the context is
+  // asked for its error; one is reported once, with the shadow map's state, and the map is drawn into again,
+  // which is the cure for the case known. (getError waits on the GPU process: not a call for every frame.)
+  let glAsked = 0, glTold = false;
+  function glCheck(now) {
+    if (now - glAsked < 3000) return;
+    glAsked = now;
+    const gl = renderer.getContext(), e = gl.getError();
+    if (!e || e === gl.CONTEXT_LOST_WEBGL) return;
+    const st = Wd.shadowState ? Wd.shadowState() : {};
+    if (Wd.shadowRedraw) Wd.shadowRedraw();
+    if (glTold) return;
+    glTold = true;
+    const msg = `WebGL error 0x${e.toString(16)} after a frame: shadow map ${st.tex ? 'on the GPU' : 'not on the GPU'}, ${st.size} px, pass ${st.auto ? 'on' : 'off'}; extras ${gov.extras}, scale ${gov.scale}; ${fmtMin(clock.min)}`;
+    console.warn(msg);
+    if (window.OETelemetry && OETelemetry.track) OETelemetry.track('error', { kind: 'gl', msg, src: 'game.js glCheck' });
+  }
   warm.finally(() => requestAnimationFrame(frame)); // (the first draw waits for the shaders, compiled in slices: world.js compile)
   function advance(seconds, hold = []) {
     for (const c of hold) keys.add(c);
