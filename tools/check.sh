@@ -134,6 +134,9 @@ else
     case "$f" in
       cities/index.json|web/data/cities.json) title=1 ;;   # the globe's list of cities
       cities/*/postcards.json|web/data/*/postcards/*|web/data/postcards.json|web/postcards.js|tools/postcards_*|tools/postcards.sh|pipeline/postcards.py) title=1 ;;   # the title's postcards (tools/postcards_check.js), not the cities' games
+      web/data/*/d/*)   # a phone's district of a map (pipeline/district.py): what a phone loads, so its memory check
+        id=${f#web/data/}; id=${id%%/*}; is_in "$id" "$CITIES" && add_city "$id" mem ;;
+      pipeline/district.py) shared_change mem ;;
       cities/*/*|web/data/*/*)
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;

@@ -55,8 +55,20 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 1444008,
-   "game": 1888709
+   "model": 1444017,
+   "game": 1888718
+  },
+  "lean_pack": {
+   "dir": "d/",
+   "x": [
+    -700,
+    1100
+   ],
+   "y": [
+    -1300,
+    1500
+   ],
+   "bytes": 1115493
   }
  },
  {
@@ -96,6 +108,18 @@
   "load_bytes": {
    "model": 2970762,
    "game": 3458153
+  },
+  "lean_pack": {
+   "dir": "d/",
+   "x": [
+    -500,
+    1300
+   ],
+   "y": [
+    0,
+    2300
+   ],
+   "bytes": 2363192
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -844,8 +868,20 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 4040717,
-   "game": 4601079
+   "model": 4040724,
+   "game": 4601086
+  },
+  "lean_pack": {
+   "dir": "d/",
+   "x": [
+    -350,
+    1250
+   ],
+   "y": [
+    -2100,
+    450
+   ],
+   "bytes": 1534709
   },
   "group_meta": {
    "native": "\u6771\u4eac",

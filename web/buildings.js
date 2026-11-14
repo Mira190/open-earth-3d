@@ -26,7 +26,7 @@ window.OEBuildings = (function () {
   function geoOptions(D, { lin, SRC, small = false, cells = null }) {
     const scene = D.scene, colours = {};
     for (const h of GEO.colourNames(D.B)) { const c = lin(h); colours[h] = [c.r, c.g, c.b]; }
-    return { T: D.T, Tfine: D.Tfine || null, frame: scene.frame, hidden: scene.hidden_solids || [], demolished: (D.LM && D.LM.demolished) || [],
+    return { T: D.T, Tfine: D.Tfine || null, frame: scene.worldFrame || scene.frame, hidden: scene.hidden_solids || [], demolished: (D.LM && D.LM.demolished) || [],
       region: scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : ''),
       photoOK: !!(scene.ground && scene.ground.length), SRC, small, colours, cells };
   }
@@ -352,7 +352,7 @@ window.OEBuildings = (function () {
   // pictures (pics: the overview first, then the tiles near the start, then the rest once they come, issue 335),
   // sent to the GPU when each of those three is in rather than at every tile; or, without them, every tile
   function loadPhoto(scene, renderer, pics, show, letGo = false) {
-    const fr = scene.frame, w = fr.x[1] - fr.x[0], h = fr.y[1] - fr.y[0];
+    const fr = scene.worldFrame || scene.frame, w = fr.x[1] - fr.x[0], h = fr.y[1] - fr.y[0];
     const max = Math.min(4096, renderer.capabilities.maxTextureSize || 4096);
     const k = Math.min(1, max / Math.max(w, h));
     const cv = document.createElement('canvas');

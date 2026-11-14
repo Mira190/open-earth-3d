@@ -1,0 +1,60 @@
+{
+ "note": "A phone's district of this map (pipeline/district.py): the packs here are cut from the whole map's and are never edited by hand.",
+ "v": 1,
+ "x": [
+  -700,
+  1100
+ ],
+ "y": [
+  -1300,
+  1500
+ ],
+ "km2": 5.04,
+ "of_km2": 14.4,
+ "kept": {
+  "buildings": 3254,
+  "solids": 3522,
+  "skyline": 293,
+  "meshes": 277,
+  "skyline_meshes": 0,
+  "materials": 130,
+  "quests": [
+   "quay",
+   "shells",
+   "arch",
+   "under",
+   "sun",
+   "lens",
+   "chips",
+   "done"
+  ]
+ },
+ "cut": {
+  "npcs": [
+   "noor"
+  ],
+  "viewpoints": [
+   "barangaroo-reserve"
+  ],
+  "surfaces": 4,
+  "wharves": [
+   "barangaroo",
+   "pyrmont-bay",
+   "north-sydney",
+   "neutral-bay"
+  ]
+ },
+ "files": {
+  "buildings.bin": 295053,
+  "game.bin": 209487,
+  "landmarks.bin": 391207,
+  "places.bin": 92437,
+  "scene.bin": 58492,
+  "shore.png": 94645,
+  "vis.bin": 76220,
+  "woods.webp": 232350
+ },
+ "bytes": 1449891,
+ "whole_bytes": 1813999,
+ "sha256": "0b86b77173eadef23fca17dbc67209939672fe4796a0ade7af81307fa9488f54"
+}
