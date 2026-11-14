@@ -34,7 +34,10 @@ def main():
     tris, verts = geo.count()
     print(f"{meta['id']}: {tris} triangles, {verts} vertices, {len(geo.parts)} materials, {len(geo.emitters)} lights to bake ({time.time() - t0:.1f} s)")
     t1 = time.time()
-    bakes = K.bake(geo, gain=meta.get("bake_gain", 0.6))
+    # the sky's light, occluded (meta "sky_rays": rays a vertex; hero_kit.sky_occlusion), in place of the corners' rule of thumb
+    rays = meta.get("sky_rays")
+    sky = (lambda g: K.sky_occlusion(g, [geo], rays=rays, reach=meta.get("sky_reach", 5.0), strength=meta.get("sky_strength", 1.0))) if rays else (lambda g: None)
+    bakes = K.bake(geo, gain=meta.get("bake_gain", 0.6), sky=sky(geo))
     print(f"baked in {time.time() - t1:.1f} s")
     out_dir = os.path.join(ROOT, "web", "data", a.city, "hero")
     os.makedirs(out_dir, exist_ok=True)
@@ -53,7 +56,7 @@ def main():
             raise SystemExit(f"fine parts must be in plain materials (no texture): {bad}")
         ft, fv = fine.count()
         print(f"{meta['id']} fine: {ft} triangles, {fv} vertices, {len(fine.parts)} materials")
-        models.append((fine, K.bake(fine, gain=meta.get("bake_gain", 0.6)), f"{meta['id']}_fine.glb", meta.get("fine_cell", 24.0)))
+        models.append((fine, K.bake(fine, gain=meta.get("bake_gain", 0.6), sky=sky(fine)), f"{meta['id']}_fine.glb", meta.get("fine_cell", 24.0)))
     for g, bk, fname, cell in models:
         K.build_blender(g, bk, materials, atlas_path, name=meta["id"], origin=origin, cell=cell)
         glb = os.path.join(out_dir, fname)

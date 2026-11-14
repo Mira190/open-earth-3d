@@ -1,15 +1,17 @@
 """The surfaces of Circular Quay West that no scanned texture had, drawn here (cities/sydney/hero.py registers
 them with blender/hero_kit.py): each a colour, a normal and a roughness image that repeat without a seam.
 
-  herring     the promenade's unit pavers, 200 x 100 mm in a herringbone, buff-grey with the odd browner one
+  herring     the promenade's unit pavers, 200 x 100 mm in a herringbone, buff-grey in close tones of one family
               (photographs: docs/HERO.md); 1.6 m to a repeat, so a texel is 1.6 mm, a pixel's width on the
               ground two metres from a walker's eye at 1440 px
   header      the same pavers as a soldier course: the darker bands across the promenade
   sandstone   Maroubra sandstone as the museum is faced with it: sawn ashlar in 380 mm courses, the joints a
               hairline, each block its own tone with the bed's faint banding; 3.04 m to a repeat
-  parapet     the same stone under a coping, with the dark runs rain leaves: 6.08 m along by 3.04 m, laid once up a band
-  seawall     the quay's concrete face: board marks, a tide band, weed at the water; 8 m along by 4 m
-  concrete    the Mordant Wing's precast panels' faint cloud, and the seat wall's
+  seawall     the quay's concrete face: board marks, pour lines, wet below high water; 8 m along by 4 m
+  concrete    precast concrete, even: the Mordant Wing's panels, the seat wall, the kerb
+
+Every change of tone has a cause in how the thing is made (a paver, a course, a joint, a pour, the tide): nothing
+is aged, stained or clouded (AGENTS.md, "The bar").
 
 Nothing here is taken from a photograph: every image is noise, shaped.
 """
@@ -72,18 +74,13 @@ def _pavers(d, n, cells, brick, seed):
     tone = _hash(*idm)
     hue = _hash(idm[1], idm[0] + 7)
     base = np.array([138.0, 130.0, 119.0])
-    col = base[None, None, :] * (0.93 + 0.14 * tone)[..., None]
-    brown = (hue > 0.88)[..., None]
-    col = np.where(brown, col * np.array([1.0, 0.95, 0.89]), col)
-    pale = (hue < 0.1)[..., None]
-    col = np.where(pale, col * 1.05, col)
+    col = base[None, None, :] * (0.965 + 0.07 * tone)[..., None]      # each paver its own fired tone, close: one family
     grain = _noise(rng, n, n, 0.6)                        # the aggregate
-    cloud = _noise(rng, n, n, 2.0)                        # wear and dirt, metres across
-    col *= (1 + 0.045 * grain + 0.05 * cloud)[..., None]
+    col *= (1 + 0.04 * grain)[..., None]
     col *= (0.94 + 0.06 * chamfer)[..., None]
     col = col * (1 - joint[..., None]) + np.array([92.0, 86.0, 77.0]) * joint[..., None] * (1 + 0.1 * grain[..., None])
     height = chamfer * 2.2 - joint * 2.0 + grain * 0.22 + (tone - 0.5) * 0.5
-    rough = 0.72 + 0.1 * tone - 0.07 * np.clip(cloud, -1, 1) + 0.2 * joint
+    rough = 0.74 + 0.06 * tone + 0.2 * joint
     _save(d, col, height, rough, 1.3)
 
 
@@ -142,8 +139,7 @@ def _sandstone(rng, h, w, courses, mean_len):
     col[..., 2] *= 1 - 0.06 * (warm - 0.5)
     bed = _noise(rng, h, w, 1.5, aniso=(1.0, 0.12))       # the bed's banding, along the course
     pit = _noise(rng, h, w, 0.4)
-    cloud = _noise(rng, h, w, 2.2)
-    col *= (1 + 0.05 * bed + 0.025 * pit + 0.04 * cloud)[..., None]
+    col *= (1 + 0.04 * bed + 0.02 * pit)[..., None]
     joint = np.clip(1.0 - edge / 1.1, 0, 1)
     col = col * (1 - 0.3 * joint[..., None])
     height = -joint * 1.4 + pit * 0.18 + bed * 0.12
@@ -156,57 +152,36 @@ def sandstone(d, n=1024):
     _save(d, col, height, rough, 1.0)
 
 
-def parapet(d, w=1024, h=512):
-    """Sandstone under a coping: 8 courses up, and the runs of dirt the rain carries down from the coping's joints."""
-    rng = np.random.default_rng(22)
-    col, height, rough = _sandstone(rng, h, w, 8, w / 5.2)
-    y = np.linspace(0, 1, h)[:, None]                     # 0 at the top
-    runs = np.clip(_noise(rng, 1, w, 0.9)[0] * 0.5 + 0.55, 0, 1.3)[None, :]      # where the water comes off
-    fine = np.clip(_noise(rng, h, w, 1.0, aniso=(0.05, 1.0)) * 0.5 + 0.5, 0, 1)   # streaks, long down the face
-    reach = 0.25 + 0.75 * runs
-    dark = np.clip(1 - y / reach, 0, 1) ** 1.5 * (0.45 + 0.55 * fine)
-    dark = np.clip(dark + 0.5 * np.clip(1 - y / 0.07, 0, 1), 0, 1) * 0.62
-    col = col * (1 - dark[..., None]) + np.array([64.0, 54.0, 42.0]) * dark[..., None]
-    _save(d, col, height, rough + 0.05 * dark, 1.0)
-
-
 def seawall(d, w=1024, h=512):
-    """Cast concrete, 8 m by 4 m: lift lines, board marks, rust weeps, the tide's dark band and green foot."""
+    """Cast concrete, 8 m by 4 m, laid once from the kerb down: the boards' grain and the pour lines a metre apart,
+    and below high water the wall wet and darker, as a tidal wall is. Clean: no runs, no weed."""
     rng = np.random.default_rng(23)
-    y = np.linspace(0, 1, h)[:, None]                     # 0 at the coping, 1 under the water
+    y = np.linspace(0, 1, h)[:, None]                     # 0 at the kerb, 1 under the water
     boards = _noise(rng, h, w, 1.2, aniso=(1.0, 0.05))
-    cloud = _noise(rng, h, w, 2.0)
     pit = _noise(rng, h, w, 0.3)
-    streak = np.clip(_noise(rng, h, w, 1.1, aniso=(0.04, 1.0)), -1.5, 2.0)
-    g = 150 + 9 * boards + 10 * cloud + 4 * pit - 16 * np.clip(streak, 0, 2) * (0.3 + 0.7 * y)
+    g = 150 + 5 * boards + 3 * pit
     col = np.dstack([g * 1.0, g * 0.985, g * 0.95])
     lifts = np.clip(1 - np.abs(((y * 4.0) % 1.0) - 0.5) * h / 4.0 / 1.5, 0, 1) * np.ones((1, w))     # pour joints, a metre apart
-    col *= (1 - 0.25 * lifts)[..., None]
-    tide = np.clip((y - 0.52) / 0.1, 0, 1) * (0.75 + 0.25 * np.clip(cloud, -1, 1))      # wet and dark below high water
-    col = col * (1 - 0.55 * tide[..., None]) + np.array([40.0, 44.0, 38.0]) * 0.55 * tide[..., None]
-    weed = np.clip((y - 0.74) / 0.1, 0, 1) * np.clip(0.6 + 0.5 * _noise(rng, h, w, 1.4), 0, 1)
-    col = col * (1 - 0.7 * weed[..., None]) + np.array([52.0, 66.0, 34.0]) * 0.7 * weed[..., None]
-    shells = (pit > 1.9) & (y > 0.6) & (y < 0.8)          # oysters at the tide line
-    col[shells] = (176, 170, 156)
+    col *= (1 - 0.22 * lifts)[..., None]
+    tide = np.clip((y - 0.55) / 0.03, 0, 1) * np.ones((1, w))        # wet below high water
+    col = col * (1 - 0.42 * tide[..., None])
     height = boards * 0.5 + pit * 0.3 - lifts * 1.2
-    rough = 0.82 - 0.4 * tide + 0.2 * weed
+    rough = 0.82 - 0.45 * tide
     _save(d, col, height, rough, 1.0)
 
 
 def concrete(d, n=512):
     """Precast concrete, off-form: a faint cloud and pinholes. Near white, so that its tint is its colour."""
     rng = np.random.default_rng(24)
-    cloud = _noise(rng, n, n, 2.0)
     pit = _noise(rng, n, n, 0.3)
-    g = 232 + 5 * cloud + 2.0 * pit - 14 * (pit > 2.6)
-    _save(d, np.dstack([g, g, g * 0.995]), pit * 0.12 - 1.0 * (pit > 2.6), 0.62 + 0.04 * cloud, 1.0)
+    g = 232 + 2.0 * pit - 10 * (pit > 2.8)
+    _save(d, np.dstack([g, g, g * 0.995]), pit * 0.12 - 1.0 * (pit > 2.8), np.full((n, n), 0.62), 1.0)
 
 
 SETS = {
     "syd_herring": (herring, 1.6),
     "syd_header": (header, 0.8),
     "syd_sandstone": (sandstone, 3.04),
-    "syd_parapet": (parapet, 6.08),
     "syd_seawall": (seawall, 8.0),
     "syd_concrete": (concrete, 2.4),
 }
