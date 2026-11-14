@@ -148,8 +148,8 @@
 
   // a growable set of packed vertex arrays: byte normals and colours, 16-bit style and storey
   // data, so a city of a million vertices takes about 45 MB rather than 80
-  function Buf() {
-    let cap = 1 << 16, n = 0;
+  function Buf(cap = 1 << 16) {
+    let n = 0;
     let P = new Float32Array(cap * 3), N = new Int8Array(cap * 3), C = new Uint8Array(cap * 3), F = new Float32Array(cap * 2),
       I = new Uint16Array(cap * 4), E = new Uint16Array(cap * 3), B = new Float32Array(cap), S = new Uint8Array(cap);
     // An array made longer or cut to len elements. Where the engine can resize a buffer (ArrayBuffer.transfer) the
@@ -239,8 +239,23 @@
   // SRC (height source codes), small, colours (sRGB hex -> linear [r, g, b] for every colour colourNames()
   // lists: the page's lin()), triangulate (contour, holes) -> faces, slice (ms between pauses, 0: none),
   // progress (f) }. Resolves with the vertex arrays and the decks' heights by solid (for the rooftop plant).
+  //
+  // cells: { size, at: [x, y], near, mid, tall, have: { cell: lod } } builds the map round the player instead of
+  // whole (issue 443: what is not seen costs nothing; docs/PERFORMANCE.md, "A map built round the player"). The
+  // solids are sorted into a grid of `size` metres and each cell is built on its own, at the level of detail its
+  // distance from `at` gives it:
+  //   0  within `near`: everything, as without cells
+  //   1  within `mid`: the walls in one lift from base to eave (no rows of vertices at 8, 24, 48 m for the sky's
+  //      openness, which is taken at the foot and the eave), a pitched roof as a flat one at its ridge, no plinth,
+  //      no posts under a canopy, no passage's ceiling
+  //   2  past `mid`: as 1, and only the solids that stand `tall` metres or more: the skyline, which is what
+  //      shows over the street wall and through the haze from there
+  // It then resolves with { cells: [{ id, lod, n, position, ..., index }], lods: { cell: lod }, grid } and only
+  // the cells whose level is not the one `have` names (a cell with nothing to draw comes back with n 0), so that
+  // the page asks again as the player moves and takes what changed; `open` is the surface model the walls'
+  // openness was read from, to hand back as o.open with the next call rather than make again.
   const pause = () => new Promise(r => setTimeout(r, 0));
-  async function build(B, { T, Tfine = null, frame, hidden: hiddenSolids = [], region = '', photoOK = false, SRC, small = false, colours, triangulate, slice = 0, progress = null }) {
+  async function build(B, { T, Tfine = null, frame, hidden: hiddenSolids = [], region = '', photoOK = false, SRC, small = false, colours, triangulate, slice = 0, progress = null, cells = null, open = null }) {
     const t0 = performance.now(), S = root.Sun;
     const foot = (x, y) => Math.min(S.terrainTri(T, x, y), Tfine ? S.terrainTri(Tfine, x, y) : Infinity);
     const cc = new Map();
@@ -285,13 +300,14 @@
     });
 
     // a 4 m surface model of building tops for the openness bake
-    let G = null;
-    try {
+    // (open: the one an earlier build made and gave back, where cells are built again as the player moves)
+    let G = open || null;
+    if (!G) try {
       G = S.buildDSM(T, B.s, { cell: 4, x0: frame.x[0], x1: frame.x[1], y0: frame.y[0], y1: frame.y[1] });
     } catch (e) { G = null; }
 
     if (slice) await pause();
-    const buf = Buf();
+    let buf = cells ? null : Buf(), lod = 0; // (the cell being built, and its level of detail)
     const trimC = lin('#d6d2c8'), soffitC = lin('#e9e4d8'), awnC = lin('#3b3f43');
 
     // ------------------------------------------------------------ walls
@@ -320,7 +336,7 @@
         if (t === 0 || sharp[k]) runs.push([]);
         runs[runs.length - 1].push(k);
       }
-      const h = zt - zb, levels = LEVELS.filter(l => l < h).map(l => zb + l).concat([zt]);
+      const h = zt - zb, levels = lod ? [zb, zt] : LEVELS.filter(l => l < h).map(l => zb + l).concat([zt]);
       let signAt = -1;
       if (signRun) {
         let best = -1;
@@ -514,11 +530,13 @@
     });
     const solid = (s, si) => {
       if (hidden.has(si)) return;
+      if (lod === 2 && s[3] < TALL) return; // (past the middle distance: the skyline only)
       const bi = s[0], P = BI[bi], g0 = s[1] / 10, zb = g0 + s[2] / 10, zt = g0 + s[3] / 10;
       const rings = s.slice(4).map(r => r.map(q => q / 10));
-      const r = roofOf.get(si), fronts = frontOf.get(si);
+      const r = lod ? null : roofOf.get(si), fronts = frontOf.get(si); // (far off, a pitched roof is a flat one at its ridge)
       const eave = r ? g0 + r[2] / 10 : zt;
       rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o, o === 0 && signSolid.get(bi) === si));
+      if (lod) { cap(rings, zt, bi, P.roof, roofOf.has(si) ? K_ROOF : K_DECK, photoOK && !roofOf.has(si) && meta[bi][2] < 45 ? 16 : 0); return; }
       if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
       if (passages.has(si)) cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true); // a building over a road through it (pipeline/road_passages.py): the passage's ceiling
       else if (s[2] > 0 && meta[bi][1] === 'roof') { // a canopy over the street (pipeline/arcades.py): its underside, and the posts it stands on
@@ -555,6 +573,50 @@
       }
       if (fronts && !small) for (const [k, fl] of fronts) if (fl & 2) awning(rings[0], k, g0, bi);
     };
+    const TALL = cells ? (cells.tall ?? 25) * 10 : 0;
+    if (cells) {
+      // the solids by cell, each where the middle of its outline's box is (kept with the pack: the same for every build)
+      const size = cells.size || 250, x0 = frame.x[0], y0 = frame.y[0];
+      const nx = Math.max(1, Math.ceil((frame.x[1] - x0) / size)), ny = Math.max(1, Math.ceil((frame.y[1] - y0) / size));
+      let by = B._cells && B._cells.size === size ? B._cells.by : null;
+      if (!by) {
+        by = Array.from({ length: nx * ny }, () => []);
+        B.s.forEach((s, si) => {
+          const r = s[4];
+          let ax = Infinity, bx = -Infinity, ay = Infinity, cy = -Infinity;
+          for (let k = 0; k < r.length; k += 2) { ax = Math.min(ax, r[k]); bx = Math.max(bx, r[k]); ay = Math.min(ay, r[k + 1]); cy = Math.max(cy, r[k + 1]); }
+          const i = Math.max(0, Math.min(nx - 1, Math.floor(((ax + bx) / 20 - x0) / size))), j = Math.max(0, Math.min(ny - 1, Math.floor(((ay + cy) / 20 - y0) / size)));
+          by[j * nx + i].push(si);
+        });
+        Object.defineProperty(B, '_cells', { value: { size, by }, enumerable: false, configurable: true });
+      }
+      const [px, py] = cells.at || [0, 0], near = cells.near ?? 500, mid = cells.mid ?? 1500, have = cells.have || {};
+      const res = { cells: [], lods: {}, grid: { size, x0, y0, nx, ny }, n: 0 };
+      for (let id = 0, s0 = performance.now(); id < nx * ny; id++) {
+        if (!by[id].length) continue;
+        if (slice && performance.now() - s0 > slice) { await pause(); s0 = performance.now(); }
+        // the cell's level: by the nearest point of its square to the player
+        const cx0 = x0 + (id % nx) * size, cy0 = y0 + Math.floor(id / nx) * size;
+        const d = Math.hypot(Math.max(cx0 - px, 0, px - cx0 - size), Math.max(cy0 - py, 0, py - cy0 - size));
+        lod = d < near ? 0 : d < mid ? 1 : 2;
+        res.lods[id] = lod;
+        if (have[id] === lod) continue;
+        buf = Buf(1 << 12);
+        for (const si of by[id]) solid(B.s[si], si);
+        if (!small && !lod) for (const si of by[id]) { // awnings on roofed solids too
+          const fronts = frontOf.get(si);
+          if (fronts && roofOf.has(si) && !hidden.has(si)) { const s = B.s[si]; for (const [k, fl] of fronts) if (fl & 2) awning(s[4].map(q => q / 10), k, s[1] / 10, s[0]); }
+        }
+        const a = buf.arrays();
+        a.id = id; a.lod = lod; res.n += a.n;
+        res.cells.push(a);
+      }
+      res.deckSi = Int32Array.from(deckZ.keys());
+      res.deckZ = Float32Array.from(deckZ.values());
+      if (G && !open) res.open = { nx: G.nx, ny: G.ny, cell: G.cell, x0: G.x0, y1: G.y1, data: G.data };
+      res.ms = performance.now() - t0;
+      return res;
+    }
     for (let si = 0, s0 = performance.now(); si < B.s.length; si++) {
       solid(B.s[si], si);
       if (slice && performance.now() - s0 > slice) { if (progress) progress(si / B.s.length); await pause(); s0 = performance.now(); }
