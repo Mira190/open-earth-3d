@@ -13,6 +13,7 @@
 // Exits 1 if any car goes 5 cm into anything, or the taxi bumps, lurches, judders or snaps round.
 // SEED seeds Math.random (1); AT=x,y hails at another spot; DBG=f0,f1 logs the taxi frame by frame.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shibuya', secs = '120', dest = ''] = process.argv;
 (async () => {
@@ -26,8 +27,7 @@ const [,, city = 'shibuya', secs = '120', dest = ''] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(n => { window.requestAnimationFrame = () => 0; window.__dbgN = n; }, process.env.DBG ? process.env.DBG.split(',').map(Number) : null);
   const r = await p.evaluate(([secs, want, at]) => {
     const g = window.__game, out = { log: [], hits: {}, worst: {} }, nLog = {};

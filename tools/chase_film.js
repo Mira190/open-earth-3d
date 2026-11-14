@@ -5,6 +5,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/chase_film.js shibuya out_dir [spots]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -24,8 +25,7 @@ const [,, city = 'shibuya', outDir = '.', nSpots = '3'] = process.argv;
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => window.__game.advance(3));
   // take over the frame loop: the game asks for its next frame, and the film calls it at a fixed step
   await p.evaluate(() => {

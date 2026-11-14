@@ -11,13 +11,14 @@
 // low tier, plays (the NPCs, the helicopter, the cars' and trees' near models all loaded, as a player
 // walking round would have them), then reads the peak. Prints one line per city and the largest
 // textures and buffers; exits 1 when a city goes over its budget:
-//   MEM_GPU   peak GPU memory, MB (default 700: quality.js budget, above the heaviest live map)
-//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 880)
-// TIER=low|medium|high (default low). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
+//   MEM_GPU   peak GPU memory, MB (default 620: quality.js budget, a tenth above the heaviest live map, issue 406)
+//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 620)
+// TIER=low|medium|high (default low). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
-const GPU_MB = +(process.env.MEM_GPU || 700), HEAP_MB = +(process.env.MEM_HEAP || 880), TOP = +(process.env.TOP || 8);
+const GPU_MB = +(process.env.MEM_GPU || 620), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
 const MB = v => (v / 1048576).toFixed(0);
 
 // Chromium's processes (one browser at a time runs here), with each one's proportional set size (its own pages
@@ -179,8 +180,7 @@ async function measure(b, city) {
   try {
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 400000 });
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     // what a player walking round meets: every NPC's character, the helicopter, the cars' and trees' near models
     await p.evaluate(async () => {
       const g = window.__game;
@@ -207,6 +207,16 @@ async function measure(b, city) {
   const r = await p.evaluate(top => window.__memReport(top), TOP).catch(() => null);
   try { await cdp.send('HeapProfiler.collectGarbage'); } catch (e) { /* */ }
   const heapEnd = await heaps();
+  // SNAP=file: a heap snapshot of the page after the collection, for tools/heap_owners.js (who keeps the array buffers)
+  if (process.env.SNAP) {
+    const out = fs.createWriteStream(process.env.SNAP.replace('%c', city));
+    const chunk = e => out.write(e.chunk);
+    cdp.on('HeapProfiler.addHeapSnapshotChunk', chunk);
+    await cdp.send('HeapProfiler.enable').catch(() => {});
+    await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false }).catch(e => errors.push(String(e).slice(0, 200)));
+    cdp.off('HeapProfiler.addHeapSnapshotChunk', chunk);
+    await new Promise(r => out.end(r));
+  }
   const split = await cdp.send('Runtime.getHeapUsage').catch(() => ({}));
   const tracked = process.env.TRACK ? await p.evaluate(() => window.__bufReport()).catch(e => [String(e)]) : null;
   let sampled = null;

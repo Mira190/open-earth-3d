@@ -118,21 +118,37 @@
   // raster()'s result as typed arrays a Worker hands over, and back: the meshes cut by a strip travel as their
   // vertices and the strips' places; the others are found again in the page's own LM.meshes
   function pack(R, strips) {
-    const flat = M => { // Map(number -> number or [numbers]) as keys, offsets and values
-      const keys = new Float64Array(M.size), off = new Int32Array(M.size + 1), vals = [];
+    const flat = M => { // Map(number -> number or [numbers]) as keys (ascending, for flatMap's search), offsets and values
+      const ks = [...M.keys()].sort((p, q) => p - q), keys = Float64Array.from(ks), off = new Int32Array(M.size + 1), vals = [];
       let i = 0;
-      for (const [k, v] of M) { keys[i] = k; if (Array.isArray(v)) vals.push(...v); else vals.push(v); off[++i] = vals.length; }
+      for (const k of ks) { const v = M.get(k); if (Array.isArray(v)) vals.push(...v); else vals.push(v); off[++i] = vals.length; }
       return { keys, off, vals: Float64Array.from(vals) };
     };
     return { solid0: flat(R.solid0), paving: flat(R.paving), tops: Object.entries(R.tops).map(([name, M]) => [name, flat(M)]),
       solid: R.solidMeshes.map((m, i) => ({ at: R.solidAt[i], cut: m.claim ? { position: m.position, index: m.index, claim: m.claim.map(s => strips.indexOf(s)) } : null })) };
   }
-  function unpack(P, LM, strips) {
-    const map = (F, list) => {
-      const M = new Map(), { keys, off, vals } = F;
-      for (let i = 0; i < keys.length; i++) M.set(keys[i], list ? Array.from(vals.subarray(off[i], off[i + 1])) : vals[off[i]]);
-      return M;
+  // a packed map read in place (issue 406: as Maps of arrays, Tokyo's took 30 MB of the heap): get(k) by a binary
+  // search of the keys, a list's values as a view of the packed ones (list) or the one value; set() and addPair() put
+  // a cell over the packed ones (nav.js lays the strips' slabs into solid0); iterates as [key, value]
+  function flatMap(F, list) {
+    const { keys, off, vals } = F, over = new Map(), n = keys.length;
+    const at = k => {
+      let lo = 0, hi = n - 1;
+      while (lo <= hi) { const m = (lo + hi) >> 1, v = keys[m]; if (v < k) lo = m + 1; else if (v > k) hi = m - 1; else return m; }
+      return -1;
     };
+    const base = i => (list ? vals.subarray(off[i], off[i + 1]) : vals[off[i]]);
+    return {
+      get(k) { if (over.size) { const o = over.get(k); if (o !== undefined) return o; } const i = at(k); return i < 0 ? undefined : base(i); },
+      has(k) { return over.has(k) || at(k) >= 0; },
+      set(k, v) { over.set(k, v); return this; },
+      addPair(k, a, b) { const l = this.get(k); over.set(k, l ? [...l, a, b] : [a, b]); },
+      get size() { let m = n; for (const k of over.keys()) if (at(k) >= 0) m--; return m + over.size; },
+      * [Symbol.iterator]() { for (let i = 0; i < n; i++) if (!over.has(keys[i])) yield [keys[i], base(i)]; yield* over; },
+    };
+  }
+  function unpack(P, LM, strips) {
+    const map = (F, list) => flatMap(F, list);
     const tops = {};
     for (const [name, F] of P.tops) tops[name] = map(F, false);
     const solidMeshes = P.solid.map(s => s.cut ? Object.assign({}, LM.meshes[s.at], { position: s.cut.position, index: s.cut.index, claim: s.cut.claim.map(j => strips[j]) }) : LM.meshes[s.at]);

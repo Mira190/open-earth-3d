@@ -1,10 +1,10 @@
 // Postcards from the road (docs/POSTCARDS.md).
 //
 // While you are away, Mugi (a small plush cat) keeps travelling: one photograph every six hours of real
-// time, from a spot in one of the live cities with Mugi sat in it, with a line of its diary. The title screen shows
-// what has come since the last visit (three at most) as a small pile of postcards; opening one shows
-// the picture, where and when it was taken and the sun there at that minute, and "Go there" starts
-// the city's game on that spot, in that light.
+// time, from a spot in one of the live cities with Mugi sat in it, with a line of its diary. What has come
+// since the last visit (three at most) is added to the album when the title screen opens, which shows
+// nothing of it; each map's passport lists the postcards taken there, and "#play-<city>@pc-<spot>.<light>"
+// starts the city's game on a postcard's spot, in its light.
 //
 // Nothing here needs a server. The journey is worked out when the page opens, from a seed kept in
 // localStorage and the time since the last visit. A postcard's picture is a still of the game's own
@@ -144,125 +144,15 @@
     return s.cards.filter(k => !cityId || k.c === cityId).map(k => Object.assign({ card: k }, describe(k, M, cities))).filter(k => k.spot).reverse();
   }
 
-  const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
-
-  // The pile on the title screen and the viewer over it. host: the title's stage; onGo(city, arrive): the dive;
-  // tick(): the menu's tick, if there is sound; track(event, props): telemetry. Returns { open, close, isOpen, stop }.
-  async function mount({ host, cities, onGo, tick = () => {}, track = () => {}, now = Date.now() }) {
+  // What has come since the last visit, added to the album and kept. The title screen calls it as it opens and
+  // shows nothing of it: the cards are in each map's passport (album). cities: the live ones with a game.
+  async function collect(cities, now = Date.now()) {
     const M = await load();
-    if (!M || !host.isConnected) return null;
-    const state = read() || fresh(now);
-    const came = plan(state, now, M, cities);
+    if (!M) return [];
+    const state = read() || fresh(now), came = plan(state, now, M, cities);
     write(state);
-    let cards = state.cards.map(k => Object.assign({ card: k }, describe(k, M, cities))).filter(k => k.spot).reverse(); // newest first
-    if (!cards.length) return null;
-    const fresh0 = cards.filter(k => !k.card.seen).length;
-    track('postcards_shown', { new: came.length, unseen: fresh0, album: cards.length });
-
-    const pile = document.createElement('button');
-    pile.className = 'ts-post'; pile.id = 'ts-post'; pile.type = 'button';
-    const view = document.createElement('div');
-    view.className = 'ts-postview'; view.id = 'ts-postview'; view.hidden = true;
-    view.setAttribute('role', 'dialog'); view.setAttribute('aria-modal', 'true'); view.setAttribute('aria-label', 'Postcards from the road');
-    view.innerHTML = `<div class="pv-card">
-      <button class="pv-x" aria-label="Close the postcards">×</button>
-      <figure class="pv-photo"><img alt="" width="960" height="640" decoding="async"><figcaption class="pv-mark" aria-hidden="true"><b></b><i></i><span></span></figcaption></figure>
-      <div class="pv-text">
-        <p class="pv-where ts-mono"></p>
-        <h2></h2>
-        <p class="pv-when ts-mono" aria-live="polite"></p>
-        <p class="pv-line"></p>
-        <p class="pv-from ts-mono"></p>
-        <div class="pv-act"><button class="pv-go">Go there<kbd>↵</kbd></button><button class="pv-nav" data-d="1" aria-label="The one before">←</button><span class="pv-n ts-mono"></span><button class="pv-nav" data-d="-1" aria-label="The next one">→</button></div>
-      </div>
-      <ol class="pv-album" aria-label="The album"></ol>
-    </div>`;
-    host.append(pile, view);
-    const $ = q => view.querySelector(q);
-    let at = 0, opener = null;
-
-    function drawPile() {
-      const unseen = cards.filter(k => !k.card.seen).length, top = cards.slice(0, 3);
-      pile.innerHTML = `<span class="pile">${top.map((k, i) => `<i style="--i:${i};background-image:url(${esc(k.src)})"></i>`).reverse().join('')}</span>`
-        + `<span class="pl"><b>From the road</b><small>${unseen ? `${unseen} new · ` : ''}${esc(top[0].city.district || top[0].city.name)}</small></span>`;
-      pile.classList.toggle('new', unseen > 0);
-      pile.setAttribute('aria-label', `Postcards from the road: ${unseen ? `${unseen} new` : `${cards.length} in the album`}`);
-    }
-    function drawAlbum() {
-      $('.pv-album').innerHTML = cards.map((k, i) => `<li><button data-i="${i}" aria-label="${esc(k.spot.name)}, ${esc(k.where)}, ${esc(k.date)}"${i === at ? ' aria-current="true"' : ''}${k.card.seen ? '' : ' class="new"'}><img src="${esc(k.src)}" alt="" loading="lazy" width="96" height="64"></button></li>`).join('');
-    }
-    function show(i, by) {
-      at = (i + cards.length) % cards.length;
-      const k = cards[at];
-      const img = $('.pv-photo img');
-      img.classList.remove('in');
-      img.onload = () => img.classList.add('in');
-      img.src = k.src; img.alt = `${k.spot.name}, ${k.where}: a photograph at ${k.time}`;
-      if (img.complete) img.classList.add('in');
-      $('.pv-mark b').textContent = k.city.district || k.city.name;
-      $('.pv-mark i').textContent = k.day;
-      $('.pv-mark span').textContent = k.time;
-      $('.pv-where').textContent = k.where;
-      $('h2').innerHTML = esc(k.spot.name) + (k.spot.native ? `<small lang="ja">${esc(k.spot.native)}</small>` : '');
-      $('.pv-when').textContent = `${k.date} · ${k.time} ${k.zone} · ${k.sun}`;
-      $('.pv-line').textContent = k.line;
-      $('.pv-from').textContent = `From the road · ${k.from}`;
-      $('.pv-n').textContent = `${cards.length - at} / ${cards.length}`;
-      if (!k.card.seen) { k.card.seen = 1; write(state); drawPile(); }
-      drawAlbum();
-      const cur = $('.pv-album [aria-current]');
-      if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
-      if (by) { tick(); track('postcard_open', { city: k.card.c, spot: k.card.s, light: k.card.l, by }); }
-    }
-    const isOpen = () => !view.hidden;
-    function open(i = 0) {
-      if (isOpen()) return;
-      opener = document.activeElement;
-      view.hidden = false;
-      host.classList.add('posting');
-      show(i, 'pile');
-      $('.pv-go').focus({ preventScroll: true });
-    }
-    function close() {
-      if (!isOpen()) return;
-      view.hidden = true;
-      host.classList.remove('posting');
-      if (opener && opener.isConnected) opener.focus({ preventScroll: true });
-    }
-    function go() {
-      const k = cards[at];
-      track('postcard_go', { city: k.card.c, spot: k.card.s, light: k.card.l });
-      close();
-      onGo(k.city, k.arrive);
-    }
-    const ac = new AbortController(), o = { signal: ac.signal };
-    pile.addEventListener('click', e => { e.stopPropagation(); open(Math.max(0, cards.map(k => !k.card.seen).lastIndexOf(true))); }, o); // the oldest unread first
-    view.addEventListener('click', e => {
-      e.stopPropagation();
-      const nav = e.target.closest('.pv-nav'), th = e.target.closest('.pv-album button');
-      if (e.target === view || e.target.closest('.pv-x')) close();
-      else if (e.target.closest('.pv-go')) go();
-      else if (nav) show(at + +nav.dataset.d, 'arrow');
-      else if (th) show(+th.dataset.i, 'album');
-    }, o);
-    // the keys are the viewer's while it is open (the title's own handler stands down: title.js)
-    document.addEventListener('keydown', e => { // (on the document: a click on the picture leaves the focus on the page)
-      if (!isOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
-      e.stopPropagation();
-      if (e.key === 'Escape') { e.preventDefault(); close(); }
-      else if (e.key === 'ArrowLeft') { e.preventDefault(); show(at + 1, 'arrow'); }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); show(at - 1, 'arrow'); }
-      else if (e.key === 'Enter' && !e.target.closest('button:not(.pv-go)')) { e.preventDefault(); go(); }
-      else if (e.key === 'Tab') { // the focus stays in the dialog
-        const f = [...view.querySelectorAll('button')], a = f[0], z = f[f.length - 1];
-        if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && (document.activeElement === z || !view.contains(document.activeElement))) { e.preventDefault(); a.focus(); }
-      }
-    }, { signal: ac.signal, capture: true });
-    for (const type of ['pointerdown', 'wheel', 'touchstart']) view.addEventListener(type, e => e.stopPropagation(), { signal: ac.signal, passive: true });
-    for (const type of ['pointerdown', 'keydown']) pile.addEventListener(type, e => e.stopPropagation(), o);
-    drawPile();
-    return { open, close, isOpen, el: pile, cards: () => cards, stop() { ac.abort(); pile.remove(); view.remove(); } };
+    return came;
   }
 
-  return { KEY, EVERY, PER_VISIT, ALBUM, light, lightTime, fresh, plan, describe, arrival, load, album, mount };
+  return { KEY, EVERY, PER_VISIT, ALBUM, light, lightTime, fresh, plan, describe, arrival, load, album, collect };
 });

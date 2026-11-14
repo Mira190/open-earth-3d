@@ -8,6 +8,7 @@
 // of the road nearest "at", facing along it (towards "face" if given), and you are at the wheel.
 // Writes out_dir/<city>-<name>-<W>.png and prints the page's errors.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', viewsFile, outDir = '.', size = '1440x900'] = process.argv;
@@ -32,8 +33,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => window.__game.advance(1));
   for (const v of views) {
     const where = await p.evaluate(v => {

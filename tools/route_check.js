@@ -8,6 +8,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/route_check.js sydney out_dir [pairs]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
@@ -37,8 +38,7 @@ const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
   await p.waitForFunction('window.__game.ways.ready', null, { timeout: 300000 });
   const stats = await p.evaluate(() => window.__game.ways.stats());
   console.log(`${city}: network ready ${((Date.now() - t0) / 1000).toFixed(1)} s after the game; ${JSON.stringify(stats)}`);
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => window.__game.advance(1));
 
   const r = await p.evaluate(nPairs => {

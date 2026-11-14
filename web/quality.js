@@ -145,7 +145,7 @@ window.OEQuality = (function () {
     // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
     const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
     return { name, small: name === 'low', lean: thin, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
-      budget: thin ? { gpuMB: 700, heapMB: 880, groundTiles: 6 } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+      budget: thin ? { gpuMB: 620, heapMB: 620, groundTiles: 6 } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
