@@ -18,6 +18,7 @@
 // GAME_TIME (HH:MM, or YYYY-MM-DDTHH:MM) pins the page's clock to that wall time in the city's own
 // time zone (tools/pin_clock.js), as tools/check.sh does; unset or "live", the real clock
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const fs = require('fs');
 const [,, city = 'sydney', secs = '60', outFile = ''] = process.argv;
@@ -53,8 +54,7 @@ const TOL = {
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   // the numbers need no pictures: stop drawing frames, so the simulation runs as fast as it can
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; window.__game.advance(1); });
   console.log(`${city}: loaded in ${((Date.now() - t0) / 1000).toFixed(0)} s`);

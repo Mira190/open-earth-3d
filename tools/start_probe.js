@@ -7,6 +7,7 @@
 //   xvfb-run -a node tools/start_probe.js sydney -100,150 300,400 # and open ground near these
 //   PADR=7 (a smaller circle), ROOF=300 xvfb-run -a node tools/start_probe.js shibuya 540,-1130  # roofs and decks below 300 m too
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'sydney', ...pts] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -17,8 +18,7 @@ const [,, city = 'sydney', ...pts] = process.argv;
   p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const out = await p.evaluate(([pts, roof, padR]) => {
     const g = window.__game, nav = g.nav, G = window.__gameData || null;
     const wh = (g.fer && g.fer.wharves) || [];

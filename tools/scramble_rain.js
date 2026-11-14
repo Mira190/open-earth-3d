@@ -9,6 +9,7 @@
 // Stills at the start and every STILL seconds go to out_dir.
 //   [PLAYER=x,y] xvfb-run -a node tools/scramble_rain.js [city] [seconds] [out_dir] [weather]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const [,, city = 'shibuya', secs = '60', outDir = '', weather = 'rain'] = process.argv;
 (async () => {
@@ -18,8 +19,7 @@ const [,, city = 'shibuya', secs = '60', outDir = '', weather = 'rain'] = proces
   p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.waitForFunction('window.__game && !window.__game.arriving()', null, { timeout: 300000 }).catch(() => {});
   await p.evaluate(w => { const g = window.__game; if (g.weather) g.weather.set(w, { now: true }); }, weather);
   // PLAYER=x,y: stand the player there (out on the stripes, say, as people stop to look)

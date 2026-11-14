@@ -4,6 +4,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   HOUR=12 xvfb-run -a node tools/sim_cost.js shibuya [frames]   # (HOUR: the clock set to that hour first)
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shibuya', framesArg = '300'] = process.argv;
 (async () => {
@@ -12,8 +13,7 @@ const [,, city = 'shibuya', framesArg = '300'] = process.argv;
   await pinClock(p, city);
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const r = await p.evaluate(([n, hour]) => {
     window.requestAnimationFrame = () => 0;
     const g = window.__game;
