@@ -2310,6 +2310,7 @@ const npcNight = require('./npc_night');
     // (on foot: at the wheel you stand where the car does, and moving the player moves no camera. The step before
     // leaves the car once it has stopped, which a car still rolling refuses)
     for (let i = 0; i < 12 && pl.mode === 'car'; i++) { g.advance(0.2, ['Space']); g.exitCar(); g.advance(0.3); if (pl.mode === 'car' && i % 4 === 3 && g.resetCar) { g.resetCar(); g.advance(0.5); } }
+    if (pl.mode === 'car' && g.afoot) { g.afoot(); g.advance(0.3); }   // (no door with room, on a street this narrow: out where the car stands)
     // (still at the wheel, where the car stands with no room at its door: the car goes where the player is put)
     const put = (x, y) => { pl.x = x; pl.y = y; pl.z = g.nav.terrain(x, y); if (pl.mode === 'car' && g.myCar && g.myCar()) { const st = g.myCar().D.st; st.x = x; st.y = y; st.z = pl.z; st.speed = 0; } };
     const car0 = pl.mode === 'car' && g.myCar && g.myCar() ? { x: g.myCar().D.st.x, y: g.myCar().D.st.y, z: g.myCar().D.st.z } : null;
