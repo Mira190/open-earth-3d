@@ -2462,6 +2462,10 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // than the tier's (SHADOW), no smaller than 1024. The map and the still casters' cache keep their objects and
       // are made again at the new size at the next shadow pass; the box's texel snapping follows mapSize.
       get shadowSize() { return sunLight.shadow.mapSize.x; },
+      // for the game's check on refused draws (game.js glCheck): whether the map has a texture on the GPU, and one
+      // more pass into it
+      shadowState() { const m = sunLight.shadow.map, d = m && m.depthTexture; return { tex: !!(d && renderer.properties.get(d).__webglTexture), auto: sunLight.shadow.autoUpdate, size: sunLight.shadow.mapSize.x }; },
+      shadowRedraw() { sunLight.shadow.needsUpdate = true; renderer.shadowMap.needsUpdate = true; },
       setShadowSize(n) {
         n = Math.max(1024, Math.min(SHADOW, n | 0));
         if (n === sunLight.shadow.mapSize.x) return n;

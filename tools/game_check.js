@@ -2344,10 +2344,17 @@ const npcNight = require('./npc_night');
     if (!H || !H.levels.length) return null;
     const pl = g.player, at = { x: pl.x, y: pl.y, z: pl.z }, was = g.held ? g.held() : false, out = [];
     const frames = async n => { for (let i = 0; i < n; i++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); } };
+    // (on foot: at the wheel you stand where the car does, and moving the player moves no camera. The step before
+    // leaves the car once it has stopped, which a car still rolling refuses)
+    for (let i = 0; i < 12 && pl.mode === 'car'; i++) { g.advance(0.2, ['Space']); g.exitCar(); g.advance(0.3); if (pl.mode === 'car' && i % 4 === 3 && g.resetCar) { g.resetCar(); g.advance(0.5); } }
+    if (pl.mode === 'car' && g.afoot) { g.afoot(); g.advance(0.3); }   // (no door with room, on a street this narrow: out where the car stands)
+    // (still at the wheel, where the car stands with no room at its door: the car goes where the player is put)
+    const put = (x, y) => { pl.x = x; pl.y = y; pl.z = g.nav.terrain(x, y); if (pl.mode === 'car' && g.myCar && g.myCar()) { const st = g.myCar().D.st; st.x = x; st.y = y; st.z = pl.z; st.speed = 0; } };
+    const car0 = pl.mode === 'car' && g.myCar && g.myCar() ? { x: g.myCar().D.st.x, y: g.myCar().D.st.y, z: g.myCar().D.st.z } : null;
     g.hold(true);
     try {
       for (const L of H.levels) {
-        pl.x = L.h.at[0]; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        put(L.h.at[0], L.h.at[1]);
         // (the world steps only while the level waits for the camera to come near, which the simulation alone decides;
         // once it is loading, the frames go on (hero.update loads and shows it) but the world stands: stepped all the
         // while, it moved on by however long the machine took to fetch the level, and the rest of the run with it, #420)
@@ -2369,14 +2376,25 @@ const npcNight = require('./npc_night');
         }
         // away: 700 m past its edge, on the map (off a small map's edge there is no ground to stand the player on)
         const far = (L.h.r || 150) + 700, away = [[far, 0], [-far, 0], [0, far], [0, -far]].map(([dx, dy]) => [L.h.at[0] + dx, L.h.at[1] + dy]).find(([x, y]) => Number.isFinite(g.nav.terrain(x, y)) && g.nav.terrain(x, y) > -50) || [L.h.at[0] + 2000, L.h.at[1]];
-        pl.x = away[0]; pl.y = away[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        put(away[0], away[1]);
         // (the camera follows the player there over some frames, and the level goes by the camera's place)
         for (let k = 0; k < 80 && H.state().find(s => s.id === L.h.id).state !== 'idle'; k++) await frames(1);
-        r.away = H.state().find(s => s.id === L.h.id).state;
-        r.back = hidden.every(o => o.visible);
+        // (a player the run left at the wheel of a car that will not be moved or left stays where the car is. The
+        // level goes by the camera's distance from its centre alone, so the leaving is done from the other end: the
+        // centre is put that far from the camera, and put back)
+        if (H.state().find(s => s.id === L.h.id).state !== 'idle' && pl.mode !== 'foot') {
+          const at0 = L.h.at;
+          L.h.at = [g.camera.position.x + far, -g.camera.position.z];
+          for (let k = 0; k < 80 && H.state().find(s => s.id === L.h.id).state !== 'idle'; k++) await frames(1);
+          r.away = H.state().find(s => s.id === L.h.id).state; r.back = hidden.every(o => o.visible);
+          L.h.at = at0; r.moved = true;
+        }
+        if (!r.moved) r.away = H.state().find(s => s.id === L.h.id).state;
+        if (r.away !== 'idle') r.away += ` with the player ${pl.mode} at ${Math.round(pl.x)},${Math.round(pl.y)} and the camera at ${Math.round(g.camera.position.x)},${Math.round(-g.camera.position.z)}`;
+        if (!r.moved) r.back = hidden.every(o => o.visible);
         out.push(r);
       }
-    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); }
+    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; if (car0) Object.assign(g.myCar().D.st, car0, { speed: 0 }); g.advance(0.1); }
     // back where you stood: a level by the start (Kamakura's) comes again before the checks that follow compare frames
     const near = L => Math.hypot(pl.x - L.h.at[0], pl.y - L.h.at[1]) - (L.h.r || 150) < 200;
     for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) await frames(1);

@@ -151,9 +151,13 @@ def place(city, sc, node):
     toward = np.asarray(sc.get("toward", node), float)
     if "path" in sc:   # a bent screen: its own foot line; the ground and roof of its building
         solids = buildings(city)["s"].get(building_index(city, sc["building"])[0], [])
-        top = max(solids, key=lambda q: q["base"] + q["top"])
-        z0, z1 = min(q["base"] for q in solids), top["base"] + top["top"]
         pts = np.asarray(sc["path"], float)
+        # the roof it stands on is the one under its own foot line, not the building's highest (a penthouse
+        # elsewhere on the footprint would leave it in the air): the highest solid under most of the line
+        walk = [a + (b - a) * k / 8 for a, b in zip(pts[:-1], pts[1:]) for k in range(9)]
+        under = [q for q in solids if sum(Polygon(q["ring"]).buffer(1.5).contains(Point(*w)) for w in walk) * 2 >= len(walk)]
+        top = max(under or solids, key=lambda q: q["base"] + q["top"])
+        z0, z1 = min(q["base"] for q in solids), top["base"] + top["top"]
         L = np.cumsum([0.0] + [float(np.linalg.norm(b - a)) for a, b in zip(pts[:-1], pts[1:])])
         mid = np.array([np.interp(L[-1] / 2, L, pts[:, 0]), np.interp(L[-1] / 2, L, pts[:, 1])])
         t = unit(pts[-1] - pts[0])

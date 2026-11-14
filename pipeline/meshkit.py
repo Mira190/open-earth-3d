@@ -170,7 +170,9 @@ class Mesh:
                "position": v.ravel().tolist(), "index": self.i}
         t = np.asarray(self.t, float)
         if self.keep_uv and len(t) == len(self.v):
-            out["uv"] = np.round(t, 2).ravel().tolist()
+            # (metres on a patterned wall keep centimetres; a share of an atlas keeps five places: two are 20 to 40
+            # pixels of a 2048 x 4096 atlas, which cut a sign's lower line off and drew its neighbour's edge)
+            out["uv"] = np.round(t, 2 if len(t) and np.abs(t).max() > 1.001 else 5).ravel().tolist()
         if getattr(self, "far", None):
             out["far"] = int(self.far)   # drawn only within this many metres (web/world.js): a room's furnishings
         if getattr(self, "detail", False):

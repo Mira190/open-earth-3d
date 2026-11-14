@@ -238,6 +238,72 @@ Textures added, all CC0 1.0 from ambientCG at 1K: `PavingStones128` (setts), `Pa
 `Gravel023`, `Concrete036` (weathered stone), `RoofingTiles013A` (the nearest to fired grey tile: ambientCG has
 no true kawara), `Planks023A` (boards, tinted dark), `PaintedWood009C` (tinted vermilion), `Bamboo001C`. The
 shop names, noren, lantern papers and boards are drawn in Python with Shippori Mincho (SIL OFL, `pipeline/adkit.py`).
+## The Scramble (Shibuya)
+
+The Shibuya map's game opens on Hachiko Square at the junction's south-east corner, looking across the
+diagonal to QFRONT. The level (`cities/shibuya/hero.py`, `hero/scramble.glb`) is the hundred metres round the
+junction, and its first part is what fills most of the frame from eye level: the ground.
+
+- **The carriageways**: one asphalt surface on the game's own road bands, a 50 cm concrete gutter along every
+  kerb, flush granite kerbs, manholes and gully grates. The asphalt is ambientCG's `Asphalt031` with its
+  aggregate a little clearer (`asphalt_texture`). Clean and of one tone: no patches, stains or wear ("The bar"
+  in AGENTS.md: the ground is never aged).
+- **The paint**: the five crosswalks at the places measured off GSI's aerial photograph
+  (`scramble.CROSSWALKS`), stop lines, the diamonds before them and centre lines, in an even off-white
+  thermoplastic with the grain of its glass beads (`paint_texture`).
+- **The pavements**: grey blocks (`PavingStones136`), and Hachiko Square in the red-brown block the 2024
+  photographs show (`PavingStones128`, brought to that brown by its own mean with `hero_kit.tint_to`; the first
+  pass had it in grey setts, which was wrong); the yellow tactile blocks on OpenStreetMap's lines with their bars
+  and domes in relief (JIS T 9251's pattern, `tactile_texture`); a cast-iron grate round each mapped tree.
+- **On the kerbs**: white guard pipes between the crosswalks, and steel lamp posts whose light is baked.
+- **The fronts** (`Level.fronts`, `front`): each wall a player can see from the junction's roads and pavements
+  (eye points on a 7 m grid within 70 m, no building between), of the buildings the landmarks do not draw whole
+  (QFRONT, 109, MAGNET, Seibu and the station keep their own). A skin 10 cm in front of the city's plain wall:
+  a glazed street floor between piers on a dark stone foot, onto a lit shop drawn as its light (shelves, a
+  cafe's counter, a clothes rail); above it, storey by storey, facing tile or panel with windows set back in
+  their reveals, aluminium frames, sills, and a coping on the parapet; behind each pane a room, lit or dark
+  after nightfall. Where a landmark's print or screen hangs on the wall the skin is cut away behind it
+  (`behind`), so no picture is covered. One grammar with a few variables per building, not yet each building
+  from its photograph.
+- **Light from the sky** (`hero_kit.sky_occlusion`, meta `sky_rays`): each vertex keeps the share of the sky it
+  sees, baked, so a reveal, a canopy's underside and the foot of a wall are darker than the open ground.
+
+It hides the landmark meshes it draws again (`p5_plaza`, the junction's flat asphalt, paint, tactile strips and
+guard pipes); the entrances, the tracks, Hachiko and the signs stay the landmarks'.
+158,000 triangles, 8.2 MB; nothing is built under a building, in a stair well, on a wall no player sees or past
+100 m. On a phone the map's GPU memory peaks at 372 to 388 MB of the 490 MB budget (`tools/check.sh shibuya:mem`).
+
+**People at the lens.** With the camera low at a kerb the near crowd showed as flat dolls a few metres away:
+the modelled people were chosen by distance from the player, not from the camera, and those behind it took the
+places. `web/game/people.js` now picks them by distance from the camera, those in view first.
+
+Photographs looked at (Wikimedia Commons; none is reproduced, no texture is taken from one): the empty
+junction, 2025-01 (ウィ貴公子, CC BY-SA 4.0), QFRONT from the crosswalk, 2025-02 (GoToVan, CC BY 2.0), Hachiko
+Square, 2020-04 (Asanagi, CC0); links in docs/cities/shibuya.md.
+
+Where it still falls short of the bar: the fronts are one grammar, not each building's own face (QFRONT's
+base and glass, the bookshop block, Center Gai's mouth and the station front are next, issue 461); glass does
+not mirror the street; white walls take the sky's blue by day; the kerbs are flush, since the game's ground is
+one surface; the lamp posts' design and places are from photographs, not a survey; and it has been seen on a
+software renderer only.
+
+**Signs that stood in the air.** A sign tower placed from a photograph by a roof height the city's solids do
+not have (a penthouse narrower than the sign, a roof 6 m lower) stood with its legs in the air. The towers now
+seat themselves on a roof that takes their whole footprint (`scramble.seat`); a bent roof screen stands on the
+roof under its own foot line, not the building's highest (`pipeline/screens.py`); a wall print hangs by the
+height of the wall behind it (`city.wall_top`). `tools/float_check.py <city>` lists landmark pieces that touch
+neither the ground, a solid nor a held piece, and `tools/check.sh` runs it for the live cities.
+
+**Pictures with something in front of them.** The same rule, things as they stand in the world, for what a
+sign is for: being seen. `tools/sign_clear.py <city>` casts rays out of every picture face (a sign, a screen,
+a print) and lists those another landmark covers. Shibuya had 86: QFRONT's fins and transoms ran across Q'S EYE,
+the crown's advert and the canopy's names (they now stop at each picture's edge, `scramble.qfront` `openings`);
+three generators each hung a sign at the same street front without knowing of the others (the generic shop
+signs and the crossing's tenant stacks now leave a front that `streets.py` dresses, and one another's sites:
+`city.dressed_fronts`, `wall_sites`); MAGNET's banner began under its fascia's top; a hoarding ran behind the
+police box. Also in `tools/check.sh`. And a sign's lower line was cut off because `pipeline/meshkit.py` kept two
+decimal places of an atlas coordinate (20 to 40 pixels of a 2048 x 4096 atlas): it keeps five.
+
 ## Circular Quay West (Sydney)
 
 From First Fleet Park's edge to the taxi rank under the Overseas Passenger Terminal: 135 m of the quay in

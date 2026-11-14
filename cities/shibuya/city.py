@@ -1442,7 +1442,7 @@ CROSSING_SIGNS = [
     {"building": "w136690966", "toward": [312.0, -1010.0], "kind": "print", "w": 7.6, "h": 14.6, "z": 5.0, "along": 7.5, "lamps": 4, "art": "nishimura"},
     # MAGNET by SHIBUYA109 (its name on the corner's fascia: scramble.py): the 18.25 x 3.71 m
     # vertical banner and a 7.1 x 11.2 m wall ad on the Jinnan side, lit from outside
-    {"building": "MAGNET SHIBUYA", "toward": [360.0, -955.0], "kind": "print", "w": 3.71, "h": 18.25, "z": 6.0, "along": 21.0, "lamps": 2, "art": "magnet_banner"},
+    {"building": "MAGNET SHIBUYA", "toward": [360.0, -955.0], "kind": "print", "w": 3.71, "h": 18.25, "z": 7.2, "along": 21.0, "lamps": 2, "art": "magnet_banner"},   # (its foot over the fascia's top at 6.9 m)
     {"building": "MAGNET SHIBUYA", "toward": [360.0, -955.0], "kind": "print", "w": 7.1, "h": 11.2, "z": 11.0, "along": 12.0, "lamps": 4, "art": "magnet_wall"},
     # SHIBU HACHI BOX, the ward's tourist information on Hachiko Square (since October 2020), facing the statue
     {"building": "w858994297", "toward": [373.8, -1047.4], "kind": "box", "w": 4.6, "h": 0.8, "z": 2.1, "depth": 0.12, "art": "hachibox"},
@@ -2047,14 +2047,17 @@ def yongen(K, y):
         facade_panel(K("atlas", "lit"), mid, n, 1.8, z + 4.5, z + 4.95, "rain", off=0.66, along=-m["len"] / 2 + 1.1)
 
 
-def shop_signs(K, sites, avoid=()):
+def shop_signs(K, sites, avoid=(), taboo=None):
     """Blade signs, banners and upper-wall boards on the districts' street fronts, each with its own words
     (none within 9 m of a published screen or sign in `avoid`)."""
     rng = np.random.default_rng(2016)
     A = K("atlas", "lit")
     placed = []   # blades already built: one from the facing wall of a narrow lane would cross them
+    from shapely.geometry import Point as _Point
     for x, y, nx, ny, g, top, L in sites:
         clear = any(np.hypot(x - p[0], y - p[1]) < 9.0 for p in avoid)   # chosen as usual, so the other fronts keep their signs, but not built
+        clear = clear or (taboo is not None and taboo.contains(_Point(x, y)))   # (a front the scramble's build dresses itself)
+        clear = clear or (x, y) in _DATA.get("wall_sites", ())                  # (or one that carries the crossing's tenant stack or print)
         n, mid = np.array([nx, ny]), np.array([x, y])
         t = np.array([-n[1], n[0]])
         kinds = ["board"] + (["blade"] if top > 9 else []) + (["blade2"] if top > 18 and rng.random() < 0.6 else [])
@@ -2154,7 +2157,7 @@ def districts_meshes(lm):
             if "hanamasa" in lm.get("yongen", {}):
                 hm = lm["yongen"]["hanamasa"]
                 avoid = avoid + [np.asarray(hm["at"], float) + np.asarray([-hm["normal"][1], hm["normal"][0]]) * a for a in (-9.0, -4.0, 0.0, 4.0)]
-        shop_signs(K, open_fronts(lm["signs"]["sites"]), avoid)
+        shop_signs(K, open_fronts(lm["signs"]["sites"]), avoid, dressed_fronts(lm))
     poles_and_wires(K, lm.get("poles", []))
     return K.meshes()
 
@@ -3289,6 +3292,35 @@ def qfront_glass(K):
     K("qfront_glass").panel(path, z1 - z0 - 6.5)
 
 
+def wall_top(mid, n, top):
+    """How high the wall behind a street front stands (m over its ground): the roof of the solid just inside
+    the front at `mid` (outward normal n); `top` where no solid is found there."""
+    if "wall_solids" not in _DATA:
+        from shapely import STRtree
+        from shapely.geometry import Polygon
+        S = [s for s in ak.load_solids(CITY) if len(s["ring"]) >= 3]
+        _DATA["wall_solids"] = (S, STRtree([Polygon(s["ring"]) for s in S]))
+    S, tree = _DATA["wall_solids"]
+    from shapely.geometry import Point
+    hit = [S[k] for d in (0.8, 2.0) for k in tree.query(Point(*(np.asarray(mid) - np.asarray(n) * d)), predicate="intersects")]
+    return max((s["base"] + s["top"] for s in hit), default=top)
+
+
+def dressed_fronts(lm):
+    """Where the scramble's own build hangs its signs (scramble.py, streets.py): the fronts onto the streets
+    off the scramble, 2.5 m either side, and the buildings it draws whole. A generic sign is not hung there:
+    two signs in one place hide each other (tools/sign_clear.py). None on a map without the scramble."""
+    if "dressed" not in _DATA:
+        from shapely.geometry import LineString, Polygon
+        from shapely.ops import unary_union
+        sb = scramble_build(lm)
+        _DATA["dressed"] = None
+        if sb is not None:
+            own = [Polygon(q["ring"]).buffer(3.0) for q in sb.D.solids if q["osm"] in scramble.streets.OWN and len(q["ring"]) >= 3]
+            _DATA["dressed"] = unary_union([LineString([a, b]).buffer(2.5, cap_style=2) for _, a, b, _, _, _ in scramble.streets.street_faces(sb.D)] + own)
+    return _DATA["dressed"]
+
+
 def crossing_wall_signs(K, lm):
     """Round the crossing, the buildings' street fronts carry their tenants' stacked signs at a corner and,
     on upper floors, lit wall prints: from the sign sites within 230 m of the scramble."""
@@ -3296,19 +3328,31 @@ def crossing_wall_signs(K, lm):
     rng = np.random.default_rng(3109)
     A, Pr = K("atlas", "lit"), K("atlas_print", "lit")
     taken = [place(sc, node)[0] for sc in CROSSING_SIGNS + CROSSING_SCREENS]   # not over a published screen or sign
+    # nor on a front that the streets off the scramble dress themselves (streets.py: its fascia, bands and tenant
+    # sign), or one of the buildings scramble.py draws whole: two signs hung in one place hide each other
+    from shapely.geometry import Point
+    dressed = dressed_fronts(lm)
+    stacks = []
     for x, y, nx, ny, g, top, L in lm["signs"]["sites"]:
         if np.hypot(x - node[0], y - node[1]) > 230 or top < 14 or min(np.hypot(x - p[0], y - p[1]) for p in taken) < 14:
+            continue
+        if dressed is not None and dressed.distance(Point(x, y)) < 4.0:
             continue
         n, mid = np.array([nx, ny]), np.array([x, y])
         t = np.array([-n[1], n[0]])
         r = rng.random()
+        # (a site's height is its building's highest roof; the wall here may belong to a lower part of it, and a
+        # sign hung by the building's height would stand in the air over that part's roof: tools/float_check.py)
+        top = min(top, wall_top(mid, n, top))
         if r < 0.55:                              # a tenant stack at one end of the front, both faces
             h = min(top - 4.0, 22.0)
             z0 = g + 3.4
             c = mid + n * 1.0 + t * (L / 2 - 0.8) * (1 if rng.random() < 0.5 else -1)
             key = f"stack{int(rng.integers(STACKS))}"
-            if min(np.hypot(*(c - p[:2])) for p in taken) < 9.0:
+            if min(np.hypot(*(c - p[:2])) for p in taken) < 9.0 or any(np.hypot(*(c - p)) < 5.0 for p in stacks) or (dressed is not None and dressed.distance(Point(*c)) < 4.0):
                 continue
+            stacks.append(c)   # (two tenant stacks a few metres apart stand in front of each other)
+            _DATA.setdefault("wall_sites", set()).add((x, y))   # (and the generic blade and board are not hung here too: shop_signs)
             P = frame(c, t)
             block(K("screen_frame"), P, -0.12, 0.12, -0.55, 0.55, z0 - 0.1, z0 + h + 0.1)
             for side in (-1, 1):
@@ -3319,6 +3363,7 @@ def crossing_wall_signs(K, lm):
             h = w / 1.5
             z0 = g + top - h - 2.5
             P = frame(mid, n)
+            _DATA.setdefault("wall_sites", set()).add((x, y))
             block(K("screen_frame"), P, -0.2, 0.15, -w / 2 - 0.1, w / 2 + 0.1, z0 - 0.1, z0 + h + 0.1)
             facade_panel(Pr, mid, n, w, z0, z0 + h, f"wprint{int(rng.integers(len(WALL_PRINTS)))}", off=0.16)
             for k in range(3):
@@ -3864,7 +3909,13 @@ def scramble_build(lm):
     if "scramble" not in lm or CITY != "shibuya":
         return None
     if "scramble_build" not in _DATA:
-        _DATA["scramble_build"] = scramble.Build(CITY, lm["scramble"]["node"], lm)
+        node = np.asarray(lm["scramble"]["node"], float)
+        opens = []
+        for sc in CROSSING_SCREENS + CROSSING_SIGNS:     # what hangs on QFRONT's front: its fins stop round each
+            if sc.get("building") == "Q-FRONT":
+                mid, n, t, base, _, _ = place(sc, node)
+                opens.append((mid, t, sc["w"], base, base + sc["h"]))
+        _DATA["scramble_build"] = scramble.Build(CITY, lm["scramble"]["node"], lm, openings=opens)
     return _DATA["scramble_build"]
 
 
