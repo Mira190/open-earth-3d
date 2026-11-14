@@ -1,5 +1,5 @@
 """Copy the parts of cities/<id>/city.json's game that need no raw data into web/data/<id>/game.json:
-its title, where it starts and its travel points (each set on the built terrain, as pipeline/game_data.py sets them).
+its title, where it starts, its travel points and the crowd's cast (each set on the built terrain, as pipeline/game_data.py sets them).
 A renamed map or a new district on its city's map (cities/index.json groups) then shows without
 rebuilding the game data, which game_data.py writes from the raw downloads. Everything else stays.
 
@@ -70,6 +70,11 @@ def main(cities):
             if travel != game.get("travel"):
                 game["travel"] = travel
                 changed.append(f"{len(travel)} travel points")
+        # the crowd's settings the page reads as they are (the real people's cast, their heights: people.js)
+        for k in ("real", "real_from", "height"):
+            if k in (gcfg.get("crowd") or {}) and (game.get("crowd") or {}).get(k) != gcfg["crowd"][k]:
+                game.setdefault("crowd", {})[k] = gcfg["crowd"][k]
+                changed.append(f"crowd.{k}")
         if changed:
             json.dump(game, open(out, "w"), separators=(",", ":"))   # as game_data.py writes it
         print(f"{city}: {', '.join(changed) or 'nothing to update'}")

@@ -230,7 +230,7 @@ class Level:
         self.geo = K.Geo()
         self.A = K.Atlas(1024, 1024)
         import archkit as ak
-        self.T = ak.Terrain("kamakura")
+        self.T = HP.Ground("kamakura")
         self.X = HP.Parts(K, self.geo, self.T, self.A)
         R = json.load(open(os.path.join(HERE, "set.json")))["roads"]
         self.hill = Path(R[HILL]["p"], XING)                    # d: metres up the hill from the crossing; right: east

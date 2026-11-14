@@ -1924,6 +1924,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // three.js caches a program by the text of onBeforeCompile, and wrappers (streetLit) read alike
       // across patterns: each patterned material keys its own
       if (lmMats[k].onBeforeCompile) lmMats[k].customProgramCacheKey = () => `lm|${k}`;
+      // photographed asphalt, paving and worn road paint at eye level, in the game (surface.js)
+      if (game && window.OESurface) OESurface.material(lmMats[k], OESurface.kindOf(m));
       if (m.pbr && window.OEPbr) OEPbr.apply(lmMats[k], m.pbr, { small, aniso: Math.min(8, renderer.capabilities.getMaxAnisotropy()) });
       if (m.interior && window.OEInterior) OEInterior.apply(lmMats[k], m.interior, { night: LM_NIGHT }); // rooms behind the glass (web/interior.js)
     }
