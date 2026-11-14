@@ -3138,7 +3138,11 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         // (or, of two held by each other that backing off hasn't parted in 30 s, the one in the junction first: two head-on
         // at the mouth of a piece stood 61 s in Sydney's junction 472, the one that could back off boxed in behind, #243)
         const stuckPair = heldBy0 && heldBy0.front === c && c.inHeld > 30 && goesFirst(c, heldBy0);
-        const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20) || stuckPair);
+        // (the face-off's own clock, faceAll, counts the two standing face to face without a break; the time held does not:
+        // held one frame and not the next as the step taken back flickers, it starts again each time, so the one that
+        // goes, the other unable to back off any more, never squeezed past: a bus and a car stood 63 s nose to nose in
+        // Sydney's junction 460, two in Shibuya's 1995 for 69 s, #484)
+        const squeeze = (long && (c.inHeld > 90 || stuckPair)) || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20);
         if (squeeze && !c.squeezing) squeezes++;
         c.squeezing = squeeze;
         if (squeeze) held = false;
