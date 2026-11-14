@@ -13,6 +13,7 @@ const DEPTH = +(process.env.DEPTH || 2), TOP = +(process.env.TOP || 14);
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1' });
   await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'low');
+  if (process.env.LV) await ctx.addInitScript(n => { try { localStorage.setItem('oe3d-lv', n); } catch (e) { /* storage blocked */ } }, process.env.LV); // (a phone's set at level n: quality.js level)
   const p = await ctx.newPage();
   const bs = await b.newBrowserCDPSession();
   const events = [];

@@ -53,7 +53,7 @@ const phone = w < 600;
         firstFrame: mk('oe:frame'), ready: mk('oe:ready'),
         order: T.dests.map(d => d.name),
         marks: T.dests.filter(d => inView(d.mark)).map(d => d.name),
-        hero: [...document.querySelectorAll('.ts-hero a, .ts-hero button')].filter(inView).map(e => e.textContent.trim().replace(/\s+/g, ' ')),
+        hero: [...document.querySelectorAll('.ts-menu [data-hero]')].filter(inView).map(e => e.textContent.trim().replace(/\s+/g, ' ')),
       };
     }, [w, h]);
     const file = path.join(outDir, `${w}x${h}-${(at || 'now').replace(/[:]/g, '')}.png`);

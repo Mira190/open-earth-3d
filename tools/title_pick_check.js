@@ -141,12 +141,13 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/#globe`;
     }, [w, h]);
     // (Kyoto second while it is on the globe; Sydney while Kyoto is parked, cities/index.json)
     check(name, 'the menu leads with Tokyo and the next place worked on, named on the globe', land.tokyo && (land.hasKyoto ? land.first.join() === 'Tokyo,Kyoto' && land.kyoto : land.first.join() === 'Tokyo,Sydney'), land);
-    const go = p.locator('.ts-hero .ts-go');
+    const go = p.locator('.ts-menu .ts-go:visible'); // under Tokyo's row; on a phone, on the line over the strip
     const gb = await go.boundingBox();
     await press(go);
     await p.waitForFunction(() => location.hash.startsWith('#play-'), null, { timeout: 15000 }).catch(() => {});
     s = await state();
-    check(name, `the primary button (${gb ? Math.round(gb.height) : 0} px, in view) goes straight to #play-shibuya`, s.hash === '#play-shibuya' && gb && gb.y + gb.height <= h && gb.height >= 44, { hash: s.hash, gb });
+    const orange = await p.evaluate(() => [...document.querySelectorAll('.ts-menu *')].filter(e => e.offsetWidth * e.offsetHeight > 4000 && /^rgb\(2[0-9]{2}, 1[0-9]{2}, /.test(getComputedStyle(e).backgroundColor)).length);
+    check(name, `the start (${gb ? Math.round(gb.height) : 0} px, in view) goes straight to #play-shibuya, and the menu has no filled amber block`, s.hash === '#play-shibuya' && gb && gb.y + gb.height <= h && gb.height >= (phone ? 44 : 24) && !orange, { hash: s.hash, gb, orange });
     await ctx2.close();
   }
   await b.close();

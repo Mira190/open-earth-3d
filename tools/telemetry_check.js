@@ -106,6 +106,18 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const save = await p.evaluate(c => { try { return JSON.parse(localStorage.getItem(`oe3d-game-${c}`)); } catch (e) { return null; } }, city);
     const sameTab = await p.evaluate(() => window.OEQuality.died('sametab'));
     const died = await p.evaluate(() => { try { return { n: JSON.parse(localStorage.getItem('oe3d-died-testville')).n, died: window.OEQuality.died('testville'), other: window.OEQuality.died('nowhere') }; } catch (e) { return null; } });
+    // the memory loop's levels (quality.js level): light at first, up a level once one is held, never back to one a page died at
+    const lv = await p.evaluate(() => {
+      const Q = window.OEQuality, set = (k, v) => localStorage.setItem(k, JSON.stringify(Object.assign({ t: Date.now() }, v))), out = {};
+      out.fresh = Q.level('lv-a');
+      set('oe3d-held-lv-b', { lv: 2 }); out.held = Q.level('lv-b');
+      set('oe3d-held-lv-c', { lv: 2 }); set('oe3d-died-lv-c', { n: 1, lv: 1 }); out.heldDied = Q.level('lv-c');
+      set('oe3d-died-lv-d', { n: 2 }); out.old = Q.level('lv-d');
+      set('oe3d-died-lv-e', { n: 1, lv: 3 }); out.floor = Q.level('lv-e');
+      for (const k of ['held-lv-b', 'held-lv-c', 'died-lv-c', 'died-lv-d', 'died-lv-e']) localStorage.removeItem(`oe3d-${k}`);
+      return out;
+    });
+    must(lv.fresh === 2 && lv.held === 1 && lv.heldDied === 2 && lv.old === 2 && lv.floor === 3, 'a phone starts light, tries a level up once one is held, and keeps clear of a level its page died at', JSON.stringify(lv));
     must(started && save && Array.isArray(save.pos), 'the game saves where the player stands on leaving', save && save.pos && save.pos.map(v => Math.round(v)).join(','));
     await sleep(1500);
     await p.goto('about:blank');

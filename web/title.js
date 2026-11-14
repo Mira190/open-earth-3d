@@ -124,11 +124,24 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       state: alt > 0 ? 'up' : alt > -6 ? 'tw' : 'night', word: alt > 0 ? 'sun up' : alt > -6 ? 'twilight' : 'night' };
   }
 
+  // One list, city then district: a city of several playable maps (Tokyo) names them on a line under its
+  // row, each one press into its game. The first of them, in the first such city, is where a new visitor
+  // starts: it carries the page's one amber mark, and P with nothing chosen presses it. The line shows
+  // under the leading city until another place is chosen, and under a chosen city.
+  const START = ['shibuya', 'tokyo'];
+  const maps = d => (d.sites || []).filter(c => c.game).sort((a, b) => (START.indexOf(a.id) + 1 || 99) - (START.indexOf(b.id) + 1 || 99));
+  const leadDest = dests.find(d => maps(d).length);
+  const startMap = leadDest ? maps(leadDest)[0] : null;
+  const dn = c => escH(c.district || c.name);
+  const mapBtn = c => (c === startMap
+    ? `<button class="ts-d ts-go" data-hero="${c.id}" aria-label="Play ${dn(c)}"><span>${dn(c)}</span><em>Play<kbd>P</kbd></em></button>`
+    : `<button class="ts-d" data-hero="${c.id}" aria-label="Play ${dn(c)}"><span>${dn(c)}</span></button>`);
   const list = $('ts-list');
   list.innerHTML = dests.map((d, i) => {
-    const p = progress(d);
-    return `<li style="--i:${i + 1}"><button class="ts-item" data-i="${i}" aria-label="${d.name}, ${d.country}">
-      <span class="n">${pad(i + 1)}</span><span class="nm">${d.name}${nativeName(d)}</span><span class="tm"><i></i><span></span></span>${p.visited ? '<span class="vis" title="Visited"></span>' : ''}</button></li>`;
+    const p = progress(d), ms = maps(d);
+    return `<li style="--i:${i + 1}"${d === leadDest ? ' class="lead"' : ''}><button class="ts-item" data-i="${i}" aria-label="${d.name}, ${d.country}">
+      <span class="n">${pad(i + 1)}</span><span class="nm">${d.name}${nativeName(d)}</span><span class="tm"><i></i><span></span></span>${p.visited ? '<span class="vis" title="Visited"></span>' : ''}</button>${
+      ms.length ? `<div class="ts-sub">${ms.map(mapBtn).join('')}</div>` : ''}</li>`;
   }).join('');
   const items = [...list.querySelectorAll('.ts-item')];
   $('ts-list').parentElement.querySelector('.ts-hint').style.setProperty('--i', dests.length + 1);
@@ -141,25 +154,18 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     });
     if (sel >= 0) fillStats(dests[sel]);
   }
-  // the one action the page asks for: straight into the best Japanese level, then the other Tokyo
-  // areas and Kyoto, each a single tap from landing (no card, no subway map in between)
-  const HERO = ['shibuya', 'shinjuku', 'tokyo', 'higashiyama'];
-  const heroes = HERO.map(id => cities.find(c => c.id === id && c.built && c.game)).filter(Boolean);
+  // on a phone the list is a strip of names with no room under one: the start sits on a slim line over it
   const heroEl = $('ts-hero');
-  if (heroEl && heroes.length) {
-    const [h0, ...rest] = heroes;
-    const nm = c => escH(c.district || c.name), sub = c => escH((c.guide && c.guide.hook) || c.tagline || '');
-    heroEl.innerHTML = `<p class="ts-eyebrow">Japan · start here</p>
-      <button class="ts-btn primary ts-go" data-hero="${h0.id}" aria-label="Play ${nm(h0)}, ${escH(h0.group || h0.country)}"><span class="ts-bl"><b>Play ${nm(h0)}${h0.native ? ` <small lang="ja">${escH(h0.native)}</small>` : ''}</b><small>${sub(h0)}</small></span><kbd>P</kbd></button>
-      <div class="ts-also">${rest.map(c => `<button class="ts-chip" data-hero="${c.id}" aria-label="Play ${nm(c)}">${nm(c)}<small>${escH(c.group || c.country)}</small></button>`).join('')}</div>`;
+  if (heroEl && startMap) {
+    heroEl.innerHTML = `<button class="ts-d ts-go" data-hero="${startMap.id}" aria-label="Play ${dn(startMap)}"><span>${dn(startMap)}${startMap.native ? `<small lang="ja">${escH(startMap.native)}</small>` : ''}</span><em>Play</em></button>`;
     heroEl.hidden = false;
-    on(heroEl, 'click', e => {
-      const b = e.target.closest('[data-hero]'); if (!b) return;
-      const c = cities.find(x => x.id === b.dataset.hero), d = dests.find(x => x.c === c || (x.sites && x.sites.includes(c)));
-      lastInput = performance.now();
-      if (d) dive(d, true, c);
-    });
   }
+  on(list.parentElement, 'click', e => {
+    const b = e.target.closest('[data-hero]'); if (!b) return;
+    const c = cities.find(x => x.id === b.dataset.hero), d = dests.find(x => x.sites && x.sites.includes(c));
+    lastInput = performance.now();
+    if (d) dive(d, true, c);
+  });
   $('ts-next').innerHTML = `Next in line <b>${planned.map(c => c.name).join(' · ')}</b>`;
   $('ts-tally').textContent = `${dests.length} destinations · ${fmtN(totalBuildings)} buildings measured · one real sun`;
   $('ts-planned').innerHTML = planned.map(c => `<li><b>${c.name}</b><span>${c.country}. ${c.data || ''}</span></li>`).join('');
@@ -769,7 +775,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     else if (k === 'p' && sel >= 0 && dests[sel].sites && card.querySelector('[data-map][data-go="play"]')) card.querySelector('[data-map][data-go="play"]').click();
     else if (k === 'p' && sel >= 0 && dests[sel].sites && card.querySelector('.ts-dplay')) card.querySelector('.ts-dplay').focus();
     else if (k === 'p' && sel >= 0 && dests[sel].c.game && !dests[sel].sites) dive(dests[sel], true);
-    else if (k === 'p' && sel < 0 && $('ts-hero') && !$('ts-hero').hidden) $('ts-hero').querySelector('.ts-go').click();
+    else if (k === 'p' && sel < 0 && startMap) list.parentElement.querySelector('.ts-go').click();
     else if (k === 'f' && sel >= 0 && window.OEFilm && OEFilm.hasReel()) OEFilm.openReel();
     else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); homeView(); for (const d of dests) d.mark.classList.remove('hot'); }
   });
@@ -825,7 +831,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   $('ts-subsolar').textContent = `Sun overhead ${fmtLat(sun.lat)} ${fmtLon(sun.lon)}`;
 
   const _v = new V3(), _n = new V3();
-  const menuEl = stage.querySelector('.ts-menu'), topEl = stage.querySelector('.ts-top');
+  const menuEl = stage.querySelector('.ts-menu'), topEl = stage.querySelector('.ts-top'), footEl = stage.querySelector('.ts-foot');
   function placeMarks() {
     const w = stage.clientWidth, h = stage.clientHeight;
     // project every label, read their widths in one go, then write: one layout a frame, not one a label
@@ -839,7 +845,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       const facing = _n.dot(_v.copy(cam.position).sub(p).normalize());
       _v.copy(p).project(cam);
       const y = (-_v.y * 0.5 + 0.5) * h;
-      return { facing, x: (_v.x * 0.5 + 0.5) * w, y, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && y > roof && y < floor };
+      return { facing, x: (_v.x * 0.5 + 0.5) * w, y, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && y > roof && y < floor && (slim || y < h - 26) }; // (a label half off the foot of a wide screen is not drawn)
     });
     // widths that do not depend on how the label was drawn last frame: the name alone, and the name with
     // the chosen place's coordinates (measured once while they show). Read as drawn, a label that lost its
@@ -874,10 +880,15 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     // city first, then the live ones, then the planned
     const order = [...dests.map((d, i) => ({ el: d.mark, pri: i === sel ? 0 : i === hot ? 1 : 2 })), ...plannedMarks.map(m => ({ el: m.el, pri: 3 }))]
       .filter(o => !o.el.hidden).sort((x, y) => x.pri - y.pri);
+    // the list, an open card and the foot's lines are text already: a label that would lie on one loses its text, and a
+    // planned place under the list is not marked at all (Singapore's name sat between two rows)
+    const keep = slim ? [] : [menuEl, ...footEl.children, ...(card.classList.contains('on') ? [card] : [])].filter(e => !e.hidden).map(e => e.getBoundingClientRect()).filter(r => r.width);
     const placed = [];
-    const hits = r => placed.some(q => r.left < q.right + 6 && r.right + 6 > q.left && r.top < q.bottom + 2 && r.bottom + 2 > q.top);
+    const over = r => keep.some(q => r.left < q.right + 14 && r.right + 14 > q.left && r.top < q.bottom + 8 && r.bottom + 8 > q.top);
+    const hits = r => over(r) || placed.some(q => r.left < q.right + 6 && r.right + 6 > q.left && r.top < q.bottom + 2 && r.bottom + 2 > q.top);
     for (const o of order) {
       let r = o.el.getBoundingClientRect();
+      if (o.pri === 3 && over(r)) { o.el.hidden = true; continue; }
       let clash = !!o.el.dataset.cramped || hits(r);
       // two places close together (Tokyo and Kyoto from orbit): try the label on the other side first
       if (clash && !o.el.dataset.cramped && o.el.dataset.x) {
