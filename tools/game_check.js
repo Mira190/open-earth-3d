@@ -2307,6 +2307,9 @@ const npcNight = require('./npc_night');
     if (!H || !H.levels.length) return null;
     const pl = g.player, at = { x: pl.x, y: pl.y, z: pl.z }, was = g.held ? g.held() : false, out = [];
     const frames = async n => { for (let i = 0; i < n; i++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); } };
+    // (on foot: at the wheel you stand where the car does, and moving the player moves no camera. The step before
+    // leaves the car once it has stopped, which a car still rolling refuses)
+    for (let i = 0; i < 40 && pl.mode === 'car'; i++) { g.advance(0.2, ['Space']); g.exitCar(); g.advance(0.3); }
     g.hold(true);
     try {
       for (const L of H.levels) {
@@ -2333,6 +2336,7 @@ const npcNight = require('./npc_night');
         // (the camera follows the player there over some frames, and the level goes by the camera's place)
         for (let k = 0; k < 80 && H.state().find(s => s.id === L.h.id).state !== 'idle'; k++) await frames(1);
         r.away = H.state().find(s => s.id === L.h.id).state;
+        if (r.away !== 'idle') r.away += ` with the player ${pl.mode} at ${Math.round(pl.x)},${Math.round(pl.y)} and the camera at ${Math.round(g.camera.position.x)},${Math.round(-g.camera.position.z)}`;
         r.back = hidden.every(o => o.visible);
         out.push(r);
       }
