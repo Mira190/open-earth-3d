@@ -282,3 +282,9 @@ white gravel (`night.clear` in `city.json`).
   Somei-yoshino cherries along the Takase canal, at Gion Shirakawa, in the Gyoen and at Nijo-jo,
   in flower from 26 March (`trees.cherry_open`); the Gyoen's weeping cherries are Somei-yoshino
   too, and the Philosopher's Path and Maruyama Park are east of the map.
+
+## The hero level by the station
+
+`cities/kyoto/hero.py` ([HERO.md](../HERO.md)): the station's north forecourt, Shiokoji-dori and Kyoto Tower
+Building's faces, modelled finely and drawn over the map while you are near. The game starts at
+(-261.5, -1779.5), on the forecourt's kerb under the tower.
