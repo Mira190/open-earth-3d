@@ -158,7 +158,10 @@ module.exports = async function trainsStep(p, part = 'all') {
     // station, see its doors and the platform doors open, board it, ride, and get off onto the next station's platform
     const Rd = T.ride;
     if (part !== 'watch' && Rd && g.rail === Rd && T.stations.length > 1) {
-      if (pl.mode === 'car') { g.exitCar(); g.advance(0.5); } // (on foot, wherever the steps before left you)
+      // (on foot, wherever the steps before left you: out of your car, out of a taxi or a ride and done with it)
+      if (pl.mode === 'car') { g.exitCar(); g.advance(0.5); }
+      if (pl.mode === 'ride') { g.leaveRide(); g.advance(1); }
+      if (g.ride && g.ride() && g.cancelRide) { g.cancelRide(); g.advance(0.5); }
       if (pl.mode !== 'foot') { Object.assign(pl, { mode: 'foot', vehicle: null }); pl.rig.root.visible = true; }
       g.setClock(g.clock.y, g.clock.m, g.clock.d, 18 * 60);
       const from = T.stations.find(s => !s.under) || T.stations[0], sv2 = T.services.find(s => T.stopsNow(s) && s.halts.findIndex(h => h.st === from) >= 0 && s.halts.findIndex(h => h.st === from) < s.halts.length - 1);
@@ -187,6 +190,8 @@ module.exports = async function trainsStep(p, part = 'all') {
       const aboard = pl.mode === 'rail' && pl.vehicle === car;
       let left = false, top = 0, arrived = false, inside = true, veiled = false;
       const money0 = g.life ? g.life.money : 0;
+      if (g.life) g.life.store.wallets[g.life.code] = 1e5; // (a wallet that covers the fare, whatever the steps before spent; put back after)
+      const money1 = g.life ? g.life.money : 0;
       for (let t = 0; t < 400 && car && !arrived; t += 0.5) {
         g.advance(0.5);
         if (T.veiled) veiled = true;
@@ -206,7 +211,7 @@ module.exports = async function trainsStep(p, part = 'all') {
       if (to.under) { // a station under the ground: the tunnel veiled, and up at its street entrance, the veil lifted
         checks.push([veiled && !T.veiled && pl.mode === 'foot' && Math.abs(offZ) < 1.5 && offD < 15 && !!offF, `rides through the tunnel (veiled: ${veiled}) and comes up at ${to.name}'s entrance (${offD.toFixed(1)} m from it, ${offZ.toFixed(2)} m off its level; the veil ${T.veiled ? 'still up' : 'lifted'})`]);
         const f = g.life && g.life.data.fares;
-        if (f && f.rides.rail) checks.push([money0 - g.life.money > 0, `the ride is charged by ${f.card.name} (${g.life.fmt(money0 - g.life.money)})`]);
+        if (f && f.rides.rail) checks.push([money1 - g.life.money > 0, `the ride is charged by ${f.card.name} (${g.life.fmt(money1 - g.life.money)})`]);
       } else checks.push([pl.mode === 'foot' && Math.abs(offZ) < 0.5 && offD < (to.r || 150) && !!offF, `gets off onto ${to.name}'s platform (${offZ.toFixed(2)} m off its level, ${offD.toFixed(0)} m from its middle)`]);
       if (g.life) g.life.store.wallets[g.life.code] = money0;
       Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h, mode: 'foot', vehicle: null }); pl.rig.root.visible = true; g.cam.yaw = keep.yaw;
