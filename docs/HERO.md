@@ -690,3 +690,36 @@ domain (the legs' trusses, the arch, Foot Town's panels and lettering).
 Short of the bar: members are square beams without gusset plates or rivets; the main deck is
 still a plain box; Foot Town has no entrance canopy, shop fronts or signs; the hill's lots are
 plain paving, with no car park lines, walls or railings; stills: `tools/views/tokyo-tower.json`.
+
+## Why the Tokyo level is not at the bar yet, and what closes the gap
+
+The owner asked, after the second pass: is this the photoreal tiny level that was asked for? It is
+not. The stills read as a clean, correct model, not as a photograph. What makes a current game's
+street read as real, from the sources below, and where this level stands on each:
+
+| What carries the look | In a current game | Here now |
+|---|---|---|
+| Indirect light and occlusion | baked or traced: every recess, eave and foot of a wall is darker, light bounces warm off brick | none on the station: it is landmark meshes, which carry no baked light; one flat ambient |
+| Edges | no razor edge: a bevel or a chamfer in the normal catches a highlight along every arris | every block is a box with hard 90 degree edges |
+| Texel density | about 1024 px a metre near a third-person camera, 512 further off | the brick is 1024 px over 1.4 m; stone, slate edges and paving are flat colour |
+| Material response | roughness and normal vary with the material, so light moves across it as the camera does | one roughness a material, no micro-relief on stone, copper or slate |
+| Tone and exposure | scene-referred light, a filmic curve, bloom before it | the shared grade; pale surfaces took a green cast until tinted warm |
+| Scale and life | props at real sizes, signs, rails, wear where hands and feet go | bare: no stands' signs, rails, bins, bicycles |
+
+Order of work that follows from it (first what changes most pixels in the first frame):
+
+1. Move the spawn's hundred metres onto the hero kit (`hero.js`), which already bakes occlusion and
+   night light into the vertices, takes 1K PBR sets and a fine model, and is freed past 520 m: the
+   south pavilion's front, its doors and canopies, the ground in front of it.
+2. Bevel what the eye rests on: window frames, cornices, pilasters, turret rings, kerbs.
+3. Give stone, slate and copper their own PBR sets at the kit's density; brick with real joints.
+4. Dress the transport plaza at real sizes: stand signs, rails, bollards, a taxi rank's paint.
+
+Sources: bevels and why a hard edge reads as cheap ([Radiator](https://www.blog.radiator.debacle.us/2017/07/bevels-in-video-games.html));
+texel density per camera ([Frozenbyte's asset workflow](https://wiki.frozenbyte.com/index.php/3D_Asset_Workflow:_General_Tips));
+trim sheets and their limits ([Chris Radsby](https://chrisradsby.notion.site/Let-s-talk-about-Trim-Sheets-Techniques-16ea5b47012c802eba09d28ec5ce9189));
+baked indirect light as the highest quality for a static scene in a browser, and the post order AO, bloom, tone curve
+([three.js forum](https://discourse.threejs.org/t/achieving-realistic-ambience-in-architectural-three-js-scenes/89753),
+[lighting and PBR on the web](https://slicker.me/three_js/lighting_pbr.htm)); Ghostwire: Tokyo built by hand from
+photographs of walked streets, not from city data ([Automaton](https://automaton-media.com/en/news/20230823-20986/),
+[Unreal Engine](https://www.unrealengine.com/en-US/developer-interviews/ghostwire-taps-into-the-charm-of-tokyo-to-deliver-a-compelling-experience)).
