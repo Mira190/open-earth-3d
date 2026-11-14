@@ -506,6 +506,7 @@ listed at the end.
 | **Tesla FSD** (AI Day 2021 and 2022: the planning talks) | The planner run for every car round it, not only for itself: each car's way ahead is known and read by the others, and where two ways meet one asserts and the other yields, by the same rule read from both sides, rather than both reacting to what is in front of them. A car that can no longer stop goes; one in the junction goes before one coming. Ideas only (its software is proprietary). | It learns from fleet video; here every car's intent is exact (its route, its movement through the junction), so nothing has to be guessed from a camera. |
 | **Baidu Apollo** (EM planner, Apache-2.0), **SUMO** (EPL-2.0), **A/B Street** (Apache-2.0), **Autonomous Intersection Management** (Dresner and Stone) | Apollo: another car's way projected onto your own as the stretch it blocks, and a go-first or yield decision on it. SUMO and A/B Street: keep the box clear (no car into a junction whose way across is blocked or whose exit has no room), and break a deadlock by someone backing off, never by driving through. AIM: a reservation for the way across, which `junctions.js` already makes. Re-written from the papers and documentation; no code taken. | They simulate traffic for planners to study. Here the same rules drive the taxi you are sitting in. |
 | **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
+| **Breath of the Wild** (its Pro HUD), **Ghost of Tsushima**, **GTA V**, **Genshin Impact**, **Red Dead Redemption 2** | What stays on screen is what is read at a glance: the objective, the minimap, the clock and the prompt for what is in reach. Everything else is one press away and off the picture: GTA and Red Dead keep the phone, the map and the journal on keys and in the pause menu, Genshin folds its row of icons away while you move, and Zelda's Pro HUD and Tsushima show nothing that is not needed now. So the HUD keeps two buttons, the map and the menu; the passport, the diary, photo mode, the phone and the districts fold behind a "more" button (their keys work either way, and a dot on it says a message is waiting), and the walking hint shows for four seconds when the gait changes and then goes. | Those games teach their keys once and hide them; a page on the web is also played by touch, where a button is the only way in, so the folded buttons stay one tap away rather than behind a pause menu. |
 
 ## Daily life: the day, the diary, bonds, skills and jobs
 
@@ -538,7 +539,7 @@ Sources for the above are listed under [Sources](#sources) ("Daily life").
   which jobs are offered and what is on.
 - **The calendar is the real one.** The game opens on the city's own date and hour. Events are
   at their real places on their real dates; the menu's date takes you to any of them.
-- **A slot is spent by choice.** Time passes on the running clock (a day in 48 minutes at 30×),
+- **A slot is spent by choice.** Time passes on the running clock (real time, or a day in 48 minutes at the menu's 30×),
   or at once with "pass the time" in the diary. Getting to know someone takes the rest of the
   slot.
 - **Everything is a true thing about a real place.** A rank's scene carries a fact that can be
@@ -2351,8 +2352,12 @@ quality tier runs a third of the cars.
     millimetres at two kilometres, so distant walls and roofs do not fight over
     pixels. The sky is given back its blue by day (`game.sky.saturation`).
 - **Sun and time:**
-  - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
-    title screen offers the morning first. The title screen and the menu offer:
+  - **Clock:** the game starts at the place's actual time, day or night, and the
+    clock runs in real time: it is read from the wall clock, so a pause, a menu or
+    a tab left in the background never leaves it behind. Picking another hour, a
+    date or a speed (30 times real time, 120, or paused) makes the clock the
+    player's own from then on, and a save keeps it; "Now" follows the place's
+    clock again. The title screen and the menu offer:
     - the time now;
     - sunrise, morning, noon, golden hour, sunset, blue hour and night, each shown
       with its clock time on the day. These are worked out from the sun, so a blue
