@@ -149,6 +149,23 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/#globe`;
     const orange = await p.evaluate(() => [...document.querySelectorAll('.ts-menu *')].filter(e => e.offsetWidth * e.offsetHeight > 4000 && /^rgb\(2[0-9]{2}, 1[0-9]{2}, /.test(getComputedStyle(e).backgroundColor)).length);
     check(name, `the start (${gb ? Math.round(gb.height) : 0} px, in view) goes straight to #play-shibuya, and the menu has no filled amber block`, s.hash === '#play-shibuya' && gb && gb.y + gb.height <= h && gb.height >= (phone ? 44 : 24) && !orange, { hash: s.hash, gb, orange });
     await ctx2.close();
+    // a visitor who has played: the start is the game last played, and says Continue
+    const ctx3 = await b.newContext({ viewport: { width: w, height: h }, hasTouch: phone, isMobile: phone });
+    await ctx3.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); localStorage.setItem('oe3d-game-shibuya', JSON.stringify({ at: 1, pos: [0, 0, 0] }));
+      localStorage.setItem('oe3d-game-sydney', JSON.stringify({ at: 2, pos: [0, 0, 0], qs: { stamps: ['a', 'b'] } })); } catch (e) { /* storage blocked */ } });
+    p = await ctx3.newPage();
+    p.on('pageerror', e => { fail++; console.log(`${name}: pageerror ${e}`); });
+    await p.goto(BASE);
+    await p.waitForSelector('.ts-item', { timeout: 120000 });
+    await p.waitForFunction(() => { const a = document.querySelector('.title-app'); return a && a.classList.contains('menu') && !a.classList.contains('opening'); }, null, { timeout: 60000 });
+    await p.waitForTimeout(3500);
+    const again = p.locator('.ts-menu .ts-go:visible');
+    const label = (await again.textContent()).replace(/\s+/g, ' ').trim();
+    await press(again);
+    await p.waitForFunction(() => location.hash.startsWith('#play-'), null, { timeout: 15000 }).catch(() => {});
+    s = await state();
+    check(name, `with two saved games the start says Continue and goes to the later one ("${label}")`, /Continue/.test(label) && s.hash === '#play-sydney', { label, hash: s.hash });
+    await ctx3.close();
   }
   await b.close();
   console.log(fail ? `title_pick_check: ${fail} failure(s)` : 'title_pick_check: ok');
