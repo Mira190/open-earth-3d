@@ -585,6 +585,7 @@ ${PAT_GLSL}`)
     }
     function play(name, fade = 0.25, once = false) {
       const a = act[name];
+      if (!a) return cur; // (a figure built without that clip keeps the one it is in)
       if (cur === a) return a;
       a.reset();
       a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);

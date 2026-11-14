@@ -382,7 +382,7 @@
       "mean_max_c": [26.0, 25.8, 24.8, 22.5, 19.5, 17.0, 16.4, 17.9, 20.1, 22.2, 23.7, 25.3],
       "source": "Bureau of Meteorology, Sydney (Observatory Hill) 066062, mean maximum temperature 1859-2020"
     },
-    "hero": [{"id": "quay-west", "glb": "hero/quay-west.glb", "fine": "hero/quay-west_fine.glb", "fine_m": 75, "at": [-195.0, 230.0], "r": 85.0, "bake": 1.0, "street": 0.55, "glow": [0.1, 1.5], "note": "Circular Quay West from First Fleet Park to the taxi rank: the Museum of Contemporary Art's sandstone front, Tallawoladah Lawn and the Writers Walk promenade, modelled finely (cities/sydney/hero.py, blender/build_hero.py, docs/HERO.md)"}],
+    "hero": [{"id": "quay-west", "glb": "hero/quay-west.glb", "fine": "hero/quay-west_fine.glb", "fine_m": 75, "at": [-195.0, 230.0], "r": 85.0, "bake": 1.0, "street": 0.55, "glow": [0.1, 1.5], "solid": [[-220.5, 181.5], [-215.5, 241.5], [-207.0, 259.0], [-210.0, 275.0], [-246.0, 215.0]], "open": [[-177.0, 198.0], [-208.5, 250.3], [-190.0, 258.0]], "note": "Circular Quay West from First Fleet Park to the taxi rank: the Museum of Contemporary Art's sandstone front, Tallawoladah Lawn and the Writers Walk promenade, modelled finely (cities/sydney/hero.py, blender/build_hero.py, docs/HERO.md). solid: points inside what the level draws as buildings (the pavilions, the entrance hall behind its glass, the Mordant Wing, the George Street range), where a walker must not be able to stand; open: points that must stay walkable (the start, the way through under the wing's dark box, the wing's forecourt): tools/game_check.js checks both (cities/sydney/museum.py, issue 426)"}],
     "start": {
       "at": [-177, 198],
       "facing": [120, 640],

@@ -241,38 +241,95 @@ shop names, noren, lantern papers and boards are drawn in Python with Shippori M
 ## Circular Quay West (Sydney)
 
 From First Fleet Park's edge to the taxi rank under the Overseas Passenger Terminal: 135 m of the quay in
-front of the Museum of Contemporary Art, where the Sydney map's game starts (the start was moved 15 m, from
-the lawn's path down onto the promenade, so that the first frame looks along it to the harbour). Chosen over
-George Street in The Rocks, 100 m west: the quay is what the start already faces, it holds the map's two
-most photographed things in one view (the museum's sandstone front and the Opera House across the cove), and
-its ground, edge and furniture are all in the open, where a level's detail shows.
+front of the Museum of Contemporary Art, where the Sydney map's game starts, looking along the promenade to
+the harbour with the Opera House across the cove on the right. Chosen over George Street in The Rocks, 100 m
+west: the quay is what the start already faces, it holds the map's two most photographed things in one view
+(the museum's sandstone front and the Opera House), and its ground, edge and furniture are all in the open,
+where a level's detail shows.
+
+The first pass (pull request 444) was built without a photograph of the promenade itself, and guessed: sawn
+granite planks, tall twin-arm lamp posts, a sandstone coping and no rail. The second pass looked at the
+place first (the photographs are listed below) and rebuilt what the guesses had wrong:
+
+| What a walker sees | As built now | From |
+|---|---|---|
+| The paving | unit pavers 200 x 100 mm in a herringbone at 45 degrees to the quay, buff-grey with the odd browner one, darker soldier courses across it every 7.4 m and along the kerb and the lawn | photographs 1, 7; the bond's size is a standard paver's, not measured |
+| The water's edge | a broad kerb, the quay's dark green cast-iron balustrade on it (posts 2 m apart with ball heads, a round top rail, a cross and ring in each panel), orange lifebuoys on the rail; under it the concrete face with its pour lines, tide band and weed, white fender piles with ladders | photographs 1, 7 |
+| The lights | the quay's ball lights: white globes on slender dark posts along the rail and the lawn's wall, lit at dusk | photographs 2, 7 |
+| The banners | white flagpoles 10 m tall between the lights, each flying a tall banner across the promenade | photographs 1, 7; the banners' art is this project's |
+| The museum's front | each bay a recess running up through the storeys between flat piers, paired steel windows and a stone spandrel to a storey; pavilions of five storeys and 21.4 m, wings of six and 27.4 m with a row of small windows under a deep attic; the rain's dark runs under every coping; the tower's stepped great piers; the entrance a portal of polished brown granite with bronze doors; the cafe's flat white canopies along the wings' feet | photographs 2, 3, 8, 9 |
+| The Mordant Wing | on OpenStreetMap's outline: a frameless glazed entrance two storeys high under stacked white boxes with a ribbon of glass between, the dark box with the museum's name over the way through to George Street, the black box with its glazed corner on top; the white precast wall north of it with the name at eye level and Brook Andrew's arrow on its concrete foot | photographs 4, 5 |
+| The lawn | a pale concrete seat wall along the promenade | photographs 6, 9 |
 
 What is measured, and from where:
 
 | Thing | Source |
 |---|---|
-| The museum's outline, its end pavilions (9.3 m forward, 14 m wide), the tower's face (13.2 m, 1.6 m proud), the lawn, the retaining wall's line, every tree, bench, bollard, cover and artwork, the eight Writers Walk plaques here by name | OpenStreetMap (`cities/sydney/hero_osm.json`, ODbL) |
+| The museum's outline, its end pavilions (9.3 m forward, 14 m wide), the tower's face (13.2 m, 1.6 m proud), the Mordant Wing's plan, the lawn, the seat wall's line, every bench, bollard, cover and artwork, the eight Writers Walk plaques here by name | OpenStreetMap (`cities/sydney/hero_osm.json`, ODbL) |
 | The ground: the lawn at 3.9-4.0 m, the promenade at 2.5 m, the slope between | the game's own surface (`hero_ground.json`: NSW Spatial Services' 5 m elevation, softened, the quay raised to its wall) |
-| The quay's edge | the game's shore raster (`shore.png`), smoothed to the wall's line |
-| The front's composition and heights: three bays to a pavilion and four to a wing, paired windows, a 4.3 m storey, pavilions 23 m, wings 26 m, the tower 35 m (the same as the map's own figure), the glass floor on the roof | photographs on Wikimedia Commons: "Museum of Contemporary Art Australia, Sydney, 2023" (CC BY-SA 4.0), "The Museum of Contemporary Art, Sydney (former MSB Building)" (CC BY-SA 4.0), "(1)Museum of Contemporary Art-3" (CC BY-SA 3.0); looked at, not copied into the model |
+| The quay's face | the game's shore raster (`shore.png`), read as a few straight runs with eased corners |
+| The front's heights | the tower's 35 m is the map's own figure; the wings and pavilions are in the proportion photograph 2 shows against it |
 
-The city's model has the museum as four plain blocks without its end pavilions or the Mordant Wing; the
-level builds both as its own shells (they have no collision: issue 426), and skins the rest 0.45 m in
-front of the city's walls. The entrance hall behind the Mordant Wing's glass is a room in geometry (floor,
-back wall hung with canvases, a ceiling of light), so that it shifts as you walk past, which a picture of a
-room does not. The two rows of palms along the lawn's wall are the map's own trees (an area in `city.json`
-`trees.areas` makes them palms where they were jacarandas), so that they move in the wind and are not drawn twice.
+Photographs looked at (Wikimedia Commons; none is reproduced, and no texture is taken from one):
 
-After dark: the lamp posts' luminaires, the up-lights along the museum's foot, the hall's ceiling and the
-steel ovoid's holes are the bake's lights; a fifth of the windows are lit.
+| | File | Licence | Used for |
+|---|---|---|---|
+| 1 | AUS Sydney, Central Business District, Circular Quay 012.jpg | see its page | the promenade from above: the herringbone, the bands, the rail, the banners' poles, benches at the rail |
+| 2 | Museum of Contemporary Art Australia, Sydney, 2023.jpg | CC BY-SA 4.0 | the front's composition, heights, stains, canopies, the ball lights, the palms on the lawn |
+| 3 | The Museum of Contemporary Art, Sydney (former MSB Building).jpg | CC BY-SA 4.0 | the front again, the tower's piers |
+| 4 | (1)Museum of Contemporary Art-3.jpg | CC BY-SA 3.0 | the Mordant Wing's entrance: boxes, glass, lettering, the arrow |
+| 5 | MCA 2014.10.26.JPG | see its page | the wing's dark box and the way under it |
+| 6 | The Rocks NSW 2000, Australia - panoramio (47).jpg | see its page | the lawn's seat wall |
+| 7 | Museum of Contemporary Art, Sydney, NSW (7834205430).jpg | see its page | the quay from the water: the concrete face, the fender piles, the rail, globes and banners in a row |
+| 8 | Sydney Museum of Contemporary Art Australia Southern entrance.jpg | see its page | the stone's coursing and joints, the polished granite of a door's surround |
+| 9 | SydneyMuseumContemporaryArt gobeirne.jpg | see its page | the whole front over the lawn |
 
-What could not be checked: the lamp posts' and benches' design (Sydney's quay posts are drawn as a tapered
-dark post with two outreach luminaires and a banner pair; the banners' and pylons' graphics are this
-project's), the paving's bond and colour (a grey sawn granite with darker bands), the height of the lawn's
-wall (the game's softened ground makes the 1.5 m drop a 7% ramp, so the wall is drawn as a 0.45 m seat wall),
-the Mordant Wing's exact massing (boxes after photographs), the ovoid's dimensions, whether the quay's edge
-here has a rail (OpenStreetMap maps fences only at the wharves: none is drawn), and the palms' species (the
-shared palm is a date palm; the real ones are slender fan palms).
+**Surfaces drawn, not scanned** (`cities/sydney/hero_tex.py`, registered with the kit by `hero_kit.register`).
+No CC0 scan had the quay's herringbone or a sawn sandstone without a brick's joints (the first pass tinted
+`Bricks066`, and the museum read as yellow brick), so the level draws its own, seamless, from shaped noise:
+the pavers (1.6 m to a repeat at 1K: a texel is 1.6 mm, a pixel's width on the ground two metres from the eye
+at 1440 px), their soldier course (512), the sandstone ashlar in 380 mm courses, the same stone under a coping
+with the rain's runs (laid once up each attic, so the stains hang from the coping and nowhere else), the
+quay's concrete face (laid once from kerb to water, so the tide band sits at high water) and precast concrete
+(512). Only what shows carries a normal or a roughness map. The only scanned sets left are `Grass004` and
+`Granite005A`.
+
+**Texels where the eye is.** A paving seen from 1.65 m is seen at a grazing angle, and without anisotropic
+filtering its joints smear to a blur four metres ahead however fine the texture: `hero.js` now sets 8x
+anisotropy on a level's texture maps on the high tier and 4x on the medium one (a sampler setting: no
+memory), none on the low tier.
+
+**The city under the level** (issue 426, `cities/sydney/museum.py`). The city's model had the museum as its
+four mapped parts only; the pavilions and the Mordant Wing were the level's shells over nothing. They are in
+the city's data now (the outline's remainder, cut as the level stacks it, each face 0.3 to 0.6 m behind the
+level's), so they stop a walker, throw the city's shadow and stand in the visibility raster whether the level
+is loaded or not. The entrance hall is a solid that is not drawn (`scene.json` `hidden_solids`): the level
+draws the hall as a room behind glass, and the solid is what stops a walker at the glass. `game.hero[].solid`
+and `.open` name points that must be solid and must stay walkable; `tools/game_check.js` checks both.
+
+The map's own quay wall has a sandstone-coloured coping 0.1 m over the ground along the shore raster's
+stepped line; the level's pavers rise to the kerb over it in their last metre (`Level.lift`), so it does not
+show.
+
+After dark: the ball lights, the cafe canopies' and the portal's downlights, the up-lights along the
+museum's foot, the hall's ceiling and the steel ovoid's holes are the bake's lights; a fifth of the windows
+are lit.
+
+Level: 61,000 triangles and 4.2 MB; fine model (the rail's crosses and rings, glazing bars, ladders, joints)
+18,000 triangles and 0.5 MB, drawn within 75 m and never on the low tier.
+
+Where it still falls short of the bar, as the stills show: the palms are the map's shared palm scaled to the
+surveyed heights, so their trunks are a metre thick where the lawn's cabbage-tree palms are slender (the
+shared tree model's to fix, or a way for a level to stand its own trees in place of the map's: issue filed);
+nothing but the up-lights and the globes lights the museum at night, where the real front is floodlit evenly;
+the glazed entrance does not mirror the quay as the photograph shows; the cafe under the canopies has no
+tables; the balustrade, the benches and the lamp posts do not stop a walker; and none of it has been seen on
+a real GPU or a real phone, only on a software renderer.
+
+What could not be checked: the paver's exact size and colours, the kerb's width, the balustrade's exact
+casting (read from two distant photographs), the lamp posts' height, the Mordant Wing's storey heights and
+setbacks (stacked after photographs 4 and 5 on the measured plan), the ovoid's dimensions, and the palms'
+species (the shared palm is a date palm; the real ones are cabbage-tree palms).
 ## Only what the first frame sees (issue 358)
 
 The levels by a map's spawn (Kamakura's first) apply issue 358's rule to detail: memory and shading go to

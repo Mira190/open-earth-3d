@@ -291,6 +291,7 @@ STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "b
 # ---------------------------------------------------------------- build_scene hooks
 
 BRIDGEPORT = "w387782067"  # 38-42 Bridge Street
+MUSEUM = "w16599528"  # the Museum of Contemporary Art
 
 
 def adjust_building(b, cls, g, geoms, ctx):
@@ -300,6 +301,16 @@ def adjust_building(b, cls, g, geoms, ctx):
         # with Loftus Street (converted to flats in 1998, three storeys added)
         for q in geoms:
             q[1] = 0.0
+    if (b.get("record_id") or "").split("@")[0] == MUSEUM:
+        # OpenStreetMap's parts cover the old building's main block only: its end pavilions, the Mordant Wing and
+        # the George Street range are the outline's remainder (cities/sydney/museum.py, issue 426)
+        import museum
+        for p, h0, h1, src, _, drawn in museum.museum_parts(ctx.ground):
+            q = [p, h0, h1, src, None]
+            geoms.append(q)
+            if not drawn:  # the entrance hall: the hero level draws it as a room behind glass
+                ctx.hide(q)
+        return geoms
     if b["name"] == OPERA:
         return opera_podium(g, geoms, ctx)
     if cls in PRECINCT_FURNITURE and Polygon(PRECINCT).contains(g.centroid):
