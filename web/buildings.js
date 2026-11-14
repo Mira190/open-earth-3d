@@ -119,7 +119,7 @@ window.OEBuildings = (function () {
         for (const m of byId.values()) { v += m.geometry.attributes.position.count; t += m.geometry.index.count / 3; }
         Object.assign(stream, { vertices: v, triangles: t, builds: stream.builds + 1 });
       };
-      stream = { cells: byId, grid: A.grid, vertices: 0, triangles: 0, builds: 0, ms: 0, get at() { return at; }, get lods() { return lods; },
+      stream = { cells: byId, grid: A.grid, vertices: 0, triangles: 0, builds: 0, ms: 0, get at() { return at; }, get lods() { return lods; }, get busy() { return busy; },
         // the player is at x, y: once that is `step` metres from where the cells were last built round, the cells
         // whose level it changes are built again. Resolves when they are in (null: nothing to do, or one under way)
         near(x, y, step = cells.step || 100) {
@@ -359,12 +359,19 @@ window.OEBuildings = (function () {
     const g = cv.getContext('2d');
     const dir = `data/${scene.city.id}/`;
     const draw = (t, im) => { if (im) g.drawImage(im, (t.x0 - fr.x[0]) * k, (fr.y[1] - t.y1) * k, (t.x1 - t.x0) * k, (t.y1 - t.y0) * k); return !!im; };
-    let tex = null;
-    const sent = () => {
+    // on a phone (quality.js lean) the canvas's pixels go once the last picture is on the GPU: 14 MB kept for nothing
+    // (a lost context reloads the view there, world.js gpuOnly)
+    const lean = !!(window.OEQuality && OEQuality.city().lean);
+    let tex = null, up = false, done = false;
+    const free = () => { if (lean && up && done) cv.width = cv.height = 0; };
+    const sent = last => {
+      if (!cv.width) return;
+      up = false; done = !!last;
       if (!tex) {
         tex = new THREE.CanvasTexture(cv);
         if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace; else tex.encoding = THREE.sRGBEncoding;
         tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        tex.onUpdate = () => { up = true; free(); };
         show(tex);
       } else tex.needsUpdate = true;
     };
@@ -379,8 +386,9 @@ window.OEBuildings = (function () {
     const part = which => Promise.all(draws.filter((d, i) => which(i))).then(ok => ok.some(Boolean));
     const first = pics ? i => pics.first[i] : () => true;
     Promise.all([lo, part(first)]).then(([low, any]) => {
-      if (any || low) sent(); // (the overview, at least, if it came)
-      if (pics && pics.first.some(f => !f)) part(i => !first(i)).then(more => { if (more) sent(); });
+      const more = !!(pics && pics.first.some(f => !f));
+      if (any || low) sent(!more); // (the overview, at least, if it came)
+      if (more) part(i => !first(i)).then(got => { if (got) sent(true); else { done = true; free(); } });
     });
   }
 

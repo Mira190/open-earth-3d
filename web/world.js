@@ -1909,7 +1909,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // are drawn at most LEAN_CAP on a side (Shibuya's screens.webp is 2048, 21 MB; here 1024, 5), which the ground
     // aerial and the mask textures (shore, woods) keep clear of, since they are data read by the pixel. The picture
     // is drawn once at its own size then let go. A text sign stays legible: these are seen across a street, not read.
-    const LEAN_CAP = 1024;
+    const LEAN_CAP = (QW && QW.budget && QW.budget.deco) || 1024; // (512 on a phone that could not hold the game: quality.js leanLevel)
     const leanDown = tex => {
       if (!LEAN || !tex || !tex.image) return tex;
       const im = tex.image, side = Math.max(im.width || 0, im.height || 0);
@@ -2278,6 +2278,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       const tex = new THREE.CanvasTexture(cv);
       tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
       tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096; at most 2048 a side on the low tier)
+      if (LEAN) tex.onUpdate = () => { tex.onUpdate = null; cv.width = cv.height = 0; }; // a phone: the GPU has it, the canvas's pixels go (a lost context reloads the view there: gpuOnly)
       if (sea.uniforms && sea.uniforms.uCover.value) sea.uniforms.uCover.value.dispose();
       sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
     }

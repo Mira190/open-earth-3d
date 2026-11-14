@@ -79,13 +79,20 @@ window.OEInland = (function () {
       }
       g.globalCompositeOperation = 'destination-out';
       for (const d of cut) { path([d]); g.fill(); }
-      const data = g.getImageData(0, 0, nx, ny).data, px = new Uint8Array(nx * ny);
-      for (let i = 0; i < px.length; i++) px[i] = data[4 * i + 3];
+      // read back in bands (the whole picture at once is four bytes a cell beside the canvas's own: 45 MB of
+      // Shibuya's load), and the canvas given up at once: a browser keeps a canvas's pixels until it is collected,
+      // Safari long after, and three of these were 116 MB of a phone's memory for as long as the game ran (issue 443)
+      const px = new Uint8Array(nx * ny);
+      for (let r0 = 0; r0 < ny; r0 += 256) {
+        const rows = Math.min(256, ny - r0), data = g.getImageData(0, r0, nx, rows).data;
+        for (let i = 0, o = r0 * nx, n = nx * rows; i < n; i++) px[o + i] = data[4 * i + 3];
+      }
+      cv.width = cv.height = 0;
       const at = (x, y) => {
         const c = Math.floor((x - x0) / cell), r = Math.floor((y1 - y) / cell);
         return c >= 0 && r >= 0 && c < nx && r < ny ? px[r * nx + c] : 0;
       };
-      return { px, nx, ny, cell, x0, y1, at, canvas: cv };
+      return { px, nx, ny, cell, x0, y1, at };
     }
     const inWalled = raster(walled, 0.5), inNatural = raster(natural, 1.0), inDeck = decks.length ? raster(decks.map(r => ({ rings: [r], box: boxOf(r) })), 0.5) : null;
     function boxOf(r) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of r) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } return [x0, y0, x1, y1]; }

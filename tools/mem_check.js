@@ -44,6 +44,7 @@ async function measure(b, city) {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1',
   });
   await ctx.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'low');
+  if (process.env.LEAN) await ctx.addInitScript(l => { try { localStorage.setItem('oe3d-lean', l); } catch (e) { /* storage blocked */ } }, process.env.LEAN); // (LEAN=1|2: the lighter levels of quality.js leanLevel)
   await ctx.addInitScript(() => {
     // bytes per texel of the uncompressed internal formats (as tools/tex_mem.js); a buffer's own bytes; a renderbuffer's samples
     const BPP = { 0x8058: 4, 0x8C43: 4, 0x1908: 4, 0x8051: 3, 0x8C41: 3, 0x1907: 3, 0x8229: 1, 0x1909: 1, 0x1903: 1, 0x822B: 2,
@@ -198,7 +199,9 @@ async function measure(b, city) {
       const lodAt = (x, y) => st.lods[Math.floor((y - G.y0) / G.size) * G.nx + Math.floor((x - G.x0) / G.size)];
       const far = [at0[0] < G.x0 + G.nx * G.size / 2 ? G.x0 + G.nx * G.size - 300 : G.x0 + 300, at0[1] < G.y0 + G.ny * G.size / 2 ? G.y0 + G.ny * G.size - 300 : G.y0 + 300];
       for (const [x, y] of [far, at0]) {
-        const n = await W.mapAt(x, y, true);
+        // (the game moves the map to the player every second too: a build of its own under way is waited for, then asked again)
+        let n = await W.mapAt(x, y, true);
+        if (n == null && st.busy) { await st.busy; n = await W.mapAt(x, y, true); if (n == null && st.busy) await st.busy; }
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
         out.moves.push({ changed: n, ms: Math.round(st.ms), vertices: st.vertices, here: lodAt(x, y) });
       }

@@ -1091,6 +1091,59 @@ canvases kept after their upload.
 
 **Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe, an iPhone's screen and user agent.
 
+### After the first frame, and a second chance (issue 443)
+
+With the map round the player on the site, the owner's iPhone drew Shibuya's first frame (the telemetry's `load`:
+`frame_ms` 10,986) and its tab died within seconds of it. So the peak that kills is no longer the build: it is what
+follows the first frame, and what the page holds that Chromium's numbers hide.
+
+**2D canvases kept after their use.** `tools/canvas_census.js <city>` notes every canvas that asks for a 2D context
+with the line that made it, and after a collection sums the live ones at four bytes a pixel. Shibuya on the phone
+tier held **183 MB** in 41 canvases: three of them 116 MB, the inland water's masks (`inland.js` `raster`: a
+4096 x 2849 canvas for the walled channels, and the natural water's and the decks'), drawn once, read back and then
+kept by the object that held the bytes read from them. A browser keeps a canvas's pixels until the canvas is
+collected, and Safari is known to keep them long after; `canvas.width = 0` gives them up at once. Now the raster is
+read back in bands of 256 rows (the whole picture at once was another 45 MB beside it) and the canvas given up; on a
+phone the water's cover mask and the roofs' photograph give theirs up once the GPU has the picture (a lost context
+reloads the view there). Shibuya: 183 -> 67 MB of live canvases (Chromium's own count, `tools/mem_infra.js`:
+`canvas` 200 -> 67 MB). What is left is the minimap's base map (17 MB), a copy three.js keeps of a picture it scaled
+down (14 MB) and the roofs' photograph until its last tile is in.
+
+**What follows the first frame comes in turn.** `game.js` `afterPlayable` fetched the NPCs within 300 m, the near
+cars, the near trees and the far aerial tiles all at once, 700 ms after the loader faded, with the rain's shaders and
+the helicopter beside them: every picture decoded, resized and sent to the GPU next to the others. On a phone they
+now come one after another with a quarter of a second between (the people nearest first, then the cars, the trees,
+the pictures, the helicopter last), and `npcStream` brings one character at a time. The far models stand in a few
+seconds longer; nothing is left out.
+
+**A load that died is lighter the next time** (`quality.js` `loadBegan`, `loadHeld`, `leanLevel`). The game leaves a
+note in localStorage as its load begins and takes it away once the game has held for half a minute after everything
+is in, or when the page is put away or closed. A note still there at the next load means the page ended without
+closing, and the phone's level goes up one and stays:
+
+| Level | Whole within | Simplified to | Aerial tiles | Shadow map | Decorative pictures | NPC pictures | Shibuya, peak GPU |
+|---|---|---|---|---|---|---|---|
+| 0 | 500 m | 1.5 km | 6 | 2048 | 1024 | 512 | 362 MB |
+| 1 | 350 m | 1 km | 4 | 1024 | 512 | 256 | 283 MB |
+| 2 | 250 m | 600 m | 2 | 1024 | 512 | 256 | 264 MB |
+
+Stills at the Scramble by day and at night are the same picture at level 2 but for a shop sign's lettering, a
+little softer; from 400 m up the low houses past 600 m are the aerial photograph. `?lean=0|1|2` sets the level by
+hand. The levels cut the GPU's memory; the page's own (the walking model, the landmarks' meshes: about 400 MB
+settled in Shibuya) is the same at each, and is the next cut. `tools/lean_check.js` crashes the page mid-load
+twice and checks each load after is one level lighter and reaches its first frame (`tools/check.sh`, with the
+memory step).
+
+**Where a page died.** The telemetry's note that a page is alive now carries the last step of the load the page
+named (`fetched`, `decoded`, `built`, `frame`, then on a phone `late people`, `late cars`, `late trees`,
+`late pictures`, `late in`, `late helicopter`, `held`), written at each step and not only every five seconds, and
+the next load's `crash` event reports it as `prev_stage`; every event of a phone carries `lean`, its level. So the
+next death names its step and the level it happened at.
+
+**Not known: whether this is enough.** The renderer process in Chromium still holds about 1.26 GB at the peak of
+Shibuya's load on the phone tier (the GPU's memory is another process there), and none of this has been on an
+iPhone. The telemetry of the owner's next visit says which step and which level hold.
+
 ### The last CPU of the city build (issue 404), measured
 
 With the console's new `nav:` and `footways:` lines (desktop tier, llvmpipe): Kyoto's walking model 844 ms, of which

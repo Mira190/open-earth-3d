@@ -275,7 +275,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     // on a phone (quality.js lean) an NPC's pictures go up at LEAN_PX a side: a 1024 one is 5.3 MB of the GPU with its
     // mipmaps, two or three a character and twenty-odd characters a map (130 MB in Tokyo, issue 406), for someone who
     // stands a few hundred pixels tall at most on a phone's canvas. The characters you play keep theirs
-    const LEAN_PX = 512, lean = !!(window.OEQuality && OEQuality.city().lean);
+    const QP = window.OEQuality ? OEQuality.city() : null, lean = !!(QP && QP.lean), LEAN_PX = (lean && QP.budget && QP.budget.npcPx) || 512;
     const smaller = tpl => {
       const jobs = [];
       tpl.scene.traverse(o => {

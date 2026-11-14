@@ -84,8 +84,11 @@ window.OETelemetry = (function () {
   const ref = (() => { try { const r = document.referrer && new URL(document.referrer); return r && r.host !== location.host ? r.host : ''; } catch (e) { return ''; } })();
   // the quality tier and WebGL 2, asked once (the probe makes a context) when quality.js has loaded
   let gpu = null;
+  // (lean: the lighter level a phone that could not hold the game was given, quality.js leanLevel; it can rise as a
+  // game's load begins, so it is read each time)
+  const leanOf = () => { try { const Q = window.OEQuality; if (gpu && Q && Q.leanLevel && Q.lean()) gpu.lean = Q.leanLevel(); } catch (e) { /* no tier */ } return gpu; };
   const tierOf = () => {
-    if (gpu) return gpu;
+    if (gpu) return leanOf();
     const Q = window.OEQuality;
     if (!Q) return {};
     try {
@@ -93,7 +96,7 @@ window.OETelemetry = (function () {
       gpu = { tier: t.name, tier_chosen: t.chosen, gl2: !!c.gl2, software: !!c.software, gpu: gpuName(c.renderer) || undefined, gpu_class: gpuClass(c.renderer),
         cores: c.cores || undefined, mem: c.memory || undefined, max_tex: c.maxTex || undefined };
     } catch (e) { gpu = {}; }
-    return gpu;
+    return leanOf();
   };
   // the GPU as the browser names it, cut down to its family and model: "ANGLE (Intel, Intel(R) Iris(R) Xe
   // Graphics (0x000046A6) Direct3D11 vs_5_0 ps_5_0, D3D11)" becomes "intel iris xe graphics". No driver
@@ -327,7 +330,15 @@ window.OETelemetry = (function () {
     track('load', Object.assign({ ok: true, ms: Math.round(t - v.t0) }, stages(v)));
     flush();
   }
-  try { new PerformanceObserver(() => globeReady()).observe({ type: 'mark' }); } catch (e) { /* checked each second instead */ }
+  // the last step of a load the page named ("oe:built", or "oe:step" with detail.step: what the game fetches once it
+  // can be played): kept in the note that says the page is alive, so a page that died says where (crash: prev_stage)
+  let stage = '';
+  try {
+    new PerformanceObserver(l => {
+      for (const e of l.getEntries()) if (!e.name.indexOf('oe:')) { stage = e.detail && e.detail.step ? String(e.detail.step).slice(0, 40) : e.name.slice(3); if (!document.hidden && !going) alive(); }
+      globeReady();
+    }).observe({ type: 'mark' });
+  } catch (e) { /* checked each second instead */ }
 
   // the loader of the view: ready when it fades, failed when it says so
   let mo = null;
@@ -587,7 +598,7 @@ window.OETelemetry = (function () {
   // tab of the site keeps its own fresh), means the page ended without closing: the browser or the GPU
   // process crashed, or the system killed it for memory. The next page load reports it.
   const ALIVE = 'oe3d-alive-', crashes = [];   // the reports wait for the first view, so they carry its tier
-  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready) }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
+  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready), stage }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
   const gone = () => { try { localStorage.removeItem(ALIVE + sid); } catch (e) { /* storage blocked */ } };
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -597,7 +608,7 @@ window.OETelemetry = (function () {
       const age = o ? Date.now() - o.t : 1e12;
       if (age < 30000) continue;
       localStorage.removeItem(k);
-      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
+      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_stage: o.stage || undefined, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
     }
   } catch (e) { /* storage blocked */ }
   setInterval(() => { if (!document.hidden && !going) alive(); }, 5000);

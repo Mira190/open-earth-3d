@@ -22,6 +22,11 @@ window.OpenEarthGame = async function game(cityId) {
 
   // ------------------------------------------------------------ load
   const loadMsg = OEWorld.loadLine('g-'); // (index.html #g-load-msg, #g-load-bar and #g-load-stage)
+  // a phone whose last load of a game died is given a lighter level this time (quality.js loadBegan, issue 443)
+  const LB = window.OEQuality && OEQuality.loadBegan ? OEQuality.loadBegan(cityId) : { level: 0, raised: false };
+  if (LB.raised) console.info(`the last load ended early: lighter detail for this phone (level ${LB.level})`);
+  // a step of the load, by name, for the telemetry's note of where a page that died was (telemetry.js prev_stage)
+  const loadStep = name => { try { performance.mark('oe:step', { detail: { view: 'game', city: cityId, step: name } }); } catch (e) { /* no User Timing */ } };
   let D;
   try {
     D = await OEWorld.load(cityId, { game: true, onMsg: loadMsg });
@@ -828,8 +833,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function npcStream(dt, cx, cy) { // twice a second: those within NPC_LOAD_M of you
     if ((npcBudget -= dt) > 0) return;
     npcBudget = 0.5;
+    if (QC.lean) { // a phone: one at a time, the nearest first (each is pictures decoded, resized and sent: see afterPlayable)
+      if (npcBusy) return;
+      let best = null, bd = NPC_LOAD_M;
+      for (const n of npcs) if (n.rig.pending && !n.loading) { const d = Math.hypot(n.x - cx, n.y - cy); if (d < bd) { bd = d; best = n; } }
+      if (best) { npcBusy = true; npcLoad(best).then(() => { npcBusy = false; }); }
+      return;
+    }
     for (const n of npcs) if (n.rig.pending && !n.loading && Math.hypot(n.x - cx, n.y - cy) < NPC_LOAD_M) npcLoad(n);
   }
+  let npcBusy = false;
   const npcsReady = () => Promise.all(npcs.map(npcLoad)); // every NPC in place (for the tools that look at them)
 
   // ------------------------------------------------------------ vehicles
@@ -5157,21 +5170,49 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // the helicopter's model while the title is up, if it waits within reach of the start (it is left out of the
     // loader's wait, issue 148): fetched, built, its shaders compiled and its textures sent now, not during the
     // opening shot; it lands on its pad once the game opens (heliToPad), not in the title's shot
-    setTimeout(() => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) heli.prefetch(); }, reduced ? 0 : 900);
+    // (on a phone, after what afterPlayable fetches: one thing at a time)
+    const heliIn = () => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) { loadStep('late helicopter'); heli.prefetch(); } };
+    setTimeout(() => { if (QC.lean) afterPlayable().then(heliIn); else heliIn(); }, reduced ? 0 : 900);
   });
   // What the first frame doesn't need, fetched once the game can be played, as the helicopter's model is (issue 335):
   // the aerial tiles beyond a kilometre of the start; the NPCs' characters, nearest the start first; the traffic's near and mid cars (their far models stand in until
   // then: actors.js upgrade) and the car you drive; the near trees (trees.js loadNear: the mid ones stand in)
+  // On a phone (quality.js lean) they come one after another, with a breath between: all at once, each picture is
+  // decoded, resized and sent to the GPU beside the others, and the phone's tab died in the seconds after its first
+  // frame (issue 443: the telemetry's load reported the frame, then nothing). In turn, the most held at once is one
+  // step's; the far models stand in a few seconds longer.
   let lateOn = null;
   function afterPlayable() {
     if (lateOn) return lateOn;
-    if (Wd.groundPictures) Wd.groundPictures.release(); // the aerial tiles further out (world.js groundPictures)
-    const near = lib ? npcs.filter(n => n.rig.pending && Math.hypot(n.x - player.x, n.y - player.y) < NPC_LOAD_M)
-      .sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)).map(npcLoad) : [];
-    carsHeld = false;
-    const carsIn = vlib && vlib.loadCars && !vlib.carsFull ? Promise.all([vlib.loadCars().then(g => { if (g && vlib.carsFull && cars.upgrade) cars.upgrade(g); }), parkWait ? parkLater() : null]) : null;
-    const treesIn = Wd.trees && Wd.trees.loadNear ? Wd.trees.loadNear() : null;
-    return (lateOn = Promise.all([...near, carsIn, treesIn]));
+    const near = () => (lib ? npcs.filter(n => n.rig.pending && Math.hypot(n.x - player.x, n.y - player.y) < NPC_LOAD_M)
+      .sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)) : []);
+    const carsIn = () => (vlib && vlib.loadCars && !vlib.carsFull ? Promise.all([vlib.loadCars().then(g => { if (g && vlib.carsFull && cars.upgrade) cars.upgrade(g); }), parkWait ? parkLater() : null]) : null);
+    const treesIn = () => (Wd.trees && Wd.trees.loadNear ? Wd.trees.loadNear() : null);
+    const pictures = () => { if (Wd.groundPictures) Wd.groundPictures.release(); }; // the aerial tiles further out (world.js groundPictures)
+    if (!QC.lean) {
+      pictures();
+      const people = near().map(npcLoad);
+      carsHeld = false;
+      lateOn = Promise.all([...people, carsIn(), treesIn()]);
+    } else {
+      const breath = () => new Promise(r => setTimeout(r, 250));
+      lateOn = (async () => {
+        loadStep('late people');
+        for (const n of near()) { await npcLoad(n); await breath(); }
+        loadStep('late cars');
+        carsHeld = false;
+        await carsIn(); await breath();
+        loadStep('late trees');
+        await treesIn(); await breath();
+        loadStep('late pictures');
+        pictures();
+        if (Wd.groundPictures && Wd.groundPictures.all) await Wd.groundPictures.all();
+        loadStep('late in');
+      })();
+    }
+    // the load has held once what follows the first frame is in and the game has run half a minute more
+    lateOn.then(() => setTimeout(() => { if (running && window.OEQuality && OEQuality.loadHeld) { OEQuality.loadHeld(); loadStep('held'); } }, 30000));
+    return lateOn;
   }
   // (for the tools: what afterPlayable fetches, come and in place: the world then as it was at the start before, issue 335)
   const lateReady = () => afterPlayable().then(() => new Promise(r => setTimeout(r, 0)));
@@ -6355,6 +6396,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
   return {
-    stop() { if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
+    stop() { if (window.OEQuality && OEQuality.loadHeld) OEQuality.loadHeld(); if (window.OEMetro) OEMetro.close(); if (window.OEVis) OEVis.dispose(); keep(); if (fish && fish.api) fish.api.dispose(); running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
 };
