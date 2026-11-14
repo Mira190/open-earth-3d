@@ -49,6 +49,7 @@ window.OEHero = (function () {
     Wd.world.add(group);
     const levels = list.map(h => ({ h, state: 'idle', root: null, mats: [], tubes: [], chases: [], wins: [], hidden: [], fine: 'idle', fineRoot: null, fineMeshes: [] }));
     const uBake = { value: 1 }, uStreet = { value: 1 }, uNight = U && U.uNight ? U.uNight : { value: 0 };
+    const aniso = Math.min(tier === 'high' ? 8 : tier === 'medium' ? 4 : 2, renderer && renderer.capabilities ? renderer.capabilities.getMaxAnisotropy() : 1);
 
     // a hero material, patched once: its baked light and occlusion, then the city's street lights
     function patch(m, h) {
@@ -128,6 +129,9 @@ window.OEHero = (function () {
               for (const k of ['normalMap', 'roughnessMap', 'metalnessMap']) if (m[k]) { m[k].dispose(); m[k] = null; }
               for (const k of ['map', 'emissiveMap', 'aoMap']) if (m[k] && !shrunk.includes(m[k])) shrunk.push(m[k]);
             }
+            // what you walk on and the walls beside you are seen at a grazing angle: without anisotropic filtering their
+            // joints and grain smear to a blur a few metres ahead (the sample is the GPU's, no memory: 8x, 4x, and 2x on the low tier)
+            if (aniso > 1) for (const k of ['map', 'normalMap', 'roughnessMap']) if (m[k] && m[k].anisotropy !== aniso) { m[k].anisotropy = aniso; m[k].needsUpdate = true; }
             patch(m, L.h);
             const n = (m.name || '').toLowerCase();
             if (/^tube/.test(n)) L.tubes.push({ m, seed: Math.random() * 1000, off: 0 });
