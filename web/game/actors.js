@@ -2579,7 +2579,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         // after 8 s the car goes on as if it weren't there, to squeeze past it as cars caught up do
         const atLine2 = front && c.mv && !front.mv && front.lineArm && front.lineArm.j === c.mv.j && front.v < 0.3 && front.toLine - front.half < 4;
         if (atLine2 && c.v < 0.3) {
-          if (!(front.backoff > 0)) front.backoff = 1.5;
+          // (asked through backOff, which stops asking one that has backed off 6 s without driving on since: set here
+          // directly, each time it ran out, it held a car that could not back off, the car asking right behind it, held
+          // "backing off" for good, out of reach of the pair rule's squeeze; two stood 69 s in Shibuya's junction 1995, #472)
+          if (!(front.backoff > 0)) backOff(front, 1.5);
           c.waitOn = c.waitOnCar === front ? (c.waitOn || 0) + dt : 0; c.waitOnCar = front;
           if (c.waitOn > 8) { c.passBy = front; c.waitOn = 0; }
         } else if (!front || front !== c.waitOnCar) { c.waitOn = 0; c.waitOnCar = null; }
