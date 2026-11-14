@@ -1120,6 +1120,26 @@ Layer A applied to memory: measure, then grant.
 lightest set is the same picture but for softer signs.) A device on the low tier that is not a phone gets the
 phone's set after its first death. `tools/telemetry_check.js` checks that a dead page is counted against its map.
 
+**The reload Safari makes itself.** Safari loads a tab again the moment its page is killed, so the dead page's
+note is a few seconds old when the next load reads it, and a note under half a minute old was taken for another
+tab's that is still open: the death went uncounted, the second load was as heavy as the first, and the visitor was
+left on "A problem repeatedly occurred" before any lighter set was tried. The tab's own last page is now known by
+the tab's session storage, which outlives a killed page, and its note is a dead page's at any age
+(`telemetry.js` `before`).
+
+**What follows the first frame comes in turn.** With the map round the player on the site, the owner's iPhone drew
+Shibuya's first frame (the telemetry's `load`: `frame_ms` 10,986) and its tab died within seconds of it. 700 ms
+after the loader fades, `game.js` `afterPlayable` fetched the NPCs within 300 m, the near cars, the near trees and
+the far aerial tiles all at once, with the helicopter beside them: every picture decoded, resized and sent to the
+GPU next to the others. On a phone they now come one after another with a quarter of a second between (the people
+nearest first, then the cars, the trees, the pictures, the helicopter last), and `npcStream` brings one character
+at a time. The far models stand in a few seconds longer; nothing is left out.
+
+**Where a page died.** The note that a page is alive carries the last step of the load the page named
+(`fetched`, `decoded`, `built`, `frame`, then on a phone `late people`, `late cars`, `late trees`,
+`late pictures`, `late in`, `late helicopter`), written at each step and not only every five seconds, and the next
+load's `crash` event reports it as `prev_stage`. The next death names its step.
+
 **Left, in order of what they hold**: the textures (223 to 339 MB of the peak: the landmarks' pictures, the ground,
 the NPCs', loaded for the whole map at the start), the walking model and the landmarks built for the whole map
 (Tokyo's page holds 383 MB of array buffers at rest), the Worker's and the page's garbage while the packs decode
