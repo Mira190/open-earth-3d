@@ -94,6 +94,19 @@ Two levels where their maps' games start, on a kit of Japanese traditional piece
 lanterns, stone fences, banners), `cities/higashiyama/hero.py` and `cities/fushimi-inari/hero.py`. Their stills:
 `tools/views/higashiyama-hero.json`, `tools/views/fushimi-inari-hero.json`.
 
+Day, dusk and night on the high tier at 1440 x 900 (lane, pagoda, foot; torii, approach, second torii), and on
+the low tier at 390 x 844:
+
+![Yasaka-dori](images/hero/yasaka-desktop.jpg)
+![Yasaka-dori on a phone](images/hero/yasaka-phone.jpg)
+![The Omotesando](images/hero/sando-desktop.jpg)
+![The Omotesando on a phone](images/hero/sando-phone.jpg)
+
+Where they fall short of the bar, as the stills show: the shops behind the glass are drawn shelves, not rooms
+(the interior mapping of `web/interior.js` is the next step for the `glow_shop` panes); the walls above the
+fronts are plain plaster in a frame; the approach's trees and the buildings beside it are the map's own; and
+none of it has been seen on a real GPU or a real phone, only on a software renderer.
+
 ### Only what a walker can see (issue 358, from first principles)
 
 A level is looked at from its street, so the street decides what exists. `hero_wa.Site.seen` answers, offline,
