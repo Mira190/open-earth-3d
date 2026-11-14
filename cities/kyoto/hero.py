@@ -213,7 +213,7 @@ class Level:
         self.geo = K.Geo()
         self.A = K.Atlas(1024, 1024)
         import archkit as ak
-        self.T = ak.Terrain("kyoto")
+        self.T = HP.Ground("kyoto")
         self.X = HP.Parts(K, self.geo, self.T, self.A)
         self.rng = np.random.default_rng(1964)
         from shapely.geometry import Polygon, Point, box
