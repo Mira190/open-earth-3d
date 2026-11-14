@@ -162,6 +162,19 @@
     return obj(head.keys, blob);
   }
 
+  // the landmarks with each mesh flagged "detail" emptied: its typed arrays (vertices, index) zero-length, the mesh
+  // itself kept, so the meshes keep their places (navcells.js indexes them); a shallow copy, obj itself untouched
+  function dropDetail(obj) {
+    if (!obj || !Array.isArray(obj.meshes) || !obj.meshes.some(m => m && m.detail)) return obj;
+    const meshes = obj.meshes.map(m => {
+      if (!m || !m.detail) return m;
+      const e = Object.assign({}, m);
+      for (const k in e) if (ArrayBuffer.isView(e[k])) e[k] = new e[k].constructor(0);
+      else if (Array.isArray(e[k]) && (k === 'position' || k === 'index' || k === 'normal' || k === 'uv' || k === 'color')) e[k] = [];
+      return e;
+    });
+    return Object.assign({}, obj, { meshes });
+  }
   const supported = () => typeof DecompressionStream === 'function' && typeof Response === 'function';
   // decode in a Worker (pack-worker.js, next to this file), the buffer handed over; on the main thread
   // where there is no Worker or it fails. One worker, made when first needed, decodes the packs in turn.
@@ -187,10 +200,14 @@
   }
   // keep: a name under which the worker keeps the pack for buildIn() (it then copies it back rather than handing
   // its arrays over)
-  function decodeIn(buf, keep = null) {
+  // lean: true leaves the landmark meshes flagged "detail" (a hero level's finest parts, landmarks.json) empty in
+  // what comes back, for the low tier, which never draws them (world.js): their vertex lists are never copied to
+  // the page. The copy kept for rasterIn still has them, so the walking model's solids are the same on every tier.
+  function decodeIn(buf, keep = null, lean = false) {
     const copy = here && typeof Worker === 'function' && worker !== false ? buf.slice(0) : null; // (kept, to decode here if the worker fails)
-    const p = post({ buf, keep }, [buf], () => decode(copy));
-    if (!p) return decode(copy || buf);
+    const local = b => decode(b).then(o => (lean ? dropDetail(o) : o));
+    const p = post({ buf, keep, lean }, [buf], () => local(copy));
+    if (!p) return local(copy || buf);
     if (keep) keptThere.add(keep);
     return p;
   }
@@ -207,7 +224,7 @@
     keptThere.delete(key);
     return post({ raster: key, opt }, [], () => Promise.reject(new Error('the worker failed')));
   }
-  const api = { decode, decodeIn, buildIn, rasterIn, supported };
+  const api = { decode, decodeIn, buildIn, rasterIn, supported, dropDetail };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.OEPack = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -407,12 +407,17 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const expoOut = t => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * clamp(t)));
   // the title card and the letterbox, on the sequence clock (so a held frame is exact):
   // the letters come out of a blur one by one while the tracking closes up
+  const INK = '#f4f1ea', GLOW = '0 0 40px rgba(255, 190, 120, 0.18)'; // the wordmark's colour and glow (title.css .ts-title .w)
   function titleFx(t) {
     const a = T_RISE + 0.1, narrowW = narrow();
     const out = smooth(span(t, PULL_A + 0.7, PULL_A + 1.7));
     titleEl.style.opacity = String(1 - out);
     titleEl.style.transform = `translateY(-50%) scale(${(1 - 0.04 * out).toFixed(4)})`;
-    titleEl.style.filter = out > 0.001 ? `blur(${(out * 6).toFixed(2)}px)` : '';
+    // The blurs here are text shadows under transparent letters, not CSS filters. A filter gives each letter a
+    // layer of its own, re-made every frame as its radius changes, and Safari on an iPhone drew those layers'
+    // edges for a frame or two: a magenta line down the screen beside the last letters, and the outline of their boxes.
+    wordEl.style.color = out > 0.001 ? 'transparent' : '';
+    wordEl.style.textShadow = out > 0.001 ? `0 0 ${(out * 6).toFixed(2)}px ${INK}` : '';
     titleEl.style.setProperty('--scrim', smooth(span(t, a, a + 1.6)).toFixed(3));
     const track = lerp(narrowW ? 0.5 : 0.9, narrowW ? 0.22 : 0.34, expoOut(span(t, a, a + 3.8)));
     wordEl.style.letterSpacing = `${track.toFixed(4)}em`;
@@ -420,7 +425,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     letters.forEach((el, i) => {
       const k = span(t, a + i * 0.045, a + i * 0.045 + 1.3), e = easeOut(k);
       el.style.opacity = smooth(k).toFixed(3);
-      el.style.filter = e < 0.999 ? `blur(${(14 * (1 - e)).toFixed(2)}px)` : '';
+      el.style.color = e < 0.999 ? 'transparent' : '';
+      el.style.textShadow = e < 0.999 ? `0 0 ${(14 * (1 - e)).toFixed(2)}px ${INK}, ${GLOW}` : '';
       el.style.transform = e < 0.999 ? `translateY(${(0.18 * (1 - e)).toFixed(3)}em)` : '';
     });
     subEl.style.opacity = smooth(span(t, a + 0.7, a + 2.1)).toFixed(3);
@@ -486,18 +492,14 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     menuShownAt = clock();
     postcards();
   }
-  // postcards from the road (postcards.js): what Mugi has sent since the last visit, as a pile
-  // on the menu; "Go there" on one dives to its city and starts the game on that spot, in that light
-  let post = null, postAsked = false;
-  const postOpen = () => !!(post && post.isOpen());
+  // postcards from the road (postcards.js): what Mugi has sent since the last visit joins the album here, and
+  // the menu shows none of it; each map's passport lists its own
+  let postAsked = false;
   function postcards() {
     if (postAsked || !window.OEPostcards || manual) return;
     postAsked = true;
     const T = window.OETelemetry;
-    OEPostcards.mount({
-      host: stage, cities: cities.filter(c => c.built && c.game), tick: () => A.tick(2600, 0.03), track: (e, p) => { if (T && T.track) T.track(e, p); },
-      onGo: (c, arrive) => { const d = dests.find(x => x.c === c || (x.sites && x.sites.includes(c))); if (d) dive(d, true, c, arrive); },
-    }).then(p => { if (!running) { if (p) p.stop(); return; } post = p; }).catch(e => console.warn('Postcards unavailable:', e));
+    OEPostcards.collect(cities.filter(c => c.built && c.game)).then(came => { if (came.length && T && T.track) T.track('postcards_came', { new: came.length }); }).catch(e => console.warn('Postcards unavailable:', e));
   }
   let menuShownAt = 0;
 
@@ -759,7 +761,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     lastInput = performance.now();
     if (!$('ts-about').hidden) { if (e.key === 'Escape') toggleAbout(false); return; }
     if (state === 'open') { if (e.target.closest && e.target.closest('button')) return; e.preventDefault(); skip(); return; } // a key on Sound or Skip is that button's
-    if (state !== 'menu' || fullOpen() || postOpen()) return; // (the full-screen map has the keys: metro.js; the postcards theirs)
+    if (state !== 'menu' || fullOpen()) return; // (the full-screen map has the keys: metro.js)
     const k = e.key.toLowerCase();
     if (k === 'arrowdown' || k === 's' || k === 'arrowright') { e.preventDefault(); select((sel + 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
@@ -823,15 +825,21 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   $('ts-subsolar').textContent = `Sun overhead ${fmtLat(sun.lat)} ${fmtLon(sun.lon)}`;
 
   const _v = new V3(), _n = new V3();
+  const menuEl = stage.querySelector('.ts-menu'), topEl = stage.querySelector('.ts-top');
   function placeMarks() {
     const w = stage.clientWidth, h = stage.clientHeight;
     // project every label, read their widths in one go, then write: one layout a frame, not one a label
     const all = [...dests.map(d => [d.mark, d.dir, true]), ...plannedMarks.map(m => [m.el, m.p, false])];
+    // on a narrow screen the menu lies over the foot of the Earth and the header over its top: a place under
+    // either has no label (half of one showed above the Play button, cut by it)
+    const slim = narrow(), sr = slim ? stage.getBoundingClientRect() : null;
+    const floor = slim ? menuEl.getBoundingClientRect().top - sr.top - 16 : Infinity, roof = slim ? topEl.getBoundingClientRect().bottom - sr.top + 10 : -Infinity;
     const at = all.map(([el, p]) => {
       _n.copy(p).normalize();
       const facing = _n.dot(_v.copy(cam.position).sub(p).normalize());
       _v.copy(p).project(cam);
-      return { facing, x: (_v.x * 0.5 + 0.5) * w, y: (-_v.y * 0.5 + 0.5) * h, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 };
+      const y = (-_v.y * 0.5 + 0.5) * h;
+      return { facing, x: (_v.x * 0.5 + 0.5) * w, y, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && y > roof && y < floor };
     });
     const widths = all.map(([el], i) => (at[i].vis ? el.offsetWidth : 0));
     all.forEach(([el, , always], i) => {
@@ -1069,7 +1077,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
 
   // a hook for the headless checks: hold the sequence at a time after Enter
   window.__title = {
-    get state() { return state; }, begin, skip, select: i => select(i, true), dests, get postcards() { return post; },
+    get state() { return state; }, begin, skip, select: i => select(i, true), dests,
     hold(t) { if (state === 'gate') begin(false); frozen = { now: tBegin + t, t }; for (const c of cues) if (!c.done && c.t <= t && !c.sound) { c.done = true; c.fn(); } },
     release() { frozen = null; },
     dive(i, play) { dive(dests[i], play); },
@@ -1092,7 +1100,6 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
         ro.disconnect();
         A.stop(0.5);
         earth.dispose();
-        if (post) post.stop();
         if (window.__title) delete window.__title;
       },
     };

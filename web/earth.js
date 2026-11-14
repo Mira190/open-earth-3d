@@ -257,7 +257,13 @@ window.OEEarth = (function () {
     void main() {
       vec3 d = normalize(vDir);
       vec3 g = uGal * d;
-      vec2 uv = vec2(fract(0.5 - atan(g.y, g.x) / 6.2831853), 0.5 + asin(clamp(g.z, -1.0, 1.0)) / 3.1415927);
+      // the longitude wraps at the anticentre, and across that one column of pixels a wrapped coordinate jumps
+      // from 1 to 0: its derivative is the whole map, so the sampler answers with the smallest mip, or with
+      // anisotropy the mean of a whole row, and draws a thin line down the sky (warm where it crosses the
+      // band). So the same longitude is wrapped twice, half a turn apart, and the one that is smooth here is
+      // used: the map repeats, so both name the same texel
+      float lon = 0.5 - atan(g.y, g.x) / 6.2831853, lonA = fract(lon), lonB = fract(lon + 0.5) - 0.5;
+      vec2 uv = vec2(fwidth(lonA) <= fwidth(lonB) ? lonA : lonB, 0.5 + asin(clamp(g.z, -1.0, 1.0)) / 3.1415927);
       vec3 mw = pow(texture2D(uMW, uv).rgb, vec3(2.2)) * uMWI * uReady;
       float ang = acos(clamp(dot(d, uSun), -1.0, 1.0));
       float disc = 1.0 - smoothstep(0.0042, 0.0052, ang);
@@ -299,14 +305,14 @@ window.OEEarth = (function () {
   const LENS = () => ({
     uniforms: {
       tDiffuse: { value: null }, uAspect: { value: 1 }, uTime: { value: 0 }, uExposure: { value: 1 }, uFade: { value: 1 }, uFlash: { value: 0 },
-      uCA: { value: 0.25 }, uGrain: { value: 0.028 }, uVignette: { value: 0.14 }, uZoom: { value: 0 },
+      uCA: { value: 0.25 }, uPx: { value: new THREE.Vector2(1, 1) }, uGrain: { value: 0.028 }, uVignette: { value: 0.14 }, uZoom: { value: 0 },
       uSunUv: { value: new THREE.Vector2(-9, -9) }, uSunVis: { value: 0 }, uFlare: { value: 1 }, uFlareTint: { value: new THREE.Color(1, 0.8, 0.6) },
       tBloom: { value: null }, uBloom: { value: 0 },
     },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
       uniform sampler2D tDiffuse; uniform float uAspect; uniform float uTime; uniform float uExposure; uniform float uFade; uniform float uFlash;
-      uniform float uCA; uniform float uGrain; uniform float uVignette; uniform float uZoom;
+      uniform float uCA; uniform vec2 uPx; uniform float uGrain; uniform float uVignette; uniform float uZoom;
       uniform vec2 uSunUv; uniform float uSunVis; uniform float uFlare; uniform vec3 uFlareTint;
       uniform sampler2D tBloom; uniform float uBloom;
       varying vec2 vUv;
@@ -360,6 +366,12 @@ window.OEEarth = (function () {
       void main() {
         vec2 uv = vUv, dc = uv - 0.5;
         vec2 off = dc * uCA * (0.0015 + 0.03 * dot(dc, dc));
+        // At rest the fringe stays under a pixel each way (uPx: the frame in pixels). Wider than that, a thin
+        // bright thing near the frame's edge (the crescent Moon as it comes round the limb, a star, a city's
+        // lights) is drawn three times, a red one, a green one and a blue one side by side, and reads as a rose
+        // line that should not be there. The dive's fringes (uCA above its rest) are as wide as they were.
+        float offPx = length(off * uPx), lim = 0.75 + 40.0 * max(uCA - 0.25, 0.0);
+        if (offPx > lim) off *= lim / offPx;
         vec3 col;
         if (uZoom > 0.001) {
           col = vec3(0.0);
@@ -586,6 +598,7 @@ window.OEEarth = (function () {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       LU.uAspect.value = w / h;
+      LU.uPx.value.set(w * pr, h * pr);
       if (stars) stars.material.uniforms.uPx.value = pr;
     }
 

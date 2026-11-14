@@ -26,13 +26,13 @@
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
 #     (tools/title_check.js), and fails a frame that ends black or a page that throws;
-#   - checks the title's postcards (tools/postcards_check.js): the journey, every still and line, the pile, the
-#     viewer and Go there into the game;
+#   - checks the title's postcards (tools/postcards_check.js): the journey, every still and line, a menu
+#     without them, and a postcard's link into the game;
 #   - opens Sydney's game and model and checks the hand-over from the loading screen
 #     (tools/load_check.js): the 3D view must be drawn, not black, when the loader starts to fade.
 # Prints one line per check and exits 1 if any failed. Logs and screenshots go to $CHECK_OUT.
-# The games play at a pinned local hour (GAME_TIME, default 10:00 in each city's own time zone,
-# tools/pin_clock.js), so that a run does not depend on the hour it is started at:
+# The games play at a pinned local date and hour (GAME_TIME, default 2026-11-02T10:00 in each city's own time
+# zone, tools/pin_clock.js), so that a run does not depend on the day or the hour it is started at:
 #   GAME_TIME=22:40 tools/check.sh osaka    # at another hour; GAME_TIME=live: the real clock
 #   tools/check.sh                      # what this branch changed (committed or not); after a
 #                                       # pass, only what changed since it (CHECK_FULL=1: all of it)
@@ -194,7 +194,9 @@ if ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
 fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
 export PORT
-export GAME_TIME=${GAME_TIME:-10:00}
+# the game's clock pinned to a date and an hour, not only an hour: the weather (weather.js, a hash of the date), the
+# day's life and the traffic's trips all follow the date, so a pinned hour alone played another game each day (#420)
+export GAME_TIME=${GAME_TIME:-2026-11-02T10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
 # The game's and the clip check's timing and traffic steps can miss under three cities' load at once
@@ -302,9 +304,9 @@ EOF
   if timeout 900 $X node tools/title_pick_check.js >"$OUT/title-pick.log" 2>&1; then
     echo "ok   title picks  $(grep -c ': ' "$OUT/title-pick.log") steps: card first, in on the second click, districts from the map"
   else echo "FAIL title picks  $(grep -E 'FAIL|Error' "$OUT/title-pick.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/title-pick.log)"; fi
-  # the postcards: the journey over six weeks, the stills and the index, then the pile, the viewer and Go there
+  # the postcards: the journey over six weeks, the stills and the index, then a menu without them and a card's link
   if timeout 1500 $X node tools/postcards_check.js >"$OUT/postcards.log" 2>&1; then
-    echo "ok   postcards  $(grep -c ': ok' "$OUT/postcards.log") steps: the journey, the stills, the pile and the card, Go there into the game"
+    echo "ok   postcards  $(grep -c ': ok' "$OUT/postcards.log") steps: the journey, the stills, none on the menu, a card's link into the game"
   else echo "FAIL postcards  $(grep -E 'FAIL|Error' "$OUT/postcards.log" | head -2 | cut -c1-140 | paste -sd ';' -)   (see $OUT/postcards.log)"; fi
 }
 
