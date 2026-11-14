@@ -148,6 +148,17 @@ window.OEAtmos = (function () {
   //           shadows and the lit parts are multiplied by), lift (what the deepest shade is lifted towards), vib (vibrance)
   //   light   shade: the colour of the light in the shade by day (the sky's, world.js's hemisphere light), bounce: how much
   //           of the sun's light the ground throws back up onto walls; flare and shafts: the sun in the lens
+  // A thunderstorm by day is dark: the weather lifts the exposure under cloud so that an overcast is never grey
+  // (weather.js light()), which left a storm's sky pale. Its key, on the lens's uniforms after the hour's grade:
+  // about a stop down at full strength, harder, and a cold slate cast (a storm's light is the cloud's, blue-grey).
+  // At night it changes nothing. The game's frame and the films (tools/film/director.js) both call it.
+  function stormKey(L, night) {
+    const storm = (window.OEWeather && OEWeather.S && OEWeather.S.storm) || 0;
+    if (!(storm > 0)) return;
+    const sk = storm * (1 - night);
+    L.uExposure.value *= 1 - 0.48 * sk; L.uContrast.value += 0.12 * storm;
+    L.uTint.value.set(L.uTint.value.x * (1 - 0.06 * sk), L.uTint.value.y * (1 - 0.02 * sk), L.uTint.value.z * (1 + 0.04 * sk));
+  }
   const LOOKS = {
     film: { palette: 'film', light: { shade: [0.74, 0.84, 0.95], bounce: 0.3, flare: 0.55, shafts: 0.5 },
       grade: { night: { vib: 0.1 }, blue: { vib: 0.15, lift: [0.0, 0.004, 0.012] }, golden: { vib: 0.18, shade: [0.95, 0.98, 1.07], hi: [1.03, 1.0, 0.96] }, day: { vib: 0.18, shade: [0.95, 0.99, 1.06] } },
@@ -361,7 +372,7 @@ window.OEAtmos = (function () {
       // (under a thunderstorm the sheet is darker still, and lightning lights it from within: weather.js S.storm, S.flash)
       Wd.cloudLight = (alt, ref) => {
         const WS = (window.OEWeather && OEWeather.S) || {}, WU = window.OEWeather ? OEWeather.U : null;
-        OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)) });
+        OEClouds.light(su, alt, ref.zen, ref.hor, { palette: LK.palette, overcast: WU ? WU.uOeOvercast.value : 0, rain: Math.min(1, (WU ? WU.uOeRain.value : 0) + 0.6 * (WS.storm || 0)), storm: WS.storm || 0 });
         if (WS.flash > 0) { su.uCloudShade.value.multiplyScalar(1 + 5 * WS.flash); su.uCloudLit.value.multiplyScalar(1 + 3 * WS.flash); }
       };
     }
@@ -597,11 +608,8 @@ window.OEAtmos = (function () {
           L.uNightTone.value = night;                              // blue between the lights, amber in them
           L.uSat.value = (gr.sat - 0.1 * ov) * (trim ? trim.sat : 1);                        // under cloud a little cooler and softer, not grey
           L.uContrast.value += 0.05 * ov;
-          // a thunderstorm by day is dark: the weather lifts the exposure under cloud so that an overcast is never grey
-          // (weather.js light()), which left a storm's sky pale; its key is lower and harder (weather.js S.storm)
-          const storm = (window.OEWeather && OEWeather.S && OEWeather.S.storm) || 0;
-          if (storm > 0) { L.uExposure.value *= 1 - 0.3 * storm * (1 - night); L.uContrast.value += 0.07 * storm; }
           L.uTint.value.set(gr.tint[0] * (trim ? trim.tint[0] : 1), gr.tint[1] * (trim ? trim.tint[1] : 1), gr.tint[2] * (trim ? trim.tint[2] : 1));
+          stormKey(L, night); // (a thunderstorm by day: darker, harder, colder)
           L.uTime.value = tSec;
           L.uShade.value.fromArray(gr.shade); L.uHiTint.value.fromArray(gr.hi); L.uVibrance.value = gr.vib * (1 - 0.5 * ov);
           L.uShadeLift.value.fromArray(gr.lift).multiplyScalar(1 - 0.6 * ov);
@@ -676,5 +684,5 @@ window.OEAtmos = (function () {
     return api;
   }
 
-  return { create, moonRaDec, skyBasis, gradeAt, GRADE_DEF };
+  return { create, moonRaDec, skyBasis, gradeAt, stormKey, GRADE_DEF };
 })();

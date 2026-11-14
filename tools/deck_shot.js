@@ -4,6 +4,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/deck_shot.js shibuya out_dir [WxH]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
@@ -24,8 +25,7 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { const g = window.__game; g.advance(1); if (g.settleArrival) g.settleArrival(); for (let i = 0; i < 20; i++) g.advance(0.25); });
   const names = await p.evaluate(() => window.__game.landmarks.filter(l => window.__game.deckOf(l)).map(l => l.name));
   for (const name of names) {

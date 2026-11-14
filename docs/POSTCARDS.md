@@ -1,16 +1,14 @@
 # Postcards from the road
 
-While you are away, Mugi keeps travelling: a small plush cat with a spotted bundle on its back. When you
-come back, the title screen has a small pile of postcards: a photograph from a real spot in one of the
-live cities with Mugi sat in it, looking at the place, where and when it was taken, the sun there at that
-minute, and a line of its diary. **Go there** on a card dives to that
-city and starts the game on the photographer's spot, in the photograph's light.
+While you are away, Mugi keeps travelling: a small plush cat with a spotted bundle on its back. Each
+postcard is a photograph from a real spot in one of the live cities with Mugi sat in it, looking at the
+place, with where and when it was taken, the sun there at that minute, and a line of its diary. The
+postcards that have come from a map are in that map's passport, and a link to one starts the game on the
+photographer's spot, in the photograph's light.
 
-![A postcard from the Senbon Torii](images/title/postcard.jpg)
-
-| The pile on the menu | On a phone |
-|---|---|
-| ![](images/title/postcards-menu.jpg) | ![](images/title/postcards-phone.jpg) |
+The title screen shows none of them. It used to carry a small pile on its menu, with a viewer over it
+and **Go there** on each card; the owner asked for the home page to be without postcards, so the pile and
+the viewer were taken out, and the title only adds what has come to the album as it opens.
 
 That is all of it. There is no second game inside the game: no food to pack, no currency, no timers,
 no notifications. The postcards are the part of the game that happens while you are not playing, and
@@ -102,18 +100,13 @@ Sources: [Culture Trip on Travel Frog](https://theculturetrip.com/asia/china/art
 
 ## What the player sees
 
-- **The pile** on the title's menu: up to three cards fanned, "From the road", how many are new and
-  where the newest is from. Bottom left on a desktop, under the logo on a phone.
-- **The card**: the photograph on a paper edge with a postmark (the map, the date, the minute), the
-  map and the spot's name (in its own script too), the local date and time with the sun's height, one
-  line of the diary, who sent it, and **Go there**. Arrows, the album strip, or ← → change the card; Esc closes.
-- **Go there**: the title's dive to that city, then the game's own title card over that spot, with
+- **A link to a card** (`#play-<city>@pc-<spot>.<light>`): the game's own title card over that spot, with
   "As on the postcard" chosen as the time to start at. Play starts you where the photographer stood.
 - **The passport** of each map lists the postcards that came from it.
 
 ## How a journey is worked out
 
-`web/postcards.js`, with no server. The state is one entry in `localStorage` (`oe3d-postcards`): a
+`web/postcards.js`, with no server, when the title screen opens. The state is one entry in `localStorage` (`oe3d-postcards`): a
 seed, the time of the last visit, where the traveller is, and the album.
 
 - A visit brings `floor(hours away / 6)` cards, three at most. The first visit ever brings one, so a
@@ -129,9 +122,7 @@ seed, the time of the last visit, where the traveller is, and the album.
 - The album keeps the newest 48.
 
 Telemetry (through `web/telemetry.js`, which sends nothing from automated browsers or with Do Not
-Track): `postcards_shown` (how many new, unseen and in the album), `postcard_open` and `postcard_go`
-(city, spot, light). The two numbers to watch are the return rate of visitors who were shown a pile,
-and the share of opened cards that go on to **Go there**.
+Track): `postcards_came` (how many new), when the title adds a visit's cards to the album.
 
 ## The stills
 
@@ -182,12 +173,9 @@ one command; choosing among several seasons by the card's date is not built.
 - the journey, in Node: a player who comes back at odd intervals for six weeks gets one card for six
   hours away and never sooner, three at most, each dated inside the absence and not in the small hours,
   in the sun's light, two or three to a map, from every map in the end;
-- the pages, on a desktop and a phone: the pile is on the menu over nothing else, the card opens with
-  its picture loaded, the arrows and the album work while the title's own keys stand down, Esc closes,
-  and **Go there** dives with `#play-<city>@pc-<spot>.<light>`; on the desktop the game then stands on
-  the spot at the postcard's light, and its passport lists the card.
-
-`tools/postcards_shot.js` takes stills of the pile and the viewer for a player with an album.
+- the pages, on a desktop and a phone: the title's menu shows no postcards and the three that came are
+  in the album; on the desktop `#play-<city>@pc-<spot>.<light>` then stands the game on the spot at the
+  postcard's light, and its passport lists the card.
 
 ## Not built yet
 

@@ -6,6 +6,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   GAME_TIME=17:30 xvfb-run -a node tools/traffic_smooth.js tokyo [seconds] [fps]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'tokyo', secs = '40', fps = '30'] = process.argv;
 (async () => {
@@ -17,8 +18,7 @@ const [,, city = 'tokyo', secs = '40', fps = '30'] = process.argv;
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; const g = window.__game; if (g.cine && g.cine.active) g.cine.skip(); g.advance(2); });
   const out = await p.evaluate(({ secs, fps }) => {
     const g = window.__game, C = g.cars.C, me = g.player, dt = 1 / fps, hist = new Map();

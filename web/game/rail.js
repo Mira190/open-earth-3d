@@ -114,30 +114,8 @@ window.OERail = (function () {
   }
 
   // the track: two rails on sleepers along a line, merged into one mesh per material
-  // The sun's glint along a rail (issue 372, item 1): the polished head of a rail is a long thin mirror, so it
-  // shines where the sun's reflection meets the line of the rail, a bright thread running towards the sun, the
-  // way a track looks into a low sun. The hair model of Kajiya and Kay (1989): with T the rail's direction and H
-  // the half vector, the highlight is sin(T, H) to a high power; it goes on the direct specular light, so the
-  // shadows and the sun's colour are the light's own. aRail: each vertex's rail direction, from trackMesh.
-  function glint(mat) {
-    if (mat.userData.glint) return mat;
-    mat.userData.glint = true;
-    mat.onBeforeCompile = sh => {
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aRail; varying vec3 vRailT;')
-        .replace('#include <project_vertex>', '#include <project_vertex>\nvRailT = normalize((viewMatrix * modelMatrix * vec4(aRail, 0.0)).xyz);');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRailT;')
-        .replace('#include <aomap_fragment>', `#include <aomap_fragment>
-#if NUM_DIR_LIGHTS > 0
-{ vec3 oeT = normalize(vRailT), oeV = normalize(vViewPosition), oeL = directionalLights[0].direction;
-  float oeTH = dot(oeT, normalize(oeL + oeV)), oeKK = pow(max(0.0, 1.0 - oeTH * oeTH), 90.0);
-  // the sun's light on the rail's head, as its diffuse term has it (its shadow, its colour, the angle)
-  vec3 oeE = reflectedLight.directDiffuse / max(material.diffuseColor * RECIPROCAL_PI, vec3(1e-3));
-  reflectedLight.directSpecular += oeE * oeKK * 1.4 * smoothstep(0.0, 0.08, dot(oeL, normal)); }
-#endif`);
-    };
-    mat.customProgramCacheKey = () => 'oe-rail-glint';
-    return mat;
-  }
+  // the sun's glint along each rail (OEWorld.railGlint, world.js): aRail, each vertex's rail direction, from trackMesh
+  const glint = mat => (window.OEWorld && OEWorld.railGlint ? OEWorld.railGlint(mat) : mat);
 
   function trackMesh(ln, gauge, lift, mat, every = 1) {
     const pos = [], idx = [], tan = [];

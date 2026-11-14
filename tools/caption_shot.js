@@ -3,6 +3,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/caption_shot.js shibuya out_dir [WxH] [area index, default 0]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'shibuya', outDir = '.', size = '1440x900', which = '0'] = process.argv;
@@ -18,8 +19,7 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900', which = '0'] = proc
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   for (const [name, time] of [['day', '12:00'], ['dusk', 'sunset'], ['night', '22:00']]) {
     const ok = await p.evaluate(([time, k]) => {
       const g = window.__game, c = g.clock, a = (g.G.areas || [])[k];

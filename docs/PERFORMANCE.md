@@ -549,6 +549,47 @@ measured, and the ladder now halves the map on a device that is short), and `Bat
 the props in the shadow box (item 3). Temporal anti-aliasing from the same history in place of MSAA on medium and low
 (the second half of item 1) waits for jittered projection, which the history above does not yet need.
 
+## The frame budget, third round: where the GPU's time goes
+
+The tables above count work (passes, draws, triangles, pixels); they do not say which of it is slow.
+`tools/gpu_cost.js` times it: every draw call, clear and blit of one frame is fenced (one pixel of the target drawn
+into is blitted to a 1 x 1 target of its kind and read back, since `gl.finish()` returns at once in Chromium) and
+the times are summed by target and by what drew (the object's name, else its material's, its instance count, and
+whether it is a tree). Software-renderer times, so shares, not milliseconds; `EVAL` takes a part out to see what it
+costs, `DUMP` writes a draw's compiled shaders.
+
+The one telemetry device with GPU timers (an Apple M3, high tier, Sydney and Shibuya) is GPU-bound at 30 frames a
+second, 37 to 70 ms of GPU a frame at 0.8 of its 3.6 million canvas pixels: the frame's cost is in its pixels.
+
+Shibuya on foot, high tier, 1440 x 900, 15:30 (fenced total 1.75 s):
+
+| part | share |
+|---|---|
+| the scene's target (4x MSAA): the ground's tiles | 28% |
+| the scene's target: the buildings' cells | 22% |
+| the scene's target: everything else (props, people, sky, far land) | 38% |
+| the sun's shadow map (moving casters over the cached still ones, and the blit) | 8% |
+| contact shadows, bloom, lens | 4% |
+
+Drawn with an unlit material, the ground and the buildings took a fifth of the time: their cost is their
+shaders, not their triangles. Taken out one at a time (the scene pass's time against the same frame's):
+
+| taken out | scene pass |
+|---|---|
+| the two spot lights (dark by day) | -8% |
+| the environment's light (`envMap`): its diffuse lookup alone | -15%; -10% |
+| the shadow map's five taps | under the run-to-run spread |
+| the area lights (already passed over when dark) | none |
+
+**Dark spot lights are passed over** (`lens.js` `skipDarkSpots`). The car's headlamp and the helicopter's
+searchlight stay in every lit shader so that switching them on compiles nothing, and each was a full light
+and BRDF evaluation per fragment at zero intensity. Their unrolled blocks now test the light's colour first, as
+the area lights' loop does. A lit beam draws exactly as before (night stills with the beam on match).
+
+In Sydney the shadow pass is 14% of the frame, and most of what it draws every frame is trees (their crowns sway in
+the depth pass too, so they are not among the cached still casters). The sea's planar reflection, where it is drawn
+(high tier on a hardware GPU), is about 5% at the quay.
+
 ## Next, by what it saves for what it risks
 
 Measured on Sydney's game, high tier, 1440 x 900, from the street, after the work above: 4.42 million triangles,
@@ -906,6 +947,32 @@ peak GPU memory or settled heap goes over the budget (`MEM_GPU`, `MEM_HEAP`), so
 memory cannot land silently. The budget is a regression ceiling set above the heaviest live city, not a hard iOS
 number — that cannot be read from Chromium. The largest maps (Kyoto, Tokyo, Shinjuku, Shibuya) sit nearest it; their
 few-million-vertex building geometry is the floor, and a per-distance building LOD would be the next cut.
+
+### The peak while it loads
+
+The owner's iPhone still ended in "A problem repeatedly occurred" opening Shibuya and Tokyo. The telemetry's
+`crash` events (a page that died while on screen, reported by the next load) place it: `prev_ready` false, five
+to thirty seconds in, with the data fetched and decoded and the scene never built. So the tab dies at the load's
+peak, which the table above does not show (it is what the page holds once it plays).
+`tools/mem_timeline.js <city>` prints that load as a timeline: the page's heap, its Workers' and the renderer
+process's resident memory every half second, with the loader's stage. In Shibuya on the phone tier the resident
+memory went from 0.5 GB to 1.7 GB between the second and the eighth second, in "Building the city".
+
+The first cut is in the Worker that makes the buildings' vertex arrays (`buildings-geo.js` `Buf`). Its eight
+arrays grew by doubling into new ones (the old and the new alive together), were copied once more to their
+exact length at the end, and the triangles' corners were kept as an array of numbers and then copied into a
+typed one: at four million vertices, about 370 MB held for 180 MB of result. They now grow and are cut to
+length with `ArrayBuffer.transfer`, which gives the old buffer up as the new one is made (a copy where an
+engine has no `transfer`), and the corners are a typed list from the start.
+
+| Shibuya, phone tier, renderer resident memory (Chromium, llvmpipe) | Before | After |
+|---|---|---|
+| 8 s in, building | 1,699 MB | 1,378 MB |
+| scene built | 1,743 MB | 1,507 MB |
+
+That is a quarter of a gigabyte off the peak, not yet a load known to fit an iPhone. What is left is the map
+itself: 48,000 buildings as one geometry, the walking model of all of it, and every landmark, whatever the
+player can see from where they stand. The next cut is a phone's map built round the player (issue 443).
 
 **Not checked here: a real iPhone or Safari.** These are emulated under Chromium with Mesa's llvmpipe; the numbers are
 what WebGL was asked for and what V8's heap holds, not what iOS accounts. The owner's own play on a phone is the real
