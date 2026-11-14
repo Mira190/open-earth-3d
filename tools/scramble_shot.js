@@ -71,7 +71,8 @@ const only = process.env.ONLY ? process.env.ONLY.split(',') : null, onlyT = proc
         // without one, the wet street alone (mirror.js)
         if (g.weather && g.weather.set) g.weather.set(tv.weather || 'clear', { now: true });
         else if (g.mirror) g.mirror.wet = tv.weather === 'rain' ? 1 : 0;
-        const gz = (x, y) => { const f = g.nav.floorAt(x, y, g.nav.terrain(x, y) + 0.5); return f ? f.z : Math.max(0, g.nav.terrain(x, y)); };
+        // (a view's "floor": the height of the deck it stands on, where that is not the ground under it)
+        const gz = (x, y) => { if (v.floor != null) return v.floor; const f = g.nav.floorAt(x, y, g.nav.terrain(x, y) + 0.5); return f ? f.z : Math.max(0, g.nav.terrain(x, y)); };
         const W = (x, y, z) => new THREE.Vector3(x, z, -y);
         const S = window.__shot;
         S.pose.pos.copy(W(v.eye[0], v.eye[1], gz(v.eye[0], v.eye[1]) + v.eye[2]));

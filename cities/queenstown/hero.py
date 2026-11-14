@@ -46,13 +46,13 @@ DOOR = (3.3, 5.7)       # the gap in the planter at the restaurant's doors (inte
 def materials(K):
     T = K.tint_to
     return {
-        "ground_deck": {"tex": "deck", "tint": T("deck", (118, 92, 70)), "rough": 0.7},
+        "ground_deck": {"tex": "deck", "tint": T("deck", (104, 82, 63)), "rough": 0.86},
         "stone_schist": {"tex": "rubble", "tint": T("rubble", (112, 114, 110)), "rough": 0.9, "maps": "cn"},
         "wood_coping": {"tex": "deck", "tint": T("deck", (128, 96, 66)), "rough": 0.6, "maps": "c"},
         "wood_bench": {"color": (0.3, 0.17, 0.09), "rough": 0.6},
-        "metal_steel": {"color": (0.62, 0.63, 0.64), "rough": 0.28, "metal": 1.0},
+        "metal_steel": {"color": (0.4, 0.41, 0.42), "rough": 0.36, "metal": 1.0},
         "metal_dark": {"color": (0.035, 0.037, 0.04), "rough": 0.45, "metal": 0.7},
-        "metal_viewer": {"color": (0.36, 0.38, 0.4), "rough": 0.38, "metal": 0.9},
+        "metal_viewer": {"color": (0.2, 0.215, 0.23), "rough": 0.5, "metal": 0.35},
         "paint_viewer": {"color": (0.02, 0.09, 0.2), "rough": 0.4},
         "glass_lens": {"color": (0.02, 0.03, 0.05), "rough": 0.03, "metal": 0.6},
         "rubber": {"color": (0.02, 0.02, 0.02), "rough": 0.9},
@@ -209,7 +209,7 @@ class Level:
             fine.tube("metal_steel", [p1 - o * 0.02, p1 + o * 0.004], 0.066, segs=12)
         geo.box("metal_viewer", c + o * -0.02 + a * 0.24 + [0, 0, 1.2], (a, o), (0.12, 0.16, 0.2))  # the coin box
         q = c + a * 0.301 + o * -0.02 + [0, 0, 1.22]
-        geo.quad("atlas_flat", q - o * 0.06, q + o * 0.06, q + o * 0.06 + [0, 0, 0.16], q - o * 0.06 + [0, 0, 0.16], uv=self.A.uv("coin"))
+        geo.quad("atlas_flat", q + o * 0.06, q - o * 0.06, q - o * 0.06 + [0, 0, 0.16], q + o * 0.06 + [0, 0, 0.16], uv=self.A.uv("coin"))
         fine.box("metal_steel", c + [0, 0, 0.26], (a, o), (0.3, 0.34, 0.02))                      # a child's step
         fine.box("metal_steel", c - o * 0.14 + [0, 0, 0.0], (a, o), (0.03, 0.03, 0.26))
 
@@ -223,10 +223,10 @@ class Level:
             geo.box("metal_dark", self.P(u + sd * (w / 2 - 0.1), D / 2 - 0.55, 0.02), (a, o), (0.06, 0.06, 0.86))
         lo, hi = self.P(u, D / 2 - 0.78, 0.84), self.P(u, D / 2 - 0.3, 1.02)
         t = hi - lo
-        geo.quad("glow_panel", lo - a * w / 2, lo + a * w / 2, hi + a * w / 2, hi - a * w / 2, uv=self.A.uv("panorama"),
+        geo.quad("glow_panel", lo + a * w / 2, lo - a * w / 2, hi - a * w / 2, hi + a * w / 2, uv=self.A.uv("panorama"),
                  emit=(self.A.mean["panorama"], 0.25))
-        nrm = hp.unit(np.cross(a, t))
-        geo.quad("metal_dark", hi - a * w / 2 - nrm * 0.03, hi + a * w / 2 - nrm * 0.03, lo + a * w / 2 - nrm * 0.03, lo - a * w / 2 - nrm * 0.03)
+        nrm = hp.unit(np.cross(t, a))      # up, towards the reader
+        geo.quad("metal_dark", hi + a * w / 2 - nrm * 0.03, hi - a * w / 2 - nrm * 0.03, lo - a * w / 2 - nrm * 0.03, lo + a * w / 2 - nrm * 0.03)
         for (p, q) in ((lo - a * w / 2, lo + a * w / 2), (hi - a * w / 2, hi + a * w / 2)):
             geo.tube("metal_dark", [p, q], 0.018, segs=6)
 
@@ -257,7 +257,7 @@ class Level:
             self.geo.emitters.append((p + a * du - [0, 0, 0.03], hp.unit([-o[0] * 0.5, -o[1] * 0.5, -1.0]), 1.0, np.array([1.0, 0.86, 0.66]) * 2.2))
         ang = math.atan2(self.out[1], self.out[0])
         for u in (-9.3, -1.6, 10.2):
-            hp.bench(self.geo, self.xy(u, -D / 2 + 0.42), ang, self.z + 0.02, w=1.8, back=False)
+            hp.bench(self.geo, self.xy(u, -D / 2 + 0.42), ang, self.z + 0.02, w=1.8, back=False, metal="metal_dark")
         self.heater(DOOR[0] - 0.7, -D / 2 + 0.45)
         self.heater(DOOR[1] + 0.7, -D / 2 + 0.45)
 

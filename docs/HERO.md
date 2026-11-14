@@ -52,7 +52,9 @@ currencies: bytes fetched, memory held, triangles drawn and pixels shaded. Each 
 | Texture memory | the screen's pixels, not the texture's | a material carries only the maps that show (`maps`: `"c"`, `"cn"`, `"cnr"`): bark, grass and distant render have no roughness map; on the low tier no normal or roughness maps at all and every colour map halved, on a phone's lean sub-tier no side over 1024 |
 | Light after dark | nothing per frame | baked into the vertices, below: no light is evaluated at run time |
 
-Measured on Sydney's level (`tools/mem_check.js`, the phone tier): see the numbers in its section below.
+Measured on Sydney's level (`tools/mem_check.js`, the phone tier): the GPU peak went from 531 MB without the
+level to 546 MB with it (budget 700), and the heap from 465 MB to 470 MB (budget 880); the fine model is never
+fetched there.
 
 **Light baked into the vertices.** After dark a street like Ichibangai is lit by its signs and shop
 fronts, not by its lamps. Each lit face (a sign's panel, a fascia, a shop's glass, a vending machine,
@@ -294,6 +296,36 @@ rounded; here every storey stands on the outline. The storey height is the build
 not a drawing's. The bus terminal's long white canopies, which fill the foreground of the photographs, are
 still the city's plain "roof" solids: they want landmark meshes of their own (issue filed). The map boards'
 faces are our own drawing. Horikawa (#322) is 3.5 km north of here and is not part of this level.
+
+## The Skyline deck (Queenstown)
+
+The Queenstown map's game starts on the Skyline deck on Bob's Peak, 450 m above the town, and the view from
+its balustrade (Queenstown Bay, the Gardens, the Kelvin Peninsula, Cecil Peak and the Remarkables over Lake
+Wakatipu) is the photograph the town is known by. Nothing else stands within 300 m of the start but the
+hillside; the waterfront is far below. So the level is the deck itself, 26 m by 3.6 m: the
+metres the camera is nearest to, in front of the view. The start did not move.
+
+The deck, its steel frame, its glass and its planter are the map's own landmark meshes (`cities/queenstown/city.py`
+`DECK`, from LINZ's aerial photographs and LiDAR, CC BY 4.0) and the dining room behind the glass is
+`interiors.py`'s; both are left as they are. The level (`cities/queenstown/hero.py`) lays over them, a
+centimetre or two proud:
+
+| Part | How |
+|---|---|
+| The boards | grooved hardwood decking (ambientCG Planks040, CC0) in place of a flat colour; in the fine model the joints over the bearers every 4 m and two fixings a board |
+| The balustrade | the shoe the glass stands in, a round stainless handrail, base plates; in the fine model the saddles, clamps and bolts |
+| The planter's face | stacked stone in Otago schist's grey (ambientCG Bricks083, CC0) under a hardwood coping at a seat's height, with the map's tussock above it |
+| On the deck | two coin-operated viewers, an interpretive panorama on a lectern (its place names are LINZ's), three backless benches, two patio heaters by the doors |
+| After dark | the heaters' burners and the panel's lamp, and their light on boards and stone, baked |
+
+The level is 2,500 triangles and 0.68 MB, its fine model 5,100 triangles and 0.14 MB: the fine model is
+fetched on the deck and drawn within 40 m, and never on the low tier. A still names the deck's height with
+`"floor"` in its view (`tools/views/queenstown-hero.json`), since the ground under the deck is the hillside.
+
+What could not be checked: the viewers, the panel, the benches, the heaters and the schist cladding are
+placed by design, not surveyed (photographs of the 2020s deck show a glass balustrade with a steel rail and
+planting along the restaurant's glass, and no close view of its furniture was found); the boards' species
+and width; the handrail's section.
 
 ## Research: how the games build a street like this, and what runs in a browser
 
