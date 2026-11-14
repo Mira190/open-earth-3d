@@ -53,7 +53,7 @@ window.OEInland = (function () {
         terrace = { path_m: b.terrace.path_m || 0.35, stream: sr, swz, steps: b.steps || [], lawn, seats: b.terrace.seats || [], weirs: b.terrace.weirs || [],
           floor, risers: b.terrace.risers || [], crossings: b.terrace.crossings || [], axis: b.terrace.axis || null };
       }
-      return { id, name: b.name, kind: b.kind, walls: b.walls || null, water_m: b.water_m || 0.3, rings, bz, wz, box: [x0, y0, x1, y1], terrace };
+      return { id, name: b.name, kind: b.kind, walls: b.walls || null, water_m: b.water_m || 0.3, rail: b.rail !== false, rings, bz, wz, box: [x0, y0, x1, y1], terrace };
     });
     const decks = (I.decks || []).map(pairs);
     const walled = bodies.filter(b => b.kind === 'walled'), natural = bodies.filter(b => b.kind === 'natural');
@@ -366,7 +366,7 @@ window.OEInland = (function () {
             cop.push(...A, ...Bq, ...C, ...A, ...C, ...D, ...A0, ...B0, ...Bq, ...A0, ...Bq, ...A);
             // the railing, set back from the face, but not across a deck over the channel
             const mx = (ax + bx) / 2 - lx * RAIL_IN, my = (ay + by) / 2 - ly * RAIL_IN;
-            if (!onDeck(mx, my) && !onDeck(mx + lx * 1.5, my + ly * 1.5)) {
+            if (b.rail && !onDeck(mx, my) && !onDeck(mx + lx * 1.5, my + ly * 1.5)) { // (rail: false, a channel with no railing: the Philosopher's Path)
               const px = -lx * RAIL_IN, py = -ly * RAIL_IN, ra = ta + h, rb = tb + h;
               // (open over the top of a flight of steps down to a promenade: the way in from the pavement)
               for (const [t0, t1] of TR ? railParts(ax + px, ay + py, bx + px, by + py, L, openAtWall) : [[0, 1]]) {
@@ -401,6 +401,7 @@ window.OEInland = (function () {
         let u = 0;
         for (const r of decks) {
           const z = r.map(([x, y]) => { const n = nearest(x, y, 40, 'walled'); return n ? n.bz : 0; });
+          const bare = r.some(([x, y]) => { const n = nearest(x, y, 40, 'walled'); return n && n.body.rail === false; }); // (a bridge over a channel with no railing has its own balustrade, or none)
           const ccw = area(r) > 0, n = r.length;
           for (let i = 0; i < n; i++) {
             const j = (i + 1) % n, [ax, ay] = r[i], [bx, by] = r[j], L = Math.hypot(bx - ax, by - ay);
@@ -413,6 +414,7 @@ window.OEInland = (function () {
             if (ccw) side.push(ax, ta, -ay, ax, sa, -ay, bx, sb, -by, ax, ta, -ay, bx, sb, -by, bx, tb, -by);
             else side.push(ax, ta, -ay, bx, sb, -by, ax, sa, -ay, ax, ta, -ay, bx, tb, -by, bx, sb, -by);
             const px = -ox * 0.15, py = -oy * 0.15;
+            if (bare) continue;
             rail.push(ax + px, ta, -(ay + py), bx + px, tb, -(by + py), bx + px, tb + RAIL_H, -(by + py), ax + px, ta, -(ay + py), bx + px, tb + RAIL_H, -(by + py), ax + px, ta + RAIL_H, -(ay + py));
             ruv.push(u, 0, u + L, 0, u + L, RAIL_H, u, 0, u + L, RAIL_H, u, RAIL_H);
             u += L;

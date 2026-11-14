@@ -193,13 +193,19 @@ const npcNight = require('./npc_night');
         r.back = hidden.every(o => o.visible);
         out.push(r);
       }
-    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); g.hold(was); }
+    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); }
+    // back where you stood: a level by the start (Kamakura's) comes again before the checks that follow compare frames
+    const near = L => Math.hypot(pl.x - L.h.at[0], pl.y - L.h.at[1]) - (L.h.r || 150) < 200;
+    for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) await frames(1);
+    out.forEach(r => { const L = H.levels.find(l => l.h.id === r.id); r.again = !near(L) || !!(L.root && L.root.visible); });
+    g.hold(was);
     return out;
   });
   for (const r of heroes || []) {
     check(r.state === 'ready' && r.shown && r.tris > 1000 && r.glow > 0, `the hero level ${r.id} loads when you come near and is shown (${r.materials} materials, ${Math.round(r.tris)} triangles, ${r.glow} lit, after ${r.frames} frames)`);
     check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
     check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
+    check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
     if (r.fine) check(r.fine.tier === 'low' ? r.fine.state === 'idle' && !r.fine.meshes : r.fine.state === 'ready' && r.fine.shown > 0 && r.fine.shown <= r.fine.meshes,
       `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);
   }
@@ -2187,6 +2193,13 @@ const npcNight = require('./npc_night');
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
   await p.evaluate(() => { const g = window.__game; g.clock.frozen = true; }); // the light held still, to compare before and after
+  // (a hero level by where you stand, let go while the checks above travelled away, is back before the frames are compared)
+  await p.evaluate(async () => {
+    const g = window.__game, H = g.hero && g.hero(), pl = g.player;
+    if (!H) return;
+    const near = L => Math.hypot(pl.x - L.h.at[0], pl.y - L.h.at[1]) - (L.h.r || 150) < 200;
+    for (let t = 0; t < 1500 && H.levels.some(L => near(L) && !(L.root && L.root.visible)); t++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); }
+  });
   const gl = await require('./glcare_step')(p, { canvas: 'game-gl', api: '__game', outDir, prefix: `${city}-` });
   check(gl.paused && gl.note, `a lost context holds the game under a note (paused ${gl.paused}, note ${gl.note})`);
   check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
