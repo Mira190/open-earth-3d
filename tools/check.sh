@@ -348,6 +348,11 @@ EOF
   if for c in $(tools/live_cities.sh); do python3 tools/float_check.py "$c" || exit 1; done >"$OUT/float.log" 2>&1; then
     echo "ok   landmarks stand on something ($(grep -c 'floating$' "$OUT/float.log") cities)"
   else echo "FAIL floating landmarks: $(grep '^FLOATS' "$OUT/float.log" | head -2 | cut -c8-120 | paste -sd ';' -)   (see $OUT/float.log)"; fi
+  # and no picture (a sign, a screen, a print) has another landmark standing in front of it (tools/sign_clear.py: a
+  # facade's fins across a screen, two generators' signs hung in one place)
+  if for c in $(tools/live_cities.sh); do python3 tools/sign_clear.py "$c" || exit 1; done >"$OUT/signclear.log" 2>&1; then
+    echo "ok   pictures clear ($(grep -c 'in front$' "$OUT/signclear.log") cities: no sign or screen behind another landmark)"
+  else echo "FAIL covered pictures: $(grep '^COVERED' "$OUT/signclear.log" | head -2 | cut -c9-130 | paste -sd ';' -)   (see $OUT/signclear.log)"; fi
   # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
   if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
   else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi

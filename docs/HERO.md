@@ -277,6 +277,16 @@ roof under its own foot line, not the building's highest (`pipeline/screens.py`)
 height of the wall behind it (`city.wall_top`). `tools/float_check.py <city>` lists landmark pieces that touch
 neither the ground, a solid nor a held piece, and `tools/check.sh` runs it for the live cities.
 
+**Pictures with something in front of them.** The same rule, things as they stand in the world, for what a
+sign is for: being seen. `tools/sign_clear.py <city>` casts rays out of every picture face (a sign, a screen,
+a print) and lists those another landmark covers. Shibuya had 86: QFRONT's fins and transoms ran across Q'S EYE,
+the crown's advert and the canopy's names (they now stop at each picture's edge, `scramble.qfront` `openings`);
+three generators each hung a sign at the same street front without knowing of the others (the generic shop
+signs and the crossing's tenant stacks now leave a front that `streets.py` dresses, and one another's sites:
+`city.dressed_fronts`, `wall_sites`); MAGNET's banner began under its fascia's top; a hoarding ran behind the
+police box. Also in `tools/check.sh`. And a sign's lower line was cut off because `pipeline/meshkit.py` kept two
+decimal places of an atlas coordinate (20 to 40 pixels of a 2048 x 4096 atlas): it keeps five.
+
 ## Circular Quay West (Sydney)
 
 From First Fleet Park's edge to the taxi rank under the Overseas Passenger Terminal: 135 m of the quay in
