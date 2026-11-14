@@ -252,9 +252,9 @@ junction, and its first part is what fills most of the frame from eye level: the
   (`scramble.CROSSWALKS`), stop lines, the diamonds before them and centre lines, in an even off-white
   thermoplastic with the grain of its glass beads (`paint_texture`).
 - **The pavements**: grey blocks (`PavingStones136`), and Hachiko Square in the red-brown block the 2024
-  photographs show (`PavingStones128`, brought to that brown by its own mean with `hero_kit.tint_to`; the first
-  pass had it in grey setts, which was wrong); the yellow tactile blocks on OpenStreetMap's lines with their bars
-  and domes in relief (JIS T 9251's pattern, `tactile_texture`); a cast-iron grate round each mapped tree.
+  photographs show, drawn here (`cities/shibuya/scramble_tex.py` `plaza`, below); the yellow tactile blocks on
+  OpenStreetMap's lines with their bars and domes in relief (JIS T 9251's pattern, `tactile_texture`); a
+  cast-iron grate round each mapped tree.
 - **On the kerbs**: white guard pipes between the crosswalks, and steel lamp posts whose light is baked.
 - **The fronts** (`Level.fronts`, `front`): each wall a player can see from the junction's roads and pavements
   (eye points on a 7 m grid within 70 m, no building between), of the buildings the landmarks do not draw whole
@@ -263,15 +263,17 @@ junction, and its first part is what fills most of the frame from eye level: the
   cafe's counter, a clothes rail); above it, storey by storey, facing tile or panel with windows set back in
   their reveals, aluminium frames, sills, and a coping on the parapet; behind each pane a room, lit or dark
   after nightfall. Where a landmark's print or screen hangs on the wall the skin is cut away behind it
-  (`behind`), so no picture is covered. One grammar with a few variables per building, not yet each building
-  from its photograph.
+  (`behind`), so no picture is covered. One grammar; the buildings that face the junction take their wall and
+  their windows from `FRONTS` (below), the rest one of three quiet facings.
 - **Light from the sky** (`hero_kit.sky_occlusion`, meta `sky_rays`): each vertex keeps the share of the sky it
   sees, baked, so a reveal, a canopy's underside and the foot of a wall are darker than the open ground.
 
 It hides the landmark meshes it draws again (`p5_plaza`, the junction's flat asphalt, paint, tactile strips and
 guard pipes); the entrances, the tracks, Hachiko and the signs stay the landmarks'.
-158,000 triangles, 8.2 MB; nothing is built under a building, in a stair well, on a wall no player sees or past
-100 m. On a phone the map's GPU memory peaks at 372 to 388 MB of the 490 MB budget (`tools/check.sh shibuya:mem`).
+153,000 triangles, 8.1 MB; nothing is built under a building, in a stair well, on a wall no player sees or past
+100 m. Its fine model (`scramble_fine.glb`: the shop doors' stiles, rails and pull handles, the lamp posts'
+bands; 14,000 triangles, 0.5 MB) is fetched on the high and medium tiers once the camera is in the level, drawn
+within 60 m, and never fetched on a phone.
 
 **QFRONT against its photograph.** The landmark drew the building as navy glass under a white grid with a plain
 band for a street floor. From the 2025 photograph of it across the crosswalk: the outer skin is now glass that
@@ -302,11 +304,51 @@ Photographs looked at (Wikimedia Commons; none is reproduced, no texture is take
 junction, 2025-01 (ウィ貴公子, CC BY-SA 4.0), QFRONT from the crosswalk, 2025-02 (GoToVan, CC BY 2.0), Hachiko
 Square, 2020-04 (Asanagi, CC0); links in docs/cities/shibuya.md.
 
-Where it still falls short of the bar: the fronts are one grammar, not each building's own face (QFRONT's
-face (the bookshop block, Center Gai's mouth and the station front are next, issue 461); glass mirrors the sky or
-nothing, never the street; the sky's clouds are painted; the kerbs are flush, since the game's ground is
-one surface; the lamp posts' design and places are from photographs, not a survey; and it has been seen on a
-software renderer only.
+### The second pass (issue 461): what the stills showed, and what was done
+
+Stills from the six eye-level views, a car's and the helicopter's (`tools/views/shibuya-hero.json`), by day, at
+dusk and at night, were put beside the 2024-25 photographs (docs/cities/shibuya.md, section 6b). Four things
+broke the picture, in the order of the pixels they covered:
+
+| What the still showed | Why | Now |
+|---|---|---|
+| Hachiko Square in a jumble of pink, brown and grey patches | the scanned set (`PavingStones128`) is slabs a metre long in four tones; tinted, it stayed a patchwork | `scramble_tex.plaza`: concrete blocks 200 x 100 mm in a herringbone, 1.6 m to the repeat (1.6 mm a texel), red-brown, each block within five percent of the next, a 3 mm sanded joint and a chamfered arris in the normal map. Every change of tone is a block or a joint |
+| White boxes with black holes for windows round the junction | white tile at sRGB 214 beside a street of greys; glass at 4% reflectance mirrors nothing | no front is white (tile 192 and a warm 190/180/164, panels 158 to 176, charcoal 62); `win_glass` mirrors three quarters of the sky's picture in a grey-blue, so an upper window by day is a pane of sky and cloud |
+| Mottled grey walls (MAGNET, the blocks south of the square) | a scanned concrete (`Concrete034`) over a whole front reads as blotches | `scramble_tex.panel`: cladding panels 1.2 m square with an open joint, flat and even; the building's colour is its tint (`wall_clad`, `wall_grey`, `wall_char`) |
+| Shops and lit rooms as flat cartoons a few metres from the eye | drawn as coloured rectangles, 400 x 220 px | each is a box room ray-cast offline from where a walker stands (`scramble_tex.shop`, `room`): a ceiling with its light panels, walls lit by them by the cosine and the square of the distance, corners darker where surfaces meet, and the trade standing in it (gondolas and shelves of goods, a bookshop's spines and table, a cafe's counter, menu board and back bar, a rail of garments on a plinth). An upstairs room is seen from 9 m below: its ceiling and the head of its back wall. The atlas is the same 2048 x 1024; it was half empty |
+
+**The fronts that face the junction** (`hero.py` `FRONTS`, by OpenStreetMap id): the block on Center Gai's corner
+in charcoal cladding with ribbons of glass (in the photographs it is a dark ground for its screens and tenant
+signs); 渋谷駅前ビル on Dogenzaka's corner and MAGNET in pale metal panels with ribbon windows; the blocks south of
+the square in grey precast; Jingu-dori's east side in tile. QFRONT, SHIBUYA109, Seibu and the station keep the
+faces the landmarks give them (`scramble.py`, `streets.py`), each already drawn from its photograph.
+
+**A way in to every shop.** Every second bay of a street floor is a pair of glass doors under the transom: the
+stone foot stops either side, the glass runs down to a steel threshold; the leaves' stiles and rails and the
+pull handles are in the fine model.
+
+**From the air and from a car.** `heli` (95 m up, over the square) and `over` (150 m, straight down) show no
+aerial photograph inside the level: carriageway, paint, kerbs and paving are the level's own to its rim. The
+dashes along the kerbs from that height are the white guard pipes and their shadows.
+
+Day, dusk and night on the high tier at 1440 x 900 (the spawn, the square, a front close up, the helicopter),
+and on the low tier at 390 x 844:
+
+![The Scramble](images/hero/scramble-desktop.jpg)
+![The Scramble on a phone](images/hero/scramble-phone.jpg)
+
+Checked on a phone (`tools/mem_check.js shibuya`, an iPhone emulated on the low tier, two runs each on the same
+machine): the GPU peak was 242 and 241 MB before and is 241 and 242 MB after, of the 300 MB budget. The atlas is
+the size it was, the drawn paving replaces a scanned set of the same size, and the fine model is never fetched
+there.
+
+Where it still falls short of the bar, as the stills show: a front's grammar is still one (piers, ribbons or
+punched windows, a parapet), varied by material, not each building's own face modelled from its photograph; the
+junction's signals are the game's live heads on plain poles, not Tokyo's masts with their arms and name plates;
+glass mirrors the sky or nothing, never the street across the way; the trees are the map's shared ones; the
+kerbs are flush, since the game's ground is one surface; the lamp posts' design and places are from photographs,
+not a survey; the shops are plausible trades, not the real tenants; and it has been seen on a software renderer
+only.
 
 **Signs that stood in the air.** A sign tower placed from a photograph by a roof height the city's solids do
 not have (a penthouse narrower than the sign, a roof 6 m lower) stood with its legs in the air. The towers now
@@ -344,8 +386,6 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   `web/game/nav.js` `lift`), and the ground meshes a level hides are not stood on (`navcells.js` `unwalkedOf`):
   at the spawn the hidden tactile strip had the player 20 cm up, and elsewhere the crowd's soles were 5 cm under
   the paving drawn.
-- The square's blocks are `PavingStones128` with the difference in tone between one block and the next at 40%
-  (`sett_texture`) and laid at half the size: the first pass read as a jumble of tones.
 - `tools/unseen_walls.js <city>` audits a level against the picture (a wall with nothing drawn at it, a footway
   with something solid on it, the floor's height over the ground drawn), and `tools/game_check.js` fails a level
   with a wall on one of the crowd's lines or a floor off its lift. Sydney's level had no unseen wall and no

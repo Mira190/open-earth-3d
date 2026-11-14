@@ -1024,6 +1024,8 @@
       {
         "id": "scramble",
         "glb": "hero/scramble.glb",
+        "fine": "hero/scramble_fine.glb",
+        "fine_m": 60,
         "at": [368.0, -1002.0],
         "r": 100.0,
         "lift": 0.05,
