@@ -63,8 +63,37 @@ TEXTURES = {
 }
 
 
+GENERATED = {}   # key -> make(dir): a level's own drawn surfaces (register)
+
+
+def register(key, rep, make):
+    """A surface a level draws for itself where no scanned one fits (a city's own paving bond, its stone):
+    make(dir) writes Color.png, NormalGL.png and Roughness.png (L) there, seamless; rep metres to a repeat.
+    Used like any TEXTURES entry afterwards (a material's "tex", tint_to)."""
+    TEXTURES[key] = (f"drawn_{key}", rep)
+    GENERATED[key] = make
+
+
+def _drawn(key):
+    from PIL import Image
+    tid, make = TEXTURES[key][0], GENERATED[key]
+    d = os.path.join(TEX_DIR, tid)
+    make(d)       # (drawn again each build: seconds, and never stale against its code)
+    r = Image.open(os.path.join(d, "Roughness.png")).convert("L")
+    Image.merge("RGB", (Image.new("L", r.size, 255), r, Image.new("L", r.size, 0))).save(os.path.join(d, "ORM.png"))
+    return {"Color": os.path.join(d, "Color.png"), "NormalGL": os.path.join(d, "NormalGL.png"),
+            "Roughness": os.path.join(d, "Roughness.png"), "ORM": os.path.join(d, "ORM.png")}
+
+
+_DRAWN = {}
+
+
 def fetch_texture(key, size="1K"):
     """The colour, normal (OpenGL) and roughness images of a TEXTURES entry, fetched once into data/raw."""
+    if key in GENERATED:
+        if key not in _DRAWN:
+            _DRAWN[key] = _drawn(key)
+        return _DRAWN[key]
     tid, _ = TEXTURES[key]
     d = os.path.join(TEX_DIR, tid)
     if not os.path.exists(os.path.join(d, f"{tid}_{size}-JPG_Color.jpg")):
@@ -326,10 +355,57 @@ class Atlas:
 
 # ---------------------------------------------------------------- the bake
 
-def bake(geo, gain=1.0, near=0.35, walls_ao=True):
+SKY_SKIP = ("glow", "tube", "chase", "lamp", "paper", "win", "glass", "leaf", "atlas_cloth")   # lit, glazed or two-sided: no sky occlusion
+
+
+def sky_occlusion(geo, occluders, rays=24, reach=5.0, strength=1.0, seed=3):
+    """{material: per-vertex share of the sky's light that reaches it, 0..1}: from every vertex `rays` rays go out
+    over the hemisphere of its normal, cosine-weighted, and each that meets one of the occluders' triangles within
+    `reach` metres takes its share away, more the nearer it lands (less where it lands on sunlit ground). This is the soft dark under a bench, a canopy,
+    a window's reveal and a wall's foot that grounds a level, distilled offline into the _BAKE's alpha: the page
+    evaluates nothing for it, on any tier. Needs Blender's BVH (bpy)."""
+    import bpy  # noqa: F401  (mathutils comes with it)
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    V, T, base = [], [], 0
+    for g0 in occluders:
+        for mat, g in g0.parts.items():
+            if mat.startswith(("leaf", "atlas_cloth", "ground_stain")) or not g["tri"]:
+                continue
+            V += [tuple(float(c) for c in p) for p in g["p"]]
+            T += [(a + base, b + base, c + base) for a, b, c in g["tri"]]
+            base = len(V)
+    tree = BVHTree.FromPolygons(V, T, all_triangles=True)
+    rng = np.random.default_rng(seed)
+    u1, u2 = (np.arange(rays) + rng.random(rays)) / rays, rng.random(rays)
+    r, th = np.sqrt(u1), 2 * math.pi * u2
+    L = np.c_[r * np.cos(th), r * np.sin(th), np.sqrt(1 - u1)]          # cosine-weighted, about +z
+    out = {}
+    for mat, g in geo.parts.items():
+        n = len(g["p"])
+        if mat.startswith(SKY_SKIP) or not n:
+            out[mat] = np.ones(n)
+            continue
+        P, N = np.asarray(g["p"], float), np.asarray(g["n"], float)
+        a = np.where(np.abs(N[:, 2:3]) < 0.9, [[0.0, 0.0, 1.0]], [[1.0, 0.0, 0.0]])
+        tx = np.cross(a, N); tx /= np.linalg.norm(tx, axis=1, keepdims=True) + 1e-12
+        ty = np.cross(N, tx)
+        occ = np.zeros(n)
+        for k in range(rays):
+            D = tx * L[k, 0] + ty * L[k, 1] + N * L[k, 2]
+            for i in range(n):
+                hit = tree.ray_cast(Vector(P[i] + N[i] * 0.03), Vector(D[i]), reach)
+                if hit[0] is not None:      # (what faces up is lit itself, and throws light back: a third of a wall's shade)
+                    occ[i] += (1.0 - hit[3] / reach) * (0.35 if hit[1].z > 0.7 else 1.0)
+        out[mat] = np.clip(1.0 - strength * occ / rays, 0.0, 1.0)
+    return out
+
+
+def bake(geo, gain=1.0, near=0.35, walls_ao=True, sky=None):
     """Every vertex's _BAKE: rgb the irradiance after dark from geo.emitters (each a small area light:
     cosine at the light and at the vertex, inverse square, held at `near` metres), a the occlusion of
-    corners from geo.walls and the ground. Lights behind a face, or a face behind a light, give nothing."""
+    corners from geo.walls and the ground, or, given `sky` (sky_occlusion's answer), the share of the sky each vertex
+    sees. Lights behind a face, or a face behind a light, give nothing."""
     E = geo.emitters
     out = {}
     if E:
@@ -365,6 +441,8 @@ def bake(geo, gain=1.0, near=0.35, walls_ao=True):
                 k = np.exp(-dist / 0.55) * np.exp(-np.maximum(h, 0) / 0.6)
                 occ = np.minimum(occ, 1 - 0.55 * k)
             ao = ao * occ
+        if sky is not None and mat in sky:      # (the rays' answer, where a level asks for it: build_hero.py meta "sky_rays")
+            ao = np.asarray(g["ao"], float) * sky[mat]
         out[mat] = np.c_[rgb * gain, np.clip(ao, 0, 1)].astype(np.float32)
     return out
 

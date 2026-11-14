@@ -2108,6 +2108,7 @@ const npcNight = require('./npc_night');
     if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
     else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most${w.deep > 0.1 && w.deepAt ? ` (${w.deepAt})` : ""}`).join('; ')})`);
     const R = rev.ride;
+    if (process.env.UNTIL === 'reverse') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=reverse: up to the cars backing out, to iterate on them)
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
       check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto}${R.heldBy ? `; held ${R.heldBy}` : ''})`);
@@ -2328,6 +2329,9 @@ const npcNight = require('./npc_night');
         let glow = 0, tris = 0;
         if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube|paper|lamp)/.test(o.material.name)) glow++; } });
         const r = { id: L.h.id, state: st.state, shown: st.shown, materials: st.materials, tris, glow, frames: t, hid: hidden.length, hiddenOff: hidden.every(o => !o.visible), want: (L.h.hide || []).length };
+        // what the level draws as buildings is solid in the city under it, and its ways through are open (game.hero[].solid, .open: issue 426)
+        const stand = q => { const f = g.nav.floorAt(q[0], q[1], g.nav.terrain(q[0], q[1]) + 0.5); return !!(f && f.z < g.nav.terrain(q[0], q[1]) + 2 && g.nav.walk(q[0], q[1], f.z).ok); };
+        r.solid = (L.h.solid || []).filter(stand); r.shut = (L.h.open || []).filter(q => !stand(q));
         // its finest parts (hero.js "fine"): fetched once you stand in it and drawn near you, never on the low tier
         if (L.h.fine) {
           for (let k = 0; k < 600 && H.tier !== 'low' && !H.state().find(s => s.id === L.h.id).fineShown; k++) await frames(1);
@@ -2357,6 +2361,7 @@ const npcNight = require('./npc_night');
     check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
     check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
     check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
+    check(!r.solid.length && !r.shut.length, `the hero level ${r.id}'s buildings are solid and its ways open (${r.solid.length ? 'a walker can stand inside at ' + JSON.stringify(r.solid) : 'none stood in'}${r.shut.length ? '; shut at ' + JSON.stringify(r.shut) : ''})`);
     if (r.fine) check(r.fine.tier === 'low' ? r.fine.state === 'idle' && !r.fine.meshes : r.fine.state === 'ready' && r.fine.shown > 0 && r.fine.shown <= r.fine.meshes,
       `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);
   }

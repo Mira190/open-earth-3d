@@ -749,5 +749,6 @@ def build(K):
                            ("ground_kerb", "granite", (160, 160, 158)), ("ground_gutter", "conc", (152, 152, 150)),
                            ("wall_white", "tile", (214, 214, 210)), ("wall_cream", "tile", (204, 196, 182)), ("wall_grey", "panel", (168, 170, 172))):
         M[mat]["tint"] = K.tint_to(key, srgb)
-    meta = {"id": ID, "at": list(CENTRE), "r": R, "z": 15.0, "glb": f"hero/{ID}.glb", "bake_gain": 1.0, "cell": 28.0}
+    meta = {"id": ID, "at": list(CENTRE), "r": R, "z": 15.0, "glb": f"hero/{ID}.glb", "bake_gain": 1.0, "cell": 28.0,
+            "sky_rays": 20, "sky_reach": 5.0, "sky_strength": 1.0}   # (the sky's light occluded, ray-cast: hero_kit.sky_occlusion)
     return geo, atlas, M, meta

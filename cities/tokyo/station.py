@@ -55,6 +55,7 @@ MATERIALS = {
     "tks_pavers": {"color": "#8b857c", "roughness": 0.7, "metalness": 0.0, "pbr": {"set": "concrete_pavers", "tile_m": [1.8, 1.8], "vary": 0.03},
                    "decal": True, "street_lit": True},
     "tks_asphalt": {"color": "#3b3c3e", "roughness": 0.9, "metalness": 0.0, "decal": True, "street_lit": True},
+    "tks_paint": {"color": "#d9d9d4", "roughness": 0.7, "metalness": 0.0, "decal": True, "street_lit": True},
     "tks_kerb": {"color": "#8f8c85", "roughness": 0.7, "metalness": 0.0, "pbr": {"set": "granite_paving", "tile_m": [1.2, 1.2]}, "street_lit": True},
     "tks_lawn": {"color": "#6c7442", "roughness": 0.95, "metalness": 0.0, "pbr": {"set": "lawn", "tile_m": [2.0, 2.0], "vary": 0.08}, "decal": True, "street_lit": True},
     "tks_hedge": {"color": "#3f5a2c", "roughness": 0.95, "metalness": 0.0, "pbr": {"set": "lawn", "tile_m": [0.9, 0.9], "vary": 0.08, "normal": 1.4}, "street_lit": True},
@@ -124,23 +125,59 @@ def ccw(ring):
 
 # ---------------------------------------------------------------- parts on a wall
 
+HERO = False     # building for the streamed level (cities/tokyo/hero.py): bevelled edges, occlusion marks, floodlights
+BEV = 0.022      # an arris is never a razor: the chamfer that catches the light along it (m)
+STOPS, BENCHES = [], []   # the stands' poles (x, y, z) and the benches under the canopies (x, y, z, heading), for the level
+FLOODS = []      # (x, y, z, nx, ny): a floodlight at the foot of a bay, for the level's baked night light
+
+
+def shade(m, vals):
+    """Occlusion of the vertices just added to m (the last len(vals)): 1 open to the sky, less in a recess or
+    under an eave. Kept beside the mesh for the hero level's bake; the landmark model has no use for it."""
+    d = m.__dict__.setdefault("ao", {})
+    n = len(m.v)
+    for k, v in enumerate(vals):
+        d[n - len(vals) + k] = v
+
+
 def slab(m, a, t, n, s0, s1, z0, z1, d0, d1, faces="fb"):
     """A block on the wall through a (2D) with tangent t and outward normal n: s0..s1 along, z0..z1 up, d0..d1 out.
     Only the faces named are built: f front, b bottom, t top, l the end at s0, r the end at s1 (what the eye can
-    reach: a band a few centimetres proud needs its front alone)."""
+    reach: a band a few centimetres proud needs its front alone). In the hero level a block that stands proud
+    enough has its front's edges chamfered towards each side that is built."""
     a, t, n = np.asarray(a, float), np.asarray(t, float), np.asarray(n, float)
     Q = lambda s, z, d: (*(a + t * s + n * d), z)
     w, h, dd = s1 - s0, z1 - z0, d1 - d0
+    bev = BEV if HERO and "f" in faces and dd > 2.6 * BEV and min(w, h) > 5 * BEV else 0.0
+    L, R, T, B = (bev if k in faces else 0.0 for k in "lrtb")
+    ds = d1 - bev      # where the sides end and the chamfers begin
     if "f" in faces:
-        m.quad(Q(s0, z0, d1), Q(s1, z0, d1), Q(s1, z1, d1), Q(s0, z1, d1), [[s0, z0], [s1, z0], [s1, z1], [s0, z1]])
+        m.quad(Q(s0 + L, z0 + B, d1), Q(s1 - R, z0 + B, d1), Q(s1 - R, z1 - T, d1), Q(s0 + L, z1 - T, d1),
+               [[s0 + L, z0 + B], [s1 - R, z0 + B], [s1 - R, z1 - T], [s0 + L, z1 - T]])
+        if bev:
+            if L:
+                m.quad(Q(s0, z0 + B, ds), Q(s0 + L, z0 + B, d1), Q(s0 + L, z1 - T, d1), Q(s0, z1 - T, ds))
+            if R:
+                m.quad(Q(s1 - R, z0 + B, d1), Q(s1, z0 + B, ds), Q(s1, z1 - T, ds), Q(s1 - R, z1 - T, d1))
+            if T:
+                m.quad(Q(s0 + L, z1 - T, d1), Q(s1 - R, z1 - T, d1), Q(s1 - R, z1, ds), Q(s0 + L, z1, ds))
+            if B:
+                m.quad(Q(s0 + L, z0, ds), Q(s1 - R, z0, ds), Q(s1 - R, z0 + B, d1), Q(s0 + L, z0 + B, d1))
+                shade(m, (0.8, 0.8, 0.9, 0.9))
+            for cs, cz, es, ez, on in ((s0 + L, z1 - T, s0, z1, L and T), (s1 - R, z1 - T, s1, z1, R and T),
+                                       (s0 + L, z0 + B, s0, z0, L and B), (s1 - R, z0 + B, s1, z0, R and B)):
+                if on:   # the corner between two chamfers
+                    m.tri(Q(cs, cz, d1), Q(es, cz, ds), Q(es, ez, ds))
+                    m.tri(Q(cs, cz, d1), Q(es, ez, ds), Q(cs, ez, ds))
     if "b" in faces:
-        m.quad(Q(s0, z0, d0), Q(s1, z0, d0), Q(s1, z0, d1), Q(s0, z0, d1), [[s0, 0], [s1, 0], [s1, dd], [s0, dd]])
+        m.quad(Q(s0, z0, d0), Q(s1, z0, d0), Q(s1, z0, ds), Q(s0, z0, ds), [[s0, 0], [s1, 0], [s1, dd], [s0, dd]])
+        shade(m, (0.6, 0.6, 0.8, 0.8))
     if "t" in faces:
-        m.quad(Q(s0, z1, d1), Q(s1, z1, d1), Q(s1, z1, d0), Q(s0, z1, d0), [[s0, 0], [s1, 0], [s1, dd], [s0, dd]])
+        m.quad(Q(s0, z1, ds), Q(s1, z1, ds), Q(s1, z1, d0), Q(s0, z1, d0), [[s0, 0], [s1, 0], [s1, dd], [s0, dd]])
     if "r" in faces:
-        m.quad(Q(s1, z0, d0), Q(s1, z1, d0), Q(s1, z1, d1), Q(s1, z0, d1), [[0, z0], [0, z1], [dd, z1], [dd, z0]])
+        m.quad(Q(s1, z0, d0), Q(s1, z1, d0), Q(s1, z1, ds), Q(s1, z0, ds), [[0, z0], [0, z1], [dd, z1], [dd, z0]])
     if "l" in faces:
-        m.quad(Q(s0, z0, d1), Q(s0, z1, d1), Q(s0, z1, d0), Q(s0, z0, d0), [[0, z0], [0, z1], [dd, z1], [dd, z0]])
+        m.quad(Q(s0, z0, ds), Q(s0, z1, ds), Q(s0, z1, d0), Q(s0, z0, d0), [[0, z0], [0, z1], [dd, z1], [dd, z0]])
 
 
 def pediment(m, a, t, n, c, w, z, rise, d):
@@ -252,6 +289,7 @@ def window(K, a, t, n, c, w, zb, zt, style, lit=True, fine=True, head=False):
         return
     q = [a + t * (c - w / 2) - n * 0.38, a + t * (c + w / 2) - n * 0.38]
     glass.quad((*q[0], zb), (*q[1], zb), (*q[1], zt), (*q[0], zt), [[0, 0], [w, 0], [w, zt - zb], [0, zt - zb]])
+    shade(glass, (0.9, 0.9, 0.6, 0.6))
     # the sash: its frame, a mullion and a transom, as faces 4 cm in front of the glass
     f = 0.07
     for s0, s1, z0, z1 in ((c - w / 2, c + w / 2, zb, zb + f), (c - w / 2, c + w / 2, zt - f, zt), (c - w / 2, c - w / 2 + f, zb, zt),
@@ -329,6 +367,8 @@ def facade(K, ring, g, top, skip, seen=None, layout=None, pil=True, parapet=True
         outl = ak.holed_wall(brick, ak.WORLD, a, b, g, g + H, [(c, w, zb, zt, False) for c, w, zb, zt, _s in spans], s0=s0)
         for (c, w, zb, zt, style), o, arched in zip(spans, outl, [ar for _c, _w, ar in wins for _f in FLOORS]):
             ak.reveal(rev, ak.WORLD, a, b, o, 0.0, -0.4)
+            for kq in range(len(o)):   # (each side of the reveal: open at the wall's face, dark at the glass)
+                rev.__dict__.setdefault("ao", {}).update({len(rev.v) - 4 * (len(o) - kq) + j: v for j, v in enumerate((1.0, 1.0, 0.5, 0.5))})
             window(K, a, t, nrm, c, w, zb, zt, style, lit_(c, zb), head=arched and style != "door")
         # the white stripes, between one opening's frame and the next
         edges_ = sorted((c - w / 2 - (0.53 if ar else 0.2), c + w / 2 + (0.53 if ar else 0.2)) for c, w, ar in wins)
@@ -337,6 +377,23 @@ def facade(K, ring, g, top, skip, seen=None, layout=None, pil=True, parapet=True
             inside = any(zb - 0.25 < z < zt + 0.6 for zb, zt, _s in FLOORS)
             for x0, x1 in (gaps if inside else [(0.0, L)]):
                 slab(stone, a, t, nrm, x0, x1, g + z * k, g + (z + 0.13) * k, 0, 0.035, "fb")
+        if HERO:
+            # what a course or the cornice keeps the sky off: the brick just under it, darker at the top (occlusion
+            # baked into the level's vertices; a strip of the wall's own brick a centimetre proud carries it)
+            for ztop, hgt, dark in ((g + H - 1.5, 0.55, 0.45), (g + 6.0 * k, 0.4, 0.6), (g + 11.4 * k, 0.35, 0.6)):
+                for x0, x1 in gaps:
+                    brick.quad((*(a + t * x0 + nrm * 0.012), ztop - hgt), (*(a + t * x1 + nrm * 0.012), ztop - hgt),
+                               (*(a + t * x1 + nrm * 0.012), ztop), (*(a + t * x0 + nrm * 0.012), ztop),
+                               [[s0 + x0, ztop - hgt], [s0 + x1, ztop - hgt], [s0 + x1, ztop], [s0 + x0, ztop]])
+                    shade(brick, (1.0, 1.0, dark, dark))
+            for x0, x1 in gaps:   # and the wall's foot, where it meets the ground
+                brick.quad((*(a + t * x0 + nrm * 0.012), g + 1.12), (*(a + t * x1 + nrm * 0.012), g + 1.12),
+                           (*(a + t * x1 + nrm * 0.012), g + 1.6), (*(a + t * x0 + nrm * 0.012), g + 1.6),
+                           [[s0 + x0, g + 1.12], [s0 + x1, g + 1.12], [s0 + x1, g + 1.6], [s0 + x0, g + 1.6]])
+                shade(brick, (0.7, 0.7, 1.0, 1.0))
+            for c, w, _ in wins[::1]:
+                fp = a + t * (c + BAY / 2 if not layout else c + 1.2) + nrm * 0.9
+                FLOODS.append((float(fp[0]), float(fp[1]), g + 0.25, float(nrm[0]), float(nrm[1])))
         # pilasters through the upper storeys: a base, the shaft and its capital under the cornice
         zp0, zp1 = g + 6.5 * k, g + H - 1.5
         for s in piers:
@@ -675,11 +732,11 @@ def _under(t):
         return False
 
 
-def _osm():
-    """OpenStreetMap's map of the forecourt (pipeline/hero_osm.py), by kind, as shapely shapes in local metres."""
+def _osm(path=OSM):
+    """OpenStreetMap's map of a level's box (pipeline/hero_osm.py), by kind, as shapely shapes in local metres."""
     from shapely.geometry import LineString, Point, Polygon
-    d = json.load(open(OSM))
-    out = {"common": [], "ped": [], "grass": [], "garden": [], "roof": [], "service": [], "tree": []}
+    d = json.load(open(path))
+    out = {"common": [], "ped": [], "grass": [], "garden": [], "roof": [], "service": [], "tree": [], "road": [], "zebra": [], "wood": [], "parking": []}
     for w in d["ways"]:
         t = w["tags"]
         if _under(t) or len(w["xy"]) < 2:
@@ -687,14 +744,21 @@ def _osm():
         if w.get("closed") and len(w["xy"]) > 3:
             kind = ("common" if t.get("leisure") == "common" else "ped" if t.get("highway") == "pedestrian" else
                     "grass" if t.get("landuse") == "grass" or t.get("natural") == "grassland" else "garden" if t.get("leisure") == "garden" else
-                    "roof" if t.get("building") == "roof" else None)
+                    "roof" if t.get("building") == "roof" else "wood" if t.get("landuse") == "forest" or t.get("natural") == "wood" or t.get("leisure") == "park" else
+                    "parking" if t.get("amenity") == "parking" else None)
             if kind:
                 p = Polygon(w["xy"]).buffer(0)
                 out[kind].append((p, int(float(t.get("layer", "1") or 1))) if kind == "roof" else p)
                 continue
         if t.get("highway") == "service":
             out["service"].append(LineString(w["xy"]))
+        elif t.get("highway") in ("trunk", "primary", "secondary", "tertiary", "unclassified", "residential"):
+            lanes = int(float(t.get("lanes") or (2 if t.get("oneway") == "yes" else 4 if t["highway"] in ("primary", "secondary") else 2)))
+            out["road"].append((LineString(w["xy"]), lanes))
+        elif t.get("footway") == "crossing":
+            out["zebra"].append(LineString(w["xy"]))
     out["tree"] = [Point(n["xy"]) for n in d["nodes"] if n["tags"].get("natural") == "tree"]
+    out["stop"] = [Point(n["xy"]) for n in d["nodes"] if n["tags"].get("highway") == "bus_stop" or n["tags"].get("amenity") == "taxi"]
     return out
 
 
@@ -819,6 +883,8 @@ def plaza(K, g, octs, axis):
                         _lay(m, q, Z, 0.05, uv)
             u += ln
         v += row
+    zone = shapely.union_all([quad(-112, 150, 2, 300), quad(-190, -112, -45, 300)]).intersection(area.buffer(60)).difference(area).difference(station)
+    streets(K, O, T, Z, uv, zone, solids)
     # planted islands: a clipped hedge mass within a granite edging; and a kerb round the roadway and the lawns
     hedge, kerb = K["tks_hedge"], K["tks_kerb"]
     for q in getattr(garden, "geoms", [garden]):
@@ -864,6 +930,7 @@ def plaza(K, g, octs, axis):
             hidden.append(s["si"])
     for r, lay in roofs:
         canopy(K, r, Z, 5.4 if lay >= 2 and r.area > 100 else 3.3)
+    STOPS[:] = [(p.x, p.y, Z(p.x, p.y)) for p in O.get("stop", []) if area.buffer(3).contains(p)]
     # the trees OpenStreetMap maps, lamps along the rows that edge the pedestrian plaza, bollards at the street
     trees, lamps, bollards = [], [], []
     rows = {}
@@ -898,6 +965,77 @@ def plaza(K, g, octs, axis):
     return trees, props, hidden
 
 
+LANE_W = 3.2
+
+
+def streets(K, O, T, Z, uv, zone, solids, walk_in=None, hard=None):
+    """The streets round a level (zone), as far as the first frame and a low flight see them: one asphalt surface on
+    the mapped carriageways (a lane 3.2 m), pavers to the buildings' feet, lane dashes and the mapped zebras. They
+    lie over the city's ground, whose aerial photograph (cars, shadows, a colour cast) showed there from the air."""
+    import shapely
+    from shapely.geometry import LineString, Point, Polygon
+    blds = shapely.union_all([Polygon(b["ring"]).buffer(0.2) for b in solids
+                              if b["top"] - b["ground"] > 2.5 and Polygon(b["ring"]).intersects(zone)])
+    half = lambda n: n * LANE_W / 2 + 0.35
+    road = shapely.union_all([l.buffer(half(n), cap_style="flat") for l, n in O["road"]] + [l.buffer(3.3) for l in O["service"]])
+    if hard is not None:   # (a car park, a forecourt: asphalt too)
+        road = shapely.union_all([road, hard])
+    road = road.buffer(1.2).buffer(-1.2).intersection(zone).difference(blds)
+    walk = (zone if walk_in is None else zone.intersection(walk_in)).difference(road).difference(blds).buffer(-0.05)
+    for mesh, poly, lift in ((K["tks_asphalt"], road, 0.03), (K["tks_pavers"], walk, 0.04)):
+        for q in T.facets(poly):
+            _lay(mesh, q, Z, lift, uv)
+    paint = K["tks_paint"]
+    rp = shapely.prepared.prep(road.buffer(-0.3))
+
+    def mark(a, b, w):
+        """A painted strip from a to b, w wide, on the road."""
+        a, b = np.asarray(a, float), np.asarray(b, float)
+        L = float(np.linalg.norm(b - a))
+        if L < 0.2:
+            return
+        n = np.array([-(b - a)[1], (b - a)[0]]) / L * w / 2
+        pts = [a - n, b - n, b + n, a + n]
+        if all(rp.contains(Point(*q)) for q in pts):
+            zz = max(Z(*q) for q in pts) + 0.045
+            paint.quad(*[(float(q[0]), float(q[1]), zz) for q in pts], [list(uv(*q)) for q in pts])
+
+    def heading(l, s):
+        p0, p1 = l.interpolate(max(0.0, s - 1.0)), l.interpolate(min(l.length, s + 1.0))
+        v = np.array([p1.x - p0.x, p1.y - p0.y])
+        return v / (np.linalg.norm(v) or 1)
+
+    # lane dashes: 5 m of paint, 5 m of road, between the lanes of each carriageway, but not across a junction
+    for l, n in O["road"]:
+        if n < 2 or not l.intersects(zone):
+            continue
+        s = 2.5
+        while s + 5.0 < l.length:
+            pm = l.interpolate(s + 2.5)
+            h = heading(l, s + 2.5)
+            crossing = any(o is not l and o.distance(pm) < half(m) + half(n) and abs(float(np.dot(heading(o, o.project(pm)), h))) < 0.8
+                           for o, m in O["road"])
+            if not crossing:
+                nrm = np.array([-h[1], h[0]])
+                p0, p1 = l.interpolate(s), l.interpolate(s + 5.0)
+                for i in range(1, n):
+                    off = (i - n / 2) * LANE_W
+                    mark(np.array([p0.x, p0.y]) + nrm * off, np.array([p1.x, p1.y]) + nrm * off, 0.15)
+            s += 10.0
+    # zebras on the mapped crossings: bars 0.45 m wide, 0.9 m apart, 4 m long, along the traffic
+    for l in O["zebra"]:
+        if not l.intersects(zone):
+            continue
+        s = 0.3
+        while s < l.length - 0.3:
+            pm = l.interpolate(s)
+            h = heading(l, s)
+            nrm = np.array([-h[1], h[0]])
+            c = np.array([pm.x, pm.y])
+            mark(c - nrm * 2.0, c + nrm * 2.0, 0.45)
+            s += 0.9
+
+
 def canopy(K, poly, Z, h):
     """A stand's canopy on a mapped roof's outline: the roof plate, its fascia, a lit soffit, a beam and posts."""
     white, iron = K["tks_canopy"], K["tks_iron"]
@@ -913,6 +1051,10 @@ def canopy(K, poly, Z, h):
     o = np.asarray(rect[0]) if li == 0 else np.asarray(rect[1])
     from shapely.geometry import Point
     rowsv = (W / 2,) if W < 3.6 else (0.6, W - 0.6)
+    if W < 3.6 and L > 8:   # a stand's shelter: a bench between each pair of posts
+        for sb in np.arange(3.5, L - 2.5, 5.5):
+            qb = o + t * sb + n * (W / 2 + 0.55)
+            BENCHES.append((float(qb[0]), float(qb[1]), Z(*qb), math.atan2(t[1], t[0])))
     for vv in rowsv:
         pts = []
         for s in np.arange(1.0, L - 0.5, max(4.5, min(6.0, (L - 2.0) / max(1, round((L - 2.0) / 5.5))))):
@@ -965,7 +1107,7 @@ SIGN_UV = {"south": (0.0, 0.5, 1.0, 1.0), "north": (0.0, 0.0, 1.0, 0.5)}   # (u0
 SIGN_TEXT = {"south": ("丸の内南口", "Marunouchi South Entrance"), "north": ("丸の内北口", "Marunouchi North Entrance")}
 
 
-def assets(out_dir):
+def sign_image():
     """The exits' name boards: white lettering on a dark bronze ground, as the restored building's own signs are
     kept quiet. Our own drawing; the lettering is IPA Gothic (IPA Font License) where it is installed."""
     from PIL import Image, ImageDraw, ImageFont
@@ -985,14 +1127,28 @@ def assets(out_dir):
         ja, en = SIGN_TEXT[key]
         d.text((W * 0.3, (y0 + y1) / 2), ja, font=font(74), fill=(244, 238, 224), anchor="mm")
         d.text((W * 0.73, (y0 + y1) / 2 + 4), en, font=font(34), fill=(226, 214, 190), anchor="mm")
-    img.save(os.path.join(out_dir, "tks_signs.png"))
+    return img
+
+
+def assets(out_dir):
+    sign_image().save(os.path.join(out_dir, "tks_signs.png"))
     return ["tks_signs.png"]
 
 
 # ---------------------------------------------------------------- entry
 
-def meshes():
-    """(materials, meshes, hidden solids, trees, props)"""
+GROUND = ("tks_asphalt", "tks_pavers", "tks_lawn", "tks_joint", "tks_groundcover", "tks_granite_a", "tks_granite_b", "tks_granite_c", "tks_paint",
+          "tks_kerb", "tks_hedge")   # what lies on the ground: the landmark model's at every distance
+
+
+def meshes(level="far"):
+    """(materials, meshes, hidden solids, trees, props). level "far": the landmark model, what reads from across
+    the plaza and the map (the game hides the building's part of it while the hero level is shown, and the
+    viewer draws it); "hero": everything, with bevels and occlusion marks, for cities/tokyo/hero.py."""
+    global HERO
+    HERO = level == "hero"
+    FLOODS.clear()
+    BENCHES.clear()
     lit = ("tks_brick", "tks_stone", "tks_stone_fine", "tks_copper", "tks_glass", "tks_glass_dark", "tks_glass_small", "tks_pent", "tks_clock", "tks_door", "tks_sign")
     K = ak.Kit("tks", floodlit=lit,
                uv=("tks_glass", "tks_glass_dark", "tks_brick", "tks_stone", "tks_stone_fine", "tks_slate", "tks_reveal", "tks_pavers", "tks_kerb", "tks_lawn", "tks_pent",
@@ -1017,4 +1173,7 @@ def meshes():
     for m in out:
         if m.mat in ("tks_sash", "tks_kerb", "tks_stone_fine", "tks_iron_fine"):
             m.detail = True
+    if not HERO:   # the landmark model goes without the parts only the streamed level's fine model shows
+        out = [m for m in out if m.mat not in ("tks_sash", "tks_stone_fine", "tks_iron_fine")]
+    HERO = False
     return mats, out, hidden, trees, props

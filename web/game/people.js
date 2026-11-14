@@ -275,7 +275,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     // on a phone (quality.js lean) an NPC's pictures go up at LEAN_PX a side: a 1024 one is 5.3 MB of the GPU with its
     // mipmaps, two or three a character and twenty-odd characters a map (130 MB in Tokyo, issue 406), for someone who
     // stands a few hundred pixels tall at most on a phone's canvas. The characters you play keep theirs
-    const LEAN_PX = 512, lean = !!(window.OEQuality && OEQuality.city().lean);
+    const QC = window.OEQuality ? OEQuality.city() : null, LEAN_PX = 512 >> ((QC && QC.lighter) ? 1 : 0), lean = !!(QC && QC.lean); // (256 after the map's page died here: quality.js died)
     const smaller = tpl => {
       const jobs = [];
       tpl.scene.traverse(o => {
@@ -291,8 +291,86 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       });
       return Promise.all(jobs);
     };
+    // The hair cards (an avatar's *_opacity material: flat strips of hair cut out of a picture, and the lashes) each
+    // face their own way, and lit by their own normals a strip that turns from the sun went black beside one that
+    // faces it: shards in a fringe, a dark band across the back of a head. They are lit as one head of hair instead,
+    // each vertex's normal pointing out from the middle of the head, as hair is shaded wherever it is built of cards.
+    const roundHair = o => {
+      const g = o.geometry, P = g.attributes.position, Nn = g.attributes.normal;
+      if (!P || !Nn || g.userData.oeHair) return;
+      g.userData.oeHair = true;
+      g.computeBoundingBox();
+      const bb = g.boundingBox, cx = (bb.min.x + bb.max.x) / 2, cy = (bb.min.y + bb.max.y) / 2, cz = (bb.min.z + bb.max.z) / 2;
+      // (the box's middle, whichever axis is up in the mesh's own frame: the cards wrap the skull all round)
+      for (let i = 0; i < P.count; i++) {
+        const x = P.getX(i) - cx, y = P.getY(i) - cy, z = P.getZ(i) - cz, l = Math.hypot(x, y, z) || 1;
+        Nn.setXYZ(i, x / l, y / l, z / l);
+      }
+      Nn.needsUpdate = true;
+      // (a two-sided material turns the normal round on a face seen from behind, and half the strips are wound
+      // facing the skull: those stayed black. Each strip is drawn from both sides as two faces with the one normal)
+      const ix = g.index;
+      if (ix) {
+        const a = ix.array, both = new a.constructor(a.length * 2);
+        both.set(a);
+        for (let i = 0; i < a.length; i += 3) { both[a.length + i] = a[i]; both[a.length + i + 1] = a[i + 2]; both[a.length + i + 2] = a[i + 1]; }
+        g.setIndex(new THREE.BufferAttribute(both, 1));
+        o.material.side = THREE.FrontSide;
+      }
+    };
+    // ... and in the colour of the hair they lie on. The cards' picture is darker than the hair painted on the head
+    // under them, much darker where the hair was recoloured (a brown or grey head kept near-black wisps: they read
+    // as black shards stuck in the fringe). Measured here, once a character: the cards' opaque texels against the
+    // head's picture at the head's vertices nearest the cards, and the cards' material lightened by the ratio.
+    const pixels = (tex, side = 96) => {
+      const im = tex && tex.image;
+      if (!im || !im.width) return null;
+      const cv = document.createElement('canvas'); cv.width = cv.height = side;
+      const g = cv.getContext('2d', { willReadFrequently: true });
+      g.drawImage(im, 0, 0, side, side);
+      const d = g.getImageData(0, 0, side, side).data;
+      cv.width = cv.height = 0;
+      const lin = v => Math.pow(v / 255, 2.2);
+      return (u, v) => { // (a glTF picture: v down the image; the texture's own transform first)
+        const x = Math.min(side - 1, Math.max(0, Math.floor((u * tex.repeat.x + tex.offset.x) % 1 * side))), y = Math.min(side - 1, Math.max(0, Math.floor((v * tex.repeat.y + tex.offset.y) % 1 * side))), k = 4 * (y * side + x);
+        return [lin(d[k]), lin(d[k + 1]), lin(d[k + 2]), d[k + 3] / 255];
+      };
+    };
+    const matchHair = (hair, head) => {
+      const hm = hair.material, dm = head.material;
+      if (hm.userData.oeHairTint || !hm.map || !dm.map) return;
+      hm.userData.oeHairTint = true;
+      let cardAt, headAt;
+      try { cardAt = pixels(hm.map); headAt = pixels(dm.map); } catch (e) { return; }
+      const P = hair.geometry.attributes.position, U2 = hair.geometry.attributes.uv, Q = head.geometry.attributes.position, V2 = head.geometry.attributes.uv;
+      if (!cardAt || !headAt || !P || !U2 || !Q || !V2) return;
+      const sum = [0, 0, 0], under = [0, 0, 0];
+      let n = 0;
+      for (let i = 0, step = Math.max(1, Math.floor(P.count / 240)); i < P.count; i += step) {
+        const c = cardAt(U2.getX(i), U2.getY(i));
+        if (c[3] < 0.5) continue;
+        const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+        let best = -1, bd = Infinity;
+        for (let j = 0; j < Q.count; j++) { const dx = Q.getX(j) - x, dy = Q.getY(j) - y, dz = Q.getZ(j) - z, dd = dx * dx + dy * dy + dz * dz; if (dd < bd) { bd = dd; best = j; } }
+        if (best < 0) continue;
+        const h = headAt(V2.getX(best), V2.getY(best));
+        for (let k = 0; k < 3; k++) { sum[k] += c[k]; under[k] += h[k]; }
+        n++;
+      }
+      if (n < 12) return;
+      const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2], ratio = lum(under) / Math.max(1e-4, lum(sum));
+      if (ratio < 1.2 && ratio > 0.8) return; // (they agree already)
+      const k = Math.min(1.6, Math.max(0.7, ratio)); // (their tone, not their hue: on black hair a channel's ratio is noise)
+      hm.color.setRGB(k, k, k);
+    };
     const ready = (name, tpl, npc = false) => {
-      tpl.scene.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; [].concat(o.material).forEach(litMaterial); } }); // (the variant person() draws, its shadow's too)
+      let hair = null, head = null;
+      tpl.scene.traverse(o => {
+        if (!o.isSkinnedMesh) return;
+        o.castShadow = o.receiveShadow = true; [].concat(o.material).forEach(litMaterial); // (the variant person() draws, its shadow's too)
+        if (/_opacity$/.test(o.material.name || '') && !/glasses/.test(o.material.name)) { hair = o; roundHair(o); } else if (/_head$/.test(o.material.name || '')) head = o;
+      });
+      if (hair && head) matchHair(hair, head);
       return (lean && npc ? smaller(tpl) : Promise.resolve()).then(() => (lib.warm ? lib.warm(tpl.scene).catch(() => {}) : null)).then(() => {
         lib.tpl[name] = tpl;
         if (onMsg) onMsg(name);

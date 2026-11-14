@@ -1084,12 +1084,71 @@ build the map whole as before (the viewer picks a building from the one geometry
 No code was taken for this. The method is what open worlds do (Unreal's World Partition and its HLODs, GTA V's
 LOD chain: "Far geometry" above); the levels are this project's own.
 
-**Left, in order of what they hold** (the next pieces of this issue): the textures (274 to 339 MB of the peak:
-the landmarks' pictures, the ground, the NPCs', loaded for the whole map at the start), the walking model and
-the landmarks built for the whole map, the Worker's and the page's garbage while the packs decode, and the 2D
-canvases kept after their upload.
+**What the page kept after the GPU had it.** `tools/canvas_mem.js <city>` lists the 2D canvases, decoded
+pictures and decoded sounds still alive in play, with who made each. Shibuya on the phone tier held 183 MB of
+canvases and 153 MB of decoded pictures:
+
+| What | Held | Now |
+|---|---|---|
+| The inland water's masks (`inland.js` `raster`): three canvases drawn to read one byte a cell from | 116 MB, on every tier | let go once read; read in bands of rows, not 45 MB of pixels at once |
+| The hole mask's two distance grids (`inland.js` `holeMask`) | 94 MB of floats while it ran | sixteen bits a cell (a tenth of a millimetre a step) |
+| The roofs' photo canvas (`buildings.js` `loadPhoto`) | 14 MB | on a phone, let go when the last tile is on it and the GPU has it |
+| The water's cover mask canvas (`world.js` `waterCover`) | 14 MB | on a phone, sent at once and let go |
+| three.js's own canvas for scaling a picture over the tier's cap, kept at the size of the last | 14 MB | a sliver sent through it once the tiles are in |
+| The ground's twenty decoded aerial tiles (`world.js` `groundKeep`) | 92 MB | on a phone, a tile's picture goes when the GPU has it and every tile has been on the roofs' photo; read again from the browser's cache when it comes back among the nearest |
+| The hole mask's bytes on the page | 11 MB | on a phone, the GPU's alone once sent |
+
+After: 38 MB of canvases (the minimap's base, 17, is the largest) and 62 MB of pictures (the shared models'
+own, which three.js keeps beside the GPU's copy). `groundKeep` also moved its tiles only when the player had gone
+150 m since the *last call*, which a walker never does in a second: it now measures from where the tiles were
+last chosen.
+
+**A second chance instead of a crash loop** (`quality.js` `died`, `telemetry.js`). A phone gives no reading of
+the memory it has left. The one signal is that the system killed the tab, and the next page load finds it: the
+note a visible page leaves every five seconds is still there. That load now counts the death against the map
+(`oe3d-died-<map>`, kept fourteen days), and on the low tier each one makes the next load of that map lighter;
+the loader says "a lighter set: the last visit ran out of memory here". This is the closed loop of issue 358's
+Layer A applied to memory: measure, then grant.
+
+| Shibuya, phone tier | Buildings whole / simplified / skyline from | Aerial tiles of their own | Decorative and NPC pictures | Buildings' vertices | Peak GPU |
+|---|---|---|---|---|---|
+| as it comes | 500 m / 1.5 km / 25 m | 6 | 1024 / 512 | 753,581 | 366 MB |
+| after one death | 350 m / 1 km / 30 m | 4 | 512 / 256 | 436,013 | 312 MB |
+| after two or more | 250 m / 750 m / 40 m | 2 | 512 / 256 | 273,096 | 289 MB |
+
+(`DIED=1 tools/mem_check.js shibuya`, `DIED=2 LEAN=1 tools/game_shot.js ...`: at the spawn and from 110 m up the
+lightest set is the same picture but for softer signs.) A device on the low tier that is not a phone gets the
+phone's set after its first death. `tools/telemetry_check.js` checks that a dead page is counted against its map.
+
+**The reload Safari makes itself.** Safari loads a tab again the moment its page is killed, so the dead page's
+note is a few seconds old when the next load reads it, and a note under half a minute old was taken for another
+tab's that is still open: the death went uncounted, the second load was as heavy as the first, and the visitor was
+left on "A problem repeatedly occurred" before any lighter set was tried. The tab's own last page is now known by
+the tab's session storage, which outlives a killed page, and its note is a dead page's at any age
+(`telemetry.js` `before`).
+
+**What follows the first frame comes in turn.** With the map round the player on the site, the owner's iPhone drew
+Shibuya's first frame (the telemetry's `load`: `frame_ms` 10,986) and its tab died within seconds of it. 700 ms
+after the loader fades, `game.js` `afterPlayable` fetched the NPCs within 300 m, the near cars, the near trees and
+the far aerial tiles all at once, with the helicopter beside them: every picture decoded, resized and sent to the
+GPU next to the others. On a phone they now come one after another with a quarter of a second between (the people
+nearest first, then the cars, the trees, the pictures, the helicopter last), and `npcStream` brings one character
+at a time. The far models stand in a few seconds longer; nothing is left out.
+
+**Where a page died.** The note that a page is alive carries the last step of the load the page named
+(`fetched`, `decoded`, `built`, `frame`, then on a phone `late people`, `late cars`, `late trees`,
+`late pictures`, `late in`, `late helicopter`), written at each step and not only every five seconds, and the next
+load's `crash` event reports it as `prev_stage`. The next death names its step.
+
+**Left, in order of what they hold**: the textures (223 to 339 MB of the peak: the landmarks' pictures, the ground,
+the NPCs', loaded for the whole map at the start), the walking model and the landmarks built for the whole map
+(Tokyo's page holds 383 MB of array buffers at rest), the Worker's and the page's garbage while the packs decode
+(a collection finds 210 MB of live array buffers where Chromium counts 490), the shared models' decoded pictures
+kept beside the GPU's, and the minimap's base.
 
 **Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe, an iPhone's screen and user agent.
+The numbers are what WebGL was asked for and what Chromium holds; what iOS counts, and where it kills, only the
+owner's phone can say. The telemetry's `crash` events will show whether a second load now gets through.
 
 ### The last CPU of the city build (issue 404), measured
 
