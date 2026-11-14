@@ -907,6 +907,32 @@ memory cannot land silently. The budget is a regression ceiling set above the he
 number — that cannot be read from Chromium. The largest maps (Kyoto, Tokyo, Shinjuku, Shibuya) sit nearest it; their
 few-million-vertex building geometry is the floor, and a per-distance building LOD would be the next cut.
 
+### The peak while it loads
+
+The owner's iPhone still ended in "A problem repeatedly occurred" opening Shibuya and Tokyo. The telemetry's
+`crash` events (a page that died while on screen, reported by the next load) place it: `prev_ready` false, five
+to thirty seconds in, with the data fetched and decoded and the scene never built. So the tab dies at the load's
+peak, which the table above does not show (it is what the page holds once it plays).
+`tools/mem_timeline.js <city>` prints that load as a timeline: the page's heap, its Workers' and the renderer
+process's resident memory every half second, with the loader's stage. In Shibuya on the phone tier the resident
+memory went from 0.5 GB to 1.7 GB between the second and the eighth second, in "Building the city".
+
+The first cut is in the Worker that makes the buildings' vertex arrays (`buildings-geo.js` `Buf`). Its eight
+arrays grew by doubling into new ones (the old and the new alive together), were copied once more to their
+exact length at the end, and the triangles' corners were kept as an array of numbers and then copied into a
+typed one: at four million vertices, about 370 MB held for 180 MB of result. They now grow and are cut to
+length with `ArrayBuffer.transfer`, which gives the old buffer up as the new one is made (a copy where an
+engine has no `transfer`), and the corners are a typed list from the start.
+
+| Shibuya, phone tier, renderer resident memory (Chromium, llvmpipe) | Before | After |
+|---|---|---|
+| 8 s in, building | 1,699 MB | 1,378 MB |
+| scene built | 1,743 MB | 1,507 MB |
+
+That is a quarter of a gigabyte off the peak, not yet a load known to fit an iPhone. What is left is the map
+itself: 48,000 buildings as one geometry, the walking model of all of it, and every landmark, whatever the
+player can see from where they stand. The next cut is a phone's map built round the player (issue 440).
+
 **Not checked here: a real iPhone or Safari.** These are emulated under Chromium with Mesa's llvmpipe; the numbers are
 what WebGL was asked for and what V8's heap holds, not what iOS accounts. The owner's own play on a phone is the real
 check.
