@@ -197,8 +197,10 @@ stays the city's landmark model.
 
 From the first great torii by JR Inari station to the Romon gate's steps, 140 m rising 7 m, with the second
 torii and the gate on one straight line behind the first. The Senbon Torii are the shrine's most photographed
-place, but they stand 350 m further in, behind the halls, out of sight of the start; the game now starts under
-the first torii, which frames the whole approach.
+place, but they stand 350 m further in, behind the halls, out of sight of the start. The start itself stays
+by the station, 100 m south-west of the first torii: started under the torii (tried at two points on the
+approach), the game check's driving steps fail there (the autopilot's trip does not arrive, a car waits at a
+narrow stretch), which is the driving's to fix before the start moves.
 
 Built: the two torii on OpenStreetMap's gate lines (vermilion posts with black feet and ring caps, tie beam
 and wedges, the lintels curving up to their ends under a black top, a plaque; floodlights at their feet, baked);
