@@ -3033,7 +3033,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
   // 5 m ground stand up to 4 m through it as grey pyramids (#399). Each grid (Tf the 5 m one, Tc the 10 m one) is
   // lowered under every water face: a point under the water to half a metre below its surface, and a point of a
   // cell the water's edge crosses (within a cell's diagonal of it) to just under the surface, so no triangle the
-  // ground tiles draw rises through it, and a point under the water beside a high bank deeper (see below); a bank that would drop more than 3 m that way (a moat's wall, which the
+  // ground tiles draw rises through it; a bank that would drop more than 3 m that way (a moat's wall, which the
   // landmark draws itself) is left. Returns the points lowered.
   const WATER = /water|pond/i;
   function carveUnderWater(grids, LM) {
@@ -3041,7 +3041,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     let n = 0;
     for (const T of grids) {
       if (!T) continue;
-      const want = new Float32Array(T.nx * T.ny).fill(Infinity), under = new Float32Array(T.nx * T.ny).fill(Infinity), R = T.cell * 1.415;
+      const want = new Float32Array(T.nx * T.ny).fill(Infinity), R = T.cell * 1.415;
       for (const m of LM.meshes) {
         const p = m.position, ix = m.index, mat = LM.materials[m.material];
         if (!p || !ix || !WATER.test(`${m.name} ${m.material}`) || (mat && mat.opacity === 0)) continue;
@@ -3058,21 +3058,10 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
             const d = triDist(T.x0 + k * T.cell, T.y1 - r * T.cell, P);
             if (d >= R) continue;
             const q = r * T.nx + k, to = d === 0 ? zw - 0.5 : zw - 0.05;
-            if (d === 0 && zw < under[q]) under[q] = zw;
             if (d > 0 && T.data[q] - to > 3) continue; // (a steep bank: the landmark's own wall stands there)
             if (to < want[q]) want[q] = to;
           }
         }
-      }
-      // a point under the water beside a bank that stands over it (a moat's earth bank, steeper than the grid can draw)
-      // goes down by as much as its highest neighbour rises over the water, up to 10 m, so the ground's triangle from
-      // the bank meets the water near the shore rather than a cell out into it (Tokyo's narrow moats, #399)
-      for (let r = 0; r < T.ny; r++) for (let k = 0; k < T.nx; k++) {
-        const q = r * T.nx + k, zw = under[q];
-        if (zw === Infinity) continue;
-        let H = -Infinity;
-        for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const rr = r + i, kk = k + j; if (rr >= 0 && kk >= 0 && rr < T.ny && kk < T.nx && under[rr * T.nx + kk] === Infinity) H = Math.max(H, T.data[rr * T.nx + kk]); }
-        if (H > zw) want[q] = Math.min(want[q], zw - 0.5 - Math.min(10, H - zw));
       }
       for (let q = 0; q < want.length; q++) if (T.data[q] > want[q]) { T.data[q] = want[q]; n++; }
     }
