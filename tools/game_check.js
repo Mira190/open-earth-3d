@@ -29,7 +29,7 @@ const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
-// places where a line of the crowd's meets a wall inside a hero level, known and listed in an issue (the hero step below):
+// places where a line of the crowd's meets a wall inside a hero level, known and listed in issue 496 (the hero step below):
 // Tokyo's seven single points north and south of the station square, Shibuya's two where a footway goes down a subway stair
 const BARRED_KNOWN = { tokyo: 7, shibuya: 3 };
 // whether the city's game has a pilgrimage's stamped spots (the step for them, below), read before anything runs

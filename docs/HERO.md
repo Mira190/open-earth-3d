@@ -351,7 +351,7 @@ landmarks' meshes, which went on being solid and being stood on where they had b
   with a wall on one of the crowd's lines or a floor off its lift. Sydney's level had no unseen wall and no
   barred footway; its floor was 4.5 cm under its paving (now `lift` 0.045; at the quay's edge, where the paving
   climbs to the coping, it is still up to 14 cm under). Tokyo's stands on its paving; seven single points of its
-  crowd's lines meet a wall, and Shibuya's meet one where two footways go down a subway stair (issue 470).
+  crowd's lines meet a wall, and Shibuya's meet one where two footways go down a subway stair (issue 496).
 
 ## Circular Quay West (Sydney)
 
