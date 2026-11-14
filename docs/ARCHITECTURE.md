@@ -36,6 +36,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
 | Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, VIIRS Annual VNL V2 2024, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
+| Photograph past the frame | `far_photo.py` | `far_photo.jpg`, `far.json` "photo": the city's own imagery source, 2 km round the frame at 5 m |
 | Landings past the frame | `outposts.py` | game.json `outposts`, `outpost_<id>.jpg`: a small tile of ground far from the model that a ferry calls at (Queenstown's Walter Peak, 13 km across Lake Wakatipu): its terrain on a 2 m grid, its water and building masks, its photo, its buildings and its wharf as a strip surface, from a STAC DEM and photo collection and Overture; the ferry legs that call there routed over Overture's lake past the frame (`web/outposts.js`) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
@@ -561,7 +562,14 @@ The views switch in place, without reloading the page.
     solved from the city's own photo inside the frame against the classes' shares
     there (held toward a default and mostly to its hue, with the built-up land
     darkened to the drawn city's tone, `BUILT_SHADE`), with value noise at 30 to
-    300 m for what the cells average away. Water at sea level sits under the
+    300 m for what the cells average away. Just past the frame, for 2 km, it
+    carries the city's own aerial photograph instead (`pipeline/far_photo.py`,
+    `far_photo.jpg`, 5 m a pixel, from the `imagery` source in `city.json`):
+    the streets run on and the blocks and parks are the real ones, feathered
+    into the land cover's colour over its last 800 m, in the tone of the
+    ground inside the frame (each channel matched to `ground_lo.jpg`). It is looked at, never
+    walked on, and nothing past the frame is built. The low tier keeps the
+    land cover alone. Water at sea level sits under the
     sea; a lake in the hills stays, flat, in the water's colour (Lake Biwa
     behind Higashiyama), and the open sea is not drawn over land past the frame
     (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge

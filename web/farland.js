@@ -36,7 +36,11 @@ window.OEFarLand = (function () {
       const px = g.getImageData(0, 0, bmp.width, bmp.height).data;
       const col = await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = DATA + 'far.jpg'; });
       if (!col) return null;
-      return { meta, px, n: bmp.width, col };
+      // the aerial photograph of the ring just past the frame (pipeline/far_photo.py), where there is one; not on a
+      // small device, which keeps the land cover's colour alone (a 2.5 megapixel texture it can do without)
+      const small = window.OEQuality && OEQuality.tier() === 'low';
+      const photo = meta.photo && !small ? await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = DATA + meta.photo.file; }) : null;
+      return { meta, px, n: bmp.width, col, photo };
     } catch (e) {
       console.warn('far land: none', e);
       return null;
@@ -132,11 +136,20 @@ window.OEFarLand = (function () {
     col.needsUpdate = true;
     col.colorSpace = THREE.SRGBColorSpace;
     col.anisotropy = 16; // three.js holds it to what the GPU allows: the land is mostly seen at a low angle
+    // the photograph past the frame: its box (x0, y0, width, height in local metres; 0 wide for none)
+    let photo = null;
+    const pbox = new THREE.Vector4(0, 0, 0, 0);
+    if (F.photo && meta.photo) {
+      photo = new THREE.Texture(F.photo);
+      photo.needsUpdate = true; photo.colorSpace = THREE.SRGBColorSpace; photo.anisotropy = 16;
+      const b = meta.photo.box;
+      pbox.set(b[0], b[1], b[2] - b[0], b[3] - b[1]);
+    }
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.96, metalness: 0, emissive: lin('#ffd9a8'), emissiveIntensity: 0 });
     mat.defines = { OE_FAR: '' };
     const night = { value: 0 };
     mat.onBeforeCompile = sh => {
-      Object.assign(sh.uniforms, { uPhotoGrade: PG, uFarCol: { value: col }, uFarLights: { value: lightTex }, uFarNight: night,
+      Object.assign(sh.uniforms, { uPhotoGrade: PG, uFarCol: { value: col }, uFarLights: { value: lightTex }, uFarNight: night, uFarPhoto: { value: photo || col }, uFarPhotoBox: { value: pbox },
         uFarBox: { value: new THREE.Vector3(cx - H, cy - H, 2 * H) } });
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vFarUV; varying vec2 vFarXZ; varying vec3 vFarW; uniform vec3 uFarBox;')
         .replace('#include <project_vertex>', `#include <project_vertex>
@@ -145,7 +158,7 @@ window.OEFarLand = (function () {
         ;
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 ${PHOTO_GRADE}
-uniform sampler2D uFarCol, uFarLights; uniform float uFarNight; varying vec2 vFarUV; varying vec2 vFarXZ; varying vec3 vFarW;
+uniform sampler2D uFarCol, uFarLights, uFarPhoto; uniform vec4 uFarPhotoBox; uniform float uFarNight; varying vec2 vFarUV; varying vec2 vFarXZ; varying vec3 vFarW;
 // the size of a pixel's footprint on the ground in units of p: the geometric mean of its two axes,
 // so that land seen at a low angle (a pixel a few metres across but hundreds deep) keeps its grain
 float farFw(vec2 p) { return sqrt(length(dFdx(p)) * length(dFdy(p))); }
@@ -174,7 +187,16 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
   c *= mix(vec3(1.0), vec3(0.8, 0.85, 0.92), wall); // partly in shade, and lit by the sky's blue more than the sun
   // seen through kilometres of air the land's colours are thinner than the photo's close by
   c = mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 0.8);
-  diffuseColor.rgb *= c * (1.0 + g);
+  c *= 1.0 + g;
+  // just past the frame, the aerial photograph of what is there (far_photo.py): the streets run on and the blocks
+  // are the real ones, in place of the land cover's colour and its made-up grain; feathered into them over the
+  // photograph's last 800 m
+  if (uFarPhotoBox.z > 0.0) {
+    vec2 q = vec2(vFarXZ.x - uFarPhotoBox.x, -vFarXZ.y - uFarPhotoBox.y), in2 = min(q, uFarPhotoBox.zw - q);
+    float k = smoothstep(0.0, 800.0, min(in2.x, in2.y));
+    if (k > 0.0) c = mix(c, photoGrade(texture2D(uFarPhoto, q / uFarPhotoBox.zw).rgb), k);
+  }
+  diffuseColor.rgb *= c;
 }`)
         .replace('#include <emissivemap_fragment>', `{
   // after dark the built-up land's lights as a night photograph from the air shows them: not a lit
