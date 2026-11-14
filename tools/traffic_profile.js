@@ -5,6 +5,7 @@
 //   xvfb-run -a node tools/traffic_profile.js sydney [seconds]
 //   FROM=2000 BLOCK=10 TOP=30 ...: the traffic's own update() alone, its lines in blocks of ten
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'sydney', secs = '40'] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -13,8 +14,7 @@ const [,, city = 'sydney', secs = '40'] = process.argv;
   const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(off => { window.requestAnimationFrame = () => 0; const g = window.__game; if (off && g.junctions.setTrips) g.junctions.setTrips(null); g.advance(20); }, !!process.env.NOTRIPS); // (NOTRIPS=1: the traffic with no trips, to weigh what they cost) // warm up: the junctions' ways worked out, the code compiled
   const cdp = await p.context().newCDPSession(p);
   await cdp.send('Profiler.enable');

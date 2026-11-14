@@ -214,8 +214,10 @@ second, the clouds at twelve seconds a frame): [images/look/shibuya-day.mp4](ima
 
 ### Follow-ups (issue 372)
 
-- **Glints on the rails.** The rails are their own material (`web/game/rail.js` `trackMesh`, `glint`): each
-  vertex carries its rail's direction (`aRail`), and the rail's head takes the hair highlight of Kajiya and Kay
+- **Glints on the rails.** The rails are their own material (`web/world.js` `railGlint`): each vertex carries its
+  rail's direction (`aRail`), written by `web/game/rail.js` `trackMesh` and, for the landmark rails swept by
+  `cities/<id>/rail.py` (material `rail_steel`: Tokyo, Sydney), worked out on load from each long thin triangle's
+  longest edge (`railDirections`), and the rail's head takes the hair highlight of Kajiya and Kay
   (1989), sin(T, H) to the 90th, on the sun's light as its diffuse term has it (shadow, colour, angle). A track
   that runs towards a low sun shows a bright thread where the sun's reflection meets it, which moves with the eye.
   The rails had been wound face down and culled from above (only the sleepers showed, on every map with a railway,

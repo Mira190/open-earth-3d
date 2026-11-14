@@ -3,6 +3,7 @@
 // the head has stood. Prints a line when a head has stood longer than two cycles, and a summary.
 //   GAME_TIME=10:00 xvfb-run -a node tools/scramble_cycle_probe.js shinjuku [seconds=300] [junction id]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shinjuku', secs = '300', jid = ''] = process.argv;
 (async () => {
@@ -12,8 +13,7 @@ const [,, city = 'shinjuku', secs = '300', jid = ''] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   if (pinned) await p.evaluate(spec => { const g = window.__game, m = /(\d\d?):(\d\d)$/.exec(spec), min = +m[1] * 60 + +m[2]; if (Math.abs(g.clock.min - min) < 30) { g.setClock(g.clock.y, g.clock.m, g.clock.d, min); g.crowdAuto(true); } }, pinned.spec);
   if (process.env.BUSY) await p.evaluate(v => { globalThis.BUSY = v; }, +process.env.BUSY);
   const r = await p.evaluate(([secs, jid]) => {

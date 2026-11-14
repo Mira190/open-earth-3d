@@ -7,6 +7,7 @@
 //   GAME_TIME=10:00 xvfb-run -a node tools/ride_hold.js shibuya [seconds=400] [rides=3]
 // Exits 1 if any car waited on a ride that was moving (really, over 1 m/s) longer than MIN seconds.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shibuya', secs = '400', rides = '3'] = process.argv;
 const MIN = Number(process.env.MIN || 20);
@@ -21,8 +22,7 @@ const MIN = Number(process.env.MIN || 20);
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });
   const r = await p.evaluate(([secs, nRides, MIN]) => {
     const g = window.__game, C = g.cars.C, idx = new Map(C.map((c, i) => [c, i])), out = { rides: [], held: [], moving: 0 };
