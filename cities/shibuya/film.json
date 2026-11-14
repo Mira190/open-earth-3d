@@ -6,7 +6,7 @@
   ],
   "year": 2026,
   "exposure": 1.1,
-  "poster": 19,
+  "poster": 12.5,
   "score": {
     "root": 49,
     "scale": [
@@ -55,8 +55,8 @@
   },
   "shots": [
     {
-      "id": "dawn",
-      "chapter": "First light",
+      "id": "dusk",
+      "chapter": "Blue hour",
       "dur": 5.5,
       "type": "move",
       "from": [
@@ -76,8 +76,8 @@
       ],
       "fov": 26,
       "time": [
-        "06:20",
-        "06:30"
+        "16:46",
+        "17:16"
       ],
       "fadeIn": 1.6,
       "ease": "linear",
@@ -87,16 +87,16 @@
         "until": 5.2,
         "lines": [
           "35.66°N 139.70°E",
-          "Sunrise behind Shibuya Scramble Square · 06:21 JST",
-          "The real sun, for the day you watch"
+          "Sunset 16:31 JST · the lights of Shibuya Scramble Square",
+          "The real sky, for the night you watch"
         ]
       },
       "tint": [
-        1.06,
-        1.0,
-        0.92
+        0.96,
+        0.99,
+        1.06
       ],
-      "sat": 1.08
+      "sat": 1.1
     },
     {
       "id": "title",
@@ -119,7 +119,7 @@
       ],
       "fov": 30,
       "time": [
-        "07:30"
+        "17:40"
       ],
       "title": {
         "kind": "main",
@@ -131,48 +131,15 @@
         "figures": "47,787 buildings · 4.5 × 4.0 km · 87% of heights surveyed by PLATEAU"
       },
       "tint": [
-        1.04,
-        1.0,
-        0.95
+        0.96,
+        0.99,
+        1.06
       ]
-    },
-    {
-      "id": "yoyogi",
-      "chapter": "Yoyogi",
-      "dur": 5,
-      "type": "move",
-      "from": [
-        640,
-        130,
-        60
-      ],
-      "to": [
-        610,
-        150,
-        58
-      ],
-      "look": [
-        331,
-        -95,
-        45
-      ],
-      "fov": 28,
-      "time": [
-        "15:50"
-      ],
-      "title": {
-        "kind": "lower",
-        "at": 0.6,
-        "until": 4.6,
-        "eyebrow": "Yoyogi Park, 1964",
-        "head": "Yoyogi National Gymnasium",
-        "text": "Kenzo Tange's roofs for the Tokyo Olympics hang on steel cables slung between two concrete masts."
-      }
     },
     {
       "id": "scramble",
       "chapter": "The scramble",
-      "dur": 5,
+      "dur": 6,
       "type": "move",
       "from": [
         385,
@@ -187,11 +154,11 @@
       "look": [
         351,
         -961,
-        9
+        16
       ],
       "fov": 32,
       "time": [
-        "16:05"
+        "18:10"
       ],
       "people": [
         366,
@@ -203,7 +170,7 @@
       "title": {
         "kind": "lower",
         "at": 0.6,
-        "until": 4.6,
+        "until": 5.6,
         "eyebrow": "Shibuya Station, Hachiko exit",
         "head": "The scramble",
         "text": "Every light turns green at once, the diagonals too: up to 3,000 people a crossing at the evening peak."
@@ -211,78 +178,78 @@
       "agl": true
     },
     {
-      "id": "sky",
-      "chapter": "SHIBUYA SKY",
+      "id": "centergai",
+      "chapter": "Center Gai",
       "dur": 5,
       "type": "move",
       "from": [
-        700,
-        -1005,
-        206
+        374,
+        -1006,
+        2.6
       ],
       "to": [
-        714,
-        -990,
-        204
+        371.5,
+        -1003,
+        2.6
       ],
       "look": [
-        518,
-        -1124,
-        238
+        343,
+        -978,
+        10
       ],
-      "fov": 24,
+      "fov": 22,
       "time": [
-        "16:24"
+        "18:12"
       ],
+      "agl": true,
+      "people": [
+        360,
+        -992
+      ],
+      "crowd_r": 30,
+      "crowd_n": 260,
+      "crowd_clear": 8,
       "title": {
         "kind": "lower",
         "at": 0.6,
         "until": 4.6,
-        "eyebrow": "Shibuya Scramble Square, 2019",
-        "head": "SHIBUYA SKY",
-        "text": "Shibuya Scramble Square's open roof, 229 m above the crossing: the highest open-air deck in Japan."
+        "eyebrow": "渋谷センター街",
+        "head": "Center Gai",
+        "text": "The arch at the mouth of Center Gai, across the scramble from the station."
       }
     },
     {
-      "id": "omotesando",
-      "chapter": "Golden hour",
-      "dur": 4.5,
+      "id": "hachiko",
+      "chapter": "Hachiko",
+      "dur": 5,
       "type": "move",
       "from": [
-        1192,
-        -225,
-        5.5
+        380.7,
+        -1047.3,
+        16.76
       ],
       "to": [
-        1180,
-        -218.5,
-        5.5
+        380.6,
+        -1046.5,
+        16.8
       ],
       "look": [
-        1040,
-        -140,
-        10
+        373.78,
+        -1047.42,
+        17.54
       ],
-      "fov": 30,
+      "fov": 20,
       "time": [
-        "16:28"
+        "18:15"
       ],
-      "agl": true,
-      "hand": 1,
-      "people": [
-        1150,
-        -205
-      ],
-      "crowd_r": 45,
-      "crowd_n": 90,
-      "crowd_clear": 10,
+      "ease": "linear",
       "title": {
         "kind": "lower",
         "at": 0.6,
-        "until": 4.2,
-        "eyebrow": "Harajuku to Aoyama",
-        "head": "Omotesando",
-        "text": "Meiji Shrine's front approach since 1920: a kilometre of zelkova trees, and the shops under them."
+        "until": 4.7,
+        "eyebrow": "忠犬ハチ公 · Hachiko",
+        "head": "Hachiko",
+        "text": "He met his master's train here every evening, and went on waiting for nine years after he was gone."
       }
     },
     {
@@ -306,15 +273,15 @@
       ],
       "fov": 28,
       "time": [
-        "17:10",
-        "17:45"
+        "18:20",
+        "18:50"
       ],
       "title": {
         "kind": "end",
         "at": 3.2,
         "until": 7,
         "name": "Shibuya",
-        "line": "The model, the sun and the city: open them."
+        "line": "The model, the night and the city: open them."
       },
       "tint": [
         0.94,
@@ -325,5 +292,12 @@
       "ev": 0.3
     }
   ],
-  "grade": "game"
+  "grade": "game",
+  "weather": {
+    "rain": 0,
+    "cloud": 0.08,
+    "wet": 1,
+    "fog": 0
+  },
+  "note": "A night film (the owner, November 2026: the day film is taken off, the main film is the night's): one evening from the blue hour to late night, the streets wet from a shower that has passed, as in the map's night overture."
 }

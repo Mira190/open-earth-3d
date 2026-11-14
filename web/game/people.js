@@ -1000,8 +1000,19 @@ transformed = crowdPose(transformed, false);`);
         camAt.copy(camera.position);
         frustum.setFromProjectionMatrix(vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse), camera.coordinateSystem, camera.reversedDepth);
       }
-      const want = [];
-      for (let i = 0; i < nActive; i++) { const p = P[i]; if (p.line < 0) continue; const d = Math.hypot(p.x - cx, p.y - cy); if (d < nearR) want.push([d, i]); }
+      // who is a person and who a far figure goes by what the eye resolves: the distance from the camera (not from
+      // the player, who stands 6 m in front of it: the far figures were being drawn at the lens while people behind
+      // the player were given faces), and those in the view first, since a face behind the camera is seen by no one.
+      // On a crowded crossing the few skinned people there are go where they are looked at.
+      const want = [], ex = camera ? camera.position.x : cx, ey = camera ? -camera.position.z : cy;
+      for (let i = 0; i < nActive; i++) {
+        const p = P[i]; if (p.line < 0) continue;
+        const d = Math.hypot(p.x - ex, p.y - ey);
+        if (d >= nearR) continue;
+        const seen = !culling || frustum.intersectsSphere(ball.set(at.set(p.x, p.z + 1, -p.y), 1.5));
+        want.push([seen ? d : d + nearR, i]);
+      }
+      ball.radius = 30;
       want.sort((a, b) => a[0] - b[0]);
       const keep = new Set(want.slice(0, near).map(w => w[1]));
       for (const [i, r] of active) if (!keep.has(i)) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }

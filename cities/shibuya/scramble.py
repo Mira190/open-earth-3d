@@ -824,7 +824,7 @@ def ring_edges(poly):
     return out
 
 
-def qfront(K, A, D):
+def qfront(K, A, D, openings=None):
     s = next((s for s in D.solids if s["osm"] == QFRONT["osm"] and s["top"] > 40), None)
     if not s:
         return []
@@ -874,20 +874,11 @@ def qfront(K, A, D):
             fins.append((p, n))
             acc = 0.0
         last = p
-    for p, n in fins:
-        t = np.array([-n[1], n[0]])
-        box(fin, frame(p, n), -0.05, 0.42, -0.04, 0.04, zs, zt + 0.2)
-    for z in list(np.arange(zs + QFRONT["storey_m"], zc, QFRONT["storey_m"])) + [zc, zs]:
-        for (p, n), (q, n2) in zip(fins, fins[1:]):
-            if np.linalg.norm(q - p) > 2.0:
-                continue
-            o, o2 = p + n * 0.42, q + n2 * 0.42
-            fin.quad(np.array([*o, z - 0.08]), np.array([*o2, z - 0.08]), np.array([*o2, z + 0.08]), np.array([*o, z + 0.08]))
-    # the crown's advert inside the glass, and the name under it, on the front's middle
+    # the crown's advert inside the glass, on the front's middle: the longest stretch of the front faces the
+    # crossing, its chord from the first front edge to the last
     mid_edge = max(fronts, key=lambda e: e[3]) if fronts else None
+    opens = [(np.asarray(m, float)[:2], np.asarray(t_, float)[:2], w_, z0_, z1_) for m, t_, w_, z0_, z1_ in (openings or [])]
     if mid_edge is not None:
-        a, b, n, L = mid_edge
-        # the longest stretch of the front faces the crossing: its chord, from the first front edge to the last
         fa, fb = fronts[0][0], fronts[-1][1]
         ch = fb - fa
         nf = np.array([ch[1], -ch[0]]) / np.linalg.norm(ch)
@@ -897,6 +888,36 @@ def qfront(K, A, D):
         c = c + nf * (depth - QFRONT["gap_m"] - 0.4)
         t = np.array([-nf[1], nf[0]])
         w = np.linalg.norm(ch) * 0.62
+        opens.append((c, t, w, zc + 1.0, zt - 1.2))
+        opens.append((c, t, 6.8, zc - 1.55, zc - 0.85))      # (and the name plate under it)
+        for along, w_, h_, z0_ in ((-5.2, 8.0, 0.95, zs + 1.4), (6.0, 5.6, 0.9, zs + 0.45)):   # (the two names over the canopy, below)
+            opens.append(((fa + fb) / 2 + nf * depth + t * along, t, w_ + 0.6, z0_, z0_ + h_))
+    # the fins and transoms stop at a screen's or an advert's edge: none runs across a picture (they did, and cut
+    # Q'S EYE and the crown's advert into a grid)
+    def clear(p):
+        """The heights at p (x, y) that a screen or advert takes: [(z0, z1)], with a margin."""
+        return [(z0_ - 0.45, z1_ + 0.45) for m, t_, w_, z0_, z1_ in opens
+                if abs((p - m) @ t_) < w_ / 2 + 0.45 and abs((p - m) @ np.array([t_[1], -t_[0]])) < 9.0]
+
+    def spans(z0, z1, cut):
+        out, z = [], z0
+        for a_, b_ in sorted(cut):
+            if a_ > z + 0.3:
+                out.append((z, min(a_, z1)))
+            z = max(z, b_)
+        if z < z1 - 0.3:
+            out.append((z, z1))
+        return [(a_, b_) for a_, b_ in out if b_ - a_ >= 1.5]   # (no stub of a fin left over an advert's top)
+    for p, n in fins:
+        for z0_, z1_ in spans(zs, zt + 0.2, clear(p)):
+            box(fin, frame(p, n), -0.05, 0.42, -0.04, 0.04, z0_, z1_)
+    for z in list(np.arange(zs + QFRONT["storey_m"], zc, QFRONT["storey_m"])) + [zc, zs]:
+        for (p, n), (q, n2) in zip(fins, fins[1:]):
+            if np.linalg.norm(q - p) > 2.0 or any(a_ < z < b_ for a_, b_ in clear((p + q) / 2)):
+                continue
+            o, o2 = p + n * 0.42, q + n2 * 0.42
+            fin.quad(np.array([*o, z - 0.08]), np.array([*o2, z - 0.08]), np.array([*o2, z + 0.08]), np.array([*o, z + 0.08]))
+    if mid_edge is not None:
         A.quad(K["x_atlas"], np.array([*(c - t * w / 2), zc + 1.0]), np.array([*(c + t * w / 2), zc + 1.0]),
                np.array([*(c + t * w / 2), zt - 1.2]), np.array([*(c - t * w / 2), zt - 1.2]), "qf_crown")
         cl = c + nf * (QFRONT["gap_m"] + 0.25)
@@ -1166,20 +1187,49 @@ def lit_box(K, A, P, w, h, d, z0, key, frame_mat="x_jr_steel"):
     A.quad(K["x_atlas"], P(0.02, -w / 2, z0), P(0.02, w / 2, z0), P(0.02, w / 2, z0 + h), P(0.02, -w / 2, z0 + h), key)
 
 
+def seat(D, b, reach=9.0):
+    """Where a billboard's tower stands: (at, the roof's height) on the roof the city has there. Its place and
+    roof height are read off photographs, and the city's solids do not always agree: a roof lower than the
+    photograph's, or a penthouse narrower than the sign, leaves the tower's legs in the air. So the tower is
+    moved, by as little as will do (up to `reach` m), until its whole footprint is over one solid's roof, and
+    it stands at that roof's own height; of the roofs that take it, the nearest in height to the one given."""
+    at, face = np.asarray(b["at"], float), np.asarray(b["face"], float)
+    w = max(w for _, w, _ in b["boxes"])
+    f = unit(face - at)
+    l = np.array([-f[1], f[0]])
+    foot = lambda c: Polygon([c + f * u + l * v for u, v in ((-1.9, -w / 2), (0.7, -w / 2), (0.7, w / 2), (-1.9, w / 2))])
+    near = [(Polygon(s["ring"], s.get("holes") or None).buffer(0), s) for s in D.solids
+            if len(s["ring"]) >= 3 and abs(s["ring"][0][0] - at[0]) < 60 and abs(s["ring"][0][1] - at[1]) < 60 and s["top"] - s["base"] > 8]
+    steps = sorted(((du, dv) for du in np.arange(-reach, reach + 0.1, 0.5) for dv in np.arange(-reach, reach + 0.1, 0.5) if math.hypot(du, dv) <= reach),
+                   key=lambda q: math.hypot(*q))
+    best = None
+    for poly, s in near:
+        for du, dv in steps:
+            c = at + f * du + l * dv
+            if poly.contains(foot(c)):
+                cost = math.hypot(du, dv) + 0.25 * abs(s["top"] - b["roof_m"])
+                if best is None or cost < best[0]:
+                    best = (cost, c, s["ground"] + s["top"])
+                break
+    if best is None:
+        raise ValueError(f"billboard {b['boxes'][0][0]} at {b['at']}: no roof within {reach} m takes its tower")
+    return best[1], best[2]
+
+
 def billboards(K, A, D):
     steel = K["x_jr_steel"]
     for b in BILLBOARDS:
-        at, face = np.asarray(b["at"]), np.asarray(b["face"])
+        at, roof = seat(D, b)
+        face = np.asarray(b["face"])
         P = frame(at, face - at)
-        g = D.ground(*at)
-        z = g + b["roof_m"] + b.get("lift", 0.0)
+        z = roof + b.get("lift", 0.0)
         hs = sum(h for _, _, h in b["boxes"]) + b.get("gap", 0.0) * (len(b["boxes"]) - 1)
         w = max(w for _, w, _ in b["boxes"])
         # the tower: legs, cross-bracing, a catwalk under the lowest box
         for v in (-w * 0.35, w * 0.35):
             for u in (-1.6, -0.5):
-                steel.tube([P(u, v, g + b["roof_m"]), P(u, v, z + hs)], 0.09, 6)
-            steel.tube([P(-1.6, v, g + b["roof_m"]), P(-0.5, v, z + hs * 0.5)], 0.05, 4)
+                steel.tube([P(u, v, roof), P(u, v, z + hs)], 0.09, 6)
+            steel.tube([P(-1.6, v, roof), P(-0.5, v, z + hs * 0.5)], 0.05, 4)
         box(steel, P, -1.8, 0.6, -w / 2, w / 2, z - 0.15, z - 0.05)
         K["x_wire"].tube([P(0.6, -w / 2, z + 1.0), P(0.6, w / 2, z + 1.0)], 0.02, 4)   # the catwalk's rail
         zz = z + hs
@@ -1444,6 +1494,8 @@ def station(K, A, D, koban_box):
                 reps = max(1, int(round(L / 9.0)))
                 for k in range(reps):
                     p, r_ = off[0] + (off[1] - off[0]) * k / reps, off[0] + (off[1] - off[0]) * (k + 1) / reps
+                    if koban_box is not None and koban_box.distance(Point(*((p + r_) / 2))) < 3.5:
+                        continue                              # (no hoarding behind the police box that stands against it)
                     hoard.quad(np.array([*p, g]), np.array([*r_, g]), np.array([*r_, g + 3.0]), np.array([*p, g + 3.0]), [[u0, v0], [u1, v0], [u1, v1], [u0, v1]])
         ak.cap(K["x_qf_roof"], ak.WORLD, [tuple(p) for p in list(O.exterior.coords)[:-1]], zt)
     # the scaffold over the square and its advert
@@ -1474,6 +1526,8 @@ def station(K, A, D, koban_box):
     for k in range(6):      # its lamps, on arms over the top
         p = a + f * L * (k + 0.5) / 6 + n * (lift + 1.4)
         box(K["x_light"], frame(p, n), -0.25, 0.25, -0.3, 0.3, z1 + 0.4, z1 + 0.7)
+        q = a + f * L * (k + 0.5) / 6                      # its arm, from the frame's top rail out over the face
+        steel.tube([np.array([*(q + n * 0.3), z1 + 0.6]), np.array([*(q + n * (lift + 0.6)), z1 + 0.95]), np.array([*(p - n * 0.2), z1 + 0.72])], 0.035, 4)
     return [q["si"] for q in sol]
 
 
@@ -1554,8 +1608,9 @@ def draw_koban(img, rects):
 class Build:
     """What the scramble adds to the Shibuya map's landmarks: meshes, solids it draws instead, ground clips."""
 
-    def __init__(self, city_id, node, lm=None):
+    def __init__(self, city_id, node, lm=None, openings=None):
         self.lm = lm or {}
+        self.openings = openings or []   # QFRONT's screens and prints: (foot's middle, along, width, z0, z1), which its fins leave clear
         self.D = Data(city_id)
         self.node = np.asarray(node, float)
         self.entrances = entrance_sites(self.D, self.node)
@@ -1575,7 +1630,7 @@ class Build:
         crosswalks(K, self.D, self.node)
         jr_lines(K, self.A, self.D)
         ginza_viaduct(K, self.D)
-        hidden += qfront(K, self.A, self.D)
+        hidden += qfront(K, self.A, self.D, self.openings)
         hidden += shibuya109(K, self.A, self.D)
         billboards(K, self.A, self.D)
         kb = koban(K, self.A, self.D, self.node)

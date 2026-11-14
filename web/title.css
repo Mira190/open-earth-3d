@@ -33,6 +33,28 @@
   background: linear-gradient(90deg, rgba(4, 6, 11, 0.9) 0%, rgba(4, 6, 11, 0.72) 26%, rgba(4, 6, 11, 0) 52%),
     linear-gradient(0deg, rgba(4, 6, 11, 0.7) 0%, rgba(4, 6, 11, 0) 22%), linear-gradient(180deg, rgba(4, 6, 11, 0.55) 0%, rgba(4, 6, 11, 0) 16%); }
 .title-app.menu .ts-shade { opacity: 1; }
+/* the place behind its card (title.js showPlate): a still of the map, full bleed, on a slow push in */
+.ts-plate { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.ts-plate i { position: absolute; inset: 0; background: #04060b center / cover no-repeat; opacity: 0; transition: opacity 1.2s ease; will-change: opacity, transform; }
+.ts-plate i.on { opacity: 1; animation: ts-plate 46s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+@keyframes ts-plate { from { transform: scale(1.02); } to { transform: scale(1.12) translate(-0.8%, -0.5%); } }
+.ts-plate::after { content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease;
+  background: linear-gradient(0deg, rgba(4, 6, 11, 0.5) 0%, rgba(4, 6, 11, 0) 30%), linear-gradient(270deg, rgba(4, 6, 11, 0.9) 0%, rgba(4, 6, 11, 0.78) 22%, rgba(4, 6, 11, 0.3) 40%, rgba(4, 6, 11, 0) 52%); }
+.title-app.plated .ts-plate::after { opacity: 1; }
+.title-app.menu.plated .ts-marks { opacity: 0; }
+.title-app.plated .ts-marks .ts-mark { pointer-events: none; }
+.title-app.diving .ts-plate, .title-app.metro-full .ts-plate, .title-app:not(.menu) .ts-plate { opacity: 0; transition: opacity 0.45s ease; }
+@media (prefers-reduced-motion: reduce) { .ts-plate i.on { animation: none; } }
+/* over the picture a card is type on the picture, not a panel (a city's subway map keeps its glass) */
+@media (min-width: 861px) {
+  .title-app.plated .ts-card:not(.metro) { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-color: transparent; text-shadow: 0 1px 14px rgba(4, 6, 11, 0.85); }
+  .title-app.plated .ts-card:not(.metro)::before, .title-app.plated .ts-card:not(.metro)::after { display: none; }
+  .title-app.plated .ts-card:not(.metro) h2 { font-size: clamp(34px, 3.6vw, 56px); }
+  .title-app.plated .ts-card:not(.metro) .ts-local { display: none; }
+}
+/* the film is a line to press, not a second picture beside the first */
+.title-app.plated .fm-reel { aspect-ratio: auto; height: 46px; background: none; }
+.title-app.plated .fm-reel img, .title-app.plated .fm-reel video, .title-app.plated .fm-reel-eb, .title-app.plated .fm-reel::after { display: none; }
 
 /* ---------- boot and the gate ---------- */
 .ts-boot { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; pointer-events: none; transition: opacity 1s ease; }
