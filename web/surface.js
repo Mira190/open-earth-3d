@@ -134,7 +134,7 @@ if (sfRoad + sfPave > 0.004) {
   function kindOf(m) {
     if (!m) return null;
     if (m.surface !== undefined) return m.surface || null;
-    if (!m.street_lit || m.map || m.emissive || m.opacity < 1) return null;
+    if (!m.street_lit || m.map || m.pbr || m.emissive || m.opacity < 1) return null; // (a tiled PBR set, pbr.js, keeps its own)
     const c = String(m.color || '#808080').replace('#', ''), v = [0, 2, 4].map(i => parseInt(c.slice(i, i + 2), 16) / 255);
     const mx = Math.max(...v), mn = Math.min(...v), L = 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
     if (L < 0.36 && mx - mn < 0.08) return 'asphalt';
