@@ -28,6 +28,14 @@ One idea per city, told in six or seven shots and one day:
 | Life | 24–29 s | At eye level, among the crowd: the people of the game walking past the lens. | A lower third about walking it, playing it |
 | Night | 29–36 s | Blue hour into night, a time-lapse: the lights coming on. The finale of the score lands as they do. | The city's name again, small; then the end card |
 
+**Shibuya's film is a night film** (the owner, November 2026: the day film read as a map; the place is its
+lights). One evening on 20 November, from the blue hour to night, the streets wet from a shower that has passed
+(`"weather": {"wet": 1}`, as in the map's night overture): the towers' lights coming on, the city from above,
+the scramble under its screens at eye level, the arch of Center Gai on a long lens, Hachiko under the lamps, and
+the skyline. Two shots tried were left out: SHIBUYA SKY after 19:00 is a dark box (the tower's windows go out
+with the offices' hours), and the scramble from straight above reads as a map. Shots after dark are set before
+19:00, while the windows are lit.
+
 The score is synthesised in the title screen's voice (the same drone, riser and
 hit), with a city's own key, chords, motif, tempo and timbre in `score`; a note of
 the motif lands on each cut.
