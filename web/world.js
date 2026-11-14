@@ -113,27 +113,40 @@ window.OEWorld = (function () {
   const LM_NIGHT = { value: 0 }; // how dark it is, for landmark patterns with lit windows
   // the Eiffel Tower's sparkle: five minutes at the start of every hour after dark (setSun turns it on)
   const SPARKLE = { on: { value: 0 }, t: { value: 0 } };
-  // A floodlit material lit from below (landmarks.json "flood": [from_m, to_m, roof, top]), as a
+  // A floodlit material lit from below (landmarks.json "flood": [from_m, to_m, roof, top, cone_m]), as a
   // castle or a tower is lit by floodlights at its foot and on its lower roofs: a wall takes the
   // light full and the underside of an eave a little more, a roof facing up catches its share at a
   // graze ("roof", 0.5), and the light falls off up the building from from_m to to_m (the local
-  // frame's heights) to "top" (0.6) of what it is at the foot. Without "flood" a floodlit material
-  // glows evenly, as a sign or a screen does. prev: the material's own pattern, if any.
+  // frame's heights) to "top" (0.6) of what it is at the foot. With "cone_m" the lights stand every
+  // cone_m metres along the wall's foot, and each throws a cone up it: bright over the fitting,
+  // widening and evening out as it rises, the scallops a floodlit facade shows in photographs at night.
+  // Without "flood" a floodlit material glows evenly, as a sign or a screen does. prev: the
+  // material's own pattern, if any.
   function floodFrom(spec, prev) {
     if (!spec) return prev;
-    const [z0, z1, roof = 0.5, top = 0.6] = spec;
+    const [z0, z1, roof = 0.5, top = 0.6, cone = 0] = spec;
     return sh => {
       if (prev) prev(sh);
       sh.uniforms.uFlood = { value: new THREE.Vector4(z0, z1, roof, top) };
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vFloodY;')
-        .replace('#include <project_vertex>', '#include <project_vertex>\n  vFloodY = (modelMatrix * vec4(transformed, 1.0)).y;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec4 uFlood; varying float vFloodY;')
+      sh.uniforms.uFloodCone = { value: cone };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vFloodP;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n  vFloodP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec4 uFlood; uniform float uFloodCone; varying vec3 vFloodP;')
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
   { vec3 wn = inverseTransformDirection(normal, viewMatrix);
     float face = wn.y < 0.0 ? 1.0 - 0.3 * wn.y : mix(1.0, uFlood.z, wn.y);
     // the light comes back off the surface, so its pattern (courses, joints, tiles) shows in it
     float tex = clamp(dot(diffuseColor.rgb, vec3(1.0)) / max(dot(diffuse, vec3(1.0)), 1e-3), 0.0, 1.5);
-    totalEmissiveRadiance *= face * tex * mix(1.0, uFlood.w, clamp((vFloodY - uFlood.x) / max(uFlood.y - uFlood.x, 1.0), 0.0, 1.0)); }`);
+    float hgt = vFloodP.y - uFlood.x;
+    float lit = face * tex * mix(1.0, uFlood.w, clamp(hgt / max(uFlood.y - uFlood.x, 1.0), 0.0, 1.0));
+    if (uFloodCone > 0.0) {
+      vec2 tn = normalize(vec2(-wn.z, wn.x) + 1e-5);
+      float u = dot(vFloodP.xz, tn) / uFloodCone, du = (fract(u + 0.5) - 0.5) * uFloodCone, h = max(hgt, 0.0);
+      float w = 0.45 + 0.3 * h, c = exp(-du * du / (w * w));
+      float k = mix(0.55 + 0.75 * c + 0.35 * c * exp(-h / 1.5), 1.0, smoothstep(6.0, 22.0, h));
+      lit *= mix(1.0, k, 1.0 - abs(wn.y));
+    }
+    totalEmissiveRadiance *= lit; }`);
     };
   }
   const PATTERNS = {
@@ -1881,6 +1894,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // an image the city's landmark_assets hook draws (signs, plaques, votive tablets), on texture coordinates 0..1
     const imageTex = f => lmTex[f] || (lmTex[f] = Object.assign(texLoader.load(D.DATA + f, leanDown),
       { colorSpace: THREE.SRGBColorSpace, anisotropy: renderer.capabilities.getMaxAnisotropy() }));
+    // the tiled PBR surfaces a landmark material names (web/pbr.js): their sets' means, before the materials
+    if (window.OEPbr && Object.values(LM.materials || {}).some(m => m.pbr)) await OEPbr.load();
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
@@ -1894,14 +1909,16 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // three.js caches a program by the text of onBeforeCompile, and wrappers (streetLit) read alike
       // across patterns: each patterned material keys its own
       if (lmMats[k].onBeforeCompile) lmMats[k].customProgramCacheKey = () => `lm|${k}`;
+      if (m.pbr && window.OEPbr) OEPbr.apply(lmMats[k], m.pbr, { small, aniso: Math.min(8, renderer.capabilities.getMaxAnisotropy()) });
+      if (m.interior && window.OEInterior) OEInterior.apply(lmMats[k], m.interior, { night: LM_NIGHT }); // rooms behind the glass (web/interior.js)
     }
     // meshes marked floodlit glow after dark; with emissive_map an image glows in its own colours (a screen, a lit sign)
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
     const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
-      // (glow_day: lit by day too, as stained glass seen from inside is)
-      userData: { glow: LM.materials[k].glow || 0.32, day: LM.materials[k].glow_day || 0 }, onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
+      userData: { glow: LM.materials[k].glow || 0.32, day: LM.materials[k].glow_day || 0 }, // (glow_day: lit by day too, as stained glass seen from inside is)
+      onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
       defines: Object.assign({}, lmMats[k].defines),
       // its own program: a floodlit copy of a patterned material, or one lit from below (which wraps
       // the pattern, so the wrapper's text alone would not tell two programs apart)
@@ -1952,6 +1969,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const screenMeshes = []; // the big LED screens' faces, for the light they throw (neon.js)
     const farObjs = [], farAt = (o, c, r, far) => { o.userData.far = { c, r2: (far + r) * (far + r) }; farObjs.push(o); };
     for (const m of LM.meshes || []) {
+      if (m.detail && small) continue; // (a hero level's finest parts, landmarks.json "detail": the high and medium tiers only)
       const g = lmGeometry(m);
       const mesh = new THREE.Mesh(g, lmMaterial(m));
       if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far * (small ? 0.6 : 1)); } // (a room's furnishings: nearer on a small device)

@@ -1290,18 +1290,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function leadOf(st, reach, wide = 0.25) {
     const fx = Math.sin(st.h), fy = Math.cos(st.h), half = myCar.C.half, hw = myCar.C.hw;
     let best = null;
-    const see = (x, y, z, h2, w2, v, h) => {
+    const see = (x, y, z, h2, w2, v, h, what = '') => {
       if (Math.abs(z - st.z) > 2.5) return;
       const dx = x - st.x, dy = y - st.y, a = dx * fx + dy * fy, w = Math.abs(-dx * fy + dy * fx);
       // (a car across the way is as long across as it is: its half length counts sideways by how far it is turned)
       const turned = h == null ? 0 : Math.abs(Math.sin(h - st.h)), across = w2 + (h2 - w2) * turned, along = h2 + (w2 - h2) * turned;
       const gap = a - along - half;
-      if (a > 0 && gap < reach && w < hw + across + wide && (!best || gap < best.gap)) best = { gap: Math.max(0, gap), v: h == null ? 0 : Math.max(0, v * Math.cos(h - st.h)) };
+      if (a > 0 && gap < reach && w < hw + across + wide && (!best || gap < best.gap)) best = { gap: Math.max(0, gap), v: h == null ? 0 : Math.max(0, v * Math.cos(h - st.h)), what };
     };
-    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < reach + 12 && Math.abs(c.y - st.y) < reach + 12) see(c.x, c.y, c.z, c.half, c.hw || 0.9, c.v, c.h);
+    for (const c of cars.live) if (c.line >= 0 && Math.abs(c.x - st.x) < reach + 12 && Math.abs(c.y - st.y) < reach + 12) see(c.x, c.y, c.z, c.half, c.hw || 0.9, c.v, c.h, c.park ? 'a parked car' : 'a car');
     if (ride) { const r = ride.drv.st; see(r.x, r.y, r.z, ride.C.half, ride.C.hw, r.v, r.h); }
-    for (let i = 0; i < crowd.active; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - st.x) < reach + 4 && Math.abs(q.y - st.y) < reach + 4) see(q.x, q.y, q.z, 0.3, 0.3, 0, null); }
-    for (const n of npcs) if (Math.abs(n.x - st.x) < reach + 4 && Math.abs(n.y - st.y) < reach + 4) see(n.x, n.y, n.z, 0.3, 0.3, 0, null);
+    for (let i = 0; i < crowd.active; i++) { const q = crowd.P[i]; if (q.line >= 0 && Math.abs(q.x - st.x) < reach + 4 && Math.abs(q.y - st.y) < reach + 4) see(q.x, q.y, q.z, 0.3, 0.3, 0, null, 'a walker'); }
+    for (const n of npcs) if (Math.abs(n.x - st.x) < reach + 4 && Math.abs(n.y - st.y) < reach + 4) see(n.x, n.y, n.z, 0.3, 0.3, 0, null, 'a person standing');
     return best;
   }
   // ------------------------------------------------------------ the driver assists (I, K)
@@ -1426,6 +1426,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const c = o.drv.st, nt = o.join ? null : OEAutopilot.nextTurn(o.turns, c.s);
     return (o.hud = { nt, turn: nt ? OEAutopilot.turnText(nt) : '', left: o.join ? o.drv.path.len : o.drv.remaining(), eta: o.join ? o.drv.total() : eta(o), intent: c.intent || '' });
   }
+  // the pedals onto the lane (autopilot.js join), stopping for what stands in the way it steers: looked for along the
+  // line to the point it aims at, not straight ahead, so that a person standing by the kerb in front of a car that
+  // turns out from it does not hold it there until the join gives up (Higashiyama by its first landmark). What
+  // held it, for the checks: o.joinWhy
+  function joinPedals(o, st, len, at) {
+    const q = {};
+    o.drv.poseAt(Math.min(len, at.s + 5 + Math.abs(st.v)), q);
+    const aim = { x: st.x, y: st.y, z: st.z, h: Math.hypot(q.x - st.x, q.y - st.y) > 0.5 ? Math.atan2(q.x - st.x, q.y - st.y) : st.h };
+    const lead = leadOf(aim, 5, 0.1), blocked = !!lead && lead.gap < 3.5;
+    o.joinWhy = blocked ? `${lead.what} ${lead.gap.toFixed(1)} m ahead` : `${at.dist.toFixed(1)} m off the lane, turned ${at.dh.toFixed(2)}`;
+    return OEAutopilot.join(st, o.drv.poseAt, len, at, blocked);
+  }
   // a step of the autopilot. Returns true (it has driven the car this step), the pedals for the car's own
   // step (onto the lane), or null (it is off again)
   function pilotStep(dt, fwd, side) {
@@ -1441,7 +1453,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         o.drv.jump(at.s); o.drv.st.v = Math.max(0, st.v);
         o.off = { x: st.x - o.drv.st.x, y: st.y - o.drv.st.y, h: angDiff(st.h, o.drv.st.h) }; o.join = false;
       } else if (o.joinT > 16) { pilotOff(o.rejoin ? '<b>Autopilot:</b> the road ahead is blocked. You have the wheel.' : 'The autopilot couldn\'t get onto the lane from here. Drive onto the street and try again.', o.rejoin ? 'blocked' : undefined); return null; }
-      else { const lead = leadOf(st, 5); return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5); }
+      else return joinPedals(o, st, len, at);
     }
     driverStep(o, dt);
     const c = o.drv.st; // (the driver's state now: a turn in the road that has just ended has a new driver)
@@ -1476,8 +1488,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       // its body swept sideways through whatever stood beside it, a car stopped for it at Fushimi Inari)
       if (Math.hypot(o.off.x, o.off.y) > 1.2 || Math.abs(o.off.h) > 0.45) {
         c.v = 0; o.join = true; o.rejoin = true; o.joinT = 0; o.joinS = 0; o.off = { x: 0, y: 0, h: 0 };
-        const len = o.drv.path.len, at = OEAutopilot.onLane(o.drv.poseAt, len, st.x, st.y, st.h, 0, 40), lead = leadOf(st, 5);
-        return OEAutopilot.join(st, o.drv.poseAt, len, at, !!lead && lead.gap < 3.5);
+        const len = o.drv.path.len, at = OEAutopilot.onLane(o.drv.poseAt, len, st.x, st.y, st.h, 0, 40);
+        return joinPedals(o, st, len, at);
       }
     }
     // (eased onto the driver's line from where it took the car over)

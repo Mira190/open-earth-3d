@@ -32,9 +32,12 @@ or an integration session. Done means in main.
    thing meet, keep the better one on first principles and say which and why in the pull
    request. Don't hand-merge generated files (`web/data/`, models, films, images): rebuild them
    with their script, or take the side the merged code expects and rebuild what you can.
-3. Run `tools/check.sh` on the merged tree; everything must pass. A failure that main has
-   without your change isn't yours to block on: fix it if it is small, otherwise say so in the
-   pull request.
+3. Run `tools/check.sh` on the merged tree; everything must pass. It is the fast tier, about
+   ten minutes: the static checks, the cities your branch changed, and for a change to the
+   shared code the smoke cities (docs/CHECKS.md). Every live city is played on main after you
+   land, in GitHub Actions (`Checks`), not by you before. A line that says FLAKY passed: two
+   runs failed on different steps. A failure that main has without your change isn't yours to
+   block on: fix it if it is small, otherwise say so in the pull request.
 4. Push the branch, open a pull request into main (what changed and why, what was checked, what
    wasn't), and land it with `git push origin HEAD:main`. That push only fast-forwards, so it is
    refused if main moved after step 1: go back to 1, and the check in step 3 then covers only what
@@ -49,10 +52,16 @@ or an integration session. Done means in main.
 6. Tell the owner in one line: the branch, the commit, in main or why not, and what the checks
    covered.
 
+- Main can be red for a while, and that is by design. When the full tier fails on main it opens
+  an issue labelled `main-red` with the shards that failed and the commits they cover. Read
+  the open one when you start and after you land (`Checks` takes about half an hour): if your
+  commits are in its range, fixing it comes before anything else; reproduce a shard with
+  `tools/check.sh <its name>` (`tools/check.sh shibuya:game`). Don't run the full tier
+  (`CHECK_TIER=full`, `tools/check.sh all`) to land: that is the two-hour wait this replaced.
 - Keep re-checks small. A change to shared code (`web/game/`, `web/assets/`, `web/*.js`,
-  `web/index.html`) makes every live city's checks run (seven while the others are parked): land
-  it on its own and early, and keep city work in city files. Stay in the landing loop until it
-  lands; each round after the first is short.
+  `web/index.html`) plays the smoke cities here and every live city on main: land it on its own
+  and early, and keep city work in city files. Stay in the landing loop until it lands; each
+  round after the first is short.
 - After merging main, run plain `tools/check.sh`, with no city names: it checks only the live
   cities (`tools/live_cities.sh`). Don't list cities yourself; that checks the parked ones too.
 - Once your branch has passed its checks, merging main again needs no new check when the merge has
@@ -122,10 +131,11 @@ The owner has asked for these things again and again. They are standing rules; d
 The owner should not be the one who finds the bug.
 
 - `tools/check.sh` runs the checks a change needs, chosen from what it changed against
-  origin/main: each changed city's game (`tools/game_check.js`, and every city's when the game,
-  the renderer or the shared assets changed), each changed reef site's scripted test, and the
-  title screen on a tablet, a phone, a desktop and with WebGL faults. `tools/check.sh all` runs
-  everything.
+  origin/main: each changed city's game (`tools/game_check.js`; the smoke cities' when the game,
+  the renderer or the shared assets changed, and every live city's on main afterwards), each
+  changed reef site's scripted test, and the title screen on a tablet, a phone, a desktop and
+  with WebGL faults. `tools/check.sh sydney:game` runs one kind of one city's checks, and
+  `tools/check.sh all` everything (docs/CHECKS.md).
 - The checks don't see what a person sees. For a visual change, take stills on a desktop
   (1440×900) and a phone (390×844), at day, dusk and night, from every new viewpoint the change
   opens (`tools/city_shot.js`, `tools/game_shot.js` for the game on foot, `tools/page_shot.js`, `tools/reef_shot.js`). Look for blown

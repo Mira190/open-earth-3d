@@ -101,7 +101,7 @@ async function autopilotStep({ log = false, far = 250, limit = 420, fresh = true
       if (touch && touch.mine) out.deep = Math.max(out.deep, dp); else out.deepStood = Math.max(out.deepStood || 0, dp);
     }
     stood = st.speed < 0.3 ? stood + 0.25 : 0;
-    if (stood > out.stoodMax) { out.stoodMax = stood; out.stoodWhy = `${d.why || (o.join ? 'joining' : '?')}${d.junction ? ` (${d.junction})` : ''}${o.turn ? ' (turning round)' : ''} at ${st.x.toFixed(0)},${st.y.toFixed(0)}`; }
+    if (stood > out.stoodMax) { out.stoodMax = stood; out.stoodWhy = `${o.join ? `joining (${o.joinWhy || '?'})` : d.why || '?'}${d.junction ? ` (${d.junction})` : ''}${o.turn ? ' (turning round)' : ''} at ${st.x.toFixed(0)},${st.y.toFixed(0)}`; }
     if (o.film && o.film.name) shots.add(o.film.name);
     if (o.hud && o.hud.eta > 0 && o.hud.left > 0 && o.hud.turn) hud++;
     // over a stop line on red: the line it was coming up to (d.lineAt, d.toLine) passed while its light was red
@@ -113,9 +113,9 @@ async function autopilotStep({ log = false, far = 250, limit = 420, fresh = true
       const name = q => (A.C.includes(q) ? `car ${A.C.indexOf(q)}` : q && q.id ? q.id : 'other'), one = q => `${name(q)} v ${(+q.v || 0).toFixed(1)} ${q.why || ''}${q.youBy ? ` (${q.youBy})` : ''}${q.heldBy ? ` by ${q.heldBy}` : ''}${q.mv ? ` in j${q.mv.j.id}` : ''}${q.lineArm ? ` at j${q.lineArm.j.id} light ${g.junctions.light(q.lineArm, q.lineEx)}` : ''}${q.rev ? ' reversing' : ''} ${Math.hypot(q.x - st.x, q.y - st.y).toFixed(0)} m off`;
       const ch = [];
       for (let q = d.block && d.block.of ? d.block.of : d.block, k = 0; q && k < 6; q = q.front, k++) ch.push(one(q));
-      out.log.push(`${t}s STOOD ${stood.toFixed(0)} s: ${d.why} held ${(d.held || 0).toFixed(0)} q ${!!d.q} xMutual ${!!d.xMutual} ${d.mv ? `in j${d.mv.j.id}` : d.lineAt ? `at j${d.lineAt.j.id} (${d.junction || ''}) light ${g.junctions.light(d.lineAt, d.lineEx)}` : ''} turn ${o.turnNo || (o.turn ? 'turning' : '')} jam ${(o.jamT || 0).toFixed(0)} s${o.unjammed ? `, asked out:${o.unjammed}` : ''} | ${ch.join(' < ') || 'no block'}`);
+      out.log.push(`${t}s STOOD ${stood.toFixed(0)} s: ${o.join ? `joining (${o.joinWhy || '?'})` : d.why} held ${(d.held || 0).toFixed(0)} q ${!!d.q} xMutual ${!!d.xMutual} ${d.mv ? `in j${d.mv.j.id}` : d.lineAt ? `at j${d.lineAt.j.id} (${d.junction || ''}) light ${g.junctions.light(d.lineAt, d.lineEx)}` : ''} turn ${o.turnNo || (o.turn ? 'turning' : '')} jam ${(o.jamT || 0).toFixed(0)} s${o.unjammed ? `, asked out:${o.unjammed}` : ''} | ${ch.join(' < ') || 'no block'}`);
     }
-    if (log && t % 5 === 0) out.log.push(`${t}s s=${d.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.speed.toFixed(1)} ${o.join ? 'joining' : d.why || ''} ${o.hud ? `[${o.hud.turn} · ${Math.round(o.hud.eta)} s]` : ''} film ${o.film.name}`);
+    if (log && t % 5 === 0) out.log.push(`${t}s s=${d.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.speed.toFixed(1)} ${o.join ? `joining (${o.joinWhy || '?'})` : d.why || ''} ${o.hud ? `[${o.hud.turn} · ${Math.round(o.hud.eta)} s]` : ''} film ${o.film.name}`);
     // the handback: a touch of the wheel, once it is well under way
     // (where the car's body has room, and the next 6 m ahead of it: a few streets pinch narrower than a car where a landmark's fine walls stand
     // into them, which the road's width pass does not see; the autopilot passes on its line, a car you drive does not)

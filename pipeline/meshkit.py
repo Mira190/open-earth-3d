@@ -173,6 +173,8 @@ class Mesh:
             out["uv"] = np.round(t, 2).ravel().tolist()
         if getattr(self, "far", None):
             out["far"] = int(self.far)   # drawn only within this many metres (web/world.js): a room's furnishings
+        if getattr(self, "detail", False):
+            out["detail"] = 1   # a hero level's finest parts: drawn on the high and medium tiers only (web/world.js)
         if self.sky is not None:
             out["sky"] = round(float(self.sky), 2)
             if self.bounce:
