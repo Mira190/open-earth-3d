@@ -203,7 +203,17 @@ window.OEQuality = (function () {
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
-      sceneScale: (w, h) => Math.min(1, Math.sqrt(SCENE_PX / Math.max(1, w * h))) };
+      sceneScale: (w, h) => Math.min(1, Math.sqrt(SCENE_PX / Math.max(1, w * h))),
+      // The scene's samples for a view of w x h CSS pixels. Four samples a pixel are for a scene drawn a pixel to
+      // the CSS pixel; on a dense display the scene is already drawn at one and a half to two device pixels each
+      // way, two to four of them under every CSS pixel, and two samples there give four to eight to the CSS pixel:
+      // half the samples written and resolved every frame (an Apple M3 at 2x in a 1001 x 894 window: 14.3 million
+      // HDR samples a frame, 7.2 now) for edges as smooth as a 1x display's at four. A 4K or 5K display filled at
+      // 2x draws the scene near a pixel to the CSS pixel (the scene's budget) and keeps four.
+      samplesAt(w, h) {
+        const n = this.samples, pr = this.pixelRatio(w, h);
+        return n > 2 && pr * this.sceneScale(w * pr, h * pr) >= 1.5 ? 2 : n;
+      } };
   }
 
   // The frame-time governor (issue 352): one controller for what a frame may cost, in place of steps that only
@@ -272,6 +282,8 @@ window.OEQuality = (function () {
       on(fn) { subs.push(fn); return g; },
       // a system's rung on the ladder: its value with every extra, at half of them and with none (see above)
       rung(name, values, fn) { const r = { name, values, fn, v: undefined }; rungs.push(r); apply(r); return g; },
+      // a rung's values changed (the view was resized): each rung's value for the extras as they stand, again
+      reapply() { for (const r of rungs) apply(r); return g; },
       // what each rung holds now, for the telemetry and the checks: { name: value }
       get ladder() { const o = {}; for (const r of rungs) o[r.name] = r.v; return o; },
       // a device with no record of its own: low first, then up as fast as the frames allow (see above)

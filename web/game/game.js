@@ -132,6 +132,9 @@ window.OpenEarthGame = async function game(cityId) {
   if (govAsked) govRecord = { scale: Math.max(gov.min, Math.min(1, Math.round(+govAsked[1] * 20) / 20)), extras: [0, 0.5, 1].includes(+govAsked[2]) ? +govAsked[2] : 1 };
   if (govRecord) gov.resume(govRecord.scale, govRecord.extras); else if (gov.auto) gov.startLow();
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
+  // the multisampling rung's values (the governor's ladder, below) for the view's size as it is now
+  let msaaRung = null;
+  const msaaFor = () => { const top = QC.samplesAt ? QC.samplesAt(stage.clientWidth, stage.clientHeight) : QC.samples; msaaRung[0] = top; msaaRung[1] = Math.min(2, top); };
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight, pr = QC.pixelRatio(w, h);
     gov.max = QC.sceneScale ? Math.max(gov.min, QC.sceneScale(w * pr, h * pr)) : 1;
@@ -144,6 +147,7 @@ window.OpenEarthGame = async function game(cityId) {
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
     if (stack) atmos.setScale(gov.scale);
+    if (msaaRung) { msaaFor(); gov.reapply(); }
     if (atmos) atmos.setSize(w, h);
     if (mirror) { const z = renderer.getDrawingBufferSize(new THREE.Vector2()); mirror.setSize(z.x, z.y); }
   }
@@ -5283,7 +5287,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   if (atmos && atmos.ao && atmos.ao.limit) gov.rung('ao', [2, 1, 0], v => atmos.ao.limit(v));
   // the scene's multisampling: the tier's (four on high) with every extra, two at half, none at the floor, where the
   // sharpened upscale and the lens's grain hide the edges more cheaply than four samples a pixel
-  if (atmos && atmos.setSamples && QC.samples) gov.rung('msaa', [QC.samples, Math.min(2, QC.samples), 0], v => atmos.setSamples(v));
+  // (the tier's: two on a dense display, where the scene has two device pixels or more under each CSS pixel already:
+  // quality.js samplesAt; followed when the window changes size, resize())
+  if (atmos && atmos.setSamples && QC.samples) { msaaRung = [0, 0, 0]; msaaFor(); gov.rung('msaa', msaaRung, v => atmos.setSamples(v)); }
   // the sun's shadow map: the tier's, then half the texels on a side (the box keeps its size: softer edges), then 1024
   if (Wd.setShadowSize) { const S = Wd.shadowSize; gov.rung('shadow', [S, Math.max(1024, S / 2), 1024], v => Wd.setShadowSize(v)); }
   // the crowd: whole, whole, and three in four with none (crowd.active, as the menu's density sets it)

@@ -457,6 +457,40 @@ the call, its arguments and the lines of the page that made it go to the telemet
 had and those three do not was raised once while the map loaded, and the next load of that map on that device
 is traced from its first call (one slower load). The next visit from that device names the call.
 
+**What the trace found here.** Run in the game check, the game's own watch reported `0x502` under llvmpipe after
+all, and the trace named it: after a lost context comes back, a render target made before the loss still carries
+the listener of the renderer's old state, and its next `dispose()` or `setSize()` deletes a framebuffer, a
+renderbuffer and a texture of the dead context beside the live ones (`world.js` `setShadowSize` from the
+governor's rung, the shadow cache's `resize`, the scene's target changing samples or size, the sky's light made
+again in `restoreGPU`). Each is INVALID_OPERATION. Nothing is drawn wrong by it, but it raises the one flag the
+watch reads, on any device whose context was ever restored (a laptop woken from sleep, a GPU process restarted)
+and whose governor then moves. `glcare.js` now leaves a delete of an object the context does not know unsent once
+a context has been restored (`spareTheDead`), for the game and the viewer alike, and `tools/gl_restore_probe.js`
+traces a loss, the restoration and the rungs after it: nothing refused. Whether the M3's two reports were this
+(a context restored while the map loaded) or another call, its next visit says.
+
+### Two samples where the display is dense (issue 375)
+
+Four samples a pixel are for a scene drawn a pixel to the CSS pixel. On a dense display the high tier draws the
+scene at up to two device pixels each way, so every CSS pixel already has up to four of them under it, each
+multisampled. `quality.js` `samplesAt(w, h)` gives the view two samples where the scene has one and a half device
+pixels or more to the CSS pixel each way (the canvas's pixel ratio times the scene's ceiling), and the tier's four
+elsewhere: a 1x display, and a 4K or 5K display filled at 2x, where the scene's budget brings it back to about a
+pixel each. The governor's rung follows the window (`game.js` `msaaFor`); the viewer takes the same count.
+
+| view (high tier) | scene pixels | samples a frame, before | now |
+|---|---|---|---|
+| 1001 x 894 at 2x (the M3's window) | 3.58 M | 14.3 M | 7.2 M |
+| 1440 x 900 at 2x | 3.69 M | 14.7 M | 7.4 M |
+| 1920 x 1080 at 2x (scene at 1.33) | 3.69 M | 14.7 M | 14.7 M |
+| 1440 x 900 at 1x | 1.30 M | 5.2 M | 5.2 M |
+
+At eight bytes of colour and four of depth a sample, that is 86 MB less written and resolved a frame on the M3.
+Stills of Shibuya at 2x with four samples and with two (`DPR=2 QUERY='?msaa=on' tools/game_shot.js`, day, dusk
+and night), enlarged three times at the roof lines and the signs' edges: no difference to be seen. A phone and
+the medium tier are not touched (no samples, and two). What a real GPU has to confirm: the milliseconds; the
+count of samples is exact.
+
 ### Scene renders nobody sees
 
 - **The sea, inland.** The ocean's wave transform (45 passes into 128 px targets), its wake field and, on a

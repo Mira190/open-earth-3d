@@ -93,8 +93,10 @@ body > .gl-note { position: fixed; }
       timer = setTimeout(() => { if (lost) giveUp('The graphics card did not give the picture back'); }, waitMs);
     };
     // three.js listens first (it was made before this), so its state is rebuilt by now
+    spareTheDead(renderer.getContext());
     const onRestoredE = () => {
       lost = false; clearTimeout(timer); stats.restores = ++restores;
+      renderer.getContext().__restored = true; // (spareTheDead, below)
       try { onRestored(losses); } catch (err) { console.warn('glcare: onRestored', err); giveUp('The view could not be redrawn'); return; }
       check = 4; // frames to read back before the picture counts as black
     };
@@ -135,6 +137,28 @@ body > .gl-note { position: fixed; }
 
   // a WebGPURenderer (the reef pages): a lost device, or the WebGL2 fallback's lost context,
   // cannot be restored in place, so the page reloads with the note
+  // After a context comes back, what was made in the lost one is dead, and three.js still deletes it: a render
+  // target made before the loss keeps the listener of the renderer's old state, and its next dispose() or setSize()
+  // (the governor halving the shadow map, the scene's target changing its samples or its size, the sky's light made
+  // again) asks WebGL to delete a framebuffer, a renderbuffer and a texture of the dead context beside the live
+  // ones. Each is INVALID_OPERATION: nothing breaks, but the context's one error flag is raised, which is the flag
+  // the game watches for draws that were refused (issue 485; found by that watch in the game check, in a rain shed
+  // after the check's own lost context). From the first restoration on, a delete of an object the context does not
+  // know (isTexture and its kin are false for the dead, with no error) is not sent. (The guard is on the context
+  // from the start, so that a trace begun before a loss keeps it, and does nothing until a restoration.)
+  const DEAD = { deleteTexture: 'isTexture', deleteFramebuffer: 'isFramebuffer', deleteRenderbuffer: 'isRenderbuffer', deleteBuffer: 'isBuffer', deleteProgram: 'isProgram',
+    deleteShader: 'isShader', deleteVertexArray: 'isVertexArray', deleteQuery: 'isQuery', deleteSampler: 'isSampler', deleteSync: 'isSync', deleteTransformFeedback: 'isTransformFeedback' };
+  function spareTheDead(gl) {
+    if (!gl || gl.__spared) return;
+    gl.__spared = true;
+    const P = Object.getPrototypeOf(gl);
+    for (const [del, is] of Object.entries(DEAD)) {
+      if (typeof P[del] !== 'function' || typeof P[is] !== 'function') continue;
+      const guard = function (o) { if (this.__restored && o && !P[is].call(this, o)) return undefined; return P[del].call(this, o); };
+      guard.__spare = true;
+      gl[del] = guard;
+    }
+  }
   function reloadOnLoss(renderer, host) {
     const note = noteIn(host), base = renderer.onDeviceLost;
     renderer.onDeviceLost = info => {
@@ -162,8 +186,9 @@ body > .gl-note { position: fixed; }
     for (const k of Object.getOwnPropertyNames(P)) {
       const d = Object.getOwnPropertyDescriptor(P, k);
       if (!d || typeof d.value !== 'function' || QUIET.test(k)) continue;
-      names.push(k);
-      const orig = d.value;
+      const own = Object.prototype.hasOwnProperty.call(gl, k) ? gl[k] : null; // (the guard of a restored context: spareTheDead)
+      names.push([k, own]);
+      const orig = own || d.value;
       gl[k] = function (...a) {
         const r = orig.apply(this, a);
         calls++;
@@ -180,7 +205,7 @@ body > .gl-note { position: fixed; }
       get calls() { return calls; },
       // what was refused so far, the list emptied (the trace goes on)
       take() { const out = [...seen.values()]; seen.clear(); return out; },
-      stop() { for (const k of names) delete gl[k]; return [...seen.values()]; },
+      stop() { for (const [k, own] of names) { if (own) gl[k] = own; else delete gl[k]; } return [...seen.values()]; },
     };
   }
   return { watch, reloadOnLoss, trace };
