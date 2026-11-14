@@ -251,24 +251,41 @@ junction, and its first part is what fills most of the frame from eye level: the
 - **The paint**: the five crosswalks at the places measured off GSI's aerial photograph
   (`scramble.CROSSWALKS`), stop lines, the diamonds before them and centre lines, in an even off-white
   thermoplastic with the grain of its glass beads (`paint_texture`).
-- **The pavements**: grey blocks (`PavingStones136`), Hachiko Square in small granite setts (`PavingStones131`,
-  its moss and colour taken out), each brought to a grey of one family by its own mean (`hero_kit.tint_to`), and the yellow tactile blocks on OpenStreetMap's lines with their bars and domes in
-  relief (JIS T 9251's pattern, `tactile_texture`); a cast-iron grate round each mapped tree.
+- **The pavements**: grey blocks (`PavingStones136`), and Hachiko Square in the red-brown block the 2024
+  photographs show (`PavingStones128`, brought to that brown by its own mean with `hero_kit.tint_to`; the first
+  pass had it in grey setts, which was wrong); the yellow tactile blocks on OpenStreetMap's lines with their bars
+  and domes in relief (JIS T 9251's pattern, `tactile_texture`); a cast-iron grate round each mapped tree.
 - **On the kerbs**: white guard pipes between the crosswalks, and steel lamp posts whose light is baked.
+- **The fronts** (`Level.fronts`, `front`): each wall a player can see from the junction's roads and pavements
+  (eye points on a 7 m grid within 70 m, no building between), of the buildings the landmarks do not draw whole
+  (QFRONT, 109, MAGNET, Seibu and the station keep their own). A skin 10 cm in front of the city's plain wall:
+  a glazed street floor between piers on a dark stone foot, onto a lit shop drawn as its light (shelves, a
+  cafe's counter, a clothes rail); above it, storey by storey, facing tile or panel with windows set back in
+  their reveals, aluminium frames, sills, and a coping on the parapet; behind each pane a room, lit or dark
+  after nightfall. Where a landmark's print or screen hangs on the wall the skin is cut away behind it
+  (`behind`), so no picture is covered. One grammar with a few variables per building, not yet each building
+  from its photograph.
+- **Light from the sky** (`hero_kit.sky_occlusion`, meta `sky_rays`): each vertex keeps the share of the sky it
+  sees, baked, so a reveal, a canopy's underside and the foot of a wall are darker than the open ground.
 
 It hides the landmark meshes it draws again (`p5_plaza`, the junction's flat asphalt, paint, tactile strips and
-guard pipes); the fronts, the entrances, the tracks, Hachiko and his bed of setts stay the landmarks'.
-43,700 triangles, 3.8 MB; nothing is built under a building, in a stair well or past 100 m.
+guard pipes); the entrances, the tracks, Hachiko and the signs stay the landmarks'.
+158,000 triangles, 8.2 MB; nothing is built under a building, in a stair well, on a wall no player sees or past
+100 m. On a phone the map's GPU memory peaks at 372 to 388 MB of the 490 MB budget (`tools/check.sh shibuya:mem`).
+
+**People at the lens.** With the camera low at a kerb the near crowd showed as flat dolls a few metres away:
+the modelled people were chosen by distance from the player, not from the camera, and those behind it took the
+places. `web/game/people.js` now picks them by distance from the camera, those in view first.
 
 Photographs looked at (Wikimedia Commons; none is reproduced, no texture is taken from one): the empty
 junction, 2025-01 (ウィ貴公子, CC BY-SA 4.0), QFRONT from the crosswalk, 2025-02 (GoToVan, CC BY 2.0), Hachiko
 Square, 2020-04 (Asanagi, CC0); links in docs/cities/shibuya.md.
 
-Where it still falls short of the bar: the fronts round the junction are the landmarks' flat colours and
-window grids (the shop fronts, tile and sign stacks of QFRONT's base, the bookshop block and Center Gai's
-mouth are the level's next part, issue 461); the kerbs are flush, since the game's ground is one surface; the
-square's setts are a straight bond, not the fans the photographs show; the lamp posts' design and places are
-from photographs, not a survey; and it has been seen on a software renderer only.
+Where it still falls short of the bar: the fronts are one grammar, not each building's own face (QFRONT's
+base and glass, the bookshop block, Center Gai's mouth and the station front are next, issue 461); glass does
+not mirror the street; white walls take the sky's blue by day; the kerbs are flush, since the game's ground is
+one surface; the lamp posts' design and places are from photographs, not a survey; and it has been seen on a
+software renderer only.
 
 **Signs that stood in the air.** A sign tower placed from a photograph by a roof height the city's solids do
 not have (a penthouse narrower than the sign, a roof 6 m lower) stood with its legs in the air. The towers now
