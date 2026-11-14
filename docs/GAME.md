@@ -1110,6 +1110,29 @@ pipeline writes. The only city-specific code is landmark geometry in
       boats.
     - Viaducts (an expressway, several levels up) keep their mapped height.
       Stubs that end over the water at nothing are cut back to the bank.
+    - Decks that overlap other decks are graded together (`together`, #401).
+      Each line is laid on its own first, so a dual carriageway's two lines,
+      a sidewalk beside its road, or a ramp merging into an expressway could
+      stand a metre apart with one slab through the other.
+      - Decks side by side (within 30°), or crossing within 1.5 m of each
+        other where their middles cross, are brought to one level. Decks
+        crossing further apart are pushed apart to head room plus slab
+        (2.8 m). A deck over a bridge's strip settles onto it or clears it
+        the same way.
+      - Points where a deck meets the ground stay put, except by up to 1 m in
+        the later rounds. A deck never goes below the ground, and moves at
+        most 3 m (an expressway, whose viaduct is measured) or 8 m.
+      - A line that starts on another deck (steps off a footway) starts at
+        that deck's edge and height.
+      - A short lift at a line's end over dry land, where the data puts the
+        end a level above the lines meeting it on the ground and nothing
+        mapped passes under it, comes down to the ground. This is a street
+        over a culvert (Tetsugaku's primary road by Keage).
+      - A one-way expressway or trunk line is as wide as its lanes and
+        shoulders, not the class's two-way 15 m.
+      - `tools/deck_room.js <city>` lists what is left. Most of it is at
+        expressway junctions, where three lines can ask for two levels at
+        once.
     - Under a deck over the water the aerial photograph has the same bridge or
       expressway, draped on the modelled bottom, and it showed through the
       water as a road on the riverbed (Tokyo's Nihonbashi under the Shuto,

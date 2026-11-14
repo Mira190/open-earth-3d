@@ -26,6 +26,16 @@ window.OEDecks = (function () {
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const FOOTW = { pedestrian: 8, footway: 3, path: 2.5, steps: 3, cycleway: 2.5, living_street: 5 };
 
+  // a road's deck width: its class's, or the width the data gives its carriageway; an expressway's one-way line (each
+  // direction of the Shuto is mapped as its own line) is its lanes and shoulders, not the class's two-way width, which
+  // laid each direction 15 m wide and so over the other direction and every ramp diverging from it (#401). (Only the
+  // motorways and trunk roads, where nothing parks at the kerb)
+  function roadW(o) {
+    if (o.cw) return o.cw + 1;
+    const full = (ROADW[o.c] || 7) + 1;
+    return o.o && (o.c === 'motorway' || o.c === 'trunk') ? Math.min(full, (o.nl || 2) * 3.5 + 2.5) : full;
+  }
+
   // the bank beside a bridge's loose end: the ground at the nearest spot a walker can stand within 30 m
   function bankZ(nav, x, y) {
     for (let r = 2; r <= 30; r += 2) for (let k = 0, n = Math.ceil(2 * Math.PI * r / 2); k < n; k++) {
@@ -155,11 +165,207 @@ window.OEDecks = (function () {
     return { p: o.p, cls: Uint8Array.from(C), zs: Float32Array.from(Z), n: C.length };
   }
 
+  // Decks that cross or overlap other decks (#401). plan() lays each line on its own, so two lines' decks that overlap in
+  // plan are never compared: a dual carriageway's two lines each graded from their own ends (Tetsugaku's primary road
+  // by Keage, whose slabs crossed with 0.2 m between them), a flight of steps starting under the footway it meets, a
+  // ramp merging into an expressway a metre below it. Where one deck is over another with less than head room plus
+  // its slab between them (and more than a step), whoever stood on the lower one would walk through the upper one's slab.
+  // Each such place is graded together: decks side by side, or crossing within ROOM_MERGE of each other, are brought
+  // to one level (as a dual carriageway's two lines are one road); decks crossing further apart are pushed apart to
+  // head room plus slab. A point where a deck meets the ground or a built surface stays put, so the other deck takes
+  // the difference. Each round moves every point by the mean of what the places it carries ask of it, until none is
+  // left (or 200 rounds: a junction of three expressway lines can ask for two levels at once). A deck over a bridge's
+  // strip is brought onto it, or over it, the same way.
+  const ROOM_MERGE = 1.5;
+  function together(runs, segs, recs, nav, near) {
+    const KNEE = 0.4, CLEAR = 1.8 + THICK + 0.1, CELL = 20;
+    // two pieces joined end to end (a ramp's next piece, lines meeting at a junction) are one surface (tools/deck_room.js)
+    const joined = (d, o) => [[o.ax, o.ay, o.az], [o.bx, o.by, o.bz]].some(a => [[d.ax, d.ay, d.az], [d.bx, d.by, d.bz]].some(c => Math.hypot(a[0] - c[0], a[1] - c[1]) < 3 && Math.abs(a[2] - c[2]) < 1));
+    // (a point on the ground or a built surface stays put, except by up to SOFT in the later rounds: two decks that
+    // overlap right to their ends, where the ground under them differs, the Koshigoe bridge's sidewalk beside Route 134)
+    const SOFT = 1;
+    let soft = false;
+    for (const r of recs) r.moved = new Float32Array(r.zs.length);
+    const fixed = (r, k) => r.cls[k] !== 2 && !(soft && Math.abs(r.moved[k]) < SOFT);
+    // A line that starts on another line's deck, short of its middle (steps or a path off a footway, mapped from a point
+    // beside it, Tetsugaku's hillside steps by the Philosopher's Path, #401), starts at that deck's height and is graded
+    // with it: left on the ground under the deck, its first piece would rise through the slab
+    {
+      const near = new Map();
+      segs.forEach((d, i) => { for (const kk of [`${Math.round(d.ax / CELL)},${Math.round(d.ay / CELL)}`, `${Math.round(d.bx / CELL)},${Math.round(d.by / CELL)}`]) { if (!near.has(kk)) near.set(kk, []); near.get(kk).push(i); } });
+      for (const [li, r] of recs.entries()) {
+        const p = r.o.p, n = r.zs.length;
+        for (const k of n > 1 ? [0, n - 1] : []) {
+          if (r.cls[k] === 2) continue;
+          const x = p[3 * k] / 10, y = p[3 * k + 1] / 10;
+          let best = null;
+          for (let gx = -1; gx <= 1; gx++) for (let gy = -1; gy <= 1; gy++) for (const j of near.get(`${Math.round(x / CELL) + gx},${Math.round(y / CELL) + gy}`) || []) {
+            const o = segs[j];
+            if (o.li === li) continue;
+            const M = Math.hypot(o.bx - o.ax, o.by - o.ay) || 1, fx = (o.bx - o.ax) / M, fy = (o.by - o.ay) / M, t = ((x - o.ax) * fx + (y - o.ay) * fy) / M;
+            if (t < 0 || t > 1 || Math.abs(-(x - o.ax) * fy + (y - o.ay) * fx) > o.hw) continue;
+            const ro = recs[o.li], z = ro.zs[o.k] + (ro.zs[o.k + 1] - ro.zs[o.k]) * t;
+            if (Math.abs(z - r.zs[k]) > KNEE && Math.abs(z - r.zs[k]) < CLEAR && (!best || Math.abs(z - r.zs[k]) < Math.abs(best.z - r.zs[k]))) best = { z, o, fx, fy };
+          }
+          if (!best) continue;
+          // (at that deck's edge, where the line leaves it, at the deck's height there: its first piece then climbs from
+          // the edge rather than through the deck it starts on)
+          const j = k ? k - 1 : 1, jx = p[3 * j] / 10, jy = p[3 * j + 1] / 10, dl = Math.hypot(jx - x, jy - y) || 1, ux = (jx - x) / dl, uy = (jy - y) / dl;
+          const o = best.o, across = ux * -best.fy + uy * best.fx, v0 = -(x - o.ax) * best.fy + (y - o.ay) * best.fx;
+          let go = 0;
+          if (Math.abs(across) > 0.2) { go = ((across > 0 ? o.hw : -o.hw) - v0) / across; if (go < 0 || go > dl - 1.5) go = 0; }
+          if (go > 0) {
+            const nx = x + ux * go, ny = y + uy * go, M = Math.hypot(o.bx - o.ax, o.by - o.ay) || 1;
+            const t = Math.max(0, Math.min(1, ((nx - o.ax) * best.fx + (ny - o.ay) * best.fy) / M)), ro = recs[o.li];
+            p[3 * k] = Math.round(nx * 10); p[3 * k + 1] = Math.round(ny * 10);
+            best.z = ro.zs[o.k] + (ro.zs[o.k + 1] - ro.zs[o.k]) * t;
+          }
+          r.zs[k] = best.z; r.cls[k] = 2;
+          // (and the piece of deck that starts there)
+          for (const d of segs) if (d.li === li && (d.k === k || d.k + 1 === k)) { if (d.k === k) { d.ax = p[3 * k] / 10; d.ay = p[3 * k + 1] / 10; } else { d.bx = p[3 * k] / 10; d.by = p[3 * k + 1] / 10; } }
+        }
+      }
+    }
+    // the places where a piece of deck is over another (every metre along it, a few across), found once: then each
+    // round only measures them again. Whether a pair is brought to one level or apart is settled once, from how they
+    // meet, so that a pair whose gap runs from a step to a storey along it does not flip from one to the other
+    const t0 = Date.now(), cells = new Map();
+    segs.forEach((d, i) => {
+      for (let x = Math.floor((Math.min(d.ax, d.bx) - d.hw) / CELL); x <= Math.floor((Math.max(d.ax, d.bx) + d.hw) / CELL); x++)
+        for (let y = Math.floor((Math.min(d.ay, d.by) - d.hw) / CELL); y <= Math.floor((Math.max(d.ay, d.by) + d.hw) / CELL); y++) {
+          const kk = `${x},${y}`;
+          if (!cells.has(kk)) cells.set(kk, []);
+          cells.get(kk).push(i);
+        }
+    });
+    const hAt = (d, s) => { const r = recs[d.li]; return r.zs[d.k] + (r.zs[d.k + 1] - r.zs[d.k]) * s; };
+    const samples = []; // [d, s, o, t, pair]
+    const pairs = new Map();
+    segs.forEach((d, di) => {
+      const L = Math.hypot(d.bx - d.ax, d.by - d.ay) || 1, ex = (d.bx - d.ax) / L, ey = (d.by - d.ay) / L;
+      for (let u = 0; u <= L; u += 1) for (let v = -d.hw + 0.3; v <= d.hw - 0.3 + 1e-6; v += Math.max(0.5, (d.hw - 0.3) / 2)) {
+        const x = d.ax + ex * u - ey * v, y = d.ay + ey * u + ex * v, s = u / L, h = hAt(d, s);
+        for (const j of cells.get(`${Math.floor(x / CELL)},${Math.floor(y / CELL)}`) || []) {
+          const o = segs[j];
+          if (o === d || (o.li === d.li && Math.abs(o.k - d.k) <= 1) || joined(d, o)) continue; // (a line's own legs too: a hairpin)
+          const M = Math.hypot(o.bx - o.ax, o.by - o.ay) || 1, fx = (o.bx - o.ax) / M, fy = (o.by - o.ay) / M;
+          const t = ((x - o.ax) * fx + (y - o.ay) * fy) / M;
+          if (t < 0 || t > 1 || Math.abs(-(x - o.ax) * fy + (y - o.ay) * fx) > o.hw) continue;
+          const gap = h - hAt(o, t);
+          if (Math.abs(gap) > 4 * CLEAR) continue; // (near enough to matter)
+          const pk = Math.min(di, j) * 1e6 + Math.max(di, j);
+          if (!pairs.has(pk)) {
+            // side by side (within 30 degrees: a dual carriageway, a sidewalk beside its road, a ramp merging): one level.
+            // Crossing: one level if they are near it where their middles cross (a junction the data lifts), else apart
+            let mode = 1;
+            if (Math.abs(ex * fx + ey * fy) < Math.cos(Math.PI / 6)) {
+              const den = ex * fy - ey * fx, wx = o.ax - d.ax, wy = o.ay - d.ay;
+              const ud = Math.max(0, Math.min(L, (wx * fy - wy * fx) / den)), to = Math.max(0, Math.min(1, (wx * ey - wy * ex) / den / M));
+              mode = Math.abs(hAt(d, ud / L) - hAt(o, to)) < ROOM_MERGE ? 1 : 2;
+            }
+            pairs.set(pk, { mode });
+          }
+          samples.push([d, s, o, t, pairs.get(pk)]);
+        }
+      }
+    });
+    // and where a deck is over a bridge's strip (a surface built with the landmarks, which stays put): onto it if it is
+    // near it, else over it with the clearance (a street's deck ending half a metre over the bridge it runs onto)
+    const strips = nav.strips || [];
+    if (strips.length && nav.stripHeight) segs.forEach(d => {
+      const L = Math.hypot(d.bx - d.ax, d.by - d.ay) || 1, ex = (d.bx - d.ax) / L, ey = (d.by - d.ay) / L;
+      const x0 = Math.min(d.ax, d.bx) - d.hw, x1 = Math.max(d.ax, d.bx) + d.hw, y0 = Math.min(d.ay, d.by) - d.hw, y1 = Math.max(d.ay, d.by) + d.hw;
+      for (const st of strips) {
+        if (st.box && (st.box[0] > x1 || st.box[2] < x0 || st.box[1] > y1 || st.box[3] < y0)) continue;
+        let pair = null;
+        for (let u = 0; u <= L; u += 1) for (let v = -d.hw + 0.3; v <= d.hw - 0.3 + 1e-6; v += Math.max(0.5, (d.hw - 0.3) / 2)) {
+          const x = d.ax + ex * u - ey * v, y = d.ay + ey * u + ex * v, z = nav.stripHeight(st, x, y);
+          if (z == null) continue;
+          const gap = hAt(d, u / L) - z;
+          if (gap < 0 || gap > 4 * CLEAR) continue;
+          if (!pair) pair = { mode: gap < ROOM_MERGE ? 1 : 2 };
+          samples.push([d, u / L, null, z, pair]);
+        }
+      }
+    });
+    let left = 0, it = 0, calm = 0;
+    const MOVE = c => (c === 'motorway' ? 3 : 8); // (an expressway's viaduct is measured: it moves least)
+    for (const r of recs) {
+      r.sum = new Float64Array(r.zs.length); r.cnt = new Uint16Array(r.zs.length); r.floor = new Float32Array(r.zs.length);
+      const p = r.o.p;
+      for (let k = 0; k < r.zs.length; k++) { const x = p[3 * k] / 10, y = p[3 * k + 1] / 10; r.floor[k] = Math.min(r.zs[k], nav.isWater(x, y) ? 1.6 : nav.terrain(x, y) + 0.1); }
+    }
+    const touched = [], A = [[null, 0, 0], [null, 0, 0], [null, 0, 0], [null, 0, 0]]; // (the points a sample moves: line, point, share)
+    const ask = (r, k, dz) => { if (!r.cnt[k]) touched.push(r, k); r.sum[k] += dz; r.cnt[k]++; };
+    for (; it < 200; it++) {
+      soft = it >= 80;
+      let bad = 0;
+      for (const q of samples) {
+        let d = q[0], s = q[1], o = q[2], t = q[3];
+        const pair = q[4];
+        let gap = hAt(d, s) - (o ? hAt(o, t) : t);
+        if (gap < 0) { if (!o) continue; [d, s, o, t, gap] = [o, t, d, s, -gap]; } // (the upper one as d)
+        // (a pair brought to one level keeps closing in under the knee, so that it settles on one level, not just under it)
+        if (gap >= CLEAR || (pair.mode === 2 && gap <= KNEE) || gap <= 0.1) continue;
+        if (gap > KNEE) bad++;
+        // how much d's height over o must change here: to nothing (one level), or up to the clearance; shared out
+        // between the four points of the two pieces by how much each moves the sample (the least change that does it)
+        const c = pair.mode === 1 ? -gap : CLEAR - gap, rd = recs[d.li];
+        let m = 0, a2 = 0;
+        const put = (r, k, w) => { if (w && !fixed(r, k)) { A[m][0] = r; A[m][1] = k; A[m][2] = w; m++; a2 += w * w; } };
+        put(rd, d.k, 1 - s); put(rd, d.k + 1, s);
+        if (o) { const ro = recs[o.li]; put(ro, o.k, -(1 - t)); put(ro, o.k + 1, -t); }
+        if (a2 < 1e-6) continue;
+        for (let i = 0; i < m; i++) ask(A[i][0], A[i][1], c * A[i][2] / a2);
+      }
+      left = bad;
+      calm = bad ? 0 : calm + 1;
+      if (!touched.length || calm > 10) break;
+      // each point by the mean of what the samples ask of it (no more than a metre a round)
+      for (let i = 0; i < touched.length; i += 2) {
+        const r = touched[i], k = touched[i + 1];
+        let dz = Math.max(-1, Math.min(1, r.sum[k] / r.cnt[k]));
+        if (r.cls[k] !== 2) dz = Math.max(-SOFT, Math.min(SOFT, r.moved[k] + dz)) - r.moved[k];
+        // (a deck no lower than the ground under it, nor the water's slab clearance, and no more than MOVE from where
+        // plan() laid it: past that the data asks for two things at once, and the line keeps its own level)
+        else dz = Math.max(Math.max(r.floor[k], r.zs[k] - r.moved[k] - MOVE(r.o.c)), Math.min(r.zs[k] - r.moved[k] + MOVE(r.o.c), r.zs[k] + dz)) - r.zs[k];
+        r.zs[k] += dz;
+        r.moved[k] += dz;
+        r.sum[k] = 0; r.cnt[k] = 0;
+      }
+      touched.length = 0;
+    }
+    let maxMove = 0, over2 = 0;
+    const movers = [];
+    for (const r of recs) for (let k = 0; k < r.zs.length; k++) {
+      const m = Math.abs(r.moved[k]);
+      if (m > maxMove) maxMove = m;
+      if (m > 2) { over2++; movers.push([+(r.o.p[3 * k] / 10).toFixed(0), +(r.o.p[3 * k + 1] / 10).toFixed(0), r.o.c, +r.moved[k].toFixed(1)]); }
+    }
+    for (const r of recs) { delete r.sum; delete r.cnt; delete r.floor; }
+    // write the levels back: the lines, the runs' points and columns, the pieces
+    for (const r of recs) { const p = r.o.p; for (let k = 0; k < r.zs.length; k++) p[3 * k + 2] = Math.round(r.zs[k] * 10); }
+    for (const run of runs) {
+      const r = recs[run.li];
+      let moved = false;
+      const p = r.o.p;
+      run.pts.forEach((q, i) => {
+        const k = run.from + i, z = r.zs[k];
+        if (Math.abs(q[2] - z) > 1e-3) { q[2] = z; moved = true; }
+        if (Math.abs(q[0] - p[3 * k] / 10) + Math.abs(q[1] - p[3 * k + 1] / 10) > 0.05) { q[0] = p[3 * k] / 10; q[1] = p[3 * k + 1] / 10; moved = true; }
+      });
+      if (moved) run.cols = columns(run, nav, near);
+    }
+    for (const d of segs) { const r = recs[d.li]; d.az = r.zs[d.k]; d.bz = r.zs[d.k + 1]; delete d.li; delete d.k; }
+    for (const r of recs) delete r.moved;
+    return { left, rounds: it, ms: Date.now() - t0, maxMove: +maxMove.toFixed(1), over2, movers };
+  }
+
   // paths: game.json "paths" ({foot, road}: lines of [x, y, z] in decimetres, rewritten in place);
   // frame: the model's extent; boats: the ferries' courses ([[x, y], ...]) and clear: how high they
   // stand out of the water, so that a bridge they pass under clears them.
   // Returns {runs, segs}: the deck polylines to draw, and their pieces for nav.addDecks
-  function plan(paths, nav, frame, { boats = [], clear = 0 } = {}) {
+  function plan(paths, nav, frame, { boats = [], clear = 0, tracks = [] } = {}) {
     const courses = boats.filter(b => b.length > 1).map(b => {
       const xs = b.map(q => q[0]), ys = b.map(q => q[1]);
       return { b, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
@@ -186,13 +392,46 @@ window.OEDecks = (function () {
     };
     const lines = [...paths.foot.map(o => [o, 'foot']), ...paths.road.map(o => [o, 'road'])];
     // where line ends meet (2 m), so a bridge mapped in pieces is told from a stub ending at nothing
-    const key = (x, y) => `${Math.round(x / 2)},${Math.round(y / 2)}`, ends = new Map();
+    const key = (x, y) => `${Math.round(x / 2)},${Math.round(y / 2)}`, ends = new Map(), endZ = new Map();
     for (const [o] of lines) {
       const n = o.p.length / 3;
-      for (const k of n > 1 ? [0, n - 1] : []) { const kk = key(o.p[3 * k] / 10, o.p[3 * k + 1] / 10); ends.set(kk, (ends.get(kk) || 0) + 1); }
+      for (const k of n > 1 ? [0, n - 1] : []) {
+        const kk = key(o.p[3 * k] / 10, o.p[3 * k + 1] / 10);
+        ends.set(kk, (ends.get(kk) || 0) + 1);
+        if (!endZ.has(kk)) endZ.set(kk, []);
+        endZ.get(kk).push(o.p[3 * k + 2] / 10);
+      }
     }
+    // does anything the map knows of pass under the piece a-b: another line crossing it in plan (not one meeting it at an
+    // end) or a railway's track? (lines and tracks in 50 m cells)
+    const UC = 50, under2 = new Map();
+    const file = (ax, ay, bx, by) => {
+      const s = [ax, ay, bx, by];
+      for (let x = Math.floor(Math.min(ax, bx) / UC); x <= Math.floor(Math.max(ax, bx) / UC); x++)
+        for (let y = Math.floor(Math.min(ay, by) / UC); y <= Math.floor(Math.max(ay, by) / UC); y++) {
+          const kk = `${x},${y}`;
+          if (!under2.has(kk)) under2.set(kk, []);
+          under2.get(kk).push(s);
+        }
+    };
+    for (const pl of [...lines.map(([o]) => o.p), ...tracks]) for (let k = 0; k + 5 < pl.length; k += 3) file(pl[k] / 10, pl[k + 1] / 10, pl[k + 3] / 10, pl[k + 4] / 10);
+    const passesUnder = (ax, ay, bx, by) => {
+      const seen = new Set();
+      for (let x = Math.floor(Math.min(ax, bx) / UC); x <= Math.floor(Math.max(ax, bx) / UC); x++)
+        for (let y = Math.floor(Math.min(ay, by) / UC); y <= Math.floor(Math.max(ay, by) / UC); y++)
+          for (const s of under2.get(`${x},${y}`) || []) {
+            if (seen.has(s)) continue;
+            seen.add(s);
+            if ([[s[0], s[1]], [s[2], s[3]]].some(([px, py]) => Math.min(Math.hypot(px - ax, py - ay), Math.hypot(px - bx, py - by)) < 3)) continue;
+            if (Math.hypot(s[0] - ax, s[1] - ay) + Math.hypot(s[2] - s[0], s[3] - s[1]) < 1e-6) continue;
+            // (a proper crossing: not a line running on in the same straight line, which cross() takes for touching)
+            const o = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+            if (o(ax, ay, bx, by, s[0], s[1]) * o(ax, ay, bx, by, s[2], s[3]) < 0 && o(s[0], s[1], s[2], s[3], ax, ay) * o(s[0], s[1], s[2], s[3], bx, by) < 0) return true;
+          }
+      return false;
+    };
     const joined = (x, y) => (ends.get(key(x, y)) || 0) > 1 || x < frame.x0 + 20 || x > frame.x1 - 20 || y < frame.y0 + 20 || y > frame.y1 - 20;
-    const runs = [], segs = [];
+    const runs = [], segs = [], recs = [];
     for (const [o, kind] of lines) {
       let p = o.p, n = p.length / 3;
       const X = k => p[3 * k] / 10, Y = k => p[3 * k + 1] / 10;
@@ -224,6 +463,23 @@ window.OEDecks = (function () {
         else if (!water && IN && IN.walled && IN.walled(x, y)) { cls[k] = 2; zs[k] = g + 0.1; } // over a walled channel: at its banks' level
         else if (!water && z - g <= RISE) zs[k] = g; // on the ground drawn there
         else { cls[k] = 2; zs[k] = z; }
+      }
+      // A short lift at a line's end over dry land, where the data puts that end a level above the line meeting it on the
+      // ground, with nothing the map knows of passing under it: a street over a culvert or a stream the map does not
+      // draw, lifted a level by the data (Tetsugaku's primary road by Keage, #401, whose two carriageways stood 6 m over
+      // the junction they meet and crossed each other's slabs). On the ground: there is nothing to clear.
+      if (n > 1) for (const [k0, step] of [[0, 1], [n - 1, -1]]) {
+        if (cls[k0] !== 2) continue;
+        const lowEnd = (endZ.get(key(X(k0), Y(k0))) || []).some(z => Math.abs(p[3 * k0 + 2] / 10 - z - LEVEL) < 1.5 && Math.abs(z - nav.terrain(X(k0), Y(k0))) < 1);
+        if (!lowEnd) continue;
+        let k = k0, len = 0, ok = true;
+        for (; k >= 0 && k < n && cls[k] === 2; k += step) {
+          if (nav.isWater(X(k), Y(k))) ok = false;
+          if (k !== k0) { len += Math.hypot(X(k) - X(k - step), Y(k) - Y(k - step)); if (passesUnder(X(k - step), Y(k - step), X(k), Y(k))) ok = false; }
+        }
+        if (k >= 0 && k < n && passesUnder(X(k - step), Y(k - step), X(k), Y(k))) ok = false;
+        if (!ok || len > 40) continue;
+        for (let j = k0; j !== k; j += step) { cls[j] = 0; zs[j] = nav.terrain(X(j), Y(j)); }
       }
       // a path that goes down into a sunken promenade (the Horikawa's stairs and ramps, mapped from the pavement):
       // on the ground until it is on the promenade, not on a deck the data's levels would lift over the street
@@ -346,26 +602,28 @@ window.OEDecks = (function () {
             if (Math.abs(zs[a1] - zs[a0]) <= SLOPE * L) for (let i = k; i <= e; i++) zs[i] = Math.max(nav.terrain(X(i), Y(i)) + RISE, zs[a0] + (zs[a1] - zs[a0]) * (cum[i] - cum[a0]) / L);
           }
         }
-        const from = Math.max(0, i0), to = i1 >= 0 ? i1 : e, w = kind === 'road' ? (ROADW[o.c] || 7) + 1 : FOOTW[o.c] || 3;
+        const from = Math.max(0, i0), to = i1 >= 0 ? i1 : e, w = kind === 'road' ? roadW(o) : FOOTW[o.c] || 3;
         // a deck ends where it meets the ground or a built surface; its pieces for walking on
         const pts = [];
         for (let i = from; i <= to; i++) pts.push([X(i), Y(i), zs[i]]);
-        const run = { pts, w, kind, c: o.c, lift: kind === 'road' ? 0.03 : 0.1 };
+        const run = { pts, w, kind, c: o.c, lift: kind === 'road' ? 0.03 : 0.1, li: recs.length, from };
         // a deck that stays under RISE over dry ground all along (a road carried over a shallow dip in the
         // street, issue 234: Chuo-dori at Nihonbashi's south bank) is part of the street: no parapets, which
         // would stand across the carriageway where the line meets the next one or crosses the junction
         if (kind === 'road' && pts.every(q => !nav.isWater(q[0], q[1]) && q[2] - nav.terrain(q[0], q[1]) < RISE)) run.parapet = false;
         run.cols = columns(run, nav, near);
         runs.push(run);
-        for (let i = from; i < to; i++) segs.push({ ax: X(i), ay: Y(i), az: zs[i], bx: X(i + 1), by: Y(i + 1), bz: zs[i + 1], hw: w / 2, th: THICK, walk: o.c !== 'motorway', par: run.parapet !== false ? PARAPET_W : 0 });
+        for (let i = from; i < to; i++) segs.push({ ax: X(i), ay: Y(i), az: zs[i], bx: X(i + 1), by: Y(i + 1), bz: zs[i + 1], hw: w / 2, th: THICK, walk: o.c !== 'motorway', par: run.parapet !== false ? PARAPET_W : 0, li: recs.length, k: i });
         k = e;
       }
       // the line follows the ground drawn under it, the built surfaces and the decks; flag what is off the ground
       o.d = new Uint8Array(Math.max(0, n - 1));
       for (let k = 0; k < n; k++) p[3 * k + 2] = Math.round(zs[k] * 10);
       for (let k = 0; k < n - 1; k++) o.d[k] = cls[k] || cls[k + 1] ? 1 : 0;
+      recs.push({ o, cls, zs, kind });
     }
-    return { runs, segs };
+    const crossing = together(runs, segs, recs, nav, near);
+    return { runs, segs, crossing };
   }
 
   // the decks as one mesh: slab, parapets and columns, from plan()'s runs
