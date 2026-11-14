@@ -26,13 +26,16 @@ wall and ceiling stops short of the ribs and louvres over it (Envelope).
   The levels   the southern foyer at the doors' level, the podium's deck (RL 14.70 m; the real one is lower, RL 12.80 m,
                 under the Monumental Steps); a straight flight up each side foyer to a gallery at the northern foyer's
                 level, RL 18.59 m (CMP table 5.1), a landing behind the auditorium with the bar, and the broad stair
-                down to the lower level by the glass. Walked end to end by tools/foyer_walk.js.
+                down to the lower level by the glass. From each gallery a doorway through the auditorium's side
+                wall opens on a landing, and a flight along the wall climbs to the circle's front (circle_plan).
+                Walked end to end, and up to the circle, by tools/foyer_walk.js.
   The house    stalls on a rake, a circle over their back and boxes in tiers along the side walls (the theatre has 865,
-                466 and 158: technical specification, 2024). Fitted under the shells as built here, the theatre seats
-                693, 260 and 112, the Concert Hall 1,320, 423 and 112. The seats are a moulded birch shell with wool on
+                466 and 158: technical specification, 2024). Fitted under the shells as built here, with a side aisle up
+                each side of the circle and its stairs where the last box would hang, the theatre seats 693, 240 and
+                98, the Concert Hall 1,320, 387 and 84. The seats are a moulded birch shell with wool on
                 the seat and the back and a shared armrest (seat_model); the rows stop a walker (oh_seat_hit); round
                 the seats kept for you the audience are seated Rocketbox people (web/game/show.js audience), the
-                boxes beyond them. No stair reaches the circle or the boxes.
+                boxes beyond them. The circle is walked, and has a seat kept for you; no stair reaches the boxes.
 """
 import math
 import os
@@ -98,10 +101,12 @@ MATERIALS = {
     "oh_skin": {"color": "#b58a6c", "roughness": 0.8, "metalness": 0.0},
     "oh_hair": {"color": "#2a211c", "roughness": 0.9, "metalness": 0.0},
 }
-# the circle and the boxes, which no one walks up to (no stair reaches them here): drawn, not solid. Up there, over
-# the floor beneath, they would stand in the collision world's 2 m cells (web/game/nav.js BAND), which reach out
-# through the auditorium's wall into the side foyers' galleries at a walker's head
-for _k in ("oh_brushbox", "oh_birch", "oh_black", "oh_wool_red", "oh_wool_magenta"):
+# the boxes, which no one walks up to (no stair reaches them here): drawn, not solid. Up there, over the floor
+# beneath, they would stand in the collision world's 2 m cells (web/game/nav.js BAND), which reach out through the
+# auditorium's wall into the side foyers' galleries at a walker's head. (The circle is solid: it is walked as a strip,
+# and near a strip nav.js reads what stands on it from the strip's floor, in fine cells. So is its doorway's bronze
+# here, drawn but not solid, as the fine cells would narrow the doorway by a quarter metre each side.)
+for _k in ("oh_brushbox", "oh_birch", "oh_black", "oh_wool_red", "oh_wool_magenta", "oh_bronze"):
     MATERIALS[_k + "_hung"] = {**MATERIALS[_k], "solid": False}
 FLOODLIT = {k for k, v in MATERIALS.items() if "emissive" in v}
 # who sits round you at the opera (web/game/show.js audience): Rocketbox avatars the NPCs already use, dressed for an evening out
@@ -123,6 +128,38 @@ HALLS = {
                 "ceiling": (9.0, 15.0), "bounce": "#6a4a30", "kind": "concert",
                 "circle": 9, "boxes": 1},
 }
+
+
+GALLERY_LV = 3.89   # the side foyers' galleries and the landing behind the auditorium: RL 18.59 m over the deck's 14.70
+
+
+def circle_plan(C):
+    """Where a hall's circle stands and how it is reached, in its frame. The circle's front is 3 m over the stalls'
+    floor under it; from each side foyer's gallery (GALLERY_LV) a doorway through the auditorium's side wall opens on
+    a landing, and a straight flight along the wall climbs from it to the circle's front cross aisle, on a brush box
+    base that closes the end of the stalls' side aisle (where the last box would have hung)."""
+    if not C.get("circle"):
+        return None
+    us0, up, hs = C["stage"]
+    ur, ha = C["house"]
+    row0, pitch = up + 5.4, 0.95
+    nrows = int((ur - 1.4 - row0) / pitch)
+    ru0, ru1 = row0 - 0.7, row0 + nrows * pitch
+    # (risers of 28 cm: with the collision world's 10 cm round a fine cell, a step stays under a walker's knee,
+    # web/game/nav.js KNEE, and is stepped up as a step)
+    nc, cp, crise = C["circle"], 0.95, 0.28
+    uc0 = ur - nc * cp - 0.6
+    zc = min(C["rake"], max(0.0, (uc0 - ru0) / (ru1 - ru0) * C["rake"])) + 3.0
+    n = max(1, int(round((zc - GALLERY_LV) / 0.15)))
+    run = n * 0.3
+    uf0 = uc0 - run                      # the flight's foot, at the landing's end
+    ul0 = uf0 - 2.0                      # the landing's far end
+    # (the circle's side aisles, the way up from its stairs: from the wall to the rows' outermost seats, which keep
+    # SIDE from the walls)
+    SIDE = 1.8
+    vmax = -ha + 1.1 + 0.56 * math.floor((2 * ha - 1.1 - SIDE) / 0.56)
+    return {"nc": nc, "cp": cp, "crise": crise, "uc0": uc0, "zc": zc, "n": n, "rise": (zc - GALLERY_LV) / n,
+            "uf0": uf0, "ul0": ul0, "ud0": ul0, "ud1": uf0, "sw": 1.5, "dh": 2.2, "side": SIDE, "aisle": (vmax + 0.28 + ha - 0.05) / 2}
 
 
 class Envelope:
@@ -489,9 +526,21 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     env_wall(lin, P, E, (us0, -hs), (us0, hs), 14.0)
     # the side walls, with a pair of doors each onto the cross aisle before the first row
     du, dw, dh = up + 3.4, 1.8, 2.3
+    CP = circle_plan(C)
     for sgn, side in ((-1, "west"), (1, "east")):
         v = sgn * ha
-        for (a, b) in (((up, v), (du - dw / 2, v)), ((du + dw / 2, v), (ur, v))):
+        runs = [((up, v), (du - dw / 2, v)), ((du + dw / 2, v), (ur, v))]
+        if CP:   # the circle's doorway from the gallery: the wall stops there from the gallery's floor to its head
+            runs = runs[:1] + [((du + dw / 2, v), (CP["ud0"], v)), ((CP["ud1"], v), (ur, v))]
+            for m_, vv in ((car, v + sgn * T), (lin, v)):
+                hung_wall(m_, P, E, (CP["ud0"], vv), (CP["ud1"], vv), GALLERY_LV)
+                env_wall(m_.twin, P, E, (CP["ud0"], vv), (CP["ud1"], vv), 12.0, z0=GALLERY_LV + CP["dh"])
+            # its bronze reveals and head (drawn, not solid: the stops beside the gallery bound the doorway, and the
+            # collision world's fine cells, a quarter metre wide, would narrow it by as much again each side)
+            for ua in (CP["ud0"] - 0.06, CP["ud1"]):
+                box(R.m("oh_bronze_hung", "carcass"), P, ua, ua + 0.06, v, v + sgn * T, GALLERY_LV, GALLERY_LV + CP["dh"])
+            box(R.m("oh_bronze_hung", "carcass"), P, CP["ud0"] - 0.06, CP["ud1"] + 0.06, v, v + sgn * T, GALLERY_LV + CP["dh"], GALLERY_LV + CP["dh"] + 0.06)
+        for (a, b) in runs:
             hung_wall(car, P, E, (a[0], a[1] + sgn * T), (b[0], b[1] + sgn * T), 12.0)
             hung_wall(lin, P, E, a, b, 12.0)
         for m_, vv in ((car, v + sgn * T), (lin, v)):
@@ -592,31 +641,81 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     # ---- the circle: over the back of the stalls, its rows climbing to the rear wall, a birch parapet along its front
     stall_z = lambda u: min(C["rake"], max(0.0, (u - rake_u0) / (rake_u1 - rake_u0) * C["rake"]))   # the stalls' floor under u
     uc0 = ur
-    if C.get("circle"):
-        nc, cp, crise = C["circle"], 0.95, 0.3
-        uc0 = ur - nc * cp - 0.6
-        zc = stall_z(uc0) + 3.0                  # its front stands 3 m over the stalls' floor under it
-        cf, cs_, cpar = A.m("oh_brushbox_hung", "circle"), A.m(C["lining"] + "_hung", "circle"), A.m("oh_birch_hung", "circle")
+    if CP:
+        nc, cp, crise = CP["nc"], CP["cp"], CP["crise"]
+        uc0, zc = CP["uc0"], CP["zc"]            # its front stands 3 m over the stalls' floor under it
+        # (solid, and walked as a strip: near it web/game/nav.js lays its steps, parapet and rows into fine cells)
+        cf, cs_, cpar = A.m("oh_brushbox", "circle"), A.m(C["lining"] + "_hung", "circle"), A.m("oh_birch", "circle")
         hc = ha - 0.05
+        pv = ha - CP["sw"]                       # the parapet stops where the stairs come up beside it
         for k in range(nc + 1):                  # the steps (the front one a landing behind the parapet)
             ua, ub = uc0 + k * cp, min(ur, uc0 + (k + 1) * cp)
             zk = zc + k * crise
             box(cf, P, ua, ub if k < nc else ur, -hc, hc, zk - 0.3, zk)
             cs_.quad(P(ua, -hc, zk - 0.3), P(ua, hc, zk - 0.3), P(ub, hc, zk - 0.3 + crise), P(ub, -hc, zk - 0.3 + crise))   # the soffit, stepping up
-        box(cpar, P, uc0 - 0.12, uc0, -hc, hc, zc - 0.55, zc + 0.8)                 # the parapet
-        box(A.m(C["wool"] + "_hung", "circle"), P, uc0 - 0.16, uc0 + 0.04, -hc, hc, zc + 0.8, zc + 0.86)
+        box(cpar, P, uc0 - 0.12, uc0, -pv, pv, zc - 0.55, zc + 0.8)                 # the parapet
+        box(A.m(C["wool"], "circle"), P, uc0 - 0.16, uc0 + 0.04, -pv, pv, zc + 0.8, zc + 0.86)
+        kc = nc // 2                             # the row with places kept for you, by the east aisle
         for k in range(nc):
             u, z = uc0 + 0.75 + k * cp, zc + (k + 1) * crise
-            for v in np.arange(-ha + 1.1, ha - 1.09, 0.56):
-                if abs(v) < 0.6 or min(ceil_at(u, v), E(u, v) - 0.9) < z + 1.6:   # an aisle down the middle; and room over the heads
-                    continue
-                seat_at(u, v, z, heading, "circle", full=0.7)
+            vs = [v for v in np.arange(-ha + 1.1, ha - 1.09, 0.56) if 0.6 <= abs(v) <= ha - CP["side"] and min(ceil_at(u, v), E(u, v) - 0.9) >= z + 1.6]   # an aisle down the middle and one up each side; and room over the heads
+            east = sorted(v for v in vs if v > 0)
+            for v in vs:
+                keep_free = k == kc and v in east[-2:]
+                seat_at(u, v, z, heading, "circle", full=0.7, kept=keep_free)
+                if keep_free and v == east[-1]:
+                    x, y, _ = P(u, v, 0)
+                    out["seats"].append({"id": f"{hid}-circle-1", "name": f"{C['name']}, the circle", "verb": "Take your seat",
+                                         "at": [round(x, 2), round(y, 2), round(z0 + z, 2)], "face": [round(float(-ax[0]), 4), round(float(-ax[1]), 4)],
+                                         "eye": 1.14, "pitch": -0.12, **({"show": f"{hid}-show"} if C["kind"] == "theatre" else {})})
+            for side in (-1, 1):   # what stops a walker at the row's seats, as in the stalls
+                vi = [v for v in vs if v * side > 0]
+                if vi:
+                    box(hit, P, u - (0.25 if k == 0 else cp - 0.42), u + 0.42, min(vi) - 0.28, max(vi) + 0.28, z, z + 0.85)
+        # what stops a walker in the circle at its side and rear walls (drawn but not solid above Z, hung_wall; the
+        # galleries' own stop outside is lower than the circle's upper rows)
+        ztop = zc + nc * crise
+        for sgn in (-1, 1):
+            box(hit, P, uc0 + cp, ur, sgn * (ha - 0.05), sgn * ha, zc, ztop + 2.4)   # (behind the cross aisle, where the stairs come up)
+        box(hit, P, ur - 0.05, ur, -ha, ha, zc, ztop + 2.4)
+        # the circle walked: its front cross aisle, then its steps
+        # (from in front of the parapet, and the stairs' strips over their rails: what stands at a strip's edge is read
+        # against that strip's floor, not the stalls' under it, so it is laid into fine cells and not 2 m ones, which
+        # would stand in the stairs' doorway at a walker's head)
+        prof = [(uc0 - 0.25, zc)] + [q for k in range(1, nc + 1) for q in ((uc0 + k * cp - 0.02, zc + (k - 1) * crise), (uc0 + k * cp, zc + k * crise))] + [(ur - 0.05, zc + nc * crise)]
+        out["surfaces"].append(strip(f"oh_{hid}_circle_oh_brushbox", P, uc0 - 0.25, ur - 0.05, -hc, hc, prof, f"{C['name']}, the circle"))
+        # ---- the circle's stairs: in from the gallery's doorway onto a landing, up a flight along the wall to the
+        # cross aisle, carpeted treads with brush box risers on a brush box base, a bronze rail on the stalls' side
+        RS, sw = CP["rise"], CP["sw"]
+        base, tread = A.m("oh_brushbox", "circle_stair"), A.m(C["carpet"], "circle_stair")
+        rail = A.m("oh_bronze", "circle_stair")
+        for sgn in (-1, 1):
+            vw, vi_ = sgn * ha, sgn * (ha - sw)
+            steps = [(CP["ul0"], CP["uf0"], GALLERY_LV)] + [(CP["uf0"] + i * 0.3, CP["uf0"] + (i + 1) * 0.3, GALLERY_LV + (i + 1) * RS) for i in range(CP["n"] - 1)]
+            steps[-1] = (steps[-1][0], uc0, steps[-1][2]) if CP["n"] > 1 else steps[-1]
+            for ua, ub, h in steps:
+                box(base, P, ua, ub, vw, vi_, 0.0, h - 0.03)
+                box(tread, P, ua, ub, vw, vi_, h - 0.03, h)
+            top = [(CP["ul0"] + 0.05, GALLERY_LV + 0.95), (CP["uf0"], GALLERY_LV + 0.95), (uc0 - 0.15, zc - RS + 0.95), (uc0 - 0.02, zc + 0.86)]
+            rv = sgn * (ha - sw + 0.05)
+            rail.tube([P(u, rv, h) for u, h in top], 0.03, sides=6)
+            for u, h in top[:3]:
+                rail.tube([P(u, rv, h - 0.95), P(u, rv, h)], 0.018, sides=4)
+            box(rail, P, CP["ul0"], CP["ul0"] + 0.02, vw, vi_, GALLERY_LV, GALLERY_LV + 0.95)   # the landing's end
+            # what stops a walker going over the rail: along the flight's open side, and at the landing's end
+            for ua, ub, h in steps:
+                box(hit, P, ua, ub, vi_, vi_ - sgn * 0.05, h, h + 1.0)
+            box(hit, P, CP["ul0"] - 0.05, CP["ul0"], vw, vi_, GALLERY_LV, GALLERY_LV + 1.0)
+            out["surfaces"].append(strip(f"oh_{hid}_circle_stair_{'we'[sgn > 0]}", P, CP["ul0"] - 0.05, uc0 + 0.05, vw, vi_ - sgn * 0.15,
+                                         [(CP["ul0"] - 0.05, GALLERY_LV), (CP["uf0"], GALLERY_LV), (uc0, zc), (uc0 + 0.05, zc)], f"{C['name']}, the stair to the circle"))
+            out["surfaces"].append(strip(f"oh_{hid}_circle_door_{'we'[sgn > 0]}", P, CP["ud0"], CP["ud1"], vw - sgn * 0.1, vw + sgn * (T + 0.1),
+                                         [(CP["ud0"], GALLERY_LV), (CP["ud1"], GALLERY_LV)], f"{C['name']}, the doorway to the circle"))
 
     # ---- the boxes: along each side wall between the stalls' doors and the circle, in tiers, six or seven seats in
     # each on two steps behind a parapet, turned to the stage
     if C.get("boxes"):
         bw, bd = 2.5, 1.75
-        ub0, ub1 = du + dw / 2 + 0.6, uc0 - 0.4
+        ub0, ub1 = du + dw / 2 + 0.6, (CP["ul0"] - 0.3) if CP else uc0 - 0.4
         nb = int((ub1 - ub0) / bw)
         aim = np.array([up, 0.0])
         bf, bpar, bwall = A.m("oh_brushbox_hung", "boxes"), A.m("oh_birch_hung", "boxes"), A.m(C["lining"] + "_hung", "boxes")
@@ -776,7 +875,7 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     # than the deck, at RL 12.80 m, under the Monumental Steps; here the doors open onto it at the deck's level.)
     # The game walks each level as a strip (game.json surfaces) on the podium's roof: near one, web/game/nav.js reads
     # the walls, the doors and the furniture finely, from the deck up, not as 2 m cells from the ground under it.
-    LV, RISE, TREAD, G = 3.89, 0.15, 0.3, 1.6
+    LV, RISE, TREAD, G = GALLERY_LV, 0.15, 0.3, 1.6
     NR = int(round(LV / RISE))
     RUN = NR * TREAD
     us1 = du + dw / 2 + 2.0                 # the side flights' foot, past the stalls' doors
@@ -818,7 +917,8 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         out["surfaces"].append(strip(f"oh_{hid}_gallery_{sd}", P, us1 - 0.05, ur_ + 0.05, va, vb, [(us1 - 0.05, 0.0), (us2, LV), (ur_ + 0.05, LV)], f"{lab}, the side foyer's stair"))
         # the auditorium's wall beside the gallery, solid at a walker's height there (the wall itself is solid only
         # to Z, hung_wall)
-        box(hit, P, us2 - 1.0, ur_, sgn * (gin - 0.05), sgn * gin, LV, LV + 2.4)
+        for a_, b_ in (((us2 - 1.0, CP["ud0"]), (CP["ud1"], ur_)) if CP else ((us2 - 1.0, ur_),)):
+            box(hit, P, a_, b_, sgn * (gin - 0.05), sgn * gin, LV, LV + 2.4)
     box(hit, P, ur_ - 0.05, ur_, -gin, gin, LV, LV + 2.4)   # and behind the landing
     # the landing and the broad stair down, each step as wide as the carpet and the shells over it let it be
     land = band(ur_, un1, -W, W).intersection(carpet)
@@ -846,9 +946,21 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     bar_half = min(ha - 1.5, 7.0 if C["kind"] == "concert" else 5.0)
     gv = gin + 0.75   # (the gallery's middle: clear of the lamps' poles by the carcass and the rail)
     route = [(us0 - 3.0, 4.0, 0.0), (us0 - 3.0, gv, 0.0), (us1 - 1.5, gv, 0.0), (us2 + 0.5, gv, LV), (ur_ - 0.5, gv, LV), (ur_ + 1.2, gv, LV), (ur_ + 1.2, bar_half + 1.4, LV), (ur_ + 4.7, bar_half + 1.4, LV), (ur_ + 4.7, 0.0, LV), (un2 + 0.6, 0.0, 0.0)]
+    routes = [route]
+    if CP:   # and up to the circle: along the east gallery, in at its doorway, up the flight and the circle's east aisle
+        # (the game's walk-to stops 0.7 m short of where it is sent: each point is set that far past where the walker
+        # should stand, along the way it comes, so that it turns square through the doorway and onto the landing)
+        # (one line from the landing to the circle's last row, 0.75 m from the wall: clear of the rail's stop, the
+        # parapet's end and the rows' seats, each of which the collision world lays a fine cell, a quarter metre, wide;
+        # in through the doorway it stops 0.3 m short of that line, as it swings onto it turning up the landing)
+        um, va, AH = (CP["ud0"] + CP["ud1"]) / 2, ha - 0.75, 0.7
+        ka = CP["nc"] - 2
+        routes.append([(us2 + 0.5, gv, LV), (um + AH, gv, LV), (um, va - AH + 0.3, LV), (CP["uf0"] - 0.3 + AH, va, LV),
+                       (CP["uc0"] + 0.45, va, CP["zc"]), (CP["uc0"] + (ka + 0.5) * CP["cp"], va, CP["zc"] + ka * CP["crise"])])
     for r_ in out["rooms"]:
         if r_["id"] == f"{hid}-foyers":
             r_["route"] = [[round(c, 2) for c in P(u, v, h)] for u, v, h in route]
+            r_["routes"] = [[[round(c, 2) for c in P(u, v, h)] for u, v, h in rt] for rt in routes]
 
     # ---- the southern foyer: an information desk, benches under the glass
     box(R.f("oh_brushbox"), P, us0 - 4.6, us0 - 4.0, -2.2, 2.2, 0.0, 1.05)
@@ -862,6 +974,8 @@ def hall_inside(key, shells, exterior, z0, deck=None):
     # ---- the side foyers: the pedestals' fans, lamps along the carcass, a bronze rail
     for sgn in (-1, 1):
         for u in np.arange(us0 + 2, ur, 6.0):
+            if CP and CP["ud0"] - 0.6 < u < CP["ud1"] + 0.6:   # (none over the circle's doorway)
+                continue
             w = ha + T if u > up else hs + T
             lv = side_h(u) if u > up else 0.0   # (on the gallery, once the flight has climbed)
             if E(u, sgn * (w + 0.3)) > lv + 3.2:
