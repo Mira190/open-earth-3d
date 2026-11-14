@@ -335,22 +335,23 @@ window.OEBuildings = (function () {
     }
 
     // ------------------------------------------------------------ the aerial photo for flat roofs
-    if (photoOK) loadPhoto(scene, renderer, pictures, tex => {
+    // (letGo: on a phone the canvas the photo is put together on goes once the last tile is on it and the GPU has it)
+    const photo = photoOK ? loadPhoto(scene, renderer, pictures, tex => {
       U.uPhoto.value = tex;
       U.uPhotoOn.value = 1;
-    });
+    }, !!cells) : Promise.resolve();
 
     // for tools and tests (tools/city_shot.js prints it)
     window.__buildings = { vertices: stream ? stream.vertices : geometry.attributes.position.count, triangles: stream ? stream.triangles : geometry.index.count / 3, props: PR.length,
       roofs: (B.r || []).length, build_ms: Math.round(performance.now() - t0), stream };
     for (const o of props.children.slice()) cellInstances(o);
-    return { mesh, geometry, material, props, styles: STYLES, stream };
+    return { mesh, geometry, material, props, styles: STYLES, stream, photo };
   }
 
   // the ground tiles drawn into one canvas (at most 4096 px a side) for flat roofs: from world.js's ground
   // pictures (pics: the overview first, then the tiles near the start, then the rest once they come, issue 335),
   // sent to the GPU when each of those three is in rather than at every tile; or, without them, every tile
-  function loadPhoto(scene, renderer, pics, show) {
+  function loadPhoto(scene, renderer, pics, show, letGo = false) {
     const fr = scene.frame, w = fr.x[1] - fr.x[0], h = fr.y[1] - fr.y[0];
     const max = Math.min(4096, renderer.capabilities.maxTextureSize || 4096);
     const k = Math.min(1, max / Math.max(w, h));
@@ -378,10 +379,11 @@ window.OEBuildings = (function () {
     const draws = scene.ground.map((t, i) => lo.then(() => tiles[i]).then(im => draw(t, im))); // (each tile over the overview)
     const part = which => Promise.all(draws.filter((d, i) => which(i))).then(ok => ok.some(Boolean));
     const first = pics ? i => pics.first[i] : () => true;
-    Promise.all([lo, part(first)]).then(([low, any]) => {
+    // resolves when every tile that came is on the photo
+    return Promise.all([lo, part(first)]).then(([low, any]) => {
       if (any || low) sent(); // (the overview, at least, if it came)
-      if (pics && pics.first.some(f => !f)) part(i => !first(i)).then(more => { if (more) sent(); });
-    });
+      return pics && pics.first.some(f => !f) ? part(i => !first(i)).then(more => { if (more) sent(); }) : null;
+    }).then(() => { if (letGo && tex) tex.onUpdate = () => { tex.onUpdate = null; cv.width = cv.height = 0; }; }).catch(() => {});
   }
 
   // ------------------------------------------------------------ the facade and roof shader
