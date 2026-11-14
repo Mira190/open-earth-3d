@@ -37,11 +37,9 @@ rendering and the tiers.
 
 While you are away, Mugi, a small plush cat, keeps travelling and sends postcards: a
 photograph from a real spot in a live city, in the light the real sun gave it at
-the minute it is dated, with a line of its diary. They wait in a small pile on
-the menu, and **Go there** on one starts the game on that spot.
+the minute it is dated, with a line of its diary. They are in each map's passport
+(the home page shows none), and a link to one starts the game on that spot.
 [docs/POSTCARDS.md](docs/POSTCARDS.md) covers the idea, the journey and the stills.
-
-![A postcard on the title screen](docs/images/title/postcard.jpg)
 
 | Sydney in the browser | Height sources | Testing a tower against the planning rule |
 |---|---|---|

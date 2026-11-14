@@ -2983,7 +2983,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         + `<span><b>Trig stations</b><span class="note">${n ? VP.filter(v => trigDone()[v.id]).map(v => v.name).join(', ') : 'Survey the view from each one'}</span></span></li>`; })() : '');
     $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id) || spotStamps().some(sp => s.id === `spot:${sp.id}`)).length}/${Q.length + spotStamps().length}`;
     if (life && life.passport) life.passport($('#g-pass .g-panel')); // the skills, under the stamps (jobs.js)
-    // the postcards that have come from this map (the title screen's pile, postcards.js), newest first
+    // the postcards that have come from this map (postcards.js), newest first
     if (window.OEPostcards) OEPostcards.album(CITY.id, window.OE_CITIES || []).then(cards => {
       const box = $('#gp-post');
       if (!box) return;
@@ -4957,7 +4957,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   spawn();
   // a link to a district of the map ("#play-shibuya@t-sancha", from the subway map or shared): the title
   // screen is set there, over that place and under its name, and the game starts there, not at the map's start
-  // or where a postcard was taken ("#play-kyoto@pc-gate.dusk", from the title screen's postcards: postcards.js):
+  // or where a postcard was taken ("#play-kyoto@pc-gate.dusk": postcards.js):
   // the game starts on the photographer's spot, looking the way the photograph does, in its light
   const DISTRICT = window.OE_ARRIVE && ((G.travel || []).find(t => t.id === window.OE_ARRIVE)
     || (/^pc-/.test(window.OE_ARRIVE) && window.OEPostcards ? OEPostcards.arrival(await OEPostcards.load(), CITY.id, window.OE_ARRIVE) : null));
