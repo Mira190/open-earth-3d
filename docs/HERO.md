@@ -730,8 +730,12 @@ Where it still falls short of the bar, as the stills show: the facade's ornament
 photographs, not the Shinkenchiku 2012/11 drawings; the dome interiors are not built; the
 ventilation towers in the transport plazas are still the city's plain solids; bus and taxi
 stands have no signs, rails or road paint; the towers round the plaza are the city's generic
-glass; from the air the streets outside the forecourt show the aerial photograph; trees are the
-shared models, not zelkova.
+glass; trees are the shared models, not zelkova.
+
+- **The streets round it** (`station.streets`): the forecourt's first version stopped at the plaza's
+  edge, and from the air the streets beyond showed the aerial photograph (cars, shadows, a green
+  cast). Within 60 m of the forecourt the mapped carriageways are one asphalt surface (a lane
+  3.2 m), with lane dashes and the mapped zebras, and pavers to the buildings' feet.
 
 #### Checked
 
@@ -740,3 +744,66 @@ shared models, not zelkova.
 - The game still starts south of the plaza at (553, 1195), now facing the south dome. The plaza
   start waits on the traffic knot at junction 1465 (issue 412).
 - Not checked: a real GPU, WebGPU, Safari and iOS.
+
+### Tokyo Tower's foot (`cities/tokyo/city.py` `tower`, `cities/tokyo/tower_foot.py`)
+
+The tower was 2,400 triangles: four legs each one beam four metres thick, an X a face. At its foot
+that is all a player sees. It is now the lattice as built, 17,000 triangles:
+
+- **Below the main deck**: four legs, each a truss of four chords laced on its four faces, tied leg
+  to leg by a girder a panel with crossed bracing, and the great arch between each pair of feet
+  with its spandrel posts; concrete feet; the lift shaft up the middle.
+- **Above it**: one tapering shaft; seven bands of international orange and white over the 333 m.
+- **By distance**: chords, rings, girders and arches are always drawn, because they make the
+  silhouette from across the map; the lacing and second diagonals (`tower_fine_*`, 9,000
+  triangles, under a pixel from 1.2 km) are drawn within 1.2 km and never unpacked on the low tier.
+- **Foot Town** on its mapped outline (the city's solid there had no height): dark panels over a
+  glazed, lit street floor, a line at the fourth floor, a rail round the roof terrace at 19 m, and
+  TOKYO TOWER in white letters on each long face (Bebas Neue, SIL OFL).
+- **The ground within 150 m**, on OpenStreetMap's outlines (`tower_osm.json`, ODbL), with the
+  station's street painter: asphalt carriageways with dashes and zebras, the rest paved, Shiba
+  Park's wooded slopes plain green under the map's trees. No aerial photograph shows there.
+
+Dimensions: 333 m, decks at 150 m and 250 m, 80 m between the feet (Tokyo Tower's published
+figures, as before). Read off photographs, not drawings: the panel heights, the legs' own width
+(11 m at the foot), the arch's crown at 22.5 m, Foot Town's height and cladding.
+
+Photograph looked at (Wikimedia Commons; not reproduced): BaseofTokyoTower.JPG, WhisperToMe, public
+domain (the legs' trusses, the arch, Foot Town's panels and lettering).
+
+Short of the bar: members are square beams without gusset plates or rivets; the main deck is
+still a plain box; Foot Town has no entrance canopy, shop fronts or signs; the hill's lots are
+plain paving, with no car park lines, walls or railings; stills: `tools/views/tokyo-tower.json`.
+
+## Why the Tokyo level is not at the bar yet, and what closes the gap
+
+The owner asked, after the second pass: is this the photoreal tiny level that was asked for? It is
+not. The stills read as a clean, correct model, not as a photograph. What makes a current game's
+street read as real, from the sources below, and where this level stands on each:
+
+| What carries the look | In a current game | Here now |
+|---|---|---|
+| Indirect light and occlusion | baked or traced: every recess, eave and foot of a wall is darker, light bounces warm off brick | none on the station: it is landmark meshes, which carry no baked light; one flat ambient |
+| Edges | no razor edge: a bevel or a chamfer in the normal catches a highlight along every arris | every block is a box with hard 90 degree edges |
+| Texel density | about 1024 px a metre near a third-person camera, 512 further off | the brick is 1024 px over 1.4 m; stone, slate edges and paving are flat colour |
+| Material response | roughness and normal vary with the material, so light moves across it as the camera does | one roughness a material, no micro-relief on stone, copper or slate |
+| Tone and exposure | scene-referred light, a filmic curve, bloom before it | the shared grade; pale surfaces took a green cast until tinted warm |
+| Scale and life | props at real sizes, signs, rails, wear where hands and feet go | bare: no stands' signs, rails, bins, bicycles |
+
+Order of work that follows from it (first what changes most pixels in the first frame):
+
+1. Move the spawn's hundred metres onto the hero kit (`hero.js`), which already bakes occlusion and
+   night light into the vertices, takes 1K PBR sets and a fine model, and is freed past 520 m: the
+   south pavilion's front, its doors and canopies, the ground in front of it.
+2. Bevel what the eye rests on: window frames, cornices, pilasters, turret rings, kerbs.
+3. Give stone, slate and copper their own PBR sets at the kit's density; brick with real joints.
+4. Dress the transport plaza at real sizes: stand signs, rails, bollards, a taxi rank's paint.
+
+Sources: bevels and why a hard edge reads as cheap ([Radiator](https://www.blog.radiator.debacle.us/2017/07/bevels-in-video-games.html));
+texel density per camera ([Frozenbyte's asset workflow](https://wiki.frozenbyte.com/index.php/3D_Asset_Workflow:_General_Tips));
+trim sheets and their limits ([Chris Radsby](https://chrisradsby.notion.site/Let-s-talk-about-Trim-Sheets-Techniques-16ea5b47012c802eba09d28ec5ce9189));
+baked indirect light as the highest quality for a static scene in a browser, and the post order AO, bloom, tone curve
+([three.js forum](https://discourse.threejs.org/t/achieving-realistic-ambience-in-architectural-three-js-scenes/89753),
+[lighting and PBR on the web](https://slicker.me/three_js/lighting_pbr.htm)); Ghostwire: Tokyo built by hand from
+photographs of walked streets, not from city data ([Automaton](https://automaton-media.com/en/news/20230823-20986/),
+[Unreal Engine](https://www.unrealengine.com/en-US/developer-interviews/ghostwire-taps-into-the-charm-of-tokyo-to-deliver-a-compelling-experience)).
