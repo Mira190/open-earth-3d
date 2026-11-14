@@ -174,12 +174,12 @@ The Kabuki-za's roof garden, with the white PLATEAU block hidden:
 
 ![Kabuki-za's roof garden](../images/tokyo/kabukiza-roof-garden.jpg)
 
-### The JR viaduct, Yurakucho Station and Shimbashi Station
+### The JR viaduct, Tokyo, Yurakucho and Shimbashi stations
 
 The railway from Tokyo Station to Shimbashi was a strip of track in the aerial photograph, flat on
 the ground, with the old station's rooms standing on it as grey boxes. `cities/tokyo/rail.py` builds
-it: 1.9 km of viaduct for eight tracks, Yurakucho and Shimbashi stations on it, and the courses of the
-trains.
+it: 2.4 km of viaduct for eight tracks, Tokyo Station's platforms 3 to 10, Yurakucho and Shimbashi
+stations on it, and the courses of the trains.
 
 - **Laid out on the map's own tracks.** `pipeline/rail_osm.py` reads OpenStreetMap's running lines
   above ground (the Yamanote, Keihin-Tohoku, Tokaido Main and Tokaido Shinkansen lines), the platform
@@ -210,9 +210,27 @@ trains.
   moving strip (`moving_ms`), so standing on it carries you up.
 - **The overhead line**: portal gantries every 48 m, and a contact wire under its messenger over each
   track, 5.0 m over the rail.
+- **Tokyo Station's platforms 3 to 10** (issue 490), so that the line can be ridden to and from Tokyo:
+  - OpenStreetMap maps each of them as a multipolygon of its two edges and its ends, which
+    `pipeline/rail_osm.py` now joins into an outline. The outlines are drawn a metre or two off the
+    rails either way, so each face is set 1.52 m from the middle of the track beside it and the
+    outline keeps only the platform's ends.
+  - 3 and 4 (Keihin-Tohoku and Yamanote towards Ueno) and 5 and 6 (towards Shinagawa) have platform
+    doors; 7 and 8 (the Ueno-Tokyo Line) and 9 and 10 (the Tokaido Line) have none. The Tokaido
+    Line's trains run on from tracks 7 and 10 as the Ueno-Tokyo Line, on the two tracks OpenStreetMap
+    names the Tohoku Main Line. Tracks 8 and 9 are service tracks in the map (`"sidings": true`):
+    laid, wired and numbered, with no train of this timetable on them.
+  - The Keihin-Tohoku Line's rapid trains (10:30 to 15:30) stop at Tokyo and run through Yurakucho
+    and Shimbashi (a service's `rapid_at`, `web/game/trains.js`).
+  - The passages OpenStreetMap maps under the tracks (north, central, south) are the openings in the
+    viaduct, with two flights and an escalator up to each platform from the central one.
+  - The fare: 155 yen by IC card from Tokyo to Yurakucho or Shimbashi (`cities/tokyo/life.json`).
+  - Not built here: the Chuo Line's platforms 1 and 2 on their higher viaduct and the Shinkansen's
+    platforms, which stay the city model's solids, and the gates and crowds (issue 480).
 - **Each end** is a train shed's mouth, a roof over the tracks with a dark wall behind it, where the
-  trains come from and go to: north, short of Tokyo Station, whose platforms are solids of the city
-  model; south, past Shimbashi's platforms.
+  trains come from and go to: north of Tokyo Station's platforms, and south, past Shimbashi's. The
+  Tokaido Shinkansen has its own at the south end of its platforms at Tokyo, which stand east of
+  this stretch.
 - The low solids under the platforms and Shimbashi's shed come down (`landmarks.json` "demolished").
 
 ![Yurakucho's platforms by day: the stairs down to the concourse, a Yamanote train at track 2 and a Shinkansen passing](../images/tokyo/yurakucho-platform-day.jpg)

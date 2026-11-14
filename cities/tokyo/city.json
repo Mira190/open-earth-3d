@@ -523,8 +523,9 @@
   ],
   "rail_osm": {
     "bbox": [139.752, 35.6475, 139.772, 35.685],
-    "lines": ["山手線", "京浜東北線", "東海道本線", "東海道新幹線"],
-    "note": "The JR lines from Tokyo Station to Hamamatsucho, track by track, with their platforms (pipeline/rail_osm.py -> cities/tokyo/rail_osm.json; cities/tokyo/rail.py builds the viaduct, Yurakucho Station and the trains' courses from it)."
+    "lines": ["山手線", "京浜東北線", "東海道本線", "東北本線", "東海道新幹線"],
+    "sidings": true,
+    "note": "The JR lines from Tokyo Station to Hamamatsucho, track by track, with their platforms (pipeline/rail_osm.py -> cities/tokyo/rail_osm.json; cities/tokyo/rail.py builds the viaduct, Tokyo, Yurakucho and Shimbashi stations and the trains' courses from it). The Tohoku Main Line's two tracks are the Tokaido Line's on from Tokyo's tracks 7 and 10 (the Ueno-Tokyo Line); the service tracks are Tokyo Station's tracks 8 and 9."
   },
   "sources": {
     "landmarks": "Tokyo Tower: parametric from published dimensions (333 m; decks at 150 m and 250 m; 80 m base), anchored at its published coordinates"

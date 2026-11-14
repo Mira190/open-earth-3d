@@ -39,9 +39,12 @@ module.exports = async function trainsStep(p, part = 'all') {
       const rapid = T.services.filter(s => s.rapid_h);
       if (rapid.length) {
         g.setClock(g.clock.y, g.clock.m, g.clock.d, 12 * 60);
-        const day = rapid.every(s => !T.stopsNow(s));
+        // (through every station but those its "rapid_at" names: the Keihin-Tohoku Line's rapid trains stop at Tokyo)
+        const at = s => (s.rapid_at || []).slice().sort().join('+'), noon = s => T.plan(s, true).legs.map(l => l.h.station).sort().join('+');
+        const day = rapid.every(s => (at(s) ? T.stopsNow(s) && noon(s) === at(s) : !T.stopsNow(s)));
+        const kept = [...new Set(rapid.map(at).filter(Boolean))].join(', ');
         g.setClock(g.clock.y, g.clock.m, g.clock.d, 18 * 60);
-        checks.push([day && rapid.every(s => T.stopsNow(s)), `the rapid trains run through at noon and stop at six in the evening (${rapid.map(s => s.track).join(', ')})`]);
+        checks.push([day && rapid.every(s => T.stopsNow(s) && T.plan(s, true).legs.length === s.halts.length), `the rapid trains run through at noon${kept ? ` but for ${kept}` : ''} and stop at six in the evening (${rapid.map(s => s.track).join(', ')})`]);
       }
       // no column of a deck over the line (an expressway on the station's roof) stands in a train's way
       { const q = {}; let worst = Infinity, n = 0;
@@ -218,7 +221,13 @@ module.exports = async function trainsStep(p, part = 'all') {
         checks.push([veiled && !T.veiled && pl.mode === 'foot' && Math.abs(offZ) < 1.5 && offD < 15 && !!offF, `rides through the tunnel (veiled: ${veiled}) and comes up at ${to.name}'s entrance (${offD.toFixed(1)} m from it, ${offZ.toFixed(2)} m off its level; the veil ${T.veiled ? 'still up' : 'lifted'})`]);
         const f = g.life && g.life.data.fares;
         if (f && f.rides.rail) checks.push([money1 - g.life.money > 0, `the ride is charged by ${f.card.name} (${g.life.fmt(money1 - g.life.money)})`]);
-      } else checks.push([pl.mode === 'foot' && Math.abs(offZ) < 0.5 && offD < (to.r || 150) && !!offF, `gets off onto ${to.name}'s platform (${offZ.toFixed(2)} m off its level, ${offD.toFixed(0)} m from its middle)`]);
+      } else {
+        checks.push([pl.mode === 'foot' && Math.abs(offZ) < 0.5 && offD < (to.r || 150) && !!offF, `gets off onto ${to.name}'s platform (${offZ.toFixed(2)} m off its level, ${offD.toFixed(0)} m from its middle)`]);
+        // and the ride is paid for: the operator's fare for that pair of stations, to the yen
+        const f = g.life && g.life.data.fares, P = f && f.rides.rail && f.rides.rail.pairs;
+        if (P) { const due = P[`${from.id}>${to.id}`] != null ? P[`${from.id}>${to.id}`] : P[`${to.id}>${from.id}`], paid = Math.round((money1 - g.life.money) * 100) / 100;
+          checks.push([due != null && paid === due, `the ride from ${from.name} to ${to.name} is charged by ${f.card.name}: ${g.life.fmt(paid)}${due == null ? ' (no fare for that pair)' : paid === due ? '' : `, not its fare of ${g.life.fmt(due)}`}`]); }
+      }
       if (g.life) g.life.store.wallets[g.life.code] = money0;
       Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h, mode: 'foot', vehicle: null }); pl.rig.root.visible = true; g.cam.yaw = keep.yaw;
       T.t = keep.t; g.setClock(g.clock.y, g.clock.m, g.clock.d, keep.min);
