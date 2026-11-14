@@ -501,6 +501,16 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-gait kbd { font-size: 9px; padding: 1px 4px; }
 .g-gait[data-g="sprint"] b { color: var(--accent); }
 .g-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+/* the HUD keeps what is read at a glance: of its buttons the map and the menu, with the rest (passport, diary, photo,
+   phone, districts) folded behind "more" until it is pressed; their keys work either way (game.js moreTray) */
+.g-btns > .chip-btn { order: 0; }
+.g-btns > .chip-btn.keep { order: 1; }
+.g-btns:not(.open) > .chip-btn:not(.keep) { display: none; }
+.g-more { position: relative; padding-left: 11px; padding-right: 11px; }
+.g-more i { display: block; width: 3px; height: 3px; border-radius: 50%; margin: 3px 6px; background: currentColor; box-shadow: -6px 0 0 currentColor, 6px 0 0 currentColor; }
+.g-more[aria-expanded="true"] { color: var(--accent); border-color: rgba(255, 176, 102, 0.55); }
+.g-btns:not(.open):has(.lf-badge) .g-more::after { content: ""; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.g-gait { transition: opacity 0.6s ease; } .g-gait.rest { opacity: 0; }
 .g-toasts { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(460px, calc(100% - 520px)); min-width: 260px; }
 .g-toast { background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r);
   padding: 10px 16px; font-size: 13px; line-height: 1.45; text-align: center; color: var(--ink); transition: opacity .5s, transform .5s; }
@@ -792,6 +802,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   <section class="ts-stage" id="globe-stage" aria-label="Open Earth 3D: the Earth now, and the cities rebuilt in 3D">
     <canvas id="globe-gl" aria-hidden="true"></canvas>
     <div class="ts-poster" aria-hidden="true"></div>
+    <div class="ts-plate" id="ts-plate" aria-hidden="true"><i></i><i></i></div>
     <div class="ts-shade" aria-hidden="true"></div>
     <div class="ts-marks" id="ts-marks"></div>
     <div class="ts-bars" aria-hidden="true"></div>
@@ -815,10 +826,10 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <button class="ts-tool" id="ts-about-btn">About</button>
     </header>
     <nav class="ts-menu" aria-label="Destinations">
+      <p class="ts-eyebrow">Destinations</p>
       <div class="ts-hero" id="ts-hero" hidden></div>
-      <p class="ts-eyebrow">Destinations · Japan first, then as the sun reaches them</p>
       <ol class="ts-list" id="ts-list"></ol>
-      <p class="ts-hint"><span class="ts-kb"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>↵</kbd> explore · <kbd>P</kbd> play · <kbd>F</kbd> film · drag to turn the Earth</span><span class="ts-tp">Tap a place to choose it · drag to turn the Earth</span></p>
+      <p class="ts-hint"><span class="ts-kb"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>↵</kbd> explore · <kbd>P</kbd> play · <kbd>F</kbd> film</span><span class="ts-tp">Tap a place to choose it · drag to turn the Earth</span></p>
     </nav>
     <section class="ts-card" id="ts-card" aria-live="polite"></section>
     <footer class="ts-foot"><span class="next" id="ts-next"></span><button class="ts-tool" id="ts-replay">Replay the opening</button><a class="ts-ver" id="ts-ver" target="_blank" rel="noopener" hidden></a></footer>
@@ -1056,7 +1067,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
       <div class="g-hud g-sun" id="g-sun" data-s="sun" title="Ray-cast from where you stand"><i></i><span>In sun</span></div>
       <div class="g-hud g-gait" id="g-gait" data-g="run" hidden></div>
-      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-phone-btn" title="Order a ride, bring your car">Phone <kbd>N</kbd></button><button class="chip-btn" id="g-metro-btn" hidden title="The subway map: go on to another district">Districts <kbd>B</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
+      <div class="g-btns" id="g-btns"><button class="chip-btn keep" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-phone-btn" title="Order a ride, bring your car">Phone <kbd>N</kbd></button><button class="chip-btn" id="g-metro-btn" hidden title="The subway map: go on to another district">Districts <kbd>B</kbd></button><button class="chip-btn keep" id="g-menu-btn">Menu <kbd>Esc</kbd></button><button class="chip-btn keep g-more" id="g-more-btn" aria-expanded="false" aria-controls="g-btns" aria-label="More: passport, photo, phone" title="More"><i aria-hidden="true"></i></button></div>
     </div>
     <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
     <div class="g-prompt" id="g-prompt" hidden><span id="gp-main"><kbd id="gp-key">E</kbd><span id="gp-text"></span></span><button id="gp-alt" hidden><kbd>Y</kbd><span>Hail a taxi</span></button></div>
@@ -1101,7 +1112,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <div class="field"><label for="gm-clock"><span>Any time</span><output class="num" id="gm-clock-v"></output></label><input type="range" id="gm-clock" min="0" max="1439" step="1" aria-label="Time of day, local clock time"></div>
           <div class="field"><label for="gm-date"><span>Date</span></label><input type="date" id="gm-date" aria-label="Date"></div>
           <div class="field"><span class="note">Weather</span><div class="seg wrap" id="gm-weather"><button data-w="live" aria-pressed="true">As the season brings it</button><button data-w="now" title="Asks Open-Meteo for this city's weather now. Only the city's coordinates are sent.">Live</button><button data-w="clear">Clear</button><button data-w="overcast">Overcast</button><button data-w="fog">Fog</button><button data-w="drizzle">Drizzle</button><button data-w="rain">Rain</button><button data-w="storm">Thunderstorm</button><button data-w="snow">Snow</button><button data-w="off" title="No weather at all: the lightest on a slow device">Off</button></div></div>
-          <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
+          <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1" aria-pressed="true">Real time</button><button data-s="30">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
           <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
           <div class="field"><span class="note">Frame rate</span><div class="seg" id="gm-fps"><button data-f="30">30</button><button data-f="60" aria-pressed="true">60</button><button data-f="0">Display</button></div></div>

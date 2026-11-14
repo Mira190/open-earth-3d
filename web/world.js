@@ -36,7 +36,7 @@ window.OEWorld = (function () {
     const want = (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
     // a district that shares a bigger map (index.html route: Sangenjaya, on Shibuya's): the loader says both
     // (after this map's page died on this device, quality.js died: a lighter set, and the loader says so)
-    const lighter = window.OEQuality && OEQuality.city().lighter ? ' (a lighter set: the last visit ran out of memory here)' : '';
+    const QL = window.OEQuality ? OEQuality.city() : null, lighter = QL && QL.lean && QL.deaths ? ' (a lighter set: the last visit ran out of memory here)' : '';
     const D = game && window.OE_DISTRICT, what = (D ? `${D.name}, on the ${entry.name} map` : entry.name || 'the city') + lighter;
     let got = 0, shown = 0;
     const report = () => {
@@ -83,6 +83,13 @@ window.OEWorld = (function () {
       }
       return getJSON(name + '.json');
     };
+    // Straight after this map's page was killed here (Safari loads the tab again at once), the dead page's memory
+    // is still being taken back, the GPU's with it: a load that starts at once competes with it, and the second
+    // death is the one that ends in "A problem repeatedly occurred". A few seconds' wait, said on the loader.
+    if (QL && QL.lean && window.OEQuality.sinceDeath && OEQuality.sinceDeath(cityId) < 20000) {
+      onMsg(`Making room: ${what}`, 0.01, 'Making room');
+      await new Promise(r => setTimeout(r, 3500));
+    }
     onMsg(want ? `Downloading ${what}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02, 'Downloading');
     // the terrain grid: int16 heights, as bytes from its pack or as base64 text from its JSON
     const grid = t => { const u = typeof t.data === 'string' ? Uint8Array.from(atob(t.data), c => c.charCodeAt(0)) : t.data;
@@ -793,6 +800,16 @@ vec3 steepRock(vec3 c, float k) {
     leanShadowMap(renderer, sunLight.shadow, SHADOW);
     const shadowStill = new URLSearchParams(location.search).get('shadowcache') === 'off' ? null : shadowCache(renderer, sunLight);
     const still = o => { if (shadowStill && o) shadowStill.mark(o); return o; };
+    // The shadow map is sampled by every lit material whether or not the sun is up, through a sampler2DShadow. The
+    // map made here ahead of three.js (leanShadowMap) has no texture on the GPU until the shadow pass has drawn into
+    // it once, and after dark that pass is left out (setSun): a page opened at night bound an ordinary empty texture
+    // to that sampler, WebGL refused every such draw ("Mismatch between texture format and sampler type"), and the
+    // ground and the walls were not drawn at all, the sky showing where they stand. So while the map has no texture
+    // of its own, one pass is asked for, whatever the hour.
+    const shadowDrawnOnce = () => {
+      const m = sunLight.shadow.map, d = m && m.depthTexture;
+      if (d && !renderer.properties.get(d).__webglTexture) sunLight.shadow.needsUpdate = true;
+    };
     // what the camera cannot see is hidden from the view (visibility.js), but the sun's shadow needs every
     // caster: they are shown again round the shadow pass (outside the cache, which reads what is shown)
     if (window.OEVis && !renderer.shadowMap.__vis) {
@@ -1264,9 +1281,20 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     }
     // a ground tile's mesh, with the bottom under its quays (tileGeometry)
     const quayBed = new THREE.MeshStandardMaterial({ color: lin(((scene.water || {}).seawall || {}).bed || '#3a3b33'), roughness: 1, metalness: 0 });
+    // On a phone's game (quality.js lean) a geometry's arrays go once the GPU has them, its bounds taken first: the
+    // ground's tiles held 30 MB of the page for nothing in Shibuya (the game reads heights from the terrain grid, and
+    // only the model viewer casts a ray at the ground). A lost context there reloads the page (see lean).
+    const shed = g => {
+      if (!(LEAN && game) || !g || !g.attributes.position || !g.attributes.position.count) return g;
+      g.computeBoundingSphere(); g.computeBoundingBox();
+      const go = function () { this.array = null; };
+      for (const a of Object.values(g.attributes)) a.onUpload(go);
+      if (g.index) g.index.onUpload(go);
+      return g;
+    };
     function groundMesh(g, material) {
-      const m = new THREE.Mesh(g, material);
-      if (g.userData.underlay) m.add(new THREE.Mesh(g.userData.underlay, quayBed));
+      const m = new THREE.Mesh(shed(g), material);
+      if (g.userData.underlay) m.add(new THREE.Mesh(shed(g.userData.underlay), quayBed));
       return m;
     }
     const photoTex = img => {
@@ -1946,7 +1974,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // are drawn at most LEAN_CAP on a side (Shibuya's screens.webp is 2048, 21 MB; here 1024, 5), which the ground
     // aerial and the mask textures (shore, woods) keep clear of, since they are data read by the pixel. The picture
     // is drawn once at its own size then let go. A text sign stays legible: these are seen across a street, not read.
-    const LEAN_CAP = 1024 >> (QW && QW.lighter ? 1 : 0); // (half after the map's page died here, quality.js died; at a quarter the signs across a street no longer read)
+    const LEAN_CAP = 1024 >> (QW && QW.lighter >= 3 ? 1 : 0); // (half on the lightest set, quality.js level: at 512 a shop's name across the Scramble no longer reads, so a phone's first set keeps 1024; at a quarter no sign does)
     const leanDown = tex => {
       if (!LEAN || !tex || !tex.image) return tex;
       const im = tex.image, side = Math.max(im.width || 0, im.height || 0);
@@ -2346,6 +2374,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         // but it stays a light: hiding it took a light out of every lit material's shader, so sunset, sunrise
         // and a jump in the clock across either recompiled the whole city
         sunLight.shadow.autoUpdate = sp.altitude > -0.5;
+        shadowDrawnOnce();
         sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 7, sp.altitude); // full a little sooner: a low sun still rakes the city with gold
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
         // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
@@ -2441,6 +2470,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
         if (shadowStill && shadowStill.resize) shadowStill.resize(n);
         shR = -1; // (the box is placed again on its new texel grid)
         renderer.shadowMap.needsUpdate = true;
+        sunLight.shadow.needsUpdate = true; // (after dark too, when the pass is otherwise left out: setSun)
         return n;
       },
       fitShadow(target, half) {
@@ -3008,7 +3038,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     SM.render = function (lights, scene, camera) {
       if (!on || lights.length !== 1 || lights[0] !== light || this.type !== THREE.PCFShadowMap ||
           !(this.autoUpdate || this.needsUpdate) || !(shadow.autoUpdate || shadow.needsUpdate)) return orig.call(this, lights, scene, camera);
-      const asked = this.needsUpdate || shadow.needsUpdate;
+      const asked = this.needsUpdate || shadow.needsUpdate, askedOfLight = shadow.needsUpdate;
       try {
         if (frame++ % 30 === 0) collect(scene);
         light.updateMatrixWorld(); light.target.updateMatrixWorld();
@@ -3021,7 +3051,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
           const real = shadow.map, need = this.needsUpdate;
           shadow.map = still;
           try { orig.call(this, lights, scene, camera); } finally { shadow.map = real; for (const o of moving) o.castShadow = true; }
-          this.needsUpdate = need; shadow.needsUpdate = need || shadow.needsUpdate;
+          // (three.js clears the light's own request after a pass: it is put back for the pass into the map itself,
+          // or a map asked for after dark, when nothing else draws it, held only the cache's half)
+          this.needsUpdate = need; shadow.needsUpdate = need || askedOfLight || shadow.needsUpdate;
           built = true; api.refreshes++;
         }
         // every frame: the still casters' depth, and the moving ones drawn over it

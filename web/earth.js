@@ -123,7 +123,7 @@ window.OEEarth = (function () {
       vec3 lights = mix(vec3(1.0, 0.44, 0.13), vec3(1.0, 0.7, 0.4), smoothstep(0.35, 0.95, L)) * pow(L, uLightsGamma) * 1.35;
       vec3 lit = lights * uLights;
       col += lit / (1.0 + 0.6 * lit) * night * (1.0 - 0.75 * cl); // soft-clipped, so a city glows rather than blows out
-      col += day * 0.0012 * night; // earthshine and the moon
+      col += day * vec3(0.0026, 0.003, 0.0036) * night; // the moon and the stars on the night side: the land and the sea just told apart
       // a survey reticle round the chosen city: rings at 100, 250 and 500 km
       if (uFocusAmt > 0.001) {
         float a = acos(clamp(dot(N0, uFocus), -1.0, 1.0)) * 6371.0;
@@ -150,7 +150,7 @@ window.OEEarth = (function () {
       a = min(1.0, a * (1.0 + 0.6 * pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0))); // thicker seen edge-on
       float mu = dot(N, uSun);
       float lit = smoothstep(-0.08, 0.12, mu) * (0.45 + 0.55 * max(mu, 0.0));
-      vec3 col = vec3(0.96, 0.98, 1.0) * sunlight(mu + 0.015) * lit * uSunE * 0.86 + vec3(0.0008, 0.001, 0.0016);
+      vec3 col = vec3(0.96, 0.98, 1.0) * sunlight(mu + 0.015) * lit * uSunE * 0.86 + vec3(0.002, 0.0024, 0.0034); // (and the night's clouds, by the moon)
       a *= uReady;
       gl_FragColor = vec4(col * a, a);
     }`;
@@ -246,6 +246,13 @@ window.OEEarth = (function () {
         col += vec3(1.0, 0.96, 0.9) * (disc + glow) * uSunDisc * (tr - vec3(dot(tr, vec3(0.3333))));
       }
       col = mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, 0.82); // the limb's colours, a little less printed
+      // the night's airglow: the thin green line of atomic oxygen (557.7 nm) near 95 km that the station's
+      // photographs show over the dark limb. An emitting shell 20 km deep: the ray's path inside it, a long
+      // chord at the limb and almost nothing straight down, where the air it crosses is in the Earth's shadow
+      vec2 g1 = hitSphere(uCam, rd, RP + 0.0165), g0 = hitSphere(uCam, rd, RP + 0.0135);
+      float chord = max(0.0, min(g1.y, t1) - max(g1.x, 0.0)) - max(0.0, min(g0.y, t1) - max(g0.x, 0.0));
+      vec3 near = uCam + rd * clamp(-dot(uCam, rd), t0, t1);
+      col += vec3(0.3, 1.0, 0.4) * max(chord, 0.0) * 0.11 * (1.0 - smoothstep(-0.3, -0.02, dot(normalize(near), uSun)));
       gl_FragColor = vec4(col, 1.0 - dot(tr, vec3(0.3333)));
     }`;
 

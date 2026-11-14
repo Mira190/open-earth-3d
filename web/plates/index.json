@@ -1,0 +1,5 @@
+{
+ "shibuya": {"view": "mid", "times": ["day", "dusk", "night"], "focus": "58% 50%"},
+ "tokyo": {"view": "spawn", "times": ["day", "dusk", "night"], "focus": "55% 45%"},
+ "sydney": {"view": "lawn", "times": ["day", "dusk", "night"], "focus": "40% 50%"}
+}
