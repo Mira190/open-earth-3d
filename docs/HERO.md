@@ -259,7 +259,7 @@ place first (the photographs are listed below) and rebuilt what the guesses had 
 | The banners | white flagpoles 10 m tall between the lights, each flying a tall banner across the promenade | photographs 1, 7; the banners' art is this project's |
 | The museum's front | each bay a recess running up through the storeys between flat piers, paired steel windows and a stone spandrel to a storey; pavilions of five storeys and 21.4 m, wings of six and 27.4 m with a row of small windows under a deep attic; the rain's dark runs under every coping; the tower's stepped great piers; the entrance a portal of polished brown granite with bronze doors; the cafe's flat white canopies along the wings' feet | photographs 2, 3, 8, 9 |
 | The Mordant Wing | on OpenStreetMap's outline: a frameless glazed entrance two storeys high under stacked white boxes with a ribbon of glass between, the dark box with the museum's name over the way through to George Street, the black box with its glazed corner on top; the white precast wall north of it with the name at eye level and Brook Andrew's arrow on its concrete foot | photographs 4, 5 |
-| The lawn | a pale concrete seat wall along the promenade | photographs 6, 9 |
+| The lawn | a pale concrete seat wall along the promenade, and the cabbage-tree palms along it, slender, where OpenStreetMap maps each | photographs 2, 6, 9 |
 
 What is measured, and from where:
 
@@ -303,9 +303,12 @@ setting: no memory).
 four mapped parts only; the pavilions and the Mordant Wing were the level's shells over nothing. They are in
 the city's data now (the outline's remainder, cut as the level stacks it, each face 0.3 to 0.6 m behind the
 level's), so they stop a walker, throw the city's shadow and stand in the visibility raster whether the level
-is loaded or not. The entrance hall is a solid that is not drawn (`scene.json` `hidden_solids`): the level
-draws the hall as a room behind glass, and the solid is what stops a walker at the glass. `game.hero[].solid`
-and `.open` name points that must be solid and must stay walkable; `tools/game_check.js` checks both.
+is loaded or not. The entrance hall is left open under them, since the level draws it as a room behind glass;
+what stops a walker at the glass is a wall that is not drawn, among the city's landmark meshes (`city.py`
+`museum_hall`: a material of no opacity that is never a floor, as the Opera House's seat rows have; a solid
+in `hidden_solids` would not do, the walking model leaves those out). `game.hero[].solid` and `.open` name
+points that must be solid and must stay walkable; `tools/game_check.js` checks both, and found the first
+attempt at the hall wanting.
 
 The map's own quay wall has a sandstone-coloured coping 0.1 m over the ground along the shore raster's
 stepped line; the level's pavers rise to the kerb over it in their last metre (`Level.lift`), so it does not
@@ -315,20 +318,25 @@ After dark: the ball lights, the cafe canopies' and the portal's downlights, the
 museum's foot, the hall's ceiling and the steel ovoid's holes are the bake's lights; a fifth of the windows
 are lit.
 
-Level: 61,000 triangles and 4.2 MB; fine model (the rail's crosses and rings, glazing bars, ladders, joints)
+Level: 71,000 triangles and 4.5 MB; fine model (the rail's crosses and rings, glazing bars, ladders, joints)
 18,000 triangles and 0.5 MB, drawn within 75 m and never on the low tier.
 
-Where it still falls short of the bar, as the stills show: the palms are the map's shared palm scaled to the
-surveyed heights, so their trunks are a metre thick where the lawn's cabbage-tree palms are slender (the
-shared tree model's to fix, or a way for a level to stand its own trees in place of the map's: issue filed);
-the glazed entrance does not mirror the quay as the photograph shows; the cafe under the canopies has no
-tables; the balustrade, the benches and the lamp posts do not stop a walker; and none of it has been seen on
-a real GPU or a real phone, only on a software renderer.
+**Its own palms.** The lawn's cabbage-tree palms were the map's shared palm, a date palm scaled to each tree's
+surveyed height: a trunk a metre thick at 14 m. The level stands its own where OpenStreetMap maps each tree
+(`Level.palm`: a slender ringed trunk, thirty fan leaves from upright to hanging, the oldest brown; about 600
+triangles a palm, plain materials, no texture), and the map plants none there (`city.py` `landmark_treeless`).
+They do not move in the wind as the map's trees do.
+
+Where it still falls short of the bar, as the stills show: the glazed entrance does not mirror the quay as
+the photograph shows; the cafe under the canopies has no tables; the palms stand still in the wind; the
+balustrade, the benches and the lamp posts do not stop a walker (the map's own quay edge does, a hand's
+breadth from the rail); the trees beyond the lawn, the water and the far shore are the map's, at the map's
+detail; and none of it has been seen on a real GPU or a real phone, only on a software renderer.
 
 What could not be checked: the paver's exact size and colours, the kerb's width, the balustrade's exact
 casting (read from two distant photographs), the lamp posts' height, the Mordant Wing's storey heights and
 setbacks (stacked after photographs 4 and 5 on the measured plan), the ovoid's dimensions, and the palms'
-species (the shared palm is a date palm; the real ones are cabbage-tree palms).
+heights (11 to 15.5 m by a seeded draw).
 ## Only what the first frame sees (issue 358)
 
 The levels by a map's spawn (Kamakura's first) apply issue 358's rule to detail: memory and shading go to

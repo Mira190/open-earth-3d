@@ -16,12 +16,13 @@ front's own frame (u along the harbour face from its south corner, o out towards
   * the Mordant Wing as the hero level builds it: the link to the old building, the block behind the entrance
     hall, the storeys over the hall (from 7.4 m up), the white wall's block north of it and the dark storeys
     set back on that; the way through under the dark box stays open;
-  * the entrance hall itself as a solid that is not drawn (scene.json hidden_solids): the level draws the
-    hall as a room behind glass, and the solid is what stops a walker at the glass;
+  * the entrance hall itself is left open under them: the level draws it as a room behind glass. What stops a
+    walker at the glass is a wall that is not drawn, among the city's landmark meshes (hall_walls, which
+    city.py's landmark_meshes lays: a material of no opacity that is never a floor);
   * the George Street range, five storeys by estimate (not seen from the quay).
 
 Every face the level draws again stands 0.3 m behind the level's, so the two never share a plane. Writes
-web/data/sydney/buildings.json and scene.json in place; run again, it changes nothing. build_scene.py reaches
+web/data/sydney/buildings.json in place; run again, it changes nothing. build_scene.py reaches
 the same volumes through city.py's adjust_building (museum_parts), so a rebuilt scene keeps them.
 """
 import json
@@ -70,10 +71,16 @@ def volumes():
     out.append(("Mordant Wing, over the hall", frame(84.8, 94.7, 9.3, 19.0), HALL_TOP, 19.6, True))
     out.append(("Mordant Wing, north", big(north.intersection(frame(95.0, 112.7 - IN, -60.0, 14.9 - IN))), 0.0, 16.8, True))
     out.append(("Mordant Wing, north, upper", big(north.intersection(frame(96.5 + IN, 112.7 - IN, -60.0, 12.9 - IN))), 16.8, 22.4, True))
-    out.append(("Mordant Wing, the entrance hall", frame(81.6, 95.0, 9.3, 17.4), 0.0, HALL_TOP, False))
     west = big(rest.intersection(frame(-10.0, 76.2, -60.0, -5.0)))
     out.append(("George Street range", west, 0.0, 16.5, True))
     return [(n, orient(p.simplify(0.15), 1.0), a, b, d) for n, p, a, b, d in out]
+
+
+def hall_walls():
+    """[(a, b, thickness, height)]: the entrance hall's glass and its south side, as walls a walker stops at
+    (local metres, from FLOOR - 1): hero.py's glass line at 17.4 m out, its head at 7.2 m."""
+    P = lambda u, o: tuple(np.asarray(A0) + _t * u + _n * o)
+    return [(P(81.6, 17.3), P(95.0, 17.3), 0.24, 8.2), (P(81.7, 9.3), P(81.7, 17.3), 0.24, 8.2)]
 
 
 def museum_parts(ground):

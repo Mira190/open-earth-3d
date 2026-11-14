@@ -49,6 +49,7 @@ STOREY = 4.3                      # its storey (six in the wings, five in the pa
 WING_TOP, PAV_TOP = ZF + 27.4, ZF + 21.4      # over the floor, as the photographs' proportions give them against the tower's 35 m
 A0, B0 = (-225.79, 173.13), (-219.54, 248.95)   # the wings' harbour face, south to north (OSM's building parts)
 WALL = ((-185.16, 172.86), (-178.71, 246.85))   # the lawn's retaining wall (OSM barrier=retaining_wall)
+PALM_RING = [(-192.2, 172.0), (-181.2, 172.0), (-174.6, 248.0), (-185.6, 248.0)]     # where the lawn's palms stand (city.py PALM_RING: the map plants none there)
 RAIL_IN = 0.3                     # the balustrade's line, in from the quay's face
 KERB, KUP = 1.0, 0.16            # the quay's kerb stone, which the balustrade stands on: its width and upstand
 # the Mordant Wing in the front's frame (u along from the old building's south corner, out towards the water), from
@@ -102,6 +103,9 @@ def materials(K):
         "glow_ember": {"map": "atlas", "rough": 0.1, "metal": 1.0, "emissive": True, "glow": 0.55},
         "glow_lamp": {"color": (1.0, 0.95, 0.85), "emissive": (1.0, 0.86, 0.66), "glow": 6.0},
         "glow_up": {"color": (1.0, 0.9, 0.7), "emissive": (1.0, 0.8, 0.55), "glow": 4.0},
+        "bark_palm": {"color": (0.13, 0.115, 0.095), "rough": 0.9},
+        "leaf_palm": {"color": (0.05, 0.105, 0.03), "rough": 0.55},
+        "leaf_palm_dry": {"color": (0.2, 0.17, 0.07), "rough": 0.7},
         "lamp_globe": {"color": (0.8, 0.8, 0.78), "rough": 0.35, "emissive": (1.0, 0.9, 0.74), "glow": 5.0},
     }
 
@@ -965,7 +969,56 @@ class Level:
                 d = T3 * -math.sin(th) + np.array([0, 0, math.cos(th)])
                 geo.fine.tube("paint_white", [q - d * 0.05, q + d * 0.05], 0.058, segs=6)
 
-    # -- the lawn's seat wall
+    def palm(self, x, y, z, h, rng):
+        """A cabbage-tree palm (Livistona australis), as the lawn's are: a slender grey trunk, ringed, a round head
+        of fan leaves, the oldest hanging brown against the trunk. Built here because the map's shared palm is a
+        date palm scaled to the tree's height, a metre thick at 14 m (city.py clears the map's from this ground)."""
+        geo = self.geo
+        lean = np.array([rng.normal(0, 0.012), rng.normal(0, 0.012), 0.0])
+        n = 9
+        pts = [np.array([x, y, z]) + lean * (h * t) ** 1.5 + [0, 0, h * t] for t in np.linspace(0, 1, n)]
+        r0 = 0.15 + 0.02 * rng.random()
+        g = geo.part("bark_palm")
+        base, segs = len(g["p"]), 7
+        for i, p in enumerate(pts):
+            t = i / (n - 1)
+            r = r0 * (1.5 - 0.5 * min(1.0, t * 6)) * (1 - 0.22 * t) * (1.0 + 0.05 * (i % 2))       # flared at the foot, ringed
+            for k in range(segs + 1):
+                th = 2 * math.pi * k / segs
+                d = np.array([math.cos(th), math.sin(th), 0.0])
+                g["p"].append(p + d * r); g["n"].append(d); g["uv"].append((k / segs, h * t)); g["ao"].append(0.75 + 0.25 * min(1.0, t * 5))
+        for i in range(n - 1):
+            for k in range(segs):
+                a0, a1, b0, b1 = base + i * (segs + 1) + k, base + i * (segs + 1) + k + 1, base + (i + 1) * (segs + 1) + k, base + (i + 1) * (segs + 1) + k + 1
+                g["tri"] += [(a0, a1, b1), (a0, b1, b0)]
+        top = pts[-1]
+        up = np.array([0, 0, 1.0])
+        nf = 30
+        for f in range(nf):
+            az = f * 2.39996 + rng.random() * 0.4
+            el = math.radians(78 - 128 * (f / (nf - 1)) ** 0.85)          # the young leaves upright, the old ones hanging
+            d = np.array([math.cos(az) * math.cos(el), math.sin(az) * math.cos(el), math.sin(el)])
+            sd = hp.unit(np.cross(d, up))
+            nn = np.cross(sd, d)
+            mat = "leaf_palm_dry" if f >= nf - 5 else "leaf_palm"
+            Lp, R = 1.45 + 0.35 * rng.random(), 1.3 + 0.3 * rng.random()
+            E = top + d * Lp - up * 0.12 * Lp * math.cos(el)
+            geo.quad("leaf_palm_dry" if f >= nf - 5 else "bark_palm", top - sd * 0.025, top + sd * 0.025, E + sd * 0.02, E - sd * 0.02, n=nn)
+            nb, spread = 9, math.radians(78)
+            edges = []
+            for j in range(nb + 1):
+                ph = -spread + 2 * spread * j / nb
+                b = d * math.cos(ph) + sd * math.sin(ph)
+                edges.append(E + b * R * 0.62 + nn * (0.05 if j % 2 else -0.05))
+            for j in range(nb):
+                ph = -spread + 2 * spread * (j + 0.5) / nb
+                b = d * math.cos(ph) + sd * math.sin(ph)
+                T = E + b * R * (1.0 - 0.18 * abs(ph) / spread) - up * R * 0.42        # the segments' tips droop
+                P = [E, edges[j], edges[j + 1], T]
+                N = [hp.unit(nn + b * 0.3)] * 3 + [hp.unit(nn * 0.5 + b)]
+                geo.mesh(mat, P, [(0, 1, 2), (1, 3, 2)], n=N, uv=[(0, 0), (0, 1), (1, 1), (1, 0)], ao=[0.6, 0.9, 0.9, 1.0])
+
+    # -- the lawn's seat wall, and the palms along it
     def planting(self):
         geo, G, rng = self.geo, self.G, self.rng
         rc = self.rep["syd_concrete"]
@@ -978,6 +1031,13 @@ class Level:
             zt = max(G.z(*W.P(u, -0.3, 0)[:2]) for u in (u0, u1)) + 0.45
             hp.fbox(geo, "conc_seat", W, u0 + 0.006, u1 - 0.006, -0.3, 0.3, za, zt, rc, faces=("front", "back", "left", "right", "top"))
         self.geo.walls.append(((xa, ya), (xb, yb), G.z(xa, ya), G.z(xa, ya) + 0.5))
+        from shapely.geometry import Point, Polygon
+        ring = Polygon(PALM_RING)
+        prng = np.random.default_rng(77)
+        for nd in sorted(self.nodes(natural="tree"), key=lambda q: q["xy"][1]):
+            x, y = nd["xy"]
+            if ring.contains(Point(x, y)):
+                self.palm(x, y, G.z(x, y) - 0.05, 11.0 + 4.5 * prng.random(), prng)
 
     # -- what stands on the promenade
     def globe(self, x, y, z):
