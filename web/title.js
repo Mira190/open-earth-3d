@@ -819,15 +819,21 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   $('ts-subsolar').textContent = `Sun overhead ${fmtLat(sun.lat)} ${fmtLon(sun.lon)}`;
 
   const _v = new V3(), _n = new V3();
+  const menuEl = stage.querySelector('.ts-menu'), topEl = stage.querySelector('.ts-top');
   function placeMarks() {
     const w = stage.clientWidth, h = stage.clientHeight;
     // project every label, read their widths in one go, then write: one layout a frame, not one a label
     const all = [...dests.map(d => [d.mark, d.dir, true]), ...plannedMarks.map(m => [m.el, m.p, false])];
+    // on a narrow screen the menu lies over the foot of the Earth and the header over its top: a place under
+    // either has no label (half of one showed above the Play button, cut by it)
+    const slim = narrow(), sr = slim ? stage.getBoundingClientRect() : null;
+    const floor = slim ? menuEl.getBoundingClientRect().top - sr.top - 16 : Infinity, roof = slim ? topEl.getBoundingClientRect().bottom - sr.top + 10 : -Infinity;
     const at = all.map(([el, p]) => {
       _n.copy(p).normalize();
       const facing = _n.dot(_v.copy(cam.position).sub(p).normalize());
       _v.copy(p).project(cam);
-      return { facing, x: (_v.x * 0.5 + 0.5) * w, y: (-_v.y * 0.5 + 0.5) * h, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 };
+      const y = (-_v.y * 0.5 + 0.5) * h;
+      return { facing, x: (_v.x * 0.5 + 0.5) * w, y, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && y > roof && y < floor };
     });
     const widths = all.map(([el], i) => (at[i].vis ? el.offsetWidth : 0));
     all.forEach(([el, , always], i) => {
