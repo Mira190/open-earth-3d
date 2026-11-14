@@ -2968,7 +2968,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     busy: kind => (kind === 'pass' ? player.mode !== 'foot' && !(player.mode === 'car' && myCar.D.st.speed < 1) : cine.active || (overture && overture.active) || OEOnboard.active() || dlg.open || uiOpen() || photo.on || !!closeup || !!arriving) }) : null;
   if (life) {
     if (window.OEDay) OEDay.create(life);
-    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEPhone', 'OEFx']) if (window[k]) window[k].create(life);
+    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEPhone', 'OEFares', 'OEFx']) if (window[k]) window[k].create(life);
     fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
   function renderPassport() {
@@ -3537,13 +3537,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function board(v, w) {
     player.mode = 'ferry'; player.vehicle = v; v.rider = true; lastBoard = w.id;
     qs.visited[w.id] = true;
+    if (life) life.emit('board', { kind: 'ferry', from: w.id, name: w.name, route: v.route }); // (the tap on: fares.js)
     for (const [l, s] of rideSteps()) if (s.from === w.id) ls(l).rideFrom = w.id;
     cam.yaw = v.h + 0.9; cam.dist = 42; cam.pitch = 0.32;
     H.toast(`Aboard ${v.name}, ${v.route}. Next stop: ${wharfById(fer.nextStop(v)).name}. <kbd>F</kbd> to skip ahead, <kbd>H</kbd> to take the helm.`);
     A.engine(0.5);
   }
   function boardRail(car, st) {
-    player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id; waitRail = null;
+    player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id; car.fromAt = [st.x, st.y]; waitRail = null;
+    if (life) life.emit('board', { kind: 'rail', from: st.id, name: st.name, route: car.line || railRide().name || '' });
     cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
     if (car.mainline) player.rig.root.visible = false; // (in the car, seen only through its windows)
     if (car.train) { const nx = rail.nextStop(car); H.toast(`Aboard the ${car.line || railRide().name || 'train'} for ${rail.towards(car)}${nx ? `. Next stop: ${nx.name}` : ''}.${rail.train && rail.train.modelled ? ' <kbd>V</kbd> for the window seat and the cab,' : ''} <kbd>F</kbd> to skip ahead.`); return; }
@@ -3559,7 +3561,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.rig.root.visible = true;
     player.mode = 'foot'; player.vehicle = null;
     [player.x, player.y, player.z] = p;
-    if (life && car.moved) life.emit('ride', { kind: 'rail', from: car.from, to: here.id, name: here.name });
+    if (life && car.moved) life.emit('ride', { kind: 'rail', from: car.from, to: here.id, name: here.name, route: car.line || railRide().name || '', m: car.fromAt ? Math.hypot(here.x - car.fromAt[0], here.y - car.fromAt[1]) : 0 });
     for (const l of [tracked(), ...openLines()].filter(Boolean)) {
       const s = stepOf(l);
       if (s && s.type === 'rail' && car.from === s.from && here.id === s.to) { completeStep(l); break; }
@@ -3585,7 +3587,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.mode = 'foot'; player.vehicle = null;
     [player.x, player.y, player.z] = p;
     qs.visited[here] = true;
-    if (life && lastBoard && lastBoard !== here) life.emit('ride', { kind: 'ferry', from: lastBoard, to: here, name: w.name });
+    if (life && lastBoard && lastBoard !== here) { const w0 = wharfById(lastBoard); life.emit('ride', { kind: 'ferry', from: lastBoard, to: here, name: w.name, route: v.route, m: w0 ? Math.hypot(w.berth[0] - w0.berth[0], w.berth[1] - w0.berth[1]) : 0 }); }
     for (const [l, s] of new Map(rideSteps())) if (ls(l).rideFrom === s.from && here === s.to) completeStep(l);
     A.engine(0);
     save();
@@ -6317,7 +6319,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
+  window.__game = { life, hero: () => hero, trips: () => junctions.trips(), pilot: () => pilot, pilotEnd: () => pilotEnd, pilotTo, pilotOff, pilotAsk, assist, assistToggle, laneHere, destinations, scenicWeights, shows, world, fishing: () => fish, fishLoad: () => (fish ? fishLoad() : Promise.resolve(null)), groundShown: () => { const g = Wd.groundPictures; if (!g || !g.shown) return null; g.release(); return g.shown(); }, // (every aerial tile in, the far ones fetched now if the loader hasn't gone yet: issue 335)
     hold: (on, zero = false) => { simHold = on !== false; if (zero) { clockT = 0; U.uTime.value = 0; titleT = 0; titleYaw = null; if (preTitle || !$('#g-title').hidden) updateCamera(0, true); } }, // (zero: the world's clock from 0, and the title's orbit from its start, for a harness that holds it from the title on: the title's frames ran both on by however long the load took, and the arrival sets out from the orbit's pose)
      held: () => simHold, turnRide: () => { if (!ride) return 'no ride'; if (ride.turn) return 'turning'; ride.turnNo = ''; turnRound(ride, 0, true); return ride.turn ? 'turning' : ride.turnNo || 'not turned'; }, governor: gov, pxScale: () => gov.scale, walkCalls, npcsReady, lateReady, late, neon, mirror, busy, cityNoise: () => CITY_NOISE, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, overture: () => overture, frame: dt => { simulate(dt); updateCamera(dt, false); }, deckPlan, roadsNow, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapChips: () => bigChips.map(c => ({ x0: c[0], y0: c[1], x1: c[2], y1: c[3], id: c[4].id })), region, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, nextView, viewBlend, COCKPIT, cockpitGlass, atmos, nightFill, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, trains, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, boardRail, alightRail, railStation, interact, enterHeli, exitHeli, heliCoach: () => coachHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, liftRide: () => liftRide, doors, room: () => room, liftCar, deckOf, deckStand, places, lookAt, framePhoto, trackNear, care, weather, crowdDraw: () => crowdDraw, life };
   return {

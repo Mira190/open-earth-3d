@@ -1,5 +1,33 @@
 {
  "note": "Shichirigahama's daily life (issue #357): the people to know, their hours, the jobs, the counters and the calendar. Built into web/data/kamakura/life.json by pipeline/life.py. Facts in 'fact' are checked against the sources in docs/cities/kamakura.md (the Enoden's history and stock from its Japanese Wikipedia articles and the railway's own pages); each event carries its own source.",
+  "fares": {
+    "note": "What a ride costs (web/game/fares.js). The Enoden's adult fares between the five stations on the map, from the fare table on its own page (read 14 November 2026): 200 yen to the nearer stations, 220 beyond; the amounts are those of its revision of 1 October 2019, and an IC card pays the same as a ticket.",
+    "operator": "Enoshima Electric Railway",
+    "as_of": "as published on 14 November 2026",
+    "source": "https://www.enoden.co.jp/train/fare/",
+    "card": {
+      "name": "PASMO",
+      "text": "Touch the reader on the platform as you board and as you leave. Suica works the same."
+    },
+    "unit": 1,
+    "rides": {
+      "rail": {
+        "name": "Enoden",
+        "pairs": {
+          "enoshima>koshigoe": 200,
+          "enoshima>kamakurakokomae": 200,
+          "enoshima>shichirigahama": 220,
+          "enoshima>inamuragasaki": 220,
+          "koshigoe>kamakurakokomae": 200,
+          "koshigoe>shichirigahama": 200,
+          "koshigoe>inamuragasaki": 220,
+          "kamakurakokomae>shichirigahama": 200,
+          "kamakurakokomae>inamuragasaki": 220,
+          "shichirigahama>inamuragasaki": 200
+        }
+      }
+    }
+  },
  "bonds": [
   {"npc": "sato", "title": "The station attendant", "where": "Kamakurakokomae's platform", "hours": {"slots": ["morning", "daytime"]},
   "places": [{"slots": ["daytime"], "at": {"station": "koshigoe", "d": [4, -6]}, "where": "Koshigoe's platform, covering the midday"}],

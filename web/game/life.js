@@ -19,7 +19,8 @@ window.OELife = (function () {
   ];
   const XP = [0, 6, 16, 32, 56]; // xp at which each level starts
   const levelOf = xp => { let l = 0; while (l < XP.length - 1 && xp >= XP[l + 1]) l++; return l + 1; };
-  const MONEY = { JPY: { symbol: '¥', start: 3000, step: 10, fare: [500, 420] }, AUD: { symbol: 'A$', start: 40, step: 1, fare: [4, 3] }, NZD: { symbol: 'NZ$', start: 40, step: 1, fare: [4, 3] }, EUR: { symbol: '€', start: 30, step: 1, fare: [3, 2] }, HKD: { symbol: 'HK$', start: 300, step: 1, fare: [29, 10] } };
+  // step: what pay and prices are rounded to; unit: the smallest coin, which a transit fare is exact to (fares.js)
+  const MONEY = { JPY: { symbol: '¥', start: 3000, step: 10, unit: 1, fare: [500, 420] }, AUD: { symbol: 'A$', start: 40, step: 1, unit: 0.01, fare: [4, 3] }, NZD: { symbol: 'NZ$', start: 40, step: 1, unit: 0.01, fare: [4, 3] }, EUR: { symbol: '€', start: 30, step: 1, unit: 0.01, fare: [3, 2] }, HKD: { symbol: 'HK$', start: 300, step: 1, unit: 0.1, fare: [29, 10] } };
   const CURRENCY = { Japan: 'JPY', Australia: 'AUD', 'New Zealand': 'NZD', France: 'EUR', Netherlands: 'EUR', 'Hong Kong': 'HKD', China: 'HKD' };
 
   function read() { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); return o && o.v === V ? o : null; } catch (e) { return null; } }
@@ -77,10 +78,18 @@ window.OELife = (function () {
       first(kind, id) { const s = city().seen, k = `${kind}:${id}`; if (s[k]) return false; s[k] = 1; dirty = true; return true; },
       // ---- the wallet, in the city's own money
       get money() { return store.wallets[code]; },
-      fmt: n => `${cur.symbol}${Math.round(n).toLocaleString('en')}`,
+      // (whole amounts as they were; an amount with cents in it to the cent)
+      fmt: n => { const v = Math.round(n / cur.unit) * cur.unit, d = Math.abs(v - Math.round(v)) < cur.unit / 2 ? 0 : cur.unit < 0.1 ? 2 : 1; return `${cur.symbol}${v.toLocaleString('en', { minimumFractionDigits: d, maximumFractionDigits: d })}`; },
       earn(n, why) { n = Math.round(n / cur.step) * cur.step; if (!(n > 0)) return 0; store.wallets[code] += n; dirty = true; if (why) ctx.H.toast(`<b>+${L.fmt(n)}</b><span>${why}</span>`); return n; },
       // paying never strands you: what you can't cover is let go, and the caller is told how much was paid
-      pay(n) { n = Math.round(n / cur.step) * cur.step; const p = Math.max(0, Math.min(n, store.wallets[code])); store.wallets[code] -= p; dirty = true; return { paid: p, short: n - p }; },
+      // (exact: to the smallest coin, as a transit fare is, not to the step prices are rounded to)
+      pay(n, exact) {
+        const u = exact ? cur.unit : cur.step, r = v => Math.round(v / cur.unit) * cur.unit;
+        n = Math.round(n / u) * u;
+        const p = r(Math.max(0, Math.min(n, store.wallets[code])));
+        store.wallets[code] = r(store.wallets[code] - p); dirty = true;
+        return { paid: p, short: r(n - p) };
+      },
       // ---- the diary's log: what you did, by the city's date
       note(text, kind = '') {
         const c = ctx.clock, log = city().log;
