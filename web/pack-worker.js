@@ -50,7 +50,7 @@ function raster(key, opt) {
   return out;
 }
 self.onmessage = async e => {
-  const { id, buf, keep, build: key, raster: rkey, opt } = e.data;
+  const { id, buf, keep, lean, build: key, raster: rkey, opt } = e.data;
   try {
     if (key || rkey) { // (in the order asked: the walls are wanted first, and build() waits on an import)
       const job = jobs.then(() => (key ? build(key, opt) : raster(rkey, opt)));
@@ -61,9 +61,11 @@ self.onmessage = async e => {
       return;
     }
     const t0 = performance.now(), obj = await self.OEPack.decode(buf), set = new Set();
-    if (keep) { kept.set(keep, obj); self.postMessage({ id, obj, ms: performance.now() - t0 }); return; }
-    buffers(obj, set);
-    self.postMessage({ id, obj, ms: performance.now() - t0 }, [...set]);
+    // (lean: the landmark meshes flagged "detail" go back empty, the low tier never drawing them; a kept copy keeps them)
+    const out = lean ? self.OEPack.dropDetail(obj) : obj;
+    if (keep) { kept.set(keep, obj); self.postMessage({ id, obj: out, ms: performance.now() - t0 }); return; }
+    buffers(out, set);
+    self.postMessage({ id, obj: out, ms: performance.now() - t0 }, [...set]);
   } catch (err) {
     self.postMessage({ id, error: String(err && err.message || err) });
   }
