@@ -2130,12 +2130,12 @@ const npcNight = require('./npc_night');
     if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
     else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most${w.deep > 0.1 && w.deepAt ? ` (${w.deepAt})` : ""}`).join('; ')})`);
     const R = rev.ride;
-    if (process.env.UNTIL === 'reverse') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=reverse: up to the cars backing out, to iterate on them)
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
       check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto}${R.heldBy ? `; held ${R.heldBy}` : ''})`);
       check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''}${R.deep > 0 && R.heldLate ? `; held half a minute at ${R.heldLate}` : ''})`);
     }
+    if (process.env.UNTIL === 'reverse') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=reverse: up to the cars and the ride backing out, to iterate on them)
   }
 
   // a railway (rail.js "train": the Enoden at Kamakura): its timetable's meets, a ride from a platform to the next
