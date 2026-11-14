@@ -36,8 +36,8 @@ sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "blender"))
 
 import adkit as ad  # noqa: E402
-import hero_parts as HP  # noqa: E402
-from hero_parts import Path, unit  # noqa: E402
+import hero_open as HP  # noqa: E402
+from hero_open import Path, unit  # noqa: E402
 
 ID = "tetsugaku"
 UP = np.array([0.0, 0.0, 1.0])
@@ -51,7 +51,7 @@ TEX = {
     "earth": ("Ground069", 2.6),        # compacted earth with grit: the path
     "moss": ("OEMoss001m", 1.8),        # moss with needles and litter (ambientCG Moss001, its gloss taken off)
     "verge": ("OEGround068m", 2.4),     # moss and red-brown litter: the verges (ambientCG Ground068, rougher)
-    "leaf": ("OELeaf001", 1.1),         # hedges and azaleas (drawn: hero_parts.leaf_texture)
+    "leaf": ("OELeaf001", 1.1),         # hedges and azaleas (drawn: hero_open.leaf_texture)
     "road": ("OEAsphalt031m", 3.0),     # the lane's asphalt
 }
 

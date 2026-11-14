@@ -40,8 +40,8 @@ sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "blender"))
 
 import adkit as ad  # noqa: E402
-import hero_parts as HP  # noqa: E402
-from hero_parts import Path, unit  # noqa: E402
+import hero_open as HP  # noqa: E402
+from hero_open import Path, unit  # noqa: E402
 
 ID = "nissaka"
 HILL, SIDE, LANE, R134, PROM = "165632713_16", "1340191882_17", "436897489_12", "379988026_18", "390566771_14"
@@ -54,8 +54,8 @@ TEX = {
     "rubble": ("Bricks089", 2.4),     # dark random rubble in mortar: the retaining wall at the crossing
     "block": ("Bricks066", 2.2),      # grey split-face blocks: the pavement's wall
     "facing": ("Tiles143", 1.8),      # tan stone facing: the garage over the rubble
-    "grass": ("OEGrass004m", 2.2),    # the banks (ambientCG Grass004, its gloss taken off: hero_parts.texture_variant)
-    "leaf": ("OELeaf001", 1.1),       # the hedges' and shrubs' faces (drawn: hero_parts.leaf_texture)
+    "grass": ("OEGrass004m", 2.2),    # the banks (ambientCG Grass004, its gloss taken off: hero_open.texture_variant)
+    "leaf": ("OELeaf001", 1.1),       # the hedges' and shrubs' faces (drawn: hero_open.leaf_texture)
     "road": ("OEAsphalt031m", 3.0),   # the road (ambientCG Asphalt031, rougher)
 }
 

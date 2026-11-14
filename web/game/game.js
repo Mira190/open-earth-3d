@@ -368,7 +368,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   D.dsm = null;
   if (Wd.farSun) Wd.farSun.init(DSM); // the sun's shadow past the shadow map, from this surface model (world.js, issue 358)
   if (D.navJob) { D.navCells = await D.navJob; D.navJob = null; } // (the landmarks on its grid, from the worker: world.js)
-  const nav = OENav.create(D, DSM);
+  const tNav = performance.now(), nav = OENav.create(D, DSM);
+  console.info(`nav: ${Math.round(performance.now() - tNav)} ms (the collision world ${nav.col.count} solids; the landmarks' fine cells sorted ${Math.round(nav.startMs)} ms)`);
   // the big screens light the street, the crowd and the buildings across from them (neon.js)
   const neon = window.OENeon ? await OENeon.create(Wd, renderer, { tier: QC.name, gain: (G.look || {}).neon ?? 1, fill: (G.look || {}).fill || [], ground: (x, y) => Math.max(0, nav.terrain(x, y)) }) : null;
   // a wet street mirrors the city (mirror.js, high tier): the ground, the paving and the road markings take it
@@ -410,7 +411,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10), cw: r.cw })));
   // (a landmark's 2 m cells stand in for its fine ones here: laying the fine cells of the whole city
   // would cost seconds at the start, nav.js; paving, padded 0.3 m in those cells, stays under 0.45)
-  const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
+  const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, i => nav.col.tagOf(i) === 1 && nav.col.zhiOf(i) <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
   deckPlan.columns = OEDecks.clearColumns(deckPlan.runs, (x, y, z, r) => roadsNow.depth(x, y, z, r), inWall);
   // a deck over a railway (the expressway on Circular Quay Station's roof): the station carries it on its own
   // columns, and none of the deck's stands within a train's width of a track
@@ -551,11 +552,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (route.js), nor through a wall
   // (against a landmark's triangles where its 2 m cells would cut the way, nav.js withoutFine: a crowd's
   // way through a gate's passage or between lanterns is kept where a walker gets through)
-  const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => cutAtWalls(G.paths.road, 0.5, true)));
+  const tRoad = performance.now(), footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => cutAtWalls(G.paths.road, 0.5, true)));
+  const roadMs = performance.now() - tRoad;
 
   loadMsg('Footways people can walk', 0.84);
   await idle();
-  const crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot, (x, y, z) => roadsNow.depth(x, y, z, 0.3) > 0))));
+  const tFoot = performance.now(), crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot, (x, y, z) => roadsNow.depth(x, y, z, 0.3) > 0))));
+  console.info(`footways: ${Math.round(performance.now() - tFoot)} ms, the roads cut at the walls ${Math.round(roadMs)} ms`);
   // benches face their footway, or the water behind it; each has two seats the crowd can use
   const benches = nav.withoutFine(() => OEActors.benches(G.props.bench || [], crowdNet, nav)), lamps = G.props.street_lamp || [];
   const benchMesh = new THREE.InstancedMesh(OEActors.boxes([ // seat, backrest and two ends; faces +z
@@ -2968,7 +2971,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     busy: kind => (kind === 'pass' ? player.mode !== 'foot' && !(player.mode === 'car' && myCar.D.st.speed < 1) : cine.active || (overture && overture.active) || OEOnboard.active() || dlg.open || uiOpen() || photo.on || !!closeup || !!arriving) }) : null;
   if (life) {
     if (window.OEDay) OEDay.create(life);
-    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEPhone', 'OEFx']) if (window[k]) window[k].create(life);
+    for (const k of ['OEStyle', 'OEBonds', 'OEJobs', 'OEKeeps', 'OEPhone', 'OEFx']) if (window[k]) window[k].create(life);
     fetch('data/life.json', { signal: ac.signal }).then(r => r.json()).then(ix => (ix.maps.includes(cityId) ? fetch(`data/${cityId}/life.json`, { signal: ac.signal }).then(r => r.json()) : null)).then(d => life.load(d)).catch(() => {});
   }
   function renderPassport() {
@@ -3725,8 +3728,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     camera.updateMatrixWorld();
     ray.setFromCamera({ x: 0, y: 0.08 }, camera);
     ray.far = 600;
-    const hit = ray.intersectObject(Wd.buildings)[0];
-    return hit ? { bi: Wd.bGeo.attributes.bid.getX(hit.face.a), distance: hit.distance } : null;
+    // (the collision world's solids, the buildings as published, which the walls are drawn from: the drawn mesh
+    // keeps no copy for picking here, world.js; local x, y, z are the scene's x, -z, y)
+    const o = ray.ray.origin, d = ray.ray.direction, F = ray.far;
+    const h = nav.col.pick(o.x, -o.z, o.y, o.x + d.x * F, -(o.z + d.z * F), o.y + d.y * F, nav.BUILDING);
+    return h ? { bi: nav.col.idOf(h.pi), distance: h.t * F } : null;
   }
   // Amsterdam: the gables a house's fronts carry (rooftop kind 5 in buildings.json), by building, and
   // when each type was built (Grachtenmuseum); a 'gable' step asks the lens to find the kinds it lists

@@ -35,8 +35,8 @@ sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "blender"))
 
 import adkit as ad  # noqa: E402
-import hero_parts as HP  # noqa: E402
-from hero_parts import unit  # noqa: E402
+import hero_open as HP  # noqa: E402
+from hero_open import unit  # noqa: E402
 
 ID = "karasuma"
 UP = np.array([0.0, 0.0, 1.0])

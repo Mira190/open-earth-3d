@@ -1,30 +1,16 @@
-"""Parts for hero levels in the open: roads on a hillside, walls, planting, poles and wires, signs
-(blender/hero_kit.py has the kit itself; cities/kamakura/hero.py was the first to use these; docs/HERO.md).
+"""Parts a hero level is put together from (docs/HERO.md), on the kit's Geo (blender/hero_kit.py): the ground
+the game walks on as a surface to pave, a wall's own frame with openings cut into it, windows set into their
+reveals, and the furniture of a street or a quay (lamp posts, benches, bollards, bins).
 
-A street between buildings (cities/shinjuku/hero.py) is fronts and a flat floor. A road on a hill, a canal
-path or a forecourt is ground that follows the terrain, with walls, banks and planting either side of it,
-so the parts here are:
-
-  * Path: a road's centre line with heights, and points a distance along it and to its right;
-  * Parts.cover: ground draped on the city's terrain every metre and cut to an outline (a road's asphalt as
-    one surface with the lanes that meet it, a bank's grass), so that the terrain never shows through it;
-  * Parts.strip, decal: markings, patches and ironwork on that ground;
-  * Parts.wall: a retaining wall along a line, battered, with a coping;
-  * Parts.hedge, bush: clipped hedges and shrubs, in a leaf texture drawn here (leaf_texture: no CC0 set
-    of a hedge's face was found on ambientCG);
-  * Parts.pole, wire: a concrete utility pole with crossarms, insulators, a transformer and a street
-    light (which the bake takes as a light), and wires that sag between two points;
-  * Parts.sign, bollard, pipe_fence.
-
-texture_variant makes a second set of a CC0 texture with its roughness remapped (ambientCG's grass is
-glossy as scanned: 0.26), kept beside the original in data/raw/hero_tex.
+Everything is in the city's local frame (x east, y north, z up, metres). Texture coordinates are in repeats of
+the material's texture (hero_kit.TEXTURES gives the metres one repeat covers), so `rep` below is that length.
+The finest pieces (glazing bars, slats' fixings, rails) go to geo.fine: a second model the page fetches only
+near the camera and never on a phone.
 """
+import json
 import math
-import os
 
 import numpy as np
-
-UP = np.array([0.0, 0.0, 1.0])
 
 
 def unit(v):
@@ -33,440 +19,302 @@ def unit(v):
     return v / n if n > 0 else v
 
 
-# ---------------------------------------------------------------- textures made here
+# ---------------------------------------------------------------- the ground the game has
 
-def _save_set(K, tid, colour, height=None, rough=0.9, normal_k=2.0, size="1K"):
-    """Write a texture set where hero_kit.fetch_texture looks for one (so it is not downloaded)."""
-    from PIL import Image
-    d = os.path.join(K.TEX_DIR, tid)
-    os.makedirs(d, exist_ok=True)
-    colour.convert("RGB").save(os.path.join(d, f"{tid}_{size}-JPG_Color.jpg"), quality=92)
-    n = colour.size[0]
-    if height is None:
-        nrm = Image.new("RGB", (n, n), (128, 128, 255))
-    else:
-        h = np.asarray(height, float)
-        gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * normal_k
-        gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * normal_k
-        v = np.dstack([-gx, gy, np.ones_like(h)])
-        v /= np.linalg.norm(v, axis=2, keepdims=True)
-        nrm = Image.fromarray(((v * 0.5 + 0.5) * 255).astype(np.uint8))
-    nrm.save(os.path.join(d, f"{tid}_{size}-JPG_NormalGL.jpg"), quality=92)
-    r = rough if not isinstance(rough, (int, float)) else Image.new("L", (n, n), int(rough * 255))
-    r.convert("L").save(os.path.join(d, f"{tid}_{size}-JPG_Roughness.jpg"), quality=92)
-    orm = os.path.join(d, f"{tid}_{size}_ORM.png")
-    if os.path.exists(orm):
-        os.remove(orm)
+class Ground:
+    """The game's own walking surface over a rectangle (tools/ground_probe.js): z(x, y) bilinear on its grid,
+    None-safe over water (the nearest land's level), and water(x, y)."""
 
+    def __init__(self, path):
+        d = json.load(open(path))
+        self.x0, self.y0, self.step, self.nx, self.ny = d["x0"], d["y0"], d["step"], d["nx"], d["ny"]
+        self.Z = np.array(d["z"], float).reshape(self.ny, self.nx)
+        self.W = np.array(list(d["water"]), int).reshape(self.ny, self.nx).astype(bool)
+        # over the water the probe reads the bed: take the nearest land's level there instead
+        Z = self.Z.copy()
+        wet = self.W | (Z < 0.3)
+        if wet.any() and (~wet).any():
+            from scipy import ndimage
+            idx = ndimage.distance_transform_edt(wet, return_distances=False, return_indices=True)
+            Z = Z[idx[0], idx[1]]
+        self.L = Z
 
-def leaf_texture(K, tid="OELeaf001", n=1024, seed=5, leaf=(26, 11), greens=((38, 70, 30), (66, 104, 44), (96, 134, 58)), count=9000):
-    """A hedge's or a shrub's face: small leaves over one another, the deep ones dark, tileable; with the
-    height that gives its normal map. Drawn, so that it is ours (CC0 with the project)."""
-    if os.path.exists(os.path.join(K.TEX_DIR, tid, f"{tid}_1K-JPG_Color.jpg")):
-        return tid
-    from PIL import Image, ImageDraw
-    rng = np.random.default_rng(seed)
-    S = 2
-    img = Image.new("RGB", (n * S, n * S), (10, 20, 9))
-    hgt = Image.new("L", (n * S, n * S), 0)
-    d, dh = ImageDraw.Draw(img), ImageDraw.Draw(hgt)
-    for i in range(count):
-        t = i / count                               # drawn back to front: later leaves are nearer and lighter
-        cx, cy = rng.random(2) * n * S
-        a = rng.random() * math.pi
-        L, W = leaf[0] * S * (0.7 + 0.6 * rng.random()) / 2, leaf[1] * S * (0.7 + 0.6 * rng.random()) / 2
-        g0, g1 = (greens[0], greens[1]) if t < 0.5 else (greens[1], greens[2])
-        k = (t * 2) % 1.0 if t < 1 else 1
-        col = tuple(int((g0[c] + (g1[c] - g0[c]) * k) * (0.82 + 0.3 * rng.random())) for c in range(3))
-        ca, sa = math.cos(a), math.sin(a)
-        pts = []
-        for th in np.linspace(0, 2 * math.pi, 12, endpoint=False):
-            x, y = L * math.cos(th) * (1 - 0.25 * abs(math.sin(th))), W * math.sin(th)
-            pts.append((x * ca - y * sa, x * sa + y * ca))
-        for ox in (-n * S, 0, n * S):               # wrapped, so that it tiles
-            for oy in (-n * S, 0, n * S):
-                if not (-L * 2 < cx + ox < n * S + L * 2 and -L * 2 < cy + oy < n * S + L * 2):
-                    continue
-                q = [(cx + ox + x, cy + oy + y) for x, y in pts]
-                d.polygon(q, fill=col)
-                dh.polygon(q, fill=int(40 + 215 * t))
-                d.line([(cx + ox - L * ca, cy + oy - L * sa), (cx + ox + L * ca, cy + oy + L * sa)], fill=tuple(int(c * 1.18) for c in col), width=S)
-    img = img.resize((n, n), Image.LANCZOS)
-    hgt = hgt.resize((n, n), Image.LANCZOS)
-    _save_set(K, tid, img, np.asarray(hgt, float) / 255.0, rough=0.86, normal_k=5.0)
-    return tid
+    def _bil(self, A, x, y):
+        fx = min(max((x - self.x0) / self.step, 0), self.nx - 1.001)
+        fy = min(max((y - self.y0) / self.step, 0), self.ny - 1.001)
+        i, j = int(fx), int(fy)
+        u, v = fx - i, fy - j
+        return (A[j, i] * (1 - u) + A[j, i + 1] * u) * (1 - v) + (A[j + 1, i] * (1 - u) + A[j + 1, i + 1] * u) * v
+
+    def z(self, x, y):
+        return float(self._bil(self.L, x, y))
+
+    def water(self, x, y):
+        i = int(round(min(max((x - self.x0) / self.step, 0), self.nx - 1)))
+        j = int(round(min(max((y - self.y0) / self.step, 0), self.ny - 1)))
+        return bool(self.W[j, i])
 
 
-def texture_variant(K, tid, base, rough=(1.0, 0.0), gain=1.0):
-    """A second set of the CC0 texture `base`: its roughness scaled and offset, its colour scaled."""
-    if os.path.exists(os.path.join(K.TEX_DIR, tid, f"{tid}_1K-JPG_Color.jpg")):
-        return tid
-    from PIL import Image
-    K.TEXTURES["_base"] = (base, 1.0)
-    T = K.fetch_texture("_base")
-    del K.TEXTURES["_base"]
-    d = os.path.join(K.TEX_DIR, tid)
-    os.makedirs(d, exist_ok=True)
-    c = np.asarray(Image.open(T["Color"]).convert("RGB"), float) * gain
-    Image.fromarray(np.clip(c, 0, 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Color.jpg"), quality=92)
-    Image.open(T["NormalGL"]).convert("RGB").save(os.path.join(d, f"{tid}_1K-JPG_NormalGL.jpg"), quality=92)
-    r = np.asarray(Image.open(T["Roughness"]).convert("L"), float) / 255.0
-    Image.fromarray((np.clip(r * rough[0] + rough[1], 0, 1) * 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Roughness.jpg"), quality=92)
-    return tid
+def pave(geo, mat, ground, area, rep, cell=1.0, dz=0.04, rot=False, ao=None):
+    """Paving laid on the ground over a shapely area: a grid of `cell` m clipped to the area's outline (each
+    cell cut by the outline, so that edges are true), dz over the ground. rot turns the texture a quarter."""
+    from shapely.geometry import box
+    from shapely.ops import triangulate
+    from shapely.prepared import prep
+    x0, y0, x1, y1 = area.bounds
+    pa = prep(area)
+    P, tri, idx = [], [], {}
 
+    def vid(x, y):
+        k = (round(x, 3), round(y, 3))
+        if k not in idx:
+            idx[k] = len(P)
+            P.append((x, y, ground.z(x, y) + dz))
+        return idx[k]
 
-# ---------------------------------------------------------------- a road's centre line
-
-class Path:
-    """A line with heights (x, y, z each metre or so): points along it and to its right."""
-
-    def __init__(self, pts, origin=None):
-        self.p = np.asarray(pts, float)
-        seg = np.linalg.norm(np.diff(self.p[:, :2], axis=0), axis=1)
-        self.s = np.r_[0, np.cumsum(seg)]
-        self.L = float(self.s[-1])
-        self.s0 = 0.0
-        if origin is not None:
-            self.s0 = float(self.s[int(np.argmin(np.hypot(self.p[:, 0] - origin[0], self.p[:, 1] - origin[1])))])
-
-    def at(self, d):
-        """Centre (x, y, z), the unit tangent and the right-hand normal, d metres from the path's origin."""
-        s = float(np.clip(d + self.s0, 0, self.L))
-        i = int(np.clip(np.searchsorted(self.s, s) - 1, 0, len(self.p) - 2))
-        f = (s - self.s[i]) / max(1e-6, self.s[i + 1] - self.s[i])
-        c = self.p[i] + (self.p[i + 1] - self.p[i]) * f
-        a, b = self.p[max(i - 2, 0), :2], self.p[min(i + 3, len(self.p) - 1), :2]
-        t = (b - a) / (np.linalg.norm(b - a) or 1)
-        return c, t, np.array([t[1], -t[0]])
-
-    def xy(self, d, o=0.0):
-        c, t, r = self.at(d)
-        return c[:2] + r * o
-
-    def line(self, d0=None, d1=None, step=1.0, o=0.0):
-        d0 = -self.s0 if d0 is None else d0
-        d1 = self.L - self.s0 if d1 is None else d1
-        n = max(1, int(math.ceil((d1 - d0) / step)))
-        return [self.xy(d0 + (d1 - d0) * i / n, o) for i in range(n + 1)]
-
-    def band(self, d0, d1, o0, o1, step=1.0):
-        """The outline (a shapely polygon) between two offsets along a stretch."""
-        from shapely.geometry import Polygon
-        return Polygon(self.line(d0, d1, step, o0) + self.line(d0, d1, step, o1)[::-1]).buffer(0)
-
-    def dist(self, q):
-        return float(np.hypot(self.p[:, 0] - q[0], self.p[:, 1] - q[1]).min())
-
-
-# ---------------------------------------------------------------- the parts
-
-class Parts:
-    """Built on a hero_kit.Geo (`geo`), over a terrain T(x, y) -> z (pipeline/archkit.Terrain)."""
-
-    def __init__(self, K, geo, T, atlas=None):
-        self.K, self.geo, self.T, self.A = K, geo, T, atlas
-
-    def G(self, q, h=0.0):
-        """A point on the ground: (x, y) -> (x, y, terrain + h)."""
-        return np.array([q[0], q[1], self.T(q[0], q[1]) + h])
-
-    # -- ground
-    def cover(self, mat, poly, h, cell=1.0, uvk=1.0, ao=None, zfn=None):
-        """Ground draped on the terrain, cut to `poly` (shapely): a grid every `cell` metres, each cell kept
-        whole inside, cut on the outline; uv in metres of the map, so that neighbours meet without a seam."""
-        import shapely
-        from shapely.geometry import box
-        from shapely.prepared import prep
-        if poly.is_empty:
-            return
-        g = self.geo.part(mat)
-        z = zfn or (lambda x, y: self.T(x, y) + h)
-        x0, y0, x1, y1 = poly.bounds
-        x0, y0 = math.floor(x0 / cell) * cell, math.floor(y0 / cell) * cell
-        pp = prep(poly)
-        idx = {}
-
-        def vert(x, y):
-            k = (round(x, 3), round(y, 3))
-            if k not in idx:
-                idx[k] = len(g["p"])
-                g["p"].append(np.array([x, y, z(x, y)])); g["n"].append(UP); g["uv"].append((x * uvk, y * uvk)); g["ao"].append(1.0 if ao is None else ao)
-            return idx[k]
-
-        def tri(a, b, c):
-            if a == b or b == c or a == c:
-                return
-            pa, pb, pc = g["p"][a], g["p"][b], g["p"][c]
-            if abs(np.cross(pb - pa, pc - pa)[2]) < 1e-7:
-                return
-            if np.cross(pb - pa, pc - pa)[2] < 0:
-                b, c = c, b
-            g["tri"].append((a, b, c))
-
-        nx, ny = int(math.ceil((x1 - x0) / cell)), int(math.ceil((y1 - y0) / cell))
-        for j in range(ny):
-            for i in range(nx):
-                cx, cy = x0 + i * cell, y0 + j * cell
-                sq = box(cx, cy, cx + cell, cy + cell)
-                if not pp.intersects(sq):
-                    continue
-                if pp.contains(sq):
-                    a, b, c, d = vert(cx, cy), vert(cx + cell, cy), vert(cx + cell, cy + cell), vert(cx, cy + cell)
-                    tri(a, b, c); tri(a, c, d)
-                    continue
-                part = poly.intersection(sq)
-                for piece in getattr(part, "geoms", [part]):
-                    if piece.geom_type != "Polygon" or piece.area < 1e-4:
+    for gx in np.arange(math.floor(x0 / cell) * cell, x1, cell):
+        for gy in np.arange(math.floor(y0 / cell) * cell, y1, cell):
+            c = box(gx, gy, gx + cell, gy + cell)
+            if pa.contains(c):
+                a, b, cc, d = vid(gx, gy), vid(gx + cell, gy), vid(gx + cell, gy + cell), vid(gx, gy + cell)
+                tri += [(a, b, cc), (a, cc, d)]
+            elif pa.intersects(c):
+                part = area.intersection(c)
+                for poly in getattr(part, "geoms", [part]):
+                    if poly.geom_type != "Polygon" or poly.area < 1e-4:
                         continue
-                    for t in shapely.constrained_delaunay_triangles(piece).geoms:
-                        co = list(t.exterior.coords)[:3]
-                        tri(*[vert(x, y) for x, y in co])
-        # smooth normals from the terrain's slope
-        e = 0.5
-        for k, i in idx.items():
-            x, y = g["p"][i][0], g["p"][i][1]
-            g["n"][i] = unit([(z(x - e, y) - z(x + e, y)) / (2 * e), (z(x, y - e) - z(x, y + e)) / (2 * e), 1.0])
+                    for t in triangulate(poly):
+                        if t.area < 1e-5 or not poly.contains(t.representative_point()):
+                            continue
+                        q = list(t.exterior.coords)[:3]
+                        if (q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[1][1] - q[0][1]) * (q[2][0] - q[0][0]) < 0:
+                            q = q[::-1]
+                        tri.append(tuple(vid(*p) for p in q))
+    if not P:
+        return
+    P = np.array(P)
+    uv = P[:, :2] / rep
+    if rot:
+        uv = np.c_[P[:, 1], -P[:, 0]] / rep
+    geo.mesh(mat, P, tri, uv=uv, ao=ao)
 
-    def strip(self, mat, fn, d0, d1, offs, h, step=1.0, uvk=1.0, across=1.0):
-        """A ribbon of ground: fn(d, o, h) along d0..d1 between the offsets `offs` (to the right), cut no
-        wider than `across` so that it follows the ground; uv in metres."""
-        n = max(1, int(math.ceil((d1 - d0) / step)))
-        ds = [d0 + (d1 - d0) * i / n for i in range(n + 1)]
-        os_ = [offs[0]]
-        for a, b in zip(offs, offs[1:]):
-            m = max(1, int(math.ceil(abs(b - a) / across)))
-            os_ += [a + (b - a) * (k + 1) / m for k in range(m)]
-        for i in range(n):
-            for j in range(len(os_) - 1):
-                a, b = fn(ds[i], os_[j], h), fn(ds[i], os_[j + 1], h)
-                c, d = fn(ds[i + 1], os_[j + 1], h), fn(ds[i + 1], os_[j], h)
-                uv = [(os_[j] * uvk, ds[i] * uvk), (os_[j + 1] * uvk, ds[i] * uvk), (os_[j + 1] * uvk, ds[i + 1] * uvk), (os_[j] * uvk, ds[i + 1] * uvk)]
-                self.geo.quad(mat, a, b, c, d, uv=uv, n=UP)
 
-    def decal(self, mat, c, t, w, l, uv=None, h=0.0):
-        """A flat rectangle on the ground at c (x, y, z), l long along t and w wide."""
-        t = np.r_[unit(np.asarray(t, float)[:2]), 0]
-        r = np.array([t[1], -t[0], 0])
-        c = np.asarray(c, float) + [0, 0, h]
-        self.geo.quad(mat, c - r * w / 2 - t * l / 2, c + r * w / 2 - t * l / 2, c + r * w / 2 + t * l / 2, c - r * w / 2 + t * l / 2, uv=uv, n=UP)
+def decal(geo, mat, ground, c, ax, w, h, uv=None, dz=0.05):
+    """A flat thing on the ground (a manhole's cover, a plaque, a drain), w along ax and h across."""
+    c = np.array([c[0], c[1], ground.z(*c[:2]) + dz])
+    u = unit(np.r_[ax[:2], 0.0])
+    v = np.array([-u[1], u[0], 0.0])
+    geo.quad(mat, c - u * w / 2 - v * h / 2, c + u * w / 2 - v * h / 2, c + u * w / 2 + v * h / 2, c - u * w / 2 + v * h / 2, uv=uv)
 
-    # -- walls
-    def wall(self, mat, pts, zb, zt, batter=0.0, uvk=1.0, cap=None, thick=0.3, back=False, v0=0.0, lip=0.0, left=False):
-        """A wall along pts (x, y), facing the right of the way they run (the left with `left`); zb and zt
-        per point (or one number); `batter` leans its top back by that share of its height; cap: a material
-        for its coping (thick wide, standing `lip` proud of the face); back: its far face too."""
-        G = self.geo
-        pts = [np.asarray(p, float)[:2] for p in pts]
-        zb = [zb] * len(pts) if isinstance(zb, (int, float)) else list(zb)
-        zt = [zt] * len(pts) if isinstance(zt, (int, float)) else list(zt)
-        if left:
-            pts, zb, zt = pts[::-1], zb[::-1], zt[::-1]
-        nrm = [normal(pts, i) for i in range(len(pts))]
-        s = 0.0
-        for i in range(len(pts) - 1):
-            a, b = pts[i], pts[i + 1]
-            L = np.linalg.norm(b - a)
-            if L < 1e-3:
+
+def disc(geo, mat, c, r, z, uv=None, segs=24, n=(0, 0, 1.0)):
+    """A flat disc at height z (a plaque in the paving, a clock's face when n is a wall's): uv the atlas cell's corners."""
+    n = unit(n)
+    a = unit(np.cross(n, [0, 0, 1.0])) if abs(n[2]) < 0.9 else np.array([1.0, 0, 0])
+    b = np.cross(n, a)
+    c = np.array([c[0], c[1], z])
+    P, U = [c], [(0.5, 0.5)]
+    for k in range(segs):
+        th = 2 * math.pi * k / segs
+        P.append(c + (a * math.cos(th) + b * math.sin(th)) * r)
+        U.append((0.5 + 0.5 * math.cos(th), 0.5 + 0.5 * math.sin(th)))
+    if uv is not None:
+        (u0, v0), (u1, _), (_, v1), _ = uv
+        U = [(u0 + (u1 - u0) * s, v0 + (v1 - v0) * t) for s, t in U]
+    geo.mesh(mat, P, [(0, 1 + k, 1 + (k + 1) % segs) for k in range(segs)], n=n, uv=U)
+
+
+def blob(geo, mat, ground, c, r, rng, dz=0.058, stretch=1.0):
+    """An irregular flat patch on the ground (a stain, a puddle, a drift of fallen flowers)."""
+    k = 18
+    ph = rng.random(3) * 6.28
+    ang = rng.random() * math.pi
+    P = [(c[0], c[1], ground.z(*c) + dz)]
+    U = [(0.5, 0.5)]
+    for i in range(k):
+        a = 2 * math.pi * i / k
+        rr = r * (1 + 0.25 * math.sin(3 * a + ph[0]) + 0.15 * math.sin(5 * a + ph[1]))
+        x, y = math.cos(a) * rr * stretch, math.sin(a) * rr
+        x, y = x * math.cos(ang) - y * math.sin(ang), x * math.sin(ang) + y * math.cos(ang)
+        P.append((c[0] + x, c[1] + y, ground.z(c[0] + x, c[1] + y) + dz))
+        U.append((0.5 + x / (2 * r), 0.5 + y / (2 * r)))
+    geo.mesh(mat, P, [(0, 1 + i, 1 + (i + 1) % k) for i in range(k)], uv=U)
+
+
+# ---------------------------------------------------------------- a wall's frame
+
+class Frame:
+    """A wall from a to b (x, y), seen from its front with a on the left: P(u, out, z) is u metres along it,
+    `out` metres in front of it, at height z (absolute)."""
+
+    def __init__(self, a, b, flip=False):
+        a, b = np.asarray(a, float)[:2], np.asarray(b, float)[:2]
+        if flip:
+            a, b = b, a
+        self.a, self.b = a, b
+        self.len = float(np.linalg.norm(b - a))
+        self.t = (b - a) / self.len
+        self.n = np.array([self.t[1], -self.t[0]])      # out of the wall, to the right of a -> b
+
+    def P(self, u, out, z):
+        q = self.a + self.t * u + self.n * out
+        return np.array([q[0], q[1], z])
+
+    @property
+    def T(self):
+        return np.r_[self.t, 0.0]
+
+    @property
+    def N(self):
+        return np.r_[self.n, 0.0]
+
+
+def wall(geo, mat, F, u0, u1, z0, z1, out, rep, holes=(), ao=None, sub=3.0, zf=None):
+    """A wall's face between u0..u1 and z0..z1 at `out`, with rectangular holes [(u0, u1, z0, z1)] left open.
+    Cut into panels no larger than `sub` m, so that the bake has vertices to light. zf(u) -> the foot's height
+    where the ground under the wall is not level (z0 then is the lowest foot)."""
+    us = sorted(set([u0, u1] + [h[k] for h in holes for k in (0, 1) if u0 < h[k] < u1]))
+    zs = sorted(set([z0, z1] + [h[k] for h in holes for k in (2, 3) if z0 < h[k] < z1]))
+
+    def split(v):
+        out_ = [v[0]]
+        for a, b in zip(v[:-1], v[1:]):
+            n = max(1, int(math.ceil((b - a) / sub)))
+            out_ += [a + (b - a) * (i + 1) / n for i in range(n)]
+        return out_
+    us, zs = split(us), split(zs)
+    for i in range(len(us) - 1):
+        for j in range(len(zs) - 1):
+            ua, ub, za, zb = us[i], us[i + 1], zs[j], zs[j + 1]
+            um, zm = (ua + ub) / 2, (za + zb) / 2
+            if any(h[0] <= um <= h[1] and h[2] <= zm <= h[3] for h in holes):
                 continue
-            na, nb = nrm[i], nrm[i + 1]
-            ha, hb = zt[i] - zb[i], zt[i + 1] - zb[i + 1]
-            A0, B0 = np.r_[a, zb[i]], np.r_[b, zb[i + 1]]
-            A1, B1 = np.r_[a - na * batter * ha, zt[i]], np.r_[b - nb * batter * hb, zt[i + 1]]
-            n = unit(np.r_[(na + nb) / 2, batter])
-            G.quad(mat, A0, B0, B1, A1, uv=[(s * uvk, v0), ((s + L) * uvk, v0), ((s + L) * uvk, v0 + hb * uvk), (s * uvk, v0 + ha * uvk)], n=n,
-                   sub=(max(1, int(L / 1.5)), max(1, int(max(ha, hb) / 1.2))))
-            G.walls.append((a, b, min(zb[i], zb[i + 1]), max(zt[i], zt[i + 1])))
-            if cap:
-                A1l, B1l = A1 + np.r_[na, 0] * lip, B1 + np.r_[nb, 0] * lip
-                A2, B2 = A1 - np.r_[na, 0] * thick, B1 - np.r_[nb, 0] * thick
-                G.quad(cap, A1l + UP * 0.06, B1l + UP * 0.06, B2 + UP * 0.06, A2 + UP * 0.06, uv=[(s, 0), (s + L, 0), (s + L, thick), (s, thick)], n=UP)
-                G.quad(cap, A1l - UP * 0.02, B1l - UP * 0.02, B1l + UP * 0.06, A1l + UP * 0.06, uv=[(s, 0), (s + L, 0), (s + L, 0.08), (s, 0.08)], n=n)
-                if back:
-                    G.quad(mat, np.r_[B2[:2], zb[i + 1]], np.r_[A2[:2], zb[i]], A2 + UP * 0.06, B2 + UP * 0.06, n=-np.r_[(na + nb) / 2, 0])
-            s += L
+            fa, fb = (zf(ua), zf(ub)) if (zf and j == 0) else (za, za)
+            geo.quad(mat, F.P(ua, out, fa), F.P(ub, out, fb), F.P(ub, out, zb), F.P(ua, out, zb),
+                     uv=[(ua / rep, fa / rep), (ub / rep, fb / rep), (ub / rep, zb / rep), (ua / rep, zb / rep)], n=F.N, ao=ao)
 
-    # -- planting
-    def hedge(self, mat, pts, w, h, seed=0, rough=0.06):
-        """A clipped hedge along pts (x, y, z of its foot): a squarish section, slightly uneven, smooth."""
-        g = self.geo.part(mat)
-        rng = np.random.default_rng(seed)
-        pts = [np.asarray(p, float) for p in pts]
-        fine = []
-        for a, b in zip(pts, pts[1:]):
-            n = max(1, int(np.linalg.norm(b - a) / 0.4))
-            fine += [a + (b - a) * k / n for k in range(n)]
-        fine.append(pts[-1])
-        K = 11
-        rings, s = [], 0.0
-        sq = lambda v: math.copysign(abs(v) ** 0.35, v)   # a squarer section than an ellipse: clipped
-        for i, p in enumerate(fine):
-            t = unit((fine[min(i + 1, len(fine) - 1)] - fine[max(i - 1, 0)])[:2])
-            r = np.array([t[1], -t[0], 0.0])
-            if i:
-                s += np.linalg.norm(p - fine[i - 1])
-            base = len(g["p"])
-            end = min(i, len(fine) - 1 - i)
-            k_end = (0.55, 0.9, 1.0)[min(end, 2)]
-            for k in range(K):
-                a = math.pi * k / (K - 1)
-                bump = 1 + rough * rng.standard_normal()
-                x, zz = -sq(math.cos(a)) * w / 2 * k_end, sq(math.sin(a)) * h * (0.9 + 0.1 * k_end)
-                q = p + r * x * bump + UP * (zz * bump)
-                nn = unit(r * -math.cos(a) + UP * math.sin(a))
-                g["p"].append(q); g["n"].append(nn); g["uv"].append((a / math.pi * (w + 2 * h), s)); g["ao"].append(0.45 + 0.55 * math.sin(a) ** 0.6)
-            rings.append(base)
-        for i in range(len(rings) - 1):
-            for k in range(K - 1):
-                a0, a1, b0, b1 = rings[i] + k, rings[i] + k + 1, rings[i + 1] + k, rings[i + 1] + k + 1
-                g["tri"] += [(a0, a1, b1), (a0, b1, b0)]
-        for ring, flip in ((rings[0], False), (rings[-1], True)):   # its ends
-            for k in range(1, K - 2):
-                g["tri"].append((ring, ring + k + 1, ring + k) if not flip else (ring, ring + k, ring + k + 1))
 
-    def bush(self, mat, c, r, h=None, seed=0, lumps=0.22):
-        """A shrub: a lumpy dome on the ground at c (x, y, z), radius r and height h."""
-        g = self.geo.part(mat)
-        rng = np.random.default_rng(seed)
-        h = h or r * 1.1
-        c = np.asarray(c, float)
-        ph = rng.random(6) * 6.28
-        NA, NB = 14, 7
-        base = len(g["p"])
-        for j in range(NB + 1):
-            b = (math.pi / 2) * j / NB * 1.12 - 0.18          # from a little under the ground to the top
-            for i in range(NA):
-                a = 2 * math.pi * i / NA
-                k = 1 + lumps * (math.sin(3 * a + ph[0] + 2 * b) * 0.6 + math.sin(5 * a + ph[1]) * math.cos(3 * b + ph[2]) * 0.5 + 0.35 * math.sin(7 * a + 5 * b + ph[3]))
-                d = np.array([math.cos(a) * math.cos(b), math.sin(a) * math.cos(b), math.sin(b)])
-                g["p"].append(c + d * np.array([r, r, h]) * k); g["n"].append(unit(d * np.array([1 / r, 1 / r, 1 / h])))
-                g["uv"].append((a / (2 * math.pi) * 2 * math.pi * r, b * h)); g["ao"].append(float(np.clip(0.35 + 0.75 * math.sin(max(b, 0)) ** 0.7, 0, 1)))
-        for j in range(NB):
-            for i in range(NA):
-                a0, a1 = base + j * NA + i, base + j * NA + (i + 1) % NA
-                b0, b1 = a0 + NA, a1 + NA
-                g["tri"] += [(a0, a1, b1), (a0, b1, b0)]
+def fbox(geo, mat, F, u0, u1, o0, o1, z0, z1, rep=1.0, faces=("front", "left", "right", "top", "bottom"), ao=None, emit=None):
+    """A box on a wall's frame: u0..u1 along, o0..o1 out of it, z0..z1 up (a pier, a sill, a cornice, a canopy)."""
+    P = F.P
+    Q = {
+        "front": (P(u0, o1, z0), P(u1, o1, z0), P(u1, o1, z1), P(u0, o1, z1)),
+        "back": (P(u1, o0, z0), P(u0, o0, z0), P(u0, o0, z1), P(u1, o0, z1)),
+        "left": (P(u0, o0, z0), P(u0, o1, z0), P(u0, o1, z1), P(u0, o0, z1)),
+        "right": (P(u1, o1, z0), P(u1, o0, z0), P(u1, o0, z1), P(u1, o1, z1)),
+        "top": (P(u0, o1, z1), P(u1, o1, z1), P(u1, o0, z1), P(u0, o0, z1)),
+        "bottom": (P(u0, o0, z0), P(u1, o0, z0), P(u1, o1, z0), P(u0, o1, z0)),
+    }
+    for k in faces:
+        q = Q[k]
+        l1, l2 = np.linalg.norm(q[1] - q[0]), np.linalg.norm(q[3] - q[0])
+        a0 = (u0 if k in ("front", "back", "top", "bottom") else o0) / rep
+        b0 = (z0 if k in ("front", "back", "left", "right") else o0) / rep
+        geo.quad(mat, *q, uv=[(a0, b0), (a0 + l1 / rep, b0), (a0 + l1 / rep, b0 + l2 / rep), (a0, b0 + l2 / rep)], ao=ao,
+                 emit=emit if (emit and k == "front") else None)
 
-    # -- things that stand
-    def post(self, mat, c, r, h, segs=8):
-        self.geo.cylinder(mat, c, r, h, segs)
 
-    def sign(self, c, facing, key, size, hgt, mat="board", post="metal_galv", back="metal_galv"):
-        """A sign on a post at c, its face (the atlas cell `key`) towards `facing` (x, y), its centre hgt up."""
-        G, A = self.geo, self.A
-        f = np.r_[unit(np.asarray(facing, float)[:2]), 0]
-        r = np.array([f[1], -f[0], 0.0])
-        self.post(post, c, 0.03, hgt + size[1] / 2 + 0.05, 8)
-        o = np.asarray(c, float) + f * 0.04 + UP * hgt
-        w, h = size
-        q = (o + r * w / 2 - UP * h / 2, o - r * w / 2 - UP * h / 2, o - r * w / 2 + UP * h / 2, o + r * w / 2 + UP * h / 2)
-        G.quad(mat, *q, uv=A.uv(key), n=f)
-        G.quad(back, q[1] - f * 0.012, q[0] - f * 0.012, q[3] - f * 0.012, q[2] - f * 0.012, n=-f)
+def window(geo, F, u0, u1, z0, z1, out, depth, wall_mat, rep, glass="win_glass", uv=None, frame="metal_bronze",
+           bars=(1, 2), sill=True, emit=None, ao=0.7):
+    """A window set `depth` back from a wall's face at `out`: the glass (uv: its atlas cell), the reveals in the
+    wall's own stone, a sill, the frame; and, in the fine model, its glazing bars (bars: uprights, transoms)."""
+    d = out - depth
+    P = F.P
+    geo.quad(glass, P(u0, d, z0), P(u1, d, z0), P(u1, d, z1), P(u0, d, z1), uv=uv, n=F.N, emit=emit)
+    for (a, b) in (((u0, z0), (u1, z0)), ((u1, z0), (u1, z1)), ((u1, z1), (u0, z1)), ((u0, z1), (u0, z0))):
+        pa, pb = P(a[0], d, a[1]), P(b[0], d, b[1])
+        ln = np.linalg.norm(pb - pa)
+        geo.quad(wall_mat, pa, pb, P(b[0], out, b[1]), P(a[0], out, a[1]),
+                 uv=[(0, 0), (ln / rep, 0), (ln / rep, depth / rep), (0, depth / rep)], ao=ao)
+    if sill:
+        fbox(geo, wall_mat, F, u0 - 0.08, u1 + 0.08, out, out + 0.07, z0 - 0.14, z0, rep, faces=("front", "left", "right", "top", "bottom"))
+    # the frame: a rim just in front of the glass
+    t = 0.055
+    for (a0, a1, b0, b1) in ((u0, u1, z0, z0 + t), (u0, u1, z1 - t, z1), (u0, u0 + t, z0, z1), (u1 - t, u1, z0, z1)):
+        fbox(geo, frame, F, a0, a1, d, d + 0.05, b0, b1, faces=("front", "left", "right", "top", "bottom"))
+    fine = geo.fine
+    nu, nv = bars
+    for i in range(nu):
+        um = u0 + (u1 - u0) * (i + 1) / (nu + 1)
+        fbox(fine, frame, F, um - 0.02, um + 0.02, d, d + 0.04, z0 + t, z1 - t, faces=("front", "left", "right"))
+    for j in range(nv):
+        zm = z0 + (z1 - z0) * (j + 1) / (nv + 1)
+        fbox(fine, frame, F, u0 + t, u1 - t, d, d + 0.035, zm - 0.018, zm + 0.018, faces=("front", "top", "bottom"))
 
-    def panel(self, mat, o, facing, size, key=None, back=None):
-        """A flat panel centred at o (x, y, z) facing `facing` (x, y): the atlas cell `key` on it."""
-        f = np.r_[unit(np.asarray(facing, float)[:2]), 0]
-        r = np.array([f[1], -f[0], 0.0])
-        o = np.asarray(o, float)
-        w, h = size
-        q = (o + r * w / 2 - UP * h / 2, o - r * w / 2 - UP * h / 2, o - r * w / 2 + UP * h / 2, o + r * w / 2 + UP * h / 2)
-        self.geo.quad(mat, *q, uv=self.A.uv(key) if key else None, n=f)
+
+# ---------------------------------------------------------------- furniture
+
+def lamp_post(geo, c, heading, z, h=9.5, arms=((1.6, 8.9), (-1.6, 8.9)), low=None, banner=None, mat="metal_pole",
+              light="glow_lamp", rgb=(1.0, 0.86, 0.66), power=170.0):
+    """A tapered steel post with outreach arms (reach along `heading`, height) and flat LED luminaires; `low`
+    (reach, height) a pedestrian luminaire; banner (atlas uvs a, b; width, height, foot height) a pair of
+    banners on arms. Its light is baked: each luminaire is a lit face (power: its intensity)."""
+    c = np.array([c[0], c[1], z])
+    e = np.array([math.cos(heading), math.sin(heading), 0.0])
+    s = np.array([-e[1], e[0], 0.0])
+    geo.lathe(mat, c, [(0.2, 0.0), (0.2, 0.05), (0.15, 0.09), (0.15, 0.95), (0.125, 1.0), (0.105, 1.1), (0.062, h)], segs=12)
+    geo.fine.lathe(mat, c, [(0.165, 0.3), (0.172, 0.31), (0.172, 0.34), (0.165, 0.35)], segs=12)   # the door's band
+    for reach, zh in list(arms) + ([low] if low else []):
+        d = e * (1 if reach > 0 else -1)
+        r = abs(reach)
+        p0 = c + [0, 0, zh - 0.35]
+        geo.tube(mat, [p0, p0 + d * r * 0.35 + [0, 0, 0.27], p0 + d * r * 0.75 + [0, 0, 0.36], p0 + d * r + [0, 0, 0.35]], 0.035, segs=6)
+        hc = c + d * (r + 0.28) + [0, 0, zh - 0.03]
+        geo.box(mat, hc, (d, s), (0.62, 0.26, 0.07))
+        q = [hc + d * a * 0.27 + s * b * 0.1 + [0, 0, -0.004] for a, b in ((-1, 1), (1, 1), (1, -1), (-1, -1))]
+        geo.quad(light, *q, uv=[(0, 0), (1, 0), (1, 1), (0, 1)], n=(0, 0, -1.0))
+        k = power * (0.35 if (low and (reach, zh) == tuple(low)) else 1.0)
+        geo.emitters.append((hc + [0, 0, -0.05], np.array([0, 0, -1.0]), 1.0, np.asarray(rgb, float) * k))
+    if banner:
+        ua, ub, bw, bh, bz = banner
+        for side, uv in ((1, ua), (-1, ub)):
+            for zz in (bz, bz + bh):
+                geo.tube(mat, [c + [0, 0, zz], c + s * side * (bw + 0.12) + [0, 0, zz]], 0.016, segs=5)
+            a, b = c + s * side * 0.1, c + s * side * (0.1 + bw)
+            if side < 0:
+                a, b = b, a
+            geo.quad("atlas_cloth", a + [0, 0, bz + 0.02], b + [0, 0, bz + 0.02], b + [0, 0, bz + bh - 0.02], a + [0, 0, bz + bh - 0.02], uv=uv, sub=(1, 3))
+
+
+def bench(geo, c, heading, z, w=1.9, wood="wood_bench", metal="metal_steel", back=True):
+    """A slatted hardwood bench on steel legs, facing `heading`."""
+    c = np.array([c[0], c[1], z])
+    f = np.array([math.cos(heading), math.sin(heading), 0.0])
+    s = np.array([-f[1], f[0], 0.0])
+    for i in range(5):       # the seat's slats
+        geo.box(wood, c + f * (-0.2 + i * 0.1) + [0, 0, 0.43], (s, f), (w, 0.082, 0.035))
+    if back:
+        for i in range(3):
+            geo.box(wood, c - f * (0.27 + i * 0.035) + [0, 0, 0.56 + i * 0.11], (s, f), (w, 0.03, 0.085))
+    for side in (-1, 1):
+        o = c + s * side * (w / 2 - 0.16)
+        geo.box(metal, o + f * 0.0 + [0, 0, 0.0], (s, f), (0.05, 0.5, 0.045))             # the foot
+        geo.box(metal, o + f * 0.18, (s, f), (0.05, 0.05, 0.43))
+        geo.box(metal, o - f * 0.2, (s, f), (0.05, 0.05, 0.95 if back else 0.43))
+        geo.box(metal, o + [0, 0, 0.39], (s, f), (0.05, 0.5, 0.04))
         if back:
-            self.geo.quad(back, q[1] - f * 0.03, q[0] - f * 0.03, q[3] - f * 0.03, q[2] - f * 0.03, n=-f)
-
-    def wire(self, a, b, sag, r=0.011, mat="cable", n=10):
-        a, b = np.asarray(a, float), np.asarray(b, float)
-        pts = [a + (b - a) * (k / n) - UP * sag * 4 * (k / n) * (1 - k / n) for k in range(n + 1)]
-        self.geo.tube(mat, pts, r, 4)
-
-    def pole(self, c, h=11.5, arms=(), lamp=None, transformer=False, low=True, lamp_z=7.2, lamp_k=520.0, lamp_rgb=(0.92, 0.96, 1.0)):
-        """A concrete utility pole (materials pole, metal_galv, porcelain, metal_alu, glow_white):
-        crossarms [(height, heading of the arm)] with three insulators each, a rack of low-voltage
-        insulators, a transformer, and an LED street light on an arm towards `lamp` (x, y), which the bake
-        takes as a light. Returns where its wires hang: {"hv": [...], "lv": [3], "tel": [2]}."""
-        G = self.geo
-        c = np.asarray(c, float)
-        for (z0, z1, r0) in ((-0.3, h * 0.35, 0.165), (h * 0.35, h * 0.7, 0.145), (h * 0.7, h, 0.125)):   # tapered in three lifts
-            G.tube("pole", [c + UP * z0, c + UP * z1], r0, 12)
-        G.cylinder("pole", c + UP * h, 0.125, 0.02, 12)
-        G.box("metal_alu", c + UP * 1.75 + np.array([0.0, -0.17, 0]), ((1, 0, 0), (0, 1, 0)), (0.12, 0.012, 0.3))   # its number plate
-        for k in range(8):   # the climbing pegs
-            a = k % 2 * math.pi
-            e = np.array([math.cos(a), math.sin(a), 0])
-            G.tube("metal_galv", [c + e * 0.13 + UP * (2.6 + k * 0.45), c + e * 0.3 + UP * (2.6 + k * 0.45)], 0.009, 4)
-        out = {"hv": [], "lv": [], "tel": []}
-        for (z, hd) in arms:
-            e = np.array([math.cos(hd), math.sin(hd), 0.0])
-            n = np.array([-e[1], e[0], 0.0])
-            G.box("metal_galv", c + UP * z + n * 0.16, (e, n), (1.8, 0.075, 0.075))
-            for sgn in (1, -1):
-                G.tube("metal_galv", [c + UP * (z - 0.55) + n * 0.14, c + UP * z + n * 0.16 + e * 0.6 * sgn], 0.012, 4)
-            for o in (-0.8, -0.25, 0.8):
-                q = c + UP * (z + 0.075) + n * 0.16 + e * o
-                G.cylinder("porcelain", q, 0.04, 0.16, 8)
-                G.cylinder("porcelain", q + UP * 0.05, 0.07, 0.03, 8)
-                G.cylinder("porcelain", q + UP * 0.1, 0.06, 0.025, 8)
-                out["hv"].append(q + UP * 0.17)
-        if low:
-            for k in range(3):   # the low-voltage rack: three insulators one over another on the pole's side
-                q = c + UP * (h - 3.4 - k * 0.3)
-                G.cylinder("porcelain", q + np.array([0.17, 0, -0.04]), 0.04, 0.08, 6)
-                out["lv"].append(q + np.array([0.19, 0, 0.0]))
-            for k in range(2):
-                q = c + UP * (h - 5.4 - k * 0.5)
-                G.box("metal_galv", q + np.array([0.15, 0, -0.05]), ((1, 0, 0), (0, 1, 0)), (0.1, 0.06, 0.1))
-                out["tel"].append(q + np.array([0.19, 0, 0]))
-        if transformer:
-            q = c + UP * (h - 2.9) + np.array([0, -0.42, 0])
-            G.cylinder("metal_galv", q, 0.27, 0.8, 14)
-            G.cylinder("metal_galv", q + UP * 0.8, 0.2, 0.06, 14)
-            for zz in (0.12, 0.62):
-                G.tube("metal_dark", [q + UP * zz + np.array([math.cos(a), math.sin(a), 0]) * 0.275 for a in np.linspace(0, 2 * math.pi, 15)], 0.012, 4)
-            G.box("metal_galv", c + UP * (h - 2.95) + np.array([0, -0.2, 0]), ((1, 0, 0), (0, 1, 0)), (0.5, 0.5, 0.06))
-            for o in (-0.1, 0.1):
-                G.cylinder("porcelain", q + UP * 0.86 + np.array([o, 0, 0]), 0.03, 0.14, 6)
-                self.wire(q + UP * 1.0 + np.array([o, 0, 0]), c + UP * (h - 0.9) + np.array([o * 3, 0.1, 0]), 0.12, 0.006, n=5)
-        if lamp is not None:
-            e = np.r_[unit(np.asarray(lamp, float)[:2]), 0]
-            z = lamp_z
-            G.tube("metal_galv", [c + UP * (z - 0.5) + e * 0.13, c + UP * (z - 0.1) + e * 0.55, c + UP * (z + 0.08) + e * 1.5], 0.022, 6)
-            hd = c + UP * (z + 0.03) + e * 1.75
-            n = np.array([-e[1], e[0], 0.0])
-            G.box("metal_alu", hd, (e, n), (0.6, 0.24, 0.07))
-            G.box("glow_white", hd - UP * 0.012, (e, n), (0.46, 0.16, 0.012), faces=("bot", "+u", "-u", "+v", "-v"))
-            G.emitters.append((hd - UP * 0.05, -UP, 0.5, np.asarray(lamp_rgb, float) * lamp_k))
-        return out
-
-    def bollard(self, c, h=0.85, mat="metal_galv", r=0.057):
-        self.geo.cylinder(mat, c, r, h, 10)
-        self.geo.cylinder(mat, np.asarray(c, float) + UP * h, r + 0.008, 0.03, 10)
-
-    def pipe_fence(self, a, b, h=1.1, mat="metal_galv", rails=(1.05, 0.6, 0.15), every=1.8, r=0.022):
-        a, b = np.asarray(a, float), np.asarray(b, float)
-        n = max(1, int(np.linalg.norm(b - a) / every))
-        for k in range(n + 1):
-            self.geo.cylinder(mat, a + (b - a) * k / n, r + 0.003, h, 6)
-        for z in rails:
-            self.geo.tube(mat, [a + UP * z, b + UP * z], r, 6)
-
-    def disc(self, mat, c, ax, r, n=24, dome=0.0, uv=False):
-        """A disc at c facing along ax; `dome` bulges its middle (a convex mirror)."""
-        g = self.geo.part(mat)
-        ax = unit(ax)
-        u = unit(np.cross(ax, UP if abs(ax[2]) < 0.9 else [1, 0, 0])); v = np.cross(u, ax)
-        base = len(g["p"])
-        g["p"].append(np.asarray(c, float) + ax * dome); g["n"].append(ax); g["uv"].append((0.5, 0.5)); g["ao"].append(1.0)
-        for k in range(n):
-            a = 2 * math.pi * k / n
-            e = math.cos(a) * u + math.sin(a) * v
-            g["p"].append(np.asarray(c, float) + e * r); g["n"].append(unit(ax + e * (dome / r * 2.5))); g["uv"].append((0.5 + 0.5 * math.cos(a), 0.5 + 0.5 * math.sin(a))); g["ao"].append(1.0)
-        for k in range(n):
-            a, b = base + 1 + k, base + 1 + (k + 1) % n
-            pa, pb = g["p"][a] - g["p"][base], g["p"][b] - g["p"][base]
-            g["tri"].append((base, a, b) if np.dot(np.cross(pa, pb), ax) > 0 else (base, b, a))
+            geo.fine.box(metal, o + [0, 0, 0.64], (s, f), (0.04, 0.46, 0.03))               # the arm
+            geo.fine.box(metal, o + f * 0.2 + [0, 0, 0.43], (s, f), (0.04, 0.04, 0.22))
 
 
-def normal(line, i):
-    """The right-hand normal of a line of (x, y) at its point i."""
-    a, b = np.asarray(line[max(i - 1, 0)], float)[:2], np.asarray(line[min(i + 1, len(line) - 1)], float)[:2]
-    u = unit(b - a)
-    return np.array([u[1], -u[0]])
+def bollard(geo, c, z, h=0.95, r=0.085, mat="metal_steel", band=None):
+    """A street bollard: a steel post with a domed cap (and a reflective band in the fine model)."""
+    c = np.array([c[0], c[1], z])
+    geo.lathe(mat, c, [(r * 1.25, 0.0), (r * 1.25, 0.03), (r, 0.05), (r, h - 0.04), (r * 0.8, h - 0.01), (0.0, h)], segs=10)
+    if band:
+        geo.fine.lathe(band, c, [(r + 0.004, h - 0.2), (r + 0.004, h - 0.12)], segs=10)
+
+
+def mooring_bollard(geo, c, z, mat="iron_black"):
+    """A cast-iron quay bollard: a waisted drum under a mushroom head."""
+    c = np.array([c[0], c[1], z])
+    geo.lathe(mat, c, [(0.3, 0.0), (0.3, 0.05), (0.2, 0.1), (0.17, 0.3), (0.19, 0.44), (0.29, 0.5), (0.3, 0.56), (0.24, 0.62), (0.0, 0.64)], segs=14)
+
+
+def bin_(geo, c, z, mat="metal_steel", dark="metal_dark"):
+    """A stainless litter bin with a dark hood."""
+    c = np.array([c[0], c[1], z])
+    geo.lathe(mat, c, [(0.27, 0.05), (0.27, 0.86)], segs=14)
+    geo.lathe(dark, c, [(0.2, 0.0), (0.2, 0.05), (0.27, 0.05)], segs=14)
+    geo.lathe(dark, c, [(0.27, 0.86), (0.285, 0.88), (0.285, 1.0), (0.24, 1.06), (0.0, 1.08)], segs=14)
+    geo.fine.lathe("rubber", c, [(0.287, 0.9), (0.287, 0.985)], segs=14)

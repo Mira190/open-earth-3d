@@ -181,6 +181,12 @@ const npcNight = require('./npc_night');
         let glow = 0, tris = 0;
         if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube)/.test(o.material.name)) glow++; } });
         const r = { id: L.h.id, state: st.state, shown: st.shown, materials: st.materials, tris, glow, frames: t, hid: hidden.length, hiddenOff: hidden.every(o => !o.visible), want: (L.h.hide || []).length };
+        // its finest parts (hero.js "fine"): fetched once you stand in it and drawn near you, never on the low tier
+        if (L.h.fine) {
+          for (let k = 0; k < 600 && H.tier !== 'low' && !H.state().find(s => s.id === L.h.id).fineShown; k++) await frames(1);
+          const fs = H.state().find(s => s.id === L.h.id);
+          r.fine = { tier: H.tier, state: fs.fine, shown: fs.fineShown, meshes: fs.fineMeshes };
+        }
         pl.x = L.h.at[0] + 2000; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
         await frames(4);
         r.away = H.state().find(s => s.id === L.h.id).state;
@@ -200,6 +206,8 @@ const npcNight = require('./npc_night');
     check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
     check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
     check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
+    if (r.fine) check(r.fine.tier === 'low' ? r.fine.state === 'idle' && !r.fine.meshes : r.fine.state === 'ready' && r.fine.shown > 0 && r.fine.shown <= r.fine.meshes,
+      `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);
   }
   if (heroes) await lightsKept('with the hero level loaded and let go');
 
