@@ -7,6 +7,7 @@
 //   xvfb-run -a node tools/ride_again.js shibuya [trials=4]
 // Exits 1 if any second ride can't be had or leaves you standing outside it.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'shibuya', trials = '4'] = process.argv;
 (async () => {
@@ -21,8 +22,7 @@ const [,, city = 'shibuya', trials = '4'] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });
   const out = await p.evaluate(n => {
     const g = window.__game, keep = g.KEEP === 'left' ? 1 : -1, res = [];

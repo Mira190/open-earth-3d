@@ -3,6 +3,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/wall_probe.js fushimi-inari -312 -229 [r]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city, X, Y, R = '2'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -11,7 +12,7 @@ const [,, city, X, Y, R = '2'] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
   await p.evaluate(async () => { const g = window.__game; g.hold(true, true); await g.ways.build(); });
-  const play = await p.$('#gt-play'); if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => window.__game.advance(4));
   const out = await p.evaluate(([x, y, r]) => {
     const nav = window.__game.nav, col = nav.col, g0 = nav.terrain(x, y), res = [];

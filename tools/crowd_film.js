@@ -5,6 +5,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   GAME_TIME=17:30 xvfb-run -a node tools/crowd_film.js shibuya out_dir [seconds, 40] [x y]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -26,8 +27,7 @@ const [,, city = 'shibuya', outDir = '.', secs = '40', ax, ay] = process.argv;
   p.on('pageerror', e => console.log(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { const g = window.__game; if (g.cine && g.cine.active) g.cine.skip(); g.advance(3); });
   await p.evaluate(() => {
     // (every callback asked for in a frame, not only the last: a one-off animation's, a toast fading, asked after the

@@ -250,7 +250,7 @@ float oeMeteor( vec3 d ) {
   };
   const lum = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
   // su: the sky's uniforms; alt: the sun's height in degrees; zen, hor: the sky's colour overhead and on the horizon across from
-  // the sun, as the dome draws them ([r, g, b]); look: {palette, overcast 0..1 (a grey sheet rather than a painted cloud)}
+  // the sun, as the dome draws them ([r, g, b]); look: {palette, overcast 0..1 (a grey sheet rather than a painted cloud), rain, storm 0..1}
   function light(su, alt, zen, hor, look = {}) {
     const P = PALETTE[look.palette] || PALETTE.film;
     let i = 0;
@@ -263,8 +263,10 @@ float oeMeteor( vec3 d ) {
     // the shade: the sky's own colour, held to a share of its brightness and tinted; under an overcast a luminous grey
     const shG = mixs(A[4], B[4]), litG = mixs(A[2], B[2]) * (1 - (0.5 + 0.22 * rain) * ov);
     const shade = [0, 1, 2].map(c => { const v = sky[c] / sl * ref * shG * shT[c]; return v + (ref * (0.5 - 0.2 * rain) * (0.95 + 0.05 * c) - v) * 0.85 * ov; });
-    su.uCloudLit.value.setRGB(litT[0] * ref * litG, litT[1] * ref * litG, litT[2] * ref * litG);
-    su.uCloudShade.value.setRGB(shade[0], shade[1], shade[2]);
+    // under a thunderstorm the deck is thick: its underside dark slate, what light comes through it dimmer (look.storm)
+    const st = look.storm || 0, stS = 1 - 0.45 * st, stL = 1 - 0.3 * st;
+    su.uCloudLit.value.setRGB(litT[0] * ref * litG * stL, litT[1] * ref * litG * stL, litT[2] * ref * litG * stL);
+    su.uCloudShade.value.setRGB(shade[0] * stS * 0.96, shade[1] * stS, shade[2] * stS * 1.04);
     const rg = mixs(A[7], B[7]) * ref * (1 - 0.8 * ov);
     su.uCloudRim.value.setRGB(rimT[0] * rg, rimT[1] * rg, rimT[2] * rg);
   }

@@ -2,6 +2,7 @@
 // whether those are inside the junction, their speed, and your car and a ride.
 //   xvfb-run -a node tools/scramble_cars.js [city] [seconds]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'shibuya', secs = '9'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -11,8 +12,7 @@ const [,, city = 'shibuya', secs = '9'] = process.argv;
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
   for (let k = 0; k < 10; k++) {
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     if (await p.waitForFunction(() => window.__game.arriving(), null, { timeout: 15000 }).then(() => true, () => false)) break;
   }
   const out = await p.evaluate(async secs => {

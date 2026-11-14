@@ -23,7 +23,10 @@ window.OETrips = (function () {
   // net: the road network (actors.js network); centres: [x, y] of the places in town; hour: () => the hour of the
   // day; avoid: per line, 1 for a road to keep off; slow(i): how much dearer a piece is to drive for what the class
   // does not say (a street a facade narrows to one car at a time: through traffic keeps to the roads it can pass on)
-  function create(net, { centres = [], hour = () => 12, rnd = Math.random, avoid = null, parkable = null, slow = null, maxEdges = 8, maxCentres = 16 } = {}) {
+  // the trips' own seeded run (an LCG, as actors.js has for the traffic): where a car is bound is not left to
+  // Math.random, so that the same clock plays the same traffic (tools/game_check.js holds the clock; #420)
+  const seeded = seed => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  function create(net, { centres = [], hour = () => 12, rnd = seeded(7919), avoid = null, parkable = null, slow = null, maxEdges = 8, maxCentres = 16 } = {}) {
     const L = net.L, n = L.length, ids = new Map(), arrive = [], q = {};
     const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; let i = ids.get(k); if (i == null) { i = arrive.length; ids.set(k, i); arrive.push([]); } return i; };
     // a state is a piece driven one way: 2 * line + (1 forward, 0 back). from[s], to[s]: the nodes it leaves and comes to

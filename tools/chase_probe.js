@@ -9,6 +9,7 @@
 // Exits 1 if the distance moves by over 3 cm from one frame to the next at a steady speed (measured
 // over 20 frames at least: a straight long enough).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'tokyo'] = process.argv;
 (async () => {
   const b = await chromium.launch({ headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] });
@@ -17,8 +18,7 @@ const [,, city = 'tokyo'] = process.argv;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
   await p.evaluate(() => window.__game.lateReady && window.__game.lateReady()); // (the cars' near models and your car come after the game opens, issue 335)
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.evaluate(() => { window.requestAnimationFrame = () => 0; });
   const r = await p.evaluate(() => {
     const g = window.__game;
