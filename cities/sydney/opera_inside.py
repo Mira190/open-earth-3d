@@ -659,11 +659,11 @@ def hall_inside(key, shells, exterior, z0, deck=None):
         for k in range(nc):
             u, z = uc0 + 0.75 + k * cp, zc + (k + 1) * crise
             vs = [v for v in np.arange(-ha + 1.1, ha - 1.09, 0.56) if 0.6 <= abs(v) <= ha - CP["side"] and min(ceil_at(u, v), E(u, v) - 0.9) >= z + 1.6]   # an aisle down the middle and one up each side; and room over the heads
-            east = sorted(v for v in vs if v > 0)
+            east_vs = sorted(v for v in vs if v > 0)   # (not `east`: that is the hall's axis, used further on)
             for v in vs:
-                keep_free = k == kc and v in east[-2:]
+                keep_free = k == kc and v in east_vs[-2:]
                 seat_at(u, v, z, heading, "circle", full=0.7, kept=keep_free)
-                if keep_free and v == east[-1]:
+                if keep_free and v == east_vs[-1]:
                     x, y, _ = P(u, v, 0)
                     out["seats"].append({"id": f"{hid}-circle-1", "name": f"{C['name']}, the circle", "verb": "Take your seat",
                                          "at": [round(x, 2), round(y, 2), round(z0 + z, 2)], "face": [round(float(-ax[0]), 4), round(float(-ax[1]), 4)],
