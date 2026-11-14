@@ -8,6 +8,7 @@
 //   xvfb-run -a node tools/wall_stops.js osaka [seconds per place=90] [places=4]
 // GAME_TIME pins the clock, as for tools/game_check.js.
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'osaka', secs = '90', places = '4'] = process.argv;
 (async () => {
@@ -21,8 +22,7 @@ const [,, city = 'osaka', secs = '90', places = '4'] = process.argv;
     p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     const r = await p.evaluate(([T, site]) => {
       window.requestAnimationFrame = () => 0; // the game's frame loop stops: the run steps only here
       const g = window.__game, A = g.cars, C = A.C, L = A.netL, nav = g.nav;

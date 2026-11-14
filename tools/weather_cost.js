@@ -8,6 +8,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   TIER=high xvfb-run -a node tools/weather_cost.js kyoto [frames]     # TIER=high|medium|low
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'kyoto', framesArg = '40'] = process.argv;
 const STATES = [
   ['clear', 'clear'],
@@ -37,8 +38,7 @@ const STATES = [
   p.on('console', m => { if (m.type() === 'error') console.log(`error: ${m.text().slice(0, 240)}`); });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   await p.waitForTimeout(4000);
   const out = await p.evaluate(async ([n, states]) => {
     const g = window.__game, W = g.weather, C = window.__draws;
