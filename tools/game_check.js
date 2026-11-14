@@ -160,42 +160,6 @@ const npcNight = require('./npc_night');
   if (city === 'tokyo' || pbr.n) check(pbr.n > 0 && pbr.loaded === pbr.n && pbr.repeat, `the landmarks' tiled PBR surfaces load and repeat in metres (${pbr.loaded} of ${pbr.n} materials)`);
   await lightsKept('once the helicopter has come');
 
-  // a hero level (game/hero.js, docs/HERO.md), on a map that has one: walked up to, it loads and shows in place of
-  // the landmark meshes it draws instead, with its lit signs; walked away from, it is let go and they come back
-  const heroes = await p.evaluate(async () => {
-    const g = window.__game, H = g.hero && g.hero();
-    if (!H || !H.levels.length) return null;
-    const pl = g.player, at = { x: pl.x, y: pl.y, z: pl.z }, was = g.held ? g.held() : false, out = [];
-    const frames = async n => { for (let i = 0; i < n; i++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); } };
-    g.hold(true);
-    try {
-      for (const L of H.levels) {
-        pl.x = L.h.at[0]; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
-        // (the world steps only while the level waits for the camera to come near, which the simulation alone decides;
-        // once it is loading, the frames go on (hero.update loads and shows it) but the world stands: stepped all the
-        // while, it moved on by however long the machine took to fetch the level, and the rest of the run with it, #420)
-        let t = 0;
-        const stateOf = () => H.state().find(s => s.id === L.h.id) || {};
-        for (; t < 900 && !stateOf().shown; t++) { if (stateOf().state === 'idle') await frames(1); else await new Promise(r => requestAnimationFrame(r)); }
-        const st = H.state().find(s => s.id === L.h.id), hidden = (L.h.hide || []).map(n => g.Wd.world.getObjectByName(n)).filter(Boolean);
-        let glow = 0, tris = 0;
-        if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube|paper|lamp)/.test(o.material.name)) glow++; } });
-        const r = { id: L.h.id, state: st.state, shown: st.shown, materials: st.materials, tris, glow, frames: t, hid: hidden.length, hiddenOff: hidden.every(o => !o.visible), want: (L.h.hide || []).length };
-        pl.x = L.h.at[0] + 2000; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
-        await frames(4);
-        r.away = H.state().find(s => s.id === L.h.id).state;
-        r.back = hidden.every(o => o.visible);
-        out.push(r);
-      }
-    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); g.hold(was); }
-    return out;
-  });
-  for (const r of heroes || []) {
-    check(r.state === 'ready' && r.shown && r.tris > 1000 && r.glow > 0, `the hero level ${r.id} loads when you come near and is shown (${r.materials} materials, ${Math.round(r.tris)} triangles, ${r.glow} lit, after ${r.frames} frames)`);
-    check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
-    check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
-  }
-  if (heroes) await lightsKept('with the hero level loaded and let go');
 
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
   // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
@@ -2259,6 +2223,48 @@ const npcNight = require('./npc_night');
   check(dodge.none || dodge.dodged == null || (dodge.dodged && dodge.v1 < dodge.v0 - 2 && dodge.off > 0.4 && dodge.honked),
     dodge.none ? 'no car' : dodge.dodged == null ? `no car on the move to dodge yours (${dodge.tried} tried)`
       : `a car coming at yours dodges it (${dodge.model}: ${dodge.v0.toFixed(1)} -> ${dodge.v1.toFixed(1)} m/s, ${dodge.off.toFixed(2)} m aside, ${dodge.honked ? 'horn' : 'no horn'})`);
+
+  // a hero level (game/hero.js, docs/HERO.md), on a map that has one: walked up to, it loads and shows in place of
+  // the landmark meshes it draws instead, with its lit signs; walked away from, it is let go and they come back
+  // (last, after the traffic's checks: it carries the player to the level and far off it, and the traffic that
+  // is kept round the player would be laid out again under the steps that measure it)
+  const heroes = await p.evaluate(async () => {
+    const g = window.__game, H = g.hero && g.hero();
+    if (!H || !H.levels.length) return null;
+    const pl = g.player, at = { x: pl.x, y: pl.y, z: pl.z }, was = g.held ? g.held() : false, out = [];
+    const frames = async n => { for (let i = 0; i < n; i++) { g.advance(0.05); await new Promise(r => requestAnimationFrame(r)); } };
+    g.hold(true);
+    try {
+      for (const L of H.levels) {
+        pl.x = L.h.at[0]; pl.y = L.h.at[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        // (the world steps only while the level waits for the camera to come near, which the simulation alone decides;
+        // once it is loading, the frames go on (hero.update loads and shows it) but the world stands: stepped all the
+        // while, it moved on by however long the machine took to fetch the level, and the rest of the run with it, #420)
+        let t = 0;
+        const stateOf = () => H.state().find(s => s.id === L.h.id) || {};
+        for (; t < 900 && !stateOf().shown; t++) { if (stateOf().state === 'idle') await frames(1); else await new Promise(r => requestAnimationFrame(r)); }
+        const st = H.state().find(s => s.id === L.h.id), hidden = (L.h.hide || []).map(n => g.Wd.world.getObjectByName(n)).filter(Boolean);
+        let glow = 0, tris = 0;
+        if (L.root) L.root.traverse(o => { if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (/^(glow|tube|paper|lamp)/.test(o.material.name)) glow++; } });
+        const r = { id: L.h.id, state: st.state, shown: st.shown, materials: st.materials, tris, glow, frames: t, hid: hidden.length, hiddenOff: hidden.every(o => !o.visible), want: (L.h.hide || []).length };
+        // away: 700 m past its edge, on the map (off a small map's edge there is no ground to stand the player on)
+        const far = (L.h.r || 150) + 700, away = [[far, 0], [-far, 0], [0, far], [0, -far]].map(([dx, dy]) => [L.h.at[0] + dx, L.h.at[1] + dy]).find(([x, y]) => Number.isFinite(g.nav.terrain(x, y)) && g.nav.terrain(x, y) > -50) || [L.h.at[0] + 2000, L.h.at[1]];
+        pl.x = away[0]; pl.y = away[1]; pl.z = g.nav.terrain(pl.x, pl.y);
+        // (the camera follows the player there over some frames, and the level goes by the camera's place)
+        for (let k = 0; k < 80 && H.state().find(s => s.id === L.h.id).state !== 'idle'; k++) await frames(1);
+        r.away = H.state().find(s => s.id === L.h.id).state;
+        r.back = hidden.every(o => o.visible);
+        out.push(r);
+      }
+    } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; g.advance(0.1); g.hold(was); }
+    return out;
+  });
+  for (const r of heroes || []) {
+    check(r.state === 'ready' && r.shown && r.tris > 1000 && r.glow > 0, `the hero level ${r.id} loads when you come near and is shown (${r.materials} materials, ${Math.round(r.tris)} triangles, ${r.glow} lit, after ${r.frames} frames)`);
+    check(r.hid === r.want && r.hiddenOff, `the hero level ${r.id} hides the ${r.want} landmark meshes it draws instead (${r.hid} found)`);
+    check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
+  }
+  if (heroes) await lightsKept('with the hero level loaded and let go');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
