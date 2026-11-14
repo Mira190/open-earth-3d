@@ -20,7 +20,7 @@ const { chromium } = require('playwright');
     let pieces = 0, metres = 0;
     for (let i = 0; i < L.length; i++) {
       const l = L[i];
-      if (l.deck) continue; // (a deck's rails are not walls)
+      if (l.deck && l.deck.some(v => v)) continue; // (a piece on a deck: its rails are not walls)
       let hits = [];
       for (let s = 2; s < l.len - 2; s += 2) {
         g.roadNet.at(i, s, q);
