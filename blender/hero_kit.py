@@ -301,7 +301,7 @@ def bake(geo, gain=1.0, near=0.35, walls_ao=True):
 
 def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0.0, 0.0, 0.0)):
     """Blender meshes from geo (one object per material), with their materials from `materials`
-    ({name: spec}: color, rough, metal, tex (a TEXTURES key), tint, emissive, map ('atlas'), alpha)."""
+    ({name: spec}: color, rough, metal, tex (a TEXTURES key), tint, emissive, map ('atlas'), emissive_only, alpha)."""
     import bpy
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
@@ -338,7 +338,8 @@ def build_blender(geo, bakes, materials, atlas_path=None, name="hero", origin=(0
             nt.links.new(tn.outputs["Color"], nm.inputs["Color"]); nt.links.new(nm.outputs["Normal"], bs.inputs["Normal"])
         if spec.get("map") == "atlas" and atlas_path:
             ta = nt.nodes.new("ShaderNodeTexImage"); ta.image = image(atlas_path)
-            nt.links.new(ta.outputs["Color"], bs.inputs["Base Color"])
+            if not spec.get("emissive_only"):   # (emissive_only: the atlas is its light alone, over its plain colour: dark glass by day)
+                nt.links.new(ta.outputs["Color"], bs.inputs["Base Color"])
             if spec.get("emissive"):
                 nt.links.new(ta.outputs["Color"], bs.inputs["Emission Color"])
                 bs.inputs["Emission Strength"].default_value = spec.get("glow", 1.0)

@@ -5,7 +5,8 @@ Asked for in November 2026 for Tokyo's live maps: one small level per map, a str
 the map stays as it is around it. Shinjuku's is Kabukicho Ichibangai (`cities/shinjuku/hero.py`);
 Shibuya's scramble and Marunouchi-Ginza's are built by their own sessions on the same kit. Kamakura's is
 the hill road above the Kamakurakokomae crossing (`cities/kamakura/hero.py`), the first by a map's spawn;
-Tetsugaku's is the head of the Philosopher's Path (`cities/tetsugaku/hero.py`).
+Tetsugaku's is the head of the Philosopher's Path (`cities/tetsugaku/hero.py`), and Kyoto's the station's
+north forecourt under Kyoto Tower (`cities/kyoto/hero.py`).
 
 | What | Where |
 |---|---|
@@ -196,6 +197,44 @@ shop fronts of the photographs are not modelled); the cherries are the city's tr
 colours; the canal's width and the banks' heights are the map's (3.5 m; 1.0 m down to the water); the slabs'
 sizes are drawn from a range, not surveyed; the bridges' balustrades are one design for all three, taken
 from Ginkakuji-bashi's; the vending machines' and benches' places are OpenStreetMap's to within a few metres.
+
+## Kyoto Station's north forecourt and Kyoto Tower's foot (Kyoto)
+
+The game opens outside the station's Karasuma gate, and what is photographed from there is Kyoto Tower over
+Shiokoji-dori. The level (`cities/kyoto/hero.py`) is that view, 110 m deep: the forecourt, the road and its
+junction with Karasuma-dori, and the faces of Kyoto Tower Building (1964, nine storeys; the tower stands on
+its roof and is the city's own landmark mesh).
+
+- **The forecourt**: dark granite paving on the plaza's outline, tactile strips to the two zebras, steel
+  bollards along the kerb, lamp posts (baked), three granite planters with clipped hedges, the two map
+  boards with their direction headers and the three flagpoles in front of them.
+- **Shiokoji-dori and Karasuma-dori's foot**: one asphalt surface, a solid centre line, lane dashes, edge
+  and stop lines, the junction's four zebras, flush granite kerbs, the north pavement's blocks, and Kyoto's
+  brown pavement fences.
+- **Kyoto Tower Building**: on every edge of its outline that looks south or east, in front of the city's
+  plain solid: a glazed street floor lit from inside between dark piers under a lit fascia ("Kyoto Tower
+  Sando", the arcade's name); eight storeys, each a balcony band of dark bronze with its rail over a ribbon
+  of windows (rooms drawn, lit after dark); the hotel's name in lit letters on the sixth storey; a rail round
+  the roof.
+
+Measured: the building's outline and height (31 m over 28 m) are the map's (PLATEAU on Overture); the road's
+two carriageways and the crossings' places are OpenStreetMap's (`game.json` `paths`, `props`).
+Photographs looked at (Wikimedia Commons; none is reproduced):
+
+| File | Author | Licence | Used for |
+|---|---|---|---|
+| Kyoto Tower in front of Karasuma Entrance of Kyoto Station.jpg | そらみみ | CC BY-SA 4.0 | the forecourt's dark paving, the two map boards and their headers, the flagpoles, the building's bronze bands and lettering |
+| Nidec Kyoto Tower 2024-08.jpg | Mr.ちゅらさん | CC0 | the building and the bus terminal's canopies at dusk, what is lit |
+| Kyoto Tower seen from Kyoto Station, 20240821 1036 5227.jpg | Jakub Hałun | CC BY 4.0 | the building's storeys and balcony rails |
+
+Textures (ambientCG, CC0 1.0): `Tiles138` (the forecourt), `PavingStones136`, `Granite001A`, `Asphalt031`,
+`Concrete034`.
+
+Not as it is, or not checked: the building's upper storeys step back in terraces and its corners are
+rounded; here every storey stands on the outline. The storey height is the building's height over nine,
+not a drawing's. The bus terminal's long white canopies, which fill the foreground of the photographs, are
+still the city's plain "roof" solids: they want landmark meshes of their own (issue filed). The map boards'
+faces are our own drawing. Horikawa (#322) is 3.5 km north of here and is not part of this level.
 
 ## Research: how the games build a street like this, and what runs in a browser
 
