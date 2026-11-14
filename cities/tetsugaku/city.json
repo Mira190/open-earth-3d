@@ -55,7 +55,8 @@
     "inland": {
       "note": "The canal's branch (疏水分線) about 3.5 m wide between stone walls 1 m down to its flow; the Shirakawa 4 m wide, 1.2 m down; the Biwako Canal below Keage between stone walls about 1.8 m down; ponds at the 5 m laser survey's level.",
       "lines": [
-        {"name": "疏水分線", "width_m": 3.5, "bank_to_water_m": 1.0, "water_m": 0.5, "walls": "stone"},
+        {"name": "疏水分線", "width_m": 3.5, "bank_to_water_m": 1.0, "water_m": 0.5, "walls": "stone", "rail": false,
+         "rail_note": "No railing along the path: OpenStreetMap maps ropes and hedges, and photographs show none"},
         {"name": "白川", "width_m": 4.0, "bank_to_water_m": 1.2, "water_m": 0.25, "walls": "stone"}
       ],
       "class_rules": {"canal": {"walls": "stone", "bank_to_water_m": 1.8, "water_m": 1.5}},
@@ -830,15 +831,34 @@
     ],
     "start": {
       "at": [
-        205,
-        1033
+        282.3,
+        1015.3
       ],
       "facing": [
-        204,
-        980
+        310.2,
+        977.7
       ],
       "time": "live"
     },
+    "hero": [
+      {
+        "id": "tetsugaku",
+        "glb": "hero/tetsugaku.glb",
+        "at": [
+          312.4,
+          976.5
+        ],
+        "r": 70.0,
+        "bake": 1.0,
+        "street": 1.0,
+        "glow": [
+          0.3,
+          1.5
+        ],
+        "hide": [],
+        "note": "The head of the Philosopher's Path from Ginkakuji-bashi to the third bridge, modelled finely (cities/tetsugaku/hero.py, blender/build_hero.py, docs/HERO.md)"
+      }
+    ],
     "helipads_from_data": false,
     "helipads": [
       {
@@ -862,8 +882,8 @@
         "name": "Haruka 遥",
         "role": "Student at Kyoto University",
         "at": [
-          206,
-          1043
+          285.5,
+          1009.8
         ],
         "look": {
           "character": "R_Female_Adult_12_f013",
