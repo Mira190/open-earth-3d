@@ -1825,6 +1825,9 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         const dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy, w = Math.abs(-dx * fy + dy * fx);
         if (w > 5.5 || a > c.half + o.half + 3 || a < -Math.max(28, o.v * 3)) continue;
         if (Math.sin(o.h) * fx + Math.cos(o.h) * fy < 0.3 && a < -o.half - c.half) continue; // (one going the other way, behind it)
+        // (one standing behind it in its lane, waiting on it: it pulls out ahead of that one, which is what it waits for.
+        // Counted as traffic, the car it held up kept it parked, and itself held behind it, for good: #409)
+        if (o.v < 0.3 && a < 0 && o.front === c) continue;
         return false;
       }
       for (const o of api.extra) { const dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy; if (Math.abs(-dx * fy + dy * fx) < 5.5 && a < c.half + (o.half || 2.4) + 3 && a > -Math.max(28, (o.v || 0) * 3)) return false; }
