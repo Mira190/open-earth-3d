@@ -583,12 +583,11 @@ ${PAT_GLSL}`)
       aim(a.ua, a.la, elbow.clone().sub(sh).normalize());
       aim(a.la, a.wr, fist.sub(elbow).normalize());
     }
-    const STILL = { reset() { return this; }, setLoop() { return this; }, setEffectiveTimeScale() { return this; }, setEffectiveWeight() { return this; },
-      play() { return this; }, crossFadeTo() { return this; }, clampWhenFinished: false }; // (no clip at all yet: nothing to play)
     function play(name, fade = 0.25, once = false) {
-      // (a rig built before its pack's clips arrived, or a character without this clip, keeps what it plays or
-      // stands idle: an undefined action here threw every frame and stopped the game's loop)
-      const a = act[name] || cur || act.Idle || Object.values(act)[0] || STILL;
+      // (a clip this character's rig was not built with, a sitting or a running one: its idle instead, or any it has.
+      // Tokyo's people at 576,1269 threw here one run in three)
+      const a = act[name] || act.Idle || act.Walk || Object.values(act)[0];
+      if (!a) return { setEffectiveTimeScale() { return this; } };
       if (cur === a) return a;
       a.reset();
       a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
