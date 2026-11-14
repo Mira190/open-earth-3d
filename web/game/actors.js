@@ -3157,7 +3157,7 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           if (!c.mv) { c.nx = undefined; c.plan = c.ex = null; }
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.5 * dt));
           lanePos(c.line, sb, c.dir, tmp, c.off + c.lo, c.pv, c.nx ? [nl, nd] : null);
-          if (overlaps(c, tmp.x, tmp.y, hx0, hy0, 0, 0, null, caught) < tangled - 1e-4 && fresh === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) <= peopleIn(c, c.x, c.y, hx0, hy0)) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); }
+          if (overlaps(c, tmp.x, tmp.y, hx0, hy0, 0, 0, null, caught) < tangled - 1e-4 && fresh === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) <= peopleIn(c, c.x, c.y, hx0, hy0)) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.dbgBack = (c.dbgBack || 0) + 1; c.dbgCaught = caught ? [...caught].map(o => C.indexOf(o)).join(',') : ''; }
         }
         // held part way across to another lane: back to the one it came from (it moves across later)
         c.lnHeld = held && !back && Math.abs(c.lo - loT) > 0.15 ? (c.lnHeld || 0) + dt : 0;
