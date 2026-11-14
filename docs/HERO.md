@@ -273,6 +273,27 @@ guard pipes); the entrances, the tracks, Hachiko and the signs stay the landmark
 158,000 triangles, 8.2 MB; nothing is built under a building, in a stair well, on a wall no player sees or past
 100 m. On a phone the map's GPU memory peaks at 372 to 388 MB of the 490 MB budget (`tools/check.sh shibuya:mem`).
 
+**QFRONT against its photograph.** The landmark drew the building as navy glass under a white grid with a plain
+band for a street floor. From the 2025 photograph of it across the crosswalk: the outer skin is now glass that
+mirrors the sky over a dark pane (`x_qf_glass`), each floor's edge a silver band 0.8 m deep behind the fins
+(`scramble.qfront`), and the level draws the street floor (`Level.qfront_base`): the shopfront line a metre
+behind the face, glazed from a stone foot to the canopy's soffit onto lit shops, with the building's round
+columns in silver cladding standing free in front.
+
+**Glass that read as milk.** Two causes, both found with the still tool's ray probe
+(`PROBE=fx,fy tools/scramble_shot.js`: what stands along the ray through a point of the frame). The subway
+entrance's panes had a pale colour of their own, and four of them one behind another whitened everything seen
+through them: clear glass has almost no colour of its own, only what it mirrors (`x_glass` is now near black at
+16%). And glass at street level mirrored the game's environment, which is the sky alone, where a photograph
+shows the shaded fronts across the street: a hero material's `sky` (hero_kit; `envMapIntensity` in `hero.js`)
+is the share of the sky it mirrors, 0.15 for shop glass. By day a shop's own light is `glow[0]` 0.24: a room
+seen from a sunlit street is darker than the street.
+
+**Daylight.** The Japanese maps take the `shinkai` look by default (docs/LOOK.md), whose shade is a strong blue;
+on a level held to a photograph it turned every white wall and the paving blue. Shibuya names its own in
+`game.look`: the `film` preset, a near-neutral shade `[0.88, 0.91, 0.95]` with more bounce from the ground, and
+a day grade without the extra saturation.
+
 **People at the lens.** With the camera low at a kerb the near crowd showed as flat dolls a few metres away:
 the modelled people were chosen by distance from the player, not from the camera, and those behind it took the
 places. `web/game/people.js` now picks them by distance from the camera, those in view first.
@@ -282,8 +303,8 @@ junction, 2025-01 (ウィ貴公子, CC BY-SA 4.0), QFRONT from the crosswalk, 20
 Square, 2020-04 (Asanagi, CC0); links in docs/cities/shibuya.md.
 
 Where it still falls short of the bar: the fronts are one grammar, not each building's own face (QFRONT's
-base and glass, the bookshop block, Center Gai's mouth and the station front are next, issue 461); glass does
-not mirror the street; white walls take the sky's blue by day; the kerbs are flush, since the game's ground is
+face (the bookshop block, Center Gai's mouth and the station front are next, issue 461); glass mirrors the sky or
+nothing, never the street; the sky's clouds are painted; the kerbs are flush, since the game's ground is
 one surface; the lamp posts' design and places are from photographs, not a survey; and it has been seen on a
 software renderer only.
 

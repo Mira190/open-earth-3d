@@ -87,7 +87,7 @@ def materials():
         # glass: dark and mirror-smooth, so that by day it shows the sky (the game's environment) and after dark
         # the rooms drawn behind it, which are its light alone
         "win_glass": {"map": "atlas", "color": (0.035, 0.045, 0.055), "rough": 0.05, "metal": 0.65, "emissive": True, "emissive_only": True, "glow": 0.9},
-        "glow_shop": {"map": "atlas", "color": (0.03, 0.035, 0.04), "rough": 0.05, "metal": 0.35, "emissive": True, "emissive_only": True, "glow": 1.0},
+        "glow_shop": {"map": "atlas", "color": (0.03, 0.035, 0.04), "rough": 0.08, "metal": 0.0, "sky": 0.15, "emissive": True, "emissive_only": True, "glow": 1.0},
     }
 
 
@@ -356,6 +356,7 @@ class Level:
         self.guards()
         self.lamps()
         self.fronts()
+        self.qfront_base()
         return self.geo, self.A
 
     # -- helpers
@@ -641,6 +642,62 @@ class Level:
                 G.walls.append((a + n * OUT, b + n * OUT, self.T(*mid), top))
                 n_faces += 1
         print(f"fronts: {n_faces} walls dressed, seen from {len(self.eyes)} places")
+
+    def qfront_base(self):
+        """QFRONT's street floor under its canopy, which the landmark draws as one plain band: the shopfront line a
+        metre behind the building's face, glazed from a stone foot to the canopy's soffit onto the shops (the
+        coffee shop's stair hall, the bookshop's entrance), and the building's round columns in silver cladding
+        standing free in front of it, as the photographs show."""
+        from shapely.geometry import Polygon
+        SC = self.S
+        G, A, D = self.geo, self.A, self.D
+        Q = SC.QFRONT
+        s = next((s for s in D.solids if s["osm"] == Q["osm"] and s["top"] > 40), None)
+        if not s:
+            return
+        R = Q["round_m"]
+        O = Polygon(s["ring"]).buffer(-R, join_style=2).buffer(R, resolution=6)
+        cen, toward = np.array(O.centroid.coords[0]), np.asarray(Q["toward"])
+        front = lambda mid, n: (toward - cen) @ n / np.linalg.norm(toward - cen) > -0.25 and (mid - cen) @ (toward - cen) > -8.0
+        zs = s["ground"] + Q["shop_m"] - 0.55              # the canopy's soffit
+        n_bays = 0
+        for a, b, n, L in SC.ring_edges(O.buffer(-1.0 + OUT, join_style=2)):
+            mid = (a + b) / 2
+            if L < 0.6 or not front(mid, n):
+                continue
+            F = PT.Frame(a, b) if np.allclose(PT.Frame(a, b).n, n, atol=0.05) else PT.Frame(b, a)
+            g = self.T(*(mid + n * 1.5)) + LIFT
+            nb = max(1, int(round(L / 3.0)))
+            bw = L / nb
+            for j in range(nb):
+                u0, u1 = j * bw, (j + 1) * bw
+                z0 = g + 0.3
+                key = f"shop{(2 + n_bays // 2) % SHOPS}"
+                (ua, va), (ub, _), (_, vb), _ = A.uv(key)
+                half = n_bays % 2
+                uv = [(ua + (ub - ua) * (half + s_) / 2, v_) for s_, v_ in ((0, va), (1, va), (1, vb), (0, vb))]
+                G.quad("glow_shop", F.P(u0, 0.0, z0), F.P(u1, 0.0, z0), F.P(u1, 0.0, zs), F.P(u0, 0.0, zs), uv=uv, n=F.N, emit=(A.mean[key], 1.3))
+                PT.fbox(G, "wall_foot", F, u0, u1, 0.0, 0.05, g, z0, TEX["dark"][1], faces=("front", "top"))
+                PT.fbox(G, "metal_alu", F, u0 - 0.035, u0 + 0.035, 0.0, 0.08, z0, zs, faces=("front", "left", "right"))
+                PT.fbox(G, "metal_alu", F, u0, u1, 0.0, 0.07, g + 2.5, g + 2.56, faces=("front", "top", "bottom"))
+                PT.fbox(G, "metal_alu", F, u0, u1, 0.0, 0.07, zs - 0.08, zs, faces=("front", "bottom"))
+                n_bays += 1
+        # the columns, on the building's face line, 5.4 m apart along the front
+        acc, last, n_cols = 2.7, None, 0
+        for a, b, n, L in SC.ring_edges(O.buffer(-0.35, join_style=2)):
+            if not front((a + b) / 2, n):
+                last = None
+                continue
+            for t in np.arange(0.0, L, 0.3):
+                p = a + (b - a) * (t / L)
+                acc += 0.3
+                if acc >= 5.4:
+                    acc = 0.0
+                    g = self.T(*p) + LIFT
+                    G.tube("metal_alu", [(p[0], p[1], g), (p[0], p[1], zs)], 0.3, segs=14)
+                    G.tube("wall_foot", [(p[0], p[1], g), (p[0], p[1], g + 0.25)], 0.34, segs=14)
+                    n_cols += 1
+        print(f"QFRONT's street floor: {n_bays} bays of glass, {n_cols} columns")
 
     def behind(self, F, Ln):
         """The parts of a wall that a landmark's picture hangs on: [(u0, u1, z0, z1)] in the wall's frame, for each

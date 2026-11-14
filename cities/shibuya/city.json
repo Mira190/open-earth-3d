@@ -565,6 +565,9 @@
       "style": "tokyo", "real_from": ["tokyo"]
     },
     "look": {
+      "preset": "film",
+      "light": {"shade": [0.88, 0.91, 0.95], "bounce": 0.6},
+      "grade": {"day": {"sat": 1.0, "vib": 0.06, "shade": [0.99, 1.0, 1.02], "tint": [1.01, 1.0, 0.99]}},
       "neon": 1,
       "fill": [{ "at": [368.7, -1000.6], "z": 12, "w": 60, "h": 56, "colour": "#ffe4c8", "k": 1.2 },
                { "at": [376.6, -1043.4], "z": 4.2, "w": 3.4, "h": 3.4, "colour": "#ffd0a0", "k": 8, "aim": [373.78, -1047.42, 2.2] }],
@@ -1025,7 +1028,7 @@
         "r": 100.0,
         "bake": 0.7,
         "street": 0.45,
-        "glow": [0.4, 1.5],
+        "glow": [0.24, 1.5],
         "hide": ["scramble_x_skin", "p5_plaza", "scramble_x_paint", "scramble_x_asphalt", "scramble_x_tactile", "scramble_x_tactile_dot", "scramble_x_guard"],
         "note": "The Scramble and Hachiko Square within 100 m of the junction: carriageway, paint, kerbs, pavements, street furniture and the fronts a player sees, modelled finely (cities/shibuya/hero.py, blender/build_hero.py, docs/HERO.md)"
       }

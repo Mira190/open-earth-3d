@@ -52,6 +52,8 @@ window.OpenEarthGame = async function game(cityId) {
     D.Tfine = Tfine; // the walls of the buildings reach down to whichever ground is drawn
     if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.settleUnderFloors(D.T, Tfine, D.LM); // (the far ground under the landmarks' floors at every distance, #286; ?settle=off: without, to compare)
     if (new URLSearchParams(location.search).get('settle') !== 'off') OEWorld.carveUnderWater([Tfine, D.T], D.LM); // (and under the landmarks' ponds and moats, #399)
+    // (and the ground drawn, not walked, deeper under the moats' narrow water: copies for the tiles, #399)
+    if (new URLSearchParams(location.search).get('settle') !== 'off' && OEWorld.deepenUnderWater) { const dr = OEWorld.deepenUnderWater([Tfine, D.T], D.LM); if (dr) { D.drawTfine = dr[0]; D.drawT = dr[1]; } }
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
@@ -346,7 +348,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return tex;
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
-    const g = Wd.tileGeometry(scene.ground[i], T), coarse = Wd.groundMeshes[i];
+    const g = Wd.tileGeometry(scene.ground[i], D.drawTfine || T), coarse = Wd.groundMeshes[i];
     const m = Wd.groundMesh(g, coarse.material);
     m.receiveShadow = true;
     world.add(m);

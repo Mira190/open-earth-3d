@@ -1328,7 +1328,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       im.onload = im.onerror = null; im.removeAttribute('src');
     };
     scene.ground.forEach((t, i) => {
-      const g = tileGeometry(t, T);
+      const g = tileGeometry(t, D.drawT || T); // (the drawn ground deeper under a narrow moat, where the game made it: deepenUnderWater)
       let tex;
       if (loTex && (!pics.first[i] || stream)) tex = loPart(t); // (until its picture comes)
       else tex = photoTex(null);
@@ -3161,6 +3161,50 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     }
     return n;
   }
+  // The ground drawn under a landmark's water beside a bank that stands over it: where a moat narrows to under a cell
+  // between its walls, the grid's triangle from a point on the bank to the next under the water still rises out of
+  // the water a cell out into it (Tokyo's palace moats, #399). In copies of the grids, for the ground tiles only, each
+  // point under the water goes down by as much as its highest neighbour on the bank rises over the water (up to 10 m),
+  // so the triangle meets the water by the shore. Walking keeps the grids as they are: lowering those changed the
+  // walking model, its route network and so the traffic. Returns the copies, or null where no water needs it.
+  function deepenUnderWater(grids, LM) {
+    if (!LM || !LM.meshes) return null;
+    const out = [];
+    let any = false;
+    for (const T of grids) {
+      if (!T) { out.push(null); continue; }
+      const under = new Float32Array(T.nx * T.ny).fill(Infinity);
+      for (const m of LM.meshes) {
+        const p = m.position, ix = m.index, mat = LM.materials[m.material];
+        if (!p || !ix || !WATER.test(`${m.name} ${m.material}`) || (mat && mat.opacity === 0)) continue;
+        for (let i = 0; i + 2 < ix.length; i += 3) {
+          const a = 3 * ix[i], b = 3 * ix[i + 1], c = 3 * ix[i + 2];
+          const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+          const nz = ux * vy - uy * vx, nl = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, nz);
+          if (!(nl > 1e-6) || Math.abs(nz) < 0.9 * nl) continue; // (the sheet, not a wall)
+          const zw = Math.min(p[a + 2], p[b + 2], p[c + 2]), P = [[p[a], p[a + 1]], [p[b], p[b + 1]], [p[c], p[c + 1]]];
+          const k0 = Math.max(0, Math.floor((Math.min(p[a], p[b], p[c]) - T.x0) / T.cell)), k1 = Math.min(T.nx - 1, Math.ceil((Math.max(p[a], p[b], p[c]) - T.x0) / T.cell));
+          const r0 = Math.max(0, Math.floor((T.y1 - Math.max(p[a + 1], p[b + 1], p[c + 1])) / T.cell)), r1 = Math.min(T.ny - 1, Math.ceil((T.y1 - Math.min(p[a + 1], p[b + 1], p[c + 1])) / T.cell));
+          for (let r = r0; r <= r1; r++) for (let k = k0; k <= k1; k++) {
+            const q = r * T.nx + k;
+            if (zw < under[q] && triDist(T.x0 + k * T.cell, T.y1 - r * T.cell, P) === 0) under[q] = zw;
+          }
+        }
+      }
+      let D = null;
+      for (let r = 0; r < T.ny; r++) for (let k = 0; k < T.nx; k++) {
+        const q = r * T.nx + k, zw = under[q];
+        if (zw === Infinity) continue;
+        let H = -Infinity;
+        for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const rr = r + i, kk = k + j; if (rr >= 0 && kk >= 0 && rr < T.ny && kk < T.nx && under[rr * T.nx + kk] === Infinity) H = Math.max(H, T.data[rr * T.nx + kk]); }
+        const to = H > zw ? zw - 0.5 - Math.min(10, H - zw) : Infinity;
+        if (to < T.data[q]) { if (!D) D = Float32Array.from(T.data); D[q] = to; }
+      }
+      if (D) any = true;
+      out.push(D ? Object.assign({}, T, { data: D }) : T);
+    }
+    return any ? out : null;
+  }
   // how far (x, y) is from a triangle P = [[x, y] x3] on the map (0 inside it)
   function triDist(x, y, P) {
     const [[ax, ay], [bx, by], [cx, cy]] = P;
@@ -3218,5 +3262,5 @@ if (dot(vRailT, vRailT) > 0.25) { vec3 oeT = normalize(vRailT), oeV = normalize(
     return g;
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater, railGlint };
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater, deepenUnderWater, railGlint };
 })();
