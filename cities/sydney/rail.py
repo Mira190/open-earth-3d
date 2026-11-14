@@ -490,21 +490,46 @@ def surfaces():
     return out
 
 
+# The City Circle's next stations each way, under the ground: boarded and left at a street entrance (OpenStreetMap's
+# railway=subway_entrance nodes, read 14 November 2026), the platform's place for the distance along the line
+# (its railway=station node). The line between is in tunnel and not drawn (web/game/trains.js "under").
+UNDER = {
+    "wynyard": {"name": "Wynyard", "entrance": (151.2062571, -33.8657229), "platforms": (151.2058096, -33.8659903),
+                "text": "Up the escalators to George Street."},
+    "st-james": {"name": "St James", "entrance": (151.2103955, -33.8707284), "platforms": (151.2112, -33.8712),
+                 "text": "Up the stairs into Hyde Park, by Elizabeth Street."},
+}
+TUNNEL_K = 1.2   # the tunnel's length over the straight line from its mouth to the next platforms (the City Circle's curves)
+
+
 def trains():
     L = layout()
     if not L:
         return None
-    rz = L["rail_z"]
+    rz, C, T = L["rail_z"], L["C"], L["T"]
+    under = {}
+    for sid, u in UNDER.items():
+        ex, ey = C.fwd.transform(*u["entrance"])
+        under[sid] = dict(u, at=(ex, ey, round(float(T(ex, ey)), 2)), plat=C.fwd.transform(*u["platforms"]))
     tracks = []
     for t, p in zip(L["tracks"], L["plats"]):
         g = LineString(t["pts"])
         mid = LineString(p["mid"]).interpolate(0.5, normalized=True)
+        stop = round(g.project(mid), 1)
+        # westbound (City Inner, platform 1) from St James to Wynyard; eastbound (City Outer, platform 2) the other way
+        west, east = ("st-james", "wynyard") if not t["east"] else ("wynyard", "st-james")
+        a, b = np.array(g.coords[0]), np.array(g.coords[-1])
+        before = -TUNNEL_K * float(np.hypot(*(np.array(under[west]["plat"]) - a)))
+        after = g.length + TUNNEL_K * float(np.hypot(*(np.array(under[east]["plat"]) - b)))
         tracks.append({"id": t["id"], "line": "city-circle", "gauge": 1.435, "p": [v for q in t["pts"] for v in (round(q[0] * 10), round(q[1] * 10), round(rz * 10))],
-                       "stop_m": round(g.project(mid), 1), "platform": p["no"], "hide_m": [3.0, round(g.length - 3.0, 1)]})
+                       "stops": [{"station": west, "m": round(before, 1)}, {"station": "circular-quay", "m": stop, "platform": p["no"]}, {"station": east, "m": round(after, 1)}],
+                       "stop_m": stop, "platform": p["no"], "hide_m": [3.0, round(g.length - 3.0, 1)]})
     c = L["box"].centroid
+    cq = {"id": "circular-quay", "name": "Circular Quay", "style": "sydney", "at": [round(c.x, 1), round(c.y, 1), rz + PLAT], "hear_m": 130}
     return {
-        "note": "The City Circle through Circular Quay (cities/sydney/rail.py): courses in decimetres at rail level, in the direction of travel.",
-        "station": {"name": "Circular Quay", "style": "sydney", "at": [round(c.x, 1), round(c.y, 1), rz + PLAT], "hear_m": 130},
+        "note": "The City Circle through Circular Quay (cities/sydney/rail.py): courses in decimetres at rail level, in the direction of travel. Wynyard and St James are under the ground, boarded and left at a street entrance.",
+        "station": cq,
+        "stations": [cq] + [{"id": sid, "name": u["name"], "at": [round(u["at"][0], 1), round(u["at"][1], 1), u["at"][2]], "r": 6, "under": {"text": u["text"]}} for sid, u in under.items()],
         "tracks": tracks,
         # one each way every five minutes, as the City Circle runs off peak, and never both at once: between
         # trains the harbour is in view across the tracks for most of a minute

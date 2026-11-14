@@ -506,6 +506,7 @@ listed at the end.
 | **Tesla FSD** (AI Day 2021 and 2022: the planning talks) | The planner run for every car round it, not only for itself: each car's way ahead is known and read by the others, and where two ways meet one asserts and the other yields, by the same rule read from both sides, rather than both reacting to what is in front of them. A car that can no longer stop goes; one in the junction goes before one coming. Ideas only (its software is proprietary). | It learns from fleet video; here every car's intent is exact (its route, its movement through the junction), so nothing has to be guessed from a camera. |
 | **Baidu Apollo** (EM planner, Apache-2.0), **SUMO** (EPL-2.0), **A/B Street** (Apache-2.0), **Autonomous Intersection Management** (Dresner and Stone) | Apollo: another car's way projected onto your own as the stretch it blocks, and a go-first or yield decision on it. SUMO and A/B Street: keep the box clear (no car into a junction whose way across is blocked or whose exit has no room), and break a deadlock by someone backing off, never by driving through. AIM: a reservation for the way across, which `junctions.js` already makes. Re-written from the papers and documentation; no code taken. | They simulate traffic for planners to study. Here the same rules drive the taxi you are sitting in. |
 | **Real traffic control and dispatch**: SCATS (Sydney), SCOOT (UK), Japan's UTMS/MODERATO and VICS, max-pressure control, Uber's and DiDi's dispatch | SCATS's and actuated signals' gap-out (already here); max-pressure: serve the phase whose queues are longest and not blocked beyond; VICS: congestion shared with every navigator, so a ride goes round a jam; the box-junction rule (the UK's rule 174, Japan's Road Traffic Act article 50): no car in without room beyond. Algorithms from the papers; the systems themselves are proprietary. | They run real cities from loop detectors; here every queue is known exactly, so the controller needs no detector model. |
+| **Breath of the Wild** (its Pro HUD), **Ghost of Tsushima**, **GTA V**, **Genshin Impact**, **Red Dead Redemption 2** | What stays on screen is what is read at a glance: the objective, the minimap, the clock and the prompt for what is in reach. Everything else is one press away and off the picture: GTA and Red Dead keep the phone, the map and the journal on keys and in the pause menu, Genshin folds its row of icons away while you move, and Zelda's Pro HUD and Tsushima show nothing that is not needed now. So the HUD keeps two buttons, the map and the menu; the passport, the diary, photo mode, the phone and the districts fold behind a "more" button (their keys work either way, and a dot on it says a message is waiting), and the walking hint shows for four seconds when the gait changes and then goes. | Those games teach their keys once and hide them; a page on the web is also played by touch, where a button is the only way in, so the folded buttons stay one tap away rather than behind a pause menu. |
 
 ## Daily life: the day, the diary, bonds, skills and jobs
 
@@ -538,7 +539,7 @@ Sources for the above are listed under [Sources](#sources) ("Daily life").
   which jobs are offered and what is on.
 - **The calendar is the real one.** The game opens on the city's own date and hour. Events are
   at their real places on their real dates; the menu's date takes you to any of them.
-- **A slot is spent by choice.** Time passes on the running clock (a day in 48 minutes at 30×),
+- **A slot is spent by choice.** Time passes on the running clock (real time, or a day in 48 minutes at the menu's 30×),
   or at once with "pass the time" in the diary. Getting to know someone takes the rest of the
   slot.
 - **Everything is a true thing about a real place.** A rank's scene carries a fact that can be
@@ -686,12 +687,18 @@ shows today's rides, the day's and the week's caps and the rules in a line each.
 
 | Map | Card | What is charged | Source |
 |---|---|---|---|
-| Sydney | Opal | Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes and 30% off trains off-peak are in the table for the day a second station is on the map. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: the fixed-date ones only. |
-| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch: JR East's own pages refused the request. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
+| Sydney | Opal | Trains A$4.33 to 10 km (Circular Quay to Wynyard or St James), 30% off outside the peaks and all of Friday to Sunday. Ferries A$7.35 to 9 km, A$9.20 beyond, the same at any hour. Daily cap A$19.30, A$9.65 from Friday to Sunday and on public holidays; weekly cap A$50, Monday to Sunday. A$2 off a change of transport within 60 minutes. | Transport for NSW, adult Opal fares, as published on 14 November 2026 (the July 2025 table; the 29 June 2026 change left the prices as they were). Public holidays: NSW's, Easter, the King's Birthday and Labour Day included, and the weekday given when New Year's Day, Australia Day, Christmas or Boxing Day falls at a weekend. |
+| Tokyo (Marunouchi-Ginza) | Suica | JR, Yurakucho to Shimbashi: ¥155 by IC card. | JR East's revision of 14 March 2026 (¥146 before), from Traffic News and Impress Watch, confirmed by Yahoo! Transit's fare search on 14 November 2026: JR East's own pages refuse automated requests. The water buses are not charged: neither Tokyo Cruise nor the Tokyo Mizube Line sells a ticket between the map's piers today. |
+| Shibuya | Suica | JR: ¥155 by IC card between any two of Harajuku, Shibuya and Ebisu. SHIBUYA SKY: ¥3,000 before 15:00 and ¥3,700 from 15:00, the adult price at the counter; the way down is on the ticket. The survey's first visit is on its pass, so the main line never takes a new visitor's whole wallet (¥3,000). | SHIBUYA SKY's ticket page, as read on 14 November 2026 (issue 441). |
 | Shichirigahama | PASMO | The Enoden: ¥200 to the nearer stations, ¥220 beyond, each pair as the railway's table has it. | Enoshima Electric Railway's fare page, read 14 November 2026 (the amounts of 1 October 2019). |
 
-Not charged yet: tickets rather than taps (Queenstown's gondola and steamer, SHIBUYA SKY), whose
-real prices are above the wallet a visitor starts with. Taxis and rides are charged as before.
+A ticket at a gate is a ride of kind `lift` by the lift's id (`routes`), bought at its paying stop
+(`from`) and good for the way down (`return`), priced by the hour where the operator does (`times`:
+`[["HH:MM", fare], ...]`); `first_free` puts a first visit on the survey's pass. Holidays are fixed
+dates, `[m, d, "weekday"]` for one that gives the next free weekday when it falls at a weekend,
+`["easter", days]` and `["nth", month, weekday, n]`. Not charged, by decision: Tokyo's water buses
+(no operator sells a ticket between the map's piers); Queenstown's gondola and steamer wait with
+the parked map. Taxis and rides are charged as before.
 `tools/fares_check.js` prices trips with known answers under Node and every live map's table
 stop to stop; `tools/game_check.js` taps on through the game's own boarding and rides to the cap;
 `tools/fare_shot.js` takes the stills.
@@ -977,6 +984,26 @@ pipeline writes. The only city-specific code is landmark geometry in
     station with another station ahead of it on the map; you stand in its third car by the doors.
     A station on a viaduct (`deck`) is only its platforms' level, not the street under it.
     `tools/trains_step.js` rides one stop and checks the doors open.
+  - **Stations under the ground** (a station's `under`: `{text}`): a station off the drawn line, its
+    `at` the street entrance, where it is boarded and left (`r`, a few metres). A ride to or from one
+    runs in tunnel past the course's `hide_m`, where the cars are not drawn: the game veils the view
+    (`api.veil`, the line's name and the next stop), runs the clock on, and on arrival stands you at
+    the entrance with its line (`under.text`); boarding there veils the view until the car comes out
+    of the tunnel's mouth. Sydney's City Circle: Wynyard (George Street) and St James (Hyde Park, by
+    Elizabeth Street) each side of Circular Quay, their entrances OpenStreetMap's, the tunnel 1.2
+    times the straight line from its mouth to the platforms. A train that ends its run on the map at
+    a station is not offered there. `tools/tunnel_shot.js` takes the ride's stills.
+  - **Stations inside buildings** are the same: a course's `dark` stretches (`[[m0, m1], ...]`) are where
+    its cars are not drawn, as past `hide_m`, and the station is boarded and left at its street entrance.
+    Shibuya's Yamanote Line (`cities/shibuya/rail.py`): Harajuku, Shibuya and Ebisu stand inside the city
+    model's buildings (JR Shibuya's works-site box, Harajuku's station building of 2020 and its platforms'
+    outlines, the JR Ebisu Building), each entered at OpenStreetMap's entrance (the East Exit, the Hachiko
+    Gate, the West Exit). Between them E235 sets run every three minutes each way on OpenStreetMap's tracks,
+    across the girder bridge beside the Scramble at the bed `scramble.py` draws, on a bed of their own
+    elsewhere: the rail the 5 m ground smoothed, 0.8 m over it, an embankment across a valley (Shibuya
+    Station on its second floor over the Shibuya River), level through a station, never steeper than 3%,
+    with walls where it stands on an embankment or in a cutting, masts every 46 m and the contact wire.
+    A train standing at a station stands wholly inside its building.
   - A platform strip with no doors along it carries `hold`: nav.js keeps a walker from stepping off its sides
     (Kyoto's JR platforms). A halt's `psd` may carry `w`, the opening's width (Kyoto's Shinkansen gates, 1.8 m).
   - Kyoto (`cities/kyoto/rail.py`): the Shinkansen and the JR lines through Kyoto Station; Sydney's
@@ -2336,8 +2363,12 @@ quality tier runs a third of the cars.
     millimetres at two kilometres, so distant walls and roofs do not fight over
     pixels. The sky is given back its blue by day (`game.sky.saturation`).
 - **Sun and time:**
-  - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
-    title screen offers the morning first. The title screen and the menu offer:
+  - **Clock:** the game starts at the place's actual time, day or night, and the
+    clock runs in real time: it is read from the wall clock, so a pause, a menu or
+    a tab left in the background never leaves it behind. Picking another hour, a
+    date or a speed (30 times real time, 120, or paused) makes the clock the
+    player's own from then on, and a save keeps it; "Now" follows the place's
+    clock again. The title screen and the menu offer:
     - the time now;
     - sunrise, morning, noon, golden hour, sunset, blue hour and night, each shown
       with its clock time on the day. These are worked out from the sun, so a blue

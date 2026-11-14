@@ -69,6 +69,10 @@ const npcNight = require('./npc_night');
   if (process.env.CHAIN) await p.addInitScript(() => { window.__chain = true; }); // (CHAIN=1: the traffic steps log more of what held them)
   const logs = [], fails = [];
   p.on('console', m => { if (m.type() === 'error') logs.push(`error: ${m.text().slice(0, 300)}`); });
+  // a draw WebGL refuses is not drawn: with the sun's shadow map never drawn into (a page opened after dark), that was
+  // every lit surface, the ground and the walls (tools/gl_mismatch_probe.js names the sampler)
+  let refused = 0;
+  p.on('console', m => { if (m.type() === 'warning' && /Mismatch between texture format and sampler type/.test(m.text())) refused++; });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
   // DIGEST=1: at each screenshot, a digest of the traffic, the crowd, the lights and you (as tools/lockstep_probe.js
@@ -258,6 +262,16 @@ const npcNight = require('./npc_night');
   if (opening) check((opening.kerb < 3 || opening.on < 2) && opening.ph === '3g' && opening.walkers >= 6,
     `the game opens at the scramble's kerb (${opening.kerb.toFixed(1)} m from a crosswalk's end, ${opening.on.toFixed(1)} m from its stripes), in its walk (phase ${opening.ph}), ${opening.walkers} walkers within 10 m`);
   check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
+  // the HUD's buttons: the map and the menu stay, the rest fold behind "more" once the tour is over (index.html .g-btns)
+  const tray = await p.evaluate(() => {
+    const shown = () => [...document.querySelectorAll('#g-btns > button')].filter(b => !b.hidden && b.offsetParent).map(b => b.id.replace(/^g-|-btn$/g, ''));
+    const more = document.getElementById('g-more-btn'), folded = shown();
+    more.click(); const open = shown(), said = more.getAttribute('aria-expanded');
+    more.click();
+    return { folded, open, said, again: shown().length };
+  });
+  check(tray.folded.join() === 'map,menu,more' && tray.open.length >= 5 && tray.said === 'true' && tray.again === 3,
+    `the HUD keeps the map, the menu and "more" (${tray.folded.join(', ')}); "more" unfolds ${tray.open.length} buttons and folds them again`);
   check(onboard.steps.length >= 8 && !onboard.missing.length && onboard.back === onboard.steps.length - 2 && onboard.skipped && onboard.flag && onboard.noTalk,
     `the HUD tour opens the first time, steps through ${onboard.steps.join(', ')}, steps back and skips, and remembers it${onboard.missing.length ? ` (${onboard.missing.join('; ')})` : ''}`);
   // a second map with the flag set: the arrival again, with no tour and the guide's short welcome instead
@@ -1298,7 +1312,7 @@ const npcNight = require('./npc_night');
   // travel the rides past the cap are free. The wallet and the card are put back as they were afterwards
   const fare = await p.evaluate(() => {
     const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
-    if (!F || !f) return { none: true };
+    if (!F || !f || !(f.rides.ferry || f.rides.rail)) return { none: true };
     const keep = JSON.stringify(L.city().fares || null), money = L.money, logN = L.city().log.length, r = { card: f.card.name };
     L.city().fares = F.fresh();
     L.store.wallets[L.code] = 1e5;
@@ -1341,6 +1355,27 @@ const npcNight = require('./npc_night');
     check(fare.phone && fare.diary, 'the phone lists the ride and the city\'s fares, and the diary keeps it');
     if (fare.cap) check(fare.free && Math.abs(fare.spent - fare.cap) < 0.005, `the day's cap of ${fare.cap}: ${fare.rides} rides spend ${fare.spent}, and the next is free`);
     await shot('fare');
+  }
+  // a ticket at a gate (a ride of kind "lift": SHIBUYA SKY): the survey's first visit is on its pass, the next is the
+  // counter's price for the hour, taken from the wallet and shown on the card, and the way down is on the ticket
+  const ticket = await p.evaluate(() => {
+    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares, T = f && f.rides.lift;
+    if (!F || !T) return { none: true };
+    const [id, r0] = Object.entries(T.routes)[0], l = g.lifts.find(q => q.id === id), r = Object.assign({}, T, r0);
+    const keep = JSON.stringify(L.city().fares || null), money = L.money, seen = Object.assign({}, L.city().seen), logN = L.city().log.length;
+    L.city().fares = F.fresh(); L.store.wallets[L.code] = 1e5; delete L.city().seen[`ticket:lift:${id}`];
+    const top = l.stops[l.stops.length - 1].name, up = () => F.admit({ kind: 'lift', route: id, from: r.from, to: top, name: l.name, toName: top });
+    const a = up(), m1 = L.money, b = up(), m2 = L.money;
+    const want = r.times ? r.times.filter(([t0]) => g.clock.min >= +t0.slice(0, 2) * 60 + +t0.slice(3)).pop()[1] : r.flat;
+    const text = F.shown ? F.shown.textContent : '';
+    const down = F.admit({ kind: 'lift', route: id, from: top, to: r.from, name: l.name, toName: r.from });
+    const out = { name: r.name, free: !!(a && a.free) && m1 === 1e5, due: b && b.due, want, paid: m1 - m2, shows: text.includes(L.fmt(want)), down: down === null, fmt: L.fmt(want) };
+    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().seen = seen; L.city().log.length = logN;
+    return out;
+  });
+  if (!ticket.none) {
+    check(ticket.free, `${ticket.name}: the survey's first visit is on its pass`);
+    check(ticket.due === ticket.want && ticket.paid === ticket.want && ticket.shows && ticket.down, `${ticket.name}: the next visit is the counter's ${ticket.fmt} for the hour, taken and shown, and the way down is on it (due ${ticket.due}, paid ${ticket.paid})`);
   }
 
   // a crossing to a landing past the frame (pipeline/outposts.py: Queenstown's Earnslaw to Walter Peak, 12.5 km
@@ -1961,6 +1996,7 @@ const npcNight = require('./npc_night');
   // (a car at the mouth of a street too narrow for two, waiting on one coming the other way: never over 30 s, as on a
   // single-track road, the one nearer its passing place first, #283; and a scramble's count of those at a kerb never below none)
   check(heldQ.narrow.max <= 30, `no car waits over 30 s at a narrow stretch for one coming the other way (${heldQ.narrow.max} s at most${heldQ.narrow.over.length ? `: ${heldQ.narrow.over.join('; ')}` : ''})`);
+  if (process.env.UNTIL === 'held') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=held: up to the junctions' and narrow stretches' step, to iterate on it)
   check(heldQ.gates.min >= 0, `the scrambles' counts of those waiting at their kerbs never go below none (${heldQ.gates.min}${heldQ.gates.at ? ` at ${heldQ.gates.at}` : ''})`);
   qNote('a queue at a signal held through more than two greens', heldQ.queues);
   qNote('held at a signal by your car, a ride or you in the road (not the junction\'s doing)', heldQ.yours);
@@ -2108,12 +2144,12 @@ const npcNight = require('./npc_night');
     if (!T.length) console.log('note backing out of a one-way street: no car of the traffic on one near you');
     else check(bad.length === 0, `cars of the traffic back out of a one-way street to the junction behind and go on (${T.map(w => `car ${w.id} from piece ${w.from} ${w.done ? `onto ${w.onto} in ${w.secs} s` : w.gone ? 'out of the traffic' : w.still}, ${w.deep.toFixed(2)} m into another at most${w.deep > 0.1 && w.deepAt ? ` (${w.deepAt})` : ""}`).join('; ')})`);
     const R = rev.ride;
-    if (process.env.UNTIL === 'reverse') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=reverse: up to the cars backing out, to iterate on them)
     if (!R || R.none) check(true, `a ride backs out of a one-way street: not tried (${R ? R.none : 'no ride'})`);
     else {
       check(R.done && R.back > 3 && R.onto !== R.line, `a ride backs out of a one-way street (piece ${R.line}) to the junction behind (${R.back.toFixed(0)} m back, ${R.secs.toFixed(0)} s, out onto piece ${R.onto}${R.heldBy ? `; held ${R.heldBy}` : ''})`);
       check(R.deep === 0 && (R.drove > 10 || R.queued), `and never into a car of the traffic, and drives on by another way (${R.deep.toFixed(2)} m deep at most${R.deepAt ? ` at ${R.deepAt}` : ''}; ${R.drove.toFixed(0)} m on${R.driveWhy ? `, held: ${R.driveWhy}${R.queued ? ' (queueing on its new way)' : ''}` : ''}${R.deep > 0 && R.heldLate ? `; held half a minute at ${R.heldLate}` : ''})`);
     }
+    if (process.env.UNTIL === 'reverse') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=reverse: up to the cars and the ride backing out, to iterate on them)
   }
 
   // a railway (rail.js "train": the Enoden at Kamakura): its timetable's meets, a ride from a platform to the next
@@ -2378,6 +2414,7 @@ const npcNight = require('./npc_night');
   if (heroes) await lightsKept('with the hero level loaded and let go');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
+  check(!refused, `WebGL refused no draw for a sampler on the wrong kind of texture${refused ? ` (${refused} warnings; tools/gl_mismatch_probe.js)` : ''}`);
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
   // a pilgrimage's stops (#359: Sangenjaya), last of all: it moves you across the map and runs the world on, which the
   // traffic's checks above would otherwise meet
@@ -2419,6 +2456,24 @@ const npcNight = require('./npc_night');
     if (near) check(near.tracked === near.line, `arriving beside ${near.giver} tracks the line ${near.line} (tracked: ${near.tracked})`);
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.qs().track = k.track; g.advance(0.2); }, keep);
   }
+
+  // the tap itself (last of all: the time it takes moves nothing the steps above see): on foot, a tap on raises the right hand with the phone in it to the reader and lowers it again
+  const tapPose = await p.evaluate(() => {
+    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
+    if (!F || !f || g.player.mode !== 'foot' || !g.player.rig || !g.player.rig.fist) return { none: true };
+    const keep = JSON.stringify(L.city().fares || null), seen = Object.assign({}, L.city().seen), money = L.money, logN = L.city().log.length;
+    const kind = f.rides.rail ? 'rail' : f.rides.ferry ? 'ferry' : null;
+    if (kind) F.on({ kind, from: 'x', name: 'x', route: '' });
+    else { const [id, r] = Object.entries(f.rides.lift.routes)[0]; F.admit({ kind: 'lift', route: id, from: r.from, to: 'top', name: r.name }); }
+    const z0 = g.player.z, fist = new THREE.Vector3();
+    g.advance(0.45);
+    const ph = g.world.getObjectByName('tap_phone'), held = !!g.player.rig.hold, up = g.player.rig.fist(fist) ? fist.y - z0 : 0, shown = !!ph && ph.visible;
+    g.advance(1.5);
+    const after = !g.player.rig.hold && !(ph && ph.visible);
+    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().seen = seen; L.city().log.length = logN;
+    return { held, up, shown, after };
+  });
+  if (!tapPose.none) check(tapPose.held && tapPose.shown && tapPose.up > 0.85 && tapPose.after, `a tap holds the phone out to the reader (the hand ${tapPose.up.toFixed(2)} m up, the phone ${tapPose.shown ? 'in it' : 'not shown'}) and puts it away (${tapPose.after})`);
 
   await advances();
   await b.close();
