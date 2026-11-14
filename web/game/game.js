@@ -506,6 +506,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (let i = 0; i < L.length; i += 3) posts.add(L[i] / 10, L[i + 1] / 10, L[i + 2] / 10, 0.12, 'lamp');
     for (let i = 0; i < NP.length; i += 3) posts.add(NP[i], NP[i + 1], NP[i + 2], 0.12, 'lamp');
     for (let i = 0; i < TR.length; i += 4) posts.add(TR[i], TR[i + 1], TR[i + 2], TR[i + 3], 'tree'); }
+  // (and a hero level's own lamp posts, hero[].posts: drawn by its model, solid here)
+  for (const h of G.hero || []) for (const [x, y] of h.posts || []) posts.add(x, y, nav.terrain(x, y), 0.14, 'lamp');
   nav.posts = posts;
   // where someone or a car beside a mapped line stands: its deck, the surface the line is on (a pier, a
   // bridge's walkway, a flight of steps: not the ground under it), or the ground drawn there (null on the bank of the water)
@@ -513,7 +515,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (at.deck) return at.z;
     const s = nav.surfaceAt(x, y, at.z);
     if (s > -Infinity && Math.abs(s - at.z) < 1.5) return s;
-    return nav.offGround(x, y) ? null : nav.terrain(x, y);
+    return nav.offGround(x, y) ? null : nav.terrain(x, y) + nav.lift(x, y); // (a hero level's paving over the ground: nav.js lift)
   };
   // footways and roads that run into a building (an arcade, a station's concourse, a street under a
   // railway station's viaduct: the model's buildings are solid from the ground up) end at its wall, so
@@ -3054,8 +3056,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // labels: landmarks, wharves, the helipad, NPC names
   const labelsEl = $('#g-labels'), labels = [];
-  const addLabel = (text, get, maxD, cls = '') => { const el = document.createElement('div'); el.className = `lbl ${cls}`; el.innerHTML = text; el.hidden = true; labelsEl.appendChild(el); labels.push({ el, get, maxD }); };
-  for (const [name, p] of Object.entries(scene.labels || {})) addLabel(name, () => W(p[0], p[1], p[2] + 6), 1400);
+  const addLabel = (text, get, maxD, cls = '') => { const el = document.createElement('div'); el.className = `lbl ${cls}`; el.innerHTML = text; el.hidden = true; labelsEl.appendChild(el); const l = { el, get, maxD }; labels.push(l); return l; };
+  // a landmark's name stands where the landmark is seen: 6 m up its foot when that is in sight, over its top when
+  // only that shows above the roofs between, and not at all behind a street's walls (on foot a tower half a
+  // kilometre off had its name floating at head height in the middle of the crossing, through every building)
+  const sightLabels = [];
+  for (const [name, p] of Object.entries(scene.labels || {})) {
+    const l = addLabel(name, () => W(p[0], p[1], l.at === 1 ? l.top + 3 : p[2] + 6), 1400);
+    Object.assign(l, { p, at: -1, top: null });
+    sightLabels.push(l);
+  }
+  let sightK = 0;
+  function sightLabel() { // one a frame
+    const l = sightLabels[sightK++ % sightLabels.length], p = l.p;
+    if (player.mode === 'heli') { l.at = 0; return; }
+    const cx = camera.position.x, cy = -camera.position.z, cz = camera.position.y, D = Math.hypot(p[0] - cx, p[1] - cy);
+    if (D > l.maxD) return;
+    // (clear, or met only by the landmark itself: within its own breadth of the point)
+    const clear = z => { const h = nav.col.pick(cx, cy, cz, p[0], p[1], z); return !h || h.t * D > D - Math.max(40, 0.12 * D); };
+    if (l.top === null) { const t = nav.col.topAt(p[0], p[1]); l.top = t > -Infinity ? t : p[2]; }
+    l.at = clear(p[2] + 6) ? 0 : l.top > p[2] + 12 && clear(l.top + 3) ? 1 : -1;
+  }
   for (const w of G.wharves) addLabel(`<span class="tag f">F</span>${w.name}`, () => W(w.terminal[0], w.terminal[1], 6), 300, 'wharf');
   for (const h of G.helipads) addLabel(`<span class="tag h">H</span>${h.name}`, () => W(h.at[0], h.at[1], h.at[2] + 6), 400, 'wharf');
   for (const v of VP) addLabel(`<span class="tag t">△</span>${v.name}`, () => W(v.x, v.y, v.z + 3.2), 260, 'wharf');
@@ -3066,8 +3087,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function updateLabels() {
     const w = stage.clientWidth, h = stage.clientHeight, placed = [];
     const far = player.mode === 'heli' ? 2.2 : 1;
+    if (sightLabels.length) sightLabel();
     for (const l of labels) {
       if (surveyLabels.length && !l.survey) { l.el.hidden = true; continue; } // during a survey, only what is in sight
+      if (l.at === -1) { l.el.hidden = true; continue; } // (a landmark out of sight: sightLabel)
       const p = l.get();
       tmpV.copy(p).project(camera);
       const d = camera.position.distanceTo(p);

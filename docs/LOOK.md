@@ -86,6 +86,12 @@ taking the shadows to blue and the lights to amber as before. Bloom keeps its hi
 it is uniforms of the one pass that ends the frame (`web/lens.js`): a look costs no pass. A city
 keys its own: `game.look.grade: {night, blue, golden, day}`, each `{ev, tint, sat, contrast}`.
 
+**Dawn in the shade (Shibuya, Tokyo).** With the sun a degree or two up, a street among towers is all shade,
+and the golden key's blue shade over a low exposure gave the whole frame a purple-grey veil. The two maps key
+their own `golden` and `blue`: a third of a stop more exposure, a shade that is nearly neutral and warm
+highlights. No fill light was added: a light with no source flattens the forms the sky's light gives and has
+to be taken out again at every other hour; what the frame lacked was exposure, as a camera would give it.
+
 ### The sky and its clouds (`web/clouds.js`, issue 353)
 
 The Sky's own cloud layer was one sheet of soft noise. In its place, in the same shader of the same dome (no

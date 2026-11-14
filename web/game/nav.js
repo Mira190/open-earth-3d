@@ -100,7 +100,7 @@ window.OENav = (function () {
     // solidMeshes: the meshes that are solid, for the collision world's finer cells (below); paving: the highest
     // point in each PAVE cell of the paving a city drapes over its ground, which floorAt stands a walker on
     const NC = window.OENavCells, { paveKey } = NC;
-    const RC = D.navCells && D.navCells.grid === `${DSM.nx}x${DSM.ny}` ? NC.unpack(D.navCells, D.LM, strips) : NC.raster(D.LM, strips, DSM);
+    const RC = D.navCells && D.navCells.grid === `${DSM.nx}x${DSM.ny}` ? NC.unpack(D.navCells, D.LM, strips) : NC.raster(D.LM, strips, DSM, NC.unwalkedOf(G));
     D.navCells = null;
     const { solid0, tops, solidMeshes, paving } = RC;
     const slabs = new Map();  // the same as solid0 for the strips' slabs alone (the collision world's boxes for them)
@@ -980,6 +980,15 @@ window.OENav = (function () {
     // the floor a walker at height z would stand on at (x, y): the highest surface no more
     // than a step above z. Returns {z, kind} or null (water or nothing reachable). cars: a car's floor,
     // which takes the expressways' decks too (a walker's does not: decks.js gives them walk false)
+    // a hero level's ground (hero.js) is laid a few centimetres over the game's own, which is still drawn under it:
+    // game.json hero[].lift, metres. Whoever stands inside the level stands on the paving drawn, not in it to the
+    // ankle; over the level's last 2 m it comes down to the ground outside
+    const lifts = (G.hero || []).filter(h => h.lift && h.at && h.r);
+    function lift(x, y) {
+      let l = 0;
+      for (const h of lifts) { const d = h.r - Math.hypot(x - h.at[0], y - h.at[1]); if (d > 0) l = Math.max(l, h.lift * Math.min(1, d / 2)); }
+      return l;
+    }
     function floorAt(x, y, z, cars = false) {
       let best = null, kind = '';
       const take = (h, k) => { if (h <= z + STEP && (best === null || h > best)) { best = h; kind = k; } };
@@ -988,7 +997,7 @@ window.OENav = (function () {
       const pr = inland && inland.promenade ? inland.promenade(x, y) : null;
       if (pr) take(pr.z, 'promenade');
       else if (!offGround(x, y)) {
-        const t = terrain(x, y), pv = paving.size ? paving.get(paveKey(x, y)) : undefined;
+        const t = terrain(x, y) + (lifts.length ? lift(x, y) : 0), pv = paving.size ? paving.get(paveKey(x, y)) : undefined;
         take(t, 'ground');
         if (pv !== undefined && pv > t && pv < t + 1.5 && !cars) take(pv, 'ground'); // (paving on the ground, not on a roof; a walker's)
         const u = under(x, y); if (u !== null) take(u, 'ground');
@@ -1203,7 +1212,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, bodyIn, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, passageFloor, inland, passages: (D.LM && D.LM.passages) || [], tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, layAll, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
+    const api = { lift, under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, bodyIn, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, passageFloor, inland, passages: (D.LM && D.LM.passages) || [], tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, layAll, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
     return api;
   }
   return { create };

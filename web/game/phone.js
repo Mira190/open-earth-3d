@@ -54,7 +54,7 @@ window.OEPhone = (function () {
       // the home screen's rows, after the ride app's (item(text, note, act) makes a row; show(view) changes page)
       home(item, show) {
         const n = unread(), day = L.day, free = L.bonds ? L.bonds.ready().filter(b => L.bonds.st(b.npc).met).length : 0;
-        return item('Messages', n ? `${n} new` : box().length ? 'Nothing new' : 'Nothing yet', () => show('messages'))
+        return item(`Messages${n ? '<i class="lf-dot" aria-hidden="true"></i>' : ''}`, n ? `${n} new` : box().length ? 'Nothing new' : 'Nothing yet', () => show('messages'))
           + item('Diary', `${day.SLOT_NAME[day.slot]}${day.today().length ? ` · ${day.today()[0].title}` : ''}${free ? ` · ${free} free to talk` : ''}`, () => { show(false); day.show(); })
           + pages.filter(p => p.on()).map(p => p.row(item, show)).join('')
           + item('Work', L.jobs && L.jobs.active ? `On a job: ${L.jobs.active.j.title}` : `Wallet ${L.fmt(L.money)}`, () => { show(false); day.show(); const b = document.querySelector('.lf-tabs button[data-tab="work"]'); if (b) b.click(); })

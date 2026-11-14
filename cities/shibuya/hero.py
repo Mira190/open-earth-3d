@@ -45,13 +45,13 @@ UP = np.array([0.0, 0.0, 1.0])
 LIFT = 0.04                       # the asphalt over the game's ground (docs/HERO.md: paving 4 cm over it)
 PAINT = LIFT + 0.012
 GUTTER_M = 0.5                    # the concrete gutter along a kerb (街渠: 50 cm is the common section)
-KERB_M = 0.18
+KERB_M = 0.18                     # (as scramble.KERB_M)
 PLAZA = (369.0, -1080.0, 416.0, -1009.5)   # Hachiko Square: west, south, east, north (setts; the rest is blocks)
 
 TEX = {
     "road": ("OEAsphalt031d", 3.2),     # Asphalt031 with its stones' contrast raised (drawn here: a worn carriageway shows its aggregate)
     "paver": ("PavingStones136", 2.0),  # grey interlocking blocks: the pavements
-    "sett": ("PavingStones128", 2.4),   # rectangular pavers in running bond: Hachiko Square's red-brown blocks (photographs, 2024)
+    "sett": ("OESett128e", 1.2),        # (drawn here from PavingStones128: sett_texture)
     "tile": ("Tiles036", 0.9),          # small square facing tiles, the skin of Japan's mixed-use buildings
     "panel": ("Concrete034", 3.0),      # smooth precast and render
     "dark": ("Tiles138", 1.6),          # dark stone at a shop front's foot
@@ -137,6 +137,30 @@ def asphalt_texture(K, tid="OEAsphalt031d", base="Asphalt031", seed=3):
     r = np.asarray(Image.open(T["Roughness"]).convert("L"), float) / 255.0
     r = np.clip(0.86 - 0.3 * np.clip((c - m) / 60.0, -0.3, 1), 0.35, 1)
     Image.fromarray((r * 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Roughness.jpg"), quality=92)
+    return tid
+
+
+def sett_texture(K, tid="OESett128e", base="PavingStones128", keep=0.4):
+    """ambientCG's PavingStones128 with the difference in tone from one block to the next brought down to `keep`
+    of what it was: its joints, grain and relief as they are. The owner's review: the square's paving read as a
+    jumble of tones (AGENTS.md, "The bar": close tones of one family). Laid at half the size, a block 10 cm by
+    30, as an interlocking block is."""
+    if os.path.exists(os.path.join(K.TEX_DIR, tid, f"{tid}_1K-JPG_Color.jpg")):
+        return tid
+    from PIL import Image
+    from scipy import ndimage
+    K.TEXTURES["_base"] = (base, 1.0)
+    T = K.fetch_texture("_base")
+    del K.TEXTURES["_base"]
+    c = np.asarray(Image.open(T["Color"]).convert("RGB"), float)
+    low = np.dstack([ndimage.gaussian_filter(c[:, :, k], c.shape[0] / 90.0, mode="wrap") for k in range(3)])   # a block's own tone
+    mean = c.reshape(-1, 3).mean(axis=0)
+    out = mean + (low - mean) * keep + (c - low)
+    d = os.path.join(K.TEX_DIR, tid)
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(os.path.join(d, f"{tid}_1K-JPG_Color.jpg"), quality=92)
+    for k in ("NormalGL", "Roughness"):
+        Image.open(T[k]).save(os.path.join(d, f"{tid}_1K-JPG_{k}.jpg"), quality=92)
     return tid
 
 
@@ -309,6 +333,7 @@ class Level:
         self.K = K
         K.TEXTURES.update(TEX)
         asphalt_texture(K)
+        sett_texture(K)
         paint_texture(K)
         tactile_texture(K, "OETactileBar", False)
         tactile_texture(K, "OETactileDot", True)
@@ -321,19 +346,12 @@ class Level:
         self.S = S = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(S)
         self.D = D = S.Data("shibuya")
-        c = np.asarray(CENTRE)
-        self.disc = Point(*c).buffer(R, 48)
-        near = [Polygon(s["ring"]).buffer(0) for s in D.solids if len(s["ring"]) >= 3 and np.linalg.norm(np.mean(s["ring"], axis=0) - c) < R + 120
-                and s.get("base", 0) - s.get("ground", 0) < 2.5]          # (what stands on the ground: not a deck or a bridge over it)
-        self.solids = unary_union([p.buffer(0.12) for p in near if p.is_valid and p.area > 1]).intersection(self.disc.buffer(5))
-        # the stair wells the entrances cut into the ground (the landmarks' clip rings)
+        # the junction's plan is the landmarks' own (scramble.Plan): one kerb line, one set of guard pipes
         L = json.load(open(os.path.join(ROOT, "web", "data", "shibuya", "landmarks.json")))
-        self.wells = unary_union([Polygon(q["ring"]).buffer(0.25) for q in L.get("clip", []) if len(q["ring"]) >= 3])
-        self.junction = S.junction_area(D)
-        bands = S.road_bands(D)
-        self.roads = unary_union([bands, self.junction]).intersection(self.disc).difference(self.solids).buffer(0)
-        self.walks = unary_union([Polygon(S.crosswalk_poly(cw)) for cw in S.CROSSWALKS])
-        self.pave = self.disc.difference(self.roads.buffer(KERB_M)).difference(self.solids).difference(self.wells).buffer(0)
+        self.plan = P = S.Plan(D, [q["ring"] for q in L.get("clip", [])], CENTRE, R)
+        self.disc, self.solids, self.wells, self.junction, self.roads, self.walks, self.pave = P.disc, P.solids, P.wells, P.junction, P.roads, P.walks, P.pave
+        # paint lies on the asphalt: inside the gutter's line, never over a kerb or a pavement
+        self.paintable = self.roads.buffer(-(GUTTER_M + 0.12))
         self.box = box
 
     def Gp(self, x, y, h=0.0):
@@ -370,6 +388,14 @@ class Level:
         r = np.array([f[1], -f[0]])
         fn = lambda d, o, hh: self.Gp(*(a + f * d + r * o), hh)
         self.X.strip(mat, fn, 0.0, L, [-w / 2, w / 2], h, step=step, uvk=uvk, across=max(w, 1.0))
+
+    def paint(self, a, b, w, step=2.0):
+        """A painted band from a to b, w wide: only its lengths on the asphalt (a stop line or a crosswalk's bar
+        measured to a straight kerb would run on over a kerb that bulges, onto the paving)."""
+        from shapely.geometry import LineString
+        for co in self.lines(LineString([tuple(a[:2]), tuple(b[:2])]).intersection(self.paintable)):
+            if np.linalg.norm(co[-1] - co[0]) > 0.3:
+                self.ribbon("ground_paint", co[0], co[-1], w, PAINT, step=step, uvk=1.0 / TEX["paint"][1])
 
     def lines(self, geom):
         for g in getattr(geom, "geoms", [geom]):
@@ -436,7 +462,7 @@ class Level:
             u0 = (L - (n * (S.BAR + S.GAP) - S.GAP)) / 2
             for i in range(n):
                 u = u0 + i * (S.BAR + S.GAP) + S.BAR / 2
-                self.ribbon("ground_paint", a + f * u - l * hw, a + f * u + l * hw, S.BAR, PAINT, step=2.4, uvk=k)
+                self.paint(a + f * u - l * hw, a + f * u + l * hw, S.BAR, step=2.4)
             mode = S.STOPS.get(cw["id"])
             if not mode:
                 continue
@@ -450,7 +476,7 @@ class Level:
             else:
                 p, q = back + left * 0.15, back + left * Ls / 2
                 lanes = [back + left * (1.6 + 3.1 * j) for j in range(int((Ls / 2) // 3.1))]
-            self.ribbon("ground_paint", p, q, S.STOP_W, PAINT, uvk=k)
+            self.paint(p, q, S.STOP_W)
             for c0 in lanes:                                          # the diamonds 30 m and 50 m before a crossing
                 for dd in (30.0, 50.0):
                     cc = c0 + o * dd
@@ -458,7 +484,7 @@ class Level:
                         continue
                     pts = [cc + o * 2.5, cc + left * 0.75, cc - o * 2.5, cc - left * 0.75]
                     for j in range(4):
-                        self.ribbon("ground_paint", pts[j], pts[(j + 1) % 4], 0.2, PAINT, uvk=k)
+                        self.paint(pts[j], pts[(j + 1) % 4], 0.2)
         # centre lines on the two-way streets, up to the stop lines (none through the junction)
         keep_out = self.junction.buffer(S.STOP_BACK + 1.0).union(self.walks.buffer(S.STOP_BACK + 1.0))
         inner = self.roads.buffer(-2.5)
@@ -470,7 +496,7 @@ class Level:
                 if LineString(co).length < 4:
                     continue
                 for a, b in zip(co[:-1], co[1:]):
-                    self.ribbon("ground_paint", a, b, 0.15, PAINT, uvk=k)
+                    self.paint(a, b, 0.15)
 
     # -- the pavements
     def pavements(self):
@@ -519,31 +545,16 @@ class Level:
 
     # -- what stands on the kerbs
     def guards(self):
-        """White guard pipes (ガードパイプ: posts every 2 m, 0.8 m high, two rails) along the kerbs between the
-        crosswalks, on the pavement's side, as photographs show them on the Hachiko and station sides; none
-        across a crosswalk's end or along QFRONT's forecourt, which has the landmarks' steel bollards."""
-        from shapely.geometry import Point
+        """The white guard pipes along the kerbs (scramble.guard_runs: the same runs the landmarks make solid),
+        drawn finely: a post every 2 m on a base plate, two rails."""
         G = self.geo
-        skip = self.walks.buffer(1.2)
-        centre = np.asarray(CENTRE)
-        for co in self.lines(self.roads.buffer(KERB_M + 0.32).boundary.intersection(self.pave)):
-            P = HP.Path(np.c_[co, np.zeros(len(co))])
-            n = int(P.L // 2.0)
-            run = []
-            for i in range(n + 1):
-                q = P.xy(P.L * i / max(n, 1))
-                ok = (np.linalg.norm(q - centre) < 62 and not skip.contains(Point(*q)) and not (q[1] > -992.0 and q[0] < 372.0)
-                      and self.solids.distance(Point(*q)) > 1.4)
-                if ok:
-                    run.append(self.Gp(*q, LIFT + 0.01))
-                if (not ok or i == n) and run:
-                    if len(run) > 1:
-                        for p in run:
-                            G.cylinder("metal_guard", p, 0.038, 0.8, 8)
-                            G.lathe("metal_guard", p, [(0.07, 0.0), (0.07, 0.012), (0.04, 0.03)], segs=8)
-                        for h in (0.42, 0.74):
-                            G.tube("metal_guard", [p + UP * h for p in run], 0.024, 6)
-                    run = []
+        for run in self.S.guard_runs(self.plan):
+            pts = [self.Gp(*q, LIFT + 0.01) for q in run]
+            for p in pts:
+                G.cylinder("metal_guard", p, 0.038, 0.8, 8)
+                G.lathe("metal_guard", p, [(0.07, 0.0), (0.07, 0.012), (0.04, 0.03)], segs=8)
+            for h in (0.42, 0.74):
+                G.tube("metal_guard", [p + UP * h for p in pts], 0.024, 6)
 
     def lamps(self):
         """Tall tapered steel posts with a flat LED head out over the road (the square's and the junction's own, from
@@ -559,7 +570,8 @@ class Level:
                 q = q[:2]
                 to_road = r if self.roads.contains(Point(*(q + r * 1.5))) else -r
                 if (np.linalg.norm(q - centre) < R - 8 and not self.walks.buffer(1.5).contains(Point(*q)) and self.solids.distance(Point(*q)) > 1.2
-                        and all(np.linalg.norm(q - p) > 20 for p in placed)):
+                        and all(np.linalg.norm(q - p) > 20 for p in placed)
+                        and self.plan.footways.distance(Point(*q)) > 1.0 and not self.plan.mouths.contains(Point(*q))):   # (never in a walker's way)
                     placed.append(q)
                     PT.lamp_post(self.geo, q, math.atan2(to_road[1], to_road[0]), self.T(*q) + LIFT + 0.01, h=9.0, arms=((1.9, 8.6),),
                                  low=(-0.9, 4.6), mat="metal_pole", light="lamp_head", rgb=(1.0, 0.9, 0.76), power=230.0)
@@ -808,4 +820,9 @@ def build(K):
         M[mat]["tint"] = K.tint_to(key, srgb)
     meta = {"id": ID, "at": list(CENTRE), "r": R, "z": 15.0, "glb": f"hero/{ID}.glb", "bake_gain": 1.0, "cell": 28.0,
             "sky_rays": 20, "sky_reach": 5.0, "sky_strength": 1.0}   # (the sky's light occluded, ray-cast: hero_kit.sky_occlusion)
+    # for cities/shibuya/city.json game.hero[]: the paving's height over the game's ground, which walkers are stood on
+    # (web/game/nav.js lift), and the lamp posts, which are solid (game.js)
+    meta["lift"] = LIFT + 0.01
+    meta["posts"] = [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in L.lamp_at]
+    print("game.hero:", json.dumps({"lift": meta["lift"], "posts": meta["posts"]}))
     return geo, atlas, M, meta

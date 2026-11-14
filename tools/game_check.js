@@ -29,6 +29,9 @@ const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
+// places where a line of the crowd's meets a wall inside a hero level, known and listed in an issue (the hero step below):
+// Tokyo's seven single points north and south of the station square, Shibuya's two where a footway goes down a subway stair
+const BARRED_KNOWN = { tokyo: 7, shibuya: 3 };
 // whether the city's game has a pilgrimage's stamped spots (the step for them, below), read before anything runs
 const STAMPED = (() => { try { return (JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'web', 'data', city, 'game.json'), 'utf8')).spots || []).some(sp => sp.stamp); } catch (e) { return false; } })();
 const { pinClock } = require('./pin_clock');
@@ -2369,7 +2372,25 @@ const npcNight = require('./npc_night');
         // what the level draws as buildings is solid in the city under it, and its ways through are open (game.hero[].solid, .open: issue 426)
         const stand = q => { const f = g.nav.floorAt(q[0], q[1], g.nav.terrain(q[0], q[1]) + 0.5); return !!(f && f.z < g.nav.terrain(q[0], q[1]) + 2 && g.nav.walk(q[0], q[1], f.z).ok); };
         r.solid = (L.h.solid || []).filter(stand); r.shut = (L.h.open || []).filter(q => !stand(q));
-        // its finest parts (hero.js "fine"): fetched once you stand in it and drawn near you, never on the low tier
+        // where the crowd walks nothing stands, and whoever stands in the level stands on its paving: no fence, post or
+        // wall on a line of the crowd's own network inside it (a guard pipe across a crosswalk's end: the owner walked
+        // into one, hidden, in the middle of Shibuya's east crosswalk), and the floor the level's lift over the game's
+        // ground where it names one (hero[].lift; tools/unseen_walls.js audits the rest against the picture)
+        {
+          const net = g.crowdNet, tmp = {}, bars = [], rr = Math.min(L.h.r || 100, 110);
+          for (let li = 0; li < net.L.length; li++) for (let d = 0; d <= net.L[li].len; d += 0.5) {
+            net.at(li, d, tmp);
+            if (Math.hypot(tmp.x - L.h.at[0], tmp.y - L.h.at[1]) > rr) continue;
+            const f = g.nav.floorAt(tmp.x, tmp.y, tmp.z + 0.6);
+            if (!f || Math.abs(f.z - tmp.z) > 0.6) continue;
+            const w = g.nav.walk(tmp.x, tmp.y, f.z);
+            if (!w.ok && w.why === 'wall') { /* (a lamp post or a trunk on a line is walked round: actors.js) */ if (!bars.some(b => Math.hypot(b[0] - tmp.x, b[1] - tmp.y) < 3)) bars.push([Math.round(tmp.x), Math.round(tmp.y)]); }
+          }
+          r.barred = bars;
+          const f0 = g.nav.floorAt(L.h.at[0], L.h.at[1], g.nav.terrain(L.h.at[0], L.h.at[1]) + 0.5);
+          r.lift = L.h.lift ? (f0 && f0.kind === 'ground' ? +(f0.z - g.nav.terrain(L.h.at[0], L.h.at[1])).toFixed(3) : L.h.lift) : null;
+          r.liftWant = L.h.lift || null;
+        }
         if (L.h.fine) {
           for (let k = 0; k < 600 && H.tier !== 'low' && !H.state().find(s => s.id === L.h.id).fineShown; k++) await frames(1);
           const fs = H.state().find(s => s.id === L.h.id);
@@ -2409,6 +2430,8 @@ const npcNight = require('./npc_night');
     check(r.away === 'idle' && r.back, `the hero level ${r.id} is let go when you leave, and the landmark meshes come back (${r.away})`);
     check(r.again, `the hero level ${r.id} is shown again where you came back to it`);
     check(!r.solid.length && !r.shut.length, `the hero level ${r.id}'s buildings are solid and its ways open (${r.solid.length ? 'a walker can stand inside at ' + JSON.stringify(r.solid) : 'none stood in'}${r.shut.length ? '; shut at ' + JSON.stringify(r.shut) : ''})`);
+    check(r.barred.length <= (BARRED_KNOWN[city] || 0), `nothing solid stands on the crowd's lines in the hero level ${r.id} (${r.barred.length ? 'barred near ' + JSON.stringify(r.barred.slice(0, 8)) : 'none barred'})`);
+    if (r.liftWant) check(Math.abs(r.lift - r.liftWant) < 0.011, `in the hero level ${r.id} you stand on its paving, ${r.liftWant * 100} cm over the game's ground (${r.lift * 100} cm)`);
     if (r.fine) check(r.fine.tier === 'low' ? r.fine.state === 'idle' && !r.fine.meshes : r.fine.state === 'ready' && r.fine.shown > 0 && r.fine.shown <= r.fine.meshes,
       `the hero level ${r.id}'s finest parts are ${r.fine.tier === 'low' ? 'not fetched on the low tier' : `drawn near you (${r.fine.shown} of ${r.fine.meshes} squares)`} (${r.fine.state})`);
   }

@@ -51,8 +51,9 @@
   }
 
   // LM: landmarks.json as decoded; strips: game.json's strip surfaces with their profiles' us and zs (nav.js);
-  // DSM: the grid ({ nx, ny, cell, x0, y1 }). Returns { solid0, tops, solidMeshes, solidAt, paving }
-  function raster(LM, strips, DSM) {
+  // DSM: the grid ({ nx, ny, cell, x0, y1 }); unwalked: the names of the ground meshes a hero level hides (unwalkedOf). Returns { solid0, tops, solidMeshes, solidAt, paving }
+  function raster(LM, strips, DSM, unwalked) {
+    const hidden = new Set(unwalked || []);
     const x0 = DSM.x0, y1 = DSM.y1;
     // ---------------------------------------------------------- landmark solids as height intervals per 2 m cell
     const solid0 = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
@@ -89,7 +90,9 @@
       // there fell through it to whatever lay under it (its soffit, a metre down) and sank to the waist in what is drawn
       const claim = strips.filter(st => st.mesh && m.name.startsWith(st.mesh) && (m.name === st.mesh || !barrier));
       if (claim.length && !(m = beyondStrips(m, claim))) continue;
-      if (mat.decal) { pave(m); continue; } // paving laid over a roof, which is the solid (or on the ground: floorAt)
+      // (not what a hero level draws again and hides, game.json hero[].hide: it is not drawn where the level is, and a
+      // walker inside the level would stand at the height of paving that is not there)
+      if (mat.decal) { if (!hidden.has(m.name)) pave(m); continue; } // paving laid over a roof, which is the solid (or on the ground: floorAt)
       if (mat.pave) pave(m); // (and what a city lays on the ground to be walked on as drawn, solid or not: Kamakura's revetment)
       if (mat.solid === false) continue; // walls a city's fine walking levels hold walkers back at instead (game.json "patches")
       solidMeshes.push(m);
@@ -117,6 +120,7 @@
 
   // raster()'s result as typed arrays a Worker hands over, and back: the meshes cut by a strip travel as their
   // vertices and the strips' places; the others are found again in the page's own LM.meshes
+  const unwalkedOf = G => [].concat(...((G && G.hero) || []).map(h => h.hide || []));
   function pack(R, strips) {
     const flat = M => { // Map(number -> number or [numbers]) as keys (ascending, for flatMap's search), offsets and values
       const ks = [...M.keys()].sort((p, q) => p - q), keys = Float64Array.from(ks), off = new Int32Array(M.size + 1), vals = [];
@@ -163,7 +167,7 @@
   function grid(frame, cell = 2) {
     return { nx: Math.round((frame.x[1] - frame.x[0]) / cell), ny: Math.round((frame.y[1] - frame.y[0]) / cell), cell, x0: frame.x[0], y1: frame.y[1] };
   }
-  const api = { raster, strips, grid, pack, unpack, stripUV, beyondStrips, PAVE, paveKey };
+  const api = { raster, strips, grid, pack, unpack, unwalkedOf, stripUV, beyondStrips, PAVE, paveKey };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.OENavCells = api;
 })(typeof self !== 'undefined' ? self : globalThis);
