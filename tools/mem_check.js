@@ -11,13 +11,13 @@
 // low tier, plays (the NPCs, the helicopter, the cars' and trees' near models all loaded, as a player
 // walking round would have them), then reads the peak. Prints one line per city and the largest
 // textures and buffers; exits 1 when a city goes over its budget:
-//   MEM_GPU   peak GPU memory, MB (default 700: quality.js budget, above the heaviest live map)
-//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 880)
+//   MEM_GPU   peak GPU memory, MB (default 620: quality.js budget, a tenth above the heaviest live map, issue 406)
+//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 620)
 // TIER=low|medium|high (default low). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
-const GPU_MB = +(process.env.MEM_GPU || 700), HEAP_MB = +(process.env.MEM_HEAP || 880), TOP = +(process.env.TOP || 8);
+const GPU_MB = +(process.env.MEM_GPU || 620), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
 const MB = v => (v / 1048576).toFixed(0);
 
 // Chromium's processes (one browser at a time runs here), with each one's proportional set size (its own pages
