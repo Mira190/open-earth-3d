@@ -35,7 +35,9 @@ window.OEWorld = (function () {
     const entry = (window.OE_CITIES || []).find(c => c.id === cityId) || {};
     const want = (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
     // a district that shares a bigger map (index.html route: Sangenjaya, on Shibuya's): the loader says both
-    const D = game && window.OE_DISTRICT, what = D ? `${D.name}, on the ${entry.name} map` : entry.name || 'the city';
+    // (after this map's page died on this device, quality.js died: a lighter set, and the loader says so)
+    const lighter = window.OEQuality && OEQuality.city().lighter ? ' (a lighter set: the last visit ran out of memory here)' : '';
+    const D = game && window.OE_DISTRICT, what = (D ? `${D.name}, on the ${entry.name} map` : entry.name || 'the city') + lighter;
     let got = 0, shown = 0;
     const report = () => {
       const now = performance.now();
@@ -683,7 +685,9 @@ vec3 steepRock(vec3 c, float k) {
     const order = tiles.map((t, i) => i).sort((a, b) => dist(tiles[a]) - dist(tiles[b]));
     const out = new Array(tiles.length);
     for (const i of order) out[i] = first[i] ? load(tiles[i]) : later.then(() => load(tiles[i]));
-    return { tiles: out, first, overview: scene.ground_lo ? load(scene.ground_lo) : null, release, all: () => Promise.all(out) };
+    // again(i): tile i's picture once more (from the browser's cache), where a phone has let it go; forget(i): let go
+    return { tiles: out, first, overview: scene.ground_lo ? load(scene.ground_lo) : null, release, all: () => Promise.all(out),
+      again: i => load(tiles[i]), forget: i => { out[i] = Promise.resolve(null); } };
   }
 
   // small: the lighter set for a weaker device (quality.js); shadow: the sun's shadow map size;
@@ -894,7 +898,12 @@ vec3 steepRock(vec3 c, float k) {
     D.inland = IN;
     // the ground is final from here: the walls, roofs and decks start building in the worker that decoded them
     // (buildings.js start, issue 344), while the aerial imagery is draped and the landmarks are made here
-    const bldJob = window.OEBuildings && OEBuildings.start ? OEBuildings.start(D, { lin, SRC: BUILDING_SRC, small,
+    // On a phone's game (quality.js lean, budget.map) the map is built round the player: the buildings by cells of a
+    // grid, whole near the start, in one lift further off and the skyline alone past that, and again as the player
+    // moves (api.mapAt; buildings-geo.js cells; issue 443)
+    const MAP = game && LEAN && small && QW.budget && QW.budget.map && new URLSearchParams(location.search).get('map') !== 'whole'
+      ? Object.assign({ at: (groundAt || [(scene.frame.x[0] + scene.frame.x[1]) / 2, (scene.frame.y[0] + scene.frame.y[1]) / 2]).slice(0, 2) }, QW.budget.map) : null;
+    const bldJob = window.OEBuildings && OEBuildings.start ? OEBuildings.start(D, { lin, SRC: BUILDING_SRC, small, cells: MAP,
       dsm: game ? { T: D.Tfine || D.T, frame: { cell: 2, x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] } } : null }) : null;
     // and, in the game, the landmarks laid on the walking model's grid there next (game/navcells.js; nav.js takes them)
     if (game && window.OENavCells && window.OEPack && OEPack.rasterIn && D.G) {
@@ -922,6 +931,7 @@ vec3 steepRock(vec3 c, float k) {
     const QUAY = Q && { mask: { value: Q.maskTexture() }, dist: { value: shoreTex }, box: { value: new THREE.Vector4(...Q.box) },
       bed: { value: lin(((scene.water || {}).seawall || {}).bed || '#3a3b33') } }; // (the bottom's colour, as quayBed's)
     const HOLE = IN && IN.holeMask();
+    if (HOLE && LEAN) HOLE.tex.onUpdate = () => { HOLE.tex.onUpdate = null; HOLE.tex.image.data = null; }; // (a phone: the mask is the GPU's alone once sent, 11 MB in Shibuya)
     const clipGround = sh => {
       if (HOLE) { // over a walled channel the ground is cut away: its walls and bed are drawn instead (inland.js)
         Object.assign(sh.uniforms, { uHole: { value: HOLE.tex }, uHoleBox: { value: new THREE.Vector4(...HOLE.box) } });
@@ -1279,7 +1289,16 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     // On a phone (quality.js lean) only the tiles nearest the camera keep their own picture on the GPU (budget.groundTiles,
     // 6 MB each), the others the overview's part; groundKeep(x, y) moves them as the camera goes (the game, every second).
     // Shibuya's twenty tiles were 122 MB of textures, Queenstown's twenty-eight 170
-    const KEEP = LEAN && loTex && QW.budget ? QW.budget.groundTiles : 0, stream = KEEP ? { img: [], own: [], lo: [], at: null } : null;
+    // Once every tile has been on screen and on the roofs' photo (stream.settled), a tile's decoded picture is not kept
+    // either (4.6 MB each, twenty of them): it is let go when the GPU has it and read again from the browser's cache
+    // when the tile comes back among the nearest
+    const KEEP = LEAN && loTex && QW.budget ? QW.budget.groundTiles : 0, stream = KEEP ? { img: [], own: [], lo: [], sent: [], gone: [], loading: [], at: null, settled: false } : null;
+    const dropPicture = i => {
+      const im = stream.img[i];
+      if (!im) return;
+      stream.img[i] = null; stream.gone[i] = true; pics.forget(i);
+      im.onload = im.onerror = null; im.removeAttribute('src');
+    };
     scene.ground.forEach((t, i) => {
       const g = tileGeometry(t, T);
       let tex;
@@ -1308,21 +1327,28 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     function groundKeep(x, y, now = false) {
       if (!stream) return;
       const was = stream.at;
-      stream.at = [x, y];
+      // (150 m from where the tiles were last chosen, not from the last call: a walker never goes that far in a second)
       if (!now && was && Math.hypot(x - was[0], y - was[1]) < 150) return;
+      stream.at = [x, y];
       const d = scene.ground.map((t, i) => [Math.hypot(Math.max(t.x0 - x, 0, x - t.x1), Math.max(t.y0 - y, 0, y - t.y1)), i]).sort((a, b) => a[0] - b[0]);
       const want = new Set(d.slice(0, KEEP).map(e => e[1]));
       scene.ground.forEach((t, i) => {
         const m = groundMeshes[i], own = stream.own[i];
         if (want.has(i) && !own && stream.img[i]) {
           const tex = stream.own[i] = photoTex(stream.img[i]);
+          stream.sent[i] = false;
           idle().then(() => {
             if (stream.own[i] !== tex) return;
-            try { renderer.initTexture(tex); } catch (e) { /* sent on its first draw */ }
+            try { renderer.initTexture(tex); stream.sent[i] = true; } catch (e) { /* sent on its first draw */ }
             m.material.map = tex;
+            if (stream.settled && stream.sent[i]) dropPicture(i);
           });
+        } else if (want.has(i) && !own && stream.gone[i] && !stream.loading[i]) { // let go since: read again, then as above
+          stream.loading[i] = true;
+          pics.again(i).then(img => { stream.loading[i] = false; if (!img) return; stream.img[i] = img; stream.gone[i] = false; groundKeep(...stream.at, true); });
         } else if (!want.has(i) && own) {
-          stream.own[i] = null;
+          stream.own[i] = null; stream.sent[i] = false;
+          if (stream.settled) dropPicture(i);
           m.material.map = stream.lo[i];
           own.dispose();
         }
@@ -1656,14 +1682,24 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // the walls reach the ground drawn round them: the tiles (and in the game the finer ones near the player)
     U.uPhotoGrade = PG;
     if (NU) Object.assign(U, NU);
-    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, job: bldJob, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
+    // (a cell of the map built round the player, as it comes and goes: a still caster, hidden while the street wall
+    // hides it, its arrays the GPU's alone once sent)
+    const letGo = function () { this.array = null; };
+    const onCell = (m, added) => {
+      if (!added) { if (window.OEVis) OEVis.ungate(m); return; }
+      still(m);
+      if (window.OEVis) OEVis.gate(m, true);
+      for (const a of Object.values(m.geometry.attributes)) a.onUpload(letGo);
+      m.geometry.index.onUpload(letGo);
+    };
+    const BLD = await OEBuildings.create(D, { lin, U, renderer, SRC, small, job: bldJob, cells: MAP, onCell, photoGrade: PHOTO_GRADE, night: NIGHT, pictures: pics,
       progress: f => loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5 + 0.14 * f) });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
     U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
-    const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
+    const bCells = BLD.stream ? buildings : OEBuildings.cells ? OEBuildings.cells(buildings) : null;
     // (the game picks a building from its collision world, nav.js col.pick: the bounds-tree is the viewer's, issue 406)
     if (THREE.MeshBVH && !game) { // a bounding-volume hierarchy makes picking a building ~300x faster
       // built in a Worker where the walls are drawn as cells (a city's worth: a second on the main thread, issue 299),
@@ -1679,16 +1715,32 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // index, bid), and in the game, which picks from its collision world, those go too (Kyoto's 120 MB, issue 406).
     // A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
     let gpuOnly = false; // (set here, before the api is made)
-    if (game && bCells) bGeo.setIndex(null); // (the cells have their own: the picking mesh's is the viewer's alone)
-    if (LEAN && bCells) {
-      const letGo = function () { this.array = null; };
+    if (BLD.stream) gpuOnly = true;
+    // (a phone: once every aerial tile has been on screen and on the roofs' photo, the tiles' decoded pictures go)
+    if (stream) Promise.all([pics.shown(), BLD.photo]).then(() => {
+      stream.settled = true;
+      scene.ground.forEach((t, i) => { if (!stream.own[i] || stream.sent[i]) dropPicture(i); });
+      // three.js draws a picture larger than the tier's cap onto a canvas of its own to scale it down, and keeps that
+      // canvas at the size of the last one (14 MB after a 2225 x 2000 mask): a sliver sent through it leaves it small
+      setTimeout(() => {
+        try {
+          const cv = document.createElement('canvas'), max = renderer.capabilities.maxTextureSize;
+          cv.width = 4; cv.height = 2 * max;
+          const t = new THREE.CanvasTexture(cv);
+          t.generateMipmaps = false; t.minFilter = THREE.LinearFilter;
+          renderer.initTexture(t); t.dispose(); cv.width = cv.height = 0;
+        } catch (e) { /* nothing to shrink */ }
+      }, 3000);
+    });
+    else if (game && bCells) bGeo.setIndex(null); // (the cells have their own: the picking mesh's is the viewer's alone)
+    if (LEAN && bCells && !BLD.stream) {
       for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode'].concat(game ? ['position', 'bid'] : [])) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
       for (const c of bCells.children) if (c.geometry.index) c.geometry.index.onUpload(letGo);
       gpuOnly = true;
     }
     world.add(still(bCells || buildings), still(BLD.props));
     if (bCells) buildings.updateMatrixWorld();
-    if (game && window.OEVis) { OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
+    if (game && window.OEVis) { if (!BLD.stream) OEVis.gateAll(bCells); OEVis.gateAll(BLD.props); } // hidden while the street wall hides them (issue 358)
     if (BOUNCE && buildings.material && buildings.material.onBeforeCompile) { // the walls' bounce from the ground in front of them
       const own = buildings.material.onBeforeCompile, key = buildings.material.customProgramCacheKey;
       buildings.material.onBeforeCompile = function (sh, r) { own.call(this, sh, r); groundBounce(sh); };
@@ -1894,7 +1946,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     // are drawn at most LEAN_CAP on a side (Shibuya's screens.webp is 2048, 21 MB; here 1024, 5), which the ground
     // aerial and the mask textures (shore, woods) keep clear of, since they are data read by the pixel. The picture
     // is drawn once at its own size then let go. A text sign stays legible: these are seen across a street, not read.
-    const LEAN_CAP = 1024;
+    const LEAN_CAP = 1024 >> (QW && QW.lighter ? 1 : 0); // (half after the map's page died here, quality.js died; at a quarter the signs across a street no longer read)
     const leanDown = tex => {
       if (!LEAN || !tex || !tex.image) return tex;
       const im = tex.image, side = Math.max(im.width || 0, im.height || 0);
@@ -2262,15 +2314,21 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
       const tex = new THREE.CanvasTexture(cv);
       tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      if (LEAN) tex.onUpdate = () => { tex.onUpdate = null; cv.width = cv.height = 0; }; // (a phone: the canvas goes once the GPU has the mask)
       tex.format = THREE.RedFormat; // a mask the water reads one channel of: a byte a texel, not four (40 MB to 10 at 2560 x 4096; at most 2048 a side on the low tier)
       if (sea.uniforms && sea.uniforms.uCover.value) sea.uniforms.uCover.value.dispose();
       sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
+      if (LEAN) idle().then(() => { try { renderer.initTexture(tex); } catch (e) { /* sent on its first draw */ } }); // (sent now, seen or not, so that its canvas goes)
     }
     if (!game) try { waterCover(); } catch (e) { console.warn('water cover:', e); }
+    // The map round the player (issue 443; docs/PERFORMANCE.md, "A map built round the player"): what is built,
+    // unpacked and uploaded follows x, y. The game calls it every second and when it moves the player. Resolves when
+    // what it changed is in (null: nothing to change)
+    const mapAt = (x, y, now = false) => { groundKeep(x, y, now); return BLD.stream ? BLD.stream.near(x, y, now ? 1 : undefined) : null; };
     const api = {
       // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
       screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
-      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, gpuOnly, groundKeep, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, outposts, groundMeshes, skyLit, skyVis: SKYVIS, farSun: FARSUN ? farSun : null, groundPictures: pics, quayMeshes, quays: Q, inland, inlandWater: IN, inlandGlints: () => glints, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, waterCover, trees, buildings, bGeo, gpuOnly, groundKeep, mapAt, mapStream: BLD.stream, U, SRC, extrude, bColour, floodMats, lmMats, night,
       skyReady, // (its program compiled and checked: the game's shaders start compiling after it, game.js earlyWarm)
       hazeProbe: { cpu: az => { const c = hazeOf(az); return c && c.clone(); }, gpu: readHaze }, // (tools/haze_check.js)
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, shadowStill, still, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)

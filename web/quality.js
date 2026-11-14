@@ -133,19 +133,37 @@ window.OEQuality = (function () {
   // the page instead of being restored in place), keeps the full aerial picture on the ground tiles nearest the
   // camera only (budget.groundTiles, the rest on the overview) and the shared models' far parts. budget: the memory
   // the view aims to stay under, MB, which tools/mem_check.js checks every live city's game against on a phone
+  // budget.map: the game's map is built round the player there (world.js mapAt, buildings-geo.js cells): cells of `size`
+  // metres, whole within `near` of the player, simplified to `mid`, past it only what stands `tall` metres or more,
+  // built again once the player has gone `step` metres (docs/PERFORMANCE.md, "A map built round the player")
   function lean(c = probe()) {
     return (c.touch && Math.min(innerWidth, innerHeight) < 600) || (!!c.memory && c.memory <= 4);
   }
+  // The memory loop (issue 443; docs/PERFORMANCE.md, "A second chance instead of a crash loop"). A phone gives no
+  // reading of the memory it has left; the one signal is that the system killed the tab, which the next page load
+  // finds as a note left behind (telemetry.js) and counts by map. died(map): how many times this map's page died
+  // on this device in the last fourteen days (the map in the address by default). On the low tier each death
+  // makes the next load of that map lighter (city().lighter: 1, 2): a device that is not a phone gets the phone's
+  // set, a phone a smaller map round the player, fewer aerial tiles of its own and smaller decorative pictures; the loader says so.
+  function died(id = (/^#(?:play-)?([a-z0-9-]+)/.exec(location.hash) || [])[1]) {
+    if (!id) return 0;
+    try {
+      const d = JSON.parse(localStorage.getItem(`oe3d-died-${id}`));
+      return d && d.n > 0 && Date.now() - d.t < 14 * 864e5 ? d.n : 0;
+    } catch (e) { return 0; }
+  }
+  const MAP = [{ size: 250, near: 500, mid: 1500, tall: 25, step: 100 }, { size: 250, near: 350, mid: 1000, tall: 30, step: 100 }, { size: 250, near: 250, mid: 750, tall: 40, step: 100 }];
   function city() {
     const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name, s = TIERS[name];
-    const thin = name === 'low' && lean(c);
+    const deaths = name === 'low' ? died() : 0, thin = name === 'low' && (lean(c) || deaths > 0);
+    const lighter = Math.min(2, thin ? deaths - (lean(c) ? 0 : 1) : 0); // (0: the phone's set; 1, 2: lighter still)
     // The high tier's canvas keeps the display's own pixels up to 2x (the lens's one pass and the interface stay
     // sharp) within CANVAS_PX, a 4K display's; the scene inside it is drawn within the tier's budget of pixels
     // (sceneScale: the governor's ceiling, issue 352), which a 1440p display meets at full size. Before, a 4K
     // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
     const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
-    return { name, small: name === 'low', lean: thin, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
-      budget: thin ? { gpuMB: 620, heapMB: 620, groundTiles: 6 } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+    return { name, small: name === 'low', lean: thin, lighter, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
+      budget: thin ? { gpuMB: 490, heapMB: 620, groundTiles: [6, 4, 2][lighter], map: MAP[lighter] } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
@@ -276,5 +294,5 @@ window.OEQuality = (function () {
     }
     return g;
   }
-  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, governor, TIERS, ORDER, NAMES };
+  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, died, governor, TIERS, ORDER, NAMES };
 })();

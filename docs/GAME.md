@@ -1290,6 +1290,22 @@ pipeline writes. The only city-specific code is landmark geometry in
     triangles each, and make up the crowd. The surveyors and the NPCs are
     Rocketbox avatars ([The main characters](#the-main-characters),
     [The NPCs](#the-npcs)).
+  - **Near you, the scanned avatars on every tier.** The ten walkers nearest a
+    phone's camera (fourteen on a desktop) are drawn as the NPCs' Rocketbox
+    cast, not as these figures: close up a Quaternius figure is a doll, with a
+    painted face and mitten hands, and on the low tier it was what stood beside
+    the player at the Scramble. A phone draws from a cast of eight (four women,
+    four men) to bound its pictures. The figures above remain the far crowd.
+  - **Hair cards:** an avatar's hair strips (its `*_opacity` material) are lit
+    as one head of hair: every vertex's normal points out from the middle of
+    the head, each strip is drawn from both sides with that one normal (a
+    two-sided material turned it inwards on half of them, which stayed black:
+    shards in a fringe, a dark band across the back of a head), and the strips
+    are lightened to the tone of the hair painted under them.
+  - **Looking a model over:** `tools/people_lineup.js out_dir [city|all]` draws
+    a sheet a character (standing; mid-stride from four sides; the face twice,
+    the hands, the feet) and measures each: height, hands and ankles where a
+    person's are, feet on the floor.
   - **One draw call each:** the pipeline merges each character into one skinned
     mesh. Every vertex indexes a small palette, so skin, hair and clothes are
     recoloured per person, and 13 files make a varied crowd.

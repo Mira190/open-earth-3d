@@ -23,12 +23,12 @@ window.OEBuildings = (function () {
 
   // the options build() takes for a city's data D (world.js): the ground drawn under the walls, the solids not
   // drawn, the region's grids and every colour the rows name, through the page's lin()
-  function geoOptions(D, { lin, SRC, small = false }) {
+  function geoOptions(D, { lin, SRC, small = false, cells = null }) {
     const scene = D.scene, colours = {};
     for (const h of GEO.colourNames(D.B)) { const c = lin(h); colours[h] = [c.r, c.g, c.b]; }
     return { T: D.T, Tfine: D.Tfine || null, frame: scene.frame, hidden: scene.hidden_solids || [], demolished: (D.LM && D.LM.demolished) || [],
       region: scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : ''),
-      photoOK: !!(scene.ground && scene.ground.length), SRC, small, colours };
+      photoOK: !!(scene.ground && scene.ground.length), SRC, small, colours, cells };
   }
   // Starts building the walls' arrays as soon as the ground under them is final (world.js, before the aerial
   // imagery is draped), in the Worker that decoded buildings.bin and kept it (OEPack.buildIn); resolves with
@@ -40,10 +40,11 @@ window.OEBuildings = (function () {
     const o = geoOptions(D, opt), t0 = performance.now();
     if (opt.dsm) o.dsm = opt.dsm;
     const job = OEPack.buildIn('buildings', o).then(a => {
-      if (a) console.info(`buildings: ${Math.round(a.ms)} ms in a worker${a.dsm ? `, its surface model ${Math.round(a.dsmMs)} ms` : ''}, back after ${Math.round(performance.now() - t0)} ms`);
+      if (a) console.info(`buildings: ${Math.round(a.ms)} ms in a worker${a.cells ? ` (${a.cells.length} cells round the player, ${a.n.toLocaleString()} vertices)` : ''}${a.dsm ? `, its surface model ${Math.round(a.dsmMs)} ms` : ''}, back after ${Math.round(performance.now() - t0)} ms`);
       return a;
     }, e => { console.warn('buildings: built on the page,', e.message || e); return null; });
     job.T = opt.dsm ? opt.dsm.T : null;
+    job.opt = o; // (what the walls were built from: cells built again later take the same)
     return job;
   }
 
@@ -51,7 +52,12 @@ window.OEBuildings = (function () {
   // yielding between them, so the loader's frames keep coming (issue 299: one frame of 2.5 s in Shibuya).
   // job: start()'s promise. Resolves with the meshes
   const SLICE = 40, pause = () => new Promise(r => setTimeout(r, 0));
-  async function create(D, { lin, U, renderer, SRC, small = false, photoGrade = null, night = null, progress = null, pictures = null, job = null }) {
+  // cells: { size, at, near, mid, tall } builds the map round the player (buildings-geo.js; a small device's game:
+  // world.js): the walls come as a group of meshes, one a cell of the grid, each at the level of detail its
+  // distance gives it, and what create() resolves with has `stream`: near(x, y) builds again the cells whose level
+  // the player's new place changes (here, in slices: the Worker has let its copy of the data go) and swaps them in.
+  // onCell(mesh, added) is called for each mesh put in the group or taken out of it.
+  async function create(D, { lin, U, renderer, SRC, small = false, photoGrade = null, night = null, progress = null, pictures = null, job = null, cells = null, onCell = null }) {
     const t0 = performance.now();
     const { B, scene } = D;
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
@@ -60,31 +66,77 @@ window.OEBuildings = (function () {
     let A = job ? await job : null;
     if (!A) {
       const T3 = THREE.ShapeUtils;
-      A = await GEO.build(B, Object.assign(geoOptions(D, { lin, SRC, small }), { slice: SLICE, progress, triangulate: (c, h) => T3.triangulateShape(c, h) }));
+      A = await GEO.build(B, Object.assign(geoOptions(D, { lin, SRC, small, cells }), { slice: SLICE, progress, triangulate: (c, h) => T3.triangulateShape(c, h) }));
     } else if (progress) progress(1);
     if (A.dsm) { const T = job.T; D.dsm = Object.assign(A.dsm, { ground: (x, y) => Math.max(0, window.Sun.terrainAt(T, x, y)) }); }
     const deckZ = new Map();
     for (let i = 0; i < A.deckSi.length; i++) deckZ.set(A.deckSi[i], A.deckZ[i]);
 
     await pause();
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(A.position, 3));
-    geometry.setAttribute('normal', new THREE.BufferAttribute(A.normal, 3, true));
-    geometry.setAttribute('color', new THREE.BufferAttribute(A.color, 3, true));
-    geometry.setAttribute('fac', new THREE.BufferAttribute(A.fac, 2));
-    geometry.setAttribute('inf', new THREE.BufferAttribute(A.inf, 4));
-    geometry.setAttribute('ext', new THREE.BufferAttribute(A.ext, 3));
-    geometry.setAttribute('bid', new THREE.BufferAttribute(A.bid, 1));
-    geometry.setAttribute('srcCode', new THREE.BufferAttribute(A.srcCode, 1));
-    geometry.setIndex(new THREE.BufferAttribute(A.index, 1));
-    geometry.computeBoundingSphere();
+    const geometryOf = a => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(a.position, 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(a.normal, 3, true));
+      g.setAttribute('color', new THREE.BufferAttribute(a.color, 3, true));
+      g.setAttribute('fac', new THREE.BufferAttribute(a.fac, 2));
+      g.setAttribute('inf', new THREE.BufferAttribute(a.inf, 4));
+      g.setAttribute('ext', new THREE.BufferAttribute(a.ext, 3));
+      g.setAttribute('bid', new THREE.BufferAttribute(a.bid, 1));
+      g.setAttribute('srcCode', new THREE.BufferAttribute(a.srcCode, 1));
+      g.setIndex(new THREE.BufferAttribute(a.index, 1));
+      return g;
+    };
+    const geometry = A.cells ? null : geometryOf(A);
+    if (geometry) geometry.computeBoundingSphere();
 
     // the share of homes lit by cool white ceiling lights rather than warm lamps: most in Japan and
     // Hong Kong, a few elsewhere (docs/NIGHT.md)
     const coolHomes = { JP: 0.55, HK: 0.6 }[scene.city.country_code] ?? 0.15;
     const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade, night, coolHomes);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = mesh.receiveShadow = true;
+    let mesh, stream = null;
+    if (A.cells) {
+      // the map round the player: a mesh a cell, swapped for another level's as the player moves
+      mesh = new THREE.Group();
+      mesh.name = 'buildings'; mesh.matrixAutoUpdate = false; mesh.material = material;
+      const byId = new Map(), T3 = THREE.ShapeUtils, open = A.open || null, base = (job && job.opt) || geoOptions(D, { lin, SRC, small, cells });
+      let lods = {}, at = cells.at.slice(), busy = null;
+      const put = res => {
+        for (const a of res.cells) {
+          const old = byId.get(a.id);
+          if (old) { mesh.remove(old); byId.delete(a.id); if (onCell) onCell(old, false); old.geometry.dispose(); }
+          if (!a.n) continue;
+          const g = geometryOf(a);
+          g.computeBoundingBox();
+          g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere());
+          const m = new THREE.Mesh(g, material);
+          m.castShadow = m.receiveShadow = true; m.name = 'buildings-cell'; m.userData.cell = a.id; m.userData.lod = a.lod;
+          m.matrixAutoUpdate = false; m.updateMatrix();
+          byId.set(a.id, m); mesh.add(m);
+          if (onCell) onCell(m, true);
+        }
+        lods = res.lods;
+        let v = 0, t = 0;
+        for (const m of byId.values()) { v += m.geometry.attributes.position.count; t += m.geometry.index.count / 3; }
+        Object.assign(stream, { vertices: v, triangles: t, builds: stream.builds + 1 });
+      };
+      stream = { cells: byId, grid: A.grid, vertices: 0, triangles: 0, builds: 0, ms: 0, get at() { return at; }, get lods() { return lods; },
+        // the player is at x, y: once that is `step` metres from where the cells were last built round, the cells
+        // whose level it changes are built again. Resolves when they are in (null: nothing to do, or one under way)
+        near(x, y, step = cells.step || 100) {
+          if (busy || Math.hypot(x - at[0], y - at[1]) < step) return null;
+          at = [x, y];
+          const t1 = performance.now();
+          busy = GEO.build(B, Object.assign({}, base, { cells: Object.assign({}, cells, { at, have: lods }), dsm: null, open, slice: 6, triangulate: (c, h) => T3.triangulateShape(c, h) }))
+            .then(res => { put(res); stream.ms = performance.now() - t1; mesh.updateMatrixWorld(true); return res.cells.length; })
+            .catch(e => { console.warn('buildings: cells not built again,', e); return 0; })
+            .finally(() => { busy = null; });
+          return busy;
+        } };
+      put(A);
+    } else {
+      mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = mesh.receiveShadow = true;
+    }
 
     // ------------------------------------------------------------ rooftop plant (instanced)
     const props = new THREE.Group();
@@ -283,22 +335,23 @@ window.OEBuildings = (function () {
     }
 
     // ------------------------------------------------------------ the aerial photo for flat roofs
-    if (photoOK) loadPhoto(scene, renderer, pictures, tex => {
+    // (letGo: on a phone the canvas the photo is put together on goes once the last tile is on it and the GPU has it)
+    const photo = photoOK ? loadPhoto(scene, renderer, pictures, tex => {
       U.uPhoto.value = tex;
       U.uPhotoOn.value = 1;
-    });
+    }, !!cells) : Promise.resolve();
 
     // for tools and tests (tools/city_shot.js prints it)
-    window.__buildings = { vertices: geometry.attributes.position.count, triangles: geometry.index.count / 3, props: PR.length,
-      roofs: (B.r || []).length, build_ms: Math.round(performance.now() - t0) };
+    window.__buildings = { vertices: stream ? stream.vertices : geometry.attributes.position.count, triangles: stream ? stream.triangles : geometry.index.count / 3, props: PR.length,
+      roofs: (B.r || []).length, build_ms: Math.round(performance.now() - t0), stream };
     for (const o of props.children.slice()) cellInstances(o);
-    return { mesh, geometry, material, props, styles: STYLES };
+    return { mesh, geometry, material, props, styles: STYLES, stream, photo };
   }
 
   // the ground tiles drawn into one canvas (at most 4096 px a side) for flat roofs: from world.js's ground
   // pictures (pics: the overview first, then the tiles near the start, then the rest once they come, issue 335),
   // sent to the GPU when each of those three is in rather than at every tile; or, without them, every tile
-  function loadPhoto(scene, renderer, pics, show) {
+  function loadPhoto(scene, renderer, pics, show, letGo = false) {
     const fr = scene.frame, w = fr.x[1] - fr.x[0], h = fr.y[1] - fr.y[0];
     const max = Math.min(4096, renderer.capabilities.maxTextureSize || 4096);
     const k = Math.min(1, max / Math.max(w, h));
@@ -326,10 +379,11 @@ window.OEBuildings = (function () {
     const draws = scene.ground.map((t, i) => lo.then(() => tiles[i]).then(im => draw(t, im))); // (each tile over the overview)
     const part = which => Promise.all(draws.filter((d, i) => which(i))).then(ok => ok.some(Boolean));
     const first = pics ? i => pics.first[i] : () => true;
-    Promise.all([lo, part(first)]).then(([low, any]) => {
+    // resolves when every tile that came is on the photo
+    return Promise.all([lo, part(first)]).then(([low, any]) => {
       if (any || low) sent(); // (the overview, at least, if it came)
-      if (pics && pics.first.some(f => !f)) part(i => !first(i)).then(more => { if (more) sent(); });
-    });
+      return pics && pics.first.some(f => !f) ? part(i => !first(i)).then(more => { if (more) sent(); }) : null;
+    }).then(() => { if (letGo && tex) tex.onUpdate = () => { tex.onUpdate = null; cv.width = cv.height = 0; }; }).catch(() => {});
   }
 
   // ------------------------------------------------------------ the facade and roof shader

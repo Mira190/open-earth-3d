@@ -19,7 +19,7 @@
 //                                           (m above datum) be seen? reach: also within this many metres
 //                                           (a caster whose shadow may be seen while it is not)
 //   OEVis.seenNext(x, y, top, height)       the same during the game's step, for the frame about to be drawn
-//   OEVis.gate(object)                      a static mesh or instanced mesh: hidden while unseen
+//   OEVis.gate(object)                      a static mesh or instanced mesh: hidden while unseen (ungate: it is leaving)
 //   OEVis.shadow(on)                        world.js, round the shadow pass: the static casters back
 //   OEVis.epoch                             changes when the answer does (re-test then, not every frame)
 //   OEVis.hold(why, on)                     stop gating for a while (an interior, a film's cut)
@@ -165,12 +165,24 @@ window.OEVis = (() => {
   }
 
   // ---- static things: each gets the cells it stands in and how high it reaches in each, once
-  function gate(obj) {
+  // now: its cells read at once (a mesh whose arrays are let go when it is uploaded: a building cell on a phone)
+  function gate(obj, now = false) {
     if (!obj || obj.userData.oeVis || api.off) return obj;
     if (!(obj.isMesh || obj.isInstancedMesh) || !(obj.layers.mask & 1)) return obj;
     obj.userData.oeVis = true;
+    if (now) { const s = samples(obj); if (s) { gates.push({ o: obj, s, hid: false }); if (!gate.timer) gate.timer = setTimeout(drain, 0); } return obj; }
     queue.push(obj);
     if (!gate.timer) gate.timer = setTimeout(drain, 0);
+    return obj;
+  }
+  // a gated mesh that is leaving the scene (a building cell swapped for another level of detail)
+  function ungate(obj) {
+    if (!obj || !obj.userData.oeVis) return obj;
+    obj.userData.oeVis = false;
+    let i = queue.indexOf(obj); if (i >= 0) queue.splice(i, 1);
+    i = gates.findIndex(g => g.o === obj); if (i >= 0) gates.splice(i, 1);
+    i = hidden.findIndex(g => g.o === obj); if (i >= 0) hidden.splice(i, 1);
+    obj.layers.mask |= 1;
     return obj;
   }
   // every mesh under an object (a prop's cells are its children)
@@ -258,5 +270,5 @@ window.OEVis = (() => {
     check();
   }
 
-  return Object.assign(api, { create, at, seen, seenNext, gate, gateAll, shadow, hold, forget, dispose, where: () => ({ x: ax, y: ay, z: az, eps: aeps, speed, pending: !!pending, ready }) });
+  return Object.assign(api, { create, at, seen, seenNext, gate, ungate, gateAll, shadow, hold, forget, dispose, where: () => ({ x: ax, y: ay, z: az, eps: aeps, speed, pending: !!pending, ready }) });
 })();

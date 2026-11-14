@@ -63,8 +63,37 @@ TEXTURES = {
 }
 
 
+GENERATED = {}   # key -> make(dir): a level's own drawn surfaces (register)
+
+
+def register(key, rep, make):
+    """A surface a level draws for itself where no scanned one fits (a city's own paving bond, its stone):
+    make(dir) writes Color.png, NormalGL.png and Roughness.png (L) there, seamless; rep metres to a repeat.
+    Used like any TEXTURES entry afterwards (a material's "tex", tint_to)."""
+    TEXTURES[key] = (f"drawn_{key}", rep)
+    GENERATED[key] = make
+
+
+def _drawn(key):
+    from PIL import Image
+    tid, make = TEXTURES[key][0], GENERATED[key]
+    d = os.path.join(TEX_DIR, tid)
+    make(d)       # (drawn again each build: seconds, and never stale against its code)
+    r = Image.open(os.path.join(d, "Roughness.png")).convert("L")
+    Image.merge("RGB", (Image.new("L", r.size, 255), r, Image.new("L", r.size, 0))).save(os.path.join(d, "ORM.png"))
+    return {"Color": os.path.join(d, "Color.png"), "NormalGL": os.path.join(d, "NormalGL.png"),
+            "Roughness": os.path.join(d, "Roughness.png"), "ORM": os.path.join(d, "ORM.png")}
+
+
+_DRAWN = {}
+
+
 def fetch_texture(key, size="1K"):
     """The colour, normal (OpenGL) and roughness images of a TEXTURES entry, fetched once into data/raw."""
+    if key in GENERATED:
+        if key not in _DRAWN:
+            _DRAWN[key] = _drawn(key)
+        return _DRAWN[key]
     tid, _ = TEXTURES[key]
     d = os.path.join(TEX_DIR, tid)
     if not os.path.exists(os.path.join(d, f"{tid}_{size}-JPG_Color.jpg")):
