@@ -3045,7 +3045,10 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
           // stood 46 s at a narrow stretch for one queued behind it, #331)
           // (after a first try at turning round has come to nothing: the second time it asks)
           c.narrowTries = (c.narrowTries || 0) + 1;
-          const o = c.narrowTries > 1 && front && front.line === c.line && front.dir !== c.dir && !front.rev && front.v < 0.3 ? front : null;
+          // (at once where it has no room behind: turned round at the very end of its piece, it met that end, stood again and
+          // counted from nothing, round and round; Shibuya's car 101 stood 73 s at the start of piece 1709 so, while car 84,
+          // facing it, could have backed out all along, #454)
+          const o = (c.narrowTries > 1 || room <= 2) && front && front.line === c.line && front.dir !== c.dir && !front.rev && front.v < 0.3 ? front : null;
           if (o && reverse(o)) { c.narrowTries = 0; /* it backs out of the way */ }
           else { dir = -dir; c.stuck = 0; } // (with no junction behind near enough to back out to, it turns round, in view too: Fushimi Inari's car 36 stood 180 s)
         }

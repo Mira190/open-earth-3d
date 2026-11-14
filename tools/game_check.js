@@ -1961,6 +1961,7 @@ const npcNight = require('./npc_night');
   // (a car at the mouth of a street too narrow for two, waiting on one coming the other way: never over 30 s, as on a
   // single-track road, the one nearer its passing place first, #283; and a scramble's count of those at a kerb never below none)
   check(heldQ.narrow.max <= 30, `no car waits over 30 s at a narrow stretch for one coming the other way (${heldQ.narrow.max} s at most${heldQ.narrow.over.length ? `: ${heldQ.narrow.over.join('; ')}` : ''})`);
+  if (process.env.UNTIL === 'held') { await advances(); await b.close(); process.exit(fails.length ? 1 : 0); } // (UNTIL=held: up to the junctions' and narrow stretches' step, to iterate on it)
   check(heldQ.gates.min >= 0, `the scrambles' counts of those waiting at their kerbs never go below none (${heldQ.gates.min}${heldQ.gates.at ? ` at ${heldQ.gates.at}` : ''})`);
   qNote('a queue at a signal held through more than two greens', heldQ.queues);
   qNote('held at a signal by your car, a ride or you in the road (not the junction\'s doing)', heldQ.yours);
