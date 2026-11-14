@@ -23,8 +23,10 @@ const DEPTH = +(process.env.DEPTH || 2), TOP = +(process.env.TOP || 14);
   const marks = [];
   for (const s of at.split(',').map(Number)) {
     await new Promise(r => setTimeout(r, Math.max(0, s * 1000 - (Date.now() - t0))));
-    const r = await bs.send('Tracing.requestMemoryDump', { levelOfDetail: 'detailed' }).catch(e => ({ error: e.message }));
-    marks.push({ s, guid: r.dumpGuid });
+    // (a renderer busy building does not answer in time: asked again, and the second it was taken at is the one printed)
+    let r = null;
+    for (let k = 0; k < 8 && !(r && r.success); k++) r = await bs.send('Tracing.requestMemoryDump', { levelOfDetail: 'detailed' }).catch(e => ({ error: e.message }));
+    marks.push({ s: +((Date.now() - t0) / 1000).toFixed(1), guid: r.dumpGuid });
   }
   const done = new Promise(r => bs.once('Tracing.tracingComplete', r));
   await bs.send('Tracing.end'); await done;
