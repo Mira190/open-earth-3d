@@ -330,7 +330,8 @@ Rocketbox avatars.
 
 **Real people up close (`web/game/people.js` `crowdRenderer`, `game.crowd.real_from`).** At eye
 level the far crowd's own low-detail character read as a doll. The nearest walkers (14 on the
-high and medium tiers, none on the low tier, where a phone keeps its memory budget) are now drawn
+high and medium tiers; 6 on a phone, from four women and four men of the cast, 27 MB more of the
+GPU in Shibuya, which the map built round the player left room for: docs/PERFORMANCE.md) are now drawn
 as the textured Rocketbox NPCs cast for the city (`game.npcs`) and the casts `real_from` names
 (Shibuya takes Tokyo's too), in their everyday clothes — the uniforms (police, delivery, pilot)
 are left out. Each near walker keeps its far figure's sex and takes a scanned face, hair and

@@ -1834,8 +1834,9 @@ const npcNight = require('./npc_night');
   // the scrambles: every way at once in a walk phase of their own, the diagonals too (tools/scramble_step.js)
   for (const r of await require('./scramble_step')(p)) { for (const [ok, what] of r.checks) check(ok, what); await shot(`scramble-${r.at.join('_')}`); }
 
-  // the street's scanned surfaces (surface.js) and the near crowd drawn as real people (people.js), both tier-gated:
-  // on the low tier (the software renderer here, unless TIER forces otherwise) neither loads, so a phone is unchanged
+  // the street's scanned surfaces (surface.js), tier-gated: on the low tier (the software renderer here, unless TIER
+  // forces otherwise) they do not load; and the near crowd drawn as real people (people.js) on every tier, the low
+  // one from a cast of eight
   {
     const r = await p.evaluate(() => {
       const g = window.__game, S = window.OESurface, low = !window.OEQuality || window.OEQuality.city().name === 'low';
@@ -1848,7 +1849,7 @@ const npcNight = require('./npc_night');
     });
     check(r.sfOn === !r.low, `street surfaces ${r.sfOn ? 'on' : 'off'} on the ${r.low ? 'low' : 'high'} tier (surface.js)`);
     if (r.sfOn) check(r.sfTex, 'the scanned surface textures loaded');
-    if (!r.low && r.realCast && r.nearTotal > 0) check(r.realNear > 0, `the nearest walkers are real people (${r.realNear}/${r.nearTotal} near are NPC rigs)`);
+    if (r.realCast && r.nearTotal > 0) check(r.realNear > 0, `the nearest walkers are real people (${r.realNear}/${r.nearTotal} near are NPC rigs)`);
   }
   // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
   { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }

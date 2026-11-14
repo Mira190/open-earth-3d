@@ -1120,11 +1120,19 @@ Layer A applied to memory: measure, then grant.
 lightest set is the same picture but for softer signs.) A device on the low tier that is not a phone gets the
 phone's set after its first death. `tools/telemetry_check.js` checks that a dead page is counted against its map.
 
+**Real people near the player on a phone too.** With that room, the low tier's nearest walkers are drawn as the
+cast's real people, as the other tiers' are (docs/LOOK.md, "Real people up close"): four women and four men of the
+cast, the same each visit (two and two after the map's page died there), 27 MB more of the GPU in Shibuya
+(366 -> 393 MB; Tokyo and Sydney load those characters as NPCs already and do not move). The crowd across the
+street is still the far figures, on every tier.
+
 **Left, in order of what they hold**: the textures (223 to 339 MB of the peak: the landmarks' pictures, the ground,
 the NPCs', loaded for the whole map at the start), the walking model and the landmarks built for the whole map
 (Tokyo's page holds 383 MB of array buffers at rest), the Worker's and the page's garbage while the packs decode
 (a collection finds 210 MB of live array buffers where Chromium counts 490), the shared models' decoded pictures
-kept beside the GPU's, and the minimap's base.
+kept beside the GPU's, and the minimap's base. Tokyo's array buffers at rest by who holds them
+(`tools/heap_owners.js`): the walking model 128 MB (the collision world 56, the rest of `nav.js` 72), the
+landmarks' geometry kept on the page after the GPU has it 66, the surface model 29, the quays' distance fields 26.
 
 **Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe, an iPhone's screen and user agent.
 The numbers are what WebGL was asked for and what Chromium holds; what iOS counts, and where it kills, only the

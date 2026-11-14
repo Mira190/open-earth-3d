@@ -634,12 +634,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const pendingRig = () => ({ root: new THREE.Group(), pending: true, animate() {} });
   const CR = G.crowd || {};
   // the nearest walkers drawn as real people (people.js crowdRenderer "real"): the city's own NPC cast, and the casts
-  // game.crowd.real_from names (Shibuya's takes Tokyo's too), in their everyday clothes (no uniforms); not on the
-  // low tier, where a phone keeps the far crowd's own figures close up and loads no more characters
+  // game.crowd.real_from names (Shibuya's takes Tokyo's too), in their everyday clothes (no uniforms); on the
+  // low tier a few of them (below), since the map built round the player left a phone the room (issue 443)
   const realCast = () => {
-    if (!lib || !lib.npcs || QC.name === 'low' || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
+    if (!lib || !lib.npcs || CR.real === false || /[?&]realcrowd=off/.test(location.search)) return null;
     const from = new Set([cityId, ...(CR.real_from || [])]);
-    return Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
+    const cast = Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
+    // (the low tier: four women and four men of the cast, the same ones each visit, so that a phone's nearest
+    // walkers are real people too and it loads eight characters for them, not the cast's fifty)
+    if (QC.name !== 'low') return cast;
+    const few = sex => cast.filter(n => lib.npcs[n].sex === sex).slice(0, QC.lighter ? 2 : 4);
+    return few('f').concat(few('m'));
   };
   let crowdDraw = null; // the crowd's renderer (people.js), for umbrellas in the rain
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
