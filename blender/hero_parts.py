@@ -57,7 +57,8 @@ class Ground:
 
 def pave(geo, mat, ground, area, rep, cell=1.0, dz=0.04, rot=False, ao=None):
     """Paving laid on the ground over a shapely area: a grid of `cell` m clipped to the area's outline (each
-    cell cut by the outline, so that edges are true), dz over the ground. rot turns the texture a quarter."""
+    cell cut by the outline, so that edges are true), dz over the ground. rot turns the texture a quarter
+    (True), or by that many radians (a herringbone laid at 45 degrees to a promenade)."""
     from shapely.geometry import box
     from shapely.ops import triangulate
     from shapely.prepared import prep
@@ -89,13 +90,18 @@ def pave(geo, mat, ground, area, rep, cell=1.0, dz=0.04, rot=False, ao=None):
                         q = list(t.exterior.coords)[:3]
                         if (q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[1][1] - q[0][1]) * (q[2][0] - q[0][0]) < 0:
                             q = q[::-1]
-                        tri.append(tuple(vid(*p) for p in q))
+                        t3 = tuple(vid(*p) for p in q)
+                        if len(set(t3)) == 3:      # (a sliver whose corners round to one point crashes Blender's normals)
+                            tri.append(t3)
     if not P:
         return
     P = np.array(P)
     uv = P[:, :2] / rep
-    if rot:
+    if rot is True:
         uv = np.c_[P[:, 1], -P[:, 0]] / rep
+    elif rot:
+        cs, sn = math.cos(rot), math.sin(rot)
+        uv = np.c_[P[:, 0] * cs + P[:, 1] * sn, -P[:, 0] * sn + P[:, 1] * cs] / rep
     geo.mesh(mat, P, tri, uv=uv, ao=ao)
 
 
