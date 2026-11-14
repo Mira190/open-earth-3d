@@ -2343,9 +2343,19 @@ const npcNight = require('./npc_night');
         put(away[0], away[1]);
         // (the camera follows the player there over some frames, and the level goes by the camera's place)
         for (let k = 0; k < 80 && H.state().find(s => s.id === L.h.id).state !== 'idle'; k++) await frames(1);
-        r.away = H.state().find(s => s.id === L.h.id).state;
+        // (a player the run left at the wheel of a car that will not be moved or left stays where the car is. The
+        // level goes by the camera's distance from its centre alone, so the leaving is done from the other end: the
+        // centre is put that far from the camera, and put back)
+        if (H.state().find(s => s.id === L.h.id).state !== 'idle' && pl.mode !== 'foot') {
+          const at0 = L.h.at;
+          L.h.at = [g.camera.position.x + far, -g.camera.position.z];
+          for (let k = 0; k < 80 && H.state().find(s => s.id === L.h.id).state !== 'idle'; k++) await frames(1);
+          r.away = H.state().find(s => s.id === L.h.id).state; r.back = hidden.every(o => o.visible);
+          L.h.at = at0; r.moved = true;
+        }
+        if (!r.moved) r.away = H.state().find(s => s.id === L.h.id).state;
         if (r.away !== 'idle') r.away += ` with the player ${pl.mode} at ${Math.round(pl.x)},${Math.round(pl.y)} and the camera at ${Math.round(g.camera.position.x)},${Math.round(-g.camera.position.z)}`;
-        r.back = hidden.every(o => o.visible);
+        if (!r.moved) r.back = hidden.every(o => o.visible);
         out.push(r);
       }
     } finally { pl.x = at.x; pl.y = at.y; pl.z = at.z; if (car0) Object.assign(g.myCar().D.st, car0, { speed: 0 }); g.advance(0.1); }
