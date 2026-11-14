@@ -1,8 +1,9 @@
 {
   "note": "Cities on the globe. status: live (built and in web/data/<id>) or planned. Planned entries list the open data to check first; none of them has been verified for this project yet.",
-  "parked_note": "Parked: built cities taken off the globe and out of the checks for now, to keep each round of checks short while work focuses on the others. Their data stays in cities/<id> and web/data/<id>. To bring one back, take its id off this list, rebuild the globe's list (python pipeline/pack.py) and run tools/check.sh <id>.",
+  "parked_note": "Parked: built cities taken off the globe and out of the checks for now, so that work goes into Tokyo (Shibuya first, and Marunouchi to Tokyo Tower) and Sydney, until the game and the look are finished there (AGENTS.md, \"Tokyo and Sydney first\"). Their data stays in cities/<id> and web/data/<id>. To bring one back, take its id off this list, rebuild the globe's list (python pipeline/pack.py) and run tools/check.sh <id>.",
   "parked": ["amsterdam", "paris", "hong-kong", "osaka", "melbourne", "melbourne-bayside",
-    "akihabara", "asakusa", "ueno", "ikebukuro", "jinbocho", "roppongi", "shinagawa", "tsukishima", "odaiba"],
+    "akihabara", "asakusa", "ueno", "ikebukuro", "jinbocho", "roppongi", "shinagawa", "tsukishima", "odaiba",
+    "shinjuku", "kyoto", "fushimi-inari", "higashiyama", "tetsugaku", "kamakura", "queenstown"],
   "cities": [
     {
       "id": "queenstown",

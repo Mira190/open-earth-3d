@@ -28,9 +28,9 @@ standing traffic). A two-hour round that fails on a step unrelated to the change
   solids, compressed models, signs): a minute;
 - every city and reef site whose own files changed (`cities/<id>/`, `web/data/<id>/`), in full;
 - for a change to the shared code, the smoke cities instead of every live city (`CHECK_SMOKE`,
-  default `tetsugaku:game,tour shibuya:mem`): a small map that has a railway, stamped spots and the
-  daily life plays the whole game check and its guided tour, and the heaviest map on a phone is
-  measured against the memory budget;
+  default `sydney:game,tour shibuya:mem`): of the live maps, Sydney plays the whole game check
+  and its guided tour (a quarter of an hour), and Shibuya, the heaviest map on a phone, is measured
+  against the memory budget; Shibuya's and Tokyo's game checks, half an hour each, play on main after landing;
 - the title screen, the loader's hand-over and the telemetry when their files changed, as before.
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each

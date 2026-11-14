@@ -8,7 +8,7 @@
 //   - until a station has been picked once, the map says it can be chosen from (the cue);
 //   - the district buttons under the map are a thumb's size, and a touch beside a station lands on it;
 //   - Esc or Back closes the full-screen map onto the globe, and a district's Explore goes in;
-//   - the menu leads with Japan, opens framed on it (Tokyo and Kyoto both named on the globe), and
+//   - the menu leads with Tokyo, opens framed on Japan (Kyoto named beside it while it is live), and
 //     its one primary button goes straight into the Shibuya game (docs/HOMEPAGE.md).
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/title_pick_check.js
@@ -66,19 +66,19 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/#globe`;
 
     // a district's button under the map picks it (on a desktop those are on the full-screen map)
     if (!phone) { await press(p.locator('.ts-card [data-full]').first()); await p.waitForTimeout(1600); }
-    const chip = p.locator(`${phone ? '.ts-card' : '.ts-mfull'} .mt-chip[data-mapid="shinjuku"]`).first();
+    const chip = p.locator(`${phone ? '.ts-card' : '.ts-mfull'} .mt-chip[data-mapid="tokyo"]`).first();
     const box = await chip.boundingBox();
     await press(chip);
     await p.waitForTimeout(400);
     s = await state();
-    check(name, `district button (${Math.round(box.height)} px tall) picks Shinjuku and ends the cue`, s.pick === 'Shinjuku' && !s.cue && box.height >= 44, s);
+    check(name, `district button (${Math.round(box.height)} px tall) picks Marunouchi and ends the cue`, s.pick === 'Marunouchi' && !s.cue && box.height >= 44, s);
 
     // open it full screen: a tap on the small map on a phone, the second click on Tokyo on a desktop
     if (phone) await p.locator('.ts-card .ts-metro svg').first().tap();
     else { await p.keyboard.press('Escape'); await p.waitForTimeout(600); await item.click(); }
     await p.waitForTimeout(1800);
     s = await state();
-    check(name, `${phone ? 'a tap on the small map' : 'second click on Tokyo'} opens the map full screen, still on the globe`, s.full && !s.diving && s.hash === '#globe' && s.pick === 'Shinjuku', s);
+    check(name, `${phone ? 'a tap on the small map' : 'second click on Tokyo'} opens the map full screen, still on the globe`, s.full && !s.diving && s.hash === '#globe' && s.pick === 'Marunouchi', s);
 
     // a touch a little off a station still lands on it
     const dot = await p.locator('.ts-mfull .mt-stn.on[aria-label^="Shibuya"] .mt-dot').first().boundingBox();
@@ -137,9 +137,10 @@ const BASE = `http://localhost:${process.env.PORT || 8800}/#globe`;
     const land = await p.evaluate(([W, H]) => {
       const mark = n => { const m = [...document.querySelectorAll('.ts-mark.live')].find(e => e.textContent.startsWith(n)); if (!m || m.hidden || m.classList.contains('mute')) return false;
         const r = m.getBoundingClientRect(); return r.left >= 0 && r.right <= W && r.top >= 0 && r.bottom <= H; };
-      return { first: [...document.querySelectorAll('.ts-item .nm')].slice(0, 2).map(e => e.firstChild.textContent.trim()), tokyo: mark('Tokyo'), kyoto: mark('Kyoto') };
+      return { first: [...document.querySelectorAll('.ts-item .nm')].slice(0, 2).map(e => e.firstChild.textContent.trim()), tokyo: mark('Tokyo'), kyoto: mark('Kyoto'), hasKyoto: [...document.querySelectorAll('.ts-item .nm')].some(e => e.firstChild.textContent.trim() === 'Kyoto') };
     }, [w, h]);
-    check(name, 'the menu leads with Tokyo and Kyoto, both named on the globe', land.first.join() === 'Tokyo,Kyoto' && land.tokyo && land.kyoto, land);
+    // (Kyoto second while it is on the globe; Sydney while Kyoto is parked, cities/index.json)
+    check(name, 'the menu leads with Tokyo and the next place worked on, named on the globe', land.tokyo && (land.hasKyoto ? land.first.join() === 'Tokyo,Kyoto' && land.kyoto : land.first.join() === 'Tokyo,Sydney'), land);
     const go = p.locator('.ts-hero .ts-go');
     const gb = await go.boundingBox();
     await press(go);

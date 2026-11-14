@@ -46,7 +46,7 @@ check('data: every spot has its four stills', !noStill.length, noStill.slice(0, 
 const stray = [];
 for (const id of fs.readdirSync(path.join(ROOT, 'web/data'))) {
   const dir = path.join(ROOT, 'web/data', id, 'postcards');
-  if (!fs.existsSync(dir)) continue;
+  if (!fs.existsSync(dir) || !games.includes(id)) continue;   // (a parked city keeps its stills for the day it comes back)
   for (const f of fs.readdirSync(dir)) { const m = /^(.+)-(dawn|day|dusk|night)\.webp$/.exec(f); if (!m || !(M.cities[id] || []).some(s => s.id === m[1])) stray.push(`${id}/${f}`); }
 }
 check('data: no still without a spot', !stray.length, stray.slice(0, 6));

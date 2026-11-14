@@ -77,18 +77,56 @@ or an integration session. Done means in main.
   (branch, commit, what is in and what is out). Don't ask the owner, and don't make the owner
   relay messages between sessions: send them yourself.
 
+# Tokyo and Sydney first
+
+The owner's decision (November 2026): the game and the look are finished in a few maps before
+anything else opens. Ten live maps each got a share of the work and none was finished; every
+shared change was paid for ten times, and almost half of main's commits were merges of main.
+
+- **Shibuya leads, Tokyo with it, Sydney beside them.** Shibuya is the main line: the Scramble,
+  dense, lit at night, the heaviest map on a phone. Tokyo's Marunouchi to Tokyo Tower map is
+  live with it, the same city. Sydney is the second line, worked in parallel, and keeps the
+  shared code from being written for Tokyo alone. Every other map is parked
+  (`cities/index.json`), Shinjuku included.
+- **A tiny level, insanely detailed.** The bar the owner set, in their words: "insanely
+  detailed quality, something that looks visually like it can keep up with AAA; small in scope
+  (like a tiny level) but otherwise impressive photorealistic graphics". It is owed first where
+  the player is born: the hundred metres round each map's spawn are rebuilt as a hero level
+  (docs/HERO.md) before the map's far corners get anything. Depth before breadth.
+- **What is not seen costs nothing.** Memory, download and shading go to what the player can
+  see from where they stand: the hero level at full detail, the middle distance simplified, the
+  rest of the map not built, unpacked or uploaded until the player nears it (docs/PERFORMANCE.md;
+  issues 358, 406 and 443). A map built round the player, never the whole map at once.
+- **Main green comes first.** An open `main-red` issue, a step that fails every run and a step
+  listed under `check-flaky` are worked before a feature, whoever broke them.
+- **Finished means this**, in each live map: half an hour of play with a goal and no dead end; a
+  phone that loads the map and keeps its tab; stills at day, dusk and night, on a desktop and a
+  phone, that stand beside a photograph of the place at the spawn and show nothing on the list
+  under "Checking your own work"; and no open follow-up issue for a system in the core.
+- **The core** is walking, driving and traffic, public transport and its fares, the hero level
+  and interiors of each map, and one line of goals through them. Finish these before starting a
+  system. A follow-up issue is closed by doing it or by cutting it, not left as a tail.
+- **Frozen**, kept working but not extended: the reef and alpine sites, fishing, postcards and
+  keepsakes, the films, and weather beyond what the live maps show now. A break in one is still
+  fixed. An idea for one goes in an issue labelled `later`.
+- **Few things at once.** Before starting, read the branches in flight; where work on the same
+  shared file is already open, join it or take a city's own files instead.
+- **A city comes back through a gate**, one at a time, when the live maps are finished: it comes
+  off the parked list, passes `tools/check.sh <id>` and the same stills, and should need its own
+  data and `city.json` only. If bringing it back needs a change to the shared code, the shared
+  code was written for one city: fix that there first, and say so.
+
 # Fewer round trips
 
 The owner has asked for these things again and again. They are standing rules; don't ask again.
 
-- **Everywhere by default.** A fix or a feature asked for in one city goes to every city, reef
-  site and page it fits, on desktop and phone, unless the owner names one place. A reported bug
-  is a class of bugs: find and fix the others like it.
-- **Parked cities wait.** The cities in `cities/index.json` `parked` (for now everything but
-  Sydney, Kyoto's three maps and Tokyo's Marunouchi-Ginza, Shibuya and Shinjuku) are off the globe
-  and out of `tools/check.sh` (`tools/live_cities.sh` lists the rest). Don't spend work on them
-  or rebuild their data; "every city" means every live one. Their data stays in the repository
-  and the owner brings one back by taking it off the list.
+- **Every live map by default.** A fix or a feature asked for in one live map goes to the others
+  where it fits, on desktop and phone, unless the owner names one place. A reported bug is a
+  class of bugs: find and fix the others like it in the live maps.
+- **Parked cities wait.** The cities in `cities/index.json` `parked` (everything but Shibuya,
+  Tokyo's Marunouchi to Tokyo Tower map and Sydney) are off the globe and out of `tools/check.sh` (`tools/live_cities.sh` lists the
+  rest). Don't spend work on them or rebuild their data; "every city" means every live one.
+  Their data stays in the repository and the owner brings one back by taking it off the list.
 - **Decide, don't offer a menu.** If you would recommend an option, do it. For an open ask
   ("keep optimising", "push to your limit") do your best ideas in order and report them. Never
   end a turn on a question that a sensible default answers ("shall I open a PR?", "shall I fix

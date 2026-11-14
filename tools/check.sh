@@ -62,9 +62,10 @@ OUT=${CHECK_OUT:-/tmp/oe-check}
 JOBS=${CHECK_JOBS:-3}
 TIER=${CHECK_TIER:-fast}
 KINDS="game clip mem tour"              # a city's checks, in the order they run
-# the fast tier's cities for a change to the shared code, and what is played in each: a small map with a railway,
-# stamped spots and the daily life (the game, and its tour in the viewer), and the heaviest one on a phone (its memory)
-SMOKE=${CHECK_SMOKE:-tetsugaku:game,tour shibuya:mem}
+# the fast tier's cities for a change to the shared code, and what is played in each: of the live maps (AGENTS.md,
+# "Tokyo and Sydney first"), Sydney's game and its tour in the viewer, and Shibuya, the heaviest one on a phone, for its
+# memory; Shibuya's and Tokyo's games, half an hour each, play on main after landing
+SMOKE=${CHECK_SMOKE:-sydney:game,tour shibuya:mem}
 plan=0; [ "${1:-}" = --plan ] && { plan=1; shift; }
 mkdir -p "$OUT"
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}

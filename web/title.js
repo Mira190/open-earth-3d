@@ -18,7 +18,7 @@
 // and if it is still black, or the device has no WebGL 2, or the GPU drops the context twice,
 // the menu runs over a still picture of the Earth instead of a black screen.
 //
-// The menu lists Japan first (Tokyo, then Kyoto, then the rest of Japan), and the other live
+// The menu lists the places most worked on first (Tokyo, Kyoto while it is live, Sydney), then the rest of Japan, and the other live
 // destinations after it in the order the sun reaches them; it opens framed on Japan, with one
 // button that goes straight into the Shibuya game (docs/HOMEPAGE.md). Choosing one
 // turns the globe to it; a card gives its figures, local time and sun, and the camera dives
@@ -90,13 +90,13 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const meta = cs[0].group_meta || null;
     dests.push({ id: `group-${name}`, name, native: meta && meta.native, country: cs[0].country, lat, lon, tz: cs[0].timezone, c: cs[0], sites: cs, meta });
   }
-  // Japan first, the places most worked on: Tokyo, Kyoto, then the rest of Japan; the others after
-  // it in the order the sun reaches them, east to west
-  const LEAD = ['Tokyo', 'Kyoto'];
+  // the places most worked on first: Tokyo, Kyoto (while it is on the globe), Sydney, then the rest of
+  // Japan; the others after it in the order the sun reaches them, east to west
+  const LEAD = ['Tokyo', 'Kyoto', 'Sydney'];
   const rank = d => { const k = LEAD.indexOf(d.name); return k >= 0 ? k : d.country === 'Japan' ? LEAD.length : LEAD.length + 1; };
   dests.sort((a, b) => rank(a) - rank(b) || Math.round(b.lon) - Math.round(a.lon) || live.indexOf(a.c) - live.indexOf(b.c));
-  // the point the menu opens on: between Tokyo and Kyoto, over Honshu
-  const jp = dests.filter(d => LEAD.includes(d.name));
+  // the point the menu opens on: between Tokyo and Kyoto, over Honshu (on Tokyo while Kyoto is parked)
+  const jp = dests.filter(d => LEAD.includes(d.name) && d.country === 'Japan');
   const JAPAN = jp.length ? { lat: jp.reduce((a, d) => a + d.lat, 0) / jp.length, lon: jp.reduce((a, d) => a + d.lon, 0) / jp.length } : null;
   const totalBuildings = live.reduce((a, c) => a + (c.buildings || 0), 0);
   for (const d of dests) {
