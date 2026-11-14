@@ -630,7 +630,7 @@ window.OEFishing = (function () {
     return { action, key, step, start, stop, dispose, button, carry, on: () => S.st !== 'off' && S.st !== 'walk', busy: () => S.st !== 'off',
       // for the checks (tools/game_check.js, tools/fishing_shot.js)
       state: () => ({ st: S.st, spot: S.spot && S.spot.id, power: S.power, line: S.line, wait: S.wait, t: S.t, fish: P.s && P.s.id, cm: P.cm, T: F.T, d: F.d, phase: F.phase, assist: save.assist, log: log(), rig: rigNow().id, drawn: gear ? 4 + (rings ? 1 : 0) : 0 }),
-      seed: n => { rnd = rng(n); }, force: id => { S.forced = id; }, easiest: () => data.species.reduce((a, q) => (q.fight.pull < a.fight.pull ? q : a)).id, forget: () => { save = { v: 1, assist: 0, lost: 0, won: 0, casts: 0, rig: {}, log: {} }; keep(); }, spots: data.spots, species: data.species, fishMesh: () => (gear ? gear.fish.mesh : null), showLog, logOpen: () => !!hud && !hud.book.hidden };
+      seed: n => { rnd = rng(n); riseT = 2; /* (and the rises' timer with it, as at the start: it ran from whenever the code arrived, which a fetch decides, and drew from rnd at other moments after the seed, #420) */ }, force: id => { S.forced = id; }, easiest: () => data.species.reduce((a, q) => (q.fight.pull < a.fight.pull ? q : a)).id, forget: () => { save = { v: 1, assist: 0, lost: 0, won: 0, casts: 0, rig: {}, log: {} }; keep(); }, spots: data.spots, species: data.species, fishMesh: () => (gear ? gear.fish.mesh : null), showLog, logOpen: () => !!hud && !hud.book.hidden };
   }
   return { VERSION, core, create };
 })();
