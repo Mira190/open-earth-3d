@@ -359,6 +359,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const near = d < 260;
       if (near && !fineTiles[i]) fineTiles[i] = fineTile(i);
       if (fineTiles[i]) fineTiles[i].visible = near;
+      // (a phone: a fine tile left 700 m behind goes, its geometry with it, and is built again on the way back)
+      if (QC.lean && fineTiles[i] && d > 700) { const f = fineTiles[i]; fineTiles[i] = null; world.remove(f); f.traverse(c => { if (c.geometry) c.geometry.dispose(); }); }
       const ud = Wd.groundMeshes[i].material.userData;
       if (near && ud.street && !ud.street.value) ud.street.value = streetTexture(i);
       else if (d > 700 && ud.street && ud.street.value) { ud.street.value.dispose(); ud.street.value = null; } // (drawn again if you come back: 24 MB a tile)
@@ -647,7 +649,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const all = Object.entries(lib.npcs).filter(([n, c]) => (c.cities || []).some(x => from.has(x)) && !/Police|Pilot|Security|Construction|Delivery|Gardener|Worker|Nurse|Chef/.test(n)).map(([n]) => n);
     if (QC.name !== 'low') return all;
     const f = all.filter(n => lib.npcs[n].sex === 'f'), m = all.filter(n => lib.npcs[n].sex !== 'f');
-    return f.slice(0, LOW_CAST / 2).concat(m.slice(0, LOW_CAST - Math.min(f.length, LOW_CAST / 2)));
+    const cast = QC.budget && QC.budget.cast ? Math.min(LOW_CAST, QC.budget.cast) : LOW_CAST; // (fewer on a phone's lighter sets: quality.js level)
+    return f.slice(0, cast / 2).concat(m.slice(0, cast - Math.min(f.length, cast / 2)));
   };
   let crowdDraw = null; // the crowd's renderer (people.js), for umbrellas in the rain
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
@@ -875,7 +878,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if ((padCheck -= 1) > 0) return;
     padCheck = 30; // every half second or so
     const st = heli.st;
-    if (!heli.loaded() && Math.hypot(st.x - player.x, st.y - player.y) < 800) heli.want(); // its model, once you are near it
+    if (!heli.loaded() && Math.hypot(st.x - player.x, st.y - player.y) < (QC.budget && QC.budget.extras === false ? 150 : 800)) heli.want(); // its model, once you are near it
     if (!st.landed || st.on || st.rotor > 0.02 || st.door > 0 || Math.hypot(st.x - player.x, st.y - player.y) < 700) return;
     for (const p of G.helipads) {
       if (Math.hypot(p.at[0] - player.x, p.at[1] - player.y) > 300 || Math.hypot(p.at[0] - st.x, p.at[1] - st.y) < 20) continue;
@@ -5174,7 +5177,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // loader's wait, issue 148): fetched, built, its shaders compiled and its textures sent now, not during the
     // opening shot; it lands on its pad once the game opens (heliToPad), not in the title's shot
     // (on a phone, after what afterPlayable fetches: one thing at a time)
-    const heliIn = () => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) { loadStep('late helicopter'); heli.prefetch(); } };
+    const heliIn = () => { if (running && !(QC.budget && QC.budget.extras === false) && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) { loadStep('late helicopter'); heli.prefetch(); } };
     setTimeout(() => { if (QC.lean) afterPlayable().then(heliIn); else heliIn(); }, reduced ? 0 : 900);
   });
   // What the first frame doesn't need, fetched once the game can be played, as the helicopter's model is (issue 335):
@@ -5190,7 +5193,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const near = () => (lib ? npcs.filter(n => n.rig.pending && Math.hypot(n.x - player.x, n.y - player.y) < NPC_LOAD_M)
       .sort((a, b) => Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y)) : []);
     const carsIn = () => (vlib && vlib.loadCars && !vlib.carsFull ? Promise.all([vlib.loadCars().then(g => { if (g && vlib.carsFull && cars.upgrade) cars.upgrade(g); }), parkWait ? parkLater() : null]) : null);
-    const treesIn = () => (Wd.trees && Wd.trees.loadNear ? Wd.trees.loadNear() : null);
+    const treesIn = () => (Wd.trees && Wd.trees.loadNear && !(QC.budget && QC.budget.extras === false) ? Wd.trees.loadNear() : null); // (the lightest set keeps the mid trees: quality.js level)
     const pictures = () => { if (Wd.groundPictures) Wd.groundPictures.release(); }; // the aerial tiles further out (world.js groundPictures)
     if (!QC.lean) {
       pictures();
@@ -5211,6 +5214,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         pictures();
         if (Wd.groundPictures && Wd.groundPictures.all) await Wd.groundPictures.all();
         loadStep('late in');
+        // a minute of play with everything in: this level fits this phone, and the next visit may try the one above
+        // (quality.js held). Counted in seconds on screen, so a tab put away does not earn it.
+        let on = 0;
+        const iv = setInterval(() => { if (!running) { clearInterval(iv); return; } if (document.hidden) return; if (++on >= 60) { clearInterval(iv); loadStep('held'); if (window.OEQuality && OEQuality.held) OEQuality.held(cityId); } }, 1000);
       })();
     }
     return lateOn;

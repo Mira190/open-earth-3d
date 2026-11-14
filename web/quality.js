@@ -139,31 +139,65 @@ window.OEQuality = (function () {
   function lean(c = probe()) {
     return (c.touch && Math.min(innerWidth, innerHeight) < 600) || (!!c.memory && c.memory <= 4);
   }
-  // The memory loop (issue 443; docs/PERFORMANCE.md, "A second chance instead of a crash loop"). A phone gives no
-  // reading of the memory it has left; the one signal is that the system killed the tab, which the next page load
-  // finds as a note left behind (telemetry.js) and counts by map. died(map): how many times this map's page died
-  // on this device in the last fourteen days (the map in the address by default). On the low tier each death
-  // makes the next load of that map lighter (city().lighter: 1, 2): a device that is not a phone gets the phone's
-  // set, a phone a smaller map round the player, fewer aerial tiles of its own and smaller decorative pictures; the loader says so.
-  function died(id = (/^#(?:play-)?([a-z0-9-]+)/.exec(location.hash) || [])[1]) {
-    if (!id) return 0;
-    try {
-      const d = JSON.parse(localStorage.getItem(`oe3d-died-${id}`));
-      return d && d.n > 0 && Date.now() - d.t < 14 * 864e5 ? d.n : 0;
-    } catch (e) { return 0; }
+  // The memory loop (issue 443; docs/PERFORMANCE.md, "Measure, then grant"). A phone gives no reading of the memory
+  // it has left; the two signals it does give are that the system killed the tab, which the next page load finds
+  // as a note left behind (telemetry.js) and counts by map, and that it did not: a minute of play. So a phone's set
+  // is a level, 0 (the fullest) to LIGHTEST, and it is granted the way a congestion window is: a phone with no
+  // record starts light (START: Safari gives a page two deaths before "A problem repeatedly occurred", so the first
+  // load has to be one that fits, not the one that looks best), a level held for a minute of play (held(), from
+  // the game) lets the next load try the one above it, and a death at a level (telemetry.js writes the level the
+  // dead page ran at) rules that level and the heavier ones out for fourteen days. A phone with the room climbs
+  // to the full set in two visits; one without stays where it lives.
+  // died(map): how many times this map's page died on this device in the last fourteen days (the map in the
+  // address by default). A low-tier device that is not a phone gets the phone's sets after its first death.
+  const mapId = () => (/^#(?:play-)?([a-z0-9-]+)/.exec(location.hash) || [])[1];
+  const DAYS = 14 * 864e5, START = 2, LIGHTEST = 3;
+  const note = k => { try { const d = JSON.parse(localStorage.getItem(k)); return d && Date.now() - d.t < DAYS ? d : null; } catch (e) { return null; } };
+  function died(id = mapId()) {
+    const d = id ? note(`oe3d-died-${id}`) : null;
+    return d && d.n > 0 ? d.n : 0;
   }
-  const MAP = [{ size: 250, near: 500, mid: 1500, tall: 25, step: 100 }, { size: 250, near: 350, mid: 1000, tall: 30, step: 100 }, { size: 250, near: 250, mid: 750, tall: 40, step: 100 }];
+  // milliseconds since this map's page last died here (Infinity: never): a load straight after waits a moment
+  // for the system to take the dead page's memory back (world.js load)
+  function sinceDeath(id = mapId()) {
+    const d = id ? note(`oe3d-died-${id}`) : null;
+    return d && d.n > 0 ? Date.now() - d.t : Infinity;
+  }
+  // a phone's level for this map (see above). oe3d-lv in localStorage sets it, for the tools
+  function level(id = mapId()) {
+    try { const f = localStorage.getItem('oe3d-lv'); if (f != null && f !== '') return Math.max(0, Math.min(LIGHTEST, +f || 0)); } catch (e) { /* storage blocked */ }
+    if (!id) return START;
+    const d = note(`oe3d-died-${id}`), h = note(`oe3d-held-${id}`);
+    // (a death noted before pages wrote their level was at level 0 or 1, the sets of that time)
+    const bad = d && d.n > 0 ? (d.lv != null ? d.lv : 1) : -1;
+    return Math.max(0, Math.min(LIGHTEST, Math.max(h && h.lv != null ? h.lv - 1 : START, bad + 1)));
+  }
+  // the game, after a minute of play on a phone: this level fits this map on this device
+  function held(id = mapId()) {
+    const c = probe();
+    if (!id || !lean(c)) return;
+    try {
+      const lv = level(id), h = note(`oe3d-held-${id}`);
+      localStorage.setItem(`oe3d-held-${id}`, JSON.stringify({ lv: h && h.lv != null ? Math.min(h.lv, lv) : lv, t: Date.now() }));
+    } catch (e) { /* storage blocked */ }
+  }
+  // budget.map by level. (2, a phone's first: the middle distance kept to 1.1 km, since from the helicopter the
+  // aerial photograph past it reads as a blue band under the horizon at dusk when it starts at 600 m)
+  const MAP = [{ size: 250, near: 500, mid: 1500, tall: 25, step: 100 }, { size: 250, near: 350, mid: 1000, tall: 30, step: 100 }, { size: 250, near: 250, mid: 1100, tall: 30, step: 100 }, { size: 250, near: 200, mid: 700, tall: 40, step: 100 }];
   function city() {
     const c = probe(), t = tier(), name = t.name === 'still' ? 'low' : t.name, s = TIERS[name];
-    const deaths = name === 'low' ? died() : 0, thin = name === 'low' && (lean(c) || deaths > 0);
-    const lighter = Math.min(2, thin ? deaths - (lean(c) ? 0 : 1) : 0); // (0: the phone's set; 1, 2: lighter still)
+    const deaths = name === 'low' ? died() : 0, phone = lean(c), thin = name === 'low' && (phone || deaths > 0);
+    // (0: the fullest phone set ... 3: the lightest; a phone's by level(), another low-tier device's by its deaths)
+    const lighter = !thin ? 0 : phone ? level() : Math.min(LIGHTEST, deaths - 1);
     // The high tier's canvas keeps the display's own pixels up to 2x (the lens's one pass and the interface stay
     // sharp) within CANVAS_PX, a 4K display's; the scene inside it is drawn within the tier's budget of pixels
     // (sceneScale: the governor's ceiling, issue 352), which a 1440p display meets at full size. Before, a 4K
     // display drew 8.3 million pixels four samples each, and a 5K one at 2x fourteen.
     const CANVAS_PX = 3840 * 2160, SCENE_PX = { high: 2560 * 1440, medium: s.budget, low: s.budget }[name];
-    return { name, small: name === 'low', lean: thin, lighter, tex: Math.min(c.maxTex || 16384, name === 'low' ? TIERS.low.tex : 16384),
-      budget: thin ? { gpuMB: 490, heapMB: 620, groundTiles: [6, 4, 2][lighter], map: MAP[lighter] } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
+    return { name, small: name === 'low', lean: thin, lighter, deaths, tex: Math.min(c.maxTex || 16384, name === 'low' ? (thin && lighter >= 2 ? 1024 : TIERS.low.tex) : 16384),
+      // cast: how many of the scanned avatars walk beside the player (game.js realCast); extras: the helicopter's and
+      // the near trees' models fetched ahead of need (game.js afterPlayable), which the lightest set leaves to demand
+      budget: thin ? { gpuMB: 300, heapMB: 620, groundTiles: [6, 4, 2, 1][lighter], map: MAP[lighter], cast: [8, 8, 4, 2][lighter], extras: lighter < LIGHTEST } : null, shadow: name === 'high' ? 4096 : 2048, antialias: name !== 'low', woods: name === 'medium' ? 0.5 : 1,
       post: c.hdrTarget, samples: c.hdrMsaa ? { high: 4, medium: 2, low: 0 }[name] : 0,
       pixelRatio: (w, h) => (name === 'high' ? Math.max(0.75, Math.min(c.dpr, 2, Math.sqrt(CANVAS_PX / Math.max(1, w * h)))) : pixelRatio(s, w, h)),
       // the most of the canvas's pixels (as a linear scale) the scene may be drawn at: w, h the canvas's device pixels
@@ -294,5 +328,5 @@ window.OEQuality = (function () {
     }
     return g;
   }
-  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, died, governor, TIERS, ORDER, NAMES };
+  return { probe, auto, tier, override, setOverride, below, pixelRatio, gpuBytes, city, lean, died, sinceDeath, level, held, governor, TIERS, ORDER, NAMES };
 })();
