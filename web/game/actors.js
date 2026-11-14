@@ -2599,9 +2599,14 @@ totalEmissiveRadiance += vCol * vLamp; // (brake lights and indicators: lit by d
         const narrowPair = fr && (why === 'narrow' || fr.why === 'narrow' || (!c.mv && !fr.mv && fr.line === c.line && fr.dir !== c.dir));
         if (fr && !narrowPair && c.v < 0.3 && fr.v < 0.3) {
           c.faceAll = c.faceCar === fr ? (c.faceAll || 0) + dt : 0;
-          c.faceT = c.faceCar === fr ? (c.faceT || 0) + dt : 0; c.faceCar = fr;
+          c.faceT = c.faceCar === fr ? (c.faceT || 0) + dt : 0; c.faceCar = fr; c.faceGap = 0;
           if (c.faceT > 4 && goesFirst(c, fr)) { c.passBy = fr; c.passFace = true; c.faceT = 0; }
-        } else { c.faceT = c.faceAll = 0; c.faceCar = null; }
+        }
+        // (the face-off's clock runs on through a break of up to 3 s: the other backing off a metre and this one moving up
+        // into the room is the same knot, not a new one. Each such step began the 20 s again, so a bus and a car in the
+        // mouth of Sydney's junction 460 stood 40 s while the car used up its backing off, then the 20 s: 63 s, #432)
+        else if (c.faceCar && c.faceCar.line >= 0 && (c.faceGap = (c.faceGap || 0) + dt) < 3) { c.faceAll = (c.faceAll || 0) + dt; c.faceT = 0; }
+        else { c.faceT = c.faceAll = c.faceGap = 0; c.faceCar = null; }
         if (c.passBy && ((!c.mv && !c.passFace) || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4 || c.passBy.line < 0)) { c.passBy = null; c.passFace = false; }
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
