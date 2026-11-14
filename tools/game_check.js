@@ -1874,7 +1874,7 @@ const npcNight = require('./npc_night');
   // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
   { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
   // the railway past the station (trains.js): its timetable, its trains drawn on their tracks, the platform walked and announced (tools/trains_step.js)
-  { const r = await require('./trains_step')(p); if (!r.none) { for (const [ok, what] of r.checks) check(ok, what); await shot('trains'); } }
+  { const r = await require('./trains_step')(p, 'watch'); if (!r.none) { for (const [ok, what] of r.checks) check(ok, what); await shot('trains'); } }
 
   // a ride behind a queue at a red light (#107): it waits its turn in its own lane, never swings out
   // round a car queueing there (c.q) to the head of the queue, and goes on when the queue moves;
@@ -2423,6 +2423,8 @@ const npcNight = require('./npc_night');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.qs().track = k.track; g.advance(0.2); }, keep);
   }
 
+  // a ride on the railway, near the end with the tap: the minutes it takes would move the traffic every step after it sees
+  { const r = await require('./trains_step')(p, 'ride'); if (!r.none) for (const [ok, what] of r.checks) check(ok, what); }
   // the tap itself (last of all: the time it takes moves nothing the steps above see): on foot, a tap on raises the right hand with the phone in it to the reader and lowers it again
   const tapPose = await p.evaluate(() => {
     const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
