@@ -100,6 +100,7 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await p.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     const save = await p.evaluate(c => { try { return JSON.parse(localStorage.getItem(`oe3d-game-${c}`)); } catch (e) { return null; } }, city);
+    const died = await p.evaluate(() => { try { return { n: JSON.parse(localStorage.getItem('oe3d-died-testville')).n, died: window.OEQuality.died('testville'), other: window.OEQuality.died('nowhere') }; } catch (e) { return null; } });
     must(started && save && Array.isArray(save.pos), 'the game saves where the player stands on leaving', save && save.pos && save.pos.map(v => Math.round(v)).join(','));
     await sleep(1500);
     await p.goto('about:blank');
@@ -184,6 +185,7 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     must(ex.length === 1 && ex[0].props.view === 'game' && ex[0].props.page_s > 0, 'the page says how it ended', ex[0] && `page ${ex[0].props.page_s} s, idle ${ex[0].props.idle_s} s`);
     const cr = of('crash');
     must(cr.length === 1 && cr[0].props.prev_city === 'testville' && cr[0].props.prev_spot === 'Test Wharf', 'a page that died on screen is reported once by the next', cr.length);
+    must(died && died.n === 1 && died.died === 1 && died.other === 0, 'and counted against its map, for a lighter load there next (quality.js died)', JSON.stringify(died));
     must(of('view', x => x.view === 'game').every(e => e.props.from === `city:${city}`), 'a view says which view it came from');
     let rep = null;
     try { execFileSync('python3', [path.join(__dirname, 'slo_report.py'), log], { stdio: 'inherit' }); } catch (e) { /* a missed level exits 1 */ }

@@ -79,13 +79,19 @@ window.OEInland = (function () {
       }
       g.globalCompositeOperation = 'destination-out';
       for (const d of cut) { path([d]); g.fill(); }
-      const data = g.getImageData(0, 0, nx, ny).data, px = new Uint8Array(nx * ny);
-      for (let i = 0; i < px.length; i++) px[i] = data[4 * i + 3];
+      // (read in bands of rows: the whole canvas's pixels at once are four bytes a cell, 45 MB for Shibuya's channels,
+      // to keep one byte of each)
+      const px = new Uint8Array(nx * ny), ROWS = Math.max(1, Math.floor((1 << 20) / nx));
+      for (let r0 = 0; r0 < ny; r0 += ROWS) {
+        const h = Math.min(ROWS, ny - r0), data = g.getImageData(0, r0, nx, h).data;
+        for (let i = 0, o = r0 * nx, n = nx * h; i < n; i++) px[o + i] = data[4 * i + 3];
+      }
       const at = (x, y) => {
         const c = Math.floor((x - x0) / cell), r = Math.floor((y1 - y) / cell);
         return c >= 0 && r >= 0 && c < nx && r < ny ? px[r * nx + c] : 0;
       };
-      return { px, nx, ny, cell, x0, y1, at, canvas: cv };
+      cv.width = cv.height = 0; // (read: the canvas's own pixels go, four bytes each where the mask keeps one; 116 MB in Shibuya)
+      return { px, nx, ny, cell, x0, y1, at };
     }
     const inWalled = raster(walled, 0.5), inNatural = raster(natural, 1.0), inDeck = decks.length ? raster(decks.map(r => ({ rings: [r], box: boxOf(r) })), 0.5) : null;
     function boxOf(r) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of r) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } return [x0, y0, x1, y1]; }
@@ -161,7 +167,9 @@ window.OEInland = (function () {
     function holeMask() {
       if (hole || !walled.length) return hole;
       const m = inWalled, { nx, ny, cell, x0, y1 } = m, N = nx * ny;
-      const dW = new Float32Array(N).fill(1e9), dD = new Float32Array(N).fill(1e9);
+      // (the distances within twice the band, in sixteen bits: a tenth of a millimetre a step, and half the 94 MB two
+      // float grids of Shibuya's mask held while this ran)
+      const QD = 65535 / (SDF_BAND * 2), dW = new Uint16Array(N).fill(65535), dD = new Uint16Array(N).fill(65535);
       const band = (rings, D) => { // the unsigned distance to every edge of `rings`, within SDF_BAND
         for (const r of rings) for (let i = 0, n = r.length; i < n; i++) {
           const [ax, ay] = r[i], [bx, by] = r[(i + 1) % n], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey || 1e-9;
@@ -170,7 +178,7 @@ window.OEInland = (function () {
           for (let rr = ra; rr <= rb; rr++) for (let cc = ca; cc <= cb; cc++) {
             const px = x0 + (cc + 0.5) * cell, py = y1 - (rr + 0.5) * cell;
             const t = Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / L2));
-            const d = Math.hypot(px - ax - t * ex, py - ay - t * ey), k = rr * nx + cc;
+            const d = Math.min(65535, Math.round(Math.hypot(px - ax - t * ex, py - ay - t * ey) * QD)), k = rr * nx + cc;
             if (d < D[k]) D[k] = d;
           }
         }
@@ -180,8 +188,8 @@ window.OEInland = (function () {
       const px = new Uint8Array(N);
       for (let k = 0; k < N; k++) {
         const c = k % nx, r = (k - c) / nx, x = x0 + (c + 0.5) * cell, y = y1 - (r + 0.5) * cell;
-        const w = (m.px[k] > 127 ? 1 : -1) * Math.min(dW[k], SDF_BAND * 2);
-        const dk = inDeck ? (inDeck.at(x, y) > 127 ? 1 : -1) * Math.min(dD[k], SDF_BAND * 2) : -SDF_BAND * 2;
+        const w = (m.px[k] > 127 ? 1 : -1) * dW[k] / QD;
+        const dk = inDeck ? (inDeck.at(x, y) > 127 ? 1 : -1) * dD[k] / QD : -SDF_BAND * 2;
         px[k] = Math.max(0, Math.min(255, Math.round(128 + SDF_K * Math.min(w + HOLE_PAD, -dk))));
       }
       const tex = new THREE.DataTexture(px, nx, ny, THREE.RedFormat, THREE.UnsignedByteType);

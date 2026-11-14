@@ -597,6 +597,12 @@ window.OETelemetry = (function () {
       const age = o ? Date.now() - o.t : 1e12;
       if (age < 30000) continue;
       localStorage.removeItem(k);
+      // the memory loop (quality.js died; issue 443): a map whose page died on this device loads lighter the next
+      // time, one step for each death, so that a phone it killed once is not killed the same way again
+      if (o && o.city && (o.view === 'game' || o.view === 'city') && age < 14 * 864e5) try {
+        let d = null; try { d = JSON.parse(localStorage.getItem(`oe3d-died-${o.city}`)); } catch (e) { d = null; }
+        localStorage.setItem(`oe3d-died-${o.city}`, JSON.stringify({ n: Math.min(9, ((d && d.n) || 0) + 1), t: Date.now(), ready: !!o.ready }));
+      } catch (e) { /* storage blocked */ }
       if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
     }
   } catch (e) { /* storage blocked */ }

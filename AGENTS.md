@@ -157,6 +157,21 @@ The owner has asked for these things again and again. They are standing rules; d
   restyling from scratch.
 - Light that is soft and rich, never blown out or grey. At night a city shows its lights the
   way an aerial photograph does.
+- Detail that the material explains, never noise. The owner's bar is photoreal, and what broke it
+  in review was blotches on the ground, an ugly view from the air, and paving in a jumble of tones.
+  From first principles: the eye accepts variation it can read as how a thing is made (courses,
+  joints, slabs laid in rows, grain, a normal map with the real relief) and rejects variation it
+  cannot explain (random tone patches, stains, grime gradients, tints, shadows with a colour of
+  their own, a blurred photograph under a model). So:
+  - every visible surface has a cause for each change of tone, at the scale the real material has;
+    random variation laid over a surface (`vary`, `grime_m`, noise) stays near zero;
+  - the ground is never aged: paving, asphalt and lawn are clean, in close tones of one family,
+    with crisp edges where one surface meets the next;
+  - a building may carry its years where that is its material (old brick, patinated copper, slate),
+    lightly: it reads as cared for, not as dirty;
+  - it holds from every height a player reaches: on foot, from a car, from the helicopter. Inside
+    a hero level no aerial photograph shows through as ground;
+  - simple beats busy: when a surface looks restless, take variation away before adding any.
 - Real places: measured open data from the newest release, landmarks and their neighbours
   checked against photographs and official dimensions, landmarks modelled finely in Blender or
   three.js, and people who look real and local.

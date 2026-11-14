@@ -193,8 +193,8 @@ def landmark_glows(scene):
 
 
 def landmark_assets(out_dir, scene):
-    """The station's signs (cities/tokyo/rail.py)."""
-    return RAIL.assets(out_dir)
+    """The railway's signs (cities/tokyo/rail.py) and the Marunouchi exits' name boards (cities/tokyo/station.py)."""
+    return RAIL.assets(out_dir) + STATION_HERO.assets(out_dir)
 
 
 def landmark_demolished(scene):
