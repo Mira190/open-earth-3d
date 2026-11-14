@@ -327,7 +327,15 @@ window.OETelemetry = (function () {
     track('load', Object.assign({ ok: true, ms: Math.round(t - v.t0) }, stages(v)));
     flush();
   }
-  try { new PerformanceObserver(() => globeReady()).observe({ type: 'mark' }); } catch (e) { /* checked each second instead */ }
+  // the last step of a load the page named ("oe:built", or "oe:step" with detail.step: what the game fetches once it
+  // can be played): kept in the note that says the page is alive, so a page that died says where (crash: prev_stage)
+  let stage = '';
+  try {
+    new PerformanceObserver(l => {
+      for (const e of l.getEntries()) if (!e.name.indexOf('oe:')) { stage = e.detail && e.detail.step ? String(e.detail.step).slice(0, 40) : e.name.slice(3); if (!document.hidden && !going) alive(); }
+      globeReady();
+    }).observe({ type: 'mark' });
+  } catch (e) { /* checked each second instead */ }
 
   // the loader of the view: ready when it fades, failed when it says so
   let mo = null;
@@ -587,15 +595,21 @@ window.OETelemetry = (function () {
   // tab of the site keeps its own fresh), means the page ended without closing: the browser or the GPU
   // process crashed, or the system killed it for memory. The next page load reports it.
   const ALIVE = 'oe3d-alive-', crashes = [];   // the reports wait for the first view, so they carry its tier
-  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready) }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
+  const alive = () => { try { localStorage.setItem(ALIVE + sid, JSON.stringify(Object.assign({ t: Date.now(), up: Math.round(now() / 1000), ready: !!(cur && cur.ready), stage }, cur ? { view: cur.kind, city: cur.city } : {}, snap()))); } catch (e) { /* storage blocked */ } };
   const gone = () => { try { localStorage.removeItem(ALIVE + sid); } catch (e) { /* storage blocked */ } };
+  // This tab's last page load, by the tab's own session storage, which outlives a page that was killed: Safari
+  // loads a tab again the moment its page dies, so the note it left is seconds old, and taken for another tab's it
+  // went uncounted; the second load was then as heavy as the first, died the same way, and left the visitor on
+  // "A problem repeatedly occurred" (issue 443). A note of this tab's own is a dead page's at any age.
+  let before = null;
+  try { before = sessionStorage.getItem('oe3d-sid'); sessionStorage.setItem('oe3d-sid', sid); } catch (e) { /* storage blocked */ }
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
       if (!k || k.indexOf(ALIVE) || k === ALIVE + sid) continue;
       let o = null; try { o = JSON.parse(localStorage.getItem(k)); } catch (e) { o = null; }
       const age = o ? Date.now() - o.t : 1e12;
-      if (age < 30000) continue;
+      if (age < 30000 && k !== ALIVE + before) continue; // (another tab's, still alive; this tab's own last page is dead whatever its age)
       localStorage.removeItem(k);
       // the memory loop (quality.js died; issue 443): a map whose page died on this device loads lighter the next
       // time, one step for each death, so that a phone it killed once is not killed the same way again
@@ -603,7 +617,7 @@ window.OETelemetry = (function () {
         let d = null; try { d = JSON.parse(localStorage.getItem(`oe3d-died-${o.city}`)); } catch (e) { d = null; }
         localStorage.setItem(`oe3d-died-${o.city}`, JSON.stringify({ n: Math.min(9, ((d && d.n) || 0) + 1), t: Date.now(), ready: !!o.ready }));
       } catch (e) { /* storage blocked */ }
-      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
+      if (age < 3 * 864e5) crashes.push(() => track('crash', { prev_view: o.view, prev_city: o.city, prev_spot: o.spot, prev_mode: o.mode, prev_ready: o.ready, prev_stage: o.stage || undefined, prev_up_s: o.up, ago_s: Math.round(age / 1000) }));
     }
   } catch (e) { /* storage blocked */ }
   setInterval(() => { if (!document.hidden && !going) alive(); }, 5000);
