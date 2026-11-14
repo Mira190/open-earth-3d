@@ -788,7 +788,8 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
     // with a halt still ahead of them on this map are cars you can board; a car is a whole train, placed by the
     // timetable; you stand in its third car by the doors, and get off at the next station onto its platform.
     const ride = api.ride = { cars: [], stations: [], events: [], mainline: true };
-    for (const st of stations) ride.stations.push(Object.assign(st, { train: true, deck: true, r: st.r || 120 }));
+    // (a station under the ground, off the drawn line: "under": its street entrance, where it is boarded and left, at its "at")
+    for (const st of stations) ride.stations.push(Object.assign(st, { train: true, deck: true, r: st.r || (st.under ? 14 : 120) }));
     const byKey = new Map(), where = { x: 0, y: 0, z: 0 };
     ride.sync = function (live) {
       const seen = new Set();
@@ -838,7 +839,10 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
     }
     const riderM = car => car.s.len / 2 - 2.5 * car.s.S.len + doorOf(car.s.S).z[0]; // the third car, by its rear door
     ride.riderPos = car => { const q = inTrain(car, riderM(car), 0.55, doorOf(car.s.S).sill + 0.02); return { x: q.x, y: q.y, z: q.z, h: q.h - q.side * Math.PI / 2 - Math.PI }; };
-    ride.alightAt = car => { const L = legAt(car); if (!L) return null; const q = inTrain(car, riderM(car), doorOf(car.s.S).hw + 1.4, (L.h.st ? L.h.st.z - car.z : 1.1)); return [q.x, q.y, q.z]; };
+    // in the tunnel: the rider's car beyond the stretch the cars are drawn on (the course's hide_m), on its way to or
+    // from a station under the ground; the game veils the view and runs on to the next station
+    ride.hidden = car => { if (!car || !car.tr) return false; const d = car.tr.x - riderM(car), [h0, h1] = car.s.tr.hide_m || [-Infinity, Infinity]; return d < h0 || d > h1; };
+    ride.alightAt = car => { const L = legAt(car); if (!L) return null; if (L.h.st && L.h.st.under) return [L.h.st.x, L.h.st.y, L.h.st.z]; const q = inTrain(car, riderM(car), doorOf(car.s.S).hw + 1.4, (L.h.st ? L.h.st.z - car.z : 1.1)); return [q.x, q.y, q.z]; };
     ride.boardAt = car => { const q = inTrain(car, riderM(car), doorOf(car.s.S).hw + 1.4, 1.1); return [q.x, q.y, q.z]; };
 
     // ---------------------------------------------------------- the platform's announcements
@@ -942,6 +946,22 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
       }
       doors(live);
       ride.sync(live);
+    };
+    // the veil over a ride in the tunnel: the dark of the tunnel with the line's name and where it is going, faded in and
+    // out (game.js shows it while ride.hidden says the rider's car is out of sight)
+    let veilEl = null;
+    api.veil = (on, text = '') => {
+      if (!veilEl) {
+        if (!on) return;
+        veilEl = document.createElement('div');
+        veilEl.id = 'g-tunnel';
+        Object.assign(veilEl.style, { position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 25, opacity: 0, transition: 'opacity 0.6s ease',
+          background: 'radial-gradient(ellipse at 50% 55%, rgba(24, 20, 16, 0.96), rgba(4, 5, 7, 0.995) 70%)', color: '#f4efe6', font: '500 15px/1.5 "Inter Tight", "Public Sans", system-ui, sans-serif', letterSpacing: '0.04em', textAlign: 'center' });
+        (document.getElementById('game') || document.body).appendChild(veilEl);
+      }
+      if (on && veilEl.dataset.text !== text) { veilEl.dataset.text = text; veilEl.innerHTML = text; }
+      veilEl.style.opacity = on ? 1 : 0;
+      api.veiled = !!on;
     };
     api.hush = () => { const A = window.OEAudio; if (A && A.train) for (let i = 0; i < 3; i++) A.train(i, 0); if (window.speechSynthesis) window.speechSynthesis.cancel(); if (capEl) capEl.style.opacity = 0; };
     // the next train to call or pass at a platform: { s, in_s, stops }, for a sign or a harness
