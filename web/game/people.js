@@ -272,9 +272,28 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     // wait on) only when its textures are on the GPU and its shaders compiled, off the frame (lib.warm, set
     // by the game once its loader has compiled the scene; issue 201): else the first frame that draws it
     // uploads them and links its program, a hitch of a frame or more each time someone new comes into view
-    const ready = (name, tpl) => {
+    // on a phone (quality.js lean) an NPC's pictures go up at LEAN_PX a side: a 1024 one is 5.3 MB of the GPU with its
+    // mipmaps, two or three a character and twenty-odd characters a map (130 MB in Tokyo, issue 406), for someone who
+    // stands a few hundred pixels tall at most on a phone's canvas. The characters you play keep theirs
+    const LEAN_PX = 512, lean = !!(window.OEQuality && OEQuality.city().lean);
+    const smaller = tpl => {
+      const jobs = [];
+      tpl.scene.traverse(o => {
+        if (!o.isSkinnedMesh) return;
+        for (const m of [].concat(o.material)) for (const k in m) {
+          const t = m[k], im = t && t.isTexture && t.image;
+          if (!im || !(im.width > LEAN_PX || im.height > LEAN_PX) || t.userData.oeLean || typeof createImageBitmap !== 'function') continue;
+          t.userData.oeLean = true;
+          const f = LEAN_PX / Math.max(im.width, im.height);
+          jobs.push(createImageBitmap(im, { resizeWidth: Math.round(im.width * f), resizeHeight: Math.round(im.height * f), resizeQuality: 'high' })
+            .then(bm => { t.image = bm; t.needsUpdate = true; if (im.close) im.close(); }).catch(() => {})); // (else as it came)
+        }
+      });
+      return Promise.all(jobs);
+    };
+    const ready = (name, tpl, npc = false) => {
       tpl.scene.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; [].concat(o.material).forEach(litMaterial); } }); // (the variant person() draws, its shadow's too)
-      return (lib.warm ? lib.warm(tpl.scene).catch(() => {}) : Promise.resolve()).then(() => {
+      return (lean && npc ? smaller(tpl) : Promise.resolve()).then(() => (lib.warm ? lib.warm(tpl.scene).catch(() => {}) : null)).then(() => {
         lib.tpl[name] = tpl;
         if (onMsg) onMsg(name);
         return tpl;
@@ -285,7 +304,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       const h = lib.heroes[name], c = lib.npcs[name];
       if (c) {
         return lib.loading[name] || (lib.loading[name] = Promise.all([get(c.file), clipsOf(c.sex)]).then(([g, clips]) =>
-          ready(name, { scene: g.scene, textured: true, clips, speeds: NP.clips[c.sex].ground_speed, bones: NP.bones || {} })));
+          ready(name, { scene: g.scene, textured: true, clips, speeds: NP.clips[c.sex].ground_speed, bones: NP.bones || {} }, true)));
       }
       if (!h) return plain(name);
       return lib.loading[name] || (lib.loading[name] = get(h.file).then(g =>

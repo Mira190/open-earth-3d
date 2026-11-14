@@ -6,6 +6,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/signal_shot.js sydney out_dir [count|id,id|arrows<count>|mid<count>] [HH:MM,HH:MM] [WxH]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.', which = '3', times = '10:30,19:40,22:00', size = '1440x900'] = process.argv;
@@ -27,8 +28,7 @@ const [,, city = 'sydney', outDir = '.', which = '3', times = '10:30,19:40,22:00
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 400000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   const ids = await p.evaluate(which => {
     const g = window.__game, J = g.cars.junctions.J, x0 = g.player.x, y0 = g.player.y;
     if (/^[\d,]+$/.test(which) && which.includes(',')) return which.split(',').filter(Boolean).map(Number);

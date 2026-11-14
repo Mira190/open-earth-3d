@@ -8,6 +8,7 @@
 // hidden, and counts the page's draw calls a frame (shadow passes included) with and without them. The shadow figure is what the sun's shadow
 // map draws again (each caster, every frame the shadows update).
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const [,, city = 'kyoto', ...spots] = process.argv;
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -30,8 +31,7 @@ const [,, city = 'kyoto', ...spots] = process.argv;
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game && window.__game.flyover', null, { timeout: 600000 });
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
   for (const s of spots.length ? spots : ['0,0']) {
     const [x, y] = s.split(',').map(Number);
     const r = await p.evaluate(async ([x, y]) => {

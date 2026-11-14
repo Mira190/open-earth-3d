@@ -6,6 +6,7 @@
 //   cd web && python3 -m http.server 8800 &
 //   GAME_TIME=10:00 xvfb-run -a node tools/mutual_front.js sydney [seconds] [places]
 const { chromium } = require('playwright');
+const { startPlay } = require('./start_play');
 const { pinClock } = require('./pin_clock');
 const [,, city = 'sydney', secs = '300', places = '1'] = process.argv;
 const MIN = Number(process.env.MIN || 10);
@@ -20,8 +21,7 @@ const MIN = Number(process.env.MIN || 10);
     p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 300)));
     await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 300000 });
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    await startPlay(p); // (the title card up, Play pressed and the game started: tools/start_play.js, #423)
     const r = await p.evaluate(({ T, site, MIN, MORE }) => {
       window.requestAnimationFrame = () => 0;
       const g = window.__game, L = g.cars.netL, C = g.cars.C;
