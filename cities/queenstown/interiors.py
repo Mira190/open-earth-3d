@@ -514,8 +514,9 @@ def williams(heritage, ground):
             cuboid(R.f("will_shelf"), P, a0, a1, v - 0.18, v + 0.18, F + z + 0.3, F + z + 0.33)
         for u in (a0, a1):
             cuboid(R.f("will_shelf"), P, u - 0.02, u + 0.02, v - 0.18, v + 0.18, F, F + 1.9)
+        keeps = a0 == KEEP_SHELF[0]   # (the traveller's shelf: its two middle boards kept clear for your keepsakes)
         for k, u in enumerate(np.arange(a0 + 0.12, a1 - 0.1, 0.22)):
-            for z in (0.33, 0.83, 1.33):
+            for z in ((0.33, 1.83) if keeps else (0.33, 0.83, 1.33)):
                 h = 0.12 + 0.1 * ((k * 7 + int(z * 10)) % 3)
                 cuboid(R.f(("will_goods", "will_goods2", "will_goods3")[(k + int(z * 3)) % 3]), P, u - 0.08, u + 0.08, v - 0.1, v + 0.1, F + z, F + z + h)
     for (u, v) in ((-4.8, 0.75), (-2.8, -3.0)):
@@ -557,8 +558,37 @@ def williams(heritage, ground):
               "ring": ring_of(P, [(iu0, iv0), (ilu1, iv0), (ilu1, iv1), (iu0, iv1)]),
               "way": [[round(c, 2) for c in P(U0 - 4.0, door["v"], 0)[:2]], [round(c, 2) for c in P(U0 - 0.9, door["v"], 0)[:2]],
                       [round(c, 2) for c in P(U0 + 1.2, door["v"], 0)[:2]], [round(c, 2) for c in P(-2.6, -1.0, 0)[:2]]]}]
+    rooms[0]["keepsakes"] = keepsake_shelf(P, g + F, iv1 - 0.32)
     glows = []
     return R.out(), doors, rooms, surfaces, glows
+
+
+# The traveller's shelf (issue 419): the long shelf on the cottage's back wall, u from KEEP_SHELF[0] to [1], keeps what you
+# have bought on any map (the diary's album, web/game/jobs.js) on its two middle boards, eight to a board, drawn there as
+# small models (web/game/keepsakes.js). The goods stay on its lowest and its top board. A spot looks along it closer
+# (web/game/places.js closer), its texts filled in by keepsakes.js from the album.
+KEEP_SHELF = (-4.4, -1.8)
+
+
+def keepsake_shelf(P, floor, v):
+    """The shelf's slots [x, y, z, heading]: z a board's top, heading the way the things face (into the room, -v), and the
+    spot that looks along it."""
+    a0, a1 = KEEP_SHELF
+    face = np.array(P(0, -1, 0)[:2]) - np.array(P(0, 0, 0)[:2])
+    head = round(math.degrees(math.atan2(face[0], face[1])) % 360, 1)
+    slots = []
+    for z in (1.33, 0.83):                       # (eye level first: the first things you keep are the ones you see)
+        for k in range(8):
+            u = a0 + (a1 - a0) * (k + 0.5) / 8
+            x, y, _ = P(u, v - 0.02, 0)
+            slots.append([round(x, 3), round(y, 3), round(floor + z, 3), head])
+    along = np.array(P(1, 0, 0)[:2]) - np.array(P(0, 0, 0)[:2])
+    side = 1 if (-along[1] * face[0] + along[0] * face[1]) >= 0 else -1    # (places.js closer: the side the walker stands on)
+    mid = P((a0 + a1) / 2, v - 0.02, 0)
+    stand = P(a0 + (a1 - a0) * 3.5 / 8, v - 1.0, 0)   # (in front of a slot, so that the look closer opens on one thing, centred)
+    return {"name": "The traveller's shelf", "slots": slots, "side": side, "along": [round(float(along[0]), 5), round(float(along[1]), 5)],
+            "half_m": round((a1 - a0) / 2 - 0.16, 2), "stand": [round(stand[0], 2), round(stand[1], 2), round(floor, 2)],
+            "mid": [round(mid[0], 3), round(mid[1], 3)], "rails": [round(floor + 0.9, 3), round(floor + 1.4, 3)]}
 
 
 def will_dims():

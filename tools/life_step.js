@@ -172,6 +172,25 @@ async function lifeStep(p, check, city) {
         if (a && a.act) { a.act(); talkOut(); g.dlg.choose(k); talkOut(); }
         out.kept = L.jobs.album().some(x => x.id === ks.menu[k].id && x.city === L.ctx.cityId);
         D.show('album'); out.albumCards = document.querySelectorAll('.lf-keeps li:not(.empty)').length; D.close();
+        // ---- the keepsake room (issue 419, keepsakes.js): what you keep stands on its room's shelf, a model of its own
+        // with its card, the shelf's look closer names it; and every keepsake any map sells has a model that builds
+        const KS = L.keepsakes;
+        if (KS) {
+          const [sx, sy, sz] = KS.room.keepsakes.stand;
+          Object.assign(g.player, { x: sx, y: sy, z: sz }); g.advance(0.6);
+          const grp = KS.group, slots = grp ? grp.children.filter(o => o.userData.keepsake) : [];
+          out.shelf = { slots: slots.length, has: slots.some(o => o.userData.keepsake === ks.menu[k].id), meshes: 0 };
+          if (grp) grp.traverse(o => { if (o.isMesh) out.shelf.meshes++; });
+          const sp = (g.G.spots || []).find(x => x.keepsakes), act = g.action && g.action();
+          out.shelf.look = !!(sp && sp.look.texts.some(t => t.startsWith(ks.menu[k].name)));
+          out.shelf.verb = act ? act.text : null;
+          // every model, built at once on the shelf (the album's own entries put back after)
+          const al = L.store.album, saved = al.slice();
+          for (const id of KS.models) if (!al.some(a => a.id === id)) al.push({ city: 'test', place: 'Test', id, name: id, shop: 'Test', text: '' });
+          const all = KS.build(), n = all ? all.children.filter(o => o.userData.keepsake).length : 0;
+          out.shelf.models = { want: Math.min(KS.models.length, KS.room.keepsakes.slots.length), got: n };
+          al.length = 0; al.push(...saved); KS.build();
+        }
       }
       const e = L.data.events.find(x => x.at);
       if (e) {
@@ -247,6 +266,10 @@ async function lifeStep(p, check, city) {
   if (r.shops) check(r.counter && r.dish > 0 && r.taste > 0, `a counter: a dish bought (${r.dish}) grows the taste`);
   if (r.events) check(r.listed && r.eventAct && r.eventKept, 'the calendar: an event is listed on its date, joined at its place and kept');
   if (r.kept != null) check(r.kept && r.albumCards >= 1, `keepsakes: one bought is in the album (${r.albumCards} card${r.albumCards === 1 ? '' : 's'})`);
+  if (r.shelf) {
+    check(r.shelf.has && r.shelf.look, `the keepsake room: the one bought stands on its shelf (${r.shelf.slots} on it, ${r.shelf.meshes} meshes), named in the look closer`);
+    check(r.shelf.models.got >= r.shelf.models.want, `the keepsake room: every keepsake's model builds (${r.shelf.models.got}/${r.shelf.models.want})`);
+  }
   if (r.trainTook != null) check(r.trainTook && r.trainRun && r.trainWrong && r.trainDone && r.trainPaid > 0, `jobs: a train job taken at its station, not done at the wrong stop, paid at the right one (+${r.trainPaid})`);
   if (r.places) check(!r.placeBad.length, `people's places by the hour: all ${r.places} on firm ground by where they are written${r.placeBad.length ? ` (${r.placeBad.join('; ')})` : ''}`);
   if (r.placeWho) check(r.strangerStays && r.stayWatched && r.movedAway && r.whereSaid && r.movedBack, `people move by the hour: ${r.placeWho} keeps the map's place until you have met (${r.strangerStays}), stays while watched, goes when you leave, the diary says where, and is back as time passes`);

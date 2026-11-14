@@ -851,15 +851,24 @@ vec3 steepRock(vec3 c, float k) {
         for (const r of [c.ring].concat(c.holes || [])) r.forEach(([x, y], k) => g[k ? 'lineTo' : 'moveTo']((x - x0) / res + 1, (y1 - y) / res + 1));
         g.fill('evenodd');
       }
-      const tex = new THREE.CanvasTexture(cv);
-      tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      const px = g.getImageData(0, 0, w, h).data;
+      // (kept as one channel, a byte a texel, rows bottom up as the canvas texture's were, and as a bit a texel for near():
+      // the canvas's four bytes a texel, on the page and on the GPU, were 45 MB each in Tokyo, issue 406)
+      const rgba = g.getImageData(0, 0, w, h).data, one = new Uint8Array(w * h), bits = new Uint8Array((w * h + 7) >> 3);
+      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+        const v = rgba[4 * (r * w + c)];
+        one[(h - 1 - r) * w + c] = v;
+        if (v > 127) bits[(r * w + c) >> 3] |= 1 << ((r * w + c) & 7);
+      }
+      cv.width = cv.height = 1;
+      const tex = new THREE.DataTexture(one, w, h, THREE.RedFormat, THREE.UnsignedByteType);
+      tex.unpackAlignment = 1; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      tex.needsUpdate = true;
       // within a clip region, or a metre and a half from one (a landmark's own seawall runs along its edge)
       const near = (x, y) => {
         const c = Math.round((x - x0) / res + 1), r = Math.round((y1 - y) / res + 1);
         for (let dr = -3; dr <= 3; dr += 3) for (let dc = -3; dc <= 3; dc += 3) {
           const rr = r + dr, cc = c + dc;
-          if (rr >= 0 && cc >= 0 && rr < h && cc < w && px[4 * (rr * w + cc)] > 127) return true;
+          if (rr >= 0 && cc >= 0 && rr < h && cc < w && (bits[(rr * w + cc) >> 3] >> ((rr * w + cc) & 7)) & 1) return true;
         }
         return false;
       };
@@ -1651,7 +1660,8 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
     const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
-    if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
+    // (the game picks a building from its collision world, nav.js col.pick: the bounds-tree is the viewer's, issue 406)
+    if (THREE.MeshBVH && !game) { // a bounding-volume hierarchy makes picking a building ~300x faster
       // built in a Worker where the walls are drawn as cells (a city's worth: a second on the main thread, issue 299),
       // and put on the picking mesh when it comes (it reorders that mesh's index, which the cells have copied
       // already); a pick before then takes the plain, slower way. A small town's, or without a Worker, here
@@ -1661,12 +1671,14 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
       else here();
     }
     // a phone (quality.js lean): once uploaded, the walls' shading attributes and the cells' indices are the GPU's
-    // alone (a hundred MB of script memory in Shibuya); the picking mesh keeps what a pick reads (position, index,
-    // bid). A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
+    // alone (a hundred MB of script memory in Shibuya); the viewer's picking mesh keeps what a pick reads (position,
+    // index, bid), and in the game, which picks from its collision world, those go too (Kyoto's 120 MB, issue 406).
+    // A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
     let gpuOnly = false; // (set here, before the api is made)
+    if (game && bCells) bGeo.setIndex(null); // (the cells have their own: the picking mesh's is the viewer's alone)
     if (LEAN && bCells) {
       const letGo = function () { this.array = null; };
-      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode']) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
+      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode'].concat(game ? ['position', 'bid'] : [])) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
       for (const c of bCells.children) if (c.geometry.index) c.geometry.index.onUpload(letGo);
       gpuOnly = true;
     }
