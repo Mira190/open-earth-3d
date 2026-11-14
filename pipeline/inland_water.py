@@ -221,6 +221,8 @@ def line_body(C, at, line, spec, extent):
             R.append(pts); BZ.append(b); WZ.append(wz)
         body = {"name": spec["name"], "kind": "walled", "walls": spec.get("walls", "concrete"), "rings": R, "bz": BZ, "wz": WZ,
                 "water_m": spec.get("water_m", 0.3), "_poly": p, "_line": L}
+        if spec.get("rail") is False:   # a channel with no railing along its walls (web/inland.js)
+            body["rail"] = False
         if spec.get("terrace"):
             body.update(terrace_of(L, p, s, low, sides, spec))
         out.append(body)
@@ -821,7 +823,7 @@ def build(C):
                    "bz the bank's height and wz the water's at each ring point (m); water_m the water's depth over the bed; "
                    "decks: where a road crosses a walled channel without a bridge model, the ground kept over it.",
            "bodies": [{"name": b["name"], "kind": b["kind"], **({"walls": b["walls"]} if b.get("walls") else {}),
-                       "water_m": b["water_m"], "rings": [q(r) for r in b["rings"]], "bz": [q(v) for v in b["bz"]],
+                       "water_m": b["water_m"], **({"rail": False} if b.get("rail") is False else {}), "rings": [q(r) for r in b["rings"]], "bz": [q(v) for v in b["bz"]],
                        "wz": [q(v) for v in b["wz"]],
                        **({"terrace": terrace_json(b["terrace"]), "stream": {"rings": [q(r) for r in b["stream"]["rings"]], "wz": [q(v) for v in b["stream"]["wz"]]},
                            "steps": [[round(float(v), 2) for v in st] for st in b.get("steps", [])]} if b.get("terrace") else {})} for b in bodies],

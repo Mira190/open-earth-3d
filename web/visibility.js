@@ -188,7 +188,7 @@ window.OEVis = (() => {
   // [x, y, top, ...]: one per 16 m cell the object touches, with the highest it reaches there
   function samples(o) {
     const g = o.geometry, P = g && g.attributes.position;
-    if (!P) return null;
+    if (!P || !(P.array || (P.data && P.data.array)) || (g.index && !g.index.array)) return null; // (on a phone, held on the GPU alone by now: world.js lean)
     o.updateWorldMatrix(true, false);
     const E = o.matrixWorld.elements, cells = new Map();
     const put = (i, j, top) => { const k = i * 65536 + j, v = cells.get(k); if (v === undefined || top > v) cells.set(k, top); };

@@ -8,11 +8,9 @@
 //   - every live city with a game has spots, every spot a line of the diary, and the album stays in its bound.
 //
 // The pages, in a browser (skipped with --journey): on a desktop and a phone, for a player back after a day,
-//   - the pile comes up on the menu and says how many are new; opening it shows a picture that has loaded,
-//     with its place, its time and its line; the arrows and the album change the card; Esc closes it;
-//   - the title's keys are the viewer's while it is open (an arrow does not change the destination);
-//   - "Go there" dives to the card's city with "@pc-<spot>.<light>", and on the desktop the game then stands
-//     on the photographer's spot with the clock at the postcard's light, and its passport lists the card.
+//   - the title's menu shows no postcards (no pile, no viewer), and the three that came are in the album;
+//   - "#play-<city>@pc-<spot>.<light>" on the desktop: the game stands on the photographer's spot with the
+//     clock at the postcard's light, and its passport lists the map's postcards.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/postcards_check.js [--journey]
 const fs = require('fs');
@@ -124,55 +122,23 @@ check('data: the index is up to date with cities/<id>/postcards.json (python pip
     }, [P.KEY, { c: 'sydney', s: M.cities.sydney[0].id, l: 'day', k: 0, seen: 1 }]);
     const p = await ctx.newPage();
     p.on('pageerror', e => { fail++; console.log(`${name}: pageerror ${e}`); });
-    const press = async loc => (phone ? loc.tap() : loc.click());
     await p.goto(BASE);
     await p.waitForSelector('.title-app.menu', { timeout: 180000 }).catch(() => {});
     await p.evaluate(() => { const t = window.__title; if (t && t.state === 'open') t.skip(); });
-    await p.waitForSelector('.title-app.menu #ts-post', { timeout: 120000 }).catch(() => {});
-    await p.waitForTimeout(2500); // (the pile fades in after the menu)
-    const pile = await p.evaluate(() => {
-      const el = document.getElementById('ts-post'); if (!el) return null;
-      const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
-      const over = [...document.querySelectorAll('.ts-item, .ts-card.on, .ts-foot > *, .ts-top > *')].filter(o => { const q = o.getBoundingClientRect(); return q.width && q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top; }).map(o => o.className || o.id);
-      return { text: el.textContent, isNew: el.classList.contains('new'), n: el.querySelectorAll('.pile i').length, box: [r.left, r.top, r.right, r.bottom].map(Math.round), opacity: +cs.opacity, over, w: innerWidth, h: innerHeight };
-    });
-    check(`${name}: the pile is on the menu, with three new`, pile && pile.isNew && /3 new/.test(pile.text) && pile.n === 3 && pile.opacity > 0.9, pile);
-    if (!pile) { await ctx.close(); continue; }
-    check(`${name}: the pile is inside the screen and over nothing else`, pile.box[0] >= 0 && pile.box[1] >= 0 && pile.box[2] <= pile.w && pile.box[3] <= pile.h && !pile.over.length, pile);
-    await press(p.locator('#ts-post'));
-    const card = () => p.evaluate(() => {
-      const v = document.getElementById('ts-postview'), img = v.querySelector('.pv-photo img'), r = v.querySelector('.pv-card').getBoundingClientRect(), g = v.querySelector('.pv-go').getBoundingClientRect();
-      return { open: !v.hidden, src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth === 960, where: v.querySelector('.pv-where').textContent, name: v.querySelector('h2').textContent,
-        when: v.querySelector('.pv-when').textContent, line: v.querySelector('.pv-line').textContent, from: v.querySelector('.pv-from').textContent, n: v.querySelector('.pv-n').textContent, thumbs: v.querySelectorAll('.pv-album button').length,
-        wide: Math.round(r.width), over: Math.round(Math.max(0, r.right - innerWidth, -r.left)), go: [Math.round(g.width), Math.round(g.height)], sel: (document.querySelector('.ts-item[aria-current="true"] .nm') || {}).textContent || '' };
-    });
-    await p.waitForFunction(() => { const i = document.querySelector('.pv-photo img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 30000 }).catch(() => {});
-    const c1 = await card();
-    check(`${name}: opening it shows the oldest unread card, its picture loaded, with its place, time and line`,
-      c1.open && c1.loaded && c1.where && c1.name && /\d\d:\d\d .*Sun \d+° (up|down)/.test(c1.when) && c1.line.length > 30 && /^From the road · \S+, the /.test(c1.from) && c1.n === '2 / 4' && c1.thumbs === 4, c1); // (the album's second card: one was read before, three are new)
-    check(`${name}: the card fits the screen, and Go there is a thumb's size`, c1.over === 0 && c1.go[1] >= 44, c1);
-    await p.keyboard.press('ArrowRight');
-    await p.waitForTimeout(300);
-    const c2 = await card();
-    check(`${name}: the right arrow shows the next card, and the destination behind does not change`, c2.n === '3 / 4' && c2.src !== c1.src && c2.sel === c1.sel, c2);
-    await press(p.locator('.pv-album button').nth(3));
-    await p.waitForTimeout(300);
-    const c3 = await card();
-    check(`${name}: the album opens the first card`, c3.n === '1 / 4' && /sydney/.test(c3.src), c3);
-    await p.keyboard.press('Escape');
-    const shut = await p.evaluate(() => ({ hidden: document.getElementById('ts-postview').hidden, text: document.getElementById('ts-post').textContent, isNew: document.getElementById('ts-post').classList.contains('new') }));
-    check(`${name}: Esc closes it, and the pile counts what is still unread`, shut.hidden && /1 new/.test(shut.text), shut);
-    // back in: the last unread, then Go there
-    await press(p.locator('#ts-post'));
-    await p.waitForTimeout(300);
-    const c4 = await card();
-    await press(p.locator('.pv-go'));
-    await p.waitForFunction(() => /^#play-/.test(location.hash), null, { timeout: 30000 }).catch(() => {});
-    const hash = await p.evaluate(() => decodeURIComponent(location.hash));
-    const m = /^#play-([a-z-]+)@pc-([a-z0-9-]+)\.(dawn|day|dusk|night)$/.exec(hash);
-    check(`${name}: Go there dives to the card's city, spot and light`, m && c4.src === `data/${m[1]}/postcards/${m[2]}-${m[3]}.webp`, { hash, src: c4.src });
-    if (m && !phone) {
+    await p.waitForFunction(k => { try { return JSON.parse(localStorage.getItem(k)).cards.length >= 4; } catch (e) { return false; } }, P.KEY, { timeout: 60000 }).catch(() => {});
+    await p.waitForTimeout(2500); // (anything on the menu fades in after it)
+    const menu = await p.evaluate(k => ({
+      menu: document.querySelector('.title-app').classList.contains('menu'),
+      shown: [...document.querySelectorAll('#ts-post, #ts-postview, [class*="postcard"], img[src*="/postcards/"], [style*="/postcards/"]')].filter(e => e.closest('.title-app') && e.getClientRects().length).length,
+      cards: (JSON.parse(localStorage.getItem(k) || '{}').cards || []).map(c => `${c.c}/${c.s}.${c.l}`),
+    }), P.KEY);
+    check(`${name}: the menu shows no postcards`, menu.menu && menu.shown === 0, menu);
+    check(`${name}: the three that came are in the album`, menu.cards.length === 4, menu.cards);
+    if (!phone && menu.cards.length) {
+      const m = /^([a-z-]+)\/([a-z0-9-]+)\.(dawn|day|dusk|night)$/.exec(menu.cards[menu.cards.length - 1]);
       const spot = M.cities[m[1]].find(s => s.id === m[2]);
+      await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${m[1]}@pc-${m[2]}.${m[3]}`);
+      await p.reload();
       await p.waitForFunction(() => window.__game && !document.getElementById('g-title').hidden, null, { timeout: 900000, polling: 500 }).catch(() => {});
       const at = await p.evaluate(() => { const g = window.__game; return g ? { x: g.player.x, y: g.player.y, min: g.clock.min, pressed: (document.querySelector('#gt-timechoice [aria-pressed="true"]') || {}).textContent, title: document.getElementById('gt-title').textContent } : null; });
       const c = cities.find(x => x.id === m[1]);

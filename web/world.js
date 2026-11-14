@@ -27,7 +27,8 @@ window.OEWorld = (function () {
   }
 
   // the city's data files; game.json too when asked for
-  async function load(cityId, { game = false, onMsg = () => {} } = {}) {
+  // (small: the low tier's set, quality.js, whose landmark meshes flagged "detail" are never unpacked onto the page)
+  async function load(cityId, { game = false, onMsg = () => {}, small = !!(window.OEQuality && OEQuality.city().small) } = {}) {
     const DATA = `data/${cityId}/`;
     // the download is most of the wait for a big city, so it is counted as it streams in, against
     // the size cities.json gives for the model or the game (raw bytes, as the streams deliver them)
@@ -72,7 +73,10 @@ window.OEWorld = (function () {
       if (window.OEPack && OEPack.supported() && (entry.packed || []).includes(name)) {
         try {
           const buf = await (await fetchFile(name + '.bin')).arrayBuffer();
-          return await (OEPack.decodeIn ? OEPack.decodeIn(buf, keep ? name : null) : OEPack.decode(buf));
+          const lean = small && name === 'landmarks';
+          if (OEPack.decodeIn) return await OEPack.decodeIn(buf, keep ? name : null, lean);
+          const o = await OEPack.decode(buf);
+          return lean && OEPack.dropDetail ? OEPack.dropDetail(o) : o;
         } catch (e) { console.warn(`${name}.bin:`, e); }
       }
       return getJSON(name + '.json');
@@ -851,15 +855,24 @@ vec3 steepRock(vec3 c, float k) {
         for (const r of [c.ring].concat(c.holes || [])) r.forEach(([x, y], k) => g[k ? 'lineTo' : 'moveTo']((x - x0) / res + 1, (y1 - y) / res + 1));
         g.fill('evenodd');
       }
-      const tex = new THREE.CanvasTexture(cv);
-      tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      const px = g.getImageData(0, 0, w, h).data;
+      // (kept as one channel, a byte a texel, rows bottom up as the canvas texture's were, and as a bit a texel for near():
+      // the canvas's four bytes a texel, on the page and on the GPU, were 45 MB each in Tokyo, issue 406)
+      const rgba = g.getImageData(0, 0, w, h).data, one = new Uint8Array(w * h), bits = new Uint8Array((w * h + 7) >> 3);
+      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+        const v = rgba[4 * (r * w + c)];
+        one[(h - 1 - r) * w + c] = v;
+        if (v > 127) bits[(r * w + c) >> 3] |= 1 << ((r * w + c) & 7);
+      }
+      cv.width = cv.height = 1;
+      const tex = new THREE.DataTexture(one, w, h, THREE.RedFormat, THREE.UnsignedByteType);
+      tex.unpackAlignment = 1; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      tex.needsUpdate = true;
       // within a clip region, or a metre and a half from one (a landmark's own seawall runs along its edge)
       const near = (x, y) => {
         const c = Math.round((x - x0) / res + 1), r = Math.round((y1 - y) / res + 1);
         for (let dr = -3; dr <= 3; dr += 3) for (let dc = -3; dc <= 3; dc += 3) {
           const rr = r + dr, cc = c + dc;
-          if (rr >= 0 && cc >= 0 && rr < h && cc < w && px[4 * (rr * w + cc)] > 127) return true;
+          if (rr >= 0 && cc >= 0 && rr < h && cc < w && (bits[(rr * w + cc) >> 3] >> ((rr * w + cc) & 7)) & 1) return true;
         }
         return false;
       };
@@ -1651,7 +1664,8 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
     // drawn as cells over a grid (buildings.js cells), the one mesh kept out of the scene for picking (game.js) and
     // for the bounds-tree; the cells share its geometry's buffers and its material
     const bCells = OEBuildings.cells ? OEBuildings.cells(buildings) : null;
-    if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
+    // (the game picks a building from its collision world, nav.js col.pick: the bounds-tree is the viewer's, issue 406)
+    if (THREE.MeshBVH && !game) { // a bounding-volume hierarchy makes picking a building ~300x faster
       // built in a Worker where the walls are drawn as cells (a city's worth: a second on the main thread, issue 299),
       // and put on the picking mesh when it comes (it reorders that mesh's index, which the cells have copied
       // already); a pick before then takes the plain, slower way. A small town's, or without a Worker, here
@@ -1661,12 +1675,14 @@ float inH(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453
       else here();
     }
     // a phone (quality.js lean): once uploaded, the walls' shading attributes and the cells' indices are the GPU's
-    // alone (a hundred MB of script memory in Shibuya); the picking mesh keeps what a pick reads (position, index,
-    // bid). A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
+    // alone (a hundred MB of script memory in Shibuya); the viewer's picking mesh keeps what a pick reads (position,
+    // index, bid), and in the game, which picks from its collision world, those go too (Kyoto's 120 MB, issue 406).
+    // A lost context then cannot be restored in place, and the game reloads instead (api.gpuOnly)
     let gpuOnly = false; // (set here, before the api is made)
+    if (game && bCells) bGeo.setIndex(null); // (the cells have their own: the picking mesh's is the viewer's alone)
     if (LEAN && bCells) {
       const letGo = function () { this.array = null; };
-      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode']) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
+      for (const n of ['normal', 'color', 'fac', 'inf', 'ext', 'srcCode'].concat(game ? ['position', 'bid'] : [])) if (bGeo.attributes[n]) bGeo.attributes[n].onUpload(letGo);
       for (const c of bCells.children) if (c.geometry.index) c.geometry.index.onUpload(letGo);
       gpuOnly = true;
     }
@@ -1959,6 +1975,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     for (const m of LM.meshes || []) {
       if (m.detail && small) continue; // (a hero level's finest parts, landmarks.json "detail": the high and medium tiers only)
       const g = lmGeometry(m);
+      if (m.material === 'rail_steel' && lmMats.rail_steel) { railDirections(g); railGlint(lmMats.rail_steel); } // (the sun's glint along the rail)
       const mesh = new THREE.Mesh(g, lmMaterial(m));
       if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far * (small ? 0.6 : 1)); } // (a room's furnishings: nearer on a small device)
       mesh.castShadow = mesh.receiveShadow = true;
@@ -3046,5 +3063,53 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     return Math.min(seg(ax, ay, bx, by), seg(bx, by, cx, cy), seg(cx, cy, ax, ay));
   }
 
-  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater };
+  // The sun's glint along a rail (issue 372, item 1): the polished head of a rail is a long thin mirror, so it
+  // shines where the sun's reflection meets the line of the rail, a bright thread running towards the sun, the
+  // way a track looks into a low sun. The hair model of Kajiya and Kay (1989): with T the rail's direction and H
+  // the half vector, the highlight is sin(T, H) to a high power; it goes on the direct specular light, so the
+  // shadows and the sun's colour are the light's own. aRail: each vertex's rail direction, from trackMesh.
+  function railGlint(mat) {
+    if (mat.userData.glint) return mat;
+    mat.userData.glint = true;
+    const own = mat.onBeforeCompile, ownKey = mat.customProgramCacheKey, plain = ownKey === THREE.Material.prototype.customProgramCacheKey;
+    mat.onBeforeCompile = function (sh, r) {
+      if (own) own.call(this, sh, r);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aRail; varying vec3 vRailT;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvRailT = (viewMatrix * modelMatrix * vec4(aRail, 0.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRailT;')
+        .replace('#include <aomap_fragment>', `#include <aomap_fragment>
+#if NUM_DIR_LIGHTS > 0
+if (dot(vRailT, vRailT) > 0.25) { vec3 oeT = normalize(vRailT), oeV = normalize(vViewPosition), oeL = directionalLights[0].direction; // (a vertex with no direction: none)
+  float oeTH = dot(oeT, normalize(oeL + oeV)), oeKK = pow(max(0.0, 1.0 - oeTH * oeTH), 90.0);
+  // the sun's light on the rail's head, as its diffuse term has it (its shadow, its colour, the angle)
+  vec3 oeE = reflectedLight.directDiffuse / max(material.diffuseColor * RECIPROCAL_PI, vec3(1e-3));
+  reflectedLight.directSpecular += oeE * oeKK * 1.4 * smoothstep(0.0, 0.08, dot(oeL, normal)); }
+#endif`);
+    };
+    mat.customProgramCacheKey = function () { return `${plain ? (own ? own.toString() : '') : ownKey.call(this)}|oe-rail-glint`; };
+    return mat;
+  }
+
+
+  // aRail for a swept rail (a landmark's rail_steel, cities/<id>/rail.py): every triangle of the sweep is long and thin
+  // along the rail, so each vertex takes the direction of the longest edge of a triangle it is in, on the ground plane
+  function railDirections(g) {
+    const P = g.attributes.position.array, I = g.index ? g.index.array : null, n = P.length / 3, T = new Float32Array(n * 3);
+    const count = I ? I.length : n, at = k => (I ? I[k] : k);
+    for (let t = 0; t + 2 < count; t += 3) {
+      const v = [at(t), at(t + 1), at(t + 2)];
+      let best = 0, bx = 0, bz = 0;
+      for (let e = 0; e < 3; e++) {
+        const a = v[e] * 3, b = v[(e + 1) % 3] * 3, dx = P[b] - P[a], dz = P[b + 2] - P[a + 2], l = dx * dx + dz * dz;
+        if (l > best) { best = l; bx = dx; bz = dz; }
+      }
+      if (best <= 0) continue;
+      const l = Math.sqrt(best);
+      for (const i of v) { if (T[i * 3] * bx + T[i * 3 + 2] * bz < 0) { bx = -bx; bz = -bz; } T[i * 3] = bx / l; T[i * 3 + 2] = bz / l; }
+    }
+    g.setAttribute('aRail', new THREE.BufferAttribute(T, 3));
+    return g;
+  }
+
+  return { load, loadLine, create, lin, smooth, compile, upload, uploadSliced, uploadBuffers, warm, readAsync, warmPasses, settleUnderFloors, carveUnderWater, railGlint };
 })();

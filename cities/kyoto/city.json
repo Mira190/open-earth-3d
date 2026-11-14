@@ -420,10 +420,29 @@
       }
     ],
     "start": {
-      "at": [-262, -1812],
-      "facing": [-292, -1720],
+      "at": [-261.5, -1779.5],
+      "facing": [-284, -1727],
       "time": "live"
     },
+    "hero": [
+      {
+        "id": "karasuma",
+        "glb": "hero/karasuma.glb",
+        "at": [
+          -262.0,
+          -1780.0
+        ],
+        "r": 75.0,
+        "bake": 1.0,
+        "street": 0.6,
+        "glow": [
+          0.14,
+          1.5
+        ],
+        "hide": [],
+        "note": "Kyoto Station's north forecourt, Shiokoji-dori and Kyoto Tower Building's faces, modelled finely (cities/kyoto/hero.py, blender/build_hero.py, docs/HERO.md)"
+      }
+    ],
     "helipads_from_data": false,
     "helipads": [
       {"id": "ekimae-pad", "name": "Kyoto Station plaza pad (game)", "at": [-230, -1782, 28.2], "heading": 300},
