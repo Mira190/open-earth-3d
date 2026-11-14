@@ -47,20 +47,25 @@ window.OEPhone = (function () {
       for (const e of day.today()) if (day.onNow(e)) post('Calendar', `${e.title}${e.where ? `, ${e.where}` : ''}: on now.`, `${o.date}|${e.id}`);
       if (o.newDay) for (const [n, e] of day.soon(1)) post('Calendar', `Tomorrow: ${e.title}${e.where ? `, ${e.where}` : ''}.`, `${o.date}|soon|${e.id}`);
     });
+    const pages = []; // other modules' pages (fares.js): { id, title(), on(), row(item, show), render() }
     const Ph = {
       unread, post, box,
+      page(p) { pages.push(p); },
       // the home screen's rows, after the ride app's (item(text, note, act) makes a row; show(view) changes page)
       home(item, show) {
         const n = unread(), day = L.day, free = L.bonds ? L.bonds.ready().filter(b => L.bonds.st(b.npc).met).length : 0;
         return item('Messages', n ? `${n} new` : box().length ? 'Nothing new' : 'Nothing yet', () => show('messages'))
           + item('Diary', `${day.SLOT_NAME[day.slot]}${day.today().length ? ` · ${day.today()[0].title}` : ''}${free ? ` · ${free} free to talk` : ''}`, () => { show(false); day.show(); })
+          + pages.filter(p => p.on()).map(p => p.row(item, show)).join('')
           + item('Work', L.jobs && L.jobs.active ? `On a job: ${L.jobs.active.j.title}` : `Wallet ${L.fmt(L.money)}`, () => { show(false); day.show(); const b = document.querySelector('.lf-tabs button[data-tab="work"]'); if (b) b.click(); })
           + item('Map', 'Travel, waypoints', () => { show(false); ctx.map(); })
           + item('Camera', 'Photo mode', () => { show(false); ctx.photo(); });
       },
-      view: v => v === 'messages',
-      title: () => 'Messages',
-      render() {
+      view: v => v === 'messages' || pages.some(p => p.id === v && p.on()),
+      title: v => { const p = pages.find(q => q.id === v); return p ? p.title() : 'Messages'; },
+      render(v) {
+        const pg = pages.find(q => q.id === v);
+        if (pg) return pg.render();
         const b = box().slice().reverse();
         for (const m of box()) m.read = 1;
         badge();

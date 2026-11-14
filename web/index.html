@@ -753,7 +753,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-dialog { bottom: 8px; width: calc(100% - 16px); padding: 14px 16px 10px; }
   .g-dialog p { font-size: 15px; }
   .g-vhud { bottom: 196px; grid-template-columns: repeat(2, auto); }
-  .g-phone { bottom: 196px; max-height: calc(100% - 420px); }
+  .g-phone { bottom: 196px; max-height: max(220px, calc(100% - 478px)); } /* under the row of buttons, over the stick */
   .gph-map { height: 120px; }
   #game-stage:has(#g-phone:not([hidden])) .g-vhud { display: none; } /* the phone covers the corner the trip card sits in */
   .gph-eta b { font-size: 22px; }
@@ -1265,6 +1265,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/jobs.js"></script>
 <script src="game/keepsakes.js"></script>
 <script src="game/phone.js"></script>
+<script src="game/fares.js"></script>
 <script src="game/fx.js"></script>
 <script src="game/hero.js"></script>
 <script src="game/game.js"></script>

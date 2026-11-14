@@ -1343,6 +1343,56 @@ const npcNight = require('./npc_night');
   check(ferry.none || ferry.moved > 20, ferry.none ? 'no ferries' : `${ferry.n} ferries run (the farthest moved ${ferry.moved.toFixed(0)} m in ${ferry.t} s)`);
   await shot('ferry');
 
+  // fares (web/game/fares.js, a map's life.json "fares"): boarding taps on, stepping off takes the operator's fare from
+  // the wallet to the cent and shows the reader's card, the phone lists the ride, and where the city caps a day's
+  // travel the rides past the cap are free. The wallet and the card are put back as they were afterwards
+  const fare = await p.evaluate(() => {
+    const g = window.__game, L = g.life, F = L && L.fares, f = L && L.data.fares;
+    if (!F || !f) return { none: true };
+    const keep = JSON.stringify(L.city().fares || null), money = L.money, logN = L.city().log.length, r = { card: f.card.name };
+    L.city().fares = F.fresh();
+    L.store.wallets[L.code] = 1e5;
+    let trip;
+    const V = (g.fer && g.fer.vessels) || [];
+    if (f.rides.ferry && V.length) {
+      // a ferry at a wharf: aboard through the game's own boarding, which is the tap on
+      const v = V[0], W = id => g.G.wharves.find(w => w.id === id);
+      let t = 0;
+      while (v.phase !== 'dwell' && t < 3000) { g.advance(5); t += 5; }
+      const from = W(g.fer.stopOf(v)), to = W(v.stops.find(id => id !== from.id));
+      g.board(v, from);
+      r.tapped = !!F.open && F.open.from === from.id && !!F.shown && /tap on/i.test(F.shown.textContent);
+      g.alight(); g.advance(0.2);
+      trip = { kind: 'ferry', to: to.id, name: to.name, route: v.route, m: Math.hypot(from.berth[0] - to.berth[0], from.berth[1] - to.berth[1]) };
+    } else {
+      const [a, b] = Object.keys(f.rides.rail.pairs || { 'a>b': 0 })[0].split('>');
+      F.on({ kind: 'rail', from: a, name: a, route: '' });
+      r.tapped = !!F.open && !!F.shown;
+      trip = { kind: 'rail', to: b, name: b, m: 1000 };
+    }
+    const before = L.money, p1 = F.off(trip);
+    r.due = p1 && p1.due; r.paid = Math.round((before - L.money) * 100) / 100; r.text = F.shown ? F.shown.textContent : '';
+    r.shows = !!F.shown && r.text.includes(L.fmt(r.due)); r.fmt = L.fmt(r.due);
+    r.phone = L.phone.view('fares') && L.phone.render('fares').includes(trip.name) && /Back/.test(L.phone.render('fares'));
+    r.diary = (L.city().log.slice(-1)[0] || {}).k === 'fare';
+    // on to the cap, where there is one: the same ride again and again
+    r.cap = (F.capOf(f, g.clock) || {}).cap || null;
+    if (r.cap) {
+      let last = p1, n = 1;
+      while (last && !(last.capped && last.due === 0) && n < 12) { F.on({ kind: trip.kind, from: 'x', name: 'x', route: trip.route }); last = F.off(trip); n++; }
+      r.rides = n; r.spent = L.city().fares.spent; r.free = !!last && last.due === 0 && F.shown.dataset.state === 'capped' && /free/i.test(F.shown.textContent);
+    }
+    L.store.wallets[L.code] = money; L.city().fares = JSON.parse(keep) || undefined; L.city().log.length = logN;
+    if (V.length && f.rides.ferry) { g.spawn(); g.advance(0.5); }
+    return r;
+  });
+  if (!fare.none) {
+    check(fare.tapped && fare.due > 0 && Math.abs(fare.paid - fare.due) < 0.005 && fare.shows, `boarding taps on with ${fare.card} and stepping off takes the fare, ${fare.fmt}, from the wallet (paid ${fare.paid}; the card: ${fare.text.replace(/\s+/g, ' ').slice(0, 90)})`);
+    check(fare.phone && fare.diary, 'the phone lists the ride and the city\'s fares, and the diary keeps it');
+    if (fare.cap) check(fare.free && Math.abs(fare.spent - fare.cap) < 0.005, `the day's cap of ${fare.cap}: ${fare.rides} rides spend ${fare.spent}, and the next is free`);
+    await shot('fare');
+  }
+
   // a crossing to a landing past the frame (pipeline/outposts.py: Queenstown's Earnslaw to Walter Peak, 12.5 km
   // over Lake Wakatipu): aboard at the wharf in the frame, skipped (F) once she is under way, alongside the far
   // wharf within a minute or so, ashore on its deck, and on foot from there to a building of the landing
