@@ -1,5 +1,5 @@
 """The railway through a city as OpenStreetMap maps it track by track: every running line above the
-ground (no tunnels), the platforms beside them and the stopping points, for the lines named in
+ground (no tunnels; with "below": true, the tracks a layer under a bridge too), the platforms beside them and the stopping points, for the lines named in
 city.json `rail_osm` ({"bbox": [lon0, lat0, lon1, lat1], "lines": ["山手線", ...]}: a line is a track's
 name, or its ref where the tracks are named that way, as Sydney's "City Inner"). Overture's
 segments keep a track's class but not its line's name, its gauge or its platforms, which is what a
@@ -40,7 +40,10 @@ def main():
         y += BAND
         time.sleep(1)
     ll = lambda w: [[round(nodes[n]["lon"], 7), round(nodes[n]["lat"], 7)] for n in w["nodes"] if n in nodes]
-    above = lambda t: t.get("tunnel") != "yes" and int(float(t.get("layer", 0) or 0)) >= 0
+    # (a city's "below": true keeps a track a layer under the ground that is not a tunnel: a line under a road's bridge,
+    # as the Yamanote's under Jingu-bashi between Harajuku and Shibuya)
+    below = bool(spec.get("below"))
+    above = lambda t: t.get("tunnel") != "yes" and t.get("tunnel") != "building_passage" and (below or int(float(t.get("layer", 0) or 0)) >= 0)
     tracks, platforms, edges, stops = [], [], [], []
     for w in ways.values():
         t = w.get("tags") or {}

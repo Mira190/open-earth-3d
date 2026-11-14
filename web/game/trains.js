@@ -5,7 +5,8 @@
 //
 //   tracks    each a course at rail level in the direction of travel ([x, y, z, ...] in decimetres), the
 //             distance along it where a stopping train's middle rests (stop_m) and its platform's number,
-//             and the stretch its cars are drawn on (hide_m: between the train sheds' mouths at the ends)
+//             and the stretch its cars are drawn on (hide_m: between the train sheds' mouths at the ends; dark:
+//             stretches inside a building, where they are not)
 //   services  what runs on a track: the stock, the number of cars, a headway and an offset in seconds,
 //             whether it stops, and the hours when it runs through instead (rapid_h)
 //   station   its name, where it is, and how far its announcements carry (hear_m)
@@ -26,6 +27,9 @@ window.OETrains = (function () {
   const ACC = 0.9, DWELL = 26;
   const HEAR = 240; // a train is heard from this far (m): from the station and the streets beside the line, not across the city
 
+  // a track's "dark" stretches, [[m0, m1], ...] along its course: inside a building (a station the city model draws as
+  // a box round its platforms), where its cars are not drawn, as past its hide_m
+  const inDark = (tr, d) => { const D = tr.dark; if (!D) return false; for (let i = 0; i < D.length; i++) if (d > D[i][0] && d < D[i][1]) return true; return false; };
   // a course in decimetres [x, y, z, ...] -> { L, at(d) }: the position and bearing d metres along it
   function course(p) {
     const n = p.length / 3, xs = new Float32Array(n), ys = new Float32Array(n), zs = new Float32Array(n), s = new Float32Array(n);
@@ -675,7 +679,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
         tr.near = Infinity;
         for (let i = 0; i < s.cars; i++) {
           const d = tr.x + (s.len / 2 - (i + 0.5) * s.S.len); // car 0 leads
-          if (d < h0 || d > h1) continue;
+          if (d < h0 || d > h1 || inDark(s.tr, d)) continue;
           // a car rides on its two bogies: its place is the middle of the chord between them
           const half = s.S.len * 0.345;
           c.at(d + half, fwd); c.at(d - half, aft);
@@ -742,7 +746,8 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
         want.set(L.h, Math.max(want.get(L.h) || 0, f));
         if (f <= 0.001) continue;
         for (let i = 0; i < s.cars; i++) {
-          const d = tr.x + (s.len / 2 - (i + 0.5) * s.S.len);
+          const d = tr.x + (s.len / 2 - (i + 0.5) * s.S.len), [h0, h1] = s.tr.hide_m || [-Infinity, Infinity];
+          if (d < h0 || d > h1 || inDark(s.tr, d)) continue; // (no doorway where its car is not drawn)
           c.at(d + 1, fwd); c.at(d - 1, aft);
           const hx = (fwd.x - aft.x) / 2, hy = (fwd.y - aft.y) / 2, lx = -hy * side, ly = hx * side, rot = Math.PI - Math.atan2(hx, hy);
           for (const z of D.z) {
@@ -841,7 +846,7 @@ float steelHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) 
     ride.riderPos = car => { const q = inTrain(car, riderM(car), 0.55, doorOf(car.s.S).sill + 0.02); return { x: q.x, y: q.y, z: q.z, h: q.h - q.side * Math.PI / 2 - Math.PI }; };
     // in the tunnel: the rider's car beyond the stretch the cars are drawn on (the course's hide_m), on its way to or
     // from a station under the ground; the game veils the view and runs on to the next station
-    ride.hidden = car => { if (!car || !car.tr) return false; const d = car.tr.x - riderM(car), [h0, h1] = car.s.tr.hide_m || [-Infinity, Infinity]; return d < h0 || d > h1; };
+    ride.hidden = car => { if (!car || !car.tr) return false; const d = car.tr.x - riderM(car), [h0, h1] = car.s.tr.hide_m || [-Infinity, Infinity]; return d < h0 || d > h1 || inDark(car.s.tr, d); };
     ride.alightAt = car => { const L = legAt(car); if (!L) return null; if (L.h.st && L.h.st.under) return [L.h.st.x, L.h.st.y, L.h.st.z]; const q = inTrain(car, riderM(car), doorOf(car.s.S).hw + 1.4, (L.h.st ? L.h.st.z - car.z : 1.1)); return [q.x, q.y, q.z]; };
     ride.boardAt = car => { const q = inTrain(car, riderM(car), doorOf(car.s.S).hw + 1.4, 1.1); return [q.x, q.y, q.z]; };
 
