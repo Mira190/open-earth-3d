@@ -21,7 +21,7 @@ already exposes (`window.__city`, `window.__game`, `window.__reef`).
 | `exit` | the page closes (`pagehide`) | `page_s`, `view_s`, `views`, `idle_s` (since the last input), `ready`, `tour_max`, `hidden` |
 | `crash` | a page load finds that an earlier one of this browser died while on screen | `prev_view`, `prev_city`, `prev_spot`, `prev_mode`, `prev_ready`, `prev_stage` (the last step of the load the page named; `held` once a phone had played a minute at its level), `prev_lv` (the level of a phone's set the dead page ran at, `quality.js` `level`), `prev_up_s`, `ago_s` |
 | `page` | once per page load | `ttfb`, `fcp`, `dom` (ms) |
-| `error` | a script error, an unhandled rejection or a resource that failed (5 per page at most) | `kind`, `msg`, `src` |
+| `error` | a script error, an unhandled rejection or a resource that failed (5 per page at most); from the game, a call WebGL refused (`kind: gl`: the error, then the call, its arguments and the lines that made it once the next frames, or the next load, have been traced: docs/PERFORMANCE.md, "A choice that settles") | `kind`, `msg`, `src` |
 | `gl_lost` | a WebGL context is lost, except in the seconds after a view stops and gives its context up | |
 
 Every event carries a random visitor id (`oe3d-vid` in localStorage), a page-load id (`sid`), the device

@@ -99,7 +99,9 @@ window.OEQuality = (function () {
     const t = name === 'still' ? null : Object.assign({}, TIERS[name]);
     if (t) {
       if (!c.hdrTarget) t.hdr = false;
-      if (!c.hdrMsaa || c.software) t.samples = 0;
+      // (?msaa=on: a check draws with the tier's samples on a software renderer too. Without it no check ever drew
+      // the multisampled scene a desktop GPU draws every frame: issue 485)
+      if (!c.hdrMsaa || (c.software && !/[?&]msaa=on\b/.test(location.search))) t.samples = 0;
       if (c.maxTex < 8192) t.lights8k = false;
       t.tex = Math.min(t.tex, c.maxTex); t.clouds = Math.min(t.clouds, c.maxTex);
     }
@@ -220,6 +222,17 @@ window.OEQuality = (function () {
   // Extras come back only at full resolution, after a longer calm. A display that cannot be met even at the
   // floor (a phone that draws the city at 40 a second) is given half its rate as the target instead, where
   // the frames are even, rather than the floor for nothing.
+  // A choice that settles (issue 485). A step of resolution is seen when it happens, and five percent of unused
+  // headroom is not, so the two directions are not judged alike. Down is prompt: a missed frame is seen. Up is a
+  // question, and vertical sync leaves only one way to ask it, which is to try; a device whose limit lies between
+  // two steps was asked every five seconds for ever (an Apple M3 in Shibuya went between 0.6 and 0.8 all session:
+  // a try that held four seconds and failed in the ninth left no trace). So the step the frames did not fit at
+  // is remembered (top), however long after the try it failed: the way back up to the step under it is as quick
+  // as before, and the step itself is asked for again only after a wait that starts at half a minute and doubles
+  // each time a try fails again (to eight minutes), and starts over when the failures stop coming. The
+  // extras have the same memory (exBad: a minute, doubling to sixteen), since multisampling and the shadow map's
+  // size coming and going are seen more than any step of resolution. A record from an earlier visit (resume)
+  // starts settled: the step above what the device held is the one to wait for.
   // Under automation it stands still (a software renderer's frames say nothing about a device) unless driven
   // through simulate().
   // One ladder (issue 375; issue 358's Layer A): whatever a frame can do without registers its rungs with rung(name,
@@ -233,6 +246,20 @@ window.OEQuality = (function () {
     const STEP = 0.05, subs = [];
     const q = v => Math.round(v / STEP) * STEP;
     let last = 0, ema = 0, refresh = 0, since = 0, calm = 0, wait = 4000, tried = 0, floorT = 0, halved = false, climbing = false;
+    // what did not fit (see above), on the clock of frames in play. top: the step a try up to it failed at, and how
+    // long it is left alone (doubling while the tries keep failing); a failure counts as the try's for as long as
+    // that wait, since a try can hold for seconds before the scene shows what it costs. bad: a step the frames
+    // stopped fitting at with no try behind it (the scene got heavier), left alone half a minute, so that the way
+    // back is not climbed while the heavy scene lasts and is quick once it has passed.
+    const BAD0 = 30000, BADMAX = 480000, EX0 = 60000, EXMAX = 960000;
+    let clock = 0, fullT = 0, top = Infinity, topAt = 0, topWait = BAD0, bad = Infinity, badAt = 0, rose = false, roseAt = 0, exBad = Infinity, exAt = 0, exWait = EX0;
+    const failed = level => {
+      if (rose && clock - roseAt < topWait) { topWait = top !== Infinity && clock - topAt < 4 * topWait ? Math.min(BADMAX, topWait * 2) : BAD0; top = level; topAt = clock; }
+      else { bad = level; badAt = clock; }
+      rose = false;
+    };
+    const held = next => (next >= top - 1e-6 && clock - topAt < topWait) || (next >= bad - 1e-6 && clock - badAt < BAD0);
+    const exFailed = level => { exWait = level === exBad && clock - exAt < 4 * exWait ? Math.min(EXMAX, exWait * 2) : EX0; exBad = level; exAt = clock; top = bad = Infinity; rose = false; };
     const rungs = [];
     const valueOf = r => r.values[g.extras >= 1 ? 0 : g.extras > 0 ? 1 : 2];
     const apply = r => { const v = valueOf(r); if (v !== r.v) { r.v = v; try { r.fn(v); } catch (e) { console.warn(`governor: ${r.name}`, e); } } };
@@ -249,6 +276,10 @@ window.OEQuality = (function () {
       get ladder() { const o = {}; for (const r of rungs) o[r.name] = r.v; return o; },
       // a device with no record of its own: low first, then up as fast as the frames allow (see above)
       startLow() { change(Math.max(g.min, Math.min(g.mid, g.max)), 0.5); climbing = true; wait = 1500; },
+      // a device with a record: it starts there, settled (the step above it, and the extras above its own, wait their turn)
+      resume(scale, extras) { change(scale, extras); top = g.scale < g.max - 1e-6 ? g.scale + STEP : Infinity; topAt = clock; topWait = BAD0; exBad = g.extras < 1 ? g.extras + 0.5 : Infinity; exAt = clock; exWait = EX0; },
+      // the step and the extras the frames last did not fit at, and the seconds until each may be tried again (for the checks and the telemetry)
+      get settled() { return { top: top === Infinity ? null : +top.toFixed(2), wait: top === Infinity ? 0 : Math.max(0, Math.round((topWait - (clock - topAt)) / 1000)), extras: exBad === Infinity ? null : exBad, extrasWait: exBad === Infinity ? 0 : Math.max(0, Math.round((exWait - (clock - exAt)) / 1000)) }; },
       get climbing() { return climbing; },
       // every animation frame, drawn or not: the display's interval, as the shortest gap seen lately. Only a gap under
       // a 60 Hz display's counts (a 90, 120 or 144 Hz display): on a device that cannot keep up, the gap between
@@ -298,21 +329,32 @@ window.OEQuality = (function () {
       if (moved) for (const fn of subs) fn(g.extras, g.scale, ex);
     }
     function decide(ms) {
-      since += ms;
+      since += ms; clock += ms;
       const target = g.targetMs, load = ema / target;
+      // at half the display's rate, frames that come at its full rate again say the scene has lightened: full rate
+      // is the aim again at once, with no step to see (before, half rate stayed while the resolution climbed to
+      // its ceiling under it, and a heavy half minute left a device at thirty frames a second for good)
+      if (halved && ema < 0.7 * target) { fullT += ms; if (fullT > 2000) { halved = false; fullT = 0; calm = 0; return; } } else fullT = 0;
       if (since < 1000) return; // (a change settles into the average first)
       if (load > 1.15) {
         calm = 0;
-        if (tried && since < 4000) { if (climbing) { climbing = false; wait = 4000; } wait = Math.min(64000, wait * 2); const ex = tried === 2; tried = 0; change(ex ? g.scale : g.scale - STEP, ex ? g.extras - 0.5 : g.extras); return; } // the try up did not fit (2: it was the extras')
+        if (tried && since < 4000) { // the try up did not fit (2: it was the extras')
+          if (climbing) { climbing = false; wait = 4000; }
+          wait = Math.min(64000, wait * 2);
+          const ex = tried === 2; tried = 0;
+          if (ex) exFailed(g.extras); else { rose = true; failed(g.scale); }
+          change(ex ? g.scale : g.scale - STEP, ex ? g.extras - 0.5 : g.extras);
+          return;
+        }
         tried = 0;
         const want = Math.max(0.85, Math.min(0.95, Math.sqrt(1 / load))); // (pixels go with the square of the scale)
         const floor = g.extras > 0 ? Math.max(g.min, Math.min(g.mid, g.max)) : g.min;
-        if (g.scale > floor + 1e-6) { floorT = 0; change(Math.max(floor, Math.min(g.scale - STEP, g.scale * want)), g.extras); return; }
+        if (g.scale > floor + 1e-6) { floorT = 0; if (climbing) { climbing = false; wait = 4000; } failed(g.scale); change(Math.max(floor, Math.min(g.scale - STEP, g.scale * want)), g.extras); return; }
         floorT += ms;
         if (floorT < 3000) return;
         floorT = 0;
         if (!halved && g.scale <= g.min + 1e-6 && load < 1.9) { halved = true; wait = 4000; return; } // half the display's rate, evenly
-        if (g.extras > 0) change(g.scale, g.extras - 0.5);
+        if (g.extras > 0) { exFailed(g.extras); change(g.scale, g.extras - 0.5); }
         return;
       }
       floorT = 0;
@@ -321,8 +363,13 @@ window.OEQuality = (function () {
       if (tried && since >= 4000) tried = 0; // the try up held
       if (calm < wait) return;
       calm = 0;
-      if (g.scale < g.max - 1e-6) { tried = 1; change(g.scale + STEP, g.extras); }
-      else if (g.extras < 1 && since >= (climbing ? 3000 : 20000)) { tried = climbing ? 2 : 0; change(g.scale, g.extras + 0.5); }
+      if (g.scale < g.max - 1e-6) {
+        if (held(g.scale + STEP)) return; // (the step that did not fit: not yet)
+        tried = 1; rose = true; roseAt = clock; change(g.scale + STEP, g.extras);
+      } else if (g.extras < 1 && since >= (climbing ? 3000 : 20000)) {
+        if (g.extras + 0.5 >= exBad && clock - exAt < exWait) return;
+        tried = 2; top = bad = Infinity; rose = false; change(g.scale, g.extras + 0.5);
+      }
       else if (climbing && g.extras >= 1) { climbing = false; wait = 4000; }
       else if (halved && since >= 30000) { halved = false; }
     }

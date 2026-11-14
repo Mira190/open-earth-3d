@@ -2531,7 +2531,11 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // render target comes back empty, so the sky's light (the PMREM target) and the haze read
       // from the sky are made again, and the shadow map redrawn. The water's FFT and wakes and
       // the post stack's targets are drawn afresh every frame.
+      // (the sky's old target is let go, not disposed: what it had on the GPU went with the lost context, and three.js
+      // deleting a framebuffer, a renderbuffer and a texture of that context in the new one is three calls WebGL
+      // refuses, INVALID_OPERATION, which the game's watch on the context then reported: tools/gl_restore_probe.js)
       restoreGPU() {
+        envRT = null;
         envKey = ''; envAt = -1e9; envWait = null; hazeOk = false; hazeKey = null;
         if (api.lastSun) api.setSun(api.lastSun.sp, api.lastSun.minutes);
         renderer.shadowMap.needsUpdate = true;

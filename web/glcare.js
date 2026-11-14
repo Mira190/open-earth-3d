@@ -145,5 +145,43 @@ body > .gl-note { position: fixed; }
     return note;
   }
 
-  return { watch, reloadOnLoss };
+  // Which call WebGL refused (issue 485). The context keeps one error flag and says nothing of the call that raised
+  // it: a refused draw is not drawn, a refused blit copies nothing, and the picture is short of whatever that was
+  // with no word in the console of a visitor's device. trace(gl) asks for the error after every call of the context
+  // until stop(), which returns what was refused: [{ call, err, n, args, at }], the call's name, the error, how
+  // often, its first arguments and the lines of the page that made it. Each question waits on the GPU process, so
+  // this is for a few frames once an error has shown (game.js glCheck), for a load asked to be traced, and for the
+  // checks (tools/game_check.js walks the governor's ladder under it); never for every frame.
+  const QUIET = /^(getError|isContextLost|getExtension|getParameter|getSupportedExtensions|getContextAttributes|getShaderPrecisionFormat)$/;
+  function trace(gl) {
+    const P = (window.WebGL2RenderingContext && gl instanceof WebGL2RenderingContext ? WebGL2RenderingContext : window.WebGLRenderingContext).prototype;
+    const seen = new Map(), names = [], getError = P.getError;
+    const show = x => (typeof x === 'number' ? (Number.isInteger(x) && x > 255 ? `0x${x.toString(16)}` : String(+x.toFixed(3))) : x === null ? 'null' : x && x.constructor ? x.constructor.name : typeof x);
+    let calls = 0;
+    while (getError.call(gl)) { /* what was raised before the trace is not its to name */ }
+    for (const k of Object.getOwnPropertyNames(P)) {
+      const d = Object.getOwnPropertyDescriptor(P, k);
+      if (!d || typeof d.value !== 'function' || QUIET.test(k)) continue;
+      names.push(k);
+      const orig = d.value;
+      gl[k] = function (...a) {
+        const r = orig.apply(this, a);
+        calls++;
+        const e = getError.call(this);
+        if (!e || e === 0x9242) return r; // (CONTEXT_LOST_WEBGL: the loss has its own note)
+        const at = (new Error().stack || '').split('\n').slice(2).map(l => (/([\w.-]+\.js)[^:]*:(\d+)/.exec(l) || []).slice(1).join(':')).filter(l => l && !/^three\./.test(l)).slice(0, 4).join(' < ');
+        const key = `${k} 0x${e.toString(16)} ${at}`;
+        const o = seen.get(key) || seen.set(key, { call: k, err: `0x${e.toString(16)}`, n: 0, args: a.slice(0, 11).map(show).join(','), at }).get(key);
+        o.n++;
+        return r;
+      };
+    }
+    return {
+      get calls() { return calls; },
+      // what was refused so far, the list emptied (the trace goes on)
+      take() { const out = [...seen.values()]; seen.clear(); return out; },
+      stop() { for (const k of names) delete gl[k]; return [...seen.values()]; },
+    };
+  }
+  return { watch, reloadOnLoss, trace };
 })();
