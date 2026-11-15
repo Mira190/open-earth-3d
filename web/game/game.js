@@ -583,6 +583,29 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return out;
   }
 
+  // A road is painted on the ground, so a car is on the ground its road is painted on. The mapped lines carry a
+  // height every 8 m (pipeline/game_data.py), and the ground between two of them, and since they were sampled,
+  // is not the chord: in Shibuya 150 of 30,000 places on the roads lay 0.25 to 0.8 m under the ground drawn
+  // there (a taxi sunk to its sills, the owner on a phone) and as many floated over it. So each line is laid on
+  // the ground a walker would stand on (lineGround), a point every 4 m, wherever that is within a step and a
+  // half of the line's own height; what is on a deck (a bridge, a viaduct) keeps the height it has.
+  function onGround(lines) {
+    const zOn = (x, y, z) => { const g = lineGround(x / 10, y / 10, { z: z / 10, deck: 0 }); return g == null || Math.abs(g - z / 10) > 1.5 ? z : Math.round(g * 10); };
+    return lines.map(l => {
+      const p = l.p, n = p.length / 3, q = [], d = [];
+      for (let k = 0; k < n; k++) {
+        const x = p[3 * k], y = p[3 * k + 1], z = p[3 * k + 2], deck = l.d && k > 0 ? l.d[k - 1] : 0, deckNext = l.d && k < n - 1 ? l.d[k] : 0;
+        if (k > 0) {
+          const ax = p[3 * k - 3], ay = p[3 * k - 2], az = p[3 * k - 1], m = deck ? 1 : Math.max(1, Math.ceil(Math.hypot(x - ax, y - ay) / 40));
+          for (let j = 1; j < m; j++) { const qx = ax + (x - ax) * j / m, qy = ay + (y - ay) * j / m; q.push(Math.round(qx), Math.round(qy), zOn(qx, qy, az + (z - az) * j / m)); d.push(0); }
+          d.push(deck);
+        }
+        q.push(x, y, deck || deckNext ? z : zOn(x, y, z));
+      }
+      return Object.assign({}, l, { p: q, d: l.d ? Uint8Array.from(d) : undefined });
+    });
+  }
+
   // ------------------------------------------------------------ street furniture: benches, lamps that light at night
   loadMsg('People, traffic and ferries: downloading the models every city shares', 0.86);
   await idle();
@@ -592,7 +615,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (route.js), nor through a wall
   // (against a landmark's triangles where its 2 m cells would cut the way, nav.js withoutFine: a crowd's
   // way through a gate's passage or between lanterns is kept where a walker gets through)
-  const tRoad = performance.now(), footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => cutAtWalls(G.paths.road, 0.5, true)));
+  const tRoad = performance.now(), footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => onGround(cutAtWalls(G.paths.road, 0.5, true))));
   const roadMs = performance.now() - tRoad;
 
   loadMsg('Footways people can walk', 0.84);
@@ -989,7 +1012,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // in a seat there is nowhere to walk: on a phone the joystick, Jump, Run and Guess are put away; a finger looks
   // round and the action button stands you up
-  function seatTouch(on) { if (touch) for (const id of ['#gt-joy', '#gt-jump', '#gt-run', '#gt-down']) $(id).hidden = on; }
+  function seatTouch(on) { if (touch) for (const id of ['#gt-joy', '#gt-jump', '#gt-run', '#gt-down', '#gt-lens']) $(id).hidden = on; }
   function standUp() {
     const st = shows.seat, f = player.seatFrom;
     shows.stand();
@@ -6379,12 +6402,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
 
   // on a phone the vehicle's readout stands over the stick, where the prompt and the messages are: they move up by
   // its height (--vhud-h, index.html), or a thumb could not reach "Get out" behind it
-  let vhudH = -1, vhudT = 0;
+  let vhudH = -1, vhudT = 0, riding = false;
   function vehicleHud() {
     vehicleHudFill();
-    if (!touch || clockT - vhudT < 0.3) return;
+    if (!touch) return;
+    // a passenger (in a taxi, aboard a ferry or a train, on a seat) has nowhere to walk: the stick, Jump, Run and Lens
+    // are put away, the readout takes the width of the screen over one row of buttons (View, Skip, E), and the
+    // picture is left clear
+    const m = player.mode, pass = m === 'seat' || m === 'ride' || m === 'rail' || (m === 'ferry' && !(player.vehicle && player.vehicle.helm));
+    if (pass !== riding) {
+      riding = pass; vhudT = -1;
+      stage.classList.toggle('riding', pass);
+      for (const id of ['#gt-joy', '#gt-jump', '#gt-run', '#gt-lens']) $(id).hidden = pass;
+    }
+    if (clockT - vhudT < 0.3) return;
     vhudT = clockT;
-    const el = $('#g-vhud'), h = el.hidden ? 0 : el.offsetHeight + 8;
+    const el = $('#g-vhud'), h = el.hidden ? 0 : Math.max(0, Math.round(stage.getBoundingClientRect().bottom - el.getBoundingClientRect().top) + 8 - 200);
     if (h !== vhudH) { vhudH = h; stage.style.setProperty('--vhud-h', `${h}px`); }
   }
   function vehicleHudFill() {
