@@ -129,24 +129,50 @@ window.OECars = (function () {
   // (a little on the paint, all of it on the light from the sky). With a lining colour the
   // material is drawn on both sides, and the back faces (the inside of the shell, seen through
   // the glass) take the lining's colour.
-  function shade(mat, lining) {
-    const uni = { uLining: { value: lining ? lin(lining) : new THREE.Color(0, 0, 0) }, uLiningOn: { value: lining ? 1 : 0 } };
+  // With a flip colour (a paint that turns: vehicles.json finish.flip) the colour leans to it where the surface turns away from the eye.
+  // With a weave (finish.weave_mm: the width of a tow) the surface is carbon cloth under its lacquer: a 2x2 twill laid flat on
+  // whichever of the car's three planes the surface faces most, its tows catching the light in turn, and fading into its
+  // mean tone where a tow is smaller than a pixel (so no shimmer from across the street).
+  function shade(mat, lining, flip, weave) {
+    const uni = { uLining: { value: lining ? lin(lining) : new THREE.Color(0, 0, 0) }, uLiningOn: { value: lining ? 1 : 0 },
+      uFlip: { value: flip ? lin(flip) : new THREE.Color(0, 0, 0) }, uFlipOn: { value: flip ? 1 : 0 }, uWeave: { value: weave ? 1000 / weave : 0 }, uSky: { value: mat.userData.sky ?? 1 } };
+    // (how much of the sky a paint shines back, finish.sky: a material's envMapIntensity no longer reaches the scene's own
+    // environment in newer three.js, and the lacquer's share is kept apart there)
+    const coatSky = +THREE.REVISION >= 150 ? '\n#ifdef USE_CLEARCOAT\n  clearcoatSpecularIndirect *= uSky;\n#endif' : '';
     if (lining) mat.side = THREE.DoubleSide;
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, uni);
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 color;\nvarying float vAO;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAO = color.r;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAO;\nuniform vec3 uLining;\nuniform float uLiningOn;')
-        .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( (uLiningOn > 0.5 && !gl_FrontFacing ? uLining : diffuse) * mix(1.0, vAO, 0.45), opacity );')
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 color;\nvarying float vAO;\nvarying vec3 vObjP;\nvarying vec3 vObjN;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAO = color.r; vObjP = position; vObjN = normal;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAO;\nuniform vec3 uLining;\nuniform float uLiningOn;\nuniform vec3 uFlip;\nuniform float uFlipOn;\nuniform float uWeave;\nuniform float uSky;\nvarying vec3 vObjP;\nvarying vec3 vObjN;')
+        .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( (uLiningOn > 0.5 && !gl_FrontFacing ? uLining : mix(diffuse, uFlip, uFlipOn * pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 3.0))) * mix(1.0, vAO, 0.45), opacity );')
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+if (uWeave > 0.0 && gl_FrontFacing) {
+  vec3 wn = abs(normalize(vObjN));
+  vec2 wg = (wn.y > wn.x && wn.y > wn.z ? vObjP.xz : wn.x > wn.z ? vObjP.zy : vObjP.xy) * uWeave;
+  vec2 wc = floor(wg), wf = fract(wg);
+  float over = step(mod(wc.x + wc.y, 4.0), 1.5);                      // a 2x2 twill: this tow runs over, or under
+  float along = over > 0.5 ? wf.x : wf.y;                             // the tow's round back across its width
+  float tow = mix(0.55, 1.0, sin(along * 3.14159));
+  float seen = 1.0 - smoothstep(0.3, 0.8, max(fwidth(wg.x), fwidth(wg.y)));
+  diffuseColor.rgb *= mix(1.0, (0.45 + 1.5 * over) * tow, seen);
+  diffuseColor.rgb += vec3(0.012, 0.013, 0.015) * over * tow * seen;
+  roughnessFactor = mix(roughnessFactor, roughnessFactor + 0.18 * (1.0 - over), seen);
+}`)
         .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\nif (uLiningOn > 0.5 && !gl_FrontFacing) {\n  material.roughness = 0.92;\n#ifdef USE_CLEARCOAT\n  material.clearcoat = 0.0;\n#endif\n}')
-        .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;');
+        .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO * uSky;' + coatSky);
     };
     mat.customProgramCacheKey = () => 'oe-car';
     return mat;
   }
   const std = (hex, roughness, metalness = 0, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: lin(hex), roughness, metalness }, extra));
-  function materials({ paint, band, seat, lining }) {
-    const coat = hex => shade(new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.07 }), lining);
+  // finish (a model's own, vehicles.json): { metalness, roughness, sky, flip, weave_mm, rim }: a metallic paint under its lacquer, how
+  // much of the sky it shines back (a deep colour under a bright sky is otherwise a pale haze), the colour it turns to
+  // at a glancing angle, and the colour of its forged rims
+  function materials({ paint, band, seat, lining }, finish) {
+    const fin = finish || {};
+    const coat = hex => shade(new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: fin.roughness ?? 0.3, metalness: fin.metalness || 0, clearcoat: 1,
+      clearcoatRoughness: finish ? 0.04 : 0.07, userData: { sky: fin.sky ?? 1 } }), lining, hex === paint ? fin.flip : null, hex === paint ? fin.weave_mm : 0);
     const lamp = (hex, emit) => std(hex, 0.2, 0, { emissive: lin(emit), emissiveIntensity: 0 });
     const m = {
       Paint: coat(paint), Paint2: coat(band || paint),
@@ -157,6 +183,20 @@ window.OECars = (function () {
       Light_Head: lamp('#aeb6bd', '#fff4dc'), Light_Tail: lamp('#8a0d10', '#ff2a1a'), Light_Amber: lamp('#d97b0e', '#ffae2a'), Sign: lamp('#f6e9a8', '#ffe9a0'),
     };
     m.Seam = m.Trim;
+    if (finish) { // the supercar's: its carbon under lacquer, its forged rims, its brakes, its displays and the line of light along its sills
+      const accent = band || '#f2a12a';
+      // (with a body of carbon under lacquer, its lip, sills, wing and canopy are the same cloth and the same lacquer: one
+      // material from the roof to the road, no band of another colour along the bottom; else bare and matt)
+      // (the parts that lie flat to the sky, the lip, the sills' blades, the fins and the wing, stay bare and matt: under
+      // lacquer they shone back every street lamp as a pale band along the bottom of the car)
+      m.Carbon_Matt = shade(std('#08090a', 0.62, 0, { envMapIntensity: 0.3 }), '#08090a');
+      m.Carbon = fin.weave_mm ? coat(paint) : m.Carbon_Matt;
+      m.Alloy = shade(std(fin.rim || '#2b2d31', 0.32, 0.95));
+      m.Disc = shade(std('#8d9196', 0.42, 0.9));
+      m.Caliper = shade(std(accent, 0.45));
+      m.Screen = std('#0a1420', 0.25, 0, { emissive: lin('#7fd0ff'), emissiveIntensity: 0.5 });
+      m.Light_Accent = lamp('#3a2a12', accent);
+    }
     return m;
   }
 
@@ -223,11 +263,11 @@ window.OECars = (function () {
 
   // ------------------------------------------------------------ a car someone gets into
   // lib: OEVehicles.load(); name: a model in vehicles.json (Car_Sedan, Car_Taxi, Car_Hatch,
-  // Car_SUV, Car_Van); colours { paint, band, seat, lining }; keep: 'left' or 'right'.
+  // Car_SUV, Car_Van, Car_Super); colours { paint, band, seat, lining }; keep: 'left' or 'right'.
   // Model frame: +z forward, +y up, +x to the left; heading h clockwise from north.
   function car(world, lib, name, { colours = {}, keep = 'left' } = {}) {
     const I = lib.info.cars, M = I.models[name], node = lib.cars.scene.getObjectByName(name);
-    const mats = materials(Object.assign({ paint: '#d8dadc', seat: '#3b3d41', lining: '#3e3c39' }, colours));
+    const mats = materials(Object.assign({ paint: '#d8dadc', seat: '#3b3d41', lining: '#3e3c39' }, colours), M.finish);
     const g = new THREE.Group(), body = new THREE.Group(), mirror = keep === 'right' ? -1 : 1;
     g.add(body);
     const half = M.length_m / 2, hw = M.width_m / 2, r = M.wheel_r_m, wb = M.axles_m[0] - M.axles_m[1];
@@ -247,7 +287,8 @@ window.OECars = (function () {
         own.push(pg);
         const mesh = new THREE.Mesh(pg, mat);
         mesh.castShadow = !mat.transparent; mesh.receiveShadow = true;
-        (p < hubs.length ? wheels[p].spin : body).add(mesh);
+        // (a brake caliper is held by the upright: it steers with its wheel and does not turn with it)
+        (p < hubs.length ? (mn === 'Caliper' ? wheels[p].steer : wheels[p].spin) : body).add(mesh);
         if (p === hubs.length) shell.push(mesh);
       });
       if (/^Light_(Head|Tail)$/.test(mn)) {
@@ -291,8 +332,8 @@ window.OECars = (function () {
       body.add(s);
       glows.push(s);
     };
-    for (const p of lampAt.Light_Head || []) glow(p, '#fff1d8', 1.1, 'head');
-    for (const p of lampAt.Light_Tail || []) glow(p, '#ff2a1a', 0.75, 'tail');
+    for (const p of lampAt.Light_Head || []) glow(p, '#fff1d8', M.lamp_glow || 1.1, 'head'); // (a supercar's lamps are two fine lines: a smaller glow)
+    for (const p of lampAt.Light_Tail || []) glow(p, '#ff2a1a', M.lamp_glow ? 0.45 : 0.75, 'tail');
     world.add(g);
     const qz = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1), hub = new THREE.Vector3();
     // the underside of the roof over a seat, in the body's frame: straight down onto the body from above
@@ -340,6 +381,7 @@ window.OECars = (function () {
         mats.Light_Head.emissiveIntensity = lit ? 2.4 : 0.05;
         mats.Light_Tail.emissiveIntensity = (s.brake ? 2.2 : 0) + (lit ? 0.9 : 0.05);
         mats.Light_Amber.emissiveIntensity = amber ? 2.6 : 0;
+        if (mats.Light_Accent) mats.Light_Accent.emissiveIntensity = 0.15 + 1.6 * night;
         mats.Sign.emissiveIntensity = s.sign ? 0.3 + 0.8 * night : 0; // (a lit panel, not a lamp: no bloom across the car)
         for (const q of glows) { // (the headlamps' glow is for the street, not for whoever is at the wheel: s.inside)
           const k = q.userData.kind === 'head' ? (lit && !s.inside ? 1 : 0) : lit ? (s.brake ? 1.4 : 0.8) : s.brake ? 0.6 : 0;
@@ -364,7 +406,7 @@ window.OECars = (function () {
         rig.root.position.copy(p).add(new THREE.Vector3(0, -CUSHION, 0));
         rig.root.rotation.set(0, 0, 0);
         rig.root.scale.setScalar(1);
-        rig.legRake = 1;
+        rig.legRake = M.leg_rake || 1; // (a supercar's seat is on its floor: the legs lie further out)
         rig.reach = seat === 'driver' && steering ? hub : null;
         if (rig.headTop) {
           rig.animate(0, 0, 'sit', 0);
@@ -395,7 +437,7 @@ window.OECars = (function () {
       carry(light) {
         if (api.lamp === light) return;
         if (light.parent) light.parent.remove(light, light.target);
-        light.position.set(0, 0.8, half - 0.2);
+        light.position.set(0, Math.min(0.8, M.height_m * 0.5), M.player ? half + 0.12 : half - 0.2); // (ahead of the supercar's splitter, not over it)
         light.target.position.set(0, -0.6, half + 16);
         body.add(light, light.target);
         api.lamp = light;
@@ -467,7 +509,7 @@ window.OECars = (function () {
   // a bend runs wider and a stop takes longer without the car turning undrivable
   const GW = () => 0.55 + 0.45 * WX.grip;
   function drive(C, nav, at) {
-    const [VMAX, A0] = PERF[C.name] || [52, 7.4];
+    const [VMAX, A0] = PERF[C.name] || (C.info.top_ms ? [C.info.top_ms, C.info.pull_ms2] : [52, 7.4]);
     const st = { x: at.x, y: at.y, z: at.z, h: at.h, vx: 0, vy: 0, r: 0, steer: 0, vz: 0, air: false, v: 0, speed: 0, slip: 0, gear: 1, rpm: 0, brake: false,
       reverse: false, grip: 1, pitch: 0, roll: 0, wpx: 0, wpy: 0 };
     const rad = C.hw + 0.04, offs = [C.half - C.hw, 0, -(C.half - C.hw)];

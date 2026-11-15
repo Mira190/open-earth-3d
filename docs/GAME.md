@@ -2957,7 +2957,24 @@ in the city's Cycles renders where the game puts them.
     a railed roof with life rafts and a small wheelhouse amidships.
   - About 27,000 triangles up close and 4,600 beyond 260 m.
 - **Cars:** a sedan, a taxi (the sedan with a roof sign), a hatchback, an SUV,
-  a van and a 12 m low-floor bus.
+  a van and a 12 m low-floor bus; and the car you drive, a supercar.
+  - **The supercar** (`Car_Super`) is a mid-engined two-seater of our own
+    design, 4.70 m long, 2.04 m wide and 1.16 m high. It was drawn after a
+    survey of what the fastest road cars and single-seaters have in common (a
+    wedge nose whose lower edge is its own lip, a dark canopy
+    set forward, intakes ahead of the rear wheels, a roof scoop running into a
+    fin, a two-element wing hung from swan necks, a finned diffuser with a
+    rain light), and copies no maker's car. Its sections are polygons of ten
+    points a side rounded by a B-spline, with creases where the points say;
+    the cuts (arches, intakes, outlets) follow their curves because the grid
+    is snapped to them. About 80,000 triangles, never in the traffic, so it
+    has no distant copies. Its body is black carbon cloth under lacquer
+    (`vehicles.json` `finish.weave_mm`: a 2x2 twill drawn by the paint's
+    shader, seen close to), the same from the roof to the lip, so that no
+    band of another colour runs along the bottom; the nose is one mouth with
+    struts standing in it, and the lip is the body's own edge. This follows
+    how the best road cars are finished (one material, its detail in the
+    weave, the fine lines and the lamps), without copying any of them.
   - Each body is one parametric surface: the roof and floor lines are curves
     along the car, and each section is a rounded box that narrows above the
     beltline. Lamps and trim lie on that surface. The wheel arches are cut and
@@ -3013,7 +3030,7 @@ optional, and a city with no config gets the defaults:
   "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
   "ferry": {"livery": "harbour"},
   "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}},
-  "car": {"model": "Car_Hatch", "colour": "#c8372d", "seat": "#34363a"}
+  "car": {"model": "Car_Super", "colour": "#0b0d11", "accent": "#d9a441", "seat": "#6e4228"}
 }
 ```
 
@@ -3028,8 +3045,10 @@ optional, and a city with no config gets the defaults:
   come in any colour, mostly white, silver or black; Melbourne's are yellow
   and its buses carry the PTV orange. The taxis you hail are the taxis in the
   traffic, so they come in the same colours.
-- **Your car:** `car` picks its model (`Car_Sedan`, `Car_Hatch`, `Car_SUV` or
-  `Car_Van`), its paint and its seats.
+- **Your car:** the supercar (`Car_Super`) unless `car` picks another model
+  (`Car_Sedan`, `Car_Hatch`, `Car_SUV` or `Car_Van`); `car` also sets its
+  paint, its accent (the brake calipers, the harnesses, the line of light
+  along the sills) and its seats.
 - **The side of the road:** `game.keep` (`left` or `right`) sets it. Without
   one, a city takes its trams' side, else its country's rule of the road.
 
