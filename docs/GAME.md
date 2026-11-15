@@ -2993,7 +2993,7 @@ optional, and a city with no config gets the defaults:
   "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
   "ferry": {"livery": "harbour"},
   "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}},
-  "car": {"model": "Car_Super", "colour": "#2e0c6e", "accent": "#f2a12a", "seat": "#1c1c20"}
+  "car": {"model": "Car_Super", "colour": "#4315a6", "accent": "#f2a12a", "seat": "#1c1c20"}
 }
 ```
 

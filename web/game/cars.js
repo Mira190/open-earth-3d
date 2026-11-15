@@ -147,12 +147,13 @@ window.OECars = (function () {
     return mat;
   }
   const std = (hex, roughness, metalness = 0, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: lin(hex), roughness, metalness }, extra));
-  // finish (a model's own, vehicles.json): { metalness, roughness, flip, rim }: a metallic paint under its lacquer, the
-  // colour it turns to at a glancing angle, and the colour of its forged rims
+  // finish (a model's own, vehicles.json): { metalness, roughness, sky, flip, rim }: a metallic paint under its lacquer, how
+  // much of the sky it shines back (a deep colour under a bright sky is otherwise a pale haze), the colour it turns to
+  // at a glancing angle, and the colour of its forged rims
   function materials({ paint, band, seat, lining }, finish) {
     const fin = finish || {};
     const coat = hex => shade(new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: fin.roughness ?? 0.3, metalness: fin.metalness || 0, clearcoat: 1,
-      clearcoatRoughness: finish ? 0.04 : 0.07 }), lining, hex === paint ? fin.flip : null);
+      clearcoatRoughness: finish ? 0.04 : 0.07, envMapIntensity: fin.sky ?? 1 }), lining, hex === paint ? fin.flip : null);
     const lamp = (hex, emit) => std(hex, 0.2, 0, { emissive: lin(emit), emissiveIntensity: 0 });
     const m = {
       Paint: coat(paint), Paint2: coat(band || paint),
@@ -308,7 +309,7 @@ window.OECars = (function () {
       glows.push(s);
     };
     for (const p of lampAt.Light_Head || []) glow(p, '#fff1d8', M.lamp_glow || 1.1, 'head'); // (a supercar's lamps are two fine lines: a smaller glow)
-    for (const p of lampAt.Light_Tail || []) glow(p, '#ff2a1a', 0.75, 'tail');
+    for (const p of lampAt.Light_Tail || []) glow(p, '#ff2a1a', M.lamp_glow ? 0.45 : 0.75, 'tail');
     world.add(g);
     const qz = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1), hub = new THREE.Vector3();
     // the underside of the roof over a seat, in the body's frame: straight down onto the body from above

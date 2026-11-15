@@ -568,6 +568,7 @@
     "finish": {
      "metalness": 0.3,
      "roughness": 0.26,
+     "sky": 0.55,
      "flip": "#12205f",
      "rim": "#8a6a45"
     },

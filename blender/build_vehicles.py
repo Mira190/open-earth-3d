@@ -2567,7 +2567,7 @@ def build_cars():
                        "Car_Taxi": {"taxi": True}, "Bus": {"bus": True},
                        "Car_Super": {"player": True, "name": "supercar", "top_ms": 92, "pull_ms2": 12.5,
                                      "lamp_glow": 0.5,
-                                     "finish": {"metalness": 0.3, "roughness": 0.26, "flip": "#12205f", "rim": "#8a6a45"}}},
+                                     "finish": {"metalness": 0.3, "roughness": 0.26, "sky": 0.55, "flip": "#12205f", "rim": "#8a6a45"}}},
             "liveries": CAR_LIVERIES,
             "tones": {"Paint": 0, "Paint2": 1, "Seat": 2, "Glass": 4, "Tyre": 5, "Light_Head": 6, "Light_Tail": 7, "Trim": 8, "Chrome": 9,
                       "Rim": 10, "Plate": 11, "Sign": 12, "Light_Amber": 13, "Seam": 8, "Dash": 8, "Carbon": 8, "Alloy": 10, "Disc": 9,
