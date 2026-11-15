@@ -2557,6 +2557,9 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       // (the sky's old target is let go, not disposed: what it had on the GPU went with the lost context, and three.js
       // deleting a framebuffer, a renderbuffer and a texture of that context in the new one is three calls WebGL
       // refuses, INVALID_OPERATION, which the game's watch on the context then reported: tools/gl_restore_probe.js)
+      // the light from the sky is no longer this sky's (the weather's cover changed under it: game/weather.js light):
+      // the next setSun makes it again
+      skyStale() { envKey = ''; },
       restoreGPU() {
         envRT = null;
         envKey = ''; envAt = -1e9; envWait = null; hazeOk = false; hazeKey = null;

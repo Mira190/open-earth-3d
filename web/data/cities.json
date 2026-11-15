@@ -106,8 +106,8 @@
    "scene"
   ],
   "load_bytes": {
-   "model": 2970762,
-   "game": 3458380
+   "model": 3173269,
+   "game": 3662918
   },
   "lean_pack": {
    "dir": "d/",
@@ -119,7 +119,7 @@
     0,
     2300
    ],
-   "bytes": 2363411
+   "bytes": 2570821
   },
   "flyover": {
    "video": "flyover.mp4",

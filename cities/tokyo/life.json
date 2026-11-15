@@ -14,7 +14,9 @@
       "rail": {
         "name": "JR",
         "pairs": {
-          "yurakucho>shimbashi": 155
+          "yurakucho>shimbashi": 155,
+          "tokyo>yurakucho": 155,
+          "tokyo>shimbashi": 155
         },
         "text": "1 to 3 km by IC card"
       }

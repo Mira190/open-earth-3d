@@ -68,6 +68,24 @@ MATERIALS = {
     "tks_soffit": {"color": "#d9d2c4", "roughness": 0.8, "metalness": 0.0, "emissive": "#ffdcae", "glow": 0.5},
     "tks_clock": {"color": "#efe9da", "roughness": 0.5, "metalness": 0.0, "emissive": "#fff0d0", "glow": 0.9},
     "tks_lamp": {"color": "#f3ead8", "roughness": 0.3, "metalness": 0.0, "emissive": "#ffe2b4", "glow": 1.0},
+    # the dome halls (hall() below): the yolk-yellow plaster of the restored walls and domes, their white mouldings and
+    # reliefs, the pale stone of the ground storey, the roundels' pale green, the lit ceilings and the daylight in the
+    # drum's windows; the floor's three granites. Under a roof, so they take little of the sky ("sky", set on the meshes)
+    "tks_hall_wall": {"lamp_lit": True, "color": "#d9b45c", "roughness": 0.85, "metalness": 0.0, "solid": False},
+    "tks_hall_white": {"lamp_lit": True, "color": "#e9e4d6", "roughness": 0.7, "metalness": 0.0, "solid": False},
+    "tks_hall_relief": {"lamp_lit": True, "color": "#e9e4d6", "roughness": 0.7, "metalness": 0.0, "solid": False},
+    "tks_hall_stone": {"lamp_lit": True, "color": "#bfb7a6", "roughness": 0.6, "metalness": 0.0},
+    "tks_hall_green": {"lamp_lit": True, "color": "#8fa391", "roughness": 0.8, "metalness": 0.0, "solid": False},
+    "tks_hall_rib": {"lamp_lit": True, "color": "#6a3a2a", "roughness": 0.7, "metalness": 0.0, "solid": False},
+    "tks_hall_ceiling": {"color": "#efe9da", "roughness": 0.8, "metalness": 0.0, "emissive": "#ffe6bf", "glow": 0.55, "glow_day": 0.3, "solid": False},
+    "tks_hall_light": {"color": "#f6efe0", "roughness": 0.4, "metalness": 0.0, "emissive": "#ffe2b4", "glow": 2.2, "glow_day": 1.0, "solid": False},
+    "tks_hall_day": {"color": "#c9d6dc", "roughness": 0.2, "metalness": 0.0, "emissive": "#dfeaf0", "glow": 0.05, "glow_day": 0.8, "solid": False},
+    "tks_hall_floor_a": {"color": "#c9c5bb", "roughness": 0.45, "metalness": 0.0, "decal": True, "street_lit": True, "surface": None},
+    "tks_hall_floor_b": {"color": "#8f8c86", "roughness": 0.45, "metalness": 0.0, "decal": True, "street_lit": True, "surface": None},
+    "tks_hall_floor_c": {"color": "#4a4a4c", "roughness": 0.4, "metalness": 0.0, "decal": True, "street_lit": True, "surface": None},
+    # the block between the building and the tracks, where the Chuo Line's viaduct stands (chuo() below)
+    "tks_chuo": {"color": "#b5b2aa", "roughness": 0.85, "metalness": 0.0},
+    "tks_chuo_roof": {"color": "#c4c8c6", "roughness": 0.5, "metalness": 0.4},
 }
 
 
@@ -226,7 +244,7 @@ def disc(m, centre, nrm, r, segs=16, r_in=0.0, depth=0.0):
             m.quad(P(r, q0), tuple(b0), tuple(b1), P(r, q1))
 
 
-def roof_bands(m, poly, z, steps, flat=None):
+def roof_bands(m, poly, z, steps, flat=None, cap=True):
     """A roof over a polygon as bands of straight slopes: steps [(inset m, rise m), ...] from the eaves in, each band
     triangulated between the outline and its inset (no grid, so a long eave is one plane), then a flat top.
     Returns the top polygon and its height. UVs: metres across and up each slope."""
@@ -257,7 +275,8 @@ def roof_bands(m, poly, z, steps, flat=None):
         cur, z = inner, z + rise
     for p in getattr(cur, "geoms", [cur]):
         if not p.is_empty and p.area > 0.5:
-            ak.cap(flat or m, ak.WORLD, list(p.exterior.coords)[:-1], z)
+            if cap:
+                ak.cap(flat or m, ak.WORLD, list(p.exterior.coords)[:-1], z)
     return cur, z
 
 
@@ -277,11 +296,13 @@ def window(K, a, t, n, c, w, zb, zt, style, lit=True, fine=True, head=False):
     stone, sash = K["tks_stone_fine"], K["tks_sash"]
     glass = K["tks_glass"] if lit else K["tks_glass_dark"]
     a, t, n = np.asarray(a, float), np.asarray(t, float), np.asarray(n, float)
-    if style == "door":
-        slab(K["tks_door"], a, t, n, c - w / 2, c + w / 2, zb, zt, -0.4, -0.38, "f")
-        for s0, s1, z0, z1 in ((c - w / 2, c + w / 2, zt - 0.1, zt), (c - w / 2, c - w / 2 + 0.08, zb, zt), (c + w / 2 - 0.08, c + w / 2, zb, zt),
-                               (c - 0.04, c + 0.04, zb, zb + 2.4), (c - w / 2, c + w / 2, zb + 2.4, zb + 2.5)):
-            slab(K["tks_iron"], a, t, n, s0, s1, z0, z1, -0.38, -0.33, "f")
+    if style in ("door", "way"):
+        # ("way": the doorway stands open, as a station's does: its leaves folded away, the transom glazed over a walker's head)
+        way = style == "way"
+        slab(K["tks_door"], a, t, n, c - w / 2, c + w / 2, zb + (2.5 if way else 0.0), zt, -0.4, -0.38, "f")
+        for s0, s1, z0, z1 in ((c - w / 2, c + w / 2, zt - 0.1, zt), (c - w / 2, c - w / 2 + 0.08, zb + (2.5 if way else 0.0), zt), (c + w / 2 - 0.08, c + w / 2, zb + (2.5 if way else 0.0), zt),
+                               (c - 0.04, c + 0.04, zb + (2.5 if way else 0.0), zb + (zt - zb if way else 2.4)), (c - w / 2, c + w / 2, zb + 2.4, zb + 2.5)):
+            slab(K["tks_iron"], a, t, n, s0, s1, z0, z1, -0.38, -0.33, "fb" if way else "f")
         slab(K["tks_stone"], a, t, n, c - w / 2 - 0.3, c - w / 2, zb, zt, 0, 0.1, "fl")
         slab(K["tks_stone"], a, t, n, c + w / 2, c + w / 2 + 0.3, zb, zt, 0, 0.1, "fr")
         slab(K["tks_stone"], a, t, n, c - w / 2 - 0.3, c + w / 2 + 0.3, zt, zt + 0.45, 0, 0.1, "fblr")
@@ -319,18 +340,20 @@ def window(K, a, t, n, c, w, zb, zt, style, lit=True, fine=True, head=False):
         slab(stone, a, t, n, c - w / 2 - j - 0.1, c + w / 2 + j + 0.1, zt + 0.26, zt + 0.38, 0, 0.16, "fblrt")
 
 
-def facade(K, ring, g, top, skip, seen=None, layout=None, pil=True, parapet=True):
+def facade(K, ring, g, top, skip, seen=None, layout=None, pil=True, parapet=True, ways=False, cut=None):
     """Walls round a CCW ring (world) from the ground g up to g + top. An edge the street can see (seen(n)) is a
     front: openings cut through the brick a bay apart, their frames, the stripes between them, pilasters and the
     balustrade; another (the side over the tracks) is the brick with its courses and flat glass.
     skip(a, b): an edge to leave out (inside a taller pavilion). layout(i, L): the openings of edge i as
-    [(centre, width, arched)], where the pavilions differ from the bay rhythm."""
+    [(centre, width, arched)], where the pavilions differ from the bay rhythm. ways: the arched doorways stand open (a
+    dome's, onto its hall). cut(i, L): a way through a back edge, (centre, width, height), with nothing across it."""
     brick, stone, rev, fine = K["tks_brick"], K["tks_stone"], K["tks_reveal"], K["tks_stone_fine"]
     H = top
     k = H / EAVES
     n = len(ring)
     s0 = 0.0
     any_edge = False
+    open_at = {}   # edge -> [(x0, x1)] where a walker passes: the plinth stops there
     for i in range(n):
         a, b = np.asarray(ring[i], float), np.asarray(ring[(i + 1) % n], float)
         L = float(np.linalg.norm(b - a))
@@ -352,24 +375,33 @@ def facade(K, ring, g, top, skip, seen=None, layout=None, pil=True, parapet=True
         lit_ = lambda c, zb: (math.sin(c * 12.9898 + zb * 78.233 + s0 * 3.1) * 43758.5453) % 1.0 < 0.62
         if not front:
             # the back: no openings cut, the glass a centimetre proud of the brick, the main courses only
-            ak.holed_wall(brick, ak.WORLD, a, b, g, g + H, [], s0=s0)
+            way = cut(i, L) if cut else None
+            ak.holed_wall(brick, ak.WORLD, a, b, g, g + H, [(way[0], way[1], g, g + way[2], False)] if way else [], s0=s0)
+            x0w, x1w = (way[0] - way[1] / 2, way[0] + way[1] / 2) if way else (L, L)
+            if way:
+                open_at[i] = [(x0w, x1w)]
             for c, w, _ in wins:
                 for zb, zt, _s in FLOORS:
+                    if way and c + w / 2 > x0w and c - w / 2 < x1w and g + zb * k < g + way[2]:
+                        continue
                     slab(K["tks_glass_dark"], a, t, nrm, c - w / 2, c + w / 2, g + zb * k, g + zt * k, 0, 0.02, "f")
             for z, h, d in COURSES:
                 slab(stone, a, t, nrm, 0, L, g + z * k, g + (z + h) * k, 0, 0.03, "f")
-            slab(stone, a, t, nrm, 0, L, g, g + 1.1, 0, 0.03, "f")
+            for x0, x1 in ((0, x0w), (x1w, L)) if way else ((0, L),):
+                slab(stone, a, t, nrm, x0, x1, g, g + 1.1, 0, 0.03, "f")
             s0 += L
             continue
         # (an arched opening at the ground floor is a doorway: from the paving to 4.1 m, a little wider)
-        spans = [(c, w + 0.45, g + 0.05, g + 4.1, "door") if arched and style == "ground" else (c, w, g + zb * k, g + zt * k, style)
+        spans = [(c, w + 0.45, g + 0.05, g + 4.1, "way" if ways else "door") if arched and style == "ground" else (c, w, g + zb * k, g + zt * k, style)
                  for c, w, arched in wins for zb, zt, style in FLOORS]
+        if ways and any(sp[4] == "way" for sp in spans):
+            open_at[i] = [(sp[0] - sp[1] / 2 - 0.32, sp[0] + sp[1] / 2 + 0.32) for sp in spans if sp[4] == "way"]
         outl = ak.holed_wall(brick, ak.WORLD, a, b, g, g + H, [(c, w, zb, zt, False) for c, w, zb, zt, _s in spans], s0=s0)
         for (c, w, zb, zt, style), o, arched in zip(spans, outl, [ar for _c, _w, ar in wins for _f in FLOORS]):
             ak.reveal(rev, ak.WORLD, a, b, o, 0.0, -0.4)
             for kq in range(len(o)):   # (each side of the reveal: open at the wall's face, dark at the glass)
                 rev.__dict__.setdefault("ao", {}).update({len(rev.v) - 4 * (len(o) - kq) + j: v for j, v in enumerate((1.0, 1.0, 0.5, 0.5))})
-            window(K, a, t, nrm, c, w, zb, zt, style, lit_(c, zb), head=arched and style != "door")
+            window(K, a, t, nrm, c, w, zb, zt, style, lit_(c, zb), head=arched and style not in ("door", "way"))
         # the white stripes, between one opening's frame and the next
         edges_ = sorted((c - w / 2 - (0.53 if ar else 0.2), c + w / 2 + (0.53 if ar else 0.2)) for c, w, ar in wins)
         gaps = [(x0, x1) for x0, x1 in zip([0.0] + [e[1] for e in edges_], [e[0] for e in edges_] + [L]) if x1 - x0 > 0.05]
@@ -417,8 +449,19 @@ def facade(K, ring, g, top, skip, seen=None, layout=None, pil=True, parapet=True
                     slab(fine, a, t, nrm, s - 0.08, s + 0.08, zc + 0.22, zc + 0.86, 0.38, 0.54, "flr")
         s0 += L
     if any_edge:
-        # the plinth, the courses and the cornice run right round
-        sweep(stone, ring, g, ((0.0, 0.0), (0.22, 0.0), (0.22, 1.0), (0.12, 1.12), (0.0, 1.12)))
+        # the plinth, the courses and the cornice run right round (the plinth stops at a way in)
+        if not open_at:
+            sweep(stone, ring, g, ((0.0, 0.0), (0.22, 0.0), (0.22, 1.0), (0.12, 1.12), (0.0, 1.12)))
+        for i in range(n) if open_at else ():
+            a, b = np.asarray(ring[i], float), np.asarray(ring[(i + 1) % n], float)
+            L = float(np.linalg.norm(b - a))
+            if L < 0.5 or skip(a, b):
+                continue
+            t = (b - a) / L
+            gaps_ = sorted(open_at.get(i, []))
+            for x0, x1 in zip([-0.22] + [q[1] for q in gaps_], [q[0] for q in gaps_] + [L + 0.22]):
+                slab(stone, a, t, np.array([t[1], -t[0]]), x0, x1, g, g + 1.0, 0, 0.22, "ftlr")
+                slab(stone, a, t, np.array([t[1], -t[0]]), x0, x1, g + 1.0, g + 1.12, 0, 0.12, "ftlr")
         for z, h, d in COURSES:
             sweep(stone, ring, g + z * k, ((0.0, 0.0), (d, 0.0), (d, h * k), (0.0, h * k)))
         zc = g + H - 1.5
@@ -524,7 +567,7 @@ def turret(S, K, p, z0, z1):
     S["copper"].lathe([(z1, 1.0), (z1 + 0.5, 0.93), (z1 + 1.0, 0.7), (z1 + 1.35, 0.35), (z1 + 1.5, 0.12), (z1 + 1.75, 0.2), (z1 + 1.95, 0.07), (z1 + 2.7, 0.03)], p, segs=14)
 
 
-def pavilion(K, S, body, c, R, phase, g, out, axis):
+def pavilion(K, S, body, c, R, phase, g, out, axis, T=None):
     """A dome pavilion on the mapped outline of its block: the front in the wings' manner but for its middle,
     where three arched windows a storey stand between two round turrets under a great arched gable with the
     clock; a slate skirt up to the drum; the dome. Round its foot the copper pent roof over the doors."""
@@ -546,12 +589,23 @@ def pavilion(K, S, body, c, R, phase, g, out, axis):
             return None
         return [(L / 2 - half - 2.2, 1.45, False), (L / 2 - 2.0, 1.25, True), (L / 2, 1.25, True), (L / 2 + 2.0, 1.25, True), (L / 2 + half + 2.2, 1.45, False)] if L > 15 \
             else [(L / 2 - 2.0, 1.25, True), (L / 2, 1.25, True), (L / 2 + 2.0, 1.25, True)]
-    facade(K, ring, g, EAVES, lambda a, b: False, seen=seen, layout=layout)
+    # the back: the edge the hall's passage to the tracks goes out through, opposite the front
+    fa, fb = np.asarray(ring[fi], float), np.asarray(ring[(fi + 1) % n], float)
+    ft = (fb - fa) / np.linalg.norm(fb - fa)
+    fe = -np.array([ft[1], -ft[0]])   # from the plaza towards the tracks
+    bi = max((i for i in range(n) if i != fi), key=lambda i: float(np.dot((np.asarray(ring[i], float) + np.asarray(ring[(i + 1) % n], float)) / 2 - np.asarray(c), fe)))
+    ba, bb = np.asarray(ring[bi], float), np.asarray(ring[(bi + 1) % n], float)
+    cut = lambda i, L_: (float(np.dot(np.asarray(c) - ba, (bb - ba) / np.linalg.norm(bb - ba))), VEST_W + 1.4, VEST_H + 0.3) if i == bi and T is not None else None
+    facade(K, ring, g, EAVES, lambda a, b: False, seen=seen, layout=layout, ways=T is not None, cut=cut)
     a, b = np.asarray(ring[fi], float), np.asarray(ring[(fi + 1) % n], float)
     L = float(np.linalg.norm(b - a))
     t = (b - a) / L
     nrm = np.array([t[1], -t[0]])
     mid = (a + b) / 2
+    foot = None
+    if T is not None:
+        foot = hall(K, c, R, g, fe, ft, float(np.dot(mid - np.asarray(c), ft)), float(np.dot(np.asarray(c) - mid, fe)),
+                    float(np.dot((ba + bb) / 2 - np.asarray(c), fe)), T)
     half = min(half, L / 2 - 1.2)
     # the balconies under the triple windows, and the turrets
     for zb in (7.0, 12.2):
@@ -595,7 +649,15 @@ def pavilion(K, S, body, c, R, phase, g, out, axis):
         S["copper"].quad(Q(r1 * math.cos(q0), zg + r1 * math.sin(q0), 0.25), Q(r1 * math.cos(q0), zg + r1 * math.sin(q0), -back),
                          Q(r1 * math.cos(q1), zg + r1 * math.sin(q1), -back), Q(r1 * math.cos(q1), zg + r1 * math.sin(q1), 0.25))
     # the slate skirt from the cornice up to the drum, and the dome
-    top, zt = roof_bands(K["tks_slate"], body, g + EAVES, [(3.4, 3.6), (3.0, 0.9)], flat=K["tks_slate"])
+    top, zt = roof_bands(K["tks_slate"], body, g + EAVES, [(3.4, 3.6), (3.0, 0.9)], flat=K["tks_slate"], cap=T is None)
+    if T is not None:   # (the hall rises through the roof's flat top to its dome: the flat is the ring round the drum)
+        import shapely as _sh
+        ringtop = top.difference(_sh.geometry.Polygon(octagon(c, R - 0.1, phase)))
+        for tri in getattr(_sh.constrained_delaunay_triangles(ringtop), "geoms", []):
+            q = list(tri.exterior.coords)[:3]
+            if (q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[1][1] - q[0][1]) * (q[2][0] - q[0][0]) < 0:
+                q = q[::-1]
+            K["tks_slate"].tri(*[(x, y, zt) for x, y in q], [[x, y] for x, y in q])
     dormers(K, ring, g + EAVES, 3.4, 3.6, lambda a_, b_: False, seen=seen, every=2)
     dome(K, S, c, R, phase, g)
     # corner roofs: a small square dome on the block's shoulders either side of the front
@@ -634,7 +696,332 @@ def pavilion(K, S, body, c, R, phase, g, out, axis):
                 K["tks_iron"].box((*q, g), (*q, zo - 0.1), 0.14, 0.14)
                 K["tks_iron_fine"].box((*q, zo - 0.75), (*(q - nn * 0.7), zo - 0.16), 0.05, 0.08)
             slen += Lj
-    return ring
+    return foot
+
+
+# ---------------------------------------------------------------- the dome halls
+
+# Under each dome is the station's hall: an octagon three storeys high under the dome's inner shell, restored in 2012
+# to Tatsuno's design. The way in from the plaza is through the pavilion's three doorways and a vestibule; the way on
+# is out of the hall's far side, under the Chuo Line's viaduct, to the passage under the tracks (cities/tokyo/rail.py).
+# Published: an octagon about 19 m across under a ceiling about 28 m up (Jiji Press), eight eagles 2.1 m across the
+# wings at the dome's corners, eight of the zodiac's animals in grey-green roundels in the corners' spandrels, dark
+# red-brown ribs on yolk-yellow plaster, and a floor whose marbles repeat the post-war dome's ceiling (Architectural
+# Institute of Japan, J. Technol. Des. 19 (43); JR East). The other heights (m over the floor) are read off
+# photographs, but for the drum's windows, which are the outer wall's.
+H_GROUND, H_WAY = 6.2, 4.9          # the ground storey's cornice, and the head of its openings
+H_2F = (7.9, 10.3)                  # the first-floor gallery's windows
+H_3F = (12.5, 14.5, 4.6)            # the second floor's arch: its sill, its springing, its width
+H_ENT = 18.2                        # the entablature the dome's wall stands on
+H_SPRING, H_CROWN = 25.3, 29.6      # the inner dome (its crown is published as about 28 m, and as over 30 m)
+WAY_W, VEST_W, VEST_H = 6.0, 7.2, 5.3
+LAMPS = []       # (x, y, z, power): the halls' lights, for the level's baked night light
+GLOWS = []       # [x, y, radius, colour, strength]: their light on the floor after dark (landmarks.json "glows")
+DEMOLISHED = []  # the city's solids the halls and the passages stand in the place of
+BARE = []        # the halls' and passages' floors, where no lamp or bench of the map's stands (landmarks.json "treeless")
+WALLED = []      # the building's and the block's footprints: but for BARE, walls stand there (closed() below)
+
+
+def _rail_deck():
+    """The viaduct's deck (cities/tokyo/rail.py), which a hall's passage runs to."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tokyo_rail", os.path.join(os.path.dirname(os.path.abspath(__file__)), "rail.py"))
+    R = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(R)
+    L = R.layout()
+    return L["deck"] if L else None
+
+
+def eagle(m, p, n, t, span=2.1, up=None):
+    """One of the eight eagles under the dome (2.1 m across the wings): the body, the head turned to its left, and
+    each wing a fan of feathers, in plaster relief standing off the wall at p (3D), which faces n."""
+    # (n and t may be 3D, with `up` the way its head points: on the dome's ring it looks down into the hall, head to the crown)
+    p = np.asarray(p, float)
+    n3 = np.array([n[0], n[1], n[2] if len(n) > 2 else 0.0])
+    t3 = np.array([t[0], t[1], t[2] if len(t) > 2 else 0.0])
+    up = np.array([0, 0, 1.0]) if up is None else np.asarray(up, float)
+    Q = lambda s, z, d: tuple(p + t3 * s + up * z + n3 * d)
+    m.box(Q(0, -0.05, 0.16), Q(0, 0.85, 0.2), 0.42, 0.3, up=tuple(n3))            # the breast
+    m.box(Q(0, 0.85, 0.2), Q(0.1, 1.12, 0.24), 0.22, 0.2, up=tuple(n3))           # the neck and head
+    m.box(Q(0.1, 1.05, 0.24), Q(0.3, 0.98, 0.26), 0.07, 0.07, up=tuple(n3))       # the beak
+    m.box(Q(-0.14, -0.05, 0.14), Q(-0.2, -0.5, 0.1), 0.16, 0.1, up=tuple(n3))     # the tail's feathers
+    m.box(Q(0.14, -0.05, 0.14), Q(0.2, -0.5, 0.1), 0.16, 0.1, up=tuple(n3))
+    m.box(Q(0, -0.05, 0.14), Q(0, -0.58, 0.1), 0.16, 0.1, up=tuple(n3))
+    for sgn in (-1, 1):
+        for k in range(6):   # the wing's feathers, fanned from the shoulder: the longest level, the rest falling
+            ang = math.radians(8 - k * 17)
+            ln = (span / 2 - 0.22) * (1.0 - 0.07 * k)
+            a0 = Q(sgn * 0.2, 0.62 - 0.03 * k, 0.12)
+            a1 = Q(sgn * (0.2 + ln * math.cos(ang)), 0.62 + ln * math.sin(ang), 0.07)
+            m.box(a0, a1, 0.17, 0.07, up=tuple(n3))
+
+
+def roundel(K, p, n, r=0.72):
+    """A zodiac roundel: a pale green disc in a white ring, the animal a white boss on it (its carving is not modelled)."""
+    n3 = np.array([n[0], n[1], 0.0])
+    p = np.asarray(p, float)
+    disc(K["tks_hall_green"], p + n3 * 0.04, n3, r, 20)
+    disc(K["tks_hall_relief"], p + n3 * 0.09, n3, r + 0.14, 20, r_in=r, depth=0.09)
+    disc(K["tks_hall_relief"], p + n3 * 0.12, n3, r * 0.5, 12, depth=0.08)
+
+
+def hall(K, c, R, g, e, t, w_door, d_front, d_back, Z):
+    """A dome's hall in the frame (e: from the plaza towards the tracks, t: along the front), floor at g: the octagon
+    and its three storeys, the inner dome, the vestibule behind the doorways (d_front from the centre, the doors'
+    middle w_door along t), and the passage on to the tracks (through the back wall at d_back). Z: the ground."""
+    import shapely
+    from shapely.geometry import Polygon
+    wall, white, rel, stone = K["tks_hall_wall"], K["tks_hall_white"], K["tks_hall_relief"], K["tks_hall_stone"]
+    c, e, t = np.asarray(c, float), np.asarray(e, float), -np.asarray(t, float)   # (e, t) right-handed: t to the left of the way in
+    w_door = -w_door
+    W = lambda u, w: c + e * u + t * w
+    Ri = R - 0.6
+    apo = Ri * math.cos(math.pi / 8)
+    V = [W(Ri * math.cos(math.radians(22.5 + 45 * k)), Ri * math.sin(math.radians(22.5 + 45 * k))) for k in range(8)]
+    deck = _rail_deck()
+    u_end = d_back + 13.6
+    if deck is not None:
+        from shapely.geometry import LineString
+        hit = LineString([tuple(W(d_back, 0)), tuple(W(d_back + 40, 0))]).intersection(deck)
+        if not hit.is_empty:
+            u_end = float(np.dot(np.asarray(hit.coords[0] if hit.geom_type == "LineString" else hit.geoms[0].coords[0]) - c, e)) + 0.35
+    # ---- the eight faces, each seen from inside: from vertex k+1 back to vertex k, so that the room is on the right
+    for k in range(8):
+        a, b = V[(k + 1) % 8], V[k]
+        L = float(np.linalg.norm(b - a))
+        tt = (b - a) / L
+        nn = np.array([tt[1], -tt[0]])   # into the room
+        ang = (45 * (k + 1)) % 360       # the way this face looks out: 0 towards the tracks, 180 towards the plaza
+        through = ang in (0, 180)
+        # the ground storey: pale stone, its opening (a way through, or a lit front set back in it)
+        o = ak.holed_wall(stone, ak.WORLD, a, b, g, g + H_GROUND, [(L / 2, WAY_W, g, g + H_WAY, False)])
+        ak.reveal(stone, ak.WORLD, a, b, o[0], 0.0, -0.6)
+        if not through:   # a glazed front behind the opening: the ticket office, the gallery's door, a shop
+            slab(K["tks_glass"], a, tt, nn, L / 2 - WAY_W / 2, L / 2 + WAY_W / 2, g, g + H_WAY, -0.6, -0.58, "f")
+            for s0, s1, z0, z1 in [(L / 2 - WAY_W / 2 + j * WAY_W / 4 - 0.035, L / 2 - WAY_W / 2 + j * WAY_W / 4 + 0.035, g, g + H_WAY) for j in range(5)] + \
+                    [(L / 2 - WAY_W / 2, L / 2 + WAY_W / 2, g + 2.5, g + 2.6), (L / 2 - WAY_W / 2, L / 2 + WAY_W / 2, g, g + 0.12)]:
+                slab(K["tks_iron"], a, tt, nn, s0, s1, z0, z1, -0.58, -0.53, "f")
+        slab(white, a, tt, nn, L / 2 - WAY_W / 2 - 0.25, L / 2 + WAY_W / 2 + 0.25, g + H_WAY, g + H_WAY + 0.35, 0, 0.1, "fbt")
+        slab(stone, a, tt, nn, 0, L, g, g + 0.3, 0, 0.05, "ft")
+        # the first cornice, the wall above in yolk-yellow plaster with its openings
+        # (the gallery's edge: a grey-green cornice standing out over the hall, and the iron rail on it)
+        slab(K["tks_hall_green"], a, tt, nn, 0, L, g + H_GROUND, g + H_GROUND + 0.5, 0, 0.55, "fbt")
+        slab(K["tks_iron"], a, tt, nn, 0, L, g + H_GROUND + 1.5, g + H_GROUND + 1.56, 0.45, 0.5, "fbt")
+        for sx in np.arange(0.15, L, 0.3):
+            slab(K["tks_iron_fine"], a, tt, nn, sx - 0.012, sx + 0.012, g + H_GROUND + 0.5, g + H_GROUND + 1.5, 0.46, 0.485, "f")
+        zs, zsp, wa = g + H_3F[0], g + H_3F[1], H_3F[2]
+        holes = [(L / 2 + dx, 1.25, g + H_2F[0], g + H_2F[1], False) for dx in (-2.5, 0.0, 2.5)] + [(L / 2, wa, zs, zsp, False)]
+        ol = ak.holed_wall(wall, ak.WORLD, a, b, g + H_GROUND + 0.5, g + H_ENT, holes)
+        for (cc, w, zb, zt, _), oo in zip(holes[:3], ol[:3]):   # the gallery's windows: lit glass behind white frames
+            ak.reveal(white, ak.WORLD, a, b, oo, 0.0, -0.3)
+            slab(K["tks_glass_small"], a, tt, nn, cc - w / 2, cc + w / 2, zb, zt, -0.3, -0.28, "f")
+            for s0, s1, z0, z1 in ((cc - w / 2 - 0.14, cc - w / 2, zb, zt), (cc + w / 2, cc + w / 2 + 0.14, zb, zt), (cc - w / 2 - 0.2, cc + w / 2 + 0.2, zt, zt + 0.2),
+                                   (cc - w / 2 - 0.2, cc + w / 2 + 0.2, zb - 0.16, zb)):
+                slab(white, a, tt, nn, s0, s1, z0, z1, 0, 0.07, "fblrt")
+            slab(white, a, tt, nn, cc - 0.03, cc + 0.03, zb, zt, -0.28, -0.24, "f")
+        # the great arch of the second floor: the opening to its springing and the arch over it, the gallery dark behind
+        ak.reveal(white, ak.WORLD, a, b, ol[3], 0.0, -0.5)
+        slab(K["tks_glass_dark"], a, tt, nn, L / 2 - wa / 2, L / 2 + wa / 2, zs, zsp + wa / 2, -0.5, -0.48, "f")
+        Qw = lambda s_, z_, d_: (*(a + tt * s_ + nn * d_), z_)
+        for j in range(10):   # the wall's tympanum round the arch is plaster: fill the arch's head, then ring it in white
+            q0, q1 = math.pi * j / 10, math.pi * (j + 1) / 10
+            K["tks_glass_dark"].tri(Qw(L / 2, zsp, 0.012), Qw(L / 2 + wa / 2 * math.cos(q0), zsp + wa / 2 * math.sin(q0), 0.012), Qw(L / 2 + wa / 2 * math.cos(q1), zsp + wa / 2 * math.sin(q1), 0.012))
+        arch_ring(white, a, tt, nn, L / 2, zsp, wa / 2, wa / 2 + 0.32, 0.1, 12)
+        slab(white, a, tt, nn, L / 2 - 0.22, L / 2 + 0.22, zsp + wa / 2 - 0.1, zsp + wa / 2 + 0.75, 0, 0.2, "fblrt")   # its keystone
+        for sgn in (-1, 1):   # the arch's piers and their imposts
+            slab(white, a, tt, nn, L / 2 + sgn * wa / 2 - (0.0 if sgn < 0 else 0.3), L / 2 + sgn * wa / 2 + (0.3 if sgn < 0 else 0.0) - (0.3 if sgn < 0 else 0.0) + (0.0 if sgn < 0 else 0.3), zsp - 0.3, zsp, 0, 0.14, "fblrt")
+        slab(white, a, tt, nn, L / 2 - wa / 2, L / 2 + wa / 2, zs - 0.25, zs, 0, 0.3, "fbtlr")   # the balcony's slab and its rail
+        slab(K["tks_iron"], a, tt, nn, L / 2 - wa / 2, L / 2 + wa / 2, zs + 0.95, zs + 1.01, 0.2, 0.26, "fbt")
+        for sx in np.arange(-wa / 2 + 0.1, wa / 2, 0.22):
+            slab(K["tks_iron_fine"], a, tt, nn, L / 2 + sx - 0.012, L / 2 + sx + 0.012, zs, zs + 0.95, 0.22, 0.245, "f")
+        slab(white, a, tt, nn, 0, L, g + 11.3, g + 11.62, 0, 0.14, "fbt")   # the string course between the floors
+        # the entablature under the drum: its frieze, and the cornice standing out over it
+        slab(white, a, tt, nn, 0, L, g + H_ENT, g + H_ENT + 0.7, 0, 0.12, "fb")
+        slab(white, a, tt, nn, 0, L, g + H_ENT + 0.7, g + H_ENT + 0.95, 0, 0.3, "fbt")
+        slab(white, a, tt, nn, 0, L, g + H_ENT + 0.95, g + H_ENT + 1.2, 0, 0.55, "fbt")
+        # the drum: plaster, with the outer wall's three windows a face letting the day in
+        dh = [(L / 2 + dx, 1.05, g + DRUM0 + 2.0, g + DRUM0 + 4.3, False) for dx in (-1.9, 0.0, 1.9)]
+        od = ak.holed_wall(wall, ak.WORLD, a, b, g + H_ENT, g + H_SPRING, dh)
+        for (cc, w, zb, zt, _), oo in zip(dh, od):
+            ak.reveal(white, ak.WORLD, a, b, oo, 0.0, -0.35)
+            slab(K["tks_hall_day"], a, tt, nn, cc - w / 2, cc + w / 2, zb, zt, -0.35, -0.33, "f")
+            slab(white, a, tt, nn, cc - 0.03, cc + 0.03, zb, zt, -0.33, -0.29, "f")
+        slab(white, a, tt, nn, 0, L, g + H_SPRING - 0.45, g + H_SPRING, 0, 0.22, "fb")
+        # the corner at vertex k: a white pilaster from the cornice to the entablature, the zodiac's roundel on it at
+        # the arch's height and the eagle under the entablature
+        slab(white, a, tt, nn, L - 0.42, L, g + H_GROUND + 0.5, g + H_ENT, 0, 0.16, "fl")
+        slab(white, a, tt, nn, 0, 0.42, g + H_GROUND + 0.5, g + H_ENT, 0, 0.16, "fr")
+        slab(stone, a, tt, nn, L - 0.5, L, g, g + H_GROUND, 0, 0.2, "fl")
+        slab(stone, a, tt, nn, 0, 0.5, g, g + H_GROUND, 0, 0.2, "fr")
+        vin = (c - V[k]) / np.linalg.norm(c - V[k])
+        vt = np.array([-vin[1], vin[0]])
+        pc = V[k] + vin * 0.42
+        roundel(K, (*pc, g + 16.1), vin)
+    # ---- the inner dome, as the photographs show it: plaster gores; an octagonal ring of dark red-brown ribs half way
+    # up, with a rib from the crown's disc to each of its corners and an eagle on each corner; below the ring a rib down
+    # each corner and three down each side, with a white panel between them at the foot; the disc with its wheel, and
+    # white clematis round it
+    rows, RING = 8, 4
+    rib = K["tks_hall_rib"]
+    prof = [(Ri * math.cos(math.radians(88 * j / rows)), g + H_SPRING + (H_CROWN - H_SPRING) * math.sin(math.radians(88 * j / rows))) for j in range(rows + 1)]
+    P3 = lambda k, j, f=1.0: (*(c + (V[k % 8] - c) * (prof[j][0] / Ri) * f), prof[j][1])
+    drop = np.array([0, 0, 0.05])
+    side = lambda k, j, f: np.asarray(P3(k, j, 0.994)) * (1 - f) + np.asarray(P3(k + 1, j, 0.994)) * f - drop
+    for k in range(8):
+        for j in range(rows):
+            wall.quad(P3(k + 1, j), P3(k, j), P3(k, j + 1), P3(k + 1, j + 1))
+        pts = [np.asarray(P3(k, j, 0.992)) - drop for j in range(rows + 1)]
+        for j, (p0, p1) in enumerate(zip(pts, pts[1:])):   # the rib up the corner, heavier above the ring
+            rib.box(tuple(p0), tuple(p1), 0.42 if j >= RING else 0.3, 0.16)
+        rib.box(tuple(side(k, RING, 0.0)), tuple(side(k, RING, 1.0)), 0.42, 0.14)   # the ring
+        for f in (0.25, 0.5, 0.75):                        # the three ribs down each side below it
+            for j in range(RING):
+                rib.box(tuple(side(k, j, f)), tuple(side(k, j + 1, f)), 0.24, 0.1)
+        for f0, f1 in ((0.03, 0.22), (0.28, 0.47), (0.53, 0.72), (0.78, 0.97)):   # the white panels at the foot, between the ribs
+            A, B, C_, D = side(k, 0, f0) + drop * 0.4, side(k, 0, f1) + drop * 0.4, side(k, 2, f1) + drop * 0.4, side(k, 2, f0) + drop * 0.4
+            A, D = A * 0.92 + D * 0.08, A * 0.08 + D * 0.92
+            B, C_ = B * 0.92 + C_ * 0.08, B * 0.08 + C_ * 0.92
+            white.quad(tuple(B), tuple(A), tuple(D), tuple(C_))
+        # the eagle on the ring's corner, looking into the hall
+        corner = np.asarray(P3(k, RING, 0.97))
+        vin = (c - V[k]) / np.linalg.norm(c - V[k])
+        eagle(rel, (*(corner[:2] - vin * 0.55), corner[2] - 0.32), (0.0, 0.0, -1.0), (-vin[1], vin[0], 0.0), up=(vin[0], vin[1], 0.0))
+    zc = prof[-1][1]
+    rc = prof[-1][0]
+    wall_top = [(*(c + (V[k] - c) * (rc / Ri)), zc) for k in range(8)]
+    for k in range(8):
+        wall.tri((*c, zc + 0.02), wall_top[k], wall_top[(k + 1) % 8])
+    dn = np.array([0, 0, -1.0])
+    disc(rib, np.array([*c, zc - 0.08]), dn, 2.1, 24, depth=0.12)                    # the red-brown disc at the crown, and its wheel
+    disc(rib, np.array([*c, zc - 0.14]), dn, 1.9, 24, r_in=1.7, depth=0.06)
+    disc(rib, np.array([*c, zc - 0.14]), dn, 0.5, 12, depth=0.08)
+    for k in range(16):
+        q = math.pi * k / 8
+        rib.box((c[0] + 0.45 * math.cos(q), c[1] + 0.45 * math.sin(q), zc - 0.16), (c[0] + 1.72 * math.cos(q), c[1] + 1.72 * math.sin(q), zc - 0.16), 0.08, 0.05)
+    for k in range(16):   # and the clematis round it, white
+        q = math.pi * (k + 0.5) / 8
+        disc(rel, np.array([c[0] + 2.55 * math.cos(q), c[1] + 2.55 * math.sin(q), zc - 0.2 - 0.02]), dn, 0.3, 8, depth=0.06)
+    # ---- the ways through: the vestibule on the plaza's side behind the pavilion's doorways, the passage on the tracks'
+    box_ = lambda u0, u1, hw: Polygon([tuple(W(u0, -hw)), tuple(W(u1, -hw)), tuple(W(u1, hw)), tuple(W(u0, hw))])
+    hw = VEST_W / 2
+    uf = -(d_front - 0.75)   # the inner face of the front wall
+    for u0, u1 in ((uf, -apo), (apo, u_end)):
+        for sgn in (-1, 1):   # the side walls, pale stone to a white frieze under the ceiling
+            a, b = (W(u0, sgn * hw), W(u1, sgn * hw)) if sgn > 0 else (W(u1, sgn * hw), W(u0, sgn * hw))   # (the room on the right)
+            L = float(np.linalg.norm(b - a))
+            tt = (b - a) / L
+            nn = np.array([tt[1], -tt[0]])
+            ak.holed_wall(stone, ak.WORLD, a, b, g - 0.3, g + VEST_H - 0.5, [])
+            slab(white, a, tt, nn, 0, L, g + VEST_H - 0.5, g + VEST_H, 0, 0.06, "fb")
+            slab(stone, a, tt, nn, 0, L, g, g + 0.3, 0, 0.05, "ft")
+        # the ceiling: lit panels between white beams, a lamp's line down the middle of each bay
+        n_b = max(1, int(round((u1 - u0) / 3.0)))
+        for j in range(n_b):
+            ua, ub = u0 + (u1 - u0) * j / n_b, u0 + (u1 - u0) * (j + 1) / n_b
+            K["tks_hall_ceiling"].quad((*W(ua, hw), g + VEST_H), (*W(ub, hw), g + VEST_H), (*W(ub, -hw), g + VEST_H), (*W(ua, -hw), g + VEST_H))
+            white.box((*W(ua, -hw), g + VEST_H - 0.12), (*W(ua, hw), g + VEST_H - 0.12), 0.3, 0.24)
+            um = (ua + ub) / 2
+            K["tks_hall_light"].box((*W(um, -hw + 1.2), g + VEST_H - 0.03), (*W(um, hw - 1.2), g + VEST_H - 0.03), 0.22, 0.05)
+            LAMPS.append((*W(um, 0), g + VEST_H - 0.7, 22.0))
+        white.box((*W(u1, -hw), g + VEST_H - 0.12), (*W(u1, hw), g + VEST_H - 0.12), 0.3, 0.24)
+        GLOWS.append([round(float(W((u0 + u1) / 2, 0)[0]), 1), round(float(W((u0 + u1) / 2, 0)[1]), 1), round(abs(u1 - u0) / 2 + 3, 1), "#ffe2b4", 0.5])
+        # over the way into the hall, from the vestibule's ceiling up to the hall's opening: nothing (the opening is
+        # lower than the ceiling); and the hall's own reveal closes the 0.6 m between them
+    # the front wall's inner face, with the three doorways
+    a, b = W(uf, -hw), W(uf, hw)
+    L = float(np.linalg.norm(b - a))
+    tt = (b - a) / L
+    doors = [(hw + (w_door + dx), 1.7, g + 0.05, g + 4.1, False) for dx in (-2.0, 0.0, 2.0)]
+    od = ak.holed_wall(stone, ak.WORLD, a, b, g - 0.3, g + VEST_H, doors)
+    for oo in od:
+        ak.reveal(stone, ak.WORLD, a, b, oo, 0.0, -0.4)
+    # ---- the floor: granite in the dome's own figure (rings and sixteen rays in two greys round a dark centre, a dark
+    # band at the walls), plain through the vestibule and the passage; laid on the ground's own triangles
+    from shapely.geometry import Point
+    T = Z
+    uvf = lambda x, y: (float(np.dot(np.array([x, y]) - c, e)), float(np.dot(np.array([x, y]) - c, t)))
+    octo = Polygon([tuple(v) for v in V])
+    ways = shapely.union_all([box_(uf, -apo + 0.1, hw), box_(apo - 0.1, u_end, hw)])
+    ctr = Point(*c)
+    ring_ = lambda r0, r1: ctr.buffer(r1, 48).difference(ctr.buffer(r0, 48)) if r0 > 0 else ctr.buffer(r1, 48)
+    fig = {"a": [], "b": [], "c": []}
+    fig["a"].append(ring_(0, 1.5))            # the pale disc at the middle
+    fig["c"].append(ring_(1.5, 1.7))
+    r0 = 1.7
+    for band, r1 in enumerate((3.0, 4.7, 6.9)):   # three rings of sixteen stones each, dark beside pale, growing outward
+        for j in range(16):
+            q0, q1 = math.radians(22.5 * j), math.radians(22.5 * (j + 1))
+            wedge = Polygon([tuple(c), tuple(c + 12 * np.array([math.cos(q0), math.sin(q0)])), tuple(c + 12 * np.array([math.cos(q1), math.sin(q1)]))])
+            fig["c" if (j + band) % 2 else "a"].append(ring_(r0 + 0.06, r1 - 0.06).intersection(wedge))
+        fig["b"].append(ring_(r1 - 0.06, r1 + 0.06))
+        r0 = r1
+    fig["b"].append(ring_(1.7, 1.76))
+    fig["a"].append(octo.buffer(-0.75).difference(ctr.buffer(6.96, 48)))
+    fig["c"].append(octo.difference(octo.buffer(-0.75)))
+    fig["a"].append(ways.difference(octo))
+    for key, polys in fig.items():
+        m = K[f"tks_hall_floor_{key}"]
+        for poly in polys:
+            for piece in getattr(poly, "geoms", [poly]):
+                if piece.geom_type != "Polygon" or piece.area < 0.01:
+                    continue
+                for facet in T.facets(piece):
+                    _lay(m, facet, T, 0.035, uvf)
+    # the hall's light after dark: a ring of lamps on the first cornice, and one high under the drum
+    for k in range(8):
+        q = math.radians(45 * k)
+        pos = W(apo * 0.86 * math.cos(q), apo * 0.86 * math.sin(q))
+        LAMPS.append((*pos, g + H_GROUND + 0.8, 60.0))
+        LAMPS.append((*pos, g + H_ENT + 1.4, 45.0))
+    for z, power in ((3.2, 240.0), (9.5, 260.0), (15.5, 260.0), (22.0, 220.0)):   # and the hall's own air: what its lamps and windows fill it with
+        LAMPS.append((*c, g + z, power))
+    GLOWS.append([round(float(c[0]), 1), round(float(c[1]), 1), round(apo + 2, 1), "#ffe2b4", 0.6])
+    BARE.append(shapely.union_all([octo.buffer(0.7), box_(uf - 0.8, u_end, hw + 0.5)]))
+    return BARE[-1], box_(d_back - 0.5, u_end + 2.0, hw), u_end   # (the way through the block behind, to past the viaduct's face)
+
+
+def closed():
+    """Where the station's walls stand across the map's footways (game.json's, which run through its rooms every way):
+    the building's and the block's footprints but for the halls, their vestibules and passages. Rings in metres, for
+    pipeline/game_extras.py, which cuts the crowd's footways there."""
+    import shapely
+    if not WALLED:
+        meshes()
+    # (a walker is 0.35 m in the shoulder and the plinth and the pent roof's posts stand out from the wall: a footway
+    # that runs within their reach is across them too)
+    area = shapely.union_all(WALLED).buffer(1.4).difference(shapely.union_all(BARE).buffer(-0.4)).buffer(0)
+    return [[[round(float(x), 2), round(float(y), 2)] for x, y in p.exterior.coords] for p in getattr(area, "geoms", [area]) if p.geom_type == "Polygon" and p.area > 1]
+
+
+def chuo(K, g, solids, station, ways, T):
+    """The block between the Marunouchi building and the tracks, where the Chuo Line's viaduct stands over the
+    station's rooms (its platforms 1 and 2 are not built: issue 480): the city's solids there, redrawn as one plain
+    mass with the halls' passages through it."""
+    import shapely
+    from shapely.geometry import Polygon
+    mine = [s for s in solids if s["name"] != NAME and len(s["ring"]) > 2 and 12 < s["top"] - s.get("base", 0) and s.get("base", 0) < 1
+            and Polygon(s["ring"]).buffer(0).area > 500 and Polygon(s["ring"]).buffer(0).intersection(station.buffer(22)).area > 0.9 * Polygon(s["ring"]).buffer(0).area]
+    if not mine:
+        return
+    top = float(np.median([s["top"] for s in mine]))
+    body = shapely.union_all([Polygon(s["ring"]).buffer(0) for s in mine]).buffer(1.2, join_style="mitre").buffer(-1.2, join_style="mitre").difference(station.buffer(-0.2))
+    body = max(getattr(body, "geoms", [body]), key=lambda q: q.area).simplify(0.3)
+    DEMOLISHED.extend(s["si"] for s in solids if s["name"] != NAME and len(s["ring"]) > 2 and s.get("base", 0) < 1
+                      and Polygon(s["ring"]).buffer(0).intersection(body.buffer(0.5)).area > 0.8 * Polygon(s["ring"]).buffer(0).area)
+    WALLED.append(body)
+    m, roof = K["tks_chuo"], K["tks_chuo_roof"]
+    low = body.difference(shapely.union_all(ways).buffer(0.02))
+    for piece in getattr(low, "geoms", [low]):
+        if piece.geom_type == "Polygon" and piece.area > 1:
+            ak.prism(m, ak.WORLD, ccw(list(piece.exterior.coords)[:-1]), g - 0.4, g + VEST_H, top=False)
+    ring = ccw(list(body.exterior.coords)[:-1])
+    ak.prism(m, ak.WORLD, ring, g + VEST_H, top, top=False)
+    ak.cap(roof, ak.WORLD, ring, top)
+    for w in ways:   # over each passage, the block's underside
+        over = w.intersection(body)
+        for piece in getattr(over, "geoms", [over]):
+            if piece.geom_type == "Polygon" and piece.area > 0.5:
+                ak.cap(m, ak.WORLD, ccw(list(piece.exterior.coords)[:-1]), g + VEST_H + 0.02, down=True)
 
 
 # ---------------------------------------------------------------- the building
@@ -677,9 +1064,18 @@ def building(K, S):
         facade(K, r, g, EAVES, in_tall, seen=seen)
         roof_bands(K["tks_slate"], Polygon(r), g + EAVES, [(3.2, 3.9), (4.0, 1.1)])
         dormers(K, r, g + EAVES, 3.2, 3.9, in_tall, seen=seen)
+    # the halls under the domes are walked through: their blocks' solids come down (the walls drawn here are what a
+    # walker meets), and so does the block behind them, redrawn with the halls' passages through it
+    T = Ground("tokyo")
+    del DEMOLISHED[:], LAMPS[:], GLOWS[:], BARE[:], WALLED[:]
+    WALLED.append(union(solids))
+    feet = []
     for c, R, ph in octs:
         body = min(blocks, key=lambda p: p.centroid.distance(shapely.geometry.Point(c)))
-        pavilion(K, S, body, c, R, ph, g, out, axis)
+        feet.append(pavilion(K, S, body, c, R, ph, g, out, axis, T))
+    DEMOLISHED.extend(s["si"] for s in domes + pav)
+    hidden = [si for si in hidden if si not in DEMOLISHED]
+    chuo(K, g, ak.load_solids("tokyo"), union(solids), [f[1] for f in feet if f], T)
     body = union(wings + pav)
     # the central pavilion: the imperial entrance's front, raised to CENTRE_TOP under its own steep roof
     if porch:
@@ -1137,7 +1533,8 @@ def assets(out_dir):
 
 # ---------------------------------------------------------------- entry
 
-GROUND = ("tks_asphalt", "tks_pavers", "tks_lawn", "tks_joint", "tks_groundcover", "tks_granite_a", "tks_granite_b", "tks_granite_c", "tks_paint",
+GROUND = ("tks_chuo", "tks_chuo_roof",
+          "tks_asphalt", "tks_pavers", "tks_lawn", "tks_joint", "tks_groundcover", "tks_granite_a", "tks_granite_b", "tks_granite_c", "tks_paint",
           "tks_kerb", "tks_hedge")   # what lies on the ground: the landmark model's at every distance
 
 
@@ -1171,9 +1568,13 @@ def meshes(level="far"):
         mats[k]["surface"] = None   # its own PBR set (web/pbr.js), not the shared ground surfaces (web/surface.js)
     out = K.out() + [m for m in S.values() if m.i]
     for m in out:
-        if m.mat in ("tks_sash", "tks_kerb", "tks_stone_fine", "tks_iron_fine"):
+        if m.mat in ("tks_sash", "tks_kerb", "tks_stone_fine", "tks_iron_fine", "tks_hall_relief"):
             m.detail = True
+        if m.mat.startswith("tks_hall_floor"):   # (laid a triangle at a time on the ground's facets)
+            m.weld()
+        if m.mat.startswith("tks_hall") and "floor" not in m.mat:   # under the dome: what the sky gives a room through its windows
+            m.sky, m.bounce = 0.5, "#b9a37a"
     if not HERO:   # the landmark model goes without the parts only the streamed level's fine model shows
-        out = [m for m in out if m.mat not in ("tks_sash", "tks_stone_fine", "tks_iron_fine")]
+        out = [m for m in out if m.mat not in ("tks_sash", "tks_stone_fine", "tks_iron_fine", "tks_hall_relief")]
     HERO = False
     return mats, out, hidden, trees, props

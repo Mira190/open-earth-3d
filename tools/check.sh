@@ -161,6 +161,7 @@ else
       web/game/game.js) shared_change; loader=1; telemetry=1; gl=1; touch=1 ;;
       web/game/hud.js) shared_change; touch=1 ;;
       tools/touch_check.js) touch=1 ;;   # the game by touch, on a phone's page
+      tools/governor_unit.js) voice=1 ;;   # the governor's modelled devices, in the static checks
       web/world.js|web/glcare.js|web/mirror.js|web/water.js|web/lens.js|web/game/atmosphere.js|web/game/ao.js|web/game/weather.js) shared_change; gl=1 ;;   # what draws into a target of its own: the passes a device's governor turns on and off
       tools/gl_error_probe.js|tools/sampler_probe.js) gl=1 ;;
       web/game/story.js|tools/story_shot.js) shared_change; story=1 ;;   # a map's story and the Stop (tools/story_shot.js plays the first episode)

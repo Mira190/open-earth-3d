@@ -938,7 +938,7 @@ city's time zone, and a physical sky. It renders each view in `city.json`
 
 Two more scripts build what every city shares, from code, with no stock assets:
 - `blender/build_vehicles.py`: the helicopter, the harbour ferry, the river
-  shuttle and the traffic (sedan, taxi, hatchback, SUV, van and bus), with
+  shuttle, the traffic (sedan, taxi, hatchback, SUV, van and bus) and the supercar you drive, with
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
 - `blender/build_trees.py`: twenty-one tree species grown from points in their

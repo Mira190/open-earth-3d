@@ -23,6 +23,7 @@
 // "plush": {kind, scarf, side, ...} the plush traveller (tools/plush.js) sat in an "eye" view on one side third
 // (-1 left, 1 right), in focus (see below);
 // "clear": metres within which the stand moves to the clearest view of "look" (see below);
+// "car": {dist, az, up, lookUp, drive} looks at your own car from round it (az: degrees clockwise from its nose);
 // "js": a statement run in the page before a view is taken (g: the game), e.g. a clear sky for the stars, or the
 // railway at a second of its timetable ("g.trains.t = 131; g.trains.update(0, g.camera)");
 // in the city's local frame (x east, y north, z up, metres).
@@ -146,7 +147,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
     await p.evaluate(() => { const O = window.OEOnboard, t = O && O.current && O.current(); if (t) t.skip(); });
   }
   for (const v of foot) {
-    await p.evaluate(v => {
+    await p.evaluate(async v => {
       const g = window.__game;
       for (let i = 0; i < 40 && g.arriving && g.arriving(); i++) { g.settleArrival(); g.advance(0.1); } // an arrival that began late
       if (g.cine.active) g.cine.skip();
@@ -276,6 +277,19 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       // "js": run with g = window.__game before the frame (the railway at a second of its timetable:
       // "g.trains.t = 131; g.trains.update(0, g.camera)")
       if (v.js) new Function('g', v.js)(g);
+      // "car": {dist, az, up, lookUp, drive} looks at your own car from `dist` metres, `az` degrees round from its nose
+      // (clockwise seen from above) and `up` metres over the road, once its model has come; "drive": true sits you in it
+      if (v.car) {
+        if (g.vlib && g.vlib.loadCars) await g.vlib.loadCars();
+        for (let i = 0; i < 200 && !g.myCar(); i++) { g.advance(0.1); await new Promise(r => setTimeout(r, 50)); }
+        const o = g.myCar();
+        if (o) {
+          const st = o.D.st, a = st.h + (v.car.az ?? 35) * Math.PI / 180, d = v.car.dist ?? 6;
+          if (v.car.drive && g.player.mode !== 'car') { [g.player.x, g.player.y, g.player.z] = [st.x, st.y, st.z]; g.enterCar(); g.advance(0.3); }
+          v.eye = [st.x + Math.sin(a) * d, st.y + Math.cos(a) * d, st.z + (v.car.up ?? 1.3)];
+          v.look = [st.x, st.y]; v.lookZ = st.z + (v.car.lookUp ?? 0.55);
+        }
+      }
       // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
       if (v.eye) {
         // "apart": metres. The world runs on until nobody in the crowd is that near the eye

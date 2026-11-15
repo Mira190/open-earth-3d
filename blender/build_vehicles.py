@@ -30,7 +30,8 @@ Both have a `Body_LOD1`, a decimated copy of the body for distance.
   each with two decimated copies (`_LOD1`, `_LOD2`) and its occlusion in the vertex
   colours. Each car but the bus has a cabin seen through its glass (`<name>_Cabin`:
   seats, a dashboard, and the steering wheel `<name>_Steering`, which turns about its
-  local +z), for the cars people get into (web/game/cars.js).
+  local +z), for the cars people get into (web/game/cars.js). And `Car_Super`, the supercar
+  you drive: full detail only, since it is never one of the traffic.
 - `vehicles.json`: liveries, registrations by country, which material takes which
   livery colour, sizes and triangle counts, and each car's length, width, height,
   axles, wheels, seats and steering wheel.
@@ -1754,6 +1755,13 @@ def car_materials():
     material("Seam", "#2a2c2e", 0.6)
     material("Seat", "#3b3d41", 0.85)
     material("Dash", "#1d1f22", 0.6)
+    material("Carbon", "#0c0d0e", 0.32, 0.0, coat=1.0)      # the supercar's: its carbon, its dark rims, its brakes
+    material("Carbon_Matt", "#08090a", 0.62)                # bare: its lip, blades, fins and wing
+    material("Alloy", "#8a6a45", 0.32, 1.0)
+    material("Screen", "#0a1420", 0.2, emit="#7fd0ff")
+    material("Light_Accent", "#3a2a12", 0.3, emit="#ffb066")
+    material("Disc", "#8d9196", 0.4, 0.9)
+    material("Caliper", "#f2a12a", 0.4, 0.0, coat=0.6)
 
 
 def car_surface(c):
@@ -2083,6 +2091,458 @@ def build_bus():
                         "track_m": c["track"]}
 
 
+# ------------------------------------------------------------ the supercar: the car you drive
+# A mid-engined two-seater of our own design, not a copy of any maker's. It takes what the fastest road
+# cars and the single-seaters share: a wedge of a nose that ends in one mouth over its own lip, a canopy
+# set well forward and dark from the screen to the tail, a waist drawn in to the intakes ahead of the
+# rear wheels, an air scoop on the roof running back into a fin, a wing hung from above on swan necks,
+# and a diffuser with a rain light between its fins. Its body is one surface, as the traffic's are, but
+# each section is a polygon of ten points a side (keel, floor, sill, the widest point, the flank, the
+# shoulder, the foot of the glass, the roof rail, the crown) carried along the car by the tables below
+# and rounded by a quadratic B-spline; SUPER_SHARP says how far each point is left a crease.
+SUPER = dict(L=4.70, W=2.04, H=1.16, axles=(1.32, -1.42), r=0.355, track=1.67, floor=0.115)
+SUPER_X = [-2.35, -2.24, -1.92, -1.42, -0.92, -0.42, -0.10, 0.25, 0.62, 1.00, 1.32, 1.82, 2.12, 2.28, 2.35]
+SUPER_T = {
+    "zt": [0.800, 0.840, 0.880, 0.950, 1.045, 1.150, 1.160, 1.105, 0.935, 0.760, 0.660, 0.560, 0.490, 0.450, 0.420],  # the centre line
+    "zs": [0.800, 0.850, 0.900, 0.925, 0.890, 0.830, 0.810, 0.790, 0.775, 0.765, 0.775, 0.690, 0.590, 0.520, 0.460],  # the shoulder
+    "wm": [0.900, 0.960, 1.000, 1.020, 1.000, 0.955, 0.935, 0.925, 0.940, 0.965, 0.985, 0.950, 0.840, 0.660, 0.440],  # half the width
+    "zb": [0.360, 0.320, 0.230, 0.125, 0.115, 0.115, 0.115, 0.115, 0.115, 0.115, 0.120, 0.135, 0.150, 0.165, 0.190],  # the floor
+    "sd": [0.060, 0.070, 0.080, 0.090, 0.090, 0.080, 0.070, 0.070, 0.070, 0.080, 0.100, 0.100, 0.090, 0.070, 0.050],  # shoulder, in from the side
+    "sc": [0.000, 0.000, 0.000, 0.000, 0.000, 0.110, 0.095, 0.060, 0.025, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000],  # the channel in the door
+    "wc": [0.620, 0.640, 0.660, 0.680, 0.720, 0.760, 0.765, 0.770, 0.780, 0.780, 0.700, 0.620, 0.520, 0.400, 0.260],  # the foot of the glass
+    "zg": [0.800, 0.850, 0.885, 0.900, 0.875, 0.830, 0.815, 0.800, 0.785, 0.775, 0.740, 0.665, 0.575, 0.510, 0.455],
+    "wt": [0.460, 0.460, 0.460, 0.470, 0.490, 0.515, 0.525, 0.560, 0.640, 0.700, 0.460, 0.400, 0.340, 0.260, 0.170],  # the roof rail
+    "zh": [0.800, 0.840, 0.878, 0.940, 1.015, 1.105, 1.115, 1.060, 0.900, 0.750, 0.672, 0.575, 0.503, 0.460, 0.425],
+}
+SUPER_SHARP = [0.0, 0.5, 0.3, 0.0, 0.35, 0.8, 0.6, 0.75, 0.0, 0.0]
+SUPER_N = 18                                    # points round a section
+
+
+def super_idx(i):
+    """The angle of the surface's parameter at point i of a section (0 the keel, 5 the shoulder, 9 the crown)."""
+    return -HALF + i * TAU / SUPER_N
+
+
+def super_surface():
+    f = {k: pchip(SUPER_X, v) for k, v in SUPER_T.items()}
+    half = SUPER["L"] / 2
+    sharp = SUPER_SHARP + SUPER_SHARP[-2:0:-1]
+
+    def ctrl(x):
+        x = min(max(x, -half), half)
+        zt, zs, wm, zb = f["zt"](x), f["zs"](x), f["wm"](x), f["zb"](x)
+        return [(0.0, zb), (wm - 0.14, zb), (wm - 0.035, zb + 0.055), (wm - f["sc"](x), zb + 0.42 * (zs - zb)),
+                (wm - 0.012, zs - 0.10), (wm - f["sd"](x), zs), (f["wc"](x), f["zg"](x)), (f["wt"](x), f["zh"](x)),
+                (f["wt"](x) * 0.5, zt - 0.006), (0.0, zt)]
+
+    def S(x, th):
+        P = ctrl(x)
+        full = [(-y, z) for y, z in P] + [(y, z) for y, z in P[-2:0:-1]]
+        u = ((th + HALF) % TAU) / TAU * SUPER_N
+        i = int(round(u)) % SUPER_N
+        t = u - round(u)
+        a, b, c = full[i - 1], full[i], full[(i + 1) % SUPER_N]
+        wa, wb, wc = (0.5 - t) ** 2 / 2, 0.75 - t * t, (0.5 + t) ** 2 / 2
+        y, z = wa * a[0] + wb * b[0] + wc * c[0], wa * a[1] + wb * b[1] + wc * c[1]
+        # a crease: towards the polygon itself, which the spline meets halfway along each side
+        e, k = (c, t) if t >= 0 else (a, -t)
+        y += (b[0] + (e[0] - b[0]) * k - y) * sharp[i]
+        z += (b[1] + (e[1] - b[1]) * k - z) * sharp[i]
+        # the ends close over their last few centimetres
+        k = (1 - min(1.0, max(0.0, (abs(x) - (half - 0.05)) / 0.049)) ** 3) ** (1 / 3)
+        zc = (P[0][1] + P[-1][1]) / 2
+        return Vector((x, y * k, zc + (z - zc) * k))
+    F = Surface(S, lambda x, th, p: Vector((p.x * 0.3, p.y, p.z - (f["zt"](min(max(x, -half), half)) + f["zb"](min(max(x, -half), half))) / 2)))
+    return F, f
+
+
+def snap_grid(F, us, vs, edges, reach=0.03):
+    """Grid points moved onto the edges of what is cut from a surface, so that a cut follows its curve and
+    not the grid's steps (Surface.grid `at`). Each of `edges` is d(p, u, v): the distance in metres from the
+    point p = F(u, v) to an edge, signed, or None where that edge does not apply. A point within `reach` of
+    an edge goes to it, by no more than a little under half a cell."""
+    at = {}
+    dv = vs[1] - vs[0]
+    for i, u0 in enumerate(us):
+        du = min(us[min(i + 1, len(us) - 1)] - us[max(i - 1, 0)], 0.06) / (2 if 0 < i < len(us) - 1 else 1)
+        for j, v0 in enumerate(vs):
+            p = F(u0, v0)
+            best = None
+            for d in edges:
+                val = d(p, u0, v0)
+                if val is not None and abs(val) < reach and (best is None or abs(val) < abs(best[1])):
+                    best = (d, val)
+            if best is None:
+                continue
+            d, val = best
+            u, v = u0, v0
+            for _ in range(3):
+                a, b = d(F(u + 1e-3, v), u + 1e-3, v), d(F(u, v + 1e-3), u, v + 1e-3)
+                if a is None or b is None:
+                    break
+                gu, gv = (a - val) / 1e-3, (b - val) / 1e-3
+                g2 = gu * gu + gv * gv
+                if g2 < 1e-9:
+                    break
+                u = min(max(u - val * gu / g2, u0 - 0.45 * du), u0 + 0.45 * du)
+                v = min(max(v - val * gv / g2, v0 - 0.45 * dv), v0 + 0.45 * dv)
+                val = d(F(u, v), u, v)
+                if val is None:
+                    break
+            else:
+                at[(i, j)] = (u, v)
+    return at
+
+
+def poly_dist(poly, x, y):
+    """The distance from (x, y) to a closed polygon's edge, negative inside it."""
+    q = nearest_on(poly, x, y)
+    d = math.hypot(q[0] - x, q[1] - y)
+    return -d if inside(poly, x, y) else d
+
+
+def super_wheel(mesh, ax, side, r, track, hw):
+    """A wheel at an axle: a low tyre on a forged rim of seven forked spokes round a centre lock, the
+    brake disc, its bell and its caliper behind them. Everything lies inside the cylinder the game cuts
+    a wheel out by (cars.js split); the caliper it then holds still."""
+    yw = side * track / 2
+    rr = r * 0.71
+    tyre = [(rr, -hw), (rr, hw), (rr + 0.012, hw + 0.002), (r * 0.90, hw + 0.006), (r * 0.975, hw * 0.88), (r, hw * 0.55), (r, -hw * 0.55),
+            (r * 0.975, -hw * 0.88), (r * 0.90, -hw - 0.006), (rr + 0.012, -hw - 0.002)]
+    revolve(mesh, "Tyre", tyre, (ax, yw, r), (0, 1, 0), segs=40)
+    for z0 in (-0.05, 0.0, 0.05):                      # three grooves round the tread
+        revolve(mesh, "Trim", [(r - 0.004, z0 - 0.006), (r - 0.004, z0 + 0.006), (r + 0.0015, z0 + 0.006), (r + 0.0015, z0 - 0.006)], (ax, yw, r), (0, 1, 0), segs=40)
+    barrel = [(rr - 0.016, -hw + 0.01), (rr - 0.016, hw - 0.004), (rr + 0.001, hw - 0.004), (rr + 0.001, -hw + 0.01)]
+    revolve(mesh, "Alloy", barrel, (ax, yw, r), (0, 1, 0), segs=40)
+    lip = [(rr - 0.022, hw - 0.012), (rr - 0.022, hw - 0.001), (rr + 0.002, hw - 0.001), (rr + 0.002, hw - 0.012)]
+    revolve(mesh, "Rim", [(a, side * b) for a, b in (lip if side > 0 else lip[::-1])], (ax, yw, r), (0, 1, 0), segs=40)
+    face = yw + side * (hw - 0.05)                 # the spokes sit back from the tyre's wall
+    cyl(mesh, "Alloy", 0.070, 0.05, T((ax, face, r), (HALF, 0, 0)), segs=20)
+    cyl(mesh, "Caliper", 0.034, 0.075, T((ax, face + side * 0.006, r), (HALF, 0, 0)), segs=6)     # the centre lock's nut
+    cyl(mesh, "Chrome", 0.016, 0.085, T((ax, face + side * 0.006, r), (HALF, 0, 0)), segs=10)
+
+    def spoke(a1, r1, a2, r2, w):
+        p1 = Vector((math.sin(a1) * r1, 0, math.cos(a1) * r1))
+        p2 = Vector((math.sin(a2) * r2, 0, math.cos(a2) * r2))
+        mid, v = (p1 + p2) / 2, p2 - p1
+        box(mesh, "Alloy", (w, 0.030, v.length), T((ax + mid.x, face, r + mid.z), (0, math.atan2(v.x, v.z), 0)), bevel=0.006)
+    for k in range(7):
+        a0 = k * TAU / 7
+        spoke(a0, 0.05, a0, rr * 0.52, 0.030)
+        for d in (-1, 1):
+            spoke(a0, rr * 0.48, a0 + d * 0.20, rr - 0.012, 0.020)
+    yd = yw - side * 0.025
+    cyl(mesh, "Disc", r * 0.63, 0.032, T((ax, yd, r), (HALF, 0, 0)), segs=36)
+    cyl(mesh, "Trim", r * 0.63 - 0.004, 0.008, T((ax, yd, r), (HALF, 0, 0)), segs=36)            # the vents between its faces
+    cyl(mesh, "Alloy", r * 0.30, 0.06, T((ax, yd + side * 0.01, r), (HALF, 0, 0)), segs=18)      # its bell
+    ac = 1.0 if ax > 0 else -1.0                   # the caliper on the side of the disc away from the car's end
+    box(mesh, "Caliper", (0.085, 0.085, 0.21), T((ax - math.sin(ac) * r * 0.50, yd, r + math.cos(ac) * r * 0.50), (0, -ac + HALF, 0)), bevel=0.014)
+
+
+def build_supercar():
+    c = SUPER
+    F, f = super_surface()
+    half, L, r, track = c["L"] / 2, c["L"], c["r"], c["track"]
+    body, trim = Mesh(), Mesh()
+    I = super_idx
+    arches = [(ax, r + 0.05) for ax in c["axles"]]
+    cl = lambda x: min(max(x, -half), half)
+    on = lambda x, z: F(x, theta_at(F, x, z))                    # the point on the right flank at height z
+    # the glass, in (x, angle): the windscreen between the roof rails, the door glass under them
+    ws = [(0.97, I(7.25)), (0.26, I(7.25)), (0.26, I(10.75)), (0.97, I(10.75))]
+    side = [(0.92, I(6.2)), (0.30, I(6.875)), (-0.34, I(6.875)), (-0.62, I(6.2))]
+    panes = [chaikin(ws, 2), chaikin(side, 1), chaikin(mirror(side)[::-1], 1)]
+    deck = chaikin([(-0.68, I(7.375)), (-1.72, I(7.5)), (-1.72, I(10.5)), (-0.68, I(10.625))], 2)   # the glass over the engine
+    scoop = [(-0.42, 0.40), (-0.47, 0.72), (-0.60, 0.785), (-0.98, 0.83), (-1.06, 0.50), (-0.96, 0.40)]               # the side intake, in (x, z)
+    vent = [(0.87, 0.21), (0.84, 0.60), (0.78, 0.60), (0.62, 0.34), (0.62, 0.21)]                   # the outlet behind the front wheel
+    dx, dth = 0.02, TAU / 216
+
+    # what is cut out of the body, each as a distance to its edge (negative inside): the wheel arches, the
+    # intakes ahead of the rear wheels and either side of the nose, the outlets behind the front wheels and
+    # in the bonnet; and the line the carbon comes up to
+    def arch_d(p, x, th):
+        return min(math.hypot(p.x - ax, p.z - r) - ra for ax, ra in arches) if abs(p.y) > c["W"] / 2 * 0.56 else None
+
+    def scoop_d(p, x, th):
+        return poly_dist(scoop, p.x, p.z) if abs(p.y) > 0.6 and -1.2 < p.x < -0.3 else None
+
+    def vent_d(p, x, th):
+        return poly_dist(vent, p.x, p.z) if abs(p.y) > 0.6 and 0.45 < p.x < 0.95 else None
+
+    def nose_d(p, x, th):
+        if p.x < 1.6:
+            return None
+        ay, x = abs(p.y), cl(x)
+        return max(1.80 - p.x, p.x - (half - 0.052), ay - (f["wm"](x) - 0.085), f["zb"](x) + 0.045 - p.z, p.z - (f["zs"](x) - 0.12))
+
+    def bonnet_d(p, x, th):
+        return max(abs(p.y) - 0.27, 1.45 - p.x, p.x - 1.81) if 1.2 < x < 2.0 and I(7) < th < I(11) else None
+
+    def carbon_z(x):
+        t = min(1.0, max(0.0, (-1.52 - x) / 0.40))
+        z = f["zb"](cl(x)) + 0.045
+        return z + (0.44 - z) * t * t * (3 - 2 * t)
+
+    def carbon_d(p, x, th):
+        return p.z - carbon_z(x) if abs(p.y) > 0.3 else None
+    holes = (arch_d, scoop_d, vent_d, nose_d, bonnet_d)
+
+    def hole(p, x, th):
+        for k, d in enumerate(holes):
+            v = d(p, x, th)
+            if v is not None and v < 0:
+                return "arch" if k == 0 else "duct"
+        return None
+
+    def cut(x, th):
+        p = F(x, th)
+        for pane in panes:
+            if inside(pane, x, th):
+                return None if all(inside(pane, x + sx * dx, th + st * dth) for sx in (-1, 1) for st in (-1, 1)) else "Trim"
+        # the canopy is dark from the screen to the tail: the pillars, the roof, the engine's cover
+        if (I(6.875) < th < I(11.125) and -0.64 < x < 0.97) or (I(7.25) < th < I(10.75) and -1.78 < x <= -0.64):
+            return "Carbon"
+        if hole(p, x, th):
+            return None
+        if p.z < carbon_z(x):                                           # the sills, the floor and the diffuser
+            return "Carbon"
+        return "Paint"
+    xs = sorted(set(spaced(-half, half, 0.03) + [half - 0.12 * (1 - t) for t in np.linspace(0, 1, 10)] +
+                    [-half + 0.12 * (1 - t) for t in np.linspace(0, 1, 10)]))
+    xs = [x for x in xs if -half <= x <= half]
+    xs[0], xs[-1] = -half + 1e-3, half - 1e-3
+    ths = list(np.linspace(0, TAU, 144, endpoint=False))
+    at = snap_grid(F, xs, ths, holes + (carbon_d,))
+    F.grid(body, xs, ths, cut, period=TAU, at=at)
+    # the ducts: the same cells set back into the body, dark
+    F.grid(body, xs, ths, lambda x, th: "Trim" if hole(F(x, th), x, th) == "duct" else None, period=TAU, offset=-0.07, at=at)
+    # glass, framed outside and in
+    for pane in panes:
+        outline = patch(trim, F, pane, "Glass", offset=0.004, step=0.03)
+        F.band(trim, outline, 0.014, "Trim", offset=0.006, across=2, closed=True, step=0.03)
+        F.band(trim, outline, 0.05, "Trim", offset=-0.012, across=2, closed=True, step=0.03)
+    outline = patch(trim, F, deck, "Glass", offset=0.006, step=0.04)
+    F.band(trim, outline, 0.016, "Carbon", offset=0.008, across=2, closed=True, step=0.04)
+    for x in np.linspace(-0.82, -1.60, 6):                       # the louvres over the engine
+        F.band(trim, [(x, I(7.55)), (x, I(10.45))], 0.030, "Carbon", offset=0.016, across=2, step=0.04)
+    # wheels, their arches lined, a rolled lip round each
+    for ax, ra in arches:
+        hw_t = 0.13 if ax > 0 else 0.155
+        for s in (1, -1):
+            cyl(body, "Trim", ra + 0.012, 0.36, T((ax, s * (f["wm"](ax) - 0.195), r), (HALF, 0, 0)), segs=32, caps=False)
+            arc = []
+            for a in np.linspace(-0.10, math.pi + 0.10, 34):
+                p = on(ax + ra * math.cos(a), r + ra * math.sin(a))
+                arc.append((p.x, -s * (p.y - 0.004), p.z))
+            tube(trim, "Paint", arc, 0.010, segs=6)
+            super_wheel(body, ax, s, r, track, hw_t)
+    # a floor pan, so that it reads solid from low down
+    box(body, "Trim", (L - 1.0, c["W"] - 0.36, 0.03), T((0, 0, c["floor"] + 0.03)))
+
+    # ---- the nose: one mouth with struts standing in it and blades across it, a dive plane on each corner,
+    # a line of light over three projectors along each wing, an outlet in the bonnet
+    # the lip is the body's own lower edge carried a hand's breadth forward, not a board hung under it
+    secs = []
+    for x in np.linspace(1.50, 2.385, 18):
+        w = f["wm"](cl(x - 0.03)) + 0.012 if x < 2.36 else 0.34
+        secs.append([(x, -w, 0.090), (x, w, 0.090), (x, w, 0.102), (x, -w, 0.102)])
+    loft(body, "Carbon_Matt", secs, smooth=False)
+
+    def nose_x(y, z):
+        """Where along the car the nose is y wide at height z."""
+        lo, hi = 1.6, half - 0.06
+        for _ in range(30):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if abs(on(mid, z).y) > y else (lo, mid)
+        return (lo + hi) / 2
+    for y in (-0.56, -0.20, 0.20, 0.56):                                      # the struts that stand in the mouth
+        x = nose_x(abs(y), 0.30)
+        z0, z1 = f["zb"](x) + 0.03, f["zs"](x) - 0.10
+        strut = [[(x + 0.010 - 0.05 * k, y - 0.009, z), (x + 0.010 - 0.05 * k, y + 0.009, z), (x - 0.09 - 0.05 * k, y + 0.004, z), (x - 0.09 - 0.05 * k, y - 0.004, z)]
+                 for k, z in ((1.0, z0), (0.0, z1))]
+        loft(body, "Carbon_Matt", strut, smooth=False)
+    for s in (1, -1):
+        m = (lambda p: p) if s > 0 else (lambda p: mirror(p)[::-1])
+        for z0, x0, x1, wd in ((0.30, 2.10, 1.80, 0.055),):   # a dive plane, rising to the rear
+            plane = []
+            for x in np.linspace(x0, x1, 6):
+                z = z0 + (x0 - x) * 0.42
+                yin = abs(on(x, z).y) - 0.012
+                plane.append([(x, s * yin, z), (x, s * (yin + wd), z + 0.012), (x, s * (yin + wd), z + 0.019), (x, s * yin, z + 0.008)])
+            loft(body, "Carbon_Matt", plane, smooth=False)
+        for z in (0.255, 0.335):                                              # the blades across each intake
+            pts = []
+            for x in np.linspace(1.80, 2.26, 12):
+                if f["zb"](x) + 0.05 < z < f["zs"](x) - 0.125:
+                    p = on(x, z)
+                    pts.append((p.x - 0.012, s * (abs(p.y) - 0.022), p.z))
+            if len(pts) > 2:
+                tube(trim, "Carbon", pts, 0.009, segs=6)
+        patch(trim, F, m(chaikin([(2.14, I(5.2)), (1.68, I(5.0)), (1.72, I(6.0)), (2.12, I(5.9))], 2)), "Trim", offset=0.004, step=0.03)
+        patch(trim, F, m(chaikin([(2.11, I(5.33)), (1.74, I(5.28)), (1.75, I(5.40)), (2.10, I(5.43))], 1)), "Light_Head", offset=0.008, step=0.03)
+        for x in (2.03, 1.93, 1.83):                                          # three projectors behind the line of light
+            th = I(5.64) if s > 0 else math.pi - I(5.64)
+            q, n = F(x, th), F.normal(x, th)
+            M = Matrix.Translation(q + n * 0.004) @ n.to_track_quat("Z", "Y").to_matrix().to_4x4()
+            cyl(body, "Chrome", 0.031, 0.010, M, segs=18)
+            cyl(body, "Trim", 0.026, 0.014, M, segs=18)
+            sphere(body, "Light_Head", 1.0, M @ T((0, 0, 0.004), scale=(0.021, 0.021, 0.010)), segs=12, rings=6)
+        patch(trim, F, m(chaikin([(1.96, I(5.78)), (1.78, I(5.76)), (1.78, I(5.88)), (1.96, I(5.88))], 1)), "Light_Amber", offset=0.008, step=0.03)
+        # the shut lines: the door's, the bonnet's, the tail's
+        x0, x1 = 0.56, -0.42
+        door = ([(x0 + 0.16 * (k - 2.7) / 3.05, I(k)) for k in np.linspace(5.75, 2.7, 12)] + [(x, I(2.7)) for x in np.linspace(x0, x1 - 0.06, 14)][1:]
+                + [(x1 - 0.06 * (1 - t), I(2.7 + 3.05 * t)) for t in np.linspace(0, 1, 12)][1:])
+        for line in (door, [(x, I(6.55)) for x in np.linspace(1.03, 2.0, 16)], [(-1.98, I(k)) for k in np.linspace(3.1, 5.6, 8)]):
+            F.band(trim, line if s > 0 else mirror(line), 0.004, "Seam", offset=0.002, across=2, step=0.03)
+        # a line of light along each sill, lit after dark
+        glow = [(x, theta_at(F, x, carbon_z(x) + 0.014)) for x in np.linspace(0.56, -0.40, 18)]
+        F.band(trim, glow if s > 0 else mirror(glow), 0.005, "Light_Accent", offset=0.004, across=2, step=0.03)
+        # the blade along the sill and the fin that turns the air out ahead of the rear wheel
+        blade = []
+        for x in np.linspace(-0.98, 0.88, 14):
+            w = f["wm"](x)
+            blade.append([(x, s * (w - 0.10), 0.094), (x, s * (w + 0.022), 0.094), (x, s * (w + 0.022), 0.106), (x, s * (w - 0.10), 0.106)])
+        loft(body, "Carbon_Matt", blade, smooth=False)
+        fin = [[(x, s * (f["wm"](x) + 0.022 - t), z) for t, z in ((0, 0.104), (0.008, 0.104), (0.008, 0.104 + h), (0, 0.104 + h))]
+               for x, h in ((-0.56, 0.01), (-0.70, 0.08), (-0.98, 0.10))]
+        loft(body, "Carbon_Matt", fin, smooth=False)
+        # a blade standing in the side intake
+        vane = [[(x, s * (abs(on(x, z0).y) - 0.03), z0), (x, s * (abs(on(x, z0).y) - 0.10), z0 + 0.01), (x, s * (abs(on(x, z1).y) - 0.10), z1 + 0.01),
+                 (x, s * (abs(on(x, z1).y) - 0.03), z1)] for x, z0, z1 in ((-0.66, 0.46, 0.75), (-0.675, 0.46, 0.75))]
+        loft(body, "Carbon", vane, smooth=False)
+        # a mirror on a blade from the door
+        xm, zm = 0.62, 0.875
+        ym = s * (f["wm"](xm) - 0.005)
+        box(body, "Carbon", (0.05, 0.17, 0.014), T((xm + 0.01, s * (f["wm"](xm) - 0.10), zm - 0.035), (s * 0.12, 0, 0)), bevel=0.004)
+        box(body, "Carbon", (0.075, 0.17, 0.08), T((xm, ym, zm), (0, 0, s * 0.10)), bevel=0.022, segs=3)
+        box(body, "Chrome", (0.006, 0.14, 0.055), T((xm - 0.039, ym, zm), (0, 0, s * 0.10)))
+    box(body, "Trim", (0.40, 0.58, 0.02), T((1.63, 0, f["zt"](1.63) - 0.105), (0, 0.2, 0)))        # the outlet's floor
+    for x in (1.55, 1.67):                                                    # vanes in the bonnet's outlet
+        box(body, "Carbon", (0.03, 0.54, 0.008), T((x, 0, f["zt"](x) - 0.022), (0, 0.5, 0)))
+    zm0, zm1 = f["zb"](half - 0.05) + 0.045, f["zs"](half - 0.05) - 0.12            # the mouth carried across the tip of the nose
+    box(body, "Trim", (0.03, 0.84, zm1 - zm0), T((half - 0.03, 0, (zm0 + zm1) / 2)), bevel=0.01)
+    box(body, "Plate", (0.02, 0.36, 0.11), T((half - 0.012, 0, (zm0 + zm1) / 2)))
+    p = F(2.24, I(9))
+    cyl(body, "Chrome", 0.028, 0.006, T((p.x, 0, p.z + 0.002), (0, 0.28, 0)), segs=16)             # a badge on the nose
+    loop = [(half + 0.012 + 0.03 * math.cos(a), 0.30, 0.215 + 0.03 * math.sin(a)) for a in np.linspace(0, TAU, 13)]
+    tube(body, "Caliper", loop, 0.007, segs=6, caps=False)                    # the tow eye
+    p = F(0.95, I(9))
+    box(body, "Trim", (0.022, 0.62, 0.014), T((p.x - 0.03, -0.05, p.z + 0.03), (0, 0, 0.04)))      # the wiper, parked
+    box(body, "Trim", (0.014, 0.30, 0.012), T((p.x + 0.01, 0.10, p.z + 0.022), (0, 0, 0.12)))
+
+    # ---- the roof: an air scoop that runs back into a fin as far as the wing
+    scp = []
+    for x, w, h in ((0.02, 0.13, 0.060), (-0.08, 0.135, 0.068), (-0.30, 0.125, 0.066), (-0.55, 0.095, 0.058), (-0.80, 0.045, 0.05), (-1.00, 0.010, 0.045)):
+        zr = f["zt"](x) - 0.012
+        scp.append([(x, -w, zr), (x, -w * 0.86, zr + h * 0.72), (x, -w * 0.45, zr + h), (x, w * 0.45, zr + h), (x, w * 0.86, zr + h * 0.72), (x, w, zr)])
+    loft(body, "Carbon", scp, cap_mat="Trim")
+    top = lambda x: f["zt"](x) + 0.045 + 0.075 * math.sin(math.pi * min(1.0, max(0.0, (-0.95 - x) / 1.15)) ** 0.8)
+    spine = [[(x, -0.007, f["zt"](x) - 0.02), (x, 0.007, f["zt"](x) - 0.02), (x, 0.004, zt2), (x, -0.004, zt2)]
+             for x, zt2 in [(x, top(x)) for x in np.linspace(-0.95, -2.10, 14)]]
+    loft(body, "Carbon", spine, smooth=False)
+
+    # ---- the tail: a dark panel across it under a blade of light, twin pipes in a carbon surround, the
+    # diffuser's fins with a rain light between them, and the wing, two elements hung from swan necks
+    xt = -half
+    zl = 0.755
+    box(body, "Trim", (0.05, 1.60, 0.28), T((xt + 0.012, 0, 0.585)), bevel=0.012)
+    for z in np.arange(0.475, 0.70, 0.038):
+        box(body, "Carbon", (0.012, 1.54, 0.007), T((xt - 0.014, 0, z)))
+    box(body, "Light_Tail", (0.03, 1.50, 0.022), T((xt - 0.014, 0, zl)), bevel=0.006)
+    box(body, "Carbon", (0.05, 0.40, 0.18), T((xt - 0.005, 0, 0.605)), bevel=0.02)
+    for s in (1, -1):
+        box(body, "Light_Tail", (0.03, 0.022, 0.15), T((xt - 0.014, s * 0.739, zl - 0.064)), bevel=0.006)
+        box(body, "Light_Amber", (0.03, 0.16, 0.016), T((xt - 0.015, s * 0.64, zl - 0.035)), bevel=0.004)
+        cyl(body, "Chrome", 0.062, 0.15, T((xt - 0.02, s * 0.09, 0.605), (0, HALF, 0)), segs=24, caps=False)
+        cyl(body, "Trim", 0.054, 0.15, T((xt - 0.018, s * 0.09, 0.605), (0, HALF, 0)), segs=24, caps=False, r2=0.0541)
+        cyl(body, "Trim", 0.054, 0.02, T((xt + 0.03, s * 0.09, 0.605), (0, HALF, 0)), segs=24)
+    box(body, "Plate", (0.02, 0.36, 0.11), T((xt - 0.02, 0, 0.45)))
+    for y in (-0.82, -0.60, -0.38, -0.16, 0.16, 0.38, 0.60, 0.82):
+        fin = [[(x, y - 0.006, f["zb"](cl(x)) - 0.065), (x, y + 0.006, f["zb"](cl(x)) - 0.065), (x, y + 0.006, f["zb"](cl(x)) + 0.012),
+                (x, y - 0.006, f["zb"](cl(x)) + 0.012)] for x in np.linspace(-1.74, -2.39, 7)]
+        loft(body, "Carbon_Matt", fin, smooth=False)
+    box(body, "Carbon", (0.07, 0.10, 0.16), T((xt - 0.02, 0, 0.30)), bevel=0.012)
+    box(body, "Light_Tail", (0.02, 0.05, 0.12), T((xt - 0.052, 0, 0.30)), bevel=0.006)
+    pitch = 0.14
+
+    def element(x0, z0, span, chord, pit, thick=0.12, tip=0.0):
+        secs = []
+        for y in np.linspace(-span, span, 11):
+            k = abs(y) / span
+            ch = chord * (1 - 0.12 * k ** 2)
+            xl, zl2 = x0 - tip * k ** 2, z0
+            secs.append([(xl - a * math.cos(pit) + h * math.sin(pit), y, zl2 + h * math.cos(pit) + a * math.sin(pit)) for a, h in airfoil(ch, thick, n=8)])
+        loft(body, "Carbon_Matt", secs)
+    element(-1.95, 1.185, 0.90, 0.30, pitch, tip=0.03)
+    element(-2.235, 1.245, 0.90, 0.115, 0.50, thick=0.10)
+    for s in (1, -1):
+        plate = [[(x, s * 0.905 - 0.006, z0), (x, s * 0.905 + 0.006, z0), (x, s * 0.905 + 0.006, z1), (x, s * 0.905 - 0.006, z1)]
+                 for x, z0, z1 in ((-1.92, 1.14, 1.20), (-2.00, 1.08, 1.24), (-2.30, 1.08, 1.30), (-2.37, 1.14, 1.30))]
+        loft(body, "Carbon_Matt", plate, smooth=False)
+        box(body, "Paint2", (0.30, 0.014, 0.012), T((-2.16, s * 0.908, 1.275), (0, -0.05, 0)))
+        # a swan neck: up from the deck, forward of the wing, and back over it
+        yn = s * 0.34
+        neck = [(-1.72, f["zt"](-1.72) - 0.04), (-1.73, 1.08), (-1.77, 1.20), (-1.85, 1.262), (-1.96, 1.268), (-2.08, 1.245)]
+        for dy in (-0.012, 0.012):
+            tube(body, "Carbon", [(x, yn + dy, z) for x, z in chaikin(neck, 2, closed=False)], 0.013, segs=6)
+    cabin, wheel, hub, seats = super_cabin()
+    gl = lambda p: [round(p[1], 3), round(p[2], 3), round(p[0], 3)]  # vehicle frame -> glTF (left, up, forward)
+    dims = {"length_m": L, "width_m": c["W"], "height_m": c["H"], "axles_m": list(c["axles"]), "wheel_r_m": r, "track_m": track,
+            "steering": gl(hub), "steering_tilt": STEER_TILT, "seats": {k: gl(p) for k, p in seats.items()}, "leg_rake": 2.6}
+    return body, trim, cabin, wheel, dims
+
+
+def super_cabin():
+    """Two carbon bucket seats with their harnesses, low between the sills and a high tunnel; a shallow
+    dash under the screen with its instruments on a display, a small wheel flat at the bottom, a hoop and
+    the bulkhead the engine sits behind. As build_cabin: right-hand drive, mirrored by the game."""
+    cab, wheel = Mesh(), Mesh()
+    fl = SUPER["floor"]
+    zs, xf, drv = 0.34, -0.14, -0.37
+    box(cab, "Dash", (1.66, 1.50, 0.03), T((0.21, 0, fl + 0.02)))
+    seats = {"driver": (xf, drv, zs), "passenger": (xf, -drv, zs)}
+    for _, y, _z in seats.values():
+        box(cab, "Seat", (0.48, 0.38, 0.10), T((xf + 0.02, y, zs - 0.05)), bevel=0.035)
+        box(cab, "Carbon", (0.50, 0.46, zs - fl - 0.10), T((xf + 0.02, y, (fl + zs) / 2 - 0.04)), bevel=0.02)
+        for k in (-1, 1):                                    # the bolsters of a bucket seat
+            box(cab, "Seat", (0.46, 0.06, 0.10), T((xf + 0.03, y + k * 0.21, zs + 0.0)), bevel=0.028)
+            box(cab, "Seat", (0.10, 0.06, 0.40), T((xf - 0.27, y + k * 0.20, zs + 0.24), (0, -0.24, 0)), bevel=0.028)
+            box(cab, "Caliper", (0.012, 0.045, 0.46), T((xf - 0.235, y + k * 0.085, zs + 0.30), (0, -0.24, 0)))      # the harness
+        box(cab, "Carbon", (0.05, 0.46, 0.62), T((xf - 0.345, y, zs + 0.27), (0, -0.24, 0)), bevel=0.02)                # the shell
+        box(cab, "Seat", (0.07, 0.38, 0.54), T((xf - 0.30, y, zs + 0.26), (0, -0.24, 0)), bevel=0.03)
+        box(cab, "Seat", (0.08, 0.24, 0.18), T((xf - 0.43, y, zs + 0.58), (0, -0.24, 0)), bevel=0.035)
+        box(cab, "Dash", (1.30, 0.03, 0.42), T((0.22, y * 2.08, fl + 0.36)))                                           # the door's lining
+    # the bulkhead behind the seats and the hoop over it, the tunnel, the dash, its displays
+    box(cab, "Dash", (0.05, 1.50, 0.66), T((-0.66, 0, fl + 0.35)))
+    box(cab, "Dash", (0.05, 0.92, 0.22), T((-0.66, 0, fl + 0.79)))
+    hoop = [(-0.60, 0.42 * math.cos(a), fl + 0.50 + 0.42 * math.sin(a)) for a in np.linspace(0.1, math.pi - 0.1, 14)]
+    tube(cab, "Carbon", hoop, 0.022, segs=8)
+    box(cab, "Carbon", (1.24, 0.24, 0.26), T((0.10, 0, fl + 0.16)), bevel=0.04)
+    box(cab, "Carbon", (0.30, 0.26, 0.30), T((0.58, 0, fl + 0.40), (0, 0.5, 0)), bevel=0.04)
+    box(cab, "Screen", (0.008, 0.16, 0.20), T((0.495, 0, fl + 0.47), (0, 0.5, 0)))
+    for k in range(3):                                           # switches on the tunnel
+        cyl(cab, "Chrome", 0.012, 0.02, T((0.18 - k * 0.07, 0, fl + 0.295)), segs=8)
+    xd = 0.76
+    box(cab, "Dash", (0.42, 1.40, 0.18), T((xd, 0, 0.665)), bevel=0.05)
+    box(cab, "Dash", (0.12, 0.32, 0.09), T((xd - 0.17, drv, 0.765)), bevel=0.03)
+    box(cab, "Screen", (0.006, 0.26, 0.065), T((xd - 0.232, drv, 0.765), (0, -0.15, 0)))
+    for y in (-0.60, 0.60):                                      # the vents at the ends of the dash
+        cyl(cab, "Chrome", 0.035, 0.012, T((xd - 0.212, y, 0.70), (0, HALF, 0)), segs=12)
+    hub = Vector((xf + 0.50, drv, zs + 0.36))
+    R = 0.165
+    rim = [hub + Vector((0, R * math.cos(a), max(R * math.sin(a), -0.70 * R))) for a in np.linspace(0, TAU, 41)]
+    tube(wheel, "Dash", rim, 0.017, segs=8, caps=False)
+    box(wheel, "Dash", (0.03, 0.11, 0.075), T(hub), bevel=0.012)
+    box(wheel, "Screen", (0.004, 0.07, 0.035), T(hub + Vector((-0.016, 0, 0.008))))
+    box(wheel, "Caliper", (0.012, 0.03, 0.012), T(hub + Vector((-0.004, 0, R))))          # the mark at the top of the rim
+    for a in (0.0, math.pi, -HALF):
+        box(wheel, "Dash", (0.016, 0.13, 0.03), T(hub + Vector((0, math.cos(a) * 0.095, math.sin(a) * 0.085)), (a, 0, 0)))
+    for y in (-1, 1):                                            # the paddles behind it
+        box(wheel, "Carbon", (0.006, 0.05, 0.11), T(hub + Vector((0.035, y * 0.13, 0.02))))
+    cyl(wheel, "Dash", 0.03, 0.30, T(hub + Vector((0.15, 0, 0)), (0, HALF, 0)), segs=10)
+    return cab, wheel, hub, seats
+
+
 def build_cars():
     car_materials()
     objs, cabins, dims = {}, {}, {}
@@ -2096,6 +2556,13 @@ def build_cars():
         hub = [dims[name]["steering"][k] for k in (2, 0, 1)]  # back to the vehicle frame
         w = wheel.build(f"{name}_Steering", origin=hub, parent=cabins[name])
         w.rotation_euler = (STEER_TILT, 0, 0)
+    # the supercar: yours alone, never one of the traffic (so no distant copies of it: main)
+    b, t, cab, wheel, dims["Car_Super"] = build_supercar()
+    b.merge(t)
+    objs["Car_Super"] = b.build("Car_Super")
+    cabins["Car_Super"] = cab.build("Car_Super_Cabin")
+    w = wheel.build("Car_Super_Steering", origin=[dims["Car_Super"]["steering"][k] for k in (2, 0, 1)], parent=cabins["Car_Super"])
+    w.rotation_euler = (STEER_TILT, 0, 0)
     b, t, dims["Bus"] = build_bus()
     b.merge(t)
     objs["Bus"] = b.build("Bus")
@@ -2114,10 +2581,14 @@ def build_cars():
             cabins[name].location = ob.location
     info = {"models": {"Car_Sedan": {"weight": CARS["sedan"]["weight"]}, "Car_Hatch": {"weight": CARS["hatch"]["weight"]},
                        "Car_SUV": {"weight": CARS["suv"]["weight"]}, "Car_Van": {"weight": CARS["van"]["weight"]},
-                       "Car_Taxi": {"taxi": True}, "Bus": {"bus": True}},
+                       "Car_Taxi": {"taxi": True}, "Bus": {"bus": True},
+                       "Car_Super": {"player": True, "name": "supercar", "top_ms": 92, "pull_ms2": 12.5,
+                                     "lamp_glow": 0.5,
+                                     "finish": {"metalness": 0.0, "roughness": 0.22, "sky": 0.4, "weave_mm": 5, "rim": "#8a6a45"}}},
             "liveries": CAR_LIVERIES,
             "tones": {"Paint": 0, "Paint2": 1, "Seat": 2, "Glass": 4, "Tyre": 5, "Light_Head": 6, "Light_Tail": 7, "Trim": 8, "Chrome": 9,
-                      "Rim": 10, "Plate": 11, "Sign": 12, "Light_Amber": 13, "Seam": 8, "Dash": 8}}
+                      "Rim": 10, "Plate": 11, "Sign": 12, "Light_Amber": 13, "Seam": 8, "Dash": 8, "Carbon": 8, "Alloy": 10, "Disc": 9,
+                      "Carbon_Matt": 8, "Caliper": 1, "Screen": 8, "Light_Accent": 8}}
     for name, d in dims.items():
         info["models"][name].update(d)
         if name in cabins:
@@ -2387,7 +2858,8 @@ def main():
              "ferry_river": [("front34", (24, -18, 6), (0, 0, 2), 40), ("side", (0, -32, 3.5), (0, 0, 2.0), 40),
                              ("end", (26, 3, 4), (0, 0, 2.2), 45), ("deck", (10, -6, 5), (3, 0, 2.5), 32)],
              "cars": [("row", (9, -24, 2.2), (0, -6, 0.8), 40), ("front", (11, -9, 1.6), (0, -9, 0.8), 45), ("rear", (-9, -3, 1.8), (0, -3, 0.8), 45),
-                      ("bus", (-14, 20, 3.0), (0, 15, 1.5), 40), ("high", (16, -20, 10), (0, -4, 0.5), 35)]}
+                      ("bus", (-14, 20, 3.0), (0, 15, 1.5), 40), ("high", (16, -20, 10), (0, -4, 0.5), 35),
+                      ("super_front", (5.2, 11.6, 1.5), (0, 15, 0.55), 50), ("super_rear", (-5.2, 11.6, 1.7), (0, 15, 0.6), 50)]}
     hero = {"helicopter": ("front34", (9.6, -7.4, 1.9), (-0.9, 0.2, 1.75), 46), "ferry": ("front34", (36, -30, 4.5), (-1, 0, 3.6), 42),
             "ferry_river": ("front34", (24, -20, 3.2), (-1, 0, 2.0), 42), "ferry_steamer": ("front34", (44, -38, 5), (-2, 0, 6), 40)}
     builders = {"helicopter": build_helicopter, "ferry": build_ferry, "ferry_river": build_ferry_river, "ferry_steamer": build_ferry_steamer, "cars": build_cars}
@@ -2413,6 +2885,10 @@ def main():
             inner = [o for cab in cabins.values() for o in (cab, *cab.children)]
             bake_vertex_ao(list(objs.values()) + inner, 0.6, a.bake_samples)
             for name in list(objs):
+                if info["models"][name].get("player"):
+                    info["models"][name].update({"triangles": triangles([objs[name]]),
+                                                 "cabin_triangles": triangles([o for o in inner if o.name.startswith(name + "_")])})
+                    continue
                 lo, far = lod_copy(objs[name], f"{name}_LOD1", 0.22), lod_copy(objs[name], f"{name}_LOD2", 0.045)
                 info["models"][name].update({"triangles": triangles([objs[name]]), "lod1_triangles": triangles([lo]),
                                              "lod2_triangles": triangles([far])})
