@@ -628,9 +628,15 @@ window.OEEarth = (function () {
     }
 
     // loading: the sky first (small), then the night side, the day and the clouds
+    let full = Promise.resolve();
     async function load(base = 'assets/earth/') {
-      const files = [['stars.json', 155e3], ['milkyway.jpg', 150e3], ['surface.jpg', 1.36e6], [`day-${String(month).padStart(2, '0')}.jpg`, 1.4e6], ['clouds.jpg', 1.78e6],
-        ['lights.jpg', q.lights8k ? 1.07e6 : 0]];
+      // The title starts on what it cannot do without: the stars, the Milky Way, the night side and a small day side
+      // (1.8 MB). The month's own day side, the clouds and the fine lights (4.2 MB more) come in behind the opening
+      // and take their places as they arrive: the bar counts the first four only. Before, it counted all seven and
+      // the title waited for the last byte, so a visitor with everything cached but the new month's picture (or one
+      // slow file) sat at 77% with nothing to say why.
+      const files = [['stars.json', 155e3], ['milkyway.jpg', 150e3], ['surface.jpg', 1.36e6], ['day-lo.jpg', 110e3],
+        [`day-${String(month).padStart(2, '0')}.jpg`, 0], ['clouds.jpg', 0], ['lights.jpg', 0]];
       const total = files.reduce((a, f) => a + f[1], 0), got = files.map(() => 0);
       let all = false;   // every byte in: the title's "fetched" stage for the telemetry (telemetry.js markOf)
       const tick = (i, b, t) => {
@@ -662,27 +668,34 @@ window.OEEarth = (function () {
         earthU.uSurf.value = tex.surf;
         if (!tex.lights) earthU.uLightsMap.value = tex.surf;
       });
-      const day = fetchImage(base + files[3][0], (b, t) => tick(3, b, t)).then(img => { tex.day = texture(img, renderer, W); earthU.uDay.value = tex.day; });
-      const cl = fetchImage(base + files[4][0], (b, t) => tick(4, b, t)).then(img => {
+      let fine = false; // (the month's day side is in: the small one never takes its place back)
+      const dayLo = fetchImage(base + files[3][0], (b, t) => tick(3, b, t)).then(img => { if (fine) return; tex.day = texture(img, renderer, 1024); earthU.uDay.value = tex.day; });
+      const up = t => { try { renderer.initTexture(t); } catch (e) { /* uploaded at its first draw */ } };
+      const day = fetchImage(base + files[4][0], () => {}).then(img => { const old = tex.day; fine = true; tex.day = texture(img, renderer, W); up(tex.day); earthU.uDay.value = tex.day; if (old && old.dispose) old.dispose(); });
+      const cl = fetchImage(base + files[5][0], () => {}).then(img => {
         tex.clouds = texture(img, renderer, q.clouds);
         tex.clouds.format = THREE.RedFormat; // grey, read as .r: a byte a texel on the GPU, not four (43 MB to 11 at 4096 x 2048)
+        up(tex.clouds);
         earthU.uClouds.value = tex.clouds;
       });
       // the lights at 8192 x 4096, one channel, where the screen is big enough to show them
-      const li = !q.lights8k || renderer.capabilities.maxTextureSize < 8192 ? null : fetchImage(base + files[5][0], (b, t) => tick(5, b, t)).then(img => {
+      const li = !q.lights8k || renderer.capabilities.maxTextureSize < 8192 ? null : fetchImage(base + files[6][0], () => {}).then(img => {
         const t = new THREE.Texture(img);
         t.format = THREE.RedFormat;
         t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
         t.wrapS = THREE.RepeatWrapping;
         t.needsUpdate = true;
         tex.lights = t;
+        up(t);
         earthU.uLightsMap.value = t;
         earthU.uLightsGamma.value = 2.1;
         earthU.uLightsTexel.value.set(1 / img.width, 1 / img.height);
       }).catch(() => null);
-      await Promise.all([mw, surf, day, cl, li]);
+      await Promise.all([mw, surf, dayLo]);
       // upload now rather than on the first frame that shows them
-      for (const t of [tex.surf, tex.day, tex.clouds, tex.lights]) if (t) renderer.initTexture(t);
+      for (const t of [tex.surf, tex.day]) if (t) renderer.initTexture(t);
+      // (the rest, behind the opening: api.full for a film or a check that wants the whole earth before its first frame)
+      full = Promise.all([day.catch(() => null), cl.catch(() => null), li]);
     }
 
     // the night lights (0..1) at a point of the globe, once the surface has loaded
@@ -802,7 +815,7 @@ window.OEEarth = (function () {
     }
 
     return { renderer, scene, camera, sun, earth: earthU, atmo: atmoU, lens: LU, bloom, sky: sky.material.uniforms, ready, uSunE,
-      get stars() { return stars; }, resize, setTime, load, render, addCity, dispose, sunOnScreen, lightsAt, selfTest, stats, degrade,
+      get stars() { return stars; }, get full() { return full; }, resize, setTime, load, render, addCity, dispose, sunOnScreen, lightsAt, selfTest, stats, degrade,
       get pixelRatio() { return pr; } };
   }
 
