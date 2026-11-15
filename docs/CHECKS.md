@@ -38,7 +38,8 @@ standing traffic). A two-hour round that fails on a step unrelated to the change
 - `touch`, when the game, its HUD, the page or `web/quality.js` changed: Shibuya on a phone's page (390 x 844 at
   3x, touch), where no key can be pressed (`tools/touch_check.js`): the canvas at two device pixels to the CSS
   pixel, no key named on the screen or in a message, a taxi hailed by a tap at the kerb, the car's pad and its
-  prompt clear of the readout, two fingers zooming.
+  prompt clear of the readout, two fingers zooming, and a taxi ridden as a passenger: the pad one row, the readout
+  across the screen, the car within 0.2 m of the road's surface, Skip and "Get out" by a tap.
 
 **After landing: the full tier, on main, in GitHub Actions** (`.github/workflows/checks.yml`). Each
 push to main runs `CHECK_TIER=full tools/check.sh --plan` against the commit of the last run that
