@@ -976,6 +976,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     player.seatFrom = { x: player.x, y: player.y, z: player.z, h: player.h };
     Object.assign(player, { mode: 'seat', x: st.at[0], y: st.at[1], z: st.at[2], h: st.h, speed: 0, ground: true, vz: 0 });
     cam.lookYaw = 0; cam.lookPitch = st.pitch || 0; cam.lastInput = -10;
+    // (into the seat's eyes from where the camera is, briefly: and it takes over from a hand-over still easing, a stand-up
+    // from the seat before, which held a view in the world the eyes are no longer near)
+    blendFrom(0.35, true);
     shows.sit(st);
     seatTouch(true);
   }
