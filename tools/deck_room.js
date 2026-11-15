@@ -22,9 +22,10 @@ const [,, city = 'tetsugaku'] = process.argv;
   await p.waitForFunction('window.__game || window.__gameError', null, { timeout: 600000 });
   const res = await p.evaluate(() => {
     const g = window.__game, nav = g.nav, KNEE = 0.4, HEAD = 1.8, out = [];
+    const half = (d, t, left) => { const h = d.hl ? (left ? d.hl : d.hr) : null; return h ? h[0] + (h[1] - h[0]) * t : d.hw; }; // (a piece narrowed on one side tapers: decks.js)
     for (const d of g.deckPlan.segs) {
       const L = Math.hypot(d.bx - d.ax, d.by - d.ay) || 1, ex = (d.bx - d.ax) / L, ey = (d.by - d.ay) / L;
-      for (let u = 0; u <= L; u += 1) for (let v = -d.hw + 0.3; v <= d.hw - 0.3 + 1e-6; v += Math.max(0.5, (d.hw - 0.3) / 2)) {
+      for (let u = 0; u <= L; u += 1) for (let hr = half(d, u / L, false), hl = half(d, u / L, true), v = -hr + 0.3; v <= hl - 0.3 + 1e-6; v += Math.max(0.5, (hl + hr - 0.6) / 4)) {
         const x = d.ax + ex * u - ey * v, y = d.ay + ey * u + ex * v, h = d.az + (d.bz - d.az) * u / L, lo = h - (d.th || 0.9);
         const under = [];
         for (const s of nav.strips) { const z = nav.stripHeight(s, x, y); if (z != null) under.push([z, `strip ${s.name || s.mesh}`]); }
@@ -55,7 +56,7 @@ const [,, city = 'tetsugaku'] = process.argv;
     console.log(q[0].lane ? `LANE [${q[0].x}, ${q[0].y}] ${q[0].deck} at ${q[0].h} m under ${q[0].what}, ${lo.toFixed(2)} m of room under it (${q.length} samples)` : `LOW  [${q[0].x}, ${q[0].y}] the deck ${q[0].deck} at ${q[0].h} m over ${q[0].what}, ${lo.toFixed(2)} m of room under its slab (${q.length} samples)`);
   }
   const cr = await p.evaluate(() => window.__game.deckPlan.crossing);
-  if (cr) console.log(`(decks graded together in ${cr.rounds} rounds, ${cr.ms} ms, ${cr.left} samples left; points moved: ${cr.over2} over 2 m, at most ${cr.maxMove} m)`);
+  if (cr) console.log(`(decks graded together in ${cr.rounds} rounds, ${cr.ms} ms, ${cr.left} samples left; points moved: ${cr.over2} over 2 m, at most ${cr.maxMove} m; ${cr.narrowed || 0} samples narrowed)`);
   if (!groups.length) console.log(`ok   ${city}: no deck stands in the body of someone on a surface under it, nor over a crowd's lane`);
   if (logs.length) console.log(logs.slice(0, 10).join('\n'));
   await b.close();

@@ -2,7 +2,7 @@
 
 Why here: the game opens on Hachiko Square at the Scramble's south-east corner, looking across the
 diagonal to QFRONT. The hundred metres round that spot are the most photographed junction there is, and
-almost all of what a player sees of it from eye level is ground: the square's setts in the foreground,
+almost all of what a player sees of it from eye level is ground: the square's blocks in the foreground,
 then the asphalt with its worn bars, then the kerbs and what stands on them.
 
 What is built, over the city's own ground and landmarks (cities/shibuya/scramble.py keeps the fronts,
@@ -13,7 +13,7 @@ the entrances, the tracks and Hachiko himself):
     (AGENTS.md, "The bar": the ground is never aged);
   * the paint, in a thermoplastic of its own: the five crosswalks at their measured places
     (scramble.CROSSWALKS, off GSI's aerial photo), stop lines, the diamonds before them, centre lines;
-  * the pavements in grey blocks and Hachiko Square in small granite setts, the yellow tactile blocks along
+  * the pavements in grey blocks and Hachiko Square in red-brown concrete blocks, the yellow tactile blocks along
     the lines OpenStreetMap maps, with their bars and domes in relief;
   * on the kerbs: the white guard pipes between the crosswalks, tall steel lamp posts whose light is
     baked into everything here, tree grates round the trees that stand in the paving.
@@ -34,6 +34,9 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "pipeline"))
 sys.path.insert(0, os.path.join(ROOT, "blender"))
 
+sys.path.insert(0, HERE)
+import scramble_tex as hero_tex  # noqa: E402
+sys.path.remove(HERE)
 import hero_open as HP  # noqa: E402
 import hero_parts as PT  # noqa: E402
 from hero_open import unit  # noqa: E402
@@ -46,14 +49,12 @@ LIFT = 0.04                       # the asphalt over the game's ground (docs/HER
 PAINT = LIFT + 0.012
 GUTTER_M = 0.5                    # the concrete gutter along a kerb (街渠: 50 cm is the common section)
 KERB_M = 0.18
-PLAZA = (369.0, -1080.0, 416.0, -1009.5)   # Hachiko Square: west, south, east, north (setts; the rest is blocks)
+PLAZA = (369.0, -1080.0, 416.0, -1009.5)   # Hachiko Square: west, south, east, north (red-brown blocks; the rest is grey)
 
 TEX = {
     "road": ("OEAsphalt031d", 3.2),     # Asphalt031 with its stones' contrast raised (drawn here: a worn carriageway shows its aggregate)
     "paver": ("PavingStones136", 2.0),  # grey interlocking blocks: the pavements
-    "sett": ("PavingStones128", 2.4),   # rectangular pavers in running bond: Hachiko Square's red-brown blocks (photographs, 2024)
     "tile": ("Tiles036", 0.9),          # small square facing tiles, the skin of Japan's mixed-use buildings
-    "panel": ("Concrete034", 3.0),      # smooth precast and render
     "dark": ("Tiles138", 1.6),          # dark stone at a shop front's foot
     "conc": ("Concrete034", 3.0),       # gutters
     "granite": ("Granite005A", 1.5),    # kerbs
@@ -70,7 +71,7 @@ def materials():
         "ground_kerb": {"tex": "granite", "tint": (0.7, 0.69, 0.68), "maps": "cn"},
         "ground_paint": {"tex": "paint", "tint": (0.92, 0.92, 0.9)},
         "ground_paver": {"tex": "paver", "tint": (0.7, 0.7, 0.7)},
-        "ground_sett": {"tex": "sett", "tint": (0.74, 0.72, 0.71)},
+        "ground_sett": {"tex": "plaza"},                 # Hachiko Square's blocks, drawn in their own colour (scramble_tex.plaza)
         "ground_tact_bar": {"tex": "tact_bar", "maps": "cn", "rough": 0.7},
         "ground_tact_dot": {"tex": "tact_dot", "maps": "cn", "rough": 0.7},
         "ground_iron": {"map": "atlas", "rough": 0.5, "metal": 0.7},
@@ -81,12 +82,15 @@ def materials():
         # the fronts: facing in three close tones, dark stone at the foot, aluminium frames
         "wall_white": {"tex": "tile", "maps": "cn", "rough": 0.42},
         "wall_cream": {"tex": "tile", "maps": "cn", "rough": 0.45},
-        "wall_grey": {"tex": "panel", "maps": "cn", "rough": 0.6},
+        "wall_grey": {"tex": "clad", "maps": "cn", "rough": 0.55},                     # grey precast panels (the scanned concrete it had was mottled: blotches on a wall)
+        "wall_clad": {"tex": "clad", "maps": "cn", "rough": 0.42, "metal": 0.35},      # pale metal cladding panels
+        "wall_char": {"tex": "clad", "maps": "cn", "rough": 0.46, "metal": 0.3},       # the same in charcoal: a front that is a ground for its signs
         "wall_foot": {"tex": "dark", "tint": (0.5, 0.5, 0.52), "maps": "cn", "rough": 0.3},
         "metal_alu": {"color": (0.56, 0.57, 0.58), "rough": 0.36, "metal": 0.9},
         # glass: dark and mirror-smooth, so that by day it shows the sky (the game's environment) and after dark
         # the rooms drawn behind it, which are its light alone
-        "win_glass": {"map": "atlas", "color": (0.035, 0.045, 0.055), "rough": 0.05, "metal": 0.65, "emissive": True, "emissive_only": True, "glow": 0.9},
+        # (an upper window by day is what it mirrors: a pane of the sky in a grey-blue, not a black hole in the wall)
+        "win_glass": {"map": "atlas", "color": (0.2, 0.235, 0.275), "rough": 0.05, "metal": 0.9, "sky": 0.75, "emissive": True, "emissive_only": True, "glow": 0.9},
         "glow_shop": {"map": "atlas", "color": (0.03, 0.035, 0.04), "rough": 0.08, "metal": 0.0, "sky": 0.15, "emissive": True, "emissive_only": True, "glow": 1.0},
     }
 
@@ -226,78 +230,47 @@ def draw_tree_grate(img, r):
     d.rectangle([x, y, x + w - 1, y + h - 1], outline=(80, 76, 70), width=3)
 
 
+def _paste(img, r, a):
+    from PIL import Image
+    x, y, w, h = r
+    img.paste(Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGB").resize((w, h), Image.LANCZOS), (x, y))
+
+
 def draw_room(seed, lit):
-    """A room behind an upstairs window, as its light after dark: a ceiling's lamps over a wall and the things
-    against it, behind a blind part drawn; or dark."""
-    def draw(img, r):
-        from PIL import ImageDraw
-        x, y, w, h = r
-        rng = np.random.default_rng(seed)
-        d = ImageDraw.Draw(img)
-        if not lit:
-            d.rectangle([x, y, x + w, y + h], fill=(5, 6, 8))
-            return
-        warm = rng.random() < 0.45
-        c = np.array((255, 222, 176) if warm else (226, 236, 250)) * (0.55 + 0.4 * rng.random())
-        for j in range(h):                                   # brightest under the ceiling, falling to the floor
-            k = 1.0 - 0.45 * j / h
-            d.line([(x, y + j), (x + w, y + j)], fill=tuple(int(v * k) for v in c))
-        for i in range(3):
-            cx = x + (i + 0.5) * w / 3
-            d.rectangle([cx - w * 0.1, y + 3, cx + w * 0.1, y + 7], fill=(255, 252, 240))
-        for i in range(int(rng.integers(1, 4))):             # a cabinet, a desk, a plant: dark shapes against the wall
-            x0 = x + rng.random() * w * 0.8
-            d.rectangle([x0, y + h * rng.uniform(0.5, 0.75), x0 + w * rng.uniform(0.1, 0.3), y + h], fill=tuple(int(v * 0.35) for v in c))
-        b = int(h * rng.choice([0.0, 0.2, 0.45, 0.7]))       # a blind drawn part of the way
-        for j in range(0, b, 5):
-            d.rectangle([x, y + j, x + w, y + j + 3], fill=tuple(int(v * 0.82) for v in c))
-    return draw
+    """A room behind an upstairs window, as its light after dark: a box room seen from the street below, its
+    ceiling and the panels in it, the head of the back wall and what stands against it (scramble_tex.room)."""
+    return lambda img, r: _paste(img, r, hero_tex.room(seed, lit, r[2], r[3]))
 
 
 def draw_shop(kind):
-    """A shop through its glass, as its light: a bright ceiling, a back wall, and its trade against it (shelves of
-    goods, a cafe's counter and pendant lamps, a clothes rail)."""
-    def draw(img, r):
-        from PIL import ImageDraw, ImageFilter
-        x, y, w, h = r
-        rng = np.random.default_rng(40 + kind)
-        d = ImageDraw.Draw(img)
-        wall = [(236, 214, 178), (240, 242, 246), (226, 206, 170), (232, 232, 228)][kind % 4]
-        d.rectangle([x, y, x + w, y + h], fill=wall)
-        d.rectangle([x, y, x + w, y + h * 0.1], fill=(255, 252, 240))
-        d.rectangle([x, y + h * 0.86, x + w, y + h], fill=tuple(int(v * 0.6) for v in wall))
-        if kind % 4 in (0, 1):                               # shelves
-            pal = [(210, 60, 50), (60, 110, 190), (240, 200, 70), (90, 170, 100), (245, 245, 240), (40, 40, 46), (230, 130, 160)]
-            for j in range(4):
-                yy = y + h * (0.3 + j * 0.15)
-                d.rectangle([x, yy, x + w, yy + 3], fill=(200, 196, 188))
-                for i in range(int(w / 8)):
-                    c = pal[int(rng.integers(len(pal)))]
-                    d.rectangle([x + i * 8 + 1, yy - 12 - int(rng.integers(0, 6)), x + i * 8 + 6, yy], fill=c)
-        elif kind % 4 == 2:                                  # a cafe: a timber counter, pendant lamps, a menu board
-            d.rectangle([x, y + h * 0.6, x + w, y + h * 0.86], fill=(104, 70, 44))
-            d.rectangle([x + w * 0.1, y + h * 0.2, x + w * 0.9, y + h * 0.36], fill=(38, 34, 30))
-            for i in range(6):
-                cx = x + (i + 0.5) * w / 6
-                d.line([(cx, y + h * 0.1), (cx, y + h * 0.42)], fill=(40, 36, 32), width=1)
-                d.ellipse([cx - 7, y + h * 0.4, cx + 7, y + h * 0.5], fill=(255, 226, 150))
-        else:                                                # clothes on a rail
-            d.line([(x, y + h * 0.32), (x + w, y + h * 0.32)], fill=(120, 120, 124), width=2)
-            for i in range(int(w / 12)):
-                c = tuple(int(v) for v in rng.integers(40, 230, 3))
-                d.rectangle([x + i * 12 + 2, y + h * 0.33, x + i * 12 + 10, y + h * rng.uniform(0.55, 0.72)], fill=c)
-        for i in range(int(rng.integers(1, 4))):             # people inside
-            cx = x + rng.random() * w
-            d.ellipse([cx - 6, y + h * 0.5, cx + 6, y + h * 0.58], fill=(60, 44, 38))
-            d.rectangle([cx - 9, y + h * 0.58, cx + 9, y + h * 0.9], fill=tuple(int(v) for v in rng.integers(30, 110, 3)))
-        sub = img.crop((x, y, x + w, y + h)).filter(ImageFilter.GaussianBlur(0.8))
-        img.paste(sub, (x, y))
-    return draw
+    """A shop through its glass from the pavement, as its light: a box room with its trade in it (shelves and
+    gondolas, a bookshop, a cafe's counter, a clothes rail), lit from its ceiling (scramble_tex.shop)."""
+    return lambda img, r: _paste(img, r, hero_tex.shop(kind, r[2], r[3]))
 
 
 ROOMS, SHOPS = 16, 8
 OUT = 0.1           # the fronts' face in front of the city's wall (m): behind the landmarks' signs, which stand 0.16 m off and more
 STOREY = 3.5
+
+# The fronts that face the junction, each by what its photographs show (docs/HERO.md, "The Scramble"): the wall's
+# material, ribbon windows or punched ones, and its storey height where the photograph counts the floors. The
+# rest take one of three quiet facings by a seeded draw. No front is white: beside a real street's greys and
+# beiges a white tile read as a card model.
+FRONTS = {
+    # the block on Center Gai's corner: charcoal cladding behind its screens and tenant signs, ribbons of glass
+    "w136690966": {"wall": "wall_char", "ribbon": True},
+    # 渋谷駅前ビル on Dogenzaka's corner: pale metal panels, ribbon windows
+    "w60739635": {"wall": "wall_clad", "ribbon": True},
+    # the blocks south of Hachiko Square: grey precast, ribbons
+    "s49004": {"wall": "wall_grey", "ribbon": True}, "s49591": {"wall": "wall_grey", "ribbon": True},
+    "s49358": {"wall": "wall_clad", "ribbon": True}, "s49241": {"wall": "wall_clad", "ribbon": True},
+    "s49151": {"wall": "wall_grey", "ribbon": True},
+    # MAGNET by SHIBUYA109: pale metal panels over the landmark's glazed corner and fascia, ribbons of glass
+    "w116806281": {"wall": "wall_clad", "ribbon": True},
+    # Jingu-dori's east side north of MAGNET: tiled office blocks
+    "w136730049": {"wall": "wall_cream", "ribbon": False}, "w136730040": {"wall": "wall_white", "ribbon": True},
+    "w136691389": {"wall": "wall_white", "ribbon": False}, "w114755219": {"wall": "wall_grey", "ribbon": True},
+}
 
 
 # ---------------------------------------------------------------- the level
@@ -308,6 +281,8 @@ class Level:
         from shapely.ops import unary_union
         self.K = K
         K.TEXTURES.update(TEX)
+        for key, (make, rep) in hero_tex.SETS.items():
+            K.register(key, rep, make)
         asphalt_texture(K)
         paint_texture(K)
         tactile_texture(K, "OETactileBar", False)
@@ -346,9 +321,9 @@ class Level:
         A.cell("grate", 124, 100, draw_grate)
         A.cell("tree_grate", 248, 248, draw_tree_grate)
         for k in range(ROOMS):
-            A.cell(f"room{k}", 124, 150, draw_room(700 + k, k % 5 != 0 and k % 3 != 0))
+            A.cell(f"room{k}", 124, 160, draw_room(700 + k, k % 5 != 0 and k % 3 != 0))
         for k in range(SHOPS):
-            A.cell(f"shop{k}", 400, 220, draw_shop(k))
+            A.cell(f"shop{k}", 480, 256, draw_shop(k))
         self.carriageway()
         self.markings()
         self.pavements()
@@ -476,7 +451,7 @@ class Level:
     def pavements(self):
         X, A = self.X, self.A
         plaza = self.box(PLAZA[0], PLAZA[1], PLAZA[2], PLAZA[3])
-        X.cover("ground_sett", self.pave.intersection(plaza).buffer(0), LIFT + 0.01, cell=2.0, uvk=1.0 / TEX["sett"][1])
+        X.cover("ground_sett", self.pave.intersection(plaza).buffer(0), LIFT + 0.01, cell=2.0, uvk=1.0 / self.K.TEXTURES["plaza"][1])
         X.cover("ground_paver", self.pave.difference(plaza).buffer(0), LIFT + 0.01, cell=2.0, uvk=1.0 / TEX["paver"][1])
         self.geo.walls += [(np.asarray(a), np.asarray(b), self.T(*a), self.T(*a) + 4.0) for poly in getattr(self.solids, "geoms", [self.solids])
                            for a, b in zip(list(poly.exterior.coords)[:-1], list(poly.exterior.coords)[1:]) if np.linalg.norm(np.subtract(a, b)) > 1.0]
@@ -620,8 +595,11 @@ class Level:
                 continue
             rng = np.random.default_rng(sum(ord(ch) for ch in (s["osm"] or str(s["si"]))) * 7919 % (2 ** 31))
             wall = ("wall_white", "wall_cream", "wall_grey")[int(rng.integers(3))]
-            rep = TEX["panel"][1] if wall == "wall_grey" else TEX["tile"][1]
             ribbon = rng.random() < 0.4                    # an office floor's ribbon windows, or punched ones
+            own = FRONTS.get(s["osm"] or f"s{s['si']}")
+            if own:
+                wall, ribbon = own["wall"], own["ribbon"]
+            rep = self.K.TEXTURES[materials()[wall]["tex"]][1]
             co = np.asarray(poly.exterior.coords)[:-1]
             if poly.exterior.is_ccw:
                 co = co[::-1]                              # clockwise: the outside is on the left of the way round
@@ -722,6 +700,32 @@ class Level:
                 merged.append(r)
         return merged
 
+    def door(self, F, u0, u1, g, z0, z1, uv, mean):
+        """A shop's way in, in the middle of a bay: a pair of glass doors 0.9 m wide under the transom, the stone
+        foot stopping either side of them, the glass running down to a steel threshold. The leaves' stiles and
+        rails and the pull handles are the level's finest parts (geo.fine: drawn near, never on a phone)."""
+        G, fine = self.geo, self.geo.fine
+        um = (u0 + u1) / 2
+        d0, d1 = um - 0.92, um + 0.92
+        head = g + 2.25
+        for a, b in ((u0, d0), (d1, u1)):
+            PT.fbox(G, "wall_foot", F, a, b, 0.0, OUT + 0.03, g, z0, TEX["dark"][1], faces=("front", "top", "left", "right"))
+            PT.fbox(G, "metal_alu", F, a, b, 0.02, 0.09, z0, z0 + 0.06, faces=("front", "left", "right", "top", "bottom"))
+        (ua, va), (ub, _), _, _ = uv                                   # the shop's floor shows through the leaves' feet
+        k = lambda u: ua + (ub - ua) * (u - u0) / (u1 - u0)
+        G.quad("glow_shop", F.P(d0, 0.03, g + 0.03), F.P(d1, 0.03, g + 0.03), F.P(d1, 0.03, z0), F.P(d0, 0.03, z0),
+               uv=[(k(d0), va), (k(d1), va), (k(d1), va), (k(d0), va)], n=F.N, emit=(mean, 1.3))
+        for x in (d0, d1):                                             # the door frame's jambs, to the ground
+            PT.fbox(G, "metal_alu", F, x - 0.035, x + 0.035, 0.02, 0.09, g, z1, faces=("front", "left", "right"))
+        PT.fbox(G, "metal_alu", F, d0, d1, 0.0, OUT + 0.05, g, g + 0.03, faces=("front", "top"))                     # the threshold
+        for lo, hi, s_ in ((d0 + 0.035, um - 0.004, 1), (um + 0.004, d1 - 0.035, -1)):                           # each leaf
+            for (m0, m1, y0, y1) in ((lo, lo + 0.05, g + 0.03, head), (hi - 0.05, hi, g + 0.03, head), (lo, hi, g + 0.03, g + 0.16), (lo, hi, head - 0.06, head)):
+                PT.fbox(fine, "metal_alu", F, m0, m1, 0.03, 0.075, y0, y1, faces=("front", "left", "right", "top", "bottom"))
+            hx = (hi - 0.11) if s_ > 0 else (lo + 0.11)                # the pull handle by the meeting stiles
+            fine.tube("metal_alu", [F.P(hx, 0.125, g + 0.85), F.P(hx, 0.125, g + 1.4)], 0.014, 8)
+            for hz in (g + 0.92, g + 1.33):
+                fine.tube("metal_alu", [F.P(hx, 0.07, hz), F.P(hx, 0.125, hz)], 0.009, 6)
+
     def front(self, F, Ln, g, top, wall, rep, ribbon, rng, hung=()):
         G, A = self.geo, self.A
         free = lambda u0, u1, z0, z1: not any(u0 < h[1] and u1 > h[0] and z0 < h[3] and z1 > h[2] for h in hung)
@@ -747,10 +751,16 @@ class Level:
             uv = [(ua + (ub - ua) * (half + s_) / 2, v_) for s_, v_ in ((0, va), (1, va), (1, vb), (0, vb))]
             G.quad("glow_shop", F.P(u0, 0.03, z0), F.P(u1, 0.03, z0), F.P(u1, 0.03, z1), F.P(u0, 0.03, z1), uv=uv, n=F.N,
                    emit=(A.mean[key], 1.3))
-            PT.fbox(G, "wall_foot", F, u0, u1, 0.0, OUT + 0.03, g, z0, TEX["dark"][1], faces=("front", "top"))
+            door = j % 2 == 1 and u1 - u0 >= 2.3                      # every second bay is the shop's way in
+            if door:
+                self.door(F, u0, u1, g, z0, z1, uv, A.mean[key])
+            else:
+                PT.fbox(G, "wall_foot", F, u0, u1, 0.0, OUT + 0.03, g, z0, TEX["dark"][1], faces=("front", "top"))
             for (m0, m1, y0, y1) in ((u0, u1, z1 - 0.07, z1), (u0, u1, z0, z0 + 0.06), (u0, u0 + 0.06, z0, z1), (u1 - 0.06, u1, z0, z1)):
+                if door and y1 - y0 < 0.1 and y0 == z0:
+                    continue                                          # (no sill rail across a doorway)
                 PT.fbox(G, "metal_alu", F, m0, m1, 0.02, 0.09, y0, y1, faces=("front", "left", "right", "top", "bottom"))
-            for t in ((0.5,) if u1 - u0 < 2.6 else (0.34, 0.67)):
+            for t in (() if door else (0.5,) if u1 - u0 < 2.6 else (0.34, 0.67)):
                 um = u0 + (u1 - u0) * t
                 PT.fbox(G, "metal_alu", F, um - 0.03, um + 0.03, 0.02, 0.08, z0, z1, faces=("front", "left", "right"))
             PT.fbox(G, "metal_alu", F, u0, u1, 0.02, 0.07, g + 2.25, g + 2.31, faces=("front", "top", "bottom"))     # the transom over the doors
@@ -801,10 +811,11 @@ def build(K):
     geo, atlas = L.build()
     M = materials()
     # the pavements, the square, kerbs and gutters in close tones of one grey family (AGENTS.md, "The bar"): each
-    # texture brought to its tone by its own mean, so that a yellowish block and a brown sett end as greys
-    for mat, key, srgb in (("ground_paver", "paver", (150, 150, 148)), ("ground_sett", "sett", (152, 118, 110)),
+    # texture brought to its tone by its own mean, so that a yellowish block ends as a grey
+    for mat, key, srgb in (("ground_paver", "paver", (150, 150, 148)),
                            ("ground_kerb", "granite", (160, 160, 158)), ("ground_gutter", "conc", (152, 152, 150)),
-                           ("wall_white", "tile", (214, 214, 210)), ("wall_cream", "tile", (204, 196, 182)), ("wall_grey", "panel", (168, 170, 172))):
+                           ("wall_white", "tile", (192, 192, 188)), ("wall_cream", "tile", (190, 180, 164)), ("wall_grey", "clad", (158, 160, 162)),
+                           ("wall_clad", "clad", (176, 180, 184)), ("wall_char", "clad", (62, 64, 68))):
         M[mat]["tint"] = K.tint_to(key, srgb)
     meta = {"id": ID, "at": list(CENTRE), "r": R, "z": 15.0, "glb": f"hero/{ID}.glb", "bake_gain": 1.0, "cell": 28.0,
             "sky_rays": 20, "sky_reach": 5.0, "sky_strength": 1.0}   # (the sky's light occluded, ray-cast: hero_kit.sky_occlusion)

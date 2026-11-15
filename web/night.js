@@ -91,7 +91,7 @@ void main() {
   // camera, nearCars metres round it, take over from the traffic's lights; the game draws the
   // mapped lamps' poles itself)
   function create(Wd, D, renderer, NU, { small = false, game = false, nearCars = 0 } = {}) {
-    const N = D.N, st = N.style || {}, [XY, ZU] = N.units, fr = D.scene.frame, rnd = rng(7919);
+    const N = D.N, st = N.style || {}, [XY, ZU] = N.units, fr = D.scene.worldFrame || D.scene.frame, rnd = rng(7919);
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
     // the mapped lamps out of the carriageways (streets.js tidy: game.json's in the game, night.json's in the viewer)
     const ST = D.streets || {}, roadsI = unpack(N.roads), P = unpack(N.pts), mapped = ST.lamps || Array.from(unpack(N.lamps), (v, i) => v * (i % 3 === 2 ? ZU : XY));

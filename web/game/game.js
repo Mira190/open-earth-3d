@@ -161,7 +161,7 @@ window.OpenEarthGame = async function game(cityId) {
   // (earlyWarm, below) in the variant the game draws (three.js builds the number of lights into each), issue 327
   const earlyLamps = { head: OECars.headlamp(world), search: OEVehicles.searchlight ? OEVehicles.searchlight(world) : null };
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
-  if (window.OEVis) OEVis.create({ city: D.id, terrain: Tfine, tier: QC.name, solids: D.B.s, hidden: D.scene.hidden_solids }); // the occluder raster and its Worker, behind everything else
+  if (window.OEVis) OEVis.create({ city: D.id, packs: D.PACKS, terrain: Tfine, tier: QC.name, solids: D.B.s, hidden: D.scene.hidden_solids }); // the occluder raster and its Worker, behind everything else
   atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {}, look: G.look || {} }) : null;
   if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
   // shaders compiled before their first frame, in the variant the post stack draws with (world.js compile):
@@ -334,7 +334,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         pen = true;
       }
     };
-    const foot = G.paths.foot.filter(f => inTile(f.p)), roads = G.paths.road.filter(r => inTile(r.p));
+    const FAR = G.paths.far || {}; // (a district's streets past its edge: painted, not walked or driven; pipeline/district.py)
+    const foot = G.paths.foot.concat(FAR.foot || []).filter(f => inTile(f.p)), roads = G.paths.road.concat(FAR.road || []).filter(r => inTile(r.p));
     for (const f of foot) { path(f.p); g.strokeStyle = '#b3ada1'; g.lineWidth = (FOOTW[f.c] || 3) / PX; g.stroke(); }
     for (const r of roads) { path(r.p); g.strokeStyle = '#9d988d'; g.lineWidth = ((r.cw || ROADW[r.c] || 7) + 1) / PX; g.stroke(); } // kerbs
     for (const r of roads) { path(r.p); g.strokeStyle = '#4b4e52'; g.lineWidth = (r.cw || ROADW[r.c] || 7) / PX; g.stroke(); }
@@ -4153,6 +4154,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return c >= 0 && r >= 0 && c < DSM.nx && r < DSM.ny ? DSM.data[r * DSM.nx + c] : 0;
   };
   const inFrame = (x, y, m = 30) => x > FRAME.x0 + m && x < FRAME.x1 - m && y > FRAME.y0 + m && y < FRAME.y1 - m;
+  // A phone's district (pipeline/district.py; D.district): the play area is the district's frame. A walker and a car
+  // stop at its edge as at the whole map's (the walking model ends there); the helicopter is held DISTRICT_AIR metres
+  // past it, over the streets still built there. Said once in a while, so that the edge is not a wall without a word.
+  const DISTRICT_AIR = 120;
+  let districtSaid = -1e9;
+  function districtEdge() {
+    if (clockT - districtSaid < 45) return;
+    districtSaid = clockT;
+    H.toast('<b>The edge of this district.</b> On a phone the game keeps to the streets round the start; the rest of the map is on a larger screen.');
+  }
   // how far into the haze at the model's edge a point is, 0 to 1, as world.js edgeHaze draws it: standing in that band,
   // everything round you is veiled, the near things too
   const edgeFade = Math.min(500, Math.max(250, 0.1 * Math.min(FRAME.x1 - FRAME.x0, FRAME.y1 - FRAME.y0)));
@@ -5476,6 +5487,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (A.wind && player.mode !== 'heli') A.wind(titleOn ? 0 : Math.max(0, Math.min(1, (wS.windSpeed - 4.5) / 14)) * (inside ? 0.35 : 1), wS.gust);
   }
   function simulate(dt) {
+    if (D.district && playing && (player.mode === 'foot' || player.mode === 'car') && !inFrame(player.x, player.y, 8)) districtEdge(); // (a phone's district: its edge, said)
     const fwd = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;
     const side = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0) + joy.x;
     const held = dlg.open || !!closeup || cine.label === 'hop' || cine.label === 'survey' || cine.label === 'closer' || (cine.active && cine.label === 'overture');
@@ -5487,6 +5499,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const lift = (k('Space') ? 1 : 0) - (k('KeyC') || k('ShiftLeft') || k('ShiftRight') ? 1 : 0) + touchLift;
       const events = [];
       heli.update(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), lift: Math.max(-1, Math.min(1, lift)) }, events);
+      if (D.district) { // a phone's district (pipeline/district.py): the helicopter keeps to it, and to the streets still built just past its edge
+        const hs = heli.st, bx = Math.max(FRAME.x0 - DISTRICT_AIR, Math.min(FRAME.x1 + DISTRICT_AIR, hs.x)), by = Math.max(FRAME.y0 - DISTRICT_AIR, Math.min(FRAME.y1 + DISTRICT_AIR, hs.y));
+        if (bx !== hs.x) { hs.x = bx; hs.vx = 0; }
+        if (by !== hs.y) { hs.y = by; hs.vy = 0; }
+        if (!inFrame(hs.x, hs.y, -DISTRICT_AIR + 2)) districtEdge();
+      }
       for (const ev of events) {
         if (ev.type === 'under_bridge') { H.toast(`<b>Under the ${ev.name || 'bridge'}!</b> ${G.under_bridge_note || ''}`); A.chime(); for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'under_bridge' && (!s.surface || s.surface === ev.surface)) completeStep(l); } }
         if (ev.type === 'bump' && clockT - bumpT > 2) { bumpT = clockT; H.toast('Careful! That was a building.'); }

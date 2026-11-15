@@ -11,14 +11,15 @@
 // low tier, plays (the NPCs, the helicopter, the cars' and trees' near models all loaded, as a player
 // walking round would have them), then reads the peak. Prints one line per city and the largest
 // textures and buffers; exits 1 when a city goes over its budget:
-//   MEM_GPU   peak GPU memory, MB (default 300: quality.js budget, a tenth above the heaviest live map at the level a phone starts at, issues 406 and 443)
-//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 620)
+//   MEM_GPU   peak GPU memory, MB (default 270: quality.js budget, a tenth above the heaviest live map at the level a phone starts at, issues 406 and 443)
+//   MEM_HEAP  settled JS heap of the page and its Workers, MB (default 400: a tenth above the heaviest live map's district)
+// QUERY='?district=off' measures the whole map on the phone tier, to compare with its district (pipeline/district.py).
 // TIER=low|medium|high (default low). QUERY=?a=b adds a query to the page's address. LV=n: the phone's set at level n (quality.js level: 0 the fullest, 2 what a phone starts at, 3 the lightest). SNAP=file (%c for the city) writes a heap snapshot at the end (tools/heap_owners.js). JSON=1 prints the result as JSON. TOP=n lists n largest (default 8).
 const { chromium } = require('playwright');
 const { startPlay } = require('./start_play');
 const fs = require('fs');
 const cities = process.argv.slice(2).length ? process.argv.slice(2) : ['shibuya'];
-const GPU_MB = +(process.env.MEM_GPU || 300), HEAP_MB = +(process.env.MEM_HEAP || 620), TOP = +(process.env.TOP || 8);
+const GPU_MB = +(process.env.MEM_GPU || 270), HEAP_MB = +(process.env.MEM_HEAP || 400), TOP = +(process.env.TOP || 8);
 const MB = v => (v / 1048576).toFixed(0);
 
 // Chromium's processes (one browser at a time runs here), with each one's proportional set size (its own pages
@@ -178,7 +179,7 @@ async function measure(b, city) {
     }
   })();
   const t0 = Date.now();
-  let ok = true, map = null;
+  let ok = true, map = null, district = null;
   try {
     await p.goto(`http://localhost:${process.env.PORT || 8800}/${process.env.QUERY || ''}#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await p.waitForFunction('window.__game', null, { timeout: 400000 });
@@ -198,7 +199,9 @@ async function measure(b, city) {
       if (!st) return null;
       const G = st.grid, at0 = st.at.slice(), v0 = st.vertices, out = { cells: st.cells.size, vertices: v0, moves: [] };
       const lodAt = (x, y) => st.lods[Math.floor((y - G.y0) / G.size) * G.nx + Math.floor((x - G.x0) / G.size)];
-      const far = [at0[0] < G.x0 + G.nx * G.size / 2 ? G.x0 + G.nx * G.size - 300 : G.x0 + 300, at0[1] < G.y0 + G.ny * G.size / 2 ? G.y0 + G.ny * G.size - 300 : G.y0 + 300];
+      // (the far corner of where the player can go: the frame, a district's on a phone, not the cells' grid, which is the whole map's)
+      const F = window.__game.scene.frame;
+      const far = [at0[0] < (F.x[0] + F.x[1]) / 2 ? F.x[1] - 300 : F.x[0] + 300, at0[1] < (F.y[0] + F.y[1]) / 2 ? F.y[1] - 300 : F.y[0] + 300];
       const own = W.mapAt; // (the game's own call each second would take the map back to where the player stands)
       W.mapAt = () => null;
       try {
@@ -211,6 +214,40 @@ async function measure(b, city) {
       out.back = st.vertices === v0;
       return out;
     });
+    // a phone's district (pipeline/district.py, world.js load): loaded where the map has one, everything the game
+    // names inside it, and its edge held on foot (a walk out along a street that the edge cuts) and in the air
+    district = await p.evaluate(async want => {
+      const g = window.__game, sc = g.scene, F = sc.frame, out = { want, on: !!sc.district, frame: [F.x, F.y] };
+      if (!out.on) return out;
+      const inF = (a, m = 0) => a[0] >= F.x[0] - m && a[0] <= F.x[1] + m && a[1] >= F.y[0] - m && a[1] <= F.y[1] + m;
+      const G = g.G, named = [].concat(G.npcs || [], G.spots || [], G.travel || [], G.helipads || [], (G.trains || {}).stations || [], (G.wharves || []).map(w => ({ id: w.id, at: w.terminal })));
+      out.outside = named.filter(o => o.at && !inF(o.at)).map(o => o.id || o.name);
+      const ids = new Set((G.npcs || []).map(n => n.id));
+      out.lost = (G.quests || []).filter(q => !ids.has(q.giver) || (q.steps || []).some(s => (s.npc && !ids.has(s.npc)) || (s.at && !inF(s.at)))).map(q => q.id);
+      out.quests = (G.quests || []).length;
+      g.hold(true);
+      let end = null;
+      for (const r of G.paths.foot.concat(G.paths.road)) {
+        const q = r.p, n = q.length;
+        for (const [x, y, ax, ay] of [[q[0], q[1], q[3], q[4]], [q[n - 3], q[n - 2], q[n - 6], q[n - 5]]]) if (!end && (x === F.x[0] * 10 || x === F.x[1] * 10 || y === F.y[0] * 10 || y === F.y[1] * 10) && Math.hypot(x - ax, y - ay) > 20) end = [x / 10, y / 10, ax / 10, ay / 10];
+        if (end) break;
+      }
+      if (end) {
+        const was = [g.player.x, g.player.y, g.player.z], [x, y, ax, ay] = end, d = Math.hypot(x - ax, y - ay), ux = (x - ax) / d, uy = (y - ay) / d;
+        g.spawn([x - ux * 15, y - uy * 15]);
+        for (let i = 0; i < 10; i++) g.advance(1 / 30);
+        g.player.heading = Math.atan2(ux, uy); if (g.cam) g.cam.yaw = g.player.heading;
+        for (let i = 0; i < 25 * 15; i++) g.advance(1 / 15, ['KeyW']);
+        out.walked = { end: [x, y], to: [Math.round(g.player.x), Math.round(g.player.y)], held: inF([g.player.x, g.player.y], 8) };
+        out.said = [...document.querySelectorAll('#g-toasts > *')].some(e => /edge of this district/.test(e.textContent));
+        g.spawn(was.slice(0, 2), was[2] + 0.5);
+        for (let i = 0; i < 10; i++) g.advance(1 / 30);
+      }
+      g.hold(false);
+      return out;
+    }, !!(await p.evaluate(c => { const e = (window.OE_CITIES || []).find(q => q.id === c); return e && e.lean_pack; }, city)) && !/map=whole|district=off/.test(process.env.QUERY || '') && (process.env.TIER || 'low') === 'low');
+    if (district.want !== district.on) { ok = false; errors.push(`a phone's district: ${district.want ? 'not loaded' : 'loaded where none was wanted'}`); }
+    if (district.on && ((district.outside || []).length || (district.lost || []).length || (district.walked && !district.walked.held))) { ok = false; errors.push(`a phone's district: ${JSON.stringify(district)}`); }
     if (map) {
       if (map.moves.some(m => m.here !== undefined && m.here !== 0) || !map.moves[0].changed || !map.back) { ok = false; errors.push(`the map round the player: ${JSON.stringify(map)}`); }
     }
@@ -282,7 +319,7 @@ async function measure(b, city) {
   }).catch(e => [String(e)]);
   const pr = await p.evaluate(() => { const c = document.getElementById('game-gl'); return c ? { w: c.width, h: c.height } : null; }).catch(() => null);
   await ctx.close();
-  return { city, ok, map, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
+  return { city, ok, map, district, smaps, owners, heapEnd, split, sampled, tracked, s: (Date.now() - t0) / 1000, heap: peakHeap, rss: peakRss, gl: r, canvas: pr, errors };
 }
 
 (async () => {
@@ -302,6 +339,7 @@ async function measure(b, city) {
     if (over.length) fail = true;
     if (process.env.JSON) continue;
     console.log(`${over.length ? 'FAIL' : 'ok  '} ${city}: GPU peak ${MB(gpu)} MB (textures ${m.gl ? MB(m.gl.tex) : '?'}, buffers ${m.gl ? MB(m.gl.buf) : '?'}, renderbuffers ${m.gl ? MB(m.gl.rb) : '?'} at the end; canvas ${m.canvas ? `${m.canvas.w}x${m.canvas.h}` : '?'}), JS heap peak ${MB(m.heap)} MB (${MB(m.heapEnd)} at the end after a collection: page objects ${MB(m.split.usedSize || 0)}, its array buffers ${MB(m.split.backingStorageSize || 0)}), renderer process ${MB(m.rss.renderer)} MB, GPU process ${MB(m.rss.gpu)} MB, ${m.s.toFixed(0)} s${over.length ? ` - ${over.join('; ')}` : ''}`);
+    if (m.district && m.district.on) console.log(`     a phone's district: ${m.district.frame[0].join('..')} by ${m.district.frame[1].join('..')} m, ${m.district.quests} quests${m.district.walked ? `; a walk out at ${m.district.walked.end.map(Math.round)} stopped at ${m.district.walked.to}${m.district.said ? ', and the game said so' : ''}` : ''}`);
     if (m.map) console.log(`     the map round the player: ${m.map.cells} cells, ${m.map.vertices.toLocaleString()} vertices of buildings; to the far corner ${m.map.moves[0].changed} cells built again in ${m.map.moves[0].ms} ms (${m.map.moves[0].vertices.toLocaleString()} vertices there), back ${m.map.moves[1].changed} in ${m.map.moves[1].ms} ms`);
     for (const e of m.errors || []) if (/the map round/.test(e)) console.log(`     ${e}`);
     if (m.gl) {
