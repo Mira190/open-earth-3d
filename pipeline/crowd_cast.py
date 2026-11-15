@@ -57,7 +57,14 @@ def cast(info):
         g = json.load(open(os.path.join(ROOT, "cities", cid, "city.json"))).get("game", {})
         want |= {cid, *g.get("crowd", {}).get("real_from", [])}
     npcs = info["npcs"]["characters"]
-    return sorted(n for n, c in npcs.items() if set(c.get("cities", [])) & want and not UNIFORM.search(n))
+    names = {n for n, c in npcs.items() if set(c.get("cities", [])) & want and not UNIFORM.search(n)}
+    # ... or the cast a map names for its streets (game.crowd.cast: as many of each sex as the desktop draws, HIGH_CAST)
+    named = set()
+    for cid in live_cities():
+        cc = json.load(open(os.path.join(ROOT, "cities", cid, "city.json"))).get("game", {}).get("crowd", {}).get("cast")
+        if cc:
+            named |= set(cc.get("f", [])[:6]) | set(cc.get("m", [])[:6])
+    return sorted((named if named else names) & set(npcs))
 
 
 def glb_parts(path):

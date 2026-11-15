@@ -45,7 +45,7 @@ function raster(key, opt) {
   if (!LM) throw new Error(`no ${key} kept`);
   kept.delete(key);
   if (!self.OENavCells) importScripts('game/navcells.js');
-  const t0 = performance.now(), N = self.OENavCells, out = N.pack(N.raster(LM, opt.strips, opt.grid), opt.strips);
+  const t0 = performance.now(), N = self.OENavCells, out = N.pack(N.raster(LM, opt.strips, opt.grid, opt.unwalked), opt.strips);
   out.ms = performance.now() - t0;
   return out;
 }

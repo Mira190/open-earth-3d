@@ -175,15 +175,18 @@
 .ts-item.hot .nm { transform: translateX(10px); color: #fff; }
 .ts-item.hot::before { width: 70%; }
 /* the one action: straight into the best Japanese level, the other Tokyo areas and Kyoto beside it */
-/* a city's playable maps, on a line under its row: shown under the leading city until another place is
-   chosen, and under a chosen one. The start (Shibuya) carries the page's one amber mark. */
+/* a city's playable maps under its row, one to a line and all at one indent: they are districts of the one city,
+   side by side (Shibuya, Marunouchi & Ginza), not one under another. A rail down their left ties them to the
+   city; each has its name and its way in, in two columns that line up. Shown under the leading city until
+   another place is chosen, and under a chosen one. The start carries the page's one amber mark; the others'
+   mark is the same shape in the line's grey, and lights when it is pointed at. */
 .ts-list li { position: relative; }
-.ts-sub { display: none; flex-wrap: wrap; align-items: center; gap: 4px 0; margin: 0 0 8px 34px; padding-left: 10px; }
-.ts-list:not(:has(.ts-item[aria-current="true"])) li.lead .ts-sub, .ts-list li:has(.ts-item[aria-current="true"]) .ts-sub { display: flex; }
+.ts-sub { display: none; grid-template-columns: max-content max-content; column-gap: 16px; row-gap: 0; margin: 2px 0 12px 38px; padding: 1px 0 1px 16px; border-left: 1px solid var(--line); }
+.ts-list:not(:has(.ts-item[aria-current="true"])) li.lead .ts-sub, .ts-list li:has(.ts-item[aria-current="true"]) .ts-sub { display: grid; }
 .ts-list:not(:has(.ts-item[aria-current="true"])) li.lead .n { color: var(--amber); }
-.ts-d { border: 0; background: none; cursor: pointer; padding: 7px 0; display: inline-flex; align-items: center; gap: 9px; color: var(--tx2);
+.ts-d { border: 0; background: none; cursor: pointer; padding: 6px 0; display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; justify-items: start; position: relative; color: var(--tx2);
   font: 400 10.5px/1 var(--t-display); letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; transition: color 0.3s; }
-.ts-d + .ts-d { margin-left: 26px; }
+.ts-d::before { content: ""; position: absolute; left: -16px; top: 50%; width: 9px; height: 1px; background: var(--line); }
 .ts-d:hover, .ts-d:focus-visible { color: #fff; }
 .ts-d.ts-go { color: var(--tx); }
 .ts-d small { font: 500 0.95em/1 var(--t-jp); letter-spacing: 0.14em; margin-left: 0.6em; color: var(--tx2); }
@@ -192,6 +195,8 @@
 .ts-d em::before { content: ""; border: 3.5px solid transparent; border-left: 6px solid currentColor; border-right: 0; }
 .ts-d em kbd { font: 400 8.5px/1 var(--t-mono); letter-spacing: 0.06em; opacity: 0.65; }
 .ts-d.ts-go:hover em, .ts-d.ts-go:focus-visible em { background: var(--amber); color: #1a0f04; }
+.ts-d:not(.ts-go) em { border-color: var(--line); color: var(--tx2); }
+.ts-d:not(.ts-go):hover em, .ts-d:not(.ts-go):focus-visible em { border-color: var(--amber); color: var(--amber); }
 .ts-hero { display: none; }
 @media (min-width: 861px) and (max-height: 960px) { .ts-item { padding: 7px 0; } }
 .ts-menu .ts-hint { margin: 22px 0 0; font: 400 9px/1.7 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx3); }

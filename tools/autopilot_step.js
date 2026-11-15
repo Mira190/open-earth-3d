@@ -339,7 +339,7 @@ async function railStep() {
   }
   if (!X) return { none: 'no street near you busy and long enough for a crossing' };
   const w = X.rail.w, out = { line: X.line, cls: L[X.line].c, crossedOpen: 0, onShut: 0, stoodOn: 0, waited: 0, crossedAfter: null, kept: 0, log: [] };
-  const was = new Map(), stood = new Map();
+  const was = new Map(), stood = new Map(), hist = new Map();
   const step = (secs, tag) => {
     for (let t = 0; t < secs; t += 0.25) {
       g.advance(0.25);
@@ -350,10 +350,14 @@ async function railStep() {
         was.set(c, d);
         const on = Math.abs(d) < w / 2 + c.half - 0.3; // (any of its body over the corridor)
         if (on && tag === 'shut' && t >= 4) { out.onShut++; if (out.log.length < 6) out.log.push(`shut ${t}s: car ${A.C.indexOf(c)} ${d.toFixed(1)} m past the middle, v ${c.v.toFixed(1)}, ${c.why}`); }
+        // (its last 8 s, for the log of one that ends up stood on the rails: how far past the middle, speed, lane, why, the car in front and how far on)
+        const h = hist.get(c) || []; hist.set(c, h);
+        h.push(`${d.toFixed(1)}/${c.v.toFixed(1)}/l${c.ln || 0}${c.lo ? `(${c.lo.toFixed(1)})` : ''}/${c.why || '-'}/${c.front ? `${A.C.indexOf(c.front)}@${((c.front.s - c.s) * c.dir).toFixed(0)}${c.front.line !== c.line ? 'x' : ''}` : '-'}`);
+        if (h.length > 32) h.shift();
         const st = on && c.v < 0.3 ? (stood.get(c) || 0) + 0.25 : 0;
         stood.set(c, st);
         // (not one already there when the check laid the crossing down under it)
-        if (st === 3 && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} [${d.toFixed(1)} m past the middle, lane ${c.ln || 0}${c.mv ? ', in a junction' : ''}${c.rev ? ', backing' : ''}; in front ${c.front ? `car ${A.C.indexOf(c.front)} ${((c.front.s - c.s) * c.dir).toFixed(1)} m on${c.front.line !== c.line ? ` on piece ${c.front.line}` : ''}, v ${c.front.v.toFixed(1)}, lane ${c.front.ln || 0}, ${c.front.why || 'going'}${c.front.park ? ', parked' : ''}${c.front.parking ? ', parking' : ''}` : 'no car'}]`); }
+        if (st === 3 && !(tag === 'open' && t < 5)) { out.stoodOn++; if (out.log.length < 6) out.log.push(`${tag} ${t}s: car ${A.C.indexOf(c)} stood on the rails, ${c.why}${c.heldBy ? ` by ${c.heldBy}` : ''} [${d.toFixed(1)} m past the middle, lane ${c.ln || 0}${c.mv ? ', in a junction' : ''}${c.rev ? ', backing' : ''}; in front ${c.front ? `car ${A.C.indexOf(c.front)} ${((c.front.s - c.s) * c.dir).toFixed(1)} m on${c.front.line !== c.line ? ` on piece ${c.front.line}` : ''}, v ${c.front.v.toFixed(1)}, lane ${c.front.ln || 0}, ${c.front.why || 'going'}${c.front.park ? ', parked' : ''}${c.front.parking ? ', parking' : ''}` : 'no car'}; its last 8 s, m past the middle/speed/lane/why/front: ${(hist.get(c) || []).join(' ')}]`); }
         if (tag === 'shut' && c.why === 'light' && c.v < 0.3 && d < 0 && d > -30) out.waited = Math.max(out.waited, 1);
         if (c.why === 'rails') out.kept++;
       }

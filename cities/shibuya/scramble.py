@@ -46,7 +46,8 @@ MATERIALS = {
     # road paint: thermoplastic, a little glass bead in it (paler and rougher than a sign)
     "x_paint": {"color": "#e4e2da", "roughness": 0.62, "metalness": 0.0, "decal": True, "street_lit": True},
     # the entrances: aluminium panels, the steel frame, the glass, the stairs' granite and the well's tiles
-    "x_panel": {"color": "#c4c7ca", "roughness": 0.42, "metalness": 0.55},
+    # (panels 0.9 m wide with their joints: a plain pale box read as a model with no texture on it)
+    "x_panel": {"color": "#a9aeb3", "roughness": 0.46, "metalness": 0.5, "pattern": "granite", "joints_m": [0.9, 0.0]},
     "x_frame": {"color": "#55595e", "roughness": 0.45, "metalness": 0.6},
     "x_glass": {"color": "#1c2529", "roughness": 0.04, "metalness": 0.2, "opacity": 0.16},
     "x_tread": {"color": "#8e8a84", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.0], "stair": "tread"},
@@ -121,6 +122,7 @@ class Data:
         self.by_id = {n["id"]: n for n in self.nodes}
         G = json.load(open(os.path.join(self.C.out, "game.json")))
         self.roads = [(r["c"], [(r["p"][k] / 10, r["p"][k + 1] / 10, r["p"][k + 2] / 10) for k in range(0, len(r["p"]), 3)]) for r in G["paths"]["road"]]
+        self.foot = [[(r["p"][k] / 10, r["p"][k + 1] / 10) for k in range(0, len(r["p"]), 3)] for r in G["paths"]["foot"]]   # (the lines the crowd walks)
 
     def ground(self, x, y):
         return self.T(x, y)
@@ -307,7 +309,6 @@ def crosswalks(K, D, node):
             for j in range(3):
                 pts = [seg[j], seg2[j], seg2[j + 1], seg[j + 1]]
                 paint.quad(*[np.array([*p, gz(p) + 0.045]) for p in pts])
-    guard_rails(K, D, area, centre)
 
 
 def road_bands(D):
@@ -318,22 +319,99 @@ def road_bands(D):
     return D._bands
 
 
-def guard_rails(K, D, area, centre, near=40.0):
-    """Along the scramble's kerbs, between the crosswalks: white guard pipes (ガードパイプ, 0.8 m, posts every
-    2 m) on the Hachiko and station side, and short stainless bollards along QFRONT's forecourt, where the
-    photographs show them; none across a crosswalk's end, a road or a doorway."""
-    bands = road_bands(D)
-    ends = []
-    for c in CROSSWALKS:
-        a, b = np.asarray(c["a"], float), np.asarray(c["b"], float)
-        ends += [Point(*a).buffer(c["width"] / 2 + 0.8), Point(*b).buffer(c["width"] / 2 + 0.8)]
-    from shapely.ops import unary_union
-    skip = unary_union(ends)
-    ring = np.asarray(area.exterior.coords)
+# The junction's plan, which the landmarks here and the hero level (hero.py) both draw from, so that what is
+# drawn and what is solid are one thing: the carriageways, the pavements and the kerb between them.
+HERO_CENTRE, HERO_R = (368.0, -1002.0), 100.0
+KERB_M = 0.18
+GUARD_NEAR = 62.0            # guard pipes within this of the junction's centre
+
+
+class Plan:
+    def __init__(self, D, wells=(), centre=HERO_CENTRE, r=HERO_R):
+        from shapely.ops import unary_union
+        c = np.asarray(centre)
+        self.centre = c
+        self.disc = Point(*c).buffer(r, 48)
+        near = [Polygon(s["ring"]).buffer(0) for s in D.solids if len(s["ring"]) >= 3 and np.linalg.norm(np.mean(s["ring"], axis=0) - c) < r + 120
+                and s.get("base", 0) - s.get("ground", 0) < 2.5]          # (what stands on the ground: not a deck or a bridge over it)
+        self.solids = unary_union([p.buffer(0.12) for p in near if p.is_valid and p.area > 1]).intersection(self.disc.buffer(5))
+        # the stair wells the entrances cut into the ground (the landmarks' clip rings)
+        self.wells = unary_union([Polygon(q).buffer(0.25) for q in wells if len(q) >= 3])
+        self.junction = junction_area(D)
+        self.roads = unary_union([road_bands(D), self.junction]).intersection(self.disc).difference(self.solids).buffer(0)
+        self.walks = unary_union([Polygon(crosswalk_poly(cw)) for cw in CROSSWALKS])
+        self.pave = self.disc.difference(self.roads.buffer(KERB_M)).difference(self.solids).difference(self.wells).buffer(0)
+        # where walkers step off a crosswalk: its band carried 4 m past each end, a metre wider each side. Nothing
+        # stands there (a guard pipe across a crosswalk's end is a fence across the crossing)
+        mouths = []
+        for cw in CROSSWALKS:
+            a, b = np.asarray(cw["a"], float), np.asarray(cw["b"], float)
+            f = unit(b - a)
+            mouths.append(Polygon(crosswalk_poly({"a": a - f * 4.0, "b": b + f * 4.0, "width": cw["width"] + 2.0})))
+        # ... and wherever else a mapped footway leaves the pavement for the carriageway (a crossing OSM maps that is
+        # not one of the five, a path's end at a kerb): 2.5 m each side of the line, from 4 m before the kerb.
+        # Japan's rule for these fences (防護柵の設置基準, 横断防止柵) is the same thing said from the road's side:
+        # they stand where crossing is to be stopped, and are open at every crossing
+        near = self.disc.buffer(20)
+        for pts in D.foot:
+            if len(pts) < 2:
+                continue
+            ln = LineString(pts)
+            if not ln.intersects(near) or not ln.intersects(self.roads):
+                continue
+            mouths.append(ln.intersection(self.roads.buffer(4.0)).buffer(2.5))
+        self.mouths = unary_union(mouths)
+        self.footways = unary_union([LineString(pts) for pts in D.foot if len(pts) > 1 and LineString(pts).intersects(near)])
+
+
+def lines_of(geom):
+    for g in getattr(geom, "geoms", [geom]):
+        if g.geom_type == "LineString" and g.length > 0.3:
+            yield np.asarray(g.coords)
+        elif g.geom_type in ("MultiLineString", "GeometryCollection"):
+            yield from lines_of(g)
+
+
+def guard_runs(plan):
+    """White guard pipes (ガードパイプ: posts every 2 m, 0.8 m high, two rails) along the kerbs between the
+    crosswalks, on the pavement's side, as photographs show them on the Hachiko and station sides: each run as
+    its posts' places. None where walkers step off a crosswalk, round a stair well, against a building or
+    along QFRONT's forecourt, which has steel bollards."""
+    runs = []
+    for co in lines_of(plan.roads.buffer(KERB_M + 0.32).boundary.intersection(plan.pave)):
+        seg = np.linalg.norm(np.diff(co, axis=0), axis=1)
+        cum = np.r_[0.0, np.cumsum(seg)]
+        n = int(cum[-1] // 2.0)
+        run = []
+        for i in range(n + 1):
+            d = cum[-1] * i / max(n, 1)
+            q = np.array([np.interp(d, cum, co[:, 0]), np.interp(d, cum, co[:, 1])])
+            pt = Point(*q)
+            ok = (np.linalg.norm(q - plan.centre) < GUARD_NEAR and not plan.mouths.contains(pt) and not (q[1] > -992.0 and q[0] < 372.0)
+                  and plan.solids.distance(pt) > 1.4 and (plan.wells.is_empty or plan.wells.distance(pt) > 0.9))
+            if ok:
+                run.append(q)
+            if (not ok or i == n) and run:
+                if len(run) > 2:                 # (a fence is a run: not a post or two left between two openings)
+                    runs.append(run)
+                run = []
+    return runs
+
+
+def guard_rails(K, D, plan, near=40.0):
+    """The guard pipes along the scramble's kerbs (guard_runs: solid here, and drawn finely by the hero level
+    while it is shown), and short stainless bollards along QFRONT's forecourt, where the photographs show them."""
     white, steel = K["x_guard"], K["x_rail"]
     gz = lambda p: D.ground(*p)
+    for run in guard_runs(plan):
+        for c in run:
+            white.tube([np.array([*c, gz(c)]), np.array([*c, gz(c) + 0.8])], 0.035, 6)
+        for h in (0.42, 0.74):
+            for p, q in zip(run[:-1], run[1:]):
+                white.tube([np.array([*p, gz(p) + h]), np.array([*q, gz(q) + h])], 0.025, 6)
     from shapely.geometry.polygon import orient
-    ring = np.asarray(orient(area, 1.0).exterior.coords)
+    bands = road_bands(D)
+    ring = np.asarray(orient(plan.junction, 1.0).exterior.coords)
     for a, b in zip(ring[:-1], ring[1:]):
         L = float(np.linalg.norm(b - a))
         if L < 0.5:
@@ -342,23 +420,14 @@ def guard_rails(K, D, area, centre, near=40.0):
         out = np.array([f[1], -f[0]])
         n = max(1, int(L // 2.0))
         for k in range(n):
-            p, q = a + f * L * k / n, a + f * L * (k + 1) / n
-            m = (p + q) / 2
-            o = m + out * 0.45
-            if np.linalg.norm(m - centre) > near or skip.contains(Point(*m)) or bands.contains(Point(*(m + out * 1.2))):
+            m = a + f * L * (k + 0.5) / n
+            c = m + out * 0.45
+            if not (m[1] > -992.0 and m[0] < 372.0) or np.linalg.norm(m - plan.centre) > near or plan.mouths.contains(Point(*c)) or bands.contains(Point(*(m + out * 1.2))):
                 continue
             if any(Polygon(s_["ring"]).contains(Point(*(m + out * 0.6))) for s_ in D.solids if abs(s_["ring"][0][0] - m[0]) < 25 and abs(s_["ring"][0][1] - m[1]) < 25):
                 continue
-            if m[1] > -992.0 and m[0] < 372.0:             # QFRONT's forecourt: bollards
-                c = o
-                lathe = [(gz(c), 0.09), (gz(c) + 0.75, 0.09), (gz(c) + 0.8, 0.06), (gz(c) + 0.82, 0.0)]
-                steel.lathe([(float(z), float(r)) for z, r in lathe], (float(c[0]), float(c[1])), 10)
-                continue
-            po, qo = p + out * 0.45, q + out * 0.45
-            for c in (po,):
-                white.tube([np.array([*c, gz(c)]), np.array([*c, gz(c) + 0.8])], 0.035, 6)
-            for h in (0.42, 0.78):
-                white.tube([np.array([*po, gz(po) + h]), np.array([*qo, gz(qo) + h])], 0.025, 6)
+            lathe = [(gz(c), 0.09), (gz(c) + 0.75, 0.09), (gz(c) + 0.8, 0.06), (gz(c) + 0.82, 0.0)]
+            steel.lathe([(float(z), float(r)) for z, r in lathe], (float(c[0]), float(c[1])), 10)
 
 
 # ---------------------------------------------------------------- tactile paving
@@ -1646,6 +1715,7 @@ class Build:
         for e in self.entrances:
             clip.append({"ring": entrance(K, self.A, e)})
             hidden.append(e["si"])
+        guard_rails(K, self.D, Plan(self.D, [c["ring"] for c in clip]))
         return K.out(), hidden, clip, getattr(self.D, "props", [])
 
     def draw(self, out_dir):

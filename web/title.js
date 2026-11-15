@@ -144,7 +144,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const dn = c => (destOf(c).sites ? escH(c.district || c.name) : resume && resume.stamps ? `${resume.stamps} stamp${resume.stamps > 1 ? 's' : ''} in your passport` : 'Your game');
   const mapBtn = c => (c === startMap
     ? `<button class="ts-d ts-go" data-hero="${c.id}" aria-label="${GO} ${escH(c.district || c.name)}"><span>${dn(c)}</span><em>${GO}<kbd>P</kbd></em></button>`
-    : `<button class="ts-d" data-hero="${c.id}" aria-label="Play ${dn(c)}"><span>${dn(c)}</span></button>`);
+    : `<button class="ts-d" data-hero="${c.id}" aria-label="Play ${dn(c)}"><span>${dn(c)}</span><em>Play</em></button>`);
   const list = $('ts-list');
   list.innerHTML = dests.map((d, i) => {
     const p = progress(d), ms = maps(d);
