@@ -8,7 +8,9 @@
 //   - it still gives way at once when the scene gets heavier, and has its resolution and the display's full rate
 //     back a minute after the scene is light again;
 //   - a device that cannot hold the floor ends there with the extras shed;
-//   - a device with a record starts from it and does not try the step above for half a minute.
+//   - a device with a record starts from it and does not try the step above for half a minute;
+//   - frames that cost the same at any resolution get the resolution back (web/quality.js `flat`), and frames
+//     that are half pixels keep the floor.
 //   node tools/governor_unit.js [--old <path to an older quality.js>]    (prints each model's changes a minute)
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const file = process.argv.includes('--old') ? process.argv[process.argv.indexOf('--old') + 1] : path.join(__dirname, '..', 'web', 'quality.js');
@@ -81,4 +83,17 @@ for (const [name, cost] of [['between 0.85 and 0.90, the extras shed', (s, e) =>
 if (has('resume')) { const g = gov(); g.resume(0.85, 0);
   const log = play(g, 25, (s, e) => 5.2 + 13.5 * s * s + 4 * e, 5), all = play(g, 600, (s, e) => 5.2 + 13.5 * s * s + 4 * e, 6);
   check(log.length === 0 && all.length <= 12, `a device with a record starts from it and holds it (${log.length} changes in its first 25 s, ${all.length} in the next ten minutes)`); }
+
+// 6. frames that cost the same at any resolution (a phone in a dense city: its draw calls and its triangles): the
+// floor buys them nothing, so the resolution comes back while they are still slow, and then stays put
+for (const [name, cost] of [['at 40 a second', () => 24], ['at 25 a second', () => 38]]) {
+  if (!Object.getOwnPropertyDescriptor(gov(), 'flat')) break; // (--old: a governor from before it)
+  const g = gov(); g.startLow();
+  const log = play(g, 120, cost, 8), late = play(g, 20 * 60, cost, 9);
+  if (process.env.SHOW) console.log(log.concat(late).map(c => `${Math.round(c.s)}s ${c.to}`).join('  '));
+  check(g.scale >= 0.8 - 1e-9 && late.length <= 20, `frames as slow at any resolution, ${name}: the resolution is given back (${g.scale.toFixed(2)}/${g.extras} after two minutes and twenty more; ${log.length} changes, then ${late.length})`);
+}
+// and where the pixels are half of a slow frame, the floor is kept: it was worth having
+{ const g = gov(); g.startLow(); play(g, 120, s => 14 + 30 * s * s, 10);
+  check(Math.abs(g.scale - g.min) < 1e-6, `frames that are half pixels keep the floor (${g.scale.toFixed(2)}/${g.extras})`); }
 process.exit(fails ? 1 : 0);
