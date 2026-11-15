@@ -15,7 +15,9 @@ as the survey allows. So, for each road and footway where it lies on the ground 
     nodes are drawn towards it less and less, so that the drop a smeared survey put in the street goes into the
     building or the bank beside it (where the walls are drawn down to whichever ground is drawn); a node there more
     than BANK_M off the street's level is the bank's own slope or a wall, and stays;
-  - where several meet (a junction, a footway beside a road) the nearest lines count most.
+  - where several meet (a junction, a footway beside a road) the nearest lines count most;
+  - a pit by a street a node or two wide (a hole in the survey, a trench dug when it flew) is filled to the ground
+    round it.
 
 The levelling is kept only where it makes the whole map's streets more even (fewer cross-falls of over 15 %, no more
 creases of over 15 %); otherwise the survey stays as it is (see run()).
@@ -54,6 +56,7 @@ FOOT_HW = {"pedestrian": 2.5, "footway": 1.0, "path": 1.0, "cycleway": 1.25, "li
 PIN_M = 2.5          # past the half width, the nodes still set to the street's level (half a cell: the triangles
                      # under the carriageway's edge)
 FEATHER_M = 2.5      # and past that, drawn towards it less and less
+PIT_M = 1.0          # a node this far under the median of the eight round it, by a street, is a pit: filled
 BANK_M = 1.5         # a node in that feather further off the street's level is a bank's or a wall's: left
 ON_GROUND_M = 0.3    # a line's point within this of the ground lies on it (otherwise a deck, a ramp, a tunnel)
 SPREAD_M = 0.4       # where the lines that reach a node disagree on its level by more (a street under a footbridge, a
@@ -226,7 +229,37 @@ def level(T, G, game, keep):
     # and towards what is left as it is, less and less over EDGE_M, so that a street comes into a hero level or onto a
     # landmark's paving on the ground as it was there, without a crease where the two meet
     alpha *= np.clip(ndimage.distance_transform_edt(~keep) * cell / EDGE_M - 0.2, 0, 1)
-    return T + alpha * (target - T), alpha
+    new = T + alpha * (target - T)
+    # a pit by a street, a node or two wide and more than PIT_M under the nodes round it (a hole in the survey, a trench
+    # dug when it flew: a construction site's, Sakuragaoka's south of Shibuya Station, 3 m deep under a street that runs
+    # level over it), filled to the ground round it; a bank (high on one side, low on the other) is no pit
+    # (where a main road runs down at the pit's own level it is a cutting or an underpass's ramp, and stays)
+    near = np.isfinite(umin) & (umin < PIN_M + FEATHER_M) & ~keep
+    cut = np.zeros((ny, nx), bool)
+    for e in game["paths"]["road"]:
+        if e.get("c") not in ("motorway", "trunk", "primary"):
+            continue
+        q = np.asarray(e["p"], np.float64).reshape(-1, 3) / 10
+        for dr in range(-2, 3):
+            for dc in range(-2, 3):
+                rr, cc = np.round((G.y1 - q[:, 1]) / cell).astype(int) + dr, np.round((q[:, 0] - G.x0) / cell).astype(int) + dc
+                ok = (rr >= 0) & (rr < ny) & (cc >= 0) & (cc < nx)
+                rr, cc = rr[ok], cc[ok]
+                cut[rr, cc] |= np.abs(T[rr, cc] - q[ok, 2]) < 1.5
+    near &= ~cut
+    for _ in range(3):
+        P = np.pad(new, 1, mode="edge")
+        ring = np.stack([P[1 + dr:1 + dr + ny, 1 + dc:1 + dc + nx] for dr in (-1, 0, 1) for dc in (-1, 0, 1) if dr or dc])
+        med = np.median(ring, axis=0)
+        # (two of the eight round it as low at most, the two along a trench a node wide: on a bank's slope three or more
+        # are lower, and it is no pit; and no deeper than a street's own MAX_MOVE_M)
+        low = (ring < new[None] + 0.3).sum(0)
+        pit = near & (new < med - PIT_M) & (low <= 2) & (med - new <= MAX_MOVE_M)
+        if not pit.any():
+            break
+        new[pit] = med[pit]
+        alpha[pit] = 1.0
+    return new, alpha
 
 
 def evenness(T, G, game, centre, radius, keep):
