@@ -174,6 +174,7 @@ else
       tools/pin_clock.js) shared_change "game clip" ;;
       web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) shared_change ;;
       tools/check.sh|tools/live_cities.sh|.github/workflows/checks.yml) voice=1 ;;   # the checks' own plumbing: the static ones, and the run itself
+      pipeline/street_ground.py) voice=1 ;;   # the streets' grading: its own check, with the static ones
       tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
     esac
   done
@@ -413,6 +414,11 @@ EOF
   if python3 pipeline/solid_rings.py --check $(bash tools/live_cities.sh) >"$OUT/rings.log" 2>&1; then
     echo "ok   rings  $(grep -c '^ok' "$OUT/rings.log") live cities' solids valid on their grid"
   else echo "FAIL rings  $(grep '^FAIL' "$OUT/rings.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/rings.log)"; fi
+  # every live map's streets graded (pipeline/street_ground.py --check, issues 510, 522 and 524): the ground written by
+  # the method as it is now, and its carriageways' cross-falls and creases within what that leaves. A minute.
+  if python3 pipeline/street_ground.py --live --check >"$OUT/streets.log" 2>&1; then
+    echo "ok   streets  $(grep -c '^ok' "$OUT/streets.log") live maps' carriageways level across and smooth along"
+  else echo "FAIL streets  $(grep '^FAIL' "$OUT/streets.log" | head -2 | cut -c6-200 | paste -sd ';' -)   (see $OUT/streets.log)"; fi
   # no landmark hangs in the air in a live city (tools/float_check.py: a sign tower whose legs miss the roof, a
   # screen stood at a penthouse's height over a lower roof)
   if for c in $(tools/live_cities.sh); do python3 tools/float_check.py "$c" || exit 1; done >"$OUT/float.log" 2>&1; then
