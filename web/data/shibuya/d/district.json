@@ -1,0 +1,77 @@
+{
+ "note": "A phone's district of this map (pipeline/district.py): the packs here are cut from the whole map's and are never edited by hand.",
+ "v": 1,
+ "x": [
+  -350,
+  1250
+ ],
+ "y": [
+  -2100,
+  450
+ ],
+ "km2": 4.08,
+ "of_km2": 17.8,
+ "kept": {
+  "buildings": 12589,
+  "solids": 13944,
+  "skyline": 1007,
+  "meshes": 124,
+  "skyline_meshes": 0,
+  "materials": 98,
+  "quests": [
+   "hachi",
+   "gai",
+   "sky",
+   "edge",
+   "done"
+  ]
+ },
+ "cut": {
+  "travel": [
+   "t-sancha"
+  ],
+  "npcs": [
+   "haru",
+   "tanaka"
+  ],
+  "spots": [
+   "pukuichi",
+   "marina",
+   "chiyo",
+   "stair_corner",
+   "fork",
+   "passage",
+   "hanamasa"
+  ],
+  "chatter": [
+   "",
+   "",
+   ""
+  ],
+  "areas": [
+   "三軒茶屋",
+   "表参道"
+  ],
+  "surfaces": 2,
+  "stations": [
+   "ebisu"
+  ],
+  "quests": [
+   "sancha",
+   "sento"
+  ]
+ },
+ "files": {
+  "buildings.bin": 820811,
+  "game.bin": 182261,
+  "landmarks.bin": 307933,
+  "places.bin": 83701,
+  "scene.bin": 32075,
+  "shore.png": 4935,
+  "vis.bin": 233310,
+  "woods.webp": 191728
+ },
+ "bytes": 1856754,
+ "whole_bytes": 4490926,
+ "sha256": "50110d746061dd85a39641bd939a050d49e749b16723c0fbe596185d0befe6fb"
+}

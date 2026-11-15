@@ -227,7 +227,11 @@ The owner should not be the one who finds the bug.
   hand-merge a `.bin`: repack it. The same command makes each live city's `vis.bin` and `skyvis.webp`
   again when its `buildings.json` changed (`pipeline/visibility.py`: the occluder raster the page's
   visibility sweep reads, a minute or two for a large city; `pipeline/skyvis.py`: the sky its ground
-  sees; docs/PERFORMANCE.md).
+  sees; docs/PERFORMANCE.md). And each live city's district for phones (`web/data/<id>/d/`,
+  `pipeline/district.py`: the same packs cut to the rectangle in `cities/<id>/city.json`
+  `phone_district`, which a phone's game loads and plays inside). Never edit a file under `d/`:
+  it is cut from the packs. A new list in `game.json` that places things on the map needs its
+  line in `district.py` `cut_game`, or a phone keeps what lies outside its district.
 
 - Every city shares the helicopter, ferry, river shuttle and car models
   (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and the people

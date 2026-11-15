@@ -134,6 +134,9 @@ else
     case "$f" in
       cities/index.json|web/data/cities.json) title=1 ;;   # the globe's list of cities
       cities/*/postcards.json|web/data/*/postcards/*|web/data/postcards.json|web/postcards.js|tools/postcards_*|tools/postcards.sh|pipeline/postcards.py) title=1 ;;   # the title's postcards (tools/postcards_check.js), not the cities' games
+      web/data/*/d/*)   # a phone's district of a map (pipeline/district.py): what a phone loads, so its memory check
+        id=${f#web/data/}; id=${id%%/*}; is_in "$id" "$CITIES" && add_city "$id" mem ;;
+      pipeline/district.py) shared_change mem ;;
       cities/*/*|web/data/*/*)
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
@@ -353,6 +356,9 @@ EOF
   if for c in $(tools/live_cities.sh); do python3 tools/sign_clear.py "$c" || exit 1; done >"$OUT/signclear.log" 2>&1; then
     echo "ok   pictures clear ($(grep -c 'in front$' "$OUT/signclear.log") cities: no sign or screen behind another landmark)"
   else echo "FAIL covered pictures: $(grep '^COVERED' "$OUT/signclear.log" | head -2 | cut -c9-130 | paste -sd ';' -)   (see $OUT/signclear.log)"; fi
+  # the far crowd's copy of every live city's cast (pipeline/crowd_cast.py, issue 475): a cast member without one is a doll far off
+  if python3 pipeline/crowd_cast.py --check >"$OUT/crowd_cast.log" 2>&1; then tail -1 "$OUT/crowd_cast.log"
+  else echo "$(grep '^FAIL' "$OUT/crowd_cast.log" | head -1 | cut -c1-160)   (see $OUT/crowd_cast.log)"; fi
   # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
   if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
   else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi

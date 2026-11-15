@@ -56,7 +56,7 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
           // and this tab's own last page, dead three seconds ago in the middle of a load (Safari loads a killed tab again
           // at once): the tab's session storage names it, so it is counted though it is younger than another tab's would be
           sessionStorage.setItem('oe3d-sid', 'aaaaaaaaaaaaaaaaaaaaaaaa');
-          localStorage.setItem('oe3d-alive-aaaaaaaaaaaaaaaaaaaaaaaa', JSON.stringify({ t: Date.now() - 3000, up: 14, ready: false, stage: 'late people', view: 'game', city: 'sametab' }));
+          localStorage.setItem('oe3d-alive-aaaaaaaaaaaaaaaaaaaaaaaa', JSON.stringify({ t: Date.now() - 3000, up: 14, ready: false, stage: 'late people', mb: 7, view: 'game', city: 'sametab' }));
         }
       } catch (e) { /* storage blocked */ }
     });
@@ -99,6 +99,8 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     await p.evaluate(() => window.OETelemetry.sample());
     const gameHere = await p.evaluate(() => window.OETelemetry.here());
     await p.evaluate(() => window.OETelemetry.set({ probe: 1 }));      // what a governor would report of itself
+    // a shader that fails to compile, as three.js reports it (on the console, no exception)
+    await p.evaluate(() => console.error('THREE.WebGLProgram: Shader Error 1282 - VALIDATE_STATUS false\n\nMaterial Name: probe\nMaterial Type: MeshStandardMaterial\n\nProgram Info Log: x'));
     // a loaded software renderer can draw under a frame a second: play on until the frame rate has its samples
     await p.waitForFunction(() => window.OETelemetry.frames() >= 20, null, { timeout: 90000, polling: 1000 }).catch(() => {});
     await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
@@ -204,6 +206,9 @@ const read = () => { try { return fs.readFileSync(log, 'utf8').trim().split('\n'
     const crT = cr.filter(e => e.props.prev_city === 'testville'), crS = cr.filter(e => e.props.prev_city === 'sametab');
     must(cr.length === 2 && crT.length === 1 && crT[0].props.prev_spot === 'Test Wharf', 'a page that died on screen is reported once by the next', cr.length);
     must(crS.length === 1 && crS[0].props.prev_stage === 'late people' && crS[0].props.prev_ready === false, 'this tab\'s own page, dead seconds ago mid-load, is reported with the step it died at', crS[0] && crS[0].props.prev_stage);
+    must(crS.length === 1 && crS[0].props.prev_mb === 7, 'and with how much it had downloaded (prev_mb)', crS[0] && crS[0].props.prev_mb);
+    const sh = of('error', x => x.kind === 'shader');
+    must(sh.length === 1 && /Shader Error.*MeshStandardMaterial "probe"/.test(sh[0].props.msg), 'a shader that fails to compile is reported', sh[0] && sh[0].props.msg);
     must(sameTab === 1, 'and counted against its map at once, so the load Safari starts again is lighter', sameTab);
     must(died && died.n === 1 && died.died === 1 && died.other === 0, 'and counted against its map, for a lighter load there next (quality.js died)', JSON.stringify(died));
     must(of('view', x => x.view === 'game').every(e => e.props.from === `city:${city}`), 'a view says which view it came from');

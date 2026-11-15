@@ -423,6 +423,27 @@ test and upload only the slots taken (`actors.js`). Both also ask the precompute
 behind the buildings, whose shadow cannot reach anything seen, takes no slot. Shibuya's scramble on foot then
 draws 2.91 million triangles in 315 draws (7.60 million in 415 on main at the start of this issue).
 
+### The far crowd as the scanned cast (issue 475)
+
+The far crowd's dolls gave way to a far copy of each cast member (`pipeline/crowd_cast.py`, docs/LOOK.md):
+about 1,000 to 1,800 triangles a copy against the dolls' 1,350 to 2,250, one 128 x 192 picture each (half that
+on a phone, about 33 kB of the GPU a character), and no per-walker colours to upload (the dolls' skin, hair,
+clothes and pattern, 52 bytes a walker). A copy is one instanced draw in the view and in each shadow pass, as a
+doll was, so the cast is held to twelve on the desktop tiers and eight on a phone (`game.js` `realCast`), below
+the dolls' thirteen; a cast member with nobody drawn this frame is not drawn at all (`people.js` `end`).
+Measured with `tools/frame_cost.js` on foot at the spawn at 12:30 (FREEZE=1; desktop 1440 x 900 high, phone
+390 x 844 low), against `?farcast=off` (the dolls), and `tools/mem_check.js` (a phone's peak GPU memory):
+
+| Map | Desktop draws | Desktop triangles | Phone draws | Phone triangles | Phone GPU peak (textures) |
+|---|---|---|---|---|---|
+| Shibuya | 513 -> 513 | 2.69 M -> 2.59 M | 354 -> 334 | 1.17 M -> 1.11 M | 242 -> 242 MB (164 -> 164) |
+| Tokyo | 949 -> 929 | 3.11 M -> 3.05 M | 744 -> 730 | 2.40 M -> 2.36 M | 272 -> 271 MB (171 -> 172) |
+| Sydney | 466 -> 462 | 1.88 M -> 1.86 M | 405 -> 405 | 1.61 M -> 1.60 M | 226-231 -> 227-231 MB (160 -> 160) |
+
+(The phone's peak moves by up to 5 MB between two runs of the same page, in the buffers of the map streamed round
+the player; its textures, where the copies' pictures are, did not move.) The download grows by the file, 650 kB
+for the live maps' 24 cast members, fetched with the dolls before the game opens.
+
 ### The main thread
 
 - No vector is made per walker per frame (`people.js`), and the shadow cache compares the still casters'
@@ -1239,7 +1260,7 @@ anything, which is the next step below; limiting the walkers to one street would
 
 No code was taken; these are methods.
 
-**Next, in order of what they hold** (issue 443): the phone's district as a pack of its own, cut offline to a
+**Next, in order of what they hold** (issue 443; the first is done, "A phone's district" below): the phone's district as a pack of its own, cut offline to a
 kilometre round the spawn with the play area bounded to it (every map-wide grid above shrinks with the frame, and
 the load's peak with the data decoded); pictures block-compressed for phones; the surface model in sixteen bits;
 the inland rasters by tile.
@@ -1248,6 +1269,74 @@ the inland rasters by tile.
 this round (about 380 MB settled in Shibuya, 580 in Tokyo) and the renderer process still peaks over a gigabyte
 there; whether 170 MB less on the GPU and a load that waits is enough, the owner's phone says, through `crash`
 (`prev_lv`, `prev_stage`) and `held`.
+
+### A phone's district (issues 443, 406, 335 and 404)
+
+Round 4 moved the GPU's share and left the page's own: about 380 MB of settled heap in Shibuya and 580 in Tokyo, and
+a renderer process over a gigabyte at the load's peak. What held it scaled with the map, not with the player: the 2 m
+surface model, the walking model and its collision world, the inland water's rasters, the packs as decoded and the
+objects parsed from them, all made for 15 to 18 square kilometres before the first frame.
+
+**The telemetry first.** Between PR 482 reaching the site (13:05 UTC, 14 November) and this round, no phone opened
+a game: the last iPhone events are 12:47 UTC on release 0.1.285, first frame at 11.7 s and the tab dead 6 s later
+(`prev_stage` `late trees`), no `prev_lv` yet. So which level the owner's phone lives at is still not known, and
+the order below is by what each cut holds.
+
+**The cut is made offline** (`pipeline/district.py`; `python pipeline/pack.py` keeps it with the packs and
+`--check` fails a stale one). A live map has a rectangle of four to five square kilometres round its spawn
+(`cities/<id>/city.json` `phone_district`, chosen to hold the map's lines of play: Shibuya from Yoyogi and Harajuku
+down to Daikanyama, Tokyo from the Palace plaza and Hibiya to Ginza, Sydney from Hyde Park to Milsons Point), and
+`web/data/<id>/d/` holds the same packs cut to it:
+
+| Pack | What is in a district's |
+|---|---|
+| `scene.bin` | the frame is the district; `world` is the whole map's frame, and the ground, the aerial tiles, the haze at the edge, the land past it, the night's light map and the roofs' photograph are drawn over it as before; the inland water clipped 60 m past the edge; the woods' and the shore's rasters cropped |
+| `buildings.bin` | every solid that touches the district or the 200 m past its edge (scenery: the streets a player at the edge looks down), and past that the skyline alone, 30 m and taller, which is what a phone's level 2 draws there anyway; the rows renumbered |
+| `landmarks.bin` | the meshes that touch the district or that band, and past it those 40 m and taller (Tokyo Tower from Marunouchi) |
+| `game.bin` | the walking terrain and the water mask cropped; roads and footways clipped at the edge, their run through the band kept apart to paint the streets there; and the play that can be finished inside: people, spots, stations, wharves, ferry routes, and each line's quests up to the first with a step outside |
+| `places.bin`, `vis.bin` | places inside, trees to the band's edge; the occluder raster cropped |
+
+Everything keeps its coordinates, so the page's code is the same and only the amount differs: `world.js` `load`
+fetches `d/` on a phone (`quality.js` `lean`; `?district=on` anywhere, `?district=off` or `?map=whole` to compare),
+and the handful of places that mean "everything drawn" rather than "where the game is played" read
+`scene.worldFrame`. The play area is the district: a walker and a car stop at its edge as they do at the whole
+map's, the helicopter is held 120 m past it, a train past its last station inside is not boarded (as at the map's
+edge), and the game says "The edge of this district" rather than leave a wall without a word. What a district
+leaves out is listed in `d/district.json` (`cut`): Sangenjaya's two quests in Shibuya, the water bus and Tokyo
+Tower in Tokyo, the western wharves in Sydney. Those stay on the whole map, on a larger screen.
+
+**Landmarks as numbers, not objects.** The pack format decodes a landmark's vertex lists as typed arrays, but
+`pack.py` tested the plain-list case first and never reached the typed one, so every vertex came back a boxed
+number in a plain array: 39 MB of Tokyo's page for 2.2 million of them, on every tier
+(`PLAIN=6 tools/heap_owners.js` names who holds a snapshot's plain arrays and numbers, as it did the array
+buffers). The order is fixed and the live maps' landmarks repacked. On a phone a landmark's geometry, and the
+ground's clip mask, are now the GPU's alone once sent, like the walls'.
+
+| Phone's first load, level 2 (`tools/mem_check.js`, `tools/mem_timeline.js`) | Whole map (PR 482) | District |
+|---|---|---|
+| Shibuya: settled heap / peak heap / renderer at the load's peak | 409 / 512 / 1,200 MB | 242 / 387 / 845 MB |
+| Tokyo | 595 / 998 / 1,426 MB | 331 / 543 / 1,198 MB |
+| Sydney | 393 / 552 / 1,047 MB (in play) | 276 / 461 / 945 MB (in play) |
+| Peak GPU: Shibuya, Tokyo, Sydney | 242, 270, 226 MB | 218, 241, 214 MB |
+| First frame (llvmpipe): Shibuya, Tokyo | 16.1 s, 49.4 s | 10.6 s, 25.4 s |
+| The packs downloaded: Shibuya, Tokyo, Sydney | 4.5, 3.4, 1.8 MB | 1.9, 2.6, 1.4 MB |
+| The walking model, footways and roads on the main thread (issue 404): Shibuya, Tokyo | 1.36 s, 3.54 s | 0.86 s, 2.10 s |
+
+The budget is lowered to hold it: **270 MB of peak GPU memory and 400 MB of settled heap** (`quality.js` `budget`,
+`tools/mem_check.js`), and the memory check now also fails a map whose district is not loaded on the phone tier,
+names something outside it, or lets a walker out of it.
+
+**Stills** at 390 x 844, the whole map built whole beside the district: at each spawn by day, dusk and night, from
+180 to 260 m over it looking out across the far zone, and at the district's own edge on foot looking out. The
+pairs are the same pictures but for the crowd and the clouds' moment. (`tools/game_shot.js` now waits for the
+cells round a view before it takes it: with `LEAN=1` a view far from the spawn was taken before they were built.)
+
+**No code was taken.** The method is a level's bounds as open-world games cut them (a playable cell with a
+scenery ring past it and the skyline as far geometry: "Far geometry" above).
+
+**Not checked: a real iPhone, Safari, a real GPU.** Chromium under llvmpipe. A renderer process of 0.85 to 1.2 GB
+at the load's peak is under WebKit's 1.5 GB soft limit by Chromium's count, which is not iOS's; the owner's phone
+says, through `crash` (`prev_lv`, `prev_stage`) and `held`.
 
 ### The last CPU of the city build (issue 404), measured
 
@@ -1258,4 +1347,7 @@ collision world's own build is now the small part. What remains reads the whole 
 roofs, piers, decks, landmark cells): moving it to a Worker means a second walking model there (a hundred MB more at
 the load's peak, against this round's aim), so the better cut is to bake its result offline into `game.bin` with the
 inputs' fingerprint and fall back to the live build when they differ. Not done in this round.
+
+On a phone the district answers it by building less: Shibuya's walking model 762 -> 564 ms, footways 372 -> 210 and
+roads 221 -> 82; Tokyo's 2,445 -> 1,655, 800 -> 364 and 291 -> 81 (the table under "A phone's district").
 
